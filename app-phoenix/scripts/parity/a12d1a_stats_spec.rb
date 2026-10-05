@@ -1440,4 +1440,361 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
         'resume_wait' => Points::AnomalyBackfillUserJob.resume_options.fetch(:wait).to_i }
     end
   end
+
+  context 'A12d1b4 source cache contracts', type: :request do
+    let(:now) { Time.utc(2026, 10, 3, 12) }
+
+    def cache_capture
+      { 'version' => 1, 'completed_years' => cache_years, 'staleness' => cache_staleness,
+        'warming' => cache_isolated { cache_warming }, 'readers' => cache_readers,
+        'missing_users' => cache_missing_users, 'failure_boundary' => cache_failures,
+        'eligibility' => cache_eligibility, 'http_scoping' => cache_isolated { cache_http_scoping },
+        'fragments' => cache_isolated { cache_fragments }, 'trigger' => cache_trigger }
+    end
+
+    def cache_isolated
+      connection = ActiveRecord::Base.connection
+      sequences = %w[users points visits tracks track_segments stats digests countries
+                     notifications].index_with do |table|
+        connection.select_one("SELECT last_value, is_called FROM #{table}_id_seq")
+      end
+      caching = InsightsController.perform_caching
+      locale = I18n.locale
+      cache = {}
+      result = nil
+      RSpec::Mocks.with_temporary_scope do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        %i[write_entry delete_entry].each do |method|
+          allow(Rails.cache).to receive(method).and_wrap_original do |original, key, *args, **kwargs|
+            cache_remember(cache, key)
+            original.call(key, *args, **kwargs)
+          end
+        end
+        allow(Rails.cache).to receive(:delete_matched).and_wrap_original do |original, pattern, **kwargs|
+          cache_redis { |redis| redis.scan_each(match: pattern).each { |key| cache_remember(cache, key) } }
+          original.call(pattern, **kwargs)
+        end
+        uuid_index = 180_500
+        allow(SecureRandom).to receive(:uuid) do
+          uuid_index += 1
+          format('00000000-0000-4000-8000-%012d', uuid_index)
+        end
+        ActiveRecord::Base.transaction(requires_new: true) do
+          sequences.each_key { |table| connection.execute("SELECT setval('#{table}_id_seq', 180500, false)") }
+          travel_to(now) { Time.use_zone('Europe/Berlin') { result = yield cache } }
+          raise ActiveRecord::Rollback
+        end
+      ensure
+        cache_restore(cache)
+      end
+      result
+    ensure
+      sequences&.each do |table, state|
+        connection.execute("SELECT setval('#{table}_id_seq', #{state.fetch('last_value')}, " \
+                           "#{connection.quote(state.fetch('is_called'))})")
+      end
+      InsightsController.perform_caching = caching
+      I18n.locale = locale if locale
+      clear_enqueued_jobs
+    end
+
+    def cache_redis(&block)
+      Rails.cache.redis.then { |client| client.respond_to?(:with) ? client.with(&block) : block.call(client) }
+    end
+
+    def cache_remember(cache, key)
+      return if cache.key?(key)
+
+      cache_redis do |redis|
+        ttl = redis.pttl(key)
+        cache[key] =
+          [redis.get(key), ttl.negative? ? ttl : Process.clock_gettime(Process::CLOCK_MONOTONIC) + ttl / 1000.0]
+      end
+    end
+
+    def cache_restore(cache)
+      cache_redis do |redis|
+        cache.each do |key, (bytes, expiry)|
+          clock = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          remaining = expiry.negative? ? expiry : ((expiry - clock) * 1000).floor
+          if bytes.nil? || remaining == -2 || remaining.zero? || (expiry.positive? && remaining.negative?)
+            redis.del(key)
+          elsif remaining == -1
+            redis.set(key, bytes)
+          else
+            redis.set(key, bytes, px: remaining)
+          end
+        end
+      end
+    end
+
+    def cache_user(id = 180_101, **attributes)
+      User.unscoped.insert_all!([{ id:, email: "cache-#{id}@example.invalid", encrypted_password: '',
+                                  status: 1, plan: 1, settings: { 'timezone' => 'Asia/Tokyo' },
+                                  created_at: now, updated_at: now }.merge(attributes)])
+      User.unscoped.find(id)
+    end
+
+    def cache_stat(user, year, month = 1, stamp = now)
+      Stat.insert_all!([{ user_id: user.id, year:, month:, distance: 1000, daily_distance: { '1' => 1000 },
+                          flight_distance: 0, toponyms: [], h3_hex_ids: {}, calculation_version: 0,
+                          created_at: stamp, updated_at: stamp }])
+    end
+
+    def cache_digest(user, year, patterns = { 'activity_breakdown' => { 'walking' => 1, 'flying' => 2 } }, stamp = now)
+      Users::Digest.create!(user:, year:, period_type: :yearly, distance: 777, travel_patterns: patterns,
+                            updated_at: stamp, created_at: stamp)
+    end
+
+    def cache_key(user, digest)
+      "insights/yearly_digest/#{user.id}/#{digest.year}/#{digest.updated_at.to_i}"
+    end
+
+    def cache_years
+      [['2026-10-03T12:00:00Z', 'Europe/Berlin'], ['2025-12-31T23:30:00Z', 'Europe/Berlin'],
+       ['2025-12-31T23:30:00Z', 'Etc/UTC']].map do |instant, zone|
+        cache_isolated do
+          user = cache_user
+          [2026, 2025, 2023, 2022].each { |year| cache_stat(user, year) }
+          cache_stat(user, 2025, 2)
+          travel_to(Time.iso8601(instant))
+          Time.use_zone(zone) do
+            years = Cache::PreheatInsightsDigests.new(user).send(:recent_years_with_stats)
+            { 'now' => instant, 'ambient_zone' => zone, 'user_zone' => 'Asia/Tokyo', 'years' => years }
+          end
+        end
+      end
+    end
+
+    def cache_staleness
+      %w[missing blank nil_patterns false_patterns fresh equal older no_latest].map do |state|
+        cache_isolated do
+          user = cache_user
+          cache_stat(user, 2025) unless state == 'no_latest'
+          patterns = case state
+                     when 'blank' then {}
+                     when 'nil_patterns' then nil
+                     when 'false_patterns' then false
+                     else { 'weekly_pattern' => [1, 2, 3, 4, 5, 6, 7] }
+                     end
+          stamp = if state == 'older'
+                    now - 1.second
+                  else
+                    now + (state == 'fresh' ? 1.second : 0)
+                  end
+          digest = cache_digest(user, 2025, patterns, stamp) unless state == 'missing'
+          stale = digest.nil? || Cache::PreheatInsightsDigests.new(user).send(:digest_stale?, digest, 2025)
+          expect(stale).to eq(%w[missing blank nil_patterns false_patterns older].include?(state))
+          Cache::PreheatInsightsDigests.new(user).call
+          saved = user.digests.yearly.first
+          { 'state' => state, 'stale' => stale, 'distance' => saved&.distance,
+            'updated_at' => saved&.updated_at&.iso8601, 'key' => saved && cache_key(user, saved) }
+        end
+      end
+    end
+
+    def cache_warming
+      user = cache_user
+      other = cache_user(180_102)
+      cache_stat(user, 2025)
+      cache_digest(user, 2025)
+      writes = []
+      listener = ->(*, payload) { writes << payload.slice(:key, :expires_in) }
+      ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') do
+        Cache::PreheatingJob.new.perform
+        Cache::UserPreheatingJob.new.perform(user.id)
+      end
+      one_day = %w[years_tracked points_geocoded_stats countries_visited cities_visited total_distance]
+      expected = one_day.map { |suffix| "dawarich/user_#{user.id}_#{suffix}" }
+      user_writes = writes.select { |write| expected.include?(write[:key]) }
+      expect(user_writes.map { |write| write[:key] }.uniq.sort).to eq(expected.sort)
+      expect(user_writes.map { |write| write[:expires_in].to_i }.uniq).to eq([86_400])
+      expect(writes.find { |write| write[:key] == 'dawarich/countries_codes' }[:expires_in]).to eq(86_400)
+      yearly = cache_key(user, user.digests.yearly.first)
+      expect(writes.find { |write| write[:key] == yearly }[:expires_in]).to eq(3600)
+      Rails.cache.write("dawarich/user_#{other.id}_total_distance", 99, expires_in: 1.day)
+      Cache::InvalidateUserCaches.new(user.id, year: 2025).call
+      invalidated = (expected + [yearly]).index_with { |key| Rails.cache.exist?(key) }
+      expect(invalidated.values).to eq([true, false, false, false, false, false])
+      expect(Rails.cache.read("dawarich/user_#{other.id}_total_distance")).to eq(99)
+      { 'writes' => writes.map { |write| { 'key' => write[:key], 'ttl' => write[:expires_in].to_i } },
+        'invalidated' => invalidated, 'other_user_distance' => 99 }
+    end
+
+    def cache_controller(user, year = 2025)
+      InsightsController.new.tap do |controller|
+        allow(controller).to receive(:current_user).and_return(user)
+        controller.instance_variable_set(:@selected_year, year)
+      end
+    end
+
+    def cache_readers
+      %w[warm stale_snapshot cached_nil cold corrupt failure missing no_stats].map do |state|
+        cache_isolated do |cache|
+          user = cache_user
+          cache_stat(user, 2025) unless state == 'no_stats'
+          digest = cache_digest(user, 2025) unless %w[missing no_stats].include?(state)
+          key = digest && cache_key(user, digest)
+          if %w[warm stale_snapshot cached_nil].include?(state)
+            Rails.cache.write(key, state == 'cached_nil' ? nil : digest, expires_in: 1.hour)
+            digest.update_columns(distance: 888) if state == 'stale_snapshot'
+          elsif state == 'corrupt'
+            cache_remember(cache, key)
+            cache_redis { |redis| redis.set(key, 'corrupt fixture', ex: 3600) }
+          elsif key
+            Rails.cache.delete(key)
+          end
+          cache_redis do |redis|
+            if state == 'failure'
+              allow(redis).to receive(:get).with(key).and_raise(Redis::CannotConnectError,
+                                                                'synthetic unavailable')
+            end
+          end
+          calls = 0
+          allow(Users::Digests::CalculateYear).to receive(:new).and_wrap_original do |original, *args|
+            calls += 1
+            original.call(*args)
+          end
+          result = cache_controller(user).send(:fetch_or_calculate_yearly_digest)
+          expect(result&.distance).to eq(if %w[cached_nil no_stats].include?(state)
+                                           nil
+                                         else
+                                           state == 'missing' ? 1000 : 777
+                                         end)
+          { 'state' => state, 'distance' => result&.distance, 'calculation_calls' => calls,
+            'activity_pairs' => result&.travel_patterns&.fetch('activity_breakdown', {})&.to_a }
+        end
+      end
+    end
+
+    def cache_missing_users
+      [180_199, 180_101].map do |id|
+        cache_isolated do
+          cache_user(id, deleted_at: now) if id == 180_101
+          before = Users::Digest.count
+          Cache::UserPreheatingJob.new.perform(id)
+          expect(Users::Digest.count).to eq(before)
+          { 'state' => id == 180_101 ? 'deleted' : 'missing', 'digest_delta' => Users::Digest.count - before }
+        end
+      end
+    end
+
+    def cache_failures
+      [1, 2].map do |failure_at|
+        cache_isolated do
+          user = cache_user
+          [2025, 2023, 2022].each { |year| cache_stat(user, year) }
+          calls = []
+          logs = []
+          allow(Rails.logger).to receive(:error) { |message| logs << message }
+          allow(Users::Digests::CalculateYear).to receive(:new).and_wrap_original do |original, id, year|
+            calls << year
+            raise 'synthetic calculation failure' if calls.length == failure_at
+
+            original.call(id, year)
+          end
+          Cache::PreheatInsightsDigests.new(user).call
+          expect(logs).to eq(["Failed to preheat insights digest for user #{user.id}: synthetic calculation failure"])
+          expect(calls).to eq(failure_at == 1 ? [2025] : [2025, 2023])
+          { 'failure_at' => failure_at, 'calls' => calls, 'saved_years' => user.digests.pluck(:year),
+'log_count' => logs.length }
+        end
+      end
+    end
+
+    def cache_eligibility
+      [false, true].map do |self_hosted|
+        cache_isolated do
+          [0, 1, 2, 3].each { |status| cache_user(180_101 + status, status:) }
+          cache_user(180_105, deleted_at: now)
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+          ids = Cache::PreheatingJob.new.send(:target_users).where(id: 180_101..180_105).order(:id).pluck(:id)
+          expect(ids).to eq(self_hosted ? [180_101, 180_102, 180_103, 180_104] : [180_102, 180_103])
+          { 'self_hosted' => self_hosted, 'user_ids' => ids }
+        end
+      end
+    end
+
+    def cache_http_scoping
+      user = cache_user(plan: 0)
+      cache_stat(user, 2025, 1, now + 1.day)
+      cache_stat(user, 2025, 11, now)
+      digest = cache_digest(user, 2025)
+      controller = cache_controller(user)
+      preheat = Cache::PreheatInsightsDigests.new(user).send(:digest_stale?, digest, 2025)
+      http = controller.send(:digest_stale?, digest)
+      expect([preheat, http]).to eq([true, false])
+      monthly = Users::Digest.create!(user:, year: 2025, month: 11, period_type: :monthly,
+                                      travel_patterns: {}, created_at: now, updated_at: now)
+      equal = controller.send(:monthly_digest_stale?, monthly)
+      monthly.update_columns(updated_at: now - 1.second)
+      older = controller.send(:monthly_digest_stale?, monthly)
+      expect([equal, older]).to eq([false, true])
+      controller.params = ActionController::Parameters.new(month: '3')
+      controller.send(:load_monthly_digest)
+      expect(controller.instance_variable_get(:@monthly_digest)).to be_nil
+      { 'preheat_stale' => preheat, 'http_stale' => http,
+        'scoped_months' => user.scoped_stats.order(:month).pluck(:month),
+        'monthly_equal_blank' => equal, 'monthly_older' => older, 'unavailable_month_digest' => nil }
+    end
+
+    def cache_fragments
+      user = cache_user
+      cache_stat(user, 2025)
+      countries = [[180_901, 'AA', 'AAA'], [180_902, 'BB', 'BBB']].map do |id, iso_a2, iso_a3|
+        { id:, name: 'Duplicate', iso_a2:, iso_a3:, created_at: now, updated_at: now }
+      end
+      Country.insert_all!(countries)
+      Rails.cache.delete(Country::NAMES_TO_ISO_A2_CACHE_KEY)
+      writes = []
+      listener = ->(*, payload) { writes << payload.slice(:key, :expires_in) }
+      InsightsController.perform_caching = true
+      ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') do
+        codes = Country.names_to_iso_a2
+        expect(codes['Duplicate']).to eq('BB')
+        sign_in user
+        get '/insights/details?year=2025&month=1', headers: { 'Turbo-Frame' => 'insights_details' }
+        expect(response).to have_http_status(:ok)
+      end
+      fragments = writes.select { |write| write[:key].start_with?('views/insights/details:') }
+      expect(fragments.length).to eq(6)
+      expect(fragments.map { |write| write[:expires_in].to_i }.uniq).to eq([86_400])
+      { 'country_key' => Country::NAMES_TO_ISO_A2_CACHE_KEY, 'country_ttl' => 86_400,
+        'country_pairs' => Country.names_to_iso_a2.to_a,
+        'fragments' => fragments.map { |write| { 'key' => write[:key], 'ttl' => write[:expires_in].to_i } } }
+    end
+
+    def cache_trigger
+      original = ENV['TZ']
+      entry = YAML.load_file(Rails.root.join('config/schedule.yml')).fetch('cache_preheating_job')
+      ENV.delete('TZ')
+      ['2025-01-01T00:00:00Z', '2025-07-01T00:00:00Z'].map do |instant|
+        Time.use_zone('Europe/Berlin') do
+          cron = Sidekiq::Cron::Job.allocate.send(:do_parse_cron, entry.fetch('cron'))
+          native_cron = Fugit::Cron.parse('0 0 * * * Etc/UTC')
+          { 'cron' => entry.fetch('cron'), 'ambient_zone' => Time.zone.name, 'after' => instant,
+            'rails_fires_at' => cron.next_time(Time.iso8601(instant)).to_t.utc.iso8601,
+            'oban_utc_fires_at' => native_cron.next_time(Time.iso8601(instant)).to_t.utc.iso8601 }
+        end
+      end
+    ensure
+      original ? ENV['TZ'] = original : ENV.delete('TZ')
+    end
+
+    it 'writes or matches A12d1b4 cache retirement corpus twice byte-identically' do
+      corpus = cache_capture
+      expect(corpus.fetch('completed_years').map do |kase|
+        kase.fetch('years')
+      end).to eq([[2025, 2023], [2025, 2023], [2023, 2022]])
+      first = digest_json(corpus)
+      expect(digest_json(cache_capture)).to eq(first)
+      destination = Rails.root.join('app-phoenix/test/fixtures/a12d1b4/cache.json')
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        FileUtils.mkdir_p(destination.dirname)
+        File.write(destination, first)
+      else
+        expect(first).to eq(destination.read)
+      end
+    end
+  end
 end
