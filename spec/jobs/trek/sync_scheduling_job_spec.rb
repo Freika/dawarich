@@ -22,15 +22,17 @@ RSpec.describe Trek::SyncSchedulingJob, type: :job do
   end
   it 'Trek fences manual and marked sweeps and publishes a slot only once' do
     source = create(:trip_source)
+    scheduled = described_class.new('a12d2_cron')
+    scheduled.enqueued_at = Time.utc(2026, 10, 4, 12)
     key = 'cron:trek_sync_job'
     job_owner!(key, :oban)
     expect { described_class.perform_now }.not_to have_enqueued_job
-    expect { described_class.perform_now('a12d2_cron') }.not_to have_enqueued_job
+    expect { scheduled.perform_now }.not_to have_enqueued_job
     job_owner!(key, :sidekiq)
-    expect { described_class.perform_now('a12d2_cron') }
+    expect { scheduled.perform_now }
       .to have_enqueued_job(Trek::SyncJob).with(source.id).exactly(:once)
     clear_enqueued_jobs
-    expect { described_class.perform_now('a12d2_cron') }.not_to have_enqueued_job
+    expect { scheduled.perform_now }.not_to have_enqueued_job
     expect { described_class.perform_now('invalid') }.to raise_error(ArgumentError)
   end
 end

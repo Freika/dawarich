@@ -7,6 +7,7 @@ RSpec.describe 'Nightly geocoding publication', :non_transactional do
     configure_instance_geocoding
     user = create(:user)
     points = create_list(:point, 2, user: user, reverse_geocoded_at: nil)
+    clear_geocode_claims!
     source = Points::NightlyReverseGeocodingJob.new
     source.enqueued_at = Time.utc(2026, 10, 4, 1, 15)
     root = Geocoding::NightlyCommands.root(source.enqueued_at.to_i)
@@ -32,6 +33,7 @@ RSpec.describe 'Nightly geocoding publication', :non_transactional do
     ).map { |kind, payload| [kind, JSON.parse(payload)] }
     expect(intents.select { _1.first == 'geocoding.reverse_point' }.flat_map { _1.last.fetch('point_ids') })
       .to match_array(points.map(&:id))
+    expect(intents.select { _1.first == 'geocoding.reverse_point' }.map(&:last)).to all(include('force' => false))
     expect(intents.map(&:first)).to include('stats.caches_invalidated')
     source.perform
     expect(ActiveRecord::Base.connection.select_value('SELECT count(*) FROM phoenix.rails_commands'))

@@ -69,8 +69,13 @@ RSpec.configure do |config|
 
   config.around(:each, :non_transactional) do |example|
     newest_user_id = NonTransactionalConcurrency.newest_user_id
+    connection = ActiveRecord::Base.connection
+    owner_keys = connection.select_values('SELECT key FROM phoenix.job_owners')
     example.run
   ensure
     NonTransactionalConcurrency.delete_users_created_after(newest_user_id)
+    quoted = owner_keys.map { connection.quote(_1) }
+    predicate = quoted.empty? ? '' : "WHERE key NOT IN (#{quoted.join(',')})"
+    connection.execute("DELETE FROM phoenix.job_owners #{predicate}")
   end
 end
