@@ -121,6 +121,14 @@ class RateLimitBench
     Float(elapsed)
   end
 
+  def self.pool_sample_command
+    command = ['psql', '-h', 'a13c_bouncer', '-p', '6432', '-U', 'dawarich_cloud',
+               '-A', '-c', 'SHOW POOLS', 'pgbouncer']
+    return command if ENV['BENCH_IN_CONTAINER'] == '1'
+
+    ['docker', 'exec', '-e', 'PGPASSWORD=cloud', 'a13c_db', *command]
+  end
+
   def self.main
     role = ENV.fetch('BENCH_ROLE')
     raise 'BENCH_ROLE must be base or branch' unless %w[base branch].include?(role)
@@ -131,12 +139,10 @@ class RateLimitBench
     key = 'a13cbenchqqqqqqqqqqqqqqq'
     paths = { 'points' => '/api/v1/points', 'tiles' => '/api/v1/tiles/points/0/0/0.mvt' }
     client = lambda do |phase, _index|
-      http_time("http://127.0.0.1:3911#{paths.fetch(phase)}?api_key=#{key}&start_at=2026-01-01&end_at=2026-01-02")
+      http_time("#{ENV.fetch('BENCH_URL', 'http://127.0.0.1:3911')}#{paths.fetch(phase)}?api_key=#{key}&start_at=2026-01-01&end_at=2026-01-02")
     end
     sampler = lambda do
-      output, error, status = Open3.capture3('docker', 'exec', '-e', 'PGPASSWORD=cloud', 'a13c_db',
-                                             'psql', '-h', 'a13c_bouncer', '-p', '6432', '-U', 'dawarich_cloud',
-                                             '-A', '-c', 'SHOW POOLS', 'pgbouncer')
+      output, error, status = Open3.capture3(*pool_sample_command)
       raise "SHOW POOLS failed: #{error.strip}" unless status.success?
 
       pool_sample(output)

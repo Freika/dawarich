@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'fixture_recording'
+
 module NormalImportFormatsSupport
   DIR = Rails.root.join('app-phoenix/test/fixtures/imports/formats')
   POINT_COLUMNS = %w[lonlat timestamp altitude altitude_decimal accuracy vertical_accuracy battery velocity ping
@@ -24,8 +26,7 @@ module NormalImportFormatsSupport
   module_function
 
   def write(name, value)
-    FileUtils.mkdir_p(DIR)
-    File.write(DIR.join("#{name}.json"), "#{JSON.pretty_generate(value)}\n")
+    FixtureRecording.verify(DIR.join("#{name}.json"), "#{JSON.pretty_generate(value)}\n")
   end
 
   def capture_csv(zone)
@@ -35,7 +36,7 @@ module NormalImportFormatsSupport
       input = "latitude,longitude,timestamp,altitude,tracker_id\n51.3,12.4,2026-01-15 23:30:00,12.75,oracle\n"
       FileUtils.mkdir_p(DIR)
       path = DIR.join('csv_valid.csv')
-      File.write(path, input)
+      FixtureRecording.verify(path, input)
       importer = Csv::Importer.new(import, user.id, path.to_s)
       2.times { importer.call }
       output = snapshot(import).merge('zone' => zone, 'locale' => 'en', 'input' => path.basename.to_s,
@@ -125,7 +126,7 @@ module NormalImportFormatsSupport
   def capture_detection
     detection_cases.map do |name, bytes, expected|
       path = DIR.join("detection_#{name}")
-      File.binwrite(path, bytes)
+      FixtureRecording.verify(path, bytes)
       { 'input' => path.basename.to_s, 'filename' => name, 'expected' => expected,
         'source' => Imports::SourceDetector.new_from_file_header(path).detect_source&.to_s }
     end
@@ -190,7 +191,7 @@ module NormalImportFormatsSupport
     end
     records + csv_detector_cases.map do |name, bytes|
       path = DIR.join("csv_detector_#{name}.csv")
-      File.binwrite(path, bytes)
+      FixtureRecording.verify(path, bytes)
       result = { 'name' => name, 'input' => path.basename.to_s, 'kind' => 'detector' }
       begin
         result.merge('detection' => Csv::Detector.new(path).call, 'error' => nil)
@@ -258,7 +259,7 @@ module NormalImportFormatsSupport
         user, import = owner!(zone, 'de')
         input = "#{name}.csv"
         path = DIR.join(input)
-        File.write(path, bytes)
+        FixtureRecording.verify(path, bytes)
         error = nil
         begin
           Csv::Importer.new(import, user.id, path.to_s).call
@@ -370,7 +371,7 @@ module NormalImportFormatsSupport
         import.update_columns(source: 6, name: "#{name}.geojson")
         input = "#{name}.geojson"
         path = DIR.join(input)
-        File.binwrite(path, bytes)
+        FixtureRecording.verify(path, bytes)
         error = nil
         begin
           Geojson::Importer.new(import, user.id, path.to_s).call
@@ -408,7 +409,7 @@ module NormalImportFormatsSupport
         import.update_columns(source: 1, name: "#{name}.rec")
         input = "#{name}.rec"
         path = DIR.join(input)
-        File.binwrite(path, bytes)
+        FixtureRecording.verify(path, bytes)
         error = nil
         begin
           OwnTracks::Importer.new(import, user.id, path.to_s).call

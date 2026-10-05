@@ -123,24 +123,40 @@ defmodule Dawarich.Posters.NativeRenderer do
   end
 
   defp cleanup(port, pid, opts) do
-    if alive?(pid) do
-      signal("-TERM", pid, opts)
+    try do
+      if alive?(pid, opts) do
+        case signal("-TERM", pid, opts) do
+          {_, 0} ->
+            deadline =
+              System.monotonic_time(:millisecond) + Keyword.get(opts, :terminate_ms, @terminate)
 
-      deadline =
-        System.monotonic_time(:millisecond) + Keyword.get(opts, :terminate_ms, @terminate)
+            _ = await(port, deadline, opts, "")
+            if alive?(pid, opts), do: kill!(pid, opts)
 
-      _ = await(port, deadline, opts, "")
-      if alive?(pid), do: signal("-KILL", pid, opts)
+          {_, _} ->
+            kill!(pid, opts)
+        end
+      end
+    after
+      if Port.info(port), do: Port.close(port)
     end
-
-    if Port.info(port), do: Port.close(port)
   end
 
-  defp alive?(pid),
-    do: elem(System.cmd("/bin/kill", ["-0", "-#{pid}"], stderr_to_stdout: true), 1) == 0
+  defp alive?(pid, opts), do: elem(kill_command(["-0", "--", "-#{pid}"], opts), 1) == 0
 
   defp signal(signal, pid, opts) do
     if observer = opts[:on_signal], do: observer.(signal, pid)
-    System.cmd("/bin/kill", [signal, "-#{pid}"], stderr_to_stdout: true)
+    kill_command([signal, "--", "-#{pid}"], opts)
   end
+
+  defp kill!(pid, opts) do
+    case signal("-KILL", pid, opts) do
+      {_, 0} -> :ok
+      {output, status} -> raise Error, "Poster renderer group KILL failed (#{status}): #{output}"
+    end
+  end
+
+  defp kill_command(args, opts),
+    do:
+      Keyword.get(opts, :kill_command, &System.cmd/3).("/bin/kill", args, stderr_to_stdout: true)
 end
