@@ -168,4 +168,17 @@ defmodule Dawarich.Integrations.SyncSchedulingTest do
     assert SyncScheduling.run(ScratchRepo, @oban, :teslamate, @slot + 120) == :ok
     assert length(commands()) == 1
   end
+
+  test "scheduler retries retain characterized Sidekiq attempt limits and backoff" do
+    for worker <- [
+          TeslaMateSchedulingWorker,
+          TrekSchedulingWorker,
+          Dawarich.AirTrail.SyncSchedulingWorker
+        ] do
+      assert worker.__opts__()[:max_attempts] == 26
+      assert worker.__opts__()[:queue] == :imports
+      assert worker.backoff(%Oban.Job{attempt: 1}) in 15..24
+      assert worker.backoff(%Oban.Job{attempt: 10}) in 6576..6675
+    end
+  end
 end

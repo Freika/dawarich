@@ -9,6 +9,11 @@ defmodule Dawarich.Integrations.SyncScheduling do
   @namespace <<0x6B, 0xA7, 0xB8, 0x11, 0x9D, 0xAD, 0x11, 0xD1, 0x80, 0xB4, 0x00, 0xC0, 0x4F, 0xD4,
                0x30, 0xC8>>
 
+  def backoff(%Oban.Job{attempt: attempt}) do
+    count = attempt - 1
+    Integer.pow(count, 4) + 15 + :rand.uniform(10 * (count + 1)) - 1
+  end
+
   def key(:airtrail), do: "cron:airtrail_flight_import_job"
   def key(:teslamate), do: "cron:teslamate_sync_job"
   def key(:trek), do: "cron:trek_sync_job"
