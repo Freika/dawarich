@@ -25,12 +25,13 @@ defmodule Dawarich.Users.RecalculationCorpusTest do
     :ok
   end
 
-  test "matches every source recalculation case through real workers and unchanged hand-backs" do
-    cases = F.all()
-    assert length(cases) == 55
+  @cases F.all()
+  55 = length(@cases)
 
-    for source <- cases do
-      reset!(ScratchRepo)
+  for source <- @cases do
+    @source_case source
+    test "matches source recalculation through real workers: #{source["id"]}" do
+      source = @source_case
       F.load!(ScratchRepo, source)
       name = source["id"]
       Process.put(:corpus_case, name)
@@ -58,7 +59,9 @@ defmodule Dawarich.Users.RecalculationCorpusTest do
       assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker LIKE '%Digests%'") == [[0]],
              name
     end
+  end
 
+  test "recalculation routes retain unchanged Rails hand-backs" do
     for path <- ["/api/v1/recalculations", "/tracks/recalculation", "/digests"] do
       assert Phoenix.Router.route_info(DawarichWeb.Router, "POST", path, "localhost") == :error
     end
