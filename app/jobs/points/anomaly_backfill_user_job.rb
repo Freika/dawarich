@@ -8,6 +8,8 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
   queue_as :low_priority
 
   def perform(user_id, reset: false, notify: true, rebuild: :async)
+    return if Points::AnomalyBackfillCommands.forward(self, user_id, reset:, notify:, rebuild:)
+
     user = User.find(user_id)
     lock_key = "anomaly_backfill:#{user.id}"
 

@@ -75,6 +75,9 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
   end
 
   def perform(user_id, attempt: 1)
+    return if ReleaseCommands.forward_recalculation(self, 'release.anomalies_user',
+                                                    { 'user_id' => user_id, 'attempt' => attempt })
+
     user = User.find_by(id: user_id)
     return release_slot if user.nil?
     return release_slot if recalculated?(user)

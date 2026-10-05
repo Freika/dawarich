@@ -3,6 +3,14 @@
 module RailsCommands
   module Registry
     HANDLERS = {
+      'achievements.check' => {
+        guard: 'The existing achievement checker converges on the user and oldest timestamp',
+        call: lambda { |payload|
+          JobCommands.produce('achievements.check', payload.except('run_at'),
+                              aggregate_id: payload.fetch('user_id'), producer: name,
+                              scheduled_at: Time.zone.at(payload.fetch('run_at')))
+        }
+      },
       'visit_months_changed' => {
         guard: 'Rails.cache.delete of the month-summary keys; a repeat deletes nothing more',
         call: lambda { |payload|
@@ -224,7 +232,10 @@ module RailsCommands
          guard: 'Durable event receipt and per-import lease; completed receipts do not restart imports',
          call: ->(payload) { Imports::NormalResume.call(payload) }
        }
-     ).merge(Stats::Commands::HANDLERS).merge(Users::Digests::Commands::HANDLERS).freeze
+     ).merge(Stats::Commands::HANDLERS).merge(Users::RecalculationCommands::HANDLERS)
+                                       .merge(Points::AnomalyBackfillCommands::HANDLERS)
+                                       .merge(ReleaseCommands::HANDLERS)
+                                       .merge(Users::Digests::Commands::HANDLERS).freeze
 
     module_function
 

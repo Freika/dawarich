@@ -17,7 +17,10 @@ module Wave6Inventory
     'Visits::FleetRedetectJob' => 'release.visits_fleet_redetect',
     'DataMigrations::CleanupNullIslandJob' => 'release.null_island',
     'DataMigrations::BackfillMotionDataJob' => 'release.motion_data',
-    'DataMigrations::BackfillAltitudeJob' => 'release.altitude'
+    'DataMigrations::BackfillAltitudeJob' => 'release.altitude',
+    'DataMigrations::RecalculateAnomaliesJob' => 'release.anomalies',
+    'DataMigrations::RecalculateAnomaliesUserJob' => 'release.anomalies_user',
+    'DataMigrations::RecalculatePerTrackerTracksJob' => 'release.per_tracker'
   }.freeze
 
   OTHER = {
@@ -32,8 +35,6 @@ module Wave6Inventory
     'DataMigrations::BackfillFamiliesForFamilyPlanJob' => :retire,
     'DataMigrations::BackfillFamilyMemberEntitlementsJob' => :retire,
     'DataMigrations::BackfillPlacesUserIdJob' => :a12_decoder,
-    'DataMigrations::RecalculatePerTrackerTracksJob' => :a12,
-    'DataMigrations::RecalculateAnomaliesJob' => :a12,
     'DataMigrations::BackfillAchievementsJob' => :a12,
     'DataMigrations::AddPointDimensionColumnsJob' => :a12,
     'DataMigrations::DropLegacyLatLonJob' => :a12,

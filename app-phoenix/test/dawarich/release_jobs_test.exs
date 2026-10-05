@@ -1,5 +1,5 @@
 defmodule Dawarich.ReleaseJobsTest do
-  use ExUnit.Case, async: false
+  use Dawarich.JobsCase
 
   alias Dawarich.ReleaseJobs
   alias Dawarich.ReleaseOperations, as: Ops
@@ -47,6 +47,33 @@ defmodule Dawarich.ReleaseJobsTest do
      }}
   ]
   @fixed_strings ~w(dimensions country users missing)
+
+  test "keeps executable anomaly and tracker classes enumerated with invalid-argument errors" do
+    start_oban(:release_recalculation_classes)
+
+    Dawarich.RecalculationFixtures.load!(
+      ScratchRepo,
+      Dawarich.RecalculationFixtures.case!("tracker_stagger")
+    )
+
+    for class <-
+          ~w(DataMigrations::RecalculateAnomaliesJob DataMigrations::RecalculatePerTrackerTracksJob) do
+      assert class in ReleaseJobs.classes()
+      assert {:ok, worker, args} = ReleaseJobs.decode(class, [])
+
+      assert :ok =
+               Ops.run(ScratchRepo, :release_recalculation_classes, worker, %Oban.Job{args: args})
+
+      assert ReleaseJobs.decode(class, [1]) == {:error, :invalid_arguments}
+      assert ReleaseJobs.decode(class, [%{"limit" => 2}]) == {:error, :invalid_arguments}
+    end
+
+    assert rows("SELECT count(*) FROM phoenix.release_operations WHERE status='completed'") == [
+             [2]
+           ]
+
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[2]]
+  end
 
   setup do
     previous = System.get_env("SELF_HOSTED")
@@ -146,8 +173,6 @@ defmodule Dawarich.ReleaseJobsTest do
              {"DataMigrations::AddPointDimensionColumnsJob", {:deferred, :a12h, @v1}},
              {"DataMigrations::BackfillAchievementsJob", {:deferred, :a12d2, @v1}},
              {"DataMigrations::DropLegacyLatLonJob", {:deferred, :a12h, @v1}},
-             {"DataMigrations::RecalculateAnomaliesJob", {:deferred, :a12d1, @v1}},
-             {"DataMigrations::RecalculatePerTrackerTracksJob", {:deferred, :a12d1, @v1}},
              {"TransportationModes::ImportBackfillJob",
               {:deferred, :a7, %{"version" => 1, "import_id" => 42}}}
            ]
@@ -161,9 +186,16 @@ defmodule Dawarich.ReleaseJobsTest do
           {:ok, worker, args} <- [ReleaseJobs.decode(class, arguments)],
           worker != Ops.PlacesUserId do
         payload =
-          if class == "DataMigrations::BackfillPointCountryIdJob",
-            do: @country_payloads |> List.keyfind(arguments, 0) |> elem(1),
-            else: Map.fetch!(@command_payloads, class)
+          cond do
+            class == "DataMigrations::BackfillPointCountryIdJob" ->
+              @country_payloads |> List.keyfind(arguments, 0) |> elem(1)
+
+            worker in [Ops.Anomalies, Ops.PerTracker] ->
+              args["cursor"]["request"]
+
+            true ->
+              Map.fetch!(@command_payloads, class)
+          end
 
         assert worker.args_from_command(1, payload) == {:ok, Map.delete(args, "operation_id")},
                class
@@ -173,7 +205,10 @@ defmodule Dawarich.ReleaseJobsTest do
 
     assert MapSet.new(decoded) ==
              MapSet.put(
-               MapSet.new(Map.keys(@command_payloads)),
+               MapSet.new(
+                 Map.keys(@command_payloads) ++
+                   ~w(DataMigrations::RecalculateAnomaliesJob DataMigrations::RecalculatePerTrackerTracksJob)
+               ),
                "DataMigrations::BackfillPointCountryIdJob"
              )
   end
@@ -226,7 +261,12 @@ defmodule Dawarich.ReleaseJobsTest do
       assert Enum.all?(Map.keys(args), &(&1 in @arg_keys)), class
 
       for {_name, value} <- Map.get(args, "cursor", %{}) do
-        assert is_integer(value) or is_boolean(value) or is_nil(value) or value in @fixed_strings,
+        assert is_integer(value) or is_boolean(value) or is_nil(value) or value in @fixed_strings or
+                 (worker in [Ops.Anomalies, Ops.PerTracker] and
+                    match?(
+                      {:ok, _},
+                      Dawarich.Users.RecalculationArgs.decode(worker.command_type(), 1, value)
+                    )),
                "#{class}: #{inspect(value)}"
       end
     end
