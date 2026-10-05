@@ -4,7 +4,7 @@ defmodule Dawarich.CLI.Jobs do
   import Dawarich.CLI, only: [puts: 2, fail: 2]
 
   alias Dawarich.ReleaseOperations
-  alias Dawarich.Jobs.Claimer
+  alias Dawarich.Jobs.{Claimer, Drain}
   alias Jason.OrderedObject, as: O
 
   @flags """
@@ -16,6 +16,7 @@ defmodule Dawarich.CLI.Jobs do
   """
   @outbox """
   SELECT
+    count(*) FILTER (WHERE state = 'pending')::integer AS pending,
     count(*) FILTER (WHERE state = 'pending' AND scheduled_at <= now())::integer AS due,
     count(*) FILTER (WHERE state = 'pending' AND scheduled_at > now())::integer AS scheduled,
     count(*) FILTER (WHERE state = 'quarantined')::integer AS quarantined,
@@ -27,6 +28,8 @@ defmodule Dawarich.CLI.Jobs do
   @oban "SELECT worker, state, count(*)::integer AS count FROM oban.oban_jobs GROUP BY worker, state ORDER BY worker, state"
   @rails_commands """
   SELECT
+    (SELECT count(*) FROM phoenix.rails_commands)::integer AS pending,
+    (SELECT count(*) FROM phoenix.rails_commands WHERE available_at > now())::integer AS future,
     (SELECT count(*) FROM phoenix.rails_commands
        WHERE available_at <= now() AND (leased_until IS NULL OR leased_until < now()))::integer AS due,
     (SELECT count(*) FROM phoenix.rails_commands WHERE leased_until >= now())::integer AS leased,
@@ -92,6 +95,7 @@ defmodule Dawarich.CLI.Jobs do
   defp full(repo) do
     O.new(
       tables: true,
+      drain: Drain.status(repo),
       outbox: one(repo, @outbox),
       owners: all(repo, @owners),
       nodes: all(repo, @nodes),

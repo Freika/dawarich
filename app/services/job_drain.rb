@@ -27,13 +27,34 @@ module JobDrain
     reasons << 'unknown_work' if counts[:unknown].positive?
     counts.each { |key, count| reasons << "#{key}_work" if key != :unknown && count.positive? }
     gauges = JobHealth.gauges
+    bridge = bridge_status(gauges[:drain])
     reasons << 'database_unreadable' unless gauges[:tables] == true
+    reasons << 'sql_bridge_blocked' if bridge[:forward] == 'BLOCKED'
     {
       status: reasons.empty? ? 'OBSERVED_EMPTY' : 'BLOCKED', observation: true,
-      counts:, classes: classes.sort.to_h, reasons: reasons.uniq.sort
+      counts:, classes: classes.sort.to_h, reasons: reasons.uniq.sort, bridge:
     }
   rescue StandardError
     { status: 'BLOCKED', observation: true, reasons: ['redis_unreadable'] }
+  end
+
+  def bridge_status(drain)
+    return { forward: 'BLOCKED', binary_rollback: 'BLOCKED', reasons: ['database_unreadable'] } unless
+      drain && drain[:tables] == true && drain[:counts]['incomplete_oban']
+
+    counts = drain[:counts]
+    common = %w[pending_outbox quarantined reverse_pending reverse_dead release_pending].select { counts[_1].positive? }
+    common << 'legacy_schedulers' if drain[:legacy_schedulers].any? { _1[:incomplete].positive? }
+    forward = common + %w[missing_owners mixed_owners unknown_owners].select { counts[_1].positive? }
+    forward << 'heartbeat_invalid' if counts['oban_owners'].positive? && counts['fresh_nodes'].zero?
+    forward << 'residual_producers' if drain[:producer_kinds].any? { _1[:status] == 'BLOCKED' }
+    binary = common + %w[incomplete_oban unfinished_generations missing_owners unknown_owners unpinned_rollback_owners]
+             .select { counts[_1].positive? }
+    {
+      forward: forward.empty? ? 'OBSERVED_EMPTY' : 'BLOCKED',
+      binary_rollback: binary.empty? ? 'OBSERVED_EMPTY' : 'BLOCKED', observation: true,
+      forward_reasons: forward.sort, binary_reasons: binary.sort, counts:
+    }
   end
 
   def count_set(set, key, counts, classes, reasons)

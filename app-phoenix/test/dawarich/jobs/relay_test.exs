@@ -138,10 +138,10 @@ defmodule Dawarich.Jobs.RelayTest do
     assert rows("SELECT count(*) FROM phoenix.processed_commands") == [[3]]
     assert rows("SELECT payload->>'n' FROM public.job_outbox") == [["2"]]
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[1]]
-    assert rows("SELECT id FROM phoenix.rails_commands_dead") == [[2]]
+    assert rows("SELECT id FROM phoenix.rails_commands_dead ORDER BY id") == [[1], [2]]
   end
 
-  test "housekeeping prunes generations a day after their last write and cascades chunks" do
+  test "housekeeping retains generations and chunks without a proven replay boundary" do
     rows("""
     WITH gen AS (
       INSERT INTO phoenix.track_generations
@@ -168,8 +168,14 @@ defmodule Dawarich.Jobs.RelayTest do
 
     :ok = Housekeeping.run!(ScratchRepo, DateTime.utc_now())
 
-    assert rows("SELECT user_id FROM phoenix.track_generations ORDER BY user_id") == [[1], [2]]
-    assert rows("SELECT count(*) FROM phoenix.track_generation_chunks") == [[0]]
+    assert rows("SELECT user_id FROM phoenix.track_generations ORDER BY user_id") == [
+             [1],
+             [2],
+             [998],
+             [999]
+           ]
+
+    assert rows("SELECT count(*) FROM phoenix.track_generation_chunks") == [[2]]
   end
 
   test "stopping the drain pauses local queues so no job starts during Puma's drain" do

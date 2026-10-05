@@ -92,7 +92,7 @@ if config_env() != :test do
     peer: Oban.Peers.Database,
     stager: {Oban.Stager, []},
     queues: queues,
-    pruner: [max_age: {1, :day}],
+    pruner: false,
     lifeline: [rescue_after: {60, :minute}],
     shutdown_grace_period: 12_000
 

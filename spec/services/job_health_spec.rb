@@ -69,6 +69,35 @@ RSpec.describe JobHealth do
       .to eq([{ 'worker' => 'Dawarich.Trips.CalculateWorker', 'state' => 'cancelled', 'count' => 1 }])
   end
 
+  it 'bridge gauges retain future debt and residual producer blockers even with native owners' do
+    phoenix_tables!
+    keys = JobCommands::COMMANDS.keys.map { "command:#{_1}" } +
+           YAML.load_file(Rails.root.join('config/schedule.yml')).keys.map { "cron:#{_1}" }
+    keys.each { |key| job_owner!(key, :oban) }
+    JobOutbox.create!(event_id: SecureRandom.uuid, command_type: 'trips.calculate', command_version: 1,
+                      payload: { 'trip_id' => 1, 'distance_unit' => 'km' }, scheduled_at: 1.hour.from_now)
+    connection = ActiveRecord::Base.connection
+    connection.execute('INSERT INTO phoenix.rails_commands (kind, available_at) ' \
+                       "VALUES ('cache.preheat_user', now() + interval '1 hour')")
+    connection.execute('INSERT INTO phoenix.rails_commands_dead ' \
+                       '(id, kind, payload, attempts, last_error, created_at) ' \
+                       "VALUES (990003, 'cache.preheat_user', '{}', 25, 'synthetic-private-error', now())")
+    connection.execute('CREATE SCHEMA oban')
+    connection.execute('CREATE TABLE oban.oban_jobs (worker text, state text)')
+    connection.execute("INSERT INTO oban.oban_jobs VALUES ('Dawarich.Imports.Trek.ScheduleWorker', 'scheduled')")
+
+    drain = described_class.gauges[:drain]
+    expect(drain[:counts]).to include('pending_outbox' => 1, 'future_outbox' => 1, 'reverse_pending' => 1,
+                                      'reverse_future' => 1, 'reverse_dead' => 1, 'incomplete_oban' => 1)
+    expect(drain[:producer_kinds].map { _1[:kind] }).to eq(RailsCommands::Registry::HANDLERS.keys.sort)
+    expect(drain[:producer_kinds].map { _1[:status] }.uniq).to eq(['BLOCKED'])
+    native_source = File.read(Rails.root.join('app-phoenix/lib/dawarich/rails_commands.ex'))
+    native_kinds = native_source[/@closure_kinds ~w\((.*?)\)/m, 1].split
+    expect(native_kinds).to eq(RailsCommands::Registry::HANDLERS.keys.sort)
+    expect(JobDrain.bridge_status(drain)[:forward]).to eq('BLOCKED')
+    expect(JSON.generate(drain)).not_to include('synthetic-private-error')
+  end
+
   it 'counts due, leased, retrying and dead reverse-outbox rows' do
     phoenix_tables!
     connection = ActiveRecord::Base.connection
