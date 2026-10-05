@@ -20,7 +20,6 @@ net=a13c-rate
 run="a13c-smoke=$$"
 manager=https://manager.example
 throttled='{"error":"rate_limit_exceeded","message":"API rate limit exceeded. Please wait before making more requests.","upgrade_url":"'
-
 fail() {
   echo "$1" >&2
   exit 1
@@ -39,7 +38,7 @@ for port in 3911 3912; do
   [ "$code" = 7 ] || fail "port $port is in use"
 done
 
-work="$(mktemp -d)"
+work="$(mktemp -d "$PWD/tmp/a13c-rate.XXXXXX")"
 cleanup() {
   ec=$?
   if [ "$ec" -ne 0 ]; then
@@ -79,7 +78,11 @@ web() {
   name=$1
   port=$2
   shift 2
-  app -d --name "$name" -p "127.0.0.1:$port:5000" "$@" "$IMAGE" $(procfile web) >/dev/null
+  if [ "$MODE" = bench ] && [ "$BENCH_ROLE" = base ]; then
+    app -d --name "$name" -p "127.0.0.1:$port:5000" "$@" --entrypoint web-entrypoint.sh "$IMAGE" bin/rails server -p 5000 -b :: >/dev/null
+  else
+    app -d --name "$name" -p "127.0.0.1:$port:5000" "$@" "$IMAGE" $(procfile web) >/dev/null
+  fi
   wait_until "healthy $port" "$name did not come up"
 }
 
@@ -200,14 +203,21 @@ sed -e 's/^DATABASE_HOST=.*/DATABASE_HOST=a13c_db/' -e 's/^DATABASE_PORT=.*/DATA
 echo DISABLE_DATABASE_ENVIRONMENT_CHECK=1 >>"$work/admin.env"
 docker run --rm --label "$run" --network "$net" --env-file "$work/admin.env" "$IMAGE" bin/rails db:schema:load >/dev/null
 sql "DO \$\$ DECLARE t record; BEGIN FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'spatial_ref_sys' LOOP EXECUTE format('ALTER TABLE public.%I OWNER TO dawarich_cloud', t.tablename); END LOOP; END \$\$" >/dev/null
-app --rm "$IMAGE" $(procfile release) >"$work/release.log" 2>&1 || { cat "$work/release.log" >&2; fail "release failed"; }
-[ "$(sql "SELECT to_regclass('phoenix.counters') IS NOT NULL")" = t ] || fail "phoenix.counters is missing after the release"
+if [ "$MODE" != bench ] || [ "$BENCH_ROLE" != base ]; then
+  app --rm "$IMAGE" $(procfile release) >"$work/release.log" 2>&1 || { cat "$work/release.log" >&2; fail "release failed"; }
+  [ "$(sql "SELECT to_regclass('phoenix.counters') IS NOT NULL")" = t ] || fail "phoenix.counters is missing after the release"
+fi
 
 if [ "$MODE" = bench ]; then
   web a13c_web 3911
-  app --rm "$IMAGE" bin/rails runner "u = User.create!(email: 'a13c-bench@dawarich.test', password: 'a13c-bench-password', skip_auto_trial: true); u.update_columns(api_key: 'a13cbenchqqqqqqqqqqqqqqq', plan: User.plans[:pro], active_until: 1.year.from_now)" >/dev/null
-  BENCH_POOL_SIZE="$pool_size" ruby app-phoenix/scripts/rate_limit_bench.rb
-  exit 0
+  app --rm "$IMAGE" bin/rails runner "u = User.create!(email: 'a13c-bench@dawarich.test', password: 'a13c-bench-password', skip_auto_trial: true); u.update_columns(api_key: 'a13cbenchqqqqqqqqqqqqqqq', plan: User.plans[:pro], active_until: 1.year.from_now); Point.insert_all!([{ user_id: u.id, timestamp: Time.utc(2026, 1, 1, 12).to_i, lonlat: 'POINT(1 1)', created_at: Time.current, updated_at: Time.current }])" >/dev/null
+  [ -z "${BENCH_BASELINE:-}" ] || cp "$BENCH_BASELINE" "$work/baseline.json"
+  bench_rc=0
+  docker run --rm --init --label "$run" --network container:a13c_web --env-file "$work/env" --entrypoint ruby \
+    -v "$PWD/app-phoenix/scripts/rate_limit_bench.rb:/bench.rb:ro" -v "$work:/bench" -e PGPASSWORD=cloud     -e BENCH_IN_CONTAINER=1 -e BENCH_URL=http://127.0.0.1:5000 -e BENCH_POOL_SIZE="$pool_size"     -e BENCH_ROLE -e BENCH_REPORT=/bench/report.json -e BENCH_BASELINE=/bench/baseline.json     "${BENCH_RUNNER_IMAGE:-$IMAGE}" /bench.rb || bench_rc=$?
+  [ "$bench_rc" -ne 0 ] || [ -s "$work/report.json" ] || fail "benchmark report was not persisted"
+  [ ! -f "$work/report.json" ] || cp "$work/report.json" "$BENCH_REPORT"
+  exit "$bench_rc"
 fi
 
 web a13c_web 3911
@@ -231,8 +241,8 @@ rpc 'body = ~s({"email":"shared@example.invalid"})
 early_in 60
 rpc 'body = ~s({"email":"released@example.invalid"})
   for _ <- 1..3 do
-    Plug.Test.conn(:post, "http://127.0.0.1/api/v1/auth/login", body)
-    |> Map.update!(:req_headers, &[{"host", "127.0.0.1"} | &1])
+    conn = Plug.Test.conn(:post, "/api/v1/auth/login", body)
+    %{conn | host: "127.0.0.1", req_headers: [{"host", "127.0.0.1:3911"} | conn.req_headers]}
     |> Plug.Conn.put_req_header("content-type", "application/json")
     |> Plug.Conn.put_req_header("content-length", Integer.to_string(byte_size(body)))
     |> DawarichWeb.RateLimit.call([])
