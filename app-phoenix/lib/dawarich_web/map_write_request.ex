@@ -82,7 +82,11 @@ defmodule DawarichWeb.MapWriteRequest do
     with false <- Regex.match?(~r/%(?![0-9A-Fa-f]{2})/, raw),
          {:ok, pairs} <- Body.segments(raw),
          true <-
-           Enum.all?(pairs, fn {key, value} -> key in ["page" | @filters] and is_binary(value) end),
+           Enum.all?(pairs, fn
+             {"controller", value} -> value == "points"
+             {"action", value} -> value == "index"
+             {key, value} -> key in ["page" | @filters] and is_binary(value)
+           end),
          true <- length(pairs) == length(Enum.uniq_by(pairs, &elem(&1, 0))) do
       {:ok, Map.new(pairs)}
     else
@@ -183,7 +187,8 @@ defmodule DawarichWeb.MapWriteRequest do
     end
   end
 
-  defp negotiate(accept, action) when action in [:tag_create, :tag_update, :tag_destroy] do
+  defp negotiate(accept, action)
+       when action in [:tag_create, :tag_update, :tag_destroy, :point_destroy] do
     if String.trim(accept) in ["", "*/*"] or DawarichWeb.Strangler.browser_like?(accept) do
       {:ok, :html}
     else
