@@ -4,7 +4,16 @@ defmodule DawarichWeb.AuthGate do
 
   alias Dawarich.Auth.{Admission, RegistrationSetting}
   alias Dawarich.Auth.Recovery.MailWorker
-  alias DawarichWeb.{AuthAccount, AuthApiKeys, AuthHandler, AuthRecovery, AuthTwoFactor, AuthOtp}
+
+  alias DawarichWeb.{
+    AuthAccount,
+    AuthApiKeys,
+    AuthHandler,
+    AuthRecovery,
+    AuthTwoFactor,
+    AuthOtp,
+    AuthAccountLink
+  }
 
   @handlers [
     {"credentials", AuthHandler},
@@ -12,7 +21,8 @@ defmodule DawarichWeb.AuthGate do
     {"account", AuthAccount.Http},
     {"api_keys", AuthApiKeys.Http},
     {"two_factor", AuthTwoFactor.Http},
-    {"otp", AuthOtp.Http}
+    {"otp", AuthOtp.Http},
+    {"account_link", AuthAccountLink.Http}
   ]
 
   @impl true
@@ -33,6 +43,9 @@ defmodule DawarichWeb.AuthGate do
       Enum.find(@handlers, fn {flow, handler} -> flow in flows and handler.route?(conn) end)
     end
   end
+
+  defp options("account_link"),
+    do: [enabled: true, context: Application.get_env(:dawarich, :account_link_context, %{})]
 
   defp options(flow) when flow in ["account", "api_keys", "two_factor", "otp"],
     do: [enabled: true]

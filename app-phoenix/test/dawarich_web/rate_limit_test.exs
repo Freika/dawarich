@@ -197,6 +197,34 @@ defmodule DawarichWeb.RateLimitTest do
     def query!(_sql, _params, _opts), do: raise(DBConnection.ConnectionError, "down")
   end
 
+  defmodule RefundRepo do
+    def query!(_sql, ["a11e-refund-failed", -1, _ttl], _opts),
+      do: raise(DBConnection.ConnectionError, "a11e-refund-down")
+
+    def query!(sql, params, opts), do: Dawarich.ScratchRepo.query!(sql, params, opts)
+  end
+
+  test "failed counter refunds retain only unrefunded entries and never replay to Rails" do
+    previous = Application.get_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, RefundRepo)
+    on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous) end)
+    entries = for key <- ~w(a11e-refund-ok a11e-refund-failed a11e-refund-last), do: {key, 901}
+    for {key, ttl} <- entries, do: State.increment(ScratchRepo, key, 1, ttl)
+    conn = Plug.Test.conn(:post, "/auth/account_link/challenge")
+    conn = put_private(conn, :dawarich_rate_limit, entries)
+    assert {:error, remaining} = RateLimit.release(conn)
+    assert remaining.private.dawarich_rate_limit == tl(entries)
+    assert State.count(ScratchRepo, "a11e-refund-ok") == 0
+    assert State.count(ScratchRepo, "a11e-refund-failed") == 1
+    assert State.count(ScratchRepo, "a11e-refund-last") == 1
+
+    assert_raise RuntimeError, "rate limit refund failed", fn ->
+      DawarichWeb.RailsProxy.call(remaining, {{127, 0, 0, 1}, 1})
+    end
+
+    assert State.count(ScratchRepo, "a11e-refund-failed") == 1
+  end
+
   test "a counter-store error hands the request to Puma uncounted" do
     conn = %{Plug.Test.conn(:post, "/s/abc/unlock") | remote_ip: {203, 0, 113, 41}}
 

@@ -32,6 +32,8 @@ defmodule DawarichWeb.AuthGateTest do
     {:get, "/users/sign_up"}
   ]
 
+  @account_link [{:get, "/auth/account_link/challenge"}, {:post, "/auth/account_link/challenge"}]
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Application.delete_env(:dawarich, :phoenix_auth)
@@ -69,7 +71,7 @@ defmodule DawarichWeb.AuthGateTest do
   end
 
   test "with no flow named, every auth request passes through untouched" do
-    untouched(@credentials ++ @recovery ++ @elsewhere)
+    untouched(@credentials ++ @recovery ++ @elsewhere ++ @account_link)
   end
 
   test "reserved and unknown flow names change nothing" do
@@ -79,17 +81,17 @@ defmodule DawarichWeb.AuthGateTest do
       ~w(registration two_factor remember oauth bogus)
     )
 
-    untouched(@credentials ++ @recovery ++ @elsewhere)
+    untouched(@credentials ++ @recovery ++ @elsewhere ++ @account_link)
   end
 
   test "credentials claims only its own four routes" do
     Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
-    untouched(@recovery ++ @elsewhere)
+    untouched(@recovery ++ @elsewhere ++ @account_link)
   end
 
   test "recovery claims only its own seven routes" do
     Application.put_env(:dawarich, :phoenix_auth, ["recovery"])
-    untouched(@credentials ++ @elsewhere)
+    untouched(@credentials ++ @elsewhere ++ @account_link)
   end
 
   test "credentials and recovery on, an instance that is not self-hosted: even their own routes pass untouched" do

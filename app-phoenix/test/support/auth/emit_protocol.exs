@@ -1,3 +1,17 @@
+if Enum.at(System.argv(), 1) in ["account_link", "account_link_source"] and
+     Process.whereis(Dawarich.Repo) == nil do
+  unless System.get_env("PHOENIX_TEST_DATABASE") in [
+           "dawarich_phoenix_test_a11e",
+           "dawarich_test_a11e"
+         ],
+         do: raise("A11e allocated test DB required")
+
+  for app <- [:ecto_sql, :postgrex, :bcrypt_elixir, :crypto],
+      do: {:ok, _} = Application.ensure_all_started(app)
+
+  {:ok, _} = Dawarich.Repo.start_link()
+end
+
 if Enum.at(System.argv(), 1) == "api_two_factor_management" do
   unless System.get_env("PHOENIX_TEST_DATABASE") == "dawarich_phoenix_test_a4otp",
     do: raise("A4 OTP own test DB required")
@@ -17,6 +31,231 @@ fixture = Jason.decode!(File.read!("test/fixtures/auth/requests.json"))
 source = fixture["login"]["user"]
 user = %{id: source["id"], encrypted_password: source["encrypted_password"]}
 secret = Application.fetch_env!(:dawarich, :rails_secret)
+
+if Enum.at(System.argv(), 1) in ["account_link", "account_link_source"] do
+  alias Dawarich.Auth.AccountLink.{Confirmation, SignIn}
+  alias Dawarich.{Repo, RailsCookies, State, Test.RailsUser}
+  alias DawarichWeb.RateLimit.Rules
+  database = System.fetch_env!("PHOENIX_TEST_DATABASE")
+
+  unless database in ["dawarich_phoenix_test_a11e", "dawarich_test_a11e"],
+    do: raise("A11e allocated test DB required")
+
+  path = hd(System.argv())
+  source_mode = Enum.at(System.argv(), 1) == "account_link_source"
+  if not source_mode and File.exists?(path), do: raise("A11e private payload already exists")
+  ids = [911_456_001, 911_456_002, 911_456_003]
+  emails = Enum.map(ids, &"a11e-protocol-#{&1}@example.invalid")
+  source = Jason.decode!(File.read!("test/fixtures/auth/account_link/requests.json"))
+  now = DateTime.utc_now()
+  at = DateTime.to_unix(now)
+  context = %{self_hosted: true, oidc: true, clock: fn -> now end, ip: "198.51.100.235"}
+
+  Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
+    for {id, email} <- Enum.zip(ids, emails) do
+      [[count]] =
+        Repo.query!("SELECT count(*) FROM users WHERE id=$1 OR email=$2", [id, email], log: false).rows
+
+      unless count == 0, do: raise("A11e synthetic actor already exists")
+    end
+
+    Process.put(:a11e_protocol_owned, [])
+    Process.put(:a11e_protocol_counters, [])
+
+    try do
+      if source_mode do
+        payload = File.read!(path) |> Jason.decode!()
+
+        unless payload["mode"] == "account_link" and
+                 Enum.map(payload["actors"], & &1["id"]) == ids and
+                 Enum.map(payload["actors"], & &1["email"]) == emails,
+               do: raise("A11e owned source payload required")
+
+        unless Bitwise.band(File.stat!(path).mode, 0o777) == 0o600,
+          do: raise("A11e private payload mode required")
+
+        rails = Map.fetch!(payload, "rails")
+        {:ok, pending} = RailsCookies.decrypt(rails["cookie"], "_dawarich_session", secret, now)
+
+        unless pending == rails["session"] and
+                 Dawarich.Auth.ActionCsrf.valid?(
+                   pending,
+                   rails["token"],
+                   "POST",
+                   "/auth/account_link/challenge"
+                 ),
+               do: raise("A11e actual Rails cookie or CSRF refused")
+
+        id = hd(ids)
+
+        RailsUser.insert!(%{
+          id: id,
+          email: hd(emails),
+          encrypted_password: rails["hash"],
+          settings: %{},
+          provider: nil,
+          uid: nil,
+          failed_attempts: 2,
+          sign_in_count: 0
+        })
+
+        Process.put(:a11e_protocol_owned, [{id, hd(emails)}])
+        {:ok, prepared} = Confirmation.prepare(pending, "safepassword12", context)
+        {:ok, linked} = Confirmation.commit(prepared, context)
+        {:ok, result} = SignIn.commit(linked, context)
+
+        unless result.user.provider == "openid_connect" and result.user.uid == rails["uid"] and
+                 result.user.sign_in_count == 1,
+               do: raise("A11e source-to-native identity or callback mismatch")
+
+        {:handoff, :linked} = Confirmation.prepare(pending, "safepassword12", context)
+
+        IO.puts(
+          "account-link source-to-native protocol: PASS actual Rails callback cookie, CSRF, identity, callbacks and replay handback"
+        )
+      else
+        actors =
+          for {id, email} <- Enum.zip(ids, emails) do
+            RailsUser.insert!(%{
+              id: id,
+              email: email,
+              encrypted_password: source["challenge_en"]["before"]["encrypted_password"],
+              settings: %{},
+              provider: nil,
+              uid: nil,
+              sign_in_count: 0,
+              failed_attempts: 2,
+              failed_otp_attempts: 3,
+              otp_required_for_login: id == Enum.at(ids, 1)
+            })
+
+            Process.put(:a11e_protocol_owned, [{id, email} | Process.get(:a11e_protocol_owned)])
+            %{id: id, email: email, hash: source["challenge_en"]["before"]["encrypted_password"]}
+          end
+
+        forms =
+          for actor <- actors, into: %{} do
+            pending =
+              source["challenge_en"]["session"]
+              |> Map.drop(~w(session_id _csrf_token))
+              |> Map.put("pending_oauth_link_attempts", 0)
+              |> put_in(["pending_oauth_link", "user_id"], actor.id)
+              |> put_in(["pending_oauth_link", "uid"], "a11e-protocol-#{actor.id}")
+              |> put_in(["pending_oauth_link", "expires_at"], at + 900)
+
+            {pending, cookie} = SessionCookie.for_form(pending, secret)
+            {actor.id, %{expected: pending, cookie: cookie}}
+          end
+
+        completed =
+          for actor <- Enum.take(actors, 2), into: %{} do
+            pending = forms[actor.id].expected
+            {:ok, prepared} = Confirmation.prepare(pending, "safepassword12", context)
+            {:ok, linked} = Confirmation.commit(prepared, context)
+            {:ok, result} = SignIn.commit(linked, context)
+
+            {state, cookie} =
+              SessionCookie.for_account_link(
+                result.session,
+                result.user,
+                result.kind,
+                "Synthetic account-link notice",
+                secret
+              )
+
+            {actor.id, %{expected: state, cookie: cookie}}
+          end
+
+        shared = database == "dawarich_test_a11e"
+
+        counter_keys =
+          for {name, value} <- [
+                {"auth/account_link_challenge_session", hd(ids)},
+                {"auth/account_link_challenge_ip", "198.51.100.235"}
+              ],
+              do: Rules.key(at, 900, name, value)
+
+        if shared do
+          for key <- counter_keys do
+            [[count]] =
+              Repo.query!("SELECT count(*) FROM phoenix.counters WHERE key=$1", [key], log: false).rows
+
+            if count != 0, do: raise("A11e owned counter already exists")
+          end
+
+          Process.put(:a11e_protocol_counters, counter_keys)
+          for key <- counter_keys, do: State.increment(Repo, key, 1, 900 - rem(at, 900) + 1)
+        end
+
+        first = forms[hd(ids)].expected
+
+        payload = %{
+          mode: "account_link",
+          actors: actors,
+          at: at,
+          database: database,
+          shared_counters: shared,
+          counter_keys: if(shared, do: counter_keys, else: []),
+          sessions: %{
+            form: forms[hd(ids)],
+            completed: completed[hd(ids)],
+            otp: completed[Enum.at(ids, 1)],
+            otp_form: forms[Enum.at(ids, 1)],
+            email_form: forms[Enum.at(ids, 2)]
+          },
+          form_token: RailsCsrf.masked_form_token(first, "/auth/account_link/challenge", "POST"),
+          email_token:
+            RailsCsrf.masked_form_token(
+              forms[Enum.at(ids, 2)].expected,
+              "/auth/account_link/email",
+              "POST"
+            ),
+          wrong_action_token:
+            RailsCsrf.masked_form_token(first, "/auth/account_link/email", "POST"),
+          foreign_token:
+            RailsCsrf.masked_form_token(
+              forms[Enum.at(ids, 1)].expected,
+              "/auth/account_link/challenge",
+              "POST"
+            )
+        }
+
+        {:ok, file} = File.open(path, [:write, :exclusive])
+
+        try do
+          File.chmod!(path, 0o600)
+          IO.binwrite(file, Jason.encode!(payload))
+        after
+          File.close(file)
+        end
+
+        Process.put(:a11e_emission_complete, true)
+
+        IO.puts(
+          "account-link native protocol: PASS pending form, completed and OTP link-only cookies emitted; actors removed"
+        )
+      end
+    rescue
+      error ->
+        if not source_mode, do: File.rm(path)
+        reraise error, __STACKTRACE__
+    after
+      for {id, email} <- Process.get(:a11e_protocol_owned, []),
+          do: Repo.query!("DELETE FROM users WHERE id=$1 AND email=$2", [id, email], log: false)
+
+      Process.delete(:a11e_protocol_owned)
+
+      keys = Process.delete(:a11e_protocol_counters) || []
+
+      if Process.delete(:a11e_emission_complete) != true do
+        for key <- keys,
+            do: Repo.query!("DELETE FROM phoenix.counters WHERE key=$1", [key], log: false)
+      end
+    end
+  end)
+
+  System.halt(0)
+end
 
 if Enum.at(System.argv(), 1) == "web_otp_source" do
   alias Dawarich.Auth.Otp.{Completion, Start}

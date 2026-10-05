@@ -15,8 +15,10 @@ defmodule Dawarich.IngestCase do
   end
 
   setup context do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    unless context[:account_link_committed] do
+      :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+      Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    end
 
     unless context[:api_public_only] do
       Repo.query!("CREATE SCHEMA IF NOT EXISTS phoenix")
