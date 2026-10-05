@@ -16,4 +16,8 @@ staging:
   channel_prefix: dawarich_staging
 
 test:
+  <% if ENV['E2E_PROXY_STACK'] == '1' %>
+  <<: *default
+  <% else %>
   adapter: test
+  <% end %>

@@ -34,8 +34,7 @@ Rails.application.configure do
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
 
-  # Disable request forgery protection in test environment.
-  config.action_controller.allow_forgery_protection = false
+  config.action_controller.allow_forgery_protection = ENV['E2E_PROXY_STACK'] == '1'
 
   # Store uploaded files on the local file system in a temporary directory.
   config.active_storage.service = :test
