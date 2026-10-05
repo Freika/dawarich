@@ -64,7 +64,20 @@ module PhoenixBuildInputs
   end
 
   def i18n_json
-    JSON.generate(I18n.backend.translations(do_init: true).slice(*I18n.available_locales))
+    JSON.generate(serializable_translations(I18n.backend.translations(do_init: true).slice(*I18n.available_locales)))
+  end
+
+  def serializable_translations(value)
+    case value
+    when Hash
+      value.reject { |_, entry| entry.is_a?(Proc) }.transform_values { |entry| serializable_translations(entry) }
+    when Array
+      value.map { |entry| serializable_translations(entry) }
+    when Proc
+      nil
+    else
+      value
+    end
   end
 
   def achievements_json

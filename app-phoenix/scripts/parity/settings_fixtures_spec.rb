@@ -11,6 +11,487 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
   let(:helper) { ApplicationController.helpers }
   let(:zones) { JSON.parse(root.join('priv/time_zones.json').read).fetch('options') }
 
+  context 'A11e account link' do
+    let(:now) { Time.utc(2026, 10, 5, 12) }
+    let(:link_password) { 'safepassword12' }
+    let(:link_hash) { JSON.parse(fixtures.join('auth/requests.json').read).dig('login', 'user', 'encrypted_password') }
+
+    before(:context) do
+      @link_transactional = self.class.use_transactional_tests
+      self.class.use_transactional_tests = false
+      Rails.application.routes.append do
+        devise_scope :user do
+          get 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
+        end
+      end
+      Rails.application.reload_routes!
+    end
+
+    after(:context) do
+      self.class.use_transactional_tests = @link_transactional
+    end
+
+    before do
+      @link_auth = Rails.application.env_config['omniauth.auth']
+      @link_mock = OmniAuth.config.mock_auth[:openid_connect]
+      @link_test_mode = OmniAuth.config.test_mode
+      OmniAuth.config.test_mode = true
+      Rails.application.env_config['devise.mapping'] = Devise.mappings[:user]
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(BCrypt::Engine).to receive(:generate_salt).and_return(link_hash.byteslice(0, 29))
+      expect(User.pepper).to be_blank
+      @link_actors = []
+      @link_next_id = 911_451_000
+    end
+
+    after do
+      @link_actors.each { |id, email| User.unscoped.where(id: id, email: email).delete_all }
+      Rails.application.env_config['omniauth.auth'] = @link_auth
+      OmniAuth.config.mock_auth[:openid_connect] = @link_mock
+      OmniAuth.config.test_mode = @link_test_mode
+    end
+
+    def link_fixture(name, value, json: true)
+      path = fixtures.join('auth/account_link', name)
+      content = json ? "#{Oj.dump(value, mode: :strict, float_precision: 0, indent: 2).chomp}\n" : value
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        FileUtils.mkdir_p(path.dirname)
+        File.write(path, content)
+      else
+        expect(path.exist?).to be(true), name
+        expect(path.read == content).to be(true), name if path.exist?
+      end
+    end
+
+    def link_actor
+      id = (@link_next_id += 1)
+      email = "a11e-#{id}@example.invalid"
+      expect(User.unscoped.where('id = ? OR email = ?', id, email).exists?).to be(false)
+      @link_actors << [id, email]
+      actor = create(:user, id: id, email: email, password: link_password, skip_auto_trial: true,
+skip_family_sync: true)
+      actor.update_columns(encrypted_password: link_hash, settings: {}, api_key: "A11E_SYNTHETIC_#{id}",
+                           created_at: now - 86_400, updated_at: now - 86_400, sign_in_count: 0,
+                           current_sign_in_at: nil, last_sign_in_at: nil, current_sign_in_ip: nil,
+                           last_sign_in_ip: nil, failed_attempts: 2, failed_otp_attempts: 3,
+                           consumed_timestep: 42, remember_created_at: now - 86_400)
+      actor.reload
+    end
+
+    def link_data(client)
+      jar = ActionDispatch::Cookies::CookieJar.build(
+        ActionDispatch::Request.new(Rails.application.env_config.dup),
+        '_dawarich_session' => client.cookies['_dawarich_session']
+      )
+      jar.encrypted['_dawarich_session']
+    end
+
+    def link_seed(client, data)
+      jar = ActionDispatch::Request.new(Rails.application.env_config.dup).cookie_jar
+      jar.encrypted['_dawarich_session'] = { value: data }
+      client.cookies['_dawarich_session'] = jar['_dawarich_session']
+    end
+
+    def link_browser(actor, locale: 'en', uid: nil)
+      uid ||= "a11e-sub-#{actor.id}-A"
+      auth = OmniAuth::AuthHash.new(provider: 'openid_connect', uid: uid,
+                                    info: { email: actor.email, name: 'Synthetic' },
+                                    extra: { raw_info: { email_verified: true } })
+      OmniAuth.config.mock_auth[:openid_connect] = auth
+      Rails.application.env_config['omniauth.auth'] = auth
+      client = ActionDispatch::Integration::Session.new(Rails.application)
+      client.get('/users/auth/openid_connect/callback')
+      expect(client.response.location).to end_with('/auth/account_link/challenge')
+      link_seed(client, link_data(client).merge('pending_oauth_link_attempts' => 3,
+                                                'user_return_to' => '/trips', 'devise.synthetic' => 'expire'))
+      client.get('/auth/account_link/challenge', params: { locale: locale })
+      expect(client.response.status).to eq(200)
+      client
+    end
+
+    def link_token(client)
+      Nokogiri::HTML5(client.response.body)
+              .at_css("form[action='/auth/account_link/challenge'] input[name='authenticity_token']")['value']
+    end
+
+    def link_pair(client)
+      [client.cookies['_dawarich_session'], link_token(client)]
+    end
+
+    def link_copy(pair)
+      client = ActionDispatch::Integration::Session.new(Rails.application)
+      client.cookies['_dawarich_session'] = pair.first
+      client
+    end
+
+    def link_actor_state(actor)
+      User.unscoped.find(actor.id).attributes.slice(
+        'id', 'email', 'encrypted_password', 'provider', 'uid', 'status', 'settings',
+        'sign_in_count', 'current_sign_in_at', 'last_sign_in_at', 'current_sign_in_ip', 'last_sign_in_ip',
+        'failed_attempts', 'locked_at', 'unlock_token', 'remember_created_at', 'otp_required_for_login',
+        'consumed_timestep', 'failed_otp_attempts', 'otp_locked_at', 'otp_backup_codes', 'updated_at', 'deleted_at'
+      ).transform_values { |value| value.respond_to?(:utc) ? iso(value) : value }
+    end
+
+    def link_projection(client, actor, before, session_before, writes, jobs)
+      data = link_data(client)
+      normalized = data.merge('session_id' => 'SESSION_ID')
+      normalized['_csrf_token'] = 'CSRF' if data.key?('_csrf_token')
+      normalized['warden.user.user.key'] = [[actor.id], 'SYNTHETIC_BCRYPT_SALT'] if data.key?('warden.user.user.key')
+      after = link_actor_state(actor)
+      {
+        'status' => client.response.status, 'location' => client.response.location&.sub(%r{\Ahttps?://[^/]+}, ''),
+        'headers' => client.response.headers.slice('cache-control', 'pragma', 'content-type'),
+        'session' => normalized, 'before' => before, 'after' => after,
+        'changed' => after.keys.reject { |key| after[key] == before[key] },
+        'retained' => %w[session_id _csrf_token user_return_to devise.synthetic].index_with do |key|
+          data[key] == session_before[key]
+        end,
+        'writes' => writes, 'jobs_delta' => enqueued_jobs.size - jobs,
+        'remember_cookie' => client.cookies['remember_user_token'].present?
+      }
+    end
+
+    def link_post(client, actor, password: link_password, token: link_token(client), headers: {})
+      before = link_actor_state(actor)
+      session_before = link_data(client)
+      jobs = enqueued_jobs.size
+      writes = []
+      request_thread = Thread.current
+      subscriber = lambda do |*args|
+        sql = args.last[:sql]
+        next unless Thread.current == request_thread
+        next unless sql.start_with?('UPDATE "users"')
+
+        writes << case sql
+                  when /"provider"/ then 'identity'
+                  when /"sign_in_count"/ then 'trackable'
+                  when /"failed_attempts"/ then 'reset_password'
+                  else 'other'
+                  end
+      end
+      params = { authenticity_token: token }
+      params[:password] = password unless password == :missing
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') do
+        client.post('/auth/account_link/challenge', params: params, headers: headers)
+      end
+      if client.response.status == 422
+        field = Nokogiri::HTML5(client.response.body).at_css('input[name="password"]')
+        expect(field['value'].to_s).to eq('') if field
+      end
+      link_projection(client, actor, before, session_before, writes, jobs)
+    end
+
+    def link_overlap(actor, pair)
+      observer = ActiveRecord::Base.connection_pool.checkout
+      ready = Queue.new
+      gates = [Queue.new, Queue.new]
+      allow_any_instance_of(User).to receive(:valid_password?).and_wrap_original do |original, password|
+        result = original.call(password)
+        index = Thread.current[:a11e_fixture_worker]
+        unless index.nil?
+          connection = ActiveRecord::Base.connection
+          ready << [index, connection.select_value('SELECT pg_backend_pid()'), result,
+                    User.where(id: actor.id).exists?]
+          gates[index].pop
+        end
+        result
+      end
+      workers = 2.times.map do |index|
+        Thread.new do
+          Thread.current[:a11e_fixture_worker] = index
+          ActiveRecord::Base.connection_pool.with_connection do
+            link_post(link_copy(pair), actor, token: pair.last)
+          end
+        end
+      end
+      prepared = Timeout.timeout(5) { [ready.pop, ready.pop] }
+      expect(prepared.map { |row| row[1] }.uniq.size).to eq(2)
+      expect(prepared.all? { |row| row[2] && row[3] }).to be(true)
+      outcomes = workers.each_index.map do |index|
+        gates[index] << true
+        workers[index].value
+      end
+      expect(prepared.map { |row| row[1] }).not_to include(observer.select_value('SELECT pg_backend_pid()'))
+      query = User.sanitize_sql_array(['SELECT provider, uid, sign_in_count FROM users WHERE id=?', actor.id])
+      persisted = observer.select_one(query)
+      expect(outcomes.map { |row| row['status'] }).to eq([302, 302])
+      expect(persisted).to eq('provider' => 'openid_connect', 'uid' => "a11e-sub-#{actor.id}-A", 'sign_in_count' => 1)
+      { 'prepared_connections_distinct' => true, 'visible_committed_actor' => true,
+        'responses' => outcomes, 'persisted' => persisted }
+    ensure
+      gates&.each { |gate| gate << true }
+      workers&.each(&:join)
+      ActiveRecord::Base.connection_pool.checkin(observer) if observer
+    end
+
+    it 'A11e account link writes deterministic pending confirmation and fallback fixtures' do
+      travel_to(now) do
+        rows = { 'at' => now.to_i }
+        pages = {}
+        %w[en de fr].each do |locale|
+          actor = link_actor
+          before = link_actor_state(actor)
+          client = link_browser(actor, locale: locale)
+          expect(link_actor_state(actor)).to eq(before)
+          rows["challenge_#{locale}"] =
+            link_projection(client, actor, before, link_data(client), [], enqueued_jobs.size)
+          doc = Nokogiri::HTML5(client.response.body)
+          expect(doc.css('form').map { |form| form['action'] })
+            .to include('/auth/account_link/challenge', '/auth/account_link/email')
+          expect(doc.at_css('input[name="password"]')['value'].to_s).to eq('')
+          doc.css('input[name="authenticity_token"]').each { |node| node['value'] = 'CSRF' }
+          doc.css('meta[name="csrf-token"]').each { |node| node['content'] = 'CSRF' }
+          doc.css('[nonce]').each { |node| node['nonce'] = 'NONCE' }
+          pages["challenge_#{locale}.html"] = doc.to_html
+          alert = 'A11e <script>synthetic</script> & retry'
+          incoming = link_data(client).merge('flash' => { 'discard' => [], 'flashes' => { 'alert' => alert } })
+          link_seed(client, incoming)
+          client.get('/auth/account_link/challenge')
+          rows["challenge_alert_#{locale}"] =
+            link_projection(client, actor, before, incoming, [], enqueued_jobs.size).merge(
+              'incoming_flash' => incoming.fetch('flash')
+            )
+          doc = Nokogiri::HTML5(client.response.body)
+          expect(doc.at_css('.card-body .alert-error').text.strip).to eq(alert)
+          expect(doc.at_css('.card-body .alert-error').css('script')).to be_empty
+          doc.css('input[name="authenticity_token"]').each { |node| node['value'] = 'CSRF' }
+          doc.css('meta[name="csrf-token"]').each { |node| node['content'] = 'CSRF' }
+          doc.css('[nonce]').each { |node| node['nonce'] = 'NONCE' }
+          pages["challenge_alert_#{locale}.html"] = doc.to_html
+          rows["success_#{locale}"] = link_post(client, actor)
+          expect(rows["success_#{locale}"]['writes']).to eq(%w[identity reset_password trackable])
+        end
+        actor = link_actor
+        actor.update_columns(otp_required_for_login: true)
+        client = link_browser(actor)
+        rows['otp'] = link_post(client, actor)
+        expect(rows['otp']['after']['sign_in_count']).to eq(0)
+        expect(rows['otp']['session'].keys).not_to include('warden.user.user.key')
+        expect(rows['otp']['writes']).to eq(['identity'])
+
+        actor = link_actor
+        client = link_browser(actor)
+        rows['wrong'] = link_post(client, actor, password: 'a11e-wrong')
+        rows['fifth'] = link_post(client, actor, password: '')
+        expect(rows['wrong']['status']).to eq(422)
+        expect(rows['fifth']['status']).to eq(302)
+        expect(rows['wrong']['changed']).to be_empty
+        actor = link_actor
+        client = link_browser(actor)
+        token = Nokogiri::HTML5(client.response.body)
+                        .at_css("form[action='/auth/account_link/email'] input[name='authenticity_token']")['value']
+        before = link_actor_state(actor)
+        data = link_data(client)
+        jobs = enqueued_jobs.size
+        rate_key = "#{Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{actor.id}"
+        expect(Rails.cache.read(rate_key)).to be_nil
+        begin
+          client.post('/auth/account_link/email', params: { authenticity_token: token })
+          rows['email'] = link_projection(client, actor, before, data, [], jobs)
+          expect(rows['email']['jobs_delta']).to eq(1)
+          expect(rows['email']['changed']).to be_empty
+        ensure
+          Rails.cache.delete(rate_key)
+        end
+
+        exclusions = {}
+        %w[equal future expired missing_user deleted linked locked payment dirty_settings extra_field
+           missing_time string_time other_provider pending_otp warden].each do |name|
+          actor = link_actor
+          client = link_browser(actor)
+          data = link_data(client)
+          pending = data['pending_oauth_link']
+          case name
+          when 'equal' then pending['expires_at'] = now.to_i
+          when 'future' then pending['expires_at'] = now.to_i + 86_400
+          when 'expired' then pending['expires_at'] = now.to_i - 1
+          when 'missing_user' then pending['user_id'] = 999_999_999
+          when 'deleted' then actor.update_columns(deleted_at: now - 60)
+          when 'linked' then actor.update_columns(provider: 'google', uid: 'a11e-existing')
+          when 'locked' then actor.update_columns(locked_at: now - 60, failed_attempts: 5)
+          when 'payment' then actor.update_columns(status: User.statuses[:pending_payment])
+          when 'dirty_settings' then actor.update_columns(settings: { 'immich_url' => 'https://example.invalid/' })
+          when 'extra_field' then pending['unexpected'] = 'a11e-extra'
+          when 'missing_time' then pending.delete('expires_at')
+          when 'string_time' then pending['expires_at'] = now.to_i.to_s
+          when 'other_provider' then pending['provider'] = 'google'
+          when 'pending_otp' then data['otp_user_id'] = actor.id
+          when 'warden' then data['warden.user.user.key'] = [[actor.id], actor.authenticatable_salt]
+          end
+          token = link_token(client)
+          link_seed(client, data)
+          before = link_actor_state(actor)
+          client.get('/auth/account_link/challenge')
+          challenge = link_projection(client, actor, before, data, [], enqueued_jobs.size)
+          confirmation = link_post(client, actor, token: token)
+          exclusions[name] = { 'pending' => pending, 'challenge' => challenge, 'confirmation' => confirmation,
+                               'native' => %w[equal future].include?(name) }
+        end
+
+        actor = link_actor
+        client = link_browser(actor)
+        pair = link_pair(client)
+        foreign = link_browser(actor)
+        controller = Auth::AccountLinksController.new
+        controller.set_request!(client.request)
+        wrong_action = controller.send(:form_authenticity_token,
+                                       form_options: { action: '/auth/account_link/email', method: 'post' })
+        rows['csrf'] = {}
+        negatives = { 'missing' => [nil, {}], 'foreign_session' => [link_token(foreign), {}],
+                      'wrong_action' => [wrong_action, {}],
+                      'foreign_origin' => [pair.last, { 'HTTP_ORIGIN' => 'https://foreign.example.invalid' }] }
+        negatives.each do |name, (token, headers)|
+          rows['csrf'][name] = link_post(link_copy(pair), actor, token: token, headers: headers)
+          expect(rows['csrf'][name]['status']).to eq(422)
+          expect(rows['csrf'][name]['changed']).to be_empty
+        end
+        rows['csrf']['valid'] = link_post(link_copy(pair), actor, token: pair.last)
+        expect(rows['csrf']['valid']['status']).to eq(302)
+
+        actor = link_actor
+        pair = link_pair(link_browser(actor))
+        rows['sequential_replay'] = 2.times.map { link_post(link_copy(pair), actor, token: pair.last) }
+        expect(rows['sequential_replay'].map { |row| row['status'] }).to eq([302, 302])
+        actor = link_actor
+        first = link_pair(link_browser(actor))
+        second = link_pair(link_browser(actor, uid: 'a11e-sub-B'))
+        rows['superseded_collision'] = [first, second].map do |saved|
+          link_post(link_copy(saved), actor, token: saved.last)
+        end
+        expect(rows['superseded_collision'].map { |row| row['after']['uid'] })
+          .to eq(["a11e-sub-#{actor.id}-A", 'a11e-sub-B'])
+        actor = link_actor
+        pair = link_pair(link_browser(actor))
+        transplant = ActionDispatch::Integration::Session.new(Rails.application)
+        transplant.get('/users/sign_in')
+        transplant.cookies['_dawarich_session'] = pair.first
+        rows['transplant'] = link_post(transplant, actor, token: pair.last)
+        expect(rows['transplant']['status']).to eq(302)
+        actor = link_actor
+        rows['overlap'] = link_overlap(actor, link_pair(link_browser(actor)))
+
+        actor = link_actor
+        client = link_browser(actor)
+        other = link_actor
+        other.update_columns(provider: 'openid_connect', uid: "a11e-sub-#{actor.id}-A")
+        before = link_actor_state(actor)
+        begin
+          link_post(client, actor)
+          raise 'a11e unique conflict unexpectedly accepted'
+        rescue ActiveRecord::RecordNotUnique => e
+          expect(link_actor_state(actor)).to eq(before)
+          rows['unique_conflict'] = { 'error' => e.class.name, 'before' => before,
+                                      'after' => link_actor_state(actor), 'pending_retained' => true }
+          expect(link_data(client)).to have_key('pending_oauth_link')
+        end
+        actor = link_actor
+        client = link_browser(actor)
+        before = link_actor_state(actor)
+        observer = ActiveRecord::Base.connection_pool.checkout
+        begin
+          callback_pid = nil
+          allow_any_instance_of(User).to receive(:update_tracked_fields!) do
+            callback_pid = ActiveRecord::Base.connection.select_value('SELECT pg_backend_pid()')
+            raise 'a11e-fixture-later-callback'
+          end
+          expect { link_post(client, actor) }.to raise_error(RuntimeError, 'a11e-fixture-later-callback')
+          expect(observer.select_value('SELECT pg_backend_pid()')).not_to eq(callback_pid)
+          expect(observer.transaction_open?).to be(false)
+          sql = 'SELECT provider, uid, failed_attempts, sign_in_count FROM users WHERE id=?'
+          durable = observer.select_one(User.sanitize_sql_array([sql, actor.id]))
+          expect(durable).to eq('provider' => 'openid_connect', 'uid' => "a11e-sub-#{actor.id}-A",
+                                'failed_attempts' => 0, 'sign_in_count' => 0)
+          rows['later_callback_failure'] = { 'error' => 'RuntimeError', 'before' => before,
+                                             'after' => link_actor_state(actor), 'durable' => durable,
+                                             'independent_connection' => true }
+        ensure
+          allow_any_instance_of(User).to receive(:update_tracked_fields!).and_call_original
+          ActiveRecord::Base.connection_pool.checkin(observer)
+        end
+
+        previous_enabled = Rack::Attack.enabled
+        previous_store = Rack::Attack.cache.store
+        counter_keys = []
+        begin
+          Rack::Attack.enabled = true
+          Rack::Attack.cache.store = RackAttack::PhoenixCounterStore.new
+          actor = link_actor
+          client = link_browser(actor)
+          pair = link_pair(client)
+          epoch = now.to_i / 900
+          session_key = "rack::attack:#{epoch}:auth/account_link_challenge_session:#{actor.id}"
+          ip_key = "rack::attack:#{epoch}:auth/account_link_challenge_ip:198.51.100.234"
+          connection = ActiveRecord::Base.connection
+          [session_key, ip_key].each do |key|
+            query = "SELECT count(*) FROM phoenix.counters WHERE key=#{connection.quote(key)}"
+            expect(connection.select_value(query)).to eq(0)
+            counter_keys << key
+          end
+          rate = 6.times.map do
+            link_post(link_copy(pair), actor, password: 'a11e-wrong', token: pair.last,
+                                            headers: { 'REMOTE_ADDR' => '198.51.100.234' })
+          end
+          expect(rate.map { |row| row['status'] }).to eq([422, 422, 422, 422, 422, 429])
+          counters = [session_key, ip_key].index_with do |key|
+            connection.select_value("SELECT value FROM phoenix.counters WHERE key=#{connection.quote(key)}")
+          end
+          expect(counters.values).to eq([6, 5])
+          rows['shared_rate'] = { 'store' => Rack::Attack.cache.store.class.name, 'enabled' => Rack::Attack.enabled,
+                                  'session_limit' => 5, 'ip_limit' => 20, 'period' => 900,
+                                  'counts' => counters, 'responses' => rate }
+        ensure
+          Rack::Attack.enabled = previous_enabled
+          Rack::Attack.cache.store = previous_store
+          counter_keys.each do |key|
+            ActiveRecord::Base.connection.execute("DELETE FROM phoenix.counters WHERE key=#{ActiveRecord::Base.connection.quote(key)}")
+          end
+        end
+
+        vectors = [
+          ['normal', link_password, link_password], ['missing', link_password, :missing],
+          ['empty', link_password, ''], ['whitespace', ' ' * 12, ' ' * 12],
+          ['72 bytes', "#{'a' * 71}b", "#{'a' * 71}b"],
+          ['73 bytes', "#{'a' * 71}bc", "#{'a' * 71}bd"],
+          ['prefix mismatch', "#{'a' * 71}b", "#{'a' * 71}c"],
+          ['multibyte crossing', "#{'a' * 71}é", "#{'a' * 71}ê"],
+          ['NUL', link_password, "#{link_password}\0ignored"],
+          ['blank hash', '', link_password], ['malformed hash', 'invalid-bcrypt', link_password]
+        ]
+        rows['password_vectors'] = vectors.map do |name, original, submitted|
+          actor = link_actor
+          hash = name.end_with?('hash') ? original : Devise::Encryptor.digest(User, original)
+          actor.update_columns(encrypted_password: hash)
+          value = submitted == :missing ? '' : submitted
+          before = link_actor_state(actor)
+          result = begin
+            actor.reload.valid_password?(value)
+          rescue StandardError => e
+            e.class.name
+          end
+          expect(link_actor_state(actor)).to eq(before)
+          client = link_browser(actor)
+          confirmation = begin
+            link_post(client, actor, password: submitted)
+          rescue ArgumentError, BCrypt::Errors::InvalidHash => e
+            expect(link_actor_state(actor)).to eq(before)
+            { 'error' => e.class.name, 'before' => before, 'after' => link_actor_state(actor), 'changed' => [] }
+          end
+          { 'name' => name, 'password' => submitted == :missing ? nil : submitted,
+            'missing' => submitted == :missing, 'bytes' => value.bytesize, 'hash' => hash,
+            'valid_password' => result, 'confirmation' => confirmation,
+            'native' => !result.is_a?(String) && !name.end_with?('hash') && name != 'NUL' }
+        end
+        rows['normalization'] = { 'session_id' => 'SESSION_ID', 'csrf' => 'CSRF',
+                                  'warden_salt' => 'SYNTHETIC_BCRYPT_SALT', 'nonce' => 'NONCE',
+                                  'wire_cookies' => 'not emitted' }
+        pages.each { |name, page| link_fixture(name, page, json: false) }
+        link_fixture('requests.json', rows)
+        link_fixture('exclusions.json', exclusions)
+      end
+    end
+  end
+
   context 'A11d web OTP' do
     let(:now) { Time.utc(2026, 10, 4, 12) }
     let(:web_otp_secret) { 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' }
@@ -1243,10 +1724,11 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
   let(:now) { Time.utc(2026, 9, 26, 12, 0, 0) }
 
   around do |example|
+    previous = ActionController::Base.allow_forgery_protection
     ActionController::Base.allow_forgery_protection = true
     example.run
   ensure
-    ActionController::Base.allow_forgery_protection = false
+    ActionController::Base.allow_forgery_protection = previous
   end
 
   def iso(time) = time&.utc&.iso8601(6)

@@ -16,6 +16,7 @@ defmodule Dawarich.Auth.Account do
     field(:otp_backup_codes, {:array, :string}, redact: true)
     field(:consumed_timestep, :integer)
     field(:provider, :string)
+    field(:uid, :string, redact: true)
     field(:status, :integer)
     field(:sign_in_count, :integer, default: 0)
     field(:current_sign_in_at, :utc_datetime_usec)

@@ -25,7 +25,11 @@ defmodule DawarichWeb.RailsProxy do
 
   @impl true
   def call(conn, upstream) do
-    conn = DawarichWeb.RateLimit.release(conn)
+    conn =
+      case DawarichWeb.RateLimit.release(conn) do
+        {:error, _conn} -> raise "rate limit refund failed"
+        conn -> conn
+      end
 
     if Headers.websocket_upgrade?(conn),
       do: DawarichWeb.CableProxy.upgrade(conn, upstream),

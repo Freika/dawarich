@@ -13,22 +13,22 @@ defmodule Dawarich.ReleaseCloudTest do
 
   describe "readiness/0" do
     test "is :ready once both ledgers record every migration in the release" do
-      assert Release.migrate() == :ok
+      assert Release.migrate(copy_opts()) == :ok
       assert Release.readiness() == :ready
     end
 
     test "is :schemas_behind while an Oban migration is unrecorded" do
-      assert Release.migrate() == :ok
+      assert Release.migrate(copy_opts()) == :ok
       Repo.query!("DELETE FROM oban.phoenix_schema_migrations")
 
       assert Release.readiness() == :schemas_behind
 
-      assert Release.migrate() == :ok
+      assert Release.migrate(copy_opts()) == :ok
       assert Release.readiness() == :ready
     end
 
     test "is :schemas_behind without the phoenix ledger and does not create it" do
-      assert Release.migrate() == :ok
+      assert Release.migrate(copy_opts()) == :ok
       Repo.query!("DROP TABLE phoenix.phoenix_schema_migrations")
       on_exit(&restore_schemas_and_role/0)
 
@@ -52,7 +52,7 @@ defmodule Dawarich.ReleaseCloudTest do
     end
 
     test "never waits for the migration table lock a real migration run holds" do
-      assert Release.migrate() == :ok
+      assert Release.migrate(copy_opts()) == :ok
 
       parent = self()
 
@@ -112,15 +112,39 @@ defmodule Dawarich.ReleaseCloudTest do
     end
 
     test "migrates once both schemas exist and belong to it", %{pool: pool} do
-      Repo.query!("CREATE SCHEMA phoenix AUTHORIZATION #{@role}")
-      Repo.query!("CREATE SCHEMA oban AUTHORIZATION #{@role}")
+      fixture =
+        Path.expand("../fixtures/auth/activation.json", __DIR__)
+        |> File.read!()
+        |> Jason.decode!()
 
-      assert with_pool(pool, &Release.migrate/0) == :ok
-      assert with_pool(pool, &Release.readiness/0) == :ready
+      for {name, value} <- [{"false", false}, {"nil", nil}] do
+        Repo.query!("DROP SCHEMA IF EXISTS phoenix CASCADE")
+        Repo.query!("DROP SCHEMA IF EXISTS oban CASCADE")
+        Repo.query!("CREATE SCHEMA phoenix AUTHORIZATION #{@role}")
+        Repo.query!("CREATE SCHEMA oban AUTHORIZATION #{@role}")
+        source = Base.decode64!(fixture["registration"][name])
+
+        assert with_pool(pool, fn ->
+                 assert Repo.query!(
+                          "SELECT has_database_privilege(current_user, current_database(), 'CREATE')"
+                        ).rows == [[false]]
+
+                 Release.migrate(command: fn _ -> {:ok, source} end)
+               end) == :ok
+
+        assert with_pool(pool, fn ->
+                 Repo.query!("SELECT enabled FROM phoenix.registration_setting").rows
+               end) == [[value]]
+
+        assert with_pool(pool, &Release.readiness/0) == :ready
+      end
     end
 
     test "cannot migrate while the schemas are missing and reports them behind", %{pool: pool} do
-      error = assert_raise Postgrex.Error, fn -> with_pool(pool, &Release.migrate/0) end
+      error =
+        assert_raise Postgrex.Error, fn ->
+          with_pool(pool, fn -> Release.migrate(copy_opts()) end)
+        end
 
       assert error.postgres.code == :insufficient_privilege
       assert with_pool(pool, &Release.readiness/0) == :schemas_behind
@@ -128,7 +152,7 @@ defmodule Dawarich.ReleaseCloudTest do
   end
 
   test "cloud schema cleanup leaves a later recovery mail consumer able to enqueue" do
-    assert Release.migrate() == :ok
+    assert Release.migrate(copy_opts()) == :ok
     Repo.query!("DROP TABLE phoenix.phoenix_schema_migrations")
     restore_schemas_and_role()
 
@@ -210,7 +234,7 @@ defmodule Dawarich.ReleaseCloudTest do
 
   defp restore_schemas_and_role do
     drop_schemas_and_role()
-    Release.migrate()
+    Release.migrate(copy_opts())
   end
 
   defp drop_schemas_and_role do
@@ -233,4 +257,6 @@ defmodule Dawarich.ReleaseCloudTest do
     %{rows: [[found]]} = Repo.query!("SELECT to_regclass($1) IS NOT NULL", [name])
     found
   end
+
+  defp copy_opts, do: [command: fn _ -> {:ok, nil} end, env: %{}]
 end

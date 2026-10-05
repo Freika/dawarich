@@ -125,17 +125,32 @@ defmodule DawarichWeb.RateLimit do
     )
   end
 
-  def release(%{private: %{dawarich_rate_limit: [_ | _] = counted}} = conn) do
-    repo = Jobs.repo()
-    Enum.each(counted, fn {key, _ttl} -> State.increment(repo, key, -1, 1) end)
-    put_private(conn, :dawarich_rate_limit, [])
-  rescue
-    error ->
-      Logger.warning("event=rate_limit.release_failed reason=#{inspect(error.__struct__)}")
-      put_private(conn, :dawarich_rate_limit, [])
+  def release(conn, repo \\ Jobs.repo())
+
+  def release(%{private: %{dawarich_rate_limit: [_ | _] = counted}} = conn, repo) do
+    refund(conn, counted, repo)
   end
 
-  def release(conn), do: conn
+  def release(conn, _repo), do: conn
+
+  defp refund(conn, [], _repo), do: put_private(conn, :dawarich_rate_limit, [])
+
+  defp refund(conn, [{key, _ttl} | remaining] = counted, repo) do
+    result =
+      try do
+        State.increment(repo, key, -1, 1)
+        :ok
+      rescue
+        error ->
+          Logger.warning("event=rate_limit.release_failed reason=#{inspect(error.__struct__)}")
+          :error
+      end
+
+    case result do
+      :ok -> refund(conn, remaining, repo)
+      :error -> {:error, put_private(conn, :dawarich_rate_limit, counted)}
+    end
+  end
 
   def throttled(conn, %{period: period}, now, manager_url) do
     body =

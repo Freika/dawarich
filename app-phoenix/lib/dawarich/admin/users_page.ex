@@ -1,7 +1,8 @@
 defmodule Dawarich.Admin.UsersPage do
   @moduledoc false
 
-  alias Dawarich.{RailsCache, Repo, TripSettings, UserTimeZone}
+  alias Dawarich.{Repo, TripSettings, UserTimeZone}
+  alias Dawarich.Auth.RegistrationSetting
   alias DawarichWeb.TripsGate
 
   @page_size 25
@@ -95,9 +96,8 @@ defmodule Dawarich.Admin.UsersPage do
   defp detail(_actor, _target, _kind), do: :rails
 
   defp registration do
-    case RailsCache.get("dawarich/registration_enabled") do
+    case RegistrationSetting.fetch() do
       {:ok, value} when is_boolean(value) -> {:ok, value}
-      :miss -> {:ok, System.get_env("ALLOW_EMAIL_PASSWORD_REGISTRATION", "false") == "true"}
       _ -> :rails
     end
   end

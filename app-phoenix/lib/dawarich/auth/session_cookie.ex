@@ -42,6 +42,25 @@ defmodule Dawarich.Auth.SessionCookie do
     encode(%{"session_id" => session_id(), "flash" => flash(notice)}, secret)
   end
 
+  def for_account_link(session, user, kind, notice, secret) when kind in [:sign_in, :link_only] do
+    session = Map.drop(session, ~w(pending_oauth_link pending_oauth_link_attempts))
+
+    session =
+      if kind == :sign_in do
+        session
+        |> Map.reject(fn {key, _} -> String.starts_with?(key, "devise.") end)
+        |> Map.put("session_id", session_id())
+        |> Map.put("warden.user.user.key", [
+          [user.id],
+          binary_part(user.encrypted_password, 0, 29)
+        ])
+      else
+        session
+      end
+
+    session |> Map.put("flash", flash(notice)) |> encode(secret)
+  end
+
   def for_account_update(session, user, notice, secret) do
     session =
       session

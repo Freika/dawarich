@@ -7,11 +7,7 @@ require 'uri'
 require 'active_support/testing/time_helpers'
 
 mode = ARGV[1]
-database_allowed = if mode == 'api_two_factor_management'
-                     ENV.fetch('DATABASE_NAME') == 'dawarich_test_a4otp'
-                   else
-                     ENV.fetch('DATABASE_NAME').start_with?('dawarich_test_a11')
-                   end
+database_allowed = ENV.fetch('DATABASE_NAME').start_with?('dawarich_test')
 raise 'Protocol own test DB required' unless Rails.env.test? && database_allowed
 
 ActiveJob::Base.queue_adapter = :test
@@ -36,6 +32,366 @@ def native_client(cookies)
   ActionDispatch::Integration::Session.new(Rails.application).tap do |session|
     session.host!('www.example.com')
     cookies.each { |name, value| session.cookies[name] = URI.decode_www_form_component(value) }
+  end
+end
+
+def account_link_assert(label, condition, detail)
+  raise "#{label}: #{detail}" unless condition
+end
+
+def account_link_state(user)
+  user.reload.attributes.slice('provider', 'uid', 'sign_in_count', 'failed_attempts', 'failed_otp_attempts',
+                               'otp_required_for_login', 'consumed_timestep', 'remember_created_at',
+                               'current_sign_in_at', 'last_sign_in_at', 'current_sign_in_ip', 'last_sign_in_ip')
+end
+
+def account_link_submit(client, token, password = 'safepassword12', headers = {})
+  params = { password: }
+  params[:authenticity_token] = token unless token.nil?
+  client.post('/auth/account_link/challenge', params:, headers:)
+end
+
+def account_link_session(client)
+  jar(ActionDispatch::Request.new(Rails.application.env_config.dup), '_dawarich_session',
+      URI.encode_www_form_component(client.cookies['_dawarich_session'])).encrypted['_dawarich_session']
+end
+
+def account_link_reset(user)
+  user.update_columns(provider: nil, uid: nil, sign_in_count: 0, failed_attempts: 2,
+                      current_sign_in_at: nil, last_sign_in_at: nil, current_sign_in_ip: nil, last_sign_in_ip: nil)
+end
+
+def account_link_source_pair(user, uid)
+  auth = OmniAuth::AuthHash.new(provider: 'openid_connect', uid:,
+                                info: { email: user.email, name: 'Synthetic' },
+                                extra: { raw_info: { email_verified: true } })
+  OmniAuth.config.mock_auth[:openid_connect] = auth
+  Rails.application.env_config['omniauth.auth'] = auth
+  client = native_client({})
+  client.get('/users/auth/openid_connect/callback')
+  raise 'A11e actual source callback refused' unless client.response.status == 302
+
+  client.get('/auth/account_link/challenge')
+  raise 'A11e actual source challenge refused' unless client.response.status == 200
+
+  token = Nokogiri::HTML5(client.response.body)
+                  .at_css("form[action='/auth/account_link/challenge'] input[name=authenticity_token]")['value']
+  [URI.encode_www_form_component(client.cookies['_dawarich_session']), token, account_link_session(client)]
+end
+
+def account_link_overlap(user, cookie, token, label, baseline)
+  previous_enabled = Rack::Attack.enabled
+  previous_store = Rack::Attack.cache.store
+  Rack::Attack.enabled = true
+  Rack::Attack.cache.store = RackAttack::PhoenixCounterStore.new
+  account_link_assert(label, Rack::Attack.enabled && Rack::Attack.cache.store.is_a?(RackAttack::PhoenixCounterStore),
+                      'overlap shared counter store inactive')
+  connection = ActiveRecord::Base.connection
+  keys = ["rack::attack:#{Time.current.to_i / 900}:auth/account_link_challenge_session:#{user.id}",
+          "rack::attack:#{Time.current.to_i / 900}:auth/account_link_challenge_ip:127.0.0.1"]
+  owned = []
+  keys.zip([baseline, 0]).each do |key, value|
+    count = connection.select_value(User.sanitize_sql_array(['SELECT value FROM phoenix.counters WHERE key=?', key]))
+    account_link_assert(label, value.zero? ? count.nil? : count == value, 'overlap counter baseline changed')
+    owned << [key, value]
+  end
+  source_session = account_link_session(native_client('_dawarich_session' => cookie))
+  before = account_link_state(user)
+  ready = Queue.new
+  release = [Queue.new, Queue.new]
+  hook = Module.new do
+    define_method(:valid_password?) do |value|
+      result = super(value)
+      index = Thread.current[:a11e_protocol_worker]
+      unless index.nil?
+        connection = ActiveRecord::Base.connection
+        ready << [index, connection.select_value('SELECT pg_backend_pid()'),
+                  User.where(id: id).exists?, result]
+        release[index].pop
+      end
+      result
+    end
+  end
+  User.prepend(hook)
+  observer = ActiveRecord::Base.connection_pool.checkout
+  workers = 2.times.map do |index|
+    Thread.new do
+      Thread.current[:a11e_protocol_worker] = index
+      ActiveRecord::Base.connection_pool.with_connection do
+        client = native_client('_dawarich_session' => cookie)
+        account_link_submit(client, token)
+        [client.response.status, account_link_session(client)]
+      end
+    end
+  end
+  prepared = Timeout.timeout(5) { [ready.pop, ready.pop] }
+  account_link_assert(label, prepared.map { |row| row[1] }.uniq.size == 2, 'overlap connections not distinct')
+  account_link_assert(label, prepared.all? do |row|
+    row[2] && row[3]
+  end, 'overlap actor not committed or password refused')
+  account_link_assert(label, !prepared.map { |row| row[1] }.include?(observer.select_value('SELECT pg_backend_pid()')),
+                      'overlap observer reused worker')
+  outcomes = workers.each_index.map do |index|
+    release[index] << true
+    workers[index].value
+  end
+  account_link_assert(label, outcomes.map(&:first) == [302, 302], 'overlap statuses changed')
+  outcomes.each do |outcome|
+    session = outcome.last
+    account_link_assert(label, session['warden.user.user.key'] == [[user.id], user.authenticatable_salt],
+                        'overlap authentication changed')
+    account_link_assert(label, (session.keys & %w[pending_oauth_link pending_oauth_link_attempts]).empty? &&
+      session.keys.none? { |key| key.start_with?('devise.') }, 'overlap pending cleanup changed')
+    account_link_assert(label, session['session_id'] != source_session['session_id'] &&
+      session.slice('_csrf_token', 'user_return_to', 'locale') ==
+        source_session.slice('_csrf_token', 'user_return_to', 'locale'), 'overlap session projection changed')
+  end
+  observed = observer.select_one(User.sanitize_sql_array(['SELECT * FROM users WHERE id=?', user.id]))
+  account_link_assert(label, observed['sign_in_count'] == 1 && observed['failed_attempts'].zero? &&
+    observed['failed_otp_attempts'] == before['failed_otp_attempts'] && observed['provider'] == 'openid_connect',
+                      'overlap durable callback state changed')
+  keys.zip([baseline + 2, 2]).each do |key, value|
+    count = observer.select_value(User.sanitize_sql_array(['SELECT value FROM phoenix.counters WHERE key=?', key]))
+    account_link_assert(label, count == value, 'overlap shared count changed')
+  end
+  puts 'Rails account-link overlap: PASS independent HTTP connections, session projections, ' \
+       'durable callbacks and shared counts'
+ensure
+  release&.each { |queue| queue << true }
+  workers&.each(&:join)
+  ActiveRecord::Base.connection_pool.checkin(observer) if observer
+  Rack::Attack.enabled = previous_enabled
+  Rack::Attack.cache.store = previous_store
+  owned&.each do |key, value|
+    sql = if value.zero?
+            ['DELETE FROM phoenix.counters WHERE key=?', key]
+          else
+            ['UPDATE phoenix.counters SET value=? WHERE key=?', value, key]
+          end
+    ActiveRecord::Base.connection.execute(User.sanitize_sql_array(sql))
+  end
+  hook&.send(:remove_method, :valid_password?)
+end
+
+def account_link_csrf(fixture, user, cookie, token)
+  label = 'Rails account-link CSRF negatives preserve identity and authentication state'
+  account_link_reset(user)
+  before = account_link_state(user)
+  cases = [[nil, {}], [fixture.fetch('foreign_token'), {}], [fixture.fetch('wrong_action_token'), {}],
+           [token, { 'HTTP_ORIGIN' => 'https://foreign.invalid' }]]
+  cases.each do |submitted, headers|
+    client = native_client('_dawarich_session' => cookie)
+    account_link_submit(client, submitted, 'safepassword12', headers)
+    account_link_assert(label, client.response.status == 422, 'CSRF negative status changed')
+    account_link_assert(label, account_link_state(user) == before, 'CSRF negative changed actor')
+    account_link_assert(label, !account_link_session(client).key?('warden.user.user.key'),
+                        'CSRF negative authenticated')
+  end
+  client = native_client('_dawarich_session' => cookie)
+  account_link_submit(client, token)
+  account_link_assert(label, client.response.status == 302 && user.reload.sign_in_count == 1,
+                      'positive control refused')
+  puts "#{label}: PASS missing, foreign-session, wrong-action, foreign Origin and valid control"
+end
+
+def account_link_rates(fixture, user, cookie, token)
+  label = 'Rails account-link protocol enforces shared session and IP limits'
+  account_link_assert(label, fixture.fetch('database') == ENV.fetch('DATABASE_NAME'), 'counter databases differ')
+  previous_enabled = Rack::Attack.enabled
+  previous_store = Rack::Attack.cache.store
+  owned = fixture.fetch('counter_keys').dup
+  Rack::Attack.enabled = true
+  Rack::Attack.cache.store = RackAttack::PhoenixCounterStore.new
+  account_link_assert(label, Rack::Attack.enabled && Rack::Attack.cache.store.is_a?(RackAttack::PhoenixCounterStore),
+                      'shared store not enabled')
+  connection = ActiveRecord::Base.connection
+  values = owned.map do |key|
+    sql = 'SELECT value,extract(epoch from expires_at-statement_timestamp()) AS ttl ' \
+          'FROM phoenix.counters WHERE key=?'
+    connection.select_one(User.sanitize_sql_array([sql, key]))
+  end
+  account_link_assert(label, values.all? do |row|
+    row && row['value'] == 1 && row['ttl'].positive? && row['ttl'] <= 901
+  end,
+                      'native shared increments or expiry missing')
+  5.times do |index|
+    account_link_reset(user)
+    before = account_link_state(user)
+    client = native_client('_dawarich_session' => cookie)
+    account_link_submit(client, token, 'safepassword12', 'REMOTE_ADDR' => '198.51.100.235')
+    account_link_assert(label, client.response.status == (index < 4 ? 302 : 429),
+                        '5/900 shared session boundary changed')
+    next unless index == 4
+
+    account_link_assert(label, account_link_state(user) == before, 'session throttle changed actor')
+    account_link_assert(label, JSON.parse(client.response.body)['error'] == 'rate_limit_exceeded',
+                        'session throttle body changed')
+  end
+  counts = owned.map do |key|
+    connection.select_value(User.sanitize_sql_array(['SELECT value FROM phoenix.counters WHERE key=?', key]))
+  end
+  account_link_assert(label, counts == [6, 5], 'shared session short-circuit counts changed')
+  ip = "rack::attack:#{fixture.fetch('at') / 900}:auth/account_link_challenge_ip:198.51.100.236"
+  count = connection.select_value(User.sanitize_sql_array(['SELECT count(*) FROM phoenix.counters WHERE key=?', ip]))
+  account_link_assert(label, count.zero?,
+                      'IP phase owned IP key exists')
+  owned << ip
+  21.times do |index|
+    data = fixture.dig('sessions', 'form', 'expected').deep_dup
+    data['pending_oauth_link']['user_id'] = 911_457_000 + index
+    key = "rack::attack:#{fixture.fetch('at') / 900}:auth/account_link_challenge_session:#{911_457_000 + index}"
+    count = connection.select_value(User.sanitize_sql_array(['SELECT count(*) FROM phoenix.counters WHERE key=?', key]))
+    account_link_assert(label, count.zero?,
+                        'IP phase owned key exists')
+    owned << key
+    encoded = ActionDispatch::Request.new(Rails.application.env_config.dup).cookie_jar
+    encoded.encrypted['_dawarich_session'] = { value: data }
+    client = native_client('_dawarich_session' => URI.encode_www_form_component(encoded['_dawarich_session']))
+    before = account_link_state(user)
+    account_link_submit(client, token, 'safepassword12', 'REMOTE_ADDR' => '198.51.100.236')
+    account_link_assert(label, client.response.status == (index < 20 ? 302 : 429), '20/900 IP boundary changed')
+    account_link_assert(label, account_link_state(user) == before, 'IP phase changed target')
+  end
+  count = connection.select_value(User.sanitize_sql_array(['SELECT value FROM phoenix.counters WHERE key=?', ip]))
+  account_link_assert(label, count == 21,
+                      'IP count changed')
+  puts "#{label}: PASS same allocated DB, native + Rails counts, expiry, 5/900, 20/900 and no effects at 429"
+ensure
+  Rack::Attack.enabled = previous_enabled
+  Rack::Attack.cache.store = previous_store
+  owned&.each { |key| ActiveRecord::Base.connection.execute(User.sanitize_sql_array(['DELETE FROM phoenix.counters WHERE key=?', key])) }
+end
+
+def consume_account_link(fixture, request)
+  label = 'Rails consumes native account-link form completion and OTP no-bypass state'
+  account_link_assert(label, (File.stat(ARGV.fetch(0)).mode & 0o777) == 0o600, 'private payload mode required')
+  ids = [911_456_001, 911_456_002, 911_456_003]
+  emails = ids.map { |id| "a11e-protocol-#{id}@example.invalid" }
+  account_link_assert(label, fixture.fetch('actors').map { |actor| actor.fetch('id') } == ids &&
+    fixture.fetch('actors').map { |actor| actor.fetch('email') } == emails, 'synthetic identities required')
+  account_link_assert(label, !User.unscoped.where(id: ids).exists? && !User.unscoped.where(email: emails).exists?,
+                      'owned actors exist')
+  expected = if fixture.fetch('shared_counters')
+               [
+                 "rack::attack:#{fixture.fetch('at') / 900}:auth/account_link_challenge_session:#{ids.first}",
+                 "rack::attack:#{fixture.fetch('at') / 900}:auth/account_link_challenge_ip:198.51.100.235"
+               ]
+             else
+               []
+             end
+  account_link_assert(label, fixture.fetch('counter_keys') == expected, 'owned counter identities required')
+  counter_keys = expected
+  previous_csrf = ActionController::Base.allow_forgery_protection
+  previous_enabled = Rack::Attack.enabled
+  previous_auth = Rails.application.env_config['omniauth.auth']
+  previous_mock = OmniAuth.config.mock_auth[:openid_connect]
+  previous_mode = OmniAuth.config.test_mode
+  created = []
+  clock = Object.new.extend(ActiveSupport::Testing::TimeHelpers)
+  ActionController::Base.allow_forgery_protection = true
+  Rack::Attack.enabled = false
+  fixture.fetch('actors').each do |actor|
+    user = User.create!(id: actor.fetch('id'), email: actor.fetch('email'), password: 'safepassword12',
+                        settings: {}, status: :active, plan: :pro, skip_auto_trial: true, skip_family_sync: true)
+    created << user
+    user.update_columns(encrypted_password: actor.fetch('hash'), provider: nil, uid: nil, failed_attempts: 2,
+                        sign_in_count: 0, failed_otp_attempts: 3, otp_required_for_login: user.id == ids[1],
+                        active_until: 10.years.from_now)
+  end
+  clock.travel_to(Time.at(fixture.fetch('at')).utc) do
+    fixture.fetch('sessions').each do |name, entry|
+      decoded = jar(request, '_dawarich_session', entry.fetch('cookie')).encrypted['_dawarich_session']
+      account_link_assert(label, decoded == entry.fetch('expected'), "#{name} decryption mismatch")
+    end
+    user = created.first
+    cookie = fixture.dig('sessions', 'form', 'cookie')
+    token = fixture.fetch('form_token')
+    account_link_csrf(fixture, user, cookie, token)
+    account_link_reset(user)
+    client = native_client('_dawarich_session' => cookie)
+    account_link_submit(client, token)
+    completed = client.response.status == 302 && user.reload.sign_in_count == 1 && user.provider == 'openid_connect'
+    account_link_assert(label, completed,
+                        'native form completion refused')
+    keys = account_link_session(client).keys & %w[pending_oauth_link pending_oauth_link_attempts]
+    account_link_assert(label, keys.empty?, 'pending state retained')
+    signed = native_client('_dawarich_session' => fixture.dig('sessions', 'completed', 'cookie'))
+    signed.get('/stats')
+    account_link_assert(label, signed.response.status == 200, 'native completed session refused')
+    otp = native_client('_dawarich_session' => fixture.dig('sessions', 'otp', 'cookie'))
+    otp.get('/stats')
+    account_link_assert(label, otp.response.status == 302, 'OTP native link-only authenticated')
+    anonymous = !account_link_session(otp).key?('warden.user.user.key') && created[1].reload.sign_in_count.zero?
+    account_link_assert(label, anonymous,
+                        'OTP no-bypass state changed')
+    otp_confirmation = native_client('_dawarich_session' => fixture.dig('sessions', 'otp_form', 'cookie'))
+    account_link_submit(otp_confirmation, fixture.fetch('foreign_token'))
+    linked = otp_confirmation.response.status == 302 && created[1].reload.provider == 'openid_connect'
+    anonymous = created[1].sign_in_count.zero? && !account_link_session(otp_confirmation).key?('warden.user.user.key')
+    account_link_assert(label, linked && anonymous, 'OTP source form bypassed authentication')
+    account_link_reset(user)
+    refused = native_client('_dawarich_session' => cookie)
+    1.upto(5) do |attempt|
+      account_link_submit(refused, token, 'wrong')
+      account_link_assert(label, refused.response.status == (attempt < 5 ? 422 : 302), 'wrong-password status changed')
+      state = account_link_session(refused)
+      correct_count = attempt < 5 ? state['pending_oauth_link_attempts'] == attempt : !state.key?('pending_oauth_link')
+      account_link_assert(label, correct_count,
+                          'wrong-password pending count changed')
+    end
+    email = native_client('_dawarich_session' => fixture.dig('sessions', 'email_form', 'cookie'))
+    email.post('/auth/account_link/email', params: { authenticity_token: fixture.fetch('email_token') })
+    account_link_assert(label, email.response.status == 302 && created[2].reload.provider.nil?,
+                        'email fallback changed identity')
+    account_link_reset(user)
+    2.times do |index|
+      replay = native_client('_dawarich_session' => cookie)
+      account_link_submit(replay, token)
+      account_link_assert(label, replay.response.status == 302 && user.reload.sign_in_count == index + 1,
+                          'saved-cookie replay source outcome changed')
+    end
+    account_link_reset(user)
+    account_link_overlap(user, cookie, token, label, fixture.fetch('shared_counters') ? 1 : 0)
+    account_link_reset(user)
+    Rails.application.routes.append do
+      devise_scope :user do
+        get 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
+      end
+    end
+    Rails.application.reload_routes!
+    Rails.application.env_config['devise.mapping'] = Devise.mappings[:user]
+    OmniAuth.config.test_mode = true
+    older = account_link_source_pair(user, 'a11e-protocol-old')
+    newer = account_link_source_pair(user, 'a11e-protocol-new')
+    [older, newer].each do |wire, form_token, state|
+      replay = native_client('_dawarich_session' => wire)
+      account_link_submit(replay, form_token)
+      correct_identity = replay.response.status == 302 && user.reload.uid == state.dig('pending_oauth_link', 'uid')
+      account_link_assert(label, correct_identity, 'superseded source outcome changed')
+    end
+    account_link_reset(user)
+    transplanted = native_client('_dawarich_session' => older.first)
+    account_link_submit(transplanted, older[1])
+    account_link_assert(label, transplanted.response.status == 302 && user.reload.sign_in_count == 1,
+                        'matching transplant source outcome changed')
+    account_link_rates(fixture, user, cookie, token) if fixture.fetch('shared_counters')
+    account_link_reset(user)
+    wire, source_token, state = account_link_source_pair(user, 'a11e-source-to-native')
+    fixture['rails'] = { 'cookie' => wire, 'token' => source_token, 'session' => state,
+                         'hash' => user.reload.encrypted_password, 'uid' => 'a11e-source-to-native' }
+    File.write(ARGV.fetch(0), JSON.generate(fixture))
+  end
+  puts "#{label}: PASS native form/CSRF, completed protected page, OTP no-bypass, " \
+       'refusal/email and four source replay schedules'
+ensure
+  ActionController::Base.allow_forgery_protection = previous_csrf
+  Rack::Attack.enabled = previous_enabled
+  Rails.application.env_config['omniauth.auth'] = previous_auth
+  OmniAuth.config.mock_auth[:openid_connect] = previous_mock
+  OmniAuth.config.test_mode = previous_mode
+  created&.each { |user| User.unscoped.where(id: user.id, email: user.email).delete_all }
+  counter_keys&.each do |key|
+    ActiveRecord::Base.connection.execute(User.sanitize_sql_array(['DELETE FROM phoenix.counters WHERE key=?', key]))
   end
 end
 
@@ -261,7 +617,7 @@ end
 def consume_web_otp(fixture, request)
   label = 'Rails consumes native pending success and refusal state without duplicate OTP effects'
   raise "#{label}: mode missing" unless fixture.fetch('mode', nil) == 'web_otp'
-  raise "#{label}: own DB required" unless ENV.fetch('DATABASE_NAME') == 'dawarich_test_a11d'
+  raise "#{label}: own DB required" unless ENV.fetch('DATABASE_NAME').start_with?('dawarich_test')
   raise "#{label}: private payload required" unless File.stat(ARGV.fetch(0)).mode & 0o777 == 0o600
 
   id = fixture.fetch('user_id')
@@ -436,6 +792,8 @@ def consume_web_otp(fixture, request)
 end
 
 case ARGV[1]
+when 'account_link'
+  consume_account_link(fixture, request)
 when 'web_otp'
   consume_web_otp(fixture, request)
 when 'api_two_factor_management'

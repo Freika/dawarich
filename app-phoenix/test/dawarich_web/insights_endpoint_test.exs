@@ -14,6 +14,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    Dawarich.State.put_registration_enabled(Dawarich.Repo, false)
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
     routes = Application.get_env(:dawarich, :rails_routes, [])
