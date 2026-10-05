@@ -169,6 +169,7 @@ defmodule DawarichWeb.MapWriteRequest do
   defp format(conn, action) do
     case get_req_header(conn, "accept") do
       [accept] -> negotiate(accept, action)
+      [] when action in [:tag_create, :tag_update, :tag_destroy] -> {:ok, :html}
       _ -> :replay
     end
   end
@@ -179,6 +180,14 @@ defmodule DawarichWeb.MapWriteRequest do
       "text/html;q=0.5, text/vnd.turbo-stream.html;q=1" -> {:ok, :turbo_stream}
       "text/vnd.turbo-stream.html;q=0.5, text/html;q=1" -> {:ok, :html}
       _ -> types(accept, :segment_update)
+    end
+  end
+
+  defp negotiate(accept, action) when action in [:tag_create, :tag_update, :tag_destroy] do
+    if String.trim(accept) in ["", "*/*"] or DawarichWeb.Strangler.browser_like?(accept) do
+      {:ok, :html}
+    else
+      types(accept, action)
     end
   end
 

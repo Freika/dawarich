@@ -8,6 +8,9 @@ defmodule Dawarich.ProxyStackShutdownTest do
     node = "dawarich_#{port}"
     {before, 0} = System.cmd("epmd", ["-names"])
     assert before =~ "name #{node} at"
+    sidekiq = "^sidekiq [^ ]+ dawarich_proxy_stack_#{port}( |$)"
+    {workers, 0} = System.cmd("pgrep", ["-f", sidekiq])
+    assert String.trim(workers) != ""
 
     script = Path.expand("../../../app-phoenix/scripts/proxy_stack.sh", __DIR__)
 
@@ -15,6 +18,7 @@ defmodule Dawarich.ProxyStackShutdownTest do
       System.cmd("sh", [script, "--down"], env: [{"PORT", port}], stderr_to_stdout: true)
 
     assert result == 0, output
+    assert {"", 1} == System.cmd("pgrep", ["-f", sidekiq])
 
     {after_shutdown, 0} = System.cmd("epmd", ["-names"])
     refute after_shutdown =~ "name #{node} at"
