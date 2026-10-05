@@ -31,7 +31,7 @@ defmodule DawarichWeb.PlacesLiveTest do
     fill!(user, 23)
     {:ok, view, html} = live_as(user, "/places")
 
-    assert html =~ "<title>Places | Dawarich</title>"
+    assert html =~ ">Places | Dawarich</title>"
 
     assert hrefs(html, "[role='tab']") == [
              "/map/v2?panel=timeline&date=today&status=confirmed",

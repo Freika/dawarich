@@ -52,7 +52,7 @@ defmodule DawarichWeb.DigestsLiveTest do
 
     digest!(user.id, %{year: Date.utc_today().year, distance: 1000})
     {:ok, view, html} = live_as(user, "/digests")
-    assert html =~ "<title>Year-End Digests | Dawarich</title>"
+    assert html =~ ">Year-End Digests | Dawarich</title>"
 
     assert html
            |> LazyHTML.from_document()
@@ -82,7 +82,7 @@ defmodule DawarichWeb.DigestsLiveTest do
   } do
     full_digest(user.id, 2024)
     {:ok, view, html} = live_as(user, "/digests/2024")
-    assert html =~ "<title>2024 Year in Review | Dawarich</title>"
+    assert html =~ ">2024 Year in Review | Dawarich</title>"
     assert has_element?(view, "p", "That's 0.1% of Earth's circumference!")
     assert has_element?(view, "p.positive", "+150% compared to 2023")
     assert has_element?(view, "#chart-1[phx-update='ignore']")

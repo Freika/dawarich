@@ -32,7 +32,7 @@ defmodule DawarichWeb.ImportsExportsParityTest do
       assert native == expected,
              "#{@page["name"]}: " <> ParityHTML.first_difference(native, expected)
 
-      assert html =~ "<title>#{@page["title"]}</title>"
+      assert html =~ ">#{@page["title"]}</title>"
     end
   end
 

@@ -4,6 +4,28 @@ defmodule DawarichWeb.InsightsDetailsPartsTest do
   alias Dawarich.Test.ParityHTML
   alias DawarichWeb.InsightsDetails.Activity
 
+  test "travel periods separate each label from its percentage like Rails" do
+    data = %{
+      time_of_day: %{"night" => 0, "morning" => 75, "afternoon" => 25, "evening" => 0},
+      weekly: [0, 0, 0, 0, 0, 0, 0],
+      seasonality: %{},
+      unit: "km"
+    }
+
+    html =
+      render_component(&DawarichWeb.InsightsDetails.Travel.render/1, locale: "en", data: data)
+
+    text =
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query(".space-y-1 .text-xs")
+      |> LazyHTML.text()
+      |> String.replace(~r/\s+/, " ")
+      |> String.trim()
+
+    assert text == "00-06 0% 06-12 75% 12-18 25% 18-24 0%"
+  end
+
   for {state, order} <- [
         {"fresh", ~w(walking stationary flying)},
         {"persisted", ~w(flying walking stationary)}

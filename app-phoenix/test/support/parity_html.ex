@@ -127,6 +127,11 @@ defmodule Dawarich.Test.ParityHTML do
   defp ordinary_node(tag, attrs, children) do
     attrs = Map.new(attrs)
 
+    attrs =
+      if tag == "title",
+        do: Map.drop(attrs, ~w(data-prefix data-default data-suffix)),
+        else: attrs
+
     if Map.has_key?(attrs, "data-phx-main") do
       normalize(children)
     else

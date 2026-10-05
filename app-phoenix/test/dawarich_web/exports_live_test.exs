@@ -30,7 +30,7 @@ defmodule DawarichWeb.ExportsLiveTest do
   describe "route" do
     test "a signed-in user gets the page under Rails' title", %{user: user} do
       {:ok, _view, html} = live_as(user)
-      assert html =~ "<title>Exports | Dawarich</title>"
+      assert html =~ ">Exports | Dawarich</title>"
     end
 
     test "a signed-out visitor is sent to Rails' sign-in page" do

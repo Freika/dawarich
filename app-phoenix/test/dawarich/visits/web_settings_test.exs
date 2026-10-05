@@ -209,7 +209,7 @@ defmodule Dawarich.Visits.WebSettingsTest do
         on_error: [duplicate_id: :warn]
       )
 
-    assert body =~ "<title>Visit detection | Dawarich</title>"
+    assert body =~ ">Visit detection | Dawarich</title>"
     assert has_element?(view, "#settings_visit_radius_meters[value='231']")
     assert has_element?(view, "form[action='/visits/redetections'] button[disabled]")
     assert has_element?(view, "form[action='/settings/visits'] input[name='authenticity_token']")

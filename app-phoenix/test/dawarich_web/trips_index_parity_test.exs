@@ -38,7 +38,7 @@ defmodule DawarichWeb.TripsIndexParityTest do
                ParityHTML.normalize(rails)
 
       assert previews(html) == previews("<html><body>#{rails}</body></html>")
-      assert html =~ "<title>#{title}</title>"
+      assert html =~ ">#{title}</title>"
     end
   end
 

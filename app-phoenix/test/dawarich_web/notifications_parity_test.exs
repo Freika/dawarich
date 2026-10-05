@@ -44,7 +44,7 @@ defmodule DawarichWeb.NotificationsParityTest do
       assert ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *") ==
                ParityHTML.normalize(rails)
 
-      assert html =~ "<title>#{state["title"]}</title>"
+      assert html =~ ">#{state["title"]}</title>"
     end
   end
 end

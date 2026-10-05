@@ -34,7 +34,7 @@ defmodule DawarichWeb.StatsLiveTest do
             {"/digests", "Year-End Digests | Dawarich"}
           ] do
         {:ok, _view, html} = live_as(user, path)
-        assert html =~ "<title>#{title}</title>", path
+        assert html =~ ">#{title}</title>", path
       end
     end
   end
@@ -240,7 +240,7 @@ defmodule DawarichWeb.StatsLiveTest do
 
     test "the index: Rails' totals, method links, one card per year", %{user: user} do
       {:ok, view, html} = live_as(user, "/stats", on_error: [duplicate_id: :warn])
-      assert html =~ "<title>Statistics | Dawarich</title>"
+      assert html =~ ">Statistics | Dawarich</title>"
       assert has_element?(view, ".stat-value.text-primary", "70 km")
       assert has_element?(view, ".stat-value.text-success", "77")
       assert has_element?(view, ".stat-desc", "100% of all points")
@@ -278,7 +278,7 @@ defmodule DawarichWeb.StatsLiveTest do
     test "the year page: the chart over the year, the cards in the window, Rails' relative hrefs",
          %{user: user} do
       {:ok, view, html} = live_as(user, "/stats/2024")
-      assert html =~ "<title>Statistics for 2024 year | Dawarich</title>"
+      assert html =~ ">Statistics for 2024 year | Dawarich</title>"
       assert has_element?(view, ~s(a[href="2024/3"]), "March 2024")
 
       assert has_element?(
@@ -293,7 +293,7 @@ defmodule DawarichWeb.StatsLiveTest do
 
     test "a month without a stat is Rails' empty state with HTTP 200", %{user: user} do
       html = RailsUser.signed_in(user.id) |> get("/stats/2024/2") |> html_response(200)
-      assert html =~ "<title>February 2024 Monthly Digest | Dawarich</title>"
+      assert html =~ ">February 2024 Monthly Digest | Dawarich</title>"
       assert html =~ ~s(<div class="alert">No location data available for this month</div>)
       refute html =~ "stat-page-card"
     end
