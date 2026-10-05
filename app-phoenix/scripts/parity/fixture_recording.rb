@@ -1,6 +1,31 @@
 # frozen_string_literal: true
 
 module FixtureRecording
+  SECRET = 'phoenix-a2-cookie-fixture-secret-not-for-production'
+
+  module SyntheticSecret
+    def self.included(base)
+      base.around do |example|
+        app = Rails.application
+        previous = app.config.secret_key_base
+        env = app.env_config.slice('action_dispatch.secret_key_base', 'action_dispatch.key_generator')
+        turbo_key = Turbo.signed_stream_verifier_key
+        turbo_verifier = Turbo::StreamsChannel.instance_variable_get(:@signed_stream_verifier)
+        app.config.secret_key_base = SECRET
+        app.env_config.merge!('action_dispatch.secret_key_base' => SECRET,
+                              'action_dispatch.key_generator' => app.key_generator)
+        Turbo.signed_stream_verifier_key = app.key_generator.generate_key('turbo/signed_stream_verifier_key')
+        Turbo::StreamsChannel.remove_instance_variable(:@signed_stream_verifier) if turbo_verifier
+        example.run
+      ensure
+        app.config.secret_key_base = previous
+        app.env_config.merge!(env)
+        Turbo.signed_stream_verifier_key = turbo_key
+        Turbo::StreamsChannel.instance_variable_set(:@signed_stream_verifier, turbo_verifier)
+      end
+    end
+  end
+
   module DeterministicInputs
     def self.included(base)
       base.include ActiveSupport::Testing::TimeHelpers
@@ -37,11 +62,33 @@ module FixtureRecording
   end
 
   def self.verify(path, bytes)
+    bytes = normalize(bytes)
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
       FileUtils.mkdir_p(File.dirname(path))
       File.binwrite(path, bytes)
     else
       raise "#{path} differs from Rails" unless File.binread(path) == bytes.b
     end
+  end
+
+  def self.normalize(value)
+    case value
+    when Hash then value.transform_values { normalize(_1) }
+    when Array then value.map { normalize(_1) }
+    when String then normalize_text(value)
+    else value
+    end
+  end
+
+  def self.normalize_text(text)
+    Gem.loaded_specs.each_value { |gem| text = text.gsub(gem.full_gem_path, "GEM_ROOT/#{gem.name}") }
+    text.gsub(Rails.root.to_s, 'RAILS_ROOT')
+        .gsub(RbConfig::CONFIG.fetch('prefix'), 'RUBY_ROOT')
+        .gsub(%r{([\w./-]+):\d+(?=:in\b)}, '\1:LINE')
+        .gsub(/(Extracted source \(around line <strong>)#\d+/, '\1#LINE')
+        .gsub(%r{(<pre class="line_numbers">)(.*?)(</pre>)}m) do
+          match = Regexp.last_match
+          "#{match[1]}#{match[2].gsub(/>\d+</, '>LINE<')}#{match[3]}"
+        end
   end
 end

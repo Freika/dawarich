@@ -211,17 +211,7 @@ module NormalImportFormatsSupport
     path.to_s
   end
 
-  def portable_notification(content)
-    message, marker, frames = content.partition(/(?:stacktrace|backtrace): /i)
-    return content if marker.empty?
-
-    frames = frames.gsub("#{Rails.root}#{File::SEPARATOR}", '')
-    Gem.loaded_specs.each_value do |gem|
-      frames = frames.gsub(gem.full_gem_path, "<gems>/#{gem.name}")
-    end
-    frames = frames.gsub(RbConfig::CONFIG.fetch('prefix'), '<ruby>')
-    message + marker + frames
-  end
+  def portable_notification(content) = FixtureRecording.normalize(content)
 
   def portable_create_notifications
     Notification.where(user_id: 987_001).order(:id).pluck(:title, :content, :kind).map do |title, content, kind|

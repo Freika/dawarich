@@ -21,11 +21,11 @@ module A12bFixtureSupport
 
   def write(name, data)
     FileUtils.mkdir_p(DIR)
-    DIR.join(name).write("#{Oj.dump(data, mode: :strict, indent: 2)}\n")
+    DIR.join(name).write("#{Oj.dump(FixtureRecording.normalize(data), mode: :strict, indent: 2)}\n")
   end
 
   def normalized(data)
-    JSON.parse(Oj.dump(data, mode: :strict))
+    JSON.parse(Oj.dump(FixtureRecording.normalize(data), mode: :strict))
   end
 
   def phoenix(code)
