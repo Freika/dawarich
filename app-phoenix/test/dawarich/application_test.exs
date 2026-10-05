@@ -8,11 +8,20 @@ defmodule Dawarich.ApplicationTest do
   @direct {:direct, @argv, "DAWARICH_PROXY=off"}
 
   setup do
+    entries = Application.get_env(:dawarich, :job_entries, [])
+
+    Application.put_env(
+      :dawarich,
+      :job_entries,
+      Dawarich.Jobs.Claimer.entries("command:visits.suggest")
+    )
+
     jobs = Application.get_env(:dawarich, :jobs_runtime)
     oban = Application.fetch_env!(:dawarich, Oban)
     Application.put_env(:dawarich, :jobs_runtime, true)
 
     on_exit(fn ->
+      Application.put_env(:dawarich, :job_entries, entries)
       Application.put_env(:dawarich, :jobs_runtime, jobs)
       Application.put_env(:dawarich, Oban, oban)
     end)
@@ -92,6 +101,7 @@ defmodule Dawarich.ApplicationTest do
       assert oban[:node] == node
       assert oban[:cron] == [crontab: Dawarich.Jobs.Registry.crontab(), timezone: "Etc/UTC"]
       assert jobs[:node] == node
+      assert jobs[:entries] == Dawarich.Jobs.Claimer.entries("command:visits.suggest")
       assert puma[:env] == [{"DAWARICH_PHOENIX_NODE", node}, {"DAWARICH_BEHIND_PHOENIX", marker}]
     end
   end

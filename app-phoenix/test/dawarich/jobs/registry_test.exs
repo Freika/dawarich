@@ -229,7 +229,7 @@ defmodule Dawarich.Jobs.RegistryTest do
 
     assert %{catch_up: false} = entries["cron:raw_data_archive_job"]
     assert %{catch_up: false} = entries["cron:raw_data_clear_job"]
-    refute Map.has_key?(entries["cron:raw_data_verify_job"], :catch_up)
+    assert entries["cron:raw_data_verify_job"].catch_up == false
   end
 
   test "the app-version cron has one source: the registry matches config/schedule.yml" do

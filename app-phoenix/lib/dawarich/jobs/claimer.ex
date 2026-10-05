@@ -32,13 +32,30 @@ defmodule Dawarich.Jobs.Claimer do
     end
   end
 
+  def entries(value) when value in [nil, ""], do: []
+
+  def entries(value) when is_binary(value) do
+    if String.trim(value) == "" do
+      []
+    else
+      keys = value |> String.split(",") |> Enum.map(&String.trim/1)
+      registry = Map.new(Registry.entries(), &{&1.key, &1})
+
+      if length(keys) != length(Enum.uniq(keys)) or
+           Enum.any?(keys, &(not Map.has_key?(registry, &1))),
+         do: raise(ArgumentError, "DAWARICH_OBAN_JOB_KEYS requires unique known job keys")
+
+      Enum.map(keys, &Map.fetch!(registry, &1))
+    end
+  end
+
   def start_link(opts \\ []), do: Task.start_link(__MODULE__, :run, [opts])
 
   def run(opts) do
     context = %{
       repo: Keyword.get(opts, :repo),
       oban: Keyword.get(opts, :oban, Oban),
-      entries: Keyword.get_lazy(opts, :entries, &Registry.claimable/0),
+      entries: Keyword.get(opts, :entries, Application.get_env(:dawarich, :job_entries, [])),
       ready?: Keyword.get(opts, :ready?, fn -> Dawarich.Release.readiness() == :ready end),
       backoff_ms: Keyword.get(opts, :backoff_ms, 30_000),
       max_backoff_ms: Keyword.get(opts, :max_backoff_ms, 300_000),
