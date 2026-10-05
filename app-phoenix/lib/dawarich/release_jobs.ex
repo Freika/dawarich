@@ -100,8 +100,10 @@ defmodule Dawarich.ReleaseJobs do
   defp once(worker), do: {:ok, worker, %{"version" => 1}}
 
   defp recalculation(worker, payload) do
+    zone = Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+
     request =
-      Map.merge(payload, %{"source_job_id" => Ecto.UUID.generate(), "ambient_zone" => "UTC"})
+      Map.merge(payload, %{"source_job_id" => Ecto.UUID.generate(), "ambient_zone" => zone})
 
     {:ok, args} = worker.args_from_command(1, request)
     {:ok, worker, Map.put(args, "operation_id", Ecto.UUID.generate())}

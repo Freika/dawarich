@@ -874,7 +874,42 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
         end
       end
       digest_json('version' => 1, 'cases' => cases, 'timestamps' => recalculation_timestamps,
-                  'policies' => recalculation_policies)
+                  'policies' => recalculation_policies, 'release_zones' => recalculation_release_zones)
+    end
+
+    def recalculation_release_zones
+      %w[Europe/Berlin Asia/Tokyo].map do |zone|
+        fleet = RSpec::Mocks.with_temporary_scope do
+          recalculation_isolated { Time.use_zone(zone) { recalculation_case('fleet_disabled') } }
+        end
+        tracker = RSpec::Mocks.with_temporary_scope do
+          recalculation_isolated { Time.use_zone(zone) { recalculation_boundary_tracker } }
+        end
+        { 'zone' => zone, 'fleet' => fleet, 'tracker' => tracker }
+      end
+    end
+
+    def recalculation_boundary_tracker
+      User.unscoped.insert_all!([{ id: 170_101, email: 'boundary@example.invalid', encrypted_password: '',
+                                  status: 1, plan: 1, settings: { 'gps_filtering_enabled' => false },
+                                  created_at: digest_now, updated_at: digest_now }])
+      Import.insert_all!([{ id: 170_801, user_id: 170_101, name: 'Records.json',
+                           source: Import.sources[:google_records], created_at: digest_now, updated_at: digest_now }])
+      at = Timestamps.parse_timestamp('1960-01-01T00:00:00Z')
+      Point.insert_all!([{ id: 170_201, user_id: 170_101, import_id: 170_801, timestamp: at,
+                          lonlat: 'POINT(12 51)', tracker_id: 'legacy-import-170801', raw_data: {},
+                          created_at: digest_now, updated_at: digest_now }])
+      records = Oj.dump({ 'locations' => [{ 'timestamp' => '1960-01-01T00:00:00Z', 'deviceTag' => 77,
+                                          'latitudeE7' => 510_000_000, 'longitudeE7' => 120_000_000 }] }, mode: :strict)
+      import = Import.find(170_801)
+      import.file.attach(io: StringIO.new(records), filename: 'Records.json', content_type: 'application/json')
+      @recalculation_blob_ids << import.file.blob.id
+      input = recalculation_rows(input: true)
+      count = Points::DeviceTagBackfiller.new(import).call
+      expect(count).to eq(1)
+      expect(Point.find(170_201).tracker_id).to eq('google-records-device-77')
+      { 'input' => input, 'records' => records, 'timestamp' => at, 'count' => count,
+        'tracker_id' => Point.find(170_201).tracker_id }
     end
 
     def recalculation_profiles
