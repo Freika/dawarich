@@ -15,13 +15,123 @@ defmodule Dawarich.ReleaseOperations.AchievementsTest do
     Registry.all()
     registry = :persistent_term.get(Registry)
 
+    sequences =
+      Map.new(~w(countries regions), &{&1, rows("SELECT last_value,is_called FROM #{&1}_id_seq")})
+
+    keys =
+      ~w(command:release.achievements_backfill command:achievements.bulk_check command:achievements.check cron:achievements_bulk_check_job)
+
+    owners =
+      rows(
+        "SELECT key,owner,pinned,updated_at,updated_by FROM phoenix.job_owners WHERE key=ANY($1)",
+        [keys]
+      )
+
     on_exit(fn ->
       :persistent_term.put(Registry, registry)
       rows("DROP TRIGGER IF EXISTS a12rel_load_failure ON regions")
       rows("DROP FUNCTION IF EXISTS a12rel_load_failure()")
+
+      for table <- ["regions", "oban.oban_jobs", "phoenix.rails_commands"] do
+        rows("DROP TRIGGER IF EXISTS a12rel_boundary_failure ON #{table}")
+      end
+
+      rows("DROP FUNCTION IF EXISTS a12rel_boundary_failure()")
+
+      if rows(
+           "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='regions' AND column_name='a12rel_missing_geom')"
+         ) == [[true]] do
+        rows("ALTER TABLE regions RENAME COLUMN a12rel_missing_geom TO geom")
+      end
+
+      rows("DELETE FROM regions")
+      rows("DELETE FROM countries WHERE id=54001")
+      rows("DELETE FROM phoenix.job_owners WHERE key=ANY($1)", [keys])
+
+      for row <- owners do
+        rows(
+          "INSERT INTO phoenix.job_owners(key,owner,pinned,updated_at,updated_by) VALUES($1,$2,$3,$4,$5)",
+          row
+        )
+      end
+
+      for {table, [[value, called]]} <- sequences do
+        rows("SELECT setval('#{table}_id_seq',$1,$2)", [value, called])
+      end
     end)
 
     :ok
+  end
+
+  test "region partial writes survive enqueue failure while publication remains retryable" do
+    fixture =
+      Path.expand("../../fixtures/a12rel/achievements.json", __DIR__)
+      |> File.read!()
+      |> Jason.decode!()
+
+    states = Map.new(fixture["cases"], &{&1["id"], &1})
+    geometry_index = fixture["geometries"] |> Enum.with_index() |> Map.new()
+    country()
+
+    for {profile, owner} <- [
+          {"repair_failure", :oban},
+          {"enqueue_failure", :oban},
+          {"enqueue_failure", :sidekiq},
+          {"load_failure", :oban}
+        ] do
+      rows("DELETE FROM regions")
+      rows("DELETE FROM oban.oban_jobs")
+      rows("DELETE FROM phoenix.rails_commands")
+      rows("DELETE FROM phoenix.processed_commands WHERE event_id=$1", [Ecto.UUID.dump!(@event)])
+      seed_source_regions()
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:achievements.bulk_check", owner)
+      source = states[profile]
+      assert project_regions(region_rows(), geometry_index, []) == source["before"]
+      install_failure(profile, owner)
+
+      {_error, statements} =
+        observe_region_statements(fn ->
+          assert_raise Postgrex.Error, fn ->
+            Achievements.run(ScratchRepo, @oban, @args, now: @now)
+          end
+        end)
+
+      remove_failure(profile, owner)
+      after_rows = region_rows()
+      assert length(after_rows) == length(source["after"])
+      actual = project_regions(after_rows, geometry_index, statements)
+      assert actual == source["after"]
+      assert committed_region_rows() == after_rows
+      refute Dawarich.Jobs.Processed.done?(ScratchRepo, @event)
+      assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+      assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+
+      {result, retry_statements} =
+        observe_region_statements(fn ->
+          Achievements.run(ScratchRepo, @oban, @args, now: @now)
+        end)
+
+      assert result == :ok
+      assert Dawarich.Jobs.Processed.done?(ScratchRepo, @event)
+
+      if profile != "load_failure" do
+        assert retry_statements == []
+
+        assert project_regions(region_rows(), geometry_index, statements) ==
+                 source["retry"]["after"]
+      else
+        assert Enum.map(retry_statements, & &1.kind) == ["upsert", "repair"]
+
+        assert project_regions(region_rows(), geometry_index, retry_statements) ==
+                 states["cloud"]["after"]
+      end
+
+      assert rows("SELECT count(*) FROM oban.oban_jobs") == [[if(owner == :oban, do: 1, else: 0)]]
+
+      assert rows("SELECT count(*) FROM phoenix.rails_commands") == [
+               [if(owner == :sidekiq, do: 1, else: 0)]
+             ]
+    end
   end
 
   test "release achievements waits for countries and loads only missing registry codes" do
@@ -222,5 +332,169 @@ defmodule Dawarich.ReleaseOperations.AchievementsTest do
 
   defp snapshot do
     rows("SELECT id,code,ST_AsEWKB(geom),created_at,updated_at FROM regions ORDER BY id")
+  end
+
+  defp seed_source_regions do
+    rows("""
+    INSERT INTO regions(id,code,geom,created_at,updated_at) VALUES
+    (55000,'DE-BE',#{@valid},'2026-01-01','2026-01-01'),
+    (55001,'ZZ-INVALID',ST_GeomFromText('MULTIPOLYGON(((0 0,2 2,2 0,0 2,0 0)))',4326),'2026-01-01','2026-01-01'),
+    (55002,'ZZ-SENTINEL',#{@valid},'2026-01-01','2026-01-01')
+    """)
+
+    rows("SELECT setval('regions_id_seq',55003,false)")
+  end
+
+  defp install_failure("load_failure", _owner),
+    do: rows("ALTER TABLE regions RENAME COLUMN geom TO a12rel_missing_geom")
+
+  defp install_failure(profile, owner) do
+    {table, event, body} =
+      case {profile, owner} do
+        {"repair_failure", _} ->
+          {"regions", "UPDATE OF geom",
+           "IF NEW.updated_at=OLD.updated_at THEN RAISE EXCEPTION 'A12rel repair failure'; END IF; RETURN NEW;"}
+
+        {"enqueue_failure", :oban} ->
+          {"oban.oban_jobs", "INSERT", "RAISE EXCEPTION 'A12rel publication failure';"}
+
+        {"enqueue_failure", :sidekiq} ->
+          {"phoenix.rails_commands", "INSERT", "RAISE EXCEPTION 'A12rel publication failure';"}
+      end
+
+    rows(
+      "CREATE FUNCTION a12rel_boundary_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN #{body} END $$"
+    )
+
+    rows(
+      "CREATE TRIGGER a12rel_boundary_failure BEFORE #{event} ON #{table} FOR EACH ROW EXECUTE FUNCTION a12rel_boundary_failure()"
+    )
+  end
+
+  defp remove_failure("load_failure", _owner),
+    do: rows("ALTER TABLE regions RENAME COLUMN a12rel_missing_geom TO geom")
+
+  defp remove_failure(profile, owner) do
+    table =
+      case {profile, owner} do
+        {"repair_failure", _} -> "regions"
+        {_, :oban} -> "oban.oban_jobs"
+        {_, :sidekiq} -> "phoenix.rails_commands"
+      end
+
+    rows("DROP TRIGGER a12rel_boundary_failure ON #{table}")
+    rows("DROP FUNCTION a12rel_boundary_failure()")
+  end
+
+  defp region_rows do
+    rows(
+      "SELECT id,code,encode(ST_AsEWKB(geom),'hex'),ST_IsValid(geom),created_at,updated_at FROM regions ORDER BY id"
+    )
+  end
+
+  defp clock do
+    [[stamp]] = rows("SELECT clock_timestamp() AT TIME ZONE 'UTC'")
+    stamp
+  end
+
+  defp observe_region_statements(work) do
+    id = {__MODULE__, make_ref()}
+    key = {__MODULE__, :region_statements}
+    Process.put(key, %{lower: clock(), statements: []})
+
+    :ok =
+      :telemetry.attach(
+        id,
+        [:dawarich, :scratch_repo, :query],
+        fn _event, _measurements, metadata, caller ->
+          if self() == caller, do: capture_region_statement(metadata, key)
+        end,
+        self()
+      )
+
+    try do
+      result = work.()
+      {result, Process.get(key).statements}
+    after
+      :telemetry.detach(id)
+      Process.delete(key)
+    end
+  end
+
+  defp capture_region_statement(%{query: sql, result: {:ok, _}}, key) do
+    kind =
+      cond do
+        sql == "SELECT EXISTS (SELECT 1 FROM countries)" -> "countries"
+        String.starts_with?(sql, "INSERT INTO regions (code, geom,") -> "upsert"
+        String.starts_with?(sql, "UPDATE regions\nSET geom") -> "repair"
+        true -> nil
+      end
+
+    if kind do
+      state = Process.get(key)
+      upper = clock()
+
+      statements =
+        if kind == "countries" do
+          state.statements
+        else
+          snapshot = region_rows()
+
+          if kind == "repair" do
+            upsert = List.last(state.statements)
+
+            assert Enum.map(snapshot, &Enum.drop(&1, 4)) ==
+                     Enum.map(upsert.rows, &Enum.drop(&1, 4))
+          end
+
+          state.statements ++ [%{kind: kind, lower: state.lower, upper: upper, rows: snapshot}]
+        end
+
+      Process.put(key, %{lower: clock(), statements: statements})
+    end
+  end
+
+  defp capture_region_statement(_metadata, _key), do: :ok
+
+  defp project_regions(data, geometries, statements) do
+    for [id, code, ewkb, valid, created, updated] <- data do
+      %{
+        "id" => id,
+        "code" => code,
+        "geometry" => Map.fetch!(geometries, ewkb),
+        "valid" => valid,
+        "created_at" => project_region_timestamp(created, statements),
+        "updated_at" => project_region_timestamp(updated, statements)
+      }
+    end
+  end
+
+  defp project_region_timestamp(~N[2026-01-01 00:00:00.000000], _statements),
+    do: "2026-01-01T00:00:00.000000Z"
+
+  defp project_region_timestamp(stamp, statements) do
+    upsert = Enum.find(statements, &(&1.kind == "upsert"))
+    assert upsert
+    assert NaiveDateTime.compare(stamp, upsert.lower) in [:eq, :gt]
+    assert NaiveDateTime.compare(stamp, upsert.upper) in [:eq, :lt]
+    %{"database_now" => "upsert", "bounded" => true}
+  end
+
+  defp committed_region_rows do
+    ScratchRepo.checkout(fn ->
+      [[first]] = rows("SELECT pg_backend_pid()")
+
+      {second, data} =
+        Task.async(fn ->
+          ScratchRepo.checkout(fn ->
+            [[pid]] = rows("SELECT pg_backend_pid()")
+            {pid, region_rows()}
+          end)
+        end)
+        |> Task.await()
+
+      assert first != second
+      data
+    end)
   end
 end
