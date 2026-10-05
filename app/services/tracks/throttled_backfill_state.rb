@@ -204,13 +204,8 @@ class Tracks::ThrottledBackfillState
       JobCommands.forward(TYPE, payload, event_id: event, aggregate_id: @user_id,
                                         producer: self.class.name, scheduled_at: at)
     else
-      ActiveRecord.after_all_transactions_commit do
-        Time.use_zone(walk.fetch('time_zone')) do
-          Tracks::ThrottledBackfillJob.set(wait_until: at).perform_later(@user_id, walk.fetch('cursor_timestamp'),
-                                                                         walk_id: walk.fetch('walk_id'),
-                                                                         time_zone: walk.fetch('time_zone'))
-        end
-      end
+      RailsCommands::Poller.publish('tracks_throttled_backfill',
+                                    payload.merge('event_id' => event, 'scheduled_at' => at.iso8601(6)))
     end
   end
 

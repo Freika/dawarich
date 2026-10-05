@@ -15,6 +15,7 @@ RSpec.describe Tracks::BackfillCommands do
   before do
     phoenix_tables!
     phoenix_state!
+    @reverse_sequence = connection.select_one('SELECT last_value,is_called FROM phoenix.rails_commands_id_seq')
     @events = []
     @owners = connection.select_all(ActiveRecord::Base.sanitize_sql_array(
                                       ['SELECT * FROM phoenix.job_owners WHERE key IN (?)', keys]
@@ -33,6 +34,11 @@ RSpec.describe Tracks::BackfillCommands do
                          ))
     end
     JobOutbox.where(aggregate_id: id, command_type: types).delete_all
+    connection.execute("DELETE FROM phoenix.rails_commands WHERE (payload->>'user_id')::bigint = 48901")
+    connection.execute(ActiveRecord::Base.sanitize_sql_array(
+                         ["SELECT setval('phoenix.rails_commands_id_seq', ?, ?)",
+                          @reverse_sequence.fetch('last_value'), @reverse_sequence.fetch('is_called')]
+                       ))
     connection.execute('DELETE FROM phoenix.track_backfill_ranges WHERE user_id = 48901')
     connection.execute('DELETE FROM phoenix.track_backfill_walks WHERE user_id = 48901')
     connection.execute('DELETE FROM users WHERE id = 48901')
@@ -71,6 +77,35 @@ RSpec.describe Tracks::BackfillCommands do
   def perform(job)
     @events << job.job_id
     job.perform_now
+  end
+
+  it 'aborted range enqueue retains its committed intent without consuming a newer cycle on replay' do
+    travel_to now do
+      initial, = states
+      job_owner!('command:tracks.backfill', :sidekiq)
+      job_owner!(Tracks::GenerationCommand::OWNER_KEY, :sidekiq)
+      allow(Tracks::ParallelGeneratorJob).to receive(:perform_later).and_return(false)
+      job = Tracks::BackfillGenerationJob.new(id, cycle_id: initial.fetch('cycle_id'), time_zone: 'Europe/Berlin')
+      perform(job)
+      expect(range).to be_nil
+      pending = connection.select_all('SELECT id,payload FROM phoenix.rails_commands ' \
+                                      "WHERE kind='tracks_generate_range' " \
+                                      "AND (payload->>'user_id')::bigint = 48901").to_a
+      expect(pending.size).to eq(1)
+      payload = JSON.parse(pending.sole.fetch('payload'))
+      expect(payload).to include('user_id' => id, 'time_zone' => 'Europe/Berlin', 'mode' => 'bulk',
+                                 'untracked_only' => true)
+      fresh = SecureRandom.uuid
+      @events << fresh
+      Tracks::BackfillState.accumulate(id, [now.to_i - 200_000], fresh, now)
+      perform(job)
+      expect(range.fetch('cycle_id')).to eq(fresh)
+      expect { RailsCommands::Poller.deliver(pending.sole.fetch('id')) }.to raise_error(/enqueue aborted/)
+      allow(Tracks::ParallelGeneratorJob).to receive(:perform_later).and_call_original
+      2.times { RailsCommands::Poller.deliver(pending.sole.fetch('id')) }
+      expect(enqueued_jobs.count { _1[:job] == Tracks::ParallelGeneratorJob }).to eq(1)
+      expect(range.fetch('cycle_id')).to eq(fresh)
+    end
   end
 
   it 'old queued jobs forward under native authority before consuming shared state' do

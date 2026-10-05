@@ -36,10 +36,7 @@ module RailsCommands
         guard: 'A second ParallelGeneratorJob over the same fixed window re-cleans it under the user lock, and ' \
                'both passes claim only orphan points (unique time-span index), so tracks converge; the cost ' \
                'is one duplicate generation pass, the whole history for a self-hosted user with no tracks',
-        call: lambda { |payload|
-          Tracks::ParallelGeneratorJob.perform_later(payload.fetch('user_id'),
-                                                     **Tracks::GenerationCommand.job_options(payload))
-        }
+        call: ->(payload) { Tracks::BackfillCommands.reverse_range(payload) }
       },
       'tracks_throttled_backfill' => {
         guard: 'ThrottledBackfillJob.schedule is SET NX on track_throttled_backfill:user:<id> (12 h, 7 days ' \

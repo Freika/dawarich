@@ -54,7 +54,7 @@ module Tracks::BackfillCommands
       end
     end
   rescue StandardError => e
-    Tracks::BackfillState.rearm(range) if range
+    Tracks::BackfillState.rearm(range) if range && !done?(range.fetch('cycle_id'))
     ExceptionReporter.call(e, "Failed to schedule backfill track generation for user #{user_id}")
   end
 
@@ -78,7 +78,8 @@ module Tracks::BackfillCommands
           Tracks::ThrottledBackfillJob.set(wait_until: at).perform_later(payload.fetch('user_id'),
                                                                          payload.fetch('cursor_timestamp'),
                                                                          walk_id: payload.fetch('walk_id'),
-                                                                         time_zone: payload.fetch('time_zone'))
+                                                                         time_zone: payload.fetch('time_zone')) ||
+            raise('Throttled backfill enqueue aborted')
         end
       end
     else
@@ -89,22 +90,25 @@ module Tracks::BackfillCommands
     end
   end
 
+  def reverse_range(payload)
+    Time.use_zone(payload.fetch('time_zone')) do
+      Tracks::ParallelGeneratorJob.perform_later(payload.fetch('user_id'),
+                                                 **Tracks::GenerationCommand.job_options(payload)) ||
+        raise('Range enqueue aborted')
+    end
+  end
+
   def publish_range(range)
     Time.use_zone(range.fetch('time_zone')) do
       start_at = Time.zone.at(range.fetch('earliest_timestamp')).beginning_of_day
       end_at = [Time.zone.at(range.fetch('latest_timestamp')).end_of_day, 6.hours.ago].min
+      payload = Tracks::GenerationCommand.payload(range.fetch('user_id'), start_at:, end_at:, mode: :bulk,
+                                                                        untracked_only: true, import_id: nil,
+                                                                        job_queue: nil)
       if JobOwnership.lock_owner(Tracks::GenerationCommand::OWNER_KEY) == :oban
-        payload = Tracks::GenerationCommand.payload(range.fetch('user_id'), start_at:, end_at:, mode: :bulk,
-                                                                          untracked_only: true, import_id: nil,
-                                                                          job_queue: nil)
         Tracks::GenerationCommand.forward(payload, event_id: range.fetch('cycle_id'), producer: name)
       else
-        ActiveRecord.after_all_transactions_commit do
-          Time.use_zone(range.fetch('time_zone')) do
-            Tracks::ParallelGeneratorJob.perform_later(range.fetch('user_id'), start_at:, end_at:, mode: :bulk,
-                                                                             untracked_only: true)
-          end
-        end
+        RailsCommands::Poller.publish('tracks_generate_range', payload)
       end
     end
   end

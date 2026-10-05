@@ -16,6 +16,7 @@ RSpec.describe Tracks::ThrottledBackfillState do
     @legacy_events = []
     phoenix_tables!
     phoenix_state!
+    @reverse_sequence = connection.select_one('SELECT last_value,is_called FROM phoenix.rails_commands_id_seq')
     @owners = connection.select_all('SELECT * FROM phoenix.job_owners WHERE key IN ' \
                                    "('command:tracks.throttled_backfill', 'command:tracks.generate_range')").to_a
     connection.execute('INSERT INTO users (id, email, settings, created_at, updated_at) VALUES ' \
@@ -39,6 +40,11 @@ RSpec.describe Tracks::ThrottledBackfillState do
     connection.execute('DELETE FROM phoenix.track_backfill_walks WHERE user_id IN (48401, 48402)')
     connection.execute('DELETE FROM points WHERE id IN (48401, 48402) AND user_id = 48401')
     connection.execute('DELETE FROM users WHERE id = 48401')
+    connection.execute("DELETE FROM phoenix.rails_commands WHERE (payload->>'user_id')::bigint IN (48401,48402)")
+    connection.execute(ActiveRecord::Base.sanitize_sql_array(
+                         ["SELECT setval('phoenix.rails_commands_id_seq', ?, ?)",
+                          @reverse_sequence.fetch('last_value'), @reverse_sequence.fetch('is_called')]
+                       ))
     connection.execute('DELETE FROM phoenix.job_owners WHERE key IN ' \
                        "('command:tracks.throttled_backfill', 'command:tracks.generate_range')")
     @owners.each do |owner|
@@ -63,6 +69,46 @@ RSpec.describe Tracks::ThrottledBackfillState do
     job = Tracks::ThrottledBackfillJob.new(*args, **options)
     @legacy_events << job.job_id
     job.perform_now
+  end
+
+  it 'failed initial and successor enqueues resume the same committed pending walk exactly once' do
+    travel_to now do
+      allow(Tracks::ThrottledBackfillJob).to receive(:set).and_return(Tracks::ThrottledBackfillJob)
+      allow(Tracks::ThrottledBackfillJob).to receive(:perform_later).and_raise(IOError, 'walk enqueue failed')
+      expect { described_class.schedule(user) }.to raise_error(IOError, 'walk enqueue failed')
+      initial = row
+      pending = connection.select_one("SELECT id FROM phoenix.rails_commands WHERE kind='tracks_throttled_backfill' " \
+                                      "AND (payload->>'user_id')::bigint = 48401")
+      expect(pending).to be_present
+      expect(described_class.schedule(user)).to be_falsey
+      expect(row).to eq(initial)
+      allow(Tracks::ThrottledBackfillJob).to receive(:set).and_call_original
+      allow(Tracks::ThrottledBackfillJob).to receive(:perform_later).and_call_original
+      2.times { RailsCommands::Poller.deliver(pending.fetch('id')) }
+      expect(enqueued_jobs.count { _1[:job] == Tracks::ThrottledBackfillJob }).to eq(1)
+      point!(48_401, 100)
+      allow(Tracks::ThrottledBackfillJob).to receive(:set).and_return(Tracks::ThrottledBackfillJob)
+      allow(Tracks::ThrottledBackfillJob).to receive(:perform_later).and_return(false)
+      expect { run_job(user_id, nil, walk_id: initial.fetch('walk_id'), time_zone: initial.fetch('time_zone')) }
+        .to raise_error(/enqueue aborted/)
+      advanced = row
+      expect(advanced).to include('walk_id' => initial.fetch('walk_id'), 'cursor_timestamp' => 100 - 30.days.to_i,
+                                  'step_event_id' => nil)
+      successor = connection.select_one('SELECT id,payload FROM phoenix.rails_commands ' \
+                                        "WHERE kind='tracks_throttled_backfill' " \
+                                        "AND (payload->>'user_id')::bigint = 48401")
+      expect(successor).to be_present
+      expect(JSON.parse(successor.fetch('payload'))).to include(
+        'walk_id' => initial.fetch('walk_id'), 'cursor_timestamp' => advanced.fetch('cursor_timestamp'),
+        'time_zone' => initial.fetch('time_zone'),
+        'scheduled_at' => Time.use_zone(initial.fetch('time_zone')) { (Time.current + 1.minute).iso8601(6) }
+      )
+      run_job(user_id, nil, walk_id: initial.fetch('walk_id'), time_zone: initial.fetch('time_zone'))
+      expect(row).to eq(advanced)
+      allow(Tracks::ThrottledBackfillJob).to receive(:set).and_call_original
+      2.times { RailsCommands::Poller.deliver(successor.fetch('id')) }
+      expect(enqueued_jobs.count { _1[:job] == Tracks::ThrottledBackfillJob }).to eq(2)
+    end
   end
 
   it 'Rails adopts legacy cursor and remaining backoff without duplicate scheduling' do
