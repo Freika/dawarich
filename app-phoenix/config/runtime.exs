@@ -96,7 +96,15 @@ if config_env() != :test do
     lifeline: [rescue_after: {60, :minute}],
     shutdown_grace_period: 12_000
 
+  cable_transport =
+    case System.get_env("DAWARICH_CABLE_TRANSPORT") do
+      value when value in [nil, "", "redis"] -> :redis
+      "pg" -> :pg
+      _ -> raise ArgumentError, "DAWARICH_CABLE_TRANSPORT must be redis or pg"
+    end
+
   config :dawarich, :cable,
+    transport: cable_transport,
     url: System.get_env("REDIS_URL"),
     database: env_integer.("RAILS_WS_DB", 2)
 
