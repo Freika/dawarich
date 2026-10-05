@@ -23,6 +23,7 @@ defmodule DawarichWeb.StranglerTest do
       System.put_env("SELF_HOSTED", "true")
       System.delete_env("DAWARICH_RAILS_SLICES")
       Ownership.put!(Repo, "command:a12h_handoff", :oban, pinned: true)
+      Ownership.ensure_rows!(Repo, ["command:a12h_unowned"])
 
       on_exit(fn ->
         :gen_tcp.close(server.listen)
