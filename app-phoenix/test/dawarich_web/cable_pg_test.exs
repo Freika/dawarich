@@ -1,7 +1,7 @@
 defmodule DawarichWeb.CablePgTest do
   use Dawarich.IngestCase, async: false
 
-  alias Dawarich.Cable.{Bus, Frames, PgStore}
+  alias Dawarich.Cable.{Bus, PgStore}
   alias Dawarich.ScratchRepo
   alias Dawarich.Test.A12a
 
@@ -41,7 +41,7 @@ defmodule DawarichWeb.CablePgTest do
     namespace = Bus.prefix() || ""
     socket = A12a.open!(port, A12a.cookie("alice"))
     on_exit(fn -> :gen_tcp.close(socket) end)
-    assert A12a.next_frame(socket) == %{"expect" => Frames.welcome()}
+    assert A12a.next_frame(socket) == %{"expect" => ~S({"type":"welcome"})}
 
     subscribe(socket, first)
     assert A12a.next_frame(socket) == %{"expect" => Enum.at(confirmations, 0)}
@@ -50,12 +50,19 @@ defmodule DawarichWeb.CablePgTest do
     assert A12a.next_frame(socket) == %{"expect" => Enum.at(confirmations, 1)}
     poll()
     delivered = for _ <- 1..2, do: A12a.next_frame(socket)["expect"]
-    assert Enum.sort(delivered) == Enum.sort(Enum.take(messages, 2))
+    # ED-473: Rails async_invoke leaves only same-publication alias frames unordered.
+    # Compare their exact bytes as a multiset; every other frame stays ordered.
+    assert Enum.frequencies(delivered) == Enum.frequencies(Enum.take(messages, 2))
 
     A12a.send_text(socket, Jason.encode!(%{command: "unsubscribe", identifier: other}))
     barrier = ~s({"channel":"FamilyLocationsChannel"})
     subscribe(socket, barrier)
-    assert A12a.next_frame(socket) == %{"expect" => Frames.reject(barrier)}
+
+    assert A12a.next_frame(socket) == %{
+             "expect" =>
+               ~S({"identifier":"{\"channel\":\"FamilyLocationsChannel\"}","type":"reject_subscription"})
+           }
+
     assert {:ok, 2} = PgStore.append(ScratchRepo, namespace, broadcasting, remaining)
     poll()
     assert A12a.next_frame(socket) == %{"expect" => Enum.at(messages, 2)}
@@ -66,28 +73,38 @@ defmodule DawarichWeb.CablePgTest do
              PgStore.append(ScratchRepo, namespace, broadcasting, "\"before fresh fence\"")
 
     subscribe(socket, first)
-    assert A12a.next_frame(socket) == %{"expect" => Frames.confirm(first)}
+    assert A12a.next_frame(socket) == %{"expect" => Enum.at(confirmations, 0)}
     assert {:ok, 4} = PgStore.append(ScratchRepo, namespace, broadcasting, "\"fresh\"")
     poll()
-    assert A12a.next_frame(socket) == %{"expect" => Frames.message(first, "\"fresh\"")}
+
+    assert A12a.next_frame(socket) == %{
+             "expect" => ~S({"identifier":"{\"channel\":\"PointsChannel\"}","message":"fresh"})
+           }
+
     assert A12a.next_frame(socket, 100) == %{"error" => ":timeout"}
   end
 
   test "PG sockets confirm after subscription readiness and deliver exact ActionCable frames",
        %{port: port} do
-    id = ~s({"channel":"PointsChannel"})
+    recorded = A12a.case!("points_live")
+    id = A12a.identifier(recorded)
+    frames = for %{"expect" => frame} <- recorded["steps"], do: frame
+    [welcome, confirmation, message] = frames
+
+    [%{"payload" => payload}] =
+      for %{"publish" => publication} <- recorded["steps"], do: publication
+
     broadcasting = A12a.broadcasting("points", "alice")
     namespace = Bus.prefix() || ""
     assert {:ok, 1} = PgStore.append(ScratchRepo, namespace, broadcasting, "\"old\"")
     socket = A12a.open!(port, A12a.cookie("alice"))
     on_exit(fn -> :gen_tcp.close(socket) end)
-    assert A12a.next_frame(socket) == %{"expect" => Frames.welcome()}
+    assert A12a.next_frame(socket) == %{"expect" => welcome}
     subscribe(socket, id)
-    assert A12a.next_frame(socket) == %{"expect" => Frames.confirm(id)}
-    payload = ~s({ "place": "München", "values": [1, 2] })
+    assert A12a.next_frame(socket) == %{"expect" => confirmation}
     assert {:ok, 2} = PgStore.append(ScratchRepo, namespace, broadcasting, payload)
     poll()
-    assert A12a.next_frame(socket) == %{"expect" => Frames.message(id, payload)}
+    assert A12a.next_frame(socket) == %{"expect" => message}
     assert A12a.next_frame(socket, 100) == %{"error" => ":timeout"}
   end
 
@@ -98,24 +115,42 @@ defmodule DawarichWeb.CablePgTest do
     namespace = Bus.prefix() || ""
     socket = A12a.open!(port, A12a.cookie("alice"))
     on_exit(fn -> :gen_tcp.close(socket) end)
-    assert A12a.next_frame(socket) == %{"expect" => Frames.welcome()}
+    assert A12a.next_frame(socket) == %{"expect" => ~S({"type":"welcome"})}
     subscribe(socket, id)
-    assert A12a.next_frame(socket) == %{"expect" => Frames.confirm(id)}
+
+    assert A12a.next_frame(socket) == %{
+             "expect" =>
+               ~S({"identifier":"{\"channel\":\"PointsChannel\"}","type":"confirm_subscription"})
+           }
+
     assert {:ok, 1} = PgStore.append(ScratchRepo, namespace, broadcasting, "\"unread\"")
     Process.exit(Process.whereis(Bus), :kill)
-    assert A12a.next_frame(socket) == %{"expect" => Frames.disconnect("server_restart", true)}
+
+    assert A12a.next_frame(socket) == %{
+             "expect" => ~S({"type":"disconnect","reason":"server_restart","reconnect":true})
+           }
+
     assert A12a.next_frame(socket) == %{"close" => 1000}
     stop_supervised!(Bus)
     [spec] = Bus.child_specs()
     start_supervised!(spec)
     fresh = A12a.open!(port, A12a.cookie("alice"))
     on_exit(fn -> :gen_tcp.close(fresh) end)
-    assert A12a.next_frame(fresh) == %{"expect" => Frames.welcome()}
+    assert A12a.next_frame(fresh) == %{"expect" => ~S({"type":"welcome"})}
     subscribe(fresh, id)
-    assert A12a.next_frame(fresh) == %{"expect" => Frames.confirm(id)}
+
+    assert A12a.next_frame(fresh) == %{
+             "expect" =>
+               ~S({"identifier":"{\"channel\":\"PointsChannel\"}","type":"confirm_subscription"})
+           }
+
     assert {:ok, 2} = PgStore.append(ScratchRepo, namespace, broadcasting, "\"fresh\"")
     poll()
-    assert A12a.next_frame(fresh) == %{"expect" => Frames.message(id, "\"fresh\"")}
+
+    assert A12a.next_frame(fresh) == %{
+             "expect" => ~S({"identifier":"{\"channel\":\"PointsChannel\"}","message":"fresh"})
+           }
+
     assert A12a.next_frame(fresh, 100) == %{"error" => ":timeout"}
   end
 
@@ -126,9 +161,14 @@ defmodule DawarichWeb.CablePgTest do
       for who <- ["alice", "bob"] do
         socket = A12a.open!(port, A12a.cookie(who))
         on_exit(fn -> :gen_tcp.close(socket) end)
-        assert A12a.next_frame(socket) == %{"expect" => Frames.welcome()}
+        assert A12a.next_frame(socket) == %{"expect" => ~S({"type":"welcome"})}
         subscribe(socket, id)
-        assert A12a.next_frame(socket) == %{"expect" => Frames.confirm(id)}
+
+        assert A12a.next_frame(socket) == %{
+                 "expect" =>
+                   ~S({"identifier":"{\"channel\":\"PointsChannel\"}","type":"confirm_subscription"})
+               }
+
         {who, socket}
       end
 
@@ -141,8 +181,11 @@ defmodule DawarichWeb.CablePgTest do
 
     for {who, socket} <- sockets do
       for seq <- 1..3 do
-        payload = Jason.encode!(%{owner: who, seq: seq})
-        assert A12a.next_frame(socket) == %{"expect" => Frames.message(id, payload)}
+        expected =
+          ~S({"identifier":"{\"channel\":\"PointsChannel\"}","message":{"owner":") <>
+            who <> ~S(","seq":) <> Integer.to_string(seq) <> "}}"
+
+        assert A12a.next_frame(socket) == %{"expect" => expected}
       end
 
       assert A12a.next_frame(socket, 100) == %{"error" => ":timeout"}
