@@ -5,6 +5,9 @@ defmodule Dawarich.Build.I18n do
   alias Jason.OrderedObject
 
   @locales ~w(en de es fr pl ca zh)
+  @active_support_ruby %OrderedObject{
+    values: [{"number", %OrderedObject{values: [{"nth", %OrderedObject{values: []}}]}}]
+  }
 
   def locales, do: @locales
 
@@ -44,10 +47,15 @@ defmodule Dawarich.Build.I18n do
   end
 
   defp merge_file(file, acc) do
-    case Yaml.load!(file) do
-      %OrderedObject{values: locales} -> Enum.reduce(locales, acc, &store(&1, &2, file))
-      _ -> raise ArgumentError, "#{file} must map locales to translations"
-    end
+    acc =
+      case Yaml.load!(file) do
+        %OrderedObject{values: locales} -> Enum.reduce(locales, acc, &store(&1, &2, file))
+        _ -> raise ArgumentError, "#{file} must map locales to translations"
+      end
+
+    if Path.basename(file) == "01_active_support.en.yml",
+      do: store({"en", @active_support_ruby}, acc, file),
+      else: acc
   end
 
   defp store({locale, _tree}, acc, _file) when locale not in @locales, do: acc
