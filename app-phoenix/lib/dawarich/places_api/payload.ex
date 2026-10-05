@@ -13,7 +13,9 @@ defmodule Dawarich.PlacesApi.Payload do
             "AND deleted_at IS NULL AND status <> 2 GROUP BY place_id"
 
   def places(owner, where, params, tail \\ "", repo \\ Repo) do
-    rows = repo.query!(select() <> " AND " <> where <> tail, [owner | params]).rows
+    rows =
+      repo.query!(select() <> " AND " <> where <> " ORDER BY p.id ASC" <> tail, [owner | params]).rows
+
     ids = Enum.map(rows, &hd/1)
 
     tags =
