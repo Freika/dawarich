@@ -6,6 +6,7 @@ RSpec.describe JobOwnership do
   let(:key) { 'command:trips.calculate' }
 
   context 'when Phoenix has never migrated the database' do
+    before { ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.job_owners') }
     it 'runs the block as Sidekiq without aborting the caller transaction' do
       ActiveRecord::Base.transaction do
         expect(described_class.with_owner(key) { :ran }).to eq(:ran)

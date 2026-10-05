@@ -5,7 +5,8 @@ defmodule Dawarich.Families.AutoCreateWorker do
   alias Dawarich.Jobs.Processed
 
   def args_from_command(1, %{"user_id" => id, "time_zone" => zone} = p)
-      when map_size(p) == 2 and is_integer(id) and is_binary(zone),
+      when map_size(p) == 2 and is_integer(id) and
+             id in -9_223_372_036_854_775_808..9_223_372_036_854_775_807 and is_binary(zone),
       do: {:ok, p}
 
   def args_from_command(1, _), do: {:error, "invalid_payload"}

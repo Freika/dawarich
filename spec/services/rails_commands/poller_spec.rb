@@ -335,7 +335,9 @@ RSpec.describe RailsCommands::Poller do
       imports.destroy_callbacks imports.destroy_achievements imports.destroy_stats imports.destroy_complete
       imports.destroy_terminal imports.extraction_requested imports.extraction_destroy_requested
       share_management.live_revoked posters.created posters.purge posters.progress
-      route_videos.attachment_job visits.web_redetect imports.resume imports.normal_resume
+      route_videos.attachment_job visits.web_redetect
+      integrations.airtrail_flights integrations.teslamate_sync integrations.trek_sync mail.family_lapse
+      places_orphan_cleanup places_bulk_name_fetch achievements.bulk_check_leaf imports.resume imports.normal_resume
       stats.calculate_month stats.caches_invalidated
       digests.calculate_month digests.calculate_year digests.email_month digests.email_year
     ]
@@ -398,7 +400,9 @@ RSpec.describe RailsCommands::Poller do
     command!('tracks_throttled_backfill', { 'user_id' => user.id })
     command!('tracks_throttled_backfill', { 'user_id' => user.id })
 
-    expect { described_class.drain_once }.to have_enqueued_job(Tracks::ThrottledBackfillJob).once.with(user.id, nil)
+    matcher = have_enqueued_job(Tracks::ThrottledBackfillJob).once
+    matcher = matcher.with(user.id, nil, walk_id: kind_of(String), time_zone: Time.zone.name)
+    expect { described_class.drain_once }.to matcher
   end
 
   it 'tracks_realtime_retrigger arms the debouncer' do
@@ -471,21 +475,23 @@ RSpec.describe RailsCommands::Poller do
 
   it 'places_delete_if_orphan enqueues one job per place' do
     phoenix_tables!
-    command!('places_delete_if_orphan', { 'user_id' => user.id, 'place_ids' => [1, 2] })
+    places = create_list(:place, 2, user: user)
+    command!('places_delete_if_orphan', { 'user_id' => user.id, 'place_ids' => places.map(&:id) })
 
     expect { described_class.drain_once }
       .to have_enqueued_job(Places::DeleteIfOrphanJob).exactly(2).times
 
     expect(enqueued_jobs.select { |job| job[:job] == Places::DeleteIfOrphanJob }.map { |job| job[:args] })
-      .to contain_exactly([1], [2])
+      .to contain_exactly(*places.map { [_1.id] })
   end
 
   it 'place_name_fetch and reverse_geocode_place enqueue their jobs' do
     phoenix_tables!
-    command!('place_name_fetch', { 'user_id' => user.id, 'place_id' => 5 })
+    place = create(:place, user: user)
+    command!('place_name_fetch', { 'user_id' => user.id, 'place_id' => place.id })
     command!('reverse_geocode_place', { 'user_id' => user.id, 'place_id' => 7 })
 
-    expect { described_class.drain_once }.to have_enqueued_job(Places::NameFetchingJob).with(5)
+    expect { described_class.drain_once }.to have_enqueued_job(Places::NameFetchingJob).with(place.id)
     expect(enqueued_jobs).to include(hash_including(job: ReverseGeocodingJob, args: ['place', 7]))
   end
 

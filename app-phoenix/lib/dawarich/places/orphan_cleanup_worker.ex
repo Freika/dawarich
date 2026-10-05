@@ -9,8 +9,10 @@ defmodule Dawarich.Places.OrphanCleanupWorker do
   alias Dawarich.Places.Orphans
   @key "command:places.orphan_cleanup"
 
-  def args_from_command(1, %{"user_id" => user} = p) when map_size(p) == 1 and is_integer(user),
-    do: {:ok, Map.put(p, "cursor", 0)}
+  def args_from_command(1, %{"user_id" => user} = p)
+      when map_size(p) == 1 and is_integer(user) and
+             user in -9_223_372_036_854_775_808..9_223_372_036_854_775_807,
+      do: {:ok, Map.put(p, "cursor", 0)}
 
   def args_from_command(1, _), do: {:error, "invalid_payload"}
   def args_from_command(_, _), do: {:error, "unsupported_version"}

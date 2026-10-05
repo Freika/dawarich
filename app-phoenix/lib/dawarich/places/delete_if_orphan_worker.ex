@@ -5,7 +5,9 @@ defmodule Dawarich.Places.DeleteIfOrphanWorker do
   alias Dawarich.Places.Orphans
 
   def args_from_command(1, %{"user_id" => user, "place_id" => place} = p)
-      when map_size(p) == 2 and is_integer(user) and is_integer(place),
+      when map_size(p) == 2 and is_integer(user) and
+             user in -9_223_372_036_854_775_808..9_223_372_036_854_775_807 and is_integer(place) and
+             place in -9_223_372_036_854_775_808..9_223_372_036_854_775_807,
       do: {:ok, p}
 
   def args_from_command(1, _), do: {:error, "invalid_payload"}

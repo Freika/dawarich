@@ -5,7 +5,9 @@ defmodule Dawarich.Families.MemberSyncWorker do
   alias Dawarich.Jobs.Processed
 
   def args_from_command(1, %{"family_id" => id, "locale" => locale, "time_zone" => zone} = p)
-      when map_size(p) == 3 and is_integer(id) and is_binary(locale) and is_binary(zone),
+      when map_size(p) == 3 and is_integer(id) and
+             id in -9_223_372_036_854_775_808..9_223_372_036_854_775_807 and is_binary(locale) and
+             is_binary(zone),
       do: {:ok, p}
 
   def args_from_command(1, _), do: {:error, "invalid_payload"}

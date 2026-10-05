@@ -7,8 +7,12 @@ defmodule Dawarich.Tracks.ThrottledBackfillWorker do
         %{"user_id" => id, "walk_id" => walk, "cursor_timestamp" => cursor, "time_zone" => zone} =
           p
       )
-      when map_size(p) == 4 and is_integer(id) and (is_nil(cursor) or is_integer(cursor)) and
-             is_binary(zone) do
+      when map_size(p) == 4 and is_integer(id) and
+             id in -9_223_372_036_854_775_808..9_223_372_036_854_775_807 and
+             (is_nil(cursor) or
+                (is_integer(cursor) and
+                   cursor in -9_223_372_036_854_775_808..9_223_372_036_854_775_807)) and
+             is_binary(zone) and is_binary(walk) and byte_size(walk) == 36 do
     case Ecto.UUID.cast(walk) do
       {:ok, _} -> {:ok, p}
       _ -> {:error, "invalid_payload"}

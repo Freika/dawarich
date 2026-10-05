@@ -7,7 +7,9 @@ defmodule Dawarich.Tracks.BackfillWorker do
   alias Dawarich.Tracks.{BackfillPeriod, RangeWorker}
 
   def args_from_command(1, %{"user_id" => id, "cycle_id" => cycle, "time_zone" => zone} = p)
-      when map_size(p) == 3 and is_integer(id) and is_binary(zone) do
+      when map_size(p) == 3 and is_integer(id) and
+             id in -9_223_372_036_854_775_808..9_223_372_036_854_775_807 and is_binary(zone) and
+             is_binary(cycle) and byte_size(cycle) == 36 do
     case Ecto.UUID.cast(cycle) do
       {:ok, _} -> {:ok, p}
       _ -> {:error, "invalid_payload"}
