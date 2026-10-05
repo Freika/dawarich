@@ -160,7 +160,7 @@ defmodule Dawarich.Jobs.RegistryTest do
     end
 
     assert Enum.count(Registry.entries(), &String.starts_with?(&1.key, "command:release.")) ==
-             map_size(@wave6_commands) + 3
+             map_size(@wave6_commands) + 5
 
     schedule = File.read!(Path.expand("../../../../config/schedule.yml", __DIR__))
 
