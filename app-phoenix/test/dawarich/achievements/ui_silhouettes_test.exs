@@ -44,6 +44,28 @@ defmodule Dawarich.Achievements.UiSilhouettesTest do
     refute UiSilhouettes.collection(ScratchRepo, ["DE", "FR"], "continent_asia") == europe
   end
 
+  test "collection SVG keeps Rails row order when identical subpaths tie and heap order changes" do
+    country("FR", @square)
+    country("GB", @wide)
+
+    assert {:ok, shape} =
+             ScratchRepo.transaction(fn ->
+               rows("SET LOCAL enable_indexscan=off")
+               rows("SET LOCAL enable_bitmapscan=off")
+
+               rows(
+                 "WITH removed AS (DELETE FROM countries WHERE iso_a2='DE' RETURNING *) INSERT INTO countries SELECT * FROM removed"
+               )
+
+               UiSilhouettes.collection(ScratchRepo, ["GB", "FR", "DE"], "continent_europe")
+             end)
+
+    square = "M 12.25 -51.5 L 12.5 -51.5 12.5 -51.25 12.25 -51.25 Z"
+    wide = "M 12.25 -51.5 L 12.75 -51.5 12.75 -51.25 12.25 -51.25 Z"
+    assert shape["path"] == Enum.join([square, square, wide], " ")
+    assert shape["viewbox"] == "12.25 -51.5 0.5 0.25"
+  end
+
   test "the viewBox rounds and prints its numbers as Ruby's Float#round(4) and #to_s do" do
     country(
       "XX",
