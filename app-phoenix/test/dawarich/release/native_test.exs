@@ -34,12 +34,36 @@ defmodule Dawarich.Release.NativeTest.Inet6Repo do
   end
 end
 
+defmodule Dawarich.Release.NativeTest.BootstrapRepo do
+  alias Dawarich.ScratchCaseRepo
+
+  def config, do: Keyword.put(ScratchCaseRepo.config(), :migration_repo, ScratchCaseRepo)
+  defdelegate __adapter__(), to: ScratchCaseRepo
+  defdelegate get_dynamic_repo(), to: ScratchCaseRepo
+  defdelegate put_dynamic_repo(repo), to: ScratchCaseRepo
+  defdelegate in_transaction?(), to: ScratchCaseRepo
+  defdelegate start_link(opts), to: ScratchCaseRepo
+  defdelegate rollback(reason), to: ScratchCaseRepo
+  defdelegate query(query, params, opts), to: ScratchCaseRepo
+
+  def transaction(fun, opts \\ []), do: ScratchCaseRepo.transaction(fun, opts)
+  def insert!(changeset, opts), do: ScratchCaseRepo.insert!(changeset, opts)
+
+  def query!(query, params \\ [], opts \\ []) do
+    if query == "CREATE SCHEMA IF NOT EXISTS phoenix" do
+      if gate = Process.delete(:private_write_gate), do: gate.()
+    end
+
+    ScratchCaseRepo.query!(query, params, opts)
+  end
+end
+
 defmodule Dawarich.Release.NativeTest do
   use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
   alias Dawarich.{Release, ReleaseMigrator}
   alias Dawarich.ReleaseMigrator.Floor
-  alias Dawarich.Release.NativeTest.{Inet6Repo, Pending, Probe}
+  alias Dawarich.Release.NativeTest.{BootstrapRepo, Inet6Repo, Pending, Probe}
 
   setup do
     ScratchRepo.query!("DROP SCHEMA IF EXISTS phoenix CASCADE")
@@ -83,17 +107,52 @@ defmodule Dawarich.Release.NativeTest do
 
   test "Release concurrent fresh migrate calls serialize the complete write path" do
     parent = self()
+    refute relation?("phoenix.phoenix_schema_migrations")
+    refute relation?("oban.oban_jobs")
 
-    Process.put(:native_gate, fn ->
-      assert advisory_held?()
-      second = Task.async(fn -> Release.migrate(opts(lease_sleep: lock_waiter(parent))) end)
-      on_exit(fn -> Process.exit(second.pid, :kill) end)
-      assert_receive {:lock_waiting, waiter}, 5_000
-      send(parent, {:competitor, second, waiter})
-    end)
+    first =
+      Task.async(fn ->
+        Process.put(:private_write_gate, fn ->
+          send(parent, {:first_private_write, self()})
+          receive do: (:continue -> :ok)
+        end)
 
-    assert Release.migrate(opts()) == :ok
-    assert_receive {:competitor, second, waiter}
+        Release.migrate(opts(repo: BootstrapRepo))
+      end)
+
+    on_exit(fn -> Process.exit(first.pid, :kill) end)
+    assert_receive {:first_private_write, caller}, 5_000
+
+    assert ScratchRepo.query!(
+             "SELECT nspname FROM pg_namespace WHERE nspname IN ('phoenix','oban')"
+           ).rows == []
+
+    second =
+      Task.async(fn ->
+        Process.put(:private_write_gate, fn ->
+          send(parent, {:second_stage, :private_write, self()})
+          receive do: (:continue -> :ok)
+        end)
+
+        wait = fn _ ->
+          send(parent, {:second_stage, :lock_waiting, self()})
+          receive do: (:continue -> :ok)
+        end
+
+        Release.migrate(opts(repo: BootstrapRepo, lease_sleep: wait))
+      end)
+
+    on_exit(fn -> Process.exit(second.pid, :kill) end)
+    assert_receive {:second_stage, stage, waiter}, 5_000
+    assert stage == :lock_waiting
+    assert advisory_held?()
+
+    assert ScratchRepo.query!(
+             "SELECT nspname FROM pg_namespace WHERE nspname IN ('phoenix','oban')"
+           ).rows == []
+
+    send(caller, :continue)
+    assert Task.await(first) == :ok
     send(waiter, :continue)
     assert Task.await(second) == :ok
     assert ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
