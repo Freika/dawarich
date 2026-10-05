@@ -9,7 +9,7 @@ module Stats
       GeocodedDays.drain_redis
       return if JobOwnership.oban?(OWNER_KEY)
 
-      ToponymsRefresh.new.call
+      ToponymsRefresh.new.call(owner_key: OWNER_KEY)
     end
   end
 end

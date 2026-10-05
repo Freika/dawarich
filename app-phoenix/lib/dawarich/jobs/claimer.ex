@@ -3,7 +3,7 @@ defmodule Dawarich.Jobs.Claimer do
   use Task, restart: :transient
   require Logger
 
-  alias Dawarich.Jobs.Registry
+  alias Dawarich.Jobs.{Ownership, Registry}
 
   @legacy_schedulers %{
     "cron:trek_sync_job" => "Dawarich.Imports.Trek.ScheduleWorker",
@@ -118,11 +118,7 @@ defmodule Dawarich.Jobs.Claimer do
       repo.transaction(fn ->
         set_lock_timeout(repo, lock_timeout)
 
-        repo.query!(
-          "INSERT INTO phoenix.job_owners (key) VALUES ($1) ON CONFLICT (key) DO NOTHING",
-          [entry.key],
-          log: false
-        )
+        Ownership.ensure_rows!(repo, Ownership.joint_keys(entry.key))
       end)
 
     with {:ok, outcome} <- repo.transaction(fn -> flip(repo, oban, entry, lock_timeout) end) do
@@ -140,32 +136,43 @@ defmodule Dawarich.Jobs.Claimer do
   defp flip(repo, oban, entry, lock_timeout) do
     set_lock_timeout(repo, lock_timeout)
 
-    case repo.query!(
-           "SELECT owner, pinned FROM phoenix.job_owners WHERE key = $1 FOR UPDATE",
-           [entry.key],
-           log: false
-         ).rows do
-      [[_owner, true]] ->
+    keys = Ownership.joint_keys(entry.key)
+
+    owners =
+      repo.query!(
+        "SELECT owner, pinned FROM phoenix.job_owners WHERE key = ANY($1) ORDER BY key FOR UPDATE",
+        [keys],
+        log: false
+      ).rows
+
+    cond do
+      Enum.any?(owners, fn [_, pinned] -> pinned end) ->
         :pinned
 
-      [["oban", false]] ->
+      Enum.all?(owners, &(&1 == ["oban", false])) ->
         :already
 
-      [["sidekiq", false]] ->
-        count = legacy_scheduler_count(repo, entry.key)
+      length(owners) == length(keys) ->
+        count = Enum.sum(Enum.map(keys, &legacy_scheduler_count(repo, &1)))
         if count > 0, do: repo.rollback({:legacy_scheduler_jobs, count})
 
         repo.query!(
-          "UPDATE phoenix.job_owners SET owner = 'oban', updated_at = $2, updated_by = $3 WHERE key = $1",
-          [entry.key, DateTime.utc_now(), "claimer:" <> Oban.config(oban).node],
+          "UPDATE phoenix.job_owners SET owner = 'oban', updated_at = $2, updated_by = $3 WHERE key = ANY($1)",
+          [keys, DateTime.utc_now(), "claimer:" <> Oban.config(oban).node],
           log: false
         )
 
-        catch_up(repo, oban, entry)
+        for key <- keys do
+          selected =
+            if key == entry.key, do: entry, else: Enum.find(Registry.entries(), &(&1.key == key))
+
+          catch_up(repo, oban, selected)
+        end
+
         :claimed
 
-      unexpected ->
-        repo.rollback({:unexpected_owner_row, unexpected})
+      true ->
+        repo.rollback({:unexpected_owner_row, owners})
     end
   end
 

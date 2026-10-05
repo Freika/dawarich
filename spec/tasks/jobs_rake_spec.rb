@@ -143,7 +143,7 @@ RSpec.describe 'dawarich:jobs' do
     Rake::Task['dawarich:jobs:release'].reenable
 
     expect { Rake::Task['dawarich:jobs:release'].invoke('cron:lite_archival_warning_job') }
-      .to output(/cron:lite_archival_warning_job: sidekiq \(pinned\).*command:mail\.user\.archival_approaching: /m)
+      .to output(/command:mail\.user\.archival_approaching: sidekiq \(pinned\).*cron:lite_archival_warning_job: /m)
       .to_stdout
   end
 
