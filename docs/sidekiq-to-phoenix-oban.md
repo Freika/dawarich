@@ -56,6 +56,13 @@ without relying on a short-lived bucket surviving between assertions.
 Achievement ownership checks retain explicit `user_data` rollback replay,
 and public achievement pages compare the complete tracked Rails import map.
 
+Normal lifecycle and ZIP fanout parity tests observe enqueue order with a
+shared test sequence across native and reverse commands. The sequence and
+columns are removed at teardown; production schemas are unchanged. Physical
+heap order and transaction timestamps cannot establish enqueue order after
+DELETE-based fixture cleanup. Reordering regressions retain the complete
+Rails field and enqueue-order comparisons.
+
 Full RSpec, browser/stand, image/Compose and PgBouncer topology acceptance
 remain controller release work. No AFFiNE synchronization is performed for
 this data-exposure-sensitive task.
