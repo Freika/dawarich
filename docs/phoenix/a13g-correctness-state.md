@@ -48,7 +48,7 @@ switching its sandbox to manual mode, as well as to the scratch repos. This
 includes the nullable registration migration; Oban migrations alone do not bring
 the main test database up to the application's schema.
 
-A10 endpoint fixtures initialize the registration singleton inside their shared
+A10 gate and endpoint fixtures initialize the registration singleton inside their
 sandbox. An absent singleton correctly hands the users page back to Rails.
 The committed account-link overlap fixture initializes registration inside its
 unboxed scope and restores the previous singleton in cleanup, keeping independent
