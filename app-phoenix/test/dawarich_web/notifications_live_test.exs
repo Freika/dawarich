@@ -131,7 +131,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
 
     assert html =~ ~s(<h1 class="text-3xl font-bold">Notifications</h1>)
     assert html =~ ~s(data-theme="dawarich-dark")
-    assert html =~ "<title>Notifications | Dawarich</title>"
+    assert html =~ ">Notifications | Dawarich</title>"
   end
 
   test "the page sends the security headers Rails pages send, and no CSP", %{user: user} do

@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang={@locale} data-theme={theme(@current_user)} data-self-hosted={to_string(@self_hosted)}>
   <head>
-    <title>{page_title(@locale, @page_title)}</title>
+    <title
+      data-default={page_title(@locale, nil)}
+      data-suffix={if @page_title, do: page_title(@locale, "")}
+      phx-no-format
+    >{page_title(@locale, @page_title)}</title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <.pwa_meta locale={@locale} />
     <meta name="action-cable-url" content="/cable" />

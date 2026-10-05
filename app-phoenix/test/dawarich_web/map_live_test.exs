@@ -38,7 +38,7 @@ defmodule DawarichWeb.MapLiveTest do
   test "signed in, both paths render the map layout with Rails' title", %{user: user} do
     for path <- ["/map", "/map/v2"] do
       html = RailsUser.signed_in(user.id) |> get(path) |> html_response(200)
-      assert html =~ "<title>Map | Dawarich</title>"
+      assert html =~ ">Map | Dawarich</title>"
       assert html =~ "width=device-width,initial-scale=1,viewport-fit=cover"
       assert html =~ ~s(<body class="h-screen !h-[100dvh] overflow-hidden relative">)
       assert html =~ ~s(id="map-footer")

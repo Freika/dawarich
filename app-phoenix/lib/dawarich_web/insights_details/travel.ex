@@ -38,11 +38,13 @@ defmodule DawarichWeb.InsightsDetails.Travel do
         <div class="mt-3">
           <div class="text-sm font-medium mb-2">{tr(@locale, "time_of_day_distribution")}</div><div class="space-y-1">
             <div :for={{period, label} <- @periods} class="flex items-center gap-2 text-xs">
-              <span class="w-12 text-base-content/60">{label}</span><progress
+              <span class="w-12 text-base-content/60">{label}</span>
+              <progress
                 class="progress progress-info flex-1 h-2"
                 value={@data.time_of_day[period] || 0}
                 max="100"
-              ></progress><span class="w-8 text-right text-base-content/60">{@data.time_of_day[period] ||
+              ></progress>
+              <span class="w-8 text-right text-base-content/60">{@data.time_of_day[period] ||
                 0}%</span>
             </div>
           </div>
@@ -68,11 +70,13 @@ defmodule DawarichWeb.InsightsDetails.Travel do
                   @locale,
                   "services.insights.travel_insight_generator.seasons." <> season,
                   %{}
-                )}</span><progress
+                )}</span>
+                <progress
                   class={"progress progress-#{color} flex-1 h-2"}
                   value={@data.seasonality[season] || 0}
                   max="100"
-                ></progress><span class="w-10 text-right text-base-content/60">{@data.seasonality[
+                ></progress>
+                <span class="w-10 text-right text-base-content/60">{@data.seasonality[
                   season
                 ] || 0}%</span>
               </div>

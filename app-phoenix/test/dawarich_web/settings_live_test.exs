@@ -35,7 +35,7 @@ defmodule DawarichWeb.SettingsLiveTest do
             {"/insights", "Insights | Dawarich"}
           ] do
         {:ok, _view, html} = live_as(user, path, on_error: [duplicate_id: :warn])
-        assert html =~ "<title>#{title}</title>", path
+        assert html =~ ">#{title}</title>", path
       end
     end
 

@@ -60,7 +60,7 @@ defmodule DawarichWeb.TripsShowParityTest do
       assert MapStimulus.attributes("<html><body>#{content}</body></html>", ["#trip-shell"]) ==
                MapStimulus.attributes("<html><body>#{rails}</body></html>", ["#trip-shell"])
 
-      assert html =~ "<title>#{title}</title>"
+      assert html =~ ">#{title}</title>"
     end
   end
 end

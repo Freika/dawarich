@@ -37,7 +37,7 @@ defmodule DawarichWeb.TripsLiveTest do
     test "Rails' title for a signed-in user, Rails' sign-in for a visitor, HEAD without a body",
          %{user: user} do
       {:ok, _view, html} = live_as(user, "/trips")
-      assert html =~ "<title>Trips | Dawarich</title>"
+      assert html =~ ">Trips | Dawarich</title>"
 
       assert redirected_to(get(build_conn(), "/trips?page=2"), 302) ==
                "http://www.example.com/users/sign_in"
@@ -230,7 +230,7 @@ defmodule DawarichWeb.TripsLiveTest do
     test "Rails' title, the #trip-shell region and the map controller's values", %{user: user} do
       {:ok, view, html} = live_as(user, "/trips/883901")
 
-      assert html =~ "<title>Leipzig &amp;lt;loop&amp;gt; | Dawarich</title>"
+      assert html =~ ">Leipzig &amp;lt;loop&amp;gt; | Dawarich</title>"
       assert page_title(view) == "Leipzig &lt;loop&gt; | Dawarich"
 
       assert has_element?(

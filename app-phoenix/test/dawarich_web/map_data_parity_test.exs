@@ -256,7 +256,7 @@ defmodule DawarichWeb.MapDataParityTest do
           |> Phoenix.HTML.html_escape()
           |> Phoenix.HTML.safe_to_string()
 
-        assert conn.resp_body =~ "<title>#{title}</title>", name
+        assert conn.resp_body =~ ">#{title}</title>", name
       end
     end
   end

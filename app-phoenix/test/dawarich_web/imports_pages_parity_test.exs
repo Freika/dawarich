@@ -111,7 +111,7 @@ defmodule DawarichWeb.ImportsPagesParityTest do
              "#{@page["name"]}: " <> ParityHTML.first_difference(native, expected)
 
       assert wiring(inner(html)) == wiring(rails)
-      assert html =~ "<title>#{@page["title"]}</title>"
+      assert html =~ ">#{@page["title"]}</title>"
     end
   end
 

@@ -51,7 +51,7 @@ defmodule DawarichWeb.PlacesParityTest do
 
     assert stimulus(html, "#places") == stimulus("<html><body>#{rails}</body></html>", "#places")
 
-    assert html =~ "<title>#{title}</title>"
+    assert html =~ ">#{title}</title>"
   end
 
   defp check(%{"kind" => "drawer", "status" => 200} = state, user, rails) do
