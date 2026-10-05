@@ -4,6 +4,48 @@ defmodule Dawarich.Cache.PreheatSweepWorkerTest do
   alias Dawarich.Cache.PreheatSweepWorker, as: Worker
   alias Dawarich.Jobs.Ownership
 
+  test "release cancels an undelegated sweep while committed warming requests and accepted user jobs remain drainable" do
+    key = "cron:cache_preheating_job"
+    Ownership.put!(ScratchRepo, key, :oban)
+    parent = self()
+
+    barrier = fn ->
+      send(parent, {:ready, self()})
+      receive do: (:delegate -> :ok)
+    end
+
+    before = Task.async(fn -> Worker.run(ScratchRepo, before_delegate: barrier) end)
+    assert_receive {:ready, before_pid}, 5000
+    Ownership.put!(ScratchRepo, key, :sidekiq)
+    send(before_pid, :delegate)
+    assert Task.await(before) == {:cancel, :not_owner}
+    assert [[0]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+
+    Ownership.put!(ScratchRepo, key, :oban)
+    after_commit = Task.async(fn -> Worker.run(ScratchRepo, after_delegate: barrier) end)
+    assert_receive {:ready, after_pid}, 5000
+    assert [[1]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+    Ownership.put!(ScratchRepo, key, :sidekiq)
+    send(after_pid, :delegate)
+    assert Task.await(after_commit) == :ok
+    assert [[1]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+    assert Worker.run(ScratchRepo) == {:cancel, :not_owner}
+
+    kase = Dawarich.DigestFixtures.case!("berlin_yearly")
+    Dawarich.DigestFixtures.load!(ScratchRepo, kase)
+    Ownership.put!(ScratchRepo, "command:cache.preheat_user", :sidekiq)
+
+    args = %{
+      "user_id" => 14101,
+      "time_zone" => "Europe/Berlin",
+      "source_job_id" => Ecto.UUID.generate()
+    }
+
+    assert Dawarich.Cache.PreheatUserWorker.perform(%Oban.Job{args: args}) == :ok
+    assert length(Dawarich.DigestFixtures.digests(ScratchRepo, 14101)) == 2
+    assert [[1]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+  end
+
   test "owned native cron delegates one source warming sweep with carried zone and due time" do
     Ownership.put!(ScratchRepo, "cron:cache_preheating_job", :oban)
     source = Ecto.UUID.generate()

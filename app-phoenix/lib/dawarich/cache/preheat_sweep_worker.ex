@@ -12,6 +12,8 @@ defmodule Dawarich.Cache.PreheatSweepWorker do
   def perform(%Oban.Job{}), do: run(Dawarich.Jobs.repo())
 
   def run(repo, opts \\ []) do
+    if hook = opts[:before_delegate], do: hook.()
+
     payload = %{
       "time_zone" => Keyword.get(opts, :time_zone, System.get_env("TIME_ZONE", "Europe/Berlin")),
       "source_job_id" => Keyword.get_lazy(opts, :source_job_id, &Ecto.UUID.generate/0),
@@ -23,9 +25,15 @@ defmodule Dawarich.Cache.PreheatSweepWorker do
     case Ownership.with_owner(repo, @key, :oban, fn ->
            RailsCommands.insert!(repo, "cache.preheat_sweep", payload)
          end) do
-      {:ok, :ok} -> :ok
-      {:skip, _owner} -> {:cancel, :not_owner}
-      {:error, reason} -> {:error, reason}
+      {:ok, :ok} ->
+        if hook = opts[:after_delegate], do: hook.()
+        :ok
+
+      {:skip, _owner} ->
+        {:cancel, :not_owner}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 end
