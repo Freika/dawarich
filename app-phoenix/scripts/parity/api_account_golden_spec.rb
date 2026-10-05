@@ -56,6 +56,10 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
         end
       end
       encoded = ApiJwtFixture.encode(vectors)
+      JSON.parse(encoded).fetch('vectors').zip(vectors.fetch('vectors')).each do |stored, original|
+        restored = stored['token'].is_a?(Array) ? stored['token'].join('.') : stored['token']
+        expect(restored).to eq(original['token']), original.fetch('name')
+      end
       if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
         File.write(ApiJwtFixture.path, encoded)
       else

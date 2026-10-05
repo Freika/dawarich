@@ -18,7 +18,7 @@ module ApiJwtFixture
   def self.encode(vectors)
     rows = vectors.fetch('vectors').map do |row|
       token = row['token']
-      token.is_a?(String) && token.count('.') == 2 ? row.merge('token' => token.split('.')) : row
+      token.is_a?(String) && token.count('.') == 2 ? row.merge('token' => token.split('.', -1)) : row
     end
     "#{JSON.pretty_generate({ 'synthetic' => true, 'vectors' => rows })}\n"
   end
