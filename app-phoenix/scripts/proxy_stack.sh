@@ -15,6 +15,7 @@ pidfile="$root/tmp/pids/proxy_stack.pid"
 log="$root/log/proxy_stack.log"
 sidekiq_log="$root/log/proxy_stack_sidekiq.log"
 sidekiq="sidekiq.* $(basename "$root") "
+puma="puma .* \\[$(basename "$root")\\]"
 
 stack() {
   env $(grep -E '^DATABASE_(PORT|USERNAME|PASSWORD)=' "$ENV_FILE" | xargs) \
@@ -34,8 +35,9 @@ stack() {
 if [ "${1:-}" = --down ]; then
   [ -f "$pidfile" ] && kill "$(cat "$pidfile")" 2>/dev/null || true
   pkill -f "$sidekiq" 2>/dev/null || true
+  pkill -f "$puma" 2>/dev/null || true
   tries=0
-  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || pgrep -f "$sidekiq" >/dev/null 2>&1; do
+  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || pgrep -f "$sidekiq" >/dev/null 2>&1 || pgrep -f "$puma" >/dev/null 2>&1; do
     tries=$((tries + 1))
     [ "$tries" -lt 60 ] || { echo "the stack did not stop" >&2; exit 1; }
     sleep 1
