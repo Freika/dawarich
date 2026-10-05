@@ -16,9 +16,8 @@ class Points::NightlyReverseGeocodingJob < ApplicationJob
       result = JobOwnership.with_owner(Geocoding::NightlyCommands::KEY) do
         rows = batch.pluck(:user_id, :id).select { |_, id| Geocoding::NightlyCommands.claim(root, id) }
         rows.group_by(&:first).each do |user_id, points|
-          Geocoding::ReverseCommands.enqueue_points(user_id, points.map(&:last), force: true,
-                                                    producer: 'Points::NightlyReverseGeocodingJob')
-          processed_user_ids.add(user_id)
+          Geocoding::NightlyCommands.enqueue_points(root, user_id, points.map(&:last))
+          processed_user_ids.add(user_id) if root.nil?
         end
       end
       break if result == :not_owner

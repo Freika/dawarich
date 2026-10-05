@@ -204,22 +204,24 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       expect(Cache::InvalidateUserCaches).not_to have_received(:new)
       JobOwnership.release!('cron:nightly_reverse_geocoding_job', by: 'a12d3-test')
       batches = 0
-      allow(Geocoding::ReverseCommands).to receive(:enqueue_points).and_wrap_original do |original, *args, **options|
+      allow(Geocoding::NightlyCommands).to receive(:enqueue_points).and_wrap_original do |original, *args|
         batches += 1
-        result = original.call(*args, **options)
+        result = original.call(*args)
         job_owner!('cron:nightly_reverse_geocoding_job', :oban) if batches == 1
         result
       end
       source = described_class.new
       source.enqueued_at = Time.utc(2026, 10, 4, 1, 15)
       source.perform
+      RailsCommands::Poller.drain_once
       expect(enqueued_jobs.size).to eq(1000)
       expect(enqueued_jobs.map { ActiveJob::Arguments.deserialize(_1[:args]).last }).to all(eq(force: true))
-      expect(Cache::InvalidateUserCaches).to have_received(:new).with(user.id).once
+      expect(Cache::InvalidateUserCaches).to have_received(:new).with(user.id, year: nil).once
       JobOwnership.release!('cron:nightly_reverse_geocoding_job', by: 'a12d3-test')
       source.perform
+      RailsCommands::Poller.drain_once
       expect(enqueued_jobs.size).to eq(1001)
-      expect(Cache::InvalidateUserCaches).to have_received(:new).with(user.id).twice
+      expect(Cache::InvalidateUserCaches).to have_received(:new).with(user.id, year: nil).once
 
       clear_enqueued_jobs
       payload = { 'user_id' => user.id, 'point_ids' => [Point.order(:id).first.id], 'force' => true,

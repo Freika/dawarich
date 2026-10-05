@@ -16,10 +16,33 @@ module Geocoding
       Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "geocoding.nightly:cron:#{slot}") if slot
     end
 
+    def enqueue_points(root, user_id, ids)
+      if root.nil?
+        return ReverseCommands.enqueue_points(user_id, ids, force: true,
+                                                           producer: 'Points::NightlyReverseGeocodingJob')
+      end
+
+      ReverseCommands.clear_dedup_keys(ids)
+      ids.each_slice(ReverseCommands::BATCH_SIZE) do |slice|
+        event = Digest::UUID.uuid_v5(root, "reverse:#{user_id}:#{slice.join(',')}")
+        RailsCommands::Poller.publish('geocoding.reverse_point',
+                                      { 'user_id' => user_id, 'point_ids' => slice, 'force' => true,
+                                        'event_id' => event })
+      end
+      return unless claim_event(root, "invalidated:#{user_id}")
+
+      RailsCommands::Poller.publish('stats.caches_invalidated',
+                                    { 'user_id' => user_id, 'year' => nil, 'scope' => 'all' })
+    end
+
     def claim(root, point_id)
+      claim_event(root, "scheduled:#{point_id}")
+    end
+
+    def claim_event(root, suffix)
       return true if root.nil? || !PhoenixSchema.table?('processed_commands')
 
-      event = Digest::UUID.uuid_v5(root, "scheduled:#{point_id}")
+      event = Digest::UUID.uuid_v5(root, suffix)
       sql = 'INSERT INTO phoenix.processed_commands(event_id,handler,processed_at) ' \
             'VALUES(?::uuid,?,?) ON CONFLICT(event_id) DO NOTHING RETURNING event_id'
       ActiveRecord::Base.connection.select_value(
