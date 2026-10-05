@@ -40,7 +40,7 @@ partition=1
 for pid in $pids; do
   if wait "$pid"; then status=0; else status=$?; failed=1; fi
   log="$logs/partition-$partition.log"
-  cat "$log"
+  cat "$log" || failed=1
   summaries=$(grep -Ec '^[0-9]+ tests?, [0-9]+ failures?' "$log" || true)
   seeds=$(grep -Ec "^Running ExUnit with seed: $seed," "$log" || true)
   if [ "$summaries" -ne 1 ] || [ "$seeds" -ne 1 ]; then
@@ -52,7 +52,7 @@ for pid in $pids; do
 done
 
 for partition in $(seq 1 "$partitions"); do
-  cat "$logs/partition-$partition.log"
+  cat "$logs/partition-$partition.log" || true
 done | awk '/^[0-9]+ tests?, [0-9]+ failures?/ {tests += $1; failures += $3}
             END {printf "%d tests, %d failures\n", tests, failures; exit failures != 0}' \
   || failed=1
