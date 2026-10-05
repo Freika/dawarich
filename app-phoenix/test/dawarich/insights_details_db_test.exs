@@ -18,6 +18,117 @@ defmodule Dawarich.Insights.DetailsDBTest do
 
   defp digests, do: Repo.query!("SELECT id, updated_at FROM digests ORDER BY id", []).rows
 
+  test "Lite restricted and locked details return before yearly patterns", %{user: user} do
+    yearly_digest!()
+
+    cache!(
+      Details.yearly_key(93, 2024, @digest_updated),
+      <<0, 17, 1, -1.0::little-float-64, -1::little-signed-32, 4, 8, ?i, 86>>
+    )
+
+    Repo.query!("UPDATE users SET plan=0 WHERE id=93", [])
+    id = "a12d1b4-restricted-queries"
+
+    :telemetry.attach(
+      id,
+      [:dawarich, :repo, :query],
+      fn _, _, meta, pid ->
+        if String.contains?(meta.query, "digests"),
+          do: send(pid, {:restricted_digest_query, meta.query})
+      end,
+      self()
+    )
+
+    try do
+      for year <- ~w(2024 2025) do
+        page = load(%{user | plan: 0}, %{"year" => year})
+        assert page.restricted
+        assert page.year_locked == (year == "2024")
+        refute page.rails
+        refute Map.has_key?(page, :yearly)
+        refute Map.has_key?(page, :totals)
+      end
+
+      refute_receive {:restricted_digest_query, _}
+    after
+      :telemetry.detach(id)
+    end
+  end
+
+  test "direct yearly reads preserve the explicitly scoped source stat list and cache precedence" do
+    alias Dawarich.Insights.Details.Digests, as: DetailDigests
+
+    oracle =
+      Path.expand("../fixtures/a12d1b4/cache.json", __DIR__) |> File.read!() |> Jason.decode!()
+
+    user!(180_101)
+    Repo.query!("UPDATE stats SET year=2025, month=month+8 WHERE user_id=180101", [])
+
+    Repo.query!("UPDATE stats SET updated_at=$1 WHERE user_id=180101 AND month=12", [
+      ~N[2026-10-04 12:00:00]
+    ])
+
+    result = Repo.query!("SELECT * FROM stats WHERE user_id=180101 AND month=11", [])
+    scoped = Enum.map(result.rows, &Map.new(Enum.zip(result.columns, &1)))
+    assert Enum.map(scoped, & &1["month"]) == oracle["http_scoping"]["scoped_months"]
+    assert DetailDigests.yearly(180_101, 2025, []) == {nil, false}
+    assert DetailDigests.yearly(180_101, 2025, scoped) == {nil, true}
+    assert DetailDigests.yearly(180_101, 2020, scoped) == {nil, false}
+    stamp = ~N[2026-10-03 12:00:00]
+
+    Dawarich.Test.StatsSeeds.digest!(180_101, %{
+      id: 71,
+      year: 2025,
+      period_type: 1,
+      distance: 888,
+      updated_at: stamp
+    })
+
+    key = Details.yearly_key(180_101, 2025, stamp)
+
+    for state <- ~w(warm stale_snapshot cached_nil cold) do
+      expected = Enum.find(oracle["readers"], &(&1["state"] == state))
+      Redis.cache_command(["DEL", key])
+      if expected["wire"], do: cache!(key, Base.decode64!(expected["wire"]))
+      before = digests()
+      {digest, hand_back} = DetailDigests.yearly(180_101, 2025, scoped)
+      assert hand_back == (state == "cold")
+
+      assert (digest && digest["distance"]) ==
+               if(state == "cold", do: 888, else: expected["distance"])
+
+      assert digests() == before
+    end
+  end
+
+  test "monthly staleness compares only the selected month and equality stays fresh", %{
+    user: user
+  } do
+    alias Dawarich.Insights.Details.Digests, as: DetailDigests
+
+    oracle =
+      Path.expand("../fixtures/a12d1b4/cache.json", __DIR__) |> File.read!() |> Jason.decode!()
+
+    Repo.query!("UPDATE stats SET updated_at=$1 WHERE month=4", [~N[2026-10-04 12:00:00]])
+    monthly_digest!(3, ~N[2024-03-01 00:00:00])
+    result = Repo.query!("SELECT * FROM stats WHERE user_id=93", [])
+    stats = Enum.map(result.rows, &Map.new(Enum.zip(result.columns, &1)))
+    before = digests()
+    {equal, stale} = DetailDigests.monthly(93, 2024, 3, [3, 4], stats)
+    assert stale == oracle["http_scoping"]["monthly_equal_blank"]
+    assert equal["travel_patterns"] == %{}
+    assert DetailDigests.monthly(93, 2024, 2, [3, 4], stats) == {nil, false}
+    assert DetailDigests.monthly(93, 2024, 2, [2, 3, 4], stats) == {nil, true}
+    assert digests() == before
+    Repo.query!("UPDATE digests SET updated_at=$1 WHERE month=3", [~N[2024-02-01 00:00:00]])
+    before = digests()
+    {_, stale} = DetailDigests.monthly(93, 2024, 3, [3, 4], stats)
+    assert stale == oracle["http_scoping"]["monthly_older"]
+    refute elem(DetailDigests.monthly(93, 2024, 3, [], stats), 1)
+    assert load(user, %{"year" => "all"}).selected_month == "all"
+    assert digests() == before
+  end
+
   test "yearly readers preserve warm stale snapshots cached nil and cold corrupt unavailable hand-back results" do
     oracle =
       Path.expand("../fixtures/a12d1b4/cache.json", __DIR__) |> File.read!() |> Jason.decode!()
