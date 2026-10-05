@@ -473,6 +473,20 @@ The post-sync Rails gate passes 329 selected examples and 251 Swagger setup exam
 
 Local implementation checks are complete. Final Wave scripts, full seed summaries, byte comparisons and deferred release work are recorded in the implementation report under `SP/orch/out/impl-a12d1b2.report.md`; local acceptance does not activate ownership. Canonical plan: `/Users/frey/projects/dawarich/superpowers/plans/2026-10-03-phoenix-a12-next-slice-plan.md`. Browser, Docker/image/compose/pooler and mini work are deferred to the controller mini lane. No AFFiNE write in this exception-content/data-exposure task.
 
+## A12h ordinary install seeds
+
+The standalone seed components remain release prerequisites. Achievement and import release adapters are merged, and Task 6 real-vector decoder closure passes. Task 9 is blocked on complete Rails/native exclusion compatible with nontransactional DDL and transaction pooling; no native activation is claimed.
+
+| ID | Surface | Rails today | Phoenix | Owner | Status |
+|---|---|---|---|---|---|
+| ED-530 | Opt-in native release-job insertion | ActiveJob/Sidekiq serialization | Explicit enqueue mode inserts native Oban changesets with raw intent and version ledger in the same transaction; preserves decoded business payload, worker options and wait. Record-only proof mode stays unchanged. Release orchestration, real-vector closure and same-image Rails hand-back are tested; G47/C4 remains a release prerequisite. | A12h Tasks 5–9/20 | open |
+| ED-531 | Native lifecycle failure during boot/deploy | Existing Phoenix failure can fall back to Rails | Native selection stops on migration, seed or readiness failure; the Rails branch retains its legacy behavior and arbitrary argv. Real subprocess failure matrices cover web/release and readiness codes; workers retain real Sidekiq. | A12h Tasks 17–20 | closed |
+| ED-532 | Ordinary install bootstrap credential logging | `db/seeds.rb` writes initial account credentials to the debug log | The bootstrap seed writes no account credentials to logs. Password hashing, API-key generation, database defaults, scoped emptiness guard and self-hosted activation remain characterized against the Rails seeds corpus. | A12h Task 14; `seeds/bootstrap_user_test.exs` | closed |
+| ED-533 | Native migrate/seeds command output | Rails task banners | Native CLI uses concise command status/errors and the existing floor remedy. Success requires completed work; db:migrate and seeds/db:seed refuse while lifecycle is disabled. Ordinary flag-off migrate remains private-schema-only. | A12h Task 16; CLI refusal and named mutations | closed |
+| ED-534 | Migrator exclusion source parity | Rails creates metadata before its session advisory lock; disabling database advisory locks requires a single migrator | Native bootstraps only empty metadata tables before the exact Rails key on a pinned connection outside transactions. Nonblocking acquisition avoids a waiting snapshot blocking concurrent indexes; the session lock spans private/public migration and registration. The connection preserves Repo socket options, stops without reconnect/restart on backend loss, terminates its write caller, and verifies both unlock results. Fresh contenders are coordinated before the first private-schema write with both schemas absent; M9c moving installation before exclusion fails. With DATABASE_ADVISORY_LOCKS=false (same false/no/off parsing), no session lock is taken: both runtimes require the operator's single-migrator rule, including transaction pooling. This is source parity. | A12h Task 9; `release/native_test.exs` | closed |
+
+ED-535–ED-539 remain reserved. No entry allows unresolved decoder classes, changed seed guards, lost jobs or native Cloud provisioning. Current implementation and activation/rollback prerequisites: `docs/phoenix/a12h-lifecycle.md`.
+
 ## A12rel release adapters (default off)
 
 | ID | Scope | Rails behavior | Native behavior | Evidence | State |

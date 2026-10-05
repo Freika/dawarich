@@ -4,16 +4,33 @@ defmodule Dawarich.CLI.Migrate do
   import Dawarich.CLI, only: [puts: 2, fail: 2]
 
   alias Dawarich.{Release, ReleaseMigrator}
+  alias Dawarich.Release.Lifecycle
 
   @last_rails_release "1.15.2"
 
   def migrate([], ctx) do
-    :ok = Release.migrate()
-    puts(ctx, "phoenix and oban schemas: current")
+    :ok = Release.migrate(release_opts(ctx))
+
+    message =
+      if Lifecycle.mode(ctx.env) == {:ok, :native},
+        do: "public, phoenix and oban schemas: current",
+        else: "phoenix and oban schemas: current"
+
+    puts(ctx, message)
     0
   end
 
   def migrate(_args, ctx), do: fail(ctx, "usage: dawarich migrate [status]")
+
+  def native_migrate(args, ctx) do
+    case Lifecycle.mode(ctx.env) do
+      {:ok, :native} -> migrate(args, ctx)
+      {:ok, :rails} -> fail(ctx, describe(:lifecycle_disabled))
+      {:error, reason} -> fail(ctx, describe(reason))
+    end
+  end
+
+  def release_opts(ctx), do: Enum.to_list(Map.take(ctx, [:repo, :env]))
 
   def status([], ctx) do
     case Release.readiness() do
@@ -85,6 +102,26 @@ defmodule Dawarich.CLI.Migrate do
     do:
       "refused: a Rails migrator holds its advisory lock (backend #{pid}); stop it, or if no Rails process runs, " <>
         "wait for PgBouncer's server_lifetime or restart PgBouncer"
+
+  def describe({:pending_data, _}),
+    do:
+      "refused: pending data migrations; run the last Rails image before enabling native lifecycle"
+
+  def describe(:registration_copy_refused), do: "registration copy refused"
+
+  def describe(:invalid_lifecycle_flag),
+    do: "refused: DAWARICH_PHOENIX_LIFECYCLE must be true or false"
+
+  def describe(:cloud_native_lifecycle), do: "refused: native lifecycle requires self-hosted mode"
+
+  def describe(:migration_lock_busy),
+    do: "refused: another migrator holds the database advisory lock"
+
+  def describe(:lifecycle_disabled),
+    do: "refused: native lifecycle is disabled; enable DAWARICH_PHOENIX_LIFECYCLE=true"
+
+  def describe(:seeds_require_current),
+    do: "refused: seeds require current public and private schemas; run dawarich migrate"
 
   def describe(error) when is_exception(error), do: "refused: #{Exception.message(error)}"
 end

@@ -1,5 +1,25 @@
 #!/bin/sh
 
+validate_phoenix_lifecycle() {
+  case "${DAWARICH_PHOENIX_LIFECYCLE-false}" in
+    false) ;;
+    true)
+      if ! env_value_is_truthy "${SELF_HOSTED-true}"; then
+        echo "Native lifecycle requires self-hosted mode" >&2
+        exit 1
+      fi
+      ;;
+    *)
+      echo "DAWARICH_PHOENIX_LIFECYCLE must be true or false" >&2
+      exit 1
+      ;;
+  esac
+}
+
+phoenix_lifecycle_is_native() {
+  [ "${DAWARICH_PHOENIX_LIFECYCLE-false}" = true ]
+}
+
 sanitize_integer_env() {
   _name="$1"
   _default="$2"

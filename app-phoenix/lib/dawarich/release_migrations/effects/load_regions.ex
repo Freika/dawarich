@@ -16,8 +16,16 @@ defmodule Dawarich.ReleaseMigrations.Effects.LoadRegions do
   WHERE NOT ST_IsValid(geom)
   """
 
-  def run(repo) do
-    repo.query!(@upsert, [File.read!(asset())], log: false)
+  def run(repo, opts \\ []) do
+    content = File.read!(Keyword.get_lazy(opts, :asset, &asset/0))
+
+    {sql, params} =
+      case Keyword.fetch(opts, :now) do
+        {:ok, now} -> {String.replace(@upsert, "NOW()", "$2::timestamp"), [content, now]}
+        :error -> {@upsert, [content]}
+      end
+
+    repo.query!(sql, params, log: false)
     repo.query!(@repair, [], log: false)
     :ok
   end

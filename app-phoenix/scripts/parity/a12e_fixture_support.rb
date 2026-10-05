@@ -4,6 +4,7 @@ require 'open3'
 require 'stringio'
 
 module A12eFixtureSupport
+  extend RSpec::Mocks::ExampleMethods
   DIR = Rails.root.join('app-phoenix/test/fixtures/a12e')
   PHRASE = 'phoenix-a12e-archive-phrase-not-for-production'
   LOGIN = 'phoenix-a12e-login-not-for-production'
@@ -28,8 +29,10 @@ module A12eFixtureSupport
   def conn = ActiveRecord::Base.connection
   def sql(text, *binds) = conn.execute(ActiveRecord::Base.sanitize_sql_array([text, *binds]))
 
-  def stored
-    @stored ||= DIR.join('cli.json').exist? ? JSON.parse(DIR.join('cli.json').read) : { 'cases' => [] }
+  def stored(corpus = 'cli')
+    @stored ||= {}
+    path = DIR.join("#{corpus}.json")
+    @stored[corpus] ||= path.exist? ? JSON.parse(path.read) : { 'cases' => [] }
   end
 
   def reset!
@@ -195,15 +198,122 @@ module A12eFixtureSupport
   def phoenix_env
     { 'MIX_ENV' => 'test', 'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
       'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27',
-      'PHOENIX_TEST_REDIS_URL' => 'redis://127.0.0.1:7196/1', 'DATABASE_HOST' => '127.0.0.1' }
+      'PHOENIX_TEST_REDIS_URL' => "#{ENV.fetch('REDIS_URL').sub(%r{/\d+\z}, '')}/1", 'DATABASE_HOST' => '127.0.0.1' }
+  end
+
+  def reset_seeds!
+    FixtureCleanup.delete!(%w[countries regions tags])
+    reset!
+    %w[countries regions tags].each do |table|
+      conn.execute("SELECT setval(pg_get_serial_sequence('#{table}','id'),1,false)")
+    end
+  end
+
+  def seed_sources
+    @seed_sources ||= begin
+      countries = Zlib::GzipReader.open(Rails.root.join('lib/assets/countries.geojson.gz')) { |gzip| Oj.load(gzip.read) }
+      countries['features'].select! { |feature| %w[LU LI].include?(feature['properties']['ISO3166-1-Alpha-2']) }
+      regions = JSON.parse(File.read(Rails.root.join(Achievements::LoadRegions::ASSET_PATH)))
+      regions['features'] = regions['features'].first(2)
+      regions['features'] << { 'type' => 'Feature', 'properties' => { 'iso_3166_2' => 'A12h-repair' },
+                              'geometry' => { 'type' => 'Polygon',
+                                              'coordinates' => [[[12, 51], [13, 52], [13, 51], [12, 52], [12, 51]]] } }
+      { 'countries' => countries, 'regions' => regions }
+    end
+  end
+
+  def seed_references!
+    sql('INSERT INTO countries(name,iso_a2,iso_a3,geom,created_at,updated_at) ' \
+        "VALUES ('Existing','XX','XXX',ST_Multi(ST_GeomFromText('POLYGON((12 51,13 51,13 52,12 51))',4326)),?,?)",
+        NOW, NOW)
+    sql('INSERT INTO regions(code,geom,created_at,updated_at) ' \
+        "VALUES ('Existing',ST_Multi(ST_GeomFromText('POLYGON((12 51,13 51,13 52,12 51))',4326)),?,?)", NOW, NOW)
+  end
+
+  def seed_snapshot
+    queries = { 'users' => 'SELECT * FROM users ORDER BY id', 'tags' => 'SELECT * FROM tags ORDER BY id',
+                'outbox' => 'SELECT * FROM job_outbox ORDER BY event_id' }
+    %w[countries regions].each do |table|
+      attributes = table == 'countries' ? 'name, iso_a2, iso_a3' : 'code'
+      queries[table] = "SELECT id, #{attributes}, encode(ST_AsEWKB(ST_Normalize(geom)), 'hex') AS geom, " \
+                       "created_at, updated_at FROM #{table} ORDER BY id"
+    end
+    queries.transform_values { |query| JSON.parse(pg_json(query)) }
+  end
+
+  def seed_record(sources: seed_sources)
+    before = seed_snapshot
+    error = nil
+    logger = Rails.logger
+    Rails.logger = ActiveSupport::Logger.new(StringIO.new)
+    RSpec::Mocks.with_temporary_scope do
+      allow(Zlib::GzipReader).to receive(:open).and_call_original
+      allow(Zlib::GzipReader).to receive(:open).with(Rails.root.join('lib/assets/countries.geojson.gz')) do |&block|
+        block.call(StringIO.new(Oj.dump(sources.fetch('countries'), mode: :strict)))
+      end
+      allow(File).to receive(:read).and_call_original
+      allow(File).to receive(:read).with(Rails.root.join(Achievements::LoadRegions::ASSET_PATH))
+                                   .and_return(Oj.dump(sources.fetch('regions'), mode: :strict))
+      begin
+        block_given? ? yield : load(Rails.root.join('db/seeds.rb'))
+      rescue StandardError => e
+        error = { 'class' => e.class.name, 'message' => e.message }
+      end
+    end
+    { 'seed' => before, 'sources' => sources, 'after' => seed_snapshot, 'error' => error,
+      'jobs' => ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job.slice('job_class', 'arguments', 'queue_name') } }
+  ensure
+    Rails.logger = logger
+  end
+
+  def lifecycle_snapshot
+    { 'public_versions' => conn.select_values('SELECT version FROM schema_migrations ORDER BY version'),
+      'intents' => JSON.parse(pg_json('SELECT * FROM phoenix.release_migration_jobs ORDER BY id')),
+      'jobs' => JSON.parse(pg_json('SELECT * FROM oban.oban_jobs ORDER BY id')) }
+  end
+
+  def lifecycle_record
+    private_db = ENV['DATABASE_NAME'].to_s.match?(/\Adawarich_(phoenix_)?test_\w+\z/)
+    raise 'A12h requires its private test database' unless ENV['RAILS_ENV'] == 'test' && private_db
+
+    load Rails.root.join('db/data_schema.rb')
+    sql('DROP SCHEMA IF EXISTS phoenix CASCADE')
+    sql('DROP SCHEMA IF EXISTS oban CASCADE')
+    sql("DELETE FROM schema_migrations WHERE version='20260314000001'")
+    code = 'Dawarich.Release.migrate(env: %{"DAWARICH_PHOENIX_LIFECYCLE" => "true", ' \
+           '"SELF_HOSTED" => "true", "DATABASE_ADVISORY_LOCKS" => "false"}, ' \
+           'command: fn _ -> {:ok, nil} end)'
+    env = phoenix_env.merge('PHOENIX_TEST_DATABASE' => ENV.fetch('DATABASE_NAME'))
+    _, status = Open3.capture2e(env, 'mix', 'run', '--no-start', '-e', code,
+                                chdir: Rails.root.join('app-phoenix').to_s)
+    raise "native migration exited #{status.exitstatus}" unless status.success?
+
+    sql('UPDATE phoenix.release_migration_jobs SET recorded_at=?', NOW)
+    sql('UPDATE oban.oban_jobs SET inserted_at=?, scheduled_at=?', NOW, NOW)
+    native = lifecycle_snapshot
+    dump_schema = ActiveRecord.dump_schema_after_migration
+    ActiveRecord.dump_schema_after_migration = false
+    off = { 'DAWARICH_PHOENIX_LIFECYCLE' => 'false', 'RAILS_ENV' => 'test',
+            'DATABASE_NAME' => ENV.fetch('DATABASE_NAME') }
+    %w[db:migrate data:migrate].each do |task|
+      _, _, exit_code = rake(task, env: off)
+      raise "#{task} exited #{exit_code}" unless exit_code.zero?
+    end
+    seeds = seed_record { rake('db:seed', env: off) }
+    { 'native' => native, 'after' => lifecycle_snapshot, 'seeds' => seeds,
+      'rails_jobs' => ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job.slice('job_class', 'arguments') } }
+  ensure
+    ActiveRecord.dump_schema_after_migration = dump_schema unless dump_schema.nil?
   end
 
   def finish(recorded)
     return unless write? && recorded.any?
 
     FileUtils.mkdir_p(DIR)
-    data = { 'cases' => recorded.sort.map { |name, entry| entry.merge('name' => name) },
-             'human_sizes' => human_sizes }
-    DIR.join('cli.json').write("#{Oj.dump(data, mode: :strict, indent: 2, float_precision: 0)}\n")
+    recorded.group_by { |name, _entry| name.start_with?('A12h') ? 'seeds' : 'cli' }.each do |corpus, entries|
+      data = { 'cases' => entries.sort.map { |name, entry| entry.merge('name' => name) } }
+      data['human_sizes'] = human_sizes if corpus == 'cli'
+      DIR.join("#{corpus}.json").write("#{Oj.dump(data, mode: :strict, indent: 2, float_precision: 0).chomp}\n")
+    end
   end
 end

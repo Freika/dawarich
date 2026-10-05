@@ -96,7 +96,7 @@ defmodule Dawarich.RailsJobOwnersTest do
           assert match?({:ok, ^worker, _args}, outcome), class
 
         {:slice, slice} ->
-          assert match?({:deferred, ^slice, _payload}, outcome), class
+          flunk("#{class} still belongs to deferred slice #{slice}")
 
         :retire ->
           assert outcome in [:skip, {:error, :cloud_family_backfill}], class

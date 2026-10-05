@@ -52,7 +52,7 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
     if fx.write?
       recorded[name] = entry
     else
-      stored = fx.stored['cases'].find { |c| c['name'] == name }
+      stored = fx.stored(name.start_with?('A12h') ? 'seeds' : 'cli')['cases'].find { |c| c['name'] == name }
       expect(fx.comparable(entry.merge('name' => name))).to eq(fx.comparable(stored))
     end
   end
@@ -355,5 +355,127 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
     User.where(id: 1041).update_all(encrypted_password: hashes.fetch('long_hash'))
     expect(User.find(1041).valid_password?(fx::LONG)).to be(true)
     expect(User.find(1041).valid_password?(fx::LONG[0, 36] + ('b' * 50))).to be(true)
+  end
+
+  context 'A12h ordinary install seeds' do
+    self.use_transactional_tests = false
+
+    before do
+      fx.reset_seeds!
+      @visits_default = fx.conn.select_value('SELECT pg_get_expr(adbin,adrelid) FROM pg_attrdef ' \
+                                            'JOIN pg_attribute ON attrelid=adrelid AND attnum=adnum ' \
+                                            "WHERE adrelid='users'::regclass AND attname='visits_redetected_at'")
+      fx.sql("ALTER TABLE users ALTER visits_redetected_at SET DEFAULT timestamp '#{fx::NOW.strftime('%F %T')}'")
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(BCrypt::Engine).to receive(:generate_salt).and_return(fx::SALT)
+      allow(SecureRandom).to receive(:hex).and_call_original
+      allow(SecureRandom).to receive(:hex).with(32).and_return('a12e' * 16)
+      allow(Region.connection).to receive(:execute).and_wrap_original do |original, query, *args|
+        if query.start_with?('INSERT INTO regions')
+          query = query.gsub('NOW()',
+                             "timestamp '#{fx::NOW.strftime('%F %T')}'")
+        end
+        original.call(query, *args)
+      end
+    end
+
+    after do
+      fx.reset_seeds!
+      fx.sql("ALTER TABLE users ALTER visits_redetected_at SET DEFAULT #{@visits_default}") if @visits_default
+    end
+
+    it 'A12h seeds preserves global emptiness guards' do
+      fx.user!(1001, 'first@example.invalid')
+      fx.user!(1002, 'second@example.invalid')
+      fx.user!(1003, 'deleted@example.invalid', deleted: true)
+      fx.seed_references!
+      Tag.create!(user_id: 1001, name: 'Only', color: '#123456')
+      keep('A12h_partial_tables', fx.seed_record)
+      expect(Tag.pluck(:user_id, :name)).to eq([[1001, 'Only']])
+      fx.user!(1004, 'later@example.invalid')
+      keep('A12h_later_user', fx.seed_record)
+      expect(Tag.count).to eq(1)
+      Tag.delete_all
+      keep('A12h_multiple_users', fx.seed_record)
+      expect(Tag.group(:user_id).count).to eq(1001 => 4, 1002 => 4, 1004 => 4)
+      expect(Country.count).to eq(1)
+      expect(Region.count).to eq(1)
+    end
+
+    it 'A12h initial admin includes self-hosted create callbacks' do
+      keep('A12h_fresh', fx.seed_record)
+      user = User.sole
+      expect(user).to have_attributes(admin: true, status: 'active', plan: 'pro', points_count: 0,
+                                      active_until: 1000.years.from_now)
+      expect(user.api_key).to match(/\A[0-9a-f]{64}\z/)
+      expect(User.find_by(api_key: user.api_key)).to eq(user)
+      expect(user.valid_password?('safepassword')).to be(true)
+      expect(user.valid_password?('different-password')).to be(false)
+      first = fx.seed_snapshot
+      keep('A12h_rerun', fx.seed_record)
+      expect(fx.seed_snapshot).to eq(first)
+      fx.reset_seeds!
+      fx.user!(1003, 'deleted@example.invalid', deleted: true)
+      keep('A12h_soft_deleted_only', fx.seed_record)
+      expect(User.count).to eq(1)
+      expect(User.unscoped.count).to eq(2)
+      expect(User.sole.active_until).to eq(1000.years.from_now)
+      expect(enqueued_jobs).to be_empty
+      expect(fx.conn.select_value('SELECT count(*) FROM job_outbox')).to eq(0)
+    end
+
+    it 'A12h seed geometries and failure effects match Rails' do
+      keep('A12h_geometries', fx.seed_record)
+      expect(fx.conn.select_values('SELECT ST_GeometryType(geom) FROM countries')).to all(eq('ST_MultiPolygon'))
+      expect(fx.conn.select_values('SELECT ST_IsValid(geom) FROM regions')).to all(be(true))
+      codes = fx.seed_sources.fetch('countries').fetch('features')
+                .map { |feature| feature.fetch('properties').fetch('ISO3166-1-Alpha-2') }
+      expect(Country.order(:id).pluck(:iso_a2)).to eq(codes)
+      fx.reset_seeds!
+      invalid = Marshal.load(Marshal.dump(fx.seed_sources))
+      invalid['countries']['features'].last['properties']['ISO3166-1-Alpha-3'] = nil
+      entry = fx.seed_record(sources: invalid)
+      expect(entry.fetch('error').fetch('class')).to eq('ActiveRecord::RecordInvalid')
+      expect(Country.count).to eq(0)
+      expect(Region.count).to eq(0)
+      expect(Tag.count).to eq(0)
+      expect(User.count).to eq(1)
+      keep('A12h_country_failure', entry)
+      allow(Tag).to receive(:create!).and_wrap_original do |original, attributes|
+        raise ActiveRecord::RecordInvalid, Tag.new if attributes[:name] == 'Favorite'
+
+        original.call(attributes)
+      end
+      entry = fx.seed_record
+      expect(entry.fetch('error').fetch('class')).to eq('ActiveRecord::RecordInvalid')
+      expect(Tag.order(:id).pluck(:name)).to eq(%w[Home Work])
+      keep('A12h_partial_tag_failure', entry)
+      keep('A12h_partial_tag_rerun', fx.seed_record)
+      expect(Tag.count).to eq(2)
+    end
+
+    it 'A12h empty countries prevent regions and later seeds' do
+      expect { Achievements::LoadRegions.new.call }.to raise_error(Achievements::LoadRegions::MissingCountriesError)
+      empty = fx.seed_sources.merge('countries' => { 'type' => 'FeatureCollection', 'features' => [] })
+      entry = fx.seed_record(sources: empty)
+      expect(entry.fetch('error').fetch('class')).to eq('Achievements::LoadRegions::MissingCountriesError')
+      expect(User.sole).to have_attributes(admin: true, active_until: 1000.years.from_now)
+      expect(Country.count).to eq(0)
+      expect(Region.count).to eq(0)
+      expect(Tag.count).to eq(0)
+      keep('A12h_empty_countries', entry)
+    end
+
+    it 'A12h native on then Rails off recognizes versions without reinserting work' do
+      entry = fx.lifecycle_record
+      expect(entry['native']['public_versions']).to include('20260314000001')
+      expect(entry['native']['jobs'].size).to eq(1)
+      expect(entry['native']['jobs'].first).to include('worker' => 'Dawarich.ReleaseOperations.RouteOpacity',
+                                                       'args' => { 'version' => 1 }, 'state' => 'scheduled')
+      expect(entry['after']).to eq(entry['native'])
+      expect(entry['rails_jobs']).to be_empty
+      expect(entry['seeds']['error']).to be_nil
+      keep('A12h_native_then_rails', entry)
+    end
   end
 end

@@ -9,6 +9,8 @@ defmodule Dawarich.ReleaseJobsTest do
   @v1 %{"version" => 1}
   @arg_keys ~w(version operation_id cursor user_id event_id import_id ambient_zone)
   @command_payloads %{
+    "DataMigrations::AddPointDimensionColumnsJob" => %{},
+    "DataMigrations::DropLegacyLatLonJob" => %{},
     "DataMigrations::BackfillAchievementsJob" => %{},
     "TransportationModes::ImportBackfillJob" => %{"import_id" => 42},
     "DataMigrations::BackfillPointDimensionsJob" => %{
@@ -49,6 +51,24 @@ defmodule Dawarich.ReleaseJobsTest do
      }}
   ]
   @fixed_strings ~w(dimensions country users missing)
+
+  test "A12h DDL vectors decode to executable workers and reject extras" do
+    for {class, worker} <- [
+          {"DataMigrations::AddPointDimensionColumnsJob", Ops.AddPointDimensions},
+          {"DataMigrations::DropLegacyLatLonJob", Ops.DropLegacyCoordinates}
+        ] do
+      assert class in ReleaseJobs.classes()
+      assert ReleaseJobs.decode(class, []) == {:ok, worker, @v1}
+      assert worker.args_from_command(1, %{}) == {:ok, @v1}
+      assert worker.new(@v1).valid?
+      assert Ecto.Changeset.get_field(worker.new(@v1), :max_attempts) == 288
+      assert worker.backoff(%Oban.Job{attempt: 2}) == 300
+
+      for extras <- [[1], [%{}], [nil]] do
+        assert ReleaseJobs.decode(class, extras) == {:error, :invalid_arguments}
+      end
+    end
+  end
 
   test "achievement and import release vectors decode to executable adapters" do
     start_oban(:a12rel_vectors)
@@ -215,18 +235,25 @@ defmodule Dawarich.ReleaseJobsTest do
            }
   end
 
-  test "classes without a Phoenix worker defer to their owner with a versioned, id-only payload" do
+  test "live self-hosted release vectors contain no deferred or error decisions" do
     System.put_env("SELF_HOSTED", "true")
 
-    deferred =
-      for {class, arguments} <- recorded_vectors(),
-          {:deferred, _owner, _payload} = outcome <- [ReleaseJobs.decode(class, arguments)],
-          do: {class, outcome}
+    for {class, arguments} <- recorded_vectors() do
+      case ReleaseJobs.decode(class, arguments) do
+        :skip ->
+          assert class in ~w(DataMigrations::BackfillFamiliesForFamilyPlanJob DataMigrations::BackfillFamilyMemberEntitlementsJob)
 
-    assert Enum.sort(deferred) == [
-             {"DataMigrations::AddPointDimensionColumnsJob", {:deferred, :a12h, @v1}},
-             {"DataMigrations::DropLegacyLatLonJob", {:deferred, :a12h, @v1}}
-           ]
+        {:ok, worker, args} ->
+          assert Code.ensure_loaded?(worker), class
+          assert function_exported?(worker, :perform, 1), class
+          changeset = worker.new(args)
+          assert changeset.valid?, class
+          assert Ecto.Changeset.get_field(changeset, :worker) == Oban.Worker.to_string(worker)
+
+        _ ->
+          flunk("#{class} has no executable release decision")
+      end
+    end
   end
 
   test "decoded args equal what the worker builds from the forwarded command" do

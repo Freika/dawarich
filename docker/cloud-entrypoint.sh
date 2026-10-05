@@ -4,6 +4,7 @@ set -e
 
 . "$(dirname "$0")/entrypoint-env-guard.sh"
 . "$(dirname "$0")/entrypoint-common.sh"
+validate_phoenix_lifecycle
 
 bootstrap "$0" "$@"
 echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
@@ -17,6 +18,10 @@ if is_server_command "$@"; then
   dawarich eval 'Dawarich.Release.halt_unless_ready()' || ready=$?
   if [ "$ready" -eq 0 ]; then
     exec_under_phoenix "$@"
+  fi
+  if phoenix_lifecycle_is_native; then
+    echo "Native lifecycle readiness failed; web boot stops here" >&2
+    exit "$ready"
   fi
   case "$ready" in
     3) cause="Phoenix schemas are missing, unreadable or behind this image" ;;

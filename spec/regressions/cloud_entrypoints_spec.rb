@@ -45,7 +45,7 @@ RSpec.describe 'Cloud entrypoints' do
     base = {
       'PATH' => "#{stubs}:#{ENV.fetch('PATH')}",
       'APP_PATH' => stubs,
-      'RAILS_ENV' => 'production',
+      'RAILS_ENV' => 'test',
       'PUID' => nil,
       'PGID' => nil,
       'BUNDLE_PATH' => nil,

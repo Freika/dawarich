@@ -2,7 +2,7 @@ defmodule Dawarich.ReleaseMigrator do
   @moduledoc false
 
   alias Dawarich.{ReleaseMigration, ReleaseMigrations}
-  alias Dawarich.ReleaseMigrator.{Lease, Ledger}
+  alias Dawarich.ReleaseMigrator.{Jobs, Lease, Ledger}
 
   @rails_migrator_salt 2_053_462_845
 
@@ -24,9 +24,18 @@ defmodule Dawarich.ReleaseMigrator do
   def migrate(repo, opts \\ []) do
     releases = Keyword.get_lazy(opts, :releases, &ReleaseMigrations.all/0)
 
-    with :ok <- preflight(repo) do
-      Lease.with_lease(repo, opts, fn lease ->
-        run(repo, lease, releases, Keyword.get(opts, :baseline), [])
+    with :ok <- preflight(repo, opts) do
+      with_lease(repo, opts, fn lease ->
+        lease = Map.put(lease, :rails_lock_check, Keyword.get(opts, :rails_lock_check, true))
+
+        run(
+          repo,
+          lease,
+          releases,
+          Keyword.get(opts, :baseline),
+          [],
+          Keyword.get(opts, :job_mode, :record)
+        )
       end)
     end
   end
@@ -39,7 +48,7 @@ defmodule Dawarich.ReleaseMigrator do
         module
         |> steps()
         |> Enum.reject(&MapSet.member?(ledger, &1.version))
-        |> apply_versions(repo, lease)
+        |> apply_versions(repo, lease, Keyword.get(opts, :job_mode, :record))
         |> case do
           {:ok, applied} -> {:ok, %{applied: applied, pending_data: []}}
           error -> error
@@ -56,7 +65,7 @@ defmodule Dawarich.ReleaseMigrator do
     releases = Keyword.get_lazy(opts, :releases, &ReleaseMigrations.all/0)
     known = Enum.flat_map(releases, &ReleaseMigration.versions/1)
 
-    with :ok <- checks(repo) do
+    with :ok <- checks(repo, opts) do
       case Ledger.classify(read_versions(repo, "schema_migrations"), known) do
         :fresh ->
           {:ok, :fresh}
@@ -73,21 +82,36 @@ defmodule Dawarich.ReleaseMigrator do
     end
   end
 
-  defp preflight(repo) do
-    with :ok <- Lease.require_two_connections(repo), do: checks(repo)
+  defp with_lease(repo, opts, fun) do
+    if lease = opts[:lease], do: fun.(lease), else: Lease.with_lease(repo, opts, fun)
   end
 
-  defp checks(repo) do
+  defp preflight(repo, opts \\ []) do
+    with :ok <- Lease.require_two_connections(repo), do: checks(repo, opts)
+  end
+
+  defp checks(repo, opts) do
     %{rows: [[timezone, schema, others]]} = repo.query!(@preflight_sql, [], log: false)
     ledger = read_versions(repo, "schema_migrations")
 
     cond do
-      timezone != "UTC" -> {:error, {:timezone, timezone}}
-      rails = rails_migrator(repo) -> {:error, {:rails_migrating, rails}}
-      schema != "public" or others != [] -> {:error, {:foreign_schema, schema, others}}
-      count = Ledger.not_dawarich(ledger) -> {:error, {:not_dawarich, count}}
-      release = Ledger.below_floor(ledger) -> {:error, {:below_floor, release}}
-      true -> :ok
+      timezone != "UTC" ->
+        {:error, {:timezone, timezone}}
+
+      rails = Keyword.get(opts, :rails_lock_check, true) && rails_migrator(repo) ->
+        {:error, {:rails_migrating, rails}}
+
+      schema != "public" or others != [] ->
+        {:error, {:foreign_schema, schema, others}}
+
+      count = Ledger.not_dawarich(ledger) ->
+        {:error, {:not_dawarich, count}}
+
+      release = Ledger.below_floor(ledger) ->
+        {:error, {:below_floor, release}}
+
+      true ->
+        :ok
     end
   end
 
@@ -110,13 +134,13 @@ defmodule Dawarich.ReleaseMigrator do
     end
   end
 
-  defp run(repo, lease, releases, baseline, applied) do
+  defp run(repo, lease, releases, baseline, applied, job_mode) do
     known = Enum.flat_map(releases, &ReleaseMigration.versions/1)
 
     case Ledger.classify(read_versions(repo, "schema_migrations"), known) do
       :fresh ->
         with :ok <- apply_baseline(repo, lease, baseline || baseline_sql()),
-             do: run(repo, lease, releases, baseline, applied ++ ["baseline"])
+             do: run(repo, lease, releases, baseline, applied ++ ["baseline"], job_mode)
 
       :current ->
         {:ok, %{applied: applied, pending_data: pending_data(repo, releases)}}
@@ -124,7 +148,9 @@ defmodule Dawarich.ReleaseMigrator do
       {:pending, versions} ->
         by_version = releases |> Enum.flat_map(&steps/1) |> Map.new(&{&1.version, &1})
 
-        case versions |> Enum.map(&Map.fetch!(by_version, &1)) |> apply_versions(repo, lease) do
+        case versions
+             |> Enum.map(&Map.fetch!(by_version, &1))
+             |> apply_versions(repo, lease, job_mode) do
           {:ok, done} ->
             {:ok, %{applied: applied ++ done, pending_data: pending_data(repo, releases)}}
 
@@ -144,61 +170,50 @@ defmodule Dawarich.ReleaseMigrator do
     end)
   end
 
-  defp apply_versions(steps, repo, lease) do
+  defp apply_versions(steps, repo, lease, job_mode) do
     Enum.reduce_while(steps, {:ok, []}, fn step, {:ok, done} ->
-      case apply_version(repo, lease, step) do
+      case apply_version(repo, lease, step, job_mode) do
         :ok -> {:cont, {:ok, done ++ [step.version]}}
         error -> {:halt, error}
       end
     end)
   end
 
-  defp apply_version(repo, lease, step) do
-    run_version(repo, lease, step)
+  defp apply_version(repo, lease, step, job_mode) do
+    run_version(repo, lease, step, job_mode)
   catch
     kind, reason -> failure(step.release, step.version, kind, reason, __STACKTRACE__)
   end
 
-  defp run_version(repo, lease, %{transaction: true} = step) do
-    repo.transaction(fn -> record(repo, lease, step, step.fun.(repo)) end)
+  defp run_version(repo, lease, %{transaction: true} = step, job_mode) do
+    repo.transaction(fn -> record(repo, lease, step, step.fun.(repo), job_mode) end)
     |> transaction_result()
   end
 
-  defp run_version(repo, lease, step) do
-    if rails = rails_migrator(repo) do
+  defp run_version(repo, lease, step, job_mode) do
+    if rails = Map.get(lease, :rails_lock_check, true) && rails_migrator(repo) do
       {:error, {:rails_migrating, rails}}
     else
       result = step.fun.(repo)
-      repo.transaction(fn -> record(repo, lease, step, result) end) |> transaction_result()
+
+      repo.transaction(fn -> record(repo, lease, step, result, job_mode) end)
+      |> transaction_result()
     end
   end
 
   defp failure(release, version, kind, reason, stacktrace),
     do: {:error, {:failed, release, version, Exception.format_banner(kind, reason, stacktrace)}}
 
-  defp record(repo, lease, step, result) do
+  defp record(repo, lease, step, result, job_mode) do
     fence!(repo, lease)
 
     repo.query!("INSERT INTO public.schema_migrations (version) VALUES ($1)", [step.version],
       log: false
     )
 
-    for job <- step_jobs(result), do: insert_job!(repo, step.version, job)
+    for job <- step_jobs(result), do: Jobs.insert!(repo, step.version, job, job_mode)
 
     :ok
-  end
-
-  defp insert_job!(repo, version, {class, args, wait})
-       when is_binary(class) and is_list(args) and is_integer(wait) and wait >= 0 do
-    repo.query!(
-      "INSERT INTO phoenix.release_migration_jobs (version, job_class, arguments, wait_seconds) VALUES ($1, $2, $3, $4)",
-      [version, class, args, wait],
-      log: false
-    )
-  end
-
-  defp insert_job!(_repo, _version, job) do
-    raise ArgumentError, "malformed job #{inspect(job)}; expected {class, args, wait_seconds}"
   end
 
   defp step_jobs({:jobs, jobs}), do: jobs
@@ -219,7 +234,9 @@ defmodule Dawarich.ReleaseMigrator do
   end
 
   defp fence!(repo, lease) do
-    if rails = rails_migrator(repo), do: repo.rollback({:rails_migrating, rails})
+    if rails = Map.get(lease, :rails_lock_check, true) && rails_migrator(repo),
+      do: repo.rollback({:rails_migrating, rails})
+
     unless Lease.fenced?(repo, lease), do: repo.rollback({:lease_lost, lease.holder})
   end
 

@@ -11,6 +11,7 @@ echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
 
 . "$(dirname "$0")/entrypoint-env-guard.sh"
 . "$(dirname "$0")/entrypoint-common.sh"
+validate_phoenix_lifecycle
 sanitize_integer_env WEB_CONCURRENCY 1
 
 # Optional privilege drop. When PUID/PGID are set and the container starts as
@@ -103,6 +104,16 @@ echo "Setting up all required databases..."
 
 # Create primary PostgreSQL database
 create_database "$DATABASE_NAME" "$DATABASE_PASSWORD" "$DATABASE_HOST" "$DATABASE_PORT" "$DATABASE_USERNAME"
+
+if phoenix_lifecycle_is_native; then
+  dawarich migrate
+  dawarich seeds
+  if is_server_command "$@"; then
+    dawarich eval 'Dawarich.Release.halt_unless_ready()'
+    exec_under_phoenix "$@"
+  fi
+  exec bundle exec "$@"
+fi
 
 # Step 2: Run migrations for all databases
 echo "Running migrations for all databases..."
