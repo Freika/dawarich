@@ -222,6 +222,7 @@ module RailsCommands
      .merge(Places::JobCommands::HANDLERS)
      .merge(Achievements::BulkCommands::HANDLERS)
      .merge(Visits::BulkCommands::HANDLERS)
+     .merge(Geocoding::NightlyCommands::HANDLERS)
      .merge(Trips::CalculationCommands::HANDLERS)
      .merge(
        'imports.resume' => {
