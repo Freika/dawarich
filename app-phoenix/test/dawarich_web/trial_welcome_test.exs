@@ -1,20 +1,31 @@
 defmodule DawarichWeb.TrialWelcomeTest do
-  use ExUnit.Case, async: false
+  use Dawarich.JobsCase, async: false
   import Plug.Conn
-  alias Dawarich.{Repo, RailsSecret}
+  alias Dawarich.RailsSecret
+  alias Dawarich.ScratchRepo, as: Repo
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{TrialWelcome, WelcomeGate}
+  alias __MODULE__.{ClaimFailureRepo, TrackFailureRepo}
   @now ~U[2026-10-04 10:00:00.000000Z]
   @jwt "synthetic-a10b-welcome-signing-phrase"
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+
+    RailsUser.insert!(
+      %{
+        id: 15611,
+        email: "a10b-welcome-http@example.invalid",
+        status: 2,
+        active_until: ~N[2026-10-11 10:00:00.000000],
+        settings: %{"locale" => "en", "timezone" => "UTC"}
+      },
+      Repo
+    )
 
     RailsUser.insert!(%{
       id: 15611,
-      email: "a10b-welcome-http@example.invalid",
-      status: 2,
-      active_until: ~N[2026-10-11 10:00:00.000000],
+      email: "a13g-auth-http@example.invalid",
       settings: %{"locale" => "en", "timezone" => "UTC"}
     })
 
@@ -25,7 +36,7 @@ defmodule DawarichWeb.TrialWelcomeTest do
         env: %{},
         oidc: false,
         clock: fn -> @now end,
-        cache_command: fn _ -> {:ok, "OK"} end
+        repo: Repo
       }
     }
   end
@@ -34,17 +45,30 @@ defmodule DawarichWeb.TrialWelcomeTest do
     assert Code.ensure_loaded?(TrialWelcome), "welcome HTTP handler must exist"
     assert Code.ensure_loaded?(WelcomeGate), "welcome gate must exist"
 
-    for {overrides, actor, command} <- [
-          {%{}, nil, fn _ -> {:ok, "OK"} end},
-          {%{"purpose" => "invalid"}, nil, fn _ -> raise "must not claim" end},
-          {%{"exp" => DateTime.to_unix(@now)}, nil, fn _ -> raise "must not claim" end},
-          {%{"jti" => " "}, nil, fn _ -> raise "must not claim" end},
-          {%{"user_id" => 15999}, nil, fn _ -> raise "must not claim" end},
-          {%{}, 15611, fn _ -> {:ok, nil} end},
-          {%{}, nil, fn _ -> {:ok, nil} end},
-          {%{}, nil, fn _ -> {:error, :uncertain} end}
-        ] do
-      context = %{c.context | cache_command: command}
+    for {{overrides, actor, outcome}, index} <-
+          Enum.with_index([
+            {%{}, nil, :fresh},
+            {%{"purpose" => "invalid"}, nil, :rejected},
+            {%{"exp" => DateTime.to_unix(@now)}, nil, :rejected},
+            {%{"jti" => " "}, nil, :rejected},
+            {%{"user_id" => 15999}, nil, :rejected},
+            {%{}, 15611, :replay},
+            {%{}, nil, :replay},
+            {%{}, nil, :error}
+          ]) do
+      jti = "a13g-http-#{index}"
+      overrides = Map.put_new(overrides, "jti", jti)
+
+      if outcome == :replay,
+        do:
+          Dawarich.Trial.WelcomeClaim.claim(
+            jti,
+            DateTime.to_unix(@now) + 1800,
+            DateTime.to_unix(@now),
+            Repo
+          )
+
+      context = if outcome == :error, do: %{c.context | repo: ClaimFailureRepo}, else: c.context
       conn = request(overrides, actor)
       assert WelcomeGate.owned?(conn, %{}, context: context)
       conn = TrialWelcome.call(conn, context: context)
@@ -81,13 +105,22 @@ defmodule DawarichWeb.TrialWelcomeTest do
         log: false
       )
 
+      Dawarich.Repo.query!(
+        "UPDATE users SET settings=$1 WHERE id=15611",
+        [%{"locale" => locale, "timezone" => "UTC"}],
+        log: false
+      )
+
       kind = if actor, do: "actor", else: "guest"
 
       oracle =
         File.read!("test/fixtures/welcome_home/midnight_#{kind}_#{locale}.json")
         |> Jason.decode!()
 
-      conn = request(%{}, actor, locale) |> TrialWelcome.call(context: c.context)
+      conn =
+        request(%{"jti" => "midnight-#{locale}-#{kind}"}, actor, locale)
+        |> TrialWelcome.call(context: c.context)
+
       assert conn.status == 302
 
       {:ok, session} =
@@ -99,6 +132,79 @@ defmodule DawarichWeb.TrialWelcomeTest do
         )
 
       assert session["flash"]["flashes"]["notice"] == oracle["flash"]["notice"]
+    end
+  end
+
+  test "failed sign-in leaves committed claim and terminal response with no upstream replay", c do
+    parent = self()
+    server = Dawarich.Test.RawHTTP.listen()
+    old = Application.get_env(:dawarich, :rails_upstream)
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, server.port})
+
+    on_exit(fn ->
+      Application.put_env(:dawarich, :rails_upstream, old)
+      :gen_tcp.close(server.listen)
+    end)
+
+    start_supervised!(
+      {Task,
+       fn ->
+         socket = Dawarich.Test.RawHTTP.accept(server)
+         Dawarich.Test.RawHTTP.read_head(socket)
+         send(parent, :upstream_replayed)
+
+         Dawarich.Test.RawHTTP.reply(
+           socket,
+           "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+         )
+
+         :gen_tcp.close(socket)
+       end}
+    )
+
+    Process.put(:track_failure_observer, parent)
+    conn = request(%{"jti" => "track-failure"}, nil)
+    before = Repo.query!("SELECT sign_in_count FROM users WHERE id=15611", [], log: false).rows
+    result = TrialWelcome.call(conn, context: %{c.context | repo: TrackFailureRepo})
+    assert_receive :track_attempted
+    assert result.status == 500 and result.halted and result.resp_body == ""
+    assert result.resp_cookies == %{}
+    refute_receive :upstream_replayed
+    assert get_resp_header(result, "x-dawarich-rails-proxy") == []
+
+    assert Repo.query!("SELECT sign_in_count FROM users WHERE id=15611", [], log: false).rows ==
+             before
+
+    key =
+      "trial_welcome:consumed:sha256:" <>
+        Base.encode16(:crypto.hash(:sha256, "track-failure"), case: :lower)
+
+    assert [[^key]] =
+             Repo.query!("SELECT key FROM phoenix.once_claims WHERE key=$1", [key], log: false).rows
+
+    guest = TrialWelcome.call(conn, context: c.context)
+    assert guest.status == 302 and hd(get_resp_header(guest, "location")) =~ "/users/sign_in"
+  end
+
+  defmodule TrackFailureRepo do
+    def transaction(fun), do: Dawarich.ScratchRepo.transaction(fun)
+
+    def query!(sql, params, opts) do
+      if String.starts_with?(sql, "UPDATE users SET sign_in_count") do
+        send(Process.get(:track_failure_observer), :track_attempted)
+        raise "deterministic Trackable failure"
+      end
+
+      Dawarich.ScratchRepo.query!(sql, params, opts)
+    end
+  end
+
+  defmodule ClaimFailureRepo do
+    def query!(sql, params, opts) do
+      if String.starts_with?(sql, "INSERT INTO phoenix.once_claims"),
+        do: raise("deterministic claim connection error")
+
+      Dawarich.ScratchRepo.query!(sql, params, opts)
     end
   end
 
