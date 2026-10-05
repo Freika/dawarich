@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 module IngestGoldenOracle
   FEATURE = lambda do |lon, lat, ts, props = {}|
@@ -161,6 +162,8 @@ module IngestGoldenOracle
 end
 
 RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
+  let(:fixture_models) { [User, Family, Family::Membership, Point, PointSource] }
+  include FixtureRecording::DeterministicInputs
   after(:all) do
     results = IngestGoldenOracle.results
     missing = IngestGoldenOracle::EXPECTED_NAMES - results.map { _1['name'] }
@@ -216,7 +219,7 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
     password = IngestGoldenOracle::PASSWORD
     user = create(:user, password:, password_confirmation: password)
     user.update_columns(api_key: "phoenix-a3-golden-key-#{kase[:name]}",
-                        settings: user.settings.merge('live_map_enabled' => true))
+                        settings: user.settings.merge('live_map_enabled' => true, 'timezone' => 'Europe/Berlin'))
     case kase[:setup]
     when :pending then user.update_columns(status: User.statuses[:pending_payment])
     when :inactive then user.update_columns(status: User.statuses[:inactive], active_until: Time.utc(2099))
@@ -272,6 +275,15 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
   end
 
   def spy!
+    @backfill_cycle = 0
+    allow(SecureRandom).to receive(:uuid).and_wrap_original do |original|
+      if caller_locations.any? { _1.path.end_with?('/tracks/backfill_state.rb') }
+        @backfill_cycle += 1
+        format('11530000-0000-4000-8000-%012d', @backfill_cycle)
+      else
+        original.call
+      end
+    end
     calls = []
     allow(Points::TileEpoch).to receive(:bump).and_wrap_original do |m, uid, **kw|
       calls << ['points.tile_epoch', { 'user_id' => uid, 'timestamps' => kw[:timestamps].map(&:to_i) }]
@@ -370,13 +382,16 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
         )
       )
     end
-    RailsCommands::Poller.drain_once
+    @backfill_cycle = 0
+    Time.use_zone(user.timezone) { RailsCommands::Poller.drain_once }
     expect(effects(user)).to eq(before)
   end
 
   def record(kase)
     Sidekiq.redis(&:flushdb)
     clear_phoenix_effects!
+    ActionCable.server.pubsub.clear
+    clear_enqueued_jobs
     user = user_for(kase)
     headers = { 'Host' => 'localhost' }.merge(kase[:headers] || {})
     cookie = cookie_for(kase[:setup], user)

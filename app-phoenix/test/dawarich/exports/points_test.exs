@@ -149,19 +149,54 @@ defmodule Dawarich.Exports.PointsTest do
   end
 
   test "GPX exports legacy schemas without altitude_decimal", %{dir: dir} do
-    seed_fixture!()
-    rows("ALTER TABLE points DROP COLUMN altitude_decimal")
+    user!(42)
+
+    [[decimal]] =
+      rows(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='points' AND column_name='altitude_decimal')"
+      )
+
+    rows("ALTER TABLE points DROP COLUMN IF EXISTS altitude_decimal")
 
     try do
-      rows("UPDATE points SET altitude=1153")
+      insert!(
+        "points",
+        [{"user_id", 42}, {"timestamp", 1_774_748_800}, {"altitude", 1153}],
+        ["lonlat"],
+        ["ST_SetSRID(ST_MakePoint(13.4,52.5),4326)::geography"]
+      )
+
       actual = payload!(dir, 1, "Etc/UTC")
       assert actual =~ "<ele>1153.0</ele>"
 
-      assert length(Regex.scan(~r/<trkpt /, actual)) ==
-               length(Regex.scan(~r/<trkpt /, @fixture["exports"]["Etc/UTC"]["gpx"]))
+      assert length(Regex.scan(~r/<trkpt /, actual)) == 1
     after
-      rows("ALTER TABLE points ADD COLUMN altitude_decimal numeric(10,2)")
+      if decimal, do: rows("ALTER TABLE points ADD COLUMN altitude_decimal numeric(10,2)")
     end
+  end
+
+  test "GPX prefers altitude_decimal on the new schema and falls back for null", %{dir: dir} do
+    user!(42)
+    rows("ALTER TABLE points ADD COLUMN IF NOT EXISTS altitude_decimal numeric(10,2)")
+
+    for {timestamp, decimal} <- [{1_774_748_800, Decimal.new("12.34")}, {1_774_748_801, nil}] do
+      insert!(
+        "points",
+        [
+          {"user_id", 42},
+          {"timestamp", timestamp},
+          {"altitude", 1153},
+          {"altitude_decimal", decimal}
+        ],
+        ["lonlat"],
+        ["ST_SetSRID(ST_MakePoint(13.4,52.5),4326)::geography"]
+      )
+    end
+
+    actual = payload!(dir, 1, "Etc/UTC")
+    assert actual =~ "<ele>12.34</ele>"
+    assert actual =~ "<ele>1153.0</ele>"
+    assert length(Regex.scan(~r/<trkpt /, actual)) == 2
   end
 
   test "columns/1 follows information_schema order minus the exclusions" do

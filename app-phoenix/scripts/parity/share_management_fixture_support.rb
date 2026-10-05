@@ -55,6 +55,7 @@ module ShareManagementFixtureSupport
   def management_document
     doc = Nokogiri::HTML5(response.body)
     doc.css('[data-exception-object-id]').each { _1['data-exception-object-id'] = 'EXCEPTION' }
+    doc.css('#route_table').remove
     doc.css('input[name="authenticity_token"]').each { |input| input['value'] = 'CSRF' }
     doc.css('meta[name="csrf-token"]').each { |meta| meta['content'] = 'CSRF' }
     doc.css('#session_dump pre').each { |dump| dump.content = 'SESSION' }

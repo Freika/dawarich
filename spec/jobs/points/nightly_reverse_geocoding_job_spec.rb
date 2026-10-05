@@ -175,6 +175,7 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
         user_b = create(:user)
         create_list(:point, 150, user: user_a, reverse_geocoded_at: nil)
         create_list(:point, 30, user: user_b, reverse_geocoded_at: nil)
+        clear_geocode_claims!
         allow(Cache::InvalidateUserCaches).to receive(:new).and_call_original
 
         expect { described_class.perform_now }.not_to have_enqueued_job(ReverseGeocodingJob)

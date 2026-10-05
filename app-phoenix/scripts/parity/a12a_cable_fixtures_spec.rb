@@ -14,6 +14,16 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
   def ids = fx::IDS
   def shares = fx::SHARES
 
+  before do
+    random = Random.new(1153)
+    FFaker::Random.seed = 1153
+    allow(SecureRandom).to receive(:random_bytes) { |n| random.bytes(n || 16) }
+    allow(OpenSSL::Random).to receive(:random_bytes) { |n| random.bytes(n) }
+    allow_any_instance_of(OpenSSL::Cipher).to receive(:random_iv) do |cipher|
+      cipher.iv = random.bytes(cipher.iv_len)
+    end
+  end
+
   before(:all) do
     expect(Rails.application.secret_key_base).to eq('phoenix-a2-cookie-fixture-secret-not-for-production')
     @previous_cable = ActionCable.server.config.cable

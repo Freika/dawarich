@@ -19,7 +19,7 @@ RSpec.describe Geocoding::ReverseCommands do
         .and have_enqueued_job(ReverseGeocodingJob)
         .with('Point', 103, force: false)
 
-      ids.each { |id| expect(claim_seconds(Point.geocode_dedup_key(id))).to be_between(86_399, 86_400) }
+      ids.each { |id| expect(claim_seconds(Point.geocode_dedup_key(id))).to eq(Float::INFINITY) }
       expect(JobOutbox.count).to eq(0)
     end
 

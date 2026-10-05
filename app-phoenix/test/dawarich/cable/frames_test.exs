@@ -1,7 +1,7 @@
 defmodule Dawarich.Cable.FramesTest do
   use ExUnit.Case, async: true
 
-  alias Dawarich.Cable.Frames
+  alias Dawarich.Cable.{Channels, Frames}
   alias Dawarich.Test.A12a
 
   defp frames(name), do: for(%{"expect" => f} <- A12a.case!(name)["steps"], do: f)
@@ -20,7 +20,15 @@ defmodule Dawarich.Cable.FramesTest do
 
   test "a relayed message splices the raw payload and escapes the identifier as Rails does" do
     for %{"steps" => steps} = c <- A12a.cases("messages") do
-      payloads = for %{"publish" => p} <- steps, do: p["payload"]
+      viewer = A12a.corpus()["users"][List.first(c["cookies"])]
+      identity = if viewer, do: %{user: %{id: viewer}}, else: %{}
+      identifier = A12a.identifier(c)
+
+      payloads =
+        for %{"publish" => p} <- steps,
+            Channels.visible?(identifier, p["payload"], identity),
+            do: p["payload"]
+
       relayed = for %{"expect" => f} <- steps, String.contains?(f, ~s("message":)), do: f
       assert relayed == Enum.map(payloads, &Frames.message(A12a.identifier(c), &1)), c["name"]
     end

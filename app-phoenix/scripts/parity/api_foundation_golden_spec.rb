@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 module ApiFoundationGoldenOracle
   PLAN = '/api/v1/plan'
@@ -60,6 +61,8 @@ module ApiFoundationGoldenOracle
 end
 
 RSpec.describe 'Phoenix fixture: golden API foundation requests', type: :request do
+  let(:fixture_models) { [User] }
+  include FixtureRecording::DeterministicInputs
   before { JobHealth.reset! }
 
   after(:all) do

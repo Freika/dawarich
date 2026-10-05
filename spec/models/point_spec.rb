@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Point, type: :model do
   describe 'realtime producer payloads' do
     let(:user) do
-      create(:user, email: 'a6-point@example.test', name: 'a6-point@example.test', settings: { live_map_enabled: true })
+      create(:user, email: 'a6-point@example.test', settings: { live_map_enabled: true })
     end
     let(:point) do
       build(:point, id: 405, user: user, longitude: 13.405, latitude: 52.52,

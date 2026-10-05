@@ -57,10 +57,12 @@ defmodule DawarichWeb.ResidualMailOwnershipTest do
     assert route.rails_key == "test_email"
 
     for accept <- ["text/html", "text/vnd.turbo-stream.html"] do
+      before = queued()
       conn = request("POST", @path, "", accept)
       assert conn.status == if(accept == "text/html", do: 302, else: 200)
       assert get_resp_header(conn, "x-dawarich-mail-owner") == ["native-test-email"]
-      assert_received {:mail, _}
+      refute_received {:mail, _}
+      assert queued() == before + 1
       refute_received {:upstream, _, _}
     end
 
@@ -87,9 +89,18 @@ defmodule DawarichWeb.ResidualMailOwnershipTest do
     Process.put(:transport_result, {:error, {"IOError", "synthetic failure after send"}})
     conn = request("POST", @path, "", "text/html")
     assert conn.status == 302
-    assert_received {:mail, _}
+    refute_received {:mail, _}
     refute_received {:upstream, _, _}
     Process.delete(:transport_result)
+  end
+
+  defp queued do
+    [[count]] =
+      Repo.query!(
+        "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Mail.TestEmailWorker'"
+      ).rows
+
+    count
   end
 
   defp request(method, path, raw, accept, opts \\ []) do
