@@ -874,7 +874,42 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
         end
       end
       digest_json('version' => 1, 'cases' => cases, 'timestamps' => recalculation_timestamps,
-                  'policies' => recalculation_policies, 'release_zones' => recalculation_release_zones)
+                  'policies' => recalculation_policies, 'release_zones' => recalculation_release_zones,
+                  'mixed_retries' => recalculation_mixed_retries)
+    end
+
+    def recalculation_mixed_retries
+      RSpec::Mocks.with_temporary_scope do
+        recalculation_isolated do
+          source = recalculation_case('fleet_rebuild_retry')
+          steps = [recalculation_retry_snapshot('first_error')]
+          job = DataMigrations::RecalculateAnomaliesUserJob.deserialize(enqueued_jobs.last)
+          clear_enqueued_jobs
+          expect(PhoenixLease.acquire('anomaly_backfill:170101', 'synthetic-busy', 60)).to be(true)
+          job.perform_now
+          steps << recalculation_retry_snapshot('busy')
+          expect(enqueued_jobs.last.fetch('exception_executions')).to eq({})
+          PhoenixLease.release('anomaly_backfill:170101', 'synthetic-busy')
+          3.times do |index|
+            job = DataMigrations::RecalculateAnomaliesUserJob.deserialize(enqueued_jobs.last)
+            clear_enqueued_jobs
+            job.perform_now
+            steps << recalculation_retry_snapshot("after_busy_error_#{index + 1}")
+          end
+          expect(steps.map { |step| step.fetch('failed') }).to eq([false, false, false, false, true])
+          expect(steps.map { |step| step.fetch('slots') }).to eq([0, 0, 0, 0, 1])
+          { 'input' => source.fetch('input'), 'steps' => steps }
+        end
+      end
+    end
+
+    def recalculation_retry_snapshot(name)
+      jobs = recalculation_jobs
+      retry_job = jobs.find { |job| job['job_class'] == 'DataMigrations::RecalculateAnomaliesUserJob' }
+      failed = DataMigrations::RecalculateAnomaliesUserJob::FAILED_SETTINGS_KEY
+      { 'name' => name, 'jobs' => jobs, 'failed' => User.find(170_101).settings.key?(failed),
+        'slots' => jobs.count { |job| job['job_class'] == 'DataMigrations::RecalculateAnomaliesJob' },
+        'delay' => retry_job && Time.iso8601(retry_job.fetch('scheduled_at')).to_i - digest_now.to_i }
     end
 
     def recalculation_release_zones

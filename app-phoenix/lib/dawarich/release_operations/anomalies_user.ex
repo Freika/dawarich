@@ -111,7 +111,7 @@ defmodule Dawarich.ReleaseOperations.AnomaliesUser do
     else
       Ops.commit(repo, op, fn ->
         request = Map.put(op.cursor["request"], "attempt", attempt + 1)
-        {Map.put(op.cursor, "request", request), 900}
+        {op.cursor |> Map.put("request", request) |> Map.put("rebuild_attempt", 1), 900}
       end)
     end
   end

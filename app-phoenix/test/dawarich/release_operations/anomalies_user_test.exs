@@ -125,6 +125,47 @@ defmodule Dawarich.ReleaseOperations.AnomaliesUserTest do
     assert rows("SELECT count(*) FROM notifications") == [[1]]
   end
 
+  test "a busy successor resets the rebuild budget after an earlier error" do
+    source = Fixtures.corpus()["mixed_retries"]
+    Fixtures.load!(ScratchRepo, source)
+    failed = [phase: fn :tracks, _, _ -> raise "rebuild_failure" end]
+    args = args()
+    assert run(args, failed) == :ok
+    next = assert_retry_step(source, 0)
+    assert next["cursor"]["rebuild_attempt"] == 2
+    hold_lease!(ScratchRepo, "anomaly_backfill:170101", "other")
+    assert run(next, lease: [timeout_ms: 0]) == :ok
+    next = assert_retry_step(source, 1)
+    assert next["cursor"]["request"]["attempt"] == 2
+    assert next["cursor"]["rebuild_attempt"] == 1
+    rows("DELETE FROM phoenix.leases WHERE holder='other'")
+
+    Enum.reduce(2..4, next, fn index, current ->
+      assert run(current, failed) == :ok
+      assert_retry_step(source, index)
+    end)
+  end
+
+  defp assert_retry_step(source, index) do
+    step = Enum.at(source["steps"], index)
+    assert rows("SELECT settings ? $1 FROM users", [@failed]) == [[step["failed"]]]
+    assert length(slots()) == step["slots"]
+
+    result =
+      if step["delay"] do
+        assert [[next, delay]] =
+                 rows(
+                   "SELECT args,extract(epoch FROM scheduled_at-inserted_at)::int FROM oban.oban_jobs"
+                 )
+
+        assert delay == step["delay"]
+        next
+      end
+
+    rows("DELETE FROM oban.oban_jobs")
+    result
+  end
+
   defp args(attempt \\ 1) do
     id = Ecto.UUID.generate()
 
