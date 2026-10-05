@@ -44,18 +44,22 @@ defmodule DawarichWeb.ExportsCreateTest do
         "SELECT id, name, status, file_format, file_type, start_at, end_at, user_id FROM exports ORDER BY id"
       ).rows
 
-  test "Phoenix routes POST /exports and no other export mutation" do
+  test "Phoenix routes export creation and the dedicated export deletion methods" do
     assert %{plug: DawarichWeb.ExportsCreate, plug_opts: :create} =
              Phoenix.Router.route_info(DawarichWeb.Router, "POST", ["exports"], "www.example.com")
 
-    for {method, path} <- [
-          {"POST", ["exports", "5"]},
-          {"DELETE", ["exports", "5"]},
-          {"PATCH", ["exports"]}
-        ] do
-      assert Phoenix.Router.route_info(DawarichWeb.Router, method, path, "www.example.com") ==
-               :error
+    for method <- ["POST", "DELETE"] do
+      assert %{plug: DawarichWeb.ExportsDelete, plug_opts: :delete} =
+               Phoenix.Router.route_info(
+                 DawarichWeb.Router,
+                 method,
+                 ["exports", "5"],
+                 "www.example.com"
+               )
     end
+
+    assert Phoenix.Router.route_info(DawarichWeb.Router, "PATCH", ["exports"], "www.example.com") ==
+             :error
   end
 
   test "the points page's Turbo request creates the export and answers Rails' redirect", ctx do

@@ -2,6 +2,19 @@ defmodule DawarichWeb.A10Routes do
   @moduledoc false
   defmacro a10_routes do
     quote do
+      pipeline :test_email do
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+      end
+
+      scope "/" do
+        pipe_through :test_email
+
+        post "/settings/general/test_email", DawarichWeb.TestEmail, [],
+          metadata: %{rails_key: "test_email", rails_gate: {DawarichWeb.TestEmailGate, :owned?}}
+      end
+
       pipeline :admin_writes do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL

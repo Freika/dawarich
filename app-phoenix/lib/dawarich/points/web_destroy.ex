@@ -21,7 +21,9 @@ defmodule Dawarich.Points.WebDestroy do
 
              rows =
                repo.query!(
-                 "DELETE FROM points WHERE user_id=$1 AND id=ANY($2::bigint[]) RETURNING id,timestamp,track_id,import_id",
+                 "WITH deleted AS (DELETE FROM points WHERE user_id=$1 AND id=ANY($2::bigint[]) " <>
+                   "RETURNING id,timestamp,track_id,import_id) " <>
+                   "SELECT id,timestamp,track_id,import_id FROM deleted ORDER BY id ASC",
                  [user.id, ids]
                ).rows
 

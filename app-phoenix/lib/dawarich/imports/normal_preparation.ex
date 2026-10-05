@@ -20,8 +20,7 @@ defmodule Dawarich.Imports.NormalPreparation do
           {:legacy, reason}
 
         :user_data_archive ->
-          ImportState.source!(lease, 8)
-          {:legacy, :user_data_archive}
+          Dawarich.UserData.ImportCommands.discover(lease, context)
 
         :multi_entry ->
           {:archive, path}

@@ -168,7 +168,7 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
 
     condition_sql, condition_binds = claimable_condition
 
-    User.connection.select_values(
+    claimed = User.connection.select_values(
       ActiveRecord::Base.sanitize_sql_array(
         [
           "UPDATE users SET settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object(#{pairs}) " \
@@ -177,6 +177,8 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
         ]
       )
     )
+
+    user_ids & claimed
   end
 
   def queued_key

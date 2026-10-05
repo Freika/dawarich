@@ -56,6 +56,8 @@ defmodule Dawarich.RailsJobOwnersTest do
         end
       end)
 
+    used = used ++ Map.keys(RailsJobOwners.native_producers())
+
     assert MapSet.equal?(MapSet.new(used), keys),
            "registry keys without a Rails class: #{inspect(Enum.sort(MapSet.difference(keys, MapSet.new(used))))}"
   end

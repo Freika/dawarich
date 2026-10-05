@@ -26,7 +26,7 @@ defmodule Dawarich.Imports.SecureFileDownloader do
           Keyword.get(opts, :start_timer, &Process.send_after/3)
         )
 
-        verify!(path, blob)
+        verify!(path, blob, opts)
         if adopt = Keyword.get(opts, :on_verified), do: adopt.(path)
         {:ok, path}
       rescue
@@ -171,14 +171,21 @@ defmodule Dawarich.Imports.SecureFileDownloader do
     end
   end
 
-  defp verify!(path, blob) do
+  defp verify!(path, blob, opts) do
     {checksum, size} = Dawarich.Storage.digest_file!(path)
     if size == 0, do: raise("Download completed but no content was received")
 
     if size != blob.byte_size,
       do: raise("Incomplete download: expected #{blob.byte_size} bytes, got #{size} bytes")
 
-    if checksum != blob.checksum, do: raise("Checksum mismatch")
+    if checksum != blob.checksum do
+      detail =
+        if Keyword.get(opts, :checksum_details, false),
+          do: ": expected #{blob.checksum}, got #{checksum}",
+          else: ""
+
+      raise "Checksum mismatch" <> detail
+    end
   end
 
   defp cleanup(path) do

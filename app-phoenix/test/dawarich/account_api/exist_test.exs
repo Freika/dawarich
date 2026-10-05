@@ -21,24 +21,22 @@ defmodule Dawarich.AccountApi.ExistTest do
     assert {:ok, 200, term} = Exist.run(%{"ids" => ids}, @secret, env())
 
     assert decode(term) == %{
-             "existing" => Enum.sort([one, two]),
+             "existing" => [one, two],
              "missing" => [deleted, 9_999_999]
            }
   end
 
   @tag :account_order
   @tag mutation: "M-A2-order"
-  test "exist preserves Rails unordered database results" do
+  test "exist returns ascending ids despite descending insertion and request order" do
     first = user!(%{id: 953_812})
     second = user!(%{id: 953_811})
-    Repo.query!("ANALYZE users")
-    ids = [second, first]
-
-    assert Repo.query!("SELECT id FROM users WHERE id=ANY($1) AND deleted_at IS NULL", [ids]).rows ==
-             [[first], [second]]
+    Repo.query!("SET LOCAL enable_indexscan=off")
+    Repo.query!("SET LOCAL enable_bitmapscan=off")
+    ids = [first, second]
 
     assert {:ok, 200, term} = Exist.run(%{"ids" => ids}, @secret, env())
-    assert decode(term)["existing"] == [first, second]
+    assert decode(term)["existing"] == [second, first]
   end
 
   defp env, do: %{"SUBSCRIPTION_WEBHOOK_SECRET" => @secret}

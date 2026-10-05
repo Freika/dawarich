@@ -51,10 +51,12 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
       [980_109, 9801, 'wrapped.gpx', 2, gpx_counts(1), 0, {}, ['wrapped.gpx.zip', 'wrapped.gpx'], 0],
       [980_110, 9801, 'unsupported flag.gpx', 3, gpx_counts(1), 5, {}, nil, 0],
       [980_201, 9802, 'trial one.gpx', 2, gpx_counts(1), 0, {}, nil, 0],
-      [980_202, 9802, 'trial two.gpx', 2, gpx_counts(1), 0, {}, nil, 0]
-    ].each_with_index.map do |(id, user_id, name, status, raw, extraction, data, file, points), index|
-      { id:, user_id:, name:, source: 4, status:, raw_data: raw, additional_data_extraction_status: extraction,
-        additional_data_extraction: data, created_at: (now - (index + 1).hours).iso8601, file:, points: }
+      [980_202, 9802, 'trial two.gpx', 2, gpx_counts(1), 0, {}, nil, 0],
+      [980_111, 9801, 'normal.csv', 2, {}, 5, {}, nil, 0, 10]
+    ].each_with_index.map do |(id, user_id, name, status, raw, extraction, data, file, points, source), index|
+      { id:, user_id:, name:, source: source || 4, status:, raw_data: raw,
+        additional_data_extraction_status: extraction, additional_data_extraction: data,
+        created_at: (now - (index + 1).hours).iso8601, file:, points: }
     end
   end
 
@@ -77,7 +79,11 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
       ['show_failed', 9801, '/imports/980107', 200],
       ['show_legacy_raw', 9801, '/imports/980108', 200],
       ['show_unsupported_flag', 9801, '/imports/980110', 200],
-      ['download_preparing', 9801, '/imports/980109/download', 202]
+      ['download_preparing', 9801, '/imports/980109/download', 202],
+      ['show_csv_en', 9801, '/imports/980111', 200],
+      ['edit_csv_en', 9801, '/imports/980111/edit', 200],
+      ['show_csv_de', 9801, '/imports/980111?locale=de', 200],
+      ['edit_csv_de', 9801, '/imports/980111/edit?locale=de', 200]
     ]
   end
 
@@ -92,7 +98,7 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
   def create_imports!
     imports.each do |row|
       import = Import.new(row.slice(:id, :user_id, :name, :raw_data)
-                             .merge(source: :gpx, status: Import.statuses.key(row[:status]),
+                             .merge(source: Import.sources.key(row[:source]), status: Import.statuses.key(row[:status]),
                                     additional_data_extraction: extraction_data(row),
                                     created_at: Time.iso8601(row[:created_at]), updated_at: now))
       import.skip_background_processing = true
@@ -138,6 +144,25 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
       write_json('pages.json', manifest)
       write_json('seed.json', { now: now.iso8601, users: seeded_users,
                                 imports: })
+      %w[en de].each do |locale|
+        User.find(9801).update!(settings: User.find(9801).settings.merge('locale' => locale))
+        sign_in User.find(9801)
+        get '/imports/980111/edit'
+        token = Nokogiri::HTML5(response.body).at_css('input[name="authenticity_token"]')['value']
+        patch '/imports/980111',
+              params: { authenticity_token: token, import: { name: 'changed.csv', source: 'unknown' } }
+        expect(response).to have_http_status(:unprocessable_content)
+        doc = Nokogiri::HTML5(response.body)
+        doc.css('input[name="authenticity_token"]').each { |node| node['value'] = 'CSRF' }
+        html = doc.at_css('body > div.container > div.w-full > div.flex').inner_html
+        if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+          File.write(dir.join("pages/invalid_source_#{locale}.html"), html)
+        else
+          expect(dir.join("pages/invalid_source_#{locale}.html").read).to eq(html)
+        end
+        expect(Import.find(980_111).name).to eq('normal.csv')
+        sign_out :user
+      end
     end
   end
 end

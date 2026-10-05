@@ -187,8 +187,14 @@ module JobCommands
    .merge(Users::RecalculationCommands::COMMANDS)
    .merge(Points::AnomalyBackfillCommands::COMMANDS)
    .merge(Imports::ProcessCommands::COMMANDS)
+   .merge(Imports::IntegrationCommands::COMMANDS)
+   .merge(Imports::TeslamateCommands::COMMANDS)
+   .merge(Imports::TrekCommands::COMMANDS)
+   .merge(Users::DataCommands::COMMANDS)
    .merge(Posters::CreationCommand::COMMANDS)
-   .merge(Users::Digests::Commands::COMMANDS).freeze
+   .merge(Users::Digests::Commands::COMMANDS)
+   .merge(Users::Digests::MailCommands::COMMANDS)
+   .merge(Families::LocationRequestMailCommands::COMMANDS).freeze
 
   module_function
 

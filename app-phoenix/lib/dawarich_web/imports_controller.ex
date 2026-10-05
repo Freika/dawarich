@@ -68,6 +68,9 @@ defmodule DawarichWeb.ImportsController do
         notice = "controllers.imports.import_was_successfully_updated"
         redirect(conn, 303, "/imports", notice, %{})
 
+      {:error, :invalid_source} ->
+        invalid_source(conn)
+
       {:error, reason} ->
         replay(conn, reason)
     end
@@ -94,6 +97,43 @@ defmodule DawarichWeb.ImportsController do
 
   defp method(%{method: "POST", params: %{"_method" => override}}), do: String.upcase(override)
   defp method(%{method: method}), do: method
+
+  defp invalid_source(conn) do
+    conn =
+      conn
+      |> fetch_query_params()
+      |> DawarichWeb.Locale.call([])
+      |> DawarichWeb.LayoutAssigns.call([])
+
+    user = conn.assigns.current_user
+    {:ok, record} = UiRecords.get(ImportsContext.repo(), user.id, conn.path_params["id"])
+
+    assigns =
+      Map.merge(conn.assigns, %{
+        __changed__: nil,
+        flash: %{},
+        page_title: nil,
+        navbar:
+          Dawarich.Navbar.load(user, now: conn.assigns.now, self_hosted: conn.assigns.self_hosted)
+      })
+
+    body =
+      DawarichWeb.ImportEdit.form(%{
+        __changed__: nil,
+        record: record,
+        locale: assigns.locale,
+        csrf: assigns.rails_csrf_token,
+        invalid_source: true
+      })
+
+    app = DawarichWeb.Layouts.app(Map.put(assigns, :inner_content, body))
+
+    html =
+      DawarichWeb.Layouts.root(Map.put(assigns, :inner_content, app))
+      |> Phoenix.HTML.Safe.to_iodata()
+
+    conn |> put_resp_content_type("text/html") |> send_resp(422, html) |> halt()
+  end
 
   defp redirect(conn, status, path, key, bindings) do
     user = conn.assigns.current_user

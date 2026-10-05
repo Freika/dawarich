@@ -234,9 +234,9 @@ module NormalImportFormatsSupport
 
   def byte_value(bytes) = { '__bytes__' => bytes.unpack1('H*') }
 
-  def reset_create_sequences
+  def reset_create_sequences(tables = %w[imports active_storage_blobs])
     connection = ActiveRecord::Base.connection
-    %w[imports active_storage_blobs].to_h do |table|
+    tables.to_h do |table|
       sequence = connection.select_value("SELECT pg_get_serial_sequence('#{table}','id')")
       state = connection.select_one("SELECT last_value,is_called FROM #{sequence}")
       connection.execute("SELECT setval('#{sequence}',#{table == 'imports' ? 987_201 : 987_301},false)")

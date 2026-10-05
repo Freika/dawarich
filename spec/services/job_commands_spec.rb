@@ -3,7 +3,121 @@
 require 'rails_helper'
 
 RSpec.describe JobCommands do
+  it 'teslamate sync queues after commit and retains failed rehome events' do
+    user = create(:user)
+    type = 'imports.teslamate_sync'
+    payload = { 'user_id' => user.id }
+    at = 1.minute.from_now
+    ActiveRecord::Base.transaction do
+      described_class::COMMANDS.fetch(type).fetch(:sidekiq).call(payload, at)
+      expect(enqueued_jobs).to be_empty
+    end
+    expect(enqueued_jobs.last[:args]).to eq([user.id])
+    job_owner!("command:#{type}", :oban)
+    described_class.forward(type, payload, event_id: SecureRandom.uuid, aggregate_id: user.id, producer: 'spec')
+    allow(TeslaMate::SyncJob.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+    expect(described_class.rehome!(type, by: 'spec'))
+      .to eq({ moved: 0, left: 1, error: 'RedisClient::CannotConnectError' })
+    expect(JobOutbox.pending.count).to eq(1)
+    allow(TeslaMate::SyncJob.queue_adapter).to receive(:enqueue_at).and_call_original
+    expect(described_class.rehome!(type, by: 'spec')).to eq({ moved: 1, left: 0 })
+  end
+
+  it 'user data backup queues after commit and retains failed rehome events' do
+    user = create(:user)
+    type = 'users.export_data'
+    payload = { 'user_id' => user.id, 'time_zone' => 'America/New_York', 'locale' => 'fr' }
+    job_owner!("command:#{type}", :sidekiq)
+    ActiveRecord::Base.transaction do
+      described_class::COMMANDS.fetch(type).fetch(:sidekiq).call(payload, Time.current)
+      expect(enqueued_jobs).to be_empty
+      raise ActiveRecord::Rollback
+    end
+    expect(enqueued_jobs).to be_empty
+    ActiveRecord::Base.transaction do
+      described_class::COMMANDS.fetch(type).fetch(:sidekiq).call(payload, Time.current)
+      expect(enqueued_jobs).to be_empty
+    end
+    expect(enqueued_jobs.last[:args]).to eq([user.id])
+    expect(enqueued_jobs.last['timezone']).to eq('America/New_York')
+    expect(enqueued_jobs.last['locale']).to eq('fr')
+    clear_enqueued_jobs
+    RailsCommands::Registry.handler(type).call(payload)
+    expect(enqueued_jobs.last[:args]).to eq([user.id])
+    clear_enqueued_jobs
+    job_owner!("command:#{type}", :oban)
+    event = SecureRandom.uuid
+    2.times { described_class.forward(type, payload, event_id: event, aggregate_id: user.id, producer: 'spec') }
+    expect(JobOutbox.count).to eq(1)
+    allow(Users::ExportDataJob.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+    expect(described_class.rehome!(type,
+                                   by: 'spec')).to eq({ moved: 0, left: 1, error: 'RedisClient::CannotConnectError' })
+    expect(JobOutbox.find(event).state).to eq('pending')
+    allow(Users::ExportDataJob.queue_adapter).to receive(:enqueue_at).and_call_original
+    expect(described_class.rehome!(type, by: 'spec')).to eq({ moved: 1, left: 0 })
+    expect(JobOutbox.exists?(event)).to be(false)
+    expect(enqueued_jobs.last[:args]).to eq([user.id])
+  end
+
+  it 'user data restore queues after commit and retains failed rehome events' do
+    record = create(:import, source: :user_data_archive, skip_background_processing: true)
+    type = 'users.import_data'
+    payload = { 'import_id' => record.id, 'user_id' => record.user_id,
+                'time_zone' => 'America/New_York', 'locale' => 'de' }
+    ActiveRecord::Base.transaction do
+      described_class::COMMANDS.fetch(type).fetch(:sidekiq).call(payload, Time.current)
+      expect(enqueued_jobs).to be_empty
+      raise ActiveRecord::Rollback
+    end
+    expect(enqueued_jobs).to be_empty
+    ActiveRecord::Base.transaction do
+      described_class::COMMANDS.fetch(type).fetch(:sidekiq).call(payload, Time.current)
+      expect(enqueued_jobs).to be_empty
+    end
+    expect(enqueued_jobs.last[:args]).to eq([record.id])
+    expect(enqueued_jobs.last['timezone']).to eq('America/New_York')
+    expect(enqueued_jobs.last['locale']).to eq('de')
+    clear_enqueued_jobs
+    job_owner!("command:#{type}", :oban)
+    event = SecureRandom.uuid
+    2.times { described_class.forward(type, payload, event_id: event, aggregate_id: record.id, producer: 'spec') }
+    expect(JobOutbox.where(command_type: type).count).to eq(1)
+    allow(Users::ImportDataJob.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+    expect(described_class.rehome!(type, by: 'spec'))
+      .to eq({ moved: 0, left: 1, error: 'RedisClient::CannotConnectError' })
+    expect(JobOutbox.find(event).state).to eq('pending')
+    allow(Users::ImportDataJob.queue_adapter).to receive(:enqueue_at).and_call_original
+    expect(described_class.rehome!(type, by: 'spec')).to eq({ moved: 1, left: 0 })
+    expect(JobOutbox.exists?(event)).to be(false)
+    expect(enqueued_jobs.last[:args]).to eq([record.id])
+  end
+
   let(:trip_payload) { { 'trip_id' => 42, 'distance_unit' => 'km' } }
+
+  it 'immich producer queues after commit and retains failed rehome events' do
+    payload = { 'user_id' => 987_001, 'time_zone' => Time.zone.name }
+    job_owner!('command:imports.immich_geodata', :sidekiq)
+    ActiveRecord::Base.transaction do
+      JobCommands.produce('imports.immich_geodata', payload, aggregate_id: 987_001, producer: 'spec')
+      expect(enqueued_jobs).to eq([])
+      raise ActiveRecord::Rollback
+    end
+    expect(enqueued_jobs).to eq([])
+    job_owner!('command:imports.immich_geodata', :oban)
+    event = SecureRandom.uuid
+    2.times do
+      JobCommands.forward('imports.immich_geodata', payload, event_id: event, aggregate_id: 987_001, producer: 'spec')
+    end
+    expect(JobOutbox.count).to eq(1)
+    allow(Import::ImmichGeodataJob.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+    expect(JobCommands.rehome!('imports.immich_geodata', by: 'spec'))
+      .to eq({ moved: 0, left: 1, error: 'RedisClient::CannotConnectError' })
+    expect(JobOutbox.find(event).state).to eq('pending')
+    allow(Import::ImmichGeodataJob.queue_adapter).to receive(:enqueue_at).and_call_original
+    expect(JobCommands.rehome!('imports.immich_geodata', by: 'spec')).to eq({ moved: 1, left: 0 })
+    expect(JobOutbox.exists?(event)).to be(false)
+    expect(enqueued_jobs.last[:args]).to eq([987_001])
+  end
 
   def produce_trip
     described_class.produce('trips.calculate', trip_payload, aggregate_id: 42, dedupe_key: '42', producer: 'spec')

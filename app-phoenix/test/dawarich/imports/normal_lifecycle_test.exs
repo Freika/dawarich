@@ -12,6 +12,8 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
   ]
 
   setup do
+    Dawarich.Test.NormalWholeEffects.record_order!(ScratchRepo)
+    on_exit(fn -> Dawarich.Test.NormalWholeEffects.remove_order!(ScratchRepo) end)
     root = Path.join(System.tmp_dir!(), "normal-lifecycle-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
     on_exit(fn -> File.rm_rf!(root) end)
@@ -165,6 +167,11 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       reset!(ScratchRepo)
       c = fixture(c, name)
       assert {:ok, :ok} = run(c)
+
+      rows(
+        "UPDATE job_outbox SET error_code=error_code WHERE aggregate_id=(SELECT min(aggregate_id) FROM job_outbox)"
+      )
+
       assert_archive_children(c)
       parent = c.expected["parent"]
 
@@ -185,7 +192,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
 
       assert ids ==
                rows(
-                 "SELECT (payload->>'import_id')::bigint FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY ctid"
+                 "SELECT (payload->>'import_id')::bigint FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY test_enqueue_order"
                )
                |> List.flatten()
 
@@ -263,6 +270,11 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       reset!(ScratchRepo)
       c = fixture(c, name)
       assert {:ok, :ok} = run(c)
+
+      rows(
+        "UPDATE job_outbox SET error_code=error_code WHERE aggregate_id=(SELECT min(aggregate_id) FROM job_outbox)"
+      )
+
       assert_archive_children(c)
       assert [] = rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
       assert [] = rows("SELECT id FROM notifications")
@@ -281,7 +293,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
 
       assert expected ==
                rows(
-                 "SELECT command_type,payload FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY ctid"
+                 "SELECT command_type,payload FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY test_enqueue_order"
                )
 
       assert_clean(c)
@@ -328,6 +340,24 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     assert_clean(c)
   end
 
+  test "whole-create effects preserve enqueue order after heap rows move", c do
+    for name <- ~w(duplicate_section_polarsteps_0 zip_known_preference) do
+      reset!(ScratchRepo)
+      c = fixture(c, name)
+      assert {:ok, :ok} = run(c)
+
+      ScratchRepo.query!(
+        "UPDATE phoenix.rails_commands SET attempts=attempts WHERE payload->>'step'='extract'"
+      )
+
+      ScratchRepo.query!(
+        "UPDATE job_outbox SET error_code=error_code WHERE aggregate_id=(SELECT min(aggregate_id) FROM job_outbox)"
+      )
+
+      NormalWholeAssertions.assert_contract(c, ScratchRepo)
+    end
+  end
+
   test "whole lifecycle compares the complete Rails contract in both followup owner arms", c do
     excluded =
       ~w(v1_profile v2_profile v1_large zip_extractor_later_child_failure zip_unsafe_skip zip_duplicate_entries bounded_tcx_nodes bounded_csv_line bounded_rec_line)
@@ -351,6 +381,37 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       assert Processed.done?(ScratchRepo, c.job.args["event_id"])
       assert_clean(c)
     end
+  end
+
+  test "whole lifecycle retains Rails enqueue order after physical row reordering", c do
+    c = fixture(c, "csv_known")
+
+    for type <- ~w(tracks.generate_range imports.update_points_count),
+        do: Ownership.put!(ScratchRepo, "command:" <> type, :oban)
+
+    assert {:ok, :ok} = run(c)
+
+    for table <- ~w(job_outbox phoenix.rails_commands) do
+      assert [[count]] = rows("SELECT count(*) FROM #{table}")
+      assert count > 1
+      rows("UPDATE #{table} SET created_at=$1", [c.context.now])
+
+      ScratchRepo.transaction(fn ->
+        rows(
+          "CREATE TEMP TABLE reordered_effects AS SELECT * FROM #{table} ORDER BY test_enqueue_order"
+        )
+
+        rows("DELETE FROM #{table}")
+
+        rows(
+          "INSERT INTO #{table} SELECT * FROM reordered_effects ORDER BY test_enqueue_order DESC"
+        )
+
+        rows("DROP TABLE reordered_effects")
+      end)
+    end
+
+    NormalWholeAssertions.assert_contract(c, ScratchRepo, :oban)
   end
 
   defp assert_parent(c), do: NormalWholeAssertions.assert_contract(c, ScratchRepo)

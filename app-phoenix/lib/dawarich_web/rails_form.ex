@@ -22,10 +22,10 @@ defmodule DawarichWeb.RailsForm do
   end
 
   @doc false
-  def admission(conn) do
+  def admission(conn, opts \\ []) do
     with :ok <- content_type(conn),
          :ok <- headers(conn),
-         :ok <- method(conn),
+         :ok <- method(conn, opts),
          :ok <- session_writers(conn),
          :ok <- signed_in(conn),
          :ok <- origin(get_req_header(conn, "origin"), conn),
@@ -42,15 +42,27 @@ defmodule DawarichWeb.RailsForm do
        else: :ok
   end
 
-  defp method(conn) do
+  defp method(conn, opts) do
     override = conn.assigns.api_params["_method"]
 
     cond do
-      get_req_header(conn, "x-http-method-override") != [] -> {:replay, "method override"}
-      Map.has_key?(conn.assigns.api_query, "_method") -> {:replay, "method override"}
-      is_nil(override) -> :ok
-      is_binary(override) and String.upcase(override) == "POST" -> :ok
-      true -> {:replay, "method override"}
+      get_req_header(conn, "x-http-method-override") != [] ->
+        {:replay, "method override"}
+
+      Map.has_key?(conn.assigns.api_query, "_method") ->
+        {:replay, "method override"}
+
+      is_nil(override) ->
+        :ok
+
+      is_binary(override) and String.upcase(override) == "POST" ->
+        :ok
+
+      is_binary(override) and String.upcase(override) in Keyword.get(opts, :allowed_overrides, []) ->
+        :ok
+
+      true ->
+        {:replay, "method override"}
     end
   end
 
