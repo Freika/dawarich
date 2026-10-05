@@ -368,7 +368,8 @@ RSpec.describe RailsCommands::Poller do
       share_management.live_revoked posters.created posters.purge exports.purge posters.progress
       route_videos.attachment_job visits.web_redetect
       integrations.airtrail_flights integrations.teslamate_sync integrations.trek_sync mail.family_lapse
-      places_orphan_cleanup places_bulk_name_fetch achievements.bulk_check_leaf trips.calculate
+      places_orphan_cleanup places_bulk_name_fetch achievements.bulk_check_leaf
+      visits.suggest geocoding.reverse_point trips.calculate
       imports.resume imports.normal_resume
       stats.full_recalculation stats.calculate_month stats.caches_invalidated
       cache.preheat_user cache.preheat_sweep

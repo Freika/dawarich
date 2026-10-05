@@ -57,7 +57,9 @@ RSpec.describe 'Residual job commands' do
         expect(klass).to have_been_enqueued.with(*arguments).at(due)
       end
       expect(JobOutbox.pending.count).to eq(0)
-      deferred = %w[visits.bulk_suggest pending_imports.cleanup release.achievements_bulk_check teslamate.sync
+      expect(JobCommands::COMMANDS.fetch('visits.bulk_suggest')).to eq(Visits::BulkCommands::COMMANDS.fetch('visits.bulk_suggest'))
+      expect(JobOwnership.lock_owner('command:visits.bulk_suggest')).to eq(:sidekiq)
+      deferred = %w[pending_imports.cleanup release.achievements_bulk_check teslamate.sync
                     trek.sync]
       expect(JobCommands::COMMANDS.keys & deferred).to be_empty
     ensure

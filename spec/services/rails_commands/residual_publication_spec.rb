@@ -85,6 +85,7 @@ RSpec.describe 'Residual committed publication' do
                    'trek' => Trek::SyncJob }.fetch(kind)
           @events = ids.map { Integrations::SchedulingCommands.event_id("#{kind}.scheduled", now.to_i, _1) }
         end
+        parent.enqueued_at = now
         allow(leaf).to receive(:set).and_return(leaf)
         allow(leaf).to receive(:perform_later).and_raise(IOError, 'after commit enqueue failed')
         expect { parent.perform('a12d2_cron') }.to raise_error(IOError, 'after commit enqueue failed')
