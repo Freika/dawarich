@@ -456,4 +456,9 @@ The standalone seed components remain release prerequisites. Live lifecycle orch
 
 | ID | Surface | Rails today | Phoenix | Owner | Status |
 |---|---|---|---|---|---|
+| ED-530 | Opt-in native release-job insertion | ActiveJob/Sidekiq serialization | Explicit enqueue mode inserts native Oban changesets with raw intent and version ledger in the same transaction; preserves decoded business payload, worker options and wait. Record-only proof mode stays unchanged. Synthetic tests pass; real-vector closure, live orchestration and G47 remain pending. | A12h Tasks 5–8 | open |
+| ED-531 | Native lifecycle failure during boot/deploy | Existing Phoenix failure can fall back to Rails | Planned native selection stops on migration, seed or readiness failure; the Rails branch retains its legacy behavior. Shell branching is pending and this head does not implement this difference. | A12h Tasks 17–20 | open |
 | ED-532 | Ordinary install bootstrap credential logging | `db/seeds.rb` writes initial account credentials to the debug log | The bootstrap seed writes no account credentials to logs. Password hashing, API-key generation, database defaults, scoped emptiness guard and self-hosted activation remain characterized against the Rails seeds corpus. | A12h Task 14; `seeds/bootstrap_user_test.exs` | closed |
+| ED-533 | Native migrate/seeds command output | Rails task banners | Planned native CLI uses concise command status/errors and the existing floor remedy. Successful exit requires completed work and preserves refusal/data effects. Task 16 is pending; current migrate remains private-schema-only. | A12h Task 16 | open |
+
+ED-534–ED-539 remain reserved. No entry allows unresolved decoder classes, changed seed guards, lost jobs or native Cloud provisioning. Current implementation and activation/rollback prerequisites: `docs/phoenix/a12h-lifecycle.md`.
