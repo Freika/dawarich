@@ -2,6 +2,7 @@ defmodule Dawarich.Auth.Api.ChallengeVerifyTest do
   use ExUnit.Case, async: false
   alias Dawarich.Auth.Api.ChallengeToken
   alias Dawarich.{Redis, Repo}
+  alias Dawarich.Test.ApiJwtFixture
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -10,11 +11,7 @@ defmodule Dawarich.Auth.Api.ChallengeVerifyTest do
   end
 
   test "OTP token verification mirrors admitted expiry age and signature boundaries without effects" do
-    rows =
-      System.fetch_env!("A11F_RAILS_JWT_VECTORS")
-      |> File.read!()
-      |> Jason.decode!()
-      |> Map.fetch!("vectors")
+    rows = ApiJwtFixture.vectors()
 
     admitted = ~w(explicit unset empty blank padded age300 future-iat)
     before = Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows

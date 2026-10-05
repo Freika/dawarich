@@ -3,22 +3,20 @@ defmodule Dawarich.Auth.Api.ChallengeTest do
   alias Dawarich.Auth.{Account, Api.Challenge}
   alias Dawarich.Auth.TwoFactor.{Secret, Totp}
   alias Dawarich.{Redis, Repo, Test.RailsUser}
+  alias Dawarich.Test.ApiJwtFixture
   @source "test/fixtures/auth/requests.json" |> File.read!() |> Jason.decode!()
   @crypto "test/fixtures/active_record_encryption.json" |> File.read!() |> Jason.decode!()
   @env Enum.find(@crypto["environments"], &(&1["name"] == "explicit keys"))["env"]
   @secret "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
-  @now ~U[2026-10-04 12:00:00.000000Z]
-  @id 954_510
+  @now ApiJwtFixture.now()
+  @id ApiJwtFixture.user_id()
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     for spec <- Redis.cache_child_specs(), do: start_supervised!(spec)
 
     row =
-      System.fetch_env!("A11F_RAILS_JWT_VECTORS")
-      |> File.read!()
-      |> Jason.decode!()
-      |> Map.fetch!("vectors")
+      ApiJwtFixture.vectors()
       |> Enum.find(&(&1["name"] == "explicit"))
 
     {:ok, ciphertext} = Secret.encrypt(@secret, @env)
@@ -43,7 +41,7 @@ defmodule Dawarich.Auth.Api.ChallengeTest do
         self_hosted: true,
         oidc: false,
         timezone: "Etc/UTC",
-        env: Map.put(@env, "JWT_SECRET_KEY", row["secret"]),
+        env: Map.put(@env, "JWT_SECRET_KEY", ApiJwtFixture.secret("jwt")),
         clock: fn -> @now end
       },
       key: "otp_challenge:consumed:" <> row["jti"]
