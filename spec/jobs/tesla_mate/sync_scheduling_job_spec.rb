@@ -24,4 +24,23 @@ RSpec.describe TeslaMate::SyncSchedulingJob, type: :job do
 
     expect { described_class.perform_now }.not_to have_enqueued_job(TeslaMate::SyncJob)
   end
+  it 'TeslaMate fences manual and marked sweeps and shares slot receipts with native scheduling' do
+    user = create(:user, status: :inactive, settings: { 'teslamate_url' => 'https://a.example' })
+    key = 'cron:teslamate_sync_job'
+    job_owner!(key, :oban)
+    expect { described_class.perform_now }.not_to have_enqueued_job
+    expect { described_class.perform_now('a12d2_cron') }.not_to have_enqueued_job
+    job_owner!(key, :sidekiq)
+    job = described_class.new('a12d2_cron')
+    job.enqueued_at = Time.zone.at(1_759_050_000)
+    commands = Integrations::SchedulingCommands
+    ActiveRecord::Base.transaction { commands.claim('teslamate', 1_759_050_000, user.id) }
+    expect { job.perform('a12d2_cron') }.not_to have_enqueued_job
+    job.enqueued_at += 60
+    expect { job.perform('a12d2_cron') }
+      .to have_enqueued_job(TeslaMate::SyncJob).with(user.id).exactly(:once)
+    clear_enqueued_jobs
+    expect { job.perform('a12d2_cron') }.not_to have_enqueued_job
+    expect { described_class.perform_now('invalid') }.to raise_error(ArgumentError)
+  end
 end

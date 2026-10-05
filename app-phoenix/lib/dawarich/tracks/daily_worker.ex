@@ -97,7 +97,11 @@ defmodule Dawarich.Tracks.DailyWorker do
         :skipped
 
       blocked?(repo, user_id, has_tracks) ->
-        RailsCommands.insert!(repo, "tracks_throttled_backfill", %{"user_id" => user_id})
+        Dawarich.Tracks.BackfillCommands.schedule(
+          repo,
+          user_id,
+          Keyword.put(opts, :time_zone, timezone)
+        )
 
       true ->
         now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)

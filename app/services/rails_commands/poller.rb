@@ -14,6 +14,35 @@ module RailsCommands
 
     module_function
 
+    def publish(kind, payload)
+      unless PhoenixSchema.table?('rails_commands')
+        return JobCommands.enqueue_after_commit(nil) { Registry.handler(kind).call(payload) }
+      end
+
+      id = ActiveRecord::Base.connection.select_value(ActiveRecord::Base.sanitize_sql_array(
+                                                        ['INSERT INTO phoenix.rails_commands(kind,payload) ' \
+                                                         'VALUES(?,?::jsonb) RETURNING id', kind, payload.to_json]
+                                                      ))
+      JobCommands.enqueue_after_commit(nil) { deliver(id) }
+      id
+    end
+
+    def deliver(id)
+      row = execute(<<~SQL.squish, id).first
+        UPDATE phoenix.rails_commands SET leased_until = now() + make_interval(secs => #{LEASE_SECONDS}),
+          attempts = attempts + 1 WHERE id = ? AND (leased_until IS NULL OR leased_until < now())
+        RETURNING id,kind,payload::text AS payload,attempts,leased_until::text AS lease
+      SQL
+      return unless row
+
+      if (error = attempt(row))
+        execute('UPDATE phoenix.rails_commands SET leased_until = NULL WHERE id = ? ' \
+                'AND leased_until = ?::timestamptz', id, row['lease'])
+        raise error
+      end
+      complete(row)
+    end
+
     def start
       return if Rails.env.test?
 
@@ -75,6 +104,8 @@ module RailsCommands
     end
 
     def attempt(row)
+      previous = ActiveSupport::IsolatedExecutionState[:job_commands_inline]
+      ActiveSupport::IsolatedExecutionState[:job_commands_inline] = true
       handler = Registry.handler(row['kind'])
       raise UnknownKind, row['kind'] unless handler
 
@@ -82,6 +113,8 @@ module RailsCommands
       nil
     rescue StandardError => e
       e
+    ensure
+      ActiveSupport::IsolatedExecutionState[:job_commands_inline] = previous
     end
 
     def complete(row)

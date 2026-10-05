@@ -4,10 +4,12 @@ module TeslaMate
   class SyncSchedulingJob < ApplicationJob
     queue_as :imports
 
-    def perform
-      JobOwnership.with_owner('cron:teslamate_sync_job') do
-        User.where("settings->>'teslamate_url' <> ''")
-            .find_each { |user| TeslaMate::SyncJob.perform_later(user.id) }
+    def perform(marker = nil)
+      commands = Integrations::SchedulingCommands
+      slot = commands.slot(self, marker)
+      scope = User.where("settings->>'teslamate_url' <> ''")
+      commands.sweep(scope, 'teslamate', 'cron:teslamate_sync_job', slot) do |ids, kind, at|
+        commands.schedule_teslamate(ids, kind, at)
       end
     end
   end

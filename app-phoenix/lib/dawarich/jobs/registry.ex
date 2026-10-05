@@ -247,7 +247,8 @@ defmodule Dawarich.Jobs.Registry do
              Dawarich.Jobs.ImportEntries.entries() ++
              Dawarich.UserData.Entries.entries() ++
              Dawarich.Digests.JobEntries.entries() ++
-             Dawarich.Mail.ResidualEntries.entries()
+             Dawarich.Mail.ResidualEntries.entries() ++
+             Dawarich.Jobs.ResidualEntries.entries()
   @native_crontab [{"17 * * * *", Dawarich.State.PurgeWorker}]
 
   def entries, do: @entries

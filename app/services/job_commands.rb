@@ -182,6 +182,10 @@ module JobCommands
       }
     }
   }.merge(ReleaseCommands::COMMANDS)
+   .merge(Tracks::BackfillCommands::COMMANDS)
+   .merge(Families::JobCommands::COMMANDS)
+   .merge(Places::JobCommands::COMMANDS)
+   .merge(Achievements::BulkCommands::COMMANDS)
    .merge(Stats::Commands::COMMANDS)
    .merge(Users::RecalculationCommands::COMMANDS)
    .merge(Points::AnomalyBackfillCommands::COMMANDS)

@@ -129,6 +129,17 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
     end
 
     context 'when a large-history user has no tracks' do
+      around do |example|
+        ActiveRecord::Base.transaction do
+          ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.track_backfill_walks')
+          PhoenixSchema.reset!
+          example.run
+          raise ActiveRecord::Rollback
+        end
+      ensure
+        PhoenixSchema.reset!
+      end
+
       let!(:wiped_user) { create(:user) }
       let!(:wiped_user_points) do
         [

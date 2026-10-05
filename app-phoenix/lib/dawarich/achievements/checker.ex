@@ -7,6 +7,8 @@ defmodule Dawarich.Achievements.Checker do
   @calculation_version 3
   @commit_attempts 2
 
+  def calculation_version, do: @calculation_version
+
   def run(repo, user_id, notify, oldest, hook \\ fn _stage -> :ok end) do
     case settings(repo, user_id) do
       :missing ->
