@@ -27,6 +27,12 @@ defmodule DawarichWeb.AchievementPublicTest do
   end
 
   test "serves Rails public and embed documents with owner metadata and no private chrome" do
+    :persistent_term.put({DawarichWeb.Assets, :rails_imports}, %{
+      "application" => "/assets/application-public-test.js"
+    })
+
+    on_exit(fn -> :persistent_term.erase({DawarichWeb.Assets, :rails_imports}) end)
+
     corpus =
       File.read!("#{@root}/public.json")
       |> Jason.decode!()

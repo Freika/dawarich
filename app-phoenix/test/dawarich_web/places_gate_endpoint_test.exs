@@ -124,7 +124,7 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
              answered_by_puma(
                serve(),
                ctx.upstream,
-               request("/places/842101", ctx.cookie, [hd(@frame)])
+               request("/places/842101", ctx.cookie, [hd(@frame), {"X-Dawarich-Client", "ios"}])
              )
   end
 
@@ -207,6 +207,15 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
   end
 
   test "ids Rails casts, nearby and the writes go to Puma", ctx do
+    saved = System.get_env("PHOTON_API_HOST")
+    System.put_env("PHOTON_API_HOST", "photon.example.invalid")
+
+    on_exit(fn ->
+      if saved,
+        do: System.put_env("PHOTON_API_HOST", saved),
+        else: System.delete_env("PHOTON_API_HOST")
+    end)
+
     S.place!(8421, 1_000_000_000_000_000_001, "Lang")
     port = serve()
 
