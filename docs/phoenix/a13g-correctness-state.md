@@ -55,6 +55,11 @@ the existing integer expiry conversion minus caller time, with a 60-second floor
 PG measures expiry from statement time. A live replay does not extend expiry.
 The existing purge worker remains responsible for physical cleanup.
 
+Signed expiry and not-before strings use Ruby decimal integer coercion, including
+ASCII leading whitespace, signs, digit separators and trailing suffixes. Rails
+recordings cover underscore expiry and past/future not-before values; a future
+not-before value is rejected before a claim or sign-in.
+
 The claim commits before Trackable sign-in. A sign-in failure retains the claim
 and returns a terminal response without issuing a cookie or replaying upstream.
 A claim database error also produces no sign-in or upstream replay. Guest replay

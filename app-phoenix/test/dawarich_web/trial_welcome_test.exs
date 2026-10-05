@@ -93,6 +93,63 @@ defmodule DawarichWeb.TrialWelcomeTest do
     end
   end
 
+  test "signed underscore expiry and not-before match Rails recordings before any claim", c do
+    for {name, overrides} <- [
+          {"underscore_future_nbf", %{"nbf" => "1_791_109_800"}},
+          {"underscore_exp", %{"exp" => "1_791_109_800"}},
+          {"underscore_past_nbf", %{"nbf" => "1_791_106_200"}}
+        ] do
+      oracle = File.read!("test/fixtures/welcome_home/#{name}.json") |> Jason.decode!()
+      jti = "a13g-review-#{name}"
+
+      key =
+        "trial_welcome:consumed:sha256:" <>
+          Base.encode16(:crypto.hash(:sha256, jti), case: :lower)
+
+      [[before]] =
+        Repo.query!("SELECT sign_in_count FROM users WHERE id=15611", [], log: false).rows
+
+      conn = request(Map.put(overrides, "jti", jti), nil)
+      assert WelcomeGate.owned?(conn, %{}, context: c.context)
+
+      assert [] ==
+               Repo.query!("SELECT key FROM phoenix.once_claims WHERE key=$1", [key], log: false).rows
+
+      conn = TrialWelcome.call(conn, context: c.context)
+      assert conn.status == oracle["status"]
+      assert URI.parse(hd(get_resp_header(conn, "location"))).path == oracle["location"]
+
+      {:ok, session} =
+        Dawarich.RailsCookies.decrypt(
+          conn.resp_cookies["_dawarich_session"].value,
+          "_dawarich_session",
+          RailsSecret.fetch(),
+          @now
+        )
+
+      assert session["flash"]["flashes"] == oracle["flash"]
+
+      assert get_in(session, ["warden.user.user.key", Access.at(0)]) == [15611] ==
+               oracle["signed_in"]
+
+      [[after_count]] =
+        Repo.query!("SELECT sign_in_count FROM users WHERE id=15611", [], log: false).rows
+
+      assert after_count - before == oracle["trackable"]["sign_in_count_delta"]
+
+      rows =
+        Repo.query!("SELECT key FROM phoenix.once_claims WHERE key=$1", [key], log: false).rows
+
+      assert rows == [[key]] == oracle["claimed"]
+      if name == "underscore_future_nbf", do: assert(rows == [] and after_count == before)
+
+      for {header, value} <- oracle["headers"],
+          String.downcase(header) in ["cache-control", "pragma", "referrer-policy"] do
+        assert get_resp_header(conn, String.downcase(header)) == [value]
+      end
+    end
+  end
+
   test "midnight notices use application timezone for guests and SafeSettings for actors", c do
     Repo.query!("UPDATE users SET active_until='2026-10-11 23:30:00' WHERE id=15611", [],
       log: false

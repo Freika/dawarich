@@ -110,6 +110,17 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     results << welcome_request('active_until_nil', user)
     expect(results.last['flash']['notice']).to include('activated')
     user.update_columns(active_until: now + 7.days)
+    [
+      ['underscore_exp', { exp: '1_791_109_800' }, true],
+      ['underscore_future_nbf', { nbf: '1_791_109_800' }, false],
+      ['underscore_past_nbf', { nbf: '1_791_106_200' }, true]
+    ].each do |name, overrides, accepted|
+      capture = welcome_request(name, user, overrides: overrides)
+      expect(capture).to include('signed_in' => accepted, 'claimed' => accepted)
+      expect(capture.dig('trackable', 'sign_in_count_delta')).to eq(accepted ? 1 : 0)
+      expect(capture.fetch('events').size).to eq(accepted ? 1 : 0)
+      results << capture
+    end
     malformed = [
       ['missing_token', nil, {}], ['malformed_token', 'not-a-jwt', {}],
       ['wrong_purpose', :signed, { purpose: 'different' }],
@@ -186,7 +197,7 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
 
   def token_for(user, jti, overrides = {}, algorithm: 'HS256')
     payload = { user_id: user.id, purpose: 'trial_welcome', exp: now.to_i + 1800, jti: jti }.merge(overrides)
-    if payload[:exp].is_a?(String)
+    if payload[:exp].is_a?(String) || payload[:nbf].is_a?(String)
       header = Base64.urlsafe_encode64(Oj.dump({ 'alg' => algorithm }, mode: :strict), padding: false)
       body = Base64.urlsafe_encode64(Oj.dump(payload.compact, mode: :strict), padding: false)
       input = "#{header}.#{body}"
@@ -279,7 +290,8 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     cases = welcome_cases
     expect(cases.map { |capture| capture.fetch('name') }).to eq(
       %w[valid_en valid_de midnight_guest_en midnight_actor_en midnight_guest_de midnight_actor_de
-         active_until_nil missing_token malformed_token wrong_purpose missing_purpose
+         active_until_nil underscore_exp underscore_future_nbf underscore_past_nbf
+         missing_token malformed_token wrong_purpose missing_purpose
          expired missing_exp wrong_algorithm missing_jti blank_jti malformed_user_id missing_user deleted_user
          malformed_exp malformed_jti different_actor same_actor_first same_actor_replay guest_replay ttl_floor
          head_success]

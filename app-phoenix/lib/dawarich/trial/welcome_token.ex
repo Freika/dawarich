@@ -36,9 +36,9 @@ defmodule Dawarich.Trial.WelcomeToken do
   def integer(value) when is_number(value), do: {:ok, trunc(value)}
 
   def integer(value) when is_binary(value) do
-    case Integer.parse(String.trim_leading(value)) do
-      {number, _} -> {:ok, number}
-      :error -> {:ok, 0}
+    case Regex.run(~r/\A[\x09-\x0D ]*([+-]?[0-9](?:_?[0-9])*)/, value) do
+      [_, number] -> {:ok, String.to_integer(String.replace(number, "_", ""))}
+      _ -> {:ok, 0}
     end
   end
 
