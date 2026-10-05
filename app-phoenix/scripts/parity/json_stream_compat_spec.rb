@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixture: lexical edges of Oj.load in compat mode, as Imports::FileLoader reads JSON' do
   let(:path) { Rails.root.join('app-phoenix/test/fixtures/imports/geojson/compat-lexical.json') }
@@ -92,7 +93,7 @@ RSpec.describe 'Phoenix fixture: lexical edges of Oj.load in compat mode, as Imp
   it 'records every case' do
     output = cases.map { |name, raw| outcome(name, raw).merge(saj: saj(raw)) }
     FileUtils.mkdir_p(path.dirname)
-    File.write(path, "#{JSON.pretty_generate(output)}\n")
+    FixtureRecording.verify(path, "#{JSON.pretty_generate(output)}\n")
     expect(output.size).to eq(cases.size)
   end
 end
