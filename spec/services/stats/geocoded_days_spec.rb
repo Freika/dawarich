@@ -62,6 +62,11 @@ RSpec.describe Stats::GeocodedDays do
   end
 
   context 'on Redis, where Phoenix never migrated' do
+    before do
+      ActiveRecord::Base.connection.execute('DROP TABLE phoenix.stats_geocoded_days')
+      PhoenixSchema.reset!
+    end
+
     it_behaves_like 'a geocoded-days queue'
 
     it 'keeps pending snapshots optional when Redis is unavailable' do

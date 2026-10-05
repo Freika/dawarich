@@ -97,39 +97,13 @@ defmodule DawarichWeb.TripDaysList do
         </div>
       </div>
       <div data-note-form={@date} class="hidden">
-        <form
-          class="space-y-3"
-          action={"/trips/#{@trip_id}/notes/#{@note.id}"}
-          accept-charset="UTF-8"
-          method="post"
-        >
-          <input type="hidden" name="_method" value="patch" />
-          <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
-          <input value={@date} type="hidden" name="note[date]" id="note_date" />
-          <div>
-            <textarea
-              name="note[body]"
-              class="textarea textarea-bordered w-full min-h-[100px]"
-              maxlength="10000"
-              placeholder={n(@locale, "write_your_notes_for_this_day")}
-            >{@note.body}</textarea>
-          </div>
-          <div class="flex gap-2">
-            <input
-              type="submit"
-              name="commit"
-              value={n(@locale, "update_note")}
-              class="btn btn-primary btn-sm"
-              data-disable-with={n(@locale, "update_note")}
-            />
-            <button
-              type="button"
-              class="btn btn-ghost btn-sm"
-              data-action="click->trip-maplibre#hideNoteForm"
-              data-date={@date}
-            >{n(@locale, "cancel")}</button>
-          </div>
-        </form>
+        <DawarichWeb.TripNoteForm.editor
+          note={@note}
+          trip_id={@trip_id}
+          date={@date}
+          locale={@locale}
+          csrf={@rails_csrf_token}
+        />
       </div>
     </turbo-frame>
     """
@@ -151,32 +125,14 @@ defmodule DawarichWeb.TripDaysList do
         >{e(@locale, "add_note")}</button>
       </div>
       <div data-note-form={@date} class="hidden">
-        <form
-          class="space-y-3"
-          action={"/trips/#{@trip_id}/notes"}
-          accept-charset="UTF-8"
-          method="post"
-        >
-          <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
-          <input type="hidden" name="note[date]" value={@date} />
-          <div>
-            <textarea
-              name="note[body]"
-              class="textarea textarea-bordered w-full min-h-[100px]"
-              maxlength="10000"
-              placeholder={e(@locale, "write_your_notes_for_this_day")}
-            ></textarea>
-          </div>
-          <div class="flex gap-2">
-            <button type="submit" class="btn btn-primary btn-sm">{e(@locale, "save_note")}</button>
-            <button
-              type="button"
-              class="btn btn-ghost btn-sm"
-              data-action="click->trip-maplibre#hideNoteForm"
-              data-date={@date}
-            >{e(@locale, "cancel")}</button>
-          </div>
-        </form>
+        <DawarichWeb.TripNoteForm.editor
+          note={%{id: nil, body: nil}}
+          trip_id={@trip_id}
+          date={@date}
+          locale={@locale}
+          csrf={@rails_csrf_token}
+          mode={:empty}
+        />
       </div>
     </turbo-frame>
     """

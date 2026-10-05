@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe InstanceSettings::Backfill, 'review regressions' do
-  before { ActiveRecord::Base.connection.execute('TRUNCATE users CASCADE') }
+  before { FixtureCleanup.delete!(%w[users]) }
 
   # `false.blank?` is true, so the old guard dropped use_https: false and the
   # registry default (true) took over — flipping a plain-HTTP Nominatim to

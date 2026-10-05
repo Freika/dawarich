@@ -140,8 +140,8 @@ defmodule DawarichWeb.Api.AccountGoldenTest do
              else: Repo
            )
     test "golden #{kase["name"]}", ctx do
-      rows("TRUNCATE #{Enum.join(@tables, ",")} CASCADE")
-      Repo.query!("TRUNCATE #{Enum.join(@tables, ",")} CASCADE")
+      Dawarich.FixtureCleanup.delete!(ScratchRepo, @tables)
+      Dawarich.FixtureCleanup.delete!(Repo, @tables)
 
       for {name, value} <- @kase["env"] do
         if is_nil(value),
@@ -205,7 +205,7 @@ defmodule DawarichWeb.Api.AccountGoldenTest do
 
   defp prepare(name, ctx) do
     kase = Enum.find(ctx.fixture["cases"], &(&1["name"] == name)) |> Map.put("expect", "own")
-    Repo.query!("TRUNCATE #{Enum.join(@tables, ",")} CASCADE")
+    Dawarich.FixtureCleanup.delete!(Repo, @tables)
 
     for [table, seeds] <- ctx.fixture["setups"][kase["setup"]], row <- seeds do
       ApiGolden.insert!(table, seed(row, ctx))

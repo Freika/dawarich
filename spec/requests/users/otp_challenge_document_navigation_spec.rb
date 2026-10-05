@@ -56,6 +56,9 @@ RSpec.describe 'OTP challenge document navigation', type: :request do
     expect(input['required']).not_to be_nil
     expect(input['maxlength']).to eq('32')
     expect(input['autocomplete']).to eq('one-time-code')
+    expect(input['inputmode']).to eq('numeric')
+    expect(input['autofocus']).not_to be_nil
+    expect(input['placeholder']).to eq('000000')
     expect(input['value'].to_s).to eq('')
     expect(form.at_css('[type="submit"]')).to be_present
   end

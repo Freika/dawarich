@@ -26,12 +26,13 @@ defmodule Dawarich.PlaceDrawer do
   WHERE p.id = $1 AND p.user_id = $2
   """
 
-  def load(user, id) do
+  def load(user, id, repo \\ Dawarich.Repo) do
     settings = user.settings || %{}
 
     with true <- PlaceList.settings?(user.settings),
          [[id, name, note, city, country, source, locked, count, minutes, tags, visits, zone]]
-         when source in 0..2 <- UserTimeZone.query!(@sql, [id, user.id], settings).rows,
+         when source in 0..2 or is_nil(source) <-
+           UserTimeZone.query!(@sql, [id, user.id], settings, repo).rows,
          true <- TripSettings.zone?(settings, zone) do
       {:ok,
        %{
@@ -40,7 +41,7 @@ defmodule Dawarich.PlaceDrawer do
          note: note,
          city: city,
          country: country,
-         source: Enum.at(@sources, source),
+         source: if(source != nil, do: Enum.at(@sources, source)),
          locked: locked,
          visit_count: count,
          total_minutes: minutes,

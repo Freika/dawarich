@@ -105,7 +105,7 @@ defmodule Dawarich.Visits.StagesTest do
   end
 
   test "the 100,000-point candidate cap is honoured" do
-    ScratchRepo.query!("TRUNCATE users, points, visits RESTART IDENTITY CASCADE", [], log: false)
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(users  points  visits))
     Wave5bFixtures.load_input!(ScratchRepo, %{"users" => [%{"id" => 1}]})
 
     rows(

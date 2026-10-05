@@ -2,8 +2,8 @@ defmodule Dawarich.GeocodingCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
-  alias Dawarich.Geocoding.{FakeHttp, HookRepo}
-  alias Dawarich.{Redis, ScratchRepo, Wave5bFixtures}
+  alias Dawarich.Geocoding.{FakeHttp, HookRepo, ResponseCache}
+  alias Dawarich.{Redis, ScratchRepo, TtlCache, Wave5bFixtures}
 
   @vars ~w(PHOTON_API_HOST PHOTON_API_KEY PHOTON_API_USE_HTTPS GEOAPIFY_API_KEY NOMINATIM_API_HOST
            NOMINATIM_API_KEY NOMINATIM_API_USE_HTTPS LOCATIONIQ_API_KEY REVERSE_GEOCODING_RPS STORE_GEODATA)
@@ -26,19 +26,17 @@ defmodule Dawarich.GeocodingCase do
     for var <- @vars,
         do: System.get_env(var) in [nil, ""] || raise("#{var} must be blank for geocoding tests")
 
-    ScratchRepo.query!(
-      "TRUNCATE points, places, instance_settings, countries RESTART IDENTITY CASCADE",
-      [],
-      log: false
-    )
-
     ExUnit.Callbacks.start_supervised!(FakeHttp)
     ExUnit.Callbacks.start_supervised!(hd(Redis.child_specs()))
-    ExUnit.Callbacks.start_supervised!(hd(Redis.cache_child_specs()))
     {:ok, "OK"} = Redis.command(["FLUSHDB"])
-    {:ok, "OK"} = Redis.cache_command(["FLUSHDB"])
+    clear_response_cache!()
     HookRepo.clear_hook()
-    ExUnit.Callbacks.on_exit(&HookRepo.clear_hook/0)
+
+    ExUnit.Callbacks.on_exit(fn ->
+      clear_response_cache!()
+      HookRepo.clear_hook()
+    end)
+
     :ok
   end
 
@@ -117,14 +115,18 @@ defmodule Dawarich.GeocodingCase do
       "SELECT member FROM phoenix.stats_geocoded_days" |> rows() |> List.flatten() |> Enum.sort()
 
   def cache_entries do
-    {:ok, keys} = Redis.cache_command(["KEYS", "*"])
-
-    keys
-    |> Enum.sort()
-    |> Enum.map(fn key ->
-      %{"key" => key, "value" => elem(Redis.cache_command(["GET", key]), 1)}
+    TtlCache
+    |> :ets.match_object({{ResponseCache, :_}, :_, :_})
+    |> Enum.flat_map(fn {{ResponseCache, key}, _, _} ->
+      case TtlCache.lookup({ResponseCache, key}) do
+        {:ok, body} -> [%{"key" => key, "value" => body}]
+        :error -> []
+      end
     end)
+    |> Enum.sort_by(& &1["key"])
   end
+
+  def clear_response_cache!, do: :ets.match_delete(TtlCache, {{ResponseCache, :_}, :_, :_})
 
   def clear_limiter! do
     {:ok, keys} = Redis.command(["KEYS", "geocoding:rate_limit:*"])

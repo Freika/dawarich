@@ -3,6 +3,35 @@
 require 'rails_helper'
 
 RSpec.describe Point, type: :model do
+  describe 'realtime producer payloads' do
+    let(:user) { create(:user, email: 'a6-point@example.test', settings: { live_map_enabled: true }) }
+    let(:point) do
+      build(:point, id: 405, user: user, longitude: 13.405, latitude: 52.52,
+                    battery: 85, altitude: 100, timestamp: 1_700_000_000, velocity: 5, country_name: 'Germany')
+    end
+
+    it 'broadcasts the complete live point tuple with a nonempty country' do
+      expect(PointsChannel).to receive(:broadcast_to).with(
+        user, [52.52, 13.405, '85', '100.0', '1700000000', '5', '405', 'Germany']
+      )
+
+      point.send(:broadcast_coordinates)
+    end
+
+    it 'broadcasts the complete family member with timezone updated_at' do
+      family = create(:family, creator: user)
+      create(:family_membership, family: family, user: user, role: :owner)
+      user.update_family_location_sharing!(true, duration: 'permanent')
+      expect(FamilyLocationsChannel).to receive(:broadcast_to).with(
+        family, { user_id: user.id, email: 'a6-point@example.test', email_initial: 'A',
+                  latitude: 52.52, longitude: 13.405, timestamp: 1_700_000_000,
+                  updated_at: '2023-11-14T23:13:20+01:00' }
+      )
+
+      Time.use_zone('Europe/Berlin') { point.send(:broadcast_coordinates) }
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to belong_to(:import).optional }
     it { is_expected.to belong_to(:user) }

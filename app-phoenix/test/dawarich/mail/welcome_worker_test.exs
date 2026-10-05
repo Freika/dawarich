@@ -56,7 +56,7 @@ defmodule Dawarich.Mail.WelcomeWorkerTest do
     assert perform_job(WelcomeWorker, args(user_id)) == :ok
     assert_received {:mail, %{message_id: first}}
 
-    rows("TRUNCATE phoenix.delivery_claims")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.delivery_claims))
 
     rows("UPDATE users SET created_at = created_at + interval '1 microsecond' WHERE id = $1", [
       user_id

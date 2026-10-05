@@ -26,7 +26,7 @@ defmodule Dawarich.Admin.JobHealthTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    Repo.query!("TRUNCATE public.job_outbox", [], log: false)
+    Dawarich.FixtureCleanup.delete!(Repo, ~w(public.job_outbox))
     :ok
   end
 
@@ -108,12 +108,11 @@ defmodule Dawarich.Admin.JobHealthTest do
   defp fixture(name), do: Jason.decode!(File.read!("test/fixtures/admin_pages/#{name}.json"))
 
   defp seed!(fixture) do
-    Repo.query!("TRUNCATE public.job_outbox", [], log: false)
+    Dawarich.FixtureCleanup.delete!(Repo, ~w(public.job_outbox))
 
-    ScratchRepo.query!(
-      "TRUNCATE phoenix.job_owners, phoenix.runtime_nodes, phoenix.rails_commands, phoenix.rails_commands_dead, oban.oban_jobs, public.job_outbox",
-      [],
-      log: false
+    Dawarich.FixtureCleanup.delete!(
+      ScratchRepo,
+      ~w(phoenix.job_owners  phoenix.runtime_nodes  phoenix.rails_commands  phoenix.rails_commands_dead  oban.oban_jobs  public.job_outbox)
     )
 
     now = ~U[2026-10-03 10:00:00Z]

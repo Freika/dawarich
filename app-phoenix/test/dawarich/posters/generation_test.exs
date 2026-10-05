@@ -180,7 +180,12 @@ defmodule Dawarich.Posters.GenerationTest do
 
   defp seed(name) do
     state = File.read!("test/fixtures/posters/" <> name <> ".json") |> Jason.decode!()
-    rows("TRUNCATE public.posters,public.points,public.tracks,public.users CASCADE")
+
+    Dawarich.FixtureCleanup.delete!(
+      ScratchRepo,
+      ~w(public.posters public.points public.tracks public.users)
+    )
+
     rows("DELETE FROM phoenix.processed_commands")
 
     rows(

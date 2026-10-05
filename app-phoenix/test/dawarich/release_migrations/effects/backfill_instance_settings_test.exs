@@ -37,7 +37,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
     assert instance_settings() == [{"reverse_geocoding_rps", nil}]
     assert raw_value("reverse_geocoding_rps") == "null"
 
-    Dawarich.ScratchCaseRepo.query!("TRUNCATE instance_settings")
+    Dawarich.FixtureCleanup.delete!(Dawarich.ScratchCaseRepo, ~w(instance_settings))
     BackfillInstanceSettings.run(ScratchRepo, env(%{"REVERSE_GEOCODING_RPS" => "fast"}))
     assert instance_settings() == []
   end
@@ -148,7 +148,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
     BackfillInstanceSettings.run(ScratchRepo, env())
     assert instance_settings() == []
 
-    Dawarich.ScratchCaseRepo.query!("TRUNCATE service_settings, users CASCADE")
+    Dawarich.FixtureCleanup.delete!(Dawarich.ScratchCaseRepo, ~w(service_settings  users))
 
     setting(user("covered@example.test"), "geoapify", %{},
       credentials: encrypted(~s({"api_key":"k"})),
@@ -216,7 +216,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
       BackfillInstanceSettings.run(ScratchRepo, env())
     end
 
-    Dawarich.ScratchCaseRepo.query!("TRUNCATE service_settings, users CASCADE")
+    Dawarich.FixtureCleanup.delete!(Dawarich.ScratchCaseRepo, ~w(service_settings  users))
 
     assert_raise Ruby.Error,
                  "Missing Active Record encryption credential: active_record_encryption.primary_key",
@@ -236,7 +236,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
     BackfillInstanceSettings.run(ScratchRepo, env(%{"REVERSE_GEOCODING_RPS" => "0.00005"}))
     assert raw_value("reverse_geocoding_rps") == "0.00005"
 
-    Dawarich.ScratchCaseRepo.query!("TRUNCATE instance_settings")
+    Dawarich.FixtureCleanup.delete!(Dawarich.ScratchCaseRepo, ~w(instance_settings))
 
     for email <- ["a@example.test", "b@example.test"] do
       setting(

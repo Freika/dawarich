@@ -58,11 +58,9 @@ defmodule Dawarich.Geocoding.PlaceFetchTest do
 
   test "name over 255 and missing coordinates raise" do
     for name <- ~w(place_name_too_long place_without_coordinates) do
-      ScratchRepo.query!("TRUNCATE places, instance_settings RESTART IDENTITY CASCADE", [],
-        log: false
-      )
+      Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(places  instance_settings))
 
-      {:ok, "OK"} = Dawarich.Redis.cache_command(["FLUSHDB"])
+      clear_response_cache!()
       f = load!(name)
       stub_requests!(f["requests"])
       before = places(f)

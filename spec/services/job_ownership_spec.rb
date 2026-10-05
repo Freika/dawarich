@@ -6,6 +6,11 @@ RSpec.describe JobOwnership do
   let(:key) { 'command:trips.calculate' }
 
   context 'when Phoenix has never migrated the database' do
+    before do
+      ActiveRecord::Base.connection.execute('DROP TABLE phoenix.job_owners')
+      PhoenixSchema.reset!
+    end
+
     it 'runs the block as Sidekiq without aborting the caller transaction' do
       ActiveRecord::Base.transaction do
         expect(described_class.with_owner(key) { :ran }).to eq(:ran)
@@ -116,11 +121,7 @@ RSpec.describe JobOwnership do
     self.use_transactional_tests = false
 
     after do
-      ActiveRecord::Base.transaction do
-        ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
-        ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
-      end
-      PhoenixTables.install_state!
+      PhoenixTables.clear!
     end
 
     it 'makes an owner change wait for a gate that holds the row' do

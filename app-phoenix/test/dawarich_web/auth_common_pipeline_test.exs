@@ -3,7 +3,7 @@ defmodule DawarichWeb.AuthCommonPipelineTest do
   import Plug.Conn
   alias DawarichWeb.{ForceSSL, HostAuthorization, RateLimit}
 
-  test "account and key handlers limit immediately after SSL before admission and respect halts" do
+  test "account key and OTP handlers limit immediately after SSL before admission and respect halts" do
     previous = Map.new(~w(SELF_HOSTED APPLICATION_PROTOCOL RAILS_ENV), &{&1, System.get_env(&1)})
     System.put_env("SELF_HOSTED", "true")
     System.put_env("APPLICATION_PROTOCOL", "http")
@@ -30,7 +30,9 @@ defmodule DawarichWeb.AuthCommonPipelineTest do
 
     for {handler, method, path} <- [
           {DawarichWeb.AuthAccount.Http, "PATCH", "/users"},
-          {DawarichWeb.AuthApiKeys.Http, "POST", "/settings/generate_api_key"}
+          {DawarichWeb.AuthApiKeys.Http, "POST", "/settings/generate_api_key"},
+          {DawarichWeb.AuthHandler, "POST", "/users/sign_in"},
+          {DawarichWeb.AuthOtp.Http, "POST", "/users/otp_challenge"}
         ] do
       input = Plug.Test.conn(method, "http://www.example.com" <> path, "retained=bytes")
 
@@ -48,7 +50,7 @@ defmodule DawarichWeb.AuthCommonPipelineTest do
       barrier(tracer)
       assert pipeline_calls() == [HostAuthorization, ForceSSL, RateLimit]
       assert_received :admitted
-      assert result.halted
+      if handler != DawarichWeb.AuthHandler, do: assert(result.halted)
       assert {:ok, "retained=bytes", _} = read_body(result)
 
       System.put_env("APPLICATION_PROTOCOL", "https")

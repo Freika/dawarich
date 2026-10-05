@@ -45,7 +45,7 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
     end
   end
 
-  def truncate! = connection.execute('TRUNCATE users, imports, points, point_sources RESTART IDENTITY CASCADE')
+  def reset_fixtures! = FixtureCleanup.delete!(%w[users imports points point_sources])
 
   def owner!
     user = connection.select_value(<<~SQL).to_i
@@ -91,7 +91,7 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
   end
 
   def capture(example)
-    truncate!
+    reset_fixtures!
     user, id = owner!
     attrs = { lonlat: 'POINT(12.4 51.3)', timestamp: 1_700_000_000, altitude: 12.75, altitude_decimal: 12.75,
               velocity: 1.2, tracker_id: 'normal-oracle', import_id: id, user_id: user,
@@ -117,7 +117,7 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
       File.write(dir.join('rails_normal_writer_oracle.json'), JSON.pretty_generate(output))
       expect(output.size).to eq(inputs.size)
     ensure
-      truncate!
+      reset_fixtures!
     end
   end
 end

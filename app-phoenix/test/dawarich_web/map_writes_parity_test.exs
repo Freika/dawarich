@@ -308,8 +308,9 @@ defmodule DawarichWeb.MapWritesParityTest do
   end
 
   defp seed(kind, name) do
-    Repo.query!(
-      "TRUNCATE users,imports,points,places,tags,taggings,visits,tracks,track_segments CASCADE"
+    Dawarich.FixtureCleanup.delete!(
+      Repo,
+      ~w(users imports points places tags taggings visits tracks track_segments)
     )
 
     Repo.query!("DELETE FROM phoenix.rails_commands")
