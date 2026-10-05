@@ -10,6 +10,19 @@ defmodule DawarichWeb.AchievementPublicTest do
   @root "test/fixtures/achievement_public"
   @scripts "script[type='importmap'],script#i18n-translations,link[rel='modulepreload']"
 
+  setup_all do
+    key = {DawarichWeb.Assets, :rails_imports}
+    previous = :persistent_term.get(key, nil)
+    imports = File.read!("#{@root}/en_direct.html") |> importmap() |> Map.fetch!("imports")
+    :persistent_term.put(key, imports)
+
+    on_exit(fn ->
+      if previous == nil,
+        do: :persistent_term.erase(key),
+        else: :persistent_term.put(key, previous)
+    end)
+  end
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Dawarich.Test.AchievementSilhouettes.clear()
@@ -27,12 +40,6 @@ defmodule DawarichWeb.AchievementPublicTest do
   end
 
   test "serves Rails public and embed documents with owner metadata and no private chrome" do
-    :persistent_term.put({DawarichWeb.Assets, :rails_imports}, %{
-      "application" => "/assets/application-public-test.js"
-    })
-
-    on_exit(fn -> :persistent_term.erase({DawarichWeb.Assets, :rails_imports}) end)
-
     corpus =
       File.read!("#{@root}/public.json")
       |> Jason.decode!()
@@ -68,11 +75,7 @@ defmodule DawarichWeb.AchievementPublicTest do
       assert LazyHTML.query(doc, ".ach-child-grid, [data-controller='achievement-unlocks']")
              |> Enum.count() == 0
 
-      assert LazyHTML.query(doc, "script[type='importmap']")
-             |> LazyHTML.text()
-             |> Jason.decode!()
-             |> Map.fetch!("imports")
-             |> Map.fetch!("application") == DawarichWeb.Assets.rails_imports()["application"]
+      assert importmap(html) == importmap(expected), row["name"]
 
       for {key, value} <- row["metadata"],
           do:
@@ -138,6 +141,14 @@ defmodule DawarichWeb.AchievementPublicTest do
       assert Map.has_key?(result.resp_cookies, "_dawarich_session")
     end
   end
+
+  defp importmap(html),
+    do:
+      html
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("script[type='importmap']")
+      |> LazyHTML.text()
+      |> Jason.decode!()
 
   defp request(method, path, params) do
     query = URI.encode_query(params)
