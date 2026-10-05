@@ -38,18 +38,10 @@ defmodule Dawarich.RailsEffects do
   def orphan_places(_repo, _user_id, []), do: :ok
 
   def orphan_places(repo, user_id, place_ids),
-    do:
-      RailsCommands.insert!(repo, "places_delete_if_orphan", %{
-        "user_id" => user_id,
-        "place_ids" => Enum.uniq(place_ids)
-      })
+    do: Dawarich.Places.JobCommands.orphan_places(repo, user_id, place_ids)
 
   def place_name(repo, user_id, place_id),
-    do:
-      RailsCommands.insert!(repo, "place_name_fetch", %{
-        "user_id" => user_id,
-        "place_id" => place_id
-      })
+    do: Dawarich.Places.JobCommands.name_fetch(repo, user_id, place_id)
 
   def reverse_place(repo, user_id, place_id),
     do:

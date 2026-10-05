@@ -14,6 +14,7 @@ defmodule Dawarich.Exports.PointsWorkerTest do
     end
 
     def rollback(value), do: ScratchRepo.rollback(value)
+    defdelegate in_transaction?(), to: ScratchRepo
 
     def transaction(fun) do
       outer? = not ScratchRepo.in_transaction?()

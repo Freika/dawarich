@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'rake'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type: :request do
   include ActiveSupport::Testing::TimeHelpers
@@ -10,13 +11,21 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
   let(:fixtures) { root.join('test/fixtures') }
   let(:helper) { ApplicationController.helpers }
 
-  def write_json(path, data) = File.write(path, "#{JSON.pretty_generate(data)}\n")
+  def verify_fixture(path, bytes) = FixtureRecording.verify(path, bytes)
+
+  def write_json(path, data) = verify_fixture(path, "#{JSON.pretty_generate(data)}\n")
 
   def each_locale(values)
     %w[en de].flat_map { |locale| I18n.with_locale(locale) { values.map { |value| yield(locale, value) } } }
   end
 
   it 'writes the formatting corpus, the country names and checks phoenix:importmap' do
+    allow(File).to receive(:write).and_call_original
+    allow(File).to receive(:binwrite).and_call_original
+    unless ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      expect(File).not_to receive(:write).with(fixtures.join('stats_corpus.json'), anything)
+      expect(File).not_to receive(:binwrite).with(fixtures.join('stats_corpus.json'), anything)
+    end
     dates = %w[2024-03-07 2024-12-01 2025-01-31].map { Date.parse(_1) }
     formats = %i[month_name month_year day_month_year month_day_padded short_month_day_padded]
     countries = [%w[Germany DE DEU], %w[Czechia CZ CZE], ['United States of America', 'US', 'USA'],
@@ -67,12 +76,15 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
     Rails.application.load_tasks unless Rake::Task.task_defined?('phoenix:importmap')
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'importmap.json')
+      Rake::Task['phoenix:importmap'].reenable
       Rake::Task['phoenix:importmap'].invoke(path)
       imports = JSON.parse(File.read(path))['imports']
       expect(imports.keys).to include('chartkick', 'Chart.bundle', '@hotwired/stimulus', 'i18n', 'maplibre-gl',
                                       'controllers/stat_page_controller', 'controllers/sharing_modal_controller',
                                       'controllers/base_controller')
       expect(imports.values).to all(start_with('/'))
+    ensure
+      Rake::Task['phoenix:importmap'].reenable
     end
   end
 
@@ -153,7 +165,7 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
     doc.css('input[name="authenticity_token"]').each { |node| node['value'] = 'CSRF' }
     body = doc.at_css('body > div.container > div.w-full > div.flex').inner_html
               .gsub(/token=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/, 'token=UPGRADE_TOKEN')
-    File.write(fixtures.join("stats/#{name}.html"), body)
+    verify_fixture(fixtures.join("stats/#{name}.html"), body)
     write_json(fixtures.join("stats/#{name}.json"), {
                  path:, title: doc.at_css('title').text, now: now.iso8601, self_hosted:,
       user: { id: user.id, email: user.email, settings: user.settings, plan: User.plans[user.plan],
@@ -179,7 +191,13 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
   end
 
   it 'writes the stats and digest pages' do
-    FileUtils.mkdir_p(fixtures.join('stats'))
+    allow(File).to receive(:write).and_call_original
+    allow(File).to receive(:binwrite).and_call_original
+    unless ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      expect(File).not_to receive(:write).with(fixtures.join('stats/index_lite_en.html'), anything)
+      expect(File).not_to receive(:binwrite).with(fixtures.join('stats/index_lite_en.html'), anything)
+    end
+    allow_any_instance_of(ActionView::Base).to receive(:rand).with(5_000..80_000).and_return(25_000)
     allow(ENV).to receive(:fetch).and_call_original
     allow(ENV).to receive(:fetch).with('JWT_SECRET_KEY').and_return('phoenix-a5-jwt-fixture-secret-not-for-production')
     geom = 'MULTIPOLYGON (((-78.637074 15.862087, -78.640411 15.864, -78.636871 15.867296, -78.637074 15.862087)))'

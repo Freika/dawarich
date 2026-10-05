@@ -3,7 +3,11 @@
 class Tracks::BackfillGenerationJob < ApplicationJob
   queue_as :tracks
 
-  def perform(user_id)
+  def perform(user_id, cycle_id: nil, time_zone: nil)
+    if Tracks::BackfillState.table?
+      return Tracks::BackfillCommands.execute_range(user_id, job_id, cycle_id:, time_zone:)
+    end
+
     range = Tracks::BackfillScheduler.pop_range(user_id)
     return if range.nil?
 

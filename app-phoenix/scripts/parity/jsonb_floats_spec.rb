@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixture: jsonb float text written by ActiveRecord with Oj' do
   def hex(float)
@@ -76,7 +77,7 @@ RSpec.describe 'Phoenix fixture: jsonb float text written by ActiveRecord with O
     path = Rails.root.join('app-phoenix/test/fixtures/jsonb_floats.json')
     head = JSON.pretty_generate(fixture).delete_suffix("\n}")
     body = rows.map { |row| "    #{JSON.generate(row)}" }.join(",\n")
-    File.write(path, "#{head},\n  \"floats\": [\n#{body}\n  ]\n}\n")
+    FixtureRecording.verify(path, "#{head},\n  \"floats\": [\n#{body}\n  ]\n}\n")
   end
 
   it 'records the Rails jsonb text of floats, nested documents and non-finite values' do

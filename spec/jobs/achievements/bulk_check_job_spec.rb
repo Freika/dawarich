@@ -11,6 +11,27 @@ RSpec.describe Achievements::BulkCheckJob do
     user
   end
 
+  it 'orders shuffled eligible users before staggering stale checks and owner hand-back' do
+    stub_const("#{described_class}::BATCH_SIZE", 1)
+    ids = [59_903, 59_902, 59_901]
+    ids.each do |id|
+      user = create(:user, id: id, status: :active)
+      create(:point, user: user)
+    end
+    connection = ActiveRecord::Base.connection
+    connection.execute('SET LOCAL enable_indexscan = off')
+    connection.execute('SET LOCAL enable_bitmapscan = off')
+    expect(described_class.new.send(:eligible_user_ids).intersection(ids)).to eq(ids.sort)
+    version = Achievements::RegionSetChecker::CALCULATION_VERSION
+    create(:achievement_progress, user: User.find(59_902), achievement_key: Achievements::Progress::EXPLORATION_KEY,
+                                  state: { 'calculation_version' => version })
+    job_owner!('command:achievements.check', :sidekiq)
+    described_class.perform_now(notify: false, stale_only: true)
+    jobs = enqueued_jobs.select { _1[:job] == Achievements::CheckJob && ids.include?(_1[:args].first) }
+    expect(jobs.map { _1[:args].first }).to eq([59_901, 59_903])
+    expect(jobs.last.fetch(:at) - jobs.first.fetch(:at)).to be_within(1).of(300)
+  end
+
   it 'enqueues a check for active and trial users only' do
     active = eligible_user
     trial = eligible_user(status: :trial)

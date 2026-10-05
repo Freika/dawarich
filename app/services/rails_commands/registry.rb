@@ -44,18 +44,12 @@ module RailsCommands
         guard: 'A second ParallelGeneratorJob over the same fixed window re-cleans it under the user lock, and ' \
                'both passes claim only orphan points (unique time-span index), so tracks converge; the cost ' \
                'is one duplicate generation pass, the whole history for a self-hosted user with no tracks',
-        call: lambda { |payload|
-          Tracks::ParallelGeneratorJob.perform_later(payload.fetch('user_id'),
-                                                     **Tracks::GenerationCommand.job_options(payload))
-        }
+        call: ->(payload) { Tracks::BackfillCommands.reverse_range(payload) }
       },
       'tracks_throttled_backfill' => {
         guard: 'ThrottledBackfillJob.schedule is SET NX on track_throttled_backfill:user:<id> (12 h, 7 days ' \
                'after completion); a repeat finds the key and enqueues nothing',
-        call: lambda { |payload|
-          user = User.find_by(id: payload.fetch('user_id'))
-          Tracks::ThrottledBackfillJob.schedule(user) if user
-        }
+        call: ->(payload) { Tracks::BackfillCommands.reverse_walk(payload) }
       },
       'tracks_realtime_retrigger' => {
         guard: 'RealtimeDebouncer#trigger is a debounce claim: a repeat extends it by 2 min, or, once the job ' \
@@ -223,6 +217,10 @@ module RailsCommands
      .merge(Exports::PurgeCommands::HANDLERS)
      .merge(Posters::ProgressCommands::HANDLERS)
      .merge(A8Handlers::HANDLERS)
+     .merge(Integrations::SchedulingCommands::HANDLERS)
+     .merge(Families::JobCommands::HANDLERS)
+     .merge(Places::JobCommands::HANDLERS)
+     .merge(Achievements::BulkCommands::HANDLERS)
      .merge(Trips::CalculationCommands::HANDLERS)
      .merge(
        'imports.resume' => {

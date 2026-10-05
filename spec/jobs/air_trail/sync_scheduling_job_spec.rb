@@ -34,4 +34,21 @@ RSpec.describe AirTrail::SyncSchedulingJob, type: :job do
     expect(JobOutbox.pending.pluck(:aggregate_id)).to eq([configured.id])
     expect(AirTrail::ImportFlightsJob).not_to have_been_enqueued
   end
+  it 'retained and manual AirTrail sweeps fence the cron before publishing leaves' do
+    configured = create(:user, settings: { 'airtrail_url' => 'https://a.example', 'airtrail_api_key' => 'k' })
+    job_owner!('cron:airtrail_flight_import_job', :oban)
+    expect { described_class.perform_now }.not_to have_enqueued_job
+    expect { described_class.perform_now('a12d2_cron') }.not_to have_enqueued_job
+    expect(JobOutbox.pending.count).to eq(0)
+    job_owner!('cron:airtrail_flight_import_job', :sidekiq)
+    expect { described_class.perform_now('a12d2_cron') }
+      .to have_enqueued_job(AirTrail::ImportFlightsJob).with(configured.id).exactly(:once)
+    clear_enqueued_jobs
+    expect { described_class.perform_now('a12d2_cron') }.not_to have_enqueued_job
+    expect { 2.times { described_class.perform_now } }
+      .to have_enqueued_job(AirTrail::ImportFlightsJob).with(configured.id).exactly(:twice)
+    clear_enqueued_jobs
+    expect { described_class.perform_now('invalid-marker') }.to raise_error(ArgumentError)
+    expect(AirTrail::ImportFlightsJob).not_to have_been_enqueued
+  end
 end

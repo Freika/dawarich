@@ -65,12 +65,12 @@ module Families
 
     def produce_lapse_notice(member)
       lapse_at = family.access_until&.utc&.iso8601 || 'none'
-      JobCommands.produce('mail.family_lapse', {
-                            'user_id' => member.id,
+      ::JobCommands.produce('mail.family_lapse', {
+                              'user_id' => member.id,
                             'family_id' => family.id,
                             'locale' => I18n.locale.to_s,
                             'lapse_at' => lapse_at
-                          }, aggregate_id: member.id, producer: 'Families::SyncMembers',
+                            }, aggregate_id: member.id, producer: 'Families::SyncMembers',
                              dedupe_key: "family-lapse:#{family.id}:#{member.id}:#{lapse_at}")
     end
   end

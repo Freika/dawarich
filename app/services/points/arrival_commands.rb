@@ -24,10 +24,12 @@ module Points
         call: ->(p) { ArrivalCommands.for_user(p) { |id| Tracks::RealtimeDebouncer.new(id).trigger } }
       },
       'tracks.backfill' => {
-        guard: 'ZADD of the same two members plus a SET NX schedule key',
+        guard: 'Per-user SQL union and one cycle publication; legacy Redis ZADD plus SET NX when tables are absent',
         call: lambda { |p|
           timestamps = p.fetch('timestamps')
-          ArrivalCommands.for_user(p) { |id| Tracks::BackfillScheduler.new(id, timestamps).call }
+          Time.use_zone(p['time_zone'] || Time.zone.name) do
+            ArrivalCommands.for_user(p) { |id| Tracks::BackfillScheduler.new(id, timestamps).call }
+          end
         }
       },
       'visits.realtime' => {

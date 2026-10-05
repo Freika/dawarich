@@ -112,21 +112,27 @@ defmodule Dawarich.Notifications do
   end
 
   def create!(repo, user_id, kind, title, content, now \\ NaiveDateTime.utc_now()) do
-    {:ok, id} =
-      repo.transaction(fn ->
-        %{rows: [[id]]} =
-          repo.query!(
-            "INSERT INTO notifications (user_id, kind, title, content, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $5) RETURNING id",
-            [user_id, Map.fetch!(@kind_codes, kind), title, content, now],
-            log: false
-          )
+    if repo.in_transaction?() do
+      insert_notification(repo, user_id, kind, title, content, now)
+    else
+      {:ok, id} =
+        repo.transaction(fn -> insert_notification(repo, user_id, kind, title, content, now) end)
 
-        repo.query!("INSERT INTO phoenix.notification_events (notification_id) VALUES ($1)", [id],
-          log: false
-        )
+      id
+    end
+  end
 
-        id
-      end)
+  defp insert_notification(repo, user_id, kind, title, content, now) do
+    %{rows: [[id]]} =
+      repo.query!(
+        "INSERT INTO notifications (user_id, kind, title, content, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $5) RETURNING id",
+        [user_id, Map.fetch!(@kind_codes, kind), title, content, now],
+        log: false
+      )
+
+    repo.query!("INSERT INTO phoenix.notification_events (notification_id) VALUES ($1)", [id],
+      log: false
+    )
 
     id
   end

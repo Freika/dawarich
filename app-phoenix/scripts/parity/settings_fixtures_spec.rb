@@ -1716,8 +1716,11 @@ skip_family_sync: true)
     Rails.application.load_tasks unless Rake::Task.task_defined?('phoenix:time_zones')
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'time_zones.json')
+      Rake::Task['phoenix:time_zones'].reenable
       Rake::Task['phoenix:time_zones'].invoke(path)
       expect(JSON.parse(File.read(path))['options']).to eq(helper.settings_time_zone_options)
+    ensure
+      Rake::Task['phoenix:time_zones'].reenable
     end
   end
 

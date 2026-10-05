@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 require_relative 'wave5b_fixture_support'
 
 FLOAT_STRING_PROBES = [
@@ -76,6 +77,6 @@ RSpec.describe 'Phoenix fixture: Ruby float and Float() parity probes' do
     )
 
     FileUtils.mkdir_p(path.dirname)
-    File.write(path, "#{JSON.pretty_generate(fixture)}\n")
+    FixtureRecording.verify(path, "#{JSON.pretty_generate(fixture)}\n")
   end
 end

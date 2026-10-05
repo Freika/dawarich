@@ -3,7 +3,7 @@ defmodule Dawarich.RailsCommands do
 
   def insert!(repo, kind, %{"user_id" => user_id} = payload)
       when is_binary(kind) and is_integer(user_id),
-      do: insert(repo, kind, payload)
+      do: insert_row!(repo, kind, payload)
 
   def insert!(
         repo,
@@ -13,11 +13,16 @@ defmodule Dawarich.RailsCommands do
       when is_binary(zone) and is_binary(uuid) and byte_size(uuid) == 36 and is_integer(at) and
              map_size(payload) == 3 do
     if match?({:ok, _}, Ecto.UUID.cast(uuid)),
-      do: insert(repo, "cache.preheat_sweep", payload),
+      do: insert_row!(repo, "cache.preheat_sweep", payload),
       else: raise(ArgumentError, "invalid source job UUID")
   end
 
-  defp insert(repo, kind, payload) do
+  def insert!(repo, "places_bulk_name_fetch" = kind, payload)
+      when is_map(payload) and map_size(payload) == 0 do
+    insert_row!(repo, kind, payload)
+  end
+
+  defp insert_row!(repo, kind, payload) do
     repo.query!(
       "INSERT INTO phoenix.rails_commands (kind, payload) VALUES ($1, $2::text::jsonb)",
       [kind, Dawarich.RubyJson.encode_exact!(payload)],

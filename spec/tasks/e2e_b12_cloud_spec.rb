@@ -21,6 +21,7 @@ RSpec.describe 'e2e:b12:user' do
 
   def invoke_with(env)
     stub_const('ENV', ENV.to_h.merge(env))
+    Rake::Task['e2e:b12:user'].reenable
     Rake::Task['e2e:b12:user'].invoke(email, 'lite')
   end
 
@@ -62,6 +63,7 @@ RSpec.describe 'e2e:b12:registration' do
     output_files << output_file
     stub_const('ENV', ENV.to_h.merge('DATABASE_NAME' => 'dawarich_e2e_b12_cloud_test', 'E2E_B12_EGRESS' => '1',
                                      'B12_FIXTURE_OUTPUT' => output_file.to_s))
+    Rake::Task['e2e:b12:registration'].reenable
     Rake::Task['e2e:b12:registration'].invoke(value)
     JSON.parse(output_file.read)
   ensure

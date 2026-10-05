@@ -47,7 +47,10 @@ RSpec.describe Points::ArrivalCommands do
   end
 
   it 'schedules one backfill for two deliveries of old timestamps' do
-    expect { 2.times { run('tracks.backfill') } }.to have_enqueued_job(Tracks::BackfillGenerationJob).with(user.id).exactly(:once)
+    payload = payloads.fetch('tracks.backfill').merge('time_zone' => 'Asia/Tokyo')
+    expect { 2.times { run('tracks.backfill', payload) } }
+      .to have_enqueued_job(Tracks::BackfillGenerationJob)
+      .with(user.id, hash_including(cycle_id: be_present, time_zone: 'Asia/Tokyo')).exactly(:once)
   end
 
   it 'schedules one visit suggestion, with ISO bounds in the user time zone, for two deliveries' do

@@ -27,6 +27,16 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
           RailsTree.read("app/services/imports/teslamate_commands.rb") <>
           RailsTree.read("app/services/imports/trek_commands.rb") <>
           RailsTree.read("app/services/release_commands.rb") <>
+          RailsTree.read("app/services/tracks/backfill_commands.rb") <>
+          hd(
+            String.split(RailsTree.read("app/services/families/job_commands.rb"), "HANDLERS = {")
+          ) <>
+          hd(
+            String.split(
+              RailsTree.read("app/services/achievements/bulk_commands.rb"),
+              "HANDLERS = {"
+            )
+          ) <>
           hd(String.split(RailsTree.read("app/services/stats/commands.rb"), "HANDLERS = {")) <>
           hd(String.split(RailsTree.read("app/services/cache/commands.rb"), "HANDLERS = {")) <>
           hd(
@@ -78,7 +88,15 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
       )
       |> List.flatten()
 
-    rails = MapSet.new(commands ++ mails ++ [normal_type] ++ data_types)
+    places =
+      ~r/'([a-z0-9_.]+)' => \[/
+      |> Regex.scan(
+        hd(String.split(RailsTree.read("app/services/places/job_commands.rb"), "COMMANDS =")),
+        capture: :all_but_first
+      )
+      |> List.flatten()
+
+    rails = MapSet.new(commands ++ mails ++ [normal_type] ++ data_types ++ places)
 
     phoenix =
       for %{kind: :command, key: "command:" <> type} <- Registry.entries(),

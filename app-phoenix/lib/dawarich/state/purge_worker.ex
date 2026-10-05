@@ -44,6 +44,24 @@ defmodule Dawarich.State.PurgeWorker do
     )
     DELETE FROM phoenix.achievement_checks USING batch
     WHERE achievement_checks.user_id = batch.user_id AND achievement_checks.expires_at <= statement_timestamp()
+    """,
+    """
+    WITH batch AS MATERIALIZED (
+      SELECT user_id FROM phoenix.track_backfill_ranges WHERE expires_at <= statement_timestamp()
+      ORDER BY expires_at LIMIT $1
+      FOR UPDATE SKIP LOCKED
+    )
+    DELETE FROM phoenix.track_backfill_ranges USING batch
+    WHERE track_backfill_ranges.user_id = batch.user_id AND track_backfill_ranges.expires_at <= statement_timestamp()
+    """,
+    """
+    WITH batch AS MATERIALIZED (
+      SELECT user_id FROM phoenix.track_backfill_walks WHERE expires_at <= statement_timestamp()
+      ORDER BY expires_at LIMIT $1
+      FOR UPDATE SKIP LOCKED
+    )
+    DELETE FROM phoenix.track_backfill_walks USING batch
+    WHERE track_backfill_walks.user_id = batch.user_id AND track_backfill_walks.expires_at <= statement_timestamp()
     """
   ]
 

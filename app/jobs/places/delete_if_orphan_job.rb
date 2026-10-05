@@ -5,7 +5,9 @@ module Places
     queue_as :places
 
     def perform(place_id)
-      Places::DeleteIfOrphan.call(place_id)
+      Places::JobCommands.execute('places.delete_if_orphan', place_id, job_id: job_id) do
+        Places::DeleteIfOrphan.call(place_id)
+      end
     end
   end
 end

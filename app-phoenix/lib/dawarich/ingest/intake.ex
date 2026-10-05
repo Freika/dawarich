@@ -48,7 +48,11 @@ defmodule Dawarich.Ingest.Intake do
 
     commit!(repo, fn ->
       count!(repo, user_id, rows)
-      if mode == :realtime, do: commands!(repo, user_id, rows, prepared)
+
+      if mode == :realtime do
+        commands!(repo, user_id, rows, prepared, opts)
+        Keyword.get(opts, :hook, fn _ -> :ok end).(:commands)
+      end
     end)
 
     rows
@@ -140,7 +144,7 @@ defmodule Dawarich.Ingest.Intake do
     end
   end
 
-  defp commands!(repo, user_id, rows, prepared) do
+  defp commands!(repo, user_id, rows, prepared, opts) do
     timestamps = Enum.map(prepared, & &1.payload.timestamp)
     {min, max} = Enum.min_max(timestamps)
 
@@ -172,7 +176,11 @@ defmodule Dawarich.Ingest.Intake do
        %{"broadcast_id" => Ecto.UUID.generate(), "upserted" => upserted, "payloads" => payloads}}
     ]
     |> Enum.each(fn {kind, payload} ->
-      RailsCommands.insert!(repo, kind, Map.put(payload, "user_id", user_id))
+      if kind == "tracks.backfill" do
+        Dawarich.Tracks.BackfillCommands.ingest(repo, user_id, payload["timestamps"], opts)
+      else
+        RailsCommands.insert!(repo, kind, Map.put(payload, "user_id", user_id))
+      end
     end)
   end
 end

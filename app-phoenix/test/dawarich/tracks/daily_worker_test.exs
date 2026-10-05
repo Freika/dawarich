@@ -130,7 +130,11 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
     )
 
     assert run() == :ok
-    assert commands() == [["tracks_throttled_backfill", %{"user_id" => user}]]
+
+    assert commands() == [
+             ["tracks_throttled_backfill", %{"user_id" => user, "time_zone" => "Europe/Berlin"}]
+           ]
+
     assert range_jobs() == []
   end
 

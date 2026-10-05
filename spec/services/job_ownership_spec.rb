@@ -7,7 +7,7 @@ RSpec.describe JobOwnership do
 
   context 'when Phoenix has never migrated the database' do
     before do
-      ActiveRecord::Base.connection.execute('DROP TABLE phoenix.job_owners')
+      ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.job_owners')
       PhoenixSchema.reset!
     end
 
