@@ -235,5 +235,5 @@ defmodule Dawarich.Places.NameFetcherTest do
     id
   end
 
-  defp clear_cache(url), do: Dawarich.Redis.cache_command(["DEL", url])
+  defp clear_cache(url), do: Dawarich.TtlCache.delete({Dawarich.Geocoding.ResponseCache, url})
 end

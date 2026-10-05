@@ -1,6 +1,6 @@
 defmodule Dawarich.Families.AutoCreateWorker do
   @moduledoc false
-  use Oban.Worker, queue: :families, max_attempts: 26
+  use Oban.Worker, queue: :maintenance, max_attempts: 26
   alias Dawarich.Families.AutoCreate
   alias Dawarich.Jobs.Processed
 

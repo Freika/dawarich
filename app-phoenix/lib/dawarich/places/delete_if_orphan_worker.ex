@@ -1,6 +1,6 @@
 defmodule Dawarich.Places.DeleteIfOrphanWorker do
   @moduledoc false
-  use Oban.Worker, queue: :places, max_attempts: 26
+  use Oban.Worker, queue: :maintenance, max_attempts: 26
   alias Dawarich.Jobs.Processed
   alias Dawarich.Places.Orphans
 

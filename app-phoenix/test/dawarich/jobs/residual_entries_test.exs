@@ -61,8 +61,10 @@ defmodule Dawarich.Jobs.ResidualEntriesTest do
           ~w(BulkVisitsSuggestingJob PendingImports::CleanupJob EnqueueBackgroundJob DataMigrations::BackfillAchievementsJob),
         do: assert(RailsJobOwners.owners()[class] == {:slice, :a12d2})
 
-    assert RailsJobOwners.owners()["TeslaMate::SyncJob"] == {:slice, :a7}
-    assert RailsJobOwners.owners()["Trek::SyncJob"] == {:slice, :a7}
+    assert RailsJobOwners.owners()["TeslaMate::SyncJob"] ==
+             {:oban, ["command:imports.teslamate_sync"]}
+
+    assert RailsJobOwners.owners()["Trek::SyncJob"] == {:oban, ["command:imports.trek_sync"]}
     assert Registry.claimable() == []
   end
 

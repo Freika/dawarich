@@ -1,6 +1,6 @@
 defmodule Dawarich.Families.MemberSyncWorker do
   @moduledoc false
-  use Oban.Worker, queue: :families, max_attempts: 26
+  use Oban.Worker, queue: :maintenance, max_attempts: 26
   alias Dawarich.Families.MemberSync
   alias Dawarich.Jobs.Processed
 

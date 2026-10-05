@@ -1,7 +1,7 @@
 defmodule Dawarich.Places.OrphanCleanupWorker do
   @moduledoc false
   use Oban.Worker,
-    queue: :places,
+    queue: :maintenance,
     max_attempts: 26,
     unique: [keys: [:event_id, :cursor], period: :infinity, states: :all]
 

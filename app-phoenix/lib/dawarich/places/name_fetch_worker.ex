@@ -1,6 +1,6 @@
 defmodule Dawarich.Places.NameFetchWorker do
   @moduledoc false
-  use Oban.Worker, queue: :places, max_attempts: 26
+  use Oban.Worker, queue: :reverse_geocoding, max_attempts: 26
   alias Dawarich.Geocoding.Config
   alias Dawarich.Jobs.Processed
   alias Dawarich.Places.NameFetcher

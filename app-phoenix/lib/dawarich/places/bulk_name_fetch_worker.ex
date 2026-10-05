@@ -1,7 +1,7 @@
 defmodule Dawarich.Places.BulkNameFetchWorker do
   @moduledoc false
   use Oban.Worker,
-    queue: :places,
+    queue: :reverse_geocoding,
     max_attempts: 26,
     unique: [keys: [:event_id, :cursor], period: :infinity, states: :all]
 
