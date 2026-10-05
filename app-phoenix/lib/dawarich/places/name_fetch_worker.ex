@@ -21,26 +21,32 @@ defmodule Dawarich.Places.NameFetchWorker do
   def backoff(job), do: Dawarich.Integrations.SyncScheduling.backoff(job)
 
   def run(repo, args, opts \\ []) do
-    unless Processed.done?(repo, args["event_id"]) do
+    if Processed.done?(repo, args["event_id"]) do
+      :ok
+    else
       config = Keyword.get_lazy(opts, :config, fn -> Config.resolve(repo) end)
       data = NameFetcher.lookup(repo, args["user_id"], args["place_id"], config)
 
-      {:ok, :ok} =
-        repo.transaction(fn ->
-          if Processed.claim!(repo, args["event_id"], "places.name_fetch") do
-            case data do
-              {:ok, result} ->
-                NameFetcher.apply(repo, args["user_id"], args["place_id"], result, config)
+      if data == :missing do
+        {:error, :not_found}
+      else
+        {:ok, :ok} =
+          repo.transaction(fn ->
+            if Processed.claim!(repo, args["event_id"], "places.name_fetch") do
+              case data do
+                {:ok, result} ->
+                  NameFetcher.apply(repo, args["user_id"], args["place_id"], result, config)
 
-              _ ->
-                :ok
+                _ ->
+                  :ok
+              end
             end
-          end
 
-          :ok
-        end)
+            :ok
+          end)
+
+        :ok
+      end
     end
-
-    :ok
   end
 end

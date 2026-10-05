@@ -197,6 +197,24 @@ defmodule Dawarich.Places.NameFetcherTest do
     assert NameFetchWorker.__opts__()[:max_attempts] == 26
   end
 
+  test "missing or foreign source place retries without claiming the naming unit", %{
+    user: user,
+    config: config
+  } do
+    place = place(user, "Retained place")
+    before = rows("SELECT row_to_json(p) FROM places p WHERE id=$1", [place])
+
+    for {owner, id} <- [{user, -1}, {user + 1, place}] do
+      event = Ecto.UUID.generate()
+      args = %{"user_id" => owner, "place_id" => id, "event_id" => event}
+      assert NameFetchWorker.run(ScratchRepo, args, config: config) == {:error, :not_found}
+      refute Dawarich.Jobs.Processed.done?(ScratchRepo, event)
+      assert rows("SELECT row_to_json(p) FROM places p WHERE id=$1", [place]) == before
+    end
+
+    assert FakeHttp.requests() == []
+  end
+
   defp place(user, name) do
     [[id]] =
       rows(
