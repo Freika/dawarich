@@ -86,7 +86,7 @@ stack bin/rails phoenix:importmap phoenix:time_zones >/dev/null
   sh -c 'mix --version | grep -q "^Mix 1.18.3 " && mix compile --force >/dev/null && mix release --overwrite >/dev/null')
 stack "$rel" eval 'Dawarich.Release.migrate()'
 stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -b 127.0.0.1 -p "$PORT")" \
-  sh -c 'echo $$ >"$1"; exec nohup "$2" start' _ "$pidfile" "$rel" >>"$log" 2>&1 &
+  ruby -e 'Process.daemon(true, true); File.write(ARGV.shift, Process.pid.to_s); exec(*ARGV)' "$pidfile" "$rel" start >>"$log" 2>&1
 
 tries=0
 until [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 \
@@ -103,7 +103,7 @@ else
 fi
 
 sidekiq_from=$(($(wc -c <"$sidekiq_log") + 1))
-stack sh -c 'echo $$ >"$1"; exec nohup bundle exec sidekiq' _ "$sidekiq_pidfile" >>"$sidekiq_log" 2>&1 &
+stack ruby -e 'Process.daemon(true, true); File.write(ARGV.shift, Process.pid.to_s); exec(*ARGV)' "$sidekiq_pidfile" bundle exec ruby -e 'require "sidekiq/cli"; Sidekiq.configure_server { |config| config.on(:startup) { RailsCommands::Poller.send(:spawn) } }; cli = Sidekiq::CLI.instance; cli.parse; cli.run' >>"$sidekiq_log" 2>&1
 tries=0
 until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
   tries=$((tries + 1))

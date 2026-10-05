@@ -3,6 +3,58 @@ defmodule DawarichWeb.Api.RemainingRoutesTest do
 
   @moduletag :capture_log
 
+  describe "real release stand" do
+    @describetag :real_stand
+    @describetag skip: is_nil(System.get_env("RELEASE_STAND_PORT"))
+
+    test "retained HEAD requests reach real Puma", %{port: port} do
+      for path <- ["/api/v1/flights", "/api/v1/places"] do
+        probe = "rel-b3-#{System.unique_integer([:positive])}"
+        target = path <> "?release_probe=" <> probe
+        offset = File.stat!(System.fetch_env!("RELEASE_RAILS_LOG")).size
+        client = request(port, target, [{"Accept", "application/json"}], "HEAD")
+        assert {401, _, ""} = read_response(client, method: "HEAD")
+        rails_hop? = stand_log("RELEASE_RAILS_LOG", offset) =~ target
+        assert rails_hop?
+        :gen_tcp.close(client)
+      end
+    end
+
+    test "notes rollback reaches real Puma while flights and places stay native", %{port: port} do
+      mode = System.fetch_env!("RELEASE_STAND_MODE")
+
+      for path <- ["/api/v1/notes", "/api/v1/flights", "/api/v1/places"] do
+        probe = "rel-b3-#{System.unique_integer([:positive])}"
+        target = path <> "?release_probe=" <> probe
+        rails_offset = File.stat!(System.fetch_env!("RELEASE_RAILS_LOG")).size
+        proxy_offset = File.stat!(System.fetch_env!("RELEASE_PROXY_LOG")).size
+        client = request(port, target, [{"Accept", "application/json"}, {"X-Request-Id", probe}])
+        assert {401, _, _} = read_response(client)
+        rails_log = stand_log("RELEASE_RAILS_LOG", rails_offset)
+        proxy_log = stand_log("RELEASE_PROXY_LOG", proxy_offset)
+        rails_hop? = rails_log =~ target
+        native_id? = proxy_log =~ "request_id=#{probe}"
+        native_route? = proxy_log =~ "[api] GET #{path} 401"
+
+        if mode == "off" or (mode == "api_notes" and path == "/api/v1/notes") do
+          assert rails_hop?
+          refute native_id?
+        else
+          refute rails_hop?
+          assert native_route?
+          assert native_id?
+        end
+
+        :gen_tcp.close(client)
+      end
+    end
+  end
+
+  defp stand_log(name, offset) do
+    bytes = File.read!(System.fetch_env!(name))
+    binary_part(bytes, offset, byte_size(bytes) - offset)
+  end
+
   @routes [
     {"POST", "/points", :points, :ingest, :api_ingest, IngestController},
     {"POST", "/overland/batches", :overland, :ingest, :api_ingest, IngestController},
