@@ -10,6 +10,16 @@ defmodule Dawarich.Jobs.RelayTest do
     def query!(_sql, _params, _opts), do: Process.exit(self(), :kill)
   end
 
+  defmodule CrashBudgetSupervisor do
+    def init(opts) do
+      {:ok, {flags, [drain, workers]}} = Dawarich.Jobs.Supervisor.init(opts)
+      {Supervisor, :start_link, [children, worker_flags]} = workers.start
+      worker_flags = Keyword.put(worker_flags, :max_restarts, 2)
+      workers = %{workers | start: {Supervisor, :start_link, [children, worker_flags]}}
+      {:ok, {flags, [drain, workers]}}
+    end
+  end
+
   defmodule TripEventsBrokenRepo do
     @moduledoc false
     alias Dawarich.ScratchRepo
@@ -250,15 +260,47 @@ defmodule Dawarich.Jobs.RelayTest do
       })
 
     [{:rails_server, puma, :worker, _}] = Supervisor.which_children(app)
-    :erlang.trace(app, true, [:receive, :set_on_spawn])
 
-    {:ok, jobs} =
-      Supervisor.start_child(
-        app,
-        {Dawarich.Jobs.Supervisor, node: "crash-node", oban: oban, repo: SelfKillingRepo}
+    child =
+      Supervisor.child_spec(
+        {Dawarich.Jobs.Supervisor,
+         node: "crash-node", oban: oban, repo: SelfKillingRepo, auto: false},
+        []
       )
 
-    assert_receive {:trace, ^jobs, :receive, {:EXIT, _workers, :shutdown}}, 10_000
+    {_, _, [opts]} = child.start
+    child = %{child | start: {Supervisor, :start_link, [CrashBudgetSupervisor, opts]}}
+
+    {:ok, jobs} =
+      Supervisor.start_child(app, child)
+
+    {:workers, workers, :supervisor, _} =
+      List.keyfind(Supervisor.which_children(jobs), :workers, 0)
+
+    workers_ref = Process.monitor(workers)
+
+    for _ <- 1..3 do
+      {:worker, relay} =
+        Dawarich.LockRace.wait_until(fn ->
+          case List.keyfind(Supervisor.which_children(workers), Relay, 0) do
+            {Relay, pid, :worker, _} when is_pid(pid) -> {:worker, pid}
+            _ -> false
+          end
+        end)
+
+      relay_ref = Process.monitor(relay)
+      assert catch_exit(Relay.tick(relay))
+      assert_received {:DOWN, ^relay_ref, :process, ^relay, :killed}
+    end
+
+    Dawarich.LockRace.wait_until(fn ->
+      match?(
+        {:workers, :undefined, :supervisor, _},
+        List.keyfind(Supervisor.which_children(jobs), :workers, 0)
+      )
+    end)
+
+    assert_received {:DOWN, ^workers_ref, :process, ^workers, :shutdown}
 
     assert {:workers, :undefined, :supervisor, _} =
              List.keyfind(Supervisor.which_children(jobs), :workers, 0)
