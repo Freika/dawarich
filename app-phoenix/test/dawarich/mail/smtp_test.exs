@@ -81,13 +81,12 @@ defmodule Dawarich.Mail.SmtpTest do
   end
 
   describe "deliver/2" do
-    import Dawarich.Test.RawHTTP, only: [listen: 0, accept: 1, reply: 2]
+    import Dawarich.Test.RawHTTP, only: [listen: 0, accept_on_request: 2, reply: 2]
 
     alias Dawarich.Mail.Smtp
     alias Dawarich.Test.MailWire
 
-    defp serve(sink) do
-      socket = accept(sink)
+    defp serve(socket) do
       reply(socket, "220 sink ESMTP\r\n")
 
       for answer <- ["250 sink\r\n", "250 ok\r\n", "250 ok\r\n", "354 go\r\n"] do
@@ -113,11 +112,14 @@ defmodule Dawarich.Mail.SmtpTest do
 
     defp delivered(message) do
       sink = listen()
-      server = Task.async(fn -> serve(sink) end)
+      on_exit(fn -> :gen_tcp.close(sink.listen) end)
       env = %{"E2E_SMTP_PORT" => Integer.to_string(sink.port)}
 
-      assert Smtp.deliver(message, env) == :ok
-      Task.await(server)
+      client = Task.async(fn -> receive do: (:deliver -> Smtp.deliver(message, env)) end)
+      {socket, :deliver} = accept_on_request(sink, fn -> send(client.pid, :deliver) end)
+      data = serve(socket)
+      assert Task.await(client, :infinity) == :ok
+      data
     end
 
     defp html_only(fields),

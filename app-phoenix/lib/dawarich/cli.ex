@@ -10,6 +10,7 @@ defmodule Dawarich.CLI do
     ["migrate"] => {Migrate, :migrate},
     ["migrate", "status"] => {Migrate, :status},
     ["jobs", "status"] => {Jobs, :status},
+    ["jobs", "drain-status"] => {Jobs, :drain_status},
     ["jobs", "resume"] => {Jobs, :resume},
     ["users", "activate"] => {Users, :activate},
     ["users", "admin"] => {Users, :admin},
@@ -80,6 +81,7 @@ defmodule Dawarich.CLI do
     migrate                                       Bring the phoenix and oban schemas up to date
     migrate status                                Show what this image sees in the database; exit 1 if it refuses it
     jobs status                                   Job owners, outbox, Phoenix nodes and Oban job counts as JSON
+    jobs drain-status                             Redacted native drain debt and rollback blockers as JSON
     jobs resume OPERATION_ID                      Resume a failed release backfill
     users activate                                Activate every user (self-hosted only)
     users admin EMAIL                             Make a user an administrator

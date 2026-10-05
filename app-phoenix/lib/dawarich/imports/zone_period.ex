@@ -4,8 +4,38 @@ defmodule Dawarich.Imports.ZonePeriod do
   @root "/usr/share/zoneinfo"
   @name ~r/\A[A-Za-z0-9_+\-]+(?:\/[A-Za-z0-9_+\-]+)*\z/
 
+  def with_cache(fun) do
+    key = {__MODULE__, :cache}
+    previous = Process.put(key, %{})
+
+    try do
+      fun.()
+    after
+      if previous, do: Process.put(key, previous), else: Process.delete(key)
+    end
+  end
+
   def load!(zone) do
     unless zone =~ @name, do: raise(ArgumentError, "invalid time zone")
+
+    case Process.get({__MODULE__, :cache}) do
+      nil ->
+        read!(zone)
+
+      cache ->
+        case Map.fetch(cache, zone) do
+          {:ok, data} ->
+            data
+
+          :error ->
+            data = read!(zone)
+            Process.put({__MODULE__, :cache}, Map.put(cache, zone, data))
+            data
+        end
+    end
+  end
+
+  defp read!(zone) do
     bytes = File.read!(Path.join(@root, zone))
     {version, counts, block} = header(bytes)
 

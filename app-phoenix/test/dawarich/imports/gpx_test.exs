@@ -4,6 +4,31 @@ defmodule Dawarich.Imports.GpxTest do
 
   @fixtures Path.expand("../../fixtures/gpx", __DIR__)
 
+  setup_all do
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "gpx-namespaces-#{System.pid()}-#{System.unique_integer([:positive])}.gpx"
+      )
+
+    on_exit(fn -> File.rm!(path) end)
+
+    File.open!(path, [:write, :binary, :raw], fn io ->
+      IO.binwrite(io, "<gpx><trk><trkseg>")
+
+      1..100_000
+      |> Stream.map(fn i ->
+        "<trkpt xmlns:p#{i}=\"urn:#{i}\" lat=\"1\" lon=\"2\"><time>2026-01-01T00:00:00Z</time></trkpt>"
+      end)
+      |> Stream.chunk_every(1_000)
+      |> Enum.each(&IO.binwrite(io, &1))
+
+      IO.binwrite(io, "</trkseg></trk></gpx>")
+    end)
+
+    %{namespace_path: path}
+  end
+
   test "real Rails SAX fixture output, counts and tracker labels match exactly" do
     oracle = @fixtures |> Path.join("rails_oracle.json") |> File.read!() |> Jason.decode!()
 
@@ -262,22 +287,9 @@ defmodule Dawarich.Imports.GpxTest do
     assert counts == %{"trackpoints_seen" => 5_500}
   end
 
-  test "unique namespace declarations do not accumulate for the whole large file" do
-    path = temp("")
-
-    File.open!(path, [:write, :binary], fn io ->
-      IO.binwrite(io, "<gpx><trk><trkseg>")
-
-      for i <- 1..100_000 do
-        IO.binwrite(
-          io,
-          "<trkpt xmlns:p#{i}=\"urn:#{i}\" lat=\"1\" lon=\"2\"><time>2026-01-01T00:00:00Z</time></trkpt>"
-        )
-      end
-
-      IO.binwrite(io, "</trkseg></trk></gpx>")
-    end)
-
+  test "unique namespace declarations do not accumulate for the whole large file", %{
+    namespace_path: path
+  } do
     :erlang.garbage_collect()
 
     {{count, peak}, counts} =

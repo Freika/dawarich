@@ -17,9 +17,18 @@ defmodule Dawarich.Geocoding.RateLimiterTest do
     key = "wave5b_rl_spacing"
     Redis.command(["DEL", key])
 
-    assert reserve(key, 10) == 0
-    assert_in_delta reserve(key, 10), 100_000, 10_000
-    assert_in_delta reserve(key, 10), 200_000, 10_000
+    lua =
+      """
+      local server_redis = redis
+      local redis = {call = function(command, ...)
+        if command == 'TIME' then return {'1000', '0'} end
+        return server_redis.call(command, ...)
+      end}
+      local reserve = function()
+      """ <> RateLimiter.lua() <> "\nend\nreturn {reserve(), reserve(), reserve()}"
+
+    assert Redis.command(["EVAL", lua, "1", key, "100000", "-1"]) ==
+             {:ok, [0, 100_000, 200_000]}
   end
 
   test "idle time banks nothing" do
@@ -45,11 +54,15 @@ defmodule Dawarich.Geocoding.RateLimiterTest do
 
   test "nil or non-positive rps never calls Redis" do
     stop_supervised!(Redix)
+    function = {Redis, :command, 3}
+    :erlang.trace_pattern(function, true, [:call_count])
+    on_exit(fn -> :erlang.trace_pattern(function, false, [:call_count]) end)
 
     for rps <- [nil, 0, -1] do
-      {elapsed, :ran} = :timer.tc(fn -> RateLimiter.throttle(%{rps: rps}, fn -> :ran end) end)
-      assert elapsed < 50_000
+      assert RateLimiter.throttle(%{rps: rps}, fn -> :ran end) == :ran
     end
+
+    assert {:call_count, 0} = :erlang.trace_info(function, :call_count)
   end
 
   test "Redis down waits one interval and runs" do

@@ -149,4 +149,40 @@ defmodule DawarichWeb.AssetsTest do
       refute source =~ ~r{^\s*//}m, file
     end
   end
+
+  test "inline family frames activate Turbo without taking over full page navigation" do
+    script = """
+    import assert from "node:assert/strict";
+    import fs from "node:fs";
+    import vm from "node:vm";
+    const turbo = {session: {drive: true}};
+    const context = vm.createContext({
+      window: {},
+      document: {querySelector: selector => selector === "turbo-frame" ? {} : null}
+    });
+    const dependency = new vm.SyntheticModule(["Turbo"], function() {
+      this.setExport("Turbo", turbo);
+    }, {context});
+    await dependency.link(() => {});
+    await dependency.evaluate();
+    const module = new vm.SourceTextModule(fs.readFileSync("priv/static/js/rails_bridge.js", "utf8"), {
+      context,
+      importModuleDynamically: async name => {
+        assert.equal(name, "@hotwired/turbo-rails");
+        return dependency;
+      }
+    });
+    await module.link(() => {});
+    await module.evaluate();
+    await module.namespace.bootTurboFrames();
+    assert.equal(turbo.session.drive, false);
+    """
+
+    {output, status} =
+      System.cmd("node", ["--experimental-vm-modules", "--input-type=module", "-e", script],
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+  end
 end

@@ -1,11 +1,15 @@
 defmodule Dawarich.Imports.GoogleRecords do
   @moduledoc false
   alias Dawarich.Imports.JsonStream.Section
-  alias Dawarich.Imports.{GpxProgress, NormalBatch}
+  alias Dawarich.Imports.{GpxProgress, NormalBatch, ZonePeriod}
   alias Dawarich.Imports.GoogleRecords.Point
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby, as: Value
 
   def call(path, import, context) do
+    ZonePeriod.with_cache(fn -> import(path, import, context) end)
+  end
+
+  defp import(path, import, context) do
     {root, section} = Section.last(path, "locations")
     validate!(root, section)
 

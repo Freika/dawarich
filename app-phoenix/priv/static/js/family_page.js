@@ -89,7 +89,10 @@ export const familyPage = ({
           slot.hidden = false
         }
       }
-      this.el.querySelector("[data-family-empty]").hidden = locations.length > 0
+      this.el.querySelector("[data-family-empty]").classList.toggle(
+        "hidden",
+        locations.length > 0,
+      )
       if (locations.length) await this.mapController.initMap()
     } catch (_error) {
       if (!abort.signal.aborted) this.clear()
@@ -107,7 +110,7 @@ export const familyPage = ({
         slot.hidden = true
       }
     }
-    this.el.querySelector("[data-family-empty]").hidden = false
+    this.el.querySelector("[data-family-empty]").classList.toggle("hidden", false)
   },
   disconnected() {
     this.gone = true
