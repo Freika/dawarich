@@ -1,10 +1,10 @@
 defmodule Dawarich.Auth.Api.ChallengeTokenTest do
   use ExUnit.Case, async: true
   alias Dawarich.Auth.Api.ChallengeToken
+  alias Dawarich.Test.ApiJwtFixture
 
   defp vectors do
-    path = System.fetch_env!("A11F_RAILS_JWT_VECTORS")
-    path |> File.read!() |> Jason.decode!() |> Map.fetch!("vectors")
+    ApiJwtFixture.vectors()
   end
 
   defp context(row) do
@@ -21,6 +21,9 @@ defmodule Dawarich.Auth.Api.ChallengeTokenTest do
 
   test "OTP challenge issuance matches source HS256 claims secret fallback and TTL" do
     row = Enum.find(vectors(), &(&1["name"] == "explicit"))
+    assert row["secret"] == ApiJwtFixture.secret("jwt")
+    assert row["now"] == DateTime.to_unix(ApiJwtFixture.now())
+    assert row["user_id"] == ApiJwtFixture.user_id()
     assert {:ok, token} = ChallengeToken.issue(row["user_id"], context(row))
     assert token == row["token"]
     [head, body, _] = String.split(token, ".")
@@ -43,6 +46,11 @@ defmodule Dawarich.Auth.Api.ChallengeTokenTest do
 
   test "OTP secrets match the Rails matrix and unavailable fallback hands back" do
     for row <- vectors(), row["source"] == "issuer" or row["name"] == "unavailable" do
+      if row["expected"] != "unavailable" do
+        assert row["context"]["rails_secret"] == ApiJwtFixture.secret("fallback")
+      end
+
+      assert row["context"]["auth_jwt_secret_key"] == ApiJwtFixture.secret("mobile")
       result = ChallengeToken.issue(row["user_id"], context(row))
 
       if row["expected"] == "unavailable" do
