@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative 'places_golden_support'
+require_relative '../../test/support/auth/api_jwt_fixture'
 
 module ApiAccountGoldenOracle
   TABLES = %w[users families family_memberships instance_settings].freeze
@@ -34,8 +35,6 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
     after(:context) { self.class.use_transactional_tests = @api_auth_transactional_tests }
 
     it 'A11f API auth writes the complete deterministic source corpus' do
-      private_path = ENV.fetch('A11F_RAILS_JWT_VECTORS')
-      expect(File.exist?(private_path)).to be(false), 'A11f private vector path collision'
       corpus, vectors = api_auth_corpus
       oracle = ApiAccountGoldenOracle
       matrix = User.statuses.keys.product(User.plans.keys, User.subscription_sources.keys).map do |values|
@@ -56,16 +55,22 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
           expect(path.read == encoded).to be(true), "A11f #{name} corpus differs from source"
         end
       end
-      File.open(private_path, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |file|
-        file.write(JSON.generate(vectors))
+      encoded = ApiJwtFixture.encode(vectors)
+      JSON.parse(encoded).fetch('vectors').zip(vectors.fetch('vectors')).each do |stored, original|
+        restored = stored['token'].is_a?(Array) ? stored['token'].join('.') : stored['token']
+        expect(restored).to eq(original['token']), original.fetch('name')
       end
-      expect(File.stat(private_path).mode & 0o777).to eq(0o600)
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        File.write(ApiJwtFixture.path, encoded)
+      else
+        expect(File.read(ApiJwtFixture.path)).to eq(encoded), 'A11f Rails JWT vectors differ from source'
+      end
     end
 
     def api_auth_corpus
       prior_cache = Rails.cache
       prior_attack = Rack::Attack.enabled
-      @api_auth_now = Time.utc(2026, 10, 4, 12)
+      @api_auth_now = ApiJwtFixture.now
       @api_auth_keys = []
       @api_auth_actors = []
       @api_auth_redis = Redis.new(url: "#{ENV.fetch('REDIS_URL')}/0", driver: :ruby)
@@ -74,9 +79,9 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       Rack::Attack.enabled = false
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
       allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('JWT_SECRET_KEY').and_return('a11f-synthetic-source-jwt')
-      allow(ENV).to receive(:[]).with('AUTH_JWT_SECRET_KEY').and_return('a11f-synthetic-source-mobile')
-      allow(Rails.application).to receive(:secret_key_base).and_return('a11f-synthetic-source-fallback')
+      allow(ENV).to receive(:[]).with('JWT_SECRET_KEY').and_return(ApiJwtFixture.secret('jwt'))
+      allow(ENV).to receive(:[]).with('AUTH_JWT_SECRET_KEY').and_return(ApiJwtFixture.secret('mobile'))
+      allow(Rails.application).to receive(:secret_key_base).and_return(ApiJwtFixture.secret('fallback'))
       matrix = User.statuses.keys.product(User.plans.keys, User.subscription_sources.keys).map do |status, plan, source|
         { name: "enums-#{status}-#{plan}-#{source}", actor_status: status, plan: plan, source: source }
       end
@@ -102,7 +107,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
     end
 
     def api_auth_actor(entry, otp: false)
-      id = 954_510
+      id = ApiJwtFixture.user_id
       email = 'a11f-source@example.invalid'
       expect(User.unscoped.where('id = ? OR email = ?', id, email).exists?).to be(false)
       @api_auth_actors << [id, [email, 'a11f-changed@example.invalid']]
@@ -431,11 +436,11 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       public_rows = []
       vectors = []
       contexts = [
-        ['explicit', 'a11f-synthetic-source-jwt', 'a11f-synthetic-source-fallback'],
-        ['unset', nil, 'a11f-synthetic-source-fallback'],
-        ['empty', '', 'a11f-synthetic-source-fallback'],
-        ['blank', " \t\n", 'a11f-synthetic-source-fallback'],
-        ['padded', '  a11f-synthetic-source-jwt  ', 'a11f-synthetic-source-fallback'],
+        ['explicit', ApiJwtFixture.secret('jwt'), ApiJwtFixture.secret('fallback')],
+        ['unset', nil, ApiJwtFixture.secret('fallback')],
+        ['empty', '', ApiJwtFixture.secret('fallback')],
+        ['blank', " \t\n", ApiJwtFixture.secret('fallback')],
+        ['padded', "  #{ApiJwtFixture.secret('jwt')}  ", ApiJwtFixture.secret('fallback')],
         ['unavailable', nil, nil]
       ]
       travel_to(@api_auth_now) do
@@ -450,7 +455,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
             expect(secret).to be_nil
             expect { Auth::IssueOtpChallengeToken.new(user).call }.to raise_error(JWT::EncodeError)
             vectors << { 'name' => name, 'context' => { 'jwt_secret_key' => jwt_secret,
-                         'auth_jwt_secret_key' => 'a11f-synthetic-source-mobile', 'rails_secret' => fallback },
+                         'auth_jwt_secret_key' => ApiJwtFixture.secret('mobile'), 'rails_secret' => fallback },
                          'expected' => 'unavailable', 'user_id' => user.id, 'now' => @api_auth_now.to_i, 'jti' => jti }
             public_rows << { 'name' => name, 'expected' => 'unavailable' }
             next
@@ -459,19 +464,19 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
           claims, header = JWT.decode(token, secret, true, algorithm: 'HS256')
           expect(claims.keys).to eq(%w[user_id purpose jti iat exp])
           expect(Auth::VerifyOtpChallengeToken.new(token).call.id).to eq(user.id)
-          expect { JWT.decode(token, 'a11f-synthetic-source-mobile', true, algorithm: 'HS256') }
+          expect { JWT.decode(token, ApiJwtFixture.secret('mobile'), true, algorithm: 'HS256') }
             .to raise_error(JWT::VerificationError)
           vectors << { 'name' => name, 'source' => 'issuer', 'token' => token,
                        'context' => { 'jwt_secret_key' => jwt_secret,
-                                      'auth_jwt_secret_key' => 'a11f-synthetic-source-mobile',
+                                      'auth_jwt_secret_key' => ApiJwtFixture.secret('mobile'),
                                       'rails_secret' => fallback },
                        'secret' => secret, 'user_id' => user.id, 'now' => @api_auth_now.to_i,
                        'jti' => jti, 'claims' => claims, 'expected' => 'accepted' }
           public_rows << { 'name' => name, 'header' => header, 'claims' => claims.merge('jti' => 'runtime:jti'),
                            'signature_verified' => true, 'mobile_secret_rejected' => true, 'expected' => 'accepted' }
         end
-        allow(ENV).to receive(:[]).with('JWT_SECRET_KEY').and_return('a11f-synthetic-source-jwt')
-        allow(Rails.application).to receive(:secret_key_base).and_return('a11f-synthetic-source-fallback')
+        allow(ENV).to receive(:[]).with('JWT_SECRET_KEY').and_return(ApiJwtFixture.secret('jwt'))
+        allow(Rails.application).to receive(:secret_key_base).and_return(ApiJwtFixture.secret('fallback'))
         jti = '53000000-0000-4000-8000-000000000010'
         allow(SecureRandom).to receive(:uuid).and_return(jti)
         normal = Auth::IssueOtpChallengeToken.new(user).call
@@ -524,7 +529,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
         special = [
           ['tampered', segments.join('.'), 'invalid'], ['nil-token', nil, 'invalid'],
           ['blank-token', '', 'invalid'], ['malformed', 'malformed', 'invalid'],
-          ['wrong-secret', JWT.encode(claims, 'a11f-wrong-secret', 'HS256'), 'invalid'],
+          ['wrong-secret', JWT.encode(claims, ApiJwtFixture.secret('wrong'), 'HS256'), 'invalid'],
           ['extra-header', JWT.encode(claims, Auth::InternalTokenSecret.call, 'HS256', { 'typ' => 'JWT' }), 'accepted']
         ]
         special.each do |name, token, expected|
