@@ -190,7 +190,7 @@ defmodule Dawarich.Test.A12a do
     {:ok, _} =
       Redix.command(Dawarich.Cable.Bus.Publisher, [
         "PUBLISH",
-        "dawarich_a12a:" <> broadcasting,
+        Bus.channel(broadcasting),
         payload
       ])
 
@@ -518,7 +518,7 @@ defmodule Dawarich.Test.A12a do
 
   def listen_all do
     pid = listener()
-    {:ok, ref} = Redix.PubSub.psubscribe(pid, "dawarich_a12a:*", self())
+    {:ok, ref} = Redix.PubSub.psubscribe(pid, Bus.channel("*"), self())
 
     receive do
       {:redix_pubsub, ^pid, ^ref, :psubscribed, _} -> {:ok, ref}
@@ -531,7 +531,7 @@ defmodule Dawarich.Test.A12a do
     receive do
       {:redix_pubsub, _pid, _ref, kind, %{channel: channel, payload: payload}}
       when kind in [:message, :pmessage] ->
-        {String.replace_prefix(channel, "dawarich_a12a:", ""), payload}
+        {String.replace_prefix(channel, Bus.channel(""), ""), payload}
     after
       timeout -> :nothing
     end

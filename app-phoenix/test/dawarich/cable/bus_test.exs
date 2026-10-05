@@ -30,8 +30,9 @@ defmodule Dawarich.Cable.BusTest do
   end
 
   test "the prefix follows RAILS_ENV like config/cable.yml" do
+    prefix = Application.fetch_env!(:dawarich, :cable_prefix)
     Application.delete_env(:dawarich, :cable_prefix)
-    on_exit(fn -> Application.put_env(:dawarich, :cable_prefix, "dawarich_a12a") end)
+    on_exit(fn -> Application.put_env(:dawarich, :cable_prefix, prefix) end)
     assert Bus.prefix(%{"RAILS_ENV" => "production"}) == "dawarich_production"
     assert Bus.prefix(%{"RAILS_ENV" => "staging"}) == "dawarich_staging"
     assert Bus.prefix(%{"RACK_ENV" => "development"}) == "dawarich_development"
@@ -41,6 +42,7 @@ defmodule Dawarich.Cable.BusTest do
   end
 
   test "the prefix is resolved once, not per message" do
+    prefix = Application.fetch_env!(:dawarich, :cable_prefix)
     rails_env = System.get_env("RAILS_ENV")
     :persistent_term.erase({Bus, :prefix})
     Application.delete_env(:dawarich, :cable_prefix)
@@ -52,7 +54,7 @@ defmodule Dawarich.Cable.BusTest do
         else: System.delete_env("RAILS_ENV")
 
       :persistent_term.erase({Bus, :prefix})
-      Application.put_env(:dawarich, :cable_prefix, "dawarich_a12a")
+      Application.put_env(:dawarich, :cable_prefix, prefix)
     end)
 
     assert Bus.prefix() == "dawarich_production"
