@@ -30,7 +30,34 @@ defmodule Dawarich.Cache.PreheatDigests do
       ).rows
 
     calculate = Keyword.get(opts, :calculate, &Calculation.yearly/4)
-    Enum.each(years, fn [year] -> calculate.(repo, id, year, opts) end)
+
+    Enum.each(years, fn [year] ->
+      if stale?(repo, id, year), do: calculate.(repo, id, year, opts)
+    end)
+
     :ok
   end
+
+  defp stale?(repo, id, year) do
+    case repo.query!(
+           "SELECT travel_patterns,updated_at FROM digests WHERE user_id=$1 AND year=$2 AND period_type=1 LIMIT 1",
+           [id, year]
+         ).rows do
+      [] ->
+        true
+
+      [[patterns, updated]] ->
+        [[latest]] =
+          repo.query!("SELECT max(updated_at) FROM stats WHERE user_id=$1 AND year=$2", [
+            id,
+            year
+          ]).rows
+
+        blank?(patterns) or (latest != nil and NaiveDateTime.compare(updated, latest) == :lt)
+    end
+  end
+
+  defp blank?(value) when value in [nil, false, [], %{}], do: true
+  defp blank?(value) when is_binary(value), do: String.trim(value) == ""
+  defp blank?(_value), do: false
 end
