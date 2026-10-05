@@ -15,6 +15,7 @@ pidfile="$root/tmp/pids/proxy_stack.pid"
 log="$root/log/proxy_stack.log"
 sidekiq_log="$root/log/proxy_stack_sidekiq.log"
 sidekiq="sidekiq.* $(basename "$root") "
+puma="puma .* \\[$(basename "$root")\\]"
 
 stack() {
   env $(grep -E '^DATABASE_(PORT|USERNAME|PASSWORD)=' "$ENV_FILE" | xargs) \
@@ -34,8 +35,9 @@ stack() {
 if [ "${1:-}" = --down ]; then
   [ -f "$pidfile" ] && kill "$(cat "$pidfile")" 2>/dev/null || true
   pkill -f "$sidekiq" 2>/dev/null || true
+  pkill -f "$puma" 2>/dev/null || true
   tries=0
-  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || pgrep -f "$sidekiq" >/dev/null 2>&1; do
+  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || pgrep -f "$sidekiq" >/dev/null 2>&1 || pgrep -f "$puma" >/dev/null 2>&1; do
     tries=$((tries + 1))
     [ "$tries" -lt 60 ] || { echo "the stack did not stop" >&2; exit 1; }
     sleep 1
@@ -82,7 +84,7 @@ stack bin/rails phoenix:importmap phoenix:time_zones >/dev/null
   PHOENIX_TEST_DATABASE="$STAND_DATABASE_NAME" MIX_ENV=prod \
   sh -c 'mix --version | grep -q "^Mix 1.18.3 " && mix compile --force >/dev/null && mix release --overwrite >/dev/null')
 stack "$rel" eval 'Dawarich.Release.migrate()'
-stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT")" \
+stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -b 127.0.0.1 -p "$PORT")" \
   sh -c 'echo $$ >"$1"; exec nohup "$2" start' _ "$pidfile" "$rel" >>"$log" 2>&1 &
 
 tries=0
@@ -110,3 +112,6 @@ done
 stack bin/rails e2e:reset_and_seed >"$root/log/proxy_stack_seed.log" 2>&1 || { tail -20 "$root/log/proxy_stack_seed.log" >&2; exit 1; }
 [ -z "${EXTRA_SEEDS:-}" ] || "$root/app-phoenix/scripts/proxy_stack.sh" --seed
 echo "BASE_URL=http://127.0.0.1:$PORT"
+if [ "${PROXY_STACK_FOREGROUND:-0}" = 1 ]; then
+  wait
+fi
