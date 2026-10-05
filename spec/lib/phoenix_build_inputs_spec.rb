@@ -136,6 +136,8 @@ RSpec.describe PhoenixBuildInputs do
       Rake::Task['phoenix:time_zones'].invoke(path)
 
       expect(File.read(path)).to eq(described_class.time_zones_json)
+    ensure
+      Rake::Task['phoenix:time_zones'].reenable
     end
   end
 

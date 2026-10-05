@@ -8,6 +8,8 @@ RSpec.describe 'points:raw_data:archive' do
     Rake::Task['points:raw_data:archive'].reenable
   end
 
+  after { Rake::Task['points:raw_data:archive'].reenable }
+
   context 'with eligible points across users' do
     let(:user) { create(:user) }
     let(:other_user) { create(:user) }
@@ -58,6 +60,8 @@ RSpec.describe 'points:raw_data:archive_full' do
     allow(PointsChannel).to receive(:broadcast_to)
     Rake::Task['points:raw_data:archive_full'].reenable
   end
+
+  after { Rake::Task['points:raw_data:archive_full'].reenable }
 
   let(:user) { create(:user) }
 

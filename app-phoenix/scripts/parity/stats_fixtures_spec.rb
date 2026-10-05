@@ -67,12 +67,15 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
     Rails.application.load_tasks unless Rake::Task.task_defined?('phoenix:importmap')
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'importmap.json')
+      Rake::Task['phoenix:importmap'].reenable
       Rake::Task['phoenix:importmap'].invoke(path)
       imports = JSON.parse(File.read(path))['imports']
       expect(imports.keys).to include('chartkick', 'Chart.bundle', '@hotwired/stimulus', 'i18n', 'maplibre-gl',
                                       'controllers/stat_page_controller', 'controllers/sharing_modal_controller',
                                       'controllers/base_controller')
       expect(imports.values).to all(start_with('/'))
+    ensure
+      Rake::Task['phoenix:importmap'].reenable
     end
   end
 

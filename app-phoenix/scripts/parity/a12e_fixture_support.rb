@@ -102,6 +102,8 @@ module A12eFixtureSupport
       end
     end
     [out.string, err.string, code]
+  ensure
+    reenable(Rake::Task[task])
   end
 
   def reenable(task)

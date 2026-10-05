@@ -12,6 +12,8 @@ RSpec.describe 'phoenix:achievements' do
       Rake::Task['phoenix:achievements'].reenable
       Rake::Task['phoenix:achievements'].invoke(path)
       JSON.parse(File.read(path))
+    ensure
+      Rake::Task['phoenix:achievements'].reenable
     end
   end
 
