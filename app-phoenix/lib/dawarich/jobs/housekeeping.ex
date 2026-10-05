@@ -22,25 +22,7 @@ defmodule Dawarich.Jobs.Housekeeping do
 
     delete!(
       repo,
-      "DELETE FROM phoenix.processed_commands WHERE processed_at < $1",
-      DateTime.add(now, -30 * @day)
-    )
-
-    delete!(
-      repo,
       "DELETE FROM phoenix.notification_events WHERE created_at < $1",
-      DateTime.add(now, -@day)
-    )
-
-    delete!(
-      repo,
-      "DELETE FROM phoenix.rails_commands_dead WHERE died_at < $1",
-      DateTime.add(now, -30 * @day)
-    )
-
-    delete!(
-      repo,
-      "DELETE FROM phoenix.track_generations WHERE updated_at < $1",
       DateTime.add(now, -@day)
     )
 

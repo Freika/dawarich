@@ -192,7 +192,7 @@ defmodule Dawarich.Tracks.BackfillCommandsTest do
     release =
       Task.async(fn -> Ownership.put!(ScratchRepo, "command:tracks.backfill", :sidekiq) end)
 
-    assert settle(release, "INSERT INTO phoenix.job_owners%") == :blocked
+    assert settle(release, "SELECT key FROM phoenix.job_owners%") == :blocked
     commit(holder)
     assert Task.await(release) == :ok
     assert rows("SELECT event_id::text FROM public.job_outbox") == [[cycle]]

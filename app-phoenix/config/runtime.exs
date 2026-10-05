@@ -92,7 +92,7 @@ if config_env() != :test do
     peer: Oban.Peers.Database,
     stager: {Oban.Stager, []},
     queues: queues,
-    pruner: [max_age: {1, :day}],
+    pruner: false,
     lifeline: [rescue_after: {60, :minute}],
     shutdown_grace_period: 12_000
 
@@ -139,3 +139,7 @@ case System.get_env("DAWARICH_RAILS_ARGS") do
            :rails_argv,
            args |> String.replace_suffix("\x1F", "") |> String.split("\x1F")
 end
+
+config :dawarich,
+       :job_entries,
+       Dawarich.Jobs.Claimer.entries(System.get_env("DAWARICH_OBAN_JOB_KEYS"))

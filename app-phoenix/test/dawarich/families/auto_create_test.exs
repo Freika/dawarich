@@ -213,7 +213,7 @@ defmodule Dawarich.Families.AutoCreateTest do
 
     assert_receive {:locked, holder}
     second = Task.async(fn -> run(user) end)
-    assert Dawarich.LockRace.settle(second, "SELECT plan, settings FROM users%") == :blocked
+    assert Dawarich.LockRace.settle(second, "INSERT INTO phoenix.job_owners%") == :blocked
     send(holder, :continue)
     assert Task.await(first) == true
     assert Task.await(second) == false

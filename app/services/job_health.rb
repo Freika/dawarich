@@ -70,11 +70,11 @@ module JobHealth
     connection.select_one(sanitize([FLAGS_SQL, { node: node.to_s, stale: STALE_SECONDS, overdue: OVERDUE_SECONDS }]))
   end
 
-  def gauges
+  def gauges(include_drain: false)
     read do
       next { tables: false } unless JobOwnership.table?
 
-      {
+      metrics = {
         tables: true,
         outbox: connection.select_one(OUTBOX_SQL),
         owners: connection.select_all(OWNERS_SQL).to_a,
@@ -82,10 +82,44 @@ module JobHealth
         oban: oban_counts,
         rails_commands: rails_commands_counts
       }
+      metrics[:drain] = drain_counts if include_drain
+      metrics
     end
   rescue StandardError => e
     Rails.logger.warn("[JobHealth] gauges failed: #{e.class}")
     { tables: :unknown }
+  end
+
+  def drain_counts
+    required = %w[phoenix.rails_commands phoenix.rails_commands_dead phoenix.track_generations
+                  phoenix.track_generation_chunks phoenix.release_operations]
+    return { tables: :unknown } unless required.all? do |table|
+      connection.select_value(sanitize(['SELECT to_regclass(?) IS NOT NULL', table]))
+    end
+
+    keys = JobCommands::COMMANDS.keys.map { "command:#{_1}" } +
+           YAML.load_file(Rails.root.join('config/schedule.yml')).keys.map { "cron:#{_1}" }
+    workers = oban_counts.reject { |row| %w[completed cancelled].include?(row['state']) }
+    oban = connection.select_value("SELECT to_regclass('oban.oban_jobs') IS NOT NULL")
+    sql = if oban
+            DRAIN_SQL
+          else
+            DRAIN_SQL.sub(
+              /\(SELECT count\(\*\) FROM oban\.oban_jobs[^\n]+?\)::integer AS incomplete_oban/,
+              'NULL::integer AS incomplete_oban'
+            )
+          end
+    {
+      tables: true, counts: connection.select_one(sanitize([sql, { keys: }])),
+      incomplete_workers: workers,
+      legacy_schedulers: if oban
+                           LEGACY_SCHEDULERS.map do |key, worker|
+                             incomplete = workers.sum { _1['worker'] == worker ? _1['count'] : 0 }
+                             { key:, worker:, incomplete: }
+                           end
+                         end,
+      producer_kinds: RailsCommands::Registry::HANDLERS.keys.sort.map { |kind| { kind:, status: 'BLOCKED' } }
+    }
   end
 
   def monotonic = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -159,5 +193,32 @@ module JobHealth
       count(*) FILTER (WHERE state = 'quarantined')::integer AS quarantined,
       EXTRACT(EPOCH FROM now() - min(scheduled_at) FILTER (WHERE state = 'pending' AND scheduled_at <= now()))::integer AS oldest_due_seconds
     FROM job_outbox
+  SQL
+
+  LEGACY_SCHEDULERS = {
+    'cron:trek_sync_job' => 'Dawarich.Imports.Trek.ScheduleWorker',
+    'cron:teslamate_sync_job' => 'Dawarich.Imports.Teslamate.ScheduleWorker'
+  }.freeze
+
+  DRAIN_SQL = <<~SQL.squish
+    SELECT
+      (SELECT count(*) FROM job_outbox WHERE state = 'pending')::integer AS pending_outbox,
+      (SELECT count(*) FROM job_outbox WHERE state = 'pending' AND scheduled_at > now())::integer AS future_outbox,
+      (SELECT count(*) FROM job_outbox WHERE state = 'quarantined')::integer AS quarantined,
+      (SELECT count(*) FROM phoenix.rails_commands)::integer AS reverse_pending,
+      (SELECT count(*) FROM phoenix.rails_commands WHERE available_at > now())::integer AS reverse_future,
+      (SELECT count(*) FROM phoenix.rails_commands WHERE available_at <= now() AND (leased_until IS NULL OR leased_until < now()))::integer AS reverse_due,
+      (SELECT count(*) FROM phoenix.rails_commands WHERE leased_until >= now())::integer AS reverse_leased,
+      (SELECT count(*) FROM phoenix.rails_commands WHERE attempts > 0 AND (leased_until IS NULL OR leased_until < now()))::integer AS reverse_retrying,
+      (SELECT count(*) FROM phoenix.rails_commands_dead)::integer AS reverse_dead,
+      (SELECT count(*) FROM phoenix.release_operations WHERE status <> 'completed')::integer AS release_pending,
+      (SELECT count(*) FROM oban.oban_jobs WHERE state NOT IN ('completed', 'cancelled'))::integer AS incomplete_oban,
+      (SELECT count(*) FROM phoenix.track_generations g WHERE status <> 'completed' OR completed_chunks < total_chunks OR EXISTS (SELECT 1 FROM phoenix.track_generation_chunks c WHERE c.generation_id = g.id AND c.status <> 'completed'))::integer AS unfinished_generations,
+      (SELECT count(*) FROM unnest(ARRAY[:keys]::text[]) AS expected(key) LEFT JOIN phoenix.job_owners o USING (key) WHERE o.key IS NULL)::integer AS missing_owners,
+      (SELECT count(*) FROM phoenix.job_owners WHERE key = ANY(ARRAY[:keys]) AND owner <> 'oban')::integer AS mixed_owners,
+      (SELECT count(*) FROM phoenix.job_owners WHERE NOT (key = ANY(ARRAY[:keys])))::integer AS unknown_owners,
+      (SELECT count(*) FROM phoenix.job_owners WHERE key = ANY(ARRAY[:keys]) AND (owner <> 'sidekiq' OR NOT pinned))::integer AS unpinned_rollback_owners,
+      (SELECT count(*) FROM phoenix.job_owners WHERE owner = 'oban')::integer AS oban_owners,
+      (SELECT count(*) FROM phoenix.runtime_nodes WHERE beat_at > now() - interval '60 seconds')::integer AS fresh_nodes
   SQL
 end

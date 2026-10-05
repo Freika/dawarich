@@ -14,7 +14,8 @@ module Points
         return if JobOwnership.oban?(OWNER_KEY)
 
         User.find_each do |user|
-          ClearUserJob.perform_later(user.id)
+          result = JobOwnership.with_owner(OWNER_KEY) { ClearUserJob.perform_later(user.id) }
+          break if result == :not_owner
         end
       rescue StandardError => e
         ExceptionReporter.call(e, 'Points raw data clearing scheduling failed')

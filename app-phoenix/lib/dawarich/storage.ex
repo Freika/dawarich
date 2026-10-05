@@ -122,8 +122,17 @@ defmodule Dawarich.Storage do
     do: Dawarich.Storage.S3.download!(config, key, dest)
 
   def delete(%{service: "local", root: root}, key) do
-    _ = File.rm(disk_path(root, key))
-    :ok
+    case safe_disk_path(root, key) do
+      {:ok, path} ->
+        case File.rm(path) do
+          :ok -> :ok
+          {:error, :enoent} -> :ok
+          {:error, reason} -> {:error, reason}
+        end
+
+      :error ->
+        {:error, :unsafe_path}
+    end
   end
 
   def delete(%{service: "s3"} = config, key), do: Dawarich.Storage.S3.delete(config, key)

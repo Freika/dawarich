@@ -1,8 +1,6 @@
 defmodule Dawarich.Lite.ArchivalWarningWorkerTest do
   use Dawarich.JobsCase
 
-  import ExUnit.CaptureLog
-
   alias Dawarich.I18n
   alias Dawarich.Jobs.Ownership
   alias Dawarich.Lite.{ArchivalWarnings, ArchivalWarningWorker}
@@ -182,13 +180,11 @@ defmodule Dawarich.Lite.ArchivalWarningWorkerTest do
     assert map_size(args) == 4
   end
 
-  test "11_5mo while the mail key is sidekiq marks nothing, inserts nothing and logs a warning" do
+  test "11_5mo after joint mail handback cancels without marks jobs or notifications" do
     :ok = Ownership.put!(ScratchRepo, @mail_key, :sidekiq)
     user_id = user!(%{oldest: @c11_5 - 100})
 
-    log = capture_log(fn -> assert run() == :ok end)
-
-    assert log =~ "[lite.archival] mail key owned by sidekiq; user #{user_id} skipped"
+    assert run() == {:cancel, :not_owner}
     assert warnings(user_id) == nil
     assert jobs() == []
     assert notifications() == []
