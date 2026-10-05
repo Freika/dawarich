@@ -78,9 +78,33 @@ defmodule DawarichWeb.PointsLiveTest do
     assert attr(html, "input[name='point_ids[]']", "value") == ["837101"]
     assert attr(html, "input[name='start_at']", "value") == ["2026-03-01T10:00"]
     assert attr(html, "select[name='import_id'] option[selected]", "value") == ["83711"]
-    assert attr(html, "#points", "phx-hook") == ["RailsStimulus"]
+
+    assert attr(html, "#points [data-controller='checkbox-select-all']", "phx-hook") == [
+             "RailsStimulus"
+           ]
+
     assert attr(html, "#bulk_destroy_form", "phx-submit") == []
     assert html =~ "Synthetic.json"
+  end
+
+  test "selection island survives hydration and is replaced for a different page", %{user: user} do
+    fill(user, 51)
+
+    conn =
+      get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/points?#{@range}")
+
+    [static_id] = attr(conn.resp_body, "[id^='points-page-']", "id")
+    {:ok, view, html} = live(conn)
+    assert attr(html, "[id^='points-page-']", "id") == [static_id]
+    assert attr(html, "#points [phx-hook='RailsStimulus']", "phx-update") == ["ignore"]
+    assert attr(html, "#points input[name='point_ids[]']", "value") |> length() == 50
+
+    html =
+      view |> element(".flex.justify-center.mb-4 [aria-label='pager'] a", "2") |> render_click()
+
+    [next_id] = attr(html, "[id^='points-page-']", "id")
+    refute next_id == static_id
+    assert attr(html, "#points input[name='point_ids[]']", "value") == ["837101"]
   end
 
   test "pagination and order navigation render the selected page", %{user: user} do

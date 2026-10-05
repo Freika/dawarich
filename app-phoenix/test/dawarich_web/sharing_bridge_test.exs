@@ -12,7 +12,7 @@ defmodule DawarichWeb.SharingBridgeTest do
       removeEventListener: name => listeners.delete(name)
     }});
     const dependency = new vm.SyntheticModule(["Application", "lazyLoadControllersFrom"], function() {
-      this.setExport("Application", {start: () => ({register() {}, stop() {}})});
+      this.setExport("Application", class {async start() {} register() {} stop() {}});
       this.setExport("lazyLoadControllersFrom", () => {});
     }, {context});
     await dependency.link(() => {});
@@ -23,7 +23,7 @@ defmodule DawarichWeb.SharingBridgeTest do
     await module.link(() => {});
     await module.evaluate();
     const element = {
-      addEventListener: (name, callback, capture) => assert.equal(capture, true),
+      addEventListener: (name, callback, capture) => assert.equal(capture, true), removeAttribute() {},
       getAttribute: () => "", querySelectorAll: () => []
     };
     const bridge = module.namespace.railsBridge(element);
@@ -91,7 +91,7 @@ defmodule DawarichWeb.SharingBridgeTest do
     const loading = new Promise(resolve => release = resolve);
     const context = vm.createContext({window: {}, document: {addEventListener() {}}});
     const dependency = new vm.SyntheticModule(["Application", "lazyLoadControllersFrom"], function() {
-      this.setExport("Application", {start: () => ({register() {}, stop() {}})});
+      this.setExport("Application", class {async start() {} register() {} stop() {}});
       this.setExport("lazyLoadControllersFrom", () => {});
     }, {context});
     await dependency.link(() => {});
@@ -102,7 +102,7 @@ defmodule DawarichWeb.SharingBridgeTest do
     await module.link(() => {});
     await module.evaluate();
     const fields = [{disabled: false}, {disabled: true}];
-    const element = {addEventListener() {}, getAttribute: () => "",
+    const element = {addEventListener() {}, removeAttribute() {}, getAttribute: () => "",
       querySelectorAll: selector => selector.includes("button") ? fields : []};
     const bridge = module.namespace.railsBridge(element);
     assert.equal(fields[0].disabled, true);
@@ -122,7 +122,7 @@ defmodule DawarichWeb.SharingBridgeTest do
       addEventListener() {}, getElementById: () => ({appendChild() {}})
     }});
     const dependency = new vm.SyntheticModule(["Application", "lazyLoadControllersFrom"], function() {
-      this.setExport("Application", {start: () => ({register() {}, stop() {}})});
+      this.setExport("Application", class {async start() {} register() {} stop() {}});
       this.setExport("lazyLoadControllersFrom", () => {});
     }, {context});
     await dependency.link(() => {});
@@ -132,7 +132,7 @@ defmodule DawarichWeb.SharingBridgeTest do
     });
     await module.link(() => {});
     await module.evaluate();
-    const element = {addEventListener() {}, getAttribute: () => "", querySelectorAll: () => []};
+    const element = {addEventListener() {}, removeAttribute() {}, getAttribute: () => "", querySelectorAll: () => []};
     const alert = {classList: {contains: () => false},
       querySelector: () => ({textContent: "Location sharing enabled"})};
     const content = {querySelector: () => alert, querySelectorAll: () => [alert], cloneNode: () => content};

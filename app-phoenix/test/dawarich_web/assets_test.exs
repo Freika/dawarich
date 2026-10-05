@@ -137,7 +137,8 @@ defmodule DawarichWeb.AssetsTest do
     source = File.read!("priv/static/js/rails_bridge.js")
 
     assert source =~ "window.StimulusIslands = islands"
-    assert source =~ ~r/Application\.start\(element\)\n\s+islands\.add\(app\)/
+    assert source =~ "const app = new Application(element)"
+    assert source =~ ~r/await app\.start\(\)\n\s+islands\.add\(app\)/
     assert source =~ ~r/app\.stop\(\)\n\s+islands\.delete\(app\)/
   end
 
