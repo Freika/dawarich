@@ -1,5 +1,5 @@
 defmodule Dawarich.Posters.TrackBuilderTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.DataCase, async: true
   alias Dawarich.Posters.{Geometry, TrackBuilder}
   alias Dawarich.Test.{ApiGolden, FrameSeeds}
 

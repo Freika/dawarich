@@ -1,15 +1,10 @@
 defmodule Dawarich.PointListTest do
-  use ExUnit.Case, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.{Accounts, PointList, PointListWindow, Repo}
   alias Dawarich.Test.{FrameSeeds, RailsUser}
 
   @now ~U[2026-03-31 10:00:00Z]
   @berlin %{"timezone" => "Europe/Berlin", "maps" => %{"distance_unit" => "km"}}
-
-  setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-  end
 
   defp user(id, settings \\ @berlin, plan \\ 1) do
     RailsUser.insert!(%{

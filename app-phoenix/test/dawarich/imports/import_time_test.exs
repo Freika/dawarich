@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.ImportTimeTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.DataCase, async: true
   alias Dawarich.Imports.ImportTime
   @oracle Path.expand("../../fixtures/gpx/rails_preparation_oracle.json", __DIR__)
   @cases @oracle

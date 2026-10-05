@@ -1,6 +1,5 @@
 defmodule Dawarich.FlightsTest do
-  use Dawarich.IngestCase, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.{Flights, RailsTime}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 

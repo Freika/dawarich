@@ -1,6 +1,5 @@
 defmodule Dawarich.VisitsApi.ReadTest do
-  use Dawarich.IngestCase, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.VisitsApi.Read
 
   setup do

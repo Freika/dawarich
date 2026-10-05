@@ -1,6 +1,5 @@
 defmodule Dawarich.Digests.TimeOfDayTest do
-  use Dawarich.JobsCase, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.DigestFixtures
   alias Dawarich.Digests.{Context, Period, TimeOfDay}
 

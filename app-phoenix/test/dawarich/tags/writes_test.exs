@@ -1,6 +1,5 @@
 defmodule Dawarich.Tags.WritesTest do
-  use Dawarich.IngestCase, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.Tags.Writes
   alias Dawarich.Test.RailsUser
 
