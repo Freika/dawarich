@@ -34,6 +34,7 @@ defmodule DawarichWeb.AuthGateTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Dawarich.State.put_registration_enabled(Repo, false)
     Application.delete_env(:dawarich, :phoenix_auth)
     previous = System.get_env("SELF_HOSTED")
     previous_flows = System.get_env("DAWARICH_PHOENIX_AUTH")
@@ -167,7 +168,7 @@ defmodule DawarichWeb.AuthGateTest do
     System.delete_env("DAWARICH_PHOENIX_AUTH")
   end
 
-  test "account writes do not require registration cache availability" do
+  test "account writes do not require registration state availability" do
     {session, previous_secret} = account_actor()
     cache = Process.whereis(Dawarich.Redis.Cache)
     if cache, do: Process.unregister(Dawarich.Redis.Cache)
@@ -177,6 +178,7 @@ defmodule DawarichWeb.AuthGateTest do
       if cache && Process.alive?(cache), do: Process.register(cache, Dawarich.Redis.Cache)
     end)
 
+    Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
     assert RegistrationSetting.fetch() == :error
     Application.put_env(:dawarich, :phoenix_auth, ~w(account api_keys credentials recovery))
     owner = self()
@@ -248,7 +250,7 @@ defmodule DawarichWeb.AuthGateTest do
     end
   end
 
-  test "two_factor opts in independently without registration cache" do
+  test "two_factor opts in independently without registration state" do
     routes = [
       {:get, "/settings/two_factor"},
       {:post, "/settings/two_factor"},
@@ -273,6 +275,7 @@ defmodule DawarichWeb.AuthGateTest do
       if cache && Process.alive?(cache), do: Process.register(cache, Dawarich.Redis.Cache)
     end)
 
+    Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
     assert RegistrationSetting.fetch() == :error
     owner = self()
     tracer = spawn(fn -> trace_calls(owner) end)
@@ -328,6 +331,7 @@ defmodule DawarichWeb.AuthGateTest do
       if cache && Process.alive?(cache), do: Process.register(cache, Dawarich.Redis.Cache)
     end)
 
+    Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
     assert RegistrationSetting.fetch() == :error
     {session, _} = SessionCookie.for_form(%{}, Application.fetch_env!(:dawarich, :rails_secret))
 
