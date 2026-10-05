@@ -4,7 +4,7 @@ defmodule Dawarich.Integrations.SyncScheduling do
   alias Dawarich.{Entitlements, RailsCommands}
   alias Dawarich.AirTrail.ImportFlightsWorker
   alias Dawarich.Imports.{Teslamate, Trek}
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.{Claimer, Ownership, Processed}
   alias DawarichWeb.LayoutAssigns
 
   @namespace <<0x6B, 0xA7, 0xB8, 0x11, 0x9D, 0xAD, 0x11, 0xD1, 0x80, 0xB4, 0x00, 0xC0, 0x4F, 0xD4,
@@ -31,6 +31,8 @@ defmodule Dawarich.Integrations.SyncScheduling do
 
   defp sweep(repo, oban, kind, slot, opts, cursor) do
     case Ownership.with_owner(repo, key(kind), :oban, fn ->
+           count = Claimer.legacy_scheduler_count(repo, key(kind))
+           if count > 0, do: repo.rollback({:legacy_scheduler_jobs, count})
            batch(repo, oban, kind, slot, opts, cursor)
          end) do
       {:ok, nil} -> :ok

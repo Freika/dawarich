@@ -23,6 +23,7 @@ defmodule Dawarich.Jobs.ImportEntries do
       %{
         key: "cron:stale_jobs_recovery_job",
         kind: :cron,
+        catch_up: false,
         expression: "*/30 * * * *",
         worker: Dawarich.Imports.StaleWorker,
         claimable: false
@@ -30,6 +31,7 @@ defmodule Dawarich.Jobs.ImportEntries do
       %{
         key: "cron:watcher_job",
         kind: :cron,
+        catch_up: false,
         expression: "0 */1 * * *",
         worker: Dawarich.Imports.WatcherWorker,
         claimable: false

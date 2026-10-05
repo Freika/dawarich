@@ -135,7 +135,7 @@ defmodule Dawarich.Jobs.RelayTest do
 
     assert rows("SELECT node FROM phoenix.runtime_nodes") == [["live"]]
     assert rows("SELECT trip_id FROM phoenix.trip_events") == [[2]]
-    assert rows("SELECT count(*) FROM phoenix.processed_commands") == [[2]]
+    assert rows("SELECT count(*) FROM phoenix.processed_commands") == [[3]]
     assert rows("SELECT payload->>'n' FROM public.job_outbox") == [["2"]]
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[1]]
     assert rows("SELECT id FROM phoenix.rails_commands_dead") == [[2]]
