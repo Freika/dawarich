@@ -23,14 +23,19 @@ defmodule Dawarich.Test.RawHTTP do
     task =
       Task.async(fn ->
         send(owner, {self(), :accepting})
-        {:ok, socket} = :gen_tcp.accept(listen)
+        {:ok, socket} = :gen_tcp.accept(listen, 5_000)
         :ok = :gen_tcp.controlling_process(socket, owner)
         socket
       end)
 
-    receive do: ({pid, :accepting} when pid == task.pid -> :ok)
+    receive do
+      {pid, :accepting} when pid == task.pid -> :ok
+    after
+      5_000 -> raise "HTTP accept readiness timed out"
+    end
+
     result = request.()
-    {Task.await(task, :infinity), result}
+    {Task.await(task), result}
   end
 
   def connect(port, timeout \\ 5_000) do

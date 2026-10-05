@@ -118,7 +118,7 @@ defmodule Dawarich.Mail.SmtpTest do
       client = Task.async(fn -> receive do: (:deliver -> Smtp.deliver(message, env)) end)
       {socket, :deliver} = accept_on_request(sink, fn -> send(client.pid, :deliver) end)
       data = serve(socket)
-      assert Task.await(client, :infinity) == :ok
+      assert Task.await(client) == :ok
       data
     end
 

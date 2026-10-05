@@ -22,8 +22,8 @@ defmodule Dawarich.Storage.HttpcClientTest do
     RawHTTP.read_head(socket)
     ref = Process.monitor(caller)
     Process.exit(caller, :kill)
-    receive do: ({:DOWN, ^ref, :process, ^caller, :killed} -> :ok)
-    assert {:error, :closed} = :gen_tcp.recv(socket, 0)
+    assert_receive {:DOWN, ^ref, :process, ^caller, :killed}
+    assert {:error, :closed} = :gen_tcp.recv(socket, 0, 1_000)
   end
 
   test "sends method, headers and body over :httpc and returns binary headers" do

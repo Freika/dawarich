@@ -22,9 +22,49 @@ defmodule Dawarich.UserData.RestorePlacesTest do
     %{c: c, data: data}
   end
 
-  test "restore place batches reuse metadata and identity reads and refresh changed schemas", %{
-    c: c
-  } do
+  for action <- [:create, :delete] do
+    test "restore observes an identity #{action} committed while processing an earlier row", %{
+      c: c
+    } do
+      assert_interleaving(c, unquote(action))
+    end
+  end
+
+  test "restore preserves earlier inserts before a later NUL name", %{c: c} do
+    valid = %{"name" => "before NUL", "latitude" => 1, "longitude" => 2}
+    invalid = %{valid | "name" => "invalid" <> <<0>>}
+
+    assert_raise Postgrex.Error, fn ->
+      Places.call(ScratchRepo, c.user_id, [valid, invalid], c.context)
+    end
+
+    assert [[valid["name"]]] == rows("SELECT name FROM places WHERE name=$1", [valid["name"]])
+  end
+
+  for {field, value, error} <- [
+        {"source", "invalid", ArgumentError},
+        {"unknown_column", "invalid", KeyError}
+      ] do
+    test "restore reports earlier #{field} failure before a later NUL name", %{c: c} do
+      first = %{
+        "name" => "first invalid",
+        "latitude" => 1,
+        "longitude" => 2,
+        unquote(field) => unquote(value)
+      }
+
+      later = %{"name" => "later" <> <<0>>, "latitude" => 1, "longitude" => 2}
+
+      assert_raise unquote(error), fn ->
+        Places.call(ScratchRepo, c.user_id, [first, later], c.context)
+      end
+    end
+  end
+
+  test "restore place batches reuse metadata with ordered identity reads and refresh changed schemas",
+       %{
+         c: c
+       } do
     ref = make_ref()
     owner = self()
 
@@ -39,7 +79,7 @@ defmodule Dawarich.UserData.RestorePlacesTest do
                 send(owner, {ref, :columns})
 
               String.contains?(metadata.query, "FROM places") ->
-                send(owner, {ref, :identity})
+                send(owner, {ref, :identity, ScratchRepo.checked_out?()})
 
               String.contains?(metadata.query, "FROM imports") ->
                 send(owner, {ref, :import})
@@ -61,8 +101,8 @@ defmodule Dawarich.UserData.RestorePlacesTest do
     assert Places.call(ScratchRepo, c.user_id, places, c.context) == 3
     assert_received {^ref, :columns}
     refute_received {^ref, :columns}
-    assert_received {^ref, :identity}
-    refute_received {^ref, :identity}
+    for _ <- 1..3, do: assert_received({^ref, :identity, true})
+    refute_received {^ref, :identity, _}
     refute_received {^ref, :import}
 
     rows("ALTER TABLE places ADD COLUMN loadtest_note text")
@@ -365,5 +405,43 @@ defmodule Dawarich.UserData.RestorePlacesTest do
 
     assert Taggings.call(ScratchRepo, c.user_id, data["taggings"], c.context) == 0
     assert Taggings.call(ScratchRepo, c.user_id, nil, c.context) == 0
+  end
+
+  defp assert_interleaving(c, action) do
+    later = %{"name" => "concurrent identity", "latitude" => 1, "longitude" => 2}
+    earlier = %{later | "name" => "earlier identity"}
+    if action == :delete, do: Places.call(ScratchRepo, c.user_id, [later], c.context)
+    ref = make_ref()
+    owner = self()
+    Process.put(ref, true)
+
+    :ok =
+      :telemetry.attach(
+        ref,
+        [:dawarich, :scratch_repo, :query],
+        fn _, _, metadata, _ ->
+          if self() == owner and String.starts_with?(metadata.query, "INSERT INTO places") and
+               Process.delete(ref) do
+            Task.async(fn ->
+              case action do
+                :create -> Places.call(ScratchRepo, c.user_id, [later], c.context)
+                :delete -> rows("DELETE FROM places WHERE name=$1", [later["name"]])
+              end
+            end)
+            |> Task.await()
+          end
+        end,
+        nil
+      )
+
+    try do
+      assert Places.call(ScratchRepo, c.user_id, [earlier, later], c.context) ==
+               if(action == :create, do: 1, else: 2)
+
+      assert [[1]] == rows("SELECT count(*) FROM places WHERE name=$1", [later["name"]])
+    after
+      :telemetry.detach(ref)
+      Process.delete(ref)
+    end
   end
 end

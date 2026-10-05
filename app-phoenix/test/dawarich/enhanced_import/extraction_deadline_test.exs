@@ -64,7 +64,7 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
 
     pid = receive do: ({:blocked, pid} -> pid)
     send(extraction.pid, :start_deadline)
-    Task.await(extraction, :infinity)
+    Task.await(extraction)
     pid
   end
 
