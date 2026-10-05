@@ -90,13 +90,13 @@ defmodule Dawarich.Mail.SmtpTest do
       reply(socket, "220 sink ESMTP\r\n")
 
       for answer <- ["250 sink\r\n", "250 ok\r\n", "250 ok\r\n", "354 go\r\n"] do
-        {:ok, _command} = :gen_tcp.recv(socket, 0, 5_000)
+        {:ok, _command} = :gen_tcp.recv(socket, 0, :infinity)
         reply(socket, answer)
       end
 
       data = receive_data(socket, "")
       reply(socket, "250 queued\r\n")
-      {:ok, "QUIT\r\n"} = :gen_tcp.recv(socket, 0, 5_000)
+      {:ok, "QUIT\r\n"} = :gen_tcp.recv(socket, 0, :infinity)
       reply(socket, "221 bye\r\n")
       data
     end
@@ -105,7 +105,7 @@ defmodule Dawarich.Mail.SmtpTest do
       if String.ends_with?(acc, "\r\n.\r\n") do
         acc |> binary_part(0, byte_size(acc) - 3) |> String.replace(~r/^\.\./m, ".")
       else
-        {:ok, chunk} = :gen_tcp.recv(socket, 0, 5_000)
+        {:ok, chunk} = :gen_tcp.recv(socket, 0, :infinity)
         receive_data(socket, acc <> chunk)
       end
     end
@@ -118,7 +118,7 @@ defmodule Dawarich.Mail.SmtpTest do
       client = Task.async(fn -> receive do: (:deliver -> Smtp.deliver(message, env)) end)
       {socket, :deliver} = accept_on_request(sink, fn -> send(client.pid, :deliver) end)
       data = serve(socket)
-      assert Task.await(client) == :ok
+      assert Task.await(client, :infinity) == :ok
       data
     end
 

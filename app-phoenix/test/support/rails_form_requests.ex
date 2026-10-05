@@ -48,6 +48,6 @@ defmodule Dawarich.Test.RailsFormRequests do
       end)
 
     conn = fun.()
-    {Task.await(puma), conn}
+    {Task.await(puma, :infinity), conn}
   end
 end

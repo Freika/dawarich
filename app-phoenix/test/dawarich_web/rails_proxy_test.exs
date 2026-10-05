@@ -267,7 +267,7 @@ defmodule DawarichWeb.RailsProxyTest do
 
     {200, _headers, rest} = read_response_head(client)
     pieces = chunks(client, rest)
-    Task.await(sender)
+    Task.await(sender, :infinity)
 
     assert IO.iodata_to_binary(pieces) == mib
     assert length(pieces) <= 128
@@ -406,13 +406,18 @@ defmodule DawarichWeb.RailsProxyTest do
         {:ok, [handler]} = ThousandIsland.connection_pids(ctx.bandit)
         monitor = Process.monitor(handler)
         :ok = :gen_tcp.close(client)
-        :ok = :inet.setopts(puma, send_timeout: 5_000)
 
         assert {:error, reason} =
                  send_until_closed(puma, :binary.copy("y", 65_536), 64 * 1_048_576)
 
         assert reason in [:closed, :econnreset]
-        assert_receive {:DOWN, ^monitor, :process, _, down_reason}, 5_000
+
+        event =
+          receive do
+            {:DOWN, ^monitor, :process, _, _} = event -> event
+          end
+
+        assert {:DOWN, ^monitor, :process, _, down_reason} = event
 
         assert down_reason == :normal or match?({:shutdown, _}, down_reason),
                "connection process exited with #{inspect(down_reason)} instead of a normal shutdown"

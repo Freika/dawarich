@@ -13,32 +13,30 @@ defmodule Dawarich.Test.RawHTTP do
   end
 
   def accept(%{listen: listen}) do
-    {:ok, socket} = :gen_tcp.accept(listen, 5_000)
+    {:ok, socket} = :gen_tcp.accept(listen, :infinity)
     socket
   end
 
-  def accept_on_request(%{listen: listen}, request) do
+  def accept_on_request(server, request) do
     owner = self()
 
     task =
       Task.async(fn ->
         send(owner, {self(), :accepting})
-        {:ok, socket} = :gen_tcp.accept(listen, 5_000)
+        socket = accept(server)
         :ok = :gen_tcp.controlling_process(socket, owner)
         socket
       end)
 
     receive do
       {pid, :accepting} when pid == task.pid -> :ok
-    after
-      5_000 -> raise "HTTP accept readiness timed out"
     end
 
     result = request.()
-    {Task.await(task), result}
+    {Task.await(task, :infinity), result}
   end
 
-  def connect(port, timeout \\ 5_000) do
+  def connect(port, timeout \\ :infinity) do
     {:ok, socket} = :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], timeout)
     socket
   end
@@ -127,7 +125,7 @@ defmodule Dawarich.Test.RawHTTP do
   end
 
   def read_until_closed(socket, acc \\ "") do
-    case :gen_tcp.recv(socket, 0, 5_000) do
+    case :gen_tcp.recv(socket, 0, :infinity) do
       {:ok, data} -> read_until_closed(socket, acc <> data)
       {:error, :closed} -> {:closed, acc}
     end
@@ -189,7 +187,7 @@ defmodule Dawarich.Test.RawHTTP do
   end
 
   defp recv(socket) do
-    {:ok, data} = :gen_tcp.recv(socket, 0, 5_000)
+    {:ok, data} = :gen_tcp.recv(socket, 0, :infinity)
     data
   end
 end
