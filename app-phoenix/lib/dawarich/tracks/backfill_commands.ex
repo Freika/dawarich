@@ -53,33 +53,46 @@ defmodule Dawarich.Tracks.BackfillCommands do
 
     transaction(repo, "tracks.throttled_backfill", fn
       :oban ->
-        unwrap(
-          repo,
-          BackfillWalks.schedule(repo, user_id, zone, now, fn walk ->
-            publish(
-              repo,
-              "tracks.throttled_backfill",
-              walk.walk_id,
-              user_id,
-              %{
-                "user_id" => user_id,
-                "walk_id" => walk.walk_id,
-                "cursor_timestamp" => nil,
-                "time_zone" => zone
-              },
-              walk.due_at
-            )
-          end)
-        )
+        if legacy_pending?(user_id) do
+          reverse_bootstrap(repo, user_id, zone)
+        else
+          unwrap(
+            repo,
+            BackfillWalks.schedule(repo, user_id, zone, now, fn walk ->
+              publish(
+                repo,
+                "tracks.throttled_backfill",
+                walk.walk_id,
+                user_id,
+                %{
+                  "user_id" => user_id,
+                  "walk_id" => walk.walk_id,
+                  "cursor_timestamp" => nil,
+                  "time_zone" => zone
+                },
+                walk.due_at
+              )
+            end)
+          )
+        end
 
       :sidekiq ->
-        RailsCommands.insert!(repo, "tracks_throttled_backfill", %{
-          "user_id" => user_id,
-          "time_zone" => zone
-        })
-
-        :ok
+        reverse_bootstrap(repo, user_id, zone)
     end)
+  end
+
+  defp legacy_pending?(user_id) do
+    case Dawarich.Redis.command(["PTTL", "track_throttled_backfill:user:#{user_id}"]) do
+      {:ok, ttl} when ttl == -2 -> false
+      _ -> true
+    end
+  end
+
+  defp reverse_bootstrap(repo, user_id, zone) do
+    RailsCommands.insert!(repo, "tracks_throttled_backfill", %{
+      "user_id" => user_id,
+      "time_zone" => zone
+    })
   end
 
   def user_zone(repo, name) do

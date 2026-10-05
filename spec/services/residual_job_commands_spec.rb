@@ -100,6 +100,54 @@ RSpec.describe 'Residual native handoff', :eval do
     PhoenixSchema.reset!
   end
 
+  it 'adopts actual native bootstrap legacy backoff and queued cursor without shortening TTL' do
+    expect(ActiveRecord::Base.connection_db_config.database).to eq('dawarich_phoenix_test_a12d2_scratch')
+    ids = [49_501, 49_502]
+    events = []
+    sequences = handoff_sequences
+    keys = %w[command:tracks.throttled_backfill command:tracks.generate_range]
+    owners = handoff_sql('SELECT * FROM phoenix.job_owners WHERE key IN (?)', keys)
+    rows = handoff_sql('SELECT id,kind,payload FROM phoenix.rails_commands WHERE ' \
+                       "(payload->>'user_id')::bigint IN (?) ORDER BY id", ids)
+    expect(rows.map { _1.fetch('payload').fetch('user_id') }).to eq(ids)
+    now = Time.utc(2026, 10, 4, 12)
+    travel_to now do
+      rows.each { RailsCommands::Poller.deliver(_1.fetch('id')) }
+      walks = handoff_sql('SELECT * FROM phoenix.track_backfill_walks WHERE user_id IN (?) ORDER BY user_id', ids)
+      expect(walks.map { _1.fetch('state') }).to eq(%w[backoff backoff])
+      expect(walks.map { _1.fetch('cursor_timestamp') }).to eq([nil, nil])
+      expect(walks.first.fetch('expires_at')).to be_between(now + 6.days - 60, now + 6.days)
+      expect(walks.last.fetch('expires_at')).to be_between(now + 10.hours - 60, now + 10.hours)
+      expect(JobOutbox.where(aggregate_id: ids)).to be_empty
+      Point.insert_all!([{ id: 49_502, user_id: 49_502, timestamp: 50, lonlat: 'POINT(1 1)',
+                          created_at: now, updated_at: now }])
+      legacy = Tracks::ThrottledBackfillJob.new(49_502, 100, time_zone: 'Europe/Berlin')
+      events << legacy.job_id
+      legacy.perform_now
+      selected = handoff_sql('SELECT * FROM phoenix.track_backfill_walks WHERE user_id = 49502').sole
+      expect(selected).to include('state' => 'walking', 'cursor_timestamp' => 100,
+                                  'selected_end_timestamp' => nil)
+      expect(JobOutbox.where(aggregate_id: ids).sole.payload).to eq(
+        selected.slice('user_id', 'walk_id', 'cursor_timestamp', 'time_zone')
+      )
+      expect(selected.fetch('expires_at')).to eq(walks.last.fetch('expires_at'))
+      expect(handoff_sql('SELECT * FROM phoenix.track_backfill_walks WHERE user_id = 49501').sole).to eq(walks.first)
+      expect(Sidekiq.redis { _1.exists(*ids.map { |id| Tracks::ThrottledBackfillJob.redis_key(id) }) }).to eq(0)
+    end
+  ensure
+    if sequences
+      handoff_sql('DELETE FROM phoenix.track_backfill_walks WHERE user_id IN (?)', ids)
+      clean_handoff(ids, events, sequences)
+      handoff_sql('DELETE FROM phoenix.job_owners WHERE key IN (?)', keys)
+      owners.each do |owner|
+        connection = ActiveRecord::Base.connection
+        connection.execute("INSERT INTO phoenix.job_owners (#{owner.keys.join(',')}) VALUES " \
+                           "(#{owner.values.map { connection.quote(_1) }.join(',')})")
+      end
+      Sidekiq.redis { _1.del(*ids.map { |id| Tracks::ThrottledBackfillJob.redis_key(id) }) }
+    end
+  end
+
   it 'consumes actual native reverse rows through the registered handlers' do
     expect(ActiveRecord::Base.connection_db_config.database).to eq('dawarich_phoenix_test_a12d2_scratch')
     sequences = handoff_sequences

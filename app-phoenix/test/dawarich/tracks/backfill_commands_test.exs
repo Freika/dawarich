@@ -11,6 +11,7 @@ defmodule Dawarich.Tracks.BackfillCommandsTest do
 
   setup do
     start_oban(__MODULE__)
+    start_supervised!(hd(Dawarich.Redis.child_specs()))
     previous = System.get_env("SELF_HOSTED")
 
     on_exit(fn ->
@@ -20,6 +21,41 @@ defmodule Dawarich.Tracks.BackfillCommandsTest do
     end)
 
     :ok
+  end
+
+  @tag :rails_parity
+  @tag :a12d2_legacy_handoff
+  test "native bootstrap sends legacy backoff and queued cursor through Rails compatibility" do
+    Ownership.put!(ScratchRepo, "command:tracks.throttled_backfill", :oban)
+    Ownership.put!(ScratchRepo, "command:tracks.generate_range", :oban)
+
+    for {id, ttl} <- [{49_501, 518_400}, {49_502, 36_000}] do
+      user!(id, %{})
+
+      assert {:ok, "OK"} =
+               Dawarich.Redis.command([
+                 "SET",
+                 "track_throttled_backfill:user:#{id}",
+                 "1",
+                 "EX",
+                 ttl
+               ])
+
+      assert BackfillCommands.schedule(ScratchRepo, id, now: @now, time_zone: "Europe/Berlin") ==
+               :ok
+    end
+
+    assert rows("SELECT user_id FROM phoenix.track_backfill_walks") == []
+    assert rows("SELECT command_type FROM job_outbox") == []
+
+    assert rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id") ==
+             for(
+               id <- [49_501, 49_502],
+               do: [
+                 "tracks_throttled_backfill",
+                 %{"user_id" => id, "time_zone" => "Europe/Berlin"}
+               ]
+             )
   end
 
   test "native ingest rolls range and publication back with failed intake" do
