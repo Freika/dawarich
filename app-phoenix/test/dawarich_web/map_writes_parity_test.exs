@@ -460,6 +460,17 @@ defmodule DawarichWeb.MapWritesParityTest do
   defp html(nodes) when is_list(nodes),
     do: nodes |> Enum.flat_map(&island/1) |> ParityHTML.normalize()
 
+  defp island({"fieldset", attrs, children}) do
+    if Map.has_key?(Map.new(attrs), "data-rails-form-ready") do
+      assert Enum.sort(attrs) ==
+               Enum.sort([{"disabled", ""}, {"data-rails-form-ready", ""}, {"class", "contents"}])
+
+      Enum.flat_map(children, &island/1)
+    else
+      [{"fieldset", attrs, Enum.flat_map(children, &island/1)}]
+    end
+  end
+
   defp island({"div", attrs, children}) do
     if Map.new(attrs)["phx-hook"] == "RailsStimulus",
       do: Enum.flat_map(children, &island/1),

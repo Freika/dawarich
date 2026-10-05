@@ -1,6 +1,5 @@
 defmodule Dawarich.NotesApi.ReadTest do
-  use Dawarich.IngestCase, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.NotesApi.Read
 
   setup do

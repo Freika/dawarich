@@ -1,6 +1,5 @@
 defmodule Dawarich.Digests.ComparisonTest do
-  use Dawarich.JobsCase, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.DigestFixtures
   alias Dawarich.Digests.{Comparison, Context, Queries}
 

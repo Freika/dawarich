@@ -1,6 +1,5 @@
 defmodule Dawarich.MapApi.ReadsTest do
-  use Dawarich.IngestCase, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.MapApi
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 

@@ -1,6 +1,5 @@
 defmodule Dawarich.JsonbTest do
-  use Dawarich.IngestCase, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.Jsonb
 
   test "decode keeps PostgreSQL's jsonb key order at every depth and passes arrays and scalars through" do

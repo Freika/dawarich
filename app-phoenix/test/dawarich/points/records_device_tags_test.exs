@@ -1,6 +1,5 @@
 defmodule Dawarich.Points.RecordsDeviceTagsTest do
-  use Dawarich.JobsCase
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.Points.RecordsDeviceTags
 
   @source Path.expand("../../fixtures/a12d1b3/Records.json", __DIR__)

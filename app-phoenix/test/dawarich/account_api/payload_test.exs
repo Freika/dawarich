@@ -1,5 +1,5 @@
 defmodule Dawarich.AccountApi.PayloadTest do
-  use Dawarich.IngestCase
+  use Dawarich.DataCase, async: true
   alias Dawarich.AccountApi.Payload
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   @moduletag api_public_only: true
