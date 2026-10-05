@@ -10,8 +10,10 @@ class StaleJobsRecoveryJob < ApplicationJob
   def perform
     Imports::ExtractionMonitor.new.call
   ensure
-    recover_stale_exports
-    recover_stale_imports
+    JobOwnership.with_owner('cron:stale_jobs_recovery_job') do
+      recover_stale_exports
+      recover_stale_imports
+    end
   end
 
   private
@@ -38,18 +40,7 @@ class StaleJobsRecoveryJob < ApplicationJob
 
   def recover_stale_imports
     Import.processing.where(processing_started_at: ...IMPORT_TIMEOUT.ago).find_each do |import|
-      I18n.with_locale(import.user.locale) do
-        error_message = I18n.t('jobs.stale_jobs_recovery_job.import_timed_out_after_being_stuck_in_processing')
-        import.update!(status: :failed, error_message: error_message)
-
-        Notifications::Create.new(
-          user: import.user,
-          kind: :error,
-          title: I18n.t('jobs.stale_jobs_recovery_job.import_failed'),
-          content: I18n.t('jobs.stale_jobs_recovery_job.import_name_was_stuck_in_processing_and_has_been_marked',
-                          name: import.name)
-        ).call
-      end
+      Imports::StaleImportRecovery.call(import, IMPORT_TIMEOUT.ago)
     rescue StandardError => e
       Rails.logger.error("Failed to recover stale import #{import.id}: #{e.message}")
     end

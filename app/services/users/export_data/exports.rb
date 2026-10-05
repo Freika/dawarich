@@ -9,7 +9,7 @@ class Users::ExportData::Exports
   end
 
   def call
-    exports_with_files = user.exports.includes(:file_attachment).to_a
+    exports_with_files = user.exports.order(:id).includes(:file_attachment).to_a
 
     if exports_with_files.size > 1
       Parallel.map(exports_with_files, in_threads: 2) do |export|

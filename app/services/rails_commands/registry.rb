@@ -220,8 +220,10 @@ module RailsCommands
      .merge(RailsCommands::ShareManagementCommands::HANDLERS)
      .merge(Posters::CreationCommand::HANDLERS)
      .merge(Posters::PurgeCommands::HANDLERS)
+     .merge(Exports::PurgeCommands::HANDLERS)
      .merge(Posters::ProgressCommands::HANDLERS)
      .merge(A8Handlers::HANDLERS)
+     .merge(Trips::CalculationCommands::HANDLERS)
      .merge(
        'imports.resume' => {
          guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',
@@ -232,10 +234,12 @@ module RailsCommands
          guard: 'Durable event receipt and per-import lease; completed receipts do not restart imports',
          call: ->(payload) { Imports::NormalResume.call(payload) }
        }
-     ).merge(Stats::Commands::HANDLERS).merge(Users::RecalculationCommands::HANDLERS)
-                                       .merge(Points::AnomalyBackfillCommands::HANDLERS)
-                                       .merge(ReleaseCommands::HANDLERS)
-                                       .merge(Users::Digests::Commands::HANDLERS).freeze
+     ).merge(Stats::Commands::HANDLERS)
+      .merge(Users::DataCommands::HANDLERS)
+      .merge(Users::RecalculationCommands::HANDLERS)
+      .merge(Points::AnomalyBackfillCommands::HANDLERS)
+      .merge(ReleaseCommands::HANDLERS)
+      .merge(Users::Digests::Commands::HANDLERS).freeze
 
     module_function
 

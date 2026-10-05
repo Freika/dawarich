@@ -118,22 +118,29 @@ defmodule DawarichWeb.ImportsUploadTest do
     end) <> "--XyZ--\r\n"
   end
 
-  test "GeoJSON, Google JSON and KML uploads reach Puma byte-exactly and create nothing", c do
+  test "admitted GeoJSON and KML uploads are native while unclassified Google JSON reaches Puma",
+       c do
     for {name, bytes} <- [
           {"points.geojson", ~s({"type":"FeatureCollection","features":[]})},
-          {"Records.json", ~s({"locations":[]})},
           {"route.kml", ~s(<?xml version="1.0"?><kml><Document/></kml>)}
         ] do
       body = create_body([rails_blob!(c, name, bytes)])
-      assert to_puma(c, :post, "/imports", body) == {"POST /imports HTTP/1.1", body}
+      conn = request(c, :post, "/imports", body)
+
+      assert {conn.status, get_resp_header(conn, "x-dawarich-handler")} ==
+               {303, ["phoenix-imports"]}
     end
 
     mixed = create_body([rails_blob!(c, "a.gpx", "<gpx/>"), rails_blob!(c, "b.kml", "<kml/>")])
-    assert to_puma(c, :post, "/imports", mixed) == {"POST /imports HTTP/1.1", mixed}
+    assert request(c, :post, "/imports", mixed).status == 303
 
-    assert imports() == []
-    assert [] == Repo.query!("SELECT id FROM active_storage_attachments").rows
-    assert [] == Repo.query!("SELECT event_id FROM job_outbox").rows
+    unknown = create_body([rails_blob!(c, "Records.json", ~s({"locations":[]}))])
+    assert to_puma(c, :post, "/imports", unknown) == {"POST /imports HTTP/1.1", unknown}
+
+    assert Enum.map(imports(), fn [_, name, source] -> {name, source} end) ==
+             [{"points.geojson", 6}, {"route.kml", 9}, {"a.gpx", 4}, {"b.kml", 9}]
+
+    assert [[4]] == Repo.query!("SELECT count(*) FROM active_storage_attachments").rows
   end
 
   test "requests Phoenix cannot answer exactly as Rails would reach Puma with their body", c do
@@ -178,8 +185,6 @@ defmodule DawarichWeb.ImportsUploadTest do
     for {method, path, body} <- [
           {:patch, "/imports/758102", params},
           {:delete, "/imports/758102", ""},
-          {:patch, "/imports/758106", params},
-          {:delete, "/imports/758106", ""},
           {:post, "/imports/758106/extraction", ""},
           {:post, "/imports/758101", params},
           {:post, "/imports/758101", params <> "&_method=get"}

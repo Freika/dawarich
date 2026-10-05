@@ -12,6 +12,32 @@ defmodule Dawarich.Storage.Blobs do
 
   def find(id), do: select(id)
 
+  def attach!(repo, type, record, blob, now) do
+    [[id]] =
+      repo.query!(
+        @insert,
+        [
+          blob.key,
+          blob.filename,
+          blob.content_type,
+          blob.metadata,
+          Map.get(blob, :stored_service, blob.service_name),
+          blob.byte_size,
+          blob.checksum,
+          now
+        ],
+        log: false
+      ).rows
+
+    repo.query!(
+      "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('file',$1,$2,$3,$4)",
+      [type, record, id, now],
+      log: false
+    )
+
+    id
+  end
+
   def create_before_direct_upload(config, attrs, %NaiveDateTime{} = now, opts \\ []) do
     key = Keyword.get_lazy(opts, :key, fn -> &Storage.generate_key/0 end).()
     zone = Keyword.get_lazy(opts, :zone, fn -> System.get_env("TIME_ZONE", "Europe/Berlin") end)

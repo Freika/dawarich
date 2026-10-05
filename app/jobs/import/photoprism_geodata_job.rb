@@ -9,7 +9,14 @@ class Import::PhotoprismGeodataJob < ApplicationJob
 
   def perform(user_id)
     user = find_user_or_skip(user_id) || return
+    zone = Time.zone.name
+    result = PhoenixLease.try_hold("photoprism-geodata:#{user.id}") do
+      Imports::IntegrationCommands.legacy('imports.photoprism_geodata') do
+        Photoprism::ImportGeodata.new(user).call
+      end
+    end
+    return result unless [false, :not_owner].include?(result)
 
-    Photoprism::ImportGeodata.new(user).call
+    Imports::IntegrationCommands.forward('photoprism', user.id, event_id: job_id, time_zone: zone)
   end
 end

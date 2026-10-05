@@ -181,11 +181,20 @@ defmodule DawarichWeb.A10bOwnershipTest do
   test "retained mounts producers frames and unsupported requests reach Rails byte identical" do
     before = snapshot()
 
+    Application.put_env(:dawarich, :rails_routes, ["user_data"])
+
+    for {method, path, body} <- [
+          {"GET", "/settings/users/export", ""},
+          {"POST", "/settings/users/import", "synthetic=body"}
+        ] do
+      handoff!(method, path, body, 15801)
+    end
+
+    Application.put_env(:dawarich, :rails_routes, [])
+
     for {method, path, body} <- [
           {"DELETE", "/settings/users/15802", ""},
           {"POST", "/settings/users/15802", "_method=delete"},
-          {"GET", "/settings/users/export", ""},
-          {"POST", "/settings/users/import", "synthetic=body"},
           {"POST", "/settings/background_jobs", "job=synthetic"},
           {"POST", "/admin/settings/test_geocoding", "provider=synthetic"},
           {"GET", "/sidekiq", ""},

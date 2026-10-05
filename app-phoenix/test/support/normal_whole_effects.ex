@@ -2,6 +2,26 @@ defmodule Dawarich.Test.NormalWholeEffects do
   @moduledoc false
   import ExUnit.Assertions
 
+  def record_order!(repo) do
+    repo.query!("CREATE SEQUENCE phoenix.normal_enqueue_order", [], log: false)
+
+    for table <- ~w(job_outbox phoenix.rails_commands) do
+      repo.query!(
+        "ALTER TABLE #{table} ADD COLUMN test_enqueue_order bigint NOT NULL DEFAULT nextval('phoenix.normal_enqueue_order')",
+        [],
+        log: false
+      )
+    end
+  end
+
+  def remove_order!(repo) do
+    for table <- ~w(job_outbox phoenix.rails_commands) do
+      repo.query!("ALTER TABLE #{table} DROP COLUMN test_enqueue_order", [], log: false)
+    end
+
+    repo.query!("DROP SEQUENCE phoenix.normal_enqueue_order", [], log: false)
+  end
+
   def expected(c, _owner) do
     assert c.expected["jobs"] ==
              for(
@@ -84,7 +104,7 @@ defmodule Dawarich.Test.NormalWholeEffects do
 
     rows =
       repo.query!(
-        "SELECT command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at,state FROM job_outbox ORDER BY created_at,aggregate_id",
+        "SELECT command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at,state FROM job_outbox ORDER BY test_enqueue_order",
         [],
         log: false
       ).rows

@@ -26,6 +26,9 @@ defmodule Dawarich.Imports.NormalLifecycle do
           {:legacy, _} = legacy ->
             legacy
 
+          :restore_handoff ->
+            :ok
+
           :removed ->
             :ok
 
@@ -40,6 +43,9 @@ defmodule Dawarich.Imports.NormalLifecycle do
   defp process(lease, state, context) do
     Tempfiles.with_files(fn adopt ->
       case NormalPreparation.download(lease, state, context, adopt) do
+        :restore_handoff ->
+          :restore_handoff
+
         {:file, path, filename} ->
           run_import(lease, state, context, path, filename)
 

@@ -48,6 +48,11 @@ defmodule Dawarich.PointExports do
     error -> {:error, "export write failed: " <> inspect(error.__struct__)}
   end
 
+  def enqueue_created(repo, id, user, locale, now) do
+    owner = Ownership.lock(repo, "command:exports.points")
+    produce(repo, owner, id, user, locale, now)
+  end
+
   defp produce(repo, :oban, id, user, _locale, now) do
     payload = %{
       "export_id" => id,
