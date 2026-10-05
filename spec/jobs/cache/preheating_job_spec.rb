@@ -3,7 +3,55 @@
 require 'rails_helper'
 
 RSpec.describe Cache::PreheatingJob do
+  include ActiveSupport::Testing::TimeHelpers
   before { Rails.cache.clear }
+
+  it 'both cron owners retain the one-day global write and original warming fanout' do
+    phoenix_tables!
+    connection = ActiveRecord::Base.connection
+    sequence = connection.select_one('SELECT last_value, is_called FROM phoenix.rails_commands_id_seq')
+    travel_to(Time.utc(2026, 10, 3, 12)) do
+      User.insert_all!([{ id: 180_121, email: 'cache-sweep@example.invalid', encrypted_password: '', status: 1,
+                         plan: 1, settings: {}, created_at: Time.current, updated_at: Time.current }])
+      writes = []
+      listener = ->(*, payload) { writes << payload.slice(:key, :expires_in) }
+      %i[sidekiq oban].each do |owner|
+        job_owner!('cron:cache_preheating_job', owner)
+        clear_enqueued_jobs
+        writes.clear
+        ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') { described_class.new.perform }
+        expect(writes).to eq([{ key: 'dawarich/countries_codes', expires_in: 86_400 }])
+        expect(enqueued_jobs.sole.fetch('arguments')).to eq([180_121])
+      end
+
+      source = SecureRandom.uuid
+      due = Time.current + 3600
+      payload = { 'time_zone' => 'Asia/Tokyo', 'source_job_id' => source, 'run_at' => due.to_i }
+      insert = ['INSERT INTO phoenix.rails_commands(kind,payload) VALUES (?,?::jsonb)',
+                'cache.preheat_sweep', payload.to_json]
+      sql = ActiveRecord::Base.sanitize_sql_array(insert)
+      connection.execute(sql)
+      JobOwnership.release!('cron:cache_preheating_job', by: 'spec')
+      clear_enqueued_jobs
+      expect(RailsCommands::Poller.drain_once).to eq(1)
+      request = enqueued_jobs.sole.deep_dup
+      expect(request.fetch('job_id')).to eq(source)
+      expect(request.fetch('timezone')).to eq('Asia/Tokyo')
+      expect(Time.iso8601(request.fetch('scheduled_at'))).to eq(due)
+      clear_enqueued_jobs
+      writes.clear
+      ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') do
+        ActiveJob::Base.deserialize(request).perform_now
+      end
+      expect(writes).to eq([{ key: 'dawarich/countries_codes', expires_in: 86_400 }])
+      expect(enqueued_jobs.sole.fetch('arguments')).to eq([180_121])
+    end
+  ensure
+    if sequence
+      connection.execute("SELECT setval('phoenix.rails_commands_id_seq', #{sequence.fetch('last_value')}, " \
+                         "#{connection.quote(sequence.fetch('is_called'))})")
+    end
+  end
 
   it 'delegated source sweep keeps 500-user batches exact eligibility and one global warm' do
     phoenix_tables!
