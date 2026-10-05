@@ -465,5 +465,17 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
       expect(Tag.count).to eq(0)
       keep('A12h_empty_countries', entry)
     end
+
+    it 'A12h native on then Rails off recognizes versions without reinserting work' do
+      entry = fx.lifecycle_record
+      expect(entry['native']['public_versions']).to include('20260314000001')
+      expect(entry['native']['jobs'].size).to eq(1)
+      expect(entry['native']['jobs'].first).to include('worker' => 'Dawarich.ReleaseOperations.RouteOpacity',
+                                                       'args' => { 'version' => 1 }, 'state' => 'scheduled')
+      expect(entry['after']).to eq(entry['native'])
+      expect(entry['rails_jobs']).to be_empty
+      expect(entry['seeds']['error']).to be_nil
+      keep('A12h_native_then_rails', entry)
+    end
   end
 end

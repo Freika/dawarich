@@ -255,7 +255,7 @@ module A12eFixtureSupport
       allow(File).to receive(:read).with(Rails.root.join(Achievements::LoadRegions::ASSET_PATH))
                                    .and_return(Oj.dump(sources.fetch('regions'), mode: :strict))
       begin
-        load Rails.root.join('db/seeds.rb')
+        block_given? ? yield : load(Rails.root.join('db/seeds.rb'))
       rescue StandardError => e
         error = { 'class' => e.class.name, 'message' => e.message }
       end
@@ -264,6 +264,46 @@ module A12eFixtureSupport
       'jobs' => ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job.slice('job_class', 'arguments', 'queue_name') } }
   ensure
     Rails.logger = logger
+  end
+
+  def lifecycle_snapshot
+    { 'public_versions' => conn.select_values('SELECT version FROM schema_migrations ORDER BY version'),
+      'intents' => JSON.parse(pg_json('SELECT * FROM phoenix.release_migration_jobs ORDER BY id')),
+      'jobs' => JSON.parse(pg_json('SELECT * FROM oban.oban_jobs ORDER BY id')) }
+  end
+
+  def lifecycle_record
+    private_db = ENV['DATABASE_NAME'].to_s.match?(/\Adawarich_(phoenix_)?test_\w+\z/)
+    raise 'A12h requires its private test database' unless ENV['RAILS_ENV'] == 'test' && private_db
+
+    load Rails.root.join('db/data_schema.rb')
+    sql('DROP SCHEMA IF EXISTS phoenix CASCADE')
+    sql('DROP SCHEMA IF EXISTS oban CASCADE')
+    sql("DELETE FROM schema_migrations WHERE version='20260314000001'")
+    code = 'Dawarich.Release.migrate(env: %{"DAWARICH_PHOENIX_LIFECYCLE" => "true", ' \
+           '"SELF_HOSTED" => "true", "DATABASE_ADVISORY_LOCKS" => "false"}, ' \
+           'command: fn _ -> {:ok, nil} end)'
+    env = phoenix_env.merge('PHOENIX_TEST_DATABASE' => ENV.fetch('DATABASE_NAME'))
+    _, status = Open3.capture2e(env, 'mix', 'run', '--no-start', '-e', code,
+                                chdir: Rails.root.join('app-phoenix').to_s)
+    raise "native migration exited #{status.exitstatus}" unless status.success?
+
+    sql('UPDATE phoenix.release_migration_jobs SET recorded_at=?', NOW)
+    sql('UPDATE oban.oban_jobs SET inserted_at=?, scheduled_at=?', NOW, NOW)
+    native = lifecycle_snapshot
+    dump_schema = ActiveRecord.dump_schema_after_migration
+    ActiveRecord.dump_schema_after_migration = false
+    off = { 'DAWARICH_PHOENIX_LIFECYCLE' => 'false', 'RAILS_ENV' => 'test',
+            'DATABASE_NAME' => ENV.fetch('DATABASE_NAME') }
+    %w[db:migrate data:migrate].each do |task|
+      _, _, exit_code = rake(task, env: off)
+      raise "#{task} exited #{exit_code}" unless exit_code.zero?
+    end
+    seeds = seed_record { rake('db:seed', env: off) }
+    { 'native' => native, 'after' => lifecycle_snapshot, 'seeds' => seeds,
+      'rails_jobs' => ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job.slice('job_class', 'arguments') } }
+  ensure
+    ActiveRecord.dump_schema_after_migration = dump_schema unless dump_schema.nil?
   end
 
   def finish(recorded)

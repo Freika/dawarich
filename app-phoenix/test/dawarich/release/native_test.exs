@@ -285,6 +285,26 @@ defmodule Dawarich.Release.NativeTest do
     assert ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
   end
 
+  test "native on then off retains ledger and pending jobs" do
+    assert Release.migrate(opts()) == :ok
+    before = lifecycle_snapshot()
+    assert ScratchRepo.query!("SELECT state FROM oban.oban_jobs").rows == [["scheduled"]]
+    assert Release.migrate(opts(env: %{})) == :ok
+    assert Release.readiness(opts(env: %{})) == :ready
+    assert lifecycle_snapshot() == before
+    assert {:ok, :current} = ReleaseMigrator.status(ScratchRepo, releases: [Probe])
+  end
+
+  defp lifecycle_snapshot do
+    for {table, order} <- [
+          {"public.schema_migrations", "version"},
+          {"phoenix.release_migration_jobs", "id"},
+          {"oban.oban_jobs", "id"}
+        ] do
+      ScratchRepo.query!("SELECT row_to_json(t) FROM #{table} t ORDER BY #{order}").rows
+    end
+  end
+
   defp readiness_snapshot do
     for table <- [
           "public.schema_migrations",

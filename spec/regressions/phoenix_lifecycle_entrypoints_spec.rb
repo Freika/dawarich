@@ -127,4 +127,21 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
                                     end])
     end
   end
+
+  it 'off-mode keeps legacy boot and arbitrary command argv' do
+    [nil, 'false'].each do |flag|
+      [server, ['bin/rails', 'runner', 'puts 1']].each do |argv|
+        result = run_script('web-entrypoint.sh', *argv, DAWARICH_PHOENIX_LIFECYCLE: flag)
+        expect(result[:status]).to be_success
+        expect(result[:calls].first(4)).to eq(['bundle exec rails db:migrate', 'bundle exec rake data:migrate',
+                                               'bundle exec rails db:seed', 'dawarich eval Dawarich.Release.migrate()'])
+        expected = if argv == server
+                     'dawarich start bundle|exec|puma|-C|config/puma.rb|-p|5000|--tag|two words|'
+                   else
+                     'bundle exec bin/rails runner puts 1'
+                   end
+        expect(result[:calls].last).to eq(expected)
+      end
+    end
+  end
 end
