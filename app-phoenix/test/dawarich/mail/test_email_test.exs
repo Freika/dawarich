@@ -19,7 +19,7 @@ defmodule Dawarich.Mail.TestEmailTest do
   }
   @markers ["a12c-body-marker", "a12c-raw-token", "https://synthetic.test/?token=a12c-raw-token"]
 
-  test "test email attempts one immediate send and matches configured and safe failure outcomes" do
+  test "test email queues once and reports enqueueing for configured SMTP" do
     start_oban(:residual_test_email)
     cases = @http |> File.read!() |> Jason.decode!() |> Map.fetch!("cases")
 
@@ -28,10 +28,14 @@ defmodule Dawarich.Mail.TestEmailTest do
 
     cases = Enum.filter(cases, &(&1["id"] in names))
     assert length(cases) == length(names)
-    before = counts()
 
     for row <- cases do
-      recipient = %{email: row["recipient"], settings: %{"locale" => row["preference"]}}
+      recipient = %{
+        id: 460_111,
+        email: row["recipient"],
+        settings: %{"locale" => row["preference"]}
+      }
+
       env = if row["configured"], do: @env, else: Map.delete(@env, "SMTP_SERVER")
 
       Process.put(:transport_result, Dawarich.Mail.TestTransport.result(row))
@@ -39,31 +43,16 @@ defmodule Dawarich.Mail.TestEmailTest do
       [{kind, description}] = Map.to_list(expected)
 
       for _ <- 1..2 do
-        assert TestEmail.run(recipient, "en", env, clock: @clock) ==
+        before = counts()
+
+        assert TestEmail.run(recipient, "en", env, clock: @clock, oban: :residual_test_email) ==
                  {String.to_existing_atom(kind), description}
 
-        if row["configured"] do
-          assert_received {:mail, message}
-          assert message.to == recipient.email
-          assert message.format == :html_only
-
-          expected_content =
-            @content
-            |> File.read!()
-            |> Jason.decode!()
-            |> Map.fetch!("cases")
-            |> Enum.find(
-              &(&1["id"] ==
-                  if(row["id"] == "preferred_de", do: "test_email_de", else: "test_email_en"))
-            )
-
-          assert message.subject == expected_content["subject"]
-        else
-          refute_received {:mail, _}
-        end
-
         refute_received {:mail, _}
-        assert counts() == before
+        after_counts = counts()
+
+        assert after_counts["oban.oban_jobs"] ==
+                 before["oban.oban_jobs"] + if(row["configured"], do: 1, else: 0)
       end
 
       Process.delete(:transport_result)
@@ -239,25 +228,7 @@ defmodule Dawarich.Mail.TestEmailTest do
           0 -> flunk("transport was not called")
         end
 
-        assert elem(TestEmail.run(user, "en", @env, clock: @clock), 0) == :notice
-
-        receive do
-          {:mail, _} -> :ok
-        after
-          0 -> flunk("transport was not called")
-        end
-
-        Process.put(:transport_result, {:error, {"IOError", Enum.join(@markers)}})
-        assert elem(TestEmail.run(user, "en", @env, clock: @clock), 0) == :alert
-
-        receive do
-          {:mail, _} -> :ok
-        after
-          0 -> flunk("transport was not called")
-        end
-
-        Process.delete(:transport_result)
-        assert elem(TestEmail.run(user, "en", @env, clock: %{}), 0) == :alert
+        assert elem(TestEmail.run(user, "en", @env, oban: :residual_log), 0) == :notice
         refute_received {:mail, _}
 
         DigestFixtures.row!(ScratchRepo, "users", %{
@@ -362,12 +333,6 @@ defmodule Dawarich.Mail.TestEmailTest do
           assert Plug.Conn.get_resp_header(response, "x-dawarich-mail-owner") == [
                    "native-test-email"
                  ]
-
-          receive do
-            {:mail, _} -> :ok
-          after
-            0 -> flunk("HTTP transport was not called")
-          end
 
           refute_received {:mail, _}
           Process.delete(:transport_result)

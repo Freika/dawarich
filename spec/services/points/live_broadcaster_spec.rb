@@ -126,7 +126,7 @@ RSpec.describe Points::LiveBroadcaster do
             family,
             {
               user_id: user.id,
-              email: 'a6-upsert@example.test',
+              email: 'a6-upsert@example.test', name: 'a6-upsert@example.test',
               email_initial: 'A',
               latitude: 52.52,
               longitude: 13.405,
@@ -136,6 +136,15 @@ RSpec.describe Points::LiveBroadcaster do
           )
 
           Time.use_zone('Europe/Berlin') { described_class.new(user.id, upserted_results, payloads).call }
+        end
+
+        it 'includes profile names in realtime family updates' do
+          user.update!(first_name: 'Ada', last_name: 'Lovelace')
+          expect(FamilyLocationsChannel).to receive(:broadcast_to).with(
+            family, hash_including(name: 'Ada Lovelace', email: user.email)
+          )
+
+          described_class.new(user.id, upserted_results, payloads).call
         end
 
         it 'broadcasts even when live_map_enabled is false' do

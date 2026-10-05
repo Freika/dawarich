@@ -4,7 +4,9 @@ require 'rails_helper'
 
 RSpec.describe Point, type: :model do
   describe 'realtime producer payloads' do
-    let(:user) { create(:user, email: 'a6-point@example.test', settings: { live_map_enabled: true }) }
+    let(:user) do
+      create(:user, email: 'a6-point@example.test', name: 'a6-point@example.test', settings: { live_map_enabled: true })
+    end
     let(:point) do
       build(:point, id: 405, user: user, longitude: 13.405, latitude: 52.52,
                     battery: 85, altitude: 100, timestamp: 1_700_000_000, velocity: 5, country_name: 'Germany')
@@ -23,7 +25,7 @@ RSpec.describe Point, type: :model do
       create(:family_membership, family: family, user: user, role: :owner)
       user.update_family_location_sharing!(true, duration: 'permanent')
       expect(FamilyLocationsChannel).to receive(:broadcast_to).with(
-        family, { user_id: user.id, email: 'a6-point@example.test', email_initial: 'A',
+        family, { user_id: user.id, email: 'a6-point@example.test', name: 'a6-point@example.test', email_initial: 'A',
                   latitude: 52.52, longitude: 13.405, timestamp: 1_700_000_000,
                   updated_at: '2023-11-14T23:13:20+01:00' }
       )
@@ -180,9 +182,10 @@ RSpec.describe Point, type: :model do
       end
 
       context 'when point is imported' do
-        let(:point) { build(:point, import_id: 1) }
+        let(:point) { create(:point, import: create(:import)) }
 
         it 'enqueues ReverseGeocodeJob' do
+          clear_dedup_key(point.id)
           expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
         end
       end
@@ -235,19 +238,20 @@ RSpec.describe Point, type: :model do
           expect { point.async_reverse_geocode }.not_to have_enqueued_job(ReverseGeocodingJob)
         end
 
-        it 'claims a 24h dedupe row for the point id' do
+        it 'keeps a persistent dedupe row for the point id' do
           point.save
 
-          expect(claim_seconds(Point.geocode_dedup_key(point.id))).to be_between(86_399, 86_400)
+          expect(ActiveRecord::Base.connection.select_value(
+                   "SELECT expires_at::text FROM phoenix.once_claims WHERE key = '#{Point.geocode_dedup_key(point.id)}'"
+                 )).to eq('infinity')
         end
 
-        it 'sets a 24h-TTL Redis key for the point id where Phoenix never migrated' do
+        it 'keeps a persistent Redis key where Phoenix never migrated' do
           without_phoenix_state!
           point.save
 
           ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(point.id)) }
-          expect(ttl).to be > 0
-          expect(ttl).to be <= 86_400
+          expect(ttl).to eq(-1)
         end
       end
 

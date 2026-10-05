@@ -12,7 +12,9 @@ defmodule DawarichWeb.SharingGate do
     do: open?(conn, id) and not RailsProxy.Headers.body?(conn) and renderable?(id)
 
   def unlock?(conn, %{"id" => id}),
-    do: open?(conn, id) and Enum.all?(@forwarded, &(get_req_header(conn, &1) == []))
+    do:
+      open?(conn, id) and not family_only?(id) and
+        Enum.all?(@forwarded, &(get_req_header(conn, &1) == []))
 
   defp open?(conn, id) do
     conn.method != "HEAD" and LayoutAssigns.self_hosted?() and SharedLinks.canonical?(id) and
@@ -29,10 +31,21 @@ defmodule DawarichWeb.SharingGate do
           &(not Map.has_key?(conn.assigns.rails_session, &1))
         )
 
+  defp family_only?(id) do
+    case SharedLinks.active(id, DateTime.utc_now()) do
+      nil -> false
+      link -> Dawarich.SharedLinks.FamilyAudience.family_only?(link)
+    end
+  end
+
   defp renderable?(id) do
     case SharedLinks.active(id, DateTime.utc_now()) do
-      nil -> true
-      link -> SharedLinks.page(link) != :rails
+      nil ->
+        true
+
+      link ->
+        not Dawarich.SharedLinks.FamilyAudience.family_only?(link) and
+          SharedLinks.page(link) != :rails
     end
   end
 end

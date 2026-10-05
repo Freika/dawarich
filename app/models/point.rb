@@ -93,10 +93,14 @@ class Point < ApplicationRecord
     @recorded_at ||= Time.zone.at(timestamp)
   end
 
-  GEOCODE_DEDUP_TTL = 1.day.to_i
-
   def self.geocode_dedup_key(id)
     "geocode:enq:Point:#{id}"
+  end
+
+  def self.claim_geocode_ids(ids)
+    keys = ids.map { geocode_dedup_key(_1) }
+    claimed = PhoenixClaims.claim_persistent_all(keys).to_set
+    ids.select { claimed.include?(geocode_dedup_key(_1)) }
   end
 
   def async_reverse_geocode(force: false, config: nil)
@@ -106,8 +110,8 @@ class Point < ApplicationRecord
     key = self.class.geocode_dedup_key(id)
     if force
       PhoenixClaims.unclaim(key)
-    else
-      return unless PhoenixClaims.claim(key, GEOCODE_DEDUP_TTL)
+    elsif self.class.claim_geocode_ids([id]).empty?
+      return
     end
 
     begin
@@ -200,6 +204,7 @@ class Point < ApplicationRecord
       {
         user_id: user.id,
         email: user.email,
+        name: user.display_name,
         email_initial: user.email.first.upcase,
         latitude: lat,
         longitude: lon,

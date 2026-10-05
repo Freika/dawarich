@@ -79,6 +79,32 @@ defmodule Dawarich.State do
     end
   end
 
+  def claim_persistent_all(repo, keys) do
+    keys = keys |> Enum.uniq() |> Enum.sort()
+
+    {:ok, claimed} =
+      repo.transaction(fn ->
+        sql =
+          String.replace(
+            @claim_all,
+            "statement_timestamp() + make_interval(secs => $2)",
+            "'infinity'::timestamptz"
+          )
+
+        claimed = List.flatten(repo.query!(sql, [keys], log: false).rows)
+
+        repo.query!(
+          "UPDATE phoenix.once_claims SET expires_at = 'infinity' WHERE key = ANY($1::text[])",
+          [keys],
+          log: false
+        )
+
+        claimed
+      end)
+
+    claimed
+  end
+
   def unclaim_all(repo, keys) when is_list(keys) do
     repo.query!(@unclaim_all, [keys], log: false)
     :ok

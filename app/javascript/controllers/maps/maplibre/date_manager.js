@@ -19,6 +19,7 @@ export class DateManager {
     let day = pad(date.getDate())
     let hours = pad(date.getHours())
     let minutes = pad(date.getMinutes())
+    let seconds = pad(date.getSeconds())
     let tzOffset = -date.getTimezoneOffset()
 
     if (timeZone) {
@@ -31,6 +32,7 @@ export class DateManager {
           day: "2-digit",
           hour: "2-digit",
           minute: "2-digit",
+          second: "2-digit",
           hourCycle: "h23",
         }).formatToParts(date)
       } catch {
@@ -44,6 +46,7 @@ export class DateManager {
       day = values.day
       hours = values.hour
       minutes = values.minute
+      seconds = values.second
       tzOffset =
         Date.UTC(
           year,
@@ -60,7 +63,7 @@ export class DateManager {
     const tzHours = pad(Math.floor(Math.abs(tzOffset) / 60))
     const tzMinutes = pad(Math.abs(tzOffset) % 60)
 
-    return `${year}-${month}-${day}T${hours}:${minutes}${tzSign}${tzHours}:${tzMinutes}`
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${tzSign}${tzHours}:${tzMinutes}`
   }
 
   static formatLocalDateForAPI(value, timeZone) {

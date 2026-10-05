@@ -5,6 +5,11 @@
   method="post"
 >
   <input type="hidden" name="authenticity_token" value={@ctx.csrf} />
+  <div :if={@type == "trip" and Map.has_key?(@ctx, :user_id) and Dawarich.SharedLinks.FamilyAudience.family_id(@ctx.user_id, @ctx.now)} class="form-control mb-4">
+    <label class="label-text mb-1" for="shared_link_audience">{t(@ctx.locale, "shared_links.family.audience", %{})}</label>
+    <select class="select select-bordered" name="shared_link[audience]" id="shared_link_audience"><option value="public">{t(@ctx.locale, "shared_links.family.public_link", %{})}</option><option value="family">{t(@ctx.locale, "shared_links.family.only", %{})}</option></select>
+    <p class="text-sm text-base-content/70 mt-2">{t(@ctx.locale, "shared_links.family.hint", %{})}</p>
+  </div>
   <div :if={@type == "live"} class="alert alert-warning text-sm mb-4">
     <span>{t(
       @ctx.locale,
@@ -83,7 +88,7 @@
     )}</span>
   </div>
   <div :if={@type == "trip"} class="form-control mt-4">
-    <span class="label-text font-semibold">{s(@ctx, @type, "what_to_include_on_the_public_page")}</span>
+    <span class="label-text font-semibold">{t(@ctx.locale, "shared_links.family.sections", %{})}</span>
     <label :for={{key, label, checked} <- sections()} class="label cursor-pointer">
       <span class="label-text">{s(@ctx, @type, label)}</span>
       <input

@@ -5,6 +5,8 @@ defmodule Dawarich.Accounts.User do
   @schema_prefix "public"
 
   schema "users" do
+    field(:first_name, :string)
+    field(:last_name, :string)
     field :email, :string
     field :provider, :string
     field :encrypted_password, :string, redact: true

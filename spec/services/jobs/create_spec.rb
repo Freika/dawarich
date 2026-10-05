@@ -155,7 +155,7 @@ RSpec.describe Jobs::Create do
       end
 
       it 'skips continue_reverse_geocoding when a dedup key already claims the point' do
-        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
+        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 86_400)
 
         expect do
           described_class.new('continue_reverse_geocoding', user.id).call
@@ -165,11 +165,13 @@ RSpec.describe Jobs::Create do
       it 'claims the dedup key for points enqueued via continue_reverse_geocoding' do
         described_class.new('continue_reverse_geocoding', user.id).call
 
-        expect(claim_seconds(Point.geocode_dedup_key(point.id))).to be_between(86_399, 86_400)
+        expect(ActiveRecord::Base.connection.select_value(
+                 "SELECT expires_at::text FROM phoenix.once_claims WHERE key = '#{Point.geocode_dedup_key(point.id)}'"
+               )).to eq('infinity')
       end
 
       it 'clears the dedup key when start_reverse_geocoding force-runs over an existing claim' do
-        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
+        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 86_400)
 
         expect do
           described_class.new('start_reverse_geocoding', user.id).call

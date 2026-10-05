@@ -21,6 +21,17 @@ defmodule Dawarich.Cable.Channels do
 
   def authorize(_params, _identity, _context), do: :ignore
 
+  def visible?(identifier, payload, identity) do
+    case {Jason.decode(identifier), Jason.decode(payload), identity} do
+      {{:ok, %{"channel" => channel}}, {:ok, %{"user_id" => id}}, %{user: %{id: own}}}
+      when channel in ["FamilyLocationsChannel", "::FamilyLocationsChannel"] ->
+        to_string(id) != to_string(own)
+
+      _ ->
+        true
+    end
+  end
+
   defp channel(name, _params, %{user: %{id: id}}, _context) when is_map_key(@user_channels, name),
     do: {:stream, RailsMessages.broadcasting([@user_channels[name], {:user, id}])}
 

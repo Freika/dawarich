@@ -213,7 +213,7 @@ export class FamilyLayer extends BaseLayer {
       },
       properties: {
         id: memberId,
-        name: member.email || member.name,
+        name: member.name || member.email,
         email: member.email,
         color: color,
         lastUpdate: Date.now(),
@@ -324,7 +324,7 @@ export class FamilyLayer extends BaseLayer {
       },
       properties: {
         id: location.user_id,
-        name: location.email || translate("common.unknown"),
+        name: location.name || location.email || translate("common.unknown"),
         email: location.email,
         color: familyMemberColor(location.user_id),
         lastUpdate: Date.now(),

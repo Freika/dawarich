@@ -105,7 +105,19 @@ defmodule Dawarich.Exports.Points do
       "</name>\n    <trkseg>\n"
     ])
 
-    reduce_pages(repo, export, time_zone, @gpx_select, nil, fn rows, acc ->
+    [[decimal]] =
+      repo.query!(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'points' AND column_name = 'altitude_decimal')",
+        [],
+        log: false
+      ).rows
+
+    select =
+      if decimal,
+        do: @gpx_select,
+        else: String.replace(@gpx_select, "p.altitude_decimal", "NULL::numeric")
+
+    reduce_pages(repo, export, time_zone, select, nil, fn rows, acc ->
       IO.binwrite(io, Enum.map(rows, &trackpoint/1))
       acc
     end)

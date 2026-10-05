@@ -71,7 +71,9 @@ defmodule Dawarich.Imports.Integrations.Immich do
           size: 1000,
           page: page,
           order: "asc",
-          withExif: true
+          withExif: true,
+          isArchived: false,
+          visibility: "timeline"
         })
 
       headers = [{~c"x-api-key", String.to_charlist(key)}, {~c"accept", ~c"application/json"}]
@@ -96,25 +98,29 @@ defmodule Dawarich.Imports.Integrations.Immich do
 
   defp geodata(assets) do
     result =
-      Enum.reduce_while(assets, {:ok, []}, fn asset, {:ok, rows} ->
-        lat = get_in(asset, ["exifInfo", "latitude"])
-        lon = get_in(asset, ["exifInfo", "longitude"])
-        time = asset["fileCreatedAt"] || get_in(asset, ["exifInfo", "dateTimeOriginal"])
+      Enum.reduce_while(
+        Enum.reject(assets, &(&1["isArchived"] == true or &1["visibility"] == "archive")),
+        {:ok, []},
+        fn asset, {:ok, rows} ->
+          lat = get_in(asset, ["exifInfo", "latitude"])
+          lon = get_in(asset, ["exifInfo", "longitude"])
+          time = asset["fileCreatedAt"] || get_in(asset, ["exifInfo", "dateTimeOriginal"])
 
-        cond do
-          lat in [nil, false, 0, 0.0] or lon in [nil, false, 0, 0.0] or is_nil(time) ->
-            {:cont, {:ok, rows}}
+          cond do
+            lat in [nil, false, 0, 0.0] or lon in [nil, false, 0, 0.0] or is_nil(time) ->
+              {:cont, {:ok, rows}}
 
-          not is_number(lat) or not is_number(lon) or not is_binary(time) ->
-            {:halt, {:discard, :invalid_payload}}
+            not is_number(lat) or not is_number(lon) or not is_binary(time) ->
+              {:halt, {:discard, :invalid_payload}}
 
-          true ->
-            case DateTime.from_iso8601(time) do
-              {:ok, stamp, _} -> {:cont, {:ok, [{lat, lon, DateTime.to_unix(stamp)} | rows]}}
-              _ -> {:halt, {:discard, :invalid_payload}}
-            end
+            true ->
+              case DateTime.from_iso8601(time) do
+                {:ok, stamp, _} -> {:cont, {:ok, [{lat, lon, DateTime.to_unix(stamp)} | rows]}}
+                _ -> {:halt, {:discard, :invalid_payload}}
+              end
+          end
         end
-      end)
+      )
 
     case result do
       {:ok, rows} -> {:ok, Enum.reverse(rows) |> Enum.sort_by(&elem(&1, 2))}

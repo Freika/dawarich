@@ -3,6 +3,8 @@ defmodule Dawarich.Auth.Account do
   use Ecto.Schema
 
   schema "users" do
+    field(:first_name, :string)
+    field(:last_name, :string)
     field(:email, :string)
     field(:api_key, :string, redact: true)
     field(:encrypted_password, :string, redact: true)

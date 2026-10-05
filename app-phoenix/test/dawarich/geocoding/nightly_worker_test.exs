@@ -15,7 +15,7 @@ defmodule Dawarich.Geocoding.NightlyWorkerTest do
     :ok
   end
 
-  test "nightly geocoding publishes every source pending point once with force and bounded leaf IDs" do
+  test "nightly geocoding publishes every source pending point once without force and with bounded leaf IDs" do
     cases =
       Jason.decode!(File.read!(@fixture))["classes"]["Points::NightlyReverseGeocodingJob"][
         "cases"
@@ -37,7 +37,9 @@ defmodule Dawarich.Geocoding.NightlyWorkerTest do
         end)
         |> Enum.sort()
 
-      for id <- expected, do: State.claim(ScratchRepo, "geocode:enq:Point:#{id}", 3600)
+      if profile == "dedup",
+        do: Enum.each([48301, 48303], &State.claim(ScratchRepo, "geocode:enq:Point:#{&1}", 3600))
+
       assert NightlyWorker.run(ScratchRepo, @oban, @slot, env: env) == :ok
       continue(env)
 
@@ -59,7 +61,7 @@ defmodule Dawarich.Geocoding.NightlyWorkerTest do
       if owner == :oban, do: assert(reverse == []), else: assert(native == [])
 
       for payload <- payloads do
-        assert payload["force"] == true
+        assert payload["force"] == false
         assert length(payload["point_ids"]) <= 100
         data = Map.take(payload, ~w(user_id point_ids force))
         assert {:ok, _} = ReversePointWorker.args_from_command(1, data)
@@ -71,7 +73,7 @@ defmodule Dawarich.Geocoding.NightlyWorkerTest do
       end
 
       assert rows("SELECT count(*) FROM phoenix.once_claims WHERE key LIKE 'geocode:enq:Point:%'") ==
-               [[0]]
+               [[length(expected) + if(profile == "dedup", do: 2, else: 0)]]
 
       assert NightlyWorker.run(ScratchRepo, @oban, @slot, env: env) == :ok
       continue(env)

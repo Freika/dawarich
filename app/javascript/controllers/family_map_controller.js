@@ -84,7 +84,7 @@ export default class extends Controller {
       },
       properties: {
         id: loc.user_id,
-        name: loc.email || translate("common.unknown"),
+        name: loc.name || loc.email || translate("common.unknown"),
         color: MEMBER_COLORS[i % MEMBER_COLORS.length],
         lastUpdate: loc.timestamp,
       },

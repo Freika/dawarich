@@ -19,6 +19,8 @@ defmodule DawarichWeb.AuthAccount.Response do
     user = %{
       conn.assigns.current_user
       | email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
         encrypted_password: user.encrypted_password
     }
 

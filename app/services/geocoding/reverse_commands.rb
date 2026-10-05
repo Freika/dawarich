@@ -37,8 +37,7 @@ module Geocoding
     end
 
     def claim_dedup_keys(ids)
-      claimed = PhoenixClaims.claim_all(ids.map { Point.geocode_dedup_key(_1) }, Point::GEOCODE_DEDUP_TTL).to_set
-      ids.select { claimed.include?(Point.geocode_dedup_key(_1)) }
+      Point.claim_geocode_ids(ids)
     end
 
     def clear_dedup_keys(ids)

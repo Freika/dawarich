@@ -8,7 +8,7 @@ class Api::V1::PhotosController < ApiController
   before_action :check_source, only: %i[thumbnail]
 
   def index
-    cache_key = "photos_#{current_api_user.id}_#{params[:start_date]}_#{params[:end_date]}"
+    cache_key = "photos_#{current_api_user.id}_v2_#{params[:start_date]}_#{params[:end_date]}"
     cached_photos = Rails.cache.read(cache_key)
     return render json: cached_photos, status: :ok if cached_photos.present?
 

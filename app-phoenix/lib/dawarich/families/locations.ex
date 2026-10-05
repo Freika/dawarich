@@ -13,7 +13,10 @@ defmodule Dawarich.Families.Locations do
 
       [settings, family_id] ->
         sharing =
-          for member <- members(family_id), Sharing.enabled?(member.settings, now), do: member
+          for member <- members(family_id),
+              member.id != user.id,
+              Sharing.enabled?(member.settings, now),
+              do: member
 
         own = Sharing.enabled?(settings, now)
 
@@ -47,13 +50,20 @@ defmodule Dawarich.Families.Locations do
 
   def members(family_id) do
     Repo.query!(
-      "SELECT u.id, u.email, u.settings, m.role, m.created_at FROM users u " <>
+      "SELECT u.id, u.email, u.settings, m.role, m.created_at, u.first_name, u.last_name FROM users u " <>
         "INNER JOIN family_memberships m ON u.id = m.user_id " <>
         "WHERE u.deleted_at IS NULL AND m.family_id = $1",
       [family_id]
     ).rows
-    |> Enum.map(fn [id, email, settings, role, joined] ->
-      %{id: id, email: email, settings: settings, role: role, joined: joined}
+    |> Enum.map(fn [id, email, settings, role, joined, first, last] ->
+      %{
+        id: id,
+        email: email,
+        settings: settings,
+        role: role,
+        joined: joined,
+        name: display_name(first, last, email)
+      }
     end)
   end
 
@@ -68,6 +78,7 @@ defmodule Dawarich.Families.Locations do
            [
              {"user_id", member.id},
              {"email", member.email},
+             {"name", member.name},
              {"email_initial", initial(member.email)},
              {"latitude", lat},
              {"longitude", lon},
@@ -78,6 +89,16 @@ defmodule Dawarich.Families.Locations do
            ]}
         ]
     end
+  end
+
+  def display_name(first, last, email) do
+    name =
+      [first, last]
+      |> Enum.map(&String.trim(&1 || ""))
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.join(" ")
+
+    if name == "", do: email, else: name
   end
 
   def initial(email) do

@@ -55,6 +55,7 @@ defmodule DawarichWeb.ShareManagementPage do
 
   def context(conn) do
     %{
+      user_id: conn.assigns.current_user.id,
       locale: conn.assigns.locale,
       csrf: conn.assigns.rails_csrf_token,
       settings: conn.assigns.current_user.settings,

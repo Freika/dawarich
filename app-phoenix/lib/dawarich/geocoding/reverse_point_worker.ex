@@ -43,16 +43,19 @@ defmodule Dawarich.Geocoding.ReversePointWorker do
         Oban.insert!(job.conf.name, new(Map.put(args, "cursor", index)))
         {:halt, :ok}
       else
-        geocode(repo, config, id, force)
+        geocode(repo, config, id, force, job.attempt >= job.max_attempts)
         {:cont, :ok}
       end
     end)
   end
 
-  defp geocode(repo, config, id, force) do
+  defp geocode(repo, config, id, force, terminal) do
     if config.enabled, do: PointFetch.run(repo, id, config, force)
-  after
     unless force, do: release(repo, id)
+  rescue
+    error ->
+      if terminal and not force, do: release(repo, id)
+      reraise error, __STACKTRACE__
   end
 
   defp release(repo, id) do

@@ -115,7 +115,7 @@ RSpec.describe 'Phoenix fixture: A12d2 residual jobs' do
     corpus = capture_schedule_parents
     nightly = corpus.fetch('classes').fetch('Points::NightlyReverseGeocodingJob').fetch('cases')
     forced = nightly.find { _1.fetch('id') == 'dedup' }
-    expect(forced.fetch('jobs').map { _1.fetch('arguments').last.fetch('force') }.uniq).to eq([true])
+    expect(forced.fetch('jobs')).to eq([])
     expect(capture_schedule_parents).to eq(corpus)
     serialized = "#{JSON.pretty_generate(corpus)}\n"
     schedules_path = Rails.root.join('app-phoenix/test/fixtures/a12d3/schedules.json')

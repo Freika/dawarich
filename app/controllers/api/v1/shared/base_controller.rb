@@ -26,13 +26,19 @@ module Api
 
         def load_link
           @link = SharedLink.active.find_by(id: params[:id])
-          return if @link
+          if @link&.accessible_to?(current_user)
+            response.set_header('Cache-Control', 'private, no-store') if @link.family_only?
+            return
+          end
+
+          @link = nil
 
           render json: { error: 'not_found' }, status: :not_found
         end
 
         def verify_phrase
           return if @link.nil?
+          return if @link.family_only?
           return if @link.magic_phrase.blank?
           return if cookies.encrypted["shared_link_#{@link.id}"] == @link.unlock_token
 
@@ -40,6 +46,7 @@ module Api
         end
 
         def cache_public_for(seconds)
+          return if link&.family_only?
           return if link&.magic_phrase.present?
 
           expires_in seconds, public: true

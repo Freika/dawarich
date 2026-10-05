@@ -43,7 +43,12 @@ defmodule Dawarich.Families.History do
 
   defp members(user, family_id, from, to, now) do
     RailsTime.with_zone(user.timezone, fn ->
-      sharing = for m <- Locations.members(family_id), Sharing.enabled?(m.settings, now), do: m
+      sharing =
+        for m <- Locations.members(family_id),
+            m.id != user.id,
+            Sharing.enabled?(m.settings, now),
+            do: m
+
       {:ok, 200, {:object, [{"members", Enum.flat_map(sharing, &member(&1, from, to, now))}]}}
     end)
   end
@@ -61,6 +66,7 @@ defmodule Dawarich.Families.History do
          [
            {"user_id", member.id},
            {"email", member.email},
+           {"name", member.name},
            {"email_initial", Locations.initial(member.email)},
            {"sharing_since", Clock.iso(started)},
            {"points", points}

@@ -18,15 +18,17 @@ module Geocoding
 
     def enqueue_points(root, user_id, ids)
       if root.nil?
-        return ReverseCommands.enqueue_points(user_id, ids, force: true,
+        return ReverseCommands.enqueue_points(user_id, ids, force: false,
                                                            producer: 'Points::NightlyReverseGeocodingJob')
       end
 
-      ReverseCommands.clear_dedup_keys(ids)
+      ids = ReverseCommands.claim_dedup_keys(ids)
+      return if ids.empty?
+
       ids.each_slice(ReverseCommands::BATCH_SIZE) do |slice|
         event = Digest::UUID.uuid_v5(root, "reverse:#{user_id}:#{slice.join(',')}")
         RailsCommands::Poller.publish('geocoding.reverse_point',
-                                      { 'user_id' => user_id, 'point_ids' => slice, 'force' => true,
+                                      { 'user_id' => user_id, 'point_ids' => slice, 'force' => false,
                                         'event_id' => event })
       end
       return unless claim_event(root, "invalidated:#{user_id}")

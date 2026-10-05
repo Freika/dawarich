@@ -148,6 +148,22 @@ defmodule Dawarich.Exports.PointsTest do
     end
   end
 
+  test "GPX exports legacy schemas without altitude_decimal", %{dir: dir} do
+    seed_fixture!()
+    rows("ALTER TABLE points DROP COLUMN altitude_decimal")
+
+    try do
+      rows("UPDATE points SET altitude=1153")
+      actual = payload!(dir, 1, "Etc/UTC")
+      assert actual =~ "<ele>1153.0</ele>"
+
+      assert length(Regex.scan(~r/<trkpt /, actual)) ==
+               length(Regex.scan(~r/<trkpt /, @fixture["exports"]["Etc/UTC"]["gpx"]))
+    after
+      rows("ALTER TABLE points ADD COLUMN altitude_decimal numeric(10,2)")
+    end
+  end
+
   test "columns/1 follows information_schema order minus the exclusions" do
     ordinal =
       rows(

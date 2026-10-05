@@ -105,6 +105,7 @@ defmodule DawarichWeb.Cable.Socket do
       reply(
         for(
           {id, {^broadcasting, :confirmed}} <- state.subs,
+          Channels.visible?(id, payload, state.identity),
           do: {:text, Frames.message(id, payload)}
         ),
         state

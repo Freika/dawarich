@@ -2,6 +2,8 @@
 
 module ApiSharedGoldenOracle
   CASES = [
+    { name: 'family_anonymous', action: 'points', link: { settings: { 'audience' => 'family', 'family_id' => 1 } },
+status: 404, json: { 'error' => 'not_found' } },
     { name: 'points_null_trip', action: 'points', null_id: 951_402, null_ts: T0 },
     { name: 'points_null_track', action: 'points', null_id: 951_401, null_ts: T0 - 1,
       link: { resource_type: 1, resource_id: 951_201 } },

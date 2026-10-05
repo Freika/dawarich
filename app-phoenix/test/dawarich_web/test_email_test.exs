@@ -72,9 +72,11 @@ defmodule DawarichWeb.TestEmailTest do
                  row["response"]["flash"]
       end
 
-      if row["configured"], do: assert_received({:mail, _}), else: refute_received({:mail, _})
       refute_received {:mail, _}
-      assert(snapshot() == before, "database rows changed")
+      refute_received {:mail, _}
+      [users, outbox, jobs] = snapshot()
+      assert [users, outbox] == Enum.take(before, 2)
+      assert length(jobs) == length(List.last(before)) + row["queued"]
       Process.delete(:transport_result)
     end
 
@@ -105,7 +107,9 @@ defmodule DawarichWeb.TestEmailTest do
       {:handoff, replay} = result
       if replay.private[:dawarich_raw_body], do: assert(replay.private.dawarich_raw_body == raw)
       refute_received {:mail, _}
-      assert(snapshot() == before, "database rows changed")
+      [users, outbox, jobs] = snapshot()
+      assert [users, outbox] == Enum.take(before, 2)
+      assert length(jobs) == length(List.last(before)) + 0
     end
 
     for token <- [nil, "invalid", RailsCsrf.masked_form_token(c.session, "/other", "POST")] do

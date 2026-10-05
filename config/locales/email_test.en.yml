@@ -1,0 +1,9 @@
+en:
+  controllers:
+    settings:
+      general:
+        test_email_queued: "Test email queued for %{email}. Delivery will be checked by the background worker; check your inbox and Sidekiq for failures."
+  settings:
+    general:
+      index:
+        test_email_worker_hint: "Queues a test message through the same background worker as system emails"

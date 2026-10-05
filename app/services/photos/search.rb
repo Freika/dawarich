@@ -4,7 +4,7 @@ class Photos::Search
   attr_reader :user, :start_date, :end_date, :errors
 
   def self.cached(user, start_date: '1970-01-01', end_date: nil, expires_in: 1.minute)
-    key = "photos_search/#{user.id}/#{start_date}/#{end_date}"
+    key = "photos_search/#{user.id}/v2/#{start_date}/#{end_date}"
     cached = Rails.cache.read(key)
     return cached if cached.present?
 
