@@ -120,4 +120,56 @@ defmodule Dawarich.Jobs.ScheduleCutoverTest do
     assert SyncScheduling.run(ScratchRepo, @oban, :teslamate, slot) == :ok
     assert fanouts() == published
   end
+
+  @tag :rails_parity
+  test "native schedule peer shares source slots and ownership fences", %{user: user} do
+    database = ScratchRepo.config()[:database]
+    assert database == System.fetch_env!("PHOENIX_TEST_DATABASE") <> "_scratch"
+    assert String.starts_with?(database, "dawarich_phoenix_test")
+    peer_send(%{op: "ready", database: database, user: user})
+    schedule_peer()
+  end
+
+  defp schedule_peer do
+    case IO.gets(:stdio, "") |> Jason.decode!() do
+      %{"op" => "claim", "expected" => expected} ->
+        result = Claimer.claim(ScratchRepo, @oban, entry(:teslamate), "100ms")
+        assert inspect(result) == expected
+        peer_send(%{op: "claimed"})
+        schedule_peer()
+
+      %{"op" => "run", "slot" => slot} ->
+        assert SyncScheduling.run(ScratchRepo, @oban, :teslamate, slot) == :ok
+        assert fanouts() == []
+        peer_send(%{op: "ran"})
+        schedule_peer()
+
+      %{"op" => "hold", "slot" => slot} ->
+        parent = self()
+
+        hook = fn _ ->
+          [[pid]] = rows("SELECT pg_backend_pid()")
+          send(parent, {:held, self(), pid})
+          receive(do: (:finish -> :ok))
+        end
+
+        task =
+          Task.async(fn ->
+            SyncScheduling.run(ScratchRepo, @oban, :teslamate, slot, hook: hook)
+          end)
+
+        assert_receive {:held, task_pid, pid}, 5_000
+        peer_send(%{op: "held", pid: pid})
+        assert %{"op" => "finish"} = IO.gets(:stdio, "") |> Jason.decode!()
+        send(task_pid, :finish)
+        assert Task.await(task) == :ok
+        peer_send(%{op: "ran"})
+        schedule_peer()
+
+      %{"op" => "stop"} ->
+        peer_send(%{op: "done"})
+    end
+  end
+
+  defp peer_send(message), do: IO.puts("A12D3:" <> Jason.encode!(message))
 end
