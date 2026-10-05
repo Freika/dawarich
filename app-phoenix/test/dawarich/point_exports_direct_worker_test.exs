@@ -10,11 +10,14 @@ defmodule Dawarich.PointExportsDirectWorkerTest do
   test "direct Phoenix command dispatches and writes NY GPX without a reverse table" do
     root = Path.join(System.tmp_dir!(), "direct-export-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
+    previous_root = Application.fetch_env!(:dawarich, :rails_root)
+    Application.put_env(:dawarich, :rails_root, root)
     backend = System.get_env("STORAGE_BACKEND")
     System.delete_env("STORAGE_BACKEND")
     rows("ALTER TABLE phoenix.rails_commands RENAME TO direct_saved_rails_commands")
 
     on_exit(fn ->
+      Application.put_env(:dawarich, :rails_root, previous_root)
       rows("ALTER TABLE phoenix.direct_saved_rails_commands RENAME TO rails_commands")
       File.rm_rf!(root)
       if backend, do: System.put_env("STORAGE_BACKEND", backend)

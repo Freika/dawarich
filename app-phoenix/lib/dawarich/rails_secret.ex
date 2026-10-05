@@ -38,7 +38,7 @@ defmodule Dawarich.RailsSecret do
 
   defp cached do
     case :persistent_term.get(__MODULE__, nil) do
-      nil -> remember(resolve(System.get_env(), File.cwd!()))
+      nil -> remember(resolve(System.get_env(), Dawarich.RailsRoot.root()))
       secret -> secret
     end
   end

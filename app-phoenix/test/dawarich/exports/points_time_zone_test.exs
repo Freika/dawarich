@@ -10,12 +10,15 @@ defmodule Dawarich.Exports.PointsTimeZoneTest do
   setup do
     root = Path.join(System.tmp_dir!(), "points-zone-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
+    previous_root = Application.fetch_env!(:dawarich, :rails_root)
+    Application.put_env(:dawarich, :rails_root, root)
     backend = System.get_env("STORAGE_BACKEND")
     zone = System.get_env("TIME_ZONE")
     System.delete_env("STORAGE_BACKEND")
     System.put_env("TIME_ZONE", "Europe/Berlin")
 
     on_exit(fn ->
+      Application.put_env(:dawarich, :rails_root, previous_root)
       File.rm_rf!(root)
       if backend, do: System.put_env("STORAGE_BACKEND", backend)
       if zone, do: System.put_env("TIME_ZONE", zone), else: System.delete_env("TIME_ZONE")

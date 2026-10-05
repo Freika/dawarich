@@ -33,10 +33,13 @@ defmodule Dawarich.Exports.PointsWorkerTest do
     Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(public.exports))
     root = Path.join(System.tmp_dir!(), "w2-worker-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
+    previous_root = Application.fetch_env!(:dawarich, :rails_root)
+    Application.put_env(:dawarich, :rails_root, root)
     backend = System.get_env("STORAGE_BACKEND")
     System.delete_env("STORAGE_BACKEND")
 
     on_exit(fn ->
+      Application.put_env(:dawarich, :rails_root, previous_root)
       File.rm_rf!(root)
       if backend, do: System.put_env("STORAGE_BACKEND", backend)
     end)

@@ -28,7 +28,7 @@ defmodule Dawarich.Storage do
   @external_resource approximations = Path.expand("../../priv/i18n_approximations.json", __DIR__)
   @approximations approximations |> File.read!() |> Jason.decode!()
 
-  def config!(env, rails_root \\ File.cwd!()) do
+  def config!(env, rails_root \\ Dawarich.RailsRoot.root()) do
     root = Path.join(rails_root, "storage")
 
     case Map.get(env, "STORAGE_BACKEND", "local") do
@@ -38,7 +38,7 @@ defmodule Dawarich.Storage do
     end
   end
 
-  def services!(env, rails_root \\ File.cwd!()) do
+  def services!(env, rails_root \\ Dawarich.RailsRoot.root()) do
     disk = %{
       "test" => %{service: "local", root: Path.join(rails_root, "tmp/storage")},
       "local" => %{service: "local", root: Path.join(rails_root, "storage")}

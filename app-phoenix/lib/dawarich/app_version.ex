@@ -6,7 +6,7 @@ defmodule Dawarich.AppVersion do
   def current,
     do:
       :dawarich
-      |> Application.get_env(:app_version_file, ".app_version")
+      |> Application.get_env(:app_version_file, Dawarich.RailsRoot.join(".app_version"))
       |> File.read!()
       |> String.trim()
 
