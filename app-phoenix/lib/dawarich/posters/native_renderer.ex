@@ -146,7 +146,11 @@ defmodule Dawarich.Posters.NativeRenderer do
 
   defp signal(signal, pid, opts) do
     if observer = opts[:on_signal], do: observer.(signal, pid)
-    kill_command([signal, "--", "-#{pid}"], opts)
+
+    case kill_command([signal, "--", "-#{pid}"], opts) do
+      {_, 0} = result -> result
+      {output, _} = result -> if alive?(pid, opts), do: result, else: {output, 0}
+    end
   end
 
   defp kill!(pid, opts) do

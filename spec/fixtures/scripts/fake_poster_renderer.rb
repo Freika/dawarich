@@ -6,7 +6,7 @@ mode = ARGV.length > 1 ? ARGV.first : nil
 job = JSON.parse(File.read(ARGV.last))
 output = job.fetch('output')
 
-if %w[linger error-child exit-parent continuous continuous-term].include?(mode)
+if %w[linger error-child exit-parent continuous continuous-term exit-before-signal].include?(mode)
   ready_reader, ready_writer = IO.pipe
   child = fork do
     ready_reader.close
@@ -21,6 +21,13 @@ if %w[linger error-child exit-parent continuous continuous-term].include?(mode)
   ready_reader.gets
   ready_reader.close
   Signal.trap('TERM', 'IGNORE') unless mode == 'continuous'
+  if mode == 'exit-before-signal'
+    Signal.trap('USR1') do
+      Process.kill('KILL', child)
+      Process.wait(child)
+      exit 0
+    end
+  end
   $stdout.sync = true
   puts JSON.dump(pid: Process.pid, pgrp: Process.getpgrp, child:)
   exit 7 if mode == 'error-child'

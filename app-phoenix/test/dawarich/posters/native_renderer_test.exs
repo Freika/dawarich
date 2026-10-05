@@ -158,6 +158,46 @@ defmodule Dawarich.Posters.NativeRendererTest do
     refute_receive {:unexpected_wait, _}
   end
 
+  @tag mutation: "signal-esrch"
+  test "group exit between liveness check and TERM or KILL preserves the renderer timeout", ctx do
+    parent = self()
+
+    for signal <- ~w(-KILL -TERM) do
+      {task, ready} =
+        ready_renderer(ctx, "exit-before-signal",
+          timeout_ms: 0,
+          terminate_ms: 0,
+          kill_command: fn executable, args, options ->
+            if hd(args) == signal do
+              pid = args |> List.last() |> String.trim_leading("-")
+              assert {_, 0} = System.cmd(executable, ["-USR1", "--", pid], options)
+              port = Process.get(:renderer_port)
+              assert_receive {^port, {:exit_status, 0}}, 1000
+            end
+
+            result = System.cmd(executable, args, options)
+            if hd(args) == signal, do: send(parent, {:raced_signal, signal, result})
+            result
+          end
+        )
+
+      send(task.pid, :render)
+      assert inspect(catch_exit(Task.await(task))) =~ "Poster renderer timed out after 0 ms"
+      assert_receive {:raced_signal, ^signal, {_, status}}
+      assert status != 0
+      assert_receive {:signal, "-TERM", _}
+
+      if signal == "-KILL",
+        do: assert_receive({:signal, "-KILL", _}),
+        else: refute_receive({:signal, "-KILL", _})
+
+      assert {_, status} =
+               System.cmd("/bin/kill", ["-0", "--", "-#{ready["pgrp"]}"], stderr_to_stdout: true)
+
+      assert status != 0
+    end
+  end
+
   @tag mutation: "kill-status"
   test "failed group KILL is visible and still closes the port", ctx do
     parent = self()
@@ -169,7 +209,7 @@ defmodule Dawarich.Posters.NativeRendererTest do
         kill_command: fn executable, args, options ->
           if hd(args) == "-KILL" do
             send(parent, {:cleanup_port, Process.get(:renderer_port)})
-            {"KILL failed", 1}
+            {"Operation not permitted", 1}
           else
             System.cmd(executable, args, options)
           end
@@ -177,7 +217,10 @@ defmodule Dawarich.Posters.NativeRendererTest do
       )
 
     send(task.pid, :render)
-    assert inspect(catch_exit(Task.await(task))) =~ "group KILL failed (1): KILL failed"
+
+    assert inspect(catch_exit(Task.await(task))) =~
+             "group KILL failed (1): Operation not permitted"
+
     assert_receive {:cleanup_port, port}
     assert Port.info(port) == nil
   end
