@@ -100,4 +100,31 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
       expect(result[:calls]).to be_empty
     end
   end
+
+  it 'native readiness failure never launches Rails' do
+    %w[web-entrypoint.sh cloud-entrypoint.sh].each do |script|
+      %w[1 3 4 5].each do |failure|
+        result = run_script(script, *server, STUB_READY_STATUS: failure)
+        expect(result[:status].exitstatus).to eq(failure.to_i)
+        expect(result[:calls].last).to eq('dawarich eval Dawarich.Release.halt_unless_ready()')
+        expect(result[:calls]).not_to include(a_string_starting_with('bundle '),
+                                              a_string_starting_with('dawarich start'))
+      end
+    end
+    result = run_script('cloud-entrypoint.sh', *server, SELF_HOSTED: 'false')
+    expect(result[:status]).not_to be_success
+    expect(result[:calls]).to be_empty
+  end
+
+  it 'worker entrypoints retain real Sidekiq and never migrate or seed' do
+    %w[sidekiq-entrypoint.sh cloud-sidekiq-entrypoint.sh].each do |script|
+      result = run_script(script, 'sidekiq', '-C', 'config/sidekiq.yml')
+      expect(result[:status]).to be_success
+      expect(result[:calls]).to eq([if script == 'sidekiq-entrypoint.sh'
+                                      'bundle exec sidekiq'
+                                    else
+                                      'bundle exec sidekiq -C config/sidekiq.yml'
+                                    end])
+    end
+  end
 end
