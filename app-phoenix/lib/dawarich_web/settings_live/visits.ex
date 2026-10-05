@@ -49,7 +49,7 @@ defmodule DawarichWeb.SettingsLive.Visits do
       />
       <div class="card bg-base-200 shadow-xl mb-6" data-controller="visit-detection-settings">
         <form
-          id="visit-detection-settings"
+          id="phx-visit-detection-settings"
           phx-update="ignore"
           action="/settings/visits"
           accept-charset="UTF-8"

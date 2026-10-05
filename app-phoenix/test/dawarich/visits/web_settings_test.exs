@@ -146,7 +146,7 @@ defmodule Dawarich.Visits.WebSettingsTest do
     form =
       html(user, page)
       |> LazyHTML.from_document()
-      |> LazyHTML.query("form#visit-detection-settings[phx-update='ignore']")
+      |> LazyHTML.query("form#phx-visit-detection-settings[phx-update='ignore']")
 
     assert LazyHTML.attribute(form, "action") == ["/settings/visits"]
     assert LazyHTML.attribute(form, "method") == ["post"]
