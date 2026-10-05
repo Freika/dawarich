@@ -58,10 +58,10 @@ module Achievements
         ::JobCommands.forward('achievements.check', payload, event_id: child_id(event, user_id),
                               aggregate_id: user_id, producer: name, scheduled_at: at)
       else
-        ::JobCommands.enqueue_after_commit(nil) do
-          CheckJob.set(wait_until: at).perform_later(user_id, notify: options.fetch(:notify),
-                                                           force: options.fetch(:force))
-        end
+        RailsCommands::Poller.publish('achievements.bulk_check_leaf',
+                                      { 'user_id' => user_id, 'notify' => options.fetch(:notify),
+                                        'force' => options.fetch(:force), 'run_at' => at.iso8601(6),
+                                        'event_id' => child_id(event, user_id) })
       end
     end
 
@@ -77,7 +77,9 @@ module Achievements
                                 aggregate_id: user_id, producer: name, scheduled_at: at)
         else
           ::JobCommands.enqueue_after_commit(nil) do
-            CheckJob.set(wait_until: at).perform_later(user_id, notify: payload.fetch('notify'), force: false)
+            CheckJob.set(wait_until: at).perform_later(user_id, notify: payload.fetch('notify'),
+                                                             force: payload.fetch('force', false)) ||
+              raise('Achievements enqueue aborted')
           end
         end
       end

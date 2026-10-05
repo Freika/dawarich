@@ -64,7 +64,8 @@ module Integrations
                               event_id: event_id(kind, slot, user_id), aggregate_id: user_id, producer: name,
                               dedupe_key: "airtrail:#{user_id}")
         else
-          ImportCommands.airtrail_flights(user_id, producer: name)
+          RailsCommands::Poller.publish('integrations.airtrail_flights',
+                                        { 'user_id' => user_id, 'event_id' => event_id(kind, slot, user_id) })
         end
       end
     end
@@ -73,14 +74,15 @@ module Integrations
       user_id = payload.fetch('user_id')
       return unless User.exists?(id: user_id)
 
-      AirTrail::ImportFlightsJob.perform_later(user_id)
+      AirTrail::ImportFlightsJob.perform_later(user_id) || raise('AirTrail enqueue aborted')
     end
 
     def schedule_teslamate(ids, kind, slot)
       ids.each do |user_id|
         next unless claim(kind, slot, user_id)
 
-        JobCommands.enqueue_after_commit(nil) { TeslaMate::SyncJob.perform_later(user_id) }
+        RailsCommands::Poller.publish('integrations.teslamate_sync',
+                                      { 'user_id' => user_id, 'event_id' => event_id(kind, slot, user_id) })
       end
     end
 
@@ -89,7 +91,9 @@ module Integrations
         next unless DawarichSettings.self_hosted? || User.select(:id, :plan).find(user_id).full_access?
         next unless claim(kind, slot, source_id)
 
-        JobCommands.enqueue_after_commit(nil) { Trek::SyncJob.perform_later(source_id) }
+        RailsCommands::Poller.publish('integrations.trek_sync',
+                                      { 'user_id' => user_id, 'source_id' => source_id,
+                                        'event_id' => event_id(kind, slot, source_id) })
       end
     end
 
@@ -97,7 +101,7 @@ module Integrations
       user_id = payload.fetch('user_id')
       return unless User.exists?(id: user_id)
 
-      TeslaMate::SyncJob.perform_later(user_id)
+      TeslaMate::SyncJob.perform_later(user_id) || raise('TeslaMate enqueue aborted')
     end
 
     def trek_sync(payload)
@@ -105,7 +109,7 @@ module Integrations
       source_id = payload.fetch('source_id')
       return unless User.exists?(id: user_id) && TripSource.exists?(id: source_id, user_id: user_id)
 
-      Trek::SyncJob.perform_later(source_id)
+      Trek::SyncJob.perform_later(source_id) || raise('Trek enqueue aborted')
     end
   end
 end
