@@ -1,143 +1,150 @@
-# A12h release lifecycle prerequisites
+# A12h native release lifecycle
 
 Last updated: 2026-10-05.
 
-This branch implements default-off lifecycle policy, two release DDL workers,
-transactional native release-job insertion, standalone ordinary install seeds,
-and route hand-back regression tests. It does not enable a live native lifecycle.
-The implementation plan is `2026-10-05-phoenix-a12h-plan.md` in the project plans
-repository. The implementation report is `SP/orch/out/impl-a12h.report.md`.
+The default-off, self-hosted lifecycle now owns public upgrades, private schema
+setup, registration-policy copy and ordinary install seeds. Rails/Puma remains
+the request fallback and Sidekiq remains the coexistence worker. This implements
+a bounded first cut of inventory row 14; it does not authorize live activation.
+The plan is `2026-10-05-phoenix-a12h-plan.md` in the project plans repository;
+the implementation report is `SP/orch/out/impl-a12h.report.md`.
 
-## Current command and boot behavior
+## Commands and boot
 
-`DAWARICH_PHOENIX_LIFECYCLE` has a strict policy: absent or literal `false` selects
-Rails; literal `true` selects native only for self-hosted configuration. Other
-values and Cloud-native configuration are rejected by the policy module.
-Release.migrate now consumes this policy. The CLI and shell wiring remain pending;
-do not activate boot using the flag until those tasks and release gates close.
+`DAWARICH_PHOENIX_LIFECYCLE` accepts only literal `true` or `false`; absence means
+false. Other values fail before lifecycle work. True requires the existing
+self-hosted policy. Cloud true refuses before either migrator runs.
 
-The retained self-hosted `docker/web-entrypoint.sh` path is:
+With true, `dawarich migrate` upgrades public, phoenix and oban schemas, inserts
+new native release jobs and copies registration policy. `dawarich db:migrate`
+is its native-only alias. `dawarich seeds` and `dawarich db:seed` require current
+public/private schemas and run ordinary seeds. Successful commands return 0;
+refusals return 1 and preserve the existing floor remedy. `data:migrate` keeps
+its existing pre-floor retirement explanation.
 
-1. Bootstrap database selectors, assets, database creation and database wait.
+Native `docker/web-entrypoint.sh` preserves asset synchronization, database
+creation/wait and privilege handling, then runs:
+
+1. `dawarich migrate`.
+2. `dawarich seeds`.
+3. For a server, `dawarich eval 'Dawarich.Release.halt_unless_ready()'`.
+4. Phoenix supervising Puma with the original server arguments; arbitrary
+   commands retain `exec bundle exec "$@"` after successful lifecycle work.
+
+Migration, seed or readiness failure exits without automatically starting Rails.
+Native readiness requires both private ledgers and a current public ledger;
+it never migrates or inserts jobs. Missing/behind schemas retain exit 3 and
+no database connection retains exit 5.
+
+Native `docker/release.sh` runs migrate then seeds and stops on either failure.
+`docker/cloud-entrypoint.sh`, when explicitly used for self-hosted native mode,
+checks public-aware readiness and stops on failure. Actual Cloud native mode
+refuses. Both worker entrypoints retain real Sidekiq and never migrate or seed.
+
+With the flag absent/false, the self-hosted web sequence remains:
+
+1. Assets, database selectors, creation and database wait.
 2. `bundle exec rails db:migrate`.
 3. `bundle exec rake data:migrate`.
 4. `bundle exec rails db:seed`.
-5. `dawarich eval 'Dawarich.Release.migrate()'` installs Phoenix/Oban schemas
-   and copies registration policy.
-6. On success, a server command runs under the Phoenix supervisor with its
-   original Puma arguments. On Phoenix migration failure, the existing Rails
-   fallback runs. Other arguments retain `exec bundle exec "$@"`.
+5. `dawarich eval 'Dawarich.Release.migrate()'` installs private schemas and
+   copies registration policy.
+6. Successful server commands run under Phoenix; Phoenix failure retains the
+   existing Rails fallback. Other commands retain their original arguments.
 
-`docker/release.sh` retains Rails schema migration followed by private Phoenix
-migration and registration copy. Cloud stops deploy if that Phoenix step fails;
-self-hosted deploy retains its existing fallback notice. Cloud web startup uses
-private-schema readiness and retains the Rails fallback. Sidekiq remains real.
+Flag-off `dawarich migrate` remains private-schema-only; `db:migrate`, seeds and
+`db:seed` refuse native work while disabled. Flag-off release keeps Rails schema
+migration then private Phoenix migration: Cloud failure stops deploy, while
+self-hosted failure retains the fallback notice. Cloud web retains its existing
+private readiness/fallback behavior. Route/auth/job-owner flags stay independent.
 
-`dawarich migrate` still installs only private schemas and registration policy.
-`dawarich migrate status` classifies the public ledger without public migration.
-`dawarich seeds`, `db:seed` and `db:migrate` aliases await Task 16. The planned
-native boot sequence (migrate, seeds, public-aware readiness, Phoenix/Puma) is
-pending Tasks 9–10 and 15–19 and is not an operator procedure on this head.
+## Write coordination and source parity
 
-## Implemented source contracts
+Unsupported, below-floor, foreign and newer public ledgers refuse before private
+schema writes. The floor is schema release 0.37.2, corresponding to product 1.0.0.
+The remedy remains to start Dawarich 1.15.2 once for Rails upgrades, then retry;
+the release owner must choose the final last-Rails comparator before shipping.
+Pending data migrations refuse rather than silently skipping work.
 
-`ReleaseMigrator.migrate(repo, job_mode: :enqueue)` decodes new version intents
-and inserts existing worker changesets through the supplied repo with prefix
-`oban`, inside that version's transaction. Raw intents and ledger entries commit
-with transactional source effects and native jobs. Delay, queue, priority and
-max attempts are retained. Skip records the raw intent only; invalid or unknown
-jobs refuse the version. The default `:record` remains unchanged.
-After syncing A12rel, all recorded self-hosted release vectors decode to valid
-executable workers or the two intentional family skips. Task 6 is closed.
+Like Rails, native creates empty schema_migrations/ar_internal_metadata with
+IF NOT EXISTS before taking Rails' exact migrator advisory key
+`2053462845 * crc32(current_database)`. No native version or registration rows
+are written before exclusion. A fresh metadata race can fail loudly without
+partial native version, job or registration writes; stronger bootstrap exclusion
+than Rails provides is not claimed.
 
-Reentry does not replay historical raw intents or change existing native job IDs,
-payloads, schedule or state. The public migrator lease serializes its callers;
-this is not complete Release-level or Rails/native exclusion. Nontransactional
-source effects can remain after failure, while no version ledger/jobs commit.
-Exactly-once insertion per applied version does not promise exactly-once execution.
+A dedicated Postgrex connection stays pinned for the whole native migrate/seed
+call, outside transactions. Completed pg_try_advisory_lock queries precede the
+required session pg_advisory_lock; blocking lock queries retain snapshots that
+would prevent CREATE INDEX CONCURRENTLY. Both lock counts release in an after
+path, and disconnect releases locks on crash. Private migrations use existing
+Ecto locking; the existing lease/fences span public migration, registration copy
+and seed writes. Release-level tests cover fresh/current migration concurrency,
+Rails try-lock refusal, seed concurrency and migrate-versus-seeds exclusion.
 
-The standalone seeds preserve source order within each component and whole-table
-guards: scoped user emptiness; unscoped country/region/tag emptiness; ascending
-scoped users for four default tags. Country loading alone is transactional.
-Region loading reuses the existing two-statement load/repair effect and rejects
-empty countries first. Tag failures retain earlier rows; a partial tag table
-prevents further automatic seeding. Whole-call ordering/exclusion awaits Task 15.
+With documented `DATABASE_ADVISORY_LOCKS=false`, native takes no session lock,
+using Visits.Persister's parsing. This is Rails source parity: the operator's
+single-migrator rule applies across both runtimes, including PgBouncer transaction
+pooling. Never take a session lock through a transaction pooler. ED-534 records
+this setting as source parity, not a native gap. Native coordination does not
+coordinate Rails db:seed; stop old boot/deploy seed writers before activation.
 
-Bootstrap retains database defaults, bcrypt and random API-key generation,
-committed creation before self-hosted activation, and Rails calendar expiry.
-It reuses the existing TZInfo-compatible `Imports.ZonePeriod` behavior, including
-future transition bounds, instead of PostgreSQL's indefinite DST extrapolation.
-Admin creation retains authorization before shared persistence. ED-532 suppresses
-bootstrap credential logging; clock, salt and random-byte injection is for corpus
-tests, with production defaults remaining the real clock and entropy.
+## Jobs and ordinary seeds
 
-## Activation and upgrade matrix
-
-| Case | Current evidence and remaining condition |
-|---|---|
-| Flag absent/false | Existing Rails lifecycle and fallback remain in production callers. |
-| Fresh self-hosted / supported 1.0.0+ schema | Synthetic migrator/job tests, Rails seed corpus and real-vector decoder closure prove components; live Release orchestration is pending. |
-| Below product 1.0.0 | Public migrator refuses the missing schema state, including floor 0.37.2. Existing CLI remedy: start Dawarich 1.15.2 once so Rails upgrades it, then retry. Final last-Rails image selection belongs to the release owner. |
-| Foreign/newer/non-Dawarich ledger, UTC/pool/lease refusal | Existing public migrator checks remain; refusal before all private writes awaits Task 9. |
-| Release job decoder | A12rel achievement and import adapters are merged; Task 6 accepts all recorded self-hosted argument vectors and validates executable worker changesets. |
-| Concurrent native lifecycle callers | Private bootstrap, public DDL, registration copy, seeds and migrate-versus-seeds require a common complete write scope and Release-level race tests in Tasks 9/15. |
-| Rails starts after preflight | Observing Rails' advisory lock does not exclude a later Rails migrator, especially during nontransactional DDL. Task 9 exclusion proof is an activation blocker. Operator quiescence is required operationally but is not that proof. |
-| Cloud | Native lifecycle remains unsupported; existing Rails deploy/provisioning remains. |
-
-The real achievement release wrapper and import activity-file/track-reprocess
-adapters are merged. The import release's 120-second initial delay and 10-second
-spacing remain unchanged. Before activation, close complete Release coordination, strict CLI
-and shell branching, readiness, real upgrade vectors, C3/C4 and release rehearsals.
-
-Task 9 implements source parity under the controller's 2026-10-05 ruling.
-Native classification refuses unsupported ledgers before private schema writes.
-Like Rails, it creates empty schema_migrations/ar_internal_metadata idempotently
-before the lock, then reclassifies under Rails' exact advisory key. No native
-version or registration rows are written before exclusion. A real metadata race
-can fail loudly at bootstrap with no native version, job or registration writes.
-
-A dedicated Postgrex connection stays pinned for the whole migrate call, with
-no transaction open while holding the session advisory lock. Lock acquisition
-uses completed pg_try_advisory_lock queries before the required pg_advisory_lock;
-waiting SELECT/DO lock calls retain snapshots that block CREATE INDEX CONCURRENTLY.
-Both lock counts are released in an after path; disconnect also releases them.
-The existing lease/fences span public migration and registration copy. Tests
-exercise concurrent fresh/current calls and Rails' source try-lock refusal.
-
-DATABASE_ADVISORY_LOCKS=false uses the same false/no/off parsing as Visits.Persister
-and takes no session lock. This is Rails source parity, including PgBouncer
-transaction pooling: operators must run only one migrator across both runtimes.
-Never take a session advisory lock through a transaction pooler. ED-534 records
-this setting as source parity, not a native exclusion gap. Whole-call migrate
-versus seeds serialization still awaits Task 15.
+Live migration uses explicit enqueue mode. Version effects, public ledger, raw
+intent and Oban job insertion share the version transaction. Worker options and
+delay remain intact; invalid/deferred decisions fail the version. Existing
+nontransactional DDL retains source partial-failure semantics. Record-only C4
+mode remains unchanged. A12rel achievement and import adapters close all recorded
+self-hosted vectors; Cloud family adapters remain a separate prerequisite.
 
 Raw intents have no execution/disposition marker and may be offline proof output
-or already executed through Rails. Establish a known baseline and resolve any
-recorded-but-unperformed work with the release owner's existing jobs procedure.
-Do not replay all stored intents. Retain per-key owners, producer fences and
-Sidekiq; this slice does not drain arbitrary ActiveJob queues or flip job owners.
+or work already performed under Rails. Establish a known migration baseline and
+resolve recorded-but-unperformed work with the release owner's existing jobs
+procedure. Never replay every stored intent. No job-owner or cron flip is implied.
 
-## Rollback and verification boundaries
+Seeds run bootstrap user, countries, regions, then tags. They preserve scoped
+User.none?, unscoped Country.none?, Region.none? and global Tag.none? predicates.
+Only country loading owns a whole-load transaction. Invalid countries roll back
+their load; empty countries refuse regions and later tags. Region geometry uses
+the existing load/repair effect. Partial tag rows prevent further automatic
+seeding. Source partial effects remain after a later seed failure.
 
-The two independent Task 20 tests prove actual upstream request/body receipt for
-`DAWARICH_RAILS_ROUTES` route metadata and `DAWARICH_RAILS_SLICES`, before native
-pipelines, with auth configuration and ordinary job-owner reads unchanged. This
-is request hand-back. Stateful native-on then Rails-off lifecycle evidence awaits
-Task 9 orchestration; it does not yet prove disposition of pending Oban work.
+Bootstrap preserves database defaults, bcrypt, random API keys, committed creation
+before self-hosted activation and the Rails calendar expiry/pro plan. Shared admin
+persistence still requires authorization. ED-532 suppresses credential output;
+clock, salt and random input injection is confined to corpus tests. Country bytes
+resolve from packaged priv assets; image/asset smoke execution remains deferred.
 
-Older-image rollback requires compatible public DDL/data and an explicit native-job
-disposition. G48 remains blocked until the release owner supplies the existing
-snapshot/restore procedure. Route hand-back does not restore schemas or cancel
-workers. G49 final drain stays with A12d3.
+## Upgrade, rollback and release boundaries
 
-The branch gate for completed work is the existing `resync-check.sh` (seed 404)
-and `seedrun.sh` (seed 202), with pinned Elixir 1.18.3/OTP 27, private allocated
-DBs/Redis and the existing full-suite slot. The controller owns the third seed.
-Scoped tests and named mutations run directly. Reports contain exact results;
-this document does not substitute for them.
+| Case | Implemented behavior and evidence |
+|---|---|
+| Fresh / supported 1.0.0+ self-hosted | Native orchestration, real-vector decoder closure, guarded ordinary seeds and public readiness; real release rehearsal remains required. |
+| Unsupported public state | Refusal before private writes, with floor/foreign/newer diagnostics. |
+| Concurrent native calls | Complete write coordination and Release-level race tests; advisory-lock-disabled operators must enforce a single migrator. |
+| Cloud true | Explicit refusal; native Cloud provisioning is a follow-up. |
+| Route hand-back | Real upstream request/body receipt for DAWARICH_RAILS_ROUTES rails_key and DAWARICH_RAILS_SLICES, with auth and job-owner behavior unchanged. |
+| Same image, native on then Rails off | Real native public version/job insertion followed by actual Rails db:migrate, data:migrate and db:seed on the same private test database. Rails recognizes the versions without reinserting work; complete pending Oban rows retain IDs, payloads and state. |
+| Older Rails image / backup restore | Requires compatible public DDL/data, explicit native-job disposition and G48 rehearsal; same-image hand-back does not prove this. |
 
-Release/asset smoke, images, browser/stand checks, C4 and release topology are
-**deferred to the controller mini lane**. Schema parity scripts require the plan's
-separately authorized existing-script fixes before G47 can run. No activation or
-release acceptance is implied by local tests. No AFFiNE synchronization is performed
-because this slice touches seeds and credentials.
+Pending Oban work remains explicitly undisposed when lifecycle is disabled. Stop
+boot writers/workers and inspect it before operational rollback; existing owner/
+rehome tools cover only their documented jobs. Release-only jobs need an explicit
+release-owner disposition. Route hand-back neither restores schemas nor cancels
+workers. G48 needs the existing snapshot/restore procedure and job disposition;
+G49 final drain remains A12d3.
+
+The branch gate is existing resync-check.sh (seed 404) and seedrun.sh (seed 202),
+with Elixir 1.18.3/OTP 27, allocated private DBs/Redis and slot.sh for full suites.
+The controller owns the third seed. Scoped tests and named mutations run directly.
+The existing Rails fixture generator runs twice identically, then verifies without
+WRITE_PHOENIX_FIXTURES. Its same-image case records complete ledgers/raw intents/
+Oban rows and normalizes only the fixture clock, without masking random fields.
+Reports carry actual results; these instructions are not substitute gates.
+
+Browser/stand, Docker images, release/asset smokes, C3/C4 and topology checks are
+**deferred to the controller mini lane**. G47's existing scripts still need the
+plan's separately authorized test-env/asdf/Redis/no-env-hashing fixes; G48 still
+needs its release procedure. Local tests do not close those release gates or
+authorize activation. No AFFiNE writes occur because seeds touch credentials.
