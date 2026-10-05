@@ -17,6 +17,22 @@ defmodule Dawarich.Test.RawHTTP do
     socket
   end
 
+  def accept_on_request(%{listen: listen}, request) do
+    owner = self()
+
+    task =
+      Task.async(fn ->
+        send(owner, {self(), :accepting})
+        {:ok, socket} = :gen_tcp.accept(listen)
+        :ok = :gen_tcp.controlling_process(socket, owner)
+        socket
+      end)
+
+    receive do: ({pid, :accepting} when pid == task.pid -> :ok)
+    result = request.()
+    {Task.await(task, :infinity), result}
+  end
+
   def connect(port, timeout \\ 5_000) do
     {:ok, socket} = :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], timeout)
     socket
