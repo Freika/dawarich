@@ -449,3 +449,17 @@ The Rails b2 oracle now contains 12 schedulers, 46 worker cases, 130 toggle case
 The post-sync Rails gate passes 329 selected examples and 251 Swagger setup examples, with the actual shared-database peer passing three tests. The existing generators pass two separate write processes and verification; all four outputs are byte-identical and the three pre-b2 artifacts remain unchanged. Capture isolation restores both sequence values and their called state after rollback or exceptions; nontransactional command specs delete only their recorded users and dependent rows. The cloud-mode stub stays scoped to the digest corpus. Named isolation regressions and mutations pin these test contracts.
 
 Local implementation checks are complete. Final Wave scripts, full seed summaries, byte comparisons and deferred release work are recorded in the implementation report under `SP/orch/out/impl-a12d1b2.report.md`; local acceptance does not activate ownership. Canonical plan: `/Users/frey/projects/dawarich/superpowers/plans/2026-10-03-phoenix-a12-next-slice-plan.md`. Browser, Docker/image/compose/pooler and mini work are deferred to the controller mini lane. No AFFiNE write in this exception-content/data-exposure task.
+
+## A12rel release adapters (default off)
+
+| ID | Scope | Rails behavior | Native behavior | Evidence | State |
+|---|---|---|---|---|---|
+| ED-540 | Release parent queue and retry metadata | Sidekiq data_migrations / low_priority queues and default retry envelope | Existing maintenance queue, priority 3, 26 Oban attempts and source-shaped SyncScheduling backoff; source delays 120/30/10 and bulk stagger 300 seconds stay exact | release_adapters_test.exs; release_jobs_test.exs source vectors | bounded, default off |
+| ED-541 | Completed release publication and delivery | Direct repeat can publish another bulk job | Existing Processed identities suppress completed publication; independent release intents remain distinct. Partial region/activity writes survive failure and unfinished commands retry. Reverse delivery and track callbacks retain durable asynchronous ED-131 behavior | achievements_test.exs; a12rel_corpus_test.exs; release_adapters_test.exs; Rails A12rel handoff example | bounded, no exactly-once execution claim |
+| ED-542 | Activity attachment integrity | ActiveStorage.download can return readable bytes despite wrong checksum/declared size or empty bytes | Existing Reader checks reject these bytes as a download failure, skip activity writes and still reprocess tracks. No content normalization | imports.json checksum/size/empty source cases; activity_backfiller_test.exs; import_backfill_test.exs; a12rel_corpus_test.exs | controller-selected default; Eugene acceptance pending before native ownership/lifecycle activation |
+
+ED-543–549 remain reserved and unused. ED-542 acceptance is required for activation,
+not implementation or merge of this default-off slice. If rejected, the smallest
+change is an explicit verified-by-default source-download mode on the existing
+Reader, tested at this call site. A second reader or fallback harness is outside
+this cut. Operator scope and A12h dependency: `docs/phoenix/a12rel-adapters.md`.
