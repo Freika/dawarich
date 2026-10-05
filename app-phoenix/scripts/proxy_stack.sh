@@ -10,7 +10,7 @@ E2E_SMTP_PORT="${E2E_SMTP_PORT:-1025}"
 SMTP_SERVER="${SMTP_SERVER:-127.0.0.1}"
 MAILPIT_API_PORT="${MAILPIT_API_PORT:-8025}"
 MAILPIT_NAME="${MAILPIT_NAME:-e2e-mailpit}"
-STAND_RELEASE_NODE="${STAND_RELEASE_NODE:-dawarich@localhost}"
+RELEASE_NODE="dawarich_$PORT@localhost"
 rel="$root/app-phoenix/_build/prod/rel/dawarich/bin/dawarich"
 pidfile="$root/tmp/pids/proxy_stack.pid"
 rails_pidfile="$root/tmp/pids/server.pid"
@@ -29,11 +29,14 @@ stack() {
     OTP_ENCRYPTION_PRIMARY_KEY=e2e-otp-primary-key-not-a-secret \
     OTP_ENCRYPTION_DETERMINISTIC_KEY=e2e-otp-deterministic-key-not-a-secret \
     OTP_ENCRYPTION_KEY_DERIVATION_SALT=e2e-otp-derivation-salt-not-a-secret \
-    WEB_CONCURRENCY=0 RAILS_MAX_THREADS=10 APPLICATION_HOSTS="${APPLICATION_HOSTS:-localhost,127.0.0.1}" DAWARICH_COOKIE_FILE="$root/tmp/proxy_stack.cookie" \
+    WEB_CONCURRENCY=0 RAILS_MAX_THREADS=10 APPLICATION_HOSTS="${APPLICATION_HOSTS:-localhost,127.0.0.1}" DAWARICH_COOKIE_FILE="$root/tmp/proxy_stack.cookie" RELEASE_NODE="$RELEASE_NODE" \
     DAWARICH_RAILS_ROUTES="${DAWARICH_RAILS_ROUTES:-}" DAWARICH_PHOENIX_AUTH="${DAWARICH_PHOENIX_AUTH:-}" ${DOMAIN:+DOMAIN="$DOMAIN"} "$@"
 }
 
 if [ "${1:-}" = --down ]; then
+  if epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; then
+    stack "$rel" stop
+  fi
   [ -f "$pidfile" ] && kill "$(cat "$pidfile")" 2>/dev/null || true
   [ -f "$rails_pidfile" ] && kill "$(cat "$rails_pidfile")" 2>/dev/null || true
   pkill -f "$sidekiq" 2>/dev/null || true
@@ -60,8 +63,8 @@ case "${DOCKER_HOST:-$(docker context inspect --format '{{.Endpoints.docker.Host
   *) echo "the Docker engine is not local" >&2; exit 1 ;;
 esac
 [ -f "$ENV_FILE" ] || { echo "$ENV_FILE with the DATABASE_* settings is missing" >&2; exit 1; }
-if epmd -names 2>/dev/null | grep -Fq "name ${STAND_RELEASE_NODE%@*} at"; then
-  echo "another local Dawarich release is running with node $STAND_RELEASE_NODE" >&2
+if epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; then
+  echo "the local Dawarich release $RELEASE_NODE is running; stop it first" >&2
   exit 1
 fi
 if curl -s -m 2 -o /dev/null "http://127.0.0.1:$PORT/"; then echo "port $PORT is in use" >&2; exit 1; fi
@@ -85,7 +88,7 @@ stack bin/rails phoenix:importmap phoenix:time_zones >/dev/null
   PHOENIX_TEST_DATABASE="$STAND_DATABASE_NAME" MIX_ENV=prod \
   sh -c 'mix --version | grep -q "^Mix 1.18.3 " && mix compile --force >/dev/null && mix release --overwrite >/dev/null')
 for release_env in "$root/app-phoenix/_build/prod/rel/dawarich/releases/"*/env.sh; do
-  sed "s/^export RELEASE_NODE=dawarich@localhost$/export RELEASE_NODE=$STAND_RELEASE_NODE/" "$release_env" >"$release_env.tmp"
+  sed 's/^export RELEASE_NODE=dawarich@localhost$/export RELEASE_NODE=${RELEASE_NODE:-dawarich@localhost}/' "$release_env" >"$release_env.tmp"
   mv "$release_env.tmp" "$release_env"
 done
 stack "$rel" eval 'Dawarich.Release.migrate()'
@@ -108,7 +111,7 @@ else
 fi
 
 sidekiq_from=$(($(wc -c <"$sidekiq_log") + 1))
-stack bundle exec ruby -e 'Process.daemon(true, true); exec("bundle", "exec", "sidekiq")' >>"$sidekiq_log" 2>&1
+stack bundle exec ruby -e 'Process.daemon(true, true); exec("bundle", "exec", "ruby", "-r", "sidekiq/cli", "-e", "Sidekiq.configure_server { |config| config.on(:startup) { RailsCommands::Poller.send(:spawn) } }; cli = Sidekiq::CLI.instance; cli.parse; cli.run")' >>"$sidekiq_log" 2>&1
 tries=0
 until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
   tries=$((tries + 1))
