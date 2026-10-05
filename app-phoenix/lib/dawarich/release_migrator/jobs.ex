@@ -29,9 +29,6 @@ defmodule Dawarich.ReleaseMigrator.Jobs do
       :skip ->
         nil
 
-      {:deferred, owner, _payload} ->
-        raise ArgumentError, "release job #{class} deferred to #{owner}"
-
       {:error, reason} ->
         raise ArgumentError, "release job #{class} refused: #{reason}"
     end

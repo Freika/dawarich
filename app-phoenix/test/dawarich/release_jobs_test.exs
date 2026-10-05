@@ -235,15 +235,25 @@ defmodule Dawarich.ReleaseJobsTest do
            }
   end
 
-  test "all recorded self-hosted classes have executable or skipped decisions" do
+  test "live self-hosted release vectors contain no deferred or error decisions" do
     System.put_env("SELF_HOSTED", "true")
 
-    deferred =
-      for {class, arguments} <- recorded_vectors(),
-          {:deferred, _owner, _payload} = outcome <- [ReleaseJobs.decode(class, arguments)],
-          do: {class, outcome}
+    for {class, arguments} <- recorded_vectors() do
+      case ReleaseJobs.decode(class, arguments) do
+        :skip ->
+          assert class in ~w(DataMigrations::BackfillFamiliesForFamilyPlanJob DataMigrations::BackfillFamilyMemberEntitlementsJob)
 
-    assert deferred == []
+        {:ok, worker, args} ->
+          assert Code.ensure_loaded?(worker), class
+          assert function_exported?(worker, :perform, 1), class
+          changeset = worker.new(args)
+          assert changeset.valid?, class
+          assert Ecto.Changeset.get_field(changeset, :worker) == Oban.Worker.to_string(worker)
+
+        _ ->
+          flunk("#{class} has no executable release decision")
+      end
+    end
   end
 
   test "decoded args equal what the worker builds from the forwarded command" do

@@ -132,15 +132,15 @@ defmodule Dawarich.ReleaseMigrator.JobsTest do
     assert jobs() == []
   end
 
-  test "skip records intent without job and deferred refuses the version" do
+  test "skip records intent without job and invalid decodes refuse the version" do
     vector("DataMigrations::BackfillFamiliesForFamilyPlanJob", [], 0)
     assert {:ok, _} = migrate()
     assert [["DataMigrations::BackfillFamiliesForFamilyPlanJob", [], 0]] = intents()
     assert jobs() == []
 
     for {class, args} <- [
-          {"DataMigrations::BackfillAchievementsJob", []},
-          {"TransportationModes::ImportBackfillJob", [1]},
+          {"DataMigrations::BackfillAchievementsJob", [1]},
+          {"TransportationModes::ImportBackfillJob", [nil]},
           {"DataMigrations::FixRouteOpacityJob", [1]},
           {"UnknownJob", []}
         ] do
