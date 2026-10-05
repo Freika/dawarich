@@ -26,7 +26,7 @@ Future rollback to Rails must restart with `DAWARICH_CABLE_TRANSPORT=redis` toge
 
 Tests-only branch acceptance does not activate PG. Browser stands, Docker/image checks, actual two-node socket fan-out, pooler transaction-mode probes and loaded-stop acceptance are **deferred to the controller mini lane**. Preserve the existing Redis coexistence probe first. PG probes require the small producer/transport selectors in the existing `SP/a12a-c3-v3/{two_nodes.sh,lib.sh,cable_probe.exs}` kit; unchanged Rails/Redis publication cannot prove PG delivery. Namespace serialization throughput must pass existing release load budgets before activation. Rails producer/client retirement remains a prerequisite.
 
-Plan: `/Users/frey/projects/dawarich/superpowers/plans/2026-10-04-phoenix-a13e-cable-pg-fanout-plan.md`. Release commands and browser specs are recorded there and in `2026-10-04-phoenix-release-tier-runbook.md`. ED-470–472 record the optional timing, retention and result differences. No AFFiNE writes for this channel-isolation/data-exposure task.
+Plan: `/Users/frey/projects/dawarich/superpowers/plans/2026-10-04-phoenix-a13e-cable-pg-fanout-plan.md`. Release commands and browser specs are recorded there and in `2026-10-04-phoenix-release-tier-runbook.md`. ED-470–472 record the optional timing, retention and result differences. ED-473 permits a multiset comparison of exact wire bytes only for two aliased identifiers receiving the same publication: Rails dispatches stream handlers via `worker_pool.async_invoke` and guarantees no relative order between those callbacks. All other frames retain direct recorded-order comparison. No AFFiNE writes for this channel-isolation/data-exposure task.
 
 ## Evidence
 
