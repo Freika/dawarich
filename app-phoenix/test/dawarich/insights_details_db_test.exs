@@ -18,6 +18,64 @@ defmodule Dawarich.Insights.DetailsDBTest do
 
   defp digests, do: Repo.query!("SELECT id, updated_at FROM digests ORDER BY id", []).rows
 
+  test "six warm fragments retain source HTML keys versions and one-day TTL" do
+    oracle =
+      Path.expand("../fixtures/a12d1b4/cache.json", __DIR__) |> File.read!() |> Jason.decode!()
+
+    user = user!(180_101)
+    user = %{user | settings: Map.put(user.settings, "timezone", "Asia/Tokyo")}
+
+    page =
+      %{
+        load(user, %{"year" => "2020"})
+        | selected: 2025,
+          selected_month: 1,
+          max_stat_updated: ~N[2026-10-03 12:00:00],
+          top_visits: []
+      }
+      |> Map.put(:country_codes, [])
+
+    cold = Fragments.render(user, "en", page, write: true)
+    assert map_size(cold) == 6
+
+    for entry <- oracle["fragments"]["fragments"] do
+      part =
+        entry["key"] |> String.split("/") |> Enum.reverse() |> Enum.find(&Map.has_key?(cold, &1))
+
+      key = Fragments.key(user, "en", page, part)
+      assert key == entry["key"]
+      assert {:ok, ttl} = Redis.cache_command(["TTL", key])
+      assert ttl > 86_390 and ttl <= entry["ttl"]
+
+      assert {:ok, "OK"} =
+               Dawarich.RailsCache.put(key, "<b>source #{part}</b>", expires_in: entry["ttl"])
+    end
+
+    changed = %{
+      page
+      | top_visits: [%{name: "<script>new</script>", visit_count: 9, total_duration: 30}]
+    }
+
+    warm = Fragments.render(user, "en", changed, write: false)
+    for {part, html} <- warm, do: assert(html == "<b>source #{part}</b>")
+
+    for {field, value} <- [
+          {:selected_month, 2},
+          {:unit, "mi"},
+          {:max_stat_updated, ~N[2026-10-04 12:00:00]}
+        ] do
+      refute Fragments.key(user, "en", page, "monthly_digest") ==
+               Fragments.key(user, "en", Map.put(page, field, value), "monthly_digest")
+    end
+
+    refute Fragments.key(user, "en", page, "location_clusters") ==
+             Fragments.key(user, "de", page, "location_clusters")
+
+    escaped = Fragments.render(user, "de", changed, write: false)["location_clusters"]
+    assert escaped =~ "&lt;script&gt;new&lt;/script&gt;"
+    refute escaped =~ "<script>new</script>"
+  end
+
   test "Lite restricted and locked details return before yearly patterns", %{user: user} do
     yearly_digest!()
 
