@@ -25,8 +25,10 @@ defmodule Dawarich.Imports.ActivityBackfiller do
       |> Map.put_new_lazy(:now, &DateTime.utc_now/0)
 
     File.with_file(blob, context, fn path ->
-      if source == 0,
-        do: Dawarich.Imports.ActivityBackfill.Semantic.run(repo, import_id, path, context)
+      case source do
+        0 -> Dawarich.Imports.ActivityBackfill.Semantic.run(repo, import_id, path, context)
+        3 -> Dawarich.Imports.ActivityBackfill.Phone.run(repo, import_id, path, context)
+      end
     end)
 
     true
