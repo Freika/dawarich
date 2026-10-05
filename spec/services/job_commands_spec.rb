@@ -3,6 +3,70 @@
 require 'rails_helper'
 
 RSpec.describe JobCommands do
+  it 'rehome moves pending supported versions only and native accepted work drains after pinned release' do
+    phoenix_tables!
+    user = create(:user)
+    at = 1.day.from_now.change(usec: 0)
+    type = 'visits.bulk_suggest'
+    root = SecureRandom.uuid
+    payload = { 'start_at' => '2026-10-24T00:00:00+02:00', 'end_at' => '2026-10-25T23:59:59+01:00',
+                'user_ids' => [user.id], 'time_zone' => 'Europe/Berlin', 'source_job_id' => root }
+    job_owner!("command:#{type}", :oban)
+    pending = JobOutbox.create!(event_id: root, command_type: type, command_version: 1, payload:, scheduled_at: at)
+    accepted = JobOutbox.create!(event_id: SecureRandom.uuid, command_type: type, command_version: 1,
+                                 payload: payload.merge('source_job_id' => SecureRandom.uuid), scheduled_at: at,
+                                 state: 'dispatched', oban_job_id: 527)
+    unsupported = JobOutbox.create!(event_id: SecureRandom.uuid, command_type: type, command_version: 99,
+                                    payload:, scheduled_at: at)
+    quarantined = JobOutbox.create!(event_id: SecureRandom.uuid, command_type: type, command_version: 1,
+                                    payload:, scheduled_at: at, state: 'quarantined', error_code: 'invalid_payload')
+    original = pending.attributes
+    allow(BulkVisitsSuggestingJob.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+    expect(described_class.rehome!(type, by: 'spec')).to eq(moved: 0, left: 1, error: 'RedisClient::CannotConnectError')
+    expect(pending.reload.attributes).to eq(original)
+    expect(enqueued_jobs).to be_empty
+    allow(BulkVisitsSuggestingJob.queue_adapter).to receive(:enqueue_at).and_call_original
+    expect(described_class.rehome!(type, by: 'spec')).to eq(moved: 1, left: 0)
+    request = enqueued_jobs.sole
+    bulk = ActiveJob::Base.deserialize(request)
+    expect(bulk.job_id).to eq(root)
+    expect(bulk.timezone).to eq('Europe/Berlin')
+    expect(request[:at]).to eq(at.to_f)
+    arguments = ActiveJob::Arguments.deserialize(request.fetch('arguments')).sole
+    expect(arguments).to include(user_ids: [user.id], start_at: DateTime.iso8601(payload['start_at']),
+                                 end_at: DateTime.iso8601(payload['end_at']))
+    expect(accepted.reload.attributes.slice('state', 'oban_job_id', 'payload')).to eq(
+      'state' => 'dispatched', 'oban_job_id' => 527, 'payload' => accepted.payload
+    )
+    expect(unsupported.reload.state).to eq('pending')
+    expect(quarantined.reload.state).to eq('quarantined')
+
+    mail_type = 'mail.user.archival_approaching'
+    job_owner!('cron:lite_archival_warning_job', :oban)
+    job_owner!("command:#{mail_type}", :oban)
+    described_class.forward(mail_type, { 'user_id' => user.id, 'locale' => 'fr', 'epoch' => '2026-10' },
+                            event_id: SecureRandom.uuid, aggregate_id: user.id, producer: 'spec', scheduled_at: at)
+    expect(described_class.rehome!(mail_type, by: 'spec')).to eq(moved: 1, left: 0)
+    expect(enqueued_jobs.last['locale']).to eq('fr')
+    expect(enqueued_jobs.last[:at]).to eq(at.to_f)
+    expect(ActiveRecord::Base.connection.select_rows(
+             'SELECT owner, pinned FROM phoenix.job_owners WHERE key IN ' \
+             "('cron:lite_archival_warning_job', 'command:mail.user.archival_approaching') ORDER BY key"
+           )).to eq([['sidekiq', true], ['sidekiq', true]])
+
+    track = create(:track, user:)
+    job_owner!('command:tracks.recalculate', :oban)
+    alias_event = SecureRandom.uuid
+    JobOutbox.create!(event_id: alias_event, command_type: 'points.anomaly_recalculate', command_version: 1,
+                      payload: { 'user_id' => user.id, 'track_id' => track.id, 'job_queue' => 'low_priority' },
+                      scheduled_at: at)
+    expect(described_class.rehome!('tracks.recalculate', by: 'spec')).to eq(moved: 1, left: 0)
+    expect(enqueued_jobs.last[:args]).to eq([track.id])
+    expect(enqueued_jobs.last[:queue]).to eq('low_priority')
+    expect(enqueued_jobs.last[:at]).to eq(at.to_f)
+    expect(JobOutbox.exists?(alias_event)).to be(false)
+  end
+
   it 'teslamate sync queues after commit and retains failed rehome events' do
     user = create(:user)
     type = 'imports.teslamate_sync'

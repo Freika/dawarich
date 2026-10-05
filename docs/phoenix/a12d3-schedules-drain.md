@@ -24,3 +24,22 @@ resolve.
 Forward Sidekiq retirement and binary rollback have separate drain checks. Current
 reverse producers remain BLOCKED even with an empty observed backlog. Ownership
 hand-back alone does not authorize stopping either runtime or rolling back binaries.
+
+## Source cron restoration after rollback
+
+Keep producers quiescent while releasing affected keys to pinned Sidekiq. Rehome
+only supported pending commands, including future commands; preserve failed pushes,
+unsupported versions and quarantined rows for disposition. Never clone dispatched
+native jobs. Joint Lite cron/mail ownership moves together, and tracks rehoming also
+handles the supported anomaly recalculation alias. Accepted native bulk work can
+still complete and publish source-owned children after hand-back.
+
+After ownership and drain checks permit reopening, restore the installed Sidekiq
+cron loading configuration and enable the affected retained cron jobs using their
+installed controls. Preserve the original schedule, arguments and timezone. The
+rollback regression uses the configured TeslaMate schedule and the installed
+`Sidekiq::Cron::Job.enable!` control; repeated polls of one original slot enqueue one
+source batch, and replay of that accepted batch retains its receipt. Restore any
+process-level cron control as well before restarting the source poller, then reopen
+incoming/manual/callback producers. An empty observed set cannot authorize binary
+rollback while native work or compatibility effects remain.
