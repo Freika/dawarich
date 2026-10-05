@@ -11,6 +11,37 @@ defmodule Dawarich.Families.HistoryTest do
     "history_window" => "all"
   }
 
+  test "locations and history exclude each sharing viewer like Rails 1.15.3" do
+    {owner, member, start} = seed_member_points!()
+
+    Repo.query!("UPDATE users SET settings = $2 WHERE id = $1", [
+      owner,
+      %{"timezone" => "UTC", "family" => %{"location_sharing" => @share}}
+    ])
+
+    Repo.query!(
+      "INSERT INTO points (user_id, timestamp, lonlat, created_at, updated_at) " <>
+        "VALUES ($1, $2, ST_SetSRID(ST_MakePoint(13.4, 52.5), 4326), now(), now())",
+      [owner, start]
+    )
+
+    params = %{"start_at" => "2030-01-01T00:00:00Z", "end_at" => "2030-01-15T10:30:00Z"}
+
+    for {viewer, other} <- [{owner, member}, {member, owner}] do
+      user = %{id: viewer, timezone: "UTC"}
+      assert {:ok, 200, {:object, locations}} = Dawarich.Families.Locations.read(user, @now)
+      assert [{:object, location}] = Map.new(locations)["locations"]
+      assert Map.new(location)["user_id"] == other
+      assert Map.new(locations)["sharing_enabled"] == true
+
+      assert {:ok, 200, {:object, [{"members", [{:object, history}]}]}} =
+               History.read(user, params, @now)
+
+      assert Map.new(history)["user_id"] == other
+      assert Map.new(history)["points"] != []
+    end
+  end
+
   test "more than 5000 points keep every ceil(total / 5000)th row in timestamp order" do
     {owner, _member, start} = seed_member_points!()
     params = %{"start_at" => "2030-01-01T00:00:00Z", "end_at" => "2030-01-15T10:30:00Z"}
