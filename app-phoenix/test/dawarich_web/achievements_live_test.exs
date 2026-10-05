@@ -49,6 +49,17 @@ defmodule DawarichWeb.AchievementsLiveTest do
   defp live_as(user, path),
     do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
+  test "sharing controls and the open card modal stay in one browser owned island", %{user: user} do
+    progress(%{"earned" => %{"DE-BY" => "2026-07-19T10:00:00Z"}})
+    {:ok, view, _html} = live_as(user, "/achievements/country_de")
+    island = "#phx-achievements[phx-update='ignore']"
+    assert has_element?(view, island <> " dialog.ach-modal")
+
+    for target <- ~w(featured createForm disableForm publicLink) do
+      assert has_element?(view, island <> " [data-card-modal-target='#{target}']")
+    end
+  end
+
   test "native collection renders and connects with missing exploration untouched", %{user: user} do
     {:ok, view, html} = live_as(user, "/achievements")
     assert html =~ "data-phx-main" and html =~ "achievement-collection"
