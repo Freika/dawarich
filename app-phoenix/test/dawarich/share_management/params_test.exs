@@ -1,13 +1,11 @@
 defmodule Dawarich.ShareManagement.ParamsTest do
-  use ExUnit.Case, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.Repo
   alias Dawarich.ShareManagement.Params
 
   @user %{id: 98101, settings: %{"timezone" => "Europe/Berlin"}}
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     :ok
   end
 

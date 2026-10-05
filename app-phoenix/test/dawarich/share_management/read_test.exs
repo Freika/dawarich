@@ -1,6 +1,5 @@
 defmodule Dawarich.ShareManagement.ReadTest do
-  use ExUnit.Case, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.ShareManagement.Read
   alias Dawarich.Test.{ApiGolden, RailsUser}
@@ -8,8 +7,6 @@ defmodule Dawarich.ShareManagement.ReadTest do
   @now ~U[2026-10-03 10:00:00Z]
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-
     fixture =
       "test/fixtures/share_management/hub_active_shared_en.json"
       |> File.read!()
@@ -17,7 +14,7 @@ defmodule Dawarich.ShareManagement.ReadTest do
 
     for actor <- fixture["actors"] do
       {:ok, until, _} = DateTime.from_iso8601(actor["active_until"])
-      attrs = Map.new(actor, fn {key, value} -> {String.to_existing_atom(key), value} end)
+      attrs = Map.new(actor, fn {key, value} -> {String.to_atom(key), value} end)
 
       RailsUser.insert!(
         Map.merge(attrs, %{
