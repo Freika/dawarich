@@ -43,9 +43,9 @@ defmodule Dawarich.RailsJobOwners do
     "DataMigrations::FixRouteOpacityJob" => {:oban, ["command:release.route_opacity"]},
     "DataMigrations::MigratePlacesLonlatJob" => :retire,
     "DataMigrations::PrefillPointsCounterCacheJob" => :retire,
-    "DataMigrations::RecalculateAnomaliesJob" => {:slice, :a12d1},
-    "DataMigrations::RecalculateAnomaliesUserJob" => {:slice, :a12d1},
-    "DataMigrations::RecalculatePerTrackerTracksJob" => {:slice, :a12d1},
+    "DataMigrations::RecalculateAnomaliesJob" => {:oban, ["command:release.anomalies"]},
+    "DataMigrations::RecalculateAnomaliesUserJob" => {:oban, ["command:release.anomalies_user"]},
+    "DataMigrations::RecalculatePerTrackerTracksJob" => {:oban, ["command:release.per_tracker"]},
     "DataMigrations::SetPointsCountryIdsJob" => :retire,
     "DataMigrations::SetReverseGeocodedAtForPointsJob" => :retire,
     "DataMigrations::StartSettingsPointsCountryIdsJob" => :retire,
@@ -79,7 +79,7 @@ defmodule Dawarich.RailsJobOwners do
     "Places::DeleteIfOrphanJob" => {:slice, :a12d2},
     "Places::NameFetchingJob" => {:slice, :a12d2},
     "Places::OrphanCleanupJob" => {:slice, :a12d2},
-    "Points::AnomalyBackfillUserJob" => {:slice, :a12d1},
+    "Points::AnomalyBackfillUserJob" => {:oban, ["command:points.anomaly_backfill"]},
     "Points::AnomalyFilterJob" => {:slice, :a12d1},
     "Points::NightlyReverseGeocodingJob" => {:slice, :a12d2},
     "Points::RawData::ArchiveJob" => {:oban, ["cron:raw_data_archive_job"]},
@@ -93,7 +93,7 @@ defmodule Dawarich.RailsJobOwners do
     "RouteVideos::PurgeJob" => {:oban, ["cron:route_videos_purge_job"]},
     "StaleJobsRecoveryJob" => {:slice, :a7},
     "Stats::CalculatingJob" => {:oban, ["command:stats.calculate_month"]},
-    "Stats::FullRecalculationJob" => {:slice, :a12d1},
+    "Stats::FullRecalculationJob" => {:oban, ["command:stats.full_recalculation"]},
     "Stats::ToponymsRefreshJob" => {:oban, ["cron:stats_toponyms_refresh_job"]},
     "TeslaMate::SyncJob" => {:slice, :a7},
     "TeslaMate::SyncSchedulingJob" => {:slice, :a7},
@@ -126,16 +126,16 @@ defmodule Dawarich.RailsJobOwners do
     "Users::Digests::CalculatingJob" => {:oban, ["command:digests.calculate_year"], :retire},
     "Users::Digests::EmailSendingJob" => :retire,
     "Users::Digests::Monthly::CalculatingJob" => {:oban, ["command:digests.calculate_month"]},
-    "Users::Digests::Monthly::EmailSendingJob" => {:slice, :a12c},
+    "Users::Digests::Monthly::EmailSendingJob" => {:oban, ["command:mail.digest.monthly"]},
     "Users::Digests::Monthly::SchedulingJob" => {:oban, ["cron:monthly_digest_scheduling_job"]},
     "Users::Digests::Yearly::CalculatingJob" => {:oban, ["command:digests.calculate_year"]},
-    "Users::Digests::Yearly::EmailSendingJob" => {:slice, :a12c},
+    "Users::Digests::Yearly::EmailSendingJob" => {:oban, ["command:mail.digest.yearly"]},
     "Users::Digests::Yearly::SchedulingJob" => {:oban, ["cron:yearly_digest_scheduling_job"]},
     "Users::ExportDataJob" => {:slice, :a7},
     "Users::ImportDataJob" => {:slice, :a7},
     "Users::MailerSendingJob" => {:oban, @mail, :retire},
     "Users::PointsCounterCorrectionJob" => {:oban, ["cron:points_counter_correction_job"]},
-    "Users::RecalculateDataJob" => {:slice, :a12d1},
+    "Users::RecalculateDataJob" => {:oban, ["command:users.recalculate_data"]},
     "Users::ResetPointsCounterJob" => :retire,
     "VisitSuggestingJob" => {:oban, ["command:visits.suggest"]},
     "Visits::FleetRedetectJob" => {:oban, ["command:release.visits_fleet_redetect"]},
@@ -144,6 +144,10 @@ defmodule Dawarich.RailsJobOwners do
   }
 
   def owners, do: @owners
+
+  def native_producers,
+    do: %{"command:mail.family_location_request" => Dawarich.Families.Requests}
+
   def classes, do: Map.keys(@owners)
   def slices, do: @slices
 end

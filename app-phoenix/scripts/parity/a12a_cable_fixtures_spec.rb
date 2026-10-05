@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+ENV['SECRET_KEY_BASE'] = 'phoenix-a2-cookie-fixture-secret-not-for-production'
+
 require 'rails_helper'
 require_relative 'a12a_fixture_support'
 
@@ -13,6 +15,7 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
   def shares = fx::SHARES
 
   before(:all) do
+    expect(Rails.application.secret_key_base).to eq('phoenix-a2-cookie-fixture-secret-not-for-production')
     @previous_cable = ActionCable.server.config.cable
     @puma = A12aFixtureSupport.boot!
     @port = @puma.connected_ports.first

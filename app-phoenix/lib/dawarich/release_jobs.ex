@@ -7,8 +7,6 @@ defmodule Dawarich.ReleaseJobs do
   @deferred %{
     "DataMigrations::AddPointDimensionColumnsJob" => :a12h,
     "DataMigrations::DropLegacyLatLonJob" => :a12h,
-    "DataMigrations::RecalculatePerTrackerTracksJob" => :a12d1,
-    "DataMigrations::RecalculateAnomaliesJob" => :a12d1,
     "DataMigrations::BackfillAchievementsJob" => :a12d2
   }
   @a12 Map.keys(@deferred)
@@ -21,9 +19,16 @@ defmodule Dawarich.ReleaseJobs do
                 TrackSegments::TimeAnchorBackfillJob DataMigrations::BackfillTransportationModesJob
                 Visits::FleetRedetectJob DataMigrations::CleanupNullIslandJob
                 DataMigrations::BackfillMotionDataJob DataMigrations::BackfillAltitudeJob
-                TransportationModes::ImportBackfillJob)
+                TransportationModes::ImportBackfillJob
+                DataMigrations::RecalculateAnomaliesJob DataMigrations::RecalculatePerTrackerTracksJob)
 
   def classes, do: @classes
+
+  def decode("DataMigrations::RecalculateAnomaliesJob", []),
+    do: recalculation(Ops.Anomalies, %{"limit" => 2})
+
+  def decode("DataMigrations::RecalculatePerTrackerTracksJob", []),
+    do: recalculation(Ops.PerTracker, %{"user_id" => nil})
 
   def decode("DataMigrations::BackfillPointDimensionsJob", []),
     do: points("dimensions", 50_000, false)
@@ -93,6 +98,16 @@ defmodule Dawarich.ReleaseJobs do
   end
 
   defp once(worker), do: {:ok, worker, %{"version" => 1}}
+
+  defp recalculation(worker, payload) do
+    zone = Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+
+    request =
+      Map.merge(payload, %{"source_job_id" => Ecto.UUID.generate(), "ambient_zone" => zone})
+
+    {:ok, args} = worker.args_from_command(1, request)
+    {:ok, worker, Map.put(args, "operation_id", Ecto.UUID.generate())}
+  end
 
   defp chain(worker, cursor),
     do:

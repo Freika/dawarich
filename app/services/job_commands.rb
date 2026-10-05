@@ -183,17 +183,23 @@ module JobCommands
     }
   }.merge(ReleaseCommands::COMMANDS)
    .merge(Stats::Commands::COMMANDS)
+   .merge(Users::RecalculationCommands::COMMANDS)
+   .merge(Points::AnomalyBackfillCommands::COMMANDS)
    .merge(Imports::ProcessCommands::COMMANDS)
    .merge(Posters::CreationCommand::COMMANDS)
-   .merge(Users::Digests::Commands::COMMANDS).freeze
+   .merge(Users::Digests::Commands::COMMANDS)
+   .merge(Users::Digests::MailCommands::COMMANDS)
+   .merge(Families::LocationRequestMailCommands::COMMANDS).freeze
 
   module_function
 
   def produce(type, payload, aggregate_id:, producer:, scheduled_at: Time.current, dedupe_key: nil)
+    payload = Users::RecalculationCommands.normalize(payload) if type == 'users.recalculate_data'
     command = COMMANDS.fetch(type)
     ActiveRecord::Base.transaction do
       if JobOwnership.lock_owner("command:#{type}") == :oban
-        insert(type, payload, event_id: SecureRandom.uuid, aggregate_id:, producer:, scheduled_at:, dedupe_key:)
+        insert(type, payload, event_id: payload.fetch('source_job_id') { SecureRandom.uuid },
+                              aggregate_id:, producer:, scheduled_at:, dedupe_key:)
         :outbox
       else
         command.fetch(:sidekiq).call(payload, scheduled_at)

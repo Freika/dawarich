@@ -58,8 +58,9 @@ defmodule Dawarich.Imports.GoogleRecords.Point do
   end
 
   defp datetime(value, context) when is_binary(value) do
-    if not Regex.match?(~r/\A-?\d+(?:\.\d+)?\z/, value) or String.length(value) in [4, 6, 8],
-      do: ImportTime.parse(value, "Etc/UTC", clock(context.now), context.repo)
+    if not Regex.match?(~r/\A-?\d+(?:\.\d+)?\z/, value) or String.length(value) in [4, 6, 8] or
+         Regex.match?(~r/\A-\d{4}\z/, value),
+       do: ImportTime.parse(value, "Etc/UTC", clock(context.now), context.repo)
   rescue
     ArgumentError -> nil
   end

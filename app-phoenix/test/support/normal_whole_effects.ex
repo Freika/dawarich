@@ -84,7 +84,7 @@ defmodule Dawarich.Test.NormalWholeEffects do
 
     rows =
       repo.query!(
-        "SELECT command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at,state FROM job_outbox ORDER BY ctid",
+        "SELECT command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at,state FROM job_outbox ORDER BY created_at,aggregate_id",
         [],
         log: false
       ).rows

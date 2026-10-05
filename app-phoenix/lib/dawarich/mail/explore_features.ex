@@ -1,11 +1,12 @@
 defmodule Dawarich.Mail.ExploreFeatures do
   @moduledoc false
   require EEx
+  alias Dawarich.Mail.Layout
 
   @dir Path.expand("../../../priv/mail", __DIR__)
   @escapes %{"&" => "&amp;", "<" => "&lt;", ">" => "&gt;", "\"" => "&quot;", "'" => "&#39;"}
 
-  for file <- ~w(explore_features.html explore_features.text layout.html layout.text) do
+  for file <- ~w(explore_features.html explore_features.text) do
     @external_resource Path.join(@dir, file <> ".eex")
   end
 
@@ -21,13 +22,6 @@ defmodule Dawarich.Mail.ExploreFeatures do
     :email
   ])
 
-  EEx.function_from_file(:defp, :html_layout, Path.join(@dir, "layout.html.eex"), [
-    :locale,
-    :inner
-  ])
-
-  EEx.function_from_file(:defp, :text_layout, Path.join(@dir, "layout.text.eex"), [:inner])
-
   def message(recipient, fallback_locale, env) do
     locale = locale(recipient.settings, fallback_locale)
     Map.merge(render(recipient.email, locale), %{from: env["SMTP_FROM"], to: recipient.email})
@@ -39,8 +33,8 @@ defmodule Dawarich.Mail.ExploreFeatures do
 
     %{
       subject: text!(locale, "mailers.users.explore_features.subject"),
-      html: html_layout(locale, html_body(html_t, &h/1, email)),
-      text: text_layout(text_body(text_t, &h/1, email))
+      html: Layout.html(locale, html_body(html_t, &h/1, email)),
+      text: Layout.text(text_body(text_t, &h/1, email))
     }
   end
 

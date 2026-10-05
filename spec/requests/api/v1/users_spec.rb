@@ -133,6 +133,22 @@ RSpec.describe 'Api::V1::Users', type: :request do
       let!(:user_a) { create(:user) }
       let!(:user_b) { create(:user) }
 
+      it 'returns existing users in ascending id order despite descending insertion' do
+        high = User.maximum(:id).to_i + 100
+        create(:user, id: high)
+        create(:user, id: high - 1)
+        ActiveRecord::Base.connection.execute('SET LOCAL enable_indexscan=off')
+        ActiveRecord::Base.connection.execute('SET LOCAL enable_bitmapscan=off')
+
+        post '/api/v1/users/exist',
+             params: { ids: [high, high - 1, high + 2, high + 1] }.to_json,
+             headers: webhook_headers.merge('Content-Type' => 'application/json')
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)).to eq('existing' => [high - 1, high],
+                                                'missing' => [high + 2, high + 1])
+      end
+
       it 'returns existing and missing arrays for the requested ids' do
         missing_id = User.maximum(:id).to_i + 9_999
 

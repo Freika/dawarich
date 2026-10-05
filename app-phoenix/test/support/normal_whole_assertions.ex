@@ -66,7 +66,7 @@ defmodule Dawarich.Test.NormalWholeAssertions do
 
     assert NormalWholeEffects.expected(c, owner) ==
              rows.(
-               "SELECT kind,payload FROM (SELECT created_at,ctid AS position,kind,payload FROM phoenix.rails_commands UNION ALL SELECT created_at,ctid,'native.command',jsonb_build_object('command_type',command_type,'command_payload',payload) FROM job_outbox) effects ORDER BY created_at,position",
+               "SELECT kind,payload FROM (SELECT created_at,id AS position,kind,payload FROM phoenix.rails_commands UNION ALL SELECT created_at,aggregate_id,'native.command',jsonb_build_object('command_type',command_type,'command_payload',payload) FROM job_outbox) effects ORDER BY created_at,position",
                []
              )
              |> Enum.map(fn

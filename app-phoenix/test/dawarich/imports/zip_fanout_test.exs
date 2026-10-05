@@ -19,6 +19,11 @@ defmodule Dawarich.Imports.ZipFanoutTest do
       Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.archive_test", :oban)
       c = Map.put(c, :lane, "command:imports.archive_test")
       assert {:ok, :removed} = run(c)
+
+      rows(
+        "UPDATE job_outbox SET error_code=error_code WHERE aggregate_id=(SELECT min(aggregate_id) FROM job_outbox)"
+      )
+
       assert_children(c)
       assert [] = rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
       assert queued(c) == expected_queue(c)
@@ -184,7 +189,7 @@ defmodule Dawarich.Imports.ZipFanoutTest do
 
     native =
       rows(
-        "SELECT command_type,payload FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY ctid"
+        "SELECT command_type,payload FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY aggregate_id"
       )
 
     reverse ++ native

@@ -3,6 +3,10 @@
 module Stats
   module Commands
     COMMANDS = {
+      'stats.full_recalculation' => {
+        version: 1,
+        sidekiq: ->(payload, at) { JobCommands.enqueue_after_commit(nil) { full_recalculation(payload, at) } }
+      },
       'stats.calculate_month' => {
         version: 1,
         sidekiq: ->(payload, at) { JobCommands.enqueue_after_commit(nil) { calculate(payload, at) } }
@@ -10,6 +14,14 @@ module Stats
     }.freeze
 
     HANDLERS = {
+      'stats.full_recalculation' => {
+        guard: 'The source job clears the shared debounce and schedules current tracked months',
+        call: lambda { |payload|
+          JobCommands.produce('stats.full_recalculation', payload.except('run_at'),
+                              aggregate_id: payload.fetch('user_id'), producer: name,
+                              scheduled_at: Time.zone.at(payload.fetch('run_at')))
+        }
+      },
       'stats.calculate_month' => {
         guard: 'Stats::CalculatingJob recomputes the month from current points and flights under stat.lock!; ' \
                'a repeat costs one more convergent calculation',
@@ -33,6 +45,12 @@ module Stats
     }.freeze
 
     module_function
+
+    def full_recalculation(payload, at)
+      job = Stats::FullRecalculationJob.new(payload.fetch('user_id'))
+      job.job_id = payload.fetch('source_job_id')
+      job.enqueue(wait_until: at)
+    end
 
     def calculate(payload, at)
       Stats::CalculatingJob.set(wait_until: at).perform_later(

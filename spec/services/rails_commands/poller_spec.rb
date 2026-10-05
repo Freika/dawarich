@@ -322,6 +322,7 @@ RSpec.describe RailsCommands::Poller do
 
   it 'every registered kind declares a repeat guard and a callable' do
     expected_kinds = %w[
+      achievements.check
       visit_months_changed airtrail_stats tracks_changed tracks_generate_range tracks_throttled_backfill
       tracks_realtime_retrigger geocode_recent_points transport_progress schedule_untracked_tracks
       enhanced_import_card places_delete_if_orphan place_name_fetch reverse_geocode_place imports.progress
@@ -336,7 +337,8 @@ RSpec.describe RailsCommands::Poller do
       imports.destroy_terminal imports.extraction_requested imports.extraction_destroy_requested
       share_management.live_revoked posters.created posters.purge posters.progress
       route_videos.attachment_job visits.web_redetect imports.resume imports.normal_resume
-      stats.calculate_month stats.caches_invalidated
+      stats.full_recalculation stats.calculate_month stats.caches_invalidated
+      users.recalculate_data points.anomaly_backfill release.anomalies release.anomalies_user release.per_tracker
       digests.calculate_month digests.calculate_year digests.email_month digests.email_year
     ]
     expect(RailsCommands::Registry::HANDLERS.keys).to eq(expected_kinds)

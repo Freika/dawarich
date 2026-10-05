@@ -65,10 +65,11 @@ defmodule Dawarich.Jobs.Outbox do
     %{num_rows: deleted} =
       repo.query!(
         """
-        DELETE FROM public.job_outbox WHERE event_id IN (
+        WITH batch AS MATERIALIZED (
           SELECT event_id FROM public.job_outbox
           WHERE state = 'dispatched' AND dispatched_at < $1
           LIMIT $2)
+        DELETE FROM public.job_outbox USING batch WHERE job_outbox.event_id = batch.event_id
         """,
         [before, limit],
         log: false
