@@ -9,13 +9,18 @@ defmodule Dawarich.Imports.GoogleSemanticHistory do
     GpxProgress,
     JsonStream,
     LeaseLost,
-    NormalBatchErrors
+    NormalBatchErrors,
+    ZonePeriod
   }
 
   alias Dawarich.{I18n, Notifications}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby, as: Value
 
   def call(path, import, context) do
+    ZonePeriod.with_cache(fn -> import(path, import, context) end)
+  end
+
+  defp import(path, import, context) do
     validate!(path)
     {_root, section} = Section.last(path, "timelineObjects")
     context = Map.update!(context, :now, &live_clock/1)
