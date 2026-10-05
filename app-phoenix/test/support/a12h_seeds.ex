@@ -17,7 +17,7 @@ defmodule Dawarich.A12hSeeds do
   def load!(repo, rows, tables) do
     Dawarich.FixtureCleanup.delete!(repo, tables)
 
-    for table <- tables, row <- rows[table] || [] do
+    for table <- Enum.sort_by(tables, &(&1 == "tags")), row <- rows[table] || [] do
       repo.query!(
         "INSERT INTO #{table} SELECT * FROM jsonb_populate_record(NULL::#{table}, $1::jsonb)",
         [row],
