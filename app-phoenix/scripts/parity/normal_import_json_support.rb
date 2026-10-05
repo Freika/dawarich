@@ -92,7 +92,7 @@ module NormalImportFormatsSupport
         user, import = owner!(zone, 'de')
         import.update_columns(source: source, name: "#{name}.input.json")
         path = DIR.join("#{name}.input.json")
-        File.binwrite(path, bytes)
+        FixtureRecording.verify(path, bytes)
         effects = []
         allow_json_effects(effects)
         error = nil
