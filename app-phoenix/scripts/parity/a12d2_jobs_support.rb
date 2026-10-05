@@ -207,13 +207,13 @@ module A12d2JobsSupport
     end
   end
 
-  def source_effects
+  def source_effects(isolated: false, &work)
     clear_enqueued_jobs
     @source_reports.clear
     result = nil
     error = nil
     begin
-      result = yield
+      result = isolated ? ActiveRecord::Base.transaction(requires_new: true, &work) : work.call
     rescue StandardError => e
       error = { 'class' => e.class.name, 'message' => e.message }
     end
@@ -386,7 +386,7 @@ module A12d2JobsSupport
       allow_any_instance_of(Families::SyncMembers).to receive(:call).and_raise('fixture sync failure')
     end
     input = { 'user_id' => user.id, 'settings' => user.settings, 'plan' => profile == 'lite' ? 'lite' : 'family' }
-    effects = source_effects do
+    effects = source_effects(isolated: true) do
       job.new.perform(USER_ID)
       job.new.perform(USER_ID) if profile == 'repeat'
       nil
@@ -422,7 +422,7 @@ module A12d2JobsSupport
       allow(JobCommands).to receive(:produce).with('mail.family_lapse', anything,
                                                    anything).and_raise('fixture mail publication failure')
     end
-    effects = source_effects do
+    effects = source_effects(isolated: true) do
       if profile == 'notify_false'
         Families::SyncMembers.new(family:, notify: false).call
       else

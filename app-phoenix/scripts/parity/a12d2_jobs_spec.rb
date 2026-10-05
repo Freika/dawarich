@@ -65,6 +65,28 @@ RSpec.describe 'Phoenix fixture: A12d2 residual jobs' do
     )
   end
 
+  it 'captures family sync failures after the source transaction rolls back' do
+    %w[sync_error error].each do |profile|
+      captured = source_isolated('Families::AutoCreationJob', profile) do
+        source_case('Families::AutoCreationJob', profile)
+      end
+      expect(captured.fetch('error')).to include('message' => 'fixture sync failure')
+      expect(captured.fetch('families')).to eq([])
+      expect(captured.fetch('memberships')).to eq([])
+      expect(captured.fetch('settings')).not_to have_key('family')
+    end
+    %w[member_error error].each do |profile|
+      captured = source_isolated('Families::MemberSyncJob', profile) do
+        source_case('Families::MemberSyncJob', profile)
+      end
+      expect(captured.fetch('error')).to include('class' => 'RuntimeError')
+      member = captured.fetch('members').find { _1.fetch('id') == A12d2JobsSupport::OTHER_ID }
+      expect(member).to include('plan' => 'lite', 'status' => 'inactive',
+                                'active_until' => '2026-10-03T14:00:00.000000+02:00')
+      expect(member.fetch('settings')).not_to have_key('family')
+    end
+  end
+
   it 'source orphan sweep detaches an active visit added after victim selection' do
     expect(capture_orphan_race(:sweep)).to include(
       'deleted_count' => 1, 'place_exists' => false, 'active_visit_place_id' => nil
