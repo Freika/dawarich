@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 require 'open3'
 
 RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
@@ -73,7 +74,7 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     deleted = synthetic_user(13_003)
     deleted.update_columns(deleted_at: now)
     results = []
-    %w[en de].each do |locale|
+    %w[en de es fr pl ca zh].each do |locale|
       capture = welcome_request("valid_#{locale}", user, locale: locale)
       expect(capture['location']).to eq('/map/v2')
       expect(capture['trackable']['sign_in_count_delta']).to eq(1)
@@ -97,7 +98,7 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     end
     user.update_columns(active_until: Time.utc(2026, 10, 11, 23, 30),
                         settings: { 'locale' => 'en', 'timezone' => 'UTC', 'onboarding_completed' => true })
-    %w[en de].each do |locale|
+    %w[en de es fr pl ca zh].each do |locale|
       [nil, user].each do |actor|
         name = "midnight_#{actor ? 'actor' : 'guest'}_#{locale}"
         capture = welcome_request(name, user, locale: locale, actor: actor)
@@ -163,7 +164,7 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
 
   def home_cases
     results = []
-    %w[en de].each do |locale|
+    %w[en de es fr pl ca zh].each do |locale|
       [[true, true, 'enabled'], [true, false, 'disabled'], [false, false, 'cloud']].each do |self_hosted, enabled, mode|
         allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
         Rails.cache.write('dawarich/registration_enabled', enabled)
@@ -279,22 +280,25 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     cases.each do |capture|
       name = capture.fetch('name')
       html = capture.fetch('html', '').gsub(/[ \t]+$/, '').rstrip
-      File.write(dir.join("#{name}.html"), "#{html}\n") unless html.empty?
+      FixtureRecording.verify(dir.join("#{name}.html"), "#{html}\n") unless html.empty?
       bytes = Oj.dump(capture.except('html'), mode: :strict, float_precision: 0, indent: 2)
       expect(bytes.include?(signing_phrase)).to be(false)
-      File.write(dir.join("#{name}.json"), "#{bytes.rstrip}\n")
+      FixtureRecording.verify(dir.join("#{name}.json"), "#{bytes.rstrip}\n")
     end
   end
 
   it 'captures welcome verification replay session and headers' do
     cases = welcome_cases
     expect(cases.map { |capture| capture.fetch('name') }).to eq(
-      %w[valid_en valid_de midnight_guest_en midnight_actor_en midnight_guest_de midnight_actor_de
+      %w[en de es fr pl ca zh].map { |locale| "valid_#{locale}" } +
+       %w[en de es fr pl ca zh].flat_map { |locale| %w[guest actor].map { |actor| "midnight_#{actor}_#{locale}" } } +
+       %w[
          active_until_nil underscore_exp underscore_future_nbf underscore_past_nbf
          missing_token malformed_token wrong_purpose missing_purpose
          expired missing_exp wrong_algorithm missing_jti blank_jti malformed_user_id missing_user deleted_user
          malformed_exp malformed_jti different_actor same_actor_first same_actor_replay guest_replay ttl_floor
-         head_success]
+         head_success
+       ]
     )
     expect(cases.find { |capture| capture['name'] == 'guest_replay' })
       .to include('location' => '/users/sign_in', 'signed_in' => false)
@@ -307,10 +311,15 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     save_cases(cases)
   end
 
-  it 'captures anonymous home registration and sign in links in en de' do
+  it 'captures anonymous home registration and sign in links in all shipped locales' do
     cases = home_cases
     expect(cases.map { |capture| capture.fetch('name') }).to eq(
-      %w[home_en_enabled home_en_disabled home_en_cloud home_de_enabled home_de_disabled home_de_cloud home_signed_in]
+      %w[en de es fr pl ca zh].flat_map { |locale|
+        %w[enabled disabled cloud].map { |mode|
+          "home_#{locale}_#{mode}"
+        }
+      } +
+      ['home_signed_in']
     )
     cases.reject { |capture| capture['name'] == 'home_signed_in' }.each do |capture|
       doc = Nokogiri::HTML5.fragment(capture.fetch('html'))

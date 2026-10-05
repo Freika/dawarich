@@ -3,11 +3,11 @@ defmodule DawarichWeb.AuthAccountLink.FormTest do
   alias Dawarich.Test.ParityHTML
   alias DawarichWeb.AuthAccountLink.Form
 
-  test "account-link challenge matches Rails en de fr forms and escapes labels and target email" do
+  test "account-link challenge matches Rails all-locale forms and escapes labels and target email" do
     assert Code.ensure_loaded?(Form)
     source = File.read!("test/fixtures/auth/account_link/requests.json") |> Jason.decode!()
 
-    for locale <- ~w(en de fr) do
+    for locale <- ~w(en de es fr pl ca zh) do
       assigns = %{
         __changed__: nil,
         locale: locale,

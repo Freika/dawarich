@@ -86,7 +86,7 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
   test "normal owner show edit and invalid source render the Rails corpus", c do
     assert ImportsGate.native?(RailsUser.signed_in(c.user), %{"id" => "980111"})
 
-    for locale <- ~w(en de) do
+    for locale <- ~w(en de es fr pl ca zh) do
       Repo.query!("UPDATE users SET settings=settings||$2 WHERE id=$1", [
         c.user,
         %{"locale" => locale}
@@ -102,6 +102,11 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
       assert [["normal.csv", 10]] ==
                Repo.query!("SELECT name,source FROM imports WHERE id=980111").rows
     end
+
+    Repo.query!("UPDATE users SET settings=settings||$2 WHERE id=$1", [
+      c.user,
+      %{"locale" => "de"}
+    ])
 
     conn =
       request(c, :post, "/imports/980111", form("google_phone_takeout") <> "&_method=patch")

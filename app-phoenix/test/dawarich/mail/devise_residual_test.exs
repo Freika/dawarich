@@ -17,11 +17,16 @@ defmodule Dawarich.Mail.DeviseResidualTest do
         &(&1["kind"] in ~w(reset_password_instructions unlock_instructions email_changed_current password_change))
       )
 
-    assert Enum.map(rows, & &1["id"]) ==
-             ~w(reset_password_instructions_en reset_password_instructions_de reset_password_instructions_fallback_fr
-                unlock_instructions_en unlock_instructions_de unlock_instructions_fallback_fr
-                email_changed_current_en email_changed_current_de email_changed_current_fallback_fr
-                password_change_en password_change_de password_change_fallback_fr)
+    expected =
+      Enum.flat_map(
+        ~w(reset_password_instructions unlock_instructions email_changed_current password_change),
+        fn kind ->
+          ids = for locale <- ~w(en de fallback_fr es fr pl ca zh), do: kind <> "_" <> locale
+          ids
+        end
+      )
+
+    assert Enum.map(rows, & &1["id"]) == expected
 
     kinds = %{
       "reset_password_instructions" => :reset_password_instructions,

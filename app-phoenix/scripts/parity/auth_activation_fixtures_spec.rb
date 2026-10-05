@@ -126,7 +126,7 @@ RSpec.describe 'Phoenix fixture: the registration flag and Devise recovery mail 
 
   it 'writes app-phoenix/test/fixtures/auth/activation.json' do
     allow(Devise).to receive(:mailer_sender).and_return(sender)
-    kinds = %i[reset_password_instructions unlock_instructions].product(%w[en de fr])
+    kinds = %i[reset_password_instructions unlock_instructions].product(%w[en de es fr pl ca zh])
 
     fixture = {
       'rails_version' => Rails.version,

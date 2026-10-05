@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', type: :request do
   include ActiveSupport::Testing::TimeHelpers
@@ -12,6 +13,7 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
   end
 
   def capture(name, path, state, headers = {}, head: true)
+    reset! if state[:user].nil?
     I18n.locale = :en
     get path, headers: headers
     expect(response).to have_http_status(:ok)
@@ -22,14 +24,14 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
     content.children.remove
     scrub!(doc)
     assert_safe!(doc)
-    File.write(dir.join("#{name}.html"), doc.at_css('body').to_html.gsub(/[ \t]+\n/, "\n"))
-    File.write(dir.join("#{name}.head.html"), doc.at_css('head').to_html.gsub(/[ \t]+\n/, "\n")) if head
+    FixtureRecording.verify(dir.join("#{name}.html"), doc.at_css('body').to_html.gsub(/[ \t]+\n/, "\n"))
+    FixtureRecording.verify(dir.join("#{name}.head.html"), doc.at_css('head').to_html.gsub(/[ \t]+\n/, "\n")) if head
     meta = {
       state: state.merge(path:),
       html: doc.at_css('html').attributes.transform_values(&:value),
       headers: header_names.index_with { |header| response.headers[header] }
     }
-    File.write(dir.join("#{name}.json"), "#{JSON.pretty_generate(meta)}\n")
+    FixtureRecording.verify(dir.join("#{name}.json"), "#{JSON.pretty_generate(meta)}\n")
   end
 
   def scrub!(doc)
@@ -92,6 +94,16 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
     sign_in user
     capture(name, path, navbar_state(user, accept_language: nil, **extra), {}, head: false)
     sign_out user
+    original = user.settings
+    (%w[en de es fr pl ca zh] - [name.split('_').last]).each do |locale|
+      user.update_columns(settings: original.merge('locale' => locale))
+      reset!
+      sign_in user
+      capture(name.sub(/_(en|de)$/) { "_#{Regexp.last_match(1)}_#{locale}" }, path,
+              navbar_state(user, accept_language: nil, **extra), {}, head: false)
+      sign_out user
+    end
+    user.update_columns(settings: original)
   end
 
   before { FileUtils.mkdir_p(dir) }
@@ -108,15 +120,33 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
   it 'writes the layout for each state' do
     travel_to now do
       capture('signed_out_en', '/users/sign_in', { user: nil, self_hosted: true, accept_language: nil })
+      %w[de es fr pl ca zh].each do |locale|
+        capture("signed_out_#{locale}", "/users/sign_in?locale=#{locale}",
+                { user: nil, self_hosted: true, accept_language: nil, locale: })
+      end
       capture('signed_out_de_suggested', '/users/sign_in',
               { user: nil, self_hosted: true, accept_language: 'de-DE,de;q=0.9' },
               { 'Accept-Language' => 'de-DE,de;q=0.9' })
+
+      %w[es fr pl ca zh].each do |locale|
+        language = "#{locale};q=0.9"
+        capture("signed_out_#{locale}_suggested", '/users/sign_in',
+                { user: nil, self_hosted: true, accept_language: language }, { 'Accept-Language' => language })
+      end
 
       dark = navbar_user('layout-dark@dawarich.test', theme: 'dark')
       reset!
       sign_in dark
       capture('self_hosted_dark_en', '/notifications', navbar_state(dark, self_hosted: true, accept_language: nil))
       sign_out dark
+      %w[de es fr pl ca zh].each do |locale|
+        dark.update_columns(settings: dark.settings.merge('locale' => locale))
+        reset!
+        sign_in dark
+        capture("self_hosted_dark_#{locale}", '/notifications',
+                navbar_state(dark, self_hosted: true, accept_language: nil))
+        sign_out dark
+      end
 
       light = navbar_user('layout-light@dawarich.test', theme: 'light')
       light.update_columns(settings: light.settings.merge('locale' => 'de'))
@@ -124,6 +154,14 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
       sign_in light
       capture('self_hosted_light_de', '/notifications', navbar_state(light, self_hosted: true, accept_language: nil))
       sign_out light
+      %w[en es fr pl ca zh].each do |locale|
+        light.update_columns(settings: light.settings.merge('locale' => locale))
+        reset!
+        sign_in light
+        capture("self_hosted_light_#{locale}", '/notifications',
+                navbar_state(light, self_hosted: true, accept_language: nil))
+        sign_out light
+      end
 
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       stub_const('SELF_HOSTED', false)
@@ -132,10 +170,17 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
       sign_in cloud
       capture('cloud_en', '/notifications', navbar_state(cloud, self_hosted: false, accept_language: nil))
       sign_out cloud
+      %w[de es fr pl ca zh].each do |locale|
+        cloud.update_columns(settings: cloud.settings.merge('locale' => locale))
+        reset!
+        sign_in cloud
+        capture("cloud_#{locale}", '/notifications', navbar_state(cloud, self_hosted: false, accept_language: nil))
+        sign_out cloud
+      end
     end
 
     flashes = %w[notice success alert error warning info].flat_map do |type|
-      %w[en de].map do |locale|
+      %w[en de es fr pl ca zh].map do |locale|
         html = I18n.with_locale(locale) do
           ApplicationController.render(partial: 'shared/flash_message',
                                        locals: { type: type, message: 'Gespeichert & <b>ok</b>' })
@@ -143,11 +188,15 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
         { type: type, locale: locale, html: html }
       end
     end
-    File.write(dir.join('flash_messages.json'), "#{JSON.pretty_generate(flashes)}\n")
+    FixtureRecording.verify(dir.join('flash_messages.json'), "#{JSON.pretty_generate(flashes)}\n")
   end
 
   it 'writes the navbar states' do
     travel_to now do
+      %w[es fr pl ca zh].each do |locale|
+        capture("navbar_signed_out_#{locale}", "/users/sign_in?locale=#{locale}",
+                { user: nil, self_hosted: true, accept_language: nil, locale: }, {}, head: false)
+      end
       capture('navbar_signed_out_de', '/users/sign_in?locale=de',
               { user: nil, self_hosted: true, accept_language: nil, locale: 'de' }, {}, head: false)
 
@@ -226,7 +275,7 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
     header, payload, signature = travel_to(now) { user.generate_subscription_token }.split('.')
     decode = ->(part) { Base64.urlsafe_decode64(part + ('=' * ((4 - (part.length % 4)) % 4))) }
 
-    File.write(dir.join('../subscription_token.json'), "#{JSON.pretty_generate(
+    FixtureRecording.verify(dir.join('../subscription_token.json'), "#{JSON.pretty_generate(
       secret:, user_id: user.id, email: user.email, now: now.to_i, jti: '00000000-0000-4000-8000-000000000000',
       header: decode.call(header), payload: decode.call(payload), signature: decode.call(signature).unpack1('H*')
     )}\n")
@@ -239,6 +288,6 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
         svg: ResponsiveQrSvg.call({ 'server_url' => url, 'api_key' => key }.to_json, size: 3) }
     end
 
-    File.write(dir.join('../onboarding_qr.json'), "#{JSON.pretty_generate(corpus)}\n")
+    FixtureRecording.verify(dir.join('../onboarding_qr.json'), "#{JSON.pretty_generate(corpus)}\n")
   end
 end

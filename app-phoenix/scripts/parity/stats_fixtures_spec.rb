@@ -16,7 +16,13 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
   def write_json(path, data) = verify_fixture(path, "#{JSON.pretty_generate(data)}\n")
 
   def each_locale(values)
-    %w[en de].flat_map { |locale| I18n.with_locale(locale) { values.map { |value| yield(locale, value) } } }
+    %w[en de es fr pl ca zh].flat_map do |locale|
+      I18n.with_locale(locale) do
+        values.map do |value|
+          yield(locale, value)
+        end
+      end
+    end
   end
 
   it 'writes the formatting corpus, the country names and checks phoenix:importmap' do
@@ -232,9 +238,12 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
                                                             'expires_at' => (now + 12.hours).iso8601 })
       stat(52_022, de, 2023, 7, 1_234_567, toponyms: [toponym('Germany', 'Berlin')])
       geocoding
-      capture('index_de', de, '/stats')
-      capture('year_de', de, '/stats/2024')
-      capture('month_de', de, '/stats/2024/3')
+      %w[de es fr pl ca zh].each do |locale|
+        de.update_columns(settings: de.settings.merge('locale' => locale))
+        capture("index_#{locale}", de, '/stats')
+        capture("year_#{locale}", de, '/stats/2024')
+        capture("month_#{locale}", de, '/stats/2024/3')
+      end
 
       january = reader(5203, timezone: 'UTC')
       stat(52_031, january, 2024, 1, 0, toponyms: [])
@@ -283,8 +292,11 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
       list_de = reader(5207, locale: 'de')
       stat(52_071, list_de, 2023, 5, 3_000)
       digest(52_072, list_de, 2024, **full)
-      capture('digests_de', list_de, '/digests')
-      capture('digest_full_de', list_de, '/digests/2024')
+      %w[de es fr pl ca zh].each do |locale|
+        list_de.update_columns(settings: list_de.settings.merge('locale' => locale))
+        capture("digests_#{locale}", list_de, '/digests')
+        capture("digest_full_#{locale}", list_de, '/digests/2024')
+      end
 
       none = reader(5208)
       stat(52_081, none, 2025, 1, 3_000)

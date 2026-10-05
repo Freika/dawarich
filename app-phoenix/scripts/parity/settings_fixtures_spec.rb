@@ -229,7 +229,7 @@ skip_family_sync: true)
       travel_to(now) do
         rows = { 'at' => now.to_i }
         pages = {}
-        %w[en de fr].each do |locale|
+        %w[en de fr es pl ca zh].each do |locale|
           actor = link_actor
           before = link_actor_state(actor)
           client = link_browser(actor, locale: locale)
@@ -629,7 +629,7 @@ skip_family_sync: true)
     it 'A11d web OTP writes deterministic challenge and transition fixtures' do
       travel_to(now) do
         rows = {}
-        %w[en de fr].each_with_index do |locale, index|
+        %w[en de fr es pl ca zh].each_with_index do |locale, index|
           actor = web_otp_actor(75_400 + index)
           client = web_otp_browser(locale: locale, extra: { 'otp_failed_attempts' => 3 })
           before = web_otp_session(client)
@@ -801,8 +801,9 @@ skip_family_sync: true)
     def two_factor_case(name, id)
       actor = two_factor_actor(id)
       client = two_factor_browser(actor)
-      kind = name.delete_suffix('_de')
-      locale = name.end_with?('_de') ? 'de' : 'en'
+      suffix = name[/_(de|es|fr|pl|ca|zh)$/, 1]
+      kind = suffix ? name.delete_suffix("_#{suffix}") : name
+      locale = suffix || 'en'
       enabled = kind == 'enabled' || kind == 'setup_enabled' || kind.start_with?('disable_', 'wrong', 'missing',
                                                                                  'invalid')
       backups = [Devise::Encryptor.digest(User, 'a11c-unused-backup')]
@@ -982,7 +983,9 @@ skip_family_sync: true)
         verify_missing_secret verify_second_save_failure disable_totp disable_backup disable_override
         wrong_password missing_password invalid_code missing_code nil_backups empty_backups repeated_disable
         disabled_de enabled_de setup_de verify_bad_de verify_good_de
-      ]
+      ] + %w[es fr pl ca zh].flat_map do |locale|
+        %w[disabled enabled setup verify_bad verify_good].map { |name| "#{name}_#{locale}" }
+      end
       requests = []
       html = {}
       names.each_with_index do |name, index|
@@ -1129,6 +1132,9 @@ skip_family_sync: true)
           wrong_password missing_password invalid_code missing_code nil_backups empty_backups repeated_disable
           disabled_de enabled_de setup_de verify_bad_de verify_good_de
         ]
+        expected_names += %w[es fr pl ca zh].flat_map do |locale|
+          %w[disabled enabled setup verify_bad verify_good].map { |name| "#{name}_#{locale}" }
+        end
         expect(corpus.fetch(:requests).pluck('name')).to eq(expected_names)
         bad = corpus.fetch(:requests).find { |row| row['name'] == 'verify_bad' }
         expect(bad.slice('status', 'code_input_empty', 'flash')).to eq(
@@ -1150,7 +1156,7 @@ skip_family_sync: true)
           expect(row.values_at('jobs_delta', 'mail_delta')).to eq([0, 0])
           expect(row['changed'] - %w[otp_secret otp_backup_codes otp_required_for_login consumed_timestep updated_at])
             .to eq([]), row['name']
-          kind = row['name'].delete_suffix('_de')
+          kind = row['name'].sub(/_(de|es|fr|pl|ca|zh)$/, '')
           status = if %w[unavailable repeated_disable].include?(kind) || kind.start_with?('disable_') ||
                       %w[wrong_password missing_password invalid_code missing_code nil_backups
                          empty_backups].include?(kind)
@@ -1267,7 +1273,11 @@ skip_family_sync: true)
         ['type_conflict', 'PUT', { 'type_conflict' => true }],
         ['errors_de', 'PUT', { 'email' => 'invalid', 'password' => 'short', 'password_confirmation' => 'empty',
                              'current_password' => 'empty', 'locale' => 'de' }]
-      ]
+      ] + %w[es fr pl ca zh].map do |locale|
+        ["errors_#{locale}", 'PUT', { 'email' => 'invalid', 'password' => 'short',
+                                     'password_confirmation' => 'empty', 'current_password' => 'empty',
+                                     'locale' => locale }]
+      end
     end
 
     def account_input(input, user)
@@ -1457,6 +1467,7 @@ skip_family_sync: true)
           multiple_errors blank_email duplicate_scalar_email duplicate_scalar_current malformed_encoding
           type_conflict errors_de
         ]
+        expected_requests += %w[es fr pl ca zh].map { |locale| "errors_#{locale}" }
         expect(corpus.fetch(:requests).pluck('name')).to eq(expected_requests)
         expect(corpus.fetch(:api_keys).pluck('name')).to eq(
           %w[plain turbo referer invalid_resource legacy_invalid_email dirty_settings

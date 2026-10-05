@@ -298,6 +298,11 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       end
       cases << { name: 'note_de_long_stream', action: :note_create, body: '界' * 10_001,
                  locale: 'de', expected: 200 }
+      cases += cases.select { |entry| entry[:locale] == 'de' }.flat_map do |entry|
+        %w[es fr pl ca zh].map do |locale|
+          entry.merge(name: entry[:name].sub('_de_', "_#{locale}_"), locale:)
+        end
+      end
       cases
     end
 

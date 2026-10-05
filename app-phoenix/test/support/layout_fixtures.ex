@@ -64,8 +64,11 @@ defmodule Dawarich.Test.LayoutFixtures do
   end
 
   defp page_title(_locale, nil), do: nil
-  defp page_title("de", _user), do: "Benachrichtigungen"
-  defp page_title(_locale, _user), do: "Notifications"
+
+  defp page_title(locale, _user) do
+    {:ok, title} = Dawarich.I18n.t(locale, "notifications.index.notifications")
+    title
+  end
 
   defp insert(%{"user" => nil}), do: nil
 

@@ -140,7 +140,9 @@ defmodule DawarichWeb.LayoutParityTest do
       {rails, meta} = LayoutFixtures.load(@name)
       phoenix = LayoutFixtures.render(meta["state"])
 
-      assert ParityHTML.without(phoenix, @chrome) == ParityHTML.without(rails, @chrome)
+      actual = ParityHTML.without(phoenix, @chrome)
+      expected = ParityHTML.without(rails, @chrome)
+      assert actual == expected, ParityHTML.first_difference(actual, expected)
 
       assert phoenix
              |> LazyHTML.from_document()
@@ -223,12 +225,15 @@ defmodule DawarichWeb.LayoutParityTest do
       assert phoenix =~ ~s(name="phoenix-csrf-token")
       assert Regex.match?(~r{\/phoenix\/js\/app\.js\?vsn=}, phoenix)
 
-      assert ParityHTML.without(phoenix, @phoenix_head_replacements, "head") ==
-               ParityHTML.without(rails_head, @rails_head_replacements, "head")
+      actual = ParityHTML.without(phoenix, @phoenix_head_replacements, "head")
+      expected = ParityHTML.without(rails_head, @rails_head_replacements, "head")
+      assert actual == expected, ParityHTML.first_difference(actual, expected)
     end
   end
 
-  for name <- ~w(self_hosted_dark_en self_hosted_light_de cloud_en) do
+  for name <-
+        LayoutFixtures.names()
+        |> Enum.filter(&String.starts_with?(&1, ["self_hosted_", "cloud_"])) do
     @name name
 
     test "a signed-in head carries Rails' JavaScript translations (#{name})" do

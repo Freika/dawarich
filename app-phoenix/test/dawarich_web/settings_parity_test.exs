@@ -104,7 +104,8 @@ defmodule DawarichWeb.SettingsParityTest do
       "blank_email" ->
         [{:email, :blank, %{}}]
 
-      name when name in ["multiple_errors", "errors_de"] ->
+      name
+      when name in ~w(multiple_errors errors_de errors_es errors_fr errors_pl errors_ca errors_zh) ->
         [
           {:email, :invalid, %{}},
           {:password_confirmation, :confirmation, %{}},

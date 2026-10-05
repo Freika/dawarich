@@ -15,7 +15,7 @@ defmodule DawarichWeb.FamilyPagesParityTest do
              creator_subscription_future creator_subscription_equal creator_subscription_past access_until_future
              access_until_equal access_until_past subscribed_owner_expired_access lapsed_owner lapsed_member
              lapsed_invitations lapsed_invitation lapsed_request paid_downgrade non_family_renewal)
-  @names for name <- @cases, locale <- ~w(en de), do: name <> "_" <> locale
+  @names for name <- @cases, locale <- ~w(en de es fr pl ca zh), do: name <> "_" <> locale
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -35,7 +35,7 @@ defmodule DawarichWeb.FamilyPagesParityTest do
       @dir |> Path.join("*.json") |> Path.wildcard() |> Enum.map(&Path.basename(&1, ".json"))
 
     assert Enum.sort(actual) == Enum.sort(@names)
-    assert length(@names) == 84
+    assert length(@names) == 294
   end
 
   test "Rails sharing response can replace native toggle and getting started slots" do
@@ -63,7 +63,7 @@ defmodule DawarichWeb.FamilyPagesParityTest do
       |> Phoenix.HTML.Safe.to_iodata()
       |> IO.iodata_to_binary()
 
-    for locale <- ~w(en de) do
+    for locale <- ~w(en de es fr pl ca zh) do
       rails = File.read!(Path.join(@dir, "sharing_toggle_#{locale}.stream.html"))
 
       streams =
@@ -100,7 +100,7 @@ defmodule DawarichWeb.FamilyPagesParityTest do
   for name <- @names do
     @name name
     @tag family_case: name
-    test "family GET corpus #{@name} matches Rails in en and de outside registered hydration fields" do
+    test "family GET corpus #{@name} matches Rails in all shipped locales outside registered hydration fields" do
       state = FrameSeeds.load_family(@name)
       user = FrameSeeds.seed_family!(state)
       now = DateTime.from_iso8601(state["now"]) |> elem(1)

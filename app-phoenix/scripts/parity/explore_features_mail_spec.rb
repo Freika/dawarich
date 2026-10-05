@@ -14,6 +14,8 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
   it 'records the subject and both bodies for preferred locales and for the job-locale fallback' do
     cases = { 'en' => [{ 'locale' => 'en' }, :en], 'de' => [{ 'locale' => ' DE ' }, :en], 'fallback_fr' => [{}, :fr] }
 
+    %w[es fr pl ca zh].each { |locale| cases[locale] = [{ 'locale' => locale }, :en] }
+
     fixtures = cases.to_h do |name, (settings, job_locale)|
       user = create(:user, email: "mail-#{name}@example.test")
       user.update_columns(settings: user.settings.except('locale').merge(settings))
@@ -30,15 +32,12 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
 
   it 'records reachable residual and Devise mail contracts without delivery' do
     fixture = residual_content
-    expected = %w[
-      otp_account_locked_en otp_account_locked_de otp_account_locked_fallback_fr
-      test_email_en test_email_de test_email_fallback_fr test_email_berlin test_email_invalid_zone
-      location_request_en location_request_de location_request_fallback_fr
-      reset_password_instructions_en reset_password_instructions_de reset_password_instructions_fallback_fr
-      unlock_instructions_en unlock_instructions_de unlock_instructions_fallback_fr
-      email_changed_current_en email_changed_current_de email_changed_current_fallback_fr
-      password_change_en password_change_de password_change_fallback_fr
-    ]
+    expected = %w[otp_account_locked test_email location_request reset_password_instructions
+                  unlock_instructions email_changed_current password_change].flat_map do |kind|
+      ids = ResidualMailFixtureSupport::LOCALES.keys.map { |locale| "#{kind}_#{locale}" }
+      ids += %w[test_email_berlin test_email_invalid_zone] if kind == 'test_email'
+      ids
+    end
     expect(fixture.fetch('cases').pluck('id')).to eq(expected)
     assert_content(fixture)
     fixture_bytes(residual_path('content'), fixture)
@@ -66,6 +65,7 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
       yearly_km yearly_mi yearly_default yearly_de yearly_ambient_fr yearly_empty yearly_shared
       yearly_sharing_disabled yearly_sparse_stats yearly_nil_json yearly_negative yearly_malformed_stats
     ]
+    expected += %w[monthly yearly].product(%w[es fr pl ca zh]).map { |period, locale| "#{period}_#{locale}" }
     expect(fixture.fetch('cases').pluck('id')).to eq(expected)
     helpers = %w[
       hbar_empty hbar_zero hbar_half hbar_negative hbar_all_negative spark_empty spark_equal spark_negative_half

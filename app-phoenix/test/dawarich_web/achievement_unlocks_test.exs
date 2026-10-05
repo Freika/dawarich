@@ -25,82 +25,102 @@ defmodule DawarichWeb.AchievementUnlocksTest do
     :ok
   end
 
-  test "answers next busy empty seen and dismiss as the Rails JSON client expects" do
-    assert run("/achievements/unlocks/next").status == 204
-    state = %{"earned" => %{"FR" => "2026-10-04T22:30:00Z", "DE" => "2026-10-04T22:30:00Z"}}
+  for locale <- ~w(en de es fr pl ca zh) do
+    @locale locale
+    test "answers next busy empty seen and dismiss as the Rails JSON client expects in #{locale}" do
+      rows("UPDATE users SET settings=settings||$1 WHERE id=44001", [%{"locale" => @locale}])
+      assert run("/achievements/unlocks/next").status == 204
+      state = %{"earned" => %{"FR" => "2026-10-04T22:30:00Z", "DE" => "2026-10-04T22:30:00Z"}}
 
-    rows(
-      "INSERT INTO achievement_progresses(user_id,achievement_key,state,created_at,updated_at) VALUES(44001,'exploration',$1,now(),now())",
-      [state]
-    )
-
-    square = "MULTIPOLYGON (((12.25 51.25,12.25 51.5,12.5 51.5,12.5 51.25,12.25 51.25)))"
-
-    rows(
-      "INSERT INTO countries(iso_a2,iso_a3,name,geom,created_at,updated_at) VALUES('FR','FRA','France',ST_GeomFromText($1,4326),now(),now())",
-      [square]
-    )
-
-    event(42301, "FR")
-    event(42302, "DE")
-    event(42303, "ES", 44002)
-    next = run("/achievements/unlocks/next")
-    assert next.status == 200
-    data = Jason.decode!(next.resp_body)
-    assert data["id"] == 42301 and data["batch_end_id"] == 42302 and data["remaining"] == 2
-    assert data["token"] =~ ~r/\A[0-9a-f]{32}\z/
-    expected = File.read!("test/fixtures/achievement_unlocks/en_next.html")
-    assert ParityHTML.normalize(data["html"]) == ParityHTML.normalize(expected)
-    assert get_resp_header(next, "content-type") == ["application/json; charset=utf-8"]
-    assert get_resp_header(next, "cache-control") == ["max-age=0, private, must-revalidate"]
-    busy = run("/achievements/unlocks/next")
-    assert busy.status == 409 and Jason.decode!(busy.resp_body) == %{"retry_after" => 2}
-    assert get_resp_header(busy, "cache-control") == ["no-cache"]
-
-    resumed =
-      run(
-        "/achievements/unlocks/next",
-        %{"claim_token" => data["token"], "batch_end_id" => "42302"},
-        form: true
+      rows(
+        "INSERT INTO achievement_progresses(user_id,achievement_key,state,created_at,updated_at) VALUES(44001,'exploration',$1,now(),now())",
+        [state]
       )
 
-    assert Jason.decode!(resumed.resp_body) == data
-    event(42304, "PL")
+      square = "MULTIPOLYGON (((12.25 51.25,12.25 51.5,12.5 51.5,12.5 51.25,12.25 51.25)))"
 
-    for value <- ["0", "-1", "+1", "01", "abc", "9223372036854775808", "10000000000000000000"] do
-      assert run("/achievements/unlocks/#{value}/seen", %{"claim_token" => data["token"]}).status ==
-               400
+      rows(
+        "INSERT INTO countries(iso_a2,iso_a3,name,geom,created_at,updated_at) VALUES('FR','FRA','France',ST_GeomFromText($1,4326),now(),now())",
+        [square]
+      )
+
+      event(42301, "FR")
+      event(42302, "DE")
+      event(42303, "ES", 44002)
+      next = run("/achievements/unlocks/next")
+      assert next.status == 200
+      data = Jason.decode!(next.resp_body)
+      assert data["id"] == 42301 and data["batch_end_id"] == 42302 and data["remaining"] == 2
+      assert data["token"] =~ ~r/\A[0-9a-f]{32}\z/
+      expected = File.read!("test/fixtures/achievement_unlocks/#{@locale}_next.html")
+      assert ParityHTML.normalize(data["html"]) == ParityHTML.normalize(expected)
+      assert get_resp_header(next, "content-type") == ["application/json; charset=utf-8"]
+      assert get_resp_header(next, "cache-control") == ["max-age=0, private, must-revalidate"]
+      busy = run("/achievements/unlocks/next")
+      assert busy.status == 409 and Jason.decode!(busy.resp_body) == %{"retry_after" => 2}
+      assert get_resp_header(busy, "cache-control") == ["no-cache"]
+
+      resumed =
+        run(
+          "/achievements/unlocks/next",
+          %{"claim_token" => data["token"], "batch_end_id" => "42302"},
+          form: true
+        )
+
+      assert Jason.decode!(resumed.resp_body) == data
+      event(42304, "PL")
+
+      for value <- ["0", "-1", "+1", "01", "abc", "9223372036854775808", "10000000000000000000"] do
+        assert run("/achievements/unlocks/#{value}/seen", %{"claim_token" => data["token"]}).status ==
+                 400
+      end
+
+      for value <- [
+            nil,
+            0,
+            -1,
+            "0",
+            "-1",
+            "01",
+            "1.0",
+            " 1",
+            "abc",
+            42302.0,
+            "9223372036854775808"
+          ] do
+        result = run("/achievements/unlocks/dismiss", %{"batch_end_id" => value})
+        assert result.status == 400 and result.resp_body == ""
+      end
+
+      for token <- [nil, "", " \n\t"] do
+        assert run("/achievements/unlocks/42301/seen", %{"claim_token" => token}).status == 400
+      end
+
+      for {id, token} <- [
+            {42301, "wrong"},
+            {42303, "wrong"},
+            {9_223_372_036_854_775_807, "wrong"}
+          ] do
+        assert run("/achievements/unlocks/#{id}/seen", %{"claim_token" => token}).status == 409
+      end
+
+      for form <- [false, true] do
+        token = if form, do: "different-nonblank", else: data["token"]
+        result = run("/achievements/unlocks/42301/seen", %{"claim_token" => token}, form: form)
+        assert result.status == 204 and result.resp_body == ""
+        assert get_resp_header(result, "content-type") == []
+      end
+
+      result = run("/achievements/unlocks/dismiss", %{"batch_end_id" => 42302})
+      assert result.status == 204 and get_resp_header(result, "cache-control") == ["no-cache"]
+
+      assert [[42303], [42304]] ==
+               rows("SELECT id FROM achievement_unlock_events WHERE seen_at IS NULL ORDER BY id")
+
+      assert run("/achievements/unlocks/next", %{"batch_end_id" => 42302}).status == 204
+      assert rows("SELECT state FROM achievement_progresses WHERE user_id=44001") == [[state]]
+      assert rows("SELECT count(*) FROM flipper_gates WHERE feature_key='achievements'") == [[0]]
     end
-
-    for value <- [nil, 0, -1, "0", "-1", "01", "1.0", " 1", "abc", 42302.0, "9223372036854775808"] do
-      result = run("/achievements/unlocks/dismiss", %{"batch_end_id" => value})
-      assert result.status == 400 and result.resp_body == ""
-    end
-
-    for token <- [nil, "", " \n\t"] do
-      assert run("/achievements/unlocks/42301/seen", %{"claim_token" => token}).status == 400
-    end
-
-    for {id, token} <- [{42301, "wrong"}, {42303, "wrong"}, {9_223_372_036_854_775_807, "wrong"}] do
-      assert run("/achievements/unlocks/#{id}/seen", %{"claim_token" => token}).status == 409
-    end
-
-    for form <- [false, true] do
-      token = if form, do: "different-nonblank", else: data["token"]
-      result = run("/achievements/unlocks/42301/seen", %{"claim_token" => token}, form: form)
-      assert result.status == 204 and result.resp_body == ""
-      assert get_resp_header(result, "content-type") == []
-    end
-
-    result = run("/achievements/unlocks/dismiss", %{"batch_end_id" => 42302})
-    assert result.status == 204 and get_resp_header(result, "cache-control") == ["no-cache"]
-
-    assert [[42303], [42304]] ==
-             rows("SELECT id FROM achievement_unlock_events WHERE seen_at IS NULL ORDER BY id")
-
-    assert run("/achievements/unlocks/next", %{"batch_end_id" => 42302}).status == 204
-    assert rows("SELECT state FROM achievement_progresses WHERE user_id=44001") == [[state]]
-    assert rows("SELECT count(*) FROM flipper_gates WHERE feature_key='achievements'") == [[0]]
   end
 
   test "skips invisible cards at most ten times without postclaim fallback" do

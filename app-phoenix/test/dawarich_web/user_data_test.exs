@@ -76,7 +76,7 @@ defmodule DawarichWeb.UserDataTest do
   end
 
   test "backup legacy trial count and size boundaries equal Rails", c do
-    for locale <- ~w(en de) do
+    for locale <- ~w(en de es fr pl ca zh) do
       Repo.query!("DELETE FROM active_storage_attachments")
       Repo.query!("DELETE FROM imports")
       Repo.query!("DELETE FROM job_outbox")
@@ -186,10 +186,10 @@ defmodule DawarichWeb.UserDataTest do
     end
   end
 
-  test "backup form and endpoint result equal Rails markup in en and de", c do
+  test "backup form and endpoint result equal Rails markup in all shipped locales", c do
     route!()
 
-    for locale <- ~w(en de) do
+    for locale <- ~w(en de es fr pl ca zh) do
       html =
         DawarichWeb.AccountParts.import_dialog(%{
           __changed__: nil,
@@ -214,6 +214,20 @@ defmodule DawarichWeb.UserDataTest do
 
       result(request(c, :get, "/settings/users/export"), c.expected[locale]["export"])
       result(request(c, :post, "/settings/users/import", "archive="), c.expected[locale]["blank"])
+
+      result(
+        request(c, :post, "/settings/users/import", "archive=invalid"),
+        c.expected[locale]["invalid"]
+      )
+
+      file = blob(c, locale <> "-backup.zip")
+      result(request(c, :post, "/settings/users/import", body(file)), c.expected[locale]["valid"])
+      Repo.query!("UPDATE active_storage_blobs SET filename='' WHERE id=$1", [file.id])
+
+      result(
+        request(c, :post, "/settings/users/import", body(file)),
+        c.expected[locale]["failed"]
+      )
     end
   end
 

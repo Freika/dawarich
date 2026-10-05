@@ -501,3 +501,9 @@ not implementation or merge of this default-off slice. If rejected, the smallest
 change is an explicit verified-by-default source-download mode on the existing
 Reader, tested at this call site. A second reader or fallback harness is outside
 this cut. Operator scope and A12h dependency: `docs/phoenix/a12rel-adapters.md`.
+
+## G45 all-locales page and email parity
+
+| ID | Surface | Rails today | Phoenix | Owner | Status |
+|---|---|---|---|---|---|
+| ED-551 | Document titles containing apostrophes | Rails double-escapes (title shows `&#39;`) | Phoenix escapes once (title shows the apostrophe); affects any locale whose translated title contains an apostrophe — observed ca stats year, ca digest index, fr digest detail | release | accepted |

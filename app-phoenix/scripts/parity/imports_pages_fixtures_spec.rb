@@ -84,7 +84,10 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
       ['edit_csv_en', 9801, '/imports/980111/edit', 200],
       ['show_csv_de', 9801, '/imports/980111?locale=de', 200],
       ['edit_csv_de', 9801, '/imports/980111/edit?locale=de', 200]
-    ]
+    ] + %w[es fr pl ca zh].flat_map do |locale|
+      [["show_csv_#{locale}", 9801, "/imports/980111?locale=#{locale}", 200],
+       ["edit_csv_#{locale}", 9801, "/imports/980111/edit?locale=#{locale}", 200]]
+    end
   end
 
   def create_users!
@@ -144,7 +147,7 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
       write_json('pages.json', manifest)
       write_json('seed.json', { now: now.iso8601, users: seeded_users,
                                 imports: })
-      %w[en de].each do |locale|
+      %w[en de es fr pl ca zh].each do |locale|
         User.find(9801).update!(settings: User.find(9801).settings.merge('locale' => locale))
         sign_in User.find(9801)
         get '/imports/980111/edit'

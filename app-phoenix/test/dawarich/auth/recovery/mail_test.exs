@@ -5,7 +5,7 @@ defmodule Dawarich.Auth.Recovery.MailTest do
   @rows Jason.decode!(
           File.read!(Path.expand("../../../fixtures/auth/recovery/mail.json", __DIR__))
         )
-  test "matches all six actual Rails HTML bodies, subjects and recipient headers" do
+  test "matches all shipped locales in Rails HTML bodies, subjects and recipient headers" do
     kinds = %{
       "reset_password_instructions" => :reset_password_instructions,
       "unlock_instructions" => :unlock_instructions

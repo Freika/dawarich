@@ -10,7 +10,7 @@ defmodule Dawarich.Mail.Digests.DataTest do
   test "digest mail data preserves source conversions periods and all yearly stats" do
     rows = @path |> File.read!() |> Jason.decode!() |> Map.fetch!("cases")
     cases = Enum.filter(rows, &is_nil(&1["error"]))
-    assert length(cases) == 20
+    assert length(cases) == 30
 
     for row <- cases do
       rows("TRUNCATE public.digests, public.stats, public.users CASCADE")
