@@ -17,6 +17,14 @@ defmodule Dawarich.Imports.ProcessWorker do
     _ -> {:error, "invalid_payload"}
   end
 
+  def args_from_command(1, %{"continuation" => continuation} = payload)
+      when map_size(payload) == 4 do
+    with {:ok, _} <- Dawarich.Imports.GoogleTakeoutResume.validate(continuation),
+         {:ok, _} <- args_from_command(1, Map.delete(payload, "continuation")) do
+      {:ok, payload}
+    end
+  end
+
   def args_from_command(1, _), do: {:error, "invalid_payload"}
   def args_from_command(_, _), do: {:error, "unsupported_version"}
 
@@ -42,7 +50,24 @@ defmodule Dawarich.Imports.ProcessWorker do
            job,
            import,
            fn lease ->
-             NormalLifecycle.call(lease, context(repo, job))
+             if payload = job.args["continuation"] do
+               Dawarich.Imports.ImportState.with_snapshot(lease, fn state ->
+                 context =
+                   Map.put(
+                     context(repo, job),
+                     :fence,
+                     &Dawarich.Imports.ImportState.effect!(lease, &1)
+                   )
+
+                 Dawarich.Imports.GoogleTakeoutResume.call(lease, state, context, payload)
+
+                 Dawarich.Imports.ImportState.effect!(lease, fn ->
+                   Processed.mark!(repo, job.args["event_id"], "imports.process_normal")
+                 end)
+               end)
+             else
+               NormalLifecycle.call(lease, context(repo, job))
+             end
            end,
            lease_options()
          ) do

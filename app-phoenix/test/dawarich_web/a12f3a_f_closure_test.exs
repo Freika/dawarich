@@ -227,6 +227,145 @@ defmodule DawarichWeb.A12f3aFResumeTest do
     end
   end
 
+  @tag a12f3a_f17: true
+  test "F17: legacy google takeout continuation adapter matches current Rails contract without a native-owner Rails effect",
+       c do
+    alias Dawarich.Imports.GoogleTakeoutResume
+
+    capture =
+      Jason.decode!(
+        File.read!(Path.expand("../fixtures/imports/formats/a12f3a-f17.json", __DIR__))
+      )
+
+    valid = capture["continuation/valid"]
+    locations = Jason.decode!(valid["input"])
+    payload = %{"locations" => locations, "current_index" => valid["current_index"]}
+    assert {:ok, ^payload} = GoogleTakeoutResume.validate(payload)
+
+    for invalid <- [
+          Map.put(payload, "ruby", "object"),
+          %{payload | "locations" => valid["input"]},
+          %{payload | "locations" => [nil]},
+          %{payload | "current_index" => -1}
+        ] do
+      assert {:error, "invalid_payload"} = GoogleTakeoutResume.validate(invalid)
+    end
+
+    rows("UPDATE imports SET source=2 WHERE id=$1", [c.import.id])
+
+    rows("UPDATE oban.oban_jobs SET worker='Dawarich.Imports.ProcessWorker' WHERE id=$1", [
+      c.job.id
+    ])
+
+    opts = Dawarich.Imports.ProcessWorker.lease_options()
+
+    invoke = fn extra, payload ->
+      Lease.with_import(
+        ScratchRepo,
+        c.job,
+        c.import,
+        fn lease ->
+          ImportState.with_snapshot(lease, fn state ->
+            context =
+              Map.merge(
+                %{
+                  repo: ScratchRepo,
+                  zone: "UTC",
+                  locale: "en",
+                  now: ~U[2026-01-15 23:30:00Z],
+                  altitude_decimal?: true,
+                  fence: fn fun -> ImportState.effect!(lease, fun) end
+                },
+                extra
+              )
+
+            GoogleTakeoutResume.call(lease, state, context, payload)
+          end)
+        end,
+        opts
+      )
+    end
+
+    assert {:ok, :ok} = invoke.(%{}, payload)
+    point = hd(valid["result"]["points"])
+
+    assert [[point["lonlat"], point["timestamp"]]] ==
+             rows("SELECT ST_AsText(lonlat),timestamp FROM points WHERE import_id=$1", [
+               c.import.id
+             ])
+
+    assert [[1, 0, 1000]] ==
+             rows("SELECT raw_points,doubles,processed FROM imports WHERE id=$1", [c.import.id])
+
+    assert {:ok, :ok} = invoke.(%{}, payload)
+    assert [[1, 0]] == rows("SELECT raw_points,doubles FROM imports WHERE id=$1", [c.import.id])
+    assert_raise LeaseLost, fn -> invoke.(%{}, %{payload | "current_index" => 1001}) end
+    reset!(ScratchRepo)
+    c = Map.merge(c, Dawarich.ImportLeaseFixture.create())
+    rows("UPDATE imports SET source=2 WHERE id=$1", [c.import.id])
+
+    rows("UPDATE oban.oban_jobs SET worker='Dawarich.Imports.ProcessWorker' WHERE id=$1", [
+      c.job.id
+    ])
+
+    payload = %{
+      payload
+      | "locations" =>
+          for(
+            i <- 0..1000,
+            do:
+              Map.put(
+                hd(locations),
+                "timestamp",
+                DateTime.to_iso8601(DateTime.from_unix!(point["timestamp"] + i))
+              )
+          )
+    }
+
+    invoke = fn extra ->
+      Lease.with_import(
+        ScratchRepo,
+        c.job,
+        c.import,
+        fn lease ->
+          ImportState.with_snapshot(lease, fn state ->
+            context =
+              Map.merge(
+                %{
+                  repo: ScratchRepo,
+                  zone: "UTC",
+                  locale: "en",
+                  now: ~U[2026-01-15 23:30:00Z],
+                  altitude_decimal?: true,
+                  fence: fn fun -> ImportState.effect!(lease, fun) end
+                },
+                extra
+              )
+
+            GoogleTakeoutResume.call(lease, state, context, payload)
+          end)
+        end,
+        opts
+      )
+    end
+
+    assert_raise LeaseLost, fn -> invoke.(%{on_batch: fn _ -> raise LeaseLost end}) end
+    assert [[1000]] == rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
+    assert {:ok, :ok} = invoke.(%{})
+
+    assert [[1001, 0, 1000]] ==
+             rows("SELECT raw_points,doubles,processed FROM imports WHERE id=$1", [c.import.id])
+
+    assert [[1001]] ==
+             rows(
+               "SELECT (attachment_snapshot->>'cursor')::int FROM phoenix.import_runs WHERE import_id=$1",
+               [c.import.id]
+             )
+
+    assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+    assert [] == rows("SELECT event_id FROM phoenix.import_handoffs")
+  end
+
   defp run(c, resume, adapter, extra, opts \\ []) do
     Lease.with_import(
       ScratchRepo,

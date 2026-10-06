@@ -139,3 +139,18 @@ claimed here.
 
 AFFiNE counterpart: Dawarich — Phoenix import codecs and extraction closure
 (docId: ovFWRqfzsy2Jb5n1NB4Qc).
+
+## F17 follow-up audit and continuation
+
+The F17–F19 follow-up audits the merged F/RX implementations before adding
+missing behavior. F17 now accepts a typed native `continuation` containing
+`locations` objects and a nonnegative `current_index` on ProcessWorker's
+existing import command. It uses the existing fenced writer and receipt,
+with a digest of the complete continuation as its captured identity. Replay
+skips committed source-array rows; changed payloads lose the fence. Progress
+retains Rails' constant `current_index` for the supplied locations batch.
+Serialized Sidekiq payloads remain with the source drain owner.
+
+The named F17 selector initially fails on the absent adapter, passes after
+implementation, fails when the committed cursor advances twice, and passes
+after restoration. Retained Rails characterization passes 34 examples.
