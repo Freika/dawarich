@@ -154,3 +154,32 @@ Serialized Sidekiq payloads remain with the source drain owner.
 The named F17 selector initially fails on the absent adapter, passes after
 implementation, fails when the committed cursor advances twice, and passes
 after restoration. Retained Rails characterization passes 34 examples.
+
+## F18 native extraction follow-up
+
+The existing GPX extractor is retained. `EnhancedImport.Adapters` dispatches
+Phone, Semantic History, Records' source no-op, Polarsteps and GPX streams.
+`NormalWorker` runs supported non-GPX extraction under the shared import and
+per-user track locks. Every write checks the executing attempt, actor, source,
+attachment, extraction event/action, and current ownership. Existing State
+writes accept that fence; deadline cancellation, bounded lock waiting and
+retry status follow the retained source behavior.
+
+The existing PlaceWriter supports Photon source for non-GPX rows and retains
+GPX waypoint adoption. Native item/track/segment writers reuse the track
+builder and geometry/transportation APIs. Visits deduplicate by owner, place
+and start; tracks preserve device separation and adopt an already generated
+track. Source segments clip around corrected or higher-priority segments.
+Trust disabled resets source segments and uses inference. Extraction removal
+reuses RX's fenced worker and DestroyExtraction, retaining raw points and
+adopted tracks while resetting extraction state.
+
+Manual non-GPX admission is a small extension of ManualExtraction's existing
+producer. Source-owned coexistence still publishes its retained source
+command; native selected work uses the new direct child worker. Shared job
+registry/readiness entries are unchanged. Records intentionally remains
+unavailable for manual extraction, matching Translator.supported?.
+
+F18's named test fails first on unsupported manual extraction, passes native
+persistence/destroy/retry/fence cases, fails the Phone-as-GPX mutation, and
+passes after restoration. The extraction/GPX/R09 regression passes 46 tests.

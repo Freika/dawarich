@@ -139,7 +139,7 @@ defmodule Dawarich.Imports.DestroyExtraction do
     if deleted != [], do: orphaned_places(lease, ids -- deleted), else: :ok
   end
 
-  defp reset_segments(lease, source) do
+  def reset_segments(lease, source) do
     label = if is_integer(source) and source >= 0, do: Enum.at(@sources, source)
 
     effect!(lease, fn ->

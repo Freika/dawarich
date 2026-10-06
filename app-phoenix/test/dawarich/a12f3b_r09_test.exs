@@ -8,7 +8,7 @@ defmodule Dawarich.A12f3bR09Test do
   test "imports.extraction_requested native producer reaches its source terminal effect", c do
     rows("UPDATE imports SET source=3,status=2 WHERE id=$1", [c.import.id])
 
-    assert {:error, :unsupported} ==
+    assert {:ok, :queued} ==
              ManualExtraction.enqueue(
                ScratchRepo,
                c.import.user_id,
@@ -20,11 +20,12 @@ defmodule Dawarich.A12f3bR09Test do
 
     assert [] == F.reverse()
 
-    assert [[0]] ==
+    assert [[1]] ==
              rows("SELECT additional_data_extraction_status FROM imports WHERE id=$1", [
                c.import.id
              ])
 
+    rows("UPDATE imports SET additional_data_extraction_status=0 WHERE id=$1", [c.import.id])
     System.delete_env("DAWARICH_RAILS")
 
     assert {:ok, :queued} ==

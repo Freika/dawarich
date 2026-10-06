@@ -21,7 +21,7 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
   INSERT INTO places (user_id, import_id, name, latitude, longitude, lonlat, source, geodata, created_at, updated_at)
   VALUES ($1, $2, $3, $4::text::numeric, $5::text::numeric,
           ST_SetSRID(ST_MakePoint($5::text::numeric::float8, $4::text::numeric::float8), 4326)::geography,
-          2, $6, now(), now())
+          $7, $6, now(), now())
   ON CONFLICT DO NOTHING RETURNING id
   """
   @tag "SELECT id, privacy_radius_meters FROM tags WHERE user_id = $1 AND LOWER(tags.name) = $2 ORDER BY id LIMIT 1"
@@ -31,14 +31,16 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
   @attach "INSERT INTO taggings (tag_id, taggable_type, taggable_id, created_at, updated_at) " <>
             "VALUES ($1, 'Place', $2, now(), now()) ON CONFLICT (taggable_type, taggable_id, tag_id) DO NOTHING"
 
-  def new(%{id: import_id, user_id: user_id}),
+  def new(%{id: import_id, user_id: user_id} = import),
     do: %{
       user_id: user_id,
       import_id: import_id,
       claimed: MapSet.new(),
       tags: %{},
       known: %{},
-      count: 0
+      count: 0,
+      last_id: nil,
+      source: if(Map.get(import, :source, 4) == 4, do: 2, else: 1)
     }
 
   def prefetch(repo, state, places) do
@@ -70,7 +72,7 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
   defp find(repo, state, place) do
     cond do
       row = by_external(repo, state, place) -> {:existing, row}
-      row = renamed(repo, state, place) -> {:renamed, row}
+      row = state.source == 2 && renamed(repo, state, place) -> {:renamed, row}
       row = nearby(repo, state, place) -> {:existing, row}
       true -> nil
     end
@@ -151,7 +153,8 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
       place_name(place.name),
       RubyDecimal.column(place.latitude, 10, 6),
       RubyDecimal.column(place.longitude, 10, 6),
-      geodata
+      geodata,
+      state.source
     ]
 
     case query(repo, @insert, params) do
@@ -167,7 +170,7 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
   end
 
   defp found(repo, state, id, place) do
-    state = %{state | claimed: MapSet.put(state.claimed, id), count: state.count + 1}
+    state = %{state | claimed: MapSet.put(state.claimed, id), count: state.count + 1, last_id: id}
     attach_tag(repo, state, id, place)
   end
 

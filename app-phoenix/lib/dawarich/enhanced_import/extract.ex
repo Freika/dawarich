@@ -1,31 +1,41 @@
 defmodule Dawarich.EnhancedImport.Extract do
   @moduledoc false
 
-  alias Dawarich.EnhancedImport.{Deadline, Gpx, PlaceWriter, SourceFile}
+  alias Dawarich.EnhancedImport.{Adapters, Deadline, ItemWriter, PlaceWriter, SourceFile}
   alias Dawarich.{RubyInteger, Storage}
 
   @element_counts ~w(waypoints_seen trackpoints_seen route_points_seen)
   @chunk 500
 
-  def process(repo, import, storage, event_id, deadline) do
-    if without_waypoints?(import.raw_data) do
+  def process(repo, import, storage, event_id, deadline, context \\ %{}) do
+    import = Map.put_new(import, :source, 4)
+
+    if import.source == 4 and without_waypoints?(import.raw_data) do
       %{}
     else
       tmp = Storage.tmp_dir!(storage, "extract-#{event_id}")
 
       try do
-        Deadline.run(fn -> extract(repo, import, storage, tmp, deadline) end, deadline)
+        Deadline.run(fn -> extract(repo, import, storage, tmp, deadline, context) end, deadline)
       after
         File.rm_rf!(tmp)
       end
     end
   end
 
-  defp extract(repo, import, storage, tmp, deadline) do
+  defp extract(repo, import, storage, tmp, deadline, context) do
     path = SourceFile.fetch!(repo, import.id, storage, tmp)
 
+    if import.source == 4 do
+      gpx(repo, import, path, deadline)
+    else
+      ItemWriter.reduce(repo, import, path, context, deadline)
+    end
+  end
+
+  defp gpx(repo, import, path, deadline) do
     {state, chunk, _size} =
-      Gpx.reduce(path, {PlaceWriter.new(import), [], 0}, fn
+      Adapters.reduce(path, import, %{}, {PlaceWriter.new(import), [], 0}, fn
         place, {state, chunk, size} when size + 1 < @chunk ->
           {state, [place | chunk], size + 1}
 
