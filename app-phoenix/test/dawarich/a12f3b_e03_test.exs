@@ -145,7 +145,10 @@ defmodule Dawarich.A12f3bE03Test do
     assert [[_, %{"user_id" => ^user}, @now, %{"parent_event_id" => ^operation}]] =
              visit_children()
 
-    assert Drain.status(ScratchRepo).shutdown == "BLOCKED"
+    accepted = Drain.status(ScratchRepo)
+    assert accepted.counts.pending_outbox == 1
+    assert "pending_outbox" in accepted.shutdown_reasons
+    assert accepted.shutdown == "BLOCKED"
 
     assert %{dispatched: 1} =
              Dispatch.run(
@@ -154,6 +157,10 @@ defmodule Dawarich.A12f3bE03Test do
                now: @now,
                commands: fn "visits.user_redetect" -> {:ok, UserRedetectWorker} end
              )
+
+    accepted = Drain.status(ScratchRepo)
+    assert accepted.counts.incomplete_oban == 1
+    assert "incomplete_oban" in accepted.shutdown_reasons
 
     assert [[%{"user_id" => ^user} = dispatched]] =
              rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [
