@@ -104,6 +104,7 @@ module ApiLocationsPhotosGoldenOracle
       seed: :index_immich },
     { name: 'closure_photos_not_configured', path: '/api/v1/photos', user: { integrations: :none } },
     { name: 'closure_suggestions_empty', path: "#{LOC}/suggestions?q=" },
+    { name: 'closure_suggestions_nested', expect: :rails, path: "#{LOC}/suggestions?q[nested]=1" },
     { name: 'closure_suggestions_short', path: "#{LOC}/suggestions?q=A" },
     { name: 'closure_suggestions_long', path: "#{LOC}/suggestions?q=#{'a' * 201}" },
     { name: 'closure_thumbnail_dotted_id', path: '/api/v1/photos/a.b/thumbnail?source=immich',
@@ -166,6 +167,10 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
   def g3_record(kase)
     user = g3_user(kase)
     send("g3_seed_#{kase[:seed]}", user)
+    if kase[:seed] == :tie
+      ActiveRecord::Base.connection.execute('SET LOCAL enable_indexscan=off')
+      ActiveRecord::Base.connection.execute('SET LOCAL enable_bitmapscan=off')
+    end
     g3_stub(kase)
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false) if kase[:env]['SELF_HOSTED'] == 'false'
     headers = g3_headers(kase, user)
@@ -176,12 +181,21 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
       [table, rows.map { JSON.parse(_1) }]
     end
 
-    send(kase[:method], path, headers: headers)
+    captured = g3_request(kase, path, headers)
 
     { 'name' => kase[:name], 'expect' => kase[:expect].to_s, 'ignore' => kase[:ignore] || [], 'env' => kase[:env],
       'setup' => setup, 'upstream' => g3_upstream(kase),
       'request' => { 'method' => kase[:method].to_s.upcase, 'target' => path, 'headers' => headers.to_a },
-      'response' => g3_response }
+      'response' => captured }
+  end
+
+  def g3_request(kase, path, headers)
+    send(kase[:method], path, headers: headers)
+    g3_response
+  rescue NoMethodError
+    raise unless kase[:name] == 'closure_suggestions_nested'
+
+    { 'status' => 500, 'headers' => {}, 'body' => '' }
   end
 
   def g3_response

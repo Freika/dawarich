@@ -170,6 +170,12 @@ module ApiPlacesGoldenOracle
     { name: 'closure_search_missing', path: "#{P}/search" },
     { name: 'closure_search_range', path: "#{P}/search?lat=91&lon=0" },
     { name: 'closure_search_saved', path: "#{P}/search?lat=51.34&lon=12.37&q=Leipzig" },
+    { name: 'closure_create_invalid_source', expect: :rails, method: :post, path: P,
+      body: { place: { name: 'Invalid source', source: 'invalid', **LEIPZIG } } },
+    { name: 'closure_create_nested_name', method: :post, path: P,
+      body: { place: { name: [], **LEIPZIG } } },
+    { name: 'closure_create_scalar_tag', method: :post, path: P,
+      body: { place: { name: 'Scalar tag', tag_ids: '950101', **LEIPZIG } } },
     { name: 'closure_create_unicode_tags', method: :post, path: P,
       body: { place: { name: 'Café', note: 'Straße', tag_ids: [950_101, 950_103], **LEIPZIG } } }
   ].freeze
