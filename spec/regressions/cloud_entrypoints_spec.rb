@@ -140,6 +140,24 @@ RSpec.describe 'Cloud entrypoints' do
   end
 
   describe 'cloud-sidekiq-entrypoint.sh' do
+    it 'native Cloud worker stays idle without a source queue consumer' do
+      stub_command('dawarich', <<~SH)
+        printf '%s\\n' "dawarich $* role=${DAWARICH_PROCESS_ROLE:-} rails=[${DAWARICH_RAILS_ARGS:-}]" >> "#{calls_file}"
+      SH
+      result = run_script('cloud-sidekiq-entrypoint.sh', 'sidekiq', '-C', 'config/sidekiq.yml',
+                          SELF_HOSTED: 'false', DAWARICH_PHOENIX_LIFECYCLE: 'true',
+                          DAWARICH_RAILS_ARGS: 'bundle exec puma')
+      expect(result[:status]).to be_success
+      expect(result[:calls]).to eq(['dawarich start role=sidekiq_idle rails=[]'])
+      [%w[sidekiq -C custom.yml], %w[rails runner], []].each do |argv|
+        FileUtils.rm_f(calls_file)
+        result = run_script('cloud-sidekiq-entrypoint.sh', *argv, SELF_HOSTED: 'false',
+                                                               DAWARICH_PHOENIX_LIFECYCLE: 'true')
+        expect(result[:status]).not_to be_success
+        expect(result[:calls]).to be_empty
+      end
+    end
+
     it 'waits for the database, then runs the given command' do
       result = run_script('cloud-sidekiq-entrypoint.sh', 'sidekiq', '-C', 'config/sidekiq.yml')
 

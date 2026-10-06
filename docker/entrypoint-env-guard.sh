@@ -47,6 +47,21 @@ validate_cloud_drain_argv() {
   exit 1
 }
 
+validate_cloud_native_worker() {
+  case "${DAWARICH_PHOENIX_LIFECYCLE-false}" in
+    false) return ;;
+    true) ;;
+    *) echo "DAWARICH_PHOENIX_LIFECYCLE must be true or false" >&2; exit 1 ;;
+  esac
+  [ "${SELF_HOSTED-true}" = false ] || return 0
+  case "$#" in
+    1) [ "$1" = sidekiq ] && return 0 ;;
+    3) [ "$1" = sidekiq ] && [ "$2" = -C ] && [ "$3" = config/sidekiq.yml ] && return 0 ;;
+  esac
+  echo "Native Cloud worker requires the known Sidekiq compatibility command" >&2
+  exit 1
+}
+
 phoenix_lifecycle_is_native() {
   [ "${DAWARICH_PHOENIX_LIFECYCLE-false}" = true ]
 }
