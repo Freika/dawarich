@@ -10,7 +10,7 @@ defmodule DawarichWeb.A9Routes do
         plug DawarichWeb.RateLimit
         plug DawarichWeb.Api.Body, nested_form: "poster"
         plug DawarichWeb.RailsAuth
-        plug DawarichWeb.RailsForm
+        plug DawarichWeb.PostersGate
         plug DawarichWeb.RailsHeaders
       end
 
@@ -35,7 +35,7 @@ defmodule DawarichWeb.A9Routes do
         plug DawarichWeb.RateLimit
         plug DawarichWeb.Api.Body, nested_form: "shared_link"
         plug DawarichWeb.RailsAuth
-        plug DawarichWeb.RailsForm
+        plug :share_form_admission
         plug DawarichWeb.RailsHeaders
       end
 
@@ -67,6 +67,9 @@ defmodule DawarichWeb.A9Routes do
               {"shared", :revoke},
               metadata: %{rails_gate: {DawarichWeb.ShareManagementGate, :mutation?}}
       end
+
+      defp share_form_admission(conn, opts),
+        do: DawarichWeb.ShareManagementForm.admit(conn, opts)
     end
   end
 

@@ -164,7 +164,11 @@ defmodule DawarichWeb.FamilyPagesTest do
     end
   end
 
-  test "all family writes still reach Rails" do
+  test "family writes have native routes and retain explicit handback" do
+    saved = Application.get_env(:dawarich, :rails_routes, [])
+    Application.put_env(:dawarich, :rails_routes, ["family"])
+    on_exit(fn -> Application.put_env(:dawarich, :rails_routes, saved) end)
+
     for {method, path} <- [
           {"POST", "/family"},
           {"PATCH", "/family"},
@@ -174,14 +178,22 @@ defmodule DawarichWeb.FamilyPagesTest do
           {"POST", "/family/invitations.91001"},
           {"DELETE", "/family/invitations/a9fpl-pending"},
           {"DELETE", "/family/members/92002"},
-          {"POST", "/family/members"},
           {"POST", "/family/location_requests"},
           {"PATCH", "/family/location_requests/94001/accept"},
           {"PATCH", "/family/location_requests/94001/decline"},
           {"PATCH", "/family/location_sharing"}
         ] do
-      assert Phoenix.Router.route_info(DawarichWeb.Router, method, path, "www.example.com") ==
-               :error
+      assert %{plug: DawarichWeb.FamilyFormRoutes} =
+               Phoenix.Router.route_info(DawarichWeb.Router, method, path, "www.example.com")
+
+      assert DawarichWeb.Strangler.handed_back?(["family"])
     end
+
+    assert Phoenix.Router.route_info(
+             DawarichWeb.Router,
+             "POST",
+             "/family/members",
+             "www.example.com"
+           ) == :error
   end
 end
