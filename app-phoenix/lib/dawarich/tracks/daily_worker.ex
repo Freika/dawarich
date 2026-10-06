@@ -135,7 +135,13 @@ defmodule Dawarich.Tracks.DailyWorker do
       "user_id" => user_id,
       "start_at" => start_ts |> DateTime.from_unix!() |> iso(),
       "end_at" => iso(now),
-      "time_zone" => one!(repo, @zone, [[timezone, System.get_env("TIME_ZONE"), "UTC"]]),
+      "time_zone" =>
+        one!(repo, @zone, [
+          Enum.map(
+            [timezone, System.get_env("TIME_ZONE", "UTC"), "UTC"],
+            &Dawarich.TimeZoneName.to_iana/1
+          )
+        ]),
       "mode" => "daily",
       "untracked_only" => false,
       "import_id" => nil,

@@ -6,6 +6,34 @@ RSpec.describe Cache::UserPreheatingJob do
   include ActiveSupport::Testing::TimeHelpers
   before { Rails.cache.clear }
 
+  it 'accepted source user forms keep metadata and missing or failed users produce no handoff' do
+    phoenix_tables!
+    job_owner!('command:cache.preheat_user', :oban)
+    User.insert_all!([{ id: 180_115, email: 'cache-user-forms@example.invalid', encrypted_password: '', status: 1,
+                       plan: 1, settings: {}, created_at: Time.current, updated_at: Time.current }])
+    due = Time.utc(2026, 10, 3, 12)
+    job = described_class.new(180_115)
+    job.locale = 'de'
+    job.timezone = 'Asia/Tokyo'
+    job.scheduled_at = due
+    ActiveJob::Base.deserialize(job.serialize).perform_now
+    expect(JobOutbox.find(job.job_id)).to have_attributes(
+      payload: { 'user_id' => 180_115, 'time_zone' => 'Asia/Tokyo', 'source_job_id' => job.job_id },
+      scheduled_at: due, command_version: 1
+    )
+
+    missing = described_class.new(180_116)
+    expect { missing.perform_now }.not_to change(JobOutbox, :count)
+    expect(Rails.cache.exist?('dawarich/user_180116_years_tracked')).to be(false)
+
+    failing = described_class.new(180_115)
+    allow(Rails.cache).to receive(:write).with('dawarich/user_180115_years_tracked', anything, expires_in: 86_400)
+                                         .and_raise(IOError, 'synthetic user cache failure')
+    expect { failing.perform_now }.to raise_error(IOError, 'synthetic user cache failure')
+    expect(JobOutbox.exists?(failing.job_id)).to be(false)
+    expect(enqueued_jobs).to be_empty
+  end
+
   it 'Oban ownership retains one-day user and one-hour yearly warming before forwarding the original job once' do
     connection = ActiveRecord::Base.connection
     sequence = connection.select_one('SELECT last_value, is_called FROM digests_id_seq')
