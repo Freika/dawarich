@@ -80,12 +80,12 @@ defmodule Dawarich.A12f3bR15Test do
     {blob, path} = blob!(c, "image/png")
     attach!("Poster", id, blob)
     assert {:ok, ^id} = Persistence.delete(id, %{id: 1}, Repo)
-    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == [[blob]]
     assert rows("SELECT kind FROM phoenix.rails_commands") == []
     assert [args] = purges()
     assert {:error, {:storage_delete, _reason}} = fail_delete(c, args, path)
-    assert :ok = PurgeWorker.run(args, services: c.services)
-    assert :ok = PurgeWorker.run(args, services: c.services)
+    assert :ok = PurgeWorker.run(args, services: c.services, repo: Repo)
+    assert :ok = PurgeWorker.run(args, services: c.services, repo: Repo)
     refute File.exists?(path)
     assert {:error, :missing} = Persistence.delete(id, %{id: 1}, Repo)
     System.delete_env("DAWARICH_RAILS")
@@ -105,10 +105,15 @@ defmodule Dawarich.A12f3bR15Test do
     {native_blob, native_path} = blob!(c, "image/png")
     attach!("Poster", native, native_blob)
     assert {:ok, ^native} = Persistence.delete(native, %{id: 1}, Repo)
-    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [native_blob]) == []
+
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [native_blob]) == [
+             [native_blob]
+           ]
+
+    inaccessible!(native_blob, c)
     native_purge = List.last(purges())
     assert {:error, {:storage_delete, _reason}} = fail_delete(c, native_purge, native_path)
-    assert :ok = PurgeWorker.run(native_purge, services: c.services)
+    assert :ok = PurgeWorker.run(native_purge, services: c.services, repo: Repo)
     refute File.exists?(native_path)
   end
 
@@ -120,8 +125,8 @@ defmodule Dawarich.A12f3bR15Test do
     inaccessible!(rejected, c)
     assert [{args, path}] = Enum.zip(purges(), [rejected_path])
     assert {:error, {:storage_delete, _reason}} = fail_delete(c, args, path)
-    assert :ok = PurgeWorker.run(args, services: c.services)
-    assert :ok = PurgeWorker.run(args, services: c.services)
+    assert :ok = PurgeWorker.run(args, services: c.services, repo: Repo)
+    assert :ok = PurgeWorker.run(args, services: c.services, repo: Repo)
     refute File.exists?(path)
     assert {:error, %{phase: :invalid_signature}} = create(rejected)
     {blob, path} = blob!(c, "video/mp4")
@@ -133,7 +138,7 @@ defmodule Dawarich.A12f3bR15Test do
     assert {:ok, ^second} = Writes.destroy(Repo, 1, second, @now)
     inaccessible!(blob, c)
     assert length(purges()) == 2
-    assert :ok = PurgeWorker.run(List.last(purges()), services: c.services)
+    assert :ok = PurgeWorker.run(List.last(purges()), services: c.services, repo: Repo)
     refute File.exists?(path)
     assert {:error, :not_found} = Writes.destroy(Repo, 1, second, @now)
     assert rows("SELECT kind FROM phoenix.rails_commands") == []
@@ -176,7 +181,7 @@ defmodule Dawarich.A12f3bR15Test do
     assert {:ok, :ok} = enqueue.(payload)
     assert {:ok, :ok} = enqueue.(payload)
     assert length(purges()) == 3
-    assert :ok = PurgeWorker.run(List.last(purges()), services: c.services)
+    assert :ok = PurgeWorker.run(List.last(purges()), services: c.services, repo: Repo)
     refute File.exists?(guarded_path)
     assert rows("SELECT kind FROM phoenix.rails_commands") == []
     {unidentified, _} = blob!(c, "video/mp4")
@@ -232,7 +237,7 @@ defmodule Dawarich.A12f3bR15Test do
                [services: c.services, ffprobe: probe]
              ])
 
-    assert :ok = PurgeWorker.run(List.last(purges()), services: c.services)
+    assert :ok = PurgeWorker.run(List.last(purges()), services: c.services, repo: Repo)
     System.delete_env("DAWARICH_RAILS")
     {legacy, _} = blob!(c, "text/plain")
     assert {:error, %{phase: :rejected}} = create(legacy)
@@ -240,8 +245,8 @@ defmodule Dawarich.A12f3bR15Test do
     Ownership.put!(Repo, "cron:route_videos_purge_job", :oban)
     {native, native_path} = blob!(c, "text/plain")
     assert {:error, %{phase: :rejected}} = create(native)
-    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [native]) == []
-    assert :ok = PurgeWorker.run(List.last(purges()), services: c.services)
+    inaccessible!(native, c)
+    assert :ok = PurgeWorker.run(List.last(purges()), services: c.services, repo: Repo)
     refute File.exists?(native_path)
   end
 
@@ -266,7 +271,7 @@ defmodule Dawarich.A12f3bR15Test do
   defp fail_delete(c, args, path) do
     File.rm!(path)
     File.mkdir!(path)
-    result = PurgeWorker.run(args, services: c.services)
+    result = PurgeWorker.run(args, services: c.services, repo: Repo)
     File.rmdir!(path)
     File.write!(path, "synthetic")
     result
@@ -316,7 +321,7 @@ defmodule Dawarich.A12f3bR15Test do
   end
 
   defp inaccessible!(id, c) do
-    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [id]) == []
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [id]) == [[id]]
     assert download(id, c).status == 404
 
     conn =

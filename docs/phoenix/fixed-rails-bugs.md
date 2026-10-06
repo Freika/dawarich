@@ -22,4 +22,24 @@ release-wide changelog compilation.
   and drain completion` in
   `app-phoenix/test/dawarich/a12f3b_e13_purge_retry_test.exs`.
 - Expected difference: ED-A12F3B-E13-F1 in
-  `app-phoenix/parity/expected_diffs.md`. No deferred bug row: this is fixed.
+  `app-phoenix/parity/expected_diffs.md`. Native path fixed; retained Rails-owned coexistence is DRB-025.
+
+## E13 F2 shared native media purge ordering
+
+- Rails symptom: storage deletion failure leaves private media stored after its
+  blob/variant rows disappear; serialized purge retries cannot recover the blob.
+- Source: installed Active Storage 8.1.3.1 `app/models/active_storage/blob.rb:335–338`
+  and `app/jobs/active_storage/purge_job.rb:6–11`; media handlers are
+  `app/services/posters/purge_commands.rb:21`,
+  `app/services/exports/purge_commands.rb:21`, and
+  `app/services/rails_commands/a8_handlers.rb:29`.
+- Phoenix: `app-phoenix/lib/dawarich/exports/purge_worker.ex` and
+  `app-phoenix/lib/dawarich/storage/native_purge.ex` retain eligible storage rows,
+  reserve purge metadata for native download/upload revocation, and delete all
+  eligible parent/variant objects before row removal. Storage errors retain
+  retry/drain debt. Existing key-only jobs still delete their durable targets.
+- Regression: `F2 every shared native producer retains blob and variant rows
+  through storage failure and serialized retry`, in
+  `app-phoenix/test/dawarich/a12f3b_e13_shared_purge_test.exs`.
+- Expected difference: ED-A12F3B-E13-F2. Original Rails job and all hand-backs
+  characterized by F3; Rails-owned coexistence remains preserved in DRB-025.

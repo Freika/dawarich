@@ -83,12 +83,14 @@ defmodule DawarichWeb.A12f3aRClosureTest do
     rows("DELETE FROM active_storage_attachments WHERE id=$1", [attachment["id"]])
     assert :ok = AttachmentEffects.enqueue!(ScratchRepo, payload)
     assert :ok = AttachmentEffects.enqueue!(ScratchRepo, payload)
-    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+    pending_purge!(blob)
 
     assert [[%{"objects" => [%{"key" => key, "service_name" => "test"}]}]] =
              rows("SELECT args FROM oban.oban_jobs")
 
     assert key == hd(state["before"]["active_storage_blobs"])["key"]
+    complete_purge!()
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
     assert rows("SELECT id FROM phoenix.rails_commands") == []
     assert rows("SELECT count(*) FROM active_storage_blobs WHERE id=$1", [blob + 10]) == [[1]]
   end
@@ -106,8 +108,9 @@ defmodule DawarichWeb.A12f3aRClosureTest do
                    max_per_user: 0
                  })
 
-        assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+        pending_purge!(blob)
         assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
+        complete_purge!()
       else
         if name == "pre_attach_error" do
           assert {:error, %{phase: :pre_attach}} =
@@ -115,8 +118,9 @@ defmodule DawarichWeb.A12f3aRClosureTest do
                      max_per_user: 0
                    })
 
-          assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+          pending_purge!(blob)
           assert rows("SELECT id FROM route_videos") == []
+          complete_purge!()
         else
           assert {:error, %{phase: :post_commit, id: id}} =
                    RouteVideos.create(CapFailureRepo, user, params(state), @now, "en", %{
@@ -283,8 +287,11 @@ defmodule DawarichWeb.A12f3aRClosureTest do
       assert get_resp_header(conn, "location") == List.wrap(state["location"])
       assert rows("SELECT id FROM route_videos") == []
       assert rows("SELECT id FROM active_storage_attachments") == []
-      assert rows("SELECT id FROM active_storage_blobs") == []
+      blob = hd(state["before"]["active_storage_blobs"])["id"]
+      pending_purge!(blob)
       assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
+      complete_purge!()
+      assert rows("SELECT id FROM active_storage_blobs") == []
       assert rows("SELECT id FROM phoenix.rails_commands") == []
     end
   end
@@ -359,6 +366,33 @@ defmodule DawarichWeb.A12f3aRClosureTest do
           assert stream =~ message
         end
       end
+    end
+  end
+
+  defp pending_purge!(blob) do
+    assert [[metadata]] = rows("SELECT metadata FROM active_storage_blobs WHERE id=$1", [blob])
+    assert Jason.decode!(metadata)["phoenix_purge_pending"] == true
+  end
+
+  defp complete_purge! do
+    assert [[args]] = rows("SELECT args FROM oban.oban_jobs")
+    root = Path.join(System.tmp_dir!(), "closure-purge-" <> Ecto.UUID.generate())
+
+    try do
+      for object <- args["objects"] do
+        file = Dawarich.Storage.disk_path(root, object["key"])
+        File.mkdir_p!(Path.dirname(file))
+        File.write!(file, "synthetic media")
+      end
+
+      services = Map.new(args["objects"], &{&1["service_name"], %{service: "local", root: root}})
+      assert :ok = Dawarich.Exports.PurgeWorker.run(args, services: %{services: services})
+      assert :ok = Dawarich.Exports.PurgeWorker.run(args, services: %{services: services})
+      assert Path.wildcard(root <> "/**/*") |> Enum.filter(&File.regular?/1) == []
+      ids = Enum.map(args["objects"], & &1["blob_id"])
+      assert rows("SELECT id FROM active_storage_blobs WHERE id=ANY($1)", [ids]) == []
+    after
+      File.rm_rf!(root)
     end
   end
 

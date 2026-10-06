@@ -160,7 +160,7 @@ defmodule DawarichWeb.A12f3bP03Test do
     assert {:error, {:storage_delete, :eperm}} =
              PurgeWorker.run(orphan, services: blocked)
 
-    assert rows("SELECT id FROM active_storage_blobs") == []
+    assert rows("SELECT id FROM active_storage_blobs") == [[blob_id]]
     File.rmdir!(file)
     File.write!(file, "synthetic")
     assert :ok = PurgeWorker.run(orphan, services: c.services)
