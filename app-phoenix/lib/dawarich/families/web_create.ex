@@ -4,18 +4,23 @@ defmodule Dawarich.Families.WebCreate do
   alias Dawarich.Mail.ExploreFeatures
 
   def run(repo, user, attrs, ctx, opts \\ []) do
-    name =
-      if is_binary(attrs["name"]),
-        do: String.replace(attrs["name"], ~r/\A[\0\t\n\v\f\r ]+|[\0\t\n\v\f\r ]+\z/, ""),
-        else: nil
-
-    errors = validate(name, ctx.locale)
-
     cond do
-      errors != [] -> {:invalid, errors, name}
-      family(repo, user.id) != nil -> {:error, :not_authorized}
-      not ctx.self_hosted and user.plan != 2 -> {:error, :not_authorized}
-      true -> create(repo, user, name, ctx, opts)
+      family(repo, user.id) != nil ->
+        {:error, :not_authorized}
+
+      not ctx.self_hosted and user.plan != 2 ->
+        {:error, :not_authorized}
+
+      true ->
+        name =
+          if is_binary(attrs["name"]),
+            do: String.replace(attrs["name"], ~r/\A[\0\t\n\v\f\r ]+|[\0\t\n\v\f\r ]+\z/, ""),
+            else: nil
+
+        case validate(name, ctx.locale) do
+          [] -> create(repo, user, name, ctx, opts)
+          errors -> {:invalid, errors, name}
+        end
     end
   end
 
