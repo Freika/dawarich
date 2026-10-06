@@ -20,6 +20,15 @@ defmodule Dawarich.Metrics.Poller do
 
   def sample do
     Dawarich.Metrics.Web.sample()
+    if Application.get_env(:dawarich, :jobs_runtime, true) do
+      try do
+        Dawarich.Metrics.Jobs.sample()
+      rescue
+        _ -> :ok
+      catch
+        :exit, _ -> :ok
+      end
+    end
     :telemetry.execute(
       [:dawarich, :runtime],
       %{memory: :erlang.memory(:total), processes: :erlang.system_info(:process_count)},

@@ -13,7 +13,7 @@ defmodule DawarichWeb.Metrics do
         conn
         |> put_resp_content_type("text/plain", nil)
         |> put_resp_header("content-type", "text/plain; version=0.0.4")
-        |> send_resp(200, Dawarich.Metrics.scrape())
+        |> send_resp(200, Dawarich.Metrics.Drain.scrape(Dawarich.Metrics.scrape()))
 
       true ->
         conn
