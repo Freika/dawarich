@@ -218,6 +218,37 @@ defmodule DawarichWeb.A12f3aRClosureTest do
     end
   end
 
+  @tag a12f3a_r04: true
+  test "R04: route-video delete and purge fencing matches current Rails contract without a native-owner Rails effect" do
+    for name <- ~w(destroy_html destroy_stream) do
+      state = capture("r04", name)
+      user = seed(state)
+      id = hd(state["before"]["route_videos"])["id"]
+      assert {:error, :not_found} = RouteVideos.destroy(ScratchRepo, user.id + 1, id, @now)
+      assert rows("SELECT id FROM route_videos") == [[id]]
+      assert rows("SELECT id FROM oban.oban_jobs") == []
+      assert {:error, :not_found} = RouteVideos.destroy(ScratchRepo, user.id, id + 50, @now)
+
+      conn =
+        Plug.Test.conn(:delete, "/route_videos/#{id}")
+        |> assign(:current_user, user)
+        |> assign(:rails_session, %{})
+        |> assign(:a8_format, if(name == "destroy_stream", do: :turbo_stream, else: :html))
+        |> assign(:now, @now)
+        |> Map.put(:path_params, %{"id" => to_string(id)})
+
+      conn = DawarichWeb.RouteVideoActions.call(conn, :destroy)
+      assert conn.status == state["status"]
+      assert conn.resp_body == state["body"]
+      assert get_resp_header(conn, "location") == List.wrap(state["location"])
+      assert rows("SELECT id FROM route_videos") == []
+      assert rows("SELECT id FROM active_storage_attachments") == []
+      assert rows("SELECT id FROM active_storage_blobs") == []
+      assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
+      assert rows("SELECT id FROM phoenix.rails_commands") == []
+    end
+  end
+
   defp normalize_urls(html),
     do:
       Regex.replace(

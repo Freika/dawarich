@@ -47,3 +47,9 @@ recipe/status compare to the existing captures. M-R03 expired newest instead
 of oldest and failed exact stream equality; restored GREEN. No completed
 retention adapter was rewritten. Equal-created-at ordering remains whatever
 the source relation specifies; no new tie policy is claimed.
+
+R04 returns native 404 for missing/foreign deletes in standalone mode. Actor
+scope, dependent detach, Turbo removal and HTML 303/flash are preserved.
+Initial RED was missing-record replay; GREEN; M-R04 omitted actor scope and
+failed the foreign-record assertion (`{:ok, id}` versus `{:error, :not_found}`);
+restored GREEN. Snapshot and shared-reference races use R05's storage fence.

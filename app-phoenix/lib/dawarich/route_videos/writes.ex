@@ -190,7 +190,9 @@ defmodule Dawarich.RouteVideos.Writes do
              log: false
            ).rows do
         [] ->
-          {:replay, "missing route video"}
+          if Dawarich.Standalone.enabled?(),
+            do: {:error, :not_found},
+            else: {:replay, "missing route video"}
 
         [[^id]] ->
           detach(repo, user_id, id, DateTime.to_naive(now))
