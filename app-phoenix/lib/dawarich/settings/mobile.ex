@@ -34,7 +34,7 @@ defmodule Dawarich.Settings.Mobile do
             Map.merge(settings["mobile"] || %{}, sanitized)
             |> Map.put(
               "updated_at",
-              ctx.now |> DateTime.truncate(:second) |> DateTime.to_iso8601()
+              timestamp(repo, settings, ctx.now)
             )
 
           settings = Map.put(settings, "mobile", mobile)
@@ -59,6 +59,21 @@ defmodule Dawarich.Settings.Mobile do
     end
   rescue
     _ -> {:error, 500, Api.failure()}
+  end
+
+  defp timestamp(repo, settings, now) do
+    zone = Dawarich.UserTimeZone.iana(repo, settings)
+
+    Dawarich.RailsTime.with_zone(repo, zone, fn ->
+      [[stamp]] =
+        repo.query!(
+          "SELECT " <> Dawarich.RailsTime.sql("$1::timestamp", 0),
+          [DateTime.to_naive(now)],
+          log: false
+        ).rows
+
+      stamp
+    end)
   end
 
   defp sanitize(raw) do

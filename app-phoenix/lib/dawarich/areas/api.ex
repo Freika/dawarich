@@ -4,8 +4,7 @@ defmodule Dawarich.Areas.Api do
   alias Dawarich.Settings.Api, as: Settings
   alias Dawarich.{RailsTime, RubyInteger}
   @fields ~w(id name latitude longitude radius created_at updated_at user_id)
-  @select "id,name,latitude::text,longitude::text,radius," <>
-            RailsTime.sql("created_at", 3) <> "," <> RailsTime.sql("updated_at", 3) <> ",user_id"
+  @select "id,name,latitude::text,longitude::text,radius,created_at,updated_at,user_id"
 
   def index(repo, user, ctx) do
     with :ok <- Settings.guard(user, ctx),
@@ -132,14 +131,40 @@ defmodule Dawarich.Areas.Api do
     end
   end
 
-  defp rows(repo, suffix, params),
-    do:
-      repo.query!("SELECT " <> @select <> " FROM areas " <> suffix, params, log: false).rows
-      |> Enum.map(fn row ->
-        Map.new(Enum.zip(@fields, row))
-        |> Map.update!("latitude", &decimal/1)
-        |> Map.update!("longitude", &decimal/1)
+  defp rows(repo, suffix, params) do
+    rows = repo.query!("SELECT " <> @select <> " FROM areas " <> suffix, params, log: false).rows
+
+    if rows == [] do
+      []
+    else
+      zone = Dawarich.UserTimeZone.iana(repo, Settings.read(repo, List.last(hd(rows))))
+
+      RailsTime.with_zone(repo, zone, fn ->
+        Enum.map(rows, fn [id, name, lat, lon, radius, created, updated, owner] ->
+          [[created, updated]] =
+            repo.query!(
+              "SELECT " <>
+                RailsTime.sql("$1::timestamp", 3) <> "," <> RailsTime.sql("$2::timestamp", 3),
+              [created, updated],
+              log: false
+            ).rows
+
+          Map.new(
+            Enum.zip(@fields, [
+              id,
+              name,
+              decimal(lat),
+              decimal(lon),
+              radius,
+              created,
+              updated,
+              owner
+            ])
+          )
+        end)
       end)
+    end
+  end
 
   defp decimal(value),
     do: value |> Decimal.new() |> Decimal.normalize() |> Decimal.to_string(:normal)

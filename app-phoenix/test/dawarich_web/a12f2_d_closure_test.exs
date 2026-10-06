@@ -268,6 +268,12 @@ defmodule DawarichWeb.A12f2DClosureTest do
     assert body == oracle("mobile_merge")["body"]
     assert body["settings"]["tracking_mode"] == "precise"
     assert persisted(user)["mobile"]["distance_filter"] == 1
+    settings(user, Map.put(persisted(user), "timezone", "Berlin"))
+
+    assert {:ok, 200, zoned} =
+             Mobile.update(Repo, user, %{"settings" => %{"auto_start" => true}}, ctx)
+
+    assert zoned == oracle("mobile_timezone")["body"]
     assert {:ok, 200, _} = Mobile.show(Repo, %{user | status: 0}, ctx)
 
     assert {:error, 401, _} =
@@ -319,6 +325,13 @@ defmodule DawarichWeb.A12f2DClosureTest do
     assert area["longitude"] == "13.405"
     assert area["radius"] == 100
     assert area["user_id"] == user.id
+    settings(user, %{"timezone" => "Berlin"})
+    assert {:ok, 200, zoned} = Areas.show(Repo, user, area["id"], ctx)
+
+    assert Map.drop(zoned, ~w(id user_id)) ==
+             Map.drop(oracle("area_timezone")["body"], ~w(id user_id))
+
+    settings(user, %{})
     assert kinds(user) == []
     assert count_area_jobs(area["id"]) == 1
 

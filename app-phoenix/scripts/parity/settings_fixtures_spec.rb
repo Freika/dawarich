@@ -1964,6 +1964,11 @@ RSpec.describe 'Phoenix fixtures: A12f2-D main API contracts', type: :request do
                                  tracking_visits: 'false', unknown: true }, expected_updated_at: 'stale' })
       capture.call('mobile_merge', :patch, '/api/v1/settings/mobile',
                    { settings: { time_filter: 9000, tracking_mode: 'bad', distance_filter: nil } })
+      actor.update_columns(settings: actor.reload.settings.merge('timezone' => 'Berlin'))
+      capture.call('mobile_timezone', :patch, '/api/v1/settings/mobile', { settings: { auto_start: true } })
+      area = create(:area, id: 912_620_004, user: actor, name: '雪', latitude: 52.52, longitude: 13.405, radius: 100)
+      capture.call('area_timezone', :get, "/api/v1/areas/#{area.id}")
+      actor.update_columns(settings: actor.reload.settings.except('timezone'))
       capture.call('progress_idle', :get, '/api/v1/settings/transportation_recalculation_status')
       capture.call('area_invalid', :post, '/api/v1/areas',
                    { area: { name: '', latitude: 91, longitude: 181, radius: 0 } })
