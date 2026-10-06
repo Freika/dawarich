@@ -84,3 +84,26 @@ enrichment/verifier (I05), scheduled children (I06), and rare exception/legacy
 envelope parity remain deferred under ruling 15. Seed 202 belongs to the
 controller's integration head. This package does not accept a Ruby-free
 release or change drain/rollback policy.
+
+## TeslaMate effect ownership reconciliation
+
+Finalization preserves the explicit native realtime owner path: filter anomalies
+synchronously, then publish `tracks.generate_realtime` to the existing outbox
+with the sync event dedupe key. Standalone mode with retained Sidekiq owner rows
+uses the native anomaly-arrival worker and debounced realtime-track worker.
+Both paths use `Tracks.BackfillCommands`; standalone emits no Rails commands.
+
+With Rails enabled and a Sidekiq realtime owner, the existing `publish/3`
+helper preserves anomaly ownership selection and the exact realtime reverse
+payload. Backfill retains its legacy-ingest option. R02 checks the explicit
+native path over a two-timestamp range and the retained-Sidekiq standalone
+path through anomaly execution. The TeslaMate sync contracts retain exact
+coexistence rows. R01 visits remains the integrated durable debouncer contract.
+
+AirTrail's native client requests a fresh socket through OTP's request-specific
+`socket_opts`, retaining the close header and TLS verification. A close header
+alone permits reuse of an already pooled connection. The existing connection
+test warms the pool, serves both possible sockets, and asserts the fresh socket
+was used; it also retains the close-header assertion. This deterministic
+contract protects the local HTTP integration tests and normal client calls
+from stale pooled sessions without retries or timeout changes.

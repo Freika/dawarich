@@ -1,3 +1,4 @@
+import { VideoStudio } from "./hooks/video_studio.js"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import { FamilyPage } from "family_page"
@@ -35,7 +36,7 @@ const turboOwns = (element) => {
 
 const liveSocket = new LiveSocket("/phoenix/live", Socket, {
   params: { _csrf_token: meta("phoenix-csrf-token") },
-  hooks: { ChangelogWidget, RailsStimulus, MapShell, FamilyPage },
+  hooks: { ChangelogWidget, RailsStimulus, MapShell, FamilyPage, VideoStudio },
   dom: {
     onBeforeElUpdated(fromEl, toEl) {
       if (

@@ -21,7 +21,9 @@ defmodule Dawarich.Stats do
   def in_window?(%{year: year, month: month}, {cut_year, cut_month}),
     do: year > cut_year or (year == cut_year and month >= cut_month)
 
-  def index(user, context, store_geodata, now) do
+  def index(user, context, store_geodata, now, opts \\ []) do
+    repo = Keyword.get(opts, :repo, Repo)
+
     rows =
       query(
         """
@@ -37,7 +39,8 @@ defmodule Dawarich.Stats do
             toponyms: Toponyms.sanitize(toponyms),
             updated_on: updated_on
           }
-        end
+        end,
+        repo
       )
 
     years =
@@ -53,15 +56,16 @@ defmodule Dawarich.Stats do
         }
       end)
 
-    toponyms = Enum.flat_map(rows, & &1.toponyms)
+    summary_rows = Enum.map(rows, &Map.take(&1, [:distance, :toponyms]))
+    summary = Dawarich.Cache.Readers.summary(user.id, summary_rows)
 
     %{
       years: years,
       locked_years: locked(rows, years, context.restricted),
-      total_distance: rows |> Enum.map(& &1.distance) |> Enum.sum(),
-      countries_visited: Toponyms.countries(toponyms),
-      cities_visited: Toponyms.cities(toponyms),
-      points: points(user.points_count || 0, PointCounts.fetch(user.id, store_geodata, now))
+      total_distance: summary.total_distance,
+      countries_visited: summary.countries_visited,
+      cities_visited: summary.cities_visited,
+      points: points(user.points_count || 0, PointCounts.fetch(user.id, store_geodata, now, opts))
     }
   end
 
@@ -149,5 +153,5 @@ defmodule Dawarich.Stats do
 
   defp sharing(_settings), do: %{enabled: false, expiration: nil}
 
-  defp query(sql, params, row), do: Repo.query!(sql, params).rows |> Enum.map(row)
+  defp query(sql, params, row, repo \\ Repo), do: repo.query!(sql, params).rows |> Enum.map(row)
 end

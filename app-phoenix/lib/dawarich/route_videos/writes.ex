@@ -90,7 +90,7 @@ defmodule Dawarich.RouteVideos.Writes do
 
       {:error, _} ->
         repo.transaction(fn ->
-          unless attached?(repo, blob_id), do: purge_unattached(repo, user_id, blob_id)
+          Dawarich.RouteVideos.AttachmentEffects.cleanup_failed_save!(repo, user_id, blob_id)
         end)
 
         {:error, %{phase: :pre_attach}}
@@ -118,7 +118,9 @@ defmodule Dawarich.RouteVideos.Writes do
       id
     end)
   rescue
-    _e in [Postgrex.Error, DBConnection.ConnectionError, RuntimeError] -> {:error, :save_failed}
+    error in [Postgrex.Error, DBConnection.ConnectionError, RuntimeError] ->
+      report(error, __STACKTRACE__)
+      {:error, :save_failed}
   end
 
   defp native?(repo),
@@ -148,7 +150,8 @@ defmodule Dawarich.RouteVideos.Writes do
     ids = Retention.expire_over_cap(repo, user_id, limit, now)
     {:ok, %{id: id, evicted: ids}}
   rescue
-    _e in [Postgrex.Error, DBConnection.ConnectionError, RuntimeError] ->
+    error in [Postgrex.Error, DBConnection.ConnectionError, RuntimeError] ->
+      report(error, __STACKTRACE__)
       {:error, %{phase: :post_commit, id: id}}
   end
 
@@ -190,7 +193,9 @@ defmodule Dawarich.RouteVideos.Writes do
              log: false
            ).rows do
         [] ->
-          {:replay, "missing route video"}
+          if Dawarich.Standalone.enabled?(),
+            do: {:error, :not_found},
+            else: {:replay, "missing route video"}
 
         [[^id]] ->
           detach(repo, user_id, id, DateTime.to_naive(now))
@@ -212,4 +217,18 @@ defmodule Dawarich.RouteVideos.Writes do
   end
 
   def destroy(_repo, _user_id, _id, _now), do: {:replay, "route video id"}
+
+  defp report(error, stack) do
+    if Sentry.get_dsn(),
+      do:
+        Sentry.capture_exception(error,
+          stacktrace: stack,
+          handled: true,
+          tags: %{"surface" => "route_videos"}
+        )
+
+    :ok
+  rescue
+    _ -> :ok
+  end
 end

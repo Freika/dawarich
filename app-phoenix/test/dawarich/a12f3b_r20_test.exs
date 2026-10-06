@@ -150,6 +150,8 @@ defmodule Dawarich.A12f3bR20Test do
     assert accepted["start_at"] == DateTime.to_unix(now) - 21_600
     assert accepted["end_at"] == DateTime.to_unix(now)
     assert accepted["stepping"] == "calendar"
+    assert accepted["time_zone"] == "Europe/Berlin"
+    assert accepted["plan_restricted"] == false
     assert DateTime.diff(at, now) == 300
     assert Dawarich.State.claimed?(ScratchRepo, "visit_realtime:user:#{uid}")
     assert rows("SELECT kind FROM phoenix.rails_commands WHERE kind='visits.realtime'") == []
@@ -234,6 +236,32 @@ defmodule Dawarich.A12f3bR20Test do
 
     assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :visit_suggesting)
     assert length(visits(uid)) == 1
+
+    for {plan, self_hosted, restricted} <- [
+          {0, "false", true},
+          {1, "false", false},
+          {0, "true", false}
+        ] do
+      rows("UPDATE users SET plan=$2 WHERE id=$1", [uid, plan])
+      assert Dawarich.Visits.RealtimeDebouncer.clear(ScratchRepo, uid) == :ok
+
+      previous =
+        rows("SELECT event_id,payload FROM public.job_outbox WHERE command_type='visits.suggest'")
+
+      env = %{
+        "DAWARICH_RAILS" => "on",
+        "SELF_HOSTED" => self_hosted,
+        "PHOTON_API_HOST" => "photon.example.invalid"
+      }
+
+      assert [_] = Dawarich.Ingest.Intake.write(prepared, uid, Keyword.put(opts, :env, env))
+
+      assert [[_, %{"plan_restricted" => ^restricted, "stepping" => "calendar"}]] =
+               rows(
+                 "SELECT event_id,payload FROM public.job_outbox WHERE command_type='visits.suggest'"
+               )
+               |> Enum.reject(&(&1 in previous))
+    end
   end
 
   defp pipeline! do
