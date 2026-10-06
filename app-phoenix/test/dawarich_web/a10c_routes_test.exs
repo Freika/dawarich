@@ -69,7 +69,7 @@ defmodule DawarichWeb.A10cRoutesTest do
     end
   end
 
-  test "routes public HTML with shared and achievements rollback keys and keeps PNG Rails" do
+  test "routes public HTML and PNG with shared and achievements rollback keys" do
     path = "/shared/achievements/a10c0000-0000-4000-8000-000000043001"
     route = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
     assert route.plug == DawarichWeb.AchievementPublicPage
@@ -82,16 +82,23 @@ defmodule DawarichWeb.A10cRoutesTest do
             Strangler.call(build_conn(method, path) |> put_req_header("accept", "text/html"), []).halted
           )
 
-    assert Phoenix.Router.route_info(Router, "GET", path <> "/og.png", "www.example.com") ==
-             :error
+    image = Phoenix.Router.route_info(Router, "GET", path <> "/og.png", "www.example.com")
+    assert image.plug == DawarichWeb.AchievementPublicImage
+    assert image.rails_key == "achievements"
+    assert image.pipe_through == [:achievement_image]
+
+    for method <- ~w(GET HEAD) do
+      conn = build_conn(method, path <> "/og.png") |> put_req_header("accept", "image/png")
+      refute Strangler.call(conn, []).halted
+    end
 
     for key <- ~w(shared achievements) do
       Application.put_env(:dawarich, :rails_routes, [key])
       assert_proxy(build_conn("GET", path))
+      assert_proxy(build_conn("HEAD", path <> "/og.png"))
     end
 
     Application.put_env(:dawarich, :rails_routes, [])
-    assert_proxy(build_conn("HEAD", path <> "/og.png"))
 
     for path <-
           ~w(/settings/users/44001 /settings/users/export /settings/users/import /settings/background_jobs /admin/settings/test_geocoding /sidekiq /admin/flipper) do
