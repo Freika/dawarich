@@ -15,6 +15,7 @@ defmodule Dawarich.Metrics do
       [
         {TelemetryMetricsPrometheus.Core,
          name: :dawarich_prometheus, metrics: definitions(), start_async: false},
+        Dawarich.Metrics.Web,
         Dawarich.Metrics.Poller
       ],
       strategy: :one_for_all
@@ -24,7 +25,7 @@ defmodule Dawarich.Metrics do
   def scrape, do: TelemetryMetricsPrometheus.Core.scrape(:dawarich_prometheus)
 
   def definitions do
-    [
+    Dawarich.Metrics.Web.definitions() ++ [
       last_value("dawarich_runtime_memory_bytes",
         event_name: [:dawarich, :runtime],
         measurement: :memory,

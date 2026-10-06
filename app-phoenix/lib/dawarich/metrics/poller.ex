@@ -19,6 +19,7 @@ defmodule Dawarich.Metrics.Poller do
   end
 
   def sample do
+    Dawarich.Metrics.Web.sample()
     :telemetry.execute(
       [:dawarich, :runtime],
       %{memory: :erlang.memory(:total), processes: :erlang.system_info(:process_count)},
