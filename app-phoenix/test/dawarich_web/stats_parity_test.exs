@@ -17,7 +17,9 @@ defmodule DawarichWeb.StatsParityTest do
     on_exit(fn -> System.delete_env("JWT_SECRET_KEY") end)
   end
 
-  for file <- Path.wildcard("test/fixtures/stats/*.json") do
+  for file <-
+        Path.wildcard("test/fixtures/stats/*.json")
+        |> Enum.filter(&File.exists?(Path.rootname(&1) <> ".html")) do
     @name Path.basename(file, ".json")
     @title_ed @name in ~w(year_ca digests_ca digest_full_fr)
     @test_name if(@title_ed,

@@ -87,7 +87,7 @@ defmodule Dawarich.EnhancedImport.DestroyGpxWorkerTest do
   end
 
   test "a failure writes Rails' message and re-raises" do
-    {id, _fixture} = undo_fixture!()
+    {id, fixture} = undo_fixture!()
 
     HookRepo.set_hook(fn sql, _params ->
       if sql =~ "DELETE FROM places", do: raise("boom")
@@ -108,7 +108,8 @@ defmodule Dawarich.EnhancedImport.DestroyGpxWorkerTest do
     assert rows("SELECT count(*) FROM places") == [[2]]
 
     HookRepo.clear_hook()
-    rows("UPDATE visits SET import_id = $1 WHERE id = 1265", [id])
+    [visit | _] = fixture["input"]["visits"]
+    rows("UPDATE visits SET import_id = $1 WHERE id = $2", [id, visit["id"]])
 
     assert_raise RuntimeError, "extracted visits or tracks present", fn ->
       DestroyGpxWorker.run(HookRepo, job(id))

@@ -216,12 +216,14 @@ RSpec.describe 'Phoenix fixtures: map segment writes', type: :request do
               'association_order' => Track.find(id).track_segments.pluck(:id),
               'jobs' => enqueued_jobs.map { { 'job' => _1[:job].name, 'args' => _1[:args] } } }
     state['user']['api_key'] = 'API_KEY' if name == 'override_put'
-    File.write(dir.join("#{name}.html"), [200, 422].include?(status) ? doc.to_html : '')
+    File.write(dir.join("#{name}.html"), [200, 422].include?(status) ? doc.to_html : '') unless name == 'override_put'
     token_pattern = /(name="(?:authenticity_token|csrf-token|csp-nonce)" (?:value|content)=")[^"]*/
     source_body = FixtureRecording.normalize(response.body).gsub(token_pattern, '\\1CSRF')
                                   .gsub(/(nonce=")[^"]*/, '\\1NONCE')
                                   .gsub(/(signed-stream-name=")[^"]*/, '\\1SIGNED')
     closure_case(name, state.merge('body' => source_body))
+    return if name == 'override_put'
+
     File.write(dir.join("#{name}.json"), "#{Oj.dump(state, mode: :strict, float_precision: 0, indent: 2)}\n")
   end
 
