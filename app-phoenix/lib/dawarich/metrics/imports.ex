@@ -14,11 +14,14 @@ defmodule Dawarich.Metrics.Imports do
       repo.transaction(fn ->
         repo.query!("SET LOCAL statement_timeout = '500ms'", [], log: false)
         [[now]] = repo.query!("SELECT now()", [], log: false).rows
+
         repo.query!(@in_flight, [], log: false).rows
-        |> Enum.reduce({%{"pending" => 0, "running" => 0}, 0}, fn [state, payload], {oldest, stalled} ->
+        |> Enum.reduce({%{"pending" => 0, "running" => 0}, 0}, fn [state, payload],
+                                                                  {oldest, stalled} ->
           case started(payload) do
             nil ->
               {oldest, stalled + 1}
+
             started ->
               age = DateTime.diff(now, started)
               oldest = Map.update!(oldest, @states[state], &max(&1, age))
@@ -28,7 +31,8 @@ defmodule Dawarich.Metrics.Imports do
       end)
 
     for {state, age} <- oldest,
-      do: :telemetry.execute([:dawarich, :imports, :age], %{age: age}, %{state: state})
+        do: :telemetry.execute([:dawarich, :imports, :age], %{age: age}, %{state: state})
+
     :telemetry.execute([:dawarich, :imports, :stalled], %{count: stalled}, %{})
   end
 
@@ -45,9 +49,14 @@ defmodule Dawarich.Metrics.Imports do
   def definitions do
     [
       last_value("dawarich_imports_extraction_oldest_age_seconds",
-        event_name: [:dawarich, :imports, :age], measurement: :age, tags: [:state]),
+        event_name: [:dawarich, :imports, :age],
+        measurement: :age,
+        tags: [:state]
+      ),
       last_value("dawarich_imports_extractions_stalled",
-        event_name: [:dawarich, :imports, :stalled], measurement: :count)
+        event_name: [:dawarich, :imports, :stalled],
+        measurement: :count
+      )
     ]
   end
 

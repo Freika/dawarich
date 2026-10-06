@@ -4,8 +4,10 @@ defmodule Dawarich.MetricsTest do
   test "enabled web runtime owns one Prometheus reporter while idle role owns none" do
     old = System.get_env("PROMETHEUS_EXPORTER_ENABLED")
     System.put_env("PROMETHEUS_EXPORTER_ENABLED", "true")
+
     on_exit(fn ->
-      if old, do: System.put_env("PROMETHEUS_EXPORTER_ENABLED", old),
+      if old,
+        do: System.put_env("PROMETHEUS_EXPORTER_ENABLED", old),
         else: System.delete_env("PROMETHEUS_EXPORTER_ENABLED")
     end)
 

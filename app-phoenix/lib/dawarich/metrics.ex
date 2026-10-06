@@ -26,17 +26,22 @@ defmodule Dawarich.Metrics do
   def scrape, do: TelemetryMetricsPrometheus.Core.scrape(:dawarich_prometheus)
 
   def definitions do
-    Dawarich.Metrics.Imports.definitions() ++ Dawarich.Metrics.Archive.definitions() ++ Dawarich.Metrics.Jobs.definitions() ++ Dawarich.Metrics.Web.definitions() ++ [
-      last_value("dawarich_runtime_memory_bytes",
-        event_name: [:dawarich, :runtime],
-        measurement: :memory,
-        description: "BEAM total memory in bytes"
-      ),
-      last_value("dawarich_runtime_processes",
-        event_name: [:dawarich, :runtime],
-        measurement: :processes,
-        description: "BEAM process count"
-      )
-    ]
+    Dawarich.Metrics.Map.definitions() ++
+      Dawarich.Metrics.Imports.definitions() ++
+      Dawarich.Metrics.Archive.definitions() ++
+      Dawarich.Metrics.Jobs.definitions() ++
+      Dawarich.Metrics.Web.definitions() ++
+      [
+        last_value("dawarich_runtime_memory_bytes",
+          event_name: [:dawarich, :runtime],
+          measurement: :memory,
+          description: "BEAM total memory in bytes"
+        ),
+        last_value("dawarich_runtime_processes",
+          event_name: [:dawarich, :runtime],
+          measurement: :processes,
+          description: "BEAM process count"
+        )
+      ]
   end
 end
