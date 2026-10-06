@@ -7,7 +7,7 @@ defmodule Dawarich.ShareManagement.Params do
 
   @settings ~w(show_photos show_stats show_route show_countries show_description show_days show_day_notes)
   @false_values [false, 0, "0", "f", "F", "false", "FALSE", "off", "OFF"]
-  @top ~w(shared_link authenticity_token commit hub start_date end_date)
+  @top ~w(shared_link authenticity_token commit hub start_date end_date format)
 
   def create(user, type, trip, params, locale) do
     if supported?(user, type, trip, params),
@@ -18,13 +18,17 @@ defmodule Dawarich.ShareManagement.Params do
   defp supported?(user, type, trip, params) do
     raw = if is_map(params), do: Map.get(params, "shared_link", %{})
 
-    type in ["live", "trip"] and (type == "live" or (is_map(trip) and is_integer(trip[:id]))) and
+    type in ["live", "trip", "track", "timeline"] and
+      (type in ["live", "timeline"] or (is_map(trip) and is_integer(trip[:id]))) and
       is_map(user.settings) and text?(user.settings["timezone"]) and is_map(params) and
       Enum.all?(params, fn {key, value} ->
         key in @top and (key == "shared_link" or text?(value))
       end) and
       is_map(raw) and Enum.all?(~w(name magic_phrase expires_at audience), &text?(raw[&1])) and
-      date_shape?(raw["expires_at"]) and settings?(raw["settings"])
+      date_shape?(raw["expires_at"]) and
+      (type != "timeline" or
+         Enum.all?(~w(start_date end_date), &(text?(raw[&1]) and date_shape?(raw[&1])))) and
+      settings?(raw["settings"])
   end
 
   def date_shape?(nil), do: true
@@ -66,12 +70,25 @@ defmodule Dawarich.ShareManagement.Params do
         },
         else: %{}
 
-    name = if Ruby.blank?(raw["name"]), do: default_name(type, trip, locale), else: raw["name"]
+    resource = if type == "timeline", do: raw, else: trip
+
+    name =
+      if Ruby.blank?(raw["name"]), do: default_name(type, resource, locale), else: raw["name"]
+
+    defaults =
+      if type == "timeline",
+        do: %{
+          "show_photos" => false,
+          "start_date" => raw["start_date"],
+          "end_date" => raw["end_date"]
+        },
+        else: defaults
 
     {:ok,
      %{
        user_id: user.id,
-       resource_type: if(type == "live", do: 3, else: 0),
+       resource_type:
+         Map.fetch!(%{"live" => 3, "trip" => 0, "track" => 1, "timeline" => 2}, type),
        resource_id: if(trip, do: trip.id),
        name: name,
        magic_phrase:
@@ -101,7 +118,8 @@ defmodule Dawarich.ShareManagement.Params do
         []
       end
 
-    family_errors ++
+    timeline_errors(attrs, locale) ++
+      family_errors ++
       ([
          {Ruby.blank?(attrs.name), :name, "errors.messages.blank", %{}},
          {codepoints(attrs.name) > 255, :name, "errors.messages.too_long", %{"count" => 255}},
@@ -116,6 +134,32 @@ defmodule Dawarich.ShareManagement.Params do
          _ -> []
        end))
   end
+
+  defp timeline_errors(%{resource_type: 2, settings: settings}, locale) do
+    first = settings["start_date"]
+    last = settings["end_date"]
+
+    key =
+      cond do
+        Ruby.blank?(first) or Ruby.blank?(last) ->
+          "must_include_start_date_and_end_date_for_timeline_shares"
+
+        is_nil(date(first)) or is_nil(date(last)) ->
+          "start_date_and_end_date_must_be_parseable_as_dates"
+
+        Date.compare(date(first), date(last)) == :gt ->
+          "end_date_must_be_on_or_after_start_date"
+
+        true ->
+          nil
+      end
+
+    if key,
+      do: [{:settings, full_message(locale, :settings, "models.shared_link." <> key, %{})}],
+      else: []
+  end
+
+  defp timeline_errors(_attrs, _locale), do: []
 
   defp full_message(locale, field, key, bindings) do
     attribute =
@@ -139,6 +183,18 @@ defmodule Dawarich.ShareManagement.Params do
     {:ok, name} = I18n.t(locale, "controllers.share_links.lives.default_name")
     name
   end
+
+  defp default_name("timeline", raw, locale) do
+    {:ok, name} =
+      I18n.t(locale, "controllers.share_links.timelines.default_name", %{
+        "start_date" => raw["start_date"],
+        "end_date" => raw["end_date"]
+      })
+
+    name
+  end
+
+  defp default_name("track", track, _locale), do: track.name
 
   defp default_name("trip", trip, locale) do
     {:ok, name} =

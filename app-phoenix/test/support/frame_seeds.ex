@@ -173,6 +173,7 @@ defmodule Dawarich.Test.FrameSeeds do
     do: "test/fixtures/family_pages/#{name}.json" |> File.read!() |> Jason.decode!()
 
   def seed_management!(name) do
+    Code.ensure_loaded!(Dawarich.Accounts.User)
     fixture = "test/fixtures/share_management/#{name}.json" |> File.read!() |> Jason.decode!()
 
     for actor <- fixture["actors"] do

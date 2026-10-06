@@ -6,6 +6,7 @@ defmodule DawarichWeb.ShareManagementForm do
   alias DawarichWeb.{
     Locale,
     RailsCsrf,
+    RailsForm,
     RailsSession,
     RequestURL,
     ShareManagementDocument,
@@ -18,6 +19,18 @@ defmodule DawarichWeb.ShareManagementForm do
   alias DawarichWeb.Api.Body
 
   def init(action), do: action
+
+  def admit(conn, _opts) do
+    case admission(conn) do
+      :ok -> assign(conn, :api_params, Map.delete(conn.assigns.api_params, "_method"))
+      {:replay, reason} -> Body.replay(conn, reason)
+    end
+  end
+
+  def admission(conn) do
+    decoded = if Body.kind(conn) == :json, do: delete_req_header(conn, "content-type"), else: conn
+    RailsForm.admission(decoded, allowed_overrides: ~w(PATCH DELETE))
+  end
 
   def call(conn, {type, action}) do
     user = conn.assigns.current_user
@@ -61,7 +74,7 @@ defmodule DawarichWeb.ShareManagementForm do
         ShareManagementDocument.frame(%{
           __changed__: nil,
           ctx: ShareManagementPage.context(conn),
-          page: %{share: nil, trip: result.trip},
+          page: invalid_page(type, result),
           type: type
         })
 
@@ -84,7 +97,12 @@ defmodule DawarichWeb.ShareManagementForm do
     body =
       if type == "shared",
         do: "",
-        else: Translate.t(conn.assigns.locale, "controllers.trips.share_links.not_found", %{})
+        else:
+          Translate.t(
+            conn.assigns.locale,
+            "controllers.#{if type == "track", do: "tracks", else: "trips"}.share_links.not_found",
+            %{}
+          )
 
     conn
     |> put_resp_content_type(if(type == "shared", do: "text/html", else: "text/plain"))
@@ -103,15 +121,26 @@ defmodule DawarichWeb.ShareManagementForm do
     |> assign(:flash_messages, [])
   end
 
+  defp invalid_page("timeline", result) do
+    %{
+      start_date: result.attrs.settings["start_date"],
+      end_date: result.attrs.settings["end_date"]
+    }
+    |> Map.reject(fn {_key, value} -> is_nil(value) end)
+    |> Map.merge(%{share: nil, trip: nil, errors: Enum.map(result.errors, &elem(&1, 1))})
+  end
+
+  defp invalid_page(_type, result), do: %{share: nil, trip: result.trip}
+
   defp supported?(conn, params, action) do
-    allowed = ~w(authenticity_token commit hub start_date end_date)
+    allowed = ~w(authenticity_token commit hub start_date end_date format)
     allowed = if action == :create, do: ["shared_link" | allowed], else: allowed
     accept = get_req_header(conn, "accept") |> Enum.join(",")
 
-    not Map.has_key?(params, "format") and
+    params["format"] in [nil, "json"] and
       (accept == "" or DawarichWeb.Strangler.browser_like?(accept) or
          Enum.all?(String.split(accept, ","), fn value ->
-           (value |> String.split(";") |> hd() |> String.trim()) in ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
+           (value |> String.split(";") |> hd() |> String.trim()) in ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html application/json)
          end)) and
       Enum.all?(params, fn {key, value} ->
         key in allowed and
@@ -122,12 +151,17 @@ defmodule DawarichWeb.ShareManagementForm do
 
   defp present?(nil), do: false
   defp present?(text), do: String.trim(text) != ""
+  defp trip_id(%{"track_id" => id}), do: String.to_integer(id)
   defp trip_id(%{"trip_id" => id}), do: String.to_integer(id)
   defp trip_id(_), do: nil
+  defp tab("timeline"), do: "timeline"
   defp tab("live"), do: "live"
   defp tab("shared"), do: "shared"
+  defp tab("track"), do: nil
   defp tab("trip"), do: nil
+  defp base("timeline", _), do: "/share_links/timeline"
   defp base("live", _), do: "/share_links/live"
+  defp base("track", track), do: "/tracks/#{track.id}/share_link"
   defp base("trip", trip), do: "/trips/#{trip.id}/share_link"
 
   defp notice(conn, action) do

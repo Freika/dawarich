@@ -147,6 +147,53 @@ RSpec.describe 'Phoenix fixtures: authenticated share management', type: :reques
     end
   end
 
+  it 'writes track and timeline six-action contracts and failed replacement rollback' do
+    target = dir.join('a12f3b')
+    allow(self).to receive(:dir).and_return(target)
+    travel_to now do
+      user = management_actor(98_101)
+      foreign = management_actor(98_102)
+      management_trip(user, 99_101)
+      management_trip(foreign, 99_102)
+      [user, foreign].each_with_index do |actor, index|
+        Track.insert!({ id: 99_103 + index, user_id: actor.id, start_at: now - 2.hours,
+                        end_at: now - 1.hour, distance: 1500, dominant_mode: 1,
+                        original_path: 'LINESTRING(12.3731 51.3397,12.3811 51.3437)',
+                        created_at: now, updated_at: now })
+      end
+      { 'track' => '/tracks/99103/share_link', 'timeline' => '/share_links/timeline' }.each do |type, base|
+        management_seed(user, foreign)
+        capture_management("#{type}_new_en", user, :get, "#{base}/new",
+                           headers: { 'Turbo-Frame' => 'share-link-modal' })
+        head = capture_management("#{type}_head_en", user, :head, "#{base}/new")
+        expect(head['status']).to eq(200)
+        SharedLink.where(user_id: user.id, resource_type: type).delete_all
+        capture_management("#{type}_empty_new_en", user, :get, "#{base}/new",
+                           headers: { 'Turbo-Frame' => 'share-link-modal' })
+        attrs = { name: '', magic_phrase: 'synthetic-phrase', expires_at: '2026-10-25',
+                  settings: { show_photos: '1' } }
+        attrs.merge!(start_date: '2026-09-01', end_date: '2026-09-07') if type == 'timeline'
+        created = capture_management("#{type}_create_en", user, :post, base, params: { shared_link: attrs })
+        expect(created['status']).to eq(302)
+        before = management_rows('shared_links')
+        failed = capture_management("#{type}_invalid_en", user, :post, base,
+                                    params: { shared_link: attrs.merge(magic_phrase: 'x' * 256) })
+        expect(failed['status']).to eq(422)
+        expect(management_rows('shared_links')).to eq(before)
+        { 'url' => [:post, '/regenerate'], 'phrase' => [:post, '/regenerate_phrase'],
+          'revoke' => [:patch, '/revoke'] }.each do |label, (verb, suffix)|
+          result = capture_management("#{type}_#{label}_en", user, verb, base + suffix)
+          expect(result['status']).to eq(302)
+        end
+        capture_management("#{type}_recreate_en", user, :post, base, params: { shared_link: attrs })
+        deleted = capture_management("#{type}_delete_en", user, :delete, base)
+        expect(deleted['status']).to eq(302)
+      end
+      foreign_track = capture_management('track_foreign_en', user, :get, '/tracks/99104/share_link/new')
+      expect(foreign_track['status']).to eq(404)
+    end
+  end
+
   it 'failed live replacement rolls back rows but broadcasts revoked to old links' do
     travel_to now do
       user = management_actor(98_101)

@@ -2,7 +2,7 @@ defmodule Dawarich.ShareManagement.Mutations do
   @moduledoc false
 
   alias Dawarich.ShareManagement.{Params, Read}
-  alias Dawarich.{RailsCommands, Repo}
+  alias Dawarich.{Cable, Repo}
 
   def run(user, type, trip_id, action, params, locale, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
@@ -11,13 +11,15 @@ defmodule Dawarich.ShareManagement.Mutations do
       case type do
         "live" -> Read.live(user, now)
         "trip" -> Read.trip(user, trip_id, now)
+        "track" -> Read.track(user, trip_id, now)
+        "timeline" -> Read.timeline(user, params, now)
         "shared" -> Read.owned(user, trip_id)
         _ -> :rails
       end
 
     with {:ok, page} <- resource do
       cond do
-        type == "shared" and (action != :revoke or page.share.type not in ["live", "trip"]) ->
+        type == "shared" and action != :revoke ->
           :rails
 
         action != :create and is_nil(page.share) ->
@@ -36,7 +38,13 @@ defmodule Dawarich.ShareManagement.Mutations do
 
       cond do
         type == "live" and page.share != nil and errors != [] ->
-          :rails
+          {:ok, hub} = Read.hub(user, %{}, now)
+
+          for share <- Enum.sort_by(hub.shares, & &1.id),
+              share.type == "live",
+              do: broadcast(user, share)
+
+          {:invalid, %{attrs: attrs, errors: errors, trip: page.trip}}
 
         errors != [] ->
           {:invalid, %{attrs: attrs, errors: errors, trip: page.trip}}
@@ -165,6 +173,8 @@ defmodule Dawarich.ShareManagement.Mutations do
       case type do
         "live" -> Read.live(user, now)
         "trip" -> Read.trip(user, page.trip.id, now)
+        "track" -> Read.track(user, page.trip.id, now)
+        "timeline" -> Read.timeline(user, %{}, now)
         "shared" -> Read.owned(user, page.share.id)
       end
 
@@ -173,7 +183,6 @@ defmodule Dawarich.ShareManagement.Mutations do
         Repo.rollback(missing(page))
 
       {:ok, page} ->
-        if type == "shared" and page.share.type not in ["live", "trip"], do: Repo.rollback(:rails)
         page
 
       error ->
@@ -182,6 +191,7 @@ defmodule Dawarich.ShareManagement.Mutations do
   end
 
   defp missing(%{trip: nil}), do: {:missing, "/map/v2"}
+  defp missing(%{trip: %{type: "track"}}), do: {:missing, "/map/v2"}
   defp missing(%{trip: trip}), do: {:missing, "/trips/#{trip.id}"}
   defp outcome({:error, value}) when value == :rails or is_tuple(value), do: value
   defp outcome(value), do: value
@@ -207,11 +217,8 @@ defmodule Dawarich.ShareManagement.Mutations do
     Map.put(attrs, :id, id)
   end
 
-  defp broadcast(user, %{type: "live", id: id}) do
-    RailsCommands.insert!(Repo, "share_management.live_revoked", %{
-      "user_id" => user.id,
-      "share_id" => id
-    })
+  defp broadcast(_user, %{type: "live", id: id}) do
+    Cable.broadcast_to("shared_location", {:shared_link, id}, %{"revoked" => true}, repo: Repo)
   end
 
   defp broadcast(_user, _share), do: :ok
