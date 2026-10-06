@@ -146,11 +146,13 @@ defmodule Dawarich.Imports.NormalLifecycle do
 
   defp publish(lease, context) do
     ImportState.effect!(lease, fn ->
-      RailsCommands.insert!(lease.repo, "imports.progress", %{
-        "import_id" => lease.import.id,
-        "user_id" => lease.import.user_id,
-        "locale" => context.locale
-      })
+      unless Dawarich.Standalone.enabled?() do
+        RailsCommands.insert!(lease.repo, "imports.progress", %{
+          "import_id" => lease.import.id,
+          "user_id" => lease.import.user_id,
+          "locale" => context.locale
+        })
+      end
     end)
 
     Dawarich.Imports.Events.broadcast(lease.import.user_id)
