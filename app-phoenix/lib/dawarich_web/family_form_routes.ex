@@ -33,6 +33,12 @@ defmodule DawarichWeb.FamilyFormRoutes do
         {"POST", "/family/memberships"} ->
           DawarichWeb.FamilyInvitationActions.call(conn, :accept)
 
+        {"POST", "/family/location_requests"} ->
+          DawarichWeb.FamilyRequestActions.call(conn, :create)
+
+        {"PATCH", "/family/location_requests/" <> rest} ->
+          request_action(conn, rest)
+
         {"POST", "/family"} ->
           FamilyActions.call(conn, :create)
 
@@ -45,12 +51,28 @@ defmodule DawarichWeb.FamilyFormRoutes do
     end
   end
 
+  defp request_action(conn, rest) do
+    case String.split(rest, "/") do
+      [id, "accept"] ->
+        DawarichWeb.FamilyRequestActions.call(%{conn | path_params: %{"id" => id}}, :accept)
+
+      [id, "decline"] ->
+        DawarichWeb.FamilyRequestActions.call(%{conn | path_params: %{"id" => id}}, :decline)
+
+      _other ->
+        conn |> Plug.Conn.send_resp(404, "") |> Plug.Conn.halt()
+    end
+  end
+
   defmacro routes do
     quote do
       get "/family/invitations/new", DawarichWeb.FamilyInvitationPage, :new
       post "/family/invitations", DawarichWeb.FamilyInvitationActions, :create
       delete "/family/invitations/:id", DawarichWeb.FamilyInvitationActions, :destroy
       post "/family/memberships", DawarichWeb.FamilyInvitationActions, :accept
+      post "/family/location_requests", DawarichWeb.FamilyRequestActions, :create
+      patch "/family/location_requests/:id/accept", DawarichWeb.FamilyRequestActions, :accept
+      patch "/family/location_requests/:id/decline", DawarichWeb.FamilyRequestActions, :decline
       post "/family", DawarichWeb.FamilyActions, :create
       patch "/family", DawarichWeb.FamilyActions, :update
       put "/family", DawarichWeb.FamilyActions, :update

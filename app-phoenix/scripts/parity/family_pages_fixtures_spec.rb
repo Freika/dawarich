@@ -219,6 +219,45 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
     end
   end
 
+  it 'characterizes request target consent, expiry and mail failure effects' do
+    travel_to now do
+      owner, member, outsider, family = family_graph('en')
+      write_family(owner, :post, '/family/location_requests', { target_user_id: member.id })
+      expect(response.status).to eq(302)
+      request = Family::LocationRequest.find_by!(requester: owner, target_user: member)
+      expect(request.expires_at).to eq(now + 24.hours)
+      write_family(owner, :patch, "/family/location_requests/#{request.id}/accept", { duration: '1h' })
+      expect(response.status).to eq(302)
+      expect(request.reload).to be_pending
+      write_family(member, :patch, "/family/location_requests/#{request.id}/accept", { duration: '1h' })
+      expect(response.status).to eq(302)
+      expect(request.reload).to be_accepted
+      expect(member.reload.family_sharing_duration).to eq('1h')
+      write_family(member, :post, "/family/location_requests/#{request.id}/decline", { _method: 'patch' })
+      expect(response.status).to eq(302)
+      expect(request.reload).to be_accepted
+      equal = family_request!(94_001, family, owner, member, expires_at: now)
+      write_family(member, :patch, "/family/location_requests/#{equal.id}/accept")
+      expect(response.status).to eq(302)
+      expect(equal.reload).to be_pending
+      member.update_family_location_sharing!(false)
+      request.destroy!
+      equal.destroy!
+      allow(FamilyMailer).to receive(:location_request).and_raise('synthetic enqueue failure')
+      before = Family::LocationRequest.count
+      write_family(owner, :post, '/family/location_requests', { target_user_id: member.id })
+      expect(response.status).to eq(302)
+      expect(Family::LocationRequest.count).to eq(before + 1)
+      expect(flash[:alert]).to eq(I18n.t('services.families.create_location_request.an_error_occurred'))
+      write_family(owner, :post, '/family/location_requests', { target_user_id: owner.id })
+      expect(response.status).to eq(302)
+      expect(flash[:alert]).to include(I18n.t('models.family.location_request.cannot_request_your_own_location'))
+      write_family(owner, :post, '/family/location_requests', { target_user_id: outsider.id })
+      expect(response.status).to eq(302)
+      expect(Family::LocationRequest.count).to eq(before + 1)
+    end
+  end
+
   it 'writes family pages with fixed actor state and scrubbed forms' do
     travel_to now do
       owner, member, outsider, family = family_graph('en')
