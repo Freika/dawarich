@@ -100,7 +100,7 @@ defmodule Dawarich.Photos.Index do
         do: Map.put(body, "takenBefore", normalized(params["end_date"], true)),
         else: body
 
-    with {:ok, status, _, raw} <-
+    with {:ok, status, response_headers, raw} <-
            request(
              :post,
              settings["immich_url"] <> "/api/search/metadata",
@@ -108,7 +108,7 @@ defmodule Dawarich.Photos.Index do
              Jason.encode!(body),
              settings["immich_skip_ssl_verification"]
            ),
-         true <- status in 200..299,
+         true <- status in 200..299 and json?(response_headers),
          {:ok, doc} <- Jason.decode(raw),
          items when is_list(items) <- get_in(doc, ["assets", "items"]) do
       if items == [],
@@ -157,7 +157,7 @@ defmodule Dawarich.Photos.Index do
              nil,
              settings["photoprism_skip_ssl_verification"]
            ),
-         true <- status in 200..299,
+         true <- status in 200..299 and json?(response_headers),
          {:ok, items} when is_list(items) <- Jason.decode(raw) do
       token =
         Enum.find_value(response_headers, fn {k, v} ->
@@ -173,6 +173,13 @@ defmodule Dawarich.Photos.Index do
       _ -> {:error, :provider}
     end
   end
+
+  defp json?(headers),
+    do:
+      Enum.any?(headers, fn {k, v} ->
+        String.downcase(to_string(k)) == "content-type" and
+          String.contains?(to_string(v), "application/json")
+      end)
 
   def request(method, url, headers, body, skip) do
     headers = for {k, v} <- headers, do: {String.to_charlist(k), String.to_charlist(v)}
@@ -210,7 +217,7 @@ defmodule Dawarich.Photos.Index do
     if Ruby.present?(value) do
       zone =
         if end_day and date_only?(value),
-          do: System.get_env("TIME_ZONE", "Etc/UTC"),
+          do: System.get_env("TIME_ZONE", "Europe/Berlin"),
           else: "Etc/UTC"
 
       time = ImportTime.parse(to_string(value), zone, DateTime.utc_now())

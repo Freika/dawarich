@@ -55,6 +55,7 @@ defmodule DawarichWeb.A12f2BClosureTest do
     assert {:ok, photos, []} = invoke(Index, :fetch, [user, params])
     assert [%{"id" => "a.b", "orientation" => "portrait", "source" => "photoprism"}] = photos
     assert invoke(ProviderCache, :token, [user.id]) == "synthetic-preview"
+    assert photos == oracle("closure_photos_photoprism")
     requests = Task.await(task)
 
     assert Enum.all?(requests, fn {head, _} ->
@@ -68,6 +69,49 @@ defmodule DawarichWeb.A12f2BClosureTest do
     assert invoke(ProviderCache, :token, [user.id]) == nil
     settings(user, %{})
     assert {:unconfigured, nil} = invoke(Index, :fetch, [user, %{}])
+
+    immich_photo = %{
+      "id" => "asset.one",
+      "type" => "IMAGE",
+      "fileCreatedAt" => "2024-01-01T12:00:00Z",
+      "localDateTime" => "2024-01-01T13:00:00",
+      "originalFileName" => "synthetic.jpg",
+      "exifInfo" => %{"latitude" => 52.52, "longitude" => 13.405, "orientation" => "6"}
+    }
+
+    {base, task} =
+      provider([
+        {"POST", "/api/search/metadata", 200,
+         Jason.encode!(%{
+           "assets" => %{
+             "items" => [
+               immich_photo,
+               Map.put(immich_photo, "isArchived", true),
+               Map.put(immich_photo, "type", "VIDEO")
+             ]
+           }
+         }), []},
+        {"POST", "/api/search/metadata", 200, Jason.encode!(%{"assets" => %{"items" => []}}), []}
+      ])
+
+    settings(user, %{
+      "immich_url" => base,
+      "immich_api_key" => "synthetic-key",
+      "photoprism_url" => "http://127.0.0.1:1",
+      "photoprism_api_key" => "synthetic-key"
+    })
+
+    assert {:ok, photos, ["photoprism"]} = Index.fetch(user, params)
+    assert photos == oracle("closure_photos_immich")
+    [{_, body}, {_, second}] = Task.await(task)
+    assert Jason.decode!(body)["page"] == 1
+    assert Jason.decode!(second)["page"] == 2
+    assert Jason.decode!(body)["takenBefore"] == "2024-01-02T22:59:59Z"
+    assert ProviderCache.get(ProviderCache.key(user.id, "2024-01-01", "2024-01-02")) == :miss
+    {base, task} = provider([{"POST", "/api/search/metadata", 200, "invalid", []}])
+    settings(user, %{"immich_url" => base, "immich_api_key" => "synthetic-key"})
+    assert {:error, 502} = Index.fetch(user, params)
+    Task.await(task)
   end
 
   @tag :a12f2_b_03
@@ -299,6 +343,143 @@ defmodule DawarichWeb.A12f2BClosureTest do
              invoke(Dawarich.PlacesApi.Closure, :run, [:show, user, %{"id" => to_string(id)}, now])
   end
 
+  @tag :a12f2_b_07
+  test "Immich enrichment preserves Pro access remote writes verification enqueue and partial failure outcomes",
+       %{user: user} do
+    assert {:ok, 200, %{"error" => "Immich URL is missing"}} =
+             invoke(Dawarich.Photos.Enrichment, :run, [:scan, user, %{}, []])
+
+    now = ~U[2026-10-06 12:00:00Z]
+    assert Dawarich.Photos.Enrichment.pro?(%{user | plan: 0}, now)
+    hosted = System.get_env("SELF_HOSTED")
+    System.put_env("SELF_HOSTED", "false")
+    assert not Dawarich.Photos.Enrichment.pro?(%{user | plan: 0}, now)
+    if hosted, do: System.put_env("SELF_HOSTED", hosted), else: System.delete_env("SELF_HOSTED")
+    parent = self()
+
+    {base, task} =
+      provider([
+        {"PUT", "/api/assets/one", 200, "{}", []},
+        {"PUT", "/api/assets/two", 400, "{}", []}
+      ])
+
+    settings(user, %{"immich_url" => base, "immich_api_key" => "synthetic-key"})
+
+    assets = [
+      %{
+        "immich_asset_id" => "one",
+        "latitude" => 52.52,
+        "longitude" => 13.405,
+        "ignored" => "value"
+      },
+      %{"immich_asset_id" => "two", "latitude" => 0, "longitude" => 0}
+    ]
+
+    enqueue = fn id, submitted, url, at ->
+      send(parent, {:verification, id, submitted, url, at})
+      :ok
+    end
+
+    assert {:ok, 200,
+            %{
+              "enriched" => 0,
+              "pending" => 1,
+              "failed" => 1,
+              "errors" => [%{"immich_asset_id" => "two"}]
+            }} =
+             invoke(Dawarich.Photos.Enrichment, :run, [
+               :create,
+               user,
+               %{"assets" => assets},
+               [enqueue: enqueue, now: ~U[2026-10-06 12:00:00Z]]
+             ])
+
+    assert_receive {:verification, notification, [%{"immich_asset_id" => "one"} = submitted],
+                    ^base, ~U[2026-10-06 12:00:10Z]}
+
+    refute Map.has_key?(submitted, "ignored")
+
+    assert [["Checking Immich location updates"]] =
+             Repo.query!("SELECT title FROM notifications WHERE id=$1 AND user_id=$2", [
+               notification,
+               user.id
+             ]).rows
+
+    assert [[1]] =
+             Repo.query!(
+               "SELECT count(*) FROM phoenix.notification_events WHERE notification_id=$1",
+               [notification]
+             ).rows
+
+    [{head, body}, _] = Task.await(task)
+    assert header(head, "x-api-key") == ["synthetic-key"]
+    assert Jason.decode!(body) == %{"latitude" => 52.52, "longitude" => 13.405}
+    {base, task} = provider([{"PUT", "/api/assets/one", 200, "{}", []}])
+    settings(user, %{"immich_url" => base, "immich_api_key" => "synthetic-key"})
+
+    assert invoke(Dawarich.Photos.Enrichment, :run, [
+             :create,
+             user,
+             %{"assets" => [hd(assets)]},
+             [enqueue: fn _, _, _, _ -> raise "after accepted PUT" end]
+           ]) == {:error, 500}
+
+    Task.await(task)
+
+    asset = %{
+      "id" => "scan.one",
+      "type" => "IMAGE",
+      "fileCreatedAt" => "2024-01-01T12:00:00Z",
+      "originalFileName" => "synthetic.jpg",
+      "exifInfo" => %{}
+    }
+
+    {base_scan, scan_task} =
+      provider([
+        {"POST", "/api/search/metadata", 200, Jason.encode!(%{"assets" => %{"items" => [asset]}}),
+         []},
+        {"POST", "/api/search/metadata", 200, Jason.encode!(%{"assets" => %{"items" => []}}), []}
+      ])
+
+    settings(user, %{"immich_url" => base_scan, "immich_api_key" => "synthetic-key"})
+    ts = DateTime.to_unix(~U[2024-01-01 12:00:00Z])
+
+    for {stamp, lat, lon} <- [{ts - 100, 52.0, 13.0}, {ts + 100, 52.02, 13.02}] do
+      Repo.query!(
+        "INSERT INTO points (user_id,timestamp,lonlat,created_at,updated_at) VALUES ($1,$2,ST_SetSRID(ST_MakePoint($4::float8,$3::float8),4326),NOW(),NOW())",
+        [user.id, stamp, lat, lon]
+      )
+    end
+
+    assert {:ok, 200,
+            %{
+              "matches" => [
+                %{
+                  "match_method" => "interpolated",
+                  "time_delta_seconds" => 100,
+                  "immich_asset_id" => "scan.one"
+                }
+              ],
+              "total_matched" => 1
+            }} = Dawarich.Photos.Enrichment.run(:scan, user, %{})
+
+    Task.await(scan_task)
+    settings(user, %{"immich_url" => base, "immich_api_key" => "synthetic-key"})
+
+    assert invoke(Dawarich.Photos.Enrichment, :run, [
+             :create,
+             user,
+             %{"assets" => [hd(assets)]},
+             []
+           ]) == {:error, :verification_unavailable}
+  end
+
+  defp oracle(name) do
+    fixture = "test/fixtures/a12f2b/closure.json" |> File.read!() |> Jason.decode!()
+    kase = Enum.find(fixture["locations_photos"], &(&1["name"] == name))
+    Jason.decode!(kase["response"]["body"])
+  end
+
   defp term_map({:object, pairs}), do: Map.new(pairs, fn {k, v} -> {k, term_map(v)} end)
   defp term_map(list) when is_list(list), do: Enum.map(list, &term_map/1)
   defp term_map(value), do: value
@@ -338,6 +519,8 @@ defmodule DawarichWeb.A12f2BClosureTest do
 
     System.put_env("PHOTON_API_USE_HTTPS", "false")
     System.put_env("REVERSE_GEOCODING_RPS", "10")
+    Redis.command(["UNLINK", "geocoding:rate_limit:photon:127.0.0.1"])
+    on_exit(fn -> Redis.command(["UNLINK", "geocoding:rate_limit:photon:127.0.0.1"]) end)
 
     on_exit(fn ->
       Enum.each(saved, fn {k, v} -> if v, do: System.put_env(k, v), else: System.delete_env(k) end)
@@ -364,6 +547,8 @@ defmodule DawarichWeb.A12f2BClosureTest do
           assert String.starts_with?(request_line(head), "#{method} #{path}")
           length = head |> header("content-length") |> List.first() || "0"
           sent = read_at_least(socket, rest, String.to_integer(length))
+
+          headers = [{"Content-Type", "application/json"} | headers]
 
           reply(socket, [
             "HTTP/1.1 #{status} OK\r\nconnection: close\r\ncontent-length: #{byte_size(body)}\r\n",

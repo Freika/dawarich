@@ -31,8 +31,16 @@ defmodule DawarichWeb.Api.PhotosController do
     end
   end
 
-  def call(conn, :thumbnail) do
-    case read(conn.assigns.api_user, conn.assigns.api_params["source"], conn.path_params["id"]) do
+  def call(conn, :thumbnail), do: thumbnail(conn, false)
+  def call(conn, :thumbnail_closure), do: thumbnail(conn, true)
+
+  defp thumbnail(conn, closure) do
+    case read(
+           conn.assigns.api_user,
+           conn.assigns.api_params["source"],
+           conn.path_params["id"],
+           closure
+         ) do
       {:ok, image} ->
         Respond.data(conn, image, "image/jpeg", cache_control: "max-age=1800, private")
 
@@ -57,7 +65,7 @@ defmodule DawarichWeb.Api.PhotosController do
     end
   end
 
-  defp read(user, source, id) do
+  defp read(user, source, id, closure) do
     settings = Accounts.settings(user.id)
 
     cond do
@@ -71,7 +79,9 @@ defmodule DawarichWeb.Api.PhotosController do
         {:unconfigured, source}
 
       true ->
-        Thumbnail.fetch(settings, source, id, user.id)
+        if closure,
+          do: Thumbnail.fetch(settings, source, id, user.id),
+          else: Thumbnail.fetch(settings, source, id)
     end
   rescue
     error -> {:replay, inspect(error.__struct__)}
