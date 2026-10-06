@@ -5,6 +5,29 @@ defmodule Dawarich.Insights.Details.Digests do
   alias Dawarich.Digests.Calculation
 
   def native_yearly(id, year, stats, opts) do
+    if Dawarich.Standalone.enabled?(),
+      do: standalone_yearly(id, year, stats, opts),
+      else: coexistence_yearly(id, year, stats, opts)
+  end
+
+  defp coexistence_yearly(id, year, stats, opts) do
+    case yearly(id, year, stats) do
+      {digest, true} ->
+        selected = Enum.filter(stats, &(&1["year"] == year))
+
+        if digest == nil or blank?(digest["travel_patterns"]) or stale?(digest, selected) do
+          calculate!(Calculation.yearly(Repo, id, year, opts))
+          {find(id, year, nil), false}
+        else
+          {digest, false}
+        end
+
+      result ->
+        result
+    end
+  end
+
+  defp standalone_yearly(id, year, stats, opts) do
     repo = Keyword.get(opts, :repo, Repo)
     digest = find(id, year, nil, repo)
     selected = Enum.filter(stats, &(&1["year"] == year))

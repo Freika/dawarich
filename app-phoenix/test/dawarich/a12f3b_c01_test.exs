@@ -6,6 +6,15 @@ defmodule Dawarich.A12f3bC01Test do
   alias Dawarich.Insights.Details.Digests
 
   setup do
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     for spec <- Redis.cache_child_specs(), do: start_supervised!(spec)
     {:ok, _} = Redis.cache_command(["FLUSHDB"])

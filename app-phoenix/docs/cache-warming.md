@@ -4,7 +4,7 @@ Native user warming populates the Stats country/city/distance summaries, tracked
 
 Native Redis entries use the `phoenix/` prefix and a versioned Elixir term payload. They never decode ActiveSupport cache entries. Summary signatures reflect current SQL values, and yearly readers verify current digest and stat freshness before accepting a cached row. Unavailable or corrupt caches fall back to SQL on reads. Warming requires successful writes before marking a command processed, so partial failures remain retryable. The source digest helper's rescued calculation errors retain Rails parity.
 
-The existing stats and point invalidation paths remove both source and native Redis entries. Native Insights reads ignore Rails yearly snapshots. Standalone tracked-month reads use native entries; coexistence retains the source reader for Rails parity.
+The existing stats and point invalidation paths remove both source and native Redis entries. Standalone Insights and tracked-month reads use native entries and ignore Rails snapshots. Coexistence retains the existing yearly warm/nil/stale snapshot and source tracked-month reader contracts for Rails parity.
 
 Controller ruling 8 retires Rails boot sentinel scheduling, self-rescheduling cleaning and Rails-only warming after native reader proof. Phoenix boot does not read the Rails sentinel or create cleaning work. Source cache jobs already accepted still drain. Native warming and consumer invalidations remain. Rails initializer deletion and old-app drain fences belong to later source retirement work.
 
