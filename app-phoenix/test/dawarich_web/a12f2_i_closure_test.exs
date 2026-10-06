@@ -79,6 +79,24 @@ defmodule DawarichWeb.A12f2IClosureTest do
     assert {result.status, result.resp_body} == {206, binary_part(@payload, 0, 10)}
   end
 
+  @tag :a12f2_i_03
+  test "Representation resolution preserves source variation signatures transforms purpose and legacy error responses", %{storage: storage} do
+    module = Dawarich.Storage.Variation
+    assert Code.ensure_loaded?(module), "native variation verifier must exist"
+    fx = closure()
+    assert {:ok, variation} = apply(module, :decode, [fx["variation"]["key"], @now])
+    assert variation.transformations == fx["variation"]["transformations"]
+    assert apply(module, :decode, [fx["variation"]["key"] <> "x", @now]) == :error
+    for purpose <- ["blob_id", "blob_key", "", "variation"] do
+      token = RailsMessages.sign_storage(fx["variation"]["transformations"], purpose, DateTime.add(@now, 1))
+      if purpose == "variation", do: assert(match?({:ok, _}, apply(module, :decode, [token, @now]))), else: assert(apply(module, :decode, [token, @now]) == :error)
+      assert apply(module, :decode, [token, DateTime.add(@now, 1)]) == :error
+    end
+    for request <- Enum.filter(fx["requests"], &(&1["name"] in ["representation_bad_signature", "representation_wrong_purpose"])) do
+      assert_response(replay(request, DawarichWeb.ActiveStorage.Representations, storage), request)
+    end
+  end
+
   defp closure, do: "test/fixtures/a12f2i/closure.json" |> File.read!() |> Jason.decode!()
 
   defp replay(request, module, storage, opts \\ []) do
