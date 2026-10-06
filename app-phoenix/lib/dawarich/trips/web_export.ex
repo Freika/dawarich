@@ -20,9 +20,6 @@ defmodule Dawarich.Trips.WebExport do
           not is_binary(name) and not is_nil(name) ->
             {:replay, "trip export name shape"}
 
-          not Regex.match?(~r/\A[\x00-\x7F]*\z/, name || "") ->
-            {:replay, "trip export transliteration"}
-
           not is_map(user.settings) ->
             {:replay, "trip export settings"}
 
@@ -44,8 +41,10 @@ defmodule Dawarich.Trips.WebExport do
           log: false
         ).rows
 
+      locale = DawarichWeb.Locale.resolve(nil, user, %{})
+
       slug =
-        name
+        Dawarich.Achievements.UiText.search(name, locale)
         |> String.replace(~r/[^a-z0-9_-]+/i, "-")
         |> String.replace(~r/-+/, "-")
         |> String.trim("-")

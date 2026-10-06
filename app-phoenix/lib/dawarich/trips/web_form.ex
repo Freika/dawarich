@@ -1,12 +1,12 @@
 defmodule Dawarich.Trips.WebForm do
   @moduledoc false
-  alias Dawarich.{TripDescription, TripSettings, TimeZoneName, UserTimeZone}
+  alias Dawarich.{TripSettings, TimeZoneName, UserTimeZone}
 
   def load(repo, user, id, context) do
     with true <- id != nil or active?(user, Map.get_lazy(context, :now, &DateTime.utc_now/0)),
          {:ok, settings} <- TripSettings.read(user.settings),
          {:ok, trip} <- trip(repo, user.id, id),
-         {:ok, description} <- TripDescription.read(trip.description) do
+         {:ok, description} <- Dawarich.Trips.RichContent.read(trip.description) do
       {:ok,
        trip
        |> Map.put(:description, description)

@@ -36,7 +36,6 @@ defmodule DawarichWeb.TripExportTest do
     previous = Application.get_env(:dawarich, :jobs_repo)
     Application.put_env(:dawarich, :jobs_repo, Repo)
     on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous) end)
-    upstream = upstream!()
 
     for entry <- @effects, String.starts_with?(entry["name"], "export_") do
       actor = entry["before"]["actor"]
@@ -90,13 +89,6 @@ defmodule DawarichWeb.TripExportTest do
           assert conn.status == 422
           assert get_resp_header(conn, "location") == [expected["location"]]
           assert rails_session(conn)["flash"]["flashes"] == expected["flash"]
-          assert counts() == before
-
-        not String.match?(trip["name"], ~r/\A[\x00-\x7F]*\z/) ->
-          assert {:replay, _} = result
-          {{_, received}, conn} = forwarded(upstream, fn -> post_form(session, raw, [], path) end)
-          assert conn.status == 204
-          assert received == raw
           assert counts() == before
 
         true ->

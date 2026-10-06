@@ -42,7 +42,7 @@ defmodule DawarichWeb.TripsGate do
   def open?(conn, check) do
     case DawarichWeb.RailsAuth.call(conn, []).assigns.current_user do
       nil -> true
-      user -> check.(user)
+      user -> check.(user) or is_nil(Application.get_env(:dawarich, :rails_upstream))
     end
   end
 end

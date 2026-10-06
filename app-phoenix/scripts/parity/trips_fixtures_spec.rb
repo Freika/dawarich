@@ -303,6 +303,8 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
           entry.merge(name: entry[:name].sub('_de_', "_#{locale}_"), locale:)
         end
       end
+      cases << { name: 'note_date_named_month_stream', action: :note_create, body: 'Date boundary',
+                 date: 'Oct 3 2026', accept: 'text/vnd.turbo-stream.html', expected: 200 }
       cases
     end
 
@@ -487,6 +489,7 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         expect(queue[:sidekiq].length + queue[:outbox].length).to eq(count), name
       elsif %i[note_create note_update].include?(entry[:action]) && !entry[:error] && !entry[:foreign]
         date = entry.fetch(:date, '2026-10-03')
+        date = Date.parse(date).iso8601 unless date == 'bad-date'
         valid = entry[:body].present? && entry[:body].length <= Note::MAX_BODY_LENGTH &&
                 %w[2026-10-03 2026-10-04].include?(date)
         note = trip.notes.for_date('2026-10-03').first
@@ -600,18 +603,18 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
           't05' => /\A(?:create|update)_/,
           't06' => /\A(?:create|update|.*show)_/,
           't07' => /recalculate/,
-          't08' => /\Anote_create/,
+          't08' => /\Anote_(?:create|date|upsert|race)/,
           't09' => /\A(?:note_update|note_destroy|foreign_note)/,
           't10' => /\Aexport_/
         }
         groups.each do |task, pattern|
           write_json("../a12f3a-#{task}.json", { now: now.iso8601,
-                                                  responses: responses.select { _1[:name].match?(pattern) },
-                                                  effects: effects.select { _1[:name].match?(pattern) } })
+                                              responses: responses.select { _1[:name].match?(pattern) },
+                                              effects: effects.select { _1[:name].match?(pattern) } })
         end
         photo_user = remaining_user(98_980)
         photo_user.update_columns(settings: photo_user.settings.merge('immich_url' => 'https://photos.example.test',
-                                                                     'immich_api_key' => 'SYNTHETIC'))
+                                                                      'immich_api_key' => 'SYNTHETIC'))
         photo_trip = remaining_trip(photo_user.reload, 9_898_001)
         assets = [
           { id: 'late', source: 'immich', orientation: 'portrait', capturedAt: '2026-10-02T23:30:00Z' },
@@ -622,7 +625,8 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         write_json('../a12f3a-t03.json', { assets:, photos: photo_trip.send(:photos),
                                          days: photo_trip.photos_by_day('Europe/Berlin').transform_keys(&:iso8601),
                                          sources: photo_trip.photo_sources,
-                                         previews: photo_trip.send(:select_dominant_orientation, photo_trip.send(:photos)) })
+                                         previews: photo_trip.send(:select_dominant_orientation,
+                                                                   photo_trip.send(:photos)) })
 
         user = remaining_user(98_981)
         foreign = remaining_user(98_982)
