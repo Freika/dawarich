@@ -133,6 +133,10 @@ defmodule Dawarich.A12f3bH02Test do
     keys = Enum.map(entries, & &1.key)
     assert length(keys) == length(Enum.uniq(keys))
     assert Registry.claimable() == []
+
+    for entry <- Dawarich.Points.JobEntries.entries(),
+        do: assert(Map.has_key?(Dawarich.RailsJobOwners.native_producers(), entry.key))
+
     kinds = Enum.flat_map(@native, fn {kinds, _, _} -> kinds end) ++ @known_gaps
     assert length(kinds) == length(Enum.uniq(kinds))
     assert Enum.sort(kinds) == Enum.sort(Dawarich.RailsCommands.closure_kinds())
