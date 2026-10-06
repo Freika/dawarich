@@ -2,7 +2,7 @@
 
 R06–R07 retain Rails 1.15.3 period calculations and mail eligibility. In standalone mode (`DAWARICH_RAILS=off`), stats and digest producers choose native execution even when an ownership row remains pinned to Sidekiq. During coexistence, each downstream command retains its ownership choice and Rails reverse payload.
 
-Stats scheduling inserts `CalculateMonthWorker` jobs, preserving the notification flag and delay. Callers with a stable event can pass `event_id` to suppress duplicate publication. Full recalculation publishes `stats.full_recalculation` to the existing job outbox using `source_job_id` as its event identity; the existing worker clears the shared debounce and fans out tracked months.
+Stats scheduling inserts `CalculateMonthWorker` jobs, preserving the notification flag and delay. Callers with a stable event can pass `event_id` to suppress duplicate publication of the same user and period while retaining every month in a composite fanout. Full recalculation publishes `stats.full_recalculation` to the existing job outbox using `source_job_id` as its event identity; the existing worker clears the shared debounce and fans out tracked months.
 
 AirTrail storage claims the accepted event in its transaction and schedules the union of months before and after the sync. Flight dates take precedence; missing dates use the departure timestamp in the user's timezone. Deleted and moved flights therefore invalidate their former months as well as their current months.
 

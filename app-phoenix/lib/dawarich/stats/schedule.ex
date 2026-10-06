@@ -23,7 +23,11 @@ defmodule Dawarich.Stats.Schedule do
           :oban ->
             event = opts[:event_id]
             native = if event, do: Map.put(args, "event_id", event), else: args
-            options = if event, do: [unique: [period: :infinity, keys: [:event_id]]], else: []
+
+            options =
+              if event,
+                do: [unique: [period: :infinity, keys: [:event_id, :user_id, :year, :month]]],
+                else: []
 
             Oban.insert!(
               Keyword.get(opts, :oban, Oban),

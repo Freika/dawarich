@@ -49,6 +49,13 @@ defmodule Dawarich.A12f3bR06Test do
       assert CalculateMonthWorker.perform(%Oban.Job{args: args}) == :ok
       assert %{"year" => 2024, "month" => 3, "calculation_version" => 3} = F.stat(601, 2024, 3)
       assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+
+      for _ <- 1..2 do
+        assert Schedule.calculate(ScratchRepo, 601, 2024, 4, false, oban: @oban, event_id: event) ==
+                 :ok
+      end
+
+      assert rows("SELECT args->>'month' FROM oban.oban_jobs ORDER BY id") == [["3"], ["4"]]
       rows("DELETE FROM oban.oban_jobs")
       F.point!(6012, 601, F.ts(2024, 4, 1))
 
