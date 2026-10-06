@@ -32,3 +32,7 @@ AFFiNE counterpart: Dawarich — Phoenix import codecs and extraction closure.
 F24 streams Phone Takeout semantic segments and frequent places, ignores raw
 signals, and preserves profile ordering and captured zones. The complete source
 table passes; emitting a raw signal as a visit fails, then restored GREEN passes.
+
+F25 retains the source Records no-op even for malformed files. All captured
+inputs pass. The reconciled mutation emits an accuracy-derived row; it fails
+the empty-output assertion, and restored GREEN passes.
