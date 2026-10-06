@@ -10,16 +10,13 @@ defmodule Dawarich.SharedApi.Points do
     rows =
       Repo.query!(
         "SELECT ST_X(lonlat::geometry), ST_Y(lonlat::geometry), timestamp FROM points p " <>
-          "WHERE user_id = $1 AND anomaly IS NOT TRUE ORDER BY timestamp DESC LIMIT 2",
+          "WHERE user_id = $1 AND anomaly IS NOT TRUE ORDER BY timestamp DESC LIMIT 1",
         [link.user_id]
       ).rows
 
     case rows do
       [] ->
         {:ok, []}
-
-      [[_, _, ts], [_, _, ts]] ->
-        {:replay, "shared latest timestamp tie"}
 
       [[lon, lat, ts] | _] ->
         ts = ts || 0
@@ -94,17 +91,13 @@ defmodule Dawarich.SharedApi.Points do
   defp sample(predicate, params) do
     from = " FROM points p WHERE #{predicate} AND #{Privacy.outside("p.lonlat")}"
 
-    [[total, unique]] =
-      Repo.query!("SELECT count(*), count(DISTINCT p.timestamp)" <> from, params).rows
+    [[total]] = Repo.query!("SELECT count(*)" <> from, params).rows
 
-    cond do
-      total != unique ->
-        {:replay, "shared timestamp ties"}
-
-      total == 0 ->
+    case total do
+      0 ->
         {:ok, []}
 
-      true ->
+      _ ->
         step = ceil(total / 10_000)
 
         numbered =
