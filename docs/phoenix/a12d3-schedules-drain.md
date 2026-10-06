@@ -171,18 +171,24 @@ remain debt. Never decode arbitrary serialized Ruby as a migration strategy.
    sidekiq_idle. One web BEAM handles Oban; the worker container is inert and its actual argv
    matches health checks. Topology smoke proves privileges, health, SIGTERM and no extra DB
    pool/cron. Redis remains for cache/Cable/other owners; A13f removal is separate.
-9. **Rollback while window is open.** Stop new native/source producers for affected keys; bring
-   back compatible Sidekiq + Poller first. Use existing pinned release for cron keys and
-   pending-only rehome for command keys, then keep Phoenix alive until accepted native workers
-   and durable successors settle. Unsupported versions/quarantined rows are not discarded.
-   Verify affected owners are pinned Sidekiq, supported pending rehome is complete, and accepted
-   native work has drained; unresolved unsupported debt remains retained/BLOCKED. Restore
-   the installed source cron loading/enqueue controls disabled in step 5, verify one source
-   schedule slot produces once, then reopen affected incoming/manual/callback producers.
-   Hand back routes separately with existing keys. Turning opt-in off does not release persisted
-   owners. An old Rails binary missing current PG ownership/state contracts stays blocked as
-   a rollback target. No guarantee of exactly-once external sends across process crashes;
-   preserve existing convergent/idempotent effects and at-least-once bridge semantics.
+9. **Rollback while window is open (rulings 4/7, 2026-10-06).** Fence all new
+   native/source producers, incoming mutations, callbacks and manual work. Enumerate
+   every Registry key and persisted owner, resolve unknown rows and release each actual
+   key to Sidekiq with pinned=true; joint releases are atomic and held locks are never
+   forced. Keep Phoenix workers/relay alive until pre-fence outbox, accepted Oban,
+   release operations and successors finish with original identities and due times.
+   Require the binary rollback observation to be empty with OBSERVED certainty;
+   unknown/read failures, dead/quarantined/future/reverse or unfinished work block.
+   No rehome/transfer, backup restore, inverse migration or deletion is performed.
+   Stop all Phoenix writers/claimers and retained helpers/Poller, verify absence and
+   re-inspect debt, then start stock Rails **1.15.3** on the same DB/storage. Restore
+   source producers once and verify pins, health/auth/API keys, Phoenix-era rows and
+   objects, and one source schedule slot before reopening traffic. Stock 1.15.3 has
+   no port ownership CLI: run release/status on the retained control plane before
+   stopping it. See the full
+   [manual rollback and deferred G48](a12f-ruby-free-release.md#a12f-3c-same-database-rollback-to-rails-1153).
+   This supersedes the earlier pending-rehome proposal; existing coexistence tools
+   remain historical interfaces for their owners. External delivery stays at least once.
 10. **Close rollback window only by Eugene's release decision.** A12f deletes Rails/Ruby/source
     payload support and owns irreversible upgrade refusal/rollback matrix. This branch makes
     no such decision. Retain Redis until A13f's stable-release prerequisites are satisfied.
@@ -193,7 +199,7 @@ Operator commands in tests/local rehearsal carry the command convention's Ruby a
 ```zsh
 eval "$RUBY_ACTIVATION" && RAILS_ENV=test DATABASE_NAME="$RDB" REDIS_URL="$TEST_REDIS_URL" bundle exec rails dawarich:jobs:drain_status
 eval "$RUBY_ACTIVATION" && RAILS_ENV=test DATABASE_NAME="$RDB" REDIS_URL="$TEST_REDIS_URL" bundle exec rails 'dawarich:jobs:release[cron:visit_suggesting_job]'
-eval "$RUBY_ACTIVATION" && RAILS_ENV=test DATABASE_NAME="$RDB" REDIS_URL="$TEST_REDIS_URL" bundle exec rails 'dawarich:jobs:rehome[command:visits.bulk_suggest]'
+eval "$RUBY_ACTIVATION" && RAILS_ENV=test DATABASE_NAME="$RDB" REDIS_URL="$TEST_REDIS_URL" bundle exec rails dawarich:jobs:status
 ```
 
 Production deployment commands/resources are a separate operator assignment, not executable

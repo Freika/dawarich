@@ -489,3 +489,114 @@ Baseline characterization: both existing Cloud/lifecycle regression files,
 RSpec seed 101, **49 examples, 0 failures**. Swagger was copied aside/restored and no
 schema/Swagger drift occurred. Implementation evidence is recorded separately
 in `.scratch/orch/out/impl-a12f3c-a.report.md`.
+
+
+## A12f-3c same-database rollback to Rails 1.15.3
+
+Dated amendment: 2026-10-06, controller rulings 4 and 7. This procedure
+supersedes native-to-Sidekiq transfer and snapshot-restore rollback instructions
+at this additive boundary. It is manual: no cut-over or rollback script is added.
+The controller retains stock Rails **1.15.3**, its actual launch argv and access
+to the same database, storage services, object keys and signing/encryption inputs.
+Release dates and image-retention windows are Eugene's release-time values
+(ruling 11), not implementation blockers.
+
+1. Fence incoming traffic, native/source new roots, cron, boot callbacks,
+   subscriptions, manual commands and reverse producers. Keep Phoenix workers,
+   relay and accepted native successors alive to finish already accepted work.
+   Resolve any remaining native-to-Rails dependency before proceeding.
+2. Enumerate **every** `Dawarich.Jobs.Registry.entries()` key and every persisted
+   `phoenix.job_owners` row through the retained control plane. Inspect missing,
+   unexpected and inconsistent rows; environment opt-ins are not the inventory.
+   For each actual expected key invoke existing `dawarich:jobs:release[KEY]`.
+   Verify `owner=sidekiq,pinned=true`, joint-key equality and no reacquisition
+   after claimer restart. A held lock stops the operation without a partial
+   joint flip; wait for its owner to finish. Never force it. Stock 1.15.3 lacks
+   these port tools: use the retained coexistence reference, then stop it before
+   stock Rails resumes. Do not invoke `rehome`.
+3. Drain pre-fence outbox, Oban, recorded release operations, accepted workers
+   and durable successors natively. Preserve event UUID, operation/run identity,
+   original due time, locale and zone. Future/retry/quarantined/dead native work,
+   unfinished generation chunks, reverse debt or unknown owners block rollback;
+   pinning neither cancels work nor completes skipped effects. Use native
+   `dawarich jobs status` and `dawarich jobs drain-status`, plus retained source
+   status/drain observations. Require binary rollback `OBSERVED_EMPTY` with
+   `certainty=OBSERVED`, every pin and no unresolved native work. A database or
+   Redis read failure, stale registration or unknown payload is BLOCKED, never
+   an empty result. Complete package D/task 13 observer handoff is a prerequisite
+   to interpreting this checkpoint; an older output without certainty cannot
+   satisfy it. Future work waits until due or receives its existing owner remedy;
+   no promotion, deletion, transfer or forced acknowledgement is permitted.
+4. Gracefully stop Phoenix web/jobs/relay/claimers and the retained control-plane
+   helper/Poller. Independently verify process absence and no native writer or
+   lease; re-inspect SQL/reverse/release debt after stop. Start stock Rails 1.15.3
+   on the **same DB/storage**, using retained release argv. Cloud leaves old
+   drain mode only now; if OLD is already stopped, restart its retained image.
+   Self-hosted replacement allows downtime. Restore source boot, cron and enqueue
+   controls once, after native absence, with incoming traffic still fenced.
+5. Verify health/ready, login and cookies, existing API keys, representative
+   Phoenix-era rows and fresh Rails writes, signed attachments and object bytes,
+   every pin, zero native debt/writers, and exactly one observed source schedule
+   slot/effect. Reopen traffic and producers only after these checks. Existing
+   external mail/webhook delivery remains at least once across crashes; the
+   SQL event collision proofs do not establish exactly-once external delivery.
+
+Test/rehearsal commands run on the retained source reference after Ruby detection.
+`KEY` is one inspected actual key, not a new all-keys command. `RDB` and
+`TEST_REDIS_URL` are controller-assigned private selectors; never export
+`DATABASE_NAME`. Use the detected activation (empty here, represented by true):
+
+```zsh
+true && RAILS_ENV=test DATABASE_NAME="$RDB" DATABASE_HOST=127.0.0.1 REDIS_URL="$TEST_REDIS_URL" asdf exec bundle exec rails "dawarich:jobs:release[$KEY]"
+true && RAILS_ENV=test DATABASE_NAME="$RDB" DATABASE_HOST=127.0.0.1 REDIS_URL="$TEST_REDIS_URL" asdf exec bundle exec rails dawarich:jobs:status
+true && RAILS_ENV=test DATABASE_NAME="$RDB" DATABASE_HOST=127.0.0.1 REDIS_URL="$TEST_REDIS_URL" asdf exec bundle exec rails dawarich:jobs:drain_status
+```
+
+Native artifact commands use its existing CLI and assigned DB/Redis environment.
+Actual image/process/resource values belong to a separately authorized release
+assignment. These commands do not authorize a deployment, SSH or traffic change.
+
+### Additive boundary and staged ADR/G48 amendment
+
+Exact dated amendment for the documentation owners of
+[ADR0015](/Users/frey/projects/dawarich/docs/adr/0015-port-every-rails-migration-to-ecto-squashed-per-release.md)
+and [release-tier G48](/Users/frey/projects/dawarich/superpowers/plans/2026-10-04-phoenix-release-tier-runbook.md):
+
+> Amendment (2026-10-06), controller rulings 4 and 7: rollback at the first
+> Phoenix boundary means retaining Phoenix-era writes and starting Rails 1.15.3
+> on the same database/storage after fencing producers, pinning every ownership
+> key to Sidekiq, draining all native work to zero without transfer, and stopping
+> Phoenix and its control-plane writers. No backup restore or inverse migration
+> is part of this procedure. `public.job_outbox`, `phoenix.*` and `oban.*` are
+> additive. Public migration `20260925100000` changes `users.settings` defaults
+> from 1000 to 500 meters and 60 to 30 minutes; `20260925100100` re-enqueues
+> transportation backfills. Both are harmless to Rails 1.15.3, and both remain
+> registered in `release_migrations/unreleased.ex`. A future non-additive
+> schema/data change reopens ruling 4. Backups remain recommended production
+> hygiene. Earlier general downgrade policy and migration decision history are
+> retained; this is a bounded exception, not an arbitrary older-image guarantee.
+
+These external inputs are read-only for package P. The amendment is staged here
+for their owners; their obsolete snapshot/loss prerequisites are **superseded**
+for this boundary, but those external files have not been edited.
+
+### Deferred G48 rehearsal
+
+Use staging/disposable populated Rails 1.15.3 data for **both Cloud and
+self-hosted**. Upgrade the exact candidate, write synthetic Phoenix-era rows
+and signed storage objects, and arrange pending plus executing native work.
+Perform all five rollback steps above; demonstrate native effects and successors
+finish with their original identities/due times, without Sidekiq transfer, and
+stock Rails retains the post-upgrade data and attachments. An unpinned key and
+an unresolved native job must each prevent traffic reopening; remedy them through
+existing owner operations and finish the rehearsal. No mirrored automated gate
+or fabricated mutation is added for documentation.
+
+Record both image heads, isolated topology, ownership/debt/lease/process
+observations, failure remedies and exact row/object/schedule effects in the
+existing release-tier report. Reuse
+[G02/G42/G47/G48/G49](/Users/frey/projects/dawarich/superpowers/plans/2026-10-04-phoenix-release-tier-runbook.md)
+for Cloud topology, final image, upgrade, rollback and old shutdown evidence.
+A feature-branch suite, same-image hand-back or a Rails-loaded test schema does
+not close G48. Image/storage access and release windows remain release-owner
+handoffs; no live rehearsal or acceptance is claimed here.
