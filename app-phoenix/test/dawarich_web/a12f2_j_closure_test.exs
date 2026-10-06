@@ -23,6 +23,75 @@ defmodule DawarichWeb.A12f2JClosureTest do
     :ok
   end
 
+  @tag :review_multipart_replay
+  test "undeclared multipart overrides replay original POST bytes and length through Endpoint",
+       c do
+    body =
+      "--probe\r\nContent-Disposition: form-data; name=\"_method\"\r\n\r\nDELETE\r\n--probe--\r\nsynthetic epilogue"
+
+    {head, replayed} = override_replay(c, "multipart/form-data; boundary=probe", body, false)
+    assert request_line(head) == "POST /api/v1/imports?literal=%2B HTTP/1.1"
+    assert header(head, "content-length") == [Integer.to_string(byte_size(body))]
+    assert replayed == body
+    assert header(head, "cookie") == ["opaque=synthetic"]
+    assert commands() == []
+  end
+
+  @tag :review_chunked_replay
+  test "undeclared chunked overrides replay original POST with valid chunk framing through Endpoint",
+       c do
+    body = "_method=DELETE&literal=synthetic"
+    {head, replayed} = override_replay(c, "application/x-www-form-urlencoded", body, true)
+    assert request_line(head) == "POST /api/v1/imports?literal=%2B HTTP/1.1"
+    assert header(head, "transfer-encoding") == ["chunked"]
+    assert replayed == body
+    assert header(head, "cookie") == ["opaque=synthetic"]
+    assert commands() == []
+  end
+
+  defp override_replay(c, type, body, chunked) do
+    upstream =
+      Task.async(fn ->
+        socket = accept(c.upstream)
+        {head, rest} = read_head(socket)
+        reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+
+        received =
+          if chunked do
+            try do
+              dechunk(socket, rest)
+            rescue
+              _ -> :invalid_chunk_framing
+            end
+          else
+            {:closed, received} = read_until_closed(socket, rest)
+            received
+          end
+
+        :gen_tcp.close(socket)
+        {head, received}
+      end)
+
+    client = connect(c.port)
+
+    framing =
+      if chunked, do: "Transfer-Encoding: chunked", else: "Content-Length: #{byte_size(body)}"
+
+    wire_body =
+      if chunked,
+        do: [Integer.to_string(byte_size(body), 16), "\r\n", body, "\r\n0\r\n\r\n"],
+        else: body
+
+    send_raw(client, [
+      "POST /api/v1/imports?literal=%2B HTTP/1.1\r\nHost: localhost\r\nCookie: opaque=synthetic\r\nContent-Type: #{type}\r\n#{framing}\r\n\r\n",
+      wire_body
+    ])
+
+    assert {200, _, "puma"} = read_response(client)
+    :gen_tcp.close(client)
+    Task.await(upstream)
+  end
+
   @tag :review_cloud_plan
   test "Cloud Lite plan features match Rails at the real Endpoint", c do
     fixture = Jason.decode!(File.read!("test/fixtures/api_foundation/golden.json"))

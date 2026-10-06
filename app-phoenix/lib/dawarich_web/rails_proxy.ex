@@ -88,7 +88,9 @@ defmodule DawarichWeb.RailsProxy do
   defp send_body(conn, socket) do
     cond do
       Map.has_key?(conn.private, :dawarich_raw_body) ->
-        with :ok <- :gen_tcp.send(socket, conn.private.dawarich_raw_body), do: {:ok, conn}
+        body = conn.private.dawarich_raw_body
+        bytes = if Headers.chunked?(conn), do: [chunk_frame(body), "0\r\n\r\n"], else: body
+        with :ok <- :gen_tcp.send(socket, bytes), do: {:ok, conn}
 
       Headers.chunked?(conn) ->
         relay_body(conn, socket, &chunk_frame/1, "0\r\n\r\n")

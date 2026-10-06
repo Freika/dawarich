@@ -54,7 +54,7 @@ defmodule DawarichWeb.Api.Transport do
       opts =
         Plug.Parsers.init(parsers: [:multipart], pass: ["*/*"], length: 9_223_372_036_854_775_807)
 
-      parsed = Plug.Parsers.call(conn, opts)
+      parsed = DawarichWeb.Api.MultipartReplay.parse(conn, opts)
       {:ok, SourceParams.munge(parsed.body_params), parsed}
     else
       {raw, conn} = raw(conn, [])
