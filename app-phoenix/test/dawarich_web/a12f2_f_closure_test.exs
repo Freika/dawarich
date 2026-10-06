@@ -657,6 +657,45 @@ defmodule DawarichWeb.A12f2FClosureTest do
     assert Repo.get!(Account, id).failed_attempts == 0
   end
 
+  @tag :a12f2_f_09
+  test "Account destroy and confirmation preserve deployment rules family owner guards one use tokens and native deletion work",
+       ctx do
+    assert Code.ensure_loaded?(Dawarich.Auth.DestroyToken)
+    alias Dawarich.Auth.{AccountDestroy, DestroyToken}
+    for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
+    id = insert_user(ctx.email)
+
+    context = %{
+      self_hosted: true,
+      env: %{},
+      rails_secret: RailsSecret.fetch(),
+      enqueue_destroy: fn actor ->
+        send(self(), {:destroy, actor})
+        :ok
+      end
+    }
+
+    assert {:error, :password_required} =
+             apply(AccountDestroy, :request, [id, %{"password" => "wrong"}, context])
+
+    assert Repo.get!(Account, id).deleted_at == nil
+    assert Repo.get!(Account, id).failed_attempts == 0
+    {:ok, token} = apply(DestroyToken, :issue, [id, context])
+    assert {:ok, claims} = apply(DestroyToken, :verify, [token, context])
+    assert claims["purpose"] == "account_destroy"
+    assert {:ok, :scheduled} = apply(AccountDestroy, :confirm, [token, context])
+    assert_received {:destroy, ^id}
+    assert Repo.get!(Account, id).deleted_at != nil
+    assert {:error, :replayed} = apply(AccountDestroy, :confirm, [token, context])
+    refute_received {:destroy, _}
+
+    assert apply(DestroyToken, :verify, [token <> "tampered", context]) ==
+             {:error, :invalid_token}
+
+    key = "account_destroy:consumed:" <> claims["jti"]
+    Dawarich.Redis.cache_command(["DEL", key])
+  end
+
   @tag :a12f2_f_05
   test "Cloud signup retains pending payment trial checkout attribution locale invitation and accepted callbacks once",
        ctx do
