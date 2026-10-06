@@ -53,7 +53,9 @@ defmodule Dawarich.SharedApi.PointsTest do
       [1_774_742_400, 1_774_742_401]
     )
 
-    assert {:replay, _} = Points.index(link)
+    assert {:ok, tied} = Points.index(link)
+    assert length(tied) == 10_000
+    assert Enum.count(tied, &(List.last(&1) == 1_774_742_400)) == 2
   end
 
   test "timeline includes owner's whole final local day across DST" do
