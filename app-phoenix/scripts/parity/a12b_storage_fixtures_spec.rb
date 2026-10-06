@@ -358,17 +358,104 @@ custom_metadata: {} }
                           repr.sub(variation.key, ActiveStorage.verifier.generate(transforms, purpose: :blob_id))),
                    record('representation_non_image', :get, repr.sub(image.signed_id, first.signed_id))]
       representation = image.representation(variation.key).processed
-      data = { 'now' => fx::NOW.iso8601(3), 'requests' => requests,
+      legacy = ActiveSupport::MessageVerifier.new(ActiveStorage.verifier.instance_variable_get(:@secret),
+                                                  digest: 'SHA1', serializer: :marshal,
+                                                  force_legacy_metadata_serializer: true)
+      legacy_key = legacy.generate(transforms, purpose: :variation)
+      expect(ActiveStorage::Variation.decode(legacy_key).transformations).to eq(transforms)
+      previews = capture_previews(helpers)
+      data = { 'legacy_variation' => legacy_key, 'previews' => previews, 'guest' => capture_guest, 'now'  => fx::NOW.iso8601(3), 'requests' => requests,
                'variation' => { 'key' => variation.key, 'transformations' => transforms,
                                 'digest' => variation.digest, 'marshal' => Base64.strict_encode64(Marshal.dump(transforms)) },
                'representation' => { 'key' => representation.key, 'filename' => representation.filename.to_s,
-                                     'bytes' => Base64.strict_encode64(representation.download) },
+                                     'bytes' => Base64.strict_encode64(representation.download),
+                                     'digest' => representation.variation.digest,
+                                     'marshal' => Base64.strict_encode64(Marshal.dump(representation.variation.transformations)) },
                'track_variants' => ActiveStorage.track_variants, 'processor' => ActiveStorage.variant_processor }
       path = Rails.root.join('app-phoenix/test/fixtures/a12f2i/closure.json')
       FixtureRecording.verify(path, "#{Oj.dump(fx.normalized(data), mode: :strict, indent: 2)}\n")
     end
   ensure
     Rails.application.env_config['action_dispatch.show_exceptions'] = previous_show
+  end
+
+  def capture_guest
+    random = Random.new(120_206)
+    allow(SecureRandom).to receive(:random_bytes) { |n| random.bytes(n || 16) }
+    allow(OpenSSL::Random).to receive(:random_bytes) { |n| random.bytes(n) }
+    allow_any_instance_of(OpenSSL::Cipher).to receive(:random_iv) do |cipher|
+      cipher.iv = random.bytes(cipher.iv_len)
+    end
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    frozen { get '/users/sign_in' }
+    token = response.body[/<meta name="csrf-token" content="([^"]+)"/, 1]
+    expect(token).to be_present
+    cookie = cookies['_dawarich_session']
+    ActiveRecord::Base.connection.execute("SELECT setval('active_storage_blobs_id_seq', 972000)")
+    allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token)
+      .and_return(*%w[u w x y z].map { |c| "a12b#{c * 24}" })
+    good = { blob: { filename: 'guest.png', byte_size: '1024', checksum: Digest::MD5.base64digest(payload),
+                     content_type: 'image/png', metadata: { 'note' => 'synthetic' } } }.to_json
+    json = { 'CONTENT_TYPE' => 'application/json', 'Accept' => 'application/json' }
+    form = Rack::Utils.build_nested_query(JSON.parse(good))
+    requests = [record('guest_json', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => token), body: good, csrf: true),
+                record('guest_no_csrf', :post, '/rails/active_storage/direct_uploads', headers: json, body: good),
+                record('guest_form', :post, '/rails/active_storage/direct_uploads',
+                       headers: { 'CONTENT_TYPE' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json',
+                                  'X-CSRF-Token' => token }, body: form, csrf: true),
+                record('guest_bad_json', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => token), body: '{', csrf: true),
+                record('guest_wrong_origin', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => token, 'Origin' => 'http://evil.example'), body: good, csrf: true)]
+    requests.each { |request| request['response_headers'].delete('set-cookie') }
+    { 'cookie' => cookie, 'csrf' => token, 'requests' => requests }
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
+  end
+
+  def synthetic_pdf
+    objects = ['<< /Type /Catalog /Pages 2 0 R >>',
+               '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+               '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 16 16] /Contents 4 0 R >>',
+               "<< /Length 23 >>\nstream\n0 0 0 rg 0 0 16 16 re f\nendstream"]
+    bytes = "%PDF-1.4\n".b
+    offsets = objects.each_with_index.map do |object, index|
+      offset = bytes.bytesize
+      bytes << "#{index + 1} 0 obj\n#{object}\nendobj\n"
+      offset
+    end
+    start = bytes.bytesize
+    bytes << "xref\n0 5\n0000000000 65535 f \n"
+    offsets.each { |offset| bytes << format('%010d 00000 n ', offset) << "\n" }
+    bytes << "trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n#{start}\n%%EOF\n"
+  end
+
+  def capture_previews(helpers)
+    require 'tempfile'
+    Tempfile.create(['a12f2i', '.mp4']) do |file|
+      _out, _err, status = Open3.capture3('ffmpeg', '-y', '-f', 'lavfi', '-i', 'color=black:s=16x16:r=1',
+                                        '-frames:v', '1', '-pix_fmt', 'yuv420p', file.path)
+      expect(status.success?).to be(true)
+      [synthetic_pdf, File.binread(file.path)].each_with_index.map do |bytes, index|
+        type = index.zero? ? 'application/pdf' : 'video/mp4'
+        filename = index.zero? ? 'synthetic.pdf' : 'synthetic.mp4'
+        key = "a12b#{(index.zero? ? 'p' : 'q') * 24}"
+        blob = ActiveStorage::Blob.create!(id: 970_541 + index, key: key, filename: filename,
+                                           content_type: type, byte_size: bytes.bytesize,
+                                           checksum: Digest::MD5.base64digest(bytes), service_name: 'test')
+        blob.service.upload(key, StringIO.new(bytes), checksum: blob.checksum)
+        output_key = "a12b#{(index.zero? ? 'r' : 's') * 24}"
+        allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token).and_return(output_key)
+        variation = ActiveStorage::Variation.new({})
+        path = helpers.rails_blob_representation_proxy_path(blob.signed_id, variation.key, filename)
+        request = record("preview_#{index}", :get, path)
+        expect(request['status']).to eq(200)
+        { 'blob' => row(blob, true), 'bytes' => Base64.strict_encode64(bytes),
+          'request' => request, 'key' => output_key }
+      end
+    end
   end
 
   def remove_local(blobs)

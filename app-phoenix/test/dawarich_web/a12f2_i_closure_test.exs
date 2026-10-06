@@ -86,6 +86,8 @@ defmodule DawarichWeb.A12f2IClosureTest do
     fx = closure()
     assert {:ok, variation} = apply(module, :decode, [fx["variation"]["key"], @now])
     assert variation.transformations == fx["variation"]["transformations"]
+    assert {:ok, legacy} = apply(module, :decode, [fx["legacy_variation"], @now])
+    assert legacy.transformations == variation.transformations
     assert apply(module, :decode, [fx["variation"]["key"] <> "x", @now]) == :error
     for purpose <- ["blob_id", "blob_key", "", "variation"] do
       token = RailsMessages.sign_storage(fx["variation"]["transformations"], purpose, DateTime.add(@now, 1))
@@ -95,6 +97,43 @@ defmodule DawarichWeb.A12f2IClosureTest do
     for request <- Enum.filter(fx["requests"], &(&1["name"] in ["representation_bad_signature", "representation_wrong_purpose"])) do
       assert_response(replay(request, DawarichWeb.ActiveStorage.Representations, storage), request)
     end
+  end
+
+  @tag :a12f2_i_04
+  test "Representation redirect and proxy preserve image bytes variation identity persisted reuse and source failures", %{storage: storage, root: root} do
+    module = Dawarich.Storage.Representations
+    assert Code.ensure_loaded?(module), "native representation processing must exist"
+    fx = closure()
+    for request <- Enum.filter(fx["requests"], &(&1["name"] in ["representation_proxy", "representation_redirect", "representation_legacy", "representation_non_image"])) do
+      assert_response(replay(request, DawarichWeb.ActiveStorage.Representations, storage, key: fn -> "a12b" <> String.duplicate("v", 24) end), request)
+    end
+    assert Repo.query!("SELECT count(*) FROM active_storage_variant_records").rows == [[1]]
+    key = fx["representation"]["key"]
+    assert File.read!(Storage.disk_path(root, key)) == Base.decode64!(fx["representation"]["bytes"])
+    assert File.read!(Storage.disk_path(root, key)) == @payload
+    for preview <- fx["previews"] do
+      row = preview["blob"]
+      bytes = Base.decode64!(preview["bytes"])
+      Repo.query!("INSERT INTO active_storage_blobs(id,key,filename,content_type,metadata,service_name,byte_size,checksum,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [row["id"],row["key"],row["filename"],row["content_type"],Jason.encode!(row["metadata"]),row["service_name"],row["byte_size"],row["checksum"],DateTime.to_naive(@now)])
+      path = Storage.disk_path(root, row["key"])
+      File.mkdir_p!(Path.dirname(path))
+      File.write!(path, bytes)
+      result = replay(preview["request"], DawarichWeb.ActiveStorage.Representations, storage, key: fn -> preview["key"] end)
+      assert_response(result, preview["request"])
+    end
+    first = Blobs.find(970_503)
+    assert {:ok, variation} = Dawarich.Storage.Variation.decode(fx["variation"]["key"], @now)
+    assert {:ok, image} = apply(module, :processed, [first, variation, storage, @now, []])
+    assert image.key == key
+    defaulted = Dawarich.Storage.Variation.default(variation, "png")
+    assert Dawarich.Storage.Variation.marshal(defaulted) == Base.decode64!(fx["representation"]["marshal"])
+    assert Dawarich.Storage.Variation.digest(defaulted) == fx["representation"]["digest"]
+    assert Repo.query!("SELECT count(*) FROM active_storage_variant_records").rows == [[1]]
+    File.rm!(Storage.disk_path(root, first.key))
+    assert {:ok, reused} = apply(module, :processed, [first, variation, storage, @now, []])
+    assert reused.key == image.key
+    assert {:ok, bad} = Dawarich.Storage.Variation.decode(RailsMessages.sign_storage(%{"format" => "unknown"}, "variation", DateTime.add(@now, 1)), @now)
+    assert {:error, :invalid_format} = apply(module, :processed, [first, bad, storage, @now, []])
   end
 
   defp closure, do: "test/fixtures/a12f2i/closure.json" |> File.read!() |> Jason.decode!()

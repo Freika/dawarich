@@ -68,5 +68,62 @@ defmodule Dawarich.Storage.Variation do
     data <> "--" <> mac(data)
   end
 
+  def default(variation, format) do
+    pairs = [{"format", Map.get(variation.transformations, "format", format)} | Enum.reject(variation.pairs, &(elem(&1, 0) == "format"))]
+    %{variation | transformations: Map.put_new(variation.transformations, "format", format), pairs: pairs, key: sign(pairs)}
+  end
+
+  def digest(variation), do: :crypto.hash(:sha, marshal(variation)) |> Base.encode64()
+  def marshal(variation) do
+    {body, _} = dump({:hash, variation.pairs}, %{})
+    <<4, 8>> <> body
+  end
+
+  defp dump({:hash, pairs}, symbols) do
+    {body, symbols} = Enum.reduce(pairs, {<<>>, symbols}, fn {k,v}, {acc, symbols} ->
+      {key, symbols} = dump({:ruby_symbol, k}, symbols)
+      {value, symbols} = dump(v, symbols)
+      {acc <> key <> value, symbols}
+    end)
+    {"{" <> long(length(pairs)) <> body, symbols}
+  end
+
+  defp dump(%Jason.OrderedObject{values: pairs}, symbols), do: dump({:hash, pairs}, symbols)
+  defp dump(value, symbols) when is_map(value), do: dump({:hash, Enum.to_list(value)}, symbols)
+  defp dump({:ruby_symbol, value}, symbols) do
+    case Map.fetch(symbols, value) do
+      {:ok, index} -> {";" <> long(index), symbols}
+      :error -> {":" <> long(byte_size(value)) <> value, Map.put(symbols, value, map_size(symbols))}
+    end
+  end
+  defp dump(value, symbols) when is_binary(value) do
+    {encoding, symbols} = dump({:ruby_symbol, "E"}, symbols)
+    {"I\"" <> long(byte_size(value)) <> value <> long(1) <> encoding <> "T", symbols}
+  end
+  defp dump(value, symbols) when is_integer(value), do: {"i" <> long(value), symbols}
+  defp dump(value, symbols) when is_float(value) do
+    string = value |> Float.to_string() |> String.trim_trailing(".0")
+    {"f" <> long(byte_size(string)) <> string, symbols}
+  end
+  defp dump(value, symbols) when is_list(value) do
+    {body, symbols} = Enum.reduce(value, {<<>>, symbols}, fn value, {acc, symbols} ->
+      {bytes, symbols} = dump(value, symbols)
+      {acc <> bytes, symbols}
+    end)
+    {"[" <> long(length(value)) <> body, symbols}
+  end
+  defp dump(nil, symbols), do: {"0", symbols}
+  defp dump(true, symbols), do: {"T", symbols}
+  defp dump(false, symbols), do: {"F", symbols}
+
+  defp long(0), do: <<0>>
+  defp long(n) when n > 0 and n < 123, do: <<n+5>>
+  defp long(n) when n < 0 and n > -124, do: <<n-5::signed>>
+  defp long(n) do
+    bytes = <<n::little-signed-32>> |> :binary.bin_to_list() |> Enum.reverse() |> Enum.drop_while(&(&1 == if(n < 0, do: 255, else: 0))) |> Enum.reverse() |> :binary.list_to_bin()
+    size = byte_size(bytes)
+    <<if(n < 0, do: -size, else: size)::signed>> <> bytes
+  end
+
   defp mac(data), do: :crypto.mac(:hmac, :sha, RailsMessages.key(RailsSecret.fetch(), "ActiveStorage", 1000, 64), data) |> Base.encode16(case: :lower)
 end
