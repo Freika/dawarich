@@ -213,6 +213,77 @@ defmodule DawarichWeb.A12f2AClosureTest do
              200
   end
 
+  @tag :a12f2_a_05
+  test "Visits Cloud operations match source bbox times soft deletion and per item commit boundaries",
+       %{user: user, now: now} do
+    previous = Application.get_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, Repo)
+    on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous) end)
+    System.put_env("SELF_HOSTED", "false")
+
+    attrs = %{
+      "name" => "Synthetic visit",
+      "latitude" => 52.52,
+      "longitude" => 13.4,
+      "started_at" => "2026-10-06T10:00:00Z",
+      "ended_at" => "2026-10-06T11:00:00Z",
+      "status" => "confirmed",
+      "place_id" => -1,
+      "area_id" => -1
+    }
+
+    result =
+      invoke(
+        DawarichWeb.Api.VisitsController,
+        :batch,
+        user,
+        %{"visits" => [attrs, Map.put(attrs, "status", "invalid")]},
+        now
+      )
+
+    assert result.status == 200
+    body = Jason.decode!(result.resp_body)
+    assert body["created_count"] == 1
+    assert body["failed_count"] == 1
+    id = hd(body["results"])["visit"]["id"]
+    assert Repo.query!("SELECT count(*) FROM visits WHERE user_id=$1", [user.id]).rows == [[1]]
+
+    assert Repo.query!("SELECT count(*) FROM oban.oban_jobs WHERE worker=$1", [
+             "Dawarich.Points.VisitMonthsWorker"
+           ]).rows == [[1]]
+
+    assert Repo.query!(
+             "SELECT count(*) FROM phoenix.rails_commands WHERE payload->>'user_id'=$1::bigint::text",
+             [user.id]
+           ).rows == [[0]]
+
+    foreign = user()
+
+    assert invoke(DawarichWeb.Api.VisitsController, :show, foreign, %{"id" => to_string(id)}, now).status ==
+             404
+
+    assert invoke(DawarichWeb.Api.VisitsController, :show, user, %{"id" => to_string(id)}, now).status ==
+             200
+
+    user = %{user | plan: 0}
+    Repo.query!("UPDATE visits SET started_at=$2 WHERE id=$1", [id, ~N[2020-01-01 00:00:00]])
+
+    assert invoke(DawarichWeb.Api.VisitsController, :show, user, %{"id" => to_string(id)}, now).status ==
+             404
+
+    Repo.query!("UPDATE visits SET started_at=$2 WHERE id=$1", [id, ~N[2026-10-06 10:00:00]])
+
+    assert invoke(DawarichWeb.Api.VisitsController, :destroy, user, %{"id" => to_string(id)}, now).status ==
+             204
+
+    assert invoke(DawarichWeb.Api.VisitsController, :show, user, %{"id" => to_string(id)}, now).status ==
+             404
+
+    assert Repo.query!("SELECT deleted_at IS NOT NULL FROM visits WHERE id=$1", [id]).rows == [
+             [true]
+           ]
+  end
+
   defp source_body(section, name) do
     fixture = "test/fixtures/a12f2a/closure.json" |> File.read!() |> Jason.decode!()
     Enum.find(fixture[section], &(&1["name"] == name))["response"]["body"] |> Jason.decode!()

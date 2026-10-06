@@ -3,7 +3,7 @@ defmodule DawarichWeb.Api.VisitsController do
   @behaviour Plug
 
   alias Dawarich.{I18n, Jobs, UserTimeZone}
-  alias Dawarich.VisitsApi.{Batch, BulkUpdate, Create, Merge, Read, SelectPlace, Update}
+  alias Dawarich.VisitsApi.{Closure, BulkUpdate, Create, Merge, Read, SelectPlace, Update}
   alias DawarichWeb.Api.{Body, Respond}
 
   def init(action), do: action
@@ -16,7 +16,7 @@ defmodule DawarichWeb.Api.VisitsController do
 
     result =
       if conn.assigns.api_format in [:json, :html, :all],
-        do: run(action, user.id, params, zone, now),
+        do: scoped_run(action, user, params, zone, now),
         else: {:replay, "visit format"}
 
     case result do
@@ -45,8 +45,23 @@ defmodule DawarichWeb.Api.VisitsController do
       :not_found ->
         Respond.json(conn, 404, {:object, [{"error", missing(action)}]})
 
-      {:replay, reason} ->
-        Body.replay(conn, reason)
+      {:replay, _reason} ->
+        Body.replay(conn, "visit resource envelope")
+    end
+  rescue
+    error ->
+      if Dawarich.Standalone.enabled?(),
+        do: Respond.json(conn, 500, {:object, [{"error", "internal_server_error"}]}),
+        else: Body.replay(conn, inspect(error.__struct__))
+  end
+
+  defp scoped_run(action, user, params, zone, now) do
+    if Dawarich.Standalone.enabled?() do
+      with :ok <- Dawarich.AccountApi.Closure.pending(user, now),
+           {:ok, params} <- Closure.scope(action, user, params, now),
+           do: run(action, user.id, params, zone, now)
+    else
+      run(action, user.id, params, zone, now)
     end
   end
 
@@ -79,7 +94,12 @@ defmodule DawarichWeb.Api.VisitsController do
   end
 
   defp run(:batch, owner, params, zone, now) do
-    case Batch.call(owner, params["visits"], zone, now) do
+    result =
+      if Dawarich.Standalone.enabled?(),
+        do: Closure.batch(owner, params["visits"], zone, now),
+        else: Dawarich.VisitsApi.Batch.call(owner, params["visits"], zone, now)
+
+    case result do
       {:ok, result} ->
         terms =
           Enum.map(result.results, fn row ->
