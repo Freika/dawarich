@@ -9,6 +9,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.MapFrameRoutes
   import DawarichWeb.A9Routes
   import DawarichWeb.StorageRoutes
+  import DawarichWeb.MetricsRoutes
   import DawarichWeb.UserDataRoutes
 
   pipeline :browser do
@@ -52,6 +53,7 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RequireUser
   end
 
+  metrics_routes()
   api_routes()
 
   pipeline :family_data do

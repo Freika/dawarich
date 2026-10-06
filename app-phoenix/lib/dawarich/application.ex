@@ -73,7 +73,8 @@ defmodule Dawarich.Application do
     node = oban[:node] || Oban.Config.node_name()
     cron = [crontab: Dawarich.Jobs.Registry.crontab(), timezone: "Etc/UTC"]
 
-    [Dawarich.Repo] ++
+    Dawarich.Metrics.children(plan) ++
+      [Dawarich.Repo] ++
       redis() ++
       [
         {Oban, Keyword.put(oban, :cron, cron)},

@@ -50,9 +50,15 @@ defmodule Dawarich.RawData.Archiver do
         Enum.each(results, Keyword.get(opts, :on_result, fn _result -> :ok end))
 
         cond do
-          Enum.any?(results, &match?({:error, _}, &1)) -> :done
-          Enum.all?(results, &(&1 == {:ok, 0})) -> {:continue, rows |> List.last() |> hd()}
-          true -> {:continue, cursor}
+          Enum.any?(results, &match?({:error, _}, &1)) ->
+            :done
+
+          Enum.all?(results, &(&1 == {:ok, 0})) ->
+            Dawarich.Metrics.Archive.operation("archive", "skipped")
+            {:continue, rows |> List.last() |> hd()}
+
+          true ->
+            {:continue, cursor}
         end
     end
   end
@@ -75,7 +81,16 @@ defmodule Dawarich.RawData.Archiver do
   end
 
   defp safe_chunk(ctx, ids, year, month) do
-    {:ok, archive_chunk(ctx, ids, year, month)}
+    count =
+      Dawarich.Metrics.Archive.track(
+        "archive",
+        fn ->
+          archive_chunk(ctx, ids, year, month)
+        end,
+        & &1
+      )
+
+    {:ok, count}
   rescue
     error ->
       Logger.error(
@@ -89,11 +104,11 @@ defmodule Dawarich.RawData.Archiver do
   defp archive_chunk(ctx, ids, year, month) do
     snapshot = ctx.repo.query!(@snapshot, [ids], log: false).rows
 
-    if length(snapshot) != length(ids),
-      do:
-        raise(
-          "Archive count mismatch for user #{ctx.user_id}: expected #{length(ids)}, got #{length(snapshot)}"
-        )
+    if length(snapshot) != length(ids) do
+      Dawarich.Metrics.Archive.mismatch(ctx.user_id, year, month, length(ids) - length(snapshot))
+
+      raise "Archive count mismatch for user #{ctx.user_id}: expected #{length(ids)}, got #{length(snapshot)}"
+    end
 
     message =
       snapshot
@@ -107,7 +122,14 @@ defmodule Dawarich.RawData.Archiver do
     case written(ctx, archive_id, storage_key, message, ids) do
       :ok ->
         sums = Map.new(snapshot, fn [id, _line, sum] -> {id, sum} end)
-        link(ctx, archive_id, storage_key, flag(ctx, archive_id, ids, sums))
+        count = link(ctx, archive_id, storage_key, flag(ctx, archive_id, ids, sums))
+
+        if count > 0 do
+          source_bytes = Enum.sum(Enum.map(snapshot, fn [_, line, _] -> byte_size(line) + 1 end))
+          Dawarich.Metrics.Archive.sizes(message, source_bytes)
+        end
+
+        count
 
       {:lost, step} ->
         raise "Archive #{archive_id} was claimed by a discard before #{step}"
