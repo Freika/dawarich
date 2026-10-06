@@ -92,6 +92,35 @@ defmodule DawarichWeb.A12f3aWClosureTest do
 
     assert response.status == 200
     assert response.resp_body =~ "Name can&#39;t be blank"
+
+    for source <- Jason.decode!(File.read!("test/fixtures/map_writes/a12f3a-w10.json")),
+        source["locale"] do
+      assert {:invalid, errors} =
+               Dawarich.Areas.WebWrite.create(Repo, ctx.user, source["params"], %{
+                 now: ctx.now,
+                 locale: source["locale"]
+               })
+
+      assert Enum.join(errors, ", ") == source["text"]
+
+      localized =
+        request(
+          %{ctx | session: Map.put(ctx.session, "locale", source["locale"])},
+          :post,
+          "/areas",
+          URI.encode_query(source["params"]),
+          DawarichWeb.AreaActions
+        )
+
+      assert localized.status == source["status"]
+
+      assert localized.resp_body
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query("turbo-stream")
+             |> LazyHTML.text()
+             |> String.trim() == source["text"]
+    end
+
     assert Repo.query!("SELECT * FROM areas").rows == before
     foreign = FrameSeeds.user!(88102)
 

@@ -9,8 +9,9 @@ defmodule DawarichWeb.AreaActions do
   def init(action), do: action
 
   def call(conn, _) do
-    ctx = %{now: Map.get(conn.assigns, :now, DateTime.utc_now())}
     user = conn.assigns.current_user
+    locale = Locale.resolve(nil, user, conn.assigns.rails_session)
+    ctx = %{now: Map.get(conn.assigns, :now, DateTime.utc_now()), locale: locale}
     attrs = conn.assigns.api_params
 
     outcome =
@@ -27,8 +28,6 @@ defmodule DawarichWeb.AreaActions do
             ctx
           )
       end
-
-    locale = Locale.resolve(nil, user, conn.assigns.rails_session)
 
     case {outcome, conn.assigns.map_write_format} do
       {:rails, _} ->

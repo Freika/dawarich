@@ -11,7 +11,7 @@ defmodule Dawarich.Areas.WebWrite do
     case repo.transaction(fn ->
            before = load!(repo, user.id, id)
            values = Map.merge(before || %{}, Map.take(attrs, @fields))
-           errors = validate(values)
+           errors = validate(values, Map.get(ctx, :locale, "en"))
            if errors != [], do: repo.rollback({:invalid, errors})
            area = save!(repo, user.id, id, values, before, ctx.now)
            relabel!(repo, area.id, values, before, ctx.now)
@@ -57,24 +57,35 @@ defmodule Dawarich.Areas.WebWrite do
     end
   end
 
-  defp validate(values) do
+  defp validate(values, locale) do
     presence =
-      for key <- @fields, Ruby.blank?(values[key]), do: "#{String.capitalize(key)} can't be blank"
+      for key <- @fields,
+          Ruby.blank?(values[key]),
+          do: error(locale, String.capitalize(key), "blank")
 
     presence ++
-      numeric(values["radius"], "Radius", 0, nil, true) ++
-      numeric(values["latitude"], "Latitude", -90, 90, false) ++
-      numeric(values["longitude"], "Longitude", -180, 180, false)
+      numeric(values["radius"], "Radius", 0, nil, true, locale) ++
+      numeric(values["latitude"], "Latitude", -90, 90, false, locale) ++
+      numeric(values["longitude"], "Longitude", -180, 180, false, locale)
   end
 
-  defp numeric(value, name, low, high, exclusive) do
+  defp numeric(value, name, low, high, exclusive, locale) do
     case number(value) do
-      nil -> ["#{name} is not a number"]
-      n when exclusive and n <= low -> ["#{name} must be greater than #{low}"]
-      n when n < low -> ["#{name} must be greater than or equal to #{low}"]
-      n when not is_nil(high) and n > high -> ["#{name} must be less than or equal to #{high}"]
+      nil -> [error(locale, name, "not_a_number")]
+      n when exclusive and n <= low -> [error(locale, name, "greater_than", low)]
+      n when n < low -> [error(locale, name, "greater_than_or_equal_to", low)]
+      n when not is_nil(high) and n > high -> [error(locale, name, "less_than_or_equal_to", high)]
       _ -> []
     end
+  end
+
+  defp error(locale, name, code, count \\ nil) do
+    {:ok, message} = Dawarich.I18n.t(locale, "errors.messages." <> code, %{"count" => count})
+
+    {:ok, result} =
+      Dawarich.I18n.t(locale, "errors.format", %{"attribute" => name, "message" => message})
+
+    result
   end
 
   defp number(value) when is_binary(value) do
