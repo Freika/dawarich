@@ -191,6 +191,104 @@ defmodule DawarichWeb.A12f3aVClosureTest do
     no_rails()
   end
 
+  @tag a12f3a_v08: true
+  test "V08: full-history and user redetect producer matches current Rails contract without a native-owner Rails effect" do
+    env("SELF_HOSTED", "false")
+    ctx = fixture("a12f3a-v08")
+    conn = request(ctx, :post, "/visits/redetections", %{}, "text/html")
+    assert conn.status == ctx.state["status"]
+    assert get_resp_header(conn, "location") == [ctx.state["location"]]
+
+    assert [[event, payload]] =
+             rows(
+               "SELECT event_id,payload FROM public.job_outbox WHERE command_type='visits.full_history_redetect'"
+             )
+
+    assert {:ok, args} = Dawarich.Visits.RedetectWorker.args_from_command(1, payload)
+    no_rails()
+    start_oban(__MODULE__.Oban)
+
+    job = %Oban.Job{
+      args: Map.put(args, "event_id", Ecto.UUID.cast!(event)),
+      conf: Oban.config(__MODULE__.Oban)
+    }
+
+    assert Dawarich.Visits.RedetectWorker.perform(job) == :ok
+
+    assert rows("SELECT title FROM notifications WHERE user_id=$1", [ctx.user.id]) == [
+             ["Visit re-detection"]
+           ]
+
+    assert rows("SELECT visits_redetected_at FROM users WHERE id=$1", [ctx.user.id]) == [[nil]]
+    pipeline = Dawarich.VisitsCase.load_visits!("detection_pipeline")
+    uid = Dawarich.VisitsCase.user_id(pipeline)
+    rows("UPDATE users SET visits_redetected_at=NULL,plan=1 WHERE id=$1", [uid])
+
+    rows(
+      "INSERT INTO areas(user_id,name,latitude,longitude,radius,created_at,updated_at) VALUES($1,'Office',51.3397,12.3731,100,now(),now())",
+      [uid]
+    )
+
+    for type <- ~w(visits.suggest visits.full_history_redetect places.delete_if_orphan) do
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:" <> type, :oban)
+    end
+
+    assert {:ok, _} =
+             Dawarich.Visits.WebSettings.redetect(ScratchRepo, uid, DateTime.utc_now(), "en")
+
+    [[root, accepted]] =
+      rows(
+        "SELECT event_id,payload FROM public.job_outbox WHERE command_type='visits.full_history_redetect' AND aggregate_id=$1",
+        [uid]
+      )
+
+    root = Ecto.UUID.cast!(root)
+    assert {:ok, start} = Dawarich.Visits.RedetectWorker.args_from_command(1, accepted)
+
+    assert Dawarich.Visits.RedetectWorker.perform(%Oban.Job{
+             args: Map.put(start, "event_id", root),
+             conf: Oban.config(__MODULE__.Oban)
+           }) == :ok
+
+    [[child, child_args]] =
+      rows(
+        "SELECT id,args FROM oban.oban_jobs WHERE worker='Dawarich.Visits.RedetectWorker' AND args->>'event_id'=$1",
+        [root]
+      )
+
+    assert child_args["step"] == 0
+    assert child_args["event_id"] == root
+    rows("DELETE FROM oban.oban_jobs WHERE id=$1", [child])
+
+    assert Dawarich.Visits.RedetectWorker.perform(%Oban.Job{
+             args: child_args,
+             conf: Oban.config(__MODULE__.Oban)
+           }) == :ok
+
+    assert rows("SELECT visits_redetected_at IS NOT NULL FROM users WHERE id=$1", [uid]) == [
+             [true]
+           ]
+
+    assert rows("SELECT title FROM notifications WHERE user_id=$1", [uid]) == [
+             ["Visit re-detection complete"]
+           ]
+
+    assert rows("SELECT count(*) FROM visits WHERE user_id=$1", [uid]) == [[1]]
+    no_rails()
+
+    rows("UPDATE users SET visits_redetected_at=now() WHERE id=$1", [ctx.user.id])
+    blocked = request(ctx, :post, "/visits/redetections", %{}, "text/html")
+    assert blocked.status == 429
+    assert get_resp_header(blocked, "location") == [ctx.state["location"]]
+
+    assert rows(
+             "SELECT count(*) FROM public.job_outbox WHERE command_type='visits.full_history_redetect' AND aggregate_id=$1",
+             [ctx.user.id]
+           ) == [[1]]
+
+    no_rails()
+  end
+
   defp fixture(name) do
     state = File.read!("test/fixtures/a8vv/visits/#{name}.json") |> Jason.decode!()
     u = hd(state["before"]["users"])

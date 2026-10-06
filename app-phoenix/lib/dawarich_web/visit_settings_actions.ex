@@ -43,21 +43,29 @@ defmodule DawarichWeb.VisitSettingsActions do
       {:cooldown, 429} ->
         Body.replay(conn, "visit redetection cooldown flash")
 
+      {:cooldown, 429, :native} ->
+        redirect(
+          conn,
+          "controllers.visits.redetections.re_detect_ran_recently_try_again_in_an_hour",
+          429,
+          "alert"
+        )
+
       {:replay, reason} ->
         Body.replay(conn, reason)
     end
   end
 
-  defp redirect(conn, key) do
+  defp redirect(conn, key, status \\ 302, type \\ "notice") do
     locale = Locale.resolve(nil, conn.assigns.current_user, conn.assigns.rails_session)
     notice = Translate.t(locale, key, %{})
 
     conn
-    |> RailsSession.stage(%{"flash" => %{"discard" => [], "flashes" => %{"notice" => notice}}})
+    |> RailsSession.stage(%{"flash" => %{"discard" => [], "flashes" => %{type => notice}}})
     |> put_resp_header("location", RequestURL.base(conn) <> "/settings/visits")
     |> put_resp_header("cache-control", "no-cache")
     |> put_resp_content_type("text/html")
-    |> send_resp(302, "")
+    |> send_resp(status, "")
     |> halt()
   end
 end
