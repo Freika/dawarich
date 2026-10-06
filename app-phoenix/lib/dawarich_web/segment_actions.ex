@@ -53,6 +53,9 @@ defmodule DawarichWeb.SegmentActions do
             :rails -> Body.replay(conn, "segment response unsupported")
           end
 
+        :not_found ->
+          conn |> send_resp(404, "") |> halt()
+
         :rails ->
           Body.replay(conn, "segment write unsupported")
       end
@@ -61,7 +64,7 @@ defmodule DawarichWeb.SegmentActions do
     end
   end
 
-  defp back(conn) do
+  def back(conn) do
     case get_req_header(conn, "referer") do
       [] ->
         {:ok, RequestURL.base(conn) <> "/"}
