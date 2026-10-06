@@ -1,2 +1,1 @@
-prometheus_exporter: bundle exec prometheus_exporter -b ANY
-web: bin/rails server -p 3000 -b ::
+web: PROMETHEUS_EXPORTER_ENABLED=true sh -c 'cd app-phoenix && mix phx.server'

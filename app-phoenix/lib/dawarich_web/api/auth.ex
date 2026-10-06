@@ -106,6 +106,7 @@ defmodule DawarichWeb.Api.Auth do
         |> assign(:api_vary, vary)
         |> assign(:api_request_id, request_id(conn))
         |> assign(:api_headers, Headers.dawarich(user != nil, version()))
+        |> assign(:api_user, user)
         |> assign(:api_if_none_match, joined(conn, "if-none-match"))
 
       {:replay, reason} ->

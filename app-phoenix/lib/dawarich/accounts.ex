@@ -28,6 +28,7 @@ defmodule Dawarich.Accounts do
       limit: 1,
       select: %{
         id: u.id,
+        email: u.email,
         status: u.status,
         active_until: u.active_until,
         plan: u.plan,

@@ -111,9 +111,11 @@ defmodule Dawarich.CLI do
     ctx = %{out: :stdio, err: :stderr, stdin: :stdio, env: System.get_env()}
 
     code =
-      if repo?(resolved),
-        do: with_repo(&dispatch(resolved, Map.put(ctx, :repo, &1))),
-        else: dispatch(resolved, ctx)
+      Dawarich.ErrorReporting.release(fn ->
+        if repo?(resolved),
+          do: with_repo(&dispatch(resolved, Map.put(ctx, :repo, &1))),
+          else: dispatch(resolved, ctx)
+      end)
 
     System.halt(code)
   end
@@ -175,11 +177,19 @@ defmodule Dawarich.CLI do
   defp dispatch({:ok, :help, _args}, ctx), do: dispatch(:unknown, ctx)
 
   defp dispatch({:ok, {module, fun}, args}, ctx) do
-    apply(module, fun, [args, ctx])
-  rescue
-    error -> fail(ctx, Exception.message(error))
-  catch
-    kind, reason when kind in [:exit, :throw] -> fail(ctx, inspect(reason))
+    Dawarich.ErrorReporting.release(fn ->
+      try do
+        apply(module, fun, [args, ctx])
+      rescue
+        error ->
+          Dawarich.ErrorReporting.capture_release(:error, error, __STACKTRACE__)
+          fail(ctx, Exception.message(error))
+      catch
+        kind, reason when kind in [:exit, :throw] ->
+          Dawarich.ErrorReporting.capture_release(kind, reason, __STACKTRACE__)
+          fail(ctx, inspect(reason))
+      end
+    end)
   end
 
   defp dispatch({:retired, message}, ctx), do: fail(ctx, message)

@@ -57,6 +57,11 @@ defmodule DawarichWeb.EndpointTest do
              target
     end
 
+    for {path, status} <- [{"/sidekiq", 302}, {"/admin/flipper", 404}] do
+      assert answered_by_phoenix(port, "GET #{path} HTTP/1.1\r\nHost: a\r\n#{cookie}\r\n") ==
+               status
+    end
+
     body = "user%5Bemail%5D=a10%40example.invalid&literal=%00%26"
 
     for {method, target, headers} <- [
@@ -74,8 +79,6 @@ defmodule DawarichWeb.EndpointTest do
           {"PATCH", "/settings/users/update_registration_settings", ""},
           {"GET", "/settings/users/export?kind=all", ""},
           {"GET", "/trial/welcome?token=synthetic-invalid", ""},
-          {"GET", "/sidekiq", ""},
-          {"GET", "/admin/flipper", ""},
           {"GET", "/settings/users/export/edit", ""},
           {"GET", "/settings/users/99999", ""},
           {"GET", "/settings/users/10001.json", ""},
@@ -689,7 +692,7 @@ defmodule DawarichWeb.EndpointTest do
 
     listener = ThousandIsland.Server.listener_pid(bandit)
     listener_ref = Process.monitor(listener)
-    live_socket = Process.whereis(DawarichWeb.Endpoint.Phoenix.LiveView.Socket)
+    live_socket = Process.whereis(DawarichWeb.Endpoint.DawarichWeb.LiveSocket)
     live_socket_ref = Process.monitor(live_socket)
     started = System.monotonic_time(:millisecond)
     stopping = Task.async(fn -> Supervisor.stop(sup) end)
@@ -750,7 +753,7 @@ defmodule DawarichWeb.EndpointTest do
     )
 
     {101, _headers, rest} = read_response_head(client)
-    live_socket = Process.whereis(DawarichWeb.Endpoint.Phoenix.LiveView.Socket)
+    live_socket = Process.whereis(DawarichWeb.Endpoint.DawarichWeb.LiveSocket)
     live_socket_ref = Process.monitor(live_socket)
     stopping = Task.async(fn -> Supervisor.stop(sup) end)
 

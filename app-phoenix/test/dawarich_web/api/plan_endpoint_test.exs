@@ -140,6 +140,9 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
     port: port,
     upstream: upstream
   } do
+    routes = Application.get_env(:dawarich, :rails_routes, [])
+    Application.put_env(:dawarich, :rails_routes, ["health", "ready"])
+    on_exit(fn -> Application.put_env(:dawarich, :rails_routes, routes) end)
     user!(%{api_key: @key})
 
     for {method, target} <- [

@@ -9,14 +9,16 @@ class Trips::CalculateAllJob < ApplicationJob
 
   def perform(trip_id, distance_unit = 'km')
     result = JobOwnership.with_owner(OWNER_KEY) { fan_out(trip_id, distance_unit) }
-    self.class.forward(trip_id, distance_unit, job_id) if result == :not_owner
+    return unless result == :not_owner
+
+    self.class.forward(trip_id, distance_unit, job_id, scheduled_at: scheduled_at || Time.current)
   end
 
-  def self.forward(trip_id, distance_unit, token)
+  def self.forward(trip_id, distance_unit, token, scheduled_at: Time.current)
     JobCommands.forward(
       'trips.calculate', { 'trip_id' => trip_id, 'distance_unit' => distance_unit },
-      event_id: Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "trips.calculate:#{trip_id}:#{token}"),
-      aggregate_id: trip_id, dedupe_key: trip_id.to_s, producer: name
+      event_id: Trips::CalculationReceipts.event_id(trip_id, token),
+      aggregate_id: trip_id, dedupe_key: trip_id.to_s, producer: name, scheduled_at:
     )
   end
 
@@ -36,7 +38,8 @@ class Trips::CalculateAllJob < ApplicationJob
     end
 
     remaining = Rails.cache.decrement(key)
-    return unless remaining&.zero?
+    return unless remaining&.zero? || Trips::CalculationReceipts.complete?(trip_id, run_token)
+    return unless Trips::CalculationReceipts.finish(trip_id, run_token)
 
     Rails.cache.delete(key)
     finalize(trip_id, error: false)
@@ -59,11 +62,14 @@ class Trips::CalculateAllJob < ApplicationJob
   private
 
   def fan_out(trip_id, distance_unit)
-    run_token = SecureRandom.uuid
+    JobOwnership.require_source_children!(OWNER_KEY)
+    run_token = job_id
     Rails.cache.write(self.class.pending_key(trip_id, run_token), 3, expires_in: PENDING_TTL, raw: true)
 
-    Trips::CalculatePathJob.perform_later(trip_id, run_token)
-    Trips::CalculateDistanceJob.perform_later(trip_id, distance_unit, run_token)
-    Trips::CalculateCountriesJob.perform_later(trip_id, distance_unit, run_token)
+    Trips::CalculatePathJob.set(wait_until: scheduled_at || Time.current).perform_later(trip_id, run_token)
+    Trips::CalculateDistanceJob.set(wait_until: scheduled_at || Time.current).perform_later(trip_id, distance_unit,
+                                                                                            run_token)
+    Trips::CalculateCountriesJob.set(wait_until: scheduled_at || Time.current).perform_later(trip_id, distance_unit,
+                                                                                             run_token)
   end
 end

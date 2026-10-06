@@ -32,6 +32,77 @@ defmodule Dawarich.ApplicationTest do
   defp ids(plan),
     do: Enum.map(Dawarich.Application.children(plan), &Supervisor.child_spec(&1, []).id)
 
+  test "opt-in Cloud web selects the native listener without a Rails child or upstream" do
+    env = %{
+      "RAILS_ENV" => "production",
+      "SELF_HOSTED" => "false",
+      "DAWARICH_PHOENIX_LIFECYCLE" => "true",
+      "DAWARICH_PROXY" => "off"
+    }
+
+    for {argv, address} <- [
+          {~w(puma -C config/puma.rb -p 5000), {{0, 0, 0, 0}, 5000}},
+          {["puma", "--config=config/puma.rb", "--bind", "tcp://[::1]:5000"],
+           {{0, 0, 0, 0, 0, 0, 0, 1}, 5000}}
+        ] do
+      input = Map.put(env, "DAWARICH_NATIVE_ARGS", Enum.join(argv, "\x1F") <> "\x1F")
+      assert {:native, ^address} = plan = Dawarich.Application.plan(@argv, input)
+      assert Dawarich.Front.upstream(plan) == nil
+      refute RailsServer in ids(plan)
+      assert Dawarich.Front.Drainer in ids(plan)
+
+      for disabled <- [
+            Map.delete(input, "DAWARICH_PHOENIX_LIFECYCLE"),
+            Map.put(input, "DAWARICH_PHOENIX_LIFECYCLE", "false"),
+            Map.delete(input, "SELF_HOSTED"),
+            Map.put(input, "SELF_HOSTED", "true")
+          ] do
+        assert Dawarich.Application.plan(@argv, disabled) == @direct
+      end
+    end
+
+    for argv <- [
+          ~w(puma -C custom.rb -p 5000),
+          ["puma", "-C", "config/puma.rb", "--tag", "two words"],
+          ~w(puma -p 5000 -p 5001),
+          ~w(rails runner),
+          ~w(sidekiq),
+          []
+        ] do
+      input = Map.put(env, "DAWARICH_NATIVE_ARGS", Enum.join(argv, "\x1F") <> "\x1F")
+      assert_raise ArgumentError, fn -> Dawarich.Application.plan(nil, input) end
+    end
+
+    assert_raise ArgumentError, fn -> Dawarich.Application.plan(nil, env) end
+  end
+
+  test "adding native front helpers preserves existing proxy and idle role selection" do
+    {:ok, socket} = :gen_tcp.listen(0, ip: {127, 0, 0, 1})
+    {:ok, port} = :inet.port(socket)
+    :ok = :gen_tcp.close(socket)
+    argv = ~w(bundle exec bin/rails server -b 127.0.0.1) ++ ["-p", "#{port}"]
+    env = %{"RAILS_ENV" => "production"}
+
+    assert Dawarich.Front.native_plan(argv, env) == {:native, {{127, 0, 0, 1}, port}}
+
+    for role <- [nil, "", "web"] do
+      assert {:proxy, %{public: {{127, 0, 0, 1}, ^port}, upstream: upstream, puma_argv: puma}} =
+               Dawarich.Application.plan(argv, Map.put(env, "DAWARICH_PROCESS_ROLE", role))
+
+      assert upstream in 20_000..32_767
+      assert puma == ~w(bundle exec bin/rails server -b 127.0.0.1) ++ ["-p", "#{upstream}"]
+    end
+
+    assert {:direct, ^argv, "DAWARICH_PROXY=off"} =
+             Dawarich.Application.plan(argv, Map.put(env, "DAWARICH_PROXY", "off"))
+
+    assert Dawarich.Application.plan(argv, Map.put(env, "DAWARICH_PROCESS_ROLE", "sidekiq_idle")) ==
+             :sidekiq_idle
+
+    assert Dawarich.Application.plan(nil, env) == :none
+    assert {:error, _} = Dawarich.Front.native_plan(nil, env)
+  end
+
   test "sidekiq idle role starts no Repo Endpoint Puma Oban relay or cron and exits cleanly on shutdown" do
     idle = Dawarich.Application.plan(@argv, %{"DAWARICH_PROCESS_ROLE" => "sidekiq_idle"})
     assert idle == :sidekiq_idle

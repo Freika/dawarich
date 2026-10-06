@@ -8,6 +8,21 @@ defmodule DawarichWeb.ShareLinkActive do
   defp s(ctx, key, bindings \\ %{}),
     do: t(ctx.locale, "shared_links.modal_active." <> key, bindings)
 
+  defp audience(ctx, share, family_key, public_key) do
+    if Dawarich.SharedLinks.FamilyAudience.family_only?(share),
+      do: t(ctx.locale, "shared_links.family." <> family_key, %{}),
+      else: s(ctx, public_key)
+  end
+
+  defp copy_label(ctx, share) do
+    key =
+      if Dawarich.SharedLinks.FamilyAudience.family_only?(share),
+        do: "copy_link",
+        else: "copy_public_link"
+
+    s(ctx, key)
+  end
+
   defp url(ctx, share), do: ctx.base_url <> "/s/" <> share.id
 
   def action(assigns) do

@@ -10,6 +10,7 @@ defmodule Dawarich.Jobs.Supervisor do
 
     workers = [
       Supervisor.child_spec({Dawarich.Jobs.Relay, opts}, shutdown: 1_000),
+      {Dawarich.Jobs.HealthRefresher, Keyword.take(opts, [:node, :repo, :public_repo])},
       {Dawarich.Jobs.Claimer, Keyword.take(opts, [:oban, :repo, :entries])}
     ]
 

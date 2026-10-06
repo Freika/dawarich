@@ -20,12 +20,14 @@ class Trips::CalculatePathJob < ApplicationJob
     placeholder_shown = trip.path.blank?
 
     trip.calculate_path
-    result = JobOwnership.with_owner(Trips::CalculateAllJob::OWNER_KEY) { trip.save! }
-    if result == :not_owner
-      return Trips::CalculateAllJob.forward(trip_id, trip.user.safe_settings.distance_unit, run_token || job_id)
+    result = Trips::CalculationReceipts.with_effect(trip_id, run_token || job_id, 'path') do
+      trip.save!
+      Turbo::StreamsChannel.broadcast_refresh_to(trip) if placeholder_shown && trip.path.present?
+      Trips::CalculateAllJob.tally_completion(trip_id, run_token)
     end
+    return unless result == :not_owner
 
-    Turbo::StreamsChannel.broadcast_refresh_to(trip) if placeholder_shown && trip.path.present?
-    Trips::CalculateAllJob.tally_completion(trip_id, run_token)
+    Trips::CalculateAllJob.forward(trip_id, trip.user.safe_settings.distance_unit, run_token || job_id,
+                                   scheduled_at: scheduled_at || Time.current)
   end
 end

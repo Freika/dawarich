@@ -15,7 +15,10 @@ defmodule Dawarich.RawData.Verifier do
   @sampled "SELECT id, raw_data, raw_data_archive_id, raw_data_archived FROM points WHERE id = ANY($1)"
   @keeps_verification [:download_failed, :unsupported_payload]
 
-  def verify(repo, storage, key, archive_id) do
+  def verify(repo, storage, key, archive_id),
+    do: Dawarich.Metrics.Archive.verify(fn -> verify_archive(repo, storage, key, archive_id) end)
+
+  defp verify_archive(repo, storage, key, archive_id) do
     [[count, checksum, metadata, verified?]] =
       repo.query!(@archive, [archive_id], log: false).rows
 

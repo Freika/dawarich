@@ -201,6 +201,7 @@ module JobCommands
   module_function
 
   def produce(type, payload, aggregate_id:, producer:, scheduled_at: Time.current, dedupe_key: nil, &source_complete)
+    CloudDrain.reject! if payload['source_job_id'].blank?
     payload = Users::RecalculationCommands.normalize(payload) if type == 'users.recalculate_data'
     command = COMMANDS.fetch(type)
     ActiveRecord::Base.transaction do
@@ -209,6 +210,7 @@ module JobCommands
                               aggregate_id:, producer:, scheduled_at:, dedupe_key:)
         :outbox
       else
+        CloudDrain.reject!
         source_complete ? source_complete.call : command.fetch(:sidekiq).call(payload, scheduled_at)
         :sidekiq
       end
