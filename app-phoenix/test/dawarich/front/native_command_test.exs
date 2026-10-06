@@ -7,6 +7,63 @@ defmodule Dawarich.Front.NativeCommandTest do
   @any4 {0, 0, 0, 0}
   @any6 {0, 0, 0, 0, 0, 0, 0, 0}
 
+  test "Rails split listener flags refuse option tokens even before valid repeats" do
+    private = "--synthetic-private-flag"
+
+    for args <- [
+          ~w(-p --unknown -p 3000),
+          ~w(-b --daemon -b 127.0.0.1),
+          ~w(--port --binding :: --port 3000),
+          ~w(--binding -p 3000 --binding ::),
+          ["-p", private, "-p", "3000"],
+          ["-b", private, "-b", "::"]
+        ] do
+      assert {:error, reason} = Command.native(["rails", "server" | args], @prod)
+      assert reason =~ "Rails server"
+      assert reason =~ "dawarich start"
+      refute reason =~ private
+      assert {:error, ^reason} = Dawarich.Front.native_plan(["rails", "server" | args], @prod)
+    end
+  end
+
+  test "Rails listener repeats validate every supplied value before choosing the last" do
+    private = "synthetic-private-listener"
+
+    for prefix <- [[], ~w(bundle exec)],
+        rails <- ~w(rails bin/rails),
+        server <- ~w(server s),
+        args <- [
+          ~w(--port=bad --port=3000),
+          ~w(-p==3000 -p 3001),
+          ~w(--binding=bad --binding=::),
+          ~w(--port= --port=3000),
+          ~w(-p 0 -p 3000),
+          ~w(-p 65536 -p 3000),
+          ["-b", "", "-b", "::"],
+          ~w(-b 127.0.0.999 -b 127.0.0.1),
+          ~w(-b [:: -b ::),
+          ~w(-b ::] -b ::),
+          ["-p", private, "--port=3000"],
+          ["--binding=" <> private, "-b::"]
+        ] do
+      argv = prefix ++ [rails, server] ++ args
+      assert {:error, reason} = Command.native(argv, @prod)
+      assert reason =~ "Rails #{server}"
+      assert reason =~ "dawarich start"
+      refute reason =~ private
+      assert {:error, ^reason} = Dawarich.Front.native_plan(argv, @prod)
+    end
+
+    env = Map.merge(@prod, %{"PORT" => private, "BINDING" => private})
+
+    for prefix <- [[], ~w(bundle exec)], rails <- ~w(rails bin/rails), server <- ~w(server s) do
+      assert Command.native(
+               prefix ++ [rails, server] ++ ~w(-p 3001 --port=3002 -b127.0.0.1 --binding=[::]),
+               env
+             ) == {:web, {@any6, 3002}}
+    end
+  end
+
   test "unknown legacy commands and malformed listener arguments refuse with a native remedy" do
     private = "synthetic-private-argv"
 

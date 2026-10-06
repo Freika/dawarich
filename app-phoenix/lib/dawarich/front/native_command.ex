@@ -119,16 +119,20 @@ defmodule Dawarich.Front.NativeCommand do
     host = List.last(opts[:binding] || []) || present(env["BINDING"]) || default_host
     port = List.last(opts[:port] || []) || present(env["PORT"]) || "3000"
 
-    bracketed? = String.contains?(host, ["[", "]"])
-
-    result =
-      if not bracketed? or Regex.match?(~r/\A\[[^\[\]]+\]\z/, host),
-        do: Command.listen_address(host, port)
-
-    case result do
-      {:ok, address} -> {:web, address}
+    with true <-
+           Enum.all?(opts[:binding] || [], &match?({:ok, _}, listen_address(&1, "3000"))),
+         true <- Enum.all?(opts[:port] || [], &match?({:ok, _}, listen_address("0.0.0.0", &1))),
+         {:ok, address} <- listen_address(host, port) do
+      {:web, address}
+    else
       _ -> {:error, "invalid listener"}
     end
+  end
+
+  defp listen_address(host, port) do
+    if not String.contains?(host, ["[", "]"]) or Regex.match?(~r/\A\[[^\[\]]+\]\z/, host),
+      do: Command.listen_address(host, port),
+      else: {:error, "invalid listener"}
   end
 
   defp present(value) when value in [nil, ""], do: nil
@@ -138,7 +142,9 @@ defmodule Dawarich.Front.NativeCommand do
   defp options([], _flags, opts), do: {:ok, opts}
 
   defp options([flag, value | tail], flags, opts) when is_map_key(flags, flag) do
-    options(tail, flags, Map.update(opts, flags[flag], [value], &(&1 ++ [value])))
+    if String.starts_with?(value, "-"),
+      do: {:error, "unsupported argv"},
+      else: options(tail, flags, Map.update(opts, flags[flag], [value], &(&1 ++ [value])))
   end
 
   defp options([arg | tail], flags, opts) do
