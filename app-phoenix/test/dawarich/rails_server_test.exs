@@ -68,47 +68,24 @@ defmodule Dawarich.RailsServerTest do
   end
 
   test "does not signal a command whose exit is already queued at shutdown" do
-    race_suspend_before_exit_status(20)
-  end
-
-  defp race_suspend_before_exit_status(0) do
-    flunk("could not reliably suspend before the queued exit_status was processed")
-  end
-
-  defp race_suspend_before_exit_status(retries_left) do
     test = self()
 
     pid =
       start_supervised!(
         {RailsServer,
-         argv: ["sh", "-c", "echo bye; exit 0"],
+         argv: ["sh", "-c", "read trigger; echo bye; exit 0"],
          sink: &send(test, {:out, &1}),
          on_exit: &send(test, {:exited, &1}),
          signal: fn os_pid, sig -> send(test, {:signalled, os_pid, sig}) end}
       )
 
-    try do
-      :sys.suspend(pid)
-    catch
-      :exit, _ -> :ok
-    end
-
-    already_handled =
-      receive do
-        {:exited, _} -> true
-      after
-        0 -> false
-      end
-
-    if already_handled do
-      stop_supervised(RailsServer)
-      race_suspend_before_exit_status(retries_left - 1)
-    else
-      assert wait_for_queued_exit_status(pid)
-      :ok = stop_supervised(RailsServer)
-      assert_received {:out, "bye\n"}
-      refute_received {:signalled, _, _}
-    end
+    %{port: port} = :sys.get_state(pid)
+    :ok = :sys.suspend(pid)
+    assert Port.command(port, "\n")
+    assert wait_for_queued_exit_status(pid)
+    :ok = stop_supervised(RailsServer)
+    assert_received {:out, "bye\n"}
+    refute_received {:signalled, _, _}
   end
 
   defp wait_for_queued_exit_status(pid) do

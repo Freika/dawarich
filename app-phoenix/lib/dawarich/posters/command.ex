@@ -23,6 +23,17 @@ defmodule Dawarich.Posters.Command do
   def produce(repo, :sidekiq, id, user, locale, _now),
     do: RailsCommands.insert!(repo, "posters.created", payload(id, user.id, locale))
 
+  def progress(repo, payload), do: child!(repo, Dawarich.Posters.ProgressWorker, payload)
+
+  def purge(repo, :oban, payload), do: child!(repo, Dawarich.Posters.PurgeWorker, payload)
+  def purge(repo, :sidekiq, payload), do: RailsCommands.insert!(repo, "posters.purge", payload)
+
+  defp child!(repo, worker, payload) do
+    payload = Map.put(payload, "event_id", Ecto.UUID.generate())
+    repo.insert!(worker.new(payload), prefix: "oban")
+    :ok
+  end
+
   defp payload(id, user_id, locale),
     do: %{"poster_id" => id, "user_id" => user_id, "locale" => locale}
 end

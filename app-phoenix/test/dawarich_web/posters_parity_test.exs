@@ -1,9 +1,8 @@
 defmodule DawarichWeb.PostersParityTest do
   use Dawarich.IngestCase, async: false
   import Plug.Conn
-  import Dawarich.Test.RawHTTP
-  alias Dawarich.Test.{ApiGolden, FrameSeeds, ParityHTML, RailsFormRequests, RailsUser}
-  alias DawarichWeb.{MapGalleryCards, PostersController, RailsCsrf, RailsForm}
+  alias Dawarich.Test.{ApiGolden, FrameSeeds, ParityHTML, RailsUser}
+  alias DawarichWeb.{MapGalleryCards, PostersController, PostersGate, RailsCsrf}
   alias DawarichWeb.Api.Body
   @dir "test/fixtures/posters"
   @requests ~w(create_whitelist create_blank_name create_blank_title create_missing_title create_error_true create_error_false delete_true delete_false delete_foreign)
@@ -82,36 +81,13 @@ defmodule DawarichWeb.PostersParityTest do
         assert %{plug: PostersController} = info
         conn = %{conn | path_params: info.path_params}
 
+        assert PostersGate.native?(conn, info.path_params)
+
         conn =
-          if String.starts_with?(@name, "delete_foreign") do
-            upstream = RailsFormRequests.upstream!()
-            assert DawarichWeb.PostersGate.native?(conn, info.path_params) == false
-
-            task =
-              Task.async(fn ->
-                Body.call(conn, nested_form: "poster") |> Body.replay("missing poster")
-              end)
-
-            socket = accept(upstream)
-            {head, rest} = read_head(socket)
-            assert request_line(head) == state["verb"] <> " " <> state["path"] <> " HTTP/1.1"
-            assert read_at_least(socket, rest, byte_size(body)) == body
-
-            reply(
-              socket,
-              "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: #{byte_size(rails)}\r\n\r\n" <>
-                rails
-            )
-
-            result = Task.await(task)
-            :gen_tcp.close(socket)
-            result
-          else
-            conn
-            |> Body.call(nested_form: "poster")
-            |> RailsForm.call([])
-            |> PostersController.call(info.plug_opts)
-          end
+          conn
+          |> Body.call(nested_form: "poster")
+          |> PostersGate.call([])
+          |> PostersController.call(info.plug_opts)
 
         assert conn.status == state["status"]
         assert get_resp_header(conn, "location") == List.wrap(state["location"])
@@ -141,7 +117,18 @@ defmodule DawarichWeb.PostersParityTest do
                end) ==
                  Enum.map(new, &["posters.created", &1["id"], user.id, state["locale"]])
 
-        assert_html(conn.resp_body, rails, before_ids)
+        if String.starts_with?(@name, "delete_foreign") do
+          assert rails =~ "ActiveRecord::RecordNotFound"
+          assert rails =~ "Couldn't find Poster"
+          assert conn.resp_body == ""
+          poster_id = state["path"] |> String.split("/") |> List.last() |> String.to_integer()
+
+          assert Repo.query!("SELECT user_id FROM posters WHERE id=$1", [poster_id]).rows == [
+                   [97102]
+                 ]
+        else
+          assert_html(conn.resp_body, rails, before_ids)
+        end
       else
         case state["after"] || state["poster"] do
           nil ->

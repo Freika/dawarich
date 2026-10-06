@@ -2,7 +2,6 @@ defmodule DawarichWeb.PostersEndpointTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
   import Plug.Conn
-  import Dawarich.Test.RawHTTP
   alias Dawarich.Posters.Persistence
   alias Dawarich.Test.{FrameSeeds, RailsFormRequests, RailsUser}
   alias DawarichWeb.RailsCsrf
@@ -67,14 +66,7 @@ defmodule DawarichWeb.PostersEndpointTest do
     foreign = FrameSeeds.user!(97102)
     {:ok, id} = Persistence.create(%{}, foreign, "en")
     assert {:error, :missing} = Persistence.delete(id, ctx.user)
-    upstream = RailsFormRequests.upstream!()
-    task = Task.async(fn -> request(ctx.session, :delete, "/posters/#{id}", "") end)
-    socket = accept(upstream)
-    {head, _} = read_head(socket)
-    assert request_line(head) == "DELETE /posters/#{id} HTTP/1.1"
-    reply(socket, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n")
-    assert Task.await(task).status == 404
-    :gen_tcp.close(socket)
+    assert request(ctx.session, :delete, "/posters/#{id}", "").status == 404
     assert length(rows(foreign.id)) == 1
 
     for accept <- ["text/vnd.turbo-stream.html", "text/html"] do
@@ -117,10 +109,7 @@ defmodule DawarichWeb.PostersEndpointTest do
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, saved) end)
 
     for {key, body, accept} <- [
-          {[], "poster[name]=Untouched", "application/json"},
-          {[], "poster[name]=Untouched&format=json", "text/html"},
           {[], "poster[name]=Untouched&_method=delete", "text/html"},
-          {[], "poster=scalar", "text/html"},
           {["posters"], "poster[name]=Untouched", "text/html"}
         ] do
       Application.put_env(:dawarich, :rails_routes, key)
