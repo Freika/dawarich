@@ -33,8 +33,15 @@ missing or already analyzed blobs. Replay cannot restore a deleted blob.
 During coexistence, Rails-owned poster creation/purge and route-video cleanup
 retain their original reverse payloads. Rails-owned uploads needing storage
 identification still follow the existing request fallback. Historical native
-poster purge children retain their original protocol for already accepted jobs. No
-reverse-row poller or queue disposition is introduced: historical reverse rows
+poster purge children retain their original protocol for already accepted jobs.
+The blob-ID consumer also handles captured source poster continuations in
+standalone mode. It locks and rechecks the blob's poster/attachment references,
+deletes the stored object before removing rows, and commits variant child jobs
+with the row removal. A storage error or missing service configuration leaves
+the blob and variant references available for retry. Parent completion cannot
+hide pending variant jobs from drain observation. This repairs the Rails
+Active Storage destroy-before-delete orphaning defect (ED-A12F3B-E13-F1).
+No reverse-row poller or queue disposition is introduced: historical reverse rows
 still require the retained Rails consumer or explicit controller disposition.
 
 No route or shared registry change is required for these direct native children;
@@ -46,3 +53,8 @@ contracts in `test/dawarich/a12f3b_r15_test.exs`, the poster producer test in
 
 Shared knowledge counterpart: AFFiNE document `YYVRDtILLJV323IdtCc8K`,
 “Dawarich — Native media effects and standalone storage revocation”.
+
+Storage-failure regression: `test/dawarich/a12f3b_e13_purge_retry_test.exs`
+(`F1`). Poster and route-video durable-key consumers are covered by
+`test/dawarich/a12f3b_r15_test.exs`; export deletion by
+`test/dawarich_web/exports_delete_test.exs`.

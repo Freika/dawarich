@@ -546,3 +546,9 @@ owner bypass or mutation exemption is introduced. Unknown/retired/dead work is
 preserved and blocks the affected transition (ruling 10). Eugene sets dates and
 image retention at release time (ruling 11). Procedure and staged external
 ADR0015/G48 amendment: `docs/phoenix/a12f-ruby-free-release.md`.
+
+## E13 retryable media storage purge
+
+| ID | Surface | Rails today | Phoenix | Evidence / owner |
+| --- | --- | --- | --- | --- |
+| ED-A12F3B-E13-F1 | Storage deletion failure while purging private media | Poster/export/video source handlers enqueue `blob.purge_later`; Active Storage destroys the blob row before storage deletion, losing the lookup needed after a failed delete. | Accepted poster blob-ID children delete storage under the reference guard and blob lock before removing rows; failure retains blob/variant references and retry/drain debt. Existing native poster/export/video durable-key children retain keys/services until physical deletion completes. | SOURCE-MEDIA F1; `a12f3b_e13_purge_retry_test.exs`, `a12f3b_r15_test.exs`, `exports_delete_test.exs`; controller ruling 17; `docs/phoenix/fixed-rails-bugs.md` |
