@@ -102,6 +102,16 @@ defmodule Dawarich.Subscriptions.Callback do
           attrs = attrs(claims)
           changes = Ecto.Changeset.change(user, attrs)
 
+          changes =
+            if map_size(changes.changes) > 0,
+              do:
+                Ecto.Changeset.put_change(
+                  changes,
+                  :updated_at,
+                  Map.get(context, :clock, &DateTime.utc_now/0).()
+                ),
+              else: changes
+
           user = repo.update!(changes, log: false)
 
           if Map.has_key?(changes.changes, :plan) do
