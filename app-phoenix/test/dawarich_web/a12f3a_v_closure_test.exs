@@ -289,6 +289,50 @@ defmodule DawarichWeb.A12f3aVClosureTest do
     no_rails()
   end
 
+  @tag a12f3a_v09: true
+  test "V09: visits native month and broadcast effects matches current Rails contract without a native-owner Rails effect" do
+    ctx = fixture("a12f3a-v09")
+    user = %{ctx.user | settings: Map.put(ctx.user.settings, "timezone", "")}
+    rows("UPDATE users SET settings=$2 WHERE id=$1", [user.id, user.settings])
+    ctx = %{ctx | user: user}
+
+    keys =
+      for month <- ~w(2026-09 2026-10 2026-11),
+          segment <- ~w(lite pro),
+          do: "timeline_month_summary/#{user.id}/#{month}/UTC/#{segment}/v3"
+
+    on_exit(fn ->
+      {:ok, cache} = Redix.start_link(System.fetch_env!("PHOENIX_TEST_REDIS_URL"), database: 0)
+      Redix.command(cache, ["UNLINK" | keys])
+      GenServer.stop(cache)
+    end)
+
+    for key <- keys,
+        do: assert(Dawarich.RailsCache.put(key, "primed", expires_in: 300) == {:ok, "OK"})
+
+    id = hd(ctx.state["before"]["rows"]["visits"])["id"]
+
+    assert {:ok, result} =
+             Dawarich.Visits.WebUpdate.run(
+               ScratchRepo,
+               user,
+               id,
+               ctx.state["request"]["params"]["visit"],
+               ctx
+             )
+
+    for key <- keys do
+      assert Dawarich.RailsCache.get(key) ==
+               if(String.contains?(key, "/2026-11/"), do: {:ok, "primed"}, else: :miss)
+    end
+
+    no_rails()
+    summary = Dawarich.Timeline.MonthSummary.build(user, "2026-10", nil, ctx.now, ScratchRepo)
+    assert Enum.any?(List.flatten(summary.weeks), &(&1.visit_count == 1))
+    assert result.old["started_at"].month == 9
+    assert result.visit["started_at"].month == 10
+  end
+
   defp fixture(name) do
     state = File.read!("test/fixtures/a8vv/visits/#{name}.json") |> Jason.decode!()
     u = hd(state["before"]["users"])
