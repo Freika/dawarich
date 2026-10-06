@@ -34,7 +34,7 @@ defmodule Dawarich.AccountApi.Closure do
         ]}}
     end
   rescue
-    _ -> {:error, 500}
+    error -> {:replay, inspect(error.__struct__)}
   end
 
   def subscription(user, until),
