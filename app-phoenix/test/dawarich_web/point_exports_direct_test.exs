@@ -95,11 +95,13 @@ defmodule DawarichWeb.PointExportsDirectTest do
     assert Repo.query!("SELECT count(*) FROM exports").rows == [[1]]
   end
 
-  test "outbox failure rolls back the export before HTTP replay", ctx do
+  test "outbox failure rolls back the native export and returns the source error", ctx do
     Repo.query!("DROP TABLE job_outbox")
 
-    assert {{"POST /exports HTTP/1.1", @body}, %{status: 204}} =
-             forwarded(ctx.upstream, fn -> post(ctx) end)
+    conn = post(ctx)
+    assert conn.status == 422
+    assert conn.resp_body == ""
+    assert Plug.Conn.get_resp_header(conn, "location") == ["http://www.example.com/exports"]
 
     assert Repo.query!("SELECT count(*) FROM exports").rows == [[0]]
     assert commands() == []

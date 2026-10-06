@@ -66,6 +66,7 @@ defmodule Dawarich.Exports do
   WITH claimed AS (
     UPDATE exports SET status = 1, processing_started_at = $4, updated_at = $4
     WHERE id = $1 AND user_id = $2 AND status = 0 AND file_type = 0
+      AND EXISTS (SELECT 1 FROM users WHERE id = $2 AND deleted_at IS NULL)
     RETURNING id
   )
   INSERT INTO phoenix.export_claims (export_id, event_id, claimed_at)
@@ -77,11 +78,13 @@ defmodule Dawarich.Exports do
   @mine """
   SELECT 1 FROM exports e JOIN phoenix.export_claims c ON c.export_id = e.id
   WHERE e.id = $1 AND e.status = 1 AND c.event_id = $2
+    AND EXISTS (SELECT 1 FROM users WHERE id = e.user_id AND deleted_at IS NULL)
   """
 
   @complete """
   UPDATE exports SET status = 2, error_message = NULL, updated_at = $2
   WHERE id = $1 AND status = 1
+    AND EXISTS (SELECT 1 FROM users WHERE id = exports.user_id AND deleted_at IS NULL)
     AND EXISTS (SELECT 1 FROM phoenix.export_claims WHERE export_id = $1 AND event_id = $3)
   RETURNING id
   """
@@ -89,6 +92,7 @@ defmodule Dawarich.Exports do
   @fail """
   UPDATE exports SET status = 3, error_message = $2, updated_at = $3
   WHERE id = $1 AND status = 1
+    AND EXISTS (SELECT 1 FROM users WHERE id = exports.user_id AND deleted_at IS NULL)
     AND EXISTS (SELECT 1 FROM phoenix.export_claims WHERE export_id = $1 AND event_id = $4)
   RETURNING id
   """

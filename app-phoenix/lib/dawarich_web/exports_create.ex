@@ -16,6 +16,20 @@ defmodule DawarichWeb.ExportsCreate do
   def init(action), do: action
 
   @impl true
+  def call(conn, :decode) do
+    case DawarichWeb.A8FormDecode.params(conn, ["file_format[]", "start_at[]", "end_at[]"]) do
+      {:ok, conn, params} ->
+        query = DawarichWeb.A8FormDecode.urlencoded(conn.query_string)
+        conn |> assign(:api_query, query) |> assign(:api_params, Map.merge(params, query))
+
+      {:replay, conn} ->
+        Body.replay(conn, "export request envelope")
+
+      {:error, conn} ->
+        halt(conn)
+    end
+  end
+
   def call(conn, :create) do
     started = System.monotonic_time()
     user = conn.assigns.current_user
