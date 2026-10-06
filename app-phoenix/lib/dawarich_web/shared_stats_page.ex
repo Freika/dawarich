@@ -78,7 +78,13 @@ defmodule DawarichWeb.SharedStatsPage do
         :month ->
           stat = data.stat
           peak = StatsFormat.peak(stat.daily)
-          zone = UserTimeZone.name(data.user.settings)
+
+          viewer_settings =
+            if conn.assigns.current_user,
+              do: conn.assigns.current_user.settings,
+              else: %{"timezone" => ""}
+
+          zone = UserTimeZone.name(viewer_settings)
 
           PublicMonth.document(
             Map.merge(assigns, %{
@@ -95,7 +101,7 @@ defmodule DawarichWeb.SharedStatsPage do
               uuid: conn.path_params["uuid"],
               data_bounds: data.bounds,
               hexagons: data.hexagons,
-              timezone: zone
+              timezone: UserTimeZone.zone(data.user.settings)
             })
           )
       end

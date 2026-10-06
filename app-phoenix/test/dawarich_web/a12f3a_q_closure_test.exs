@@ -495,6 +495,10 @@ defmodule DawarichWeb.A12f3aQClosureTest do
         user.id
       ])
 
+      if row["owner_settings"] do
+        Repo.query!("UPDATE users SET settings=$1 WHERE id=$2", [row["owner_settings"], user.id])
+      end
+
       set_mode(if(row["state"] == "partial", do: "false", else: "true"))
       conn = build_conn() |> assign(:now, ctx.now) |> get("/shared/#{kind}/#{uuid}")
       assert conn.status == row["status"]
@@ -512,6 +516,9 @@ defmodule DawarichWeb.A12f3aQClosureTest do
 
         assert Dawarich.Test.ChartkickHTML.charts(html) ==
                  Dawarich.Test.ChartkickHTML.charts(row["html"])
+
+        assert Dawarich.Test.ParityHTML.stimulus(html) ==
+                 Dawarich.Test.ParityHTML.stimulus(row["html"])
 
         assert normalize_public(html) == normalize_public(row["html"]),
                inspect(first_difference(normalize_public(html), normalize_public(row["html"])),

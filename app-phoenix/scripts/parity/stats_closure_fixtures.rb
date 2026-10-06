@@ -160,6 +160,17 @@ time_spent_by_location: { 'countries' => [{ 'name' => 'Germany', 'minutes' => 'o
         { state:, uuid: row.sharing_uuid, status: response.status, location: response.location&.delete_prefix('http://www.example.com'),
           html: fragment, cache_control: response.headers['Cache-Control'] }
       end
+      if task == 14
+        %w[UTC Berlin].each do |zone|
+          user.update_columns(settings: user.settings.merge('timezone' => zone), plan: User.plans[:pro])
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          row.enable_sharing!(expiration: '1h')
+          get "/shared/#{kind}/#{row.sharing_uuid}"
+          cases << { state: "timezone_#{zone}", owner_settings: user.settings, uuid: row.sharing_uuid,
+                     status: response.status, html: Nokogiri::HTML5(response.body).at_css(selector)&.to_html,
+                     cache_control: response.headers['Cache-Control'] }
+        end
+      end
       write_json(fixtures.join("stats/a12f3a-q#{task}.json"), cases)
     end
   end
