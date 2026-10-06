@@ -121,6 +121,43 @@ defmodule Dawarich.Notifications do
     |> Enum.map(&%{&1 | kind: @kind_names[&1.kind]})
   end
 
+  def update_with_broadcast!(repo, user_id, id, params) do
+    {:ok, :ok} =
+      repo.transaction(fn ->
+        case repo.query!(
+               "SELECT title, content FROM notifications WHERE id=$1 AND user_id=$2 FOR UPDATE",
+               [id, user_id],
+               log: false
+             ).rows do
+          [[title, content]] ->
+            title = Map.get(params, "title", title)
+            content = Map.get(params, "content", content)
+
+            if Enum.any?([title, content], &(not is_binary(&1) or String.trim(&1) == "")),
+              do: raise(Invalid)
+
+            repo.query!(
+              "UPDATE notifications SET title=$3, content=$4, updated_at=$5 WHERE id=$1 AND user_id=$2",
+              [id, user_id, title, content, NaiveDateTime.utc_now()],
+              log: false
+            )
+
+            repo.query!(
+              "INSERT INTO phoenix.notification_events (notification_id) VALUES ($1)",
+              [id],
+              log: false
+            )
+
+            :ok
+
+          _ ->
+            repo.rollback(:not_found)
+        end
+      end)
+
+    :ok
+  end
+
   def create!(repo, user_id, kind, title, content, now \\ NaiveDateTime.utc_now()) do
     if repo.in_transaction?() do
       insert_notification(repo, user_id, kind, title, content, now)
