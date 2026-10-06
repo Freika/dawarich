@@ -343,6 +343,44 @@ defmodule DawarichWeb.A12f2EClosureTest do
     assert {:error, 404, _} = ApiPosition.update(Repo, %{user | id: user!()}, point, params, ctx)
   end
 
+  @tag :a12f2_e_07
+  test "Anomaly reapply preserves source ranges plan guards locks and one native recalculation producer" do
+    alias Dawarich.Points.ApiAnomaly
+    actor = user!(%{settings: %{"timezone" => "UTC"}})
+    user = %{id: actor, status: 1, plan: 1, active_until: nil, settings: %{"timezone" => "UTC"}}
+    ctx = context()
+    key = "anomaly_backfill_pending:#{actor}"
+    Dawarich.Redis.cache_command(["DEL", key])
+    Ownership.put!(Repo, "command:points.anomaly_backfill", :oban)
+
+    assert {:ok, 202,
+            %{
+              "message" =>
+                "Re-evaluation queued. Existing anomaly flags will be cleared and recomputed."
+            }} = ApiAnomaly.reapply(Repo, user, %{"start_at" => "bad"}, ctx)
+
+    assert [[1]] =
+             Repo.query!(
+               "SELECT count(*) FROM job_outbox WHERE command_type='points.anomaly_backfill'"
+             ).rows
+
+    assert [[payload]] =
+             Repo.query!(
+               "SELECT payload FROM job_outbox WHERE command_type='points.anomaly_backfill'"
+             ).rows
+
+    assert payload["user_id"] == actor
+    assert payload["reset"] == true
+    assert {:ok, _} = Dawarich.Points.AnomalyBackfillWorker.args_from_command(1, payload)
+
+    assert {:error, 409, %{"error" => "Anomaly re-evaluation already in progress."}} =
+             ApiAnomaly.reapply(Repo, user, %{}, ctx)
+
+    assert {:ok, true} = Dawarich.RailsCache.get(key)
+    assert {:error, 401, _} = ApiAnomaly.reapply(Repo, %{user | status: 0}, %{}, ctx)
+    Dawarich.Redis.cache_command(["DEL", key])
+  end
+
   defp point!(actor, timestamp, track \\ nil) do
     [[id]] =
       Repo.query!(
