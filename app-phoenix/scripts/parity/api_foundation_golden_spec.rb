@@ -62,6 +62,12 @@ module ApiFoundationGoldenOracle
     { name: 'closure_me_self_hosted', path: '/api/v1/users/me', user: { active_until: nil } },
     { name: 'closure_me_cloud_pending', path: '/api/v1/users/me', env: { 'SELF_HOSTED' => 'false' },
       user: { status: 'pending_payment' } },
+    { name: 'closure_insights_cloud_lite_2025', path: '/api/v1/insights?year=2025',
+      env: { 'SELF_HOSTED' => 'false' }, user: { plan: 'lite', active_until: nil }, stats: true },
+    { name: 'closure_insights_cloud_lite_2026', path: '/api/v1/insights?year=2026',
+      env: { 'SELF_HOSTED' => 'false' }, user: { plan: 'lite', active_until: nil }, stats: true },
+    { name: 'closure_insights_details_cloud_lite', path: '/api/v1/insights/details?year=2026',
+      env: { 'SELF_HOSTED' => 'false' }, user: { plan: 'lite', active_until: nil }, stats: true },
     { name: 'closure_manager_missing_secret', method: :post, path: '/api/v1/users/exist', auth: :none },
     { name: 'closure_manager_bad_secret', method: :post, path: '/api/v1/users/exist', auth: :none,
       env: { 'SUBSCRIPTION_WEBHOOK_SECRET' => 'synthetic-a12f2a-webhook' },
@@ -77,7 +83,7 @@ module ApiFoundationGoldenOracle
 end
 
 RSpec.describe 'Phoenix fixture: golden API foundation requests', type: :request do
-  let(:fixture_models) { [User] }
+  let(:fixture_models) { [User, Stat] }
   include FixtureRecording::DeterministicInputs
   before { JobHealth.reset! }
 
@@ -123,6 +129,11 @@ RSpec.describe 'Phoenix fixture: golden API foundation requests', type: :request
 
   def record(kase)
     user = user_for(kase)
+    if kase[:stats]
+      [[2025, 9, 90_000], [2025, 10, 1000], [2025, 11, 2000], [2026, 1, 6000]].each do |year, month, distance|
+        create(:stat, user:, year:, month:, distance:, toponyms: [], daily_distance: { '1' => distance })
+      end
+    end
     if kase[:name].start_with?('closure_')
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with('SUBSCRIPTION_WEBHOOK_SECRET')

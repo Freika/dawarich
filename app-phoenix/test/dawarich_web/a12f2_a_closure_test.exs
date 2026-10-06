@@ -497,8 +497,30 @@ defmodule DawarichWeb.A12f2AClosureTest do
     assert length(Jason.decode!(points.resp_body)) == 1
     assert invoke(DawarichWeb.Api.StatsController, :residency, lite, %{}, now).status == 403
 
-    assert invoke(DawarichWeb.Api.StatsController, :details, lite, %{"year" => "2026"}, now).status ==
-             422
+    for {year, month, meters} <- [
+          {2025, 9, 90_000},
+          {2025, 10, 1000},
+          {2025, 11, 2000},
+          {2026, 1, 6000}
+        ] do
+      Repo.query!(
+        "INSERT INTO stats(user_id,year,month,distance,toponyms,daily_distance,created_at,updated_at) VALUES($1,$2,$3,$4,'[]',$5,NOW(),NOW())",
+        [user.id, year, month, meters, %{"1" => meters}]
+      )
+    end
+
+    for {action, year, name} <- [
+          {:insights, "2025", "closure_insights_cloud_lite_2025"},
+          {:insights, "2026", "closure_insights_cloud_lite_2026"},
+          {:details, "2026", "closure_insights_details_cloud_lite"}
+        ] do
+      response = invoke(DawarichWeb.Api.StatsController, action, lite, %{"year" => year}, now)
+      expected = oracle(name)
+      assert response.status == 200
+
+      assert Map.delete(Jason.decode!(response.resp_body), "upgradeUrl") ==
+               Map.delete(expected, "upgradeUrl")
+    end
 
     System.delete_env("SELF_HOSTED")
     points = invoke(DawarichWeb.Api.MapController, :points, lite, params, now)
