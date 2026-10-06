@@ -505,6 +505,43 @@ defmodule DawarichWeb.A12f2AClosureTest do
     assert points.status == 200
     assert length(Jason.decode!(points.resp_body)) == 2
 
+    System.put_env("SELF_HOSTED", "false")
+
+    [[track]] =
+      Repo.query!(
+        "INSERT INTO tracks(user_id,start_at,end_at,created_at,updated_at,original_path) VALUES($1,$2,$3,NOW(),NOW(),ST_GeomFromText('LINESTRING(13 52,13.1 52,13.2 52,13.3 52)',4326)) RETURNING id",
+        [user.id, ~N[2020-01-01 00:00:00], ~N[2026-10-06 11:30:00]]
+      ).rows
+
+    for {at, lon} <- [{old, 12.9}, {old + 1, 13.1}, {fresh, 13.2}, {fresh + 1800, 13.3}] do
+      Repo.query!(
+        "INSERT INTO points(user_id,track_id,timestamp,lonlat,created_at,updated_at) VALUES($1,$2,$3,ST_SetSRID(ST_MakePoint($4,52),4326),NOW(),NOW())",
+        [user.id, track, at, lon]
+      )
+    end
+
+    clipped =
+      invoke(
+        DawarichWeb.Api.MapController,
+        :track,
+        lite,
+        %{
+          "id" => to_string(track),
+          "start_at" => to_string(old + 1),
+          "end_at" => to_string(fresh + 1800)
+        },
+        now
+      )
+
+    assert clipped.status == 200
+
+    assert hd(Jason.decode!(clipped.resp_body)["features"])["geometry"]["coordinates"] == [
+             [13.2, 52.0],
+             [13.3, 52.0]
+           ]
+
+    System.delete_env("SELF_HOSTED")
+
     assert invoke(DawarichWeb.Api.MapController, :points, user, %{"start_at" => %{}}, now).status in [
              422,
              500

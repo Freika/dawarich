@@ -14,6 +14,7 @@ defmodule Dawarich.MapApi.Closure do
         :points -> MapApi.read(action, user, points_params(params, cutoff, now), now)
         :tracks when cutoff != nil -> tracks(user, params, cutoff)
         :track_points when cutoff != nil -> track_points(user, params, cutoff)
+        :track when cutoff != nil -> track(user, params, cutoff, now)
         _ -> MapApi.read(action, user, params, now)
       end
     end)
@@ -41,6 +42,42 @@ defmodule Dawarich.MapApi.Closure do
   defp points_params(params, cutoff, now) do
     {:ok, {from, _to}} = Params.safe_range(params["start_at"], params["end_at"], now)
     Map.put(params, "start_at", to_string(max(from || cutoff, cutoff)))
+  end
+
+  defp track(user, params, cutoff, now) do
+    id = RubyInteger.to_i(params["id"])
+
+    case TrackRecord.rows("WHERE t.user_id=$1 AND t.id=$2", [user.id, id]) do
+      [] ->
+        :missing
+
+      [row] ->
+        import? = Dawarich.ReleaseMigrations.Effects.Support.Ruby.present?(params["import_id"])
+
+        {:ok, range} =
+          if params["start_at"] not in [nil, ""] and params["end_at"] not in [nil, ""],
+            do: Params.safe_range(params["start_at"], params["end_at"], now),
+            else: {:ok, nil}
+
+        clip? =
+          import? or
+            (range != nil and
+               (trunc(Dawarich.MapApi.Segments.epoch(row["start_at"])) < elem(range, 0) or
+                  trunc(Dawarich.MapApi.Segments.epoch(row["end_at"])) > elem(range, 1)))
+
+        params =
+          if clip? do
+            {from, to} = range || {cutoff, 253_402_300_799}
+
+            params
+            |> Map.put("start_at", to_string(max(from, cutoff)))
+            |> Map.put("end_at", to_string(to))
+          else
+            params
+          end
+
+        MapApi.read(:track, user, params, now)
+    end
   end
 
   defp tracks(user, params, cutoff) do
