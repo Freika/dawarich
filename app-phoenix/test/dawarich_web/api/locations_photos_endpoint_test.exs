@@ -264,6 +264,23 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
     end
   end
 
+  @tag :review_privacy
+  test "coordinate privacy checks inspect message payloads even when timestamps resemble coordinates" do
+    clean = "16:37:52.529 [info] [api] GET /api/v1/locations 200 1ms\n"
+    refute logged_messages(clean) =~ "52.52"
+    leaked = "16:37:00.001 [info] [api] lat=52.52 lon=13.405\n"
+    assert logged_messages(leaked) =~ "52.52"
+    assert logged_messages(leaked) =~ "13.405"
+  end
+
+  defp logged_messages(log),
+    do:
+      String.replace(
+        log,
+        ~r/^.*?\[(?:debug|info|notice|warning|error|critical|alert|emergency)\]\s*/m,
+        ""
+      )
+
   test "answered lines carry the final status; hand-off reasons carry no coordinates, URLs or keys",
        %{port: port, upstream: upstream} do
     {base, immich} = immich([answer(302, "")])
@@ -287,9 +304,11 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
     assert log =~ ~r/\[api\] GET \/api\/v1\/locations 200 \d+ms request_id=[0-9a-f-]{36}/
     assert log =~ "[api] /api/v1/locations handed to Rails: coordinate parameter shape"
     assert log =~ "[api] #{@thumb} handed to Rails: photo source answered 302"
-    refute log =~ "52.52"
-    refute log =~ base
-    refute log =~ "phoenix-a4g3-immich-key"
+    messages = logged_messages(log)
+    refute messages =~ "52.52"
+    refute messages =~ "13.405"
+    refute messages =~ base
+    refute messages =~ "phoenix-a4g3-immich-key"
   end
 
   test "a DB error raised while reading hands off to Rails instead of crashing, in both controllers",

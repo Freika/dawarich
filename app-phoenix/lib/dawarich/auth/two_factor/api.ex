@@ -4,13 +4,23 @@ defmodule Dawarich.Auth.TwoFactor.Api do
   alias Dawarich.I18n
 
   def run(action, id, params, context) do
+    if context[:native] do
+      repo = Map.get(context, :repo, Dawarich.Repo)
+      {:ok, result} = repo.transaction(fn -> execute(action, id, params, context) end)
+      result
+    else
+      execute(action, id, params, context)
+    end
+  end
+
+  defp execute(action, id, params, context) do
     cond do
       Enum.any?(~w(password otp_code), fn key ->
         is_binary(params[key]) and String.contains?(params[key], <<0>>)
       end) ->
         {:replay, :parameters}
 
-      context[:self_hosted] != true ->
+      context[:self_hosted] != true and context[:native] != true ->
         {:replay, :cloud}
 
       not Secret.available?(Map.get_lazy(context, :env, &System.get_env/0)) ->

@@ -8,8 +8,8 @@ defmodule Dawarich.Auth.SessionCookie do
   @login_drop ~w(session_id _csrf_token user_return_to warden.user.user.key warden.user.user.session)
 
   def for_form(session, secret) do
-    session = Map.put_new_lazy(session, "session_id", &session_id/0)
-    session = Map.put_new_lazy(session, "_csrf_token", &RailsCsrf.new_token/0)
+    session = default(session, "session_id", &session_id/0)
+    session = default(session, "_csrf_token", &RailsCsrf.new_token/0)
     encode(session, secret)
   end
 
@@ -83,6 +83,13 @@ defmodule Dawarich.Auth.SessionCookie do
 
   defp flash(notice), do: %{"discard" => [], "flashes" => %{"notice" => notice}}
   defp session_id, do: :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
+
+  defp default(session, key, fun) do
+    case Map.get(session, key) do
+      value when value in [nil, false] -> Map.put(session, key, fun.())
+      _ -> session
+    end
+  end
 
   defp encode(session, secret) do
     cookie = RailsCookies.encrypt(session, @name, secret)

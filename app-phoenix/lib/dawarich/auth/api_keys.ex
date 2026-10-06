@@ -4,7 +4,9 @@ defmodule Dawarich.Auth.ApiKeys do
   alias Dawarich.Repo
 
   def rotate(id, session_salt, context) do
-    with {:ok, actor} <- AccountChanges.actor(id, session_salt, context),
+    module = if context[:native], do: Dawarich.Auth.AccountClosure, else: AccountChanges
+
+    with {:ok, actor} <- module.actor(id, session_salt, context),
          false <- Token.blank?(actor.email),
          true <- Account.normalize_email(actor.email) == actor.email do
       changes = %{
@@ -12,8 +14,11 @@ defmodule Dawarich.Auth.ApiKeys do
         updated_at: Map.get(context, :clock, &DateTime.utc_now/0).()
       }
 
-      {:ok,
-       Map.get(context, :repo, Repo).update!(Ecto.Changeset.change(actor, changes), log: false)}
+      updated =
+        Map.get(context, :repo, Repo).update!(Ecto.Changeset.change(actor, changes), log: false)
+
+      Dawarich.TtlCache.delete({DawarichWeb.RateLimit, actor.api_key})
+      {:ok, updated}
     else
       value when is_boolean(value) -> {:handoff, :invalid_resource}
       handoff -> handoff

@@ -56,9 +56,7 @@ defmodule Dawarich.Auth.Credentials do
             from(u in Account, where: u.id == ^id and is_nil(u.deleted_at), lock: "FOR UPDATE")
           )
 
-        if user && user.remember_created_at do
-          change(repo, user, %{remember_created_at: nil, updated_at: clock(context)})
-        end
+        Dawarich.Auth.Remember.forget(repo, user, clock(context))
 
         :ok
       end)
@@ -94,6 +92,17 @@ defmodule Dawarich.Auth.Credentials do
   def restore(_, _), do: {:error, :invalid}
 
   defp authenticate(user, password, valid, context, repo) do
+    if context[:native] do
+      case Dawarich.Auth.CredentialsClosure.authenticate(repo, user, password, valid, context) do
+        {:ok, user} -> signed_in(repo, user, context)
+        other -> other
+      end
+    else
+      bounded_authenticate(user, password, valid, context, repo)
+    end
+  end
+
+  defp bounded_authenticate(user, password, valid, context, repo) do
     now = clock(context)
     locked = not Accounts.unlocked?(user, now)
     expired = not is_nil(user.locked_at) and not locked

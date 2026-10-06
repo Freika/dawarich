@@ -29,6 +29,7 @@ defmodule DawarichWeb.AuthApiKeys.Http do
       Keyword.get(opts, :context, %{})
       |> Map.put_new(:self_hosted, System.get_env("SELF_HOSTED") == "true")
       |> Map.put_new_lazy(:oidc, &Admission.oidc?/0)
+      |> Map.put(:native, Keyword.get(opts, :native, false))
 
     case identity(conn, context) do
       {:ok, conn, id, salt, context} -> parse(conn, id, salt, opts, context)
@@ -44,9 +45,9 @@ defmodule DawarichWeb.AuthApiKeys.Http do
          cookie when is_binary(cookie) <- conn.cookies["_dawarich_session"],
          {:ok, session} when is_map(session) <-
            RailsCookies.decrypt(cookie, "_dawarich_session", secret, DateTime.utc_now()),
-         :ok <- Admission.context(session, conn.req_headers, context.oidc, context.self_hosted),
+         :ok <- admission(session, conn, context),
          [[id], salt] <- session["warden.user.user.key"],
-         {:ok, _actor} <- AccountChanges.actor(id, salt, context),
+         {:ok, _actor} <- account(context).actor(id, salt, context),
          %Accounts.User{} <- Accounts.get(id) do
       {:ok, RailsAuth.call(conn, secret: secret), id, salt, context}
     else
@@ -55,6 +56,16 @@ defmodule DawarichWeb.AuthApiKeys.Http do
   rescue
     _ -> {:handoff, :identity}
   end
+
+  defp account(context),
+    do: if(context[:native], do: Dawarich.Auth.AccountClosure, else: AccountChanges)
+
+  defp admission(session, conn, context),
+    do:
+      if(context[:native],
+        do: :ok,
+        else: Admission.context(session, conn.req_headers, context.oidc, context.self_hosted)
+      )
 
   defp parse(conn, id, salt, opts, context) do
     with "" <- conn.query_string,
@@ -133,8 +144,9 @@ defmodule DawarichWeb.AuthApiKeys.Http do
 
   defp fallback(conn, opts) do
     conn =
-      case Keyword.get(opts, :fallback) do
-        fun when is_function(fun, 1) -> fun.(conn)
+      case {Keyword.get(opts, :native, false), Keyword.get(opts, :fallback)} do
+        {true, _} -> send_resp(conn, 422, "Invalid API key request")
+        {_, fun} when is_function(fun, 1) -> fun.(conn)
         _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
       end
 
