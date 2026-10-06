@@ -1,5 +1,6 @@
 defmodule Dawarich.Families.WebMemberships do
   @moduledoc false
+  require Logger
   alias Dawarich.{Notifications, I18n}
   alias Dawarich.Families.{WebCreate, Sharing}
   alias Dawarich.Mail.ExploreFeatures
@@ -41,6 +42,10 @@ defmodule Dawarich.Families.WebMemberships do
 
   def delete!(repo, id, user_id, role, settings, source, ctx) do
     repo.query!("DELETE FROM family_memberships WHERE id=$1", [id], log: false)
+    cleanup!(repo, user_id, role, settings, source, ctx)
+  end
+
+  defp cleanup!(repo, user_id, role, settings, source, ctx) do
     at = DateTime.to_naive(ctx.now)
 
     if not ctx.self_hosted and role != 0 and source == 0 do
@@ -74,6 +79,8 @@ defmodule Dawarich.Families.WebMemberships do
     )
 
     :ok
+  rescue
+    _error -> Logger.warning("Family departure cleanup failed")
   end
 
   defp notify(repo, actor, target, email, settings, family, ctx) do
