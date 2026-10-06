@@ -130,6 +130,102 @@ defmodule Dawarich.MapMatching.Atlas.ClientTest do
     Task.await(task)
   end
 
+  test "rejects oversized Content-Length responses for every Atlas call", c do
+    for {call, payload} <- [{:health, @health}, {:version, @version}, {:match, @match}] do
+      body = Jason.encode!(Map.put(payload, "padding", String.duplicate("x", 8 * 1024 * 1024)))
+      task = stream_response(c.server, "Content-Length: #{byte_size(body)}", [body])
+      result = atlas_call(call, c.url, receive_timeout: 100)
+      Task.await(task)
+
+      assert {:error, %Client.Error{code: "response_too_large", transient?: true} = error} =
+               result
+
+      assert error.message == "Atlas request failed"
+      refute inspect(error) =~ "padding"
+
+      task = stream_response(c.server, "Content-Length: #{byte_size(body)}", [])
+      result = atlas_call(call, c.url, receive_timeout: 100)
+      assert Task.await(task) == {:error, :closed}
+      assert {:error, %Client.Error{code: "response_too_large"}} = result
+
+      base = Jason.encode!(Map.put(payload, "padding", ""))
+
+      body =
+        Jason.encode!(
+          Map.put(payload, "padding", String.duplicate("x", 8 * 1024 * 1024 - byte_size(base)))
+        )
+
+      task = stream_response(c.server, "Content-Length: #{byte_size(body)}", [body])
+      result = atlas_call(call, c.url, receive_timeout: 100)
+      Task.await(task)
+      assert {:ok, _} = result
+    end
+  end
+
+  test "rejects oversized streams without Content-Length before completion", c do
+    for framing <- [:chunked, :close],
+        {call, payload} <- [{:health, @health}, {:version, @version}, {:match, @match}] do
+      body = Jason.encode!(Map.put(payload, "padding", String.duplicate("x", 8 * 1024 * 1024)))
+      headers = if framing == :chunked, do: "Transfer-Encoding: chunked", else: ""
+      data = if framing == :chunked, do: chunk(body), else: body
+      task = stream_response(c.server, headers, [data])
+      result = atlas_call(call, c.url, receive_timeout: 100)
+      assert Task.await(task) == {:error, :closed}
+      assert {:error, %Client.Error{code: "response_too_large", transient?: true}} = result
+    end
+
+    task =
+      stream_response(
+        c.server,
+        "Transfer-Encoding: chunked",
+        [chunk(String.duplicate("x", 8 * 1024 * 1024 + 1))],
+        503
+      )
+
+    result = Client.health(c.url, receive_timeout: 100)
+    assert Task.await(task) == {:error, :closed}
+    assert {:error, %Client.Error{code: "response_too_large"}} = result
+  end
+
+  test "cuts off a drip response at the overall request deadline", c do
+    body = Jason.encode!(@health)
+
+    task =
+      Task.async(fn ->
+        socket = accept(c.server)
+        read_head(socket)
+        reply(socket, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n")
+
+        try do
+          Enum.reduce_while(:binary.bin_to_list(body), 0, fn byte, count ->
+            case :gen_tcp.send(socket, chunk(<<byte>>)) do
+              :ok ->
+                Process.sleep(20)
+
+                case :gen_tcp.recv(socket, 0, 0) do
+                  {:error, :closed} -> {:halt, count + 1}
+                  {:error, :timeout} -> {:cont, count + 1}
+                end
+
+              {:error, :closed} ->
+                {:halt, count}
+            end
+          end)
+        after
+          :gen_tcp.send(socket, "0\r\n\r\n")
+          :gen_tcp.close(socket)
+        end
+      end)
+
+    started = System.monotonic_time(:millisecond)
+    result = Client.health(c.url, receive_timeout: 100, request_timeout: 120)
+    elapsed = System.monotonic_time(:millisecond) - started
+    count = Task.await(task)
+    assert {:error, %Client.Error{code: "request_timeout", transient?: true}} = result
+    assert count < byte_size(body)
+    assert elapsed < 500
+  end
+
   test "connection failure is transient", c do
     :gen_tcp.close(c.server.listen)
 
@@ -320,6 +416,25 @@ defmodule Dawarich.MapMatching.Atlas.ClientTest do
     for url <- [nil, "", "  "] do
       assert {:error, "not_configured"} = ConnectionTest.call(url)
     end
+  end
+
+  defp atlas_call(:match, url, opts), do: Client.match(url, @input, opts)
+  defp atlas_call(call, url, opts), do: apply(Client, call, [url, opts])
+
+  defp chunk(body), do: [Integer.to_string(byte_size(body), 16), "\r\n", body, "\r\n"]
+
+  defp stream_response(server, headers, fragments, status \\ 200) do
+    Task.async(fn ->
+      socket = accept(server)
+      read_head(socket)
+
+      try do
+        :gen_tcp.send(socket, ["HTTP/1.1 #{status} Response\r\n", headers, "\r\n\r\n", fragments])
+        :gen_tcp.recv(socket, 0, 1_000)
+      after
+        :gen_tcp.close(socket)
+      end
+    end)
   end
 
   defp serve(server, responses) do

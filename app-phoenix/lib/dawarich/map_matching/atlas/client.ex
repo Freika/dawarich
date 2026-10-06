@@ -1,4 +1,16 @@
 defmodule Dawarich.MapMatching.Atlas.Client do
+  @moduledoc """
+  Atlas responses retain at most 8 MiB of body data, including error responses.
+  This allows large match geometries while bounding provider-controlled memory.
+  Responses exceeding the cap return transient `response_too_large` errors.
+
+  Network requests have a 75-second monotonic deadline across connection, sending
+  and receiving, in addition to the 75-second idle receive timeout. Callers may
+  override these with `:request_timeout` and `:receive_timeout` (milliseconds).
+  Deadline expiry returns a sanitized transient `request_timeout` error.
+  """
+  @max_response_bytes 8 * 1024 * 1024
+
   defmodule Error do
     defexception [
       :code,
@@ -64,6 +76,7 @@ defmodule Dawarich.MapMatching.Atlas.Client do
 
   defp request(url, method, path, body, opts) do
     {uri, address} = Endpoint.resolve!(url, path)
+    deadline = System.monotonic_time(:millisecond) + Keyword.get(opts, :request_timeout, 75_000)
     scheme = if uri.scheme == "https", do: :https, else: :http
     headers = [{"accept", "application/json"}]
     headers = if body, do: [{"content-type", "application/json"} | headers], else: headers
@@ -72,15 +85,31 @@ defmodule Dawarich.MapMatching.Atlas.Client do
            hostname: uri.host,
            mode: :passive,
            protocols: [:http1],
-           transport_opts: [timeout: Keyword.get(opts, :connect_timeout, 5_000)]
+           transport_opts: [
+             timeout: min(Keyword.get(opts, :connect_timeout, 5_000), remaining!(deadline))
+           ]
          ) do
       {:ok, conn} ->
         try do
+          transport = if scheme == :https, do: :ssl, else: :inet
+
+          transport.setopts(Mint.HTTP.get_socket(conn),
+            send_timeout: remaining!(deadline),
+            send_timeout_close: true
+          )
+
           case Mint.HTTP.request(conn, method, uri.path, headers, body) do
             {:ok, conn, ref} ->
-              receive_body(conn, ref, Keyword.get(opts, :receive_timeout, 75_000), {nil, [], []})
+              receive_body(
+                conn,
+                ref,
+                Keyword.get(opts, :receive_timeout, 75_000),
+                deadline,
+                {nil, [], [], 0, false}
+              )
 
             {:error, _, _} ->
+              remaining!(deadline)
               connection_failed()
           end
         after
@@ -88,30 +117,71 @@ defmodule Dawarich.MapMatching.Atlas.Client do
         end
 
       {:error, _} ->
+        remaining!(deadline)
         connection_failed()
     end
   rescue
     e in Error -> {:error, e}
   end
 
-  defp receive_body(conn, ref, timeout, state) do
-    case Mint.HTTP.recv(conn, 0, timeout) do
+  defp receive_body(conn, ref, idle_timeout, deadline, state) do
+    budget = remaining!(deadline)
+
+    case Mint.HTTP.recv(conn, 0, min(idle_timeout, budget)) do
       {:ok, conn, responses} ->
-        {status, headers, body, done} =
-          Enum.reduce(responses, Tuple.insert_at(state, 3, false), fn
-            {:status, ^ref, status}, {_, h, b, d} -> {status, h, b, d}
-            {:headers, ^ref, headers}, {s, h, b, d} -> {s, h ++ headers, b, d}
-            {:data, ^ref, bytes}, {s, h, b, d} -> {s, h, [bytes | b], d}
-            {:done, ^ref}, {s, h, b, _} -> {s, h, b, true}
-            _, acc -> acc
+        remaining!(deadline)
+
+        {status, headers, body, size, done} =
+          Enum.reduce(responses, state, fn
+            {:status, ^ref, status}, {_, h, b, n, d} ->
+              {status, h, b, n, d}
+
+            {:headers, ^ref, headers}, {s, h, b, n, d} ->
+              check_length!(headers)
+              {s, h ++ headers, b, n, d}
+
+            {:data, ^ref, bytes}, {s, h, b, n, d} ->
+              size = n + byte_size(bytes)
+              check_size!(size)
+              {s, h, [bytes | b], size, d}
+
+            {:done, ^ref}, {s, h, b, n, _} ->
+              {s, h, b, n, true}
+
+            _, acc ->
+              acc
           end)
 
         if done,
           do: decode(status, headers, body),
-          else: receive_body(conn, ref, timeout, {status, headers, body})
+          else:
+            receive_body(conn, ref, idle_timeout, deadline, {status, headers, body, size, done})
+
+      {:error, _, %Mint.TransportError{reason: :timeout}, _} when budget <= idle_timeout ->
+        error("request_timeout", nil, true)
 
       {:error, _, _, _} ->
+        remaining!(deadline)
         connection_failed()
+    end
+  end
+
+  defp check_length!(headers) do
+    for {"content-length", value} <- headers do
+      case Integer.parse(value) do
+        {size, ""} -> check_size!(size)
+        _ -> :ok
+      end
+    end
+  end
+
+  defp check_size!(size) when size <= @max_response_bytes, do: :ok
+  defp check_size!(_), do: raise(Error, code: "response_too_large", transient?: true)
+
+  defp remaining!(deadline) do
+    case deadline - System.monotonic_time(:millisecond) do
+      remaining when remaining > 0 -> remaining
+      _ -> raise Error, code: "request_timeout", transient?: true
     end
   end
 
