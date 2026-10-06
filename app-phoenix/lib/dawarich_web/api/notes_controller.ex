@@ -3,7 +3,7 @@ defmodule DawarichWeb.Api.NotesController do
   @behaviour Plug
 
   alias Dawarich.{I18n, UserTimeZone}
-  alias Dawarich.NotesApi.{Read, Write}
+  alias Dawarich.NotesApi.{Closure, Read, Write}
   alias DawarichWeb.Api.{Body, Respond}
 
   def init(action), do: action
@@ -15,9 +15,13 @@ defmodule DawarichWeb.Api.NotesController do
     now = conn.assigns[:api_now] || DateTime.utc_now()
 
     result =
-      if conn.assigns.api_format in [:json, :html, :all],
-        do: run(action, user.id, params, zone, now),
-        else: {:replay, "note format"}
+      if Dawarich.Standalone.enabled?() do
+        Closure.run(action, user, params, now)
+      else
+        if conn.assigns.api_format in [:json, :html, :all],
+          do: run(action, user.id, params, zone, now),
+          else: {:replay, "note format"}
+      end
 
     case result do
       {:ok, term} ->
@@ -31,6 +35,20 @@ defmodule DawarichWeb.Api.NotesController do
           conn,
           404,
           {:object, [{"error", I18n.en!("controllers.api.record_not_found")}]}
+        )
+
+      {:error, status} ->
+        Respond.json(
+          conn,
+          status,
+          {:object,
+           [
+             {"error",
+              if(status == 400,
+                do: "param is missing or the value is empty: note",
+                else: "internal_server_error"
+              )}
+           ]}
         )
 
       {:replay, reason} ->
