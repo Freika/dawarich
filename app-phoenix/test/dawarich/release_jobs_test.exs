@@ -321,7 +321,7 @@ defmodule Dawarich.ReleaseJobsTest do
     end
   end
 
-  test "family backfills skip self-hosted and refuse Cloud" do
+  test "family backfills skip self-hosted and use native Cloud operations" do
     for class <-
           ~w(DataMigrations::BackfillFamiliesForFamilyPlanJob DataMigrations::BackfillFamilyMemberEntitlementsJob) do
       System.delete_env("SELF_HOSTED")
@@ -331,7 +331,17 @@ defmodule Dawarich.ReleaseJobsTest do
       assert ReleaseJobs.decode(class, []) == :skip
 
       System.put_env("SELF_HOSTED", "false")
-      assert ReleaseJobs.decode(class, []) == {:error, :cloud_family_backfill}
+
+      assert {:ok, Dawarich.ReleaseJobs.FamilyBackfill, %{"version" => 1, "cursor" => cursor}} =
+               ReleaseJobs.decode(class, [])
+
+      assert cursor["phase"] ==
+               if(class == "DataMigrations::BackfillFamiliesForFamilyPlanJob",
+                 do: "families",
+                 else: "entitlements"
+               )
+
+      assert cursor["after_id"] == 0
     end
   end
 
