@@ -6,6 +6,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.A8Routes
   import DawarichWeb.PageRoutes
   import DawarichWeb.A10Routes
+  import DawarichWeb.CableRoutes
   import DawarichWeb.ApiRoutes
   import DawarichWeb.MapFrameRoutes
   import DawarichWeb.A9Routes
@@ -78,17 +79,7 @@ defmodule DawarichWeb.Router do
 
   family_data_routes()
 
-  pipeline :cable do
-    plug DawarichWeb.HostAuthorization
-    plug DawarichWeb.ForceSSL
-    plug DawarichWeb.RateLimit
-  end
-
-  scope "/" do
-    pipe_through :cable
-
-    get "/cable", DawarichWeb.Cable, :upgrade, metadata: %{slice: :cable}
-  end
+  cable_routes()
 
   pipeline :sharing do
     plug DawarichWeb.HostAuthorization
