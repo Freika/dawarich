@@ -68,9 +68,10 @@ defmodule DawarichWeb.PublicFiles do
     rails_env =
       if Keyword.has_key?(opts, :env), do: RailsSecret.rails_env(env), else: default_rails_env
 
-    with true <- rails_env in @serving_envs,
+    with true <- Dawarich.Standalone.enabled?() or rails_env in @serving_envs,
          [] <- get_req_header(conn, "range"),
          {:ok, segments} <- segments(conn.request_path),
+         segments = asset_segments(root, segments),
          {path, info, headers} <- find(root, segments, header(conn, "accept-encoding") || ""),
          true <- authorized?(conn, env["APPLICATION_HOSTS"]),
          {:ok, secure} <- secure_headers(conn, env) do
@@ -81,6 +82,23 @@ defmodule DawarichWeb.PublicFiles do
   end
 
   def call(conn, _opts), do: conn
+
+  defp asset_segments(root, ["assets" | tail] = original) do
+    if Dawarich.Standalone.enabled?() do
+      logical = Enum.join(tail, "/")
+      logical = if Path.extname(logical) == "", do: logical <> ".js", else: logical
+      resolved = DawarichWeb.Assets.stylesheet_path(Path.dirname(root), logical)
+
+      case segments(resolved) do
+        {:ok, mapped} when resolved != "/assets/" <> logical -> mapped
+        _ -> original
+      end
+    else
+      original
+    end
+  end
+
+  defp asset_segments(_root, segments), do: segments
 
   defp header(conn, name) do
     case get_req_header(conn, name) do

@@ -72,6 +72,10 @@ defmodule DawarichWeb.Strangler do
       owned?(conn) ->
         conn |> Plug.Conn.put_private(:dawarich_method, conn.method) |> Plug.Head.call([])
 
+      Dawarich.Standalone.enabled?() ->
+        {reason, status} = standalone_rejection(conn)
+        DawarichWeb.StandaloneError.respond(conn, reason, status)
+
       DawarichWeb.TurboVisit.live_view_visit?(conn) ->
         DawarichWeb.TurboVisit.reload(conn)
 
@@ -79,6 +83,33 @@ defmodule DawarichWeb.Strangler do
         conn
         |> DawarichWeb.RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
         |> halt()
+    end
+  end
+
+  defp standalone_rejection(conn) do
+    method = if conn.method == "HEAD", do: "GET", else: conn.method
+
+    case Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host) do
+      :error ->
+        {"missing_route", 404}
+
+      route ->
+        cond do
+          not rails_constraints?(route) ->
+            {"route_constraint", 404}
+
+          handed_back?(conn.path_info, route) ->
+            {"route_disabled", 404}
+
+          not slice_owned?(route, conn) ->
+            {"slice_disabled", 404}
+
+          Enum.any?(route.pipe_through, &(&1 in @page_pipelines)) and not page_request?(conn) ->
+            {"unsupported_envelope", 422}
+
+          true ->
+            {"native_gate", 500}
+        end
     end
   end
 

@@ -151,4 +151,4 @@ end
 
 config :dawarich,
        :job_entries,
-       Dawarich.Jobs.Claimer.entries(System.get_env("DAWARICH_OBAN_JOB_KEYS"))
+       Dawarich.Standalone.job_entries()
