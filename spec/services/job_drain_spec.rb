@@ -123,6 +123,47 @@ RSpec.describe 'JobDrain' do
     end
   end
 
+  it 'Cloud quiet drain accepts only explicitly stopping Sidekiq process records' do
+    allow(JobHealth).to receive(:gauges).and_return(empty_gauges)
+    process = "synthetic-quiet-drain-#{SecureRandom.hex(8)}"
+    fetcher = "synthetic-quiet-fetcher-#{SecureRandom.hex(8)}"
+    monitor = Sidekiq::LimitFetch::Global::Monitor
+
+    begin
+      Sidekiq.redis do |redis|
+        redis.sadd('processes', process)
+        redis.hset(process, 'info', JSON.generate('identity' => process), 'busy', '0',
+                   'beat', Time.current.to_f.to_s)
+        redis.sadd(monitor::PROCESS_SET, fetcher)
+        redis.set(monitor::HEARTBEAT_PREFIX + fetcher, '1')
+      end
+
+      aggregate_failures do
+        ['false', 'true', nil, 'unknown'].each do |quiet|
+          Sidekiq.redis do |redis|
+            quiet.nil? ? redis.hdel(process, 'quiet') : redis.hset(process, 'quiet', quiet)
+          end
+          expect(Sidekiq::ProcessSet.new(false).to_a.sole['quiet']).to eq(quiet)
+          expect(JobDrain.status(phase: :pre_quiet)).to include(status: 'OBSERVED_EMPTY', certainty: 'OBSERVED')
+          status = JobDrain.status(phase: :quiet)
+          expect(status[:fetch]).to eq(busy: 0, probed: 0, processes: 1)
+          expect(status[:counts].values).to all(eq(0))
+          expect(status[:bridge][:shutdown]).to eq('OBSERVED_EMPTY')
+          expected_status = quiet == 'true' ? 'OBSERVED_EMPTY' : 'BLOCKED'
+          expected_reasons = quiet == 'true' ? [] : ['processes_not_quiet']
+          expect(status).to include(status: expected_status, certainty: 'OBSERVED', reasons: expected_reasons),
+                            "quiet=#{quiet.inspect}"
+        end
+      end
+    ensure
+      Sidekiq.redis do |redis|
+        redis.srem('processes', process)
+        redis.srem(monitor::PROCESS_SET, fetcher)
+        redis.del(process, monitor::HEARTBEAT_PREFIX + fetcher)
+      end
+    end
+  end
+
   it 'Cloud source drain read failures and changing observations remain UNKNOWN and block shutdown' do
     allow(JobHealth).to receive(:gauges).and_return(empty_gauges)
     allow(Sidekiq::Queue).to receive(:all).and_raise(RedisClient::CannotConnectError, 'synthetic-private-error')

@@ -108,7 +108,7 @@ module JobDrain
     reasons << 'fetch_probes_present' if phase != :pre_quiet && probed.any?
     reasons << 'fetchers_present' if phase == :post_stop && fetchers.any?
     reasons << 'processes_present' if phase == :post_stop && processes.any?
-    reasons << 'processes_not_quiet' if phase == :quiet && processes.any? { !_1['quiet'] }
+    reasons << 'processes_not_quiet' if phase == :quiet && processes.any? { !_1.stopping? }
     { busy: busy.size, probed: probed.size, processes: fetchers.size }
   end
 
