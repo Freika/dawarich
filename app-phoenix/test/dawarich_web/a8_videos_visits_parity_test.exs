@@ -64,13 +64,18 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
         Path.wildcard("#{@dir}/*/*.#{extension}")
         |> Enum.filter(fn path ->
           File.exists?(Path.rootname(path) <> ".json") and
-            File.exists?(Path.rootname(path) <> ".html")
+            (extension == "json" or File.exists?(Path.rootname(path) <> ".html"))
         end)
         |> Enum.map(&(&1 |> Path.relative_to(@dir) |> Path.rootname()))
 
       closure =
         if extension == "json",
-          do: Enum.map(1..9, &("visits/a12f3a-v0" <> to_string(&1))),
+          do:
+            for(
+              prefix <- ["visits/a12f3a-v0", "videos/a12f3a-r0"],
+              n <- 1..9,
+              do: prefix <> to_string(n)
+            ),
           else: ["visits/a12f3a-v02"]
 
       assert Enum.sort(actual) == Enum.sort(@names ++ closure)

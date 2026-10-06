@@ -56,6 +56,18 @@ defmodule Dawarich.A12f3bR04Test do
            ]
 
     assert reverse("tracks.backfill") == []
+
+    assert Dawarich.Jobs.Dispatch.run(
+             repo: ScratchRepo,
+             oban: __MODULE__,
+             now: DateTime.add(@now, 60)
+           ) == %{dispatched: 1}
+
+    assert [[args]] =
+             rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [inspect(BackfillWorker)])
+
+    assert args["event_id"] == payload["cycle_id"]
+    assert args["cycle_id"] == payload["cycle_id"]
     System.delete_env("DAWARICH_RAILS")
     Intake.write(input, 1, repo: ScratchRepo, now: @now)
     assert [[reverse]] = reverse("tracks.backfill")

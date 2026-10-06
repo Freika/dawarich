@@ -167,6 +167,19 @@ defmodule Dawarich.A12f3bR05Test do
     assert payload == %{"trip_id" => trip, "distance_unit" => "km"}
     assert Ecto.UUID.cast(event) == {:ok, event}
     assert reverse("trips.calculate") == []
+
+    assert Dawarich.Jobs.Dispatch.run(
+             repo: ScratchRepo,
+             oban: __MODULE__,
+             now: DateTime.utc_now()
+           ) == %{dispatched: 1}
+
+    assert [[job_args]] =
+             rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [
+               inspect(Dawarich.Trips.CalculateWorker)
+             ])
+
+    assert job_args == Map.put(payload, "event_id", event)
     old_repo = Application.get_env(:dawarich, :jobs_repo)
     Application.put_env(:dawarich, :jobs_repo, ScratchRepo)
     on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, old_repo) end)
