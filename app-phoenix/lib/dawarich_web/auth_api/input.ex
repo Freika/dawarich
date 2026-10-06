@@ -16,6 +16,7 @@ defmodule DawarichWeb.AuthApi.Input do
             parsers: [:urlencoded, :json],
             pass: [],
             json_decoder: Jason,
+            body_reader: {__MODULE__, :read_body, []},
             length: 16384
           )
         )
@@ -26,6 +27,14 @@ defmodule DawarichWeb.AuthApi.Input do
   rescue
     _ -> {:error, conn}
   end
+
+  def read_body(%{private: %{dawarich_raw_body: raw}} = conn, opts) when is_binary(raw) do
+    if byte_size(raw) > Keyword.get(opts, :length, 16384),
+      do: raise(Plug.Parsers.RequestTooLargeError),
+      else: {:ok, raw, conn}
+  end
+
+  def read_body(conn, opts), do: Plug.Conn.read_body(conn, opts)
 
   def precheck(conn) do
     names = Enum.map(conn.req_headers, &elem(&1, 0))
