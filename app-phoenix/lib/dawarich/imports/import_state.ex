@@ -93,7 +93,7 @@ defmodule Dawarich.Imports.ImportState do
 
       change(lease, :terminal, 2)
     else
-      if lease.lane == "command:imports.process_normal" and state!(lease).status == 3,
+      if state!(lease).status == 3 and state!(lease).mode != :terminal,
         do: terminal_failed!(lease)
     end
 

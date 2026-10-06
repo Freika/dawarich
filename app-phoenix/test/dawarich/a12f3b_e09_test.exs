@@ -2,14 +2,14 @@ defmodule Dawarich.A12f3bE09Test do
   use Dawarich.JobsCase
 
   alias Dawarich.A12f3bImportsFixture, as: F
-  alias Dawarich.Imports.{GpxHandover, Lease, NormalHandover, ProcessWorker}
+  alias Dawarich.Imports.{GpxHandover, Lease, NormalHandover, ProcessGpxWorker, ProcessWorker}
   alias Dawarich.Jobs.{Drain, Ownership, Processed}
 
   setup do: F.setup()
 
   @tag a12f3b_case: "E09a"
   test "E09 native owner accepts every retained argument and continuation shape", base do
-    for source <- [4, 3], status <- [3, 2] do
+    for {source, status} <- [{4, 2}, {3, 3}, {3, 2}] do
       c = checkpoint(base, source)
 
       rows("UPDATE imports SET status=$2,raw_data=$3 WHERE id=$1", [
@@ -118,6 +118,137 @@ defmodule Dawarich.A12f3bE09Test do
       rows("UPDATE oban.oban_jobs SET state='completed' WHERE state IN ('available','scheduled')")
       refute "incomplete_oban" in Drain.status(ScratchRepo).shutdown_reasons
     end
+  end
+
+  @tag a12f3b_case: "R1"
+  test "R1 real GPX failure survives marker rejection without processing or notifying twice", c do
+    rows("CREATE TABLE public.e09_failure_passes (import_id bigint)")
+
+    rows(
+      "CREATE FUNCTION public.e09_record_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.status=3 THEN INSERT INTO public.e09_failure_passes VALUES (NEW.id); END IF; RETURN NEW; END $$"
+    )
+
+    rows(
+      "CREATE TRIGGER e09_record_failure AFTER UPDATE OF status ON imports FOR EACH ROW EXECUTE FUNCTION public.e09_record_failure()"
+    )
+
+    rows(
+      "CREATE FUNCTION public.e09_reject_marker() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'E09 marker unavailable'; END $$"
+    )
+
+    try do
+      for recovery <- [:worker, :handover] do
+        if recovery == :handover, do: reset!(ScratchRepo)
+        c = if recovery == :handover, do: Dawarich.ImportLeaseFixture.create(), else: c
+
+        rows(
+          "CREATE TRIGGER e09_reject_marker BEFORE INSERT ON phoenix.processed_commands FOR EACH ROW EXECUTE FUNCTION public.e09_reject_marker()"
+        )
+
+        try do
+          assert_raise Postgrex.Error, ~r/E09 marker unavailable/, fn ->
+            ProcessGpxWorker.perform(c.job)
+          end
+        after
+          rows("DROP TRIGGER e09_reject_marker ON phoenix.processed_commands")
+        end
+
+        assert [[3]] == rows("SELECT status FROM imports WHERE id=$1", [c.import.id])
+
+        assert [[1]] ==
+                 rows("SELECT count(*) FROM notifications WHERE user_id=$1", [c.import.user_id])
+
+        refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+        rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [c.job.id])
+        job = %{c.job | attempt: 2}
+
+        assert :ok =
+                 if(recovery == :worker,
+                   do: ProcessGpxWorker.perform(job),
+                   else: GpxHandover.resume(ScratchRepo, job)
+                 )
+
+        assert [[1]] ==
+                 rows("SELECT count(*) FROM notifications WHERE user_id=$1", [c.import.user_id])
+
+        assert [[1]] ==
+                 rows("SELECT count(*) FROM public.e09_failure_passes WHERE import_id=$1", [
+                   c.import.id
+                 ])
+
+        assert [[3, "terminal"]] ==
+                 rows(
+                   "SELECT i.status,r.phase FROM imports i JOIN phoenix.import_runs r ON r.import_id=i.id WHERE i.id=$1",
+                   [c.import.id]
+                 )
+
+        assert Processed.done?(ScratchRepo, job.args["event_id"])
+        assert :ok = ProcessGpxWorker.perform(job)
+        assert :ok = GpxHandover.resume(ScratchRepo, job)
+
+        assert [[1]] ==
+                 rows("SELECT count(*) FROM notifications WHERE user_id=$1", [c.import.user_id])
+
+        assert [] == rows("SELECT id FROM points WHERE import_id=$1", [c.import.id])
+
+        assert [] ==
+                 rows(
+                   "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.ExtractGpxWorker'"
+                 )
+
+        assert [] == F.reverse()
+        assert [] == rows("SELECT event_id FROM phoenix.import_handoffs")
+      end
+    after
+      rows("DROP FUNCTION public.e09_reject_marker()")
+      rows("DROP TRIGGER e09_record_failure ON imports")
+      rows("DROP FUNCTION public.e09_record_failure()")
+      rows("DROP TABLE public.e09_failure_passes")
+    end
+  end
+
+  @tag a12f3b_case: "R1_atomic"
+  test "R1 rejected failure notification leaves processing recoverable without a terminal receipt",
+       c do
+    rows(
+      "CREATE FUNCTION public.e09_reject_notification() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'E09 notification unavailable'; END $$"
+    )
+
+    rows(
+      "CREATE TRIGGER e09_reject_notification BEFORE INSERT ON notifications FOR EACH ROW EXECUTE FUNCTION public.e09_reject_notification()"
+    )
+
+    try do
+      assert_raise Postgrex.Error, ~r/E09 notification unavailable/, fn ->
+        ProcessGpxWorker.perform(c.job)
+      end
+    after
+      rows("DROP TRIGGER e09_reject_notification ON notifications")
+      rows("DROP FUNCTION public.e09_reject_notification()")
+    end
+
+    assert [[0, "processing"]] ==
+             rows(
+               "SELECT i.status,r.phase FROM imports i JOIN phoenix.import_runs r ON r.import_id=i.id WHERE i.id=$1",
+               [c.import.id]
+             )
+
+    assert [] == rows("SELECT id FROM notifications")
+    refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+    assert {:snooze, 5} = GpxHandover.resume(ScratchRepo, c.job)
+
+    rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [c.job.id])
+    assert :ok = ProcessGpxWorker.perform(%{c.job | attempt: 2})
+
+    assert [[3, "terminal"]] ==
+             rows(
+               "SELECT i.status,r.phase FROM imports i JOIN phoenix.import_runs r ON r.import_id=i.id WHERE i.id=$1",
+               [c.import.id]
+             )
+
+    assert [[1]] == rows("SELECT count(*) FROM notifications")
+    assert Processed.done?(ScratchRepo, c.job.args["event_id"])
+    assert [] == F.reverse()
   end
 
   defp checkpoint(base, source) do
