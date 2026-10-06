@@ -21,7 +21,37 @@ defmodule Dawarich.Front.NativeCommand do
     end
   end
 
+  defp command(["puma" | args], env) do
+    with {:ok, opts} <-
+           options(args, %{
+             "-p" => :port,
+             "--port" => :port,
+             "-b" => :bind,
+             "--bind" => :bind,
+             "-C" => :config,
+             "--config" => :config
+           }),
+         true <- Map.get(opts, :config, []) in [[], ["config/puma.rb"]] do
+      puma_listener(opts, env)
+    else
+      _ -> {:error, "unsupported argv"}
+    end
+  end
+
   defp command(_argv, _env), do: {:error, "unsupported argv"}
+
+  defp puma_listener(%{bind: [bind]} = opts, _env) when not is_map_key(opts, :port) do
+    case Regex.run(~r/\Atcp:\/\/(\[[^\]]+\]|[^:\/?#@]+):([0-9]+)\z/, bind) do
+      [_, host, port] -> listener(%{binding: [host], port: [port]}, %{}, "0.0.0.0")
+      _ -> {:error, "invalid listener"}
+    end
+  end
+
+  defp puma_listener(opts, env) do
+    if not Map.has_key?(opts, :bind) and length(Map.get(opts, :port, [])) <= 1,
+      do: listener(opts, env, "0.0.0.0"),
+      else: {:error, "invalid listener"}
+  end
 
   defp listener(opts, env, default_host) do
     host = List.last(opts[:binding] || []) || present(env["BINDING"]) || default_host
