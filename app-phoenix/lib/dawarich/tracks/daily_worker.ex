@@ -116,7 +116,7 @@ defmodule Dawarich.Tracks.DailyWorker do
         one!(repo, @history, [user_id]) > @bootstrap_limit
 
   defp start(repo, oban, payload, event_id) do
-    case Ownership.lock(repo, @range_key) do
+    case Dawarich.Tracks.Owner.lock(repo, @range_key) do
       :oban -> Oban.insert!(oban, RangeWorker.new(Map.put(payload, "event_id", event_id)))
       :sidekiq -> RailsCommands.insert!(repo, "tracks_generate_range", payload)
     end

@@ -54,20 +54,19 @@ defmodule Dawarich.Imports.Teslamate.Effects do
         ],
         log: false
       )
-
-      Dawarich.Tracks.BackfillCommands.put(ctx.repo, ctx.id, [min, max],
-        time_zone: zone,
-        now: ctx.now
-      )
     else
       for {kind, payload} <- [
             {"points.anomaly_filter", %{"start_at" => min, "end_at" => max}},
-            {"tracks.realtime", %{}},
-            {"tracks.backfill", %{"timestamps" => [min, max]}}
+            {"tracks.realtime", %{}}
           ] do
         Dawarich.RailsCommands.insert!(ctx.repo, kind, Map.put(payload, "user_id", ctx.id))
       end
     end
+
+    Dawarich.Tracks.BackfillCommands.put(ctx.repo, ctx.id, [min, max],
+      time_zone: ctx.settings["timezone"] || "Etc/UTC",
+      now: ctx.now
+    )
 
     Enum.each(months, fn {year, month} ->
       Dawarich.Stats.Schedule.calculate(ctx.repo, ctx.id, year, month, true,

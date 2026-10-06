@@ -21,17 +21,24 @@ defmodule Dawarich.Tracks.RealtimeWorker do
   def args_from_command(_version, _payload), do: {:error, "unsupported_version"}
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: args, conf: conf}), do: run(Dawarich.Jobs.repo(), conf.name, args)
+  def perform(%Oban.Job{args: args, conf: conf}) do
+    repo = Dawarich.Jobs.repo()
+    Dawarich.State.unclaim(repo, Dawarich.Tracks.RealtimeCommands.key(args["user_id"]))
+    run(repo, conf.name, args)
+  end
 
   @impl Oban.Worker
   def timeout(_job), do: :timer.minutes(10)
 
-  def run(repo, _oban, %{"user_id" => user_id}, opts \\ []) do
+  def run(repo, oban, %{"user_id" => user_id}, opts \\ []) do
     now = Keyword.get_lazy(opts, :now, fn -> System.os_time(:second) end)
 
     case Settings.find(repo, user_id) do
-      %{status: status} = user when status in [1, 2] -> generate(repo, user, now, opts)
-      _ -> :ok
+      %{status: status} = user when status in [1, 2] ->
+        generate(repo, oban, user, now, opts)
+
+      _ ->
+        :ok
     end
   rescue
     error ->
@@ -42,7 +49,7 @@ defmodule Dawarich.Tracks.RealtimeWorker do
       :ok
   end
 
-  defp generate(repo, user, now, opts) do
+  defp generate(repo, oban, user, now, opts) do
     case PerUserLock.with_user_lock(
            repo,
            user.id,
@@ -62,7 +69,13 @@ defmodule Dawarich.Tracks.RealtimeWorker do
 
       {:error, :timeout} ->
         Logger.warning("Tracks::RealtimeGenerationJob lock_busy user_id=#{user.id}")
-        RailsCommands.insert!(repo, "tracks_realtime_retrigger", %{"user_id" => user.id})
+
+        Dawarich.Tracks.RealtimeCommands.trigger(repo, user.id,
+          oban: oban,
+          now: DateTime.from_unix!(now),
+          kind: "tracks_realtime_retrigger"
+        )
+
         :ok
     end
   end
