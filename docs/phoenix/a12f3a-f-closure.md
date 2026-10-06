@@ -40,3 +40,15 @@ the empty-output assertion, and restored GREEN passes.
 F26 streams step visits from Polarsteps arrays and steps objects while location
 trails emit no extracted visits. The complete source table passes. Swapping
 latitude and longitude fails the exact place comparison; restored GREEN passes.
+
+F15’s standalone GPX continuation stores the prepared-row cursor in the existing
+import-run attachment receipt. The executing event, job, attempt, actor, source
+and blob fence applies before every batch. Points, counters, tile effects and
+cursor advance commit together. Retries skip committed prepared rows and retain
+counters. A changed attachment raises LeaseLost without another point or handoff.
+The new NormalResume module is the minimal shared cursor seam required by F15;
+F16 reuses it. Coexistence keeps its existing source-owned handback behavior.
+
+Evidence: missing GpxResume was RED; the aggregate passes; bypassing the saved
+attachment check fails the changed-blob assertion; restored affected GPX tests
+pass (54 tests). Progress uses the existing native PubSub stream in standalone.

@@ -53,3 +53,110 @@ defmodule DawarichWeb.A12f3aFClosureTest do
     end
   end
 end
+
+defmodule DawarichWeb.A12f3aFResumeTest do
+  use Dawarich.JobsCase
+  alias Dawarich.Imports.{GpxImporter, GpxResume, ImportState, Lease, LeaseLost}
+
+  setup do
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+    root = Path.join(System.tmp_dir!(), "f-resume-#{Ecto.UUID.generate()}")
+    File.mkdir_p!(root)
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+
+      File.rm_rf!(root)
+    end)
+
+    Map.put(Dawarich.ImportLeaseFixture.create(), :root, root)
+  end
+
+  @tag a12f3a_f15: true
+  test "F15: gpx native resume lineage matches current Rails contract without a native-owner Rails effect",
+       c do
+    for change <- [false, true] do
+      if change, do: reset!(ScratchRepo)
+      c = if change, do: Map.merge(c, Dawarich.ImportLeaseFixture.create()), else: c
+
+      points =
+        for i <- 0..1000,
+            do:
+              "<trkpt lat='51.3' lon='12.4'><time>#{DateTime.to_iso8601(DateTime.from_unix!(1_768_519_800 + i))}</time></trkpt>"
+
+      bytes = "<gpx><trk><trkseg>#{Enum.join(points)}</trkseg></trk></gpx>"
+      c = attach(c, "resume.gpx", bytes)
+
+      assert_raise LeaseLost, fn ->
+        run(c, GpxResume, GpxImporter, %{on_batch: fn _ -> raise LeaseLost end})
+      end
+
+      assert [[1000, 0]] =
+               rows("SELECT raw_points,doubles FROM imports WHERE id=$1", [c.import.id])
+
+      assert [[1000]] = rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
+      rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [c.job.id])
+      c = %{c | job: %{c.job | attempt: 2}}
+
+      if change do
+        rows("UPDATE active_storage_blobs SET checksum='changed' WHERE id=$1", [c.blob_id])
+        assert_raise LeaseLost, fn -> run(c, GpxResume, GpxImporter, %{}) end
+        assert [[1000]] = rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
+      else
+        assert {:ok, :ok} = run(c, GpxResume, GpxImporter, %{})
+
+        assert [[1001, 0]] =
+                 rows("SELECT raw_points,doubles FROM imports WHERE id=$1", [c.import.id])
+
+        assert [[1001]] = rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
+      end
+
+      assert [] = rows("SELECT kind FROM phoenix.rails_commands")
+      assert [] = rows("SELECT event_id FROM phoenix.import_handoffs")
+    end
+  end
+
+  defp attach(c, filename, bytes) do
+    blob = Dawarich.RailsBlobFixture.create!(ScratchRepo, c.root, filename, bytes)
+
+    rows(
+      "INSERT INTO active_storage_attachments(record_type,record_id,name,blob_id,created_at) VALUES('Import',$1,'file',$2,now())",
+      [c.import.id, blob.id]
+    )
+
+    [[key]] = rows("SELECT key FROM active_storage_blobs WHERE id=$1", [blob.id])
+    Map.merge(c, %{blob_id: blob.id, path: Dawarich.Storage.disk_path(c.root, key)})
+  end
+
+  defp run(c, resume, adapter, extra, opts \\ []) do
+    Lease.with_import(
+      ScratchRepo,
+      c.job,
+      c.import,
+      fn lease ->
+        ImportState.with_snapshot(lease, fn state ->
+          context =
+            Map.merge(
+              %{
+                repo: ScratchRepo,
+                zone: "Europe/Berlin",
+                locale: "en",
+                now: ~U[2026-01-15 23:30:00Z],
+                altitude_decimal?: true,
+                fence: fn fun -> ImportState.effect!(lease, fun) end
+              },
+              extra
+            )
+
+          context = resume.driver(lease, state, context)
+          resume.start!(lease, state, context)
+          adapter.call(c.path, c.import, context)
+        end)
+      end,
+      opts
+    )
+  end
+end

@@ -71,7 +71,8 @@ defmodule Dawarich.Imports.GpxLifecycle do
 
   defp run_import(lease, state, context, path) do
     try do
-      ImportState.start!(lease, clock(context))
+      context = Dawarich.Imports.GpxResume.driver(lease, state, context)
+      Dawarich.Imports.GpxResume.start!(lease, state, context)
       publish(lease, context)
       driver = Map.put(context, :altitude_decimal?, altitude_decimal?(lease, context))
       GpxImporter.call(path, state.import, driver)
@@ -122,11 +123,13 @@ defmodule Dawarich.Imports.GpxLifecycle do
 
   defp publish(lease, context, native? \\ true) do
     ImportState.effect!(lease, fn ->
-      RailsCommands.insert!(lease.repo, "imports.progress", %{
-        "import_id" => lease.import.id,
-        "user_id" => lease.import.user_id,
-        "locale" => context.locale
-      })
+      unless Dawarich.Standalone.enabled?(),
+        do:
+          RailsCommands.insert!(lease.repo, "imports.progress", %{
+            "import_id" => lease.import.id,
+            "user_id" => lease.import.user_id,
+            "locale" => context.locale
+          })
     end)
 
     if native?, do: broadcast(lease)

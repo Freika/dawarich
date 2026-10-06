@@ -18,7 +18,14 @@ defmodule Dawarich.Imports.GpxImporter do
       | zone: context.zone |> Dawarich.TimeZoneName.to_iana() |> ZonePeriod.load!()
     }
 
-    state = %{batch: [], size: 0, cache: %{}, progress: %{at: nil, index: nil}}
+    state = %{
+      batch: [],
+      size: 0,
+      cache: %{},
+      progress: %{at: nil, index: nil},
+      resume_skip: Map.get(context, :resume_offset, 0),
+      prepared: Map.get(context, :resume_offset, 0)
+    }
 
     {state, counts} =
       Gpx.reduce(path, import, state, fn raw, tracker, acc ->
@@ -27,8 +34,18 @@ defmodule Dawarich.Imports.GpxImporter do
             acc
 
           row ->
-            acc = %{acc | batch: [row | acc.batch], size: acc.size + 1}
-            if acc.size == @limit, do: flush(acc, import, context), else: acc
+            if acc.resume_skip > 0 do
+              %{acc | resume_skip: acc.resume_skip - 1}
+            else
+              acc = %{
+                acc
+                | batch: [row | acc.batch],
+                  size: acc.size + 1,
+                  prepared: acc.prepared + 1
+              }
+
+              if acc.size == @limit, do: flush(acc, import, context), else: acc
+            end
         end
       end)
 
@@ -45,14 +62,18 @@ defmodule Dawarich.Imports.GpxImporter do
   end
 
   defp write(state, import, context) do
-    BulkWriter.write(Enum.reverse(state.batch), import, state.cache, context.repo, fn fun ->
-      Fence.run(context, fun)
+    Dawarich.Imports.NormalResume.batch(context, state.prepared - state.size, state.size, fn ->
+      BulkWriter.write(Enum.reverse(state.batch), import, state.cache, context.repo, fn fun ->
+        Fence.run(context, fun)
+      end)
     end)
   rescue
     error in LeaseLost ->
       reraise error, __STACKTRACE__
 
     error ->
+      if Map.has_key?(context, :resume_lease), do: reraise(error, __STACKTRACE__)
+
       {:ok, title} =
         I18n.t(context.locale, "services.imports.bulk_insertable.importer_name_import_error", %{
           "importer_name" => "GPX"

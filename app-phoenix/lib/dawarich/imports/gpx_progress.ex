@@ -26,13 +26,15 @@ defmodule Dawarich.Imports.GpxProgress do
   end
 
   defp publish(import, context) do
-    Fence.run(context, fn ->
-      RailsCommands.insert!(context.repo, "imports.progress", %{
-        "user_id" => import.user_id,
-        "import_id" => import.id,
-        "locale" => context.locale
-      })
-    end)
+    unless Dawarich.Standalone.enabled?(),
+      do:
+        Fence.run(context, fn ->
+          RailsCommands.insert!(context.repo, "imports.progress", %{
+            "user_id" => import.user_id,
+            "import_id" => import.id,
+            "locale" => context.locale
+          })
+        end)
   rescue
     error in LeaseLost -> reraise error, __STACKTRACE__
     error -> Logger.warning("GPX progress transport failed: #{Exception.message(error)}")
