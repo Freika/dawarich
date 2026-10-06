@@ -7,14 +7,23 @@ defmodule DawarichWeb.AuthAccountLink.Http do
   alias Dawarich.Auth.AccountLink.{Pending, Confirmation, SignIn}
   alias DawarichWeb.{RailsAuth, RailsProxy, RateLimit, RequestURL}
   alias DawarichWeb.AuthAccountLink.Response
+  @closed_fields ~w(token password authenticity_token commit utf8)
+  @closed_paths ~w(/auth/account_link /auth/account_link/challenge /auth/account_link/email)
   @path "/auth/account_link/challenge"
   @fields ~w(authenticity_token password commit utf8)
 
   def init(opts), do: opts
-  def route?(conn), do: conn.request_path == @path
+  def route?(conn), do: conn.request_path in @closed_paths
 
   def call(conn, opts) do
-    if Keyword.get(opts, :enabled, false) == true and route?(conn) and ordinary?(conn) and
+    if Keyword.get(opts, :closure, false),
+      do: closed_call(conn, opts),
+      else: legacy_call(conn, opts)
+  end
+
+  defp legacy_call(conn, opts) do
+    if Keyword.get(opts, :enabled, false) == true and conn.request_path == @path and
+         ordinary?(conn) and
          Admission.headers(conn.req_headers) == :ok do
       conn = conn |> DawarichWeb.HostAuthorization.call([]) |> DawarichWeb.ForceSSL.call([])
       if conn.halted, do: conn, else: admit(conn, opts)
@@ -195,4 +204,69 @@ defmodule DawarichWeb.AuthAccountLink.Http do
 
     halt(conn)
   end
+
+  defp closed_call(conn, opts) do
+    if Keyword.get(opts, :enabled, false) and conn.request_path in @closed_paths do
+      conn = conn |> DawarichWeb.HostAuthorization.call([]) |> DawarichWeb.ForceSSL.call([])
+      conn = if conn.halted, do: conn, else: DawarichWeb.RateLimit.call(conn, [])
+      if conn.halted, do: conn, else: closed_dispatch(conn, opts)
+    else
+      case opts[:fallback] do
+        fun when is_function(fun, 1) -> fun.(conn)
+        _ -> conn
+      end
+    end
+  end
+
+  defp closed_dispatch(conn, opts) do
+    context =
+      Keyword.get(opts, :context, %{})
+      |> Map.put_new(:ip, conn.remote_ip |> :inet.ntoa() |> to_string())
+      |> Map.put_new(:base_url, RequestURL.base(conn))
+
+    conn = RailsAuth.call(conn, [])
+
+    context =
+      Map.put(context, :locale, DawarichWeb.Locale.resolve(nil, nil, conn.assigns.rails_session))
+
+    conn =
+      conn
+      |> put_resp_header("cache-control", "no-store")
+      |> put_resp_header("pragma", "no-cache")
+
+    with :ok <- Admission.headers(conn.req_headers),
+         {:ok, params, conn} <- closed_parameters(conn),
+         true <- conn.method == "GET" or closed_csrf?(conn, params) do
+      Dawarich.Auth.AccountLink.Closure.route(conn, params, context)
+    else
+      false -> conn |> send_resp(422, "Invalid authenticity token") |> halt()
+      _ -> conn |> send_resp(400, "Invalid account link request") |> halt()
+    end
+  rescue
+    _ -> Dawarich.Auth.Providers.Failure.terminal(conn)
+  end
+
+  defp closed_parameters(%{method: "POST"} = conn) do
+    with [type] <- get_req_header(conn, "content-type"),
+         true <- hd(String.split(type, ";")) == "application/x-www-form-urlencoded",
+         {:ok, body, conn} <- closed_body(conn),
+         {:ok, params} <- Admission.form(body, conn.query_string, @closed_fields),
+         do: {:ok, params, conn}
+  end
+
+  defp closed_parameters(conn) do
+    with {:ok, params} <- Admission.form(conn.query_string, "", @closed_fields),
+         do: {:ok, params, conn}
+  end
+
+  defp closed_csrf?(conn, params) do
+    get_req_header(conn, "origin") in [[], [RequestURL.base(conn)]] and
+      Enum.any?(
+        [params["authenticity_token"] | get_req_header(conn, "x-csrf-token")],
+        &ActionCsrf.valid?(conn.assigns.rails_session, &1, "POST", conn.request_path)
+      )
+  end
+
+  defp closed_body(%{private: %{dawarich_raw_body: raw}} = conn), do: {:ok, raw, conn}
+  defp closed_body(conn), do: read_body(conn, length: 65536)
 end
