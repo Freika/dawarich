@@ -1,6 +1,5 @@
 defmodule DawarichWeb.AdminUserDestroy do
   @moduledoc false
-  import Plug.Conn
   alias Dawarich.Auth.AccountDestroy
   alias Dawarich.I18n
   alias DawarichWeb.AdminWrites.{Fallback, Request, Response}
@@ -37,7 +36,7 @@ defmodule DawarichWeb.AdminUserDestroy do
         Fallback.call(conn, action: :destroy, context: context, status: 404)
 
       {:error, _} ->
-        conn |> send_resp(503, "Account deletion unavailable") |> halt()
+        Fallback.call(conn, action: :destroy, context: context, status: 503)
     end
   end
 
