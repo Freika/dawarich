@@ -211,6 +211,12 @@ defmodule DawarichWeb.A10bOwnershipTest do
 
   test "retained mounts producers frames and unsupported requests reach Rails byte identical" do
     before = snapshot()
+    assert request("GET", "/sidekiq", "", 15801).status == 302
+    assert request("GET", "/admin/flipper", "", 15801).status == 404
+    refute_received {:upstream, _, _, _}
+    assert snapshot() == before
+
+    before = snapshot()
 
     Application.put_env(:dawarich, :rails_routes, ["user_data"])
 
@@ -228,8 +234,6 @@ defmodule DawarichWeb.A10bOwnershipTest do
           {"POST", "/settings/users/15802", "_method=delete"},
           {"POST", "/settings/background_jobs", "job=synthetic"},
           {"POST", "/admin/settings/test_geocoding", "provider=synthetic"},
-          {"GET", "/sidekiq", ""},
-          {"GET", "/admin/flipper", ""},
           {"PATCH", "/settings/users/015802", "user%5Bemail%5D=changed"},
           {"PATCH", "/settings/users/15999", "user%5Bemail%5D=changed"},
           {"PATCH", "/settings/users/15802", "user%5Badmin%5D=1&user%5Badmin%5D=0"},

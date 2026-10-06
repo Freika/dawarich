@@ -19,6 +19,14 @@ defmodule DawarichWeb.RateLimitTest do
     State.increment(ScratchRepo, key, seed["value"], seed["period"])
   end
 
+  defp replay(scenario, %{"request" => %{"path" => "/admin/flipper" <> _} = r, "at" => at}) do
+    assert {:pass, _conn, [], nil} =
+             RateLimit.decide(
+               RateLimitCorpus.request_conn(r),
+               opts(scenario["mode"] == "self_hosted", at)
+             )
+  end
+
   defp replay(scenario, %{"request" => r, "at" => at} = step) do
     outcome =
       RateLimit.decide(
@@ -84,7 +92,7 @@ defmodule DawarichWeb.RateLimitTest do
           into: MapSet.new(),
           do: i["throttle"]
 
-    assert MapSet.new(Rules.throttles(), &elem(&1, 0)) == recorded
+    assert MapSet.new(Rules.throttles(), &elem(&1, 0)) == MapSet.delete(recorded, "admin/flipper")
   end
 
   test "slash variants of the unlock path count under the key Rails counts them with" do
