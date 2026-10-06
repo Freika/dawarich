@@ -1,34 +1,20 @@
 defmodule DawarichWeb.A8Gate do
   @moduledoc false
-  alias Dawarich.Visits.WebSettings
-  alias DawarichWeb.{RailsAuth, Strangler}
 
   def actions?(conn, _params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and action_query?(conn) and
+    action_query?(conn) and
       Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and
       Plug.Conn.get_req_header(conn, "x-http-method-override") == [] and
       action_content?(conn) and
       not String.contains?(List.last(conn.path_info) || "", ".")
   end
 
-  defp action_query?(%{query_string: ""}), do: true
+  defp action_query?(conn), do: request_gate(conn).actions?(conn, %{})
 
-  defp action_query?(conn) do
-    case conn.path_info do
-      ["trips", id, "export"] ->
-        conn.method == "POST" and numeric?(id) and
-          scalar_query?(conn.query_string, ~w(file_format))
-
-      ["places", id] ->
-        conn.method in ~w(POST DELETE) and numeric?(id) and
-          scalar_query?(conn.query_string, ~w(page))
-
-      _ ->
-        false
-    end
-  end
-
-  defp numeric?(id), do: Regex.match?(~r/\A\d{1,18}\z/, id)
+  def request_gate(%{path_info: ["trips" | _]}), do: DawarichWeb.TripRequestGate
+  def request_gate(%{path_info: ["places" | _]}), do: DawarichWeb.PlaceRequestGate
+  def request_gate(%{path_info: ["route_videos" | _]}), do: DawarichWeb.RouteVideoRequestGate
+  def request_gate(_), do: DawarichWeb.VisitRequestGate
 
   defp action_content?(conn) do
     DawarichWeb.Api.Body.kind(conn) in [:form, :none] or
@@ -55,28 +41,10 @@ defmodule DawarichWeb.A8Gate do
 
   defp bounded_length?(_), do: false
 
-  def navigation?(conn, _params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and Strangler.page_request?(conn) and
-      scalar_query?(conn.query_string, ~w(status locale))
-  end
+  def navigation?(conn, params), do: DawarichWeb.VisitRequestGate.navigation?(conn, params)
+  def settings?(conn, params), do: DawarichWeb.VisitRequestGate.settings?(conn, params)
 
-  def settings?(conn, _params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and scalar_query?(conn.query_string, ~w(locale)) and
-      case RailsAuth.call(conn, []).assigns.current_user do
-        nil ->
-          true
-
-        user ->
-          WebSettings.page(
-            user,
-            WebSettings.load(Dawarich.Repo, user.id),
-            DateTime.utc_now(),
-            DawarichWeb.LayoutAssigns.self_hosted?()
-          ) != :rails
-      end
-  end
-
-  defp scalar_query?(raw, allowed) do
+  def scalar_query?(raw, allowed) do
     false = Regex.match?(~r/%(?![0-9A-Fa-f]{2})/, raw)
     pairs = URI.query_decoder(raw) |> Enum.to_list()
 

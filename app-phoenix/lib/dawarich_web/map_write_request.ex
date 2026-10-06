@@ -7,8 +7,6 @@ defmodule DawarichWeb.MapWriteRequest do
   alias DawarichWeb.{RailsCsrf, RailsForm, WebFormParams}
 
   @common ~w(authenticity_token _method commit utf8)
-  @tag ~w(name icon color privacy_radius_meters)
-  @filters ~w(start_at end_at order_by import_id)
 
   @impl true
   def init(opts), do: opts
@@ -18,7 +16,7 @@ defmodule DawarichWeb.MapWriteRequest do
     conn = assign(conn, :api_tag, "map_writes")
 
     with true <- headers?(conn),
-         {:ok, query} <- query(conn),
+         {:ok, query} <- request_module(conn).query(conn),
          {:ok, conn, params} <- WebFormParams.params(conn, repeated: ["point_ids[]"], query: true) do
       admit(conn, params, query)
     else
@@ -30,9 +28,9 @@ defmodule DawarichWeb.MapWriteRequest do
 
   defp admit(conn, body, query) do
     with {:ok, action, method} <- action(conn, body),
-         true <- fields?(action, body),
+         true <- request_module(conn).fields?(action, body),
          true <- csrf_consistent?(conn, body),
-         {:ok, format} <- format(conn, action) do
+         {:ok, format} <- request_module(conn).format(conn, action) do
       params = Map.merge(body, query)
       conn = %{conn | body_params: body, params: Map.merge(params, conn.path_params)}
 
@@ -76,31 +74,11 @@ defmodule DawarichWeb.MapWriteRequest do
       get_req_header(conn, "x-http-method-override") == []
   end
 
-  defp query(%{query_string: ""}), do: {:ok, %{}}
-
-  defp query(%{path_info: ["points", "bulk_destroy"], query_string: raw}) do
-    with false <- Regex.match?(~r/%(?![0-9A-Fa-f]{2})/, raw),
-         {:ok, pairs} <- Body.segments(raw),
-         true <-
-           Enum.all?(pairs, fn
-             {"controller", value} -> value == "points"
-             {"action", value} -> value == "index"
-             {key, value} -> key in ["page" | @filters] and is_binary(value)
-           end),
-         true <- length(pairs) == length(Enum.uniq_by(pairs, &elem(&1, 0))) do
-      {:ok, Map.new(pairs)}
-    else
-      _ -> :replay
-    end
-  end
-
-  defp query(_), do: :replay
-
   defp action(conn, params) do
-    with {action, methods, overrides} <- target(conn.path_info),
+    with {action, methods, overrides} <- request_module(conn).target(conn.path_info),
          true <- conn.method in methods,
          method when is_binary(method) <- effective_method(conn, params, overrides) do
-      {:ok, tag_action(action, method), method}
+      {:ok, request_module(conn).action(action, method), method}
     else
       _ -> :replay
     end
@@ -121,100 +99,21 @@ defmodule DawarichWeb.MapWriteRequest do
 
   defp effective_method(conn, params, _), do: if(is_nil(params["_method"]), do: conn.method)
 
-  defp target(["tags"]), do: {:tag_create, ["POST"], ["POST"]}
+  def request_module(%{path_info: ["tags" | _]}), do: DawarichWeb.MapTagRequest
+  def request_module(%{path_info: ["points" | _]}), do: DawarichWeb.MapPointRequest
+  def request_module(%{path_info: ["tracks" | _]}), do: DawarichWeb.MapSegmentRequest
+  def request_module(_), do: DawarichWeb.AreaRequest
 
-  defp target(["tags", id]),
-    do: if(id?(id), do: {:tag_member, ~w(PATCH PUT DELETE POST), ~w(PATCH PUT DELETE)})
+  def id?(id), do: Regex.match?(~r/\A[1-9]\d{0,17}\z/, id)
 
-  defp target(["tracks", track_id, "segments", id]),
-    do: if(id?(track_id) and id?(id), do: {:segment_update, ~w(PATCH POST), ["PATCH"]})
-
-  defp target(["points", "bulk_destroy"]), do: {:point_destroy, ~w(DELETE POST), ["DELETE"]}
-  defp target(_), do: nil
-
-  defp id?(id), do: Regex.match?(~r/\A[1-9]\d{0,17}\z/, id)
-  defp tag_action(:tag_member, "DELETE"), do: :tag_destroy
-  defp tag_action(:tag_member, _), do: :tag_update
-  defp tag_action(action, _), do: action
-
-  defp fields?(action, params) when action in [:tag_create, :tag_update],
-    do: root?(params, ["tag"]) and nested?(params["tag"], @tag)
-
-  defp fields?(:tag_destroy, params), do: root?(params, [])
-
-  defp fields?(:segment_update, params) do
-    root?(params, ~w(reset track_segment)) and
-      (params["reset"] == "true" or nested?(params["track_segment"], ["transportation_mode"])) and
-      Enum.all?(params, fn
-        {"track_segment", value} -> nested?(value, ["transportation_mode"])
-        {_, value} -> is_binary(value)
-      end)
-  end
-
-  defp fields?(:point_destroy, params) do
-    root?(params, ["point_ids", "page" | @filters]) and
-      Enum.all?(params, fn
-        {"point_ids", ids} when is_list(ids) -> Enum.all?(ids, &is_binary/1)
-        {_, value} -> is_binary(value)
-      end)
-  end
-
-  defp root?(params, allowed),
+  def root?(params, allowed),
     do:
       Enum.all?(params, fn {key, value} ->
         if key in @common, do: is_binary(value), else: key in allowed
       end)
 
-  defp nested?(%{} = params, allowed) when map_size(params) > 0,
+  def nested?(%{} = params, allowed) when map_size(params) > 0,
     do: Enum.all?(params, fn {key, value} -> key in allowed and is_binary(value) end)
 
-  defp nested?(_, _), do: false
-
-  defp format(conn, action) do
-    case get_req_header(conn, "accept") do
-      [accept] -> negotiate(accept, action)
-      [] when action in [:tag_create, :tag_update, :tag_destroy] -> {:ok, :html}
-      _ -> :replay
-    end
-  end
-
-  defp negotiate(accept, :segment_update) do
-    case accept do
-      "*/*" -> {:ok, :turbo_stream}
-      "text/html;q=0.5, text/vnd.turbo-stream.html;q=1" -> {:ok, :turbo_stream}
-      "text/vnd.turbo-stream.html;q=0.5, text/html;q=1" -> {:ok, :html}
-      _ -> types(accept, :segment_update)
-    end
-  end
-
-  defp negotiate(accept, action)
-       when action in [:tag_create, :tag_update, :tag_destroy, :point_destroy] do
-    if String.trim(accept) in ["", "*/*"] or DawarichWeb.Strangler.browser_like?(accept) do
-      {:ok, :html}
-    else
-      types(accept, action)
-    end
-  end
-
-  defp negotiate(accept, action), do: types(accept, action)
-
-  defp types(accept, action) do
-    types = accept |> String.split(",") |> Enum.map(&String.trim/1)
-    allowed = ~w(text/html application/xhtml+xml text/vnd.turbo-stream.html)
-
-    if types != [] and Enum.all?(types, &(&1 in allowed)) do
-      cond do
-        action == :segment_update ->
-          {:ok, if(hd(types) == "text/vnd.turbo-stream.html", do: :turbo_stream, else: :html)}
-
-        "text/html" in types ->
-          {:ok, :html}
-
-        true ->
-          :replay
-      end
-    else
-      :replay
-    end
-  end
+  def nested?(_, _), do: false
 end
