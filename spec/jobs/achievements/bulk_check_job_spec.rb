@@ -87,4 +87,17 @@ RSpec.describe Achievements::BulkCheckJob do
 
     expect(Achievements::CheckJob).not_to have_been_enqueued.with(user.id, notify: true, force: true)
   end
+  it 'preserves the forced option and child identity when a native sweep hands back to Rails' do
+    user = eligible_user
+    root = SecureRandom.uuid
+    at = Time.zone.parse('2026-10-04 12:00:00.123456')
+    job_owner!('command:achievements.check', :sidekiq)
+    expect(RailsCommands::Poller).to receive(:publish).with(
+      'achievements.bulk_check_leaf',
+      { 'user_id' => user.id, 'notify' => false, 'force' => true,
+        'run_at' => at.iso8601(6), 'event_id' => Achievements::BulkCommands.child_id(root, user.id) }
+    )
+
+    Achievements::BulkCommands.schedule(user.id, { notify: false, force: true }, at, root)
+  end
 end
