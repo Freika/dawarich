@@ -28,3 +28,7 @@ drains. Native continuation, full enhanced orchestration and complete planned
 edge envelopes remain open until their own evidence is recorded.
 
 AFFiNE counterpart: Dawarich — Phoenix import codecs and extraction closure.
+
+F24 streams Phone Takeout semantic segments and frequent places, ignores raw
+signals, and preserves profile ordering and captured zones. The complete source
+table passes; emitting a raw signal as a visit fails, then restored GREEN passes.
