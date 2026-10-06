@@ -30,6 +30,7 @@ defmodule Dawarich.Trips.CalculateWorkerTest do
     }
   end
 
+  @tag a12f3b_case: "E152b"
   test "an early failed attempt reports nothing and keeps the cooldown", %{
     args: args,
     trip_id: id
