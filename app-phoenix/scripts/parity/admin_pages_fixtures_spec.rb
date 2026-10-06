@@ -87,6 +87,7 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
   end
 
   def instance_cases
+    allow(JobOwnership).to receive(:table?).and_return(false)
     user = actor(10_001)
     results = []
     provider = ActiveRecord::Encryption::DerivedSecretKeyProvider.new(secret)
@@ -410,4 +411,77 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
       save_capture(capture)
     end
   end
+  def api_health_capture(name, path: '/api/v1/health', key: nil, bearer: nil, summary: { status: 'unknown', alarm: false }, limit_count: 0)
+    reset!
+    Rack::Attack.reset!
+    Rails.cache.clear
+    JobHealth.reset!
+    allow(JobHealth).to receive(:compute).and_return(summary)
+    JobHealth.refresh! unless summary[:status] == 'unknown'
+    headers = { 'Host' => 'staging.dawarich.app', 'X-Forwarded-Proto' => 'https' }
+    headers['Authorization'] = "Bearer #{bearer}" if bearer
+    target = key.nil? ? path : "#{path}?api_key=#{CGI.escape(key)}"
+    limit_count.times { get target, headers: }
+    get(target, headers:)
+    body = response.parsed_body
+    raw = response.body
+    if body['resume_url']
+      body['resume_url'] = body['resume_url'].sub(/token=.*/, 'token=SUBSCRIPTION_TOKEN')
+      raw = JSON.generate(body)
+    end
+    { 'name' => name, 'path' => path, 'query_key' => key, 'bearer' => bearer,
+      'summary' => summary.stringify_keys, 'self_hosted' => DawarichSettings.self_hosted?,
+      'limit_count' => limit_count, 'status' => response.status, 'body' => body, 'raw_body' => raw,
+      'headers' => response.headers.to_h.transform_keys(&:downcase).except('x-request-id', 'x-runtime', 'etag', 'set-cookie') }
+  end
+
+  it 'writes the health and readiness HTTP corpus' do
+    user = actor(10_101)
+    user.update_columns(plan: User.plans.fetch('lite'))
+    pending = actor(10_102)
+    pending.update_columns(status: User.statuses.fetch('pending_payment'))
+    saved_enabled = Rack::Attack.enabled
+    saved_env = ENV.slice('JWT_SECRET_KEY')
+    ENV['JWT_SECRET_KEY'] = 'a12f-synthetic-checkout-secret'
+    Rack::Attack.enabled = true
+    cases = %w[unknown absent stale ok].map do |status|
+      api_health_capture(status, summary: { status:, alarm: false })
+    end
+    cases << api_health_capture('alarm', summary: { status: 'stale', alarm: true })
+    cases << api_health_capture('query_valid', key: user.api_key)
+    cases << api_health_capture('query_invalid', key: 'a12f-invalid')
+    cases << api_health_capture('bearer_valid', bearer: user.api_key)
+    cases << api_health_capture('bearer_invalid', bearer: 'a12f-invalid')
+    cases << api_health_capture('query_precedence', key: 'a12f-invalid', bearer: user.api_key)
+    cases << api_health_capture('query_empty', key: '', bearer: user.api_key)
+    cases << api_health_capture('pending', key: pending.api_key)
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    cases << api_health_capture('cloud_anonymous')
+    cases << api_health_capture('cloud_ok', key: user.api_key)
+    cases << api_health_capture('cloud_invalid', key: 'a12f-invalid')
+    cases << api_health_capture('cloud_throttled', key: user.api_key, limit_count: 200)
+    cases << api_health_capture('cloud_pending', key: pending.api_key)
+    allow(ActiveRecord::Base.connection).to receive(:select_value).with('SELECT 1').and_return(1)
+    allow(Sidekiq).to receive(:redis).and_yield(double(call: 'PONG'))
+    cases << api_health_capture('ready_ok', path: '/api/v1/ready')
+    cases << api_health_capture('ready_pending', path: '/api/v1/ready', key: pending.api_key)
+    cases << api_health_capture('ready_cloud_key', path: '/api/v1/ready', key: user.api_key)
+    cases << api_health_capture('ready_cloud_throttled', path: '/api/v1/ready', key: user.api_key, limit_count: 200)
+    allow(ActiveRecord::Base.connection).to receive(:select_value).with('SELECT 1').and_raise(PG::ConnectionBad)
+    cases << api_health_capture('ready_database_error', path: '/api/v1/ready', key: user.api_key)
+    allow(ActiveRecord::Base.connection).to receive(:select_value).with('SELECT 1').and_return(1)
+    allow(Sidekiq).to receive(:redis).and_raise(RedisClient::CannotConnectError)
+    cases << api_health_capture('ready_redis_error', path: '/api/v1/ready')
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    cases << api_health_capture('ready_self_hosted_error', path: '/api/v1/ready')
+    expect(cases.take(5).map { |reply| reply.fetch('body').fetch('phoenix').keys.sort }).to all(eq(%w[alarm status]))
+    expect(cases.find { |reply| reply['name'] == 'cloud_throttled' }.fetch('status')).to eq(429)
+    File.write(dir.join('api_health.json'), "#{JSON.pretty_generate('version' => APP_VERSION, 'now' => now.iso8601, 'cases' => cases)}\n")
+  ensure
+    Rack::Attack.enabled = saved_enabled
+    Rack::Attack.reset!
+    JobHealth.reset!
+    ENV['JWT_SECRET_KEY'] = saved_env['JWT_SECRET_KEY']
+  end
+
 end
