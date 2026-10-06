@@ -241,7 +241,7 @@ defmodule Dawarich.Subscriptions.Callback do
         command,
         payload,
         id,
-        Map.get(context, :clock, &DateTime.utc_now/0).() |> DateTime.to_naive(),
+        Map.get(context, :clock, &DateTime.utc_now/0).(),
         %{"producer" => "Subscriptions#callback"}
       ],
       log: false
