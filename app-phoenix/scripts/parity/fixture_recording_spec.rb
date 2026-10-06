@@ -96,4 +96,21 @@ RSpec.describe FixtureRecording do
       expect(Users::SafeSettings.new({}).timezone).to eq('Europe/Berlin')
     end
   end
+  it 'records minified source packets without replacing the domain packet' do
+    Dir.mktmpdir do |root|
+      domain = File.join(root, 'test/fixtures/map_frames/a12f3a-m01.json')
+      source = File.join(root, 'test/fixtures/a12f3a_source/map_frames/a12f3a-m01.json')
+      FileUtils.mkdir_p(File.dirname(domain))
+      File.write(domain, '{"domain":true}')
+      previous = ENV['WRITE_PHOENIX_FIXTURES']
+      ENV['WRITE_PHOENIX_FIXTURES'] = '1'
+      described_class.source_verify(domain, JSON.pretty_generate({ source: ['body', { status: 200 }] }))
+      expect(File.read(domain)).to eq('{"domain":true}')
+      expect(File.read(source)).to eq("{\"source\":[\"body\",{\"status\":200}]}\n")
+      ENV.delete('WRITE_PHOENIX_FIXTURES')
+      described_class.source_verify(domain, JSON.pretty_generate({ source: ['body', { status: 200 }] }))
+    ensure
+      previous.nil? ? ENV.delete('WRITE_PHOENIX_FIXTURES') : ENV['WRITE_PHOENIX_FIXTURES'] = previous
+    end
+  end
 end

@@ -146,7 +146,7 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
       '09' => result.slice('restores', 'cases', 'post_commit_storage_failure'),
       '10' => result.slice('restores', 'boundaries', 'nil_source_restores'),
       '11' => result.slice('post_commit_anomaly', 'post_commit_storage_failure') }.each do |id, captured|
-      UserDataFixturesSupport.write("a12f3a-e#{id}.json", captured)
+      UserDataFixturesSupport.source_write("a12f3a-e#{id}.json", captured)
     end
   end
 
@@ -259,6 +259,12 @@ RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request d
       expect(response).to have_http_status(:found)
       traces[locale]['invalid'] = observe.call
       invalid = { 'status' => response.status, 'location' => URI(response.location).path, 'flash' => flash.to_hash }
+      containers = { array: ['synthetic'], object: { nested: 'synthetic' } }.to_h do |kind, value|
+        post '/settings/users/import', params: { archive: value }
+        expect(response).to have_http_status(:found)
+        expect(flash.to_hash).to have_key('alert')
+        [kind, { status: response.status, location: URI(response.location).path, flash: flash.to_hash.slice('alert') }]
+      end
       filename = %w[en de].include?(locale) ? 'backup.zip' : "#{locale}-backup.zip"
       blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('synthetic archive'), filename: filename,
                                                     content_type: 'application/zip')
@@ -302,9 +308,9 @@ RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request d
       sign_out(:user)
       [locale,
        { 'valid' => valid, 'failed' => failed, 'form' => form.to_html, 'export' => export, 'blank' => blank,
-'invalid' => invalid, 'trial' => trial }]
+'invalid' => invalid, 'containers' => containers, 'trial' => trial }]
     end
     UserDataFixturesSupport.write('http.json', result)
-    UserDataFixturesSupport.write('a12f3a-e04.json', { summary: result, traces: })
+    UserDataFixturesSupport.source_write('a12f3a-e04.json', { summary: result, traces: })
   end
 end

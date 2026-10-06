@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-download pages as Rails renders them',
                type: :request do
@@ -121,6 +122,149 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
     { blob_id: blob.id, filename:, byte_size: blob.byte_size, checksum: blob.checksum }
   end
 
+  def source_import_http(error = nil)
+    body = error ? nil : response.body
+    if body
+      doc = Nokogiri::HTML5(body)
+      doc.css('input[name="authenticity_token"]').each { _1['value'] = 'CSRF' }
+      doc.css('meta[name="csrf-token"], meta[name="csp-nonce"]').each { _1['content'] = 'CSRF' }
+      doc.css('[nonce]').each { _1['nonce'] = 'NONCE' }
+      doc.css('[signed-stream-name]').each { _1['signed-stream-name'] = 'SIGNED' }
+      doc.css('a[href*="/rails/active_storage/"]').each { _1['href'] = 'ORIGINAL' }
+      body = doc.to_html unless response.body.empty?
+    end
+    { 'status' => error ? nil : response.status, 'body' => FixtureRecording.normalize(body),
+      'media_type' => error ? nil : response.media_type, 'location' => error ? nil : response.location,
+      'headers' => error ? {} : response.headers.slice('Content-Type', 'Vary', 'Cache-Control', 'Refresh'),
+      'set_cookie' => !error && response.headers['Set-Cookie'].present?, 'flash' => error ? {} : flash.to_hash,
+      'error' => error && { 'class' => error.class.name, 'message' => FixtureRecording.normalize(error.message) } }
+  end
+
+  def source_import_state(user)
+    attachments = ActiveStorage::Attachment.where(record_type: 'Import', record_id: user.import_ids)
+    blobs = ActiveStorage::Blob.where(id: attachments.select(:blob_id))
+    { imports: user.imports.order(:id).map { _1.attributes.except('processing_started_at') },
+      attachments: attachments.order(:id).map(&:attributes),
+      blobs: blobs.order(:id).map { _1.attributes.except('key') } }
+  end
+
+  def capture_source_import_actions
+    rows = Hash.new { |h, k| h[k] = {} }
+    user = User.find(9801)
+    user.update_columns(plan: User.plans[:pro], status: User.statuses[:active], active_until: Time.utc(3026, 1, 1))
+    recipes = %w[upload_empty upload_raw upload_signed upload_invalid upload_descriptor upload_duplicate
+                 patch_valid put_valid put_blank put_unknown put_nil_source put_blank_source foreign missing guest
+                 destroy_html destroy_turbo download_original download_missing download_preparing download_prepared]
+    recipes += Import.sources.keys.map { "put_source_#{_1}" }
+    recipes += (0..5).flat_map { |phase| ["extract_#{phase}", "unextract_#{phase}"] }
+    [true, false].each do |hosted|
+      RSpec::Mocks.with_temporary_scope do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(hosted)
+        stub_const('SELF_HOSTED', hosted)
+        recipes.each_with_index do |name, index|
+          id = 981_000 + index + (hosted ? 0 : 1000)
+          %w[imports active_storage_blobs active_storage_attachments].each do |table|
+            sequence = "SELECT setval(pg_get_serial_sequence('#{table}','id'),#{id * 10 + 1_000_000},false)"
+            ActiveRecord::Base.connection.execute(sequence)
+          end
+          import = Import.new(id:, user:, name: "source-#{id}.gpx", source: :gpx, status: :completed,
+                              raw_data: gpx_counts(1), created_at: now, updated_at: now)
+          import.skip_background_processing = true
+          import.save!(validate: false)
+          blob = ActiveStorage::Blob.create_and_upload!(key: "a12f3a-import-#{id}", io: StringIO.new('<gpx/>'),
+                                                        filename: "source-#{id}.gpx",
+                                                        content_type: 'application/gpx+xml')
+          import.file.attach(blob) unless name == 'download_missing'
+          reset!
+          sign_in user unless name == 'guest'
+          get(name == 'guest' ? '/users/sign_in' : '/imports/new')
+          token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+          method = :put
+          path = "/imports/#{id}"
+          params = { import: { name: "renamed-#{id}.gpx" } }
+          accept = 'text/html'
+          task = '03'
+          if name.start_with?('upload_')
+            method = :post
+            path = '/imports'
+            task = '02'
+            files = case name
+                    when 'upload_empty' then ['']
+                    when 'upload_raw' then [Rack::Test::UploadedFile.new(StringIO.new('<gpx/>'), 'application/gpx+xml',
+                                                                         original_filename: 'raw.gpx')]
+                    when 'upload_invalid' then ['invalid-signed-id']
+                    when 'upload_descriptor' then [{ signed_id: blob.signed_id, client_wrapped: true,
+original_filename: 'mismatch.gpx' }.to_json]
+                    when 'upload_duplicate' then [blob.signed_id, blob.signed_id]
+                    else [blob.signed_id]
+                    end
+            params = { import: { source: 'csv', files: } }
+          elsif name.start_with?('extract_', 'unextract_')
+            phase = name.split('_').last.to_i
+            import.update_columns(additional_data_extraction_status: phase,
+                                  additional_data_extraction: { 'started_at' => now.iso8601 })
+            method = name.start_with?('unextract_') ? :delete : :post
+            path = "/imports/#{id}/extraction"
+            task = '04'
+            params = { trust_source: 'false' }
+            accept = 'text/vnd.turbo-stream.html'
+          elsif name.start_with?('download_')
+            method = :get
+            path = "/imports/#{id}/download"
+            params = {}
+            task = '05'
+            if %w[download_preparing download_prepared].include?(name)
+              blob.update!(filename: 'source.gpx.zip', metadata: { 'dawarich_client_wrapped' => true,
+                                                               'dawarich_original_filename' => 'source.gpx' })
+              import.prepared_download.attach(blob) if name == 'download_prepared'
+            end
+          elsif name.start_with?('destroy_')
+            method = :delete
+            params = {}
+            task = '04'
+            accept = 'text/vnd.turbo-stream.html' if name == 'destroy_turbo'
+          else
+            method = :patch if name == 'patch_valid'
+            params[:import][:name] = '' if name == 'put_blank'
+            params[:import][:source] = 'unknown' if name == 'put_unknown'
+            params[:import][:source] = nil if name == 'put_nil_source'
+            params[:import][:source] = '' if name == 'put_blank_source'
+            params[:import][:source] = name.delete_prefix('put_source_') if name.start_with?('put_source_')
+            path = '/imports/99999999' if name == 'missing'
+            import.update_columns(user_id: 9802) if name == 'foreign'
+          end
+          before = source_import_state(user)
+          clear_enqueued_jobs
+          error = nil
+          begin
+            public_send(method, path, params:, headers: { 'X-CSRF-Token' => token, 'Accept' => accept })
+          rescue StandardError => e
+            error = e
+          end
+          actual = source_import_http(error)
+          expect(actual['status']).to eq(422) if name == 'upload_raw'
+          expect(actual['status']).to eq(303) if %w[put_valid patch_valid upload_signed].include?(name)
+          recipe = params.deep_dup
+          if name.start_with?('upload_')
+            recipe[:import][:files] = files.map do
+              _1.is_a?(String) ? _1 : 'RAW_UPLOADED_FILE'
+            end
+          end
+          jobs = enqueued_jobs.map { { class: _1[:job].name, args: _1[:args], queue: _1[:queue], at: _1[:at] } }
+          rows[task]["#{hosted}-#{name}"] = actual.merge(
+            'request' => { method:, path:, params: recipe, accept: }, 'self_hosted' => hosted,
+            'before' => before, 'after' => source_import_state(user), 'jobs' => jobs
+          )
+        end
+      end
+    end
+    rows.each { |task, cases| write_source_json("a12f3a-i#{task}.json", cases) }
+  end
+
+  def write_source_json(name, data)
+    FixtureRecording.source_verify(dir.join(name), "#{JSON.generate(data)}\n")
+  end
+
   def capture_import_requests!
     user = User.find(9801)
     settings = user.settings
@@ -214,6 +358,7 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
         else
           expect(dir.join("pages/#{name}.html").read).to eq(html)
         end
+        (@source_pages ||= {})[name] = source_import_http.merge('path' => path)
         sign_out :user
         { name:, user_id:, path:, status:, title: doc.at_css('title').text }
       end
@@ -229,6 +374,9 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
       sign_out :user
       capture_import_cleanup!
       capture_import_requests!
+      write_source_json('a12f3a-i01.json', @source_pages)
+      write_source_json('a12f3a-i06.json', @source_pages)
+      capture_source_import_actions
       write_json('pages.json', manifest)
       write_json('seed.json', { now: now.iso8601, users: seeded_users,
                                 imports: })

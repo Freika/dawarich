@@ -11,8 +11,8 @@ RSpec.describe 'Phoenix fixtures: map tag writes', type: :request do
   after(:all) do
     selected = closure_cases.sort.to_h.select { |name, _| %w[create guest_create].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w06.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w06.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select do |name, _|
       %w[update foreign missing override prior guest_update].any? do
@@ -20,8 +20,8 @@ RSpec.describe 'Phoenix fixtures: map tag writes', type: :request do
       end
     end
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w07.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w07.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
   end
 

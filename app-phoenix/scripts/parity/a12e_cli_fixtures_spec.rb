@@ -73,6 +73,7 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
         fx.reset!
         count.times { |index| fx.user!(97_800 + index, "places-cli-#{index}@example.test") }
         fx.user!(97_999, 'places-cli-deleted@example.test', deleted: true) if count.positive?
+        fx.sql('CLUSTER users USING users_pkey')
         clear_enqueued_jobs
         out, err, code = fx.rake(task)
         jobs = enqueued_jobs.map do |job|
@@ -113,6 +114,7 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
       if task.end_with?('cleanup_suggested_places')
         fx.reset!
         103.times { |index| fx.user!(97_800 + index, "places-cli-partial-#{index}@example.test") }
+        fx.sql('CLUSTER users USING users_pkey')
         clear_enqueued_jobs
         calls = 0
         RSpec::Mocks.with_temporary_scope do
@@ -169,7 +171,7 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
                       aliases: ['dawarich:backfill_place_names', 'dawarich:cleanup_suggested_places'] }
     outputs.each do |id, cases|
       path = Rails.root.join("app-phoenix/test/fixtures/places/a12f3a-p#{id}.json")
-      FixtureRecording.verify(path, "#{JSON.pretty_generate(cases)}\n")
+      FixtureRecording.source_verify(path, "#{JSON.pretty_generate(cases)}\n")
     end
     fx.reset!
   end

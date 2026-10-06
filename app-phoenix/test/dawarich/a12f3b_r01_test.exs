@@ -185,17 +185,26 @@ defmodule Dawarich.A12f3bR01Test do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
     ingest(user, now: now)
     ingest(user, now: DateTime.add(now, 10))
-    assert [[args]] = jobs("Dawarich.Points.RealtimeVisitsWorker")
-    assert args["time_zone"] == "Pacific/Chatham"
-    assert args["start_at"] == DateTime.to_unix(now) - 21_600
-    assert args["end_at"] == DateTime.to_unix(now)
 
-    assert [[due]] =
+    assert [[args, due]] =
              rows(
-               "SELECT scheduled_at FROM oban.oban_jobs WHERE worker='Dawarich.Points.RealtimeVisitsWorker'"
+               "SELECT payload,scheduled_at FROM public.job_outbox WHERE command_type='visits.suggest'"
              )
 
-    assert NaiveDateTime.diff(due, DateTime.to_naive(now)) == 300
+    assert args == %{
+             "user_id" => user,
+             "time_zone" => "Pacific/Chatham",
+             "start_at" => DateTime.to_unix(now) - 21_600,
+             "end_at" => DateTime.to_unix(now),
+             "stepping" => "calendar",
+             "plan_restricted" => false
+           }
+
+    assert rows(
+             "SELECT command_version,aggregate_id,metadata FROM public.job_outbox WHERE command_type='visits.suggest'"
+           ) == [[1, user, %{"producer" => "Visits::RealtimeDebouncer"}]]
+
+    assert DateTime.diff(due, now) == 300
     assert reverse("visits.realtime") == []
 
     rows(
@@ -205,8 +214,19 @@ defmodule Dawarich.A12f3bR01Test do
 
     rows("DELETE FROM phoenix.once_claims")
     ingest(user)
-    assert length(jobs("Dawarich.Points.RealtimeVisitsWorker")) == 1
+
+    assert rows("SELECT count(*) FROM public.job_outbox WHERE command_type='visits.suggest'") == [
+             [1]
+           ]
+
     coexist("visits.suggest", fn -> ingest(user) end, "visits.realtime")
+  end
+
+  test "visit arrivals expose only the shared Visits scheduler" do
+    assert Code.ensure_loaded?(Dawarich.Visits.RealtimeDebouncer)
+    assert Code.ensure_loaded?(Dawarich.Points.Realtime)
+    refute function_exported?(Dawarich.Points.Realtime, :visits, 3)
+    refute Code.ensure_loaded?(Dawarich.Points.RealtimeVisitsWorker)
   end
 
   @tag a12f3b_case: "R01k05"

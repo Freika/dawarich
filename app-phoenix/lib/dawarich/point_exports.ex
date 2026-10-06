@@ -40,7 +40,7 @@ defmodule Dawarich.PointExports do
           log: false
         )
 
-      produce(repo, owner, id, user, locale, now)
+      if export.file_format != 2, do: produce(repo, owner, id, user, locale, now)
 
       id
     end)

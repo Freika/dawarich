@@ -9,8 +9,8 @@ RSpec.describe 'Phoenix fixtures: tag pages', type: :request do
   after(:all) do
     selected = closure_cases.sort.to_h.select { |name, _| ['tags_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w05.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w05.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
   end
 

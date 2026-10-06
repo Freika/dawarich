@@ -38,6 +38,8 @@ RSpec.describe 'settings/onboarding', type: :request do
 
         expect(response).to have_http_status(:redirect)
         expect(response.location).to include('/map/v2', 'panel=timeline', 'date=')
+        expect(response.media_type).to eq('text/html')
+        expect(flash[:notice]).to be_present
       end
 
       it 'is idempotent and redirects to map v2' do
@@ -46,6 +48,12 @@ RSpec.describe 'settings/onboarding', type: :request do
 
         expect(response).to have_http_status(:redirect)
         expect(response.location).to include('/map/v2', 'panel=timeline', 'date=')
+        expect(flash[:notice]).to eq(I18n.t('controllers.settings.onboardings.demo_data_is_already_loaded'))
+
+        allow_any_instance_of(DemoData::Importer).to receive(:call).and_return(status: :error)
+        post demo_data_settings_onboarding_path
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq(I18n.t('controllers.settings.onboardings.something_went_wrong_loading_demo_data'))
       end
 
       context 'when user is on a non-UTC timezone' do
@@ -68,12 +76,15 @@ RSpec.describe 'settings/onboarding', type: :request do
         delete demo_data_settings_onboarding_path
 
         expect(response).to redirect_to(root_path)
+        expect(user.imports.where(demo: true)).not_to exist
+        expect(flash[:notice]).to eq(I18n.t('controllers.settings.onboardings.demo_data_removed'))
       end
 
       it 'handles missing demo data gracefully' do
         delete demo_data_settings_onboarding_path
 
         expect(response).to redirect_to(root_path)
+        expect(flash[:notice]).to eq(I18n.t('controllers.settings.onboardings.no_demo_data_found'))
       end
 
       it 'redirects to root with alert when destroy raises' do

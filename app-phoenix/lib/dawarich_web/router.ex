@@ -2,6 +2,7 @@ defmodule DawarichWeb.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
   import DawarichWeb.AchievementRoutes
+  import DawarichWeb.AchievementImageRoutes
   import DawarichWeb.A8Routes
   import DawarichWeb.PageRoutes
   import DawarichWeb.A10Routes
@@ -17,7 +18,10 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.SettingsFormRoutes
   import DawarichWeb.SettingsMiscRoutes
   import DawarichWeb.OnboardingRoutes
+  import DawarichWeb.IntegrationFormRoutes
   import DawarichWeb.NotificationFormRoutes
+  import DawarichWeb.AdminFormRoutes
+  import DawarichWeb.TrialHomeRoutes
 
   pipeline :browser do
     plug DawarichWeb.HostAuthorization
@@ -153,6 +157,7 @@ defmodule DawarichWeb.Router do
   end
 
   achievement_routes()
+  achievement_image_routes()
 
   pipeline :imports_request do
     plug :put_api_tag, "imports"
@@ -217,7 +222,10 @@ defmodule DawarichWeb.Router do
     post "/digests/:year", DawarichWeb.DigestActions, :destroy
   end
 
+  integration_form_routes()
   a10_routes()
+  admin_form_routes()
+  trial_home_routes()
   settings_form_routes()
   settings_misc_routes()
   onboarding_routes()

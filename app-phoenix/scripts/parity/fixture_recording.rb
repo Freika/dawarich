@@ -112,6 +112,11 @@ module FixtureRecording
     end
   end
 
+  def self.source_verify(path, bytes)
+    root = File.expand_path(path).sub('/test/fixtures/', '/test/fixtures/a12f3a_source/')
+    verify(root, "#{JSON.generate(JSON.parse(bytes))}\n")
+  end
+
   def self.verify(path, bytes, json_bodies: [])
     bytes = normalize(bytes)
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'

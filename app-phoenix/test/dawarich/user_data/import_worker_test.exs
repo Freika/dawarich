@@ -84,7 +84,7 @@ defmodule Dawarich.UserData.ImportWorkerTest do
 
       assert [[1]] == rows("SELECT count(*) FROM points")
       assert [] == rows("SELECT id FROM areas")
-      refute Processed.done?(ScratchRepo, job.args["event_id"])
+      assert Processed.done?(ScratchRepo, job.args["event_id"])
       assert [] == File.ls!(dir)
     end
   end

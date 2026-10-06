@@ -28,7 +28,10 @@ defmodule DawarichWeb.TrialLiveAuth do
     if user && user.status == 3 do
       {:cont, assign(socket, :current_user, user)}
     else
-      {:halt, redirect(socket, to: socket.assigns.request_path)}
+      {:halt,
+       redirect(socket,
+         to: if(Dawarich.Standalone.enabled?(), do: "/", else: socket.assigns.request_path)
+       )}
     end
   end
 end

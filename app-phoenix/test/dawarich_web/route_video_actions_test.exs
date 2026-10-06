@@ -88,6 +88,10 @@ defmodule DawarichWeb.RouteVideoActionsTest do
       }
     ])
 
+    ScratchRepo.query!("SELECT setval(pg_get_serial_sequence('route_videos', 'id'), 7, true)", [],
+      log: false
+    )
+
     params = %{
       "route_video" => %{
         "name" => "Saved route",

@@ -30,6 +30,8 @@ defmodule DawarichWeb.VideoStudio do
       class="fixed inset-0 hidden bg-base-300"
       style="z-index: 60"
       data-controller="video-studio"
+      phx-hook="VideoStudio"
+      phx-update="ignore"
       data-video-studio-fonts-value={@fonts}
       data-video-studio-upload-url-value={@upload_url}
       data-video-studio-create-url-value={@create_url}
