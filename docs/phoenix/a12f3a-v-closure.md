@@ -97,7 +97,8 @@ remain their callee owners' responsibility.
 The residual fleet `Visits::UserRedetectJob` contract is separate from
 user-triggered full-history redetection: suggestions-enabled check, per-user
 lock, three collision retries at 15 minutes, no user-request cooldown or
-completion notifications. The existing release fleet producer belongs to the
+completion notifications, and a completion timestamp only if no months fail.
+The existing release fleet producer belongs to the
 sibling job/cron readiness owner; it is not activated here. Direct remaining
 month-command producers and final sink routing need sibling reconciliation.
 
