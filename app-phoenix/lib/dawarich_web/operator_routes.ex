@@ -19,6 +19,16 @@ defmodule DawarichWeb.OperatorRoutes do
 
         get "/sidekiq", DawarichWeb.OperatorRedirect, []
       end
+
+      scope "/" do
+        pipe_through :operator
+
+        get "/api-docs", DawarichWeb.ApiDocs, []
+        get "/api-docs/index.html", DawarichWeb.ApiDocs, []
+        get "/api-docs/v1/swagger.yaml", DawarichWeb.ApiDocs, []
+        match :*, "/api-docs", DawarichWeb.ApiDocs, []
+        match :*, "/api-docs/*path", DawarichWeb.ApiDocs, []
+      end
     end
   end
 end

@@ -85,3 +85,13 @@ nonadmins receive no operator access. Detailed job mutations and other Cloud
 admin pages remain with A12f-3 task 17. ED-346 records the intentional UI change;
 source fixture comparison still verifies the complete preexisting markup, and
 separately verifies the added admin-only health card.
+
+## Native OpenAPI ownership
+
+The operator router explicitly owns GET/HEAD docs and the v1 YAML on both
+self-hosted and Cloud, with no self-hosted slice. Existing host authorization,
+SSL, rate-limit and response-header plugs run normally. Unknown versions and
+methods within `/api-docs` terminate with native 404. Coexistence can still
+hand the namespace back using `DAWARICH_RAILS_ROUTES=api-docs`.
+The YAML remains `swagger/v1/swagger.yaml`; A12f-4 task 15 must retain that
+exact file in the final runtime image. No source bytes changed here.
