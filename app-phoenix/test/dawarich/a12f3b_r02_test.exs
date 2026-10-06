@@ -33,17 +33,30 @@ defmodule Dawarich.A12f3bR02Test do
     assert length(jobs("Dawarich.Points.AnomalyStatsWorker")) == 1
     assert reverse("points.anomaly_filter") == []
 
+    second = point!(user, @at + 1, {13.41, 52.5}, accuracy: 20_000)
+
+    for key <- ~w(tracks.generate_realtime tracks.backfill),
+        do: Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:" <> key, :oban)
+
     Dawarich.Imports.Teslamate.Effects.finalize(
       %{
         repo: ScratchRepo,
         id: user,
-        now: DateTime.utc_now(),
-        settings: %{"timezone" => "Europe/Berlin"}
+        settings: %{"timezone" => "Europe/Berlin"},
+        event: Ecto.UUID.generate(),
+        now: DateTime.utc_now()
       },
-      %{range: {@at, @at}, months: []}
+      %{range: {@at, @at + 1}, months: []}
     )
 
-    assert length(jobs("Dawarich.Points.AnomalyArrivalWorker")) == 2
+    assert flagged(user) == [id, second]
+    assert jobs("Dawarich.Points.AnomalyArrivalWorker") == [[args]]
+
+    assert rows("SELECT command_type FROM job_outbox ORDER BY command_type") == [
+             ["tracks.backfill"],
+             ["tracks.generate_realtime"]
+           ]
+
     assert reverse("points.anomaly_filter") == []
 
     coexist("points.anomaly_filter", fn ->

@@ -44,11 +44,16 @@ defmodule DawarichWeb.UserDataController do
     value = conn.assigns.api_params["archive"]
 
     cond do
-      is_nil(value) or (is_binary(value) and String.trim(value) == "") ->
+      Dawarich.Ingest.Ruby.blank?(value) ->
         redirect(conn, "/users/edit", "alert", "please_select_a_zip_archive_to_import")
 
       not is_binary(value) ->
-        DawarichWeb.Api.Body.replay(conn, "archive parameter")
+        redirect(
+          conn,
+          "/users/edit",
+          "alert",
+          "an_error_occurred_while_starting_the_import_please_try_again"
+        )
 
       true ->
         start_import(conn, value)

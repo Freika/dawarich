@@ -2,6 +2,7 @@ defmodule DawarichWeb.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
   import DawarichWeb.AchievementRoutes
+  import DawarichWeb.AchievementImageRoutes
   import DawarichWeb.A8Routes
   import DawarichWeb.PageRoutes
   import DawarichWeb.A10Routes
@@ -153,6 +154,7 @@ defmodule DawarichWeb.Router do
   end
 
   achievement_routes()
+  achievement_image_routes()
 
   pipeline :imports_request do
     plug :put_api_tag, "imports"

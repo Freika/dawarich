@@ -19,7 +19,7 @@ defmodule DawarichWeb.UserDataRoutes do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
-        plug DawarichWeb.Api.Body
+        plug DawarichWeb.UserDataGate, :decode
         plug DawarichWeb.RailsAuth
         plug DawarichWeb.RailsForm
         plug DawarichWeb.RailsHeaders
