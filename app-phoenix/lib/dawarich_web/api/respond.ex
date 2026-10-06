@@ -116,7 +116,7 @@ defmodule DawarichWeb.Api.Respond do
 
   defp rate_headers(conn, status) do
     if conn.private[:dawarich_native_api] == true and conn.assigns[:api_user] != nil and
-         status in 200..399 do
+         status in 200..399 and conn.path_info not in [["api", "v1", "ready"], ["ready"]] do
       headers =
         DawarichWeb.Api.Headers.rate_limit(%{
           self_hosted: DawarichWeb.LayoutAssigns.self_hosted?(),

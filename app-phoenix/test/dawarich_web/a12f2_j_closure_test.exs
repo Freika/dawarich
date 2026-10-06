@@ -339,6 +339,22 @@ defmodule DawarichWeb.A12f2JClosureTest do
     assert values(rate_headers, "x-ratelimit-remaining") == ["199"]
     [reset] = values(rate_headers, "x-ratelimit-reset")
     assert rem(String.to_integer(reset), 3600) == 0
+
+    for path <- ["/api/v1/ready", "/ready"] do
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Plug.Conn.assign(:readiness_opts,
+          release: fn _ -> :ready end,
+          database: fn -> {:ok, %{rows: [[1]]}} end,
+          redis: fn -> {:ok, "PONG"} end
+        )
+        |> Plug.Conn.put_req_header("authorization", "Bearer " <> @key)
+        |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, :get, path)
+
+      assert conn.status == 200
+      assert Plug.Conn.get_resp_header(conn, "x-ratelimit-limit") == []
+    end
+
     Repo.query!("UPDATE users SET status=3 WHERE id=$1", [id])
     Dawarich.TtlCache.delete({DawarichWeb.RateLimit, @key})
     assert {402, headers, body} = endpoint(c, "GET", "/api/v1/notes", bearer())
