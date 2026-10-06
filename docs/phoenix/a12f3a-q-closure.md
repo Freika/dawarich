@@ -33,3 +33,4 @@ No browser acceptance or whole-domain retirement is claimed by this implementati
 ## Task commits
 
 - Q01: verify existing index and year parity; source/mutation evidence recorded.
+- Q02: preserve month comparisons and malformed data failures; source/mutation evidence recorded.

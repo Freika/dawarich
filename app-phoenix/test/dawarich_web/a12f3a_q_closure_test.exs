@@ -75,6 +75,40 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     end
   end
 
+  @tag a12f3a_q02: true
+  test "Q02: month comparisons and empty months matches current Rails contract without a native-owner Rails effect",
+       %{user: user, context: ctx} do
+    stat!(user.id, %{year: 2024, month: 3, distance: 1000})
+    page_ctx = Map.put(ctx, :base_url, "http://www.example.com")
+
+    for row <- fixture("02") do
+      Repo.query!("UPDATE stats SET daily_distance=$1 WHERE user_id=$2", [row["input"], user.id])
+
+      if row["status"] == 500 do
+        assert_raise ArgumentError, fn ->
+          DawarichWeb.StatsLive.Month.page(user, %{"year" => "2024", "month" => "3"}, page_ctx)
+        end
+      else
+        page =
+          DawarichWeb.StatsLive.Month.page(user, %{"year" => "2024", "month" => "3"}, page_ctx)
+
+        assert page.data.stat.daily == [[1, 1000]]
+        assert page.data.previous == nil
+      end
+    end
+
+    stat!(user.id, %{year: 2024, month: 1, distance: 9000, daily_distance: [[1, 9000]]})
+
+    january =
+      DawarichWeb.StatsLive.Month.page(user, %{"year" => "2024", "month" => "1"}, page_ctx)
+
+    assert january.data.previous == nil
+    assert january.data.average_km == 5
+
+    assert DawarichWeb.StatsLive.Month.page(user, %{"year" => "2024", "month" => "2"}, page_ctx).data.stat ==
+             nil
+  end
+
   defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do
     for row <- fixture(task) do
       settings = %{
