@@ -84,6 +84,8 @@ defmodule DawarichWeb.A12f3bD05Test do
 
       assert head.status == 200 and head.resp_body == ""
 
+      Repo.query!("UPDATE users SET settings=$1 WHERE id=18051", [%{}], log: false)
+
       member =
         Phoenix.ConnTest.dispatch(
           RailsUser.signed_in(18051, %{"dawarich_client" => "ios"}),

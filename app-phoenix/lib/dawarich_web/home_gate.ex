@@ -15,7 +15,7 @@ defmodule DawarichWeb.HomeGate do
 
     "home" not in Application.get_env(:dawarich, :rails_routes, []) and
       conn.method in ["GET", "HEAD"] and is_nil(conn.assigns.rails_locked) and
-      (is_nil(user) or AdminGate.supported?(user)) and
+      (Dawarich.Standalone.enabled?() or is_nil(user) or AdminGate.supported?(user)) and
       (Dawarich.Standalone.enabled?() or not is_nil(user) or
          match?(
            {:ok, _},

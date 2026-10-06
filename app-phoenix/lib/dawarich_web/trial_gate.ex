@@ -8,7 +8,8 @@ defmodule DawarichWeb.TrialGate do
     conn = RailsAuth.call(conn, [])
     user = conn.assigns.current_user
 
-    request?(conn) and (is_nil(user) or AdminGate.supported?(user)) and
+    request?(conn) and
+      (Dawarich.Standalone.enabled?() or is_nil(user) or AdminGate.supported?(user)) and
       (Dawarich.Standalone.enabled?() or is_nil(user) or LayoutAssigns.self_hosted?() or
          checkout_configured?())
   rescue
@@ -19,7 +20,8 @@ defmodule DawarichWeb.TrialGate do
     conn = RailsAuth.call(conn, [])
     user = conn.assigns.current_user
 
-    request?(conn) and (is_nil(user) or AdminGate.supported?(user)) and
+    request?(conn) and
+      (Dawarich.Standalone.enabled?() or is_nil(user) or AdminGate.supported?(user)) and
       (Dawarich.Standalone.enabled?() or is_nil(user) or user.status != 3 or
          checkout_configured?())
   rescue

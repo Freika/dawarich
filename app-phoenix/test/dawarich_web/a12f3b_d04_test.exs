@@ -100,6 +100,9 @@ defmodule DawarichWeb.A12f3bD04Test do
 
     assert pending.status == 200 and pending.resp_body == ""
     assert get_resp_header(pending, "cache-control") == ["no-store"]
+    Repo.query!("UPDATE users SET settings=$1 WHERE id=18041", [%{}], log: false)
+    assert TrialGate.upgrade?(request("/trial/upgrade"), %{})
+    assert TrialGate.resume?(request("/trial/resume"), %{})
     user = Accounts.get(18041)
 
     session = %{
