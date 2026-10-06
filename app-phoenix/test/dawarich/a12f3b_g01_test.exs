@@ -99,6 +99,17 @@ defmodule Dawarich.A12f3bG01Test do
     refute "heartbeat_invalid" in Drain.status(ScratchRepo).forward_reasons
   end
 
+  @tag a12f3b_case: "G01c"
+  test "UTC cron arithmetic preserves canonical datetime metadata" do
+    at = ~U[2026-10-04 12:00:00.123456Z]
+    assert DateTime.add(at, 60) == ~U[2026-10-04 12:01:00.123456Z]
+
+    assert Dawarich.Jobs.CronTimeZoneDatabase.time_zone_periods_from_wall_datetime(
+             DateTime.to_naive(at),
+             "Etc/UTC"
+           ) == {:ok, %{zone_abbr: "UTC", utc_offset: 0, std_offset: 0}}
+  end
+
   defp cron_timezone do
     {Oban, opts} = Enum.find(Dawarich.Application.children(:none), &match?({Oban, _}, &1))
     opts[:cron][:timezone]

@@ -7,6 +7,9 @@ defmodule Dawarich.Jobs.CronTimeZoneDatabase do
   @epoch Calendar.ISO.date_to_iso_days(1970, 1, 1) * 86_400
 
   @impl true
+  def time_zone_period_from_utc_iso_days(days, "Etc/UTC"),
+    do: Calendar.UTCOnlyTimeZoneDatabase.time_zone_period_from_utc_iso_days(days, "Etc/UTC")
+
   def time_zone_period_from_utc_iso_days(days, zone) do
     epoch = Calendar.ISO.iso_days_to_unit(days, :second) - @epoch
     {:ok, period(ZonePeriod.load!(zone), zone, epoch)}
@@ -15,6 +18,9 @@ defmodule Dawarich.Jobs.CronTimeZoneDatabase do
   end
 
   @impl true
+  def time_zone_periods_from_wall_datetime(naive, "Etc/UTC"),
+    do: Calendar.UTCOnlyTimeZoneDatabase.time_zone_periods_from_wall_datetime(naive, "Etc/UTC")
+
   def time_zone_periods_from_wall_datetime(naive, zone) do
     data = ZonePeriod.load!(zone)
     wall = naive |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()

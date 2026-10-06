@@ -15,7 +15,9 @@ mapped to IANA names. Oban uses a Calendar timezone adapter over the existing
 native `Imports.ZonePeriod` reader and the system zoneinfo files; no new
 dependency, SQL connection or Rails process is required for cron validation.
 The adapter supports ambiguous and missing local times and the reader's future
-transition rules. Production images already install system tzdata.
+transition rules. UTC delegates to the standard library to preserve canonical
+DateTime metadata throughout native workers. Production images already install
+system tzdata.
 
 Coexistence retains the existing UTC scheduler policy. This narrows ED-520 to
 coexistence; the controller owns the shared difference ledger. All source cron
