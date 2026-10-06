@@ -123,36 +123,24 @@ defmodule Dawarich.Metrics.WebTest do
 
     start_supervised!(PressureRepo)
     observe_queries!()
-    parent = self()
-
-    holder =
-      Task.async(fn ->
-        PressureRepo.checkout(fn ->
-          send(parent, :checked_out)
-          receive do: (:release -> :ok)
-        end)
-      end)
-
-    assert_receive :checked_out
 
     client =
       Task.async(fn ->
-        send(parent, :querying)
-        PressureRepo.query!("SELECT 1", [], log: false)
+        receive do: (:query -> PressureRepo.query!("SELECT 1", [], log: false))
       end)
 
     try do
-      assert_receive :querying
-      await_waiting_client(System.monotonic_time(:millisecond) + 1_000)
-      Dawarich.Metrics.Web.sample([PressureRepo])
-      body = Dawarich.Metrics.scrape()
-      assert metric(body, "pool_size", PressureRepo) == 1
-      assert metric(body, "pool_ready", PressureRepo) == 0
-      assert metric(body, "pool_busy", PressureRepo) == 1
-      assert metric(body, "pool_waiting", PressureRepo) == 1
+      PressureRepo.checkout(fn ->
+        send(client.pid, :query)
+        await_waiting_client(System.monotonic_time(:millisecond) + 1_000)
+        Dawarich.Metrics.Web.sample([PressureRepo])
+        body = Dawarich.Metrics.scrape()
+        assert metric(body, "pool_size", PressureRepo) == 1
+        assert metric(body, "pool_ready", PressureRepo) == 0
+        assert metric(body, "pool_busy", PressureRepo) == 1
+        assert metric(body, "pool_waiting", PressureRepo) == 1
+      end)
     after
-      send(holder.pid, :release)
-      Task.await(holder)
       Task.await(client)
     end
 
@@ -187,6 +175,7 @@ defmodule Dawarich.Metrics.WebTest do
 
     unless Enum.sum(Enum.map(pools, & &1.checkout_queue_length)) == 1 do
       assert System.monotonic_time(:millisecond) < deadline
+      :erlang.yield()
       await_waiting_client(deadline)
     end
   end
