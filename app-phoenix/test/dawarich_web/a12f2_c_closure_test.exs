@@ -207,6 +207,43 @@ defmodule DawarichWeb.A12f2CClosureTest do
              invoke(Dawarich.MapApi.PrivacyZones, :fetch, [user])
   end
 
+  @tag :a12f2_c_06
+  test "Hexagon index and bounds retain H3 resolution Pro entitlement shared grants and source geometry",
+       %{user: user} do
+    fixture = oracle("hexagons")
+    seed(fixture["setup"])
+    owner = %{user | id: 810_001}
+    params = %{"start_date" => "2025-01-01", "end_date" => "2025-01-02"}
+    assert {:ok, result} = invoke(Dawarich.MapApi.Hexagons, :fetch, [owner, params])
+    expected = Jason.decode!(fixture["body"])
+    assert result["metadata"] == expected["metadata"]
+    assert length(result["features"]) == 1
+    coords = hd(result["features"])["geometry"]["coordinates"] |> hd()
+    want = hd(expected["features"])["geometry"]["coordinates"] |> hd()
+    assert length(coords) == length(want)
+
+    for {[lng, lat], [wlng, wlat]} <- Enum.zip(coords, want) do
+      assert_in_delta lng, wlng, 1.0e-10
+      assert_in_delta lat, wlat, 1.0e-10
+    end
+
+    assert {:ok, bounds} = invoke(Dawarich.MapApi.Hexagons, :bounds, [owner, params])
+    assert bounds == Jason.decode!(oracle("bounds")["body"])
+    assert {:ok, %{"features" => []}} = Dawarich.MapApi.Hexagons.fetch(user, params)
+    uuid = "00000000-0000-0000-0000-000000000001"
+
+    Repo.query!(
+      "UPDATE stats SET sharing_uuid=$1::text::uuid,sharing_settings='{\"enabled\":true}' WHERE id=780001",
+      [uuid]
+    )
+
+    assert {:ok, shared} = Dawarich.MapApi.Hexagons.fetch(user, Map.put(params, "uuid", uuid))
+    assert shared == result
+    Repo.query!("UPDATE stats SET sharing_settings='{\"enabled\":false}' WHERE id=780001")
+    assert {:error, 404, _} = Dawarich.MapApi.Hexagons.fetch(user, Map.put(params, "uuid", uuid))
+    assert {:error, 400, _} = Dawarich.MapApi.Hexagons.bounds(owner, %{})
+  end
+
   defp track(user_id) do
     [[id]] =
       Repo.query!(
@@ -228,8 +265,8 @@ defmodule DawarichWeb.A12f2CClosureTest do
     do: "test/fixtures/a12f2c/closure.json" |> File.read!() |> Jason.decode!() |> Map.fetch!(name)
 
   defp seed(setup) do
-    for table <- ~w(users countries point_sources tracks track_segments points) do
-      Dawarich.Test.ApiGolden.insert!(table, setup[table])
+    for table <- ~w(users countries point_sources tracks track_segments points visits stats) do
+      if setup[table], do: Dawarich.Test.ApiGolden.insert!(table, setup[table])
     end
   end
 

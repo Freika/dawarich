@@ -213,6 +213,37 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
         }
       end
     end
+    map_seed(seed: :base, user: {})
+    map_insert('visits', id: 790_001, user_id: ApiMapGoldenOracle::OWNER, name: 'synthetic', status: 1,
+                         started_at: map_time(0), ended_at: map_time(300), duration: 5,
+                         created_at: ApiMapGoldenOracle::STAMP, updated_at: ApiMapGoldenOracle::STAMP)
+    cell = H3.from_geo_coordinates([52.0, 13.0], 8).to_s(16)
+    map_insert('stats', id: 780_001, user_id: ApiMapGoldenOracle::OWNER, year: 2025, month: 1,
+                        distance: 987, h3_hex_ids: JSON.generate([[cell, 2, ApiMapGoldenOracle::T0, ApiMapGoldenOracle::T0 + 300]]),
+                        created_at: ApiMapGoldenOracle::STAMP, updated_at: ApiMapGoldenOracle::STAMP)
+    {
+      'timeline' => '/api/v1/timeline?start_at=2025-01-01T00:00:00Z&end_at=2025-01-01T23:59:59Z',
+      'timeline_missing' => '/api/v1/timeline',
+      'timeline_large' => '/api/v1/timeline?start_at=2025-01-01&end_at=2025-03-01',
+      'visited' => '/api/v1/countries/visited?start_at=1735689600&end_at=1735690000',
+      'visited_bad' => '/api/v1/countries/visited?start_at=bad&end_at=1735690000',
+      'tracked_months' => '/api/v1/points/tracked_months',
+      'hexagons' => '/api/v1/maps/hexagons?start_date=2025-01-01&end_date=2025-01-02',
+      'bounds' => '/api/v1/maps/hexagons/bounds?start_date=2025-01-01&end_date=2025-01-02',
+      'fog' => '/api/v1/maps/hexagons/fog?start_date=2025-01-01&end_date=2025-01-02',
+      'fog_bad' => '/api/v1/maps/hexagons/fog?start_date=bad&end_date=2025-01-02'
+    }.each do |name, path|
+      get path, headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
+      closure[name] = {
+        'setup' => (ApiMapGoldenOracle::TABLES + %w[visits stats]).to_h do |table|
+          [table, ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
+                                         .map { JSON.parse(_1) }]
+        end,
+        'status' => response.status, 'body' => response.body
+      }
+    end
+    get '/api/v1/countries/borders', headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
+    closure['borders'] = { 'status' => response.status, 'sha256' => Digest::SHA256.hexdigest(response.body) }
     FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2c/closure.json'),
                             "#{map_exact_json(closure)}\n")
   end
