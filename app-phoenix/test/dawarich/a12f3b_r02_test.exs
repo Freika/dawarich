@@ -33,12 +33,23 @@ defmodule Dawarich.A12f3bR02Test do
     assert length(jobs("Dawarich.Points.AnomalyStatsWorker")) == 1
     assert reverse("points.anomaly_filter") == []
 
+    second = point!(user, @at, {13.41, 52.5}, accuracy: 20_000)
+    Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:tracks.generate_realtime", :oban)
+
     Dawarich.Imports.Teslamate.Effects.finalize(
-      %{repo: ScratchRepo, id: user, now: DateTime.utc_now()},
+      %{
+        repo: ScratchRepo,
+        id: user,
+        settings: %{"timezone" => "Europe/Berlin"},
+        event: Ecto.UUID.generate(),
+        now: DateTime.utc_now()
+      },
       %{range: {@at, @at}, months: []}
     )
 
-    assert length(jobs("Dawarich.Points.AnomalyArrivalWorker")) == 2
+    assert flagged(user) == [id, second]
+    assert length(jobs("Dawarich.Points.AnomalyArrivalWorker")) == 1
+    assert length(jobs("Dawarich.Points.AnomalyStatsWorker")) == 2
     assert reverse("points.anomaly_filter") == []
 
     coexist("points.anomaly_filter", fn ->
