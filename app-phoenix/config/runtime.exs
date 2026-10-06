@@ -1,5 +1,14 @@
 import Config
 
+reporting =
+  Dawarich.ErrorReporting.Config.from_env(
+    if(config_env() == :test, do: %{}, else: System.get_env()),
+    config_env()
+  )
+
+config :dawarich, :error_reporting, reporting
+config :sentry, Dawarich.ErrorReporting.Config.sdk(reporting)
+
 env_integer = fn name, default ->
   case System.get_env(name) do
     value when value in [nil, ""] -> default

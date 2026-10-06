@@ -1,5 +1,7 @@
 import Config
 
+config :sentry, dsn: nil, enable_logs: false
+
 connection = [
   hostname: System.get_env("DATABASE_HOST", "localhost"),
   port: String.to_integer(System.get_env("DATABASE_PORT", "5432")),
