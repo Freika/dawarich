@@ -186,7 +186,7 @@ defmodule Dawarich.Ingest.Intake do
           Dawarich.Points.Realtime.tracks(repo, payload, opts)
 
         "visits.realtime" ->
-          Dawarich.Points.Realtime.visits(repo, payload, opts)
+          Dawarich.Visits.RealtimeDebouncer.trigger(repo, user_id, opts)
 
         "points.live_broadcast" ->
           if Dawarich.Points.NativeEffects.native?(repo, "command:points.live_broadcast"),
