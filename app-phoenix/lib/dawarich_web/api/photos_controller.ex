@@ -3,7 +3,7 @@ defmodule DawarichWeb.Api.PhotosController do
   @behaviour Plug
 
   alias Dawarich.{Accounts, I18n}
-  alias Dawarich.Photos.Thumbnail
+  alias Dawarich.Photos.{Index, Thumbnail}
   alias DawarichWeb.Api.{Body, Respond}
 
   @sources ~w(immich photoprism)
@@ -13,6 +13,24 @@ defmodule DawarichWeb.Api.PhotosController do
   def init(action), do: action
 
   @impl true
+  def call(conn, :index) do
+    case Index.fetch(conn.assigns.api_user, conn.assigns.api_params) do
+      {:ok, photos, errors} ->
+        conn =
+          if errors == [],
+            do: conn,
+            else: Plug.Conn.put_resp_header(conn, "x-photo-source-errors", Enum.join(errors, ","))
+
+        Respond.json(conn, 200, photos)
+
+      {:unconfigured, source} ->
+        unconfigured(conn, source)
+
+      {:error, _} ->
+        error(conn, 502, "controllers.api.v1.photos.failed_to_fetch_photos")
+    end
+  end
+
   def call(conn, :thumbnail) do
     case read(conn.assigns.api_user, conn.assigns.api_params["source"], conn.path_params["id"]) do
       {:ok, image} ->
