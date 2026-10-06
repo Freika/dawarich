@@ -71,7 +71,7 @@ defmodule Dawarich.Subscriptions.Callback do
   defp persist(claims, context) do
     repo = Map.get(context, :repo, Repo)
 
-    case repo.get(Account, claims["user_id"], log: false) do
+    case repo.one(eligible(claims["user_id"]), log: false) do
       nil ->
         {:error, 404, %{"error" => "unknown_dawarich_user_id", "user_id" => claims["user_id"]}}
 
@@ -80,14 +80,18 @@ defmodule Dawarich.Subscriptions.Callback do
     end
   end
 
+  defp eligible(id), do: from(u in Account, where: u.id == ^id and is_nil(u.deleted_at))
+
   defp transaction(repo, claims, context) do
     result =
       try do
         repo.transaction(fn ->
           user =
-            repo.one!(from(u in Account, where: u.id == ^claims["user_id"], lock: "FOR UPDATE"),
+            repo.one(from(u in eligible(claims["user_id"]), lock: "FOR UPDATE"),
               log: false
             )
+
+          if is_nil(user), do: repo.rollback(:unknown_user)
 
           if Cache.older?(claims, context) do
             Cache.release(claims["event_id"], context)
@@ -97,6 +101,7 @@ defmodule Dawarich.Subscriptions.Callback do
           if is_function(context[:before_update], 0), do: context.before_update.()
           attrs = attrs(claims)
           changes = Ecto.Changeset.change(user, attrs)
+
           user = repo.update!(changes, log: false)
 
           if Map.has_key?(changes.changes, :plan) do
@@ -119,6 +124,9 @@ defmodule Dawarich.Subscriptions.Callback do
       end
 
     case result do
+      {:error, :unknown_user} ->
+        {:error, 404, %{"error" => "unknown_dawarich_user_id", "user_id" => claims["user_id"]}}
+
       {:error, :stale} ->
         response(200, "stale_event")
 
