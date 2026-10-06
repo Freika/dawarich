@@ -21,7 +21,11 @@ defmodule DawarichWeb.PostersController do
   def call(conn, action) do
     params = conn.assigns.api_params
     locale = Locale.resolve(nil, conn.assigns.current_user, conn.assigns.rails_session)
-    conn = Plug.Conn.assign(conn, :locale, locale)
+
+    conn =
+      conn
+      |> Plug.Conn.assign(:locale, locale)
+      |> Plug.Conn.assign(:poster_format, PostersGate.format(conn, params))
 
     if PostersGate.supported?(conn, params),
       do: run(conn, action, params),
@@ -39,6 +43,9 @@ defmodule DawarichWeb.PostersController do
       end
 
     case result do
+      {:ok, _id} when conn.assigns.poster_format in [:json, :other] ->
+        unsupported(conn)
+
       {:ok, id} ->
         if turbo?(conn) do
           poster = Dawarich.MapGallery.poster(conn.assigns.current_user.id, id)
@@ -60,6 +67,9 @@ defmodule DawarichWeb.PostersController do
           )
         end
 
+      {:error, _} when conn.assigns.poster_format in [:json, :other] ->
+        unsupported(conn)
+
       {:error, _} ->
         message = notice(conn, "failed_to_start_poster_generation")
 
@@ -70,9 +80,13 @@ defmodule DawarichWeb.PostersController do
   end
 
   defp run(conn, :destroy, _) do
-    id = String.to_integer(conn.path_params["id"])
+    id = Dawarich.RubyInteger.to_i(conn.path_params["id"])
+    id = if id in -9_223_372_036_854_775_808..9_223_372_036_854_775_807, do: id, else: 0
 
     case Persistence.delete(id, conn.assigns.current_user) do
+      {:ok, ^id} when conn.assigns.poster_format in [:json, :other] ->
+        unsupported(conn)
+
       {:ok, ^id} ->
         if turbo?(conn),
           do:
@@ -116,12 +130,9 @@ defmodule DawarichWeb.PostersController do
     """
   end
 
-  defp turbo?(conn),
-    do:
-      Enum.any?(
-        get_req_header(conn, "accept"),
-        &String.contains?(&1, "text/vnd.turbo-stream.html")
-      )
+  defp unsupported(conn), do: conn |> put_resp_content_type("text/html") |> send_resp(406, "")
+
+  defp turbo?(conn), do: conn.assigns.poster_format == :turbo
 
   defp notice(conn, key), do: Translate.t(conn.assigns.locale, "controllers.posters." <> key, %{})
 

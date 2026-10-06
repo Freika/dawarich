@@ -41,6 +41,11 @@ defmodule Dawarich.Posters.Persistence do
   end
 
   def create(params, %{id: user_id} = user, locale, repo \\ Repo) do
+    params =
+      Map.filter(params, fn {_, value} ->
+        is_binary(value) or is_number(value) or is_boolean(value) or is_nil(value)
+      end)
+
     name =
       if Ruby.blank?(params["name"]),
         do: DawarichWeb.Translate.t(locale, "controllers.posters.untitled", %{}),

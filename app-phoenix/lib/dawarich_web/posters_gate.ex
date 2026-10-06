@@ -1,39 +1,79 @@
 defmodule DawarichWeb.PostersGate do
   @moduledoc false
-  import Plug.Conn, only: [get_req_header: 2]
+  import Plug.Conn
+  alias DawarichWeb.{Locale, RailsForm, RequireUser}
+  alias DawarichWeb.Api.Body
 
-  def native?(conn, params) do
-    conn.method in ~w(POST DELETE) and DawarichWeb.LayoutAssigns.self_hosted?() and
-      get_req_header(conn, "turbo-frame") == [] and
-      (is_nil(params["id"]) or params["id"] =~ ~r/\A[1-9]\d{0,17}\z/) and
-      owned_delete?(conn, params)
-  end
+  def init(opts), do: opts
 
-  defp owned_delete?(%{method: "DELETE"} = conn, params) do
-    case DawarichWeb.RailsAuth.call(conn, []).assigns.current_user do
-      nil -> true
-      user -> not is_nil(Dawarich.MapGallery.poster(user.id, String.to_integer(params["id"])))
+  def native?(conn, _params), do: conn.method in ~w(POST DELETE)
+
+  def call(conn, _opts) do
+    locale = Locale.resolve(nil, conn.assigns.current_user, conn.assigns.rails_session)
+    conn = assign(conn, :locale, locale)
+
+    if is_nil(conn.assigns.current_user) do
+      if format(conn, conn.assigns.api_params) == :json do
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(
+          401,
+          Jason.encode!(%{
+            error: DawarichWeb.Translate.t(locale, "devise.failure.unauthenticated", %{})
+          })
+        )
+        |> halt()
+      else
+        RequireUser.call(conn, [])
+      end
+    else
+      admission =
+        conn
+        |> put_req_header("content-type", "application/x-www-form-urlencoded")
+        |> RailsForm.admission()
+
+      case admission do
+        :ok -> conn
+        {:replay, reason} -> Body.replay(conn, reason)
+      end
     end
   end
 
-  defp owned_delete?(_, _), do: true
+  def supported?(_conn, params) do
+    Enum.all?(params, fn {key, value} ->
+      (key in ~w(authenticity_token commit format id) and is_binary(value)) or
+        (key == "poster" and (is_map(value) or is_binary(value)))
+    end)
+  end
 
-  def supported?(conn, params) do
+  def format(conn, params) do
     accept = get_req_header(conn, "accept") |> Enum.join(",")
 
-    types =
-      for entry <- String.split(accept, ","),
-          do: entry |> String.split(";") |> hd() |> String.trim()
+    cond do
+      params["format"] == "json" ->
+        :json
 
-    (accept == "" or DawarichWeb.Strangler.browser_like?(accept) or
-       Enum.all?(
-         types,
-         &(&1 in ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html))
-       )) and
-      Enum.all?(params, fn {key, value} ->
-        (key in ~w(authenticity_token commit) and is_binary(value)) or
-          (conn.method == "POST" and key == "poster" and is_map(value) and
-             Enum.all?(value, fn {_, item} -> is_binary(item) end))
-      end)
+      params["format"] == "turbo_stream" ->
+        :turbo
+
+      params["format"] == "html" ->
+        :html
+
+      params["format"] not in [nil, ""] ->
+        :other
+
+      String.contains?(accept, "text/vnd.turbo-stream.html") ->
+        :turbo
+
+      String.contains?(accept, "application/json") ->
+        :json
+
+      accept == "" or String.contains?(accept, "text/html") or String.contains?(accept, "*/*") or
+          DawarichWeb.Strangler.browser_like?(accept) ->
+        :html
+
+      true ->
+        :other
+    end
   end
 end
