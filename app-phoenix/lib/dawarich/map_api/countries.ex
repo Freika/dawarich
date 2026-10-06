@@ -3,10 +3,10 @@ defmodule Dawarich.MapApi.Countries do
   alias Dawarich.{CountryNames, RailsTime, Redis, Repo}
   alias Dawarich.Tiles.Http
   alias Dawarich.Photos.ProviderCache
-  @source Path.expand("../../../priv/country_codes.json", __DIR__)
+  defp source, do: Application.app_dir(:dawarich, "priv/country_codes.json")
 
   def borders do
-    data = @source |> File.read!() |> Jason.decode!()
+    data = source() |> File.read!() |> Jason.decode!()
     bytes = data["borders_gzip_base64"] |> Base.decode64!() |> :zlib.gunzip()
 
     case Redis.cache_command(["EXISTS", "dawarich/countries_codes"]) do
@@ -29,7 +29,7 @@ defmodule Dawarich.MapApi.Countries do
            {:ok, to} <- Http.strict_timestamp(params["end_at"]),
            true <- from <= to do
         {where, args} = Http.point_scope(user, params, {from, to})
-        aliases = @source |> File.read!() |> Jason.decode!() |> Map.get("visited_aliases", %{})
+        aliases = source() |> File.read!() |> Jason.decode!() |> Map.get("visited_aliases", %{})
 
         countries =
           Repo.query!(

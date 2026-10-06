@@ -336,6 +336,32 @@ defmodule DawarichWeb.A12f2CClosureTest do
     assert {:ok, ttl} = Redis.cache_command(["TTL", "dawarich/user_#{owner.id}_years_tracked"])
     assert ttl in 86390..86400
     assert result == Dawarich.MapApi.TrackedMonths.fetch(owner)
+
+    package =
+      Path.join(
+        System.tmp_dir!(),
+        "country-package-#{System.unique_integer([:positive])}/dawarich-0.1.0"
+      )
+
+    File.mkdir_p!(Path.join(package, "ebin"))
+    File.mkdir_p!(Path.join(package, "priv"))
+    packaged = ~s({"synthetic":"packaged"})
+
+    codes = %{
+      "borders_gzip_base64" => packaged |> :zlib.gzip() |> Base.encode64(),
+      "visited_aliases" => %{}
+    }
+
+    File.write!(Path.join(package, "priv/country_codes.json"), Jason.encode!(codes))
+    original = Application.app_dir(:dawarich, "ebin") |> String.to_charlist()
+
+    try do
+      assert :code.replace_path(:dawarich, String.to_charlist(Path.join(package, "ebin"))) == true
+      assert Dawarich.MapApi.Countries.borders() == {:ok, packaged}
+    after
+      :code.replace_path(:dawarich, original)
+      File.rm_rf!(Path.dirname(package))
+    end
   end
 
   @tag :a12f2_c_06_robust
