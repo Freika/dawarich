@@ -128,14 +128,18 @@ defmodule DawarichWeb.OperatorRoutesTest do
     assert page.resp_body =~ ~s(data-testid="instance-settings-phoenix-jobs")
     assert request(:head, "/settings/background_jobs", 10001, credentials()).resp_body == ""
 
-    for authorization <- [nil, "invalid"] do
-      session = Map.put(session(), "operator_authorization", authorization)
-      assert {:halt, rejected} = AdminLiveAuth.on_mount(:background, %{}, session, socket())
+    for context <- [%{}, %{"operator_grant" => "invalid"}] do
+      assert {:halt, rejected} =
+               AdminLiveAuth.on_mount(:background, %{}, session(), socket(context))
+
       assert rejected.redirected == {:redirect, %{to: "/settings/background_jobs", status: 302}}
     end
 
     session = DawarichWeb.OperatorRedirect.live_session(conn) |> Map.merge(session())
-    assert {:cont, mounted} = AdminLiveAuth.on_mount(:background, %{}, session, socket())
+
+    assert {:cont, mounted} =
+             AdminLiveAuth.on_mount(:background, %{}, session, socket(connect_session(page)))
+
     assert mounted.redirected == nil
     System.put_env("SIDEKIQ_PASSWORD", "synthetic-rotated")
     assert {:halt, revoked} = Phoenix.LiveView.Lifecycle.handle_info(:navbar_refresh, mounted)
@@ -162,9 +166,15 @@ defmodule DawarichWeb.OperatorRoutesTest do
 
   test "Cloud job health role refresh redirects demoted operators and retains authorized operators" do
     cloud!()
-    conn = basic(signed(:get, "/settings/background_jobs", 10001))
+
+    conn =
+      basic(signed(:get, "/settings/background_jobs", 10001)) |> Endpoint.call(Endpoint.init([]))
+
     session = DawarichWeb.OperatorRedirect.live_session(conn) |> Map.merge(session())
-    assert {:cont, mounted} = AdminLiveAuth.on_mount(:background, %{}, session, socket())
+
+    assert {:cont, mounted} =
+             AdminLiveAuth.on_mount(:background, %{}, session, socket(connect_session(conn)))
+
     assert {:halt, authorized} = Phoenix.LiveView.Lifecycle.handle_info(:navbar_refresh, mounted)
     assert authorized.redirected == nil
     assert authorized.assigns.current_user.admin
@@ -219,7 +229,18 @@ defmodule DawarichWeb.OperatorRoutesTest do
     }
   end
 
-  defp socket do
+  defp connect_session(conn) do
+    {_sid, session} =
+      DawarichWeb.SessionStore.get(
+        conn,
+        conn.resp_cookies["_dawarich_phoenix"].value,
+        DawarichWeb.SessionStore.init(Endpoint.session_options())
+      )
+
+    session
+  end
+
+  defp socket(context \\ %{}) do
     %Phoenix.LiveView.Socket{
       router: DawarichWeb.Router,
       view: DawarichWeb.SettingsLive.BackgroundJobs,
@@ -227,7 +248,7 @@ defmodule DawarichWeb.OperatorRoutesTest do
       transport_pid: self(),
       assigns: %{__changed__: %{}, current_user: Accounts.get(10001), flash: %{}},
       private: %{
-        connect_info: %{session: %{"rails_user_id" => 10001}},
+        connect_info: %{session: Map.put(context, "rails_user_id", 10001)},
         lifecycle: %Phoenix.LiveView.Lifecycle{}
       }
     }

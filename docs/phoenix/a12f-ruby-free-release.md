@@ -185,16 +185,40 @@ background page for admins only. The minimum Cloud destination seam extends
 `AdminGate` and `AdminLiveAuth` for this read page, retaining the settings
 hand-back key, supported user state, session identity and role rechecks.
 HTTP GET/HEAD on the destination challenges missing or incorrect Cloud Basic
-credentials before rendering. Its signed LiveView session carries an opaque
-server proof bound to the actor and configured credentials; connected mounts
-and lifecycle hooks validate that proof and reload the current role. Rotating
-credentials invalidates mounted Cloud access. Self-hosted demotion clears the
+credentials before rendering. A successful Cloud request issues a random grant
+in the encrypted, HttpOnly Phoenix session cookie. Redis holds its binding to
+the authenticated Rails login, actor and current Basic configuration, with a
+non-sliding one-hour expiry. Neither the grant nor Basic credentials are placed
+in the signed, client-readable LiveView page token. Connected mounts use only
+the current cookie context, including the Rails login identity independently
+derived by SessionStore; an authorized page token cannot authorize another login.
+The verified Rails authentication result is reused only within its request;
+each fresh websocket request independently authenticates its current cookies.
+Redis misses/errors, expiry, deletion, credential rotation and demotion reject
+connected access. Reload the page with Basic credentials to obtain a new grant.
+The existing private cache Redis connection stores these grants; Cloud HTTP
+authorization returns 503 if grant storage is unavailable.
+
+`LiveSocket` routes LiveView messages through `AuthorizedLiveChannel`, which
+rechecks operator/admin authorization before delegating to the pinned framework
+channel. This includes built-in `lv:clear-flash`, component events and internal
+info messages that bypass ordinary lifecycle hooks. Ordinary LiveViews delegate
+unchanged; uploads retain their existing channel. Lifecycle hooks also remain
+for params and role refresh. The wrapper depends on the pinned channel's state
+and callback contract, so framework upgrades must retain the real endpoint
+channel regression. Authorized reconnects use the existing grant until expiry.
+Self-hosted demotion clears the
 cached health assign and hides the card while retaining background settings.
 Self-hosted nonadmins still see their ordinary background settings. Cloud
 nonadmins receive no operator access. Detailed job mutations and other Cloud
 admin pages remain with A12f-3 task 17. ED-346 records the intentional UI change;
 source fixture comparison still verifies the complete preexisting markup, and
 separately verifies the added admin-only health card.
+
+Shared decision history: AFFiNE `Dawarich — ADR-20261006-operator-session-grants
+— Bind Cloud LiveView authorization to the current login`, document
+`lhm4h4Ab4OmJufkmL-5dR`. The shared operator index is document
+`GMf1eWxYiCJBDeGAzmf0F`.
 
 ## Native OpenAPI ownership
 

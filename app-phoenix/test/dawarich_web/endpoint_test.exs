@@ -692,7 +692,7 @@ defmodule DawarichWeb.EndpointTest do
 
     listener = ThousandIsland.Server.listener_pid(bandit)
     listener_ref = Process.monitor(listener)
-    live_socket = Process.whereis(DawarichWeb.Endpoint.Phoenix.LiveView.Socket)
+    live_socket = Process.whereis(DawarichWeb.Endpoint.DawarichWeb.LiveSocket)
     live_socket_ref = Process.monitor(live_socket)
     started = System.monotonic_time(:millisecond)
     stopping = Task.async(fn -> Supervisor.stop(sup) end)
@@ -753,7 +753,7 @@ defmodule DawarichWeb.EndpointTest do
     )
 
     {101, _headers, rest} = read_response_head(client)
-    live_socket = Process.whereis(DawarichWeb.Endpoint.Phoenix.LiveView.Socket)
+    live_socket = Process.whereis(DawarichWeb.Endpoint.DawarichWeb.LiveSocket)
     live_socket_ref = Process.monitor(live_socket)
     stopping = Task.async(fn -> Supervisor.stop(sup) end)
 
