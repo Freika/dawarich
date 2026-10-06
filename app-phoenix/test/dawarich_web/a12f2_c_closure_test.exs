@@ -17,6 +17,19 @@ defmodule DawarichWeb.A12f2CClosureTest do
     {:ok, user: user}
   end
 
+  test "timeline mode distances serialize in sorted key order for every input order" do
+    pairs = [{"walking", 0.5}, {"driving", 0.5}, {"cycling", 0.5}]
+
+    for modes <- [pairs, Enum.reverse(pairs), Map.new(pairs)] do
+      day = %{date: "2025-01-01", summary: %{mode_distances: modes}, bounds: nil, entries: []}
+      {:object, [{"days", [{:object, fields}]}]} = Dawarich.Timeline.Api.term(%{days: [day]})
+      {:object, summary} = fields |> List.keyfind("summary", 0) |> elem(1)
+
+      assert List.keyfind(summary, "mode_distances", 0) ==
+               {"mode_distances", {:object, Enum.sort(pairs)}}
+    end
+  end
+
   @tag :a12f2_c_03
   test "Point tiles retain binary MVT geometry properties zoom bounds epoch ETag and failure framing",
        %{user: user} do
@@ -544,6 +557,18 @@ defmodule DawarichWeb.A12f2CClosureTest do
     fixture = oracle("timeline")
     seed(fixture["setup"])
     owner = %{user | id: 810_001}
+
+    response =
+      DawarichWeb.Api.TimelineController.call(
+        tile_conn(owner, %{
+          "start_at" => "2025-01-01T00:00:00Z",
+          "end_at" => "2025-01-01T23:59:59Z"
+        }),
+        :index
+      )
+
+    assert response.status == fixture["status"]
+    assert Jason.decode!(response.resp_body) == Jason.decode!(fixture["body"])
 
     assert {:ok, latest} =
              Dawarich.Mcp.Tools.call(owner, %{"name" => "get_latest_location", "arguments" => %{}})

@@ -72,14 +72,29 @@ module FixtureRecording
     end
   end
 
-  def self.verify(path, bytes)
+  def self.verify(path, bytes, json_bodies: [])
     bytes = normalize(bytes)
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
       FileUtils.mkdir_p(File.dirname(path))
       File.binwrite(path, bytes)
     else
-      raise "#{path} differs from Rails" unless File.binread(path) == bytes.b
+      expected = File.binread(path)
+      equal = if json_bodies.empty?
+                expected == bytes.b
+              else
+                json_with_bodies(expected, json_bodies) == json_with_bodies(bytes, json_bodies)
+              end
+      raise "#{path} differs from Rails" unless equal
     end
+  end
+
+  def self.json_with_bodies(bytes, paths)
+    value = JSON.parse(bytes)
+    paths.each do |path|
+      parent = value.dig(*path[0...-1])
+      parent[path.last] = JSON.parse(parent.fetch(path.last))
+    end
+    value
   end
 
   def self.normalize(value)

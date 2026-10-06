@@ -298,7 +298,7 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     closure['mcp_delete'] = { 'status' => response.status, 'body' => response.body }
 
     FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2c/closure.json'),
-                            "#{map_exact_json(closure)}\n")
+                            "#{map_exact_json(closure)}\n", json_bodies: [%w[timeline body]])
   end
 
   def map_closure_setup(tables)
