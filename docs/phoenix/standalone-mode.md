@@ -63,14 +63,30 @@ Delegate unmounted native handlers only in standalone mode`, document
 AuthGate flows. It delegates signup GET/POST to F's registration handler,
 password request/edit/PUT/PATCH to F's native recovery mode, GitHub/Google/OIDC
 initiation and callbacks to G's provider handler, and account-link routes to
-G's closure mode. Registration and recovery consume the native registration
+G's closure mode. H's Apple web initiation/form callback, all five mobile
+API POST actions (including `.json`/`.html`), mobile GET/HEAD success and the
+exact POST subscription webhook callback use their native handlers. The
+subscription callback retains its webhook-secret/JWT authentication instead
+of requiring an account API key. Only Apple form callbacks use state/nonce
+cookies in place of browser CSRF. Apple initiation preserves HEAD and admitted
+HTML/JSON formats. Registration and recovery consume the native registration
 setting. Recovery enqueues the existing native mail worker and applies the
 shared rate limiter. The handlers retain CSRF/origin checks, encrypted cookies,
 provider state validation, session rotation and terminal failure behavior.
 
+Ambiguous session-cookie values or duplicate Cookie headers are refused before
+browser or mobile authentication effects. Apple state/nonce/import cookies
+also reject duplicate values. Cookie refusal is limited to standalone auth
+admission; coexistence dispatch is unchanged.
+
 POST `/users` is inspected once with a bounded body. Plain signup reaches
 registration; PATCH/PUT overrides reach the existing native account handler.
-Other overrides terminate before registration effects. Both handlers reuse the
+Literal PATCH/PUT also select native account mode in Cloud and self-hosted
+settings. Accepted form overrides supply the effective method to the limiter
+without changing the original request method or raw body; signup counters
+therefore do not classify account updates as registrations. Authentication,
+current-password policy and CSRF still run in the account handler. Other
+overrides terminate before registration effects. Both handlers reuse the
 buffered body. No coexistence flow selection or route declarations change.
 
 In Strangler's standalone terminal path, a small dispatch table admits these
@@ -91,15 +107,18 @@ handler. No second router or handler implementation is introduced. With the
 standalone flag unset, requests retain their original upstream method/body.
 
 Application context seams are `registration_context`, `recovery_context`,
-`provider_auth_context`, `account_link_context` and `account_context`. Missing
-required Cloud signup, security-notification, linkage-mail or mobile owners
-retain the handlers' terminal native errors; they are not substituted with
+`provider_auth_context`, `account_link_context`, `account_context`,
+`apple_auth_context`, `api_auth_context` and `subscription_context`. Browser
+contexts default to H's real signed mobile handoff and retain configured owner
+callbacks. Missing required Cloud signup, security-notification or linkage-mail
+owners retain the handlers' terminal native errors; they are not substituted with
 success callbacks. See the [F](a12f2-f.md) and [G](a12f2-g.md) handoffs.
 
-At this implementation baseline H's Apple/mobile modules are absent. Apple
-web/mobile activation requires H integration first. This dispatch does not
-copy unintegrated handler logic or claim Apple reachability. The sweep's
-integrations form is already mounted by its owner; `/assets/channels` belongs
+H's reviewed implementation is integrated and reached through the Endpoint.
+Provider state regressions use valid authorization codes with synthetic
+successful exchanges: absent or mismatched state consumes pending state without
+exchange/account/login effects; matching state rotates the login session.
+The sweep's integrations form is already mounted by its owner; `/assets/channels` belongs
 to the asset/build contract, and DELETE `/` has no merged native handler.
 Security review and the integration/release gates remain separate acceptance.
 

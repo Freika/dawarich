@@ -20,6 +20,7 @@ defmodule DawarichWeb.StandaloneActivationTest do
     previous = Map.new(names, &{&1, System.get_env(&1)})
 
     keys = [
+      :jobs_repo,
       :phoenix_auth,
       :rails_routes,
       :rails_upstream,
@@ -27,7 +28,8 @@ defmodule DawarichWeb.StandaloneActivationTest do
       :recovery_context
     ]
 
-    config = Map.new(keys, &{&1, Application.get_env(:dawarich, &1)})
+    config = Map.new(keys, &{&1, Application.fetch_env(:dawarich, &1)})
+    Application.put_env(:dawarich, :jobs_repo, Repo)
     System.put_env("DAWARICH_RAILS", "off")
     System.put_env("SELF_HOSTED", "true")
     System.put_env("FORCE_SSL", "false")
@@ -41,9 +43,10 @@ defmodule DawarichWeb.StandaloneActivationTest do
       end
 
       for {key, value} <- config do
-        if value,
-          do: Application.put_env(:dawarich, key, value),
-          else: Application.delete_env(:dawarich, key)
+        case value do
+          {:ok, previous} -> Application.put_env(:dawarich, key, previous)
+          :error -> Application.delete_env(:dawarich, key)
+        end
       end
     end)
 
@@ -183,10 +186,41 @@ defmodule DawarichWeb.StandaloneActivationTest do
         scope: "email",
         issuer: "https://idp.example.test",
         response_type: "code",
-        pkce: false
+        pkce: false,
+        client_auth_method: :basic,
+        token_endpoint: "http://idp.example.test/token",
+        userinfo_endpoint: "http://idp.example.test/profile",
+        emails_endpoint: "http://idp.example.test/emails"
       }
 
-      Application.put_env(:dawarich, :provider_auth_context, %{providers: %{provider => config}})
+      owner = self()
+
+      context = %{
+        providers: %{provider => config},
+        http: fn method, url, _, _ ->
+          send(owner, {:state_exchange, method})
+
+          case URI.parse(url).path do
+            "/token" ->
+              {:ok, %{"access_token" => "synthetic"}}
+
+            "/profile" ->
+              {:ok,
+               %{
+                 "id" => "synthetic",
+                 "sub" => "synthetic",
+                 "name" => "Synthetic",
+                 "email" => c.user.email,
+                 "email_verified" => true
+               }}
+
+            "/emails" ->
+              {:ok, [%{"email" => c.user.email, "primary" => true, "verified" => true}]}
+          end
+        end
+      }
+
+      Application.put_env(:dawarich, :provider_auth_context, context)
       assert request(:post, path, c.guest, %{}).status == 422
       started = request(:post, path, c.guest, signed(%{}, c.guest))
       assert started.status == 302
@@ -197,11 +231,28 @@ defmodule DawarichWeb.StandaloneActivationTest do
 
       assert Map.has_key?(started.private, :dawarich_rate_limit)
 
-      for method <- [:get, :post] do
-        failed = request(method, path <> "/callback", c.guest, %{})
+      pending = RailsFormRequests.rails_session(started)
+
+      for method <- [:get, :post], state <- [nil, "mismatched"] do
+        params = %{"code" => "synthetic-code"}
+        params = if state, do: Map.put(params, "state", state), else: params
+
+        route =
+          if method == :get,
+            do: path <> "/callback?" <> URI.encode_query(params),
+            else: path <> "/callback"
+
+        failed = request(method, route, pending, params)
         assert failed.status == 302
         assert get_resp_header(failed, "x-dawarich-auth-owner") == ["native-provider"]
-        refute Map.has_key?(RailsFormRequests.rails_session(failed), "warden.user.user.key")
+        clean = RailsFormRequests.rails_session(failed)
+        refute clean["warden.user.user.key"]
+        refute clean["pending_oauth_link"]
+        refute clean["omniauth.state"]
+        refute clean["omniauth.nonce"]
+        refute clean["omniauth.pkce.verifier"]
+        refute_receive {:state_exchange, _}
+        assert Repo.get!(Account, c.user.id).sign_in_count == 0
       end
 
       guard(
