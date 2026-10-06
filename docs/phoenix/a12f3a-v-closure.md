@@ -42,6 +42,13 @@ Sibling cache/effect owners must reconcile that delegation and their remaining
 direct `visit_months_changed` writers. Global bus, sink and Registry files
 remain unchanged.
 
+The full-suite gate exposed old global Cloud-veto assertions in the shared
+O02 dispatch and A8 endpoint tests. Their minimum reconciliation admits only
+the visits domain in O02's Cloud matrix and makes the A8 source replay cases
+select explicit route hand-back. Other domain predicates and pre-pipeline
+byte-preserving hand-back checks remain. O must reconcile this shared test
+matrix as other domain packages admit Cloud.
+
 `WebSettings.redetect/4` locks the actor row and calls
 `HistoryRedetect.enqueue/6`. That producer locks
 `command:visits.full_history_redetect`. Its native outbox command is version 1
@@ -84,7 +91,10 @@ The nine named aggregates each have initial RED, GREEN, a failing production
 mutation and restored GREEN evidence in the assigned execution report.
 The focused Phoenix batch has 113 tests and zero failures; the source visit
 request batch has 67 examples and zero failures. Changed generators pass
-RuboCop. The final execution report records the full seed-404 partition totals,
+RuboCop. The reconciled shared gate batch has 11 tests and zero failures.
+Missing renderer dependencies were installed without a lockfile change; its
+focused existing tests have three tests and zero failures. The final execution
+report records the full seed-404 partition totals,
 compile/format, secret scan, commits and service cleanup.
 
 This is the main native journey cut under ruling 15, not release acceptance of
