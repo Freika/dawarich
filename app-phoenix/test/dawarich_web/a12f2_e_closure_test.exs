@@ -381,6 +381,204 @@ defmodule DawarichWeb.A12f2EClosureTest do
     Dawarich.Redis.cache_command(["DEL", key])
   end
 
+  @tag :a12f2_e_08
+  test "Points Overland OwnTracks and Traccar retain every source coercion refusal friends and partial result contract" do
+    alias Dawarich.Ingest.Closure
+    actor = user!(%{points_count: 0, settings: %{"timezone" => "UTC"}})
+
+    feature = %{
+      "geometry" => %{"coordinates" => [13.4, 52.5]},
+      "properties" => %{"timestamp" => 1_790_000_000, "device_id" => true}
+    }
+
+    assert {:ok, [prepared], nil} = Closure.prepare(:overland, %{"locations" => [feature]}, actor)
+    assert prepared.values.tracker_id == "t"
+    assert prepared.payload.raw_data == feature
+    assert [_] = Dawarich.Ingest.Intake.write([prepared], actor)
+    assert [["t"]] = Repo.query!("SELECT tracker_id FROM points WHERE user_id=$1", [actor]).rows
+    cases = File.read!("test/fixtures/ingest/golden.json") |> Jason.decode!()
+
+    cases =
+      Map.get(
+        cases,
+        "closure_cases",
+        Enum.filter(cases["cases"], &String.starts_with?(&1["name"], "closure_"))
+      )
+
+    for kase <- cases do
+      action =
+        cond do
+          String.contains?(kase["request"]["target"], "overland") -> :overland
+          String.contains?(kase["request"]["target"], "owntracks") -> :owntracks
+          String.contains?(kase["request"]["target"], "traccar") -> :traccar
+          true -> :points
+        end
+
+      params = Jason.decode!(kase["request"]["body"])
+      result = Closure.prepare(action, params, actor)
+
+      if kase["response"]["status"] == 500 do
+        assert {:error, 500, _} = result
+      else
+        assert {:ok, prepared, _} = result
+        expected = List.first(kase["rows"])
+
+        if expected do
+          point = List.first(prepared)
+          assert point.values.tracker_id == expected["tracker_id"]
+          assert point.values.altitude == expected["altitude"]
+          assert point.values.timestamp == expected["timestamp"]
+        end
+      end
+    end
+
+    golden = File.read!("test/fixtures/ingest/golden.json") |> Jason.decode!()
+
+    native_cases =
+      Enum.filter(golden["cases"], fn kase ->
+        String.starts_with?(kase["name"], ["points_", "overland_", "owntracks_", "traccar_"]) and
+          kase["name"] not in ["points_slice2_fault", "owntracks_friends_failure"] and
+          String.starts_with?(kase["request"]["body"], ["{", "["])
+      end)
+
+    for kase <- golden["closure_cases"] ++ native_cases, do: native_ingest_oracle!(golden, kase)
+
+    assert {:error, 500, _} = Closure.prepare(:points, %{}, actor)
+
+    assert {:error, 422, _} =
+             Closure.prepare(
+               :points,
+               %{"locations" => [put_in(feature, ["properties", "timestamp"], "2023-02-29")]},
+               actor
+             )
+
+    assert {:ok, [], []} =
+             Closure.prepare(
+               :owntracks,
+               %{"_type" => "waypoint", "lat" => 52.5, "lon" => 13.4, "tst" => 1},
+               actor
+             )
+
+    assert {:ok, [], nil} =
+             Closure.prepare(
+               :traccar,
+               %{
+                 "device_id" => "x",
+                 "location" => %{
+                   "timestamp" => 1_790_000_000,
+                   "latitude" => 91,
+                   "longitude" => 13.4
+                 }
+               },
+               actor
+             )
+  end
+
+  defp native_ingest_oracle!(golden, kase) do
+    Repo.transaction(fn ->
+      Dawarich.Ingest.Sources.forget()
+
+      for table <- ~w(users families family_memberships point_sources points),
+          row <- kase["setup"][table] do
+        Repo.query!(
+          "INSERT INTO #{table} SELECT * FROM json_populate_record(NULL::#{table},$1::text::json) ON CONFLICT DO NOTHING",
+          [Jason.encode!(row)]
+        )
+      end
+
+      for table <- ~w(users families family_memberships point_sources points),
+          do:
+            Repo.query!(
+              "SELECT setval(pg_get_serial_sequence('#{table}','id'),GREATEST((SELECT max(id) FROM #{table}),1))"
+            )
+
+      actor = Enum.find(kase["setup"]["users"], &(&1["id"] == kase["user_id"]))
+
+      user =
+        actor
+        |> Map.take(~w(id status plan points_count active_until settings subscription_source))
+        |> Map.new(fn {key, value} -> {String.to_existing_atom(key), value} end)
+
+      user = %{user | active_until: nil}
+      target = kase["request"]["target"]
+
+      action =
+        cond do
+          String.contains?(target, "overland") -> :overland
+          String.contains?(target, "owntracks") -> :owntracks
+          String.contains?(target, "traccar") -> :traccar
+          true -> :points
+        end
+
+      body = kase["request"]["body"]
+
+      conn =
+        Plug.Test.conn(:post, target, body)
+        |> Plug.Conn.put_req_header("content-type", "application/json")
+        |> Plug.Conn.put_req_header("content-length", to_string(byte_size(body)))
+        |> DawarichWeb.Api.Body.call([])
+
+      result =
+        api_conn(user, conn.assigns.api_params, context())
+        |> DawarichWeb.Api.IngestController.call({:native, action})
+
+      assert result.status == kase["response"]["status"], kase["name"]
+
+      ids =
+        Repo.query!("SELECT id FROM points WHERE user_id=$1 ORDER BY id", [user.id]).rows
+        |> List.flatten()
+        |> Kernel.--(kase["setup_point_ids"])
+        |> Enum.with_index()
+        |> Map.new(fn {id, i} -> {id, "new:#{i}"} end)
+
+      normalize = fn text ->
+        Regex.replace(~r/"id":(\d+)/, text, fn whole, id ->
+          case ids[String.to_integer(id)] do
+            nil -> whole
+            token -> ~s("id":"#{token}")
+          end
+        end)
+      end
+
+      assert normalize.(result.resp_body) == kase["response"]["body"], kase["name"]
+
+      if kase["rows"] do
+        result = Repo.query!(golden["rows_sql"], [user.id])
+
+        rows =
+          Enum.map(result.rows, &Map.new(Enum.zip(result.columns, &1)))
+          |> Jason.encode!()
+          |> normalize.()
+          |> Jason.decode!()
+
+        differences =
+          Enum.zip(rows, kase["rows"])
+          |> Enum.map(fn {actual, expected} ->
+            for {key, value} <- actual, value != expected[key], do: {key, value, expected[key]}
+          end)
+
+        assert rows == kase["rows"], "#{kase["name"]} #{inspect(differences)}"
+      end
+
+      Repo.rollback(:oracle_done)
+    end)
+
+    Dawarich.Ingest.Sources.forget()
+  end
+
+  defp api_conn(user, params, ctx) do
+    Plug.Test.conn(:post, "/api/v1/points", Jason.encode!(params))
+    |> Plug.Conn.assign(:api_user, user)
+    |> Plug.Conn.assign(:api_params, params)
+    |> Plug.Conn.assign(:api_context, ctx)
+    |> Plug.Conn.assign(:api_started, System.monotonic_time())
+    |> Plug.Conn.assign(:api_vary, false)
+    |> Plug.Conn.assign(:api_request_id, "a12f2e")
+    |> Plug.Conn.assign(:api_tag, "a12f2e")
+    |> Plug.Conn.assign(:api_headers, [])
+    |> Plug.Conn.assign(:api_if_none_match, "")
+  end
+
   defp point!(actor, timestamp, track \\ nil) do
     [[id]] =
       Repo.query!(

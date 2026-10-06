@@ -170,7 +170,9 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
     raise "golden generator incomplete, missing cases: #{missing.join(', ')}" if missing.any?
 
     path = Rails.root.join('app-phoenix/test/fixtures/ingest/golden.json')
-    fixture = { 'rows_sql' => IngestGoldenOracle::ROWS_SQL, 'cases' => results.sort_by { _1['name'] } }
+    fixture = { 'rows_sql' => IngestGoldenOracle::ROWS_SQL,
+                'cases' => results.reject { _1['name'].start_with?('closure_') }.sort_by { _1['name'] },
+                'closure_cases' => results.select { _1['name'].start_with?('closure_') }.sort_by { _1['name'] } }
     encoded = "#{Oj.dump(fixture, mode: :strict, float_precision: 0, indent: 2)}\n"
     File.write(path, encoded) if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
 
@@ -188,6 +190,7 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
       IngestGoldenOracle.results << record(
         kase.reverse_merge(setup: :user, path: '/api/v1/points', auth: :bearer, expect: :own)
       )
+      capture_closure_ingest! if kase[:name] == 'points_empty'
     }
   end
 
@@ -210,6 +213,33 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
       IngestGoldenOracle.results << record(
         IngestGoldenOracle::SLICE_FAULT.reverse_merge(setup: :user, path: '/api/v1/points', auth: :bearer, expect: :own)
       )
+    end
+  end
+
+  def capture_closure_ingest!
+    cases = [
+      { name: 'closure_overland_boolean_device', path: IngestGoldenOracle::OL,
+        body: { locations: [IngestGoldenOracle::FEATURE.call(13.4, 52.5, 1_790_000_000, device_id: true)] } },
+      { name: 'closure_overland_array_device', path: IngestGoldenOracle::OL,
+        body: { locations: [IngestGoldenOracle::FEATURE.call(13.4, 52.5, 1_790_000_000, device_id: [1, true])] } },
+      { name: 'closure_overland_integer_boolean', path: IngestGoldenOracle::OL,
+        body: { locations: [IngestGoldenOracle::FEATURE.call(13.4, 52.5, 1_790_000_000, altitude: true)] } },
+      { name: 'closure_overland_integer_container', path: IngestGoldenOracle::OL,
+        body: { locations: [IngestGoldenOracle::FEATURE.call(13.4, 52.5, 1_790_000_000, altitude: {})] } },
+      { name: 'closure_points_weekday',
+        body: { locations: [IngestGoldenOracle::FEATURE.call(13.4, 52.5, 'Sat Aug 28 02:55:50 2021')] } },
+      { name: 'closure_owntracks_boolean_device', path: IngestGoldenOracle::OT,
+        body: { lat: 52.5, lon: 13.4, tst: 1_790_000_000, tid: true, inregions: [1, true] } },
+      { name: 'closure_traccar_boolean_device', path: IngestGoldenOracle::TC,
+        body: { device_id: false, location: { timestamp: '2026-09-28T11:00Z', latitude: 52.5, longitude: 13.4 } } }
+    ]
+    cases.each do |kase|
+      result = nil
+      ActiveRecord::Base.transaction(requires_new: true) do
+        result = record(kase.reverse_merge(setup: :user, path: '/api/v1/points', auth: :bearer, expect: :own))
+        raise ActiveRecord::Rollback
+      end
+      IngestGoldenOracle.results << result
     end
   end
 

@@ -5,7 +5,18 @@ defmodule DawarichWeb.Api.IngestController do
   require Logger
 
   alias Dawarich.I18n
-  alias Dawarich.Ingest.{Friends, GeoJSON, Intake, OwnTracks, Timestamp, Traccar, Unsupported}
+
+  alias Dawarich.Ingest.{
+    Closure,
+    Friends,
+    GeoJSON,
+    Intake,
+    OwnTracks,
+    Timestamp,
+    Traccar,
+    Unsupported
+  }
+
   alias DawarichWeb.Api.{Body, Respond}
 
   @failed %{
@@ -19,6 +30,37 @@ defmodule DawarichWeb.Api.IngestController do
   def init(action), do: action
 
   @impl true
+  def call(conn, {:native, action}) do
+    user = conn.assigns.api_user
+    ctx = Dawarich.Imports.Api.context(conn)
+
+    with :ok <- Dawarich.Imports.Api.guard(user, ctx, true, false),
+         {:ok, prepared, friends} <- Closure.prepare(action, conn.assigns.api_params, user.id) do
+      if action == :traccar and prepared == [] do
+        Respond.json(conn, 422, Closure.failed(action))
+      else
+        with {:ok, rows} <- write(conn, action, prepared, user.id) do
+          {status, body} =
+            case action do
+              :points -> {200, {:object, [{"data", Enum.map(rows, &row/1)}]}}
+              :overland -> {201, %{"result" => "ok"}}
+              :owntracks -> {200, friends}
+              :traccar -> {200, []}
+            end
+
+          try do
+            Map.get(ctx, :after_commit, fn -> :ok end).()
+            Respond.json(conn, status, body)
+          rescue
+            _ -> Respond.json(conn, 500, Closure.failed(action))
+          end
+        end
+      end
+    else
+      {:error, status, body} -> Respond.json(conn, status, body)
+    end
+  end
+
   def call(conn, action),
     do: run(action, conn, conn.assigns.api_params, conn.assigns.api_user.id)
 
@@ -68,7 +110,7 @@ defmodule DawarichWeb.Api.IngestController do
   end
 
   defp write(conn, action, prepared, user) do
-    {:ok, Intake.write(prepared, user)}
+    {:ok, Intake.write(prepared, user, conn.assigns[:ingest_write_opts] || [])}
   rescue
     error ->
       Logger.error(

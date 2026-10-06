@@ -6,14 +6,21 @@ defmodule Dawarich.Ingest.GeoJSON do
 
   @motion ~w(motion activity action departure_date)
 
-  def points(params, user_id) do
+  def points(params, user_id), do: points(params, user_id, false)
+
+  def points(params, user_id, native?) do
     case params |> Permit.geojson() |> Map.get("locations") do
-      list when is_list(list) -> list |> Enum.map(&point(&1, user_id)) |> Enum.reject(&is_nil/1)
-      _other -> Ruby.unsupported!("locations is not an array")
+      list when is_list(list) ->
+        list |> Enum.map(&point(&1, user_id, native?)) |> Enum.reject(&is_nil/1)
+
+      _other ->
+        Ruby.unsupported!("locations is not an array")
     end
   end
 
-  def overland(params) do
+  def overland(params), do: overland(params, false)
+
+  def overland(params, native?) do
     locations =
       case params |> Permit.geojson() |> Map.get("locations") do
         nil -> []
@@ -21,11 +28,11 @@ defmodule Dawarich.Ingest.GeoJSON do
         list -> list
       end
 
-    locations |> Enum.map(&overland_point/1) |> Enum.reject(&is_nil/1)
+    locations |> Enum.map(&overland_point(&1, native?)) |> Enum.reject(&is_nil/1)
   end
 
-  defp point(location, user_id) do
-    timestamp = Timestamp.points(Ruby.dig(location, ["properties", "timestamp"]))
+  defp point(location, user_id, native?) do
+    timestamp = timestamp(Ruby.dig(location, ["properties", "timestamp"]), native?)
     coordinates = Ruby.dig(location, ["geometry", "coordinates"])
 
     if Ruby.present?(coordinates) and timestamp != nil and
@@ -46,8 +53,8 @@ defmodule Dawarich.Ingest.GeoJSON do
     end
   end
 
-  defp overland_point(point) do
-    timestamp = Timestamp.points(Ruby.dig(point, ["properties", "timestamp"]))
+  defp overland_point(point, native?) do
+    timestamp = timestamp(Ruby.dig(point, ["properties", "timestamp"]), native?)
 
     if point["geometry"] != nil and timestamp != nil do
       coordinates = Ruby.dig(point, ["geometry", "coordinates"])
@@ -60,6 +67,9 @@ defmodule Dawarich.Ingest.GeoJSON do
       common(point, point["properties"], timestamp, lonlat)
     end
   end
+
+  defp timestamp(value, true), do: Dawarich.Ingest.Closure.timestamp(value, :points)
+  defp timestamp(value, false), do: Timestamp.points(value)
 
   defp common(location, properties, timestamp, lonlat) do
     %{
