@@ -17,29 +17,34 @@ defmodule Dawarich.AccountApi.Exist do
     end
   end
 
+  def authorized(params, valid, env \\ System.get_env()) do
+    cond do
+      Ruby.blank?(env["SUBSCRIPTION_WEBHOOK_SECRET"]) -> error(503, "configuration_error")
+      not valid -> error(401, "invalid_webhook_secret")
+      is_nil(params["ids"]) -> error(422, "ids_is_required")
+      true -> query(params["ids"])
+    end
+  end
+
   defp query(raw) do
     raw = if is_list(raw), do: raw, else: [raw]
 
-    if length(raw) <= 4096 and Enum.all?(raw, &Ruby.scalar?/1) do
-      ids = raw |> Enum.flat_map(&integer/1) |> Enum.uniq()
+    ids = raw |> Enum.flat_map(&integer/1) |> Enum.uniq()
 
-      bounded =
-        Enum.filter(ids, &(&1 >= -9_223_372_036_854_775_808 and &1 <= 9_223_372_036_854_775_807))
+    bounded =
+      Enum.filter(ids, &(&1 >= -9_223_372_036_854_775_808 and &1 <= 9_223_372_036_854_775_807))
 
-      existing =
-        Repo.query!(
-          "SELECT id FROM users WHERE id=ANY($1) AND deleted_at IS NULL ORDER BY id ASC",
-          [
-            bounded
-          ]
-        ).rows
-        |> List.flatten()
+    existing =
+      Repo.query!(
+        "SELECT id FROM users WHERE id=ANY($1) AND deleted_at IS NULL ORDER BY id ASC",
+        [bounded]
+      ).rows
+      |> List.flatten()
 
-      {:ok, 200, {:object, [{"existing", existing}, {"missing", ids -- existing}]}}
-    else
-      {:replay, "manager ids shape"}
-    end
+    {:ok, 200, {:object, [{"existing", existing}, {"missing", ids -- existing}]}}
   end
+
+  defp integer(raw) when is_map(raw) or is_list(raw), do: []
 
   defp integer(raw) do
     case Regex.run(@integer, Ruby.to_s(raw), capture: :all_but_first) do

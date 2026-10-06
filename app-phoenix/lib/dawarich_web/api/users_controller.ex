@@ -3,30 +3,17 @@ defmodule DawarichWeb.Api.UsersController do
   @behaviour Plug
 
   alias Dawarich.AccountApi.{Exist, Payload}
-  alias DawarichWeb.Api.{Auth, Body, Respond}
+  alias DawarichWeb.Api.Respond
 
   def init(action), do: action
 
   def call(conn, :exist) do
-    conn = Auth.public(conn)
+    conn = DawarichWeb.Api.AccountManager.call(conn, [])
 
-    if conn.halted do
-      conn
-    else
-      result =
-        if conn.assigns.api_format in [:json, :html, :all],
-          do:
-            Exist.run(
-              conn.assigns.api_params,
-              conn |> Plug.Conn.get_req_header("x-webhook-secret") |> Enum.join(", ")
-            ),
-          else: {:replay, "manager format"}
+    {:ok, status, term} =
+      Exist.authorized(conn.assigns.api_params, conn.assigns.manager_secret_valid)
 
-      case result do
-        {:ok, status, term} -> Respond.json(conn, status, term)
-        {:replay, reason} -> Body.replay(conn, reason)
-      end
-    end
+    Respond.json(conn, status, term)
   end
 
   def call(conn, :me) do

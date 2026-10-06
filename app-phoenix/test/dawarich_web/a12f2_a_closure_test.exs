@@ -82,11 +82,69 @@ defmodule DawarichWeb.A12f2AClosureTest do
     assert invoke(PlanController, :show, %{user | plan: 9}, %{}, now).status == 500
   end
 
+  @tag :a12f2_a_03
+  test "Manager exist retains secret refusal id coercion tombstones and anonymous headers in Cloud",
+       %{user: user, now: now} do
+    previous = System.get_env("SUBSCRIPTION_WEBHOOK_SECRET")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("SUBSCRIPTION_WEBHOOK_SECRET", previous),
+        else: System.delete_env("SUBSCRIPTION_WEBHOOK_SECRET")
+    end)
+
+    System.put_env("SELF_HOSTED", "false")
+    System.delete_env("SUBSCRIPTION_WEBHOOK_SECRET")
+    assert invoke(UsersController, :exist, nil, %{}, now).status == 503
+    System.put_env("SUBSCRIPTION_WEBHOOK_SECRET", "synthetic-a12f2a-webhook")
+    mobile = [{"x-dawarich-client", "ios"}, {"x-webhook-secret", "wrong"}]
+    bad = invoke(UsersController, :exist, nil, %{}, now, mobile)
+    assert bad.status == 401
+    assert Jason.decode!(bad.resp_body) == oracle("closure_manager_bad_secret")
+    assert get_resp_header(bad, "x-dawarich-response") == ["Hey, I'm alive!"]
+    valid = [{"x-webhook-secret", "synthetic-a12f2a-webhook"}]
+    assert invoke(UsersController, :exist, nil, %{}, now, valid).status == 422
+    deleted = user()
+    Repo.query!("UPDATE users SET deleted_at=NOW() WHERE id=$1", [deleted.id])
+
+    params = %{
+      "ids" => [
+        " #{user.id} ",
+        user.id,
+        "1_2",
+        "bad",
+        "12x",
+        deleted.id,
+        %{"id" => user.id},
+        12.0,
+        true,
+        nil
+      ]
+    }
+
+    result = invoke(UsersController, :exist, nil, params, now, valid)
+    assert result.status == 200
+
+    assert Jason.decode!(result.resp_body) == %{
+             "existing" => [user.id],
+             "missing" => [12, deleted.id]
+           }
+
+    assert invoke(UsersController, :exist, nil, %{"ids" => %{"x" => 1}}, now, valid).status == 200
+  end
+
+  defp oracle(name) do
+    fixture = "test/fixtures/a12f2a/closure.json" |> File.read!() |> Jason.decode!()
+    Enum.find(fixture["cases"], &(&1["name"] == name))["response"]["body"] |> Jason.decode!()
+  end
+
   defp invoke(module, action, user, params, now, headers \\ []) do
     conn = Plug.Test.conn("GET", "/api/v1/plan")
 
     conn =
       Enum.reduce(headers, conn, fn {key, value}, conn -> put_req_header(conn, key, value) end)
+
+    conn = %{conn | path_params: Map.take(params, ~w(id photo_id))}
 
     conn
     |> assign(:api_user, user)
