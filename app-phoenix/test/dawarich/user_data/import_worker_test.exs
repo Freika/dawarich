@@ -90,6 +90,7 @@ defmodule Dawarich.UserData.ImportWorkerTest do
   end
 
   @tag :tmp_dir
+  @tag a12f3b_case: "E16b"
   test "archive discovery queues only the fenced owner-routed restore command", %{tmp_dir: dir} do
     for owner <- [:oban, :sidekiq, :missing], changed <- [:none, :blob, :source] do
       reset!(ScratchRepo)
@@ -153,6 +154,37 @@ defmodule Dawarich.UserData.ImportWorkerTest do
 
         assert [] == rows("SELECT import_id FROM phoenix.import_runs")
       end
+    end
+
+    reset!(ScratchRepo)
+    c = NormalFormats.whole!("v1_profile", ScratchRepo, dir)
+    Ownership.put!(ScratchRepo, "command:users.import_data", :oban)
+    source = rows("SELECT source FROM imports WHERE id=$1", [c.import.id])
+
+    rows(
+      "ALTER TABLE job_outbox ADD CONSTRAINT e16_child_failure CHECK(command_type <> 'users.import_data')"
+    )
+
+    try do
+      assert_raise Postgrex.Error, fn ->
+        Lease.with_import(
+          ScratchRepo,
+          c.job,
+          c.import,
+          fn lease ->
+            ImportState.with_snapshot(lease, fn _ -> ImportCommands.discover(lease, c.context) end)
+          end,
+          ProcessWorker.lease_options()
+        )
+      end
+
+      refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+      assert [] == rows("SELECT command_type FROM job_outbox")
+      assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+      assert source == rows("SELECT source FROM imports WHERE id=$1", [c.import.id])
+      assert [[c.import.id]] == rows("SELECT import_id FROM phoenix.import_runs")
+    after
+      rows("ALTER TABLE job_outbox DROP CONSTRAINT e16_child_failure")
     end
   end
 
