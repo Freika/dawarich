@@ -25,9 +25,14 @@ defmodule DawarichWeb.AuthProvider.Http do
   end
 
   defp admit(conn, opts) do
+    context = Keyword.get(opts, :context, %{})
+
     context =
-      Keyword.get(opts, :context, %{})
-      |> Map.put_new(:self_hosted, System.get_env("SELF_HOSTED", "true") != "false")
+      context
+      |> Map.put_new(
+        :self_hosted,
+        Dawarich.ReleaseMigration.self_hosted?(Map.get_lazy(context, :env, &System.get_env/0))
+      )
       |> Map.put_new(:base_url, RequestURL.base(conn))
       |> Map.put_new(:ip, conn.remote_ip |> :inet.ntoa() |> to_string())
 

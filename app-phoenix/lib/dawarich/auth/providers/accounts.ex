@@ -163,7 +163,13 @@ defmodule Dawarich.Auth.Providers.Accounts do
         log_rounds: Map.get(context, :log_rounds, 12)
       )
 
-    self_hosted = Map.get(context, :self_hosted, System.get_env("SELF_HOSTED", "true") != "false")
+    self_hosted =
+      Map.get(
+        context,
+        :self_hosted,
+        Dawarich.ReleaseMigration.self_hosted?(Map.get_lazy(context, :env, &System.get_env/0))
+      )
+
     until = if self_hosted, do: active_until(now)
     if is_function(context[:before_insert], 0), do: context.before_insert.()
 

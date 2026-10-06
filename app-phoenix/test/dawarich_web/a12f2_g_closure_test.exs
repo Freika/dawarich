@@ -273,6 +273,14 @@ defmodule DawarichWeb.A12f2GClosureTest do
     assert {:ok, nil, false} = OidcAccounts.resolve(identity, %{auto_register: false})
     refute Repo.get_by(Account, email: ctx.email)
 
+    for flag <- ["false", "False", "0", "1", "yes"] do
+      assert {:ok, nil, false} =
+               OidcAccounts.resolve(identity, %{
+                 env: %{"OIDC_AUTO_REGISTER" => flag},
+                 log_rounds: 4
+               })
+    end
+
     assert {:ok, user, true} =
              OidcAccounts.resolve(identity, %{auto_register: true, log_rounds: 4})
 
@@ -491,6 +499,23 @@ defmodule DawarichWeb.A12f2GClosureTest do
   @tag :a12f2_g_08
   test "Provider completion preserves ticket invitation OTP mobile payment priorities and terminal side effects",
        ctx do
+    for {flag, expected} <- [{nil, 404}, {"true", 404}, {"yes", 404}, {"false", 302}, {"0", 302}] do
+      env = %{
+        "GITHUB_OAUTH_CLIENT_ID" => "synthetic-client",
+        "GITHUB_OAUTH_CLIENT_SECRET" => "synthetic-client-secret"
+      }
+
+      env = if flag, do: Map.put(env, "SELF_HOSTED", flag), else: env
+
+      initiated =
+        DawarichWeb.AuthProvider.Http.call(request(:post, "/users/auth/github", %{}),
+          enabled: true,
+          context: %{env: env}
+        )
+
+      assert initiated.status == expected
+    end
+
     parent = self()
     {:ok, profile} = Agent.start_link(fn -> %{id: 42, email: ctx.email} end)
 

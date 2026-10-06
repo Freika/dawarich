@@ -13,7 +13,8 @@ defmodule DawarichWeb.AuthAccountLink.Http do
   @fields ~w(authenticity_token password commit utf8)
 
   def init(opts), do: opts
-  def route?(conn), do: conn.request_path in @closed_paths
+  def route?(conn), do: conn.request_path == @path
+  def closure_route?(conn), do: conn.request_path in @closed_paths
 
   def call(conn, opts) do
     if Keyword.get(opts, :closure, false),
