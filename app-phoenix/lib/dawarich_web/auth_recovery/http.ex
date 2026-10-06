@@ -24,6 +24,12 @@ defmodule DawarichWeb.AuthRecovery.Http do
     if Keyword.get(opts, :enabled, false) == true and route?(conn) and
          Admission.headers(conn.req_headers) == :ok do
       conn = conn |> DawarichWeb.HostAuthorization.call([]) |> DawarichWeb.ForceSSL.call([])
+
+      conn =
+        if not conn.halted and Keyword.get(opts, :native, false),
+          do: DawarichWeb.RateLimit.call(conn, []),
+          else: conn
+
       if conn.halted, do: conn, else: admit(conn, opts)
     else
       fallback(conn, opts)

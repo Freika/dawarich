@@ -120,7 +120,7 @@ defmodule DawarichWeb.Api.IngestGoldenTest do
 
   defp replayed(kase, upstream, client) do
     request = kase["request"]
-    puma = accept(upstream)
+    puma = Dawarich.Test.ApiGolden.rails_connection(client, upstream)
     {head, rest} = read_head(puma)
 
     assert request_line(head) == "POST #{request["target"]} HTTP/1.1"

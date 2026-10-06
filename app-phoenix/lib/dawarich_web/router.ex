@@ -6,6 +6,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.A8Routes
   import DawarichWeb.PageRoutes
   import DawarichWeb.A10Routes
+  import DawarichWeb.CableRoutes
   import DawarichWeb.ApiRoutes
   import DawarichWeb.MapFrameRoutes
   import DawarichWeb.A9Routes
@@ -78,17 +79,7 @@ defmodule DawarichWeb.Router do
 
   family_data_routes()
 
-  pipeline :cable do
-    plug DawarichWeb.HostAuthorization
-    plug DawarichWeb.ForceSSL
-    plug DawarichWeb.RateLimit
-  end
-
-  scope "/" do
-    pipe_through :cable
-
-    get "/cable", DawarichWeb.Cable, :upgrade, metadata: %{slice: :cable}
-  end
+  cable_routes()
 
   pipeline :sharing do
     plug DawarichWeb.HostAuthorization
@@ -269,15 +260,25 @@ defmodule DawarichWeb.Router do
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 
   defp method_override_to_rails(conn, _opts) do
-    if Plug.Conn.get_req_header(conn, "x-http-method-override") == [],
-      do: conn,
-      else: DawarichWeb.Api.Body.replay(conn, "method override header")
+    if conn.private[:dawarich_native_api] or
+         Plug.Conn.get_req_header(conn, "x-http-method-override") == [],
+       do: conn,
+       else: DawarichWeb.Api.Body.replay(conn, "method override header")
   end
 
   defp put_path_format(%{path_info: [_api, _v1, "photos", _id, "thumbnail.jpg"]} = conn, _opts),
     do: Plug.Conn.assign(conn, :api_params, Map.put(conn.assigns.api_params, "format", "jpg"))
 
   defp put_path_format(conn, _opts), do: conn
+
+  defp put_tile_format(conn, _opts),
+    do: Plug.Conn.assign(conn, :api_params, Map.put(conn.assigns.api_params, "format", "mvt"))
+
+  defp spatial_grant_auth(conn, _opts) do
+    if Dawarich.ReleaseMigrations.Effects.Support.Ruby.present?(conn.assigns.api_params["uuid"]),
+      do: DawarichWeb.Api.Auth.public(conn),
+      else: DawarichWeb.Api.Auth.call(conn, require_active: false)
+  end
 
   defp phoenix_session(conn, _opts) do
     opts =

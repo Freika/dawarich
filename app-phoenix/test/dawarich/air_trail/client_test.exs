@@ -1,5 +1,5 @@
 defmodule Dawarich.AirTrail.ClientTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Dawarich.AirTrail.Client
   alias Dawarich.AirTrailStub
@@ -17,6 +17,7 @@ defmodule Dawarich.AirTrail.ClientTest do
       })
 
     {:ok, listen} = :ssl.listen(0, [ip: {127, 0, 0, 1}, active: false, reuseaddr: true] ++ config)
+    on_exit(fn -> :ssl.close(listen) end)
     {:ok, {_ip, port}} = :ssl.sockname(listen)
     {listen, AirTrailStub.redirect("https://127.0.0.1:#{port}/api/flight/list?scope=mine")}
   end
@@ -78,6 +79,7 @@ defmodule Dawarich.AirTrail.ClientTest do
 
     {:ok, socket} = :ssl.transport_accept(listen, :infinity)
     assert {:error, {:tls_alert, {:unknown_ca, _}}} = :ssl.handshake(socket, :infinity)
+    :ssl.close(listen)
     assert Task.await(task, :infinity) == {:error, "Could not connect to AirTrail"}
   end
 
@@ -89,6 +91,7 @@ defmodule Dawarich.AirTrail.ClientTest do
     {:ok, socket} = :ssl.handshake(socket, :infinity)
     {:ok, _request} = :ssl.recv(socket, 0, :infinity)
     :ok = :ssl.send(socket, "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}")
+    :ssl.close(socket)
 
     assert Task.await(task, :infinity) == {:ok, []}
   end

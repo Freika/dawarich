@@ -115,6 +115,8 @@ defmodule DawarichWeb.AuthAccount.Http do
         else: Admission.context(session, conn.req_headers, context.oidc, context.self_hosted)
       )
 
+  defp read_all(%{private: %{dawarich_raw_body: raw}} = conn, []), do: {:ok, raw, conn}
+
   defp read_all(conn, acc) do
     remaining = 65_536 - IO.iodata_length(acc)
 

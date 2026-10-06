@@ -10,6 +10,10 @@ defmodule DawarichWeb.Api.DigestsController do
   alias DawarichWeb.Api.{Body, Params, Respond}
 
   @impl true
+  def init(:closure_index),
+    do: if(Dawarich.Standalone.enabled?(), do: :closure_index, else: :index)
+
+  def init(:closure_show), do: if(Dawarich.Standalone.enabled?(), do: :closure_show, else: :show)
   def init(action), do: action
 
   @impl true

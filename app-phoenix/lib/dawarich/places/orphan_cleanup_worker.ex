@@ -75,10 +75,8 @@ defmodule Dawarich.Places.OrphanCleanupWorker do
     hook = Keyword.get(opts, :hook, fn _ -> :ok end)
     hook.({:selected, ids})
 
-    Enum.each(ids, fn id ->
-      Orphans.delete(repo, args["user_id"], id, sweep: true)
-      hook.({:deleting, id})
-    end)
+    Orphans.delete_batch(repo, args["user_id"], ids)
+    Enum.each(ids, &hook.({:deleting, &1}))
 
     if length(ids) == 500, do: Oban.insert!(oban, new(Map.put(args, "cursor", List.last(ids))))
     :ok

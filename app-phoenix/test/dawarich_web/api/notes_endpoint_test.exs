@@ -56,7 +56,7 @@ defmodule DawarichWeb.Api.NotesEndpointTest do
       System.put_env("SELF_HOSTED", hosted)
       encoded = Jason.encode!(body)
       client = submit(ctx, "POST", target, encoded, headers)
-      puma = accept(ctx.upstream)
+      puma = Dawarich.Test.ApiGolden.rails_connection(client, ctx.upstream)
       {head, rest} = read_head(puma)
       assert request_line(head) == "POST #{target} HTTP/1.1"
       assert read_at_least(puma, rest, byte_size(encoded)) == encoded

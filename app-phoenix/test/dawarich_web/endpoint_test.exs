@@ -1059,12 +1059,17 @@ defmodule DawarichWeb.EndpointTest do
     assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
   end
 
-  test "every other map path, method and format goes to Puma unchanged", ctx do
+  test "native timeline and retained map page envelopes preserve their ownership", ctx do
     port = serve()
     get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
 
+    client = connect(port)
+    send_raw(client, get.("/api/v1/timeline?start_at=1&end_at=2", ""))
+    assert {401, headers, ""} = read_response(client)
+    assert values(headers, "x-dawarich-response") == ["Hey, I'm alive!"]
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+
     for {target, headers} <- [
-          {"/api/v1/timeline?start_at=1&end_at=2", ""},
           {"/map/v2", "Accept: application/json\r\n"},
           {"/map/v2?format=json", ""},
           {"/map/v2", "X-Requested-With: XMLHttpRequest\r\n"}

@@ -282,6 +282,7 @@ defmodule Dawarich.Jobs.ReleaseAdaptersTest do
                    %{
                      "user_id" => id,
                      "notify" => false,
+                     "force" => true,
                      "event_id" => BulkCheck.child_id(root, id),
                      "run_at" => DateTime.to_iso8601(DateTime.add(now, div(index, 200) * 300))
                    }
@@ -330,6 +331,7 @@ defmodule Dawarich.Jobs.ReleaseAdaptersTest do
                  %{
                    "user_id" => id,
                    "notify" => false,
+                   "force" => true,
                    "event_id" => BulkCheck.child_id(failed, id),
                    "run_at" => DateTime.to_iso8601(DateTime.add(now, div(index, 200) * 300))
                  }

@@ -13,6 +13,15 @@ defmodule DawarichWeb.A12f2GClosureTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    previous = Application.fetch_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, Repo)
+
+    on_exit(fn ->
+      case previous do
+        {:ok, repo} -> Application.put_env(:dawarich, :jobs_repo, repo)
+        :error -> Application.delete_env(:dawarich, :jobs_repo)
+      end
+    end)
 
     if is_nil(Process.whereis(Dawarich.Redis.Cache)) do
       [spec] = Dawarich.Redis.cache_child_specs()

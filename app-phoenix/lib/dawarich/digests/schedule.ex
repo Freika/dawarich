@@ -9,13 +9,23 @@ defmodule Dawarich.Digests.Schedule do
     enqueue(
       repo,
       "month",
-      %{"user_id" => user_id, "year" => year, "month" => month, "time_zone" => zone},
+      %{
+        "user_id" => user_id,
+        "year" => Dawarich.RubyInteger.to_i(year),
+        "month" => Dawarich.RubyInteger.to_i(month),
+        "time_zone" => zone
+      },
       opts
     )
   end
 
   def yearly(repo, user_id, year, zone, opts \\ []) do
-    enqueue(repo, "year", %{"user_id" => user_id, "year" => year, "time_zone" => zone}, opts)
+    enqueue(
+      repo,
+      "year",
+      %{"user_id" => user_id, "year" => Dawarich.RubyInteger.to_i(year), "time_zone" => zone},
+      opts
+    )
   end
 
   defp enqueue(repo, period, args, opts) do
