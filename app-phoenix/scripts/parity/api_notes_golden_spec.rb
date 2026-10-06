@@ -152,6 +152,16 @@ RSpec.describe 'Phoenix fixture: golden notes API requests', type: :request do
     notes_golden_fixture
   end
 
+  it 'records the closure corpus with exactly one terminal newline', :closure_single_newline do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('WRITE_PHOENIX_FIXTURES').and_return('1')
+
+    notes_golden_fixture
+
+    bytes = Rails.root.join('app-phoenix/test/fixtures/a12f2a/closure.json').binread
+    expect(bytes).to match(/[^\n]\n\z/)
+  end
+
   it 'records a stable bad-request response for an empty note root' do
     oracle = ApiNotesGoldenOracle
     entry = oracle::CASES.find { _1[:name] == 'create_empty_root' }
@@ -223,7 +233,7 @@ RSpec.describe 'Phoenix fixture: golden notes API requests', type: :request do
     closure_path = Rails.root.join('app-phoenix/test/fixtures/a12f2a/closure.json')
     closure = closure_path.exist? ? JSON.parse(closure_path.read) : {}
     closure['notes'] = captured
-    encoded_closure = "#{Oj.dump(closure.sort.to_h, mode: :strict, indent: 2, float_precision: 0)}\n"
+    encoded_closure = "#{Oj.dump(closure.sort.to_h, mode: :strict, indent: 2, float_precision: 0).rstrip}\n"
     FixtureRecording.verify(closure_path, encoded_closure)
   end
 

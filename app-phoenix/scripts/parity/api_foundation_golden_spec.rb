@@ -100,7 +100,7 @@ RSpec.describe 'Phoenix fixture: golden API foundation requests', type: :request
                                                 .select { _1['name'].start_with?('closure_') }.sort_by { _1['name'] }
     closure = closure.sort.to_h
     FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2a/closure.json'),
-                            "#{Oj.dump(closure, mode: :strict, float_precision: 0, indent: 2)}\n")
+                            "#{Oj.dump(closure, mode: :strict, float_precision: 0, indent: 2).rstrip}\n")
     File.write(path, "#{Oj.dump(fixture, mode: :strict, float_precision: 0, indent: 2)}\n")
   end
 
