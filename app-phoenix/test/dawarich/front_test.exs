@@ -1,5 +1,5 @@
 defmodule Dawarich.FrontTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import ExUnit.CaptureLog
 
@@ -17,6 +17,76 @@ defmodule Dawarich.FrontTest do
   end
 
   defp rails_command(port), do: ~w(bundle exec bin/rails server -b 127.0.0.1) ++ ["-p", "#{port}"]
+
+  test "native front children start a serving Endpoint and its existing drainer without Puma" do
+    port = free_port()
+    argv = ~w(bin/rails server -b 127.0.0.1) ++ ["-p", "#{port}"]
+    assert {:native, {{127, 0, 0, 1}, ^port}} = plan = Front.native_plan(argv, @prod)
+    assert Front.upstream(plan) == nil
+    assert Front.native_plan(~w(sidekiq), @prod) == :sidekiq_idle
+    assert Front.native_plan(~w(rails db:migrate), @prod) == :migrate
+    assert {:error, _} = Front.native_plan([], @prod)
+
+    assert [endpoint, {Dawarich.Front.Drainer, []}] = Front.children(plan)
+
+    assert %{
+             id: DawarichWeb.Endpoint,
+             shutdown: 5_000,
+             start: {DawarichWeb.Endpoint, :start_link, [opts]}
+           } = endpoint
+
+    assert opts[:server] == true
+    assert opts[:http] == Front.http_options({127, 0, 0, 1}, port)
+
+    assert opts[:secret_key_base] ==
+             Dawarich.RailsSecret.endpoint_secret(Dawarich.RailsSecret.fetch())
+
+    :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
+
+    on_exit(fn ->
+      {:ok, _} = Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
+    end)
+
+    {:ok, busy} = :gen_tcp.listen(port, ip: {127, 0, 0, 1}, active: false)
+    assert Front.native_plan(argv, @prod) == plan
+    owner = self()
+
+    {pid, monitor} =
+      spawn_monitor(fn ->
+        Process.flag(:trap_exit, true)
+        result = Supervisor.start_link(Front.children(plan), strategy: :one_for_one)
+        send(owner, {:bind_result, result})
+      end)
+
+    assert_receive {:bind_result, {:error, reason}}, 1_000
+    assert inspect(reason) =~ "eaddrinuse"
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}
+    :ok = :gen_tcp.close(busy)
+
+    sup =
+      start_supervised!(%{
+        id: :native_front,
+        start: {Supervisor, :start_link, [Front.children(plan), [strategy: :one_for_one]]},
+        type: :supervisor
+      })
+
+    assert Enum.map(Supervisor.which_children(sup), &elem(&1, 0)) ==
+             [Dawarich.Front.Drainer, DawarichWeb.Endpoint]
+
+    {:ok, bandit} = Bandit.PhoenixAdapter.bandit_pid(DawarichWeb.Endpoint)
+    assert {:ok, {{127, 0, 0, 1}, ^port}} = ThousandIsland.listener_info(bandit)
+
+    assert {:ok, {{_, 200, _}, _, body}} =
+             :httpc.request(
+               :get,
+               {~c"http://127.0.0.1:#{port}/phoenix/js/phoenix.mjs", []},
+               [timeout: 2_000, connect_timeout: 1_000],
+               body_format: :binary
+             )
+
+    assert body == File.read!(Application.app_dir(:phoenix, "priv/static/phoenix.mjs"))
+    assert Supervisor.stop(sup) == :ok
+  end
 
   test "without a server command there is no proxy and no Puma" do
     assert Front.plan(nil, @prod, @opts) == :none
