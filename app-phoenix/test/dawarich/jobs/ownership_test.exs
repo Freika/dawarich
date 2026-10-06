@@ -95,7 +95,7 @@ defmodule Dawarich.Jobs.OwnershipTest do
         ~s|
       JobOwnership.with_owner('#{key}') do
         puts 'CLOUD:HOLDING'
-        STDIN.gets
+        raise 'source channel closed' unless STDIN.gets
         ActiveRecord::Base.connection.execute("INSERT INTO phoenix.runtime_nodes (node, started_at, beat_at) VALUES ('source', now(), now())")
       end
     |,
@@ -290,6 +290,176 @@ defmodule Dawarich.Jobs.OwnershipTest do
     assert rows("SELECT owner FROM phoenix.job_owners") == [["sidekiq"]]
   end
 
+  test "actual native trip transaction blocks source release and same-root distance" do
+    fixture = trip_fixture!()
+    id = fixture["trip"]["id"]
+    :ok = Ownership.put!(ScratchRepo, "command:trips.calculate", :oban)
+
+    source =
+      source_port(
+        ~s|
+      puts 'CLOUD:READY'
+      raise 'source channel closed' unless STDIN.gets
+      JobOwnership.send(:remove_const, :LOCK_TIMEOUT)
+      JobOwnership.const_set(:LOCK_TIMEOUT, '50ms')
+      begin
+        JobOwnership.release!('command:trips.calculate', by: 'leaf-race')
+        puts 'CLOUD:RELEASED'
+      rescue ActiveRecord::LockWaitTimeout
+        puts 'CLOUD:BLOCKED'
+      end
+    |,
+        :rails
+      )
+
+    assert source_line(source) == "CLOUD:READY"
+    event = source_run(~s|
+      Trips::CalculateAllJob.forward(#{id}, 'mi', '00000000-0000-4000-8000-000000003383')
+      puts "CLOUD:\#{JobOutbox.sole.event_id}"
+    |) |> String.replace_prefix("CLOUD:", "")
+
+    holder =
+      Dawarich.LockRace.hold(fn ->
+        rows("SELECT id FROM trips WHERE id = $1 FOR UPDATE", [id])
+      end)
+
+    worker = Task.async(fn -> native_trip(id, event) end)
+
+    try do
+      assert Dawarich.LockRace.settle(worker, "SELECT started_at, ended_at%") == :blocked
+      Port.command(source, "release\n")
+      assert source_line(source) == "CLOUD:BLOCKED"
+      assert source_exit(source) == 0
+    after
+      Dawarich.LockRace.commit(holder)
+      assert Task.await(worker) == :ok
+    end
+
+    assert source_run(~s|
+      accepted = Trips::CalculateDistanceJob.new(#{id}, 'mi', '00000000-0000-4000-8000-000000003383').serialize
+      JobOwnership.release!('command:trips.calculate', by: 'leaf-race')
+      broadcasts = 0
+      callback = ->(*) { broadcasts += 1 }
+      ActiveSupport::Notifications.subscribed(callback, 'broadcast.action_cable') do
+        ActiveJob::Base.execute(accepted)
+      end
+      puts "CLOUD:\#{broadcasts}"
+    |) == "CLOUD:0"
+    assert_trip_effect(fixture, event)
+  end
+
+  test "completed source root redelivery creates no additional native effects" do
+    fixture = trip_fixture!()
+    id = fixture["trip"]["id"]
+    event = source_chain(id, "00000000-0000-4000-8000-000000003382", 3)
+    assert native_trip(id, event) == :ok
+    assert rows("SELECT kind FROM phoenix.trip_events") == []
+    assert Dawarich.Jobs.Processed.done?(ScratchRepo, event)
+  end
+
+  test "partially completed source root resumes only unfinished native effects" do
+    fixture = trip_fixture!()
+    id = fixture["trip"]["id"]
+    event = source_chain(id, "00000000-0000-4000-8000-000000003384", 1)
+    assert native_trip(id, event) == :ok
+    assert native_trip(id, event) == :ok
+
+    assert rows("SELECT kind FROM phoenix.trip_events ORDER BY id") ==
+             [["path"], ["countries"], ["finished"]]
+
+    assert Dawarich.Jobs.Processed.done?(ScratchRepo, event)
+  end
+
+  test "materialized child first preserves accepted parent due time" do
+    fixture = trip_fixture!()
+    id = fixture["trip"]["id"]
+    event = source_chain(id, "00000000-0000-4000-8000-000000003381", 0)
+
+    assert rows("SELECT scheduled_at FROM job_outbox WHERE event_id = $1", [
+             Ecto.UUID.dump!(event)
+           ]) ==
+             [[~U[2026-06-01 12:00:00.000000Z]]]
+  end
+
+  test "accepted native replay waits for terminal source root completion after pinning" do
+    fixture = trip_fixture!()
+    id = fixture["trip"]["id"]
+    root = "00000000-0000-4000-8000-000000003385"
+    :ok = Ownership.put!(ScratchRepo, "command:trips.calculate", :sidekiq, pinned: true)
+
+    source =
+      source_port(
+        ~s|
+      puts "CLOUD:\#{Trips::CalculationReceipts.event_id(#{id}, '#{root}')}"
+      raise 'source channel closed' unless STDIN.gets
+      Rails.cache.write(Trips::CalculateAllJob.pending_key(#{id}, '#{root}'), 3, raw: true)
+      Trips::CalculatePathJob.perform_now(#{id}, '#{root}')
+      Trips::CalculateDistanceJob.perform_now(#{id}, 'mi', '#{root}')
+      held = false
+      callback = ->(*) { unless held; held = true; puts 'CLOUD:HOLDING'; raise 'source channel closed' unless STDIN.gets; end }
+      ActiveSupport::Notifications.subscribed(callback, 'broadcast.action_cable') do
+        Trips::CalculateCountriesJob.perform_now(#{id}, 'mi', '#{root}')
+      end
+    |,
+        :rails
+      )
+
+    event = source_line(source) |> String.replace_prefix("CLOUD:", "")
+    Port.command(source, "execute\n")
+    assert source_line(source) == "CLOUD:HOLDING"
+    worker = Dawarich.LockRace.attempt(fn -> native_trip(id, event) end)
+
+    try do
+      assert Dawarich.LockRace.settle(worker, "SELECT pg_advisory_xact_lock%") == :blocked
+    after
+      Port.command(source, "release\n")
+      assert source_exit(source) == 0
+      send(self(), {:native_result, Task.await(worker)})
+    end
+
+    assert_receive {:native_result, {:ok, :ok}}
+    assert rows("SELECT kind FROM phoenix.trip_events") == []
+    assert Dawarich.Jobs.Processed.done?(ScratchRepo, event)
+  end
+
+  defp native_trip(id, event) do
+    Dawarich.Trips.CalculateWorker.perform(%Oban.Job{
+      args: %{"trip_id" => id, "distance_unit" => "mi", "event_id" => event},
+      attempt: 1,
+      max_attempts: 3
+    })
+  end
+
+  defp source_chain(id, root, completed) do
+    source_run(~s"""
+      job = Trips::CalculateAllJob.new(#{id}, 'mi')
+      job.job_id = '#{root}'
+      job.scheduled_at = Time.utc(2026, 6, 1, 12)
+      accepted = job.serialize
+      before = Sidekiq::Queue.new('trips').map(&:jid)
+      ActiveJob::Base.execute(accepted)
+      children = Sidekiq::Queue.new('trips').reject { |child| before.include?(child.jid) }
+      children.sort_by! { |child| child.args.first['job_class'] == 'Trips::CalculateDistanceJob' ? 0 : 1 }
+      begin
+        broadcasts = 0
+        callback = ->(*) { broadcasts += 1 }
+        ActiveSupport::Notifications.subscribed(callback, 'broadcast.action_cable') do
+          children.first(#{completed}).each { |child| ActiveJob::Base.execute(child.args.first) }
+        end
+        raise 'source effects missing' unless broadcasts == (#{completed} == 3 ? 4 : #{completed})
+        JobOwnership.put!('command:trips.calculate', :oban, pinned: false, by: 'replay')
+        ENV['DAWARICH_CLOUD_DRAIN_ONLY'] = 'true'
+        children.drop(#{completed}).each { |child| ActiveJob::Base.execute(child.args.first) }
+        ActiveJob::Base.execute(accepted)
+        puts "CLOUD:\#{JobOutbox.sole.event_id}"
+      ensure
+        children.each(&:delete)
+        Rails.cache.delete(Trips::CalculateAllJob.pending_key(#{id}, '#{root}'))
+      end
+    """)
+    |> String.replace_prefix("CLOUD:", "")
+  end
+
   defp trip_fixture! do
     fixture =
       Path.expand("../../fixtures/trips/calculation.json", __DIR__)
@@ -334,7 +504,7 @@ defmodule Dawarich.Jobs.OwnershipTest do
                ["finished", "mi", false]
              ]
 
-    assert rows("SELECT event_id::text FROM phoenix.processed_commands") == [[event]]
+    assert Dawarich.Jobs.Processed.done?(ScratchRepo, event)
   end
 
   defp source_port(code, boot) do
@@ -354,39 +524,58 @@ defmodule Dawarich.Jobs.OwnershipTest do
       end
 
     script =
-      preload <>
-        "STDOUT.sync = true; begin; " <>
+      "STDOUT.sync = true; " <>
+        preload <>
+        "puts 'CLOUD:BOOTED'; exit 1 unless STDIN.gets; begin; " <>
         code <>
-        "; rescue => e; puts 'CLOUD:ERROR:' + (['due time changed', 'source children appeared', 'children appeared', 'owner changed', 'success receipt appeared', 'forward appeared', 'wrapper context changed', 'materialized children missing', 'carried child root changed'].include?(e.message) ? e.message : e.class.name); exit 1; end"
+        "; rescue => e; puts 'CLOUD:ERROR:' + (['due time changed', 'source children appeared', 'children appeared', 'owner changed', 'success receipt appeared', 'forward appeared', 'wrapper context changed', 'materialized children missing', 'carried child root changed', 'source effects missing'].include?(e.message) ? e.message : e.class.name); exit 1; end"
 
-    Port.open({:spawn_executable, System.find_executable("asdf")}, [
-      :binary,
-      :exit_status,
-      :use_stdio,
-      :stderr_to_stdout,
-      {:line, 16384},
-      {:cd, Application.fetch_env!(:dawarich, :rails_root)},
-      {:args, ["exec", "bundle", "exec", "ruby", "-e", script]},
-      {:env,
-       Enum.map(
-         [
-           {"RAILS_ENV", "test"},
-           {"DATABASE_NAME", database},
-           {"DATABASE_HOST", "127.0.0.1"},
-           {"REDIS_URL", redis},
-           {"SELF_HOSTED", "false"},
-           {"DAWARICH_CLOUD_DRAIN_ONLY", "false"}
-         ],
-         fn {key, value} -> {String.to_charlist(key), String.to_charlist(value)} end
-       )}
-    ])
+    port =
+      Port.open({:spawn_executable, System.find_executable("asdf")}, [
+        :binary,
+        :exit_status,
+        :use_stdio,
+        :stderr_to_stdout,
+        {:line, 16384},
+        {:cd, Application.fetch_env!(:dawarich, :rails_root)},
+        {:args, ["exec", "bundle", "exec", "ruby", "-e", script]},
+        {:env,
+         Enum.map(
+           [
+             {"RAILS_ENV", "test"},
+             {"DATABASE_NAME", database},
+             {"DATABASE_HOST", "127.0.0.1"},
+             {"REDIS_URL", redis},
+             {"SELF_HOSTED", "false"},
+             {"DAWARICH_CLOUD_DRAIN_ONLY", "false"}
+           ],
+           fn {key, value} -> {String.to_charlist(key), String.to_charlist(value)} end
+         )}
+      ])
+
+    source_ready(port)
+    Port.command(port, "execute\n")
+    port
+  end
+
+  defp source_ready(port) do
+    receive do
+      {^port, {:data, {:eol, "CLOUD:BOOTED"}}} -> :ok
+      {^port, {:data, _}} -> source_ready(port)
+      {^port, {:exit_status, status}} -> flunk("source boot exited: #{status}")
+    end
   end
 
   defp source_run(code, boot \\ :rails) do
     port = source_port(code, boot)
-    result = source_line(port)
-    assert source_exit(port) == 0, result
-    result
+
+    try do
+      result = source_line(port)
+      assert source_exit(port) == 0, result
+      result
+    after
+      if Port.info(port), do: Port.close(port)
+    end
   end
 
   defp source_line(port) do

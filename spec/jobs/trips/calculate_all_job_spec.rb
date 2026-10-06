@@ -163,7 +163,7 @@ RSpec.describe Trips::CalculateAllJob, type: :job do
       Trips::CalculateDistanceJob => ->(trip) { [trip.id, 'km'] },
       Trips::CalculateCountriesJob => ->(trip) { [trip.id, 'km'] }
     }.each do |job_class, args|
-      it "#{job_class.name.demodulize} computes before the gate, saves under it and broadcasts after its commit" do
+      it "#{job_class.name.demodulize} computes before the gate and holds it through saving and broadcasting" do
         record { job_class.perform_now(*args.call(trip)) }
 
         reads = events.each_index.select do |index|
@@ -176,7 +176,8 @@ RSpec.describe Trips::CalculateAllJob, type: :job do
         expect(reads).not_to be_empty
         expect(reads.max).to be < lock
         expect(first_index(lock) { _1.match?(/\A(RELEASE SAVEPOINT|COMMIT)/) }).to eq(commit)
-        expect(events.index(:broadcast)).to be > commit
+        expect(events.index(:broadcast)).to be > update
+        expect(events.index(:broadcast)).to be < commit
       end
     end
   end
