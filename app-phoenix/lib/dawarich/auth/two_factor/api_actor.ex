@@ -8,8 +8,8 @@ defmodule Dawarich.Auth.TwoFactor.ApiActor do
 
   def load(id, context) do
     cond do
-      context[:self_hosted] != true -> {:replay, :cloud}
-      context[:oidc] == true -> {:replay, :oidc}
+      context[:self_hosted] != true and context[:native] != true -> {:replay, :cloud}
+      context[:oidc] == true and context[:native] != true -> {:replay, :oidc}
       not is_integer(id) -> {:replay, :actor}
       true -> find(id, context)
     end
@@ -28,7 +28,10 @@ defmodule Dawarich.Auth.TwoFactor.ApiActor do
   defp find(id, context) do
     repo = Map.get(context, :repo, Repo)
 
-    case repo.one(from(u in Account, where: u.id == ^id and is_nil(u.deleted_at)), log: false) do
+    query = from(u in Account, where: u.id == ^id and is_nil(u.deleted_at))
+    query = if context[:native], do: from(u in query, lock: "FOR UPDATE"), else: query
+
+    case repo.one(query, log: false) do
       nil ->
         {:replay, :actor}
 

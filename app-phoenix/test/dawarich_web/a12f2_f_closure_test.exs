@@ -420,6 +420,57 @@ defmodule DawarichWeb.A12f2FClosureTest do
            ]) == false
   end
 
+  @tag :a12f2_f_11
+  test "API two factor Cloud setup confirm backup disable preserve source availability input errors encryption and consumption",
+       ctx do
+    alias Dawarich.Auth.TwoFactor.{Api, Totp}
+    id = insert_user(ctx.email)
+    unavailable = %{native: true, self_hosted: false, env: %{}}
+
+    assert {:ok, 503, {:object, [{"error", "two_factor_not_available"}]}} =
+             Api.run(:setup, id, %{"password" => "wrong"}, unavailable)
+
+    crypto = Jason.decode!(File.read!("test/fixtures/active_record_encryption.json"))
+    env = Enum.find(crypto["environments"], &(&1["name"] == "explicit keys"))["env"]
+
+    context = %{
+      native: true,
+      self_hosted: false,
+      env: env,
+      backup_options: [log_rounds: 4],
+      clock: fn -> ~U[2026-10-06 12:00:00.000000Z] end
+    }
+
+    assert {:ok, 401, _} = Api.run(:setup, id, %{"password" => "wrong"}, context)
+    assert Repo.get!(Account, id).failed_attempts == 0
+
+    assert {:ok, 200, {:object, setup}} =
+             Api.run(:setup, id, %{"password" => "safepassword12"}, context)
+
+    secret = List.keyfind(setup, "secret", 0) |> elem(1)
+    refute Repo.get!(Account, id).otp_secret == secret
+    code = Totp.at(secret, DateTime.to_unix(context.clock.()))
+
+    assert {:ok, 200, {:object, [{"backup_codes", codes}]}} =
+             Api.run(:confirm, id, %{"password" => "safepassword12", "otp_code" => code}, context)
+
+    assert length(codes) == 10
+    assert Repo.get!(Account, id).otp_required_for_login
+    assert {:ok, 409, _} = Api.run(:setup, id, %{"password" => "safepassword12"}, context)
+
+    assert {:ok, 200, _} =
+             Api.run(
+               :destroy,
+               id,
+               %{"password" => "safepassword12", "otp_code" => hd(codes)},
+               context
+             )
+
+    user = Repo.get!(Account, id)
+    refute user.otp_required_for_login
+    assert user.otp_secret == nil and user.otp_backup_codes == []
+  end
+
   @tag :a12f2_f_05
   test "Cloud signup retains pending payment trial checkout attribution locale invitation and accepted callbacks once",
        ctx do
