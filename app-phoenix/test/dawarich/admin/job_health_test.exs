@@ -30,6 +30,18 @@ defmodule Dawarich.Admin.JobHealthTest do
     :ok
   end
 
+  test "public health summary preserves node freshness ownership and overdue alarm" do
+    for name <- ~w(fresh stale absent owned_stale owned_absent overdue) do
+      fixture = fixture(name)
+      seed!(fixture)
+      assert JobHealth.summary(Repo, ScratchRepo, fixture["node"]) == fixture["summary"]
+    end
+
+    assert JobHealth.summary(Repo, MissingRepo, nil) == %{"status" => "absent", "alarm" => false}
+    assert JobHealth.summary(Repo, UnavailableRepo, "web-a") == %{"status" => "unknown", "alarm" => false}
+    assert ScratchRepo.query!("SHOW statement_timeout", [], log: false).rows == [["0"]]
+  end
+
   test "job health alarm uses Rails freshness and overdue boundaries" do
     for name <- ~w(fresh stale absent owned_stale owned_absent overdue) do
       fixture = fixture(name)
