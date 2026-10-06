@@ -52,6 +52,56 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
     assert rows("SELECT id FROM places WHERE id=$1", [id]) == [[id]]
   end
 
+  test "cleanup uses bounded database round trips for a full batch", %{
+    user: user,
+    other: other,
+    args: args
+  } do
+    victims =
+      rows(
+        "INSERT INTO places(user_id,name,source,latitude,longitude,created_at,updated_at) SELECT $1,'Synthetic batch',1,0,0,now(),now() FROM generate_series(1,500) RETURNING id",
+        [user]
+      )
+      |> List.flatten()
+      |> Enum.sort()
+
+    hidden = visit(user, hd(victims), 2)
+
+    rows(
+      "INSERT INTO place_visits(place_id,visit_id,created_at,updated_at) VALUES($1,$2,now(),now())",
+      [hd(victims), hidden]
+    )
+
+    sentinel = place(other, 1, nil)
+    Process.put(:cleanup_queries, 0)
+
+    Dawarich.Geocoding.HookRepo.set_hook(fn _sql, _params ->
+      Process.put(:cleanup_queries, Process.get(:cleanup_queries) + 1)
+      :ok
+    end)
+
+    try do
+      assert Worker.run(Dawarich.Geocoding.HookRepo, @oban, args) == :ok
+      assert Process.get(:cleanup_queries) <= 20
+    after
+      Dawarich.Geocoding.HookRepo.clear_hook()
+    end
+
+    assert rows("SELECT id FROM places WHERE user_id=ANY($1)", [[user, other]]) == [[sentinel]]
+    assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[nil]]
+    assert rows("SELECT count(*) FROM place_visits WHERE visit_id=$1", [hidden]) == [[0]]
+
+    [[next]] =
+      rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [
+        "Dawarich.Places.OrphanCleanupWorker"
+      ])
+
+    assert next["cursor"] == List.last(victims)
+    assert Processed.done?(ScratchRepo, Worker.batch_id(args))
+    assert Worker.run(ScratchRepo, @oban, args) == :ok
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
+  end
+
   test "cleanup drains source-sized user batches preserving custom and referenced places", %{
     user: user,
     other: other,
