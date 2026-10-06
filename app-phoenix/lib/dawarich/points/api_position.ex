@@ -129,11 +129,22 @@ defmodule Dawarich.Points.ApiPosition do
                 DateTime.from_unix!(point.timestamp) |> DateTime.to_naive()
               )
 
-            RailsCommands.insert!(repo, "stats.calculate_month", %{
-              "user_id" => user.id,
-              "year" => local.local.year,
-              "month" => local.local.month
-            })
+            if Dawarich.Standalone.enabled?() or
+                 Dawarich.Jobs.Ownership.lock(repo, "command:stats.calculate_month") == :oban do
+              Dawarich.Stats.Schedule.calculate(
+                repo,
+                user.id,
+                local.local.year,
+                local.local.month,
+                true
+              )
+            else
+              RailsCommands.insert!(repo, "stats.calculate_month", %{
+                "user_id" => user.id,
+                "year" => local.local.year,
+                "month" => local.local.month
+              })
+            end
           end,
           fn ->
             RailsCommands.insert!(repo, "achievements.check", %{

@@ -3,7 +3,7 @@ defmodule Dawarich.Stats.CalculateMonth do
 
   require Logger
 
-  alias Dawarich.{I18n, Notifications, RailsCommands}
+  alias Dawarich.{I18n, Notifications}
   alias Dawarich.Mail.ExploreFeatures
   alias Dawarich.Stats.{Accounts, GeocodedDays, Hexagons, MonthQueries}
 
@@ -131,7 +131,7 @@ defmodule Dawarich.Stats.CalculateMonth do
   defp invalidated!(ctx) do
     case Keyword.get(ctx.opts, :invalidated) do
       nil ->
-        RailsCommands.insert!(ctx.repo, "stats.caches_invalidated", %{
+        Dawarich.Stats.CacheInvalidation.call(ctx.repo, %{
           "user_id" => ctx.user.id,
           "year" => ctx.year,
           "scope" => "all"

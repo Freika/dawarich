@@ -46,7 +46,13 @@ defmodule Dawarich.Mail.ResidualCommands do
   defp select(repo, type, reverse, rails, native, dedupe) do
     {:ok, :ok} =
       repo.transaction(fn ->
-        case Ownership.lock(repo, "command:" <> type) do
+        owner =
+          if type in ~w(mail.digest.monthly mail.digest.yearly) and
+               Dawarich.Standalone.enabled?(),
+             do: :oban,
+             else: Ownership.lock(repo, "command:" <> type)
+
+        case owner do
           :sidekiq ->
             RailsCommands.insert!(repo, reverse, rails)
 
