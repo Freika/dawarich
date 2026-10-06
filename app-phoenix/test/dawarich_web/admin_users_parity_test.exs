@@ -1,6 +1,7 @@
 defmodule DawarichWeb.AdminUsersParityTest do
   use ExUnit.Case, async: false
   import Phoenix.LiveViewTest, only: [render_component: 2]
+  import Dawarich.Test.FormIsolation
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{ParityHTML, RailsUser}
   alias DawarichWeb.SettingsLive.{UsersIndex, UserShow, UserEdit}
@@ -39,6 +40,8 @@ defmodule DawarichWeb.AdminUsersParityTest do
 
     assert LazyHTML.attribute(dialogs, "phx-update") == ["ignore", "ignore", "ignore"]
     assert LazyHTML.attribute(dialogs, "open") == []
+    assert_form_isolated(admin)
+    assert_form_isolated(extraction)
   end
 
   for name <- @cases do
@@ -50,6 +53,7 @@ defmodule DawarichWeb.AdminUsersParityTest do
       params = URI.decode_query(URI.parse(state["path"]).query || "")
       assert {:ok, page} = UsersIndex.page(params, context)
       html = render_component(&UsersIndex.render/1, Map.merge(context, page))
+      assert_form_isolated(html, "form[action='/settings/users/update_registration_settings']")
       rails = File.read!(Path.join(@dir, @name <> ".html"))
 
       assert ParityHTML.normalize(html) == ParityHTML.normalize(rails),
@@ -102,6 +106,7 @@ defmodule DawarichWeb.AdminUsersParityTest do
       context = seed_detail!(state)
       assert {:ok, page} = UserEdit.page(%{"id" => to_string(state["target"]["id"])}, context)
       html = render_component(&UserEdit.render/1, Map.merge(context, page))
+      assert_form_isolated(html, "form.edit_user")
       assert_markup!(html, name)
       password = LazyHTML.from_fragment(html) |> LazyHTML.query("input[type='password']")
       assert LazyHTML.attribute(password, "value") in [[], [""]]
@@ -251,7 +256,10 @@ defmodule DawarichWeb.AdminUsersParityTest do
     |> Enum.map(fn {tag, attrs, _} ->
       {tag,
        attrs
-       |> Enum.reject(fn {name, _} -> String.starts_with?(name, "phx-") end)
+       |> Enum.reject(fn
+         {"id", "phx-" <> _} -> true
+         {name, _} -> String.starts_with?(name, "phx-")
+       end)
        |> Enum.map(fn
          {"class", value} -> {"class", value |> String.split() |> Enum.join(" ")}
          attr -> attr

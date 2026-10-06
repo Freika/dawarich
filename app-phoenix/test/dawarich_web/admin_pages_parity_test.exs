@@ -2,6 +2,7 @@ defmodule DawarichWeb.AdminPagesParityTest do
   use Dawarich.JobsCase, async: false
 
   import Phoenix.LiveViewTest, only: [render_component: 2]
+  import Dawarich.Test.FormIsolation
 
   alias Dawarich.{ActiveRecordEncryption, Repo}
   alias Dawarich.ReleaseMigrations.Effects.Support.InstanceSettingsRegistry
@@ -55,6 +56,7 @@ defmodule DawarichWeb.AdminPagesParityTest do
 
       assert {:ok, page} = Instance.page(params, context)
       html = render_component(&Instance.render/1, Map.merge(context, page))
+      assert_form_isolated(html, "form[action='/admin/settings']")
       html = String.replace(html, ~s( data-turbo="false"), "")
       rails = File.read!(Path.join(@dir, @name <> ".html"))
       assert ParityHTML.normalize(html) == ParityHTML.normalize(rails)
@@ -147,7 +149,10 @@ defmodule DawarichWeb.AdminPagesParityTest do
     |> LazyHTML.to_tree()
     |> Enum.map(fn {tag, attrs, _} ->
       {tag,
-       Enum.reject(attrs, fn {name, _} -> String.starts_with?(name, "phx-") end)
+       Enum.reject(attrs, fn
+         {"id", "phx-" <> _} -> true
+         {name, _} -> String.starts_with?(name, "phx-")
+       end)
        |> Enum.map(fn
          {"class", value} -> {"class", value |> String.split() |> Enum.join(" ")}
          attr -> attr

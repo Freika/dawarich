@@ -55,6 +55,8 @@ defmodule DawarichWeb.SettingsLive.UsersIndex do
               </p>
             </div>
             <form
+              id="phx-registration-settings"
+              phx-update="ignore"
               class="flex items-center gap-3"
               data-turbo="false"
               action="/settings/users/update_registration_settings"

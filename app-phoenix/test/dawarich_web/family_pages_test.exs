@@ -2,6 +2,7 @@ defmodule DawarichWeb.FamilyPagesTest do
   use Dawarich.JobsCase, async: false
 
   import Phoenix.ConnTest
+  import Dawarich.Test.FormIsolation
   import Plug.Conn, only: [put_req_header: 3]
   import Dawarich.Test.RawHTTP
 
@@ -31,6 +32,9 @@ defmodule DawarichWeb.FamilyPagesTest do
 
   test "show renders owner and member Rails controls", ctx do
     html = document(ctx.owner, "/family")
+    assert_form_isolated(html)
+    assert_form_isolated(document(ctx.owner, "/family/invitations"))
+    assert_form_isolated(document(ctx.member, "/family/location_requests/94001"))
     owner = html
     assert true == (html =~ "Leipzig Fixture Family")
     expect_element(owner, "a[href='/family/edit']")
@@ -69,6 +73,7 @@ defmodule DawarichWeb.FamilyPagesTest do
 
   test "new renders create upgrade and lapsed branches", ctx do
     create = document(ctx.outsider, "/family/new")
+    assert_form_isolated(create)
     expect_element(create, "form[action='/family'] input[name='family[name]']")
     System.put_env("SELF_HOSTED", "false")
     System.put_env("JWT_SECRET_KEY", "test")
@@ -105,6 +110,7 @@ defmodule DawarichWeb.FamilyPagesTest do
 
   test "edit preserves owner policy and Rails form verb", ctx do
     edit = document(ctx.owner, "/family/edit")
+    assert_form_isolated(edit)
     expect_element(edit, "form[action='/family.91001'] input[name='_method'][value='patch']")
     expect_element(edit, "input[name='family[name]'][value='Leipzig Fixture Family']")
     expect_element(edit, "a[href='/family'][data-turbo-method='delete'][data-turbo-confirm]")

@@ -50,6 +50,7 @@ defmodule DawarichWeb.SettingsLive.UserEdit do
             data-turbo="false"
             class="edit_user"
             id={"edit_user_#{@target.id}"}
+            phx-update="ignore"
             action={"/settings/users/#{@target.id}"}
             accept-charset="UTF-8"
             method="post"

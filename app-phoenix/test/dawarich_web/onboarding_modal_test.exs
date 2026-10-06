@@ -3,6 +3,7 @@ defmodule DawarichWeb.OnboardingModalTest do
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  import Dawarich.Test.FormIsolation
 
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.RailsCsrf
@@ -37,12 +38,14 @@ defmodule DawarichWeb.OnboardingModalTest do
   test "a Phoenix page renders the modal and the unlock host as LiveView-ignored Rails Stimulus islands, before and after the socket joins",
        %{user: user} do
     html = dead(user)
+    assert_form_isolated(html, "#onboarding-modal form[data-controller='upload']")
     assert count(html, @modal) == 1
     assert count(html, @host) == 1
 
     {:ok, view, _html} = live_as(user)
     assert has_element?(view, @modal)
     assert has_element?(view, @host)
+    assert_form_isolated(render(view), "#onboarding-modal form[data-controller='upload']")
   end
 
   test "the track screen's QR code is api_key_qr_code(current_user, size: 3) for Rails' root URL",

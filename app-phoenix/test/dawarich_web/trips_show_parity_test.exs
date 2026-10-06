@@ -2,6 +2,7 @@ defmodule DawarichWeb.TripsShowParityTest do
   use Dawarich.JobsCase, async: false
 
   import Phoenix.ConnTest
+  import Dawarich.Test.FormIsolation
 
   alias Dawarich.Test.{MapStimulus, ParityHTML, RailsUser, TripsSeeds}
 
@@ -45,6 +46,8 @@ defmodule DawarichWeb.TripsShowParityTest do
 
       rails =
         @dir |> Path.join("pages/#{@page["name"]}.html") |> File.read!() |> MapStimulus.prepare()
+
+      assert_form_isolated(html)
 
       title = @page["title"] |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
