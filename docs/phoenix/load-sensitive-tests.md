@@ -15,6 +15,13 @@ that first acquires leases and executes database queries. The existing database
 lock-wait assertion still verifies that ownership transfer blocks behind a live
 stage, then invalidates its next effect.
 
+The secure import downloader's four-attempt timeout test waits for each writer
+to report that it has written its partial bytes, then delivers the deadline
+through the existing timer seam. A short wall-clock timer can expire before a
+writer is scheduled and therefore cannot prove how many streams started. The
+deterministic probe retains the attempt limit and file cleanup assertions;
+production timeout and retry settings are unchanged.
+
 Bulk visit sweeps validate all distinct candidate timezone names and the ambient
 fallback with one `pg_timezone_names` scan per nonempty user page. Rails aliases
 are mapped to IANA names; invalid user zones fall back to the validated ambient

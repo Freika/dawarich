@@ -171,6 +171,8 @@ defmodule Dawarich.Imports.SecureFileDownloaderTest do
 
   test "stops after exactly four timed-out attempts", %{dir: dir} do
     {:ok, count} = Agent.start_link(fn -> 0 end)
+    owner = self()
+    started = make_ref()
 
     capture_log(fn ->
       assert_raise Downloader.TimeoutError, fn ->
@@ -179,11 +181,16 @@ defmodule Dawarich.Imports.SecureFileDownloaderTest do
           fn sink ->
             Agent.update(count, &(&1 + 1))
             sink.("partial")
-            Process.sleep(:infinity)
+            send(owner, {started, :writer_started})
+            receive do: (:finish -> :ok)
           end,
           &never/1,
           temp_dir: dir,
-          timeout_ms: 40
+          timeout_ms: 40,
+          start_timer: fn timer_owner, message, 40 ->
+            receive do: ({^started, :writer_started} -> send(timer_owner, message))
+            make_ref()
+          end
         )
       end
     end)
