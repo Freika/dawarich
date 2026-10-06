@@ -4,7 +4,7 @@ defmodule DawarichWeb.HealthRoutes do
   defmacro health_routes do
     quote do
       pipeline :health do
-        plug :put_api_tag, "health"
+        plug :put_api_tag, "api"
         plug DawarichWeb.HostAuthorization, health: true
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit

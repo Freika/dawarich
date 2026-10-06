@@ -25,6 +25,110 @@ defmodule DawarichWeb.HealthEndpointTest do
     end)
   end
 
+  test "health query envelopes preserve Rails errors and supported replies" do
+    compare_queries(~w(/api/v1/health))
+  end
+
+  test "readiness query envelopes preserve Rails errors on both URLs" do
+    compare_queries(~w(/api/v1/ready /ready))
+  end
+
+  defp compare_queries(paths) do
+    alias Dawarich.Test.RawHTTP
+
+    cases = Jason.decode!(File.read!("test/fixtures/admin_pages/api_health_queries.json"))
+    assert length(cases) == 24
+
+    for path <- ~w(/api/v1/health /api/v1/ready) do
+      kase = Enum.find(cases, &(&1["path"] == path and &1["query"] == "x=%GG"))
+      assert kase["status"] == 400
+      assert kase["headers"]["content-type"] == ["text/html; charset=UTF-8"]
+    end
+
+    upstream = Application.get_env(:dawarich, :rails_upstream)
+    jobs_repo = Application.get_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, Repo)
+    server = RawHTTP.listen()
+    parent = self()
+
+    start_supervised!({Task, fn -> query_upstream(server, parent, cases) end})
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, server.port})
+
+    on_exit(fn ->
+      :gen_tcp.close(server.listen)
+      Application.put_env(:dawarich, :rails_upstream, upstream)
+      Application.put_env(:dawarich, :jobs_repo, jobs_repo)
+    end)
+
+    for path <- paths,
+        mode <- ~w(true false),
+        kase <- cases,
+        kase["path"] == if(path == "/ready", do: "/api/v1/ready", else: path),
+        method <- [:get, :head] do
+      System.put_env("SELF_HOSTED", mode)
+      target = path <> "?" <> kase["query"]
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Plug.Conn.assign(:readiness_opts,
+          release: fn _ -> :ready end,
+          database: fn -> {:ok, %{rows: [[1]]}} end,
+          redis: fn -> {:ok, "PONG"} end
+        )
+        |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, method, target)
+
+      assert conn.status == kase["status"], target
+      assert conn.resp_body == if(method == :head, do: "", else: kase["raw_body"]), target
+
+      for {header, values} <- kase["headers"], header != "content-length" do
+        assert Plug.Conn.get_resp_header(conn, header) == values, "#{target}: #{header}"
+      end
+
+      assert Enum.sort(
+               Enum.map(conn.resp_headers, &elem(&1, 0)) --
+                 ~w(content-length etag x-request-id x-runtime)
+             ) ==
+               Enum.sort(Map.keys(kase["headers"]) -- ~w(content-length))
+
+      if kase["query"] in ~w(x=1&x=2 x=%25GG format=xml) do
+        refute_received {:query_upstream, _}
+      else
+        assert_receive {:query_upstream, line}
+        assert line == "GET #{target} HTTP/1.1"
+        assert conn.halted
+      end
+    end
+  end
+
+  defp query_upstream(server, parent, cases) do
+    alias Dawarich.Test.RawHTTP
+
+    socket = RawHTTP.accept(server)
+    {head, _rest} = RawHTTP.read_head(socket)
+    line = RawHTTP.request_line(head)
+    [_method, target, _version] = String.split(line, " ", parts: 3)
+    [path, query] = String.split(target, "?", parts: 2)
+    path = if path == "/ready", do: "/api/v1/ready", else: path
+    kase = Enum.find(cases, &(&1["path"] == path and &1["query"] == query))
+    send(parent, {:query_upstream, line})
+
+    headers =
+      for {header, values} <- kase["headers"],
+          header != "content-length",
+          value <- values,
+          do: "#{header}: #{value}\r\n"
+
+    RawHTTP.reply(socket, [
+      "HTTP/1.1 #{kase["status"]} Rails\r\n",
+      headers,
+      "content-length: #{byte_size(kase["raw_body"])}\r\n\r\n",
+      kase["raw_body"]
+    ])
+
+    :gen_tcp.close(socket)
+    query_upstream(server, parent, cases)
+  end
+
   test "health is native on self hosted and Cloud without private API authentication" do
     route =
       Phoenix.Router.route_info(

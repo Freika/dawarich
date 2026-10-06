@@ -413,7 +413,7 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
   end
 
   def api_health_capture(name, path: '/api/v1/health', key: nil, bearer: nil,
-                         summary: { status: 'unknown', alarm: false }, limit_count: 0)
+                         summary: { status: 'unknown', alarm: false }, limit_count: 0, query: nil)
     reset!
     Rack::Attack.reset!
     Rails.cache.clear
@@ -427,14 +427,15 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
     (limit_count + 1).times do
       env = Rack::MockRequest.env_for("http://staging.dawarich.app#{target}")
                              .merge(Rails.application.env_config)
+      env['QUERY_STRING'] = query if query
       headers.each { |name, value| env["HTTP_#{name.upcase.tr('-', '_')}"] = value }
       status, wire_headers, wire_body = Rails.application.call(env)
       raw = +''
       wire_body.each { |part| raw << part }
       wire_body.close if wire_body.respond_to?(:close)
     end
-    body = JSON.parse(raw)
-    if body['resume_url']
+    body = JSON.parse(raw) if raw.start_with?('{')
+    if body && body['resume_url']
       body['resume_url'] = body['resume_url'].sub(/token=.*/, 'token=SUBSCRIPTION_TOKEN')
       raw = JSON.generate(body)
     end
@@ -489,6 +490,18 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
     expect(cases.find { |reply| reply['name'] == 'cloud_throttled' }.fetch('status')).to eq(429)
     corpus = { 'version' => APP_VERSION, 'now' => now.iso8601, 'cases' => cases }
     File.write(dir.join('api_health.json'), "#{JSON.pretty_generate(corpus)}\n")
+    config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                'action_dispatch.show_detailed_exceptions' => false)
+    allow(Rails.application).to receive(:env_config).and_return(config)
+    allow(Sidekiq).to receive(:redis).and_yield(double(call: 'PONG'))
+    queries = %w[x=%GG %GG=x x=% x=%2 x=%FF x[y]=1 x=1&x[y]=2 x =1 x=1&x=2 x=%25GG format=xml]
+    query_cases = %w[/api/v1/health /api/v1/ready].flat_map do |path|
+      queries.map do |query|
+        api_health_capture(query, path:, query:).merge('query' => query)
+      end
+    end
+    expect(query_cases.select { |reply| reply['query'] == 'x=%GG' }.pluck('status')).to eq([400, 400])
+    File.write(dir.join('api_health_queries.json'), "#{JSON.pretty_generate(query_cases)}\n")
   ensure
     Rack::Attack.enabled = saved_enabled
     Rack::Attack.reset!
