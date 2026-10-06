@@ -764,3 +764,217 @@ defmodule DawarichWeb.A12f3aFExtractionTest do
     end
   end
 end
+
+defmodule DawarichWeb.A12f3aFPostprocessingTest do
+  use Dawarich.JobsCase
+  alias Dawarich.A12f3bImportsFixture, as: F
+  alias Dawarich.Imports.{ImportState, Lease, Postprocessing}
+
+  setup do
+    previous = System.get_env("SELF_HOSTED")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("SELF_HOSTED", previous),
+        else: System.delete_env("SELF_HOSTED")
+    end)
+
+    F.setup()
+  end
+
+  @tag a12f3a_f19: true
+  test "F19: import postprocessing native effects matches current Rails contract without a native-owner Rails effect",
+       c do
+    for mode <- ["true", "false", nil],
+        outcome <- [:success, :skipped, :post_failure, :partial_failure] do
+      if mode, do: System.put_env("SELF_HOSTED", mode), else: System.delete_env("SELF_HOSTED")
+      reset!(ScratchRepo)
+      c = Map.merge(c, Dawarich.ImportLeaseFixture.create())
+      source = if outcome == :skipped, do: 10, else: 3
+      rows("UPDATE imports SET source=$2 WHERE id=$1", [c.import.id, source])
+
+      rows("UPDATE oban.oban_jobs SET worker='Dawarich.Imports.ProcessWorker' WHERE id=$1", [
+        c.job.id
+      ])
+
+      F.blob(c, "source.json", "{}", "file")
+      context = %{c.context | locale: "de", now: ~U[2026-02-01 12:00:00Z]}
+
+      if outcome == :post_failure do
+        rows(
+          "CREATE FUNCTION public.f19_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'f19 count failed'; END $$"
+        )
+
+        rows(
+          "CREATE TRIGGER f19_failure BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION public.f19_failure()"
+        )
+      end
+
+      try do
+        assert {:ok, :ok} =
+                 Lease.with_import(
+                   ScratchRepo,
+                   c.job,
+                   c.import,
+                   fn lease ->
+                     ImportState.with_snapshot(lease, fn _state ->
+                       ImportState.start!(lease, context.now)
+
+                       if outcome == :skipped do
+                         rows("UPDATE imports SET raw_points=2,doubles=2 WHERE id=$1", [
+                           c.import.id
+                         ])
+                       else
+                         for stamp <- [1_767_220_200, 1_767_226_200] do
+                           rows(
+                             "INSERT INTO points(user_id,import_id,lonlat,timestamp,created_at,updated_at) VALUES($1,$2,'POINT(12.4 51.3)',$3,now(),now())",
+                             [c.import.user_id, c.import.id, stamp]
+                           )
+                         end
+                       end
+
+                       driver =
+                         Map.put(context, :fence, fn fun -> ImportState.effect!(lease, fun) end)
+
+                       import = ImportState.import!(lease)
+
+                       if outcome == :partial_failure do
+                         ImportState.fail!(
+                           lease,
+                           %ArgumentError{message: "captured parser failure"},
+                           context.now
+                         )
+                       else
+                         assert :ok = Postprocessing.call(lease, import, driver)
+                       end
+
+                       ImportState.complete!(lease, context.now)
+
+                       if outcome != :partial_failure do
+                         ImportState.effect!(lease, fn ->
+                           import = ImportState.import!(lease)
+                           Postprocessing.enqueue_extraction!(ScratchRepo, import, context)
+                         end)
+                       end
+
+                       :ok
+                     end)
+                   end,
+                   Dawarich.Imports.ProcessWorker.lease_options()
+                 )
+
+        if outcome == :partial_failure do
+          assert [[3]] == rows("SELECT status FROM imports WHERE id=$1", [c.import.id])
+          assert [] == rows("SELECT worker FROM oban.oban_jobs WHERE state<>'executing'")
+        else
+          assert [[2]] == rows("SELECT status FROM imports WHERE id=$1", [c.import.id])
+
+          if outcome == :skipped do
+            assert [[0, "Import abgeschlossen, aber keine neuen Punkte"]] ==
+                     rows("SELECT kind,title FROM notifications")
+
+            assert [] ==
+                     rows(
+                       "SELECT worker FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker'"
+                     )
+          else
+            assert [[2025, 12], [2026, 1]] ==
+                     rows(
+                       "SELECT (args->>'year')::int,(args->>'month')::int FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker' ORDER BY 1,2"
+                     )
+
+            assert [[%{"locale" => "de", "time_zone" => "Europe/Berlin", "source" => 3} = args]] =
+                     rows(
+                       "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker'"
+                     )
+
+            assert Ecto.UUID.cast(args["event_id"]) != :error
+
+            assert [[1]] ==
+                     rows(
+                       "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Achievements.CheckWorker'"
+                     )
+
+            assert [[1]] ==
+                     rows(
+                       "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Visits.SuggestWorker' AND args->>'time_zone'='Europe/Berlin'"
+                     )
+
+            assert [] ==
+                     rows(
+                       "SELECT worker FROM oban.oban_jobs WHERE worker='Dawarich.Tracks.RangeWorker'"
+                     )
+
+            events =
+              rows("SELECT worker,args FROM oban.oban_jobs WHERE state<>'executing' ORDER BY id")
+
+            assert {:ok, :ok} =
+                     ScratchRepo.transaction(fn ->
+                       Postprocessing.Commands.reverse!(
+                         ScratchRepo,
+                         c.import,
+                         context,
+                         "schedule_stats",
+                         %{
+                           "months" => [[2025, 12], [2026, 1]],
+                           "oldest_timestamp" => 1_767_220_200
+                         }
+                       )
+
+                       Postprocessing.Commands.reverse!(ScratchRepo, c.import, context, "extract")
+                       :ok
+                     end)
+
+            assert events ==
+                     rows(
+                       "SELECT worker,args FROM oban.oban_jobs WHERE state<>'executing' ORDER BY id"
+                     )
+
+            if outcome == :post_failure do
+              assert [[1, "Import-Post-Processing unvollständig"]] ==
+                       rows("SELECT kind,title FROM notifications")
+            else
+              assert [] == rows("SELECT title FROM notifications")
+            end
+          end
+        end
+
+        assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+      after
+        if outcome == :post_failure do
+          rows("DROP TRIGGER f19_failure ON users")
+          rows("DROP FUNCTION public.f19_failure()")
+        end
+      end
+    end
+
+    reset!(ScratchRepo)
+    c = Map.merge(c, Dawarich.ImportLeaseFixture.create()) |> F.destroy()
+
+    for stamp <- [1_767_220_200, 1_767_226_200] do
+      rows(
+        "INSERT INTO points(user_id,import_id,lonlat,timestamp,created_at,updated_at) VALUES($1,$2,'POINT(12.4 51.3)',$3,now(),now())",
+        [c.import.user_id, c.import.id, stamp]
+      )
+    end
+
+    Dawarich.Imports.Events.subscribe(c.import.user_id)
+    assert :ok = Dawarich.Imports.DestroyWorker.perform(c.job)
+    assert_receive :imports_changed
+    assert [] == rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
+    assert [] == rows("SELECT id FROM points WHERE import_id=$1", [c.import.id])
+
+    assert [[2025, 12], [2026, 1]] ==
+             rows(
+               "SELECT (args->>'year')::int,(args->>'month')::int FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker' ORDER BY 1,2"
+             )
+
+    events = rows("SELECT worker,args FROM oban.oban_jobs WHERE state<>'executing' ORDER BY id")
+    assert :ok = Dawarich.Imports.DestroyWorker.perform(c.job)
+
+    assert events ==
+             rows("SELECT worker,args FROM oban.oban_jobs WHERE state<>'executing' ORDER BY id")
+
+    assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+  end
+end

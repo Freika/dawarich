@@ -94,6 +94,13 @@ defmodule Dawarich.Imports.Postprocessing.Native do
           Snapshot.clock(context)
         )
 
+      [[source]] when source in [0, 3, 13] ->
+        Dawarich.EnhancedImport.NormalWorker.enqueue!(
+          repo,
+          Map.put(import, :source, source),
+          context
+        )
+
       [[_]] ->
         repo.query!(
           "UPDATE imports SET additional_data_extraction_status=4,additional_data_extraction=additional_data_extraction||jsonb_build_object('error_message','Unsupported native extraction source') WHERE id=$1 AND user_id=$2",

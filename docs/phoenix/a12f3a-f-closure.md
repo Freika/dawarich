@@ -46,7 +46,7 @@ publication path for native month stats, achievement checks, calendar visit
 suggestions, track ranges, point counters and GPX extraction. RX-IMPORTS'
 upload, purge, extraction removal and destruction effects are retained.
 Unsupported native extraction sources keep their explicit native error;
-typed non-GPX extraction adapters still need their broader worker dispatcher.
+the later F18 follow-up below supplies the non-GPX worker dispatcher.
 
 The merged lifecycle regression interrupts actual GPX and CSV imports after
 1000 committed points, rejects changed attachment identity, resumes to 1001
@@ -124,11 +124,9 @@ Package I owns the HTTP upload/manual-extraction path. Package O owns Registry
 readiness and final wiring. Keep shared entries inert until integration proof;
 this branch does not advertise a Rails-free end-to-end HTTP worker journey.
 
-F17's strict native Google Takeout continuation adapter is not implemented.
-F18 still needs non-GPX adapter dispatch, fenced extraction worker, durable
-visit/track/segment attribution and the broader extraction envelopes. F19's
-native publication path is supplied by RX-IMPORTS; complete retry, ordering
-and domain-effect envelopes with Q/P/W/V still remain.
+The original priority cut left F17–F19 open. The follow-up sections below
+record their gap audit and completed native continuation, extraction, and
+postprocessing work, reusing RX-IMPORTS and the existing Q/P/W/V APIs.
 Complete F01/F15/F16 edge envelopes also remain open. These are unfinished
 tasks, not successful source drain or retirement evidence.
 
@@ -183,3 +181,35 @@ unavailable for manual extraction, matching Translator.supported?.
 F18's named test fails first on unsupported manual extraction, passes native
 persistence/destroy/retry/fence cases, fails the Phone-as-GPX mutation, and
 passes after restoration. The extraction/GPX/R09 regression passes 46 tests.
+
+## F19 postprocessing follow-up
+
+Postprocessing retains RX's single native publication path and source step
+order. The missing automatic non-GPX extraction handoff now calls
+`NormalWorker.enqueue!(repo, import, context)`. It captures actor/source/blob,
+locale and zone, derives the child UUID from the existing import event and
+payload, and preserves it across terminal replay. No new effect framework or
+reverse consumer is introduced.
+
+The named aggregate verifies both zone-local months, native stats/achievement/
+visit/count/extraction publication, extraction suppressing generic track
+ranges, stable child args on replay, all-skipped localization, a real failed
+count update with later effects retained, parser failure without followups,
+and deletion with affected-month stats and terminal replay. It runs in
+self-hosted, explicit Cloud and unset default modes. Dropping the last stats
+month fails the exact December/January assertion; restored code passes.
+
+### Caller contracts and ownership handoff
+
+| Caller | Callee / contract | Event, fence and source owner |
+| --- | --- | --- |
+| ProcessWorker typed continuation | GoogleTakeoutResume.call(lease, state, context, payload) | Existing process_normal import event/attempt/token; constant Rails progress index; old serialized work stays with source drain |
+| ManualExtraction native non-GPX | NormalWorker.enqueue!(repo, args, event, at) | Existing extraction event/action and actor/source/blob; queued on existing extraction lane |
+| Postprocessing.Native extract | NormalWorker.enqueue!(repo, import, context) | Stable child of import-run UUID; captured locale/zone and clock; executes after import completion |
+| NormalWorker | Extract.process(repo, import, storage, event, deadline, context) | Import and per-user locks; every child/status write uses the current executing-job and extraction identity fence |
+| ExtractionRemovalWorker | DestroyExtraction.call(lease, source) | Existing RX removal fence; raw points survive; source labels/corrected segments retain Rails semantics |
+| Native stats/visits/tracks/achievements/cache | Existing Q/V/W/P/RX owner APIs | Existing payloads, due times, and dedupe contracts unchanged |
+
+F17–F19's missing behavior and named tests/mutations are complete in the
+follow-up. This does not claim completion of other package F tasks or release,
+source-drain, production claimability, deployment, or shutdown readiness.
