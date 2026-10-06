@@ -3,11 +3,20 @@ defmodule DawarichWeb.OperatorRedirect do
 
   import Plug.Conn
 
-  alias DawarichWeb.{LayoutAssigns, RailsSession}
+  alias DawarichWeb.{LayoutAssigns, RailsAuth, RailsSession}
 
   def init(opts), do: opts
 
   def call(conn, retired: true), do: send_resp(conn, 404, "")
+
+  def call(conn, background: true) do
+    cond do
+      LayoutAssigns.self_hosted?() -> conn
+      not operator?(conn.assigns.current_user) -> call(conn, []) |> halt()
+      basic?(conn) -> conn
+      true -> Plug.BasicAuth.request_basic_auth(conn, realm: "Restricted Area") |> halt()
+    end
+  end
 
   def call(conn, _opts) do
     cond do
@@ -36,6 +45,34 @@ defmodule DawarichWeb.OperatorRedirect do
 
   def background?(user),
     do: not is_nil(user) and (LayoutAssigns.self_hosted?() or operator?(user))
+
+  def authorized?(conn), do: LayoutAssigns.self_hosted?() or basic?(conn)
+
+  def live_session(conn) do
+    conn = RailsAuth.call(conn, [])
+    session = RailsAuth.live_session(conn)
+
+    if operator?(conn.assigns.current_user) and authorized?(conn),
+      do: Map.put(session, "operator_authorization", proof(conn.assigns.current_user)),
+      else: session
+  end
+
+  def live_authorized?(user, authorization) do
+    operator?(user) and is_binary(authorization) and
+      Plug.Crypto.secure_compare(authorization, proof(user))
+  end
+
+  defp proof(user) do
+    :crypto.mac(
+      :hmac,
+      :sha256,
+      Dawarich.RailsSecret.fetch(),
+      :erlang.term_to_binary(
+        {user.id, System.get_env("SIDEKIQ_USERNAME"), System.get_env("SIDEKIQ_PASSWORD")}
+      )
+    )
+    |> Base.url_encode64(padding: false)
+  end
 
   defp configured?,
     do:

@@ -20,7 +20,10 @@ defmodule DawarichWeb.AdminGate do
     _ -> false
   end
 
-  def background?(conn, _params), do: eligible?(conn, :background)
+  def background?(conn, _params),
+    do: eligible?(conn, :background) and DawarichWeb.OperatorRedirect.authorized?(conn)
+
+  def background_route?(conn, _params), do: eligible?(conn, :background)
 
   def supported?(%{settings: settings}) when is_map(settings) do
     case TripSettings.read(settings) do

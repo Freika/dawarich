@@ -105,35 +105,73 @@ defmodule DawarichWeb.OperatorRoutesTest do
     response = request(:head, "/sidekiq", 10001, "synthetic-operator:synthetic-password")
     assert response.status == 302
     assert get_resp_header(response, "location") == ["/settings/background_jobs"]
-    assert AdminGate.background?(signed(:get, "/settings/background_jobs", 10001), %{})
+  end
+
+  test "Cloud job health requires Basic authorization on HTTP and connected mounts" do
+    cloud!()
+
+    for method <- [:get, :head],
+        credentials <- [nil, "synthetic-operator:wrong", "wrong:synthetic-password"] do
+      response = request(method, "/settings/background_jobs", 10001, credentials)
+      assert response.status == 401
+      assert get_resp_header(response, "www-authenticate") == [~s(Basic realm="Restricted Area")]
+      refute response.resp_body =~ ~s(data-testid="instance-settings-phoenix-jobs")
+    end
+
+    refute AdminGate.background?(signed(:get, "/settings/background_jobs", 10001), %{})
     refute AdminGate.background?(signed(:get, "/settings/background_jobs", 10002), %{})
-    assert request(:get, "/settings/background_jobs", 10001).status == 200
+    conn = basic(signed(:get, "/settings/background_jobs", 10001))
+    assert AdminGate.background?(conn, %{})
 
-    session = %{
-      "rails_user_id" => 10001,
-      "locale" => "en",
-      "self_hosted" => false,
-      "request_path" => "/settings/background_jobs",
-      "query_params" => %{},
-      "rails_csrf_token" => "CSRF",
-      "base_url" => "http://localhost"
-    }
+    page = request(:get, "/settings/background_jobs", 10001, credentials())
+    assert page.status == 200
+    assert page.resp_body =~ ~s(data-testid="instance-settings-phoenix-jobs")
+    assert request(:head, "/settings/background_jobs", 10001, credentials()).resp_body == ""
 
-    socket = %Phoenix.LiveView.Socket{
-      router: DawarichWeb.Router,
-      view: DawarichWeb.SettingsLive.BackgroundJobs,
-      endpoint: Endpoint,
-      transport_pid: self(),
-      assigns: %{__changed__: %{}, current_user: Accounts.get(10001), flash: %{}},
-      private: %{
-        connect_info: %{session: %{"rails_user_id" => 10001}},
-        lifecycle: %Phoenix.LiveView.Lifecycle{}
-      }
-    }
+    for authorization <- [nil, "invalid"] do
+      session = Map.put(session(), "operator_authorization", authorization)
+      assert {:halt, rejected} = AdminLiveAuth.on_mount(:background, %{}, session, socket())
+      assert rejected.redirected == {:redirect, %{to: "/settings/background_jobs", status: 302}}
+    end
 
-    assert {:cont, mounted} = AdminLiveAuth.on_mount(:background, %{}, session, socket)
+    session = DawarichWeb.OperatorRedirect.live_session(conn) |> Map.merge(session())
+    assert {:cont, mounted} = AdminLiveAuth.on_mount(:background, %{}, session, socket())
+    assert mounted.redirected == nil
+    System.put_env("SIDEKIQ_PASSWORD", "synthetic-rotated")
+    assert {:halt, revoked} = Phoenix.LiveView.Lifecycle.handle_info(:navbar_refresh, mounted)
+    assert revoked.redirected == {:redirect, %{to: "/settings/background_jobs", status: 302}}
+  end
+
+  test "self hosted demotion clears cached job health while retaining background settings" do
+    assert {:cont, mounted} = AdminLiveAuth.on_mount(:background, %{}, session(), socket())
+    assert {:ok, mounted} = DawarichWeb.SettingsLive.BackgroundJobs.mount(%{}, session(), mounted)
+    assert mounted.assigns.health
+    assert render_health(mounted) =~ ~s(data-testid="instance-settings-phoenix-jobs")
+
     Repo.query!("UPDATE users SET admin = false WHERE id = 10001", [], log: false)
-    assert {:halt, _} = Phoenix.LiveView.Lifecycle.handle_info(:navbar_refresh, mounted)
+    assert {:halt, demoted} = Phoenix.LiveView.Lifecycle.handle_info(:navbar_refresh, mounted)
+    assert demoted.redirected == nil
+    refute demoted.assigns.current_user.admin
+    assert demoted.assigns.health == nil
+    refute render_health(demoted) =~ ~s(data-testid="instance-settings-phoenix-jobs")
+
+    stale = Phoenix.Component.assign(demoted, :health, mounted.assigns.health)
+    refute render_health(stale) =~ ~s(data-testid="instance-settings-phoenix-jobs")
+    assert AdminGate.background?(signed(:get, "/settings/background_jobs", 10001), %{})
+  end
+
+  test "Cloud job health role refresh redirects demoted operators and retains authorized operators" do
+    cloud!()
+    conn = basic(signed(:get, "/settings/background_jobs", 10001))
+    session = DawarichWeb.OperatorRedirect.live_session(conn) |> Map.merge(session())
+    assert {:cont, mounted} = AdminLiveAuth.on_mount(:background, %{}, session, socket())
+    assert {:halt, authorized} = Phoenix.LiveView.Lifecycle.handle_info(:navbar_refresh, mounted)
+    assert authorized.redirected == nil
+    assert authorized.assigns.current_user.admin
+
+    Repo.query!("UPDATE users SET admin = false WHERE id = 10001", [], log: false)
+    assert {:halt, demoted} = Phoenix.LiveView.Lifecycle.handle_info(:navbar_refresh, authorized)
+    assert demoted.redirected == {:redirect, %{to: "/settings/background_jobs", status: 302}}
   end
 
   test "Flipper root and nested URLs are retired native 404s with no Rails fallback" do
@@ -156,6 +194,50 @@ defmodule DawarichWeb.OperatorRoutesTest do
     end
 
     refute Enum.any?(DawarichWeb.RateLimit.Rules.throttles(), &(elem(&1, 0) == "admin/flipper"))
+  end
+
+  defp cloud! do
+    System.put_env("SELF_HOSTED", "false")
+    System.put_env("SIDEKIQ_USERNAME", "synthetic-operator")
+    System.put_env("SIDEKIQ_PASSWORD", "synthetic-password")
+  end
+
+  defp credentials, do: "synthetic-operator:synthetic-password"
+
+  defp basic(conn),
+    do: put_req_header(conn, "authorization", "Basic " <> Base.encode64(credentials()))
+
+  defp session do
+    %{
+      "rails_user_id" => 10001,
+      "locale" => "en",
+      "self_hosted" => DawarichWeb.LayoutAssigns.self_hosted?(),
+      "request_path" => "/settings/background_jobs",
+      "query_params" => %{},
+      "rails_csrf_token" => "CSRF",
+      "base_url" => "http://localhost"
+    }
+  end
+
+  defp socket do
+    %Phoenix.LiveView.Socket{
+      router: DawarichWeb.Router,
+      view: DawarichWeb.SettingsLive.BackgroundJobs,
+      endpoint: Endpoint,
+      transport_pid: self(),
+      assigns: %{__changed__: %{}, current_user: Accounts.get(10001), flash: %{}},
+      private: %{
+        connect_info: %{session: %{"rails_user_id" => 10001}},
+        lifecycle: %Phoenix.LiveView.Lifecycle{}
+      }
+    }
+  end
+
+  defp render_health(socket) do
+    socket.assigns
+    |> DawarichWeb.SettingsLive.BackgroundJobs.render()
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
   end
 
   defp request(method, path, id, credentials \\ nil) do

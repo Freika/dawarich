@@ -92,5 +92,9 @@
       </div>
     </div>
   </div>
-  <DawarichWeb.AdminJobHealth.card :if={@health} locale={@locale} health={@health} />
+  <DawarichWeb.AdminJobHealth.card
+    :if={@current_user.admin == true && @health}
+    locale={@locale}
+    health={@health}
+  />
 </div>

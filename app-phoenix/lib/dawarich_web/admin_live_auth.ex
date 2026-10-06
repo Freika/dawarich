@@ -11,6 +11,7 @@ defmodule DawarichWeb.AdminLiveAuth do
     socket =
       socket
       |> assign(:admin_mode, mode)
+      |> assign(:operator_authorization, session["operator_authorization"])
       |> attach_hook(:admin_role_event, :handle_event, fn _event, _params, socket ->
         authorize(socket)
       end)
@@ -31,14 +32,20 @@ defmodule DawarichWeb.AdminLiveAuth do
 
     hosting =
       LayoutAssigns.self_hosted?() or
-        (socket.assigns.admin_mode == :background and DawarichWeb.OperatorRedirect.operator?(user))
+        (socket.assigns.admin_mode == :background and
+           DawarichWeb.OperatorRedirect.live_authorized?(
+             user,
+             socket.assigns.operator_authorization
+           ))
 
     if hosting and not is_nil(user) and
          (socket.assigns.admin_mode == :background or user.admin == true) and
          AdminGate.supported?(user) do
-      {:cont, assign(socket, :current_user, user)}
+      socket = assign(socket, :current_user, user)
+      socket = if user.admin == true, do: socket, else: assign(socket, :health, nil)
+      {:cont, socket}
     else
-      {:halt, redirect(socket, to: request_url(socket))}
+      {:halt, redirect(assign(socket, :health, nil), to: request_url(socket))}
     end
   end
 
