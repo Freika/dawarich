@@ -56,9 +56,7 @@ defmodule Dawarich.Auth.Credentials do
             from(u in Account, where: u.id == ^id and is_nil(u.deleted_at), lock: "FOR UPDATE")
           )
 
-        if user && user.remember_created_at do
-          change(repo, user, %{remember_created_at: nil, updated_at: clock(context)})
-        end
+        Dawarich.Auth.Remember.forget(repo, user, clock(context))
 
         :ok
       end)

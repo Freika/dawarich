@@ -279,6 +279,87 @@ defmodule DawarichWeb.A12f2FClosureTest do
     refute failure.private[:replayed]
   end
 
+  @tag :a12f2_f_06
+  test "Remember issuance restore expiry trackable Warden persistence and all device logout match Rails",
+       ctx do
+    alias DawarichWeb.AuthRestore
+    id = insert_user(ctx.email)
+    session = guest()
+    opts = [enabled: true, native: true, registration_enabled: true, fallback: &replay/1]
+
+    params =
+      csrf(
+        %{
+          "user[email]" => ctx.email,
+          "user[password]" => "safepassword12",
+          "user[remember_me]" => "1"
+        },
+        session,
+        "POST",
+        "/users/sign_in"
+      )
+
+    login = AuthHandler.call(request(:post, "/users/sign_in", session, params), opts)
+    assert login.status == 303
+    cookie = login.resp_cookies["remember_user_token"].value
+    assert login.resp_cookies["remember_user_token"].http_only
+    assert login.resp_cookies["remember_user_token"].same_site == "Lax"
+
+    assert {:ok, [[^id], _, _]} =
+             RailsCookies.verify(
+               cookie,
+               "remember_user_token",
+               RailsSecret.fetch(),
+               DateTime.utc_now()
+             )
+
+    before = Repo.get!(Account, id).sign_in_count
+
+    restored =
+      Plug.Test.conn(:get, @base <> "/stats")
+      |> put_req_header("cookie", "remember_user_token=" <> cookie)
+      |> RailsAuth.call([])
+      |> AuthRestore.call(enabled: true, native: true)
+
+    assert [[^id], _] = response_session(restored)["warden.user.user.key"]
+    assert Repo.get!(Account, id).sign_in_count == before + 1
+    remembered = Repo.get!(Account, id).remember_created_at
+    assert remembered != nil
+    signout_session = response_session(restored) |> Map.put("_csrf_token", RailsCsrf.new_token())
+    signout = csrf(%{}, signout_session, "DELETE", "/users/sign_out")
+    logout = AuthHandler.call(request(:delete, "/users/sign_out", signout_session, signout), opts)
+    assert logout.status == 303
+
+    other_device =
+      Plug.Test.conn(:get, @base <> "/stats")
+      |> put_req_header("cookie", "remember_user_token=" <> cookie)
+      |> RailsAuth.call([])
+
+    assert other_device.assigns.current_user == nil
+    assert Repo.get!(Account, id).remember_created_at == nil
+
+    remembered_only =
+      Plug.Test.conn(:delete, @base <> "/users/sign_out", URI.encode_query(signout))
+      |> put_req_header("cookie", "remember_user_token=" <> cookie)
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> put_req_header("content-length", Integer.to_string(byte_size(URI.encode_query(signout))))
+
+    assert AuthHandler.call(remembered_only, opts).status == 422
+    assert Code.ensure_loaded?(Dawarich.Auth.Remember)
+
+    assert apply(Dawarich.Auth.Remember, :valid?, [
+             Repo.get!(Account, id),
+             [
+               [id],
+               String.slice(@hash, 0, 29),
+               Accounts.remember_generated_at(
+                 DateTime.add(DateTime.utc_now(), -Accounts.remember_for())
+               )
+             ],
+             DateTime.utc_now()
+           ]) == false
+  end
+
   defp insert_user(email) do
     [[id]] =
       Repo.query!(
