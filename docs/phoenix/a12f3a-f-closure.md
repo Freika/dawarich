@@ -36,3 +36,7 @@ table passes; emitting a raw signal as a visit fails, then restored GREEN passes
 F25 retains the source Records no-op even for malformed files. All captured
 inputs pass. The reconciled mutation emits an accuracy-derived row; it fails
 the empty-output assertion, and restored GREEN passes.
+
+F26 streams step visits from Polarsteps arrays and steps objects while location
+trails emit no extracted visits. The complete source table passes. Swapping
+latitude and longitude fails the exact place comparison; restored GREEN passes.

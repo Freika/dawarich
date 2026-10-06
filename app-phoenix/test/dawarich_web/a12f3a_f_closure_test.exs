@@ -18,6 +18,11 @@ defmodule DawarichWeb.A12f3aFClosureTest do
     assert_adapter(25, Dawarich.EnhancedImport.RecordsAdapter)
   end
 
+  @tag a12f3a_f26: true
+  test "F26: polarsteps enhanced adapter matches current Rails contract without a native-owner Rails effect" do
+    assert_adapter(26, Dawarich.EnhancedImport.PolarstepsAdapter)
+  end
+
   defp assert_adapter(task, adapter) do
     captures = File.read!(Path.join(@dir, "a12f3a-f#{task}.json")) |> Jason.decode!()
     root = Path.join(System.tmp_dir!(), "f-adapter-#{Ecto.UUID.generate()}")
