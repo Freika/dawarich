@@ -202,6 +202,11 @@ defmodule Dawarich.A12f3bR01Test do
              "SELECT command_version,aggregate_id,metadata FROM public.job_outbox WHERE command_type='visits.suggest'"
            ) == [[1, user, %{"producer" => "Visits::RealtimeDebouncer"}]]
 
+    assert [[due]] =
+             rows(
+               "SELECT scheduled_at FROM public.job_outbox WHERE command_type='visits.suggest'"
+             )
+
     assert DateTime.diff(due, now) == 300
     assert reverse("visits.realtime") == []
 
