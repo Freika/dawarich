@@ -5,6 +5,10 @@ defmodule Dawarich.Notifications do
 
   alias Dawarich.{Repo, UserTimeZone}
 
+  defmodule Invalid do
+    defexception message: "Notification validation failed", plug_status: 422
+  end
+
   @per_page 20
   @kind_names %{0 => "info", 1 => "warning", 2 => "error"}
   @kind_codes %{info: 0, warning: 1, error: 2}
@@ -45,6 +49,12 @@ defmodule Dawarich.Notifications do
   def get(_user_id, _id), do: nil
 
   def mark_read(user_id, %{read_at: nil} = notification) do
+    if Enum.any?(
+         [notification.title, notification.content, notification.kind],
+         &(is_nil(&1) or (is_binary(&1) and String.trim(&1) == ""))
+       ),
+       do: raise(Invalid)
+
     now = NaiveDateTime.utc_now()
 
     from(n in "notifications",
