@@ -4,6 +4,7 @@ defmodule Dawarich.Imports.UploadRecords do
 
   def insert!(repo, user, item, owner) do
     blob = item.blob
+    owner = if Dawarich.Standalone.enabled?(), do: :oban, else: owner
 
     locked =
       repo.query!(

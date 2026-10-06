@@ -63,19 +63,36 @@ defmodule Dawarich.Imports.ImportBlobPurges do
           "source_blob_id" => source_id
         }
 
-        if owner == :oban do
-          repo.query!(
-            "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at) VALUES(gen_random_uuid(),'imports.prepared_download_purge',1,$1,$2,$3,$4,now()) ON CONFLICT DO NOTHING",
-            [
-              payload,
-              %{"producer" => "Phoenix import blob cleanup"},
-              import_id,
-              "import-blob-purge:#{blob_id}:#{import_id}:#{user_id}:#{source_id}"
-            ],
+        if Dawarich.Standalone.enabled?() do
+          ids =
+            removed_ids ||
+              repo.query!(
+                "SELECT id FROM active_storage_attachments WHERE record_type='Import' AND record_id=$1 AND blob_id=$2",
+                [import_id, blob_id],
+                log: false
+              ).rows
+              |> List.flatten()
+
+          repo.query!("DELETE FROM active_storage_attachments WHERE id=ANY($1)", [ids],
             log: false
           )
+
+          Dawarich.Imports.PreparedDownloadPurgeWorker.enqueue!(repo, [blob_id])
         else
-          Dawarich.RailsCommands.insert!(repo, "imports.prepared_download_purge", payload)
+          if owner == :oban do
+            repo.query!(
+              "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at) VALUES(gen_random_uuid(),'imports.prepared_download_purge',1,$1,$2,$3,$4,now()) ON CONFLICT DO NOTHING",
+              [
+                payload,
+                %{"producer" => "Phoenix import blob cleanup"},
+                import_id,
+                "import-blob-purge:#{blob_id}:#{import_id}:#{user_id}:#{source_id}"
+              ],
+              log: false
+            )
+          else
+            Dawarich.RailsCommands.insert!(repo, "imports.prepared_download_purge", payload)
+          end
         end
 
       skip ->
