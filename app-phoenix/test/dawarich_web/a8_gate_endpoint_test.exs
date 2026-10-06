@@ -43,6 +43,7 @@ defmodule DawarichWeb.A8GateEndpointTest do
     test name, ctx do
       old = System.get_env("SELF_HOSTED")
       System.put_env("SELF_HOSTED", "false")
+      Application.put_env(:dawarich, :rails_routes, ["visits", "settings"])
 
       on_exit(fn ->
         if old, do: System.put_env("SELF_HOSTED", old), else: System.delete_env("SELF_HOSTED")
