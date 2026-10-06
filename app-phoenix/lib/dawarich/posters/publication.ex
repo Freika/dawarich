@@ -1,6 +1,6 @@
 defmodule Dawarich.Posters.Publication do
   @moduledoc false
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
   alias Dawarich.Posters.Command
   @owner "command:posters.create"
 
@@ -9,7 +9,7 @@ defmodule Dawarich.Posters.Publication do
 
     transaction(repo, fn ->
       lease!(repo, ctx)
-      if Ownership.lock(repo, @owner) != :oban, do: repo.rollback(:lost)
+      if Command.owner(repo) != :oban, do: repo.rollback(:lost)
       row = row!(repo, ctx)
 
       cond do
@@ -107,7 +107,7 @@ defmodule Dawarich.Posters.Publication do
   defp fenced!(repo, ctx) do
     lease!(repo, ctx)
 
-    if Ownership.lock(repo, @owner) != :oban or stamp(repo) != ctx.owner_stamp,
+    if Command.owner(repo) != :oban or stamp(repo) != ctx.owner_stamp,
       do: repo.rollback(:lost)
 
     row!(repo, ctx)

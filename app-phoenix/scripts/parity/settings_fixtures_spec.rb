@@ -1935,4 +1935,130 @@ skip_family_sync: true)
       capture('insights_legacy_en', legacy, '/insights?year=2024')
     end
   end
+  context 'A12f3b browser writes' do
+    let(:actor) { create(:user, settings: { 'timezone' => 'UTC', 'keep' => 7, 'digest_emails_enabled' => true }) }
+
+    before do
+      sign_in actor
+      get '/settings/general'
+      @browser_token = Nokogiri::HTML5(response.body).at_css('meta[name=csrf-token]')['content']
+    end
+
+    it 'characterizes general booleans aliases and rebucketing effects' do
+      stat = create(:stat, user: actor, year: 2025, month: 1, calculation_version: 3)
+      expect do
+        patch '/settings/general', params: { authenticity_token: @browser_token, timezone: 'Berlin', locale: 'de',
+          monthly_digest_emails_enabled: '', yearly_digest_emails_enabled: 'off',
+          news_emails_enabled: 'yes', show_supporter_badge: '0', ignored: { nested: 'x' } }
+      end.to have_enqueued_job(Stats::CalculatingJob).with(actor.id, 2025, 1, notify_on_failure: false)
+      expect(response.status).to eq(302)
+      expect(response.location).to end_with('/settings/general')
+      expect(actor.reload.settings).to include('timezone' => 'Berlin', 'locale' => 'de', 'keep' => 7,
+                                               'monthly_digest_emails_enabled' => nil,
+                                               'yearly_digest_emails_enabled' => false,
+                                               'news_emails_enabled' => true, 'show_supporter_badge' => false)
+      expect(actor.settings).not_to have_key('digest_emails_enabled')
+      expect(stat.reload.calculation_version).to eq(0)
+      expect(stat.repair_deferred_at).to be_present
+    end
+
+    it 'characterizes general SQL failure without persisted settings or jobs' do
+      before = actor.reload.settings
+      jobs = enqueued_jobs.size
+      allow_any_instance_of(User).to receive(:save).and_raise(ActiveRecord::StatementInvalid, 'synthetic save failure')
+      expect do
+        patch '/settings/general', params: { authenticity_token: @browser_token, timezone: 'Berlin' }
+      end.to raise_error(ActiveRecord::StatementInvalid)
+      expect(actor.reload.settings).to eq(before)
+      expect(enqueued_jobs.size).to eq(jobs)
+    end
+
+    it 'characterizes supporter rejection and Cloud test email refusal' do
+      allow_any_instance_of(User).to receive(:supporter?).and_return(false)
+      post '/settings/general/verify_supporter',
+           params: { authenticity_token: @browser_token, supporter_email: ' SYNTHETIC@EXAMPLE.INVALID ' }
+      expect(response.status).to eq(302)
+      expect(actor.reload.settings['supporter_email']).to eq('synthetic@example.invalid')
+      expect(flash[:alert]).to be_present
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      expect do
+        post '/settings/general/test_email', params: { authenticity_token: @browser_token }
+      end.not_to have_enqueued_job
+      expect(response.status).to eq(303)
+    end
+
+    it 'characterizes theme consent and current key actor scope' do
+      other = create(:user)
+      previous = other.api_key
+      get '/settings/theme', params: { theme: 'light' }
+      expect(response.status).to eq(302)
+      expect(actor.reload.theme).to eq('light')
+      patch '/settings/changelog_consent', params: { authenticity_token: @browser_token, decision: 'bad' }
+      expect(response.status).to eq(422)
+      patch '/settings/changelog_consent', params: { authenticity_token: @browser_token, decision: 'granted' }
+      expect(response.status).to eq(302)
+      expect(actor.reload.changelog_consent).to eq('granted')
+      actor.update_columns(provider: 'openid_connect', uid: 'synthetic-settings-provider', otp_required_for_login: true)
+      post '/settings/generate_api_key', params: { authenticity_token: @browser_token, user_id: other.id }
+      expect(response.status).to eq(302)
+      expect(actor.reload.api_key.size).to eq(64)
+      expect(other.reload.api_key).to eq(previous)
+    end
+  end
+end
+
+RSpec.describe 'Phoenix fixtures: A12f2-D main API contracts', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  it 'records settings mobile areas and recalculation contracts' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    travel_to Time.utc(2026, 10, 6, 12) do
+      actor = create(:user, id: 912_620_001, email: 'a12f2d@example.invalid', skip_auto_trial: true,
+                            skip_family_sync: true)
+      actor.update_columns(api_key: %w[A12F2D SYNTHETIC].join('_'), settings: {})
+      headers = { 'Authorization' => 'Bearer A12F2D_SYNTHETIC' }
+      corpus = {}
+      capture = lambda do |name, method, path, params = {}|
+        public_send(method, path, params: params, headers: headers.dup, as: :json)
+        expected = { 'settings_bad_tiles' => 422, 'area_invalid' => 422,
+                     'recalculation_invalid' => 400, 'recalculation_pending' => 409 }.fetch(name, 200)
+        expect(response.status).to eq(expected)
+        corpus[name] = { 'status' => response.status, 'body' => response.parsed_body,
+                         'headers' => response.headers.slice('Content-Type', 'Cache-Control', 'ETag'),
+                         'settings' => actor.reload.settings }
+      end
+      capture.call('settings_default', :get, '/api/v1/settings')
+      actor.update_columns(settings: { 'maps' => { 'name' => 'Legacy', 'distance_unit' => 'km' } })
+      capture.call('settings_merge', :patch, '/api/v1/settings',
+                   { settings: { maps: { distance_unit: 'mi' }, minutes_between_routes: 9000, ignored: true } })
+      capture.call('settings_bad_tiles', :patch, '/api/v1/settings',
+                   { settings: { maps_maplibre_tiles_url: 'https://tiles.example.invalid/{z}' } })
+      capture.call('mobile_default', :get, '/api/v1/settings/mobile')
+      capture.call('mobile_update', :patch, '/api/v1/settings/mobile',
+                   { settings: { tracking_mode: 'precise', distance_filter: 0, batch_size: 9000,
+                                 tracking_visits: 'false', unknown: true }, expected_updated_at: 'stale' })
+      capture.call('mobile_merge', :patch, '/api/v1/settings/mobile',
+                   { settings: { time_filter: 9000, tracking_mode: 'bad', distance_filter: nil } })
+      actor.update_columns(settings: actor.reload.settings.merge('timezone' => 'Berlin'))
+      capture.call('mobile_timezone', :patch, '/api/v1/settings/mobile', { settings: { auto_start: true } })
+      area = create(:area, id: 912_620_004, user: actor, name: '雪', latitude: 52.52, longitude: 13.405, radius: 100)
+      capture.call('area_timezone', :get, "/api/v1/areas/#{area.id}")
+      actor.update_columns(settings: actor.reload.settings.except('timezone'))
+      capture.call('progress_idle', :get, '/api/v1/settings/transportation_recalculation_status')
+      capture.call('area_invalid', :post, '/api/v1/areas',
+                   { area: { name: '', latitude: 91, longitude: 181, radius: 0 } })
+      capture.call('recalculation_invalid', :post, '/api/v1/recalculations', { year: '1999' })
+      allow(Rails.cache).to receive(:read).with("recalculation_pending:#{actor.id}").and_return(true)
+      capture.call('recalculation_pending', :post, '/api/v1/recalculations', { year: 2024 })
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      actor.update_columns(plan: :lite, settings: {})
+      capture.call('settings_lite', :get, '/api/v1/settings')
+      capture.call('settings_lite_update', :patch, '/api/v1/settings',
+                   { settings: { enabled_map_layers: %w[Tracks Heatmap], globe_projection: true,
+                                 maps: { distance_unit: 'mi', hidden_tile_categories: ['water'] },
+                                 immich_url: 'https://example.invalid', maps_maplibre_style: 'custom' } })
+      bytes = "#{JSON.pretty_generate(corpus)}\n"
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2d/closure.json'), bytes)
+    end
+  end
 end

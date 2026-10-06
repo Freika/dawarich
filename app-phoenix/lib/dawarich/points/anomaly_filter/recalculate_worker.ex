@@ -28,18 +28,22 @@ defmodule Dawarich.Points.AnomalyFilter.RecalculateWorker do
   def run(repo, %{"track_id" => track, "user_id" => user} = args) do
     if repo.query!("SELECT id FROM tracks WHERE id=$1 AND user_id=$2", [track, user], log: false).num_rows ==
          1 do
-      case Ownership.with_owner(repo, "command:tracks.recalculate", :oban, fn ->
-             RecalculateWorker.run(repo, nil, %{"track_id" => track})
-           end) do
-        {:ok, :ok} ->
-          :ok
+      if Dawarich.Standalone.enabled?() do
+        RecalculateWorker.run(repo, nil, %{"track_id" => track})
+      else
+        case Ownership.with_owner(repo, "command:tracks.recalculate", :oban, fn ->
+               RecalculateWorker.run(repo, nil, %{"track_id" => track})
+             end) do
+          {:ok, :ok} ->
+            :ok
 
-        {:skip, :sidekiq} ->
-          Dawarich.RailsCommands.insert!(
-            repo,
-            "points.anomaly_recalculate",
-            Map.take(args, ~w(user_id track_id job_queue))
-          )
+          {:skip, :sidekiq} ->
+            Dawarich.RailsCommands.insert!(
+              repo,
+              "points.anomaly_recalculate",
+              Map.take(args, ~w(user_id track_id job_queue))
+            )
+        end
       end
     else
       :ok

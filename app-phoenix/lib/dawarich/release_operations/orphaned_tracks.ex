@@ -5,7 +5,7 @@ defmodule Dawarich.ReleaseOperations.OrphanedTracks do
 
   require Logger
 
-  alias Dawarich.{RailsCommands, ReleaseOperations}
+  alias Dawarich.ReleaseOperations
 
   @batch 1_000
   @page """
@@ -50,13 +50,9 @@ defmodule Dawarich.ReleaseOperations.OrphanedTracks do
       for {user_id, owned} <- Enum.group_by(rows, &Enum.at(&1, 1)) do
         stamps = Enum.flat_map(owned, fn [_, _, start_ts, end_ts] -> [start_ts, end_ts] end)
 
-        RailsCommands.insert!(repo, "tracks_changed", %{
-          "user_id" => user_id,
-          "created" => [],
-          "updated" => [],
-          "destroyed" => Enum.map(owned, &hd/1),
-          "min_ts" => Enum.min(stamps),
-          "max_ts" => Enum.max(stamps)
+        Dawarich.Tracks.Effects.write!(repo, user_id, %{
+          destroyed: Enum.map(owned, &hd/1),
+          stamps: stamps
         })
       end
     end)

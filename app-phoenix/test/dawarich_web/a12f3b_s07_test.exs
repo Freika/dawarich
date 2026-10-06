@@ -60,6 +60,7 @@ defmodule DawarichWeb.A12f3bS07Test do
   end
 
   @tag a12f3b_case: "S07b"
+  @tag a12f3b_r15: "R15k05"
   test "live share revocation publishes one native ended event", %{actor: actor} do
     stream = Dawarich.RailsMessages.broadcasting(["shared_location", {:shared_link, S.id(1)}])
     {:ok, ref} = Bus.subscribe(stream)

@@ -23,7 +23,12 @@ defmodule DawarichWeb.FamilyActions do
       conn
       |> fetch_query_params()
       |> Plug.Parsers.call(
-        Plug.Parsers.init(parsers: [:urlencoded, :json], pass: ["*/*"], json_decoder: Jason)
+        Plug.Parsers.init(
+          parsers: [:urlencoded, :json],
+          pass: ["*/*"],
+          json_decoder: Jason,
+          body_reader: {DawarichWeb.FamilyRequestAdmission, :read_body, []}
+        )
       )
       |> RailsAuth.call([])
       |> LayoutAssigns.call([])

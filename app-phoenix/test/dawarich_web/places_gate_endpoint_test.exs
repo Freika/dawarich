@@ -206,7 +206,7 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
     assert log =~ "[places] /places/842199 handed to Rails: place drawer changed after the gate"
   end
 
-  test "ids Rails casts, nearby and the writes go to Puma", ctx do
+  test "unsupported ids and writes go to Puma while nearby is native", ctx do
     saved = System.get_env("PHOTON_API_HOST")
     System.put_env("PHOTON_API_HOST", "photon.example.invalid")
 
@@ -221,7 +221,6 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
 
     for target <- [
           "/places/12abc",
-          "/places/nearby?latitude=51.34&longitude=12.37",
           "/places/1000000000000000001",
           "/places/842101/edit"
         ] do
@@ -230,6 +229,20 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
 
       assert line == "GET #{target} HTTP/1.1"
     end
+
+    start_supervised!(Dawarich.Geocoding.FakeHttp)
+    start_supervised!(hd(Dawarich.Redis.child_specs()))
+
+    Dawarich.Geocoding.FakeHttp.stub(
+      "http://photon.example.invalid/reverse?distance_sort=true&lang=en&lat=51.34&limit=5&lon=12.37&radius=0.5",
+      200,
+      Jason.encode!(%{"type" => "FeatureCollection", "features" => []})
+    )
+
+    client = connect(port)
+    send_raw(client, request("/places/nearby?latitude=51.34&longitude=12.37", ctx.cookie, @frame))
+    assert {200, _headers, body} = read_response(client)
+    assert body =~ "No nearby places found"
 
     body = "_method=patch&place%5Bnote%5D=x"
 

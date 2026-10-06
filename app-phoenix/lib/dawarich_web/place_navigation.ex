@@ -9,28 +9,28 @@ defmodule DawarichWeb.PlaceNavigation do
   def init(action), do: action
 
   def call(conn, :show) do
-    if get_req_header(conn, "turbo-frame") == ["place-drawer"] do
-      MapFrames.call(conn, :place)
-    else
-      id = String.to_integer(conn.path_params["id"])
+    id = String.to_integer(conn.path_params["id"])
 
-      case Repo.query!(
-             "SELECT id FROM places WHERE id=$1 AND user_id=$2",
-             [id, conn.assigns.current_user.id],
-             log: false
-           ).rows do
-        [[^id]] ->
+    case Repo.query!(
+           "SELECT id FROM places WHERE id=$1 AND user_id=$2",
+           [id, conn.assigns.current_user.id],
+           log: false
+         ).rows do
+      [[^id]] ->
+        if get_req_header(conn, "turbo-frame") == ["place-drawer"] do
+          MapFrames.call(conn, :place)
+        else
           conn
           |> put_resp_header("location", RequestURL.base(conn) <> "/map/v2?place_id=#{id}")
           |> put_resp_header("cache-control", "no-cache")
           |> put_resp_content_type("text/html")
           |> send_resp(302, "")
           |> halt()
+        end
 
-        [] ->
-          html = DawarichWeb.ErrorHTML.render("404.html", %{}) |> Phoenix.HTML.Safe.to_iodata()
-          conn |> put_resp_content_type("text/html", "UTF-8") |> send_resp(404, html) |> halt()
-      end
+      [] ->
+        html = DawarichWeb.ErrorHTML.render("404.html", %{}) |> Phoenix.HTML.Safe.to_iodata()
+        conn |> put_resp_content_type("text/html", "UTF-8") |> send_resp(404, html) |> halt()
     end
   end
 
@@ -41,10 +41,21 @@ defmodule DawarichWeb.PlaceNavigation do
 
       {:ok, 200, radius} ->
         html =
-          NearbyPlaces.empty(%{
+          NearbyPlaces.render(%{
             __changed__: nil,
             locale: conn.assigns.locale,
             params: conn.query_params,
+            places:
+              Dawarich.Places.Nearby.fetch(
+                conn.assigns.current_user,
+                Ruby.to_f(conn.query_params["latitude"]),
+                Ruby.to_f(conn.query_params["longitude"]),
+                radius,
+                if(conn.query_params["limit"],
+                  do: DawarichWeb.Params.ruby_to_i(conn.query_params["limit"]),
+                  else: 5
+                )
+              ),
             radius: radius
           })
           |> Phoenix.HTML.Safe.to_iodata()
@@ -55,11 +66,6 @@ defmodule DawarichWeb.PlaceNavigation do
         |> put_resp_content_type("text/html")
         |> send_resp(200, html)
         |> halt()
-
-      :rails ->
-        conn
-        |> assign(:api_tag, "places")
-        |> DawarichWeb.Api.Body.replay("provider nearby search")
     end
   end
 
@@ -68,11 +74,7 @@ defmodule DawarichWeb.PlaceNavigation do
       {:ok, 400, nil}
     else
       radius = if params["radius"], do: Ruby.to_f(params["radius"]), else: 0.5
-      zero = Ruby.to_f(params["latitude"]) == 0.0 and Ruby.to_f(params["longitude"]) == 0.0
-
-      if is_number(radius) and (zero or not Dawarich.Geocoding.Config.resolve(Repo).enabled),
-        do: {:ok, 200, radius},
-        else: :rails
+      {:ok, 200, radius}
     end
   end
 end

@@ -177,6 +177,7 @@ defmodule DawarichWeb.AuthHandler do
 
       method == "DELETE" ->
         Credentials.logout(conn.assigns.current_user.id)
+        DawarichWeb.NotificationSession.signed_out(conn.assigns.rails_session)
         AuthResponse.signed_out(conn)
 
       true ->

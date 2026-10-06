@@ -11,6 +11,8 @@ defmodule DawarichWeb.NavbarHooks do
   def attach(socket, opts \\ []) do
     if connected?(socket), do: schedule()
 
+    socket = notification_session(socket)
+
     socket =
       if Keyword.get(opts, :params, true),
         do: attach_hook(socket, :navbar_params, :handle_params, &params/3),
@@ -20,6 +22,11 @@ defmodule DawarichWeb.NavbarHooks do
     |> attach_hook(:navbar_info, :handle_info, &info/2)
     |> attach_hook(:navbar_event, :handle_event, &event/3)
   end
+
+  defp notification_session(%{assigns: %{current_user: %{}}} = socket),
+    do: DawarichWeb.NotificationSession.attach(socket)
+
+  defp notification_session(socket), do: socket
 
   defp params(_params, uri, socket) do
     socket =

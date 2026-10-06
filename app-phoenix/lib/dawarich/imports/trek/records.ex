@@ -86,7 +86,7 @@ defmodule Dawarich.Imports.Trek.Records do
          (force or path or is_nil(distance) or countries in [nil, %{}, []]) do
       unit = get_in(ctx.settings, ["maps", "distance_unit"]) || "km"
       payload = %{"trip_id" => id, "distance_unit" => unit}
-      owner = Dawarich.Jobs.Ownership.lock(ctx.repo, "command:trips.calculate")
+      owner = Dawarich.Tracks.Owner.lock(ctx.repo, "command:trips.calculate")
 
       if owner == :oban do
         ctx.repo.query!(

@@ -2,7 +2,6 @@ defmodule Dawarich.Points.AnomalyBackfill do
   @moduledoc false
 
   alias Dawarich.Points.AnomalyFilter
-  alias Dawarich.RailsCommands
   alias Dawarich.State.Lease
   alias Dawarich.Points.AnomalyBackfillProgress, as: Progress
 
@@ -69,11 +68,7 @@ defmodule Dawarich.Points.AnomalyBackfill do
             ).num_rows
 
           if cleared > 0,
-            do:
-              RailsCommands.insert!(repo, "points.tile_epoch", %{
-                "user_id" => args["user_id"],
-                "timestamps" => []
-              })
+            do: Dawarich.RailsEffects.tile_epoch(repo, args["user_id"], [])
         end
 
         Progress.reset!(repo, args)

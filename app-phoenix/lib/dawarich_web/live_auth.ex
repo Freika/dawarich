@@ -6,7 +6,7 @@ defmodule DawarichWeb.LiveAuth do
   import Phoenix.LiveView,
     only: [attach_hook: 4, connected?: 1, get_connect_info: 2, put_flash: 3, redirect: 2]
 
-  @layout ~w(locale suggested_locale self_hosted request_path query_params rails_csrf_token base_url)a
+  @layout ~w(notification_session locale suggested_locale self_hosted request_path query_params rails_csrf_token base_url)a
 
   def on_mount(:default, _params, session, socket) do
     rendered = session["rails_user_id"]

@@ -1,7 +1,7 @@
 defmodule Dawarich.Tracks.ThrottledBackfill do
   @moduledoc false
 
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
   alias Dawarich.RailsCommands
   alias Dawarich.Tracks.{BackfillWalks, RangeWorker, Settings, ThrottledBackfillWorker}
 
@@ -38,8 +38,8 @@ defmodule Dawarich.Tracks.ThrottledBackfill do
 
   defp start(repo, oban, step, now, opts) do
     repo.transaction(fn ->
-      owner = Ownership.lock(repo, @key)
-      range_owner = Ownership.lock(repo, "command:tracks.generate_range")
+      owner = Dawarich.Tracks.Owner.lock(repo, @key)
+      range_owner = Dawarich.Tracks.Owner.lock(repo, "command:tracks.generate_range")
       current = BackfillWalks.current(repo, step.user_id, step.walk_id, step.cursor_timestamp)
 
       cond do

@@ -106,11 +106,14 @@ defmodule Dawarich.Geocoding.NightlySweep do
       receipt = uuid(Ecto.UUID.dump!(root), "invalidated:#{user}")
 
       if Processed.claim!(repo, receipt, "geocoding.nightly") do
-        RailsCommands.insert!(repo, "stats.caches_invalidated", %{
-          "user_id" => user,
-          "year" => nil,
-          "scope" => "all"
-        })
+        Dawarich.Stats.CacheInvalidation.call(
+          repo,
+          %{
+            "user_id" => user,
+            "year" => nil,
+            "scope" => "all"
+          }
+        )
       end
     end
   end

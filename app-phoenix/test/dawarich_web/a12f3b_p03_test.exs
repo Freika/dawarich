@@ -1,7 +1,8 @@
 defmodule DawarichWeb.A12f3bP03Test do
   use Dawarich.JobsCase, async: false
   alias Dawarich.Jobs.{Dispatch, Ownership}
-  alias Dawarich.Posters.{Persistence, Generation, ProgressWorker, PurgeWorker}
+  alias Dawarich.Posters.{Persistence, Generation, ProgressWorker}
+  alias Dawarich.Exports.PurgeWorker
   alias Dawarich.Storage
 
   setup do
@@ -24,6 +25,7 @@ defmodule DawarichWeb.A12f3bP03Test do
   end
 
   @tag a12f3b_case: "P03a"
+  @tag a12f3b_r15: "R15k02"
   test "poster producers finish without a Rails poller", c do
     {:ok, id} =
       Persistence.create(
@@ -65,6 +67,14 @@ defmodule DawarichWeb.A12f3bP03Test do
 
     assert rows("SELECT status FROM posters WHERE id=$1", [id]) == [[2]]
     assert rows("SELECT kind FROM phoenix.rails_commands") == []
+    channel = Dawarich.RailsMessages.broadcasting([{:user, 1}, "posters"])
+
+    start_supervised!(
+      {Dawarich.Cable.PgBus, name: Dawarich.Cable.Bus, repo: ScratchRepo, polling: false}
+    )
+
+    {:ok, ref} = Dawarich.Cable.Bus.subscribe(channel)
+    assert_receive {:cable_pg, _, _, :subscribed, ^channel, ^ref}
     progress = jobs("Dawarich.Posters.ProgressWorker")
     assert length(progress) == 3
 
@@ -72,7 +82,14 @@ defmodule DawarichWeb.A12f3bP03Test do
       assert job["locale"] == "de"
       assert :ok = ProgressWorker.run(ScratchRepo, job)
       assert :ok = ProgressWorker.run(ScratchRepo, job)
+      send(Dawarich.Cable.Bus, :poll)
+      assert_receive {:cable_pg, _, _, ^channel, _seq, payload} = event
+      assert Dawarich.Cable.Bus.event(event) == {:message, channel, payload}
+      assert Jason.decode!(payload) =~ "poster_#{id}"
     end
+
+    refute_receive {:cable_pg, _, _, ^channel, _, _}
+    Dawarich.Cable.Bus.unsubscribe(channel)
 
     events = rows("SELECT channel,payload FROM phoenix.cable_events ORDER BY seq")
     assert length(events) == 3
@@ -86,9 +103,9 @@ defmodule DawarichWeb.A12f3bP03Test do
     end
 
     assert {:ok, ^id} = Persistence.delete(id, %{id: 1}, ScratchRepo)
-    assert [purge] = jobs("Dawarich.Posters.PurgeWorker")
-    assert :ok = PurgeWorker.run(ScratchRepo, purge, services: c.services)
-    assert :ok = PurgeWorker.run(ScratchRepo, purge, services: c.services)
+    assert [purge] = jobs("Dawarich.Exports.PurgeWorker")
+    assert :ok = PurgeWorker.run(purge, services: c.services)
+    assert :ok = PurgeWorker.run(purge, services: c.services)
     assert rows("SELECT id FROM active_storage_blobs") == []
     assert Path.wildcard(c.storage.root <> "/**/*") |> Enum.filter(&File.regular?/1) == []
     Ownership.put!(ScratchRepo, "command:posters.create", :sidekiq, pinned: true)
@@ -130,26 +147,25 @@ defmodule DawarichWeb.A12f3bP03Test do
           )
 
     assert {:ok, ^first} = Persistence.delete(first, %{id: 1}, ScratchRepo)
-    assert [purge] = jobs("Dawarich.Posters.PurgeWorker")
-    assert :ok = PurgeWorker.run(ScratchRepo, purge, services: c.services)
+    assert jobs("Dawarich.Exports.PurgeWorker") == []
     assert Storage.get!(c.storage, blob.key) == "synthetic"
     assert rows("SELECT id FROM active_storage_blobs") == [[blob_id]]
     assert {:ok, ^second} = Persistence.delete(second, %{id: 1}, ScratchRepo)
-    orphan = jobs("Dawarich.Posters.PurgeWorker") |> List.last()
+    orphan = jobs("Dawarich.Exports.PurgeWorker") |> List.last()
     blocked = %{services: %{"local" => %{root: c.storage.root, service: "local"}}}
     file = Storage.disk_path(c.storage.root, blob.key)
     File.rm!(file)
     File.mkdir!(file)
 
     assert {:error, {:storage_delete, :eperm}} =
-             PurgeWorker.run(ScratchRepo, orphan, services: blocked)
+             PurgeWorker.run(orphan, services: blocked)
 
     assert rows("SELECT id FROM active_storage_blobs") == []
     File.rmdir!(file)
     File.write!(file, "synthetic")
-    assert :ok = PurgeWorker.run(ScratchRepo, orphan, services: c.services)
+    assert :ok = PurgeWorker.run(orphan, services: c.services)
     assert rows("SELECT id FROM active_storage_blobs") == []
-    assert File.read!(file) == "synthetic"
+    refute File.exists?(file)
   end
 
   @tag review_case: "R2"
@@ -186,9 +202,9 @@ defmodule DawarichWeb.A12f3bP03Test do
     end
 
     assert {:ok, ^poster} = Persistence.delete(poster, %{id: 1}, ScratchRepo)
-    assert [purge] = jobs("Dawarich.Posters.PurgeWorker")
-    assert :ok = PurgeWorker.run(ScratchRepo, purge, services: c.services)
-    assert :ok = PurgeWorker.run(ScratchRepo, purge, services: c.services)
+    assert [purge] = jobs("Dawarich.Exports.PurgeWorker")
+    assert :ok = PurgeWorker.run(purge, services: c.services)
+    assert :ok = PurgeWorker.run(purge, services: c.services)
 
     assert rows("SELECT id FROM active_storage_variant_records WHERE blob_id=$1", [parent.id]) ==
              []
@@ -198,21 +214,10 @@ defmodule DawarichWeb.A12f3bP03Test do
              [[orphan.id, shared.id]]
            ) == []
 
-    children = jobs("Dawarich.Posters.PurgeWorker") |> Enum.drop(1)
+    assert [purge] == jobs("Dawarich.Exports.PurgeWorker")
 
-    assert Enum.flat_map(children, & &1["blob_ids"]) |> Enum.sort() ==
-             Enum.sort([orphan.id, shared.id])
-
-    for child <- children do
-      assert :ok = PurgeWorker.run(ScratchRepo, child, services: c.services)
-      assert :ok = PurgeWorker.run(ScratchRepo, child, services: c.services)
-    end
-
-    grandchildren = jobs("Dawarich.Posters.PurgeWorker") |> Enum.drop(1 + length(children))
-    assert Enum.flat_map(grandchildren, & &1["blob_ids"]) == [nested.id]
-
-    for child <- grandchildren,
-        do: assert(:ok = PurgeWorker.run(ScratchRepo, child, services: c.services))
+    assert Enum.map(purge["objects"], & &1["key"]) |> Enum.sort() ==
+             Enum.sort([parent.key, orphan.key, nested.key])
 
     assert rows("SELECT id FROM active_storage_variant_records") == []
 

@@ -18,7 +18,8 @@ defmodule DawarichWeb.TrackShareActions do
   def init(action), do: action
 
   def native?(conn, params) do
-    conn.method in ~w(GET HEAD POST PATCH DELETE) and LayoutAssigns.self_hosted?() and
+    conn.method in ~w(GET HEAD POST PATCH DELETE) and
+      (Dawarich.Standalone.enabled?() or LayoutAssigns.self_hosted?()) and
       is_binary(params["track_id"]) and params["track_id"] =~ ~r/\A\d{1,18}\z/ and
       get_req_header(conn, "turbo-frame") in [[], ["share-link-modal"]] and
       get_req_header(conn, "x-dawarich-client") == []

@@ -64,10 +64,11 @@ defmodule Dawarich.UserData.Restore.PointWriter do
            ) do
         {:ok, %{num_rows: count}} ->
           if count > 0 do
-            Dawarich.RailsCommands.insert!(repo, "points.tile_epoch", %{
-              "user_id" => hd(cast)["user_id"],
-              "timestamps" => Enum.map(cast, & &1["timestamp"])
-            })
+            Dawarich.RailsEffects.tile_epoch(
+              repo,
+              hd(cast)["user_id"],
+              Enum.map(cast, & &1["timestamp"])
+            )
           end
 
           count

@@ -5,15 +5,17 @@ defmodule Dawarich.Stats.WebCommands do
 
   def update_all(repo, user, context) do
     repo.transaction(fn ->
-      case Ownership.lock(repo, "command:stats.full_recalculation") do
+      case if(Dawarich.Standalone.enabled?(),
+             do: :oban,
+             else: Ownership.lock(repo, "command:stats.full_recalculation")
+           ) do
         :oban ->
           if Dawarich.State.claim(repo, "stats_full_recalculation:user:#{user.id}", 300) do
-            publish!(
-              repo,
-              "stats.full_recalculation",
-              %{"user_id" => user.id, "source_job_id" => Ecto.UUID.generate()},
-              context.now
-            )
+            Dawarich.Stats.StatsFullRecalculationEffects.call(repo, %{
+              "user_id" => user.id,
+              "source_job_id" => Ecto.UUID.generate(),
+              "run_at" => DateTime.to_unix(context.now, :microsecond) / 1_000_000
+            })
           end
 
           result(context, "stats_are_being_updated", %{})
@@ -28,7 +30,10 @@ defmodule Dawarich.Stats.WebCommands do
   def update(repo, user, year, month, context) do
     if month == "all" or Regex.match?(~r/\A(?:0?[1-9]|1[0-2])\z/, month) do
       repo.transaction(fn ->
-        case Ownership.lock(repo, "command:stats.calculate_month") do
+        case if(Dawarich.Standalone.enabled?(),
+               do: :oban,
+               else: Ownership.lock(repo, "command:stats.calculate_month")
+             ) do
           :oban ->
             for number <- if(month == "all", do: Enum.to_list(1..12), else: [month]) do
               publish!(

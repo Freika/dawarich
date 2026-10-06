@@ -3,7 +3,7 @@ defmodule Dawarich.Imports.BulkWriter do
 
   alias Dawarich.Imports.{NormalCast, SourceDimensions}
   alias Dawarich.Imports.Geometry
-  alias Dawarich.{RailsCommands, Repo}
+  alias Dawarich.Repo
 
   @columns ~w(lonlat timestamp altitude altitude_decimal velocity tracker_id import_id user_id created_at updated_at battery ping accuracy vertical_accuracy ssid bssid inrids in_regions topic battery_status connection trigger motion_data raw_data course course_accuracy)a
   @required ~w(lonlat timestamp import_id user_id created_at updated_at)a
@@ -29,10 +29,7 @@ defmodule Dawarich.Imports.BulkWriter do
 
       if inserted > 0 do
         fence.(fn ->
-          RailsCommands.insert!(repo, "points.tile_epoch", %{
-            "user_id" => import.user_id,
-            "timestamps" => Enum.map(unique, & &1.timestamp)
-          })
+          Dawarich.RailsEffects.tile_epoch(repo, import.user_id, Enum.map(unique, & &1.timestamp))
         end)
       end
 
@@ -51,10 +48,7 @@ defmodule Dawarich.Imports.BulkWriter do
       inserted = fence.(fn -> insert!(values, repo) end)
 
       fence.(fn ->
-        RailsCommands.insert!(repo, "points.tile_epoch", %{
-          "user_id" => import.user_id,
-          "timestamps" => Enum.map(rows, & &1.timestamp)
-        })
+        Dawarich.RailsEffects.tile_epoch(repo, import.user_id, Enum.map(rows, & &1.timestamp))
       end)
 
       {inserted, cache}
