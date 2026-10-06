@@ -88,33 +88,54 @@ operator scrape only, never web hand-back. Remove the target after G49; there
 is no default Rails exporter target or Ruby dependency in the native exporter.
 No backend was contacted during tests.
 
-## Task 10 prerequisite gap and minimum seam
+## Map application producers
 
-At the allocated baseline `8d6368fc3`, the plan's proposed owners
-`points/move.ex`, `map_edits/publisher.ex`, and
-`dawarich_web/api/tiles_controller.ex` do not exist. A census finds no equivalent
-native point-position mutation, map publisher or tile request flow.
-The move/tile port belongs to sync/route closure, not this metrics cut.
+`Dawarich.Metrics.Map.definitions/0` retains the eight Rails 1.15.3 map
+families. The native owners are `Dawarich.Points.ApiPosition`,
+`Dawarich.Points.PositionEffects`, `Dawarich.MapEdits.Publisher`, and
+`Dawarich.Tiles.Http` through the point/track tile controllers.
 
-`Dawarich.Metrics.Map.definitions/0` supplies the retained eight map families,
-buckets and labels as the minimum integration seam:
+| Family (with dawarich_map_ prefix) | Type | Labels / buckets |
+| --- | --- | --- |
+| point_moves_total | counter | outcome: success, conflict, timeout |
+| point_move_duration_seconds | histogram | outcome; 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3 |
+| point_move_lock_wait_seconds | histogram | outcome; 0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3 |
+| point_move_track_points | histogram | no labels; 1, 100, 1000, 10000, 50000, 100000 |
+| point_move_track_segments | histogram | no labels; 0, 1, 5, 10, 25, 50, 100 |
+| post_commit_failures_total | counter | operation: publish, broadcast, stats, achievements |
+| tile_requests_total | counter | layer: point_tiles, track_tiles; outcome |
+| tile_request_duration_seconds | histogram | layer, outcome; 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5 |
 
-- `[:dawarich, :map, :move]`: count, duration, lock_wait, track_points,
-  track_segments; metadata outcome. Times are native units.
-- `[:dawarich, :map, :post_commit_failure]`: count; metadata operation.
-- `[:dawarich, :map, :tile]`: count, duration; metadata layer, outcome.
-  Duration is native units.
+The move event `[:dawarich, :map, :move]` carries count, duration, lock_wait,
+track_points and track_segments, with outcome metadata. Duration includes
+synchronous publication and follow-up scheduling. Lock wait measures acquisition
+of the track and point row locks. Successful tracked moves report the non-anomalous
+recalculation point count and segment count. Conflicts retain the source default
+of one point and the current track's segment count. Timeouts report one point and
+zero segments, retaining the lock wait if acquisition completed; an acquisition
+timeout reports zero lock wait. Untracked moves report one point and zero segments.
+Invalid coordinates/history, authorization failures and missing points do not emit
+move outcomes, matching the source service boundary.
 
-Map names: point_moves_total, point_move_duration_seconds,
-point_move_lock_wait_seconds, point_move_track_points,
-point_move_track_segments, post_commit_failures_total, tile_requests_total,
-tile_request_duration_seconds, all under `dawarich_map_`.
-Exact buckets are retained from Yabeda. There are no fake producer emissions.
+`[:dawarich, :map, :post_commit_failure]` carries count and operation.
+Tile-epoch/publication orchestration uses publish; the publisher separately records
+broadcast exceptions and failed transport results. Stats and achievement scheduling
+failures retain their respective operation labels. These rescued failures preserve
+the committed point write and its successful move outcome.
 
-Task 10 is **not complete**: its real move/tile/publish test and
-M-F3O-MAP post-commit mutation require those native owners. No direct telemetry
-test is claimed as producer proof. Do not accept map observability until the
-owners emit these events and the prescribed real-flow test/mutation passes.
+The tile event `[:dawarich, :map, :tile]` carries count and duration, with layer
+and outcome metadata. It measures the tile action after authorization: 200/204
+map to success, 304 to not_modified, 400 to invalid, 503 to failure, and other
+statuses to http_<status>. Conditional, empty and error responses each emit once.
+All times use native units in telemetry and convert to seconds at the reporter.
+No point IDs, users, coordinates, SQL or exception messages become map labels.
+
+The real-flow test in `app-phoenix/test/dawarich/metrics/map_test.exs` covers
+tracked and untracked moves, conflicts, cancellation before/after acquisition,
+actual row-lock contention, all four post-commit operation labels, native tile
+controllers and real SQL failures at the shared tile-query seam. It checks the
+scraped counters, histogram counts/sums, native-time conversion and exact buckets.
+M-F3O-MAP suppresses the post-commit failure event and must fail this test.
 
 ## Verification boundary
 
