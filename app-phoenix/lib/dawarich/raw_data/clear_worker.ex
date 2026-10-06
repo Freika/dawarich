@@ -11,6 +11,7 @@ defmodule Dawarich.RawData.ClearWorker do
 
   alias Dawarich.RawData.UserSweep
   alias Dawarich.ReleaseOperations
+  alias Dawarich.State.Lease
 
   @key "cron:raw_data_clear_job"
   @clear """
@@ -46,8 +47,17 @@ defmodule Dawarich.RawData.ClearWorker do
 
   def run(repo, _oban, %{"user_id" => user_id}, opts) when is_integer(user_id) do
     if ReleaseOperations.user?(repo, user_id) do
-      cleared = clear(repo, user_id, opts, 0)
-      if cleared > 0, do: Logger.info("Cleared raw_data for #{cleared} points (user #{user_id})")
+      Lease.with_lease(
+        repo,
+        "clear_raw_data:#{user_id}",
+        fn ->
+          cleared = clear(repo, user_id, opts, 0)
+
+          if cleared > 0,
+            do: Logger.info("Cleared raw_data for #{cleared} points (user #{user_id})")
+        end,
+        timeout_ms: 0
+      )
     end
 
     :ok
