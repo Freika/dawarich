@@ -64,8 +64,8 @@ defmodule Dawarich.TagPagesTest do
     tag!(owner, 83821, "Owned")
     tag!(foreign, 83822, "Foreign")
     assert {:ok, %{id: 83821, name: "Owned"}} = TagPages.edit(owner, 83821)
-    assert :rails = TagPages.edit(owner, 83822)
-    assert :rails = TagPages.edit(owner, 999_999)
+    assert :not_found = TagPages.edit(owner, 83822)
+    assert :not_found = TagPages.edit(owner, 999_999)
   end
 
   test "edit preserves blank fields demo and privacy attributes", %{owner: owner} do

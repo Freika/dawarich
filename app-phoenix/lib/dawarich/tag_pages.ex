@@ -24,7 +24,7 @@ defmodule Dawarich.TagPages do
            [user.id, id]
          ).rows do
       [values] -> {:ok, row(values)}
-      [] -> :rails
+      [] -> :not_found
     end
   end
 

@@ -65,7 +65,7 @@ defmodule Dawarich.Tags.Writes do
            [id, user_id]
          ).rows do
       [values] -> Map.new(Enum.zip(@columns, values))
-      [] -> repo.rollback(:rails)
+      [] -> repo.rollback(:not_found)
     end
   end
 
@@ -111,6 +111,7 @@ defmodule Dawarich.Tags.Writes do
     case repo.transaction(fun) do
       {:ok, outcome} -> outcome
       {:error, :rails} -> :rails
+      {:error, :not_found} -> :not_found
     end
   rescue
     _ in [Postgrex.Error, DBConnection.ConnectionError] -> :rails
