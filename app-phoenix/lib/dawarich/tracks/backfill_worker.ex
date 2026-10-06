@@ -3,7 +3,7 @@ defmodule Dawarich.Tracks.BackfillWorker do
   use Oban.Worker, queue: :tracks, max_attempts: 26
 
   require Logger
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
   alias Dawarich.Tracks.{BackfillPeriod, RangeWorker}
 
   def args_from_command(1, %{"user_id" => id, "cycle_id" => cycle, "time_zone" => zone} = p)
@@ -38,7 +38,7 @@ defmodule Dawarich.Tracks.BackfillWorker do
 
     {:ok, _} =
       repo.transaction(fn ->
-        Ownership.lock(repo, "command:tracks.generate_range")
+        Dawarich.Tracks.Owner.lock(repo, "command:tracks.generate_range")
 
         repo.query!(
           "UPDATE phoenix.track_backfill_ranges SET due_at = $3, expires_at = GREATEST(expires_at, $4), " <>
@@ -58,7 +58,7 @@ defmodule Dawarich.Tracks.BackfillWorker do
   end
 
   defp consume(repo, oban, %{"user_id" => user_id, "cycle_id" => cycle}, opts) do
-    owner = Ownership.lock(repo, "command:tracks.generate_range")
+    owner = Dawarich.Tracks.Owner.lock(repo, "command:tracks.generate_range")
     now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
 
     case repo.query!(

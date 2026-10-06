@@ -4,14 +4,13 @@ defmodule Dawarich.Transportation.RecalculationStatus do
   @ttl 86_400
   @increment """
   local raw = redis.call('GET', KEYS[1])
-  if not raw then return 0 end
-  local state = cjson.decode(raw)
+  local state = raw and cjson.decode(raw) or {processed_tracks = 0, total_tracks = cjson.null}
   if state.status == 'completed' then return state.processed_tracks end
   if redis.call('SADD', KEYS[2], ARGV[1]) == 0 then return state.processed_tracks end
   redis.call('EXPIRE', KEYS[2], 86400)
   state.processed_tracks = state.processed_tracks + 1
   local ttl = 86400
-  if state.processed_tracks >= state.total_tracks then
+  if type(state.total_tracks) == 'number' and state.processed_tracks >= state.total_tracks then
     state.status = 'completed'
     state.completed_at = ARGV[2]
     ttl = 300

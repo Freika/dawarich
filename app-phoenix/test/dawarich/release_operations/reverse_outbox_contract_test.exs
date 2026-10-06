@@ -39,10 +39,12 @@ defmodule Dawarich.ReleaseOperations.ReverseOutboxContractTest do
       )
       |> List.flatten()
 
+    files =
+      Path.wildcard(Path.join(@operations, "*.ex")) ++
+        [Path.join(@operations, "../tracks/effects.ex")]
+
     kinds =
-      @operations
-      |> Path.join("*.ex")
-      |> Path.wildcard()
+      files
       |> Enum.flat_map(&inserted_kinds/1)
       |> Enum.uniq()
       |> Enum.sort()
