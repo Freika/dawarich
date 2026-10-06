@@ -157,14 +157,24 @@ defmodule Dawarich.Families.WebInvitations do
       Keyword.get(opts, :enqueue, &enqueue/3).(repo, payload, ctx.now)
       key = if ctx.self_hosted, do: "sent_self_hosted", else: "sent"
 
-      Notifications.create!(
-        repo,
-        user.id,
-        :info,
-        t(ctx.locale, "invite", "invitation_sent"),
-        t(ctx.locale, "invite", key, %{"email" => email}),
-        at
-      )
+      WebCreate.notify(fn ->
+        Keyword.get(opts, :notify, fn ->
+          Notifications.create!(
+            repo,
+            user.id,
+            :info,
+            t(
+              Dawarich.Mail.ExploreFeatures.locale(user.settings, "en"),
+              "invite",
+              "invitation_sent"
+            ),
+            t(Dawarich.Mail.ExploreFeatures.locale(user.settings, "en"), "invite", key, %{
+              "email" => email
+            }),
+            at
+          )
+        end).()
+      end)
 
       id
     end)

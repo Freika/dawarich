@@ -13,6 +13,20 @@ defmodule DawarichWeb.A12f3bF04Test do
 
   @tag a12f3b_case: "F04a"
   test "family invitations create cancel and distinguish new from token", c do
+    assert request(c.owner, "POST", "/family/invitations").status == 400
+
+    assert {:ok, _} =
+             WebInvitations.create(
+               Repo,
+               c.owner,
+               %{"email" => "notification@example.test"},
+               %{now: ~U[2026-10-03 10:00:00Z], locale: "en", self_hosted: true},
+               notify: fn -> raise "synthetic notification failure" end
+             )
+
+    Repo.query!("DELETE FROM family_invitations WHERE email='notification@example.test'")
+    Repo.query!("DELETE FROM job_outbox")
+
     conn =
       request(c.owner, "POST", "/family/invitations", %{
         "family_invitation" => %{"email" => " NEW@EXAMPLE.TEST "}

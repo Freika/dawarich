@@ -155,15 +155,7 @@ defmodule DawarichWeb.FamilyActions do
       )
 
   def error(conn, :not_authorized),
-    do:
-      redirect_key(
-        conn,
-        303,
-        "/",
-        "alert",
-        "controllers.application.you_are_not_authorized_to_perform_this_action",
-        "en"
-      )
+    do: DawarichWeb.FamilyGate.redirect(conn, "/", :not_authorized)
 
   def error(conn, :not_found), do: conn |> send_resp(404, "") |> halt()
   def error(conn, :missing_parameter), do: conn |> send_resp(400, "") |> halt()
@@ -208,7 +200,18 @@ defmodule DawarichWeb.FamilyActions do
         __changed__: nil,
         page: page,
         upgrade_href: nil,
-        flash: %{},
+        flash:
+          if(action == :create,
+            do: %{
+              "alert" =>
+                Translate.t(
+                  conn.assigns.locale,
+                  "controllers.families.failed_to_create_family",
+                  %{}
+                )
+            },
+            else: %{}
+          ),
         rails_js: true,
         rails_charts: false,
         navbar:

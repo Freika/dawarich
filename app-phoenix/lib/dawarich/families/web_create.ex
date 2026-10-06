@@ -3,7 +3,7 @@ defmodule Dawarich.Families.WebCreate do
   alias Dawarich.{Notifications, I18n}
   alias Dawarich.Mail.ExploreFeatures
 
-  def run(repo, user, attrs, ctx) do
+  def run(repo, user, attrs, ctx, opts \\ []) do
     name =
       if is_binary(attrs["name"]),
         do: String.replace(attrs["name"], ~r/\A[\0\t\n\v\f\r ]+|[\0\t\n\v\f\r ]+\z/, ""),
@@ -15,7 +15,7 @@ defmodule Dawarich.Families.WebCreate do
       errors != [] -> {:invalid, errors, name}
       family(repo, user.id) != nil -> {:error, :not_authorized}
       not ctx.self_hosted and user.plan != 2 -> {:error, :not_authorized}
-      true -> create(repo, user, name, ctx)
+      true -> create(repo, user, name, ctx, opts)
     end
   end
 
@@ -44,6 +44,7 @@ defmodule Dawarich.Families.WebCreate do
   end
 
   def refresh_access(_repo, _family, access, _plan, _until, true), do: access
+  def refresh_access(_repo, _family, access, _plan, nil, false), do: access
 
   def refresh_access(repo, family, access, plan, until, false) do
     effective =
@@ -91,7 +92,7 @@ defmodule Dawarich.Families.WebCreate do
     end
   end
 
-  defp create(repo, user, name, ctx) do
+  defp create(repo, user, name, ctx, opts) do
     repo.transaction(fn ->
       repo.query!("SELECT id FROM users WHERE id=$1 FOR UPDATE", [user.id], log: false)
       if family(repo, user.id), do: repo.rollback(:not_authorized)
@@ -112,17 +113,27 @@ defmodule Dawarich.Families.WebCreate do
 
       locale = ExploreFeatures.locale(user.settings, "en")
 
-      Notifications.create!(
-        repo,
-        user.id,
-        :info,
-        t(locale, "family_created"),
-        t(locale, "you_ve_successfully_created_the_family_name", %{"name" => name}),
-        at
-      )
+      notify(fn ->
+        Keyword.get(opts, :notify, fn ->
+          Notifications.create!(
+            repo,
+            user.id,
+            :info,
+            t(locale, "family_created"),
+            t(locale, "you_ve_successfully_created_the_family_name", %{"name" => name}),
+            at
+          )
+        end).()
+      end)
 
       id
     end)
+  end
+
+  def notify(callback) do
+    callback.()
+  rescue
+    _error -> :ok
   end
 
   defp t(locale, key, params \\ %{}) do

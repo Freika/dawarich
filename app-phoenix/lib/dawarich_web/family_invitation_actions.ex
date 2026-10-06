@@ -28,7 +28,20 @@ defmodule DawarichWeb.FamilyInvitationActions do
         result =
           case action do
             :create ->
-              WebInvitations.create(Repo, user, conn.params["family_invitation"] || %{}, ctx)
+              cond do
+                is_nil(family) ->
+                  {:error, :not_in_family}
+
+                family.role != 0 ->
+                  {:error, :not_authorized}
+
+                not is_map(conn.params["family_invitation"]) or
+                    map_size(conn.params["family_invitation"]) == 0 ->
+                  {:error, :missing_parameter}
+
+                true ->
+                  WebInvitations.create(Repo, user, conn.params["family_invitation"], ctx)
+              end
 
             :destroy ->
               WebInvitations.cancel(Repo, user, conn.path_params["id"], ctx)
@@ -89,6 +102,9 @@ defmodule DawarichWeb.FamilyInvitationActions do
   defp respond(conn, _action, {:error, reason})
        when reason in [:not_in_family, :not_authorized, :not_found],
        do: FamilyActions.error(conn, reason)
+
+  defp respond(conn, _action, {:error, :missing_parameter}),
+    do: FamilyActions.error(conn, :missing_parameter)
 
   defp respond(conn, _action, {:error, :invalid_shape}), do: FamilyActions.error(conn, :failed)
 

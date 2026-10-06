@@ -137,7 +137,12 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
   it 'characterizes family create and update forms and invalid names' do
     travel_to now do
       owner, member, outsider, family = family_graph('en')
+      write_family(outsider, :post, '/family', { family: { name: '' } })
+      expect(response.status).to eq(422)
+      expect(response.body).to include(I18n.t('controllers.families.failed_to_create_family'))
+      allow(Notification).to receive(:create!).and_raise('synthetic notification failure')
       write_family(outsider, :post, '/family', { family: { name: '  New family  ' } })
+      allow(Notification).to receive(:create!).and_call_original
       expect(response.status).to eq(302)
       expect(response.location).to end_with('/family')
       expect(outsider.reload.family.name).to eq('New family')
@@ -157,6 +162,14 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
       expect(family.reload.name).to eq('Overridden')
       write_family(member, :patch, '/family', { family: { name: 'Forbidden' } })
       expect(response.status).to eq(303)
+      reset!
+      sign_in member
+      get '/family'
+      token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      patch '/family', params: { family: { name: 'Forbidden' }, authenticity_token: token },
+                       headers: { 'Referer' => 'http://www.example.com/family?locale=de' }
+      expect(response.status).to eq(303)
+      expect(response.location).to eq('http://www.example.com/family?locale=de')
       expect(family.reload.name).to eq('Overridden')
       write_family(owner, :patch, '/family', { family: { name: "e\u0301" * 26 } })
       expect(response.status).to eq(422)
@@ -196,7 +209,11 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
     travel_to now do
       owner, member, outsider, family = family_graph('en')
       family_invitations!(family, owner, outsider.email)
+      write_family(owner, :post, '/family/invitations', {})
+      expect(response.status).to eq(400)
+      allow(Notification).to receive(:create!).and_raise('synthetic notification failure')
       write_family(owner, :post, '/family/invitations', { family_invitation: { email: ' NEW@EXAMPLE.TEST ' } })
+      allow(Notification).to receive(:create!).and_call_original
       expect(response.status).to eq(302)
       invite = family.family_invitations.find_by!(email: 'new@example.test')
       expect(invite.expires_at).to eq(now + 7.days)

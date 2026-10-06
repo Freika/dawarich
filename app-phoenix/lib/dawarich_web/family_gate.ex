@@ -57,7 +57,7 @@ defmodule DawarichWeb.FamilyGate do
     end
   end
 
-  defp redirect(conn, path, reason) do
+  def redirect(conn, path, reason) do
     key =
       case reason do
         :not_authorized ->
