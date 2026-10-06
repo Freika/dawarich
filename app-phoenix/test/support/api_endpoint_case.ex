@@ -88,11 +88,17 @@ defmodule Dawarich.ApiEndpointCase do
       "\r\n"
     ])
 
+    Process.put({__MODULE__, :last_request}, client)
     client
   end
 
   def puma(upstream, body \\ "rails") do
-    socket = accept(upstream)
+    socket =
+      case Process.get({__MODULE__, :last_request}) do
+        nil -> accept(upstream)
+        client -> Dawarich.Test.ApiGolden.rails_connection(client, upstream)
+      end
+
     {head, _rest} = read_head(socket)
     reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}")
     request_line(head)

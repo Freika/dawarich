@@ -113,7 +113,9 @@ defmodule Dawarich.Test.ApiGolden do
     assert received == body
   end
 
-  defp rails_connection(client, upstream) do
+  def rails_connection(nil, upstream), do: accept(upstream)
+
+  def rails_connection(client, upstream) do
     owner = self()
 
     task =

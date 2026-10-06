@@ -180,7 +180,7 @@ defmodule DawarichWeb.Api.SharedEndpointTest do
     cookie = "remember_user_token=synthetic-original-signed-cookie"
     target = "/api/v1/shared/#{@id}/route"
     client = request(ctx.port, target, @headers ++ [{"Cookie", cookie}])
-    puma = accept(ctx.upstream)
+    puma = Dawarich.Test.ApiGolden.rails_connection(client, ctx.upstream)
     {head, _rest} = read_head(puma)
     assert request_line(head) == "GET #{target} HTTP/1.1"
     assert header(head, "cookie") == [cookie]
