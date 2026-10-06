@@ -52,7 +52,7 @@ defmodule Dawarich.MapApi.Closure do
               {"x-scoped-points", to_string(meta.count)}
             ]
 
-        {:points, term, headers, meta}
+        {:points, term, headers, %{meta | from: from, to: to}}
 
       result ->
         result

@@ -741,6 +741,72 @@ defmodule DawarichWeb.A12f2AClosureTest do
     assert get_resp_header(self_hosted, "x-scoped-points") == []
   end
 
+  @tag :a12f2_a_fix_3
+  test "Cloud point ETag retains the caller lower bound", %{user: user, now: now} do
+    System.put_env("SELF_HOSTED", "false")
+    Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [user.id])
+
+    Repo.query!(
+      "INSERT INTO points(user_id,timestamp,lonlat,created_at,updated_at) VALUES($1,$2,ST_SetSRID(ST_MakePoint(13,52),4326),NOW(),NOW())",
+      [user.id, DateTime.to_unix(DateTime.add(now, -3600))]
+    )
+
+    lite = %{user | plan: 0}
+    params = %{"start_at" => "2020-01-01", "end_at" => "2026-10-06T12:00:00Z", "slim" => "true"}
+    {:points, _, _, meta} = Dawarich.MapApi.Closure.read(:points, lite, params, now)
+    source_meta = %{meta | from: DateTime.to_unix(~U[2020-01-01 00:00:00Z])}
+    source_etag = Dawarich.MapApi.Cache.points_etag(user.id, params, source_meta)
+
+    result =
+      invoke(DawarichWeb.Api.MapController, :points, lite, params, now, [
+        {"if-none-match", source_etag}
+      ])
+
+    native = invoke(DawarichWeb.Api.MapController, :points, lite, params, now)
+    unchanged = invoke(DawarichWeb.Api.MapController, :points, lite, params, DateTime.add(now, 1))
+    assert unchanged.resp_body == native.resp_body
+
+    later =
+      invoke(DawarichWeb.Api.MapController, :points, lite, params, DateTime.add(now, 1), [
+        {"if-none-match", hd(get_resp_header(native, "etag"))}
+      ])
+
+    assert [result.status, later.status] == [304, 304]
+    assert result.resp_body == ""
+    assert later.resp_body == ""
+    assert get_resp_header(native, "etag") == [source_etag]
+    assert get_resp_header(unchanged, "etag") == [source_etag]
+
+    open_params = Map.delete(params, "start_at")
+    open = invoke(DawarichWeb.Api.MapController, :points, lite, open_params, now)
+
+    open_later =
+      invoke(DawarichWeb.Api.MapController, :points, lite, open_params, DateTime.add(now, 1), [
+        {"if-none-match", hd(get_resp_header(open, "etag"))}
+      ])
+
+    assert open_later.status == 304
+
+    cutoff = Dawarich.MapApi.Closure.window(lite, now)
+
+    Repo.query!(
+      "INSERT INTO points(user_id,timestamp,lonlat,created_at,updated_at) VALUES($1,$2,ST_SetSRID(ST_MakePoint(13,52),4326),NOW(),NOW())",
+      [user.id, cutoff]
+    )
+
+    boundary = invoke(DawarichWeb.Api.MapController, :points, lite, params, now)
+    assert length(Jason.decode!(boundary.resp_body)) == 2
+
+    removed =
+      invoke(DawarichWeb.Api.MapController, :points, lite, params, DateTime.add(now, 1), [
+        {"if-none-match", hd(get_resp_header(boundary, "etag"))}
+      ])
+
+    assert removed.status == 200
+    assert length(Jason.decode!(removed.resp_body)) == 1
+    refute get_resp_header(removed, "etag") == get_resp_header(boundary, "etag")
+  end
+
   defp source_body(section, name) do
     fixture = "test/fixtures/a12f2a/closure.json" |> File.read!() |> Jason.decode!()
     Enum.find(fixture[section], &(&1["name"] == name))["response"]["body"] |> Jason.decode!()
