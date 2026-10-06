@@ -33,7 +33,7 @@ native acceptance.
 
 Source Sidekiq uses `REDIS_URL` with `RAILS_JOB_QUEUE_DB` default **1**, independently
 of the URL path. Native runtime uses the same queue selector; cache DB defaults
-to 0. Source queues are the 24 named queues in `config/sidekiq.yml`; source cron
+to 0. Source queues are the 23 named queues in `config/sidekiq.yml`; source cron
 has 24 registrations in `config/schedule.yml`. Do not use cron loading alone as
 a fence: installed sidekiq-cron 2.4.0 ScheduleLoader checks `enabled`, whereas
 Launcher constructs the poller from positive `cron_poll_interval` independently.

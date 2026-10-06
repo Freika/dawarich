@@ -5,6 +5,7 @@ require 'fileutils'
 require 'json'
 require 'open3'
 require 'tmpdir'
+require 'uri'
 
 RSpec.describe 'Phoenix lifecycle entrypoints' do
   let(:root) { File.expand_path('../..', __dir__) }
@@ -53,14 +54,57 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
   end
 
   def rails_probe(code)
+    raise ArgumentError, 'Rails probes require RAILS_ENV=test' unless ENV.fetch('RAILS_ENV') == 'test'
+
     env = {
       'SELF_HOSTED' => 'false', 'DAWARICH_CLOUD_DRAIN_ONLY' => 'false',
       'DAWARICH_PHOENIX_LIFECYCLE' => 'false', 'DATABASE_URL' => nil,
-      'REDIS_URL' => 'redis://127.0.0.1:7317', 'RAILS_JOB_QUEUE_DB' => '1'
+      'REDIS_URL' => test_redis_url, 'RAILS_JOB_QUEUE_DB' => '1', 'RAILS_CACHE_DB' => '0'
     }
     stdout, stderr, status = Open3.capture3(env, 'asdf', 'exec', 'bundle', 'exec', 'ruby', '-e', code, chdir: root)
     expect(status).to be_success, "Rails probe failed: #{stderr.lines.last(8).join}"
     JSON.parse(stdout.lines.find { |line| line.start_with?('DRAIN_PROBE=') }.delete_prefix('DRAIN_PROBE='))
+  end
+
+  def test_redis_url
+    url = URI.parse(ENV.fetch('REDIS_URL'))
+    unless %w[redis rediss].include?(url.scheme) && %w[127.0.0.1 localhost [::1]].include?(url.host) &&
+           url.port&.between?(1, 65_535) && ![6379, 7205].include?(url.port) &&
+           url.path.match?(%r{\A(?:/\d*)?\z}) && url.query.nil? && url.fragment.nil?
+      raise ArgumentError, 'Rails probes require a private test Redis URL'
+    end
+
+    url.path = ''
+    url.to_s
+  rescue URI::InvalidURIError, KeyError, TypeError
+    raise ArgumentError, 'Rails probes require a private test Redis URL'
+  end
+
+  it 'Rails probes preserve the caller Redis target with separate queue and cache databases' do
+    url = URI.parse(ENV.fetch('REDIS_URL'))
+    url.port = url.port == 65_535 ? url.port - 1 : url.port + 1
+    url.path = '/7'
+    stub_const('ENV', { 'RAILS_ENV' => 'test', 'REDIS_URL' => url.to_s })
+    url.path = ''
+    expect(Open3).to receive(:capture3).with(
+      hash_including('REDIS_URL' => url.to_s, 'RAILS_JOB_QUEUE_DB' => '1', 'RAILS_CACHE_DB' => '0'),
+      'asdf', 'exec', 'bundle', 'exec', 'ruby', '-e', 'probe', chdir: root
+    ).and_return(["DRAIN_PROBE={}\n", '', instance_double(Process::Status, success?: true)])
+
+    expect(rails_probe('probe')).to eq({})
+  end
+
+  it 'Rails probes reject unsafe Redis targets before launching destructive cleanup' do
+    expect(Open3).not_to receive(:capture3)
+    env = { 'RAILS_ENV' => 'test' }
+    stub_const('ENV', env)
+    [nil, '', 'not a URL', 'http://127.0.0.1:12345', 'redis://example.com:12345',
+     'redis://127.0.0.1', 'redis://127.0.0.1:6379', 'redis://127.0.0.1:7205'].each do |url|
+      env['REDIS_URL'] = url
+      expect { rails_probe('probe') }.to raise_error(ArgumentError, 'Rails probes require a private test Redis URL')
+    end
+    env['RAILS_ENV'] = 'production'
+    expect { rails_probe('probe') }.to raise_error(ArgumentError, 'Rails probes require RAILS_ENV=test')
   end
 
   it 'drain only Rails boot disables cache cron loading cron polling and reverse poller' do
