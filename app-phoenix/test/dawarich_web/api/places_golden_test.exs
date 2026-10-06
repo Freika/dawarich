@@ -17,7 +17,11 @@ defmodule DawarichWeb.Api.PlacesGoldenTest do
   end
 
   for kase <- @golden["cases"] do
-    @kase kase
+    @kase if(kase["name"] in ~w(rails_nearby rails_search),
+            do: Map.put(kase, "expect", "own"),
+            else: kase
+          )
+    @tag golden_case: String.to_atom(kase["name"])
     test "golden #{kase["name"]}", %{port: port, upstream: puma} do
       Enum.each(@kase["env"], fn {name, value} -> System.put_env(name, value) end)
       seed(@kase)

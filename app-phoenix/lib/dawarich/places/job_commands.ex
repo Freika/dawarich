@@ -1,7 +1,7 @@
 defmodule Dawarich.Places.JobCommands do
   @moduledoc false
   alias Dawarich.Jobs.Ownership
-  alias Dawarich.RailsCommands
+  alias Dawarich.{RailsCommands, Standalone}
 
   def name_fetch(repo, user, place),
     do:
@@ -52,7 +52,14 @@ defmodule Dawarich.Places.JobCommands do
       end)
 
   defp resolve(repo, type, fun) do
-    {:ok, _} = repo.transaction(fn -> fun.(Ownership.lock(repo, "command:" <> type)) end)
+    {:ok, _} =
+      repo.transaction(fn ->
+        owner =
+          if Standalone.enabled?(), do: :oban, else: Ownership.lock(repo, "command:" <> type)
+
+        fun.(owner)
+      end)
+
     :ok
   end
 

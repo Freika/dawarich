@@ -156,6 +156,17 @@ defmodule DawarichWeb.A8GateEndpointTest do
 
   test "API and storage requests retain their assigned route ownership", ctx do
     upstream = upstream!()
+    replay(ctx, upstream, :get, "/api/v1/route_videos", "")
+    previous = System.get_env("DAWARICH_RAILS")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    System.put_env("DAWARICH_RAILS", "off")
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
 
     for {method, path} <- [
           {:get, "/api/v1/route_videos"}
@@ -167,8 +178,17 @@ defmodule DawarichWeb.A8GateEndpointTest do
                "www.example.com"
              ) == :error
 
-      replay(ctx, upstream, method, path, "")
+      missing = request(ctx, method, path, "")
+      assert missing.status == 404
+      assert missing.resp_body == File.read!(Dawarich.RailsRoot.join("public/404.html"))
+      assert get_resp_header(missing, "set-cookie") == []
     end
+
+    if previous,
+      do: System.put_env("DAWARICH_RAILS", previous),
+      else: System.delete_env("DAWARICH_RAILS")
+
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
     for {method, path, action, pipeline} <- [
           {:post, "/rails/active_storage/direct_uploads", :direct_upload, :storage_upload},

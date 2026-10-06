@@ -10,8 +10,8 @@ defmodule Dawarich.Stats.Schedule do
   def calculate(repo, user_id, year, month, notify, opts \\ []) do
     args = %{
       "user_id" => user_id,
-      "year" => year,
-      "month" => month,
+      "year" => Dawarich.RubyInteger.to_i(year),
+      "month" => Dawarich.RubyInteger.to_i(month),
       "notify_on_failure" => notify
     }
 
@@ -31,7 +31,7 @@ defmodule Dawarich.Stats.Schedule do
 
             Oban.insert!(
               Keyword.get(opts, :oban, Oban),
-              CalculateMonthWorker.new(native, [schedule_in: delay] ++ options)
+              CalculateMonthWorker.new(native, due_options(opts, delay) ++ options)
             )
 
             :ok
@@ -48,5 +48,11 @@ defmodule Dawarich.Stats.Schedule do
       end)
 
     :ok
+  end
+
+  defp due_options(opts, delay) do
+    if clock = opts[:clock],
+      do: [scheduled_at: DateTime.from_unix!(clock + delay)],
+      else: [schedule_in: delay]
   end
 end

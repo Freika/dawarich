@@ -6,6 +6,9 @@ defmodule DawarichWeb.Api.LocationsController do
   alias DawarichWeb.Api.{Body, Params, Respond}
 
   @impl true
+  def init(:index_closure),
+    do: if(Dawarich.Standalone.enabled?(), do: :index_closure, else: :index)
+
   def init(action), do: action
 
   @impl true

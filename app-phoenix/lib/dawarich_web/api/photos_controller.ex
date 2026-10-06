@@ -10,6 +10,9 @@ defmodule DawarichWeb.Api.PhotosController do
   @printable ~r/\A[\x20-\x7E]*\z/
 
   @impl true
+  def init(:thumbnail_closure),
+    do: if(Dawarich.Standalone.enabled?(), do: :thumbnail_closure, else: :thumbnail)
+
   def init(action), do: action
 
   @impl true

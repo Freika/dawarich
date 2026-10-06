@@ -136,56 +136,45 @@ defmodule Dawarich.VisitsApi.SelectPlaceTest do
   end
 
   defp serialized(attrs, outcome) do
-    parent = self()
+    {status, {actual, waiter, waiting}} =
+      ScratchRepo.transaction(fn ->
+        [[holding]] = rows("SELECT pg_backend_pid()")
+        assert {:ok, _} = select(953_301, attrs)
 
-    holder =
-      Task.async(fn ->
-        ScratchRepo.transaction(fn ->
-          [[pid]] = rows("SELECT pg_backend_pid()")
-          assert {:ok, _} = select(953_301, attrs)
-          send(parent, {:holding, pid})
+        waiter =
+          Task.async(fn ->
+            ScratchRepo.checkout(fn ->
+              [[pid]] = rows("SELECT pg_backend_pid()")
+              {pid, select(953_302, attrs)}
+            end)
+          end)
 
-          receive do
-            :release ->
-              if outcome == :rollback, do: ScratchRepo.rollback(:rolled_back), else: :committed
-          end
-        end)
+        waiting = blocked_backend(holding, System.monotonic_time(:millisecond) + 1000)
+        assert is_integer(waiting)
+
+        if outcome == :rollback,
+          do: ScratchRepo.rollback({:rolled_back, waiter, waiting}),
+          else: {:committed, waiter, waiting}
       end)
 
-    assert_receive {:holding, holding}
+    assert {status, actual} ==
+             if(outcome == :commit, do: {:ok, :committed}, else: {:error, :rolled_back})
 
-    waiter =
-      Task.async(fn ->
-        ScratchRepo.checkout(fn ->
-          [[pid]] = rows("SELECT pg_backend_pid()")
-          send(parent, {:waiting, pid})
-          select(953_302, attrs)
-        end)
-      end)
-
-    assert_receive {:waiting, waiting}
-
-    try do
-      assert blocked?(waiting, holding, System.monotonic_time(:millisecond) + 1000)
-    after
-      send(holder.pid, :release)
-    end
-
-    assert Task.await(holder) in [{:ok, :committed}, {:error, :rolled_back}]
-    assert {:ok, _} = Task.await(waiter)
+    assert {^waiting, {:ok, _}} = Task.await(waiter)
     :ok
   end
 
-  defp blocked?(waiting, holding, deadline) do
-    cond do
-      rows("SELECT $2::int=ANY(pg_blocking_pids($1::int))", [waiting, holding]) == [[true]] ->
-        true
+  defp blocked_backend(holding, deadline) do
+    case rows(
+           "SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND $1::int=ANY(pg_blocking_pids(pid))",
+           [holding]
+         ) do
+      [[waiting]] ->
+        waiting
 
-      System.monotonic_time(:millisecond) >= deadline ->
-        false
-
-      true ->
-        blocked?(waiting, holding, deadline)
+      [] ->
+        if System.monotonic_time(:millisecond) < deadline,
+          do: blocked_backend(holding, deadline)
     end
   end
 

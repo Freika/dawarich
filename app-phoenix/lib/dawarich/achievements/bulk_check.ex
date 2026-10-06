@@ -87,12 +87,15 @@ defmodule Dawarich.Achievements.BulkCheck do
   end
 
   defp publish(repo, _oban, args, id, :sidekiq, at) do
-    Dawarich.RailsCommands.insert!(repo, "achievements.bulk_check_leaf", %{
+    payload = %{
       "user_id" => id,
       "notify" => args["notify"],
       "event_id" => child_id(args["event_id"], id),
       "run_at" => DateTime.to_iso8601(at)
-    })
+    }
+
+    payload = if args["force"], do: Map.put(payload, "force", true), else: payload
+    Dawarich.RailsCommands.insert!(repo, "achievements.bulk_check_leaf", payload)
   end
 
   defp uuid(namespace, name) do

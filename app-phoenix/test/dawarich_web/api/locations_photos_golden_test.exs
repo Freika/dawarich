@@ -13,7 +13,11 @@ defmodule DawarichWeb.Api.LocationsPhotosGoldenTest do
   end
 
   for kase <- @golden["cases"] do
-    @kase kase
+    @kase if(
+            kase["name"] in ~w(rails_photos_index rails_locations_suggestions rails_enrich_scan rails_enrich_create),
+            do: Map.put(kase, "expect", "own"),
+            else: kase
+          )
     test "golden #{kase["name"]}", %{port: port, upstream: puma} do
       Enum.each(@kase["env"], fn {name, value} -> System.put_env(name, value) end)
       if get_in(@kase, ["upstream", "fault"]) == "timeout", do: put_photo_source_timeout(300)

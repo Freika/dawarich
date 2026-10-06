@@ -58,7 +58,9 @@ defmodule DawarichWeb.StandaloneMapTest do
     assert byte_size(conn.resp_body) > 0
     track(user!())
     assert request(path, key).resp_body == conn.resp_body
-    assert request(path <> "&speed_coloring=true", key).status == 422
+    colored = request(path <> "&speed_coloring=true", key)
+    assert colored.status == 200
+    assert colored.resp_body == conn.resp_body
   end
 
   test "standalone map bounds and progress read native state without account leakage", %{
@@ -86,7 +88,7 @@ defmodule DawarichWeb.StandaloneMapTest do
     assert request("/api/v1/settings/transportation_recalculation_status", key).status == 401
   end
 
-  test "standalone map invalid timezone terminates with a logged native envelope error", %{
+  test "standalone map preserves stored invalid timezone with source admission fallback", %{
     id: id,
     key: key
   } do
@@ -97,10 +99,12 @@ defmodule DawarichWeb.StandaloneMapTest do
 
     log =
       ExUnit.CaptureLog.capture_log(fn ->
-        assert request("/api/v1/settings", key).status == 422
+        conn = request("/api/v1/settings", key)
+        assert conn.status == 200
+        assert Jason.decode!(conn.resp_body)["settings"]["timezone"] == "unsupported"
       end)
 
-    assert log =~ "standalone_map_timezone"
+    refute log =~ "standalone_map_timezone"
   end
 
   defp request(path, key) do

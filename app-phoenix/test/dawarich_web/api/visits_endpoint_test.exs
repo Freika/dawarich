@@ -61,7 +61,7 @@ defmodule DawarichWeb.Api.VisitsEndpointTest do
         ] do
       System.put_env("DAWARICH_RAILS_SLICES", slices)
       client = submit(ctx, "POST", "/api/v1/visits", payload)
-      puma = accept(ctx.upstream)
+      puma = Dawarich.Test.ApiGolden.rails_connection(client, ctx.upstream)
       {head, rest} = read_head(puma)
       encoded = Jason.encode!(payload)
       assert request_line(head) == "POST /api/v1/visits HTTP/1.1"

@@ -285,4 +285,47 @@ defmodule Dawarich.RuntimeConfigTest do
     System.delete_env("DAWARICH_PHOENIX_AUTH")
     assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:phoenix_auth] == []
   end
+
+  @tag :a12f4_a04_1
+  test "candidate obsolete flags refuse even when empty before runtime children" do
+    names =
+      ~w(DAWARICH_RAILS DAWARICH_PROXY DAWARICH_RAILS_ROUTES DAWARICH_RAILS_SLICES DAWARICH_RAILS_ARGS DAWARICH_PHOENIX_AUTH DAWARICH_OBAN_JOB_KEYS DAWARICH_PHOENIX_LIFECYCLE DAWARICH_BEHIND_PHOENIX DAWARICH_PHOENIX_NODE DAWARICH_CLOUD_DRAIN_ONLY)
+
+    for name <- names, value <- ["", "off", "true", "synthetic-env-value"] do
+      error =
+        assert_raise ArgumentError, fn ->
+          Dawarich.Standalone.validate_candidate_env!(%{name => value})
+        end
+
+      assert error.message ==
+               "#{name} is obsolete in the native candidate; remove it and use native commands"
+
+      refute error.message =~ "synthetic-env-value"
+    end
+
+    assert Dawarich.Standalone.validate_candidate_env!(%{}) == :ok
+    assert Dawarich.Release.Lifecycle.mode(%{}) == {:ok, :rails}
+    assert Dawarich.Application.plan(nil, %{}) == :none
+  end
+
+  @tag :a12f4_a04_2
+  test "retained deployment configuration is not a candidate ownership kill switch" do
+    env = %{
+      "RAILS_ENV" => "production",
+      "RACK_ENV" => "production",
+      "SECRET_KEY_BASE" => "synthetic-not-a-production-secret",
+      "REDIS_URL" => "redis://localhost/1",
+      "RAILS_JOB_QUEUE_DB" => "1",
+      "RAILS_CACHE_DB" => "0",
+      "RAILS_WS_DB" => "2",
+      "RAILS_MAX_THREADS" => "5",
+      "SMTP_ADDRESS" => "smtp.dawarich.test",
+      "SENTRY_DSN" => "https://synthetic@sentry.dawarich.test/1",
+      "SELF_HOSTED" => "false",
+      "ALLOW_EMAIL_PASSWORD_REGISTRATION" => "false",
+      "RAILS_WIRE_DATA_KEY" => "retained"
+    }
+
+    assert Dawarich.Standalone.validate_candidate_env!(env) == :ok
+  end
 end

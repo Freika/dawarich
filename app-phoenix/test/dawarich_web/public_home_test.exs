@@ -26,6 +26,17 @@ defmodule DawarichWeb.PublicHomeTest do
     on_exit(fn -> Logger.configure(level: level) end)
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    previous_jobs_repo = Application.fetch_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, Dawarich.Repo)
+    Dawarich.Repo.query!("DELETE FROM phoenix.app_version", [], log: false)
+
+    on_exit(fn ->
+      case previous_jobs_repo do
+        {:ok, repo} -> Application.put_env(:dawarich, :jobs_repo, repo)
+        :error -> Application.delete_env(:dawarich, :jobs_repo)
+      end
+    end)
+
     Dawarich.State.put_registration_enabled(Dawarich.Repo, true)
     RailsUser.insert!(%{id: 15701, email: "a10b-home@example.invalid"})
     {:ok, before} = Dawarich.Redis.cache_command(["GET", "dawarich/registration_enabled"])
@@ -39,7 +50,9 @@ defmodule DawarichWeb.PublicHomeTest do
     :ok
   end
 
+  @tag :a12f4_gate_home
   test "credentials and public home obey copied false while Cloud home keeps signup" do
+    assert Dawarich.Jobs.repo() == Dawarich.Repo
     assert Code.ensure_loaded?(PublicHomeLive), "public home LiveView must exist"
 
     previous = System.get_env("SELF_HOSTED")

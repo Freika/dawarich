@@ -235,7 +235,7 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
     end
   end
 
-  test "Cloud, the kill switch, HEAD, other suffixes, other ids, the photo list, suggestions and enrich reach Puma even without a key",
+  test "Cloud legacy reads, the kill switch, HEAD, other suffixes and other ids reach Puma before auth",
        %{port: port, upstream: upstream} do
     owner!()
 
@@ -247,10 +247,13 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
           {"GET", "/api/v1/locations.json?lat=1&lon=1", nil},
           {"GET", "/api/v1/photos/a.b/thumbnail?source=immich", nil},
           {"GET", "/api/v1/photos/#{String.duplicate("a", 129)}/thumbnail", nil},
-          {"GET", "/api/v1/photos?start_date=2024-01-01&end_date=2024-01-02", nil},
-          {"GET", "/api/v1/locations/suggestions?q=Berlin", nil},
-          {"POST", "/api/v1/immich/enrich/scan", nil},
-          {"POST", "/api/v1/immich/enrich", nil}
+          {"GET", "/api/v1/photos?start_date=2024-01-01&end_date=2024-01-02",
+           {"DAWARICH_RAILS_SLICES", "api_locations_photos"}},
+          {"GET", "/api/v1/locations/suggestions?q=Berlin",
+           {"DAWARICH_RAILS_SLICES", "api_locations_photos"}},
+          {"POST", "/api/v1/immich/enrich/scan",
+           {"DAWARICH_RAILS_SLICES", "api_locations_photos"}},
+          {"POST", "/api/v1/immich/enrich", {"DAWARICH_RAILS_SLICES", "api_locations_photos"}}
         ] do
       Enum.each(~w(SELF_HOSTED DAWARICH_RAILS_SLICES), &System.delete_env/1)
       with {name, value} <- env, do: System.put_env(name, value)
@@ -262,6 +265,28 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
 
       assert {200, _, _} = read_response(client, method: method)
     end
+
+    System.delete_env("DAWARICH_RAILS_SLICES")
+
+    for hosted <- ["true", "false"] do
+      System.put_env("SELF_HOSTED", hosted)
+
+      for {method, target} <- [
+            {"GET", "/api/v1/photos?start_date=2024-01-01&end_date=2024-01-02"},
+            {"GET", "/api/v1/locations/suggestions?q=Berlin"},
+            {"POST", "/api/v1/immich/enrich/scan"},
+            {"POST", "/api/v1/immich/enrich"}
+          ] do
+        assert {401, headers, ""} =
+                 port
+                 |> request(target, [{"Accept", "application/json"}], method)
+                 |> read_response()
+
+        assert values(headers, "x-dawarich-response") == ["Hey, I'm alive!"]
+      end
+    end
+
+    no_upstream!(upstream)
   end
 
   @tag :review_privacy

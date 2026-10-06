@@ -45,7 +45,8 @@ defmodule DawarichWeb.AuthGate do
     flows = flows()
     standalone = Dawarich.Standalone.enabled?()
 
-    if standalone or System.get_env("SELF_HOSTED") == "true" do
+    if not DawarichWeb.Strangler.handed_back?(conn.path_info) and
+         (standalone or System.get_env("SELF_HOSTED") == "true") do
       Enum.find(@handlers, fn {flow, handler} ->
         flow in flows and handler.route?(conn) and (flow != "api_keys" or not standalone)
       end)

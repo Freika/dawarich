@@ -125,12 +125,24 @@ RSpec.describe 'Phoenix fixture: golden stats API requests', type: :request do
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil),
                 'cases' => ApiStatsGoldenOracle.results.sort_by { _1['name'] } }
     File.write(path, "#{g2_exact_json(fixture)}\n")
+    if (visited = fixture['cases'].find { _1['name'] == 'rails_visited_epoch' })
+      recorded = visited.merge('expect' => 'own', 'cache' => self.class.instance_variable_get(:@visited_epoch_cache))
+      File.write(path.dirname.join('visited_epoch.json'), "#{g2_exact_json(recorded)}\n")
+    end
   end
 
   ApiStatsGoldenOracle::CASES.each do |kase|
     it(kase[:name]) do
       defaults = { method: :get, auth: :bearer, expect: :own, env: {}, seed: :none, user: {} }
-      ApiStatsGoldenOracle.results << g2_record(kase.reverse_merge(defaults))
+      recorded = g2_record(kase.reverse_merge(defaults))
+      ApiStatsGoldenOracle.results << recorded
+      if kase[:name] == 'rails_visited_epoch'
+        user = recorded['setup'].find { _1.first == 'users' }.last.find do |row|
+          row['api_key'] == recorded['request']['headers'].to_h['Authorization'].delete_prefix('Bearer ')
+        end
+        keys = [2023, 'all'].map { "points:tile_epoch:#{user['id']}:#{_1}" }
+        self.class.instance_variable_set(:@visited_epoch_cache, keys.index_with { Rails.cache.read(_1, raw: true) })
+      end
     end
   end
 
@@ -170,6 +182,9 @@ RSpec.describe 'Phoenix fixture: golden stats API requests', type: :request do
     headers = g2_headers(kase, user)
     path = kase[:auth] == :query ? "#{kase[:path]}?api_key=#{user.api_key}" : kase[:path]
     g2_conditional(kase[:conditional], path, headers) if kase[:conditional]
+    if kase[:name] == 'rails_visited_epoch'
+      [2023, 'all'].each { Rails.cache.delete("points:tile_epoch:#{user.id}:#{_1}") }
+    end
     setup = ApiStatsGoldenOracle::TABLES.map do |table|
       rows = ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
       [table, rows.map { JSON.parse(_1) }]
