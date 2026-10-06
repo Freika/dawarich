@@ -1,4 +1,54 @@
 defmodule Dawarich.ErrorReporting do
+  @scope {__MODULE__, :release_scope}
+  @captured {__MODULE__, :release_captured}
+
+  def release(fun) do
+    nested = Process.get(@scope, false)
+    Process.put(@scope, true)
+
+    try do
+      fun.()
+    rescue
+      error ->
+        capture_release(:error, error, __STACKTRACE__)
+        reraise error, __STACKTRACE__
+    catch
+      kind, reason ->
+        capture_release(kind, reason, __STACKTRACE__)
+        :erlang.raise(kind, reason, __STACKTRACE__)
+    after
+      Process.put(@scope, nested)
+      if not nested, do: Process.delete(@captured)
+    end
+  end
+
+  def capture_release(kind, reason, stack) do
+    captured = {kind, reason, stack}
+
+    if Process.get(@captured) != captured do
+      Process.put(@captured, captured)
+      {:ok, _} = Application.ensure_all_started([:ssl, :inets, :sentry])
+
+      if Sentry.get_dsn() do
+        Sentry.capture_exception(Exception.normalize(kind, reason, stack),
+          stacktrace: stack,
+          result: :sync,
+          request_retries: [],
+          handled: false,
+          tags: %{"surface" => "release"}
+        )
+
+        Sentry.flush(timeout: 2_000)
+      end
+    end
+
+    :ok
+  rescue
+    _ -> :ok
+  catch
+    _, _ -> :ok
+  end
+
   def start do
     if Sentry.get_dsn() do
       :telemetry.attach(__MODULE__, [:oban, :job, :exception], &__MODULE__.oban_exception/4, nil)
