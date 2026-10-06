@@ -102,3 +102,15 @@ ownership-selected compatibility branches and retained unused kinds.
 
 Stop the web release with `bin/dawarich stop` using the same cookie and node
 configuration. Redis remains a runtime dependency and must be managed separately.
+
+## Public JavaScript resolution
+
+Standalone static serving resolves asset requests against the manifest in this
+order: the exact logical name, the name with `.js`, then the directory's
+`index.js`. This also handles names such as `stimulus.min` and the public page's
+relative `./channels` import. Only manifest entries are remapped; the existing
+path, host, symlink, compression and conditional-response checks still apply.
+
+`StandaloneShareAssetsTest` unlocks a public timeline through the real endpoint,
+then checks the complete repository importmap and extensionless module paths.
+Browser verification also checks that the unlocked page renders a route canvas.
