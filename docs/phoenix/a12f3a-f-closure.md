@@ -60,3 +60,9 @@ Semantic History retains Rails’ zero raw_points counter quirk. Initial RED
 exposed the missing normal batch interruption/checkpoint behavior; GREEN passes.
 Forcing resume_offset to zero fails retry; restored GREEN passes. The Semantic
 History table extension had its own missing-checkpoint RED and GREEN.
+
+F01’s priority envelope rejects unsupported storage and unsafe archives as
+native errors in standalone, retaining source fallback in coexistence. RED
+returned a legacy tuple; GREEN returns an error without points or handoff.
+Mapping CSV to GeoJSON fails the dispatch assertion; restored GREEN passes.
+The complete planned source/transport aggregate remains open.

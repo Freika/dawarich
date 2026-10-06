@@ -119,6 +119,43 @@ defmodule DawarichWeb.A12f3aFResumeTest do
     end
   end
 
+  @tag a12f3a_f01: true
+  test "F01: source detector and adapter dispatch matches current Rails contract without a native-owner Rails effect",
+       c do
+    assert {:ok, Dawarich.Imports.Csv} = Dawarich.Imports.Adapters.fetch(10)
+    assert {:ok, Dawarich.Imports.Geojson} = Dawarich.Imports.Adapters.fetch(6)
+    assert {:ok, Dawarich.Imports.GoogleRecords} = Dawarich.Imports.Adapters.fetch(2)
+    assert {:ok, Dawarich.Imports.GoogleSemanticHistory} = Dawarich.Imports.Adapters.fetch(0)
+
+    {:ok, {_, bytes}} =
+      :zip.create(~c"unsafe.zip", [{~c"../blocked.csv", "latitude,longitude\n51.3,12.4\n"}], [
+        :memory
+      ])
+
+    c = attach(c, "unsafe.zip", bytes)
+
+    for services <- [%{}, %{"local" => %{service: "local", root: c.root}}] do
+      assert {:ok, {:error, error, _stack}} =
+               Lease.with_import(ScratchRepo, c.job, c.import, fn lease ->
+                 ImportState.with_snapshot(lease, fn state ->
+                   Dawarich.Imports.Tempfiles.with_files(fn adopt ->
+                     Dawarich.Imports.NormalPreparation.download(
+                       lease,
+                       state,
+                       %{services: services, temp_dir: c.root},
+                       adopt
+                     )
+                   end)
+                 end)
+               end)
+
+      assert is_exception(error)
+      assert [] = rows("SELECT id FROM points")
+      assert [] = rows("SELECT kind FROM phoenix.rails_commands")
+      assert [] = rows("SELECT event_id FROM phoenix.import_handoffs")
+    end
+  end
+
   defp attach(c, filename, bytes) do
     blob = Dawarich.RailsBlobFixture.create!(ScratchRepo, c.root, filename, bytes)
 
