@@ -5,7 +5,7 @@ defmodule Dawarich.Release.Lifecycle do
 
   def mode(env \\ System.get_env())
 
-  def mode(%{"DAWARICH_RAILS" => "off"}), do: {:ok, :native}
+  def mode(%{"DAWARICH_RAILS" => "off"} = env), do: native(env)
 
   def mode(env) do
     case Map.get(env, "DAWARICH_PHOENIX_LIFECYCLE", "false") do
