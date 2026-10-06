@@ -249,6 +249,9 @@ defmodule DawarichWeb.A12f2CClosureTest do
 
     assert {:ok, shared} = Dawarich.MapApi.Hexagons.fetch(user, Map.put(params, "uuid", uuid))
     assert shared == result
+    Repo.query!("UPDATE users SET deleted_at=NOW() WHERE id=$1", [owner.id])
+    assert {:error, 404, _} = Dawarich.MapApi.Hexagons.fetch(user, Map.put(params, "uuid", uuid))
+    Repo.query!("UPDATE users SET deleted_at=NULL WHERE id=$1", [owner.id])
     Repo.query!("UPDATE stats SET sharing_settings='{\"enabled\":false}' WHERE id=780001")
     assert {:error, 404, _} = Dawarich.MapApi.Hexagons.fetch(user, Map.put(params, "uuid", uuid))
     assert {:error, 400, _} = Dawarich.MapApi.Hexagons.bounds(owner, %{})

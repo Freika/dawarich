@@ -143,7 +143,7 @@ defmodule Dawarich.MapApi.Hexagons do
   def context(user, params) do
     if Http.present?(params["uuid"]) do
       case Repo.query!(
-             "SELECT s.user_id,s.year,s.month,s.h3_hex_ids,s.sharing_settings,u.settings,u.plan,u.active_until FROM stats s JOIN users u ON u.id=s.user_id WHERE s.sharing_uuid::text=$1",
+             "SELECT s.user_id,s.year,s.month,s.h3_hex_ids,s.sharing_settings,u.settings,u.plan,u.active_until FROM stats s JOIN users u ON u.id=s.user_id AND u.deleted_at IS NULL WHERE s.sharing_uuid::text=$1",
              [params["uuid"]]
            ).rows do
         [[id, year, month, cells, sharing, settings, plan, active]] ->
