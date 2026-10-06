@@ -284,6 +284,81 @@ defmodule DawarichWeb.A12f2AClosureTest do
            ]
   end
 
+  @tag :a12f2_a_06
+  test "Family Cloud APIs preserve inherited entitlement consent cooldown and membership scope",
+       %{user: user, now: now} do
+    System.put_env("SELF_HOSTED", "false")
+    id = family(user, now)
+    Repo.query!("UPDATE families SET access_until=$2 WHERE id=$1", [id, ~N[2000-01-01 00:00:00]])
+    mine = invoke(DawarichWeb.Api.FamilyController, :mine, %{user | plan: 0}, %{}, now)
+    assert mine.status == 200
+
+    assert Jason.decode!(mine.resp_body) == %{
+             "lapsed" => true,
+             "family" => %{"name" => "Synthetic"},
+             "me" => %{"user_id" => user.id, "owner" => true}
+           }
+
+    assert invoke(DawarichWeb.Api.FamilyController, :locations, %{user | plan: 0}, %{}, now).status ==
+             403
+
+    Repo.query!("UPDATE families SET access_until=$2 WHERE id=$1", [id, ~N[3026-01-01 00:00:00]])
+    member = user()
+
+    Repo.query!(
+      "INSERT INTO family_memberships(family_id,user_id,role,created_at,updated_at) VALUES($1,$2,1,NOW(),NOW())",
+      [id, member.id]
+    )
+
+    settings = %{
+      "family" => %{
+        "location_sharing" => %{
+          "enabled" => true,
+          "duration" => "permanent",
+          "started_at" => "2026-10-06T12:00:00Z",
+          "share_history" => true,
+          "history_window" => "7d",
+          "history_before_sharing" => false
+        }
+      }
+    }
+
+    Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [member.id, settings])
+
+    for at <- [DateTime.add(now, -3600), DateTime.add(now, 1800)] do
+      Repo.query!(
+        "INSERT INTO points(user_id,timestamp,lonlat,created_at,updated_at) VALUES($1,$2,ST_SetSRID(ST_MakePoint(13,52),4326),NOW(),NOW())",
+        [member.id, DateTime.to_unix(at)]
+      )
+    end
+
+    history =
+      invoke(
+        DawarichWeb.Api.FamilyController,
+        :history,
+        %{user | plan: 0},
+        %{"start_at" => "2026-10-06T10:00:00Z", "end_at" => "2026-10-06T13:00:00Z"},
+        now
+      )
+
+    assert history.status == 200
+    assert [%{"points" => [[52.0, 13.0, stamp]]}] = Jason.decode!(history.resp_body)["members"]
+    assert stamp == DateTime.to_unix(DateTime.add(now, 1800))
+
+    assert invoke(
+             DawarichWeb.Api.FamilyController,
+             :history,
+             user,
+             %{"start_at" => "bad", "end_at" => "bad"},
+             now
+           ).status == 400
+
+    outsider = user()
+
+    assert invoke(DawarichWeb.Api.FamilyController, :mine, %{outsider | plan: 0}, %{}, now).status ==
+             403
+  end
+
   defp source_body(section, name) do
     fixture = "test/fixtures/a12f2a/closure.json" |> File.read!() |> Jason.decode!()
     Enum.find(fixture[section], &(&1["name"] == name))["response"]["body"] |> Jason.decode!()
