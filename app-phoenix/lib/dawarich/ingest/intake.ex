@@ -2,6 +2,7 @@ defmodule Dawarich.Ingest.Intake do
   @moduledoc false
 
   alias Dawarich.Ingest.{Cast, Geo, Sources}
+  alias Dawarich.Visits.RealtimeDebouncer
   alias Dawarich.{RailsCommands, Repo}
 
   @slice 1_000
@@ -186,7 +187,7 @@ defmodule Dawarich.Ingest.Intake do
           Dawarich.Points.Realtime.tracks(repo, payload, opts)
 
         "visits.realtime" ->
-          Dawarich.Visits.RealtimeDebouncer.trigger(repo, user_id, opts)
+          RealtimeDebouncer.trigger(repo, user_id, opts)
 
         "points.live_broadcast" ->
           if Dawarich.Points.NativeEffects.native?(repo, "command:points.live_broadcast"),
