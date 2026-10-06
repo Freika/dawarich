@@ -97,6 +97,70 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
     capture_family("non_family_renewal_#{locale}", member, '/family', locale:, status: 303)
   end
 
+  it 'characterizes fresh actor errors and the declared invitation new action' do
+    travel_to now do
+      owner, member, outsider, = family_graph('en')
+      sign_in member
+      head '/family'
+      expect(response.status).to eq(200)
+      expect(response.body).to be_empty
+      member.family_membership.destroy!
+      get '/family'
+      expect(response.status).to eq(302)
+      expect(response.location).to end_with('/family/new')
+      sign_out member
+      sign_in owner
+      get '/family/invitations/new'
+      expect(response.status).to eq(404)
+      expect(request.path_parameters[:action]).to eq('new')
+      owner.update_columns(settings: [])
+      reset!
+      sign_in owner.reload
+      expect { get '/family' }.to raise_error(TypeError)
+      sign_out owner
+      sign_in outsider
+      get '/family'
+      expect(response.status).to eq(302)
+      expect(session[:user_return_to]).to be_nil
+    end
+  end
+
+  def write_family(actor, verb, path, params = {}, accept: 'text/html')
+    reset!
+    sign_in actor.reload if actor
+    get '/family/new'
+    get '/family' if response.redirect?
+    token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')&.[]('content')
+    public_send(verb, path, params: params.merge(authenticity_token: token), headers: { 'Accept' => accept })
+  end
+
+  it 'characterizes family create and update forms and invalid names' do
+    travel_to now do
+      owner, member, outsider, family = family_graph('en')
+      write_family(outsider, :post, '/family', { family: { name: '  New family  ' } })
+      expect(response.status).to eq(302)
+      expect(response.location).to end_with('/family')
+      expect(outsider.reload.family.name).to eq('New family')
+      expect(outsider.family_membership).to be_owner
+      write_family(owner, :patch, '/family', { family: { name: '' } })
+      expect(response.status).to eq(422)
+      expect(family.reload.name).to eq('Leipzig Fixture Family')
+      write_family(owner, :put, '/family', { family: { name: 'Updated family' } })
+      expect(response.status).to eq(302)
+      expect(family.reload.name).to eq('Updated family')
+      write_family(owner, :post, '/family.91001', { _method: 'patch', family: { name: 'Overridden' } },
+                   accept: 'text/vnd.turbo-stream.html')
+      expect(response.status).to eq(302)
+      expect(family.reload.name).to eq('Overridden')
+      write_family(owner, :patch, '/family', { family: { name: { nested: 'bad' } } })
+      expect(response.status).to eq(302)
+      expect(family.reload.name).to eq('Overridden')
+      write_family(member, :patch, '/family', { family: { name: 'Forbidden' } })
+      expect(response.status).to eq(303)
+      expect(family.reload.name).to eq('Overridden')
+    end
+  end
+
   it 'writes family pages with fixed actor state and scrubbed forms' do
     travel_to now do
       owner, member, outsider, family = family_graph('en')
