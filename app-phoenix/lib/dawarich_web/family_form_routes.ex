@@ -3,8 +3,11 @@ defmodule DawarichWeb.FamilyFormRoutes do
   alias DawarichWeb.FamilyActions
   def init(opts), do: opts
 
-  def call(%{method: "GET", request_path: "/family/invitations/new"} = conn, _opts),
-    do: DawarichWeb.FamilyInvitationPage.call(conn, :new)
+  def call(%{method: "GET"} = conn, _opts) do
+    if path(conn) == "/family/invitations/new",
+      do: DawarichWeb.FamilyInvitationPage.call(conn, :new),
+      else: conn |> Plug.Conn.send_resp(404, "") |> Plug.Conn.halt()
+  end
 
   def call(conn, _opts) do
     conn = FamilyActions.prepare(conn)
@@ -12,7 +15,7 @@ defmodule DawarichWeb.FamilyFormRoutes do
     if conn.halted do
       conn
     else
-      path = Regex.replace(~r/\.[^\/]+$/, conn.request_path, "")
+      path = path(conn)
 
       case {conn.method, path} do
         {"DELETE", "/family"} ->
@@ -67,21 +70,38 @@ defmodule DawarichWeb.FamilyFormRoutes do
     end
   end
 
+  defp path(conn), do: Regex.replace(~r/\.[^\/]+$/, conn.request_path, "")
+
   defmacro routes do
+    paths = [
+      {[:get], "/family/invitations/new"},
+      {[:post], "/family/invitations"},
+      {[:post, :delete], "/family/invitations/:id"},
+      {[:post], "/family/memberships"},
+      {[:post], "/family/location_requests"},
+      {[:post, :patch], "/family/location_requests/:id/accept"},
+      {[:post, :patch], "/family/location_requests/:id/decline"},
+      {[:post, :patch], "/family/location_sharing"},
+      {[:post, :patch, :put, :delete], "/family"},
+      {[:post, :delete], "/family/members/:id"}
+    ]
+
+    routes =
+      for {verbs, path} <- paths,
+          verb <- verbs,
+          suffix <-
+            if(String.starts_with?(List.last(String.split(path, "/")), ":"),
+              do: [""],
+              else: ["", ".:format"]
+            ) do
+        quote do
+          match unquote(verb), unquote(path <> suffix), DawarichWeb.FamilyFormRoutes, :dispatch,
+            as: nil
+        end
+      end
+
     quote do
-      get "/family/invitations/new", DawarichWeb.FamilyInvitationPage, :new
-      post "/family/invitations", DawarichWeb.FamilyInvitationActions, :create
-      delete "/family/invitations/:id", DawarichWeb.FamilyInvitationActions, :destroy
-      post "/family/memberships", DawarichWeb.FamilyInvitationActions, :accept
-      post "/family/location_requests", DawarichWeb.FamilyRequestActions, :create
-      patch "/family/location_requests/:id/accept", DawarichWeb.FamilyRequestActions, :accept
-      patch "/family/location_requests/:id/decline", DawarichWeb.FamilyRequestActions, :decline
-      patch "/family/location_sharing", DawarichWeb.FamilySharingActions, :update
-      post "/family", DawarichWeb.FamilyActions, :create
-      patch "/family", DawarichWeb.FamilyActions, :update
-      put "/family", DawarichWeb.FamilyActions, :update
-      delete "/family", DawarichWeb.FamilyActions, :destroy
-      delete "/family/members/:id", DawarichWeb.FamilyMembershipActions, :destroy
+      (unquote_splicing(routes))
     end
   end
 end

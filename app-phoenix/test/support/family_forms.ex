@@ -1,8 +1,15 @@
+defmodule Dawarich.Test.FamilyForms.Router do
+  use Phoenix.Router
+  require DawarichWeb.FamilyFormRoutes
+  DawarichWeb.FamilyFormRoutes.routes()
+end
+
 defmodule Dawarich.Test.FamilyForms do
   import Plug.Conn
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{FrameSeeds, RailsUser}
-  alias DawarichWeb.{RailsCsrf, FamilyFormRoutes}
+  alias DawarichWeb.RailsCsrf
+  alias Dawarich.Test.FamilyForms.Router
 
   def seed do
     Code.ensure_loaded!(Dawarich.Accounts.User)
@@ -23,7 +30,7 @@ defmodule Dawarich.Test.FamilyForms do
       |> assign(:now, ~U[2026-10-03 10:00:00Z])
 
     conn = Enum.reduce(headers, conn, fn {k, v}, c -> put_req_header(c, k, v) end)
-    FamilyFormRoutes.call(conn, FamilyFormRoutes.init([]))
+    Router.call(conn, Router.init([]))
   end
 
   def json_request(user, method, path, params) do
@@ -35,7 +42,7 @@ defmodule Dawarich.Test.FamilyForms do
     |> put_req_header("x-csrf-token", RailsCsrf.masked_token(session))
     |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(session))
     |> assign(:now, ~U[2026-10-03 10:00:00Z])
-    |> FamilyFormRoutes.call(FamilyFormRoutes.init([]))
+    |> Router.call(Router.init([]))
   end
 
   def records(sql, args \\ []), do: Repo.query!(sql, args).rows
