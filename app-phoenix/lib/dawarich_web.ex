@@ -11,6 +11,7 @@ defmodule DawarichWeb do
   def live_view do
     quote do
       use Phoenix.LiveView
+      on_mount Dawarich.ErrorReporting.LiveViewHook
       import DawarichWeb.Translate, only: [t: 3]
     end
   end

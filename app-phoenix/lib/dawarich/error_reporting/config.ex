@@ -19,6 +19,7 @@ defmodule Dawarich.ErrorReporting.Config do
         before_send: {Dawarich.ErrorReporting.Redactor, :event},
         before_send_log: {Dawarich.ErrorReporting.Redactor, :log},
         enable_logs: false,
+        dedup_events: false,
         max_breadcrumbs: 0,
         send_max_attempts: 1,
         send_client_reports: false,

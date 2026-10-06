@@ -17,10 +17,23 @@ defmodule Dawarich.ErrorReporting do
   end
 
   def logger_surface(event, _config) do
-    if :bandit in Map.get(event.meta, :domain, []) do
-      put_in(event, [:meta, :sentry], tags: %{"surface" => "web"})
-    else
-      event
+    cond do
+      :bandit in Map.get(event.meta, :domain, []) ->
+        put_in(event, [:meta, :sentry], tags: %{"surface" => "web"})
+
+      live_crash?(event.meta[:crash_reason]) ->
+        put_in(event, [:meta, :sentry], tags: %{"surface" => "live_view"})
+
+      true ->
+        event
     end
   end
+
+  defp live_crash?({_reason, stack}) when is_list(stack) do
+    Enum.any?(stack, fn {module, _, _, _} ->
+      String.starts_with?(to_string(module), "Elixir.Phoenix.LiveView.")
+    end)
+  end
+
+  defp live_crash?(_), do: false
 end
