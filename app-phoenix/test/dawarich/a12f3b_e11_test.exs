@@ -155,13 +155,20 @@ defmodule Dawarich.A12f3bE11Test do
     user = Wave6Fixtures.user!()
     ids = for n <- 1..3, do: Wave6Fixtures.point!(user, %{"raw_data" => %{"n" => n}})
     args = %{"user_id" => user, "cursor" => 0}
-    parent = Oban.insert!(@oban, ArchiveWorker.new(args))
-    rows("UPDATE oban.oban_jobs SET state='executing' WHERE id=$1", [parent.id])
     future = DateTime.add(DateTime.utc_now(), 3600)
     stale_args = %{"user_id" => user, "cursor" => List.last(ids) + 1}
     stale = Oban.insert!(@oban, ArchiveWorker.new(stale_args, scheduled_at: future))
     assert stale.state == "scheduled"
     assert stale.scheduled_at == future
+    conflict = Oban.insert!(@oban, ArchiveWorker.new(stale_args))
+    assert conflict.id == stale.id
+    assert conflict.scheduled_at == future
+    parent = Oban.insert!(@oban, ArchiveWorker.new(args))
+    parent = ScratchRepo.get!(Oban.Job, parent.id, prefix: "oban")
+    assert parent.args["cursor"] == stale_args["cursor"]
+    assert parent.args["coverage_floor"] == 0
+    args = parent.args
+    rows("UPDATE oban.oban_jobs SET state='executing' WHERE id=$1", [parent.id])
 
     handler = {__MODULE__, make_ref()}
     recipient = self()
@@ -188,12 +195,12 @@ defmodule Dawarich.A12f3bE11Test do
       assert rows("SELECT count(*) FROM oban.oban_jobs WHERE state='executing'") == [[1]]
     end
 
-    assert :ok = archive(ctx, args, chunk_size: 1, before_flag: probe)
+    assert :ok = archive(ctx, args, job_id: parent.id, chunk_size: 1, before_flag: probe)
     assert_receive {:continuation_lease, []}
     :telemetry.detach(handler)
     rows("UPDATE oban.oban_jobs SET state='completed' WHERE id=$1", [parent.id])
     assert rows("SELECT count(*) FROM points WHERE raw_data_archived=true") == [[1]]
-    assert Drain.status(ScratchRepo).counts.incomplete_oban == 2
+    assert Drain.status(ScratchRepo).counts.incomplete_oban == 1
 
     assert [[continuation_id, ^args]] =
              rows("SELECT id,args FROM oban.oban_jobs WHERE state='available'")
@@ -229,7 +236,7 @@ defmodule Dawarich.A12f3bE11Test do
 
   defp finish(ctx, id, args) do
     rows("UPDATE oban.oban_jobs SET state='executing' WHERE id=$1", [id])
-    assert :ok = archive(ctx, args, chunk_size: 1)
+    assert :ok = archive(ctx, args, job_id: id, chunk_size: 1)
     rows("UPDATE oban.oban_jobs SET state='completed' WHERE id=$1", [id])
 
     case rows("SELECT id,args FROM oban.oban_jobs WHERE state='available' ORDER BY id") do
