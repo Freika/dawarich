@@ -8,6 +8,26 @@ defmodule Dawarich.DemoData.Points do
     rows =
       Enum.map(fixture["features"], fn feature ->
         p = feature["properties"]
+
+        p =
+          Map.update(p, "battery_status", nil, fn
+            value when is_binary(value) ->
+              Map.fetch!(
+                %{
+                  "unknown" => 0,
+                  "unplugged" => 1,
+                  "charging" => 2,
+                  "full" => 3,
+                  "connected_not_charging" => 4,
+                  "discharging" => 5
+                },
+                value
+              )
+
+            value ->
+              value
+          end)
+
         Map.merge(p, %{"timestamp" => p["timestamp"] + delta})
       end)
 

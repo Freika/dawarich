@@ -46,6 +46,13 @@ defmodule Dawarich.DemoData.Importer do
               ]
             )
 
+            Dawarich.DemoData.Derivatives.seed(
+              repo,
+              user,
+              anchor,
+              Keyword.get_lazy(opts, :derivatives, fn -> fixture("demo_derivatives") end)
+            )
+
             :created
           end
         end,

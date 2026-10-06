@@ -20,7 +20,7 @@ defmodule Dawarich.Test.DemoData do
               "accuracy" => 10,
               "vertical_accuracy" => 12,
               "battery" => 90,
-              "battery_status" => 1
+              "battery_status" => "unplugged"
             }
           }
         end
