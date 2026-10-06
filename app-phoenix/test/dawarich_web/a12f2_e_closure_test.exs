@@ -293,6 +293,56 @@ defmodule DawarichWeb.A12f2EClosureTest do
     assert Enum.any?(commands(), fn [kind, _] -> kind == "points.web_destroy_follow_up" end)
   end
 
+  @tag :a12f2_e_06
+  test "Point position API retains history scope timestamp conflicts canonical point and recalculated track" do
+    alias Dawarich.Points.ApiPosition
+    actor = user!(%{settings: %{"timezone" => "UTC"}})
+    user = %{id: actor, status: 1, plan: 1, active_until: nil, settings: %{"timezone" => "UTC"}}
+    ctx = context()
+
+    [[track]] =
+      Repo.query!(
+        "INSERT INTO tracks(user_id,start_at,end_at,distance,duration,original_path,created_at,updated_at) VALUES($1,$2,$3,1,60,ST_GeomFromText('LINESTRING(13.4 52.5,13.5 52.6)',4326),now(),now()) RETURNING id",
+        [actor, ~N[2026-09-28 11:00:00], ~N[2026-09-28 11:01:00]]
+      ).rows
+
+    point = point!(actor, 1_790_593_200, track)
+    point!(actor, 1_790_593_260, track)
+
+    params = %{
+      "point" => %{"latitude" => "51", "longitude" => "14", "revision" => 99},
+      "track_revision" => 0,
+      "history_scope" => %{"start_at" => "2026-09-28T11:00Z", "end_at" => "2026-09-28T12:00Z"}
+    }
+
+    assert {:error, 409, {:object, stale}} = ApiPosition.update(Repo, user, point, params, ctx)
+    assert stale |> Map.new() |> Map.fetch!("revision") == %{"point" => 0, "track" => 0}
+    assert [] == commands()
+    params = put_in(params, ["point", "revision"], 0)
+    assert {:ok, 200, {:object, moved}} = ApiPosition.update(Repo, user, point, params, ctx)
+    assert moved |> Map.new() |> Map.fetch!("revision") == %{"point" => 1, "track" => 1}
+
+    assert [[distance, 1]] =
+             Repo.query!("SELECT distance,lock_version FROM tracks WHERE id=$1", [track]).rows
+
+    assert distance > 1000
+    assert {:error, 409, _} = ApiPosition.update(Repo, user, point, params, ctx)
+
+    assert {:error, 422, _} =
+             ApiPosition.update(
+               Repo,
+               user,
+               point,
+               put_in(params, ["history_scope", "start_at"], "bad"),
+               ctx
+             )
+
+    assert {:error, 422, _} =
+             ApiPosition.update(Repo, user, point, put_in(params, ["point", "latitude"], 91), ctx)
+
+    assert {:error, 404, _} = ApiPosition.update(Repo, %{user | id: user!()}, point, params, ctx)
+  end
+
   defp point!(actor, timestamp, track \\ nil) do
     [[id]] =
       Repo.query!(
