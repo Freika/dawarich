@@ -53,7 +53,7 @@ defmodule Dawarich.Timeline.Api do
                do:
                  {Atom.to_string(key),
                   if(key == :mode_distances,
-                    do: {:object, Enum.to_list(day.summary.mode_distances)},
+                    do: {:object, Enum.sort_by(day.summary.mode_distances, &elem(&1, 0))},
                     else: day.summary[key]
                   )}
              )}
