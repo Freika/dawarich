@@ -136,6 +136,37 @@ defmodule DawarichWeb.A12f2IClosureTest do
     assert {:error, :invalid_format} = apply(module, :processed, [first, bad, storage, @now, []])
   end
 
+  @tag :a12f2_i_05
+  test "Disk redirect and direct upload retain guest CSRF legacy session body formats service config and terminal persistence", %{storage: storage} do
+    module = DawarichWeb.ActiveStorage.UploadClosure
+    assert Code.ensure_loaded?(module), "native upload closure must exist"
+    guest = closure()["guest"]
+    Repo.query!("SELECT setval('active_storage_blobs_id_seq',972000)")
+    {:ok, keys} = Agent.start_link(fn -> Enum.map(~w(u w x y z), &("a12b" <> String.duplicate(&1,24))) end)
+    on_exit(fn -> if Process.alive?(keys), do: Agent.stop(keys) end)
+    key = fn -> Agent.get_and_update(keys, fn [key|rest] -> {key, rest} end) end
+    for request <- guest["requests"] do
+      body = Base.decode64!(request["body"])
+      conn = Enum.reduce(request["headers"], conn(:post, "http://dawarich.example" <> request["path"], body), fn {name,value}, conn -> put_req_header(conn, String.downcase(String.replace(name,"CONTENT_","content-")), value) end)
+      conn = conn |> put_req_header("cookie", "_dawarich_session=" <> URI.encode_www_form(guest["cookie"])) |> DawarichWeb.RailsAuth.call([])
+      refute conn.assigns[:current_user]
+      conn = if request["csrf"], do: put_req_header(conn,"x-csrf-token",guest["csrf"]), else: conn
+      before = blob_count()
+      result = DawarichWeb.ActiveStorage.call(conn, action: :direct_upload, storage: storage, now: @now, key: key, zone: "Europe/Berlin")
+      assert_response(result, request)
+      assert blob_count() == before + if(result.status == 200, do: 1, else: 0)
+    end
+    session = %{"_csrf_token" => DawarichWeb.RailsCsrf.new_token()}
+    token = DawarichWeb.RailsCsrf.masked_token(session)
+    body = Jason.encode!(%{"blob" => %{"filename" => "large.png", "byte_size" => 1, "checksum" => "synthetic", "metadata" => %{"note" => String.duplicate("p",1_100_000)}}})
+    conn = conn(:post,"http://dawarich.example/rails/active_storage/direct_uploads",body) |> put_req_header("content-type","application/json") |> put_req_header("transfer-encoding","chunked") |> put_req_header("x-csrf-token",token) |> assign(:rails_session,session)
+    result = DawarichWeb.ActiveStorage.call(conn, action: :direct_upload, storage: storage, now: @now, key: key)
+    assert result.status == 200
+    assert byte_size(Jason.decode!(result.resp_body)["metadata"]["note"]) == 1_100_000
+  end
+
+  defp blob_count, do: Repo.query!("SELECT count(*) FROM active_storage_blobs").rows |> hd() |> hd()
+
   defp closure, do: "test/fixtures/a12f2i/closure.json" |> File.read!() |> Jason.decode!()
 
   defp replay(request, module, storage, opts \\ []) do
