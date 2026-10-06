@@ -5,6 +5,10 @@ defmodule Dawarich.Notifications do
 
   alias Dawarich.{Repo, UserTimeZone}
 
+  defmodule Invalid do
+    defexception message: "Notification validation failed", plug_status: 422
+  end
+
   @per_page 20
   @kind_names %{0 => "info", 1 => "warning", 2 => "error"}
   @kind_codes %{info: 0, warning: 1, error: 2}
@@ -45,6 +49,12 @@ defmodule Dawarich.Notifications do
   def get(_user_id, _id), do: nil
 
   def mark_read(user_id, %{read_at: nil} = notification) do
+    if Enum.any?(
+         [notification.title, notification.content, notification.kind],
+         &(is_nil(&1) or (is_binary(&1) and String.trim(&1) == ""))
+       ),
+       do: raise(Invalid)
+
     now = NaiveDateTime.utc_now()
 
     from(n in "notifications",
@@ -110,6 +120,54 @@ defmodule Dawarich.Notifications do
     |> Repo.all()
     |> Enum.map(&%{&1 | kind: @kind_names[&1.kind]})
   end
+
+  def update_with_broadcast!(repo, user_id, id, params) do
+    {:ok, :ok} =
+      repo.transaction(fn ->
+        case repo.query!(
+               "SELECT title, content, kind, read_at FROM notifications WHERE id=$1 AND user_id=$2 FOR UPDATE",
+               [id, user_id],
+               log: false
+             ).rows do
+          [[title, content, kind, read_at]] ->
+            title = Map.get(params, "title", title)
+            content = Map.get(params, "content", content)
+            kind = kind_code(Map.get(params, "kind", kind))
+            read_at = read_time(Map.get(params, "read_at", read_at))
+
+            if Enum.any?([title, content], &(not is_binary(&1) or String.trim(&1) == "")),
+              do: raise(Invalid)
+
+            repo.query!(
+              "UPDATE notifications SET title=$3, content=$4, updated_at=$5, kind=$6, read_at=$7 WHERE id=$1 AND user_id=$2",
+              [id, user_id, title, content, NaiveDateTime.utc_now(), kind, read_at],
+              log: false
+            )
+
+            repo.query!(
+              "INSERT INTO phoenix.notification_events (notification_id) VALUES ($1)",
+              [id],
+              log: false
+            )
+
+            :ok
+
+          _ ->
+            repo.rollback(:not_found)
+        end
+      end)
+
+    :ok
+  end
+
+  defp kind_code(value) when value in [0, "info", :info], do: 0
+  defp kind_code(value) when value in [1, "warning", :warning], do: 1
+  defp kind_code(value) when value in [2, "error", :error], do: 2
+  defp kind_code(_), do: raise(Invalid)
+  defp read_time(nil), do: nil
+  defp read_time(%NaiveDateTime{} = at), do: at
+  defp read_time(%DateTime{} = at), do: DateTime.to_naive(at)
+  defp read_time(_), do: raise(Invalid)
 
   def create!(repo, user_id, kind, title, content, now \\ NaiveDateTime.utc_now()) do
     if repo.in_transaction?() do

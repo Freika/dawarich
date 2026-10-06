@@ -34,6 +34,26 @@ defmodule DawarichWeb.TestEmail do
 
   @impl true
   def call(conn, opts) do
+    context = TestEmailGate.context(opts)
+
+    if Dawarich.Standalone.enabled?() and not context.self_hosted and conn.method == "POST" and
+         conn.request_path == "/settings/general/test_email" do
+      with true <- transport?(conn),
+           {:ok, raw, conn} <- read_all(conn, []),
+           {:ok, params} <-
+             Admission.form(raw, conn.query_string, ~w(authenticity_token commit utf8)),
+           conn = RailsAuth.call(conn, []),
+           true <- csrf?(conn, params) do
+        cloud_refusal(conn)
+      else
+        _ -> DawarichWeb.SettingsActions.reject(conn, 422)
+      end
+    else
+      dispatch(conn, opts)
+    end
+  end
+
+  defp dispatch(conn, opts) do
     case admit(conn, opts) do
       {:ok, conn, actor, locale, format, context} ->
         native(conn, actor, locale, format, context, opts)
@@ -43,6 +63,29 @@ defmodule DawarichWeb.TestEmail do
 
       {:handoff, conn} ->
         conn |> RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream)) |> halt()
+    end
+  end
+
+  defp cloud_refusal(conn) do
+    conn = RailsAuth.call(conn, [])
+
+    if conn.assigns.current_user do
+      locale = Locale.resolve(nil, conn.assigns.current_user, conn.assigns.rails_session)
+
+      message =
+        DawarichWeb.Translate.t(
+          locale,
+          "controllers.application.you_are_not_authorized_to_perform_this_action",
+          %{}
+        )
+
+      conn
+      |> RailsSession.stage(%{"flash" => %{"discard" => [], "flashes" => %{"alert" => message}}})
+      |> put_resp_header("location", RequestURL.base(conn) <> "/")
+      |> send_resp(303, "")
+      |> halt()
+    else
+      DawarichWeb.SettingsActions.reject(conn, 302)
     end
   end
 

@@ -148,4 +148,28 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
   ensure
     ENV['TZ'] = system_zone
   end
+  it 'characterizes legacy owner actions and invalid read validation' do
+    actor = create(:user)
+    other = create(:user)
+    own = create(:notification, user: actor)
+    foreign = create(:notification, user: other)
+    sign_in actor
+    get '/notifications'
+    token = Nokogiri::HTML5(response.body).at_css('meta[name=csrf-token]')['content']
+    post '/notifications/mark_as_read', params: { authenticity_token: token }
+    expect(response.status).to eq(303)
+    expect(response.location).to end_with('/notifications')
+    expect(own.reload.read_at).to be_present
+    expect(foreign.reload.read_at).to be_nil
+    delete "/notifications/#{foreign.id}", params: { authenticity_token: token }
+    expect(response.status).to eq(404)
+    own.update_columns(title: '', content: '', read_at: nil)
+    get "/notifications/#{own.id}"
+    expect(response.status).to eq(422)
+    expect(own.reload.read_at).to be_nil
+    post '/notifications/destroy_all', params: { authenticity_token: token }
+    expect(response.status).to eq(303)
+    expect(actor.notifications.count).to eq(0)
+    expect(other.notifications.count).to eq(1)
+  end
 end
