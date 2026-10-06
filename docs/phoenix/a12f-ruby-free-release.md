@@ -489,3 +489,17 @@ Baseline characterization: both existing Cloud/lifecycle regression files,
 RSpec seed 101, **49 examples, 0 failures**. Swagger was copied aside/restored and no
 schema/Swagger drift occurred. Implementation evidence is recorded separately
 in `.scratch/orch/out/impl-a12f3c-a.report.md`.
+
+## A12f-2J route integration
+
+The merged B/C/E/I handlers are declared natively, including spatial tiles,
+timeline, fog/hexagons, border/month/digest reads, MCP, photos/search/places,
+imports/pending intake, point mutations and signed storage proxy/representations.
+API slices admit Cloud and HEAD; pending CORS retains the narrow source policy.
+`DAWARICH_RAILS_ROUTES` and `DAWARICH_RAILS_SLICES` remain coexistence controls.
+Native accepted API failures are terminal and cannot repeat writes through Rails.
+
+D/F/G/H seams await their accepted packages. Browser/operators/workers and rare
+transport parity remain the named release prerequisites; this route activation
+does not establish Ruby-free image acceptance. The controller owns standalone
+hand-back terminal policy and integration seed202. See `a12f2-j.md` for evidence.
