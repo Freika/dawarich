@@ -6,6 +6,36 @@ RSpec.describe Cache::PreheatingJob do
   include ActiveSupport::Testing::TimeHelpers
   before { Rails.cache.clear }
 
+  it 'accepted source origins retain locale zone identity and due time and stop fanout on a global write failure' do
+    phoenix_tables!
+    job_owner!('cron:cache_preheating_job', :oban)
+    User.insert_all!([{ id: 180_125, email: 'cache-forms@example.invalid', encrypted_password: '', status: 1,
+                       plan: 1, settings: {}, created_at: Time.current, updated_at: Time.current }])
+    due = Time.utc(2026, 10, 3, 12)
+
+    [[], [nil], ['cron'], ['manual']].each do |arguments|
+      job = described_class.new(*arguments)
+      job.locale = 'de'
+      job.timezone = 'Asia/Tokyo'
+      job.scheduled_at = due
+      request = job.serialize
+      clear_enqueued_jobs
+      ActiveJob::Base.deserialize(request).perform_now
+      expect(request).to include('arguments' => arguments, 'locale' => 'de', 'timezone' => 'Asia/Tokyo',
+                                 'job_id' => job.job_id)
+      expect(Time.iso8601(request.fetch('scheduled_at'))).to eq(due)
+      expect(enqueued_jobs.sole).to include('arguments' => [180_125], 'locale' => 'de', 'timezone' => 'Asia/Tokyo')
+      expect(JobOutbox.count).to eq(0)
+    end
+
+    clear_enqueued_jobs
+    allow(Rails.cache).to receive(:write).with('dawarich/countries_codes', anything, expires_in: 86_400)
+                                         .and_raise(IOError, 'synthetic global cache failure')
+    expect { described_class.new.perform('cron') }.to raise_error(IOError, 'synthetic global cache failure')
+    expect(enqueued_jobs).to be_empty
+    expect(JobOutbox.count).to eq(0)
+  end
+
   it 'nightly enqueue follows ownership while manual and accepted sweeps still warm after a transfer' do
     phoenix_tables!
     User.insert_all!([{ id: 180_119, email: 'cache-cron@example.invalid', encrypted_password: '', status: 1,

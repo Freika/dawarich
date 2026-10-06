@@ -19,9 +19,9 @@ defmodule Dawarich.ReleaseCloudTest do
   test "native Cloud lifecycle remains refused without L1 even when Rails is off" do
     before = Repo.query!("SELECT version FROM public.schema_migrations ORDER BY version").rows
 
-    for {env, readiness} <- [
-          {%{"DAWARICH_PHOENIX_LIFECYCLE" => "true", "SELF_HOSTED" => "false"}, :schemas_behind},
-          {%{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => "false"}, :ready}
+    for env <- [
+          %{"DAWARICH_PHOENIX_LIFECYCLE" => "true", "SELF_HOSTED" => "false"},
+          %{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => "false"}
         ] do
       opts = Keyword.put(copy_opts(), :env, env)
 
@@ -33,7 +33,7 @@ defmodule Dawarich.ReleaseCloudTest do
         Release.seed(opts)
       end
 
-      assert Release.readiness(opts) == readiness
+      assert Release.readiness(opts) == :schemas_behind
 
       assert Repo.query!("SELECT version FROM public.schema_migrations ORDER BY version").rows ==
                before

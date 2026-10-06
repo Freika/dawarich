@@ -14,31 +14,28 @@ defmodule Dawarich.Settings.Integrations do
          :ok <- validate(updated, opts) do
       {statuses, notices, alerts} = test_connections(previous, updated, opts)
 
-      repo.transaction(
-        fn ->
-          case read(repo, id, " FOR UPDATE") do
-            [[%{} = current]] ->
-              settings = current |> Map.merge(changes) |> Map.merge(statuses) |> normalize_urls()
+      repo.transaction(fn ->
+        case read(repo, id, " FOR UPDATE") do
+          [[%{} = current]] ->
+            settings = current |> Map.merge(changes) |> Map.merge(statuses) |> normalize_urls()
 
-              repo.query!(
-                "UPDATE users SET settings=$2,updated_at=$3 WHERE id=$1",
-                [id, settings, NaiveDateTime.utc_now()],
-                log: false
-              )
+            repo.query!(
+              "UPDATE users SET settings=$2,updated_at=$3 WHERE id=$1",
+              [id, settings, NaiveDateTime.utc_now()],
+              log: false
+            )
 
-              %{
-                success: true,
-                settings: settings,
-                notices: [t(opts, "updated") | notices],
-                alerts: alerts
-              }
+            %{
+              success: true,
+              settings: settings,
+              notices: [t(opts, "updated") | notices],
+              alerts: alerts
+            }
 
-            _ ->
-              repo.rollback(:invalid_settings)
-          end
-        end,
-        mode: :savepoint
-      )
+          _ ->
+            repo.rollback(:invalid_settings)
+        end
+      end)
     else
       {:error, {:url, key, message}} ->
         {:ok,

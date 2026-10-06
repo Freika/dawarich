@@ -66,9 +66,22 @@ defmodule Dawarich.A12f3bH01Hot5Test do
              ) == 1
     end
 
+    timeout = Repo.query!("SHOW statement_timeout", [], log: false).rows
+
     for path <- ["/admin/settings", "/settings/users", "/settings/users/35002/edit"] do
-      assert request(35001, "GET", path).status == 200
+      Repo.transaction(fn ->
+        Repo.query!("SAVEPOINT hot5_admin_page", [], log: false)
+
+        try do
+          assert request(35001, "GET", path).status == 200
+        after
+          Repo.query!("ROLLBACK TO SAVEPOINT hot5_admin_page", [], log: false)
+          Repo.query!("RELEASE SAVEPOINT hot5_admin_page", [], log: false)
+        end
+      end)
     end
+
+    assert Repo.query!("SHOW statement_timeout", [], log: false).rows == timeout
 
     assert request(35001, "PATCH", "/admin/settings", %{
              "instance_settings[store_geodata]" => "false"

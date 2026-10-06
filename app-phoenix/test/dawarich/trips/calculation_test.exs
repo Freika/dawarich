@@ -1,5 +1,6 @@
 defmodule Dawarich.Trips.CalculationTest do
   use Dawarich.JobsCase, async: true, group: :scratch_db
+  use Oban.Testing, repo: Dawarich.ScratchRepo
 
   alias Dawarich.Trips.Calculation
 
@@ -56,11 +57,13 @@ defmodule Dawarich.Trips.CalculationTest do
   defp blocked_by?(waiting, holding),
     do: rows("SELECT $2::int = ANY(pg_blocking_pids($1::int))", [waiting, holding]) == [[true]]
 
+  @tag a12f3b_case: "E152a"
   test "computes the path, distance and countries Rails computes for the same rows, and reports each step" do
     fixture = load!()
     id = fixture["trip"]["id"]
 
-    assert Calculation.run(ScratchRepo, id, "mi") == :ok
+    args = %{"trip_id" => id, "distance_unit" => "mi", "event_id" => Ecto.UUID.generate()}
+    assert perform_job(Dawarich.Trips.CalculateWorker, args) == :ok
 
     expected = fixture["expected"]
     assert [[path, distance, countries, _updated, nil]] = trip_row(id)
@@ -74,6 +77,10 @@ defmodule Dawarich.Trips.CalculationTest do
              ["countries", "mi", false],
              ["finished", "mi", false]
            ]
+
+    assert perform_job(Dawarich.Trips.CalculateWorker, args) == :ok
+    assert length(events()) == 4
+    assert rows("SELECT kind FROM phoenix.rails_commands") == []
   end
 
   test "an unchanged recalculation keeps updated_at, clears the cooldown and reports again without a refresh" do
