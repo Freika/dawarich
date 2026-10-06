@@ -131,9 +131,15 @@ defmodule Dawarich.Photos.Enrichment do
            Jason.encode!(Map.take(asset, ~w(latitude longitude))),
            settings["immich_skip_ssl_verification"]
          ) do
-      {:ok, status, _, _} when status in 200..299 -> :ok
-      {:ok, status, _, _} -> {:error, "HTTP #{status}: #{reason(status)}"}
-      {:error, reason} -> {:error, transport_message(reason)}
+      {:ok, status, _, _} when status in 200..299 ->
+        :ok
+
+      {:ok, status, headers, _} ->
+        {:error,
+         "HTTP #{status}: #{headers |> List.keyfind("_status_reason", 0, {"", reason(status)}) |> elem(1)}"}
+
+      {:error, reason} ->
+        {:error, transport_message(reason)}
     end
   end
 

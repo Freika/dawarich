@@ -5,6 +5,8 @@ defmodule Dawarich.Photos.Index do
   alias Dawarich.Imports.ImportTime
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
+  defdelegate term(photos), to: ProviderCache
+
   def fetch(user, params, opts \\ []) do
     settings = Keyword.get_lazy(opts, :settings, fn -> Accounts.settings(user.id) end)
     key = ProviderCache.key(user.id, params["start_date"], params["end_date"])
@@ -181,28 +183,9 @@ defmodule Dawarich.Photos.Index do
           String.contains?(to_string(v), "application/json")
       end)
 
-  def request(method, url, headers, body, skip) do
-    headers = for {k, v} <- headers, do: {String.to_charlist(k), String.to_charlist(v)}
-
-    request =
-      if body,
-        do: {String.to_charlist(url), headers, ~c"application/json", body},
-        else: {String.to_charlist(url), headers}
-
-    timeout = Application.get_env(:dawarich, :photo_source_timeout, 10_000)
-
-    case :httpc.request(
-           method,
-           request,
-           [timeout: timeout, connect_timeout: timeout, ssl: Thumbnail.ssl(skip)],
-           body_format: :binary
-         ) do
-      {:ok, {{_, status, _}, headers, raw}} -> {:ok, status, headers, raw}
-      {:error, reason} -> {:error, reason}
-    end
-  rescue
-    _ -> {:error, :transport}
-  end
+  defdelegate request(method, url, headers, body, skip),
+    to: Dawarich.Photos.ThumbnailClosure,
+    as: :http
 
   defp headers(s, "immich"),
     do: [{"x-api-key", s["immich_api_key"]}, {"accept", "application/json"}]
@@ -247,8 +230,12 @@ defmodule Dawarich.Photos.Index do
     from = parse(params["start_date"])
 
     to =
-      parse(params["end_date"], true) ||
-        if(source == "photoprism", do: System.system_time(:second))
+      if(source == "photoprism" and date_only?(params["end_date"]),
+        do: parse(params["end_date"]) + 86399,
+        else: parse(params["end_date"], true)
+      )
+
+    to = to || if(source == "photoprism", do: System.system_time(:second))
 
     if is_nil(from) and source == "immich" do
       assets

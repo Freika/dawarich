@@ -21,7 +21,7 @@ defmodule DawarichWeb.Api.PhotosController do
             do: conn,
             else: Plug.Conn.put_resp_header(conn, "x-photo-source-errors", Enum.join(errors, ","))
 
-        Respond.json(conn, 200, photos)
+        Respond.json(conn, 200, Index.term(photos))
 
       {:unconfigured, source} ->
         unconfigured(conn, source)
@@ -47,6 +47,9 @@ defmodule DawarichWeb.Api.PhotosController do
       {:unconfigured, source} ->
         unconfigured(conn, source)
 
+      {:error, status, :permission_missing} ->
+        error(conn, status, "services.immich.response_analyzer.permission_missing")
+
       {:error, status} ->
         error(
           conn,
@@ -70,9 +73,9 @@ defmodule DawarichWeb.Api.PhotosController do
 
     cond do
       not is_map(settings) ->
-        {:replay, "settings shape"}
+        if closure, do: {:error, 500}, else: {:replay, "settings shape"}
 
-      not (is_nil(source) or (is_binary(source) and source =~ @printable)) ->
+      not closure and not (is_nil(source) or (is_binary(source) and source =~ @printable)) ->
         {:replay, "source parameter shape"}
 
       not Thumbnail.configured?(settings) or source not in @sources ->
@@ -84,7 +87,7 @@ defmodule DawarichWeb.Api.PhotosController do
           else: Thumbnail.fetch(settings, source, id)
     end
   rescue
-    error -> {:replay, inspect(error.__struct__)}
+    error -> if closure, do: {:error, 500}, else: {:replay, inspect(error.__struct__)}
   end
 
   defp unconfigured(conn, source) do

@@ -166,9 +166,19 @@ defmodule Dawarich.PlacesApi.Closure do
 
       if not create,
         do:
-          Repo.query!("DELETE FROM taggings WHERE taggable_type='Place' AND taggable_id=$1", [id])
+          Repo.query!(
+            "DELETE FROM taggings WHERE taggable_type='Place' AND taggable_id=$1 AND NOT (tag_id=ANY($2))",
+            [id, ids]
+          )
 
-      for tag <- ids,
+      existing =
+        Repo.query!(
+          "SELECT tag_id FROM taggings WHERE taggable_type='Place' AND taggable_id=$1",
+          [id]
+        ).rows
+        |> List.flatten()
+
+      for tag <- ids -- existing,
           do:
             Repo.query!(
               "INSERT INTO taggings (tag_id,taggable_type,taggable_id,created_at,updated_at) VALUES ($1,'Place',$2,$3,$3)",

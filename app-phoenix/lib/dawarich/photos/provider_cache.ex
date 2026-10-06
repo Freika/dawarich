@@ -3,6 +3,10 @@ defmodule Dawarich.Photos.ProviderCache do
   alias Dawarich.{RailsCache, Redis}
   alias Dawarich.RailsCache.Wire
 
+  @photo_keys ~w(id latitude longitude localDateTime capturedAt originalFileName city state country type orientation source)
+  def term(photos),
+    do: Enum.map(photos, fn photo -> {:object, Enum.map(@photo_keys, &{&1, photo[&1]})} end)
+
   def key(user, from, to), do: "photos_#{user}_v2_#{from}_#{to}"
   def token_key(user), do: "dawarich/photoprism_preview_token_#{user}"
 
@@ -75,12 +79,19 @@ defmodule Dawarich.Photos.ProviderCache do
   defp marshal(s) when is_binary(s), do: ["I\"", bytes(s), long(1), ":", bytes("E"), "T"]
   defp marshal(list) when is_list(list), do: ["[", long(length(list)), Enum.map(list, &marshal/1)]
 
-  defp marshal(map) when is_map(map),
-    do: [
+  defp marshal(map) when is_map(map) do
+    keys =
+      if Map.has_key?(map, "capturedAt"),
+        do:
+          ~w(id latitude longitude localDateTime capturedAt originalFileName city state country type orientation source),
+        else: Map.keys(map)
+
+    [
       "{",
       long(map_size(map)),
-      Enum.map(map, fn {k, v} -> [marshal(to_string(k)), marshal(v)] end)
+      Enum.map(keys, fn k -> [marshal(to_string(k)), marshal(map[k])] end)
     ]
+  end
 
   defp bytes(value), do: [long(byte_size(value)), value]
   defp long(0), do: <<0>>

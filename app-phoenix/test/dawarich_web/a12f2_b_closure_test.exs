@@ -56,6 +56,11 @@ defmodule DawarichWeb.A12f2BClosureTest do
     assert [%{"id" => "a.b", "orientation" => "portrait", "source" => "photoprism"}] = photos
     assert invoke(ProviderCache, :token, [user.id]) == "synthetic-preview"
     assert photos == oracle("closure_photos_photoprism")
+
+    assert Index.term(photos)
+           |> Dawarich.ReleaseMigrations.Effects.Support.Ruby.json()
+           |> IO.iodata_to_binary() == oracle_body("closure_photos_photoprism")
+
     requests = Task.await(task)
 
     assert Enum.all?(requests, fn {head, _} ->
@@ -313,6 +318,21 @@ defmodule DawarichWeb.A12f2BClosureTest do
     assert [%{"id" => ^tag}] = object["tags"]
     id = object["id"]
 
+    tagging =
+      Repo.query!("SELECT id FROM taggings WHERE taggable_type='Place' AND taggable_id=$1", [id]).rows
+
+    assert {:ok, 200, _, []} =
+             invoke(Dawarich.PlacesApi.Closure, :run, [
+               :update,
+               user,
+               %{"id" => to_string(id), "place" => %{"tag_ids" => [tag]}},
+               now
+             ])
+
+    assert Repo.query!("SELECT id FROM taggings WHERE taggable_type='Place' AND taggable_id=$1", [
+             id
+           ]).rows == tagging
+
     assert {:ok, 200, term, []} =
              invoke(Dawarich.PlacesApi.Closure, :run, [
                :update,
@@ -474,10 +494,12 @@ defmodule DawarichWeb.A12f2BClosureTest do
            ]) == {:error, :verification_unavailable}
   end
 
-  defp oracle(name) do
+  defp oracle(name), do: Jason.decode!(oracle_body(name))
+
+  defp oracle_body(name) do
     fixture = "test/fixtures/a12f2b/closure.json" |> File.read!() |> Jason.decode!()
     kase = Enum.find(fixture["locations_photos"], &(&1["name"] == name))
-    Jason.decode!(kase["response"]["body"])
+    kase["response"]["body"]
   end
 
   defp term_map({:object, pairs}), do: Map.new(pairs, fn {k, v} -> {k, term_map(v)} end)
