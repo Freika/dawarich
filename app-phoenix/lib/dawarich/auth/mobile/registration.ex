@@ -9,7 +9,7 @@ defmodule Dawarich.Auth.Mobile.Registration do
     invitation = RegistrationPolicy.invitation(params["invitation_token"], context)
     context = Map.put(context, :invitation, invitation)
 
-    case Registration.create(params, context) do
+    case Registration.create_mobile(params, context) do
       {:ok, user} ->
         finish(user, params, context)
 
