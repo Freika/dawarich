@@ -1,33 +1,106 @@
 <div class="hero bg-base-200">
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10 items-start gap-10">
     <div class="text-center lg:text-left max-w-md">
-      <h1 class="text-4xl font-bold text-base-content"><%= text(@locale, "almost_there") %></h1>
-      <p class="py-6 text-base-content/70"><%= text(@locale, "only_a_few_steps_left_until_you_get_control_over") %></p>
+      <h1 class="text-4xl font-bold text-base-content">{text(@locale, "almost_there")}</h1>
+      <p class="py-6 text-base-content/70">
+        {text(@locale, "only_a_few_steps_left_until_you_get_control_over")}
+      </p>
       <ol class="list-decimal list-inside space-y-2 text-base-content/80">
-        <li :for={key <- ~w(create_your_account configure_your_mobile_app start_tracking_your_location_data_securely ellipsis you_re_beautiful)}><%= text(@locale, key) %></li>
+        <li :for={
+          key <-
+            ~w(create_your_account configure_your_mobile_app start_tracking_your_location_data_securely ellipsis you_re_beautiful)
+        }>
+          {text(@locale, key)}
+        </li>
       </ol>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-lg bg-base-100 px-5 py-5">
-      <form class="new_user" id="new_user" action="/users" method="post" accept-charset="UTF-8" data-turbo="false">
+      <form
+        class="new_user"
+        id="new_user"
+        action="/users"
+        method="post"
+        accept-charset="UTF-8"
+        data-turbo="false"
+      >
         <input type="hidden" name="authenticity_token" value={@token} />
-        <input :if={@invitation} type="hidden" name="user[invitation_token]" value={@invitation.token} />
-        <div :if={@messages != []} id="error_explanation" class="alert alert-error mb-4" data-turbo-cache="false"><ul><li :for={message <- @messages}><%= message %></li></ul></div>
-        <div class="form-control">
-          <label class="label" for="user_email"><span class="label-text"><%= text(@locale, "email") %></span></label>
-          <input type="email" id="user_email" name="user[email]" value={@email} autocomplete="email" autofocus readonly={@invitation != nil} class="input input-bordered w-full" />
+        <input
+          :if={@invitation}
+          type="hidden"
+          name="user[invitation_token]"
+          value={@invitation.token}
+        />
+        <div
+          :if={@messages != []}
+          id="error_explanation"
+          class="alert alert-error mb-4"
+          data-turbo-cache="false"
+        >
+          <ul>
+            <li :for={message <- @messages}>{message}</li>
+          </ul>
         </div>
         <div class="form-control">
-          <label class="label" for="user_password"><span class="label-text"><%= text(@locale, "password") %></span></label>
-          <input type="password" id="user_password" name="user[password]" autocomplete="new-password" aria-describedby="password-hint" class="input input-bordered w-full" />
-          <span id="password-hint" class="label-text-alt text-base-content/60 mt-1"><%= DawarichWeb.Translate.t(@locale, "devise.registrations.new.characters_minimum", %{"count" => 12}) %></span>
+          <label class="label" for="user_email"><span class="label-text">{text(@locale, "email")}</span></label>
+          <input
+            type="email"
+            id="user_email"
+            name="user[email]"
+            value={@email}
+            autocomplete="email"
+            autofocus
+            readonly={@invitation != nil}
+            class="input input-bordered w-full"
+          />
         </div>
         <div class="form-control">
-          <label class="label" for="user_password_confirmation"><span class="label-text"><%= text(@locale, "password_confirmation") %></span></label>
-          <input type="password" id="user_password_confirmation" name="user[password_confirmation]" autocomplete="new-password" class="input input-bordered w-full" />
+          <label class="label" for="user_password"><span class="label-text">{text(
+            @locale,
+            "password"
+          )}</span></label>
+          <input
+            type="password"
+            id="user_password"
+            name="user[password]"
+            autocomplete="new-password"
+            aria-describedby="password-hint"
+            class="input input-bordered w-full"
+          />
+          <span id="password-hint" class="label-text-alt text-base-content/60 mt-1">{DawarichWeb.Translate.t(
+            @locale,
+            "devise.registrations.new.characters_minimum",
+            %{"count" => 12}
+          )}</span>
         </div>
-        <div class="form-control mt-6"><input type="submit" name="commit" value={text(@locale, "sign_up")} class="btn btn-primary" /></div>
+        <div class="form-control">
+          <label class="label" for="user_password_confirmation"><span class="label-text">{text(
+            @locale,
+            "password_confirmation"
+          )}</span></label>
+          <input
+            type="password"
+            id="user_password_confirmation"
+            name="user[password_confirmation]"
+            autocomplete="new-password"
+            class="input input-bordered w-full"
+          />
+        </div>
+        <div class="form-control mt-6">
+          <input
+            type="submit"
+            name="commit"
+            value={text(@locale, "sign_up")}
+            class="btn btn-primary"
+          />
+        </div>
       </form>
-      <div class="mt-5 space-y-2 text-sm"><a class="link link-hover text-base-content/70" href="/users/sign_in"><%= DawarichWeb.Translate.t(@locale, "devise.shared.links.log_in", %{}) %></a></div>
+      <div class="mt-5 space-y-2 text-sm">
+        <a class="link link-hover text-base-content/70" href="/users/sign_in">{DawarichWeb.Translate.t(
+          @locale,
+          "devise.shared.links.log_in",
+          %{}
+        )}</a>
+      </div>
     </div>
   </div>
 </div>

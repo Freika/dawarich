@@ -2,10 +2,20 @@ defmodule DawarichWeb.AuthRegistration.Http do
   @moduledoc false
   @behaviour Plug
   import Plug.Conn
-  alias Dawarich.Auth.{ActionCsrf, Admission, Registration, RegistrationPolicy, SessionCookie}
+
+  alias Dawarich.Auth.{
+    ActionCsrf,
+    Admission,
+    Registration,
+    RegistrationPolicy,
+    RegistrationSetup,
+    RegistrationAttribution,
+    SessionCookie
+  }
+
   alias DawarichWeb.{AuthCookie, RailsAuth, RailsCsrf, RequestURL}
 
-  @fields ~w(authenticity_token commit utf8 locale invitation_token import_ticket _gl user[email] user[password] user[password_confirmation] user[first_name] user[last_name] user[invitation_token] user[signup_intent])
+  @fields ~w(authenticity_token commit utf8 locale invitation_token import_ticket _gl aff via utm_source utm_medium utm_campaign utm_term utm_content user[email] user[password] user[password_confirmation] user[first_name] user[last_name] user[invitation_token] user[signup_intent])
   def init(opts), do: opts
 
   def route?(conn),
@@ -38,6 +48,19 @@ defmodule DawarichWeb.AuthRegistration.Http do
       email = params["user[email]"] || (invitation && invitation.email) || ""
       locale = DawarichWeb.Locale.resolve(params["locale"], nil, conn.assigns.rails_session)
       context = context |> Map.put(:invitation, invitation) |> Map.put(:locale, locale)
+      session = conn.assigns.rails_session
+
+      session =
+        if context.self_hosted == false,
+          do: RegistrationAttribution.store(session, params),
+          else: session
+
+      session =
+        if params["import_ticket"],
+          do: Map.put(session, "pending_import_ticket", params["import_ticket"]),
+          else: session
+
+      conn = assign(conn, :rails_session, session)
 
       context =
         if params["locale"] || conn.assigns.rails_session["locale"],
@@ -77,26 +100,45 @@ defmodule DawarichWeb.AuthRegistration.Http do
         fn key -> {key, params["user[#{key}]"]} end
       )
 
-    case Registration.create(attrs, context) do
-      {:ok, user} ->
-        conn =
-          AuthCookie.session(
-            conn,
-            SessionCookie.for_login(
-              conn.assigns.rails_session,
-              user,
-              message(context.locale, "devise.registrations.signed_up"),
-              Dawarich.RailsSecret.fetch()
-            )
-          )
+    if not RegistrationSetup.ready?(context) do
+      conn |> send_resp(503, "Signup callbacks unavailable") |> halt()
+    else
+      case Registration.create(attrs, context) do
+        {:ok, user} ->
+          case RegistrationSetup.complete(user, attrs, conn.assigns.rails_session, context) do
+            {:ok, %{signed_in: true} = result} ->
+              conn =
+                AuthCookie.session(
+                  conn,
+                  SessionCookie.for_login(
+                    result.session,
+                    result.user,
+                    message(context.locale, "devise.registrations.signed_up"),
+                    Dawarich.RailsSecret.fetch()
+                  )
+                )
 
-        redirect(conn, "/", nil, 303)
+              redirect(conn, result.location, nil, 303)
 
-      {:error, %{messages: messages, email: email}} ->
-        form(conn, email, messages, context, 422)
+            {:ok, result} ->
+              conn
+              |> AuthCookie.session(
+                SessionCookie.for_form(result.session, Dawarich.RailsSecret.fetch())
+              )
+              |> put_resp_header("location", result.location)
+              |> send_resp(302, "")
+              |> halt()
 
-      {:error, :denied} ->
-        redirect(conn, "/", nil, 302)
+            {:error, _} ->
+              conn |> send_resp(503, "Signup callbacks unavailable") |> halt()
+          end
+
+        {:error, %{messages: messages, email: email}} ->
+          form(conn, email, messages, context, 422)
+
+        {:error, :denied} ->
+          redirect(conn, "/", nil, 302)
+      end
     end
   end
 

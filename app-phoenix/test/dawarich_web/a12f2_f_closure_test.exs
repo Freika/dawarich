@@ -63,6 +63,7 @@ defmodule DawarichWeb.A12f2FClosureTest do
     assert created.status == 303
     user = Repo.get_by!(Account, email: ctx.email)
     assert user.status == 1 and user.plan == 1
+    assert user.active_until.year == DateTime.utc_now().year + 1000
     assert byte_size(user.api_key) == 64
     assert Bcrypt.verify_pass("safepassword12", user.encrypted_password)
     signed = response_session(created)
@@ -118,6 +119,65 @@ defmodule DawarichWeb.A12f2FClosureTest do
            ])
 
     refute created.private[:replayed]
+    now = DateTime.utc_now()
+
+    [[family]] =
+      Repo.query!(
+        "INSERT INTO families(creator_id,name,created_at,updated_at) VALUES($1,'Synthetic family',$2,$2) RETURNING id",
+        [id, DateTime.to_naive(now)],
+        log: false
+      ).rows
+
+    token = "synthetic-invitation-#{id}"
+    invited_email = "invited-" <> ctx.email
+
+    Repo.query!(
+      "INSERT INTO family_invitations(family_id,invited_by_id,email,token,expires_at,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$5,$5)",
+      [family, id, invited_email, token, DateTime.to_naive(now)],
+      log: false
+    )
+
+    invited_context = %{
+      self_hosted: true,
+      oidc: false,
+      registration_enabled: false,
+      clock: fn -> now end
+    }
+
+    invited_params =
+      params
+      |> Map.put("user[email]", invited_email)
+      |> Map.put("user[invitation_token]", token)
+      |> csrf(session, "POST", "/users")
+
+    invited =
+      handler.call(
+        request(:post, "/users", session, invited_params),
+        Keyword.put(opts, :context, invited_context)
+      )
+
+    assert invited.status == 303
+    assert get_resp_header(invited, "location") == [@base <> "/family"]
+    member = Repo.get_by!(Account, email: invited_email)
+
+    assert [[1]] =
+             Repo.query!("SELECT status FROM family_invitations WHERE token=$1", [token],
+               log: false
+             ).rows
+
+    assert [[1]] =
+             Repo.query!(
+               "SELECT count(*) FROM family_memberships WHERE user_id=$1 AND family_id=$2",
+               [member.id, family],
+               log: false
+             ).rows
+
+    assert [[2]] =
+             Repo.query!(
+               "SELECT count(*) FROM notifications WHERE user_id IN ($1,$2)",
+               [id, member.id],
+               log: false
+             ).rows
   end
 
   @tag :a12f2_f_02
@@ -358,6 +418,80 @@ defmodule DawarichWeb.A12f2FClosureTest do
              ],
              DateTime.utc_now()
            ]) == false
+  end
+
+  @tag :a12f2_f_05
+  test "Cloud signup retains pending payment trial checkout attribution locale invitation and accepted callbacks once",
+       ctx do
+    assert Code.ensure_loaded?(Dawarich.Auth.RegistrationSetup)
+    alias Dawarich.Auth.{Registration, RegistrationSetup}
+    jwt = System.get_env("JWT_SECRET_KEY")
+    manager = System.get_env("MANAGER_URL")
+    System.put_env("JWT_SECRET_KEY", "synthetic-signup-checkout-secret")
+    System.put_env("MANAGER_URL", "https://manager.synthetic.test")
+
+    on_exit(fn ->
+      if jwt, do: System.put_env("JWT_SECRET_KEY", jwt), else: System.delete_env("JWT_SECRET_KEY")
+
+      if manager,
+        do: System.put_env("MANAGER_URL", manager),
+        else: System.delete_env("MANAGER_URL")
+    end)
+
+    callbacks = %{
+      webhook: fn id ->
+        send(self(), {:signup_webhook, id})
+        :ok
+      end,
+      partnero: fn id, key ->
+        send(self(), {:partnero, id, key})
+        :ok
+      end
+    }
+
+    context = %{
+      self_hosted: false,
+      oidc: false,
+      registration_enabled: false,
+      callbacks: callbacks,
+      chosen_locale: "de",
+      locale: "de",
+      log_rounds: 4
+    }
+
+    params = %{
+      "email" => ctx.email,
+      "password" => "safepassword12",
+      "password_confirmation" => "safepassword12",
+      "signup_intent" => "cloud"
+    }
+
+    {:ok, user} = Registration.create(params, context)
+
+    session =
+      Map.merge(guest(), %{
+        "utm_source" => "synthetic",
+        "gads_linker" => "linker value",
+        "partnero_referral" => "synthetic-referral"
+      })
+
+    assert {:ok, result} = apply(RegistrationSetup, :complete, [user, params, session, context])
+    assert result.user.status == 3
+    assert result.location =~ "https://manager.synthetic.test/checkout?token="
+    assert result.location =~ "&_gl=linker%20value"
+    refute Map.has_key?(result.session, "warden.user.user.key")
+    refute Map.has_key?(result.session, "utm_source")
+    refute Map.has_key?(result.session, "partnero_referral")
+    assert Accounts.settings(user.id)["locale"] == "de"
+    assert Accounts.settings(user.id)["signup_intent"] == "cloud"
+    assert_received {:signup_webhook, id}
+    assert id == user.id
+    assert_received {:partnero, ^id, "synthetic-referral"}
+    assert {:error, %{errors: errors}} = Registration.create(params, context)
+    assert Enum.any?(errors, fn {field, _, _} -> field == :email end)
+    refute_received {:signup_webhook, _}
+    [[source]] = Repo.query!("SELECT utm_source FROM users WHERE id=$1", [id], log: false).rows
+    assert source == "synthetic"
   end
 
   defp insert_user(email) do

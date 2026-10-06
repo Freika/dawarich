@@ -41,7 +41,7 @@ defmodule Dawarich.Auth.RegistrationPolicy do
     now = Map.get(context, :clock, &DateTime.utc_now/0).() |> DateTime.to_naive()
 
     case repo.query!(
-           "SELECT i.id,i.email,i.family_id,i.status=0 AND i.expires_at>$2,f.name,u.email FROM family_invitations i JOIN families f ON f.id=i.family_id JOIN users u ON u.id=i.invited_by_id WHERE i.token=$1",
+           "SELECT i.id,i.email,i.family_id,i.status=0 AND i.expires_at>=$2,f.name,u.email FROM family_invitations i JOIN families f ON f.id=i.family_id JOIN users u ON u.id=i.invited_by_id WHERE i.token=$1",
            [token, now],
            log: false
          ).rows do

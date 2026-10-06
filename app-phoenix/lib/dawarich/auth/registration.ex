@@ -45,6 +45,16 @@ defmodule Dawarich.Auth.Registration do
     end
   end
 
+  defp self_hosted_until(now) do
+    date = DateTime.to_date(now)
+    year = date.year + 1000
+
+    target =
+      Date.new!(year, date.month, min(date.day, Calendar.ISO.days_in_month(year, date.month)))
+
+    DateTime.add(now, Date.diff(target, date) * 86_400)
+  end
+
   defp insert(repo, params, email, context) do
     now = Map.get(context, :clock, &DateTime.utc_now/0).()
     password = params["password"]
@@ -58,7 +68,7 @@ defmodule Dawarich.Auth.Registration do
     locale = context[:chosen_locale]
     settings = if locale, do: %{"locale" => locale}, else: %{}
     self_hosted = context[:self_hosted] != false
-    until = if self_hosted, do: DateTime.add(now, 1000 * 365 * 86_400)
+    until = if self_hosted, do: self_hosted_until(now)
     status = if self_hosted, do: 1, else: 3
 
     case repo.transaction(fn ->
