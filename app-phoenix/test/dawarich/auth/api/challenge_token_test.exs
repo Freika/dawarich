@@ -34,14 +34,20 @@ defmodule Dawarich.Auth.Api.ChallengeTokenTest do
     assert claims["exp"] - claims["iat"] == 300
     assert Map.keys(claims) |> Enum.sort() == ~w(exp iat jti purpose user_id)
     live = Map.drop(context(row), [:clock, :jti])
+    before_issuance = DateTime.to_unix(DateTime.utc_now())
     assert {:ok, first} = ChallengeToken.issue(row["user_id"], live)
     assert {:ok, second} = ChallengeToken.issue(row["user_id"], live)
+    after_issuance = DateTime.to_unix(DateTime.utc_now())
     assert first != second
     a = first |> String.split(".") |> Enum.at(1) |> decode()
     b = second |> String.split(".") |> Enum.at(1) |> decode()
     assert {:ok, _} = Ecto.UUID.cast(a["jti"])
     assert a["jti"] != b["jti"]
-    assert abs(a["iat"] - DateTime.to_unix(DateTime.utc_now())) <= 1
+
+    for issued <- [a, b] do
+      assert issued["iat"] in before_issuance..after_issuance
+      assert issued["exp"] - issued["iat"] == 300
+    end
   end
 
   test "OTP secrets match the Rails matrix and unavailable fallback hands back" do
