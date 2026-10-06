@@ -62,7 +62,7 @@ defmodule Dawarich.Users.RecalculationCorpusTest do
   end
 
   test "recalculation routes retain unchanged Rails hand-backs" do
-    for path <- ["/api/v1/recalculations", "/tracks/recalculation", "/digests"] do
+    for path <- ["/api/v1/recalculations", "/digests"] do
       assert Phoenix.Router.route_info(DawarichWeb.Router, "POST", path, "localhost") == :error
     end
 

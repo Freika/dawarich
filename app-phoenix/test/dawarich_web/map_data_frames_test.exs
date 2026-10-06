@@ -69,7 +69,7 @@ defmodule DawarichWeb.MapDataFramesTest do
   end
 
   test "matching address frame uses normalized fields without list fallback", %{user: user} do
-    assert %{plug: MapFrames} =
+    assert %{plug: DawarichWeb.PointAddress} =
              Phoenix.Router.route_info(Router, "GET", "/points/837001/address", "localhost")
 
     Repo.query!(
@@ -106,10 +106,10 @@ defmodule DawarichWeb.MapDataFramesTest do
   end
 
   test "direct foreign malformed and query-writing frame requests replay", %{user: user} do
-    assert %{plug: MapFrames} =
+    assert %{plug: DawarichWeb.PointAddress} =
              Phoenix.Router.route_info(Router, "GET", "/points/837001/address", "localhost")
 
-    refute MapDataGate.point_address?(RailsUser.signed_in(user.id), %{"id" => "837001"})
+    assert MapDataGate.point_address?(RailsUser.signed_in(user.id), %{"id" => "837001"})
     other = FrameSeeds.user!(8371)
     FrameSeeds.point!(other.id, 837_002, 1_772_359_200)
 
@@ -118,13 +118,17 @@ defmodule DawarichWeb.MapDataFramesTest do
       end_at: ~N[2026-10-03 09:00:00]
     })
 
+    for frame <- [nil, "point-address-0", "point-address-837001"] do
+      conn = no_token(user)
+      conn = if frame, do: put_req_header(conn, "turbo-frame", frame), else: conn
+      assert request(conn, "/points/837001/address").status == 200
+    end
+
+    assert request(RailsUser.signed_in(user.id), "/points/837002/address").status == 404
+
     upstream = RailsFormRequests.upstream!()
 
     for {path, frame, token} <- [
-          {"/points/837001/address", nil, true},
-          {"/points/837001/address", "point-address-0", true},
-          {"/points/837001/address", "point-address-837001", false},
-          {"/points/837002/address", "point-address-837002", true},
           {"/points/no/address", "point-address-no", true},
           {"/points/9999999999999999999/address", "point-address-9999999999999999999", true},
           {"/points/837001/address?locale=de", "point-address-837001", true},

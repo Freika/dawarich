@@ -109,10 +109,10 @@ defmodule DawarichWeb.MapDataParityTest do
     }
 
     fallback =
-      state["status"] == 404 or
-        name in ~w(address_direct points_named_start points_named_end points_pre_epoch_import)
+      (state["status"] == 404 and state["kind"] == "segments") or
+        name in ~w(points_named_start points_named_end points_pre_epoch_import)
 
-    if state["status"] == 200 and not fallback do
+    if state["status"] == 200 and not fallback and name != "address_direct" do
       native = body(state, ctx, path)
 
       expected =
@@ -212,7 +212,8 @@ defmodule DawarichWeb.MapDataParityTest do
       Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com")
 
     ctx = Map.merge(ctx, %{id: params["id"], track_id: params["track_id"]})
-    assert action == if(kind == "segments", do: :segments, else: :point_address)
+    assert action == if(kind == "segments", do: :segments, else: :address)
+    action = if action == :address, do: :point_address, else: action
     assert {:ok, "text/html", html} = MapFrames.body(action, ctx)
     IO.iodata_to_binary(html)
   end
@@ -226,8 +227,33 @@ defmodule DawarichWeb.MapDataParityTest do
         do: put_req_header(conn, "turbo-frame", state["turbo_frame"]),
         else: conn
 
-    conn = if fallback, do: replay(conn, state, rails), else: get(conn, state["path"])
+    conn =
+      cond do
+        fallback ->
+          replay(conn, state, rails)
+
+        state["status"] == 404 and state["kind"] == "tag_form" ->
+          {404, headers, body} = assert_error_sent(404, fn -> get(conn, state["path"]) end)
+          %{conn | status: 404, resp_headers: headers, resp_body: body, state: :sent}
+
+        true ->
+          get(conn, state["path"])
+      end
+
     assert conn.status == state["status"], name
+
+    if name == "address_direct" do
+      frame = fn body ->
+        body
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("turbo-frame")
+        |> LazyHTML.to_html()
+        |> ParityHTML.normalize()
+      end
+
+      assert frame.(conn.resp_body) == frame.(rails), name
+      assert conn.resp_body =~ "<!DOCTYPE html>"
+    end
 
     assert conn |> get_resp_header("content-type") |> hd() |> String.split(";") |> hd() ==
              state["content_type"],
