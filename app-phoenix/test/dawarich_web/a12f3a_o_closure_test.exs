@@ -340,6 +340,167 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     end
   end
 
+  @tag a12f3a_o07: true
+  test "O07: import export trip visit video methods consume native owner outcomes exactly once",
+       ctx do
+    assert Strangler.gate_open?(
+             info("GET", "/settings/users/export"),
+             raw(ctx, "HEAD", "/settings/users/export", "")
+           )
+
+    routes = i_f_e_t_v_r()
+    assert length(routes) == 43
+
+    for hosted <- ["true", "false"], legacy <- [false, true] do
+      System.put_env("SELF_HOSTED", hosted)
+      Repo.query!("UPDATE users SET settings=$1 WHERE id=8896", [if(legacy, do: [], else: %{})])
+
+      for {method, path, key, handler} <- routes do
+        route = info(method, path)
+        assert route != :error, "#{method} #{path}"
+        assert owner(route) == handler, "#{method} #{path}"
+        assert Code.ensure_loaded?(handler)
+        if key == "user_data", do: assert(route.rails_key == key)
+        pinned(ctx, method, path <> "?original=a%2Bb&original=c", key)
+        if method == "GET", do: pinned(ctx, "HEAD", path, key)
+      end
+    end
+
+    Repo.query!("UPDATE users SET settings='{}' WHERE id=8896")
+    Dawarich.Jobs.Ownership.put!(Repo, "command:users.export_data", :oban)
+
+    expected =
+      File.read!("test/fixtures/user_data/http.json")
+      |> Jason.decode!()
+      |> get_in(["en", "export"])
+
+    for hosted <- ["true", "false"], method <- ["GET", "HEAD"] do
+      System.put_env("SELF_HOSTED", hosted)
+      before = Repo.query!("SELECT count(*) FROM job_outbox").rows
+
+      response =
+        @endpoint.call(raw(ctx, method, "/settings/users/export", ""), @endpoint.init([]))
+
+      assert response.status == expected["status"]
+
+      assert get_resp_header(response, "location") == [
+               "http://www.example.com" <> expected["location"]
+             ]
+
+      assert get_resp_header(response, "x-dawarich-handler") == ["phoenix-user-data"]
+      assert response.resp_body == ""
+      assert [[count]] = before
+      assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[count + 1]]
+      assert commands() == []
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    end
+
+    for key <- ~w(user_data visits) do
+      Application.put_env(:dawarich, :rails_routes, [key])
+      admitted = Strangler.call(raw(ctx, "PATCH", "/settings/visits", ""), [])
+      refute admitted.halted
+    end
+
+    Application.put_env(:dawarich, :rails_routes, [])
+
+    before = Repo.query!("SELECT count(*) FROM job_outbox").rows
+
+    doomed =
+      raw(ctx, "GET", "/settings/users/export", "")
+      |> register_before_send(fn _ -> raise "synthetic post-commit response failure" end)
+
+    error = assert_raise RuntimeError, fn -> @endpoint.call(doomed, @endpoint.init([])) end
+    assert Exception.message(error) =~ "synthetic post-commit response failure"
+    assert [[count]] = before
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[count + 1]]
+    assert commands() == []
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+
+    for {method, path, headers, bytes} <- [
+          {"POST", "/route_videos", [], "foreign_domain=x"},
+          {"POST", "/trips", [{"x-http-method-override", "DELETE"}], "trip%5Bname%5D=Synthetic"},
+          {"POST", "/settings/users/import", [], "archive=bad&authenticity_token=bad"},
+          {"POST", "/exports", [], "authenticity_token=bad"}
+        ] do
+      System.put_env("SELF_HOSTED", "true")
+      previous = observations()
+
+      conn =
+        Enum.reduce(headers, raw(ctx, method, path, bytes), fn {k, v}, c ->
+          put_req_header(c, k, v)
+        end)
+
+      {{line, original}, response} =
+        forwarded(ctx.upstream, fn -> @endpoint.call(conn, @endpoint.init([])) end)
+
+      assert response.status == 204
+      assert line == "#{method} #{path} HTTP/1.1"
+      assert original == bytes
+      assert observations() == previous
+    end
+
+    System.put_env("DAWARICH_RAILS", "off")
+
+    response =
+      @endpoint.call(raw(ctx, "POST", "/route_videos", "foreign_domain=x"), @endpoint.init([]))
+
+    assert response.status in [400, 422, 500]
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    assert commands() == []
+  end
+
+  defp i_f_e_t_v_r do
+    reads = [
+      {"/imports", "imports", DawarichWeb.ImportsLive.Index},
+      {"/imports/new", "imports", DawarichWeb.ImportsLive.New},
+      {"/imports/42", "imports", DawarichWeb.ImportsLive.Show},
+      {"/imports/42/edit", "imports", DawarichWeb.ImportsLive.Edit},
+      {"/imports/42/download", "imports", DawarichWeb.ImportsDownload},
+      {"/exports", "exports", DawarichWeb.ExportsLive.Index},
+      {"/settings/users/export", "user_data", DawarichWeb.UserDataController},
+      {"/trips", "trips", DawarichWeb.TripsLive.Index},
+      {"/trips/new", "trips", DawarichWeb.TripsLive.Form},
+      {"/trips/42", "trips", DawarichWeb.TripsLive.Show},
+      {"/trips/42/edit", "trips", DawarichWeb.TripsLive.Form},
+      {"/visits", "visits", DawarichWeb.VisitsNavigation},
+      {"/settings/visits", "settings", DawarichWeb.SettingsLive.Visits}
+    ]
+
+    Enum.map(reads, fn {path, key, handler} -> {"GET", path, key, handler} end) ++
+      [
+        {"POST", "/imports", "imports", DawarichWeb.ImportsController},
+        {"PATCH", "/imports/42", "imports", DawarichWeb.ImportsController},
+        {"PUT", "/imports/42", "imports", DawarichWeb.ImportsController},
+        {"DELETE", "/imports/42", "imports", DawarichWeb.ImportsController},
+        {"POST", "/imports/42/extraction", "imports", DawarichWeb.ImportsController},
+        {"DELETE", "/imports/42/extraction", "imports", DawarichWeb.ImportsController},
+        {"POST", "/exports", "exports", DawarichWeb.ExportsCreate},
+        {"DELETE", "/exports/42", "exports", DawarichWeb.ExportsDelete},
+        {"POST", "/settings/users/import", "user_data", DawarichWeb.UserDataController},
+        {"POST", "/trips", "trips", DawarichWeb.TripActions},
+        {"PATCH", "/trips/42", "trips", DawarichWeb.TripActions},
+        {"PUT", "/trips/42", "trips", DawarichWeb.TripActions},
+        {"DELETE", "/trips/42", "trips", DawarichWeb.TripActions},
+        {"POST", "/trips/42/recalculate", "trips", DawarichWeb.TripActions},
+        {"POST", "/trips/42/export", "trips", DawarichWeb.TripActions},
+        {"POST", "/trips/41/notes", "trips", DawarichWeb.TripNoteActions},
+        {"PATCH", "/trips/41/notes/42", "trips", DawarichWeb.TripNoteActions},
+        {"PUT", "/trips/41/notes/42", "trips", DawarichWeb.TripNoteActions},
+        {"DELETE", "/trips/41/notes/42", "trips", DawarichWeb.TripNoteActions},
+        {"PATCH", "/visits/42", "visits", DawarichWeb.VisitActions},
+        {"PUT", "/visits/42", "visits", DawarichWeb.VisitActions},
+        {"DELETE", "/visits/42", "visits", DawarichWeb.VisitActions},
+        {"PATCH", "/visits/bulk_update", "visits", DawarichWeb.VisitActions},
+        {"DELETE", "/visits/bulk_destroy", "visits", DawarichWeb.VisitActions},
+        {"POST", "/visits/merge", "visits", DawarichWeb.VisitActions},
+        {"POST", "/visits/redetections", "visits", DawarichWeb.VisitSettingsActions},
+        {"PATCH", "/settings/visits", "settings", DawarichWeb.VisitSettingsActions},
+        {"PUT", "/settings/visits", "settings", DawarichWeb.VisitSettingsActions},
+        {"POST", "/route_videos", "route_videos", DawarichWeb.RouteVideoActions},
+        {"DELETE", "/route_videos/42", "route_videos", DawarichWeb.RouteVideoActions}
+      ]
+  end
+
   defp q_m_w_p do
     reads = [
       {"/stats", "stats", DawarichWeb.StatsLive.Index},
