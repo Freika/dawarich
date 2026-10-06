@@ -32,7 +32,7 @@ defmodule Dawarich.A12f3bE11Test do
     point = Wave6Fixtures.point!(user, %{"raw_data" => raw})
     hold_lease!(ScratchRepo, "archive_raw_data:#{user}", "retained-source")
 
-    assert :ok = archive(ctx, %{"user_id" => user, "cursor" => 0})
+    assert {:snooze, 1} = archive(ctx, %{"user_id" => user, "cursor" => 0})
     assert rows("SELECT raw_data_archived FROM points WHERE id=$1", [point]) == [[false]]
     assert rows("SELECT count(*) FROM points_raw_data_archives") == [[0]]
     assert lease_holders(ScratchRepo, "archive_raw_data:#{user}") == [["retained-source"]]

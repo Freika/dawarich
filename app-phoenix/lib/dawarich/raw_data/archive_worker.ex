@@ -41,11 +41,25 @@ defmodule Dawarich.RawData.ArchiveWorker do
         )
       end
 
-    with {:ok, {:continue, next}} <- result do
-      Oban.insert!(oban, new(%{"user_id" => user_id, "cursor" => next}))
-    end
+    case result do
+      {:ok, {:continue, next}} ->
+        continuation = %{"user_id" => user_id, "cursor" => next}
 
-    :ok
+        case Oban.insert!(oban, new(continuation)) do
+          %Oban.Job{id: id, args: ^continuation, state: state}
+          when is_integer(id) and state in ["available", "scheduled"] ->
+            :ok
+
+          _ ->
+            {:snooze, 1}
+        end
+
+      {:error, :timeout} ->
+        {:snooze, 1}
+
+      _ ->
+        :ok
+    end
   end
 
   def run(repo, oban, args, opts) when args == %{},
