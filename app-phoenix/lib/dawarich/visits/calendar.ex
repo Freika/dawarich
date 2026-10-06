@@ -2,7 +2,12 @@ defmodule Dawarich.Visits.Calendar do
   @moduledoc false
 
   def changed(repo, user_id, stamps) do
-    case Dawarich.Jobs.Ownership.lock(repo, "command:visits.suggest") do
+    owner =
+      if Dawarich.Standalone.enabled?(),
+        do: :oban,
+        else: Dawarich.Jobs.Ownership.lock(repo, "command:visits.suggest")
+
+    case owner do
       :oban ->
         case repo.query!("SELECT settings FROM users WHERE id=$1", [user_id], log: false).rows do
           [[settings]] -> invalidate(repo, %{id: user_id, settings: settings}, stamps)

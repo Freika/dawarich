@@ -24,7 +24,7 @@ defmodule Dawarich.Visits.BulkSweep do
       work = fn -> batch(repo, oban, args, opts, env) end
 
       result =
-        if args["cron"],
+        if args["cron"] == true and not Dawarich.Standalone.enabled?(env),
           do: Ownership.with_owner(repo, BulkSweepWorker.key(), :oban, work),
           else: repo.transaction(work)
 
@@ -41,7 +41,12 @@ defmodule Dawarich.Visits.BulkSweep do
   defp batch(repo, oban, args, opts, env) do
     unless Processed.done?(repo, args["event_id"]) do
       rows = repo.query!(@users, [args["after_id"] || 0, args["user_ids"]], log: false).rows
-      owner = Ownership.lock(repo, "command:visits.suggest")
+
+      owner =
+        if Dawarich.Standalone.enabled?(env),
+          do: :oban,
+          else: Ownership.lock(repo, "command:visits.suggest")
+
       chunks = Calendar.time_chunks(args["start_at"], args["end_at"])
       zone_env = Map.put_new(env, "TIME_ZONE", "UTC")
       zones = time_zones(repo, rows, zone_env)

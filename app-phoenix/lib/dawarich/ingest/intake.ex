@@ -176,10 +176,15 @@ defmodule Dawarich.Ingest.Intake do
        %{"broadcast_id" => Ecto.UUID.generate(), "upserted" => upserted, "payloads" => payloads}}
     ]
     |> Enum.each(fn {kind, payload} ->
-      if kind == "tracks.backfill" do
-        Dawarich.Tracks.BackfillCommands.ingest(repo, user_id, payload["timestamps"], opts)
-      else
-        RailsCommands.insert!(repo, kind, Map.put(payload, "user_id", user_id))
+      case kind do
+        "tracks.backfill" ->
+          Dawarich.Tracks.BackfillCommands.ingest(repo, user_id, payload["timestamps"], opts)
+
+        "visits.realtime" ->
+          Dawarich.Visits.RealtimeDebouncer.trigger(repo, user_id, opts)
+
+        _ ->
+          RailsCommands.insert!(repo, kind, Map.put(payload, "user_id", user_id))
       end
     end)
   end

@@ -10,8 +10,11 @@ defmodule Dawarich.Visits.HistoryRedetect do
   def cooldown?(last, now),
     do: NaiveDateTime.compare(last, DateTime.to_naive(DateTime.add(now, -3600))) == :gt
 
-  def enqueue(repo, user_id, settings, last, now, locale) do
-    owner = Dawarich.Jobs.Ownership.lock(repo, "command:visits.full_history_redetect")
+  def enqueue(repo, user_id, settings, last, now, locale, opts \\ []) do
+    owner =
+      Keyword.get_lazy(opts, :owner, fn ->
+        Dawarich.Jobs.Ownership.lock(repo, "command:visits.full_history_redetect")
+      end)
 
     if cooldown?(last, now),
       do: repo.rollback(if(owner == :oban, do: {:cooldown, 429, :native}, else: {:cooldown, 429}))

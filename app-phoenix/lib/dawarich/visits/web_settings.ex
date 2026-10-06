@@ -30,7 +30,8 @@ defmodule Dawarich.Visits.WebSettings do
 
   def redetect(repo, user_id, now, locale) do
     transact(repo, user_id, fn %{settings: settings, last_redetected: last} ->
-      Dawarich.Visits.HistoryRedetect.enqueue(repo, user_id, settings, last, now, locale)
+      opts = if Dawarich.Standalone.enabled?(), do: [owner: :oban], else: []
+      Dawarich.Visits.HistoryRedetect.enqueue(repo, user_id, settings, last, now, locale, opts)
     end)
   end
 
