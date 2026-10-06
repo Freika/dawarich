@@ -4,6 +4,20 @@ defmodule DawarichWeb.A12f2JClosureTest do
   @moduletag :capture_log
   @key "a12f2-j-synthetic-api-key"
 
+  @tag :review_cloud_plan
+  test "Cloud Lite plan features match Rails at the real Endpoint", c do
+    fixture = Jason.decode!(File.read!("test/fixtures/api_foundation/golden.json"))
+    kase = Enum.find(fixture["cases"], &(&1["name"] == "rails_cloud_plan"))
+    System.put_env("SELF_HOSTED", "false")
+    for row <- kase["setup"], do: Dawarich.Test.ApiGolden.insert!("users", row)
+
+    Dawarich.Test.ApiGolden.check(
+      Dawarich.Test.ActivatedPlanGolden.activate(kase),
+      c.port,
+      c.upstream
+    )
+  end
+
   @tag :a12f2_j_activate_b
   test "Merged photos places and search handlers are reachable through the real Endpoint", c do
     for {method, path} <- [

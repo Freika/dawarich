@@ -41,7 +41,7 @@ defmodule Dawarich.Test.ApiGolden do
   defp owned(kase, client, upstream, options) do
     %{"status" => status, "headers" => expected} = kase["response"]
     body = body(kase["response"])
-    {got_status, headers, got_body} = read_response(client)
+    {got_status, headers, got_body} = read_response(client, method: kase["request"]["method"])
     assert got_status == status
     {comparison_body, headers} = crypto_comparison(got_body, headers, options)
     ignore = (kase["ignore"] || []) ++ float_derived_headers(options)
@@ -64,11 +64,18 @@ defmodule Dawarich.Test.ApiGolden do
     for name <- names -- ["x-request-id", "x-runtime"],
         do: assert(values(headers, name) == [expected[name]], name)
 
-    assert values(headers, "content-length") ==
-             if(status in [204, 304],
-               do: [],
-               else: [Integer.to_string(byte_size(content_length_body(got_body, body, options)))]
-             )
+    if kase["request"]["method"] == "HEAD" do
+      assert got_body == ""
+      assert Enum.all?(values(headers, "content-length"), &Regex.match?(~r/\A\d+\z/, &1))
+    else
+      assert values(headers, "content-length") ==
+               if(status in [204, 304],
+                 do: [],
+                 else: [
+                   Integer.to_string(byte_size(content_length_body(got_body, body, options)))
+                 ]
+               )
+    end
 
     assert [runtime] = values(headers, "x-runtime")
     assert runtime =~ ~r/\A\d+\.\d{6}\z/
@@ -91,7 +98,7 @@ defmodule Dawarich.Test.ApiGolden do
 
   defp rails(kase, client, upstream) do
     %{"method" => method, "target" => target, "headers" => sent} = kase["request"]
-    puma = accept(upstream)
+    puma = rails_connection(client, upstream)
     {head, rest} = read_head(puma)
 
     assert request_line(head) == "#{method} #{target} HTTP/1.1"
@@ -104,6 +111,37 @@ defmodule Dawarich.Test.ApiGolden do
     reply(puma, ["HTTP/1.1 #{status} Rails\r\nContent-Length: #{byte_size(body)}\r\n\r\n", body])
     assert {^status, _, received} = read_response(client, method: method)
     assert received == body
+  end
+
+  defp rails_connection(client, upstream) do
+    owner = self()
+
+    task =
+      Task.async(fn ->
+        socket = accept(upstream)
+        :ok = :gen_tcp.controlling_process(socket, owner)
+        socket
+      end)
+
+    ref = task.ref
+    :ok = :inet.setopts(client, active: :once)
+
+    try do
+      receive do
+        {^ref, socket} ->
+          Process.demonitor(ref, [:flush])
+          socket
+
+        {:tcp, ^client, _bytes} ->
+          flunk("expected pre-effect Rails hand-back, received terminal Endpoint response")
+
+        {:tcp_closed, ^client} ->
+          flunk("expected pre-effect Rails hand-back, Endpoint closed the connection")
+      end
+    after
+      :inet.setopts(client, active: false)
+      Task.shutdown(task, :brutal_kill)
+    end
   end
 
   defp crypto_comparison(raw, headers, options) do
