@@ -75,6 +75,7 @@ RSpec.describe 'Phoenix fixture: a trip calculated by Rails' do
       path = Rails.root.join('app-phoenix/test/fixtures/trips/calculation.json')
       FileUtils.mkdir_p(path.dirname)
       FixtureRecording.verify(path, "#{JSON.pretty_generate(fixture)}\n")
+      FixtureRecording.verify(path.dirname.join('a12f3a-t04.json'), "#{JSON.pretty_generate(fixture)}\n")
     end
   end
 end

@@ -1,8 +1,94 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: :request do
+  closure_cases = {}
+  define_method(:closure_case) { |name, data| closure_cases[name] = data }
+  after(:all) do
+    selected = closure_cases.sort.to_h.select { |name, _| ['page_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t01.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t02.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t06.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t07.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t08.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t09.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t10.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r01.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r02.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r03.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r04.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r05.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r06.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r07.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| %w[page_ video_].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r08.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| %w[page_ video_].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r09.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/trips') }
@@ -584,6 +670,10 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
                       fault: entry[:fault], race: entry[:race] }
           responses << remaining_response(entry[:name], error).merge(request:)
           effects << { name: entry[:name], request:, before:, after: remaining_graph(user, id), queue: }
+          captured = responses.last.merge(effects: effects.last,
+                                          body: error ? nil : remaining_html(response.body),
+                                          set_cookie: !error && response.headers['Set-Cookie'].present?)
+          closure_case("remaining_#{entry[:name]}", captured)
           next unless !error && accept == 'text/html' && entry[:action].to_s.start_with?('note_')
 
           follow_redirect!
@@ -693,6 +783,14 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
                           {}
                         end,
                jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args], queue: _1[:queue] } } }
+      captured = data.deep_dup.merge(body:,
+                                     set_cookie: request[:method] && response.headers['Set-Cookie'].present?)
+      %i[before after].each do |phase|
+        captured.fetch(phase).fetch(:active_storage_blobs).each do |blob|
+          blob['key'] = "blob-#{blob.fetch('id')}"
+        end
+      end
+      closure_case("video_#{name}", captured)
       File.write(target.join("#{name}.json"),
                  "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n")
     end
@@ -1154,6 +1252,10 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
     else
       expect(dir.join("pages/#{name}.html").read).to eq(html)
     end
+    closure_case("page_#{name}", { path:, status: response.status, media_type: response.media_type, body: html,
+                 location: response.location, flash: flash.to_hash, set_cookie: response.headers['Set-Cookie'].present?,
+                 headers: response.headers.slice('Vary', 'Cache-Control'),
+                 trips: User.find(user_id).trips.order(:id).map(&:attributes) })
     sign_out :user
     { name:, user_id:, path:, title: doc.at_css('title').text }
   end
@@ -1187,6 +1289,7 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
           end }
       end
       write_json('windows.json', { trips: cases })
+      write_json('a12f3a-t05.json', { trips: cases })
     end
   end
 
