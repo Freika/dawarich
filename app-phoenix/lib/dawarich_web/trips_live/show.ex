@@ -71,6 +71,16 @@ defmodule DawarichWeb.TripsLive.Show do
           <div class="w-full lg:w-2/5 lg:h-full lg:overflow-y-auto">
             <.trip_header page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
             <turbo-frame id="share-link-modal"></turbo-frame>
+            <button
+              :if={@page.settings.photos}
+              type="button"
+              class="btn btn-sm btn-ghost"
+              data-trip-maplibre-target="photosToggleBtn"
+              data-action="click->trip-maplibre#togglePhotos"
+              title={t(@locale, "trips.show.toggle_photo_markers_on_map", %{})}
+            >
+              <.icon name="camera" class="w-4 h-4" />{t(@locale, "trips.show.photos", %{})}
+            </button>
             <.trip_toolbar page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
             <DawarichWeb.TripItinerary.itinerary
               :if={DawarichWeb.TripPlanItems.visible?(@page.plan)}
@@ -85,6 +95,21 @@ defmodule DawarichWeb.TripsLive.Show do
               <h3 class="text-lg font-semibold mb-2">{t(@locale, "trips.show.trip_notes", %{})}</h3>
               <div class="prose max-w-none">
                 {Phoenix.HTML.raw(TripDescription.html(@page.description))}
+              </div>
+            </div>
+            <div :if={@page.photos.sources != []} class="mb-6">
+              <div class="flex flex-wrap gap-2">
+                <a
+                  :for={source <- @page.photos.sources}
+                  href={@page.photos.links[source]}
+                  class="btn btn-sm btn-outline gap-1"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <.icon name="camera" class="w-4 h-4" />{t(@locale, "trips.show.more_on_source", %{
+                    source: t(@locale, "photo_sources.#{source}", %{})
+                  })}
+                </a>
               </div>
             </div>
             <div class="mb-6">

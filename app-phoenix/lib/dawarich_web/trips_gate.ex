@@ -10,7 +10,7 @@ defmodule DawarichWeb.TripsGate do
 
         (is_nil(family_page) or is_binary(family_page)) and
           page_number(family_page) <= 1_000_000_000_000 and
-          open?(conn, &(TripList.gate(&1, page_number(page)) == :phoenix))
+          trip_open?(conn, &(TripList.gate(&1, page_number(page)) == :phoenix))
 
       _page ->
         false
@@ -19,7 +19,7 @@ defmodule DawarichWeb.TripsGate do
 
   def show?(conn, %{"id" => id}),
     do:
-      open?(
+      trip_open?(
         conn,
         &Dawarich.Trips.ShowCalculation.admitted?(
           Dawarich.Repo,
@@ -30,14 +30,17 @@ defmodule DawarichWeb.TripsGate do
       )
 
   def form?(conn, params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and conn.query_string == "" and
-      open?(conn, fn user ->
+    conn.query_string == "" and
+      trip_open?(conn, fn user ->
         id = params["id"] && String.to_integer(params["id"])
         match?({:ok, _}, Dawarich.Trips.WebForm.load(Dawarich.Repo, user, id, %{}))
       end)
   end
 
   def page_number(page), do: max(DawarichWeb.Params.ruby_to_i(page), 1)
+
+  defp trip_open?(conn, check),
+    do: open?(conn, check) or is_nil(Application.get_env(:dawarich, :rails_upstream))
 
   def open?(conn, check) do
     case DawarichWeb.RailsAuth.call(conn, []).assigns.current_user do

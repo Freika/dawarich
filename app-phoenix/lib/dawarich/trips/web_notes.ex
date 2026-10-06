@@ -62,17 +62,18 @@ defmodule Dawarich.Trips.WebNotes do
   defp date(raw) when raw in [nil, "", "bad-date"], do: {:invalid_date}
 
   defp date(raw) when is_binary(raw) do
-    if Regex.match?(~r/\A\d{4}-\d{2}-\d{2}\z/, raw) do
-      case Date.from_iso8601(raw) do
-        {:ok, date} -> {:ok, date}
-        _ -> {:invalid_date}
-      end
-    else
-      {:replay, "uncaptured note date syntax"}
-    end
+    parts = Dawarich.Imports.DateParts.parse(raw)
+    now = Date.utc_today()
+
+    with day when is_integer(day) <- parts["mday"],
+         {:ok, date} <- Date.new(parts["year"] || now.year, parts["mon"] || now.month, day),
+         do: {:ok, date},
+         else: (_ -> {:invalid_date})
+  rescue
+    _ -> {:invalid_date}
   end
 
-  defp date(_), do: {:replay, "note date shape"}
+  defp date(_), do: {:invalid_date}
 
   defp save(repo, user, trip_id, old, body, context) when is_binary(body) or is_nil(body) do
     note = %{old | body: body}

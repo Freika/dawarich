@@ -4,7 +4,6 @@ defmodule DawarichWeb.TripActions do
   import Plug.Conn
   alias Dawarich.{Jobs, Trips.WebWrite, Trips.WebDelete, Trips.WebForm}
   alias DawarichWeb.{Locale, RailsCsrf, RailsSession, RequestURL, Translate, TripForm}
-  alias DawarichWeb.Api.Body
 
   def init(action), do: action
 
@@ -49,7 +48,7 @@ defmodule DawarichWeb.TripActions do
         end
 
       {:replay, reason} ->
-        Body.replay(conn, reason)
+        DawarichWeb.TripRequest.replay(conn, reason)
 
       {:error, :not_found} ->
         not_found(conn)
@@ -70,7 +69,7 @@ defmodule DawarichWeb.TripActions do
     id = conn.path_params["id"] && String.to_integer(conn.path_params["id"])
 
     if action == :create and not WebForm.active?(user, ctx.now) do
-      Body.replay(conn, "inactive trip create")
+      DawarichWeb.TripRequest.replay(conn, "inactive trip create")
     else
       case change(conn, action, user, id, ctx) do
         {:ok, result} ->
@@ -92,16 +91,16 @@ defmodule DawarichWeb.TripActions do
 
         {:invalid, errors, values} ->
           if action == :create and conn.assigns.a8_format == :turbo_stream do
-            Body.replay(conn, "invalid Turbo trip create MissingTemplate")
+            conn |> send_resp(500, "") |> halt()
           else
             case WebForm.load(Jobs.repo(), user, id, ctx) do
               {:ok, form} -> invalid(conn, WebForm.invalid(form, errors, values), ctx.locale)
-              _ -> Body.replay(conn, "trip validation form")
+              _ -> DawarichWeb.TripRequest.replay(conn, "trip validation form")
             end
           end
 
         {:replay, reason} ->
-          Body.replay(conn, reason)
+          DawarichWeb.TripRequest.replay(conn, reason)
 
         {:error, :not_found} ->
           not_found(conn)

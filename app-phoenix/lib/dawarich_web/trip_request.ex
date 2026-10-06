@@ -42,4 +42,15 @@ defmodule DawarichWeb.TripRequest do
   def query_keys(:trip_export), do: ~w(file_format)
   def query_keys(_), do: []
   def repeated_keys, do: ["visit_ids[]"]
+
+  def replay(conn, reason) do
+    if upstream = Application.get_env(:dawarich, :rails_upstream) do
+      conn
+      |> DawarichWeb.RailsProxy.call(upstream)
+      |> Plug.Conn.halt()
+    else
+      status = if reason == :not_found, do: 404, else: 500
+      conn |> Plug.Conn.send_resp(status, "") |> Plug.Conn.halt()
+    end
+  end
 end

@@ -75,5 +75,7 @@ RSpec.describe 'Phoenix fixtures: trip descriptions as Rails renders them on the
     end
 
     FixtureRecording.verify(path, "#{Oj.dump({ 'cases' => rows.map(&:stringify_keys) }, mode: :strict, indent: 2)}\n")
+    FixtureRecording.verify(path.dirname.join('a12f3a-t04.json'),
+                            "#{Oj.dump({ 'cases' => rows.map(&:stringify_keys) }, mode: :strict, indent: 2)}\n")
   end
 end
