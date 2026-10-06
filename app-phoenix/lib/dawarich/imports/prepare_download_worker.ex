@@ -84,7 +84,7 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
     case Download.prepare!(repo, job.args["user_id"], job.args["import_id"], source.id, context) do
       :ok -> effect(repo, job, source, fn -> mark(repo, job) end)
       {:error, :changed} -> handback(repo, job)
-      {:legacy, _} -> handback(repo, job, true)
+      {:legacy, reason} -> {:error, reason}
     end
   end
 
@@ -103,7 +103,7 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
     end
   end
 
-  defp handback(repo, job, legacy? \\ false) do
+  defp handback(repo, job) do
     {:ok, result} =
       repo.transaction(fn ->
         owner = Ownership.lock(repo, @lane)
@@ -126,7 +126,7 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
                   snapshot.source.id != job.args["source_blob_id"] ->
                 mark(repo, job)
 
-              owner == :sidekiq or legacy? ->
+              owner == :sidekiq ->
                 reverse(repo, job)
 
               true ->

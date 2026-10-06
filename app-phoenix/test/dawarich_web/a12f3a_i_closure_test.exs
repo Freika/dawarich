@@ -136,6 +136,103 @@ defmodule DawarichWeb.A12f3aIClosureTest do
     |> Jason.decode!()
   end
 
+  @tag a12f3a_i05: true
+  test "I05: import original and prepared downloads matches current Rails contract without a native-owner Rails effect",
+       c do
+    oracle = capture("i05")
+    {:ok, {_, zip}} = :zip.create(~c"wrapped.zip", [{~c"wrapped.gpx", "<gpx/>"}], [:memory])
+    blob = Dawarich.RailsBlobFixture.create!(Repo, c.root, "wrapped.gpx.zip", zip)
+
+    descriptor = %{
+      "signed_id" => blob.signed_id,
+      "client_wrapped" => true,
+      "original_filename" => "wrapped.gpx"
+    }
+
+    Ownership.put!(Repo, "command:imports.prepare_download", :oban)
+    Ownership.put!(Repo, "command:imports.prepared_download_purge", :oban)
+
+    {:ok, [id]} =
+      Dawarich.Imports.UploadCreate.create(Repo, c.user, [descriptor], %{
+        storage: %{service: "local", root: c.root},
+        self_hosted?: true
+      })
+
+    stale =
+      Dawarich.RailsBlobFixture.create!(Repo, c.root, "stale.gpx", "stale",
+        metadata: %{"dawarich_download_source_blob_id" => blob.id + 1}
+      )
+
+    Repo.query!(
+      "INSERT INTO active_storage_attachments(record_type,record_id,name,blob_id,created_at) VALUES('Import',$1,'prepared_download',$2,now())",
+      [id, stale.id]
+    )
+
+    response = request(c, :get, "/imports/#{id}/download", %{})
+    assert response.status == oracle["status"]
+    assert get_resp_header(response, "refresh") == [oracle["refresh"]]
+
+    assert Repo.query!(
+             "SELECT payload FROM job_outbox WHERE command_type='imports.prepare_download'"
+           ).rows == [[%{"import_id" => id, "user_id" => c.user.id, "source_blob_id" => blob.id}]]
+
+    original = request(c, :get, "/imports/#{id}/download?original=1", %{})
+    assert original.status == 200
+    assert original.resp_body == zip
+    assert hd(get_resp_header(original, "content-disposition")) =~ oracle["original_filename"]
+
+    for key <- [:imports_storage, :imports_services, :jobs_repo] do
+      previous = Application.fetch_env(:dawarich, key)
+
+      on_exit(fn ->
+        case previous do
+          {:ok, value} -> Application.put_env(:dawarich, key, value)
+          :error -> Application.delete_env(:dawarich, key)
+        end
+      end)
+    end
+
+    Application.delete_env(:dawarich, :imports_storage)
+    Application.put_env(:dawarich, :imports_services, %{})
+    unavailable = request(c, :get, "/imports/#{id}/download?original=1", %{})
+    assert unavailable.status == 422
+    assert get_resp_header(unavailable, "x-dawarich-handler") == ["phoenix-imports"]
+    Application.put_env(:dawarich, :jobs_repo, Repo)
+
+    args = %{
+      "event_id" => Ecto.UUID.generate(),
+      "import_id" => id,
+      "user_id" => c.user.id,
+      "source_blob_id" => blob.id
+    }
+
+    [[job_id]] =
+      Repo.query!(
+        "INSERT INTO oban.oban_jobs(state,queue,worker,args,attempt,max_attempts,attempted_at) VALUES('executing','imports','Dawarich.Imports.PrepareDownloadWorker',$1,1,3,now()) RETURNING id",
+        [args]
+      ).rows
+
+    job = %Oban.Job{id: job_id, attempt: 1, args: args}
+
+    assert {:error, :unconfigured_storage_service} =
+             Dawarich.Imports.PrepareDownloadWorker.perform(job)
+
+    refute Dawarich.Jobs.Processed.done?(Repo, args["event_id"])
+    assert commands() == []
+
+    Application.put_env(:dawarich, :imports_services, %{
+      "local" => %{service: "local", root: c.root}
+    })
+
+    assert :ok = Dawarich.Imports.PrepareDownloadWorker.perform(job)
+    assert Dawarich.Jobs.Processed.done?(Repo, args["event_id"])
+    prepared = request(c, :get, "/imports/#{id}/download", %{})
+    assert prepared.status == 200
+    assert prepared.resp_body == "<gpx/>"
+    assert request(c, :get, "/imports/#{id}/download?original=1", %{}).resp_body == zip
+    assert commands() == []
+  end
+
   defp request(c, method, path, params) do
     body = Plug.Conn.Query.encode(params)
 

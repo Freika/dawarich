@@ -217,6 +217,16 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
         sign_out :user
         { name:, user_id:, path:, status:, title: doc.at_css('title').text }
       end
+      write_json('a12f3a-i01.json', manifest.reject { _1[:name] == 'download_preparing' })
+      wrapped = Imports::Download.new(Import.find(980_109))
+      sign_in User.find(9801)
+      get '/imports/980109/download'
+      ActiveStorage::Current.set(url_options: { host: 'www.example.com', protocol: 'http' }) do
+        data = { status: response.status, refresh: response.headers['Refresh'],
+                 original_filename: URI.parse(wrapped.original_url).path.split('/').last, ready: wrapped.ready? }
+        write_json('a12f3a-i05.json', data)
+      end
+      sign_out :user
       capture_import_cleanup!
       capture_import_requests!
       write_json('pages.json', manifest)

@@ -68,16 +68,16 @@ defmodule DawarichWeb.ImportsDownloadTest do
              forwarded(upstream!(), fn -> get(RailsUser.signed_in(other.id), path) end)
   end
 
-  test "a GPX import Phoenix cannot read is downloaded by Rails", c do
+  test "a missing import blob returns a native unavailable response", c do
     Dawarich.Test.ImportsExportsSeeds.import!(%{
       id: 759_701,
       user_id: c.user.id,
       name: "bare.gpx"
     })
 
-    path = "/imports/759701/download"
-    {request, conn} = forwarded(upstream!(), fn -> get(RailsUser.signed_in(c.user.id), path) end)
-    assert {request, conn.status} == {{"GET #{path} HTTP/1.1", ""}, 204}
+    conn = get(RailsUser.signed_in(c.user.id), "/imports/759701/download")
+    assert conn.status == 404
+    assert Plug.Conn.get_resp_header(conn, "x-dawarich-handler") == ["phoenix-imports"]
   end
 
   test "wrapped blob returns native pending cache and original archive remains immediately downloadable",
@@ -101,31 +101,20 @@ defmodule DawarichWeb.ImportsDownloadTest do
     assert conn.resp_body == zip
   end
 
-  test "empty current catalog reaches historical storage Rails handback", c do
+  test "empty current catalog returns a native error without an upstream", c do
     id = import!(c, "historical.gpx", "<gpx/>")
     Application.delete_env(:dawarich, :imports_storage)
     Application.put_env(:dawarich, :imports_services, %{})
-    upstream = Dawarich.Test.RawHTTP.listen()
     previous = Application.get_env(:dawarich, :rails_upstream)
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
 
     on_exit(fn ->
       Application.delete_env(:dawarich, :imports_services)
       Application.put_env(:dawarich, :rails_upstream, previous)
     end)
 
-    reply =
-      Task.async(fn ->
-        socket = Dawarich.Test.RawHTTP.accept(upstream)
-        {head, _} = Dawarich.Test.RawHTTP.read_head(socket)
-        assert Dawarich.Test.RawHTTP.request_line(head) == "GET /imports/#{id}/download HTTP/1.1"
-        Dawarich.Test.RawHTTP.reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nlegacy")
-      end)
-
     conn = get(RailsUser.signed_in(c.user.id), "/imports/#{id}/download")
-    assert conn.status == 200
-    assert conn.resp_body == "legacy"
-    assert Plug.Conn.get_resp_header(conn, "x-dawarich-handler") == ["rails-imports"]
-    Task.await(reply)
+    assert conn.status == 422
+    assert Plug.Conn.get_resp_header(conn, "x-dawarich-handler") == ["phoenix-imports"]
   end
 end
