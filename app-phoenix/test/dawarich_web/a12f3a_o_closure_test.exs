@@ -107,7 +107,9 @@ defmodule DawarichWeb.A12f3aOClosureTest do
 
     area = request(ctx, :post, "/areas", encode(%{"area" => %{"name" => "Synthetic"}}, ctx.token))
     assert apply(MapWriteRequest, :request_module, [area]) == DawarichWeb.AreaRequest
-    assert apply(DawarichWeb.AreaRequest, :target, [area.path_info]) == nil
+
+    assert apply(DawarichWeb.AreaRequest, :target, [area.path_info]) ==
+             {:area_create, ["POST"], ["POST"]}
 
     replay(
       ctx,

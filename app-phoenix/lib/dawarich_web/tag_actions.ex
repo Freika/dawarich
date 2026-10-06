@@ -1,6 +1,7 @@
 defmodule DawarichWeb.TagActions do
   @moduledoc false
   @behaviour Plug
+  import Plug.Conn
   alias Dawarich.{Repo, Tags.Writes}
   alias DawarichWeb.{Locale, TagWriteResponse}
   alias DawarichWeb.Api.Body
@@ -9,6 +10,32 @@ defmodule DawarichWeb.TagActions do
   def init(action), do: action
   @impl true
   def call(conn, _action) do
+    action = conn.assigns.map_write_action
+    tag = conn.assigns.api_params["tag"]
+
+    status =
+      cond do
+        action in [:tag_update, :tag_destroy] and
+            Dawarich.TagPages.edit(conn.assigns.current_user, id(conn)) == :not_found ->
+          404
+
+        action == :tag_destroy ->
+          nil
+
+        Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(tag) ->
+          400
+
+        is_binary(tag) ->
+          500
+
+        true ->
+          nil
+      end
+
+    if status, do: conn |> send_resp(status, "") |> halt(), else: write(conn)
+  end
+
+  defp write(conn) do
     user = conn.assigns.current_user
     action = conn.assigns.map_write_action
 
@@ -31,6 +58,9 @@ defmodule DawarichWeb.TagActions do
     case result do
       {status, %{response: response}} when status in [:ok, :invalid] ->
         TagWriteResponse.send(response)
+
+      :not_found ->
+        conn |> send_resp(404, "") |> halt()
 
       :rails ->
         Body.replay(conn, "tag write or response unsupported")

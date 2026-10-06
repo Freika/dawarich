@@ -3,8 +3,10 @@ defmodule DawarichWeb.MapSegmentRequest do
   import Plug.Conn, only: [get_req_header: 2]
   import DawarichWeb.MapWriteRequest, only: [root?: 2, nested?: 2, id?: 1]
 
+  def target(["tracks", "recalculation"]), do: {:track_recalculation, ["POST"], ["POST"]}
+
   def target(["tracks", track_id, "segments", id]),
-    do: if(id?(track_id) and id?(id), do: {:segment_update, ~w(PATCH POST), ["PATCH"]})
+    do: if(id?(track_id) and id?(id), do: {:segment_update, ~w(PATCH PUT POST), ~w(PATCH PUT)})
 
   def target(_), do: nil
 
@@ -17,12 +19,24 @@ defmodule DawarichWeb.MapSegmentRequest do
       end)
   end
 
+  def fields?(:track_recalculation, params), do: root?(params, [])
+
   def fields?(_, _), do: false
 
   def action(action, _), do: action
 
   def query(%{query_string: ""}), do: {:ok, %{}}
   def query(_), do: :replay
+
+  def format(conn, :track_recalculation) do
+    accept = get_req_header(conn, "accept") |> List.first()
+
+    {:ok,
+     if(is_binary(accept) and String.starts_with?(accept, "text/vnd.turbo-stream.html"),
+       do: :turbo_stream,
+       else: :html
+     )}
+  end
 
   def format(conn, action) do
     case get_req_header(conn, "accept") do

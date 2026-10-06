@@ -69,7 +69,7 @@ defmodule Dawarich.Tracks.SegmentEditorTest do
           {919_610, 9_196_200},
           {999_999, 9_196_100}
         ] do
-      assert :rails = override(ctx, "walking", track, segment)
+      assert :not_found = override(ctx, "walking", track, segment)
       assert snapshot() == before
       assert commands() == []
     end

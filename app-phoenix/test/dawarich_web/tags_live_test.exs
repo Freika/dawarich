@@ -169,8 +169,8 @@ defmodule DawarichWeb.TagsLiveTest do
     assert %{rails_gate: {MapDataGate, :tag_edit?}} =
              Phoenix.Router.route_info(Router, "GET", "/tags/83941/edit", "localhost")
 
-    refute MapDataGate.tag_edit?(conn, %{"id" => "83941"})
-    refute MapDataGate.tag_edit?(conn, %{"id" => "999999"})
+    assert MapDataGate.tag_edit?(conn, %{"id" => "83941"})
+    assert MapDataGate.tag_edit?(conn, %{"id" => "999999"})
 
     for id <- ["bad", "1e3", "1abc", "9999999999999999999"],
         do: refute(MapDataGate.tag_edit?(conn, %{"id" => id}))

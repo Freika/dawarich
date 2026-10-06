@@ -32,7 +32,7 @@ defmodule DawarichWeb.TagsLive.Form do
     do: {:ok, assign(socket, default_emoji: session["tag_default_emoji"])}
 
   @impl true
-  def handle_params(params, uri, socket) do
+  def handle_params(params, _uri, socket) do
     result =
       if socket.assigns.live_action == :new,
         do: {:ok, %{id: nil, name: nil, icon: nil, color: nil, privacy_radius_meters: nil}},
@@ -44,9 +44,8 @@ defmodule DawarichWeb.TagsLive.Form do
         title = t(socket.assigns.locale, "tags.#{kind}.#{kind}_tag", %{})
         {:noreply, assign(socket, tag: tag, kind: kind, tag_title: title, page_title: nil)}
 
-      :rails ->
-        %URI{path: path, query: query} = URI.parse(uri)
-        {:noreply, redirect(socket, to: if(query, do: path <> "?" <> query, else: path))}
+      :not_found ->
+        raise DawarichWeb.NotFoundError
     end
   end
 
