@@ -102,32 +102,93 @@ defmodule DawarichWeb.A12f2BClosureTest do
   end
 
   @tag :a12f2_b_04
-  test "Location suggestions retain Rails validation provider selection shared cache and limiter errors", %{user: user} do
-    assert invoke(Dawarich.Locations.Suggestions, :run, [user, %{"q" => String.duplicate("x", 201)}]) == {:ok, 400, %{"error" => "Search query too long (max 200 characters)"}}
-    assert invoke(Dawarich.Locations.Suggestions, :run, [user, %{"q" => " "}]) == {:ok, 200, %{"suggestions" => []}}
-    {base, task} = provider([{"GET", "/api?", 200, Jason.encode!(%{"type" => "FeatureCollection", "features" => [feature("Café", 52.52, 13.405), feature("Duplicate", 52.5201, 13.405)]}), []}])
+  test "Location suggestions retain Rails validation provider selection shared cache and limiter errors",
+       %{user: user} do
+    assert invoke(Dawarich.Locations.Suggestions, :run, [
+             user,
+             %{"q" => String.duplicate("x", 201)}
+           ]) == {:ok, 400, %{"error" => "Search query too long (max 200 characters)"}}
+
+    assert invoke(Dawarich.Locations.Suggestions, :run, [user, %{"q" => " "}]) ==
+             {:ok, 200, %{"suggestions" => []}}
+
+    {base, task} =
+      provider([
+        {"GET", "/api?", 200,
+         Jason.encode!(%{
+           "type" => "FeatureCollection",
+           "features" => [feature("Café", 52.52, 13.405), feature("Duplicate", 52.5201, 13.405)]
+         }), []}
+      ])
+
     geocoder(base)
-    assert {:ok, 200, %{"suggestions" => [%{"name" => "Café", "coordinates" => [52.52, 13.405], "type" => "unknown"}]}} = result = invoke(Dawarich.Locations.Suggestions, :run, [user, %{"q" => " Café "}])
+
+    assert {:ok, 200,
+            %{
+              "suggestions" => [
+                %{"name" => "Café", "coordinates" => [52.52, 13.405], "type" => "Feature"}
+              ]
+            }} = result = invoke(Dawarich.Locations.Suggestions, :run, [user, %{"q" => " Café "}])
+
     [{head, _}] = Task.await(task)
-    assert URI.decode_query(URI.parse(Enum.at(String.split(request_line(head)), 1)).query)["q"] == "Café"
+
+    assert URI.decode_query(URI.parse(Enum.at(String.split(request_line(head)), 1)).query)["q"] ==
+             "Café"
+
     assert invoke(Dawarich.Locations.Suggestions, :run, [user, %{"q" => "Café"}]) == result
-    assert {:ok, 200, _} = invoke(Dawarich.Locations.Closure, :read, [user, %{"lat" => "52.52abc", "lon" => "13.405", "date_from" => "bad"}])
-    assert {:ok, 400, _} = invoke(Dawarich.Locations.Closure, :read, [user, %{"lat" => "91", "lon" => "0"}])
+
+    assert {:ok, 200, _} =
+             invoke(Dawarich.Locations.Closure, :read, [
+               user,
+               %{"lat" => "52.52abc", "lon" => "13.405", "date_from" => "bad"}
+             ])
+
+    assert {:ok, 400, _} =
+             invoke(Dawarich.Locations.Closure, :read, [user, %{"lat" => "91", "lon" => "0"}])
+
     config = Dawarich.Geocoding.Config.resolve(Repo)
-    Redis.command(["SET", "geocoding:rate_limit:" <> Dawarich.Geocoding.RateLimiter.key(config), Integer.to_string(System.system_time(:microsecond) + 5_000_000), "PX", "10000"])
-    assert invoke(Dawarich.Locations.Suggestions, :run, [user, %{"q" => "Uncached"}]) == {:ok, 200, %{"suggestions" => []}}
+
+    Redis.command([
+      "SET",
+      "geocoding:rate_limit:" <> Dawarich.Geocoding.RateLimiter.key(config),
+      Integer.to_string(System.system_time(:microsecond) + 5_000_000),
+      "PX",
+      "10000"
+    ])
+
+    assert invoke(Dawarich.Locations.Suggestions, :run, [user, %{"q" => "Uncached"}]) ==
+             {:ok, 200, %{"suggestions" => []}}
   end
 
-  defp feature(name, lat, lon), do: %{"type" => "Feature", "geometry" => %{"type" => "Point", "coordinates" => [lon, lat]}, "properties" => %{"name" => name, "city" => "Berlin", "country" => "Germany"}}
+  defp feature(name, lat, lon),
+    do: %{
+      "type" => "Feature",
+      "geometry" => %{"type" => "Point", "coordinates" => [lon, lat]},
+      "properties" => %{"name" => name, "city" => "Berlin", "country" => "Germany"}
+    }
 
   defp geocoder(base) do
-    vars = ~w(PHOTON_API_HOST PHOTON_API_KEY PHOTON_API_USE_HTTPS REVERSE_GEOCODING_RPS GEOAPIFY_API_KEY NOMINATIM_API_HOST LOCATIONIQ_API_KEY)
+    previous_http = Application.fetch_env!(:dawarich, :geocoding_http)
+    Application.put_env(:dawarich, :geocoding_http, Dawarich.Geocoding.Http)
+    on_exit(fn -> Application.put_env(:dawarich, :geocoding_http, previous_http) end)
+
+    vars =
+      ~w(PHOTON_API_HOST PHOTON_API_KEY PHOTON_API_USE_HTTPS REVERSE_GEOCODING_RPS GEOAPIFY_API_KEY NOMINATIM_API_HOST LOCATIONIQ_API_KEY)
+
     saved = Map.new(vars, &{&1, System.get_env(&1)})
     Enum.each(vars, &System.delete_env/1)
-    System.put_env("PHOTON_API_HOST", URI.parse(base).host <> ":" <> Integer.to_string(URI.parse(base).port))
+
+    System.put_env(
+      "PHOTON_API_HOST",
+      URI.parse(base).host <> ":" <> Integer.to_string(URI.parse(base).port)
+    )
+
     System.put_env("PHOTON_API_USE_HTTPS", "false")
     System.put_env("REVERSE_GEOCODING_RPS", "10")
-    on_exit(fn -> Enum.each(saved, fn {k, v} -> if v, do: System.put_env(k, v), else: System.delete_env(k) end) end)
+
+    on_exit(fn ->
+      Enum.each(saved, fn {k, v} -> if v, do: System.put_env(k, v), else: System.delete_env(k) end)
+    end)
   end
 
   defp invoke(module, function, args) do
