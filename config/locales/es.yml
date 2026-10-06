@@ -43,7 +43,18 @@ es:
           locationiq: "Servicio alojado. Necesita una clave de API."
         points:
           title: "Puntos"
+        experimental:
+          title: "Funciones experimentales"
+        map_matching:
+          title: "Ajuste de rutas"
+          description: "Alinea los trayectos registrados con ruido a carreteras y caminos cercanos. Solo cambia cómo se dibujan los trayectos compatibles; los puntos registrados y la ruta original permanecen intactos."
         fields:
+          atlas_url: "URL de Atlas"
+          map_matching_enabled: "Activar el ajuste de rutas"
+          atlas_url_hint: "URL base HTTP o HTTPS completa de tu servicio privado Dawarich Atlas."
+          map_matching_enabled_hint: "Se aplica a toda la instancia. Los trayectos existentes no se procesan automáticamente."
+          map_matching_shadow_mode: "Modo sombra"
+          map_matching_shadow_mode_hint: "Procesa las rutas aptas sin mostrar los trazados ajustados."
           photon_api_host: "Host"
           photon_api_key: "Clave de API"
           photon_api_use_https: "Usar HTTPS"
@@ -59,6 +70,8 @@ es:
           api_key_keep_hint: "Déjalo vacío para conservar la clave guardada."
           store_geodata_hint: "Busca la ciudad y el país al añadir puntos nuevos. Las consultas nocturnas continúan si hay un proveedor configurado, aunque esta opción esté desactivada."
       update:
+        atlas_url_invalid: "La URL de Atlas debe ser una URL HTTP o HTTPS completa, sin credenciales, consulta ni fragmento."
+        atlas_url_required: "Configura una URL de Atlas antes de activar el ajuste de rutas."
         saved: "Ajustes guardados."
         pinned: "Rechazado: fijado por %{variables}."
         host_invalid: "El host debe ser un nombre de host sin más, con un puerto o una ruta opcionales y sin espacios."
