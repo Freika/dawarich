@@ -107,6 +107,43 @@ RSpec.describe 'Cloud entrypoints' do
   end
 
   describe 'cloud-entrypoint.sh' do
+    it 'native Cloud server maps Puma5000 argv without Rails argv or upstream' do
+      stub_command('dawarich', <<~SH)
+        printf '%s\\n' "dawarich $* native=[$(printf '%s' "${DAWARICH_NATIVE_ARGS:-}" | tr '\\037' '|')] rails=[${DAWARICH_RAILS_ARGS:-}]" >> "#{calls_file}"
+      SH
+      [server, ['puma', '--config=config/puma.rb', '--bind', 'tcp://[::1]:5000'],
+       ['puma', '-C', 'config/puma.rb', '--tag', 'two words']].each do |argv|
+        FileUtils.rm_f(calls_file)
+        result = run_script('cloud-entrypoint.sh', *argv, SELF_HOSTED: 'false',
+                                                       DAWARICH_PHOENIX_LIFECYCLE: 'true',
+                                                       DAWARICH_RAILS_ARGS: 'bundle exec puma',
+                                                       DAWARICH_PROCESS_ROLE: 'sidekiq_idle',
+                                                       DAWARICH_NATIVE_ARGS: 'inherited')
+        expect(result[:status]).to be_success
+        expect(result[:calls]).to eq([
+                                       'dawarich eval Dawarich.Release.halt_unless_ready() native=[] rails=[]',
+                                       "dawarich start native=[#{argv.join('|')}|] rails=[]"
+                                     ])
+      end
+      FileUtils.rm_f(calls_file)
+      result = run_script('cloud-entrypoint.sh', 'rails', 'runner', 'puts 1', SELF_HOSTED: 'false',
+                                                                         DAWARICH_PHOENIX_LIFECYCLE: 'true')
+      expect(result[:status]).not_to be_success
+      expect(result[:calls]).to be_empty
+    end
+
+    it 'native Cloud readiness failure stops without fallback for every readiness exit' do
+      %w[3 4 5 1].each do |failure|
+        FileUtils.rm_f(calls_file)
+        result = run_script('cloud-entrypoint.sh', *server, SELF_HOSTED: 'false',
+                                                       DAWARICH_PHOENIX_LIFECYCLE: 'true',
+                                                       STUB_DAWARICH_STATUS: failure)
+        expect(result[:status].exitstatus).to eq(failure.to_i)
+        expect(result[:app_calls]).to eq(['dawarich eval Dawarich.Release.halt_unless_ready()'])
+        expect(result[:psql]).to be_empty
+      end
+    end
+
     it 'starts the server under Phoenix when its schemas are ready' do
       result = run_script('cloud-entrypoint.sh', *server)
 
