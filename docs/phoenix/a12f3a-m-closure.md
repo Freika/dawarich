@@ -46,4 +46,16 @@ Year strings use Ruby integer coercion. Structured years and out-of-int32 time b
 
 Existing tied-country handback tests now assert native output and no upstream request. The old corpus census remains scoped to its original cases; the package aggregate owns the new task captures. Source generators were recorded twice, with identical task bytes and old fixtures restored.
 
-M07 and final full-suite gates are pending. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.
+## M07 — presentation and realtime lifecycle
+
+Existing `MapShell` remains the native LiveView hook and hosts retained client assets. The aggregate evaluates the production shell, realtime controller and channel adapter with deterministic timers and boundary-only adapters. It covers destroyed-before-setup, late controller registration, duplicate mount, points/track edit refresh, track refresh coalescing, family subscription, studios and one unsubscribe per subscription.
+
+This behavior is already present at the base and reconciles as initially GREEN. Removing controller unload during shell destruction produces four late subscriptions (expected zero); restoring passes. Existing channel contract checks pass 6/6. No redundant production rewrite or additional socket is introduced.
+
+Producer-to-browser visit/area/segment/video completion requires W/V/R/A12a handoffs and G44, outside this isolated presentation cut. Native Turbo frame rendering and native channel consumption are proven separately; this is not a claim that those integrated release journeys were run.
+
+## Remaining shared transport / release cases
+
+A12f-2/O retain global raw-query rejection, JSON/format routing and path constraints, expired-session envelopes and key rollback integration. Package M does not edit shared Strangler/Slices/session parsers or claim final Ruby-source deletion. Source malformed settings, broader Date.parse forms, unusual date/time envelopes and all-locale browser parity remain the next edge parity pass under ruling 15. Known 2038 range failure and unspecified same-time encounter ordering are handed to the controller's deferred Rails bug register.
+
+Compile/format, scoped Ruby checks, secret scan and full seed-404 results will be recorded after package gates. Seed 202 belongs to the integration head under ruling 14. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.
