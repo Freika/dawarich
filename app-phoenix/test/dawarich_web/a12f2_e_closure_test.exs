@@ -221,6 +221,88 @@ defmodule DawarichWeb.A12f2EClosureTest do
     assert [[1]] = Repo.query!("SELECT count(*) FROM imports WHERE user_id=$1", [user_id]).rows
   end
 
+  @tag :a12f2_e_05
+  test "Point mutations preserve own scope Ruby strong params relocation soft delete bulk limits and callbacks" do
+    alias Dawarich.Points.ApiWrites
+    actor = user!(%{points_count: 2, settings: %{"timezone" => "UTC"}})
+    foreign = user!(%{points_count: 1})
+
+    user = %{
+      id: actor,
+      status: 1,
+      plan: 1,
+      active_until: nil,
+      points_count: 2,
+      settings: %{"timezone" => "UTC"}
+    }
+
+    ctx = context()
+    own = point!(actor, 1_790_000_000)
+    second = point!(actor, 1_790_000_001)
+    other = point!(foreign, 1_790_000_002)
+
+    assert {:ok, 200, %{"count" => 1}} =
+             ApiWrites.bulk_destroy(Repo, user, %{"point_ids" => [own, other]}, ctx)
+
+    assert [[^other]] = Repo.query!("SELECT id FROM points WHERE user_id=$1", [foreign]).rows
+    assert [[1]] = Repo.query!("SELECT points_count FROM users WHERE id=$1", [actor]).rows
+
+    assert {:error, 422, %{"error" => "No points selected"}} =
+             ApiWrites.bulk_destroy(Repo, user, %{}, ctx)
+
+    assert {:error, 422, %{"limit" => 5000, "requested" => 5001}} =
+             ApiWrites.bulk_destroy(
+               Repo,
+               user,
+               %{"point_ids" => List.duplicate(second, 5001)},
+               ctx
+             )
+
+    assert {:error, 404, _} = ApiWrites.destroy(Repo, user, own, ctx)
+
+    assert {:error, 404, _} =
+             ApiWrites.update(
+               Repo,
+               user,
+               other,
+               %{"point" => %{"latitude" => "51", "longitude" => "14"}},
+               ctx
+             )
+
+    assert {:ok, 200, point} =
+             ApiWrites.update(
+               Repo,
+               user,
+               second,
+               %{"point" => %{"latitude" => "51", "longitude" => "14", "timestamp" => 1}},
+               ctx
+             )
+
+    assert {:object, pairs} = point
+
+    assert pairs |> Map.new() |> Map.take(["latitude", "longitude", "timestamp"]) == %{
+             "latitude" => "51.0",
+             "longitude" => "14.0",
+             "timestamp" => 1_790_000_001
+           }
+
+    assert {:ok, 200, %{"message" => "Point deleted successfully"}} =
+             ApiWrites.destroy(Repo, user, second, ctx)
+
+    assert [[0]] = Repo.query!("SELECT count(*) FROM points WHERE user_id=$1", [actor]).rows
+    assert Enum.any?(commands(), fn [kind, _] -> kind == "points.web_destroy_follow_up" end)
+  end
+
+  defp point!(actor, timestamp, track \\ nil) do
+    [[id]] =
+      Repo.query!(
+        "INSERT INTO points(user_id,timestamp,track_id,lonlat,created_at,updated_at) VALUES($1,$2,$3,'POINT(13.4 52.5)',now(),now()) RETURNING id",
+        [actor, timestamp, track]
+      ).rows
+
+    id
+  end
+
   defp context do
     root = Path.join(System.tmp_dir!(), "a12f2e-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
