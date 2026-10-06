@@ -250,6 +250,19 @@ defmodule DawarichWeb.A12f2FClosureTest do
 
     assert invalid.status == 422
     refute invalid.private[:replayed]
+
+    oversized =
+      request(
+        :post,
+        "/users/sign_in",
+        session,
+        Map.put(raw, "user[password]", String.duplicate("x", 70_000))
+      )
+      |> put_req_header("content-length", "1")
+      |> AuthHandler.call(opts)
+
+    assert oversized.status == 400
+    refute oversized.private[:replayed]
     assert Credentials.login("unknown-" <> ctx.email, "wrong", context) == {:error, :invalid}
   end
 

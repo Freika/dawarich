@@ -101,7 +101,7 @@ defmodule DawarichWeb.AuthHandler do
                 end
 
               {:error, conn} ->
-                halt(conn)
+                conn |> send_resp(400, "Invalid credential request") |> halt()
             end
           else
             fallback(conn, opts)
@@ -124,13 +124,28 @@ defmodule DawarichWeb.AuthHandler do
     end
   end
 
-  defp read_all(%{private: %{dawarich_raw_body: raw}} = conn, []), do: {:ok, raw, conn}
+  defp read_all(%{private: %{dawarich_raw_body: raw}} = conn, []) do
+    if byte_size(raw) <= 65_536, do: {:ok, raw, conn}, else: {:error, conn}
+  end
 
   defp read_all(conn, acc) do
-    case read_body(conn, RailsProxy.read_options()) do
-      {:more, raw, conn} -> read_all(conn, [acc, raw])
-      {:ok, raw, conn} -> {:ok, IO.iodata_to_binary([acc, raw]), conn}
-      {:error, _} -> {:error, conn}
+    remaining = 65_536 - IO.iodata_length(acc)
+
+    case read_body(conn, length: max(remaining, 1), read_length: 65_536) do
+      {:more, raw, conn} when byte_size(raw) < remaining ->
+        read_all(conn, [acc, raw])
+
+      {:ok, raw, conn} when byte_size(raw) <= remaining ->
+        {:ok, IO.iodata_to_binary([acc, raw]), conn}
+
+      {:more, _, conn} ->
+        {:error, conn}
+
+      {:ok, _, conn} ->
+        {:error, conn}
+
+      {:error, _} ->
+        {:error, conn}
     end
   end
 

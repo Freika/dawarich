@@ -110,10 +110,23 @@ defmodule DawarichWeb.AuthRecovery.Http do
   end
 
   defp read_all(conn, acc) do
-    case read_body(conn, length: 65_536, read_length: 65_536) do
-      {:more, raw, conn} -> read_all(conn, [acc, raw])
-      {:ok, raw, conn} -> {:ok, IO.iodata_to_binary([acc, raw]), conn}
-      {:error, reason} -> {:error, reason}
+    remaining = 65_536 - IO.iodata_length(acc)
+
+    case read_body(conn, length: max(remaining, 1), read_length: 65_536) do
+      {:more, raw, conn} when byte_size(raw) < remaining ->
+        read_all(conn, [acc, raw])
+
+      {:ok, raw, conn} when byte_size(raw) <= remaining ->
+        {:ok, IO.iodata_to_binary([acc, raw]), conn}
+
+      {:more, _, conn} ->
+        {:error, conn}
+
+      {:ok, _, conn} ->
+        {:error, conn}
+
+      {:error, _} ->
+        {:error, conn}
     end
   end
 
