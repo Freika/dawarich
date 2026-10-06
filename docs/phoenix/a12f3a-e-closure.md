@@ -65,3 +65,12 @@ cache epoch token and verifies duplicate rows do not change it.
 AFFiNE counterpart: **Dawarich — Implementation: A12f-3a E native exports and backup
 journey**, document `3jnCJWRTo80DsateIkxcL`; synchronized and verified by readback.
 The assigned execution report records final seed-404 gate counts and cleanup.
+
+The final required seed-404 gate at `33ba78df8` completed 8,829 tests with one
+failure in P08 places CLI scheduling, outside package E. Its test assumes ascending
+user IDs for due-time assignment, while the second CLI query has no ordering and
+Rails uses an unordered `batch.pluck(:id)` too. A private temporary-table probe
+reproduced batch-first ID 1 versus scheduled-first ID 100. P owns reconciliation
+under ruling 13; adding a production sort here would change source parity.
+All E checks passed. The full gate remains failed; no unchanged-suite retry or
+places-file change was made. The report preserves both full runs and all summaries.
