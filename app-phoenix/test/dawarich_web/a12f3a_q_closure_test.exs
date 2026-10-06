@@ -1,0 +1,95 @@
+defmodule DawarichWeb.A12f3aQClosureTest do
+  use ExUnit.Case, async: false
+  import Plug.Conn
+  import Phoenix.ConnTest
+  import Dawarich.Test.StatsSeeds
+  alias Dawarich.{Accounts, Repo}
+  alias Dawarich.Jobs.Ownership
+  alias Dawarich.Test.RailsUser
+
+  @endpoint DawarichWeb.Endpoint
+  @now ~U[2026-09-26 12:00:00Z]
+
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    saved = Application.get_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, Repo)
+    env = System.get_env("SELF_HOSTED")
+
+    on_exit(fn ->
+      Application.put_env(:dawarich, :jobs_repo, saved)
+      if env, do: System.put_env("SELF_HOSTED", env), else: System.delete_env("SELF_HOSTED")
+    end)
+
+    user =
+      RailsUser.insert!(%{
+        id: 5290,
+        email: "q-closure@dawarich.test",
+        settings: %{"timezone" => "Europe/Berlin"}
+      })
+
+    %{user: Accounts.get(user.id), context: %{now: @now, locale: "en", self_hosted: true}}
+  end
+
+  @tag a12f3a_q06: true
+  test "Q06: single-month and all-month stats update matches current Rails contract without a native-owner Rails effect",
+       %{user: user, context: ctx} do
+    Ownership.put!(Repo, "command:stats.calculate_month", :oban)
+
+    for row <- fixture("06") do
+      Repo.query!("DELETE FROM job_outbox", [])
+
+      assert {:ok, result} =
+               Dawarich.Stats.WebCommands.update(Repo, user, "2024", row["input"], ctx)
+
+      assert result.status == row["status"]
+      assert result.path == row["location"]
+      assert %{Atom.to_string(result.flash) => result.message} == row["flash"]
+
+      actual =
+        for [args] <-
+              Repo.query!(
+                "SELECT payload FROM job_outbox ORDER BY created_at, payload->>'month'",
+                []
+              ).rows,
+            do: [args["user_id"], args["year"], args["month"]]
+
+      assert Enum.sort(actual) ==
+               Enum.sort(
+                 Enum.map(row["jobs"], fn [id, year, month] ->
+                   [id, Dawarich.Digests.to_i(year), Dawarich.Digests.to_i(month)]
+                 end)
+               )
+
+      assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
+    end
+
+    for mode <- ["true", "false", nil] do
+      set_mode(mode)
+      Repo.query!("DELETE FROM job_outbox", [])
+      conn = write(user, :post, "/stats/2024/all/update", %{"_method" => "put"})
+      assert conn.status == 303
+      assert get_resp_header(conn, "location") == ["http://www.example.com/stats"]
+      assert Repo.query!("SELECT count(*) FROM job_outbox", []).rows == [[12]]
+    end
+  end
+
+  defp fixture(task),
+    do: File.read!("test/fixtures/stats/a12f3a-q#{task}.json") |> Jason.decode!()
+
+  defp set_mode(nil), do: System.delete_env("SELF_HOSTED")
+  defp set_mode(value), do: System.put_env("SELF_HOSTED", value)
+
+  defp write(user, method, path, attrs) do
+    session = RailsUser.session(user.id)
+    raw = Plug.Conn.Query.encode(attrs)
+
+    build_conn()
+    |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+    |> put_req_header("content-type", "application/x-www-form-urlencoded")
+    |> put_req_header("content-length", to_string(byte_size(raw)))
+    |> put_req_header("x-csrf-token", DawarichWeb.RailsCsrf.masked_token(session))
+    |> dispatch(@endpoint, method, path, raw)
+  end
+end

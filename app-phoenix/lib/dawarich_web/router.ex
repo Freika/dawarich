@@ -175,6 +175,24 @@ defmodule DawarichWeb.Router do
   end
 
   page_routes()
+
+  pipeline :stats_request do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.StatsRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :stats_request
+
+    for method <- [:put, :post] do
+      match method, "/stats/:year/:month/update", DawarichWeb.StatsActions, :update
+    end
+  end
+
   storage_routes()
   a10_routes()
   map_frame_routes()

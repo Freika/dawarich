@@ -3,9 +3,11 @@
 require 'rails_helper'
 require 'rake'
 require_relative 'fixture_recording'
+require_relative 'stats_closure_fixtures'
 
 RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type: :request do
   include ActiveSupport::Testing::TimeHelpers
+  include StatsClosureFixtures
 
   let(:root) { Rails.root.join('app-phoenix') }
   let(:fixtures) { root.join('test/fixtures') }
@@ -309,6 +311,7 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
       minimal = reader(5210)
       digest(52_101, minimal, 2024, toponyms: {})
       capture('digest_minimal_en', minimal, '/digests/2024')
+      capture_q_commands
     end
   end
 end
