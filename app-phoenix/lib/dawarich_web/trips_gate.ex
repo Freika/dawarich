@@ -30,7 +30,7 @@ defmodule DawarichWeb.TripsGate do
       )
 
   def form?(conn, params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and conn.query_string == "" and
+    conn.query_string == "" and
       open?(conn, fn user ->
         id = params["id"] && String.to_integer(params["id"])
         match?({:ok, _}, Dawarich.Trips.WebForm.load(Dawarich.Repo, user, id, %{}))
