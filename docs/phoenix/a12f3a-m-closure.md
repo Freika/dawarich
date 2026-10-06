@@ -1,6 +1,6 @@
 # A12f-3a package M closure
 
-Source baseline: Rails 1.15.3; implementation base c3197844f. Main map journey first, per ruling 15.
+Source baseline: Rails 1.15.3; implementation base c3197844f. This delivers ruling 15's tonight main-path slice; exhaustive edge and integrated release acceptance remain below.
 
 ## M01 — map shell selection
 
@@ -18,7 +18,7 @@ M owns presentation and frame reads. No native jobs or reverse effects are produ
 
 `/map/v1` and `/maps/v2` return 301 natively, including guests, signed-in users, Cloud and HEAD. The former canonicalizes parsed query parameters; the latter drops them. Captured `.json` suffixes redirect to the same destination. Bodies are empty, matching Rails.
 
-The M02 aggregate initially reached the absent Rails upstream. Native implementation passed all 96 request combinations. Dropping the legacy query failed the exact Location assertion; restoring passed. Minimal wiring is in `page_routes.ex` with `rails_key: "map"`; O should retain these declarations in its serialized O06 pass.
+The M02 aggregate initially reached the absent Rails upstream. Native implementation passed all 96 request combinations. Dropping the legacy query failed the exact Location assertion; restoring passed. Minimal wiring is in `page_routes.ex` with `rails_key: "map"` and a guarded `map_redirect` pipeline; O should retain these declarations in its serialized O06 pass.
 
 ## M03 — timeline feed
 
@@ -58,4 +58,16 @@ Producer-to-browser visit/area/segment/video completion requires W/V/R/A12a hand
 
 A12f-2/O retain global raw-query rejection, JSON/format routing and path constraints, expired-session envelopes and key rollback integration. Package M does not edit shared Strangler/Slices/session parsers or claim final Ruby-source deletion. Source malformed settings, broader Date.parse forms, unusual date/time envelopes and all-locale browser parity remain the next edge parity pass under ruling 15. Known 2038 range failure and unspecified same-time encounter ordering are handed to the controller's deferred Rails bug register.
 
-Compile/format, scoped Ruby checks, secret scan and full seed-404 results will be recorded after package gates. Seed 202 belongs to the integration head under ruling 14. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.
+Seed 202 belongs to the integration head under ruling 14. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.
+
+## Package verification
+
+Forced compile with warnings as errors passed for 1,417 files; format checks passed. The targeted Rails request suite passed 41 examples, and seven existing source generator examples passed after final formatting. Both changed Ruby generators passed RuboCop. Named task mutations and twice-write capture comparisons are recorded in the execution report.
+
+The first full seed-404 run exposed old endpoint ownership assertions and an unguarded redirect router declaration. Native response assertions now verify no upstream request, and the dedicated redirect pipeline owns host, SSL and rate-limit checks. The affected endpoint/rate-limit/package batch passed 57 tests.
+
+The second full run passed the map partition but exposed an existing metrics test's 100 ms asynchronous first-connection handshake. The test now holds the real pool connection synchronously and waits for an actual queued client before sampling, with the original deadline and saturation/duration assertions retained. Both metrics tests passed with a single Erlang scheduler. This minimal test-only gate fix changes no production metrics code.
+
+The final required three-partition seed-404 gate passed: 8,642 tests, zero failures (2,642 / 2,893 / 3,107 per partition). Existing suite exclusions and skips remain unchanged. Gitleaks found no leaks; git diff checks found no whitespace or swagger/schema drift. Final committed-head scan and cleanup evidence are in the execution report.
+
+AFFiNE counterpart: Dawarich — Phoenix A12f-3a map shell and frames implementation (`MLaNM8OY0qcTmNHoSGaYa`). Planning index: `cdFa14Gdde-iWiERUNqIo`; package M plan: `ZIKYW9aTewW7RQU6pjL2K`.
