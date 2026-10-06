@@ -5,6 +5,67 @@ defmodule Dawarich.Visits.HistoryRedetect do
 
   @batch_size 200
 
+  def cooldown?(nil, _now), do: false
+
+  def cooldown?(last, now),
+    do: NaiveDateTime.compare(last, DateTime.to_naive(DateTime.add(now, -3600))) == :gt
+
+  def enqueue(repo, user_id, settings, last, now, locale) do
+    owner = Dawarich.Jobs.Ownership.lock(repo, "command:visits.full_history_redetect")
+
+    if cooldown?(last, now),
+      do: repo.rollback(if(owner == :oban, do: {:cooldown, 429, :native}, else: {:cooldown, 429}))
+
+    zone = settings["timezone"] || Dawarich.UserTimeZone.zone(%{})
+
+    unless is_binary(zone) and
+             repo.query!(
+               "SELECT 1 FROM pg_timezone_names WHERE name=$1",
+               [Dawarich.TimeZoneName.to_iana(zone)],
+               log: false
+             ).num_rows == 1,
+           do: repo.rollback({:replay, "visit time zone"})
+
+    if owner == :sidekiq do
+      Dawarich.RailsCommands.insert!(repo, "visits.web_redetect", %{
+        "user_id" => user_id,
+        "locale" => locale,
+        "timezone" => Dawarich.TimeZoneName.to_iana(zone)
+      })
+    else
+      [[plan]] = repo.query!("SELECT plan FROM users WHERE id=$1", [user_id], log: false).rows
+      user = %{id: user_id, plan: plan}
+
+      restricted =
+        not Dawarich.Entitlements.full_access?(
+          repo,
+          user,
+          DawarichWeb.LayoutAssigns.self_hosted?(),
+          now
+        )
+
+      payload = %{
+        "user_id" => user_id,
+        "time_zone" => Dawarich.TimeZoneName.to_iana(zone),
+        "plan_restricted" => restricted
+      }
+
+      repo.query!(
+        "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES($1,'visits.full_history_redetect',1,$2,$3,$4,$5)",
+        [
+          Ecto.UUID.bingenerate(),
+          payload,
+          %{"producer" => "Visits::FullHistoryRedetectJob", "locale" => locale},
+          user_id,
+          now
+        ],
+        log: false
+      )
+
+      :ok
+    end
+  end
+
   @legacy_sql "SELECT id, floor(extract(epoch FROM started_at))::bigint, floor(extract(epoch FROM ended_at))::bigint, " <>
                 "area_id, place_id FROM visits WHERE user_id = $1 AND deleted_at IS NULL AND status != 2 " <>
                 "AND confidence IS NULL AND id > $2 ORDER BY id LIMIT #{@batch_size}"

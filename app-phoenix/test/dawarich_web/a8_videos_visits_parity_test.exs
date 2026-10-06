@@ -64,7 +64,12 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
         Path.wildcard("#{@dir}/*/*.#{extension}")
         |> Enum.map(&(&1 |> Path.relative_to(@dir) |> Path.rootname()))
 
-      assert Enum.sort(actual) == Enum.sort(@names)
+      closure =
+        if extension == "json",
+          do: Enum.map(1..9, &("visits/a12f3a-v0" <> to_string(&1))),
+          else: ["visits/a12f3a-v02"]
+
+      assert Enum.sort(actual) == Enum.sort(@names ++ closure)
     end
   end
 

@@ -1578,6 +1578,11 @@ skip_family_sync: true)
                                                'X-Frame-Options', 'Referrer-Policy', 'X-Content-Type-Options'),
                jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args] } } }
       a8_settings_json(target.join("#{name}.json"), data)
+      captures = { 'navigation_empty' => '01', 'partial_save' => '07', 'redetect_allowed' => '08' }
+      suffix = captures[name]
+      return unless suffix
+
+      a8_settings_json(fixtures.join("a8vv/visits/a12f3a-v#{suffix}.json"), data)
     end
 
     it 'writes A8 visit settings and redirects' do

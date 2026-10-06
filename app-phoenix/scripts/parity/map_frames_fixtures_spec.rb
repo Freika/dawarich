@@ -214,15 +214,20 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       body = response.body.gsub(/(name="authenticity_token" value=")[^"]*/, '\1CSRF')
       body = '' if response.status >= 400 && response.media_type == 'text/html'
       File.write(target.join("#{name}.html"), body)
-      write_json(target.join("#{name}.json"), {
-                   now: now.iso8601, self_hosted: DawarichSettings.self_hosted?, request:, before:,
+      data = {
+        now: now.iso8601, self_hosted: DawarichSettings.self_hosted?, request:, before:,
                    after: a8_visit_graph(users), status: response.status, content_type: response.media_type,
                    location: response.location, flash: flash.to_hash, cache:,
                    headers: response.headers.slice('Content-Type', 'Location', 'Vary', 'Cache-Control',
                                                    'X-Frame-Options', 'Referrer-Policy', 'X-Content-Type-Options'),
                    streams: Nokogiri::HTML5.fragment(body).css('turbo-stream').map { [_1['action'], _1['target']] },
                    jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args] } }
-                 })
+      }
+      write_json(target.join("#{name}.json"), data)
+      captures = { 'soft_delete_turbo' => '03', 'bulk_date' => '04',
+                   'bulk_cross_day_destroy' => '05', 'merge_noted' => '06', 'month_move' => '09' }
+      suffix = captures[name]
+      write_json(target.join("a12f3a-v#{suffix}.json"), data) if suffix
     end
 
     def a8_visit_streams
@@ -506,6 +511,16 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
           cache = cache.transform_values { Rails.cache.exist?(_1) }
           expect(cache.values).to eq([false, false]) if name == 'month_move'
           a8_visit_record(name, users, before, { method: method.to_s.upcase, path:, params:, accept: }, cache:)
+          next unless name == 'confirm'
+
+          place!(user, id, 'Auto cafe')
+          suggest!(id, id, id)
+          visit.update_columns(name: 'Unmatched', status: Visit.statuses[:suggested])
+          before_confirm = a8_visit_graph(users)
+          a8_visit_request(user, method, path, params, accept:)
+          expect(visit.reload.name).to eq('Auto cafe')
+          a8_visit_record('a12f3a-v02', users, before_confirm,
+                          { method: method.to_s.upcase, path:, params:, accept: })
         end
       end
     end

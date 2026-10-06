@@ -60,8 +60,15 @@ defmodule DawarichWeb.A12f3aOClosureTest do
       assert effects() == before
 
       System.put_env("SELF_HOSTED", "false")
-      refute apply(gate, :actions?, [conn, %{}])
-      refute A8Gate.actions?(conn, %{})
+
+      if domain == DawarichWeb.VisitRequest do
+        assert apply(gate, :actions?, [conn, %{}])
+        assert A8Gate.actions?(conn, %{})
+      else
+        refute apply(gate, :actions?, [conn, %{}])
+        refute A8Gate.actions?(conn, %{})
+      end
+
       System.put_env("SELF_HOSTED", "true")
 
       for rejected <- [

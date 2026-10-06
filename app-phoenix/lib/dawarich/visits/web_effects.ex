@@ -52,7 +52,7 @@ defmodule Dawarich.Visits.WebEffects do
   end
 
   def after_change(repo, user, old, new, _context) do
-    RailsEffects.visit_months(repo, user.id, stamps([old, new]))
+    months(repo, user, [old, new])
     previous = if old["place_id"] != new["place_id"], do: [old["place_id"]], else: []
 
     left =
@@ -61,6 +61,10 @@ defmodule Dawarich.Visits.WebEffects do
 
     current = if left and not new["demo"], do: [new["place_id"]], else: []
     RailsEffects.orphan_places(repo, user.id, Enum.reject(previous ++ current, &is_nil/1))
+  end
+
+  def months(repo, user, rows) do
+    RailsEffects.visit_months(repo, user.id, stamps(rows))
   end
 
   def stamps(rows), do: Enum.map(rows, &DateTime.from_naive!(&1["started_at"], "Etc/UTC"))
