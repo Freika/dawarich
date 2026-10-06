@@ -41,3 +41,4 @@ No browser acceptance or whole-domain retirement is claimed by this implementati
 - Q08: retain private source failure boundaries; source/mutation evidence recorded.
 - Q09: generate past yearly digests natively; source/mutation evidence recorded.
 - Q10: pin actor-scoped deletion and missing responses; source/mutation evidence recorded.
+- Q11: update sharing capabilities natively; source/mutation evidence recorded.

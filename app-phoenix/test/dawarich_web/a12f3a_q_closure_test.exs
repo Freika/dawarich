@@ -329,6 +329,44 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2023"}, page_ctx) == :not_found
   end
 
+  @tag a12f3a_q11: true
+  test "Q11: digest sharing mutation matches current Rails contract without a native-owner Rails effect",
+       %{user: user, context: ctx} do
+    rows = fixture("11")
+    digest!(user.id, %{year: 2024, sharing_uuid: Ecto.UUID.dump!(hd(rows)["uuid"])})
+    ctx = Map.put(ctx, :base_url, "http://www.example.com")
+
+    for row <- rows do
+      assert {:ok, result} =
+               Dawarich.Digests.Sharing.update(Repo, user, "2024", row["params"], ctx)
+
+      assert result.settings == row["settings"]
+      assert result.body == row["body"]
+      assert result.uuid == row["uuid"]
+    end
+
+    conn =
+      write(user, :patch, "/digests/2024/sharing", %{
+        "enabled" => "1",
+        "expiration" => "1h",
+        "format" => "json"
+      })
+
+    assert conn.status == 200
+    assert Jason.decode!(conn.resp_body)["success"]
+
+    assert {:ok, shifted} =
+             Dawarich.Digests.Sharing.update(
+               Repo,
+               user,
+               "2024",
+               %{"enabled" => "1", "expiration" => "1h"},
+               %{ctx | now: ~U[2026-10-25 00:30:00Z]}
+             )
+
+    assert shifted.settings["expires_at"] == "2026-10-25T02:30:00+01:00"
+  end
+
   @tag a12f3a_q10: true
   test "Q10: digest deletion and failure boundary matches current Rails contract without a native-owner Rails effect",
        %{user: user, context: ctx} do
