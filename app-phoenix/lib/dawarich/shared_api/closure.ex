@@ -15,7 +15,10 @@ defmodule Dawarich.SharedApi.Closure do
 
   def allowed_photo?(link, source, id) do
     context = Photos.grant_context(link)
+    not is_nil(context.range) and allowed_photo?(link, context, source, id)
+  end
 
+  defp allowed_photo?(link, context, source, id) do
     ids =
       case ProviderCache.get(photo_ids_key(link, context)) do
         {:ok, ids} when is_map(ids) -> ids

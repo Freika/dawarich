@@ -58,34 +58,40 @@ defmodule Dawarich.SharedApi.PhotosTest do
     no_upstream!(ctx.upstream)
   end
 
-  test "enabled unconfigured photos hand back before ACL cache effects", ctx do
+  test "enabled unconfigured photos replay lists and deny scopeless thumbnails before cache effects",
+       ctx do
     link = %{ctx.link | settings: %{"show_photos" => true}}
     assert {:replay, _} = Photos.response(link, :photos)
     assert {:replay, _} = Photos.response(link, :thumbnail)
     flag!(true)
 
-    for action <- ["photos", "photos/synthetic/thumbnail?source=immich"] do
+    for action <- ["photos"] do
       client = request(ctx.port, "/api/v1/shared/#{@id}/#{action}", @headers)
       assert puma(ctx.upstream) == "GET /api/v1/shared/#{@id}/#{action} HTTP/1.1"
       assert {200, _, "rails"} = read_response(client)
     end
 
+    assert {404, _, ""} = response(ctx, "photos/synthetic/thumbnail?source=immich")
+    no_upstream!(ctx.upstream)
     untouched!()
   end
 
-  test "provider-enabled shared photos hand back before cache or network effect", ctx do
+  test "provider-enabled shared photos replay lists and deny scopeless thumbnails before network effects",
+       ctx do
     {provider, worker} = provider!(ctx.link.user_id)
     link = %{ctx.link | settings: %{"show_photos" => true}}
     assert {:replay, _} = Photos.response(link, :photos)
     refute_received :photo_request
     flag!(true)
 
-    for action <- ["photos", "photos/synthetic/thumbnail?source=immich"] do
+    for action <- ["photos"] do
       client = request(ctx.port, "/api/v1/shared/#{@id}/#{action}", @headers)
       assert puma(ctx.upstream) == "GET /api/v1/shared/#{@id}/#{action} HTTP/1.1"
       assert {200, _, "rails"} = read_response(client)
     end
 
+    assert {404, _, ""} = response(ctx, "photos/synthetic/thumbnail?source=immich")
+    no_upstream!(ctx.upstream)
     untouched!()
     refute_received :photo_request
     Task.shutdown(worker, :brutal_kill)

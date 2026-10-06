@@ -172,9 +172,6 @@ defmodule DawarichWeb.Strangler do
     end
   end
 
-  defp slice_owned?(%{slice: :api_shared, plug_opts: action}, %{method: "HEAD"})
-       when action in [:photos, :thumbnail],
-       do: Dawarich.Standalone.enabled?() and DawarichWeb.Slices.owned?(:api_shared)
   def native_api?(%{path_info: ["api", "v1" | _]} = conn) do
     method = if conn.method == "HEAD", do: "GET", else: conn.method
 
@@ -198,6 +195,10 @@ defmodule DawarichWeb.Strangler do
       _ -> path
     end
   end
+
+  defp slice_owned?(%{slice: :api_shared, plug_opts: action}, %{method: "HEAD"})
+       when action in [:photos, :thumbnail],
+       do: Dawarich.Standalone.enabled?() and DawarichWeb.Slices.owned?(:api_shared)
 
   defp slice_owned?(%{slice: slice}, conn),
     do:

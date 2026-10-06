@@ -67,3 +67,30 @@ Rails retains F2's warm-window defect, reproduced through request GET/HEAD
 and recorded as DRB-023 in `deferred-rails-bugs.md`. The review-fix brief
 explicitly authorizes Phoenix to prioritize privacy over that source parity.
 The decision is recorded in `shared-photo-grants-adr.md`.
+
+## Coexistence privacy closure
+
+S02C1 guards actual mounted GET/HEAD in standalone, default coexistence and
+coexistence with `api_shared` handed back to Rails. `SharedPhotoGuard` runs at
+`RailsProxy.call` before opening the upstream socket and uses the same current
+`Closure.allowed_photo?` policy as native thumbnails. Window changes and zone
+expansion deny with empty 404 responses without forwarding or fetching a
+thumbnail. Missing windows deny before cache writes. Valid coexistence
+requests retain their Rails response and authorization path; this guard grants
+no access and changes no list ownership or other slice admission.
+
+S02C1Rails uses the real Rails integration middleware/controller/Redis cache
+behind the actual Endpoint and TCP forwarding, sharing the test database.
+After a Rails list warms the grant, a trip date edit produces Phoenix 404/404
+with no handoff or thumbnail construction. Direct unchanged Rails returns
+200/200. Valid thumbnails and phrase refusal retain their upstream behavior.
+M-S02C1 bypasses the proxy guard and fails both mounted regressions.
+
+The integration merge restored a coexistence-only photo admission gate that
+also blocked standalone photos; `photos_owned?` now explicitly admits the
+standalone native producer. The existing HEAD exception and new integration
+API helpers remain grouped and intact. S02C2 checks the ruling-17 entry in
+`fixed-rails-bugs.md` and DRB-023's standalone/coexistence disposition.
+Rails remains unchanged; no additional ED or DRB was added. S02F1 is not an
+inherited Rails bug. Requests that already captured the old policy can finish;
+subsequent requests resolve the current policy and deny.

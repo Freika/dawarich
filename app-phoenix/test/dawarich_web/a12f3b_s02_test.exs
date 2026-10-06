@@ -475,6 +475,128 @@ defmodule DawarichWeb.A12f3bS02Test do
     assert effects() == c.effects
   end
 
+  @tag a12f3b_case: "S02C1"
+  test "mounted coexistence GET and HEAD revoke excluded trip thumbnails before Rails handoff",
+       c do
+    for mode <- [:standalone, :coexistence, :rails_slice] do
+      System.put_env("DAWARICH_RAILS", "off")
+      Repo.query!("UPDATE tags SET privacy_radius_meters=100 WHERE user_id=$1", [c.owner])
+      configure(c, [asset("public-0")])
+      link = link!(c.owner, 0, c.trip)
+      assert {200, _, list} = response(c, link, "photos")
+      assert [%{"id" => "public-0"}] = Jason.decode!(list)
+
+      if mode != :standalone do
+        System.delete_env("DAWARICH_RAILS")
+
+        System.put_env(
+          "DAWARICH_RAILS_SLICES",
+          if(mode == :rails_slice, do: "api_shared", else: "")
+        )
+
+        assert {200, _, ^list} = routed_response(c, link, "photos", "GET", list)
+        assert_receive {:s02_rails_request, "GET " <> _}
+      end
+
+      for method <- ~w(GET HEAD) do
+        assert {200, _, body} =
+                 routed_response(
+                   c,
+                   link,
+                   "photos/public-0/thumbnail?source=immich",
+                   method,
+                   @image
+                 )
+
+        assert body == if(method == "HEAD", do: "", else: @image)
+        if mode != :standalone, do: assert_receive({:s02_rails_request, _})
+      end
+
+      Repo.query!(
+        "UPDATE trips SET started_at=started_at + interval '1 day', ended_at=ended_at + interval '1 day' WHERE id=$1",
+        [c.trip]
+      )
+
+      before_denial = requests(c)
+      get = routed_response(c, link, "photos/public-0/thumbnail?source=immich", "GET", @image)
+      head = routed_response(c, link, "photos/public-0/thumbnail?source=immich", "HEAD", @image)
+      assert {elem(get, 0), elem(head, 0)} == {404, 404}
+      assert elem(get, 2) == ""
+      assert elem(head, 2) == ""
+      refute_received {:s02_rails_request, _}
+
+      assert Enum.all?(
+               Enum.drop(requests(c), length(before_denial)),
+               &(&1.path == "/api/search/metadata")
+             )
+
+      Repo.query!(
+        "UPDATE trips SET started_at=started_at - interval '1 day', ended_at=ended_at - interval '1 day' WHERE id=$1",
+        [c.trip]
+      )
+
+      Repo.query!("UPDATE tags SET privacy_radius_meters=1000000 WHERE user_id=$1", [c.owner])
+
+      for method <- ~w(GET HEAD) do
+        assert {404, _, ""} =
+                 routed_response(
+                   c,
+                   link,
+                   "photos/public-0/thumbnail?source=immich",
+                   method,
+                   @image
+                 )
+
+        refute_received {:s02_rails_request, _}
+      end
+    end
+
+    assert commands() == []
+    assert effects() == c.effects
+    no_upstream!(c.upstream)
+  end
+
+  @tag a12f3b_case: "S02C2"
+  test "S02 Rails bug registers identify the fixed leak and deferred Rails repair" do
+    fixed = File.read!("../docs/phoenix/fixed-rails-bugs.md")
+    deferred = File.read!("../docs/phoenix/deferred-rails-bugs.md")
+    row = deferred |> String.split("\n") |> Enum.find(&String.starts_with?(&1, "| DRB-023 |"))
+    assert fixed =~ "DRB-023"
+    assert fixed =~ "S02F2"
+    assert fixed =~ "S02C1"
+    assert fixed =~ "coexistence"
+    assert fixed =~ "app/controllers/api/v1/shared/photos_controller.rb:42"
+    assert fixed =~ "app-phoenix/lib/dawarich/shared_api/closure.ex:16"
+    assert fixed =~ "Rails remains unchanged"
+    assert row =~ "coexistence"
+    assert row =~ "S02C1"
+  end
+
+  defp routed_response(c, id, action, method, body) do
+    parent = self()
+
+    upstream =
+      Task.async(fn ->
+        socket = accept(c.upstream)
+        {head, _} = read_head(socket)
+        send(parent, {:s02_rails_request, request_line(head)})
+        payload = if method == "HEAD", do: "", else: body
+
+        reply(socket, [
+          "HTTP/1.1 200 OK\r\nContent-Length: #{byte_size(payload)}\r\n\r\n",
+          payload
+        ])
+
+        :gen_tcp.close(socket)
+      end)
+
+    try do
+      response(c, id, action, [], method)
+    after
+      Task.shutdown(upstream, :brutal_kill)
+    end
+  end
+
   defp resource!(table, owner) do
     {first, last, extra, value} =
       if table == "trips",

@@ -27,6 +27,16 @@ sorted zones. Both list and cold-thumbnail paths use this key. Legacy v2
 keys cannot authorize native thumbnails. Existing caps and provider caches
 remain in effect.
 
+Coexistence thumbnail replay passes through `SharedPhotoGuard` at
+`RailsProxy.call`, using the same `Closure.allowed_photo?` policy before
+opening the upstream connection. This includes GET/HEAD, `api_shared` slice
+handoff and suffix requests. Lists and authorized thumbnails keep their
+existing Rails path. Phrase, family-audience and unavailable-owner refusals
+continue through their existing authorization path; the guard does not grant
+access. A missing resource window is denied before grant-cache writes.
+Standalone photo admission explicitly accepts the native producer even when
+the coexistence route gate would hand enabled photos back.
+
 ## Alternatives and consequences
 
 Invalidation from every zone/resource write would require covering all SQL,
@@ -50,3 +60,14 @@ Repository counterparts: `shared-photos-s02-handoff.md` and
 `deferred-rails-bugs.md` (DRB-023). Shared knowledge-base handoff:
 AFFiNE `sTHXI_y0g2E7VcjM02YGf`; deferred-bugs register:
 AFFiNE `K4KXXQgxcwGIkohuXyUQQ`.
+
+S02C1 proves mounted standalone/default coexistence/Rails-slice window and
+zone denial. S02C1Rails warms the real Rails controller/cache through an actual
+Endpoint and TCP proxy bridge, then edits the shared trip in the shared test
+database: Phoenix denies 404/404 without forwarding or Rails thumbnail
+construction, while direct unchanged Rails still serves 200/200. It retains
+valid forwarding and phrase refusal. M-S02C1 bypasses the proxy guard and
+must fail both mounted regressions. S02C2 checks the fixed/deferred changelog;
+its mutation removes the S02F2 regression reference. Fixed-bug counterpart:
+`fixed-rails-bugs.md`; DRB-023 remains the deferred Rails repair, with no new
+ED or DRB entry. Previously in-flight requests retain snapshot semantics.
