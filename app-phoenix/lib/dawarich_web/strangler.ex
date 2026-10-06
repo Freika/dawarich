@@ -72,7 +72,13 @@ defmodule DawarichWeb.Strangler do
   def call(conn, _opts) do
     cond do
       owned?(conn) ->
-        conn |> Plug.Conn.put_private(:dawarich_method, conn.method) |> Plug.Head.call([])
+        conn
+        |> Plug.Conn.put_private(
+          :dawarich_native_api,
+          String.starts_with?(conn.request_path, "/api/v1/")
+        )
+        |> Plug.Conn.put_private(:dawarich_method, conn.method)
+        |> Plug.Head.call([])
 
       Dawarich.Standalone.enabled?() ->
         {reason, status} = standalone_rejection(conn)

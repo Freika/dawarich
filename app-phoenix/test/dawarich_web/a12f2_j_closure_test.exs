@@ -182,16 +182,93 @@ defmodule DawarichWeb.A12f2JClosureTest do
     no_upstream!(c.upstream)
   end
 
+  @tag :a12f2_j_02
+  test "Native body parsing retains source duplicate nested encoding limits and accepted chunked multipart requests",
+       c do
+    fixture = Jason.decode!(File.read!("test/fixtures/a12f2j/transport.json"))
+
+    for row <- fixture["params"], Map.has_key?(row, "params") do
+      assert {401, _, ""} = endpoint(c, "GET", "/api/v1/photos?" <> row["query"])
+    end
+
+    for row <- fixture["params"], Map.has_key?(row, "params") do
+      assert DawarichWeb.Api.SourceParams.decode(row["query"]) == {:ok, row["params"]}
+    end
+
+    for row <- fixture["params"], Map.has_key?(row, "error") do
+      assert DawarichWeb.Api.SourceParams.decode(row["query"]) == {:error, 400}
+    end
+
+    conn = Plug.Test.conn(:post, "/api/v1/imports", ~s({"a":1,"a":2,"array":[null,1,null]}))
+
+    conn =
+      conn
+      |> Plug.Conn.put_req_header("content-type", "application/json")
+      |> Plug.Conn.assign(:api_tag, "api")
+
+    parsed = DawarichWeb.Api.Body.call(conn, native: true)
+    assert parsed.assigns.api_params == %{"a" => 2, "array" => [1]}
+
+    multipart =
+      "--j-boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"trace.json\"\r\nContent-Type: application/json\r\n\r\n{}\r\n--j-boundary--\r\n"
+
+    conn = Plug.Test.conn(:post, "/api/v1/imports", multipart)
+
+    conn =
+      conn
+      |> Plug.Conn.put_req_header("content-type", "multipart/form-data; boundary=j-boundary")
+      |> Plug.Conn.assign(:api_tag, "api")
+
+    parsed = DawarichWeb.Api.Body.call(conn, native: true)
+    assert %Plug.Upload{filename: "trace.json", path: file} = parsed.assigns.api_params["file"]
+    assert File.read!(file) == "{}"
+
+    chunked =
+      Integer.to_string(byte_size(multipart), 16) <> "\r\n" <> multipart <> "\r\n0\r\n\r\n"
+
+    assert {401, _, ""} =
+             endpoint(
+               c,
+               "POST",
+               "/api/v1/imports",
+               [
+                 {"Transfer-Encoding", "chunked"},
+                 {"Content-Type", "multipart/form-data; boundary=j-boundary"}
+               ],
+               chunked
+             )
+
+    no_upstream!(c.upstream)
+  end
+
   defp bearer, do: [{"Authorization", "Bearer #{@key}"}, {"Accept", "application/json"}]
 
   defp route(method, path),
     do: Phoenix.Router.route_info(DawarichWeb.Router, method, path, "localhost")
 
-  defp endpoint(c, method, path, headers \\ []) do
+  defp endpoint(c, method, path, headers \\ [], body \\ "") do
     upstream = Task.async(fn -> puma(c.upstream, "unexpected Rails replay") end)
 
     try do
-      c.port |> request(path, headers, method) |> read_response(method: method)
+      client = connect(c.port)
+
+      length =
+        if body != "" and
+             not Enum.any?(headers, fn {name, _} ->
+               String.downcase(name) == "transfer-encoding"
+             end),
+           do: "Content-Length: #{byte_size(body)}\r\n",
+           else: ""
+
+      send_raw(client, [
+        "#{method} #{path} HTTP/1.1\r\nHost: localhost\r\n",
+        length,
+        Enum.map(headers, fn {name, value} -> "#{name}: #{value}\r\n" end),
+        "\r\n",
+        body
+      ])
+
+      read_response(client, method: method)
     after
       Task.shutdown(upstream, :brutal_kill)
     end

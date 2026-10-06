@@ -20,6 +20,12 @@ defmodule DawarichWeb.Api.Body do
 
   @impl true
   def call(conn, opts) do
+    if conn.private[:dawarich_native_api] == true or Keyword.get(opts, :native, false),
+      do: DawarichWeb.Api.Transport.parse(conn),
+      else: legacy(conn, opts)
+  end
+
+  defp legacy(conn, opts) do
     conn = put_private(conn, :dawarich_nested_form, Keyword.get(opts, :nested_form))
 
     case classify(conn) do
