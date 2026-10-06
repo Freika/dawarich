@@ -7,7 +7,6 @@ defmodule Dawarich.Tracks.RealtimeWorker do
 
   require Logger
 
-  alias Dawarich.RailsCommands
   alias Dawarich.Tracks.{Boundary, Builder, Merger, PerUserLock, Points, Settings}
 
   @lookback 6 * 3_600
@@ -30,12 +29,12 @@ defmodule Dawarich.Tracks.RealtimeWorker do
   @impl Oban.Worker
   def timeout(_job), do: :timer.minutes(10)
 
-  def run(repo, oban, %{"user_id" => user_id}, opts \\ []) do
+  def run(repo, oban, %{"user_id" => user_id} = args, opts \\ []) do
     now = Keyword.get_lazy(opts, :now, fn -> System.os_time(:second) end)
 
     case Settings.find(repo, user_id) do
       %{status: status} = user when status in [1, 2] ->
-        generate(repo, oban, user, now, opts)
+        generate(repo, oban, user, now, Keyword.put(opts, :event_id, args["event_id"]))
 
       _ ->
         :ok
@@ -57,10 +56,13 @@ defmodule Dawarich.Tracks.RealtimeWorker do
            Keyword.get(opts, :lock, [])
          ) do
       {:ok, :ok} ->
-        RailsCommands.insert!(repo, "geocode_recent_points", %{
-          "user_id" => user.id,
-          "since" => now - @geocode_window
-        })
+        Dawarich.Tracks.RecentGeocoding.run(
+          repo,
+          oban,
+          user.id,
+          now - @geocode_window,
+          opts[:event_id]
+        )
 
         :ok
 
