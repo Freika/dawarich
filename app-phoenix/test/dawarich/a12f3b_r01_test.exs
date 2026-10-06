@@ -138,6 +138,16 @@ defmodule Dawarich.A12f3bR01Test do
     assert :ok = Dawarich.Points.LiveBroadcastWorker.run(ScratchRepo, args)
     assert rows("SELECT count(*) FROM phoenix.cable_events WHERE channel=$1", [stream]) == [[1]]
     assert reverse("points.live_broadcast") == []
+    rows("UPDATE users SET deleted_at=now() WHERE id=$1", [user])
+
+    assert :ok =
+             Dawarich.Points.LiveBroadcastWorker.run(
+               ScratchRepo,
+               Map.put(args, "broadcast_id", Ecto.UUID.generate())
+             )
+
+    assert rows("SELECT count(*) FROM phoenix.cable_events") == [[3]]
+    rows("UPDATE users SET deleted_at=NULL WHERE id=$1", [user])
     coexist("points.live_broadcast", fn -> ingest(user) end)
   end
 
@@ -197,6 +207,39 @@ defmodule Dawarich.A12f3bR01Test do
     ingest(user)
     assert length(jobs("Dawarich.Points.RealtimeVisitsWorker")) == 1
     coexist("visits.suggest", fn -> ingest(user) end, "visits.realtime")
+  end
+
+  @tag a12f3b_case: "R01k05"
+  test "native point effect ownership handoff supplies executable versioned workers" do
+    payloads = %{
+      "command:points.tile_epoch" => %{"user_id" => 1, "timestamps" => [@at, nil]},
+      "command:points.live_broadcast" => %{
+        "user_id" => 1,
+        "broadcast_id" => Ecto.UUID.generate(),
+        "upserted" => [%{"id" => 1, "timestamp" => @at, "latitude" => 52.5, "longitude" => 13.4}],
+        "payloads" => [
+          %{"timestamp" => @at, "battery" => 80, "altitude" => 12.5, "velocity" => "3"}
+        ]
+      },
+      "command:points.anomaly_filter" => %{
+        "user_id" => 1,
+        "start_at" => @at,
+        "end_at" => @at,
+        "time_zone" => "UTC"
+      }
+    }
+
+    entries = Dawarich.Points.JobEntries.entries()
+    assert Enum.sort(Enum.map(entries, & &1.key)) == Enum.sort(Map.keys(payloads))
+
+    for entry <- entries do
+      payload = payloads[entry.key]
+      assert {:ok, ^payload} = entry.worker.args_from_command(1, payload)
+      assert {:error, "unsupported_version"} = entry.worker.args_from_command(2, payload)
+
+      assert {:error, "invalid_payload"} =
+               entry.worker.args_from_command(1, Map.put(payload, "unexpected", true))
+    end
   end
 
   defp ingest(user, opts \\ []) do

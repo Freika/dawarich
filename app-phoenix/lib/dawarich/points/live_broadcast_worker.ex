@@ -5,11 +5,36 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
   alias Dawarich.{Cable, State}
   alias Dawarich.Families.{Locations, Sharing}
 
+  def args_from_command(
+        1,
+        %{"user_id" => user, "broadcast_id" => event, "upserted" => points, "payloads" => data} =
+          payload
+      )
+      when is_integer(user) and is_list(points) and is_list(data) and map_size(payload) == 4 do
+    with {:ok, _} <- Ecto.UUID.cast(event),
+         true <- Enum.all?(points, &valid_point?/1),
+         true <- Enum.all?(data, &(is_map(&1) and is_integer(&1["timestamp"]))) do
+      {:ok, payload}
+    else
+      _ -> {:error, "invalid_payload"}
+    end
+  end
+
+  def args_from_command(1, _), do: {:error, "invalid_payload"}
+  def args_from_command(_, _), do: {:error, "unsupported_version"}
+
+  defp valid_point?(%{"id" => id, "timestamp" => stamp, "longitude" => lon, "latitude" => lat}),
+    do: is_integer(id) and is_integer(stamp) and is_number(lon) and is_number(lat)
+
+  defp valid_point?(_), do: false
+
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}), do: run(Dawarich.Jobs.repo(), args)
 
   def run(repo, %{"user_id" => user, "upserted" => points} = args) do
-    case repo.query!("SELECT email,first_name,last_name,settings FROM users WHERE id=$1", [user],
+    case repo.query!(
+           "SELECT email,first_name,last_name,settings FROM users WHERE id=$1 AND deleted_at IS NULL",
+           [user],
            log: false
          ).rows do
       [[email, first, last, settings]] when points != [] ->
