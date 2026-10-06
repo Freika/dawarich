@@ -8,6 +8,26 @@ defmodule Dawarich.RouteVideos.AttachmentEffects do
     :ok
   end
 
+  def cleanup_failed_save!(repo, user_id, blob_id) do
+    if attached?(repo, blob_id) do
+      :ok
+    else
+      Dawarich.RouteVideos.AttachmentJob.enqueue!(repo, %{
+        "user_id" => user_id,
+        "blob_id" => blob_id,
+        "action" => "purge_unattached"
+      })
+    end
+  end
+
+  defp attached?(repo, blob_id),
+    do:
+      repo.query!(
+        "SELECT EXISTS(SELECT 1 FROM active_storage_attachments WHERE blob_id=$1)",
+        [blob_id],
+        log: false
+      ).rows == [[true]]
+
   defp valid?(repo, payload) do
     positive?(payload, ["user_id", "blob_id"]) and
       case payload["action"] do

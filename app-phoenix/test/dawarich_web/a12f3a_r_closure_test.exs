@@ -71,6 +71,45 @@ defmodule DawarichWeb.A12f3aRClosureTest do
     assert rows("SELECT count(*) FROM active_storage_blobs WHERE id=$1", [blob + 10]) == [[1]]
   end
 
+  @tag a12f3a_r02: true
+  test "R02: rejected and failed upload cleanup matches current Rails contract without a native-owner Rails effect" do
+    for name <- ~w(wrong_mime over_ceiling pre_attach_error post_commit_cap_error) do
+      state = capture("r02", name)
+      user = seed(state)
+      blob = state["request"]["blob_id"]
+
+      if name in ~w(wrong_mime over_ceiling) do
+        assert {:error, %{phase: :rejected}} =
+                 RouteVideos.create(ScratchRepo, user, params(state), @now, "en", %{
+                   max_per_user: 0
+                 })
+
+        assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+        assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
+      else
+        assert :ok = AttachmentEffects.cleanup_failed_save!(ScratchRepo, user.id, blob)
+        assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+      end
+
+      assert rows("SELECT id FROM phoenix.rails_commands") == []
+    end
+
+    state = capture("r02", "shared_blob")
+    user = seed(state)
+    blob = hd(state["before"]["active_storage_blobs"])["id"]
+    assert :ok = AttachmentEffects.cleanup_failed_save!(ScratchRepo, user.id, blob)
+    assert rows("SELECT count(*) FROM active_storage_blobs WHERE id=$1", [blob]) == [[1]]
+    assert rows("SELECT id FROM oban.oban_jobs") == []
+  end
+
+  defp params(state) do
+    put_in(
+      state["request"]["params"],
+      ["route_video", "file"],
+      RailsMessages.blob_id(state["request"]["blob_id"])
+    )
+  end
+
   defp capture(task, name) do
     "test/fixtures/a8vv/videos/a12f3a-#{task}.json"
     |> File.read!()

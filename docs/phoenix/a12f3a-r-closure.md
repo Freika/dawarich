@@ -22,3 +22,10 @@ passes (1 test). Rails characterization batch: 44 examples, 0 failures.
 
 Full suite, transport closure, studio binding, locale coverage and release
 browser proof remain pending. G44 belongs to the controller release lane.
+
+R02 uses `cleanup_failed_save!/3` for rescue cleanup: attached blobs are retained,
+unattached uploads use the same fenced attachment-job dispatch. Named test
+covers MIME/size refusal and shared failure cleanup. Initial missing-function
+RED; GREEN 1 selected test; M-R02 purged an attached blob and failed the
+retained-blob assertion; restored GREEN 1 selected test. Full fault-envelope
+coverage remains subject to the source-backed request table.

@@ -90,7 +90,7 @@ defmodule Dawarich.RouteVideos.Writes do
 
       {:error, _} ->
         repo.transaction(fn ->
-          unless attached?(repo, blob_id), do: purge_unattached(repo, user_id, blob_id)
+          Dawarich.RouteVideos.AttachmentEffects.cleanup_failed_save!(repo, user_id, blob_id)
         end)
 
         {:error, %{phase: :pre_attach}}
