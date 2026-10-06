@@ -15,12 +15,22 @@ defmodule DawarichWeb.PointListActions do
   def call(conn, _action) do
     user = conn.assigns.current_user
     params = conn.assigns.api_params
+
+    if not is_nil(params["point_ids"]) and not is_list(params["point_ids"]) do
+      conn |> send_resp(500, "") |> halt()
+    else
+      destroy(conn, user, params)
+    end
+  end
+
+  defp destroy(conn, user, params) do
     query = params |> Map.take(@filters) |> Enum.sort() |> URI.encode_query()
     location = RequestURL.base(conn) <> "/points" <> if(query == "", do: "", else: "?" <> query)
 
     ctx = %{
       locale: Locale.resolve(nil, user, conn.assigns.rails_session),
-      timezone: UserTimeZone.iana(Repo, user.settings)
+      timezone: UserTimeZone.iana(Repo, user.settings),
+      now: Map.get(conn.assigns, :now, DateTime.utc_now())
     }
 
     ctx = Map.put(ctx, :render, &prepare(conn, &1, location, ctx.locale))
