@@ -3,7 +3,8 @@ defmodule Dawarich.ReleaseOperations.VisitsFleetRedetect do
 
   use Oban.Worker, queue: :maintenance, priority: 3, max_attempts: 10
 
-  alias Dawarich.{RailsCommands, ReleaseOperations}
+  alias Dawarich.ReleaseOperations
+  alias Dawarich.Visits.UserRedetectWorker
 
   @batch 500
   @stagger 30
@@ -40,10 +41,7 @@ defmodule Dawarich.ReleaseOperations.VisitsFleetRedetect do
       ids
       |> Enum.with_index()
       |> Enum.each(fn {user_id, index} ->
-        RailsCommands.insert!(repo, "release_user_redetect", %{
-          "user_id" => user_id,
-          "run_at" => started + offset + index * @stagger
-        })
+        UserRedetectWorker.enqueue(repo, user_id, started + offset + index * @stagger, op.id)
       end)
 
       if length(ids) < @batch,

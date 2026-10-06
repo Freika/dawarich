@@ -22,5 +22,6 @@ defmodule Mix.Tasks.Dawarich.BuildInputs do
     )
 
     Build.write!(Path.join(phoenix, "importmap.json"), Build.Importmap.export(root, assets))
+    Build.runtime_data!(root, out)
   end
 end

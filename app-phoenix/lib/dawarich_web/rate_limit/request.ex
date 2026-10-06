@@ -22,7 +22,12 @@ defmodule DawarichWeb.RateLimit.Request do
     type = media_type(header(conn, "content-type"))
 
     %{
-      method: Map.get(conn.private, :dawarich_method, conn.method),
+      method:
+        Map.get(
+          conn.private,
+          :dawarich_rate_limit_method,
+          Map.get(conn.private, :dawarich_method, conn.method)
+        ),
       path: path,
       throttle_path: throttle_path,
       unlock_id: unlock_id(throttle_path),

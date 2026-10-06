@@ -218,13 +218,16 @@ defmodule DawarichWeb.AuthRegistration.Http do
   defp parameters(conn) do
     with [type] <- get_req_header(conn, "content-type"),
          true <- hd(String.split(type, ";")) == "application/x-www-form-urlencoded",
-         {:ok, body, conn} <- read_body(conn, length: 65_536, read_length: 65_536),
+         {:ok, body, conn} <- raw_body(conn),
          {:ok, params} <- Admission.form(body, "", @fields) do
       {:ok, params, conn}
     else
       _ -> :error
     end
   end
+
+  defp raw_body(%{private: %{dawarich_raw_body: raw}} = conn), do: {:ok, raw, conn}
+  defp raw_body(conn), do: read_body(conn, length: 65_536, read_length: 65_536)
 
   defp csrf?(conn, params) do
     origins = get_req_header(conn, "origin")

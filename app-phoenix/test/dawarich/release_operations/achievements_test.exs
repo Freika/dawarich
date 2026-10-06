@@ -63,6 +63,7 @@ defmodule Dawarich.ReleaseOperations.AchievementsTest do
     :ok
   end
 
+  @tag a12f3b_case: "E18Bb"
   test "region partial writes survive enqueue failure while publication remains retryable" do
     fixture =
       Path.expand("../../fixtures/a12rel/achievements.json", __DIR__)
@@ -131,6 +132,11 @@ defmodule Dawarich.ReleaseOperations.AchievementsTest do
       assert rows("SELECT count(*) FROM phoenix.rails_commands") == [
                [if(owner == :sidekiq, do: 1, else: 0)]
              ]
+
+      status = Dawarich.Jobs.Drain.status(ScratchRepo)
+      assert status.binary_rollback == "BLOCKED"
+
+      assert if(owner == :oban, do: "incomplete_oban", else: "reverse_pending") in status.binary_reasons
     end
   end
 
@@ -243,6 +249,7 @@ defmodule Dawarich.ReleaseOperations.AchievementsTest do
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[1]]
   end
 
+  @tag a12f3b_case: "E18Ba"
   test "release parent publishes silent stale bulk after regions to its command owner" do
     country()
     codes = Registry.subdivision_codes() |> MapSet.to_list()

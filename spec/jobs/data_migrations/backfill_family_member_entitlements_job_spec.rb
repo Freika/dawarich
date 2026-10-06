@@ -26,6 +26,17 @@ RSpec.describe DataMigrations::BackfillFamilyMemberEntitlementsJob do
     described_class.perform_now
 
     expect { described_class.perform_now }.not_to(change { member.reload.updated_at })
+
+    member.update_columns(plan: User.plans[:lite], status: User.statuses[:inactive], active_until: nil)
+    other_owner = create(:user, plan: :family, status: :active, active_until: 1.year.from_now, skip_auto_trial: true)
+    other_family = create(:family, creator: other_owner)
+    allow(Families::SyncMembers).to receive(:new).and_call_original
+    allow(Families::SyncMembers).to receive(:new).with(family: other_family, notify: false)
+                                                 .and_raise(StandardError, 'synthetic family failure')
+
+    expect { described_class.perform_now }.to raise_error(StandardError, 'synthetic family failure')
+    expect(member.reload).to be_pro
+    expect(member.reload).to be_active
   end
 
   it 'does nothing on self-hosted instances' do
