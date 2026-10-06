@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixture: the cookies Rails issues at sign-in', type: :request do
   include ActiveSupport::Testing::TimeHelpers
+  include FixtureRecording::SyntheticSecret
 
   let(:secret) { 'phoenix-a2-cookie-fixture-secret-not-for-production' }
 
@@ -86,7 +88,7 @@ RSpec.describe 'Phoenix fixture: the cookies Rails issues at sign-in', type: :re
         csrf: { session_cookie: csrf_session, masked_token: masked }
       }
       path = Rails.root.join('app-phoenix/test/fixtures/rails_cookies.json')
-      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1' && !path.exist?
         File.write(path, "#{JSON.pretty_generate(fixture)}\n")
       else
         recorded = JSON.parse(path.read)

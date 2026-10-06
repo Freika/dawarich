@@ -78,7 +78,7 @@ RSpec.describe 'Phoenix fixture: rack-attack throttles, blocklist and responders
   def transport_cors
     origins = ['https://dawarich.app', 'https://preview-1.dawarich.pages.dev', 'http://localhost:8080',
                'https://DAWARICH.app', 'https://dawarich.app.evil.test', 'null', 'http://127.0.0.1:8080']
-    origins.product(['/api/v1/imports/pending', '/api/v1/points'], ['POST', 'DELETE']).map do |origin, path, method|
+    origins.product(['/api/v1/imports/pending', '/api/v1/points'], %w[POST DELETE]).map do |origin, path, method|
       env = Rack::MockRequest.env_for(path, method: 'OPTIONS')
       env.merge!('HTTP_ORIGIN' => origin, 'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => method,
                  'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'Content-Type, X-Upload')
