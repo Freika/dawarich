@@ -572,6 +572,70 @@ defmodule DawarichWeb.A12f2AClosureTest do
     assert invoke(DawarichWeb.Api.StatsController, :index, user, %{}, now).status == 200
   end
 
+  @tag :a12f2_a_fix_1
+  test "Cloud lite bbox index cannot bypass cutoff with blank upper bound", %{
+    user: user,
+    now: now
+  } do
+    System.put_env("SELF_HOSTED", "false")
+    previous = Application.get_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, Repo)
+    on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous) end)
+    Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [user.id])
+
+    [[area]] =
+      Repo.query!(
+        "INSERT INTO areas(user_id,name,latitude,longitude,radius,created_at,updated_at) VALUES($1,'Synthetic',52,13,100,NOW(),NOW()) RETURNING id",
+        [user.id]
+      ).rows
+
+    [[visit]] =
+      Repo.query!(
+        "INSERT INTO visits(user_id,area_id,name,status,started_at,ended_at,duration,created_at,updated_at) VALUES($1,$2,'Old',1,'2020-01-01','2020-01-01 01:00',3600,NOW(),NOW()) RETURNING id",
+        [user.id, area]
+      ).rows
+
+    lite = %{user | plan: 0}
+
+    params = %{
+      "selection" => "true",
+      "sw_lat" => "51",
+      "sw_lng" => "12",
+      "ne_lat" => "53",
+      "ne_lng" => "14",
+      "start_at" => "",
+      "end_at" => ""
+    }
+
+    hidden =
+      invoke(DawarichWeb.Api.VisitsController, :show, lite, %{"id" => to_string(visit)}, now)
+
+    assert hidden.status == 404
+    result = invoke(DawarichWeb.Api.VisitsController, :index, lite, params, now)
+    assert result.status == 200
+    assert Jason.decode!(result.resp_body) == []
+
+    paged =
+      invoke(DawarichWeb.Api.VisitsController, :index, lite, Map.put(params, "page", "1"), now)
+
+    assert paged.status == 200
+    assert Jason.decode!(paged.resp_body) == []
+    assert get_resp_header(paged, "x-total-count") == ["0"]
+    assert get_resp_header(paged, "x-total-pages") == ["0"]
+
+    Repo.query!("UPDATE visits SET started_at=$2,ended_at=$3 WHERE id=$1", [
+      visit,
+      ~N[2026-10-06 10:00:00],
+      ~N[2026-10-06 11:00:00]
+    ])
+
+    fresh =
+      invoke(DawarichWeb.Api.VisitsController, :index, lite, Map.put(params, "page", "1"), now)
+
+    assert [%{"id" => ^visit}] = Jason.decode!(fresh.resp_body)
+    assert get_resp_header(fresh, "x-total-count") == ["1"]
+  end
+
   defp source_body(section, name) do
     fixture = "test/fixtures/a12f2a/closure.json" |> File.read!() |> Jason.decode!()
     Enum.find(fixture[section], &(&1["name"] == name))["response"]["body"] |> Jason.decode!()

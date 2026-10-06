@@ -2,6 +2,7 @@ defmodule Dawarich.VisitsApi.Closure do
   @moduledoc false
   alias Dawarich.{I18n, Jobs}
   alias Dawarich.VisitsApi.Batch
+  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   def scope(action, user, params, now) do
     cutoff = Dawarich.MapApi.Closure.window(user, now)
@@ -49,14 +50,17 @@ defmodule Dawarich.VisitsApi.Closure do
     if params["selection"] == "true" or
          (params["start_at"] not in [nil, ""] and params["end_at"] not in [nil, ""]) do
       from =
-        if params["start_at"] in [nil, ""],
+        if Ruby.blank?(params["start_at"]),
           do: cutoff,
           else: Dawarich.Imports.ImportTime.parse(params["start_at"], zone, now)
 
       if from do
         params
         |> Map.put("start_at", DateTime.to_iso8601(DateTime.from_unix!(max(from, cutoff))))
-        |> Map.put("end_at", params["end_at"] || "9999-12-31T23:59:59Z")
+        |> Map.put(
+          "end_at",
+          if(Ruby.blank?(params["end_at"]), do: "9999-12-31T23:59:59Z", else: params["end_at"])
+        )
       else
         params
       end
