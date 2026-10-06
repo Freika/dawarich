@@ -94,6 +94,16 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
     fixture_bytes(residual_path('effects'), fixture)
   end
 
+  it 'characterizes trial mail commands and the two-day explore delay' do
+    user = fresh_intent_user('creation')
+    allow(JobOwnership).to receive(:lock_owner).and_return(:oban)
+    user.send(:start_trial)
+    mails = JobOutbox.where(command_type: ['mail.user.welcome', 'users.explore_features_mail']).order(:scheduled_at)
+    expect(mails.pluck(:command_type)).to eq(['mail.user.welcome', 'users.explore_features_mail'])
+    expect(mails.pluck(:scheduled_at)).to eq([Time.current, 2.days.from_now])
+    expect(mails.map(&:payload)).to eq(Array.new(2) { { 'user_id' => user.id, 'locale' => 'en' } })
+  end
+
   it 'characterizes explicit reply-to on both source MIME formats' do
     user = create(:user)
     messages = [UsersMailer.with(user:).welcome.message,
