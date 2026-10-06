@@ -8,6 +8,7 @@ defmodule Dawarich.Families.SharingUpdate do
   @false_values [false, "0", "f", "F", "false", "FALSE", "off", "OFF"]
   @hours %{"1h" => 1, "6h" => 6, "12h" => 12, "24h" => 24}
   @windows ~w(24h 7d 30d all)
+  @strip ~r/\A[\0\t\n\v\f\r ]|[\0\t\n\v\f\r ]\z/
 
   def call(user, params, now) do
     case Locations.membership(user.id) do
@@ -22,7 +23,7 @@ defmodule Dawarich.Families.SharingUpdate do
   end
 
   def web_call(user, params, now), do: __MODULE__.Web.call(user, params, now)
-  def web_write!(user_id, params, now), do: write!(user_id, params, now)
+  def web_write!(user_id, params, now), do: write!(user_id, params, now, true)
 
   def enable!(user_id, duration, now) when is_binary(duration),
     do: write!(user_id, %{"enabled" => true, "duration" => duration}, now)
@@ -47,13 +48,21 @@ defmodule Dawarich.Families.SharingUpdate do
         )}}
   end
 
-  defp write!(user_id, params, now) do
+  defp write!(user_id, params, now, normalize? \\ false) do
     [[settings, email]] =
       Repo.query!("SELECT settings, email FROM users WHERE id = $1 FOR UPDATE", [user_id]).rows
 
     if Ruby.blank?(email), do: raise(ArgumentError, "a blank email fails Rails' validation")
     stored = settings
-    settings = __MODULE__.Web.normalize_settings!(settings)
+
+    settings =
+      if normalize? do
+        __MODULE__.Web.normalize_settings!(settings)
+      else
+        plain!(settings)
+        settings
+      end
+
     family = settings["family"]
     unless is_nil(family) or is_map(family), do: raise(ArgumentError, "family settings")
     config = if params["enabled"], do: enabled(family, params, now), else: %{"enabled" => false}
@@ -188,6 +197,31 @@ defmodule Dawarich.Families.SharingUpdate do
   end
 
   defp duration(_value), do: raise(ArgumentError, "duration parameter shape")
+
+  defp plain!(%{} = settings) do
+    for key <- ~w(immich_url photoprism_url), not untouched_url?(settings[key]) do
+      raise ArgumentError, "#{key} would be rewritten on save"
+    end
+
+    case settings["maps"] do
+      nil ->
+        :ok
+
+      %{"url" => url} when is_binary(url) ->
+        if url =~ @strip, do: raise(ArgumentError, "maps url")
+
+      %{} ->
+        :ok
+
+      _other ->
+        raise ArgumentError, "maps settings would be read on save"
+    end
+  end
+
+  defp plain!(_settings), do: raise(ArgumentError, "settings are not an object")
+
+  defp untouched_url?(url),
+    do: is_nil(url) or (is_binary(url) and not String.ends_with?(url, "/"))
 
   defp missing do
     key = "controllers.api.v1.families.sharing.missing_required_parameter_param"

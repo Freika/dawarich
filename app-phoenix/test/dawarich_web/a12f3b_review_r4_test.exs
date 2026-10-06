@@ -37,6 +37,31 @@ defmodule DawarichWeb.A12f3bReviewR4Test do
 
     assert Accounts.settings(c.member.id)["immich_url"] == "https://photos.example.test"
 
+    for dirty <- [
+          %{"immich_url" => "https://photos.example.test/"},
+          %{"photoprism_url" => "https://gallery.example.test/"},
+          %{"maps" => %{"url" => " https://maps.example.test/ "}}
+        ] do
+      stored = Map.merge(settings, dirty)
+      Repo.query!("UPDATE users SET settings=$1 WHERE id=90102", [stored])
+      api_user = Map.put(Accounts.get(c.member.id), :timezone, "Europe/Berlin")
+
+      for params <- [%{"enabled" => false}, %{"enabled" => false, "web" => true}] do
+        assert {:replay, "ArgumentError"} =
+                 DawarichWeb.Api.FamilyController.run(
+                   :sharing,
+                   api_user,
+                   params,
+                   ~U[2026-10-03 10:00:00Z]
+                 )
+
+        assert Accounts.settings(c.member.id) == stored
+      end
+
+      assert json_request(c.member, "PATCH", "/family/location_sharing", %{"enabled" => false}).status ==
+               200
+    end
+
     for malformed <- [
           %{"immich_url" => []},
           %{"maps" => []},
