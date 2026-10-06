@@ -315,13 +315,24 @@ defmodule Dawarich.ReleaseJobsTest do
     end
   end
 
+  @tag a12f3b_case: "E192a"
   test "unknown classes are refused" do
-    for class <- ["DataMigrations::NoSuchJob", "Users::RecalculateDataJob", ""] do
-      assert ReleaseJobs.decode(class, []) == {:error, :unknown_class}, class
+    for {class, arguments} <- [
+          {"DataMigrations::NoSuchJob", []},
+          {"Users::RecalculateDataJob", []},
+          {"", []},
+          {"DataMigrations::SetPointsCountryIdsJob", [42]},
+          {"DataMigrations::SetReverseGeocodedAtForPointsJob", []},
+          {"DataMigrations::StartSettingsPointsCountryIdsJob", []}
+        ] do
+      assert ReleaseJobs.decode(class, arguments) == {:error, :unknown_class}, class
     end
+
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
   end
 
-  test "family backfills skip self-hosted and refuse Cloud" do
+  test "family backfills skip self-hosted and use native Cloud operations" do
     for class <-
           ~w(DataMigrations::BackfillFamiliesForFamilyPlanJob DataMigrations::BackfillFamilyMemberEntitlementsJob) do
       System.delete_env("SELF_HOSTED")
@@ -331,7 +342,17 @@ defmodule Dawarich.ReleaseJobsTest do
       assert ReleaseJobs.decode(class, []) == :skip
 
       System.put_env("SELF_HOSTED", "false")
-      assert ReleaseJobs.decode(class, []) == {:error, :cloud_family_backfill}
+
+      assert {:ok, Dawarich.ReleaseJobs.FamilyBackfill, %{"version" => 1, "cursor" => cursor}} =
+               ReleaseJobs.decode(class, [])
+
+      assert cursor["phase"] ==
+               if(class == "DataMigrations::BackfillFamiliesForFamilyPlanJob",
+                 do: "families",
+                 else: "entitlements"
+               )
+
+      assert cursor["after_id"] == 0
     end
   end
 

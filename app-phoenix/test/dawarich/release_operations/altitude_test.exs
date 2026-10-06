@@ -87,6 +87,7 @@ defmodule Dawarich.ReleaseOperations.AltitudeTest do
              5.0
   end
 
+  @tag a12f3b_case: "E18A1b"
   test "the parent spawns one child per live user with points" do
     live = Wave6Fixtures.user!(%{"points_count" => 2})
     Wave6Fixtures.user!(%{"points_count" => 0})
@@ -98,8 +99,14 @@ defmodule Dawarich.ReleaseOperations.AltitudeTest do
     assert cursor == %{"phase" => "raw", "user_id" => live, "after_id" => 0}
     assert is_binary(child)
     assert rows("SELECT status FROM phoenix.release_operations") == [["completed"]]
+    status = Dawarich.Jobs.Drain.status(ScratchRepo)
+    assert status.counts.incomplete_oban == 1
+    assert "incomplete_oban" in status.binary_reasons
+    assert status.binary_rollback == "BLOCKED"
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
   end
 
+  @tag a12f3b_case: "E18A1a"
   test "the raw pass writes both columns and skips equal integers", %{extractors: extractors} do
     user = Wave6Fixtures.user!(%{"points_count" => 1})
 
@@ -130,6 +137,10 @@ defmodule Dawarich.ReleaseOperations.AltitudeTest do
     end
 
     assert stored(equal) == [87, nil, false]
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+
+    assert rows("SELECT count(*) FROM phoenix.release_operations WHERE status <> 'completed'") ==
+             [[0]]
   end
 
   test "the archive pass reads the Rails fixture archive, updates existing points only and skips an equal integer",

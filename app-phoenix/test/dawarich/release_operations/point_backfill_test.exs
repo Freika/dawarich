@@ -24,6 +24,7 @@ defmodule Dawarich.ReleaseOperations.PointBackfillTest do
     assert Enum.map(PointBackfill.aliases(), &Tuple.to_list/1) == extractors["country_aliases"]
   end
 
+  @tag a12f3b_case: "E18A2a"
   test "a dimensions page seeds, stamps only NULL sources, pauses 5 s and continues", %{
     user: user
   } do
@@ -64,8 +65,11 @@ defmodule Dawarich.ReleaseOperations.PointBackfillTest do
     assert [[args, delay]] = jobs()
     assert args == successor(id, cursor("dimensions", 3, 50_000, false))
     assert delay >= 4 and delay <= 6
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    assert "release_pending" in Dawarich.Jobs.Drain.status(ScratchRepo).binary_reasons
   end
 
+  @tag a12f3b_case: "E18A2b"
   test "the last dimensions page starts country with repair and no pause", %{user: user} do
     Wave6Fixtures.point!(user, %{"id" => 1})
     Wave6Fixtures.point!(user, %{"id" => 2})
@@ -75,6 +79,12 @@ defmodule Dawarich.ReleaseOperations.PointBackfillTest do
     assert [[args, delay]] = jobs()
     assert args == successor(id, cursor("country", nil, 50_000, true))
     assert delay < 1
+    assert operation(id) == [[cursor("country", nil, 50_000, true), "running"]]
+    status = Dawarich.Jobs.Drain.status(ScratchRepo)
+    assert status.counts.incomplete_oban == 1
+    assert status.counts.release_pending == 1
+    assert status.binary_rollback == "BLOCKED"
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
   end
 
   test "country resolves names and aliases to the lowest id and leaves unknown names NULL", %{

@@ -8,6 +8,23 @@ defmodule Dawarich.Build do
     File.write!(path, iodata)
   end
 
+  def runtime_data!(root, out) do
+    priv = Application.app_dir(:dawarich, "priv")
+
+    for {source, retained, target} <- [
+          {"app-phoenix/priv/time_zones.json", "time_zones.json", "tmp/phoenix/time_zones.json"},
+          {"config/shared_link_wordlist.txt", "shared_link_wordlist.txt",
+           "priv/shared_link_wordlist.txt"},
+          {"lib/assets/countries.geojson.gz", "countries.geojson.gz",
+           "priv/countries.geojson.gz"},
+          {"lib/assets/admin1_world.geojson", "admin1_world.geojson", "priv/admin1_world.geojson"}
+        ] do
+      input = Path.join(root, source)
+      input = if File.regular?(input), do: input, else: Path.join(priv, retained)
+      write!(Path.join(out, target), File.read!(input))
+    end
+  end
+
   def refresh!(target, root, fun) do
     if stale?(target, sources(root)), do: write!(target, fun.())
     :ok
