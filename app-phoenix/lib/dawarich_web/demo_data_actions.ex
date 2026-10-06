@@ -15,6 +15,19 @@ defmodule DawarichWeb.DemoDataActions do
   end
 
   defp perform(conn, opts) do
+    if conn.method == "DELETE" or
+         String.upcase(conn.assigns.api_params["_method"] || "") == "DELETE" do
+      case Dawarich.DemoData.Destroyer.call(Repo, conn.assigns.current_user) do
+        :destroyed -> redirect(conn, "/", "demo_data_removed")
+        :no_demo_data -> redirect(conn, "/", "no_demo_data_found")
+        :error -> redirect(conn, "/", "something_went_wrong_removing_demo_data", "alert")
+      end
+    else
+      create(conn, opts)
+    end
+  end
+
+  defp create(conn, opts) do
     user = conn.assigns.current_user
 
     case Importer.call(Repo, user, opts) do

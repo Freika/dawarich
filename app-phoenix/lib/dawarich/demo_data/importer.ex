@@ -60,11 +60,49 @@ defmodule Dawarich.DemoData.Importer do
       )
 
     case result do
-      {:ok, status} -> status
-      {:error, _} -> :error
+      {:ok, :created} ->
+        invalidate(repo, user)
+        :created
+
+      {:ok, status} ->
+        status
+
+      {:error, _} ->
+        :error
     end
   rescue
     _ -> :error
+  end
+
+  def invalidate(repo, user, months \\ nil) do
+    months =
+      months ||
+        repo.query!(
+          "SELECT DISTINCT extract(year FROM to_timestamp(timestamp) AT TIME ZONE $2)::int,extract(month FROM to_timestamp(timestamp) AT TIME ZONE $2)::int FROM points WHERE user_id=$1 AND import_id IN (SELECT id FROM imports WHERE user_id=$1 AND demo=true)",
+          [user.id, zone(user)],
+          log: false
+        ).rows
+
+    setting = user.settings["timezone"] || "UTC"
+    setting = if setting == "", do: "UTC", else: setting
+
+    for [year, month] <- months, segment <- ~w(lite pro) do
+      label = "#{year}-" <> String.pad_leading(Integer.to_string(month), 2, "0")
+
+      {:ok, _} =
+        Dawarich.Redis.cache_command([
+          "UNLINK",
+          "timeline_month_summary/#{user.id}/#{label}/#{setting}/#{segment}/v3"
+        ])
+    end
+
+    Dawarich.Stats.CacheInvalidation.call(repo, %{
+      "user_id" => user.id,
+      "year" => nil,
+      "scope" => "all"
+    })
+  rescue
+    _ -> :ok
   end
 
   def fixture(name),
