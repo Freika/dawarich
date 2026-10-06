@@ -158,6 +158,55 @@ defmodule DawarichWeb.A12f2CClosureTest do
     assert bytes == Base.decode64!(oracle("tracks_speed")["body_base64"])
   end
 
+  @tag :a12f2_c_05
+  test "Timeline and privacy zones preserve ownership zoned ranges interleaving limits and serialized geometry",
+       %{user: user} do
+    track = track(user.id)
+
+    Repo.query!(
+      "INSERT INTO visits (user_id, name, status, started_at, ended_at, duration, created_at, updated_at) VALUES ($1,'synthetic',1,'2025-01-01','2025-01-01 00:05:00',5,NOW(),NOW())",
+      [user.id]
+    )
+
+    track(user!(%{}))
+    params = %{"start_at" => "2025-01-01T00:00:00Z", "end_at" => "2025-01-01T23:59:59Z"}
+    assert {:ok, %{days: [day]}} = invoke(Dawarich.Timeline.Api, :fetch, [user, params])
+    assert [%{type: "visit"}, %{type: "journey", track_id: ^track}] = day.entries
+    assert day.summary.time_stationary_minutes == 5
+    assert day.summary.time_moving_minutes == 5
+    refute Map.has_key?(hd(day.entries), :start_s)
+
+    assert {:error, 400, "start_at and end_at are required"} =
+             Dawarich.Timeline.Api.fetch(user, %{})
+
+    assert {:error, 400, "Date range cannot exceed 31 days"} =
+             Dawarich.Timeline.Api.fetch(user, Map.put(params, "end_at", "2025-03-01"))
+
+    assert {:ok, %{days: []}} =
+             Dawarich.Timeline.Api.fetch(user, Map.put(params, "start_at", "2025-01-02"))
+
+    zoned = %{user | timezone: "Europe/Berlin"}
+
+    assert {:ok, %{days: [%{date: "2025-01-01", entries: [visit | _]}]}} =
+             Dawarich.Timeline.Api.fetch(zoned, params)
+
+    assert visit.started_at == "2025-01-01T01:00:00+01:00"
+
+    [[tag]] =
+      Repo.query!(
+        "INSERT INTO tags (user_id,name,privacy_radius_meters,created_at,updated_at) VALUES ($1,'synthetic',100,NOW(),NOW()) RETURNING id",
+        [user.id]
+      ).rows
+
+    Repo.query!(
+      "INSERT INTO tags (user_id,name,privacy_radius_meters,created_at,updated_at) VALUES ($1,'other',200,NOW(),NOW())",
+      [user!(%{})]
+    )
+
+    assert [%{tag_id: ^tag, tag_name: "synthetic", radius_meters: 100, places: []}] =
+             invoke(Dawarich.MapApi.PrivacyZones, :fetch, [user])
+  end
+
   defp track(user_id) do
     [[id]] =
       Repo.query!(
