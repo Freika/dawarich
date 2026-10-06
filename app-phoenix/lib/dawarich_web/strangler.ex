@@ -131,7 +131,9 @@ defmodule DawarichWeb.Strangler do
   end
 
   defp slice_owned?(%{slice: slice}, conn),
-    do: conn.method != "HEAD" and DawarichWeb.Slices.owned?(slice)
+    do:
+      (conn.method != "HEAD" or DawarichWeb.Slices.head?(slice)) and
+        DawarichWeb.Slices.owned?(slice)
 
   defp slice_owned?(_route, _conn), do: true
 

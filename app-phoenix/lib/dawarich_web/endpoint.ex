@@ -33,6 +33,7 @@ defmodule DawarichWeb.Endpoint do
     only: ~w(app.js map_shell.js rails_bridge.js family_page.js)
 
   plug DawarichWeb.PublicFiles
+  plug DawarichWeb.Cors
   plug DawarichWeb.AuthGate
   plug DawarichWeb.Strangler
   plug DawarichWeb.Router

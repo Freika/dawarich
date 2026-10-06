@@ -112,6 +112,76 @@ defmodule DawarichWeb.A12f2JClosureTest do
     no_upstream!(c.upstream)
   end
 
+  @tag :a12f2_j_06
+  test "CORS preflight admits only pending import POST OPTIONS and exact production preview or test local origins",
+       c do
+    fixture = Jason.decode!(File.read!("test/fixtures/a12f2j/transport.json"))
+
+    for row <- fixture["cors"] do
+      headers = [
+        {"Origin", row["origin"]},
+        {"Access-Control-Request-Method", row["method"]},
+        {"Access-Control-Request-Headers", "Content-Type, X-Upload"}
+      ]
+
+      {status, actual, ""} = endpoint(c, "OPTIONS", row["path"], headers)
+      assert status == row["status"]
+
+      assert Map.new(
+               Enum.filter(actual, fn {name, _} ->
+                 String.starts_with?(name, "access-control-") or name == "vary"
+               end)
+             ) == row["headers"]
+    end
+
+    refute DawarichWeb.Cors.allowed_origin?("http://localhost:8080", true)
+    assert DawarichWeb.Cors.allowed_origin?("https://dawarich.app", true)
+    assert DawarichWeb.Cors.allowed_origin?("https://preview-1.dawarich.pages.dev", true)
+    no_upstream!(c.upstream)
+  end
+
+  @tag :a12f2_j_07
+  test "Pending upload success host limiter auth and errors retain source CORS headers without widening credentials",
+       c do
+    origin = [{"Origin", "https://dawarich.app"}]
+    assert {404, headers, ""} = endpoint(c, "POST", "/api/v1/imports/pending", origin)
+    assert values(headers, "access-control-allow-origin") == ["https://dawarich.app"]
+    assert values(headers, "vary") == ["Origin"]
+    assert values(headers, "access-control-allow-credentials") == []
+    System.put_env("SELF_HOSTED", "false")
+    assert {400, headers, _} = endpoint(c, "POST", "/api/v1/imports/pending", origin)
+    assert values(headers, "access-control-allow-origin") == ["https://dawarich.app"]
+
+    for denied <- [[], [{"Origin", "https://evil.test"}]] do
+      assert {403, headers, ""} = endpoint(c, "POST", "/api/v1/imports/pending", denied)
+      assert values(headers, "access-control-allow-origin") == []
+      assert values(headers, "vary") == ["Origin"]
+    end
+
+    no_upstream!(c.upstream)
+  end
+
+  @tag :a12f2_j_09
+  test "Each API slice and Cable is native in explicit Cloud mode and HEAD matches that route source contract",
+       c do
+    for mode <- [nil, "true", "false"] do
+      if mode, do: System.put_env("SELF_HOSTED", mode), else: System.delete_env("SELF_HOSTED")
+
+      for path <-
+            ~w(/api/v1/users/me /api/v1/notes /api/v1/visits /api/v1/places /api/v1/photos /api/v1/points /api/v1/stats /api/v1/plan /api/v1/imports /api/v1/families/locations) do
+        assert {401, _, ""} = endpoint(c, "GET", path), "#{mode} #{path}"
+        assert {401, _, ""} = endpoint(c, "HEAD", path), "#{mode} HEAD #{path}"
+      end
+
+      assert {404, _, "Page not found"} = endpoint(c, "GET", "/cable")
+
+      assert {404, _, ""} =
+               endpoint(c, "HEAD", "/cable", [{"Connection", "upgrade"}, {"Upgrade", "websocket"}])
+    end
+
+    no_upstream!(c.upstream)
+  end
+
   defp bearer, do: [{"Authorization", "Bearer #{@key}"}, {"Accept", "application/json"}]
 
   defp route(method, path),
@@ -121,7 +191,7 @@ defmodule DawarichWeb.A12f2JClosureTest do
     upstream = Task.async(fn -> puma(c.upstream, "unexpected Rails replay") end)
 
     try do
-      c.port |> request(path, headers, method) |> read_response()
+      c.port |> request(path, headers, method) |> read_response(method: method)
     after
       Task.shutdown(upstream, :brutal_kill)
     end
