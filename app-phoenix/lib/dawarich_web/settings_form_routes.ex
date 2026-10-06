@@ -2,17 +2,8 @@ defmodule DawarichWeb.SettingsFormRoutes do
   @moduledoc false
   defmacro settings_form_routes do
     quote do
-      pipeline :settings_forms do
-        plug DawarichWeb.HostAuthorization
-        plug DawarichWeb.ForceSSL
-        plug DawarichWeb.RateLimit
-        plug DawarichWeb.RailsAuth
-        plug DawarichWeb.Api.Body
-        plug DawarichWeb.RailsHeaders
-      end
-
       scope "/" do
-        pipe_through :settings_forms
+        pipe_through :standalone_settings
 
         for method <- [:post, :patch, :put] do
           match method, "/settings/general", DawarichWeb.SettingsActions, :update,

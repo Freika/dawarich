@@ -50,7 +50,7 @@ defmodule DawarichWeb.RailsAuth do
       [
         {"rails_user_id", conn.assigns[:current_user] && conn.assigns.current_user.id},
         {"notification_session",
-         DawarichWeb.NotificationSession.topic(conn.assigns.rails_session)}
+         DawarichWeb.NotificationSession.topic(conn.assigns[:rails_session] || %{})}
       ] ++
         for(
           key <- @layout -- [:notification_session],

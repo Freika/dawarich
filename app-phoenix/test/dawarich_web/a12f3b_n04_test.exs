@@ -14,9 +14,17 @@ defmodule DawarichWeb.A12f3bN04Test do
       send(test, {:verification, conn.query_params})
 
       case conn.query_params["github_username"] do
-        "supported" -> send_resp(conn, 200, Jason.encode!(%{supporter: true, platform: "github"}))
-        "invalid" -> send_resp(conn, 200, "invalid")
-        _ -> send_resp(conn, 403, "denied")
+        "supported" ->
+          send_resp(conn, 200, Jason.encode!(%{supporter: true, platform: "github"}))
+
+        "truthy" ->
+          send_resp(conn, 200, Jason.encode!(%{supporter: "yes", platform: "github"}))
+
+        "invalid" ->
+          send_resp(conn, 200, "invalid")
+
+        _ ->
+          send_resp(conn, 403, "denied")
       end
     end
   end
@@ -48,7 +56,7 @@ defmodule DawarichWeb.A12f3bN04Test do
 
   @tag a12f3b_case: "N04a"
   test "supporter verification preserves provider outcomes and flags" do
-    for name <- ["", "denied", "invalid", " Supported "] do
+    for name <- ["", "denied", "invalid", "truthy", " Supported "] do
       params = %{"supporter_github_username" => name}
       conn = apply(SettingsSupporterActions, :call, [request(params), :verify])
       assert conn.status == 302

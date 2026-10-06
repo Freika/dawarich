@@ -3,7 +3,7 @@ defmodule DawarichWeb.OnboardingRoutes do
   defmacro onboarding_routes do
     quote do
       scope "/" do
-        pipe_through :settings_forms
+        pipe_through :standalone_settings
 
         for method <- [:post, :patch, :put] do
           match method, "/settings/onboarding", DawarichWeb.OnboardingActions, :update,

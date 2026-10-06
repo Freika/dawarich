@@ -7,6 +7,16 @@ defmodule DawarichWeb.A12f3bN01Test do
 
   defmodule Router do
     use Phoenix.Router
+
+    pipeline :standalone_settings do
+      plug DawarichWeb.HostAuthorization
+      plug DawarichWeb.ForceSSL
+      plug DawarichWeb.RateLimit
+      plug DawarichWeb.RailsAuth
+      plug DawarichWeb.Api.Body
+      plug DawarichWeb.RailsHeaders
+    end
+
     import DawarichWeb.NotificationFormRoutes
     import DawarichWeb.SettingsFormRoutes
     import DawarichWeb.SettingsMiscRoutes

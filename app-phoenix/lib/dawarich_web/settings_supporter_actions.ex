@@ -9,7 +9,7 @@ defmodule DawarichWeb.SettingsSupporterActions do
     case SettingsActions.admit(conn, ["POST"]) do
       :ok ->
         case Supporter.verify(Repo, conn.assigns.current_user.id, conn.assigns.api_params) do
-          {:ok, %{"supporter" => supporter} = info} when supporter not in [false, nil] ->
+          {:ok, %{"supporter" => true} = info} ->
             platform =
               if is_binary(info["platform"]),
                 do:

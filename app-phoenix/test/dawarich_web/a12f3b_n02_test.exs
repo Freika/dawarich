@@ -53,12 +53,35 @@ defmodule DawarichWeb.A12f3bN02Test do
     refute html =~ ">Created<"
     assert html =~ "notifications-badge"
     assert Notifications.get(ctx.actor.id, id).title == "Updated"
+
+    assert apply(Notifications, :update_with_broadcast!, [
+             Repo,
+             ctx.actor.id,
+             id,
+             %{"kind" => "warning", "read_at" => NaiveDateTime.utc_now()}
+           ]) == :ok
+
+    assert Notifications.get(ctx.actor.id, id).kind == "warning"
+    assert Notifications.get(ctx.actor.id, id).read_at
+    assert TurboEvents.notifications(Repo, Repo) == 1
+    for _ <- 1..2, do: assert_receive({:redix_pubsub, _, _, :message, _})
+    :sys.get_state(Bus)
+    assert render(view) =~ "warning"
+    assert Dawarich.Navbar.unread(ctx.actor.id).count == 0
   end
 
   @tag a12f3b_case: "N02b"
   test "notification actions fail after signout in another tab", ctx do
     id = Notifications.create!(Repo, ctx.actor.id, :info, "Keep", "Body")
-    {:ok, view, _} = live_as(ctx)
+
+    page =
+      build_conn()
+      |> put_req_cookie("_dawarich_session", RailsUser.cookie(ctx.session))
+      |> RailsUser.connecting_as(ctx.actor.id)
+      |> get("/notifications?locale=de")
+
+    {:ok, view, _} = live(page)
+    cookie = page.resp_cookies["_dawarich_session"].value
 
     body =
       URI.encode_query(%{"authenticity_token" => DawarichWeb.RailsCsrf.masked_token(ctx.session)})
@@ -67,7 +90,7 @@ defmodule DawarichWeb.A12f3bN02Test do
       Plug.Test.conn(:delete, "/users/sign_out", body)
       |> put_req_header("content-type", "application/x-www-form-urlencoded")
       |> put_req_header("content-length", "#{byte_size(body)}")
-      |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(ctx.session))
+      |> put_req_header("cookie", "_dawarich_session=" <> cookie)
       |> DawarichWeb.AuthHandler.call(enabled: true, registration_enabled: true)
 
     assert logout.status == 303

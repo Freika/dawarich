@@ -125,20 +125,22 @@ defmodule Dawarich.Notifications do
     {:ok, :ok} =
       repo.transaction(fn ->
         case repo.query!(
-               "SELECT title, content FROM notifications WHERE id=$1 AND user_id=$2 FOR UPDATE",
+               "SELECT title, content, kind, read_at FROM notifications WHERE id=$1 AND user_id=$2 FOR UPDATE",
                [id, user_id],
                log: false
              ).rows do
-          [[title, content]] ->
+          [[title, content, kind, read_at]] ->
             title = Map.get(params, "title", title)
             content = Map.get(params, "content", content)
+            kind = kind_code(Map.get(params, "kind", kind))
+            read_at = read_time(Map.get(params, "read_at", read_at))
 
             if Enum.any?([title, content], &(not is_binary(&1) or String.trim(&1) == "")),
               do: raise(Invalid)
 
             repo.query!(
-              "UPDATE notifications SET title=$3, content=$4, updated_at=$5 WHERE id=$1 AND user_id=$2",
-              [id, user_id, title, content, NaiveDateTime.utc_now()],
+              "UPDATE notifications SET title=$3, content=$4, updated_at=$5, kind=$6, read_at=$7 WHERE id=$1 AND user_id=$2",
+              [id, user_id, title, content, NaiveDateTime.utc_now(), kind, read_at],
               log: false
             )
 
@@ -157,6 +159,15 @@ defmodule Dawarich.Notifications do
 
     :ok
   end
+
+  defp kind_code(value) when value in [0, "info", :info], do: 0
+  defp kind_code(value) when value in [1, "warning", :warning], do: 1
+  defp kind_code(value) when value in [2, "error", :error], do: 2
+  defp kind_code(_), do: raise(Invalid)
+  defp read_time(nil), do: nil
+  defp read_time(%NaiveDateTime{} = at), do: at
+  defp read_time(%DateTime{} = at), do: DateTime.to_naive(at)
+  defp read_time(_), do: raise(Invalid)
 
   def create!(repo, user_id, kind, title, content, now \\ NaiveDateTime.utc_now()) do
     if repo.in_transaction?() do

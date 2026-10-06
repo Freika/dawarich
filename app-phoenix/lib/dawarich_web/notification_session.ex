@@ -5,7 +5,7 @@ defmodule DawarichWeb.NotificationSession do
   alias Dawarich.{Accounts, Cable.Bus, Notifications}
 
   def topic(session) do
-    case {session["warden.user.user.key"], session["session_id"] || session["_csrf_token"]} do
+    case {session["warden.user.user.key"], session["_csrf_token"] || session["session_id"]} do
       {[[id], _], value} when is_integer(id) and is_binary(value) ->
         "notification-session:" <>
           Base.encode16(:crypto.hash(:sha256, "#{id}:" <> value), case: :lower)
@@ -90,8 +90,18 @@ defmodule DawarichWeb.NotificationSession do
 
       Map.has_key?(socket.assigns, :notification) ->
         case Notifications.get(id, socket.assigns.notification.id) do
-          nil -> socket
-          notification -> assign(socket, :notification, notification)
+          nil ->
+            socket
+
+          notification ->
+            [notification] =
+              Notifications.localize(
+                [notification],
+                socket.assigns.current_user.settings,
+                socket.assigns.now
+              )
+
+            assign(socket, :notification, notification)
         end
 
       true ->

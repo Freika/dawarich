@@ -3,7 +3,7 @@ defmodule DawarichWeb.SettingsMiscRoutes do
   defmacro settings_misc_routes do
     quote do
       scope "/" do
-        pipe_through :settings_forms
+        pipe_through :standalone_settings
 
         get "/settings/theme", DawarichWeb.SettingsMiscActions, :theme,
           metadata: %{rails_gate: {DawarichWeb.SettingsActions, :enabled?}}

@@ -2,17 +2,8 @@ defmodule DawarichWeb.NotificationFormRoutes do
   @moduledoc false
   defmacro notification_form_routes do
     quote do
-      pipeline :notification_forms do
-        plug DawarichWeb.HostAuthorization
-        plug DawarichWeb.ForceSSL
-        plug DawarichWeb.RateLimit
-        plug DawarichWeb.RailsAuth
-        plug DawarichWeb.Api.Body
-        plug DawarichWeb.RailsHeaders
-      end
-
       scope "/" do
-        pipe_through :notification_forms
+        pipe_through :standalone_settings
 
         post "/notifications/mark_as_read", DawarichWeb.NotificationActions, :mark_as_read,
           metadata: %{rails_gate: {DawarichWeb.SettingsActions, :enabled?}}
