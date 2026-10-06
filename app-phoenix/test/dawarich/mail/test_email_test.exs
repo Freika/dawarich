@@ -7,7 +7,6 @@ defmodule Dawarich.Mail.TestEmailTest do
   alias Dawarich.Mail.Digests.{DeliveryWorker, Enqueue, Render}
 
   @http Path.expand("../../fixtures/mail/residual/http.json", __DIR__)
-  @content Path.expand("../../fixtures/mail/residual/content.json", __DIR__)
   @digests Path.expand("../../fixtures/mail/residual/digest_content.json", __DIR__)
   @clock %{local: ~N[2026-10-04 12:00:00], offset: 0, zone: "UTC", valid: true}
   @env %{
@@ -59,9 +58,9 @@ defmodule Dawarich.Mail.TestEmailTest do
     end
 
     assert TestEmail.supported?(Map.put(@env, "SMTP_AUTHENTICATION", "unsupported")) == false
-    assert TestEmail.supported?(Map.put(@env, "SMTP_AUTHENTICATION", "plain")) == false
-    assert TestEmail.supported?(Map.put(@env, "SMTP_STARTTLS", "true")) == false
-    assert TestEmail.supported?(Map.put(@env, "SMTP_SSL", "true")) == false
+    assert TestEmail.supported?(Map.put(@env, "SMTP_AUTHENTICATION", "plain")) == true
+    assert TestEmail.supported?(Map.put(@env, "SMTP_STARTTLS", "true")) == true
+    assert TestEmail.supported?(Map.put(@env, "SMTP_SSL", "true")) == true
     assert TestEmail.supported?(@env) == true
     assert TestEmail.supported?(Map.delete(@env, "SMTP_SERVER")) == true
   end

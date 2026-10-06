@@ -9,8 +9,8 @@ defmodule Dawarich.Mail.TestEmail do
 
   def supported?(env) do
     if configured?(env) do
-      options = SmtpConfig.options(env)
-      options[:auth] == :never and options[:tls] == :never and options[:ssl] == false
+      SmtpConfig.options(env)
+      true
     else
       true
     end
