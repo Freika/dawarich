@@ -2,7 +2,8 @@ defmodule Dawarich.Points.ApiPosition do
   @moduledoc false
   alias Dawarich.Imports.Api
   alias Dawarich.Points.ApiWrites
-  alias Dawarich.{RailsCommands, RubyInteger}
+  alias Dawarich.RubyInteger
+  alias Dawarich.Metrics.Map, as: Metrics
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   def update(repo, user, id, params, ctx) do
@@ -11,22 +12,31 @@ defmodule Dawarich.Points.ApiPosition do
          {:ok, scope} <- ApiWrites.required(params, "history_scope"),
          {:ok, scope} <- history(scope, user, repo),
          {:ok, lat, lon, revision, track_revision} <- coordinates(attrs, params) do
-      result =
-        repo.transaction(fn ->
-          move(repo, user, id, lat, lon, revision, track_revision, scope)
-        end)
+      Metrics.move(fn ->
+        result =
+          repo.transaction(fn ->
+            move(repo, user, id, lat, lon, revision, track_revision, scope)
+          end)
 
-      case result do
-        {:ok, {:ok, response, point}} ->
-          postcommit(repo, user, point, response)
-          {:ok, 200, response}
+        case result do
+          {:ok, {:ok, response, point, measurements}} ->
+            Dawarich.Points.PositionEffects.call(repo, user, point, response)
+            {"success", measurements, {:ok, 200, response}}
 
-        {:error, {:stale, response}} ->
-          {:error, 409, stale(response)}
+          {:error, {:stale, response, measurements}} ->
+            {"conflict", measurements, {:error, 409, stale(response)}}
 
-        {:ok, error} ->
-          error
-      end
+          {:error, {:stale, response}} ->
+            {"conflict", Metrics.sizes(repo, nil), {:error, 409, stale(response)}}
+
+          {:error, {:timeout, lock_wait}} ->
+            {"timeout", Map.put(Metrics.sizes(repo, nil), :lock_wait, lock_wait),
+             invalid("recalculation_timeout", "canceling statement due to statement timeout")}
+
+          {:ok, error} ->
+            {nil, %{}, error}
+        end
+      end)
     end
   rescue
     error in Postgrex.Error ->
@@ -42,6 +52,7 @@ defmodule Dawarich.Points.ApiPosition do
     repo.query!("SET LOCAL statement_timeout='3s'")
 
     with {:ok, identity} <- ApiWrites.identity(repo, user.id, id) do
+      locks_started = System.monotonic_time()
       track = lock_track(repo, user.id, identity.track_id)
 
       repo.query!("SELECT id FROM points WHERE id=$1 AND user_id=$2 FOR UPDATE", [
@@ -49,36 +60,52 @@ defmodule Dawarich.Points.ApiPosition do
         user.id
       ])
 
-      {:ok, point} = ApiWrites.identity(repo, user.id, id)
+      lock_wait = System.monotonic_time() - locks_started
 
-      if point.track_id != identity.track_id or point.revision != revision or
-           (track && track.revision != track_revision),
-         do: repo.rollback({:stale, response(repo, point, track, nil)})
+      try do
+        {:ok, point} = ApiWrites.identity(repo, user.id, id)
 
-      before = countries(repo, user.id, scope)
+        if point.track_id != identity.track_id or point.revision != revision or
+             (track && track.revision != track_revision),
+           do:
+             repo.rollback(
+               {:stale, response(repo, point, track, nil),
+                Map.put(Metrics.sizes(repo, track), :lock_wait, lock_wait)}
+             )
 
-      repo.query!(
-        "UPDATE points SET lonlat=ST_SetSRID(ST_MakePoint($2,$3),4326)::geography,country_id=NULL,country_name=NULL,country=NULL,city=NULL,reverse_geocoded_at=NULL,lock_version=lock_version+1,updated_at=now() WHERE id=$1",
-        [point.id, lon, lat]
-      )
-
-      ApiWrites.country!(repo, point.id)
-
-      if track do
-        [[previous]] = repo.query!("SELECT COALESCE(max(id),0) FROM phoenix.rails_commands").rows
-        Dawarich.Tracks.Recalculator.call(repo, Dawarich.Tracks.Store.get(repo, track.id))
+        before = countries(repo, user.id, scope)
 
         repo.query!(
-          "DELETE FROM phoenix.rails_commands WHERE id>$1 AND kind='tracks_changed' AND payload->>'user_id'=$2",
-          [previous, to_string(user.id)]
+          "UPDATE points SET lonlat=ST_SetSRID(ST_MakePoint($2,$3),4326)::geography,country_id=NULL,country_name=NULL,country=NULL,city=NULL,reverse_geocoded_at=NULL,lock_version=lock_version+1,updated_at=now() WHERE id=$1",
+          [point.id, lon, lat]
         )
-      end
 
-      after_countries = countries(repo, user.id, scope)
-      visited = if before == after_countries, do: nil, else: %{"iso_a3" => after_countries}
-      {:ok, point} = ApiWrites.identity(repo, user.id, point.id)
-      track = lock_track(repo, user.id, identity.track_id)
-      {:ok, response(repo, point, track, visited), point}
+        ApiWrites.country!(repo, point.id)
+
+        if track do
+          [[previous]] =
+            repo.query!("SELECT COALESCE(max(id),0) FROM phoenix.rails_commands").rows
+
+          Dawarich.Tracks.Recalculator.call(repo, Dawarich.Tracks.Store.get(repo, track.id))
+
+          repo.query!(
+            "DELETE FROM phoenix.rails_commands WHERE id>$1 AND kind='tracks_changed' AND payload->>'user_id'=$2",
+            [previous, to_string(user.id)]
+          )
+        end
+
+        after_countries = countries(repo, user.id, scope)
+        visited = if before == after_countries, do: nil, else: %{"iso_a3" => after_countries}
+        {:ok, point} = ApiWrites.identity(repo, user.id, point.id)
+        track = lock_track(repo, user.id, identity.track_id)
+        measurements = Map.put(Metrics.sizes(repo, track, true), :lock_wait, lock_wait)
+        {:ok, response(repo, point, track, visited), point, measurements}
+      rescue
+        error in Postgrex.Error ->
+          if error.postgres[:code] == :query_canceled,
+            do: repo.rollback({:timeout, lock_wait}),
+            else: reraise(error, __STACKTRACE__)
+      end
     end
   end
 
@@ -115,60 +142,6 @@ defmodule Dawarich.Points.ApiPosition do
   end
 
   defp stale({:object, fields}), do: {:object, fields ++ [{"error", %{"code" => "stale_edit"}}]}
-
-  defp postcommit(repo, user, point, response) do
-    for fun <- [
-          fn ->
-            Dawarich.RailsEffects.tile_epoch(repo, user.id, [point.timestamp])
-          end,
-          fn -> publish(user.id, response, repo) end,
-          fn ->
-            local =
-              Dawarich.UserTimeZone.local(
-                user.settings,
-                DateTime.from_unix!(point.timestamp) |> DateTime.to_naive()
-              )
-
-            if Dawarich.Standalone.enabled?() or
-                 Dawarich.Jobs.Ownership.lock(repo, "command:stats.calculate_month") == :oban do
-              Dawarich.Stats.Schedule.calculate(
-                repo,
-                user.id,
-                local.local.year,
-                local.local.month,
-                true
-              )
-            else
-              RailsCommands.insert!(repo, "stats.calculate_month", %{
-                "user_id" => user.id,
-                "year" => local.local.year,
-                "month" => local.local.month
-              })
-            end
-          end,
-          fn ->
-            Dawarich.Points.NativeEffects.achievements(repo, %{
-              "user_id" => user.id,
-              "oldest_timestamp" => point.timestamp
-            })
-          end
-        ] do
-      try do
-        fun.()
-      rescue
-        _ -> :ok
-      end
-    end
-  end
-
-  defp publish(actor, response, repo) do
-    gid = Base.encode64("gid://dawarich/User/#{actor}", padding: false)
-    payload = %{"type" => "point_moved", "version" => 1, "data" => response}
-
-    Dawarich.Cable.Bus.publish("map_edits:" <> gid, Ruby.json(payload) |> IO.iodata_to_binary(),
-      repo: repo
-    )
-  end
 
   defp countries(repo, actor, scope) do
     repo.query!(
