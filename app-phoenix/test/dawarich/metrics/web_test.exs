@@ -3,6 +3,10 @@ defmodule Dawarich.Metrics.WebTest do
   import Plug.Test
   import Plug.Conn
 
+  defmodule PressureRepo do
+    use Ecto.Repo, otp_app: :dawarich, adapter: Ecto.Adapters.Postgres
+  end
+
   setup do
     old = System.get_env("PROMETHEUS_EXPORTER_ENABLED")
     System.put_env("PROMETHEUS_EXPORTER_ENABLED", "true")
@@ -51,10 +55,15 @@ defmodule Dawarich.Metrics.WebTest do
       Application.put_env(:dawarich, :allowed_hosts, hosts)
     end
 
+    observe_queries!()
+    before = Dawarich.Metrics.scrape()
     Repo.query!("SELECT 1", [], log: false)
+    assert_receive {:db_query, Repo, successful, {:ok, _}}
 
     assert {:error, %Postgrex.Error{}} =
              Repo.query("SELECT metric_column_does_not_exist", [], log: false)
+
+    assert_receive {:db_query, Repo, failed, {:error, _}}
 
     Dawarich.Metrics.Web.sample([Repo])
     body = Dawarich.Metrics.scrape()
@@ -64,12 +73,20 @@ defmodule Dawarich.Metrics.WebTest do
     assert body =~ ~s(dawarich_web_requests_total{method="HEAD",route="/metrics",status="200"} 1)
     assert body =~ "dawarich_web_request_duration_seconds_count"
     assert body =~ ~s(dawarich_web_errors_total{route="/metrics"} 2)
-    assert body =~ "dawarich_db_queries_total"
-    assert body =~ "dawarich_db_errors_total"
-    assert body =~ "dawarich_db_query_duration_seconds_count"
-    assert body =~ "dawarich_db_queue_duration_seconds_count"
-    assert body =~ "dawarich_db_pool_busy"
-    assert body =~ "dawarich_db_pool_waiting"
+    assert metric(body, "queries_total", Repo) - metric(before, "queries_total", Repo) == 2
+    assert metric(body, "errors_total", Repo) - metric(before, "errors_total", Repo) == 1
+
+    for {family, measurement} <- [{"query", :query_time}, {"queue", :queue_time}] do
+      duration = successful[measurement] + failed[measurement]
+      assert duration > 0
+      expected = System.convert_time_unit(duration, :native, :nanosecond) / 1_000_000_000
+      name = "#{family}_duration_seconds"
+      assert metric(body, name <> "_count", Repo) - metric(before, name <> "_count", Repo) == 2
+      seconds = metric(body, name <> "_sum", Repo) - metric(before, name <> "_sum", Repo)
+      assert seconds > 0 and seconds < 5
+      assert_in_delta seconds, expected, 1.0e-9
+    end
+
     assert body =~ "dawarich_runtime_memory_bytes"
     assert body =~ "dawarich_runtime_processes"
     refute body =~ "private-should-not-appear"
@@ -84,5 +101,106 @@ defmodule Dawarich.Metrics.WebTest do
     assert {seconds, _} = Float.parse(sum)
     assert seconds > 0 and seconds < 5
     assert body =~ "dawarich_web_active_requests 0"
+  end
+
+  test "real checked out connections and waiting clients expose pool pressure and queue duration" do
+    options =
+      Repo.config()
+      |> Keyword.merge(
+        pool: DBConnection.ConnectionPool,
+        pool_size: 1,
+        telemetry_prefix: [:dawarich, :repo]
+      )
+
+    previous = Application.get_env(:dawarich, PressureRepo)
+    Application.put_env(:dawarich, PressureRepo, options)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, PressureRepo, previous),
+        else: Application.delete_env(:dawarich, PressureRepo)
+    end)
+
+    start_supervised!(PressureRepo)
+    observe_queries!()
+    parent = self()
+
+    holder =
+      Task.async(fn ->
+        PressureRepo.checkout(fn ->
+          send(parent, :checked_out)
+          receive do: (:release -> :ok)
+        end)
+      end)
+
+    assert_receive :checked_out
+
+    client =
+      Task.async(fn ->
+        send(parent, :querying)
+        PressureRepo.query!("SELECT 1", [], log: false)
+      end)
+
+    try do
+      assert_receive :querying
+      await_waiting_client(System.monotonic_time(:millisecond) + 1_000)
+      Dawarich.Metrics.Web.sample([PressureRepo])
+      body = Dawarich.Metrics.scrape()
+      assert metric(body, "pool_size", PressureRepo) == 1
+      assert metric(body, "pool_ready", PressureRepo) == 0
+      assert metric(body, "pool_busy", PressureRepo) == 1
+      assert metric(body, "pool_waiting", PressureRepo) == 1
+    after
+      send(holder.pid, :release)
+      Task.await(holder)
+      Task.await(client)
+    end
+
+    assert_receive {:db_query, PressureRepo, measurements, {:ok, _}}
+    assert measurements.queue_time > 0
+    seconds = System.convert_time_unit(measurements.queue_time, :native, :nanosecond) / 1.0e9
+    Dawarich.Metrics.Web.sample([PressureRepo])
+    body = Dawarich.Metrics.scrape()
+    assert_in_delta metric(body, "queue_duration_seconds_sum", PressureRepo), seconds, 1.0e-9
+    assert metric(body, "pool_ready", PressureRepo) == 1
+    assert metric(body, "pool_busy", PressureRepo) == 0
+    assert metric(body, "pool_waiting", PressureRepo) == 0
+  end
+
+  def capture_query(_, measurements, metadata, pid),
+    do: send(pid, {:db_query, metadata.repo, measurements, metadata.result})
+
+  defp observe_queries! do
+    :ok =
+      :telemetry.attach(
+        __MODULE__,
+        [:dawarich, :repo, :query],
+        &__MODULE__.capture_query/4,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(__MODULE__) end)
+  end
+
+  defp await_waiting_client(deadline) do
+    pools = Ecto.Adapter.lookup_meta(PressureRepo).pid |> DBConnection.get_connection_metrics()
+
+    unless Enum.sum(Enum.map(pools, & &1.checkout_queue_length)) == 1 do
+      assert System.monotonic_time(:millisecond) < deadline
+      await_waiting_client(deadline)
+    end
+  end
+
+  defp metric(body, name, repo) do
+    label = Regex.escape(to_string(repo))
+
+    case Regex.run(~r/dawarich_db_#{name}\{repo="#{label}"\} ([\d.e+-]+)/, body) do
+      [_, value] ->
+        {number, ""} = Float.parse(value)
+        number
+
+      nil ->
+        0
+    end
   end
 end

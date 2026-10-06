@@ -40,6 +40,8 @@ change because the runtime changes. Application metric names remain stable.
 No native metric claims an inert worker is a Sidekiq process. Queues and states
 are reset to zero as work completes. Database debt collectors use bounded
 statement timeouts on a periodic sampler, never scrape-time SQL. Failed debt reads retain the last valid sample.
+Queue latency uses only due available/retryable jobs. Executing jobs contribute
+to running runtime independently; an executing-only queue has zero latency.
 
 Web/query buckets (seconds): 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1,
 2.5, 5, 10, 30, 60, 120, 300, 600. Job buckets retain the source long-running
@@ -77,8 +79,10 @@ Time.zone.parse inputs are not covered by this implementation's parser.
 Only an explicitly configured `SIDEKIQ_METRICS_URL` enables aggregation.
 Requests use the internal Basic metrics credentials and bounded five-second
 connect/read waits. Non-200 responses, transport failures and exceptions leave
-the local scrape available. HELP/TYPE metadata is unique; identical raw source
-series identities gain `process="web"` and `process="sidekiq"` labels.
+the local scrape available. HELP/TYPE metadata is unique; series with identical
+metric names and parsed label maps gain `process="web"` and `process="sidekiq"`
+labels, regardless of label order. Quoted values, escaped quotes, backslashes
+and newlines are parsed for identity; original label text is retained in output.
 Existing process labels and noncolliding samples are retained. This is an
 operator scrape only, never web hand-back. Remove the target after G49; there
 is no default Rails exporter target or Ruby dependency in the native exporter.
@@ -117,5 +121,10 @@ owners emit these events and the prescribed real-flow test/mutation passes.
 The assigned report records each named RED/GREEN/mutation/restored-GREEN run,
 source oracle, branch commits and final compile/format/404/202/gitleaks gates.
 This does not establish browser, Docker or release acceptance.
+Review regressions cover reordered Rails/native archive labels and independent
+queue latency/runtime gauges. DB assertions compare real query/error count
+deltas and histogram sums with native telemetry converted to seconds. A real
+single-connection pool proves busy/waiting values during checkout contention,
+queue-duration conversion, and pressure reset after the client completes.
 AFFiNE writes are prohibited by the assignment's security-sensitive delegate
 rule; this repository document is the code-coupled handoff.
