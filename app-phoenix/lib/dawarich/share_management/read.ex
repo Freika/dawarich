@@ -62,6 +62,69 @@ defmodule Dawarich.ShareManagement.Read do
     end
   end
 
+  def track(user, id, now, locale \\ nil) do
+    case Repo.query!(
+           "SELECT id,start_at,distance,dominant_mode FROM tracks WHERE user_id=$1 AND id=$2",
+           [user.id, id]
+         ).rows do
+      [[id, start, distance, mode]] ->
+        modes =
+          ~w(unknown stationary walking running cycling driving bus train flying boat motorcycle)
+
+        locale = locale || DawarichWeb.Locale.resolve(nil, user, %{})
+        unit = get_in(user.settings, ["maps", "distance_unit"]) || "km"
+        factors = %{"km" => 1000, "mi" => 1609.34, "m" => 1, "ft" => 0.3048, "yd" => 0.9144}
+
+        if Map.has_key?(factors, unit) do
+          mode_key =
+            if is_nil(mode),
+              do: "helpers.shared_links.track",
+              else: "transportation_modes." <> Enum.at(modes, mode)
+
+          {:ok, mode_name} = Dawarich.I18n.t(locale, mode_key)
+
+          date = UserTimeZone.local(user.settings, start).local |> NaiveDateTime.to_date()
+          date = DawarichWeb.LocalizedDate.l(locale, date, "day_month_year_abbreviated")
+
+          {:ok, name} =
+            Dawarich.I18n.t(locale, "helpers.shared_links.track_label", %{
+              "mode" => mode_name,
+              "date" => date,
+              "distance" => round((distance || 0) / factors[unit]),
+              "unit" => unit
+            })
+
+          share =
+            links(user, now, "AND resource_type=1 AND resource_id=#{id} ORDER BY id LIMIT 1")
+            |> List.first()
+
+          {:ok, %{trip: %{id: id, name: name, type: "track"}, share: share}}
+        else
+          :rails
+        end
+
+      [] ->
+        {:error, 404}
+    end
+  end
+
+  def timeline(user, params, now) do
+    {:ok, hub} = hub(user, params, now)
+    share = links(user, now, "AND resource_type=2 ORDER BY id LIMIT 1") |> List.first()
+
+    if Enum.all?(
+         ~w(start_date end_date),
+         &Dawarich.ShareManagement.Params.timeline_date_shape?(params[&1])
+       ) and
+         (is_nil(share) or
+            (is_map(share.settings) and
+               Enum.all?(~w(start_date end_date), &(not is_nil(date(share.settings[&1])))))) do
+      {:ok, %{trip: nil, share: share, start_date: hub.start_date, end_date: hub.end_date}}
+    else
+      :rails
+    end
+  end
+
   def owned(user, id) do
     if Dawarich.SharedLinks.canonical?(id) do
       case Repo.query!(

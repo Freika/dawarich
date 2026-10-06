@@ -73,6 +73,21 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
     end
   end
 
+  it 'refuses a family-only public document and unlock without a family viewer' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    user = create(:user)
+    link = SharedLink.create!(user:, resource_type: :live, name: 'Synthetic family refusal',
+                              magic_phrase: 'synthetic-phrase')
+    link.update_columns(settings: { 'audience' => 'family', 'family_id' => -1 })
+    get "/s/#{link.id}"
+    expect(response.status).to eq(404)
+    expect(response.headers['X-Robots-Tag']).to eq('noindex, nofollow')
+    post "/s/#{link.id}/unlock", params: { phrase: 'synthetic-phrase' }
+    expect(response.status).to eq(404)
+    expect(response.cookies.keys).not_to include("shared_link_#{link.id}")
+    expect(link.reload.view_count).to eq(0)
+  end
+
   def places_seed(kase)
     oracle = ApiSharedGoldenOracle
     reset!

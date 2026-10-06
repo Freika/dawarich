@@ -8,7 +8,6 @@ defmodule DawarichWeb.ShareManagementParityTest do
     LayoutAssigns,
     Locale,
     RailsCsrf,
-    RailsForm,
     RequireUser,
     ShareManagementForm,
     ShareManagementPage
@@ -34,6 +33,19 @@ defmodule DawarichWeb.ShareManagementParityTest do
     | for(name <- @cases, locale <- ~w(en de es fr pl ca zh), do: name <> "_" <> locale)
   ]
 
+  @domain_names for type <- ~w(track timeline),
+                    action <-
+                      ~w(new head empty_new create invalid url phrase revoke recreate delete),
+                    do: "a12f3b/#{type}_#{action}_en"
+  @domain_cases ["a12f3b/track_foreign_en" | @domain_names]
+
+  setup do
+    old = Application.get_env(:dawarich, :cable)
+    Application.put_env(:dawarich, :cable, transport: :pg, bus: false)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, old) end)
+    :ok
+  end
+
   @tag mutation: "corpus"
   test "management corpus is complete" do
     actual =
@@ -43,12 +55,24 @@ defmodule DawarichWeb.ShareManagementParityTest do
     assert length(@names) == 505
   end
 
-  for name <- @names do
+  for name <- @names ++ @domain_cases do
     @name name
     @tag management_case: name
     test "management #{@name} matches Rails" do
       state = load(@name)
       user = FrameSeeds.seed_management!(@name)
+
+      if @name in @domain_cases do
+        for {id, owner} <- [{99103, 98101}, {99104, 98102}] do
+          FrameSeeds.track!(owner, id, %{
+            start_at: ~N[2026-10-03 08:00:00],
+            end_at: ~N[2026-10-03 09:00:00],
+            distance: 1500,
+            dominant_mode: 1
+          })
+        end
+      end
+
       now = state["now"] |> DateTime.from_iso8601() |> elem(1)
       rails = File.read!(Path.join(@dir, @name <> ".html"))
       session = if user, do: RailsUser.session(user.id), else: %{}
@@ -99,14 +123,16 @@ defmodule DawarichWeb.ShareManagementParityTest do
         if state["verb"] != "GET" and state["flash"] == %{}, do: assert(conn.resp_cookies == %{})
       end
 
-      if conn.status in [200, 422] do
-        native = fragment(conn.resp_body)
-        actual = normalize(native, state)
-        expected = normalize(rails, state)
-        assert actual == expected, ParityHTML.first_difference(actual, expected)
-        assert attributes(native, state) == attributes(rails, state)
-      else
-        assert normalize(conn.resp_body, state) == normalize(rails, state)
+      if state["verb"] != "HEAD" do
+        if conn.status in [200, 422] do
+          native = fragment(conn.resp_body)
+          actual = normalize(native, state)
+          expected = normalize(rails, state)
+          assert actual == expected, ParityHTML.first_difference(actual, expected)
+          assert attributes(native, state) == attributes(rails, state)
+        else
+          assert normalize(conn.resp_body, state) == normalize(rails, state)
+        end
       end
     end
   end
@@ -126,6 +152,7 @@ defmodule DawarichWeb.ShareManagementParityTest do
       |> put_req_header("content-type", type)
       |> put_req_header("content-length", to_string(byte_size(body)))
       |> put_req_header("x-csrf-token", RailsCsrf.masked_token(session) || "")
+      |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
       |> assign(:api_tag, "form")
       |> assign(:current_user, user)
       |> assign(:rails_session, session)
@@ -137,11 +164,11 @@ defmodule DawarichWeb.ShareManagementParityTest do
       end)
 
     info =
-      Phoenix.Router.route_info(DawarichWeb.Router, state["verb"], conn.request_path, conn.host)
+      route_info(conn, state)
 
     conn = %{conn | path_params: info.path_params}
 
-    if state["verb"] == "GET" do
+    if state["verb"] in ~w(GET HEAD) do
       conn =
         conn
         |> fetch_query_params()
@@ -155,7 +182,58 @@ defmodule DawarichWeb.ShareManagementParityTest do
     end
   end
 
-  defp respond(conn, %{"verb" => "GET"}) do
+  defp respond(conn, state) when is_map(state) do
+    info = route_info(conn, state)
+
+    if info[:domain] do
+      conn =
+        if state["verb"] in ~w(GET HEAD),
+          do: conn,
+          else: Body.call(conn, nested_form: "shared_link")
+
+      if conn.halted, do: conn, else: info.domain.call(conn, info.plug_opts)
+    else
+      respond_existing(conn, state)
+    end
+  end
+
+  defp route_info(conn, state) do
+    cond do
+      conn.request_path =~ ~r/\A\/tracks\/\d+\/share_link/ ->
+        id = conn.request_path |> String.split("/") |> Enum.at(2)
+
+        %{
+          path_params: %{"track_id" => id},
+          domain: DawarichWeb.TrackShareActions,
+          plug_opts: domain_action(state)
+        }
+
+      String.starts_with?(conn.request_path, "/share_links/timeline") ->
+        %{
+          path_params: %{},
+          domain: DawarichWeb.TimelineShareActions,
+          plug_opts: domain_action(state)
+        }
+
+      true ->
+        Phoenix.Router.route_info(DawarichWeb.Router, state["verb"], conn.request_path, conn.host)
+    end
+  end
+
+  defp domain_action(state) do
+    suffix = state["path"] |> String.split("?") |> hd() |> String.split("/") |> List.last()
+
+    cond do
+      state["verb"] in ~w(GET HEAD) -> :new
+      state["verb"] == "DELETE" -> :destroy
+      suffix == "revoke" -> :revoke
+      suffix == "regenerate" -> :regenerate
+      suffix == "regenerate_phrase" -> :regenerate_phrase
+      true -> :create
+    end
+  end
+
+  defp respond_existing(conn, %{"verb" => "GET"}) do
     conn = RequireUser.call(conn, [])
 
     if conn.halted do
@@ -168,9 +246,9 @@ defmodule DawarichWeb.ShareManagementParityTest do
     end
   end
 
-  defp respond(conn, state) do
+  defp respond_existing(conn, state) do
     conn = Body.call(conn, nested_form: "shared_link")
-    conn = if conn.halted, do: conn, else: RailsForm.call(conn, [])
+    conn = if conn.halted, do: conn, else: ShareManagementForm.admit(conn, [])
 
     if conn.halted do
       conn
@@ -182,14 +260,7 @@ defmodule DawarichWeb.ShareManagementParityTest do
     end
   end
 
-  defp replay?(state) do
-    state["json_request"] or Map.has_key?(state["headers"], "X-HTTP-Method-Override") or
-      (state["verb"] == "POST" and state["path"] == "/share_links/live" and state["status"] == 422) or
-      (state["path"] =~ "/share_links/shares/" and String.ends_with?(state["path"], "/revoke") and
-         Enum.any?(state["before"], fn row ->
-           String.contains?(state["path"], row["id"]) and row["resource_type"] in [1, 2]
-         end))
-  end
+  defp replay?(state), do: Map.has_key?(state["headers"], "X-HTTP-Method-Override")
 
   defp encode(params) do
     params
@@ -211,13 +282,9 @@ defmodule DawarichWeb.ShareManagementParityTest do
       Repo.query!("SELECT row_to_json(t) FROM shared_links t ORDER BY id").rows |> List.flatten()
 
   defp events do
-    for ["share_management.live_revoked", payload] <- commands() do
-      %{
-        "stream" =>
-          "shared_location:" <>
-            Base.encode64("gid://dawarich/SharedLink/" <> payload["share_id"], padding: false),
-        "message" => %{"revoked" => true}
-      }
+    for [stream, payload] <-
+          Repo.query!("SELECT channel,payload FROM phoenix.cable_events ORDER BY seq").rows do
+      %{"stream" => stream, "message" => Jason.decode!(payload)}
     end
   end
 

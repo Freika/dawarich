@@ -37,7 +37,7 @@
     >
       <label class="label"><span class="label-text">{s(@ctx, @type, key)}</span></label>
       <input
-        value={Date.to_iso8601(date)}
+        value={date_value(date)}
         class="input input-bordered"
         required
         type="date"
@@ -117,6 +117,24 @@
       />
     </label>
   </div>
+  <div :if={@type == "track"} class="form-control mt-4">
+    <label :for={key <- ["show_photos", "show_stats"]} class="label cursor-pointer">
+      <span class="label-text">{s(@ctx, @type, key)}</span>
+      <input
+        type="hidden"
+        name={"shared_link[settings][#{key}]"}
+        id={"shared_link_settings_#{key}"}
+        value="0"
+      />
+      <input
+        type="checkbox"
+        name={"shared_link[settings][#{key}]"}
+        id={"shared_link_settings_#{key}"}
+        value="1"
+        class="checkbox"
+      />
+    </label>
+  </div>
   <div :if={@type == "timeline"} class="form-control mt-4">
     <label class="label cursor-pointer">
       <span class="label-text">{s(@ctx, @type, "show_photos")}</span>
@@ -134,6 +152,9 @@
         class="checkbox"
       />
     </label>
+  </div>
+  <div :if={@type == "timeline" and @errors != []} class="alert alert-error mt-4 text-sm">
+    {Enum.join(@errors, ", ")}
   </div>
   <div class="modal-action">
     <a

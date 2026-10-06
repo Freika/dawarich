@@ -10,9 +10,17 @@ defmodule DawarichWeb.ShareLinkForm do
       UserTimeZone.local(assigns.ctx.settings, DateTime.to_naive(assigns.ctx.now)).local
       |> NaiveDateTime.to_date()
 
-    assigns = assigns |> assign(:today, today) |> assign(:phrase, assigns.ctx.phrase.())
+    assigns =
+      assigns
+      |> assign(:today, today)
+      |> assign(:phrase, assigns.ctx.phrase.())
+      |> assign(:errors, Map.get(assigns, :errors, []))
+
     create_form(assigns)
   end
+
+  defp date_value(%Date{} = date), do: Date.to_iso8601(date)
+  defp date_value(date) when is_binary(date), do: date
 
   defp s(ctx, type, key), do: t(ctx.locale, "shared_links.modal_#{type}_create_form." <> key, %{})
   defp expiry(ctx, key), do: t(ctx.locale, "shared_links.expires_field." <> key, %{})
