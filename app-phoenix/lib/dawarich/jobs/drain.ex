@@ -29,7 +29,7 @@ defmodule Dawarich.Jobs.Drain do
   @debt ~w(pending_outbox quarantined reverse_pending reverse_dead release_pending)a
   @incomplete "SELECT worker, state, count(*)::integer AS count FROM oban.oban_jobs WHERE state NOT IN ('completed', 'cancelled') GROUP BY worker, state ORDER BY worker, state"
 
-  def status(repo) do
+  def status(repo, opts \\ []) do
     {:ok, status} =
       repo.transaction(fn ->
         repo.query!("SET LOCAL statement_timeout = '500ms'", [], log: false)
@@ -78,7 +78,7 @@ defmodule Dawarich.Jobs.Drain do
         }
       end)
 
-    status
+    with_source(status, Keyword.fetch(opts, :source_status))
   rescue
     _ ->
       %{
@@ -88,6 +88,46 @@ defmodule Dawarich.Jobs.Drain do
         forward_reasons: ["database_unreadable"],
         binary_reasons: ["database_unreadable"]
       }
+  end
+
+  defp with_source(status, :error), do: status
+
+  defp with_source(status, {:ok, source}) do
+    keys = ~w(queued scheduled retry dead busy unknown)
+    counts = if is_map(source), do: source["counts"]
+
+    readable =
+      is_map(counts) and source["observation"] == true and
+        source["status"] in ["OBSERVED_EMPTY", "BLOCKED"] and
+        Enum.all?(keys, &(is_integer(counts[&1]) and counts[&1] >= 0))
+
+    reasons =
+      cond do
+        not readable ->
+          ["source_census_unreadable"]
+
+        source["status"] == "BLOCKED" or Enum.any?(keys, &(counts[&1] > 0)) ->
+          ["source_wrapper_debt"]
+
+        true ->
+          []
+      end
+
+    forward = Enum.sort(Enum.uniq(status.forward_reasons ++ reasons))
+    binary = Enum.sort(Enum.uniq(status.binary_reasons ++ reasons))
+
+    source =
+      if is_map(source),
+        do: Map.take(source, ~w(status observation counts classes reasons)),
+        else: nil
+
+    Map.merge(status, %{
+      forward: result(forward),
+      binary_rollback: result(binary),
+      forward_reasons: forward,
+      binary_reasons: binary,
+      source_status: source
+    })
   end
 
   defp reasons(counts, keys),

@@ -94,6 +94,18 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
     fixture_bytes(residual_path('effects'), fixture)
   end
 
+  it 'characterizes unknown serialized mail wrappers as source debt without decoding GlobalIDs' do
+    counts = { unknown: 0 }
+    classes = Hash.new(0)
+    item = { 'class' => 'Sidekiq::ActiveJob::Wrapper', 'wrapped' => 'RetiredSyntheticMailerJob',
+             'args' => [{ 'arguments' => [{ '_aj_globalid' => 'gid://dawarich/User/12345' }] }] }
+    before = Marshal.dump(item)
+    JobDrain.count_job(item, counts, classes)
+    expect(counts).to eq(unknown: 1)
+    expect(classes).to eq('unknown' => 1)
+    expect(Marshal.dump(item)).to eq(before)
+  end
+
   it 'characterizes trial mail commands and the two-day explore delay' do
     user = fresh_intent_user('creation')
     allow(JobOwnership).to receive(:lock_owner).and_return(:oban)
