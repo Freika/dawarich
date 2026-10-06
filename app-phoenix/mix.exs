@@ -24,6 +24,8 @@ defmodule Dawarich.MixProject do
   defp deps do
     [
       {:ecto_sql, "~> 3.13"},
+      {:telemetry_metrics, "~> 1.1"},
+      {:telemetry_metrics_prometheus_core, "~> 1.2"},
       {:postgrex, ">= 0.0.0"},
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
