@@ -2,14 +2,13 @@ defmodule Dawarich.Posters.Persistence do
   @moduledoc false
   alias Dawarich.Repo
   alias Dawarich.Ingest.Ruby
-  alias Dawarich.Jobs.Ownership
   alias Dawarich.Posters.Command
 
   @settings ~w(title lat lon distance theme start_at end_at source route_fill route_opacity route_width)
 
   def delete(id, user, repo \\ Repo) do
     repo.transaction(fn ->
-      owner = Ownership.lock(repo, "command:posters.create")
+      owner = Command.owner(repo)
 
       case repo.query!("SELECT id FROM posters WHERE id=$1 AND user_id=$2 FOR UPDATE", [
              id,
@@ -30,11 +29,15 @@ defmodule Dawarich.Posters.Persistence do
           repo.query!("DELETE FROM posters WHERE id=$1 AND user_id=$2", [id, user.id])
 
           if blobs != [] do
-            Command.purge(repo, owner, %{
-              "poster_id" => id,
-              "user_id" => user.id,
-              "blob_ids" => blobs
-            })
+            if owner == :oban do
+              Dawarich.Exports.PurgeWorker.enqueue!(repo, blobs)
+            else
+              Command.purge(repo, owner, %{
+                "poster_id" => id,
+                "user_id" => user.id,
+                "blob_ids" => blobs
+              })
+            end
           end
 
           id
@@ -56,7 +59,7 @@ defmodule Dawarich.Posters.Persistence do
     now = NaiveDateTime.utc_now()
 
     repo.transaction(fn ->
-      owner = Ownership.lock(repo, "command:posters.create")
+      owner = Command.owner(repo)
 
       %{rows: [[id]]} =
         repo.query!(

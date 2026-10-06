@@ -1,9 +1,9 @@
 defmodule Dawarich.RouteVideos.Writes do
   @moduledoc false
 
-  alias Dawarich.{RailsCommands, RailsMessages}
+  alias Dawarich.RailsMessages
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias Dawarich.RouteVideos.{Recipe, Retention}
+  alias Dawarich.RouteVideos.{AttachmentJob, Recipe, Retention}
 
   @ceiling 250 * 1024 * 1024
 
@@ -16,7 +16,7 @@ defmodule Dawarich.RouteVideos.Writes do
         blob.content_type != "video/mp4" or blob.byte_size > @ceiling ->
           refuse(repo, user.id, blob_id)
 
-        not identified?(blob.metadata) ->
+        not identified?(blob.metadata) and not native?(repo) ->
           {:replay, "blob identification or analysis requires Rails storage"}
 
         true ->
@@ -74,7 +74,9 @@ defmodule Dawarich.RouteVideos.Writes do
 
   defp refuse(repo, user_id, blob_id) do
     if attached?(repo, blob_id) do
-      {:replay, "rejected shared blob"}
+      if Dawarich.Standalone.enabled?(),
+        do: {:error, %{phase: :rejected}},
+        else: {:replay, "rejected shared blob"}
     else
       repo.transaction(fn -> purge_unattached(repo, user_id, blob_id) end)
       {:error, %{phase: :rejected}}
@@ -110,11 +112,19 @@ defmodule Dawarich.RouteVideos.Writes do
         log: false
       )
 
+      if native?(repo),
+        do: Dawarich.RouteVideos.AnalysisWorker.enqueue!(repo, user_id, id, blob_id)
+
       id
     end)
   rescue
     _e in [Postgrex.Error, DBConnection.ConnectionError, RuntimeError] -> {:error, :save_failed}
   end
+
+  defp native?(repo),
+    do:
+      Dawarich.Standalone.enabled?() or
+        Dawarich.Jobs.Ownership.lock(repo, "cron:route_videos_purge_job") == :oban
 
   defp attached?(repo, blob_id),
     do:
@@ -126,7 +136,7 @@ defmodule Dawarich.RouteVideos.Writes do
 
   defp purge_unattached(repo, user_id, blob_id),
     do:
-      RailsCommands.insert!(repo, "route_videos.attachment_job", %{
+      AttachmentJob.enqueue!(repo, %{
         "user_id" => user_id,
         "blob_id" => blob_id,
         "action" => "purge_unattached"
@@ -157,7 +167,7 @@ defmodule Dawarich.RouteVideos.Writes do
 
       repo.query!("UPDATE route_videos SET updated_at=$2 WHERE id=$1", [id, now], log: false)
 
-      RailsCommands.insert!(repo, "route_videos.attachment_job", %{
+      AttachmentJob.enqueue!(repo, %{
         "user_id" => user_id,
         "action" => "purge_detached",
         "blob_id" => blob_id,
