@@ -4,11 +4,18 @@ defmodule Dawarich.Application do
 
   alias Dawarich.Front
 
+  @front_runtime Application.compile_env(:dawarich, :front_runtime, true)
+
   @impl true
   def start(_type, _args) do
     Dawarich.ErrorReporting.start()
-    plan = plan(Application.get_env(:dawarich, :rails_argv), System.get_env())
+    plan = runtime_plan(Application.get_env(:dawarich, :rails_argv), System.get_env())
     start_plan(plan)
+  end
+
+  def runtime_plan(argv, env) do
+    selected = plan(argv, env)
+    if @front_runtime or selected == :sidekiq_idle, do: selected, else: :none
   end
 
   def plan(argv, %{"DAWARICH_RAILS" => "off"} = env) do
@@ -75,7 +82,8 @@ defmodule Dawarich.Application do
   end
 
   defp start_plan(plan) do
-    if Dawarich.Standalone.enabled?(), do: Dawarich.Release.halt_unless_ready()
+    if Dawarich.Standalone.enabled?() and match?({:native, _}, plan),
+      do: Dawarich.Release.halt_unless_ready()
 
     Dawarich.QrCache.create_table()
     Dawarich.TtlCache.create_table()

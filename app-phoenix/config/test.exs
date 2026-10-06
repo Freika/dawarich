@@ -70,6 +70,7 @@ config :dawarich, :redis,
   database: 1,
   cache_database: 0
 
+config :dawarich, :front_runtime, false
 config :dawarich, :jobs_runtime, false
 config :dawarich, :jobs_repo, Dawarich.ScratchRepo
 config :dawarich, :geocoding_http, Dawarich.Geocoding.FakeHttp

@@ -196,4 +196,84 @@ defmodule Dawarich.ApplicationTest do
       assert puma[:env] == [{"DAWARICH_PHOENIX_NODE", node}, {"DAWARICH_BEHIND_PHOENIX", marker}]
     end
   end
+
+  @tag :a12f4_a03_1
+  test "standalone application starts only the native requested listener" do
+    for hosted <- [nil, "true", "false"], role <- [nil, "", "web"] do
+      env = %{
+        "DAWARICH_RAILS" => "off",
+        "SELF_HOSTED" => hosted,
+        "DAWARICH_PROCESS_ROLE" => role,
+        "BINDING" => "127.0.0.1",
+        "PORT" => "4321"
+      }
+
+      assert {:native, {{127, 0, 0, 1}, 4321}} = plan = Dawarich.Application.plan(nil, env)
+      assert Enum.count(ids(plan), &(&1 == DawarichWeb.Endpoint)) == 1
+      assert Enum.count(ids(plan), &(&1 == Dawarich.Front.Drainer)) == 1
+      refute RailsServer in ids(plan)
+      assert Dawarich.Front.upstream(plan) == nil
+      assert [endpoint, {Dawarich.Front.Drainer, []}] = Dawarich.Front.children(plan)
+
+      assert endpoint.start |> elem(2) |> hd() |> Keyword.fetch!(:http) ==
+               Dawarich.Front.http_options({127, 0, 0, 1}, 4321)
+    end
+  end
+
+  @tag :a12f4_a03_3
+  test "ordinary test startup has no public listener while native release startup requires readiness" do
+    config = Config.Reader.read!(Path.expand("../../config/test.exs", __DIR__), env: :test)
+    assert config[:dawarich][:front_runtime] == false
+    assert Dawarich.Application.runtime_plan(nil, %{"DAWARICH_RAILS" => "off"}) == :none
+
+    assert Dawarich.Application.runtime_plan(nil, %{"DAWARICH_PROCESS_ROLE" => "sidekiq_idle"}) ==
+             :sidekiq_idle
+
+    script = ~S"""
+    {:ok, socket} = :gen_tcp.listen(0, ip: {127, 0, 0, 1})
+    {:ok, port} = :inet.port(socket)
+    :gen_tcp.close(socket)
+    System.put_env("PORT", Integer.to_string(port))
+    {:ok, _} = Application.ensure_all_started(:dawarich)
+    if Bandit.PhoenixAdapter.bandit_pid(DawarichWeb.Endpoint) != {:error, :no_server_found}, do: System.halt(21)
+    IO.puts("test startup has no public listener")
+    """
+
+    {output, status} = native_subprocess(script)
+    assert status == 0, "exit #{status}: #{output}"
+    assert output =~ "test startup has no public listener"
+
+    script = ~S"""
+    Application.ensure_all_started(:ecto_sql)
+    {:ok, _} = Dawarich.Repo.start_link()
+    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :manual)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    Dawarich.Repo.query!("DELETE FROM public.schema_migrations WHERE version=(SELECT max(version) FROM public.schema_migrations)", [], log: false)
+    Application.put_env(:dawarich, :front_runtime, true)
+    source = File.read!("lib/dawarich/application.ex")
+    Code.compile_string(String.replace(source, "defmodule Dawarich.Application do", "defmodule Dawarich.NativeBootProbe do"))
+    IO.puts("pending public version prepared")
+    Dawarich.NativeBootProbe.start(:normal, [])
+    IO.puts("native children started")
+    """
+
+    {output, status} = native_subprocess(script)
+    assert output =~ "pending public version prepared"
+    assert status == 3, "exit #{status}: #{output}"
+    refute output =~ "native children started"
+  end
+
+  defp native_subprocess(script) do
+    System.cmd("mix", ["run", "--no-start", "-e", script],
+      cd: Path.expand("../..", __DIR__),
+      env: [
+        {"DAWARICH_RAILS", "off"},
+        {"DAWARICH_RAILS_ARGS", nil},
+        {"DAWARICH_NATIVE_ARGS", nil},
+        {"DAWARICH_PROCESS_ROLE", "web"},
+        {"ERL_FLAGS", "+S 2:2"}
+      ],
+      stderr_to_stdout: true
+    )
+  end
 end
