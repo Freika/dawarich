@@ -64,10 +64,16 @@ defmodule Dawarich.Build.DockerfileTest do
     end
 
     refute Enum.any?(native, &Regex.match?(~r/^COPY (?:\.\.?\/?\.?|vendor)\s/, &1))
-    refute Enum.any?(native, &Regex.match?(~r/^COPY .*\b(?:Gemfile|spec|app\/models|config\/initializers)\b/, &1))
+
+    refute Enum.any?(
+             native,
+             &Regex.match?(~r/^COPY .*\b(?:Gemfile|spec|app\/models|config\/initializers)\b/, &1)
+           )
+
     refute Enum.any?(native, &(&1 =~ ~r/^RUN .*swagger\.yaml/))
 
     ignored = File.read!(Path.expand("../../../../.dockerignore", __DIR__))
+
     for path <- ~w(.env* .scratch/ storage/ config/master.key) do
       assert path in String.split(ignored, "\n")
     end
@@ -102,7 +108,9 @@ defmodule Dawarich.Build.DockerfileTest do
       assert payload =~ "public/*.#{extension}"
     end
 
-    assert payload =~ "mkdir -p storage log tmp/pids tmp/cache tmp/sockets public/imports public/exports"
+    assert payload =~
+             "mkdir -p storage log tmp/pids tmp/cache tmp/sockets public/imports public/exports"
+
     assert payload =~ "chmod -R 777 storage log tmp public"
     assert payload =~ "cp -r public $APP_PATH/public_dist"
     refute payload =~ "ENV LD_LIBRARY_PATH"
@@ -115,12 +123,55 @@ defmodule Dawarich.Build.DockerfileTest do
 
     {"poster_builder", renderer} = List.keyfind(stages(), "poster_builder", 0)
     renderer = Enum.join(renderer, "\n")
-    assert renderer =~ "vendor/poster_renderer/package.json vendor/poster_renderer/package-lock.json"
+
+    assert renderer =~
+             "vendor/poster_renderer/package.json vendor/poster_renderer/package-lock.json"
+
     assert renderer =~ "COPY vendor/poster_renderer/fonts fonts"
     assert renderer =~ "npm ci --no-audit --no-fund"
     assert renderer =~ ~s|test "$(node -p 'process.versions.modules')" = 115|
     assert renderer =~ ~s([ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ])
     assert payload =~ "require('@maplibre/maplibre-gl-native'); require('canvas')"
+  end
+
+  @tag :a12f4_b03_2
+  test "image recipe explicitly rejects Ruby tools and application source payload" do
+    native = native_stage()
+    assertion = Enum.find(native, &String.starts_with?(&1, "RUN for tool in "))
+    assert assertion, "the native build must reject Ruby executables and source payload"
+    shell = String.replace_prefix(assertion, "RUN ", "")
+    root = Path.join(System.tmp_dir!(), "native_payload_#{System.unique_integer([:positive])}")
+    tools = Path.join(root, "tools")
+    File.mkdir_p!(tools)
+    on_exit(fn -> File.rm_rf!(root) end)
+    env = [{"APP_PATH", root}, {"PATH", tools}]
+
+    assert {"", 0} = System.cmd("/bin/sh", ["-c", shell], env: env)
+
+    for tool <- ~w(ruby bundle gem rake rails puma sidekiq) do
+      path = Path.join(tools, tool)
+      File.write!(path, "#!/bin/sh\nexit 0\n")
+      File.chmod!(path, 0o755)
+      assert {"", 1} == System.cmd("/bin/sh", ["-c", shell], env: env)
+      File.rm!(path)
+    end
+
+    for source <-
+          ~w(Gemfile Gemfile.lock .ruby-version bin/rails bin/rake config/application.rb config/boot.rb config/environment.rb spec app/controllers app/models app/jobs app/helpers app/views app/mailers app/services app/policies db/schema.rb vendor/bundle lib/tasks) do
+      path = Path.join(root, source)
+      File.mkdir_p!(Path.dirname(path))
+      File.write!(path, "probe")
+      assert {"", 1} == System.cmd("/bin/sh", ["-c", shell], env: env)
+      File.rm!(path)
+    end
+
+    libraries = Enum.find(native, &String.starts_with?(&1, "RUN for path in /usr/local/lib/ruby"))
+    assert libraries
+    assert libraries =~ "/usr/lib/ruby"
+    assert libraries =~ "/usr/local/bundle"
+    assert libraries =~ "/var/lib/gems"
+    assert libraries =~ ~s([ ! -e "$path" ] || exit 1)
+    assert Enum.join(native, "\n") =~ "dawarich eval 'Dawarich.Release.check_runtime_apps!()'"
   end
 
   defp builder_css_path do

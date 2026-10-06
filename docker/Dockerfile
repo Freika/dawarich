@@ -120,6 +120,17 @@ RUN mkdir -p storage log tmp/pids tmp/cache tmp/sockets public/imports public/ex
 RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
     cd vendor/poster_renderer \
     && LD_LIBRARY_PATH=/opt/mbgl-libs node -e "require('@maplibre/maplibre-gl-native'); require('canvas')"; fi
+RUN for tool in ruby bundle gem rake rails puma sidekiq; do \
+    ! command -v "$tool" >/dev/null 2>&1 || exit 1; done \
+    && for path in Gemfile Gemfile.lock .ruby-version bin/rails bin/rake \
+    config/application.rb config/boot.rb config/environment.rb spec \
+    app/controllers app/models app/jobs app/helpers app/views app/mailers app/services app/policies \
+    db/schema.rb vendor/bundle lib/tasks; do \
+    [ ! -e "$APP_PATH/$path" ] || exit 1; done
+RUN for path in /usr/local/lib/ruby /usr/lib/ruby /usr/local/bundle /var/lib/gems; do \
+    [ ! -e "$path" ] || exit 1; done
+RUN DAWARICH_COOKIE_FILE=/tmp/build-cookie dawarich eval 'Dawarich.Release.check_runtime_apps!()' \
+    && rm -f /tmp/build-cookie
 EXPOSE $RAILS_PORT
 STOPSIGNAL SIGTERM
 ENTRYPOINT ["web-entrypoint.sh"]

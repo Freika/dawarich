@@ -62,7 +62,7 @@ defmodule Dawarich.Release do
   end
 
   def check_runtime_apps! do
-    check_runtime_apps!(Application.spec(@app, :applications) || [], &Application.load/1)
+    check_runtime_apps!([@app, :sentry, :telemetry_metrics_prometheus_core], &Application.load/1)
   end
 
   def check_runtime_apps!(root_apps, loader) when is_list(root_apps) and is_function(loader, 1) do
