@@ -1,0 +1,158 @@
+defmodule Dawarich.Metrics.JobsTest do
+  use Dawarich.JobsCase, async: false
+  @moduletag :capture_log
+
+  defmodule Worker do
+    use Oban.Worker, queue: :maintenance
+    def perform(%Oban.Job{args: %{"fail" => true}}), do: raise("synthetic job failure")
+    def perform(_), do: :ok
+  end
+
+  defmodule UnavailableRepo do
+    def transaction(_), do: raise("synthetic collection failure")
+  end
+
+  setup do
+    start_supervised!(Dawarich.Metrics)
+    :ok
+  end
+
+  test "native job lifecycle and pending future retry debt produce equivalent job metrics" do
+    name = __MODULE__.Oban
+    start_oban(name)
+    Oban.insert!(name, Worker.new(%{"fail" => false}))
+    Oban.insert!(name, Worker.new(%{"fail" => true}))
+    assert %{success: 1, failure: 1} = Oban.drain_queue(name, queue: :maintenance)
+    outbox!(scheduled_at: DateTime.add(DateTime.utc_now(), -600))
+    outbox!(scheduled_at: DateTime.add(DateTime.utc_now(), 3600))
+
+    Oban.insert!(
+      name,
+      Dawarich.ReleaseOperations.PointBackfill.new(
+        %{"version" => 1, "event_id" => Ecto.UUID.generate(), "cursor" => %{}},
+        scheduled_at: DateTime.add(DateTime.utc_now(), 3600)
+      )
+    )
+
+    Dawarich.Metrics.Jobs.sample(ScratchRepo, ScratchRepo)
+    body = Dawarich.Metrics.scrape()
+    assert body =~ "dawarich_jobs_executed_total"
+    assert body =~ "dawarich_jobs_success_total"
+
+    assert body =~
+             ~s(dawarich_jobs_failed_total{queue="maintenance",worker="Dawarich.Metrics.JobsTest.Worker"} 1)
+
+    assert body =~ "dawarich_jobs_runtime_seconds_count"
+    assert body =~ "dawarich_jobs_latency_seconds_count"
+    assert body =~ ~s(dawarich_jobs_depth{queue="maintenance",state="retryable"} 1)
+    assert body =~ ~s(dawarich_jobs_depth{queue="maintenance",state="scheduled"} 1)
+    assert body =~ ~s(dawarich_outbox_debt{state="due"} 1)
+    assert body =~ ~s(dawarich_outbox_debt{state="scheduled"} 1)
+    assert body =~ "dawarich_outbox_oldest_due_seconds"
+    assert body =~ "dawarich_jobs_busy"
+    assert body =~ "dawarich_jobs_queue_latency_seconds"
+    refute body =~ "synthetic job failure"
+    refute body =~ "event_id"
+    Dawarich.Metrics.Jobs.sample(UnavailableRepo, ScratchRepo)
+    assert Dawarich.Metrics.scrape() =~ ~s(dawarich_outbox_debt{state="due"} 1)
+    rows("UPDATE oban.oban_jobs SET state='completed'")
+    rows("DELETE FROM public.job_outbox")
+    Dawarich.Metrics.Jobs.sample(ScratchRepo, ScratchRepo)
+    reset = Dawarich.Metrics.scrape()
+    assert reset =~ ~s(dawarich_jobs_depth{queue="maintenance",state="retryable"} 0)
+    assert reset =~ "dawarich_outbox_oldest_due_seconds 0"
+  end
+
+  test "queue latency measures eligible waiting jobs independently of running runtime" do
+    rows("""
+    INSERT INTO oban.oban_jobs (state, queue, worker, args, scheduled_at, attempted_at)
+    VALUES ('executing', 'maintenance', 'MetricsWorker', '{}',
+            now() - interval '600 seconds', now() - interval '600 seconds')
+    """)
+
+    Dawarich.Metrics.Jobs.sample(ScratchRepo, ScratchRepo)
+    body = Dawarich.Metrics.scrape()
+    assert gauge(body, "queue_latency") == 0
+    assert_in_delta gauge(body, "running_runtime"), 600, 10
+    assert body =~ ~s(dawarich_jobs_depth{queue="maintenance",state="executing"} 1)
+
+    rows("""
+    INSERT INTO oban.oban_jobs (state, queue, worker, args, scheduled_at)
+    VALUES ('available', 'maintenance', 'MetricsWorker', '{}', now() - interval '120 seconds'),
+           ('retryable', 'maintenance', 'MetricsWorker', '{}', now() - interval '300 seconds'),
+           ('retryable', 'maintenance', 'MetricsWorker', '{}', now() + interval '60 seconds'),
+           ('scheduled', 'maintenance', 'MetricsWorker', '{}', now() - interval '900 seconds')
+    """)
+
+    Dawarich.Metrics.Jobs.sample(ScratchRepo, ScratchRepo)
+    body = Dawarich.Metrics.scrape()
+    assert_in_delta gauge(body, "queue_latency"), 300, 10
+    assert_in_delta gauge(body, "running_runtime"), 600, 10
+
+    rows(
+      "UPDATE oban.oban_jobs SET state='completed' WHERE scheduled_at < now() AND state != 'executing'"
+    )
+
+    Dawarich.Metrics.Jobs.sample(ScratchRepo, ScratchRepo)
+    assert gauge(Dawarich.Metrics.scrape(), "queue_latency") == 0
+  end
+
+  test "Cloud drain canonicalizes reordered archive labels and escaped label values" do
+    cases = [
+      {"dawarich_archive_count_mismatches_total", ~s(month="1",year="2020"),
+       ~s(year="2020",month="1")},
+      {"escaped", ~S(value="comma,quote\"slash\\newline\n} end",kind="archive"),
+       ~S(kind="archive",value="comma,quote\"slash\\newline\n} end")},
+      {"empty", "", ""}
+    ]
+
+    for {name, local, remote} <- cases do
+      body = Dawarich.Metrics.Drain.merge("#{name}{#{local}} 1\n", "#{name}{#{remote}} 2\n")
+      suffix = fn labels -> if labels == "", do: "", else: "," <> labels end
+      assert body =~ ~s(#{name}{process="web"#{suffix.(local)}} 1)
+      assert body =~ ~s(#{name}{process="sidekiq"#{suffix.(remote)}} 2)
+    end
+
+    local = ~S(escaped{value="one,two",kind="archive"} 3) <> "\n"
+    remote = ~S(escaped{kind="archive",value="one,three"} 4) <> "\n"
+    assert Dawarich.Metrics.Drain.merge(local, remote) == local <> remote
+
+    labelled = ~s(owned{process="worker",queue="default"} 5\n)
+    assert Dawarich.Metrics.Drain.merge(labelled, labelled) == labelled <> labelled
+  end
+
+  test "Cloud drain scrape has unique series and survives source exporter failure" do
+    local =
+      "# HELP shared Same metric\n# TYPE shared gauge\nshared{queue=\"default\"} 1\nonly_local 2\n"
+
+    remote =
+      "# HELP shared Same metric\n# TYPE shared gauge\nshared{queue=\"default\"} 3\nonly_remote 4\n"
+
+    config = %{
+      url: "http://127.0.0.1:1/metrics",
+      username: "synthetic-user",
+      password: "synthetic-password"
+    }
+
+    fetch = fn ^config -> {:ok, remote} end
+    body = Dawarich.Metrics.Drain.scrape(local, config, fetch)
+    assert body =~ ~s(shared{process="web",queue="default"} 1)
+    assert body =~ ~s(shared{process="sidekiq",queue="default"} 3)
+    assert length(Regex.scan(~r/# HELP shared /, body)) == 1
+    assert length(Regex.scan(~r/# TYPE shared /, body)) == 1
+    assert body =~ "only_remote 4"
+
+    assert Dawarich.Metrics.Drain.scrape(local, config, fn _ -> {:error, :unavailable} end) ==
+             local
+
+    assert Dawarich.Metrics.Drain.scrape(local, config, fn _ -> raise "offline" end) == local
+  end
+
+  defp gauge(body, name) do
+    [_, value] =
+      Regex.run(~r/dawarich_jobs_#{name}_seconds\{queue="maintenance"\} ([\d.e+-]+)/, body)
+
+    {number, ""} = Float.parse(value)
+    number
+  end
+end

@@ -51,7 +51,7 @@ defmodule Dawarich.Admin.JobHealth do
 
   def pretty(_), do: nil
 
-  defp summary(public_repo, jobs_repo, node) do
+  def summary(public_repo, jobs_repo, node) do
     flags =
       read(jobs_repo, fn ->
         if table?(jobs_repo, "phoenix.job_owners"),

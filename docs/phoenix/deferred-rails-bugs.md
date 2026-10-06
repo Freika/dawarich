@@ -1,0 +1,75 @@
+# Deferred Rails bugs (Phoenix port)
+
+Parity first, fix later. Eugene's 2026-10-06 master-plan ruling 13 requires the port to preserve characterized Rails failures and quirks; repairs belong to a separate effort. This register records user-visible defects and the explicitly retained optional-nonce policy. Suggested fixes are proposals, not authorization to change A12f behavior.
+
+Reviewed against source revision `c2f1774ee9a28b6f3970d2a041be1a0adc12baf5` on 2026-10-06. All file:line anchors below exist at that revision. A plan reference names the required parity task, not proof that it has shipped. Older ED entries sometimes describe native normalization rather than parity: those differences are identified explicitly and need reconciliation by the closure owner. ED-551 is an accepted correction and is recorded as such, not as a preserved Phoenix failure.
+
+To add a row, use the next unused DRB ID, describe a synthetic reproduction and visible result, verify the current Rails anchor, and cite the native location, ED or plan task. Record preserved/planned/corrected status, a proposed fix and its compatibility risk; keep IDs stable when resolving rows. Never include personal data, credentials or runtime allocations. Update the AFFiNE counterpart with the same content.
+
+## Auth
+
+| ID | Symptom (user-visible) | Rails source file:line | Phoenix parity location / ED / plan task | Suggested fix | Risk |
+| --- | --- | --- | --- | --- | --- |
+| DRB-001 | Google and Apple mobile ID-token exchanges accept an omitted/blank nonce. This is an explicitly retained legacy policy quirk, not a newly discovered verification bypass. | `app/services/auth/verify_google_token.rb:46`; `app/services/auth/verify_apple_token.rb:19` | Required parity: 2G Task 3, 2H Tasks 3/6; A12f-2 NE-5, ruling 12. | After client rollout, require a nonce and bind it to a one-use login challenge. | High: breaks older mobile clients; coordinate provider and replay-policy changes. |
+
+## API
+
+| ID | Symptom (user-visible) | Rails source file:line | Phoenix parity location / ED / plan task | Suggested fix | Risk |
+| --- | --- | --- | --- | --- | --- |
+| DRB-002 | A structured `year` parameter (array/object) on residency reads or digest creation reaches `to_i` and raises instead of returning a validation error. | `app/controllers/api/v1/residency_controller.rb:7`; `app/controllers/api/v1/digests_controller.rb:23` | Required source-shaped coercion/failure: 2A Task 8, 2J Tasks 2/5; digest producer: 3a-A Q09. | Validate scalar integer input at the resource boundary; return the documented 4xx response. | Medium: changes error status and legacy coercion; preserve valid numeric-string behavior. |
+| DRB-003 | Reading a digest with non-empty object-shaped `toponyms`, or malformed city elements, can return 500 rather than a usable digest. | `app/serializers/api/digest_detail_serializer.rb:49` | `app-phoenix/lib/dawarich/digests/api.ex:167` currently replays non-array data; 2C Task 8 explicitly preserves malformed-toponyms failure (M-C-DIGEST). | Validate stored digest shapes, repair affected rows, then expose a bounded data error. | High: silent empty-list coercion would hide travel data; update API and page contracts together. |
+| DRB-004 | Residency queries for 2038 and later can fail when year-bound epoch values exceed the integer timestamp query range. | `app/services/residency/day_counter.rb:136` | Required failure: 2A Task 8, 3a-B M06; `app-phoenix/lib/dawarich/residency.ex:22` and `app-phoenix/test/dawarich/residency_test.exs:134` currently restrict/replay outside 1970–2037. | Characterize the exact SQL boundary and migrate timestamp/bind handling to bigint consistently. | High: schema, ingestion, historical ranges and shared-database rollback compatibility. |
+
+## Map/points
+
+| ID | Symptom (user-visible) | Rails source file:line | Phoenix parity location / ED / plan task | Suggested fix | Risk |
+| --- | --- | --- | --- | --- | --- |
+| DRB-005 | An invalid stored timezone can make `/map` or its timeline/calendar fail with 500 instead of rendering. | `app/helpers/timeline_helper.rb:33`; `app/controllers/map/maplibre_controller.rb:56` | Required failure: 3a-B M01/M03/M04, 3a NE-2. ED-202/263 record earlier native timezone fallback; closure must reconcile that difference. | Validate settings on write, repair legacy zones and use one explicit fallback policy for all consumers. | High: changing zone changes displayed dates, ranges and sharing expiry interpretation. |
+| DRB-006 | Non-empty array/object `start_at` or `end_at` values cause 500 on map/timeline requests: the parser calls `match?` without a scalar check. | `app/controllers/concerns/safe_timestamp_parser.rb:15`; `app/controllers/map/timeline_feeds_controller.rb:51` | Required failure: 3a-B M01/M03. ED-201 records earlier native ignoring of non-string dates. | Validate scalar dates before parsing and return a consistent 4xx response. | Medium: retain supported free-text dates and epoch coercions until a separate compatibility decision. |
+| DRB-007 | Structured pagination input on `/points` reaches Kaminari without a scalar check and can fail instead of showing a validation response. | `app/controllers/points_controller.rb:14` | Required source errors: 3a-B W01; same Kaminari defect characterized by ED-115/125 on sibling lists. | Validate pagination centrally, with a documented response for structured values. | Low–medium: avoid changing valid page coercion, bounds or list ordering. |
+
+## Imports/exports
+
+| ID | Symptom (user-visible) | Rails source file:line | Phoenix parity location / ED / plan task | Suggested fix | Risk |
+| --- | --- | --- | --- | --- | --- |
+| DRB-008 | A completed extraction whose stored `counts` is nil/non-object, or whose extraction payload is non-object, can break the import detail card with 500. A malformed GPX `raw_data` count container can also break the card. | `app/models/import.rb:143`; `app/models/import.rb:131`; `app/views/imports/_extraction_card.html.erb:19` | Required failure: 3a-D I01, 3a NE-2; native card entry `app-phoenix/lib/dawarich_web/components/imports_extraction_card.ex:26`. | Add versioned payload validation and repair known legacy shapes before making the card tolerant. | Medium: do not report an empty or successful extraction when counts are unreadable. |
+| DRB-009 | `/imports?page[]=2` or `/exports?page[x]=2` returns 500 because Kaminari receives an array/object. | `app/controllers/imports_controller.rb:28`; `app/controllers/exports_controller.rb:14` | ED-125 records native page-1 normalization; required malformed-input closure: 3a-D I01 and 3a-E E01 under NE-2/ruling 13. | Validate page shape and return a stable 4xx or explicitly approved default. | Low: visible error behavior changes; keep supported pagination unchanged. |
+| DRB-010 | A points export name beginning with `/` or exceeding rubyzip's name limit fails during archive generation, after the export was accepted. | `app/services/exports/create.rb:16` | ED-081 preserves export failure, with different error text and a byte-based native limit; `app-phoenix/lib/dawarich/exports/zip.ex`; 3a-E E02. | Validate the archive entry name before enqueue, separating display name from safe entry name. | Medium: Unicode character/byte limits and old export regeneration need a compatibility policy. |
+
+## Sharing/family
+
+| ID | Symptom (user-visible) | Rails source file:line | Phoenix parity location / ED / plan task | Suggested fix | Risk |
+| --- | --- | --- | --- | --- | --- |
+| DRB-011 | `/family/invitations/:id` is interpreted as a token, not a database ID. The ownership census also finds `/family/invitations/new` captured as token `new` by Phoenix, usually returning 404. Rails declares `new` but has no `new` action; its source failure must be distinguished from the native route capture. | `config/routes.rb:190`; `app/controllers/family/invitations_controller.rb:17` | `app-phoenix/lib/dawarich_web/a9_routes.ex:101`; `app-phoenix/lib/dawarich_web/family_invitation_page.ex:23`; route-ownership census “Route ordering”; 3b-A F04a and ruling 13. | Give public token viewing and authenticated resource routes distinct paths/constraints; either implement or remove the declared new route in a separate fix. | High: emailed token links, authorization and bookmarked URLs; census ownership alone is not semantic parity proof. |
+| DRB-012 | Malformed stored family-sharing settings can return 500 when updating sharing. A structured duration can fail while building the response after the settings write. | `app/models/concerns/user_family.rb:64`; `app/services/families/update_location_sharing.rb:75` | Required failure/effect order: 3b-A F06b; 3a NE-2. Preserve terminal source errors, never replay after a committed write. | Validate nested settings/duration before mutation and build the response from validated persisted values. | High: consent, expiry and partial-write semantics; avoid accidentally extending location visibility. |
+
+## Mail/jobs
+
+| ID | Symptom (user-visible) | Rails source file:line | Phoenix parity location / ED / plan task | Suggested fix | Risk |
+| --- | --- | --- | --- | --- | --- |
+| DRB-013 | Digest mail can remain queued when the following `sent_at` validation fails; a retry sees no sent marker and can queue another delivery. Conversely `sent_at` records enqueue time, not successful SMTP delivery. | `app/jobs/users/digests/monthly/email_sending_job.rb:26`; `app/jobs/users/digests/yearly/email_sending_job.rb:26` | Preserved ordering: `app-phoenix/lib/dawarich/mail/digests/enqueue.ex:52`; `docs/phoenix/a12c-residual-mail.md:197`; 3b-C M11. | Separate durable delivery intent, enqueue state and delivery result; validate before enqueue and deduplicate by intent. | High: mail retry/opt-out semantics and existing markers; SMTP still cannot guarantee exactly-once receipt. |
+
+## Other
+
+| ID | Symptom (user-visible) | Rails source file:line | Phoenix parity location / ED / plan task | Suggested fix | Risk |
+| --- | --- | --- | --- | --- | --- |
+| DRB-014 | A month stat with nil/malformed `daily_distance` can fail the stats page. An object with string day keys can fail `Date.new` in peak-day/quietest-week rendering. An absent month stat is **not** this bug: Rails renders its empty state. | `app/helpers/stats_helper.rb:39`; `app/helpers/stats_helper.rb:53`; `app/helpers/stats_helper.rb:128` | ED-146 records earlier normalization in `app-phoenix/lib/dawarich/stats.ex:108`; required failure: 3a-A Q02 and NE-2. | Define and migrate one daily-distance schema; validate days and distances at write/read boundaries. | Medium: charts and summaries must not silently omit corrupt distance data. |
+| DRB-015 | `/insights` fails on nil daily-distance data or arrays containing elements that cannot form key/value pairs. | `app/services/insights/year_totals_calculator.rb:64`; `app/services/insights/activity_heatmap_calculator.rb:81` | ED-161 records native empty/skip behavior; required source failure: 3a-A Q03 and NE-2. | Repair legacy data, validate pair shapes and expose a bounded unavailable-data state. | Medium: skipping bad rows changes totals, active-day counts and heatmaps. |
+| DRB-016 | `/insights?year[]=…` returns 500 when the selected year is converted with `to_i`, including restricted-year checks. | `app/controllers/insights_controller.rb:54`; `app/controllers/insights_controller.rb:65` | ED-161 records earlier native default-year behavior; required failure: 3a-A Q03. | Validate a scalar year before access checks; keep plan restriction checks on the validated value. | Medium: do not turn malformed selection into access to a restricted year. |
+| DRB-017 | A digest page can return 500 for object-shaped toponyms, non-array first-visit values, a missing country used for a flag, or non-numeric total country minutes. | `app/views/users/digests/show.html.erb:173`; `app/models/users/digest.rb:94`; `app/models/users/digest.rb:240` | ED-147 records earlier native empty/default rendering; required failure: 3a-A Q08 and NE-2. | Validate/migrate digest JSON together with DRB-003; render a recoverable error without inventing empty history. | Medium–high: private/public digest rendering, counts and existing shared links must agree. |
+| DRB-018 | Non-object user settings, or enabled sharing with an invalid/non-string expiry, can break every page that renders the navbar. | `app/helpers/application_helper.rb:78`; `app/models/concerns/user_family.rb:53` | ED-105 records earlier native onboarding/sharing defaults; required malformed-settings parity: 3a NE-2, 3b-A F01a/F06b. | Validate settings structure and expiry, repair legacy rows, then implement an explicit safe display fallback. | High: widespread availability and location-sharing privacy; distinguish malformed from deliberately disabled sharing. |
+| DRB-019 | Titles containing apostrophes display literal `&#39;` in Rails (observed in Catalan stats/digest titles and French digest detail). | `app/helpers/application_helper.rb:45`; `app/views/layouts/application.html.erb:4` | **Already corrected in Phoenix:** ED-551 (`app-phoenix/parity/expected_diffs.md:509`) explicitly accepts single escaping. Do not reintroduce the defect as parity. | Fix Rails translation interpolation/title escaping so the final HTML boundary escapes once; retain HTML safety. | Low: localization regression and injection risk if fixed with blanket `html_safe`. |
+
+## Source decisions and boundaries
+
+Plan aliases refer to the read-only planning set by filename, independent of any developer checkout:
+
+- **Master:** `2026-10-05-phoenix-a12f-ruby-free-release-plan.md`, rulings 8–14 (especially 12–13).
+- **2A/2C/2G/2H/2J:** corresponding `2026-10-06-phoenix-a12f-2-route-closure-plan-{a,c,g,h,j}.md`; all A12f-2 parts were reviewed, including NE-3/NE-5.
+- **3a-A/B/D/E:** corresponding `2026-10-06-phoenix-a12f-3a-pages-plan-{a,b,d,e}.md`; all A12f-3a parts were reviewed, especially NE-2 and source-error assertions.
+- **3b-A/C:** corresponding `2026-10-06-phoenix-a12f-3b-producers-plan-{a,c}.md`; all A12f-3b parts were reviewed, including NE-01–17 and F04/F06/M11.
+- **3c:** `2026-10-06-phoenix-a12f-3c-cloud-cutover-drain-plan.md`, source-drain requirements and rulings 8–13.
+- **Census:** `route-ownership/route-ownership.md`, invitation ordering observation at lines 66, 229–230. Its native route-capture finding does not prove the Rails `/new` response.
+- **ED register:** [expected_diffs.md](../../app-phoenix/parity/expected_diffs.md). Runtime/framework differences alone are not defects.
+
+Legacy cookie serializers, odd supported formats, legacy redirects, configured integrations and retained aliases are compatibility obligations, not automatically bugs. Cache scheduling retirement and dormant Confirmable/member-joined/no-op trial mail APIs follow rulings 8–9 and the drain plans; they are not newly missing product mail. Unknown/retired/dead accepted payloads remain transition blockers under ruling 10, not disposable bugs. This document authorizes no runtime, route, data or queue changes.

@@ -6,6 +6,7 @@ defmodule Dawarich.Application do
 
   @impl true
   def start(_type, _args) do
+    Dawarich.ErrorReporting.start()
     plan = plan(Application.get_env(:dawarich, :rails_argv), System.get_env())
     start_plan(plan)
   end
@@ -13,10 +14,34 @@ defmodule Dawarich.Application do
   def plan(argv, env) do
     case env["DAWARICH_PROCESS_ROLE"] do
       "sidekiq_idle" -> :sidekiq_idle
-      role when role in [nil, "", "web"] -> Front.plan(argv, env)
+      role when role in [nil, "", "web"] -> web_plan(argv, env)
       _ -> raise ArgumentError, "DAWARICH_PROCESS_ROLE must be web or sidekiq_idle"
     end
   end
+
+  defp web_plan(
+         _argv,
+         %{
+           "SELF_HOSTED" => "false",
+           "DAWARICH_PHOENIX_LIFECYCLE" => "true"
+         } = env
+       ) do
+    argv =
+      case env["DAWARICH_NATIVE_ARGS"] do
+        args when is_binary(args) ->
+          args |> String.replace_suffix("\x1F", "") |> String.split("\x1F")
+
+        _ ->
+          nil
+      end
+
+    case Front.native_plan(argv, env) do
+      {:native, _} = plan -> plan
+      _ -> raise ArgumentError, "Native Cloud web requires a supported listener command"
+    end
+  end
+
+  defp web_plan(argv, env), do: Front.plan(argv, env)
 
   defp start_plan(:sidekiq_idle) do
     Supervisor.start_link(children(:sidekiq_idle),
@@ -48,7 +73,8 @@ defmodule Dawarich.Application do
     node = oban[:node] || Oban.Config.node_name()
     cron = [crontab: Dawarich.Jobs.Registry.crontab(), timezone: "Etc/UTC"]
 
-    [Dawarich.Repo] ++
+    Dawarich.Metrics.children(plan) ++
+      [Dawarich.Repo] ++
       redis() ++
       [
         {Oban, Keyword.put(oban, :cron, cron)},
