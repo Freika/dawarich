@@ -53,10 +53,34 @@ defmodule DawarichWeb.A12f3bS01Test do
   test "public link owner retirement removes access immediately" do
     now = DateTime.utc_now()
     assert SharedLinks.active(@id, now)
+
+    Repo.query!(
+      "UPDATE shared_links SET settings='{}', magic_phrase=NULL WHERE id=$1::text::uuid",
+      [@id]
+    )
+
+    assert api(:points).status == 200
+    assert api(:photos).status == 200
     Repo.query!("UPDATE shared_links SET revoked_at=now() WHERE id=$1::text::uuid", [@id])
     refute SharedLinks.active(@id, now)
+    retired_api!()
     Repo.query!("DELETE FROM shared_links WHERE id=$1::text::uuid", [@id])
     refute SharedLinks.active(@id, now)
+    retired_api!()
+  end
+
+  defp retired_api! do
+    for action <- [:points, :photos, :thumbnail] do
+      response = api(action)
+      assert response.status == 404
+      assert Jason.decode!(response.resp_body) == %{"error" => "not_found"}
+    end
+  end
+
+  defp api(action) do
+    request(:show)
+    |> assign(:api_params, %{})
+    |> DawarichWeb.Api.SharedController.call(action)
   end
 
   defp request(action) do
