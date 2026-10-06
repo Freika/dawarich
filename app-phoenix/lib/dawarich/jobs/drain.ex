@@ -32,6 +32,7 @@ defmodule Dawarich.Jobs.Drain do
   def status(repo) do
     {:ok, status} =
       repo.transaction(fn ->
+        repo.query!("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ", [], log: false)
         repo.query!("SET LOCAL statement_timeout = '500ms'", [], log: false)
 
         %{columns: columns, rows: [values]} =
@@ -65,7 +66,12 @@ defmodule Dawarich.Jobs.Drain do
               ~w(incomplete_oban unfinished_generations missing_owners unknown_owners unpinned_rollback_owners)a
             )
 
+        shutdown = forward ++ reasons(counts, ~w(incomplete_oban unfinished_generations)a)
+
         %{
+          shutdown: result(shutdown),
+          shutdown_reasons: Enum.sort(shutdown),
+          certainty: if("heartbeat_invalid" in forward, do: "UNKNOWN", else: "OBSERVED"),
           forward: result(forward),
           binary_rollback: result(binary),
           observation: true,
@@ -82,6 +88,9 @@ defmodule Dawarich.Jobs.Drain do
   rescue
     _ ->
       %{
+        shutdown: "BLOCKED",
+        shutdown_reasons: ["database_unreadable"],
+        certainty: "UNKNOWN",
         forward: "BLOCKED",
         binary_rollback: "BLOCKED",
         observation: true,

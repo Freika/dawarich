@@ -88,6 +88,92 @@ defmodule Dawarich.Jobs.DrainStatusTest do
     assert "heartbeat_invalid" in Drain.status(ScratchRepo).forward_reasons
   end
 
+  test "Cloud shutdown observation blocks all unresolved native and reverse debt" do
+    start_oban(@oban)
+    native_owners!()
+
+    rows(
+      "INSERT INTO phoenix.runtime_nodes (node, started_at, beat_at) VALUES ('shutdown', now(), now())"
+    )
+
+    vectors = [
+      {"INSERT INTO job_outbox (event_id, command_type, command_version, payload, scheduled_at) VALUES (gen_random_uuid(), 'trips.calculate', 1, '{}', now())",
+       "DELETE FROM job_outbox", "pending_outbox"},
+      {"INSERT INTO job_outbox (event_id, command_type, command_version, payload, scheduled_at) VALUES (gen_random_uuid(), 'trips.calculate', 1, '{}', now() + interval '1 hour')",
+       "DELETE FROM job_outbox", "pending_outbox"},
+      {"INSERT INTO job_outbox (event_id, command_type, command_version, payload, state, scheduled_at) VALUES (gen_random_uuid(), 'trips.calculate', 1, '{}', 'quarantined', now())",
+       "DELETE FROM job_outbox", "quarantined"},
+      {"INSERT INTO phoenix.rails_commands(kind) VALUES ('synthetic.unknown')",
+       "DELETE FROM phoenix.rails_commands", "reverse_pending"},
+      {"INSERT INTO phoenix.rails_commands(kind, available_at) VALUES ('synthetic.unknown', now() + interval '1 hour')",
+       "DELETE FROM phoenix.rails_commands", "reverse_pending"},
+      {"INSERT INTO phoenix.rails_commands(kind, leased_until) VALUES ('synthetic.unknown', now() + interval '1 hour')",
+       "DELETE FROM phoenix.rails_commands", "reverse_pending"},
+      {"INSERT INTO phoenix.rails_commands(kind, attempts) VALUES ('synthetic.unknown', 2)",
+       "DELETE FROM phoenix.rails_commands", "reverse_pending"},
+      {"INSERT INTO phoenix.rails_commands_dead(id, kind, payload, attempts, last_error, created_at) VALUES (990003, 'synthetic.unknown', '{}', 25, 'synthetic-private-error', now())",
+       "DELETE FROM phoenix.rails_commands_dead", "reverse_dead"},
+      {"INSERT INTO phoenix.release_operations(id, command_type, cursor) VALUES (gen_random_uuid(), 'release.time_anchor', '{}')",
+       "DELETE FROM phoenix.release_operations", "release_pending"},
+      {"INSERT INTO phoenix.track_generations(id, user_id, mode, untracked_only, low_priority, status, total_chunks) VALUES (gen_random_uuid(), 7, 'bulk', false, false, 'running', 1)",
+       "DELETE FROM phoenix.track_generations", "unfinished_generations"},
+      {"WITH g AS (INSERT INTO phoenix.track_generations(id, user_id, mode, untracked_only, low_priority, status, total_chunks, completed_chunks) VALUES (gen_random_uuid(), 7, 'bulk', false, false, 'completed', 1, 1) RETURNING id) INSERT INTO phoenix.track_generation_chunks(generation_id, chunk_id, start_ts, end_ts, buffer_start_ts, buffer_end_ts) SELECT id, 0, 0, 1, 0, 1 FROM g",
+       "DELETE FROM phoenix.track_generations", "unfinished_generations"},
+      {"DELETE FROM phoenix.job_owners WHERE key = 'command:trips.calculate'",
+       "INSERT INTO phoenix.job_owners(key, owner) VALUES ('command:trips.calculate', 'oban')",
+       "missing_owners"},
+      {"INSERT INTO phoenix.job_owners(key) VALUES ('command:synthetic.unknown')",
+       "DELETE FROM phoenix.job_owners WHERE key = 'command:synthetic.unknown'",
+       "unknown_owners"},
+      {"UPDATE phoenix.runtime_nodes SET beat_at = now() - interval '2 minutes'",
+       "UPDATE phoenix.runtime_nodes SET beat_at = now()", "heartbeat_invalid"}
+    ]
+
+    for {insert, cleanup, reason} <- vectors do
+      rows(insert)
+      status = Drain.status(ScratchRepo)
+      assert status.shutdown == "BLOCKED"
+      assert reason in status.shutdown_reasons
+      refute Jason.encode!(status) =~ "synthetic-private-error"
+      rows(cleanup)
+      refute reason in Drain.status(ScratchRepo).shutdown_reasons
+    end
+
+    Oban.insert!(@oban, Dawarich.ReleaseOperations.RouteOpacity.new(%{"version" => 1}))
+    assert "incomplete_oban" in Drain.status(ScratchRepo).shutdown_reasons
+  end
+
+  test "Cloud native drain unreadable tables never becomes an empty observation" do
+    for table <-
+          ~w(job_outbox phoenix.job_owners phoenix.rails_commands phoenix.rails_commands_dead phoenix.track_generations phoenix.track_generation_chunks phoenix.release_operations phoenix.runtime_nodes oban.oban_jobs) do
+      rows("ALTER TABLE #{table} RENAME TO drain_unreadable")
+
+      try do
+        status = Drain.status(ScratchRepo)
+        assert status.certainty == "UNKNOWN"
+        assert status.shutdown == "BLOCKED"
+        assert status.forward == "BLOCKED"
+        assert status.binary_rollback == "BLOCKED"
+        assert status.shutdown_reasons == ["database_unreadable"]
+        refute Map.has_key?(status, :counts)
+      after
+        [schema, name] =
+          if String.contains?(table, "."), do: String.split(table, "."), else: ["public", table]
+
+        rows("ALTER TABLE #{schema}.drain_unreadable RENAME TO #{name}")
+      end
+    end
+  end
+
+  defp native_owners! do
+    keys = Enum.map(Registry.entries(), & &1.key)
+
+    rows(
+      "INSERT INTO phoenix.job_owners(key, owner) SELECT key, 'oban' FROM unnest($1::text[]) AS key",
+      [keys]
+    )
+  end
+
   test "housekeeping retains aged dead debt and drain status remains blocked" do
     rows("""
     INSERT INTO phoenix.rails_commands_dead (id, kind, payload, attempts, last_error, created_at, died_at)
