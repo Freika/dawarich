@@ -329,6 +329,34 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2023"}, page_ctx) == :not_found
   end
 
+  @tag a12f3a_q10: true
+  test "Q10: digest deletion and failure boundary matches current Rails contract without a native-owner Rails effect",
+       %{user: user, context: ctx} do
+    digest!(user.id, %{year: 2024})
+    digest!(user.id, %{year: 2024, month: 3, period_type: 0})
+    other = RailsUser.insert!(%{id: 5291, email: "q-other@dawarich.test"})
+    digest!(other.id, %{year: 2024})
+
+    for row <- fixture("10") do
+      assert {:ok, result} = Dawarich.Digests.WebCommands.destroy(Repo, user, "2024", ctx)
+      assert result.status == row["status"]
+      assert result.path == row["location"]
+      assert %{Atom.to_string(result.flash) => result.message} == row["flash"]
+
+      assert Repo.query!(
+               "SELECT count(*) FROM digests WHERE user_id=$1 AND year=2024 AND period_type=1",
+               [user.id]
+             ).rows == [[row["remaining"]]]
+    end
+
+    assert Repo.query!("SELECT count(*) FROM digests", []).rows == [[2]]
+    digest!(user.id, %{year: 2024})
+    conn = write(user, :post, "/digests/2024", %{"_method" => "delete"})
+    assert conn.status == 303
+    assert Repo.query!("SELECT count(*) FROM digests", []).rows == [[2]]
+    assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
+  end
+
   defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do
     for row <- fixture(task) do
       settings = %{
