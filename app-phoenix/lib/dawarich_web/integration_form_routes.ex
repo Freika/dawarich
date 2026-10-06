@@ -19,6 +19,9 @@ defmodule DawarichWeb.IntegrationFormRoutes do
           match method, "/settings/integrations", DawarichWeb.IntegrationActions, :update,
             metadata: %{rails_gate: {DawarichWeb.IntegrationActions, :enabled?}}
         end
+
+        post "/settings/background_jobs", DawarichWeb.IntegrationJobActions, :create,
+          metadata: %{rails_gate: {DawarichWeb.IntegrationActions, :enabled?}}
       end
     end
   end
