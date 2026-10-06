@@ -19,9 +19,22 @@ defmodule DawarichWeb.IntegrationFormRoutes do
           match method, "/settings/integrations", DawarichWeb.IntegrationActions, :update,
             metadata: %{rails_gate: {DawarichWeb.IntegrationActions, :enabled?}}
         end
+      end
+
+      pipeline :integration_jobs do
+        plug :put_api_tag, "integrations"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.RailsAuth
+        plug DawarichWeb.RailsHeaders
+      end
+
+      scope "/" do
+        pipe_through :integration_jobs
 
         post "/settings/background_jobs", DawarichWeb.IntegrationJobActions, :create,
-          metadata: %{rails_gate: {DawarichWeb.IntegrationActions, :enabled?}}
+          metadata: %{rails_gate: {DawarichWeb.IntegrationJobActions, :enabled?}}
       end
     end
   end

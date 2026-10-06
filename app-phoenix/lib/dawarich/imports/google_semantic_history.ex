@@ -30,7 +30,14 @@ defmodule Dawarich.Imports.GoogleSemanticHistory do
       nil
     end)
 
-    state = %{batch: [], size: 0, count: 0, cache: %{}, progress: %{at: nil, index: nil}}
+    state = %{
+      batch: [],
+      size: 0,
+      count: Map.get(context, :resume_offset, 0),
+      resume_skip: Map.get(context, :resume_offset, 0),
+      cache: %{},
+      progress: %{at: nil, index: nil}
+    }
 
     state =
       reduce(path, section, state, fn object, state ->
@@ -90,6 +97,14 @@ defmodule Dawarich.Imports.GoogleSemanticHistory do
   defp reduce(path, section, acc, fun), do: Section.reduce(path, section, acc, fun)
 
   defp push(point, state, import, context) do
+    if state.resume_skip > 0 do
+      %{state | resume_skip: state.resume_skip - 1}
+    else
+      push_point(point, state, import, context)
+    end
+  end
+
+  defp push_point(point, state, import, context) do
     now = DateTime.to_naive(clock(context.now))
 
     attrs =
@@ -114,13 +129,15 @@ defmodule Dawarich.Imports.GoogleSemanticHistory do
 
   defp write(state, import, context) do
     {_, cache} =
-      BulkWriter.write_semantic(
-        Enum.reverse(state.batch),
-        import,
-        state.cache,
-        context.repo,
-        fn fun -> Fence.run(context, fun) end
-      )
+      Dawarich.Imports.NormalResume.batch(context, state.count - state.size, state.size, fn ->
+        BulkWriter.write_semantic(
+          Enum.reverse(state.batch),
+          import,
+          state.cache,
+          context.repo,
+          fn fun -> Fence.run(context, fun) end
+        )
+      end)
 
     cache
   rescue
@@ -128,6 +145,8 @@ defmodule Dawarich.Imports.GoogleSemanticHistory do
       reraise e, __STACKTRACE__
 
     error ->
+      if Map.has_key?(context, :resume_lease), do: reraise(error, __STACKTRACE__)
+
       {:ok, title} =
         I18n.t(
           context.locale,

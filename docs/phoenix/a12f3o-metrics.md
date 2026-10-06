@@ -121,7 +121,12 @@ move outcomes, matching the source service boundary.
 Tile-epoch/publication orchestration uses publish; the publisher separately records
 broadcast exceptions and failed transport results. Stats and achievement scheduling
 failures retain their respective operation labels. These rescued failures preserve
-the committed point write and its successful move outcome.
+the committed point write and its successful move outcome. Tile epoch and
+publication run in separate rescue boundaries, so a failed tile epoch does not
+suppress the point-moved event. Stats retain standalone-aware
+`Dawarich.Stats.Schedule.calculate`; achievements use
+`Dawarich.Points.NativeEffects.achievements`, which produces native jobs in
+standalone mode and the existing reverse command in coexistence mode.
 
 The tile event `[:dawarich, :map, :tile]` carries count and duration, with layer
 and outcome metadata. It measures the tile action after authorization: 200/204
@@ -147,5 +152,7 @@ queue latency/runtime gauges. DB assertions compare real query/error count
 deltas and histogram sums with native telemetry converted to seconds. A real
 single-connection pool proves busy/waiting values during checkout contention,
 queue-duration conversion, and pressure reset after the client completes.
-AFFiNE writes are prohibited by the assignment's security-sensitive delegate
-rule; this repository document is the code-coupled handoff.
+The map-effect integration contract is synchronized with the AFFiNE document
+`Dawarich — Phoenix map move metrics and post-commit effects`
+(`docId: yjj5hxEfF-DZJjCSVy_-o`). This repository document remains the
+code-coupled handoff.

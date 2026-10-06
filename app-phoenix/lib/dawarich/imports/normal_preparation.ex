@@ -17,7 +17,7 @@ defmodule Dawarich.Imports.NormalPreparation do
 
       case ArchiveDispatch.inspect(path, opts) do
         {:legacy, reason} ->
-          {:legacy, reason}
+          legacy(reason)
 
         :user_data_archive ->
           Dawarich.UserData.ImportCommands.discover(lease, context)
@@ -33,12 +33,26 @@ defmodule Dawarich.Imports.NormalPreparation do
         :not_a_zip ->
           file(path, blob.filename, state, context)
       end
+    else
+      {:legacy, reason} -> legacy(reason)
     end
   rescue
-    error in ParserLimit -> {:legacy, {:parser_limit, error.message}}
+    error in ParserLimit -> envelope(error, :parser_limit, __STACKTRACE__)
     error in LeaseLost -> reraise error, __STACKTRACE__
-    error in ArchiveError -> {:legacy, {:archive_policy, error.message}}
+    error in ArchiveError -> envelope(error, :archive_policy, __STACKTRACE__)
     error -> {:error, error, __STACKTRACE__}
+  end
+
+  defp legacy(reason) do
+    if Dawarich.Standalone.enabled?(),
+      do: raise(ArgumentError, "Import cannot be processed natively: #{inspect(reason)}"),
+      else: {:legacy, reason}
+  end
+
+  defp envelope(error, kind, stack) do
+    if Dawarich.Standalone.enabled?(),
+      do: {:error, error, stack},
+      else: {:legacy, {kind, error.message}}
   end
 
   defp file(path, filename, state, context) do

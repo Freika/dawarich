@@ -5,8 +5,9 @@ defmodule Dawarich.Points.PositionEffects do
   def call(repo, user, point, response) do
     safe("publish", fn ->
       Dawarich.RailsEffects.tile_epoch(repo, user.id, [point.timestamp])
-      Dawarich.MapEdits.Publisher.call(repo, user.id, response)
     end)
+
+    safe("publish", fn -> Dawarich.MapEdits.Publisher.call(repo, user.id, response) end)
 
     safe("stats", fn ->
       local =
@@ -34,7 +35,7 @@ defmodule Dawarich.Points.PositionEffects do
     end)
 
     safe("achievements", fn ->
-      RailsCommands.insert!(repo, "achievements.check", %{
+      Dawarich.Points.NativeEffects.achievements(repo, %{
         "user_id" => user.id,
         "oldest_timestamp" => point.timestamp
       })

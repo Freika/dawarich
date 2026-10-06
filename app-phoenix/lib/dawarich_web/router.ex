@@ -18,7 +18,10 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.SettingsFormRoutes
   import DawarichWeb.SettingsMiscRoutes
   import DawarichWeb.OnboardingRoutes
+  import DawarichWeb.IntegrationFormRoutes
   import DawarichWeb.NotificationFormRoutes
+  import DawarichWeb.AdminFormRoutes
+  import DawarichWeb.TrialHomeRoutes
 
   pipeline :browser do
     plug DawarichWeb.HostAuthorization
@@ -219,7 +222,10 @@ defmodule DawarichWeb.Router do
     post "/digests/:year", DawarichWeb.DigestActions, :destroy
   end
 
+  integration_form_routes()
   a10_routes()
+  admin_form_routes()
+  trial_home_routes()
   settings_form_routes()
   settings_misc_routes()
   onboarding_routes()

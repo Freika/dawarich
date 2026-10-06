@@ -38,6 +38,7 @@ defmodule Dawarich.Metrics.MapTest do
   end
 
   defmodule FailedEffectsRepo do
+    def in_transaction?(), do: Dawarich.Repo.in_transaction?()
     def transaction(fun), do: Dawarich.Repo.transaction(fun)
     def rollback(reason), do: Dawarich.Repo.rollback(reason)
 
@@ -87,6 +88,38 @@ defmodule Dawarich.Metrics.MapTest do
 
   def event(event, measurements, metadata, pid),
     do: send(pid, {event, measurements, metadata})
+
+  @tag :merge_effect_isolation
+  test "tile epoch failure preserves publication follow ups and successful move metrics", %{
+    user: user
+  } do
+    cable = Application.get_env(:dawarich, :cable)
+    Application.put_env(:dawarich, :cable, transport: :pg)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, cable) end)
+    point = point!(user.id, nil, 0)
+    Process.put(:map_postcommit_fault, "points.tile_epoch")
+
+    try do
+      assert {:ok, 200, _} =
+               ApiPosition.update(FailedEffectsRepo, user, point, params(0), %{
+                 self_hosted?: true,
+                 now: DateTime.utc_now()
+               })
+    after
+      Process.delete(:map_postcommit_fault)
+    end
+
+    assert_receive {[:dawarich, :map, :post_commit_failure], %{count: 1}, %{operation: "publish"}}
+    assert_receive {[:dawarich, :map, :move], %{count: 1}, %{outcome: "success"}}
+    assert rows("SELECT lock_version FROM points WHERE id=$1", [point]) == [[1]]
+
+    assert rows("SELECT count(*) FROM phoenix.cable_events WHERE channel LIKE 'map_edits:%'") == [
+             [1]
+           ]
+
+    assert rows("SELECT kind FROM phoenix.rails_commands ORDER BY kind") ==
+             [["achievements.check"], ["stats.calculate_month"]]
+  end
 
   test "native moves and tiles retain map outcomes lock waits sizes and post commit failures", %{
     user: user

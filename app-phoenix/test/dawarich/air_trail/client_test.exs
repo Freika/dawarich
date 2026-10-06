@@ -95,13 +95,45 @@ defmodule Dawarich.AirTrail.ClientTest do
 
   test "asks AirTrail to close the connection so no keep-alive session is reused" do
     server = RawHTTP.listen()
-    task = Task.async(fn -> Client.flights(source("http://127.0.0.1:#{server.port}")) end)
+    base = "http://127.0.0.1:#{server.port}"
+    response = "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}"
 
-    socket = RawHTTP.accept(server)
-    {head, _rest} = RawHTTP.read_head(socket)
-    RawHTTP.reply(socket, "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}")
+    warmup =
+      Task.async(fn ->
+        :httpc.request(:get, {String.to_charlist(base), []}, [], body_format: :binary)
+      end)
 
-    assert Task.await(task, :infinity) == {:ok, []}
-    assert RawHTTP.header(head, "connection") == ["close"]
+    pooled_socket = RawHTTP.accept(server)
+    RawHTTP.read_head(pooled_socket)
+    RawHTTP.reply(pooled_socket, response)
+    assert {:ok, _} = Task.await(warmup, :infinity)
+    owner = self()
+    ref = make_ref()
+
+    fresh =
+      Task.async(fn ->
+        socket = RawHTTP.accept(server)
+        {head, _} = RawHTTP.read_head(socket)
+        send(owner, {ref, :fresh, head})
+        RawHTTP.reply(socket, response)
+      end)
+
+    pooled =
+      Task.async(fn ->
+        {head, _} = RawHTTP.read_head(pooled_socket)
+        send(owner, {ref, :pooled, head})
+        RawHTTP.reply(pooled_socket, response)
+      end)
+
+    try do
+      assert Client.flights(source(base)) == {:ok, []}
+      assert_received {^ref, :fresh, head}
+      assert RawHTTP.header(head, "connection") == ["close"]
+    after
+      Task.shutdown(fresh, :brutal_kill)
+      Task.shutdown(pooled, :brutal_kill)
+      :gen_tcp.close(pooled_socket)
+      :gen_tcp.close(server.listen)
+    end
   end
 end

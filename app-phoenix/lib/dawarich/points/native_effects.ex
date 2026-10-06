@@ -12,4 +12,10 @@ defmodule Dawarich.Points.NativeEffects do
     repo.insert!(worker.new(args, opts), prefix: "oban", log: false)
     :ok
   end
+
+  def achievements(repo, payload) do
+    if Dawarich.Standalone.enabled?(),
+      do: enqueue(repo, Dawarich.Achievements.CheckWorker, Map.put(payload, "notify", true)),
+      else: Dawarich.RailsCommands.insert!(repo, "achievements.check", payload)
+  end
 end
