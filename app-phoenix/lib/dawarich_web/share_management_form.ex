@@ -22,7 +22,7 @@ defmodule DawarichWeb.ShareManagementForm do
 
   def admit(conn, _opts) do
     case admission(conn) do
-      :ok -> assign(conn, :api_params, Map.delete(conn.assigns.api_params, "_method"))
+      :ok -> conn
       {:replay, reason} -> Body.replay(conn, reason)
     end
   end
@@ -32,9 +32,17 @@ defmodule DawarichWeb.ShareManagementForm do
     RailsForm.admission(decoded, allowed_overrides: ~w(PATCH DELETE))
   end
 
-  def call(conn, {type, action}) do
+  def call(conn, {type, route_action}) do
+    with {:ok, action} <- DawarichWeb.ShareManagementMethod.action(conn, route_action) do
+      perform(conn, {type, action})
+    else
+      {:replay, reason} -> Body.replay(conn, reason)
+    end
+  end
+
+  defp perform(conn, {type, action}) do
     user = conn.assigns.current_user
-    params = conn.assigns.api_params
+    params = Map.delete(conn.assigns.api_params, "_method")
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
     now = Map.get(conn.assigns, :now, DateTime.utc_now())
     id = if type == "shared", do: conn.path_params["id"], else: trip_id(conn.path_params)
@@ -59,26 +67,37 @@ defmodule DawarichWeb.ShareManagementForm do
   end
 
   def respond(conn, {type, _}, params, {:invalid, result}) do
-    if present?(params["hub"]) do
-      ShareManagementStreams.respond(
-        conn,
-        params,
-        tab(type),
-        Enum.map(result.errors, &elem(&1, 1)),
-        422
-      )
-    else
-      conn = presentation(conn)
+    cond do
+      json?(conn, params) and not present?(params["hub"]) ->
+        conn
+        |> put_resp_content_type("text/html")
+        |> send_resp(
+          500,
+          DawarichWeb.ErrorHTML.render("500.html", %{}) |> Phoenix.HTML.Safe.to_iodata()
+        )
+        |> halt()
 
-      content =
-        ShareManagementDocument.frame(%{
-          __changed__: nil,
-          ctx: ShareManagementPage.context(conn),
-          page: invalid_page(type, result),
-          type: type
-        })
+      present?(params["hub"]) ->
+        ShareManagementStreams.respond(
+          conn,
+          params,
+          tab(type),
+          Enum.map(result.errors, &elem(&1, 1)),
+          422
+        )
 
-      ShareManagementPage.respond(conn, content, 422)
+      true ->
+        conn = presentation(conn)
+
+        content =
+          ShareManagementDocument.frame(%{
+            __changed__: nil,
+            ctx: ShareManagementPage.context(conn),
+            page: invalid_page(type, result),
+            type: type
+          })
+
+        ShareManagementPage.respond(conn, content, 422)
     end
   end
 
@@ -147,6 +166,15 @@ defmodule DawarichWeb.ShareManagementForm do
           (key == "shared_link" or is_binary(value))
       end) and
       Enum.all?(~w(start_date end_date), &Params.date_shape?(params[&1]))
+  end
+
+  defp json?(conn, params) do
+    params["format"] == "json" or
+      get_req_header(conn, "accept")
+      |> Enum.join(",")
+      |> String.split([",", ";"])
+      |> hd()
+      |> String.trim() == "application/json"
   end
 
   defp present?(nil), do: false

@@ -11,7 +11,7 @@ defmodule Dawarich.ShareManagement.Mutations do
       case type do
         "live" -> Read.live(user, now)
         "trip" -> Read.trip(user, trip_id, now)
-        "track" -> Read.track(user, trip_id, now)
+        "track" -> Read.track(user, trip_id, now, locale)
         "timeline" -> Read.timeline(user, params, now)
         "shared" -> Read.owned(user, trip_id)
         _ -> :rails

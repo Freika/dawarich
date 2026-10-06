@@ -13,9 +13,10 @@ defmodule DawarichWeb.TrackShareRoutes do
         pipe_through :share_form
 
         for {verb, suffix, action} <- [
-              {:post, "", :create},
-              {:delete, "", :destroy},
+              {:post, "/", :create},
+              {:delete, "/", :destroy},
               {:patch, "/revoke", :revoke},
+              {:post, "/revoke", :revoke},
               {:post, "/regenerate", :regenerate},
               {:post, "/regenerate_phrase", :regenerate_phrase}
             ] do

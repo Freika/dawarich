@@ -1,7 +1,7 @@
 defmodule DawarichWeb.TimelineShareActions do
   @moduledoc false
   @behaviour Plug
-  import Plug.Conn
+  import Plug.Conn, only: [get_req_header: 2]
   alias Dawarich.ShareManagement.Read
 
   alias DawarichWeb.{
@@ -37,24 +37,27 @@ defmodule DawarichWeb.TimelineShareActions do
   defp perform(conn, :new) do
     conn = LayoutAssigns.call(conn, [])
 
-    {:ok, page} = Read.timeline(conn.assigns.current_user, conn.query_params, conn.assigns.now)
+    case Read.timeline(conn.assigns.current_user, conn.query_params, conn.assigns.now) do
+      {:ok, page} ->
+        content =
+          ShareManagementDocument.frame(%{
+            __changed__: nil,
+            page: page,
+            ctx: ShareManagementPage.context(conn),
+            type: "timeline"
+          })
 
-    content =
-      ShareManagementDocument.frame(%{
-        __changed__: nil,
-        page: page,
-        ctx: ShareManagementPage.context(conn),
-        type: "timeline"
-      })
+        ShareManagementPage.respond(conn, content)
 
-    ShareManagementPage.respond(conn, content)
+      result ->
+        ShareManagementForm.respond(conn, {"timeline", :new}, %{}, result)
+    end
   end
 
   defp perform(conn, action) do
     case ShareManagementForm.admission(conn) do
       :ok ->
         conn
-        |> assign(:api_params, Map.delete(conn.assigns.api_params, "_method"))
         |> ShareManagementForm.call({"timeline", action})
 
       {:replay, reason} ->

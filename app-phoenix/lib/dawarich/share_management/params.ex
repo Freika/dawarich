@@ -28,7 +28,7 @@ defmodule Dawarich.ShareManagement.Params do
       is_map(raw) and Enum.all?(~w(name magic_phrase expires_at audience), &text?(raw[&1])) and
       date_shape?(raw["expires_at"]) and
       (type != "timeline" or
-         Enum.all?(~w(start_date end_date), &(text?(raw[&1]) and date_shape?(raw[&1])))) and
+         Enum.all?(~w(start_date end_date), &(text?(raw[&1]) and timeline_date_shape?(raw[&1])))) and
       settings?(raw["settings"])
   end
 
@@ -38,6 +38,10 @@ defmodule Dawarich.ShareManagement.Params do
     do: raw =~ ~r/\A\d{4}-\d{2}-\d{2}\z/ or not (raw =~ ~r/\d/)
 
   def date_shape?(_raw), do: false
+
+  def timeline_date_shape?(raw) when raw in [nil, ""], do: true
+  def timeline_date_shape?(raw) when is_binary(raw), do: raw =~ ~r/\A\d{4}-\d{2}-\d{2}\z/
+  def timeline_date_shape?(_raw), do: false
 
   defp settings?(nil), do: true
   defp settings?(value) when value in [false, "", []], do: true

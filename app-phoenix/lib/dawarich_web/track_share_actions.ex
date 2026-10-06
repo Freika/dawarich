@@ -1,11 +1,12 @@
 defmodule DawarichWeb.TrackShareActions do
   @moduledoc false
   @behaviour Plug
-  import Plug.Conn
+  import Plug.Conn, only: [get_req_header: 2, assign: 3]
   alias Dawarich.ShareManagement.Read
 
   alias DawarichWeb.{
     LayoutAssigns,
+    Locale,
     RailsAuth,
     RequireUser,
     ShareManagementDocument,
@@ -29,6 +30,13 @@ defmodule DawarichWeb.TrackShareActions do
     if conn.halted do
       conn
     else
+      conn =
+        assign(
+          conn,
+          :locale,
+          Locale.resolve(nil, conn.assigns.current_user, conn.assigns.rails_session)
+        )
+
       if native?(conn, conn.path_params),
         do: perform(conn, action),
         else: Body.replay(conn, "track share transport")
@@ -41,7 +49,8 @@ defmodule DawarichWeb.TrackShareActions do
     case Read.track(
            conn.assigns.current_user,
            String.to_integer(conn.path_params["track_id"]),
-           conn.assigns.now
+           conn.assigns.now,
+           conn.assigns.locale
          ) do
       {:ok, page} ->
         content =
@@ -63,7 +72,6 @@ defmodule DawarichWeb.TrackShareActions do
     case ShareManagementForm.admission(conn) do
       :ok ->
         conn
-        |> assign(:api_params, Map.delete(conn.assigns.api_params, "_method"))
         |> ShareManagementForm.call({"track", action})
 
       {:replay, reason} ->
