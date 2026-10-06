@@ -45,7 +45,7 @@ defmodule Dawarich.ErrorReporting.Redactor do
   defp mechanism(nil), do: nil
   defp mechanism(mechanism), do: %{mechanism | data: nil, meta: nil}
   defp stack(nil), do: nil
-  defp stack(stack), do: %{stack | frames: Enum.map(stack.frames, &frame/1)}
+  defp stack(stack), do: %{stack | frames: Enum.map(stack.frames || [], &frame/1)}
 
   defp frame(frame) do
     %{

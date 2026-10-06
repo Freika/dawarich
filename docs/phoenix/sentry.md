@@ -58,6 +58,10 @@ both forms, connected mounts and events, without changing process exits.
 Oban uses one `[:oban, :job, :exception]` handler. It preserves existing job logging,
 retry schedules, attempt counts and final discard. The SDK's automatic Oban
 capture is disabled to avoid duplication; no args/meta/payload is attached.
+Returned `{:error, exception}` results are reported even without a stack;
+empty SDK frame lists are scrubbed safely and omitted from the envelope.
+Real returned-error jobs retain their exception type and operational labels,
+emit one scrubbed envelope per attempt, retry, and discard at exhaustion.
 SDK event deduplication is disabled because distinct scrubbed failures can have
 identical stacks; actual web, LiveView and Oban tests assert one envelope per failure.
 
@@ -76,8 +80,9 @@ Focused tests live in `test/dawarich/error_reporting`,
 `test/dawarich/jobs/error_reporting_test.exs`. Tests assert complete SDK envelopes
 through its HTTP client seam or a local HTTP receiver. Release tests build and
 invoke the existing release executable/eval seam, with no web application start.
-The assigned report records RED/GREEN/mutation/restored evidence and the full
-ExUnit seed 404/202 gates. No deployed telemetry backend is contacted.
+The assigned reports record RED/GREEN/mutation/restored evidence. The initial
+implementation ran full ExUnit seeds 404/202; review fixes run seed 404 only
+under controller ruling 14. No deployed telemetry backend is contacted.
 
 This is the Sentry portion of A12f-3o, not whole-release acceptance. AFFiNE writes
 are forbidden by the controller plan for this assignment; this repository file
