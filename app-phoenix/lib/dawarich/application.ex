@@ -6,6 +6,7 @@ defmodule Dawarich.Application do
 
   @impl true
   def start(_type, _args) do
+    Dawarich.ErrorReporting.start()
     plan = plan(Application.get_env(:dawarich, :rails_argv), System.get_env())
     start_plan(plan)
   end
