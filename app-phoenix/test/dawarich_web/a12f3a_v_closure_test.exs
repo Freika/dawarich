@@ -72,6 +72,28 @@ defmodule DawarichWeb.A12f3aVClosureTest do
     end
   end
 
+  @tag a12f3a_v03: true
+  test "V03: visit delete and source response matches current Rails contract without a native-owner Rails effect" do
+    env("SELF_HOSTED", "false")
+    ctx = fixture("a12f3a-v03")
+    fixture("merge_noted")
+    unrelated = rows("SELECT * FROM place_visits ORDER BY id")
+    points = rows("SELECT id,visit_id,lock_version FROM points ORDER BY id")
+    id = hd(ctx.state["before"]["rows"]["visits"])["id"]
+    assert {:ok, result} = WebDelete.run(ScratchRepo, ctx.user, id, %{}, ctx)
+
+    assert ParityHTML.normalize(DawarichWeb.VisitStreams.render(:destroy, result, ctx)) ==
+             ParityHTML.normalize(File.read!("test/fixtures/a8vv/visits/soft_delete_turbo.html"))
+
+    durable(ctx.state)
+    assert rows("SELECT * FROM place_visits ORDER BY id") == unrelated
+    assert rows("SELECT id,visit_id,lock_version FROM points ORDER BY id") == points
+    no_rails()
+    conn = request(ctx, :delete, "/visits/999999999", %{})
+    assert conn.status == 404
+    assert rows("SELECT * FROM place_visits ORDER BY id") == unrelated
+  end
+
   defp fixture(name) do
     state = File.read!("test/fixtures/a8vv/visits/#{name}.json") |> Jason.decode!()
     u = hd(state["before"]["users"])
