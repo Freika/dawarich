@@ -175,8 +175,73 @@ defmodule DawarichWeb.Router do
   end
 
   page_routes()
+
+  pipeline :stats_request do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.StatsRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :stats_request
+
+    for method <- [:put, :post] do
+      match method, "/stats/:year/:month/update", DawarichWeb.StatsActions, :update
+      match method, "/stats/update_all", DawarichWeb.StatsActions, :update_all
+    end
+  end
+
   storage_routes()
+
+  pipeline :digest_request do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.DigestRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :digest_request
+    post "/digests", DawarichWeb.DigestActions, :create
+    delete "/digests/:year", DawarichWeb.DigestActions, :destroy
+    post "/digests/:year", DawarichWeb.DigestActions, :destroy
+  end
+
   a10_routes()
+
+  pipeline :stats_sharing do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.StatsSharingRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :stats_sharing
+
+    for method <- [:patch, :post] do
+      match method, "/digests/:year/sharing", DawarichWeb.DigestSharing, :update
+      match method, "/stats/:year/:month/sharing", DawarichWeb.StatSharing, :update
+    end
+  end
+
+  scope "/" do
+    pipe_through :sharing
+
+    get "/shared/digest/:uuid", DawarichWeb.SharedStatsPage, :digest,
+      metadata: %{rails_key: "digests"}
+
+    get "/shared/month/:uuid", DawarichWeb.SharedStatsPage, :month,
+      metadata: %{rails_key: "stats"}
+  end
+
   map_frame_routes()
   a8_routes()
   share_page_routes()

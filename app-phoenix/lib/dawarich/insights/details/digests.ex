@@ -2,6 +2,39 @@ defmodule Dawarich.Insights.Details.Digests do
   @moduledoc false
   alias Dawarich.{Digests, RailsCache, Repo}
   alias Dawarich.RailsCache.Snapshot
+  alias Dawarich.Digests.Calculation
+
+  def native_yearly(id, year, stats, opts) do
+    case yearly(id, year, stats) do
+      {digest, true} ->
+        selected = Enum.filter(stats, &(&1["year"] == year))
+
+        if digest == nil or digest["travel_patterns"] in [nil, %{}, []] or
+             stale?(digest, selected) do
+          calculate!(Calculation.yearly(Repo, id, year, opts))
+          {find(id, year, nil), false}
+        else
+          {digest, false}
+        end
+
+      result ->
+        result
+    end
+  end
+
+  def native_monthly(id, year, month, available, stats, opts) do
+    case monthly(id, year, month, available, stats) do
+      {_digest, true} ->
+        calculate!(Calculation.monthly(Repo, id, year, month, opts))
+        {find(id, year, month), false}
+
+      result ->
+        result
+    end
+  end
+
+  defp calculate!({:ok, _id}), do: :ok
+  defp calculate!({:error, error}), do: raise(error)
 
   def yearly(id, year, stats) do
     case find(id, year, nil) do

@@ -25,7 +25,8 @@ defmodule DawarichWeb.StatsLive.Month do
       }) do
     {year, month} = {Params.ruby_to_i(year), Params.ruby_to_i(month)}
     context = Stats.context(user, now, self_hosted)
-    data = Stats.month(user, year, month, context)
+    data = Stats.month(user, year, month, context, previous_month: month - 1)
+    if data.stat, do: validate_daily!(data.stat.daily)
     peak = data.stat && StatsFormat.peak(data.stat.daily)
     settings = if is_map(user.settings), do: user.settings, else: %{}
 
@@ -56,6 +57,9 @@ defmodule DawarichWeb.StatsLive.Month do
       alert_href: StatsFormat.upgrade_url(user, now, self_hosted, "data_window", "stats_month")
     }
   end
+
+  defp validate_daily!(daily) when is_list(daily), do: :ok
+  defp validate_daily!(_daily), do: raise(ArgumentError, "invalid daily_distance")
 
   defp sharing_url(%{sharing: %{enabled: true}, sharing_uuid: uuid}, base_url)
        when is_binary(uuid),

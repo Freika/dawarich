@@ -143,7 +143,7 @@ defmodule DawarichWeb.SharingParts do
   attr :locale, :string, required: true
   attr :url, :string, required: true
 
-  defp sharing_link(assigns) do
+  def sharing_link(assigns) do
     ~H"""
     <div id="sharing-link-display" class="form-control mb-4">
       <label class="label"><span class="label-text font-medium">{t(

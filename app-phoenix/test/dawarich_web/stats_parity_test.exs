@@ -17,15 +17,17 @@ defmodule DawarichWeb.StatsParityTest do
     on_exit(fn -> System.delete_env("JWT_SECRET_KEY") end)
   end
 
-  for file <-
-        Path.wildcard("test/fixtures/stats/*.json")
-        |> Enum.filter(&File.exists?(Path.rootname(&1) <> ".html")) do
+  for html <- Path.wildcard("test/fixtures/stats/*.html"),
+      file = Path.rootname(html) <> ".json" do
     @name Path.basename(file, ".json")
     @title_ed @name in ~w(year_ca digests_ca digest_full_fr)
     @test_name if(@title_ed,
                  do: "#{@name} matches Rails except title double-escaping (ED-551)",
                  else: "#{@name} matches the page Rails renders"
                )
+
+    if @name in ~w(index_en index_nongeo_en index_lite_en year_lite_en),
+      do: @tag(a12f3a_q01: true)
 
     test @test_name do
       state = @dir |> Path.join(@name <> ".json") |> File.read!() |> Jason.decode!()

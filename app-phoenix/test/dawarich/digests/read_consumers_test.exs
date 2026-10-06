@@ -51,7 +51,7 @@ defmodule Dawarich.Digests.ReadConsumersTest do
     assert %{route: "/digests/:year"} =
              Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/digests/2025", "localhost")
 
-    assert Phoenix.Router.route_info(DawarichWeb.Router, "POST", "/digests", "localhost") ==
-             :error
+    assert %{plug: DawarichWeb.DigestActions, plug_opts: :create} =
+             Phoenix.Router.route_info(DawarichWeb.Router, "POST", "/digests", "localhost")
   end
 end
