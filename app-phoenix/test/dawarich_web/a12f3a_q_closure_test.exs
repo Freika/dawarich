@@ -109,6 +109,32 @@ defmodule DawarichWeb.A12f3aQClosureTest do
              nil
   end
 
+  @tag a12f3a_q03: true
+  test "Q03: insights index and year/month selection matches current Rails contract without a native-owner Rails effect",
+       %{user: user} do
+    stat!(user.id, %{year: 2024, month: 3, distance: 1000, daily_distance: nil})
+    context = Dawarich.Stats.context(user, @now, true)
+
+    for row <- fixture("03") do
+      if row["status"] == 500 do
+        assert_raise ArgumentError, fn -> Dawarich.Insights.page(user, row["input"], context) end
+      else
+        Repo.query!("UPDATE stats SET daily_distance='[[1, 1000]]'::jsonb WHERE user_id=$1", [
+          user.id
+        ])
+
+        stat!(user.id, %{year: 2024, month: 4, distance: 1000, daily_distance: [[1, 1000]]})
+
+        assert Dawarich.Insights.page(user, row["input"], context).selected_month ==
+                 row["selected_month"]
+      end
+    end
+
+    Repo.query!("UPDATE stats SET daily_distance='[[1, 1000]]'::jsonb WHERE user_id=$1", [user.id])
+
+    assert Dawarich.Insights.page(user, %{}, context).year == 2024
+  end
+
   defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do
     for row <- fixture(task) do
       settings = %{
