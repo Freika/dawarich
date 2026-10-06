@@ -135,7 +135,7 @@ defmodule Dawarich.A12f3bR15Test do
     assert length(purges()) == 2
     assert :ok = PurgeWorker.run(List.last(purges()), services: c.services)
     refute File.exists?(path)
-    assert {:replay, _} = Writes.destroy(Repo, 1, second, @now)
+    assert {:error, :not_found} = Writes.destroy(Repo, 1, second, @now)
     assert rows("SELECT kind FROM phoenix.rails_commands") == []
     {guarded, guarded_path} = blob!(c, "video/mp4")
     assert {:ok, %{id: guarded_video}} = create(guarded)
