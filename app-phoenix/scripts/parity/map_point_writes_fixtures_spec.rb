@@ -1,8 +1,26 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: map point writes', type: :request do
+  closure_cases = {}
+  define_method(:closure_case) do |name, data|
+    closure_cases[name] = data.merge('user' => data.fetch('user').merge('api_key' => 'API_KEY'))
+  end
+  after(:all) do
+    selected = closure_cases.sort.to_h.select { |name, _| [''].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w03.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| [''].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w04.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/map_writes/points') }
@@ -153,6 +171,11 @@ RSpec.describe 'Phoenix fixtures: map point writes', type: :request do
               'pending_oldest' => Achievements::PendingChecks.read(user.id).first,
               'jobs' => enqueued_jobs.map { { 'job' => _1[:job].name, 'args' => _1[:args], 'queue' => _1[:queue] } } }
     File.write(dir.join("#{name}.html"), '')
+    token_pattern = /(name="(?:authenticity_token|csrf-token|csp-nonce)" (?:value|content)=")[^"]*/
+    source_body = FixtureRecording.normalize(response.body).gsub(token_pattern, '\\1CSRF')
+                                  .gsub(/(nonce=")[^"]*/, '\\1NONCE')
+                                  .gsub(/(signed-stream-name=")[^"]*/, '\\1SIGNED')
+    closure_case(name, state.merge('body' => source_body))
     File.write(dir.join("#{name}.json"), "#{Oj.dump(state, mode: :strict, float_precision: 0, indent: 2)}\n")
   end
 
@@ -188,11 +211,82 @@ RSpec.describe 'Phoenix fixtures: map point writes', type: :request do
     end
   end
 
+  def capture_areas
+    target = dir.dirname.join('a12f3a-w10.json')
+    relabel_target = dir.dirname.join('a12f3a-w11.json')
+    snapshots = []
+    recipes = [
+      [:post, :create, {}, 200], [:post, :create, { name: '' }, 200],
+      [:post, :create, { radius: '0' }, 200], [:post, :create, { latitude: '91' }, 200],
+      [:post, :create, { longitude: '-181' }, 200], [:post, :nested, {}, 200],
+      [:patch, :reshape, { radius: '250' }, 200], [:put, :reshape, { radius: '250' }, 200],
+      [:patch, :rename, { name: 'Renamed' }, 200], [:put, :unchanged, {}, 200],
+      [:patch, :invalid, { radius: '-5' }, 200], [:patch, :foreign, {}, 404],
+      [:put, :missing, {}, 404], [:post, :guest, {}, 302], [:post, :html, {}, 406],
+      [:post, :override, { _method: 'put', radius: '250' }, 200]
+    ]
+    recipes.each_with_index do |(method, kind, changes, expected), index|
+      user = reader(95_800 + index * 2)
+      foreign = reader(95_801 + index * 2)
+      id = 958_000 + index * 10
+      unless method == :post && kind != :override
+        Area.insert!({ id:, user_id: kind == :foreign ? foreign.id : user.id, name: 'Synthetic area',
+                       latitude: 51.3397, longitude: 12.3734, radius: 200, created_at: now, updated_at: now })
+      end
+      ActiveRecord::Base.connection.execute("SELECT setval(pg_get_serial_sequence('areas', 'id'), #{id + 1}, false)")
+      path = if method == :post && kind != :override
+               '/areas'
+             else
+               "/areas/#{kind == :missing ? id + 9 : id}"
+             end
+      params = { name: 'Synthetic area', latitude: '51.3397', longitude: '12.3734', radius: '200' }.merge(changes)
+      params = { area: params } if kind == :nested
+      accept = kind == :html ? 'text/html' : 'text/vnd.turbo-stream.html'
+      reset!
+      sign_in user unless kind == :guest
+      get(kind == :guest ? '/users/sign_in' : '/tags/new')
+      token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      before = Area.where(user_id: [user.id, foreign.id]).order(:id).map(&:attributes)
+      commands = []
+      clear_enqueued_jobs
+      RSpec::Mocks.with_temporary_scope do
+        allow(JobCommands).to receive(:produce).and_wrap_original do |original, type, payload, **options|
+          commands << { type:, payload:, **options }
+          original.call(type, payload, **options)
+        end
+        public_send(method, path, params:, headers: { 'Accept' => accept, 'X-CSRF-Token' => token })
+      end
+      expect(response.status).to eq(expected), kind.to_s
+      after = Area.where(user_id: [user.id, foreign.id]).order(:id).map(&:attributes)
+      changed = before != after
+      invalid_radius = ['0', '-5'].include?(changes[:radius])
+      invalid_coordinate = changes[:latitude] == '91' || changes[:longitude] == '-181'
+      expected_change = %i[create reshape rename html override].include?(kind) && changes[:name] != '' &&
+                        !invalid_radius && !invalid_coordinate
+      expect(changed).to eq(expected_change), kind.to_s
+      expect(commands.map do
+        _1[:type]
+      end).to eq(%i[create reshape html
+                    override].include?(kind) && expected_change ? ['areas.relabel_visits'] : []), kind.to_s
+      snapshots << {
+        method: method.to_s.upcase, path:, params:, accept:, kind:, status: response.status,
+        body: FixtureRecording.normalize(response.body), media_type: response.media_type, location: response.location,
+        vary: response.headers['Vary'], cookie: response.headers['Set-Cookie'].present?, flash: flash.to_hash,
+        before:, after:, commands:,
+        jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args], queue: _1[:queue] } }
+      }
+    end
+    bytes = "#{Oj.dump(snapshots.as_json, mode: :strict, float_precision: 0, indent: 2)}\n"
+    FixtureRecording.verify(target, bytes)
+    FixtureRecording.verify(relabel_target, bytes)
+  end
+
   def generate!
     cases.each_with_index { |name, index| capture(name, index) }
   end
 
   it 'writes point counters filters and dependent scheduling' do
     generate!
+    capture_areas
   end
 end
