@@ -35,9 +35,12 @@ defmodule DawarichWeb.Api.Body do
   end
 
   def replay(conn, reason) do
-    if Dawarich.Standalone.enabled?(),
-      do: DawarichWeb.StandaloneError.respond(conn, "api_body"),
-      else: proxy_replay(conn, reason)
+    cond do
+      conn.state in [:sent, :chunked] -> halt(conn)
+      conn.private[:dawarich_native_api] -> DawarichWeb.RailsErrors.respond(conn, 500)
+      Dawarich.Standalone.enabled?() -> DawarichWeb.StandaloneError.respond(conn, "api_body")
+      true -> proxy_replay(conn, reason)
+    end
   end
 
   defp proxy_replay(conn, reason) do

@@ -390,6 +390,53 @@ defmodule DawarichWeb.A12f2JClosureTest do
     assert commands() == []
   end
 
+  @tag :a12f2_j_12
+  test "Owned native errors never call Rails after committed SQL cache mail storage token or remote effects",
+       c do
+    actor = user!(%{api_key: @key, points_count: 0, settings: %{"timezone" => "UTC"}})
+    user = Dawarich.Accounts.by_api_key(@key)
+
+    params = %{
+      "locations" => [
+        %{
+          "geometry" => %{"coordinates" => [13.4, 52.5]},
+          "properties" => %{"timestamp" => 1_790_000_000}
+        }
+      ]
+    }
+
+    conn = Plug.Test.conn(:post, "/api/v1/points", Jason.encode!(params))
+
+    conn =
+      conn
+      |> Plug.Conn.assign(:api_tag, "ingest")
+      |> DawarichWeb.Api.Respond.prepare()
+      |> Plug.Conn.assign(:api_user, user)
+      |> Plug.Conn.assign(:api_params, params)
+      |> Plug.Conn.assign(:api_context, %{
+        self_hosted?: true,
+        after_commit: fn -> raise "synthetic postcommit render failure" end
+      })
+      |> Plug.Conn.put_private(:dawarich_native_api, true)
+
+    sent = DawarichWeb.Api.IngestController.call(conn, {:native, :points})
+    assert sent.status == 500
+    assert [[1]] = Repo.query!("SELECT count(*) FROM points WHERE user_id=$1", [actor]).rows
+    upstream = Task.async(fn -> puma(c.upstream) end)
+
+    result =
+      try do
+        DawarichWeb.Api.Body.replay(sent, "postcommit failure")
+      rescue
+        exception -> {:unexpected_replay, exception.__struct__}
+      end
+
+    Task.shutdown(upstream, :brutal_kill)
+    assert %Plug.Conn{status: 500, state: :sent} = result
+    assert [[1]] = Repo.query!("SELECT count(*) FROM points WHERE user_id=$1", [actor]).rows
+    no_upstream!(c.upstream)
+  end
+
   defp bearer, do: [{"Authorization", "Bearer #{@key}"}, {"Accept", "application/json"}]
 
   defp route(method, path),
