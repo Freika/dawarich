@@ -148,7 +148,12 @@ defmodule DawarichWeb.TestEmailTest do
           Map.put(@env, "SMTP_STARTTLS", "true"),
           Map.put(@env, "SMTP_SSL", "true")
         ] do
-      assert_handoff(TestEmail.admit(base, context: %{self_hosted: true, oidc: false, env: env}))
+      before = snapshot()
+
+      assert {:ok, _, _, _, _, _} =
+               TestEmail.admit(base, context: %{self_hosted: true, oidc: false, env: env})
+
+      assert snapshot() == before
       refute_received {:mail, _}
     end
   end
