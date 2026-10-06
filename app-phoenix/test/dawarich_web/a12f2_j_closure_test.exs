@@ -18,6 +18,25 @@ defmodule DawarichWeb.A12f2JClosureTest do
     )
   end
 
+  @tag :review_user_zone
+  test "native API timezone admission preserves Rails numeric offsets and invalid-name fallback",
+       c do
+    fixture = Jason.decode!(File.read!("test/fixtures/api_foundation/golden.json"))
+
+    for name <- ~w(replay_zone_integer replay_zone_case) do
+      kase = Enum.find(fixture["cases"], &(&1["name"] == name))
+      for row <- kase["setup"], do: Dawarich.Test.ApiGolden.insert!("users", row)
+
+      Dawarich.Test.ApiGolden.check(
+        Dawarich.Test.ActivatedPlanGolden.activate(kase),
+        c.port,
+        c.upstream
+      )
+
+      for row <- kase["setup"], do: Repo.query!("DELETE FROM users WHERE id=$1", [row["id"]])
+    end
+  end
+
   @tag :a12f2_j_activate_b
   test "Merged photos places and search handlers are reachable through the real Endpoint", c do
     for {method, path} <- [

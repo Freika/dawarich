@@ -11,7 +11,7 @@ defmodule DawarichWeb.Api.PlanGoldenTest do
   end
 
   for kase <- @golden["cases"] do
-    @kase kase
+    @kase Dawarich.Test.ActivatedPlanGolden.activate(kase)
     test "golden #{kase["name"]}", %{port: port, upstream: upstream} do
       Enum.each(@kase["env"], fn {name, value} -> System.put_env(name, value) end)
 

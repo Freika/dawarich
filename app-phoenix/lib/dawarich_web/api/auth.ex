@@ -43,7 +43,7 @@ defmodule DawarichWeb.Api.Auth do
         |> assign(:api_request_id, request_id(conn))
         |> assign(:api_headers, Headers.dawarich(user != nil, version()))
         |> assign(:api_if_none_match, joined(conn, "if-none-match"))
-        |> admit(user, opts)
+        |> admit(native_user(conn, user), opts)
 
       {:replay, reason} ->
         Body.replay(conn, reason)
@@ -65,6 +65,12 @@ defmodule DawarichWeb.Api.Auth do
          {:ok, user} <- lookup(key),
          do: {:ok, format, vary, user}
   end
+
+  defp native_user(%{private: %{dawarich_native_api: true}}, user) when is_map(user) do
+    %{user | timezone: DawarichWeb.Api.UserZone.name(user.timezone)}
+  end
+
+  defp native_user(_conn, user), do: user
 
   defp native_or_legacy(conn, check),
     do: if(conn.private[:dawarich_native_api], do: :ok, else: check.(conn))
