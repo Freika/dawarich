@@ -94,6 +94,19 @@ defmodule DawarichWeb.A12f3aVClosureTest do
     assert rows("SELECT * FROM place_visits ORDER BY id") == unrelated
   end
 
+  @tag a12f3a_v04: true
+  test "V04: bulk update scope and coercions matches current Rails contract without a native-owner Rails effect" do
+    ctx = fixture("a12f3a-v04")
+    req = ctx.state["request"]
+    assert {:ok, result} = WebBulk.run(ScratchRepo, :update, ctx.user, req["params"], ctx)
+    assert result.count == 1
+    durable(ctx.state)
+    no_rails()
+    assert {:ok, [12]} = Dawarich.Visits.WebScope.ids("12,99")
+    assert {:ok, [12, 99]} = Dawarich.Visits.WebScope.ids(["12", "12", "99", "no"])
+    assert {:error, :too_many} = Dawarich.Visits.WebScope.ids(Enum.map(1..501, &to_string/1))
+  end
+
   defp fixture(name) do
     state = File.read!("test/fixtures/a8vv/visits/#{name}.json") |> Jason.decode!()
     u = hd(state["before"]["users"])
