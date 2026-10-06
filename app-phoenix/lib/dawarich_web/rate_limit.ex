@@ -22,7 +22,10 @@ defmodule DawarichWeb.RateLimit do
 
   def call(conn, _opts) do
     self_hosted = LayoutAssigns.self_hosted?()
-    now = System.os_time(:second)
+    now =
+      if conn.assigns[:api_now],
+        do: DateTime.to_unix(conn.assigns.api_now),
+        else: System.os_time(:second)
 
     case decide(conn, %{now: now, plan: &plan/1, repo: Jobs.repo(), self_hosted: self_hosted}) do
       {:pass, conn, counted, token} ->

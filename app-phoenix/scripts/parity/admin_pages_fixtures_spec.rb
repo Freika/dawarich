@@ -411,7 +411,9 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
       save_capture(capture)
     end
   end
-  def api_health_capture(name, path: '/api/v1/health', key: nil, bearer: nil, summary: { status: 'unknown', alarm: false }, limit_count: 0)
+
+  def api_health_capture(name, path: '/api/v1/health', key: nil, bearer: nil,
+                         summary: { status: 'unknown', alarm: false }, limit_count: 0)
     reset!
     Rack::Attack.reset!
     Rails.cache.clear
@@ -421,18 +423,27 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
     headers = { 'Host' => 'staging.dawarich.app', 'X-Forwarded-Proto' => 'https' }
     headers['Authorization'] = "Bearer #{bearer}" if bearer
     target = key.nil? ? path : "#{path}?api_key=#{CGI.escape(key)}"
-    limit_count.times { get target, headers: }
-    get(target, headers:)
-    body = response.parsed_body
-    raw = response.body
+    status = wire_headers = raw = nil
+    (limit_count + 1).times do
+      env = Rack::MockRequest.env_for("http://staging.dawarich.app#{target}")
+                            .merge(Rails.application.env_config)
+      headers.each { |name, value| env["HTTP_#{name.upcase.tr('-', '_')}"] = value }
+      status, wire_headers, wire_body = Rails.application.call(env)
+      raw = +''
+      wire_body.each { |part| raw << part }
+      wire_body.close if wire_body.respond_to?(:close)
+    end
+    body = JSON.parse(raw)
     if body['resume_url']
       body['resume_url'] = body['resume_url'].sub(/token=.*/, 'token=SUBSCRIPTION_TOKEN')
       raw = JSON.generate(body)
     end
     { 'name' => name, 'path' => path, 'query_key' => key, 'bearer' => bearer,
       'summary' => summary.stringify_keys, 'self_hosted' => DawarichSettings.self_hosted?,
-      'limit_count' => limit_count, 'status' => response.status, 'body' => body, 'raw_body' => raw,
-      'headers' => response.headers.to_h.transform_keys(&:downcase).except('x-request-id', 'x-runtime', 'etag', 'set-cookie') }
+      'limit_count' => limit_count, 'status' => status, 'body' => body, 'raw_body' => raw,
+      'headers' => wire_headers.to_a.group_by { |name, _| name.downcase }
+                              .transform_values { |pairs| pairs.map(&:last) }
+                              .except('x-request-id', 'x-runtime', 'etag', 'set-cookie') }
   end
 
   it 'writes the health and readiness HTTP corpus' do
@@ -476,12 +487,12 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
     cases << api_health_capture('ready_self_hosted_error', path: '/api/v1/ready')
     expect(cases.take(5).map { |reply| reply.fetch('body').fetch('phoenix').keys.sort }).to all(eq(%w[alarm status]))
     expect(cases.find { |reply| reply['name'] == 'cloud_throttled' }.fetch('status')).to eq(429)
-    File.write(dir.join('api_health.json'), "#{JSON.pretty_generate('version' => APP_VERSION, 'now' => now.iso8601, 'cases' => cases)}\n")
+    corpus = { 'version' => APP_VERSION, 'now' => now.iso8601, 'cases' => cases }
+    File.write(dir.join('api_health.json'), "#{JSON.pretty_generate(corpus)}\n")
   ensure
     Rack::Attack.enabled = saved_enabled
     Rack::Attack.reset!
     JobHealth.reset!
     ENV['JWT_SECRET_KEY'] = saved_env['JWT_SECRET_KEY']
   end
-
 end
