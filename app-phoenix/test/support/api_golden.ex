@@ -60,6 +60,11 @@ defmodule Dawarich.Test.ApiGolden do
   def insert!(table, row, repo) when is_map(row), do: insert!(table, [row], repo)
 
   def insert!(table, rows, repo) when is_list(rows) do
+    rows =
+      if table == "tracks",
+        do: Enum.map(rows, &Map.put_new(&1, "map_matching_data", %{})),
+        else: rows
+
     result =
       repo.query!(
         "INSERT INTO #{table} SELECT * FROM json_populate_recordset(NULL::#{table}, $1::text::json)",

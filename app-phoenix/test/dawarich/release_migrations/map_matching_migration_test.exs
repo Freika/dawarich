@@ -11,11 +11,11 @@ defmodule Dawarich.ReleaseMigrations.MapMatchingMigrationTest do
     index = List.keyfind(Unreleased.steps(), "20261006120100", 0)
     assert columns != nil
     assert index != nil
-    {_, add_columns, false} = ReleaseMigration.normalize(columns)
+    {_, add_columns, true} = ReleaseMigration.normalize(columns)
     {_, add_index, false} = ReleaseMigration.normalize(index)
 
     for _ <- 1..2 do
-      assert :ok = add_columns.(ScratchRepo)
+      assert {:ok, :ok} = ScratchRepo.transaction(fn -> add_columns.(ScratchRepo) end)
       assert :ok = add_index.(ScratchRepo)
     end
 
@@ -51,6 +51,50 @@ defmodule Dawarich.ReleaseMigrations.MapMatchingMigrationTest do
 
     assert :ok = add_index.(ScratchRepo)
     assert_index!()
+    retry_under_lock!(add_columns)
+  end
+
+  defp retry_under_lock!(add_columns) do
+    scratch_sql!("ALTER TABLE tracks DROP COLUMN map_matching_input_digest")
+    parent = self()
+
+    blocker =
+      Task.async(fn ->
+        ScratchRepo.transaction(fn ->
+          scratch_sql!("LOCK TABLE tracks IN ACCESS SHARE MODE")
+          send(parent, {:locked, self()})
+          receive do: (:release -> :ok)
+        end)
+      end)
+
+    receive do: ({:locked, pid} when pid == blocker.pid -> :ok)
+    handler = {__MODULE__, make_ref()}
+    event = ScratchRepo.config()[:telemetry_prefix] ++ [:query]
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        event,
+        fn _, _, metadata, pid ->
+          case metadata.result do
+            {:error, %Postgrex.Error{postgres: %{code: :lock_not_available}}} ->
+              send(pid, :release)
+
+            _ ->
+              :ok
+          end
+        end,
+        blocker.pid
+      )
+
+    try do
+      assert {:ok, :ok} = ScratchRepo.transaction(fn -> add_columns.(ScratchRepo) end)
+      assert {:ok, :ok} = Task.await(blocker)
+      assert ReleaseMigration.column?(ScratchRepo, "tracks", "map_matching_input_digest")
+    after
+      send(blocker.pid, :release)
+      :telemetry.detach(handler)
+    end
   end
 
   defp assert_index! do
