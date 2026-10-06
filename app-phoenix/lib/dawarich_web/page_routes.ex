@@ -11,6 +11,9 @@ defmodule DawarichWeb.PageRoutes do
       scope "/" do
         pipe_through :map_write
 
+        post "/tracks/recalculation", DawarichWeb.TrackRecalculationActions, :create,
+          metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+
         post "/areas", DawarichWeb.AreaActions, :create,
           metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
 
