@@ -131,6 +131,65 @@ defmodule DawarichWeb.A12f3aFResumeTest do
     Map.merge(c, %{blob_id: blob.id, path: Dawarich.Storage.disk_path(c.root, key)})
   end
 
+  @tag a12f3a_f16: true
+  test "F16: normal native resume lineage matches current Rails contract without a native-owner Rails effect",
+       c do
+    cases = [
+      {10, Dawarich.Imports.Csv, "csv_import_1001", false},
+      {0, Dawarich.Imports.GoogleSemanticHistory, "semantic_import_1001", false},
+      {2, Dawarich.Imports.GoogleRecords, "records_import_1001", false},
+      {1, Dawarich.Imports.Owntracks, "owntracks_import_1001", false},
+      {6, Dawarich.Imports.Geojson, "geojson_import_1001", true},
+      {3, Dawarich.Imports.GooglePhone, "phone_import_1001", true},
+      {9, Dawarich.Imports.Kml, "kml_import_1001", false}
+    ]
+
+    for {source, adapter, name, atomic} <- cases do
+      reset!(ScratchRepo)
+      c = Map.merge(c, Dawarich.ImportLeaseFixture.create())
+      rows("UPDATE imports SET source=$2 WHERE id=$1", [c.import.id, source])
+
+      rows("UPDATE oban.oban_jobs SET worker='Dawarich.Imports.ProcessWorker' WHERE id=$1", [
+        c.job.id
+      ])
+
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.process_normal", :oban)
+      dir = Path.expand("../fixtures/imports/formats", __DIR__)
+      capture = Jason.decode!(File.read!(Path.join(dir, name <> ".json")))
+      filename = capture["input"]
+      c = attach(c, filename, File.read!(Path.join(dir, filename)))
+      opts = Dawarich.Imports.ProcessWorker.lease_options()
+
+      assert_raise LeaseLost, fn ->
+        run(
+          c,
+          Dawarich.Imports.NormalResume,
+          adapter,
+          %{on_batch: fn _ -> raise LeaseLost end},
+          opts
+        )
+      end
+
+      committed = if atomic, do: 0, else: 1000
+
+      assert [[committed]] ==
+               rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
+
+      rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [c.job.id])
+      c = %{c | job: %{c.job | attempt: 2}}
+      assert {:ok, :ok} = run(c, Dawarich.Imports.NormalResume, adapter, %{}, opts)
+
+      raw = if source == 0, do: 0, else: 1001
+
+      assert [[raw, 0]] ==
+               rows("SELECT raw_points,doubles FROM imports WHERE id=$1", [c.import.id])
+
+      assert [[1001]] = rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
+      assert [] = rows("SELECT kind FROM phoenix.rails_commands")
+      assert [] = rows("SELECT event_id FROM phoenix.import_handoffs")
+    end
+  end
+
   defp run(c, resume, adapter, extra, opts \\ []) do
     Lease.with_import(
       ScratchRepo,

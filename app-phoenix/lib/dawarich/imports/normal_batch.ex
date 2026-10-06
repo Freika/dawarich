@@ -11,10 +11,14 @@ defmodule Dawarich.Imports.NormalBatch do
       batch: [],
       size: 0,
       cache: %{},
-      prepared: 0,
+      prepared: Map.get(context, :resume_offset, 0),
+      resume_skip: Map.get(context, :resume_offset, 0),
       inserted: 0
     }
   end
+
+  def push(%{resume_skip: remaining} = state, _attrs) when remaining > 0,
+    do: %{state | resume_skip: remaining - 1}
 
   def push(state, attrs) do
     state = %{state | batch: [attrs | state.batch], size: state.size + 1}
@@ -39,19 +43,23 @@ defmodule Dawarich.Imports.NormalBatch do
   def finish(state), do: flush(state)
 
   defp write(state) do
-    BulkWriter.write(
-      Enum.reverse(state.batch),
-      state.import,
-      state.cache,
-      state.context.repo,
-      fn fun -> Fence.run(state.context, fun) end
-    )
+    Dawarich.Imports.NormalResume.batch(state.context, state.prepared, state.size, fn ->
+      BulkWriter.write(
+        Enum.reverse(state.batch),
+        state.import,
+        state.cache,
+        state.context.repo,
+        fn fun -> Fence.run(state.context, fun) end
+      )
+    end)
   rescue
     error in LeaseLost ->
       reraise error, __STACKTRACE__
 
     error ->
-      if state.policy == :atomic, do: reraise(error, __STACKTRACE__)
+      if state.policy == :atomic or Map.has_key?(state.context, :resume_lease),
+        do: reraise(error, __STACKTRACE__)
+
       NormalBatchErrors.notify!(state.import, state.context, error)
       {0, state.cache}
   end

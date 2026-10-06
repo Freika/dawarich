@@ -52,3 +52,11 @@ F16 reuses it. Coexistence keeps its existing source-owned handback behavior.
 Evidence: missing GpxResume was RED; the aggregate passes; bypassing the saved
 attachment check fails the changed-blob assertion; restored affected GPX tests
 pass (54 tests). Progress uses the existing native PubSub stream in standalone.
+
+F16 uses the same fenced receipt for CSV, Records, OwnTracks, Semantic History,
+GeoJSON, Phone Takeout and KML. The existing NormalBatch has the minimum cursor
+seam needed by these codecs; atomic formats retain whole-import rollback.
+Semantic History retains Rails’ zero raw_points counter quirk. Initial RED
+exposed the missing normal batch interruption/checkpoint behavior; GREEN passes.
+Forcing resume_offset to zero fails retry; restored GREEN passes. The Semantic
+History table extension had its own missing-checkpoint RED and GREEN.
