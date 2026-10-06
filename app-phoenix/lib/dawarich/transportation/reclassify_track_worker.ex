@@ -61,11 +61,15 @@ defmodule Dawarich.Transportation.ReclassifyTrackWorker do
   defp progress!(_repo, nil, _event_id), do: :ok
 
   defp progress!(repo, user_id, event_id) do
-    if Processed.claim!(repo, event_id, @handler),
-      do:
+    if Processed.claim!(repo, event_id, @handler) do
+      if Dawarich.Transportation.RecalculationStatus.native?(user_id) do
+        Dawarich.Transportation.RecalculationStatus.increment(user_id, event_id)
+      else
         RailsCommands.insert!(repo, "transport_progress", %{
           "user_id" => user_id,
           "event_id" => event_id
         })
+      end
+    end
   end
 end
