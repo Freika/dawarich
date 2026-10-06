@@ -1,6 +1,6 @@
 # A12f-4 runtime preparation
 
-Status: preparation only. Coexistence remains the default; `DAWARICH_RAILS=off` selects the existing standalone implementation. No Rails source retirement or final release acceptance is authorized by this package. Last updated: 2026-10-06.
+Status: preparation only. Coexistence remains the default; `DAWARICH_RAILS=off` selects the existing standalone implementation. No Rails source retirement or final release acceptance is authorized by this package. Last updated: 2026-10-07.
 
 ## Prerequisite census
 
@@ -62,3 +62,12 @@ The first full seed-404 gate recorded 8989 tests and one existing peer-VM startu
 
 
 The peer-corrected full gate had 8989 tests and one existing public-home fixture-state failure: shared job-state version rows caused a genuine newer-version badge absent from the recorded Rails packet. `public_home_test.exs` now binds job-state reads to its own sandbox Repo and establishes the recorded no-update precondition inside the rollback transaction, restoring application configuration afterwards. The existing public-home matrix (`a12f4_gate_home`) has actual repo-isolation assertion RED, GREEN, shared-repo mutation failure and restored GREEN; all five original public-home cases pass. Product version notifications, registration, retained HTML/JSON fixtures and source quirks are unchanged.
+
+
+## Completed preparation gates
+
+Tested code head: `90cf60e56` on `feat/a12f4-r`, based on `4045f0540`. Required controller seedrun at seed 404 completed normally: **8989 tests, 0 failures**, exit 0. Partition summaries: 2753/0, 3223/0 and 3013/0; 11 existing exclusions and 3 existing skips, none introduced by this package. Both earlier failed runs are preserved alongside the successful run in the controller report artifacts.
+
+Scoped runtime batch: 143 tests, 0 failures. Retained Rails lifecycle/Cloud entrypoint characterization: 58 examples, 0 failures; Swagger restored. Forced warnings-as-errors compilation and whole-tree formatting pass on the tested head. Eight implementation commits pass the branch-range gitleaks scan. No Ruby production files changed; changed-Ruby specs/RuboCop are inapplicable. Final report records the documentation evidence commit, final branch scan, clean tree and owned-service cleanup.
+
+These gates complete the authorized preparation only. Final default selection/removal, collective prerequisite acceptance, integration seed 202 and real release/image/source-drain proofs remain the controller handoff described above.
