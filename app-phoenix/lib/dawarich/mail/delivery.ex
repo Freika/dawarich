@@ -8,7 +8,8 @@ defmodule Dawarich.Mail.Delivery do
   INSERT INTO phoenix.delivery_claims AS c (handler, provider_key, event_id, claimed_at)
   VALUES ($1, $2, $3, $4)
   ON CONFLICT (handler, provider_key) DO UPDATE
-    SET event_id = EXCLUDED.event_id, claimed_at = EXCLUDED.claimed_at
+    SET event_id = EXCLUDED.event_id,
+        claimed_at = CASE WHEN c.event_id = EXCLUDED.event_id THEN c.claimed_at ELSE EXCLUDED.claimed_at END
     WHERE c.delivered_at IS NULL
       AND (c.event_id = EXCLUDED.event_id
            OR c.claimed_at < EXCLUDED.claimed_at - make_interval(secs => #{@takeover_seconds}))
@@ -20,6 +21,17 @@ defmodule Dawarich.Mail.Delivery do
       [[_]] -> :send
       [] -> if delivered?(repo, handler, key), do: :delivered, else: :held
     end
+  end
+
+  def issued_at(repo, handler, key) do
+    [[at]] =
+      repo.query!(
+        "SELECT claimed_at FROM phoenix.delivery_claims WHERE handler=$1 AND provider_key=$2",
+        [handler, key],
+        log: false
+      ).rows
+
+    DateTime.to_unix(at)
   end
 
   def delivered!(repo, handler, key, event_id, now \\ DateTime.utc_now()) do
