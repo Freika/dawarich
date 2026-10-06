@@ -8,8 +8,6 @@ defmodule DawarichWeb.ImportsRequest do
   alias DawarichWeb.{RailsForm, RailsProxy}
   alias Plug.Conn.Query
 
-  @keys ~w(authenticity_token _method trust_source import_id commit)
-  @import_keys ~w(name source)
   @rack_params 4_096
   @max 2_097_152
 
@@ -75,7 +73,7 @@ defmodule DawarichWeb.ImportsRequest do
   defp decode(conn, parse) do
     body = parse.(conn.private.dawarich_raw_body)
 
-    if Enum.all?(body, &field?/1),
+    if Enum.all?(body, &request_module(conn).field?/1),
       do: {:ok, assign_params(conn, body)},
       else: {:replay, conn, "parameter shape"}
   rescue
@@ -105,11 +103,10 @@ defmodule DawarichWeb.ImportsRequest do
     {name, String.replace_suffix(value, "\r\n", "")}
   end
 
-  defp field?({"import", %{} = import}), do: Enum.all?(import, &import_field?/1)
-  defp field?({key, value}), do: key in @keys and is_binary(value)
+  def request_module(%{path_info: ["imports"], method: "POST"}),
+    do: DawarichWeb.Imports.UploadForm
 
-  defp import_field?({"files", files}) when is_list(files), do: Enum.all?(files, &is_binary/1)
-  defp import_field?({key, value}), do: key in @import_keys and is_binary(value)
+  def request_module(_), do: DawarichWeb.Imports.UpdateForm
 
   defp assign_params(conn, body) do
     %{conn | body_params: body, params: Map.merge(body, conn.path_params)}
