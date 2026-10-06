@@ -395,6 +395,38 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
   end
 
+  @tag a12f3a_q12: true
+  test "Q12: public yearly digest and expiration matches current Rails contract without a native-owner Rails effect",
+       %{user: user, context: ctx} do
+    stamp = NaiveDateTime.utc_now(:second)
+
+    Dawarich.Test.SeedIds.insert_all!(Repo, "countries", [
+      %{name: "Germany", iso_a2: "DE", iso_a3: "DEU", created_at: stamp, updated_at: stamp}
+    ])
+
+    uuid = hd(fixture("12"))["uuid"]
+
+    digest!(user.id, %{
+      year: 2024,
+      distance: 50_000,
+      sharing_uuid: Ecto.UUID.dump!(uuid),
+      toponyms: [toponym("Germany", ["Berlin"])],
+      first_time_visits: %{"countries" => ["Germany"], "cities" => ["Berlin"]},
+      monthly_distances: %{"3" => 1000},
+      time_spent_by_location: %{"countries" => [%{"name" => "Germany", "minutes" => 1000}]}
+    })
+
+    assert_public_cases(
+      user,
+      ctx,
+      "12",
+      "digest",
+      "digests",
+      uuid,
+      "div.max-w-xl.mx-auto.px-4.py-8"
+    )
+  end
+
   defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do
     for row <- fixture(task) do
       settings = %{
