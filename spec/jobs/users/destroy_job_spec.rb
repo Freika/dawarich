@@ -33,12 +33,19 @@ RSpec.describe Users::DestroyJob, type: :job do
       end
 
       it 'enqueues destruction webhook with the deleted user_id and email' do
+        allow(Users::Destroy).to receive(:new).and_call_original
+        import = create(:import, user:)
+        point = create(:point, user:, import:)
         user_id = user.id
         user_email = user.email
 
         expect { described_class.perform_now(user_id) }
-          .to have_enqueued_job(Users::DestructionWebhookJob)
-          .with(user_id, user_email)
+          .to have_enqueued_job(Users::DestructionWebhookJob).with(user_id, user_email)
+
+        expect(User.unscoped.find_by(id: user_id)).to be_nil
+        expect(Import.find_by(id: import.id)).to be_nil
+        expect(Point.find_by(id: point.id)).to be_nil
+        expect { described_class.perform_now(user_id) }.not_to have_enqueued_job(Users::DestructionWebhookJob)
       end
     end
 
