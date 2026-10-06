@@ -3,6 +3,24 @@
 require 'json'
 require 'time'
 
+secret = 'phoenix-a2-cookie-fixture-secret-not-for-production'
+Rails.application.config.secret_key_base = secret
+Rails.application.env_config['action_dispatch.secret_key_base'] = secret
+Rails.application.env_config['action_dispatch.key_generator'] = Rails.application.key_generator
+Devise.secret_key = secret
+require_relative 'recovery/oracle_support'
+RecoveryOracle.deterministic!('credentials-raw-')
+random = Random.new(1153)
+SecureRandom.singleton_class.prepend(Module.new do
+  define_method(:random_bytes) { |n = 16| random.bytes(n || 16) }
+end)
+OpenSSL::Random.singleton_class.prepend(Module.new do
+  define_method(:random_bytes) { |n| random.bytes(n) }
+end)
+OpenSSL::Cipher.prepend(Module.new do
+  define_method(:random_iv) { self.iv = random.bytes(iv_len) }
+end)
+
 unless Rails.env.test? && ENV.fetch('DATABASE_NAME').start_with?('dawarich_test')
   raise 'A11 oracle requires its own test database'
 end
@@ -16,7 +34,6 @@ FIELDS = %w[id encrypted_password failed_attempts locked_at unlock_token remembe
 
 def state(user)
   attributes = user.reload.attributes.slice(*FIELDS)
-  attributes['unlock_token'] &&= '[issued]'
   attributes.transform_values { |value| value.respond_to?(:iso8601) ? value.utc.iso8601(6) : value }
 end
 
@@ -56,7 +73,7 @@ end
 
 email = 'a11-credentials-oracle@dawarich.test'
 User.unscoped.where(email: email).delete_all
-user = User.new(email: email, password: 'safepassword12', status: :active,
+user = User.new(id: 20_115_300, email: email, password: 'safepassword12', status: :active,
                 active_until: Time.utc(2099, 1, 1))
 user.skip_auto_trial = true
 user.skip_family_sync = true
@@ -164,6 +181,23 @@ ActionController::Base.allow_forgery_protection = false
   login(attempt, email, password)
   result[name] = { setup: columns, response: response(attempt), user: state(user) }
 end
+
+DawarichSettings.set_registration_enabled(true)
+ActiveRecord::Base.connection.execute("SELECT setval(pg_get_serial_sequence('users', 'id'), 20115302, false)")
+User.unscoped.where(email: 'a12f2f-registration@dawarich.test').delete_all
+signup = client
+signup.get('/users/sign_up')
+result[:registration_form] = response(signup)
+signup.post('/users', params: { user: { email: 'a12f2f-registration@dawarich.test',
+                                       password: 'safepassword12', password_confirmation: 'safepassword12' } })
+created = User.find_by!(email: 'a12f2f-registration@dawarich.test')
+result[:registration] = response(signup).merge(status_value: created.status, plan: created.plan,
+                                               api_key_present: created.api_key.present?)
+signup.delete('/users/sign_out')
+duplicate = client
+duplicate.post('/users', params: { user: { email: created.email, password: 'safepassword12',
+                                          password_confirmation: 'safepassword12' } })
+result[:duplicate_registration] = response(duplicate)
 
 File.write(ARGV.fetch(0), "#{JSON.pretty_generate(result)}\n")
 puts "Captured A11 request oracle: #{result.keys.size - 5} bounded cases; test delivery only"

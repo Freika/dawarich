@@ -1,8 +1,14 @@
 # frozen_string_literal: true
 
+secret = 'phoenix-a2-cookie-fixture-secret-not-for-production'
+Rails.application.config.secret_key_base = secret
+Rails.application.env_config['action_dispatch.secret_key_base'] = secret
+Rails.application.env_config['action_dispatch.key_generator'] = Rails.application.key_generator
+Devise.secret_key = secret
 require_relative 'oracle_support'
 
 RecoveryOracle.deterministic!('http-raw-')
+User.before_validation(on: :create) { self.id ||= 20_115_301 if email == 'recovery-http-oracle@dawarich.test' }
 User.class_eval do
   def send_devise_notification(kind, *args)
     RecoveryOracle.notifications << { kind:, raw: args.first }
@@ -79,6 +85,21 @@ result[:unlocked_unlock_request] = recovery_response(session)
 session = recovery_session
 session.post('/users/unlock', params: { user: { email: 'unknown@dawarich.test' } })
 result[:unknown_unlock_request] = recovery_response(session)
+
+user = RecoveryOracle.fresh_user(EMAIL)
+raw = user.send_reset_password_instructions
+user.update_columns(reset_password_sent_at: RecoveryOracle::NOW - 21_600 - 1)
+session = recovery_session
+session.patch('/users/password', params: { user: { reset_password_token: raw, password: 'newpassword12345',
+                                                  password_confirmation: 'newpassword12345' } })
+result[:expired_patch_reset] =
+  recovery_response(session).merge(token_retained: user.reload.reset_password_token.present?)
+
+user.update_columns(reset_password_sent_at: RecoveryOracle::NOW - 21_600)
+session = recovery_session
+session.patch('/users/password', params: { user: { reset_password_token: raw, password: 'newpassword12345',
+                                                  password_confirmation: 'newpassword12345' } })
+result[:boundary_patch_reset] = recovery_response(session).merge(token_cleared: user.reload.reset_password_token.nil?)
 
 RecoveryOracle.write(ARGV.fetch(0), result)
 puts 'Captured Rails recovery HTTP responses; delivery disabled'
