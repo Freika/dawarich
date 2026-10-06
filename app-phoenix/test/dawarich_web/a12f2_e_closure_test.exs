@@ -140,6 +140,87 @@ defmodule DawarichWeb.A12f2EClosureTest do
     assert [] == commands()
   end
 
+  @tag :a12f2_e_04
+  test "Pending ticket claims preserve expiry one actor conversion and rollback compatible native production" do
+    alias Dawarich.PendingImports.Claim
+    user_id = user!(%{settings: %{"timezone" => "UTC"}})
+    other = user!()
+    user = %{id: user_id, status: 1, subscription_source: 1, settings: %{"timezone" => "UTC"}}
+    ctx = context()
+    ticket = Ecto.UUID.generate()
+
+    [[pending]] =
+      Repo.query!(
+        "INSERT INTO pending_imports(claim_ticket,original_filename,origin,expires_at,created_at,updated_at) VALUES($1,'pending.json','https://dawarich.app',$2,now(),now()) RETURNING id",
+        [Ecto.UUID.dump!(ticket), ~N[2026-10-07 12:00:00]]
+      ).rows
+
+    blob =
+      Api.attach(
+        Repo,
+        "PendingImport",
+        pending,
+        upload!("pending.json", "{}"),
+        ctx,
+        "application/json"
+      )
+
+    Ownership.put!(Repo, "command:imports.process_normal", :oban)
+    assert %{"id" => import, "name" => "pending.json"} = Claim.claim(Repo, user, ticket, ctx)
+    assert nil == Claim.claim(Repo, %{user | id: other}, ticket, ctx)
+    assert nil == Claim.claim(Repo, user, ticket, ctx)
+
+    assert [[^user_id]] =
+             Repo.query!("SELECT claimed_by_user_id FROM pending_imports WHERE id=$1", [pending]).rows
+
+    assert [[blob_id]] =
+             Repo.query!(
+               "SELECT blob_id FROM active_storage_attachments WHERE record_type='Import' AND record_id=$1",
+               [import]
+             ).rows
+
+    assert blob_id == blob.id
+
+    assert [[1]] =
+             Repo.query!(
+               "SELECT count(*) FROM job_outbox WHERE command_type='imports.process_normal'"
+             ).rows
+
+    assert nil == Claim.claim(Repo, user, "not-a-ticket", ctx)
+    assert nil == Claim.claim(Repo, user, Ecto.UUID.generate(), ctx)
+
+    Repo.query!(
+      "UPDATE pending_imports SET claimed_at=NULL,claimed_by_user_id=NULL WHERE id=$1",
+      [pending]
+    )
+
+    for i <- 1..4,
+        do:
+          Repo.query!(
+            "INSERT INTO imports(user_id,name,created_at,updated_at) VALUES($1,$2,now(),now())",
+            [user_id, "trial-limit-#{i}.json"]
+          )
+
+    assert {:error, :trial_limit} =
+             Claim.claim(Repo, %{user | status: 2, subscription_source: nil}, ticket, %{
+               ctx
+               | now: ~U[2026-10-06 12:00:01Z]
+             })
+
+    assert [[nil]] =
+             Repo.query!("SELECT claimed_at FROM pending_imports WHERE id=$1", [pending]).rows
+
+    Repo.query!("DELETE FROM imports WHERE user_id=$1 AND name LIKE 'trial-limit-%'", [user_id])
+
+    Repo.query!(
+      "UPDATE pending_imports SET claimed_at=NULL,claimed_by_user_id=NULL,expires_at=$2 WHERE id=$1",
+      [pending, ~N[2026-10-05 12:00:00]]
+    )
+
+    assert nil == Claim.claim(Repo, user, ticket, ctx)
+    assert [[1]] = Repo.query!("SELECT count(*) FROM imports WHERE user_id=$1", [user_id]).rows
+  end
+
   defp context do
     root = Path.join(System.tmp_dir!(), "a12f2e-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
