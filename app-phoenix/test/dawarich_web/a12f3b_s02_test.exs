@@ -1,6 +1,5 @@
 defmodule DawarichWeb.A12f3bS02Test do
   use Dawarich.ApiEndpointCase
-  import Plug.Conn
   alias Dawarich.{RailsCookies, RailsSecret, SharedLinks}
   alias Dawarich.Photos.ProviderCache
   alias Dawarich.SharedApi.Closure
@@ -483,33 +482,7 @@ defmodule DawarichWeb.A12f3bS02Test do
     end)
   end
 
-  defp response(c, id, action, headers \\ [], method \\ "GET")
-
-  defp response(_c, id, action, headers, "HEAD") do
-    [path | query] = String.split(action, "?", parts: 2)
-    params = if query == [], do: %{}, else: URI.decode_query(hd(query))
-    ["photos" | rest] = String.split(path, "/")
-    params = Map.put(params, "id", id)
-    params = if rest == [], do: params, else: Map.put(params, "photo_id", hd(rest))
-    conn = Plug.Test.conn("HEAD", "/api/v1/shared/#{id}/#{action}")
-
-    conn =
-      Enum.reduce(headers, conn, fn {k, v}, acc -> put_req_header(acc, String.downcase(k), v) end)
-
-    conn = %{conn | path_params: Map.take(params, ~w(id photo_id))}
-
-    result =
-      conn
-      |> Plug.Head.call([])
-      |> assign(:api_params, params)
-      |> assign(:api_now, @now)
-      |> assign(:api_tag, "api")
-      |> DawarichWeb.Api.SharedController.call(if(rest == [], do: :photos, else: :thumbnail))
-
-    {result.status, result.resp_headers, result.resp_body}
-  end
-
-  defp response(c, id, action, headers, method),
+  defp response(c, id, action, headers \\ [], method \\ "GET"),
     do:
       c.port
       |> request(

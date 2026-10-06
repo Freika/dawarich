@@ -23,22 +23,24 @@ request uses the share owner's configured credentials and PhotoPrism preview
 token; another user's token never authorizes the fetch.
 
 `a12f3b_s02_test.exs` covers real standalone GET requests, actual local providers,
-source-recorded metadata responses, deterministic provider timeouts, native
-controller HEAD behavior, ACL caps, credentials and unchanged outbox/blob
+source-recorded metadata responses, deterministic provider timeouts, real
+HTTP HEAD behavior, ACL caps, credentials and unchanged outbox/blob
 footprints. Both named tests failed before the coordinate fix. M-S02a removes
 the photo toggle; M-S02b uses an owner-wide unfiltered list for thumbnails.
 Both mutations must fail their selector and pass after manual restoration.
 
-## HOT integration boundary
+## Minimum HEAD integration seam
 
-The existing Strangler gate rejects slice-owned HEAD requests before they reach
-the shared controller. Direct controller tests prove photo HEAD semantics, but
-mounted standalone photo HEAD requests still return 404 at this baseline.
-Plan A assigns Strangler to HOT. The minimal proposed exception accepts
-standalone HEAD only for `:api_shared` routes whose action is `:photos` or
-`:thumbnail`, using the existing authorization pipeline and Plug.Head.
-The controller must approve that exception or apply it during HOT integration.
-Coexistence HEAD hand-back and other API slices must retain their current gates.
+The baseline Strangler gate rejected slice-owned HEAD requests before they
+reached the shared controller. The brief's minimum-dependency-seam allowance
+was used for a four-line exception in this otherwise HOT-owned module. It
+accepts standalone HEAD only for `:api_shared` routes whose action is `:photos`
+or `:thumbnail`, using the existing authorization pipeline and Plug.Head.
+The actual socket assertions were RED before this seam and GREEN afterwards.
+Removing the seam fails the HEAD assertion and restoring it passes again.
+Coexistence HEAD hand-back and other API slices retain their current gates.
+HOT must retain this exact scope when integrating the task; no route, source
+pin or other shared-file change is required.
 
 Mandatory privacy/security review follows this task. Full acceptance evidence
 is recorded in the controller's S02 implementation report. This handoff does

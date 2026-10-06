@@ -96,16 +96,22 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
       ['missing_time', { json_ids: ['public-0'], acl_size: 1 }],
       ['missing_type', { json_ids: [], acl_size: nil }],
       ['timeout', { json_ids: [], acl_size: 0 }],
-      ['prism_strings', { json_ids: %w[public-0 public-1], acl_size: 2 }]
+      ['prism_strings', { json_ids: %w[public-0 public-1], acl_size: 2 }],
+      ['head', { acl_size: 2 }]
     ]
     results = variants.map do |variant, expected|
       entry = { name: "s02_#{variant}", action: 'photos', seed: :provider, photo_variant: variant,
+                method: variant == 'head' ? :head : :get,
                 link: { settings: { 'show_photos' => true } }, **expected }
       kase = { method: :get, auth: :none, expect: :own, env: {}, content: {},
                path: "/api/v1/shared/#{ApiSharedGoldenOracle::LINK}/photos" }.merge(entry)
       result = places_record(kase, oracle: ApiSharedGoldenOracle, strict: true)
       expect(result.dig('response', 'status')).to eq(200)
-      expect(JSON.parse(result.dig('response', 'body')).map { _1.fetch('id') }).to eq(expected[:json_ids])
+      if entry[:method] == :head
+        expect(result.dig('response', 'body')).to eq('')
+      else
+        expect(JSON.parse(result.dig('response', 'body')).map { _1.fetch('id') }).to eq(expected[:json_ids])
+      end
       expect(result.fetch('after').fetch('shared_links')).to eq(
         ApiSharedGoldenOracle.setups.fetch(result.fetch('setup')).to_h.fetch('shared_links')
       )
