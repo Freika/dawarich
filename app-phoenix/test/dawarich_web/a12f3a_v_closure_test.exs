@@ -151,6 +151,22 @@ defmodule DawarichWeb.A12f3aVClosureTest do
            ]) == [[true], [true]]
   end
 
+  @tag a12f3a_v06: true
+  test "V06: merge noted visits and same-day checks matches current Rails contract without a native-owner Rails effect" do
+    ctx = fixture("a12f3a-v06")
+    req = ctx.state["request"]
+    assert {:ok, result} = WebMerge.run(ScratchRepo, ctx.user, req["params"]["visit_ids"], ctx)
+    durable(ctx.state)
+    assert rows("SELECT id FROM notes ORDER BY id") == []
+    assert rows("SELECT id FROM place_visits ORDER BY id") == []
+    assert rows("SELECT id FROM visits WHERE id=ANY($1)", [result.source_ids]) == []
+
+    assert ParityHTML.normalize(DawarichWeb.VisitStreams.render(:merge, result, ctx)) ==
+             ParityHTML.normalize(File.read!("test/fixtures/a8vv/visits/merge_noted.html"))
+
+    no_rails()
+  end
+
   defp fixture(name) do
     state = File.read!("test/fixtures/a8vv/visits/#{name}.json") |> Jason.decode!()
     u = hd(state["before"]["users"])
