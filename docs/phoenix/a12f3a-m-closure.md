@@ -32,4 +32,10 @@ Calendar frames accept the source single-digit month form and preserve complete 
 
 The initial aggregate failed admission for `2026-9`. Native month normalization passed. Extending the visit query into the next local month failed frame parity; restoring passed. Malformed scalar months return a terminal native error instead of replay. Visit/calendar invalidation belongs V09/shared effect owners; this reader recomputes natively and creates no cache jobs.
 
-M05–M07 closure and final full-suite gates are pending. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.
+## M05 — track-info frame
+
+The current base already has owner/missing/foreign track isolation and source parity. The aggregate is reconciled as initially GREEN, not an invented RED. M03's shared frame admission also covers locale markers. The lookup now lives in `Timeline.DayAssociations.track/3`, with the existing `DayRows.track/3` interface delegated unchanged.
+
+Removing the `user_id` predicate fails the foreign-track `:not_found` assertion; restoring passes. The source track payload, DOM IDs, units and localized frame body are compared. No provider calls or job effects are added. Non-numeric path IDs and JSON/format routing remain A12f-2/O transport handoffs.
+
+M06–M07 closure and final full-suite gates are pending. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.

@@ -4,7 +4,6 @@ defmodule DawarichWeb.MapFramesGate do
   import Plug.Conn, only: [get_req_header: 2]
 
   alias Dawarich.Entitlements
-  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
 
   @types ["text/html", "application/xhtml+xml", "text/vnd.turbo-stream.html", "*/*"]

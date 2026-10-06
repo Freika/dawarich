@@ -1,7 +1,33 @@
 defmodule Dawarich.Timeline.DayAssociations do
   @moduledoc false
+  import Dawarich.Timeline.Sql
   alias Dawarich.UserTimeZone
   alias Dawarich.MapApi.Segments
+
+  def track(user, id, repo) do
+    """
+    SELECT t.id, t.distance, t.avg_speed, t.elevation_gain, t.elevation_loss, t.dominant_mode,
+           #{local("t.start_at")}, #{offset("t.start_at")}, z.name
+    FROM tracks t CROSS JOIN z WHERE t.id = $1 AND t.user_id = $2
+    """
+    |> UserTimeZone.query!([id, user.id], user.settings || %{}, repo)
+    |> Map.fetch!(:rows)
+    |> case do
+      [[id, distance, speed, gain, loss, mode, start_local, start_offset, zone]] ->
+        %{
+          id: id,
+          distance: distance,
+          avg_speed: speed,
+          elevation_gain: gain,
+          elevation_loss: loss,
+          mode: mode && Segments.mode(mode),
+          started_at: iso(start_local, start_offset, zone)
+        }
+
+      [] ->
+        nil
+    end
+  end
 
   def suggestions([], _repo), do: %{}
 

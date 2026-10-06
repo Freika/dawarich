@@ -90,6 +90,15 @@ defmodule DawarichWeb.A12f3aMClosureTest do
     check_frames("m04", :calendar, &MapFramesGate.calendar?/2)
   end
 
+  @tag a12f3a_m05: true
+  test "M05: track-info frame matches current Rails contract without a native-owner Rails effect" do
+    check_frames("m05", :track_info, &MapFramesGate.track?/2)
+    user = Dawarich.Accounts.get(7111)
+    assert :not_found = MapFrames.body(:track_info, %{user: user, id: "999999", locale: "en"})
+    other = FrameSeeds.user!(89005)
+    assert :not_found = MapFrames.body(:track_info, %{user: other, id: "7481", locale: "en"})
+  end
+
   defp check_frames(name, action, gate) do
     [first | _] = cases = load(name)["cases"]
     user = FrameSeeds.seed!(first)
