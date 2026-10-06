@@ -12,7 +12,6 @@ defmodule DawarichWeb.RateLimit do
   alias DawarichWeb.RateLimit.{Request, Rules}
 
   @message "API rate limit exceeded. Please wait before making more requests."
-  @cors_resource "/api/v1/imports/pending"
 
   @impl true
   def init(opts), do: opts
@@ -53,9 +52,6 @@ defmodule DawarichWeb.RateLimit do
     candidates = Enum.filter(Rules.throttles(), fn rule -> elem(rule, 4).(facts) end)
 
     cond do
-      conn.request_path |> URI.decode() |> Path.expand("/") == @cors_resource ->
-        {:defer, conn, [], "Rack CORS resource"}
-
       candidates == [] and not Rules.blocklist_path?(facts) ->
         {:pass, conn, [], nil}
 

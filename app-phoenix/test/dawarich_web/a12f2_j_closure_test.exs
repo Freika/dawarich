@@ -66,6 +66,39 @@ defmodule DawarichWeb.A12f2JClosureTest do
     no_upstream!(c.upstream)
   end
 
+  @tag :a12f2_j_activate_e
+  test "Merged imports pending intake and point mutations own native Endpoint admission", c do
+    for {method, path} <- [
+          {"GET", "/api/v1/imports"},
+          {"GET", "/api/v1/imports/17"},
+          {"POST", "/api/v1/imports"},
+          {"PATCH", "/api/v1/points/17/position"},
+          {"PUT", "/api/v1/points/17/position"},
+          {"PATCH", "/api/v1/points/17"},
+          {"PUT", "/api/v1/points/17"},
+          {"DELETE", "/api/v1/points/17"},
+          {"DELETE", "/api/v1/points/bulk_destroy"},
+          {"POST", "/api/v1/points/reapply_anomaly_filter"}
+        ] do
+      assert {401, _, ""} = endpoint(c, method, path), path
+    end
+
+    assert {404, _, ""} = endpoint(c, "POST", "/api/v1/imports/pending")
+    user!(%{api_key: @key, settings: %{"timezone" => "UTC"}})
+    assert {200, _, "[]"} = endpoint(c, "GET", "/api/v1/imports", bearer())
+
+    for {path, action} <- [
+          {"/points", :points},
+          {"/overland/batches", :overland},
+          {"/owntracks/points", :owntracks},
+          {"/traccar/points", :traccar}
+        ] do
+      assert route("POST", "/api/v1" <> path).plug_opts == {:native, action}
+    end
+
+    no_upstream!(c.upstream)
+  end
+
   defp bearer, do: [{"Authorization", "Bearer #{@key}"}, {"Accept", "application/json"}]
 
   defp route(method, path),

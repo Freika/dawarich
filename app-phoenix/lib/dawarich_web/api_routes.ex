@@ -5,6 +5,7 @@ defmodule DawarichWeb.ApiRoutes do
     quote do
       import DawarichWeb.ApiReadRoutes
       import DawarichWeb.ApiClosureRoutes
+      import DawarichWeb.ApiWriteRoutes
 
       pipeline :api_account do
         plug :put_api_tag, "api"
@@ -131,11 +132,27 @@ defmodule DawarichWeb.ApiRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_ingest
 
-        post "/points", IngestController, :points, metadata: %{slice: :ingest}
-        post "/overland/batches", IngestController, :overland, metadata: %{slice: :ingest}
-        post "/owntracks/points", IngestController, :owntracks, metadata: %{slice: :ingest}
-        post "/traccar/points", IngestController, :traccar, metadata: %{slice: :ingest}
+        post "/points", IngestController, {:native, :points}, metadata: %{slice: :ingest}
+
+        post "/overland/batches", IngestController, {:native, :overland},
+          metadata: %{slice: :ingest}
+
+        post "/owntracks/points", IngestController, {:native, :owntracks},
+          metadata: %{slice: :ingest}
+
+        post "/traccar/points", IngestController, {:native, :traccar}, metadata: %{slice: :ingest}
       end
+
+      pipeline :api_pending do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.Api.Body
+        plug DawarichWeb.Api.Respond, :prepare
+      end
+
+      a12f2_e_routes()
 
       pipeline :api_foundation do
         plug :put_api_tag, "api"
