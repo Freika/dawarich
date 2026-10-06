@@ -53,6 +53,56 @@ contracts remain for the map owners. Bounds currently return the exact extent.
 Advanced speed coloring and unsupported map envelopes terminate with 422; map
 execution failures terminate with 500. Their reason tags begin `standalone_map_`.
 
+## Standalone route activation
+
+AFFiNE counterpart: `Dawarich — ADR-20261006-standalone-route-activation —
+Delegate unmounted native handlers only in standalone mode`, document
+`Xnkn3TzesrUQUKUf04Mc9`.
+
+`StandaloneAuth` dispatches only when `DAWARICH_RAILS=off`, before the retained
+AuthGate flows. It delegates signup GET/POST to F's registration handler,
+password request/edit/PUT/PATCH to F's native recovery mode, GitHub/Google/OIDC
+initiation and callbacks to G's provider handler, and account-link routes to
+G's closure mode. Registration and recovery consume the native registration
+setting. Recovery enqueues the existing native mail worker and applies the
+shared rate limiter. The handlers retain CSRF/origin checks, encrypted cookies,
+provider state validation, session rotation and terminal failure behavior.
+
+POST `/users` is inspected once with a bounded body. Plain signup reaches
+registration; PATCH/PUT overrides reach the existing native account handler.
+Other overrides terminate before registration effects. Both handlers reuse the
+buffered body. No coexistence flow selection or route declarations change.
+
+In Strangler's standalone terminal path, a small dispatch table admits these
+previously unmounted merged handlers through the existing host, SSL, limiter,
+body and API-key authentication plugs:
+
+| Method/path | Native handler |
+| --- | --- |
+| PATCH `/api/v1/settings` | SettingsController update |
+| PATCH `/api/v1/points/:point_id/position` | PointPositionsController update |
+| GET `/api/v1/timeline` | TimelineController index |
+| GET `/api/v1/maps/hexagons` | HexagonsController index |
+
+Writes retain active-account admission. Hexagon index permits a public UUID
+through its existing grant validation; missing or revoked grants fail locally.
+The admitted API actor receives stored settings required by E's position
+handler. No second router or handler implementation is introduced. With the
+standalone flag unset, requests retain their original upstream method/body.
+
+Application context seams are `registration_context`, `recovery_context`,
+`provider_auth_context`, `account_link_context` and `account_context`. Missing
+required Cloud signup, security-notification, linkage-mail or mobile owners
+retain the handlers' terminal native errors; they are not substituted with
+success callbacks. See the [F](a12f2-f.md) and [G](a12f2-g.md) handoffs.
+
+At this implementation baseline H's Apple/mobile modules are absent. Apple
+web/mobile activation requires H integration first. This dispatch does not
+copy unintegrated handler logic or claim Apple reachability. The sweep's
+integrations form is already mounted by its owner; `/assets/channels` belongs
+to the asset/build contract, and DELETE `/` has no merged native handler.
+Security review and the integration/release gates remain separate acceptance.
+
 ## Terminal hand-backs
 
 The route admission checks remain active. In standalone mode each refused

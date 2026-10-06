@@ -32,7 +32,10 @@ defmodule DawarichWeb.AuthGate do
 
   @impl true
   def call(conn, _opts) do
-    case claimed(conn) do
+    conn =
+      if Dawarich.Standalone.enabled?(), do: DawarichWeb.StandaloneAuth.call(conn), else: conn
+
+    case if(conn.halted, do: nil, else: claimed(conn)) do
       nil -> conn
       {flow, handler} -> handler.call(conn, options(flow))
     end
