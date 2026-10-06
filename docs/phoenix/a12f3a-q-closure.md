@@ -30,6 +30,8 @@ Q04/Q07/Q14 final no-Rails cache/effect terminal proof depends on sibling rows 1
 
 No browser acceptance or whole-domain retirement is claimed by this implementation. Gates and exact commit/test evidence are maintained in the assigned controller report. AFFiNE counterpart: Dawarich — Phoenix A12f-3a Q native stats and digest implementation.
 
+AFFiNE document ID: `poskgp6EKQz4qU2XYFUC6`; normalized full readback verified.
+
 ## Task commits
 
 - Q01: verify existing index and year parity; source/mutation evidence recorded.
@@ -37,6 +39,7 @@ No browser acceptance or whole-domain retirement is claimed by this implementati
 - Q03: preserve period selection and source failures; source/mutation evidence recorded.
 - Q04: calculate cold and stale digests natively; source/mutation evidence recorded.
 - Q05: serve native details frames in Cloud mode; source/mutation evidence recorded.
+- Q06: publish native single/all-month stats commands; early commit and mutation evidence recorded.
 - Q07: publish deduplicated full recalculation commands; source/mutation evidence recorded.
 - Q08: retain private source failure boundaries; source/mutation evidence recorded.
 - Q09: generate past yearly digests natively; source/mutation evidence recorded.
