@@ -390,6 +390,63 @@ defmodule DawarichWeb.A12f2JClosureTest do
     assert commands() == []
   end
 
+  @tag :a12f2_j_11
+  test "Every retained route and auth switch hands original method body query cookies and headers to Rails before effects",
+       c do
+    previous = Application.get_env(:dawarich, :rails_routes, [])
+    on_exit(fn -> Application.put_env(:dawarich, :rails_routes, previous) end)
+    System.put_env("DAWARICH_RAILS_SLICES", "ingest")
+
+    assert {200, _, "unexpected Rails replay"} =
+             endpoint(
+               c,
+               "POST",
+               "/api/v1/points?a=%ZZ",
+               [{"Content-Type", "application/json"}],
+               "{bad"
+             )
+
+    System.delete_env("DAWARICH_RAILS_SLICES")
+    body = "_method=GET&literal=%00%26&place[name]=synthetic"
+
+    for {key, path} <- [
+          {"api", "/api/v1/places.json?a=%ZZ"},
+          {"active_storage", "/rails/active_storage/direct_uploads?source=%2B"},
+          {"rails", "/rails/active_storage/direct_uploads?source=%2B"}
+        ] do
+      Application.put_env(:dawarich, :rails_routes, [key])
+
+      upstream =
+        Task.async(fn ->
+          socket = accept(c.upstream)
+          {head, rest} = read_head(socket)
+          raw = read_at_least(socket, rest, byte_size(body))
+          reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+          {head, raw}
+        end)
+
+      client = connect(c.port)
+
+      send_raw(client, [
+        "POST #{path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\nCookie: opaque=synthetic\r\nX-Probe: untouched\r\n\r\n",
+        body
+      ])
+
+      assert {200, headers, "puma"} = read_response(client)
+      {head, raw} = Task.await(upstream)
+      assert request_line(head) == "POST #{path} HTTP/1.1"
+      assert raw == body
+      assert header(head, "cookie") == ["opaque=synthetic"]
+      assert header(head, "x-probe") == ["untouched"]
+      assert values(headers, "set-cookie") == []
+      assert commands() == []
+    end
+
+    Application.put_env(:dawarich, :rails_routes, [])
+    assert {401, _, ""} = endpoint(c, "GET", "/api/v1/photos")
+    no_upstream!(c.upstream)
+  end
+
   @tag :a12f2_j_12
   test "Owned native errors never call Rails after committed SQL cache mail storage token or remote effects",
        c do

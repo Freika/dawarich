@@ -31,13 +31,20 @@ defmodule DawarichWeb.Api.MethodOverride do
   def call(conn, _opts), do: conn
 
   defp native?(conn) do
-    not DawarichWeb.Strangler.handed_back?(conn.path_info) and
+    original_owned?(conn) and not DawarichWeb.Strangler.handed_back?(conn.path_info) and
       Enum.any?(@methods, fn method ->
         case Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host) do
           %{slice: slice} -> DawarichWeb.Slices.owned?(slice)
           _ -> false
         end
       end)
+  end
+
+  defp original_owned?(conn) do
+    case Phoenix.Router.route_info(DawarichWeb.Router, conn.method, conn.path_info, conn.host) do
+      %{slice: slice} -> DawarichWeb.Slices.owned?(slice)
+      _ -> true
+    end
   end
 
   defp form_method(conn) do
