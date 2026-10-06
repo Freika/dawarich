@@ -23,6 +23,7 @@ defmodule Dawarich.Jobs.Drain do
     (SELECT count(*) FROM phoenix.job_owners WHERE NOT (key = ANY($1)))::integer AS unknown_owners,
     (SELECT count(*) FROM phoenix.job_owners WHERE key = ANY($1) AND (owner <> 'sidekiq' OR NOT pinned))::integer AS unpinned_rollback_owners,
     (SELECT count(*) FROM phoenix.job_owners WHERE owner = 'oban')::integer AS oban_owners,
+    (SELECT count(*) FROM phoenix.runtime_nodes WHERE beat_at <= now() - interval '60 seconds')::integer AS stale_nodes,
     (SELECT count(*) FROM phoenix.runtime_nodes WHERE beat_at > now() - interval '60 seconds')::integer AS fresh_nodes
   """
 
@@ -50,7 +51,7 @@ defmodule Dawarich.Jobs.Drain do
         forward = common ++ reasons(counts, ~w(missing_owners mixed_owners unknown_owners)a)
 
         forward =
-          if counts.oban_owners > 0 and counts.fresh_nodes == 0,
+          if counts.stale_nodes > 0 or (counts.oban_owners > 0 and counts.fresh_nodes == 0),
             do: ["heartbeat_invalid" | forward],
             else: forward
 
@@ -65,6 +66,9 @@ defmodule Dawarich.Jobs.Drain do
               counts,
               ~w(incomplete_oban unfinished_generations missing_owners unknown_owners unpinned_rollback_owners)a
             )
+
+        binary =
+          if "heartbeat_invalid" in forward, do: ["heartbeat_invalid" | binary], else: binary
 
         shutdown = forward ++ reasons(counts, ~w(incomplete_oban unfinished_generations)a)
 

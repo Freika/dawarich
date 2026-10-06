@@ -25,6 +25,11 @@ module JobDrain
       count_job(work.job.item, counts, classes)
     end
     processes = Sidekiq::ProcessSet.new(false).to_a
+    Sidekiq.redis do |redis|
+      reasons << 'process_registration_unreadable' if redis.scard('processes') != processes.size
+      orphaned = scan_keys(redis, '*:work') - processes.map { "#{_1.identity}:work" }
+      reasons << 'busy_unreadable' if orphaned.any? { redis.hlen(_1).positive? }
+    end
     busy = processes.sum { |process| process['busy'].to_i }
     reasons << 'busy_unreadable' if busy != counts[:busy]
     counts[:busy] = [counts[:busy], busy].max
@@ -37,15 +42,11 @@ module JobDrain
     reasons << 'database_unreadable' unless gauges[:tables] == true && bridge[:counts]
     reasons << 'changed_during_read' unless before == fingerprint
     reasons << 'sql_bridge_blocked' if bridge[:shutdown] == 'BLOCKED'
+    unknown = bridge[:certainty] == 'UNKNOWN' ||
+              reasons.any? { _1.match?(/unreadable|invalid|inconsistent|changed_during_read/) }
     {
       status: reasons.empty? ? 'OBSERVED_EMPTY' : 'BLOCKED', observation: true,
-      certainty: if reasons.any? do
-        _1.match?(/unreadable|invalid|inconsistent|changed_during_read/)
-      end
-                   'UNKNOWN'
-                 else
-                   'OBSERVED'
-                 end,
+      certainty: unknown ? 'UNKNOWN' : 'OBSERVED',
       phase:, fetch:,
       counts:, classes: classes.sort.to_h, reasons: reasons.uniq.sort, bridge:
     }
@@ -58,6 +59,7 @@ module JobDrain
                                 permitted_classes: [Symbol]).fetch(:queues)
     names = Sidekiq::Queue.all.map(&:name) + configured + Array(Sidekiq.default_configuration[:queues])
     Sidekiq.redis do |redis|
+      scan_keys(redis, 'queue:*').each { names << _1.delete_prefix('queue:') }
       reservation_keys(redis).each { names << _1.split(':', 3).last }
     end
     names.uniq.sort.map { Sidekiq::Queue[_1] }
@@ -113,19 +115,23 @@ module JobDrain
   def bridge_status(drain)
     unless drain && drain[:tables] == true && drain[:counts]['incomplete_oban']
       return { forward: 'BLOCKED', shutdown: 'BLOCKED', binary_rollback: 'BLOCKED',
-reasons: ['database_unreadable'] }
+               reasons: ['database_unreadable'] }
     end
 
     counts = drain[:counts]
     common = %w[pending_outbox quarantined reverse_pending reverse_dead release_pending].select { counts[_1].positive? }
     common << 'legacy_schedulers' if drain[:legacy_schedulers].any? { _1[:incomplete].positive? }
     forward = common + %w[missing_owners mixed_owners unknown_owners].select { counts[_1].positive? }
-    forward << 'heartbeat_invalid' if counts['oban_owners'].positive? && counts['fresh_nodes'].zero?
+    if counts['stale_nodes'].positive? || (counts['oban_owners'].positive? && counts['fresh_nodes'].zero?)
+      forward << 'heartbeat_invalid'
+    end
     forward << 'residual_producers' if drain[:producer_kinds].any? { _1[:status] == 'BLOCKED' }
     binary = common + %w[incomplete_oban unfinished_generations missing_owners unknown_owners unpinned_rollback_owners]
              .select { counts[_1].positive? }
+    binary << 'heartbeat_invalid' if forward.include?('heartbeat_invalid')
     shutdown = forward + %w[incomplete_oban unfinished_generations].select { counts[_1].positive? }
     {
+      certainty: forward.include?('heartbeat_invalid') ? 'UNKNOWN' : 'OBSERVED',
       shutdown: shutdown.empty? ? 'OBSERVED_EMPTY' : 'BLOCKED', shutdown_reasons: shutdown.sort,
       forward: forward.empty? ? 'OBSERVED_EMPTY' : 'BLOCKED',
       binary_rollback: binary.empty? ? 'OBSERVED_EMPTY' : 'BLOCKED', observation: true,

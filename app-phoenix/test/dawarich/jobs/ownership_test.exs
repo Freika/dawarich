@@ -422,6 +422,85 @@ defmodule Dawarich.Jobs.OwnershipTest do
     assert Dawarich.Jobs.Processed.done?(ScratchRepo, event)
   end
 
+  test "rollback pins every registry key including joint keys to Sidekiq across restart" do
+    keys = Registry.entries() |> Enum.map(& &1.key) |> Enum.uniq() |> Enum.sort()
+
+    rows(
+      "INSERT INTO phoenix.job_owners(key, owner) SELECT key, 'oban' FROM unnest($1::text[]) AS key",
+      [keys]
+    )
+
+    joint = Ownership.joint_keys("cron:lite_archival_warning_job") |> Enum.sort()
+
+    holder =
+      Dawarich.LockRace.hold(fn ->
+        rows("SELECT key FROM phoenix.job_owners WHERE key = $1 FOR SHARE", [List.last(joint)])
+      end)
+
+    try do
+      assert source_run(
+               ~s|
+        JobOwnership.send(:remove_const, :LOCK_TIMEOUT)
+        JobOwnership.const_set(:LOCK_TIMEOUT, '50ms')
+        begin
+          JobOwnership.release!('#{hd(joint)}', by: 'rollback')
+          puts 'CLOUD:CHANGED'
+        rescue ActiveRecord::LockWaitTimeout
+          puts 'CLOUD:BLOCKED'
+        end
+      |,
+               :ownership
+             ) == "CLOUD:BLOCKED"
+
+      assert rows("SELECT owner, pinned FROM phoenix.job_owners WHERE key = ANY($1)", [joint]) ==
+               [["oban", false], ["oban", false]]
+    after
+      Dawarich.LockRace.commit(holder)
+    end
+
+    assert source_run(
+             ~s"""
+               JSON.parse('#{Jason.encode!(keys)}').each { |key| JobOwnership.release!(key, by: 'rollback') }
+               puts 'CLOUD:PINNED'
+             """,
+             :ownership
+           ) == "CLOUD:PINNED"
+
+    expected = Enum.map(keys, &[&1, "sidekiq", true])
+    assert rows("SELECT key, owner, pinned FROM phoenix.job_owners ORDER BY key") == expected
+
+    oban = __MODULE__.RollbackOban
+
+    for _ <- 1..2 do
+      start_oban(oban)
+
+      assert Claimer.claim_all(ScratchRepo, oban, Registry.entries())
+             |> Enum.all?(fn {_key, result} -> result == :pinned end)
+
+      assert rows("SELECT key, owner, pinned FROM phoenix.job_owners ORDER BY key") == expected
+      assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+      :ok = stop_supervised(oban)
+    end
+
+    assert Dawarich.Jobs.Drain.status(ScratchRepo).binary_rollback == "OBSERVED_EMPTY"
+
+    rows(
+      "INSERT INTO phoenix.job_owners(key, owner, pinned) VALUES ('command:unknown.rollback', 'sidekiq', true)"
+    )
+
+    assert "unknown_owners" in Dawarich.Jobs.Drain.status(ScratchRepo).binary_reasons
+    rows("DELETE FROM phoenix.job_owners WHERE key = 'command:unknown.rollback'")
+
+    rows(
+      "INSERT INTO phoenix.runtime_nodes(node, started_at, beat_at) VALUES ('stale-rollback', now(), now() - interval '2 minutes')"
+    )
+
+    status = Dawarich.Jobs.Drain.status(ScratchRepo)
+    assert status.binary_rollback == "BLOCKED"
+    assert "heartbeat_invalid" in status.binary_reasons
+    assert status.certainty == "UNKNOWN"
+  end
+
   defp native_trip(id, event) do
     Dawarich.Trips.CalculateWorker.perform(%Oban.Job{
       args: %{"trip_id" => id, "distance_unit" => "mi", "event_id" => event},

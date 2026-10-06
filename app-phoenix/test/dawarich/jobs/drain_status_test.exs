@@ -165,6 +165,212 @@ defmodule Dawarich.Jobs.DrainStatusTest do
     end
   end
 
+  test "rollback rejects accepted native work and unfinished release operations after pinning" do
+    start_oban(@oban)
+    pin_owners!()
+    assert Drain.status(ScratchRepo).binary_rollback == "OBSERVED_EMPTY"
+
+    for state <- ~w(available scheduled retryable executing discarded suspended) do
+      job = Oban.insert!(@oban, Dawarich.ReleaseOperations.RouteOpacity.new(%{"version" => 1}))
+
+      rows(
+        "UPDATE oban.oban_jobs SET state = $2::oban.oban_job_state, scheduled_at = now() + interval '1 hour' WHERE id = $1",
+        [job.id, state]
+      )
+
+      status = Drain.status(ScratchRepo)
+      assert status.binary_rollback == "BLOCKED"
+      assert "incomplete_oban" in status.binary_reasons
+      rows("DELETE FROM oban.oban_jobs WHERE id = $1", [job.id])
+    end
+
+    for state <- ~w(running failed) do
+      rows(
+        "INSERT INTO phoenix.release_operations(id, command_type, cursor, status, error) VALUES (gen_random_uuid(), 'release.time_anchor', '{}', $1, 'synthetic-private-error')",
+        [state]
+      )
+
+      assert "release_pending" in Drain.status(ScratchRepo).binary_reasons
+      refute Jason.encode!(Drain.status(ScratchRepo)) =~ "synthetic-private-error"
+      rows("DELETE FROM phoenix.release_operations")
+    end
+
+    for state <- ~w(pending quarantined) do
+      event =
+        outbox!(
+          command_type: "synthetic.unknown",
+          scheduled_at: DateTime.add(DateTime.utc_now(), 3600)
+        )
+
+      rows("UPDATE job_outbox SET state = $2 WHERE event_id = $1", [Ecto.UUID.dump!(event), state])
+
+      assert Drain.status(ScratchRepo).binary_rollback == "BLOCKED"
+      rows("DELETE FROM job_outbox WHERE event_id = $1", [Ecto.UUID.dump!(event)])
+    end
+
+    rows(
+      "INSERT INTO phoenix.rails_commands_dead(id, kind, payload, attempts, last_error, created_at) VALUES (990004, 'synthetic.unknown', '{}', 25, 'synthetic-private-error', now())"
+    )
+
+    assert "reverse_dead" in Drain.status(ScratchRepo).binary_reasons
+    rows("DELETE FROM phoenix.rails_commands_dead")
+
+    rows(
+      "INSERT INTO phoenix.runtime_nodes(node, started_at, beat_at) VALUES ('rollback-stale', now(), now() - interval '2 minutes')"
+    )
+
+    assert "heartbeat_invalid" in Drain.status(ScratchRepo).binary_reasons
+  end
+
+  test "rollback drains pending and accepted native work after pinning without a Sidekiq transfer" do
+    :ok = Supervisor.terminate_child(Dawarich.Supervisor, Oban)
+    start_oban(Oban)
+    on_exit(fn -> Supervisor.restart_child(Dawarich.Supervisor, Oban) end)
+    native_owners!()
+    fixture = rollback_trip!()
+    trip_id = fixture["trip"]["id"]
+    event = Ecto.UUID.generate()
+
+    accepted =
+      Oban.insert!(
+        Dawarich.Trips.CalculateWorker.new(%{
+          "trip_id" => trip_id,
+          "distance_unit" => "mi",
+          "event_id" => event
+        })
+      )
+
+    track = Dawarich.Wave6Fixtures.track!(fixture["user"]["id"])
+
+    for offset <- [0, 60],
+        do:
+          Dawarich.Wave6Fixtures.point!(fixture["user"]["id"], %{
+            "track_id" => track,
+            "timestamp" => 1_577_836_800 + offset
+          })
+
+    segment = Dawarich.Wave6Fixtures.segment!(track, %{"start_index" => 0, "end_index" => 1})
+    due = ~U[2026-10-07 12:00:00.000000Z]
+
+    pending =
+      outbox!(command_type: "release.time_anchor", payload: %{"from_id" => 0}, scheduled_at: due)
+
+    {:ok, redis} = Redix.start_link(Application.fetch_env!(:dawarich, :redis)[:url])
+
+    source_before =
+      Redix.command!(redis, ["KEYS", "queue:*"])
+      |> Map.new(fn key -> {key, Redix.command!(redis, ["LRANGE", key, 0, -1])} end)
+
+    try do
+      pin_owners!()
+
+      assert Dawarich.Jobs.Ownership.with_owner(
+               ScratchRepo,
+               "command:trips.calculate",
+               :oban,
+               fn -> flunk("new root admitted") end
+             ) == {:skip, :sidekiq}
+
+      assert Dawarich.Families.InvitationCleanupWorker.perform(%Oban.Job{}) ==
+               {:cancel, :not_owner}
+
+      assert Dawarich.Jobs.Dispatch.run(repo: ScratchRepo, oban: Oban, now: DateTime.add(due, -1)) ==
+               %{}
+
+      assert "pending_outbox" in Drain.status(ScratchRepo).binary_reasons
+      assert %{success: 1, failure: 0} = Oban.drain_queue(queue: :trips)
+      assert Dawarich.Jobs.Processed.done?(ScratchRepo, event)
+
+      assert rows("SELECT kind FROM phoenix.trip_events ORDER BY id") == [
+               ["path"],
+               ["distance"],
+               ["countries"],
+               ["finished"]
+             ]
+
+      assert Dawarich.Trips.CalculateWorker.perform(accepted) == :ok
+      assert rows("SELECT count(*) FROM phoenix.trip_events") == [[4]]
+
+      assert Dawarich.Jobs.Dispatch.run(repo: ScratchRepo, oban: Oban, now: due) == %{
+               dispatched: 1
+             }
+
+      assert rows("SELECT scheduled_at FROM job_outbox WHERE event_id = $1", [
+               Ecto.UUID.dump!(pending)
+             ]) == [[due]]
+
+      assert %{success: 1, failure: 0} = Oban.drain_queue(queue: :maintenance, with_limit: 1)
+
+      assert [[%{"operation_id" => ^pending} = successor]] =
+               rows("SELECT args FROM oban.oban_jobs WHERE args ? 'operation_id'")
+
+      assert successor["cursor"]["from_id"] == segment
+      assert "release_pending" in Drain.status(ScratchRepo).binary_reasons
+
+      assert %{success: 1, failure: 0} =
+               Oban.drain_queue(queue: :maintenance, with_scheduled: DateTime.utc_now())
+
+      assert rows("SELECT status FROM phoenix.release_operations WHERE id = $1", [
+               Ecto.UUID.dump!(pending)
+             ]) == [["completed"]]
+
+      assert rows(
+               "SELECT extract(epoch FROM start_at)::bigint, extract(epoch FROM end_at)::bigint FROM track_segments WHERE id = $1",
+               [segment]
+             ) == [[1_577_836_800, 1_577_836_860]]
+
+      assert Drain.status(ScratchRepo).binary_rollback == "OBSERVED_EMPTY"
+      assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+
+      source_after =
+        Redix.command!(redis, ["KEYS", "queue:*"])
+        |> Map.new(fn key -> {key, Redix.command!(redis, ["LRANGE", key, 0, -1])} end)
+
+      assert source_after == source_before
+
+      rows(
+        "INSERT INTO phoenix.runtime_nodes(node, started_at, beat_at) VALUES ('rollback-drainer', now(), now() - interval '2 minutes')"
+      )
+
+      assert Drain.status(ScratchRepo).binary_rollback == "BLOCKED"
+      assert "heartbeat_invalid" in Drain.status(ScratchRepo).binary_reasons
+    after
+      GenServer.stop(redis)
+    end
+  end
+
+  defp rollback_trip! do
+    fixture =
+      Path.expand("../../fixtures/trips/calculation.json", __DIR__)
+      |> File.read!()
+      |> Jason.decode!()
+
+    rows(
+      "INSERT INTO users (id, email, settings, created_at, updated_at) SELECT id, email, settings, created_at, updated_at FROM json_populate_record(NULL::users, $1)",
+      [fixture["user"]]
+    )
+
+    rows(
+      "INSERT INTO trips (id, user_id, name, started_at, ended_at, created_at, updated_at) SELECT id, user_id, name, started_at, ended_at, created_at, updated_at FROM json_populate_record(NULL::trips, $1)",
+      [fixture["trip"]]
+    )
+
+    for {table, records} <- [
+          {"point_sources", fixture["point_sources"]},
+          {"points", fixture["points"]}
+        ],
+        record <- records do
+      rows("INSERT INTO #{table} SELECT * FROM json_populate_record(NULL::#{table}, $1)", [record])
+    end
+
+    fixture
+  end
+
+  defp pin_owners! do
+    for entry <- Registry.entries(),
+        do: Dawarich.Jobs.Ownership.put!(ScratchRepo, entry.key, :sidekiq, pinned: true)
+  end
+
   defp native_owners! do
     keys = Enum.map(Registry.entries(), & &1.key)
 

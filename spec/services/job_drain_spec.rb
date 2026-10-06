@@ -82,7 +82,8 @@ RSpec.describe 'JobDrain' do
         expect(Sidekiq.redis { |redis| redis.call('TYPE', key) }).not_to eq('none')
         Sidekiq.redis { |redis| redis.del(key) }
       end
-      ['SyntheticForeignWorker', 'Retired::CloudWrapper', 'BulkVisitsSuggestingJob'].each do |name|
+      ['SyntheticForeignWorker', 'Retired::CloudWrapper', 'BulkVisitsSuggestingJob',
+       'ActionMailer::MailDeliveryJob'].each do |name|
         Sidekiq.redis { |redis| redis.lpush('queue:trips', drain_payload(name)) }
         expect(JobDrain.status[:reasons]).to include('queued_work')
         refute_payload(JobDrain.status)
@@ -92,6 +93,9 @@ RSpec.describe 'JobDrain' do
         redis.sadd(monitor::PROCESS_SET, fetcher)
         redis.set(monitor::HEARTBEAT_PREFIX + fetcher, '1')
       end
+      Sidekiq.redis { |redis| redis.lpush('queue:synthetic-orphan', message) }
+      expect(JobDrain.status[:reasons]).to include('queued_work')
+      Sidekiq.redis { |redis| redis.del('queue:synthetic-orphan') }
       expect(queue.acquire).to be(true)
       expect(JobDrain.status[:reasons]).to include('fetchers_present', 'fetch_probes_present')
       expect(JobDrain.status[:counts][:queued]).to eq(0)
@@ -112,7 +116,8 @@ RSpec.describe 'JobDrain' do
       queue.release
       Sidekiq.redis do |redis|
         redis.srem(monitor::PROCESS_SET, fetcher)
-        redis.del(monitor::HEARTBEAT_PREFIX + fetcher, 'queue:trips', 'synthetic-drain-worker')
+        redis.del(monitor::HEARTBEAT_PREFIX + fetcher, 'queue:trips', 'queue:synthetic-orphan',
+                  'synthetic-drain-worker')
         redis.srem('processes', 'synthetic-drain-worker')
       end
     end
@@ -132,6 +137,27 @@ RSpec.describe 'JobDrain' do
     expect(JobDrain.status[:reasons]).to include('database_unreadable')
     allow(JobHealth.connection).to receive(:select_one).and_call_original
     allow(JobHealth).to receive(:gauges).and_return(empty_gauges)
+    stale = empty_gauges
+    stale[:drain][:counts]['stale_nodes'] = 1
+    allow(JobHealth).to receive(:gauges).and_return(stale)
+    expect(JobDrain.status).to include(status: 'BLOCKED', certainty: 'UNKNOWN')
+    expect(JobDrain.status[:bridge][:binary_reasons]).to include('heartbeat_invalid')
+    allow(JobHealth).to receive(:gauges).and_return(empty_gauges)
+    Sidekiq.redis { |redis| redis.sadd('processes', 'synthetic-missing-info') }
+    begin
+      expect(JobDrain.status).to include(status: 'BLOCKED', certainty: 'UNKNOWN')
+      expect(JobDrain.status[:reasons]).to include('process_registration_unreadable')
+    ensure
+      Sidekiq.redis { |redis| redis.srem('processes', 'synthetic-missing-info') }
+    end
+    Sidekiq.redis { |redis| redis.hset('synthetic-orphan:work', 'thread', 'synthetic-private-error') }
+    begin
+      expect(JobDrain.status).to include(status: 'BLOCKED', certainty: 'UNKNOWN')
+      expect(JobDrain.status[:reasons]).to include('busy_unreadable')
+      refute_payload(JobDrain.status)
+    ensure
+      Sidekiq.redis { |redis| redis.del('synthetic-orphan:work') }
+    end
     process = 'synthetic-stale-drain-worker'
     begin
       Sidekiq.redis do |redis|
@@ -169,7 +195,7 @@ RSpec.describe 'JobDrain' do
   def empty_gauges
     keys = %w[pending_outbox quarantined reverse_pending reverse_dead release_pending incomplete_oban
               unfinished_generations missing_owners mixed_owners unknown_owners unpinned_rollback_owners
-              oban_owners fresh_nodes]
+              oban_owners fresh_nodes stale_nodes]
     { tables: true, drain: { tables: true, counts: keys.index_with { 0 }, legacy_schedulers: [], producer_kinds: [] } }
   end
 
