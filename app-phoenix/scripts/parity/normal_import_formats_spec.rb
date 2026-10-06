@@ -83,34 +83,38 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     selected = captured.select { |name, _| ['enhanced/26'].any? { name.start_with?(_1) } }
     NormalImportFormatsSupport.write('a12f3a-f26', selected) unless selected.empty?
     selected = captured.select { |name, _| name.start_with?('producers/watcher/') }
-    unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i07.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
-    end
+                       .transform_keys { _1.delete_prefix('producers/watcher/') }
+    capture_producer_alias(7, selected) unless selected.empty?
     selected = captured.select { |name, _| name.start_with?('producers/immich/') }
-    unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i08.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
-    end
+                       .transform_keys { _1.delete_prefix('producers/immich/') }
+    capture_producer_alias(8, selected) unless selected.empty?
     selected = captured.select { |name, _| name.start_with?('producers/teslamate/') }
-    unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i09.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
-    end
+                       .transform_keys { _1.delete_prefix('producers/teslamate/') }
+    capture_producer_alias(9, selected) unless selected.empty?
     selected = captured.select { |name, _| name.start_with?('producers/stale/') }
-    unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i10.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
-    end
+                       .transform_keys { _1.delete_prefix('producers/stale/') }
+    capture_producer_alias(10, selected) unless selected.empty?
     selected = captured.select { |name, _| name.start_with?('producers/photoprism/') }
-    unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i11.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
-    end
+                       .transform_keys { _1.delete_prefix('producers/photoprism/') }
+    capture_producer_alias(11, selected) unless selected.empty?
     selected = captured.select { |name, _| name.start_with?('producers/trek/') }
-    unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i12.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+                       .transform_keys { _1.delete_prefix('producers/trek/') }
+    capture_producer_alias(12, selected) unless selected.empty?
+  end
+
+  def capture_producer_alias(task, selected)
+    path = Rails.root.join("app-phoenix/test/fixtures/imports_pages/a12f3a-i#{task.to_s.rjust(2, '0')}.json")
+    order = JSON.parse(path.read).keys
+    selected = producer_alias_plain(selected.sort_by { |name, _| order.index(name) || order.length }.to_h)
+    FixtureRecording.verify(path, "#{JSON.pretty_generate(selected)}\n")
+  end
+
+  def producer_alias_plain(value)
+    case value
+    when Hash then value.transform_values { producer_alias_plain(_1) }
+    when Array then value.map { producer_alias_plain(_1) }
+    when Time, DateTime, ActiveSupport::TimeWithZone then value.as_json
+    else value
     end
   end
 
@@ -119,7 +123,7 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     when Hash then value.transform_values { extracted_plain(_1) }
     when Array then value.map { extracted_plain(_1) }
     when Time, DateTime then value.iso8601(6)
-    when Struct then extracted_plain(value.to_h)
+    when Struct, Data then extracted_plain(value.to_h)
     else value
     end
   end
