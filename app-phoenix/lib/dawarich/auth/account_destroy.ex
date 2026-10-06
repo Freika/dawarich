@@ -20,6 +20,27 @@ defmodule Dawarich.Auth.AccountDestroy do
     end)
   end
 
+  def request_as_admin(actor_id, id, context) do
+    transaction(context, fn repo ->
+      with true <- context[:self_hosted] == true and context[:oidc] != true,
+           [[true]] <-
+             repo.query!(
+               "SELECT admin FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE",
+               [actor_id],
+               log: false
+             ).rows,
+           {:ok, user} <- actor(repo, id),
+           :ok <- family_guard(repo, id) do
+        schedule(repo, user, context)
+      else
+        false -> {:error, :actor}
+        [] -> {:error, :actor}
+        [[false]] -> {:error, :actor}
+        other -> other
+      end
+    end)
+  end
+
   def confirm(token, context) do
     with {:ok, claims} <- DestroyToken.verify(token, context) do
       transaction(context, fn repo ->

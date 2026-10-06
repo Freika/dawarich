@@ -3,7 +3,40 @@ defmodule Dawarich.Admin.UserSecurity do
   alias Dawarich.Auth.Recovery.Settings
   alias Dawarich.Repo
 
-  def reset(_actor, _id, _context), do: {:handoff, :synchronous_mail}
+  def reset(actor, id, context) do
+    repo = Map.get(context, :repo, Repo)
+
+    with :ok <- authorize(actor, repo, context),
+         {:ok, _} <- target(repo, id) do
+      case repo.transaction(fn ->
+             with :ok <- authorize(actor, repo, context),
+                  [[email]] <-
+                    repo.query!(
+                      "SELECT email FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE",
+                      [id],
+                      log: false
+                    ).rows,
+                  {:ok, %{notification: notification}} <-
+                    Dawarich.Auth.Recovery.Lifecycle.request_reset(email, context) do
+               enqueue =
+                 Map.get(context, :enqueue, fn notification ->
+                   Dawarich.Auth.Recovery.MailWorker.enqueue(
+                     notification,
+                     Map.get(context, :oban, Oban)
+                   )
+                 end)
+
+               if enqueue.(notification) == :ok, do: {:ok, id}, else: repo.rollback(:mail)
+             else
+               [] -> {:handoff, :target}
+               other -> other
+             end
+           end) do
+        {:ok, outcome} -> outcome
+        {:error, :mail} -> {:terminal, :mail}
+      end
+    end
+  end
 
   def rotate(actor, id, context) do
     repo = Map.get(context, :repo, Repo)
@@ -34,7 +67,9 @@ defmodule Dawarich.Admin.UserSecurity do
         {:handoff, :oidc}
 
       true ->
-        case repo.query!("SELECT admin FROM users WHERE id=$1 AND deleted_at IS NULL", [actor.id],
+        case repo.query!(
+               "SELECT admin FROM users WHERE id=$1 AND deleted_at IS NULL FOR SHARE",
+               [actor.id],
                log: false
              ).rows do
           [[true]] -> :ok

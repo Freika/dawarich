@@ -284,6 +284,7 @@ defmodule DawarichWeb.A12f3aPCLIClosureTest do
   test "P08: places cli cleanup scheduling matches current Rails contract without a native-owner Rails effect" do
     owner("orphan_cleanup")
     ids = users(102)
+    rows("UPDATE users SET updated_at=now() WHERE id=ANY($1)", [Enum.take(ids, 20)])
     rows("UPDATE users SET deleted_at=now() WHERE id=$1", [List.last(ids)])
     context = ctx()
     assert CLI.run(["places", "cleanup-suggested"], context) == 0

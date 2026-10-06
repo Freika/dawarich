@@ -38,7 +38,7 @@ defmodule DawarichWeb.AdminLiveAuth do
         (socket.assigns.admin_mode == :background and
            operator_authorized?(user, socket))
 
-    if hosting and not is_nil(user) and
+    if hosting and not is_nil(user) and current_identity?(actor, user) and
          (socket.assigns.admin_mode == :background or user.admin == true) and
          AdminGate.supported?(user) do
       socket = assign(socket, :current_user, user)
@@ -52,6 +52,12 @@ defmodule DawarichWeb.AdminLiveAuth do
        |> redirect(to: request_url(socket))}
     end
   end
+
+  defp current_identity?(%{encrypted_password: original}, %{encrypted_password: current})
+       when is_binary(original) and is_binary(current),
+       do: Plug.Crypto.secure_compare(String.slice(original, 0, 29), String.slice(current, 0, 29))
+
+  defp current_identity?(_, _), do: false
 
   defp operator_context(session, socket) do
     if connected?(socket),
