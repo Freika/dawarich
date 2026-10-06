@@ -2,7 +2,7 @@ defmodule DawarichWeb.FamilyActions do
   @moduledoc false
   import Plug.Conn
   alias Dawarich.{Repo, FamilyPageAccess}
-  alias Dawarich.Families.{WebCreate, WebUpdate}
+  alias Dawarich.Families.{WebCreate, WebUpdate, WebDestroy}
 
   alias DawarichWeb.{
     RailsAuth,
@@ -62,6 +62,41 @@ defmodule DawarichWeb.FamilyActions do
       locale: conn.assigns.locale,
       self_hosted: conn.assigns.self_hosted
     }
+
+  def call(conn, :destroy) do
+    conn = prepare(conn)
+
+    if conn.halted do
+      conn
+    else
+      result = WebDestroy.run(Repo, conn.assigns.current_user, context(conn))
+
+      case result do
+        {:ok, _id} ->
+          redirect_key(
+            conn,
+            302,
+            "/family/new",
+            "notice",
+            "controllers.families.family_deleted_successfully"
+          )
+
+        {:refused, :members_present} ->
+          redirect_key(
+            conn,
+            302,
+            "/family",
+            "alert",
+            "controllers.families.cannot_delete_family_with_members_remove_all_members_first"
+          )
+
+        {:error, reason} ->
+          error(conn, reason)
+      end
+    end
+  rescue
+    _error -> error(conn, :failed)
+  end
 
   def call(conn, action) do
     conn = prepare(conn)

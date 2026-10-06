@@ -161,6 +161,34 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
     end
   end
 
+  it 'characterizes family deletion, member boundaries and departure cleanup' do
+    travel_to now do
+      owner, member, outsider, family = family_graph('en')
+      member.update_family_location_sharing!(true, duration: '1h')
+      request = family_request!(94_001, family, owner, member)
+      write_family(owner, :delete, '/family')
+      expect(response.status).to eq(302)
+      expect(Family.exists?(family.id)).to be(true)
+      write_family(owner, :delete, '/family/members/92001')
+      expect(response.status).to eq(302)
+      expect(Family::Membership.exists?(92_001)).to be(true)
+      write_family(outsider, :delete, '/family/members/92002')
+      expect(response.status).to eq(302)
+      expect(Family::Membership.exists?(92_002)).to be(true)
+      write_family(owner, :delete, '/family/members/92999')
+      expect(response.status).to eq(404)
+      write_family(member, :delete, '/family/members/92002')
+      expect(response.status).to eq(302)
+      expect(response.location).to end_with('/family/new')
+      expect(member.reload.settings.dig('family', 'location_sharing', 'enabled')).to be(false)
+      expect(request.reload).to be_expired
+      write_family(owner, :delete, '/family')
+      expect(response.status).to eq(302)
+      expect(Family.exists?(family.id)).to be(false)
+      expect(Family::LocationRequest.exists?(request.id)).to be(false)
+    end
+  end
+
   it 'writes family pages with fixed actor state and scrubbed forms' do
     travel_to now do
       owner, member, outsider, family = family_graph('en')
