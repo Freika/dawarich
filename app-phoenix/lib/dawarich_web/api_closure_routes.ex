@@ -22,13 +22,15 @@ defmodule DawarichWeb.ApiClosureRoutes do
     quote do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_locations_photos
-        get "/photos", PhotosController, :index, metadata: %{slice: :api_locations_photos}
+
+        get "/photos", PhotosController, :index,
+          metadata: %{slice: :api_locations_photos, native_api: true}
 
         get "/locations", LocationsController, :index_closure,
           metadata: %{slice: :api_locations_photos}
 
         get "/locations/suggestions", LocationsController, :suggestions,
-          metadata: %{slice: :api_locations_photos}
+          metadata: %{slice: :api_locations_photos, native_api: true}
 
         get "/photos/:id/thumbnail", PhotosController, :thumbnail_closure,
           metadata: %{slice: :api_locations_photos}
@@ -37,10 +39,10 @@ defmodule DawarichWeb.ApiClosureRoutes do
           metadata: %{slice: :api_locations_photos}
 
         post "/immich/enrich/scan", ImmichController, :scan,
-          metadata: %{slice: :api_locations_photos}
+          metadata: %{slice: :api_locations_photos, native_api: true}
 
         post "/immich/enrich", ImmichController, :create,
-          metadata: %{slice: :api_locations_photos}
+          metadata: %{slice: :api_locations_photos, native_api: true}
       end
     end
   end

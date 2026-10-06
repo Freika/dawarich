@@ -8,6 +8,9 @@ defmodule DawarichWeb.Api.PlacesController do
   alias DawarichWeb.Api.{Body, Respond}
 
   @impl true
+  def init({:closure, action}),
+    do: if(Dawarich.Standalone.enabled?(), do: {:closure, action}, else: action)
+
   def init(action), do: action
 
   @impl true

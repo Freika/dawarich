@@ -180,10 +180,10 @@ defmodule DawarichWeb.Api.RemainingRoutesTest do
           {"GET", "/api/v1/notes", "api_notes", false, false, true},
           {"GET", "/api/v1/flights", "", false, true, true},
           {"GET", "/api/v1/places", "", false, true, true},
-          {"HEAD", "/api/v1/flights", "", false, false, false},
-          {"HEAD", "/api/v1/places", "", false, false, false},
-          {"GET", "/api/v1/flights", "", true, false, false},
-          {"GET", "/api/v1/places", "", true, false, false}
+          {"HEAD", "/api/v1/flights", "", false, false, true},
+          {"HEAD", "/api/v1/places", "", false, false, true},
+          {"GET", "/api/v1/flights", "", true, false, true},
+          {"GET", "/api/v1/places", "", true, false, true}
         ] do
       System.put_env("DAWARICH_RAILS_SLICES", slices)
       System.put_env("SELF_HOSTED", if(cloud, do: "false", else: "true"))

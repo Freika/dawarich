@@ -4,6 +4,25 @@ defmodule DawarichWeb.A12f2JClosureTest do
   @moduletag :capture_log
   @key "a12f2-j-synthetic-api-key"
 
+  setup context do
+    native =
+      Enum.any?(
+        ~w(review_cloud_plan review_user_zone a12f2_j_activate_b a12f2_j_activate_c a12f2_j_activate_e a12f2_j_09 a12f2_j_02 a12f2_j_03 a12f2_j_04 a12f2_j_05 a12f2_j_12 a12f2_j_13)a,
+        &context[&1]
+      )
+
+    previous = System.get_env("DAWARICH_RAILS")
+    if native, do: System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    :ok
+  end
+
   @tag :review_cloud_plan
   test "Cloud Lite plan features match Rails at the real Endpoint", c do
     fixture = Jason.decode!(File.read!("test/fixtures/api_foundation/golden.json"))
@@ -127,6 +146,24 @@ defmodule DawarichWeb.A12f2JClosureTest do
           {"/traccar/points", :traccar}
         ] do
       assert route("POST", "/api/v1" <> path).plug_opts == {:native, action}
+    end
+
+    no_upstream!(c.upstream)
+  end
+
+  @tag :coexistence_cloud_override
+  test "Coexistence Cloud import overrides select the native read before upload effects", c do
+    System.put_env("SELF_HOSTED", "false")
+    user!(%{api_key: @key, plan: 1, settings: %{"timezone" => "UTC"}})
+
+    for {path, headers, body} <- [
+          {"/api/v1/imports", bearer() ++ [{"X-HTTP-Method-Override", "GET"}], ""},
+          {"/api/v1/imports.json",
+           bearer() ++ [{"Content-Type", "application/x-www-form-urlencoded"}], "_method=GET"}
+        ] do
+      assert {200, _, "[]"} = endpoint(c, "POST", path, headers, body)
+      assert Repo.query!("SELECT count(*) FROM imports").rows == [[0]]
+      assert commands() == []
     end
 
     no_upstream!(c.upstream)

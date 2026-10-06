@@ -33,7 +33,7 @@ defmodule DawarichWeb.Api.RequestFormat do
          not DawarichWeb.Strangler.handed_back?(["api", "v1" | rest]) do
       DawarichWeb.RailsErrors.respond(conn, 404)
     else
-      format_path(conn)
+      if DawarichWeb.Strangler.native_api?(conn), do: format_path(conn), else: conn
     end
   end
 

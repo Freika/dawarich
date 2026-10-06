@@ -193,7 +193,17 @@ defmodule DawarichWeb.MapWritesHandbackTest do
       refute :map_write in route.pipe_through
     end
 
+    forwarded(ctx, :patch, "/api/v1/tracks/920010", raw(ctx, "track[distance]=500"))
     before = snapshot()
+    previous = System.get_env("DAWARICH_RAILS")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    System.put_env("DAWARICH_RAILS", "off")
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
     missing = request(ctx, :patch, "/api/v1/tracks/920010", raw(ctx, "track[distance]=500"))
     assert missing.status == 404

@@ -140,7 +140,10 @@ defmodule DawarichWeb.HostAuthorizationTest do
     refute Slices.owned?(:ingest)
     System.delete_env("DAWARICH_RAILS_SLICES")
     System.put_env("SELF_HOSTED", "false")
-    assert Slices.owned?(:ingest)
+    refute Slices.owned?(:ingest)
+    assert Slices.owned?(:ingest, true)
+    System.put_env("DAWARICH_RAILS_SLICES", "ingest")
+    refute Slices.owned?(:ingest, true)
   end
 
   describe "in front of a Phoenix page" do

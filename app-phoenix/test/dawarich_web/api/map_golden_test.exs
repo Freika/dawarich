@@ -12,7 +12,11 @@ defmodule DawarichWeb.Api.MapGoldenTest do
   end
 
   for kase <- @golden["cases"] do
-    @kase kase
+    @kase if(
+            kase["name"] in ~w(rails_point_tiles rails_tracked_months rails_point_update rails_points_bulk_destroy),
+            do: Map.put(kase, "expect", "own"),
+            else: kase
+          )
     test "golden #{kase["name"]}", %{port: port, upstream: puma} do
       Enum.each(@kase["env"], fn {name, value} -> System.put_env(name, value) end)
 

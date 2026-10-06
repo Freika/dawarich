@@ -166,7 +166,7 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
     end
   end
 
-  test "Cloud, the kill switch, HEAD, suffixes, the digest year constraint, mutations, borders and visited reach Puma even without a key",
+  test "Cloud legacy reads, slice pins, HEAD, suffixes, digest constraints and mutations reach Puma",
        %{port: port, upstream: upstream} do
     owner!()
 
@@ -181,8 +181,9 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
           {"GET", "/api/v1/digests/23", nil},
           {"POST", "/api/v1/digests?year=2023", nil},
           {"DELETE", "/api/v1/digests/2023", nil},
-          {"GET", "/api/v1/countries/borders", nil},
-          {"GET", "/api/v1/countries/visited?start_at=1&end_at=2", nil}
+          {"GET", "/api/v1/countries/borders", {"DAWARICH_RAILS_SLICES", "api_map_reads"}},
+          {"GET", "/api/v1/countries/visited?start_at=1&end_at=2",
+           {"DAWARICH_RAILS_SLICES", "api_map_reads"}}
         ] do
       Enum.each(~w(SELF_HOSTED DAWARICH_RAILS_SLICES), &System.delete_env/1)
       with {name, value} <- env, do: System.put_env(name, value)
@@ -194,6 +195,21 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
 
       assert {200, _, _} = read_response(client, method: method)
     end
+
+    System.delete_env("DAWARICH_RAILS_SLICES")
+
+    for hosted <- ["true", "false"] do
+      System.put_env("SELF_HOSTED", hosted)
+
+      for target <- ~w(/api/v1/countries/borders /api/v1/countries/visited?start_at=1&end_at=2) do
+        assert {401, headers, ""} =
+                 port |> request(target, [{"Accept", "application/json"}]) |> read_response()
+
+        assert values(headers, "x-dawarich-response") == ["Hey, I'm alive!"]
+      end
+    end
+
+    no_upstream!(upstream)
   end
 
   test "answered lines carry the final status, the Last-Modified 304 included; a hand-off logs its reason",

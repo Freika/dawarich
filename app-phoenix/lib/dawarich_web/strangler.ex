@@ -52,6 +52,20 @@ defmodule DawarichWeb.Strangler do
     "/api/v1/digests/:year" => %{"year" => ~r/\A\d{4}\z/}
   }
 
+  @coexistence_constraints %{
+    "/api/v1/visits/:id" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/api/v1/visits/:id/possible_places" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/api/v1/visits/:id/select_place" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/api/v1/notes/:id" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/api/v1/photos/:id/thumbnail" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
+    "/api/v1/photos/:id/thumbnail.jpg" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
+    "/api/v1/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/api/v1/tracks/:id" => %{"id" => ~r/\A\d+\z/},
+    "/api/v1/tracks/:track_id/points" => %{"track_id" => ~r/\A\d+\z/},
+    "/api/v1/families/location_requests/:id/accept" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/api/v1/families/location_requests/:id/decline" => %{"id" => ~r/\A\d{1,18}\z/}
+  }
+
   def browser_like?(value), do: value =~ @browser_like
 
   @impl true
@@ -67,7 +81,7 @@ defmodule DawarichWeb.Strangler do
         conn
         |> Plug.Conn.put_private(
           :dawarich_native_api,
-          String.starts_with?(conn.request_path, "/api/v1/")
+          native_api?(conn)
         )
         |> Plug.Conn.put_private(:dawarich_method, conn.method)
         |> Plug.Head.call([])
@@ -98,7 +112,8 @@ defmodule DawarichWeb.Strangler do
     method = if conn.method == "HEAD", do: "GET", else: conn.method
     route = Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host)
 
-    not handed_back?(conn.path_info) and not DawarichWeb.ApiClosureRoutes.deferred?(conn) and
+    Dawarich.Standalone.enabled?() and not handed_back?(conn.path_info) and
+      not DawarichWeb.ApiClosureRoutes.deferred?(conn) and
       (route == :error or
          (not handed_back?(conn.path_info, route) and slice_owned?(route, conn) and
             not rails_constraints?(route)))
@@ -151,10 +166,35 @@ defmodule DawarichWeb.Strangler do
     end
   end
 
+  def native_api?(%{path_info: ["api", "v1" | _]} = conn) do
+    method = if conn.method == "HEAD", do: "GET", else: conn.method
+
+    Dawarich.Standalone.enabled?() or
+      Enum.any?([conn.path_info, format_path(conn.path_info)], fn path ->
+        case Phoenix.Router.route_info(DawarichWeb.Router, method, path, conn.host) do
+          %{native_api: true} -> true
+          %{rails_key: key} when key in ~w(health ready) -> true
+          _ -> false
+        end
+      end)
+  end
+
+  def native_api?(_conn), do: false
+
+  defp format_path(["api", "v1", "tiles" | _] = path), do: path
+
+  defp format_path(path) do
+    case Regex.run(~r/\A(.+)\.([^\.\/]+)\z/, List.last(path)) do
+      [_, name, _] -> List.replace_at(path, -1, name)
+      _ -> path
+    end
+  end
+
   defp slice_owned?(%{slice: slice}, conn),
     do:
-      (conn.method != "HEAD" or DawarichWeb.Slices.head?(slice)) and
-        DawarichWeb.Slices.owned?(slice)
+      (conn.method != "HEAD" or
+         ((DawarichWeb.Slices.head?(slice) and native_api?(conn)) or slice == :cable)) and
+        DawarichWeb.Slices.owned?(slice, native_api?(conn))
 
   defp slice_owned?(_route, _conn), do: true
 
@@ -176,9 +216,16 @@ defmodule DawarichWeb.Strangler do
 
   def rails_constraints?(%{route: route, path_params: params}),
     do:
-      Enum.all?(Map.get(@constraints, route, %{}), fn {name, pattern} ->
+      Enum.all?(Map.get(constraints(), route, %{}), fn {name, pattern} ->
         Regex.match?(pattern, params[name])
       end)
+
+  defp constraints,
+    do:
+      if(Dawarich.Standalone.enabled?(),
+        do: @constraints,
+        else: Map.merge(@constraints, @coexistence_constraints)
+      )
 
   def handed_back?([segment | _]),
     do: Map.get(@keys, segment, segment) in Application.get_env(:dawarich, :rails_routes, [])

@@ -5,9 +5,9 @@ defmodule DawarichWeb.Slices do
 
   def head?(slice), do: slice in @api_slices or slice == :cable
 
-  def owned?(slice) do
+  def owned?(slice, native_api \\ false) do
     Dawarich.Standalone.enabled?() or
-      ((slice in @api_slices or slice == :cable or
+      ((native_api or slice == :cable or
           DawarichWeb.LayoutAssigns.self_hosted?(%{
             "SELF_HOSTED" => System.get_env("SELF_HOSTED")
           })) and

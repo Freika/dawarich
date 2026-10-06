@@ -10,6 +10,12 @@ defmodule DawarichWeb.Api.MethodOverride do
   def call(%{path_info: ["api", "v1", "mcp"]} = conn, _opts), do: conn
 
   def call(%{method: "POST", path_info: ["api", "v1" | _]} = conn, _opts) do
+    if DawarichWeb.Strangler.native_api?(conn), do: native(conn), else: conn
+  end
+
+  def call(conn, _opts), do: conn
+
+  defp native(conn) do
     slices = candidate_slices(conn)
 
     cond do
@@ -17,18 +23,16 @@ defmodule DawarichWeb.Api.MethodOverride do
         DawarichWeb.ApiClosureRoutes.deferred?(conn) or not original_owned?(conn) ->
         conn
 
-      override_possible?(conn) and Enum.any?(slices, &(not DawarichWeb.Slices.owned?(&1))) ->
+      override_possible?(conn) and Enum.any?(slices, &(not DawarichWeb.Slices.owned?(&1, true))) ->
         put_private(conn, :dawarich_api_pre_effect_pin, true)
 
-      Enum.any?(slices, &DawarichWeb.Slices.owned?/1) ->
+      Enum.any?(slices, &DawarichWeb.Slices.owned?(&1, true)) ->
         override(conn)
 
       true ->
         conn
     end
   end
-
-  def call(conn, _opts), do: conn
 
   defp override(conn) do
     conn = Transport.parse(conn)
@@ -62,7 +66,7 @@ defmodule DawarichWeb.Api.MethodOverride do
 
   defp original_owned?(conn) do
     case Phoenix.Router.route_info(DawarichWeb.Router, conn.method, conn.path_info, conn.host) do
-      %{slice: slice} -> DawarichWeb.Slices.owned?(slice)
+      %{slice: slice} -> DawarichWeb.Slices.owned?(slice, true)
       _ -> true
     end
   end
