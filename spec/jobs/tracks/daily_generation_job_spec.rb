@@ -83,7 +83,7 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
       expect { described_class.perform_now }.to \
         have_enqueued_job(Tracks::ParallelGeneratorJob).with(
           active_user.id,
-          hash_including(mode: 'daily', start_at: Time.at(active_user_old_track.end_at.to_i + 1))
+          hash_including(mode: 'daily', start_at: Time.zone.at(active_user_old_track.end_at.to_i + 1))
         )
       job = ActiveJob::Base.queue_adapter.enqueued_jobs.find { _1[:args].first == active_user.id }
       expect(job[:args].last.fetch('end_at').fetch('value')).to end_with('+09:00')
