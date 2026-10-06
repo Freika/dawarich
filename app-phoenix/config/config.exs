@@ -1,5 +1,7 @@
 import Config
 
+config :elixir, :time_zone_database, Dawarich.Jobs.CronTimeZoneDatabase
+
 config :dawarich, ecto_repos: [Dawarich.Repo]
 
 config :dawarich, Dawarich.Repo,
