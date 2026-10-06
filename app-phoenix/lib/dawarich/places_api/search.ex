@@ -5,6 +5,21 @@ defmodule Dawarich.PlacesApi.Search do
   alias Dawarich.Locations.Suggestions
   alias Dawarich.PlacesApi.{Nearby, Payload}
 
+  def term(%{"places" => places, "areas" => areas}),
+    do:
+      {:object,
+       [
+         {"places", Enum.map(places, &Nearby.item_term/1)},
+         {"areas",
+          Enum.map(
+            areas,
+            &{:object,
+             Enum.map(~w(id name latitude longitude radius source), fn key -> {key, &1[key]} end)}
+          )}
+       ]}
+
+  def term(other), do: other
+
   def run(user, params) do
     cond do
       not Ruby.present?(params["lat"]) or not Ruby.present?(params["lon"]) ->

@@ -1,17 +1,42 @@
 defmodule Dawarich.Photos.ProviderCache do
   @moduledoc false
-  alias Dawarich.{RailsCache, Redis}
+  alias Dawarich.{RailsCache, Redis, TtlCache}
   alias Dawarich.RailsCache.Wire
 
   @photo_keys ~w(id latitude longitude localDateTime capturedAt originalFileName city state country type orientation source)
   def term(photos),
     do: Enum.map(photos, fn photo -> {:object, Enum.map(@photo_keys, &{&1, photo[&1]})} end)
 
+  def decode_json(body) do
+    case Jason.decode(body, objects: :ordered_objects) do
+      {:ok, value} -> {:ok, normalize(value)}
+      error -> error
+    end
+  end
+
+  def wire(map) when is_map(map), do: {:object, Enum.map(order(map), &{&1, wire(map[&1])})}
+  def wire(list) when is_list(list), do: Enum.map(list, &wire/1)
+  def wire(value), do: value
+
+  defp order(map) do
+    case TtlCache.lookup({__MODULE__, :order, map}) do
+      {:ok, keys} -> keys
+      _ -> Map.keys(map)
+    end
+  end
+
+  defp ordered(pairs) do
+    pairs = Enum.map(pairs, fn {key, value} -> {normalize(key), normalize(value)} end)
+    map = Map.new(pairs)
+    TtlCache.put({__MODULE__, :order, map}, Enum.map(pairs, &elem(&1, 0)), 86_400_000)
+    map
+  end
+
   def key(user, from, to), do: "photos_#{user}_v2_#{from}_#{to}"
   def token_key(user), do: "dawarich/photoprism_preview_token_#{user}"
 
   def get(key) do
-    case RailsCache.get(key) do
+    case RailsCache.get(key, hash: :pairs) do
       {:ok, value} -> {:ok, normalize(value)}
       _ -> :miss
     end
@@ -59,6 +84,11 @@ defmodule Dawarich.Photos.ProviderCache do
     end
   end
 
+  defp normalize(%Jason.OrderedObject{values: pairs}), do: ordered(pairs)
+
+  defp normalize(%Dawarich.RailsCache.Value{tag: :hash_default, value: {pairs, _}}),
+    do: ordered(pairs)
+
   defp normalize({:ruby_symbol, name}), do: name
   defp normalize(%Dawarich.RailsCache.Value{value: value}) when is_binary(value), do: value
   defp normalize(value) when is_list(value), do: Enum.map(value, &normalize/1)
@@ -84,12 +114,19 @@ defmodule Dawarich.Photos.ProviderCache do
       if Map.has_key?(map, "capturedAt"),
         do:
           ~w(id latitude longitude localDateTime capturedAt originalFileName city state country type orientation source),
-        else: Map.keys(map)
+        else: order(map)
 
     [
       "{",
       long(map_size(map)),
-      Enum.map(keys, fn k -> [marshal(to_string(k)), marshal(map[k])] end)
+      Enum.map(keys, fn k ->
+        key =
+          if Map.has_key?(map, "capturedAt") or Map.has_key?(map, "geodata"),
+            do: [":", bytes(to_string(k))],
+            else: marshal(to_string(k))
+
+        [key, marshal(map[k])]
+      end)
     ]
   end
 

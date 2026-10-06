@@ -4,6 +4,22 @@ defmodule Dawarich.Locations.Suggestions do
   alias Dawarich.Geocoding.{Config, Http, Query, RateLimiter, ResponseCache, Search}
   alias Dawarich.Ingest.Ruby
 
+  def term(%{"suggestions" => list}),
+    do:
+      {:object,
+       [
+         {"suggestions",
+          Enum.map(
+            list,
+            &{:object, Enum.map(~w(name address coordinates type), fn key -> {key, &1[key]} end)}
+          )}
+       ]}
+
+  def term(other), do: other
+
+  def run(_user, %{"q" => q}) when not is_nil(q) and not is_binary(q),
+    do: {:ok, 500, %{"error" => "Internal Server Error"}}
+
   def run(user, params) do
     query = String.trim(params["q"] || "")
 
@@ -29,7 +45,11 @@ defmodule Dawarich.Locations.Suggestions do
             address = address(config.provider, data, p)
 
             item = %{
-              "name" => List.first(String.split(address, ",")) || "Unknown location",
+              "name" =>
+                if(address == "",
+                  do: "Unknown location",
+                  else: List.first(String.split(address, ","))
+                ),
               "address" => address,
               "coordinates" => [lat, lon],
               "type" => data["type"] || data["class"] || "unknown"
@@ -120,7 +140,7 @@ defmodule Dawarich.Locations.Suggestions do
       end
 
     with {:ok, status, body} when status in 200..399 <- response,
-         {:ok, doc} <- Jason.decode(body) do
+         {:ok, doc} <- Dawarich.Photos.ProviderCache.decode_json(body) do
       ResponseCache.put(key, body)
 
       case config.provider do

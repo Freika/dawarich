@@ -4,6 +4,29 @@ defmodule Dawarich.Photos.Enrichment do
   alias Dawarich.Photos.Index
   alias Dawarich.Ingest.Ruby
 
+  def term(list) when is_list(list), do: Enum.map(list, &term/1)
+
+  def term(map) when is_map(map) do
+    keys =
+      cond do
+        Map.has_key?(map, "matches") ->
+          ~w(error matches total_without_geodata total_matched)
+
+        Map.has_key?(map, "enriched") ->
+          ~w(error enriched pending failed errors)
+
+        Map.has_key?(map, "immich_asset_id") ->
+          ~w(immich_asset_id filename photo_timestamp time_delta_seconds latitude longitude match_method error)
+
+        true ->
+          Map.keys(map)
+      end
+
+    {:object, for(key <- keys, Map.has_key?(map, key), do: {key, term(map[key])})}
+  end
+
+  def term(other), do: other
+
   def pro?(user, now), do: Entitlements.full_access?(user, ReleaseMigration.self_hosted?(), now)
 
   def run(action, user, params, opts \\ []) do

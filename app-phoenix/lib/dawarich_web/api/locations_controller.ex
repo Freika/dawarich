@@ -20,7 +20,7 @@ defmodule DawarichWeb.Api.LocationsController do
     do:
       closure(
         conn,
-        Dawarich.Locations.Suggestions.run(conn.assigns.api_user, conn.assigns.api_params)
+        suggestions(conn.assigns.api_user, conn.assigns.api_params)
       )
 
   def call(conn, :index) do
@@ -39,6 +39,11 @@ defmodule DawarichWeb.Api.LocationsController do
       {:replay, reason} ->
         Body.replay(conn, reason)
     end
+  end
+
+  defp suggestions(user, params) do
+    {:ok, status, term} = Dawarich.Locations.Suggestions.run(user, params)
+    {:ok, status, Dawarich.Locations.Suggestions.term(term)}
   end
 
   defp answer(conn, lat, lon) do

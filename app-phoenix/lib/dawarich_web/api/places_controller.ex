@@ -14,7 +14,7 @@ defmodule DawarichWeb.Api.PlacesController do
   def call(conn, action) when action in [:nearby, :search] do
     module = if action == :nearby, do: Dawarich.PlacesApi.Nearby, else: Dawarich.PlacesApi.Search
     {:ok, status, term} = module.run(conn.assigns.api_user, conn.assigns.api_params)
-    Respond.json(conn, status, term)
+    Respond.json(conn, status, module.term(term))
   end
 
   def call(conn, {:closure, action}) do

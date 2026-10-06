@@ -57,6 +57,17 @@ defmodule DawarichWeb.A12f2BClosureTest do
     assert invoke(ProviderCache, :token, [user.id]) == "synthetic-preview"
     assert photos == oracle("closure_photos_photoprism")
 
+    {:ok, cache_bytes} =
+      Redis.cache_command([
+        "GET",
+        ProviderCache.key(user.id, params["start_date"], params["end_date"])
+      ])
+
+    assert {:ok,
+            %{
+              value: [%Dawarich.RailsCache.Value{value: {[{{:ruby_symbol, "id"}, "a.b"} | _], _}}]
+            }} = Dawarich.RailsCache.Wire.decode(cache_bytes, hash: :pairs)
+
     assert Index.term(photos)
            |> Dawarich.ReleaseMigrations.Effects.Support.Ruby.json()
            |> IO.iodata_to_binary() == oracle_body("closure_photos_photoprism")
@@ -153,6 +164,11 @@ defmodule DawarichWeb.A12f2BClosureTest do
   @tag :a12f2_b_04
   test "Location suggestions retain Rails validation provider selection shared cache and limiter errors",
        %{user: user} do
+    assert invoke(Dawarich.Locations.Suggestions, :term, [%{"suggestions" => []}]) ==
+             {:object, [{"suggestions", []}]}
+
+    assert {:ok, 500, _} = invoke(Dawarich.Locations.Suggestions, :run, [user, %{"q" => %{}}])
+
     assert invoke(Dawarich.Locations.Suggestions, :run, [
              user,
              %{"q" => String.duplicate("x", 201)}
@@ -212,6 +228,9 @@ defmodule DawarichWeb.A12f2BClosureTest do
   @tag :a12f2_b_05
   test "Nearby places preserve actor scope coordinate validation radius sort and formatted cache results",
        %{user: user} do
+    assert invoke(Dawarich.PlacesApi.Nearby, :term, [%{"places" => []}]) ==
+             {:object, [{"places", []}]}
+
     assert {:ok, 400, _} = invoke(Dawarich.PlacesApi.Nearby, :run, [user, %{}])
 
     {base, task} =
@@ -246,6 +265,20 @@ defmodule DawarichWeb.A12f2BClosureTest do
              %{"latitude" => "0", "longitude" => "0"}
            ]) == {:ok, 200, %{"places" => []}}
 
+    raw = ~s({"z":1,"a":{"y":2,"b":3}})
+    assert {:ok, data} = ProviderCache.decode_json(raw)
+    cache_key = "photos_search/#{user.id}/wire-order"
+    assert {:ok, "OK"} = ProviderCache.put(cache_key, data, 30)
+    Dawarich.TtlCache.delete({ProviderCache, :order, data})
+    Dawarich.TtlCache.delete({ProviderCache, :order, data["a"]})
+    assert {:ok, cached} = ProviderCache.get(cache_key)
+
+    assert ProviderCache.wire(cached)
+           |> Dawarich.ReleaseMigrations.Effects.Support.Ruby.json()
+           |> IO.iodata_to_binary() == raw
+
+    ProviderCache.invalidate(user.id)
+
     own = place(user.id, "Own", 52.52, 13.405)
     foreign = place(user.id + 1, "Foreign", 52.52, 13.405)
 
@@ -259,6 +292,9 @@ defmodule DawarichWeb.A12f2BClosureTest do
   test "Place search and CRUD retain geocoder saved place dedup tags and refusal semantics", %{
     user: user
   } do
+    assert invoke(Dawarich.PlacesApi.Search, :term, [%{"places" => [], "areas" => []}]) ==
+             {:object, [{"places", []}, {"areas", []}]}
+
     assert {:ok, 400, _} = invoke(Dawarich.PlacesApi.Search, :run, [user, %{}])
     own = place(user.id, "Café", 52.52, 13.405)
     place(user.id + 1, "Café", 52.52, 13.405)
@@ -296,6 +332,29 @@ defmodule DawarichWeb.A12f2BClosureTest do
       ).rows
 
     now = ~U[2026-10-06 12:00:00Z]
+
+    assert {:ok, 500, _, []} =
+             invoke(Dawarich.PlacesApi.Closure, :run, [
+               :create,
+               user,
+               %{
+                 "place" => %{
+                   "name" => "Invalid source",
+                   "latitude" => 52.52,
+                   "longitude" => 13.405,
+                   "source" => "invalid"
+                 }
+               },
+               now
+             ])
+
+    assert {:ok, 422, {:object, [{"errors", ["Name can't be blank"]}]}, []} =
+             invoke(Dawarich.PlacesApi.Closure, :run, [
+               :create,
+               user,
+               %{"place" => %{"name" => [], "latitude" => 52.52, "longitude" => 13.405}},
+               now
+             ])
 
     assert {:ok, 201, term, []} =
              invoke(Dawarich.PlacesApi.Closure, :run, [
@@ -343,6 +402,24 @@ defmodule DawarichWeb.A12f2BClosureTest do
 
     assert term_map(term)["tags"] == []
 
+    assert {:ok, 201, scalar, []} =
+             invoke(Dawarich.PlacesApi.Closure, :run, [
+               :create,
+               user,
+               %{
+                 "place" => %{
+                   "name" => "Scalar tag",
+                   "latitude" => 52.52,
+                   "longitude" => 13.405,
+                   "tag_ids" => to_string(tag)
+                 }
+               },
+               now
+             ])
+
+    assert [%{"id" => ^tag}] = term_map(scalar)["tags"]
+    assert oracle("closure_create_nested_name") == %{"errors" => ["Name can't be blank"]}
+
     assert {:ok, 404, _, []} =
              invoke(Dawarich.PlacesApi.Closure, :run, [
                :show,
@@ -366,6 +443,10 @@ defmodule DawarichWeb.A12f2BClosureTest do
   @tag :a12f2_b_07
   test "Immich enrichment preserves Pro access remote writes verification enqueue and partial failure outcomes",
        %{user: user} do
+    assert invoke(Dawarich.Photos.Enrichment, :term, [
+             %{"enriched" => 0, "pending" => 0, "failed" => 0, "errors" => []}
+           ]) == {:object, [{"enriched", 0}, {"pending", 0}, {"failed", 0}, {"errors", []}]}
+
     assert {:ok, 200, %{"error" => "Immich URL is missing"}} =
              invoke(Dawarich.Photos.Enrichment, :run, [:scan, user, %{}, []])
 
@@ -498,7 +579,7 @@ defmodule DawarichWeb.A12f2BClosureTest do
 
   defp oracle_body(name) do
     fixture = "test/fixtures/a12f2b/closure.json" |> File.read!() |> Jason.decode!()
-    kase = Enum.find(fixture["locations_photos"], &(&1["name"] == name))
+    kase = Enum.find(List.flatten(Map.values(fixture)), &(&1["name"] == name))
     kase["response"]["body"]
   end
 

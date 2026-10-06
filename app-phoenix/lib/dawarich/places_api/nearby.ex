@@ -5,6 +5,15 @@ defmodule Dawarich.PlacesApi.Nearby do
   alias Dawarich.Locations.Suggestions
   alias Dawarich.Photos.ProviderCache
 
+  @fields ~w(id name latitude longitude osm_id osm_type osm_key osm_value city country street housenumber postcode source geodata)
+  def term(%{"places" => list}), do: {:object, [{"places", Enum.map(list, &item_term/1)}]}
+  def term(other), do: other
+
+  def item_term(map),
+    do:
+      {:object,
+       for(key <- @fields, Map.has_key?(map, key), do: {key, ProviderCache.wire(map[key])})}
+
   def run(user, params) do
     if Ruby.present?(params["latitude"]) and Ruby.present?(params["longitude"]) do
       places =

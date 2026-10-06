@@ -74,7 +74,12 @@ defmodule Dawarich.PlacesApi.Closure do
   end
 
   defp save(owner, previous, changes, now) do
-    attrs = Map.merge(stored(previous), Map.take(changes, @attributes))
+    attrs =
+      Map.merge(
+        stored(previous),
+        Map.filter(Map.take(changes, @attributes), fn {_, value} -> scalar?(value) end)
+      )
+
     name = if is_nil(attrs["name"]), do: nil, else: to_string(attrs["name"])
 
     attrs =
@@ -83,6 +88,7 @@ defmodule Dawarich.PlacesApi.Closure do
     values = [name, number(attrs["latitude"]), number(attrs["longitude"])]
     source = Map.get(@sources, attrs["source"], attrs["source"])
     source = if source == "", do: nil, else: source
+    if source not in [nil, 0, 1, 2], do: raise(ArgumentError)
     values = values ++ [source, attrs["note"]]
 
     case errors(values) do
@@ -141,21 +147,16 @@ defmodule Dawarich.PlacesApi.Closure do
         do: message
   end
 
-  defp inputs?(attrs) when is_map(attrs) and map_size(attrs) > 0,
-    do: Enum.all?(attrs, fn {key, value} -> input?(key, value) end)
-
+  defp inputs?(attrs) when is_map(attrs), do: map_size(attrs) > 0
   defp inputs?(_attrs), do: false
 
-  defp input?(key, value) when key in ["name", "note", "latitude", "longitude"],
-    do: is_nil(value) or is_binary(value) or is_number(value)
-
-  defp input?("source", value), do: value in [nil, "", 0, 1, 2] or Map.has_key?(@sources, value)
-  defp input?(_key, _value), do: true
+  defp scalar?(value),
+    do: is_nil(value) or is_binary(value) or is_number(value) or is_boolean(value)
 
   defp save_tags(owner, id, changes, now, create) do
-    if is_list(changes["tag_ids"]) do
+    if Map.has_key?(changes, "tag_ids") and changes["tag_ids"] not in [nil, false] do
       ids =
-        changes["tag_ids"]
+        List.wrap(changes["tag_ids"])
         |> Enum.reject(&is_nil/1)
         |> Enum.map(&Dawarich.Ingest.Ruby.to_i/1)
         |> Enum.uniq()
@@ -188,12 +189,15 @@ defmodule Dawarich.PlacesApi.Closure do
   end
 
   defp blank?(nil), do: true
-  defp blank?(value), do: value =~ ~r/\A[\x09-\x0D ]*\z/
+  defp blank?(value), do: String.trim(value) == ""
 
   defp number(nil), do: nil
   defp number(value) when is_number(value), do: value / 1
   defp number(""), do: nil
-  defp number(value), do: Dawarich.Ingest.Ruby.to_f(value)
+  defp number(value) when is_boolean(value), do: if(value, do: 1.0, else: 0.0)
+
+  defp number(value),
+    do: if(String.trim(value) == "", do: nil, else: Dawarich.Ingest.Ruby.to_f(value))
 
   defp not_found,
     do: {:ok, 404, {:object, [{"error", I18n.en!("controllers.api.record_not_found")}]}, []}

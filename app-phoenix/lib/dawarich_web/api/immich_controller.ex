@@ -16,7 +16,7 @@ defmodule DawarichWeb.Api.ImmichController do
     if Enrichment.pro?(user, now) do
       case Enrichment.run(action, user, conn.assigns.api_params) do
         {:ok, status, term} ->
-          Respond.json(conn, status, term)
+          Respond.json(conn, status, Enrichment.term(term))
 
         {:error, :verification_unavailable} ->
           Respond.json(conn, 503, %{"error" => "verification_unavailable"})
