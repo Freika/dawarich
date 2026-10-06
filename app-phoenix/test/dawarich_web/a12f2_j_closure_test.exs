@@ -99,6 +99,19 @@ defmodule DawarichWeb.A12f2JClosureTest do
     no_upstream!(c.upstream)
   end
 
+  @tag :a12f2_j_activate_i
+  test "Merged storage proxy representations and guest upload refusals are terminal native responses",
+       c do
+    for path <-
+          ~w(/rails/active_storage/blobs/proxy/invalid/photo.jpg /rails/active_storage/representations/proxy/invalid/invalid/photo.jpg /rails/active_storage/representations/redirect/invalid/invalid/photo.jpg /rails/active_storage/representations/invalid/invalid/photo.jpg) do
+      assert {404, headers, _} = endpoint(c, "GET", path), path
+      assert values(headers, "x-dawarich-handler") == ["phoenix-active-storage"]
+    end
+
+    assert {422, _, _} = endpoint(c, "POST", "/rails/active_storage/direct_uploads")
+    no_upstream!(c.upstream)
+  end
+
   defp bearer, do: [{"Authorization", "Bearer #{@key}"}, {"Accept", "application/json"}]
 
   defp route(method, path),
