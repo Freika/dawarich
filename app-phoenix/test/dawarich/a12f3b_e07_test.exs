@@ -271,6 +271,94 @@ defmodule Dawarich.A12f3bE07Test do
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
   end
 
+  @tag a12f3b_case: "E07R1"
+  test "R1 dispatches integer and numeric string family mail ids to terminal delivery" do
+    for form <- [&Function.identity/1, &Integer.to_string/1, &"+000#{&1}"] do
+      owner = user!(2, %{})
+
+      assert :ok =
+               AutoCreateWorker.run(
+                 ScratchRepo,
+                 %{"user_id" => owner, "time_zone" => "UTC", "event_id" => Ecto.UUID.generate()},
+                 now: @now
+               )
+
+      [[family]] = rows("SELECT id FROM families WHERE creator_id=$1", [owner])
+      member = user!(0, %{"locale" => "fr"})
+      invitation = invitation!(family, owner, 0, DateTime.add(@now, 86_400), @now)
+
+      cases = [
+        {"mail.family_invitation", FamilyInvitationWorker,
+         %{"invitation_id" => form.(invitation), "locale" => "de"},
+         %{"invitation_id" => invitation, "locale" => "de"}, "invitee@example.test"},
+        {"mail.family_lapse", FamilyLapseWorker,
+         %{
+           "user_id" => form.(member),
+           "family_id" => form.(family),
+           "locale" => "de",
+           "lapse_at" => "none"
+         },
+         %{
+           "user_id" => member,
+           "family_id" => family,
+           "locale" => "de",
+           "lapse_at" => "none"
+         }, email(member)}
+      ]
+
+      events =
+        for {command, _, payload, _, _} <- cases,
+            do: outbox!(command_type: command, payload: payload, scheduled_at: @now)
+
+      assert %{dispatched: 2} = Dispatch.run(repo: ScratchRepo, oban: @oban, now: @now)
+
+      for {{_, worker, payload, expected, recipient}, event} <- Enum.zip(cases, events) do
+        assert [[job, args]] =
+                 rows("SELECT id,args FROM oban.oban_jobs WHERE args->>'event_id'=$1", [event])
+
+        assert args == Map.put(expected, "event_id", event)
+        assert :ok = worker.perform(%Oban.Job{args: args})
+        assert_received {:mail, %{to: ^recipient, subject: subject, text: text}}
+        assert is_binary(subject)
+        assert text =~ "My Family"
+        assert :ok = worker.perform(%Oban.Job{args: args})
+        refute_received {:mail, _}
+        finish(job)
+
+        assert rows("SELECT state,error_code FROM job_outbox WHERE event_id=$1", [
+                 Ecto.UUID.dump!(event)
+               ]) == [["dispatched", nil]]
+
+        assert {:error, "unsupported_version"} = worker.args_from_command(2, payload)
+
+        assert {:error, "invalid_payload"} =
+                 worker.args_from_command(1, Map.put(payload, "extra", true))
+
+        for key <- Map.keys(expected) -- ["locale", "lapse_at"],
+            bad <- [
+              nil,
+              [],
+              %{},
+              "",
+              "invalid",
+              "9223372036854775808",
+              "-9223372036854775809"
+            ] do
+          assert {:error, "invalid_payload"} =
+                   worker.args_from_command(1, Map.put(payload, key, bad))
+        end
+      end
+    end
+
+    assert rows("SELECT count(*) FROM phoenix.delivery_claims WHERE delivered_at IS NOT NULL") ==
+             [[6]]
+
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    assert Drain.status(ScratchRepo).counts.pending_outbox == 0
+    assert Drain.status(ScratchRepo).counts.quarantined == 0
+    assert Drain.status(ScratchRepo).counts.incomplete_oban == 0
+  end
+
   defp user!(plan, settings) do
     [[id]] =
       rows(
