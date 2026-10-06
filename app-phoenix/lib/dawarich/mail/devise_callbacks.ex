@@ -11,18 +11,45 @@ defmodule Dawarich.Mail.DeviseCallbacks do
     if Enum.any?(Map.keys(changes), &(&1 not in @fields)),
       do: raise(ArgumentError, "unsupported credential change")
 
-    repo.transaction(fn ->
-      case repo.query!(@load, [id], log: false).rows do
-        [[email, hash, settings]] ->
-          before = %{id: id, email: email, encrypted_password: hash, settings: settings}
-          after_user = Map.merge(before, changes)
-          changed = Enum.filter(@fields, &(before[&1] != after_user[&1]))
-          save!(repo, id, after_user, changed)
-          after_update(before, after_user, opts)
-          after_user
+    nested = repo.in_transaction?()
 
-        [] ->
-          repo.rollback(:missing)
+    result =
+      repo.transaction(fn ->
+        case repo.query!(@load, [id], log: false).rows do
+          [[email, hash, settings]] ->
+            before = %{id: id, email: email, encrypted_password: hash, settings: settings}
+            after_user = Map.merge(before, changes)
+            changed = Enum.filter(@fields, &(before[&1] != after_user[&1]))
+            save!(repo, id, after_user, changed)
+            jobs = after_update(before, after_user, opts)
+            {after_user, jobs}
+
+          [] ->
+            repo.rollback(:missing)
+        end
+      end)
+
+    case result do
+      {:ok, {user, jobs}} ->
+        if nested do
+          {:ok, user}
+        else
+          case after_commit(jobs) do
+            :ok -> {:ok, user}
+            {:error, reason} -> {:error, {:delivery, reason}}
+          end
+        end
+
+      error ->
+        error
+    end
+  end
+
+  def after_commit(jobs) do
+    Enum.reduce_while(jobs, :ok, fn job, :ok ->
+      case DeviseNotificationWorker.perform(job) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
       end
     end)
   end
@@ -54,9 +81,9 @@ defmodule Dawarich.Mail.DeviseCallbacks do
 
         Oban.insert!(Keyword.get(opts, :oban, Oban), DeviseNotificationWorker.new(args))
       end
+    else
+      []
     end
-
-    :ok
   end
 
   defp save!(_repo, _id, _user, []), do: :ok

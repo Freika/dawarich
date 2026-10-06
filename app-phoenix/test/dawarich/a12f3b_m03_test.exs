@@ -97,5 +97,14 @@ defmodule Dawarich.A12f3bM03Test do
              end)
 
     assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+    Process.put(:transport_result, {:error, :rejected})
+
+    assert {:error, {:delivery, :rejected}} =
+             DeviseCallbacks.update(ScratchRepo, id, %{email: "committed@example.test"}, opts)
+
+    assert rows("SELECT email FROM users WHERE id=$1", [id]) == [["committed@example.test"]]
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
+    assert rows("SELECT delivered_at FROM phoenix.delivery_claims") == [[nil]]
+    assert_received {:mail, _}
   end
 end
