@@ -40,7 +40,14 @@ defmodule DawarichWeb.Api.PhotosController do
         unconfigured(conn, source)
 
       {:error, status} ->
-        error(conn, status, "services.immich.response_analyzer.thumbnail_failed")
+        error(
+          conn,
+          status,
+          if(conn.assigns.api_params["source"] == "immich",
+            do: "services.immich.response_analyzer.thumbnail_failed",
+            else: "controllers.api.v1.photos.failed_to_fetch_thumbnail"
+          )
+        )
 
       :timeout ->
         error(conn, 502, "controllers.api.v1.photos.failed_to_fetch_photos")
@@ -64,7 +71,7 @@ defmodule DawarichWeb.Api.PhotosController do
         {:unconfigured, source}
 
       true ->
-        Thumbnail.fetch(settings, source, id)
+        Thumbnail.fetch(settings, source, id, user.id)
     end
   rescue
     error -> {:replay, inspect(error.__struct__)}

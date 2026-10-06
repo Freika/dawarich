@@ -12,6 +12,8 @@ defmodule Dawarich.Photos.Thumbnail do
   @environment ~w(http_proxy https_proxy HTTP_PROXY HTTPS_PROXY SSL_CERT_FILE SSL_CERT_DIR)
   @max_body 32 * 1024 * 1024
 
+  defdelegate fetch(settings, source, id, user), to: Dawarich.Photos.ThumbnailClosure
+
   def configured?(settings), do: pair?(settings, "immich") or pair?(settings, "photoprism")
 
   def fetch(_settings, "photoprism", _id),
