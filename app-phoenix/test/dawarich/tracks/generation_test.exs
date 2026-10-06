@@ -92,6 +92,7 @@ defmodule Dawarich.Tracks.GenerationTest do
            ]
   end
 
+  @tag a12f3b_case: "E14Bb"
   test "a replayed poll does not schedule twice" do
     {:started, id} = start!(2)
 
