@@ -10,11 +10,13 @@ defmodule Dawarich.A12f3bH01Test do
     Process.put(:h01_remote_ip, {0x2001, 0xDB8, a, b, c, d, e, f})
     saved = Map.new(~w(DAWARICH_RAILS SELF_HOSTED JWT_SECRET_KEY), &{&1, System.get_env(&1)})
     routes = Application.get_env(:dawarich, :rails_routes)
+    auth = Application.get_env(:dawarich, :phoenix_auth)
     upstream = Application.get_env(:dawarich, :rails_upstream)
     System.put_env("DAWARICH_RAILS", "off")
     System.put_env("SELF_HOSTED", "true")
     System.put_env("JWT_SECRET_KEY", "h01-synthetic-subscription-secret")
     Application.put_env(:dawarich, :rails_routes, [])
+    Application.put_env(:dawarich, :phoenix_auth, [])
     Application.put_env(:dawarich, :rails_upstream, nil)
 
     on_exit(fn ->
@@ -23,6 +25,7 @@ defmodule Dawarich.A12f3bH01Test do
       end
 
       Application.put_env(:dawarich, :rails_routes, routes)
+      Application.put_env(:dawarich, :phoenix_auth, auth)
       Application.put_env(:dawarich, :rails_upstream, upstream)
     end)
 
@@ -95,6 +98,7 @@ defmodule Dawarich.A12f3bH01Test do
 
     assert request(c.owner, "DELETE", "/posters/#{id}").status == 303
     assert Repo.query!("SELECT id FROM posters WHERE id=$1", [id]).rows == []
+    assert_settings(c.owner, c.outsider)
   end
 
   @tag a12f3b_case: "H01b"
@@ -111,6 +115,15 @@ defmodule Dawarich.A12f3bH01Test do
           {"trip_shares", actor, "/trips/99101/share_link", Shares.params("track")},
           {"share_links", actor, "/share_links/timeline", Shares.params("timeline")},
           {"posters", c.owner, "/posters", %{"poster" => %{"name" => "Must hand back"}}},
+          {nil, c.owner, "/settings/general", %{"_method" => "patch", "locale" => "de"}},
+          {nil, c.owner, "/settings/general/verify_supporter", %{}},
+          {nil, c.owner, "/settings/changelog_consent",
+           %{"_method" => "patch", "decision" => "granted"}},
+          {nil, c.owner, "/settings/generate_api_key", %{}},
+          {nil, c.owner, "/settings/onboarding", %{"_method" => "put"}},
+          {nil, c.owner, "/notifications/mark_as_read", %{}},
+          {nil, c.owner, "/notifications/destroy_all", %{}},
+          {nil, c.owner, "/notifications/1", %{"_method" => "delete"}},
           {nil, c.outsider, "/family/location_requests?a=%ZZ", "target_user_id=90102"},
           {nil, c.outsider, "/family/location_requests", "a=%4"},
           {nil, c.outsider, "/family/location_requests", "_method=delete"}
@@ -163,6 +176,23 @@ defmodule Dawarich.A12f3bH01Test do
     Application.put_env(:dawarich, :rails_upstream, nil)
     System.put_env("DAWARICH_RAILS", "off")
     before = footprint()
+
+    for {method, path, params} <- [
+          {"PATCH", "/settings/general", %{"locale" => "de"}},
+          {"POST", "/settings/general/verify_supporter", %{}},
+          {"PATCH", "/settings/changelog_consent", %{"decision" => "granted"}},
+          {"POST", "/settings/generate_api_key", %{}},
+          {"PUT", "/settings/onboarding", %{}},
+          {"POST", "/notifications/mark_as_read", %{}},
+          {"POST", "/notifications/destroy_all", %{}},
+          {"DELETE", "/notifications/1", %{}}
+        ] do
+      assert request(c.owner, method, path, Map.put(params, "authenticity_token", "invalid")).status ==
+               422
+    end
+
+    assert raw_request("PATCH", "/settings/general", "", "").status == 302
+    assert raw_request("GET", "/settings/theme?theme=light", "", "").status == 302
     assert request(c.outsider, "POST", "/family", %{"family" => %{"name" => ""}}).status == 422
 
     assert request(c.outsider, "POST", "/family", %{
@@ -172,6 +202,7 @@ defmodule Dawarich.A12f3bH01Test do
 
     assert footprint() == before
     System.put_env("SELF_HOSTED", "false")
+    assert_settings(c.owner, c.outsider)
 
     assert request(c.owner, "POST", "/posters", %{"poster" => %{"name" => "Native Cloud"}}).status ==
              302
@@ -272,14 +303,117 @@ defmodule Dawarich.A12f3bH01Test do
         {"GET", "/trial/welcome", DawarichWeb.TrialWelcome},
         {"GET", "/", DawarichWeb.HomeDispatch},
         {"GET", "/notifications", Phoenix.LiveView.Plug}
-      ]
+      ] ++ settings_declarations()
+  end
+
+  defp settings_declarations do
+    for {path, methods, plug} <- [
+          {"/settings/general", ~w(POST PATCH PUT), DawarichWeb.SettingsActions},
+          {"/settings/general/verify_supporter", ["POST"], DawarichWeb.SettingsSupporterActions},
+          {"/settings/theme", ["GET"], DawarichWeb.SettingsMiscActions},
+          {"/settings/changelog_consent", ~w(PATCH POST), DawarichWeb.SettingsMiscActions},
+          {"/settings/generate_api_key", ["POST"], DawarichWeb.SettingsMiscActions},
+          {"/settings/onboarding", ~w(POST PATCH PUT), DawarichWeb.OnboardingActions},
+          {"/notifications/mark_as_read", ["POST"], DawarichWeb.NotificationActions},
+          {"/notifications/destroy_all", ["POST"], DawarichWeb.NotificationActions},
+          {"/notifications/1", ~w(DELETE POST), DawarichWeb.NotificationActions},
+          {"/settings/general/test_email", ["POST"], DawarichWeb.TestEmail}
+        ],
+        method <- methods,
+        do: {method, path, plug}
+  end
+
+  defp assert_settings(user, other) do
+    for {method, params} <- [
+          {"PATCH", %{"news_emails_enabled" => "false"}},
+          {"PUT", %{"news_emails_enabled" => "true"}},
+          {"POST", %{"_method" => "patch", "news_emails_enabled" => "false"}}
+        ] do
+      result = request(user, method, "/settings/general", params)
+      assert result.status == 302
+      assert get_resp_header(result, "location") == ["http://www.example.com/settings/general"]
+
+      assert Dawarich.Accounts.settings(user.id)["news_emails_enabled"] ==
+               (params["news_emails_enabled"] == "true")
+    end
+
+    assert request(user, "POST", "/settings/general/verify_supporter").status == 302
+    get = request(user, "GET", "/settings/theme?theme=light")
+    head = request(user, "HEAD", "/settings/theme?theme=light")
+    assert get.status == 302
+    assert head.status == get.status
+    assert get_resp_header(head, "location") == get_resp_header(get, "location")
+    assert head.resp_body == ""
+    assert Dawarich.Accounts.get(user.id).theme == "light"
+
+    for {method, params} <- [
+          {"PATCH", %{"decision" => "granted"}},
+          {"POST", %{"_method" => "patch", "decision" => "declined"}}
+        ] do
+      assert request(user, method, "/settings/changelog_consent", params).status == 302
+
+      assert Dawarich.Accounts.get(user.id).changelog_consent ==
+               if(params["decision"] == "granted", do: 1, else: 0)
+    end
+
+    old_key = Dawarich.Accounts.get(user.id).api_key
+    cache_key = {DawarichWeb.RateLimit, old_key}
+    Dawarich.TtlCache.fetch(cache_key, 60_000, fn -> :primed end)
+    assert {:ok, :primed} = Dawarich.TtlCache.lookup(cache_key)
+    other_key = Dawarich.Accounts.get(other.id).api_key
+
+    Repo.query!(
+      "UPDATE users SET provider='openid_connect', uid='h01-provider', otp_required_for_login=true WHERE id=$1",
+      [user.id]
+    )
+
+    assert request(user, "POST", "/settings/generate_api_key", %{"user_id" => "#{other.id}"}).status ==
+             302
+
+    key = Dawarich.Accounts.get(user.id).api_key
+    assert key != old_key
+    assert byte_size(key) == 64
+    assert Dawarich.TtlCache.lookup(cache_key) == :error
+    assert Dawarich.Accounts.by_api_key(old_key) == nil
+    assert Dawarich.Accounts.by_api_key(key).id == user.id
+    assert Dawarich.Accounts.get(other.id).api_key == other_key
+
+    for {method, params} <- [
+          {"PATCH", %{}},
+          {"PUT", %{}},
+          {"POST", %{"_method" => "put"}}
+        ] do
+      result = request(user, method, "/settings/onboarding", params)
+      assert result.status == 200
+      assert result.resp_body == ""
+      assert Dawarich.Accounts.settings(user.id)["onboarding_completed"]
+    end
+
+    own = Dawarich.Notifications.create!(Repo, user.id, :info, "Mounted notification", "Body")
+
+    foreign =
+      Dawarich.Notifications.create!(Repo, other.id, :info, "Foreign notification", "Body")
+
+    assert request(user, "POST", "/notifications/mark_as_read").status == 303
+    assert Dawarich.Notifications.get(user.id, own).read_at
+    refute Dawarich.Notifications.get(other.id, foreign).read_at
+    assert request(user, "DELETE", "/notifications/#{foreign}", %{"id" => "#{own}"}).status == 404
+    assert Dawarich.Notifications.get(user.id, own)
+    assert request(user, "DELETE", "/notifications/#{own}").status == 303
+    own = Dawarich.Notifications.create!(Repo, user.id, :info, "Override notification", "Body")
+    assert request(user, "POST", "/notifications/#{own}", %{"_method" => "delete"}).status == 303
+    Dawarich.Notifications.create!(Repo, user.id, :info, "Delete all notification", "Body")
+    assert request(user, "POST", "/notifications/destroy_all").status == 303
+    assert Repo.query!("SELECT id FROM notifications WHERE user_id=$1", [user.id]).rows == []
+    assert Dawarich.Notifications.get(other.id, foreign)
   end
 
   defp footprint do
     for table <-
           ~w(families family_memberships family_invitations family_location_requests shared_links posters job_outbox notifications) do
       Repo.query!("SELECT row_to_json(t)::text FROM #{table} t ORDER BY row_to_json(t)::text").rows
-    end
+    end ++
+      Repo.query!("SELECT id, settings, theme, changelog_consent, api_key FROM users ORDER BY id").rows
   end
 
   defp request(user, method, path, params \\ %{}) do

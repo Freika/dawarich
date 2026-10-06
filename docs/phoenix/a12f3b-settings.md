@@ -14,9 +14,9 @@ Theme, changelog consent, and current-key rotation use legacy browser URLs. Cons
 
 Onboarding PATCH/PUT and overridden POST merge only `onboarding_completed: true`. Successful responses are empty 200s; repeated completion preserves the saved timestamp. Failed persistence returns a native error so the browser cannot close the modal as success.
 
-## HOT handoff
+## Endpoint activation
 
-Import and mount these macros in order:
+The main router mounts these macros in order:
 
 1. Keep `A10Routes` before these modules; it defines the existing guarded `:standalone_settings` pipeline.
 2. `DawarichWeb.SettingsFormRoutes.settings_form_routes/0`.
@@ -26,7 +26,9 @@ Import and mount these macros in order:
 
 All four modules reuse `:standalone_settings`; they introduce no unmounted pipeline names.
 
-Remove the duplicate minimal `/settings/general` declarations from `A10Routes` when mounting `SettingsFormRoutes`. Preserve the existing test-email route. Every new route declares the standalone ownership gate; retained-source operation remains available during coexistence. Endpoint route activation and final HTTP integration evidence belong to HOT. DEMO adds its separate onboarding/demo routes after this shared module handoff.
+The duplicate minimal `/settings/general` declarations have been removed from `A10Routes`; its test-email route remains mounted. Every new route declares the standalone ownership gate; retained-source operation remains available during coexistence. DEMO adds its separate onboarding/demo routes.
+
+In standalone mode, `AuthGate` lets current-key rotation reach the mounted SETTINGS action instead of intercepting it with the bounded A11 handler. This preserves session-authorized provider/OTP rotation through the real endpoint. During coexistence, the existing A11 handler remains available under its configured auth flow.
 
 The minimal external seams are `AuthHandler` (successful-logout signal), `RailsAuth.live_session` and `LiveAuth` (session topic propagation), `NavbarHooks` (subscription and authorization hooks), and `Auth.ApiKeys` (session-authorized entry point). These are part of the SETTINGS handoff, not changes to the settings API.
 
@@ -34,6 +36,8 @@ The minimal external seams are `AuthHandler` (successful-logout signal), `RailsA
 
 Task tests are `test/dawarich_web/a12f3b_n01_test.exs` through `a12f3b_n06_test.exs`. Each plan selector has recorded RED, GREEN, a failing named production mutation, and restored GREEN. Source characterization extends the existing notification/settings generators and onboarding request specs. Retained fixture recording was run twice with byte-identical output.
 
-Under ruling 15, unsupported nested/duplicate/legacy envelope edge cases may return native errors in standalone mode; this package does not invent Rails bug fixes or claim complete rare-envelope parity. HOT owns mounting and endpoint acceptance; the controller owns seed 202 on the integration head and deferred Rails bug records. The execution report records gate output and these integration responsibilities.
+The retained H01 endpoint tests also cover the mounted method/path inventory without duplicate declarations, native settings and notification writes in self-hosted and Cloud standalone mode, session/CSRF refusal before effects, exact coexistence handback, and GET/HEAD theme response equivalence. API-key rotation primes the old rate-limit cache entry and verifies its invalidation, retired-key refusal, and preservation of another user's key.
+
+Under ruling 15, unsupported nested/duplicate/legacy envelope edge cases may return native errors in standalone mode; this package does not invent Rails bug fixes or claim complete rare-envelope parity. The controller owns seed 202 on the integration head and deferred Rails bug records. The execution reports record gate output and these integration responsibilities.
 
 Shared documentation: AFFiNE document `sIL5FiAZt9ZWDGTJTbQ2O` (Dawarich — Phoenix browser settings and notifications).
