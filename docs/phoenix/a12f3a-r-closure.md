@@ -107,3 +107,8 @@ this proven native scope. HEAD/media capabilities belong to the storage owner.
 O08 must repeat affected source generators twice at the reconciled integration
 head; package R does not claim new generator counts or byte stability. G44
 browser/export acceptance and seed 202 remain controller gates.
+
+The named client tables also cover unavailable-codec UI, render completion
+following destruction, and an aborted direct-upload callback arriving late.
+These deterministic probes pass without machine load or timing sleeps.
+Forced native compilation with warnings as errors and format check pass.

@@ -323,6 +323,27 @@ test("R09: native rendering and download bridge matches current Rails contract w
   studio.abortController = new AbortController()
   studio.cancel()
   assert.equal(studio.abortController.signal.aborted, true)
+  context.isVideoExportSupported = () => false
+  studio.syncSupport()
+  assert.equal(studio.renderButtonTarget.disabled, true)
+  assert.equal(studio.statusTarget.textContent, "video.unsupported_browser")
+  let release
+  context.renderRouteVideo = () =>
+    new Promise((resolve) => {
+      release = resolve
+    })
+  studio.points = [1, 2]
+  const lateRender = studio.render()
+  studio.operationVersion++
+  studio.destroyed = true
+  studio.cancel()
+  release({ blob: { size: 128 } })
+  await lateRender
+  assert.deepEqual(
+    urls,
+    ["blob:0"],
+    "a render completing after destruction creates no object URL",
+  )
 })
 
 test("R06: studio recipe and native hooks matches current Rails contract without a native-owner Rails effect", async () => {
@@ -444,4 +465,31 @@ test("R06: studio recipe and native hooks matches current Rails contract without
     /abort|cancel/i,
   )
   assert.equal(posted.length, 1)
+  let uploadComplete
+  globals.DirectUpload = class {
+    constructor(_file, _url, delegate) {
+      this.delegate = delegate
+    }
+    create(callback) {
+      this.delegate.directUploadWillStoreFileWithXHR(xhr)
+      uploadComplete = callback
+    }
+  }
+  const cancelled = new AbortController()
+  const inFlight = globals.saveAPI({
+    blob: new Blob(["synthetic"]),
+    name: "Route",
+    settings: recipe,
+    signal: cancelled.signal,
+  })
+  cancelled.abort()
+  await assert.rejects(inFlight, /cancel/i)
+  uploadComplete(null, { signed_id: "late-synthetic-upload" })
+  assert.equal(
+    posted.length,
+    1,
+    "cancelled uploads cannot save after their late callback",
+  )
+  assert.equal(xhr.upload.count(), 0)
+  assert.equal(xhr.aborts, 1)
 })
