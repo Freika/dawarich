@@ -14,6 +14,10 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.HealthRoutes
   import DawarichWeb.OperatorRoutes
   import DawarichWeb.DomainRoutes
+  import DawarichWeb.SettingsFormRoutes
+  import DawarichWeb.SettingsMiscRoutes
+  import DawarichWeb.OnboardingRoutes
+  import DawarichWeb.NotificationFormRoutes
 
   pipeline :browser do
     plug DawarichWeb.HostAuthorization
@@ -214,6 +218,10 @@ defmodule DawarichWeb.Router do
   end
 
   a10_routes()
+  settings_form_routes()
+  settings_misc_routes()
+  onboarding_routes()
+  notification_form_routes()
 
   pipeline :stats_sharing do
     plug DawarichWeb.HostAuthorization
