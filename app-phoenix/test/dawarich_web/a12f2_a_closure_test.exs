@@ -359,6 +359,122 @@ defmodule DawarichWeb.A12f2AClosureTest do
              403
   end
 
+  @tag :a12f2_a_07
+  test "Shared APIs retain phrase grant privacy photo ACL and resource failures without API authentication",
+       %{user: user, now: now} do
+    link_id = Ecto.UUID.generate()
+
+    Repo.query!(
+      "INSERT INTO shared_links(id,user_id,name,resource_type,settings,created_at,updated_at) VALUES($1::text::uuid,$2,'Synthetic',2,$3,NOW(),NOW())",
+      [
+        link_id,
+        user.id,
+        %{"start_date" => "2026-10-06", "end_date" => "2026-10-06", "show_photos" => true}
+      ]
+    )
+
+    params = %{"id" => link_id}
+
+    photos =
+      invoke(DawarichWeb.Api.SharedController, :photos, nil, params, now, [
+        {"x-dawarich-client", "ios"}
+      ])
+
+    assert photos.status == 200
+    assert Jason.decode!(photos.resp_body) == []
+    link = Dawarich.SharedLinks.active(link_id, now)
+    key = Dawarich.SharedApi.Closure.photo_ids_key(link)
+    Dawarich.Photos.ProviderCache.put(key, %{"immich:public-photo" => true}, 600)
+    assert Dawarich.SharedApi.Closure.allowed_photo?(link, "immich", "public-photo")
+    refute Dawarich.SharedApi.Closure.allowed_photo?(link, "immich", "private-photo")
+
+    private =
+      invoke(
+        DawarichWeb.Api.SharedController,
+        :thumbnail,
+        nil,
+        Map.merge(params, %{"photo_id" => "private-photo", "source" => "immich"}),
+        now
+      )
+
+    assert private.status == 404
+    server = Dawarich.Test.RawHTTP.listen()
+    image = <<255, 216, 0, 255, 217>>
+
+    task =
+      Task.async(fn ->
+        asset = %{
+          "id" => "public-photo",
+          "type" => "IMAGE",
+          "fileCreatedAt" => "2026-10-06T12:00:00Z",
+          "localDateTime" => "2026-10-06T12:00:00",
+          "originalFileName" => "synthetic.jpg",
+          "exifInfo" => %{"latitude" => 52.0, "longitude" => 13.0}
+        }
+
+        replies = [
+          {"POST /api/search/metadata HTTP/1.1", "application/json",
+           Jason.encode!(%{"assets" => %{"items" => [asset]}})},
+          {"POST /api/search/metadata HTTP/1.1", "application/json",
+           Jason.encode!(%{"assets" => %{"items" => []}})},
+          {"GET /api/assets/public-photo/thumbnail?size=preview HTTP/1.1", "image/jpeg", image}
+        ]
+
+        for {line, type, body} <- replies do
+          socket = Dawarich.Test.RawHTTP.accept(server)
+          {head, rest} = Dawarich.Test.RawHTTP.read_head(socket)
+          assert Dawarich.Test.RawHTTP.request_line(head) == line
+          size = head |> Dawarich.Test.RawHTTP.header("content-length") |> List.first() || "0"
+          Dawarich.Test.RawHTTP.read_at_least(socket, rest, String.to_integer(size))
+
+          Dawarich.Test.RawHTTP.reply(socket, [
+            "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-type: #{type}\r\ncontent-length: #{byte_size(body)}\r\n\r\n",
+            body
+          ])
+
+          :gen_tcp.close(socket)
+        end
+      end)
+
+    Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [
+      user.id,
+      %{
+        "timezone" => "UTC",
+        "immich_url" => "http://127.0.0.1:#{server.port}",
+        "immich_api_key" => "synthetic-photo-key"
+      }
+    ])
+
+    photos = invoke(DawarichWeb.Api.SharedController, :photos, nil, params, now)
+    assert [%{"id" => "public-photo", "thumbnail_url" => url}] = Jason.decode!(photos.resp_body)
+    assert url == "/api/v1/shared/#{link_id}/photos/public-photo/thumbnail?source=immich"
+    assert get_resp_header(photos, "cache-control") == ["max-age=60, public"]
+
+    thumbnail =
+      invoke(
+        DawarichWeb.Api.SharedController,
+        :thumbnail,
+        nil,
+        Map.merge(params, %{"photo_id" => "public-photo", "source" => "immich"}),
+        now
+      )
+
+    assert thumbnail.status == 200
+    assert thumbnail.resp_body == image
+    Task.await(task)
+    Dawarich.Photos.ProviderCache.invalidate(user.id)
+
+    Repo.query!(
+      "UPDATE shared_links SET magic_phrase='synthetic-phrase' WHERE id=$1::text::uuid",
+      [link_id]
+    )
+
+    assert invoke(DawarichWeb.Api.SharedController, :points, nil, params, now).status == 401
+    Repo.query!("UPDATE shared_links SET revoked_at=NOW() WHERE id=$1::text::uuid", [link_id])
+    assert invoke(DawarichWeb.Api.SharedController, :photos, nil, params, now).status == 404
+    Redis.cache_command(["UNLINK", key])
+  end
+
   defp source_body(section, name) do
     fixture = "test/fixtures/a12f2a/closure.json" |> File.read!() |> Jason.decode!()
     Enum.find(fixture[section], &(&1["name"] == name))["response"]["body"] |> Jason.decode!()
