@@ -74,6 +74,18 @@ defmodule DawarichWeb.StandaloneMapTest do
     assert request("/api/v1/settings/transportation_recalculation_status", key).status == 200
   end
 
+  test "standalone recalculation progress rejects inactive accounts without restricting settings",
+       %{id: id, key: key} do
+    assert request("/api/v1/settings/transportation_recalculation_status", key).status == 200
+    Repo.query!("UPDATE users SET status=0 WHERE id=$1", [id])
+    assert request("/api/v1/settings/transportation_recalculation_status", key).status == 401
+    assert request("/api/v1/settings", key).status == 200
+
+    Repo.query!("UPDATE users SET status=1, active_until=NOW()-interval '1 day' WHERE id=$1", [id])
+
+    assert request("/api/v1/settings/transportation_recalculation_status", key).status == 401
+  end
+
   test "standalone map invalid timezone terminates with a logged native envelope error", %{
     id: id,
     key: key

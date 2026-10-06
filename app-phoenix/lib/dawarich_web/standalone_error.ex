@@ -6,7 +6,14 @@ defmodule DawarichWeb.StandaloneError do
   def respond(conn, reason \\ "unsupported_envelope", status \\ 422) do
     metadata = %{method: conn.method, path: conn.request_path, reason: reason, status: status}
     Logger.warning("[standalone.handback] " <> Jason.encode!(metadata))
-    :telemetry.execute([:dawarich, :standalone, :handback], %{count: 1}, metadata)
+
+    method =
+      if conn.method in ~w(GET HEAD POST PUT PATCH DELETE OPTIONS), do: conn.method, else: "OTHER"
+
+    :telemetry.execute([:dawarich, :standalone, :handback], %{count: 1}, %{
+      metadata
+      | method: method
+    })
 
     message =
       if status == 422, do: "Unprocessable Entity", else: Plug.Conn.Status.reason_phrase(status)

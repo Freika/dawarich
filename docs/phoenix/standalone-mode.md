@@ -43,6 +43,8 @@ settings. Supporter verification remains a separate route.
 Standalone self-hosted mode also owns the authenticated settings/progress reads,
 point and track vector tiles, and date/import bounds used by the main map. Reads
 are account scoped, exclude anomalous points, and use private cache headers.
+Recalculation progress requires an active account and current subscription;
+settings index retains its existing account admission policy.
 Precompiled relative JavaScript imports resolve through the asset manifest.
 
 These are minimum main-path seams under ruling 15. Robust outlier bounds,
@@ -73,10 +75,30 @@ internal failure details.
 
 Every terminal response logs `[standalone.handback]` followed by JSON containing
 method, path, reason, and status, and emits
-`[:dawarich, :standalone, :handback]` with `%{count: 1}` and the same metadata.
+`[:dawarich, :standalone, :handback]` with `%{count: 1}`. Telemetry uses only
+GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS or OTHER for the method label;
+the log retains the original method.
 Query strings, bodies, and request headers are excluded. With the existing
 Prometheus exporter enabled, `dawarich_standalone_handbacks` counts these events
 by method, reason, and status; paths are excluded from metric labels.
+
+## Asynchronous work and storage
+
+Standalone export deletion revokes unshared signed blob capabilities within the
+deletion transaction. Existing native disk URLs also stop serving revoked blobs.
+A native Oban purge retains object keys and service names for retryable physical
+storage deletion. Shared attachments remain accessible. Previously issued S3
+URLs depend on object deletion or their URL expiry until the purge executes.
+
+Per-user cache preheating schedules the existing native worker directly when
+standalone owns the command. Explicit pinned Rails ownership remains respected.
+
+The [reverse-consumer audit](standalone-reverse-gaps.md) inventories all 78 reverse
+kinds, 97 registered jobs, user actions and impacts. Registry selection does not
+consume Rails commands. Remaining gaps include import/video purges, point-arrival
+scheduling and broadcasts, import postprocessing, derived-data invalidation and
+release fanout. The detailed audit distinguishes unconditional gaps from
+ownership-selected compatibility branches and retained unused kinds.
 
 Stop the web release with `bin/dawarich stop` using the same cookie and node
 configuration. Redis remains a runtime dependency and must be managed separately.

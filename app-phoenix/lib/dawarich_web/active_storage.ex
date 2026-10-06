@@ -51,6 +51,7 @@ defmodule DawarichWeb.ActiveStorage do
   defp action(:disk, conn, storage, now, _opts) do
     with {:ok, %{"key" => key} = data} <-
            RailsMessages.verify_storage(conn.path_params["encoded_key"], "blob_key", now),
+         true <- downloadable?(key),
          %{service: "local", root: root} <- Storage.disk_service(storage, data["service_name"]),
          {:ok, path} <- Storage.safe_disk_path(root, key),
          {:ok, %File.Stat{type: :regular, size: size, mtime: mtime}} <-
@@ -84,6 +85,12 @@ defmodule DawarichWeb.ActiveStorage do
 
   defp action(:direct_upload, conn, storage, now, opts),
     do: DawarichWeb.ActiveStorage.UploadClosure.call(conn, storage, now, opts)
+
+  defp downloadable?(key) do
+    not Dawarich.Standalone.enabled?() or
+      Dawarich.Repo.query!("SELECT 1 FROM active_storage_blobs WHERE key=$1", [key], log: false).num_rows ==
+        1
+  end
 
   defp acceptable?(conn, data) do
     media =

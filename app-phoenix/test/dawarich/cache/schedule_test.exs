@@ -4,6 +4,51 @@ defmodule Dawarich.Cache.ScheduleTest do
   alias Dawarich.Cache.Schedule
   alias Dawarich.Jobs.Ownership
 
+  test "standalone preheating schedules the existing native consumer while respecting pinned Rails ownership" do
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    source = Ecto.UUID.generate()
+    now = 1_791_028_800
+    Ownership.put!(ScratchRepo, "command:cache.preheat_user", :oban)
+
+    assert Schedule.preheat_user(ScratchRepo, 14101,
+             source_job_id: source,
+             time_zone: "Etc/UTC",
+             clock: now,
+             schedule_in: 3600
+           ) == :ok
+
+    assert [[args, at]] =
+             rows(
+               "SELECT args,scheduled_at FROM oban.oban_jobs WHERE worker='Dawarich.Cache.PreheatUserWorker'"
+             )
+
+    assert args["source_job_id"] == source
+    assert args["event_id"] == source
+    assert args["time_zone"] == "Etc/UTC"
+
+    assert NaiveDateTime.compare(at, DateTime.from_unix!(now + 3600) |> DateTime.to_naive()) ==
+             :eq
+
+    assert {:ok, _} =
+             Dawarich.Cache.PreheatUserWorker.args_from_command(1, Map.delete(args, "event_id"))
+
+    assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+    assert :ok = Dawarich.Cache.PreheatUserWorker.run(ScratchRepo, args)
+    assert Dawarich.Jobs.Processed.done?(ScratchRepo, source)
+    Ownership.put!(ScratchRepo, "command:cache.preheat_user", :sidekiq, pinned: true)
+    assert Schedule.preheat_user(ScratchRepo, 14101, clock: now) == :ok
+    assert [["cache.preheat_user"]] == rows("SELECT kind FROM phoenix.rails_commands")
+    assert [[1]] == rows("SELECT count(*) FROM oban.oban_jobs")
+  end
+
   test "both owners retain Rails warming before current-owner durable dispatch with stable identity zone and time" do
     source = Ecto.UUID.generate()
     now = 1_791_028_800
