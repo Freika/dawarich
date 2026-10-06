@@ -167,6 +167,30 @@ defmodule DawarichWeb.A12f3aVClosureTest do
     no_rails()
   end
 
+  @tag a12f3a_v07: true
+  test "V07: visits settings page and writes matches current Rails contract without a native-owner Rails effect" do
+    ctx = fixture("a12f3a-v07")
+
+    for mode <- ["true", "false", nil] do
+      env("SELF_HOSTED", mode)
+      conn = RailsUser.signed_in(ctx.user.id) |> get("/settings/visits")
+      assert conn.status == 200
+      assert conn.resp_body =~ "phx-visit-detection-settings"
+
+      for method <- [:patch, :put] do
+        saved = request(ctx, method, "/settings/visits", ctx.state["params"], "text/html")
+        assert saved.status == ctx.state["status"]
+        assert get_resp_header(saved, "location") == [ctx.state["location"]]
+        assert rails_session(saved)["flash"]["flashes"]["notice"] == ctx.state["flash"]["notice"]
+        assert [[settings]] = rows("SELECT settings FROM users WHERE id=$1", [ctx.user.id])
+        assert settings["visit_radius_meters"] == 75
+        assert settings["unrelated"] == "survives"
+      end
+    end
+
+    no_rails()
+  end
+
   defp fixture(name) do
     state = File.read!("test/fixtures/a8vv/visits/#{name}.json") |> Jason.decode!()
     u = hd(state["before"]["users"])

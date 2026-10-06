@@ -13,8 +13,7 @@ defmodule DawarichWeb.VisitRequestGate do
   end
 
   def settings?(conn, _params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and
-      DawarichWeb.A8Gate.scalar_query?(conn.query_string, ~w(locale)) and
+    DawarichWeb.A8Gate.scalar_query?(conn.query_string, ~w(locale)) and
       case RailsAuth.call(conn, []).assigns.current_user do
         nil ->
           true
