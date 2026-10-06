@@ -180,6 +180,7 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
       plain = reader(6101)
       capture('self_hosted_en', plain, '/map/v2?start_at=2026-09-20T00:00&end_at=2026-09-20T23:59')
       capture('map_path_en', plain, '/map')
+      capture_map_closure(plain)
 
       rich = reader(6102, live_map_enabled: false, fog_of_war_mode: 'hexagons',
                         enabled_transportation_modes: %w[walking cycling train], airtrail_url: 'https://air.example.test',
@@ -209,6 +210,33 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
       galleries!(pro)
       capture('cloud_pro_en', pro, '/map/v2?import_id=999999&panel=timeline', self_hosted: false)
     end
+  end
+
+  def capture_map_closure(user)
+    cases = ['2026-05-28', '2026/05/28', '28 May 2026', '2026-3-29'].map do |date|
+      reset!
+      sign_in user
+      path = "/map/v2?#{ { date:, panel: 'timeline' }.to_query }"
+      get path
+      expect(response).to have_http_status(:ok)
+      { path:, params: { date:, panel: 'timeline' }, expected: window_values(Nokogiri::HTML5(response.body)) }
+    end
+    write_json(fixtures.join('map_frames/a12f3a-m01.json'), { now: now.iso8601, settings: user.settings,
+      env: { 'TIME_ZONE' => ENV.fetch('TIME_ZONE', nil) }, cases: })
+    markers = %w[map-shell poster-studio video-studio timeline-calendar-frame timeline-feed-frame]
+    write_json(fixtures.join('map_frames/a12f3a-m07.json'), { source: 'app/views/map/maplibre/index.html.erb',
+      markers: markers.select { |id| Nokogiri::HTML5(response.body).at_css("##{id}") } })
+    redirects = %w[/map/v1 /maps/v2].flat_map do |base|
+      ['', '?start_at=2026-08-01T00%3A00%3A00&panel=timeline', '?q=Tom+%26+Jerry&tag[]=a&tag[]=b', '.json?x=1'].flat_map do |query|
+        %w[get head].map do |method|
+          reset!
+          path = base + query
+          public_send(method, path)
+          { method:, path:, status: response.status, location: response.headers['Location'], body: response.body }
+        end
+      end
+    end
+    write_json(fixtures.join('map_frames/a12f3a-m02.json'), { cases: redirects })
   end
 
   def window_cases
