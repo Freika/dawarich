@@ -44,7 +44,7 @@ defmodule Dawarich.CLI.Places do
 
       ids =
         repo.query!(
-          "SELECT id FROM users WHERE deleted_at IS NULL AND ($1::bigint IS NULL OR id>$1) AND id<=$2 ORDER BY id",
+          "SELECT id FROM users WHERE deleted_at IS NULL AND ($1::bigint IS NULL OR id>$1) AND id<=$2",
           [cursor, last],
           log: false
         ).rows
