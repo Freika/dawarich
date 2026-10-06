@@ -8,7 +8,6 @@ defmodule Dawarich.Families.SharingUpdate do
   @false_values [false, "0", "f", "F", "false", "FALSE", "off", "OFF"]
   @hours %{"1h" => 1, "6h" => 6, "12h" => 12, "24h" => 24}
   @windows ~w(24h 7d 30d all)
-  @strip ~r/\A[\0\t\n\v\f\r ]|[\0\t\n\v\f\r ]\z/
 
   def call(user, params, now) do
     case Locations.membership(user.id) do
@@ -53,13 +52,14 @@ defmodule Dawarich.Families.SharingUpdate do
       Repo.query!("SELECT settings, email FROM users WHERE id = $1 FOR UPDATE", [user_id]).rows
 
     if Ruby.blank?(email), do: raise(ArgumentError, "a blank email fails Rails' validation")
-    plain!(settings)
+    stored = settings
+    settings = __MODULE__.Web.normalize_settings!(settings)
     family = settings["family"]
     unless is_nil(family) or is_map(family), do: raise(ArgumentError, "family settings")
     config = if params["enabled"], do: enabled(family, params, now), else: %{"enabled" => false}
     updated = Map.put(settings, "family", Map.put(family || %{}, "location_sharing", config))
 
-    if updated != settings do
+    if updated != stored do
       Repo.query!("UPDATE users SET settings = $1, updated_at = $2 WHERE id = $3", [
         updated,
         Clock.naive(now),
@@ -188,31 +188,6 @@ defmodule Dawarich.Families.SharingUpdate do
   end
 
   defp duration(_value), do: raise(ArgumentError, "duration parameter shape")
-
-  defp plain!(%{} = settings) do
-    for key <- ~w(immich_url photoprism_url), not untouched_url?(settings[key]) do
-      raise ArgumentError, "#{key} would be rewritten on save"
-    end
-
-    case settings["maps"] do
-      nil ->
-        :ok
-
-      %{"url" => url} when is_binary(url) ->
-        if url =~ @strip, do: raise(ArgumentError, "maps url")
-
-      %{} ->
-        :ok
-
-      _other ->
-        raise ArgumentError, "maps settings would be read on save"
-    end
-  end
-
-  defp plain!(_settings), do: raise(ArgumentError, "settings are not an object")
-
-  defp untouched_url?(url),
-    do: is_nil(url) or (is_binary(url) and not String.ends_with?(url, "/"))
 
   defp missing do
     key = "controllers.api.v1.families.sharing.missing_required_parameter_param"

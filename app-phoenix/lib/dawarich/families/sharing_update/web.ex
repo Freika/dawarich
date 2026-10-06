@@ -38,6 +38,43 @@ defmodule Dawarich.Families.SharingUpdate.Web do
       {:ok, 500, {:object, [{"success", false}, {"message", message(user, "unexpected_error")}]}}
   end
 
+  def normalize_settings!(%{} = settings) do
+    settings =
+      Enum.reduce(~w(immich_url photoprism_url), settings, fn key, acc ->
+        case acc[key] do
+          nil -> acc
+          url when is_binary(url) -> Map.put(acc, key, String.replace(url, ~r{/+\z}, ""))
+          _other -> raise ArgumentError, "photo URL settings"
+        end
+      end)
+
+    case settings["maps"] do
+      nil ->
+        settings
+
+      %{"url" => nil} ->
+        settings
+
+      %{"url" => url} when is_binary(url) ->
+        put_in(
+          settings,
+          ["maps", "url"],
+          String.replace(url, ~r/\A[\0\t\n\v\f\r ]+|[\0\t\n\v\f\r ]+\z/, "")
+        )
+
+      %{"url" => _other} ->
+        raise ArgumentError, "maps URL settings"
+
+      %{} ->
+        settings
+
+      _other ->
+        raise ArgumentError, "maps settings"
+    end
+  end
+
+  def normalize_settings!(_settings), do: raise(ArgumentError, "settings are not an object")
+
   def boolean(value) when value in [nil, ""], do: nil
   def boolean(value), do: value not in @false_values
 
