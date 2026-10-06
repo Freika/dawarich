@@ -29,6 +29,47 @@ defmodule Dawarich.Mail.UserCallbacks do
     end)
   end
 
+  def link(repo, action, user_id, url, opts \\ [])
+      when action in ["oauth_account_link", "account_destroy_confirmation"] do
+    token = url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query() |> Map.fetch!("token")
+    [_header, payload, _signature] = String.split(token, ".")
+
+    expires =
+      payload |> Base.url_decode64!(padding: false) |> Jason.decode!() |> Map.fetch!("exp")
+
+    digest = :crypto.hash(:sha256, token) |> Base.encode16(case: :lower)
+    type = "mail.user." <> action
+    prefix = if action == "oauth_account_link", do: "oauth-link", else: "destroy-confirmation"
+
+    body = %{
+      "user_id" => user_id,
+      "locale" => Keyword.get(opts, :locale, "en"),
+      "link_url" => url,
+      "link_token_sha256" => digest,
+      "link_expires_at" => expires
+    }
+
+    body =
+      if action == "oauth_account_link",
+        do: Map.put(body, "provider_label", Keyword.fetch!(opts, :provider_label)),
+        else: body
+
+    repo.transaction(fn ->
+      lock_user!(repo, user_id)
+      ensure_native!(repo, [type])
+
+      publish!(
+        repo,
+        type,
+        body,
+        "#{prefix}:#{user_id}:#{digest}",
+        Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
+      )
+
+      :ok
+    end)
+  end
+
   defp lock_user!(repo, id) do
     case repo.query!("SELECT id FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE", [id],
            log: false
