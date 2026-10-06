@@ -20,6 +20,21 @@ defmodule DawarichWeb.RateLimit do
   def call(%{private: %{dawarich_rate_limit: _}} = conn, _opts), do: conn
 
   def call(conn, _opts) do
+    conn = native_params(conn)
+    if conn.halted, do: conn, else: apply_limit(conn)
+  end
+
+  defp native_params(
+         %{private: %{dawarich_native_api: true}, path_info: ["api", "v1", "mcp"]} = conn
+       ),
+       do: assign(conn, :api_params, %{})
+
+  defp native_params(%{private: %{dawarich_native_api: true}} = conn),
+    do: DawarichWeb.Api.Transport.parse(conn)
+
+  defp native_params(conn), do: conn
+
+  defp apply_limit(conn) do
     self_hosted = LayoutAssigns.self_hosted?()
 
     now =
@@ -52,12 +67,48 @@ defmodule DawarichWeb.RateLimit do
     candidates = Enum.filter(Rules.throttles(), fn rule -> elem(rule, 4).(facts) end)
 
     cond do
+      conn.private[:dawarich_native_api] ->
+        if Rules.blocked?(facts),
+          do: {:blocked, conn},
+          else:
+            count(
+              conn,
+              native_inputs(conn, facts),
+              Enum.filter(candidates, &Rules.method?(&1, facts.method)),
+              opts
+            )
+
       candidates == [] and not Rules.blocklist_path?(facts) ->
         {:pass, conn, [], nil}
 
       true ->
         screen(conn, facts, candidates, opts)
     end
+  end
+
+  defp native_inputs(conn, facts) do
+    params = conn.assigns.api_params
+
+    bearer =
+      case Regex.run(
+             ~r/\ABearer\s+(\S+)\z/i,
+             Enum.join(get_req_header(conn, "authorization"), ", "),
+             capture: :all_but_first
+           ) do
+        [key] -> key
+        _ -> nil
+      end
+
+    key = if params["api_key"] in [nil, false], do: bearer, else: params["api_key"]
+    {_, %{ip: ip}, _} = Request.inputs(conn, facts, [:ip])
+
+    Map.merge(facts, %{
+      api_key: if(is_binary(key), do: key),
+      params: params,
+      body: params,
+      ip: ip,
+      webhook: Enum.join(get_req_header(conn, "x-webhook-secret"), ", ")
+    })
   end
 
   defp screen(conn, facts, candidates, opts) do

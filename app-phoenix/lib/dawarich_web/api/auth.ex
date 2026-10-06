@@ -30,6 +30,11 @@ defmodule DawarichWeb.Api.Auth do
   def call(conn, opts) do
     conn = conn |> assign(:api_started, System.monotonic_time()) |> fetch_cookies()
 
+    conn =
+      if conn.private[:dawarich_native_api],
+        do: DawarichWeb.Api.ClientSession.call(conn),
+        else: conn
+
     case admission(conn) do
       {:ok, format, vary, user} ->
         conn
@@ -42,19 +47,27 @@ defmodule DawarichWeb.Api.Auth do
 
       {:replay, reason} ->
         Body.replay(conn, reason)
+
+      {:error, status} ->
+        conn
+        |> Respond.prepare()
+        |> Respond.json(status, %{"status" => status, "error" => "Bad Request"})
     end
   end
 
   @doc false
   def admission(conn) do
     with :ok <- headers(conn),
-         :ok <- cookies(conn),
-         :ok <- client(conn),
+         :ok <- native_or_legacy(conn, &cookies/1),
+         :ok <- native_or_legacy(conn, &client/1),
          {:ok, format, vary} <- format(conn),
          {:ok, key} <- api_key(conn),
          {:ok, user} <- lookup(key),
          do: {:ok, format, vary, user}
   end
+
+  defp native_or_legacy(conn, check),
+    do: if(conn.private[:dawarich_native_api], do: :ok, else: check.(conn))
 
   defp headers(conn) do
     if Enum.any?(conn.req_headers, fn {name, _value} -> String.contains?(name, "_") end) or
@@ -78,7 +91,7 @@ defmodule DawarichWeb.Api.Auth do
            [
              {"error", "payment_required"},
              {"message", t("complete_your_subscription_to_continue")},
-             {"resume_url", nil}
+             {"resume_url", resume_url(conn, user)}
            ]}
         )
 
@@ -94,6 +107,12 @@ defmodule DawarichWeb.Api.Auth do
       true ->
         assign(conn, :api_user, user)
     end
+  end
+
+  defp resume_url(conn, user) do
+    if conn.private[:dawarich_native_api] and System.get_env("SELF_HOSTED") == "false",
+      do: Dawarich.SubscriptionToken.url(user, conn.assigns[:api_now] || DateTime.utc_now()),
+      else: nil
   end
 
   def public(conn) do

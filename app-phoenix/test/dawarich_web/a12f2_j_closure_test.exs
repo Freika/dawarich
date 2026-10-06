@@ -284,6 +284,64 @@ defmodule DawarichWeb.A12f2JClosureTest do
     no_upstream!(c.upstream)
   end
 
+  @tag :a12f2_j_04
+  test "API authentication retains key priority bearer cookies mobile markers Cloud payment and error header order",
+       c do
+    id = user!(%{api_key: @key, settings: %{"timezone" => "UTC"}})
+    assert {401, _, ""} = endpoint(c, "GET", "/api/v1/notes?api_key=", bearer())
+
+    assert {200, headers, "[]"} =
+             endpoint(c, "GET", "/api/v1/notes", bearer() ++ [{"X-Dawarich-Client", "ios"}])
+
+    [cookie] = values(headers, "set-cookie")
+    value = cookie |> String.split(";") |> hd() |> String.split("=", parts: 2) |> List.last()
+
+    assert {:ok, session} =
+             Dawarich.RailsCookies.decrypt(
+               value,
+               "_dawarich_session",
+               Dawarich.RailsSecret.fetch(),
+               DateTime.utc_now()
+             )
+
+    assert session["dawarich_client"] == "ios"
+
+    assert {401, _, ""} =
+             endpoint(c, "GET", "/api/v1/notes", [{"Cookie", "_dawarich_session=" <> value}])
+
+    System.put_env("SELF_HOSTED", "false")
+    old_jwt = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", "synthetic-j-checkout-signing-key")
+
+    on_exit(fn ->
+      if old_jwt,
+        do: System.put_env("JWT_SECRET_KEY", old_jwt),
+        else: System.delete_env("JWT_SECRET_KEY")
+    end)
+
+    old_manager = System.get_env("MANAGER_URL")
+    System.put_env("MANAGER_URL", "https://manager.example.test")
+
+    on_exit(fn ->
+      if old_manager,
+        do: System.put_env("MANAGER_URL", old_manager),
+        else: System.delete_env("MANAGER_URL")
+    end)
+
+    assert {200, _, "[]"} = endpoint(c, "GET", "/api/v1/places?tag_ids[]=untagged", bearer())
+    Repo.query!("UPDATE users SET status=3 WHERE id=$1", [id])
+    Dawarich.TtlCache.delete({DawarichWeb.RateLimit, @key})
+    assert {402, headers, body} = endpoint(c, "GET", "/api/v1/notes", bearer())
+
+    assert String.starts_with?(
+             Jason.decode!(body)["resume_url"],
+             "https://manager.example.test/auth/dawarich?token="
+           )
+
+    assert values(headers, "x-dawarich-response") == ["Hey, I'm alive and authenticated!"]
+    no_upstream!(c.upstream)
+  end
+
   defp bearer, do: [{"Authorization", "Bearer #{@key}"}, {"Accept", "application/json"}]
 
   defp route(method, path),
