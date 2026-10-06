@@ -453,6 +453,30 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     )
   end
 
+  @tag a12f3a_q14: true
+  test "Q14: public month and expiration matches current Rails contract without a native-owner Rails effect",
+       %{user: user, context: ctx} do
+    uuid = hd(fixture("14"))["uuid"]
+
+    stat!(user.id, %{
+      year: 2024,
+      month: 3,
+      distance: 1000,
+      daily_distance: [[1, 1000]],
+      sharing_uuid: Ecto.UUID.dump!(uuid)
+    })
+
+    assert_public_cases(
+      user,
+      ctx,
+      "14",
+      "month",
+      "stats",
+      uuid,
+      "div.container.mx-auto.px-4.py-8"
+    )
+  end
+
   defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do
     for row <- fixture(task) do
       settings = %{

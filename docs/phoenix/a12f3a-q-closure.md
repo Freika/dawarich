@@ -44,3 +44,4 @@ No browser acceptance or whole-domain retirement is claimed by this implementati
 - Q11: update sharing capabilities natively; source/mutation evidence recorded.
 - Q12: render public full and partial digests; source/mutation evidence recorded.
 - Q13: update actor-scoped month sharing; source/mutation evidence recorded.
+- Q14: expose public monthly digest pages; source/mutation evidence recorded.
