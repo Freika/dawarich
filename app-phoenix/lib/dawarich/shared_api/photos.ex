@@ -2,7 +2,7 @@ defmodule Dawarich.SharedApi.Photos do
   @moduledoc false
   alias Dawarich.{Accounts, RailsTime, Repo, UserTimeZone}
   alias Dawarich.Photos.{Index, ProviderCache, Thumbnail}
-  alias Dawarich.SharedApi.Closure
+  alias Dawarich.SharedApi.{Closure, Privacy}
 
   def response(link, action, params \\ %{}) do
     if Dawarich.Standalone.enabled?(),
@@ -43,7 +43,7 @@ defmodule Dawarich.SharedApi.Photos do
       end
 
     zones = Closure.zones(link.user_id)
-    photos = Enum.filter(photos, &Closure.visible_photo?(&1, zones))
+    photos = Enum.filter(photos, &Privacy.visible_photo?(&1, zones))
     ids(photos, link)
     photos
   end
