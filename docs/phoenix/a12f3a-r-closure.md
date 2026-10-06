@@ -35,7 +35,8 @@ including unidentified uploads (native AnalysisWorker), exact size ceiling,
 default name, unknown-key filtering and Unicode truncation. The source
 `Recipe.read/1` replay contract remains available under coexistence; standalone
 mode coerces native scalar/container recipe values before truncation. The
-route-video domain gate no longer vetoes Cloud. Initial RED was a native 500
+route-video domain gate admits standalone Cloud while preserving coexistence
+delegation to Rails. Initial RED was a native 500
 for explicit Cloud; GREEN 27 endpoint table cases plus scalar coercion;
 M-R01 retained `unknown` and failed persisted recipe equality; restored GREEN.
 Container coercion is source-code-backed but has no additional recorded source
@@ -119,4 +120,13 @@ that application when the map/trip portal supplies it. The controller identifier
 is retained as source-compatible metadata; the portal explicitly bypasses
 source Stimulus startup for this studio. Source page regressions pass:
 27 map/trip tests, 0 failures. The complete client regression batch still passes
-60 tests, 0 failures. No full suite had started while this fix was made.
+60 tests, 0 failures.
+
+The first full seed-404 gate found four failures. The domain gate was corrected
+to preserve coexistence Cloud admission. The existing attachment producer test
+was aligned with native missing-video deletion, and the visits producer test
+with the base's versioned `visits.suggest` outbox rather than its obsolete
+direct worker. These are assertion seam updates; visits production is unchanged.
+The remaining poster failure was a missing native dependency. Its identical
+local lockfile and cached renderer binaries supplied the worktree dependencies.
+Affected dispatch/video/producer checks pass: 16 tests, zero failures.
