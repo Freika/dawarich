@@ -36,6 +36,7 @@ defmodule Dawarich.ErrorReportingCase do
     on_exit(fn ->
       Sentry.flush()
       :logger.remove_handler(:dawarich_sentry)
+      :telemetry.detach(Dawarich.ErrorReporting)
       Enum.each(saved, fn {key, value} -> Sentry.put_config(key, value) end)
       Application.put_env(:dawarich, :error_reporting, reporting)
       Application.delete_env(:dawarich, :sentry_test_receiver)

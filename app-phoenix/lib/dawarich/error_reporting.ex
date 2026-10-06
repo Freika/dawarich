@@ -1,6 +1,7 @@
 defmodule Dawarich.ErrorReporting do
   def start do
     if Sentry.get_dsn() do
+      :telemetry.attach(__MODULE__, [:oban, :job, :exception], &__MODULE__.oban_exception/4, nil)
       :logger.remove_handler(:dawarich_sentry)
 
       :logger.add_handler(:dawarich_sentry, Sentry.LoggerHandler, %{
@@ -14,6 +15,43 @@ defmodule Dawarich.ErrorReporting do
     end
 
     :ok
+  end
+
+  def oban_exception(
+        _event,
+        _measurements,
+        %{job: job, kind: kind, reason: reason, stacktrace: stack},
+        _config
+      ) do
+    case reason do
+      %Oban.PerformError{reason: {action, _}} when action in [:discard, :cancel] ->
+        :ok
+
+      _ ->
+        error =
+          case reason do
+            %Oban.PerformError{reason: {:error, error}} when is_exception(error) -> error
+            _ -> Exception.normalize(kind, reason, if(is_list(stack), do: stack, else: []))
+          end
+
+        Sentry.capture_exception(error,
+          stacktrace: if(is_list(stack), do: stack, else: []),
+          handled: false,
+          tags: %{
+            "surface" => "oban",
+            "worker" => job.worker,
+            "queue" => job.queue,
+            "attempt" => job.attempt,
+            "max_attempts" => job.max_attempts
+          }
+        )
+
+        :ok
+    end
+  rescue
+    _ -> :ok
+  catch
+    _, _ -> :ok
   end
 
   def logger_surface(event, _config) do
