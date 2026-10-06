@@ -114,10 +114,18 @@ defmodule DawarichWeb.ApiRoutes do
         get "/:id/trip", SharedController, :trip, metadata: %{slice: :api_shared}
         get "/:id/points", SharedController, :points, metadata: %{slice: :api_shared}
         get "/:id/route", SharedController, :route, metadata: %{slice: :api_shared}
-        get "/:id/photos", SharedController, :photos, metadata: %{slice: :api_shared}
+
+        get "/:id/photos", SharedController, :photos,
+          metadata: %{
+            slice: :api_shared,
+            rails_gate: {DawarichWeb.Api.SharedController, :photos_owned?}
+          }
 
         get "/:id/photos/:photo_id/thumbnail", SharedController, :thumbnail,
-          metadata: %{slice: :api_shared}
+          metadata: %{
+            slice: :api_shared,
+            rails_gate: {DawarichWeb.Api.SharedController, :photos_owned?}
+          }
       end
 
       pipeline :api_ingest do

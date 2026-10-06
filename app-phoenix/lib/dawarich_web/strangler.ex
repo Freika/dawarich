@@ -99,7 +99,9 @@ defmodule DawarichWeb.Strangler do
     route = Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host)
 
     not handed_back?(conn.path_info) and not DawarichWeb.ApiClosureRoutes.deferred?(conn) and
-      (route == :error or (not handed_back?(conn.path_info, route) and slice_owned?(route, conn)))
+      (route == :error or
+         (not handed_back?(conn.path_info, route) and slice_owned?(route, conn) and
+            not rails_constraints?(route)))
   end
 
   defp native_api_error?(_conn), do: false
