@@ -124,3 +124,88 @@ keeps these approved retirements terminal even if the broader admin namespace
 is pinned back during coexistence; no other routes bypass hand-back. The old
 Flipper-specific rate-limit rule is removed. Tables and historical migrations
 are untouched; Rails engine/gems/initializer removal stays A12f-4 task 22.
+
+## Docker deployment and Heroku retirement
+
+Docker is the supported Phoenix deployment for self-hosted installations and
+Cloud. The removed `app.json` is retained in the Rails 1.15.3 reference at
+`8d6368fc3187db758151a4d401547d93612d26bb`: it selected Node/Ruby buildpacks,
+`bundle exec rails db:migrate` as a Dokku predeploy hook, and
+`/api/v1/health` as startup health. Those buildpack and manifest deployment
+paths are retired; there is no Phoenix Heroku replacement or support promise.
+
+This operator branch does **not** activate the Ruby-free runtime. A12f-4 owns
+final entrypoint/Procfile mapping, removal of Ruby, and Docker/Cloud/release
+smoke. The current A12h opt-in `DAWARICH_PHOENIX_LIFECYCLE=true` requires
+self-hosted mode and still refuses Cloud; it must not be presented as the
+final Cloud deployment switch. Follow [A12h lifecycle](a12h-lifecycle.md) for
+the current coexistence behavior. Use the following contracts with the
+qualified release image after the controller completes A12f-4.
+
+### Self-hosted compose contract
+
+Use `docker/docker-compose.yml` with a pinned release image and your existing
+PostGIS and Redis services. Redis remains required in A12f. The public web
+port stays 3000, with host mapping `${DAWARICH_APP_PORT:-3000}:3000`. Set
+`APPLICATION_HOSTS`, `APPLICATION_PROTOCOL`, `SELF_HOSTED`, database selectors
+and `REDIS_URL` for your installation; preserve the existing `SECRET_KEY_BASE`
+and encryption keys so stored sessions and encrypted data remain readable.
+Keep credentials outside version control. The retained web argv
+`bin/rails server -p 3000 -b ::` is a compatibility input to the native front
+in the final image; it does not require a Ruby runtime there.
+
+Persist the existing volume destinations:
+
+| Destination | Purpose |
+|---|---|
+| `/var/app/public` | Served assets, including local Swagger UI; refreshed from image `public_dist` at boot. |
+| `/var/app/storage` | Local attachment and generated-media objects. |
+| `/var/app/tmp/imports/watched` | Watched import inbox. |
+| PostgreSQL data directory | Location data, public ledger/outbox and private Phoenix/Oban schemas. |
+| `/var/app/tmp` or an explicit `DAWARICH_COOKIE_FILE` parent | Writable native cookie/runtime path; preserve across CLI and web processes when using remote commands. |
+
+Retain the compose Postgres backup mount `/dawarich_db_data` where your
+installation uses it; it is separate from native application schema work.
+Use `PUID`/`PGID` for ownership initialization and privilege dropping, rather
+than compose `user:`. Run operator commands with the same UID:GID as the web
+process, so generated storage and the cookie remain readable.
+
+The qualified self-hosted web entrypoint keeps asset sync and database
+creation/wait, then native migrate, seeds and readiness before listeners
+start. Native commands are `dawarich migrate`, `dawarich seeds`,
+`dawarich migrate status` and `dawarich eval 'Dawarich.Release.halt_unless_ready()'`.
+Upgrade from Rails 1.15.3; older databases must first reach that retained Rails
+upgrade boundary. Refusals stop boot rather than hiding failed migrations.
+Schema work must have a single migration owner; do not launch simultaneous
+old Rails and native boot writers. Preserve the public health URL
+`/api/v1/health` and its JSON `status=ok` check; `/api/v1/ready` and `/ready`
+are native readiness contracts supplied by A12f-1. Image gates must exercise
+the retained healthcheck against the final runtime.
+
+The retained `sidekiq-entrypoint.sh` / `sidekiq` compose service becomes inert
+under `DAWARICH_PROCESS_ROLE=sidekiq_idle` in the final cut. It must not migrate,
+seed, dequeue or duplicate jobs; native jobs run in the web application. This
+branch leaves the real coexistence Sidekiq worker intact. Job-owner keys and
+cron activation remain separate controller decisions, not a side effect of
+visiting `/sidekiq` or starting an operator page.
+
+### Cloud contract
+
+The qualified Cloud image uses `cloud-entrypoint.sh` for web readiness/start
+and `release.sh` for the single native migration/seed release phase. The web
+phase does not run migrations or silently fall back to Rails. The old
+`cloud-sidekiq-entrypoint.sh` worker slot is inert after the final mapping.
+Share existing database/storage and native cookie permissions where required,
+keep the web listener behind the existing proxy and host/HTTPS policy, and
+configure both `SIDEKIQ_USERNAME`/`SIDEKIQ_PASSWORD` for operator redirects.
+
+Cloud cut-over runs on a new Phoenix-only server. The old Rails 1.15.3
+deployment is drain-only during the transition. The controller's A12f-3c
+runbook owns traffic switching and rollback: pin new work to Rails, drain
+native work to zero, stop Phoenix and start Rails against the same database.
+No pending-work transfer or backup restore is implied by these Docker docs.
+Backups remain ordinary pre-upgrade operator hygiene.
+
+A12f-4 must run existing image/cloud/release smoke and Swagger UI browser
+acceptance on the same qualified candidate. This branch has not built or
+started a deployment image and does not claim those release gates passed.
