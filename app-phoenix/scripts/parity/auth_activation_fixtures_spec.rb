@@ -131,7 +131,8 @@ RSpec.describe 'Phoenix fixture: the registration flag and Devise recovery mail 
       allow_registration: allow_registration
     ).call
     { 'outcome' => user ? 'account' : 'denied', 'created' => created,
-      'provider' => user&.provider, 'uid' => user&.uid, 'email' => user&.email }
+      'provider' => user&.provider, 'uid' => user&.uid, 'email' => user&.email,
+      'signup_variant' => user&.signup_variant }
   rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
     { 'outcome' => 'challenge', 'provider' => e.user.reload.provider, 'rate_limited' => e.rate_limited }
   rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
@@ -172,11 +173,11 @@ RSpec.describe 'Phoenix fixture: the registration flag and Devise recovery mail 
                    'OIDC_ISSUER' => 'https://idp.dawarich.test/.well-known/openid-configuration#paste',
                    'APPLICATION_URL' => 'http://www.example.com' }
     oidc = OidcConfig.build(public_env)
-    fixture = { 'accounts' => cases, 'oidc_public' => oidc,
-                'failure_messages' => %w[invalid_credentials connection_timeout security_error
-                                         provider_unavailable provider_configuration_error unknown_error].index_with do |key|
-                  I18n.t("controllers.users.omniauth_callbacks.#{key}", locale: :en)
-                end }
+    failures = %w[invalid_credentials connection_timeout security_error
+                  provider_unavailable provider_configuration_error unknown_error].index_with do |key|
+      I18n.t("controllers.users.omniauth_callbacks.#{key}", locale: :en)
+    end
+    fixture = { 'accounts' => cases, 'oidc_public' => oidc, 'failure_messages' => failures }
     output = Rails.root.join('app-phoenix/test/fixtures/auth/a12f2g/providers.json')
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
       FileUtils.mkdir_p(output.dirname)
