@@ -179,6 +179,7 @@ defmodule DawarichWeb.ApiRoutes do
 
         for {path, action} <- [
               {"/settings", :settings},
+              {"/settings/transportation_recalculation_status", :progress},
               {"/maps/hexagons/bounds", :bounds},
               {"/tiles/points/:z/:x/:y", :points},
               {"/tiles/tracks/:z/:x/:y", :tracks}
@@ -189,29 +190,6 @@ defmodule DawarichWeb.ApiRoutes do
               rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
             }
         end
-      end
-
-      pipeline :api_standalone_progress do
-        plug :put_api_tag, "api"
-        plug DawarichWeb.HostAuthorization
-        plug DawarichWeb.ForceSSL
-        plug DawarichWeb.RateLimit
-        plug DawarichWeb.Api.Body
-        plug DawarichWeb.Api.Auth
-      end
-
-      scope "/api/v1", DawarichWeb.Api do
-        pipe_through :api_standalone_progress
-
-        get "/settings/transportation_recalculation_status", StandaloneMap, :progress,
-          metadata: %{
-            slice: :api_map_reads,
-            rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-          }
-      end
-
-      scope "/api/v1", DawarichWeb.Api do
-        pipe_through :api_stats
 
         get "/points", MapController, :points, metadata: %{slice: :api_map_reads}
         get "/tracks", MapController, :tracks, metadata: %{slice: :api_map_reads}
