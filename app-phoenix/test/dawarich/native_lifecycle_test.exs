@@ -7,13 +7,17 @@ defmodule Dawarich.NativeLifecycleTest do
   @tag :a12f4_a02_1
   test "standalone native lifecycle is mandatory in both deployment modes" do
     for hosted <- [nil, "true", "false"], legacy <- [nil, "", "false", "true"] do
-      env = %{
-        "DAWARICH_RAILS" => "off",
-        "SELF_HOSTED" => hosted,
-        "DAWARICH_PHOENIX_LIFECYCLE" => legacy
-      }
+      env =
+        %{
+          "DAWARICH_RAILS" => "off",
+          "SELF_HOSTED" => hosted,
+          "DAWARICH_PHOENIX_LIFECYCLE" => legacy
+        }
+        |> Enum.reject(fn {_, value} -> is_nil(value) end)
+        |> Map.new()
 
-      assert Lifecycle.mode(env) == {:ok, :native}
+      expected = if hosted == "false", do: {:error, :cloud_native_lifecycle}, else: {:ok, :native}
+      assert Lifecycle.mode(env) == expected
     end
 
     assert Lifecycle.mode(%{}) == {:ok, :rails}
@@ -22,8 +26,11 @@ defmodule Dawarich.NativeLifecycleTest do
 
   @tag :a12f4_a02_2
   test "standalone native readiness refuses a pending public version without writes" do
-    for hosted <- [nil, "true", "false"] do
-      opts = [repo: Repo, env: %{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => hosted}]
+    for env <- [
+          %{"DAWARICH_RAILS" => "off"},
+          %{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => "true"}
+        ] do
+      opts = [repo: Repo, env: env]
       assert Release.readiness(opts) == :ready
 
       %{rows: [[version]]} =
@@ -43,6 +50,15 @@ defmodule Dawarich.NativeLifecycleTest do
 
       assert Release.readiness(opts) == :ready
     end
+
+    before = snapshot()
+
+    assert Release.readiness(
+             repo: Repo,
+             env: %{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => "false"}
+           ) == :schemas_behind
+
+    assert snapshot() == before
   end
 
   defp snapshot do

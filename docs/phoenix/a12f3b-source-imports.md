@@ -33,3 +33,16 @@ failure notification (`app/services/imports/create.rb:47`). An accepted job retr
 after those effects commit can therefore repeat the notification. The Phoenix
 receipt closes that retry gap. The shared ED/DRB ledgers remain controller/HOT
 owned; this scoped fix report records the source behavior and native correction.
+
+## Integration gate reconciliation
+
+The refreshed integration branch retains the controller's Cloud lifecycle guard
+from `099391a60`. Runtime regression fixtures omit unset environment keys and
+assert Cloud refusal without writes; they do not enable Cloud provisioning.
+The note regression distinguishes an empty root object (400) from a populated
+object with an invalid blank body (422), retaining its database immutability check.
+
+After an interrupted suite, private test databases may retain the normal lifecycle
+enqueue-order sequence and test columns. Remove those test-only artifacts before
+rerunning the gate. For bounded schedulers, `ERL_AFLAGS` allows the peer harness's
+explicit scheduler arguments to take precedence; `ERL_FLAGS` overrides them.
