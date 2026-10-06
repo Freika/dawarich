@@ -177,7 +177,9 @@ RSpec.describe 'Phoenix fixture: the registration flag and Devise recovery mail 
                   provider_unavailable provider_configuration_error unknown_error].index_with do |key|
       I18n.t("controllers.users.omniauth_callbacks.#{key}", locale: :en)
     end
-    fixture = { 'accounts' => cases, 'oidc_public' => oidc, 'failure_messages' => failures }
+    google = OmniAuth::Strategies::GoogleOauth2.new(nil, scope: 'userinfo.email,userinfo.profile')
+    fixture = { 'accounts' => cases, 'oidc_public' => oidc, 'failure_messages' => failures,
+                'google_scope' => google.send(:get_scope, scope: google.options[:scope]) }
     output = Rails.root.join('app-phoenix/test/fixtures/auth/a12f2g/providers.json')
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
       FileUtils.mkdir_p(output.dirname)

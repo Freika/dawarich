@@ -9,7 +9,8 @@ defmodule Dawarich.Auth.Providers.Google do
       client_id: config.client_id,
       redirect_uri: config.redirect_uri,
       response_type: "code",
-      scope: "openid email profile",
+      scope:
+        "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
       state: state,
       access_type: "offline"
     }
@@ -40,6 +41,7 @@ defmodule Dawarich.Auth.Providers.Google do
          true <- claims["iss"] in ["accounts.google.com", "https://accounts.google.com"],
          true <- claims["aud"] in audiences,
          true <- is_number(claims["exp"]) and claims["exp"] > now(context),
+         true <- not_before?(claims["nbf"], context),
          true <- is_binary(claims["sub"]) and claims["sub"] != "",
          true <- nonce?(claims["nonce"], context[:nonce]) do
       {:ok, claims}
@@ -81,11 +83,8 @@ defmodule Dawarich.Auth.Providers.Google do
         Map.get(config, :jwks_uri, "https://www.googleapis.com/oauth2/v3/certs")
       )
 
-    case verify_id_token(tokens["id_token"], verification) do
-      {:ok, claims} ->
-        {:ok, claims}
-
-      _ ->
+    case tokens["id_token"] do
+      absent when absent in [nil, ""] ->
         Jwks.request(
           :get,
           config.userinfo_endpoint,
@@ -93,6 +92,9 @@ defmodule Dawarich.Auth.Providers.Google do
           [{"authorization", "Bearer " <> token}],
           context
         )
+
+      id_token ->
+        verify_id_token(id_token, verification)
     end
   end
 
@@ -108,6 +110,10 @@ defmodule Dawarich.Auth.Providers.Google do
       last_name: profile["family_name"]
     }
   end
+
+  defp not_before?(nil, _context), do: true
+  defp not_before?(value, context) when is_number(value), do: value <= now(context) + 60
+  defp not_before?(_, _context), do: false
 
   defp nonce?(_, nil), do: true
   defp nonce?(_, ""), do: true

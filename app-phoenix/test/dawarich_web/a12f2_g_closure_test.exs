@@ -137,7 +137,7 @@ defmodule DawarichWeb.A12f2GClosureTest do
 
     assert {:ok, url, session} = Google.authorize(config, %{})
     query = URI.decode_query(URI.parse(url).query)
-    assert query["scope"] == "openid email profile" and query["access_type"] == "offline"
+    assert query["scope"] == @oracle["google_scope"] and query["access_type"] == "offline"
     refute query["nonce"]
     assert {:ok, pending, _} = State.take(session, %{"state" => query["state"]})
     assert {:ok, profile} = Google.callback(config, %{"code" => "synthetic-code"}, pending, %{})
@@ -710,6 +710,289 @@ defmodule DawarichWeb.A12f2GClosureTest do
     assert get_resp_header(result, "location") == [@base <> "/users/sign_in"]
     assert response_session(result)["flash"]["flashes"]["alert"] =~ "is not verified"
   end
+
+  @tag :a12f2_g_r1
+  test "G-R1 rejected Google callback ID tokens never create link or sign in accounts", ctx do
+    {private, key} = signing_key("callback-refusal")
+    parent = self()
+    existing = user(ctx.email)
+
+    Repo.update!(Ecto.Changeset.change(existing, provider: "google_oauth2", uid: "returning"),
+      log: false
+    )
+
+    collision = user("collision-" <> ctx.email)
+
+    config =
+      google_config(
+        "https://callback-refusal-#{System.unique_integer([:positive])}.dawarich.test"
+      )
+
+    before_count = Repo.aggregate(Account, :count)
+
+    for {email, subject} <- [
+          {ctx.email, "returning"},
+          {collision.email, "collision"},
+          {"new-" <> ctx.email, "new"}
+        ],
+        invalid <- [:audience, :expiry, :issuer, :nonce, :signature, :malformed] do
+      valid =
+        claims("https://accounts.google.com")
+        |> Map.merge(%{"email" => email, "sub" => subject, "nonce" => "expected"})
+
+      changes =
+        case invalid do
+          :audience -> %{"aud" => "wrong-client"}
+          :expiry -> %{"exp" => 1}
+          :issuer -> %{"iss" => "https://wrong.dawarich.test"}
+          :nonce -> %{"nonce" => "wrong"}
+          _ -> %{}
+        end
+
+      token = signed(private, "callback-refusal", Map.merge(valid, changes))
+
+      token =
+        case invalid do
+          :signature -> token <> "corrupt"
+          :malformed -> "malformed"
+          _ -> token
+        end
+
+      context = %{
+        self_hosted: true,
+        providers: %{"google_oauth2" => config},
+        http: fn _, url, _, _ ->
+          cond do
+            url == config.token_endpoint ->
+              {:ok, %{"access_token" => "synthetic-access", "id_token" => token}}
+
+            url == config.jwks_uri ->
+              {:ok, %{"keys" => [key]}}
+
+            url == config.userinfo_endpoint ->
+              send(parent, :userinfo_fallback)
+              {:ok, valid}
+          end
+        end
+      }
+
+      session = %{"omniauth.state" => "synthetic-state", "omniauth.nonce" => "expected"}
+
+      result =
+        DawarichWeb.AuthProvider.Http.call(
+          request(:get, "/users/auth/google_oauth2/callback", session, %{
+            "code" => "synthetic-code",
+            "state" => "synthetic-state"
+          }),
+          enabled: true,
+          context: context,
+          fallback: &replay/1
+        )
+
+      assert result.status == 302 and result.halted
+      refute response_session(result)["warden.user.user.key"]
+      refute response_session(result)["pending_oauth_link"]
+      refute response_session(result)["omniauth.state"]
+
+      assert response_session(result)["flash"]["flashes"]["alert"] ==
+               @oracle["failure_messages"]["invalid_credentials"]
+
+      assert get_resp_header(result, "location") == [@base <> "/"]
+      refute result.private[:replayed]
+      assert Repo.aggregate(Account, :count) == before_count
+      assert Repo.get!(Account, existing.id).sign_in_count == existing.sign_in_count
+      assert Repo.get!(Account, collision.id).provider == nil
+      refute_receive :userinfo_fallback
+    end
+
+    for absent <- [nil, ""] do
+      context = %{
+        http: fn _, url, _, _ ->
+          if url == config.token_endpoint,
+            do: {:ok, %{"access_token" => "synthetic-access", "id_token" => absent}},
+            else: {:ok, claims("https://accounts.google.com")}
+        end
+      }
+
+      assert {:ok, _} =
+               Google.callback(config, %{"code" => "synthetic-code"}, %{nonce: nil}, context)
+    end
+  end
+
+  @tag :a12f2_g_r2
+  test "G-R2 Google rejects future not-before claims with retained sixty second leeway" do
+    {private, key} = signing_key("not-before")
+    now = DateTime.from_unix!(1_800_000_000)
+
+    config =
+      google_config("https://not-before-#{System.unique_integer([:positive])}.dawarich.test")
+
+    context = %{
+      jwks_uri: config.jwks_uri,
+      audiences: [config.client_id],
+      clock: fn -> now end,
+      http: fn _, _, _, _ -> {:ok, %{"keys" => [key]}} end
+    }
+
+    valid = claims("https://accounts.google.com") |> Map.put("exp", DateTime.to_unix(now) + 7200)
+
+    for offset <- [3600, 61] do
+      token = signed(private, "not-before", Map.put(valid, "nbf", DateTime.to_unix(now) + offset))
+      assert {:error, :invalid_credentials} = Google.verify_id_token(token, context)
+    end
+
+    for offset <- [-1, 0, 60] do
+      token = signed(private, "not-before", Map.put(valid, "nbf", DateTime.to_unix(now) + offset))
+      assert {:ok, _} = Google.verify_id_token(token, context)
+    end
+
+    assert {:ok, _} = Google.verify_id_token(signed(private, "not-before", valid), context)
+  end
+
+  @tag :a12f2_g_r3
+  test "G-R3 callback mobile headers and client parameters preserve precedence and payment priority",
+       ctx do
+    local = user(ctx.email)
+    Repo.update!(Ecto.Changeset.change(local, provider: "github", uid: "42"), log: false)
+    parent = self()
+
+    context = %{
+      self_hosted: true,
+      mobile_redirect: fn _, client ->
+        send(parent, {:mobile_completion, client})
+        {:ok, "/mobile-success"}
+      end
+    }
+
+    conn =
+      request(:get, "/users/auth/github/callback", %{})
+      |> put_req_header("x-dawarich-client", "ios")
+      |> assign(:rails_session, %{})
+
+    result = Dawarich.Auth.Providers.Completion.complete(conn, local, false, "github", context)
+    assert get_resp_header(result, "location") == [@base <> "/mobile-success"]
+    assert_receive {:mobile_completion, "ios"}
+    assert response_session(result)["dawarich_client"] == "ios"
+    config = github_config("https://mobile.dawarich.test")
+
+    context =
+      Map.merge(context, %{
+        providers: %{"github" => config},
+        http: fn _, url, _, _ ->
+          cond do
+            url == config.token_endpoint ->
+              {:ok, %{"access_token" => "synthetic-access"}}
+
+            url == config.userinfo_endpoint ->
+              {:ok, %{"id" => 42, "name" => "Ada Lovelace"}}
+
+            url == config.emails_endpoint ->
+              {:ok, [%{"email" => ctx.email, "primary" => true, "verified" => true}]}
+          end
+        end
+      })
+
+    options = [enabled: true, context: context, fallback: &replay/1]
+
+    for {header, param, stored, expected} <- [
+          {"ios", "android", "android", "ios"},
+          {nil, "android", nil, "android"},
+          {nil, nil, "ios", "ios"},
+          {"browser", "android", "ios", nil},
+          {nil, "browser", nil, nil}
+        ] do
+      session = %{"omniauth.state" => "synthetic-state"}
+      session = if stored, do: Map.put(session, "dawarich_client", stored), else: session
+      params = %{"state" => "synthetic-state", "code" => "synthetic-code"}
+      params = if param, do: Map.put(params, "client", param), else: params
+      conn = request(:get, "/users/auth/github/callback", session, params)
+      conn = if header, do: put_req_header(conn, "x-dawarich-client", header), else: conn
+      result = DawarichWeb.AuthProvider.Http.call(conn, options)
+      assert result.status == 302
+
+      if expected do
+        assert get_resp_header(result, "location") == [@base <> "/mobile-success"]
+        assert_receive {:mobile_completion, ^expected}
+        assert response_session(result)["dawarich_client"] == expected
+      else
+        assert get_resp_header(result, "location") == [@base <> "/"]
+        refute_receive {:mobile_completion, _}
+      end
+    end
+
+    start =
+      DawarichWeb.AuthProvider.Http.call(
+        request(:post, "/users/auth/github", %{}, %{"client" => "android"}),
+        options
+      )
+
+    assert response_session(start)["dawarich_client"] == "android"
+    payment = Repo.update!(Ecto.Changeset.change(local, status: 3), log: false)
+    result = Dawarich.Auth.Providers.Completion.complete(conn, payment, false, "github", context)
+    assert get_resp_header(result, "location") == [@base <> "/trial/resume"]
+    refute_receive {:mobile_completion, _}
+
+    [[family_id]] =
+      Repo.query!(
+        "INSERT INTO families(creator_id,name,created_at,updated_at) VALUES($1,'Synthetic family',now(),now()) RETURNING id",
+        [local.id],
+        log: false
+      ).rows
+
+    invitation = "synthetic-mobile-invitation-#{local.id}"
+
+    Repo.query!(
+      "INSERT INTO family_invitations(family_id,invited_by_id,email,token,expires_at,created_at,updated_at) VALUES($1,$2,$3,$4,now()+interval '1 hour',now(),now())",
+      [family_id, local.id, local.email, invitation],
+      log: false
+    )
+
+    invited = assign(conn, :rails_session, %{"invitation_token" => invitation})
+
+    result =
+      Dawarich.Auth.Providers.Completion.complete(invited, payment, false, "github", context)
+
+    assert get_resp_header(result, "location") == [@base <> "/family/invitations/" <> invitation]
+    refute_receive {:mobile_completion, _}
+  end
+
+  @tag :a12f2_g_r4
+  test "G-R4 default Cloud Google authorization scopes match the retained Rails strategy" do
+    context = %{
+      self_hosted: false,
+      env: %{
+        "GOOGLE_OAUTH_CLIENT_ID" => "synthetic-client",
+        "GOOGLE_OAUTH_CLIENT_SECRET" => "synthetic-client-secret"
+      }
+    }
+
+    result =
+      DawarichWeb.AuthProvider.Http.call(request(:post, "/users/auth/google_oauth2", %{}),
+        enabled: true,
+        context: context
+      )
+
+    assert result.status == 302
+    [location] = get_resp_header(result, "location")
+    query = URI.decode_query(URI.parse(location).query)
+    assert query["scope"] == @oracle["google_scope"]
+
+    assert query["scope"] ==
+             "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+
+    refute "openid" in String.split(query["scope"])
+  end
+
+  defp google_config(base),
+    do: %{
+      client_id: "synthetic-client",
+      client_secret: "synthetic-client-secret",
+      authorization_endpoint: base <> "/authorize",
+      token_endpoint: base <> "/token",
+      userinfo_endpoint: base <> "/userinfo",
+      jwks_uri: base <> "/keys",
+      redirect_uri: @base <> "/users/auth/google_oauth2/callback"
+    }
 
   defp request(method, path, session, params \\ %{}) do
     session =

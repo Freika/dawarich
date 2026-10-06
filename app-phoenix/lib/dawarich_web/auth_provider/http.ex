@@ -7,7 +7,7 @@ defmodule DawarichWeb.AuthProvider.Http do
   alias DawarichWeb.{AuthCookie, RailsAuth, RequestURL}
 
   @providers ~w(github google_oauth2 openid_connect)
-  @fields ~w(state code error error_reason error_description error_uri nonce scope authuser prompt hd authenticity_token commit utf8 locale invitation_token import_ticket aff via _gl utm_source utm_medium utm_campaign utm_term utm_content message)
+  @fields ~w(state code error error_reason error_description error_uri nonce scope client authuser prompt hd authenticity_token commit utf8 locale invitation_token import_ticket aff via _gl utm_source utm_medium utm_campaign utm_term utm_content message)
   def init(opts), do: opts
   def route?(conn), do: match?({_, _}, route(conn.request_path))
 
@@ -41,6 +41,8 @@ defmodule DawarichWeb.AuthProvider.Http do
 
     with :ok <- Admission.headers(conn.req_headers),
          {:ok, params, conn} <- parameters(conn) do
+      conn = assign(conn, :rails_session, Completion.client_session(conn, params))
+
       context =
         Map.put(
           context,

@@ -40,7 +40,7 @@ defmodule Dawarich.Auth.Providers.Completion do
 
   defp finish(conn, user, created, provider, context) do
     repo = Map.get(context, :repo, Repo)
-    session = conn.assigns.rails_session
+    session = client_session(conn)
 
     session =
       if created and context[:self_hosted] == false,
@@ -66,7 +66,7 @@ defmodule Dawarich.Auth.Providers.Completion do
         {user, claim(repo, user, session, context)}
       end)
 
-    path = destination(user, session, context)
+    path = destination(user, session, context, conn)
 
     notice =
       DawarichWeb.Translate.t(
@@ -99,7 +99,20 @@ defmodule Dawarich.Auth.Providers.Completion do
     end
   end
 
-  defp destination(user, session, context) do
+  def client_session(conn, params \\ %{}) do
+    session = conn.assigns.rails_session
+    client = List.first(Plug.Conn.get_req_header(conn, "x-dawarich-client")) || params["client"]
+
+    if client in ["ios", "android"],
+      do: Map.put(session, "dawarich_client", client),
+      else: session
+  end
+
+  defp destination(user, session, context, conn) do
+    client =
+      List.first(Plug.Conn.get_req_header(conn, "x-dawarich-client")) ||
+        session["dawarich_client"]
+
     invitation = RegistrationPolicy.invitation(session["invitation_token"], context)
 
     cond do
@@ -109,10 +122,10 @@ defmodule Dawarich.Auth.Providers.Completion do
       user.status == 3 ->
         "/trial/resume"
 
-      session["dawarich_client"] in ["ios", "android"] ->
+      client in ["ios", "android"] ->
         case context[:mobile_redirect] do
           fun when is_function(fun, 2) ->
-            case fun.(user, session["dawarich_client"]) do
+            case fun.(user, client) do
               {:ok, "/" <> rest = path} ->
                 if safe_path?(path, rest),
                   do: path,
