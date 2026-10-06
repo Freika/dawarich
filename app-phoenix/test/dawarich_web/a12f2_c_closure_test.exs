@@ -346,6 +346,73 @@ defmodule DawarichWeb.A12f2CClosureTest do
     assert exact["max_lng"] == 100.0
   end
 
+  @tag :a12f2_c_08
+  test "Digest reads preserve malformed stored JSONB year constraints distance units and source failures",
+       %{user: user} do
+    Repo.query!(
+      "INSERT INTO digests (user_id,year,period_type,distance,toponyms,created_at,updated_at) VALUES ($1,2024,1,12345,'[]', '2025-01-01','2025-01-01')",
+      [user.id]
+    )
+
+    assert {:ok, term, opts} =
+             invoke(Dawarich.Digests.ReadClosure, :show, [user, "2024junk", %{}, []])
+
+    body =
+      term
+      |> Dawarich.ReleaseMigrations.Effects.Support.Ruby.json()
+      |> IO.iodata_to_binary()
+      |> Jason.decode!()
+
+    assert body["year"] == 2024
+    assert body["distance"]["converted"] == 12
+    assert opts[:cache_control] == "max-age=3600, private"
+    assert :not_found == invoke(Dawarich.Digests.ReadClosure, :show, [user, "1970", %{}, []])
+
+    assert {:not_modified, _} =
+             invoke(Dawarich.Digests.ReadClosure, :show, [
+               user,
+               "2024",
+               %{},
+               [{"if-modified-since", "Wed, 01 Jan 2025 00:00:00 GMT"}]
+             ])
+
+    Repo.query!("UPDATE digests SET toponyms = '{\"country\":\"Germany\"}' WHERE user_id=$1", [
+      user.id
+    ])
+
+    assert {:error, 500} == invoke(Dawarich.Digests.ReadClosure, :show, [user, "2024", %{}, []])
+
+    assert {:ok, _, []} =
+             invoke(Dawarich.Digests.ReadClosure, :index, [user, ~U[2025-06-01 00:00:00Z]])
+
+    response =
+      DawarichWeb.Api.DigestsController.call(
+        tile_conn(user, %{}) |> Map.put(:path_params, %{"year" => "2024"}),
+        :closure_show
+      )
+
+    assert response.status == 500
+    refute Map.has_key?(response.private, :rails_replay)
+    source = oracle("digest_valid")
+    seed(source["setup"])
+
+    assert {:ok, valid, _} =
+             Dawarich.Digests.ReadClosure.show(%{user | id: 810_001}, "2024junk", %{}, [])
+
+    assert valid
+           |> Dawarich.ReleaseMigrations.Effects.Support.Ruby.json()
+           |> IO.iodata_to_binary()
+           |> Jason.decode!() == Jason.decode!(source["body"])
+
+    source = oracle("digest_malformed")
+    Repo.query!("DELETE FROM digests WHERE id=770001")
+    Dawarich.Test.ApiGolden.insert!("digests", source["setup"]["digests"])
+    assert source["status"] == 500
+
+    assert {:error, 500} =
+             Dawarich.Digests.ReadClosure.show(%{user | id: 810_001}, "2024junk", %{}, [])
+  end
+
   defp track(user_id) do
     [[id]] =
       Repo.query!(
@@ -377,7 +444,8 @@ defmodule DawarichWeb.A12f2CClosureTest do
     do: "test/fixtures/a12f2c/closure.json" |> File.read!() |> Jason.decode!() |> Map.fetch!(name)
 
   defp seed(setup) do
-    for table <- ~w(users countries point_sources tracks track_segments points visits stats) do
+    for table <-
+          ~w(users countries point_sources tracks track_segments points visits stats digests) do
       if setup[table], do: Dawarich.Test.ApiGolden.insert!(table, setup[table])
     end
   end
@@ -396,5 +464,11 @@ defmodule DawarichWeb.A12f2CClosureTest do
     Plug.Test.conn(:get, "/synthetic.mvt")
     |> Plug.Conn.assign(:api_user, user)
     |> Plug.Conn.assign(:api_params, params)
+    |> Plug.Conn.assign(:api_started, System.monotonic_time())
+    |> Plug.Conn.assign(:api_headers, [])
+    |> Plug.Conn.assign(:api_request_id, "synthetic")
+    |> Plug.Conn.assign(:api_tag, "closure")
+    |> Plug.Conn.assign(:api_vary, false)
+    |> Plug.Conn.assign(:api_if_none_match, nil)
   end
 end

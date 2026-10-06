@@ -264,6 +264,41 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     get '/api/v1/points/tracked_months', headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
     closure['tracked_months_berlin'] = { 'status' => response.status, 'body' => response.body }
 
+    User.find(ApiMapGoldenOracle::OWNER).update_columns(settings: { 'timezone' => 'Etc/UTC' })
+    map_insert('digests', id: 770_001, user_id: ApiMapGoldenOracle::OWNER, year: 2024, period_type: 1,
+                         distance: 12_345, toponyms: '[]', created_at: ApiMapGoldenOracle::STAMP,
+                         updated_at: ApiMapGoldenOracle::STAMP)
+    %w[valid malformed].each do |variant|
+      Users::Digest.find(770_001).update_columns(toponyms: { 'country' => 'Germany' }) if variant == 'malformed'
+      setup = (ApiMapGoldenOracle::TABLES + %w[visits stats digests]).to_h do |table|
+        [table, ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
+                                       .map { JSON.parse(_1) }]
+      end
+      result = map_response({ method: :get, expect: :rails }, '/api/v1/digests/2024',
+                            { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" })
+      closure["digest_#{variant}"] = result.merge('setup' => setup)
+    end
+
+    mcp_headers = { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}",
+                    'Accept' => 'application/json', 'Content-Type' => 'application/json' }
+    {
+      'initialize' => { jsonrpc: '2.0', id: 1, method: 'initialize',
+                        params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'synthetic', version: '1' } } },
+      'tools' => { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+      'latest' => { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_latest_location', arguments: {} } },
+      'search' => { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'search_visits', arguments: { query: 'synthetic' } } },
+      'timeline' => { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_timeline', arguments: { start_at: '2025-01-01', end_at: '2025-01-01' } } },
+      'notification' => { jsonrpc: '2.0', method: 'notifications/initialized' },
+      'batch' => []
+    }.each do |name, payload|
+      post '/api/v1/mcp', params: JSON.generate(payload), headers: mcp_headers
+      closure["mcp_#{name}"] = { 'status' => response.status, 'body' => response.body }
+    end
+    get '/api/v1/mcp', headers: mcp_headers
+    closure['mcp_get'] = { 'status' => response.status, 'body' => response.body }
+    delete '/api/v1/mcp', headers: mcp_headers
+    closure['mcp_delete'] = { 'status' => response.status, 'body' => response.body }
+
     FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2c/closure.json'),
                             "#{map_exact_json(closure)}\n")
   end
