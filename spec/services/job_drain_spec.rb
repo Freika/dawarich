@@ -65,9 +65,12 @@ RSpec.describe 'JobDrain' do
       Sidekiq.redis { |redis| redis.hset(process, 'beat', 2.minutes.ago.to_f.to_s) }
       expect(JobDrain.status[:reasons]).to include('process_heartbeat_invalid')
 
-      changing = instance_double(Sidekiq::Queue, size: 1)
+      changing = Sidekiq::Queue[queue]
+      allow(changing).to receive(:size).and_return(1)
       allow(changing).to receive(:each)
       allow(Sidekiq::Queue).to receive(:all).and_return([changing])
+      allow(Sidekiq::Queue).to receive(:[]).and_call_original
+      allow(Sidekiq::Queue).to receive(:[]).with(queue).and_return(changing)
       expect(JobDrain.status[:reasons]).to include('changed_during_read')
 
       allow(Sidekiq::Queue).to receive(:all).and_raise(RedisClient::CannotConnectError, secret)

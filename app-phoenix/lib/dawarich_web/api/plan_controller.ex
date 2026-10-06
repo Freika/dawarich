@@ -2,7 +2,7 @@ defmodule DawarichWeb.Api.PlanController do
   @moduledoc false
   @behaviour Plug
 
-  alias Dawarich.RailsTime
+  alias Dawarich.{Entitlements, RailsTime}
   alias Dawarich.AccountApi.Closure
   alias DawarichWeb.Api.{Body, Respond}
 
@@ -30,7 +30,7 @@ defmodule DawarichWeb.Api.PlanController do
     result =
       if Dawarich.Standalone.enabled?(),
         do: Closure.plan(conn.assigns.api_user, conn.assigns[:api_now] || DateTime.utc_now()),
-        else: fields(conn.assigns.api_user)
+        else: fields(conn.assigns.api_user, conn)
 
     case result do
       {:ok, body} ->
@@ -43,7 +43,14 @@ defmodule DawarichWeb.Api.PlanController do
     end
   end
 
-  defp fields(user) do
+  defp fields(user, conn) do
+    {full, effective} =
+      Entitlements.access(
+        user,
+        DawarichWeb.LayoutAssigns.self_hosted?(),
+        conn.assigns[:api_now] || DateTime.utc_now()
+      )
+
     with {:ok, plan} <- label(@plans, user.plan),
          {:ok, status} <- label(@statuses, user.status),
          {:ok, source} <- label(@sources, user.subscription_source),
@@ -52,15 +59,30 @@ defmodule DawarichWeb.Api.PlanController do
        {:object,
         [
           {"plan", plan},
-          {"effective_plan", plan},
+          {"effective_plan", effective},
           {"status", status},
           {"subscription_source", source},
           {"active_until", until},
-          {"features", @features}
+          {"features", if(full, do: @features, else: lite_features())}
         ]}}
     end
   rescue
     error -> {:replay, inspect(error.__struct__)}
+  end
+
+  defp lite_features do
+    {:object,
+     [
+       {"heatmap", false},
+       {"fog_of_war", false},
+       {"scratch_map", false},
+       {"globe_view", false},
+       {"integrations", false},
+       {"write_api", "create_only"},
+       {"sharing", false},
+       {"full_digest", false},
+       {"data_window", "12_months"}
+     ]}
   end
 
   defp label(labels, value) do

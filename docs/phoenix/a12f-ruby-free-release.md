@@ -490,6 +490,20 @@ RSpec seed 101, **49 examples, 0 failures**. Swagger was copied aside/restored a
 schema/Swagger drift occurred. Implementation evidence is recorded separately
 in `.scratch/orch/out/impl-a12f3c-a.report.md`.
 
+## A12f-2J route integration
+
+The merged B/C/E/I handlers are declared natively, including spatial tiles,
+timeline, fog/hexagons, border/month/digest reads, MCP, photos/search/places,
+imports/pending intake, point mutations and signed storage proxy/representations.
+API slices admit Cloud and HEAD; pending CORS retains the narrow source policy.
+`DAWARICH_RAILS_ROUTES` and `DAWARICH_RAILS_SLICES` remain coexistence controls.
+Native accepted API failures are terminal and cannot repeat writes through Rails.
+
+D/F/G/H seams await their accepted packages. Browser/operators/workers and rare
+transport parity remain the named release prerequisites; this route activation
+does not establish Ruby-free image acceptance. The controller owns standalone
+hand-back terminal policy and integration seed202. See `a12f2-j.md` for evidence.
+
 
 ## A12f-3c same-database rollback to Rails 1.15.3
 
@@ -756,3 +770,27 @@ integration head per ruling 14. Complete task-11 cross-package acceptance remain
 pending D's reviewed integration, B/L1 shared-data/lifecycle and E image/stop owner
 proofs. This document supplies the final operator procedure and exact debt; a green
 P branch alone closes neither the operational checkpoints nor G48/G49.
+
+## A12f-2J integration refresh
+
+The integration refresh preserves package A's Cloud account subscription,
+SafeSettings map/globe restrictions, inherited family entitlements and reviewed
+Cloud Lite visit cutoff. Plan responses use A's terminal standalone closure
+while coexistence retains J's effective-plan and entitlement calculation.
+J's accepted B/C/E/I route activation and pre-effect coexistence pins remain in
+place. Auth, cron, cache, release migration and standalone registry packages
+arrive unchanged from the integration branch; their package acceptance does not
+by itself establish additional route activation or Ruby-free release acceptance.
+
+Both the J activation entries and the Cloud cut-over/same-database rollback
+entries are retained in the release documentation and expected-difference ledger.
+No expected-difference identifier collisions were found.
+
+Merge verification at seed 404: the targeted API/A/J/entitlement/standalone
+batch passes 1,093 tests with zero failures and two existing skips. The full
+three-partition suite passes 9,021 tests with zero failures (2,893 / 3,249 /
+2,879); the existing 11 exclusions and three skips remain. Forced compilation
+with warnings as errors, whole-tree formatting, merge-content secret scanning
+and Swagger/schema drift checks pass. All started suite processes complete and
+private verification services are stopped. Broader release acceptance remains
+with the controller.

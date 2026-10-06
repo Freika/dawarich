@@ -4,10 +4,11 @@ defmodule Dawarich.Jobs.TwoNodeTest do
   alias Dawarich.TwoNodeHarness
 
   defp start_node(node, opts \\ []) do
-    args = Enum.flat_map(:code.get_path(), &[~c"-pa", &1])
+    args = [~c"+S", ~c"2:2"] ++ Enum.flat_map(:code.get_path(), &[~c"-pa", &1])
     {:ok, peer, _} = :peer.start_link(%{connection: :standard_io, args: args})
     Process.unlink(peer)
     on_exit(fn -> if Process.alive?(peer), do: :peer.stop(peer) end)
+    assert :peer.call(peer, :erlang, :system_info, [:schedulers_online]) == 2
     expected = Keyword.get(opts, :expected, :ok)
     prefix = Keyword.get(opts, :prefix, "oban")
 
@@ -31,6 +32,7 @@ defmodule Dawarich.Jobs.TwoNodeTest do
         "SELECT count(*) FROM oban.oban_jobs WHERE worker = 'Dawarich.TwoNodeHarness.CronWorker'"
       )
 
+  @tag :a12f4_gate_peer
   test "two BEAMs with distinct Oban nodes elect one leader and insert one cron job per evaluation" do
     peers = [start_node("web-a"), start_node("web-b")]
 

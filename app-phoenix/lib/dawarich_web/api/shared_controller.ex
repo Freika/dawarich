@@ -9,6 +9,17 @@ defmodule DawarichWeb.Api.SharedController do
   alias DawarichWeb.SharedLinkCookie
   alias Dawarich.SharedLinks.FamilyAudience
 
+  def photos_owned?(conn, %{"id" => id}) do
+    if SharedLinks.api_uuid?(id) do
+      case SharedLinks.active(id, conn.assigns[:api_now] || DateTime.utc_now()) do
+        %{settings: %{"show_photos" => true}} -> false
+        _ -> true
+      end
+    else
+      true
+    end
+  end
+
   def init(action), do: action
 
   def call(conn, action) do

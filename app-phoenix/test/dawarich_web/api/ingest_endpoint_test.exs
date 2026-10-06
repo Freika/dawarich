@@ -50,18 +50,23 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
       ]
     )
 
+    Process.put({__MODULE__, :last_request}, client)
     client
   end
 
   defp puma(upstream) do
-    socket = accept(upstream)
+    socket =
+      Dawarich.Test.ApiGolden.rails_connection(Process.get({__MODULE__, :last_request}), upstream)
+
     {head, _rest} = read_head(socket)
     reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
     request_line(head)
   end
 
   defp puma_request(upstream, body) do
-    socket = accept(upstream)
+    socket =
+      Dawarich.Test.ApiGolden.rails_connection(Process.get({__MODULE__, :last_request}), upstream)
+
     {head, rest} = read_head(socket)
     received = read_at_least(socket, rest, byte_size(body))
     reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
@@ -101,6 +106,7 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
 
   test "GET and .json variants stay on Rails", %{port: port, upstream: upstream} do
     client = connect(port)
+    Process.put({__MODULE__, :last_request}, client)
     send_raw(client, "GET /api/v1/points.json HTTP/1.1\r\nHost: localhost\r\n\r\n")
     assert puma(upstream) == "GET /api/v1/points.json HTTP/1.1"
     assert {200, _, "rails"} = read_response(client)

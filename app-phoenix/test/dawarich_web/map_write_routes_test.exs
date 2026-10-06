@@ -128,7 +128,12 @@ defmodule DawarichWeb.MapWriteRoutesTest do
       refute Map.get(route, :rails_gate) == {MapWriteGate, :owned?}
     end
 
-    assert info("DELETE", "/api/v1/points/42") == :error
+    route = info("DELETE", "/api/v1/points/42")
+    assert route.plug == DawarichWeb.Api.PointWritesController
+    assert route.plug_opts == :destroy
+    assert route.pipe_through == [:api_ingest]
+    assert route.slice == :ingest
+    refute Map.get(route, :rails_gate) == {MapWriteGate, :owned?}
     assert info("PATCH", "/api/v1/tracks/42") == :error
   end
 

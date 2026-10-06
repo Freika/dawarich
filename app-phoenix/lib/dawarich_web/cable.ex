@@ -35,7 +35,7 @@ defmodule DawarichWeb.Cable do
   end
 
   def possible?(conn) do
-    conn.method == "GET" and
+    Map.get(conn.private, :dawarich_method, conn.method) == "GET" and
       "upgrade" in String.split(String.downcase(header(conn, "connection")), ~r/ *, */) and
       String.downcase(header(conn, "upgrade")) == "websocket"
   end
