@@ -356,6 +356,16 @@ defmodule DawarichWeb.A12f2JClosureTest do
   @tag :a12f2_j_05
   test "Native unknown API paths bad parameters constraint misses and exceptions match source status body and HEAD",
        c do
+    prefixes =
+      "test/fixtures/a12f2j/transport.json"
+      |> File.read!()
+      |> Jason.decode!()
+      |> Map.fetch!("route_prefixes")
+
+    for %{"path" => path, "status" => status} <- prefixes do
+      assert {^status, _, _} = endpoint(c, "GET", path, [{"Accept", "application/json"}])
+    end
+
     for {method, path} <- [
           {"GET", "/api/v1/unknown.json"},
           {"HEAD", "/api/v1/unknown.json"},
@@ -469,6 +479,7 @@ defmodule DawarichWeb.A12f2JClosureTest do
 
     for {key, path} <- [
           {"api", "/api/v1/places.json?a=%ZZ"},
+          {"api", "/%61pi/v1/photos?source=%2B"},
           {"active_storage", "/rails/active_storage/direct_uploads?source=%2B"},
           {"rails", "/rails/active_storage/direct_uploads?source=%2B"}
         ] do

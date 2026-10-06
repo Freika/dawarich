@@ -27,7 +27,19 @@ defmodule DawarichWeb.Api.RequestFormat do
 
   def init(opts), do: opts
 
-  def call(%{path_info: ["api", "v1" | rest]} = conn, _opts) do
+  def call(%{path_info: [api, version | rest]} = conn, _opts) do
+    if [api, version] != ["api", "v1"] and URI.decode(api) == "api" and
+         URI.decode(version) == "v1" and
+         not DawarichWeb.Strangler.handed_back?(["api", "v1" | rest]) do
+      DawarichWeb.RailsErrors.respond(conn, 404)
+    else
+      format_path(conn)
+    end
+  end
+
+  def call(conn, _opts), do: format_path(conn)
+
+  defp format_path(%{path_info: ["api", "v1" | rest]} = conn) do
     if DawarichWeb.Strangler.handed_back?(conn.path_info) or Enum.take(rest, 1) == ["tiles"] do
       conn
     else
@@ -46,7 +58,7 @@ defmodule DawarichWeb.Api.RequestFormat do
     end
   end
 
-  def call(conn, _opts), do: conn
+  defp format_path(conn), do: conn
 
   def decide(conn) do
     format = conn.private[:dawarich_path_format] || conn.assigns.api_params["format"]
