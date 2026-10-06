@@ -3,6 +3,7 @@ defmodule DawarichWeb.SettingsLiveTest do
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  import Dawarich.Test.FormIsolation
 
   alias Dawarich.Test.RailsUser
 
@@ -508,6 +509,7 @@ defmodule DawarichWeb.SettingsLiveTest do
             ~w(/settings/general /settings/integrations /settings/integrations?service=photoprism /settings/integrations?service=airtrail /settings/integrations?service=teslamate /settings/integrations?service=trek /users/edit) do
         {:ok, view, _html} = live_as(user, path, on_error: [duplicate_id: :warn])
         doc = view |> render() |> LazyHTML.from_fragment()
+        assert_form_isolated(render(view))
 
         assert doc |> LazyHTML.query(@rails_control) |> Enum.count() > 1, path
         patched = doc |> LazyHTML.query(@rails_control <> @patched) |> LazyHTML.attribute("id")

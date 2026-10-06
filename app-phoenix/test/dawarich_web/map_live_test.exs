@@ -3,6 +3,7 @@ defmodule DawarichWeb.MapLiveTest do
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  import Dawarich.Test.FormIsolation
 
   alias Dawarich.Repo
   alias Dawarich.Test.RailsUser
@@ -38,6 +39,7 @@ defmodule DawarichWeb.MapLiveTest do
   test "signed in, both paths render the map layout with Rails' title", %{user: user} do
     for path <- ["/map", "/map/v2"] do
       html = RailsUser.signed_in(user.id) |> get(path) |> html_response(200)
+      assert_form_isolated(html)
       assert html =~ ">Map | Dawarich</title>"
       assert html =~ "width=device-width,initial-scale=1,viewport-fit=cover"
       assert html =~ ~s(<body class="h-screen !h-[100dvh] overflow-hidden relative">)
@@ -55,6 +57,7 @@ defmodule DawarichWeb.MapLiveTest do
 
   test "the Rails regions are LiveView-ignored MapShell hooks that Turbo may drive", %{user: user} do
     {:ok, view, _html} = live_as(user, "/map/v2")
+    assert_form_isolated(render(view))
 
     for selector <- ["div#map-shell", "turbo-frame#share-link-modal"],
         do:

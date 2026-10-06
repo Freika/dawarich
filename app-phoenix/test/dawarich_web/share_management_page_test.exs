@@ -2,6 +2,7 @@ defmodule DawarichWeb.ShareManagementPageTest do
   use Dawarich.JobsCase, async: false
 
   import Phoenix.ConnTest
+  import Dawarich.Test.FormIsolation
   import Dawarich.Test.RawHTTP
   alias Dawarich.Repo
   alias Dawarich.Test.{FrameSeeds, RailsUser}
@@ -23,6 +24,7 @@ defmodule DawarichWeb.ShareManagementPageTest do
 
     for path <- ~w(/share_links/hub /share_links/live/new /trips/99101/share_link/new) do
       html = RailsUser.signed_in(ctx.actor.id) |> get(path) |> html_response(200)
+      assert_form_isolated(html)
 
       controller? =
         element?(html, "[phx-hook='RailsStimulus'] [data-controller='share-link-modal']")

@@ -3,6 +3,7 @@ defmodule DawarichWeb.PointsLiveTest do
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  import Dawarich.Test.FormIsolation
   import Plug.Conn
 
   alias Dawarich.{RailsCookies, RailsSecret, Repo}
@@ -94,7 +95,9 @@ defmodule DawarichWeb.PointsLiveTest do
       get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/points?#{@range}")
 
     [static_id] = attr(conn.resp_body, "[id^='points-page-']", "id")
+    assert_form_isolated(conn.resp_body, "#bulk_destroy_form")
     {:ok, view, html} = live(conn)
+    assert_form_isolated(html, "#bulk_destroy_form")
     assert attr(html, "[id^='points-page-']", "id") == [static_id]
     assert attr(html, "#points [phx-hook='RailsStimulus']", "phx-update") == ["ignore"]
     assert attr(html, "#points input[name='point_ids[]']", "value") |> length() == 50
@@ -103,6 +106,7 @@ defmodule DawarichWeb.PointsLiveTest do
       view |> element(".flex.justify-center.mb-4 [aria-label='pager'] a", "2") |> render_click()
 
     [next_id] = attr(html, "[id^='points-page-']", "id")
+    assert_form_isolated(html, "#bulk_destroy_form")
     refute next_id == static_id
     assert attr(html, "#points input[name='point_ids[]']", "value") == ["837101"]
   end

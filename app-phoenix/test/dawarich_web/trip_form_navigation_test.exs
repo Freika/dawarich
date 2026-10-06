@@ -3,6 +3,7 @@ defmodule DawarichWeb.TripFormNavigationTest do
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  import Dawarich.Test.FormIsolation
   alias Dawarich.Test.{RailsUser, TripsSeeds}
 
   @endpoint DawarichWeb.Endpoint
@@ -14,6 +15,8 @@ defmodule DawarichWeb.TripFormNavigationTest do
     for path <- ["/trips/new", "/trips/759301/edit"] do
       {:ok, view, _html} =
         live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
+
+      assert_form_isolated(render(view), "#trip-form-shell form")
 
       assert has_element?(
                view,

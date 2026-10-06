@@ -2,7 +2,14 @@
   class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl"
   data-testid={"instance-settings-pane-" <> @section}
 >
-  <form data-turbo-frame="_top" action="/admin/settings" accept-charset="UTF-8" method="post">
+  <form
+    id={"phx-instance-settings-#{@section}"}
+    phx-update="ignore"
+    data-turbo-frame="_top"
+    action="/admin/settings"
+    accept-charset="UTF-8"
+    method="post"
+  >
     <input type="hidden" name="_method" value="patch" /><input
       type="hidden"
       name="authenticity_token"

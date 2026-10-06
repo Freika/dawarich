@@ -2,6 +2,7 @@ defmodule DawarichWeb.ImportsNativePagesTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  import Dawarich.Test.FormIsolation
   import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
   alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
   @endpoint DawarichWeb.Endpoint
@@ -32,6 +33,24 @@ defmodule DawarichWeb.ImportsNativePagesTest do
              ~s(data-upload-url-value="http://www.example.com/rails/active_storage/direct_uploads")
 
     refute html =~ "/imports/direct_uploads"
+    assert_form_isolated(html, "#phx-import-upload")
+  end
+
+  test "import rename and source selection share a stable patch isolation before and after join",
+       c do
+    path = "/imports/759101/edit"
+    dead = RailsUser.signed_in(c.user.id) |> get(path) |> html_response(200)
+    {:ok, view, joined} = live_as(c.user, path)
+
+    for html <- [dead, joined, render(view)] do
+      assert_form_isolated(html, "form[action='/imports/759101']")
+
+      assert ["phx-import-edit-759101"] ==
+               html
+               |> LazyHTML.from_document()
+               |> LazyHTML.query("form[phx-update='ignore']")
+               |> LazyHTML.attribute("id")
+    end
   end
 
   test "the owner's show and edit pages are native LiveViews", c do

@@ -2,6 +2,7 @@ defmodule DawarichWeb.TagsLiveTest do
   use Dawarich.JobsCase, async: false
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  import Dawarich.Test.FormIsolation
   import Plug.Conn
   alias Dawarich.Repo
   alias Dawarich.Test.{FrameSeeds, RailsUser}
@@ -74,7 +75,9 @@ defmodule DawarichWeb.TagsLiveTest do
 
     conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/tags/new")
     static_emoji = attr(conn.resp_body, "input[name='tag[icon]']", "value")
+    assert_form_isolated(conn.resp_body, "form.space-y-4")
     {:ok, view, html} = live(conn)
+    assert_form_isolated(html, "form.space-y-4")
     [emoji] = attr(html, "input[name='tag[icon]']", "value")
     source = File.read!(Path.expand("../../../app/helpers/tags_helper.rb", __DIR__))
     [_, list] = Regex.run(~r/COMMON_TAG_EMOJIS = %w\[(.*?)\]/s, source)
@@ -90,6 +93,7 @@ defmodule DawarichWeb.TagsLiveTest do
   test "edit form preserves exact Rails field names methods and blank defaults", %{user: user} do
     tag!(user, 83921, %{icon: "", color: "", demo: true})
     {:ok, _view, html} = live_as(user, "/tags/83921/edit")
+    assert_form_isolated(html, "form.space-y-4")
     assert attr(html, "form.space-y-4", "action") == ["/tags/83921"]
     assert attr(html, "form.space-y-4", "method") == ["post"]
     assert attr(html, "form.space-y-4 input[name='_method']", "value") == ["patch"]

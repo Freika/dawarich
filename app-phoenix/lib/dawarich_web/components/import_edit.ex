@@ -16,6 +16,8 @@ defmodule DawarichWeb.ImportEdit do
     <div class="mx-auto md:w-2/3 w-full" data-testid="native-imports-root">
       <h1 class="font-bold text-4xl">{text(@locale, "imports.edit.editing_import")}</h1>
       <form
+        id={"phx-import-edit-#{@record.id}"}
+        phx-update="ignore"
         class="form-body mt-4"
         action={"/imports/#{@record.id}"}
         accept-charset="UTF-8"
