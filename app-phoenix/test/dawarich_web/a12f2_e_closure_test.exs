@@ -474,6 +474,105 @@ defmodule DawarichWeb.A12f2EClosureTest do
              )
   end
 
+  @tag :a12f2_e_09
+  test "Ingest upload and point failures never replay accepted SQL storage cache or external effects" do
+    actor = user!(%{points_count: 0, settings: %{"timezone" => "UTC"}})
+
+    user = %{
+      id: actor,
+      status: 1,
+      plan: 1,
+      subscription_source: 1,
+      active_until: nil,
+      points_count: 0,
+      settings: %{"timezone" => "UTC"}
+    }
+
+    ctx = Map.put(context(), :after_commit, fn -> raise "synthetic render failure" end)
+
+    feature = %{
+      "geometry" => %{"coordinates" => [13.4, 52.5]},
+      "properties" => %{"timestamp" => 1_790_000_000}
+    }
+
+    conn = api_conn(user, %{"locations" => [feature]}, ctx)
+    conn = DawarichWeb.Api.IngestController.call(conn, {:native, :points})
+    assert conn.status == 500
+    assert [[1]] = Repo.query!("SELECT count(*) FROM points WHERE user_id=$1", [actor]).rows
+    Ownership.put!(Repo, "command:imports.process_normal", :oban)
+
+    assert {:error, 500, _} =
+             Api.create(Repo, user, %{"file" => upload!("accepted.json", "{}")}, ctx)
+
+    assert [[1]] = Repo.query!("SELECT count(*) FROM imports WHERE user_id=$1", [actor]).rows
+
+    assert [[1]] =
+             Repo.query!(
+               "SELECT count(*) FROM job_outbox WHERE command_type='imports.process_normal'"
+             ).rows
+
+    assert [[1]] =
+             Repo.query!(
+               "SELECT count(*) FROM active_storage_attachments WHERE record_type='Import'"
+             ).rows
+
+    [[point]] = Repo.query!("SELECT id FROM points WHERE user_id=$1", [actor]).rows
+
+    assert {:error, 500, _} =
+             Dawarich.Points.ApiWrites.update(
+               Repo,
+               user,
+               point,
+               %{"point" => %{"latitude" => "51", "longitude" => "14"}},
+               ctx
+             )
+
+    assert [[14.0, 51.0]] =
+             Repo.query!(
+               "SELECT ST_X(lonlat::geometry),ST_Y(lonlat::geometry) FROM points WHERE id=$1",
+               [point]
+             ).rows
+
+    upstream = Dawarich.Test.RawHTTP.listen()
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
+    parent = self()
+
+    server =
+      Task.async(fn ->
+        socket = Dawarich.Test.RawHTTP.accept(upstream)
+        send(parent, :upstream_replayed)
+        Dawarich.Test.RawHTTP.read_head(socket)
+        Dawarich.Test.RawHTTP.reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nreplay")
+      end)
+
+    on_exit(fn -> Application.put_env(:dawarich, :rails_upstream, nil) end)
+
+    try do
+      Repo.query!(
+        "CREATE FUNCTION a12f2e_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.timestamp=1790001001 THEN RAISE EXCEPTION 'synthetic slice fault'; END IF; RETURN NEW; END $$"
+      )
+
+      Repo.query!(
+        "CREATE TRIGGER a12f2e_fault BEFORE INSERT ON points FOR EACH ROW EXECUTE FUNCTION a12f2e_fault()"
+      )
+
+      locations =
+        for index <- 1..1001,
+            do: put_in(feature, ["properties", "timestamp"], 1_790_000_000 + index)
+
+      conn =
+        api_conn(user, %{"locations" => locations}, Map.delete(ctx, :after_commit))
+        |> DawarichWeb.Api.IngestController.call({:native, :points})
+
+      refute_receive :upstream_replayed, 0
+      assert conn.status == 500
+      assert [[1001]] = Repo.query!("SELECT count(*) FROM points WHERE user_id=$1", [actor]).rows
+    after
+      Task.shutdown(server, :brutal_kill)
+      :gen_tcp.close(upstream.listen)
+    end
+  end
+
   defp native_ingest_oracle!(golden, kase) do
     Repo.transaction(fn ->
       Dawarich.Ingest.Sources.forget()
