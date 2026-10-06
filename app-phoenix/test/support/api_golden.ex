@@ -157,7 +157,8 @@ defmodule Dawarich.Test.ApiGolden do
     lengths = if method == "HEAD", do: head_length(kase["response"]), else: [byte_size(body)]
     framing = Enum.map(lengths, &"Content-Length: #{&1}\r\n")
     reply(puma, ["HTTP/1.1 #{status} Rails\r\n", framing, "\r\n", body])
-    assert {^status, _, received} = response(client, method)
+    assert {^status, headers, received} = response(client, method)
+    if method == "HEAD", do: assert(values(headers, "content-length") == lengths)
     assert received == body
   end
 
