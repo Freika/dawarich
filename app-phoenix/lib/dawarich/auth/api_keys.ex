@@ -1,22 +1,56 @@
 defmodule Dawarich.Auth.ApiKeys do
   @moduledoc false
   alias Dawarich.Auth.{Account, AccountChanges, Recovery.Token}
-  alias Dawarich.Repo
+  import Ecto.Query
+  alias Dawarich.{Accounts, Repo}
 
   def rotate(id, session_salt, context) do
     with {:ok, actor} <- AccountChanges.actor(id, session_salt, context),
          false <- Token.blank?(actor.email),
          true <- Account.normalize_email(actor.email) == actor.email do
-      changes = %{
-        api_key: :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower),
-        updated_at: Map.get(context, :clock, &DateTime.utc_now/0).()
-      }
-
-      {:ok,
-       Map.get(context, :repo, Repo).update!(Ecto.Changeset.change(actor, changes), log: false)}
+      persist(actor, context)
     else
       value when is_boolean(value) -> {:handoff, :invalid_resource}
       handoff -> handoff
     end
+  end
+
+  def rotate_session(%{"warden.user.user.key" => [[id], salt]} = session)
+      when is_integer(id) and is_binary(salt) do
+    {:ok, result} =
+      Repo.transaction(
+        fn ->
+          actor =
+            Repo.one(
+              from u in Account,
+                where: u.id == ^id and is_nil(u.deleted_at),
+                lock: "FOR UPDATE"
+            )
+
+          with %Account{} <- actor,
+               %Accounts.User{id: ^id} <- Accounts.from_session(session, DateTime.utc_now()),
+               false <- Token.blank?(actor.email),
+               true <- Account.normalize_email(actor.email) == actor.email do
+            persist(actor, %{})
+          else
+            _ -> {:handoff, :invalid_resource}
+          end
+        end,
+        mode: :savepoint
+      )
+
+    result
+  end
+
+  def rotate_session(_), do: {:handoff, :session}
+
+  defp persist(actor, context) do
+    changes = %{
+      api_key: :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower),
+      updated_at: Map.get(context, :clock, &DateTime.utc_now/0).()
+    }
+
+    {:ok,
+     Map.get(context, :repo, Repo).update!(Ecto.Changeset.change(actor, changes), log: false)}
   end
 end
