@@ -1,7 +1,7 @@
 defmodule Dawarich.Visits.BulkSweep do
   @moduledoc false
 
-  alias Dawarich.{Entitlements, RailsCommands, UserTimeZone}
+  alias Dawarich.{Entitlements, RailsCommands, TimeZoneName, UserTimeZone}
   alias Dawarich.Geocoding.Config
   alias Dawarich.Jobs.{Ownership, Processed}
   alias Dawarich.Visits.{BulkSweepWorker, Calendar, Settings, SuggestWorker}
@@ -43,12 +43,13 @@ defmodule Dawarich.Visits.BulkSweep do
       rows = repo.query!(@users, [args["after_id"] || 0, args["user_ids"]], log: false).rows
       owner = Ownership.lock(repo, "command:visits.suggest")
       chunks = Calendar.time_chunks(args["start_at"], args["end_at"])
+      zone_env = Map.put_new(env, "TIME_ZONE", "UTC")
+      zones = time_zones(repo, rows, zone_env)
 
       for [id, settings, plan] <- rows,
           Settings.policy(settings).suggestions_enabled,
           Processed.claim!(repo, receipt_id(args["event_id"], id), "visits.bulk_suggest") do
-        zone_env = Map.put_new(env, "TIME_ZONE", "UTC")
-        [[zone]] = UserTimeZone.query!("SELECT name FROM z", [], settings, repo, zone_env).rows
+        zone = Map.fetch!(zones, TimeZoneName.to_iana(UserTimeZone.zone(settings, zone_env)))
         hosted = DawarichWeb.LayoutAssigns.self_hosted?(env)
         now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
         restricted = not Entitlements.full_access?(repo, %{id: id, plan: plan}, hosted, now)
@@ -79,6 +80,30 @@ defmodule Dawarich.Visits.BulkSweep do
     end
 
     :ok
+  end
+
+  defp time_zones(_repo, [], _env), do: %{}
+
+  defp time_zones(repo, rows, env) do
+    names =
+      rows
+      |> Enum.map(fn [_, settings, _] ->
+        TimeZoneName.to_iana(UserTimeZone.zone(settings, env))
+      end)
+      |> Enum.uniq()
+
+    fallback = TimeZoneName.to_iana(env["TIME_ZONE"] || "Europe/Berlin")
+
+    valid =
+      repo.query!(
+        "SELECT name FROM pg_timezone_names WHERE name = ANY($1::text[])",
+        [Enum.uniq([fallback | names])],
+        log: false
+      ).rows
+      |> MapSet.new(&hd/1)
+
+    fallback = if MapSet.member?(valid, fallback), do: fallback, else: "UTC"
+    Map.new(names, &{&1, if(MapSet.member?(valid, &1), do: &1, else: fallback)})
   end
 
   defp publish(_repo, oban, payload, event, :oban) do

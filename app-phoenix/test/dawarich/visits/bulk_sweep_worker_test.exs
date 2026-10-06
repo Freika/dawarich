@@ -220,6 +220,65 @@ defmodule Dawarich.Visits.BulkSweepWorkerTest do
              length(f["jobs"])
   end
 
+  test "bulk sweep validates timezones once per page and preserves Rails fallback" do
+    zones = [nil, "Tokyo", "invalid-user-zone", "Asia/Tokyo"]
+
+    for n <- 1..40 do
+      rows(
+        "INSERT INTO users (id,email,settings,status,plan,points_count,created_at,updated_at) " <>
+          "VALUES ($1,$2,$3,1,1,1,now(),now())",
+        [54000 + n, "zone-#{n}@example.invalid", %{"timezone" => Enum.at(zones, rem(n, 4))}]
+      )
+    end
+
+    Ownership.put!(ScratchRepo, "command:visits.suggest", :oban)
+    key = make_ref()
+
+    :ok =
+      :telemetry.attach(
+        key,
+        ScratchRepo.config()[:telemetry_prefix] ++ [:query],
+        fn _, _, metadata, parent ->
+          if self() == parent and String.contains?(metadata.query, "pg_timezone_names"),
+            do: Process.put(key, Process.get(key, 0) + 1)
+        end,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(key) end)
+
+    for {ambient, fallback} <- [{"Berlin", "Europe/Berlin"}, {"invalid-ambient-zone", "UTC"}] do
+      rows("DELETE FROM oban.oban_jobs")
+      Process.put(key, 0)
+
+      args = %{
+        "event_id" => Ecto.UUID.generate(),
+        "start_at" => "2025-10-04T00:00:00Z",
+        "end_at" => "2025-10-04T23:59:59Z",
+        "user_ids" => [],
+        "time_zone" => "Etc/UTC"
+      }
+
+      result =
+        BulkSweepWorker.run(ScratchRepo, @oban, args,
+          env: Map.put(env("selection"), "TIME_ZONE", ambient)
+        )
+
+      lookups = Process.delete(key)
+
+      actual =
+        rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Visits.SuggestWorker'")
+        |> Enum.map(fn [args] -> {args["user_id"], args["time_zone"]} end)
+        |> Enum.sort()
+
+      expected =
+        for n <- 1..40,
+            do: {54000 + n, if(rem(n, 4) in [1, 3], do: "Asia/Tokyo", else: fallback)}
+
+      assert {result, lookups, actual} == {:ok, 1, expected}
+    end
+  end
+
   defp load_users(users) do
     for user <- users do
       rows(
