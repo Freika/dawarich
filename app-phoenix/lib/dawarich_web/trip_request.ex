@@ -26,8 +26,10 @@ defmodule DawarichWeb.TripRequest do
   def action(:note, _), do: :note_update
   def action(action, _method), do: action
 
-  def fields?(action, params) when action in [:trip_create, :trip_update],
-    do: nested?(params, "trip", @trip)
+  def fields?(action, params) when action in [:trip_create, :trip_update] do
+    {href, fields} = Map.pop(params, "href", "")
+    is_binary(href) and nested?(fields, "trip", @trip)
+  end
 
   def fields?(action, params) when action in [:note_create, :note_update],
     do: nested?(params, "note", @note)

@@ -152,3 +152,27 @@ ownership-selected compatibility branches and retained unused kinds.
 
 Stop the web release with `bin/dawarich stop` using the same cookie and node
 configuration. Redis remains a runtime dependency and must be managed separately.
+
+## Public JavaScript resolution
+
+Standalone static serving resolves asset requests against the manifest in this
+order: the exact logical name, the name with `.js`, then the directory's
+`index.js`. This also handles names such as `stimulus.min` and the public page's
+relative `./channels` import. Only manifest entries are remapped; the existing
+path, host, symlink, compression and conditional-response checks still apply.
+
+`StandaloneShareAssetsTest` unlocks a public timeline through the real endpoint,
+then checks the complete repository importmap and extensionless module paths.
+Browser verification also checks that the unlocked page renders a route canvas.
+
+## Trip browser form admission
+
+Native trip create and update accept Trix's unscoped scalar `href` field while
+persisting only the permitted `trip` attributes. A8 also follows Rails' normal
+browser `Accept` rule: a non-XHR mixed header containing `*/*` selects HTML,
+including Chrome's weighted document header. Explicit Turbo format selection
+and the existing CSRF, session, parameter-shape and method checks remain active.
+Create redirects to the new trip with 302 and its notice; update uses 303.
+
+`StandaloneTripFormTest` exercises the new/edit endpoint flow, name/date/rich-text
+persistence, notices, redirects and rejected envelopes with the browser header.

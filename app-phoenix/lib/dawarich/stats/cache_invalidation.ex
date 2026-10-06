@@ -4,19 +4,24 @@ defmodule Dawarich.Stats.CacheInvalidation do
 
   def call(repo, payload, key \\ "command:stats.calculate_month") do
     if Standalone.enabled?() or Ownership.lock(repo, key) == :oban do
-      invalidate(payload)
+      invalidate(repo, payload)
     else
       RailsCommands.insert!(repo, "stats.caches_invalidated", payload)
     end
   end
 
-  defp invalidate(%{"user_id" => user, "year" => year, "scope" => scope}) do
+  defp invalidate(repo, %{"user_id" => user, "year" => year, "scope" => scope}) do
+    if scope == "all",
+      do:
+        repo.query!("DELETE FROM phoenix.stats_point_counts WHERE user_id=$1", [user], log: false)
+
     suffixes = ~w(countries_visited cities_visited)
 
     suffixes =
       if scope == "all", do: suffixes ++ ~w(points_geocoded_stats total_distance), else: suffixes
 
     keys = Enum.map(suffixes, &"dawarich/user_#{user}_#{&1}")
+    keys = keys ++ Enum.map(keys, &("phoenix/" <> &1))
     {:ok, _} = Redis.cache_command(["DEL" | keys])
 
     pattern =
@@ -25,6 +30,7 @@ defmodule Dawarich.Stats.CacheInvalidation do
         else: "insights/yearly_digest/#{user}/*"
 
     scan("0", pattern)
+    scan("0", "phoenix/" <> pattern)
     :ok
   end
 

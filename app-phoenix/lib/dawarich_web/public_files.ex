@@ -86,11 +86,12 @@ defmodule DawarichWeb.PublicFiles do
   defp asset_segments(root, ["assets" | tail] = original) do
     if Dawarich.Standalone.enabled?() do
       logical = Enum.join(tail, "/")
-      logical = if Path.extname(logical) == "", do: logical <> ".js", else: logical
-      resolved = DawarichWeb.Assets.stylesheet_path(Path.dirname(root), logical)
 
-      case segments(resolved) do
-        {:ok, mapped} when resolved != "/assets/" <> logical -> mapped
+      with resolved when is_binary(resolved) <-
+             DawarichWeb.Assets.asset_path(Path.dirname(root), logical),
+           {:ok, mapped} <- segments(resolved) do
+        mapped
+      else
         _ -> original
       end
     else

@@ -1,6 +1,6 @@
 # A12h native release lifecycle
 
-Last updated: 2026-10-05.
+Last updated: 2026-10-06.
 
 The default-off, self-hosted lifecycle now owns public upgrades, private schema
 setup, registration-policy copy and ordinary install seeds. Rails/Puma remains
@@ -93,6 +93,33 @@ single-migrator rule applies across both runtimes, including PgBouncer transacti
 pooling. Never take a session lock through a transaction pooler. ED-534 records
 this setting as source parity, not a native gap. Native coordination does not
 coordinate Rails db:seed; stop old boot/deploy seed writers before activation.
+
+## Release concurrency test synchronization
+
+`test/dawarich/release/native_test.exs` uses monitored workers for the fresh
+migration race and lock-connection-loss proof. Test-only `Dawarich.NativeWorker`
+reports stages, the actual migration result and process exit separately. Each
+write barrier requires an explicit continuation. Completion requires both the
+result and normal exit, after migration cleanup has released the session lock.
+An exit before readiness reports its reason immediately. ExUnit's existing
+whole-test deadline still bounds a stalled worker; there is no independent
+five-second deadline on bootstrap or the complete DDL path.
+
+The loss proof captures only the dedicated test connection through Repo
+configuration. It verifies the caller link, closes that connection's TCP socket
+and requests a driver ping to deliver the disconnect immediately. It awaits the
+caller's monitored exit before trying the Rails advisory key and checking that
+native rows, jobs, versions and registration copy remain unwritten. It does not
+terminate a PostgreSQL backend. This probe depends on the pinned DBConnection
+state shape and must be checked when upgrading that dependency.
+
+Run the two tests with `ELIXIR_ERL_OPTIONS="+S 1:1"`, using the existing
+`PHOENIX_TEST_DATABASE` and `PHOENIX_TEST_REDIS_URL` isolation settings. Named
+mutations cover worker identity, readiness failure, completion result, abnormal
+exit after a result, worker crash, lock exclusion and the caller link. Controlled
+barriers reproduce stalled progress without host-wide CPU load. The shared
+knowledge-base counterpart is titled **Dawarich — Native release concurrency
+test synchronization** (AFFiNE document `bzWCSl5BdwdP0bkQzz_-w`).
 
 ## Jobs and ordinary seeds
 
