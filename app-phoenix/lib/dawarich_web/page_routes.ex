@@ -40,7 +40,16 @@ defmodule DawarichWeb.PageRoutes do
 
       rails_pages_routes()
 
+      pipeline :map_redirect do
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.RailsHeaders
+      end
+
       scope "/" do
+        pipe_through :map_redirect
+
         for path <- ["/map/v1", "/map/v1.:format"] do
           get path, DawarichWeb.MapRedirects, :legacy, metadata: %{rails_key: "map"}
         end
