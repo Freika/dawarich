@@ -1,0 +1,43 @@
+# Imports HTTP and producer closure
+
+Standalone priority cut, 2026-10-06. This extends the existing A12f-2 import intake and A7 producer implementations. Full package I envelope closure remains open.
+
+The upload form accepts the existing direct-upload signed references and queues GPX or normal processing according to the locked command owner. Empty uploads return the source 422 redirect and alert cookie. Rejected batches leave no imports, attachments or commands. Format detection failures return a native 422; their exact Rails exception messages remain open.
+
+Import PUT and POST `_method=put` now reach the update action. Blank or duplicate names retain Rails 1.15.3 behavior: validation prevents persistence while the controller redirects with its success notice. Invalid sources render the existing 422 edit form.
+
+Manual GPX extraction and removal publish `enhanced_import.extract_gpx` and `enhanced_import.destroy_gpx` directly when those command owners are Oban. The payloads use the existing worker decoders: `{import_id, lock_attempt: 1}` and `{import_id}`. The outbox UUID matches the extraction event stored on the import; aggregate identity is the actor, scheduling is immediate, and the transaction locks owner, import and user. Source-owned requests retain their accepted reverse handoff. Duplicate active extraction requests publish no second command and redirect with the source authorization alert. Native removal with extracted visits or tracks returns a terminal 422 until package F's broader removal worker is ready.
+
+Minimal O wiring: `import_routes.ex` adds PUT alongside PATCH with the same pipeline and ownership metadata. No shared transport parser, CSRF guard, global fallback or claimable flag changes. The purge command adds one inert Registry entry as the minimum dispatch seam.
+
+Detached import blobs now publish `imports.prepared_download_purge` under `command:imports.prepared_download_purge` when the owner is Oban. The typed payload is `{blob_id, import_id, user_id, source_blob_id}`; immediate scheduling and pending receipt deduplication retain the existing cleanup boundary. The worker checks the executing attempt, exact immutable receipt, current actor when the import exists, storage service/key, and absence of all attachments before deleting. Storage errors leave the event unprocessed for retry. Source ownership retains its handoff, including accepted native work after an owner flip. The Registry entry stays unclaimable for controller integration. The canonical imports inventory and native-producer census name the new key. Rails JobCommands adds its version-1 compatibility decoder, delegating to the existing immutable-receipt purge helper; its existing characterization verifies the real purge job.
+
+Download preparation preserves the captured source blob even when a stale prepared cache is attached. The original archive remains immediately readable; native preparation produces the extracted file and retains the archive. Missing blobs return native 404, and unsupported configured storage returns native 422. A native prepare worker retains a retryable storage error instead of publishing a reverse continuation. Source-owned accepted work keeps its existing handoff. Exact Rails error envelopes remain a later parity task under ruling 15.
+
+## Verification
+
+`a12f3a_i_closure_test.exs` contains the aggregate I02, I03, I04, I05 and I09 tests plus the I06 native-purge priority test. Each initially failed on missing behavior, passed after implementation, failed its production mutation and passed after restoration. The tests disconnect the Rails upstream and inspect persisted imports, attachments and outbox/reverse-command rows.
+
+TeslaMate completion uses the existing native anomaly filter inside its worker transaction and publishes `tracks.generate_realtime` with an event-based dedupe key when that downstream owner is Oban. Track backfill uses `BackfillCommands.put/4`, preserving its range accumulation, captured zone and delayed scheduling. Stats retain `Stats.Schedule.calculate/6` and its independent owner. Source-owned realtime retains the original reverse effects. Shared tile/anomaly-dependent effect sinks still belong to sibling rows19–22.
+
+The existing imports page generator now records `a12f3a-i02.json`, `a12f3a-i03.json` and `a12f3a-i04.json`. The writer ran twice with an empty whole-fixture byte diff; previous fixtures were unchanged. This package captured these independently because O04's additions were not present at its base. No newly named Rails example was added; the existing generator example was extended.
+
+The page generator additionally captures the purge receipt guards as `a12f3a-i06.json`. Its writer passed twice with identical output and assertion mode. The native purge test failed with no typed outbox publication, passed after implementation, failed when the shared-attachment guard was bypassed and passed after restoration.
+
+All twelve package source capture filenames are now present. I01 records the inherited page manifest; I05 records the source preparing response and original filename. Both passed twice-write comparison and ordinary assertion mode. The I05 test failed on a 502 fallback, passed with native errors, failed when the queued source blob was replaced by the current stale cache blob and passed after restoration.
+
+The existing normal import producer generator also records I07–I12 source captures independently. I01, I07–I08 and I10–I12 reuse existing implementations and characterization tests. They are not represented as newly RED-tested tasks. Evidence and final gate counts belong in the controller-assigned execution report.
+
+## Remaining scope and handoff
+
+- I01: complete malformed legacy rows, foreign/missing authorization ordering, unsupported page envelopes and HEAD characterization.
+- I02: raw multipart, descriptor shapes, exact checksum/storage failure messages, quotas and all transport/environment combinations.
+- I03: full query/format/Turbo tails and coercion envelopes.
+- I04: package F's source/blob/attempt fencing and non-GPX extraction/removal interface; redirect-back envelopes and removal of extracted visits/tracks.
+- I05–I06: exact download/transport error envelopes, signed URL delivery parity and terminal event integration. Native receipt-based attachment purge is implemented and tested; the full I06 progress mutation remains open.
+- I07–I08, I10–I12: existing native producer tests pass against current-head Rails captures. Their remaining envelope/mutation reconciliation and downstream effect sink closure still need package completion evidence. I09 realtime/backfill production is now native; shared tile/anomaly-dependent effects remain sibling-owned.
+- F and sibling rows19–22 own worker/effect/schedule readiness. Keep job entries inert. The producer changes do not prove source-drain completion or authorize release deployment.
+
+The shared AFFiNE counterpart is the Dawarich Phoenix imports HTTP and producer closure document. The master source of implementation conventions remains the controller's A12f-3a plan D and Ruby-free release plan.
+
+The full-suite gate also exposed a metrics readiness race. Its test now holds the connection in the test process before releasing the query client and yields while observing the queue. No timeout was increased and no host load was generated.

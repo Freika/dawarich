@@ -1,5 +1,7 @@
 defmodule Dawarich.Imports.Teslamate.Effects do
   @moduledoc false
+  alias Dawarich.Jobs.Ownership
+
   def record(ctx, acc, rows) do
     recovery =
       ctx.settings["teslamate_processing_pending"] == true and
@@ -37,12 +39,34 @@ defmodule Dawarich.Imports.Teslamate.Effects do
   def finalize(_ctx, %{range: nil}), do: :ok
 
   def finalize(ctx, %{range: {min, max}, months: months}) do
-    for {kind, payload} <- [
-          {"points.anomaly_filter", %{"start_at" => min, "end_at" => max}},
-          {"tracks.realtime", %{}},
-          {"tracks.backfill", %{"timestamps" => [min, max]}}
-        ] do
-      Dawarich.RailsCommands.insert!(ctx.repo, kind, Map.put(payload, "user_id", ctx.id))
+    if Ownership.lock(ctx.repo, "command:tracks.generate_realtime") == :oban do
+      zone = ctx.settings["timezone"] || "Etc/UTC"
+      Dawarich.Points.AnomalyFilter.call(ctx.repo, ctx.id, min, max, zone: zone)
+
+      ctx.repo.query!(
+        "INSERT INTO job_outbox(event_id,command_type,command_version,payload,aggregate_id,dedupe_key,metadata,scheduled_at) VALUES(gen_random_uuid(),'tracks.generate_realtime',1,$1,$2,$3,$4,$5) ON CONFLICT DO NOTHING",
+        [
+          %{"user_id" => ctx.id},
+          ctx.id,
+          "teslamate-realtime:#{ctx.event}",
+          %{"producer" => "Phoenix TeslaMate sync"},
+          ctx.now
+        ],
+        log: false
+      )
+
+      Dawarich.Tracks.BackfillCommands.put(ctx.repo, ctx.id, [min, max],
+        time_zone: zone,
+        now: ctx.now
+      )
+    else
+      for {kind, payload} <- [
+            {"points.anomaly_filter", %{"start_at" => min, "end_at" => max}},
+            {"tracks.realtime", %{}},
+            {"tracks.backfill", %{"timestamps" => [min, max]}}
+          ] do
+        Dawarich.RailsCommands.insert!(ctx.repo, kind, Map.put(payload, "user_id", ctx.id))
+      end
     end
 
     Enum.each(months, fn {year, month} ->

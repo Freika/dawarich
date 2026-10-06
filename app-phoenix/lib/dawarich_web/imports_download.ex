@@ -31,17 +31,20 @@ defmodule DawarichWeb.ImportsDownload do
                  context.now
                ) do
             {:ok, _} -> pending(conn, record, context.locale)
-            {:error, _} -> rails(conn)
+            {:error, _} -> unavailable(conn, 422)
           end
 
         {:legacy, _} ->
-          rails(conn)
+          unavailable(conn, 422)
+
+        {:error, :not_found} ->
+          unavailable(conn, 404)
 
         {:error, _} ->
-          rails(conn)
+          unavailable(conn, 422)
       end
     else
-      _ -> rails(conn)
+      _ -> unavailable(conn, 404)
     end
   end
 
@@ -103,11 +106,10 @@ defmodule DawarichWeb.ImportsDownload do
       |> Phoenix.HTML.html_escape()
       |> Phoenix.HTML.safe_to_string()
 
-  defp rails(conn) do
+  defp unavailable(conn, status) do
     conn
-    |> delete_resp_header("x-dawarich-handler")
-    |> register_before_send(&put_resp_header(&1, "x-dawarich-handler", "rails-imports"))
-    |> DawarichWeb.RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
+    |> put_resp_content_type("text/html")
+    |> send_resp(status, "Import download is unavailable")
     |> halt()
   end
 end

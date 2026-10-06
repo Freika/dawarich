@@ -373,6 +373,7 @@ defmodule DawarichWeb.EndpointTest do
       {"POST", "/imports"},
       {"POST", "/imports/:id"},
       {"PATCH", "/imports/:id"},
+      {"PUT", "/imports/:id"},
       {"DELETE", "/imports/:id"},
       {"POST", "/imports/:id/extraction"},
       {"DELETE", "/imports/:id/extraction"},

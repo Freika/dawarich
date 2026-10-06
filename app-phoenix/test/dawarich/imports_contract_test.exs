@@ -10,6 +10,7 @@ defmodule Dawarich.ImportsContractTest do
     command:imports.immich_geodata
     command:imports.photoprism_geodata
     command:imports.prepare_download
+    command:imports.prepared_download_purge
     command:imports.process_gpx
     command:imports.process_normal
     command:imports.teslamate_sync

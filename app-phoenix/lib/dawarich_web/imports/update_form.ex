@@ -3,6 +3,10 @@ defmodule DawarichWeb.Imports.UpdateForm do
   @keys ~w(authenticity_token _method trust_source import_id commit)
   @import_keys ~w(name source)
 
+  def action(method) when method in ["PATCH", "PUT"], do: :update
+  def action("DELETE"), do: :delete
+  def action(_), do: :unsupported
+
   def field?({"import", %{} = import}), do: Enum.all?(import, &import_field?/1)
   def field?({key, value}), do: key in @keys and is_binary(value)
 

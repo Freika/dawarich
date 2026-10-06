@@ -121,6 +121,79 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
     { blob_id: blob.id, filename:, byte_size: blob.byte_size, checksum: blob.checksum }
   end
 
+  def capture_import_requests!
+    user = User.find(9801)
+    settings = user.settings
+    user.update_columns(settings: settings.merge('locale' => 'en'))
+    sign_in user
+    get '/imports/980111/edit'
+    token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+    uploads = [nil, [], ['']].map do |files|
+      params = { authenticity_token: token }
+      params[:import] = { files: } unless files.nil?
+      post('/imports', params:)
+      expect(response.status).to eq(422)
+      { status: response.status, location: response.location, alert: flash[:alert] }
+    end
+    write_json('a12f3a-i02.json', uploads)
+    updates = [
+      [:put, { name: 'renamed.csv', source: 'geojson' }],
+      [:patch, { name: '', source: 'gpx' }],
+      [:post, { name: 'override.csv', source: 'gpx' }],
+      [:put, { source: 'unknown' }]
+    ].map do |method, attrs|
+      params = { authenticity_token: token, import: attrs }
+      params[:_method] = 'put' if method == :post
+      public_send(method, '/imports/980111', params:)
+      row = Import.find(980_111)
+      { method:, status: response.status, location: response.location,
+        name: row.name, source: row.source, notice: flash[:notice] }
+    end
+    expect(updates.map { _1[:status] }).to eq([303, 303, 303, 422])
+    expect(updates.map { _1[:name] }).to eq(%w[renamed.csv renamed.csv override.csv override.csv])
+    write_json('a12f3a-i03.json', updates)
+    extraction = []
+    post('/imports/980101/extraction', params: { authenticity_token: token, trust_source: 'false' })
+    extraction << { status: response.status, location: response.location }
+    post('/imports/980101/extraction', params: { authenticity_token: token })
+    extraction << { status: response.status, location: response.location }
+    Import.find(980_101).update_columns(additional_data_extraction_status: 3)
+    delete('/imports/980101/extraction', params: { authenticity_token: token })
+    extraction << { status: response.status, location: response.location }
+    expect(extraction.map { _1[:status] }).to eq([302, 303, 302])
+    write_json('a12f3a-i04.json', extraction)
+    Import.find(980_111).update_columns(name: 'normal.csv', source: 10)
+    sign_out :user
+    user.update_columns(settings:)
+  end
+
+  def capture_import_cleanup!
+    connection = ActiveRecord::Base.connection
+    connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
+    connection.execute(File.read(Rails.root.join(
+                                   'app-phoenix/priv/repo/sql/20261001160000_import_blob_purges.sql'
+                                 )))
+    cases = %w[authorized missing_receipt foreign_actor attached_blob].map do |name|
+      blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('synthetic cleanup'), filename: 'cleanup.gpx')
+      actor = name == 'foreign_actor' ? 9802 : 9801
+      unless name == 'missing_receipt'
+        connection.execute(<<~SQL.squish)
+          INSERT INTO phoenix.import_blob_purges(blob_id,import_id,user_id,source_blob_id)
+          VALUES (#{blob.id},980101,#{actor},#{blob.id})
+        SQL
+      end
+      ActiveStorage::Attachment.create!(record: User.find(9802), name: 'avatar', blob:) if name == 'attached_blob'
+      before = ActiveJob::Base.queue_adapter.enqueued_jobs.length
+      Imports::PreparedDownloadPurgeCommands.call(
+        'blob_id' => blob.id, 'import_id' => 980_101, 'user_id' => actor, 'source_blob_id' => blob.id
+      )
+      jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.drop(before).map { _1[:job].name }
+      expect(jobs).to eq(name == 'authorized' ? ['ActiveStorage::PurgeJob'] : [])
+      { name:, jobs: }
+    end
+    write_json('a12f3a-i06.json', cases)
+  end
+
   it 'writes the pages and the seed they render' do
     expect(Rails.application.secret_key_base).to eq(secret)
 
@@ -144,6 +217,18 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
         sign_out :user
         { name:, user_id:, path:, status:, title: doc.at_css('title').text }
       end
+      write_json('a12f3a-i01.json', manifest.reject { _1[:name] == 'download_preparing' })
+      wrapped = Imports::Download.new(Import.find(980_109))
+      sign_in User.find(9801)
+      get '/imports/980109/download'
+      ActiveStorage::Current.set(url_options: { host: 'www.example.com', protocol: 'http' }) do
+        data = { status: response.status, refresh: response.headers['Refresh'],
+                 original_filename: URI.parse(wrapped.original_url).path.split('/').last, ready: wrapped.ready? }
+        write_json('a12f3a-i05.json', data)
+      end
+      sign_out :user
+      capture_import_cleanup!
+      capture_import_requests!
       write_json('pages.json', manifest)
       write_json('seed.json', { now: now.iso8601, users: seeded_users,
                                 imports: })

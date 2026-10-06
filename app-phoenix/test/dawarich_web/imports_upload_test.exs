@@ -118,7 +118,7 @@ defmodule DawarichWeb.ImportsUploadTest do
     end) <> "--XyZ--\r\n"
   end
 
-  test "admitted GeoJSON and KML uploads are native while unclassified Google JSON reaches Puma",
+  test "admitted GeoJSON and KML uploads are native while unclassified Google JSON is rejected",
        c do
     for {name, bytes} <- [
           {"points.geojson", ~s({"type":"FeatureCollection","features":[]})},
@@ -135,7 +135,7 @@ defmodule DawarichWeb.ImportsUploadTest do
     assert request(c, :post, "/imports", mixed).status == 303
 
     unknown = create_body([rails_blob!(c, "Records.json", ~s({"locations":[]}))])
-    assert to_puma(c, :post, "/imports", unknown) == {"POST /imports HTTP/1.1", unknown}
+    assert request(c, :post, "/imports", unknown).status == 422
 
     assert Enum.map(imports(), fn [_, name, source] -> {name, source} end) ==
              [{"points.geojson", 6}, {"route.kml", 9}, {"a.gpx", 4}, {"b.kml", 9}]
@@ -154,8 +154,7 @@ defmodule DawarichWeb.ImportsUploadTest do
           {gpx, "/imports", [{"content-type", @form}, {"origin", "https://evil.example"}]},
           {~s({"import":{"files":["x"]}}), "/imports", [{"content-type", "application/json"}]},
           {"--b\r\n\r\n--b--\r\n", "/imports",
-           [{"content-type", "multipart/form-data; boundary=b"}]},
-          {"", "/imports", [{"content-type", @form}]}
+           [{"content-type", "multipart/form-data; boundary=b"}]}
         ] do
       assert to_puma(c, :post, path, body, headers) == {"POST #{path} HTTP/1.1", body}
     end

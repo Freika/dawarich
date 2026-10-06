@@ -160,7 +160,10 @@ defmodule Dawarich.RailsJobOwners do
   end
 
   def native_producers,
-    do: %{"command:mail.family_location_request" => Dawarich.Families.Requests}
+    do: %{
+      "command:mail.family_location_request" => Dawarich.Families.Requests,
+      "command:imports.prepared_download_purge" => Dawarich.Imports.ImportBlobPurges
+    }
 
   def classes, do: Map.keys(@owners)
   def slices, do: @slices

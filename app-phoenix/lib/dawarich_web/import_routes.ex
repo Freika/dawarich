@@ -7,6 +7,7 @@ defmodule DawarichWeb.ImportRoutes do
         post "/imports", DawarichWeb.ImportsController, :create
         post "/imports/:id", DawarichWeb.ImportsController, :update, metadata: @native_import
         patch "/imports/:id", DawarichWeb.ImportsController, :update, metadata: @native_import
+        put "/imports/:id", DawarichWeb.ImportsController, :update, metadata: @native_import
         delete "/imports/:id", DawarichWeb.ImportsController, :delete, metadata: @native_import
 
         post "/imports/:id/extraction", DawarichWeb.ImportsController, :extract,

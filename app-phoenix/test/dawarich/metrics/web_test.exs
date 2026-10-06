@@ -125,8 +125,13 @@ defmodule Dawarich.Metrics.WebTest do
     observe_queries!()
 
     client =
+      Task.async(fn ->
+        receive do: (:query -> PressureRepo.query!("SELECT 1", [], log: false))
+      end)
+
+    try do
       PressureRepo.checkout(fn ->
-        queued = Task.async(fn -> PressureRepo.query!("SELECT 1", [], log: false) end)
+        send(client.pid, :query)
         await_waiting_client(System.monotonic_time(:millisecond) + 1_000)
         Dawarich.Metrics.Web.sample([PressureRepo])
         body = Dawarich.Metrics.scrape()
@@ -134,10 +139,11 @@ defmodule Dawarich.Metrics.WebTest do
         assert metric(body, "pool_ready", PressureRepo) == 0
         assert metric(body, "pool_busy", PressureRepo) == 1
         assert metric(body, "pool_waiting", PressureRepo) == 1
-        queued
       end)
+    after
+      Task.await(client)
+    end
 
-    Task.await(client)
     assert_receive {:db_query, PressureRepo, measurements, {:ok, _}}
     assert measurements.queue_time > 0
     seconds = System.convert_time_unit(measurements.queue_time, :native, :nanosecond) / 1.0e9

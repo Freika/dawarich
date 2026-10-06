@@ -52,14 +52,31 @@ defmodule Dawarich.Imports.ImportBlobPurges do
   end
 
   def enqueue!(repo, import_id, user_id, blob_id, source_id, removed_ids \\ nil) do
+    owner = Dawarich.Jobs.Ownership.lock(repo, "command:imports.prepared_download_purge")
+
     case authorize!(repo, import_id, user_id, blob_id, source_id, removed_ids) do
       :ok ->
-        Dawarich.RailsCommands.insert!(repo, "imports.prepared_download_purge", %{
+        payload = %{
           "blob_id" => blob_id,
           "import_id" => import_id,
           "user_id" => user_id,
           "source_blob_id" => source_id
-        })
+        }
+
+        if owner == :oban do
+          repo.query!(
+            "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at) VALUES(gen_random_uuid(),'imports.prepared_download_purge',1,$1,$2,$3,$4,now()) ON CONFLICT DO NOTHING",
+            [
+              payload,
+              %{"producer" => "Phoenix import blob cleanup"},
+              import_id,
+              "import-blob-purge:#{blob_id}:#{import_id}:#{user_id}:#{source_id}"
+            ],
+            log: false
+          )
+        else
+          Dawarich.RailsCommands.insert!(repo, "imports.prepared_download_purge", payload)
+        end
 
       skip ->
         skip
