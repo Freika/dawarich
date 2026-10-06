@@ -5,6 +5,8 @@ defmodule Dawarich.Tiles.Http do
   alias DawarichWeb.Api.Params
 
   def coords(params) do
+    params = Map.update(params, "y", nil, &String.replace_suffix(to_string(&1), ".mvt", ""))
+
     with {z, ""} <- Integer.parse(to_string(params["z"])),
          {x, ""} <- Integer.parse(to_string(params["x"])),
          {y, ""} <- Integer.parse(to_string(params["y"])),
