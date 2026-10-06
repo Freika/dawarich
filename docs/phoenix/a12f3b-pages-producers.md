@@ -15,3 +15,29 @@ Domain handoffs: [FAMILY](a12f3b-family.md), [SHARES](shares-review-handoff.md).
 This is route activation, not H02–H04 producer/release closure. Missing achievement PNG, Trek/onboarding/notification HTTP action seams at this base remain with their domain owners. SHARES S02 photo transport remains dependent on A4. Unsupported legacy envelopes return native errors in standalone mode under ruling 15. H02 requires finished CACHE/MAIL/CRON and reverse/source handoffs; H03 additionally requires E21 and A12f-3c observations/fences; complete H04 and G42–G49 remain separate acceptance. Ruling 7 rollback pins all owners to Sidekiq, drains accepted native work, stops Phoenix and starts Rails on the same data; no pending-work transfer is introduced.
 
 Shared knowledge counterpart: AFFiNE “Dawarich — A12f-3b native route integration”. Controller reports contain exact command results and mutation evidence; runtime allocations remain outside versioned documentation.
+
+## ADMIN and TRIALHOME mounts
+
+Router invokes `AdminFormRoutes.admin_form_routes/0` after `A10Routes` defines
+`:admin_writes`. This adds native `DELETE /settings/users/:id` and
+`POST /admin/settings/test_geocoding`. Existing admin pages and write routes keep
+their ordering, gate metadata, current-session checks and LiveView authorization.
+POST member forms still use the reviewed CSRF-validated `_method=delete` seam.
+Missing account destruction capability returns 503 before marking the target;
+A11 owns actual enqueue wiring. Cloud/non-admin refusal and operator Basic/grant
+requirements remain those of the reviewed ADMIN package.
+
+Router also invokes `TrialHomeRoutes.trial_home_routes/0` after its four pipelines
+are defined. The four previous A10 scopes are removed, so root, welcome, upgrade
+and resume each have one declaration with the same native handler and gate.
+Standalone root guest/member and signed welcome/replay flows use native sessions
+and once-claims. Existing trial status and connected authorization remain intact.
+
+`test/dawarich/a12f3b_h01_hot5_test.exs`, selector H01d, checks unique mounts,
+pipeline/gate metadata, native admin reads/settings/provider submission, DELETE
+and POST deletion, unavailable capability, guest/non-admin/Cloud/CSRF refusal,
+root GET/HEAD and mobile/referral markers, welcome sign-in and replay. Removing
+either new macro call must fail its route assertions. Existing D01–D05 and admin
+and trial authorization tests retain their domain coverage. This mount work does
+not close A11 destruction, MAIL delivery, I01 provider parity, independent security
+review or the controller's integration/release gates.

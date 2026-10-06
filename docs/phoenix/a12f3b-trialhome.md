@@ -26,12 +26,12 @@ in sign-in or response construction after claiming returns a terminal native
 ## HOT route handoff
 
 `DawarichWeb.TrialHomeRoutes.trial_home_routes/0` declares the existing four
-routes. HOT must import the module and invoke the macro once after its existing
+routes. Router imports the module and invokes the macro once after its existing
 `:public_home`, `:trial_welcome`, `:rails_frame` and `:trial_resume` pipelines are
-defined. Replace the corresponding four route scopes in `A10Routes`; do not
-mount duplicates. Pipeline definitions remain HOT-owned. The current route
-mounts already call the updated handlers, so the package tests exercise these
-requests through the existing Endpoint without editing shared router files.
+defined. The corresponding four route scopes in `A10Routes` are removed.
+Pipeline definitions remain HOT-owned. The H01d Endpoint test verifies unique
+declarations, native root GET/HEAD, session markers, welcome sign-in and replay;
+the existing D04–D05 tests continue to exercise the same handlers.
 
 ## Verification
 
