@@ -110,7 +110,7 @@ defmodule DawarichWeb.Api.Auth do
   end
 
   defp resume_url(conn, user) do
-    if conn.private[:dawarich_native_api] and System.get_env("SELF_HOSTED") == "false",
+    if conn.private[:dawarich_native_api] == true and System.get_env("SELF_HOSTED") == "false",
       do: Dawarich.SubscriptionToken.url(user, conn.assigns[:api_now] || DateTime.utc_now()),
       else: nil
   end

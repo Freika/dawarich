@@ -83,7 +83,7 @@ defmodule DawarichWeb.Api.Respond do
 
   defp log(conn, status) do
     Logger.info(
-      "[#{conn.assigns.api_tag}] #{conn.method} #{conn.request_path} #{status} #{elapsed_ms(conn)}ms request_id=#{conn.assigns.api_request_id}"
+      "[#{conn.assigns[:api_tag] || "api"}] #{conn.method} #{conn.request_path} #{status} #{elapsed_ms(conn)}ms request_id=#{conn.assigns.api_request_id}"
     )
   end
 
