@@ -134,6 +134,10 @@ defmodule DawarichWeb.A10Routes do
         plug DawarichWeb.TrialResumeStatus
       end
 
+      pipeline :background_operator do
+        plug DawarichWeb.OperatorRedirect, background: true
+      end
+
       scope "/" do
         pipe_through [:browser, :rails_user]
 
@@ -158,15 +162,19 @@ defmodule DawarichWeb.A10Routes do
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.AdminGate, :users?}}
         end
+      end
+
+      scope "/" do
+        pipe_through [:browser, :rails_user, :background_operator]
 
         live_session :background_read,
-          session: {DawarichWeb.RailsAuth, :live_session, []},
+          session: {DawarichWeb.OperatorRedirect, :live_session, []},
           on_mount: {DawarichWeb.AdminLiveAuth, :background},
           root_layout: {DawarichWeb.Layouts, :root},
           layout: {DawarichWeb.Layouts, :app} do
           live "/settings/background_jobs", DawarichWeb.SettingsLive.BackgroundJobs, :index,
             container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.AdminGate, :background?}}
+            metadata: %{rails_gate: {DawarichWeb.AdminGate, :background_route?}}
         end
       end
 

@@ -12,6 +12,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.MetricsRoutes
   import DawarichWeb.UserDataRoutes
   import DawarichWeb.HealthRoutes
+  import DawarichWeb.OperatorRoutes
 
   pipeline :browser do
     plug DawarichWeb.HostAuthorization
@@ -57,6 +58,7 @@ defmodule DawarichWeb.Router do
   metrics_routes()
   api_routes()
   health_routes()
+  operator_routes()
 
   pipeline :family_data do
     plug DawarichWeb.HostAuthorization

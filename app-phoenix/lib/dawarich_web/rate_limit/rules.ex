@@ -71,7 +71,6 @@ defmodule DawarichWeb.RateLimit.Rules do
       {"trial/welcome", 30, 60, ["GET"], cloud(at("/trial/welcome")), [:ip], &ip/1},
       {"signups/ip_burst", 5, 60, ["POST"], cloud(at("/users")), [:ip], &ip/1},
       {"signups/ip_hourly", 20, 3_600, ["POST"], cloud(at("/users")), [:ip], &ip/1},
-      {"admin/flipper", 30, 300, :any, cloud(under("/admin/flipper")), [:ip], &ip/1},
       {"shared_links/viewer", 120, 60, :any, cloud(&viewer?/1), [:ip], &ip/1},
       {"shared_links/cable", 120, 60, :any, cloud(at("/cable")), [:params, :ip],
        &present_ip(&1, "share_id")},

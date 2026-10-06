@@ -74,13 +74,16 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
       page = BackgroundJobs.page(context)
       html = render_component(&BackgroundJobs.render/1, Map.merge(context, page))
       rails = File.read!("test/fixtures/admin_pages/background_#{name}.html")
-      actual = ParityHTML.normalize(html)
+      actual = ParityHTML.without(html, ["#phoenix-jobs"], ".min-h-content")
       expected = ParityHTML.normalize(rails)
       assert actual == expected, ParityHTML.first_difference(actual, expected)
       selector = "a[data-turbo-method], a[target]"
       assert ParityHTML.stimulus(html, selector) == ParityHTML.stimulus(rails, selector)
 
       assert Enum.count(LazyHTML.query(LazyHTML.from_fragment(html), "a[href='/sidekiq']")) ==
+               if(user.admin, do: 1, else: 0)
+
+      assert Enum.count(LazyHTML.query(LazyHTML.from_fragment(html), "#phoenix-jobs")) ==
                if(user.admin, do: 1, else: 0)
     end
   end

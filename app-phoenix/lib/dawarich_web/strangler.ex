@@ -129,6 +129,8 @@ defmodule DawarichWeb.Strangler do
 
   def handed_back?([]), do: "home" in Application.get_env(:dawarich, :rails_routes, [])
 
+  defp handed_back?(_path, %{retired: true}), do: false
+
   defp handed_back?(path, route) do
     segment = List.first(path) || "home"
 

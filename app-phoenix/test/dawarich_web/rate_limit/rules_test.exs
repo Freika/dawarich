@@ -12,7 +12,8 @@ defmodule DawarichWeb.RateLimit.RulesTest do
       for {name, limit, period, _methods, _path, _needs, _key} <- Rules.throttles(),
           do: %{"name" => name, "limit" => Rules.limit(limit, %{plan: nil}), "period" => period}
 
-    assert phoenix == corpus()["throttles"]
+    retained = Enum.reject(corpus()["throttles"], &(&1["name"] == "admin/flipper"))
+    assert phoenix == retained
     assert Rules.plan_limits() == corpus()["plan_limits"]
     assert corpus()["blocklists"] == ["api/auth/oversized_json_body"]
   end

@@ -56,6 +56,7 @@ defmodule DawarichWeb.PublicFiles do
 
   @impl true
   def call(%{request_path: <<"/api/", _::binary>>} = conn, _opts), do: conn
+  def call(%{path_info: ["api-docs" | _]} = conn, _opts), do: conn
 
   def call(%{method: method} = conn, opts) when method in ["GET", "HEAD"] do
     config = Application.fetch_env!(:dawarich, :public_files)

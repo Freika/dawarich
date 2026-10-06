@@ -8,6 +8,7 @@
     "daisyui": "^4.7.3",
     "maplibre-gl": "6.4.1",
     "postcss": "^8.5.26",
+    "swagger-ui-dist": "5.33.1",
     "trix": "^2.1.19"
   },
   "engines": {
