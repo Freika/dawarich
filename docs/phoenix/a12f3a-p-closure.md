@@ -98,8 +98,10 @@ integration.
 No router or shared parser edit is needed: existing routes already point at the
 extracted Places request gates and native navigation. The minimal extra seam is
 the existing `NearbyPlaces` component, extended to render nonempty cards.
-Existing navigation/corpus tests now distinguish native nearby results from the
-historical hand-back and supplementary source captures from the original corpus.
+Existing navigation/corpus and raw-socket endpoint tests now distinguish native
+nearby results from the historical hand-back and supplementary source captures
+from the original corpus. The endpoint test uses the existing provider/Redis
+seams and confirms that configured nearby does not open a Puma connection.
 
 Ruling 15's edge-envelope work remains explicit: malformed stored settings or
 geometry, unsupported form/format shapes, and rich-text/storage dependent
@@ -110,3 +112,21 @@ format constraints, route activation and source-free cut-over belong to O and
 A12f-2. Do not interpret these unit gates as retirement of cache jobs or activation
 of native producers. Real browser/stand/image/G42–49 and final physical source
 removal remain controller release work.
+
+## Implementation gates
+
+The required three-partition seed-404 full suite passes: 8,748 tests, zero
+failures. Partition counts are 3,128 / 2,570 / 3,050; existing exclusions and
+three baseline skips are unchanged. Forced warnings-as-errors compilation and
+format checking pass. The targeted Phoenix batch passes 76 tests; the focused
+nearby socket/renderer batch passes 17. Changed Rails source characterization
+passes 58 examples, the final source/seam assertions pass three, and all four
+changed Ruby paths pass RuboCop. Ten supplemental source captures are
+byte-identical after two writes. Valid named mutation failures and restored
+GREEN evidence are recorded in the assigned execution report.
+
+The first full run identified missing renderer dependencies and an inherited
+nearby socket expectation. Dependencies were installed locally and the endpoint
+expectation was corrected; the full gate passed after those root fixes. No
+timeout increases, retries, new skips or registry activation were introduced.
+The shared AFFiNE Plan C part 3 includes this implementation and source handoff.
