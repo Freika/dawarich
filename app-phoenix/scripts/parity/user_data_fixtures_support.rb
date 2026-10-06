@@ -22,6 +22,10 @@ module UserDataFixturesSupport
     FixtureRecording.verify(DIR.join(name), "#{JSON.pretty_generate(data)}\n")
   end
 
+  def source_write(name, data)
+    FixtureRecording.source_verify(DIR.join(name), JSON.generate(data))
+  end
+
   def with_users
     yield
   ensure

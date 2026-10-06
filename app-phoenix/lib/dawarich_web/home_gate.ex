@@ -15,8 +15,8 @@ defmodule DawarichWeb.HomeGate do
 
     "home" not in Application.get_env(:dawarich, :rails_routes, []) and
       conn.method in ["GET", "HEAD"] and is_nil(conn.assigns.rails_locked) and
-      (is_nil(user) or AdminGate.supported?(user)) and
-      (not is_nil(user) or
+      (Dawarich.Standalone.enabled?() or is_nil(user) or AdminGate.supported?(user)) and
+      (Dawarich.Standalone.enabled?() or not is_nil(user) or
          match?(
            {:ok, _},
            DawarichWeb.PublicHomeLive.registration(DawarichWeb.LayoutAssigns.self_hosted?())
@@ -24,10 +24,13 @@ defmodule DawarichWeb.HomeGate do
       Admission.headers(conn.req_headers) == :ok and
       Enum.all?(query, fn {_key, value} -> is_binary(value) end) and
       length(keys) == length(Enum.uniq(keys)) and
-      not Enum.any?(["_method" | @markers], &Map.has_key?(query, &1)) and
-      not Enum.any?(@markers, &Map.has_key?(conn.assigns.rails_session, &1)) and
+      not Map.has_key?(query, "_method") and
+      (Dawarich.Standalone.enabled?() or
+         (not Enum.any?(@markers, &Map.has_key?(query, &1)) and
+            not Enum.any?(@markers, &Map.has_key?(conn.assigns.rails_session, &1)))) and
+      (Dawarich.Standalone.enabled?() or Plug.Conn.get_req_header(conn, "x-dawarich-client") == []) and
       Enum.all?(
-        ~w(turbo-frame x-dawarich-client x-http-method-override),
+        ~w(turbo-frame x-http-method-override),
         &(Plug.Conn.get_req_header(conn, &1) == [])
       )
   rescue

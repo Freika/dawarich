@@ -74,6 +74,9 @@ defmodule DawarichWeb.RouteVideoActions do
       {:replay, reason} ->
         Body.replay(conn, reason)
 
+      {:error, :not_found} ->
+        DawarichWeb.StandaloneError.respond(conn, "missing_route_video", 404)
+
       {:error, _} ->
         stream(conn, 422, RouteVideoStreams.error(locale, "failed_to_save"))
     end

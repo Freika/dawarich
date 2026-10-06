@@ -9,18 +9,18 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
   after(:all) do
     selected = closure_cases.sort.to_h.select { |name, _| %w[list_ drawer_].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p01.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p01.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['nearby_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p02.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p02.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| %w[create_ update_].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p04.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p04.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select do |name, _|
       %w[delete_ foreign_ show_].any? do
@@ -28,8 +28,8 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
       end
     end
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p05.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p05.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
   end
 
@@ -524,8 +524,8 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
     end
   end
 
-  def capture_nearby_service(user)
-    configure_instance_geocoding
+  def capture_source_nearby_service(user)
+    expect(Geocoding::Config.resolved_config.enabled?).to be(true)
     rows = {}
     feature = { 'type' => 'Feature', 'geometry' => { 'type' => 'Point', 'coordinates' => [12.37, 51.34] },
                 'properties' => { 'name' => 'Synthetic Café', 'osm_id' => 123, 'osm_type' => 'N',
@@ -580,7 +580,7 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
                                  after: self.rows(user), jobs: [] } }
       end
     end
-    FixtureRecording.verify(dir.join('a12f3a-p03.json'), "#{JSON.pretty_generate(rows)}\n")
+    FixtureRecording.source_verify(dir.join('a12f3a-p03.json'), "#{JSON.pretty_generate(rows)}\n")
   end
 
   it 'writes the places list and drawer renders' do
@@ -595,6 +595,7 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
       closure_write('p01', { cases: %w[list_page1 list_page2 drawer_full drawer_signed_out].map do |name|
         { response: JSON.parse(dir.join("#{name}.json").read), html: dir.join("#{name}.html").read }
       end })
+      capture_source_nearby_service(User.find(lists.first[1]))
     end
   end
 end

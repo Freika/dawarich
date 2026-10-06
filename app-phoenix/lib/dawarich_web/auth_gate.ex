@@ -53,7 +53,7 @@ defmodule DawarichWeb.AuthGate do
   def flows do
     if Dawarich.Standalone.enabled?(),
       do: Enum.map(@handlers, &elem(&1, 0)),
-      else: Application.get_env(:dawarich, :phoenix_auth, [])
+      else: Application.get_env(:dawarich, :phoenix_auth, []) || []
   end
 
   defp options("account_link"),

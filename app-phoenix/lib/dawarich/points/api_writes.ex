@@ -69,7 +69,7 @@ defmodule Dawarich.Points.ApiWrites do
             commit(repo, fn ->
               if kind == "points.tile_epoch",
                 do: Dawarich.RailsEffects.tile_epoch(repo, user.id, [point.timestamp]),
-                else: RailsCommands.insert!(repo, kind, payload)
+                else: Dawarich.Points.NativeEffects.achievements(repo, payload)
             end)
 
       if Dawarich.Geocoding.Config.resolve(repo).enabled,
@@ -161,7 +161,12 @@ defmodule Dawarich.Points.ApiWrites do
   end
 
   def produce(repo, kind, payload, aggregate) do
-    case Dawarich.Jobs.Ownership.lock(repo, "command:" <> kind) do
+    owner =
+      if Dawarich.Standalone.enabled?(),
+        do: :oban,
+        else: Dawarich.Jobs.Ownership.lock(repo, "command:" <> kind)
+
+    case owner do
       :oban ->
         repo.query!(
           "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES(gen_random_uuid(),$1,1,$2,$3,$4,now())",

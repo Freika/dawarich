@@ -9,83 +9,83 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
   after(:all) do
     selected = closure_cases.sort.to_h.select { |name, _| ['page_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t01.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t01.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t02.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t02.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t06.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t06.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t07.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t07.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t08.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t08.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t09.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t09.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t10.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t10.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r01.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r01.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r02.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r02.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r03.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r03.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r04.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r04.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r05.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r05.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r06.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r06.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r07.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r07.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| %w[page_ video_].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r08.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r08.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| %w[page_ video_].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r09.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r09.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
   end
 
@@ -1325,7 +1325,7 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
           end }
       end
       write_json('windows.json', { trips: cases })
-      write_json('a12f3a-t05.json', { trips: cases })
+      FixtureRecording.source_verify(dir.join('a12f3a-t05.json'), JSON.generate({ trips: cases }))
     end
   end
 

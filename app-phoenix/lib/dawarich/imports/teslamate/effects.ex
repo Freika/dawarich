@@ -41,28 +41,39 @@ defmodule Dawarich.Imports.Teslamate.Effects do
   def finalize(ctx, %{range: {min, max}, months: months}) do
     realtime_owner = Ownership.lock(ctx.repo, "command:tracks.generate_realtime")
 
-    if realtime_owner == :oban do
-      zone = ctx.settings["timezone"] || "Etc/UTC"
-      Dawarich.Points.AnomalyFilter.call(ctx.repo, ctx.id, min, max, zone: zone)
+    cond do
+      realtime_owner == :oban ->
+        zone = ctx.settings["timezone"] || "Etc/UTC"
+        Dawarich.Points.AnomalyFilter.call(ctx.repo, ctx.id, min, max, zone: zone)
 
-      ctx.repo.query!(
-        "INSERT INTO job_outbox(event_id,command_type,command_version,payload,aggregate_id,dedupe_key,metadata,scheduled_at) VALUES(gen_random_uuid(),'tracks.generate_realtime',1,$1,$2,$3,$4,$5) ON CONFLICT DO NOTHING",
-        [
-          %{"user_id" => ctx.id},
-          ctx.id,
-          "teslamate-realtime:#{ctx.event}",
-          %{"producer" => "Phoenix TeslaMate sync"},
-          ctx.now
-        ],
-        log: false
-      )
-    else
-      for {kind, payload} <- [
-            {"points.anomaly_filter", %{"start_at" => min, "end_at" => max}},
-            {"tracks.realtime", %{}}
-          ] do
-        publish(ctx.repo, kind, Map.put(payload, "user_id", ctx.id))
-      end
+        ctx.repo.query!(
+          "INSERT INTO job_outbox(event_id,command_type,command_version,payload,aggregate_id,dedupe_key,metadata,scheduled_at) VALUES(gen_random_uuid(),'tracks.generate_realtime',1,$1,$2,$3,$4,$5) ON CONFLICT DO NOTHING",
+          [
+            %{"user_id" => ctx.id},
+            ctx.id,
+            "teslamate-realtime:#{ctx.event}",
+            %{"producer" => "Phoenix TeslaMate sync"},
+            ctx.now
+          ],
+          log: false
+        )
+
+      Dawarich.Standalone.enabled?() ->
+        publish(ctx.repo, "points.anomaly_filter", %{
+          "user_id" => ctx.id,
+          "start_at" => min,
+          "end_at" => max
+        })
+
+        Dawarich.Points.Realtime.tracks(ctx.repo, %{"user_id" => ctx.id}, now: ctx.now)
+
+      true ->
+        for {kind, payload} <- [
+              {"points.anomaly_filter", %{"start_at" => min, "end_at" => max}},
+              {"tracks.realtime", %{}}
+            ] do
+          publish(ctx.repo, kind, Map.put(payload, "user_id", ctx.id))
+        end
     end
 
     Dawarich.Tracks.BackfillCommands.put(ctx.repo, ctx.id, [min, max],

@@ -279,7 +279,8 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
       rows['10'] << row
     end
     digest(528_014 + offset, actor, 2024)
-    allow(SecureRandom).to receive(:uuid).and_return('00000000-0000-4000-8000-000000528099')
+    uuid = "00000000-0000-4000-8000-#{(528_099 + offset).to_s.rjust(12, '0')}"
+    allow(SecureRandom).to receive(:uuid).and_return(uuid)
     [['11', '/digests/2024/sharing', '/shared/digest/', actor.digests.yearly.first],
      ['13', '/stats/2024/3/sharing', '/shared/month/', actor.stats.first]].each do |id, path, public_prefix, record|
       ['application/json', 'text/vnd.turbo-stream.html'].each do |accept|
@@ -312,7 +313,6 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
     @closure_action_cases ||= rows.transform_values { [] }
     rows.each do |id, cases|
       @closure_action_cases[id].concat(cases)
-      write_json(fixtures.join("stats/a12f3a-q#{id}.json"), { cases: @closure_action_cases[id] })
     end
   end
 
@@ -429,6 +429,18 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
       minimal = reader(5210)
       digest(52_101, minimal, 2024, toponyms: {})
       capture('digest_minimal_en', minimal, '/digests/2024')
+      { '01' => /\A(?:index|year)_/, '02' => /\Amonth_/, '08' => /\A(?:digest|digests)_/ }.each do |id, pattern|
+        captured = { cases: @closure_reads.select { _1[:name].match?(pattern) } }
+        FixtureRecording.source_verify(fixtures.join("stats/a12f3a-q#{id}.json"), JSON.generate(captured))
+      end
+      hosted = DawarichSettings.self_hosted?
+      capture_closure_actions
+      capture_closure_actions(self_hosted: false)
+      @closure_action_cases.each do |id, cases|
+        FixtureRecording.source_verify(fixtures.join("stats/a12f3a-q#{id}.json"), JSON.generate({ cases: }))
+      end
+      allow(SecureRandom).to receive(:uuid).and_call_original
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(hosted)
       capture_q_commands
     end
   end

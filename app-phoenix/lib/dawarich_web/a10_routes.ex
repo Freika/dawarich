@@ -99,27 +99,10 @@ defmodule DawarichWeb.A10Routes do
         put "/admin/settings", DawarichWeb.AdminWrites.Settings, [action: :instance],
           metadata: %{rails_gate: {DawarichWeb.AdminWritesGate, :instance?}}
 
-        post "/settings/background_jobs", DawarichWeb.AdminWrites.Settings, [action: :background],
-          metadata: %{rails_gate: {DawarichWeb.AdminWritesGate, :background?}}
-
         patch "/settings/background_jobs",
               DawarichWeb.AdminWrites.Settings,
               [action: :background],
               metadata: %{rails_gate: {DawarichWeb.AdminWritesGate, :background?}}
-      end
-
-      scope "/" do
-        pipe_through :trial_welcome
-
-        get "/trial/welcome", DawarichWeb.TrialWelcome, [],
-          metadata: %{rails_gate: {DawarichWeb.WelcomeGate, :owned?}}
-      end
-
-      scope "/" do
-        pipe_through :public_home
-
-        get "/", DawarichWeb.HomeDispatch, [],
-          metadata: %{rails_gate: {DawarichWeb.HomeGate, :owned?}}
       end
 
       pipeline :trial_resume do
@@ -184,27 +167,6 @@ defmodule DawarichWeb.A10Routes do
           live "/settings/background_jobs", DawarichWeb.SettingsLive.BackgroundJobs, :index,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.AdminGate, :background_route?}}
-        end
-      end
-
-      scope "/" do
-        pipe_through :rails_frame
-
-        get "/trial/upgrade", DawarichWeb.TrialUpgrade, [],
-          metadata: %{rails_gate: {DawarichWeb.TrialGate, :upgrade?}}
-      end
-
-      scope "/" do
-        pipe_through :trial_resume
-
-        live_session :trial_resume,
-          session: {DawarichWeb.RailsAuth, :live_session, []},
-          on_mount: DawarichWeb.TrialLiveAuth,
-          root_layout: {DawarichWeb.Layouts, :root},
-          layout: {DawarichWeb.Layouts, :app} do
-          live "/trial/resume", DawarichWeb.TrialLive.Resume, :show,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TrialGate, :resume?}}
         end
       end
     end

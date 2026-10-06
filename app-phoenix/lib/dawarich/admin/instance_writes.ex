@@ -15,6 +15,13 @@ defmodule Dawarich.Admin.InstanceWrites do
     end
   end
 
+  def test_geocoding(actor, context) do
+    repo = Map.get(context, :repo, Repo)
+
+    with :ok <- actor(actor, repo, context),
+         do: Dawarich.Admin.GeocodingTest.call(repo, context)
+  end
+
   defp actor(actor, repo, context) do
     cond do
       context[:self_hosted] != true ->

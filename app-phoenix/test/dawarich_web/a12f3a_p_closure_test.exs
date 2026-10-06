@@ -238,6 +238,18 @@ defmodule DawarichWeb.A12f3aPCLIClosureTest do
     def query!(_, _, _), do: raise(DBConnection.ConnectionError, "synthetic database unavailable")
   end
 
+  defmodule ReorderedBatchRepo do
+    defdelegate transaction(fun), to: Dawarich.ScratchRepo
+
+    def query!(sql, params, opts) do
+      result = Dawarich.ScratchRepo.query!(sql, params, opts)
+
+      if String.contains?(sql, "AND id<=$2"),
+        do: %{result | rows: Enum.reverse(result.rows)},
+        else: result
+    end
+  end
+
   defp ctx(repo \\ ScratchRepo) do
     {:ok, out} = StringIO.open("")
     {:ok, err} = StringIO.open("")
@@ -284,22 +296,32 @@ defmodule DawarichWeb.A12f3aPCLIClosureTest do
   test "P08: places cli cleanup scheduling matches current Rails contract without a native-owner Rails effect" do
     owner("orphan_cleanup")
     ids = users(102)
+    rows("UPDATE users SET updated_at=now() WHERE id=ANY($1)", [Enum.take(ids, 20)])
     rows("UPDATE users SET deleted_at=now() WHERE id=$1", [List.last(ids)])
-    context = ctx()
-    assert CLI.run(["places", "cleanup-suggested"], context) == 0
 
-    expected =
-      ids
-      |> Enum.take(101)
-      |> Enum.with_index()
-      |> Enum.map(fn {id, index} ->
-        [%{"user_id" => id}, DateTime.add(context.now, index * 100_000, :microsecond)]
-      end)
+    for repo <- [ScratchRepo, ReorderedBatchRepo] do
+      rows("DELETE FROM job_outbox")
+      context = ctx(repo)
+      assert CLI.run(["places", "cleanup-suggested"], context) == 0
 
-    assert rows("SELECT payload,scheduled_at FROM job_outbox ORDER BY scheduled_at") == expected
-    assert text(context.out) == ""
-    assert text(context.err) == ""
-    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+      scheduled =
+        rows("SELECT command_type,payload,scheduled_at FROM job_outbox ORDER BY scheduled_at")
+
+      assert Enum.map(scheduled, &Enum.at(&1, 0)) ==
+               List.duplicate("places.orphan_cleanup", 101)
+
+      assert scheduled
+             |> Enum.map(fn [_, %{"user_id" => id}, _] -> id end)
+             |> Enum.chunk_every(100)
+             |> Enum.map(&Enum.sort/1) == ids |> Enum.take(101) |> Enum.chunk_every(100)
+
+      assert Enum.map(scheduled, &Enum.at(&1, 2)) ==
+               Enum.map(0..100, &DateTime.add(context.now, &1 * 100_000, :microsecond))
+
+      assert text(context.out) == ""
+      assert text(context.err) == ""
+      assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    end
   end
 
   @tag a12f3a_p09: true
