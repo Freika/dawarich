@@ -34,6 +34,7 @@ FIELDS = %w[id encrypted_password failed_attempts locked_at unlock_token remembe
 
 def state(user)
   attributes = user.reload.attributes.slice(*FIELDS)
+  attributes['unlock_token'] = 'synthetic-unlock-digest-present' if attributes['unlock_token'].present?
   attributes.transform_values { |value| value.respond_to?(:iso8601) ? value.utc.iso8601(6) : value }
 end
 
