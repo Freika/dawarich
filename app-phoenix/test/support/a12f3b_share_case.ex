@@ -17,6 +17,13 @@ defmodule Dawarich.Test.A12f3bShareCase do
       [actor.id, ~N[2026-10-03 08:00:00], ~N[2026-10-03 09:00:00]]
     )
 
+    FrameSeeds.track!(98102, 99104, %{
+      start_at: ~N[2026-10-03 08:00:00],
+      end_at: ~N[2026-10-03 09:00:00],
+      distance: 1500,
+      dominant_mode: 1
+    })
+
     actor
   end
 

@@ -24,6 +24,11 @@ defmodule DawarichWeb.A12f3bS03Test do
 
     assert missing.status == 404
 
+    absent =
+      S.request(actor, "track", :new, %{}, track_id: "99999999") |> TrackShareActions.call(:new)
+
+    assert absent.status == 404
+
     assert {:ok, %{share: share, committed?: true}} =
              TrackMutations.run(actor, 99103, :create, S.params("track", %{"name" => ""}), "en",
                now: S.now()

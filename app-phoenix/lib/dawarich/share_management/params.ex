@@ -21,6 +21,7 @@ defmodule Dawarich.ShareManagement.Params do
     type in ["live", "trip", "track", "timeline"] and
       (type in ["live", "timeline"] or (is_map(trip) and is_integer(trip[:id]))) and
       is_map(user.settings) and text?(user.settings["timezone"]) and is_map(params) and
+      params["format"] in [nil, "json"] and
       Enum.all?(params, fn {key, value} ->
         key in @top and (key == "shared_link" or text?(value))
       end) and

@@ -72,9 +72,20 @@ defmodule DawarichWeb.A12f3bS07Test do
     assert Jason.decode!(payload) == %{"revoked" => true}
     refute_receive {:redix_pubsub, _, ^ref, :message, _}
     assert commands() == []
-    assert {:ok, _} = Mutations.run(actor, "trip", 99101, :revoke, %{}, "en", now: S.now())
-    refute_receive {:redix_pubsub, _, ^ref, :message, _}
-    assert commands() == []
+
+    for {type, id, share} <- [{"trip", 99101, S.id(6)}, {"track", 99103, S.id(7)}] do
+      other_stream =
+        Dawarich.RailsMessages.broadcasting(["shared_location", {:shared_link, share}])
+
+      {:ok, other_ref} = Bus.subscribe(other_stream)
+      assert_receive {:redix_pubsub, _, ^other_ref, :subscribed, _}
+      assert {:ok, _} = Mutations.run(actor, type, id, :revoke, %{}, "en", now: S.now())
+      refute_receive {:redix_pubsub, _, ^other_ref, :message, _}
+      refute_receive {:redix_pubsub, _, ^ref, :message, _}
+      assert commands() == []
+      Bus.unsubscribe(other_stream)
+    end
+
     Bus.unsubscribe(stream)
   end
 end
