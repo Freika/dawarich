@@ -57,6 +57,7 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
   end
 
   before do
+    allow(ENV).to receive(:fetch).with('JWT_SECRET_KEY').and_return(signing_phrase)
     FileUtils.mkdir_p(dir)
     @events = []
     allow(Rails.logger).to receive(:info).and_wrap_original do |original, message = nil, &block|
@@ -504,5 +505,24 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     jti = Array.new(128) { |index| Digest::SHA256.hexdigest("a13g-legacy-large-#{index}") }.join
     expect(jti.bytesize).to eq(8192)
     legacy_jti_case(jti)
+  end
+
+  it 'characterizes root mobile referral and legacy session effects' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    reset!
+    get '/', params: { client: 'ios', aff: 'partner', via: 'ignored' }
+    expect(response.status).to eq(200)
+    expect(request.session[:dawarich_client]).to eq('ios')
+    expect(request.session[:partnero_referral]).to eq('partner')
+    expect(request.session['warden.user.user.key']).to be_nil
+    head '/'
+    expect(response.status).to eq(200)
+    expect(response.body).to eq('')
+    user = synthetic_user(13_081)
+    sign_in user
+    get '/', headers: { 'X-Dawarich-Client' => 'android' }
+    expect(response).to redirect_to('/map/v2')
+    expect(request.session[:dawarich_client]).to eq('android')
+    expect(request.session[:partnero_referral]).to eq('partner')
   end
 end

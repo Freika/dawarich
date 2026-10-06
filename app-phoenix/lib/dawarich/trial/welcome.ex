@@ -14,7 +14,7 @@ defmodule Dawarich.Trial.Welcome do
     conn = RailsAuth.call(conn, secret: context.secret, now: clock(context))
     session = conn.assigns.rails_session
     actor = conn.assigns.current_user
-    locale = Locale.resolve(nil, actor, session)
+    locale = Locale.resolve(params["locale"], actor, session)
 
     with :ok <- session_state(conn, session, context) do
       case WelcomeToken.decode(
@@ -143,10 +143,11 @@ defmodule Dawarich.Trial.Welcome do
       context[:oidc] == true ->
         {:handoff, :oidc}
 
-      Enum.any?(@markers, &Map.has_key?(session, &1)) ->
+      not Dawarich.Standalone.enabled?() and Enum.any?(@markers, &Map.has_key?(session, &1)) ->
         {:handoff, :session}
 
-      Enum.any?(Map.keys(session), &String.starts_with?(&1, "devise.")) ->
+      not Dawarich.Standalone.enabled?() and
+          Enum.any?(Map.keys(session), &String.starts_with?(&1, "devise.")) ->
         {:handoff, :session}
 
       conn.assigns.rails_locked != nil ->
