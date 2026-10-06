@@ -71,13 +71,17 @@ defmodule Dawarich.Posters.Generation do
 
       uploaded =
         Enum.reduce_while(outputs, {:ok, []}, fn {ext, type, bytes}, {:ok, blobs} ->
+          key = attachment_key(ctx, ext)
+
           try do
             filename = "poster_#{ctx.id}.#{ext}"
             path = Path.join(dir, filename)
             File.write!(path, bytes)
-            {:cont, {:ok, blobs ++ [Storage.put!(storage, path, filename, type)]}}
+            {:cont, {:ok, blobs ++ [Storage.put!(storage, path, filename, type, key)]}}
           rescue
-            error -> {:halt, {:error, error, blobs}}
+            error ->
+              Storage.delete(storage, key)
+              {:halt, {:error, error, blobs}}
           end
         end)
 
@@ -106,6 +110,12 @@ defmodule Dawarich.Posters.Generation do
     after
       File.rm_rf!(dir)
     end
+  end
+
+  defp attachment_key(ctx, ext) do
+    :crypto.hash(:sha256, "#{ctx.id}:#{ctx.event_id}:#{ext}")
+    |> Base.encode16(case: :lower)
+    |> binary_part(0, 28)
   end
 
   defp discard(storage, blobs) do
