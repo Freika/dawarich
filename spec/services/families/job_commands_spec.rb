@@ -71,4 +71,38 @@ RSpec.describe 'Families::JobCommands' do
     expect(member.reload).to be_pro
     expect(JobOutbox.pending.count).to eq(0)
   end
+  it 'retains string positional ids and source context when forwarding family jobs' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    auto_user = create(:user, plan: :family, skip_auto_trial: true)
+    owner = create(:user, plan: :family, active_until: 1.day.from_now, skip_auto_trial: true)
+    family = create(:family, creator: owner)
+    member = create(:user, plan: :lite, status: :inactive, skip_auto_trial: true)
+    create(:family_membership, family: family, user: member)
+    JobOutbox.delete_all
+    clear_enqueued_jobs
+
+    Time.use_zone('Asia/Tokyo') do
+      I18n.with_locale(:de) do
+        Families::AutoCreationJob.new.perform(auto_user.id.to_s)
+        Families::MemberSyncJob.new.perform(family.id.to_s)
+      end
+    end
+    expect(auto_user.reload).to be_in_family
+    expect(member.reload).to be_pro
+    expect(JobOutbox.count).to eq(0)
+
+    job_owner!('command:families.auto_create', :oban)
+    job_owner!('command:families.member_sync', :oban)
+    Time.use_zone('Asia/Tokyo') do
+      I18n.with_locale(:de) do
+        Families::AutoCreationJob.new.perform(auto_user.id.to_s)
+        Families::MemberSyncJob.new.perform(family.id.to_s)
+      end
+    end
+    expect(JobOutbox.pending.find_by!(command_type: 'families.auto_create').payload)
+      .to eq('user_id' => auto_user.id.to_s, 'time_zone' => 'Asia/Tokyo')
+    expect(JobOutbox.pending.find_by!(command_type: 'families.member_sync').payload)
+      .to eq('family_id' => family.id.to_s, 'locale' => 'de', 'time_zone' => 'Asia/Tokyo')
+    expect(enqueued_jobs).to be_empty
+  end
 end
