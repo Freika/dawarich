@@ -33,7 +33,7 @@ defmodule Dawarich.Users.CreationWebhookWorker do
           email: email,
           first_name: first,
           last_name: last,
-          active_until: timestamp(active),
+          active_until: timestamp(repo, active, opts),
           status: %{0 => "inactive", 1 => "active", 2 => "trial", 3 => "pending_payment"}[status],
           action: "create_user"
         }
@@ -45,12 +45,23 @@ defmodule Dawarich.Users.CreationWebhookWorker do
     end
   end
 
-  defp timestamp(nil), do: nil
+  defp timestamp(_repo, nil, _opts), do: nil
 
-  defp timestamp(%NaiveDateTime{} = at),
-    do:
-      at
-      |> DateTime.from_naive!("Etc/UTC")
-      |> DateTime.truncate(:millisecond)
-      |> DateTime.to_iso8601()
+  defp timestamp(repo, at, opts) do
+    env = WebhookCommands.env(opts)
+    settings = %{"timezone" => env["TIME_ZONE"] || "Europe/Berlin"}
+
+    [[local, offset, zone]] =
+      Dawarich.UserTimeZone.query!(
+        "SELECT ($1::timestamp AT TIME ZONE 'UTC') AT TIME ZONE z.name, " <>
+          "extract(epoch FROM (($1::timestamp AT TIME ZONE 'UTC') AT TIME ZONE z.name) - $1::timestamp)::int, z.name FROM z",
+        [at],
+        settings,
+        repo,
+        env
+      ).rows
+
+    Calendar.strftime(local, "%Y-%m-%d %H:%M:%S") <>
+      " " <> Dawarich.LocalTime.offset(zone, offset)
+  end
 end

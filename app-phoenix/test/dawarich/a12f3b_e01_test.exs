@@ -88,12 +88,23 @@ defmodule Dawarich.A12f3bE01Test do
              "first_name" => "Ada",
              "last_name" => "Lovelace",
              "status" => "trial",
-             "active_until" => "2026-10-06T12:00:00.123Z",
+             "active_until" => "2026-10-06 14:00:00 +0200",
              "action" => "create_user"
            }
 
     assert :ok = CreationWebhookWorker.run(Repo, creation, opts)
     refute_received {:post, _, _, _, _}
+
+    utc = %{creation | "event_id" => Ecto.UUID.generate()}
+
+    assert :ok =
+             CreationWebhookWorker.run(Repo, utc,
+               env: Map.put(@env, "TIME_ZONE", "UTC"),
+               http: http
+             )
+
+    assert_receive {:post, _, _, %{"token" => utc_token}, nil}
+    assert decode(utc_token)["active_until"] == "2026-10-06 12:00:00 UTC"
 
     failed_create = %{creation | "event_id" => Ecto.UUID.generate()}
 
