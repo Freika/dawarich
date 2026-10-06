@@ -11,19 +11,26 @@ defmodule Dawarich.RailsEffects do
       else: RailsCommands.insert!(repo, "points.tile_epoch", payload)
   end
 
-  def untracked_tracks(repo, user_id, import_id),
-    do:
-      RailsCommands.insert!(repo, "schedule_untracked_tracks", %{
-        "user_id" => user_id,
-        "import_id" => import_id
-      })
+  def untracked_tracks(repo, user_id, import_id) do
+    payload = %{"user_id" => user_id, "import_id" => import_id}
 
-  def import_card(repo, user_id, import_id),
-    do:
-      RailsCommands.insert!(repo, "enhanced_import_card", %{
-        "user_id" => user_id,
-        "import_id" => import_id
-      })
+    if Dawarich.Points.NativeEffects.native?(repo, "command:tracks.generate_range"),
+      do:
+        Dawarich.Points.NativeEffects.enqueue(
+          repo,
+          Dawarich.Points.UntrackedTracksWorker,
+          Map.put(payload, "event_id", Ecto.UUID.generate())
+        ),
+      else: RailsCommands.insert!(repo, "schedule_untracked_tracks", payload)
+  end
+
+  def import_card(repo, user_id, import_id) do
+    payload = %{"user_id" => user_id, "import_id" => import_id}
+
+    if Dawarich.Points.NativeEffects.native?(repo, "command:enhanced_import.extract_gpx"),
+      do: Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Points.ImportCardWorker, payload),
+      else: RailsCommands.insert!(repo, "enhanced_import_card", payload)
+  end
 
   def visit_months(_repo, _user_id, []), do: :ok
 
