@@ -99,9 +99,6 @@ defmodule DawarichWeb.A10Routes do
         put "/admin/settings", DawarichWeb.AdminWrites.Settings, [action: :instance],
           metadata: %{rails_gate: {DawarichWeb.AdminWritesGate, :instance?}}
 
-        post "/settings/background_jobs", DawarichWeb.AdminWrites.Settings, [action: :background],
-          metadata: %{rails_gate: {DawarichWeb.AdminWritesGate, :background?}}
-
         patch "/settings/background_jobs",
               DawarichWeb.AdminWrites.Settings,
               [action: :background],

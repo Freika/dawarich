@@ -104,6 +104,7 @@ defmodule Dawarich.A12f3bH01Test do
     assert request(c.owner, "DELETE", "/posters/#{id}").status == 303
     assert Repo.query!("SELECT id FROM posters WHERE id=$1", [id]).rows == []
     assert_settings(c.owner, c.outsider)
+    assert_demo_flow(c.owner)
   end
 
   @tag a12f3b_case: "H01c"
@@ -242,6 +243,140 @@ defmodule Dawarich.A12f3bH01Test do
     assert RawHTTP.request_line(Task.await(receiver)) == "GET #{path}/og.png HTTP/1.1"
   end
 
+  @tag a12f3b_case: "H01d"
+  test "mounted integration forms save nested settings and publish native photo imports", c do
+    for method <- ~w(POST PATCH PUT) do
+      route =
+        Phoenix.Router.route_info(Router, method, "/settings/integrations", "www.example.com")
+
+      assert is_map(route), "missing integration #{method}"
+      assert route.plug == DawarichWeb.IntegrationActions
+      assert route.pipe_through == [:integration_forms]
+
+      assert Enum.count(
+               Router.__routes__(),
+               &(&1.path == route.route and to_string(&1.verb) == String.downcase(method))
+             ) == 1
+    end
+
+    route =
+      Phoenix.Router.route_info(Router, "POST", "/settings/background_jobs", "www.example.com")
+
+    assert route.plug == DawarichWeb.IntegrationJobActions
+    assert Enum.count(Router.__routes__(), &(&1.path == route.route and &1.verb == :post)) == 1
+    session = RailsUser.session(c.owner.id)
+
+    for hosted <- ~w(true false) do
+      System.put_env("SELF_HOSTED", hosted)
+
+      for {method, override} <- [{:patch, nil}, {:put, nil}, {:post, "patch"}] do
+        params = %{
+          "settings" => %{
+            "immich_url" => "",
+            "immich_api_key" => "synthetic-mounted-immich",
+            "ignored" => "discard"
+          }
+        }
+
+        params = if override, do: Map.put(params, "_method", override), else: params
+
+        response =
+          browser_request(session, method, "/settings/integrations?service=immich", params)
+
+        assert response.status == 302
+
+        assert get_resp_header(response, "location") == [
+                 "http://www.example.com/settings/integrations?service=immich"
+               ]
+
+        assert get_resp_header(response, "cache-control") == ["no-cache"]
+        saved = Dawarich.Accounts.settings(c.owner.id)
+        assert saved["immich_api_key"] == "synthetic-mounted-immich"
+        refute Map.has_key?(saved, "ignored")
+      end
+
+      masked =
+        browser_request(session, :post, "/settings/integrations?service=immich", %{
+          "_method" => "put",
+          "settings" => %{"immich_api_key" => "********"}
+        })
+
+      assert masked.status == 302
+
+      assert Dawarich.Accounts.settings(c.owner.id)["immich_api_key"] ==
+               "synthetic-mounted-immich"
+
+      for provider <- ~w(immich photoprism) do
+        Dawarich.Jobs.Ownership.put!(Repo, "command:imports.#{provider}_geodata", :oban)
+
+        response =
+          browser_request(
+            session,
+            :post,
+            "/settings/background_jobs?job_name=start_#{provider}_import",
+            %{}
+          )
+
+        assert response.status == 302
+        assert get_resp_header(response, "location") == ["http://www.example.com/imports"]
+      end
+
+      if hosted == "true" do
+        legacy =
+          browser_request(
+            session,
+            :post,
+            "/settings/background_jobs?settings%5Bvisits_suggestions_enabled%5D=true",
+            %{"_method" => "patch"}
+          )
+
+        assert legacy.status == 302
+
+        assert get_resp_header(legacy, "location") == [
+                 "http://www.example.com/settings/background_jobs"
+               ]
+
+        assert Dawarich.Accounts.settings(c.owner.id)["visits_suggestions_enabled"] == "true"
+      end
+    end
+
+    expected =
+      for kind <- ~w(imports.immich_geodata imports.photoprism_geodata),
+          _ <- 1..2,
+          do: [kind, 1, %{"user_id" => c.owner.id, "time_zone" => "Europe/Berlin"}]
+
+    assert Repo.query!(
+             "SELECT command_type,command_version,payload FROM job_outbox ORDER BY command_type"
+           ).rows == expected
+
+    assert commands() == []
+    before = Dawarich.Accounts.settings(c.owner.id)
+
+    denied =
+      browser_request(session, :post, "/settings/integrations", %{
+        "_method" => "patch",
+        "settings" => %{"immich_api_key" => "denied"},
+        "authenticity_token" => "invalid"
+      })
+
+    assert denied.status == 422
+    assert Dawarich.Accounts.settings(c.owner.id) == before
+
+    assert browser_request(session, :post, "/settings/background_jobs?job_name=unknown", %{}).status ==
+             422
+
+    Dawarich.Jobs.Ownership.put!(Repo, "command:imports.photoprism_geodata", :sidekiq)
+
+    assert browser_request(
+             session,
+             :post,
+             "/settings/background_jobs?job_name=start_photoprism_import",
+             %{}
+           ).status == 503
+
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[4]]
+  end
+
   @tag a12f3b_case: "H01b"
   test "part B handback occurs before native effects and final native transport errors are source compatible",
        c do
@@ -262,6 +397,11 @@ defmodule Dawarich.A12f3bH01Test do
            %{"_method" => "patch", "decision" => "granted"}},
           {nil, c.owner, "/settings/generate_api_key", %{}},
           {nil, c.owner, "/settings/onboarding", %{"_method" => "put"}},
+          {nil, c.owner, "/settings/onboarding/demo_data", %{}},
+          {nil, c.owner, "/settings/onboarding/demo_data", %{"_method" => "delete"}},
+          {nil, c.owner, "/settings/integrations?service=immich",
+           %{"_method" => "patch", "settings" => %{"immich_api_key" => "synthetic-handback"}}},
+          {nil, c.owner, "/settings/background_jobs?job_name=start_immich_import", %{}},
           {nil, c.owner, "/notifications/mark_as_read", %{}},
           {nil, c.owner, "/notifications/destroy_all", %{}},
           {nil, c.owner, "/notifications/1", %{"_method" => "delete"}},
@@ -324,6 +464,10 @@ defmodule Dawarich.A12f3bH01Test do
           {"PATCH", "/settings/changelog_consent", %{"decision" => "granted"}},
           {"POST", "/settings/generate_api_key", %{}},
           {"PUT", "/settings/onboarding", %{}},
+          {"POST", "/settings/onboarding/demo_data", %{}},
+          {"DELETE", "/settings/onboarding/demo_data", %{}},
+          {"PATCH", "/settings/integrations", %{"settings" => %{"immich_api_key" => "denied"}}},
+          {"POST", "/settings/background_jobs?job_name=start_immich_import", %{}},
           {"POST", "/notifications/mark_as_read", %{}},
           {"POST", "/notifications/destroy_all", %{}},
           {"DELETE", "/notifications/1", %{}}
@@ -394,6 +538,89 @@ defmodule Dawarich.A12f3bH01Test do
 
     assert denied.status == 404
     refute Map.has_key?(denied.resp_cookies, "shared_link_" <> Shares.id(1))
+  end
+
+  defp assert_demo_flow(user) do
+    for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
+    session = RailsUser.session(user.id)
+    path = "/settings/onboarding/demo_data"
+    imported = browser_request(session, :post, path, %{})
+    assert imported.status == 302
+    [landing] = get_resp_header(imported, "location")
+    assert URI.parse(landing).path == "/map/v2"
+    assert URI.decode_query(URI.parse(landing).query)["panel"] == "timeline"
+
+    assert Repo.query!(
+             "SELECT count(*) FROM points WHERE user_id=$1 AND import_id IN (SELECT id FROM imports WHERE user_id=$1 AND demo=true)",
+             [user.id]
+           ).rows == [[17988]]
+
+    live = Dawarich.Test.DemoData.real_point(user.id, 1_650_000_000)
+    map = browser_request(session, :get, "/map/v2", %{})
+    assert map.status == 200
+    html = LazyHTML.from_document(map.resp_body)
+    banner = LazyHTML.query(html, "#demo-data-banner")
+    assert LazyHTML.text(banner) =~ "viewing demo data"
+    form = LazyHTML.query(banner, "form")
+    assert LazyHTML.attribute(form, "method") == ["post"]
+    assert LazyHTML.attribute(form, "action") == [path]
+    assert String.trim(LazyHTML.text(LazyHTML.query(form, "button"))) == "Delete"
+
+    fields =
+      for input <- LazyHTML.query(form, "input"),
+          into: %{},
+          do: {hd(LazyHTML.attribute(input, "name")), hd(LazyHTML.attribute(input, "value"))}
+
+    assert fields["_method"] == "delete"
+    assert is_binary(fields["authenticity_token"]) and fields["authenticity_token"] != ""
+
+    denied =
+      browser_request(session, :post, path, Map.put(fields, "authenticity_token", "invalid"))
+
+    assert denied.status == 422
+
+    assert Repo.query!("SELECT count(*) FROM imports WHERE user_id=$1 AND demo=true", [user.id]).rows ==
+             [[1]]
+
+    removed = browser_request(session, :post, path, fields)
+    assert removed.status == 302
+    assert get_resp_header(removed, "location") == ["http://www.example.com/"]
+
+    assert removed.private.dawarich_rails_session_changes["flash"]["flashes"]["notice"] =~
+             "removed"
+
+    assert Repo.query!("SELECT id FROM points WHERE user_id=$1", [user.id]).rows == [[live]]
+
+    assert Repo.query!("SELECT count(*) FROM imports WHERE user_id=$1 AND demo=true", [user.id]).rows ==
+             [[0]]
+
+    after_delete = browser_request(session, :get, "/map/v2", %{})
+    assert after_delete.status == 200
+
+    assert Enum.empty?(
+             LazyHTML.query(LazyHTML.from_document(after_delete.resp_body), "#demo-data-banner")
+           )
+
+    assert browser_request(session, :delete, path, %{}).status == 302
+    assert commands() == []
+  end
+
+  defp browser_request(session, method, path, params) do
+    body =
+      if method == :get,
+        do: "",
+        else:
+          Plug.Conn.Query.encode(
+            Map.put_new(params, "authenticity_token", RailsCsrf.masked_token(session))
+          )
+
+    Phoenix.ConnTest.build_conn()
+    |> Map.put(:remote_ip, Process.get(:h01_remote_ip))
+    |> put_req_header("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+    |> put_req_header("content-type", "application/x-www-form-urlencoded")
+    |> put_req_header("content-length", to_string(byte_size(body)))
+    |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(session))
+    |> Phoenix.ConnTest.dispatch(Endpoint, method, path, body)
   end
 
   defp declarations do
@@ -551,7 +778,7 @@ defmodule Dawarich.A12f3bH01Test do
 
   defp footprint do
     for table <-
-          ~w(families family_memberships family_invitations family_location_requests shared_links posters job_outbox notifications) do
+          ~w(families family_memberships family_invitations family_location_requests shared_links posters job_outbox notifications imports points tracks trips visits places tags stats) do
       Repo.query!("SELECT row_to_json(t)::text FROM #{table} t ORDER BY row_to_json(t)::text").rows
     end ++
       Repo.query!("SELECT id, settings, theme, changelog_consent, api_key FROM users ORDER BY id").rows
