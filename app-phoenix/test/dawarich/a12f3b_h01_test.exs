@@ -109,6 +109,142 @@ defmodule Dawarich.A12f3bH01Test do
     assert_settings(c.owner, c.outsider)
   end
 
+  @tag a12f3b_case: "H01c"
+  test "mounted achievement routes serve standalone pages unlocks and public PNGs", c do
+    Dawarich.Test.AchievementSilhouettes.clear()
+    on_exit(&Dawarich.Test.AchievementSilhouettes.clear/0)
+    uuid = "a12f0000-0000-4000-8000-000000090101"
+    path = "/shared/achievements/#{uuid}"
+
+    Repo.query!(
+      "INSERT INTO achievement_progresses(user_id,achievement_key,state,sharing_enabled,sharing_uuid,created_at,updated_at) VALUES($1,'country_de','{}',true,$2,now(),now())",
+      [c.owner.id, uuid]
+    )
+
+    image_request = fn method ->
+      Plug.Test.conn(method, path <> "/og.png")
+      |> Map.put(:remote_ip, Process.get(:h01_remote_ip))
+      |> put_req_header("accept", "image/png")
+      |> Endpoint.call(Endpoint.init([]))
+    end
+
+    image = image_request.("GET")
+    assert image.status == 200
+
+    assert <<137, 80, 78, 71, 13, 10, 26, 10, _::binary-size(8), 1200::32, 630::32, _::binary>> =
+             image.resp_body
+
+    assert get_resp_header(image, "content-type") == ["image/png"]
+    assert get_resp_header(image, "cache-control") == ["private, no-store"]
+    assert get_resp_header(image, "content-disposition") == ["inline"]
+    head = image_request.("HEAD")
+    assert head.status == image.status and head.resp_body == ""
+    assert head.resp_headers == image.resp_headers
+    route = Phoenix.Router.route_info(Router, "GET", path <> "/og.png", "www.example.com")
+    assert route.plug == DawarichWeb.AchievementPublicImage
+    assert route.pipe_through == [:achievement_image]
+    assert route.rails_key == "achievements"
+
+    assert Enum.count(Router.__routes__(), &(&1.path == route.route)) == 1
+
+    page_request = fn method, target ->
+      Plug.Test.conn(method, target)
+      |> Map.put(:remote_ip, Process.get(:h01_remote_ip))
+      |> put_req_header("accept", "text/html")
+      |> put_req_header(
+        "cookie",
+        "_dawarich_session=" <> RailsUser.cookie(RailsUser.session(c.owner.id))
+      )
+      |> Endpoint.call(Endpoint.init([]))
+    end
+
+    for target <- ["/achievements", "/achievements/country_de", path, path <> "?embed=1"] do
+      get = page_request.("GET", target)
+      head = page_request.("HEAD", target)
+      assert get.status == 200, target
+      assert get_resp_header(get, "content-type") == ["text/html; charset=utf-8"]
+      assert head.status == get.status and head.resp_body == ""
+      assert get_resp_header(head, "content-type") == get_resp_header(get, "content-type")
+    end
+
+    for {target, status} <- [
+          {"/achievements/country_fr", 302},
+          {"/achievements/border_hopper", 302},
+          {"/achievements/missing", 404}
+        ],
+        do: assert(page_request.("GET", target).status == status)
+
+    assert request(c.owner, "POST", "/achievements/unlocks/next").status == 204
+
+    [[id]] =
+      Repo.query!(
+        "INSERT INTO achievement_unlock_events(user_id,kind,key,created_at,updated_at) VALUES($1,'geography','FR',now(),now()) RETURNING id",
+        [c.owner.id]
+      ).rows
+
+    invalid =
+      request(c.owner, "POST", "/achievements/unlocks/next", %{"authenticity_token" => "invalid"})
+
+    assert invalid.status == 422
+
+    assert Repo.query!(
+             "SELECT claim_token,claimed_at,seen_at FROM achievement_unlock_events WHERE id=$1",
+             [id]
+           ).rows == [[nil, nil, nil]]
+
+    next = request(c.owner, "POST", "/achievements/unlocks/next")
+    assert next.status == 200
+    card = Jason.decode!(next.resp_body)
+    assert card["id"] == id
+    assert is_binary(card["html"]) and card["html"] != ""
+
+    assert Repo.query!("SELECT claim_token FROM achievement_unlock_events WHERE id=$1", [id]).rows ==
+             [[card["token"]]]
+
+    assert request(c.owner, "POST", "/achievements/unlocks/#{id}/seen", %{
+             "claim_token" => card["token"]
+           }).status == 204
+
+    assert request(c.owner, "POST", "/achievements/unlocks/dismiss", %{"batch_end_id" => id}).status ==
+             204
+
+    assert request(c.owner, "POST", "/achievements/unlocks/next").status == 204
+
+    assert request(c.owner, "PATCH", "/achievements/country_de/toggle_sharing", %{
+             "enabled" => "0"
+           }).status ==
+             302
+
+    denied = image_request.("GET")
+    assert denied.status == 404 and denied.resp_body == ""
+    assert get_resp_header(denied, "cache-control") == ["private, no-store"]
+    assert image_request.("HEAD").status == 404
+
+    System.delete_env("DAWARICH_RAILS")
+    Application.put_env(:dawarich, :rails_routes, ["achievements"])
+    server = RawHTTP.listen()
+    on_exit(fn -> :gen_tcp.close(server.listen) end)
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, server.port})
+
+    receiver =
+      Task.async(fn ->
+        socket = RawHTTP.accept(server)
+        {head, _} = RawHTTP.read_head(socket)
+
+        RawHTTP.reply(
+          socket,
+          "HTTP/1.1 209 Rails\r\nContent-Length: 6\r\nConnection: close\r\n\r\nsource"
+        )
+
+        :gen_tcp.close(socket)
+        head
+      end)
+
+    pinned = image_request.("GET")
+    assert pinned.status == 209 and pinned.resp_body == "source"
+    assert RawHTTP.request_line(Task.await(receiver)) == "GET #{path}/og.png HTTP/1.1"
+  end
+
   @tag a12f3b_case: "H01b"
   test "part B handback occurs before native effects and final native transport errors are source compatible",
        c do

@@ -1,9 +1,8 @@
 defmodule DawarichWeb.AchievementActions.Sharing do
   @moduledoc false
   @behaviour Plug
-  import Plug.Conn
   alias Dawarich.Achievements.Sharing, as: Carrier
-  alias DawarichWeb.{Locale, RailsProxy}
+  alias DawarichWeb.{Locale}
   alias DawarichWeb.AchievementActions.{Request, Response}
 
   def init(opts), do: opts
@@ -27,6 +26,13 @@ defmodule DawarichWeb.AchievementActions.Sharing do
   end
 
   defp execute(conn, actor, params, context) do
+    case DawarichWeb.AchievementActions.Gate.fresh(conn, actor, context) do
+      {:ok, conn, actor} -> execute_fresh(conn, actor, params, context)
+      :error -> conn |> DawarichWeb.StandaloneError.respond("achievement_actor", 401)
+    end
+  end
+
+  defp execute_fresh(conn, actor, params, context) do
     conn =
       if conn.assigns[:achievement_action],
         do: conn,
@@ -40,12 +46,5 @@ defmodule DawarichWeb.AchievementActions.Sharing do
     _ -> Response.terminal(conn)
   end
 
-  defp handoff(conn, opts) do
-    upstream =
-      Keyword.get_lazy(opts, :upstream, fn ->
-        Application.fetch_env!(:dawarich, :rails_upstream)
-      end)
-
-    conn |> RailsProxy.call(upstream) |> halt()
-  end
+  defp handoff(conn, opts), do: DawarichWeb.AchievementActions.Gate.refuse(conn, opts)
 end

@@ -3,10 +3,70 @@ defmodule Dawarich.Exports do
 
   alias Dawarich.Mail.ExploreFeatures
 
+  def parse_submission(params) do
+    with {:ok, format} <- file_format(params["file_format"]),
+         {:ok, first, start_at} <- submission_time(params["start_at"]),
+         {:ok, last, end_at} <- submission_time(params["end_at"]) do
+      {:ok,
+       %{
+         name: "export_from_#{first}_to_#{last}.#{params["file_format"]}",
+         file_format: format,
+         start_at: start_at,
+         end_at: end_at
+       }}
+    end
+  rescue
+    _ -> {:error, :invalid_submission}
+  end
+
+  defp file_format(value) when value in [nil, ""], do: {:ok, nil}
+  defp file_format("json"), do: {:ok, 0}
+  defp file_format("gpx"), do: {:ok, 1}
+  defp file_format("archive"), do: {:ok, 2}
+  defp file_format(_), do: {:error, :invalid_submission}
+
+  defp submission_time(value) when is_binary(value) do
+    if String.trim(value) == "" do
+      {:ok, "", nil}
+    else
+      parts = Dawarich.Imports.DateParts.parse(value)
+      %{"year" => year, "mon" => month, "mday" => day} = parts
+      date = Date.new(year, month, day)
+      julian = year < 1582 and month == 2 and day == 29 and rem(year, 4) == 0
+
+      if (date == {:error, :invalid_date} and not julian) or
+           (year == 1582 and month == 10 and day in 5..14),
+         do: raise(ArgumentError, "invalid date")
+
+      name =
+        Enum.map_join([year, month, day], "-", fn n ->
+          String.pad_leading(to_string(n), if(n == year, do: 4, else: 2), "0")
+        end)
+
+      time =
+        try do
+          zone = System.get_env("TIME_ZONE", "Europe/Berlin")
+          epoch = Dawarich.Imports.ImportTime.parse(value, zone, DateTime.utc_now())
+
+          {{y, m, d}, {h, min, sec}} =
+            :calendar.gregorian_seconds_to_datetime(epoch + 62_167_219_200)
+
+          struct!(NaiveDateTime, year: y, month: m, day: d, hour: h, minute: min, second: sec)
+        rescue
+          _ -> nil
+        end
+
+      {:ok, name, time}
+    end
+  end
+
+  defp submission_time(_), do: {:error, :invalid_submission}
+
   @claim """
   WITH claimed AS (
     UPDATE exports SET status = 1, processing_started_at = $4, updated_at = $4
     WHERE id = $1 AND user_id = $2 AND status = 0 AND file_type = 0
+      AND EXISTS (SELECT 1 FROM users WHERE id = $2 AND deleted_at IS NULL)
     RETURNING id
   )
   INSERT INTO phoenix.export_claims (export_id, event_id, claimed_at)
@@ -18,11 +78,13 @@ defmodule Dawarich.Exports do
   @mine """
   SELECT 1 FROM exports e JOIN phoenix.export_claims c ON c.export_id = e.id
   WHERE e.id = $1 AND e.status = 1 AND c.event_id = $2
+    AND EXISTS (SELECT 1 FROM users WHERE id = e.user_id AND deleted_at IS NULL)
   """
 
   @complete """
   UPDATE exports SET status = 2, error_message = NULL, updated_at = $2
   WHERE id = $1 AND status = 1
+    AND EXISTS (SELECT 1 FROM users WHERE id = exports.user_id AND deleted_at IS NULL)
     AND EXISTS (SELECT 1 FROM phoenix.export_claims WHERE export_id = $1 AND event_id = $3)
   RETURNING id
   """
@@ -30,6 +92,7 @@ defmodule Dawarich.Exports do
   @fail """
   UPDATE exports SET status = 3, error_message = $2, updated_at = $3
   WHERE id = $1 AND status = 1
+    AND EXISTS (SELECT 1 FROM users WHERE id = exports.user_id AND deleted_at IS NULL)
     AND EXISTS (SELECT 1 FROM phoenix.export_claims WHERE export_id = $1 AND event_id = $4)
   RETURNING id
   """

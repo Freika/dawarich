@@ -109,6 +109,7 @@ defmodule DawarichWeb.AchievementSharingTest do
     assert result.status == 302 and result.resp_body == ""
   end
 
+  @tag a12f3b_case: "A02b"
   test "does not replay after a sharing effect or response failure" do
     server = RawHTTP.listen()
     on_exit(fn -> :gen_tcp.close(server.listen) end)
@@ -139,6 +140,39 @@ defmodule DawarichWeb.AchievementSharingTest do
              )
 
     assert is_binary(uuid)
+    assert [[1]] = rows("SELECT count(*) FROM achievement_progresses WHERE user_id=44001")
+
+    disabled =
+      Sharing.call(
+        request(
+          "PATCH",
+          "/achievements/country_de/toggle_sharing",
+          %{"enabled" => false},
+          true,
+          nil
+        ),
+        []
+      )
+
+    assert Jason.decode!(disabled.resp_body) == %{
+             "enabled" => false,
+             "uuid" => uuid,
+             "url" => nil
+           }
+
+    enabled =
+      Sharing.call(
+        request(
+          "PATCH",
+          "/achievements/country_de/toggle_sharing",
+          %{"enabled" => true},
+          true,
+          nil
+        ),
+        []
+      )
+
+    assert Jason.decode!(enabled.resp_body)["uuid"] == uuid
     assert {:error, :timeout} = :gen_tcp.accept(server.listen, 0)
 
     conn =

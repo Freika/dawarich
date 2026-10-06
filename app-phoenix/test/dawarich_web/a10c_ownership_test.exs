@@ -157,11 +157,18 @@ defmodule DawarichWeb.A10cOwnershipTest do
 
     before = snapshot()
 
-    {203, headers, "Rails"} =
-      exchange(ctx, "GET", "/shared/achievements/#{uuid}?locale=de", "", proxy: true)
+    [[settings]] = rows("SELECT settings FROM users WHERE id=44001")
+    other = rows("SELECT to_jsonb(u) FROM users u WHERE id=44002")
+    {200, headers, html} = exchange(ctx, "GET", "/shared/achievements/#{uuid}?locale=de", "")
+    assert html =~ ~s(lang="de")
+    assert values(headers, "set-cookie") != []
 
-    assert values(headers, "set-cookie") == []
-    assert snapshot() == before
+    assert rows("SELECT settings FROM users WHERE id=44001") == [
+             [Map.put(settings, "locale", "de")]
+           ]
+
+    assert rows("SELECT to_jsonb(u) FROM users u WHERE id=44002") == other
+    assert Enum.drop(snapshot(), 1) == Enum.drop(before, 1)
 
     rows("UPDATE users SET settings='[]' WHERE id=44001")
     before = snapshot()
@@ -179,7 +186,7 @@ defmodule DawarichWeb.A10cOwnershipTest do
     assert snapshot() == before
   end
 
-  test "independently rolls public cards back and retains all other A10 residues", ctx do
+  test "independently rolls public cards and PNG back and retains other A10 residues", ctx do
     uuid = "a10c0000-0000-4000-8000-000000044001"
 
     rows(
@@ -193,10 +200,22 @@ defmodule DawarichWeb.A10cOwnershipTest do
     assert values(headers, "x-frame-options") == []
     assert values(headers, "content-security-policy") == ["frame-ancestors *"]
 
+    before = snapshot()
+    {200, headers, png} = exchange(ctx, "GET", path <> "/og.png", "", guest: true)
+    assert values(headers, "content-type") == ["image/png"]
+    assert values(headers, "cache-control") == ["private, no-store"]
+
+    assert <<137, 80, 78, 71, 13, 10, 26, 10, _::binary-size(8), 1200::32, 630::32, _::binary>> =
+             png
+
+    assert {200, _, ""} = exchange(ctx, "HEAD", path <> "/og.png", "", guest: true)
+    assert snapshot() == before
+
     for key <- ~w(shared achievements) do
       Application.put_env(:dawarich, :rails_routes, [key])
       before = snapshot()
       assert {203, _, "Rails"} = exchange(ctx, "GET", path, "", proxy: true, guest: true)
+      assert {203, _, ""} = exchange(ctx, "HEAD", path <> "/og.png", "", proxy: true, guest: true)
       assert snapshot() == before
     end
 
@@ -207,8 +226,6 @@ defmodule DawarichWeb.A10cOwnershipTest do
     assert snapshot() == before
 
     for {method, path, raw} <- [
-          {"GET", path <> "/og.png", ""},
-          {"HEAD", path <> "/og.png", ""},
           {"DELETE", "/settings/users/44001", ""},
           {"POST", "/settings/users/44001", "_method=delete"},
           {"POST", "/settings/background_jobs", "job=synthetic"},

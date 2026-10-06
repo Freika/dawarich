@@ -52,12 +52,16 @@ defmodule DawarichWeb.AchievementPublic do
   end
 
   def handoff(conn, opts) do
-    upstream =
-      Keyword.get_lazy(opts, :upstream, fn ->
-        Application.fetch_env!(:dawarich, :rails_upstream)
-      end)
+    if Dawarich.Standalone.enabled?() do
+      DawarichWeb.StandaloneError.respond(conn, "achievement_public")
+    else
+      upstream =
+        Keyword.get_lazy(opts, :upstream, fn ->
+          Application.fetch_env!(:dawarich, :rails_upstream)
+        end)
 
-    conn |> RailsProxy.call(upstream) |> halt()
+      conn |> RailsProxy.call(upstream) |> halt()
+    end
   end
 
   defp session?(conn) do

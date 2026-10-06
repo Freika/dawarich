@@ -42,15 +42,6 @@ defmodule Dawarich.Imports.Teslamate.Effects do
     realtime_owner = Ownership.lock(ctx.repo, "command:tracks.generate_realtime")
 
     cond do
-      Dawarich.Standalone.enabled?() ->
-        Dawarich.Points.AnomalyArrivalWorker.enqueue(ctx.repo, %{
-          "user_id" => ctx.id,
-          "start_at" => min,
-          "end_at" => max
-        })
-
-        Dawarich.Points.Realtime.tracks(ctx.repo, %{"user_id" => ctx.id}, now: ctx.now)
-
       realtime_owner == :oban ->
         zone = ctx.settings["timezone"] || "Etc/UTC"
         Dawarich.Points.AnomalyFilter.call(ctx.repo, ctx.id, min, max, zone: zone)
@@ -67,12 +58,21 @@ defmodule Dawarich.Imports.Teslamate.Effects do
           log: false
         )
 
+      Dawarich.Standalone.enabled?() ->
+        publish(ctx.repo, "points.anomaly_filter", %{
+          "user_id" => ctx.id,
+          "start_at" => min,
+          "end_at" => max
+        })
+
+        Dawarich.Points.Realtime.tracks(ctx.repo, %{"user_id" => ctx.id}, now: ctx.now)
+
       true ->
         for {kind, payload} <- [
               {"points.anomaly_filter", %{"start_at" => min, "end_at" => max}},
               {"tracks.realtime", %{}}
             ] do
-          Dawarich.RailsCommands.insert!(ctx.repo, kind, Map.put(payload, "user_id", ctx.id))
+          publish(ctx.repo, kind, Map.put(payload, "user_id", ctx.id))
         end
     end
 
@@ -88,6 +88,11 @@ defmodule Dawarich.Imports.Teslamate.Effects do
       )
     end)
   end
+
+  defp publish(repo, "points.anomaly_filter", payload),
+    do: Dawarich.Points.AnomalyArrivalWorker.enqueue(repo, payload)
+
+  defp publish(repo, kind, payload), do: Dawarich.RailsCommands.insert!(repo, kind, payload)
 
   def failure(ctx, message) do
     locale = Dawarich.Mail.ExploreFeatures.locale(ctx.settings, nil)

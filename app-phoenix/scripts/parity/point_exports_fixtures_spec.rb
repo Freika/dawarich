@@ -138,6 +138,10 @@ RSpec.describe 'Phoenix fixtures: POST /exports as Rails answers it', type: :req
   end
 
   def capture_export_workers(user)
+    [ActiveStorage::Blob, ActiveStorage::Attachment, Notification].each do |model|
+      sequence = model.connection.select_value("SELECT pg_get_serial_sequence('#{model.table_name}','id')")
+      model.connection.execute("SELECT setval('#{sequence}',9723100,false)")
+    end
     rows = {}
     Point.insert!({ id: 9_723_000, user_id: user.id, timestamp: Time.utc(2024, 3, 7, 12).to_i,
                     lonlat: 'POINT(12.4 51.3)', altitude: 12, altitude_decimal: 12.75,
@@ -213,8 +217,18 @@ RSpec.describe 'Phoenix fixtures: POST /exports as Rails answers it', type: :req
       expect(cases.find { _1[:name] == 'method override to delete' }.dig(:rails, :flash)).to eq({})
       write_json('cases.json', { users:, cases: })
       workers = capture_export_workers(User.find(9723))
+      containers = [
+        ['array format', utc.merge('file_format' => ['gpx'])],
+        ['object format', utc.merge('file_format' => { 'nested' => 'gpx' })],
+        ['array start', utc.merge('start_at' => ['2024-03-01'])],
+        ['object start', utc.merge('start_at' => { 'nested' => '2024-03-01' })],
+        ['array end', utc.merge('end_at' => ['2024-03-31'])],
+        ['object end', utc.merge('end_at' => { 'nested' => '2024-03-31' })]
+      ].map do |name, params|
+        { name:, source: 'hand', params:, rails: rails_answer(9723, params) }
+      end
       FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/user_data/a12f3a-e02.json'),
-                              "#{JSON.pretty_generate({ users:, cases:, workers: })}\n")
+                              "#{JSON.pretty_generate({ users:, cases:, workers:, containers: })}\n")
     end
   end
 end

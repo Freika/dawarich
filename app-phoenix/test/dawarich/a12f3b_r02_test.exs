@@ -33,6 +33,11 @@ defmodule Dawarich.A12f3bR02Test do
     assert length(jobs("Dawarich.Points.AnomalyStatsWorker")) == 1
     assert reverse("points.anomaly_filter") == []
 
+    second = point!(user, @at + 1, {13.41, 52.5}, accuracy: 20_000)
+
+    for key <- ~w(tracks.generate_realtime tracks.backfill),
+        do: Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:" <> key, :oban)
+
     Dawarich.Imports.Teslamate.Effects.finalize(
       %{
         repo: ScratchRepo,
@@ -41,11 +46,51 @@ defmodule Dawarich.A12f3bR02Test do
         event: Ecto.UUID.generate(),
         now: DateTime.utc_now()
       },
-      %{range: {@at, @at}, months: []}
+      %{range: {@at, @at + 1}, months: []}
     )
 
-    assert length(jobs("Dawarich.Points.AnomalyArrivalWorker")) == 2
+    assert flagged(user) == [id, second]
+    assert jobs("Dawarich.Points.AnomalyArrivalWorker") == [[args]]
+
+    assert rows("SELECT command_type FROM job_outbox ORDER BY command_type") == [
+             ["tracks.backfill"],
+             ["tracks.generate_realtime"]
+           ]
+
     assert reverse("points.anomaly_filter") == []
+
+    for key <- ~w(tracks.generate_realtime tracks.backfill),
+        do: Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:" <> key, :sidekiq, pinned: true)
+
+    rows("DELETE FROM phoenix.once_claims")
+    third = point!(user, @at + 2, {13.42, 52.5}, accuracy: 20_000)
+
+    Dawarich.Imports.Teslamate.Effects.finalize(
+      %{
+        repo: ScratchRepo,
+        id: user,
+        settings: %{"timezone" => "Europe/Berlin"},
+        event: Ecto.UUID.generate(),
+        now: DateTime.utc_now()
+      },
+      %{range: {@at, @at + 2}, months: []}
+    )
+
+    assert [[^args], [arrival]] = jobs("Dawarich.Points.AnomalyArrivalWorker")
+
+    assert arrival == %{
+             "user_id" => user,
+             "start_at" => @at,
+             "end_at" => @at + 2,
+             "time_zone" => "Europe/Berlin"
+           }
+
+    assert flagged(user) == [id, second]
+    assert :ok = Dawarich.Points.AnomalyArrivalWorker.run(ScratchRepo, arrival)
+    assert flagged(user) == [id, second, third]
+    assert length(jobs("Dawarich.Points.RealtimeTracksWorker")) == 2
+    assert rows("SELECT kind FROM phoenix.rails_commands") == []
+    assert rows("SELECT count(*) FROM job_outbox WHERE command_type='tracks.backfill'") == [[1]]
 
     coexist("points.anomaly_filter", fn ->
       Intake.prepare([payload], user) |> Intake.write(user, repo: ScratchRepo)
