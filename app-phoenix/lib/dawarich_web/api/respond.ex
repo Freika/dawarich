@@ -44,6 +44,7 @@ defmodule DawarichWeb.Api.Respond do
 
   defp send_body(conn, status, body, type, opts) do
     conn = frame(conn, type)
+    conn = rate_headers(conn, status)
     conn = if conn.assigns.api_vary, do: put_resp_header(conn, "vary", "Accept"), else: conn
     conn = cache(conn, status, body, opts)
     final = final_status(conn, status)
@@ -64,6 +65,7 @@ defmodule DawarichWeb.Api.Respond do
 
   def head(conn, status, type \\ "text/html") do
     conn = frame(conn, type || "")
+    conn = rate_headers(conn, status)
     conn = if is_nil(type), do: delete_resp_header(conn, "content-type"), else: conn
     log(conn, status)
     conn |> cache(status, "", []) |> send_resp(status, "") |> halt()
@@ -71,6 +73,7 @@ defmodule DawarichWeb.Api.Respond do
 
   def not_modified(conn, validators) do
     conn = frame(conn, "")
+    conn = rate_headers(conn, 304)
     log(conn, 304)
 
     conn
@@ -109,6 +112,23 @@ defmodule DawarichWeb.Api.Respond do
     |> merge_resp_headers(conn.assigns.api_headers)
     |> put_resp_header("x-request-id", conn.assigns.api_request_id)
     |> put_resp_header("x-runtime", :erlang.float_to_binary(elapsed / 1_000_000, decimals: 6))
+  end
+
+  defp rate_headers(conn, status) do
+    if conn.private[:dawarich_native_api] == true and conn.assigns[:api_user] != nil and
+         status in 200..399 do
+      headers =
+        DawarichWeb.Api.Headers.rate_limit(%{
+          self_hosted: DawarichWeb.LayoutAssigns.self_hosted?(),
+          authenticated: true,
+          throttle: conn.assigns[:rate_limit_token],
+          now: DateTime.to_unix(conn.assigns[:api_now] || DateTime.utc_now())
+        })
+
+      merge_resp_headers(conn, headers)
+    else
+      conn
+    end
   end
 
   defp cache(conn, status, body, opts) when status in [200, 201] and body != "" do

@@ -287,7 +287,11 @@ defmodule DawarichWeb.A12f2JClosureTest do
   @tag :a12f2_j_04
   test "API authentication retains key priority bearer cookies mobile markers Cloud payment and error header order",
        c do
-    id = user!(%{api_key: @key, settings: %{"timezone" => "UTC"}})
+    previous_repo = Application.get_env(:dawarich, :jobs_repo, Dawarich.Repo)
+    on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous_repo) end)
+    Application.put_env(:dawarich, :jobs_repo, Repo)
+    Dawarich.TtlCache.delete({DawarichWeb.RateLimit, @key})
+    id = user!(%{api_key: @key, plan: 0, settings: %{"timezone" => "UTC"}})
     assert {401, _, ""} = endpoint(c, "GET", "/api/v1/notes?api_key=", bearer())
 
     assert {200, headers, "[]"} =
@@ -328,7 +332,13 @@ defmodule DawarichWeb.A12f2JClosureTest do
         else: System.delete_env("MANAGER_URL")
     end)
 
-    assert {200, _, "[]"} = endpoint(c, "GET", "/api/v1/places?tag_ids[]=untagged", bearer())
+    assert {200, rate_headers, "[]"} =
+             endpoint(c, "GET", "/api/v1/places?tag_ids[]=untagged", bearer())
+
+    assert values(rate_headers, "x-ratelimit-limit") == ["200"]
+    assert values(rate_headers, "x-ratelimit-remaining") == ["199"]
+    [reset] = values(rate_headers, "x-ratelimit-reset")
+    assert rem(String.to_integer(reset), 3600) == 0
     Repo.query!("UPDATE users SET status=3 WHERE id=$1", [id])
     Dawarich.TtlCache.delete({DawarichWeb.RateLimit, @key})
     assert {402, headers, body} = endpoint(c, "GET", "/api/v1/notes", bearer())
@@ -339,6 +349,7 @@ defmodule DawarichWeb.A12f2JClosureTest do
            )
 
     assert values(headers, "x-dawarich-response") == ["Hey, I'm alive and authenticated!"]
+    assert values(headers, "x-ratelimit-limit") == []
     no_upstream!(c.upstream)
   end
 
