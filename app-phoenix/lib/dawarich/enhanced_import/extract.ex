@@ -34,28 +34,31 @@ defmodule Dawarich.EnhancedImport.Extract do
   end
 
   defp gpx(repo, import, path, deadline) do
+    guard = Map.get(import, :fence, fn fun -> fun.() end)
+
     {state, chunk, _size} =
       Adapters.reduce(path, import, %{}, {PlaceWriter.new(import), [], 0}, fn
         place, {state, chunk, size} when size + 1 < @chunk ->
           {state, [place | chunk], size + 1}
 
         place, {state, chunk, _size} ->
-          {write(repo, state, [place | chunk], deadline), [], 0}
+          {write(repo, state, [place | chunk], deadline, guard), [], 0}
       end)
 
-    state = write(repo, state, chunk, deadline)
+    state = write(repo, state, chunk, deadline, guard)
 
     if state.count > 0, do: %{"places" => state.count}, else: %{}
   end
 
-  defp write(_repo, state, [], _deadline), do: state
+  defp write(_repo, state, [], _deadline, _guard), do: state
 
-  defp write(repo, state, chunk, deadline) do
+  defp write(repo, state, chunk, deadline, guard) do
     places = Enum.reverse(chunk)
 
-    Enum.reduce(places, PlaceWriter.prefetch(repo, state, places), fn place, state ->
+    Enum.reduce(places, guard.(fn -> PlaceWriter.prefetch(repo, state, places) end), fn place,
+                                                                                        state ->
       Deadline.check!(deadline)
-      PlaceWriter.upsert(repo, state, place)
+      guard.(fn -> PlaceWriter.upsert(repo, state, place) end)
     end)
   end
 

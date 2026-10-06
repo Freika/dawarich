@@ -157,7 +157,8 @@ after restoration. Retained Rails characterization passes 34 examples.
 
 The existing GPX extractor is retained. `EnhancedImport.Adapters` dispatches
 Phone, Semantic History, Records' source no-op, Polarsteps and GPX streams.
-`NormalWorker` runs supported non-GPX extraction under the shared import and
+`NormalWorker` runs all newly produced supported extraction, including GPX,
+under the shared import and
 per-user track locks. Every write checks the executing attempt, actor, source,
 attachment, extraction event/action, and current ownership. Existing State
 writes accept that fence; deadline cancellation, bounded lock waiting and
@@ -172,7 +173,7 @@ Trust disabled resets source segments and uses inference. Extraction removal
 reuses RX's fenced worker and DestroyExtraction, retaining raw points and
 adopted tracks while resetting extraction state.
 
-Manual non-GPX admission is a small extension of ManualExtraction's existing
+Manual native admission is a small extension of ManualExtraction's existing
 producer. Source-owned coexistence still publishes its retained source
 command; native selected work uses the new direct child worker. Shared job
 registry/readiness entries are unchanged. Records intentionally remains
@@ -180,12 +181,17 @@ unavailable for manual extraction, matching Translator.supported?.
 
 F18's named test fails first on unsupported manual extraction, passes native
 persistence/destroy/retry/fence cases, fails the Phone-as-GPX mutation, and
-passes after restoration. The extraction/GPX/R09 regression passes 46 tests.
+passes after restoration. The extraction/GPX/R09 regression passes 46 tests. An additional GPX
+admission check first fails because manual GPX lacks the new worker envelope.
+Both manual and automatic producers now use the same fenced worker; GPX place
+prefetch and writes check its current attempt. The retained ExtractGpxWorker
+remains available for its existing accepted-work contract. The expanded
+F/R09/R10/extraction regression passes 70 tests.
 
 ## F19 postprocessing follow-up
 
 Postprocessing retains RX's single native publication path and source step
-order. The missing automatic non-GPX extraction handoff now calls
+order. Automatic extraction for GPX and the missing non-GPX branches now calls
 `NormalWorker.enqueue!(repo, import, context)`. It captures actor/source/blob,
 locale and zone, derives the child UUID from the existing import event and
 payload, and preserves it across terminal replay. No new effect framework or
@@ -204,7 +210,7 @@ month fails the exact December/January assertion; restored code passes.
 | Caller | Callee / contract | Event, fence and source owner |
 | --- | --- | --- |
 | ProcessWorker typed continuation | GoogleTakeoutResume.call(lease, state, context, payload) | Existing process_normal import event/attempt/token; constant Rails progress index; old serialized work stays with source drain |
-| ManualExtraction native non-GPX | NormalWorker.enqueue!(repo, args, event, at) | Existing extraction event/action and actor/source/blob; queued on existing extraction lane |
+| ManualExtraction native supported extraction | NormalWorker.enqueue!(repo, args, event, at) | Existing extraction event/action and actor/source/blob; queued on existing extraction lane |
 | Postprocessing.Native extract | NormalWorker.enqueue!(repo, import, context) | Stable child of import-run UUID; captured locale/zone and clock; executes after import completion |
 | NormalWorker | Extract.process(repo, import, storage, event, deadline, context) | Import and per-user locks; every child/status write uses the current executing-job and extraction identity fence |
 | ExtractionRemovalWorker | DestroyExtraction.call(lease, source) | Existing RX removal fence; raw points survive; source labels/corrected segments retain Rails semantics |

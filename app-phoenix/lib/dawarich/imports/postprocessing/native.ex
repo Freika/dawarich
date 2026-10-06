@@ -85,16 +85,7 @@ defmodule Dawarich.Imports.Postprocessing.Native do
            [import.id, import.user_id],
            log: false
          ).rows do
-      [[4]] ->
-        publish!(
-          repo,
-          Dawarich.EnhancedImport.ExtractGpxWorker,
-          %{"import_id" => import.id, "lock_attempt" => 1},
-          identity(repo, import.id),
-          Snapshot.clock(context)
-        )
-
-      [[source]] when source in [0, 3, 13] ->
+      [[source]] when source in [0, 3, 4, 13] ->
         Dawarich.EnhancedImport.NormalWorker.enqueue!(
           repo,
           Map.put(import, :source, source),

@@ -300,6 +300,25 @@ defmodule DawarichWeb.A12f3aFResumeTest do
     assert {:ok, :ok} = invoke.(%{}, payload)
     assert [[1, 0]] == rows("SELECT raw_points,doubles FROM imports WHERE id=$1", [c.import.id])
     assert_raise LeaseLost, fn -> invoke.(%{}, %{payload | "current_index" => 1001}) end
+    command = Map.put(Map.drop(c.job.args, ["event_id"]), "continuation", payload)
+    assert {:ok, ^command} = Dawarich.Imports.ProcessWorker.args_from_command(1, command)
+
+    assert {:error, "invalid_payload"} =
+             Dawarich.Imports.ProcessWorker.args_from_command(
+               1,
+               Map.put(command, "ruby", "object")
+             )
+
+    args = Map.put(command, "event_id", c.job.args["event_id"])
+    rows("UPDATE oban.oban_jobs SET args=$2 WHERE id=$1", [c.job.id, args])
+    job = %{c.job | args: args}
+    assert :ok = Dawarich.Imports.ProcessWorker.perform(job)
+    assert Dawarich.Jobs.Processed.done?(ScratchRepo, args["event_id"])
+    assert :ok = Dawarich.Imports.ProcessWorker.perform(job)
+
+    assert [[1, 0, 1000]] ==
+             rows("SELECT raw_points,doubles,processed FROM imports WHERE id=$1", [c.import.id])
+
     reset!(ScratchRepo)
     c = Map.merge(c, Dawarich.ImportLeaseFixture.create())
     rows("UPDATE imports SET source=2 WHERE id=$1", [c.import.id])
@@ -556,6 +575,69 @@ defmodule DawarichWeb.A12f3aFExtractionTest do
       assert [[3]] == rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
       assert [] == rows("SELECT id FROM visits WHERE import_id=$1", [c.import.id])
       assert [] == rows("SELECT id FROM tracks WHERE import_id=$1", [c.import.id])
+      assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+    end
+
+    for admission <- [:manual, :completion] do
+      reset!(ScratchRepo)
+      c = Map.merge(c, Dawarich.ImportLeaseFixture.create())
+
+      rows("UPDATE imports SET status=2,raw_data='{\"waypoints_seen\":1}' WHERE id=$1", [
+        c.import.id
+      ])
+
+      F.blob(
+        c,
+        "waypoint.gpx",
+        "<gpx><wpt lat='51.3' lon='12.4'><name>Synthetic GPX</name></wpt></gpx>",
+        "file"
+      )
+
+      if admission == :manual do
+        assert {:ok, :queued} =
+                 Dawarich.Imports.ManualExtraction.enqueue(
+                   ScratchRepo,
+                   c.import.user_id,
+                   c.import.id,
+                   :extract,
+                   %{},
+                   c.context
+                 )
+      else
+        assert :ok =
+                 Dawarich.Imports.Postprocessing.enqueue_extraction!(
+                   ScratchRepo,
+                   Map.merge(c.import, %{
+                     source: 4,
+                     additional_data_extraction_status: 0,
+                     raw_data: %{"waypoints_seen" => 1}
+                   }),
+                   c.context
+                 )
+      end
+
+      [[id, args]] =
+        rows(
+          "SELECT id,args FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker'"
+        )
+
+      assert args["source"] == 4
+      rows("UPDATE oban.oban_jobs SET state='executing',attempt=1 WHERE id=$1", [id])
+      job = %Oban.Job{id: id, args: args, attempt: 1, max_attempts: 3, meta: %{}}
+      rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [id])
+      assert {:cancel, _} = NormalWorker.run(ScratchRepo, job)
+      assert [] == rows("SELECT id FROM places WHERE import_id=$1", [c.import.id])
+      assert :ok = NormalWorker.run(ScratchRepo, %{job | attempt: 2})
+
+      assert [[3, %{"places" => 1}]] ==
+               rows(
+                 "SELECT additional_data_extraction_status,additional_data_extraction->'counts' FROM imports WHERE id=$1",
+                 [c.import.id]
+               )
+
+      assert [["Synthetic GPX", 2]] ==
+               rows("SELECT name,source FROM places WHERE import_id=$1", [c.import.id])
+
       assert [] == rows("SELECT kind FROM phoenix.rails_commands")
     end
 
