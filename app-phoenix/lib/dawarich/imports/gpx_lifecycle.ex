@@ -122,11 +122,13 @@ defmodule Dawarich.Imports.GpxLifecycle do
 
   defp publish(lease, context, native? \\ true) do
     ImportState.effect!(lease, fn ->
-      RailsCommands.insert!(lease.repo, "imports.progress", %{
-        "import_id" => lease.import.id,
-        "user_id" => lease.import.user_id,
-        "locale" => context.locale
-      })
+      unless Dawarich.Standalone.enabled?() do
+        RailsCommands.insert!(lease.repo, "imports.progress", %{
+          "import_id" => lease.import.id,
+          "user_id" => lease.import.user_id,
+          "locale" => context.locale
+        })
+      end
     end)
 
     if native?, do: broadcast(lease)

@@ -6,7 +6,8 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
     unique: [keys: [:event_id], states: :incomplete, period: :infinity]
 
   alias Dawarich.Imports.{Download, Download.Snapshot, LeaseLost, StorageContext}
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
   alias Dawarich.State.Lease
   @lane "command:imports.prepare_download"
   @worker "Dawarich.Imports.PrepareDownloadWorker"
