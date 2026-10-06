@@ -1,7 +1,7 @@
 defmodule Dawarich.Posters.Publication do
   @moduledoc false
   alias Dawarich.Jobs.{Ownership, Processed}
-  alias Dawarich.RailsCommands
+  alias Dawarich.Posters.Command
   @owner "command:posters.create"
 
   def prepare(repo, id, user_id, event, holder, locale) do
@@ -151,7 +151,7 @@ defmodule Dawarich.Posters.Publication do
 
   defp notify(repo, ctx),
     do:
-      RailsCommands.insert!(repo, "posters.progress", %{
+      Command.progress(repo, %{
         "poster_id" => ctx.id,
         "user_id" => ctx.user_id,
         "locale" => ctx.locale

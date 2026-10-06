@@ -161,10 +161,18 @@ RSpec.describe 'Phoenix fixtures: poster persistence and generation', type: :req
         expect(response.status).to eq(404)
       end
       expect(Poster.exists?(poster.id)).to be(true)
+      post '/posters', params: { poster: { name: 123 } }, as: :json
+      expect(response.status).to eq(406)
+      expect(user.posters.last.name).to eq('123')
       sign_out user
       post '/posters', params: { poster: { name: 'Guest' } }, headers: { 'Accept' => 'text/html' }
       expect(response.status).to eq(302)
       expect(response.location).to end_with('/users/sign_in')
+      expect(request.session[:user_return_to]).to be_nil
+      post '/posters', params: { poster: { name: 'Guest' } }, as: :json
+      expect(response.status).to eq(401)
+      expect(response.headers['WWW-Authenticate']).to be_nil
+      expect(response.parsed_body).to eq({ 'error' => 'You need to sign in or sign up before continuing.' })
     end
   end
 

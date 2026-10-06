@@ -82,9 +82,28 @@ defmodule DawarichWeb.A12f3bP01Test do
              404
 
     assert request(session, :post, "/posters", %{"poster" => "scalar"}, "text/html").status == 422
+
+    assert request(session, :post, "/posters", %{"poster" => %{"name" => 123}}, "text/html").status ==
+             302
+
+    assert Repo.query!("SELECT name FROM posters WHERE user_id=$1 ORDER BY id DESC LIMIT 1", [id]).rows ==
+             [["123"]]
+
     guest = request(%{}, :post, "/posters", %{"poster" => %{"name" => "Guest"}}, "text/html")
     assert guest.status == 302
+    assert RailsFormRequests.rails_session(guest)["user_return_to"] == nil
     assert get_resp_header(guest, "location") == ["http://www.example.com/users/sign_in"]
+
+    guest_json =
+      request(%{}, :post, "/posters", %{"poster" => %{"name" => "Guest"}}, "application/json")
+
+    assert guest_json.status == 401
+
+    assert Jason.decode!(guest_json.resp_body) == %{
+             "error" => "You need to sign in or sign up before continuing."
+           }
+
+    assert get_resp_header(guest_json, "www-authenticate") == []
   end
 
   @tag a12f3b_case: "P01b"
