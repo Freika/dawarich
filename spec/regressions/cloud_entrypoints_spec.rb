@@ -140,6 +140,24 @@ RSpec.describe 'Cloud entrypoints' do
   end
 
   describe 'cloud-sidekiq-entrypoint.sh' do
+    it 'native Cloud worker stays idle without a source queue consumer' do
+      stub_command('dawarich', <<~SH)
+        printf '%s\\n' "dawarich $* role=${DAWARICH_PROCESS_ROLE:-} rails=[${DAWARICH_RAILS_ARGS:-}]" >> "#{calls_file}"
+      SH
+      result = run_script('cloud-sidekiq-entrypoint.sh', 'sidekiq', '-C', 'config/sidekiq.yml',
+                          SELF_HOSTED: 'false', DAWARICH_PHOENIX_LIFECYCLE: 'true',
+                          DAWARICH_RAILS_ARGS: 'bundle exec puma')
+      expect(result[:status]).to be_success
+      expect(result[:calls]).to eq(['dawarich start role=sidekiq_idle rails=[]'])
+      [%w[sidekiq -C custom.yml], %w[rails runner], []].each do |argv|
+        FileUtils.rm_f(calls_file)
+        result = run_script('cloud-sidekiq-entrypoint.sh', *argv, SELF_HOSTED: 'false',
+                                                               DAWARICH_PHOENIX_LIFECYCLE: 'true')
+        expect(result[:status]).not_to be_success
+        expect(result[:calls]).to be_empty
+      end
+    end
+
     it 'waits for the database, then runs the given command' do
       result = run_script('cloud-sidekiq-entrypoint.sh', 'sidekiq', '-C', 'config/sidekiq.yml')
 
@@ -148,6 +166,43 @@ RSpec.describe 'Cloud entrypoints' do
          'bundle exec sidekiq -C config/sidekiq.yml']
       )
     end
+  end
+
+  it 'drain only Cloud refuses web release and manual argv before boot' do
+    rejected = [
+      ['cloud-entrypoint.sh', server], ['release.sh', []],
+      ['cloud-entrypoint.sh', %w[rails runner]], ['cloud-entrypoint.sh', %w[rake db:migrate]],
+      ['cloud-sidekiq-entrypoint.sh', server], ['cloud-sidekiq-entrypoint.sh', %w[rails runner]],
+      ['cloud-sidekiq-entrypoint.sh', %w[sidekiq -C custom.yml]],
+      ['cloud-sidekiq-entrypoint.sh', %w[sidekiq -r malicious.rb]],
+      ['cloud-sidekiq-entrypoint.sh', []]
+    ]
+    rejected.each do |script, argv|
+      FileUtils.rm_f(calls_file)
+      result = run_script(script, *argv, SELF_HOSTED: 'false', DAWARICH_CLOUD_DRAIN_ONLY: 'true')
+      expect(result[:status]).not_to be_success
+      expect(result[:calls]).to be_empty
+    end
+    [nil, 'true'].each do |cloud|
+      FileUtils.rm_f(calls_file)
+      result = run_script('cloud-sidekiq-entrypoint.sh', 'sidekiq', SELF_HOSTED: cloud,
+                                                               DAWARICH_CLOUD_DRAIN_ONLY: 'true')
+      expect(result[:status]).not_to be_success
+      expect(result[:calls]).to be_empty
+    end
+    [{ DAWARICH_PHOENIX_LIFECYCLE: 'true' }, { DAWARICH_PROCESS_ROLE: 'sidekiq_idle' },
+     { DAWARICH_CLOUD_DRAIN_ONLY: 'TRUE' }, { DAWARICH_CLOUD_DRAIN_ONLY: '' }].each do |extra|
+      FileUtils.rm_f(calls_file)
+      result = run_script('cloud-sidekiq-entrypoint.sh', 'sidekiq', SELF_HOSTED: 'false',
+                                                                DAWARICH_CLOUD_DRAIN_ONLY: 'true', **extra)
+      expect(result[:status]).not_to be_success
+      expect(result[:calls]).to be_empty
+    end
+    FileUtils.rm_f(calls_file)
+    result = run_script('cloud-sidekiq-entrypoint.sh', 'sidekiq', '-C', 'config/sidekiq.yml',
+                        SELF_HOSTED: 'false', DAWARICH_CLOUD_DRAIN_ONLY: 'true')
+    expect(result[:status]).to be_success
+    expect(result[:app_calls]).to eq(['bundle exec sidekiq -C config/sidekiq.yml'])
   end
 
   %w[cloud-entrypoint.sh cloud-sidekiq-entrypoint.sh].each do |script|
