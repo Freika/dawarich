@@ -88,6 +88,7 @@ defmodule Dawarich.Jobs.DrainStatusTest do
     assert "heartbeat_invalid" in Drain.status(ScratchRepo).forward_reasons
   end
 
+  @tag a12f3b_case: "E20a"
   test "housekeeping retains aged dead debt and drain status remains blocked" do
     rows("""
     INSERT INTO phoenix.rails_commands_dead (id, kind, payload, attempts, last_error, created_at, died_at)
@@ -98,6 +99,38 @@ defmodule Dawarich.Jobs.DrainStatusTest do
     assert rows("SELECT id FROM phoenix.rails_commands_dead") == [[990_002]]
     assert Drain.status(ScratchRepo).counts.reverse_dead == 1
     assert "reverse_dead" in Drain.status(ScratchRepo).forward_reasons
+
+    for {class, index} <-
+          Enum.with_index(
+            ~w(ActionMailer::MailDeliveryJob ActionMailer::DeliveryJob ActiveStorage::AnalyzeJob ActiveStorage::PurgeJob ActiveStorage::MirrorJob ActiveStorage::TransformJob Unknown::RetiredJob),
+            1
+          ) do
+      payload = %{
+        "job_class" => class,
+        "arguments" => [
+          %{"_aj_globalid" => "gid://dawarich/User/42"},
+          %{"_aj_symbol_keys" => ["unknown"]}
+        ],
+        "version" => 99
+      }
+
+      rows(
+        "INSERT INTO phoenix.rails_commands_dead(id,kind,payload,attempts,last_error,created_at) VALUES($1,$2,$3,25,'synthetic-private-error',now())",
+        [990_002 + index, class, payload]
+      )
+    end
+
+    before = rows("SELECT id,kind,payload FROM phoenix.rails_commands_dead ORDER BY id")
+    Housekeeping.run!(ScratchRepo, @now)
+    assert rows("SELECT id,kind,payload FROM phoenix.rails_commands_dead ORDER BY id") == before
+    status = Drain.status(ScratchRepo)
+    assert status.counts.reverse_dead == 8
+    assert status.forward == "BLOCKED"
+    assert status.binary_rollback == "BLOCKED"
+    refute Jason.encode!(status) =~ "gid://"
+    assert Drain.status(nil).forward == "BLOCKED"
+    assert Drain.status(nil).binary_rollback == "BLOCKED"
+    assert Drain.status(nil).forward_reasons == ["database_unreadable"]
   end
 
   test "housekeeping preserves stale unfinished generations and chunks" do
