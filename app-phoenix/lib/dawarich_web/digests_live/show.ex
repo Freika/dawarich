@@ -38,12 +38,16 @@ defmodule DawarichWeb.DigestsLive.Show do
         :not_found
 
       digest ->
+        Dawarich.Digests.validate_summary!(digest)
+        full = Dawarich.Entitlements.full_access?(user, self_hosted, now)
+        if full, do: Dawarich.Digests.validate_full!(digest)
+
         %{
           page_title: t(locale, "users.digests.show.year_year_in_review", %{year: digest.year}),
           rails_js: true,
           digest: digest,
           unit: StatsFormat.unit(user.settings),
-          full: Dawarich.Entitlements.full_access?(user, self_hosted, now),
+          full: full,
           table: Dawarich.CountryNames.table(),
           upgrade: StatsFormat.upgrade_url(user, now, self_hosted, "digest", "year_in_review"),
           sharing_url:

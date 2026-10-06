@@ -251,6 +251,48 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
   end
 
+  @tag a12f3a_q08: true
+  test "Q08: private digest index and show residuals matches current Rails contract without a native-owner Rails effect",
+       %{user: user, context: ctx} do
+    digest!(user.id, %{year: 2024})
+    digest!(user.id, %{year: 2026})
+    page_ctx = Map.put(ctx, :base_url, "http://www.example.com")
+
+    for row <- fixture("08") do
+      if row["attributes"] do
+        attrs = row["input"]
+
+        Repo.query!(
+          "UPDATE digests SET toponyms=$1, first_time_visits=$2, time_spent_by_location=$3 WHERE user_id=$4 AND year=2024",
+          [
+            attrs["toponyms"],
+            attrs["first_time_visits"] || %{},
+            attrs["time_spent_by_location"] || %{},
+            user.id
+          ]
+        )
+      else
+        Repo.query!("UPDATE digests SET toponyms=$1 WHERE user_id=$2 AND year=2024", [
+          row["input"],
+          user.id
+        ])
+      end
+
+      if row["status"] == 500 do
+        assert_raise ArgumentError, fn ->
+          DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2024"}, page_ctx)
+        end
+      else
+        assert DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2024"}, page_ctx).digest.year ==
+                 2024
+      end
+    end
+
+    context = Dawarich.Stats.context(user, @now, true)
+    assert Enum.map(Dawarich.Digests.index(user.id, context).digests, & &1.year) == [2024]
+    assert DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2023"}, page_ctx) == :not_found
+  end
+
   defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do
     for row <- fixture(task) do
       settings = %{

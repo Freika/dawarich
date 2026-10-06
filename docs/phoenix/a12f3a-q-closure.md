@@ -38,3 +38,4 @@ No browser acceptance or whole-domain retirement is claimed by this implementati
 - Q04: calculate cold and stale digests natively; source/mutation evidence recorded.
 - Q05: serve native details frames in Cloud mode; source/mutation evidence recorded.
 - Q07: publish deduplicated full recalculation commands; source/mutation evidence recorded.
+- Q08: retain private source failure boundaries; source/mutation evidence recorded.

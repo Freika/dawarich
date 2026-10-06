@@ -48,6 +48,16 @@ defmodule Dawarich.Digests do
     end
   end
 
+  def get_shared(uuid) do
+    case Repo.query!(
+           "SELECT year, distance, toponyms, first_time_visits, time_spent_by_location, year_over_year, all_time_stats, monthly_distances, sharing_settings, sharing_uuid::text FROM digests WHERE sharing_uuid=$1 LIMIT 1",
+           [Ecto.UUID.dump!(uuid)]
+         ).rows do
+      [] -> nil
+      [row] -> digest(row)
+    end
+  end
+
   def countries_count(toponyms), do: Enum.count(toponyms, &Ruby.present?(&1["country"]))
 
   def cities_count(toponyms), do: toponyms |> Enum.map(&length(list(&1["cities"]))) |> Enum.sum()
@@ -75,8 +85,35 @@ defmodule Dawarich.Digests do
       monthly_distances: monthly(monthly),
       sharing_enabled: sharing["enabled"] == true,
       sharing_expiration: sharing["expiration"],
-      sharing_uuid: uuid
+      sharing_uuid: uuid,
+      raw_toponyms: toponyms,
+      raw_first: first,
+      raw_spent: spent
     }
+  end
+
+  def validate_summary!(digest) do
+    for key <- ~w(countries cities) do
+      value = digest.raw_first[key]
+
+      if value not in [nil, false] and not is_list(value) and value != %{},
+        do: raise(ArgumentError, "invalid first visits")
+    end
+
+    :ok
+  end
+
+  def validate_full!(digest) do
+    raw = digest.raw_toponyms
+    if is_map(raw) and map_size(raw) > 0, do: raise(ArgumentError, "invalid digest toponyms")
+
+    if Enum.any?(digest.toponyms, &(not is_binary(&1["country"]))),
+      do: raise(ArgumentError, "invalid country flag")
+
+    if Enum.any?(digest.top_countries, &(not is_number(&1["minutes"]))),
+      do: raise(ArgumentError, "invalid country minutes")
+
+    :ok
   end
 
   def available_years(user_id, context) do
