@@ -90,6 +90,84 @@ defmodule DawarichWeb.A12f2CClosureTest do
     assert bytes == Base.decode64!(fixture["body_base64"])
   end
 
+  @tag :a12f2_c_04
+  test "Track tiles retain segment speed properties geometry clipping plan scope and conditional bytes",
+       %{user: user} do
+    track = track(user.id)
+
+    for {offset, lng} <- [{0, 13.1}, {60, 13.001}, {120, 13.002}, {180, 13.003}, {300, 13.004}] do
+      point(user.id, 1_735_689_600 + offset, false, track, lng)
+    end
+
+    params = %{
+      "z" => "10",
+      "x" => "548",
+      "y" => "338",
+      "start_at" => "1735689660",
+      "end_at" => "1735689780",
+      "speed_coloring" => "true"
+    }
+
+    assert {:ok, tile, features} = invoke(Dawarich.Tiles.Tracks, :fetch, [user, params])
+    assert tile =~ "tracks"
+    assert features != []
+    assert Enum.all?(features, &(&1["segment_speed"] < 10))
+
+    assert Enum.all?(
+             features,
+             &(&1["start_timestamp"] == 1_735_689_660 and &1["end_timestamp"] == 1_735_689_780)
+           )
+
+    assert Enum.all?(features, &(&1["dominant_mode"] == "driving" and &1["color"] == "#6366F1"))
+    conn = tile_conn(user, params)
+
+    assert %{status: 200, resp_body: ^tile} =
+             first = invoke(DawarichWeb.Api.TrackTilesController, :call, [conn, :show])
+
+    [etag] = Plug.Conn.get_resp_header(first, "etag")
+
+    assert %{status: 304} =
+             invoke(DawarichWeb.Api.TrackTilesController, :call, [
+               Plug.Conn.put_req_header(conn, "if-none-match", etag),
+               :show
+             ])
+
+    assert {:ok, "", []} =
+             Dawarich.Tiles.Tracks.fetch(user, Map.put(params, "import_id", "999999"))
+
+    fixture = oracle("tracks_base")
+    seed(fixture["setup"])
+    source_user = %{user | id: 810_001}
+
+    source_params =
+      Map.merge(params, %{
+        "start_at" => "1735689600",
+        "end_at" => "1735690000",
+        "speed_coloring" => "false"
+      })
+
+    assert {:ok, bytes, _} = Dawarich.Tiles.Tracks.fetch(source_user, source_params)
+    assert bytes == Base.decode64!(fixture["body_base64"])
+
+    assert {:ok, bytes, _} =
+             Dawarich.Tiles.Tracks.fetch(
+               source_user,
+               Map.put(source_params, "speed_coloring", "true")
+             )
+
+    assert bytes == Base.decode64!(oracle("tracks_speed")["body_base64"])
+  end
+
+  defp track(user_id) do
+    [[id]] =
+      Repo.query!(
+        "INSERT INTO tracks (user_id, start_at, end_at, original_path, distance, avg_speed, duration, dominant_mode, created_at, updated_at) VALUES ($1, '2025-01-01', '2025-01-01 00:05:00', 'SRID=4326;LINESTRING(13 52,13.004 52)', 300, 4, 300, 5, NOW(), NOW()) RETURNING id",
+        [user_id]
+      ).rows
+
+    id
+  end
+
   defp invoke(module, fun, args) do
     assert Code.ensure_loaded?(module) and function_exported?(module, fun, length(args)),
            "missing native #{inspect(module)}.#{fun}"
