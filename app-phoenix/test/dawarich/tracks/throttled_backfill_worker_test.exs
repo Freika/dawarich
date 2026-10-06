@@ -14,6 +14,7 @@ defmodule Dawarich.Tracks.ThrottledBackfillWorkerTest do
     :ok
   end
 
+  @tag a12f3b_case: "E14A2a"
   test "jumps gaps and starts one fixed thirty-day untracked low-priority slice" do
     user = user!(%{"timezone" => "Asia/Tokyo"})
     other = user!()
@@ -83,6 +84,7 @@ defmodule Dawarich.Tracks.ThrottledBackfillWorkerTest do
     assert Processed.done?(ScratchRepo, window["event_id"])
   end
 
+  @tag a12f3b_case: "E14A2b"
   test "failed start preserves cursor and successful replay has one delayed successor" do
     user = user!()
     point!(user.id, @epoch - 100, 1, 1)

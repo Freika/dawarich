@@ -31,7 +31,7 @@ defmodule Dawarich.Cache.PreheatSweepWorker do
         Keyword.get(opts, :schedule_in, 0)
 
     opts = opts |> Keyword.put(:clock, at) |> Keyword.put(:schedule_in, 0)
-    effect = fn -> sweep(repo, source, opts) end
+    effect = fn -> sweep(repo, source, Keyword.put(opts, :accepted, true)) end
 
     result =
       if opts[:accepted],

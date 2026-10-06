@@ -50,6 +50,7 @@ defmodule Dawarich.Tracks.GenerationTest do
     )
   end
 
+  @tag a12f3b_case: "E14A1b"
   test "start! commits generation, chunks and jobs together or not at all" do
     assert_raise RuntimeError, "boom", fn ->
       start!(2, hook: fn :inserted -> raise "boom" end)
@@ -91,6 +92,7 @@ defmodule Dawarich.Tracks.GenerationTest do
            ]
   end
 
+  @tag a12f3b_case: "E14Bb"
   test "a replayed poll does not schedule twice" do
     {:started, id} = start!(2)
 

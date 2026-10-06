@@ -4,6 +4,7 @@ defmodule Dawarich.ReleaseOperations.Transportation do
   use Oban.Worker, queue: :maintenance, priority: 3, max_attempts: 10
 
   alias Dawarich.{RailsCommands, ReleaseOperations}
+  alias Dawarich.Transportation.ReclassifyTrackWorker
 
   @batch 1_000
   @slice 100
@@ -41,13 +42,45 @@ defmodule Dawarich.ReleaseOperations.Transportation do
       rows
       |> Enum.chunk_every(@slice)
       |> Enum.with_index()
-      |> Enum.each(fn {slice, index} -> enqueue(repo, slice, now + index * @stagger) end)
+      |> Enum.each(fn {slice, index} -> enqueue(repo, op, slice, now + index * @stagger) end)
 
       advance(scope, rows)
     end)
   end
 
-  defp enqueue(repo, slice, run_at) do
+  defp enqueue(repo, op, slice, run_at) do
+    case Dawarich.Tracks.Owner.lock(repo, "command:transportation.reclassify_track") do
+      :oban ->
+        for [track_id, user_id] <- slice do
+          args = %{
+            "track_id" => track_id,
+            "user_id" => user_id,
+            "report_progress" => false,
+            "event_id" => child_id(op.id, track_id)
+          }
+
+          Oban.insert!(
+            op.oban,
+            ReclassifyTrackWorker.new(args,
+              scheduled_at: DateTime.from_unix!(run_at),
+              unique: [keys: [:event_id], period: :infinity, states: :all]
+            )
+          )
+        end
+
+      :sidekiq ->
+        reverse(repo, slice, run_at)
+    end
+  end
+
+  defp child_id(operation_id, track_id) do
+    <<a::48, _::4, b::12, _::2, c::62, _::binary>> =
+      :crypto.hash(:sha, Ecto.UUID.dump!(operation_id) <> "transportation:#{track_id}")
+
+    Ecto.UUID.load!(<<a::48, 5::4, b::12, 2::2, c::62>>)
+  end
+
+  defp reverse(repo, slice, run_at) do
     for {user_id, track_ids} <- Enum.group_by(slice, &Enum.at(&1, 1), &hd/1) do
       RailsCommands.insert!(repo, "release_reclassify_tracks", %{
         "user_id" => user_id,

@@ -107,3 +107,23 @@ test warms the pool, serves both possible sockets, and asserts the fresh socket
 was used; it also retains the close-header assertion. This deterministic
 contract protects the local HTTP integration tests and normal client calls
 from stale pooled sessions without retries or timeout changes.
+
+## Standalone transaction regression
+
+Integration saves use a regular `Repo.transaction/1`, which starts a transaction
+when no outer transaction exists. A top-level `mode: :savepoint` leaves Postgrex
+idle and causes `DBConnection.TransactionError` before the normal form can save.
+Sandboxed tests already have a database transaction and therefore concealed
+this runtime failure. Ecto Sandbox supplies its own savepoint handling for
+ordinary transactions.
+
+`StandaloneIntegrationsFlowTest` checks out a connection with `sandbox: false`,
+loads the actual integration form, submits blank Immich fields with SSL
+verification enabled, follows the save redirect and verifies persisted settings.
+A database constraint then rejects a changed SSL flag and verifies rollback and
+connection usability. Existing integration tests retain provider, concurrent
+merge, masking and sandbox rollback coverage.
+
+The shared AFFiNE counterpart is **Dawarich — Standalone integration settings
+and photo imports**. The sweep-2 fix report records RED/GREEN/mutation and final
+gate evidence.
