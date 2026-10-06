@@ -412,17 +412,23 @@ defmodule Dawarich.ReleaseCloudCompatibilityTest do
     )
 
     result =
-      rails!(root, """
-      import = Import.find(#{fixture["import"]})
-      trip = Trip.find(#{fixture["trip"]})
-      raise 'native ciphertext unreadable' unless ServiceSetting.first.credentials_hash.fetch('api_key') == 'synthetic-native'
-      require 'sidekiq/api'
-      queued = Sidekiq::Queue.new('imports').find_job('#{fixture["jid"]}')
-      raise 'accepted job missing' unless queued
-      ActiveJob::Base.execute(queued.args.fetch(0))
-      queued.delete
-      puts 'COMPAT:' + {processed: import.reload.processed, points: import.points.count, trip: trip.name, email: import.user.email}.to_json
-      """)
+      rails!(
+        root,
+        """
+        import = Import.find(#{fixture["import"]})
+        trip = Trip.find(#{fixture["trip"]})
+        raise 'native ciphertext unreadable' unless ServiceSetting.first.credentials_hash.fetch('api_key') == 'synthetic-native'
+        require 'sidekiq/api'
+        queued = Sidekiq::Queue.new('imports').find_job('#{fixture["jid"]}')
+        raise 'accepted job missing' unless queued
+        count = Sidekiq::Queue.new('imports').size
+        ActiveJob::Base.execute(queued.args.fetch(0))
+        queued.delete
+        raise 'source continuation appeared' unless Sidekiq::Queue.new('imports').size == count - 1
+        puts 'COMPAT:' + {processed: import.reload.processed, points: import.points.count, trip: trip.name, email: import.user.email}.to_json
+        """,
+        true
+      )
 
     assert result == %{
              "processed" => 3,
@@ -440,7 +446,6 @@ defmodule Dawarich.ReleaseCloudCompatibilityTest do
     ScratchRepo.query!("DELETE FROM schema_migrations WHERE version=$1", [public_version])
     assert Release.readiness(opts()) == :schemas_behind
     assert relation?("public.job_outbox")
-    assert fixture["source_version"] == "1.15.3"
   end
 
   test "shared signed attachment remains readable by Rails1153 after a native write and source drain",
@@ -486,24 +491,30 @@ defmodule Dawarich.ReleaseCloudCompatibilityTest do
     attachments = snapshot(~w(active_storage_blobs active_storage_attachments))
 
     result =
-      rails!(root, """
-      require 'sidekiq/api'
-      queued = Sidekiq::Queue.new('imports').find_job('#{fixture["jid"]}')
-      raise 'accepted job missing' unless queued
-      ActiveJob::Base.execute(queued.args.fetch(0))
-      queued.delete
-      signed = #{Jason.encode!(signed)}
-      blob = ActiveStorage::Blob.find_signed!(signed)
-      raise 'attachment missing' unless blob.attachments.exists?(record_type: 'Import', record_id: #{fixture["import"]})
-      raise 'object bytes changed' unless blob.download == "native attachment\\n"
-      session = ActionDispatch::Integration::Session.new(Rails.application)
-      session.host! 'www.example.com'
-      session.get("/rails/active_storage/blobs/proxy/\#{signed}/native.bin")
-      raise 'signed route unreadable' unless session.response.status == 200 && session.response.body == blob.download
-      source = ActiveStorage::Blob.where.not(id: blob.id).first!
-      raise 'source attachment changed' unless source.download == 'source attachment'
-      puts 'COMPAT:' + {key: blob.key, checksum: blob.checksum, service: blob.service_name, bytes: session.response.body, processed: Import.find(#{fixture["import"]}).processed, source_signed: source.signed_id}.to_json
-      """)
+      rails!(
+        root,
+        """
+        require 'sidekiq/api'
+        queued = Sidekiq::Queue.new('imports').find_job('#{fixture["jid"]}')
+        raise 'accepted job missing' unless queued
+        count = Sidekiq::Queue.new('imports').size
+        ActiveJob::Base.execute(queued.args.fetch(0))
+        queued.delete
+        raise 'source continuation appeared' unless Sidekiq::Queue.new('imports').size == count - 1
+        signed = #{Jason.encode!(signed)}
+        blob = ActiveStorage::Blob.find_signed!(signed)
+        raise 'attachment missing' unless blob.attachments.exists?(record_type: 'Import', record_id: #{fixture["import"]})
+        raise 'object bytes changed' unless blob.download == "native attachment\\n"
+        session = ActionDispatch::Integration::Session.new(Rails.application)
+        session.host! 'www.example.com'
+        session.get("/rails/active_storage/blobs/proxy/\#{signed}/native.bin")
+        raise 'signed route unreadable' unless session.response.status == 200 && session.response.body == blob.download
+        source = ActiveStorage::Blob.where.not(id: blob.id).first!
+        raise 'source attachment changed' unless source.download == 'source attachment'
+        puts 'COMPAT:' + {key: blob.key, checksum: blob.checksum, service: blob.service_name, bytes: session.response.body, processed: Import.find(#{fixture["import"]}).processed, source_signed: source.signed_id}.to_json
+        """,
+        true
+      )
 
     assert Map.take(result, ~w(key checksum service bytes processed)) == %{
              "key" => key,
@@ -583,10 +594,10 @@ defmodule Dawarich.ReleaseCloudCompatibilityTest do
       ScratchRepo.query!("INSERT INTO #{table}(version) SELECT unnest($1::text[])", [versions])
     end
 
-    Map.put(fixture, "source_version", "1.15.3")
+    fixture
   end
 
-  defp rails!(root, script) do
+  defp rails!(root, script, drain \\ false) do
     database = ScratchRepo.config()[:database]
 
     unless String.starts_with?(database, "dawarich_phoenix_test"),
@@ -615,7 +626,7 @@ defmodule Dawarich.ReleaseCloudCompatibilityTest do
           {"REDIS_URL", Application.fetch_env!(:dawarich, :redis)[:url]},
           {"SECRET_KEY_BASE", Dawarich.RailsSecret.fetch()},
           {"SELF_HOSTED", "false"},
-          {"DAWARICH_CLOUD_DRAIN_ONLY", "false"},
+          {"DAWARICH_CLOUD_DRAIN_ONLY", if(drain, do: "true", else: "false")},
           {"DAWARICH_RAILS", "on"}
         ]
 
