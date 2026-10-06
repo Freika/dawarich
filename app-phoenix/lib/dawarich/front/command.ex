@@ -5,6 +5,12 @@ defmodule Dawarich.Front.Command do
 
   @loopback "127.0.0.1"
 
+  defdelegate native(argv, env), to: Dawarich.Front.NativeCommand, as: :parse
+
+  def listen_address(host, value) do
+    with {:ok, port} <- port(value), {:ok, ip} <- ip(host), do: {:ok, {ip, port}}
+  end
+
   def parse(["bundle", "exec", rails, server | args], env, upstream, _ipv6?)
       when rails in ["bin/rails", "rails"] and server in ["server", "s"] do
     {ports, args} = take(args, "-p", "--port")

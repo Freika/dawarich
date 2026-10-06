@@ -10,6 +10,13 @@ defmodule Dawarich.Front do
   @marker "DAWARICH_BEHIND_PHOENIX"
   @loopback_v6 {0, 0, 0, 0, 0, 0, 0, 1}
 
+  def native_plan(argv, env) do
+    case Command.native(argv, env) do
+      {:web, address} -> {:native, address}
+      plan -> plan
+    end
+  end
+
   def plan(argv, env, opts \\ [])
 
   def plan(nil, _env, _opts), do: :none
@@ -34,8 +41,14 @@ defmodule Dawarich.Front do
     do: [{RailsServer, argv: argv, env: puma_env ++ [{@marker, false}]}]
 
   def children({:proxy, %{public: {ip, port}, puma_argv: puma_argv}}, puma_env) do
+    [{RailsServer, argv: puma_argv, env: puma_env ++ [{@marker, "1"}]}] ++
+      endpoint_children(ip, port)
+  end
+
+  def children({:native, {ip, port}}, _env), do: endpoint_children(ip, port)
+
+  defp endpoint_children(ip, port) do
     [
-      {RailsServer, argv: puma_argv, env: puma_env ++ [{@marker, "1"}]},
       {DawarichWeb.Endpoint,
        server: true,
        secret_key_base: RailsSecret.endpoint_secret(RailsSecret.fetch()),
@@ -69,6 +82,8 @@ defmodule Dawarich.Front do
   end
 
   def log(:none), do: :ok
+
+  def log({:native, {ip, port}}), do: Logger.info("Phoenix listens on #{address(ip)}:#{port}")
 
   def log({:proxy, %{public: {ip, port}, upstream: upstream}}) do
     Logger.info(
