@@ -111,6 +111,7 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     unless selected.empty?
       FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i12.json'),
                                      "#{JSON.pretty_generate(selected)}\n")
+
     end
   end
 
@@ -119,7 +120,7 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     when Hash then value.transform_values { extracted_plain(_1) }
     when Array then value.map { extracted_plain(_1) }
     when Time, DateTime then value.iso8601(6)
-    when Struct then extracted_plain(value.to_h)
+    when Struct, Data then extracted_plain(value.to_h)
     else value
     end
   end
