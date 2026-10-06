@@ -41,3 +41,9 @@ The retained H01 endpoint tests also cover the mounted method/path inventory wit
 Under ruling 15, unsupported nested/duplicate/legacy envelope edge cases may return native errors in standalone mode; this package does not invent Rails bug fixes or claim complete rare-envelope parity. The controller owns seed 202 on the integration head and deferred Rails bug records. The execution reports record gate output and these integration responsibilities.
 
 Shared documentation: AFFiNE document `sIL5FiAZt9ZWDGTJTbQ2O` (Dawarich — Phoenix browser settings and notifications).
+
+## Standalone settings journey regression
+
+General settings must start a normal `Repo.transaction/1`. Unconditional `mode: :savepoint` cannot begin a transaction on an idle Postgrex connection: it returns a rollback without saving preferences and produces the failure flash. Database sandbox tests conceal this because their connection already has an open transaction.
+
+`test/dawarich_web/standalone_settings_flow_test.exs` exercises the real Endpoint with `DAWARICH_RAILS=off`, an encrypted Rails session, rendered CSRF input, and a database checkout with `sandbox: false`. It verifies the 302 redirect, empty body, success flash, persisted and rendered timezone, monthly Oban arguments, and unchanged-zone idempotence. An injected Oban insertion error proves that preferences and stat invalidation roll back together. Each test cleans up its committed rows.
