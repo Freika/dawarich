@@ -244,6 +244,42 @@ defmodule DawarichWeb.A12f2CClosureTest do
     assert {:error, 400, _} = Dawarich.MapApi.Hexagons.bounds(owner, %{})
   end
 
+  @tag :a12f2_c_07
+  test "Fog retains strict dates viewport H3 exclusions privacy and source service failures", %{
+    user: user
+  } do
+    fixture = oracle("fog")
+    seed(fixture["setup"])
+    owner = %{user | id: 810_001}
+    params = %{"start_date" => "2025-01-01", "end_date" => "2025-01-02"}
+    assert {:ok, result} = invoke(Dawarich.MapApi.Fog, :fetch, [owner, params])
+    assert result == Jason.decode!(fixture["body"])
+
+    Repo.query!("UPDATE stats SET h3_hex_ids=$1::text::jsonb WHERE id=780001", [
+      Jason.encode!([
+        ["pre-range", 1, 1_735_603_200, 1_735_603_300],
+        ["in-range", 2, 1_735_689_600, 1_735_689_900],
+        ["in-range", 1, nil, nil],
+        ["after-range", 1, 1_735_862_400, 1_735_862_500],
+        nil,
+        [nil, 0, nil, nil]
+      ])
+    ])
+
+    assert {:ok, %{"h3_indexes" => ["in-range"], "metadata" => %{"count" => 1}}} =
+             Dawarich.MapApi.Fog.fetch(owner, params)
+
+    assert {:ok, %{"h3_indexes" => []}} = Dawarich.MapApi.Fog.fetch(user, params)
+
+    assert {:error, 400, "Invalid date format"} =
+             Dawarich.MapApi.Fog.fetch(owner, Map.put(params, "start_date", "bad"))
+
+    assert {:error, 400, _} = Dawarich.MapApi.Fog.fetch(owner, %{})
+
+    assert {:ok, %{"h3_indexes" => []}} =
+             Dawarich.MapApi.Fog.fetch(owner, Map.put(params, "start_date", "2026-01-01"))
+  end
+
   defp track(user_id) do
     [[id]] =
       Repo.query!(
