@@ -193,7 +193,13 @@ defmodule DawarichWeb.MapWritesHandbackTest do
       refute :map_write in route.pipe_through
     end
 
-    forwarded(ctx, :patch, "/api/v1/tracks/920010", raw(ctx, "track[distance]=500"))
+    before = snapshot()
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
+    missing = request(ctx, :patch, "/api/v1/tracks/920010", raw(ctx, "track[distance]=500"))
+    assert missing.status == 404
+    assert missing.resp_body == File.read!(Dawarich.RailsRoot.join("public/404.html"))
+    assert get_resp_header(missing, "content-type") == ["text/html; charset=UTF-8"]
+    assert snapshot() == before
 
     route =
       Phoenix.Router.route_info(
