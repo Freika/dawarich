@@ -44,13 +44,23 @@ defmodule Dawarich.Points.AnomalyFilter.Effects do
       months(context, flagged)
       |> Enum.each(fn [year, month] ->
         context.fence.(fn ->
-          RailsCommands.insert!(context.repo, "points.anomaly_stats", %{
+          payload = %{
             "user_id" => context.user_id,
             "year" => year,
             "month" => month,
             "job_queue" => queue,
             "time_zone" => context.zone
-          })
+          }
+
+          if Dawarich.Points.NativeEffects.native?(context.repo, "command:stats.calculate_month"),
+            do:
+              Dawarich.Points.NativeEffects.enqueue(
+                context.repo,
+                Dawarich.Points.AnomalyStatsWorker,
+                payload,
+                queue: queue || "projections"
+              ),
+            else: RailsCommands.insert!(context.repo, "points.anomaly_stats", payload)
         end)
       end)
     end
@@ -72,9 +82,20 @@ defmodule Dawarich.Points.AnomalyFilter.Effects do
     context.fence.(fn ->
       {:ok, :ok} =
         context.repo.transaction(fn ->
-          case Ownership.lock(context.repo, "command:tracks.recalculate") do
-            :oban -> insert_track!(context.repo, payload, track)
-            :sidekiq -> RailsCommands.insert!(context.repo, "points.anomaly_recalculate", payload)
+          if Dawarich.Standalone.enabled?() do
+            Dawarich.Points.NativeEffects.enqueue(
+              context.repo,
+              Dawarich.Points.AnomalyFilter.RecalculateWorker,
+              payload
+            )
+          else
+            case Ownership.lock(context.repo, "command:tracks.recalculate") do
+              :oban ->
+                insert_track!(context.repo, payload, track)
+
+              :sidekiq ->
+                RailsCommands.insert!(context.repo, "points.anomaly_recalculate", payload)
+            end
           end
         end)
     end)

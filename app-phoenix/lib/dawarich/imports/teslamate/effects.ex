@@ -44,9 +44,11 @@ defmodule Dawarich.Imports.Teslamate.Effects do
         ] do
       payload = Map.put(payload, "user_id", ctx.id)
 
-      if kind == "tracks.realtime",
-        do: Dawarich.Points.Realtime.tracks(ctx.repo, payload, now: ctx.now),
-        else: Dawarich.RailsCommands.insert!(ctx.repo, kind, payload)
+      case kind do
+        "points.anomaly_filter" -> Dawarich.Points.AnomalyArrivalWorker.enqueue(ctx.repo, payload)
+        "tracks.realtime" -> Dawarich.Points.Realtime.tracks(ctx.repo, payload, now: ctx.now)
+        _ -> Dawarich.RailsCommands.insert!(ctx.repo, kind, payload)
+      end
     end
 
     Enum.each(months, fn {year, month} ->

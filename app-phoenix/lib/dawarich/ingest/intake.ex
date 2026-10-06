@@ -179,6 +179,9 @@ defmodule Dawarich.Ingest.Intake do
         "tracks.backfill" ->
           Dawarich.Tracks.BackfillCommands.ingest(repo, user_id, payload["timestamps"], opts)
 
+        "points.anomaly_filter" ->
+          Dawarich.Points.AnomalyArrivalWorker.enqueue(repo, payload)
+
         "tracks.realtime" ->
           Dawarich.Points.Realtime.tracks(repo, payload, opts)
 
