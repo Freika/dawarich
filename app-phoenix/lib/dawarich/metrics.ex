@@ -26,7 +26,7 @@ defmodule Dawarich.Metrics do
   def scrape, do: TelemetryMetricsPrometheus.Core.scrape(:dawarich_prometheus)
 
   def definitions do
-    Dawarich.Metrics.Jobs.definitions() ++ Dawarich.Metrics.Web.definitions() ++ [
+    Dawarich.Metrics.Archive.definitions() ++ Dawarich.Metrics.Jobs.definitions() ++ Dawarich.Metrics.Web.definitions() ++ [
       last_value("dawarich_runtime_memory_bytes",
         event_name: [:dawarich, :runtime],
         measurement: :memory,
