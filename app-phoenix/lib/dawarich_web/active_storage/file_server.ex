@@ -49,6 +49,70 @@ defmodule DawarichWeb.ActiveStorage.FileServer do
     end
   end
 
+  def source(%{service: "local", root: root}, key, _opts) do
+    with {:ok, path} <- Dawarich.Storage.safe_disk_path(root, key),
+         {:ok, %{type: :regular}} <- File.stat(path) do
+      {:ok, {:local, path}}
+    else
+      _ -> {:error, :missing}
+    end
+  end
+
+  def source(%{service: "s3"} = config, key, _opts) do
+    case s3(config, :head, key, %{}) do
+      {:ok, %{headers: headers}} ->
+        size = Enum.find_value(headers, fn {k,v} -> String.downcase(k) == "content-length" && String.to_integer(v) end)
+        {:ok, {:s3, config, key, size}}
+      {:error, {:http_error, 404, _}} -> {:error, :missing}
+      _ -> {:error, :provider}
+    end
+  end
+
+  def read_range!(%{service: "local", root: root}, key, first, last, _opts) do
+    {:ok, path} = Dawarich.Storage.safe_disk_path(root, key)
+    File.open!(path, [:read, :binary], fn io ->
+      {:ok, bytes} = :file.pread(io, first, last-first+1)
+      bytes
+    end)
+  end
+
+  def read_range!(%{service: "s3"} = config, key, first, last, _opts) do
+    {:ok, %{body: body}} = s3(config, :get, key, %{"range" => "bytes=#{first}-#{last}"})
+    body
+  end
+
+  def stream(%{method: "HEAD"} = conn, _source, _opts), do: send_resp(conn, 200, "")
+  def stream(conn, {:local, path}, opts) do
+    conn = send_chunked(conn, 200)
+    Enum.reduce_while(File.stream!(path, 65_536), conn, fn bytes, conn -> send_chunk(conn, bytes, opts) end)
+  end
+
+  def stream(conn, {:s3, config, key, size}, opts) do
+    conn = send_chunked(conn, 200)
+    if size == 0 do
+      conn
+    else
+      Enum.reduce_while(0..div(size-1, 65_536), conn, fn part, conn ->
+        bytes = read_range!(config, key, part*65_536, min((part+1)*65_536-1,size-1), opts)
+        send_chunk(conn, bytes, opts)
+      end)
+    end
+  end
+
+  defp send_chunk(conn, bytes, opts) do
+    case chunk(conn, bytes) do
+      {:ok, conn} ->
+        if callback = opts[:after_chunk], do: callback.(conn)
+        {:cont, conn}
+      {:error, _} -> {:halt, halt(conn)}
+    end
+  end
+
+  defp s3(config, method, key, headers) do
+    %ExAws.Operation.S3{http_method: method, bucket: config.bucket, path: key, headers: headers, parser: & &1}
+    |> ExAws.request(config.ex_aws)
+  end
+
   defp specs([], _size, acc), do: {:ok, Enum.reverse(acc)}
 
   defp specs([spec | rest], size, acc) do

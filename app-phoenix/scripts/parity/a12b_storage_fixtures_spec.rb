@@ -307,6 +307,7 @@ custom_metadata: {} }
     expect(fresh.service.exist?(fresh.key)).to be(true)
     expect(mismatch.service.exist?(mismatch.key)).to be(false)
     expect(local_fresh.service.download(local_fresh.key).b).to eq(payload)
+    capture_closure(stored)
     uploads = direct_upload_requests
     rows = (stored + [local]).map { |b| row(b, true) } +
            [fresh, mismatch, missing, local_fresh].map { |b| row(b, false) }
@@ -314,7 +315,7 @@ custom_metadata: {} }
                         'upload_requests' => uploads['requests'])
     if fx.write?
       previous = fx::DIR.join('storage.json').exist? ? fx.read('storage.json') : {}
-      fx.write('storage.json', previous.merge(data))
+      fx.write('storage.json', previous.merge(data.except(*unrecorded)))
       approximations_path.write("#{Oj.dump(approximations, mode: :strict, indent: 2)}\n")
     else
       recorded = fx.read('storage.json')
@@ -326,6 +327,50 @@ custom_metadata: {} }
     remove_local([local, local_fresh])
   end
 
+  def capture_closure(blobs)
+    previous_show = Rails.application.env_config['action_dispatch.show_exceptions']
+    Rails.application.env_config['action_dispatch.show_exceptions'] = :all
+    helpers = Rails.application.routes.url_helpers
+    first = blobs.first
+    proxy = helpers.rails_service_blob_proxy_path(first.signed_id, first.filename)
+    requests = [record('proxy_plain', :get, proxy), record('proxy_head', :head, proxy),
+                record('proxy_range', :get, proxy, headers: { 'Range' => 'bytes=0-9' }),
+                record('proxy_suffix', :get, proxy, headers: { 'Range' => 'bytes=-5' }),
+                record('proxy_unsatisfiable', :get, proxy, headers: { 'Range' => 'bytes=999999-' }),
+                record('proxy_invalid', :get, proxy, headers: { 'Range' => 'bytes=9-0' }),
+                record('proxy_disposition', :get, "#{proxy}?disposition=inline"),
+                record('proxy_conditional', :get, proxy,
+                       headers: { 'If-None-Match' => response.headers['etag'].to_s }),
+                record('proxy_ims', :get, proxy, headers: { 'If-Modified-Since' => Time.utc(2011).httpdate }),
+                record('proxy_bad_signature', :get, proxy.sub(first.signed_id, "#{first.signed_id}x"))]
+    allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token).and_return("a12b#{'v' * 24}")
+    image = blobs[2]
+    transforms = { resize_to_limit: [1, 1], rotate: 90, format: :png, saver: { quality: 80 } }
+    variation = ActiveStorage::Variation.new(transforms)
+    begin
+      repr = helpers.rails_blob_representation_proxy_path(image.signed_id, variation.key, image.filename)
+      requests += [record('representation_proxy', :get, repr),
+                   record('representation_redirect', :get,
+                          helpers.rails_blob_representation_path(image.signed_id, variation.key, image.filename)),
+                   record('representation_legacy', :get, repr.sub('/proxy/', '/')),
+                   record('representation_bad_signature', :get, repr.sub(variation.key, "#{variation.key}x")),
+                   record('representation_wrong_purpose', :get,
+                          repr.sub(variation.key, ActiveStorage.verifier.generate(transforms, purpose: :blob_id))),
+                   record('representation_non_image', :get, repr.sub(image.signed_id, first.signed_id))]
+      representation = image.representation(variation.key).processed
+      data = { 'now' => fx::NOW.iso8601(3), 'requests' => requests,
+               'variation' => { 'key' => variation.key, 'transformations' => transforms,
+                                'digest' => variation.digest, 'marshal' => Base64.strict_encode64(Marshal.dump(transforms)) },
+               'representation' => { 'key' => representation.key, 'filename' => representation.filename.to_s,
+                                     'bytes' => Base64.strict_encode64(representation.download) },
+               'track_variants' => ActiveStorage.track_variants, 'processor' => ActiveStorage.variant_processor }
+      path = Rails.root.join('app-phoenix/test/fixtures/a12f2i/closure.json')
+      FixtureRecording.verify(path, "#{Oj.dump(fx.normalized(data), mode: :strict, indent: 2)}\n")
+    end
+  ensure
+    Rails.application.env_config['action_dispatch.show_exceptions'] = previous_show
+  end
+
   def remove_local(blobs)
     blobs.compact.each { |blob| blob.service.delete(blob.key) }
     %w[storage/a1/2b storage/a1].map { |dir| Rails.root.join(dir) }.each do |dir|
@@ -335,6 +380,7 @@ custom_metadata: {} }
 
   def phoenix_storage_code
     <<~ELIXIR
+      Application.put_env(:dawarich, :rails_secret, "#{fx::SECRET}")
       alias DawarichWeb.ActiveStorageUrls
       fx = "test/fixtures/a12b/storage.json" |> File.read!() |> Jason.decode!()
       now = ~U[2026-10-02 12:00:00.000000Z]
@@ -355,6 +401,9 @@ custom_metadata: {} }
       out = fx.phoenix(phoenix_storage_code)
       out['downloads'].each do |download|
         blob = blobs.find { |b| b.id == download['blob_id'] }
+        token = URI.decode_www_form_component(URI(download['url']).path.split('/')[4])
+        expect(ActiveStorage.verifier.verified(token, purpose: :blob_key)).to be_present
+        expect(blob.service.exist?(blob.key)).to be(true)
         get URI(download['url']).path
         expect(response).to have_http_status(:ok)
         expect(response.body.b).to eq(payload)
