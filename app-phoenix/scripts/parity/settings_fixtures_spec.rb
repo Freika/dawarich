@@ -1935,4 +1935,74 @@ skip_family_sync: true)
       capture('insights_legacy_en', legacy, '/insights?year=2024')
     end
   end
+  context 'A12f3b browser writes' do
+    let(:actor) { create(:user, settings: { 'timezone' => 'UTC', 'keep' => 7, 'digest_emails_enabled' => true }) }
+
+    before do
+      sign_in actor
+      get '/settings/general'
+      @browser_token = Nokogiri::HTML5(response.body).at_css('meta[name=csrf-token]')['content']
+    end
+
+    it 'characterizes general booleans aliases and rebucketing effects' do
+      stat = create(:stat, user: actor, year: 2025, month: 1, calculation_version: 3)
+      expect do
+        patch '/settings/general', params: { authenticity_token: @browser_token, timezone: 'Berlin', locale: 'de',
+          monthly_digest_emails_enabled: '', yearly_digest_emails_enabled: 'off',
+          news_emails_enabled: 'yes', show_supporter_badge: '0', ignored: { nested: 'x' } }
+      end.to have_enqueued_job(Stats::CalculatingJob).with(actor.id, 2025, 1, notify_on_failure: false)
+      expect(response.status).to eq(302)
+      expect(response.location).to end_with('/settings/general')
+      expect(actor.reload.settings).to include('timezone' => 'Berlin', 'locale' => 'de', 'keep' => 7,
+                                               'monthly_digest_emails_enabled' => nil,
+                                               'yearly_digest_emails_enabled' => false,
+                                               'news_emails_enabled' => true, 'show_supporter_badge' => false)
+      expect(actor.settings).not_to have_key('digest_emails_enabled')
+      expect(stat.reload.calculation_version).to eq(0)
+      expect(stat.repair_deferred_at).to be_present
+    end
+
+    it 'characterizes general SQL failure without persisted settings or jobs' do
+      before = actor.reload.settings
+      jobs = enqueued_jobs.size
+      allow_any_instance_of(User).to receive(:save).and_raise(ActiveRecord::StatementInvalid, 'synthetic save failure')
+      expect do
+        patch '/settings/general', params: { authenticity_token: @browser_token, timezone: 'Berlin' }
+      end.to raise_error(ActiveRecord::StatementInvalid)
+      expect(actor.reload.settings).to eq(before)
+      expect(enqueued_jobs.size).to eq(jobs)
+    end
+
+    it 'characterizes supporter rejection and Cloud test email refusal' do
+      allow_any_instance_of(User).to receive(:supporter?).and_return(false)
+      post '/settings/general/verify_supporter',
+           params: { authenticity_token: @browser_token, supporter_email: ' SYNTHETIC@EXAMPLE.INVALID ' }
+      expect(response.status).to eq(302)
+      expect(actor.reload.settings['supporter_email']).to eq('synthetic@example.invalid')
+      expect(flash[:alert]).to be_present
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      expect do
+        post '/settings/general/test_email', params: { authenticity_token: @browser_token }
+      end.not_to have_enqueued_job
+      expect(response.status).to eq(303)
+    end
+
+    it 'characterizes theme consent and current key actor scope' do
+      other = create(:user)
+      previous = other.api_key
+      get '/settings/theme', params: { theme: 'light' }
+      expect(response.status).to eq(302)
+      expect(actor.reload.theme).to eq('light')
+      patch '/settings/changelog_consent', params: { authenticity_token: @browser_token, decision: 'bad' }
+      expect(response.status).to eq(422)
+      patch '/settings/changelog_consent', params: { authenticity_token: @browser_token, decision: 'granted' }
+      expect(response.status).to eq(302)
+      expect(actor.reload.changelog_consent).to eq('granted')
+      actor.update_columns(provider: 'openid_connect', uid: 'synthetic-settings-provider', otp_required_for_login: true)
+      post '/settings/generate_api_key', params: { authenticity_token: @browser_token, user_id: other.id }
+      expect(response.status).to eq(302)
+      expect(actor.reload.api_key.size).to eq(64)
+      expect(other.reload.api_key).to eq(previous)
+    end
+  end
 end
