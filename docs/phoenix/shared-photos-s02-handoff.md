@@ -14,8 +14,12 @@ while responses retain the original coordinate values.
 Trip thumbnail authorization includes every visible photo in the trip window;
 track and timeline authorization includes only the first 100 visible photos.
 Live shares have no photo window and return an empty list. Resource lookups
-remain scoped to the owner. A privacy-zone fingerprint change forces a new ACL
-lookup, preventing the previous cached grant from bypassing an expanded zone.
+remain scoped to the owner. Every thumbnail request rereads the effective owner-scoped window and privacy
+zones. The v3 ACL key binds owner, resource type/ID, effective window and sorted
+zones. List and cold-thumbnail grants use the exact snapshot that selected
+their IDs, preventing a concurrent expansion from poisoning a newer key.
+Trip/track boundary changes and timeline date/timezone changes select a new
+grant key, so warm IDs cannot bypass the current scope.
 Disabled photos, expired/revoked links, phrase refusal, private/unlocated assets,
 foreign resources and out-of-window assets cannot trigger a thumbnail fetch.
 Provider failures return an empty photo list or thumbnail 404. Each provider
@@ -45,3 +49,21 @@ pin or other shared-file change is required.
 Mandatory privacy/security review follows this task. Full acceptance evidence
 is recorded in the controller's S02 implementation report. This handoff does
 not authorize a source cut, merge or deployment.
+
+## Review privacy corrections
+
+Review findings F1 and F2 are covered by named regressions S02F1 and S02F2.
+S02F1 expands a zone through one-shot Ecto query telemetry between reading
+its snapshot and writing the grant, through both list and cold-thumbnail
+paths. Subsequent GET/HEAD must return 404 without a thumbnail fetch.
+S02F2 warms a trip grant, moves both boundaries one day forward without
+refreshing the list, and requires the same denial. Both were RED at 200/200
+before the fix. M-S02F1 rereads zones when storing the key; M-S02F2 omits the
+window from the key. Each mutation must fail its named regression and pass
+again after restoration.
+
+Rails request-local zone memoization prevents F1's poisoned-new-key race.
+Rails retains F2's warm-window defect, reproduced through request GET/HEAD
+and recorded as DRB-023 in `deferred-rails-bugs.md`. The review-fix brief
+explicitly authorizes Phoenix to prioritize privacy over that source parity.
+The decision is recorded in `shared-photo-grants-adr.md`.

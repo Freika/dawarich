@@ -2,26 +2,24 @@ defmodule Dawarich.SharedApi.Closure do
   @moduledoc false
   alias Dawarich.Repo
   alias Dawarich.Photos.ProviderCache
-  alias Dawarich.ReleaseMigrations.Effects.Support.RubyFloat
+  alias Dawarich.SharedApi.Photos
 
-  def photo_ids_key(link) do
-    zones = zones(link.user_id) |> Enum.sort_by(fn zone -> {zone.lat, zone.lon, zone.radius} end)
+  def photo_ids_key(link), do: photo_ids_key(link, Photos.grant_context(link))
 
-    text =
-      "[" <>
-        Enum.map_join(zones, ", ", fn z ->
-          "{lon: #{RubyFloat.to_s(z.lon)}, lat: #{RubyFloat.to_s(z.lat)}, radius: #{z.radius}}"
-        end) <> "]"
-
-    digest = :crypto.hash(:md5, text) |> Base.encode16(case: :lower)
-    "shared_link/#{link.id}/photo_ids/v2/#{digest}"
+  def photo_ids_key(link, context) do
+    zones = Enum.sort_by(context.zones, fn zone -> {zone.lat, zone.lon, zone.radius} end)
+    scope = {link.user_id, link.type, link.resource_id, context.range, zones}
+    digest = :crypto.hash(:sha256, :erlang.term_to_binary(scope)) |> Base.encode16(case: :lower)
+    "shared_link/#{link.id}/photo_ids/v3/#{digest}"
   end
 
   def allowed_photo?(link, source, id) do
+    context = Photos.grant_context(link)
+
     ids =
-      case ProviderCache.get(photo_ids_key(link)) do
+      case ProviderCache.get(photo_ids_key(link, context)) do
         {:ok, ids} when is_map(ids) -> ids
-        _ -> Dawarich.SharedApi.Photos.allowed_ids(link)
+        _ -> Photos.allowed_ids(link, context)
       end
 
     Map.has_key?(ids, "#{source}:#{id}")

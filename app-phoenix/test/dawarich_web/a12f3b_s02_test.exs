@@ -397,6 +397,84 @@ defmodule DawarichWeb.A12f3bS02Test do
     assert effects() == c.effects
   end
 
+  @tag a12f3b_case: "S02F1"
+  test "zone expansion between filtering and fingerprinting cannot poison thumbnail grants", c do
+    for entry <- [:list, :cold_thumbnail] do
+      Repo.query!("UPDATE tags SET privacy_radius_meters=100 WHERE user_id=$1", [c.owner])
+      configure(c, [asset("public-0", "52.5", "13.4")])
+      link = link!(c.owner, 0, c.trip)
+      parent = self()
+      handler = {__MODULE__, :zone_expansion, entry}
+
+      :telemetry.attach(
+        handler,
+        [:dawarich, :repo, :query],
+        fn _, _, meta, owner ->
+          if String.starts_with?(meta.query, "SELECT p.longitude::float8,p.latitude::float8") and
+               Process.get(handler) != true do
+            Process.put(handler, true)
+            Repo.query!("UPDATE tags SET privacy_radius_meters=1000000 WHERE user_id=$1", [owner])
+            send(parent, {:zone_expanded, owner})
+          end
+        end,
+        c.owner
+      )
+
+      on_exit(fn -> :telemetry.detach(handler) end)
+      action = if entry == :list, do: "photos", else: "photos/public-0/thumbnail?source=immich"
+      assert {200, _, _} = response(c, link, action)
+      assert_receive {:zone_expanded, owner}
+      assert owner == c.owner
+      :telemetry.detach(handler)
+
+      refute Dawarich.SharedApi.Privacy.visible_photo?(
+               %{"latitude" => "52.5", "longitude" => "13.4"},
+               Closure.zones(c.owner)
+             )
+
+      before_denial = requests(c)
+      get = response(c, link, "photos/public-0/thumbnail?source=immich")
+      head = response(c, link, "photos/public-0/thumbnail?source=immich", [], "HEAD")
+      assert {elem(get, 0), elem(head, 0)} == {404, 404}
+      assert elem(get, 2) == ""
+      assert elem(head, 2) == ""
+      assert Enum.drop(requests(c), length(before_denial)) == []
+    end
+
+    assert commands() == []
+    no_upstream!(c.upstream)
+    assert effects() == c.effects
+  end
+
+  @tag a12f3b_case: "S02F2"
+  test "warm thumbnail grants expire when the shared trip window excludes the photo", c do
+    configure(c, [asset("public-0")])
+    link = link!(c.owner, 0, c.trip)
+    assert {200, _, body} = response(c, link, "photos")
+    assert [%{"id" => "public-0"}] = Jason.decode!(body)
+    assert {200, _, @image} = response(c, link, "photos/public-0/thumbnail?source=immich")
+
+    Repo.query!(
+      "UPDATE trips SET started_at=started_at + interval '1 day', ended_at=ended_at + interval '1 day' WHERE id=$1",
+      [c.trip]
+    )
+
+    before_denial = requests(c)
+    get = response(c, link, "photos/public-0/thumbnail?source=immich")
+    head = response(c, link, "photos/public-0/thumbnail?source=immich", [], "HEAD")
+    assert {elem(get, 0), elem(head, 0)} == {404, 404}
+    assert elem(get, 2) == ""
+    assert elem(head, 2) == ""
+
+    assert Enum.all?(Enum.drop(requests(c), length(before_denial)), fn request ->
+             request.path == "/api/search/metadata"
+           end)
+
+    assert commands() == []
+    no_upstream!(c.upstream)
+    assert effects() == c.effects
+  end
+
   defp resource!(table, owner) do
     {first, last, extra, value} =
       if table == "trips",
@@ -442,8 +520,7 @@ defmodule DawarichWeb.A12f3bS02Test do
       [id, owner, type, resource, settings]
     )
 
-    key = Closure.photo_ids_key(%{id: id, user_id: owner})
-    on_exit(fn -> Dawarich.Redis.cache_command(["UNLINK", key]) end)
+    on_exit(fn -> clear_grants(id) end)
     id
   end
 
@@ -456,11 +533,18 @@ defmodule DawarichWeb.A12f3bS02Test do
     ProviderCache.invalidate(c.owner)
 
     for [id] <- Repo.query!("SELECT id::text FROM shared_links WHERE user_id=$1", [c.owner]).rows do
-      Dawarich.Redis.cache_command(["UNLINK", Closure.photo_ids_key(%{id: id, user_id: c.owner})])
+      clear_grants(id)
     end
 
     parent = self()
     Agent.update(c.state, &%{&1 | immich: photos, failure: failure, parent: parent})
+  end
+
+  defp clear_grants(id) do
+    case Dawarich.Redis.cache_command(["KEYS", "shared_link/#{id}/photo_ids/*"]) do
+      {:ok, [_ | _] = keys} -> Dawarich.Redis.cache_command(["UNLINK" | keys])
+      _ -> :ok
+    end
   end
 
   defp asset(id, lat \\ 52.5, lon \\ 13.4),
