@@ -3,6 +3,7 @@ defmodule Dawarich.MapApi.Closure do
   alias Dawarich.{MapApi, RailsTime, Repo, RubyInteger}
   alias Dawarich.AccountApi.Closure, as: Account
   alias Dawarich.MapApi.{Params, PointRecord, TrackRecord}
+  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   def read(action, user, params, now) do
     user = %{user | timezone: Account.zone(user.timezone)}
@@ -11,7 +12,7 @@ defmodule Dawarich.MapApi.Closure do
       cutoff = window(user, now)
 
       case action do
-        :points -> MapApi.read(action, user, points_params(params, cutoff, now), now)
+        :points -> points(user, params, cutoff, now)
         :tracks when cutoff != nil -> tracks(user, params, cutoff)
         :track_points when cutoff != nil -> track_points(user, params, cutoff)
         :track when cutoff != nil -> track(user, params, cutoff, now)
@@ -35,6 +36,44 @@ defmodule Dawarich.MapApi.Closure do
 
       epoch
     end
+  end
+
+  defp points(user, params, cutoff, now) do
+    case MapApi.read(:points, user, points_params(params, cutoff, now), now) do
+      {:points, term, headers, meta} when cutoff != nil ->
+        end_value = if Ruby.present?(params["end_at"]), do: params["end_at"], else: {:now, now}
+        {:ok, {from, to}} = Params.safe_range(params["start_at"], end_value, now)
+        count = points_in_range(user.id, params, from, to)
+
+        headers =
+          headers ++
+            [
+              {"x-total-points-in-range", to_string(count)},
+              {"x-scoped-points", to_string(meta.count)}
+            ]
+
+        {:points, term, headers, meta}
+
+      result ->
+        result
+    end
+  end
+
+  defp points_in_range(owner, params, from, to) do
+    {where, args} =
+      if from,
+        do: {"user_id=$1 AND timestamp BETWEEN $2 AND $3", [owner, from, to]},
+        else: {"user_id=$1 AND timestamp <= $2", [owner, to]}
+
+    {where, args} =
+      if Ruby.present?(params["import_id"]),
+        do:
+          {where <> " AND import_id=$#{length(args) + 1}",
+           args ++ [RubyInteger.to_i(params["import_id"])]},
+        else: {where, args}
+
+    [[count]] = Repo.query!("SELECT count(*) FROM points WHERE " <> where, args).rows
+    count
   end
 
   defp points_params(params, nil, _now), do: params

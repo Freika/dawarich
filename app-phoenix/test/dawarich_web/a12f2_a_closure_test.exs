@@ -636,6 +636,111 @@ defmodule DawarichWeb.A12f2AClosureTest do
     assert get_resp_header(fresh, "x-total-count") == ["1"]
   end
 
+  @tag :a12f2_a_fix_2
+  test "Cloud lite point responses retain source window count headers", %{user: user, now: now} do
+    System.put_env("SELF_HOSTED", "false")
+    Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [user.id])
+
+    for at <- [
+          DateTime.to_unix(~U[2020-01-01 00:00:00Z]),
+          DateTime.to_unix(DateTime.add(now, -3600))
+        ] do
+      Repo.query!(
+        "INSERT INTO points(user_id,timestamp,lonlat,created_at,updated_at) VALUES($1,$2,ST_SetSRID(ST_MakePoint(13,52),4326),NOW(),NOW())",
+        [user.id, at]
+      )
+    end
+
+    params = %{"start_at" => "2020-01-01", "end_at" => "2026-10-06T12:00:00Z", "slim" => "true"}
+    lite = %{user | plan: 0}
+
+    result =
+      invoke(
+        DawarichWeb.Api.MapController,
+        :points,
+        lite,
+        params,
+        now
+      )
+
+    assert result.status == 200
+    assert length(Jason.decode!(result.resp_body)) == 1
+    assert get_resp_header(result, "x-total-points-in-range") == ["2"]
+    assert get_resp_header(result, "x-scoped-points") == ["1"]
+
+    cached =
+      invoke(DawarichWeb.Api.MapController, :points, lite, params, now, [
+        {"if-none-match", hd(get_resp_header(result, "etag"))}
+      ])
+
+    assert cached.status == 304
+    assert get_resp_header(cached, "x-total-points-in-range") == []
+    assert get_resp_header(cached, "x-scoped-points") == []
+
+    [[import_id]] =
+      Repo.query!(
+        "INSERT INTO imports(user_id,name,created_at,updated_at) VALUES($1,'Synthetic',NOW(),NOW()) RETURNING id",
+        [user.id]
+      ).rows
+
+    Repo.query!("UPDATE points SET import_id=$2 WHERE user_id=$1", [user.id, import_id])
+    fresh = DateTime.to_unix(DateTime.add(now, -3600))
+
+    for {owner, at, lon, anomaly, import} <- [
+          {user.id, fresh + 1, 13, true, import_id},
+          {user.id, fresh, 15, false, import_id},
+          {user.id, fresh + 2, 13, false, nil},
+          {user.id, DateTime.to_unix(~U[2010-01-01 00:00:00Z]), 13, false, import_id},
+          {user.id, DateTime.to_unix(DateTime.add(now, 3600)), 13, false, import_id},
+          {user().id, fresh, 13, false, import_id}
+        ] do
+      Repo.query!(
+        "INSERT INTO points(user_id,timestamp,lonlat,anomaly,import_id,created_at,updated_at) VALUES($1,$2,ST_SetSRID(ST_MakePoint($3,52),4326),$4,$5,NOW(),NOW())",
+        [owner, at, lon, anomaly, import]
+      )
+    end
+
+    filtered_params =
+      Map.merge(params, %{
+        "import_id" => to_string(import_id),
+        "min_longitude" => "12",
+        "max_longitude" => "14",
+        "min_latitude" => "51",
+        "max_latitude" => "53"
+      })
+
+    filtered = invoke(DawarichWeb.Api.MapController, :points, lite, filtered_params, now)
+    assert filtered.status == 200
+    assert length(Jason.decode!(filtered.resp_body)) == 1
+    assert get_resp_header(filtered, "x-total-points-in-range") == ["4"]
+    assert get_resp_header(filtered, "x-scoped-points") == ["1"]
+
+    unbounded =
+      invoke(
+        DawarichWeb.Api.MapController,
+        :points,
+        lite,
+        Map.drop(filtered_params, ["start_at", "end_at"]),
+        now
+      )
+
+    assert unbounded.status == 200
+    assert get_resp_header(unbounded, "x-total-points-in-range") == ["5"]
+    assert get_resp_header(unbounded, "x-scoped-points") == ["1"]
+
+    family(user, now)
+    inherited = invoke(DawarichWeb.Api.MapController, :points, lite, params, now)
+    assert inherited.status == 200
+    assert get_resp_header(inherited, "x-total-points-in-range") == []
+    assert get_resp_header(inherited, "x-scoped-points") == []
+
+    System.put_env("SELF_HOSTED", "true")
+    self_hosted = invoke(DawarichWeb.Api.MapController, :points, lite, params, now)
+    assert self_hosted.status == 200
+    assert get_resp_header(self_hosted, "x-total-points-in-range") == []
+    assert get_resp_header(self_hosted, "x-scoped-points") == []
+  end
+
   defp source_body(section, name) do
     fixture = "test/fixtures/a12f2a/closure.json" |> File.read!() |> Jason.decode!()
     Enum.find(fixture[section], &(&1["name"] == name))["response"]["body"] |> Jason.decode!()
