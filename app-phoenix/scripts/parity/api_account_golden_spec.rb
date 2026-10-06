@@ -26,6 +26,39 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
   include ActiveSupport::Testing::TimeHelpers
   include PlacesGoldenSupport
 
+  context 'A12f2 H mobile closure' do
+    it 'records standalone mobile login registration and provider refusals' do
+      prior_attack = Rack::Attack.enabled
+      Rack::Attack.enabled = false
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+      allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
+      rows = []
+      cases = [
+        ['login-invalid', '/api/v1/auth/login', { email: 'missing-h@example.invalid', password: 'wrong' }],
+        ['otp-invalid', '/api/v1/auth/otp_challenge', { challenge_token: 'invalid', otp_code: '012345' }],
+        ['registration-invalid', '/api/v1/auth/register',
+         { email: 'invalid', password: '', password_confirmation: '' }],
+        ['apple-blank', '/api/v1/auth/apple', { id_token: '' }],
+        ['google-blank', '/api/v1/auth/google', { id_token: '' }]
+      ]
+      cases.each do |name, path, params|
+        post path, params: params, as: :json, headers: { 'X-Dawarich-Client' => 'ios' }
+        rows << { 'name' => name, 'status' => response.status, 'body' => JSON.parse(response.body) }
+      end
+      path = Rails.root.join('app-phoenix/test/fixtures/auth/a12f2h/closure.json')
+      encoded = "#{JSON.pretty_generate(rows)}\n"
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        FileUtils.mkdir_p(path.dirname)
+        File.write(path, encoded)
+      else
+        expect(path.read).to eq(encoded)
+      end
+    ensure
+      Rack::Attack.enabled = prior_attack
+    end
+  end
+
   context 'A11f API auth' do
     before(:context) do
       @api_auth_transactional_tests = self.class.use_transactional_tests

@@ -77,7 +77,14 @@ defmodule DawarichWeb.Api.SharedController do
     |> assign(:api_if_none_match, conn |> get_req_header("if-none-match") |> Enum.join(", "))
   end
 
-  defp supported?(conn) do
+  defp supported?(conn),
+    do:
+      if(Dawarich.Standalone.enabled?(),
+        do: conn.assigns.api_params["format"] in [nil, "json"],
+        else: coexistence_supported?(conn)
+      )
+
+  defp coexistence_supported?(conn) do
     client =
       List.first(get_req_header(conn, "x-dawarich-client")) || conn.assigns.api_params["client"]
 
@@ -113,9 +120,24 @@ defmodule DawarichWeb.Api.SharedController do
       )
 
   defp dispatch(conn, action, link) when action in [:photos, :thumbnail],
-    do: result(conn, Dawarich.SharedApi.Photos.response(link, action), [])
+    do:
+      result(
+        conn,
+        Dawarich.SharedApi.Photos.response(
+          link,
+          action,
+          Map.merge(conn.assigns.api_params, conn.path_params)
+        ),
+        if(action == :photos and link.settings["show_photos"] == true,
+          do: [cache_control: photo_cache(link)],
+          else: []
+        )
+      )
 
   defp dispatch(conn, _action, _link), do: Body.replay(conn, "shared API action pending")
+
+  defp result(conn, {:image, body}, opts),
+    do: Respond.data(conn, body, "image/jpeg", private_opts(conn, opts))
 
   defp result(conn, {:ok, term}, opts),
     do: Respond.json(conn, 200, term, private_opts(conn, opts))
@@ -128,6 +150,13 @@ defmodule DawarichWeb.Api.SharedController do
     do: Keyword.put(opts, :cache_control, "private, no-store")
 
   defp private_opts(_, opts), do: opts
+
+  defp photo_cache(link),
+    do:
+      if(Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(link.magic_phrase),
+        do: "max-age=60, public",
+        else: "max-age=0, private, must-revalidate"
+      )
 
   defp cache(%{magic_phrase: phrase}) do
     if Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(phrase),

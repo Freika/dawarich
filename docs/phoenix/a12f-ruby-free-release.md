@@ -164,8 +164,8 @@ when `POSTHOG_ENABLED=true`.
 The source characterization batch has 39 examples and zero failures on the
 allocated private Rails database. Swagger is copied aside and restored around
 RSpec. Native task tests must prove routing, auth and terminal retirement
-through Endpoint without a Rails request. Full ExUnit seeds 404 and 202 are
-the branch merge gate. Real Swagger rendering, release asset packaging and
+through Endpoint without a Rails request. Controller ruling 14 sets full ExUnit seed 404 as
+the branch gate; seed 202 belongs to the integration head after each merge batch. Real Swagger rendering, release asset packaging and
 Docker/Cloud smoke remain A12f-4/G44 release evidence; HTML assertions alone
 do not establish image acceptance.
 
@@ -503,3 +503,294 @@ D/F/G/H seams await their accepted packages. Browser/operators/workers and rare
 transport parity remain the named release prerequisites; this route activation
 does not establish Ruby-free image acceptance. The controller owns standalone
 hand-back terminal policy and integration seed202. See `a12f2-j.md` for evidence.
+
+
+## A12f-3c same-database rollback to Rails 1.15.3
+
+Dated amendment: 2026-10-06, controller rulings 4 and 7. This procedure
+supersedes native-to-Sidekiq transfer and snapshot-restore rollback instructions
+at this additive boundary. It is manual: no cut-over or rollback script is added.
+The controller retains stock Rails **1.15.3**, its actual launch argv and access
+to the same database, storage services, object keys and signing/encryption inputs.
+Release dates and image-retention windows are Eugene's release-time values
+(ruling 11), not implementation blockers.
+
+1. Fence incoming traffic, native/source new roots, cron, boot callbacks,
+   subscriptions, manual commands and reverse producers. Keep Phoenix workers,
+   relay and accepted native successors alive to finish already accepted work.
+   Resolve any remaining native-to-Rails dependency before proceeding.
+2. Enumerate **every** `Dawarich.Jobs.Registry.entries()` key and every persisted
+   `phoenix.job_owners` row through the retained control plane. Inspect missing,
+   unexpected and inconsistent rows; environment opt-ins are not the inventory.
+   For each actual expected key invoke existing `dawarich:jobs:release[KEY]`.
+   Verify `owner=sidekiq,pinned=true`, joint-key equality and no reacquisition
+   after claimer restart. A held lock stops the operation without a partial
+   joint flip; wait for its owner to finish. Never force it. Stock 1.15.3 lacks
+   these port tools: use the retained coexistence reference, then stop it before
+   stock Rails resumes. Do not invoke `rehome`.
+3. Drain pre-fence outbox, Oban, recorded release operations, accepted workers
+   and durable successors natively. Preserve event UUID, operation/run identity,
+   original due time, locale and zone. Future/retry/quarantined/dead native work,
+   unfinished generation chunks, reverse debt or unknown owners block rollback;
+   pinning neither cancels work nor completes skipped effects. Use native
+   `dawarich jobs status` and `dawarich jobs drain-status`, plus retained source
+   status/drain observations. Require binary rollback `OBSERVED_EMPTY` with
+   `certainty=OBSERVED`, every pin and no unresolved native work. A database or
+   Redis read failure, stale registration or unknown payload is BLOCKED, never
+   an empty result. Complete package D/task 13 observer handoff is a prerequisite
+   to interpreting this checkpoint; an older output without certainty cannot
+   satisfy it. Future work waits until due or receives its existing owner remedy;
+   no promotion, deletion, transfer or forced acknowledgement is permitted.
+4. Gracefully stop Phoenix web/jobs/relay/claimers and the retained control-plane
+   helper/Poller. Independently verify process absence and no native writer or
+   lease; re-inspect SQL/reverse/release debt after stop. Start stock Rails 1.15.3
+   on the **same DB/storage**, using retained release argv. Cloud leaves old
+   drain mode only now; if OLD is already stopped, restart its retained image.
+   Self-hosted replacement allows downtime. Restore source boot, cron and enqueue
+   controls once, after native absence, with incoming traffic still fenced.
+5. Verify health/ready, login and cookies, existing API keys, representative
+   Phoenix-era rows and fresh Rails writes, signed attachments and object bytes,
+   every pin, zero native debt/writers, and exactly one observed source schedule
+   slot/effect. Reopen traffic and producers only after these checks. Existing
+   external mail/webhook delivery remains at least once across crashes; the
+   SQL event collision proofs do not establish exactly-once external delivery.
+
+Test/rehearsal commands run on the retained source reference after Ruby detection.
+`KEY` is one inspected actual key, not a new all-keys command. `RDB` and
+`TEST_REDIS_URL` are controller-assigned private selectors; never export
+`DATABASE_NAME`. Use the detected activation (empty here, represented by true):
+
+```zsh
+true && RAILS_ENV=test DATABASE_NAME="$RDB" DATABASE_HOST=127.0.0.1 REDIS_URL="$TEST_REDIS_URL" asdf exec bundle exec rails "dawarich:jobs:release[$KEY]"
+true && RAILS_ENV=test DATABASE_NAME="$RDB" DATABASE_HOST=127.0.0.1 REDIS_URL="$TEST_REDIS_URL" asdf exec bundle exec rails dawarich:jobs:status
+true && RAILS_ENV=test DATABASE_NAME="$RDB" DATABASE_HOST=127.0.0.1 REDIS_URL="$TEST_REDIS_URL" asdf exec bundle exec rails dawarich:jobs:drain_status
+```
+
+Native artifact commands use its existing CLI and assigned DB/Redis environment.
+Actual image/process/resource values belong to a separately authorized release
+assignment. These commands do not authorize a deployment, SSH or traffic change.
+
+### Additive boundary and staged ADR/G48 amendment
+
+Exact dated amendment for the documentation owners of
+[ADR0015](/Users/frey/projects/dawarich/docs/adr/0015-port-every-rails-migration-to-ecto-squashed-per-release.md)
+and [release-tier G48](/Users/frey/projects/dawarich/superpowers/plans/2026-10-04-phoenix-release-tier-runbook.md):
+
+> Amendment (2026-10-06), controller rulings 4 and 7: rollback at the first
+> Phoenix boundary means retaining Phoenix-era writes and starting Rails 1.15.3
+> on the same database/storage after fencing producers, pinning every ownership
+> key to Sidekiq, draining all native work to zero without transfer, and stopping
+> Phoenix and its control-plane writers. No backup restore or inverse migration
+> is part of this procedure. `public.job_outbox`, `phoenix.*` and `oban.*` are
+> additive. Public migration `20260925100000` changes `users.settings` defaults
+> from 1000 to 500 meters and 60 to 30 minutes; `20260925100100` re-enqueues
+> transportation backfills. Both are harmless to Rails 1.15.3, and both remain
+> registered in `release_migrations/unreleased.ex`. A future non-additive
+> schema/data change reopens ruling 4. Backups remain recommended production
+> hygiene. Earlier general downgrade policy and migration decision history are
+> retained; this is a bounded exception, not an arbitrary older-image guarantee.
+
+These external inputs are read-only for package P. The amendment is staged here
+for their owners; their obsolete snapshot/loss prerequisites are **superseded**
+for this boundary, but those external files have not been edited.
+
+### Deferred G48 rehearsal
+
+Use staging/disposable populated Rails 1.15.3 data for **both Cloud and
+self-hosted**. Upgrade the exact candidate, write synthetic Phoenix-era rows
+and signed storage objects, and arrange pending plus executing native work.
+Perform all five rollback steps above; demonstrate native effects and successors
+finish with their original identities/due times, without Sidekiq transfer, and
+stock Rails retains the post-upgrade data and attachments. An unpinned key and
+an unresolved native job must each prevent traffic reopening; remedy them through
+existing owner operations and finish the rehearsal. No mirrored automated gate
+or fabricated mutation is added for documentation.
+
+Record both image heads, isolated topology, ownership/debt/lease/process
+observations, failure remedies and exact row/object/schedule effects in the
+existing release-tier report. Reuse
+[G02/G42/G47/G48/G49](/Users/frey/projects/dawarich/superpowers/plans/2026-10-04-phoenix-release-tier-runbook.md)
+for Cloud topology, final image, upgrade, rollback and old shutdown evidence.
+A feature-branch suite, same-image hand-back or a Rails-loaded test schema does
+not close G48. Image/storage access and release windows remain release-owner
+handoffs; no live rehearsal or acceptance is claimed here.
+
+
+## A12f-3c operator cut-over and old shutdown handoff
+
+Package P inspection head: `c86ff9db1` (2026-10-06), with Rails 1.15.3 sync,
+package A source fences, package C reviewed chain/effect protection and task 2
+native Cloud argv mapping integrated. The earlier census above remains historical
+at its stated head. These are default-off preparations, not a production census
+or release authorization. Explicit Cloud means `SELF_HOSTED=false`.
+
+| Handoff | Current preparation / unresolved release prerequisite |
+| --- | --- |
+| A, tasks 2/5 | `DAWARICH_CLOUD_DRAIN_ONLY=true` admits only retained OLD Sidekiq argv, rejects web/release/manual boot and fresh roots/enqueues; cron loader disabled **and** `cron_poll_interval=0`; cache boot and reverse Poller disabled. Scheduled/retry transfer of previously accepted work remains observable. |
+| Task 2 / A12f-1 | Native opt-in clears inherited Rails argv, maps supported Puma5000/TCP listener args through native helpers, terminates on readiness exits 1/3/4/5, and starts inert `sidekiq_idle` workers. See [native Cloud web handoff](a12f-3c-native-cloud-web.md). Legacy off-mode still coexists. A12f-4 owns the final Ruby-free image/process proof. |
+| B/L1, tasks 3/4 | Not present as a completed Cloud proof here: lifecycle explicit Cloud/native opt-in still refuses. Account/trial/family/Manager/mail callbacks, release provisioning without CREATE, read-only web readiness, shared source/native row/object and registration authority proofs remain required. Loading a test schema is not provisioning evidence. |
+| C, tasks 6/7 | Ordered effect/owner locks and UUIDv5 receipts coordinate source/native trip effects; accepted due time and root identity survive materialized children. Completed roots add no effects; partial roots finish only missing effects. SQL receipts do not promise exactly-once external delivery. |
+| D, tasks 9/13 | Owner report supplies phased source observation and native shutdown/binary rollback contracts. They are **absent at this inspection head**; D review fix `405a321f9` has passed its external final gate (8974 tests, zero failures). Require its controller-integrated candidate and focused revalidation before using the new observer output or accepting rollback. |
+| E, tasks 8/10 | Existing `cloud_smoke.sh` still characterizes coexistence. Two-deployment traffic switch, installed fetch quiet/settle/TERM and post-stop process/debt proof remain owner/release handoffs, not executed by P. |
+| R1/J1/J2/L2/L3 | Retained HTTP envelopes, every source payload/reverse-kind disposition, migration exclusion/recorded-operation and registration-copy proofs remain per-owner acceptance inputs. Historical 125-class/78-kind/24-schedule totals alone are not closure. |
+
+### Accepted work and identity dispositions
+
+The [A12d3 retention map](a12d3-schedules-drain.md#source-job-retention-map)
+remains the per-class inventory; supplement it with actual queued, scheduled,
+retry, dead, busy and fetch observations at release time without logging payloads.
+
+| Work | Required disposition before the affected checkpoint |
+| --- | --- |
+| Supported carried trip root/materialized children | Preserve original parent/run/event token, accepted due time and wrapper locale/zone. Source and native effects share durable per-effect/root receipts under ownership locks; already completed effects do not repeat, partial work finishes missing effects. |
+| Legacy replayable parent with independently random child token; historical children without accepted schedule metadata | Retain/predrain under its owner before flipping. No inferred reconciliation or newly invented identity/due time. C's supported vector does not certify these tails. |
+| Source-owned trip parent needing fresh source children under drain-only | Refuse before pending tally or child publication; retain unresolved accepted wrapper. Route through an already proved native-owner continuation only when its owner/identity contract is valid. No silent acknowledgement. |
+| Parallel/realtime/daily tracks, migration walkers, archive chains, integration schedulers, digest/mail, resumable imports/extraction, family callbacks | Require their domain-specific continuation/effect proof or predrain. A source chain requiring fresh source children or a native-to-Rails callback blocks the affected switch. No generic allowlist or producer exemption is implied. |
+| Retry/scheduled bookkeeping for accepted source work | Preserve original payload and due time; it may drain on OLD, provided the entire chain is isolated and proved safe. Not permission for fresh application enqueues. |
+| Unknown/retired/dead or unreadable work | Preserve it and BLOCK the affected switch/shutdown until concrete owner disposition (ruling 10). Never deserialize arbitrary Ruby or bulk-delete for an empty status. |
+
+### Checkpoint 1: switch traffic to NEW
+
+Require the actual **NEW Phoenix-only** image, retained HTTP/HEAD/auth/API/storage
+closure and L1 lifecycle/callback effects ready. Release owns public/private/Oban
+migration, exclusion, seeds and registration copy; web readiness is observation
+only. NEW/OLD share compatible public rows and `public.job_outbox`, additive
+private ledgers, storage services/keys, mount/object access and signing inputs.
+Verify actual UID/mount permissions and native reads/writes visible to retained
+source jobs; no values or real user traces belong in the evidence.
+
+Fence OLD web, boot/cache, cron loading **and polling**, manual jobs, callbacks,
+framework/ActiveJob/Sidekiq publication and reverse Poller with installed controls.
+Do not clear old cron registrations or pending payloads. Prove every remaining
+accepted chain can settle without fresh source publication or native-to-Rails
+effects, with owner/event collision tests and original identities. Only isolated
+accepted source debt may remain at this checkpoint; unsupported/unknown debt
+blocks its affected transition. Switch all HTTP and callbacks to NEW, remove OLD
+web reachability, and prove NEW has no OLD upstream, Rails child or fallback.
+Record listener argv, process tree, health/ready, representative HTTP envelopes,
+source producer closure and accepted-debt dispositions in the release-tier report.
+
+### Checkpoint 2: stop OLD after complete G49
+
+This is a separate later checkpoint under producer quiescence. Use D's installed
+Sidekiq-limit_fetch observation contract: configured/actual queues, every
+scheduled/retry/dead/busy payload, queue lock busy/probed lists, installed
+monitor registrations/heartbeats, orphan work and changing/unreadable reads.
+Native SQL/reverse/release/generation observations supplement source Redis;
+native `forward` alone cannot authorize OLD shutdown.
+
+1. Before quieting, use source `phase: :pre_quiet`: healthy idle probes/processes
+   may exist, but unresolved payload/effect debt and UNKNOWN block. Require the
+   separate native `shutdown` observation; ordinary forward health is insufficient.
+2. Quiet every independently identified OLD worker using its existing supported
+   mechanism. Keep accepted effects alive until settled. Inspect source
+   `phase: :quiet`: all registered workers must report literal stopping state
+   (`Process#stopping?`, not Ruby truthiness of Redis `quiet`), and fetch/probe
+   reservations must be released. SQL/reverse/release and native debt remain zero.
+   The source CLI's default post-stop phase does not select a pre-TERM phase;
+   the task-10 operator uses the existing observer API with the explicit phase.
+3. Complete pre-TERM checks, gracefully TERM only authorized OLD processes, and
+   independently inspect OS/container absence. Repeat source default
+   `phase: :post_stop` plus native shutdown/debt/lease checks after stop. No source
+   process/fetch registration, reservation, busy work or new payload may remain.
+   Missing info, stale heartbeat, UNKNOWN/read error or newly appearing debt blocks
+   completion. Observers do not quiet workers, signal processes or authorize stop.
+4. Resume only native producers after process/debt absence is proved. Retain the
+   Rails 1.15.3 image and storage access through Eugene's rollback window. If OLD
+   has stopped, the retained image can still resume after the
+   [same-DB rollback steps](#a12f-3c-same-database-rollback-to-rails-1153).
+
+Source/native reads are not an atomic global snapshot. Producer quiescence,
+settled accepted work, stopped consumers and independent post-stop reinspection
+establish the boundary; two transient empty readings do not. D's review fix and
+E's actual quiet/stop smoke are required before this procedure is accepted.
+
+The release report must contain **both** checkpoints, exact candidate/image
+heads, actual smoke and named mutation results, retained-work dispositions,
+shared data/storage checks and observed process/debt absence. Use the existing
+[G02/G42/G47/G48/G49 release-tier runbook](/Users/frey/projects/dawarich/superpowers/plans/2026-10-04-phoenix-release-tier-runbook.md).
+No branch result here switches traffic, removes Rails support or closes the
+rollback window.
+
+
+## A12f-3c package P validation and mutation audit
+
+Validation scope: tasks 11, 12 and 14 on inspection head `c86ff9db1` plus the
+package P documentation commits. No production files, fixtures, wrappers,
+controller scripts, automated gates or new tests were added. Documentation and
+census use the master plan's explicit no-test/no-mutation exception. Each owner
+behavioral test's RED, GREEN, named mutation and restored GREEN remains evidence
+from its isolated owner worktree, not a mutation rerun by P.
+
+| Owner evidence audited | Named mutations / claimed assertion | Result and boundary |
+| --- | --- | --- |
+| A task 5: argv, boot cron/cache/Poller, enqueue refusal, fresh root fence; task 2 idle | M3C-05-ARGV/CRON/ENQUEUE/ROOT; M3C-02-IDLE | Each RED and mutation: one named example/one intended failure; GREEN and restored: one/zero. Mutations expose web startup, positive cron polling, acknowledged application enqueue/fresh root, or real Sidekiq instead of idle. Accepted retry/schedule bookkeeping retained. |
+| Task 2 web/readiness/application plan | M3C-02-WEB/FALLBACK/PLAN | Web and readiness: one named example per phase; native plan: one selected test, seven excluded. Each mutation fails its argv/exit/plan assertion, each restored GREEN passes. `impl-a12f3c-a2.report.md` pins selectors and patches. |
+| A review caller Redis isolation | M-R1-PATH/PROTECTED | RED and mutation each one/one; GREEN/restored one/zero. Open3 interception checks unsafe-target refusal without making unsafe connections; separate real-effect source batches prove portable Redis selection. |
+| C tasks 6/7: ordered locks, carried event, supported native continuation, unsupported source chain | M3C-06-LOCK/ID; M3C-07-FORWARD/CHAIN/CHILD-ID | One selected test per original native phase, eight excluded; mutations fail actual owner contention, event identity, duplicate outbox root, retained refusal or child token. Restored batches pass. Source strict joint/refusal/child-identity counterparts also fail their own assertions. |
+| C review real worker/source completion boundary | Owner/completion/partial/due/terminal mutations | Initial four-test RED has four intended failures; terminal test has its own RED. Each final named mutation has one selected test/one assertion failure; restored batch 25/zero. Actual root lock, no completed-effect replay, partial-effect replay, due time and terminal root contention are exercised. |
+| D task 9 and task 13 historical owner report | M3C-09-FETCH/UNKNOWN/REVERSE/SQL; M3C-PIN/DEBT/DRAIN | Logs show intended missing reservation/UNKNOWN, reverse/table-error, missing pin, accepted native debt and post-pin dispatch failures; restored source/native batches pass at D's historical candidate. **Not integrated at P's base.** D's reviewed `405a321f9` gate passed externally (8974/zero); integration and focused revalidation at the final handoff head remain pending. |
+| D review literal quiet state | M-D01-TRUTHY | Real ProcessSet vectors false/true/absent/unknown: own RED/mutation one example/one intended failure; restored one/zero. Reviewed D gate passed externally; integration remains required. |
+| B tasks 3/4 and E tasks 8/10 | M3C-03-*, M3C-04-*, M3C-08-*, task 10 stop vectors | No completed owner proof at this inspection head. Cloud lifecycle/shared data and actual two-deployment image/quiet/stop results remain **unrun/unaccepted** here. Existing Cloud refusal tests do not substitute. |
+
+Audit sources are the controller reports `impl-a12f3c-a.report.md`,
+`fix-a12f3c-a.report.md`, `impl-a12f3c-a2.report.md`,
+`impl-a12f3c-c.report.md`, `fix-a12f3c-c.report.md`,
+`impl-a12f3c-d.report.md` and `fix-a12f3c-d.report.md`, plus their named logs.
+The audit checks the failed named assertion, not merely a nonzero suite exit.
+Exploratory compiler/bootstrap failures and incidental Rswag dry runs are not
+mutation kills. A/C/task-2 reviewed commits are ancestors of the inspection
+head; D review commit is not. No owner change is imported by P.
+
+Local focused source command: the two Cloud/lifecycle regression files plus
+`spec/services/job_ownership_spec.rb` and `spec/services/job_drain_spec.rb`,
+RSpec seed 101: **75 examples, zero failures**. Swagger was copied aside and
+restored on exit; its incidental 251-example dry run is separate. Legacy off-mode
+coexistence and opt-in terminal readiness still pass. Native focused command:
+`release_cloud_test.exs`, `jobs/ownership_test.exs`, `jobs/drain_status_test.exs`,
+`jobs/joint_ownership_test.exs`, `jobs/drain_test.exs`, seed 404:
+**30 tests, zero failures**. These are the tests present at this base, and do
+not contain D's new task-9/task-13 vectors.
+
+Forced warnings-as-errors compile passes (1626 application files); whole-tree
+`mix format --check-formatted` passes. No Ruby file changes in package P, so
+changed-Ruby lint/spec expansion and L1 fixture regeneration are not applicable.
+Audited A/C/task-2 production files remain below 300 lines (largest current
+file: `app/services/job_commands.rb`, 298). P adds no executable comments or
+allocation/secret values. Only four explicit documentation paths are staged;
+no ignored environment, fixture, Swagger or schema changes.
+
+Branch full seed-404 via the required seedrun.sh: **8973 tests, zero failures**,
+all three partitions exit zero (2981 / 3207 / 2785 tests). There are 11 existing
+exclusions and three existing skips; P adds none. The committed-range gitleaks
+scan passes with no leaks. All started suites completed and private Redis services
+were stopped. Final branch status is clean with no Swagger/schema drift. Exact
+commands and logs are in the controller's package P report. Seed 202 runs only on the
+integration head per ruling 14. Complete task-11 cross-package acceptance remains
+pending D's reviewed integration, B/L1 shared-data/lifecycle and E image/stop owner
+proofs. This document supplies the final operator procedure and exact debt; a green
+P branch alone closes neither the operational checkpoints nor G48/G49.
+
+## A12f-2J integration refresh
+
+The integration refresh preserves package A's Cloud account subscription,
+SafeSettings map/globe restrictions, inherited family entitlements and reviewed
+Cloud Lite visit cutoff. Plan responses use A's terminal standalone closure
+while coexistence retains J's effective-plan and entitlement calculation.
+J's accepted B/C/E/I route activation and pre-effect coexistence pins remain in
+place. Auth, cron, cache, release migration and standalone registry packages
+arrive unchanged from the integration branch; their package acceptance does not
+by itself establish additional route activation or Ruby-free release acceptance.
+
+Both the J activation entries and the Cloud cut-over/same-database rollback
+entries are retained in the release documentation and expected-difference ledger.
+No expected-difference identifier collisions were found.
+
+Merge verification at seed 404: the targeted API/A/J/entitlement/standalone
+batch passes 1,093 tests with zero failures and two existing skips. The full
+three-partition suite passes 9,021 tests with zero failures (2,893 / 3,249 /
+2,879); the existing 11 exclusions and three skips remain. Forced compilation
+with warnings as errors, whole-tree formatting, merge-content secret scanning
+and Swagger/schema drift checks pass. All started suite processes complete and
+private verification services are stopped. Broader release acceptance remains
+with the controller.

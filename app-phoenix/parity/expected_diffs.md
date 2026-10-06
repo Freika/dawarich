@@ -526,3 +526,23 @@ branches remain with their named owners. Intentional route/slice pins retain
 coexistence replay. Accepted API errors and sent/chunked replies never replay;
 the new point after-commit test proves one SQL transition. Mail/token/provider
 boundaries require their accepted owner handlers. See `docs/phoenix/a12f2-j.md`.
+
+
+## A12f-3c Cloud cut-over, drain and same-DB rollback
+
+Dated 2026-10-06; controller rulings 2/4/7/10/11. Earlier coexistence entries
+remain historical contracts. These bounded operational differences do not waive
+unclosed HTTP, Cloud lifecycle, source payload or reverse-kind parity owners.
+
+| ID | Surface | Rails / coexistence | Final Phoenix transition contract | Evidence / owner |
+| --- | --- | --- | --- | --- |
+| ED-A12F3C-1 | Cloud deployment roles | Rails and Phoenix may coexist with route hand-back | NEW is Phoenix-only with no OLD upstream; OLD is isolated drain-only. Traffic switch and OLD shutdown are distinct checkpoints. Preparatory flags remain default off. | A/task 2 argv and producer tests; B/L1/R1 plus A12f-4 image and E/G49 evidence required |
+| ED-A12F3C-2 | OLD publication during drain | Source callbacks, cache boot, cron, manual and application enqueue may publish | Drain-only fences fresh roots/children and reverse Poller; accepted scheduled/retry bookkeeping remains. Unsupported accepted chains remain retained/BLOCKED. | A M3C-05-*; C M3C-07-CHAIN/FORWARD/CHILD-ID; domain continuation dispositions required |
+| ED-A12F3C-3 | Drain observation and old shutdown | Queue/status snapshots alone do not prove process absence | D phased source fetch/registration observations plus native shutdown debt fail closed on UNKNOWN. E quiets/settles/TERMs and reinspects absent processes/debt. | D/task 9 reviewed integration and E/tasks 8/10/G49 remain prerequisites; no operational acceptance from counts alone |
+| ED-A12F3C-4 | First-release rollback | Earlier docs proposed pending rehome or snapshot restore | Pin every Registry/persisted key to Sidekiq, drain accepted native work without transfer, stop Phoenix, start stock Rails 1.15.3 on SAME DB/storage preserving Phoenix-era writes. | Rulings 4/7; D/task 13 proof and deferred Cloud/self-hosted G48; future non-additive changes reopen ruling 4 |
+
+No new exactly-once external delivery guarantee, payload deletion allowance,
+owner bypass or mutation exemption is introduced. Unknown/retired/dead work is
+preserved and blocks the affected transition (ruling 10). Eugene sets dates and
+image retention at release time (ruling 11). Procedure and staged external
+ADR0015/G48 amendment: `docs/phoenix/a12f-ruby-free-release.md`.

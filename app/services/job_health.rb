@@ -219,6 +219,7 @@ module JobHealth
       (SELECT count(*) FROM phoenix.job_owners WHERE NOT (key = ANY(ARRAY[:keys])))::integer AS unknown_owners,
       (SELECT count(*) FROM phoenix.job_owners WHERE key = ANY(ARRAY[:keys]) AND (owner <> 'sidekiq' OR NOT pinned))::integer AS unpinned_rollback_owners,
       (SELECT count(*) FROM phoenix.job_owners WHERE owner = 'oban')::integer AS oban_owners,
+      (SELECT count(*) FROM phoenix.runtime_nodes WHERE beat_at <= now() - interval '60 seconds')::integer AS stale_nodes,
       (SELECT count(*) FROM phoenix.runtime_nodes WHERE beat_at > now() - interval '60 seconds')::integer AS fresh_nodes
   SQL
 end

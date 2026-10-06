@@ -2,7 +2,7 @@ defmodule Dawarich.Jobs.ScheduleCutoverTest do
   use Dawarich.JobsCase
 
   alias Dawarich.Integrations.SyncScheduling
-  alias Dawarich.Jobs.{Claimer, Housekeeping, Ownership, Processed, Registry}
+  alias Dawarich.Jobs.{Claimer, Drain, Housekeeping, Ownership, Processed, Registry}
   alias Dawarich.RailsCommands
 
   @oban __MODULE__.Oban
@@ -52,6 +52,7 @@ defmodule Dawarich.Jobs.ScheduleCutoverTest do
     end)
   end
 
+  @tag a12f3b_case: "G01b"
   test "the same source and native schedule slot commits fanout once including a claim at the due minute",
        context do
     for timestamp <- [
@@ -101,6 +102,24 @@ defmodule Dawarich.Jobs.ScheduleCutoverTest do
       source_batch(kind, slot, id, context.user)
       assert fanouts() == published
       assert Claimer.claim(ScratchRepo, @oban, entry(kind)) == :pinned
+    end
+
+    for {key, worker} <- [
+          {"cron:teslamate_sync_job", Dawarich.Imports.Teslamate.ScheduleWorker},
+          {"cron:trek_sync_job", Dawarich.Imports.Trek.ScheduleWorker}
+        ],
+        state <- ~w(available executing scheduled retryable discarded) do
+      rows("DELETE FROM oban.oban_jobs")
+      entry = Enum.find(Registry.entries(), &(&1.key == key))
+      job = Oban.insert!(@oban, worker.new(%{}))
+      rows("UPDATE oban.oban_jobs SET state=$1 WHERE id=$2", [state, job.id])
+      Ownership.put!(ScratchRepo, key, :sidekiq)
+      assert Claimer.legacy_scheduler_count(ScratchRepo, key) == 1
+      assert Claimer.claim(ScratchRepo, @oban, entry) == {:error, {:legacy_scheduler_jobs, 1}}
+      assert "legacy_schedulers" in Drain.status(ScratchRepo).forward_reasons
+      assert rows("SELECT state FROM oban.oban_jobs WHERE id=$1", [job.id]) == [[state]]
+      rows("UPDATE oban.oban_jobs SET state='completed' WHERE id=$1", [job.id])
+      assert Claimer.claim(ScratchRepo, @oban, entry) == :claimed
     end
 
     for %{kind: :cron} = cron <- Registry.entries(), do: assert(cron.catch_up == false)

@@ -1,7 +1,8 @@
 defmodule Dawarich.AccountApi.Payload do
   @moduledoc false
 
-  alias Dawarich.{Accounts, Entitlements, RailsTime, Repo, UserSettings, UserTimeZone}
+  alias Dawarich.{Accounts, RailsTime, Repo, UserSettings, UserTimeZone}
+  alias Dawarich.AccountApi.Closure
   alias Dawarich.Geocoding.Config
   alias Dawarich.Ingest.Ruby
 
@@ -32,6 +33,21 @@ defmodule Dawarich.AccountApi.Payload do
     unless is_binary(timezone), do: Ruby.unsupported!("account timezone shape")
     zone = UserTimeZone.name(raw)
 
+    [[plan, status, source, active_until]] =
+      Repo.query!("SELECT plan,status,subscription_source,active_until FROM users WHERE id=$1", [
+        id
+      ]).rows
+
+    actor = %{
+      id: id,
+      plan: plan,
+      status: status,
+      subscription_source: source,
+      active_until: active_until
+    }
+
+    full = Closure.full?(actor, now)
+
     RailsTime.with_zone(zone, fn ->
       [[email, theme, created, updated]] =
         Repo.query!(
@@ -39,22 +55,13 @@ defmodule Dawarich.AccountApi.Payload do
           [id]
         ).rows
 
-      settings = settings(raw, timezone)
-      hosted = DawarichWeb.LayoutAssigns.self_hosted?()
-
-      [[status, plan, active_until, until]] =
-        Repo.query!(
-          "SELECT status,plan,active_until,#{RailsTime.sql("active_until", 3)} FROM users WHERE id=$1",
-          [id]
-        ).rows
-
-      account = %{id: id, plan: plan, active_until: active_until}
+      settings = settings(raw, timezone, full)
 
       features =
         {:object,
          [
            {"reverse_geocoding", Config.resolve(Repo).enabled},
-           {"family", Entitlements.families?(account, hosted, now)}
+           {"family", Closure.family?(actor, now)}
          ]}
 
       user =
@@ -68,30 +75,20 @@ defmodule Dawarich.AccountApi.Payload do
            {"settings", settings}
          ]}
 
-      subscription =
-        if hosted do
-          []
-        else
-          [
-            {"subscription",
-             {:object,
-              [
-                {"status",
-                 %{0 => "inactive", 1 => "active", 2 => "trial", 3 => "pending_payment"}[status]},
-                {"active_until", until},
-                {"plan", %{0 => "lite", 1 => "pro", 2 => "family"}[plan]}
-              ]}}
-          ]
-        end
+      fields = [{"user", user}, {"features", features}]
 
-      {:ok, {:object, [{"user", user}, {"features", features}] ++ subscription}}
+      fields =
+        if Closure.hosted?(),
+          do: fields,
+          else: fields ++ [{"subscription", Closure.subscription(actor, stamp(active_until))}]
+
+      {:ok, {:object, fields}}
     end)
   rescue
-    error in [Dawarich.Ingest.Unsupported, ArgumentError] ->
-      {:replay, inspect(error.__struct__)}
+    error -> {:replay, inspect(error.__struct__)}
   end
 
-  defp settings(raw, timezone) do
+  defp settings(raw, timezone, full) do
     values = Map.merge(@defaults, raw)
 
     maps =
@@ -100,6 +97,11 @@ defmodule Dawarich.AccountApi.Payload do
         value when is_map(value) -> Map.merge(%{"distance_unit" => "km"}, value)
         _ -> Ruby.unsupported!("maps container")
       end
+
+    maps =
+      if full or not is_map(maps),
+        do: maps,
+        else: Map.drop(maps, ~w(hidden_tile_categories disabled_poi_groups))
 
     values =
       values
@@ -112,7 +114,7 @@ defmodule Dawarich.AccountApi.Payload do
       |> Map.update!("merge_threshold_minutes", &Ruby.to_i/1)
       |> Map.update!("route_opacity", &Ruby.to_f/1)
       |> Map.update!("visits_suggestions_enabled", &(&1 == "true"))
-      |> Map.update!("globe_projection", &UserSettings.cast/1)
+      |> Map.update!("globe_projection", &if(full, do: UserSettings.cast(&1), else: false))
 
     maps =
       if is_map(maps) do
@@ -135,6 +137,13 @@ defmodule Dawarich.AccountApi.Payload do
 
   defp ordered(value) when is_list(value), do: Enum.map(value, &ordered/1)
   defp ordered(value), do: value
+
+  defp stamp(nil), do: nil
+
+  defp stamp(value) do
+    [[text]] = Repo.query!("SELECT " <> RailsTime.sql("$1::timestamp", 3), [value]).rows
+    text
+  end
 
   defp positive(value, default) do
     n = Ruby.to_i(value)

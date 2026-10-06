@@ -153,6 +153,14 @@ defmodule Dawarich.Tiles.Http do
   end
 
   def call(conn, layer, module, schema) do
+    started = System.monotonic_time()
+
+    conn
+    |> respond(layer, module, schema)
+    |> Dawarich.Metrics.Map.tile(layer, started)
+  end
+
+  defp respond(conn, layer, module, schema) do
     user = conn.assigns.api_user
     params = Map.merge(conn.assigns.api_params, conn.path_params)
     conn = put_resp_header(conn, "vary", "Authorization")

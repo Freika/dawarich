@@ -7,7 +7,39 @@ defmodule DawarichWeb.Api.UsersController do
 
   def init(action), do: action
 
-  def call(conn, :exist) do
+  def call(conn, action),
+    do:
+      if(Dawarich.Standalone.enabled?(),
+        do: native_call(conn, action),
+        else: legacy_call(conn, action)
+      )
+
+  defp native_call(conn, :exist) do
+    conn = DawarichWeb.Api.AccountManager.call(conn, [])
+
+    {:ok, status, term} =
+      Exist.authorized(conn.assigns.api_params, conn.assigns.manager_secret_valid)
+
+    Respond.json(conn, status, term)
+  end
+
+  defp native_call(conn, :me) do
+    now = conn.assigns[:api_now] || DateTime.utc_now()
+
+    result =
+      case Dawarich.AccountApi.Closure.pending(conn.assigns.api_user, now) do
+        :ok -> Payload.read(conn.assigns.api_user.id, now)
+        pending -> pending
+      end
+
+    case result do
+      {:ok, term} -> Respond.json(conn, 200, term)
+      {:ok, status, term} -> Respond.json(conn, status, term)
+      _ -> Respond.json(conn, 500, {:object, [{"error", "internal_server_error"}]})
+    end
+  end
+
+  defp legacy_call(conn, :exist) do
     conn = Auth.public(conn)
 
     if conn.halted do
@@ -29,7 +61,7 @@ defmodule DawarichWeb.Api.UsersController do
     end
   end
 
-  def call(conn, :me) do
+  defp legacy_call(conn, :me) do
     result =
       if conn.private[:dawarich_native_api] or conn.assigns.api_format in [:json, :html, :all],
         do: Payload.read(conn.assigns.api_user.id, conn.assigns[:api_now] || DateTime.utc_now()),

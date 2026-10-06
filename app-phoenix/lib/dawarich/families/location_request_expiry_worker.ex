@@ -28,6 +28,9 @@ defmodule Dawarich.Families.LocationRequestExpiryWorker do
 
       {:skip, _owner} ->
         {:cancel, :not_owner}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 end

@@ -5,6 +5,37 @@ defmodule DawarichWeb.AuthApi.Input do
   @fields %{login: ~w(email password), challenge: ~w(challenge_token otp_code)}
   @content_type ~r/\A(?:application\/json|text\/x-json|application\/jsonrequest|application\/x-www-form-urlencoded)(?:;\s*charset=utf-8)?\z/i
 
+  def native(conn) do
+    if is_map(conn.assigns[:api_params]) do
+      {:ok, conn.assigns.api_params, conn}
+    else
+      conn =
+        Plug.Parsers.call(
+          conn,
+          Plug.Parsers.init(
+            parsers: [:urlencoded, :json],
+            pass: [],
+            json_decoder: Jason,
+            body_reader: {__MODULE__, :read_body, []},
+            length: 16384
+          )
+        )
+
+      conn = fetch_query_params(conn)
+      {:ok, Map.merge(conn.body_params, conn.query_params), conn}
+    end
+  rescue
+    _ -> {:error, conn}
+  end
+
+  def read_body(%{private: %{dawarich_raw_body: raw}} = conn, opts) when is_binary(raw) do
+    if byte_size(raw) > Keyword.get(opts, :length, 16384),
+      do: raise(Plug.Parsers.RequestTooLargeError),
+      else: {:ok, raw, conn}
+  end
+
+  def read_body(conn, opts), do: Plug.Conn.read_body(conn, opts)
+
   def precheck(conn) do
     names = Enum.map(conn.req_headers, &elem(&1, 0))
 

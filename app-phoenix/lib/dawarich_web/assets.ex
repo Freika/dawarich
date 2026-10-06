@@ -34,6 +34,14 @@ defmodule DawarichWeb.Assets do
   def stylesheet_path(rails_root, logical),
     do: "/assets/" <> Map.get(read_manifest(rails_root), logical, logical)
 
+  def asset_path(rails_root, logical) do
+    assets = read_manifest(rails_root)
+
+    Enum.find_value([logical, logical <> ".js", logical <> "/index.js"], fn candidate ->
+      if digest = assets[candidate], do: "/assets/" <> digest
+    end)
+  end
+
   def script_versions do
     %{
       phoenix: to_string(Application.spec(:phoenix, :vsn)),

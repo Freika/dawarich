@@ -4,7 +4,17 @@ defmodule Dawarich.Auth.Registration do
   alias Dawarich.Auth.{Account, AccountValidation, RegistrationPolicy}
   alias Dawarich.Repo
 
-  def create(params, context) do
+  def create(params, context),
+    do: create_account(params, Map.put(context, :registration_channel, :browser))
+
+  def create_mobile(params, context) do
+    create_account(
+      Map.take(params, ~w(email password password_confirmation)),
+      Map.put(context, :registration_channel, :mobile)
+    )
+  end
+
+  defp create_account(params, context) do
     repo = Map.get(context, :repo, Repo)
     email = Account.normalize_email(params["email"] || "")
     invitation = context[:invitation]
@@ -58,6 +68,10 @@ defmodule Dawarich.Auth.Registration do
     DateTime.add(now, Date.diff(target, date) * 86_400)
   end
 
+  defp variant(%{registration_channel: :mobile}, _self_hosted), do: nil
+  defp variant(_context, true), do: "legacy_trial"
+  defp variant(_context, false), do: "reverse_trial"
+
   defp insert(repo, params, email, context) do
     now = Map.get(context, :clock, &DateTime.utc_now/0).()
     password = params["password"]
@@ -85,7 +99,7 @@ defmodule Dawarich.Auth.Registration do
                     params["last_name"],
                     status,
                     until && DateTime.to_naive(until),
-                    if(self_hosted, do: "legacy_trial", else: "reverse_trial"),
+                    variant(context, self_hosted),
                     settings,
                     DateTime.to_naive(now)
                   ],

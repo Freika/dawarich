@@ -66,35 +66,56 @@ defmodule Dawarich.Cache.ScheduleTest do
                schedule_in: 3600
              ) == :ok
 
-      assert [["cache.preheat_user", payload]] =
-               rows("SELECT kind,payload FROM phoenix.rails_commands")
+      if owner == :oban do
+        assert [[args, at]] = rows("SELECT args,scheduled_at FROM oban.oban_jobs")
 
-      assert payload == %{
-               "user_id" => 14101,
-               "time_zone" => "Europe/Berlin",
-               "source_job_id" => source,
-               "run_at" => now + 3600
-             }
+        assert args == %{
+                 "user_id" => 14101,
+                 "time_zone" => "Europe/Berlin",
+                 "source_job_id" => source,
+                 "event_id" => source
+               }
 
-      assert [[0]] = rows("SELECT count(*) FROM oban.oban_jobs")
-      assert [[0]] = rows("SELECT count(*) FROM public.job_outbox")
-      assert Schedule.preheat_user(ScratchRepo, 14101, time_zone: "Etc/UTC", clock: now) == :ok
+        assert NaiveDateTime.compare(at, DateTime.from_unix!(now + 3600) |> DateTime.to_naive()) ==
+                 :eq
 
-      [[generated]] =
+        assert [[0]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+        assert Schedule.preheat_user(ScratchRepo, 14101, source_job_id: source, clock: now) == :ok
+        assert [[1]] = rows("SELECT count(*) FROM oban.oban_jobs")
+      else
+        assert [["cache.preheat_user", payload]] =
+                 rows("SELECT kind,payload FROM phoenix.rails_commands")
+
+        assert payload == %{
+                 "user_id" => 14101,
+                 "time_zone" => "Europe/Berlin",
+                 "source_job_id" => source,
+                 "run_at" => now + 3600
+               }
+
+        assert [[0]] = rows("SELECT count(*) FROM oban.oban_jobs")
+        assert [[0]] = rows("SELECT count(*) FROM public.job_outbox")
+        assert Schedule.preheat_user(ScratchRepo, 14101, time_zone: "Etc/UTC", clock: now) == :ok
+
+        [[generated]] =
+          rows(
+            "SELECT payload->>'source_job_id' FROM phoenix.rails_commands ORDER BY id DESC LIMIT 1"
+          )
+
+        assert {:ok, _} = Ecto.UUID.cast(generated)
+        refute generated == source
+
         rows(
-          "SELECT payload->>'source_job_id' FROM phoenix.rails_commands ORDER BY id DESC LIMIT 1"
+          "ALTER TABLE phoenix.rails_commands ADD CONSTRAINT a12d1b4_reject_user CHECK(kind<>'cache.preheat_user') NOT VALID"
         )
 
-      assert {:ok, _} = Ecto.UUID.cast(generated)
-      refute generated == source
+        assert_raise Postgrex.Error, fn ->
+          Schedule.preheat_user(ScratchRepo, 14101, clock: now)
+        end
 
-      rows(
-        "ALTER TABLE phoenix.rails_commands ADD CONSTRAINT a12d1b4_reject_user CHECK(kind<>'cache.preheat_user') NOT VALID"
-      )
-
-      assert_raise Postgrex.Error, fn -> Schedule.preheat_user(ScratchRepo, 14101, clock: now) end
-      assert [[2]] = rows("SELECT count(*) FROM phoenix.rails_commands")
-      rows("ALTER TABLE phoenix.rails_commands DROP CONSTRAINT a12d1b4_reject_user")
+        assert [[2]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+        rows("ALTER TABLE phoenix.rails_commands DROP CONSTRAINT a12d1b4_reject_user")
+      end
     end
   after
     rows("ALTER TABLE phoenix.rails_commands DROP CONSTRAINT IF EXISTS a12d1b4_reject_user")
