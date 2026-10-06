@@ -14,7 +14,7 @@ defmodule DawarichWeb.ExportRoutes do
       end
 
       pipeline :exports_create do
-        plug :put_api_tag, "exports"
+        plug :put_api_tag, "form"
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit

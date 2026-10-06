@@ -52,3 +52,16 @@ full envelope variants and worker ownership changes beyond the exercised live-us
 accepted-event and blob fences. This is a native journey implementation and parity
 regression cut, not Ruby-free release acceptance. The assigned execution report
 records exact gate counts and the remaining task variants.
+
+## Verification
+
+The scoped Rails batch passed 48 examples; both changed generator files passed
+RuboCop. The native domain batch passed 73 tests. After installing the vendor
+poster dependencies and restoring the existing form logging tag, the root-fix
+batch passed 22 tests including the complete closure file and real poster styles.
+All eleven restored selectors pass; the native batch test also checks the actual
+cache epoch token and verifies duplicate rows do not change it.
+
+AFFiNE counterpart: **Dawarich — Implementation: A12f-3a E native exports and backup
+journey**, document `3jnCJWRTo80DsateIkxcL`; synchronized and verified by readback.
+The assigned execution report records final seed-404 gate counts and cleanup.

@@ -98,6 +98,7 @@ defmodule DawarichWeb.A12f3aERequestClosureTest do
   @tag :tmp_dir
   test "E04: backup http producer and authority matches current Rails contract without a native-owner Rails effect",
        c do
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
     Ownership.put!(Repo, "command:users.export_data", :oban)
     Ownership.put!(Repo, "command:users.import_data", :oban)
 
@@ -498,6 +499,7 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
   @tag a12f3a_e10: true
   test "E10: restore monthly points and raw archives matches current Rails contract without a native-owner Rails effect",
        %{tmp_dir: dir} do
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
     c = UserDataSeeds.seed!("v2", ScratchRepo)
 
     for boundary <- capture(10)["boundaries"] do
@@ -515,6 +517,11 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
                  Map.put(c.context, :native_owner, true)
                )
 
+      key = "points:tile_epoch:#{c.user_id}:2026"
+      assert {:ok, epoch} = Dawarich.Redis.cache_command(["GET", key])
+      assert is_binary(epoch) and Regex.match?(~r/\A[0-9a-f]{16}\z/, epoch)
+      on_exit(fn -> Dawarich.Redis.cache_command(["DEL", key]) end)
+
       assert 0 ==
                Dawarich.UserData.Restore.Points.call(
                  ScratchRepo,
@@ -523,6 +530,7 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
                  Map.put(c.context, :native_owner, true)
                )
 
+      assert {:ok, ^epoch} = Dawarich.Redis.cache_command(["GET", key])
       assert [[count]] == rows("SELECT count(*) FROM points")
       assert [] == rows("SELECT kind FROM phoenix.rails_commands")
     end
