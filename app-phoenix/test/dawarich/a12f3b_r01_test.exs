@@ -186,8 +186,10 @@ defmodule Dawarich.A12f3bR01Test do
     ingest(user, now: now)
     ingest(user, now: DateTime.add(now, 10))
 
-    assert [[args]] =
-             rows("SELECT payload FROM public.job_outbox WHERE command_type='visits.suggest'")
+    assert [[args, due]] =
+             rows(
+               "SELECT payload,scheduled_at FROM public.job_outbox WHERE command_type='visits.suggest'"
+             )
 
     assert args == %{
              "user_id" => user,
