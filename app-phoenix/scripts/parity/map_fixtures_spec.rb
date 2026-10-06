@@ -216,7 +216,7 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
     cases = ['2026-05-28', '2026/05/28', '28 May 2026', '2026-3-29'].map do |date|
       reset!
       sign_in user
-      path = "/map/v2?#{ { date:, panel: 'timeline' }.to_query }"
+      path = "/map/v2?#{{ date:, panel: 'timeline' }.to_query}"
       get path
       expect(response).to have_http_status(:ok)
       { path:, params: { date:, panel: 'timeline' }, expected: window_values(Nokogiri::HTML5(response.body)) }
@@ -227,7 +227,8 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
     write_json(fixtures.join('map_frames/a12f3a-m07.json'), { source: 'app/views/map/maplibre/index.html.erb',
       markers: markers.select { |id| Nokogiri::HTML5(response.body).at_css("##{id}") } })
     redirects = %w[/map/v1 /maps/v2].flat_map do |base|
-      ['', '?start_at=2026-08-01T00%3A00%3A00&panel=timeline', '?q=Tom+%26+Jerry&tag[]=a&tag[]=b', '.json?x=1'].flat_map do |query|
+      ['', '?start_at=2026-08-01T00%3A00%3A00&panel=timeline', '?q=Tom+%26+Jerry&tag[]=a&tag[]=b',
+       '.json?x=1'].flat_map do |query|
         %w[get head].map do |method|
           reset!
           path = base + query

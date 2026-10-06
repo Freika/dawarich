@@ -22,7 +22,7 @@ The M02 aggregate initially reached the absent Rails upstream. Native implementa
 
 ## M03 — timeline feed
 
-Missing/blank timestamps and malformed scalar timestamps use the current instant, matching Rails SafeTimestampParser. Locale/client markers no longer force a Rails handback for scalar frame queries. Structured timestamp envelopes remain deferred to the shared transport/domain edge pass.
+Missing/blank timestamps and malformed scalar timestamps use the current instant, matching Rails SafeTimestampParser. Locale/client markers no longer force a Rails handback for scalar frame queries. Structured timestamp envelopes have captured source 500 outcomes and terminate natively before frame data reads.
 
 Two source capture passes preserve same-time visits in the observed descending-ID encounter order. Rails orders only by start time; this is a characterized ambiguity, not an upstream bug fix. The native secondary order matches this capture. Reversing that order fails the complete normalized frame assertion; restoring passes. Source and native assertions also retain DST, ranges, plan windows and existing rich-feed fixtures.
 
@@ -30,7 +30,7 @@ Two source capture passes preserve same-time visits in the observed descending-I
 
 Calendar frames accept the source single-digit month form and preserve complete source grid cells. Month bounds remain local to the user; the source capture includes a next-month visit that must not count, even in an adjacent grid cell. Existing HTML/Turbo/HEAD, DST and Lite-window fixtures remain regression evidence.
 
-The initial aggregate failed admission for `2026-9`. Native month normalization passed. Extending the visit query into the next local month failed frame parity; restoring passed. Malformed scalar months return a terminal native error instead of replay. Visit/calendar invalidation belongs V09/shared effect owners; this reader recomputes natively and creates no cache jobs.
+The initial aggregate failed admission for `2026-9`. Native month normalization passed. Extending the visit query into the next local month failed frame parity; restoring passed. Malformed scalar and structured months return a terminal native error instead of replay. Visit/calendar invalidation belongs V09/shared effect owners; this reader recomputes natively and creates no cache jobs.
 
 ## M05 — track-info frame
 

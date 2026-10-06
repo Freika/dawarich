@@ -70,6 +70,14 @@ defmodule DawarichWeb.MapFrames do
     end
   end
 
+  def body(:index, %{query: %{"start_at" => value}})
+      when not is_binary(value) and not is_nil(value),
+      do: {:error, 500}
+
+  def body(:index, %{query: %{"end_at" => value}})
+      when not is_binary(value) and not is_nil(value),
+      do: {:error, 500}
+
   def body(:index, ctx) do
     window =
       MapWindow.build(
@@ -130,7 +138,7 @@ defmodule DawarichWeb.MapFrames do
       do: render(&TimelineCalendar.calendar_stream/1, assigns, "text/vnd.turbo-stream.html"),
       else: html(&TimelineCalendar.calendar/1, assigns)
   rescue
-    ArgumentError -> {:error, 500}
+    _error in [ArgumentError, FunctionClauseError] -> {:error, 500}
   end
 
   def body(:residency, %{query: %{"year" => value}})

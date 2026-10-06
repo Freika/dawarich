@@ -18,7 +18,7 @@ defmodule DawarichWeb.MapFramesGate do
     do: true
 
   defp timestamp?(nil), do: true
-  defp timestamp?(_value), do: false
+  defp timestamp?(_value), do: true
 
   def calendar?(conn, _params) do
     query = query(conn)
@@ -32,7 +32,7 @@ defmodule DawarichWeb.MapFramesGate do
 
   defp month?(nil), do: true
   defp month?(value) when is_binary(value), do: true
-  defp month?(_value), do: false
+  defp month?(_value), do: true
 
   defp accept?(conn) do
     accept = conn |> get_req_header("accept") |> Enum.join(", ")
@@ -50,5 +50,5 @@ defmodule DawarichWeb.MapFramesGate do
   defp query(conn), do: Plug.Conn.Query.decode(conn.query_string)
 
   defp plain?(_conn, query),
-    do: Enum.all?(query, fn {_key, value} -> is_binary(value) or is_nil(value) end)
+    do: is_map(query)
 end

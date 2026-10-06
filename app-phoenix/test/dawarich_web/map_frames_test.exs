@@ -196,7 +196,7 @@ defmodule DawarichWeb.MapFramesTest do
   end
 
   describe "MapFramesGate.feed?/2" do
-    test "owns Rails timestamp fallbacks and rejects structured timestamps" do
+    test "admits Rails timestamp fallback and structured native error cases" do
       ok = &MapFramesGate.feed?(build_conn(:get, "/map/timeline_feeds?" <> &1), %{})
 
       assert ok.("start_at=1790460000&end_at=1790546399")
@@ -204,7 +204,7 @@ defmodule DawarichWeb.MapFramesTest do
       assert ok.("end_at=2026-09-27T23:59:59")
       assert ok.("start_at=%20&end_at=2026-09-27T23:59:59")
       assert ok.("start_at=yesterday&end_at=2026-09-27T23:59:59")
-      refute ok.("start_at[]=1&end_at=2")
+      assert ok.("start_at[]=1&end_at=2")
     end
   end
 
@@ -264,7 +264,7 @@ defmodule DawarichWeb.MapFramesTest do
       assert calendar("?month=2026-09", "")
       assert calendar("?month=2026-9")
       assert calendar("?month=0000-01")
-      refute calendar("?month[]=2026-09")
+      assert calendar("?month[]=2026-09")
       refute calendar("?month=2026-09", "text/html;level=1, text/vnd.turbo-stream.html")
       refute calendar("?month=2026-09", "TEXT/HTML, application/xhtml+xml")
     end
