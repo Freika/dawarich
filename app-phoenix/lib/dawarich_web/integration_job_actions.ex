@@ -34,36 +34,70 @@ defmodule DawarichWeb.IntegrationJobActions do
     ArgumentError -> false
   end
 
+  defp destination("start_airtrail_import"), do: "/settings/integrations"
+  defp destination("start_teslamate_sync"), do: "/settings/integrations?service=teslamate"
+
+  defp destination(name) when name in ~w(start_reverse_geocoding continue_reverse_geocoding),
+    do: "/settings/background_jobs"
+
+  defp destination(_), do: "/imports"
+
   defp create(conn) do
     case IntegrationActions.admit(conn, ["POST"], ["job_name"]) do
-      :ok ->
-        case IntegrationCommands.enqueue(
-               Repo,
-               conn.assigns.current_user.id,
-               conn.assigns.api_params["job_name"]
-             ) do
-          {:ok, :queued} ->
-            message =
-              Translate.t(
-                IntegrationActions.locale(conn),
-                "controllers.settings.background_jobs.job_was_successfully_created",
-                %{}
-              )
+      :ok -> admitted(conn)
+      {:error, status} -> SettingsActions.reject(conn, status)
+    end
+  end
 
-            IntegrationActions.redirect(conn, "/imports", %{"notice" => message})
+  defp admitted(conn) do
+    if conn.assigns.api_params["job_name"] in ~w(start_reverse_geocoding continue_reverse_geocoding) and
+         not IntegrationActions.hosted?(conn) do
+      IntegrationActions.redirect(
+        conn,
+        "/",
+        %{
+          "alert" =>
+            Translate.t(
+              IntegrationActions.locale(conn),
+              "controllers.application.you_are_not_authorized_to_perform_this_action",
+              %{}
+            )
+        },
+        303
+      )
+    else
+      enqueue(conn)
+    end
+  end
 
-          {:error, :not_owned} ->
-            SettingsActions.reject(conn, 503)
+  defp enqueue(conn) do
+    case IntegrationCommands.enqueue(
+           Repo,
+           conn.assigns.current_user.id,
+           conn.assigns.api_params["job_name"],
+           locale: IntegrationActions.locale(conn),
+           self_hosted: IntegrationActions.hosted?(conn)
+         ) do
+      {:ok, :queued} ->
+        message =
+          Translate.t(
+            IntegrationActions.locale(conn),
+            "controllers.settings.background_jobs.job_was_successfully_created",
+            %{}
+          )
 
-          {:error, :enqueue_failed} ->
-            SettingsActions.reject(conn, 500)
+        IntegrationActions.redirect(conn, destination(conn.assigns.api_params["job_name"]), %{
+          "notice" => message
+        })
 
-          {:error, _} ->
-            SettingsActions.reject(conn, 422)
-        end
+      {:error, :not_owned} ->
+        SettingsActions.reject(conn, 503)
 
-      {:error, status} ->
-        SettingsActions.reject(conn, status)
+      {:error, :enqueue_failed} ->
+        SettingsActions.reject(conn, 500)
+
+      {:error, _} ->
+        SettingsActions.reject(conn, 422)
     end
   end
 end
