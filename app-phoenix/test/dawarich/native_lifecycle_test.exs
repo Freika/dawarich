@@ -5,15 +5,30 @@ defmodule Dawarich.NativeLifecycleTest do
   alias Dawarich.Release.Lifecycle
 
   @tag :a12f4_a02_1
-  test "standalone native lifecycle is mandatory in both deployment modes" do
-    for hosted <- [nil, "true", "false"], legacy <- [nil, "", "false", "true"] do
+  test "standalone native lifecycle defaults to self-hosted and refuses unsupported Cloud" do
+    for hosted <- [nil, "true"], legacy <- [nil, "", "false", "true"] do
       env = %{
         "DAWARICH_RAILS" => "off",
         "SELF_HOSTED" => hosted,
         "DAWARICH_PHOENIX_LIFECYCLE" => legacy
       }
 
+      env = Map.reject(env, fn {_key, value} -> is_nil(value) end)
       assert Lifecycle.mode(env) == {:ok, :native}
+    end
+
+    for legacy <- [nil, "", "false", "true"] do
+      env =
+        Map.reject(
+          %{
+            "DAWARICH_RAILS" => "off",
+            "SELF_HOSTED" => "false",
+            "DAWARICH_PHOENIX_LIFECYCLE" => legacy
+          },
+          fn {_key, value} -> is_nil(value) end
+        )
+
+      assert Lifecycle.mode(env) == {:error, :cloud_native_lifecycle}
     end
 
     assert Lifecycle.mode(%{}) == {:ok, :rails}
@@ -22,8 +37,15 @@ defmodule Dawarich.NativeLifecycleTest do
 
   @tag :a12f4_a02_2
   test "standalone native readiness refuses a pending public version without writes" do
-    for hosted <- [nil, "true", "false"] do
-      opts = [repo: Repo, env: %{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => hosted}]
+    for hosted <- [nil, "true"] do
+      opts = [
+        repo: Repo,
+        env:
+          Map.reject(%{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => hosted}, fn {_key, value} ->
+            is_nil(value)
+          end)
+      ]
+
       assert Release.readiness(opts) == :ready
 
       %{rows: [[version]]} =
@@ -43,6 +65,15 @@ defmodule Dawarich.NativeLifecycleTest do
 
       assert Release.readiness(opts) == :ready
     end
+
+    before = snapshot()
+
+    assert Release.readiness(
+             repo: Repo,
+             env: %{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => "false"}
+           ) == :schemas_behind
+
+    assert snapshot() == before
   end
 
   defp snapshot do

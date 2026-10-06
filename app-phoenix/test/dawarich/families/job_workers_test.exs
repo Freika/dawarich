@@ -29,9 +29,12 @@ defmodule Dawarich.Families.JobWorkersTest do
     auto = %{"user_id" => user, "time_zone" => "Berlin"}
     assert AutoCreateWorker.args_from_command(1, auto) == {:ok, auto}
 
+    assert AutoCreateWorker.args_from_command(1, Map.put(auto, "user_id", to_string(user))) ==
+             {:ok, auto}
+
     for payload <- [
           Map.put(auto, "extra", 1),
-          Map.put(auto, "user_id", "1"),
+          Map.put(auto, "user_id", "invalid"),
           Map.delete(auto, "time_zone")
         ],
         do: assert(AutoCreateWorker.args_from_command(1, payload) == {:error, "invalid_payload"})
@@ -59,9 +62,12 @@ defmodule Dawarich.Families.JobWorkersTest do
     sync = %{"family_id" => family, "locale" => "de", "time_zone" => "UTC"}
     assert MemberSyncWorker.args_from_command(1, sync) == {:ok, sync}
 
+    assert MemberSyncWorker.args_from_command(1, Map.put(sync, "family_id", to_string(family))) ==
+             {:ok, sync}
+
     for payload <- [
           Map.put(sync, "extra", 1),
-          Map.put(sync, "family_id", "1"),
+          Map.put(sync, "family_id", "invalid"),
           Map.delete(sync, "locale")
         ],
         do: assert(MemberSyncWorker.args_from_command(1, payload) == {:error, "invalid_payload"})

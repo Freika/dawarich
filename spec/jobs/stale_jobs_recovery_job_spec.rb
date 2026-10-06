@@ -18,6 +18,7 @@ RSpec.describe StaleJobsRecoveryJob do
     expect { described_class.new.perform }.not_to change(Notification, :count)
     expect(import.reload.status).to eq('processing')
     expect(export.reload.status).to eq('processing')
+    expect(JobOutbox.count).to eq(0)
     expect(metrics.extractions_stalled.get).to eq(1)
     job_owner!('cron:stale_jobs_recovery_job', :sidekiq)
     connection = ActiveRecord::Base.connection
@@ -28,6 +29,8 @@ RSpec.describe StaleJobsRecoveryJob do
     connection.execute("DELETE FROM phoenix.leases WHERE name='import:#{import.id}'")
     expect { described_class.new.perform }.to change(Notification, :count).by(1)
     expect(import.reload.status).to eq('failed')
+    expect(JobOutbox.count).to eq(0)
+    expect(extraction.reload.additional_data_extraction_status).to eq('pending')
   end
 
   describe '#perform' do
