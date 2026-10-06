@@ -53,6 +53,84 @@ contracts remain for the map owners. Bounds currently return the exact extent.
 Advanced speed coloring and unsupported map envelopes terminate with 422; map
 execution failures terminate with 500. Their reason tags begin `standalone_map_`.
 
+## Standalone route activation
+
+AFFiNE counterpart: `Dawarich — ADR-20261006-standalone-route-activation —
+Delegate unmounted native handlers only in standalone mode`, document
+`Xnkn3TzesrUQUKUf04Mc9`.
+
+`StandaloneAuth` dispatches only when `DAWARICH_RAILS=off`, before the retained
+AuthGate flows. It delegates signup GET/POST to F's registration handler,
+password request/edit/PUT/PATCH to F's native recovery mode, GitHub/Google/OIDC
+initiation and callbacks to G's provider handler, and account-link routes to
+G's closure mode. H's Apple web initiation/form callback, all five mobile
+API POST actions (including `.json`/`.html`), mobile GET/HEAD success and the
+exact POST subscription webhook callback use their native handlers. The
+subscription callback retains its webhook-secret/JWT authentication instead
+of requiring an account API key. Only Apple form callbacks use state/nonce
+cookies in place of browser CSRF. Apple initiation preserves HEAD and admitted
+HTML/JSON formats. Registration and recovery consume the native registration
+setting. Recovery enqueues the existing native mail worker and applies the
+shared rate limiter. The handlers retain CSRF/origin checks, encrypted cookies,
+provider state validation, session rotation and terminal failure behavior.
+
+AuthGate selects `native: true` for credentials and browser OTP only in
+standalone mode, retaining its registration setting and OTP flow options.
+This activates F's password failure/lockout accounting and ordinary failure
+form for OTP accounts, plus proxied and Cloud OTP challenge/completion.
+Credentials and OTP also participate in standalone cookie ambiguity refusal.
+Their handlers retain duplicate-header, CSRF/origin, host, SSL and rate checks.
+With the flag unset, credential/OTP admission and forwarding are unchanged.
+Endpoint regressions live in `standalone_credentials_otp_test.exs`.
+
+Ambiguous session-cookie values or duplicate Cookie headers are refused before
+browser or mobile authentication effects. Apple state/nonce/import cookies
+also reject duplicate values. Cookie refusal is limited to standalone auth
+admission; coexistence dispatch is unchanged.
+
+POST `/users` is inspected once with a bounded body. Plain signup reaches
+registration; PATCH/PUT overrides reach the existing native account handler.
+Literal PATCH/PUT also select native account mode in Cloud and self-hosted
+settings. Accepted form overrides supply the effective method to the limiter
+without changing the original request method or raw body; signup counters
+therefore do not classify account updates as registrations. Authentication,
+current-password policy and CSRF still run in the account handler. Other
+overrides terminate before registration effects. Both handlers reuse the
+buffered body. No coexistence flow selection or route declarations change.
+
+In Strangler's standalone terminal path, a small dispatch table admits these
+previously unmounted merged handlers through the existing host, SSL, limiter,
+body and API-key authentication plugs:
+
+| Method/path | Native handler |
+| --- | --- |
+| PATCH `/api/v1/settings` | SettingsController update |
+| PATCH `/api/v1/points/:point_id/position` | PointPositionsController update |
+| GET `/api/v1/timeline` | TimelineController index |
+| GET `/api/v1/maps/hexagons` | HexagonsController index |
+
+Writes retain active-account admission. Hexagon index permits a public UUID
+through its existing grant validation; missing or revoked grants fail locally.
+The admitted API actor receives stored settings required by E's position
+handler. No second router or handler implementation is introduced. With the
+standalone flag unset, requests retain their original upstream method/body.
+
+Application context seams are `registration_context`, `recovery_context`,
+`provider_auth_context`, `account_link_context`, `account_context`,
+`apple_auth_context`, `api_auth_context` and `subscription_context`. Browser
+contexts default to H's real signed mobile handoff and retain configured owner
+callbacks. Missing required Cloud signup, security-notification or linkage-mail
+owners retain the handlers' terminal native errors; they are not substituted with
+success callbacks. See the [F](a12f2-f.md) and [G](a12f2-g.md) handoffs.
+
+H's reviewed implementation is integrated and reached through the Endpoint.
+Provider state regressions use valid authorization codes with synthetic
+successful exchanges: absent or mismatched state consumes pending state without
+exchange/account/login effects; matching state rotates the login session.
+The sweep's integrations form is already mounted by its owner; `/assets/channels` belongs
+to the asset/build contract, and DELETE `/` has no merged native handler.
+Security review and the integration/release gates remain separate acceptance.
+
 ## Terminal hand-backs
 
 The route admission checks remain active. In standalone mode each refused

@@ -73,8 +73,14 @@ defmodule DawarichWeb.Strangler do
         conn |> Plug.Conn.put_private(:dawarich_method, conn.method) |> Plug.Head.call([])
 
       Dawarich.Standalone.enabled?() ->
-        {reason, status} = standalone_rejection(conn)
-        DawarichWeb.StandaloneError.respond(conn, reason, status)
+        conn = DawarichWeb.StandaloneRoutes.dispatch(conn)
+
+        if conn.halted do
+          conn
+        else
+          {reason, status} = standalone_rejection(conn)
+          DawarichWeb.StandaloneError.respond(conn, reason, status)
+        end
 
       DawarichWeb.TurboVisit.live_view_visit?(conn) ->
         DawarichWeb.TurboVisit.reload(conn)
