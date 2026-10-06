@@ -34,5 +34,18 @@ RSpec.describe Trek::SyncSchedulingJob, type: :job do
     clear_enqueued_jobs
     expect { scheduled.perform_now }.not_to have_enqueued_job
     expect { described_class.perform_now('invalid') }.to raise_error(ArgumentError)
+    job_owner!('command:imports.trek_sync', :oban)
+    allow(PhoenixLease).to receive(:try_hold).with("trek-sync:#{source.id}").and_return(false)
+
+    [nil, 123].each do |cursor|
+      args = cursor.nil? ? [source.id] : [source.id, cursor]
+      accepted = Trek::SyncJob.new(*args)
+      2.times { accepted.perform_now }
+      row = JobOutbox.find_by!(event_id: accepted.job_id)
+      expect(row.command_type).to eq('imports.trek_sync')
+      expect(row.payload).to eq({ 'source_id' => source.id, 'after_id' => cursor })
+      expect(row.aggregate_id).to eq(source.id)
+      expect(JobOutbox.where(event_id: accepted.job_id).count).to eq(1)
+    end
   end
 end
