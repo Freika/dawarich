@@ -697,3 +697,58 @@ shared data/storage checks and observed process/debt absence. Use the existing
 [G02/G42/G47/G48/G49 release-tier runbook](/Users/frey/projects/dawarich/superpowers/plans/2026-10-04-phoenix-release-tier-runbook.md).
 No branch result here switches traffic, removes Rails support or closes the
 rollback window.
+
+
+## A12f-3c package P validation and mutation audit
+
+Validation scope: tasks 11, 12 and 14 on inspection head `c86ff9db1` plus the
+package P documentation commits. No production files, fixtures, wrappers,
+controller scripts, automated gates or new tests were added. Documentation and
+census use the master plan's explicit no-test/no-mutation exception. Each owner
+behavioral test's RED, GREEN, named mutation and restored GREEN remains evidence
+from its isolated owner worktree, not a mutation rerun by P.
+
+| Owner evidence audited | Named mutations / claimed assertion | Result and boundary |
+| --- | --- | --- |
+| A task 5: argv, boot cron/cache/Poller, enqueue refusal, fresh root fence; task 2 idle | M3C-05-ARGV/CRON/ENQUEUE/ROOT; M3C-02-IDLE | Each RED and mutation: one named example/one intended failure; GREEN and restored: one/zero. Mutations expose web startup, positive cron polling, acknowledged application enqueue/fresh root, or real Sidekiq instead of idle. Accepted retry/schedule bookkeeping retained. |
+| Task 2 web/readiness/application plan | M3C-02-WEB/FALLBACK/PLAN | Web and readiness: one named example per phase; native plan: one selected test, seven excluded. Each mutation fails its argv/exit/plan assertion, each restored GREEN passes. `impl-a12f3c-a2.report.md` pins selectors and patches. |
+| A review caller Redis isolation | M-R1-PATH/PROTECTED | RED and mutation each one/one; GREEN/restored one/zero. Open3 interception checks unsafe-target refusal without making unsafe connections; separate real-effect source batches prove portable Redis selection. |
+| C tasks 6/7: ordered locks, carried event, supported native continuation, unsupported source chain | M3C-06-LOCK/ID; M3C-07-FORWARD/CHAIN/CHILD-ID | One selected test per original native phase, eight excluded; mutations fail actual owner contention, event identity, duplicate outbox root, retained refusal or child token. Restored batches pass. Source strict joint/refusal/child-identity counterparts also fail their own assertions. |
+| C review real worker/source completion boundary | Owner/completion/partial/due/terminal mutations | Initial four-test RED has four intended failures; terminal test has its own RED. Each final named mutation has one selected test/one assertion failure; restored batch 25/zero. Actual root lock, no completed-effect replay, partial-effect replay, due time and terminal root contention are exercised. |
+| D task 9 and task 13 historical owner report | M3C-09-FETCH/UNKNOWN/REVERSE/SQL; M3C-PIN/DEBT/DRAIN | Logs show intended missing reservation/UNKNOWN, reverse/table-error, missing pin, accepted native debt and post-pin dispatch failures; restored source/native batches pass at D's historical candidate. **Not integrated at P's base.** D's final reviewed candidate and revalidation are pending. |
+| D review literal quiet state | M-D01-TRUTHY | Real ProcessSet vectors false/true/absent/unknown: own RED/mutation one example/one intended failure; restored one/zero. Complete reviewed D gate/integration still required. |
+| B tasks 3/4 and E tasks 8/10 | M3C-03-*, M3C-04-*, M3C-08-*, task 10 stop vectors | No completed owner proof at this inspection head. Cloud lifecycle/shared data and actual two-deployment image/quiet/stop results remain **unrun/unaccepted** here. Existing Cloud refusal tests do not substitute. |
+
+Audit sources are the controller reports `impl-a12f3c-a.report.md`,
+`fix-a12f3c-a.report.md`, `impl-a12f3c-a2.report.md`,
+`impl-a12f3c-c.report.md`, `fix-a12f3c-c.report.md`,
+`impl-a12f3c-d.report.md` and `fix-a12f3c-d.report.md`, plus their named logs.
+The audit checks the failed named assertion, not merely a nonzero suite exit.
+Exploratory compiler/bootstrap failures and incidental Rswag dry runs are not
+mutation kills. A/C/task-2 reviewed commits are ancestors of the inspection
+head; D review commit is not. No owner change is imported by P.
+
+Local focused source command: the two Cloud/lifecycle regression files plus
+`spec/services/job_ownership_spec.rb` and `spec/services/job_drain_spec.rb`,
+RSpec seed 101: **75 examples, zero failures**. Swagger was copied aside and
+restored on exit; its incidental 251-example dry run is separate. Legacy off-mode
+coexistence and opt-in terminal readiness still pass. Native focused command:
+`release_cloud_test.exs`, `jobs/ownership_test.exs`, `jobs/drain_status_test.exs`,
+`jobs/joint_ownership_test.exs`, `jobs/drain_test.exs`, seed 404:
+**30 tests, zero failures**. These are the tests present at this base, and do
+not contain D's new task-9/task-13 vectors.
+
+Forced warnings-as-errors compile passes (1626 application files); whole-tree
+`mix format --check-formatted` passes. No Ruby file changes in package P, so
+changed-Ruby lint/spec expansion and L1 fixture regeneration are not applicable.
+Audited A/C/task-2 production files remain below 300 lines (largest current
+file: `app/services/job_commands.rb`, 298). P adds no executable comments or
+allocation/secret values. Only four explicit documentation paths are staged;
+no ignored environment, fixture, Swagger or schema changes.
+
+The branch full seed-404 gate and committed-range gitleaks are recorded in the
+controller's package P report after completion. Seed 202 runs only on the
+integration head per ruling 14. Complete task-11 cross-package acceptance remains
+pending D's reviewed integration, B/L1 shared-data/lifecycle and E image/stop owner
+proofs. This document supplies the final operator procedure and exact debt; a green
+P branch alone closes neither the operational checkpoints nor G48/G49.

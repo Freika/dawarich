@@ -140,8 +140,10 @@ remain debt. Never decode arbitrary serialized Ruby as a migration strategy.
    Verify outcome per key, not just claimer process exit.
 4. **Drain old work while producers move.** Existing queued source jobs finish/forward under
    compatibility shims with original job UUID. New native child work uses current owner and
-   stable publication identity. Keep Sidekiq consuming all source queues and reverse Poller
-   running. Scheduled and retry work remains debt until processed/resolved; never bulk-delete,
+   stable publication identity. During incremental coexistence retain the source reverse
+   Poller; at the final Cloud switch fence it and first close native-to-Rails dependencies.
+   OLD consumes only proved-safe accepted source chains. Scheduled and retry work remains
+   debt until processed/resolved; never bulk-delete,
    pull all future work forward or clear dead jobs. If a source payload is unsupported, stop
    final cutover and ask the controller for its concrete disposition, retaining the payload.
 5. **Final producer quiescence.** In the approved maintenance window pause incoming mutations,
