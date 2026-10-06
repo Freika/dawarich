@@ -508,6 +508,25 @@ this cut. Operator scope and A12h dependency: `docs/phoenix/a12rel-adapters.md`.
 |---|---|---|---|---|---|
 | ED-551 | Document titles containing apostrophes | Rails double-escapes (title shows `&#39;`) | Phoenix escapes once (title shows the apostrophe); affects any locale whose translated title contains an apostrophe — observed ca stats year, ca digest index, fr digest detail | release | accepted |
 
+## A12f-2J activated branches (ruling 15)
+
+At the Rails 1.15.3 base, J declares the accepted B/C/E/I handlers and removes
+transport replay for their owned API requests. ED-119 duplicate scalar/nested
+query/form, mobile markers, ordinary suffixes and streaming multipart branches
+are native. ED-121/152/194/370/400 API Cloud and HEAD branches are native when
+their existing slice is enabled. ED-152 borders/visited/digest reads and ED-194
+photos/suggestions/enrichment reach their package handlers. Storage proxy and
+representations are native under the retained `active_storage` key.
+
+These entries remain open: rare envelopes return native errors under ruling 15,
+and complete source parity for encoding, MIME/legacy cookies/settings and stored
+malformed values needs follow-up. D/F/G/H declarations/auth activation await
+accepted packages. ED-249/295/335/355/383/392/410/411 browser/worker/provider
+branches remain with their named owners. Intentional route/slice pins retain
+coexistence replay. Accepted API errors and sent/chunked replies never replay;
+the new point after-commit test proves one SQL transition. Mail/token/provider
+boundaries require their accepted owner handlers. See `docs/phoenix/a12f2-j.md`.
+
 
 ## A12f-3c Cloud cut-over, drain and same-DB rollback
 

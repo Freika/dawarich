@@ -49,7 +49,7 @@ defmodule DawarichWeb.CableRouteTest do
     end
   end
 
-  test "an owned /cable upgrade is answered by Phoenix; DAWARICH_RAILS_ROUTES=cable and Cloud hand it to Puma",
+  test "self-hosted and Cloud cable upgrades are native while both cable pins hand back",
        %{port: port} do
     assert {101, _} = upgrade!(port)
     refute_receive {:cable_request, "/cable", _, _}, 200
@@ -61,7 +61,7 @@ defmodule DawarichWeb.CableRouteTest do
 
     with_system_env("SELF_HOSTED", "false", fn ->
       assert {101, _} = upgrade!(port)
-      assert_receive {:cable_request, "/cable", _, _}
+      refute_receive {:cable_request, "/cable", _, _}, 200
     end)
 
     with_system_env("DAWARICH_RAILS_SLICES", "cable", fn ->
@@ -87,7 +87,10 @@ defmodule DawarichWeb.CableRouteTest do
       for {name, value} <- [{"SELF_HOSTED", "false"}, {"DAWARICH_RAILS_SLICES", "cable"}] do
         with_system_env(name, value, fn ->
           assert {101, _} = upgrade!(port)
-          assert_receive {:cable_request, "/cable", _, _}
+
+          if name == "SELF_HOSTED",
+            do: refute_receive({:cable_request, "/cable", _, _}, 100),
+            else: assert_receive({:cable_request, "/cable", _, _})
         end)
       end
     end

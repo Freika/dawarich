@@ -134,15 +134,19 @@ defmodule DawarichWeb.StorageRoutesTest do
     assert get_resp_header(partial, "content-range") == ["bytes 1-3/6"]
     assert request(c, :head, disk, "", [], false).resp_body == ""
     proxy = %{build_conn() | path_info: ~w(rails active_storage blobs proxy signed binary.dat)}
-    refute DawarichWeb.StorageGate.native?(proxy, %{})
+    assert DawarichWeb.StorageGate.native?(proxy, %{})
 
-    {{line, ""}, proxied} =
-      forwarded(c.upstream, fn ->
-        request(c, :get, "/rails/active_storage/blobs/proxy/signed/binary.dat", "", [], false)
-      end)
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
+    before = Repo.query!("SELECT count(*) FROM active_storage_blobs").rows
 
-    assert {line, proxied.status} ==
-             {"GET /rails/active_storage/blobs/proxy/signed/binary.dat HTTP/1.1", 204}
+    proxied =
+      request(c, :get, "/rails/active_storage/blobs/proxy/signed/binary.dat", "", [], false)
+
+    assert proxied.status == 404
+    assert proxied.resp_body == ""
+    assert get_resp_header(proxied, "x-dawarich-handler") == ["phoenix-active-storage"]
+    assert Repo.query!("SELECT count(*) FROM active_storage_blobs").rows == before
+    assert File.read!(Storage.disk_path(c.disk, body["key"])) == bytes
   end
 
   test "route extraction preserves every existing LiveView session" do

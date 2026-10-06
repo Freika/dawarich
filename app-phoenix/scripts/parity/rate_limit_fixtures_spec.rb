@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative 'rate_limit_fixture_support'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixture: rack-attack throttles, blocklist and responders' do
   include ActiveSupport::Testing::TimeHelpers
@@ -36,10 +37,66 @@ RSpec.describe 'Phoenix fixture: rack-attack throttles, blocklist and responders
       'cookies' => @cookies || {}
     }
     write? ? write(data) : expect(normalized(data)).to(eq(@stored))
+    transport = {
+      params: transport_params,
+      overrides: transport_overrides,
+      cors: transport_cors,
+      route_prefixes: transport_route_prefixes
+    }
+    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2j/transport.json'),
+                            "#{JSON.pretty_generate(transport)}\n")
   end
 
   def keys = RateLimitFixtureSupport::KEYS
   def at(offset) = RateLimitFixtureSupport::NOW.to_i + offset
+
+  def transport_route_prefixes
+    ['/api/v1/photos', '/%61pi/v1/photos', '/api/%761/photos'].map do |path|
+      env = Rack::MockRequest.env_for(path, 'HTTP_ACCEPT' => 'application/json')
+      status, _, body = Rails.application.call(env)
+      body.close if body.respond_to?(:close)
+      { path: path, status: status }
+    end
+  end
+
+  def transport_params
+    ['a=first&a=last', 'tag_ids[]=1&tag_ids[]=2', 'place[name]=Berlin&place[note]=a+b',
+     'flag&empty=&=ignored', 'a=%ZZ', 'a=scalar&a[b]=nested'].map do |query|
+      env = Rack::MockRequest.env_for('/api/v1/places')
+      env['QUERY_STRING'] = query
+      request = ActionDispatch::Request.new(Rails.application.env_config.merge(env))
+      begin
+        { query: query, params: request.query_parameters }
+      rescue StandardError => e
+        { query: query, error: e.class.name }
+      end
+    end
+  end
+
+  def transport_overrides
+    [['POST', 'application/x-www-form-urlencoded', '_method=PATCH', 'DELETE'],
+     ['POST', 'application/json', '{"_method":"PATCH"}', 'DELETE'],
+     ['POST', 'application/x-www-form-urlencoded', '_method=', 'DELETE'],
+     ['GET', 'application/x-www-form-urlencoded', '_method=PATCH', 'DELETE']].map do |method, type, body, header|
+      env = Rack::MockRequest.env_for('/api/v1/places', method: method, input: body)
+      env.merge!('CONTENT_TYPE' => type, 'HTTP_X_HTTP_METHOD_OVERRIDE' => header)
+      Rack::MethodOverride.new(->(_) { [200, {}, []] }).call(env)
+      { method: method, content_type: type, body: body, header: header, effective: env['REQUEST_METHOD'] }
+    end
+  end
+
+  def transport_cors
+    origins = ['https://dawarich.app', 'https://preview-1.dawarich.pages.dev', 'http://localhost:8080',
+               'https://DAWARICH.app', 'https://dawarich.app.evil.test', 'null', 'http://127.0.0.1:8080']
+    origins.product(['/api/v1/imports/pending', '/api/v1/points'], %w[POST DELETE]).map do |origin, path, method|
+      env = Rack::MockRequest.env_for(path, method: 'OPTIONS')
+      env.merge!('HTTP_ORIGIN' => origin, 'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => method,
+                 'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'Content-Type, X-Upload')
+      status, headers, = Rails.application.call(env)
+      { origin: origin, path: path, method: method, status: status,
+        headers: headers.select { |name, _| name.start_with?('access-control-') || name == 'vary' } }
+    end
+  end
 
   def paths
     ['/users/sign_in', '/users/sign_in/', '//users//sign_in', '/users/sign_in.json', '/users/sign_in.',
@@ -190,10 +247,13 @@ RSpec.describe 'Phoenix fixture: rack-attack throttles, blocklist and responders
   end
 
   def stack
-    @stack ||= Rails.application.config.middleware.build(lambda do |env|
+    @stack ||= Rails.application.config.middleware.to_a.reverse.inject(lambda do |env|
       @inner = env
       [200, { 'content-type' => 'text/plain' }, ['passed']]
-    end)
+    end) do |app, entry|
+      middleware = entry.klass.is_a?(Class) ? entry.klass : entry.klass.dup
+      middleware.new(app, *entry.args, &entry.block)
+    end
   end
 
   def env_for(request)

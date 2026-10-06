@@ -5,14 +5,6 @@ defmodule DawarichWeb.StorageRoutes do
 
   def init(action), do: action
 
-  def call(conn, :direct_upload) do
-    if conn.assigns[:current_user] do
-      serve(conn, :direct_upload)
-    else
-      DawarichWeb.Api.Body.replay(conn, "storage session")
-    end
-  end
-
   def call(conn, action), do: serve(conn, action)
 
   defp serve(conn, action) do
@@ -20,8 +12,17 @@ defmodule DawarichWeb.StorageRoutes do
 
     conn
     |> put_resp_header("x-dawarich-handler", "phoenix-active-storage")
-    |> DawarichWeb.ActiveStorage.call(action: action, storage: storage)
+    |> dispatch(action, storage)
   end
+
+  defp dispatch(conn, :proxy, storage),
+    do: DawarichWeb.ActiveStorage.Proxy.call(conn, storage: storage)
+
+  defp dispatch(conn, {:representation, action}, storage),
+    do: DawarichWeb.ActiveStorage.Representations.call(conn, action: action, storage: storage)
+
+  defp dispatch(conn, action, storage),
+    do: DawarichWeb.ActiveStorage.call(conn, action: action, storage: storage)
 
   defmacro storage_routes do
     quote do
@@ -66,6 +67,24 @@ defmodule DawarichWeb.StorageRoutes do
             rails_key: "active_storage",
             rails_gate: {DawarichWeb.StorageGate, :native?}
           }
+
+        get "/blobs/proxy/:signed_id/*filename", DawarichWeb.StorageRoutes, :proxy,
+          metadata: %{
+            rails_key: "active_storage",
+            rails_gate: {DawarichWeb.StorageGate, :native?}
+          }
+
+        for {path, action} <- [
+              {"/representations/proxy/:signed_blob_id/:variation_key/*filename", :proxy},
+              {"/representations/redirect/:signed_blob_id/:variation_key/*filename", :redirect},
+              {"/representations/:signed_blob_id/:variation_key/*filename", :redirect}
+            ] do
+          get path, DawarichWeb.StorageRoutes, {:representation, action},
+            metadata: %{
+              rails_key: "active_storage",
+              rails_gate: {DawarichWeb.StorageGate, :native?}
+            }
+        end
 
         get "/blobs/redirect/:signed_id/*filename", DawarichWeb.StorageRoutes, :redirect,
           metadata: %{
