@@ -6,6 +6,7 @@ defmodule Dawarich.Jobs.DrainStatusTest do
   @oban __MODULE__.Oban
   @now ~U[2026-10-05 10:00:00Z]
 
+  @tag a12f3b_case: "E21a"
   test "all-native drain remains blocked by future pending outbox reverse leases quarantine and dead commands" do
     start_oban(@oban)
     keys = Enum.map(Registry.entries(), & &1.key)
@@ -71,6 +72,8 @@ defmodule Dawarich.Jobs.DrainStatusTest do
     assert status.counts.release_pending == 1
     assert status.counts.incomplete_oban == 2
     assert Enum.all?(status.legacy_schedulers, &(&1.incomplete == 1))
+    assert "legacy_schedulers" in status.forward_reasons
+    assert "legacy_schedulers" in status.binary_reasons
     assert "pending_outbox" in status.forward_reasons
     assert "residual_producers" in status.forward_reasons
     assert Enum.all?(status.producer_kinds, &(&1.status == "BLOCKED"))
@@ -133,7 +136,10 @@ defmodule Dawarich.Jobs.DrainStatusTest do
     assert Drain.status(nil).forward_reasons == ["database_unreadable"]
   end
 
+  @tag a12f3b_case: "E21b"
   test "housekeeping preserves stale unfinished generations and chunks" do
+    start_oban(@oban)
+
     rows("""
     WITH gen AS (
       INSERT INTO phoenix.track_generations (id, user_id, mode, untracked_only, low_priority, status, total_chunks, updated_at)
@@ -153,5 +159,33 @@ defmodule Dawarich.Jobs.DrainStatusTest do
 
     assert rows("SELECT count(*) FROM phoenix.track_generation_chunks") == [[2]]
     assert Drain.status(ScratchRepo).counts.unfinished_generations == 2
+
+    keys = Enum.map(Registry.entries(), & &1.key)
+
+    rows(
+      "INSERT INTO phoenix.job_owners(key,owner,pinned) SELECT key,'sidekiq',true FROM unnest($1::text[]) AS key",
+      [keys]
+    )
+
+    for state <- ~w(available scheduled retryable executing suspended discarded) do
+      job =
+        Oban.insert!(@oban, Dawarich.Users.RecalculateWorker.new(%{"synthetic_state" => state}))
+
+      rows("UPDATE oban.oban_jobs SET state=$2::oban.oban_job_state WHERE id=$1", [job.id, state])
+    end
+
+    status = Drain.status(ScratchRepo)
+    assert status.counts.unpinned_rollback_owners == 0
+    assert status.counts.incomplete_oban == 6
+    assert "unfinished_generations" in status.binary_reasons
+    assert "incomplete_oban" in status.binary_reasons
+    rows("UPDATE phoenix.track_generations SET status='completed',completed_chunks=total_chunks")
+    rows("UPDATE phoenix.track_generation_chunks SET status='completed'")
+    assert Drain.status(ScratchRepo).binary_rollback == "BLOCKED"
+    rows("UPDATE oban.oban_jobs SET state='completed'")
+    assert Drain.status(ScratchRepo).binary_rollback == "OBSERVED_EMPTY"
+    rows("UPDATE phoenix.job_owners SET pinned=false WHERE key=$1", [hd(keys)])
+    assert "unpinned_rollback_owners" in Drain.status(ScratchRepo).binary_reasons
+    assert Drain.status(ScratchRepo).forward == "BLOCKED"
   end
 end

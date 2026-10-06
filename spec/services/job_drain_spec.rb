@@ -60,6 +60,16 @@ RSpec.describe 'JobDrain' do
       expect(Sidekiq::ScheduledSet.new.size).to eq(baseline[:counts][:scheduled] + 1)
       expect(Sidekiq::DeadSet.new.size).to eq(baseline[:counts][:dead] + 1)
 
+      Sidekiq.redis { |redis| redis.hdel("#{process}:work", 'synthetic-thread') }
+      expect(JobDrain.status[:reasons]).to include('busy_unreadable', 'busy_work')
+      Sidekiq.redis { |redis| redis.hset(process, 'beat', 2.minutes.ago.to_f.to_s) }
+      expect(JobDrain.status[:reasons]).to include('process_heartbeat_invalid')
+
+      changing = instance_double(Sidekiq::Queue, size: 1)
+      allow(changing).to receive(:each)
+      allow(Sidekiq::Queue).to receive(:all).and_return([changing])
+      expect(JobDrain.status[:reasons]).to include('changed_during_read')
+
       allow(Sidekiq::Queue).to receive(:all).and_raise(RedisClient::CannotConnectError, secret)
       expect(JobDrain.status).to include(status: 'BLOCKED', reasons: ['redis_unreadable'])
       expect(JSON.generate(JobDrain.status)).not_to include(secret)
