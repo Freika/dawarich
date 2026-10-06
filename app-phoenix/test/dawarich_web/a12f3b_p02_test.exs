@@ -139,6 +139,61 @@ defmodule DawarichWeb.A12f3bP02Test do
     assert rows("SELECT key FROM active_storage_blobs") |> List.flatten() == keys
   end
 
+  @tag review_case: "R1"
+  test "stale poster lease holder preserves replacement attachment bytes", c do
+    state = seed("points_gap_boundaries")
+    id = state["before"]["id"]
+    event = Ecto.UUID.generate()
+    winner = %{png: "winner png", pdf: "%PDF-winner"}
+
+    stale = fn _, _, _ ->
+      rows(
+        "UPDATE phoenix.leases SET expires_at=statement_timestamp()-interval '1 second' WHERE name=$1",
+        ["posters:#{id}"]
+      )
+
+      assert :ok =
+               Generation.run(id, state["actor_id"], event, "en",
+                 repo: ScratchRepo,
+                 storage: c.storage,
+                 renderer: fn _, _, _ -> winner end
+               )
+
+      assert rows("SELECT status FROM posters WHERE id=$1", [id]) == [[2]]
+
+      for [type, key] <- rows("SELECT content_type,key FROM active_storage_blobs") do
+        assert Storage.get!(c.storage, key) ==
+                 if(type == "image/png", do: winner.png, else: winner.pdf)
+      end
+
+      %{png: "stale png", pdf: "%PDF-stale"}
+    end
+
+    assert :lost =
+             Generation.run(id, state["actor_id"], event, "en",
+               repo: ScratchRepo,
+               storage: c.storage,
+               renderer: stale
+             )
+
+    assert Processed.done?(ScratchRepo, event)
+    assert rows("SELECT status FROM posters WHERE id=$1", [id]) == [[2]]
+    assert rows("SELECT count(*) FROM active_storage_attachments") == [[2]]
+
+    assert [["image", png], ["print_pdf", pdf]] =
+             rows(
+               "SELECT a.name,b.key FROM active_storage_attachments a JOIN active_storage_blobs b ON b.id=a.blob_id ORDER BY a.name"
+             )
+
+    assert File.read(Storage.disk_path(c.root, png)) == {:ok, winner.png}
+    assert File.read(Storage.disk_path(c.root, pdf)) == {:ok, winner.pdf}
+
+    assert Generation.run(id, state["actor_id"], event, "en",
+             repo: ScratchRepo,
+             renderer: fn _, _, _ -> flunk("completed event rendered again") end
+           ) == :ok
+  end
+
   defp render(_, _, _), do: %{png: "synthetic png", pdf: "%PDF-synthetic"}
 
   defp s3(root) do

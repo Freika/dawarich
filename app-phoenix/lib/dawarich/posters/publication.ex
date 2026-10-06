@@ -57,19 +57,30 @@ defmodule Dawarich.Posters.Publication do
     end)
   end
 
-  def publish(repo, ctx, [png, pdf]) do
+  def publish(repo, ctx, blobs), do: publish(repo, ctx, fn -> blobs end, fn _ -> :ok end)
+
+  def publish(repo, ctx, upload, discard) do
     transaction(repo, fn ->
       current = fenced!(repo, ctx)
 
       if current.status == 2 or Processed.done?(repo, ctx.event_id) do
         :duplicate
       else
-        attach(repo, ctx, "image", png)
-        attach(repo, ctx, "print_pdf", pdf)
-        repo.query!("UPDATE posters SET status=2,updated_at=now() WHERE id=$1", [ctx.id])
-        notify(repo, ctx)
-        Processed.mark!(repo, ctx.event_id, @owner)
-        :published
+        blobs = upload.()
+
+        try do
+          [png, pdf] = blobs
+          attach(repo, ctx, "image", png)
+          attach(repo, ctx, "print_pdf", pdf)
+          repo.query!("UPDATE posters SET status=2,updated_at=now() WHERE id=$1", [ctx.id])
+          notify(repo, ctx)
+          Processed.mark!(repo, ctx.event_id, @owner)
+          :published
+        rescue
+          error ->
+            discard.(blobs)
+            reraise error, __STACKTRACE__
+        end
       end
     end)
   end
