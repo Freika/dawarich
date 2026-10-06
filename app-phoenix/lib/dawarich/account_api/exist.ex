@@ -13,7 +13,7 @@ defmodule Dawarich.AccountApi.Exist do
       Ruby.blank?(secret) -> error(503, "configuration_error")
       not Plug.Crypto.secure_compare(provided, secret) -> error(401, "invalid_webhook_secret")
       is_nil(params["ids"]) -> error(422, "ids_is_required")
-      true -> query(params["ids"])
+      true -> legacy_query(params["ids"])
     end
   end
 
@@ -24,6 +24,14 @@ defmodule Dawarich.AccountApi.Exist do
       is_nil(params["ids"]) -> error(422, "ids_is_required")
       true -> query(params["ids"])
     end
+  end
+
+  defp legacy_query(raw) do
+    values = if is_list(raw), do: raw, else: [raw]
+
+    if length(values) <= 4096 and Enum.all?(values, &Ruby.scalar?/1),
+      do: query(raw),
+      else: {:replay, "manager ids shape"}
   end
 
   defp query(raw) do

@@ -85,7 +85,7 @@ defmodule Dawarich.AccountApi.Payload do
       {:ok, {:object, fields}}
     end)
   rescue
-    _ -> {:error, 500}
+    error -> {:replay, inspect(error.__struct__)}
   end
 
   defp settings(raw, timezone, full) do
