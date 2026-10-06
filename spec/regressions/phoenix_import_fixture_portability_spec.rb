@@ -20,16 +20,20 @@ RSpec.describe NormalImportFormatsSupport do
     end
   end
 
-  it 'keeps the import failure message and portable backend frames' do
+  it 'normalizes import failure paths and backend frames with the shared fixture format' do
     gem = Gem.loaded_specs.fetch('i18n')
     prefix = "Import \"#{Rails.root.join('trace.zip')}\" failed: unknown format, Stacktrace: "
     frames = "#{Rails.root.join('app/services/imports/create.rb')}:35:in 'Imports::Create#call'\n" \
              "#{gem.full_gem_path}/lib/i18n.rb:383:in 'I18n.with_locale'\n" \
              "#{RbConfig::CONFIG.fetch('prefix')}/bin/bundle:25:in '<main>'"
 
-    expect(described_class.portable_notification(prefix + frames)).to eq(
-      "#{prefix}app/services/imports/create.rb:35:in 'Imports::Create#call'\n" \
-      "<gems>/i18n/lib/i18n.rb:383:in 'I18n.with_locale'\n<ruby>/bin/bundle:25:in '<main>'"
+    notification = described_class.portable_notification(prefix + frames)
+
+    expect(notification).to eq(
+      'Import "RAILS_ROOT/trace.zip" failed: unknown format, Stacktrace: ' \
+      "RAILS_ROOT/app/services/imports/create.rb:LINE:in 'Imports::Create#call'\n" \
+      "GEM_ROOT/i18n/lib/i18n.rb:LINE:in 'I18n.with_locale'\nRUBY_ROOT/bin/bundle:LINE:in '<main>'"
     )
+    expect(notification).not_to include(Rails.root.to_s, gem.full_gem_path, RbConfig::CONFIG.fetch('prefix'))
   end
 end
