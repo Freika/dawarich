@@ -160,6 +160,62 @@ defmodule DawarichWeb.A12f2BClosureTest do
              {:ok, 200, %{"suggestions" => []}}
   end
 
+  @tag :a12f2_b_05
+  test "Nearby places preserve actor scope coordinate validation radius sort and formatted cache results",
+       %{user: user} do
+    assert {:ok, 400, _} = invoke(Dawarich.PlacesApi.Nearby, :run, [user, %{}])
+
+    {base, task} =
+      provider([
+        {"GET", "/reverse?", 200,
+         Jason.encode!(%{
+           "type" => "FeatureCollection",
+           "features" => [feature("Café", 52.52, 13.405)]
+         }), []}
+      ])
+
+    geocoder(base)
+
+    assert {:ok, 200, %{"places" => [%{"name" => "Café", "source" => "photon", "id" => nil}]}} =
+             invoke(Dawarich.PlacesApi.Nearby, :run, [
+               user,
+               %{
+                 "latitude" => "52.52abc",
+                 "longitude" => "13.405",
+                 "radius" => "0.5",
+                 "limit" => "10"
+               }
+             ])
+
+    [{head, _}] = Task.await(task)
+    query = URI.decode_query(URI.parse(Enum.at(String.split(request_line(head)), 1)).query)
+    assert query["radius"] == "0.5"
+    assert query["distance_sort"] == "true"
+
+    assert invoke(Dawarich.PlacesApi.Nearby, :run, [
+             user,
+             %{"latitude" => "0", "longitude" => "0"}
+           ]) == {:ok, 200, %{"places" => []}}
+
+    own = place(user.id, "Own", 52.52, 13.405)
+    foreign = place(user.id + 1, "Foreign", 52.52, 13.405)
+
+    assert [%{"id" => ^own}] =
+             invoke(Dawarich.PlacesApi.Nearby, :saved, [user.id, 52.52, 13.405, 0.5, 10, ""])
+
+    assert own != foreign
+  end
+
+  defp place(owner, name, lat, lon) do
+    [[id]] =
+      Repo.query!(
+        "INSERT INTO places (user_id,name,latitude,longitude,lonlat,source,created_at,updated_at) VALUES ($1,$2,$3::float8,$4::float8,ST_SetSRID(ST_MakePoint($4::float8,$3::float8),4326)::geography,0,NOW(),NOW()) RETURNING id",
+        [owner, name, lat, lon]
+      ).rows
+
+    id
+  end
+
   defp feature(name, lat, lon),
     do: %{
       "type" => "Feature",

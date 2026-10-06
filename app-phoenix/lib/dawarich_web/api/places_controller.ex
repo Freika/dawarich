@@ -11,6 +11,13 @@ defmodule DawarichWeb.Api.PlacesController do
   def init(action), do: action
 
   @impl true
+  def call(conn, :nearby) do
+    {:ok, status, term} =
+      Dawarich.PlacesApi.Nearby.run(conn.assigns.api_user, conn.assigns.api_params)
+
+    Respond.json(conn, status, term)
+  end
+
   def call(conn, action) do
     params = Map.merge(conn.assigns.api_params, conn.path_params)
 
