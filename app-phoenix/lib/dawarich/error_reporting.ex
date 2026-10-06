@@ -1,6 +1,8 @@
 defmodule Dawarich.ErrorReporting do
   def start do
     if Sentry.get_dsn() do
+      :logger.remove_handler(:dawarich_sentry)
+
       :logger.add_handler(:dawarich_sentry, Sentry.LoggerHandler, %{
         config: %{
           capture_excluded_domains: [],

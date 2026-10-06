@@ -16,6 +16,8 @@ defmodule Dawarich.ErrorReporting.Config do
   def sdk(config) do
     Keyword.drop(config, [:profiles_sample_rate, :traces_sample_rate, :enable_logs]) ++
       [
+        before_send: {Dawarich.ErrorReporting.Redactor, :event},
+        before_send_log: {Dawarich.ErrorReporting.Redactor, :log},
         enable_logs: false,
         max_breadcrumbs: 0,
         send_max_attempts: 1,
