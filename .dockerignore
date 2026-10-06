@@ -37,3 +37,10 @@ app-phoenix/priv/countries.geojson.gz
 /db/release_snapshots/
 /scripts/schema_parity/
 .superpowers/
+
+.env*
+.scratch/
+storage/
+config/master.key
+config/credentials/*.key
+*.pem

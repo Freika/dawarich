@@ -44,6 +44,7 @@ RUN mkdir -p /out/public/api-docs \
           node_modules/swagger-ui-dist/swagger-ui.css \
           node_modules/swagger-ui-dist/LICENSE /out/public/api-docs/
 COPY app/assets app/assets
+COPY lib/assets lib/assets
 COPY app/javascript app/javascript
 COPY app/helpers app/helpers
 COPY app/views app/views
@@ -57,6 +58,21 @@ RUN BROWSERSLIST_IGNORE_OLD_DATA=1 node_modules/.bin/tailwindcss \
       -i app/assets/stylesheets/application.tailwind.css -o app/assets/builds/tailwind.css \
       -c config/tailwind.config.js --minify \
     && cd /build && mix dawarich.build_inputs --root /src --out /out
+
+FROM debian:trixie-slim AS poster_builder
+
+ARG TARGETARCH
+RUN apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nodejs npm ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /renderer
+COPY vendor/poster_renderer/package.json vendor/poster_renderer/package-lock.json ./
+COPY vendor/poster_renderer/render.sh vendor/poster_renderer/render.mjs vendor/poster_renderer/register.mjs vendor/poster_renderer/loader.mjs ./
+COPY vendor/poster_renderer/fonts fonts
+RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ]; then \
+    test "$(node -p 'process.versions.modules')" = 115 \
+    && npm ci --no-audit --no-fund \
+    && rm -rf /root/.npm; fi
 
 FROM debian:trixie-slim AS native_runtime
 
@@ -74,6 +90,36 @@ RUN apt-get update -qq \
 
 COPY --from=mbgl_libs /out /opt/mbgl-libs
 WORKDIR $APP_PATH
+ENV DAWARICH_RAILS=off DAWARICH_PHOENIX_LIFECYCLE=true
+COPY --from=phoenix_builder /build/_build/prod/rel/dawarich /opt/dawarich
+COPY --from=phoenix_builder /out/public/assets public/assets
+COPY --from=phoenix_builder /out/public/api-docs public/api-docs
+COPY --from=phoenix_builder /out/config/sprockets-manifest.json config/sprockets-manifest.json
+COPY --from=phoenix_builder /src/app/assets/builds/tailwind.css app/assets/builds/tailwind.css
+COPY --from=phoenix_builder /out/tmp/phoenix tmp/phoenix
+COPY swagger/v1/swagger.yaml swagger/v1/swagger.yaml
+COPY public/*.html public/*.png public/*.ico public/*.svg public/*.txt public/*.webmanifest public/
+COPY public/maplibre public/maplibre
+COPY public/maps public/maps
+COPY public/maps_maplibre public/maps_maplibre
+COPY public/poster_themes public/poster_themes
+COPY app/javascript app/javascript
+COPY app/assets/fonts app/assets/fonts
+COPY app/assets/images app/assets/images
+COPY vendor/javascript vendor/javascript
+COPY config/storage.yml config/storage.yml
+COPY .app_version .app_version
+COPY --from=poster_builder /renderer vendor/poster_renderer
+COPY docker/entrypoint-env-guard.sh docker/entrypoint-common.sh docker/web-entrypoint.sh docker/sidekiq-entrypoint.sh docker/cloud-entrypoint.sh docker/cloud-sidekiq-entrypoint.sh docker/release.sh /usr/local/bin/
+RUN mkdir -p storage log tmp/pids tmp/cache tmp/sockets public/imports public/exports \
+    && chmod -R 777 storage log tmp public \
+    && cp -r public $APP_PATH/public_dist \
+    && chmod +x /usr/local/bin/*entrypoint*.sh /usr/local/bin/release.sh \
+    && ln -s /opt/dawarich/bin/dawarich /usr/local/bin/dawarich \
+    && rm -f /opt/dawarich/releases/COOKIE
+RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
+    cd vendor/poster_renderer \
+    && LD_LIBRARY_PATH=/opt/mbgl-libs node -e "require('@maplibre/maplibre-gl-native'); require('canvas')"; fi
 EXPOSE $RAILS_PORT
 STOPSIGNAL SIGTERM
 ENTRYPOINT ["web-entrypoint.sh"]
