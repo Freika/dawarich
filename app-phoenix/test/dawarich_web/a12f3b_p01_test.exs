@@ -128,6 +128,54 @@ defmodule DawarichWeb.A12f3bP01Test do
     assert length(commands()) == 1
   end
 
+  @tag review_case: "R3"
+  test "poster mixed Accept alternatives select supported Rails responses" do
+    id = Dawarich.Test.FrameSeeds.user!(97111, %{"locale" => "en", "timezone" => "UTC"}).id
+    session = RailsUser.session(id)
+
+    for accept <- ["application/json, text/html", "application/json, */*"] do
+      created = request(session, :post, "/posters", %{"poster" => %{"name" => "Mixed"}}, accept)
+      assert created.status == 302, accept
+      assert get_resp_header(created, "location") == ["http://www.example.com/map/v2"]
+      assert get_resp_header(created, "content-type") == ["text/html; charset=utf-8"]
+
+      assert [[poster]] =
+               Repo.query!("SELECT id FROM posters WHERE user_id=$1 ORDER BY id DESC LIMIT 1", [
+                 id
+               ]).rows
+
+      deleted = request(session, :delete, "/posters/#{poster}", %{}, accept, to_string(poster))
+      assert deleted.status == 303, accept
+      assert get_resp_header(deleted, "location") == ["http://www.example.com/map/v2"]
+      assert Repo.query!("SELECT id FROM posters WHERE id=$1", [poster]).rows == []
+      guest = request(%{}, :post, "/posters", %{"poster" => %{"name" => "Guest"}}, accept)
+      assert guest.status == if(String.contains?(accept, "*/*"), do: 302, else: 401), accept
+
+      if guest.status == 302,
+        do: assert(get_resp_header(guest, "location") == ["http://www.example.com/users/sign_in"])
+    end
+
+    for {accept, format} <- [
+          {"text/vnd.turbo-stream.html;q=0.2, text/html;q=0.9", :html},
+          {"text/html;q=0.2, text/vnd.turbo-stream.html;q=0.9", :turbo},
+          {"application/json, text/vnd.turbo-stream.html", :turbo}
+        ] do
+      created =
+        request(session, :post, "/posters", %{"poster" => %{"name" => "Negotiated"}}, accept)
+
+      assert created.status == if(format == :html, do: 302, else: 200), accept
+
+      assert [[poster]] =
+               Repo.query!("SELECT id FROM posters WHERE user_id=$1 ORDER BY id DESC LIMIT 1", [
+                 id
+               ]).rows
+
+      deleted = request(session, :delete, "/posters/#{poster}", %{}, accept, to_string(poster))
+      assert deleted.status == if(format == :html, do: 303, else: 200), accept
+      assert Repo.query!("SELECT id FROM posters WHERE id=$1", [poster]).rows == []
+    end
+  end
+
   defp request(session, verb, path, params, accept, route_id \\ nil) do
     params = Map.put(params, "authenticity_token", RailsCsrf.masked_token(session))
     body = Jason.encode!(params)

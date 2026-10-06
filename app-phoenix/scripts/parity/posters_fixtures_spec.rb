@@ -151,6 +151,28 @@ RSpec.describe 'Phoenix fixtures: poster persistence and generation', type: :req
         expect(user.posters.last.settings).to eq({ 'theme' => 'missing', 'distance' => 'nonsense',
                                                   'start_at' => 'bad', 'route_width' => '-10' })
       end
+      ['application/json, text/html', 'application/json, */*'].each do |accept|
+        count = user.posters.count
+        post '/posters', params: { poster: { name: 'Mixed' } }, headers: { 'Accept' => accept }
+        expect(response.status).to eq(302)
+        expect(response.location).to eq('http://www.example.com/map/v2')
+        expect(user.posters.count).to eq(count + 1)
+        mixed = user.posters.last
+        delete "/posters/#{mixed.id}", headers: { 'Accept' => accept }
+        expect(response.status).to eq(303)
+        expect(response.location).to eq('http://www.example.com/map/v2')
+        expect(Poster.exists?(mixed.id)).to be(false)
+      end
+      [['text/vnd.turbo-stream.html;q=0.2, text/html;q=0.9', 302],
+       ['text/html;q=0.2, text/vnd.turbo-stream.html;q=0.9', 200],
+       ['application/json, text/vnd.turbo-stream.html', 200]].each do |accept, status|
+        post '/posters', params: { poster: { name: 'Negotiated' } }, headers: { 'Accept' => accept }
+        expect(response.status).to eq(status)
+        mixed = user.posters.last
+        delete "/posters/#{mixed.id}", headers: { 'Accept' => accept }
+        expect(response.status).to eq(status == 302 ? 303 : 200)
+        expect(Poster.exists?(mixed.id)).to be(false)
+      end
       own = user.posters.last
       delete "/posters/#{own.id}tail", headers: { 'Accept' => 'application/json' }
       expect(response.status).to eq(406)
@@ -169,6 +191,10 @@ RSpec.describe 'Phoenix fixtures: poster persistence and generation', type: :req
       expect(response.status).to eq(302)
       expect(response.location).to end_with('/users/sign_in')
       expect(request.session[:user_return_to]).to be_nil
+      ['application/json, text/html', 'application/json, */*'].each do |accept|
+        post '/posters', params: { poster: { name: 'Guest' } }, headers: { 'Accept' => accept }
+        expect(response.status).to eq(accept.include?('*/*') ? 302 : 401)
+      end
       post '/posters', params: { poster: { name: 'Guest' } }, as: :json
       expect(response.status).to eq(401)
       expect(response.headers['WWW-Authenticate']).to be_nil
