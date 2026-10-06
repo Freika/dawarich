@@ -213,6 +213,25 @@ RSpec.describe 'Phoenix fixtures: map point writes', type: :request do
                    jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args] } },
                    own_count: user.reload.points_count, foreign_count: foreign.reload.points_count }
     end
+    RSpec::Mocks.with_temporary_scope do
+      config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                  'action_dispatch.show_detailed_exceptions' => false)
+      allow(Rails.application).to receive(:env_config).and_return(config)
+      allow(Achievements::CheckJob).to receive(:schedule).and_raise('synthetic producer failure')
+      patch "/api/v1/points/#{id + 4}", params: { point: { latitude: '53', longitude: '16' } },
+                                       headers:, env: { 'action_dispatch.show_exceptions' => :all }
+      records << { name: 'relocation_callback_failure', status: response.status, body: response.body,
+                   position: Point.find(id + 4).lonlat.as_text }
+    end
+    RSpec::Mocks.with_temporary_scope do
+      config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                  'action_dispatch.show_detailed_exceptions' => false)
+      allow(Rails.application).to receive(:env_config).and_return(config)
+      allow(User).to receive(:update_counters).and_raise('synthetic counter failure')
+      delete "/api/v1/points/#{id + 3}", headers:, env: { 'action_dispatch.show_exceptions' => :all }
+      records << { name: 'delete_counter_failure', status: response.status, body: response.body,
+                   persisted: Point.exists?(id + 3), own_count: user.reload.points_count }
+    end
     path = Rails.root.join('app-phoenix/test/fixtures/a12f2e/closure.json')
     FileUtils.mkdir_p(path.dirname)
     File.write(path, "#{JSON.pretty_generate(records)}\n")

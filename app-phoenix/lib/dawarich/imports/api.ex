@@ -11,22 +11,27 @@ defmodule Dawarich.Imports.Api do
   def extensions, do: @extensions
 
   def index(repo, actor, params) do
-    page = max(RubyInteger.to_i(params["page"] || 1), 1)
-    per = min(RubyInteger.to_i(params["per_page"] || 25), 100)
+    page = max(integer(params["page"]), 1)
+    per = min(integer(Map.get(params, "per_page", 25)), 100)
     [[count]] = repo.query!("SELECT count(*) FROM imports WHERE user_id=$1", [actor]).rows
-    per = if per == 0, do: 25, else: per
-    if per < 0, do: raise(ArgumentError)
+    if per == 0, do: raise(ArgumentError)
+    per = if per < 0, do: 25, else: per
 
     rows =
       select(
         repo,
         actor,
-        "WHERE user_id=$1 ORDER BY created_at DESC,id DESC LIMIT $2 OFFSET $3",
+        "WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3",
         [actor, per, (page - 1) * per]
       )
 
     {:ok, Enum.map(rows, &serialize/1), %{current_page: page, total_pages: ceil(count / per)}}
   end
+
+  defp integer(value) when is_nil(value) or is_number(value) or is_binary(value),
+    do: RubyInteger.to_i(value)
+
+  defp integer(_), do: raise(ArgumentError)
 
   def show(repo, actor, id) do
     id = RubyInteger.to_i(id)

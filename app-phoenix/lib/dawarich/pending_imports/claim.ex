@@ -8,6 +8,17 @@ defmodule Dawarich.PendingImports.Claim do
   def claim(repo, user, ticket, ctx) do
     with {:ok, ticket} <- Ecto.UUID.dump(ticket),
          {:ok, result} <- repo.transaction(fn -> convert(repo, user, ticket, ctx) end) do
+      if result,
+        do:
+          repo.transaction(fn ->
+            enqueue(
+              repo,
+              user,
+              result["id"],
+              Ownership.lock(repo, "command:imports.process_normal")
+            )
+          end)
+
       result
     else
       {:error, reason} -> {:error, reason}
@@ -33,7 +44,6 @@ defmodule Dawarich.PendingImports.Claim do
           ).rows
 
         validate!(repo, user, name, size)
-        owner = Ownership.lock(repo, "command:imports.process_normal")
 
         [[id]] =
           repo.query!(
@@ -45,8 +55,6 @@ defmodule Dawarich.PendingImports.Claim do
           "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('file','Import',$1,$2,$3)",
           [id, blob, DateTime.to_naive(ctx.now)]
         )
-
-        enqueue(repo, user, id, owner)
 
         {:ok, record} = Api.show(repo, user.id, id)
         record

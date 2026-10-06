@@ -59,36 +59,36 @@ defmodule Dawarich.Points.ApiWrites do
           )
 
           country!(repo, point.id)
-
-          RailsCommands.insert!(repo, "points.tile_epoch", %{
-            "user_id" => user.id,
-            "timestamps" => [point.timestamp]
-          })
-
-          RailsCommands.insert!(repo, "achievements.check", %{
-            "user_id" => user.id,
-            "oldest_timestamp" => point.timestamp
-          })
-
-          if Dawarich.Geocoding.Config.resolve(repo).enabled,
-            do:
-              produce(
-                repo,
-                "geocoding.reverse_point",
-                %{"user_id" => user.id, "point_ids" => [point.id], "force" => true},
-                user.id
-              )
-
-          if point.track_id,
-            do:
-              produce(repo, "tracks.recalculate", %{"track_id" => point.track_id}, point.track_id)
         end)
+
+      for {kind, payload} <- [
+            {"points.tile_epoch", %{"user_id" => user.id, "timestamps" => [point.timestamp]}},
+            {"achievements.check", %{"user_id" => user.id, "oldest_timestamp" => point.timestamp}}
+          ],
+          do: commit(repo, fn -> RailsCommands.insert!(repo, kind, payload) end)
+
+      if Dawarich.Geocoding.Config.resolve(repo).enabled,
+        do:
+          commit(repo, fn ->
+            produce(
+              repo,
+              "geocoding.reverse_point",
+              %{"user_id" => user.id, "point_ids" => [point.id], "force" => true},
+              user.id
+            )
+          end)
+
+      if point.track_id,
+        do:
+          commit(repo, fn ->
+            produce(repo, "tracks.recalculate", %{"track_id" => point.track_id}, point.track_id)
+          end)
 
       try do
         Map.get(ctx, :after_commit, fn -> :ok end).()
         {:ok, 200, serialize(repo, point.id, params["slim"] == "true")}
       rescue
-        _ -> {:error, 500, nil}
+        _ -> {:error, 500, failure()}
       end
     end
   rescue
@@ -96,7 +96,7 @@ defmodule Dawarich.Points.ApiWrites do
       {:error, 422, %{"error" => "Lonlat can't be blank"}}
 
     error in Postgrex.Error ->
-      if error.postgres[:code] == :unique_violation,
+      if error.postgres[:code] == :unique_violation and error.postgres[:table] == "points",
         do:
           {:error, 422,
            %{
@@ -104,8 +104,10 @@ defmodule Dawarich.Points.ApiWrites do
                "Lonlat " <>
                  I18n.en!("models.point.already_has_a_point_at_this_location_and_time_for")
            }},
-        else: reraise(error, __STACKTRACE__)
+        else: {:error, 500, failure()}
   end
+
+  def failure, do: {:object, [{"status", 500}, {"error", "Internal Server Error"}]}
 
   def identity(repo, actor, id) do
     case repo.query!(
@@ -122,8 +124,13 @@ defmodule Dawarich.Points.ApiWrites do
 
   def required(params, key) do
     case params[key] do
-      value when is_map(value) and map_size(value) > 0 -> {:ok, value}
-      _ -> {:error, 400, %{"error" => "param is missing or the value is empty: #{key}"}}
+      value when is_map(value) and map_size(value) > 0 ->
+        {:ok, value}
+
+      value ->
+        if Dawarich.Ingest.Ruby.blank?(value),
+          do: {:error, 400, %{"error" => "param is missing or the value is empty: #{key}"}},
+          else: {:error, 500, failure()}
     end
   end
 
@@ -173,7 +180,7 @@ defmodule Dawarich.Points.ApiWrites do
     owner
   end
 
-  defp delete(repo, user, ids, _ctx) do
+  defp delete(repo, user, ids, ctx) do
     ids = Enum.map(ids, &id/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
 
     {:ok, rows} =
@@ -185,11 +192,6 @@ defmodule Dawarich.Points.ApiWrites do
           ).rows
 
         if rows != [] do
-          repo.query!("UPDATE users SET points_count=COALESCE(points_count,0)-$2 WHERE id=$1", [
-            user.id,
-            length(rows)
-          ])
-
           for {import, count} <-
                 rows
                 |> Enum.reject(&is_nil(Enum.at(&1, 3)))
@@ -199,24 +201,41 @@ defmodule Dawarich.Points.ApiWrites do
                   "UPDATE imports SET points_count=COALESCE(points_count,0)-$2 WHERE id=$1",
                   [import, count]
                 )
-
-          stamps = Enum.map(rows, &Enum.at(&1, 1))
-
-          RailsCommands.insert!(repo, "points.web_destroy_follow_up", %{
-            "user_id" => user.id,
-            "timestamps" => stamps,
-            "track_ids" =>
-              rows |> Enum.map(&Enum.at(&1, 2)) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
-            "oldest_timestamp" => Enum.min(stamps),
-            "locale" => "en",
-            "timezone" => Dawarich.UserTimeZone.iana(repo, user.settings)
-          })
         end
 
         rows
       end)
 
+    if rows != [] do
+      commit(repo, fn ->
+        repo.query!("UPDATE users SET points_count=COALESCE(points_count,0)-$2 WHERE id=$1", [
+          user.id,
+          length(rows)
+        ])
+      end)
+
+      commit(repo, fn ->
+        stamps = Enum.map(rows, &Enum.at(&1, 1))
+
+        RailsCommands.insert!(repo, "points.web_destroy_follow_up", %{
+          "user_id" => user.id,
+          "timestamps" => stamps,
+          "track_ids" =>
+            rows |> Enum.map(&Enum.at(&1, 2)) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
+          "oldest_timestamp" => Enum.min(stamps),
+          "locale" => "en",
+          "timezone" => Dawarich.UserTimeZone.iana(repo, user.settings)
+        })
+      end)
+    end
+
+    Map.get(ctx, :after_commit, fn -> :ok end).()
     rows
+  end
+
+  defp commit(repo, fun) do
+    {:ok, result} = repo.transaction(fun)
+    result
   end
 
   defp id(value) when is_binary(value) do

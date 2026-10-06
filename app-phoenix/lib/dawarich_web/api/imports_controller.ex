@@ -37,11 +37,18 @@ defmodule DawarichWeb.Api.ImportsController do
     end
   rescue
     _ ->
-      Respond.json(conn, 500, %{
-        "error" =>
-          Dawarich.I18n.en!(
-            "controllers.api.v1.imports.an_error_occurred_while_processing_the_import"
-          )
-      })
+      body =
+        if action == :create do
+          %{
+            "error" =>
+              Dawarich.I18n.en!(
+                "controllers.api.v1.imports.an_error_occurred_while_processing_the_import"
+              )
+          }
+        else
+          {:object, [{"status", 500}, {"error", "Internal Server Error"}]}
+        end
+
+      Respond.json(conn, 500, body)
   end
 end

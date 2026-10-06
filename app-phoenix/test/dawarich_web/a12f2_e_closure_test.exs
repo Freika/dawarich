@@ -63,8 +63,23 @@ defmodule DawarichWeb.A12f2EClosureTest do
     assert {:error, 403, %{"error" => "write_api_restricted"}} =
              Api.create(Repo, %{user | plan: 0}, %{"file" => upload}, %{ctx | self_hosted?: false})
 
-    assert {:ok, [^second], %{current_page: 1, total_pages: 2}} =
+    assert {:ok, [page_record], %{current_page: 1, total_pages: 2}} =
              Api.index(Repo, owner, %{"per_page" => "1"})
+
+    assert page_record in [first, second]
+    assert_raise ArgumentError, fn -> Api.index(Repo, owner, %{"per_page" => "0"}) end
+    assert {:ok, records, %{total_pages: 1}} = Api.index(Repo, owner, %{"per_page" => "-1"})
+    assert length(records) == 2
+
+    for source <- Jason.decode!(File.read!("test/fixtures/imports_exports/api_closure.json")),
+        source["name"] == "pagination" and source["status"] == 500 do
+      conn =
+        api_conn(user, %{"per_page" => source["per_page"]}, ctx)
+        |> DawarichWeb.Api.ImportsController.call(:index)
+
+      assert conn.status == source["status"]
+      assert conn.resp_body == source["body"]
+    end
 
     assert [[2]] =
              Repo.query!(
@@ -219,6 +234,44 @@ defmodule DawarichWeb.A12f2EClosureTest do
 
     assert nil == Claim.claim(Repo, user, ticket, ctx)
     assert [[1]] = Repo.query!("SELECT count(*) FROM imports WHERE user_id=$1", [user_id]).rows
+    failed_ticket = Ecto.UUID.generate()
+
+    [[failed_pending]] =
+      Repo.query!(
+        "INSERT INTO pending_imports(claim_ticket,original_filename,origin,expires_at,created_at,updated_at) VALUES($1,'callback-claim.json','https://dawarich.app',$2,now(),now()) RETURNING id",
+        [Ecto.UUID.dump!(failed_ticket), ~N[2026-10-07 12:00:00]]
+      ).rows
+
+    Repo.query!(
+      "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('file','PendingImport',$1,$2,now())",
+      [failed_pending, blob.id]
+    )
+
+    Repo.query!(
+      "CREATE FUNCTION a12f2e_claim_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.command_type='imports.process_normal' THEN RAISE EXCEPTION 'synthetic callback failure'; END IF; RETURN NEW; END $$"
+    )
+
+    Repo.query!(
+      "CREATE TRIGGER a12f2e_claim_fault BEFORE INSERT ON job_outbox FOR EACH ROW EXECUTE FUNCTION a12f2e_claim_fault()"
+    )
+
+    try do
+      assert_raise Postgrex.Error, fn -> Claim.claim(Repo, user, failed_ticket, ctx) end
+
+      assert [[^user_id]] =
+               Repo.query!("SELECT claimed_by_user_id FROM pending_imports WHERE id=$1", [
+                 failed_pending
+               ]).rows
+
+      assert [[1]] =
+               Repo.query!(
+                 "SELECT count(*) FROM imports WHERE user_id=$1 AND name='callback-claim.json'",
+                 [user_id]
+               ).rows
+    after
+      Repo.query!("DROP TRIGGER a12f2e_claim_fault ON job_outbox")
+      Repo.query!("DROP FUNCTION a12f2e_claim_fault()")
+    end
   end
 
   @tag :a12f2_e_05
@@ -532,6 +585,73 @@ defmodule DawarichWeb.A12f2EClosureTest do
                "SELECT ST_X(lonlat::geometry),ST_Y(lonlat::geometry) FROM points WHERE id=$1",
                [point]
              ).rows
+
+    Repo.query!(
+      "CREATE FUNCTION a12f2e_callback_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.kind='achievements.check' THEN RAISE EXCEPTION 'synthetic callback failure'; END IF; RETURN NEW; END $$"
+    )
+
+    Repo.query!(
+      "CREATE TRIGGER a12f2e_callback_fault BEFORE INSERT ON phoenix.rails_commands FOR EACH ROW EXECUTE FUNCTION a12f2e_callback_fault()"
+    )
+
+    try do
+      conn =
+        api_conn(user, %{"point" => %{"latitude" => "53", "longitude" => "16"}}, context())
+        |> Map.put(:path_params, %{"id" => to_string(point)})
+        |> DawarichWeb.Api.PointWritesController.call(:update)
+
+      assert conn.status == 500
+
+      assert [[16.0, 53.0]] =
+               Repo.query!(
+                 "SELECT ST_X(lonlat::geometry),ST_Y(lonlat::geometry) FROM points WHERE id=$1",
+                 [point]
+               ).rows
+
+      source =
+        File.read!("test/fixtures/a12f2e/closure.json")
+        |> Jason.decode!()
+        |> Enum.find(&(&1["name"] == "relocation_callback_failure"))
+
+      assert conn.resp_body == source["body"]
+    after
+      Repo.query!("DROP TRIGGER a12f2e_callback_fault ON phoenix.rails_commands")
+      Repo.query!("DROP FUNCTION a12f2e_callback_fault()")
+    end
+
+    delete_actor = user!(%{points_count: 1})
+    doomed = point!(delete_actor, 1_790_000_010)
+
+    Repo.query!(
+      "CREATE FUNCTION a12f2e_counter_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id=#{delete_actor} AND NEW.points_count=0 THEN RAISE EXCEPTION 'synthetic counter failure'; END IF; RETURN NEW; END $$"
+    )
+
+    Repo.query!(
+      "CREATE TRIGGER a12f2e_counter_fault BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION a12f2e_counter_fault()"
+    )
+
+    try do
+      conn =
+        api_conn(%{user | id: delete_actor}, %{}, context())
+        |> Map.put(:path_params, %{"id" => to_string(doomed)})
+        |> DawarichWeb.Api.PointWritesController.call(:destroy)
+
+      assert conn.status == 500
+      assert [[0]] = Repo.query!("SELECT count(*) FROM points WHERE id=$1", [doomed]).rows
+
+      assert [[1]] =
+               Repo.query!("SELECT points_count FROM users WHERE id=$1", [delete_actor]).rows
+
+      source =
+        File.read!("test/fixtures/a12f2e/closure.json")
+        |> Jason.decode!()
+        |> Enum.find(&(&1["name"] == "delete_counter_failure"))
+
+      assert conn.resp_body == source["body"]
+    after
+      Repo.query!("DROP TRIGGER a12f2e_counter_fault ON users")
+      Repo.query!("DROP FUNCTION a12f2e_counter_fault()")
+    end
 
     upstream = Dawarich.Test.RawHTTP.listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})

@@ -27,6 +27,6 @@ defmodule DawarichWeb.Api.PointWritesController do
 
     Respond.json(conn, status, body)
   rescue
-    _ -> Respond.head(conn, 500)
+    _ -> Respond.json(conn, 500, ApiWrites.failure())
   end
 end

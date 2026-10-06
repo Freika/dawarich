@@ -227,6 +227,7 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
       records << { method:, path:, params:, status: response.status, body: response.body,
                    pagination: response.headers.slice('X-Current-Page', 'X-Total-Pages') }
     end
+    records.concat(capture_pagination!(headers))
     upload_path = Rails.root.join('tmp/a12f2e-source.json')
     File.write(upload_path, '{}')
     records.concat(capture_uploads!(user, headers, upload_path))
@@ -243,9 +244,37 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
     first = PendingImports::Claim.new(pending, user).call
     second = PendingImports::Claim.new(pending, User.find(9711)).call
     records << { name: 'claim', import_name: first.name, replay: second, claimed_by: pending.reload.claimed_by_user_id }
+    records << capture_claim_failure!(pending, user)
     write_json('api_closure.json', records)
   ensure
     FileUtils.rm_f(upload_path) if upload_path
+  end
+
+  def capture_claim_failure!(pending, user)
+    failed = PendingImport.create!(claim_ticket: '11530000-0000-4000-8000-000000000003',
+                                   original_filename: 'callback-claim.json', origin: 'https://dawarich.app',
+                                   expires_at: now + 1.day)
+    failed.file.attach(pending.file.blob)
+    RSpec::Mocks.with_temporary_scope do
+      allow(ImportCommands).to receive(:process).and_raise('synthetic producer failure')
+      expect { PendingImports::Claim.new(failed, user).call }.to raise_error(RuntimeError, 'synthetic producer failure')
+    end
+    { name: 'claim_producer_failure', claimed: failed.reload.claimed_at.present?,
+      persisted: user.imports.exists?(name: 'callback-claim.json') }
+  end
+
+  def capture_pagination!(headers)
+    RSpec::Mocks.with_temporary_scope do
+      allow(Rails.application).to receive(:env_config).and_return(
+        Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                           'action_dispatch.show_detailed_exceptions' => false)
+      )
+      ['0', '-1', 'false', 'garbage'].map do |per_page|
+        get '/api/v1/imports', params: { per_page: }, headers: headers
+        { name: 'pagination', per_page:, status: response.status, body: response.body,
+          pagination: response.headers.slice('X-Current-Page', 'X-Total-Pages') }
+      end
+    end
   end
 
   def capture_uploads!(user, headers, path)
@@ -291,6 +320,8 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
   def capture_pending!(path)
     allow(PendingImport).to receive(:new).and_wrap_original do |original, *args|
       original.call(*args).tap do |pending|
+        next if pending.claim_ticket.present?
+
         suffix = pending.original_filename == 'failed-storage.json' ? '2' : '1'
         pending.claim_ticket = "11530000-0000-4000-8000-00000000000#{suffix}"
       end
