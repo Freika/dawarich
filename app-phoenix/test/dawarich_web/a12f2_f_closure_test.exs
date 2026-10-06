@@ -471,6 +471,58 @@ defmodule DawarichWeb.A12f2FClosureTest do
     assert user.otp_secret == nil and user.otp_backup_codes == []
   end
 
+  @tag :a12f2_f_08
+  test "Account and API key updates retain legacy sessions Cloud validation encryption and immediate token revocation",
+       ctx do
+    alias Dawarich.Auth.ApiKeys
+    id = insert_user(ctx.email)
+    old_key = :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower)
+
+    Repo.query!(
+      "UPDATE users SET api_key=$2,provider='github',uid='synthetic-provider' WHERE id=$1",
+      [id, old_key],
+      log: false
+    )
+
+    context = %{native: true, self_hosted: false, oidc: true, log_rounds: 4}
+    salt = String.slice(@hash, 0, 29)
+    assert {:ok, rotated} = ApiKeys.rotate(id, salt, context)
+    assert Accounts.by_api_key(old_key) == nil
+    assert Accounts.by_api_key(rotated.api_key).id == id
+    assert Repo.get!(Account, id).sign_in_count == 0
+    assert Code.ensure_loaded?(Dawarich.Auth.AccountClosure)
+
+    params = %{
+      "email" => "changed-" <> ctx.email,
+      "password" => "newpassword12345",
+      "password_confirmation" => "newpassword12345"
+    }
+
+    assert {:ok, updated} =
+             apply(Dawarich.Auth.AccountClosure, :update, [id, salt, params, context])
+
+    assert updated.email == "changed-" <> ctx.email
+    assert Bcrypt.verify_pass("newpassword12345", updated.encrypted_password)
+    assert updated.sign_in_count == 0 and updated.failed_attempts == 0
+
+    assert {:handoff, :session} =
+             apply(Dawarich.Auth.AccountClosure, :update, [id, salt, params, context])
+
+    Repo.query!("UPDATE users SET provider=NULL,uid=NULL WHERE id=$1", [id], log: false)
+    new_salt = String.slice(updated.encrypted_password, 0, 29)
+
+    assert {:error, %{errors: errors}} =
+             apply(Dawarich.Auth.AccountClosure, :update, [
+               id,
+               new_salt,
+               %{"current_password" => "wrong", "first_name" => "Changed"},
+               context
+             ])
+
+    assert Enum.any?(errors, fn {field, _, _} -> field == :current_password end)
+    assert Repo.get!(Account, id).failed_attempts == 0
+  end
+
   @tag :a12f2_f_05
   test "Cloud signup retains pending payment trial checkout attribution locale invitation and accepted callbacks once",
        ctx do

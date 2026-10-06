@@ -31,6 +31,7 @@ defmodule DawarichWeb.AuthAccount.Http do
       context
       |> Map.put_new(:self_hosted, System.get_env("SELF_HOSTED") == "true")
       |> Map.put_new_lazy(:oidc, &Admission.oidc?/0)
+      |> Map.put(:native, Keyword.get(opts, :native, false))
 
     case identity(conn, context) do
       {:ok, conn, id, salt, context} -> parse(conn, id, salt, opts, context)
@@ -46,9 +47,9 @@ defmodule DawarichWeb.AuthAccount.Http do
          cookie when is_binary(cookie) <- conn.cookies["_dawarich_session"],
          {:ok, session} when is_map(session) <-
            RailsCookies.decrypt(cookie, "_dawarich_session", secret, DateTime.utc_now()),
-         :ok <- Admission.context(session, conn.req_headers, context.oidc, context.self_hosted),
+         :ok <- admission(session, conn, context),
          [[id], salt] <- session["warden.user.user.key"],
-         {:ok, _actor} <- AccountChanges.actor(id, salt, context),
+         {:ok, _actor} <- account(context).actor(id, salt, context),
          %Accounts.User{} <- Accounts.get(id) do
       conn = RailsAuth.call(conn, secret: secret)
       locale = DawarichWeb.Locale.resolve(nil, conn.assigns.current_user, session)
@@ -79,7 +80,7 @@ defmodule DawarichWeb.AuthAccount.Http do
                 for {"user[" <> key, value} <- params, do: {String.trim_trailing(key, "]"), value}
               )
 
-            case AccountChanges.update(id, salt, user_params, context) do
+            case account(context).update(id, salt, user_params, context) do
               {:ok, actor} -> Response.updated(conn, actor, context)
               {:error, render} -> Response.form(conn, conn.assigns.current_user, render, context)
               {:handoff, _} -> fallback(conn, opts)
@@ -96,11 +97,34 @@ defmodule DawarichWeb.AuthAccount.Http do
     end
   end
 
+  defp account(context),
+    do: if(context[:native], do: Dawarich.Auth.AccountClosure, else: AccountChanges)
+
+  defp admission(session, conn, context),
+    do:
+      if(context[:native],
+        do: :ok,
+        else: Admission.context(session, conn.req_headers, context.oidc, context.self_hosted)
+      )
+
   defp read_all(conn, acc) do
-    case read_body(conn, RailsProxy.read_options()) do
-      {:more, raw, conn} -> read_all(conn, [acc, raw])
-      {:ok, raw, conn} -> {:ok, IO.iodata_to_binary([acc, raw]), conn}
-      {:error, _} -> {:error, conn}
+    remaining = 65_536 - IO.iodata_length(acc)
+
+    case read_body(conn, length: max(remaining, 1), read_length: 65_536) do
+      {:more, raw, conn} when byte_size(raw) < remaining ->
+        read_all(conn, [acc, raw])
+
+      {:ok, raw, conn} when byte_size(raw) <= remaining ->
+        {:ok, IO.iodata_to_binary([acc, raw]), conn}
+
+      {:more, _, conn} ->
+        {:error, conn}
+
+      {:ok, _, conn} ->
+        {:error, conn}
+
+      {:error, _} ->
+        {:error, conn}
     end
   end
 
@@ -134,8 +158,9 @@ defmodule DawarichWeb.AuthAccount.Http do
 
   defp fallback(conn, opts) do
     conn =
-      case Keyword.get(opts, :fallback) do
-        fun when is_function(fun, 1) -> fun.(conn)
+      case {Keyword.get(opts, :native, false), Keyword.get(opts, :fallback)} do
+        {true, _} -> send_resp(conn, 422, "Invalid account request")
+        {_, fun} when is_function(fun, 1) -> fun.(conn)
         _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
       end
 
