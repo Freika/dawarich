@@ -41,9 +41,32 @@ defmodule Dawarich.Imports.DestroyService do
                 log: false
               ).rows
 
+            [[settings]] =
+              lease.repo.query!("SELECT settings FROM users WHERE id=$1", [lease.user],
+                log: false
+              ).rows
+
+            zone =
+              Dawarich.TimeZoneName.to_iana(
+                context["time_zone"] || Dawarich.UserTimeZone.name(settings, lease.repo)
+              )
+
+            months =
+              lease.repo.query!(
+                "SELECT DISTINCT extract(year FROM to_timestamp(timestamp) AT TIME ZONE $3)::int,extract(month FROM to_timestamp(timestamp) AT TIME ZONE $3)::int FROM points WHERE import_id=$1 AND (user_id=$2 OR user_id IS NULL)",
+                [lease.id, lease.user, zone],
+                log: false
+              ).rows
+
+            months = Enum.uniq((context["months"] || []) ++ months)
+
             lease.repo.query!(
               "UPDATE phoenix.import_destroy_runs SET context=context||$2 WHERE import_id=$1 AND token=$3",
-              [lease.id, %{"track_ids" => tracks}, lease.token],
+              [
+                lease.id,
+                %{"track_ids" => tracks, "months" => months, "time_zone" => zone},
+                lease.token
+              ],
               log: false
             )
 

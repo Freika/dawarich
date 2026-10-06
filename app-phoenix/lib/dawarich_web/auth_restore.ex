@@ -10,12 +10,13 @@ defmodule DawarichWeb.AuthRestore do
     session = conn.assigns.rails_session
 
     if (Keyword.get(opts, :enabled, false) and
-          Admission.context(
-            session,
-            conn.req_headers,
-            false,
-            System.get_env("SELF_HOSTED") == "true"
-          ) == :ok and conn.assigns.current_user) &&
+          (Keyword.get(opts, :native, false) or
+             Admission.context(
+               session,
+               conn.req_headers,
+               false,
+               System.get_env("SELF_HOSTED") == "true"
+             ) == :ok) and conn.assigns.current_user) &&
          is_nil(Accounts.from_session(session, now)) do
       restore(conn, session, now)
     else

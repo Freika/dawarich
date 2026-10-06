@@ -62,9 +62,32 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     for extension <- ["json", "html"] do
       actual =
         Path.wildcard("#{@dir}/*/*.#{extension}")
+        |> Enum.filter(fn path ->
+          extension == "json" or
+            (File.exists?(Path.rootname(path) <> ".json") and
+               File.exists?(Path.rootname(path) <> ".html"))
+        end)
         |> Enum.map(&(&1 |> Path.relative_to(@dir) |> Path.rootname()))
 
-      assert Enum.sort(actual) == Enum.sort(@names)
+      closure =
+        if extension == "json",
+          do:
+            Enum.map(1..9, &("visits/a12f3a-v0" <> to_string(&1))) ++
+              Enum.map(1..9, &("videos/a12f3a-r0" <> to_string(&1))),
+          else: ["visits/a12f3a-v02"]
+
+      actual =
+        Path.wildcard("#{@dir}/*/*.#{extension}")
+        |> Enum.filter(fn path ->
+          capture = path |> Path.relative_to(@dir) |> Path.rootname()
+
+          capture in closure or
+            (File.exists?(Path.rootname(path) <> ".json") and
+               File.exists?(Path.rootname(path) <> ".html"))
+        end)
+        |> Enum.map(&(&1 |> Path.relative_to(@dir) |> Path.rootname()))
+
+      assert Enum.sort(actual) == Enum.sort(@names ++ closure)
     end
   end
 
@@ -84,7 +107,7 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
       )
 
     System.put_env("JWT_SECRET_KEY", "phoenix-a5-jwt-fixture-secret-not-for-production")
-    System.put_env("TIME_ZONE", "Europe/Berlin")
+    System.put_env("TIME_ZONE", "UTC")
 
     on_exit(fn ->
       for {key, value} <- previous do

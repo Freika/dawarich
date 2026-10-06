@@ -1,6 +1,50 @@
 defmodule Dawarich.Visits.Calendar do
   @moduledoc false
 
+  def changed(repo, user_id, stamps) do
+    if Dawarich.Standalone.enabled?() do
+      Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Points.VisitMonthsWorker, %{
+        "user_id" => user_id,
+        "started_at" => Enum.map(stamps, &DateTime.to_iso8601/1)
+      })
+    else
+      case Dawarich.Jobs.Ownership.lock(repo, "command:visits.suggest") do
+        :oban ->
+          case repo.query!("SELECT settings FROM users WHERE id=$1", [user_id], log: false).rows do
+            [[settings]] -> invalidate(repo, %{id: user_id, settings: settings}, stamps)
+            [] -> :ok
+          end
+
+        :sidekiq ->
+          Dawarich.RailsCommands.insert!(repo, "visit_months_changed", %{
+            "user_id" => user_id,
+            "started_at" => stamps |> Enum.map(&DateTime.to_iso8601/1) |> Enum.uniq()
+          })
+      end
+    end
+  end
+
+  def invalidate(repo, user, stamps) do
+    setting = user.settings["timezone"] || System.get_env("TIME_ZONE", "UTC")
+    setting = if setting == "", do: "UTC", else: setting
+    zone = Dawarich.TimeZoneName.to_iana(setting)
+
+    months =
+      repo.query!(
+        "SELECT DISTINCT to_char(stamp AT TIME ZONE $2, 'YYYY-MM') FROM unnest($1::timestamptz[]) stamp",
+        [stamps, zone],
+        log: false
+      ).rows
+      |> List.flatten()
+
+    for month <- months, segment <- ~w(lite pro) do
+      key = Enum.join(["timeline_month_summary", user.id, month, setting, segment, "v3"], "/")
+      {:ok, _} = Dawarich.Redis.cache_command(["UNLINK", key])
+    end
+
+    :ok
+  end
+
   @series "FROM generate_series(date_trunc('month', to_timestamp($1::bigint)), " <>
             "to_timestamp($2::bigint) - interval '1 second', interval '1 month') AS m ORDER BY m"
 

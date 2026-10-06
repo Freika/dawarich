@@ -3,9 +3,11 @@
 require 'rails_helper'
 require 'rake'
 require_relative 'fixture_recording'
+require_relative 'stats_closure_fixtures'
 
 RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type: :request do
   include ActiveSupport::Testing::TimeHelpers
+  include StatsClosureFixtures
 
   let(:root) { Rails.root.join('app-phoenix') }
   let(:fixtures) { root.join('test/fixtures') }
@@ -193,7 +195,125 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
       instance_settings: InstanceSetting.order(:id).map { { key: _1.key, value: _1.value } },
       point_counts:
                })
+    @closure_reads ||= []
+    @closure_reads << { name:, body:, state: JSON.parse(fixtures.join("stats/#{name}.json").read) }
     sign_out user
+  end
+
+  def closure_body
+    doc = Nokogiri::HTML5(response.body)
+    doc.css('input[name="authenticity_token"]').each { _1['value'] = 'CSRF' }
+    doc.css('meta[name="csrf-token"]').each { _1['content'] = 'CSRF' }
+    doc.css('[nonce]').each { _1['nonce'] = 'NONCE' }
+    doc.css('[signed-stream-name]').each { _1['signed-stream-name'] = 'SIGNED_STREAM' }
+    FixtureRecording.normalize(doc.to_html)
+  end
+
+  def closure_response(method, path, params, user, error = nil)
+    {
+      self_hosted: DawarichSettings.self_hosted?, method: method.to_s.upcase, path:, params:,
+        status: response.status, media_type: response.media_type,
+      body: closure_body, location: response.location,
+      headers: response.headers.slice('Cache-Control', 'Vary', 'Content-Type', 'X-Frame-Options',
+                                      'X-Content-Type-Options', 'Referrer-Policy'),
+      cookie: response.headers['Set-Cookie'].present?, flash: flash.to_hash,
+      error: error && { class: error.class.name, message: FixtureRecording.normalize(error.message) },
+      stats: user.stats.order(:id).map do
+        _1.attributes.slice(*%w[id year month distance sharing_uuid sharing_settings])
+      end,
+      digests: user.digests.order(:id).map do
+        _1.attributes.slice(*%w[id year month period_type sharing_uuid sharing_settings])
+      end,
+      jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args], queue: _1[:queue], at: _1[:at] } }
+    }
+  end
+
+  def closure_request(user, method, path, params = {}, accept: 'text/html', guest: false)
+    reset!
+    sign_in user unless guest
+    get(guest ? '/users/sign_in' : '/tags/new')
+    token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+    clear_enqueued_jobs
+    public_send(method, path, params:, headers: { 'Accept' => accept, 'X-CSRF-Token' => token })
+    closure_response(method, path, params, user)
+  end
+
+  def capture_closure_actions(self_hosted: true)
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+    offset = self_hosted ? 0 : 100
+    actor = reader(52_801 + offset)
+    other = reader(52_802 + offset)
+    stat(528_011 + offset, actor, 2024, 3, 1000)
+    stat(528_021 + offset, other, 2024, 3, 1000)
+    digest(528_012 + offset, actor, 2024)
+    digest(528_013 + offset, actor, 2024, period_type: :monthly, month: 3)
+    digest(528_022 + offset, other, 2024)
+    Point.insert!({ id: 52_801_001 + offset, user_id: actor.id, timestamp: Time.utc(2024, 3, 1).to_i,
+                    lonlat: 'POINT(12.373468 51.339700)', created_at: now, updated_at: now })
+    rows = %w[06 07 09 10 11 12 13 14].index_with { [] }
+    %w[1 12 all 0 13 bogus].each do |month|
+      row = closure_request(actor, :put, "/stats/2024/#{month}/update")
+      expect(row[:status]).to eq(month == 'bogus' ? 404 : 303)
+      expected = if month == 'all'
+                   (1..12).map { [actor.id, '2024', _1] }
+                 else
+                   (%w[1 12].include?(month) ? [[actor.id, '2024', month]] : [])
+                 end
+      expect(row[:jobs].map { _1[:args] }).to eq(expected)
+      rows['06'] << row
+    end
+    rows['06'] << closure_request(actor, :post, '/stats/2024/3/update', { _method: 'put' })
+    rows['07'] << closure_request(actor, :put, '/stats/update_all')
+    expect(rows['07'].last[:jobs].map { _1[:args] }).to eq([[actor.id, 2024, 3]])
+    %w[2024 2024junk 1969 2026 9999 bogus].each do |year|
+      row = closure_request(actor, :post, '/digests', { year: })
+      expect(row[:status]).to eq(303)
+      expect(row[:jobs].size).to eq(year.start_with?('2024') ? 1 : 0)
+      rows['09'] << row
+    end
+    %w[missing present].each do |state|
+      row = closure_request(actor, :delete, "/digests/#{state == 'missing' ? 1900 : 2024}")
+      expect(row[:status]).to eq(state == 'missing' ? 302 : 303)
+      expect(other.digests.count).to eq(1)
+      expect(actor.digests.monthly.count).to eq(1)
+      rows['10'] << row
+    end
+    digest(528_014 + offset, actor, 2024)
+    allow(SecureRandom).to receive(:uuid).and_return('00000000-0000-4000-8000-000000528099')
+    [['11', '/digests/2024/sharing', '/shared/digest/', actor.digests.yearly.first],
+     ['13', '/stats/2024/3/sharing', '/shared/month/', actor.stats.first]].each do |id, path, public_prefix, record|
+      ['application/json', 'text/vnd.turbo-stream.html'].each do |accept|
+        [{ enabled: '1' }, { enabled: '1', expiration: '12h' }, { enabled: '1', expiration: 'invalid' },
+         { enabled: 'true' }, { enabled: '0' }].each do |params|
+          row = closure_request(actor, :patch, path, params, accept:)
+          expect(row[:status]).to eq(200)
+          rows[id] << row
+        end
+      end
+      public_id = id == '11' ? '12' : '14'
+      %w[enabled expired disabled missing].each do |state|
+        record.enable_sharing!(expiration: '12h')
+        if state == 'expired'
+          record.update_columns(sharing_settings: record.sharing_settings.merge('expires_at' => (now - 1).iso8601))
+        end
+        record.disable_sharing! if state == 'disabled'
+        uuid = state == 'missing' ? '00000000-0000-4000-8000-000000000000' : record.reload.sharing_uuid
+        %i[get head].each do |method|
+          row = closure_request(actor, method, public_prefix + uuid, {}, guest: true)
+          expect(row[:status]).to eq(state == 'enabled' ? 200 : 302)
+          expect(response.body).to eq('') if method == :head
+          rows[public_id] << row.merge(grant: state)
+        end
+      end
+      missing = closure_request(actor, :patch, path.sub('2024', '1900'), { enabled: '1' }, accept: 'application/json')
+      expect(missing[:status]).to eq(404)
+      rows[id] << missing
+    end
+    @closure_action_cases ||= rows.transform_values { [] }
+    rows.each do |id, cases|
+      @closure_action_cases[id].concat(cases)
+      write_json(fixtures.join("stats/a12f3a-q#{id}.json"), { cases: @closure_action_cases[id] })
+    end
   end
 
   it 'writes the stats and digest pages' do
@@ -309,6 +429,7 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
       minimal = reader(5210)
       digest(52_101, minimal, 2024, toponyms: {})
       capture('digest_minimal_en', minimal, '/digests/2024')
+      capture_q_commands
     end
   end
 end

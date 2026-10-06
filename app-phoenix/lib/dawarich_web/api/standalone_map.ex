@@ -10,7 +10,14 @@ defmodule DawarichWeb.Api.StandaloneMap do
   def enabled?(_conn, _params), do: Dawarich.Standalone.enabled?()
   def init(action), do: action
 
-  def call(conn, action) do
+  def call(conn, :progress) do
+    conn = DawarichWeb.Api.Auth.admit(conn, conn.assigns.api_user, [])
+    if conn.halted, do: conn, else: handle(conn, :progress)
+  end
+
+  def call(conn, action), do: handle(conn, action)
+
+  defp handle(conn, action) do
     if Dawarich.ReleaseMigration.self_hosted?() do
       case Dawarich.RailsTime.with_zone(conn.assigns.api_user.timezone, fn ->
              run(conn, action, Map.merge(conn.assigns.api_params, conn.path_params))

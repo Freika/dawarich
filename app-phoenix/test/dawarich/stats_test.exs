@@ -123,7 +123,7 @@ defmodule Dawarich.StatsTest do
     assert Stats.month(me, 2024, 2, c).average_km == 17
   end
 
-  test "month JSON: toponyms sanitized as Stat#toponyms, daily distance defaults to no days" do
+  test "month JSON: toponyms sanitized as Stat#toponyms, malformed daily data remains raw" do
     me = user(5551)
 
     raw = [
@@ -157,9 +157,9 @@ defmodule Dawarich.StatsTest do
              %{"country" => nil, "cities" => []}
            ]
 
-    assert march.daily == []
+    assert march.daily == nil
     assert Stats.month(me, 2024, 4, c).stat.daily == []
-    assert Stats.month(me, 2024, 5, c).stat.daily == [[1, 100], [2, 0]]
+    assert Stats.month(me, 2024, 5, c).stat.daily == [[1, 100], [2, 0], "x", [3]]
 
     assert Toponyms.visited(march.toponyms) == [
              %{"country" => "DE", "cities" => [%{"city" => "Berlin"}]}

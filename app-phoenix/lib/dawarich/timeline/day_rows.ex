@@ -59,30 +59,7 @@ defmodule Dawarich.Timeline.DayRows do
     }
   end
 
-  def track(user, id, repo \\ Repo) do
-    """
-    SELECT t.id, t.distance, t.avg_speed, t.elevation_gain, t.elevation_loss, t.dominant_mode,
-           #{local("t.start_at")}, #{offset("t.start_at")}, z.name
-    FROM tracks t CROSS JOIN z WHERE t.id = $1 AND t.user_id = $2
-    """
-    |> UserTimeZone.query!([id, user.id], user.settings || %{}, repo)
-    |> Map.fetch!(:rows)
-    |> case do
-      [[id, distance, speed, gain, loss, mode, start_local, start_offset, zone]] ->
-        %{
-          id: id,
-          distance: distance,
-          avg_speed: speed,
-          elevation_gain: gain,
-          elevation_loss: loss,
-          mode: mode && Segments.mode(mode),
-          started_at: iso(start_local, start_offset, zone)
-        }
-
-      [] ->
-        nil
-    end
-  end
+  def track(user, id, repo \\ Repo), do: DayAssociations.track(user, id, repo)
 
   defp visits(user_id, start_s, end_s, window_now, settings, repo, include_id) do
     """
@@ -93,7 +70,7 @@ defmodule Dawarich.Timeline.DayRows do
     WHERE v.user_id = $1 AND
       (v.id=$5 OR (v.deleted_at IS NULL AND v.status <> 2
       AND v.started_at BETWEEN #{bound("$2")} AND #{bound("$3")} AND #{windowed("v.started_at", "$4")}))
-    ORDER BY v.started_at, v.id
+    ORDER BY v.started_at, v.id DESC
     """
     |> UserTimeZone.query!([user_id, start_s, end_s, window_now, include_id], settings, repo)
     |> Map.fetch!(:rows)

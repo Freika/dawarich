@@ -1,5 +1,19 @@
 # ExUnit partitions
 
+Install both JavaScript dependency sets before running the suite, from the
+repository root. Use a private cache when sharing the machine:
+
+```sh
+npm ci --cache "${TMPDIR:-/tmp}/dawarich-test-npm-cache"
+npm ci --prefix vendor/poster_renderer --cache "${TMPDIR:-/tmp}/dawarich-test-npm-cache"
+```
+
+The root install supplies Swagger UI assets. The poster renderer has its own
+lockfile and requires `@maplibre/maplibre-gl-native`; root `npm ci` does not
+install it. A `MODULE_NOT_FOUND` error in `a12f3b_p02_test.exs` or
+`NativeRenderer.run/3` means the vendor install is missing. These dependencies
+are setup requirements for native poster coverage, including partitioned runs.
+
 Run from any directory:
 
 ```sh

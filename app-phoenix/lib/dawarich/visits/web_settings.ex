@@ -30,21 +30,8 @@ defmodule Dawarich.Visits.WebSettings do
 
   def redetect(repo, user_id, now, locale) do
     transact(repo, user_id, fn %{settings: settings, last_redetected: last} ->
-      if not is_nil(last) and
-           NaiveDateTime.compare(last, DateTime.to_naive(DateTime.add(now, -3600))) == :gt do
-        repo.rollback({:cooldown, 429})
-      else
-        zone = settings["timezone"] || UserTimeZone.zone(%{})
-
-        unless is_binary(zone) and known_zone?(repo, zone),
-          do: repo.rollback({:replay, "visit time zone"})
-
-        Dawarich.RailsCommands.insert!(repo, "visits.web_redetect", %{
-          "user_id" => user_id,
-          "locale" => locale,
-          "timezone" => TimeZoneName.to_iana(zone)
-        })
-      end
+      opts = if Dawarich.Standalone.enabled?(), do: [owner: :oban], else: []
+      Dawarich.Visits.HistoryRedetect.enqueue(repo, user_id, settings, last, now, locale, opts)
     end)
   end
 
@@ -66,14 +53,6 @@ defmodule Dawarich.Visits.WebSettings do
 
   defp scalar?(value) when is_binary(value), do: String.valid?(value)
   defp scalar?(value), do: is_number(value) or is_boolean(value) or is_nil(value)
-
-  defp known_zone?(repo, zone),
-    do:
-      repo.query!(
-        "SELECT EXISTS (SELECT 1 FROM pg_timezone_names WHERE name=$1)",
-        [TimeZoneName.to_iana(zone)],
-        log: false
-      ).rows == [[true]]
 
   def load(repo, user_id) do
     case repo.query!("SELECT settings, visits_redetected_at FROM users WHERE id = $1", [user_id],

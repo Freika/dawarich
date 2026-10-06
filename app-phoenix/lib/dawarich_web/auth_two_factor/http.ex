@@ -4,7 +4,7 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
   import Plug.Conn
   alias Dawarich.{Accounts, RailsCookies, RailsSecret}
   alias Dawarich.Auth.{ActionCsrf, Admission, SessionCookie}
-  alias Dawarich.Auth.TwoFactor.{Management, Secret}
+  alias Dawarich.Auth.TwoFactor.{Closure, Management, Secret}
   alias DawarichWeb.{RailsAuth, RailsProxy, RequestURL}
   alias DawarichWeb.AuthTwoFactor.Response
 
@@ -29,7 +29,14 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
   defp admit(conn, opts) do
     context =
       Keyword.get(opts, :context, %{})
-      |> Map.put_new(:self_hosted, System.get_env("SELF_HOSTED") == "true")
+      |> Map.put_new(
+        :self_hosted,
+        if(Keyword.get(opts, :native, false),
+          do: System.get_env("SELF_HOSTED", "true") != "false",
+          else: System.get_env("SELF_HOSTED") == "true"
+        )
+      )
+      |> Map.put(:native, Keyword.get(opts, :native, false))
       |> Map.put_new_lazy(:oidc, &Admission.oidc?/0)
 
     case identity(conn, context) do
@@ -46,9 +53,12 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
          cookie when is_binary(cookie) <- conn.cookies["_dawarich_session"],
          {:ok, session} when is_map(session) <-
            RailsCookies.decrypt(cookie, "_dawarich_session", secret, DateTime.utc_now()),
-         :ok <- Admission.context(session, conn.req_headers, context.oidc, context.self_hosted),
+         true <-
+           context.native or
+             Admission.context(session, conn.req_headers, context.oidc, context.self_hosted) ==
+               :ok,
          [[id], salt] <- session["warden.user.user.key"],
-         {:ok, _actor} <- Secret.actor(id, salt, context),
+         {:ok, _actor} <- actor(id, salt, context),
          %Accounts.User{} <- Accounts.get(id) do
       SessionCookie.for_form(session, secret)
       {:ok, RailsAuth.call(conn, secret: secret), id, salt, Map.put(context, :secret, secret)}
@@ -57,6 +67,10 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
     end
   rescue
     _ -> {:handoff, :identity}
+  end
+
+  defp actor(id, salt, context) do
+    if context.native, do: Closure.actor(id, salt, context), else: Secret.actor(id, salt, context)
   end
 
   defp parse(%{method: "GET", request_path: @path} = conn, id, salt, opts, context) do
@@ -127,18 +141,22 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
 
   defp dispatch(conn, action, params, id, salt, opts, context) do
     result =
-      case action do
-        :show ->
-          Management.show(id, salt, context)
+      if context.native do
+        Closure.call(action, id, salt, params, context)
+      else
+        case action do
+          :show ->
+            Management.show(id, salt, context)
 
-        :setup ->
-          Management.setup(id, salt, context)
+          :setup ->
+            Management.setup(id, salt, context)
 
-        :verify ->
-          Management.verify(id, salt, params["otp_attempt"], context)
+          :verify ->
+            Management.verify(id, salt, params["otp_attempt"], context)
 
-        :disable ->
-          Management.disable(id, salt, params["password"], params["otp_attempt"], context)
+          :disable ->
+            Management.disable(id, salt, params["password"], params["otp_attempt"], context)
+        end
       end
 
     case result do
@@ -164,10 +182,23 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
   end
 
   defp read_all(conn, acc) do
-    case read_body(conn, RailsProxy.read_options()) do
-      {:more, raw, conn} -> read_all(conn, [acc, raw])
-      {:ok, raw, conn} -> {:ok, IO.iodata_to_binary([acc, raw]), conn}
-      {:error, _} -> {:error, conn}
+    remaining = 65_536 - IO.iodata_length(acc)
+
+    case read_body(conn, length: max(remaining, 1), read_length: 65_536) do
+      {:more, raw, conn} when byte_size(raw) < remaining ->
+        read_all(conn, [acc, raw])
+
+      {:ok, raw, conn} when byte_size(raw) <= remaining ->
+        {:ok, IO.iodata_to_binary([acc, raw]), conn}
+
+      {:more, _, conn} ->
+        {:error, conn}
+
+      {:ok, _, conn} ->
+        {:error, conn}
+
+      {:error, _} ->
+        {:error, conn}
     end
   end
 
@@ -192,9 +223,13 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
 
   defp fallback(conn, opts) do
     conn =
-      case Keyword.get(opts, :fallback) do
-        fun when is_function(fun, 1) -> fun.(conn)
-        _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+      if Keyword.get(opts, :native, false) do
+        send_resp(conn, 422, "Invalid two-factor request")
+      else
+        case Keyword.get(opts, :fallback) do
+          fun when is_function(fun, 1) -> fun.(conn)
+          _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+        end
       end
 
     halt(conn)

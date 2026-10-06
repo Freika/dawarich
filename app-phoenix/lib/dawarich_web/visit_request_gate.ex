@@ -3,18 +3,17 @@ defmodule DawarichWeb.VisitRequestGate do
   alias Dawarich.Visits.WebSettings
   alias DawarichWeb.{RailsAuth, Strangler}
 
-  def actions?(conn, _params), do: DawarichWeb.LayoutAssigns.self_hosted?() and query?(conn)
+  def actions?(conn, _params), do: query?(conn)
 
   defp query?(conn), do: conn.query_string == ""
 
   def navigation?(conn, _params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and Strangler.page_request?(conn) and
+    Strangler.page_request?(conn) and
       DawarichWeb.A8Gate.scalar_query?(conn.query_string, ~w(status locale))
   end
 
   def settings?(conn, _params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and
-      DawarichWeb.A8Gate.scalar_query?(conn.query_string, ~w(locale)) and
+    DawarichWeb.A8Gate.scalar_query?(conn.query_string, ~w(locale)) and
       case RailsAuth.call(conn, []).assigns.current_user do
         nil ->
           true

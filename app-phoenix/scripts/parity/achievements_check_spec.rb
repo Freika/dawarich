@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe 'Phoenix fixture: achievement checks run by Rails' do
+  include ActiveSupport::Testing::TimeHelpers
+
+  around { |example| travel_to(Time.utc(2026, 10, 4, 22, 30)) { example.run } }
+
   def json_rows(sql, *binds)
     ActiveRecord::Base.connection.select_values(ActiveRecord::Base.sanitize_sql_array([sql, *binds]))
                       .map { JSON.parse(_1) }
@@ -21,7 +25,8 @@ RSpec.describe 'Phoenix fixture: achievement checks run by Rails' do
 
   def insert_points!(user, country, lon, lat, first_timestamp, created_at, count: 9)
     rows = Array.new(count) do |i|
-      { user_id: user.id, timestamp: first_timestamp + (i * 300), lonlat: "POINT(#{lon} #{lat})",
+      { id: (@point_id = (@point_id || 81_300) + 1), user_id: user.id, timestamp: first_timestamp + (i * 300),
+        lonlat: "POINT(#{lon} #{lat})",
         country_id: country.id, anomaly: false, created_at: created_at, updated_at: created_at }
     end
     ids = Point.insert_all(rows, returning: :id).rows.flatten
@@ -48,17 +53,19 @@ RSpec.describe 'Phoenix fixture: achievement checks run by Rails' do
 
   it 'records four checks and the state, events, awards and notifications Rails writes after each' do
     Region.delete_all
-    user = create(:user)
+    user = create(:user, id: 81_301, email: 'achievement-check-source@example.invalid')
     user.update_columns(settings: { 'locale' => 'de', 'min_minutes_spent_in_city' => 30 })
     Notification.where(user_id: user.id).delete_all
 
-    de = Country.create!(iso_a2: 'DE', iso_a3: 'DEU', name: 'Germany', geom: square(12.0, 51.0, 1.0))
-    lu = Country.create!(iso_a2: 'LU', iso_a3: 'LUX', name: 'Luxembourg', geom: square(6.0, 49.5, 0.3))
+    de = Country.create!(id: 81_301, iso_a2: 'DE', iso_a3: 'DEU', name: 'Germany', geom: square(12.0, 51.0, 1.0))
+    lu = Country.create!(id: 81_302, iso_a2: 'LU', iso_a3: 'LUX', name: 'Luxembourg', geom: square(6.0, 49.5, 0.3))
     corners = {
       'DE-SN' => [12.3, 51.3], 'DE-ST' => [12.1, 51.5], 'DE-TH' => [12.1, 51.1], 'DE-BB' => [12.5, 51.5],
       'DE-BE' => [12.7, 51.7], 'DE-MV' => [12.5, 51.8], 'DE-SH' => [12.1, 51.8], 'DE-HH' => [12.7, 51.1]
     }
-    corners.each { |code, (west, south)| Region.create!(code: code, geom: square(west, south, 0.1)) }
+    corners.each_with_index do |(code, (west, south)), index|
+      Region.create!(id: 81_301 + index, code: code, geom: square(west, south, 0.1))
+    end
     center = ->(code) { corners.fetch(code).map { |value| (value + 0.05).round(4) } }
 
     base = Time.utc(2026, 6, 1, 8).to_i
@@ -107,6 +114,11 @@ RSpec.describe 'Phoenix fixture: achievement checks run by Rails' do
 
     path = Rails.root.join('app-phoenix/test/fixtures/achievements/check.json')
     FileUtils.mkdir_p(path.dirname)
-    File.write(path, "#{JSON.pretty_generate(fixture)}\n")
+    bytes = "#{JSON.pretty_generate(fixture)}\n"
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(path, bytes)
+    else
+      expect(path.read).to eq(bytes)
+    end
   end
 end

@@ -93,12 +93,13 @@ defmodule DawarichWeb.FamilyInvitationTest do
     assert element?(html, ".alert-warning")
     refute element?(html, "a[data-method='post']")
 
-    assert Phoenix.Router.route_info(
-             DawarichWeb.Router,
-             "POST",
-             "/family/memberships",
-             "www.example.com"
-           ) == :error
+    assert %{plug: DawarichWeb.FamilyFormRoutes} =
+             Phoenix.Router.route_info(
+               DawarichWeb.Router,
+               "POST",
+               "/family/memberships",
+               "www.example.com"
+             )
   end
 
   test "invitation key hands back public and nested token landings" do

@@ -47,6 +47,24 @@ defmodule DawarichWeb.AuthResponse do
     |> redirect("/")
   end
 
+  def denied(conn, key) do
+    locale = DawarichWeb.Locale.resolve(nil, nil, conn.assigns.rails_session)
+    message = DawarichWeb.Translate.t(locale, key, %{})
+
+    session =
+      Map.put(conn.assigns.rails_session, "flash", %{
+        "discard" => [],
+        "flashes" => %{"alert" => message}
+      })
+
+    conn
+    |> AuthCookie.session(SessionCookie.for_form(session, RailsSecret.fetch()))
+    |> DawarichWeb.RailsHeaders.call([])
+    |> put_resp_header("location", RequestURL.base(conn) <> "/")
+    |> send_resp(302, "")
+    |> halt()
+  end
+
   def form(conn, email, error, status) do
     conn =
       conn

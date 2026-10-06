@@ -102,8 +102,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
 
           live "/insights", DawarichWeb.InsightsLive.Index, :index,
             container: {:div, class: "contents"}
-
-          family_page_routes()
         end
       end
     end

@@ -154,7 +154,6 @@ defmodule DawarichWeb.MapWriteRequestTest do
           {:post, "/tags?locale=de", "tag[name]=Synthetic"},
           {:post, "/tags/42", "tag[name]=Bare"},
           {:patch, "/tags/042", "tag[name]=LeadingZero"},
-          {:put, "/tracks/42/segments/43", "reset=true"},
           {:delete, "/points/bulk_destroy", "point_ids[bad]=42"},
           {:delete, "/points/bulk_destroy?start_at=1&start_at=2", "point_ids[]=42"},
           {:post, "/tags", "tag[name]=%FF"}

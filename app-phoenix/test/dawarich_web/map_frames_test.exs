@@ -89,12 +89,12 @@ defmodule DawarichWeb.MapFramesTest do
   describe "MapFramesGate.track?/2" do
     defp gate_conn(path), do: build_conn(:get, path)
 
-    test "refuses the locale and client markers" do
+    test "accepts scalar locale and client markers" do
       assert MapFramesGate.track?(gate_conn("/map/timeline_feeds/5/track_info"), %{})
-      refute MapFramesGate.track?(gate_conn("/map/timeline_feeds/5/track_info?locale=de"), %{})
-      refute MapFramesGate.track?(gate_conn("/map/timeline_feeds/5/track_info?client=ios"), %{})
+      assert MapFramesGate.track?(gate_conn("/map/timeline_feeds/5/track_info?locale=de"), %{})
+      assert MapFramesGate.track?(gate_conn("/map/timeline_feeds/5/track_info?client=ios"), %{})
 
-      refute "/map/timeline_feeds/5/track_info"
+      assert "/map/timeline_feeds/5/track_info"
              |> gate_conn()
              |> put_req_header("x-dawarich-client", "ios")
              |> MapFramesGate.track?(%{})
@@ -196,15 +196,15 @@ defmodule DawarichWeb.MapFramesTest do
   end
 
   describe "MapFramesGate.feed?/2" do
-    test "owns digits and ISO start/end only" do
+    test "admits Rails timestamp fallback and structured native error cases" do
       ok = &MapFramesGate.feed?(build_conn(:get, "/map/timeline_feeds?" <> &1), %{})
 
       assert ok.("start_at=1790460000&end_at=1790546399")
       assert ok.("start_at=2026-09-27T00:00:00&end_at=2026-09-27%2023:59")
-      refute ok.("end_at=2026-09-27T23:59:59")
-      refute ok.("start_at=%20&end_at=2026-09-27T23:59:59")
-      refute ok.("start_at=yesterday&end_at=2026-09-27T23:59:59")
-      refute ok.("start_at[]=1&end_at=2")
+      assert ok.("end_at=2026-09-27T23:59:59")
+      assert ok.("start_at=%20&end_at=2026-09-27T23:59:59")
+      assert ok.("start_at=yesterday&end_at=2026-09-27T23:59:59")
+      assert ok.("start_at[]=1&end_at=2")
     end
   end
 
@@ -262,9 +262,9 @@ defmodule DawarichWeb.MapFramesTest do
       assert calendar("?month=")
       assert calendar("?month=2026-09", "*/*")
       assert calendar("?month=2026-09", "")
-      refute calendar("?month=2026-9")
-      refute calendar("?month=0000-01")
-      refute calendar("?month[]=2026-09")
+      assert calendar("?month=2026-9")
+      assert calendar("?month=0000-01")
+      assert calendar("?month[]=2026-09")
       refute calendar("?month=2026-09", "text/html;level=1, text/vnd.turbo-stream.html")
       refute calendar("?month=2026-09", "TEXT/HTML, application/xhtml+xml")
     end
@@ -316,7 +316,7 @@ defmodule DawarichWeb.MapFramesTest do
       refute html =~ "residency-country-list"
     end
 
-    test "countries with equal day counts are Rails' to order", %{user: user} do
+    test "countries with equal day counts render in the captured source order", %{user: user} do
       S.point!(user.id, 7799, DateTime.to_unix(~U[2026-03-21 12:00:00Z]), %{
         country_name: "Atlantis"
       })
@@ -331,7 +331,7 @@ defmodule DawarichWeb.MapFramesTest do
 
       ctx = %{user: user, locale: "en", query: %{"year" => "2026"}, now: ~U[2026-09-29 10:00:00Z]}
 
-      assert {:replay, _reason} = DawarichWeb.MapFrames.body(:residency, ctx)
+      assert {:ok, "text/html", _html} = DawarichWeb.MapFrames.body(:residency, ctx)
     end
 
     test "the year runs from local midnight to local midnight in the user's zone", %{user: user} do
@@ -360,18 +360,18 @@ defmodule DawarichWeb.MapFramesTest do
         |> Map.put(:query_string, query)
         |> MapFramesGate.residency?(%{})
 
-    test "owns self-hosted users and Cloud users with full access, years 1970–2037 and no year" do
+    test "admits residency authentication and year failures to the native action" do
       lite = S.user!(7023, %{"timezone" => "Europe/Berlin"}, %{plan: 0})
       pro = S.user!(7024)
 
       assert residency(lite, "year=2026")
       System.put_env("SELF_HOSTED", "false")
-      refute residency(lite, "year=2026")
+      assert residency(lite, "year=2026")
       assert residency(pro, "year=2026")
       assert residency(pro, "")
-      refute residency(pro, "year=1969")
-      refute residency(pro, "year=26")
-      refute residency(pro, "year=")
+      assert residency(pro, "year=1969")
+      assert residency(pro, "year=26")
+      assert residency(pro, "year=")
     end
   end
 

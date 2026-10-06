@@ -195,7 +195,7 @@ defmodule Dawarich.TripGateTest do
       TripsSeeds.trip!(%{id: 880_201, user_id: 8802, path: @path})
       TripsSeeds.trip!(%{id: 880_301, user_id: 8803, path: @path})
 
-      assert TripPage.gate(photos, 880_201) == :rails
+      assert {:ok, _} = TripPage.gate(photos, 880_201)
       assert TripPage.gate(leagues, 880_301) == :rails
     end
 

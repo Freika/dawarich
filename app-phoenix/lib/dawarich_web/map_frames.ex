@@ -44,12 +44,21 @@ defmodule DawarichWeb.MapFrames do
       stream: action == :calendar and stream?(accept)
     }
 
-    case body(action, ctx) do
+    result =
+      if action == :residency and restricted?(ctx), do: :pro_required, else: body(action, ctx)
+
+    case result do
+      :pro_required ->
+        reject_pro(conn)
+
       {:ok, type, html} ->
         respond(conn, accept, type, html)
 
       {:ok, type, html, changes} ->
         conn |> RailsSession.stage(changes) |> respond(accept, type, html)
+
+      {:error, status} ->
+        conn |> put_resp_content_type("text/html") |> send_resp(status, "")
 
       :not_found ->
         raise DawarichWeb.NotFoundError
@@ -61,10 +70,26 @@ defmodule DawarichWeb.MapFrames do
     end
   end
 
+  def body(:index, %{query: %{"start_at" => value}})
+      when not is_binary(value) and not is_nil(value),
+      do: {:error, 500}
+
+  def body(:index, %{query: %{"end_at" => value}})
+      when not is_binary(value) and not is_nil(value),
+      do: {:error, 500}
+
   def body(:index, ctx) do
     window =
       MapWindow.build(
-        Map.take(ctx.query, ["start_at", "end_at"]),
+        Map.new(~w(start_at end_at), fn key ->
+          value = ctx.query[key]
+
+          {key,
+           if(Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(value),
+             do: Integer.to_string(DateTime.to_unix(ctx.now)),
+             else: value
+           )}
+        end),
         ctx.user.settings || %{},
         ctx.now,
         nil
@@ -112,14 +137,20 @@ defmodule DawarichWeb.MapFrames do
     if ctx.stream,
       do: render(&TimelineCalendar.calendar_stream/1, assigns, "text/vnd.turbo-stream.html"),
       else: html(&TimelineCalendar.calendar/1, assigns)
+  rescue
+    _error in [ArgumentError, FunctionClauseError] -> {:error, 500}
   end
 
+  def body(:residency, %{query: %{"year" => value}})
+      when not is_binary(value) and not is_nil(value),
+      do: {:error, 500}
+
   def body(:residency, ctx) do
-    year = if is_binary(ctx.query["year"]), do: String.to_integer(ctx.query["year"])
+    year = if is_binary(ctx.query["year"]), do: DawarichWeb.Params.ruby_to_i(ctx.query["year"])
 
     case ResidencyFrame.data(ctx.user, year, ctx.now) do
       {:ok, data} -> html(&ResidencyFrame.frame/1, Map.put(data, :locale, ctx.locale))
-      {:replay, reason} -> {:replay, reason}
+      {:error, status} -> {:error, status}
     end
   end
 
@@ -181,6 +212,24 @@ defmodule DawarichWeb.MapFrames do
       {:ok, point} -> html(&PointAddressFrame.frame/1, %{point: point, locale: ctx.locale})
       :rails -> {:replay, "point address changed after the gate"}
     end
+  end
+
+  defp reject_pro(conn) do
+    alert =
+      DawarichWeb.Translate.t(
+        conn.assigns.locale,
+        "controllers.application.this_feature_requires_a_pro_plan",
+        %{}
+      )
+
+    location =
+      List.first(get_req_header(conn, "referer")) || DawarichWeb.RequestURL.base(conn) <> "/"
+
+    conn
+    |> RailsSession.stage(%{"flash" => %{"discard" => [], "flashes" => %{"alert" => alert}}})
+    |> put_resp_header("location", location)
+    |> put_resp_content_type("text/html")
+    |> send_resp(303, "")
   end
 
   defp replay_tag(:place), do: "places"

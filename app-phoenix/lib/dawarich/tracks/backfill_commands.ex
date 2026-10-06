@@ -1,7 +1,6 @@
 defmodule Dawarich.Tracks.BackfillCommands do
   @moduledoc false
 
-  alias Dawarich.Jobs.Ownership
   alias Dawarich.Tracks.{BackfillRanges, BackfillWalks}
   alias Dawarich.{RailsCommands, TimeZoneName}
 
@@ -52,7 +51,7 @@ defmodule Dawarich.Tracks.BackfillCommands do
 
     transaction(repo, "tracks.throttled_backfill", fn
       :oban ->
-        if legacy_pending?(user_id) do
+        if not Dawarich.Standalone.enabled?() and legacy_pending?(user_id) do
           reverse_bootstrap(repo, user_id, zone)
         else
           unwrap(
@@ -109,7 +108,10 @@ defmodule Dawarich.Tracks.BackfillCommands do
   end
 
   defp transaction(repo, kind, fun) do
-    unwrap(repo, repo.transaction(fn -> fun.(Ownership.lock(repo, "command:" <> kind)) end))
+    unwrap(
+      repo,
+      repo.transaction(fn -> fun.(Dawarich.Tracks.Owner.lock(repo, "command:" <> kind)) end)
+    )
   end
 
   defp unwrap(_repo, {:ok, result}), do: result

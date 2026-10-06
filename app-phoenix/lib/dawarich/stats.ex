@@ -78,7 +78,7 @@ defmodule Dawarich.Stats do
     %{distances: distances(rows), stats: Enum.filter(rows, &in_window?(&1, context.cutoff))}
   end
 
-  def month(user, year, month, context) do
+  def month(user, year, month, context, opts \\ []) do
     rows =
       """
       SELECT month, distance, flight_distance, daily_distance, toponyms, sharing_settings, sharing_uuid::text
@@ -90,7 +90,7 @@ defmodule Dawarich.Stats do
           month: m,
           distance: distance,
           flight_distance: flight,
-          daily: daily(daily),
+          daily: if(daily == %{}, do: [], else: daily),
           toponyms: Toponyms.sanitize(toponyms),
           sharing: sharing(sharing),
           sharing_uuid: uuid
@@ -100,7 +100,10 @@ defmodule Dawarich.Stats do
 
     %{
       stat: Enum.find(rows, &(&1.month == month)),
-      previous: if(month > 1, do: Enum.find(rows, &(&1.month == month - 1))),
+      previous:
+        if(month > 1,
+          do: Enum.find(rows, &(&1.month == Keyword.get(opts, :previous_month, month - 1)))
+        ),
       average_km: average_km(rows)
     }
   end

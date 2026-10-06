@@ -8,7 +8,7 @@ defmodule DawarichWeb.RailsAuth do
 
   @session "_dawarich_session"
   @remember "remember_user_token"
-  @layout ~w(locale suggested_locale self_hosted request_path query_params flash_messages rails_csrf_token base_url)a
+  @layout ~w(notification_session locale suggested_locale self_hosted request_path query_params flash_messages rails_csrf_token base_url)a
 
   @impl true
   def init(opts), do: opts
@@ -47,8 +47,15 @@ defmodule DawarichWeb.RailsAuth do
 
   def live_session(conn) do
     Map.new(
-      [{"rails_user_id", conn.assigns[:current_user] && conn.assigns.current_user.id}] ++
-        for(key <- @layout, do: {Atom.to_string(key), conn.assigns[key]})
+      [
+        {"rails_user_id", conn.assigns[:current_user] && conn.assigns.current_user.id},
+        {"notification_session",
+         DawarichWeb.NotificationSession.topic(conn.assigns[:rails_session] || %{})}
+      ] ++
+        for(
+          key <- @layout -- [:notification_session],
+          do: {Atom.to_string(key), conn.assigns[key]}
+        )
     )
   end
 

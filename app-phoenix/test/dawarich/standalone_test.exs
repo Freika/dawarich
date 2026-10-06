@@ -83,6 +83,35 @@ defmodule Dawarich.StandaloneTest do
     assert log =~ "unsupported_envelope"
   end
 
+  test "standalone custom HTTP methods share the bounded OTHER telemetry label" do
+    parent = self()
+    id = "standalone-custom-methods"
+
+    :telemetry.attach(
+      id,
+      [:dawarich, :standalone, :handback],
+      fn _, _, metadata, _ ->
+        send(parent, {:handback, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(id) end)
+
+    for method <- ~w(REVIEWONE REVIEWTWO GET HEAD POST PUT PATCH DELETE OPTIONS) do
+      label = if method in ~w(REVIEWONE REVIEWTWO), do: "OTHER", else: method
+
+      log =
+        capture_log(fn ->
+          conn = Plug.Test.conn(method, "/review-missing") |> DawarichWeb.Strangler.call([])
+          assert conn.status == 404
+          assert_receive {:handback, %{method: ^label, status: 404, reason: "missing_route"}}
+        end)
+
+      assert log =~ method
+    end
+  end
+
   test "standalone proxy body replay and cable never open an upstream" do
     Application.put_env(:dawarich, :rails_upstream, nil)
 

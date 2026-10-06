@@ -127,7 +127,6 @@ defmodule DawarichWeb.NormalUploadReplayTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
   import Plug.Conn
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
   alias Dawarich.Test.RailsUser
 
   test "unsupported upload replay has no committed import effect" do
@@ -148,17 +147,20 @@ defmodule DawarichWeb.NormalUploadReplayTest do
     body =
       Plug.Conn.Query.encode(%{"import" => %{"files" => [gpx.signed_id, unsupported.signed_id]}})
 
-    {{line, received}, conn} =
-      forwarded(upstream!(), fn ->
-        build_conn()
-        |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-        |> put_req_header("x-csrf-token", DawarichWeb.RailsCsrf.masked_token(session))
-        |> put_req_header("content-type", "application/x-www-form-urlencoded")
-        |> put_req_header("content-length", Integer.to_string(byte_size(body)))
-        |> dispatch(DawarichWeb.Endpoint, :post, "/imports", body)
-      end)
+    previous = Application.get_env(:dawarich, :rails_upstream)
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
+    on_exit(fn -> Application.put_env(:dawarich, :rails_upstream, previous) end)
 
-    assert {line, received, conn.status} == {"POST /imports HTTP/1.1", body, 204}
+    conn =
+      build_conn()
+      |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+      |> put_req_header("x-csrf-token", DawarichWeb.RailsCsrf.masked_token(session))
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> put_req_header("content-length", Integer.to_string(byte_size(body)))
+      |> dispatch(DawarichWeb.Endpoint, :post, "/imports", body)
+
+    assert conn.status == 422
+    assert get_resp_header(conn, "location") == ["http://www.example.com/imports/new"]
     assert [] == Repo.query!("SELECT id FROM imports").rows
     assert [] == Repo.query!("SELECT id FROM active_storage_attachments").rows
     assert [] == Repo.query!("SELECT event_id FROM job_outbox").rows

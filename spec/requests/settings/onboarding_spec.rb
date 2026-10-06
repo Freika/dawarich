@@ -12,14 +12,20 @@ RSpec.describe 'settings/onboarding', type: :request do
 
     describe 'PATCH /settings/onboarding' do
       it 'sets onboarding_completed to true' do
+        user.update_columns(settings: user.settings.merge('synthetic_keep' => 7))
         patch settings_onboarding_path
 
+        expect(response.body).to eq('')
+        expect(user.reload.settings['synthetic_keep']).to eq(7)
         expect(response).to have_http_status(:ok)
         expect(user.reload.settings['onboarding_completed']).to be true
       end
 
       it 'is idempotent' do
-        2.times { patch settings_onboarding_path }
+        patch settings_onboarding_path
+        saved_at = user.reload.updated_at
+        put settings_onboarding_path
+        expect(user.reload.updated_at).to eq(saved_at)
 
         expect(response).to have_http_status(:ok)
         expect(user.reload.settings['onboarding_completed']).to be true

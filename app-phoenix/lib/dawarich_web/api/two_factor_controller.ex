@@ -10,7 +10,10 @@ defmodule DawarichWeb.Api.TwoFactorController do
   def call(conn, action) do
     result =
       if supported?(conn) do
-        context = %{self_hosted: true}
+        context = %{
+          self_hosted: System.get_env("SELF_HOSTED", "true") != "false",
+          native: conn.assigns[:api_native] == true
+        }
 
         context =
           if conn.assigns[:api_repo],
@@ -28,8 +31,13 @@ defmodule DawarichWeb.Api.TwoFactorController do
       end
 
     case result do
-      {:ok, status, term} -> Respond.json(conn, status, term)
-      {:replay, reason} -> Body.replay(conn, reason)
+      {:ok, status, term} ->
+        Respond.json(conn, status, term)
+
+      {:replay, reason} ->
+        if conn.assigns[:api_native],
+          do: Respond.json(conn, 422, {:object, [{"error", "invalid_two_factor_request"}]}),
+          else: Body.replay(conn, reason)
     end
   rescue
     Ecto.InvalidChangesetError ->

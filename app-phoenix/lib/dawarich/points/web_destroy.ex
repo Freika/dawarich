@@ -1,6 +1,6 @@
 defmodule Dawarich.Points.WebDestroy do
   @moduledoc false
-  alias Dawarich.{RailsCommands, RubyInteger, UserTimeZone}
+  alias Dawarich.RubyInteger
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   def run(repo, user, ids, ctx) do
@@ -69,16 +69,9 @@ defmodule Dawarich.Points.WebDestroy do
   defp follow_up(_repo, _user, [], _ctx), do: :ok
 
   defp follow_up(repo, user, deleted, ctx) do
-    timestamps = Enum.map(deleted, & &1.timestamp)
-
-    RailsCommands.insert!(repo, "points.web_destroy_follow_up", %{
-      "user_id" => user.id,
-      "timestamps" => timestamps,
-      "track_ids" => deleted |> Enum.map(& &1.track_id) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
-      "oldest_timestamp" => Enum.min(timestamps),
-      "locale" => ctx.locale,
-      "timezone" => Map.get_lazy(ctx, :timezone, fn -> UserTimeZone.iana(repo, user.settings) end)
-    })
+    if Dawarich.Standalone.enabled?(),
+      do: Dawarich.Points.DeletionEffects.publish(repo, user, deleted, ctx),
+      else: Dawarich.Points.WebDestroyEffects.publish!(repo, user, deleted, ctx)
   end
 
   defp render(repo, {:ok, result} = outcome, ctx) do

@@ -60,8 +60,15 @@ defmodule DawarichWeb.A12f3aOClosureTest do
       assert effects() == before
 
       System.put_env("SELF_HOSTED", "false")
-      refute apply(gate, :actions?, [conn, %{}])
-      refute A8Gate.actions?(conn, %{})
+
+      if domain == DawarichWeb.VisitRequest or gate == DawarichWeb.TripRequestGate do
+        assert apply(gate, :actions?, [conn, %{}])
+        assert A8Gate.actions?(conn, %{})
+      else
+        refute apply(gate, :actions?, [conn, %{}])
+        refute A8Gate.actions?(conn, %{})
+      end
+
       System.put_env("SELF_HOSTED", "true")
 
       for rejected <- [
@@ -107,7 +114,9 @@ defmodule DawarichWeb.A12f3aOClosureTest do
 
     area = request(ctx, :post, "/areas", encode(%{"area" => %{"name" => "Synthetic"}}, ctx.token))
     assert apply(MapWriteRequest, :request_module, [area]) == DawarichWeb.AreaRequest
-    assert apply(DawarichWeb.AreaRequest, :target, [area.path_info]) == nil
+
+    assert apply(DawarichWeb.AreaRequest, :target, [area.path_info]) ==
+             {:area_create, ["POST"], ["POST"]}
 
     replay(
       ctx,
@@ -161,37 +170,35 @@ defmodule DawarichWeb.A12f3aOClosureTest do
     body = encode(%{"trip" => %{"name" => "Leipzig"}}, ctx.token)
     conn = request(ctx, :post, "/trips", body)
     gate = A8Gate.request_gate(conn)
-    refute gate.actions?(conn, %{})
-    refute A8Gate.actions?(conn, %{})
+    assert gate.actions?(conn, %{})
+    assert A8Gate.actions?(conn, %{})
+
+    for rejected <- [
+          put_req_header(conn, "x-dawarich-client", "unsupported"),
+          put_req_header(conn, "x-http-method-override", "DELETE"),
+          put_req_header(conn, "content-type", "application/json"),
+          %{conn | path_info: ["trips", "42.json"]}
+        ] do
+      assert gate.actions?(rejected, %{})
+      refute A8Gate.actions?(rejected, %{})
+    end
+
+    rejected = %{conn | query_string: "foreign_domain=x"}
+    refute gate.actions?(rejected, %{})
+    refute A8Gate.actions?(rejected, %{})
 
     {^gate, binary, filename} = :code.get_object_code(gate)
     source = Path.expand("../../lib/dawarich_web/trip_request_gate.ex", __DIR__)
 
     cloud_policy =
-      source
-      |> File.read!()
-      |> String.replace("DawarichWeb.LayoutAssigns.self_hosted?() and ", "")
+      source |> File.read!() |> String.replace("do: query?(conn)", "do: query?(conn) and false")
 
     options = Code.compiler_options(ignore_module_conflict: true)
 
     try do
       Code.compile_string(cloud_policy, source)
-      assert gate.actions?(conn, %{})
-      assert A8Gate.actions?(conn, %{})
-
-      for rejected <- [
-            put_req_header(conn, "x-dawarich-client", "unsupported"),
-            put_req_header(conn, "x-http-method-override", "DELETE"),
-            put_req_header(conn, "content-type", "application/json"),
-            %{conn | path_info: ["trips", "42.json"]}
-          ] do
-        assert gate.actions?(rejected, %{})
-        refute A8Gate.actions?(rejected, %{})
-      end
-
-      rejected = %{conn | query_string: "foreign_domain=x"}
-      refute gate.actions?(rejected, %{})
-      refute A8Gate.actions?(rejected, %{})
+      refute gate.actions?(conn, %{})
+      refute A8Gate.actions?(conn, %{})
     after
       :code.purge(gate)
       {:module, ^gate} = :code.load_binary(gate, filename, binary)
@@ -199,8 +206,8 @@ defmodule DawarichWeb.A12f3aOClosureTest do
       Code.compiler_options(options)
     end
 
-    refute gate.actions?(conn, %{})
-    refute A8Gate.actions?(conn, %{})
+    assert gate.actions?(conn, %{})
+    assert A8Gate.actions?(conn, %{})
   end
 
   defp effects do

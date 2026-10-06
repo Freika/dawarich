@@ -29,11 +29,19 @@ defmodule Dawarich.Places.JobCommands do
           })
       end)
 
-  def orphan_cleanup(repo, user),
+  def orphan_cleanup(repo, user, scheduled_at \\ nil),
     do:
       resolve(repo, "places.orphan_cleanup", fn
-        :oban -> publish(repo, "places.orphan_cleanup", %{"user_id" => user}, user)
-        :sidekiq -> RailsCommands.insert!(repo, "places_orphan_cleanup", %{"user_id" => user})
+        :oban ->
+          publish(repo, "places.orphan_cleanup", %{"user_id" => user}, user, scheduled_at)
+
+        :sidekiq ->
+          payload =
+            if scheduled_at,
+              do: %{"user_id" => user, "scheduled_at" => DateTime.to_iso8601(scheduled_at)},
+              else: %{"user_id" => user}
+
+          RailsCommands.insert!(repo, "places_orphan_cleanup", payload)
       end)
 
   def bulk_name_fetch(repo),
@@ -57,7 +65,7 @@ defmodule Dawarich.Places.JobCommands do
     :ok
   end
 
-  defp publish(repo, type, payload, aggregate) do
+  defp publish(repo, type, payload, aggregate, scheduled_at \\ nil) do
     repo.query!(
       "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,aggregate_id,metadata,scheduled_at) VALUES($1,$2,1,$3,$4,$5,$6)",
       [
@@ -66,7 +74,7 @@ defmodule Dawarich.Places.JobCommands do
         payload,
         aggregate,
         %{"producer" => "phoenix.places"},
-        DateTime.utc_now()
+        scheduled_at || DateTime.utc_now()
       ],
       log: false
     )

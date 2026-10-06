@@ -102,6 +102,79 @@ defmodule DawarichWeb.ExportsDeleteTest do
            ) == "synthetic export"
   end
 
+  test "standalone export deletion revokes signed downloads and natively purges with retry safety",
+       c do
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    Ecto.Migrator.run(Repo, Path.expand("../../priv/repo/oban_migrations", __DIR__), :up,
+      all: true,
+      prefix: "oban",
+      log: false
+    )
+
+    blob =
+      Dawarich.RailsBlobFixture.create!(Repo, c.root, "backup.zip", "synthetic standalone export")
+
+    shared = Dawarich.RailsBlobFixture.create!(Repo, c.root, "shared.zip", "shared export")
+
+    for {record, id} <- [{981_101, blob.id}, {981_101, shared.id}, {981_102, shared.id}] do
+      Repo.query!(
+        "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES($1,'Export',$2,$3,now())",
+        ["file-#{id}", record, id]
+      )
+    end
+
+    services = %{default: "local", services: %{"local" => %{service: "local", root: c.root}}}
+
+    redirect = fn id ->
+      Plug.Test.conn(:get, "/rails/active_storage/blobs/redirect/#{id}/backup.zip")
+      |> Map.put(:path_params, %{"signed_id" => id, "filename" => "backup.zip"})
+      |> DawarichWeb.ActiveStorage.call(action: :redirect, storage: services)
+    end
+
+    url = redirect.(blob.signed_id) |> get_resp_header("location") |> hd()
+
+    download = fn ->
+      encoded = url |> URI.parse() |> Map.fetch!(:path) |> String.split("/") |> Enum.at(-2)
+
+      Plug.Test.conn(:get, url)
+      |> Map.put(:path_params, %{"encoded_key" => encoded, "filename" => "backup.zip"})
+      |> DawarichWeb.ActiveStorage.call(action: :disk, storage: services)
+    end
+
+    assert download.().status == 200
+    assert request(c, :delete, "/exports/981101").status == 303
+    assert redirect.(blob.signed_id).status == 404
+    assert download.().status == 404
+    assert redirect.(shared.signed_id).status == 302
+
+    assert [] ==
+             Repo.query!("SELECT kind FROM phoenix.rails_commands WHERE kind='exports.purge'").rows
+
+    [[args]] =
+      Repo.query!("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PurgeWorker'").rows
+
+    [object] = args["objects"]
+    assert object["key"] != ""
+    path = Dawarich.Storage.disk_path(c.root, object["key"])
+    File.rm!(path)
+    File.mkdir_p!(path)
+    assert {:error, _} = apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services]])
+    File.rmdir!(path)
+    File.write!(path, "synthetic standalone export")
+    assert :ok = apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services]])
+    assert :ok = apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services]])
+    assert download.().status == 404
+    assert redirect.(shared.signed_id).status == 302
+  end
+
   test "DELETE and POST export deletion run natively with Rails session and CSRF", c do
     route!("POST")
 

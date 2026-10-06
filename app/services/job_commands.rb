@@ -2,6 +2,9 @@
 
 module JobCommands
   COMMANDS = {
+    'imports.prepared_download_purge' => {
+      version: 1, sidekiq: ->(payload, _at) { Imports::PreparedDownloadPurgeCommands.call(payload) }
+    },
     'imports.prepare_download' => {
       version: 1,
       sidekiq: lambda { |payload, _at|
@@ -178,25 +181,25 @@ module JobCommands
       }
     }
   }.merge(ReleaseCommands::COMMANDS)
-   .merge(ReleaseAdapterCommands::COMMANDS)
-   .merge(Tracks::BackfillCommands::COMMANDS)
-   .merge(Families::JobCommands::COMMANDS)
-   .merge(Places::JobCommands::COMMANDS)
-   .merge(Achievements::BulkCommands::COMMANDS)
-   .merge(Stats::Commands::COMMANDS)
-   .merge(Cache::Commands::COMMANDS)
-   .merge(Visits::BulkCommands::COMMANDS)
-   .merge(Users::RecalculationCommands::COMMANDS)
-   .merge(Points::AnomalyBackfillCommands::COMMANDS)
-   .merge(Imports::ProcessCommands::COMMANDS)
-   .merge(Imports::IntegrationCommands::COMMANDS)
-   .merge(Imports::TeslamateCommands::COMMANDS)
-   .merge(Imports::TrekCommands::COMMANDS)
-   .merge(Users::DataCommands::COMMANDS)
-   .merge(Posters::CreationCommand::COMMANDS)
-   .merge(Users::Digests::Commands::COMMANDS)
-   .merge(Users::Digests::MailCommands::COMMANDS)
-   .merge(Families::LocationRequestMailCommands::COMMANDS).freeze
+             .merge(ReleaseAdapterCommands::COMMANDS)
+             .merge(Tracks::BackfillCommands::COMMANDS)
+             .merge(Families::JobCommands::COMMANDS)
+             .merge(Places::JobCommands::COMMANDS)
+             .merge(Achievements::BulkCommands::COMMANDS)
+             .merge(Stats::Commands::COMMANDS)
+             .merge(Cache::Commands::COMMANDS)
+             .merge(Visits::BulkCommands::COMMANDS)
+             .merge(Users::RecalculationCommands::COMMANDS)
+             .merge(Points::AnomalyBackfillCommands::COMMANDS)
+             .merge(Imports::ProcessCommands::COMMANDS)
+             .merge(Imports::IntegrationCommands::COMMANDS)
+             .merge(Imports::TeslamateCommands::COMMANDS)
+             .merge(Imports::TrekCommands::COMMANDS)
+             .merge(Users::DataCommands::COMMANDS)
+             .merge(Posters::CreationCommand::COMMANDS)
+             .merge(Users::Digests::Commands::COMMANDS)
+             .merge(Users::Digests::MailCommands::COMMANDS)
+             .merge(Families::LocationRequestMailCommands::COMMANDS).freeze
 
   module_function
 

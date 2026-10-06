@@ -3,7 +3,6 @@ defmodule Dawarich.Points.ApiAnomaly do
   alias Dawarich.Imports.Api
   alias Dawarich.{I18n, RailsCache, Redis}
   alias Dawarich.RailsCache.Wire
-  alias Dawarich.Jobs.Ownership
 
   def reapply(repo, user, _params, ctx) do
     with :ok <- Api.guard(user, ctx) do
@@ -32,8 +31,6 @@ defmodule Dawarich.Points.ApiAnomaly do
   defp enqueue(repo, user) do
     {:ok, _} =
       repo.transaction(fn ->
-        owner = Ownership.lock(repo, "command:points.anomaly_backfill")
-
         payload = %{
           "user_id" => user.id,
           "reset" => true,
@@ -44,14 +41,7 @@ defmodule Dawarich.Points.ApiAnomaly do
           "progress" => %{}
         }
 
-        if owner == :oban do
-          repo.query!(
-            "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES(gen_random_uuid(),'points.anomaly_backfill',1,$1,$2,$3,now())",
-            [payload, %{"producer" => "Phoenix Point Anomaly API"}, user.id]
-          )
-        else
-          Dawarich.RailsCommands.insert!(repo, "points.anomaly_backfill", payload)
-        end
+        Dawarich.Points.AnomalyBackfillWorker.enqueue(repo, payload)
       end)
   end
 

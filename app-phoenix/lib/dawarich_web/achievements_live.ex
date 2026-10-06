@@ -18,7 +18,7 @@ defmodule DawarichWeb.AchievementsLive do
 
   @impl true
   def handle_params(params, _, socket) do
-    user = Dawarich.Accounts.get(socket.assigns.current_user.id)
+    user = DawarichWeb.AchievementActions.Gate.current_user(socket.assigns.current_user)
 
     if is_nil(user) do
       {:noreply, redirect(socket, to: "/users/sign_in")}

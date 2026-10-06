@@ -1,8 +1,19 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: tag pages', type: :request do
+  closure_cases = {}
+  define_method(:closure_case) { |name, data| closure_cases[name] = data }
+  after(:all) do
+    selected = closure_cases.sort.to_h.select { |name, _| ['tags_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w05.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/map_data') }
@@ -88,6 +99,11 @@ RSpec.describe 'Phoenix fixtures: tag pages', type: :request do
               'user' => user && user_row(user), 'rows' => user ? rows(user) : {},
               'foreign' => foreign && { 'user' => user_row(foreign), 'rows' => rows(foreign) } }
     File.write(dir.join("#{name}.html"), body)
+    token_pattern = /(name="(?:authenticity_token|csrf-token|csp-nonce)" (?:value|content)=")[^"]*/
+    source_body = FixtureRecording.normalize(response.body).gsub(token_pattern, '\\1CSRF')
+                                  .gsub(/(nonce=")[^"]*/, '\\1NONCE')
+                                  .gsub(/(signed-stream-name=")[^"]*/, '\\1SIGNED')
+    closure_case(name, state.merge('body' => source_body))
     File.write(dir.join("#{name}.json"), "#{Oj.dump(state, mode: :strict, float_precision: 0, indent: 2)}\n")
     sign_out user if user
     doc

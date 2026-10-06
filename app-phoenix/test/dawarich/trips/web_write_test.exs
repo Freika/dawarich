@@ -132,11 +132,6 @@ defmodule Dawarich.Trips.WebWriteTest do
           assert snapshot(id) == before
           assert totals(user) == totals_before
 
-        String.contains?(entry["name"], "embedded") ->
-          assert {:replay, _} = result
-          assert snapshot(id) == before
-          assert totals(user) == totals_before
-
         response["status"] == 422 or response["error"] != nil ->
           assert {:invalid, errors, _} = result
 

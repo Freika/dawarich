@@ -195,12 +195,16 @@ defmodule DawarichWeb.MapWritesHandbackTest do
 
     forwarded(ctx, :patch, "/api/v1/tracks/920010", raw(ctx, "track[distance]=500"))
 
-    forwarded(
-      ctx,
-      :put,
-      "/tracks/920010/segments/9200100",
-      raw(ctx, "track_segment[transportation_mode]=cycling")
-    )
+    route =
+      Phoenix.Router.route_info(
+        Router,
+        "PUT",
+        "/tracks/920010/segments/9200100",
+        "www.example.com"
+      )
+
+    assert route.plug == DawarichWeb.SegmentActions
+    assert route.pipe_through == [:map_write]
   end
 
   test "rejected write commits no cookie outbox RailsCommands", ctx do

@@ -137,7 +137,7 @@ defmodule DawarichWeb.TripFormsActionsTest do
     end
 
     for name <-
-          ~w(create_oban update_name_ordinary_oban update_name_demo_sidekiq destroy_ordinary_oban) do
+          ~w(create_oban update_name_ordinary_oban update_name_demo_sidekiq update_embedded_ordinary_oban destroy_ordinary_oban) do
       ctx = seed(name)
       conn = submit(ctx)
       expected = response(name)
@@ -170,9 +170,7 @@ defmodule DawarichWeb.TripFormsActionsTest do
 
     for {name, accept} <- [
           {"create_sidekiq", "text/html"},
-          {"update_date_ordinary_sidekiq", "text/html"},
-          {"create_missing_template_oban", "text/vnd.turbo-stream.html"},
-          {"update_embedded_ordinary_oban", "text/html"}
+          {"update_date_ordinary_sidekiq", "text/html"}
         ] do
       ctx = seed(name)
 
@@ -195,6 +193,9 @@ defmodule DawarichWeb.TripFormsActionsTest do
       assert Repo.query!("SELECT (SELECT count(*) FROM trips), (SELECT count(*) FROM job_outbox)").rows ==
                before
     end
+
+    ctx = seed("create_missing_template_oban")
+    assert submit(ctx, "text/vnd.turbo-stream.html").status == 500
 
     ctx = seed("foreign_edit")
 

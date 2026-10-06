@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders them', type: :request do
   include ActiveSupport::Testing::TimeHelpers
@@ -365,11 +366,19 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
         else
           expect(dir.join("pages/#{name}.html").read).to eq(html)
         end
+        (@closure_pages ||= {})[name] = { path:, body: html, status: response.status, media_type: response.media_type,
+              location: response.location, flash: flash.to_hash, set_cookie: response.headers['Set-Cookie'].present?,
+              headers: response.headers.slice('Vary', 'Cache-Control'),
+              imports: imports.select { _1[:user_id] == user_id }, exports: exports.select { _1[:user_id] == user_id } }
         sign_out :user
         { name:, user_id:, path:, title: doc.at_css('title').text }
       end
       capture_api_closure!
       write_json('pages.json', manifest)
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/user_data/a12f3a-e01.json'),
+                              "#{JSON.pretty_generate(@closure_pages.select do |name, _|
+                                name.start_with?('exports_')
+                              end)}\n")
       write_json('seed.json', { users:, imports: imports.map { |r| r.except(:file, :prepared) },
                                 exports: exports.map { |r| r.except(:file) }, blobs:, attachments: })
     end

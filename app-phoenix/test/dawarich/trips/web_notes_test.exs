@@ -178,7 +178,7 @@ defmodule Dawarich.Trips.WebNotesTest do
 
     assert length(saved(899_902)) == 1
 
-    assert {:replay, _} =
+    assert {:ok, _} =
              WebNotes.run(
                ScratchRepo,
                :create,

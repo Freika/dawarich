@@ -1,6 +1,7 @@
 defmodule Dawarich.Imports.NormalHandover do
   @moduledoc false
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
   alias Dawarich.State.Lease
   @lane "command:imports.process_normal"
   @worker "Dawarich.Imports.ProcessWorker"
@@ -149,19 +150,23 @@ defmodule Dawarich.Imports.NormalHandover do
   end
 
   defp enqueue(repo, args, fallback) do
-    repo.query!(
-      "INSERT INTO phoenix.import_handoffs(event_id,import_id,user_id,time_zone,native_fallback) VALUES ($1,$2,$3,$4,$5) ON CONFLICT(event_id) DO NOTHING",
-      [
-        Ecto.UUID.dump!(args["event_id"]),
-        args["import_id"],
-        args["user_id"],
-        args["time_zone"],
-        fallback
-      ],
-      log: false
-    )
+    if Dawarich.Standalone.enabled?() do
+      {:error, :unsupported_native_import}
+    else
+      repo.query!(
+        "INSERT INTO phoenix.import_handoffs(event_id,import_id,user_id,time_zone,native_fallback) VALUES ($1,$2,$3,$4,$5) ON CONFLICT(event_id) DO NOTHING",
+        [
+          Ecto.UUID.dump!(args["event_id"]),
+          args["import_id"],
+          args["user_id"],
+          args["time_zone"],
+          fallback
+        ],
+        log: false
+      )
 
-    Dawarich.RailsCommands.insert!(repo, "imports.normal_resume", args)
-    Processed.mark!(repo, args["event_id"], "imports.process_normal.handback")
+      Dawarich.RailsCommands.insert!(repo, "imports.normal_resume", args)
+      Processed.mark!(repo, args["event_id"], "imports.process_normal.handback")
+    end
   end
 end

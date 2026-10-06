@@ -2,7 +2,7 @@ defmodule Dawarich.Visits.SuggestWorker do
   @moduledoc false
   use Oban.Worker, queue: :visit_suggesting, max_attempts: 1
 
-  alias Dawarich.Visits.{Calendar, Suggest}
+  alias Dawarich.Visits.{Calendar, RealtimeDebouncer, Settings, Suggest}
 
   @chain [keys: [:event_id, :cursor], period: :infinity, states: :all]
   @keys ~w(user_id start_at end_at stepping time_zone plan_restricted)
@@ -32,8 +32,11 @@ defmodule Dawarich.Visits.SuggestWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"cursor" => cursor, "end_at" => stop} = args} = job) do
-    if cursor < stop do
-      repo = Dawarich.Jobs.repo()
+    repo = Dawarich.Jobs.repo()
+    if cursor == args["start_at"], do: RealtimeDebouncer.clear(repo, args["user_id"])
+
+    with %{settings: settings} <- Settings.load(repo, args["user_id"]),
+         true <- Settings.policy(settings).suggestions_enabled and cursor < stop do
       next = Calendar.next_day(repo, args["time_zone"], cursor, args["stepping"])
       :ok = Suggest.run(repo, args["user_id"], cursor, min(next, stop), args)
       if next < stop, do: Oban.insert!(job.conf.name, new(Map.put(args, "cursor", next)))

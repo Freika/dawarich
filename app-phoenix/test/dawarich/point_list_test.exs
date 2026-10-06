@@ -56,7 +56,7 @@ defmodule Dawarich.PointListTest do
     assert [%{id: 83611, name: "Synthetic 83611.json"}] = page.imports
     other = user(8362)
     import!(other, 83612)
-    assert :rails = load(owner, %{"import_id" => "83612"})
+    assert :not_found = load(owner, %{"import_id" => "83612"})
   end
 
   test "list is owner scoped inclusive and fifty per page" do
@@ -118,7 +118,7 @@ defmodule Dawarich.PointListTest do
     assert length(family.rows) == 2
   end
 
-  test "nonexact ordering and unsupported settings request Rails" do
+  test "tied ordering reads natively and unsupported settings request Rails" do
     owner = user(8367)
     point(owner, 836_701, ~U[2026-03-01 10:00:00Z])
 
@@ -127,12 +127,12 @@ defmodule Dawarich.PointListTest do
     ])
 
     point(owner, 836_702, ~U[2026-03-01 10:00:00Z])
-    assert :rails = load(owner)
+    assert {:ok, %{count: 2}} = load(owner)
     Repo.query!("DELETE FROM points WHERE id = $1", [836_702])
     assert {:ok, _} = load(owner)
     import!(owner, 83671)
     import!(owner, 83672)
-    assert :rails = load(owner)
+    assert {:ok, _} = load(owner)
     Repo.query!("DELETE FROM imports WHERE id = $1", [83672])
     assert :rails = load(%{owner | settings: %{"timezone" => "Unknown/Zone"}})
     assert :rails = load(%{owner | settings: %{"maps" => []}})

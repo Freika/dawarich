@@ -16,7 +16,9 @@ defmodule DawarichWeb.MapTagRequest do
   def action(action, _), do: action
 
   def fields?(action, params) when action in [:tag_create, :tag_update],
-    do: root?(params, ["tag"]) and nested?(params["tag"], @tag)
+    do:
+      root?(params, ["tag"]) and
+        (is_nil(params["tag"]) or is_binary(params["tag"]) or nested?(params["tag"], @tag))
 
   def fields?(:tag_destroy, params), do: root?(params, [])
 

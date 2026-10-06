@@ -7,6 +7,9 @@ defmodule Dawarich.Insights do
   alias DawarichWeb.{Params, StatsFormat}
 
   def page(user, params, context) do
+    if is_list(params["year"]) or is_map(params["year"]),
+      do: raise(ArgumentError, "year does not support to_i")
+
     rows = rows(user.id)
     available = rows |> Enum.map(& &1.year) |> Enum.uniq() |> Enum.sort(:desc)
     scoped = Enum.filter(rows, &Stats.in_window?(&1, context.cutoff))
@@ -36,13 +39,33 @@ defmodule Dawarich.Insights do
       page
     else
       stats = if all_time, do: scoped, else: Enum.filter(scoped, &(&1.year == year))
+      Enum.each(stats, &validate_daily!(&1.daily_distance))
 
       Map.merge(page, %{
+        selected_month: selected_month(params["month"], stats, year, context.today),
         totals: totals(stats, StatsFormat.unit(user.settings)),
         heatmap: if(all_time, do: nil, else: Heatmap.build(stats, year, context.today))
       })
     end
   end
+
+  defp selected_month(raw, stats, year, today) do
+    if is_binary(raw) and raw != "",
+      do: Dawarich.Digests.to_i(raw),
+      else:
+        stats
+        |> Enum.map(& &1.month)
+        |> Enum.max(fn -> if year == today.year, do: today.month, else: 12 end)
+  end
+
+  defp validate_daily!(daily) when is_map(daily), do: :ok
+
+  defp validate_daily!(daily) when is_list(daily) do
+    unless Enum.all?(daily, &match?([_, _], &1)),
+      do: raise(ArgumentError, "invalid daily_distance pairs")
+  end
+
+  defp validate_daily!(_daily), do: raise(ArgumentError, "invalid daily_distance")
 
   defp selected(year, _available, _today) when is_binary(year), do: year
   defp selected(_year, [newest | _], _today), do: Integer.to_string(newest)

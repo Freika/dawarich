@@ -33,7 +33,10 @@ defmodule DawarichWeb.InsightsLive.Index do
         "/insights/details?" <>
           Params.to_query(
             for(
-              {k, v} <- %{"year" => data.selected, "month" => params["month"]},
+              {k, v} <- %{
+                "year" => data.selected,
+                "month" => params["month"]
+              },
               v != nil,
               into: %{},
               do: {k, v}

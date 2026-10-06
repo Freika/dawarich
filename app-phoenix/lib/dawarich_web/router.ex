@@ -13,6 +13,11 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.UserDataRoutes
   import DawarichWeb.HealthRoutes
   import DawarichWeb.OperatorRoutes
+  import DawarichWeb.DomainRoutes
+  import DawarichWeb.SettingsFormRoutes
+  import DawarichWeb.SettingsMiscRoutes
+  import DawarichWeb.OnboardingRoutes
+  import DawarichWeb.NotificationFormRoutes
 
   pipeline :browser do
     plug DawarichWeb.HostAuthorization
@@ -113,8 +118,6 @@ defmodule DawarichWeb.Router do
       metadata: %{rails_gate: {DawarichWeb.SharingGate, :show?}}
   end
 
-  family_invitation_routes()
-
   scope "/" do
     pipe_through :sharing_unlock
 
@@ -175,12 +178,84 @@ defmodule DawarichWeb.Router do
   end
 
   page_routes()
+
+  pipeline :stats_request do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.StatsRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :stats_request
+
+    for method <- [:put, :post] do
+      match method, "/stats/:year/:month/update", DawarichWeb.StatsActions, :update
+      match method, "/stats/update_all", DawarichWeb.StatsActions, :update_all
+    end
+  end
+
+  family_native_routes()
+  family_invitation_routes()
   storage_routes()
+
+  pipeline :digest_request do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.DigestRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :digest_request
+    post "/digests", DawarichWeb.DigestActions, :create
+    delete "/digests/:year", DawarichWeb.DigestActions, :destroy
+    post "/digests/:year", DawarichWeb.DigestActions, :destroy
+  end
+
   a10_routes()
+  settings_form_routes()
+  settings_misc_routes()
+  onboarding_routes()
+  notification_form_routes()
+
+  pipeline :stats_sharing do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.StatsSharingRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :stats_sharing
+
+    for method <- [:patch, :post] do
+      match method, "/digests/:year/sharing", DawarichWeb.DigestSharing, :update
+      match method, "/stats/:year/:month/sharing", DawarichWeb.StatSharing, :update
+    end
+  end
+
+  scope "/" do
+    pipe_through :sharing
+
+    get "/shared/digest/:uuid", DawarichWeb.SharedStatsPage, :digest,
+      metadata: %{rails_key: "digests"}
+
+    get "/shared/month/:uuid", DawarichWeb.SharedStatsPage, :month,
+      metadata: %{rails_key: "stats"}
+  end
+
   map_frame_routes()
   a8_routes()
   share_page_routes()
   share_form_routes()
+  native_share_routes()
   poster_routes()
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)

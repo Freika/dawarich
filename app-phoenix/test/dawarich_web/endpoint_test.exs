@@ -373,6 +373,7 @@ defmodule DawarichWeb.EndpointTest do
       {"POST", "/imports"},
       {"POST", "/imports/:id"},
       {"PATCH", "/imports/:id"},
+      {"PUT", "/imports/:id"},
       {"DELETE", "/imports/:id"},
       {"POST", "/imports/:id/extraction"},
       {"DELETE", "/imports/:id/extraction"},
@@ -831,7 +832,7 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "stats and digest paths outside Rails' constraints, and every other method, go to Puma",
+  test "stats and digest paths outside Rails' constraints go to Puma while native writes require sign in",
        ctx do
     port = serve()
 
@@ -858,7 +859,7 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert answered_by_phoenix(port, request) == 302
     end
   end
 
@@ -992,7 +993,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings/general /settings/visits /settings/integrations /settings/integrations?service=trek /settings/users/export /users/edit /insights /insights?year=all&month=3) do
+          ~w(/settings/general /settings/visits /settings/integrations /settings/integrations?service=trek /settings/users/export /users/edit /insights /insights?year=all&month=3 /insights/details?year=2024) do
       assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
     end
   end
@@ -1001,7 +1002,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /settings/users /settings/trek_sources/1/select_trips /insights/details?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
+          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /settings/users /settings/trek_sources/1/select_trips /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
@@ -1046,11 +1047,16 @@ defmodule DawarichWeb.EndpointTest do
           )
   end
 
-  test "Phoenix answers both map paths itself", _ctx do
+  test "Phoenix answers both map paths itself", ctx do
     port = serve()
 
     for target <- ~w(/map /map/v2 /map/v2?date=2026-09-29&panel=timeline),
         do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
+
+    for target <- ~w(/maps/v2 /map/v1),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 301)
+
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
   end
 
   test "every other map path, method and format goes to Puma unchanged", ctx do
@@ -1058,9 +1064,6 @@ defmodule DawarichWeb.EndpointTest do
     get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
 
     for {target, headers} <- [
-          {"/maps/v2", ""},
-          {"/map/v1", ""},
-          {"/map/timeline_feeds?date=2026-09-29", ""},
           {"/api/v1/timeline?start_at=1&end_at=2", ""},
           {"/map/v2", "Accept: application/json\r\n"},
           {"/map/v2?format=json", ""},
@@ -1116,7 +1119,7 @@ defmodule DawarichWeb.EndpointTest do
           )
   end
 
-  test "Phoenix answers the map frames itself" do
+  test "Phoenix answers the map frames itself", ctx do
     port = serve()
     accept = "Accept: text/html, application/xhtml+xml\r\n"
 
@@ -1127,12 +1130,32 @@ defmodule DawarichWeb.EndpointTest do
           "/map/timeline_feeds/calendar",
           "/map/residency?year=2026",
           "/map/residency",
+          "/map/timeline_feeds/5/track_info?locale=de",
+          "/map/timeline_feeds/5/track_info?client=ios",
+          "/map/timeline_feeds/5/track_info?aff=a6s2",
+          "/map/timeline_feeds/calendar?month=2026-09&via=a6s2",
+          "/map/timeline_feeds?date=2026-09-29",
+          "/map/timeline_feeds?start_at=&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds?start_at=Oct%2015%202025&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds?start_at[]=1&end_at=2",
+          "/map/timeline_feeds?start_at=1&end_at=2&locale=de",
+          "/map/timeline_feeds/calendar?month=2026-9",
+          "/map/residency?year=abc",
+          "/map/residency?year=",
+          "/map/residency?year=2040",
           "/tracks/5/segments"
         ],
         do:
           assert(
             answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n#{accept}\r\n") == 302
           )
+
+    assert answered_by_phoenix(
+             port,
+             "GET /map/timeline_feeds/5/track_info HTTP/1.1\r\nHost: a\r\nX-Dawarich-Client: ios\r\n\r\n"
+           ) == 302
+
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
   end
 
   test "frame inputs Phoenix does not reproduce go to Puma unchanged", ctx do
@@ -1143,23 +1166,9 @@ defmodule DawarichWeb.EndpointTest do
     for {target, headers} <- [
           {"/map/timeline_feeds/abc/track_info", frame},
           {"/map/timeline_feeds/1234567890123456789/track_info", frame},
-          {"/map/timeline_feeds/5/track_info?locale=de", frame},
-          {"/map/timeline_feeds/5/track_info?client=ios", frame},
-          {"/map/timeline_feeds/5/track_info?aff=a6s2", frame},
-          {"/map/timeline_feeds/calendar?month=2026-09&via=a6s2", frame},
-          {"/map/timeline_feeds/5/track_info", frame <> "X-Dawarich-Client: ios\r\n"},
           {"/map/timeline_feeds/5/track_info", "Accept: application/json\r\n"},
           {"/map/timeline_feeds/5/track_info", frame <> "X-Requested-With: XMLHttpRequest\r\n"},
           {"/map/timeline_feeds/5/track_info?format=json", frame},
-          {"/map/timeline_feeds?date=2026-09-29", frame},
-          {"/map/timeline_feeds?start_at=&end_at=2026-09-27T23:59:59", frame},
-          {"/map/timeline_feeds?start_at=Oct%2015%202025&end_at=2026-09-27T23:59:59", frame},
-          {"/map/timeline_feeds?start_at[]=1&end_at=2", frame},
-          {"/map/timeline_feeds?start_at=1&end_at=2&locale=de", frame},
-          {"/map/timeline_feeds/calendar?month=2026-9", frame},
-          {"/map/residency?year=abc", frame},
-          {"/map/residency?year=", frame},
-          {"/map/residency?year=2040", frame},
           {"/tracks/5/segments?locale=de", frame}
         ],
         do:

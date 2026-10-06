@@ -30,7 +30,7 @@ defmodule Dawarich.EnhancedImport.State do
 
   def completed!(repo, import, counts) do
     payload = @merge <> "'completed_at', #{@now}, 'counts', $2::jsonb, 'error_message', NULL)"
-    write!(repo, import, 3, payload, [counts], [:card, :untracked])
+    write!(repo, import, 3, payload, [counts], [:untracked, :card])
   end
 
   def retrying!(repo, import, message) do

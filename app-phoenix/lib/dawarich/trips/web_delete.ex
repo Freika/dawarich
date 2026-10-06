@@ -1,6 +1,5 @@
 defmodule Dawarich.Trips.WebDelete do
   @moduledoc false
-  alias Dawarich.TripDescription
 
   @planned ~w(planned_reservations planned_accommodations planned_travellers planned_unplanned_places)
 
@@ -39,7 +38,9 @@ defmodule Dawarich.Trips.WebDelete do
         log: false
       ).rows
 
-    bodies = Enum.all?(rich, fn [_, body] -> match?({:ok, _}, TripDescription.read(body)) end)
+    bodies =
+      Enum.all?(rich, fn [_, body] -> match?({:ok, _}, Dawarich.Trips.RichContent.read(body)) end)
+
     ids = Enum.map(rich, &hd/1)
 
     [[attached]] =

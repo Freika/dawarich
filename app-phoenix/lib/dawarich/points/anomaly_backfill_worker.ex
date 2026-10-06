@@ -11,6 +11,29 @@ defmodule Dawarich.Points.AnomalyBackfillWorker do
   def args_from_command(version, payload),
     do: RecalculationArgs.decode("points.anomaly_backfill", version, payload)
 
+  def enqueue(repo, payload) do
+    cond do
+      Dawarich.Standalone.enabled?() ->
+        Dawarich.Points.NativeEffects.enqueue(
+          repo,
+          __MODULE__,
+          Map.put(payload, "event_id", payload["source_job_id"])
+        )
+
+      Ownership.lock(repo, "command:points.anomaly_backfill") == :oban ->
+        repo.query!(
+          "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES(gen_random_uuid(),'points.anomaly_backfill',1,$1,$2,$3,now())",
+          [payload, %{"producer" => "Phoenix Point Anomaly API"}, payload["user_id"]],
+          log: false
+        )
+
+        :ok
+
+      true ->
+        RailsCommands.insert!(repo, "points.anomaly_backfill", payload)
+    end
+  end
+
   @impl Oban.Worker
   def perform(%Oban.Job{args: args, conf: conf}) do
     case run(Dawarich.Jobs.repo(), conf.name, args) do
@@ -109,25 +132,38 @@ defmodule Dawarich.Points.AnomalyBackfillWorker do
   end
 
   defp route!(repo, kind, payload) do
-    case Ownership.lock(repo, "command:" <> kind) do
-      :sidekiq ->
-        RailsCommands.insert!(repo, kind, Map.put(payload, "run_at", System.os_time(:second)))
+    if Dawarich.Standalone.enabled?() do
+      {worker, args} =
+        case kind do
+          "users.recalculate_data" ->
+            {RecalculateWorker, Map.put(payload, "event_id", payload["source_job_id"])}
 
-      :oban ->
-        repo.query!(
-          """
-          INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at)
-          VALUES($1,$2,1,$3,$4,$5,NOW())
-          """,
-          [
-            Ecto.UUID.dump!(payload["source_job_id"] || Ecto.UUID.generate()),
-            kind,
-            payload,
-            %{"producer" => "Phoenix Points::AnomalyBackfill"},
-            payload["user_id"]
-          ],
-          log: false
-        )
+          "achievements.check" ->
+            {Dawarich.Achievements.CheckWorker, payload}
+        end
+
+      Dawarich.Points.NativeEffects.enqueue(repo, worker, args)
+    else
+      case Ownership.lock(repo, "command:" <> kind) do
+        :sidekiq ->
+          RailsCommands.insert!(repo, kind, Map.put(payload, "run_at", System.os_time(:second)))
+
+        :oban ->
+          repo.query!(
+            """
+            INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at)
+            VALUES($1,$2,1,$3,$4,$5,NOW())
+            """,
+            [
+              Ecto.UUID.dump!(payload["source_job_id"] || Ecto.UUID.generate()),
+              kind,
+              payload,
+              %{"producer" => "Phoenix Points::AnomalyBackfill"},
+              payload["user_id"]
+            ],
+            log: false
+          )
+      end
     end
 
     :ok

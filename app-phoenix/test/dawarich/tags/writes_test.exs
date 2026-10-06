@@ -173,8 +173,8 @@ defmodule Dawarich.Tags.WritesTest do
     before = state()
 
     for id <- [91951, 999_999] do
-      assert :rails = Writes.update(Repo, ctx.user, id, %{"name" => "Changed"}, ctx.write_ctx)
-      assert :rails = Writes.destroy(Repo, ctx.user, id, ctx.write_ctx)
+      assert :not_found = Writes.update(Repo, ctx.user, id, %{"name" => "Changed"}, ctx.write_ctx)
+      assert :not_found = Writes.destroy(Repo, ctx.user, id, ctx.write_ctx)
       assert state() == before
     end
 

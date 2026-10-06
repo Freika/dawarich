@@ -5,9 +5,9 @@ defmodule Dawarich.MapWindow do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   @iso ~r/\A\s*(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?)?\s*(Z|[+-]\d{2}(?::?\d{2})?)?\s*\z/
-  @day ~r/\A\s*(\d{4})-(\d{1,2})-(\d{1,2})/
+  @day ~r/\A\s*(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/
+  @months ~w(january february march april may june july august september october november december)
   @max_epoch 253_402_300_799
-
   @valid "SELECT name FROM pg_timezone_names WHERE name = ANY($1::text[])"
 
   @points """
@@ -231,12 +231,24 @@ defmodule Dawarich.MapWindow do
   defp requested_day(_value, _ctx), do: nil
 
   defp parse_day(value) do
-    with [_, y, m, d] <- Regex.run(@day, value),
+    with [_, y, m, d] <- day_parts(value),
          {:ok, date} <- Date.new(int(y), int(m), int(d)) do
       date
     else
       _ -> nil
     end
+  end
+
+  defp day_parts(value) do
+    Regex.run(@day, value) ||
+      case Regex.run(~r/\A\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/, value) do
+        [_, d, month, y] ->
+          m = Enum.find_index(@months, &String.starts_with?(&1, String.downcase(month)))
+          if m, do: [value, y, Integer.to_string(m + 1), d]
+
+        _ ->
+          nil
+      end
   end
 
   defp calendar_month(params, ctx) do

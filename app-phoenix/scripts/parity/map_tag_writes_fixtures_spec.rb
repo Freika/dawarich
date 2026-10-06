@@ -1,8 +1,30 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: map tag writes', type: :request do
+  closure_cases = {}
+  define_method(:closure_case) do |name, data|
+    closure_cases[name] = data.merge('user' => data.fetch('user').merge('api_key' => 'API_KEY'))
+  end
+  after(:all) do
+    selected = closure_cases.sort.to_h.select { |name, _| %w[create guest_create].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w06.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select do |name, _|
+      %w[update foreign missing override prior guest_update].any? do
+        name.start_with?(_1)
+      end
+    end
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w07.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/map_writes/tags') }
@@ -182,6 +204,11 @@ headers: { 'X-CSRF-Token' => token, 'Accept' => accept }
               'set_cookie' => response.headers['Set-Cookie'].present?, 'flash' => flash.to_hash,
               'jobs' => enqueued_jobs.map { { 'job' => _1[:job].name, 'args' => _1[:args] } } }
     File.write(dir.join("#{name}.html"), body)
+    token_pattern = /(name="(?:authenticity_token|csrf-token|csp-nonce)" (?:value|content)=")[^"]*/
+    source_body = FixtureRecording.normalize(response.body).gsub(token_pattern, '\\1CSRF')
+                                  .gsub(/(nonce=")[^"]*/, '\\1NONCE')
+                                  .gsub(/(signed-stream-name=")[^"]*/, '\\1SIGNED')
+    closure_case(name, state.merge('body' => source_body))
     File.write(dir.join("#{name}.json"), "#{Oj.dump(state, mode: :strict, float_precision: 0, indent: 2)}\n")
   end
 

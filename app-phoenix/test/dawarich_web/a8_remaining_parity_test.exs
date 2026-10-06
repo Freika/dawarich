@@ -172,7 +172,7 @@ defmodule DawarichWeb.A8RemainingParityTest do
     Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, user.settings])
 
     for name <-
-          ~w(create_oban update_name_ordinary_oban update_name_demo_sidekiq update_date_ordinary_oban) do
+          ~w(create_oban update_name_ordinary_oban update_name_demo_sidekiq update_date_ordinary_oban update_embedded_ordinary_oban) do
       {entry, user} = seed_trip(name)
       {run, _raw} = submit(entry, user)
       conn = run.()
@@ -204,6 +204,13 @@ defmodule DawarichWeb.A8RemainingParityTest do
                  ]
                ]
 
+      for rich <- entry["after"]["action_text_rich_texts"] do
+        assert Repo.query!(
+                 "SELECT body FROM action_text_rich_texts WHERE record_type='Trip' AND record_id=$1",
+                 [id]
+               ).rows == [[rich["body"]]]
+      end
+
       expected_outbox =
         Enum.map(entry["queue"]["outbox"], fn envelope ->
           [
@@ -224,7 +231,7 @@ defmodule DawarichWeb.A8RemainingParityTest do
              ).rows == expected_outbox
     end
 
-    for name <- ~w(create_sidekiq update_date_ordinary_sidekiq update_embedded_ordinary_oban) do
+    for name <- ~w(create_sidekiq update_date_ordinary_sidekiq) do
       {entry, user} = seed_trip(name)
       {run, raw} = submit(entry, user)
       replay(upstream, run, raw)
@@ -247,10 +254,29 @@ defmodule DawarichWeb.A8RemainingParityTest do
       })
     ])
 
-    before = snapshot()
-    {{_, _}, conn} = forwarded(upstream, fn -> RailsUser.signed_in(user.id) |> get(path) end)
-    assert conn.status == 204
-    assert snapshot() == before
+    for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
+    [trip] = entry["before"]["trips"]
+
+    iso = fn raw ->
+      raw
+      |> naive()
+      |> NaiveDateTime.truncate(:second)
+      |> DateTime.from_naive!("Etc/UTC")
+      |> DateTime.to_iso8601()
+    end
+
+    key =
+      Dawarich.Photos.ProviderCache.key(user.id, iso.(trip["started_at"]), iso.(trip["ended_at"]))
+
+    assert {:ok, _} = Dawarich.Photos.ProviderCache.put(key, [])
+    on_exit(fn -> Dawarich.Photos.ProviderCache.invalidate(user.id) end)
+    conn = RailsUser.signed_in(user.id) |> get(path)
+    assert conn.status == 200
+
+    assert Repo.query!("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [trip["id"]]).rows ==
+             [[1]]
+
+    assert commands() == []
 
     for key <- ~w(trips places) do
       Application.put_env(:dawarich, :rails_routes, [key])

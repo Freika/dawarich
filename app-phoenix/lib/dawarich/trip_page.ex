@@ -5,7 +5,6 @@ defmodule Dawarich.TripPage do
     CountryNames,
     Repo,
     TripDays,
-    TripDescription,
     TripSettings,
     TripStream,
     TripStudio,
@@ -30,11 +29,11 @@ defmodule Dawarich.TripPage do
   """
 
   def gate(user, trip_id) do
-    with {:ok, %{photos: false} = settings} <- TripSettings.read(user.settings),
+    with {:ok, settings} <- TripSettings.read(user.settings),
          true <- Dawarich.Trips.PlanRead.supported?(Repo, user.id, trip_id),
          [[zone, started_local, ended_local, seconds, near_transition, false, body]] <-
            UserTimeZone.query!(@gate, [trip_id, user.id], user.settings).rows,
-         {:ok, description} <- TripDescription.read(body),
+         {:ok, description} <- Dawarich.Trips.RichContent.read(body),
          true <- TripSettings.zone?(user.settings, zone),
          span = TripDays.span(started_local, ended_local, seconds, near_transition),
          {_parts, borrowed} =
@@ -96,6 +95,7 @@ defmodule Dawarich.TripPage do
 
     day_data = TripDays.day_data(user.id, from, to, settings.minutes * 60, zone)
     notes = day_notes(id)
+    photos = Dawarich.Trips.Photos.load(user, started, ended, zone)
     {:ok, plan} = Dawarich.Trips.PlanRead.load(Repo, user.id, id)
     plan = DawarichWeb.TripPlanItems.prepare(plan, user.settings)
 
@@ -137,7 +137,8 @@ defmodule Dawarich.TripPage do
       has_path: has_path,
       map_state: state,
       windows_json: day_data.windows_json,
-      days: days(first_day, last_day, day_data.stats, notes),
+      days: days(first_day, last_day, day_data.stats, notes, photos.days),
+      photos: photos,
       day_notes: notes,
       plan: plan,
       now: now,
@@ -151,11 +152,11 @@ defmodule Dawarich.TripPage do
     }
   end
 
-  defp days(first, last, stats, notes),
+  defp days(first, last, stats, notes, photos),
     do:
       for(
         date <- Date.range(first, last, 1),
-        do: %{date: date, stats: stats[date], note: notes[date]}
+        do: %{date: date, stats: stats[date], note: notes[date], photos: photos[date] || []}
       )
 
   def day_notes(trip_id),

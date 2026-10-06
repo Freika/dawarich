@@ -1,8 +1,24 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: point lists and addresses', type: :request do
+  closure_cases = {}
+  define_method(:closure_case) { |name, data| closure_cases[name] = data }
+  after(:all) do
+    selected = closure_cases.sort.to_h.select { |name, _| ['points_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w01.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['address_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w02.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/map_data') }
@@ -102,6 +118,11 @@ RSpec.describe 'Phoenix fixtures: point lists and addresses', type: :request do
       expect(body).not_to match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./)
       File.write(dir.join("#{name}.html"), body)
       File.write(dir.join("#{name}.target.html"), doc.at_css("turbo-frame##{frame}").to_html) if frame && status == 200
+      token_pattern = /(name="(?:authenticity_token|csrf-token|csp-nonce)" (?:value|content)=")[^"]*/
+      source_body = FixtureRecording.normalize(response.body).gsub(token_pattern, '\\1CSRF')
+                                    .gsub(/(nonce=")[^"]*/, '\\1NONCE')
+                                    .gsub(/(signed-stream-name=")[^"]*/, '\\1SIGNED')
+      closure_case(name, state.merge('body' => source_body))
       File.write(dir.join("#{name}.json"), "#{Oj.dump(state, mode: :strict, float_precision: 0, indent: 2)}\n")
       sign_out user if user
     end

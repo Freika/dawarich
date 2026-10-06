@@ -43,6 +43,10 @@ RSpec.describe 'Places::JobCommands' do
     RailsCommands::Registry.handler('places_bulk_name_fetch').call({})
     expect(Places::OrphanCleanupJob).to have_been_enqueued.with(user.id)
     expect(Places::BulkNameFetchingJob).to have_been_enqueued.with(no_args)
+    clear_enqueued_jobs
+    RailsCommands::Registry.handler('places_orphan_cleanup').call('user_id' => user.id,
+                                                                  'scheduled_at' => due.iso8601(6))
+    expect(Places::OrphanCleanupJob).to have_been_enqueued.with(user.id).at(due)
     job_owner!('command:places.name_fetch', :oban)
     RailsCommands::Registry.handler('place_name_fetch').call('user_id' => user.id, 'place_id' => place.id)
     expect(JobOutbox.pending.sole).to have_attributes(command_type: 'places.name_fetch')

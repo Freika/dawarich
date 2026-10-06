@@ -20,7 +20,7 @@ defmodule DawarichWeb.AchievementInitial do
     context =
       DawarichWeb.AchievementContext.for_user(conn.assigns.current_user, conn.assigns.locale)
 
-    {:ok, view} =
+    result =
       Dawarich.Achievements.Collection.load(
         Dawarich.Repo,
         conn.assigns.current_user.id,
@@ -28,6 +28,19 @@ defmodule DawarichWeb.AchievementInitial do
         context
       )
 
+    case result do
+      {:ok, view} ->
+        loaded(conn, view)
+
+      {:redirect, path} ->
+        conn |> put_resp_header("location", path) |> send_resp(302, "") |> halt()
+
+      {:error, :not_found} ->
+        conn |> send_resp(404, "") |> halt()
+    end
+  end
+
+  defp loaded(conn, view) do
     keys =
       if(view[:set], do: [view.set], else: view.sets ++ view.orphans)
       |> Enum.filter(& &1["celebrate"])
