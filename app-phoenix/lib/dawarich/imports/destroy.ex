@@ -1,6 +1,6 @@
 defmodule Dawarich.Imports.Destroy do
   @moduledoc false
-  alias Dawarich.Jobs.Ownership
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
   alias Dawarich.RailsCommands
 
   def enqueue(repo, user_id, import_id, context) do

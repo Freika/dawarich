@@ -14,18 +14,29 @@ defmodule Dawarich.Imports.DestroyEffects do
     do: insert!(lease, "imports.destroy_callbacks", Map.put(payload, "step", step))
 
   def insert!(lease, kind, payload) do
-    RailsCommands.insert!(
-      lease.repo,
-      kind,
-      Map.merge(
-        %{
-          "import_id" => lease.id,
-          "user_id" => lease.user,
-          "event_id" => lease.job.args["event_id"]
-        },
+    if Dawarich.Imports.DestroyNativeEffects.selected?(lease.repo, kind, payload) do
+      Dawarich.Imports.DestroyNativeEffects.run!(
+        lease.repo,
+        lease.user,
+        lease.id,
+        lease.job.args["event_id"],
+        kind,
         payload
       )
-    )
+    else
+      RailsCommands.insert!(
+        lease.repo,
+        kind,
+        Map.merge(
+          %{
+            "import_id" => lease.id,
+            "user_id" => lease.user,
+            "event_id" => lease.job.args["event_id"]
+          },
+          payload
+        )
+      )
+    end
   end
 
   def points!(lease, timestamps) do
