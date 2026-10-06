@@ -26,21 +26,12 @@ defmodule DawarichWeb.Strangler do
     "/api/v1/tiles/points/:z/:x/:y" => %{"y" => ~r/\A[^\/]+\.mvt\z/},
     "/api/v1/tiles/tracks/:z/:x/:y" => %{"y" => ~r/\A[^\/]+\.mvt\z/},
     "/family/location_requests/:id" => %{"id" => ~r/\A\d{1,18}\z/},
-    "/api/v1/visits/:id" => %{"id" => ~r/\A\d{1,18}\z/},
-    "/api/v1/visits/:id/possible_places" => %{"id" => ~r/\A\d{1,18}\z/},
-    "/api/v1/visits/:id/select_place" => %{"id" => ~r/\A\d{1,18}\z/},
-    "/api/v1/notes/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/route_videos/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/visits/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/settings/users/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/settings/users/:id/edit" => %{"id" => ~r/\A\d{1,18}\z/},
     "/tracks/:track_id/segments" => %{"track_id" => ~r/\A\d{1,18}\z/},
     "/points/:id/address" => %{"id" => ~r/\A\d{1,18}\z/},
-    "/api/v1/photos/:id/thumbnail" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
-    "/api/v1/photos/:id/thumbnail.jpg" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
-    "/api/v1/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},
-    "/api/v1/tracks/:id" => %{"id" => ~r/\A\d+\z/},
-    "/api/v1/tracks/:track_id/points" => %{"track_id" => ~r/\A\d+\z/},
     "/map/timeline_feeds/:id/track_info" => %{"id" => ~r/\A\d{1,18}\z/},
     "/trips/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/trips/:id/edit" => %{"id" => ~r/\A\d{1,18}\z/},
@@ -48,8 +39,6 @@ defmodule DawarichWeb.Strangler do
     "/trips/:id/export" => %{"id" => ~r/\A\d{1,18}\z/},
     "/trips/:trip_id/notes" => %{"trip_id" => ~r/\A\d{1,18}\z/},
     "/trips/:trip_id/notes/:id" => %{"trip_id" => ~r/\A\d{1,18}\z/, "id" => ~r/\A\d{1,18}\z/},
-    "/api/v1/families/location_requests/:id/accept" => %{"id" => ~r/\A\d{1,18}\z/},
-    "/api/v1/families/location_requests/:id/decline" => %{"id" => ~r/\A\d{1,18}\z/},
     "/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/tags/:id/edit" => %{"id" => ~r/\A\d{1,18}\z/},
     "/tags/:id" => %{"id" => ~r/\A[1-9]\d{0,17}\z/},
@@ -80,6 +69,9 @@ defmodule DawarichWeb.Strangler do
         |> Plug.Conn.put_private(:dawarich_method, conn.method)
         |> Plug.Head.call([])
 
+      native_api_error?(conn) ->
+        DawarichWeb.RailsErrors.respond(conn, 404)
+
       Dawarich.Standalone.enabled?() ->
         {reason, status} = standalone_rejection(conn)
         DawarichWeb.StandaloneError.respond(conn, reason, status)
@@ -94,6 +86,16 @@ defmodule DawarichWeb.Strangler do
         |> halt()
     end
   end
+
+  defp native_api_error?(%{path_info: ["api", "v1" | _]} = conn) do
+    method = if conn.method == "HEAD", do: "GET", else: conn.method
+    route = Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host)
+
+    not handed_back?(conn.path_info) and not DawarichWeb.ApiClosureRoutes.deferred?(conn) and
+      (route == :error or (not handed_back?(conn.path_info, route) and slice_owned?(route, conn)))
+  end
+
+  defp native_api_error?(_conn), do: false
 
   defp original_method(conn),
     do: %{conn | method: conn.private[:dawarich_original_method] || conn.method}

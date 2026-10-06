@@ -342,6 +342,29 @@ defmodule DawarichWeb.A12f2JClosureTest do
     no_upstream!(c.upstream)
   end
 
+  @tag :a12f2_j_05
+  test "Native unknown API paths bad parameters constraint misses and exceptions match source status body and HEAD",
+       c do
+    for {method, path} <- [
+          {"GET", "/api/v1/unknown.json"},
+          {"HEAD", "/api/v1/unknown.json"},
+          {"GET", "/api/v1/digests/20.json"},
+          {"PUT", "/api/v1/photos.json"},
+          {"GET", "/api/v1/tiles/points/0/0/0"}
+        ] do
+      assert {404, _, body} = endpoint(c, method, path, [{"Accept", "application/json"}])
+      assert body == if(method == "HEAD", do: "", else: ~s({"status":404,"error":"Not Found"}))
+    end
+
+    assert {400, _, body} =
+             endpoint(c, "GET", "/api/v1/photos?a=%ZZ", [{"Accept", "application/json"}])
+
+    assert Jason.decode!(body)["status"] == 400
+    user!(%{api_key: @key, settings: %{"timezone" => "UTC"}})
+    assert {404, _, _} = endpoint(c, "GET", "/api/v1/places/17suffix", bearer())
+    no_upstream!(c.upstream)
+  end
+
   defp bearer, do: [{"Authorization", "Bearer #{@key}"}, {"Accept", "application/json"}]
 
   defp route(method, path),

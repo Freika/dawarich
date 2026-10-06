@@ -7,6 +7,8 @@ defmodule DawarichWeb.Api.MethodOverride do
   @methods ~w(GET HEAD PUT POST DELETE OPTIONS PATCH LINK UNLINK)
   def init(opts), do: opts
 
+  def call(%{path_info: ["api", "v1", "mcp"]} = conn, _opts), do: conn
+
   def call(%{method: "POST", path_info: ["api", "v1" | _]} = conn, _opts) do
     if native?(conn) do
       conn = Transport.parse(conn)

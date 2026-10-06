@@ -1,6 +1,23 @@
 defmodule DawarichWeb.ApiClosureRoutes do
   @moduledoc false
 
+  def deferred?(conn) do
+    case conn.path_info do
+      ["api", "v1", area | _]
+      when area in ~w(auth areas settings demo_data recalculations subscriptions) ->
+        true
+
+      ["api", "v1", "users", "me"] ->
+        conn.method == "DELETE"
+
+      ["api", "v1", "digests" | _] ->
+        conn.method not in ~w(GET HEAD)
+
+      _ ->
+        false
+    end
+  end
+
   defmacro a12f2_b_routes do
     quote do
       scope "/api/v1", DawarichWeb.Api do

@@ -5,6 +5,22 @@ defmodule DawarichWeb.Api.Transport do
 
   @json ~w(application/json text/x-json application/jsonrequest)
 
+  def init(opts), do: opts
+
+  def call(conn, :router) do
+    DawarichWeb.Router.call(conn, DawarichWeb.Router.init([]))
+  rescue
+    exception in Plug.Conn.WrapperError ->
+      if conn.private[:dawarich_native_api],
+        do: DawarichWeb.RailsErrors.respond(exception.conn, 500),
+        else: reraise(exception, __STACKTRACE__)
+
+    exception ->
+      if conn.private[:dawarich_native_api],
+        do: DawarichWeb.RailsErrors.respond(conn, 500),
+        else: reraise(exception, __STACKTRACE__)
+  end
+
   def parse(%{private: %{dawarich_body_parsed: true}} = conn), do: conn
 
   def parse(conn) do
