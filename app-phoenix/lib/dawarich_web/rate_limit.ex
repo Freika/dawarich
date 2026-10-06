@@ -53,12 +53,16 @@ defmodule DawarichWeb.RateLimit do
         blocked(conn)
 
       {:defer, conn, counted, reason} ->
-        Logger.info("[rate_limit] #{conn.request_path} handed to Rails: #{reason}")
+        if conn.private[:dawarich_native_api] do
+          DawarichWeb.RailsErrors.respond(conn, 500)
+        else
+          Logger.info("[rate_limit] #{conn.request_path} handed to Rails: #{reason}")
 
-        conn
-        |> put_private(:dawarich_rate_limit, counted)
-        |> RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
-        |> halt()
+          conn
+          |> put_private(:dawarich_rate_limit, counted)
+          |> RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
+          |> halt()
+        end
     end
   end
 

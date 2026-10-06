@@ -447,6 +447,52 @@ defmodule DawarichWeb.A12f2JClosureTest do
     no_upstream!(c.upstream)
   end
 
+  @tag :a12f2_j_13
+  test "Closed API auth and storage work with no Rails upstream while unclosed page owners remain explicit release debt",
+       c do
+    System.put_env("SELF_HOSTED", "false")
+    repo = Application.get_env(:dawarich, :jobs_repo, Dawarich.Repo)
+    on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, repo) end)
+    Application.put_env(:dawarich, :jobs_repo, :synthetic_unavailable_counter_repo)
+
+    assert {500, _, _} =
+             endpoint(c, "POST", "/api/v1/imports/pending", [{"Origin", "https://dawarich.app"}])
+
+    Application.put_env(:dawarich, :jobs_repo, repo)
+    no_upstream!(c.upstream)
+    Application.put_env(:dawarich, :rails_upstream, nil)
+
+    for mode <- ["true", "false"] do
+      System.put_env("SELF_HOSTED", mode)
+
+      for path <- ~w(/api/v1/photos /api/v1/timeline /api/v1/places /api/v1/imports /api/v1/mcp) do
+        assert {401, _, ""} = endpoint(c, "GET", path)
+        assert {401, _, ""} = endpoint(c, "HEAD", path)
+      end
+
+      assert {404, _, _} = endpoint(c, "GET", "/api/v1/unknown.json")
+
+      assert {404, _, _} =
+               endpoint(c, "GET", "/rails/active_storage/blobs/proxy/invalid/fixture.jpg")
+    end
+
+    env = Map.new(~w(JWT_SECRET_KEY MANAGER_URL), &{&1, System.get_env(&1)})
+
+    on_exit(fn ->
+      Enum.each(env, fn {name, value} ->
+        if value, do: System.put_env(name, value), else: System.delete_env(name)
+      end)
+    end)
+
+    System.put_env("JWT_SECRET_KEY", "synthetic-j-frontier-key")
+    System.put_env("MANAGER_URL", "https://manager.example.test")
+    user!(%{api_key: @key, status: 3, settings: %{"timezone" => "UTC"}})
+    Dawarich.TtlCache.delete({DawarichWeb.RateLimit, @key})
+    assert {402, _, body} = endpoint(c, "GET", "/api/v1/notes", bearer())
+    assert Jason.decode!(body)["error"] == "payment_required"
+    no_upstream!(c.upstream)
+  end
+
   @tag :a12f2_j_12
   test "Owned native errors never call Rails after committed SQL cache mail storage token or remote effects",
        c do
