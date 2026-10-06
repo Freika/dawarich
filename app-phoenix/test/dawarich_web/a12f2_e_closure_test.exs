@@ -432,6 +432,39 @@ defmodule DawarichWeb.A12f2EClosureTest do
     assert {:ok, true} = Dawarich.RailsCache.get(key)
     assert {:error, 401, _} = ApiAnomaly.reapply(Repo, %{user | status: 0}, %{}, ctx)
     Dawarich.Redis.cache_command(["DEL", key])
+
+    fault_actor = user!()
+    fault_key = "anomaly_backfill_pending:#{fault_actor}"
+    Dawarich.Redis.cache_command(["DEL", fault_key])
+
+    Repo.query!(
+      "CREATE FUNCTION a12f2e_anomaly_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.command_type='points.anomaly_backfill' THEN RAISE EXCEPTION 'synthetic producer failure'; END IF; RETURN NEW; END $$"
+    )
+
+    Repo.query!(
+      "CREATE TRIGGER a12f2e_anomaly_fault BEFORE INSERT ON job_outbox FOR EACH ROW EXECUTE FUNCTION a12f2e_anomaly_fault()"
+    )
+
+    try do
+      conn =
+        api_conn(%{user | id: fault_actor}, %{}, ctx)
+        |> DawarichWeb.Api.AnomalyController.call(:create)
+
+      assert conn.status == 500
+      assert {:ok, true} = Dawarich.RailsCache.get(fault_key)
+
+      source =
+        File.read!("test/fixtures/a12f2e/closure.json")
+        |> Jason.decode!()
+        |> Enum.find(&(&1["name"] == "anomaly_producer_failure"))
+
+      assert source["pending"] == true
+      assert conn.resp_body == source["body"]
+    after
+      Repo.query!("DROP TRIGGER a12f2e_anomaly_fault ON job_outbox")
+      Repo.query!("DROP FUNCTION a12f2e_anomaly_fault()")
+      Dawarich.Redis.cache_command(["DEL", fault_key])
+    end
   end
 
   @tag :a12f2_e_08
@@ -651,6 +684,46 @@ defmodule DawarichWeb.A12f2EClosureTest do
     after
       Repo.query!("DROP TRIGGER a12f2e_counter_fault ON users")
       Repo.query!("DROP FUNCTION a12f2e_counter_fault()")
+    end
+
+    [[revision]] = Repo.query!("SELECT lock_version FROM points WHERE id=$1", [point]).rows
+
+    Repo.query!(
+      "CREATE FUNCTION a12f2e_position_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic position write failure'; END $$"
+    )
+
+    Repo.query!(
+      "CREATE TRIGGER a12f2e_position_fault BEFORE UPDATE ON points FOR EACH ROW EXECUTE FUNCTION a12f2e_position_fault()"
+    )
+
+    try do
+      params = %{
+        "point" => %{"latitude" => "54", "longitude" => "17", "revision" => revision},
+        "history_scope" => %{"start_at" => "1", "end_at" => "2147483647"}
+      }
+
+      conn =
+        api_conn(user, params, context())
+        |> Map.put(:path_params, %{"point_id" => to_string(point)})
+        |> DawarichWeb.Api.PointPositionsController.call(:update)
+
+      assert conn.status == 500
+
+      source =
+        File.read!("test/fixtures/a12f2e/closure.json")
+        |> Jason.decode!()
+        |> Enum.find(&(&1["name"] == "position_write_failure"))
+
+      assert conn.resp_body == source["body"]
+
+      assert [[16.0, 53.0, ^revision]] =
+               Repo.query!(
+                 "SELECT ST_X(lonlat::geometry),ST_Y(lonlat::geometry),lock_version FROM points WHERE id=$1",
+                 [point]
+               ).rows
+    after
+      Repo.query!("DROP TRIGGER a12f2e_position_fault ON points")
+      Repo.query!("DROP FUNCTION a12f2e_position_fault()")
     end
 
     upstream = Dawarich.Test.RawHTTP.listen()

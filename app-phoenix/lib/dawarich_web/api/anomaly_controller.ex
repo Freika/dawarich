@@ -15,6 +15,6 @@ defmodule DawarichWeb.Api.AnomalyController do
 
     Respond.json(conn, status, body)
   rescue
-    _ -> Respond.head(conn, 500)
+    _ -> Respond.json(conn, 500, {:object, [{"status", 500}, {"error", "Internal Server Error"}]})
   end
 end
