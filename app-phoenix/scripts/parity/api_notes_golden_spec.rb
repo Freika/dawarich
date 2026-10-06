@@ -211,6 +211,20 @@ RSpec.describe 'Phoenix fixture: golden notes API requests', type: :request do
     else
       expect(path.read == encoded).to be(true), 'notes golden fixture differs from Rails'
     end
+    closure_entries = [
+      { name: 'date_only', method: :post, path: oracle::P,
+        body: { note: { body: 'Synthetic note', noted_at: '2026-10-06' } } },
+      { name: 'invalid_date', method: :post, path: oracle::P, body: { note: { body: '', noted_at: 'invalid' } } }
+    ]
+    captured = closure_entries.map do |entry|
+      places_record({ auth: :bearer, expect: :own, env: {}, content: oracle::JSON_TYPE }.merge(entry),
+                    oracle:, strict: true)
+    end
+    closure_path = Rails.root.join('app-phoenix/test/fixtures/a12f2a/closure.json')
+    closure = closure_path.exist? ? JSON.parse(closure_path.read) : {}
+    closure['notes'] = captured
+    encoded_closure = "#{Oj.dump(closure.sort.to_h, mode: :strict, indent: 2, float_precision: 0)}\n"
+    FixtureRecording.verify(closure_path, encoded_closure)
   end
 
   def places_seed(kase)

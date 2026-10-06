@@ -133,6 +133,91 @@ defmodule DawarichWeb.A12f2AClosureTest do
     assert invoke(UsersController, :exist, nil, %{"ids" => %{"x" => 1}}, now, valid).status == 200
   end
 
+  @tag :a12f2_a_04
+  test "Notes Cloud CRUD preserves own scope Ruby parameter shapes uniqueness and source failures",
+       %{user: user, now: now} do
+    System.put_env("SELF_HOSTED", "false")
+    missing = invoke(DawarichWeb.Api.NotesController, :create, user, %{}, now)
+    assert missing.status == 400
+
+    attrs = %{
+      "body" => "Synthetic note",
+      "title" => "Day",
+      "noted_at" => "2026-10-06",
+      "latitude" => 0,
+      "longitude" => 0,
+      "ignored" => true
+    }
+
+    created = invoke(DawarichWeb.Api.NotesController, :create, user, %{"note" => attrs}, now)
+    assert created.status == 201
+    body = Jason.decode!(created.resp_body)
+    assert body["date"] == source_body("notes", "date_only")["date"]
+    assert body["latitude"] == 0.0
+    id = body["id"]
+    Repo.query!("UPDATE notes SET source_digest='synthetic-digest' WHERE id=$1", [id])
+    foreign = user()
+
+    assert invoke(DawarichWeb.Api.NotesController, :show, foreign, %{"id" => to_string(id)}, now).status ==
+             404
+
+    assert invoke(
+             DawarichWeb.Api.NotesController,
+             :update,
+             foreign,
+             %{"id" => to_string(id), "note" => %{"body" => "Foreign"}},
+             now
+           ).status == 404
+
+    updated =
+      invoke(
+        DawarichWeb.Api.NotesController,
+        :update,
+        user,
+        %{"id" => to_string(id), "note" => %{"body" => "Updated", "latitude" => nil}},
+        now
+      )
+
+    assert updated.status == 200
+    assert Jason.decode!(updated.resp_body)["latitude"] == 0.0
+
+    assert Repo.query!("SELECT source_digest FROM notes WHERE id=$1", [id]).rows == [
+             ["synthetic-digest"]
+           ]
+
+    invalid =
+      invoke(
+        DawarichWeb.Api.NotesController,
+        :create,
+        user,
+        %{"note" => %{"body" => "", "noted_at" => "invalid"}},
+        now
+      )
+
+    assert invalid.status == 422
+
+    assert Jason.decode!(invalid.resp_body)["errors"] ==
+             source_body("notes", "invalid_date")["errors"]
+
+    assert invoke(DawarichWeb.Api.NotesController, :index, user, %{}, now).status == 200
+
+    assert invoke(
+             DawarichWeb.Api.NotesController,
+             :destroy,
+             foreign,
+             %{"id" => to_string(id)},
+             now
+           ).status == 404
+
+    assert invoke(DawarichWeb.Api.NotesController, :destroy, user, %{"id" => to_string(id)}, now).status ==
+             200
+  end
+
+  defp source_body(section, name) do
+    fixture = "test/fixtures/a12f2a/closure.json" |> File.read!() |> Jason.decode!()
+    Enum.find(fixture[section], &(&1["name"] == name))["response"]["body"] |> Jason.decode!()
+  end
+
   defp oracle(name) do
     fixture = "test/fixtures/a12f2a/closure.json" |> File.read!() |> Jason.decode!()
     Enum.find(fixture["cases"], &(&1["name"] == name))["response"]["body"] |> Jason.decode!()
