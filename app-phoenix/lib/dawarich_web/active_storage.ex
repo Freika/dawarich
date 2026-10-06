@@ -55,14 +55,18 @@ defmodule DawarichWeb.ActiveStorage do
          {:ok, path} <- Storage.safe_disk_path(root, key),
          {:ok, %File.Stat{type: :regular, size: size, mtime: mtime}} <-
            File.stat(path, time: :posix) do
-      conn
-      |> put_resp_header("content-type", data["content_type"] || "application/octet-stream")
-      |> put_resp_header("content-disposition", data["disposition"] || "attachment")
-      |> FileServer.serve(
-        path,
-        size,
-        mtime |> DateTime.from_unix!() |> DateTime.to_naive() |> Params.http_date()
-      )
+      if is_nil(data["content_type"]) do
+        DawarichWeb.ActiveStorage.Proxy.page(conn, 500)
+      else
+        conn
+        |> put_resp_header("content-type", data["content_type"])
+        |> put_resp_header("content-disposition", data["disposition"] || "attachment")
+        |> FileServer.serve(
+          path,
+          size,
+          mtime |> DateTime.from_unix!() |> DateTime.to_naive() |> Params.http_date()
+        )
+      end
     else
       _ -> head(conn, 404)
     end

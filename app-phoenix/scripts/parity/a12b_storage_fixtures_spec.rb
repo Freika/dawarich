@@ -343,6 +343,15 @@ custom_metadata: {} }
                        headers: { 'If-None-Match' => response.headers['etag'].to_s }),
                 record('proxy_ims', :get, proxy, headers: { 'If-Modified-Since' => Time.utc(2011).httpdate }),
                 record('proxy_bad_signature', :get, proxy.sub(first.signed_id, "#{first.signed_id}x"))]
+    allow(first.service).to receive(:download).and_raise(ActiveStorage::FileNotFoundError)
+    requests << record('proxy_missing_file', :get, proxy)
+    allow(first.service).to receive(:download).and_raise(IOError, 'synthetic provider failure')
+    requests << record('proxy_provider_failure', :get, proxy)
+    allow(first.service).to receive(:download).and_call_original
+    requests << record('proxy_untyped', :get,
+                       helpers.rails_service_blob_proxy_path(blobs[4].signed_id, blobs[4].filename))
+    requests << record('disk_untyped', :get, URI(frozen { with_urls { blobs[4].url } }).path)
+    ActiveRecord::Base.connection.execute("SELECT setval('active_storage_blobs_id_seq', 970600)")
     allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token).and_return("a12b#{'v' * 24}")
     image = blobs[2]
     transforms = { resize_to_limit: [1, 1], rotate: 90, format: :png, saver: { quality: 80 } }
@@ -356,7 +365,10 @@ custom_metadata: {} }
                    record('representation_bad_signature', :get, repr.sub(variation.key, "#{variation.key}x")),
                    record('representation_wrong_purpose', :get,
                           repr.sub(variation.key, ActiveStorage.verifier.generate(transforms, purpose: :blob_id))),
-                   record('representation_non_image', :get, repr.sub(image.signed_id, first.signed_id))]
+                   record('representation_non_image', :get, repr.sub(image.signed_id, first.signed_id)),
+                   record('representation_non_image_wrong_purpose', :get,
+                          repr.sub(image.signed_id, first.signed_id)
+                              .sub(variation.key, ActiveStorage.verifier.generate(transforms, purpose: :blob_id)))]
       representation = image.representation(variation.key).processed
       legacy = ActiveSupport::MessageVerifier.new(ActiveStorage.verifier.instance_variable_get(:@secret),
                                                   digest: 'SHA1', serializer: :marshal,
@@ -364,19 +376,71 @@ custom_metadata: {} }
       legacy_key = legacy.generate(transforms, purpose: :variation)
       expect(ActiveStorage::Variation.decode(legacy_key).transformations).to eq(transforms)
       previews = capture_previews(helpers)
-      data = { 'legacy_variation' => legacy_key, 'previews' => previews, 'guest' => capture_guest, 'now'  => fx::NOW.iso8601(3), 'requests' => requests,
+      representation_marshal = Marshal.dump(representation.variation.transformations)
+      data = { 'legacy_variation' => legacy_key, 'previews' => previews, 'guest' => capture_guest,
+               'image_formats' => capture_image_formats(helpers), 's3' => capture_s3_proxy(helpers),
+               'now' => fx::NOW.iso8601(3), 'requests' => requests,
                'variation' => { 'key' => variation.key, 'transformations' => transforms,
-                                'digest' => variation.digest, 'marshal' => Base64.strict_encode64(Marshal.dump(transforms)) },
+                                'digest' => variation.digest,
+                                'marshal' => Base64.strict_encode64(Marshal.dump(transforms)) },
                'representation' => { 'key' => representation.key, 'filename' => representation.filename.to_s,
                                      'bytes' => Base64.strict_encode64(representation.download),
                                      'digest' => representation.variation.digest,
-                                     'marshal' => Base64.strict_encode64(Marshal.dump(representation.variation.transformations)) },
+                                     'marshal' => Base64.strict_encode64(representation_marshal) },
                'track_variants' => ActiveStorage.track_variants, 'processor' => ActiveStorage.variant_processor }
       path = Rails.root.join('app-phoenix/test/fixtures/a12f2i/closure.json')
       FixtureRecording.verify(path, "#{Oj.dump(fx.normalized(data), mode: :strict, indent: 2)}\n")
     end
   ensure
     Rails.application.env_config['action_dispatch.show_exceptions'] = previous_show
+  end
+
+  def capture_s3_proxy(helpers)
+    config = { 's3' => { 'service' => 'S3', 'bucket' => 'synthetic', 'region' => 'eu-central-1',
+                         'access_key_id' => 'synthetic', 'secret_access_key' => 'synthetic',
+                         'stub_responses' => true } }
+    service = ActiveStorage::Service.configure(:s3, config)
+    allow(ActiveStorage::Blob.services).to receive(:fetch).and_call_original
+    allow(ActiveStorage::Blob.services).to receive(:fetch).with('s3').and_return(service)
+    client = service.client.client
+    client.stub_responses(:head_object, content_length: payload.bytesize)
+    client.stub_responses(:get_object, body: payload)
+    blob = frozen { make_blob(970_552, "a12b#{'n' * 24}", 's3.json', 'application/json', stored: false, service: 's3') }
+    path = helpers.rails_service_blob_proxy_path(blob.signed_id, blob.filename)
+    request = record('s3_proxy', :get, path)
+    expect(request['status']).to eq(200)
+    effects = client.api_requests.map do |call|
+      { 'method' => call[:operation_name].to_s, 'key' => call[:params][:key], 'range' => call[:params][:range] }
+    end
+    { 'blob' => row(blob, true), 'request' => request, 'effects' => effects }
+  end
+
+  def capture_image_formats(helpers)
+    signature = "\x89PNG\r\n\x1a\n".b
+    chunks = [['IHDR', [16, 16, 8, 2, 0, 0, 0].pack('NNCCCCC')],
+              ['IDAT', Zlib.deflate(("\0" * 49) * 16)], ['IEND', ''.b]]
+    bytes = signature + chunks.map do |name, data|
+      [data.bytesize].pack('N') + name + data + [Zlib.crc32(name + data)].pack('N')
+    end.join
+    blob = frozen do
+      ActiveStorage::Blob.create!(id: 970_551, key: "a12b#{'m' * 24}", filename: 'tiny.png',
+                                  content_type: 'image/png', service_name: 'test', byte_size: bytes.bytesize,
+                                  checksum: Digest::MD5.base64digest(bytes))
+    end
+    blob.service.upload(blob.key, StringIO.new(bytes), checksum: blob.checksum)
+    cases = %w[png jpg gif webp].each_with_index.map do |format, index|
+      key = "a12b#{(index + 1).to_s * 24}"
+      allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token).and_return(key)
+      variation = ActiveStorage::Variation.new(format: format, resize_to_limit: [1, 1], rotate: 90, quality: 80)
+      proxy = helpers.rails_blob_representation_proxy_path(blob.signed_id, variation.key, blob.filename)
+      redirect = helpers.rails_blob_representation_path(blob.signed_id, variation.key, blob.filename)
+      requests = [record("format_#{format}_proxy", :get, proxy),
+                  record("format_#{format}_redirect", :get, redirect)]
+      representation = blob.representation(variation.key).processed
+      expect(representation.download).to eq(bytes)
+      { 'key' => key, 'requests' => requests, 'content_type' => representation.image.blob.content_type }
+    end
+    { 'blob' => row(blob, true), 'bytes' => Base64.strict_encode64(bytes), 'cases' => cases }
   end
 
   def capture_guest
@@ -394,25 +458,60 @@ custom_metadata: {} }
     cookie = cookies['_dawarich_session']
     ActiveRecord::Base.connection.execute("SELECT setval('active_storage_blobs_id_seq', 972000)")
     allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token)
-      .and_return(*%w[u w x y z].map { |c| "a12b#{c * 24}" })
+      .and_return(*%w[u w x A B C D E y z].map { |c| "a12b#{c * 24}" })
     good = { blob: { filename: 'guest.png', byte_size: '1024', checksum: Digest::MD5.base64digest(payload),
                      content_type: 'image/png', metadata: { 'note' => 'synthetic' } } }.to_json
     json = { 'CONTENT_TYPE' => 'application/json', 'Accept' => 'application/json' }
     form = Rack::Utils.build_nested_query(JSON.parse(good))
+    multipart = JSON.parse(good)['blob'].except('metadata').map do |name, value|
+      "--a12f2i\r\nContent-Disposition: form-data; name=\"blob[#{name}]\"\r\n\r\n#{value}\r\n"
+    end.join
+    multipart << "--a12f2i--\r\n"
     requests = [record('guest_json', :post, '/rails/active_storage/direct_uploads',
                        headers: json.merge('X-CSRF-Token' => token), body: good, csrf: true),
                 record('guest_no_csrf', :post, '/rails/active_storage/direct_uploads', headers: json, body: good),
                 record('guest_form', :post, '/rails/active_storage/direct_uploads',
                        headers: { 'CONTENT_TYPE' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json',
                                   'X-CSRF-Token' => token }, body: form, csrf: true),
+                record('guest_multipart', :post, '/rails/active_storage/direct_uploads',
+                       headers: { 'CONTENT_TYPE' => 'multipart/form-data; boundary=a12f2i',
+                                  'Accept' => 'application/json', 'X-CSRF-Token' => token },
+                       body: multipart, csrf: true),
                 record('guest_bad_json', :post, '/rails/active_storage/direct_uploads',
                        headers: json.merge('X-CSRF-Token' => token), body: '{', csrf: true),
                 record('guest_wrong_origin', :post, '/rails/active_storage/direct_uploads',
-                       headers: json.merge('X-CSRF-Token' => token, 'Origin' => 'http://evil.example'), body: good, csrf: true)]
+                       headers: json.merge('X-CSRF-Token' => token, 'Origin' => 'http://evil.example'),
+                       body: good, csrf: true)]
+    cases = {
+      'negative' => { 'byte_size' => -1, 'metadata' => 'dropped' },
+      'scalars' => { 'filename' => 123, 'checksum' => 456, 'byte_size' => 12.7, 'content_type' => 789 },
+      'null_size' => { 'byte_size' => nil },
+      'null_checksum' => { 'checksum' => nil },
+      'missing_checksum' => {}
+    }
+    cases.each do |name, changes|
+      attrs = JSON.parse(good)['blob'].merge(changes)
+      attrs.delete('checksum') if name == 'missing_checksum'
+      ActiveRecord::Base.transaction(requires_new: true) do
+        requests << record("guest_#{name}", :post, '/rails/active_storage/direct_uploads',
+                           headers: json.merge('X-CSRF-Token' => token), body: { blob: attrs }.to_json, csrf: true)
+        raise ActiveRecord::Rollback if requests.last['status'] == 500
+      end
+    end
     requests.each { |request| request['response_headers'].delete('set-cookie') }
-    { 'cookie' => cookie, 'csrf' => token, 'requests' => requests }
+    before = ActiveStorage::Blob.count
+    allow_any_instance_of(ActiveStorage::Blob).to receive(:service_url_for_direct_upload)
+      .and_raise('synthetic response generation failure')
+    post_commit = record('post_commit', :post, '/rails/active_storage/direct_uploads',
+                         headers: json.merge('X-CSRF-Token' => token), body: good, csrf: true)
+    expect(post_commit['status']).to eq(500)
+    post_commit['blob_delta'] = ActiveStorage::Blob.count - before
+    expect(post_commit['blob_delta']).to eq(1)
+    post_commit['response_headers'].delete('set-cookie')
+    { 'cookie' => cookie, 'csrf' => token, 'requests' => requests, 'post_commit' => post_commit }
   ensure
     ActionController::Base.allow_forgery_protection = previous
+    allow_any_instance_of(ActiveStorage::Blob).to receive(:service_url_for_direct_upload).and_call_original
   end
 
   def synthetic_pdf
@@ -436,15 +535,17 @@ custom_metadata: {} }
     require 'tempfile'
     Tempfile.create(['a12f2i', '.mp4']) do |file|
       _out, _err, status = Open3.capture3('ffmpeg', '-y', '-f', 'lavfi', '-i', 'color=black:s=16x16:r=1',
-                                        '-frames:v', '1', '-pix_fmt', 'yuv420p', file.path)
+                                          '-frames:v', '1', '-pix_fmt', 'yuv420p', file.path)
       expect(status.success?).to be(true)
       [synthetic_pdf, File.binread(file.path)].each_with_index.map do |bytes, index|
         type = index.zero? ? 'application/pdf' : 'video/mp4'
         filename = index.zero? ? 'synthetic.pdf' : 'synthetic.mp4'
         key = "a12b#{(index.zero? ? 'p' : 'q') * 24}"
-        blob = ActiveStorage::Blob.create!(id: 970_541 + index, key: key, filename: filename,
-                                           content_type: type, byte_size: bytes.bytesize,
-                                           checksum: Digest::MD5.base64digest(bytes), service_name: 'test')
+        blob = frozen do
+          ActiveStorage::Blob.create!(id: 970_541 + index, key: key, filename: filename,
+                                      content_type: type, byte_size: bytes.bytesize,
+                                      checksum: Digest::MD5.base64digest(bytes), service_name: 'test')
+        end
         blob.service.upload(key, StringIO.new(bytes), checksum: blob.checksum)
         output_key = "a12b#{(index.zero? ? 'r' : 's') * 24}"
         allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token).and_return(output_key)
