@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require_relative 'fixture_recording'
-require 'geocoder/results/photon'
+require_relative 'places_closure_capture'
 
 RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders them', type: :request do
   closure_cases = {}
@@ -488,6 +487,24 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
         end
         remainder_json('responses.json', { now: now.iso8601, responses: })
         remainder_json('effects.json', { now: now.iso8601, effects: })
+        %w[p04 p05].each do |task|
+          names = if task == 'p04'
+                    %w[create_tags_turbo_false update_omitted_tags_turbo_true
+                       update_empty_tags_turbo_true]
+                  else
+                    %w[delete_html_false delete_turbo_true
+                       foreign_destroy_html_false]
+                  end
+          data = { responses: responses.select { names.include?(_1[:name]) },
+                   effects: effects.select { names.include?(_1[:name]) } }
+          target = dir.parent.join("a12f3a-#{task}.json")
+          encoded = "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2).rstrip}\n"
+          if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+            File.write(target, encoded)
+          else
+            expect(JSON.parse(target.read)).to eq(JSON.parse(encoded))
+          end
+        end
         %i[create update].each_with_index do |action, index|
           user = reader(98_950 + index, 'timezone' => 'Europe/Berlin')
           id = 989_000 + index * 20
@@ -572,9 +589,12 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
 
     travel_to now do
       seed!
+      capture_places_closure
       lists.each { |name, user_id, path| capture_list(name, user_id, path) }
       drawers.each { |name, user_id, place_id| capture_drawer(name, user_id, place_id) }
-      capture_nearby_service(User.find(lists.first[1]))
+      closure_write('p01', { cases: %w[list_page1 list_page2 drawer_full drawer_signed_out].map do |name|
+        { response: JSON.parse(dir.join("#{name}.json").read), html: dir.join("#{name}.html").read }
+      end })
     end
   end
 end

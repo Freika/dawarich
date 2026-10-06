@@ -93,13 +93,18 @@ defmodule DawarichWeb.PlaceNavigationTest do
     before =
       Repo.query!("SELECT (SELECT count(*) FROM places),(SELECT count(*) FROM job_outbox)").rows
 
-    {{line, _}, conn} =
-      forwarded(upstream, fn ->
-        RailsUser.signed_in(user.id) |> get("/places/nearby?latitude=51.34&longitude=12.37")
-      end)
+    start_supervised!(Dawarich.Geocoding.FakeHttp)
 
-    assert conn.status == 204
-    assert line == "GET /places/nearby?latitude=51.34&longitude=12.37 HTTP/1.1"
+    Dawarich.Geocoding.FakeHttp.stub(
+      "http://photon.example.invalid/reverse?distance_sort=true&lang=en&lat=51.34&limit=5&lon=12.37&radius=0.5",
+      200,
+      Jason.encode!(%{"type" => "FeatureCollection", "features" => []})
+    )
+
+    start_supervised!(hd(Dawarich.Redis.child_specs()))
+    conn = RailsUser.signed_in(user.id) |> get("/places/nearby?latitude=51.34&longitude=12.37")
+    assert conn.status == 200
+    assert conn.resp_body =~ "No nearby places found"
 
     assert Repo.query!("SELECT (SELECT count(*) FROM places),(SELECT count(*) FROM job_outbox)").rows ==
              before
