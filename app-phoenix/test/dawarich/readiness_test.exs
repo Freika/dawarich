@@ -41,4 +41,32 @@ defmodule Dawarich.ReadinessTest do
            ) == {:unavailable, :lifecycle}
   end
 
+  test "database and Redis failure return unavailable without exposing connection data" do
+    secret = "synthetic-private-database-password"
+
+    healthy = [
+      release: fn _ -> :ready end,
+      database: fn -> {:ok, %{rows: [[1]]}} end,
+      redis: fn -> {:ok, "PONG"} end
+    ]
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        for {key, failure, reason} <- [
+              {:database, fn -> {:error, secret} end, :database},
+              {:database, fn -> raise secret end, :database},
+              {:release, fn _ -> :no_connection end, :lifecycle},
+              {:release, fn _ -> raise secret end, :lifecycle},
+              {:redis, fn -> {:error, secret} end, :redis},
+              {:redis, fn -> exit(secret) end, :redis}
+            ] do
+          result = Dawarich.Readiness.check(Keyword.put(healthy, key, failure))
+          assert result == {:unavailable, reason}
+          refute inspect(result) =~ secret
+        end
+      end)
+
+    refute log =~ secret
+    assert log =~ "Readiness check failed"
+  end
 end

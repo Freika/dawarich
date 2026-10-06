@@ -16,14 +16,34 @@ defmodule Dawarich.Readiness do
   end
 
   defp lifecycle(release, opts) do
-    if release.(opts) == :ready, do: :ready, else: {:unavailable, :lifecycle}
+    guarded(
+      fn -> if release.(opts) == :ready, do: :ready, else: {:unavailable, :lifecycle} end,
+      :lifecycle
+    )
   end
 
   defp dependency(call, kind) do
-    case call.() do
-      {:ok, %{rows: [[1]]}} when kind == :database -> :ready
-      {:ok, "PONG"} when kind == :redis -> :ready
-      _ -> {:unavailable, kind}
-    end
+    guarded(
+      fn ->
+        case call.() do
+          {:ok, %{rows: [[1]]}} when kind == :database -> :ready
+          {:ok, "PONG"} when kind == :redis -> :ready
+          _ -> {:unavailable, kind}
+        end
+      end,
+      kind
+    )
+  end
+
+  defp guarded(call, kind) do
+    call.()
+  rescue
+    error ->
+      Logger.warning("Readiness check failed: #{inspect(error.__struct__)}")
+      {:unavailable, kind}
+  catch
+    class, _ ->
+      Logger.warning("Readiness check failed: #{class}")
+      {:unavailable, kind}
   end
 end
