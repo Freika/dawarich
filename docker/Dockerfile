@@ -47,6 +47,10 @@ RUN mix release
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund && rm -rf ~/.npm
+RUN mkdir -p /out/public/api-docs \
+    && cp node_modules/swagger-ui-dist/swagger-ui-bundle.js \
+          node_modules/swagger-ui-dist/swagger-ui.css \
+          node_modules/swagger-ui-dist/LICENSE /out/public/api-docs/
 COPY app/assets app/assets
 COPY app/javascript app/javascript
 COPY app/helpers app/helpers
@@ -157,6 +161,7 @@ RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
     fi
 
 COPY --from=phoenix_builder /out/public/assets public/assets
+COPY --from=phoenix_builder /out/public/api-docs public/api-docs
 COPY --from=phoenix_builder /out/config/sprockets-manifest.json config/sprockets-manifest.json
 COPY --from=phoenix_builder /src/app/assets/builds/tailwind.css app/assets/builds/tailwind.css
 COPY --from=phoenix_builder /out/tmp/phoenix tmp/phoenix

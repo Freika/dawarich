@@ -95,3 +95,23 @@ methods within `/api-docs` terminate with native 404. Coexistence can still
 hand the namespace back using `DAWARICH_RAILS_ROUTES=api-docs`.
 The YAML remains `swagger/v1/swagger.yaml`; A12f-4 task 15 must retain that
 exact file in the final runtime image. No source bytes changed here.
+
+## Swagger UI distribution
+
+`swagger-ui-dist` is pinned to 5.33.1 in the existing npm lockfile. The UI
+initializes SwaggerUIBundle with `/api-docs/v1/swagger.yaml`, local bundle/CSS,
+deep linking and the built-in API preset. `validatorUrl: null` prevents sending
+the document to an external validator. No CDN, alternate spec or standalone
+preset is required. [Swagger installation documentation](https://swagger.io/docs/open-source-tools/swagger-ui/usage/installation/)
+describes the distribution bundle used here.
+
+The Docker builder copies exactly `swagger-ui-bundle.js`, `swagger-ui.css` and
+`LICENSE` into `/out/public/api-docs`; the runtime COPY puts them in
+`/var/app/public/api-docs`, before `public_dist` is staged for volume sync. The
+ApiDocs handler only serves those filenames. PublicFiles leaves the namespace
+to the normal Strangler/operator pipeline, so public static files cannot bypass
+its hand-back, host or SSL policy or expose other npm artifacts. Native tests
+copy the real installed distribution into an isolated public root and verify
+served bytes, types, HEAD and denied extra files even with production static
+serving enabled. A12f-4 must retain these COPY steps and the Swagger YAML while
+removing Ruby from the image, then run the real UI/browser/image acceptance.
