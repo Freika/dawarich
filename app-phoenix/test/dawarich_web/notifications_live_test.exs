@@ -70,8 +70,8 @@ defmodule DawarichWeb.NotificationsLiveTest do
       join_ref: "1"
     }
 
-    {:ok, channel} = Phoenix.LiveView.Channel.start_link({@endpoint, from})
-    Process.unlink(channel)
+    channel = start_supervised!({Phoenix.LiveView.Channel, {@endpoint, from}}, id: ref)
+    monitor = Process.monitor(channel)
 
     send(
       channel,
@@ -85,8 +85,18 @@ defmodule DawarichWeb.NotificationsLiveTest do
        }, from, socket}
     )
 
-    assert_receive {^ref, reply}
-    reply
+    try do
+      receive do
+        {^ref, reply} ->
+          reply
+
+        {:DOWN, ^monitor, :process, ^channel, reason} ->
+          flunk("LiveView channel exited before its join reply: #{inspect(reason)}")
+      end
+    after
+      Process.demonitor(monitor, [:flush])
+      stop_supervised(ref)
+    end
   end
 
   defp rails_flash_conn(user, flashes) do
