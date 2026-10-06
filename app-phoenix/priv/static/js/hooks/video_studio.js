@@ -79,7 +79,11 @@ const lifecycle = {
 }
 
 export function mountVideoStudio(element, application = window.Stimulus) {
-  if (instances.has(element)) return instances.get(element)
+  if (instances.has(element)) {
+    const studio = instances.get(element)
+    if (application) studio.application = application
+    return studio
+  }
   const studio = Object.assign(
     {
       element,

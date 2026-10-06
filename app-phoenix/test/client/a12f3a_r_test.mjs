@@ -228,6 +228,13 @@ test("R08: native studio controls and lifecycle matches current Rails contract w
     studio,
     "repeated native mounts reuse one studio",
   )
+  const mapApplication = { getControllerForElementAndIdentifier() {} }
+  r.globals.hookAPI.mountVideoStudio(r.el, mapApplication)
+  assert.equal(
+    studio.application,
+    mapApplication,
+    "the map portal supplies its application after child hook mounting",
+  )
   const beforeDestroy = studio.operationVersion
   r.globals.hookAPI.destroyVideoStudio(r.el)
   r.globals.hookAPI.destroyVideoStudio(r.el)

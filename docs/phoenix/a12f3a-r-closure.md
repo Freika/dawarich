@@ -112,3 +112,11 @@ The named client tables also cover unavailable-codec UI, render completion
 following destruction, and an aborted direct-upload callback arriving late.
 These deterministic probes pass without machine load or timing sleeps.
 Forced native compilation with warnings as errors and format check pass.
+
+A native child-hook-before-map mount probe initially failed because the existing
+studio retained the earlier application. `mountVideoStudio/2` now refreshes
+that application when the map/trip portal supplies it. The controller identifier
+is retained as source-compatible metadata; the portal explicitly bypasses
+source Stimulus startup for this studio. Source page regressions pass:
+27 map/trip tests, 0 failures. The complete client regression batch still passes
+60 tests, 0 failures. No full suite had started while this fix was made.
