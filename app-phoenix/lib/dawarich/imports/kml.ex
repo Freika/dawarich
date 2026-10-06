@@ -13,7 +13,7 @@ defmodule Dawarich.Imports.Kml do
       parse(input, dir)
       prepared = Path.join(dir, "prepared")
 
-      File.open!(prepared, [:write, :binary, :raw], fn io ->
+      File.open!(prepared, [:write, :binary, :raw, {:delayed_write, 65_536, 100}], fn io ->
         for kind <- [:placemark, :track] do
           dir
           |> Path.join(Atom.to_string(kind))

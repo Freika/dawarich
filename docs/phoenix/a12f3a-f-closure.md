@@ -66,3 +66,9 @@ native errors in standalone, retaining source fallback in coexistence. RED
 returned a legacy tuple; GREEN returns an error without points or handoff.
 Mapping CSV to GeoJSON fails the dispatch assertion; restored GREEN passes.
 The complete planned source/transport aggregate remains open.
+
+The inherited KML interpolation regression timed out in per-point spool writes.
+The KML prepared writer now buffers at most 64 KiB and flushes on close. The
+same test passes in 5.1 seconds with its unchanged 60-second deadline. Existing
+source snapshots remain the byte/ordering oracle; no host load generator was
+used.
