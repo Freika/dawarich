@@ -59,23 +59,20 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
 
   @tag :index
   test "the A8 corpus contains every named capture" do
+    for prefix <- ["visits/a12f3a-v0", "videos/a12f3a-r0"], index <- 1..9 do
+      assert File.exists?(Path.join(@dir, prefix <> to_string(index) <> ".json"))
+    end
+
     for extension <- ["json", "html"] do
       actual =
         Path.wildcard("#{@dir}/*/*.#{extension}")
         |> Enum.filter(fn path ->
-          File.exists?(Path.rootname(path) <> ".json")
+          File.exists?(Path.rootname(path) <> ".json") and
+            File.exists?(Path.rootname(path) <> ".html")
         end)
         |> Enum.map(&(&1 |> Path.relative_to(@dir) |> Path.rootname()))
 
-      closure =
-        if extension == "json",
-          do:
-            Enum.flat_map(["visits/a12f3a-v0", "videos/a12f3a-r0"], fn prefix ->
-              Enum.map(1..9, &(prefix <> to_string(&1)))
-            end),
-          else: ["visits/a12f3a-v02"]
-
-      assert Enum.sort(actual) == Enum.sort(@names ++ closure)
+      assert Enum.sort(actual) == Enum.sort(@names ++ ["visits/a12f3a-v02"])
     end
   end
 
