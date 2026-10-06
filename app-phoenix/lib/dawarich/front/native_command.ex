@@ -38,6 +38,33 @@ defmodule Dawarich.Front.NativeCommand do
     end
   end
 
+  defp command(["sidekiq" | args], _env) do
+    with {:ok, opts} <- options(args, %{"-C" => :config, "--config" => :config}),
+         true <- Map.get(opts, :config, []) in [[], ["config/sidekiq.yml"]] do
+      :sidekiq_idle
+    else
+      _ -> {:error, "unsupported argv"}
+    end
+  end
+
+  defp command([rails, "db:migrate"], _env) when rails in ["rails", "bin/rails"], do: :migrate
+  defp command([rails, "db:seed"], _env) when rails in ["rails", "bin/rails"], do: :seeds
+  defp command(["dawarich", "start"], env), do: listener(%{}, env, "0.0.0.0")
+  defp command(["dawarich", "migrate"], _env), do: :migrate
+  defp command(["dawarich", "seeds"], _env), do: :seeds
+
+  defp command(["dawarich", action, body], _env) when action in ["eval", "rpc"] and body != "",
+    do: {:release, [action, body]}
+
+  defp command(["dawarich", "remote"], _env), do: {:release, ["remote"]}
+
+  defp command(["dawarich" | args], _env) do
+    case Dawarich.CLI.resolve(args) do
+      {:ok, _, _} -> {:cli, args}
+      _ -> {:error, "unsupported argv"}
+    end
+  end
+
   defp command(_argv, _env), do: {:error, "unsupported argv"}
 
   defp puma_listener(%{bind: [bind]} = opts, _env) when not is_map_key(opts, :port) do
