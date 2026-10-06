@@ -62,6 +62,10 @@ defmodule DawarichWeb.A12f3aQClosureTest do
                  end)
                )
 
+      for [args] <- Repo.query!("SELECT payload FROM job_outbox", []).rows do
+        assert args["notify_on_failure"] == row["default_failure_notified"]
+      end
+
       assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
     end
 
@@ -265,6 +269,14 @@ defmodule DawarichWeb.A12f3aQClosureTest do
       assert Repo.query!("SELECT count(*) FROM job_outbox", []).rows == [[1]]
     end
 
+    [[ttl]] =
+      Repo.query!(
+        "SELECT extract(epoch FROM expires_at - statement_timestamp())::int FROM phoenix.once_claims WHERE key=$1",
+        ["stats_full_recalculation:user:#{user.id}"]
+      ).rows
+
+    assert ttl in (source["debounce_ttl"] - 10)..source["debounce_ttl"]
+
     assert Repo.query!("SELECT command_type FROM job_outbox", []).rows == [
              ["stats.full_recalculation"]
            ]
@@ -284,6 +296,32 @@ defmodule DawarichWeb.A12f3aQClosureTest do
           ]
 
     assert actual == source["jobs"]
+    Repo.query!("DELETE FROM job_outbox", [])
+    Dawarich.State.unclaim(Repo, "stats_full_recalculation:user:#{user.id}")
+    Ownership.put!(Repo, "command:stats.full_recalculation", :sidekiq)
+    assert {:replay, _} = Dawarich.Stats.WebCommands.update_all(Repo, user, ctx)
+    refute Dawarich.State.claimed?(Repo, "stats_full_recalculation:user:#{user.id}")
+    assert Repo.query!("SELECT count(*) FROM job_outbox", []).rows == [[0]]
+    Ownership.put!(Repo, "command:stats.full_recalculation", :oban)
+
+    Repo.query!(
+      "CREATE FUNCTION pg_temp.q_outbox_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic Q07 publication failure'; END $$",
+      []
+    )
+
+    Repo.query!(
+      "CREATE TRIGGER q_outbox_failure BEFORE INSERT ON public.job_outbox FOR EACH ROW EXECUTE FUNCTION pg_temp.q_outbox_failure()",
+      []
+    )
+
+    assert_raise Postgrex.Error, fn ->
+      Dawarich.Stats.WebCommands.update_all(Repo, user, ctx)
+    end
+
+    Repo.query!("DROP TRIGGER q_outbox_failure ON public.job_outbox", [])
+    assert_full_recalculation_owner_race(user, ctx)
+    refute Dawarich.State.claimed?(Repo, "stats_full_recalculation:user:#{user.id}")
+    assert Repo.query!("SELECT count(*) FROM job_outbox", []).rows == [[0]]
     assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
   end
 
@@ -475,6 +513,37 @@ defmodule DawarichWeb.A12f3aQClosureTest do
       uuid,
       "div.container.mx-auto.px-4.py-8"
     )
+  end
+
+  defp assert_full_recalculation_owner_race(user, ctx) do
+    repo = Dawarich.ScratchRepo
+    key = "command:stats.full_recalculation"
+    Dawarich.JobsCase.reset!(repo)
+    RailsUser.insert!(%{id: user.id, email: "q-owner-race@dawarich.test"}, repo)
+    Ownership.put!(repo, key, :oban)
+
+    holder =
+      Dawarich.LockRace.hold(fn ->
+        assert {:ok, %{status: 303}} = Dawarich.Stats.WebCommands.update_all(repo, user, ctx)
+      end)
+
+    try do
+      error =
+        assert_raise Postgrex.Error, fn ->
+          Ownership.put!(repo, key, :sidekiq)
+        end
+
+      assert error.postgres.code == :lock_not_available
+    after
+      Dawarich.LockRace.commit(holder)
+    end
+
+    assert repo.query!("SELECT count(*) FROM job_outbox", []).rows == [[1]]
+    Ownership.put!(repo, key, :sidekiq)
+    assert {:replay, _} = Dawarich.Stats.WebCommands.update_all(repo, user, ctx)
+    assert repo.query!("SELECT count(*) FROM job_outbox", []).rows == [[1]]
+    assert repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
+    Dawarich.JobsCase.reset!(repo)
   end
 
   defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do

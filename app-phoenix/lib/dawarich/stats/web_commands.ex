@@ -7,7 +7,7 @@ defmodule Dawarich.Stats.WebCommands do
     repo.transaction(fn ->
       case Ownership.lock(repo, "command:stats.full_recalculation") do
         :oban ->
-          if Dawarich.State.claim(repo, "stats_full_recalculation:user:#{user.id}", 900) do
+          if Dawarich.State.claim(repo, "stats_full_recalculation:user:#{user.id}", 300) do
             publish!(
               repo,
               "stats.full_recalculation",
@@ -38,7 +38,7 @@ defmodule Dawarich.Stats.WebCommands do
                   "user_id" => user.id,
                   "year" => Dawarich.Digests.to_i(year),
                   "month" => Dawarich.Digests.to_i(number),
-                  "notify_on_failure" => false
+                  "notify_on_failure" => true
                 },
                 context.now
               )
