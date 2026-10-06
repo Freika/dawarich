@@ -130,3 +130,15 @@ direct worker. These are assertion seam updates; visits production is unchanged.
 The remaining poster failure was a missing native dependency. Its identical
 local lockfile and cached renderer binaries supplied the worktree dependencies.
 Affected dispatch/video/producer checks pass: 16 tests, zero failures.
+The native poster dependency check passes: three tests, zero failures.
+
+The corrected full seed-404 gate completed with 8,910 tests and 218 failures.
+All three private database partitions lost connections in the first seconds
+of the run. A later health query succeeded with the server start time unchanged.
+The run also exposed P08 cleanup scheduling order: its second user query has
+no ordering clause, while the test expects ascending IDs. That source-parity
+decision belongs to package P; no places production or assertion was changed.
+Full-suite acceptance is blocked. The compiled/tested native head is
+`0986afda9948af49971d72b50cb160eb87be32a2`; forced compile, format, targeted
+checks and secret scan pass. Swagger and schema remain unchanged.
+Every suite finished, and all Redis processes started for validation stopped.
