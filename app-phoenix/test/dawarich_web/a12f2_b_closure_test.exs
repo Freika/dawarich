@@ -206,6 +206,103 @@ defmodule DawarichWeb.A12f2BClosureTest do
     assert own != foreign
   end
 
+  @tag :a12f2_b_06
+  test "Place search and CRUD retain geocoder saved place dedup tags and refusal semantics", %{
+    user: user
+  } do
+    assert {:ok, 400, _} = invoke(Dawarich.PlacesApi.Search, :run, [user, %{}])
+    own = place(user.id, "Café", 52.52, 13.405)
+    place(user.id + 1, "Café", 52.52, 13.405)
+
+    {base, task} =
+      provider([
+        {"GET", "/api?", 200,
+         Jason.encode!(%{
+           "type" => "FeatureCollection",
+           "features" => [
+             feature(" café ", 52.52001, 13.405),
+             feature("Café elsewhere", 52.523, 13.405)
+           ]
+         }), []}
+      ])
+
+    geocoder(base)
+
+    assert {:ok, 200,
+            %{
+              "places" => [%{"id" => ^own}, %{"id" => nil, "name" => "Café elsewhere"}],
+              "areas" => []
+            }} =
+             invoke(Dawarich.PlacesApi.Search, :run, [
+               user,
+               %{"lat" => "52.52", "lon" => "13.405", "q" => "Café"}
+             ])
+
+    Task.await(task)
+
+    [[tag]] =
+      Repo.query!(
+        "INSERT INTO tags (user_id,name,created_at,updated_at) VALUES ($1,'Private',NOW(),NOW()) RETURNING id",
+        [user.id]
+      ).rows
+
+    now = ~U[2026-10-06 12:00:00Z]
+
+    assert {:ok, 201, term, []} =
+             invoke(Dawarich.PlacesApi.Closure, :run, [
+               :create,
+               user,
+               %{
+                 "place" => %{
+                   "name" => "Straße",
+                   "latitude" => 52.52,
+                   "longitude" => 13.405,
+                   "tag_ids" => [tag],
+                   "user_id" => user.id + 1
+                 }
+               },
+               now
+             ])
+
+    object = term_map(term)
+    assert object["name"] == "Straße"
+    assert [%{"id" => ^tag}] = object["tags"]
+    id = object["id"]
+
+    assert {:ok, 200, term, []} =
+             invoke(Dawarich.PlacesApi.Closure, :run, [
+               :update,
+               user,
+               %{"id" => to_string(id), "place" => %{"tag_ids" => []}},
+               now
+             ])
+
+    assert term_map(term)["tags"] == []
+
+    assert {:ok, 404, _, []} =
+             invoke(Dawarich.PlacesApi.Closure, :run, [
+               :show,
+               %{user | id: user.id + 1},
+               %{"id" => to_string(id)},
+               now
+             ])
+
+    assert :no_content =
+             invoke(Dawarich.PlacesApi.Closure, :run, [
+               :destroy,
+               user,
+               %{"id" => to_string(id)},
+               now
+             ])
+
+    assert {:ok, 404, _, []} =
+             invoke(Dawarich.PlacesApi.Closure, :run, [:show, user, %{"id" => to_string(id)}, now])
+  end
+
+  defp term_map({:object, pairs}), do: Map.new(pairs, fn {k, v} -> {k, term_map(v)} end)
+  defp term_map(list) when is_list(list), do: Enum.map(list, &term_map/1)
+  defp term_map(value), do: value
+
   defp place(owner, name, lat, lon) do
     [[id]] =
       Repo.query!(

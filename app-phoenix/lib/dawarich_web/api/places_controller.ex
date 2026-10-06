@@ -4,7 +4,7 @@ defmodule DawarichWeb.Api.PlacesController do
 
   import Plug.Conn, only: [delete_resp_header: 2, merge_resp_headers: 2, register_before_send: 2]
 
-  alias Dawarich.PlacesApi
+  alias Dawarich.PlacesApi.Closure, as: PlacesApi
   alias DawarichWeb.Api.{Body, Respond}
 
   @impl true
@@ -14,6 +14,13 @@ defmodule DawarichWeb.Api.PlacesController do
   def call(conn, :nearby) do
     {:ok, status, term} =
       Dawarich.PlacesApi.Nearby.run(conn.assigns.api_user, conn.assigns.api_params)
+
+    Respond.json(conn, status, term)
+  end
+
+  def call(conn, :search) do
+    {:ok, status, term} =
+      Dawarich.PlacesApi.Search.run(conn.assigns.api_user, conn.assigns.api_params)
 
     Respond.json(conn, status, term)
   end
