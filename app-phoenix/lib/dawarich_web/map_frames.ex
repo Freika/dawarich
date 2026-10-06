@@ -51,6 +51,9 @@ defmodule DawarichWeb.MapFrames do
       {:ok, type, html, changes} ->
         conn |> RailsSession.stage(changes) |> respond(accept, type, html)
 
+      {:error, status} ->
+        conn |> put_resp_content_type("text/html") |> send_resp(status, "")
+
       :not_found ->
         raise DawarichWeb.NotFoundError
 
@@ -120,6 +123,8 @@ defmodule DawarichWeb.MapFrames do
     if ctx.stream,
       do: render(&TimelineCalendar.calendar_stream/1, assigns, "text/vnd.turbo-stream.html"),
       else: html(&TimelineCalendar.calendar/1, assigns)
+  rescue
+    ArgumentError -> {:error, 500}
   end
 
   def body(:residency, ctx) do

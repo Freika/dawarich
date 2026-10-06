@@ -85,6 +85,11 @@ defmodule DawarichWeb.A12f3aMClosureTest do
     check_frames("m03", :index, &MapFramesGate.feed?/2)
   end
 
+  @tag a12f3a_m04: true
+  test "M04: calendar frame matches current Rails contract without a native-owner Rails effect" do
+    check_frames("m04", :calendar, &MapFramesGate.calendar?/2)
+  end
+
   defp check_frames(name, action, gate) do
     [first | _] = cases = load(name)["cases"]
     user = FrameSeeds.seed!(first)
@@ -114,6 +119,17 @@ defmodule DawarichWeb.A12f3aMClosureTest do
         }
 
         assert gate.(build_conn(:get, row["path"]) |> put_req_header("accept", @frame), params)
+
+        if row["calendar_cells"] do
+          summary = Dawarich.Timeline.MonthSummary.build(user, query["month"], nil, now)
+
+          cells =
+            Enum.map(List.flatten(summary.weeks), fn cell ->
+              Map.new(cell, fn {k, v} -> {to_string(k), v} end)
+            end)
+
+          assert cells == row["calendar_cells"]
+        end
 
         if row["error"] do
           assert {:error, 500} = MapFrames.body(action, ctx)

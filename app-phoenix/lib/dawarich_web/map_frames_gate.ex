@@ -7,7 +7,6 @@ defmodule DawarichWeb.MapFramesGate do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
 
-  @month ~r/\A(19|20|21)\d{2}-(0[1-9]|1[0-2])\z/
   @types ["text/html", "application/xhtml+xml", "text/vnd.turbo-stream.html", "*/*"]
 
   def track?(conn, _params), do: plain?(conn, query(conn))
@@ -34,7 +33,7 @@ defmodule DawarichWeb.MapFramesGate do
   end
 
   defp month?(nil), do: true
-  defp month?(value) when is_binary(value), do: Ruby.blank?(value) or value =~ @month
+  defp month?(value) when is_binary(value), do: true
   defp month?(_value), do: false
 
   defp accept?(conn) do

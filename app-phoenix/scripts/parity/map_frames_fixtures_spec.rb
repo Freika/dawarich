@@ -173,7 +173,12 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       end
       body = response.body.gsub(/(name="authenticity_token" value=")[^"]*/, '\1CSRF')
                           .gsub(%r{(/auth/dawarich\?token=)[^&"]+}, '\1REDACTED')
-      state(user, path, 'frame').merge('body' => body)
+      entry = state(user, path, 'frame').merge('body' => body)
+      if name == 'm04'
+        month = Rack::Utils.parse_query(URI.parse(path).query.to_s).fetch('month')
+        entry['calendar_cells'] = Timeline::MonthSummary.new(user:, month:).call[:weeks].flatten
+      end
+      entry
     end
     write_json(dir.join("a12f3a-#{name}.json"), { 'cases' => cases })
   end

@@ -22,7 +22,7 @@ defmodule Dawarich.Timeline.MonthSummary do
     start =
       if Ruby.blank?(month),
         do: Date.beginning_of_month(today),
-        else: Date.from_iso8601!(month <> "-01")
+        else: Date.from_iso8601!(String.replace(month, ~r/-(\d)\z/, "-0\\1") <> "-01")
 
     args = [user.id, start, window_now]
 
