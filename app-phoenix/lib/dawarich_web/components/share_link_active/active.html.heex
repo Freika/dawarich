@@ -1,19 +1,11 @@
 <div class="flex items-center gap-2 mb-4">
   <h3 class="font-bold text-lg">{s(@ctx, "sharing")}</h3>
-  <span class="badge badge-success badge-sm gap-1"><span class="w-1.5 h-1.5 rounded-full bg-success-content/80"></span>{if Dawarich.SharedLinks.FamilyAudience.family_only?(
-                                                                                                                             @share
-                                                                                                                           ),
-                                                                                                                           do:
-                                                                                                                             t(
-                                                                                                                               @ctx.locale,
-                                                                                                                               "shared_links.family.label",
-                                                                                                                               %{}
-                                                                                                                             ),
-                                                                                                                           else:
-                                                                                                                             s(
-                                                                                                                               @ctx,
-                                                                                                                               "public"
-                                                                                                                             )}</span>
+  <span class="badge badge-success badge-sm gap-1"><span class="w-1.5 h-1.5 rounded-full bg-success-content/80"></span>{audience(
+    @ctx,
+    @share,
+    "label",
+    "public"
+  )}</span>
 </div>
 <p :if={@subtitle} class="text-sm text-base-content/70 mb-5">{@subtitle}</p>
 <div class="space-y-4">
@@ -21,9 +13,7 @@
     <label
       class="text-xs font-medium text-base-content/60 uppercase tracking-wide"
       for="share-url"
-    >{if Dawarich.SharedLinks.FamilyAudience.family_only?(@share),
-      do: t(@ctx.locale, "shared_links.family.link", %{}),
-      else: s(@ctx, "public_link")}</label>
+    >{audience(@ctx, @share, "link", "public_link")}</label>
     <div class="join w-full mt-1">
       <input
         id="share-url"
@@ -40,15 +30,7 @@
         data-clipboard-text-value={url(@ctx, @share)}
         data-action="click->clipboard#copy"
         title={s(@ctx, "copy_link")}
-        aria-label={
-          s(
-            @ctx,
-            if(Dawarich.SharedLinks.FamilyAudience.family_only?(@share),
-              do: "copy_link",
-              else: "copy_public_link"
-            )
-          )
-        }
+        aria-label={copy_label(@ctx, @share)}
       ><.icon name="copy" class="w-4 h-4" /></button>
       <a
         target="_blank"

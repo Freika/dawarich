@@ -12,17 +12,13 @@
     }
     class="form-control mb-4"
   >
-    <label class="label-text mb-1" for="shared_link_audience">{t(
-      @ctx.locale,
-      "shared_links.family.audience",
-      %{}
-    )}</label>
-    <select class="select select-bordered" name="shared_link[audience]" id="shared_link_audience"><option value="public">
-      {t(@ctx.locale, "shared_links.family.public_link", %{})}
-    </option><option value="family">{t(@ctx.locale, "shared_links.family.only", %{})}</option></select>
-    <p class="text-sm text-base-content/70 mt-2">
-      {t(@ctx.locale, "shared_links.family.hint", %{})}
-    </p>
+    <label class="label-text mb-1" for="shared_link_audience">{family(@ctx, "audience")}</label>
+    <select
+      class="select select-bordered"
+      name="shared_link[audience]"
+      id="shared_link_audience"
+    ><option :for={{value, text} <- audiences(@ctx)} value={value}>{text}</option></select>
+    <p class="text-sm text-base-content/70 mt-2">{family(@ctx, "hint")}</p>
   </div>
   <div :if={@type == "live"} class="alert alert-warning text-sm mb-4">
     <span>{t(

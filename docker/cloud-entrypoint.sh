@@ -4,6 +4,7 @@ set -e
 
 . "$(dirname "$0")/entrypoint-env-guard.sh"
 . "$(dirname "$0")/entrypoint-common.sh"
+validate_cloud_drain_argv "$0" "$@"
 validate_phoenix_lifecycle
 
 bootstrap "$0" "$@"

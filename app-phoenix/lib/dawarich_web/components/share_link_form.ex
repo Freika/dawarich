@@ -17,6 +17,11 @@ defmodule DawarichWeb.ShareLinkForm do
   defp s(ctx, type, key), do: t(ctx.locale, "shared_links.modal_#{type}_create_form." <> key, %{})
   defp expiry(ctx, key), do: t(ctx.locale, "shared_links.expires_field." <> key, %{})
 
+  defp family(ctx, key), do: t(ctx.locale, "shared_links.family." <> key, %{})
+
+  defp audiences(ctx),
+    do: [{"public", family(ctx, "public_link")}, {"family", family(ctx, "only")}]
+
   defp sections do
     [
       {"show_route", "route_map", true},
