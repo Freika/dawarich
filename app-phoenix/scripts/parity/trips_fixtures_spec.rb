@@ -386,17 +386,19 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
 
     def remaining_fault(entry)
       if entry[:fault]
-        target = if entry[:owner] == :oban
-                   allow(JobOutbox).to(receive(:insert_all))
-                 else
-                   allow_any_instance_of(Sidekiq::Client).to(receive(:push))
-                 end
-        target.and_wrap_original do |original, *args, **kwargs|
+        fault = lambda do |original, *args, **kwargs|
           raise 'synthetic queue failure' if entry[:fault] == :enqueue
 
           result = original.call(*args, **kwargs)
           ActiveRecord::Base.connection.execute('SELECT a8_remaining_missing_column FROM trips')
           result
+        end
+        if entry[:owner] == :oban
+          allow(JobOutbox).to receive(:insert_all).and_wrap_original(&fault)
+        else
+          allow(Sidekiq::Client).to receive(:new).and_wrap_original do |original, *args, **kwargs|
+            original.call(*args, **kwargs).tap { |client| allow(client).to receive(:push).and_wrap_original(&fault) }
+          end
         end
       end
       return unless entry[:race]
@@ -592,6 +594,36 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         end
         write_json('responses.json', { now: now.iso8601, responses: })
         write_json('effects.json', { now: now.iso8601, effects: })
+        groups = {
+          't01' => /\A(?:new|edit|foreign_edit|plan_)/,
+          't02' => /show/,
+          't05' => /\A(?:create|update)_/,
+          't06' => /\A(?:create|update|.*show)_/,
+          't07' => /recalculate/,
+          't08' => /\Anote_create/,
+          't09' => /\A(?:note_update|note_destroy|foreign_note)/,
+          't10' => /\Aexport_/
+        }
+        groups.each do |task, pattern|
+          write_json("../a12f3a-#{task}.json", { now: now.iso8601,
+                                                  responses: responses.select { _1[:name].match?(pattern) },
+                                                  effects: effects.select { _1[:name].match?(pattern) } })
+        end
+        photo_user = remaining_user(98_980)
+        photo_user.update_columns(settings: photo_user.settings.merge('immich_url' => 'https://photos.example.test',
+                                                                     'immich_api_key' => 'SYNTHETIC'))
+        photo_trip = remaining_trip(photo_user.reload, 9_898_001)
+        assets = [
+          { id: 'late', source: 'immich', orientation: 'portrait', capturedAt: '2026-10-02T23:30:00Z' },
+          { id: 'early', source: 'photoprism', orientation: 'landscape', capturedAt: '2026-10-03T01:00:00Z' },
+          { id: 'invalid', source: 'immich', orientation: 'landscape', capturedAt: 'not-a-date' }
+        ]
+        allow_any_instance_of(Photos::Search).to receive(:call).and_return(assets)
+        write_json('../a12f3a-t03.json', { assets:, photos: photo_trip.send(:photos),
+                                         days: photo_trip.photos_by_day('Europe/Berlin').transform_keys(&:iso8601),
+                                         sources: photo_trip.photo_sources,
+                                         previews: photo_trip.send(:select_dominant_orientation, photo_trip.send(:photos)) })
+
         user = remaining_user(98_981)
         foreign = remaining_user(98_982)
         trip = remaining_trip(user, 9_898_101)
