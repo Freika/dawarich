@@ -36,3 +36,4 @@ No browser acceptance or whole-domain retirement is claimed by this implementati
 - Q02: preserve month comparisons and malformed data failures; source/mutation evidence recorded.
 - Q03: preserve period selection and source failures; source/mutation evidence recorded.
 - Q04: calculate cold and stale digests natively; source/mutation evidence recorded.
+- Q05: serve native details frames in Cloud mode; source/mutation evidence recorded.

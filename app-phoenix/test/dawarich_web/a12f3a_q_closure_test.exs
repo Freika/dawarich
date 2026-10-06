@@ -190,6 +190,28 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
   end
 
+  @tag a12f3a_q05: true
+  test "Q05: insights details frame and transport tails matches current Rails contract without a native-owner Rails effect",
+       %{user: user} do
+    for row <- fixture("05") do
+      set_mode(to_string(row["self_hosted"]))
+
+      conn =
+        RailsUser.signed_in(user.id)
+        |> put_req_header("turbo-frame", "insights_details")
+        |> get("/insights/details?year=all")
+
+      assert conn.status == row["status"]
+      assert conn.resp_body =~ ~s(<turbo-frame id="insights_details">)
+      refute conn.resp_body =~ "<!DOCTYPE"
+      assert get_resp_header(conn, "cache-control") == [row["cache_control"]]
+    end
+
+    conn = get(build_conn(), "/insights/details?year=all")
+    assert conn.status == 302
+    assert get_resp_header(conn, "location") == ["http://www.example.com/users/sign_in"]
+  end
+
   defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do
     for row <- fixture(task) do
       settings = %{
