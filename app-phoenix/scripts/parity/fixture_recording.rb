@@ -21,18 +21,58 @@ module FixtureRecording
         previous = app.config.secret_key_base
         env = app.env_config.slice('action_dispatch.secret_key_base', 'action_dispatch.key_generator')
         turbo_key = Turbo.signed_stream_verifier_key
-        turbo_verifier = Turbo::StreamsChannel.instance_variable_get(:@signed_stream_verifier)
+        storage_verifier = ActiveStorage.verifier
+        global_id_verifier = SignedGlobalID.verifier
+        configured_global_id_verifier = app.config.global_id.verifier
+        caches = [[app, :@message_verifiers], [ActiveStorage::Blob, :@signed_id_verifier],
+                  [Turbo::StreamsChannel, :@signed_stream_verifier]].map do |owner, key|
+          [owner, key, owner.instance_variable_defined?(key), owner.instance_variable_get(key)]
+        end
         app.config.secret_key_base = SECRET
         app.env_config.merge!('action_dispatch.secret_key_base' => SECRET,
                               'action_dispatch.key_generator' => app.key_generator)
         Turbo.signed_stream_verifier_key = app.key_generator.generate_key('turbo/signed_stream_verifier_key')
-        Turbo::StreamsChannel.remove_instance_variable(:@signed_stream_verifier) if turbo_verifier
+        caches.each { |owner, key, _present, _value| owner.instance_variable_set(key, nil) }
+        ActiveStorage.verifier = app.message_verifier('ActiveStorage')
+        SignedGlobalID.verifier = GlobalID::Verifier.new(app.key_generator.generate_key('signed_global_ids'))
+        app.config.global_id.verifier = SignedGlobalID.verifier
         example.run
       ensure
         app.config.secret_key_base = previous
         app.env_config.merge!(env)
         Turbo.signed_stream_verifier_key = turbo_key
-        Turbo::StreamsChannel.instance_variable_set(:@signed_stream_verifier, turbo_verifier)
+        ActiveStorage.verifier = storage_verifier
+        SignedGlobalID.verifier = global_id_verifier
+        app.config.global_id.verifier = configured_global_id_verifier
+        caches.each do |owner, key, present, value|
+          if present
+            owner.instance_variable_set(key, value)
+          elsif owner.instance_variable_defined?(key)
+            owner.remove_instance_variable(key)
+          end
+        end
+      end
+    end
+  end
+
+  module CanonicalTimezone
+    def self.included(base)
+      base.before(:context) { @fixture_recording_context_timezone = ENV.delete('TIME_ZONE') }
+      base.after(:context) do
+        value = @fixture_recording_context_timezone
+        value.nil? ? ENV.delete('TIME_ZONE') : ENV['TIME_ZONE'] = value
+      end
+      base.around do |example|
+        previous = ENV.fetch('TIME_ZONE', nil)
+        ENV.delete('TIME_ZONE')
+        Time.use_zone('Europe/Berlin') { example.run }
+      ensure
+        previous.nil? ? ENV.delete('TIME_ZONE') : ENV['TIME_ZONE'] = previous
+      end
+      base.before do |example|
+        defaults = Users::SafeSettings::DEFAULT_VALUES.merge('timezone' => example.metadata.fetch(:fixture_timezone,
+                                                                                                  'UTC'))
+        stub_const('Users::SafeSettings::DEFAULT_VALUES', defaults.freeze)
       end
     end
   end
