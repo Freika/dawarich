@@ -7,6 +7,8 @@ defmodule DawarichWeb.OperatorRedirect do
 
   def init(opts), do: opts
 
+  def call(conn, retired: true), do: send_resp(conn, 404, "")
+
   def call(conn, _opts) do
     cond do
       not operator?(conn.assigns.current_user) ->

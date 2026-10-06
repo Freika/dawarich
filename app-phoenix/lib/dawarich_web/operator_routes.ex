@@ -28,6 +28,12 @@ defmodule DawarichWeb.OperatorRoutes do
         get "/api-docs/v1/swagger.yaml", DawarichWeb.ApiDocs, []
         match :*, "/api-docs", DawarichWeb.ApiDocs, []
         match :*, "/api-docs/*path", DawarichWeb.ApiDocs, []
+
+        match :*, "/admin/flipper", DawarichWeb.OperatorRedirect, [retired: true],
+          metadata: %{retired: true}
+
+        match :*, "/admin/flipper/*path", DawarichWeb.OperatorRedirect, [retired: true],
+          metadata: %{retired: true}
       end
     end
   end

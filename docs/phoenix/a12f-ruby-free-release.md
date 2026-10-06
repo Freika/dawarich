@@ -115,3 +115,12 @@ copy the real installed distribution into an isolated public root and verify
 served bytes, types, HEAD and denied extra files even with production static
 serving enabled. A12f-4 must retain these COPY steps and the Swagger YAML while
 removing Ruby from the image, then run the real UI/browser/image acceptance.
+
+## Flipper retirement
+
+`/admin/flipper` and all nested paths return an empty native 404 for every
+method, hosting mode and user role. Explicit `retired: true` route metadata
+keeps these approved retirements terminal even if the broader admin namespace
+is pinned back during coexistence; no other routes bypass hand-back. The old
+Flipper-specific rate-limit rule is removed. Tables and historical migrations
+are untouched; Rails engine/gems/initializer removal stays A12f-4 task 22.

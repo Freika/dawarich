@@ -136,6 +136,28 @@ defmodule DawarichWeb.OperatorRoutesTest do
     assert {:halt, _} = Phoenix.LiveView.Lifecycle.handle_info(:navbar_refresh, mounted)
   end
 
+  test "Flipper root and nested URLs are retired native 404s with no Rails fallback" do
+    previous = Application.get_env(:dawarich, :rails_routes)
+    Application.put_env(:dawarich, :rails_routes, ["admin"])
+    on_exit(fn -> Application.put_env(:dawarich, :rails_routes, previous) end)
+
+    for hosted <- ["true", "false"],
+        id <- [nil, 10001, 10002],
+        method <- [:get, :head, :post, :patch, :delete],
+        path <- [
+          "/admin/flipper",
+          "/admin/flipper/features",
+          "/admin/flipper/features/example?format=json"
+        ] do
+      System.put_env("SELF_HOSTED", hosted)
+      response = request(method, path, id)
+      assert {response.status, response.resp_body} == {404, ""}
+      assert get_resp_header(response, "location") == []
+    end
+
+    refute Enum.any?(DawarichWeb.RateLimit.Rules.throttles(), &(elem(&1, 0) == "admin/flipper"))
+  end
+
   defp request(method, path, id, credentials \\ nil) do
     request = signed(method, path, id)
 
