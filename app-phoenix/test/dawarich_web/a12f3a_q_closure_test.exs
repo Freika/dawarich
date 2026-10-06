@@ -367,6 +367,32 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert shifted.settings["expires_at"] == "2026-10-25T02:30:00+01:00"
   end
 
+  @tag a12f3a_q13: true
+  test "Q13: month sharing mutation matches current Rails contract without a native-owner Rails effect",
+       %{user: user, context: ctx} do
+    rows = fixture("13")
+    stat!(user.id, %{year: 2024, month: 3, sharing_uuid: Ecto.UUID.dump!(hd(rows)["uuid"])})
+    ctx = Map.put(ctx, :base_url, "http://www.example.com")
+
+    for row <- rows do
+      assert {:ok, result} =
+               Dawarich.Stats.Sharing.update(Repo, user, "2024", "3", row["params"], ctx)
+
+      assert result.settings == row["settings"]
+      assert result.body == row["body"]
+    end
+
+    other = RailsUser.insert!(%{id: 5291, email: "sharing-other@dawarich.test"})
+    stat!(other.id, %{year: 2023, month: 7, sharing_uuid: Ecto.UUID.dump!(Ecto.UUID.generate())})
+
+    assert :not_found =
+             Dawarich.Stats.Sharing.update(Repo, user, "2023", "7", %{"enabled" => "1"}, ctx)
+
+    conn = write(user, :patch, "/stats/2024/3/sharing", %{"enabled" => "1", "format" => "json"})
+    assert conn.status == 200
+    assert Jason.decode!(conn.resp_body)["success"]
+  end
+
   @tag a12f3a_q10: true
   test "Q10: digest deletion and failure boundary matches current Rails contract without a native-owner Rails effect",
        %{user: user, context: ctx} do
