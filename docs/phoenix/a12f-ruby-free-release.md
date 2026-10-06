@@ -64,3 +64,24 @@ through Endpoint without a Rails request. Full ExUnit seeds 404 and 202 are
 the branch merge gate. Real Swagger rendering, release asset packaging and
 Docker/Cloud smoke remain A12f-4/G44 release evidence; HTML assertions alone
 do not establish image acceptance.
+
+## Legacy Sidekiq redirect
+
+GET/HEAD `/sidekiq` returns 302 with a fixed local Location
+`/settings/background_jobs`; queries cannot select the destination. Guests and
+nonadmins receive the source home redirect and Rails-compatible error flash.
+Cloud admins need both configured Sidekiq credentials and the existing Basic
+challenge (realm `Restricted Area`); credentials are compared as SHA-256
+digests with constant-time comparison. Other Sidekiq methods/subpaths remain
+outside this root redirect during coexistence.
+
+The baseline JobHealth component lived on instance settings, rather than the
+background page named in the plan. The existing component is reused on the
+background page for admins only. The minimum Cloud destination seam extends
+`AdminGate` and `AdminLiveAuth` for this read page, retaining the settings
+hand-back key, supported user state, session identity and role rechecks.
+Self-hosted nonadmins still see their ordinary background settings. Cloud
+nonadmins receive no operator access. Detailed job mutations and other Cloud
+admin pages remain with A12f-3 task 17. ED-346 records the intentional UI change;
+source fixture comparison still verifies the complete preexisting markup, and
+separately verifies the added admin-only health card.

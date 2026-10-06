@@ -10,6 +10,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.A9Routes
   import DawarichWeb.StorageRoutes
   import DawarichWeb.UserDataRoutes
+  import DawarichWeb.OperatorRoutes
 
   pipeline :browser do
     plug DawarichWeb.HostAuthorization
@@ -53,6 +54,7 @@ defmodule DawarichWeb.Router do
   end
 
   api_routes()
+  operator_routes()
 
   pipeline :family_data do
     plug DawarichWeb.HostAuthorization

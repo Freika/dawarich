@@ -29,7 +29,11 @@ defmodule DawarichWeb.AdminLiveAuth do
     actor = socket.assigns.current_user
     user = actor && Accounts.get(actor.id)
 
-    if LayoutAssigns.self_hosted?() and not is_nil(user) and
+    hosting =
+      LayoutAssigns.self_hosted?() or
+        (socket.assigns.admin_mode == :background and DawarichWeb.OperatorRedirect.operator?(user))
+
+    if hosting and not is_nil(user) and
          (socket.assigns.admin_mode == :background or user.admin == true) and
          AdminGate.supported?(user) do
       {:cont, assign(socket, :current_user, user)}
