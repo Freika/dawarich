@@ -1931,3 +1931,51 @@ skip_family_sync: true)
     end
   end
 end
+
+RSpec.describe 'Phoenix fixtures: A12f2-D main API contracts', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  it 'records settings mobile areas and recalculation contracts' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    travel_to Time.utc(2026, 10, 6, 12) do
+      actor = create(:user, id: 912_620_001, email: 'a12f2d@example.invalid', skip_auto_trial: true,
+                            skip_family_sync: true)
+      actor.update_columns(api_key: %w[A12F2D SYNTHETIC].join('_'), settings: {})
+      headers = { 'Authorization' => 'Bearer A12F2D_SYNTHETIC' }
+      corpus = {}
+      capture = lambda do |name, method, path, params = {}|
+        public_send(method, path, params: params, headers: headers, as: :json)
+        corpus[name] = { 'status' => response.status, 'body' => response.parsed_body,
+                         'headers' => response.headers.slice('Content-Type', 'Cache-Control', 'ETag'),
+                         'settings' => actor.reload.settings }
+      end
+      capture.call('settings_default', :get, '/api/v1/settings')
+      actor.update_columns(settings: { 'maps' => { 'name' => 'Legacy', 'distance_unit' => 'km' } })
+      capture.call('settings_merge', :patch, '/api/v1/settings',
+                   { settings: { maps: { distance_unit: 'mi' }, minutes_between_routes: 9000, ignored: true } })
+      capture.call('settings_bad_tiles', :patch, '/api/v1/settings',
+                   { settings: { maps_maplibre_tiles_url: 'https://tiles.example.invalid/{z}' } })
+      capture.call('mobile_default', :get, '/api/v1/settings/mobile')
+      capture.call('mobile_update', :patch, '/api/v1/settings/mobile',
+                   { settings: { tracking_mode: 'precise', distance_filter: 0, batch_size: 9000,
+                                 tracking_visits: 'false', unknown: true }, expected_updated_at: 'stale' })
+      capture.call('mobile_merge', :patch, '/api/v1/settings/mobile',
+                   { settings: { time_filter: 9000, tracking_mode: 'bad', distance_filter: nil } })
+      capture.call('progress_idle', :get, '/api/v1/settings/transportation_recalculation_status')
+      capture.call('area_invalid', :post, '/api/v1/areas', { area: { name: '', latitude: 91, longitude: 181, radius: 0 } })
+      allow(Area).to receive(:new).and_call_original
+      capture.call('recalculation_invalid', :post, '/api/v1/recalculations', { year: '1999' })
+      allow(Rails.cache).to receive(:read).with("recalculation_pending:#{actor.id}").and_return(true)
+      capture.call('recalculation_pending', :post, '/api/v1/recalculations', { year: 2024 })
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      actor.update_columns(plan: :lite, settings: {})
+      capture.call('settings_lite', :get, '/api/v1/settings')
+      capture.call('settings_lite_update', :patch, '/api/v1/settings',
+                   { settings: { enabled_map_layers: ['Tracks', 'Heatmap'], globe_projection: true,
+                                 maps: { distance_unit: 'mi', hidden_tile_categories: ['water'] },
+                                 immich_url: 'https://example.invalid', maps_maplibre_style: 'custom' } })
+      bytes = "#{JSON.pretty_generate(corpus)}\n"
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2d/closure.json'), bytes)
+    end
+  end
+end
