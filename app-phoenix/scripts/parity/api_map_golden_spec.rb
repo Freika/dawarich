@@ -192,6 +192,29 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     map_seed(seed: :none, user: {})
 
     expect(PointSource.exists?(850_999)).to be(false)
+    closure = {}
+    %w[points tracks].each do |layer|
+      %w[base speed empty invalid partial].each do |variant|
+        map_seed(seed: :base, user: {})
+        query = 'start_at=1735689600&end_at=1735690000'
+        query += '&speed_coloring=true' if variant == 'speed'
+        query += '&import_id=999999' if variant == 'empty'
+        query = 'start_at=1735689600' if variant == 'partial'
+        x = variant == 'invalid' ? 1024 : 548
+        path = "/api/v1/tiles/#{layer}/10/#{x}/338.mvt?#{query}"
+        get path, headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
+        closure["#{layer}_#{variant}"] = {
+          'setup' => ApiMapGoldenOracle::TABLES.to_h do |table|
+            [table, ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
+                                           .map { JSON.parse(_1) }]
+          end,
+          'status' => response.status, 'body_base64' => Base64.strict_encode64(response.body),
+          'headers' => response.headers.to_h.transform_keys(&:downcase).slice('content-type', 'cache-control', 'vary')
+        }
+      end
+    end
+    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2c/closure.json'),
+                            "#{map_exact_json(closure)}\n")
   end
 
   def map_exact_json(value, depth = 0)
