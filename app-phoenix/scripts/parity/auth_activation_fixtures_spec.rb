@@ -124,6 +124,71 @@ RSpec.describe 'Phoenix fixture: the registration flag and Devise recovery mail 
     )
   end
 
+  def provider_result(provider, verified, email, uid, allow_registration: true)
+    user, created = Auth::FindOrCreateOauthUser.new(
+      provider: provider, provider_label: provider, claims: { sub: uid, email: email },
+      email_verified: verified, on_email_collision: :raise_only,
+      allow_registration: allow_registration
+    ).call
+    { 'outcome' => user ? 'account' : 'denied', 'created' => created,
+      'provider' => user&.provider, 'uid' => user&.uid, 'email' => user&.email,
+      'signup_variant' => user&.signup_variant }
+  rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+    { 'outcome' => 'challenge', 'provider' => e.user.reload.provider, 'rate_limited' => e.rate_limited }
+  rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
+    { 'outcome' => 'unverified_email' }
+  rescue Auth::FindOrCreateOauthUser::AccountPendingDeletion
+    { 'outcome' => 'pending_deletion' }
+  end
+
+  def record_provider_contracts
+    cases = %w[github google_oauth2 openid_connect].to_h do |provider|
+      email = "a12f2g-#{provider}@dawarich.test"
+      local = create(:user, email: email)
+      collision = [true, false, 'true', nil].to_h do |verified|
+        auth = OmniAuth::AuthHash.new(
+          provider: provider, uid: 'synthetic-subject', info: { email: email },
+          extra: { raw_info: { email_verified: verified } }
+        )
+        value = begin
+          user = User.from_omniauth(auth)
+          { 'outcome' => user ? 'account' : 'denied' }
+        rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
+          { 'outcome' => 'challenge' }
+        rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
+          { 'outcome' => 'unverified_email' }
+        end
+        [verified.inspect, value]
+      end
+      local.update_columns(deleted_at: Time.current)
+      deleted = provider_result(provider, true, email, 'deleted')
+      fresh = provider_result(provider, true, "fresh-#{email}", 'fresh')
+      returning = provider_result(provider, false, '', 'fresh', allow_registration: false)
+      missing = provider_result(provider, false, '', 'missing')
+      denied = provider_result(provider, true, "denied-#{email}", 'denied', allow_registration: false)
+      [provider, { 'collision' => collision, 'deleted' => deleted, 'fresh' => fresh,
+                   'returning' => returning, 'missing_email' => missing, 'registration_disabled' => denied }]
+    end
+    public_env = { 'OIDC_CLIENT_ID' => 'synthetic-client', 'OIDC_PKCE_ENABLED' => 'true',
+                   'OIDC_ISSUER' => 'https://idp.dawarich.test/.well-known/openid-configuration#paste',
+                   'APPLICATION_URL' => 'http://www.example.com' }
+    oidc = OidcConfig.build(public_env)
+    failures = %w[invalid_credentials connection_timeout security_error
+                  provider_unavailable provider_configuration_error unknown_error].index_with do |key|
+      I18n.t("controllers.users.omniauth_callbacks.#{key}", locale: :en)
+    end
+    google = OmniAuth::Strategies::GoogleOauth2.new(nil, scope: 'userinfo.email,userinfo.profile')
+    fixture = { 'accounts' => cases, 'oidc_public' => oidc, 'failure_messages' => failures,
+                'google_scope' => google.send(:get_scope, scope: google.options[:scope]) }
+    output = Rails.root.join('app-phoenix/test/fixtures/auth/a12f2g/providers.json')
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      FileUtils.mkdir_p(output.dirname)
+      File.write(output, "#{JSON.pretty_generate(fixture)}\n")
+    else
+      expect(JSON.parse(output.read)).to eq(JSON.parse(fixture.to_json))
+    end
+  end
+
   it 'writes app-phoenix/test/fixtures/auth/activation.json' do
     allow(Devise).to receive(:mailer_sender).and_return(sender)
     kinds = %i[reset_password_instructions unlock_instructions].product(%w[en de es fr pl ca zh])
@@ -138,6 +203,7 @@ RSpec.describe 'Phoenix fixture: the registration flag and Devise recovery mail 
       'mails' => kinds.map { |kind, locale| devise_mail(kind, locale) },
       'controls' => controls.to_h { |name, html| [name, control(name, html)] }
     }
+    record_provider_contracts
     fixture = JSON.parse(fixture.to_json)
 
     expect(fixture['registration'].values.uniq.size).to eq(3)
