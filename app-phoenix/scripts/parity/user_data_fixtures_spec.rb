@@ -146,7 +146,7 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
       '09' => result.slice('restores', 'cases', 'post_commit_storage_failure'),
       '10' => result.slice('restores', 'boundaries', 'nil_source_restores'),
       '11' => result.slice('post_commit_anomaly', 'post_commit_storage_failure') }.each do |id, captured|
-      UserDataFixturesSupport.write("a12f3a-e#{id}.json", captured)
+      UserDataFixturesSupport.source_write("a12f3a-e#{id}.json", captured)
     end
   end
 
@@ -305,6 +305,6 @@ RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request d
 'invalid' => invalid, 'trial' => trial }]
     end
     UserDataFixturesSupport.write('http.json', result)
-    UserDataFixturesSupport.write('a12f3a-e04.json', { summary: result, traces: })
+    UserDataFixturesSupport.source_write('a12f3a-e04.json', { summary: result, traces: })
   end
 end

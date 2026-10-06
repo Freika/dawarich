@@ -9,13 +9,13 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
   after(:all) do
     selected = closure_cases.sort.to_h.select { |name, _| ['page_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_frames/a12f3a-m01.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_frames/a12f3a-m01.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| ['page_'].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_frames/a12f3a-m07.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_frames/a12f3a-m07.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
   end
 
@@ -217,7 +217,7 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
         end
       end
     end
-    FixtureRecording.verify(fixtures.join('map_frames/a12f3a-m02.json'), "#{JSON.pretty_generate(rows)}\n")
+    FixtureRecording.source_verify(fixtures.join('map_frames/a12f3a-m02.json'), "#{JSON.pretty_generate(rows)}\n")
   end
 
   it 'writes the map pages' do

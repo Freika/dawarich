@@ -18,8 +18,8 @@ RSpec.describe 'Phoenix fixture: Rails GPX extraction' do
     super(directory, name, data)
   end
   after(:all) do
-    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports/formats/a12f3a-f18.json'),
-                            "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/imports/formats/a12f3a-f18.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
   end
 
   include Wave5bFixtureSupport
