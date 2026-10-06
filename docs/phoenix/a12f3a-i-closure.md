@@ -8,15 +8,19 @@ Import PUT and POST `_method=put` now reach the update action. Blank or duplicat
 
 Manual GPX extraction and removal publish `enhanced_import.extract_gpx` and `enhanced_import.destroy_gpx` directly when those command owners are Oban. The payloads use the existing worker decoders: `{import_id, lock_attempt: 1}` and `{import_id}`. The outbox UUID matches the extraction event stored on the import; aggregate identity is the actor, scheduling is immediate, and the transaction locks owner, import and user. Source-owned requests retain their accepted reverse handoff. Duplicate active extraction requests publish no second command and redirect with the source authorization alert. Native removal with extracted visits or tracks returns a terminal 422 until package F's broader removal worker is ready.
 
-Minimal O wiring: `import_routes.ex` adds PUT alongside PATCH with the same pipeline and ownership metadata. No shared transport parser, CSRF guard, Registry entry, global fallback or claimable flag changes.
+Minimal O wiring: `import_routes.ex` adds PUT alongside PATCH with the same pipeline and ownership metadata. No shared transport parser, CSRF guard, global fallback or claimable flag changes. The purge command adds one inert Registry entry as the minimum dispatch seam.
+
+Detached import blobs now publish `imports.prepared_download_purge` under `command:imports.prepared_download_purge` when the owner is Oban. The typed payload is `{blob_id, import_id, user_id, source_blob_id}`; immediate scheduling and pending receipt deduplication retain the existing cleanup boundary. The worker checks the executing attempt, exact immutable receipt, current actor when the import exists, storage service/key, and absence of all attachments before deleting. Storage errors leave the event unprocessed for retry. Source ownership retains its handoff, including accepted native work after an owner flip. The Registry entry stays unclaimable for controller integration.
 
 ## Verification
 
-`a12f3a_i_closure_test.exs` contains the aggregate I02, I03, I04 and I09 tests. Each initially failed on missing behavior, passed after implementation, failed its production mutation and passed after restoration. The tests disconnect the Rails upstream and inspect persisted imports, attachments and outbox/reverse-command rows.
+`a12f3a_i_closure_test.exs` contains the aggregate I02, I03, I04 and I09 tests plus the I06 native-purge priority test. Each initially failed on missing behavior, passed after implementation, failed its production mutation and passed after restoration. The tests disconnect the Rails upstream and inspect persisted imports, attachments and outbox/reverse-command rows.
 
 TeslaMate completion uses the existing native anomaly filter inside its worker transaction and publishes `tracks.generate_realtime` with an event-based dedupe key when that downstream owner is Oban. Track backfill uses `BackfillCommands.put/4`, preserving its range accumulation, captured zone and delayed scheduling. Stats retain `Stats.Schedule.calculate/6` and its independent owner. Source-owned realtime retains the original reverse effects. Shared tile/anomaly-dependent effect sinks still belong to sibling rows19–22.
 
 The existing imports page generator now records `a12f3a-i02.json`, `a12f3a-i03.json` and `a12f3a-i04.json`. The writer ran twice with an empty whole-fixture byte diff; previous fixtures were unchanged. This package captured these independently because O04's additions were not present at its base. No newly named Rails example was added; the existing generator example was extended.
+
+The page generator additionally captures the purge receipt guards as `a12f3a-i06.json`. Its writer passed twice with identical output and assertion mode. The native purge test failed with no typed outbox publication, passed after implementation, failed when the shared-attachment guard was bypassed and passed after restoration.
 
 The existing normal import producer generator also records I07–I12 source captures independently. I01, I05–I08 and I10–I12 reuse existing implementations and characterization tests. They are not represented as newly RED-tested tasks. Evidence and final gate counts belong in the controller-assigned execution report.
 
@@ -26,7 +30,7 @@ The existing normal import producer generator also records I07–I12 source capt
 - I02: raw multipart, descriptor shapes, exact checksum/storage failure messages, quotas and all transport/environment combinations.
 - I03: full query/format/Turbo tails and coercion envelopes.
 - I04: package F's source/blob/attempt fencing and non-GPX extraction/removal interface; redirect-back envelopes and removal of extracted visits/tracks.
-- I05–I06: remaining download error envelopes, native delayed purge and terminal event integration.
+- I05–I06: remaining download error envelopes and terminal event integration. Native receipt-based attachment purge is implemented and tested; the full I06 progress mutation remains open.
 - I07–I08, I10–I12: existing native producer tests pass against current-head Rails captures. Their remaining envelope/mutation reconciliation and downstream effect sink closure still need package completion evidence. I09 realtime/backfill production is now native; shared tile/anomaly-dependent effects remain sibling-owned.
 - F and sibling rows19–22 own worker/effect/schedule readiness. Keep job entries inert. The producer changes do not prove source-drain completion or authorize release deployment.
 

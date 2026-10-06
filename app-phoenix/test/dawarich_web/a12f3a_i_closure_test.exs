@@ -148,6 +148,195 @@ defmodule DawarichWeb.A12f3aIClosureTest do
   end
 end
 
+defmodule DawarichWeb.A12f3aINativePurgeTest do
+  use Dawarich.JobsCase, async: false
+  alias Dawarich.Imports.{ImportBlobPurges, ImportBlobPurgeWorker}
+  alias Dawarich.Jobs.{Dispatch, Ownership, Processed}
+
+  setup do
+    c = Dawarich.ImportLeaseFixture.create()
+    rows("DELETE FROM oban.oban_jobs WHERE id=$1", [c.job.id])
+    root = Path.join(System.tmp_dir!(), "import-purge-" <> Ecto.UUID.generate())
+    File.mkdir_p!(root)
+
+    for {key, value} <- [
+          jobs_repo: ScratchRepo,
+          imports_services: %{"local" => %{service: "local", root: root}}
+        ] do
+      previous = Application.fetch_env(:dawarich, key)
+      Application.put_env(:dawarich, key, value)
+
+      on_exit(fn ->
+        case previous do
+          {:ok, configured} -> Application.put_env(:dawarich, key, configured)
+          :error -> Application.delete_env(:dawarich, key)
+        end
+      end)
+    end
+
+    on_exit(fn -> File.rm_rf!(root) end)
+    Ownership.put!(ScratchRepo, "command:imports.prepared_download_purge", :oban)
+    Map.put(c, :root, root)
+  end
+
+  @tag a12f3a_i06_purge: true
+  test "I06 priority: native detached blob purge uses immutable receipts and preserves reattached blobs",
+       c do
+    oracle =
+      Path.expand("../fixtures/imports_pages/a12f3a-i06.json", __DIR__)
+      |> File.read!()
+      |> Jason.decode!()
+      |> Map.new(&{&1["name"], &1["jobs"]})
+
+    assert oracle["authorized"] == ["ActiveStorage::PurgeJob"]
+    assert oracle["missing_receipt"] == []
+    assert oracle["foreign_actor"] == []
+    assert oracle["attached_blob"] == []
+    source = Dawarich.RailsBlobFixture.create!(ScratchRepo, c.root, "source.gpx", "<gpx/>")
+
+    rows(
+      "INSERT INTO active_storage_attachments(record_type,record_id,name,blob_id,created_at) VALUES('Import',$1,'file',$2,now())",
+      [c.import.id, source.id]
+    )
+
+    old = detached(c, source.id)
+    assert rows("SELECT command_type FROM job_outbox") == [["imports.prepared_download_purge"]]
+    assert rows("SELECT kind FROM phoenix.rails_commands") == []
+    start_oban(__MODULE__)
+    assert %{dispatched: 1} = Dispatch.run(oban: __MODULE__, repo: ScratchRepo)
+    assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :imports)
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [old.id]) == []
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [source.id]) == [[source.id]]
+    shared = detached(c, source.id)
+
+    rows(
+      "INSERT INTO active_storage_attachments(record_type,record_id,name,blob_id,created_at) VALUES('User',$1,'avatar',$2,now())",
+      [c.other, shared.id]
+    )
+
+    assert %{dispatched: 1} = Dispatch.run(oban: __MODULE__, repo: ScratchRepo)
+    assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :imports)
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [shared.id]) == [[shared.id]]
+
+    assert rows("SELECT count(*) FROM active_storage_attachments WHERE blob_id=$1", [shared.id]) ==
+             [[1]]
+
+    assert bytes(c, shared.id) == "old"
+    rejected = detached(c, source.id)
+
+    rows(
+      "INSERT INTO phoenix.import_blob_purges(blob_id,import_id,user_id,source_blob_id) VALUES($1,$2,$3,$4)",
+      [rejected.id, c.import.id, c.other, source.id]
+    )
+
+    payload = payload(c, source.id, rejected.id) |> Map.put("user_id", c.other)
+    j = job(payload)
+    assert :ok = ImportBlobPurgeWorker.perform(j)
+    assert Processed.done?(ScratchRepo, j.args["event_id"])
+
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [rejected.id]) == [
+             [rejected.id]
+           ]
+
+    assert bytes(c, rejected.id) == "old"
+    no_receipt = job(payload(c, source.id + 1, rejected.id))
+    assert :ok = ImportBlobPurgeWorker.perform(no_receipt)
+    assert bytes(c, rejected.id) == "old"
+    j = job(payload(c, source.id, rejected.id))
+    rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [j.id])
+    assert {:cancel, _} = ImportBlobPurgeWorker.perform(j)
+    refute Processed.done?(ScratchRepo, j.args["event_id"])
+    assert :ok = ImportBlobPurgeWorker.perform(%{j | attempt: 2})
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [rejected.id]) == []
+    assert rows("SELECT kind FROM phoenix.rails_commands") == []
+    retry = detached(c, source.id)
+    j = job(payload(c, source.id, retry.id))
+    services = Application.get_env(:dawarich, :imports_services)
+    Application.put_env(:dawarich, :imports_services, %{})
+    assert {:error, :unconfigured_storage_service} = ImportBlobPurgeWorker.perform(j)
+    refute Processed.done?(ScratchRepo, j.args["event_id"])
+    assert bytes(c, retry.id) == "old"
+    Application.put_env(:dawarich, :imports_services, services)
+    assert :ok = ImportBlobPurgeWorker.perform(j)
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [retry.id]) == []
+    handback = detached(c, source.id)
+    Ownership.put!(ScratchRepo, "command:imports.prepared_download_purge", :sidekiq)
+    j = job(payload(c, source.id, handback.id))
+    assert :ok = ImportBlobPurgeWorker.perform(j)
+    assert :ok = ImportBlobPurgeWorker.perform(j)
+    assert bytes(c, handback.id) == "old"
+
+    assert rows("SELECT kind FROM phoenix.rails_commands") == [
+             ["imports.prepared_download_purge"]
+           ]
+
+    valid = payload(c, source.id, handback.id)
+    assert {:ok, ^valid} = ImportBlobPurgeWorker.args_from_command(1, valid)
+
+    assert {:error, "invalid_payload"} =
+             ImportBlobPurgeWorker.args_from_command(1, Map.put(valid, "extra", true))
+
+    assert {:error, "invalid_payload"} =
+             ImportBlobPurgeWorker.args_from_command(1, Map.put(valid, "blob_id", 0))
+
+    assert {:error, "unsupported_version"} = ImportBlobPurgeWorker.args_from_command(2, valid)
+  end
+
+  defp bytes(c, id) do
+    [[key]] = rows("SELECT key FROM active_storage_blobs WHERE id=$1", [id])
+    File.read!(Dawarich.Storage.disk_path(c.root, key))
+  end
+
+  defp detached(c, source) do
+    blob = Dawarich.RailsBlobFixture.create!(ScratchRepo, c.root, "old.gpx", "old")
+
+    rows(
+      "INSERT INTO active_storage_attachments(record_type,record_id,name,blob_id,created_at) VALUES('Import',$1,'prepared_download',$2,now())",
+      [c.import.id, blob.id]
+    )
+
+    assert {:ok, :ok} =
+             ScratchRepo.transaction(fn ->
+               ImportBlobPurges.enqueue!(
+                 ScratchRepo,
+                 c.import.id,
+                 c.import.user_id,
+                 blob.id,
+                 source
+               )
+
+               rows(
+                 "DELETE FROM active_storage_attachments WHERE record_type='Import' AND record_id=$1 AND blob_id=$2",
+                 [c.import.id, blob.id]
+               )
+
+               :ok
+             end)
+
+    blob
+  end
+
+  defp payload(c, source, blob),
+    do: %{
+      "blob_id" => blob,
+      "import_id" => c.import.id,
+      "user_id" => c.import.user_id,
+      "source_blob_id" => source
+    }
+
+  defp job(payload) do
+    args = Map.put(payload, "event_id", Ecto.UUID.generate())
+
+    [[id]] =
+      rows(
+        "INSERT INTO oban.oban_jobs(state,queue,worker,args,attempt,max_attempts,attempted_at) VALUES('executing','imports','Dawarich.Imports.ImportBlobPurgeWorker',$1,1,3,now()) RETURNING id",
+        [args]
+      )
+
+    %Oban.Job{id: id, attempt: 1, args: args}
+  end
+end
+
 defmodule DawarichWeb.A12f3aIProducerClosureTest do
   use Dawarich.JobsCase, async: false
   alias Dawarich.Imports.Teslamate.Effects

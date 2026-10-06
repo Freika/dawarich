@@ -167,6 +167,33 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
     user.update_columns(settings:)
   end
 
+  def capture_import_cleanup!
+    connection = ActiveRecord::Base.connection
+    connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
+    connection.execute(File.read(Rails.root.join(
+                                   'app-phoenix/priv/repo/sql/20261001160000_import_blob_purges.sql'
+                                 )))
+    cases = %w[authorized missing_receipt foreign_actor attached_blob].map do |name|
+      blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('synthetic cleanup'), filename: 'cleanup.gpx')
+      actor = name == 'foreign_actor' ? 9802 : 9801
+      unless name == 'missing_receipt'
+        connection.execute(<<~SQL.squish)
+          INSERT INTO phoenix.import_blob_purges(blob_id,import_id,user_id,source_blob_id)
+          VALUES (#{blob.id},980101,#{actor},#{blob.id})
+        SQL
+      end
+      ActiveStorage::Attachment.create!(record: User.find(9802), name: 'avatar', blob:) if name == 'attached_blob'
+      before = ActiveJob::Base.queue_adapter.enqueued_jobs.length
+      Imports::PreparedDownloadPurgeCommands.call(
+        'blob_id' => blob.id, 'import_id' => 980_101, 'user_id' => actor, 'source_blob_id' => blob.id
+      )
+      jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.drop(before).map { _1[:job].name }
+      expect(jobs).to eq(name == 'authorized' ? ['ActiveStorage::PurgeJob'] : [])
+      { name:, jobs: }
+    end
+    write_json('a12f3a-i06.json', cases)
+  end
+
   it 'writes the pages and the seed they render' do
     expect(Rails.application.secret_key_base).to eq(secret)
 
@@ -190,6 +217,7 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
         sign_out :user
         { name:, user_id:, path:, status:, title: doc.at_css('title').text }
       end
+      capture_import_cleanup!
       capture_import_requests!
       write_json('pages.json', manifest)
       write_json('seed.json', { now: now.iso8601, users: seeded_users,
