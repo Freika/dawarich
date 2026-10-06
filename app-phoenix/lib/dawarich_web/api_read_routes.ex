@@ -71,13 +71,20 @@ defmodule DawarichWeb.ApiReadRoutes do
     quote do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_places
+        get "/places/nearby", PlacesController, :nearby, metadata: %{slice: :api_places}
+        get "/places/search", PlacesController, :search, metadata: %{slice: :api_places}
 
-        get "/places", PlacesController, :index, metadata: %{slice: :api_places}
-        post "/places", PlacesController, :create, metadata: %{slice: :api_places}
-        get "/places/:id", PlacesController, :show, metadata: %{slice: :api_places}
-        patch "/places/:id", PlacesController, :update, metadata: %{slice: :api_places}
-        put "/places/:id", PlacesController, :update, metadata: %{slice: :api_places}
-        delete "/places/:id", PlacesController, :destroy, metadata: %{slice: :api_places}
+        for {method, path, action} <- [
+              {:get, "/places", :index},
+              {:post, "/places", :create},
+              {:get, "/places/:id", :show},
+              {:patch, "/places/:id", :update},
+              {:put, "/places/:id", :update},
+              {:delete, "/places/:id", :destroy}
+            ] do
+          match method, path, PlacesController, {:closure, action},
+            metadata: %{slice: :api_places}
+        end
       end
     end
   end
