@@ -51,6 +51,21 @@ already reference the native bulk and check workers.
   later retry converges without duplicate unlocks or notices. Direct Checker
   calls retain their existing interface.
 
+## Integration gate seams
+
+The seed-404 gate exposed a TeslaMate finalization branch that inserted a reverse
+anomaly command directly in standalone mode. Its anomaly leaf now delegates to
+the existing `Dawarich.Points.AnomalyArrivalWorker.enqueue/2`, which already
+handles standalone/native ownership and coexistence. This is the minimum producer
+seam needed by the existing R02 contract; other TeslaMate publication remains
+with its integration owner.
+
+The retained ownership test now checks native owner-locale rendering and locale
+persistence while retaining its malformed-state hand-back assertions. The route
+limiter test compares pipeline names as strings, so an unmounted domain route
+macro does not require its atom to have been loaded in that test partition.
+Every mounted route still requires RateLimit immediately after ForceSSL.
+
 ## Verification
 
 The task tests are `a12f3b_a01_test.exs` through `a12f3b_a04_test.exs` under

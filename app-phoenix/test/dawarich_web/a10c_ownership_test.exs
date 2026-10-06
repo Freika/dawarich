@@ -157,11 +157,18 @@ defmodule DawarichWeb.A10cOwnershipTest do
 
     before = snapshot()
 
-    {203, headers, "Rails"} =
-      exchange(ctx, "GET", "/shared/achievements/#{uuid}?locale=de", "", proxy: true)
+    [[settings]] = rows("SELECT settings FROM users WHERE id=44001")
+    other = rows("SELECT to_jsonb(u) FROM users u WHERE id=44002")
+    {200, headers, html} = exchange(ctx, "GET", "/shared/achievements/#{uuid}?locale=de", "")
+    assert html =~ ~s(lang="de")
+    assert values(headers, "set-cookie") != []
 
-    assert values(headers, "set-cookie") == []
-    assert snapshot() == before
+    assert rows("SELECT settings FROM users WHERE id=44001") == [
+             [Map.put(settings, "locale", "de")]
+           ]
+
+    assert rows("SELECT to_jsonb(u) FROM users u WHERE id=44002") == other
+    assert Enum.drop(snapshot(), 1) == Enum.drop(before, 1)
 
     rows("UPDATE users SET settings='[]' WHERE id=44001")
     before = snapshot()
