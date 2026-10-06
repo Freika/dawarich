@@ -191,3 +191,17 @@ plan's separately authorized test-env/asdf/Redis/no-env-hashing fixes; G48 still
 needs its release procedure. Local tests do not close those release gates or
 authorize activation. Operational documentation is mirrored without credentials;
 seed payloads and secrets must never enter the shared knowledge base.
+
+
+## A12f-3c Cloud handoff (2026-10-06)
+
+[Package P's two checkpoints](a12f-ruby-free-release.md#a12f-3c-operator-cut-over-and-old-shutdown-handoff)
+separate NEW traffic activation from OLD final shutdown. Native argv mapping
+and source fences are integrated preparation; explicit Cloud/native lifecycle
+still refuses at the package P inspection head. L1/B must supply real Cloud
+provisioning, source-equivalent trial/family/callback effects, registration-copy
+authority, migration exclusion and shared row/object proofs before traffic moves.
+Do not turn a self-hosted guard off to fabricate this handoff. Read-only readiness
+must not migrate/seed or duplicate callbacks. D's reviewed every-key pin/drain
+contract and E's two-deployment stop evidence remain acceptance prerequisites;
+local tests do not close G48/G49.

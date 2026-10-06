@@ -311,3 +311,25 @@ Open questions for Eugene (release decisions only):
 The assigned local rehearsal resources are Redis 7247, Rails database
 `dawarich_test_a12d3` and Phoenix database `dawarich_phoenix_test_a12d3`.
 The open release decisions preserve cache coexistence and retain/block defaults.
+
+
+## A12f-3c final Cloud checkpoints (2026-10-06)
+
+The phase list above preserves incremental coexistence history. Controller
+ruling 2's final Cloud cut uses separate NEW Phoenix-only and OLD drain-only
+roles, with two independent checkpoints detailed in
+[the package P handoff](a12f-ruby-free-release.md#a12f-3c-operator-cut-over-and-old-shutdown-handoff).
+At traffic switch, NEW's image/HTTP/lifecycle/shared-storage proof and accepted
+chain isolation must be complete; disable OLD publication, boot/cron/manual/
+callback producers and reverse Poller. Only proved-safe accepted source debt
+may drain on OLD. NEW never uses OLD as an upstream.
+
+OLD shutdown follows full G49 under producer quiescence: D pre_quiet observations,
+quiet all identified fetchers, settle effects, require explicit stopping state
+and no probes, check native shutdown debt, TERM, then independently inspect
+process absence and repeat post_stop/source/native observations. UNKNOWN,
+unreadable, newly appearing, unknown/retired/dead work blocks and remains stored.
+D's integrated review fix and E's actual smoke/stop evidence are prerequisites;
+this runbook is not their execution result. Resume native producers only after
+absence proof. Ruling 7's same-DB rollback pins every real key then drains natively;
+no pending transfer is used. Release dates/windows remain Eugene's values.
