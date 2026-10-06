@@ -39,7 +39,9 @@ defmodule Dawarich.Imports.Teslamate.Effects do
   def finalize(_ctx, %{range: nil}), do: :ok
 
   def finalize(ctx, %{range: {min, max}, months: months}) do
-    if Ownership.lock(ctx.repo, "command:tracks.generate_realtime") == :oban do
+    realtime_owner = Ownership.lock(ctx.repo, "command:tracks.generate_realtime")
+
+    if realtime_owner == :oban do
       zone = ctx.settings["timezone"] || "Etc/UTC"
       Dawarich.Points.AnomalyFilter.call(ctx.repo, ctx.id, min, max, zone: zone)
 
@@ -65,6 +67,7 @@ defmodule Dawarich.Imports.Teslamate.Effects do
 
     Dawarich.Tracks.BackfillCommands.put(ctx.repo, ctx.id, [min, max],
       time_zone: ctx.settings["timezone"] || "Etc/UTC",
+      legacy_ingest: realtime_owner != :oban,
       now: ctx.now
     )
 

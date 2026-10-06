@@ -10,7 +10,9 @@ the persisted owner. This is a scoped domain seam, not a global ownership change
 
 - Intake's existing backfill admission and TeslaMate's timestamp range use
   `BackfillCommands`. TeslaMate selects backfill ownership independently of
-  realtime ownership. The durable cycle keeps its timezone, bounded timestamps,
+  realtime ownership. Coexistence retains the original ambient-zone payload when
+  realtime is Rails-owned, and the explicit-zone payload when realtime is native.
+  The durable cycle keeps its timezone, bounded timestamps,
   and one due publication; replay widens the same cycle.
 - Backfill, daily, and throttled workers select native range work in standalone
   mode. Throttled continuations retain the walk, cursor, step receipt, and
@@ -60,6 +62,11 @@ Source characterization uses the existing backfill/job-command RSpec batch.
 Package gates are compile with warnings as errors, formatting, full ExUnit seed
 404 through the controller suite runner, secret scanning, and a clean tree.
 Seed 202 belongs to the controller's integrated head.
+
+The retained release audit follows the delegated track effect seam without
+removing a handler assertion. The A8 census requires both sets of JSON-only
+closure captures and preserves all retained HTML/base assertions. Missing local
+JS dependencies are setup; neither correction changes product behavior.
 
 The matching AFFiNE document is titled
 “Dawarich — Native track follow-ups (A12f-3b R04–R05)”. The repository document is

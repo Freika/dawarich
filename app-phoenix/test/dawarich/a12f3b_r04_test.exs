@@ -73,7 +73,6 @@ defmodule Dawarich.A12f3bR04Test do
     assert [[reverse]] = reverse("tracks.backfill")
     assert reverse["timestamps"] == [@epoch - 100_000, @epoch - 100_000]
     rows("DELETE FROM phoenix.rails_commands")
-    Ownership.put!(ScratchRepo, "command:tracks.backfill", :oban)
 
     ctx = %{
       repo: ScratchRepo,
@@ -88,10 +87,40 @@ defmodule Dawarich.A12f3bR04Test do
       months: []
     })
 
+    assert reverse("tracks.backfill") == [
+             [%{"user_id" => 1, "timestamps" => [@epoch - 100_000, @epoch - 90_000]}]
+           ]
+
+    Ownership.put!(ScratchRepo, "command:tracks.backfill", :oban)
+    rows("DELETE FROM phoenix.rails_commands")
+
+    Dawarich.Imports.Teslamate.Effects.finalize(ctx, %{
+      range: {@epoch - 100_000, @epoch - 90_000},
+      months: []
+    })
+
     assert reverse("tracks.backfill") == []
 
     assert rows("SELECT latest_timestamp FROM phoenix.track_backfill_ranges") == [
              [@epoch - 90_000]
+           ]
+
+    Ownership.put!(ScratchRepo, "command:tracks.backfill", :sidekiq)
+    Ownership.put!(ScratchRepo, "command:tracks.generate_realtime", :oban)
+
+    Dawarich.Imports.Teslamate.Effects.finalize(ctx, %{
+      range: {@epoch - 100_000, @epoch - 90_000},
+      months: []
+    })
+
+    assert reverse("tracks.backfill") == [
+             [
+               %{
+                 "user_id" => 1,
+                 "timestamps" => [@epoch - 100_000, @epoch - 90_000],
+                 "time_zone" => "Etc/UTC"
+               }
+             ]
            ]
   end
 
