@@ -37,7 +37,7 @@ defmodule DawarichWeb.AuthGate do
 
     case if(conn.halted, do: nil, else: claimed(conn)) do
       nil -> conn
-      {flow, handler} -> handler.call(conn, options(flow))
+      {flow, handler} -> handler.call(conn, native_options(flow, options(flow)))
     end
   end
 
@@ -56,6 +56,12 @@ defmodule DawarichWeb.AuthGate do
     if Dawarich.Standalone.enabled?(),
       do: Enum.map(@handlers, &elem(&1, 0)),
       else: Application.get_env(:dawarich, :phoenix_auth, []) || []
+  end
+
+  defp native_options(flow, opts) do
+    if Dawarich.Standalone.enabled?() and flow in ["credentials", "otp"],
+      do: Keyword.put(opts, :native, true),
+      else: opts
   end
 
   defp options("account_link"),

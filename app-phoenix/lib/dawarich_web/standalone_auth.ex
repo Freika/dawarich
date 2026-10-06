@@ -6,7 +6,9 @@ defmodule DawarichWeb.StandaloneAuth do
     AuthAccount,
     AuthAccountLink,
     AuthApple,
+    AuthHandler,
     AuthMobile,
+    AuthOtp,
     AuthProvider,
     AuthRecovery,
     AuthRegistration
@@ -16,6 +18,8 @@ defmodule DawarichWeb.StandaloneAuth do
     AuthAccount.Http,
     AuthAccountLink.Http,
     AuthApple.Http,
+    AuthHandler,
+    AuthOtp.Http,
     AuthProvider.Http,
     AuthRecovery.Http,
     AuthRegistration.Http

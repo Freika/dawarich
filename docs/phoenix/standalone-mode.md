@@ -74,6 +74,15 @@ setting. Recovery enqueues the existing native mail worker and applies the
 shared rate limiter. The handlers retain CSRF/origin checks, encrypted cookies,
 provider state validation, session rotation and terminal failure behavior.
 
+AuthGate selects `native: true` for credentials and browser OTP only in
+standalone mode, retaining its registration setting and OTP flow options.
+This activates F's password failure/lockout accounting and ordinary failure
+form for OTP accounts, plus proxied and Cloud OTP challenge/completion.
+Credentials and OTP also participate in standalone cookie ambiguity refusal.
+Their handlers retain duplicate-header, CSRF/origin, host, SSL and rate checks.
+With the flag unset, credential/OTP admission and forwarding are unchanged.
+Endpoint regressions live in `standalone_credentials_otp_test.exs`.
+
 Ambiguous session-cookie values or duplicate Cookie headers are refused before
 browser or mobile authentication effects. Apple state/nonce/import cookies
 also reject duplicate values. Cookie refusal is limited to standalone auth
