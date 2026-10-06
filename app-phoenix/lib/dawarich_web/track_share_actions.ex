@@ -34,7 +34,8 @@ defmodule DawarichWeb.TrackShareActions do
         assign(
           conn,
           :locale,
-          Locale.resolve(nil, conn.assigns.current_user, conn.assigns.rails_session)
+          conn.assigns[:locale] ||
+            Locale.resolve(nil, conn.assigns.current_user, conn.assigns.rails_session)
         )
 
       if native?(conn, conn.path_params),

@@ -20,6 +20,6 @@ Rails accepts `Date.parse` strings such as month names, named dates and slash-se
 
 ## Resolved track locale
 
-TrackShareActions resolves locale from the user preference and Rails session before reading the form. Read.track accepts that resolved locale, and mutation resource lookup receives the same locale used by create. Direct domain reads resolve the user preference. Padded German preferences and a German session without a user preference therefore produce the German label and default persisted name.
+TrackShareActions preserves the locale already resolved by the request before reading the form, falling back to the user/session resolver only when no request locale is assigned. Prefetched locale selections therefore remain visible without persisting a preference change. Read.track accepts that resolved locale, and mutation resource lookup receives the same locale used by create. Direct domain reads resolve the user preference. Padded German preferences and a German session without a user preference therefore produce the German label and default persisted name.
 
 Canonical shared index: AFFiNE “Dawarich — Phoenix SHARES native management handoff” (`sTHXI_y0g2E7VcjM02YGf`). The controller's execution plans remain authoritative for integration, photo prerequisites and release acceptance.

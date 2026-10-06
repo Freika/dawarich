@@ -232,6 +232,32 @@ defmodule DawarichWeb.A12f3bReviewTest do
     end
   end
 
+  @tag review_case: "F4-request"
+  test "F4 prefetched track form preserves the locale already resolved by the request", %{
+    actor: actor
+  } do
+    settings = Map.put(actor.settings, "locale", "en")
+    Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [actor.id, settings])
+    Repo.query!("DELETE FROM shared_links WHERE user_id=$1 AND resource_type=1", [actor.id])
+    session = RailsUser.session(actor.id, %{"locale" => "en"})
+
+    response =
+      Plug.Test.conn(:get, "/tracks/99103/share_link/new?locale=de")
+      |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+      |> put_req_header("purpose", "prefetch")
+      |> put_req_header("turbo-frame", "share-link-modal")
+      |> assign(:now, S.now())
+      |> ShareReviewRouter.call(ShareReviewRouter.init([]))
+
+    assert response.status == 200
+    assert response.assigns.locale == "de"
+    assert response.resp_body =~ "Stationär · 3. Okt 2026 · 2 km"
+
+    assert Repo.query!("SELECT settings->>'locale' FROM users WHERE id=$1", [actor.id]).rows == [
+             ["en"]
+           ]
+  end
+
   defp routed(actor, path, params, content_type \\ "application/x-www-form-urlencoded") do
     body =
       if content_type == "application/json",
