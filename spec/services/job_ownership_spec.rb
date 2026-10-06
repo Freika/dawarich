@@ -86,6 +86,21 @@ RSpec.describe JobOwnership do
     end
   end
 
+  it 'Cloud joint owner corruption authorizes neither runtime' do
+    keys = %w[command:mail.user.archival_approaching cron:lite_archival_warning_job]
+    keys.each { |owner_key| job_owner!(owner_key, :oban) }
+    ActiveRecord::Base.connection.execute(
+      "UPDATE phoenix.job_owners SET owner = 'sidekiq' WHERE key = '#{keys.first}'"
+    )
+
+    keys.each do |owner_key|
+      %i[sidekiq oban].each do |runtime|
+        expect { described_class.with_owner(owner_key, runtime) { :split_effect } }
+          .to raise_error(StandardError, /joint job ownership disagrees/)
+      end
+    end
+  end
+
   context 'with the shared geocoding rate limiter guard' do
     let(:geocoding_key) { 'command:visits.suggest' }
 

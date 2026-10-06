@@ -16,9 +16,16 @@ defmodule Dawarich.Trips.CalculateWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"trip_id" => id, "distance_unit" => unit}} = job) do
-    case Calculation.run(Dawarich.Jobs.repo(), id, unit) do
-      outcome when outcome in [:ok, :missing, :superseded] -> :ok
-    end
+    Dawarich.Jobs.Processed.once(
+      Dawarich.Jobs.repo(),
+      job.args["event_id"],
+      Atom.to_string(__MODULE__),
+      fn ->
+        case Calculation.run(Dawarich.Jobs.repo(), id, unit) do
+          outcome when outcome in [:ok, :missing, :superseded] -> :ok
+        end
+      end
+    )
   rescue
     exception ->
       if job.attempt >= job.max_attempts, do: Calculation.fail!(Dawarich.Jobs.repo(), id, unit)

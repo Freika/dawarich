@@ -4,6 +4,7 @@ module JobOwnership
   OWNERS = %i[sidekiq oban].freeze
   LOCK_TIMEOUT = '5s'
   JOINT_KEYS = [%w[cron:lite_archival_warning_job command:mail.user.archival_approaching]].freeze
+  class InconsistentOwners < StandardError; end
 
   module_function
 
@@ -37,7 +38,9 @@ module JobOwnership
                                                          ['SELECT key, owner FROM phoenix.job_owners ' \
                                                           'WHERE key IN (?) ORDER BY key FOR SHARE', keys]
                                                        ))
-    owners.include?([key, 'oban']) ? :oban : :sidekiq
+    raise InconsistentOwners, "joint job ownership disagrees for #{key}" unless owners.map(&:last).uniq.one?
+
+    owners.first.last.to_sym
   end
 
   def release!(key, by:)
