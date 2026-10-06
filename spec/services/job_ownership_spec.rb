@@ -3,6 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe JobOwnership do
+  include ActiveJob::TestHelper
   let(:key) { 'command:trips.calculate' }
 
   context 'when Phoenix has never migrated the database' do
@@ -84,6 +85,44 @@ RSpec.describe JobOwnership do
         expect(lite_rows).to eq(lite_keys.map { |key| [key, 'sidekiq', false] }), released
       end
     end
+  end
+
+  it 'Cloud joint owner corruption authorizes neither runtime' do
+    keys = %w[command:mail.user.archival_approaching cron:lite_archival_warning_job]
+    keys.each { |owner_key| job_owner!(owner_key, :oban) }
+    ActiveRecord::Base.connection.execute(
+      "UPDATE phoenix.job_owners SET owner = 'sidekiq' WHERE key = '#{keys.first}'"
+    )
+
+    keys.each do |owner_key|
+      %i[sidekiq oban].each do |runtime|
+        expect { described_class.with_owner(owner_key, runtime) { :split_effect } }
+          .to raise_error(StandardError, /joint job ownership disagrees/)
+      end
+    end
+  end
+
+  it 'unsupported accepted source trip stays unresolved before any drain child or pending tally' do
+    trip = create(:trip, skip_calculation_enqueue: true)
+    job_owner!(Trips::CalculateAllJob::OWNER_KEY, :sidekiq)
+    job = Trips::CalculateAllJob.new(trip.id, 'mi')
+    accepted = job.serialize
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('DAWARICH_CLOUD_DRAIN_ONLY').and_return('true')
+    allow(Rails.cache).to receive(:write).and_call_original
+
+    expect { ActiveJob::Base.execute(accepted) }.to raise_error(StandardError, /accepted source chain.*predrain/)
+    expect(Rails.cache).not_to have_received(:write)
+    expect(ActiveJob::Base.queue_adapter.enqueued_jobs).to be_empty
+    expect(JobOutbox.count).to eq(0)
+    expect(described_class.with_owner(Trips::CalculateAllJob::OWNER_KEY) { :retained }).to eq(:retained)
+    expect(ActiveRecord::Base.connection.select_value('SELECT count(*) FROM phoenix.processed_commands')).to eq(0)
+
+    allow(ENV).to receive(:[]).with('DAWARICH_CLOUD_DRAIN_ONLY').and_return('false')
+    ActiveJob::Base.execute(accepted)
+    expect(Trips::CalculatePathJob).to have_been_enqueued.with(trip.id, job.job_id)
+    expect(Trips::CalculateDistanceJob).to have_been_enqueued.with(trip.id, 'mi', job.job_id)
+    expect(Trips::CalculateCountriesJob).to have_been_enqueued.with(trip.id, 'mi', job.job_id)
   end
 
   context 'with the shared geocoding rate limiter guard' do

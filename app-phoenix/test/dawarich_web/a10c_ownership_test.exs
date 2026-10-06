@@ -201,6 +201,10 @@ defmodule DawarichWeb.A10cOwnershipTest do
     end
 
     Application.put_env(:dawarich, :rails_routes, [])
+    before = snapshot()
+    assert {302, _, _} = exchange(ctx, "GET", "/sidekiq", "")
+    assert {404, _, ""} = exchange(ctx, "GET", "/admin/flipper", "")
+    assert snapshot() == before
 
     for {method, path, raw} <- [
           {"GET", path <> "/og.png", ""},
@@ -208,9 +212,7 @@ defmodule DawarichWeb.A10cOwnershipTest do
           {"DELETE", "/settings/users/44001", ""},
           {"POST", "/settings/users/44001", "_method=delete"},
           {"POST", "/settings/background_jobs", "job=synthetic"},
-          {"POST", "/admin/settings/test_geocoding", ""},
-          {"GET", "/sidekiq", ""},
-          {"GET", "/admin/flipper", ""}
+          {"POST", "/admin/settings/test_geocoding", ""}
         ] do
       before = snapshot()
       assert {203, _, _} = exchange(ctx, method, path, raw, proxy: true, form: method == "POST")

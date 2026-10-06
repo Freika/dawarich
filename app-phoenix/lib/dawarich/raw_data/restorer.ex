@@ -30,7 +30,15 @@ defmodule Dawarich.RawData.Restorer do
   def months(repo, user_id),
     do: Enum.map(repo.query!(@months, [user_id], log: false).rows, &List.to_tuple/1)
 
-  def restore_month(repo, storage, key, user_id, year, month, opts \\ []) do
+  def restore_month(repo, storage, key, user_id, year, month, opts \\ []),
+    do:
+      Dawarich.Metrics.Archive.track(
+        "restore",
+        fn -> restore(repo, storage, key, user_id, year, month, opts) end,
+        & &1.restored
+      )
+
+  defp restore(repo, storage, key, user_id, year, month, opts) do
     case repo.query!(@archives, [user_id, year, month], log: false).rows do
       [] ->
         raise "No archives found for user #{user_id}, #{year}-#{month}"

@@ -42,7 +42,11 @@ defmodule Dawarich.Jobs.Ownership do
         log: false
       ).rows
 
-    if [key, "oban"] in owners, do: :oban, else: :sidekiq
+    case owners |> Enum.map(&List.last/1) |> Enum.uniq() do
+      ["oban"] -> :oban
+      ["sidekiq"] -> :sidekiq
+      _ -> :inconsistent
+    end
   end
 
   def put!(repo, key, owner, opts \\ []) when owner in @owners do

@@ -11,9 +11,11 @@ defmodule DawarichWeb.Endpoint do
 
   def session_options, do: @session_options
 
-  socket "/phoenix/live", Phoenix.LiveView.Socket,
+  socket "/phoenix/live", DawarichWeb.LiveSocket,
     websocket: [connect_info: [session: @session_options]],
     longpoll: false
+
+  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   plug Plug.Static,
     at: "/phoenix/js",

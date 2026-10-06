@@ -1,5 +1,21 @@
 defmodule Dawarich.Jobs.Processed do
   @moduledoc false
+  def once(repo, event_id, handler, effect) do
+    case repo.transaction(fn ->
+           if claim!(repo, event_id, handler) do
+             case effect.() do
+               :ok -> :ok
+               unresolved -> repo.rollback(unresolved)
+             end
+           else
+             :ok
+           end
+         end) do
+      {:ok, :ok} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   def done?(repo, event_id) do
     %{num_rows: rows} =
       repo.query!(
