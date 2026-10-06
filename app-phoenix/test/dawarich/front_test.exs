@@ -18,7 +18,8 @@ defmodule Dawarich.FrontTest do
 
   defp rails_command(port), do: ~w(bundle exec bin/rails server -b 127.0.0.1) ++ ["-p", "#{port}"]
 
-  test "native front children start a serving Endpoint and its existing drainer without Puma" do
+  @tag :a12f4_a03_2
+  test "native bind failure is terminal without a fallback listener" do
     port = free_port()
     argv = ~w(bin/rails server -b 127.0.0.1) ++ ["-p", "#{port}"]
     assert {:native, {{127, 0, 0, 1}, ^port}} = plan = Front.native_plan(argv, @prod)
@@ -56,6 +57,7 @@ defmodule Dawarich.FrontTest do
         Process.flag(:trap_exit, true)
         result = Supervisor.start_link(Front.children(plan), strategy: :one_for_one)
         send(owner, {:bind_result, result})
+        if match?({:ok, _}, result), do: Supervisor.stop(elem(result, 1))
       end)
 
     assert_receive {:bind_result, {:error, reason}}, 1_000
