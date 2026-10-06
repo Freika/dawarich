@@ -25,7 +25,7 @@ HOT must exercise these additions through the real Endpoint after mounting. This
 
 The package report contains source capture, named RED/GREEN/mutation, targeted security checks, compile/format, full seed-404, and secret-scan evidence. Controller integration owns HOT mounts, A11 deletion capability wiring, MAIL delivery configuration, and mandatory security review. Rare legacy envelope failures remain native errors under ruling 15; exact malformed-envelope parity is deferred under the controller's convention.
 
-The provider-test adapter uses existing native geocoding Config/Search/Result. I01 owns shared provider-test integration; exact Turbo-stream output, safe error details, and bounded rate-budget parity remain follow-ups under ruling 15. The required full-suite gate also exposed an existing places CLI batch reread without ordering; its minimal fix preserves ascending user scheduling, verified after a deliberate row reorder.
+The provider-test adapter uses existing native geocoding Config/Search/Result. I01 owns shared provider-test integration; exact Turbo-stream output, safe error details, and bounded rate-budget parity remain follow-ups under ruling 15. The required full-suite gate exposed a places CLI assertion that assumed ascending user scheduling. Rails orders batch boundaries but leaves the batch pluck unordered. P08 now preserves that source quirk and checks batch membership and delay slots independently (DRB-022 in `deferred-rails-bugs.md`), including a deterministic reversed-reread probe.
 
 ## ADR: reuse native authentication owners for admin residual writes
 
