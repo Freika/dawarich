@@ -120,3 +120,44 @@ AFFiNE maintains a matching focused document titled
 “Dawarich — Phoenix visits and redetection implementation”
 (`docId: BsApq3bMe4_hiZ9Co4mUq`); this repository
 file is the versioned code-coupled counterpart.
+
+## Reconciled arrival-time suggestions (2026-10-06)
+
+`Ingest.Intake` uses `Visits.RealtimeDebouncer` as the sole arrival-time visit
+scheduler. `Points.Realtime.visits` and `Points.RealtimeVisitsWorker` are removed.
+The Points alternative duplicated scheduling while bypassing the versioned
+`visits.suggest` outbox, fixing day steps at 24 hours and always restricting the
+plan. The shared Visits path preserves the native worker's dispatch, preference
+recheck and debounce release.
+
+The Rails source contract is `Points::ArrivalCommands`'s `visits.realtime`
+handler, `Visits::RealtimeDebouncer#trigger`, `VisitSuggestingJob#perform` and
+`Visits::Commands.forward_suggest`. Arrival scheduling uses the arrival clock,
+not the point's recorded timestamp: a six-hour window ending at arrival, due
+five minutes later, with a ten-minute sliding claim. Geocoding and opt-in gate
+the claim; failed publication rolls it back. ISO8601 arguments parse in the
+user's timezone and use calendar stepping. Restriction follows
+`User#plan_restricted?` / `Entitlements#restricted?`, including unrestricted
+self-hosted and paid users and inherited family access.
+
+Native scheduling publishes version-one `visits.suggest` with actor aggregate
+ID and `Visits::RealtimeDebouncer` producer metadata. Standalone mode selects
+native work; coexistence locks `command:visits.suggest`, and Sidekiq ownership
+retains `visits.realtime`. SuggestWorker releases the claim before checking
+existence and opt-in, so execution permits the next arrival to schedule.
+
+R01 checks the exact payload, scheduling envelope, opt-out and coexistence, and
+rejects restoration of either removed Points entry point. R20 exercises delayed
+dispatch, visit creation, sliding TTL, claim release, execution-time opt-out,
+failed publication and Lite/Pro/self-hosted restriction. Intake covers the
+same native payload, historical point versus arrival time, duplicate arrivals
+and final-effect rollback while preserving independently committed point
+slices and their tile effect. The existing ingest goldens retain Rails' command
+order and request/response fixtures.
+
+Reconciliation verification: 79 targeted R01/R20/intake/ingest-golden tests,
+30 Rails characterization examples and 8,912 full-suite tests at seed 404 all
+pass with zero failures. The full suite retains its existing 11 exclusions and
+three skips. Six independent production mutations fail their assertions and
+restored targets pass. Forced compilation with warnings as errors, whole-tree
+format verification and Gitleaks pass; Swagger and schema show no drift.

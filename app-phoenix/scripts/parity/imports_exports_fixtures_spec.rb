@@ -375,10 +375,10 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
       end
       capture_api_closure!
       write_json('pages.json', manifest)
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/user_data/a12f3a-e01.json'),
-                              "#{JSON.pretty_generate(@closure_pages.select do |name, _|
-                                name.start_with?('exports_')
-                              end)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/user_data/a12f3a-e01.json'),
+                                     "#{JSON.pretty_generate(@closure_pages.select do |name, _|
+                                       name.start_with?('exports_')
+                                     end)}\n")
       write_json('seed.json', { users:, imports: imports.map { |r| r.except(:file, :prepared) },
                                 exports: exports.map { |r| r.except(:file) }, blobs:, attachments: })
     end
@@ -408,7 +408,7 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
   end
 
   it 'writes the blob path corpus' do
-    previous_host = Rails.application.routes.default_url_options[:host]
+    previous_urls = Rails.application.routes.default_url_options.dup
     expect(Rails.application.secret_key_base).to eq(secret)
     Rails.application.routes.default_url_options[:host] = 'www.example.com'
     names = ['export_from_2024-03-01_to_2024-03-31.json.zip', 'a b.gpx.zip', 'ümlaut ß.json.zip', 'q?x.zip',
@@ -427,6 +427,6 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
     end
     write_json('blob_paths.json', corpus)
   ensure
-    Rails.application.routes.default_url_options[:host] = previous_host
+    Rails.application.routes.default_url_options = previous_urls
   end
 end

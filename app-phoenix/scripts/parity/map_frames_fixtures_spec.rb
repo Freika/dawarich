@@ -1,8 +1,54 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :request do
+  source_cases = {}
+  define_method(:source_case) { |name, data| source_cases[name] = data }
+  after(:all) do
+    selected = source_cases.sort.to_h.select { |name, _| name.start_with?('visit_') }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v01.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = source_cases.sort.to_h.select { |name, _| name.start_with?('visit_') }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v02.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = source_cases.sort.to_h.select { |name, _| name.start_with?('visit_') }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v03.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = source_cases.sort.to_h.select { |name, _| name.start_with?('visit_') }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v04.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = source_cases.sort.to_h.select { |name, _| ['feed_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_frames/a12f3a-m03.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = source_cases.sort.to_h.select { |name, _| ['calendar_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_frames/a12f3a-m04.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = source_cases.sort.to_h.select { |name, _| ['track_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_frames/a12f3a-m05.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = source_cases.sort.to_h.select { |name, _| ['residency_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_frames/a12f3a-m06.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/map_frames') }
@@ -149,6 +195,17 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
     body = response.body
                    .gsub(/(name="authenticity_token" value=")[^"]*/, '\1CSRF')
                    .gsub(%r{(/auth/dawarich\?token=)[^&"]+}, '\1REDACTED')
+    doc = Nokogiri::HTML5(response.body)
+    doc.css('input[name="authenticity_token"]').each { _1['value'] = 'CSRF' }
+    doc.css('meta[name="csrf-token"], meta[name="csp-nonce"]').each { _1['content'] = 'CSRF' }
+    doc.css('[nonce]').each { _1['nonce'] = 'NONCE' }
+    doc.css('[signed-stream-name]').each { _1['signed-stream-name'] = 'SIGNED' }
+    source_case(name, state(user, path, accept).merge('body' => doc.to_html,
+                                                      'set_cookie' => response.headers['Set-Cookie'].present?,
+                                                      'flash' => flash.to_hash,
+                                                      'jobs' => enqueued_jobs.map do
+                                                        { 'class' => _1[:job].name, 'args' => _1[:args] }
+                                                      end))
     body = '' if response.status >= 400
     raise "#{name} contains a JWT-shaped value" if body.match?(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./)
 
@@ -214,6 +271,15 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       body = response.body.gsub(/(name="authenticity_token" value=")[^"]*/, '\1CSRF')
       body = '' if response.status >= 400 && response.media_type == 'text/html'
       File.write(target.join("#{name}.html"), body)
+      source_body = FixtureRecording.normalize(response.body)
+                                    .gsub(/(name="authenticity_token" value=")[^"]*/, '\\1CSRF')
+      source_case("visit_#{name}", { now: now.iso8601, self_hosted: DawarichSettings.self_hosted?, request:, before:,
+                   after: a8_visit_graph(users), status: response.status, content_type: response.media_type,
+                   body: source_body,
+                   location: response.location, flash: flash.to_hash, cache:,
+                   set_cookie: response.headers['Set-Cookie'].present?,
+                   headers: response.headers.slice('Content-Type', 'Location', 'Vary', 'Cache-Control'),
+                   jobs: enqueued_jobs.map { { class: _1[:job].name, args: _1[:args], queue: _1[:queue] } } })
       data = {
         now: now.iso8601, self_hosted: DawarichSettings.self_hosted?, request:, before:,
                    after: a8_visit_graph(users), status: response.status, content_type: response.media_type,

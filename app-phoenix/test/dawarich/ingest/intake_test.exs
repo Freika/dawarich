@@ -47,6 +47,61 @@ defmodule Dawarich.Ingest.IntakeTest do
                }
              ]
            ] = commands()
+
+    Repo.query!(
+      "UPDATE users SET settings=$2,plan=0 WHERE id=$1",
+      [user, %{"visits_suggestions_enabled" => "true", "timezone" => "Pacific/Chatham"}]
+    )
+
+    Dawarich.Jobs.Ownership.put!(Repo, "command:visits.suggest", :oban)
+    now = ~U[2026-04-05 00:00:00Z]
+
+    opts = [
+      now: now,
+      env: %{
+        "DAWARICH_RAILS" => "on",
+        "SELF_HOSTED" => "true",
+        "PHOTON_API_HOST" => "photon.example.invalid"
+      }
+    ]
+
+    point = payload(13.4, 52.5, 1_788_930_000)
+    before = commands()
+
+    assert_raise RuntimeError, "arrival rollback", fn ->
+      ingest(
+        user,
+        [point],
+        Keyword.put(opts, :hook, fn :commands -> raise "arrival rollback" end)
+      )
+    end
+
+    assert Repo.query!(
+             "SELECT payload FROM public.job_outbox WHERE command_type='visits.suggest'"
+           ).rows == []
+
+    refute Dawarich.State.claimed?(Repo, "visit_realtime:user:#{user}")
+    after_rollback = Enum.reject(commands(), fn [kind, _] -> kind == "points.tile_epoch" end)
+    assert after_rollback == Enum.reject(before, fn [kind, _] -> kind == "points.tile_epoch" end)
+    assert [_] = ingest(user, [point], opts)
+    assert [_] = ingest(user, [point], Keyword.put(opts, :now, DateTime.add(now, 10)))
+
+    assert [[args, due]] =
+             Repo.query!(
+               "SELECT payload,scheduled_at FROM public.job_outbox WHERE command_type='visits.suggest'"
+             ).rows
+
+    assert args == %{
+             "user_id" => user,
+             "start_at" => DateTime.to_unix(now) - 21_600,
+             "end_at" => DateTime.to_unix(now),
+             "stepping" => "calendar",
+             "time_zone" => "Pacific/Chatham",
+             "plan_restricted" => false
+           }
+
+    assert DateTime.diff(due, now) == 300
+    assert Enum.count(commands(), fn [kind, _] -> kind == "visits.realtime" end) == 1
   end
 
   test "a second write of the same point updates it, keeps created_at and the count, and resets archival" do

@@ -59,6 +59,10 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
 
   @tag :index
   test "the A8 corpus contains every named capture" do
+    for prefix <- ["visits/a12f3a-v0", "videos/a12f3a-r0"], index <- 1..9 do
+      assert File.exists?(Path.join(@dir, prefix <> to_string(index) <> ".json"))
+    end
+
     for extension <- ["json", "html"] do
       actual =
         Path.wildcard("#{@dir}/*/*.#{extension}")

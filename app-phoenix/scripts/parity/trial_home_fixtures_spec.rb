@@ -21,6 +21,7 @@ RSpec.describe 'Phoenix fixtures: trial checkout and home responses', type: :req
   end
 
   before do
+    allow(ENV).to receive(:fetch).with('JWT_SECRET_KEY').and_return(signing_phrase)
     FileUtils.mkdir_p(dir)
     stub_const('MANAGER_URL', 'https://manager.example.test')
     allow(SecureRandom).to receive(:uuid).and_return(jti)
@@ -182,5 +183,33 @@ RSpec.describe 'Phoenix fixtures: trial checkout and home responses', type: :req
     expect(cases.last.dig('headers', 'Cache-Control')).to eq('no-store')
     expect(cases.last.dig('headers', 'Referrer-Policy')).to eq('no-referrer')
     cases.each { |capture| save_capture(capture) }
+  end
+
+  it 'characterizes residual entitlement boundaries and marker session writes' do
+    user = actor
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    %w[pending_payment trial active inactive].each do |status|
+      %w[lite pro family].each do |plan|
+        [now - 1.second, now, now + 1.second].each do |expires|
+          user.update_columns(status: User.statuses.fetch(status), plan: User.plans.fetch(plan), active_until: expires)
+          captured = capture('residual', user.reload, '/trial/resume', params: { client: 'ios', aff: 'partner' })
+          expect(captured.fetch('status')).to eq(status == 'pending_payment' ? 200 : 302)
+          expect(response.headers).to include('Cache-Control' => 'no-store', 'Pragma' => 'no-cache')
+          expect(request.session[:dawarich_client]).to eq('ios')
+          expect(request.session[:partnero_referral]).to eq('partner')
+          expect(response.location).to eq('http://www.example.com/') unless status == 'pending_payment'
+        end
+      end
+    end
+    user.update_columns(status: User.statuses.fetch('pending_payment'))
+    reset!
+    sign_in user.reload
+    head '/trial/resume'
+    expect(response.status).to eq(200)
+    expect(response.body).to eq('')
+    expect(response.headers).to include('Cache-Control' => 'no-store', 'Pragma' => 'no-cache')
+    ENV.delete('JWT_SECRET_KEY')
+    allow(ENV).to receive(:fetch).with('JWT_SECRET_KEY').and_call_original
+    expect { get '/trial/upgrade' }.to raise_error(KeyError)
   end
 end

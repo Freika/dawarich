@@ -11,13 +11,13 @@ RSpec.describe 'Phoenix fixtures: map segment writes', type: :request do
   after(:all) do
     selected = closure_cases.sort.to_h.select { |name, _| [''].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w08.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w08.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = closure_cases.sort.to_h.select { |name, _| [''].any? { name.start_with?(_1) } }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w09.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w09.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
   end
 
@@ -103,14 +103,15 @@ RSpec.describe 'Phoenix fixtures: map segment writes', type: :request do
     track!(user, id, mode:)
     track!(foreign, id + 1)
     track!(user, id + 2)
+    if name == 'override_tied'
+      segment!(id, id * 10 + 3, mode: 'driving', from: now - 1.hour + 600, to: now - 1.hour + 1195)
+    end
     segment!(id, id * 10, mode: name == 'override_unchanged' ? 'walking' : 'cycling')
     segment!(id + 1, id * 10 + 1)
     segment!(id + 2, id * 10 + 2)
     case name
     when 'override_raw'
       TrackSegment.where(id: id * 10).update_all(start_at: nil, end_at: nil, start_index: 0, end_index: 119)
-    when 'override_tied'
-      segment!(id, id * 10 + 3, mode: 'driving', from: now - 1.hour + 600, to: now - 1.hour + 1195)
     when 'reset_preserved'
       segment!(id, id * 10 + 3, mode: 'bus', from: now - 1.hour + 100, to: now - 1.hour + 200)
       segment!(id, id * 10 + 4, mode: 'driving', from: now - 1.hour + 300, to: now - 1.hour + 400,
@@ -297,7 +298,7 @@ RSpec.describe 'Phoenix fixtures: map segment writes', type: :request do
                 set_cookie: response.headers['Set-Cookie'].present?, before:, after: status.data,
                 jobs: enqueued_jobs.map { { class: _1[:job].name, args: _1[:args], queue: _1[:queue] } } }
     end
-    FixtureRecording.verify(dir.dirname.join('a12f3a-w12.json'), "#{JSON.pretty_generate(rows)}\n")
+    FixtureRecording.source_verify(dir.dirname.join('a12f3a-w12.json'), "#{JSON.pretty_generate(rows)}\n")
   end
 
   def capture_reclassification
@@ -342,7 +343,7 @@ RSpec.describe 'Phoenix fixtures: map segment writes', type: :request do
     expect(status['status']).to eq('failed')
     expect(error).to include(message: 'synthetic enqueue failure')
     rows << { failure: error, status: }
-    FixtureRecording.verify(dir.dirname.join('a12f3a-w13.json'), "#{JSON.pretty_generate(rows)}\n")
+    FixtureRecording.source_verify(dir.dirname.join('a12f3a-w13.json'), "#{JSON.pretty_generate(rows)}\n")
   end
 
   def generate!

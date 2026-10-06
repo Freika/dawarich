@@ -19,16 +19,16 @@ RSpec.describe 'Phoenix fixture: Rails visit detection' do
     super(directory, name, data)
   end
   after(:all) do
-    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v05.json'),
-                            "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
-    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v06.json'),
-                            "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
-    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v07.json'),
-                            "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
-    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v08.json'),
-                            "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
-    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v09.json'),
-                            "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v05.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v06.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v07.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v08.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v09.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
   end
 
   include Wave5bFixtureSupport

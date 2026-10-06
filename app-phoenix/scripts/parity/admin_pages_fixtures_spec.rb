@@ -297,6 +297,7 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
       INSERT INTO phoenix.rails_commands_dead VALUES
       (10099, 'visit_months_changed', '{}', 25, 'synthetic fixture error', ?, ?)
     SQL
+    sql('DROP SCHEMA IF EXISTS oban CASCADE')
     sql('CREATE SCHEMA oban')
     sql('CREATE TABLE oban.oban_jobs (id bigint, worker text, state text)')
     sql(<<~SQL.squish)

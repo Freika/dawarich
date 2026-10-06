@@ -94,18 +94,30 @@ defmodule Dawarich.Admin.UserSecurityTest do
     assert {:handoff, :actor} = UserSecurity.rotate(c.actor, 15302, c.context)
   end
 
-  test "issues targeted reset with existing digest and sealed mail or falls back before effects",
+  test "issues targeted reset with existing digest and sealed mail atomically",
        c do
     assert Code.ensure_loaded?(UserSecurity), "target security actions must exist"
 
     for context <- [c.context, Map.put(c.context, :mail_deliverable, false)] do
-      before = {snapshot(15301), snapshot(15302), jobs()}
-      assert {:handoff, :synchronous_mail} = UserSecurity.reset(c.actor, 15302, context)
-      unchanged = {snapshot(15301), snapshot(15302), jobs()} == before
-      assert unchanged
+      before = snapshot(15301)
+
+      context =
+        Map.put(context, :enqueue, fn notification ->
+          send(self(), {:mail, notification})
+          :ok
+        end)
+
+      assert {:ok, 15302} = UserSecurity.reset(c.actor, 15302, context)
+      assert_received {:mail, %{}}
+      assert is_binary(snapshot(15302)["reset_password_token"])
+      assert snapshot(15301) == before
     end
 
-    assert {:handoff, :synchronous_mail} = UserSecurity.reset(c.actor, -1, c.context)
+    before = {snapshot(15301), snapshot(15302), jobs()}
+    context = Map.put(c.context, :enqueue, fn _ -> {:error, :failed} end)
+    assert {:terminal, :mail} = UserSecurity.reset(c.actor, 15302, context)
+    assert {snapshot(15301), snapshot(15302), jobs()} == before
+    assert {:handoff, :target} = UserSecurity.reset(c.actor, -1, c.context)
 
     source =
       File.read!("test/fixtures/admin_mutations/reset_mail_failure.json") |> Jason.decode!()

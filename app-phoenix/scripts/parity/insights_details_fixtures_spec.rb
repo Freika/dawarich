@@ -290,7 +290,8 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
     )
     FixtureRecording.verify(dir.join('details-corpus.json'), "#{JSON.pretty_generate(corpus.as_json)}\n")
     %w[04 05].each do |id|
-      FixtureRecording.verify(dir.join("../stats/a12f3a-q#{id}.json"), "#{JSON.pretty_generate(captures.as_json)}\n")
+      FixtureRecording.source_verify(dir.join("../stats/a12f3a-q#{id}.json"),
+                                     "#{JSON.pretty_generate(captures.as_json)}\n")
     end
     index_rows = []
     [true, false].each do |self_hosted|
@@ -316,7 +317,8 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
                         location: error ? nil : response.location, flash: error ? nil : flash.to_hash }
       end
     end
-    FixtureRecording.verify(dir.join('../stats/a12f3a-q03.json'), "#{JSON.pretty_generate(index_rows.as_json)}\n")
+    FixtureRecording.source_verify(dir.join('../stats/a12f3a-q03.json'),
+                                   "#{JSON.pretty_generate(index_rows.as_json)}\n")
   end
 
   it 'writes the activity card Rails renders for fresh and persisted JSON key order' do

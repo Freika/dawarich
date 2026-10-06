@@ -269,9 +269,18 @@ defmodule DawarichWeb.A10bOwnershipTest do
       handoff!("PATCH", "/settings/users/15802", "user%5Bemail%5D=refused", 15801, headers)
     end
 
-    handoff!("POST", "/settings/users/15802/send_password_reset", "", 15801)
     same = snapshot() == before
     assert same, "retained requests changed users"
+
+    conn = request("POST", "/settings/users/15802/send_password_reset", "", 15801)
+    assert conn.status == 302
+    assert get_resp_header(conn, "location") == ["http://www.example.com/settings/users/15802"]
+
+    assert [[token]] =
+             Repo.query!("SELECT reset_password_token FROM users WHERE id=15802", [], log: false).rows
+
+    assert is_binary(token)
+    refute_received {:upstream, _, _, _}
   end
 
   test "timezone callback hands background update back before rows or jobs change" do

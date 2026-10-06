@@ -4,7 +4,7 @@ defmodule DawarichWeb.AdminWrites.Users do
   alias Dawarich.Admin.{UserCreate, UserSecurity, UserUpdate}
   alias Dawarich.I18n
   alias DawarichWeb.AdminWrites.{Request, Response}
-  alias DawarichWeb.RailsProxy
+  alias DawarichWeb.AdminWrites.Fallback
 
   def init(opts), do: opts
 
@@ -19,7 +19,7 @@ defmodule DawarichWeb.AdminWrites.Users do
         conn
 
       {:handoff, conn} ->
-        RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+        Fallback.call(conn, opts)
     end
   end
 
@@ -42,7 +42,7 @@ defmodule DawarichWeb.AdminWrites.Users do
         Response.redirect(conn, 303, "/settings/users", :alert, message)
 
       {:handoff, _} ->
-        RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+        Fallback.call(conn, action: context.action, context: context)
 
       {:terminal, _} ->
         conn |> send_resp(500, "") |> halt()
@@ -73,11 +73,16 @@ defmodule DawarichWeb.AdminWrites.Users do
         Response.redirect(conn, 302, "/settings/users", :alert, message)
 
       {:handoff, _} ->
-        RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+        Fallback.call(conn, action: context.action, context: context)
 
       {:terminal, _} ->
         conn |> send_resp(500, "") |> halt()
     end
+  end
+
+  defp dispatch(conn, actor, _params, %{action: :destroy} = context) do
+    id = conn.request_path |> String.split("/") |> List.last() |> String.to_integer()
+    DawarichWeb.AdminUserDestroy.respond(conn, actor, id, context)
   end
 
   defp dispatch(conn, actor, _params, %{action: action} = context)
@@ -87,12 +92,23 @@ defmodule DawarichWeb.AdminWrites.Users do
     case apply(UserSecurity, action, [actor, id, context]) do
       {:ok, _id} ->
         {:ok, message} =
-          I18n.t(context.locale, "controllers.settings.users.api_key_has_been_regenerated")
+          I18n.t(
+            context.locale,
+            "controllers.settings.users." <>
+              if(action == :reset,
+                do: "password_reset_email_has_been_sent",
+                else: "api_key_has_been_regenerated"
+              )
+          )
 
         Response.redirect(conn, 302, "/settings/users/#{id}", :notice, message)
 
-      {:handoff, _} ->
-        RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+      {:handoff, reason} ->
+        Fallback.call(conn,
+          action: context.action,
+          context: context,
+          status: if(reason == :target, do: 404, else: 422)
+        )
 
       {:terminal, _} ->
         conn |> send_resp(500, "") |> halt()

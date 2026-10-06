@@ -10,7 +10,7 @@ defmodule Dawarich.A12f3bH01Test do
     Process.put(:h01_remote_ip, {0x2001, 0xDB8, a, b, c, d, e, f})
     saved = Map.new(~w(DAWARICH_RAILS SELF_HOSTED JWT_SECRET_KEY), &{&1, System.get_env(&1)})
     routes = Application.get_env(:dawarich, :rails_routes)
-    auth = Application.get_env(:dawarich, :phoenix_auth)
+    auth = Application.fetch_env(:dawarich, :phoenix_auth)
     upstream = Application.get_env(:dawarich, :rails_upstream)
     System.put_env("DAWARICH_RAILS", "off")
     System.put_env("SELF_HOSTED", "true")
@@ -25,7 +25,12 @@ defmodule Dawarich.A12f3bH01Test do
       end
 
       Application.put_env(:dawarich, :rails_routes, routes)
-      Application.put_env(:dawarich, :phoenix_auth, auth)
+
+      case auth do
+        {:ok, value} -> Application.put_env(:dawarich, :phoenix_auth, value)
+        :error -> Application.delete_env(:dawarich, :phoenix_auth)
+      end
+
       Application.put_env(:dawarich, :rails_upstream, upstream)
     end)
 

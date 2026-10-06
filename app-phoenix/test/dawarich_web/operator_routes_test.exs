@@ -107,6 +107,7 @@ defmodule DawarichWeb.OperatorRoutesTest do
     assert get_resp_header(response, "location") == ["/settings/background_jobs"]
   end
 
+  @tag a12f3b_case: "D01a"
   test "Cloud job health requires Basic authorization on HTTP and connected mounts" do
     cloud!()
 
