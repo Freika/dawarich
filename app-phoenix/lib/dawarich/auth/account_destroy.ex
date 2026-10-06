@@ -21,26 +21,35 @@ defmodule Dawarich.Auth.AccountDestroy do
   end
 
   def confirm(token, context) do
-    with {:ok, claims} <- DestroyToken.verify(token, context) do
+    with {:ok, claims} <- DestroyToken.verify(token, context),
+         :ok <- worker_ready(context),
+         true <- DestroyToken.consume(claims["jti"], context) do
+      confirm_reserved(claims, context)
+    else
+      false -> {:error, :replayed}
+      other -> other
+    end
+  end
+
+  defp confirm_reserved(claims, context) do
+    result =
       transaction(context, fn repo ->
         with {:ok, user} <- actor(repo, claims["user_id"]),
-             :ok <- family_guard(repo, user.id),
-             :ok <- worker_ready(context),
-             true <- DestroyToken.consume(claims["jti"], context) do
-          case schedule(repo, user, context) do
-            {:error, :worker_owner} ->
-              DestroyToken.release(claims["jti"], context)
-              repo.rollback(:worker_owner)
-
-            result ->
-              result
-          end
-        else
-          false -> {:error, :replayed}
-          other -> other
+             :ok <- family_guard(repo, user.id) do
+          schedule(repo, user, context)
         end
       end)
+
+    case result do
+      {:ok, :scheduled} -> :ok
+      _ -> DestroyToken.release(claims["jti"], context)
     end
+
+    result
+  catch
+    kind, reason ->
+      DestroyToken.release(claims["jti"], context)
+      :erlang.raise(kind, reason, __STACKTRACE__)
   end
 
   defp worker_ready(context) do
