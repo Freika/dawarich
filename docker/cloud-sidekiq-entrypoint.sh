@@ -4,6 +4,7 @@ set -e
 
 . "$(dirname "$0")/entrypoint-env-guard.sh"
 . "$(dirname "$0")/entrypoint-common.sh"
+validate_cloud_drain_argv "$0" "$@"
 
 bootstrap "$0" "$@"
 echo "⚠️ Starting Sidekiq in $RAILS_ENV environment ⚠️"

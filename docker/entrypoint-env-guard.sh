@@ -1,6 +1,7 @@
 #!/bin/sh
 
 validate_phoenix_lifecycle() {
+  validate_cloud_drain_argv "$0" "$@"
   case "${DAWARICH_PHOENIX_LIFECYCLE-false}" in
     false) ;;
     true)
@@ -14,6 +15,36 @@ validate_phoenix_lifecycle() {
       exit 1
       ;;
   esac
+}
+
+validate_cloud_drain_mode() {
+  case "${DAWARICH_CLOUD_DRAIN_ONLY-false}" in
+    false) return ;;
+    true)
+      if [ "${SELF_HOSTED-true}" = false ] &&
+         [ "${DAWARICH_PHOENIX_LIFECYCLE-false}" = false ] &&
+         [ -z "${DAWARICH_PROCESS_ROLE:-}" ]; then
+        return
+      fi
+      echo "Cloud drain requires SELF_HOSTED=false and a source worker without native or idle mode" >&2
+      ;;
+    *) echo "DAWARICH_CLOUD_DRAIN_ONLY must be true or false" >&2 ;;
+  esac
+  exit 1
+}
+
+validate_cloud_drain_argv() {
+  validate_cloud_drain_mode
+  [ "${DAWARICH_CLOUD_DRAIN_ONLY-false}" = true ] || return 0
+  if [ "${1##*/}" = cloud-sidekiq-entrypoint.sh ]; then
+    shift
+    case "$#" in
+      1) [ "$1" = sidekiq ] && return 0 ;;
+      3) [ "$1" = sidekiq ] && [ "$2" = -C ] && [ "$3" = config/sidekiq.yml ] && return 0 ;;
+    esac
+  fi
+  echo "Cloud drain permits only the source Sidekiq worker with its known configuration" >&2
+  exit 1
 }
 
 phoenix_lifecycle_is_native() {

@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'fileutils'
+require 'json'
 require 'open3'
 require 'tmpdir'
 
@@ -49,6 +50,137 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
                                        File.join(root, 'docker', name), *args)
     calls = File.exist?(calls_file) ? File.readlines(calls_file, chomp: true) : []
     { stderr:, status:, calls: }
+  end
+
+  def rails_probe(code)
+    env = {
+      'SELF_HOSTED' => 'false', 'DAWARICH_CLOUD_DRAIN_ONLY' => 'false',
+      'DAWARICH_PHOENIX_LIFECYCLE' => 'false', 'DATABASE_URL' => nil,
+      'REDIS_URL' => 'redis://127.0.0.1:7317', 'RAILS_JOB_QUEUE_DB' => '1'
+    }
+    stdout, stderr, status = Open3.capture3(env, 'asdf', 'exec', 'bundle', 'exec', 'ruby', '-e', code, chdir: root)
+    expect(status).to be_success, "Rails probe failed: #{stderr.lines.last(8).join}"
+    JSON.parse(stdout.lines.find { |line| line.start_with?('DRAIN_PROBE=') }.delete_prefix('DRAIN_PROBE='))
+  end
+
+  it 'drain only Rails boot disables cache cron loading cron polling and reverse poller' do
+    result = rails_probe(<<~RUBY)
+      require 'sidekiq/cli'
+      require 'sidekiq-cron'
+      require 'json'
+      Sidekiq.configure_server { |c| c.redis = { url: ENV.fetch('REDIS_URL'), db: 1 } }
+      Sidekiq.redis { |r| r.call('FLUSHDB') }
+      Sidekiq::Cron::Job.create(name: 'drain-stale', cron: '* * * * *', class: 'Cache::CleaningJob')
+      require 'redis'
+      Redis.new(url: ENV.fetch('REDIS_URL'), db: 0).flushdb
+      ENV['DAWARICH_CLOUD_DRAIN_ONLY'] = 'true'
+      module Rails; class Server; end; end
+      require './config/environment'
+      calls = []
+      observer = Module.new do
+        define_method(:start) { calls << :reverse; super() }
+      end
+      RailsCommands::Poller.singleton_class.prepend(observer)
+      Sidekiq.default_configuration[:lifecycle_events][:startup].each(&:call)
+      launcher = Sidekiq::Launcher.new(Sidekiq.default_configuration, embedded: true)
+      puts 'DRAIN_PROBE=' + JSON.generate(
+        enabled: Sidekiq::Cron.configuration.enabled,
+        interval: Sidekiq::Cron.configuration.cron_poll_interval,
+        poller: !launcher.cron_poller.nil?,
+        registrations: Sidekiq::Cron::Job.all.map(&:name), reverse_starts: calls.length,
+        cache_jobs: Sidekiq::Queue.all.flat_map { |q| q.map { |j| j.item['wrapped'] } },
+        queued: Sidekiq::Queue.all.sum(&:size)
+      )
+      RailsCommands::Poller.stop
+      Sidekiq.redis { |r| r.call('FLUSHDB') }
+    RUBY
+    expect(result).to include('enabled' => false, 'interval' => 0, 'poller' => false,
+                              'registrations' => ['drain-stale'], 'reverse_starts' => 0,
+                              'cache_jobs' => [], 'queued' => 0)
+  end
+
+  it 'drain only rejects new callback manual and framework source enqueues without acknowledging them' do
+    result = rails_probe(<<~RUBY)
+      require './config/environment'
+      require 'sidekiq/api'
+      require 'json'
+      ActiveJob::Base.queue_adapter = :sidekiq
+      class DrainProbeJob < ApplicationJob; def perform; end; end
+      Sidekiq.redis { |r| r.call('FLUSHDB') }
+      original = DrainProbeJob.perform_later
+      future = DrainProbeJob.set(wait: 60).perform_later
+      snapshot = -> { Sidekiq.redis { |r| r.call('LRANGE', 'queue:default', 0, -1) } +
+                      Sidekiq::ScheduledSet.new.map(&:jid) }
+      before = snapshot.call
+      ENV['DAWARICH_CLOUD_DRAIN_ONLY'] = 'true'
+      attempts = [
+        -> { User.new(id: 991).send(:trigger_creation_webhook) },
+        -> { DrainProbeJob.perform_later },
+        -> { DrainProbeJob.set(wait: 10).perform_later },
+        -> { ActiveJob.perform_all_later(DrainProbeJob.new) },
+        -> { ActiveStorage::PurgeJob.perform_later(nil) },
+        -> { Sidekiq::Client.push('class' => 'DrainProbe', 'args' => []) },
+        -> { Sidekiq::Client.new.push_bulk('class' => 'DrainProbe', 'args' => [[], []]) }
+      ]
+      errors = attempts.map do |attempt|
+        begin
+          attempt.call
+          'acknowledged'
+        rescue StandardError => e
+          e.class.name
+        end
+      end
+      after = snapshot.call
+      Sidekiq.redis { |r| r.call('ZADD', 'schedule', Time.now.to_f - 1,
+        Sidekiq::ScheduledSet.new.first.value) }
+      Sidekiq::Scheduled::Enq.new(Sidekiq.default_configuration).enqueue_jobs(['schedule'])
+      transferred = Sidekiq::Queue.new('default').map(&:jid).include?(future.provider_job_id)
+      ENV['DAWARICH_CLOUD_DRAIN_ONLY'] = 'false'
+      resumed = DrainProbeJob.perform_later
+      puts 'DRAIN_PROBE=' + JSON.generate(errors: errors, unchanged: before == after,
+        original: !original.provider_job_id.nil?, future: !future.provider_job_id.nil?,
+        resumed: !resumed.provider_job_id.nil?, transferred: transferred)
+      Sidekiq.redis { |r| r.call('FLUSHDB') }
+    RUBY
+    expect(result).to include('errors' => Array.new(7, 'CloudDrain::EnqueueRefused'), 'unchanged' => true,
+                              'original' => true, 'future' => true, 'resumed' => true, 'transferred' => true)
+  end
+
+  it 'drain only prevents fresh source job commands but retains accepted native forwarding identity' do
+    result = rails_probe(<<~RUBY)
+      require './config/environment'
+      require 'sidekiq/api'
+      require 'json'
+      ActiveJob::Base.queue_adapter = :sidekiq
+      db = ActiveRecord::Base.connection
+      db.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
+      db.execute("CREATE TABLE IF NOT EXISTS phoenix.job_owners (key text PRIMARY KEY, owner text DEFAULT 'sidekiq')")
+      Sidekiq.redis { |r| r.call('FLUSHDB') }
+      ENV['DAWARICH_CLOUD_DRAIN_ONLY'] = 'true'
+      type = 'trips.calculate'
+      key = 'command:' + type
+      payload = { 'trip_id' => 991, 'distance_unit' => 'km' }
+      options = { aggregate_id: '991', producer: 'drain-probe' }
+      event = 'c87d611e-7182-4f54-8f0b-2b641debe4b4'
+      db.transaction do
+        db.execute("INSERT INTO phoenix.job_owners(key, owner) VALUES ('command:trips.calculate','oban') ON CONFLICT (key) DO UPDATE SET owner='oban'")
+        before = JobOutbox.count
+        root = begin; JobCommands.produce(type, payload, **options); 'acknowledged'; rescue StandardError => e; e.class.name; end
+        forwarded = 2.times.map { JobCommands.produce(type, payload.merge('source_job_id' => event), **options) }
+        rows = JobOutbox.where(event_id: event).to_a
+        db.execute("UPDATE phoenix.job_owners SET owner='sidekiq' WHERE key='command:trips.calculate'")
+        child = begin; JobCommands.produce(type, payload.merge('source_job_id' => event), **options); 'acknowledged'; rescue StandardError => e; e.class.name; end
+        puts 'DRAIN_PROBE=' + JSON.generate(root: root, forwarded: forwarded, child: child,
+          count_delta: JobOutbox.count - before, event: rows.map(&:event_id),
+          source_ids: rows.map { |r| r.payload['source_job_id'] }, queued: Sidekiq::Queue.all.sum(&:size))
+        raise ActiveRecord::Rollback
+      end
+      Sidekiq.redis { |r| r.call('FLUSHDB') }
+    RUBY
+    expect(result).to include('root' => 'CloudDrain::EnqueueRefused', 'forwarded' => %w[outbox outbox],
+                              'child' => 'CloudDrain::EnqueueRefused', 'count_delta' => 1,
+                              'event' => ['c87d611e-7182-4f54-8f0b-2b641debe4b4'],
+                              'source_ids' => ['c87d611e-7182-4f54-8f0b-2b641debe4b4'], 'queued' => 0)
   end
 
   it 'native web boot runs migrate then seeds then Phoenix with original server argv' do
