@@ -111,7 +111,7 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
       { watcher: 'i07', immich: 'i08', teslamate: 'i09', stale: 'i10', photoprism: 'i11', trek: 'i12' }
         .each do |provider, task|
           path = Rails.root.join("app-phoenix/test/fixtures/imports_pages/a12f3a-#{task}.json")
-          data = results.fetch(provider.to_s)
+          data = results.fetch(provider.to_s).as_json
           if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
             File.write(path, "#{JSON.pretty_generate(data)}\n")
           else
