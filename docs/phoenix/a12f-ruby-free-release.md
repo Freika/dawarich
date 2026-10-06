@@ -49,8 +49,11 @@ Cloud database CREATE/schema-owner rights and L1 provisioning are unproved at
 this head; source schema-loading for tests does not prove NEW provisioning.
 
 Registration copy authority is `ReleaseMigrations.V1_13_1.copy_registration_setting`:
-the migration owner copies source Flipper registration policy into the native
-service setting under existing exclusion. Do not derive it from new self-hosted
+the migration owner copies the source Redis cache entry
+`dawarich/registration_enabled` into `phoenix.registration_setting`, preserving
+an existing native row; a missing cache entry uses the explicit
+`ALLOW_EMAIL_PASSWORD_REGISTRATION` environment policy. Copy happens under
+existing exclusion. Do not derive it from new self-hosted
 account defaults or run an independent web-time copy.
 
 Storage service names remain `test`/`local`/`s3` (`config/storage.yml`,
