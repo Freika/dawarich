@@ -29,3 +29,21 @@ covers MIME/size refusal and shared failure cleanup. Initial missing-function
 RED; GREEN 1 selected test; M-R02 purged an attached blob and failed the
 retained-blob assertion; restored GREEN 1 selected test. Full fault-envelope
 coverage remains subject to the source-backed request table.
+
+R01 native endpoint saves signed MP4s in all three deployment mode settings,
+including unidentified uploads (native AnalysisWorker), exact size ceiling,
+default name, unknown-key filtering and Unicode truncation. The source
+`Recipe.read/1` replay contract remains available under coexistence; standalone
+mode coerces native scalar/container recipe values before truncation. The
+route-video domain gate no longer vetoes Cloud. Initial RED was a native 500
+for explicit Cloud; GREEN 27 endpoint table cases plus scalar coercion;
+M-R01 retained `unknown` and failed persisted recipe equality; restored GREEN.
+Container coercion is source-code-backed but has no additional recorded source
+envelope; ordered multi-key nested hashes remain an edge parity handoff.
+
+R03 reconciled with merged retention: initial aggregate was already GREEN.
+Cap zero/one, age boundary, gallery prepend/replacement order and durable
+recipe/status compare to the existing captures. M-R03 expired newest instead
+of oldest and failed exact stream equality; restored GREEN. No completed
+retention adapter was rewritten. Equal-created-at ordering remains whatever
+the source relation specifies; no new tie policy is claimed.
