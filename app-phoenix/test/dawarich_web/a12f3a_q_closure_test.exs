@@ -422,7 +422,7 @@ defmodule DawarichWeb.A12f3aQClosureTest do
   end
 
   @tag a12f3a_q12: true
-  test "Q12: public yearly digest and expiration matches current Rails contract without a native-owner Rails effect",
+  test "Q12: public digest grant and markup matches current Rails contract without a native-owner Rails effect",
        %{user: user, context: ctx} do
     stamp = NaiveDateTime.utc_now(:second)
 
@@ -454,7 +454,7 @@ defmodule DawarichWeb.A12f3aQClosureTest do
   end
 
   @tag a12f3a_q14: true
-  test "Q14: public month and expiration matches current Rails contract without a native-owner Rails effect",
+  test "Q14: public shared month matches current Rails contract without a native-owner Rails effect",
        %{user: user, context: ctx} do
     uuid = hd(fixture("14"))["uuid"]
 
