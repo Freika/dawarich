@@ -54,6 +54,20 @@ module ApiFoundationGoldenOracle
     { name: 'rails_ready_anonymous', expect: :rails, path: '/api/v1/ready', auth: :none },
     { name: 'rails_ready_pending_payment', expect: :rails, path: '/api/v1/ready', user: { status: 'pending_payment' } }
   ].freeze
+  CLOSURE_CASES = [
+    { name: 'closure_plan_cloud_lite', env: { 'SELF_HOSTED' => 'false' }, user: { plan: 'lite' } },
+    { name: 'closure_me_cloud_lite', path: '/api/v1/users/me', env: { 'SELF_HOSTED' => 'false' },
+      user: { plan: 'lite', status: 'inactive', active_until: nil, timezone: 'Berlin' },
+      settings: { 'maps' => { 'distance_unit' => 'mi', 'hidden_tile_categories' => ['water'] } } },
+    { name: 'closure_me_self_hosted', path: '/api/v1/users/me', user: { active_until: nil } },
+    { name: 'closure_me_cloud_pending', path: '/api/v1/users/me', env: { 'SELF_HOSTED' => 'false' },
+      user: { status: 'pending_payment' } },
+    { name: 'closure_manager_missing_secret', method: :post, path: '/api/v1/users/exist', auth: :none },
+    { name: 'closure_manager_bad_secret', method: :post, path: '/api/v1/users/exist', auth: :none,
+      env: { 'SUBSCRIPTION_WEBHOOK_SECRET' => 'synthetic-a12f2a-webhook' }, headers: { 'X-Webhook-Secret' => 'wrong' } },
+    { name: 'closure_manager_missing_ids', method: :post, path: '/api/v1/users/exist', auth: :none,
+      env: { 'SUBSCRIPTION_WEBHOOK_SECRET' => 'synthetic-a12f2a-webhook' }, headers: { 'X-Webhook-Secret' => 'synthetic-a12f2a-webhook' } }
+  ].freeze
 
   def self.results
     @results ||= []
@@ -69,11 +83,14 @@ RSpec.describe 'Phoenix fixture: golden API foundation requests', type: :request
     path = Rails.root.join('app-phoenix/test/fixtures/api_foundation/golden.json')
     FileUtils.mkdir_p(path.dirname)
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil),
-                'cases' => ApiFoundationGoldenOracle.results.sort_by { _1['name'] } }
+                'cases' => ApiFoundationGoldenOracle.results.reject { _1['name'].start_with?('closure_') }.sort_by { _1['name'] } }
+    closure = { 'cases' => ApiFoundationGoldenOracle.results.select { _1['name'].start_with?('closure_') }.sort_by { _1['name'] } }
+    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2a/closure.json'),
+                            "#{Oj.dump(closure, mode: :strict, float_precision: 0, indent: 2)}\n")
     File.write(path, "#{Oj.dump(fixture, mode: :strict, float_precision: 0, indent: 2)}\n")
   end
 
-  ApiFoundationGoldenOracle::CASES.each do |kase|
+  (ApiFoundationGoldenOracle::CASES + ApiFoundationGoldenOracle::CLOSURE_CASES).each do |kase|
     it(kase[:name]) do
       defaults = { method: :get, path: ApiFoundationGoldenOracle::PLAN, auth: :bearer, expect: :own, env: {} }
       ApiFoundationGoldenOracle.results << record(kase.reverse_merge(defaults))
@@ -91,12 +108,18 @@ RSpec.describe 'Phoenix fixture: golden API foundation requests', type: :request
     user.update_columns(api_key: "phoenix-a4-golden-key-#{kase[:name]}", plan: User.plans.fetch(attrs[:plan]),
                         status: attrs[:status] && User.statuses.fetch(attrs[:status]),
                         subscription_source: User.subscription_sources.fetch(attrs[:subscription_source]),
-                        active_until: attrs[:active_until], settings:, deleted_at: attrs[:deleted_at])
+                        active_until: attrs[:active_until], settings: settings.merge(kase[:settings] || {}), deleted_at: attrs[:deleted_at])
     user
   end
 
   def record(kase)
     user = user_for(kase)
+    if kase[:name].start_with?('closure_')
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('SUBSCRIPTION_WEBHOOK_SECRET').and_return(kase[:env]['SUBSCRIPTION_WEBHOOK_SECRET'])
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('JWT_SECRET_KEY').and_return(FixtureRecording::SECRET)
+    end
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false) if kase[:env]['SELF_HOSTED'] == 'false'
     headers = { 'Host' => 'localhost' }.merge(kase[:headers] || {})
     headers['Authorization'] = "Bearer #{user.api_key}" if kase[:auth] == :bearer

@@ -30,14 +30,18 @@ defmodule DawarichWeb.Api.UsersController do
   end
 
   def call(conn, :me) do
+    now = conn.assigns[:api_now] || DateTime.utc_now()
+
     result =
-      if conn.assigns.api_format in [:json, :html, :all],
-        do: Payload.read(conn.assigns.api_user.id),
-        else: {:replay, "account format"}
+      case Dawarich.AccountApi.Closure.pending(conn.assigns.api_user, now) do
+        :ok -> Payload.read(conn.assigns.api_user.id, now)
+        pending -> pending
+      end
 
     case result do
       {:ok, term} -> Respond.json(conn, 200, term)
-      {:replay, reason} -> Body.replay(conn, reason)
+      {:ok, status, term} -> Respond.json(conn, status, term)
+      _ -> Respond.json(conn, 500, {:object, [{"error", "internal_server_error"}]})
     end
   end
 end
