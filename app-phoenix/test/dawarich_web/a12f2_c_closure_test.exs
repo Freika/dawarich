@@ -34,6 +34,7 @@ defmodule DawarichWeb.A12f2CClosureTest do
 
     assert {:ok, tile, features} = invoke(Dawarich.Tiles.Points, :fetch, [user, params])
     assert is_binary(tile) and byte_size(tile) > 0
+    assert {:ok, ^tile, _} = Dawarich.Tiles.Points.fetch(user, Map.put(params, "y", "338.mvt"))
     assert [%{"count" => 1, "timestamp" => 1_735_689_600, "revision" => 0}] = features
     assert tile =~ "points"
     conn = tile_conn(user, params)
@@ -411,6 +412,79 @@ defmodule DawarichWeb.A12f2CClosureTest do
 
     assert {:error, 500} =
              Dawarich.Digests.ReadClosure.show(%{user | id: 810_001}, "2024junk", %{}, [])
+  end
+
+  @tag :a12f2_c_09
+  test "MCP GET POST DELETE retain stateless JSON RPC negotiation protocol headers and Bearer only auth",
+       %{user: user} do
+    Repo.query!("UPDATE users SET api_key='synthetic-mcp' WHERE id=$1", [user.id])
+
+    headers = [
+      {"authorization", "Bearer synthetic-mcp"},
+      {"accept", "application/json"},
+      {"content-type", "application/json"}
+    ]
+
+    assert {:ok, actor} = invoke(Dawarich.Mcp.Transport, :authorize, [headers, %{}])
+    assert actor.id == user.id
+
+    assert {:error, 401} =
+             invoke(Dawarich.Mcp.Transport, :authorize, [
+               Enum.reject(headers, &(elem(&1, 0) == "authorization")),
+               %{"api_key" => "synthetic-mcp"}
+             ])
+
+    init =
+      Jason.encode!(%{
+        "jsonrpc" => "2.0",
+        "id" => "client-1",
+        "method" => "initialize",
+        "params" => %{
+          "protocolVersion" => "2025-11-25",
+          "capabilities" => %{},
+          "clientInfo" => %{"name" => "synthetic", "version" => "1"}
+        }
+      })
+
+    assert {200, reply} = invoke(Dawarich.Mcp.Transport, :request, ["POST", headers, init, actor])
+    assert reply["id"] == "client-1"
+    assert reply["result"]["serverInfo"]["name"] == "dawarich"
+    assert reply["result"]["protocolVersion"] == "2025-11-25"
+    assert reply["result"] == Jason.decode!(oracle("mcp_initialize")["body"])["result"]
+    assert {405, _} = Dawarich.Mcp.Transport.request("GET", headers, "", actor)
+
+    assert {200, %{"success" => true}} =
+             Dawarich.Mcp.Transport.request("DELETE", headers, "", actor)
+
+    assert {202, nil} =
+             Dawarich.Mcp.Transport.request(
+               "POST",
+               headers,
+               ~s({"jsonrpc":"2.0","method":"notifications/initialized"}),
+               actor
+             )
+
+    assert {400, %{"error" => %{"code" => -32600}}} =
+             Dawarich.Mcp.Transport.request("POST", headers, "[]", actor)
+
+    assert {400, %{"error" => %{"code" => -32700}}} =
+             Dawarich.Mcp.Transport.request("POST", headers, "{", actor)
+
+    assert {406, _} =
+             Dawarich.Mcp.Transport.request(
+               "POST",
+               List.keydelete(headers, "accept", 0),
+               init,
+               actor
+             )
+
+    assert {400, _} =
+             Dawarich.Mcp.Transport.request(
+               "DELETE",
+               [{"mcp-protocol-version", "invalid"} | headers],
+               "",
+               actor
+             )
   end
 
   defp track(user_id) do
