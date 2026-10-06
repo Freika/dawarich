@@ -471,6 +471,140 @@ defmodule DawarichWeb.A12f2FClosureTest do
     assert user.otp_secret == nil and user.otp_backup_codes == []
   end
 
+  @tag :a12f2_f_07
+  test "Browser OTP and 2FA retain lockout backup consumption pending state remember and recovery effects",
+       ctx do
+    alias Dawarich.Auth.Otp.Pending
+    alias Dawarich.Auth.TwoFactor.Secret
+    alias DawarichWeb.AuthOtp.Http
+    for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
+    id = insert_user(ctx.email)
+    crypto = Jason.decode!(File.read!("test/fixtures/active_record_encryption.json"))
+    env = Enum.find(crypto["environments"], &(&1["name"] == "explicit keys"))["env"]
+    {:ok, secret} = Secret.encrypt("JBSWY3DPEHPK3PXP", env)
+
+    Repo.query!(
+      "UPDATE users SET otp_required_for_login=true,otp_secret=$2,failed_otp_attempts=6,settings='{}' WHERE id=$1",
+      [id, secret],
+      log: false
+    )
+
+    now = DateTime.utc_now()
+
+    context = %{
+      self_hosted: true,
+      oidc: false,
+      env: env,
+      clock: fn -> now end,
+      enqueue_otp_lock: fn actor ->
+        send(self(), {:otp_lock, actor.id})
+        :ok
+      end
+    }
+
+    opts = [enabled: true, native: true, context: context, fallback: &replay/1]
+    pending = Pending.start(guest(), id, "1", DateTime.to_unix(now))
+
+    {last, _session} =
+      Enum.reduce(1..5, {nil, pending}, fn n, {_response, session} ->
+        params = csrf(%{"otp_attempt" => "invalid-code"}, session, "POST", "/users/otp_challenge")
+        response = Http.call(request(:post, "/users/otp_challenge", session, params), opts)
+        assert response.status == if(n < 5, do: 422, else: 302)
+        refute response.private[:replayed]
+        refute Map.has_key?(response.resp_cookies, "remember_user_token")
+        assert response.resp_cookies["_dawarich_session"]
+        {response, response_session(response)}
+      end)
+
+    ended = response_session(last)
+    refute Map.has_key?(ended, "otp_user_id")
+
+    expected =
+      DawarichWeb.Translate.t(
+        "en",
+        "controllers.users.otp_challenge.account_temporarily_locked_due_to_too_many_failed_2fa_attempts",
+        %{}
+      )
+
+    assert ended["flash"]["flashes"]["alert"] == expected
+    assert Repo.get!(Account, id).failed_otp_attempts == 10
+    assert Repo.get!(Account, id).otp_locked_at != nil
+    assert_received {:otp_lock, ^id}
+    refute_received {:otp_lock, _}
+    key = "otp_lockout_email_throttle/user/#{id}"
+    Dawarich.Redis.cache_command(["DEL", key])
+    assert Code.ensure_loaded?(Dawarich.Auth.TwoFactor.Closure)
+
+    Repo.query!(
+      "UPDATE users SET otp_locked_at=NULL,failed_otp_attempts=0,provider='github',otp_secret=NULL,otp_required_for_login=false WHERE id=$1",
+      [id],
+      log: false
+    )
+
+    browser_context =
+      Map.merge(context, %{
+        self_hosted: false,
+        oidc: true,
+        native: true,
+        backup_options: [log_rounds: 4]
+      })
+
+    browser_opts = [enabled: true, native: true, context: browser_context, fallback: &replay/1]
+    actor = Repo.get!(Account, id)
+
+    browser_session =
+      Map.put(guest(), "warden.user.user.key", [
+        [id],
+        binary_part(actor.encrypted_password, 0, 29)
+      ])
+
+    browser = DawarichWeb.AuthTwoFactor.Http
+
+    setup =
+      browser.call(
+        request(
+          :post,
+          "/settings/two_factor",
+          browser_session,
+          csrf(%{}, browser_session, "POST", "/settings/two_factor")
+        ),
+        browser_opts
+      )
+
+    assert setup.status == 200
+    refute setup.private[:replayed]
+    {:ok, otp} = Secret.decrypt(Repo.get!(Account, id).otp_secret, env)
+    code = Dawarich.Auth.TwoFactor.Totp.at(otp, DateTime.to_unix(now))
+
+    verified =
+      browser.call(
+        request(
+          :post,
+          "/settings/two_factor/verify",
+          browser_session,
+          csrf(%{"otp_attempt" => code}, browser_session, "POST", "/settings/two_factor/verify")
+        ),
+        browser_opts
+      )
+
+    assert verified.status == 200
+    assert Repo.get!(Account, id).otp_required_for_login
+    assert length(Repo.get!(Account, id).otp_backup_codes) == 10
+
+    invalid =
+      browser.call(
+        request(:delete, "/settings/two_factor", browser_session, %{
+          "password" => "safepassword12",
+          "otp_attempt" => code,
+          "authenticity_token" => "invalid"
+        }),
+        browser_opts
+      )
+
+    assert invalid.status == 422
+    assert Repo.get!(Account, id).otp_required_for_login
+  end
+
   @tag :a12f2_f_08
   test "Account and API key updates retain legacy sessions Cloud validation encryption and immediate token revocation",
        ctx do
