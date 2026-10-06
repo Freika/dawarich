@@ -315,10 +315,21 @@ defmodule Dawarich.ReleaseJobsTest do
     end
   end
 
+  @tag a12f3b_case: "E192a"
   test "unknown classes are refused" do
-    for class <- ["DataMigrations::NoSuchJob", "Users::RecalculateDataJob", ""] do
-      assert ReleaseJobs.decode(class, []) == {:error, :unknown_class}, class
+    for {class, arguments} <- [
+          {"DataMigrations::NoSuchJob", []},
+          {"Users::RecalculateDataJob", []},
+          {"", []},
+          {"DataMigrations::SetPointsCountryIdsJob", [42]},
+          {"DataMigrations::SetReverseGeocodedAtForPointsJob", []},
+          {"DataMigrations::StartSettingsPointsCountryIdsJob", []}
+        ] do
+      assert ReleaseJobs.decode(class, arguments) == {:error, :unknown_class}, class
     end
+
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
   end
 
   test "family backfills skip self-hosted and use native Cloud operations" do

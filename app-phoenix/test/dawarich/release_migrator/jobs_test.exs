@@ -132,6 +132,7 @@ defmodule Dawarich.ReleaseMigrator.JobsTest do
     assert jobs() == []
   end
 
+  @tag a12f3b_case: "E192b"
   test "skip records intent without job and invalid decodes refuse the version" do
     vector("DataMigrations::BackfillFamiliesForFamilyPlanJob", [], 0)
     assert {:ok, _} = migrate()
@@ -142,6 +143,9 @@ defmodule Dawarich.ReleaseMigrator.JobsTest do
           {"DataMigrations::BackfillAchievementsJob", [1]},
           {"TransportationModes::ImportBackfillJob", [nil]},
           {"DataMigrations::FixRouteOpacityJob", [1]},
+          {"DataMigrations::SetPointsCountryIdsJob", [42]},
+          {"DataMigrations::SetReverseGeocodedAtForPointsJob", []},
+          {"DataMigrations::StartSettingsPointsCountryIdsJob", []},
           {"UnknownJob", []}
         ] do
       scratch_sql!(
