@@ -196,6 +196,15 @@ defmodule DawarichWeb.Router do
 
   defp put_path_format(conn, _opts), do: conn
 
+  defp put_tile_format(conn, _opts),
+    do: Plug.Conn.assign(conn, :api_params, Map.put(conn.assigns.api_params, "format", "mvt"))
+
+  defp spatial_grant_auth(conn, _opts) do
+    if Dawarich.ReleaseMigrations.Effects.Support.Ruby.present?(conn.assigns.api_params["uuid"]),
+      do: DawarichWeb.Api.Auth.public(conn),
+      else: DawarichWeb.Api.Auth.call(conn, require_active: false)
+  end
+
   defp phoenix_session(conn, _opts) do
     opts =
       Keyword.put(

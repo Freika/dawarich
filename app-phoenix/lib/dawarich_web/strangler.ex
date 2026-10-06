@@ -23,6 +23,8 @@ defmodule DawarichWeb.Strangler do
   @keys %{"s" => "sharing", "invitations" => "family"}
 
   @constraints %{
+    "/api/v1/tiles/points/:z/:x/:y" => %{"y" => ~r/\A[^\/]+\.mvt\z/},
+    "/api/v1/tiles/tracks/:z/:x/:y" => %{"y" => ~r/\A[^\/]+\.mvt\z/},
     "/family/location_requests/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/visits/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/visits/:id/possible_places" => %{"id" => ~r/\A\d{1,18}\z/},

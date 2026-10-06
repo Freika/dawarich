@@ -33,6 +33,14 @@ defmodule DawarichWeb.ApiReadRoutes do
         get "/points/:z/:x/:y", PointTilesController, :show, metadata: %{slice: :api_map_reads}
         get "/tracks/:z/:x/:y", TrackTilesController, :show, metadata: %{slice: :api_map_reads}
       end
+
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_transport
+
+        for method <- [:get, :post, :delete] do
+          match method, "/mcp", McpController, :handle, metadata: %{slice: :api_map_reads}
+        end
+      end
     end
   end
 
@@ -45,8 +53,8 @@ defmodule DawarichWeb.ApiReadRoutes do
         get "/insights", StatsController, :insights, metadata: %{slice: :api_stats}
         get "/insights/details", StatsController, :details, metadata: %{slice: :api_stats}
         get "/residency", StatsController, :residency, metadata: %{slice: :api_stats}
-        get "/digests", DigestsController, :index, metadata: %{slice: :api_stats}
-        get "/digests/:year", DigestsController, :show, metadata: %{slice: :api_stats}
+        get "/digests", DigestsController, :closure_index, metadata: %{slice: :api_stats}
+        get "/digests/:year", DigestsController, :closure_show, metadata: %{slice: :api_stats}
 
         get "/countries/visited_cities", GeoController, :visited_cities,
           metadata: %{slice: :api_stats}

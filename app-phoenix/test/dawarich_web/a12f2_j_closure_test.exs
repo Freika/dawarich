@@ -32,6 +32,40 @@ defmodule DawarichWeb.A12f2JClosureTest do
     no_upstream!(c.upstream)
   end
 
+  @tag :a12f2_j_activate_c
+  test "Merged spatial tiles digest and MCP reads own their Endpoint requests", c do
+    for path <-
+          ~w(/api/v1/timeline /api/v1/tags/privacy_zones /api/v1/countries/borders /api/v1/countries/visited /api/v1/points/tracked_months /api/v1/maps/hexagons /api/v1/maps/hexagons/bounds /api/v1/maps/hexagons/fog /api/v1/tiles/points/0/0/0.mvt /api/v1/tiles/tracks/0/0/0.mvt /api/v1/mcp) do
+      assert {401, _, ""} = endpoint(c, "GET", path), path
+    end
+
+    user!(%{api_key: @key, settings: %{"timezone" => "UTC"}})
+
+    assert {200, _, timeline} =
+             endpoint(
+               c,
+               "GET",
+               "/api/v1/timeline?start_at=2026-01-01&end_at=2026-01-01",
+               bearer()
+             )
+
+    assert is_map(Jason.decode!(timeline))
+    assert {204, _, ""} = endpoint(c, "GET", "/api/v1/tiles/points/0/0/0.mvt", bearer())
+
+    assert {404, _, _} =
+             endpoint(c, "GET", "/api/v1/maps/hexagons?uuid=missing", [
+               {"Accept", "application/json"}
+             ])
+
+    assert route("GET", "/api/v1/digests").plug_opts == :closure_index
+    assert route("GET", "/api/v1/digests/2026").plug_opts == :closure_show
+
+    for method <- ~w(GET POST DELETE),
+        do: assert(route(method, "/api/v1/mcp").plug_opts == :handle)
+
+    no_upstream!(c.upstream)
+  end
+
   defp bearer, do: [{"Authorization", "Bearer #{@key}"}, {"Accept", "application/json"}]
 
   defp route(method, path),

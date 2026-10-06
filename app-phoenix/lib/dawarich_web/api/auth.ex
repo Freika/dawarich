@@ -179,7 +179,8 @@ defmodule DawarichWeb.Api.Auth do
                  "html" => :html,
                  "xml" => :xml,
                  "text" => :text,
-                 "jpg" => :jpeg
+                 "jpg" => :jpeg,
+                 "mvt" => :mvt
                },
                conn.assigns.api_params["format"]
              ) do

@@ -161,6 +161,34 @@ defmodule DawarichWeb.ApiRoutes do
         plug DawarichWeb.Api.Auth, require_active: false
       end
 
+      pipeline :api_tiles do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.Api.Body
+        plug :put_tile_format
+        plug DawarichWeb.Api.Auth, require_active: false
+      end
+
+      pipeline :api_spatial_grants do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.Api.Body
+        plug :spatial_grant_auth
+      end
+
+      pipeline :api_transport do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.Api.Respond, :prepare
+      end
+
+      a12f2_c_spatial_routes()
       api_stats_routes()
 
       scope "/api/v1", DawarichWeb.Api do
@@ -168,10 +196,7 @@ defmodule DawarichWeb.ApiRoutes do
 
         for {path, action} <- [
               {"/settings", :settings},
-              {"/settings/transportation_recalculation_status", :progress},
-              {"/maps/hexagons/bounds", :bounds},
-              {"/tiles/points/:z/:x/:y", :points},
-              {"/tiles/tracks/:z/:x/:y", :tracks}
+              {"/settings/transportation_recalculation_status", :progress}
             ] do
           get path, StandaloneMap, action,
             metadata: %{

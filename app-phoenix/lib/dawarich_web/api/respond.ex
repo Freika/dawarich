@@ -8,6 +8,23 @@ defmodule DawarichWeb.Api.Respond do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.RailsHeaders
 
+  def init(opts), do: opts
+  def call(conn, :prepare), do: prepare(conn)
+
+  def prepare(conn) do
+    conn
+    |> assign(:api_started, System.monotonic_time())
+    |> assign(:api_format, :json)
+    |> assign(:api_vary, false)
+    |> assign(:api_request_id, Ecto.UUID.generate())
+    |> assign(
+      :api_headers,
+      DawarichWeb.Api.Headers.dawarich(false, Dawarich.AppVersion.current())
+    )
+    |> assign(:api_if_none_match, List.first(get_req_header(conn, "if-none-match")))
+    |> assign(:api_user, nil)
+  end
+
   def json(conn, status, term, opts \\ []),
     do:
       send_body(
