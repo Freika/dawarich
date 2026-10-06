@@ -84,7 +84,7 @@ defmodule DawarichWeb.ActiveStorage.FileServer do
   def stream(%{method: "HEAD"} = conn, _source, _opts), do: send_resp(conn, 200, "")
   def stream(conn, {:local, path}, opts) do
     conn = send_chunked(conn, 200)
-    Enum.reduce_while(File.stream!(path, 65_536), conn, fn bytes, conn -> send_chunk(conn, bytes, opts) end)
+    stream_chunks(conn, File.stream!(path, 65_536), opts)
   end
 
   def stream(conn, {:s3, config, key, size}, opts) do
@@ -93,17 +93,31 @@ defmodule DawarichWeb.ActiveStorage.FileServer do
       conn
     else
       Enum.reduce_while(0..div(size-1, 65_536), conn, fn part, conn ->
-        bytes = read_range!(config, key, part*65_536, min((part+1)*65_536-1,size-1), opts)
-        send_chunk(conn, bytes, opts)
+        try do
+          bytes = read_range!(config, key, part*65_536, min((part+1)*65_536-1,size-1), opts)
+          send_chunk(conn, bytes, opts)
+        rescue
+          _ -> {:halt, halt(conn)}
+        end
       end)
     end
+  end
+
+  defp stream_chunks(conn, chunks, opts) do
+    Enum.reduce_while(chunks, conn, fn bytes, conn -> send_chunk(conn, bytes, opts) end)
+  rescue
+    _ -> halt(conn)
   end
 
   defp send_chunk(conn, bytes, opts) do
     case chunk(conn, bytes) do
       {:ok, conn} ->
-        if callback = opts[:after_chunk], do: callback.(conn)
-        {:cont, conn}
+        try do
+          if callback = opts[:after_chunk], do: callback.(conn)
+          {:cont, conn}
+        rescue
+          _ -> {:halt, halt(conn)}
+        end
       {:error, _} -> {:halt, halt(conn)}
     end
   end

@@ -15,7 +15,7 @@ defmodule Dawarich.Storage.Variation do
   defp build(%{} = transforms, signed) do
     {:ok, %__MODULE__{transformations: transforms, pairs: ordered(signed, transforms), key: signed}}
   end
-  defp build(_, _), do: :error
+  defp build(_, _), do: {:error, :invalid_transformations}
 
   defp ordered(signed, transforms) do
     with [data, _] <- String.split(signed, "--"),
@@ -38,9 +38,9 @@ defmodule Dawarich.Storage.Variation do
          true <- meta["pur"] == "variation",
          true <- live?(meta["exp"], now),
          {:ok, inner} <- Base.decode64(meta["message"]),
-         {:ok, value} <- Marshal.decode(inner),
+         {:ok, %Value{tag: :hash_default, value: {pairs, nil}} = value} <- Marshal.decode(inner, hash: :pairs),
          %{} = transforms <- normalize(value) do
-      {:ok, %__MODULE__{transformations: transforms, pairs: Enum.to_list(transforms), key: signed}}
+      {:ok, %__MODULE__{transformations: transforms, pairs: marshal_pairs(pairs), key: signed}}
     else
       _ -> :error
     end
@@ -49,11 +49,17 @@ defmodule Dawarich.Storage.Variation do
   end
   defp legacy(_, _), do: :error
 
+  defp normalize(%Value{tag: :hash_default, value: {pairs, nil}}), do: Map.new(pairs, fn {k,v} -> {normalize(k), normalize(v)} end)
   defp normalize(%Value{}), do: :error
   defp normalize({:ruby_symbol, name}), do: name
   defp normalize(value) when is_map(value), do: Map.new(value, fn {k,v} -> {normalize(k), normalize(v)} end)
   defp normalize(value) when is_list(value), do: Enum.map(value, &normalize/1)
   defp normalize(value), do: value
+
+  defp marshal_pairs(pairs), do: Enum.map(pairs, fn {k,v} -> {normalize(k), marshal_value(v)} end)
+  defp marshal_value(%Value{tag: :hash_default, value: {pairs, nil}}), do: Jason.OrderedObject.new(marshal_pairs(pairs))
+  defp marshal_value(value) when is_list(value), do: Enum.map(value, &marshal_value/1)
+  defp marshal_value(value), do: value
 
   defp live?(nil, _now), do: true
   defp live?(exp, now) do
@@ -63,15 +69,22 @@ defmodule Dawarich.Storage.Variation do
     end
   end
 
+  defp json_value({:ruby_symbol, name}), do: name
+  defp json_value(%Jason.OrderedObject{values: pairs}), do: Jason.OrderedObject.new(Enum.map(pairs, fn {k,v} -> {k,json_value(v)} end))
+  defp json_value(value) when is_list(value), do: Enum.map(value, &json_value/1)
+  defp json_value(value), do: value
+
   def sign(pairs) do
-    data = RailsMessages.json(%{"_rails" => Jason.OrderedObject.new(data: Jason.OrderedObject.new(pairs), pur: "variation")}) |> Base.encode64()
+    data = RailsMessages.json(%{"_rails" => Jason.OrderedObject.new(data: Jason.OrderedObject.new(Enum.map(pairs, fn {k,v} -> {k,json_value(v)} end)), pur: "variation")}) |> Base.encode64()
     data <> "--" <> mac(data)
   end
 
   def default(variation, format) do
-    pairs = [{"format", Map.get(variation.transformations, "format", format)} | Enum.reject(variation.pairs, &(elem(&1, 0) == "format"))]
+    pairs = [{"format", pair_format(variation.pairs, format)} | Enum.reject(variation.pairs, &(elem(&1, 0) == "format"))]
     %{variation | transformations: Map.put_new(variation.transformations, "format", format), pairs: pairs, key: sign(pairs)}
   end
+
+  defp pair_format(pairs, format), do: List.keyfind(pairs, "format", 0, {"format", format}) |> elem(1)
 
   def digest(variation), do: :crypto.hash(:sha, marshal(variation)) |> Base.encode64()
   def marshal(variation) do

@@ -15,6 +15,7 @@ defmodule DawarichWeb.ActiveStorage.UploadClosure do
          {:ok, attrs} <- attrs(params["blob"]) do
       service = Storage.service!(storage, storage.default)
       {:ok, row} = Blobs.create_before_direct_upload(service, attrs, DateTime.to_naive(now), opts)
+      if callback = opts[:after_blob], do: callback.(row)
       target = ActiveStorageUrls.direct_upload(service, row, RequestURL.base(conn), now)
       json = direct_upload_json(row, target)
       conn |> put_resp_content_type("application/json") |> put_resp_header("content-length", to_string(byte_size(json))) |> Respond.rack_etag(json) |> send_resp(200, json)
@@ -23,6 +24,8 @@ defmodule DawarichWeb.ActiveStorage.UploadClosure do
       {:error, :invalid} -> page(conn, 422)
       _ -> page(conn, 400)
     end
+  rescue
+    _ -> conn |> page(500) |> halt()
   end
 
   defp params(%{body_params: %{} = params} = conn) when not is_struct(params), do: {:ok, params, conn}

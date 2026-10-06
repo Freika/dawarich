@@ -12,6 +12,7 @@ defmodule DawarichWeb.ActiveStorage.Representations do
          {:ok, variation} <- Variation.decode(conn.path_params["variation_key"], now) do
       apply(DawarichWeb.ActiveStorage.RepresentationResponse, :call, [conn, blob, variation, storage, now, opts])
     else
+      {:error, :invalid_transformations} -> Proxy.page(conn, 500)
       :error -> Proxy.empty(conn, 404)
       nil -> Proxy.page(conn, 404)
     end

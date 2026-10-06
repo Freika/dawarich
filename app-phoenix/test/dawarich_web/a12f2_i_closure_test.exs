@@ -165,6 +165,56 @@ defmodule DawarichWeb.A12f2IClosureTest do
     assert byte_size(Jason.decode!(result.resp_body)["metadata"]["note"]) == 1_100_000
   end
 
+  @tag :a12f2_i_06
+  test "Storage failures after accepted file blob or variant effects never replay into a second Rails operation", %{storage: storage, root: root} do
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127,0,0,1}])
+    {:ok, {_,port}} = :inet.sockname(listener)
+    on_exit(fn -> :gen_tcp.close(listener) end)
+    upstream = {{127,0,0,1}, port}
+    owner = self()
+    start_supervised!({Task, fn ->
+      case :gen_tcp.accept(listener) do
+        {:ok, socket} ->
+          send(owner, :rails_replay)
+          {_head, _rest} = Dawarich.Test.RawHTTP.read_head(socket)
+          :gen_tcp.send(socket, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+          :gen_tcp.close(socket)
+        {:error, :closed} -> :ok
+      end
+    end})
+    session = %{"_csrf_token" => DawarichWeb.RailsCsrf.new_token()}
+    token = DawarichWeb.RailsCsrf.masked_token(session)
+    body = Jason.encode!(%{"blob" => %{"filename" => "accepted.png", "byte_size" => 1024, "checksum" => "synthetic"}})
+    conn = conn(:post,"http://dawarich.example/rails/active_storage/direct_uploads",body) |> put_req_header("content-type","application/json") |> put_req_header("accept","application/json") |> put_req_header("x-csrf-token",token) |> assign(:rails_session,session)
+    before = blob_count()
+    result = DawarichWeb.ActiveStorage.call(conn, action: :direct_upload, storage: storage, now: @now, key: fn -> "a12b" <> String.duplicate("t",24) end, upstream: upstream, after_blob: fn _ -> raise "synthetic response failure" end)
+    refute_received :rails_replay
+    assert result.status == 500
+    assert blob_count() == before + 1
+    fx = closure()
+    assert {:ok, variation} = Dawarich.Storage.Variation.decode(fx["variation"]["key"], @now)
+    blob = Blobs.find(970_503)
+    before = blob_count()
+    assert {:error, :processing} = Dawarich.Storage.Representations.processed(blob, variation, storage, @now, after_variant_insert: fn _ -> raise "synthetic SQL failure" end)
+    assert blob_count() == before
+    assert Repo.query!("SELECT count(*) FROM active_storage_variant_records").rows == [[0]]
+    key = "a12b" <> String.duplicate("o",24)
+    assert {:error, :processing} = Dawarich.Storage.Representations.processed(blob, variation, storage, @now, key: fn -> key end, after_put: fn _ -> raise "synthetic put failure" end)
+    assert blob_count() == before + 1
+    assert Repo.query!("SELECT count(*) FROM active_storage_variant_records").rows == [[1]]
+    assert File.read!(Storage.disk_path(root,key)) == @payload
+    assert {:ok, reused} = Dawarich.Storage.Representations.processed(blob, variation, storage, @now)
+    assert reused.key == key
+    assert blob_count() == before + 1
+    request = Enum.find(fx["requests"], &(&1["name"] == "proxy_plain"))
+    streamed = replay(request, Proxy, storage, after_chunk: fn _ -> raise "synthetic partial send" end)
+    assert streamed.status == 200
+    assert streamed.halted
+    assert streamed.resp_body == @payload
+    refute_received :rails_replay
+    assert Path.wildcard(Path.join(root,".phoenix-tmp/*")) == []
+  end
+
   defp blob_count, do: Repo.query!("SELECT count(*) FROM active_storage_blobs").rows |> hd() |> hd()
 
   defp closure, do: "test/fixtures/a12f2i/closure.json" |> File.read!() |> Jason.decode!()
