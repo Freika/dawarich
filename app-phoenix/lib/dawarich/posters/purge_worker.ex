@@ -3,6 +3,7 @@ defmodule Dawarich.Posters.PurgeWorker do
   use Oban.Worker, queue: :posters, max_attempts: 26
   alias Dawarich.{RailsRoot, Storage}
   alias Dawarich.Jobs.Processed
+  alias Dawarich.Posters.Command
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}), do: run(Dawarich.Jobs.repo(), args)
@@ -48,6 +49,17 @@ defmodule Dawarich.Posters.PurgeWorker do
             if referenced do
               nil
             else
+              children =
+                repo.query!(
+                  "DELETE FROM active_storage_attachments WHERE record_type='ActiveStorage::VariantRecord' AND record_id IN (SELECT id FROM active_storage_variant_records WHERE blob_id=$1) RETURNING blob_id",
+                  [id],
+                  log: false
+                ).rows
+                |> List.flatten()
+                |> Enum.uniq()
+
+              if children != [], do: Command.purge(repo, :oban, %{"blob_ids" => children})
+
               repo.query!("DELETE FROM active_storage_variant_records WHERE blob_id=$1", [id],
                 log: false
               )

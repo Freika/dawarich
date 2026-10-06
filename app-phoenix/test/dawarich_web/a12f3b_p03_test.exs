@@ -152,6 +152,104 @@ defmodule DawarichWeb.A12f3bP03Test do
     assert File.read!(file) == "synthetic"
   end
 
+  @tag review_case: "R2"
+  test "poster purge removes tracked variant trees while preserving shared child blobs", c do
+    {:ok, poster} = Persistence.create(%{}, %{id: 1}, "en", ScratchRepo)
+    {:ok, survivor} = Persistence.create(%{}, %{id: 1}, "en", ScratchRepo)
+    parent = blob!(c.storage, "original")
+    orphan = blob!(c.storage, "variant")
+    shared = blob!(c.storage, "shared variant")
+    nested = blob!(c.storage, "nested variant")
+
+    for {source, image, digest} <- [
+          {parent, orphan, "orphan"},
+          {parent, shared, "shared"},
+          {orphan, nested, "nested"}
+        ] do
+      [[variant]] =
+        rows(
+          "INSERT INTO active_storage_variant_records(blob_id,variation_digest) VALUES($1,$2) RETURNING id",
+          [source.id, digest]
+        )
+
+      rows(
+        "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('image','ActiveStorage::VariantRecord',$1,$2,now())",
+        [variant, image.id]
+      )
+    end
+
+    for {record, blob} <- [{poster, parent}, {survivor, shared}] do
+      rows(
+        "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('image','Poster',$1,$2,now())",
+        [record, blob.id]
+      )
+    end
+
+    assert {:ok, ^poster} = Persistence.delete(poster, %{id: 1}, ScratchRepo)
+    assert [purge] = jobs("Dawarich.Posters.PurgeWorker")
+    assert :ok = PurgeWorker.run(ScratchRepo, purge, services: c.services)
+    assert :ok = PurgeWorker.run(ScratchRepo, purge, services: c.services)
+
+    assert rows("SELECT id FROM active_storage_variant_records WHERE blob_id=$1", [parent.id]) ==
+             []
+
+    assert rows(
+             "SELECT blob_id FROM active_storage_attachments WHERE record_type='ActiveStorage::VariantRecord' AND blob_id=ANY($1)",
+             [[orphan.id, shared.id]]
+           ) == []
+
+    children = jobs("Dawarich.Posters.PurgeWorker") |> Enum.drop(1)
+
+    assert Enum.flat_map(children, & &1["blob_ids"]) |> Enum.sort() ==
+             Enum.sort([orphan.id, shared.id])
+
+    for child <- children do
+      assert :ok = PurgeWorker.run(ScratchRepo, child, services: c.services)
+      assert :ok = PurgeWorker.run(ScratchRepo, child, services: c.services)
+    end
+
+    grandchildren = jobs("Dawarich.Posters.PurgeWorker") |> Enum.drop(1 + length(children))
+    assert Enum.flat_map(grandchildren, & &1["blob_ids"]) == [nested.id]
+
+    for child <- grandchildren,
+        do: assert(:ok = PurgeWorker.run(ScratchRepo, child, services: c.services))
+
+    assert rows("SELECT id FROM active_storage_variant_records") == []
+
+    assert rows(
+             "SELECT id FROM active_storage_attachments WHERE record_type='ActiveStorage::VariantRecord'"
+           ) == []
+
+    assert rows("SELECT id FROM active_storage_blobs") == [[shared.id]]
+    assert Storage.get!(c.storage, shared.key) == "shared variant"
+
+    for blob <- [parent, orphan, nested],
+        do: refute(File.exists?(Storage.disk_path(c.storage.root, blob.key)))
+  end
+
+  defp blob!(storage, bytes) do
+    File.mkdir_p!(storage.root)
+    path = Path.join(storage.root, "upload")
+    File.write!(path, bytes)
+    blob = Storage.put!(storage, path, "poster.png", "image/png")
+
+    [[id]] =
+      rows(
+        "INSERT INTO active_storage_blobs(key,filename,content_type,metadata,service_name,byte_size,checksum,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,now()) RETURNING id",
+        [
+          blob.key,
+          blob.filename,
+          blob.content_type,
+          blob.metadata,
+          blob.service_name,
+          blob.byte_size,
+          blob.checksum
+        ]
+      )
+
+    Map.put(blob, :id, id)
+  end
+
   defp jobs(worker),
     do:
       rows("SELECT args FROM oban.oban_jobs WHERE worker=$1 ORDER BY id", [worker])

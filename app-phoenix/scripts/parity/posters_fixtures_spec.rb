@@ -188,6 +188,24 @@ RSpec.describe 'Phoenix fixtures: poster persistence and generation', type: :req
       expect(poster.image.attached?).to be(false)
       expect(poster.print_pdf.attached?).to be(false)
       expect(ActiveStorage::Blob.count).to eq(0)
+      source = ActiveStorage::Blob.create!(key: 'synthetic-variant-source', filename: 'poster.png',
+                                           service_name: 'test', byte_size: 3, checksum: 'CY9rzUYh03PK3k6DJie09g==')
+      child = ActiveStorage::Blob.create!(key: 'synthetic-variant-image', filename: 'variant.png',
+                                          service_name: 'test', byte_size: 3, checksum: 'CY9rzUYh03PK3k6DJie09g==')
+      variant = ActiveStorage::VariantRecord.create!(blob: source, variation_digest: 'synthetic')
+      ActiveStorage::Attachment.create!(record: variant, name: 'image', blob: child)
+      source.service.upload(source.key, StringIO.new('png'))
+      child.service.upload(child.key, StringIO.new('png'))
+      source.purge
+      expect(ActiveStorage::VariantRecord.exists?(variant.id)).to be(false)
+      expect(ActiveStorage::Attachment.where(record_type: 'ActiveStorage::VariantRecord',
+                                             record_id: variant.id)).to be_empty
+      expect(enqueued_jobs.any? { |job| job[:job] == ActiveStorage::PurgeJob }).to be(true)
+      ActiveStorage::PurgeJob.perform_now(child)
+      expect(ActiveStorage::Blob.exists?(child.id)).to be(false)
+      expect(source.service.exist?(source.key)).to be(false)
+      expect(child.service.exist?(child.key)).to be(false)
+      clear_enqueued_jobs
       blob = ActiveStorage::Blob.create!(key: 'synthetic-shared-poster', filename: 'poster.png', service_name: 'test',
                                          byte_size: 3, checksum: 'CY9rzUYh03PK3k6DJie09g==')
       other = fixture_poster(user, 96_903)
