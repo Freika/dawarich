@@ -1,6 +1,7 @@
 defmodule Dawarich.Metrics.Drain do
   @moduledoc false
-  @sample ~r/\A([a-zA-Z_:][a-zA-Z0-9_:]*)(\{.*?\})?(\s+.*)\z/
+  @sample ~r/\A([a-zA-Z_:][a-zA-Z0-9_:]*)(\{(?:[^"{}]|"(?:\\.|[^"\\])*")*\})?(\s+.*)\z/
+  @label ~r/([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*"((?:\\.|[^"\\])*)"/
 
   def config do
     case System.get_env("SIDEKIQ_METRICS_URL") do
@@ -81,16 +82,27 @@ defmodule Dawarich.Metrics.Drain do
 
   defp identity(line) do
     case Regex.run(@sample, line) do
-      [_, name, labels, _] -> {name, if(labels == "{}", do: "", else: labels)}
+      [_, name, labels, _] -> {name, label_map(labels)}
       _ -> nil
     end
+  end
+
+  defp label_map(labels) do
+    Map.new(Regex.scan(@label, labels), fn [_, name, value] ->
+      value =
+        Regex.replace(~r/\\([\\n"])/, value, fn _, escaped ->
+          if escaped == "n", do: "\n", else: escaped
+        end)
+
+      {name, value}
+    end)
   end
 
   defp disambiguate(line, process, collisions) do
     if MapSet.member?(collisions, identity(line)) do
       [_, name, labels, value] = Regex.run(@sample, line)
 
-      if Regex.match?(~r/[{,]process="/, labels) do
+      if Map.has_key?(label_map(labels), "process") do
         line
       else
         label = ~s(process="#{process}")

@@ -63,6 +63,30 @@ defmodule Dawarich.Metrics.JobsTest do
     assert reset =~ "dawarich_outbox_oldest_due_seconds 0"
   end
 
+  test "Cloud drain canonicalizes reordered archive labels and escaped label values" do
+    cases = [
+      {"dawarich_archive_count_mismatches_total", ~s(month="1",year="2020"),
+       ~s(year="2020",month="1")},
+      {"escaped", ~S(value="comma,quote\"slash\\newline\n} end",kind="archive"),
+       ~S(kind="archive",value="comma,quote\"slash\\newline\n} end")},
+      {"empty", "", ""}
+    ]
+
+    for {name, local, remote} <- cases do
+      body = Dawarich.Metrics.Drain.merge("#{name}{#{local}} 1\n", "#{name}{#{remote}} 2\n")
+      suffix = fn labels -> if labels == "", do: "", else: "," <> labels end
+      assert body =~ ~s(#{name}{process="web"#{suffix.(local)}} 1)
+      assert body =~ ~s(#{name}{process="sidekiq"#{suffix.(remote)}} 2)
+    end
+
+    local = ~S(escaped{value="one,two",kind="archive"} 3) <> "\n"
+    remote = ~S(escaped{kind="archive",value="one,three"} 4) <> "\n"
+    assert Dawarich.Metrics.Drain.merge(local, remote) == local <> remote
+
+    labelled = ~s(owned{process="worker",queue="default"} 5\n)
+    assert Dawarich.Metrics.Drain.merge(labelled, labelled) == labelled <> labelled
+  end
+
   test "Cloud drain scrape has unique series and survives source exporter failure" do
     local =
       "# HELP shared Same metric\n# TYPE shared gauge\nshared{queue=\"default\"} 1\nonly_local 2\n"
@@ -89,4 +113,5 @@ defmodule Dawarich.Metrics.JobsTest do
 
     assert Dawarich.Metrics.Drain.scrape(local, config, fn _ -> raise "offline" end) == local
   end
+
 end
