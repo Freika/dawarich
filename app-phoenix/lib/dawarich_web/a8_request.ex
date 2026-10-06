@@ -132,6 +132,10 @@ defmodule DawarichWeb.A8Request do
       accept == "text/html;q=0.5, text/vnd.turbo-stream.html;q=1" ->
         {:ok, :turbo_stream}
 
+      get_req_header(conn, "x-requested-with") != ["XMLHttpRequest"] and
+          Regex.match?(~r{,\s*\*/\*|\*/\*\s*,}, accept) ->
+        {:ok, :html}
+
       String.contains?(accept, ";") ->
         :replay
 
