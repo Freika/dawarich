@@ -445,6 +445,7 @@ defmodule DawarichWeb.MapWritesParityTest do
         Repo.query!("SELECT (#{projection})::text FROM #{table} t ORDER BY id").rows
         |> Enum.map(fn [json] -> Jason.decode!(json) end)
 
+      rows = Enum.map(rows, &Dawarich.Test.ApiGolden.column_defaults(table, &1))
       assert actual == rows, "#{name}: #{table}: " <> ParityHTML.first_difference(actual, rows)
     end
   end

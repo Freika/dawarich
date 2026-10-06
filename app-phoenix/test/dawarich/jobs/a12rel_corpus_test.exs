@@ -377,6 +377,7 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
     for row <- profile["before"]["tracks"] do
       row =
         row
+        |> then(&ApiGolden.column_defaults("tracks", &1))
         |> Map.put("original_path", row["ewkb"])
         |> Map.delete("ewkb")
         |> Map.update!("dominant_mode", &Segments.mode_to_int/1)
@@ -435,6 +436,7 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
     expected_tracks =
       Enum.map(expected["tracks"], fn row ->
         row
+        |> then(&ApiGolden.column_defaults("tracks", &1))
         |> Map.put("original_path", row["ewkb"])
         |> Map.delete("ewkb")
         |> Map.update!("dominant_mode", &Segments.mode_to_int/1)
