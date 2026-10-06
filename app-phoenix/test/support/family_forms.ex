@@ -26,5 +26,17 @@ defmodule Dawarich.Test.FamilyForms do
     FamilyFormRoutes.call(conn, FamilyFormRoutes.init([]))
   end
 
+  def json_request(user, method, path, params) do
+    session = RailsUser.session(user.id)
+
+    Plug.Test.conn(method, path, Jason.encode!(params))
+    |> put_req_header("content-type", "application/json")
+    |> put_req_header("accept", "application/json")
+    |> put_req_header("x-csrf-token", RailsCsrf.masked_token(session))
+    |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(session))
+    |> assign(:now, ~U[2026-10-03 10:00:00Z])
+    |> FamilyFormRoutes.call(FamilyFormRoutes.init([]))
+  end
+
   def records(sql, args \\ []), do: Repo.query!(sql, args).rows
 end

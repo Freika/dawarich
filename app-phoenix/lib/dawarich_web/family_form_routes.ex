@@ -39,6 +39,9 @@ defmodule DawarichWeb.FamilyFormRoutes do
         {"PATCH", "/family/location_requests/" <> rest} ->
           request_action(conn, rest)
 
+        {"PATCH", "/family/location_sharing"} ->
+          DawarichWeb.FamilySharingActions.call(conn, :update)
+
         {"POST", "/family"} ->
           FamilyActions.call(conn, :create)
 
@@ -73,6 +76,7 @@ defmodule DawarichWeb.FamilyFormRoutes do
       post "/family/location_requests", DawarichWeb.FamilyRequestActions, :create
       patch "/family/location_requests/:id/accept", DawarichWeb.FamilyRequestActions, :accept
       patch "/family/location_requests/:id/decline", DawarichWeb.FamilyRequestActions, :decline
+      patch "/family/location_sharing", DawarichWeb.FamilySharingActions, :update
       post "/family", DawarichWeb.FamilyActions, :create
       patch "/family", DawarichWeb.FamilyActions, :update
       put "/family", DawarichWeb.FamilyActions, :update
