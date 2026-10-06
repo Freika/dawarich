@@ -32,7 +32,10 @@ defmodule Dawarich.Subscriptions.Cache do
     end
   end
 
-  def invalidate(key, context), do: command(["DEL", "rack_attack/plan/" <> (key || "")], context)
+  def invalidate(key, context) do
+    Dawarich.TtlCache.delete({DawarichWeb.RateLimit, key})
+    command(["DEL", "rack_attack/plan/" <> (key || "")], context)
+  end
 
   defp stamp(claims) do
     case claims["event_timestamp_ms"] do
