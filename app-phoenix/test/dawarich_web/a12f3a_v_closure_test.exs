@@ -107,6 +107,50 @@ defmodule DawarichWeb.A12f3aVClosureTest do
     assert {:error, :too_many} = Dawarich.Visits.WebScope.ids(Enum.map(1..501, &to_string/1))
   end
 
+  @tag a12f3a_v05: true
+  test "V05: bulk destroy scope and rollback matches current Rails contract without a native-owner Rails effect" do
+    ctx = fixture("a12f3a-v05")
+    req = ctx.state["request"]
+    assert {:ok, result} = WebBulk.run(ScratchRepo, :destroy, ctx.user, req["params"], ctx)
+    durable(ctx.state)
+
+    assert ParityHTML.normalize(DawarichWeb.VisitStreams.render(:bulk_destroy, result, ctx)) ==
+             ParityHTML.normalize(
+               File.read!("test/fixtures/a8vv/visits/bulk_cross_day_destroy.html")
+             )
+
+    no_rails()
+    selected = fixture("bulk_date")
+
+    sentinel =
+      hd(selected.state["before"]["rows"]["visits"])
+      |> Map.put("id", 909_010)
+      |> Map.put("status", 1)
+
+    ScratchRepo.query!(
+      "INSERT INTO visits SELECT * FROM json_populate_record(NULL::visits,$1::text::json)",
+      [Jason.encode!(sentinel)],
+      log: false
+    )
+
+    ids =
+      rows("SELECT id FROM visits WHERE user_id=$1 ORDER BY id", [selected.user.id])
+      |> List.flatten()
+
+    assert {:ok, %{count: 1}} =
+             WebBulk.run(
+               ScratchRepo,
+               :destroy,
+               selected.user,
+               %{"source_status" => "suggested", "date" => "2026-10-03"},
+               selected
+             )
+
+    assert rows("SELECT deleted_at IS NULL FROM visits WHERE id=ANY($1) ORDER BY id", [
+             Enum.drop(ids, 1)
+           ]) == [[true], [true]]
+  end
+
   defp fixture(name) do
     state = File.read!("test/fixtures/a8vv/visits/#{name}.json") |> Jason.decode!()
     u = hd(state["before"]["users"])
