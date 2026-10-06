@@ -38,4 +38,12 @@ The current base already has owner/missing/foreign track isolation and source pa
 
 Removing the `user_id` predicate fails the foreign-track `:not_found` assertion; restoring passes. The source track payload, DOM IDs, units and localized frame body are compared. No provider calls or job effects are added. Non-numeric path IDs and JSON/format routing remain A12f-2/O transport handoffs.
 
-M06–M07 closure and final full-suite gates are pending. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.
+## M06 — residency frame and ties
+
+The native frame preserves the source country encounter order on tied day counts and tied per-day point counts. `Residency.term/3` takes `:source` for this captured frame contract; the existing API/default strict coexistence behavior is unchanged. The focused `ResidencyFrame.data/3` call-site change is a minimal callee seam.
+
+Year strings use Ruby integer coercion. Structured years and out-of-int32 time bounds fail natively. The source 2038 `ActiveRecord::RangeError` remains a 500; it is not corrected during the port (ruling 13). Cloud Lite rejects before year parsing with source 303, location and alert; guest authentication remains first. The aggregate originally failed on the tied-country replay. Reversing tied country encounter order fails complete frame parity; restoring passes.
+
+Existing tied-country handback tests now assert native output and no upstream request. The old corpus census remains scoped to its original cases; the package aggregate owns the new task captures. Source generators were recorded twice, with identical task bytes and old fixtures restored.
+
+M07 and final full-suite gates are pending. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.

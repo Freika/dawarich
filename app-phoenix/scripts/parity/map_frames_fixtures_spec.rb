@@ -157,7 +157,7 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
     sign_out as if as
   end
 
-  def capture_closure(name, user, requests)
+  def capture_closure(name, user, requests, write: true)
     cases = requests.map do |path|
       Rails.cache.clear
       reset!
@@ -167,7 +167,7 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
         ActiveRecord::Base.transaction(requires_new: true) do
           get path, headers: { 'Accept' => accepts.fetch('frame') }
         end
-      rescue ActiveRecord::RangeError => e
+      rescue ActiveRecord::RangeError, Date::Error, NoMethodError => e
         next { 'path' => path, 'accept' => accepts.fetch('frame'), 'now' => now.iso8601,
           'status' => 500, 'error' => e.class.name, 'body' => '', 'user' => user_row(user), 'rows' => before_rows }
       end
@@ -180,7 +180,9 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       end
       entry
     end
-    write_json(dir.join("a12f3a-#{name}.json"), { 'cases' => cases })
+    data = { 'cases' => cases }
+    write_json(dir.join("a12f3a-#{name}.json"), data) if write
+    data
   end
 
   def feed(day, last = day) = "/map/timeline_feeds?start_at=#{day}T00:00:00&end_at=#{last}T23:59:59"
@@ -735,8 +737,12 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       points!(tied, 7993, [at('2026-03-22', '12:00')], country: 'Czechia')
       points!(tied, 7994, [at('2026-03-21', '13:00')], country: 'Czechia')
       points!(tied, 7995, [at('2026-03-22', '13:00')], country: 'Germany')
-      capture_closure('m06', tied, ['/map/residency?year=2026', '/map/residency?year=2026tail',
-        '/map/residency?year=2038'])
+      data = capture_closure('m06', tied, ['/map/residency?year=2026', '/map/residency?year=2026tail',
+        '/map/residency?year=2038', '/map/residency?year[]=2026'])
+      cloud!
+      lite = reader(7999, plan: :lite)
+      data['access_cases'] = capture_closure('m06-access', lite, ['/map/residency?year=not-valid'], write: false)['cases']
+      write_json(dir.join('a12f3a-m06.json'), data)
     end
   end
 end

@@ -14,7 +14,7 @@ defmodule DawarichWeb.ResidencyFrame do
     {_zone, today} = LocalTime.local(settings, now)
 
     with {:ok, window} <- Residency.local_window(user.id, year, settings, today),
-         {:ok, {:object, pairs}} <- Residency.term(user.id, window) do
+         {:ok, {:object, pairs}} <- Residency.term(user.id, window, :source) do
       result = Map.new(pairs)
       {:object, daily} = result["daily_countries"]
       countries = for {:object, fields} <- result["countries"], do: country(Map.new(fields))

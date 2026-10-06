@@ -99,6 +99,23 @@ defmodule DawarichWeb.A12f3aMClosureTest do
     assert :not_found = MapFrames.body(:track_info, %{user: other, id: "7481", locale: "en"})
   end
 
+  @tag a12f3a_m06: true
+  test "M06: residency frame and ties matches current Rails contract without a native-owner Rails effect" do
+    check_frames("m06", :residency, &MapFramesGate.residency?/2)
+    self_hosted("false")
+
+    for row <- load("m06")["access_cases"] do
+      user = FrameSeeds.seed!(row)
+      conn = get(RailsUser.signed_in(user.id), row["path"])
+      assert conn.status == row["status"]
+      assert get_resp_header(conn, "location") == [row["location"]]
+      assert conn.resp_body == row["body"]
+
+      assert conn.private.dawarich_rails_session_changes["flash"]["flashes"]["alert"] ==
+               row["session"]["alert"]
+    end
+  end
+
   defp check_frames(name, action, gate) do
     [first | _] = cases = load(name)["cases"]
     user = FrameSeeds.seed!(first)
@@ -110,7 +127,7 @@ defmodule DawarichWeb.A12f3aMClosureTest do
 
       for row <- cases do
         %URI{path: path, query: query} = URI.parse(row["path"])
-        query = URI.decode_query(query || "")
+        query = Plug.Conn.Query.decode(query || "")
 
         params =
           Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com").path_params

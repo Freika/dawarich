@@ -3,8 +3,7 @@ defmodule DawarichWeb.MapFramesGate do
 
   import Plug.Conn, only: [get_req_header: 2]
 
-  alias Dawarich.Entitlements
-  alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
+  alias DawarichWeb.Strangler
 
   @types ["text/html", "application/xhtml+xml", "text/vnd.turbo-stream.html", "*/*"]
 
@@ -28,7 +27,7 @@ defmodule DawarichWeb.MapFramesGate do
 
   def residency?(conn, _params) do
     query = query(conn)
-    plain?(conn, query) and year?(Map.get(query, "year")) and pro?(conn)
+    year?(Map.get(query, "year"))
   end
 
   defp month?(nil), do: true
@@ -45,20 +44,8 @@ defmodule DawarichWeb.MapFramesGate do
 
   defp year?(nil), do: true
 
-  defp year?(value) when is_binary(value),
-    do: value =~ ~r/\A\d{4}\z/ and String.to_integer(value) in 1970..2037
-
-  defp year?(_value), do: false
-
-  defp pro?(conn) do
-    case RailsAuth.call(conn, []).assigns.current_user do
-      nil ->
-        true
-
-      user ->
-        LayoutAssigns.self_hosted?() or Entitlements.full_access?(user, false, DateTime.utc_now())
-    end
-  end
+  defp year?(value) when is_binary(value), do: true
+  defp year?(_value), do: true
 
   defp query(conn), do: Plug.Conn.Query.decode(conn.query_string)
 

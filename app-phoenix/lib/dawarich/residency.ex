@@ -27,16 +27,26 @@ defmodule Dawarich.Residency do
   end
 
   def local_window(user_id, requested, settings, today) do
-    with {:ok, year} <- year(requested || latest_year(user_id) || today.year) do
+    year = requested || latest_year(user_id) || today.year
+
+    if is_integer(year) and year in 1..9999 do
       %{rows: [[first, last]]} = UserTimeZone.query!(@local_bounds, [year], settings)
-      {:ok, {year, first, last}}
+
+      if first >= -2_147_483_648 and last <= 2_147_483_647,
+        do: {:ok, {year, first, last}},
+        else: {:error, 500}
+    else
+      {:error, 500}
     end
   end
 
-  def term(user_id, {year, first, last}) do
+  def term(user_id, window, order \\ :strict)
+
+  def term(user_id, {year, first, last}, order) do
     rows = Repo.query!(@days, [user_id, first, last]).rows
 
-    with {:ok, daily} <- daily_countries(rows), {:ok, countries} <- countries(rows, year) do
+    with {:ok, daily} <- daily_countries(rows, order),
+         {:ok, countries} <- countries(rows, year, order) do
       years =
         for(
           [y] <-
@@ -68,12 +78,12 @@ defmodule Dawarich.Residency do
   defp db_year(now),
     do: hd(hd(Repo.query!("SELECT extract(year FROM $1::timestamptz)::int", [now]).rows))
 
-  defp daily_countries(rows) do
+  defp daily_countries(rows, order) do
     rows
     |> Enum.chunk_by(fn [date, _country, _count] -> date end)
     |> Enum.reduce_while({:ok, []}, fn [[date | _] | _] = group, {:ok, acc} ->
       case Enum.sort_by(group, fn [_date, _country, count] -> count end, :desc) do
-        [[_, _, top], [_, _, next] | _] when top == next ->
+        [[_, _, top], [_, _, next] | _] when top == next and order == :strict ->
           {:halt, {:replay, "countries tie on #{date}"}}
 
         [[_, country, _] | _] ->
@@ -86,7 +96,7 @@ defmodule Dawarich.Residency do
     end
   end
 
-  defp countries(rows, year) do
+  defp countries(rows, year, order) do
     total = total(rows)
 
     entries =
@@ -110,7 +120,7 @@ defmodule Dawarich.Residency do
 
     days = Enum.map(entries, &elem(&1, 0))
 
-    if length(Enum.uniq(days)) == length(days),
+    if order == :source or length(Enum.uniq(days)) == length(days),
       do: {:ok, entries |> Enum.sort_by(&elem(&1, 0), :desc) |> Enum.map(&elem(&1, 1))},
       else: {:replay, "countries with equal days"}
   end

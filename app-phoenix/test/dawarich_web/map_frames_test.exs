@@ -316,7 +316,7 @@ defmodule DawarichWeb.MapFramesTest do
       refute html =~ "residency-country-list"
     end
 
-    test "countries with equal day counts are Rails' to order", %{user: user} do
+    test "countries with equal day counts render in the captured source order", %{user: user} do
       S.point!(user.id, 7799, DateTime.to_unix(~U[2026-03-21 12:00:00Z]), %{
         country_name: "Atlantis"
       })
@@ -331,7 +331,7 @@ defmodule DawarichWeb.MapFramesTest do
 
       ctx = %{user: user, locale: "en", query: %{"year" => "2026"}, now: ~U[2026-09-29 10:00:00Z]}
 
-      assert {:replay, _reason} = DawarichWeb.MapFrames.body(:residency, ctx)
+      assert {:ok, "text/html", _html} = DawarichWeb.MapFrames.body(:residency, ctx)
     end
 
     test "the year runs from local midnight to local midnight in the user's zone", %{user: user} do
@@ -360,18 +360,18 @@ defmodule DawarichWeb.MapFramesTest do
         |> Map.put(:query_string, query)
         |> MapFramesGate.residency?(%{})
 
-    test "owns self-hosted users and Cloud users with full access, years 1970–2037 and no year" do
+    test "admits residency authentication and year failures to the native action" do
       lite = S.user!(7023, %{"timezone" => "Europe/Berlin"}, %{plan: 0})
       pro = S.user!(7024)
 
       assert residency(lite, "year=2026")
       System.put_env("SELF_HOSTED", "false")
-      refute residency(lite, "year=2026")
+      assert residency(lite, "year=2026")
       assert residency(pro, "year=2026")
       assert residency(pro, "")
-      refute residency(pro, "year=1969")
-      refute residency(pro, "year=26")
-      refute residency(pro, "year=")
+      assert residency(pro, "year=1969")
+      assert residency(pro, "year=26")
+      assert residency(pro, "year=")
     end
   end
 

@@ -44,7 +44,13 @@ defmodule DawarichWeb.MapFrames do
       stream: action == :calendar and stream?(accept)
     }
 
-    case body(action, ctx) do
+    result =
+      if action == :residency and restricted?(ctx), do: :pro_required, else: body(action, ctx)
+
+    case result do
+      :pro_required ->
+        reject_pro(conn)
+
       {:ok, type, html} ->
         respond(conn, accept, type, html)
 
@@ -127,12 +133,16 @@ defmodule DawarichWeb.MapFrames do
     ArgumentError -> {:error, 500}
   end
 
+  def body(:residency, %{query: %{"year" => value}})
+      when not is_binary(value) and not is_nil(value),
+      do: {:error, 500}
+
   def body(:residency, ctx) do
-    year = if is_binary(ctx.query["year"]), do: String.to_integer(ctx.query["year"])
+    year = if is_binary(ctx.query["year"]), do: DawarichWeb.Params.ruby_to_i(ctx.query["year"])
 
     case ResidencyFrame.data(ctx.user, year, ctx.now) do
       {:ok, data} -> html(&ResidencyFrame.frame/1, Map.put(data, :locale, ctx.locale))
-      {:replay, reason} -> {:replay, reason}
+      {:error, status} -> {:error, status}
     end
   end
 
@@ -194,6 +204,24 @@ defmodule DawarichWeb.MapFrames do
       {:ok, point} -> html(&PointAddressFrame.frame/1, %{point: point, locale: ctx.locale})
       :rails -> {:replay, "point address changed after the gate"}
     end
+  end
+
+  defp reject_pro(conn) do
+    alert =
+      DawarichWeb.Translate.t(
+        conn.assigns.locale,
+        "controllers.application.this_feature_requires_a_pro_plan",
+        %{}
+      )
+
+    location =
+      List.first(get_req_header(conn, "referer")) || DawarichWeb.RequestURL.base(conn) <> "/"
+
+    conn
+    |> RailsSession.stage(%{"flash" => %{"discard" => [], "flashes" => %{"alert" => alert}}})
+    |> put_resp_header("location", location)
+    |> put_resp_content_type("text/html")
+    |> send_resp(303, "")
   end
 
   defp replay_tag(:place), do: "places"
