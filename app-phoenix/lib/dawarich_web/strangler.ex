@@ -60,6 +60,9 @@ defmodule DawarichWeb.Strangler do
   @impl true
   def call(conn, _opts) do
     cond do
+      conn.private[:dawarich_api_pre_effect_pin] ->
+        hand_back(conn)
+
       owned?(conn) ->
         conn
         |> Plug.Conn.put_private(
@@ -80,12 +83,16 @@ defmodule DawarichWeb.Strangler do
         DawarichWeb.TurboVisit.reload(conn)
 
       true ->
-        conn
-        |> original_method()
-        |> DawarichWeb.RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
-        |> halt()
+        hand_back(conn)
     end
   end
+
+  defp hand_back(conn),
+    do:
+      conn
+      |> original_method()
+      |> DawarichWeb.RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
+      |> halt()
 
   defp native_api_error?(%{path_info: ["api", "v1" | _]} = conn) do
     method = if conn.method == "HEAD", do: "GET", else: conn.method

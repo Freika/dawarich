@@ -418,6 +418,53 @@ defmodule DawarichWeb.A12f2JClosureTest do
              )
 
     System.delete_env("DAWARICH_RAILS_SLICES")
+    System.put_env("DAWARICH_RAILS_SLICES", "api_map_reads")
+
+    assert {200, _, "unexpected Rails replay"} =
+             endpoint(
+               c,
+               "POST",
+               "/api/v1/points?a=%ZZ",
+               [
+                 {"Content-Type", "multipart/form-data; boundary=probe"},
+                 {"X-HTTP-Method-Override", "GET"}
+               ],
+               "synthetic upload"
+             )
+
+    chunk_body = "_method=GET&literal=\r\nsource"
+
+    upstream =
+      Task.async(fn ->
+        socket = accept(c.upstream)
+        {head, rest} = read_head(socket)
+
+        raw =
+          try do
+            dechunk(socket, rest)
+          rescue
+            exception -> {:bad_framing, exception.__struct__}
+          end
+
+        reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+        {head, raw}
+      end)
+
+    client = connect(c.port)
+
+    send_raw(client, [
+      "POST /api/v1/points HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\nTransfer-Encoding: chunked\r\n\r\n",
+      Integer.to_string(byte_size(chunk_body), 16),
+      "\r\n",
+      chunk_body,
+      "\r\n0\r\n\r\n"
+    ])
+
+    assert {200, _, "puma"} = read_response(client)
+    {head, raw} = Task.await(upstream)
+    assert request_line(head) == "POST /api/v1/points HTTP/1.1"
+    assert raw == chunk_body
+    System.delete_env("DAWARICH_RAILS_SLICES")
     body = "_method=GET&literal=%00%26&place[name]=synthetic"
 
     for {key, path} <- [
