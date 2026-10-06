@@ -51,6 +51,10 @@ defmodule DawarichWeb.ShareManagementEndpointTest do
       deleted = request(ctx.session, :delete, base, "")
       assert deleted.status == 302
       assert length(ids(ctx.actor.id)) == length(prior) - 1
+      assert request(ctx.session, :post, base, "").status == 302
+      prior = ids(ctx.actor.id)
+      assert request(ctx.session, :post, base, "_method=delete").status == 302
+      assert length(ids(ctx.actor.id)) == length(prior) - 1
     end
 
     conn =
@@ -86,7 +90,8 @@ defmodule DawarichWeb.ShareManagementEndpointTest do
           {token(ctx.session) <> "&shared_link[name]=untouched",
            [{"origin", "https://foreign.test"}]},
           {~s({"shared_link":{"name":"untouched"}}), [{"content-type", "application/json"}]},
-          {token(ctx.session) <> "&_method=delete", []}
+          {~s({"shared_link":{"name":"untouched"}}), [{"content-type", "application/xml"}]},
+          {token(ctx.session) <> "&_method=put", []}
         ] do
       task = Task.async(fn -> raw(ctx.session, :post, "/share_links/live", body, headers) end)
       socket = accept(upstream)

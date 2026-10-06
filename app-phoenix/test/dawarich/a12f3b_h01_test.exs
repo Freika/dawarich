@@ -6,6 +6,8 @@ defmodule Dawarich.A12f3bH01Test do
   alias DawarichWeb.{Endpoint, Router, RailsCsrf}
 
   setup do
+    <<a::16, b::16, c::16, d::16, e::16, f::16>> = :crypto.strong_rand_bytes(12)
+    Process.put(:h01_remote_ip, {0x2001, 0xDB8, a, b, c, d, e, f})
     saved = Map.new(~w(DAWARICH_RAILS SELF_HOSTED JWT_SECRET_KEY), &{&1, System.get_env(&1)})
     routes = Application.get_env(:dawarich, :rails_routes)
     upstream = Application.get_env(:dawarich, :rails_upstream)
@@ -108,7 +110,10 @@ defmodule Dawarich.A12f3bH01Test do
           {"tracks", actor, "/tracks/99103/share_link", Shares.params("track")},
           {"trip_shares", actor, "/trips/99101/share_link", Shares.params("track")},
           {"share_links", actor, "/share_links/timeline", Shares.params("timeline")},
-          {"posters", c.owner, "/posters", %{"poster" => %{"name" => "Must hand back"}}}
+          {"posters", c.owner, "/posters", %{"poster" => %{"name" => "Must hand back"}}},
+          {nil, c.outsider, "/family/location_requests?a=%ZZ", "target_user_id=90102"},
+          {nil, c.outsider, "/family/location_requests", "a=%4"},
+          {nil, c.outsider, "/family/location_requests", "_method=delete"}
         ] do
       before = footprint()
       Application.put_env(:dawarich, :rails_routes, if(key, do: [key], else: []))
@@ -118,9 +123,14 @@ defmodule Dawarich.A12f3bH01Test do
       cookie = RailsUser.cookie(session)
 
       body =
-        Plug.Conn.Query.encode(
-          Map.put(params, "authenticity_token", RailsCsrf.masked_token(session))
-        )
+        if is_binary(params),
+          do:
+            "authenticity_token=" <>
+              URI.encode_www_form(RailsCsrf.masked_token(session)) <> "&" <> params,
+          else:
+            Plug.Conn.Query.encode(
+              Map.put(params, "authenticity_token", RailsCsrf.masked_token(session))
+            )
 
       receiver =
         Task.async(fn ->
@@ -290,6 +300,7 @@ defmodule Dawarich.A12f3bH01Test do
 
   defp raw_request(method, path, body, cookie) do
     Plug.Test.conn(method, path, body)
+    |> Map.put(:remote_ip, Process.get(:h01_remote_ip))
     |> put_req_header("content-type", "application/x-www-form-urlencoded")
     |> put_req_header("content-length", to_string(byte_size(body)))
     |> put_req_header("cookie", "_dawarich_session=" <> cookie)

@@ -11,6 +11,7 @@ defmodule DawarichWeb.DomainRoutes do
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
         plug DawarichWeb.FamilyDeliveryAdmission
+        plug DawarichWeb.FamilyRequestAdmission
         plug DawarichWeb.RailsHeaders
       end
 

@@ -112,17 +112,35 @@ defmodule DawarichWeb.A9RoutesTest do
 
       assert {^view, ^action, opts, session} = info.phoenix_live_view
       assert opts == [action: action, router: Router, container: {:div, class: "contents"}]
-      assert session.name == :rails_pages
+      family = String.starts_with?(path, "/family")
+      assert session.name == if(family, do: :family_pages, else: :rails_pages)
+
+      hooks = [
+        %{
+          id: {DawarichWeb.LiveAuth, :default},
+          stage: :mount,
+          function: &DawarichWeb.LiveAuth.on_mount/4
+        }
+      ]
+
+      hooks =
+        if family,
+          do:
+            hooks ++
+              [
+                %{
+                  id: {DawarichWeb.FamilyGate, :default},
+                  stage: :mount,
+                  function: &DawarichWeb.FamilyGate.on_mount/4
+                }
+              ],
+          else: hooks
 
       assert session.extra == %{
-               session: {DawarichWeb.TagsLive.Form, :live_session, []},
-               on_mount: [
-                 %{
-                   id: {DawarichWeb.LiveAuth, :default},
-                   stage: :mount,
-                   function: &DawarichWeb.LiveAuth.on_mount/4
-                 }
-               ],
+               session:
+                 {if(family, do: DawarichWeb.RailsAuth, else: DawarichWeb.TagsLive.Form),
+                  :live_session, []},
+               on_mount: hooks,
                root_layout: {DawarichWeb.Layouts, :root},
                layout: {DawarichWeb.Layouts, :app}
              }
