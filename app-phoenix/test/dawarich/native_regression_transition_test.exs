@@ -64,7 +64,15 @@ defmodule Dawarich.NativeRegressionTransitionTest do
            ]
 
     before = rows("SELECT row_to_json(n)::text FROM notes n ORDER BY id")
-    rejected = request(:post, "/api/v1/notes", %{"note" => %{}}, key)
+    empty = request(:post, "/api/v1/notes", %{"note" => %{}}, key)
+    assert empty.status == 400
+    assert empty.halted
+
+    assert Jason.decode!(empty.resp_body)["error"] ==
+             "param is missing or the value is empty: note"
+
+    assert rows("SELECT row_to_json(n)::text FROM notes n ORDER BY id") == before
+    rejected = request(:post, "/api/v1/notes", %{"note" => %{"body" => ""}}, key)
     assert rejected.status == 422
     assert rejected.halted
     assert rows("SELECT row_to_json(n)::text FROM notes n ORDER BY id") == before

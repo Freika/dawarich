@@ -5,15 +5,19 @@ defmodule Dawarich.NativeLifecycleTest do
   alias Dawarich.Release.Lifecycle
 
   @tag :a12f4_a02_1
-  test "standalone native lifecycle is mandatory in both deployment modes" do
+  test "standalone native lifecycle preserves accepted self-hosted mode and pending Cloud refusal" do
     for hosted <- [nil, "true", "false"], legacy <- [nil, "", "false", "true"] do
-      env = %{
-        "DAWARICH_RAILS" => "off",
-        "SELF_HOSTED" => hosted,
-        "DAWARICH_PHOENIX_LIFECYCLE" => legacy
-      }
+      env =
+        %{
+          "DAWARICH_RAILS" => "off",
+          "SELF_HOSTED" => hosted,
+          "DAWARICH_PHOENIX_LIFECYCLE" => legacy
+        }
+        |> Enum.reject(fn {_, value} -> is_nil(value) end)
+        |> Map.new()
 
-      assert Lifecycle.mode(env) == {:ok, :native}
+      expected = if hosted == "false", do: {:error, :cloud_native_lifecycle}, else: {:ok, :native}
+      assert Lifecycle.mode(env) == expected
     end
 
     assert Lifecycle.mode(%{}) == {:ok, :rails}
@@ -23,25 +27,34 @@ defmodule Dawarich.NativeLifecycleTest do
   @tag :a12f4_a02_2
   test "standalone native readiness refuses a pending public version without writes" do
     for hosted <- [nil, "true", "false"] do
-      opts = [repo: Repo, env: %{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => hosted}]
-      assert Release.readiness(opts) == :ready
+      env = %{"DAWARICH_RAILS" => "off"}
+      env = if hosted, do: Map.put(env, "SELF_HOSTED", hosted), else: env
+      opts = [repo: Repo, env: env]
 
-      %{rows: [[version]]} =
-        Repo.query!(
-          "DELETE FROM public.schema_migrations WHERE version = (SELECT max(version) FROM public.schema_migrations) RETURNING version",
-          [],
+      if hosted == "false" do
+        before = snapshot()
+        assert Release.readiness(opts) == :schemas_behind
+        assert snapshot() == before
+      else
+        assert Release.readiness(opts) == :ready
+
+        %{rows: [[version]]} =
+          Repo.query!(
+            "DELETE FROM public.schema_migrations WHERE version = (SELECT max(version) FROM public.schema_migrations) RETURNING version",
+            [],
+            log: false
+          )
+
+        before = snapshot()
+        assert Release.readiness(opts) == :schemas_behind
+        assert snapshot() == before
+
+        Repo.query!("INSERT INTO public.schema_migrations(version) VALUES($1)", [version],
           log: false
         )
 
-      before = snapshot()
-      assert Release.readiness(opts) == :schemas_behind
-      assert snapshot() == before
-
-      Repo.query!("INSERT INTO public.schema_migrations(version) VALUES($1)", [version],
-        log: false
-      )
-
-      assert Release.readiness(opts) == :ready
+        assert Release.readiness(opts) == :ready
+      end
     end
   end
 

@@ -44,7 +44,7 @@ Rails sources, fallback plans and existing opt-in configuration are retained thr
 
 | Task / tag | Executable preparation | Mutation proof |
 | --- | --- | --- |
-| A02 / `a12f4_a02_1` | Standalone lifecycle mandatory for unset/self-hosted/explicit Cloud, including conflicting old lifecycle flags; absent standalone still Rails | M-A02-MODE restores Rails dispatch |
+| A02 / `a12f4_a02_1` | Standalone lifecycle native for unset/self-hosted modes despite old lifecycle flags; explicit Cloud remains refused pending L1; absent standalone still Rails | M-A02-MODE restores Rails dispatch |
 | A02 / `a12f4_a02_2` | Pending public version refuses readiness without schema, ledger, registration, outbox or Oban writes in all deployment modes | M-A02-READY accepts private-ledger-only readiness |
 | A03 / `a12f4_a03_1` | Requested native listener has one Endpoint and Drainer, no Rails child or upstream | M-A03-CHILD inserts a second transport listener |
 | A03 / `a12f4_a03_2` | Occupied native bind fails terminally; exact listener serves after release of the occupied port | M-A03-BIND supplies an alternate port only on occupied bind |
@@ -71,3 +71,9 @@ Tested code head: `90cf60e56` on `feat/a12f4-r`, based on `4045f0540`. Required 
 Scoped runtime batch: 143 tests, 0 failures. Retained Rails lifecycle/Cloud entrypoint characterization: 58 examples, 0 failures; Swagger restored. Forced warnings-as-errors compilation and whole-tree formatting pass on the tested head. Eight implementation commits pass the branch-range gitleaks scan. No Ruby production files changed; changed-Ruby specs/RuboCop are inapplicable. Final report records the documentation evidence commit, final branch scan, clean tree and owned-service cleanup.
 
 These gates complete the authorized preparation only. Final default selection/removal, collective prerequisite acceptance, integration seed 202 and real release/image/source-drain proofs remain the controller handoff described above.
+
+## Controller baseline test correction
+
+The controller's lifecycle correction in AFFiNE supersedes the earlier Cloud test expectation. Test environment maps omit unset keys. Absent `SELF_HOSTED` retains the Rails self-hosted default; explicit Cloud stays refused pending the L1 handoff, including standalone mode. `native_lifecycle_test.exs` checks the accepted mode and refuses Cloud readiness without changing schemas, ledgers, registration or jobs. The retained `release_cloud_test.exs` refusal checks remain required. Production lifecycle selection is unchanged.
+
+The standalone transition test distinguishes an empty note root (400, required parameter missing) from a nonempty root containing an empty body (422, model validation). Both retain unchanged note rows and terminal native responses. The Rails oracle is `app/controllers/api/v1/notes_controller.rb`, `note_params`. These are stale fixture/expectation corrections; no Rails bug is fixed.
