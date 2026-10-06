@@ -212,6 +212,45 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert get_resp_header(conn, "location") == ["http://www.example.com/users/sign_in"]
   end
 
+  @tag a12f3a_q07: true
+  test "Q07: full stats recalculation producer matches current Rails contract without a native-owner Rails effect",
+       %{user: user, context: ctx} do
+    Ownership.put!(Repo, "command:stats.full_recalculation", :oban)
+
+    for stamp <- [~U[2024-03-05 00:00:00Z], ~U[2024-04-05 00:00:00Z]],
+        do: point!(user.id, %{timestamp: DateTime.to_unix(stamp)})
+
+    source = fixture("07")
+
+    for _ <- 1..2 do
+      assert {:ok, result} = Dawarich.Stats.WebCommands.update_all(Repo, user, ctx)
+      assert result.status == source["status"]
+      assert %{Atom.to_string(result.flash) => result.message} == source["flash"]
+      assert Repo.query!("SELECT count(*) FROM job_outbox", []).rows == [[1]]
+    end
+
+    assert Repo.query!("SELECT command_type FROM job_outbox", []).rows == [
+             ["stats.full_recalculation"]
+           ]
+
+    [args] = Repo.query!("SELECT payload FROM job_outbox", []).rows |> hd()
+    assert {:ok, ^args} = Dawarich.Stats.FullRecalculationWorker.args_from_command(1, args)
+    years = Dawarich.Stats.TrackedMonths.call(Repo, user.id)
+
+    actual =
+      for %{year: year, months: months} <- years,
+          month <- months,
+          do: [
+            user.id,
+            year,
+            Enum.find_index(~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec), &(&1 == month)) +
+              1
+          ]
+
+    assert actual == source["jobs"]
+    assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
+  end
+
   defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do
     for row <- fixture(task) do
       settings = %{

@@ -8,18 +8,24 @@ defmodule DawarichWeb.StatsActions do
 
   def init(action), do: action
 
-  def call(conn, :update) do
+  def call(conn, action) do
     user = conn.assigns.current_user
     context = %{now: conn.assigns[:now] || DateTime.utc_now(), locale: conn.assigns.locale}
 
     if active?(user, context.now) do
-      case WebCommands.update(
-             Repo,
-             user,
-             conn.path_params["year"],
-             conn.path_params["month"],
-             context
-           ) do
+      result =
+        if action == :update_all,
+          do: WebCommands.update_all(Repo, user, context),
+          else:
+            WebCommands.update(
+              Repo,
+              user,
+              conn.path_params["year"],
+              conn.path_params["month"],
+              context
+            )
+
+      case result do
         {:ok, result} -> redirect(conn, result)
         {:replay, reason} -> Body.replay(conn, reason)
         {:error, _} -> conn |> send_resp(500, "") |> halt()

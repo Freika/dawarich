@@ -3,6 +3,28 @@ defmodule Dawarich.Stats.WebCommands do
   alias Dawarich.Jobs.Ownership
   alias DawarichWeb.{LocalizedDate, Translate}
 
+  def update_all(repo, user, context) do
+    repo.transaction(fn ->
+      case Ownership.lock(repo, "command:stats.full_recalculation") do
+        :oban ->
+          if Dawarich.State.claim(repo, "stats_full_recalculation:user:#{user.id}", 900) do
+            publish!(
+              repo,
+              "stats.full_recalculation",
+              %{"user_id" => user.id, "source_job_id" => Ecto.UUID.generate()},
+              context.now
+            )
+          end
+
+          result(context, "stats_are_being_updated", %{})
+
+        :sidekiq ->
+          {:replay, "Sidekiq full stats recalculation"}
+      end
+    end)
+    |> unwrap()
+  end
+
   def update(repo, user, year, month, context) do
     if month == "all" or Regex.match?(~r/\A(?:0?[1-9]|1[0-2])\z/, month) do
       repo.transaction(fn ->
