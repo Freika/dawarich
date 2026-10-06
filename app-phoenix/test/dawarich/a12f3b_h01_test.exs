@@ -315,6 +315,24 @@ defmodule Dawarich.A12f3bH01Test do
         assert response.status == 302
         assert get_resp_header(response, "location") == ["http://www.example.com/imports"]
       end
+
+      if hosted == "true" do
+        legacy =
+          browser_request(
+            session,
+            :post,
+            "/settings/background_jobs?settings%5Bvisits_suggestions_enabled%5D=true",
+            %{"_method" => "patch"}
+          )
+
+        assert legacy.status == 302
+
+        assert get_resp_header(legacy, "location") == [
+                 "http://www.example.com/settings/background_jobs"
+               ]
+
+        assert Dawarich.Accounts.settings(c.owner.id)["visits_suggestions_enabled"] == "true"
+      end
     end
 
     expected =

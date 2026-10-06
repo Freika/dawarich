@@ -6,7 +6,35 @@ defmodule DawarichWeb.IntegrationJobActions do
 
   def init(action), do: action
 
+  def enabled?(conn, params) do
+    if legacy_settings?(conn),
+      do: DawarichWeb.AdminWritesGate.background?(conn, params),
+      else: IntegrationActions.enabled?(conn, params)
+  end
+
   def call(conn, :create) do
+    if legacy_settings?(conn) do
+      DawarichWeb.AdminWrites.Settings.call(conn, action: :background)
+    else
+      conn =
+        if Map.has_key?(conn.assigns, :api_params),
+          do: conn,
+          else: DawarichWeb.Api.Body.call(conn, nested_form: "settings")
+
+      if conn.halted, do: conn, else: create(conn)
+    end
+  end
+
+  defp legacy_settings?(conn) do
+    params = URI.decode_query(conn.query_string)
+
+    Map.has_key?(params, "settings[visits_suggestions_enabled]") and
+      not Map.has_key?(params, "job_name")
+  rescue
+    ArgumentError -> false
+  end
+
+  defp create(conn) do
     case IntegrationActions.admit(conn, ["POST"], ["job_name"]) do
       :ok ->
         case IntegrationCommands.enqueue(
