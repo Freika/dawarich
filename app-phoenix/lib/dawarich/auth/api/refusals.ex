@@ -11,7 +11,7 @@ defmodule Dawarich.Auth.Api.Refusals do
     Mobile.Payload
   }
 
-  alias Dawarich.Auth.TwoFactor.{ApiActor, Secret}
+  alias Dawarich.Auth.TwoFactor.Secret
   alias Dawarich.{Repo, RailsCache.Wire, Redis}
 
   def login(params, context) do
@@ -33,7 +33,7 @@ defmodule Dawarich.Auth.Api.Refusals do
       password = scalar(params["password"])
 
       authenticated =
-        if user, do: ApiActor.password_valid?(user, password), else: dummy(password, context)
+        if user, do: password_valid?(user, password), else: dummy(password, context)
 
       cond do
         not authenticated ->
@@ -162,6 +162,13 @@ defmodule Dawarich.Auth.Api.Refusals do
     do:
       user.otp_locked_at &&
         DateTime.compare(user.otp_locked_at, DateTime.add(clock(context), -1800)) == :gt
+
+  defp password_valid?(user, password) do
+    Bcrypt.verify_pass(
+      binary_part(password, 0, min(byte_size(password), 72)),
+      user.encrypted_password
+    )
+  end
 
   defp dummy(password, context) do
     Bcrypt.no_user_verify(log_rounds: Map.get(context, :log_rounds, 12))
