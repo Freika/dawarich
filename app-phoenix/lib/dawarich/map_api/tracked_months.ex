@@ -4,6 +4,12 @@ defmodule Dawarich.MapApi.TrackedMonths do
   alias Dawarich.Photos.ProviderCache
 
   def fetch(user) do
+    if Dawarich.Standalone.enabled?(),
+      do: Dawarich.Cache.Readers.tracked_months(Repo, user.id),
+      else: source_fetch(user)
+  end
+
+  defp source_fetch(user) do
     key = "dawarich/user_#{user.id}_years_tracked"
 
     case ProviderCache.get(key) do
