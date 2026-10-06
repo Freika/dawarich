@@ -343,7 +343,7 @@ defmodule DawarichWeb.Api.TwoFactorEndpointTest do
 
   defp replay!(c, method, target, body, opts) do
     client = submit(c, method, target, body, opts)
-    puma = accept(c.upstream)
+    puma = Dawarich.Test.ApiGolden.rails_connection(client, c.upstream)
     {head, rest} = read_head(puma)
     assert request_line(head) == "#{method} #{target} HTTP/1.1"
     assert header(head, "x-original") == ["synthetic-byte-check"]
