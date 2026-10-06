@@ -36,6 +36,8 @@ defmodule DawarichWeb.HostAuthorization do
   def init(opts), do: opts
 
   @impl true
+  def call(%{request_path: "/api/v1/health"} = conn, health: true), do: conn
+
   def call(conn, _opts) do
     case Application.get_env(:dawarich, :allowed_hosts, []) do
       [] ->
