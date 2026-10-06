@@ -34,7 +34,7 @@ defmodule Dawarich.Imports.Lease do
       lane: Keyword.get(opts, :lane, @lane),
       worker: Keyword.get(opts, :worker, @worker),
       sources: Keyword.get(opts, :sources, [4]),
-      terminal_statuses: Keyword.get(opts, :terminal_statuses, [2])
+      terminal_statuses: Keyword.get(opts, :terminal_statuses, [2, 3])
     }
 
     case State.Lease.with_lease(repo, "import:#{import.id}", fn -> run(lease, fun) end,
