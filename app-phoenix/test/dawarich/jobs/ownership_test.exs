@@ -206,21 +206,37 @@ defmodule Dawarich.Jobs.OwnershipTest do
     fixture = trip_fixture!()
     id = fixture["trip"]["id"]
     root = "00000000-0000-4000-8000-000000003307"
-    :ok = Ownership.put!(ScratchRepo, "command:trips.calculate", :oban)
-    event = source_run(~s|
-      before = Sidekiq::Queue.new('trips').size
-      job = Trips::CalculateAllJob.new(#{id}, 'mi')
-      job.job_id = '#{root}'
-      job.scheduled_at = Time.utc(2026, 6, 1, 12)
+    :ok = Ownership.put!(ScratchRepo, "command:trips.calculate", :sidekiq)
 
-      accepted = job.serialize.merge('locale' => 'de', 'timezone' => 'Pacific/Chatham')
-      2.times { ActiveJob::Base.execute(accepted) }
-      row = JobOutbox.sole
-      raise 'due time changed' unless row.scheduled_at == job.scheduled_at
-      raise 'source children appeared' unless Sidekiq::Queue.new('trips').size == before
-      raise 'wrapper context changed' unless accepted.values_at('locale', 'timezone') == ['de', 'Pacific/Chatham']
-      puts "CLOUD:\#{row.event_id}"
-    |) |> String.replace_prefix("CLOUD:", "")
+    event =
+      source_run(~s"""
+        before = Sidekiq::Queue.new('trips').map(&:jid)
+        job = Trips::CalculateAllJob.new(#{id}, 'mi')
+        job.job_id = '#{root}'
+        job.scheduled_at = Time.utc(2026, 6, 1, 12)
+
+        accepted = job.serialize.merge('locale' => 'de', 'timezone' => 'Pacific/Chatham')
+        ActiveJob::Base.execute(accepted)
+        children = Sidekiq::Queue.new('trips').reject { |child| before.include?(child.jid) }
+        raise 'materialized children missing' unless children.size == 3
+        begin
+          raise 'carried child root changed' unless children.all? { |child| child.args.first['arguments'].last == '#{root}' }
+          JobOwnership.put!(Trips::CalculateAllJob::OWNER_KEY, :oban, pinned: false, by: 'cloud-test')
+          ENV['DAWARICH_CLOUD_DRAIN_ONLY'] = 'true'
+          2.times { ActiveJob::Base.execute(accepted) }
+          children.each { |child| ActiveJob::Base.execute(child.args.first) }
+        ensure
+          children.each(&:delete)
+          children.map { |child| child.args.first['arguments'].last }.uniq.each { |token| Rails.cache.delete(Trips::CalculateAllJob.pending_key(#{id}, token)) }
+        end
+        row = JobOutbox.sole
+        raise 'due time changed' unless row.scheduled_at == job.scheduled_at
+        raise 'source children appeared' unless Sidekiq::Queue.new('trips').map(&:jid).sort == before.sort
+        raise 'wrapper context changed' unless accepted.values_at('locale', 'timezone') == ['de', 'Pacific/Chatham']
+        puts "CLOUD:\#{row.event_id}"
+      """)
+      |> String.replace_prefix("CLOUD:", "")
+
     oban = __MODULE__.TripOban
     start_oban(oban)
 
@@ -341,7 +357,7 @@ defmodule Dawarich.Jobs.OwnershipTest do
       preload <>
         "STDOUT.sync = true; begin; " <>
         code <>
-        "; rescue => e; puts 'CLOUD:ERROR:' + (['due time changed', 'source children appeared', 'children appeared', 'owner changed', 'success receipt appeared', 'forward appeared', 'wrapper context changed'].include?(e.message) ? e.message : e.class.name); exit 1; end"
+        "; rescue => e; puts 'CLOUD:ERROR:' + (['due time changed', 'source children appeared', 'children appeared', 'owner changed', 'success receipt appeared', 'forward appeared', 'wrapper context changed', 'materialized children missing', 'carried child root changed'].include?(e.message) ? e.message : e.class.name); exit 1; end"
 
     Port.open({:spawn_executable, System.find_executable("asdf")}, [
       :binary,

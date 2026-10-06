@@ -120,9 +120,9 @@ RSpec.describe JobOwnership do
 
     allow(ENV).to receive(:[]).with('DAWARICH_CLOUD_DRAIN_ONLY').and_return('false')
     ActiveJob::Base.execute(accepted)
-    expect(Trips::CalculatePathJob).to have_been_enqueued.with(trip.id, an_instance_of(String))
-    expect(Trips::CalculateDistanceJob).to have_been_enqueued.with(trip.id, 'mi', an_instance_of(String))
-    expect(Trips::CalculateCountriesJob).to have_been_enqueued.with(trip.id, 'mi', an_instance_of(String))
+    expect(Trips::CalculatePathJob).to have_been_enqueued.with(trip.id, job.job_id)
+    expect(Trips::CalculateDistanceJob).to have_been_enqueued.with(trip.id, 'mi', job.job_id)
+    expect(Trips::CalculateCountriesJob).to have_been_enqueued.with(trip.id, 'mi', job.job_id)
   end
 
   context 'with the shared geocoding rate limiter guard' do

@@ -62,7 +62,7 @@ class Trips::CalculateAllJob < ApplicationJob
 
   def fan_out(trip_id, distance_unit)
     JobOwnership.require_source_children!(OWNER_KEY)
-    run_token = SecureRandom.uuid
+    run_token = job_id
     Rails.cache.write(self.class.pending_key(trip_id, run_token), 3, expires_in: PENDING_TTL, raw: true)
 
     Trips::CalculatePathJob.perform_later(trip_id, run_token)
