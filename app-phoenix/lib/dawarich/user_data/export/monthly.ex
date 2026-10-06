@@ -23,30 +23,27 @@ defmodule Dawarich.UserData.Export.Monthly do
 
   def write_rows(rows, table, dir) do
     entries =
-      Enum.reduce(rows, %{}, fn {month, pairs}, entries ->
-        year = month |> String.split("-") |> hd()
-        name = "#{table}/#{year}/#{month}.jsonl"
-        path = Path.join(dir, name)
+      rows
+      |> Stream.chunk_every(1000)
+      |> Enum.reduce(%{}, fn batch, entries ->
+        batch
+        |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+        |> Enum.reduce(entries, fn {month, rows}, entries ->
+          year = month |> String.split("-") |> hd()
+          name = "#{table}/#{year}/#{month}.jsonl"
+          path = Path.join(dir, name)
+          previous = entries[name]
+          unless previous, do: File.mkdir_p!(Path.dirname(path))
 
-        case entries[name] do
-          nil ->
-            File.mkdir_p!(Path.dirname(path))
-            File.write!(path, "")
+          bytes =
+            Enum.map(rows, fn pairs ->
+              [Serializer.encode(%Jason.OrderedObject{values: pairs}), "\n"]
+            end)
 
-          _ ->
-            :ok
-        end
-
-        File.write!(path, [Serializer.encode(%Jason.OrderedObject{values: pairs}), "\n"], [
-          :append
-        ])
-
-        Map.update(
-          entries,
-          name,
-          %{name: name, path: path, count: 1},
-          &%{&1 | count: &1.count + 1}
-        )
+          File.write!(path, bytes, if(previous, do: [:append], else: []))
+          count = length(rows) + if(previous, do: previous.count, else: 0)
+          Map.put(entries, name, %{name: name, path: path, count: count})
+        end)
       end)
 
     entries |> Map.values() |> Enum.sort_by(& &1.name)
