@@ -10,7 +10,10 @@ RSpec.describe 'Phoenix fixture: ISO codes and flags of Countries::IsoCodeMapper
 
     path = Rails.root.join('app-phoenix/priv/country_codes.json')
     rows = countries.values.map { |data| [data[:name], data[:iso2], data[:iso3], data[:flag]] }
-    File.write(path, "#{Oj.dump({ 'countries' => rows }, mode: :strict, indent: 2)}\n")
+    data = { 'countries' => rows }
+    data.merge!(JSON.parse(path.read).slice('borders_gzip_base64', 'visited_aliases')) if path.exist?
+    data.compact!
+    File.write(path, "#{Oj.dump(data, mode: :strict, indent: 2)}\n")
 
     expect(JSON.parse(path.read)['countries'].size).to eq(countries.size)
     expect(Countries::IsoCodeMapper.iso_codes_from_country_name('Russia')).to eq(%w[RU RUS])

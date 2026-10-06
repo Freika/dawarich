@@ -88,6 +88,9 @@ defmodule DawarichWeb.A12f2CClosureTest do
     source_user = %{user | id: 810_001, timezone: "Etc/UTC"}
     assert {:ok, bytes, _} = Dawarich.Tiles.Points.fetch(source_user, params)
     assert bytes == Base.decode64!(fixture["body_base64"])
+    epoch_seed(source_user.id)
+    response = DawarichWeb.Api.PointTilesController.call(tile_conn(source_user, params), :show)
+    assert Plug.Conn.get_resp_header(response, "etag") == [fixture["headers"]["etag"]]
   end
 
   @tag :a12f2_c_04
@@ -156,6 +159,12 @@ defmodule DawarichWeb.A12f2CClosureTest do
              )
 
     assert bytes == Base.decode64!(oracle("tracks_speed")["body_base64"])
+    epoch_seed(source_user.id)
+
+    response =
+      DawarichWeb.Api.TrackTilesController.call(tile_conn(source_user, source_params), :show)
+
+    assert Plug.Conn.get_resp_header(response, "etag") == [fixture["headers"]["etag"]]
   end
 
   @tag :a12f2_c_05
@@ -280,6 +289,51 @@ defmodule DawarichWeb.A12f2CClosureTest do
              Dawarich.MapApi.Fog.fetch(owner, Map.put(params, "start_date", "2026-01-01"))
   end
 
+  @tag :a12f2_c_02
+  test "Spatial metadata preserves GeoJSON history scope epochs zoned months and conditional responses",
+       %{user: user} do
+    fixture = oracle("visited")
+    seed(fixture["setup"])
+    owner = %{user | id: 810_001, timezone: "Europe/Berlin"}
+    params = %{"start_at" => "1735689600", "end_at" => "1735690000"}
+    assert {:ok, result, etag} = invoke(Dawarich.MapApi.Countries, :visited, [owner, params])
+    assert result == Jason.decode!(fixture["body"])
+    assert {:ok, %{"countries" => []}, _} = Dawarich.MapApi.Countries.visited(user, params)
+    assert {:ok, _, ^etag} = Dawarich.MapApi.Countries.visited(owner, params)
+
+    Redis.cache_command([
+      "SET",
+      "points:tile_epoch:#{owner.id}:2025",
+      :crypto.strong_rand_bytes(8) |> Base.encode16()
+    ])
+
+    assert {:ok, _, changed} = Dawarich.MapApi.Countries.visited(owner, params)
+    refute changed == etag
+
+    for bad <- [%{}, Map.put(params, "start_at", "bad"), Map.put(params, "end_at", "1735689599")] do
+      assert {:error, 422, "start_at and end_at must be valid timestamps"} =
+               Dawarich.MapApi.Countries.visited(owner, bad)
+    end
+
+    assert {:ok, bytes} = invoke(Dawarich.MapApi.Countries, :borders, [])
+
+    assert :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower) ==
+             oracle("borders")["sha256"]
+
+    Redis.cache_command(["UNLINK", "dawarich/user_#{owner.id}_years_tracked"])
+    assert result = invoke(Dawarich.MapApi.TrackedMonths, :fetch, [owner])
+    assert result == Jason.decode!(oracle("tracked_months_berlin")["body"])
+    assert %{"year" => 2024, "months" => ["Dec"]} in result
+    assert {:ok, cache} = Redis.cache_command(["GET", "dawarich/user_#{owner.id}_years_tracked"])
+
+    assert {:ok, %{value: [%{{:ruby_symbol, "year"} => 2025} | _]}} =
+             Dawarich.RailsCache.Wire.decode(cache)
+
+    assert {:ok, ttl} = Redis.cache_command(["TTL", "dawarich/user_#{owner.id}_years_tracked"])
+    assert ttl in 86390..86400
+    assert result == Dawarich.MapApi.TrackedMonths.fetch(owner)
+  end
+
   defp track(user_id) do
     [[id]] =
       Repo.query!(
@@ -295,6 +349,16 @@ defmodule DawarichWeb.A12f2CClosureTest do
            "missing native #{inspect(module)}.#{fun}"
 
     apply(module, fun, args)
+  end
+
+  defp epoch_seed(id) do
+    for layer <- ~w(points tracks), year <- [2025, "all"] do
+      Redis.cache_command([
+        "SET",
+        "#{layer}:tile_epoch:#{id}:#{year}",
+        "synthetic-#{layer}-#{year}"
+      ])
+    end
   end
 
   defp oracle(name),

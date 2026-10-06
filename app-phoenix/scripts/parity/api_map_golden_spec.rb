@@ -196,6 +196,11 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     %w[points tracks].each do |layer|
       %w[base speed empty invalid partial].each do |variant|
         map_seed(seed: :base, user: {})
+        %w[points tracks].each do |domain|
+          [2025, 'all'].each do |year|
+            Rails.cache.write("#{domain}:tile_epoch:#{ApiMapGoldenOracle::OWNER}:#{year}", "synthetic-#{domain}-#{year}", raw: true)
+          end
+        end
         query = 'start_at=1735689600&end_at=1735690000'
         query += '&speed_coloring=true' if variant == 'speed'
         query += '&import_id=999999' if variant == 'empty'
@@ -209,7 +214,7 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
                                            .map { JSON.parse(_1) }]
           end,
           'status' => response.status, 'body_base64' => Base64.strict_encode64(response.body),
-          'headers' => response.headers.to_h.transform_keys(&:downcase).slice('content-type', 'cache-control', 'vary')
+          'headers' => response.headers.to_h.transform_keys(&:downcase).slice('content-type', 'cache-control', 'vary', 'etag')
         }
       end
     end
@@ -244,6 +249,21 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     end
     get '/api/v1/countries/borders', headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
     closure['borders'] = { 'status' => response.status, 'sha256' => Digest::SHA256.hexdigest(response.body) }
+    codes_path = Rails.root.join('app-phoenix/priv/country_codes.json')
+    codes = JSON.parse(File.read(codes_path))
+    stream = StringIO.new
+    gzip = Zlib::GzipWriter.new(stream)
+    gzip.mtime = 0
+    gzip.write(response.body)
+    gzip.close
+    codes['borders_gzip_base64'] = Base64.strict_encode64(stream.string)
+    codes['visited_aliases'] = Countries::NameAliases::ALIASES
+    FixtureRecording.verify(codes_path, "#{Oj.dump(codes, mode: :strict, indent: 2)}\n")
+    User.find(ApiMapGoldenOracle::OWNER).update_columns(settings: { 'timezone' => 'Europe/Berlin' })
+    Rails.cache.delete("dawarich/user_#{ApiMapGoldenOracle::OWNER}_years_tracked")
+    get '/api/v1/points/tracked_months', headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
+    closure['tracked_months_berlin'] = { 'status' => response.status, 'body' => response.body }
+
     FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2c/closure.json'),
                             "#{map_exact_json(closure)}\n")
   end

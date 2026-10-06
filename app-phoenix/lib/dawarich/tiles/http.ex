@@ -147,7 +147,7 @@ defmodule Dawarich.Tiles.Http do
 
     prefix = System.get_env("RAILS_CACHE_ID") || System.get_env("RAILS_APP_VERSION")
     key = if prefix, do: prefix <> "/" <> key, else: key
-    ~s(W/"#{:crypto.hash(:md5, key) |> Base.encode16(case: :lower)}")
+    ~s(W/"#{:crypto.hash(:sha256, key) |> Base.encode16(case: :lower) |> binary_part(0, 32)}")
   end
 
   def call(conn, layer, module, schema) do
