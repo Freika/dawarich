@@ -89,6 +89,57 @@ defmodule DawarichWeb.A12f2EClosureTest do
              )
   end
 
+  @tag :a12f2_e_03
+  test "Pending intake retains Cloud only origin file quota ticket expiry storage and error outcomes" do
+    alias Dawarich.PendingImports.{Intake, Quota}
+
+    ctx =
+      Map.merge(context(), %{
+        origin: "https://dawarich.app",
+        base_url: "https://localhost",
+        zone: "Etc/UTC",
+        production?: false
+      })
+
+    assert {:error, 404, nil} = Intake.create(Repo, %{}, ctx)
+    ctx = %{ctx | self_hosted?: false}
+    key = Quota.key(ctx.now)
+    Dawarich.Redis.cache_command(["DEL", key])
+    on_exit(fn -> Dawarich.Redis.cache_command(["DEL", key]) end)
+    assert {:error, 403, nil} = Intake.create(Repo, %{}, %{ctx | origin: "https://evil.example"})
+    assert {:error, 400, %{"error" => "Missing file"}} = Intake.create(Repo, %{}, ctx)
+    file = upload!("source.json", "{}")
+    params = %{"file" => file, "original_filename" => "source.json"}
+
+    assert {:error, 422, _} =
+             Intake.create(Repo, %{params | "file" => upload!("source.json", "")}, ctx)
+
+    assert {:error, 500, _} =
+             Intake.create(Repo, params, %{ctx | storage: %{service: "local", root: file.path}})
+
+    assert {:ok, "0"} = Dawarich.Redis.cache_command(["GET", key])
+    assert [[1]] = Repo.query!("SELECT count(*) FROM pending_imports").rows
+    Dawarich.Redis.cache_command(["SET", key, to_string(10 * 1024 * 1024 * 1024)])
+    assert {:error, 429, _} = Intake.create(Repo, params, ctx)
+    assert {:ok, to_string(10 * 1024 * 1024 * 1024)} == Dawarich.Redis.cache_command(["GET", key])
+    Dawarich.Redis.cache_command(["SET", key, "0"])
+    assert {:ok, 201, result} = Intake.create(Repo, params, ctx)
+    assert {:ok, _} = Ecto.UUID.cast(result["claim_ticket"])
+    assert result["expires_at"] == "2026-10-07T12:00:00Z"
+
+    assert result["claim_url"] ==
+             "https://localhost/users/sign_up?import_ticket=#{result["claim_ticket"]}&utm_source=tool&utm_medium=save-to-account"
+
+    assert [["source.json", "https://dawarich.app", nil]] =
+             Repo.query!(
+               "SELECT original_filename,origin,claimed_at FROM pending_imports WHERE claim_ticket=$1",
+               [Ecto.UUID.dump!(result["claim_ticket"])]
+             ).rows
+
+    assert {:ok, "2"} = Dawarich.Redis.cache_command(["GET", key])
+    assert [] == commands()
+  end
+
   defp context do
     root = Path.join(System.tmp_dir!(), "a12f2e-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
