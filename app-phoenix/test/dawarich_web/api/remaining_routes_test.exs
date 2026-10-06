@@ -94,7 +94,9 @@ defmodule DawarichWeb.Api.RemainingRoutesTest do
     {"GET", "/photos/:id/thumbnail", :thumbnail, :api_locations_photos, :api_locations_photos,
      PhotosController},
     {"GET", "/photos/:id/thumbnail.jpg", :thumbnail, :api_locations_photos, :api_locations_photos,
-     PhotosController}
+     PhotosController},
+    {"GET", "/health", :index, nil, :health, HealthController},
+    {"GET", "/ready", :ready, nil, :health, HealthController}
   ]
 
   test "existing API route metadata and pipelines survive extraction" do
