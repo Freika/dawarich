@@ -89,10 +89,14 @@ defmodule DawarichWeb.Strangler do
 
       true ->
         conn
+        |> original_method()
         |> DawarichWeb.RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
         |> halt()
     end
   end
+
+  defp original_method(conn),
+    do: %{conn | method: conn.private[:dawarich_original_method] || conn.method}
 
   defp standalone_rejection(conn) do
     method = if conn.method == "HEAD", do: "GET", else: conn.method

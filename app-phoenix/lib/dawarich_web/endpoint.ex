@@ -35,6 +35,8 @@ defmodule DawarichWeb.Endpoint do
   plug DawarichWeb.PublicFiles
   plug DawarichWeb.Cors
   plug DawarichWeb.AuthGate
+  plug DawarichWeb.Api.RequestFormat
+  plug DawarichWeb.Api.MethodOverride
   plug DawarichWeb.Strangler
   plug DawarichWeb.Router
 end

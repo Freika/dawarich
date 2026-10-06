@@ -186,9 +186,10 @@ defmodule DawarichWeb.Router do
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 
   defp method_override_to_rails(conn, _opts) do
-    if Plug.Conn.get_req_header(conn, "x-http-method-override") == [],
-      do: conn,
-      else: DawarichWeb.Api.Body.replay(conn, "method override header")
+    if conn.private[:dawarich_native_api] or
+         Plug.Conn.get_req_header(conn, "x-http-method-override") == [],
+       do: conn,
+       else: DawarichWeb.Api.Body.replay(conn, "method override header")
   end
 
   defp put_path_format(%{path_info: [_api, _v1, "photos", _id, "thumbnail.jpg"]} = conn, _opts),

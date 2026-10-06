@@ -241,6 +241,49 @@ defmodule DawarichWeb.A12f2JClosureTest do
     no_upstream!(c.upstream)
   end
 
+  @tag :a12f2_j_03
+  test "Native requests retain source method override format suffix Accept XHR and routing precedence",
+       c do
+    user!(%{api_key: @key, settings: %{"timezone" => "UTC"}})
+
+    headers =
+      bearer() ++
+        [
+          {"Content-Type", "application/x-www-form-urlencoded"},
+          {"X-HTTP-Method-Override", "DELETE"}
+        ]
+
+    assert {200, _, "[]"} =
+             endpoint(c, "POST", "/api/v1/places?_method=DELETE", headers, "_method=GET")
+
+    fixture = Jason.decode!(File.read!("test/fixtures/a12f2j/transport.json"))
+
+    for row <- fixture["overrides"] do
+      conn = Plug.Test.conn(row["method"], "/api/v1/places", row["body"])
+
+      conn =
+        conn
+        |> Plug.Conn.put_req_header("content-type", row["content_type"])
+        |> Plug.Conn.put_req_header("x-http-method-override", row["header"])
+
+      assert DawarichWeb.Api.MethodOverride.call(conn, []).method == row["effective"]
+    end
+
+    for path <- ["/api/v1/places.json", "/api/v1/places.xml", "/api/v1/places.json?format=xml"] do
+      assert {200, headers, "[]"} = endpoint(c, "GET", path, bearer())
+      assert values(headers, "content-type") == ["application/json; charset=utf-8"]
+    end
+
+    conn =
+      Plug.Test.conn(:get, "/api/v1/photos")
+      |> Plug.Conn.put_req_header("accept", "application/xml;q=0.2, application/json;q=0.9")
+      |> Plug.Conn.assign(:api_params, %{})
+
+    assert DawarichWeb.Api.RequestFormat.decide(conn) == {:ok, :json, true}
+    assert {401, _, ""} = endpoint(c, "HEAD", "/api/v1/photos.json")
+    no_upstream!(c.upstream)
+  end
+
   defp bearer, do: [{"Authorization", "Bearer #{@key}"}, {"Accept", "application/json"}]
 
   defp route(method, path),

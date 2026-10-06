@@ -171,6 +171,12 @@ defmodule DawarichWeb.Api.Auth do
   end
 
   defp format(conn) do
+    if conn.private[:dawarich_native_api],
+      do: DawarichWeb.Api.RequestFormat.decide(conn),
+      else: legacy_format(conn)
+  end
+
+  defp legacy_format(conn) do
     cond do
       Map.has_key?(conn.assigns.api_params, "format") ->
         case Map.get(
