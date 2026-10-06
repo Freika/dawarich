@@ -365,6 +365,31 @@ defmodule DawarichWeb.A12f2JClosureTest do
     no_upstream!(c.upstream)
   end
 
+  @tag :a12f2_j_auth_pins
+  test "Enabled credential ownership hands users pins back before native cookies or effects", c do
+    old_routes = Application.get_env(:dawarich, :rails_routes, [])
+    old_flows = Application.get_env(:dawarich, :phoenix_auth, [])
+
+    on_exit(fn ->
+      Application.put_env(:dawarich, :rails_routes, old_routes)
+      Application.put_env(:dawarich, :phoenix_auth, old_flows)
+    end)
+
+    Dawarich.State.put_registration_enabled(Repo, true)
+    System.put_env("SELF_HOSTED", "true")
+    Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
+    Application.put_env(:dawarich, :rails_routes, [])
+    assert {200, headers, _} = endpoint(c, "GET", "/users/sign_in", [{"Accept", "text/html"}])
+    assert values(headers, "x-dawarich-auth-owner") == ["native-credentials"]
+    Application.put_env(:dawarich, :rails_routes, ["users"])
+
+    assert {200, headers, "unexpected Rails replay"} =
+             endpoint(c, "GET", "/users/sign_in", [{"Accept", "text/html"}])
+
+    assert values(headers, "set-cookie") == []
+    assert commands() == []
+  end
+
   defp bearer, do: [{"Authorization", "Bearer #{@key}"}, {"Accept", "application/json"}]
 
   defp route(method, path),
