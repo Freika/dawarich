@@ -24,7 +24,7 @@ defmodule DawarichWeb.Metrics do
   end
 
   defp authorized?(conn) do
-    case Plug.BasicAuth.parse_basic_auth(conn) do
+    case credentials(conn) do
       {user, password} ->
         valid_user = compare(user, System.get_env("METRICS_USERNAME") || "")
         valid_password = compare(password, System.get_env("METRICS_PASSWORD") || "")
@@ -32,6 +32,19 @@ defmodule DawarichWeb.Metrics do
 
       _ ->
         false
+    end
+  end
+
+  defp credentials(conn) do
+    with [header] <- get_req_header(conn, "authorization"),
+         [scheme, encoded] <- String.split(header, ~r/\s+/, parts: 2, trim: true),
+         true <- String.valid?(scheme),
+         true <- String.downcase(scheme) == "basic",
+         {:ok, decoded} <- Base.decode64(encoded, ignore: :whitespace),
+         [user, password] <- :binary.split(decoded, ":") do
+      {user, password}
+    else
+      _ -> :error
     end
   end
 

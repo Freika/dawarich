@@ -6,6 +6,7 @@ defmodule DawarichWeb.MetricsRoutes do
       pipeline :metrics do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
       end
 
       scope "/" do

@@ -9,11 +9,13 @@ defmodule DawarichWeb.MetricsTest do
     System.put_env("PROMETHEUS_EXPORTER_ENABLED", "true")
     System.put_env("METRICS_USERNAME", "metrics-test")
     System.put_env("METRICS_PASSWORD", "synthetic-test-password")
+
     on_exit(fn ->
       Enum.each(old, fn {key, value} ->
         if value, do: System.put_env(key, value), else: System.delete_env(key)
       end)
     end)
+
     start_supervised!(Dawarich.Metrics)
     :ok
   end
@@ -29,14 +31,25 @@ defmodule DawarichWeb.MetricsTest do
   test "metrics requires the existing enable flag and Basic credentials in both deployment modes" do
     for mode <- ["true", "false"] do
       System.put_env("SELF_HOSTED", mode)
+
       for header <- [nil, "Bearer bad", "Basic ???", auth("bad", "bad")] do
         response = request(:get, header)
         assert response.status == 401
         assert response.resp_body == "Unauthorized"
-        assert get_resp_header(response, "www-authenticate") == [~s(Basic realm="Dawarich Metrics")]
+
+        assert get_resp_header(response, "www-authenticate") == [
+                 ~s(Basic realm="Dawarich Metrics")
+               ]
       end
+
       response = request(:get, auth("metrics-test", "synthetic-test-password"))
       assert response.status == 200
+
+      for scheme <- ["basic", "BASIC", "bAsIc"] do
+        header = scheme <> " " <> Base.encode64("metrics-test:synthetic-test-password")
+        assert request(:get, header).status == 200
+      end
+
       assert response.resp_body =~ "# HELP"
       assert get_resp_header(response, "content-type") == ["text/plain; version=0.0.4"]
       head = request(:head, auth("metrics-test", "synthetic-test-password"))
@@ -59,6 +72,7 @@ defmodule DawarichWeb.MetricsTest do
       refute response.resp_body =~ "# HELP"
       assert get_resp_header(response, "www-authenticate") == []
     end
+
     System.delete_env("PROMETHEUS_EXPORTER_ENABLED")
     assert request(:get).status == 404
   end
