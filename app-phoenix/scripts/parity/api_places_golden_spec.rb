@@ -164,6 +164,15 @@ module ApiPlacesGoldenOracle
     { name: 'rails_search', expect: :rails, path: "#{P}/search?lat=51.34&lon=12.37", auth: :none },
     { name: 'rails_post_member', expect: :rails, method: :post, path: H, auth: :none }
   ].freeze
+  CLOSURE_CASES = [
+    { name: 'closure_nearby_missing', path: "#{P}/nearby" },
+    { name: 'closure_nearby_zero', path: "#{P}/nearby?latitude=0&longitude=0" },
+    { name: 'closure_search_missing', path: "#{P}/search" },
+    { name: 'closure_search_range', path: "#{P}/search?lat=91&lon=0" },
+    { name: 'closure_search_saved', path: "#{P}/search?lat=51.34&lon=12.37&q=Leipzig" },
+    { name: 'closure_create_unicode_tags', method: :post, path: P,
+      body: { place: { name: 'Café', note: 'Straße', tag_ids: [950_101, 950_103], **LEIPZIG } } }
+  ].freeze
 
   def self.results
     @results ||= []
@@ -186,14 +195,22 @@ RSpec.describe 'Phoenix fixture: golden places API requests', type: :request do
     oracle = ApiPlacesGoldenOracle
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
                 'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,
-                'cases' => oracle.results.sort_by { _1['name'] } }
+                'cases' => oracle.results.reject { _1['name'].start_with?('closure_') }.sort_by { _1['name'] } }
     File.write(path, "#{places_exact_json(fixture)}\n")
+    closure_path = Rails.root.join('app-phoenix/test/fixtures/a12f2b/closure.json')
+    FileUtils.mkdir_p(closure_path.dirname)
+    closure = closure_path.exist? ? JSON.parse(closure_path.read) : {}
+    closure['places'] = oracle.results.select { _1['name'].start_with?('closure_') }.sort_by { _1['name'] }
+    File.write(closure_path, "#{places_exact_json(closure.sort.to_h)}\n")
   end
 
-  ApiPlacesGoldenOracle::CASES.each do |kase|
+  (ApiPlacesGoldenOracle::CASES + ApiPlacesGoldenOracle::CLOSURE_CASES).each do |kase|
     it(kase[:name]) do
       defaults = { method: :get, auth: :bearer, expect: :own, env: {}, seed: :base,
                    content: ApiPlacesGoldenOracle::JSON_TYPE }
+      if kase[:name].start_with?('closure_')
+        ActiveRecord::Base.connection.execute("SELECT setval('taggings_id_seq', 959000, false)")
+      end
       ApiPlacesGoldenOracle.results << places_record(kase.reverse_merge(defaults))
       expect(enqueued_jobs).to be_empty if kase.fetch(:expect, :own) == :own
     end
