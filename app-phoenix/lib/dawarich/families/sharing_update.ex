@@ -22,12 +22,15 @@ defmodule Dawarich.Families.SharingUpdate do
     end
   end
 
+  def web_call(user, params, now), do: __MODULE__.Web.call(user, params, now)
+  def web_write!(user_id, params, now), do: write!(user_id, params, now, true)
+
   def enable!(user_id, duration, now) when is_binary(duration),
     do: write!(user_id, %{"enabled" => true, "duration" => duration}, now)
 
   defp update(user_id, params, now) do
     enabled = boolean(params["enabled"])
-    duration = duration(params["duration"])
+    duration = requested_duration(params)
     config = write!(user_id, Map.put(params, "enabled", enabled), now)
     expires = if enabled, do: Clock.parse(config["expires_at"])
 
@@ -45,18 +48,27 @@ defmodule Dawarich.Families.SharingUpdate do
         )}}
   end
 
-  defp write!(user_id, params, now) do
+  defp write!(user_id, params, now, normalize? \\ false) do
     [[settings, email]] =
       Repo.query!("SELECT settings, email FROM users WHERE id = $1 FOR UPDATE", [user_id]).rows
 
     if Ruby.blank?(email), do: raise(ArgumentError, "a blank email fails Rails' validation")
-    plain!(settings)
+    stored = settings
+
+    settings =
+      if normalize? do
+        __MODULE__.Web.normalize_settings!(settings)
+      else
+        plain!(settings)
+        settings
+      end
+
     family = settings["family"]
     unless is_nil(family) or is_map(family), do: raise(ArgumentError, "family settings")
     config = if params["enabled"], do: enabled(family, params, now), else: %{"enabled" => false}
     updated = Map.put(settings, "family", Map.put(family || %{}, "location_sharing", config))
 
-    if updated != settings do
+    if updated != stored do
       Repo.query!("UPDATE users SET settings = $1, updated_at = $2 WHERE id = $3", [
         updated,
         Clock.naive(now),
@@ -75,11 +87,19 @@ defmodule Dawarich.Families.SharingUpdate do
         _other -> raise ArgumentError, "sharing settings"
       end
 
-    history = flag(params["share_history"])
+    history =
+      if params["web"],
+        do: __MODULE__.Web.boolean(params["share_history"]),
+        else: flag(params["share_history"])
+
     history = if is_nil(history), do: old["share_history"] || false, else: history
     consent = flag(params["history_before_sharing"])
     consent = if is_nil(consent), do: old["history_before_sharing"] == true, else: consent == true
-    window = window(params["history_window"]) || old["history_window"]
+
+    window =
+      if params["web"],
+        do: params["history_window"] || old["history_window"],
+        else: window(params["history_window"]) || old["history_window"]
 
     base = %{
       "enabled" => true,
@@ -89,14 +109,18 @@ defmodule Dawarich.Families.SharingUpdate do
       "history_before_sharing" => if(history in [nil, false], do: history, else: consent)
     }
 
-    duration = duration(params["duration"])
+    duration = requested_duration(params)
 
     cond do
       Ruby.present?(duration) ->
         expiring(base, duration, expiry(duration, now))
 
       Ruby.present?(old["duration"]) ->
-        existing = duration(old["duration"])
+        existing =
+          if params["web"],
+            do: __MODULE__.Web.duration(old["duration"]),
+            else: duration(old["duration"])
+
         expiring(base, existing, carried(existing, old["expires_at"], now))
 
       true ->
@@ -120,9 +144,9 @@ defmodule Dawarich.Families.SharingUpdate do
   defp future?(at, now), do: NaiveDateTime.compare(at, Clock.naive(now)) == :gt
 
   defp expiry(duration, now) do
-    case Map.fetch(@hours, duration) do
-      {:ok, hours} -> NaiveDateTime.add(Clock.naive(now), hours * 3600)
-      :error -> nil
+    case __MODULE__.Web.hours(duration) do
+      hours when hours > 0 -> NaiveDateTime.add(Clock.naive(now), hours * 3600)
+      _ -> nil
     end
   end
 
@@ -156,6 +180,13 @@ defmodule Dawarich.Families.SharingUpdate do
 
   defp window(value) when is_nil(value) or is_binary(value) or is_boolean(value), do: value
   defp window(_value), do: raise(ArgumentError, "history window parameter shape")
+
+  defp requested_duration(params),
+    do:
+      if(params["web"],
+        do: __MODULE__.Web.duration(params["duration"]),
+        else: duration(params["duration"])
+      )
 
   defp duration(nil), do: nil
 
