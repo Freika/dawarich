@@ -89,12 +89,12 @@ defmodule DawarichWeb.MapFramesTest do
   describe "MapFramesGate.track?/2" do
     defp gate_conn(path), do: build_conn(:get, path)
 
-    test "refuses the locale and client markers" do
+    test "accepts scalar locale and client markers" do
       assert MapFramesGate.track?(gate_conn("/map/timeline_feeds/5/track_info"), %{})
-      refute MapFramesGate.track?(gate_conn("/map/timeline_feeds/5/track_info?locale=de"), %{})
-      refute MapFramesGate.track?(gate_conn("/map/timeline_feeds/5/track_info?client=ios"), %{})
+      assert MapFramesGate.track?(gate_conn("/map/timeline_feeds/5/track_info?locale=de"), %{})
+      assert MapFramesGate.track?(gate_conn("/map/timeline_feeds/5/track_info?client=ios"), %{})
 
-      refute "/map/timeline_feeds/5/track_info"
+      assert "/map/timeline_feeds/5/track_info"
              |> gate_conn()
              |> put_req_header("x-dawarich-client", "ios")
              |> MapFramesGate.track?(%{})
@@ -196,14 +196,14 @@ defmodule DawarichWeb.MapFramesTest do
   end
 
   describe "MapFramesGate.feed?/2" do
-    test "owns digits and ISO start/end only" do
+    test "owns Rails timestamp fallbacks and rejects structured timestamps" do
       ok = &MapFramesGate.feed?(build_conn(:get, "/map/timeline_feeds?" <> &1), %{})
 
       assert ok.("start_at=1790460000&end_at=1790546399")
       assert ok.("start_at=2026-09-27T00:00:00&end_at=2026-09-27%2023:59")
-      refute ok.("end_at=2026-09-27T23:59:59")
-      refute ok.("start_at=%20&end_at=2026-09-27T23:59:59")
-      refute ok.("start_at=yesterday&end_at=2026-09-27T23:59:59")
+      assert ok.("end_at=2026-09-27T23:59:59")
+      assert ok.("start_at=%20&end_at=2026-09-27T23:59:59")
+      assert ok.("start_at=yesterday&end_at=2026-09-27T23:59:59")
       refute ok.("start_at[]=1&end_at=2")
     end
   end

@@ -93,7 +93,7 @@ defmodule Dawarich.Timeline.DayRows do
     WHERE v.user_id = $1 AND
       (v.id=$5 OR (v.deleted_at IS NULL AND v.status <> 2
       AND v.started_at BETWEEN #{bound("$2")} AND #{bound("$3")} AND #{windowed("v.started_at", "$4")}))
-    ORDER BY v.started_at, v.id
+    ORDER BY v.started_at, v.id DESC
     """
     |> UserTimeZone.query!([user_id, start_s, end_s, window_now, include_id], settings, repo)
     |> Map.fetch!(:rows)

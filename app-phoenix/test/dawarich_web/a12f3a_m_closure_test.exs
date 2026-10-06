@@ -80,6 +80,68 @@ defmodule DawarichWeb.A12f3aMClosureTest do
     assert effects() == {0, 0}
   end
 
+  @tag a12f3a_m03: true
+  test "M03: timeline feed frame matches current Rails contract without a native-owner Rails effect" do
+    check_frames("m03", :index, &MapFramesGate.feed?/2)
+  end
+
+  defp check_frames(name, action, gate) do
+    [first | _] = cases = load(name)["cases"]
+    user = FrameSeeds.seed!(first)
+    {:ok, now, 0} = DateTime.from_iso8601(first["now"])
+    before_rows = Repo.query!("SELECT count(*) FROM points WHERE user_id = $1", [user.id]).rows
+
+    for mode <- ["true", "false", nil] do
+      self_hosted(mode)
+
+      for row <- cases do
+        %URI{path: path, query: query} = URI.parse(row["path"])
+        query = URI.decode_query(query || "")
+
+        params =
+          Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com").path_params
+
+        ctx = %{
+          user: user,
+          locale: query["locale"] || "en",
+          query: query,
+          id: params["id"],
+          now: now,
+          self_hosted: mode != "false",
+          csrf: "CSRF",
+          csrf_changes: %{},
+          stream: false
+        }
+
+        assert gate.(build_conn(:get, row["path"]) |> put_req_header("accept", @frame), params)
+
+        if row["error"] do
+          assert {:error, 500} = MapFrames.body(action, ctx)
+          assert get(RailsUser.signed_in(user.id), row["path"]).status == 500
+        else
+          assert {:ok, type, html} = MapFrames.body(action, ctx)
+          assert type == row["content_type"]
+
+          assert ParityHTML.normalize(IO.iodata_to_binary(html)) ==
+                   ParityHTML.normalize(row["body"])
+
+          conn =
+            RailsUser.signed_in(user.id) |> put_req_header("accept", @frame) |> get(row["path"])
+
+          assert conn.status == row["status"]
+          assert get_resp_header(conn, "content-type") == [type <> "; charset=utf-8"]
+          assert get_resp_header(conn, "vary") == List.wrap(row["vary"])
+          assert head(RailsUser.signed_in(user.id), row["path"]).resp_body == ""
+        end
+      end
+    end
+
+    assert Repo.query!("SELECT count(*) FROM points WHERE user_id = $1", [user.id]).rows ==
+             before_rows
+
+    assert effects() == {0, 0}
+  end
+
   defp effects do
     {Repo.query!("SELECT count(*) FROM public.job_outbox", []).rows |> hd() |> hd(),
      Dawarich.ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs", []).rows |> hd() |> hd()}

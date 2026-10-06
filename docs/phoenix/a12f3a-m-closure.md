@@ -20,4 +20,10 @@ M owns presentation and frame reads. No native jobs or reverse effects are produ
 
 The M02 aggregate initially reached the absent Rails upstream. Native implementation passed all 96 request combinations. Dropping the legacy query failed the exact Location assertion; restoring passed. Minimal wiring is in `page_routes.ex` with `rails_key: "map"`; O should retain these declarations in its serialized O06 pass.
 
-M03–M07 closure and final full-suite gates are pending. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.
+## M03 — timeline feed
+
+Missing/blank timestamps and malformed scalar timestamps use the current instant, matching Rails SafeTimestampParser. Locale/client markers no longer force a Rails handback for scalar frame queries. Structured timestamp envelopes remain deferred to the shared transport/domain edge pass.
+
+Two source capture passes preserve same-time visits in the observed descending-ID encounter order. Rails orders only by start time; this is a characterized ambiguity, not an upstream bug fix. The native secondary order matches this capture. Reversing that order fails the complete normalized frame assertion; restoring passes. Source and native assertions also retain DST, ranges, plan windows and existing rich-feed fixtures.
+
+M04–M07 closure and final full-suite gates are pending. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.

@@ -157,6 +157,27 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
     sign_out as if as
   end
 
+  def capture_closure(name, user, requests)
+    cases = requests.map do |path|
+      Rails.cache.clear
+      reset!
+      sign_in user
+      before_rows = rows(user)
+      begin
+        ActiveRecord::Base.transaction(requires_new: true) do
+          get path, headers: { 'Accept' => accepts.fetch('frame') }
+        end
+      rescue ActiveRecord::RangeError => e
+        next { 'path' => path, 'accept' => accepts.fetch('frame'), 'now' => now.iso8601,
+          'status' => 500, 'error' => e.class.name, 'body' => '', 'user' => user_row(user), 'rows' => before_rows }
+      end
+      body = response.body.gsub(/(name="authenticity_token" value=")[^"]*/, '\1CSRF')
+                          .gsub(%r{(/auth/dawarich\?token=)[^&"]+}, '\1REDACTED')
+      state(user, path, 'frame').merge('body' => body)
+    end
+    write_json(dir.join("a12f3a-#{name}.json"), { 'cases' => cases })
+  end
+
   def feed(day, last = day) = "/map/timeline_feeds?start_at=#{day}T00:00:00&end_at=#{last}T23:59:59"
 
   context 'A8 web visits' do
@@ -557,6 +578,10 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       points!(rich, 7601, [at(d, '08:10'), at(d, '08:40'), at(d, '09:20')], visit: 7301)
       points!(rich, 7611, [at(d, '10:20'), at(d, '11:00')], visit: 7302)
       capture('feed_rich_en', rich, feed(d))
+      visit!(rich, 7307, at(d, '08:05'), at(d, '09:40'), name: 'Same-time stop')
+      capture_closure('m03', rich, [feed(d), '/map/timeline_feeds',
+        '/map/timeline_feeds?start_at=garbage&end_at=garbage', feed(d) + '&locale=de'])
+      Visit.where(id: 7307).delete_all
 
       night = reader(7102)
       track!(night, 7411, at('2026-09-27', '22:30'), at('2026-09-28', '01:30'), mode: :driving, distance: 60_000,
@@ -616,6 +641,8 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       track!(km, 7481, at('2026-09-27', '07:00'), at('2026-09-27', '08:00'), mode: :cycling, distance: 12_345,
                                                                            speed: 18.47, gain: 120, loss: 95)
       capture('track_km_en', km, '/map/timeline_feeds/7481/track_info')
+      capture_closure('m05', km, ['/map/timeline_feeds/7481/track_info',
+        '/map/timeline_feeds/7481/track_info?locale=de'])
 
       mi = reader(7112, maps: { 'distance_unit' => 'mi' })
       track!(mi, 7482, at('2026-09-27', '07:00'), at('2026-09-27', '07:30'), mode: :unknown, distance: 800,
@@ -643,6 +670,10 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       track!(cal, 7494, at('2026-10-25', '00:30'), at('2026-10-25', '05:00'), mode: :driving, distance: 50_000)
       points!(cal, 7621, [at('2026-09-25', '12:00')])
       capture('calendar_frame_en', cal, '/map/timeline_feeds/calendar?month=2026-09')
+      visit!(cal, 7499, at('2026-10-01', '12:00'), at('2026-10-01', '13:00'))
+      capture_closure('m04', cal, ['/map/timeline_feeds/calendar?month=2026-09',
+        '/map/timeline_feeds/calendar?month=2026-9'])
+      Visit.where(id: 7499).delete_all
       capture('calendar_stream_en', cal, '/map/timeline_feeds/calendar?month=2026-10', accept: 'stream')
       capture('calendar_any_en', cal, '/map/timeline_feeds/calendar?month=2026-09', accept: 'any')
       capture('calendar_browser_en', cal, '/map/timeline_feeds/calendar?month=2026-09', accept: 'browser')
@@ -694,6 +725,13 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       capture('residency_default_year_en', default, '/map/residency')
 
       capture('residency_signed_out', nil, '/map/residency?year=2026')
+      tied = reader(7991)
+      points!(tied, 7992, [at('2026-03-21', '12:00')], country: 'Germany')
+      points!(tied, 7993, [at('2026-03-22', '12:00')], country: 'Czechia')
+      points!(tied, 7994, [at('2026-03-21', '13:00')], country: 'Czechia')
+      points!(tied, 7995, [at('2026-03-22', '13:00')], country: 'Germany')
+      capture_closure('m06', tied, ['/map/residency?year=2026', '/map/residency?year=2026tail',
+        '/map/residency?year=2038'])
     end
   end
 end

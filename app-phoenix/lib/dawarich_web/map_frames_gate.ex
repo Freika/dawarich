@@ -3,7 +3,7 @@ defmodule DawarichWeb.MapFramesGate do
 
   import Plug.Conn, only: [get_req_header: 2]
 
-  alias Dawarich.{Entitlements, MapWindow}
+  alias Dawarich.Entitlements
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
 
@@ -18,8 +18,9 @@ defmodule DawarichWeb.MapFramesGate do
   end
 
   defp timestamp?(value) when is_binary(value),
-    do: Ruby.present?(value) and (value =~ ~r/\A\d+\z/ or MapWindow.iso?(value))
+    do: true
 
+  defp timestamp?(nil), do: true
   defp timestamp?(_value), do: false
 
   def calendar?(conn, _params) do
@@ -63,8 +64,6 @@ defmodule DawarichWeb.MapFramesGate do
 
   defp query(conn), do: Plug.Conn.Query.decode(conn.query_string)
 
-  defp plain?(conn, query),
-    do:
-      not Enum.any?(~w(locale client aff via), &Map.has_key?(query, &1)) and
-        get_req_header(conn, "x-dawarich-client") == []
+  defp plain?(_conn, query),
+    do: Enum.all?(query, fn {_key, value} -> is_binary(value) or is_nil(value) end)
 end

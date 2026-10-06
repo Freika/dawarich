@@ -64,7 +64,15 @@ defmodule DawarichWeb.MapFrames do
   def body(:index, ctx) do
     window =
       MapWindow.build(
-        Map.take(ctx.query, ["start_at", "end_at"]),
+        Map.new(~w(start_at end_at), fn key ->
+          value = ctx.query[key]
+
+          {key,
+           if(Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(value),
+             do: Integer.to_string(DateTime.to_unix(ctx.now)),
+             else: value
+           )}
+        end),
         ctx.user.settings || %{},
         ctx.now,
         nil
