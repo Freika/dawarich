@@ -104,6 +104,9 @@ RSpec.describe PendingImports::CleanupJob do
       expect(user_import.reload.file).to be_attached
       expect(ActiveStorage::Blob.exists?(blob_id)).to be true
       expect(user_import.file.download.bytesize).to be > 0
+      expect(PendingImport.exists?(pending.id)).to be false
+      expect(ActiveStorage::Attachment.where(blob_id:).pluck(:record_type, :record_id, :name))
+        .to eq([['Import', user_import.id, 'file']])
     end
   end
 end
