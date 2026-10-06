@@ -2,7 +2,6 @@ defmodule Dawarich.Ingest.Closure do
   @moduledoc false
   alias Dawarich.Ingest.{
     Cast,
-    Friends,
     Geo,
     GeoJSON,
     OwnTracks,
@@ -49,7 +48,7 @@ defmodule Dawarich.Ingest.Closure do
       case action do
         :points -> {GeoJSON.points(params, actor, true), nil}
         :overland -> {GeoJSON.overland(params, true), nil}
-        :owntracks -> {OwnTracks.payloads(params), Friends.for_user(actor)}
+        :owntracks -> {OwnTracks.payloads(params), nil}
         :traccar -> {Traccar.payloads(params, true), nil}
       end
 

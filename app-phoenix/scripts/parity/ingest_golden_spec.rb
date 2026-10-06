@@ -231,7 +231,11 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
       { name: 'closure_owntracks_boolean_device', path: IngestGoldenOracle::OT,
         body: { lat: 52.5, lon: 13.4, tst: 1_790_000_000, tid: true, inregions: [1, true] } },
       { name: 'closure_traccar_boolean_device', path: IngestGoldenOracle::TC,
-        body: { device_id: false, location: { timestamp: '2026-09-28T11:00Z', latitude: 52.5, longitude: 13.4 } } }
+        body: { device_id: false, location: { timestamp: '2026-09-28T11:00Z', latitude: 52.5, longitude: 13.4 } } },
+      { name: 'closure_owntracks_friends_failure', setup: :family, path: IngestGoldenOracle::OT,
+        body: { _type: 'location', lat: 52.5, lon: 13.4, tst: 1_790_000_000 },
+        rails_stub: :friends_failure,
+        phoenix_fault: ['ALTER TABLE family_memberships RENAME TO family_memberships_a3'] }
     ]
     cases.each do |kase|
       result = nil

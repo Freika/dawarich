@@ -523,7 +523,7 @@ defmodule DawarichWeb.A12f2EClosureTest do
     native_cases =
       Enum.filter(golden["cases"], fn kase ->
         String.starts_with?(kase["name"], ["points_", "overland_", "owntracks_", "traccar_"]) and
-          kase["name"] not in ["points_slice2_fault", "owntracks_friends_failure"] and
+          kase["name"] != "points_slice2_fault" and
           String.starts_with?(kase["request"]["body"], ["{", "["])
       end)
 
@@ -538,7 +538,7 @@ defmodule DawarichWeb.A12f2EClosureTest do
                actor
              )
 
-    assert {:ok, [], []} =
+    assert {:ok, [], nil} =
              Closure.prepare(
                :owntracks,
                %{"_type" => "waypoint", "lat" => 52.5, "lon" => 13.4, "tst" => 1},
@@ -809,6 +809,8 @@ defmodule DawarichWeb.A12f2EClosureTest do
         |> Plug.Conn.put_req_header("content-type", "application/json")
         |> Plug.Conn.put_req_header("content-length", to_string(byte_size(body)))
         |> DawarichWeb.Api.Body.call([])
+
+      for statement <- kase["phoenix_fault"] || [], do: Repo.query!(statement)
 
       result =
         api_conn(user, conn.assigns.api_params, context())
