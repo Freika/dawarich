@@ -61,11 +61,16 @@ defmodule Dawarich.MapApi.Hexagons do
       where = if ctx.shared, do: "p.user_id = $1 AND p.timestamp BETWEEN $2 AND $3", else: where
       args = if ctx.shared, do: [ctx.user.id, elem(range, 0), elem(range, 1)], else: args
 
-      [[count, minlat, maxlat, minlng, maxlng]] =
-        Repo.query!(
-          "SELECT COUNT(*),ST_YMin(ST_Extent(p.lonlat::geometry)),ST_YMax(ST_Extent(p.lonlat::geometry)),ST_XMin(ST_Extent(p.lonlat::geometry)),ST_XMax(ST_Extent(p.lonlat::geometry)) FROM points p WHERE #{where} AND (p.anomaly=false OR p.anomaly IS NULL)",
-          args
-        ).rows
+      rows =
+        if params["robust"] == "true",
+          do: robust(where, args),
+          else:
+            Repo.query!(
+              "SELECT COUNT(*),ST_YMin(ST_Extent(p.lonlat::geometry)),ST_YMax(ST_Extent(p.lonlat::geometry)),ST_XMin(ST_Extent(p.lonlat::geometry)),ST_XMax(ST_Extent(p.lonlat::geometry)) FROM points p WHERE #{where} AND (p.anomaly=false OR p.anomaly IS NULL)",
+              args
+            ).rows
+
+      [[count, minlat, maxlat, minlng, maxlng]] = rows
 
       if count == 0,
         do: {:error, 404, "No data found for the specified date range"},
@@ -88,6 +93,52 @@ defmodule Dawarich.MapApi.Hexagons do
         do: {:error, 503, "History bounds request timed out"},
         else: {:error, 400, "Invalid date format"}
   end
+
+  defp robust(where, args) do
+    sql =
+      "SELECT FLOOR(ST_X(p.lonlat::geometry)/2)::int,FLOOR(ST_Y(p.lonlat::geometry)/2)::int,COUNT(*),MIN(ST_Y(p.lonlat::geometry)),MAX(ST_Y(p.lonlat::geometry)),MIN(ST_X(p.lonlat::geometry)),MAX(ST_X(p.lonlat::geometry)) FROM points p WHERE #{where} AND (p.anomaly=false OR p.anomaly IS NULL) AND p.lonlat IS NOT NULL GROUP BY 1,2"
+
+    {:ok, cells} =
+      Repo.transaction(fn ->
+        Repo.query!("SET LOCAL statement_timeout = 5000")
+        Repo.query!(sql, args).rows
+      end)
+
+    count = Enum.sum(Enum.map(cells, &Enum.at(&1, 2)))
+    cells = if count < 50, do: cells, else: inliers(cells)
+
+    if cells == [],
+      do: [[0, nil, nil, nil, nil]],
+      else: [[count, min_at(cells, 3), max_at(cells, 4), min_at(cells, 5), max_at(cells, 6)]]
+  end
+
+  defp inliers(cells) do
+    keys = MapSet.new(cells, fn [x, y | _] -> {x, y} end)
+
+    supported =
+      Enum.filter(cells, fn [x, y, count | _] ->
+        count >= 2 or
+          Enum.any?(
+            for(dx <- -1..1, dy <- -1..1, dx != 0 or dy != 0, do: {x + dx, y + dy}),
+            &MapSet.member?(keys, &1)
+          )
+      end)
+
+    if supported == [] do
+      cells
+    else
+      lng_gap = max(1, (max_at(cells, 6) - min_at(cells, 5)) * 0.2)
+      lat_gap = max(1, (max_at(cells, 4) - min_at(cells, 3)) * 0.2)
+
+      Enum.filter(cells, fn [_x, _y, _count, minlat, maxlat, minlng, maxlng] ->
+        minlng <= max_at(supported, 6) + lng_gap and maxlng >= min_at(supported, 5) - lng_gap and
+          minlat <= max_at(supported, 4) + lat_gap and maxlat >= min_at(supported, 3) - lat_gap
+      end)
+    end
+  end
+
+  defp min_at(cells, n), do: cells |> Enum.map(&Enum.at(&1, n)) |> Enum.min()
+  defp max_at(cells, n), do: cells |> Enum.map(&Enum.at(&1, n)) |> Enum.max()
 
   def context(user, params) do
     if Http.present?(params["uuid"]) do
@@ -112,7 +163,7 @@ defmodule Dawarich.MapApi.Hexagons do
                stat: %{cells: cells},
                shared: true,
                from: Date.to_iso8601(first),
-               to: Date.to_iso8601(Date.end_of_month(first)) <> "T23:59:59"
+               to: Date.to_iso8601(Date.end_of_month(first)) <> "T23:59:59Z"
              }}
           else
             missing()
@@ -183,94 +234,5 @@ defmodule Dawarich.MapApi.Hexagons do
       Repo.query!("SELECT " <> RailsTime.sql("to_timestamp($1) AT TIME ZONE 'UTC'", 0), [n]).rows
 
     text
-  end
-end
-
-defmodule Dawarich.MapApi.Hexagons.Boundary do
-  @moduledoc false
-  import Bitwise
-  alias Dawarich.H3.Tables
-  @units {{0, 0, 0}, {0, 0, 1}, {0, 1, 0}, {0, 1, 1}, {1, 0, 0}, {1, 0, 1}, {1, 1, 0}}
-  @ii [{2, 1, 0}, {1, 2, 0}, {0, 2, 1}, {0, 1, 2}, {1, 0, 2}, {2, 0, 1}]
-  @iii [{5, 4, 0}, {1, 5, 0}, {0, 5, 4}, {0, 1, 5}, {4, 0, 5}, {5, 0, 1}]
-
-  def polygon(hex) do
-    h = if is_binary(hex), do: String.to_integer(hex, 16), else: hex
-    base = h >>> 45 &&& 127
-    res = h >>> 52 &&& 15
-
-    if Tables.pentagon?(base),
-      do: raise(ArgumentError, "Pentagon boundary requires face projection")
-
-    ring =
-      Enum.find_value(0..19, fn face ->
-        Enum.find_value(for(i <- 0..2, j <- 0..2, k <- 0..2, do: {i, j, k}), fn coord ->
-          if Tables.base_cell(face, coord) == {base, 0}, do: ring(h, res, face, coord)
-        end)
-      end) || raise(ArgumentError, "Boundary crosses an icosahedron face")
-
-    %{"type" => "Polygon", "coordinates" => [ring ++ [hd(ring)]]}
-  end
-
-  defp ring(h, res, face, coord) do
-    coord =
-      Enum.reduce(1..res//1, coord, fn r, coord ->
-        digit = h >>> ((15 - r) * 3) &&& 7
-        add(down(coord, if(rem(r, 2) == 1, do: :ap7, else: :ap7r)), elem(@units, digit))
-      end)
-
-    coord = coord |> down(:ap3) |> down(:ap3r)
-
-    {coord, adj, verts} =
-      if rem(res, 2) == 1, do: {down(coord, :ap7r), res + 1, @iii}, else: {coord, res, @ii}
-
-    verts = Enum.map(verts, &add(coord, &1))
-    maxdim = 6 * Integer.pow(7, div(adj, 2))
-
-    if Enum.all?(verts, fn {i, j, k} -> i + j + k <= maxdim end),
-      do: Enum.map(verts, &geo(&1, face, adj))
-  end
-
-  defp down({i, j, k}, :ap7), do: norm({3 * i + j, 3 * j + k, i + 3 * k})
-  defp down({i, j, k}, :ap7r), do: norm({3 * i + k, i + 3 * j, j + 3 * k})
-  defp down({i, j, k}, :ap3), do: norm({2 * i + j, 2 * j + k, i + 2 * k})
-  defp down({i, j, k}, :ap3r), do: norm({2 * i + k, i + 2 * j, j + 2 * k})
-
-  defp norm({i, j, k}),
-    do:
-      (
-        n = min(i, min(j, k))
-        {i - n, j - n, k - n}
-      )
-
-  defp add({i, j, k}, {a, b, c}), do: norm({i + a, j + b, k + c})
-
-  defp geo({i, j, k}, face, res) do
-    x = i - k - 0.5 * (j - k)
-    y = (j - k) * 0.86602540378443864676
-
-    r =
-      :math.atan(
-        :math.sqrt(x * x + y * y) / :math.pow(:math.sqrt(7), res) / 3 * 0.381966011250105
-      )
-
-    az = Tables.face_axis(face) - :math.atan2(y, x)
-    {lat, lng} = Tables.face_center(face)
-    slat = :math.sin(lat) * :math.cos(r) + :math.cos(lat) * :math.sin(r) * :math.cos(az)
-    plat = :math.asin(max(-1.0, min(1.0, slat)))
-
-    plng =
-      lng +
-        :math.atan2(
-          :math.sin(az) * :math.sin(r) * :math.cos(lat),
-          :math.cos(r) - :math.sin(lat) * slat
-        )
-
-    plng =
-      if plng > :math.pi(),
-        do: plng - 2 * :math.pi(),
-        else: if(plng < -:math.pi(), do: plng + 2 * :math.pi(), else: plng)
-
-    [plng * 180 / :math.pi(), plat * 180 / :math.pi()]
   end
 end

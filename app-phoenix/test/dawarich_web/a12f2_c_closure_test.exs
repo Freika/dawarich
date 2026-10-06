@@ -334,6 +334,18 @@ defmodule DawarichWeb.A12f2CClosureTest do
     assert result == Dawarich.MapApi.TrackedMonths.fetch(owner)
   end
 
+  @tag :a12f2_c_06_robust
+  test "Robust history bounds retain supported cells and total source point counts", %{user: user} do
+    for i <- 0..49, do: point(user.id, 1_735_689_600 + i, false, nil, 13.0)
+    point(user.id, 1_735_689_700, false, nil, 100.0)
+    params = %{"start_date" => "2025-01-01", "end_date" => "2025-01-02", "robust" => "true"}
+    assert {:ok, bounds} = Dawarich.MapApi.Hexagons.bounds(user, params)
+    assert bounds["point_count"] == 51
+    assert bounds["max_lng"] == 13.0
+    assert {:ok, exact} = Dawarich.MapApi.Hexagons.bounds(user, Map.delete(params, "robust"))
+    assert exact["max_lng"] == 100.0
+  end
+
   defp track(user_id) do
     [[id]] =
       Repo.query!(
