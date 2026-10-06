@@ -198,7 +198,8 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
         map_seed(seed: :base, user: {})
         %w[points tracks].each do |domain|
           [2025, 'all'].each do |year|
-            Rails.cache.write("#{domain}:tile_epoch:#{ApiMapGoldenOracle::OWNER}:#{year}", "synthetic-#{domain}-#{year}", raw: true)
+            Rails.cache.write("#{domain}:tile_epoch:#{ApiMapGoldenOracle::OWNER}:#{year}",
+                              "synthetic-#{domain}-#{year}", raw: true)
           end
         end
         query = 'start_at=1735689600&end_at=1735690000'
@@ -209,12 +210,10 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
         path = "/api/v1/tiles/#{layer}/10/#{x}/338.mvt?#{query}"
         get path, headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
         closure["#{layer}_#{variant}"] = {
-          'setup' => ApiMapGoldenOracle::TABLES.to_h do |table|
-            [table, ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
-                                           .map { JSON.parse(_1) }]
-          end,
+          'setup' => map_closure_setup(ApiMapGoldenOracle::TABLES),
           'status' => response.status, 'body_base64' => Base64.strict_encode64(response.body),
-          'headers' => response.headers.to_h.transform_keys(&:downcase).slice('content-type', 'cache-control', 'vary', 'etag')
+          'headers' => response.headers.to_h.transform_keys(&:downcase)
+                               .slice('content-type', 'cache-control', 'vary', 'etag')
         }
       end
     end
@@ -223,8 +222,9 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
                          started_at: map_time(0), ended_at: map_time(300), duration: 5,
                          created_at: ApiMapGoldenOracle::STAMP, updated_at: ApiMapGoldenOracle::STAMP)
     cell = H3.from_geo_coordinates([52.0, 13.0], 8).to_s(16)
+    stored_cells = [[cell, 2, ApiMapGoldenOracle::T0, ApiMapGoldenOracle::T0 + 300]]
     map_insert('stats', id: 780_001, user_id: ApiMapGoldenOracle::OWNER, year: 2025, month: 1,
-                        distance: 987, h3_hex_ids: JSON.generate([[cell, 2, ApiMapGoldenOracle::T0, ApiMapGoldenOracle::T0 + 300]]),
+                        distance: 987, h3_hex_ids: JSON.generate(stored_cells),
                         created_at: ApiMapGoldenOracle::STAMP, updated_at: ApiMapGoldenOracle::STAMP)
     {
       'timeline' => '/api/v1/timeline?start_at=2025-01-01T00:00:00Z&end_at=2025-01-01T23:59:59Z',
@@ -240,10 +240,7 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     }.each do |name, path|
       get path, headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
       closure[name] = {
-        'setup' => (ApiMapGoldenOracle::TABLES + %w[visits stats]).to_h do |table|
-          [table, ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
-                                         .map { JSON.parse(_1) }]
-        end,
+        'setup' => map_closure_setup(ApiMapGoldenOracle::TABLES + %w[visits stats]),
         'status' => response.status, 'body' => response.body
       }
     end
@@ -270,10 +267,7 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
                          updated_at: ApiMapGoldenOracle::STAMP)
     %w[valid malformed].each do |variant|
       Users::Digest.find(770_001).update_columns(toponyms: { 'country' => 'Germany' }) if variant == 'malformed'
-      setup = (ApiMapGoldenOracle::TABLES + %w[visits stats digests]).to_h do |table|
-        [table, ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
-                                       .map { JSON.parse(_1) }]
-      end
+      setup = map_closure_setup(ApiMapGoldenOracle::TABLES + %w[visits stats digests])
       result = map_response({ method: :get, expect: :rails }, '/api/v1/digests/2024',
                             { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" })
       closure["digest_#{variant}"] = result.merge('setup' => setup)
@@ -283,11 +277,15 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
                     'Accept' => 'application/json', 'Content-Type' => 'application/json' }
     {
       'initialize' => { jsonrpc: '2.0', id: 1, method: 'initialize',
-                        params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'synthetic', version: '1' } } },
+                        params: { protocolVersion: '2025-11-25', capabilities: {},
+                                  clientInfo: { name: 'synthetic', version: '1' } } },
       'tools' => { jsonrpc: '2.0', id: 1, method: 'tools/list' },
-      'latest' => { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_latest_location', arguments: {} } },
-      'search' => { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'search_visits', arguments: { query: 'synthetic' } } },
-      'timeline' => { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_timeline', arguments: { start_at: '2025-01-01', end_at: '2025-01-01' } } },
+      'latest' => { jsonrpc: '2.0', id: 1, method: 'tools/call',
+                   params: { name: 'get_latest_location', arguments: {} } },
+      'search' => { jsonrpc: '2.0', id: 1, method: 'tools/call',
+                   params: { name: 'search_visits', arguments: { query: 'synthetic' } } },
+      'timeline' => { jsonrpc: '2.0', id: 1, method: 'tools/call',
+                   params: { name: 'get_timeline', arguments: { start_at: '2025-01-01', end_at: '2025-01-01' } } },
       'notification' => { jsonrpc: '2.0', method: 'notifications/initialized' },
       'batch' => []
     }.each do |name, payload|
@@ -301,6 +299,13 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
 
     FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2c/closure.json'),
                             "#{map_exact_json(closure)}\n")
+  end
+
+  def map_closure_setup(tables)
+    tables.index_with do |table|
+      ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
+                        .map { JSON.parse(_1) }
+    end
   end
 
   def map_exact_json(value, depth = 0)
