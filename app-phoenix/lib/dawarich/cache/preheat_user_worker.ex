@@ -39,12 +39,17 @@ defmodule Dawarich.Cache.PreheatUserWorker do
   end
 
   defp preheat(repo, payload, event, opts) do
+    opts = Keyword.put(opts, :ambient_zone, payload["time_zone"])
+    :ok = Dawarich.Cache.Readers.warm(repo, payload["user_id"], opts)
+
     :ok =
       PreheatDigests.call(
         repo,
         payload["user_id"],
         Keyword.put(opts, :ambient_zone, payload["time_zone"])
       )
+
+    :ok = Dawarich.Cache.Readers.warm_digests(repo, payload["user_id"], opts)
 
     if hook = opts[:after_preheat], do: hook.()
 

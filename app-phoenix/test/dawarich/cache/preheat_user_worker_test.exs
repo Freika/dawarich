@@ -4,6 +4,12 @@ defmodule Dawarich.Cache.PreheatUserWorkerTest do
   alias Dawarich.Cache.PreheatUserWorker, as: Worker
   alias Dawarich.DigestFixtures, as: F
 
+  setup do
+    for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
+    {:ok, _} = Dawarich.Redis.cache_command(["FLUSHDB"])
+    :ok
+  end
+
   test "replayed forwarded preheat settles the event once and a crash before settlement converges" do
     kase = F.case!("berlin_yearly")
     F.load!(ScratchRepo, kase)
