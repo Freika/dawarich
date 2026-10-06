@@ -37,18 +37,19 @@ defmodule Dawarich.Lite.ArchivalWarningWorker do
   end
 
   defp check(repo, oban, tz, now, user_id) do
-    {:ok, result} =
-      repo.transaction(fn ->
-        case Ownership.lock(repo, @key) do
-          :oban ->
-            mail_owned? = Ownership.lock(repo, @mail_key) == :oban
-            ArchivalWarnings.check_user(repo, tz, user_id, mail_owned?, oban, now)
+    case repo.transaction(fn ->
+           case Ownership.lock(repo, @key) do
+             :oban ->
+               mail_owned? = Ownership.lock(repo, @mail_key) == :oban
+               ArchivalWarnings.check_user(repo, tz, user_id, mail_owned?, oban, now)
 
-          _ ->
-            :not_owner
-        end
-      end)
-
-    if result == :not_owner, do: {:halt, {:cancel, :not_owner}}, else: {:cont, :ok}
+             _ ->
+               :not_owner
+           end
+         end) do
+      {:ok, :not_owner} -> {:halt, {:cancel, :not_owner}}
+      {:ok, _} -> {:cont, :ok}
+      {:error, reason} -> {:halt, {:error, reason}}
+    end
   end
 end
