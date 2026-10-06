@@ -1,12 +1,4 @@
-# Runtime libraries for the prebuilt maplibre-native Node binding
-# (vendor/poster_renderer). The binary is built on Ubuntu 24.04 and links
-# lib versions Debian doesn't ship (libicu74, libjpeg8) — vendor exactly
-# those .so files and load them via LD_LIBRARY_PATH scoped to the renderer.
 FROM ubuntu:24.04 AS mbgl_libs
-# Only 64-bit targets ship the prebuilt maplibre-native binding (see the armv7
-# skip below), so vendor these libs there only. On 32-bit armhf, Ubuntu 24.04's
-# 64-bit time_t transition renamed libuv1/libpng16-16 to *t64, which would break
-# the install for libraries armv7 never loads anyway — emit an empty /out.
 ARG TARGETARCH
 RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ]; then \
     apt-get update -qq \
@@ -66,7 +58,27 @@ RUN BROWSERSLIST_IGNORE_OLD_DATA=1 node_modules/.bin/tailwindcss \
       -c config/tailwind.config.js --minify \
     && cd /build && mix dawarich.build_inputs --root /src --out /out
 
-FROM ruby:3.4.9-slim
+FROM debian:trixie-slim AS native_runtime
+
+ENV APP_PATH=/var/app LANG=C.UTF-8 RAILS_ENV=production RAILS_PORT=3000
+
+RUN apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    erlang-base erlang-inets erlang-ssl erlang-xmerl \
+    libstdc++6 libgcc-s1 libssl3t64 libncurses6 zlib1g \
+    postgresql-client curl procps gosu ca-certificates tzdata nodejs \
+    libegl1 libgles2 libgbm1 libglx0 libopengl0 libx11-6 xvfb xauth mesa-libgallium \
+    libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libjpeg62-turbo libgif7 librsvg2-2 \
+    && rm -rf /var/lib/apt/lists/* \
+    && test "$(node -p 'process.versions.modules')" = 115
+
+COPY --from=mbgl_libs /out /opt/mbgl-libs
+WORKDIR $APP_PATH
+EXPOSE $RAILS_PORT
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["web-entrypoint.sh"]
+
+FROM ruby:3.4.9-slim AS coexistence_runtime
 
 ARG RAILS_ENV=production
 
@@ -99,14 +111,11 @@ RUN apt-get update -qq \
     && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js from Debian repositories (supports all architectures including armv7)
 RUN apt-get update -qq \
     && apt-get install -y --no-install-recommends nodejs npm \
     && npm install -g yarn \
     && rm -rf /var/lib/apt/lists/*
 
-# Headless GL stack for the in-container poster renderer (maplibre-native):
-# software rendering via Mesa + a virtual X display. No browser involved.
 RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     libegl1 libgles2 libgbm1 libglx0 libopengl0 libx11-6 xvfb xauth \
@@ -119,21 +128,16 @@ RUN apt-get update -qq \
 
 COPY --from=mbgl_libs /out /opt/mbgl-libs
 
-# Use jemalloc with check for architecture
 RUN if [ "$(uname -m)" = "x86_64" ]; then \
     echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
     else \
     echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
     fi
 
-# Return freed pages to the OS quickly instead of holding them in the
-# allocator, and cap arena count — keeps idle RSS low on small hosts.
 ENV MALLOC_CONF="narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:1000"
 
-# Enable YJIT
 ENV RUBY_YJIT_ENABLE=1
 
-# Update RubyGems and install Bundler
 RUN gem update --system 3.6.9 \
     && gem install bundler --version "$BUNDLE_VERSION" \
     && rm -rf $GEM_HOME/cache/*
@@ -142,7 +146,6 @@ WORKDIR $APP_PATH
 
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
-# Install production gems only
 RUN bundle config set --local path 'vendor/bundle' \
     && bundle config set --local without 'development test' \
     && bundle install --jobs 4 --retry 3 \
@@ -150,10 +153,6 @@ RUN bundle config set --local path 'vendor/bundle' \
 
 COPY ../. ./
 
-# Poster renderer dependencies — prebuilt maplibre-native binaries exist for
-# x64/arm64 only (Debian's Node 20 = ABI 115, which the release ships). On
-# armv7 the renderer is skipped; server-side poster rendering is unavailable
-# there.
 RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
     cd vendor/poster_renderer \
     && npm ci --no-audit --no-fund \
@@ -166,13 +165,9 @@ COPY --from=phoenix_builder /out/config/sprockets-manifest.json config/sprockets
 COPY --from=phoenix_builder /src/app/assets/builds/tailwind.css app/assets/builds/tailwind.css
 COPY --from=phoenix_builder /out/tmp/phoenix tmp/phoenix
 
-# Ensure tmp directory exists and is writable by any user (for custom uid:gid support)
 RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
     && chmod -R 777 tmp
 
-# Stage a pristine copy of public/ for the entrypoint to sync into the
-# persistent volume at runtime. Lives under the app dir, not /tmp, so
-# tmpfs-mounted /tmp cannot make the sync silently skip.
 RUN cp -r public $APP_PATH/public_dist
 
 COPY --from=phoenix_builder /build/_build/prod/rel/dawarich /opt/dawarich
@@ -183,7 +178,6 @@ RUN ln -s /opt/dawarich/bin/dawarich /usr/local/bin/dawarich \
     && DAWARICH_COOKIE_FILE=/tmp/build-cookie dawarich eval '{:ok, _} = Application.ensure_all_started(:postgrex); IO.puts(:ok)' | grep -qx ok \
     && rm -f /tmp/build-cookie
 
-# Copy entrypoint scripts and grant execution permissions
 COPY ./docker/entrypoint-env-guard.sh /usr/local/bin/entrypoint-env-guard.sh
 COPY ./docker/entrypoint-common.sh /usr/local/bin/entrypoint-common.sh
 
