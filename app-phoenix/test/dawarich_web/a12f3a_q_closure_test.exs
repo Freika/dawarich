@@ -75,6 +75,72 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     end
   end
 
+  defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do
+    for row <- fixture(task) do
+      settings = %{
+        "enabled" => row["state"] != "disabled",
+        "expiration" => "1h",
+        "expires_at" =>
+          DateTime.to_iso8601(
+            DateTime.add(@now, if(row["state"] == "expired", do: -1, else: 3600))
+          )
+      }
+
+      Repo.query!("UPDATE #{table} SET sharing_settings=$1 WHERE user_id=$2", [settings, user.id])
+
+      Repo.query!("UPDATE users SET plan=$1 WHERE id=$2", [
+        if(row["state"] == "partial", do: 0, else: 1),
+        user.id
+      ])
+
+      set_mode(if(row["state"] == "partial", do: "false", else: "true"))
+      conn = build_conn() |> assign(:now, ctx.now) |> get("/shared/#{kind}/#{uuid}")
+      assert conn.status == row["status"]
+      head = build_conn() |> assign(:now, ctx.now) |> head("/shared/#{kind}/#{uuid}")
+      assert head.status == conn.status
+      assert head.resp_body == ""
+      assert get_resp_header(conn, "cache-control") == [row["cache_control"]]
+
+      if row["html"] do
+        html =
+          conn.resp_body
+          |> LazyHTML.from_document()
+          |> LazyHTML.query(selector)
+          |> LazyHTML.to_html()
+
+        assert Dawarich.Test.ChartkickHTML.charts(html) ==
+                 Dawarich.Test.ChartkickHTML.charts(row["html"])
+
+        assert normalize_public(html) == normalize_public(row["html"]),
+               inspect(first_difference(normalize_public(html), normalize_public(row["html"])),
+                 limit: :infinity
+               )
+
+        refute html =~ "data-api-key"
+      else
+        assert get_resp_header(conn, "location") == ["http://www.example.com/"]
+      end
+
+      assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
+    end
+
+    assert (build_conn() |> get("/shared/#{kind}/unknown")).status == 302
+  end
+
+  defp first_difference(a, a), do: nil
+
+  defp first_difference(a, b) when is_list(a) and is_list(b) and length(a) == length(b),
+    do: Enum.find_value(Enum.zip(a, b), fn {x, y} -> first_difference(x, y) end)
+
+  defp first_difference(a, b) when is_tuple(a) and is_tuple(b),
+    do: first_difference(Tuple.to_list(a), Tuple.to_list(b))
+
+  defp first_difference(a, b), do: {a, b}
+
+  defp normalize_public(html),
+    do:
+      html |> Dawarich.Test.ChartkickHTML.without_charts() |> Dawarich.Test.ParityHTML.normalize()
+
   defp fixture(task),
     do: File.read!("test/fixtures/stats/a12f3a-q#{task}.json") |> Jason.decode!()
 

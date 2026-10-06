@@ -1,19 +1,35 @@
-# Stats, insights, digests and public month closure
+# Stats, insights, digests and public month implementation
 
-Package Q implements plan A tasks Q01–Q14. Rails 1.15.3 remains the source contract. Native command readiness remains controlled by the existing ownership registry; this package does not make workers claimable or remove coexistence hand-back.
+Last updated: 2026-10-06. Rails 1.15.3 is the source contract. Repository implementation covers the supported native browser journeys in package Q. Release retirement remains conditional on the shared transport, cache/effect and final route integration handoffs described below.
 
-## Native browser stats update
+## Domain contracts
 
-`Stats.WebCommands.update/5` receives repo, user, year, month and context with locale/now. Valid months publish one typed `stats.calculate_month` outbox command; `all` publishes twelve in source order inside one transaction under `command:stats.calculate_month`. Invalid periods return the source 303 alert without publishing. Explicit Sidekiq ownership returns a pre-effect hand-back. Browser actions use existing Rails session and CSRF adapters, source notice text and active-until ordering.
+- `Stats.WebCommands.update/5`: repo, user, year, month, context (now/locale); typed `stats.calculate_month` outbox entries under the existing command owner lock. A single month publishes once; all publishes twelve. Invalid periods retain the source alert and publish nothing.
+- `Stats.WebCommands.update_all/3`: transactionally claims the existing user dedupe key for 900 seconds and publishes one `stats.full_recalculation` command with source job UUID. Duplicate requests retain the source notice. Existing full-recalculation worker and tracked-month calculations remain the terminal implementation.
+- `Digests.WebCommands.create/4`: validates source past-year/tracked-year rules and publishes typed `digests.calculate_year`, including actor time zone. `destroy/4` deletes only the actor's yearly digest; source found 303 and missing 302 responses remain distinct.
+- `Digests.Sharing.update/5` and `Stats.Sharing.update/6`: actor-scoped mutations preserve UUID, exact enabled coercion, all five expirations, locale messages and JSON/Turbo results. Hour durations use elapsed time across DST; week/month durations use calendar time. Disabled and expired public capabilities redirect to the root with the source flash. Public digest lookup uses the capability's exact row, including a monthly digest UUID.
+- Public digest full/partial and public month documents retain source page markup, chart payloads and public map data attributes. Public map boot uses the existing Stimulus bridge. Public pages expose no owner API key.
+- Native insights details calculate missing or stale yearly/monthly digests synchronously through existing `Digests.Calculation` entry points. Warm Rails cache reads remain compatible. Cold and unavailable cache stay native. Native requests write no Rails fragments and do not enqueue reverse Rails commands. This is not a claim that shared cache/effect workers are retired.
+- Source failures remain failures: nil/nonempty string-keyed month daily data, malformed insights periods/daily pairs, nonempty object digest toponyms, nil country flags, non-array first visits and nonnumeric country minutes. Empty legacy object toponyms remain readable.
 
-Minimal Q route wiring adds a stats request pipeline and PUT/POST-override update routes to `router.ex`. Package O06 must reconcile these additions with its final route wiring. Shared transport rules and global route constraints remain outside Q.
+## Oracle and route ownership
 
-Source capture extends the existing stats fixture generator, because O03 captures were absent at the allocated base. Existing fixture bytes remain unchanged. `a12f3a-q06.json` records January, padded January, all twelve months and rejected periods. Q09/Q10 source captures are available for the subsequent digest tasks.
+O03 source additions were absent at the allocated base. Under the task's explicit exception, Q extended the existing `stats_fixtures_spec.rb` generator through `stats_closure_fixtures.rb` and captured the fourteen assigned JSON files. Two complete recordings were byte-identical; preexisting stats fixtures, country names and stats corpus remained unchanged. O08 must reconcile this generator extension with O03's additions.
 
-Q06 named test: initial missing-function RED; GREEN (1 test, 0 failures); M-Q06 omits December and fails the captured job-list assertion; restored GREEN (1 test, 0 failures). Browser cases run with self-hosted true, explicit Cloud false and unset default. Native payloads coerce source year/month strings to integers required by the existing worker decoder. No reverse Rails command is written.
+Minimal reachable wiring in `router.ex` adds stats update, digest create/delete, sharing mutations and public digest/month pages. Public routes carry the relevant stats/digests coexistence key. O06 owns final route reconciliation. No global fallback, route retirement flags, worker readiness registry or shared sink routing was changed.
 
-## Remaining work
+## Verification convention
 
-Q01–Q05, Q07–Q14 remain under implementation. Q06 transport edge envelopes, owner-race/enqueue-failure coverage and native worker terminal evidence still need integration with the shared transport/effect owners. Passing supported browser requests does not close those branches or retire Rails fragment jobs.
+Q01 reuses the existing source-backed year/index parity cases rather than inventing a new failing test for already implemented behavior. Its plan-window mutation fails the year oracle and restoration passes. Q02–Q14 add named closure assertions: each initial RED, GREEN, named production mutation failure and restored GREEN is recorded in the implementation report. Additional DST and malformed-digest assertions also failed before their fixes.
 
-Final package gates and AFFiNE synchronization are pending.
+## Required integration handoff
+
+The domain implementation does not close unsupported dotted/JSON/XHR/valueless request envelopes or ambiguous/failed CSRF/body/session transport. Shared `Strangler`, `RailsForm`, `Api.Body` and auth primitives remain A12f-2 owned. Explicit Sidekiq ownership is a pre-effect coexistence hand-back; native post-effect failures are terminal.
+
+Q04/Q07/Q14 final no-Rails cache/effect terminal proof depends on sibling rows 19–20. Existing effect sinks/registry readiness remain inert until that handoff. The public map still consumes `/api/v1/maps/hexagons`, which belongs to A12f-2 package C; this package supplies native page bounds and capability hooks, not an unowned replacement API. O06/O08 must reconcile routing/source captures; the controller runs seed 202 on the integration head.
+
+No browser acceptance or whole-domain retirement is claimed by this implementation. Gates and exact commit/test evidence are maintained in the assigned controller report. AFFiNE counterpart: Dawarich — Phoenix A12f-3a Q native stats and digest implementation.
+
+## Task commits
+
+- Q01: verify existing index and year parity; source/mutation evidence recorded.
