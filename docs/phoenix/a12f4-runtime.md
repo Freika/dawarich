@@ -35,3 +35,24 @@ After controller prerequisite acceptance and exclusive test-file handoff:
 7. Run gates on that coherent accepted integration head; controller runs integration seed 202 and real G42–49/U1 acceptance. No package green is release acceptance.
 
 Rails sources, fallback plans and existing opt-in configuration are retained throughout this preparation. No allocation values belong in tracked files. The controller report records concrete command/log locations.
+
+## Prepared seams and verification
+
+`Standalone.validate_candidate_env!/1` is a pure, dormant final-candidate validator. It refuses the eleven exact obsolete settings by presence, reports only the variable name and native remedy, and preserves Rails/Rack environment, secrets configuration, Redis selectors, SMTP, Sentry and arbitrary wire/data keys. It is deliberately **not invoked by runtime configuration** while coexistence and standalone activation remain supported.
+
+`Application.runtime_plan/2` respects compile-time `front_runtime: false` in ordinary tests. Manual `plan/2` and `children/1` still exercise the real native listener and parser. Production defaults `front_runtime` to true. Standalone release startup requires public/private lifecycle readiness before caches or supervisor children; explicit legacy Cloud opt-in behavior is preserved until its owner prerequisites are accepted. The isolated release-style probe compiles the same application implementation with front runtime enabled and checks the actual status-3 halt against a pending public ledger inside a private rollback transaction.
+
+| Task / tag | Executable preparation | Mutation proof |
+| --- | --- | --- |
+| A02 / `a12f4_a02_1` | Standalone lifecycle mandatory for unset/self-hosted/explicit Cloud, including conflicting old lifecycle flags; absent standalone still Rails | M-A02-MODE restores Rails dispatch |
+| A02 / `a12f4_a02_2` | Pending public version refuses readiness without schema, ledger, registration, outbox or Oban writes in all deployment modes | M-A02-READY accepts private-ledger-only readiness |
+| A03 / `a12f4_a03_1` | Requested native listener has one Endpoint and Drainer, no Rails child or upstream | M-A03-CHILD inserts a second transport listener |
+| A03 / `a12f4_a03_2` | Occupied native bind fails terminally; exact listener serves after release of the occupied port | M-A03-BIND supplies an alternate port only on occupied bind |
+| A03 / `a12f4_a03_3` | Ordinary test application has no public listener; enabled native startup refuses a pending public version before children | M-A03-TEST ignores compile-time suppression; M-A03-READY removes readiness halt |
+| A04 / `a12f4_a04_1` | Candidate validator rejects empty/off/true/synthetic values without echoing them | M-A04-FLAGS omits `DAWARICH_RAILS_ROUTES` |
+| A04 / `a12f4_a04_2` | Retained deployment/wire keys remain valid candidate configuration | M-A04-ENV rejects `RAILS_ENV` |
+| A07 / `a12f4_a07_1` | Full H02 registry reaches supervised Claimer; pinned source owners/claimability stay unchanged, no Oban work | M-A07-OWNER bypasses the actual Claimer pin predicate for a native command |
+| A07 / `a12f4_a07_2` | Idle worker has zero dependencies/producers and normal shutdown; coexistence registry remains opt-in | M-A07-IDLE inserts Repo |
+| A25 / `a12f4_a25_1` | Standalone real Endpoint sign-in, unknown HEAD, note create/read and rejected body retain response/effect checks with zero upstream connections | M-A25-DEFAULT empties standalone auth flows |
+
+Each named selector has assertion RED, GREEN, named mutation failure and restored GREEN at seed 404. Already implemented behavior uses characterization RED via its production mutation, rather than claiming new implementation was required. A04 refusal and A03 compile-time test suppression use test-first new-contract RED. The report retains exact command/log evidence and fixture/setup corrections. No final-default test was weakened, skipped or represented as accepted: the preparation selectors explicitly exercise standalone.

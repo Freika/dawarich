@@ -36,7 +36,11 @@ defmodule Dawarich.NativeLifecycleTest do
       before = snapshot()
       assert Release.readiness(opts) == :schemas_behind
       assert snapshot() == before
-      Repo.query!("INSERT INTO public.schema_migrations(version) VALUES($1)", [version], log: false)
+
+      Repo.query!("INSERT INTO public.schema_migrations(version) VALUES($1)", [version],
+        log: false
+      )
+
       assert Release.readiness(opts) == :ready
     end
   end
