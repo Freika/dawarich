@@ -112,13 +112,17 @@ defmodule Dawarich.ShareManagement.ParamsTest do
           %{"shared_link" => %{"settings" => "1"}},
           %{"shared_link" => %{"settings" => %{"show_route" => []}}},
           %{"locale" => "de"},
-          %{"format" => "json"},
+          %{"format" => "xml"},
           %{"_method" => "PATCH"}
         ] do
       assert Params.create(@user, "live", nil, params, "en") == :rails
     end
 
-    assert Params.create(@user, "timeline", nil, %{}, "en") == :rails
+    assert {:ok, live} = Params.create(@user, "live", nil, %{}, "en")
+    assert Params.create(@user, "live", nil, %{"format" => "json"}, "en") == {:ok, live}
+    assert {:ok, timeline} = Params.create(@user, "timeline", nil, %{}, "en")
+    assert [{:settings, _message}] = Params.validate(timeline, @now, "en")
+    assert Params.create(@user, "unknown", nil, %{}, "en") == :rails
     assert Params.create(%{@user | settings: []}, "live", nil, %{}, "en") == :rails
 
     assert Params.create(%{@user | settings: %{"timezone" => []}}, "live", nil, %{}, "en") ==

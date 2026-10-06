@@ -19,7 +19,9 @@ defmodule Dawarich.Posters.NativeRenderer do
 
     try do
       path = Path.join(dir, "job.json")
-      File.write!(path, Jason.encode!(payload(poster, track, locale, png, pdf)))
+      job = payload(poster, track, locale, png, pdf)
+      job = if opts[:tiles_url], do: Map.put(job, :tilesUrl, opts[:tiles_url]), else: job
+      File.write!(path, Jason.encode!(job))
       run(Keyword.get_lazy(opts, :command, &command/0), path, opts)
       %{png: File.read!(png), pdf: File.read!(pdf)}
     rescue

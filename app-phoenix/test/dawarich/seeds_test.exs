@@ -28,6 +28,23 @@ defmodule Dawarich.SeedsTest do
     }
   end
 
+  test "standalone flag runs native release seeds idempotently without the lifecycle opt in", %{
+    opts: opts
+  } do
+    options =
+      Keyword.put(opts, :env, %{
+        "DAWARICH_RAILS" => "off",
+        "SELF_HOSTED" => "true",
+        "DATABASE_ADVISORY_LOCKS" => "false"
+      })
+
+    assert Release.seed(options) == :ok
+    assert rows("SELECT count(*) FROM users") == [[1]]
+    before = snapshot()
+    assert Release.seed(options) == :ok
+    assert snapshot() == before
+  end
+
   test "native seeds run in source order and a second call is unchanged", %{opts: opts} do
     assert Release.seed(opts) == :ok
     assert rows("SELECT count(*) FROM users") == [[1]]

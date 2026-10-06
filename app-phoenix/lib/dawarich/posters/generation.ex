@@ -69,43 +69,49 @@ defmodule Dawarich.Posters.Generation do
     try do
       outputs = [{"png", "image/png", result.png}, {"pdf", "application/pdf", result.pdf}]
 
-      uploaded =
-        Enum.reduce_while(outputs, {:ok, []}, fn {ext, type, bytes}, {:ok, blobs} ->
-          try do
-            filename = "poster_#{ctx.id}.#{ext}"
-            path = Path.join(dir, filename)
-            File.write!(path, bytes)
-            {:cont, {:ok, blobs ++ [Storage.put!(storage, path, filename, type)]}}
-          rescue
-            error -> {:halt, {:error, error, blobs}}
-          end
-        end)
+      upload = fn -> upload!(storage, dir, ctx, outputs) end
 
-      case uploaded do
-        {:error, error, blobs} ->
-          discard(storage, blobs)
-          raise error
-
-        {:ok, blobs} ->
-          case Publication.publish(repo, ctx, blobs) do
-            {:ok, :published} ->
-              :ok
-
-            {:ok, :duplicate} ->
-              discard(storage, blobs)
-
-            {:error, :lost} ->
-              discard(storage, blobs)
-              :lost
-
-            {:error, error} ->
-              discard(storage, blobs)
-              raise error
-          end
+      case Publication.publish(repo, ctx, upload, &discard(storage, &1)) do
+        {:ok, result} when result in [:published, :duplicate] -> :ok
+        {:error, :lost} -> :lost
+        {:error, error} -> raise error
       end
     after
       File.rm_rf!(dir)
     end
+  end
+
+  defp upload!(storage, dir, ctx, outputs) do
+    uploaded =
+      Enum.reduce_while(outputs, {:ok, []}, fn {ext, type, bytes}, {:ok, blobs} ->
+        key = attachment_key(ctx, ext)
+
+        try do
+          filename = "poster_#{ctx.id}.#{ext}"
+          path = Path.join(dir, filename)
+          File.write!(path, bytes)
+          {:cont, {:ok, blobs ++ [Storage.put!(storage, path, filename, type, key)]}}
+        rescue
+          error ->
+            Storage.delete(storage, key)
+            {:halt, {:error, error, blobs}}
+        end
+      end)
+
+    case uploaded do
+      {:ok, blobs} ->
+        blobs
+
+      {:error, error, blobs} ->
+        discard(storage, blobs)
+        raise error
+    end
+  end
+
+  defp attachment_key(ctx, ext) do
+    :crypto.hash(:sha256, "#{ctx.id}:#{ctx.event_id}:#{ext}")
+    |> Base.encode16(case: :lower)
+    |> binary_part(0, 28)
   end
 
   defp discard(storage, blobs) do

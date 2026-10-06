@@ -11,6 +11,41 @@ defmodule Dawarich.Families.Requests do
   @cooldown_seconds 3600
   @lifetime_seconds 86_400
 
+  def web_create(user, params, now, opts \\ []) do
+    case Locations.membership(user.id) do
+      [_settings, nil] ->
+        {:ok, 404, Locations.not_in_family()}
+
+      [_settings, family] ->
+        target = target_id(params)
+
+        if target == user.id do
+          message =
+            Dawarich.WebValidation.message(
+              "en",
+              "family/location_request",
+              "requester_id",
+              "models.family.location_request.cannot_request_your_own_location"
+            )
+
+          {:ok, 422, {:object, [{"message", message}]}}
+        else
+          create(user, family, target, now, opts)
+        end
+    end
+  rescue
+    _error -> failure(500, "an_error_occurred")
+  end
+
+  def web_respond(user, decision, params, now) do
+    respond(user, decision, Map.put(params, "web", true), now)
+  rescue
+    _error ->
+      {:ok, 500,
+       {:object,
+        [{"message", I18n.en!("services.families.respond_to_location_request.an_error_occurred")}]}}
+  end
+
   def create(user, params, now) do
     case Locations.membership(user.id) do
       [_settings, nil] ->
@@ -37,9 +72,10 @@ defmodule Dawarich.Families.Requests do
     end
   end
 
-  defp create(_user, _family_id, nil, _now), do: not_found()
+  defp create(user, family, target, now), do: create(user, family, target, now, [])
+  defp create(_user, _family_id, nil, _now, _opts), do: not_found()
 
-  defp create(user, family_id, target_id, now) do
+  defp create(user, family_id, target_id, now, opts) do
     if target_id == user.id, do: raise(ArgumentError, "a request for one's own location")
 
     case Repo.query!(
@@ -60,12 +96,12 @@ defmodule Dawarich.Families.Requests do
             failure(429, "request_cooldown_active_please_wait_before_requesting_again")
 
           true ->
-            insert(user, family_id, %{id: id, email: email, settings: settings}, now)
+            insert(user, family_id, %{id: id, email: email, settings: settings}, now, opts)
         end
     end
   end
 
-  defp insert(user, family_id, target, now) do
+  defp insert(user, family_id, target, now, opts) do
     at = Clock.naive(now)
     expires = NaiveDateTime.add(at, @lifetime_seconds)
 
@@ -80,7 +116,7 @@ defmodule Dawarich.Families.Requests do
     [[email]] = Repo.query!("SELECT email FROM users WHERE id = $1", [user.id]).rows
     notify(email, target, id, at)
 
-    ResidualCommands.location(Repo, %{
+    Keyword.get(opts, :enqueue, &ResidualCommands.location/2).(Repo, %{
       "user_id" => user.id,
       "request_id" => id
     })
@@ -104,6 +140,8 @@ defmodule Dawarich.Families.Requests do
     bindings = %{"email" => ExploreFeatures.h(requester_email), "link" => link}
     content = t(locale, "safe_email_is_requesting_your_location_link", bindings)
     Notifications.create!(Repo, target.id, :info, t(locale, "location_request"), content, at)
+  rescue
+    _error -> :ok
   end
 
   defp respond(user_id, family_id, id, decision, params, now) do
@@ -134,7 +172,17 @@ defmodule Dawarich.Families.Requests do
     at = Clock.naive(now)
 
     if status == 0 and NaiveDateTime.compare(expires, at) == :gt do
-      if decision == :accept, do: SharingUpdate.enable!(user_id, duration(params, suggested), now)
+      if decision == :accept do
+        if params["web"],
+          do:
+            SharingUpdate.web_write!(
+              user_id,
+              %{"enabled" => true, "duration" => duration(params, suggested), "web" => true},
+              now
+            ),
+          else: SharingUpdate.enable!(user_id, duration(params, suggested), now)
+      end
+
       code = if decision == :accept, do: 1, else: 2
 
       Repo.query!(
@@ -148,6 +196,9 @@ defmodule Dawarich.Families.Requests do
       response_failure(422, "no_longer_actionable")
     end
   end
+
+  defp duration(%{"web" => true} = params, suggested),
+    do: if(Ruby.blank?(params["duration"]), do: suggested, else: params["duration"])
 
   defp duration(params, suggested) do
     case params["duration"] do

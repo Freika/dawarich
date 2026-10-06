@@ -177,6 +177,20 @@ defmodule DawarichWeb.ApiRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_stats
 
+        for {path, action} <- [
+              {"/settings", :settings},
+              {"/settings/transportation_recalculation_status", :progress},
+              {"/maps/hexagons/bounds", :bounds},
+              {"/tiles/points/:z/:x/:y", :points},
+              {"/tiles/tracks/:z/:x/:y", :tracks}
+            ] do
+          get path, StandaloneMap, action,
+            metadata: %{
+              slice: :api_map_reads,
+              rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
+            }
+        end
+
         get "/points", MapController, :points, metadata: %{slice: :api_map_reads}
         get "/tracks", MapController, :tracks, metadata: %{slice: :api_map_reads}
         get "/tracks/:id", MapController, :track, metadata: %{slice: :api_map_reads}

@@ -11,6 +11,14 @@ defmodule Dawarich.Application do
     start_plan(plan)
   end
 
+  def plan(argv, %{"DAWARICH_RAILS" => "off"} = env) do
+    case env["DAWARICH_PROCESS_ROLE"] do
+      "sidekiq_idle" -> :sidekiq_idle
+      role when role in [nil, "", "web"] -> standalone_plan(argv, env)
+      _ -> raise ArgumentError, "DAWARICH_PROCESS_ROLE must be web or sidekiq_idle"
+    end
+  end
+
   def plan(argv, env) do
     case env["DAWARICH_PROCESS_ROLE"] do
       "sidekiq_idle" -> :sidekiq_idle
@@ -43,6 +51,22 @@ defmodule Dawarich.Application do
 
   defp web_plan(argv, env), do: Front.plan(argv, env)
 
+  defp standalone_plan(argv, env) do
+    native_argv =
+      case env["DAWARICH_NATIVE_ARGS"] do
+        args when is_binary(args) ->
+          args |> String.replace_suffix("\x1F", "") |> String.split("\x1F")
+
+        _ ->
+          argv || ~w(dawarich start)
+      end
+
+    case Front.native_plan(native_argv, env) do
+      {:native, _} = plan -> plan
+      _ -> raise ArgumentError, "Standalone web requires a supported native listener command"
+    end
+  end
+
   defp start_plan(:sidekiq_idle) do
     Supervisor.start_link(children(:sidekiq_idle),
       strategy: :one_for_one,
@@ -51,6 +75,8 @@ defmodule Dawarich.Application do
   end
 
   defp start_plan(plan) do
+    if Dawarich.Standalone.enabled?(), do: Dawarich.Release.halt_unless_ready()
+
     Dawarich.QrCache.create_table()
     Dawarich.TtlCache.create_table()
 

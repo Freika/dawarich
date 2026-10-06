@@ -78,6 +78,17 @@ defmodule Dawarich.Release.NativeTest do
     :ok
   end
 
+  test "standalone flag migrates fresh and existing ledgers natively without the lifecycle opt in" do
+    options = opts(env: %{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => "true"})
+    assert :ok = Release.migrate(options)
+    assert ScratchRepo.query!("SELECT id FROM native_items").rows == [[1]]
+    assert {:ok, :current} = ReleaseMigrator.status(ScratchRepo, releases: [Probe])
+    ScratchRepo.query!("INSERT INTO native_items VALUES (2)")
+    assert :ok = Release.migrate(options)
+    assert ScratchRepo.query!("SELECT id FROM native_items ORDER BY id").rows == [[1], [2]]
+    assert ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
+  end
+
   test "below-floor or unsupported public ledger refuses before private schema writes" do
     ledger(Floor.versions() -- [hd(Floor.versions())])
 

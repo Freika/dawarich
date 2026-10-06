@@ -31,7 +31,12 @@ defmodule DawarichWeb.FamilyForms do
                 name="authenticity_token"
                 value={@rails_csrf_token}
               />
-              <.name_field locale={@locale} value={nil} scope="new" />
+              <.name_field
+                locale={@locale}
+                value={@page[:name]}
+                errors={@page[:errors] || []}
+                scope="new"
+              />
               <div class="alert alert-info">
                 <div>
                   <h3 class="text-sm font-medium mb-2">{n(@locale, "what_happens_title")}</h3><ul class="text-sm space-y-1">
@@ -140,7 +145,12 @@ defmodule DawarichWeb.FamilyForms do
               name="authenticity_token"
               value={@rails_csrf_token}
             />
-            <.name_field locale={@locale} value={@page.family.name} scope="edit" />
+            <.name_field
+              locale={@locale}
+              value={@page.family.name}
+              errors={@page[:errors] || []}
+              scope="edit"
+            />
             <div class="bg-base-300 p-4 rounded-md">
               <h3 class="text-sm font-medium text-base-content mb-2">{e(@locale, "family_info")}</h3><dl class="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
                 <div>
@@ -200,8 +210,22 @@ defmodule DawarichWeb.FamilyForms do
   end
 
   def name_field(assigns) do
+    assigns = assign_new(assigns, :errors, fn -> [] end)
+
     ~H"""
     <div>
+      <div :if={@errors != []} class="alert alert-error">
+        <div>
+          <h3 class="text-sm font-medium">
+            {t(@locale, "families." <> @scope <> ".error_title", %{})}
+          </h3>
+          <div class="mt-2 text-sm">
+            <ul class="list-disc pl-5 space-y-1">
+              <li :for={error <- @errors}>{error}</li>
+            </ul>
+          </div>
+        </div>
+      </div>
       <label class="label label-text font-medium mb-2" for="family_name">{t(
         @locale,
         "families.form.name",

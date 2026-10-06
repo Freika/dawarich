@@ -154,7 +154,7 @@ defmodule Dawarich.Imports.LeaseTest do
       end)
 
     on_exit(fn -> send(holder.pid, :release) end)
-    assert_receive :locked
+    await_stage(holder, :locked)
     assert {:skip, :busy} = run(c, fn _ -> flunk("concurrent import acquired") end)
     send(holder.pid, :release)
     assert {:ok, :released} = Task.await(holder)
@@ -197,9 +197,13 @@ defmodule Dawarich.Imports.LeaseTest do
         end)
       end)
 
-    assert_receive :locked
+    await_stage(%{pid: pid, ref: ref}, :locked)
     Process.exit(pid, :kill)
-    assert_receive {:DOWN, ^ref, :process, ^pid, :killed}
+
+    receive do
+      {:DOWN, ^ref, :process, ^pid, :killed} -> :ok
+    end
+
     assert {:skip, :busy} = run(c, &write(&1, c, 7))
 
     rows("UPDATE phoenix.leases SET expires_at=now()-interval '1 second' WHERE name=$1", [
@@ -252,7 +256,7 @@ defmodule Dawarich.Imports.LeaseTest do
       send(holder.pid, :owner_changed)
     end)
 
-    assert_receive :effect_entered
+    await_stage(holder, :effect_entered)
 
     transfer =
       Task.async(fn ->
@@ -263,15 +267,93 @@ defmodule Dawarich.Imports.LeaseTest do
         end)
       end)
 
-    assert_receive {:transfer_started, backend}
+    backend = await_stage(transfer, :transfer_started)
     assert lock_waiting?(backend)
     assert Task.yield(transfer, 0) == nil
     send(holder.pid, :release)
-    assert_receive :effect_committed
+    await_stage(holder, :effect_committed)
     assert :ok = Task.await(transfer)
     send(holder.pid, :owner_changed)
     assert {:ok, :stopped} = Task.await(holder)
     assert count(c) == [[7]]
+  end
+
+  test "stage synchronization waits for a gated import effect beyond the assertion window", c do
+    parent = self()
+
+    holder =
+      Task.async(fn ->
+        receive do
+          {:enter, observer} ->
+            run(c, fn lease ->
+              Lease.effect!(lease, fn ->
+                send(observer, :effect_entered)
+
+                receive do
+                  :release -> :ok
+                end
+              end)
+
+              :completed
+            end)
+        end
+      end)
+
+    waiter =
+      Task.async(fn ->
+        ref = Process.monitor(holder.pid)
+        send(parent, :waiter_started)
+
+        try do
+          await_stage(%{pid: holder.pid, ref: ref}, :effect_entered)
+        after
+          Process.demonitor(ref, [:flush])
+        end
+      end)
+
+    on_exit(fn ->
+      send(holder.pid, {:enter, waiter.pid})
+      send(holder.pid, :release)
+    end)
+
+    receive do
+      :waiter_started -> :ok
+    end
+
+    pending = Task.yield(waiter, 150)
+    send(holder.pid, {:enter, waiter.pid})
+    entered = Task.await(waiter)
+    send(holder.pid, :release)
+    completed = Task.await(holder)
+    assert {pending, entered, completed} == {nil, :ok, {:ok, :completed}}
+  end
+
+  test "stage synchronization reports the monitored task exit" do
+    {pid, ref} =
+      spawn_monitor(fn ->
+        receive do
+          :stop -> exit(:stage_failed)
+        end
+      end)
+
+    send(pid, :stop)
+
+    assert_raise ExUnit.AssertionError,
+                 ~r/Lease task exited before effect_entered: :stage_failed/,
+                 fn -> await_stage(%{pid: pid, ref: ref}, :effect_entered) end
+  end
+
+  defp await_stage(%{pid: pid, ref: ref}, stage) do
+    receive do
+      ^stage ->
+        :ok
+
+      {^stage, value} ->
+        value
+
+      {:DOWN, ^ref, :process, ^pid, reason} ->
+        flunk("Lease task exited before #{stage}: #{inspect(reason)}")
+    end
   end
 
   defp lock_waiting?(backend, tries \\ 100) do

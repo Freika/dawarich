@@ -81,8 +81,19 @@ defmodule Dawarich.Posters.CreateWorkerTest do
              id
            ]) == [["image"], ["print_pdf"]]
 
-    assert rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id") ==
-             List.duplicate(["posters.progress", payload(state)], 3)
+    assert rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id") == []
+
+    assert rows(
+             "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Posters.ProgressWorker' ORDER BY id"
+           )
+           |> Enum.map(fn [args] -> Map.drop(args, ["event_id"]) end) ==
+             List.duplicate(payload(state), 3)
+
+    saved = Application.get_env(:dawarich, :cable)
+    Application.put_env(:dawarich, :cable, transport: :pg)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, saved) end)
+    assert %{success: 3, failure: 0} = Oban.drain_queue(__MODULE__, queue: :posters)
+    assert rows("SELECT count(*) FROM phoenix.cable_events") == [[3]]
 
     assert Dawarich.Jobs.Processed.done?(ScratchRepo, event)
     assert length(Path.wildcard(c.root <> "/storage/??/??/*")) == 2
@@ -133,7 +144,16 @@ defmodule Dawarich.Posters.CreateWorkerTest do
     enqueue(state)
     assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :posters)
     assert rows("SELECT status FROM posters WHERE id=$1", [state["before"]["id"]]) == [[3]]
-    assert rows("SELECT state,attempt FROM oban.oban_jobs") == [["completed", 1]]
+
+    assert rows(
+             "SELECT state,attempt FROM oban.oban_jobs WHERE worker='Dawarich.Posters.CreateWorker'"
+           ) == [["completed", 1]]
+
+    saved = Application.get_env(:dawarich, :cable)
+    Application.put_env(:dawarich, :cable, transport: :pg)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, saved) end)
+    assert %{success: 2, failure: 0} = Oban.drain_queue(__MODULE__, queue: :posters)
+    assert rows("SELECT count(*) FROM phoenix.cable_events") == [[2]]
 
     outbox!(
       command_type: "posters.create",

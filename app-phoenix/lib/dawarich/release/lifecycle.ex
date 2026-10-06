@@ -3,7 +3,11 @@ defmodule Dawarich.Release.Lifecycle do
 
   alias Dawarich.ReleaseMigration
 
-  def mode(env \\ System.get_env()) do
+  def mode(env \\ System.get_env())
+
+  def mode(%{"DAWARICH_RAILS" => "off"}), do: {:ok, :native}
+
+  def mode(env) do
     case Map.get(env, "DAWARICH_PHOENIX_LIFECYCLE", "false") do
       "false" -> {:ok, :rails}
       "true" -> native(env)

@@ -30,7 +30,7 @@ defmodule DawarichWeb.ShareManagementGate do
     query = Plug.Conn.Query.decode(conn.query_string)
     user = RailsAuth.call(conn, []).assigns.current_user
 
-    conn.method == "GET" and LayoutAssigns.self_hosted?() and
+    conn.method in ~w(GET HEAD) and LayoutAssigns.self_hosted?() and
       get_req_header(conn, "turbo-frame") in [[], ["share-link-modal"]] and
       get_req_header(conn, "x-dawarich-client") == [] and
       Enum.all?(query, fn {key, value} ->

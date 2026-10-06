@@ -2,6 +2,24 @@ defmodule DawarichWeb.A10Routes do
   @moduledoc false
   defmacro a10_routes do
     quote do
+      pipeline :standalone_settings do
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.RailsAuth
+        plug DawarichWeb.Api.Body
+        plug DawarichWeb.RailsHeaders
+      end
+
+      scope "/" do
+        pipe_through :standalone_settings
+
+        for method <- [:post, :patch, :put] do
+          match method, "/settings/general", DawarichWeb.StandaloneSettings, [],
+            metadata: %{rails_gate: {DawarichWeb.StandaloneSettings, :enabled?}}
+        end
+      end
+
       pipeline :test_email do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
