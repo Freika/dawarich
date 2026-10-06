@@ -8,7 +8,7 @@ Reverse-geocoding actions enqueue a native Oban worker on the reverse-geocoding 
 
 Password reset uses the existing recovery lifecycle and sealed native mail worker. Token changes and enqueue share a transaction; a failed enqueue rolls back the token. The HTTP action uses the password-reset flash rather than the API-key flash. SMTP configuration and delivery remain the MAIL owner's responsibility.
 
-Admin deletion calls `Auth.AccountDestroy.request_as_admin/3`, the minimum A11 capability added here. It checks the current self-hosted admin, locks the actor and target, reuses the family-owner guard and atomic mark/schedule primitive, and requires A11's `:enqueue_destroy` capability. A missing or failed capability returns native 503 without marking the user deleted. A11 must provide its actual native destruction enqueue function through `:account_destroy_context`; this package does not introduce a second destructive worker. Source permits deletion of the sole admin; last-admin protection remains on role/status updates only.
+Admin deletion calls `Auth.AccountDestroy.request_as_admin/3`, the minimum A11 capability added here. It checks the current self-hosted admin, locks the actor and target, reuses the family-owner guard and atomic mark/schedule primitive, and requires A11's `:enqueue_destroy` capability. A missing or failed capability returns native 503 in standalone mode without marking the user deleted; coexistence retains Rails fallback before acceptance. A11 must provide its actual native destruction enqueue function through `:account_destroy_context`; this package does not introduce a second destructive worker. Source permits deletion of the sole admin; last-admin protection remains on role/status updates only.
 
 ## HOT mount handoff
 
@@ -24,6 +24,8 @@ HOT must exercise these additions through the real Endpoint after mounting. This
 ## Verification and remaining integration
 
 The package report contains source capture, named RED/GREEN/mutation, targeted security checks, compile/format, full seed-404, and secret-scan evidence. Controller integration owns HOT mounts, A11 deletion capability wiring, MAIL delivery configuration, and mandatory security review. Rare legacy envelope failures remain native errors under ruling 15; exact malformed-envelope parity is deferred under the controller's convention.
+
+The provider-test adapter uses existing native geocoding Config/Search/Result. I01 owns shared provider-test integration; exact Turbo-stream output, safe error details, and bounded rate-budget parity remain follow-ups under ruling 15. The required full-suite gate also exposed an existing places CLI batch reread without ordering; its minimal fix preserves ascending user scheduling, verified after a deliberate row reorder.
 
 ## ADR: reuse native authentication owners for admin residual writes
 
