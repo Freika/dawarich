@@ -158,9 +158,10 @@ defmodule DawarichWeb.ActiveStorage.Proxy do
   end
 
   def failed_stream(conn, status) do
+    conn = if conn.method == "HEAD", do: conn, else: put_resp_header(conn, "content-length", "0")
+
     conn
     |> put_resp_header("cache-control", "no-cache")
-    |> put_resp_header("content-length", "0")
     |> send_resp(status, "")
   end
 

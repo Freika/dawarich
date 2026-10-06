@@ -207,6 +207,40 @@ defmodule DawarichWeb.A12f2IClosureTest do
     end
 
     refute_received {:provider_request, _, _}
+
+    assert_response(
+      replay(fx["s3"]["head"], Proxy, %{storage | services: %{"s3" => service}}),
+      fx["s3"]["head"]
+    )
+
+    for effect <- fx["s3"]["head_effects"] do
+      method = if effect["method"] == "head_object", do: :head, else: :get
+      assert_receive {:provider_request, ^method, headers}
+      assert headers["range"] == effect["range"]
+    end
+
+    refute_received {:provider_request, _, _}
+
+    for request <- fx["s3"]["failures"] do
+      status = if String.contains?(request["name"], "NoSuchKey"), do: 404, else: 403
+
+      respond = fn
+        :head, _ -> {:ok, %{status_code: 200, headers: [{"content-length", "1024"}], body: ""}}
+        :get, _ -> {:ok, %{status_code: status, headers: [], body: ""}}
+      end
+
+      failed = %{
+        cfg
+        | ex_aws:
+            Keyword.merge(cfg.ex_aws,
+              http_client: S3Client,
+              http_opts: [respond: respond],
+              retries: [max_attempts: 1]
+            )
+      }
+
+      assert_response(replay(request, Proxy, %{storage | services: %{"s3" => failed}}), request)
+    end
   end
 
   @tag :a12f2_i_03

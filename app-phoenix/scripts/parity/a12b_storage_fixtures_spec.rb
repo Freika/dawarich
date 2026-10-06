@@ -412,7 +412,21 @@ custom_metadata: {} }
     effects = client.api_requests.map do |call|
       { 'method' => call[:operation_name].to_s, 'key' => call[:params][:key], 'range' => call[:params][:range] }
     end
-    { 'blob' => row(blob, true), 'request' => request, 'effects' => effects }
+    head = record('s3_proxy_head', :head, path)
+    expect(head['status']).to eq(200)
+    head_effects = client.api_requests.drop(effects.size).map do |call|
+      { 'method' => call[:operation_name].to_s, 'key' => call[:params][:key], 'range' => call[:params][:range] }
+    end
+    failures = %w[AccessDenied NoSuchKey].flat_map do |error|
+      client.stub_responses(:get_object, error)
+      %i[get head].map do |method|
+        failed = record("s3_proxy_#{error}_#{method}", method, path)
+        expect(failed['status']).to eq(500)
+        failed
+      end
+    end
+    { 'blob' => row(blob, true), 'request' => request, 'effects' => effects,
+      'head' => head, 'head_effects' => head_effects, 'failures' => failures }
   end
 
   def capture_image_formats(helpers)
