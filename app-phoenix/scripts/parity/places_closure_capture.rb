@@ -6,7 +6,7 @@ require 'geocoder/results/photon'
 module PlacesClosureCapture
   def closure_write(task, data)
     path = dir.join("a12f3a-#{task}.json")
-    encoded = "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n"
+    encoded = "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2).rstrip}\n"
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
       File.write(path, encoded)
     else

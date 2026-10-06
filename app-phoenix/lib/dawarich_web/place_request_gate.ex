@@ -1,7 +1,10 @@
 defmodule DawarichWeb.PlaceRequestGate do
   @moduledoc false
 
-  def actions?(conn, _params), do: DawarichWeb.LayoutAssigns.self_hosted?() and query?(conn)
+  def actions?(conn, _params),
+    do:
+      (DawarichWeb.LayoutAssigns.self_hosted?() or Dawarich.Standalone.enabled?()) and
+        query?(conn)
 
   defp query?(%{query_string: ""}), do: true
 

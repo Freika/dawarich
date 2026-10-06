@@ -455,7 +455,7 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
           data = { responses: responses.select { names.include?(_1[:name]) },
                    effects: effects.select { names.include?(_1[:name]) } }
           target = dir.parent.join("a12f3a-#{task}.json")
-          encoded = "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n"
+          encoded = "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2).rstrip}\n"
           if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
             File.write(target, encoded)
           else

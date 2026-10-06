@@ -18,7 +18,15 @@ defmodule DawarichWeb.PlacesGate do
   def drawer?(conn, %{"id" => id}) do
     Plug.Conn.get_req_header(conn, "turbo-frame") == ["place-drawer"] and conn.query_string == "" and
       Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and
-      TripsGate.open?(conn, &(PlaceDrawer.load(&1, String.to_integer(id)) != :rails))
+      TripsGate.open?(conn, fn user ->
+        PlaceDrawer.load(user, String.to_integer(id)) != :rails or
+          (Dawarich.Standalone.enabled?() and
+             Dawarich.Repo.query!(
+               "SELECT id FROM places WHERE id=$1 AND user_id=$2",
+               [String.to_integer(id), user.id],
+               log: false
+             ).rows == [])
+      end)
   end
 
   def navigation?(conn, params) do
@@ -30,13 +38,9 @@ defmodule DawarichWeb.PlacesGate do
   end
 
   def nearby?(conn, _params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and
-      Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and valued?(conn.query_string) and
+    Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and valued?(conn.query_string) and
       scalar_nearby?(conn.query_string) and
-      TripsGate.open?(conn, fn _user ->
-        DawarichWeb.PlaceNavigation.nearby_state(Plug.Conn.Query.decode(conn.query_string)) !=
-          :rails
-      end)
+      TripsGate.open?(conn, fn _user -> true end)
   end
 
   defp scalar_nearby?(query) do

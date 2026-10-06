@@ -1,12 +1,15 @@
 defmodule Dawarich.CLI do
   @moduledoc false
 
-  alias Dawarich.CLI.{Jobs, Migrate, RawData, RawDataReset, RawDataStatus, Seeds, Users}
+  alias Dawarich.CLI.{Jobs, Migrate, RawData, RawDataReset, RawDataStatus, Seeds, Users, Places}
 
   @rule String.duplicate("━", 46)
 
   @commands %{
     ["help"] => :help,
+    ["places", "backfill-names"] => {Places, :backfill_names},
+    ["places", "cleanup-suggested"] => {Places, :cleanup_suggested},
+    ["places", "orphan-count"] => {Places, :orphan_count},
     ["migrate"] => {Migrate, :migrate},
     ["migrate", "status"] => {Migrate, :status},
     ["seeds"] => {Seeds, :seeds},
@@ -30,6 +33,8 @@ defmodule Dawarich.CLI do
   @own_repo [{Migrate, :migrate}, {Migrate, :native_migrate}, {Seeds, :seeds}]
 
   @rake %{
+    "dawarich:backfill_place_names" => ["places", "backfill-names"],
+    "dawarich:cleanup_suggested_places" => ["places", "cleanup-suggested"],
     "users:activate" => ["users", "activate"],
     "dawarich:jobs:status" => ["jobs", "status"],
     "db:migrate:status" => ["migrate", "status"],
@@ -54,15 +59,7 @@ defmodule Dawarich.CLI do
                 "dawarich:jobs:#{task} moves jobs between Sidekiq and Phoenix: run it with bin/rails while Sidekiq runs. It is removed together with Sidekiq."}
            )
 
-  @places for(
-            task <- ~w(dawarich:backfill_place_names dawarich:cleanup_suggested_places),
-            into: %{},
-            do:
-              {task,
-               "#{task} is not in this image yet: run bin/rails #{task} until the release that moves the Places jobs to Phoenix."}
-          )
-
-  @retired Map.merge(Map.merge(@sidekiq, @places), %{
+  @retired Map.merge(@sidekiq, %{
              "points:raw_data:restore_temporary" =>
                "points:raw_data:restore_temporary was removed: it filled a cache only Rails read. Restore to the database with dawarich raw-data restore USER_ID YEAR MONTH.",
              "import:big_file" =>
@@ -99,6 +96,9 @@ defmodule Dawarich.CLI do
     raw-data restore USER_ID YEAR MONTH           Put archived raw_data back into the points of a month
     raw-data restore-all USER_ID                  Restore every archived month of a user
     raw-data reset-all                            Restore everything and delete every archive (CONFIRM=true skips the prompt)
+    places backfill-names                         Enqueue legacy place-name backfill
+    places cleanup-suggested                      Enqueue orphan suggested-place cleanup for every user
+    places orphan-count                           Count remaining orphan suggested places (0 means drained)
     help                                          Show this help
 
   Rake task names work too, for example: dawarich "points:raw_data:restore[1,2026,1]"
