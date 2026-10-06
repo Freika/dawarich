@@ -27,12 +27,7 @@ defmodule Dawarich.RailsEffects do
   def visit_months(_repo, _user_id, []), do: :ok
 
   def visit_months(repo, user_id, started_at) do
-    stamps = started_at |> Enum.map(&DateTime.to_iso8601/1) |> Enum.uniq()
-
-    RailsCommands.insert!(repo, "visit_months_changed", %{
-      "user_id" => user_id,
-      "started_at" => stamps
-    })
+    Dawarich.Visits.Calendar.changed(repo, user_id, started_at)
   end
 
   def orphan_places(_repo, _user_id, []), do: :ok

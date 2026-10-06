@@ -3,7 +3,7 @@ defmodule DawarichWeb.VisitRequestGate do
   alias Dawarich.Visits.WebSettings
   alias DawarichWeb.{RailsAuth, Strangler}
 
-  def actions?(conn, _params), do: DawarichWeb.LayoutAssigns.self_hosted?() and query?(conn)
+  def actions?(conn, _params), do: query?(conn)
 
   defp query?(conn), do: conn.query_string == ""
 
