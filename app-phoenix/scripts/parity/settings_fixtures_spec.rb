@@ -1944,7 +1944,10 @@ RSpec.describe 'Phoenix fixtures: A12f2-D main API contracts', type: :request do
       headers = { 'Authorization' => 'Bearer A12F2D_SYNTHETIC' }
       corpus = {}
       capture = lambda do |name, method, path, params = {}|
-        public_send(method, path, params: params, headers: headers, as: :json)
+        public_send(method, path, params: params, headers: headers.dup, as: :json)
+        expected = { 'settings_bad_tiles' => 422, 'area_invalid' => 422,
+                     'recalculation_invalid' => 400, 'recalculation_pending' => 409 }.fetch(name, 200)
+        expect(response.status).to eq(expected)
         corpus[name] = { 'status' => response.status, 'body' => response.parsed_body,
                          'headers' => response.headers.slice('Content-Type', 'Cache-Control', 'ETag'),
                          'settings' => actor.reload.settings }
@@ -1962,8 +1965,8 @@ RSpec.describe 'Phoenix fixtures: A12f2-D main API contracts', type: :request do
       capture.call('mobile_merge', :patch, '/api/v1/settings/mobile',
                    { settings: { time_filter: 9000, tracking_mode: 'bad', distance_filter: nil } })
       capture.call('progress_idle', :get, '/api/v1/settings/transportation_recalculation_status')
-      capture.call('area_invalid', :post, '/api/v1/areas', { area: { name: '', latitude: 91, longitude: 181, radius: 0 } })
-      allow(Area).to receive(:new).and_call_original
+      capture.call('area_invalid', :post, '/api/v1/areas',
+                   { area: { name: '', latitude: 91, longitude: 181, radius: 0 } })
       capture.call('recalculation_invalid', :post, '/api/v1/recalculations', { year: '1999' })
       allow(Rails.cache).to receive(:read).with("recalculation_pending:#{actor.id}").and_return(true)
       capture.call('recalculation_pending', :post, '/api/v1/recalculations', { year: 2024 })
@@ -1971,7 +1974,7 @@ RSpec.describe 'Phoenix fixtures: A12f2-D main API contracts', type: :request do
       actor.update_columns(plan: :lite, settings: {})
       capture.call('settings_lite', :get, '/api/v1/settings')
       capture.call('settings_lite_update', :patch, '/api/v1/settings',
-                   { settings: { enabled_map_layers: ['Tracks', 'Heatmap'], globe_projection: true,
+                   { settings: { enabled_map_layers: %w[Tracks Heatmap], globe_projection: true,
                                  maps: { distance_unit: 'mi', hidden_tile_categories: ['water'] },
                                  immich_url: 'https://example.invalid', maps_maplibre_style: 'custom' } })
       bytes = "#{JSON.pretty_generate(corpus)}\n"
