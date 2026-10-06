@@ -116,7 +116,9 @@ RSpec.describe Users::MailerSendingJob, type: :job do
 
       it 'each wave-2 type owned by oban forwards with event_id = job_id and enqueues no delivery' do
         wave2_mails.each do |email_type, options|
-          job_owner!("command:#{UserMailCommands::TYPES.fetch(email_type)}", :oban)
+          JobOwnership.joint_keys("command:#{UserMailCommands::TYPES.fetch(email_type)}").each do |key|
+            job_owner!(key, :oban)
+          end
           job = described_class.new(user.id, email_type, **options)
 
           expect { job.perform_now }.not_to have_enqueued_job(ActionMailer::MailDeliveryJob)
@@ -127,7 +129,9 @@ RSpec.describe Users::MailerSendingJob, type: :job do
 
       it "each wave-2 type owned by sidekiq enqueues today's delivery" do
         wave2_mails.each do |email_type, options|
-          job_owner!("command:#{UserMailCommands::TYPES.fetch(email_type)}", :sidekiq)
+          JobOwnership.joint_keys("command:#{UserMailCommands::TYPES.fetch(email_type)}").each do |key|
+            job_owner!(key, :sidekiq)
+          end
 
           expect { described_class.perform_now(user.id, email_type, **options) }
             .to have_enqueued_mail(UsersMailer, email_type.to_sym).with(params: { user:, **options }, args: [])
@@ -138,7 +142,7 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       it 'an old archival job without epoch forwards the user\'s 11_5mo mark as epoch' do
         warnings = { 'archival_warnings' => { '11_5mo' => '2026-09-01T03:00:00+02:00' } }
         user.update_columns(settings: user.settings.merge(warnings))
-        job_owner!('command:mail.user.archival_approaching', :oban)
+        JobOwnership.joint_keys('command:mail.user.archival_approaching').each { |key| job_owner!(key, :oban) }
         job = described_class.new(user.id, 'archival_approaching')
 
         job.perform_now
