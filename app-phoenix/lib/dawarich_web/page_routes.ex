@@ -11,6 +11,14 @@ defmodule DawarichWeb.PageRoutes do
       scope "/" do
         pipe_through :map_write
 
+        post "/areas", DawarichWeb.AreaActions, :create,
+          metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+
+        for method <- [:patch, :put, :post] do
+          match method, "/areas/:id", DawarichWeb.AreaActions, :update,
+            metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+        end
+
         post "/tags", DawarichWeb.TagActions, :create,
           metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
 
