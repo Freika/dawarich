@@ -1,6 +1,41 @@
 defmodule DawarichWeb.ApiReadRoutes do
   @moduledoc false
 
+  defmacro a12f2_c_spatial_routes do
+    quote do
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_stats
+        get "/timeline", TimelineController, :index, metadata: %{slice: :api_map_reads}
+
+        get "/tags/privacy_zones", PrivacyZonesController, :index,
+          metadata: %{slice: :api_map_reads}
+
+        get "/countries/borders", SpatialController, :borders, metadata: %{slice: :api_map_reads}
+        get "/countries/visited", SpatialController, :visited, metadata: %{slice: :api_map_reads}
+
+        get "/points/tracked_months", SpatialController, :tracked_months,
+          metadata: %{slice: :api_map_reads}
+
+        get "/maps/hexagons/fog", HexagonsController, :fog, metadata: %{slice: :api_map_reads}
+      end
+
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_spatial_grants
+
+        get "/maps/hexagons/bounds", HexagonsController, :bounds,
+          metadata: %{slice: :api_map_reads}
+
+        get "/maps/hexagons", HexagonsController, :index, metadata: %{slice: :api_map_reads}
+      end
+
+      scope "/api/v1/tiles", DawarichWeb.Api do
+        pipe_through :api_tiles
+        get "/points/:z/:x/:y", PointTilesController, :show, metadata: %{slice: :api_map_reads}
+        get "/tracks/:z/:x/:y", TrackTilesController, :show, metadata: %{slice: :api_map_reads}
+      end
+    end
+  end
+
   defmacro api_stats_routes do
     quote do
       scope "/api/v1", DawarichWeb.Api do

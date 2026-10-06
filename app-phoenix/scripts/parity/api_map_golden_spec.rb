@@ -192,6 +192,120 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     map_seed(seed: :none, user: {})
 
     expect(PointSource.exists?(850_999)).to be(false)
+    closure = {}
+    %w[points tracks].each do |layer|
+      %w[base speed empty invalid partial].each do |variant|
+        map_seed(seed: :base, user: {})
+        %w[points tracks].each do |domain|
+          [2025, 'all'].each do |year|
+            Rails.cache.write("#{domain}:tile_epoch:#{ApiMapGoldenOracle::OWNER}:#{year}",
+                              "synthetic-#{domain}-#{year}", raw: true)
+          end
+        end
+        query = 'start_at=1735689600&end_at=1735690000'
+        query += '&speed_coloring=true' if variant == 'speed'
+        query += '&import_id=999999' if variant == 'empty'
+        query = 'start_at=1735689600' if variant == 'partial'
+        x = variant == 'invalid' ? 1024 : 548
+        path = "/api/v1/tiles/#{layer}/10/#{x}/338.mvt?#{query}"
+        get path, headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
+        closure["#{layer}_#{variant}"] = {
+          'setup' => map_closure_setup(ApiMapGoldenOracle::TABLES),
+          'status' => response.status, 'body_base64' => Base64.strict_encode64(response.body),
+          'headers' => response.headers.to_h.transform_keys(&:downcase)
+                               .slice('content-type', 'cache-control', 'vary', 'etag')
+        }
+      end
+    end
+    map_seed(seed: :base, user: {})
+    map_insert('visits', id: 790_001, user_id: ApiMapGoldenOracle::OWNER, name: 'synthetic', status: 1,
+                         started_at: map_time(0), ended_at: map_time(300), duration: 5,
+                         created_at: ApiMapGoldenOracle::STAMP, updated_at: ApiMapGoldenOracle::STAMP)
+    cell = H3.from_geo_coordinates([52.0, 13.0], 8).to_s(16)
+    stored_cells = [[cell, 2, ApiMapGoldenOracle::T0, ApiMapGoldenOracle::T0 + 300]]
+    map_insert('stats', id: 780_001, user_id: ApiMapGoldenOracle::OWNER, year: 2025, month: 1,
+                        distance: 987, h3_hex_ids: JSON.generate(stored_cells),
+                        created_at: ApiMapGoldenOracle::STAMP, updated_at: ApiMapGoldenOracle::STAMP)
+    {
+      'timeline' => '/api/v1/timeline?start_at=2025-01-01T00:00:00Z&end_at=2025-01-01T23:59:59Z',
+      'timeline_missing' => '/api/v1/timeline',
+      'timeline_large' => '/api/v1/timeline?start_at=2025-01-01&end_at=2025-03-01',
+      'visited' => '/api/v1/countries/visited?start_at=1735689600&end_at=1735690000',
+      'visited_bad' => '/api/v1/countries/visited?start_at=bad&end_at=1735690000',
+      'tracked_months' => '/api/v1/points/tracked_months',
+      'hexagons' => '/api/v1/maps/hexagons?start_date=2025-01-01&end_date=2025-01-02',
+      'bounds' => '/api/v1/maps/hexagons/bounds?start_date=2025-01-01&end_date=2025-01-02',
+      'fog' => '/api/v1/maps/hexagons/fog?start_date=2025-01-01&end_date=2025-01-02',
+      'fog_bad' => '/api/v1/maps/hexagons/fog?start_date=bad&end_date=2025-01-02'
+    }.each do |name, path|
+      get path, headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
+      closure[name] = {
+        'setup' => map_closure_setup(ApiMapGoldenOracle::TABLES + %w[visits stats]),
+        'status' => response.status, 'body' => response.body
+      }
+    end
+    get '/api/v1/countries/borders', headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
+    closure['borders'] = { 'status' => response.status, 'sha256' => Digest::SHA256.hexdigest(response.body) }
+    codes_path = Rails.root.join('app-phoenix/priv/country_codes.json')
+    codes = JSON.parse(File.read(codes_path))
+    stream = StringIO.new
+    gzip = Zlib::GzipWriter.new(stream)
+    gzip.mtime = 0
+    gzip.write(response.body)
+    gzip.close
+    codes['borders_gzip_base64'] = Base64.strict_encode64(stream.string)
+    codes['visited_aliases'] = Countries::NameAliases::ALIASES
+    FixtureRecording.verify(codes_path, "#{Oj.dump(codes, mode: :strict, indent: 2)}\n")
+    User.find(ApiMapGoldenOracle::OWNER).update_columns(settings: { 'timezone' => 'Europe/Berlin' })
+    Rails.cache.delete("dawarich/user_#{ApiMapGoldenOracle::OWNER}_years_tracked")
+    get '/api/v1/points/tracked_months', headers: { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" }
+    closure['tracked_months_berlin'] = { 'status' => response.status, 'body' => response.body }
+
+    User.find(ApiMapGoldenOracle::OWNER).update_columns(settings: { 'timezone' => 'Etc/UTC' })
+    map_insert('digests', id: 770_001, user_id: ApiMapGoldenOracle::OWNER, year: 2024, period_type: 1,
+                         distance: 12_345, toponyms: '[]', created_at: ApiMapGoldenOracle::STAMP,
+                         updated_at: ApiMapGoldenOracle::STAMP)
+    %w[valid malformed].each do |variant|
+      Users::Digest.find(770_001).update_columns(toponyms: { 'country' => 'Germany' }) if variant == 'malformed'
+      setup = map_closure_setup(ApiMapGoldenOracle::TABLES + %w[visits stats digests])
+      result = map_response({ method: :get, expect: :rails }, '/api/v1/digests/2024',
+                            { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}" })
+      closure["digest_#{variant}"] = result.merge('setup' => setup)
+    end
+
+    mcp_headers = { 'Authorization' => "Bearer #{ApiMapGoldenOracle::KEY}",
+                    'Accept' => 'application/json', 'Content-Type' => 'application/json' }
+    {
+      'initialize' => { jsonrpc: '2.0', id: 1, method: 'initialize',
+                        params: { protocolVersion: '2025-11-25', capabilities: {},
+                                  clientInfo: { name: 'synthetic', version: '1' } } },
+      'tools' => { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+      'latest' => { jsonrpc: '2.0', id: 1, method: 'tools/call',
+                   params: { name: 'get_latest_location', arguments: {} } },
+      'search' => { jsonrpc: '2.0', id: 1, method: 'tools/call',
+                   params: { name: 'search_visits', arguments: { query: 'synthetic' } } },
+      'timeline' => { jsonrpc: '2.0', id: 1, method: 'tools/call',
+                   params: { name: 'get_timeline', arguments: { start_at: '2025-01-01', end_at: '2025-01-01' } } },
+      'notification' => { jsonrpc: '2.0', method: 'notifications/initialized' },
+      'batch' => []
+    }.each do |name, payload|
+      post '/api/v1/mcp', params: JSON.generate(payload), headers: mcp_headers
+      closure["mcp_#{name}"] = { 'status' => response.status, 'body' => response.body }
+    end
+    get '/api/v1/mcp', headers: mcp_headers
+    closure['mcp_get'] = { 'status' => response.status, 'body' => response.body }
+    delete '/api/v1/mcp', headers: mcp_headers
+    closure['mcp_delete'] = { 'status' => response.status, 'body' => response.body }
+
+    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/a12f2c/closure.json'),
+                            "#{map_exact_json(closure)}\n")
+  end
+
+  def map_closure_setup(tables)
+    tables.index_with do |table|
+      ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
+                        .map { JSON.parse(_1) }
+    end
   end
 
   def map_exact_json(value, depth = 0)

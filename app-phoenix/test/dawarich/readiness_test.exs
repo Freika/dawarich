@@ -2,8 +2,7 @@ defmodule Dawarich.ReadinessTest do
   use Dawarich.DataCase, async: false
 
   test "ready requires current native ledgers database and required Redis" do
-    {:ok, redis} = Redix.start_link(Application.fetch_env!(:dawarich, :redis)[:url])
-    on_exit(fn -> if Process.alive?(redis), do: GenServer.stop(redis) end)
+    redis = start_supervised!({Redix, Application.fetch_env!(:dawarich, :redis)[:url]})
 
     opts = [
       repo: Repo,

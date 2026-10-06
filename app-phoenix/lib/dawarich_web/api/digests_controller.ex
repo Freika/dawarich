@@ -6,6 +6,7 @@ defmodule DawarichWeb.Api.DigestsController do
 
   alias Dawarich.{Accounts, I18n, RailsTime}
   alias Dawarich.Digests.Api
+  alias Dawarich.Digests.ReadClosure
   alias DawarichWeb.Api.{Body, Params, Respond}
 
   @impl true
@@ -27,6 +28,9 @@ defmodule DawarichWeb.Api.DigestsController do
           {:object, [{"error", I18n.en!("controllers.api.record_not_found")}]}
         )
 
+      {:error, status} ->
+        Respond.json(conn, status, {:object, [{"error", "Digest request failed"}]})
+
       {:replay, reason} ->
         Body.replay(conn, reason)
     end
@@ -35,8 +39,17 @@ defmodule DawarichWeb.Api.DigestsController do
   defp read(action, conn) do
     run(action, conn.assigns.api_user, conn)
   rescue
-    error -> {:replay, inspect(error.__struct__)}
+    error ->
+      if action in [:closure_index, :closure_show],
+        do: {:error, 500},
+        else: {:replay, inspect(error.__struct__)}
   end
+
+  defp run(:closure_index, user, _conn), do: ReadClosure.index(user, DateTime.utc_now())
+
+  defp run(:closure_show, user, conn),
+    do:
+      ReadClosure.show(user, conn.path_params["year"], conn.assigns.api_params, conn.req_headers)
 
   defp run(:index, user, _conn) do
     with {:ok, term} <-
