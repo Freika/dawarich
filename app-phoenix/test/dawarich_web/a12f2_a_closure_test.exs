@@ -475,6 +475,44 @@ defmodule DawarichWeb.A12f2AClosureTest do
     Redis.cache_command(["UNLINK", key])
   end
 
+  @tag :a12f2_a_08
+  test "Existing map and stats APIs natively preserve source coercions cache ties and terminal failures in Cloud",
+       %{user: user, now: now} do
+    System.put_env("SELF_HOSTED", "false")
+    Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [user.id])
+    old = DateTime.to_unix(~U[2020-01-01 00:00:00Z])
+    fresh = DateTime.to_unix(DateTime.add(now, -3600))
+
+    for at <- [old, fresh] do
+      Repo.query!(
+        "INSERT INTO points(user_id,timestamp,lonlat,created_at,updated_at) VALUES($1,$2,ST_SetSRID(ST_MakePoint(13,52),4326),NOW(),NOW())",
+        [user.id, at]
+      )
+    end
+
+    lite = %{user | plan: 0}
+    params = %{"start_at" => "2020-01-01", "end_at" => "2026-10-06T12:00:00Z", "slim" => "true"}
+    points = invoke(DawarichWeb.Api.MapController, :points, lite, params, now)
+    assert points.status == 200
+    assert length(Jason.decode!(points.resp_body)) == 1
+    assert invoke(DawarichWeb.Api.StatsController, :residency, lite, %{}, now).status == 403
+
+    assert invoke(DawarichWeb.Api.StatsController, :details, lite, %{"year" => "2026"}, now).status ==
+             422
+
+    System.delete_env("SELF_HOSTED")
+    points = invoke(DawarichWeb.Api.MapController, :points, lite, params, now)
+    assert points.status == 200
+    assert length(Jason.decode!(points.resp_body)) == 2
+
+    assert invoke(DawarichWeb.Api.MapController, :points, user, %{"start_at" => %{}}, now).status in [
+             422,
+             500
+           ]
+
+    assert invoke(DawarichWeb.Api.StatsController, :index, user, %{}, now).status == 200
+  end
+
   defp source_body(section, name) do
     fixture = "test/fixtures/a12f2a/closure.json" |> File.read!() |> Jason.decode!()
     Enum.find(fixture[section], &(&1["name"] == name))["response"]["body"] |> Jason.decode!()

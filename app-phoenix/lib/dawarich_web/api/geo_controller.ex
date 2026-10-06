@@ -27,8 +27,20 @@ defmodule DawarichWeb.Api.GeoController do
   def call(conn, :flights), do: answer(conn, :flights)
 
   defp answer(conn, action) do
-    case read(action, conn.assigns.api_user, conn.assigns.api_params) do
+    result =
+      if Dawarich.Standalone.enabled?(),
+        do:
+          Dawarich.Stats.ApiClosure.read(
+            action,
+            conn.assigns.api_user,
+            conn.assigns.api_params,
+            conn.assigns[:api_now] || DateTime.utc_now()
+          ),
+        else: read(action, conn.assigns.api_user, conn.assigns.api_params)
+
+    case result do
       {:ok, term, opts} -> Respond.json(conn, 200, term, opts)
+      {:error, status, term} -> Respond.json(conn, status, term)
       {:replay, reason} -> Body.replay(conn, reason)
     end
   end
