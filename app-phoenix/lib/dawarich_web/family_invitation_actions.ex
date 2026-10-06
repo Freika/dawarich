@@ -90,6 +90,8 @@ defmodule DawarichWeb.FamilyInvitationActions do
        when reason in [:not_in_family, :not_authorized, :not_found],
        do: FamilyActions.error(conn, reason)
 
+  defp respond(conn, _action, {:error, :invalid_shape}), do: FamilyActions.error(conn, :failed)
+
   defp respond(conn, _action, {:error, _reason}),
     do:
       FamilyActions.redirect_key(

@@ -41,7 +41,7 @@ defmodule DawarichWeb.FamilyRequestActions do
           result =
             if action == :create,
               do: Requests.web_create(user, params, ctx.now),
-              else: Requests.respond(user, action, params, ctx.now)
+              else: Requests.web_respond(user, action, params, ctx.now)
 
           respond(conn, action, result)
       end
@@ -90,15 +90,33 @@ defmodule DawarichWeb.FamilyRequestActions do
         "controllers.family.location_requests.you_are_not_authorized_to_view_this_request"
       )
 
-  defp respond(conn, _action, {:ok, _status, {:object, fields}}),
+  defp respond(conn, action, {:ok, _status, {:object, fields}}),
     do:
       FamilyActions.redirect(
         conn,
         302,
         "/family",
         "alert",
-        fields |> List.keyfind("message", 0) |> elem(1)
+        localized(conn, action, fields |> List.keyfind("message", 0) |> elem(1))
       )
 
   defp respond(conn, _action, _result), do: FamilyActions.error(conn, :failed)
+
+  defp localized(conn, action, message) do
+    service =
+      if action == :create, do: "create_location_request", else: "respond_to_location_request"
+
+    keys =
+      if action == :create,
+        do:
+          ~w(target_user_is_already_sharing_their_location request_cooldown_active_please_wait_before_requesting_again an_error_occurred),
+        else: ~w(no_longer_actionable an_error_occurred)
+
+    Enum.find_value(keys, message, fn key ->
+      scope = "services.families." <> service <> "." <> key
+
+      if Dawarich.I18n.en!(scope) == message,
+        do: DawarichWeb.Translate.t(conn.assigns.locale, scope, %{})
+    end)
+  end
 end

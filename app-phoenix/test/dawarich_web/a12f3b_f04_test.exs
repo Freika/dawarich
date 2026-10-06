@@ -62,6 +62,14 @@ defmodule DawarichWeb.A12f3bF04Test do
     assert records("SELECT status FROM family_invitations WHERE id=$1", [id]) == [[3]]
     Repo.query!("UPDATE family_invitations SET token='new' WHERE id=93001")
     assert request(c.owner, "GET", "/family/invitations/new").status == 404
+
+    assert request(c.owner, "POST", "/family/invitations", %{
+             "family_invitation" => %{"email" => "local@localhost"}
+           }).status == 302
+
+    assert records("SELECT count(*) FROM family_invitations WHERE email='local@localhost'") == [
+             [1]
+           ]
   end
 
   @tag a12f3b_case: "F04b"
@@ -109,5 +117,34 @@ defmodule DawarichWeb.A12f3bF04Test do
 
     assert records("SELECT count(*) FROM family_memberships WHERE user_id=90103") == [[1]]
     assert records("SELECT count(*) FROM notifications WHERE user_id IN (90101,90103)") == [[2]]
+    System.put_env("SELF_HOSTED", "false")
+    on_exit(fn -> System.delete_env("SELF_HOSTED") end)
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [c.outsider.id])
+
+    Repo.query!(
+      "UPDATE family_invitations SET status=0,expires_at=$1 WHERE token='a9fpl-pending'",
+      [~N[2026-10-04 10:00:00]]
+    )
+
+    Repo.query!("UPDATE users SET plan=1,active_until=$1 WHERE id=$2", [
+      ~N[2026-10-03 09:59:59],
+      c.owner.id
+    ])
+
+    Repo.query!("UPDATE families SET access_until=$1 WHERE id=91001", [~N[2026-11-03 10:00:00]])
+
+    refused =
+      request(Accounts.get(c.outsider.id), "POST", "/family/memberships", %{
+        "token" => "a9fpl-pending"
+      })
+
+    assert Plug.Conn.get_resp_header(refused, "location") == ["http://www.example.com/"]
+
+    assert records("SELECT access_until FROM families WHERE id=91001") == [
+             [~N[2026-10-03 09:59:59.000000]]
+           ]
+
+    assert records("SELECT count(*) FROM family_memberships WHERE user_id=90103") == [[0]]
+    assert records("SELECT status FROM family_invitations WHERE token='a9fpl-pending'") == [[0]]
   end
 end

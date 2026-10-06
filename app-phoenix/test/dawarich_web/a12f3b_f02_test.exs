@@ -35,7 +35,7 @@ defmodule DawarichWeb.A12f3bF02Test do
 
   @tag a12f3b_case: "F02b"
   test "invalid family update preserves original name and flash contract", c do
-    for value <- ["", String.duplicate("x", 51)] do
+    for value <- ["", String.duplicate("x", 51), String.duplicate("e\u0301", 26)] do
       conn = request(c.owner, "PATCH", "/family", %{"family" => %{"name" => value}})
       assert conn.status == 422
       assert conn.resp_body =~ "family[name]"

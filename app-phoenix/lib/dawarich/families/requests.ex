@@ -37,6 +37,15 @@ defmodule Dawarich.Families.Requests do
     _error -> failure(500, "an_error_occurred")
   end
 
+  def web_respond(user, decision, params, now) do
+    respond(user, decision, Map.put(params, "web", true), now)
+  rescue
+    _error ->
+      {:ok, 500,
+       {:object,
+        [{"message", I18n.en!("services.families.respond_to_location_request.an_error_occurred")}]}}
+  end
+
   def create(user, params, now) do
     case Locations.membership(user.id) do
       [_settings, nil] ->
@@ -163,7 +172,17 @@ defmodule Dawarich.Families.Requests do
     at = Clock.naive(now)
 
     if status == 0 and NaiveDateTime.compare(expires, at) == :gt do
-      if decision == :accept, do: SharingUpdate.enable!(user_id, duration(params, suggested), now)
+      if decision == :accept do
+        if params["web"],
+          do:
+            SharingUpdate.web_write!(
+              user_id,
+              %{"enabled" => true, "duration" => duration(params, suggested), "web" => true},
+              now
+            ),
+          else: SharingUpdate.enable!(user_id, duration(params, suggested), now)
+      end
+
       code = if decision == :accept, do: 1, else: 2
 
       Repo.query!(
@@ -177,6 +196,9 @@ defmodule Dawarich.Families.Requests do
       response_failure(422, "no_longer_actionable")
     end
   end
+
+  defp duration(%{"web" => true} = params, suggested),
+    do: if(Ruby.blank?(params["duration"]), do: suggested, else: params["duration"])
 
   defp duration(params, suggested) do
     case params["duration"] do

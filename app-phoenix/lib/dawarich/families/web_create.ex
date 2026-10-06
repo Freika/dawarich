@@ -4,7 +4,11 @@ defmodule Dawarich.Families.WebCreate do
   alias Dawarich.Mail.ExploreFeatures
 
   def run(repo, user, attrs, ctx) do
-    name = if is_binary(attrs["name"]), do: String.trim(attrs["name"]), else: nil
+    name =
+      if is_binary(attrs["name"]),
+        do: String.replace(attrs["name"], ~r/\A[\0\t\n\v\f\r ]+|[\0\t\n\v\f\r ]+\z/, ""),
+        else: nil
+
     errors = validate(name, ctx.locale)
 
     cond do
@@ -39,6 +43,27 @@ defmodule Dawarich.Families.WebCreate do
     end
   end
 
+  def refresh_access(_repo, _family, access, _plan, _until, true), do: access
+
+  def refresh_access(repo, family, access, plan, until, false) do
+    effective =
+      cond do
+        plan == 2 -> until
+        is_nil(access) -> nil
+        is_nil(until) -> access
+        NaiveDateTime.compare(access, until) == :gt -> until
+        true -> access
+      end
+
+    if effective != access,
+      do:
+        repo.query!("UPDATE families SET access_until=$1 WHERE id=$2", [effective, family],
+          log: false
+        )
+
+    effective
+  end
+
   def validate(name, locale) do
     cond do
       is_nil(name) or String.trim(name) == "" ->
@@ -51,7 +76,7 @@ defmodule Dawarich.Families.WebCreate do
           )
         ]
 
-      String.length(name) > 50 ->
+      length(String.codepoints(name)) > 50 ->
         [
           Dawarich.WebValidation.message(
             locale,

@@ -42,7 +42,7 @@ defmodule Dawarich.Families.WebUpdate do
       is_nil(name) or String.trim(name) == "" ->
         [Dawarich.WebValidation.message(locale, "family", "name", "errors.messages.blank")]
 
-      String.length(name) > 50 ->
+      length(String.codepoints(name)) > 50 ->
         [
           Dawarich.WebValidation.message(locale, "family", "name", "errors.messages.too_long", %{
             "count" => 50

@@ -158,6 +158,9 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
       write_family(member, :patch, '/family', { family: { name: 'Forbidden' } })
       expect(response.status).to eq(303)
       expect(family.reload.name).to eq('Overridden')
+      write_family(owner, :patch, '/family', { family: { name: "e\u0301" * 26 } })
+      expect(response.status).to eq(422)
+      expect(family.reload.name).to eq('Overridden')
     end
   end
 
@@ -206,6 +209,9 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
       write_family(owner, :delete, "/family/invitations/#{invite.token}")
       expect(response.status).to eq(302)
       expect(invite.reload).to be_cancelled
+      write_family(owner, :post, '/family/invitations', { family_invitation: { email: 'local@localhost' } })
+      expect(response.status).to eq(302)
+      expect(family.family_invitations.exists?(email: 'local@localhost')).to be(true)
       before_jobs = Sidekiq::Queues['mailers'].size
       write_family(outsider, :post, '/family/memberships', { token: 'a9fpl-equal' })
       expect(response.status).to eq(302)
@@ -216,6 +222,16 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
       write_family(outsider, :post, '/family/memberships', { token: 'a9fpl-equal' })
       expect(response.location).to end_with('/')
       expect(Family::Membership.where(user: outsider).count).to eq(1)
+      outsider.family_membership.delete
+      outsider.reload
+      Family::Invitation.find_by!(token: 'a9fpl-equal').update!(status: :pending, expires_at: now + 1.day)
+      owner.update_columns(plan: User.plans[:pro], active_until: now - 1.second)
+      family.update_columns(access_until: now + 30.days)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      write_family(outsider, :post, '/family/memberships', { token: 'a9fpl-equal' })
+      expect(response.location).to end_with('/')
+      expect(family.reload.access_until).to eq(now - 1.second)
+      expect(outsider.reload.family).to be_nil
     end
   end
 
@@ -255,6 +271,41 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
       write_family(owner, :post, '/family/location_requests', { target_user_id: outsider.id })
       expect(response.status).to eq(302)
       expect(Family::LocationRequest.count).to eq(before + 1)
+    end
+  end
+
+  it 'characterizes sharing coercion and failures before and after the settings write' do
+    travel_to now do
+      owner, member, _outsider, = family_graph('en')
+      write_family(member, :patch, '/family/location_sharing', { enabled: 'on', duration: '2' },
+                   accept: 'application/json')
+      expect(response.status).to eq(200)
+      expect(member.reload.family_sharing_duration).to eq('2')
+      expect(member.family_sharing_expires_at).to eq(now + 2.hours)
+      write_family(member, :patch, '/family/location_sharing', { enabled: { nested: false }, duration: '1h' },
+                   accept: 'application/json')
+      expect(response.status).to eq(200)
+      expect(member.reload.family_sharing_enabled?).to be(true)
+      write_family(member, :patch, '/family/location_sharing', { enabled: false }, accept: 'application/json')
+      reset!
+      sign_in member
+      get '/family'
+      token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      patch '/family/location_sharing', params: { enabled: true, duration: [] }.to_json,
+            headers: { 'Content-Type' => 'application/json', 'Accept' => 'application/json', 'X-CSRF-Token' => token }
+      expect(response.status).to eq(500)
+      expect(JSON.parse(response.body)['success']).to be(false)
+      expect(member.reload.settings.dig('family', 'location_sharing', 'enabled')).to be(true)
+      reset!
+      sign_in owner
+      get '/family'
+      owner_token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      owner.update_columns(settings: owner.settings.merge('family' => []))
+      patch '/family/location_sharing', params: { enabled: true, duration: '1h' }.to_json,
+            headers: { 'Content-Type' => 'application/json', 'Accept' => 'application/json',
+                       'X-CSRF-Token' => owner_token }
+      expect(response.status).to eq(500)
+      expect(owner.reload.settings['family']).to eq([])
     end
   end
 

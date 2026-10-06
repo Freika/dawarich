@@ -33,34 +33,40 @@ defmodule Dawarich.Families.WebInvitations do
   end
 
   def accept(repo, user, token, ctx, opts \\ []) do
-    repo.transaction(fn ->
-      case repo.query!(
-             "SELECT id,family_id,email,status,expires_at FROM family_invitations WHERE token=$1 FOR UPDATE",
-             [token],
-             log: false
-           ).rows do
-        [] ->
-          repo.rollback(:not_found)
+    result =
+      repo.transaction(fn ->
+        case repo.query!(
+               "SELECT id,family_id,email,status,expires_at FROM family_invitations WHERE token=$1 FOR UPDATE",
+               [token],
+               log: false
+             ).rows do
+          [] ->
+            repo.rollback(:not_found)
 
-        [[id, family, email, status, expires]] ->
-          cond do
-            NaiveDateTime.compare(expires, DateTime.to_naive(ctx.now)) == :lt ->
-              repo.rollback(:invitation_expired)
+          [[id, family, email, status, expires]] ->
+            cond do
+              NaiveDateTime.compare(expires, DateTime.to_naive(ctx.now)) == :lt ->
+                repo.rollback(:invitation_expired)
 
-            status != 0 ->
-              repo.rollback(:invitation_processed)
+              status != 0 ->
+                repo.rollback(:invitation_processed)
 
-            email != user.email ->
-              repo.rollback(:invitation_email_mismatch)
+              email != user.email ->
+                repo.rollback(:invitation_email_mismatch)
 
-            WebCreate.family(repo, user.id) != nil ->
-              repo.rollback(:already_in_family)
+              WebCreate.family(repo, user.id) != nil ->
+                repo.rollback(:already_in_family)
 
-            true ->
-              join(repo, user, id, family, ctx, opts)
-          end
-      end
-    end)
+              true ->
+                join(repo, user, id, family, ctx, opts)
+            end
+        end
+      end)
+
+    case result do
+      {:ok, {:error, reason}} -> {:error, reason}
+      other -> other
+    end
   rescue
     _error -> {:error, :accept_failed}
   end
@@ -69,25 +75,61 @@ defmodule Dawarich.Families.WebInvitations do
     email = email |> String.downcase() |> String.trim()
 
     cond do
-      not Regex.match?(~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/, email) ->
-        {:refused, "Email is invalid"}
+      email == "" ->
+        {:refused,
+         Dawarich.WebValidation.message(
+           ctx.locale,
+           "family/invitation",
+           "email",
+           "errors.messages.blank"
+         )}
+
+      not Regex.match?(
+        ~r/\A[a-zA-Z0-9.!\#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\z/,
+        email
+      ) ->
+        {:refused,
+         Dawarich.WebValidation.message(
+           ctx.locale,
+           "family/invitation",
+           "email",
+           "errors.messages.invalid"
+         )}
 
       not ctx.self_hosted and capacity(repo, family.id, ctx.now) >= 5 ->
-        {:refused, t(ctx.locale, "invite", "family_full")}
+        {:refused,
+         Dawarich.WebValidation.message(
+           ctx.locale,
+           "family",
+           "family",
+           "services.families.invite.family_full"
+         )}
 
       exists?(
         repo,
         "SELECT 1 FROM users u JOIN family_memberships m ON m.user_id=u.id WHERE u.email=$1",
         [email]
       ) ->
-        {:refused, t(ctx.locale, "invite", "user_already_in_family")}
+        {:refused,
+         Dawarich.WebValidation.message(
+           ctx.locale,
+           "family/invitation",
+           "email",
+           "services.families.invite.user_already_in_family"
+         )}
 
       exists?(
         repo,
         "SELECT 1 FROM family_invitations WHERE family_id=$1 AND email=$2 AND status=0 AND expires_at>$3",
         [family.id, email, DateTime.to_naive(ctx.now)]
       ) ->
-        {:refused, t(ctx.locale, "invite", "invitation_already_sent")}
+        {:refused,
+         Dawarich.WebValidation.message(
+           ctx.locale,
+           "family/invitation",
+           "email",
+           "services.families.invite.invitation_already_sent"
+         )}
 
       true ->
         persist(repo, user, family, email, ctx, opts)
@@ -160,21 +202,21 @@ defmodule Dawarich.Families.WebInvitations do
         log: false
       ).rows
 
-    unless ctx.self_hosted do
-      access = if plan == 2 and until, do: until, else: access
+    access = WebCreate.refresh_access(repo, family, access, plan, until, ctx.self_hosted)
 
-      if access,
-        do:
-          repo.query!("UPDATE families SET access_until=$1 WHERE id=$2", [access, family],
-            log: false
-          )
+    cond do
+      not ctx.self_hosted and not Entitlements.inherited?(access, plan, until, ctx.now) ->
+        {:error, :family_lapsed}
 
-      if not Entitlements.inherited?(access, plan, until, ctx.now),
-        do: repo.rollback(:family_lapsed)
+      not ctx.self_hosted and capacity(repo, family, ctx.now) > 5 ->
+        {:error, :family_full}
 
-      if capacity(repo, family, ctx.now) > 5, do: repo.rollback(:family_full)
+      true ->
+        join_member(repo, user, invitation, family, creator, name, ctx, opts)
     end
+  end
 
+  defp join_member(repo, user, invitation, family, creator, name, ctx, opts) do
     at = DateTime.to_naive(ctx.now)
 
     repo.query!(
