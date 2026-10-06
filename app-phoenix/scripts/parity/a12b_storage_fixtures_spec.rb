@@ -455,6 +455,7 @@ custom_metadata: {} }
     frozen { get '/users/sign_in' }
     token = response.body[/<meta name="csrf-token" content="([^"]+)"/, 1]
     expect(token).to be_present
+    real_token = request.session[:_csrf_token]
     cookie = cookies['_dawarich_session']
     ActiveRecord::Base.connection.execute("SELECT setval('active_storage_blobs_id_seq', 972000)")
     allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token)
@@ -477,6 +478,8 @@ custom_metadata: {} }
                        headers: { 'CONTENT_TYPE' => 'multipart/form-data; boundary=a12f2i',
                                   'Accept' => 'application/json', 'X-CSRF-Token' => token },
                        body: multipart, csrf: true),
+                record('guest_unmasked', :post, '/rails/active_storage/direct_uploads',
+                       headers: json, body: JSON.parse(good).merge('authenticity_token' => real_token).to_json),
                 record('guest_bad_json', :post, '/rails/active_storage/direct_uploads',
                        headers: json.merge('X-CSRF-Token' => token), body: '{', csrf: true),
                 record('guest_wrong_origin', :post, '/rails/active_storage/direct_uploads',

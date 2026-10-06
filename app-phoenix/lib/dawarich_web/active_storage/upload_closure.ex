@@ -88,7 +88,27 @@ defmodule DawarichWeb.ActiveStorage.UploadClosure do
     tokens = [params["authenticity_token"] | get_req_header(conn, "x-csrf-token")]
 
     origin in [[], [RequestURL.base(conn)]] and
-      Enum.any?(tokens, &(is_binary(&1) and RailsCsrf.valid?(session, &1)))
+      Enum.any?(tokens, &(is_binary(&1) and valid_csrf?(session, &1)))
+  end
+
+  defp valid_csrf?(session, token) do
+    RailsCsrf.valid?(session, token) or
+      with %{"_csrf_token" => real} when is_binary(real) <- session,
+           {:ok, <<raw::binary-size(32)>>} <- Base.url_decode64(real, padding: false),
+           {:ok, decoded} <- Base.url_decode64(token, padding: false) do
+        case decoded do
+          <<legacy::binary-size(32)>> ->
+            Plug.Crypto.secure_compare(legacy, raw)
+
+          <<pad::binary-size(32), masked::binary-size(32)>> ->
+            Plug.Crypto.secure_compare(:crypto.exor(pad, masked), raw)
+
+          _ ->
+            false
+        end
+      else
+        _ -> false
+      end
   end
 
   defp attrs(blob) when is_map(blob) and map_size(blob) > 0 do
