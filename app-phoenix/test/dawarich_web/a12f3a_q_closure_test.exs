@@ -212,6 +212,42 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert get_resp_header(conn, "location") == ["http://www.example.com/users/sign_in"]
   end
 
+  @tag a12f3a_q09: true
+  test "Q09: digest generation http producer matches current Rails contract without a native-owner Rails effect",
+       %{user: user, context: ctx} do
+    stat!(user.id, %{year: 2024, month: 3, distance: 1000})
+    stat!(user.id, %{year: 2026, month: 3, distance: 1000})
+    Ownership.put!(Repo, "command:digests.calculate_year", :oban)
+
+    for row <- fixture("09") do
+      Repo.query!("DELETE FROM job_outbox", [])
+      assert {:ok, result} = Dawarich.Digests.WebCommands.create(Repo, user, row["input"], ctx)
+      assert result.status == row["status"]
+      assert result.path == row["location"]
+      assert %{Atom.to_string(result.flash) => result.message} == row["flash"]
+
+      actual =
+        for [args] <- Repo.query!("SELECT payload FROM job_outbox", []).rows,
+            do: [args["user_id"], args["year"]]
+
+      assert actual == row["jobs"]
+    end
+
+    for mode <- ["true", "false", nil] do
+      set_mode(mode)
+      Repo.query!("DELETE FROM job_outbox", [])
+      conn = write(user, :post, "/digests", %{"year" => "2024"})
+      assert conn.status == 303
+      assert get_resp_header(conn, "location") == ["http://www.example.com/digests"]
+
+      assert Repo.query!("SELECT command_type FROM job_outbox", []).rows == [
+               ["digests.calculate_year"]
+             ]
+    end
+
+    assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
+  end
+
   @tag a12f3a_q07: true
   test "Q07: full stats recalculation producer matches current Rails contract without a native-owner Rails effect",
        %{user: user, context: ctx} do

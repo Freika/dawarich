@@ -39,3 +39,4 @@ No browser acceptance or whole-domain retirement is claimed by this implementati
 - Q05: serve native details frames in Cloud mode; source/mutation evidence recorded.
 - Q07: publish deduplicated full recalculation commands; source/mutation evidence recorded.
 - Q08: retain private source failure boundaries; source/mutation evidence recorded.
+- Q09: generate past yearly digests natively; source/mutation evidence recorded.
