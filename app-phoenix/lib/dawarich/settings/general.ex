@@ -5,34 +5,31 @@ defmodule Dawarich.Settings.General do
   @boolean ~w(monthly_digest_emails_enabled yearly_digest_emails_enabled news_emails_enabled show_supporter_badge)
 
   def save(repo, id, params, opts \\ []) do
-    repo.transaction(
-      fn ->
-        case repo.query!(
-               "SELECT settings FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE",
-               [id],
-               log: false
-             ).rows do
-          [[%{} = previous]] ->
-            settings = changes(previous, params)
+    repo.transaction(fn ->
+      case repo.query!(
+             "SELECT settings FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE",
+             [id],
+             log: false
+           ).rows do
+        [[%{} = previous]] ->
+          settings = changes(previous, params)
 
-            if settings != previous do
-              repo.query!(
-                "UPDATE users SET settings=$2, updated_at=$3 WHERE id=$1",
-                [id, settings, NaiveDateTime.utc_now()],
-                log: false
-              )
+          if settings != previous do
+            repo.query!(
+              "UPDATE users SET settings=$2, updated_at=$3 WHERE id=$1",
+              [id, settings, NaiveDateTime.utc_now()],
+              log: false
+            )
 
-              if settings["timezone"] != previous["timezone"], do: rebucket(repo, id, opts)
-            end
+            if settings["timezone"] != previous["timezone"], do: rebucket(repo, id, opts)
+          end
 
-            settings
+          settings
 
-          _ ->
-            repo.rollback(:invalid_settings)
-        end
-      end,
-      mode: :savepoint
-    )
+        _ ->
+          repo.rollback(:invalid_settings)
+      end
+    end)
   rescue
     _ -> {:error, :save_failed}
   end

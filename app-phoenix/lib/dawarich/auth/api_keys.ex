@@ -20,26 +20,23 @@ defmodule Dawarich.Auth.ApiKeys do
   def rotate_session(%{"warden.user.user.key" => [[id], salt]} = session)
       when is_integer(id) and is_binary(salt) do
     {:ok, result} =
-      Repo.transaction(
-        fn ->
-          actor =
-            Repo.one(
-              from u in Account,
-                where: u.id == ^id and is_nil(u.deleted_at),
-                lock: "FOR UPDATE"
-            )
+      Repo.transaction(fn ->
+        actor =
+          Repo.one(
+            from u in Account,
+              where: u.id == ^id and is_nil(u.deleted_at),
+              lock: "FOR UPDATE"
+          )
 
-          with %Account{} <- actor,
-               %Accounts.User{id: ^id} <- Accounts.from_session(session, DateTime.utc_now()),
-               false <- Token.blank?(actor.email),
-               true <- Account.normalize_email(actor.email) == actor.email do
-            persist(actor, %{})
-          else
-            _ -> {:handoff, :invalid_resource}
-          end
-        end,
-        mode: :savepoint
-      )
+        with %Account{} <- actor,
+             %Accounts.User{id: ^id} <- Accounts.from_session(session, DateTime.utc_now()),
+             false <- Token.blank?(actor.email),
+             true <- Account.normalize_email(actor.email) == actor.email do
+          persist(actor, %{})
+        else
+          _ -> {:handoff, :invalid_resource}
+        end
+      end)
 
     result
   end
