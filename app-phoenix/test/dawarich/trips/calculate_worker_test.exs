@@ -35,8 +35,14 @@ defmodule Dawarich.Trips.CalculateWorkerTest do
     args: args,
     trip_id: id
   } do
+    start_oban(__MODULE__)
+    accepted = Oban.insert!(__MODULE__, CalculateWorker.new(args))
+    assert accepted.args["event_id"] == args["event_id"]
     assert_raise FunctionClauseError, fn -> perform_job(CalculateWorker, args, attempt: 1) end
     assert rows("SELECT count(*) FROM phoenix.trip_events") == [[0]]
+    status = Dawarich.Jobs.Drain.status(ScratchRepo)
+    assert status.counts.incomplete_oban == 1
+    assert "incomplete_oban" in status.shutdown_reasons
 
     assert [[%NaiveDateTime{}]] =
              rows("SELECT last_recalculated_at FROM trips WHERE id = $1", [id])
