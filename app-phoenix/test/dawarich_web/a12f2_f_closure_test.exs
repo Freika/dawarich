@@ -193,6 +193,92 @@ defmodule DawarichWeb.A12f2FClosureTest do
     assert Credentials.login("unknown-" <> ctx.email, "wrong", context) == {:error, :invalid}
   end
 
+  @tag :a12f2_f_03
+  test "Recovery owns legacy sessions tokens OIDC Cloud refusal and exact mail save failure ordering",
+       ctx do
+    alias Dawarich.Auth.Recovery.{Lifecycle, Token}
+    alias DawarichWeb.AuthRecovery.Http
+    id = insert_user(ctx.email)
+    now = DateTime.utc_now()
+
+    context = %{
+      self_hosted: true,
+      oidc: false,
+      registration_enabled: true,
+      secret: RailsSecret.fetch(),
+      log_rounds: 4,
+      clock: fn -> now end,
+      sign_in_ip: "192.0.2.9",
+      enqueue: fn notification ->
+        send(self(), {:recovery, notification})
+        :ok
+      end
+    }
+
+    opts = [enabled: true, native: true, context: context, fallback: &replay/1]
+    assert Http.route?(Plug.Test.conn(:patch, "/users/password"))
+    session = guest()
+    params = csrf(%{"user[email]" => ctx.email}, session, "POST", "/users/password")
+    response = Http.call(request(:post, "/users/password", session, params), opts)
+    assert response.status == 303
+    assert_received {:recovery, notification}
+    assert notification.user_id == id
+
+    assert Repo.get!(Account, id).reset_password_token ==
+             Token.digest(:reset_password_token, notification.raw, RailsSecret.fetch())
+
+    raw = notification.raw
+
+    Repo.query!(
+      "UPDATE users SET reset_password_sent_at=$2,locked_at=$3,failed_attempts=11,failed_otp_attempts=10,otp_locked_at=$3 WHERE id=$1",
+      [id, DateTime.to_naive(DateTime.add(now, -21_601)), DateTime.to_naive(now)],
+      log: false
+    )
+
+    reset =
+      csrf(
+        %{
+          "user[reset_password_token]" => raw,
+          "user[password]" => "newpassword12345",
+          "user[password_confirmation]" => "newpassword12345"
+        },
+        session,
+        "PATCH",
+        "/users/password"
+      )
+
+    expired = Http.call(request(:patch, "/users/password", session, reset), opts)
+    assert expired.status == 422
+    assert Repo.get!(Account, id).reset_password_token != nil
+
+    Repo.query!(
+      "UPDATE users SET reset_password_sent_at=$2 WHERE id=$1",
+      [id, DateTime.to_naive(DateTime.add(now, -21_600))],
+      log: false
+    )
+
+    completed = Http.call(request(:patch, "/users/password", session, reset), opts)
+    assert completed.status == 303
+    user = Repo.get!(Account, id)
+    assert user.reset_password_token == nil
+    assert user.locked_at == nil and user.otp_locked_at == nil
+    assert user.failed_attempts == 0 and user.failed_otp_attempts == 0
+    assert Bcrypt.verify_pass("newpassword12345", user.encrypted_password)
+    assert [[^id], _] = response_session(completed)["warden.user.user.key"]
+    replayed = Http.call(request(:patch, "/users/password", session, reset), opts)
+    assert replayed.status == 422
+    {:ok, issued} = Lifecycle.request_reset(ctx.email, context)
+    digest = issued.user.reset_password_token
+
+    failing =
+      Keyword.put(opts, :context, %{context | enqueue: fn _ -> {:error, :unavailable} end})
+
+    failure = Http.call(request(:post, "/users/password", session, params), failing)
+    assert failure.status == 500
+    assert Repo.get!(Account, id).reset_password_token == digest
+    refute failure.private[:replayed]
+  end
+
   defp insert_user(email) do
     [[id]] =
       Repo.query!(
