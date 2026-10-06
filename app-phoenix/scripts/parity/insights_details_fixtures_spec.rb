@@ -261,10 +261,16 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
                %w[es fr pl ca zh].map do |locale|
                  [reader, "/insights/details?year=2024&month=4&locale=#{locale}", "details-#{locale}.html"]
                end
+    captures = []
     written = requests.map do |user, path, fixture|
       reset!
       sign_in User.find(user.id)
+      before = rows([user])
       markup, keys = frame(path)
+      captures << { path:, body: markup, status: response.status, media_type: response.media_type,
+                    location: response.location, vary: response.headers['Vary'],
+                    cookie: response.headers['Set-Cookie'].present?, flash: flash.to_hash,
+                    before:, after: rows([user]) }
       FixtureRecording.verify(dir.join(fixture), "#{markup}\n")
       keys.grep(%r{\Aviews/insights/details:})
     end
@@ -283,6 +289,34 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
       end
     )
     FixtureRecording.verify(dir.join('details-corpus.json'), "#{JSON.pretty_generate(corpus.as_json)}\n")
+    %w[04 05].each do |id|
+      FixtureRecording.verify(dir.join("../stats/a12f3a-q#{id}.json"), "#{JSON.pretty_generate(captures.as_json)}\n")
+    end
+    index_rows = []
+    [true, false].each do |self_hosted|
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+      ['', '?year=2024', '?year=all', '?year=2024&month=4', '?year[]=2024', '?month[]=4',
+       '?year=bad&month=99'].each do |query|
+        reset!
+        sign_in reader
+        error = nil
+        begin
+          get("/insights#{query}")
+        rescue StandardError => e
+          error = { class: e.class.name, message: FixtureRecording.normalize(e.message) }
+        end
+        doc = Nokogiri::HTML5(error ? '' : response.body)
+        doc.css('input[name="authenticity_token"]').each { _1['value'] = 'CSRF' }
+        doc.css('meta[name="csrf-token"]').each { _1['content'] = 'CSRF' }
+        doc.css('[nonce]').each { _1['nonce'] = 'NONCE' }
+        index_rows << { path: "/insights#{query}", self_hosted:, error:,
+                        status: error ? nil : response.status,
+                          body: error ? nil : FixtureRecording.normalize(doc.to_html),
+                        media_type: error ? nil : response.media_type,
+                        location: error ? nil : response.location, flash: error ? nil : flash.to_hash }
+      end
+    end
+    FixtureRecording.verify(dir.join('../stats/a12f3a-q03.json'), "#{JSON.pretty_generate(index_rows.as_json)}\n")
   end
 
   it 'writes the activity card Rails renders for fresh and persisted JSON key order' do

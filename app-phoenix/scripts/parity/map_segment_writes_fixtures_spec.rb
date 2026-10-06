@@ -1,8 +1,26 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: map segment writes', type: :request do
+  closure_cases = {}
+  define_method(:closure_case) do |name, data|
+    closure_cases[name] = data.merge('user' => data.fetch('user').merge('api_key' => 'API_KEY'))
+  end
+  after(:all) do
+    selected = closure_cases.sort.to_h.select { |name, _| [''].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w08.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| [''].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w09.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/map_writes/segments') }
@@ -77,7 +95,7 @@ RSpec.describe 'Phoenix fixtures: map segment writes', type: :request do
     %w[override_condensed override_raw override_unchanged override_tied disabled reset_changed reset_unchanged
        reset_preserved reset_empty reset_failure html_referer html_root html_disabled html_reset_failure
        override_post reset_post foreign_track wrong_nested missing_track missing_segment guest
-       accept_turbo_only accept_html_first accept_turbo_q accept_html_q accept_wildcard]
+       accept_turbo_only accept_html_first accept_turbo_q accept_html_q accept_wildcard override_put]
   end
 
   def seed(user, foreign, id, name)
@@ -130,7 +148,11 @@ RSpec.describe 'Phoenix fixtures: map segment writes', type: :request do
     allow(TracksChannel).to receive(:broadcast_to) { |actor, data|
       @broadcasts << { 'user_id' => actor.id, 'data' => data.as_json }
     }
-    method = name.end_with?('_post') ? :post : :patch
+    method = if name == 'override_put'
+               :put
+             else
+               name.end_with?('_post') ? :post : :patch
+             end
     reset = name.include?('reset')
     params = if reset
                { reset: 'true' }
@@ -193,7 +215,15 @@ RSpec.describe 'Phoenix fixtures: map segment writes', type: :request do
               'epochs' => @epochs, 'broadcasts' => @broadcasts,
               'association_order' => Track.find(id).track_segments.pluck(:id),
               'jobs' => enqueued_jobs.map { { 'job' => _1[:job].name, 'args' => _1[:args] } } }
-    File.write(dir.join("#{name}.html"), [200, 422].include?(status) ? doc.to_html : '')
+    state['user']['api_key'] = 'API_KEY' if name == 'override_put'
+    File.write(dir.join("#{name}.html"), [200, 422].include?(status) ? doc.to_html : '') unless name == 'override_put'
+    token_pattern = /(name="(?:authenticity_token|csrf-token|csp-nonce)" (?:value|content)=")[^"]*/
+    source_body = FixtureRecording.normalize(response.body).gsub(token_pattern, '\\1CSRF')
+                                  .gsub(/(nonce=")[^"]*/, '\\1NONCE')
+                                  .gsub(/(signed-stream-name=")[^"]*/, '\\1SIGNED')
+    closure_case(name, state.merge('body' => source_body))
+    return if name == 'override_put'
+
     File.write(dir.join("#{name}.json"), "#{Oj.dump(state, mode: :strict, float_precision: 0, indent: 2)}\n")
   end
 
@@ -242,11 +272,86 @@ RSpec.describe 'Phoenix fixtures: map segment writes', type: :request do
     end
   end
 
+  def capture_recalculation
+    rows = []
+    [true, false].product(%w[idle processing], %w[html turbo]).each_with_index do |(hosted, phase, format), index|
+      user = reader(99_000 + index)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(hosted)
+      Rails.cache.clear
+      reset!
+      sign_in user
+      get '/tags/new'
+      token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      status = Tracks::TransportationRecalculationStatus.new(user.id)
+      status.start(total_tracks: 10) if phase == 'processing'
+      before = status.data
+      clear_enqueued_jobs
+      accept = format == 'turbo' ? 'text/vnd.turbo-stream.html' : 'text/html'
+      post '/tracks/recalculation', headers: { 'X-CSRF-Token' => token, 'Accept' => accept,
+                                             'Referer' => 'http://www.example.com/map/v2' }
+      expect(response.status).to eq(format == 'turbo' ? 200 : 302)
+      expect(enqueued_jobs.size).to eq(phase == 'processing' ? 0 : 1)
+      expect(status.data).to eq(before)
+      rows << { self_hosted: hosted, phase:, format:, status: response.status, body: response.body,
+                media_type: response.media_type, location: response.location, flash: flash.to_hash,
+                set_cookie: response.headers['Set-Cookie'].present?, before:, after: status.data,
+                jobs: enqueued_jobs.map { { class: _1[:job].name, args: _1[:args], queue: _1[:queue] } } }
+    end
+    FixtureRecording.verify(dir.dirname.join('a12f3a-w12.json'), "#{JSON.pretty_generate(rows)}\n")
+  end
+
+  def capture_reclassification
+    rows = []
+    [0, 1, 101].each_with_index do |count, index|
+      user = reader(99_100 + index)
+      count.times { |n| track!(user, 9_910_000 + index * 1000 + n) }
+      Rails.cache.clear
+      clear_enqueued_jobs
+      writes = []
+      RSpec::Mocks.with_temporary_scope do
+        allow(Rails.cache).to receive(:write).and_wrap_original do |original, *args, **options|
+          writes << { key: args[0], value: args[1], expires_in: options[:expires_in] }
+          original.call(*args, **options)
+        end
+        TransportationModes::UserReclassifyJob.perform_now(user.id)
+      end
+      jobs = enqueued_jobs.map do |job|
+        { class: job[:job].name, args: job[:args], queue: job[:queue],
+          due_offset: job[:at] && (job[:at] - now.to_f).round(6) }
+      end
+      expect(jobs.size).to eq(count)
+      expect(jobs.map { _1[:due_offset] }).to eq(count.times.map { (_1 / 100) * 10 })
+      status = Tracks::TransportationRecalculationStatus.new(user.id).data
+      expect(status['status']).to eq(count.zero? ? 'completed' : 'processing')
+      rows << { count:, status:, writes:, jobs:, retry: TransportationModes::UserReclassifyJob.get_sidekiq_options['retry'] }
+    end
+    user = reader(99_104)
+    track!(user, 9_914_000)
+    Rails.cache.clear
+    error = nil
+    RSpec::Mocks.with_temporary_scope do
+      allow(ActiveJob).to receive(:perform_all_later).and_raise(RuntimeError, 'synthetic enqueue failure')
+      allow(ExceptionReporter).to receive(:call)
+      begin
+        TransportationModes::UserReclassifyJob.perform_now(user.id)
+      rescue RuntimeError => e
+        error = { class: e.class.name, message: e.message }
+      end
+    end
+    status = Tracks::TransportationRecalculationStatus.new(user.id).data
+    expect(status['status']).to eq('failed')
+    expect(error).to include(message: 'synthetic enqueue failure')
+    rows << { failure: error, status: }
+    FixtureRecording.verify(dir.dirname.join('a12f3a-w13.json'), "#{JSON.pretty_generate(rows)}\n")
+  end
+
   def generate!
     cases.each_with_index { |name, index| capture(name, index) }
   end
 
   it 'writes segment override reset failure and stream targets' do
     generate!
+    capture_recalculation
+    capture_reclassification
   end
 end

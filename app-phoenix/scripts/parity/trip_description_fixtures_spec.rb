@@ -4,6 +4,15 @@ require 'rails_helper'
 require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: trip descriptions as Rails renders them on the trip page' do
+  include FixtureRecording::DeterministicInputs
+
+  def fixture_models
+    [User, Import, Export, ActiveStorage::Blob, ActiveStorage::Attachment, Place, Visit, Point, Tag, Tagging,
+     PlaceVisit, Note, Area, Track, TrackSegment, Notification, Trip]
+  end
+
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:path) { Rails.root.join('app-phoenix/test/fixtures/trips/descriptions.json') }
   let(:now) { Time.utc(2026, 9, 29, 12, 0, 0) }
 
@@ -56,6 +65,34 @@ RSpec.describe 'Phoenix fixtures: trip descriptions as Rails renders them on the
     ]
   end
 
+  def capture_embedded_attachment(user, cases)
+    travel_to now
+    sequence = "SELECT setval(pg_get_serial_sequence('active_storage_blobs','id'),989900,false)"
+    ActiveStorage::Blob.connection.execute(sequence)
+    blob = ActiveStorage::Blob.create_and_upload!(key: 'a12f3a-rich-attachment',
+                                                  io: StringIO.new('synthetic embedded image'),
+                                                  filename: 'synthetic image.png', content_type: 'image/png',
+                                                  identify: false,
+                                                  metadata: { analyzed: true, width: 1, height: 1 })
+    trip = Trip.create!(id: 989_901, user:, name: 'Embedded description', started_at: now, ended_at: now + 1.day,
+                        skip_calculation_enqueue: true)
+    content = "<div>Before</div>#{ActionText::Attachment.from_attachable(blob).to_html}<div>After</div>"
+    trip.description = content
+    trip.save!
+    text = trip.reload.description
+    expect(text.embeds.pluck(:id)).to eq([blob.id])
+    before = { body: text.body.to_s, sgid: blob.attachable_sgid,
+               blobs: [blob.attributes.except('key')], attachments: text.embeds_attachments.map(&:attributes) }
+    clear_enqueued_jobs
+    trip.destroy!
+    expect(ActionText::RichText.where(record_type: 'Trip', record_id: trip.id)).to be_empty
+    expect(ActiveStorage::Attachment.where(record_type: 'ActionText::RichText', record_id: text.id)).to be_empty
+    captured = { cases:, embedded: before, after: { trip: Trip.exists?(trip.id), rich_text: text.destroyed?,
+                      blob: ActiveStorage::Blob.exists?(blob.id) },
+                 jobs: enqueued_jobs.map { { class: _1[:job].name, args: _1[:args], queue: _1[:queue] } } }
+    FixtureRecording.verify(path.dirname.join('a12f3a-t03.json'), "#{JSON.pretty_generate(captured)}\n")
+  end
+
   it 'writes each stored body with the HTML the trip page renders for it' do
     user = create(:user)
     cases = phoenix_cases.map { |c| [*c, 'phoenix'] } + rails_cases.map { |c| [*c, 'rails'] }
@@ -64,6 +101,9 @@ RSpec.describe 'Phoenix fixtures: trip descriptions as Rails renders them on the
       { id:, user_id: user.id, name: "case #{id}", started_at: now, ended_at: now + 1.day, created_at: now,
         updated_at: now }
     end)
+    ActionText::RichText.connection.execute(
+      "SELECT setval(pg_get_serial_sequence('action_text_rich_texts','id'),989950,false)"
+    )
     stored = cases.zip(ids).reject { |(_, body, _), _| body.nil? }
     ActionText::RichText.insert_all(stored.map do |(_, body, _), id|
       { record_type: 'Trip', record_id: id, name: 'description', body:, created_at: now, updated_at: now }
@@ -74,6 +114,7 @@ RSpec.describe 'Phoenix fixtures: trip descriptions as Rails renders them on the
       { name:, body:, expect:, rendered: rendered.presence&.to_s }
     end
 
+    capture_embedded_attachment(user, rows)
     FixtureRecording.verify(path, "#{Oj.dump({ 'cases' => rows.map(&:stringify_keys) }, mode: :strict, indent: 2)}\n")
     FixtureRecording.verify(path.dirname.join('a12f3a-t04.json'),
                             "#{Oj.dump({ 'cases' => rows.map(&:stringify_keys) }, mode: :strict, indent: 2)}\n")

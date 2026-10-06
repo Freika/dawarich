@@ -5,6 +5,17 @@ module FixtureRecording
 
   module SyntheticSecret
     def self.included(base)
+      base.before do
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('JWT_SECRET_KEY').and_return(SECRET)
+        random = Random.new(1153)
+        allow(SecureRandom).to receive(:random_bytes) { |n| random.bytes(n || 16) }
+        allow(OpenSSL::Random).to receive(:random_bytes) { |n| random.bytes(n) }
+        allow_any_instance_of(OpenSSL::Cipher).to receive(:random_iv) do |cipher|
+          cipher.iv = random.bytes(cipher.iv_len)
+        end
+        allow(Rack::Utils).to receive(:clock_time).and_return(0.0)
+      end
       base.around do |example|
         app = Rails.application
         previous = app.config.secret_key_base
@@ -84,7 +95,9 @@ module FixtureRecording
     Gem.loaded_specs.each_value { |gem| text = text.gsub(gem.full_gem_path, "GEM_ROOT/#{gem.name}") }
     text.gsub(Rails.root.to_s, 'RAILS_ROOT')
         .gsub(RbConfig::CONFIG.fetch('prefix'), 'RUBY_ROOT')
-        .gsub(%r{([\w./-]+):\d+(?=:in\b)}, '\1:LINE')
+        .gsub(%r{(?<=[\w./-]):\d+(?=:in\b)}, ':LINE')
+        .gsub(%r{(/auth/dawarich\?token=)eyJ[\w-]+\.[\w-]+\.[\w-]+}, '\1JWT')
+        .gsub(/(data-exception-object-id=\\?"|onclick=\\?"return toggle\(|<div id=\\?")\d+/, '\1OBJECT')
         .gsub(/(Extracted source \(around line <strong>)#\d+/, '\1#LINE')
         .gsub(%r{(<pre class="line_numbers">)(.*?)(</pre>)}m) do
           match = Regexp.last_match

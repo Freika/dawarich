@@ -1,9 +1,27 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 require_relative 'wave5b_fixture_support'
 
 RSpec.describe 'Phoenix fixture: Rails GPX extraction' do
+  include FixtureRecording::DeterministicInputs
+
+  def fixture_models
+    [User, Import, Export, ActiveStorage::Blob, ActiveStorage::Attachment, Place, Visit, Point, Tag, Tagging,
+     PlaceVisit, Note, Area, Track, TrackSegment, Notification, ActionText::RichText, Trip]
+  end
+
+  closure_cases = {}
+  define_method(:write_fixture) do |directory, name, data|
+    closure_cases[name] = data.merge('postgis_build' => postgis_build)
+    super(directory, name, data)
+  end
+  after(:all) do
+    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports/formats/a12f3a-f18.json'),
+                            "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+  end
+
   include Wave5bFixtureSupport
   include ActiveSupport::Testing::TimeHelpers
 
@@ -111,14 +129,15 @@ RSpec.describe 'Phoenix fixture: Rails GPX extraction' do
 
   def zip_bytes(entries)
     path = Rails.root.join('tmp', "w5b-zip-#{SecureRandom.hex(4)}.zip")
-    travel_to(Time.utc(2026, 9, 1)) do
-      Zip::File.open(path.to_s, create: true) do |zip|
-        entries.each { |entry, body| body.nil? ? zip.mkdir(entry) : zip.get_output_stream(entry) { |f| f.write(body) } }
-      end
+    previous = Time.current
+    travel_to Time.utc(2026, 9, 1)
+    Zip::File.open(path.to_s, create: true) do |zip|
+      entries.each { |entry, body| body.nil? ? zip.mkdir(entry) : zip.get_output_stream(entry) { |f| f.write(body) } }
     end
     File.binread(path)
   ensure
     File.delete(path) if path && File.exist?(path)
+    travel_to(previous) if previous
   end
 
   it 'seeks past a UTF-8 BOM and past leading junk before the document start' do

@@ -644,10 +644,21 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
       rows("DELETE FROM phoenix.rails_commands")
       if profile["id"] != "countries_empty", do: achievement_country()
 
-      for row <- profile["before"] do
+      for chunk <- Enum.chunk_every(profile["before"], 500) do
+        values =
+          Enum.map(chunk, fn row ->
+            [row["id"], row["code"], Enum.at(fixture["geometries"], row["geometry"])]
+          end)
+          |> Enum.zip()
+          |> Enum.map(&Tuple.to_list/1)
+
         rows(
-          "INSERT INTO regions(id,code,geom,created_at,updated_at) VALUES($1,$2,ST_GeomFromEWKB(decode($3,'hex')),'2026-01-01','2026-01-01')",
-          [row["id"], row["code"], Enum.at(fixture["geometries"], row["geometry"])]
+          """
+          INSERT INTO regions(id,code,geom,created_at,updated_at)
+          SELECT id,code,ST_GeomFromEWKB(decode(ewkb,'hex')),'2026-01-01','2026-01-01'
+          FROM unnest($1::bigint[],$2::text[],$3::text[]) AS input(id,code,ewkb)
+          """,
+          values
         )
       end
 

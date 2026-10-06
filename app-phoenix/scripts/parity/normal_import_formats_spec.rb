@@ -17,9 +17,321 @@ require_relative 'normal_import_fit_support'
 require_relative '../../../spec/support/fit_fixture_helper'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
+  before do
+    @previous_urls = Rails.application.routes.default_url_options.dup
+    Rails.application.routes.default_url_options = @previous_urls.merge(host: 'www.example.com')
+  end
+
+  after { Rails.application.routes.default_url_options = @previous_urls }
+
   include ActiveSupport::Testing::TimeHelpers
   include NormalImportReleaseSupport
   self.use_transactional_tests = false
+
+  after(:all) do
+    captured = NormalImportFormatsSupport.closure_cases.sort.to_h
+    selected = captured.select { |name, _| %w[source_detection dispatch].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f01', selected) unless selected.empty?
+    selected = captured.select { |name, _| %w[csv atomic].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f02', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['geojson'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f03', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['owntracks'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f04', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['gpx'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f05', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['kml'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f06', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['tcx'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f07', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['fit'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f08', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['polarsteps'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f09', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['mobile'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f10', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['records'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f11', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['semantic'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f12', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['phone'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f13', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['whole_create'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f14', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['resume/gpx'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f15', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['resume/normal'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f16', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['continuation'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f17', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['extraction'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f18', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['postprocess', 'whole_create/post'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f19', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['google_photos'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f20', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['photos'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f21', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['whole_create/kmz'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f22', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['enhanced/23'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f23', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['enhanced/24'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f24', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['enhanced/25'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f25', selected) unless selected.empty?
+    selected = captured.select { |name, _| ['enhanced/26'].any? { name.start_with?(_1) } }
+    NormalImportFormatsSupport.write('a12f3a-f26', selected) unless selected.empty?
+    selected = captured.select { |name, _| name.start_with?('producers/watcher/') }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i07.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = captured.select { |name, _| name.start_with?('producers/immich/') }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i08.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = captured.select { |name, _| name.start_with?('producers/teslamate/') }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i09.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = captured.select { |name, _| name.start_with?('producers/stale/') }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i10.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = captured.select { |name, _| name.start_with?('producers/photoprism/') }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i11.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = captured.select { |name, _| name.start_with?('producers/trek/') }
+    unless selected.empty?
+      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i12.json'),
+                              "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
+  def extracted_plain(value)
+    case value
+    when Hash then value.transform_values { extracted_plain(_1) }
+    when Array then value.map { extracted_plain(_1) }
+    when Time, DateTime then value.iso8601(6)
+    when Struct then extracted_plain(value.to_h)
+    else value
+    end
+  end
+
+  def capture_dispatch
+    ActiveRecord::Base.transaction(requires_new: true) do
+      user, import = NormalImportFormatsSupport.owner!('UTC')
+      creator = Imports::Create.new(user, import)
+      values = (Import.sources.keys + [nil, 'zip', 'unsupported']).to_h do |source|
+        result = error = nil
+        begin
+          result = creator.send(:importer, source).name
+        rescue ArgumentError => e
+          error = { class: e.class.name, message: e.message }
+        end
+        [source.to_s, { source:, result:, error: }]
+      end
+      expect(values.fetch('gpx')[:result]).to eq('Gpx::TrackImporter')
+      expect(values.fetch('zip')[:error]).to include(class: 'ArgumentError')
+      NormalImportFormatsSupport.write('dispatch', values)
+      raise ActiveRecord::Rollback
+    end
+  end
+
+  def capture_enhanced_adapters
+    duration = { startTimestamp: '2026-01-15T10:00:00Z', endTimestamp: '2026-01-15T11:00:00Z' }
+    location = { latitudeE7: 513_000_000, longitudeE7: 124_000_000, placeId: 'synthetic', name: 'Café' }
+    semantic = { timelineObjects: [{ placeVisit: { location:, duration:, visitConfidence: 0.8 } },
+                                   { activitySegment: { duration:, activityType: 'WALKING', distance: 1000,
+                                                        confidence: 0.9 } }] }.to_json
+    phone = { semanticSegments: [{ startTime: duration[:startTimestamp], endTime: duration[:endTimestamp],
+              visit: { topCandidate: { placeId: 'synthetic', probability: 0.8, semanticType: 'HOME',
+                                      placeLocation: { latLng: '51.3°, 12.4°' } } },
+              activity: { distanceMeters: 1000, topCandidate: { type: 'WALKING', probability: 0.9 } } }],
+              userLocationProfile: { frequentPlaces: [{ placeId: 'home', label: 'Home',
+                                                       placeLocation: '51.3,12.4' }] } }.to_json
+    polarsteps = [{ id: 1, location: { lat: 51.3, lon: 12.4 }, display_name: 'Café',
+                   arrived: 1_768_471_200, departed: 1_768_474_800 }].to_json
+    adapters = [
+      [23, EnhancedImport::Adapters::GoogleSemanticHistoryAdapter,
+       NormalImportFormatsSupport.google_semantic_cases + [['enhanced_valid', semantic, 'UTC']]],
+      [24, EnhancedImport::Adapters::GooglePhoneTakeoutAdapter,
+       NormalImportFormatsSupport.google_phone_cases + [['enhanced_valid', phone, 'UTC']]],
+      [25, EnhancedImport::Adapters::GoogleRecordsAdapter, NormalImportFormatsSupport.google_records_cases],
+      [26, EnhancedImport::Adapters::PolarstepsAdapter,
+       NormalImportFormatsSupport.polarsteps_cases + [['enhanced_valid', polarsteps, 'UTC']]]
+    ]
+    adapters.each do |task, adapter, cases|
+      cases.each do |name, bytes, zone|
+        Time.use_zone(zone) do
+          ActiveRecord::Base.transaction(requires_new: true) do
+            _, import = NormalImportFormatsSupport.owner!(zone)
+            rows = []
+            error = nil
+            Dir.mktmpdir('a12f3a-adapter') do |directory|
+              path = File.join(directory, 'input.json')
+              File.binwrite(path, bytes)
+              begin
+                adapter.new(import, path).translate { rows << extracted_plain(_1.to_h) }
+              rescue StandardError => e
+                error = { class: e.class.name, message: FixtureRecording.normalize(e.message) }
+              end
+            end
+            expect(rows).not_to be_empty if name == 'enhanced_valid'
+            expect(rows).to be_empty if task == 25
+            NormalImportFormatsSupport.write("enhanced/#{task}/#{name}",
+                                             { zone:, input: NormalImportFormatsSupport.byte_value(bytes), rows:,
+error: })
+            raise ActiveRecord::Rollback
+          end
+        end
+      end
+    end
+  end
+
+  def capture_postprocessing
+    input = "latitude,longitude,timestamp\n51.3,12.4,1768519800\n"
+    %w[success filter_anomalies schedule_stats_creating schedule_visit_suggesting
+       schedule_track_generation].each do |name|
+      RSpec::Mocks.with_temporary_scope do
+        unless name == 'success'
+          allow_any_instance_of(Imports::Create).to receive(name.to_sym)
+            .and_raise(StandardError, "synthetic post-processing #{name} failure")
+        end
+        options = { name: "postprocess_#{name}", filename: 'postprocess.csv', bytes: input,
+                    source: 'csv', expected_source: 'csv', locale: 'en' }
+        result = NormalImportFormatsSupport.capture_whole_create(options)
+        expect(result['parent']['status']).to eq('completed')
+        expect(result['points'].size).to eq(1)
+        if name != 'success'
+          expect(result['notifications'].count { _1.first == 'Import post-processing incomplete' }).to eq(1)
+        end
+        NormalImportFormatsSupport.write("postprocess/#{name}", result)
+      end
+    end
+  end
+
+  def capture_gpx_tracks
+    point = '<trkpt lat="51.3" lon="12.4"><time>2026-01-15T23:30:00Z</time><ele>12.75</ele></trkpt>'
+    cases = { 'valid' => "<gpx><trk><trkseg>#{point}</trkseg></trk></gpx>", 'empty' => '<gpx/>',
+              'malformed' => '<gpx><trk><trkseg><trkpt',
+                'duplicates' => "<gpx><trk><trkseg>#{point * 2}</trkseg></trk></gpx>",
+              'legacy' => "<gpx><trk><trkseg>#{point}</trkseg></trk></gpx>" }
+    cases.each do |name, bytes|
+      result = NormalImportFormatsSupport.capture_json("gpx_tracks_#{name}", bytes, 'UTC', 4, Gpx::TrackImporter)
+      expect(result['points'].size).to eq(1) if name == 'valid'
+      NormalImportFormatsSupport.write("gpx_tracks_#{name}", result)
+    end
+  end
+
+  def capture_resume_lineage
+    phoenix_tables!
+    phoenix_leases!
+    PhoenixSchema.reset!
+    %w[gpx normal].each do |lane|
+      service = lane == 'gpx' ? Imports::GpxResume : Imports::NormalResume
+      type = "imports.process_#{lane}"
+      %w[process repeat no_receipt wrong_user wrong_zone completed deleting deleted_user forward fallback
+         busy].each_with_index do |name, index|
+        user, import = NormalImportFormatsSupport.owner!('Pacific/Auckland')
+        import.update_columns(source: Import.sources.fetch(lane == 'gpx' ? 'gpx' : 'csv'))
+        bytes = if lane == 'gpx'
+                  '<gpx><trk><trkseg><trkpt lat="51" lon="13"><time>2026-01-01T10:00:00</time>' \
+                    '</trkpt></trkseg></trk></gpx>'
+                else
+                  "latitude,longitude,timestamp\n51,13,2026-01-01 10:00:00\n"
+                end
+        import.file.attach(io: StringIO.new(bytes), filename: "resume.#{lane == 'gpx' ? 'gpx' : 'csv'}")
+        event = "00000000-0000-4000-8000-#{format('%012d', index + (lane == 'gpx' ? 100 : 200))}"
+        payload = { 'event_id' => event, 'import_id' => import.id, 'user_id' => user.id,
+'time_zone' => 'Pacific/Auckland' }
+        job_owner!("command:#{type}", %w[forward fallback].include?(name) ? :oban : :sidekiq)
+        query = 'INSERT INTO phoenix.import_handoffs(event_id,import_id,user_id,time_zone,native_fallback) ' \
+                  'VALUES (?,?,?,?,?)'
+        unless name == 'no_receipt'
+          ActiveRecord::Base.connection.execute(ActiveRecord::Base.sanitize_sql_array(
+                                                  [query, event, import.id, user.id, payload['time_zone'],
+                                                   name == 'fallback']
+                                                ))
+        end
+        import.update_columns(status: Import.statuses.fetch(name)) if %w[completed deleting].include?(name)
+        user.update_columns(deleted_at: Time.current) if name == 'deleted_user'
+        request = payload.dup
+        request['user_id'] += 1 if name == 'wrong_user'
+        request['time_zone'] = 'UTC' if name == 'wrong_zone'
+        clear_enqueued_jobs
+        error = nil
+        RSpec::Mocks.with_temporary_scope do
+          allow(SecureRandom).to receive(:uuid).and_return('00000000-0000-4000-8000-000000000999')
+          begin
+            if name == 'busy'
+              hold_import_lock("import:#{import.id}") { service.perform(request) }
+            else
+              service.perform(request)
+              service.perform(request) if %w[repeat forward].include?(name)
+            end
+          rescue StandardError => e
+            error = { class: e.class.name, message: FixtureRecording.normalize(e.message) }
+          end
+        end
+        statement = 'SELECT event_id,import_id,user_id,time_zone,state,forwarded_event_id,native_fallback ' \
+                    'FROM phoenix.import_handoffs WHERE event_id=?'
+        receipt = ActiveRecord::Base.connection.select_one(
+          ActiveRecord::Base.sanitize_sql_array([statement, event])
+        )
+        expect(import.reload.points.count).to eq(%w[process repeat fallback].include?(name) ? 1 : 0)
+        expect(receipt['state']).to eq('forwarded') if name == 'forward'
+        expect(error[:class]).to eq(service::Busy.name) if name == 'busy'
+        NormalImportFormatsSupport.write("resume/#{lane}/#{name}", { payload:, request:, receipt:, error:,
+          import: NormalImportFormatsSupport.snapshot(import),
+          outbox: JobOutbox.where(aggregate_id: 987_101, command_type: type).order(:event_id).map do
+            _1.attributes.slice('event_id', 'command_type', 'payload', 'dedupe_key')
+          end,
+          jobs: enqueued_jobs.map { { class: _1[:job].name, args: _1[:args], queue: _1[:queue] } } })
+      ensure
+        blobs = ActiveStorage::Blob.joins(:attachments)
+                                   .where(active_storage_attachments: { record_type: 'Import',
+record_id: 987_101 }).to_a
+        NormalImportFormatsSupport.cleanup_whole_create(blobs)
+        connection = ActiveRecord::Base.connection
+        %w[import_handoffs import_runs].each do |table|
+          connection.execute("DELETE FROM phoenix.#{table} WHERE import_id=987101")
+        end
+        JobOutbox.where(aggregate_id: 987_101, command_type: type).delete_all
+        connection.execute(ActiveRecord::Base.sanitize_sql_array(['DELETE FROM phoenix.job_owners WHERE key=?',
+                                                                  "command:#{type}"]))
+      end
+    end
+  end
+
+  def capture_google_continuation
+    %w[valid malformed unsupported_row].each do |name|
+      ActiveRecord::Base.transaction(requires_new: true) do
+        _, import = NormalImportFormatsSupport.owner!('UTC')
+        input = [{ latitudeE7: 513_000_000, longitudeE7: 124_000_000, timestamp: '2026-01-15T23:30:00Z',
+                   deviceTag: 'synthetic' }].to_json
+        input = '{' if name == 'malformed'
+        input = '[null]' if name == 'unsupported_row'
+        error = nil
+        begin
+          Import::GoogleTakeoutJob.perform_now(import.id, input, 1000)
+        rescue StandardError => e
+          error = { class: e.class.name, message: FixtureRecording.normalize(e.message) }
+        end
+        expect(import.points.count).to eq(name == 'valid' ? 1 : 0)
+        NormalImportFormatsSupport.write("continuation/#{name}", { input:, current_index: 1000,
+          result: NormalImportFormatsSupport.snapshot(import), error:,
+          retry: Import::GoogleTakeoutJob.get_sidekiq_options['retry'] })
+        raise ActiveRecord::Rollback
+      end
+    end
+  end
 
   it 'A12rel import parent records file backfill and track effects' do
     corpus = capture_release_imports
@@ -186,6 +498,14 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
         name = atomic ? 'atomic_second_batch_failure' : 'csv_second_batch_failure'
         NormalImportFormatsSupport.write(name, result)
       end
+    end
+    travel_to Time.utc(2026, 1, 15, 23, 30) do
+      capture_postprocessing
+      capture_gpx_tracks
+      capture_enhanced_adapters
+      capture_resume_lineage
+      capture_google_continuation
+      capture_dispatch
     end
     detection = NormalImportFormatsSupport.capture_detection
     detection.each { |row| expect(row.fetch('source')).to eq(row.fetch('expected')) }

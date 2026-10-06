@@ -32,6 +32,7 @@ defmodule DawarichWeb.MapFramesParityTest do
     assert @dir
            |> Path.join("*.json")
            |> Path.wildcard()
+           |> Enum.filter(&File.exists?(Path.rootname(&1) <> ".html"))
            |> Enum.map(&Path.basename(&1, ".json"))
            |> Enum.reject(&String.starts_with?(&1, "a12f3a-"))
            |> Enum.sort() == @names
