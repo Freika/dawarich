@@ -4,8 +4,38 @@ defmodule Dawarich.Front.NativeCommand do
   alias Dawarich.Front.Command
   alias Dawarich.RailsSecret
 
-  def parse(["bundle", "exec" | argv], env), do: command(argv, env)
-  def parse(argv, env), do: command(argv, env)
+  def parse(argv, env) do
+    argv = unbundle(argv)
+
+    result =
+      if is_list(argv) and Enum.all?(argv, &is_binary/1),
+        do: command(argv, env),
+        else: {:error, "unsupported argv"}
+
+    case result do
+      {:error, _} ->
+        {:error,
+         "#{label(argv)} command is unsupported or has invalid arguments; use dawarich start, dawarich migrate, dawarich seeds, or dawarich help"}
+
+      plan ->
+        plan
+    end
+  end
+
+  defp unbundle(["bundle", "exec" | argv]), do: argv
+  defp unbundle(argv), do: argv
+
+  defp label([rails, action | _]) when rails in ["rails", "bin/rails"] do
+    if action in ~w(server s runner console db:migrate db:seed),
+      do: "Rails #{action}",
+      else: "Rails"
+  end
+
+  defp label(["puma" | _]), do: "Puma"
+  defp label(["sidekiq" | _]), do: "Sidekiq"
+  defp label(["rake" | _]), do: "Rake"
+  defp label(["dawarich" | _]), do: "Native"
+  defp label(_argv), do: "Legacy"
 
   defp command([rails, server | args], env)
        when rails in ["rails", "bin/rails"] and server in ["server", "s"] do
@@ -53,6 +83,11 @@ defmodule Dawarich.Front.NativeCommand do
   defp command(["dawarich", "migrate"], _env), do: :migrate
   defp command(["dawarich", "seeds"], _env), do: :seeds
 
+  defp command(["dawarich", "migrate", "status"], _env), do: {:cli, ["migrate", "status"]}
+
+  defp command(["dawarich", action | _args], _env) when action in ["seeds", "migrate"],
+    do: {:error, "unsupported argv"}
+
   defp command(["dawarich", action, body], _env) when action in ["eval", "rpc"] and body != "",
     do: {:release, [action, body]}
 
@@ -84,7 +119,13 @@ defmodule Dawarich.Front.NativeCommand do
     host = List.last(opts[:binding] || []) || present(env["BINDING"]) || default_host
     port = List.last(opts[:port] || []) || present(env["PORT"]) || "3000"
 
-    case Command.listen_address(host, port) do
+    bracketed? = String.contains?(host, ["[", "]"])
+
+    result =
+      if not bracketed? or Regex.match?(~r/\A\[[^\[\]]+\]\z/, host),
+        do: Command.listen_address(host, port)
+
+    case result do
       {:ok, address} -> {:web, address}
       _ -> {:error, "invalid listener"}
     end
@@ -108,7 +149,7 @@ defmodule Dawarich.Front.NativeCommand do
             {key, String.replace_prefix(arg, flag <> "=", "")}
 
           byte_size(flag) == 2 and String.starts_with?(arg, flag) and byte_size(arg) > 2 ->
-            {key, binary_part(arg, 2, byte_size(arg) - 2)}
+            {key, arg |> binary_part(2, byte_size(arg) - 2) |> String.replace_prefix("=", "")}
 
           true ->
             nil

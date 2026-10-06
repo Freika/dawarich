@@ -7,6 +7,77 @@ defmodule Dawarich.Front.NativeCommandTest do
   @any4 {0, 0, 0, 0}
   @any6 {0, 0, 0, 0, 0, 0, 0, 0}
 
+  test "unknown legacy commands and malformed listener arguments refuse with a native remedy" do
+    private = "synthetic-private-argv"
+
+    for argv <- [
+          [],
+          nil,
+          [private],
+          ["rails", "runner", private],
+          ["rails", "console", private],
+          ["rake", private],
+          ["bundle", "exec", "rake", private],
+          ~w(bundle exec),
+          ~w(bundle exec bundle exec rails server),
+          ~w(rails server -p),
+          ~w(rails server --binding),
+          ["rails", "server", "-p", private],
+          ~w(rails server -p 0),
+          ~w(rails server -p 65536),
+          ~w(rails server -p -1),
+          ~w(rails server -p==3000),
+          ~w(rails server --port=),
+          ["rails", "server", "-b", private],
+          ~w(rails server -b 127.0.0.999),
+          ~w(rails server -b [::),
+          ~w(rails server -b ::]),
+          ~w(rails server -e production),
+          ["rails", "server", private],
+          ~w(puma -p),
+          ~w(puma -b tcp://127.0.0.1:0),
+          ~w(puma -b tcp://127.0.0.1:65536),
+          ~w(puma -b tcp://127.0.0.1:bad),
+          ~w(puma -b tcp://user:password@127.0.0.1:5000),
+          ["puma", "-C", private],
+          ["puma", private],
+          ["sidekiq", "-C", private],
+          ~w(sidekiq -q default),
+          ~w(sidekiq -c 5),
+          ~w(sidekiq -C),
+          ["sidekiq", private],
+          ~w(rails db:migrate extra),
+          ~w(rails db:seed extra),
+          ~w(dawarich start extra),
+          ~w(dawarich seeds extra),
+          ~w(dawarich migrate extra),
+          ["dawarich", "eval", private, "extra"]
+        ] do
+      assert {:error, reason} = Command.native(argv, @prod)
+      assert reason =~ "command"
+      assert reason =~ "dawarich"
+      refute reason =~ private
+      refute reason =~ "password"
+    end
+
+    for {argv, label} <- [
+          {["rails", "runner", private], "Rails runner"},
+          {["rails", "console", private], "Rails console"},
+          {["sidekiq", "-C", private], "Sidekiq"},
+          {["puma", "-p", private], "Puma"}
+        ] do
+      assert {:error, reason} = Command.native(argv, @prod)
+      assert reason =~ label
+    end
+
+    for env <- [%{"PORT" => private}, %{"BINDING" => private}] do
+      assert {:error, reason} = Command.native(~w(dawarich start), env)
+      refute reason =~ private
+    end
+
+    assert Command.native(~w(rails server -p=5000 -b=::), @prod) == {:web, {@any6, 5000}}
+  end
+
   test "legacy Sidekiq and migrate argv map to native roles without extra jobs runtime" do
     for prefix <- [[], ~w(bundle exec)],
         config <- [
