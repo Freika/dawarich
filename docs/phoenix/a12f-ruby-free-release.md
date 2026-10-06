@@ -3,7 +3,8 @@
 Baseline: Rails 1.15.3 integrated at `8d6368fc3187db758151a4d401547d93612d26bb`.
 Controller rulings dated 2026-10-05 govern the first Phoenix release. This
 document records the shared operator contract and the A12f-3o tasks 1–4 and
-18–20 changes. Metrics and Sentry owners document their detailed mappings;
+18–20 changes. The source telemetry census below pins names and configuration; native metrics
+and Sentry owners document their implementation mappings;
 A12f-4 owns final runtime activation and image acceptance.
 
 ## Shared operator contract
@@ -15,7 +16,7 @@ A12f-4 owns final runtime activation and image acceptance.
 | `/api-docs/v1/swagger.yaml` | `swagger/v1/swagger.yaml`, OpenAPI 3.0.1, title Dawarich API, version v1; rswag has no rewriting filter. | Exact stored bytes and `text/yaml`; HEAD has the same headers and no body. No generated alternate schema. |
 | `/admin/flipper` and nested paths | Admin Flipper engine. `FeatureFlags` gates no behavior. | Terminal native 404; no alternate flag UI. Stored tables and historical migrations remain. |
 | `/metrics` | Enabled only by exact `PROMETHEUS_EXPORTER_ENABLED=true`; Basic auth `METRICS_USERNAME`/`METRICS_PASSWORD`, realm `Dawarich Metrics`, including self-hosted. | Required native equivalent, owned by A12f-3o tasks 5–11. |
-| Sentry/GlitchTip | `SENTRY_DSN`; traces default 0.05, profiles default 0.1. Logs default off; `SENTRY_ENABLE_LOGS` is case insensitive. | Required in the first release, owned by A12f-3o tasks 12–17. |
+| Sentry/GlitchTip | `SENTRY_DSN`; `SENTRY_TRACES_SAMPLE_RATE` default 0.05, `SENTRY_PROFILES_SAMPLE_RATE` default 0.1. Logs default off; `SENTRY_ENABLE_LOGS` is case insensitive. | Required in the first release, owned by A12f-3o tasks 12–17. |
 | Server PostHog | Cloud only, nonblank `POSTHOG_API_KEY`; `POSTHOG_HOST` defaults to EU ingestion. Rails captures rescued/unhandled and ActiveJob exceptions and user ID context; test mode suppresses delivery. | Retired. No native server client, boot child, identify/capture or telemetry forwarding. Browser PostHog remains with its existing owner. |
 | Heroku `app.json` | Node and Ruby buildpacks, Dokku Rails migration hook and health check. | Retired; Docker is the supported Phoenix deployment. |
 
@@ -36,9 +37,112 @@ Source metrics aggregate web and Sidekiq exposition, deduplicate HELP/TYPE,
 and distinguish colliding samples with `process=web|sidekiq`; a failed remote
 scrape keeps local metrics. `SIDEKIQ_METRICS_URL` defaults to the internal
 Sidekiq port 9394. Web process aggregation uses a shared mmap store, retaining
-files of live PIDs during rolling restarts. Detailed names, types, units,
-labels and buckets are pinned by the metrics owner against the synced Yabeda
-and map/extraction producers, rather than inferred from this route census.
+files of live PIDs during rolling restarts. The following census pins the
+synced source declarations; native exporter mappings remain with their owner.
+
+### Source metric census
+
+Names below are Prometheus family names. `yabeda-prometheus` 0.9.1 joins group,
+metric and declared unit with underscores; application metrics already contain
+their semantic units in the name. `—` means no labels or no finite buckets.
+Each histogram also exports `_bucket` (adding `le`, including `+Inf`), `_sum`
+and `_count`. Counters count events/items; gauges are snapshots, even where
+a gauge name ends in `_count`. Collision-only `process=web|sidekiq` labels
+are added by `Dawarich::AggregatingMetrics`, independently of these declarations.
+
+Application declarations: `config/initializers/yabeda.rb`. Emissions come from
+`app/services/points/raw_data/{archiver,clearer,restorer,verifier}.rb`,
+`points/move.rb`, `map_edits/publisher.rb`, vector-tile controllers and
+`imports/extraction_monitor.rb`.
+
+| Family | Type | Unit | Labels | Finite buckets |
+|---|---|---|---|---|
+| `dawarich_archive_operations_total` | counter | operations | operation, status | — |
+| `dawarich_archive_points_total` | counter | points | operation | — |
+| `dawarich_archive_compression_ratio` | histogram | ratio | — | 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 |
+| `dawarich_archive_count_mismatches_total` | counter | mismatches | year, month | — |
+| `dawarich_archive_count_difference` | gauge | points | user_id | — |
+| `dawarich_archive_size_bytes` | histogram | bytes | — | 1000000, 10000000, 50000000, 100000000, 500000000, 1000000000 |
+| `dawarich_archive_verification_duration_seconds` | histogram | seconds | status | 0.1, 0.5, 1, 2, 5, 10, 30, 60 |
+| `dawarich_archive_verification_failures_total` | counter | failures | check | — |
+| `dawarich_map_point_moves_total` | counter | moves | outcome | — |
+| `dawarich_map_point_move_duration_seconds` | histogram | seconds | outcome | 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3 |
+| `dawarich_map_point_move_lock_wait_seconds` | histogram | seconds | outcome | 0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3 |
+| `dawarich_map_point_move_track_points` | histogram | points | — | 1, 100, 1000, 10000, 50000, 100000 |
+| `dawarich_map_point_move_track_segments` | histogram | segments | — | 0, 1, 5, 10, 25, 50, 100 |
+| `dawarich_map_post_commit_failures_total` | counter | failures | operation | — |
+| `dawarich_map_tile_requests_total` | counter | requests | layer, outcome | — |
+| `dawarich_map_tile_request_duration_seconds` | histogram | seconds | layer, outcome | 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5 |
+| `dawarich_imports_extraction_oldest_age_seconds` | gauge | seconds | state | — |
+| `dawarich_imports_extractions_stalled` | gauge | extractions | — | — |
+
+Pinned collector declarations are in the bundled gems identified in
+`Gemfile.lock`: `yabeda-rails` 0.11.0 (`lib/yabeda/rails.rb`),
+`yabeda-sidekiq` 0.12.0 (`lib/yabeda/sidekiq.rb`),
+`yabeda-activerecord` 0.1.2 (`lib/yabeda/active_record.rb`) and
+`yabeda-puma-plugin` 0.9.0 (`lib/puma/plugin/yabeda.rb`). Shared bucket sets:
+
+- **WEB**: 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600.
+- **JOB/SQL**: 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 1800, 3600, 21600.
+
+| Family | Type | Unit | Labels | Finite buckets / condition |
+|---|---|---|---|---|
+| `rails_requests_total` | counter | requests | controller, action, status, format, method | — |
+| `rails_request_duration_seconds`, `rails_view_runtime_seconds`, `rails_db_runtime_seconds` | histogram | seconds | controller, action, status, format, method | WEB |
+| `rails_apdex_target_seconds` | gauge | seconds | — | Only when `YABEDA_RAILS_APDEX_TARGET` is configured |
+| `sidekiq_jobs_enqueued_total` | counter | jobs | queue, worker | — |
+| `sidekiq_jobs_rerouted_total` | counter | jobs | from_queue, to_queue, worker | — |
+| `sidekiq_jobs_executed_total`, `sidekiq_jobs_success_total`, `sidekiq_jobs_failed_total` | counter | jobs | queue, worker | Server by default; failed adds error only with label opt-in |
+| `sidekiq_running_job_runtime_seconds` | gauge | seconds | queue, worker | Server by default; max aggregation |
+| `sidekiq_job_latency_seconds`, `sidekiq_job_runtime_seconds` | histogram | seconds/job | queue, worker | JOB/SQL; server by default |
+| `sidekiq_jobs_waiting_count` | gauge | jobs | queue | Cluster collection |
+| `sidekiq_active_workers_count` | gauge | busy workers | — | Cluster collection |
+| `sidekiq_jobs_scheduled_count`, `sidekiq_jobs_retry_count`, `sidekiq_jobs_dead_count` | gauge | jobs | — | Cluster collection; retry adds queue only with segmentation opt-in |
+| `sidekiq_active_processes` | gauge | processes | — | Cluster collection |
+| `sidekiq_queue_latency` | gauge | seconds | queue | Cluster collection; no unit suffix declared |
+| `activerecord_queries_total` | counter | queries | config, kind, cached, async | — |
+| `activerecord_query_duration_seconds` | histogram | seconds | config, kind, cached, async | JOB/SQL |
+| `activerecord_connection_pool_size`, `activerecord_connection_pool_connections`, `activerecord_connection_pool_busy`, `activerecord_connection_pool_dead`, `activerecord_connection_pool_idle` | gauge | connections | config | — |
+| `activerecord_connection_pool_waiting` | gauge | threads | config | — |
+| `activerecord_connection_pool_checkout_timeout_seconds` | gauge | seconds | config | — |
+| `puma_backlog` | gauge | connections | index | — |
+| `puma_running`, `puma_busy_threads`, `puma_pool_capacity`, `puma_max_threads` | gauge | threads | index | — |
+| `puma_requests_count` | gauge | requests since worker start | index | — |
+| `puma_workers`, `puma_booted_workers`, `puma_old_workers` | gauge | workers | — | Clustered Puma only |
+
+Puma metrics use most-recent aggregation and require the control app enabled
+by `config/puma.rb` when metrics are enabled. Rails buckets may be overridden
+with `YABEDA_RAILS_BUCKETS`; SQL buckets with `YABEDA_ACTIVERECORD_BUCKETS`.
+Rails controller names default to snake case (`YABEDA_RAILS_CONTROLLER_NAME_CASE`);
+`YABEDA_RAILS_IGNORE_ACTIONS` defaults to empty. Sidekiq
+`YABEDA_SIDEKIQ_DECLARE_PROCESS_METRICS` and
+`YABEDA_SIDEKIQ_COLLECT_CLUSTER_METRICS` default to server-only.
+`YABEDA_SIDEKIQ_RETRIES_SEGMENTED_BY_QUEUE` and
+`YABEDA_SIDEKIQ_LABEL_FOR_ERROR_CLASS_ON_SIDEKIQ_JOBS_FAILED` default false.
+Cluster gauges use most-recent aggregation. Exporter debug instrumentation is
+not enabled by the app; if Yabeda debug is enabled it additionally declares
+`prometheus_exporter_render_duration_seconds` (histogram, no labels; buckets
+0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10).
+
+### SDK configuration census
+
+| Input | Source default / behavior | Phoenix requirement |
+|---|---|---|
+| `SENTRY_DSN` | Unset: initializer returns without initializing SDK; shared Sentry/GlitchTip DSN | Retain the deployed DSN contract |
+| `SENTRY_TRACES_SAMPLE_RATE` | 0.05, parsed with `to_f` | Record SDK capability differences; do not claim unsupported tracing |
+| `SENTRY_PROFILES_SAMPLE_RATE` | 0.1, parsed with `to_f` | Record SDK capability differences; do not claim unsupported profiling |
+| `SENTRY_ENABLE_LOGS` | false; only case-insensitive true opts in | Errors remain independent of optional log forwarding |
+| `SENTRY_CURRENT_ENV`, `SENTRY_ENVIRONMENT`, `RAILS_ENV`, `RACK_ENV` | First present in this order; fallback development (sentry-ruby 7.0.0) | Preserve deployment environment resolution |
+| `POSTHOG_API_KEY` | Unset/blank or self-hosted: no source client | Retired server integration |
+| `POSTHOG_HOST` | `https://eu.i.posthog.com` | Ignored by native server |
+| `POSTHOG_PERSONAL_API_KEY` | nil; optional source feature-flag evaluation | No native server client |
+
+Source Sentry uses active-support logger breadcrumbs, leaves Rails structured
+logging disabled, and forwards INFO-or-higher Rails logs only on log opt-in.
+PostHog source enables automatic rescued/unhandled and ActiveJob exceptions
+and authenticated user ID context, queue limit 10000, feature-flag polling
+30 seconds and request timeout 3 seconds; test mode suppresses delivery.
+These source SDK settings are a census, not native delivery acceptance.
 
 Source Sentry logs redact password/token/key/authorization/OTP/payment attributes
 and email addresses. Phoenix must report real web, LiveView, Oban and release
@@ -80,6 +184,12 @@ background page named in the plan. The existing component is reused on the
 background page for admins only. The minimum Cloud destination seam extends
 `AdminGate` and `AdminLiveAuth` for this read page, retaining the settings
 hand-back key, supported user state, session identity and role rechecks.
+HTTP GET/HEAD on the destination challenges missing or incorrect Cloud Basic
+credentials before rendering. Its signed LiveView session carries an opaque
+server proof bound to the actor and configured credentials; connected mounts
+and lifecycle hooks validate that proof and reload the current role. Rotating
+credentials invalidates mounted Cloud access. Self-hosted demotion clears the
+cached health assign and hides the card while retaining background settings.
 Self-hosted nonadmins still see their ordinary background settings. Cloud
 nonadmins receive no operator access. Detailed job mutations and other Cloud
 admin pages remain with A12f-3 task 17. ED-346 records the intentional UI change;
