@@ -180,6 +180,14 @@ RSpec.describe JobHealth do
       expect(statements).to eq([])
     end
 
+    it 'retains the cached summary at exactly sixty seconds and expires just after' do
+      allow(described_class).to receive(:monotonic).and_return(100.0)
+      described_class.refresh!(nil)
+
+      expect(described_class.summary(160.0)).to eq(status: 'absent', alarm: false)
+      expect(described_class.summary(160.000001)).to eq(status: 'unknown', alarm: false)
+    end
+
     it 'reads unknown when the last refresh is older than a minute' do
       before = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       described_class.refresh!(nil)
