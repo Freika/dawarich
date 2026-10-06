@@ -22,6 +22,10 @@ Minimal reachable wiring in `router.ex` adds stats update, digest create/delete,
 
 Q01 reuses the existing source-backed year/index parity cases rather than inventing a new failing test for already implemented behavior. Its plan-window mutation fails the year oracle and restoration passes. Q02–Q14 add named closure assertions: each initial RED, GREEN, named production mutation failure and restored GREEN is recorded in the implementation report. Additional DST and malformed-digest assertions also failed before their fixes.
 
+## Regression reconciliation
+
+The first full seed-404 gate found seven legacy assertions that expected missing native routes, Puma cold/details responses, or normalization of malformed daily data. The source-backed changes require the new routes, native cold calculations and terminal source errors. Focused reconciliation passed 135 tests. Cold insights corpus parity and version-correct warm/nil/stale cache-hit write guards passed 18 tests; source HTML remains equal across the captured locales. No timeout increase, retry, new exclusion or skip was used to hide failures.
+
 ## Required integration handoff
 
 The domain implementation does not close unsupported dotted/JSON/XHR/valueless request envelopes or ambiguous/failed CSRF/body/session transport. Shared `Strangler`, `RailsForm`, `Api.Body` and auth primitives remain A12f-2 owned. Explicit Sidekiq ownership is a pre-effect coexistence hand-back; native post-effect failures are terminal.

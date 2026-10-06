@@ -831,7 +831,7 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "stats and digest paths outside Rails' constraints, and every other method, go to Puma",
+  test "stats and digest paths outside Rails' constraints go to Puma while native writes require sign in",
        ctx do
     port = serve()
 
@@ -858,7 +858,7 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert answered_by_phoenix(port, request) == 302
     end
   end
 
@@ -992,7 +992,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings/general /settings/visits /settings/integrations /settings/integrations?service=trek /settings/users/export /users/edit /insights /insights?year=all&month=3) do
+          ~w(/settings/general /settings/visits /settings/integrations /settings/integrations?service=trek /settings/users/export /users/edit /insights /insights?year=all&month=3 /insights/details?year=2024) do
       assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
     end
   end
@@ -1001,7 +1001,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /settings/users /settings/trek_sources/1/select_trips /insights/details?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
+          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /settings/users /settings/trek_sources/1/select_trips /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==

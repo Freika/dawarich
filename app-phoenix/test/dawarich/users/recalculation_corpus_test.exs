@@ -61,10 +61,13 @@ defmodule Dawarich.Users.RecalculationCorpusTest do
     end
   end
 
-  test "recalculation routes retain unchanged Rails hand-backs" do
-    for path <- ["/api/v1/recalculations", "/tracks/recalculation", "/digests"] do
+  test "recalculation routes retain explicit hand-backs and expose native digest generation" do
+    for path <- ["/api/v1/recalculations", "/tracks/recalculation"] do
       assert Phoenix.Router.route_info(DawarichWeb.Router, "POST", path, "localhost") == :error
     end
+
+    assert %{plug: DawarichWeb.DigestActions, plug_opts: :create} =
+             Phoenix.Router.route_info(DawarichWeb.Router, "POST", "/digests", "localhost")
 
     original = Application.get_env(:dawarich, :rails_routes)
     Application.put_env(:dawarich, :rails_routes, ["digests", "api"])
