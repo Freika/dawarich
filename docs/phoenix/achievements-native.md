@@ -4,16 +4,18 @@ Phoenix owns achievement pages, unlock requests, sharing toggles and public card
 `DawarichWeb.AchievementRoutes.achievement_routes/0`. The map's
 `POST /achievements/unlocks/next` uses the native deck in standalone mode.
 
-## Integration handoff
+## Router integration
 
-HOT must import `DawarichWeb.AchievementImageRoutes` and call
-`achievement_image_routes()` in the main router. This adds the dedicated
+The main router imports `DawarichWeb.AchievementImageRoutes` and calls
+`achievement_image_routes()` once. This adds the dedicated
 `:achievement_image` pipeline and `GET /shared/achievements/:uuid/og.png`.
 HEAD follows the existing Strangler/Plug.Head path. The image route has
 `rails_key: "achievements"` so the coexistence route pin still applies. It must
 use the image pipeline, which accepts PNG requests rather than the HTML public
-page gate. The route macro is exercised through a test router; the final main
-router mount and endpoint acceptance belong to HOT.
+page gate. The route macro is exercised through a test router. The H01c case in
+`app-phoenix/test/dawarich/a12f3b_h01_test.exs` exercises the real Endpoint:
+standalone pages and redirects, public and embed cards, PNG GET/HEAD and disabled
+sharing, CSRF refusal before claims, next/seen/dismiss, and the coexistence pin.
 
 No registry changes are required. Existing achievement command/cron entries
 already reference the native bulk and check workers.
@@ -81,4 +83,4 @@ configuration comes from the environment.
 
 Shared knowledge base counterpart: `Dawarich — Native achievement journeys
 (A12f-3b A01–A04)` in AFFiNE. The implementation report records exact execution
-results and the controller's remaining route mount.
+results; the HOT third-pass report records router integration and its gates.
