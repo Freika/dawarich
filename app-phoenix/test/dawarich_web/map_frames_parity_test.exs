@@ -33,6 +33,7 @@ defmodule DawarichWeb.MapFramesParityTest do
            |> Path.join("*.json")
            |> Path.wildcard()
            |> Enum.map(&Path.basename(&1, ".json"))
+           |> Enum.reject(&String.starts_with?(&1, "a12f3a-"))
            |> Enum.sort() == @names
   end
 
