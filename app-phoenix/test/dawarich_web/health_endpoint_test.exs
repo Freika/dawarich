@@ -2,7 +2,13 @@ defmodule DawarichWeb.HealthEndpointTest do
   use Dawarich.IngestCase, async: false
 
   setup do
-    saved = Map.new(~w(SELF_HOSTED DAWARICH_RAILS_SLICES), &{&1, System.get_env(&1)})
+    saved =
+      Map.new(
+        ~w(SELF_HOSTED DAWARICH_RAILS_SLICES RAILS_ENV APPLICATION_PROTOCOL),
+        &{&1, System.get_env(&1)}
+      )
+
+    allowed_hosts = Application.get_env(:dawarich, :allowed_hosts)
     routes = Application.get_env(:dawarich, :rails_routes)
     Application.put_env(:dawarich, :rails_routes, [])
     System.delete_env("DAWARICH_RAILS_SLICES")
@@ -11,6 +17,7 @@ defmodule DawarichWeb.HealthEndpointTest do
     on_exit(fn ->
       Dawarich.Jobs.Health.reset()
       Application.put_env(:dawarich, :rails_routes, routes)
+      Application.put_env(:dawarich, :allowed_hosts, allowed_hosts)
 
       Enum.each(saved, fn {key, value} ->
         if value, do: System.put_env(key, value), else: System.delete_env(key)
@@ -47,6 +54,30 @@ defmodule DawarichWeb.HealthEndpointTest do
 
       assert Plug.Conn.get_resp_header(conn, "x-dawarich-response") == ["Hey, I'm alive!"]
     end
+
+    Application.put_env(:dawarich, :allowed_hosts, [~r/\Aallowed\.example\z/])
+    System.put_env("RAILS_ENV", "production")
+    System.put_env("APPLICATION_PROTOCOL", "https")
+
+    probe = %{Phoenix.ConnTest.build_conn() | host: "staging.dawarich.app"}
+
+    conn =
+      probe
+      |> Plug.Conn.put_req_header("x-forwarded-proto", "https")
+      |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, :get, "/api/v1/health")
+
+    assert conn.status == 200
+
+    assert Plug.Conn.get_resp_header(conn, "strict-transport-security") == [
+             DawarichWeb.ForceSSL.hsts()
+           ]
+
+    assert Phoenix.ConnTest.dispatch(probe, DawarichWeb.Endpoint, :get, "/api/v1/health").status ==
+             301
+
+    for path <- ~w(/api/v1/ready /ready),
+        do:
+          assert(Phoenix.ConnTest.dispatch(probe, DawarichWeb.Endpoint, :get, path).status == 403)
   end
 
   test "both readiness URLs return 503 on unavailable and skip payment and API key gates" do
