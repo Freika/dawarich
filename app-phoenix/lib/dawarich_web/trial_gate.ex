@@ -9,7 +9,8 @@ defmodule DawarichWeb.TrialGate do
     user = conn.assigns.current_user
 
     request?(conn) and (is_nil(user) or AdminGate.supported?(user)) and
-      (is_nil(user) or LayoutAssigns.self_hosted?() or checkout_configured?())
+      (Dawarich.Standalone.enabled?() or is_nil(user) or LayoutAssigns.self_hosted?() or
+         checkout_configured?())
   rescue
     _ -> false
   end
@@ -19,7 +20,8 @@ defmodule DawarichWeb.TrialGate do
     user = conn.assigns.current_user
 
     request?(conn) and (is_nil(user) or AdminGate.supported?(user)) and
-      (is_nil(user) or user.status != 3 or checkout_configured?())
+      (Dawarich.Standalone.enabled?() or is_nil(user) or user.status != 3 or
+         checkout_configured?())
   rescue
     _ -> false
   end
@@ -36,15 +38,18 @@ defmodule DawarichWeb.TrialGate do
       Enum.all?(query, fn {key, value} ->
         is_binary(value) or (key in ["plan", "interval"] and (is_list(value) or is_map(value)))
       end) and
-      not Enum.any?(["_method" | @markers], &Map.has_key?(query, &1)) and
-      not Enum.any?(@markers, &Map.has_key?(conn.assigns.rails_session, &1)) and
+      not Map.has_key?(query, "_method") and
+      (Dawarich.Standalone.enabled?() or
+         (not Enum.any?(@markers, &Map.has_key?(query, &1)) and
+            not Enum.any?(@markers, &Map.has_key?(conn.assigns.rails_session, &1)))) and
+      (Dawarich.Standalone.enabled?() or Plug.Conn.get_req_header(conn, "x-dawarich-client") == []) and
       Enum.all?(
-        ~w(turbo-frame x-dawarich-client x-http-method-override),
+        ~w(turbo-frame x-http-method-override),
         &(Plug.Conn.get_req_header(conn, &1) == [])
       )
   end
 
-  defp checkout_configured? do
+  def checkout_configured? do
     uri = URI.parse(System.get_env("MANAGER_URL", ""))
 
     uri.scheme in ["http", "https"] and is_binary(uri.host) and uri.host != "" and
