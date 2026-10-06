@@ -525,6 +525,7 @@ defmodule DawarichWeb.A12f2HClosureTest do
 
     env = [
       {"MIX_ENV", "test"},
+      {"MIX_TEST_PARTITION", ""},
       {"PHOENIX_TEST_DATABASE", database},
       {"DATABASE_HOST", "127.0.0.1"},
       {"ASDF_ERLANG_VERSION", "27.3.4.1"},

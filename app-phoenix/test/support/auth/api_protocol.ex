@@ -192,6 +192,7 @@ defmodule Dawarich.Auth.ApiProtocol do
 
       payload = %{
         "mode" => "api_auth_password_work",
+        "database" => Repo.config()[:database],
         "id" => id,
         "email" => email,
         "dummy_cost" => cost,
@@ -351,6 +352,7 @@ defmodule Dawarich.Auth.ApiProtocol do
 
       payload = %{
         "mode" => "api_auth_otp_work",
+        "database" => Repo.config()[:database],
         "out_of_range_tokens" => out_of_range_tokens,
         "id" => id,
         "email" => email,
