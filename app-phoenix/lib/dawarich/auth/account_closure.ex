@@ -2,7 +2,7 @@ defmodule Dawarich.Auth.AccountClosure do
   @moduledoc false
   import Ecto.Query
   alias Dawarich.{Accounts, Repo}
-  alias Dawarich.Auth.{Account, AccountValidation}
+  alias Dawarich.Auth.{Account, AccountValidation, SecurityNotifications}
   alias Dawarich.Auth.Recovery.{Settings, Token}
 
   def actor(id, salt, context) when is_integer(id) and is_binary(salt) do
@@ -30,7 +30,7 @@ defmodule Dawarich.Auth.AccountClosure do
   def update(id, salt, params, context) do
     repo = Map.get(context, :repo, Repo)
 
-    {:ok, result} =
+    result =
       repo.transaction(fn ->
         repo.one(from(u in Account, where: u.id == ^id, lock: "FOR UPDATE"), log: false)
 
@@ -61,7 +61,10 @@ defmodule Dawarich.Auth.AccountClosure do
         end
       end)
 
-    result
+    case result do
+      {:ok, value} -> value
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp save(repo, user, changes, context) do
@@ -92,14 +95,18 @@ defmodule Dawarich.Auth.AccountClosure do
         |> Map.put(:settings, settings)
         |> Map.put(:updated_at, Map.get(context, :clock, &DateTime.utc_now/0).())
 
+      if not SecurityNotifications.ready?(context, changes),
+        do: repo.rollback(:notification_owner)
+
       case repo.update(
              Ecto.Changeset.change(user, changes)
              |> Ecto.Changeset.unique_constraint(:email, name: :index_users_on_email),
              log: false,
              mode: :savepoint
            ) do
-        {:ok, user} ->
-          {:ok, user}
+        {:ok, updated} ->
+          SecurityNotifications.enqueue(repo, user, updated, changes, context)
+          {:ok, updated}
 
         {:error, _} ->
           {:error, %{email: user.email, errors: [{:email, :taken, %{}}], messages: []}}

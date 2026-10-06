@@ -81,9 +81,17 @@ defmodule DawarichWeb.AuthAccount.Http do
               )
 
             case account(context).update(id, salt, user_params, context) do
-              {:ok, actor} -> Response.updated(conn, actor, context)
-              {:error, render} -> Response.form(conn, conn.assigns.current_user, render, context)
-              {:handoff, _} -> fallback(conn, opts)
+              {:ok, actor} ->
+                Response.updated(conn, actor, context)
+
+              {:error, :notification_owner} ->
+                conn |> send_resp(503, "Security notifications unavailable") |> halt()
+
+              {:error, render} ->
+                Response.form(conn, conn.assigns.current_user, render, context)
+
+              {:handoff, _} ->
+                fallback(conn, opts)
             end
           else
             _ -> fallback(conn, opts)

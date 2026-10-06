@@ -18,9 +18,14 @@ defmodule Dawarich.Auth.CredentialsClosure do
       end
 
     cond do
-      valid and user.otp_required_for_login -> {:handoff, :otp}
-      valid and not locked and user.failed_attempts < 9 -> {:ok, user}
-      true -> failure(repo, user, password, locked, now, context)
+      valid and user.otp_required_for_login and not locked and user.failed_attempts < 9 ->
+        {:handoff, :otp}
+
+      valid and not locked and user.failed_attempts < 9 ->
+        {:ok, user}
+
+      true ->
+        failure(repo, user, password, locked, now, context)
     end
   end
 

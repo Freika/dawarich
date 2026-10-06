@@ -148,6 +148,9 @@ defmodule DawarichWeb.AuthRecovery.Http do
         |> send_resp(result.status, "")
         |> halt()
 
+      {:error, :notification_owner} ->
+        conn |> send_resp(503, "Security notifications unavailable") |> halt()
+
       {:error, {:delivery, _}} ->
         conn |> headers() |> send_resp(500, "Recovery delivery failed") |> halt()
 

@@ -10,7 +10,7 @@ defmodule Dawarich.Auth.Registration do
     invitation = context[:invitation]
 
     if RegistrationPolicy.allowed?(context, invitation, email) do
-      validate_and_insert(repo, params, email, context)
+      validate_and_insert(repo, Map.put(params, "email", email), email, context)
     else
       {:error, :denied}
     end
@@ -31,7 +31,10 @@ defmodule Dawarich.Auth.Registration do
 
     errors =
       validation.errors ++
-        if(params["password"] in [nil, ""], do: [{:password, :blank, %{}}], else: [])
+        if(Dawarich.Auth.Recovery.Token.blank?(params["password"]),
+          do: [{:password, :blank, %{}}],
+          else: []
+        )
 
     if errors != [] do
       {:error,

@@ -94,7 +94,11 @@ defmodule Dawarich.Auth.RegistrationSetup do
         callback = get_in(context, [:callbacks, :accept_invitation])
 
         if is_function(callback, 2),
-          do: callback.(user.id, invitation.id) == :ok,
+          do:
+            if(callback.(user.id, invitation.id) == :ok,
+              do: true,
+              else: repo.rollback(:family_owner)
+            ),
           else: repo.rollback(:family_owner)
       else
         self_hosted_invitation(repo, user, invitation, context)

@@ -24,6 +24,7 @@ defmodule Dawarich.Auth.Otp.Start do
 
   def prepare(email, password, session, context) when is_binary(email) do
     repo = Map.get(context, :repo, Repo)
+    email = if context[:native], do: Account.normalize_email(email), else: email
     query = from(u in Account, where: u.email == ^email and is_nil(u.deleted_at))
 
     case repo.one(query, log: false) do
@@ -78,10 +79,10 @@ defmodule Dawarich.Auth.Otp.Start do
     env = Map.get_lazy(context, :env, &System.get_env/0)
 
     cond do
-      context[:self_hosted] != true ->
+      context[:native] != true and context[:self_hosted] != true ->
         {:handoff, :cloud}
 
-      context[:oidc] == true ->
+      context[:native] != true and context[:oidc] == true ->
         {:handoff, :oidc}
 
       not Secret.available?(env) ->

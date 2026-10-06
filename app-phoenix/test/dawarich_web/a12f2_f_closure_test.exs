@@ -27,7 +27,6 @@ defmodule DawarichWeb.A12f2FClosureTest do
   @tag :a12f2_f_04
   test "Registration preserves self hosted and Cloud OIDC policy invitations field validation and source markup",
        ctx do
-    assert Code.ensure_loaded?(DawarichWeb.AuthRegistration.Http)
     handler = DawarichWeb.AuthRegistration.Http
 
     opts = [
@@ -418,19 +417,6 @@ defmodule DawarichWeb.A12f2FClosureTest do
       |> put_req_header("content-length", Integer.to_string(byte_size(URI.encode_query(signout))))
 
     assert AuthHandler.call(remembered_only, opts).status == 422
-    assert Code.ensure_loaded?(Dawarich.Auth.Remember)
-
-    assert apply(Dawarich.Auth.Remember, :valid?, [
-             Repo.get!(Account, id),
-             [
-               [id],
-               String.slice(@hash, 0, 29),
-               Accounts.remember_generated_at(
-                 DateTime.add(DateTime.utc_now(), -Accounts.remember_for())
-               )
-             ],
-             DateTime.utc_now()
-           ]) == false
   end
 
   @tag :a12f2_f_11
@@ -631,7 +617,14 @@ defmodule DawarichWeb.A12f2FClosureTest do
       log: false
     )
 
-    context = %{native: true, self_hosted: false, oidc: true, log_rounds: 4}
+    context = %{
+      native: true,
+      self_hosted: false,
+      oidc: true,
+      log_rounds: 4,
+      enqueue_security_notification: fn _ -> :ok end
+    }
+
     salt = String.slice(@hash, 0, 29)
     assert {:ok, rotated} = ApiKeys.rotate(id, salt, context)
     assert Accounts.by_api_key(old_key) == nil
@@ -673,7 +666,6 @@ defmodule DawarichWeb.A12f2FClosureTest do
   @tag :a12f2_f_09
   test "Account destroy and confirmation preserve deployment rules family owner guards one use tokens and native deletion work",
        ctx do
-    assert Code.ensure_loaded?(Dawarich.Auth.DestroyToken)
     alias Dawarich.Auth.{AccountDestroy, DestroyToken}
     for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
     id = insert_user(ctx.email)
@@ -712,7 +704,6 @@ defmodule DawarichWeb.A12f2FClosureTest do
   @tag :a12f2_f_05
   test "Cloud signup retains pending payment trial checkout attribution locale invitation and accepted callbacks once",
        ctx do
-    assert Code.ensure_loaded?(Dawarich.Auth.RegistrationSetup)
     alias Dawarich.Auth.{Registration, RegistrationSetup}
     jwt = System.get_env("JWT_SECRET_KEY")
     manager = System.get_env("MANAGER_URL")
@@ -826,6 +817,508 @@ defmodule DawarichWeb.A12f2FClosureTest do
     assert_raise DawarichWeb.RailsSession.Overflow, fn ->
       SessionCookie.for_form(overflowing, RailsSecret.fetch())
     end
+  end
+
+  @tag :review_f1
+  test "OTP wrong and blank passwords retain credential counters and the ordinary failure form",
+       ctx do
+    {id, env} = otp_user(ctx.email)
+    session = guest()
+
+    opts = [
+      enabled: true,
+      native: true,
+      registration_enabled: true,
+      otp_enabled: true,
+      otp_context: %{self_hosted: true, oidc: false, env: env},
+      credentials_context: %{log_rounds: 4}
+    ]
+
+    for {password, attempts} <- [{"wrong", 2}, {"", 4}] do
+      params =
+        csrf(
+          %{"user[email]" => ctx.email, "user[password]" => password},
+          session,
+          "POST",
+          "/users/sign_in"
+        )
+
+      response = AuthHandler.call(request(:post, "/users/sign_in", session, params), opts)
+      assert Repo.get!(Account, id).failed_attempts == attempts
+      assert response.status == 422
+      assert response.resp_body =~ "Invalid email or password"
+      assert response.resp_body =~ ~s(action="/users/sign_in")
+      refute response.resp_body =~ "otp_attempt"
+    end
+
+    normalized =
+      csrf(
+        %{"user[email]" => String.upcase(ctx.email), "user[password]" => "wrong"},
+        session,
+        "POST",
+        "/users/sign_in"
+      )
+
+    assert AuthHandler.call(request(:post, "/users/sign_in", session, normalized), opts).status ==
+             422
+
+    assert Repo.get!(Account, id).failed_attempts == 6
+
+    Repo.query!("UPDATE users SET locked_at=now(),failed_attempts=10 WHERE id=$1", [id],
+      log: false
+    )
+
+    params =
+      csrf(
+        %{"user[email]" => ctx.email, "user[password]" => "wrong"},
+        session,
+        "POST",
+        "/users/sign_in"
+      )
+
+    response = AuthHandler.call(request(:post, "/users/sign_in", session, params), opts)
+    assert Repo.get!(Account, id).failed_attempts == 12
+    assert response.resp_body =~ "Invalid email or password"
+    params = Map.put(params, "user[password]", "safepassword12")
+    response = AuthHandler.call(request(:post, "/users/sign_in", session, params), opts)
+    assert Repo.get!(Account, id).failed_attempts == 14
+    assert response.resp_body =~ "Invalid email or password"
+  end
+
+  @tag :review_f2
+  test "native OTP admits proxied Cloud OIDC and default self hosted requests while rejecting duplicate headers and bad CSRF",
+       ctx do
+    {id, env} = otp_user(ctx.email)
+    now = DateTime.utc_now()
+    session = guest()
+
+    for context <- [
+          %{self_hosted: true, oidc: false},
+          %{self_hosted: false, oidc: false},
+          %{self_hosted: false, oidc: true},
+          %{}
+        ] do
+      System.delete_env("SELF_HOSTED")
+      context = Map.merge(context, %{env: env, clock: fn -> now end})
+
+      opts = [
+        enabled: true,
+        native: true,
+        registration_enabled: true,
+        otp_enabled: true,
+        otp_context: context
+      ]
+
+      params =
+        csrf(
+          %{"user[email]" => ctx.email, "user[password]" => "safepassword12"},
+          session,
+          "POST",
+          "/users/sign_in"
+        )
+
+      response =
+        request(:post, "/users/sign_in", session, params)
+        |> put_req_header("x-forwarded-for", "192.0.2.20")
+        |> AuthHandler.call(opts)
+
+      assert response.status == 422
+      assert response.resp_body =~ "otp_attempt"
+      pending = response_session(response)
+      assert pending["otp_user_id"] == id
+      params = csrf(%{"otp_attempt" => "invalid-code"}, pending, "POST", "/users/otp_challenge")
+
+      conn =
+        request(:post, "/users/otp_challenge", pending, params)
+        |> put_req_header("x-forwarded-for", "192.0.2.20")
+
+      otp_opts = [enabled: true, native: true, context: context]
+      before = Repo.get!(Account, id).failed_otp_attempts
+
+      denied =
+        DawarichWeb.AuthOtp.Http.call(
+          %{conn | req_headers: [{"x-forwarded-for", "192.0.2.21"} | conn.req_headers]},
+          otp_opts
+        )
+
+      assert denied.status == 422
+      assert Repo.get!(Account, id).failed_otp_attempts == before
+
+      invalid =
+        request(
+          :post,
+          "/users/otp_challenge",
+          pending,
+          Map.put(params, "authenticity_token", "invalid")
+        )
+        |> DawarichWeb.AuthOtp.Http.call(otp_opts)
+
+      assert invalid.status == 422
+      assert Repo.get!(Account, id).failed_otp_attempts == before
+      failed = DawarichWeb.AuthOtp.Http.call(conn, otp_opts)
+      assert failed.status == 422
+      assert failed.resp_cookies["_dawarich_session"]
+      assert Repo.get!(Account, id).failed_otp_attempts == before + 1
+      code = Dawarich.Auth.TwoFactor.Totp.at("JBSWY3DPEHPK3PXP", DateTime.to_unix(now))
+
+      successful =
+        request(
+          :post,
+          "/users/otp_challenge",
+          pending,
+          csrf(%{"otp_attempt" => code}, pending, "POST", "/users/otp_challenge")
+        )
+        |> put_req_header("x-forwarded-for", "192.0.2.20")
+        |> DawarichWeb.AuthOtp.Http.call(otp_opts)
+
+      assert successful.status == 302
+      assert [[^id], _] = response_session(successful)["warden.user.user.key"]
+      assert Repo.get!(Account, id).current_sign_in_ip == "192.0.2.20"
+      Repo.query!("UPDATE users SET consumed_timestep=NULL WHERE id=$1", [id], log: false)
+    end
+  end
+
+  @tag :review_f3
+  test "registration refuses whitespace blank missing password and omitted email without inserting or crashing",
+       ctx do
+    opts = [
+      enabled: true,
+      context: %{self_hosted: true, oidc: false, registration_enabled: true, log_rounds: 4}
+    ]
+
+    session = guest()
+
+    for password <- ["            ", "", nil] do
+      params =
+        %{
+          "user[email]" => ctx.email,
+          "user[password]" => password,
+          "user[password_confirmation]" => password
+        }
+        |> Enum.reject(fn {_, v} -> is_nil(v) end)
+        |> Map.new()
+        |> csrf(session, "POST", "/users")
+
+      response =
+        DawarichWeb.AuthRegistration.Http.call(request(:post, "/users", session, params), opts)
+
+      assert response.status == 422
+      assert response.resp_body =~ "Password can&#39;t be blank"
+      refute Repo.get_by(Account, email: ctx.email)
+    end
+
+    for params <- [
+          %{},
+          %{
+            "user[password]" => "safepassword12",
+            "user[password_confirmation]" => "safepassword12"
+          }
+        ] do
+      response =
+        DawarichWeb.AuthRegistration.Http.call(
+          request(:post, "/users", session, csrf(params, session, "POST", "/users")),
+          opts
+        )
+
+      assert response.status == 422
+      assert response.resp_body =~ "Email can&#39;t be blank"
+    end
+  end
+
+  @tag :review_f4
+  test "retained deletion form commit and DELETE override schedule deletion with effective method CSRF",
+       ctx do
+    for method <- [:delete, :post] do
+      id = insert_user("#{method}-" <> ctx.email)
+      session = Map.put(guest(), "warden.user.user.key", [[id], String.slice(@hash, 0, 29)])
+      params = %{"password" => "safepassword12", "commit" => "Delete my account"}
+      params = if method == :post, do: Map.put(params, "_method", "delete"), else: params
+
+      params =
+        Map.put(
+          params,
+          "authenticity_token",
+          RailsCsrf.masked_form_token(session, "/users", "DELETE")
+        )
+
+      opts = [
+        enabled: true,
+        context: %{
+          enqueue_destroy: fn actor ->
+            send(self(), {:deleted, actor})
+            :ok
+          end
+        }
+      ]
+
+      invalid =
+        DawarichWeb.AuthAccount.Destroy.call(
+          request(method, "/users", session, Map.put(params, "_method", "patch")),
+          opts
+        )
+
+      assert invalid.status == 422
+      assert Repo.get!(Account, id).deleted_at == nil
+
+      response =
+        DawarichWeb.AuthAccount.Destroy.call(request(method, "/users", session, params), opts)
+
+      assert response.status == 302
+      assert Repo.get!(Account, id).deleted_at != nil
+      assert_received {:deleted, ^id}
+    end
+  end
+
+  @tag :review_f5
+  test "Cloud account password email changes and reset require accepted security notification intents",
+       ctx do
+    alias Dawarich.Auth.{AccountClosure, Recovery.Token}
+    id = insert_user(ctx.email)
+    Repo.query!("UPDATE users SET settings='{}' WHERE id=$1", [id], log: false)
+    salt = String.slice(@hash, 0, 29)
+    email = "changed-" <> ctx.email
+
+    params = %{
+      "email" => email,
+      "current_password" => "safepassword12",
+      "password" => "newpassword12345",
+      "password_confirmation" => "newpassword12345"
+    }
+
+    context = %{self_hosted: false, log_rounds: 4}
+    assert {:error, :notification_owner} = AccountClosure.update(id, salt, params, context)
+    assert Repo.get!(Account, id).email == ctx.email
+    assert Repo.get!(Account, id).encrypted_password == @hash
+
+    rejecting =
+      Map.put(context, :enqueue_security_notification, fn _ -> {:error, :unavailable} end)
+
+    assert {:error, :notification_owner} = AccountClosure.update(id, salt, params, rejecting)
+    assert Repo.get!(Account, id).email == ctx.email
+
+    accepting =
+      Map.put(context, :enqueue_security_notification, fn intent ->
+        send(self(), {:security, intent})
+        :ok
+      end)
+
+    assert {:ok, updated} = AccountClosure.update(id, salt, params, accepting)
+
+    assert_received {:security,
+                     %{kind: :email_changed, recipient: old, resource_email: ^email, user_id: ^id}}
+
+    assert old == ctx.email
+
+    assert_received {:security,
+                     %{
+                       kind: :password_change,
+                       recipient: ^email,
+                       resource_email: ^email,
+                       user_id: ^id
+                     }}
+
+    refute_received {:security, _}
+    now = DateTime.utc_now()
+    raw = "synthetic-reset-review"
+    digest = Token.digest(:reset_password_token, raw, RailsSecret.fetch())
+
+    Repo.query!(
+      "UPDATE users SET reset_password_token=$2,reset_password_sent_at=$3 WHERE id=$1",
+      [id, digest, DateTime.to_naive(now)],
+      log: false
+    )
+
+    reset = %{
+      "user[reset_password_token]" => raw,
+      "user[password]" => "resetpassword12345",
+      "user[password_confirmation]" => "resetpassword12345"
+    }
+
+    assert {:error, :notification_owner} = Dawarich.Auth.Recovery.Closure.reset(reset, context)
+    assert Repo.get!(Account, id).encrypted_password == updated.encrypted_password
+    assert Repo.get!(Account, id).reset_password_token == digest
+    reset_session = guest()
+
+    blocked_reset =
+      DawarichWeb.AuthRecovery.Http.call(
+        request(
+          :patch,
+          "/users/password",
+          reset_session,
+          csrf(reset, reset_session, "PATCH", "/users/password")
+        ),
+        enabled: true,
+        native: true,
+        context: context
+      )
+
+    assert blocked_reset.status == 503
+    assert {:error, :notification_owner} = Dawarich.Auth.Recovery.Closure.reset(reset, rejecting)
+    assert Repo.get!(Account, id).reset_password_token == digest
+    assert {:ok, _} = Dawarich.Auth.Recovery.Closure.reset(reset, accepting)
+
+    assert_received {:security,
+                     %{
+                       kind: :password_change,
+                       recipient: ^email,
+                       resource_email: ^email,
+                       user_id: ^id
+                     }}
+
+    assert Repo.get!(Account, id).reset_password_token == nil
+    refute_received {:security, _}
+  end
+
+  @tag :review_f6
+  test "rejected deletion enqueue rolls back tombstone and permits one successful confirmation retry",
+       ctx do
+    alias Dawarich.Auth.{AccountDestroy, DestroyToken}
+    for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
+    id = insert_user(ctx.email)
+
+    context = %{
+      self_hosted: false,
+      env: %{},
+      rails_secret: RailsSecret.fetch(),
+      enqueue_destroy: fn _ -> {:error, :unavailable} end
+    }
+
+    {:ok, token} = DestroyToken.issue(id, context)
+    {:ok, claims} = DestroyToken.verify(token, context)
+
+    on_exit(fn ->
+      Dawarich.Redis.cache_command(["DEL", "account_destroy:consumed:" <> claims["jti"]])
+    end)
+
+    assert {:error, :worker_owner} = AccountDestroy.confirm(token, context)
+    assert Repo.get!(Account, id).deleted_at == nil
+
+    accepted =
+      Map.put(context, :enqueue_destroy, fn actor ->
+        send(self(), {:accepted, actor})
+        :ok
+      end)
+
+    assert {:ok, :scheduled} = AccountDestroy.confirm(token, accepted)
+    assert Repo.get!(Account, id).deleted_at != nil
+    assert_received {:accepted, ^id}
+    assert {:error, :replayed} = AccountDestroy.confirm(token, accepted)
+    refute_received {:accepted, _}
+  end
+
+  @tag :review_f7
+  test "live remember cookies expire exactly at fourteen days and remember only signout invalidates them",
+       ctx do
+    id = insert_user(ctx.email)
+    now = ~U[2026-10-06 12:00:00.000000Z]
+    created = DateTime.add(now, -Accounts.remember_for() - 2)
+
+    Repo.query!(
+      "UPDATE users SET remember_created_at=$2 WHERE id=$1",
+      [id, DateTime.to_naive(created)],
+      log: false
+    )
+
+    user = Repo.get!(Account, id)
+
+    payload = fn age ->
+      [[id], String.slice(@hash, 0, 29), Accounts.remember_generated_at(DateTime.add(now, -age))]
+    end
+
+    assert Dawarich.Auth.Remember.valid?(user, payload.(Accounts.remember_for() - 1), now)
+    refute Dawarich.Auth.Remember.valid?(user, payload.(Accounts.remember_for()), now)
+    refute Dawarich.Auth.Remember.valid?(user, payload.(Accounts.remember_for() + 1), now)
+    live = [[id], String.slice(@hash, 0, 29), Accounts.remember_generated_at(DateTime.utc_now())]
+
+    cookie =
+      RailsCookies.sign(
+        live,
+        "remember_user_token",
+        RailsSecret.fetch(),
+        DateTime.add(DateTime.utc_now(), Accounts.remember_for())
+      )
+
+    session = guest()
+    params = csrf(%{}, session, "DELETE", "/users/sign_out")
+    conn = request(:delete, "/users/sign_out", session, params)
+
+    conn =
+      put_req_header(
+        conn,
+        "cookie",
+        hd(get_req_header(conn, "cookie")) <> "; remember_user_token=" <> cookie
+      )
+
+    response = AuthHandler.call(conn, enabled: true, native: true, registration_enabled: true)
+    assert response.status == 303
+    assert Repo.get!(Account, id).remember_created_at == nil
+  end
+
+  @tag :review_f8_signup
+  test "Cloud signup refuses rejected invitation ownership and rolls back attribution and payment state",
+       ctx do
+    alias Dawarich.Auth.{Registration, RegistrationSetup}
+    previous = Map.new(~w(JWT_SECRET_KEY MANAGER_URL), &{&1, System.get_env(&1)})
+    System.put_env("JWT_SECRET_KEY", "synthetic-review-checkout")
+    System.put_env("MANAGER_URL", "https://manager.synthetic.test")
+
+    on_exit(fn ->
+      Enum.each(previous, fn {k, v} ->
+        if v, do: System.put_env(k, v), else: System.delete_env(k)
+      end)
+    end)
+
+    context = %{
+      self_hosted: false,
+      oidc: false,
+      log_rounds: 4,
+      invitation: %{id: 1, acceptable: true, email: ctx.email},
+      callbacks: %{
+        webhook: fn _ -> :ok end,
+        accept_invitation: fn _, _ -> {:error, :unavailable} end
+      }
+    }
+
+    params = %{
+      "email" => ctx.email,
+      "password" => "safepassword12",
+      "password_confirmation" => "safepassword12"
+    }
+
+    {:ok, user} = Registration.create(params, context)
+
+    assert {:error, :family_owner} =
+             RegistrationSetup.complete(
+               user,
+               params,
+               %{"utm_source" => "synthetic-review"},
+               context
+             )
+
+    assert Repo.get!(Account, user.id).status == user.status
+
+    assert [[nil]] =
+             Repo.query!("SELECT utm_source FROM users WHERE id=$1", [user.id], log: false).rows
+
+    accepted = put_in(context, [:callbacks, :accept_invitation], fn _, _ -> :ok end)
+
+    assert {:ok, %{signed_in: true, location: "/family"}} =
+             RegistrationSetup.complete(user, params, %{}, accepted)
+  end
+
+  defp otp_user(email) do
+    id = insert_user(email)
+    crypto = Jason.decode!(File.read!("test/fixtures/active_record_encryption.json"))
+    env = Enum.find(crypto["environments"], &(&1["name"] == "explicit keys"))["env"]
+    {:ok, secret} = Dawarich.Auth.TwoFactor.Secret.encrypt("JBSWY3DPEHPK3PXP", env)
+
+    Repo.query!(
+      "UPDATE users SET otp_required_for_login=true,otp_secret=$2,settings='{}' WHERE id=$1",
+      [id, secret],
+      log: false
+    )
+
+    {id, env}
   end
 
   defp insert_user(email) do

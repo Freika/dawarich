@@ -62,6 +62,8 @@ defmodule Dawarich.Auth.DestroyToken do
     end
   end
 
+  def release(jti, context), do: command(["DEL", key(jti)], context)
+
   defp valid?(claims, context) do
     now = epoch(context)
 

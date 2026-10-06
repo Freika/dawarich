@@ -27,14 +27,27 @@ defmodule DawarichWeb.AuthOtp.Http do
   defp admit(conn, opts) do
     context =
       Keyword.get(opts, :context, %{})
-      |> Map.put_new(:self_hosted, System.get_env("SELF_HOSTED") == "true")
+      |> Map.put_new(
+        :self_hosted,
+        System.get_env(
+          "SELF_HOSTED",
+          if(Keyword.get(opts, :native, false), do: "true", else: "false")
+        ) == "true"
+      )
+      |> Map.put(:native, Keyword.get(opts, :native, false))
       |> Map.put_new_lazy(:oidc, &Admission.oidc?/0)
-      |> Map.put_new_lazy(:ip, fn -> conn.remote_ip |> :inet.ntoa() |> to_string() end)
+      |> Map.put_new_lazy(:ip, fn -> DawarichWeb.RackIp.ip(conn) end)
 
     case identity(conn, context) do
       {:ok, conn, context} -> parse(conn, opts, context)
       _ -> fallback(conn, opts)
     end
+  end
+
+  defp admission(session, conn, context) do
+    if context[:native],
+      do: Admission.headers(conn.req_headers),
+      else: Admission.context(session, conn.req_headers, context.oidc, context.self_hosted)
   end
 
   defp identity(conn, context) do
@@ -46,7 +59,7 @@ defmodule DawarichWeb.AuthOtp.Http do
          cookie when is_binary(cookie) <- conn.cookies["_dawarich_session"],
          {:ok, session} when is_map(session) <-
            RailsCookies.decrypt(cookie, "_dawarich_session", secret, now),
-         :ok <- Admission.context(session, conn.req_headers, context.oidc, context.self_hosted),
+         :ok <- admission(session, conn, context),
          nil <- session["warden.user.user.key"],
          true <- local_return?(session["user_return_to"]) do
       conn = RailsAuth.call(conn, secret: secret, now: now)

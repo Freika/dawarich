@@ -49,7 +49,7 @@ defmodule DawarichWeb.AuthHandler do
              Admission.oidc?(),
              System.get_env("SELF_HOSTED") == "true"
            ),
-         true <- owned?(conn, session) do
+         true <- owned?(conn, session, opts) do
       conn = put_private(conn, :auth_registration_enabled, registration)
 
       if Keyword.get(opts, :native, false) and conn.method == "POST" and Admission.oidc?() and
@@ -72,10 +72,16 @@ defmodule DawarichWeb.AuthHandler do
       else: Admission.context(session, headers, oidc, self_hosted)
   end
 
-  defp owned?(%{request_path: "/users/sign_out"}, session),
-    do: match?(%Accounts.User{}, Accounts.from_session(session, DateTime.utc_now()))
+  defp owned?(%{request_path: "/users/sign_out"} = conn, session, opts) do
+    user =
+      if Keyword.get(opts, :native, false),
+        do: conn.assigns.current_user,
+        else: Accounts.from_session(session, DateTime.utc_now())
 
-  defp owned?(conn, _session), do: is_nil(conn.assigns.current_user)
+    match?(%Accounts.User{}, user)
+  end
+
+  defp owned?(conn, _session, _opts), do: is_nil(conn.assigns.current_user)
 
   def route?(conn), do: {conn.method, conn.request_path} in @routes
 
@@ -187,7 +193,14 @@ defmodule DawarichWeb.AuthHandler do
   defp otp_login(conn, params, opts) do
     context =
       Keyword.get(opts, :otp_context, %{})
-      |> Map.put_new(:self_hosted, System.get_env("SELF_HOSTED") == "true")
+      |> Map.put_new(
+        :self_hosted,
+        System.get_env(
+          "SELF_HOSTED",
+          if(Keyword.get(opts, :native, false), do: "true", else: "false")
+        ) == "true"
+      )
+      |> Map.put(:native, Keyword.get(opts, :native, false))
       |> Map.put_new_lazy(:oidc, &Admission.oidc?/0)
       |> Map.put(:remember, params["user[remember_me]"])
 
@@ -205,9 +218,19 @@ defmodule DawarichWeb.AuthHandler do
                conn.assigns.rails_session,
                context
              ) do
-          {:challenge, _user, pending} -> Response.form(conn, pending, context)
-          :ordinary -> credentials_login(conn, params, opts)
-          {:handoff, _} -> fallback(conn, opts)
+          {:challenge, _user, pending} ->
+            Response.form(conn, pending, context)
+
+          :ordinary ->
+            credentials_login(conn, params, opts)
+
+          {:handoff, reason} when reason in [:password, :locked] ->
+            if Keyword.get(opts, :native, false),
+              do: credentials_login(conn, params, opts),
+              else: fallback(conn, opts)
+
+          {:handoff, _} ->
+            fallback(conn, opts)
         end
     end
   end

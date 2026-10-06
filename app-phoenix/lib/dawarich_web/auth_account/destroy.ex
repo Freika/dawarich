@@ -11,6 +11,7 @@ defmodule DawarichWeb.AuthAccount.Destroy do
     do:
       {conn.method, conn.request_path} in [
         {"DELETE", "/users"},
+        {"POST", "/users"},
         {"GET", "/users/me/destroy/confirm"}
       ]
 
@@ -42,7 +43,13 @@ defmodule DawarichWeb.AuthAccount.Destroy do
          [type] <- get_req_header(conn, "content-type"),
          true <- hd(String.split(type, ";")) == "application/x-www-form-urlencoded",
          {:ok, body, conn} <- read_body(conn, length: 65_536, read_length: 65_536),
-         {:ok, params} <- Admission.form(body, "", ~w(password confirm_email authenticity_token)),
+         {:ok, params} <-
+           Admission.form(
+             body,
+             conn.query_string,
+             ~w(password confirm_email authenticity_token commit utf8 _method)
+           ),
+         true <- valid_method?(conn, params),
          true <- get_req_header(conn, "origin") in [[], [RequestURL.base(conn)]],
          true <-
            ActionCsrf.valid?(
@@ -57,6 +64,9 @@ defmodule DawarichWeb.AuthAccount.Destroy do
       _ -> conn |> send_resp(422, "Invalid account deletion request") |> halt()
     end
   end
+
+  defp valid_method?(%{method: "POST"}, params), do: params["_method"] == "delete"
+  defp valid_method?(%{method: "DELETE"}, params), do: params["_method"] in [nil, "delete"]
 
   defp respond(conn, {:ok, :scheduled}, path) do
     if conn.method != "GET" or

@@ -27,7 +27,14 @@ defmodule Dawarich.Auth.AccountDestroy do
              :ok <- family_guard(repo, user.id),
              :ok <- worker_ready(context),
              true <- DestroyToken.consume(claims["jti"], context) do
-          schedule(repo, user, context)
+          case schedule(repo, user, context) do
+            {:error, :worker_owner} ->
+              DestroyToken.release(claims["jti"], context)
+              repo.rollback(:worker_owner)
+
+            result ->
+              result
+          end
         else
           false -> {:error, :replayed}
           other -> other
@@ -54,7 +61,7 @@ defmodule Dawarich.Auth.AccountDestroy do
             {:ok, :scheduled}
 
           [[id]] ->
-            if enqueue.(id) == :ok, do: {:ok, :scheduled}, else: repo.rollback(:worker_owner)
+            if enqueue.(id) == :ok, do: {:ok, :scheduled}, else: {:error, :worker_owner}
         end
 
       _ ->
@@ -153,7 +160,12 @@ defmodule Dawarich.Auth.AccountDestroy do
   defp transaction(context, fun) do
     repo = Map.get(context, :repo, Repo)
 
-    case repo.transaction(fn -> fun.(repo) end) do
+    case repo.transaction(fn ->
+           case fun.(repo) do
+             {:error, reason} -> repo.rollback(reason)
+             result -> result
+           end
+         end) do
       {:ok, result} -> result
       {:error, reason} -> {:error, reason}
     end

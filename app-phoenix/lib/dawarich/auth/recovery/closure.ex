@@ -1,7 +1,7 @@
 defmodule Dawarich.Auth.Recovery.Closure do
   @moduledoc false
   import Ecto.Query
-  alias Dawarich.Auth.{Account, SessionCookie, Trackable}
+  alias Dawarich.Auth.{Account, SecurityNotifications, SessionCookie, Trackable}
   alias Dawarich.Auth.Recovery.{Flow, Settings, Token}
   alias Dawarich.{RailsSecret, Repo}
 
@@ -18,6 +18,9 @@ defmodule Dawarich.Auth.Recovery.Closure do
           )
 
         {:ok, %{status: 303, location: "/", session: next, cookie: cookie}}
+
+      {:error, :notification_owner} ->
+        {:error, :notification_owner}
 
       {:error, error} ->
         {:ok,
@@ -50,7 +53,7 @@ defmodule Dawarich.Auth.Recovery.Closure do
     digest = Token.digest(:reset_password_token, raw, secret(context))
     now = Map.get(context, :clock, &DateTime.utc_now/0).()
 
-    {:ok, result} =
+    result =
       repo.transaction(fn ->
         user =
           if is_binary(digest),
@@ -70,7 +73,10 @@ defmodule Dawarich.Auth.Recovery.Closure do
         end
       end)
 
-    result
+    case result do
+      {:ok, value} -> value
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp expired?(nil, _), do: true
@@ -112,7 +118,12 @@ defmodule Dawarich.Auth.Recovery.Closure do
               do: Map.merge(changes, Trackable.changes(user, now, context.sign_in_ip)),
               else: changes
 
-          {:ok, repo.update!(Ecto.Changeset.change(user, changes), log: false)}
+          if not SecurityNotifications.ready?(context, changes),
+            do: repo.rollback(:notification_owner)
+
+          updated = repo.update!(Ecto.Changeset.change(user, changes), log: false)
+          SecurityNotifications.enqueue(repo, user, updated, changes, context)
+          {:ok, updated}
 
         :error ->
           {:handoff, :settings_callback}
