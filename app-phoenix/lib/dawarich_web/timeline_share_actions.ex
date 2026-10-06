@@ -17,7 +17,8 @@ defmodule DawarichWeb.TimelineShareActions do
   def init(action), do: action
 
   def native?(conn, _params) do
-    conn.method in ~w(GET HEAD POST PATCH DELETE) and LayoutAssigns.self_hosted?() and
+    conn.method in ~w(GET HEAD POST PATCH DELETE) and
+      (Dawarich.Standalone.enabled?() or LayoutAssigns.self_hosted?()) and
       get_req_header(conn, "turbo-frame") in [[], ["share-link-modal"]] and
       get_req_header(conn, "x-dawarich-client") == []
   end

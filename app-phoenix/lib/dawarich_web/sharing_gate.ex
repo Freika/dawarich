@@ -13,14 +13,16 @@ defmodule DawarichWeb.SharingGate do
 
   def unlock?(conn, %{"id" => id}),
     do:
-      open?(conn, id) and not family_only?(id) and
+      open?(conn, id) and (Dawarich.Standalone.enabled?() or not family_only?(id)) and
         Enum.all?(@forwarded, &(get_req_header(conn, &1) == []))
 
   defp open?(conn, id) do
-    conn.method != "HEAD" and LayoutAssigns.self_hosted?() and SharedLinks.canonical?(id) and
+    (Dawarich.Standalone.enabled?() or conn.method != "HEAD") and
+      (Dawarich.Standalone.enabled?() or LayoutAssigns.self_hosted?()) and
+      SharedLinks.canonical?(id) and
       get_req_header(conn, "x-dawarich-client") == [] and
       not Map.has_key?(Plug.Conn.Query.decode(conn.query_string), "client") and
-      anonymous?(RailsAuth.call(conn, []))
+      (Dawarich.Standalone.enabled?() or anonymous?(RailsAuth.call(conn, [])))
   end
 
   defp anonymous?(conn),
@@ -44,7 +46,8 @@ defmodule DawarichWeb.SharingGate do
         true
 
       link ->
-        not Dawarich.SharedLinks.FamilyAudience.family_only?(link) and
+        (Dawarich.Standalone.enabled?() or
+           not Dawarich.SharedLinks.FamilyAudience.family_only?(link)) and
           SharedLinks.page(link) != :rails
     end
   end
