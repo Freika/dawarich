@@ -21,6 +21,9 @@ defmodule Dawarich.RouteVideos.Recipe do
     end
   end
 
+  def read(nil), do: {:ok, %{}}
+  def read(_), do: {:replay, "recipe shape"}
+
   defp stringify(nil), do: ""
   defp stringify(value) when is_map(value) or is_list(value), do: inspect_ruby(value)
   defp stringify(value), do: Dawarich.ReleaseMigrations.Effects.Support.Ruby.to_s(value)
@@ -39,7 +42,4 @@ defmodule Dawarich.RouteVideos.Recipe do
         end) <> "}"
 
   defp inspect_ruby(value), do: stringify(value)
-
-  def read(nil), do: {:ok, %{}}
-  def read(_), do: {:replay, "recipe shape"}
 end

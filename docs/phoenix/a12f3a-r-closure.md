@@ -20,8 +20,8 @@ attachment ID snapshot check and failed the retained-blob assertion (`[[0]]`
 versus `[[1]]`); restored GREEN 1 test. The merged RX purge-worker test also
 passes (1 test). Rails characterization batch: 44 examples, 0 failures.
 
-Full suite, transport closure, studio binding, locale coverage and release
-browser proof remain pending. G44 belongs to the controller release lane.
+Final suite evidence is recorded below. Exhaustive transport edges and release
+browser proof remain controller handoffs. G44 belongs to the release lane.
 
 R02 uses `cleanup_failed_save!/3` for rescue cleanup: attached blobs are retained,
 unattached uploads use the same fenced attachment-job dispatch. Named test
@@ -53,3 +53,57 @@ scope, dependent detach, Turbo removal and HTML 303/flash are preserved.
 Initial RED was missing-record replay; GREEN; M-R04 omitted actor scope and
 failed the foreign-record assertion (`{:ok, id}` versus `{:error, :not_found}`);
 restored GREEN. Snapshot and shared-reference races use R05's storage fence.
+
+## Native studio and minimal wiring
+
+R08/R09/R06 port all source controller actions to focused native modules under
+`priv/static/js/hooks/`. Controls retain their original functional attributes.
+The hook reuses the existing StudioState, date range, provider, MapLibre preview,
+HUD, VideoRenderer, MP4 encoder/codec negotiation and DirectUpload modules.
+No server renderer is introduced. Launch/close, format/theme/camera/track/fog/HUD,
+units/watermark, range restore/navigation, progress/cancel, result playback,
+recipe provenance and signed save are retained. Operation versions fence late
+results; teardown removes listeners, aborts render/upload and revokes URLs.
+
+Additional minimum seams for O06/O07: `app.js` registers VideoStudio;
+`map_shell.js` mounts/disposes its portalled instance instead of starting the
+source controller; `endpoint.ex` serves the native hooks directory. The studio
+component uses `phx-hook="VideoStudio"`. O owns final hook/asset route reconciliation.
+Two additional focused modules, `video_studio_dates.js` and
+`video_studio_preview.js`, keep each production file below 300 lines.
+
+Client evidence: R08 initial missing-controls-module RED; integrated native
+mount/destroy and controls GREEN; M-R08 leaked a change listener and failed
+listener count 1 versus 0; restored GREEN. R09 initial missing-render-module
+RED; rendering/progress/cancel GREEN; M-R09 retained the object URL and failed
+revoke list `[]` versus `["blob:0"]`; restored GREEN. R06 initial abort-signal
+assertion RED; signed save/provenance/progress cleanup GREEN; M-R06 saved end_at
+as start_at and failed the distinct timestamps; restored GREEN. The three named
+client tests and existing settings/date/codec/map lifecycle tests pass: 60 tests.
+This is Node evidence, not browser or real WebCodecs export acceptance.
+
+R07 locale cards reconciled with the merged component: initial behavioral
+aggregate GREEN after correcting template text extraction in the test. English
+cards compare to captures; all seven source locales exercise deletion links,
+confirmation, playback/preload, expired recipe controls and success/error
+messages. M-R07 kept playable media on an expired card and failed the no-video
+assertion; restored GREEN. No already-completed component was rewritten.
+
+## Remaining integration and edge proof
+
+Domain workers retain current claimability and coexistence ownership decisions;
+sibling rows 19–22 own registry/sink/cron/payload readiness. Native storage
+uses existing blob revocation and object deletion, preserving shared references.
+Source callbacks and unknown source payload disposition stay with their owners.
+Handled native save/retention failures use the configured Sentry interface;
+shared privacy/transport acceptance remains its owner's gate.
+
+Outstanding edge envelope proof: exhaustive guest/expired-session/CSRF and
+unsupported-format matrices; ordered nested/container recipe coercion; tied
+created-at ordering; full locale Rails HTML captures and real codec-unavailable
+browser workflows. Standalone rejects unsupported admitted envelopes natively,
+per tonight ruling 15. Existing coexistent replay behavior is retained outside
+this proven native scope. HEAD/media capabilities belong to the storage owner.
+O08 must repeat affected source generators twice at the reconciled integration
+head; package R does not claim new generator counts or byte stability. G44
+browser/export acceptance and seed 202 remain controller gates.

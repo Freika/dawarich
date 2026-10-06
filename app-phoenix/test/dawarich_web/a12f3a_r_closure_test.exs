@@ -9,6 +9,28 @@ defmodule DawarichWeb.A12f3aRClosureTest do
 
   @now ~U[2026-10-03 10:00:00Z]
 
+  defmodule SaveFailureRepo do
+    defdelegate transaction(fun), to: Dawarich.ScratchRepo
+    defdelegate insert!(changeset, options), to: Dawarich.ScratchRepo
+
+    def query!(sql, params, opts \\ []) do
+      if String.starts_with?(sql, "INSERT INTO route_videos"),
+        do: raise("synthetic save failure"),
+        else: Dawarich.ScratchRepo.query!(sql, params, opts)
+    end
+  end
+
+  defmodule CapFailureRepo do
+    defdelegate transaction(fun), to: Dawarich.ScratchRepo
+    defdelegate insert!(changeset, options), to: Dawarich.ScratchRepo
+
+    def query!(sql, params, opts \\ []) do
+      if String.starts_with?(sql, "UPDATE route_videos SET status"),
+        do: raise("synthetic cap failure"),
+        else: Dawarich.ScratchRepo.query!(sql, params, opts)
+    end
+  end
+
   setup do
     Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(route_videos))
     previous = System.get_env("DAWARICH_RAILS")
@@ -87,8 +109,26 @@ defmodule DawarichWeb.A12f3aRClosureTest do
         assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
         assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
       else
-        assert :ok = AttachmentEffects.cleanup_failed_save!(ScratchRepo, user.id, blob)
-        assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+        if name == "pre_attach_error" do
+          assert {:error, %{phase: :pre_attach}} =
+                   RouteVideos.create(SaveFailureRepo, user, params(state), @now, "en", %{
+                     max_per_user: 0
+                   })
+
+          assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+          assert rows("SELECT id FROM route_videos") == []
+        else
+          assert {:error, %{phase: :post_commit, id: id}} =
+                   RouteVideos.create(CapFailureRepo, user, params(state), @now, "en", %{
+                     max_per_user: 1
+                   })
+
+          assert rows("SELECT blob_id FROM active_storage_attachments WHERE record_id=$1", [id]) ==
+                   [[blob]]
+
+          assert rows("SELECT count(*) FROM active_storage_blobs WHERE id=$1", [blob]) == [[1]]
+          assert rows("SELECT status FROM route_videos WHERE id=$1", [id]) == [[0]]
+        end
       end
 
       assert rows("SELECT id FROM phoenix.rails_commands") == []
@@ -246,6 +286,79 @@ defmodule DawarichWeb.A12f3aRClosureTest do
       assert rows("SELECT id FROM active_storage_blobs") == []
       assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
       assert rows("SELECT id FROM phoenix.rails_commands") == []
+    end
+  end
+
+  @tag a12f3a_r07: true
+  test "R07: video locale cards and browser handoff matches current Rails contract without a native-owner Rails effect" do
+    for name <- ~w(playable_card expired_card stored_without_file) do
+      state = capture("r07", name)
+      user = seed(state)
+      id = hd(state["before"]["route_videos"])["id"]
+      video = MapGallery.route_video(user.id, id, "Europe/Berlin", ScratchRepo)
+
+      html =
+        render_component(&DawarichWeb.RouteVideoCard.route_video_card/1,
+          video: video,
+          locale: "en"
+        )
+
+      assert ParityHTML.normalize(normalize_urls(html)) == ParityHTML.normalize(state["body"])
+
+      for locale <- ~w(en ca de es fr pl zh) do
+        html =
+          render_component(&DawarichWeb.RouteVideoCard.route_video_card/1,
+            video: video,
+            locale: locale
+          )
+
+        dom = LazyHTML.from_fragment(html)
+        delete = LazyHTML.query(dom, "a[data-turbo-method=delete]")
+        assert LazyHTML.attribute(delete, "href") == ["/route_videos/#{id}"]
+
+        assert LazyHTML.attribute(delete, "data-turbo-confirm") == [
+                 DawarichWeb.Translate.t(
+                   locale,
+                   "route_videos.route_video.delete_this_video",
+                   %{}
+                 )
+               ]
+
+        if name == "playable_card" do
+          assert LazyHTML.attribute(LazyHTML.query(dom, "video"), "preload") == ["metadata"]
+          stale = Map.put(video, :status, 1)
+
+          expired =
+            render_component(&DawarichWeb.RouteVideoCard.route_video_card/1,
+              video: stale,
+              locale: locale
+            )
+
+          assert LazyHTML.query(LazyHTML.from_fragment(expired), "video") |> LazyHTML.to_tree() ==
+                   []
+
+          assert expired =~ "video-studio#restoreSettings"
+        else
+          assert LazyHTML.query(dom, "video") |> LazyHTML.to_tree() == []
+
+          assert LazyHTML.attribute(LazyHTML.query(dom, "button[data-settings]"), "data-settings") ==
+                   [video.settings_json]
+        end
+
+        for key <- ~w(saved failed_to_save rejected_file) do
+          stream =
+            if key == "saved",
+              do: DawarichWeb.RouteVideoStreams.save(video, [], locale),
+              else: DawarichWeb.RouteVideoStreams.error(locale, key)
+
+          message =
+            DawarichWeb.Translate.t(locale, "controllers.route_videos." <> key, %{})
+            |> Phoenix.HTML.html_escape()
+            |> Phoenix.HTML.safe_to_string()
+
+          assert stream =~ message
+        end
+      end
     end
   end
 
