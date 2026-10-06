@@ -46,7 +46,10 @@ defmodule DawarichWeb.FamilyActions do
       origins != [] and origins != [RequestURL.base(conn)] ->
         conn |> send_resp(422, "") |> halt()
 
-      not Enum.any?(tokens, &RailsCsrf.valid?(conn.assigns.rails_session, &1)) ->
+      not Enum.any?(
+        tokens,
+        &RailsCsrf.valid?(conn.assigns.rails_session, &1, conn.request_path, conn.method)
+      ) ->
         conn |> send_resp(422, "") |> halt()
 
       true ->
