@@ -120,6 +120,7 @@ defmodule Dawarich.Jobs.Relay do
         )
       end
 
+      Dawarich.Metrics.Imports.collect(state.repo)
       %{state | beat_at: now}
     end
   end
