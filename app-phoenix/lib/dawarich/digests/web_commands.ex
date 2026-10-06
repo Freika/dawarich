@@ -14,7 +14,10 @@ defmodule Dawarich.Digests.WebCommands do
 
     if valid do
       repo.transaction(fn ->
-        case Ownership.lock(repo, "command:digests.calculate_year") do
+        case if(Dawarich.Standalone.enabled?(),
+               do: :oban,
+               else: Ownership.lock(repo, "command:digests.calculate_year")
+             ) do
           :oban ->
             repo.query!(
               "INSERT INTO public.job_outbox (event_id, command_type, command_version, payload, metadata, scheduled_at) VALUES (gen_random_uuid(), 'digests.calculate_year', 1, $1, $2, $3)",
