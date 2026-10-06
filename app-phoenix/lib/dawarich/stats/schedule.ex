@@ -19,11 +19,15 @@ defmodule Dawarich.Stats.Schedule do
 
     {:ok, :ok} =
       repo.transaction(fn ->
-        case Ownership.lock(repo, @key) do
+        case if(Dawarich.Standalone.enabled?(), do: :oban, else: Ownership.lock(repo, @key)) do
           :oban ->
+            event = opts[:event_id]
+            native = if event, do: Map.put(args, "event_id", event), else: args
+            options = if event, do: [unique: [period: :infinity, keys: [:event_id]]], else: []
+
             Oban.insert!(
               Keyword.get(opts, :oban, Oban),
-              CalculateMonthWorker.new(args, schedule_in: delay)
+              CalculateMonthWorker.new(native, [schedule_in: delay] ++ options)
             )
 
             :ok

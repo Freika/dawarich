@@ -1,7 +1,6 @@
 defmodule Dawarich.Stats.RefreshToponyms do
   @moduledoc false
 
-  alias Dawarich.RailsCommands
   alias Dawarich.Stats.{MonthQueries, ToponymRuns}
 
   @bounds """
@@ -59,11 +58,14 @@ defmodule Dawarich.Stats.RefreshToponyms do
 
         if changed or invalidate,
           do:
-            RailsCommands.insert!(repo, "stats.caches_invalidated", %{
-              "user_id" => account.id,
-              "year" => year,
-              "scope" => "toponyms"
-            })
+            Dawarich.Stats.CacheInvalidation.call(
+              repo,
+              %{
+                "user_id" => account.id,
+                "year" => year,
+                "scope" => "toponyms"
+              }
+            )
 
         true
     end
