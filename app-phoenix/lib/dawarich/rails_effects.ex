@@ -3,12 +3,13 @@ defmodule Dawarich.RailsEffects do
 
   alias Dawarich.RailsCommands
 
-  def tile_epoch(repo, user_id, timestamps),
-    do:
-      RailsCommands.insert!(repo, "points.tile_epoch", %{
-        "user_id" => user_id,
-        "timestamps" => timestamps
-      })
+  def tile_epoch(repo, user_id, timestamps) do
+    payload = %{"user_id" => user_id, "timestamps" => timestamps}
+
+    if Dawarich.Points.NativeEffects.native?(repo, "command:points.tile_epoch"),
+      do: Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Points.TileEpochWorker, payload),
+      else: RailsCommands.insert!(repo, "points.tile_epoch", payload)
+  end
 
   def untracked_tracks(repo, user_id, import_id),
     do:

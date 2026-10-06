@@ -42,7 +42,11 @@ defmodule Dawarich.Imports.Teslamate.Effects do
           {"tracks.realtime", %{}},
           {"tracks.backfill", %{"timestamps" => [min, max]}}
         ] do
-      Dawarich.RailsCommands.insert!(ctx.repo, kind, Map.put(payload, "user_id", ctx.id))
+      payload = Map.put(payload, "user_id", ctx.id)
+
+      if kind == "tracks.realtime",
+        do: Dawarich.Points.Realtime.tracks(ctx.repo, payload, now: ctx.now),
+        else: Dawarich.RailsCommands.insert!(ctx.repo, kind, payload)
     end
 
     Enum.each(months, fn {year, month} ->

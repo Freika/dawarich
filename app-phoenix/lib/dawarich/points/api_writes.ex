@@ -65,7 +65,12 @@ defmodule Dawarich.Points.ApiWrites do
             {"points.tile_epoch", %{"user_id" => user.id, "timestamps" => [point.timestamp]}},
             {"achievements.check", %{"user_id" => user.id, "oldest_timestamp" => point.timestamp}}
           ],
-          do: commit(repo, fn -> RailsCommands.insert!(repo, kind, payload) end)
+          do:
+            commit(repo, fn ->
+              if kind == "points.tile_epoch",
+                do: Dawarich.RailsEffects.tile_epoch(repo, user.id, [point.timestamp]),
+                else: RailsCommands.insert!(repo, kind, payload)
+            end)
 
       if Dawarich.Geocoding.Config.resolve(repo).enabled,
         do:

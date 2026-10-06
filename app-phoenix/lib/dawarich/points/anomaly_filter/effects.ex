@@ -23,10 +23,7 @@ defmodule Dawarich.Points.AnomalyFilter.Effects do
       |> Enum.uniq_by(fn at -> DateTime.from_unix!(at).year |> max(1970) |> min(2100) end)
 
     context.fence.(fn ->
-      RailsCommands.insert!(context.repo, "points.tile_epoch", %{
-        "user_id" => context.user_id,
-        "timestamps" => timestamps
-      })
+      Dawarich.RailsEffects.tile_epoch(context.repo, context.user_id, timestamps)
     end)
 
     if Keyword.get(opts, :invalidate_dependents, true) do

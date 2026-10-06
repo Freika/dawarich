@@ -34,10 +34,7 @@ defmodule Dawarich.Imports.DestroyEffects do
         DateTime.from_unix!(at || 0).year |> max(1970) |> min(2100)
       end)
 
-    RailsCommands.insert!(lease.repo, "points.tile_epoch", %{
-      "user_id" => lease.user,
-      "timestamps" => stamps
-    })
+    Dawarich.RailsEffects.tile_epoch(lease.repo, lease.user, stamps)
   end
 
   def visits!(lease, rows) do
