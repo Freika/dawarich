@@ -40,8 +40,11 @@ defmodule Dawarich.Families.LapseNotices do
     end
   end
 
-  def publish(repo, :sidekiq, payload, _now),
-    do: RailsCommands.insert!(repo, "mail.family_lapse", payload)
+  def publish(repo, :sidekiq, payload, now) do
+    if Dawarich.Standalone.enabled?(),
+      do: publish(repo, :oban, payload, now),
+      else: RailsCommands.insert!(repo, "mail.family_lapse", payload)
+  end
 
   def publish(repo, :oban, payload, now) do
     dedupe = "family-lapse:#{payload["family_id"]}:#{payload["user_id"]}:#{payload["lapse_at"]}"

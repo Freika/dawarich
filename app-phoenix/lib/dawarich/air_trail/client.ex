@@ -15,7 +15,10 @@ defmodule Dawarich.AirTrail.Client do
 
     options = [connect_timeout: 15_000, timeout: 15_000, ssl: ssl(skip)]
 
-    case :httpc.request(:get, request, options, body_format: :binary) do
+    case :httpc.request(:get, request, options,
+           body_format: :binary,
+           socket_opts: [nodelay: true]
+         ) do
       {:ok, {{_, status, _}, _headers, body}} when status in 200..299 -> decode(body)
       {:ok, {{_, status, _}, _headers, _body}} -> {:error, "AirTrail responded with #{status}"}
       {:error, reason} -> {:error, connection_message(reason)}

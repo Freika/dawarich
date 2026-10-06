@@ -186,10 +186,8 @@ defmodule Dawarich.A12f3bR01Test do
     ingest(user, now: now)
     ingest(user, now: DateTime.add(now, 10))
 
-    assert [[args, due]] =
-             rows(
-               "SELECT payload,scheduled_at FROM public.job_outbox WHERE command_type='visits.suggest'"
-             )
+    assert [[args]] =
+             rows("SELECT payload FROM public.job_outbox WHERE command_type='visits.suggest'")
 
     assert args == %{
              "user_id" => user,
@@ -215,9 +213,8 @@ defmodule Dawarich.A12f3bR01Test do
     rows("DELETE FROM phoenix.once_claims")
     ingest(user)
 
-    assert rows("SELECT count(*) FROM public.job_outbox WHERE command_type='visits.suggest'") == [
-             [1]
-           ]
+    assert rows("SELECT count(*) FROM public.job_outbox WHERE command_type='visits.suggest'") ==
+             [[1]]
 
     coexist("visits.suggest", fn -> ingest(user) end, "visits.realtime")
   end

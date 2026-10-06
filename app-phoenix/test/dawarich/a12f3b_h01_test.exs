@@ -9,9 +9,8 @@ defmodule Dawarich.A12f3bH01Test do
     <<a::16, b::16, c::16, d::16, e::16, f::16>> = :crypto.strong_rand_bytes(12)
     Process.put(:h01_remote_ip, {0x2001, 0xDB8, a, b, c, d, e, f})
     saved = Map.new(~w(DAWARICH_RAILS SELF_HOSTED JWT_SECRET_KEY), &{&1, System.get_env(&1)})
-    routes = Application.get_env(:dawarich, :rails_routes)
-    auth = Application.fetch_env(:dawarich, :phoenix_auth)
-    upstream = Application.get_env(:dawarich, :rails_upstream)
+    application_keys = [:rails_routes, :phoenix_auth, :rails_upstream]
+    original = Map.new(application_keys, &{&1, Application.fetch_env(:dawarich, &1)})
     System.put_env("DAWARICH_RAILS", "off")
     System.put_env("SELF_HOSTED", "true")
     System.put_env("JWT_SECRET_KEY", "h01-synthetic-subscription-secret")
@@ -24,14 +23,8 @@ defmodule Dawarich.A12f3bH01Test do
         if value, do: System.put_env(key, value), else: System.delete_env(key)
       end
 
-      Application.put_env(:dawarich, :rails_routes, routes)
-
-      case auth do
-        {:ok, value} -> Application.put_env(:dawarich, :phoenix_auth, value)
-        :error -> Application.delete_env(:dawarich, :phoenix_auth)
-      end
-
-      Application.put_env(:dawarich, :rails_upstream, upstream)
+      restore_application(original)
+      for {key, value} <- original, do: assert(Application.fetch_env(:dawarich, key) == value)
     end)
 
     owner = FrameSeeds.seed_family!(FrameSeeds.load_family("owner_en"))
@@ -40,6 +33,16 @@ defmodule Dawarich.A12f3bH01Test do
 
   @tag a12f3b_case: "H01a"
   test "every retained part B source route has an executable native owner", c do
+    for key <- [:rails_routes, :phoenix_auth, :rails_upstream] do
+      current = Application.fetch_env(:dawarich, key)
+      Application.delete_env(:dawarich, key)
+      snapshot = %{key => Application.fetch_env(:dawarich, key)}
+      Application.put_env(:dawarich, key, [])
+      restore_application(snapshot)
+      assert Application.fetch_env(:dawarich, key) == :error
+      restore_application(%{key => current})
+    end
+
     for {method, path, plug} <- declarations() do
       route = Phoenix.Router.route_info(Router, method, path, "www.example.com")
       assert is_map(route), "missing #{method} #{path}"
@@ -808,5 +811,14 @@ defmodule Dawarich.A12f3bH01Test do
     |> put_req_header("cookie", "_dawarich_session=" <> cookie)
     |> assign(:now, Shares.now())
     |> Endpoint.call(Endpoint.init([]))
+  end
+
+  defp restore_application(saved) do
+    for {key, setting} <- saved do
+      case setting do
+        {:ok, value} -> Application.put_env(:dawarich, key, value)
+        :error -> Application.delete_env(:dawarich, key)
+      end
+    end
   end
 end

@@ -106,7 +106,13 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
           do: type
 
     assert MapSet.subset?(MapSet.new(@wave2_types), rails)
-    assert phoenix == MapSet.put(rails, "points.anomaly_recalculate")
+
+    native_effects =
+      MapSet.new(
+        ~w(points.anomaly_recalculate points.tile_epoch points.live_broadcast points.anomaly_filter)
+      )
+
+    assert phoenix == MapSet.union(rails, native_effects)
 
     assert {:ok, Dawarich.Points.AnomalyFilter.RecalculateWorker} =
              Registry.command("points.anomaly_recalculate")
