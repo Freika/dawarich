@@ -34,7 +34,13 @@ defmodule Dawarich.A12f3bR02Test do
     assert reverse("points.anomaly_filter") == []
 
     Dawarich.Imports.Teslamate.Effects.finalize(
-      %{repo: ScratchRepo, id: user, now: DateTime.utc_now()},
+      %{
+        repo: ScratchRepo,
+        id: user,
+        settings: %{"timezone" => "Europe/Berlin"},
+        event: Ecto.UUID.generate(),
+        now: DateTime.utc_now()
+      },
       %{range: {@at, @at}, months: []}
     )
 

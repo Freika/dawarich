@@ -147,7 +147,7 @@ defmodule Dawarich.Points.ApiPosition do
             end
           end,
           fn ->
-            RailsCommands.insert!(repo, "achievements.check", %{
+            Dawarich.Points.NativeEffects.achievements(repo, %{
               "user_id" => user.id,
               "oldest_timestamp" => point.timestamp
             })
