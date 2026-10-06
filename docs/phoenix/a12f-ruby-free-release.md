@@ -209,3 +209,18 @@ Backups remain ordinary pre-upgrade operator hygiene.
 A12f-4 must run existing image/cloud/release smoke and Swagger UI browser
 acceptance on the same qualified candidate. This branch has not built or
 started a deployment image and does not claim those release gates passed.
+
+## Server PostHog retirement
+
+Native boot, web and Oban job execution ignore server `POSTHOG_API_KEY` and
+`POSTHOG_HOST`; no PostHog application, supervisor child, telemetry forwarder
+or identify/capture producer is retained. The synced baseline already had no
+native server analytics seam, so this cut adds a real-flow regression guard
+and documentation rather than introducing an unnecessary runtime client.
+The guard restarts the native application with synthetic Cloud configuration,
+serves the stored YAML through Endpoint and executes the owned version-check
+Oban worker against a local HTTP server. A local transport trap rejects any
+server analytics request; the required boot-emission mutation is detected.
+The browser `app/javascript/posthog.js` and `components/head.ex` include are
+unchanged. Rails PostHog initializer and gems remain source oracles until
+A12f-4 task 22 removes Rails dependencies.
