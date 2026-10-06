@@ -381,7 +381,7 @@ defmodule DawarichWeb.RateLimitTest do
       |> Enum.filter(fn [_name, body] ->
         body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit(?:\n|$)/
       end)
-      |> MapSet.new(fn [name, _body] -> String.to_existing_atom(name) end)
+      |> MapSet.new(fn [name, _body] -> name end)
 
     for file <- ~w(auth_handler.ex auth_otp/http.ex) do
       source = File.read!(Path.expand("../../lib/dawarich_web/#{file}", __DIR__))
@@ -402,7 +402,7 @@ defmodule DawarichWeb.RateLimitTest do
 
       assert is_map(info), "#{route.verb} #{route.path} does not resolve"
 
-      assert Enum.any?(info.pipe_through, &MapSet.member?(guarded, &1)),
+      assert Enum.any?(info.pipe_through, &MapSet.member?(guarded, Atom.to_string(&1))),
              "#{route.verb} #{route.path} has no guarded pipeline: #{inspect(info.pipe_through)}"
     end
   end
