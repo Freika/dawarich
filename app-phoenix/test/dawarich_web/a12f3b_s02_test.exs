@@ -318,6 +318,7 @@ defmodule DawarichWeb.A12f3bS02Test do
       assert {404, _, ""} = response(c, link, "photos/public-0/thumbnail?source=immich")
     end
 
+    previous_timeout = Application.fetch_env(:dawarich, :photo_source_timeout)
     put_photo_source_timeout(50)
     parent = self()
     Agent.update(c.state, &%{&1 | failure: :timeout, parent: parent})
@@ -326,6 +327,11 @@ defmodule DawarichWeb.A12f3bS02Test do
     configure(c, [], :timeout)
     assert {200, _, "[]"} = response(c, link, "photos")
     release_timeouts()
+
+    case previous_timeout do
+      {:ok, value} -> Application.put_env(:dawarich, :photo_source_timeout, value)
+      :error -> Application.delete_env(:dawarich, :photo_source_timeout)
+    end
 
     assert Enum.all?(requests(c), fn r ->
              values(r.headers, "x-api-key") == ["synthetic-owner"]
