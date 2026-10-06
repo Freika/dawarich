@@ -2,7 +2,7 @@ defmodule DawarichWeb.A8Gate do
   @moduledoc false
 
   def actions?(conn, _params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and action_query?(conn) and
+    action_query?(conn) and
       Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and
       Plug.Conn.get_req_header(conn, "x-http-method-override") == [] and
       action_content?(conn) and
