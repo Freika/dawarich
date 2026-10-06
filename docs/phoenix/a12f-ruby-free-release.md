@@ -1,0 +1,66 @@
+# Phoenix Ruby-free release: operator contracts
+
+Baseline: Rails 1.15.3 integrated at `8d6368fc3187db758151a4d401547d93612d26bb`.
+Controller rulings dated 2026-10-05 govern the first Phoenix release. This
+document records the shared operator contract and the A12f-3o tasks 1–4 and
+18–20 changes. Metrics and Sentry owners document their detailed mappings;
+A12f-4 owns final runtime activation and image acceptance.
+
+## Shared operator contract
+
+| Surface | Rails source contract | Phoenix disposition |
+|---|---|---|
+| `/sidekiq` | Admin session; self-hosted, or Cloud with both `SIDEKIQ_USERNAME` and `SIDEKIQ_PASSWORD` present. Cloud also challenges with Rack Basic auth. Unauthorized root GET redirects temporarily to `/` and sets error flash `You are not authorized to perform this action.` | GET/HEAD temporarily redirect authorized operators to `/settings/background_jobs`; retain role and Cloud Basic restrictions. No Sidekiq CRUD replacement. |
+| `/api-docs`, `/api-docs/index.html` | Public rswag UI; Basic auth is disabled in `config/initializers/rswag_ui.rb`. | Public locally served Swagger UI, subject to existing host and SSL policy. |
+| `/api-docs/v1/swagger.yaml` | `swagger/v1/swagger.yaml`, OpenAPI 3.0.1, title Dawarich API, version v1; rswag has no rewriting filter. | Exact stored bytes and `text/yaml`; HEAD has the same headers and no body. No generated alternate schema. |
+| `/admin/flipper` and nested paths | Admin Flipper engine. `FeatureFlags` gates no behavior. | Terminal native 404; no alternate flag UI. Stored tables and historical migrations remain. |
+| `/metrics` | Enabled only by exact `PROMETHEUS_EXPORTER_ENABLED=true`; Basic auth `METRICS_USERNAME`/`METRICS_PASSWORD`, realm `Dawarich Metrics`, including self-hosted. | Required native equivalent, owned by A12f-3o tasks 5–11. |
+| Sentry/GlitchTip | `SENTRY_DSN`; traces default 0.05, profiles default 0.1. Logs default off; `SENTRY_ENABLE_LOGS` is case insensitive. | Required in the first release, owned by A12f-3o tasks 12–17. |
+| Server PostHog | Cloud only, nonblank `POSTHOG_API_KEY`; `POSTHOG_HOST` defaults to EU ingestion. Rails captures rescued/unhandled and ActiveJob exceptions and user ID context; test mode suppresses delivery. | Retired. No native server client, boot child, identify/capture or telemetry forwarding. Browser PostHog remains with its existing owner. |
+| Heroku `app.json` | Node and Ruby buildpacks, Dokku Rails migration hook and health check. | Retired; Docker is the supported Phoenix deployment. |
+
+Rails normalizes `SELF_HOSTED` using true/1/yes/on/t, case folding, quotes and
+whitespace. Native `LayoutAssigns.self_hosted?/1` retains this contract.
+`RailsAuth` reuses encrypted Rails sessions and remember cookies. Redirects
+must keep a fixed local destination and never derive it from query parameters.
+Hand-back keys apply before native router pipelines during coexistence.
+
+## Telemetry and lifecycle boundary
+
+The shared source oracle is `config/routes.rb`, initializers `01_constants`,
+`03_dawarich_settings`, `rswag_api`, `rswag_ui`, `sentry`, `yabeda`, `sidekiq`,
+`prometheus_metrics_store`, `posthog`, plus `lib/dawarich/metrics_basic_auth.rb`,
+`aggregating_metrics.rb` and `lib/sentry_log_redactor.rb`.
+
+Source metrics aggregate web and Sidekiq exposition, deduplicate HELP/TYPE,
+and distinguish colliding samples with `process=web|sidekiq`; a failed remote
+scrape keeps local metrics. `SIDEKIQ_METRICS_URL` defaults to the internal
+Sidekiq port 9394. Web process aggregation uses a shared mmap store, retaining
+files of live PIDs during rolling restarts. Detailed names, types, units,
+labels and buckets are pinned by the metrics owner against the synced Yabeda
+and map/extraction producers, rather than inferred from this route census.
+
+Source Sentry logs redact password/token/key/authorization/OTP/payment attributes
+and email addresses. Phoenix must report real web, LiveView, Oban and release
+command exceptions without additional PII; configuring an SDK alone does not
+close that requirement. Native release seams are `Dawarich.Release`,
+`Release.Lifecycle`, `CLI` and `Application.start/2`; `Front.children/2` still
+selects coexistence at this baseline. No external DSN or analytics account is
+needed for characterization.
+
+Rails Flipper gems/initializer and PostHog gems/initializer remain read-only
+oracles until A12f-4 task 22. Historical Flipper migrations remain native data
+compatibility, not a live operator dependency. The existing Phoenix dependency
+list, runtime configuration and application supervision contain no server
+PostHog SDK or producer. `components/head.ex` still includes the browser script
+when `POSTHOG_ENABLED=true`.
+
+## Verification ownership
+
+The source characterization batch has 39 examples and zero failures on the
+allocated private Rails database. Swagger is copied aside and restored around
+RSpec. Native task tests must prove routing, auth and terminal retirement
+through Endpoint without a Rails request. Full ExUnit seeds 404 and 202 are
+the branch merge gate. Real Swagger rendering, release asset packaging and
+Docker/Cloud smoke remain A12f-4/G44 release evidence; HTML assertions alone
+do not establish image acceptance.
