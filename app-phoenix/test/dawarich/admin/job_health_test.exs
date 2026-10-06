@@ -38,7 +38,12 @@ defmodule Dawarich.Admin.JobHealthTest do
     end
 
     assert JobHealth.summary(Repo, MissingRepo, nil) == %{"status" => "absent", "alarm" => false}
-    assert JobHealth.summary(Repo, UnavailableRepo, "web-a") == %{"status" => "unknown", "alarm" => false}
+
+    assert JobHealth.summary(Repo, UnavailableRepo, "web-a") == %{
+             "status" => "unknown",
+             "alarm" => false
+           }
+
     assert ScratchRepo.query!("SHOW statement_timeout", [], log: false).rows == [["0"]]
   end
 
