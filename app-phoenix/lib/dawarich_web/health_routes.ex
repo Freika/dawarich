@@ -14,6 +14,8 @@ defmodule DawarichWeb.HealthRoutes do
       scope "/", DawarichWeb.Api do
         pipe_through :health
         get "/api/v1/health", HealthController, :index, metadata: %{rails_key: "health"}
+        get "/api/v1/ready", HealthController, :ready, metadata: %{rails_key: "ready"}
+        get "/ready", HealthController, :ready, metadata: %{rails_key: "ready"}
       end
     end
   end

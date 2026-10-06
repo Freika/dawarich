@@ -9,6 +9,19 @@ defmodule DawarichWeb.Api.HealthController do
 
   def init(action), do: action
 
+  def call(conn, :ready) do
+    conn = Auth.public(conn)
+
+    if conn.halted do
+      conn
+    else
+      case Dawarich.Readiness.check(conn.assigns[:readiness_opts] || []) do
+        :ready -> Respond.json(conn, 200, {:object, [{"status", "ok"}]})
+        {:unavailable, _} -> Respond.json(conn, 503, {:object, [{"status", "unavailable"}]})
+      end
+    end
+  end
+
   def call(conn, :index) do
     conn = Auth.public(conn)
 
