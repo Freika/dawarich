@@ -120,6 +120,79 @@ defmodule DawarichWeb.A12f2FClosureTest do
     refute created.private[:replayed]
   end
 
+  @tag :a12f2_f_02
+  test "Credentials retain failure counters lockouts Cloud OIDC client addresses and source form responses",
+       ctx do
+    id = insert_user(ctx.email)
+
+    context = %{
+      native: true,
+      ip: "192.0.2.10",
+      log_rounds: 4,
+      enqueue: fn intent ->
+        send(self(), {:mail, intent.kind})
+        :ok
+      end
+    }
+
+    assert Credentials.login(ctx.email, "wrong", context) == {:error, :invalid}
+    assert Repo.get!(Account, id).failed_attempts == 2
+    Repo.query!("UPDATE users SET failed_attempts=9 WHERE id=$1", [id], log: false)
+    assert Credentials.login(ctx.email, "safepassword12", context) == {:error, :invalid}
+    locked = Repo.get!(Account, id)
+    assert locked.failed_attempts == 11
+    assert locked.locked_at != nil
+    assert locked.unlock_token != nil
+    assert_received {:mail, :unlock_instructions}
+    assert Credentials.login(ctx.email, "safepassword12", context) == {:error, :invalid}
+    assert Repo.get!(Account, id).failed_attempts == 13
+    refute_received {:mail, _}
+
+    Repo.query!(
+      "UPDATE users SET locked_at=now()-interval '2 hours',failed_attempts=11 WHERE id=$1",
+      [id],
+      log: false
+    )
+
+    assert {:ok, _} = Credentials.login(ctx.email, "safepassword12", context)
+    assert Repo.get!(Account, id).failed_attempts == 0
+    session = guest()
+    opts = [enabled: true, native: true, registration_enabled: true, fallback: &replay/1]
+    System.delete_env("SELF_HOSTED")
+    form = AuthHandler.call(request(:get, "/users/sign_in", %{}), opts)
+    assert form.status == 200
+
+    raw =
+      csrf(
+        %{
+          "user[email]" => ctx.email,
+          "user[password]" => "safepassword12",
+          "user[remember_me]" => "1"
+        },
+        session,
+        "POST",
+        "/users/sign_in"
+      )
+
+    signed =
+      request(:post, "/users/sign_in", session, raw)
+      |> put_req_header("x-forwarded-for", "192.0.2.44")
+      |> AuthHandler.call(opts)
+
+    assert signed.status == 303
+    assert response_session(signed)["session_id"] != session["session_id"]
+
+    invalid =
+      AuthHandler.call(
+        request(:post, "/users/sign_in", session, Map.put(raw, "authenticity_token", "invalid")),
+        opts
+      )
+
+    assert invalid.status == 422
+    refute invalid.private[:replayed]
+    assert Credentials.login("unknown-" <> ctx.email, "wrong", context) == {:error, :invalid}
+  end
+
   defp insert_user(email) do
     [[id]] =
       Repo.query!(

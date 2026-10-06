@@ -41,17 +41,35 @@ defmodule DawarichWeb.AuthHandler do
          false <-
            Enum.any?(get_req_header(conn, "accept"), &String.contains?(&1, "application/json")),
          :ok <-
-           Admission.context(
+           context(
+             conn,
+             opts,
              session,
              conn.req_headers,
              Admission.oidc?(),
              System.get_env("SELF_HOSTED") == "true"
            ),
          true <- owned?(conn, session) do
-      dispatch(put_private(conn, :auth_registration_enabled, registration), opts)
+      conn = put_private(conn, :auth_registration_enabled, registration)
+
+      if Keyword.get(opts, :native, false) and conn.method == "POST" and Admission.oidc?() and
+           System.get_env("ALLOW_EMAIL_PASSWORD_LOGIN", "true") != "true" do
+        AuthResponse.denied(
+          conn,
+          "controllers.users.sessions.email_password_login_is_disabled_please_use_oidc_to_sign"
+        )
+      else
+        dispatch(conn, opts)
+      end
     else
       _ -> fallback(conn, opts)
     end
+  end
+
+  defp context(_conn, opts, session, headers, oidc, self_hosted) do
+    if Keyword.get(opts, :native, false),
+      do: :ok,
+      else: Admission.context(session, headers, oidc, self_hosted)
   end
 
   defp owned?(%{request_path: "/users/sign_out"}, session),
@@ -202,8 +220,11 @@ defmodule DawarichWeb.AuthHandler do
   defp local_return?(_), do: false
 
   defp credentials_login(conn, params, opts) do
+    {:ok, ip} = Dawarich.Auth.CredentialsClosure.client_ip(conn)
+
     context = %{
-      ip: to_string(:inet.ntoa(conn.remote_ip)),
+      native: Keyword.get(opts, :native, false),
+      ip: ip,
       remember: params["user[remember_me]"] == "1"
     }
 
@@ -228,9 +249,10 @@ defmodule DawarichWeb.AuthHandler do
   end
 
   defp fallback(conn, opts) do
-    case Keyword.get(opts, :fallback) do
-      fun when is_function(fun, 1) -> fun.(conn)
-      nil -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+    case {Keyword.get(opts, :native, false), Keyword.get(opts, :fallback)} do
+      {true, _} -> conn |> send_resp(422, "Invalid authentication request") |> halt()
+      {_, fun} when is_function(fun, 1) -> fun.(conn)
+      {_, nil} -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
     end
   end
 end
