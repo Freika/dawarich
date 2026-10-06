@@ -487,6 +487,74 @@ defmodule DawarichWeb.A12f2CClosureTest do
              )
   end
 
+  @tag :a12f2_c_10
+  test "MCP tools preserve schemas actor scoped results pagination privacy and JSON RPC errors",
+       %{user: user} do
+    expected = point(user.id, 1_735_689_600, false)
+    point(user.id, 1_735_689_601, true)
+    point(user!(%{}), 1_735_689_602, false)
+
+    assert {:ok, result} =
+             invoke(Dawarich.Mcp.Tools, :call, [
+               user,
+               %{"name" => "get_latest_location", "arguments" => %{}}
+             ])
+
+    assert result["structuredContent"]["point"]["id"] == expected
+    assert result["isError"] == false
+
+    assert {:ok, %{"isError" => true}} =
+             Dawarich.Mcp.Tools.call(user, %{
+               "name" => "get_latest_location",
+               "arguments" => %{"timezone" => "UTC"}
+             })
+
+    assert {:rpc_error, -32602, _} =
+             Dawarich.Mcp.Tools.call(user, %{"name" => "unknown", "arguments" => %{}})
+
+    fixture = oracle("timeline")
+    seed(fixture["setup"])
+    owner = %{user | id: 810_001}
+
+    assert {:ok, latest} =
+             Dawarich.Mcp.Tools.call(owner, %{"name" => "get_latest_location", "arguments" => %{}})
+
+    assert latest == Jason.decode!(oracle("mcp_latest")["body"])["result"]
+
+    assert {:ok, timeline} =
+             Dawarich.Mcp.Tools.call(owner, %{
+               "name" => "get_timeline",
+               "arguments" => %{"start_at" => "2025-01-01", "end_at" => "2025-01-01"}
+             })
+
+    assert timeline == Jason.decode!(oracle("mcp_timeline")["body"])["result"]
+
+    assert {:ok, search} =
+             Dawarich.Mcp.Tools.call(owner, %{
+               "name" => "search_visits",
+               "arguments" => %{"query" => "synthetic", "limit" => 1}
+             })
+
+    assert search == Jason.decode!(oracle("mcp_search")["body"])["result"]
+
+    assert {:ok, %{"isError" => true}} =
+             Dawarich.Mcp.Tools.call(owner, %{
+               "name" => "get_timeline",
+               "arguments" => %{"start_at" => "2025-01-01", "end_at" => "2025-01-08"}
+             })
+
+    assert {:ok, none} =
+             Dawarich.Mcp.Tools.call(owner, %{
+               "name" => "search_visits",
+               "arguments" => %{"query" => "%%"}
+             })
+
+    assert none["structuredContent"]["total_count"] == 0
+
+    assert Dawarich.Mcp.Tools.list() ==
+             Jason.decode!(oracle("mcp_tools")["body"])["result"]["tools"]
+  end
+
   defp track(user_id) do
     [[id]] =
       Repo.query!(
