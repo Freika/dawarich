@@ -5,6 +5,28 @@ defmodule DawarichWeb.AuthApi.Input do
   @fields %{login: ~w(email password), challenge: ~w(challenge_token otp_code)}
   @content_type ~r/\A(?:application\/json|text\/x-json|application\/jsonrequest|application\/x-www-form-urlencoded)(?:;\s*charset=utf-8)?\z/i
 
+  def native(conn) do
+    if is_map(conn.assigns[:api_params]) do
+      {:ok, conn.assigns.api_params, conn}
+    else
+      conn =
+        Plug.Parsers.call(
+          conn,
+          Plug.Parsers.init(
+            parsers: [:urlencoded, :json],
+            pass: [],
+            json_decoder: Jason,
+            length: 16384
+          )
+        )
+
+      conn = fetch_query_params(conn)
+      {:ok, Map.merge(conn.body_params, conn.query_params), conn}
+    end
+  rescue
+    _ -> {:error, conn}
+  end
+
   def precheck(conn) do
     names = Enum.map(conn.req_headers, &elem(&1, 0))
 

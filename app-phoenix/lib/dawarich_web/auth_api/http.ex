@@ -14,6 +14,15 @@ defmodule DawarichWeb.AuthApi.Http do
   def route?(conn), do: conn.method == "POST" and Map.has_key?(@routes, conn.request_path)
 
   def call(conn, opts) do
+    if Keyword.get(opts, :standalone, Dawarich.Standalone.enabled?()) and
+         Keyword.get(opts, :enabled, false) do
+      DawarichWeb.AuthMobile.Http.call(conn, opts)
+    else
+      coexist(conn, opts)
+    end
+  end
+
+  defp coexist(conn, opts) do
     env = Keyword.get(opts, :context, %{}) |> Map.get_lazy(:env, &System.get_env/0)
 
     context =
