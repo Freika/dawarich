@@ -119,10 +119,7 @@ defmodule Dawarich.Points.ApiPosition do
   defp postcommit(repo, user, point, response) do
     for fun <- [
           fn ->
-            RailsCommands.insert!(repo, "points.tile_epoch", %{
-              "user_id" => user.id,
-              "timestamps" => [point.timestamp]
-            })
+            Dawarich.RailsEffects.tile_epoch(repo, user.id, [point.timestamp])
           end,
           fn -> publish(user.id, response, repo) end,
           fn ->

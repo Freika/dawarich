@@ -68,8 +68,11 @@ defmodule Dawarich.Points.WebDestroy do
 
   defp follow_up(_repo, _user, [], _ctx), do: :ok
 
-  defp follow_up(repo, user, deleted, ctx),
-    do: Dawarich.Points.WebDestroyEffects.publish!(repo, user, deleted, ctx)
+  defp follow_up(repo, user, deleted, ctx) do
+    if Dawarich.Standalone.enabled?(),
+      do: Dawarich.Points.DeletionEffects.publish(repo, user, deleted, ctx),
+      else: Dawarich.Points.WebDestroyEffects.publish!(repo, user, deleted, ctx)
+  end
 
   defp render(repo, {:ok, result} = outcome, ctx) do
     case Map.get(ctx, :render) do

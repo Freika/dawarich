@@ -1,8 +1,6 @@
 defmodule Dawarich.Areas do
   @moduledoc false
 
-  alias Dawarich.RailsCommands
-
   @candidates """
   SELECT v.id,
          CASE WHEN pl.id IS NOT NULL THEN COALESCE(ST_Y(pl.lonlat::geometry), pl.latitude::float8) END,
@@ -104,13 +102,15 @@ defmodule Dawarich.Areas do
             :ok
 
           started ->
-            RailsCommands.insert!(repo, "visit_months_changed", %{
-              "user_id" => area.user_id,
-              "started_at" =>
-                Enum.map(started, fn [time] ->
-                  time |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_iso8601()
-                end)
-            })
+            times = Enum.map(started, fn [time] -> DateTime.from_naive!(time, "Etc/UTC") end)
+
+            if Dawarich.Points.NativeEffects.native?(repo, "command:visits.suggest"),
+              do: Dawarich.RailsEffects.visit_months(repo, area.user_id, times),
+              else:
+                Dawarich.RailsCommands.insert!(repo, "visit_months_changed", %{
+                  "user_id" => area.user_id,
+                  "started_at" => Enum.map(times, &DateTime.to_iso8601/1)
+                })
         end
       end)
   end

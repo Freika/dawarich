@@ -65,7 +65,12 @@ defmodule Dawarich.Points.ApiWrites do
             {"points.tile_epoch", %{"user_id" => user.id, "timestamps" => [point.timestamp]}},
             {"achievements.check", %{"user_id" => user.id, "oldest_timestamp" => point.timestamp}}
           ],
-          do: commit(repo, fn -> RailsCommands.insert!(repo, kind, payload) end)
+          do:
+            commit(repo, fn ->
+              if kind == "points.tile_epoch",
+                do: Dawarich.RailsEffects.tile_epoch(repo, user.id, [point.timestamp]),
+                else: RailsCommands.insert!(repo, kind, payload)
+            end)
 
       if Dawarich.Geocoding.Config.resolve(repo).enabled,
         do:
@@ -215,17 +220,29 @@ defmodule Dawarich.Points.ApiWrites do
       end)
 
       commit(repo, fn ->
-        stamps = Enum.map(rows, &Enum.at(&1, 1))
+        if Dawarich.Standalone.enabled?() do
+          deleted =
+            Enum.map(rows, fn [id, stamp, track, import] ->
+              %{id: id, timestamp: stamp, track_id: track, import_id: import}
+            end)
 
-        RailsCommands.insert!(repo, "points.web_destroy_follow_up", %{
-          "user_id" => user.id,
-          "timestamps" => stamps,
-          "track_ids" =>
-            rows |> Enum.map(&Enum.at(&1, 2)) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
-          "oldest_timestamp" => Enum.min(stamps),
-          "locale" => "en",
-          "timezone" => Dawarich.UserTimeZone.iana(repo, user.settings)
-        })
+          Dawarich.Points.DeletionEffects.publish(repo, user, deleted, %{
+            locale: "en",
+            now: ctx.now
+          })
+        else
+          stamps = Enum.map(rows, &Enum.at(&1, 1))
+
+          RailsCommands.insert!(repo, "points.web_destroy_follow_up", %{
+            "user_id" => user.id,
+            "timestamps" => stamps,
+            "track_ids" =>
+              rows |> Enum.map(&Enum.at(&1, 2)) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
+            "oldest_timestamp" => Enum.min(stamps),
+            "locale" => "en",
+            "timezone" => Dawarich.UserTimeZone.iana(repo, user.settings)
+          })
+        end
       end)
     end
 

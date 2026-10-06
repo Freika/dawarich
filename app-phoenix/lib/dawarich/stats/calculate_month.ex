@@ -128,13 +128,19 @@ defmodule Dawarich.Stats.CalculateMonth do
     id
   end
 
-  defp invalidated!(ctx),
-    do:
-      RailsCommands.insert!(ctx.repo, "stats.caches_invalidated", %{
-        "user_id" => ctx.user.id,
-        "year" => ctx.year,
-        "scope" => "all"
-      })
+  defp invalidated!(ctx) do
+    case Keyword.get(ctx.opts, :invalidated) do
+      nil ->
+        RailsCommands.insert!(ctx.repo, "stats.caches_invalidated", %{
+          "user_id" => ctx.user.id,
+          "year" => ctx.year,
+          "scope" => "all"
+        })
+
+      callback ->
+        callback.()
+    end
+  end
 
   defp fail(ctx, error, stacktrace) do
     message = Exception.message(error)
