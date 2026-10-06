@@ -3,7 +3,12 @@ defmodule Dawarich.ReleaseCloudTest do
 
   alias Dawarich.{Release, ReleaseMigration, Repo}
 
-  defp role, do: "dawarich_phoenix_nocreate" <> System.get_env("MIX_TEST_PARTITION", "")
+  defp role do
+    database = Application.fetch_env!(:dawarich, Repo)[:database]
+    suffix = :crypto.hash(:sha256, database) |> Base.encode16(case: :lower) |> binary_part(0, 20)
+    "dawarich_phoenix_nocreate_" <> suffix
+  end
+
   @password "nocreate"
 
   setup do
