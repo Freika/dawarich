@@ -47,6 +47,19 @@ RSpec.describe Users::CreationWebhookJob, type: :job do
       described_class.perform_now(user.id)
     end
 
+    it 'ignores a rejected HTTP response without retrying' do
+      allow(HTTParty).to receive(:post).and_return(instance_double(HTTParty::Response, code: 500))
+
+      expect { described_class.new.perform(user.id) }.not_to raise_error
+      expect(HTTParty).to have_received(:post).once
+    end
+
+    it 'propagates transport errors to the job runner' do
+      allow(HTTParty).to receive(:post).and_raise(Net::ReadTimeout)
+
+      expect { described_class.new.perform(user.id) }.to raise_error(Net::ReadTimeout)
+    end
+
     context 'when user is deleted' do
       before { user.mark_as_deleted! }
 
