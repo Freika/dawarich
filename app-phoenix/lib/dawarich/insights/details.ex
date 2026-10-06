@@ -7,6 +7,10 @@ defmodule Dawarich.Insights.Details do
   alias DawarichWeb.StatsFormat
 
   def load(user, params, opts \\ []) do
+    if opts[:fill] == true and
+         Enum.any?([params["year"], params["month"]], &(is_map(&1) or is_list(&1))),
+       do: raise(ArgumentError, "invalid insights period")
+
     now = opts[:now] || DateTime.utc_now()
     self_hosted = Keyword.get_lazy(opts, :self_hosted, &DawarichWeb.LayoutAssigns.self_hosted?/0)
     context = Stats.context(user, now, self_hosted)
@@ -60,14 +64,20 @@ defmodule Dawarich.Insights.Details do
 
       if data.all_time,
         do: Map.merge(data, defaults()),
-        else: patterns(data, user.id, context.zone, scoped, params)
+        else: patterns(data, user.id, context.zone, scoped, params, opts)
     end
   end
 
   defdelegate yearly_key(id, year, updated), to: DetailDigests, as: :key
 
-  defp patterns(data, id, zone, stats, params) do
-    {yearly, yearly_rails} = DetailDigests.yearly(id, data.year, stats)
+  defp patterns(data, id, zone, stats, params, opts) do
+    calculation = [now: opts[:now] || DateTime.utc_now(), ambient_zone: zone]
+
+    {yearly, yearly_rails} =
+      if opts[:fill],
+        do: DetailDigests.native_yearly(id, data.year, stats, calculation),
+        else: DetailDigests.yearly(id, data.year, stats)
+
     patterns = if yearly, do: yearly["travel_patterns"] || %{}, else: %{}
     months = for s <- stats, s["year"] == data.year, do: s["month"]
 
@@ -79,7 +89,11 @@ defmodule Dawarich.Insights.Details do
             if data.year == data.today.year, do: data.today.month, else: 12
           end)
 
-    {monthly, monthly_rails} = DetailDigests.monthly(id, data.year, month, months, stats)
+    {monthly, monthly_rails} =
+      if opts[:fill],
+        do: DetailDigests.native_monthly(id, data.year, month, months, stats, calculation),
+        else: DetailDigests.monthly(id, data.year, month, months, stats)
+
     orders = if yearly, do: Dawarich.RailsCache.JsonOrder.pattern_pairs(yearly), else: %{}
 
     data

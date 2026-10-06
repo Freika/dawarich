@@ -135,6 +135,61 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert Dawarich.Insights.page(user, %{}, context).year == 2024
   end
 
+  @tag a12f3a_q04: true
+  test "Q04: insights details data and synchronous digest fill matches current Rails contract without a native-owner Rails effect",
+       %{user: user} do
+    stat!(user.id, %{
+      year: 2024,
+      month: 3,
+      distance: 1000,
+      daily_distance: [[1, 1000]],
+      updated_at: ~N[2026-09-24 12:00:00]
+    })
+
+    for row <- fixture("04") do
+      if row["state"] == "cold",
+        do: Repo.query!("DELETE FROM digests WHERE user_id=$1", [user.id]),
+        else:
+          Repo.query!(
+            "UPDATE digests SET distance=9, travel_patterns='{}', updated_at='2026-09-23 12:00:00' WHERE user_id=$1",
+            [user.id]
+          )
+
+      page =
+        Dawarich.Insights.Details.load(user, %{"year" => "2024", "month" => "3"},
+          fill: true,
+          now: @now,
+          self_hosted: true
+        )
+
+      refute page.rails
+      assert page.yearly["distance"] == 1000
+      assert page.monthly["distance"] == 1000
+
+      actual =
+        Repo.query!(
+          "SELECT year, month, period_type, distance, travel_patterns, monthly_distances FROM digests WHERE user_id=$1 ORDER BY period_type",
+          [user.id]
+        ).rows
+
+      expected =
+        Enum.map(row["digests"], fn d ->
+          [
+            d["year"],
+            d["month"],
+            if(d["period_type"] == "monthly", do: 0, else: 1),
+            d["distance"],
+            d["travel_patterns"],
+            d["monthly_distances"]
+          ]
+        end)
+
+      assert actual == expected
+    end
+
+    assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
+  end
+
   defp assert_public_cases(user, ctx, task, kind, table, uuid, selector) do
     for row <- fixture(task) do
       settings = %{
