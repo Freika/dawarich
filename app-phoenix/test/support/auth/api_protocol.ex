@@ -491,8 +491,33 @@ defmodule Dawarich.Auth.ApiProtocol do
           }
         end
 
+      mobile_context =
+        Map.put(
+          context,
+          :env,
+          Map.put(context.env, "AUTH_JWT_SECRET_KEY", "synthetic-h-protocol-mobile")
+        )
+
+      {:ok, handoff_path} =
+        Dawarich.Auth.Mobile.Handoff.redirect(
+          %{api_key: "synthetic-mobile-key"},
+          "ios",
+          mobile_context
+        )
+
+      mobile = %{
+        "secret" => "synthetic-h-protocol-mobile",
+        "token" => URI.decode_query(URI.parse(handoff_path).query)["token"],
+        "watermark" =>
+          Base.encode64(
+            Dawarich.Subscriptions.Cache.entry(1_790_000_000_000, DateTime.to_unix(now) + 604_800)
+          )
+      }
+
       payload = %{
+        "mobile" => mobile,
         "mode" => "api_auth",
+        "database" => Repo.config()[:database],
         "lifecycle" => lifecycle,
         "at" => DateTime.to_unix(now),
         "env" => context.env,
@@ -531,6 +556,16 @@ defmodule Dawarich.Auth.ApiProtocol do
       end)
 
     Process.put(:a11f_protocol_keys, payload["marker_keys"] ++ payload["rails"]["marker_keys"])
+
+    if payload["mobile"] do
+      verification = Map.put(context, :env, %{"JWT_SECRET_KEY" => payload["mobile"]["secret"]})
+
+      {:ok, claims} =
+        Dawarich.Subscriptions.Callback.decode(payload["rails"]["mobile"], verification)
+
+      unless claims["api_key"] == "synthetic-mobile-key",
+        do: raise("Source mobile handoff key mismatch")
+    end
 
     try do
       if lifecycle == "shared_rdb" do

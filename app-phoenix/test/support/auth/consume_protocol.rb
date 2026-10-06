@@ -7,8 +7,11 @@ require 'uri'
 require 'active_support/testing/time_helpers'
 
 mode = ARGV[1]
+fixture = JSON.parse(File.read(ARGV.fetch(0)))
 database_allowed = if %w[api_auth api_auth_password_work api_auth_otp_work].include?(mode)
-                     ENV.fetch('DATABASE_NAME') == 'dawarich_test_a11f'
+                     ENV.fetch('DATABASE_NAME') == fixture.fetch('database') &&
+                       ENV.fetch('DATABASE_NAME').match?(/\Adawarich_(?:phoenix_)?test_/) &&
+                       ENV.fetch('DATABASE_HOST') == '127.0.0.1'
                    else
                      ENV.fetch('DATABASE_NAME').start_with?('dawarich_test')
                    end
@@ -17,7 +20,6 @@ raise 'Protocol own test DB required' unless Rails.env.test? && database_allowed
 ActiveJob::Base.queue_adapter = :test
 ActionMailer::Base.delivery_method = :test
 ActionMailer::Base.perform_deliveries = false
-fixture = JSON.parse(File.read(ARGV.fetch(0)))
 raise 'Protocol fixture mode must match dispatch' unless fixture.fetch('mode', nil) == mode
 
 Rails.application.reload_routes!
@@ -898,6 +900,21 @@ def consume_api_auth(fixture)
         races = JSON.parse(File.read(Rails.root.join('app-phoenix/test/fixtures/auth/api_auth/races.json')))
         fixture['rails'] = { 'actors' => source_actors, 'marker_keys' => keys - fixture['marker_keys'],
                              'source_races' => races }
+        if fixture['mobile']
+          mobile = fixture.fetch('mobile')
+          decoded, = JWT.decode(mobile.fetch('token'), mobile.fetch('secret'), true, algorithm: 'HS256')
+          unless decoded == { 'api_key' => 'synthetic-mobile-key', 'exp' => fixture.fetch('at') + 300 }
+            raise 'Native mobile token refused by Rails'
+          end
+
+          bytes = Base64.strict_decode64(mobile.fetch('watermark'))
+          coder = Rails.cache.instance_variable_get(:@coder)
+          raise 'Native callback watermark refused by Rails' unless coder.load(bytes).value == 1_790_000_000_000
+
+          fixture['rails']['mobile'] = Subscription::EncodeJwtToken.new(
+            { api_key: 'synthetic-mobile-key', exp: fixture.fetch('at') + 300 }, mobile.fetch('secret')
+          ).call
+        end
         File.write(ARGV.fetch(0), JSON.generate(fixture))
       end
     end
