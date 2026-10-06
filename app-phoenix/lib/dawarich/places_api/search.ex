@@ -34,7 +34,7 @@ defmodule Dawarich.PlacesApi.Search do
         else
           radius = Nearby.number(params["radius"], 1.0) |> max(0.01) |> min(5.0)
           limit = Nearby.count(params["limit"], 10) |> max(1) |> min(50)
-          query = params["q"] |> Ruby.to_s() |> String.trim()
+          query = params["q"] |> Ruby.to_s() |> Suggestions.strip()
           saved = Nearby.saved(user.id, lat, lon, radius, limit, query)
           external = external(user, query, lat, lon, radius, limit)
 
@@ -51,7 +51,7 @@ defmodule Dawarich.PlacesApi.Search do
   end
 
   defp external(user, query, lat, lon, radius, limit) do
-    if String.length(query) < 2 do
+    if Suggestions.size(query) < 2 do
       Nearby.fetch(user, lat, lon, radius, limit, cache: true)
     else
       opts = [
@@ -60,7 +60,11 @@ defmodule Dawarich.PlacesApi.Search do
         params: bounds(Suggestions.configuration(), lat, lon, radius)
       ]
 
-      (Suggestions.lookup(user, String.slice(query, 0, 200), opts) || [])
+      (Suggestions.lookup(
+         user,
+         query |> String.codepoints() |> Enum.take(200) |> Enum.join(),
+         opts
+       ) || [])
       |> Enum.map(&Nearby.format(&1, lat, lon))
       |> Enum.filter(&(Nearby.distance(&1, lat, lon) <= radius))
       |> Enum.sort_by(&Nearby.distance(&1, lat, lon))
@@ -98,8 +102,8 @@ defmodule Dawarich.PlacesApi.Search do
 
   def co_located_saved_place?(external, saved) do
     Enum.any?(saved, fn place ->
-      String.downcase(String.trim(place["name"] || "")) ==
-        String.downcase(String.trim(external["name"] || "")) and
+      String.downcase(Suggestions.strip(place["name"] || "")) ==
+        String.downcase(Suggestions.strip(external["name"] || "")) and
         Nearby.distance(external, place["latitude"], place["longitude"]) <= 0.05
     end)
   end
@@ -121,7 +125,7 @@ defmodule Dawarich.PlacesApi.Search do
     end)
     |> Enum.filter(fn area ->
       Nearby.distance(area, lat, lon) <= radius or
-        (String.length(query) >= 2 and
+        (Suggestions.size(query) >= 2 and
            String.contains?(String.downcase(area["name"] || ""), String.downcase(query)))
     end)
     |> Enum.sort_by(&Nearby.distance(&1, lat, lon))

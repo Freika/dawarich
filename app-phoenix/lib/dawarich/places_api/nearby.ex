@@ -121,7 +121,7 @@ defmodule Dawarich.PlacesApi.Nearby do
       }
     end)
     |> Enum.filter(fn place ->
-      if String.length(query) >= 2,
+      if Suggestions.size(query) >= 2,
         do: String.contains?(String.downcase(place["name"] || ""), String.downcase(query)),
         else: distance(place, lat, lon) <= radius
     end)

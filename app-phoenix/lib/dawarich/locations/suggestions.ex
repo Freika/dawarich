@@ -17,21 +17,29 @@ defmodule Dawarich.Locations.Suggestions do
 
   def term(other), do: other
 
+  def strip(value),
+    do: String.replace(value, ~r/\A[\x00\x09-\x0D\x20]+|[\x00\x09-\x0D\x20]+\z/u, "")
+
+  def size(value), do: length(String.codepoints(value))
+
   def run(_user, %{"q" => q}) when not is_nil(q) and not is_binary(q),
     do: {:ok, 500, %{"error" => "Internal Server Error"}}
 
   def run(user, params) do
-    query = String.trim(params["q"] || "")
+    query = strip(params["q"] || "")
 
     cond do
-      String.length(query) > 200 ->
+      Ruby.blank?(query) ->
+        {:ok, 200, %{"suggestions" => []}}
+
+      size(query) > 200 ->
         {:ok, 400,
          %{
            "error" =>
              I18n.en!("controllers.api.v1.locations.search_query_too_long_max_200_characters")
          }}
 
-      String.length(query) < 2 ->
+      size(query) < 2 ->
         {:ok, 200, %{"suggestions" => []}}
 
       true ->
@@ -93,7 +101,10 @@ defmodule Dawarich.Locations.Suggestions do
 
   def lookup(user, query, opts \\ []) do
     config = configuration(opts[:fallback] || false)
-    if config.enabled, do: throttle(config, fn -> search(config, user, query, opts) end), else: []
+
+    if config.enabled and not Ruby.blank?(query),
+      do: throttle(config, fn -> search(config, user, query, opts) end),
+      else: []
   rescue
     _ -> []
   end

@@ -105,6 +105,8 @@ module ApiLocationsPhotosGoldenOracle
     { name: 'closure_photos_not_configured', path: '/api/v1/photos', user: { integrations: :none } },
     { name: 'closure_suggestions_empty', path: "#{LOC}/suggestions?q=" },
     { name: 'closure_suggestions_nested', expect: :rails, path: "#{LOC}/suggestions?q[nested]=1" },
+    { name: 'closure_suggestions_nbsp', path: "#{LOC}/suggestions?q=#{'%C2%A0' * 201}" },
+    { name: 'closure_suggestions_combining', path: "#{LOC}/suggestions?q=#{'%65%CC%81' * 150}" },
     { name: 'closure_suggestions_short', path: "#{LOC}/suggestions?q=A" },
     { name: 'closure_suggestions_long', path: "#{LOC}/suggestions?q=#{'a' * 201}" },
     { name: 'closure_thumbnail_dotted_id', path: '/api/v1/photos/a.b/thumbnail?source=immich',

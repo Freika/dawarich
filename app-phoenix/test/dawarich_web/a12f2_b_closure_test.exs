@@ -169,6 +169,19 @@ defmodule DawarichWeb.A12f2BClosureTest do
 
     assert {:ok, 500, _} = invoke(Dawarich.Locations.Suggestions, :run, [user, %{"q" => %{}}])
 
+    assert invoke(Dawarich.Locations.Suggestions, :size, [String.duplicate("e\u0301", 150)]) ==
+             300
+
+    assert invoke(Dawarich.Locations.Suggestions, :run, [
+             user,
+             %{"q" => String.duplicate("\u00A0", 201)}
+           ]) == {:ok, 200, oracle("closure_suggestions_nbsp")}
+
+    assert invoke(Dawarich.Locations.Suggestions, :run, [
+             user,
+             %{"q" => String.duplicate("e\u0301", 150)}
+           ]) == {:ok, 400, oracle("closure_suggestions_combining")}
+
     assert invoke(Dawarich.Locations.Suggestions, :run, [
              user,
              %{"q" => String.duplicate("x", 201)}
