@@ -71,3 +71,13 @@ must fail both mounted regressions. S02C2 checks the fixed/deferred changelog;
 its mutation removes the S02F2 regression reference. Fixed-bug counterpart:
 `fixed-rails-bugs.md`; DRB-023 remains the deferred Rails repair, with no new
 ED or DRB entry. Previously in-flight requests retain snapshot semantics.
+
+The proxy's current-scope check is independent of native family-viewer
+recognition. Rails can authenticate a handoff envelope that native session
+parsing does not represent; native viewer absence must not skip the ACL.
+S02C1V uses a valid synthetic family share and a synthetic legacy-viewer
+routing envelope: valid thumbnails can forward, but edited-window GET/HEAD
+must deny even when no native viewer is recognized. It tests the proxy
+boundary, not authentication of that synthetic cookie by Rails. M-S02C1V
+reintroduces the native family-viewer predicate and fails at 200/200.
+Family authorization remains Rails' decision for valid handoff thumbnails.

@@ -556,6 +556,64 @@ defmodule DawarichWeb.A12f3bS02Test do
     no_upstream!(c.upstream)
   end
 
+  @tag a12f3b_case: "S02C1V"
+  test "shared thumbnail scope guards Rails handoff without a native family viewer", c do
+    configure(c, [asset("public-0")])
+    link = link!(c.owner, 0, c.trip)
+    assert {200, _, _} = response(c, link, "photos")
+
+    [[family]] =
+      Repo.query!(
+        "INSERT INTO families(creator_id,name,created_at,updated_at) VALUES($1,'Synthetic family',NOW(),NOW()) RETURNING id",
+        [c.owner]
+      ).rows
+
+    for member <- [c.owner, c.foreign] do
+      Repo.query!(
+        "INSERT INTO family_memberships(family_id,user_id,role,created_at,updated_at) VALUES($1,$2,1,NOW(),NOW())",
+        [family, member]
+      )
+    end
+
+    set!(link, "settings", %{
+      "show_photos" => true,
+      "audience" => "family",
+      "family_id" => to_string(family)
+    })
+
+    shared = SharedLinks.active(link, @now)
+    assert Dawarich.SharedLinks.FamilyAudience.accessible?(shared, %{id: c.foreign}, @now)
+    refute Dawarich.SharedLinks.FamilyAudience.accessible?(shared, nil, @now)
+    System.delete_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS_SLICES", "api_shared")
+    headers = [{"Cookie", "remember_user_token=synthetic-legacy-viewer"}]
+    action = "photos/public-0/thumbnail?source=immich"
+    assert {200, _, @image} = routed_response(c, link, action, "GET", @image, headers)
+    assert_receive {:s02_rails_request, _}
+
+    Repo.query!(
+      "UPDATE trips SET started_at=started_at + interval '1 day', ended_at=ended_at + interval '1 day' WHERE id=$1",
+      [c.trip]
+    )
+
+    before_denial = requests(c)
+    get = routed_response(c, link, action, "GET", @image, headers)
+    head = routed_response(c, link, action, "HEAD", @image, headers)
+    assert {elem(get, 0), elem(head, 0)} == {404, 404}
+    assert elem(get, 2) == ""
+    assert elem(head, 2) == ""
+    refute_received {:s02_rails_request, _}
+
+    assert Enum.all?(
+             Enum.drop(requests(c), length(before_denial)),
+             &(&1.path == "/api/search/metadata")
+           )
+
+    assert commands() == []
+    assert effects() == c.effects
+    no_upstream!(c.upstream)
+  end
+
   @tag a12f3b_case: "S02C2"
   test "S02 Rails bug registers identify the fixed leak and deferred Rails repair" do
     fixed = File.read!("../docs/phoenix/fixed-rails-bugs.md")
@@ -572,7 +630,7 @@ defmodule DawarichWeb.A12f3bS02Test do
     assert row =~ "S02C1"
   end
 
-  defp routed_response(c, id, action, method, body) do
+  defp routed_response(c, id, action, method, body, headers \\ []) do
     parent = self()
 
     upstream =
@@ -591,7 +649,7 @@ defmodule DawarichWeb.A12f3bS02Test do
       end)
 
     try do
-      response(c, id, action, [], method)
+      response(c, id, action, headers, method)
     after
       Task.shutdown(upstream, :brutal_kill)
     end

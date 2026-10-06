@@ -26,7 +26,8 @@ Named regressions in `app-phoenix/test/dawarich_web/a12f3b_s02_test.exs`:
 S02F2, “warm thumbnail grants expire when the shared trip window excludes the
 photo”; S02C1, “mounted coexistence GET and HEAD revoke excluded trip thumbnails
 before Rails handoff”. Both require 404/404 without a provider thumbnail fetch.
-S02C2 verifies the fixed/deferred register entries.
+S02C1V checks that missing native family-viewer recognition cannot bypass the
+current scope on Rails handoff. S02C2 verifies the fixed/deferred register entries.
 
 Rails remains unchanged. DRB-023 records its deferred repair; no additional
 DRB or ED row was added. S02F1's poisoned-zone-key race is Phoenix-specific:

@@ -94,3 +94,12 @@ API helpers remain grouped and intact. S02C2 checks the ruling-17 entry in
 Rails remains unchanged; no additional ED or DRB was added. S02F1 is not an
 inherited Rails bug. Requests that already captured the old policy can finish;
 subsequent requests resolve the current policy and deny.
+
+S02C1V additionally checks a family share handed to Rails without a native
+viewer. The current-scope guard runs independently of native family-viewer
+recognition; Rails retains authentication/authorization of valid forwarding.
+A synthetic legacy-viewer routing probe is RED at excluded GET/HEAD 200/200,
+GREEN after removing the viewer-dependent bypass, fails M-S02C1V when that
+predicate is restored, and passes after restoration. This probe does not
+claim that Rails authenticates the synthetic cookie; the separate S02C1Rails
+probe supplies the real-backend public-share proof.

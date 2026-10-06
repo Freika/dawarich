@@ -4,7 +4,7 @@ defmodule DawarichWeb.SharedPhotoGuard do
   alias Dawarich.SharedLinks
   alias Dawarich.SharedLinks.FamilyAudience
   alias Dawarich.SharedApi.Closure
-  alias DawarichWeb.{RailsAuth, SharedLinkCookie}
+  alias DawarichWeb.SharedLinkCookie
 
   def admit(%{method: method} = conn) when method in ["GET", "HEAD"] do
     case conn.private[:dawarich_original_path_info] || conn.path_info do
@@ -26,7 +26,6 @@ defmodule DawarichWeb.SharedPhotoGuard do
     with true <- SharedLinks.api_uuid?(id),
          true <- SharedLinks.api_owner_available?(id),
          %{settings: %{"show_photos" => true}} = link <- SharedLinks.active(id, now),
-         true <- FamilyAudience.accessible?(link, RailsAuth.session_user(conn, now: now), now),
          true <- FamilyAudience.family_only?(link) or SharedLinkCookie.unlocked?(conn, link, now) do
       params = conn.assigns[:api_params] || fetch_query_params(conn).query_params
       source = params["source"]
