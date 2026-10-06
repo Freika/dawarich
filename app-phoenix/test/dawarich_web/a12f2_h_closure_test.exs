@@ -64,6 +64,368 @@ defmodule DawarichWeb.A12f2HClosureTest do
     %{id: id, email: "h-#{id}@example.invalid", context: context}
   end
 
+  @tag :h_review_1
+  test "H1 Cloud limiter preserves framed login OTP registration provider Apple and subscription bodies",
+       c do
+    previous = System.get_env("SELF_HOSTED")
+    System.put_env("SELF_HOSTED", "false")
+
+    try do
+      context =
+        Map.merge(c.context, %{
+          self_hosted: false,
+          registration_enabled: true,
+          callbacks: %{webhook: fn _ -> :ok end}
+        })
+
+      login = response("login", %{"email" => c.email, "password" => "safepassword12"}, context)
+      assert is_binary(login.private[:dawarich_raw_body])
+      assert login.status == 200
+      assert Jason.decode!(login.resp_body)["user_id"] == c.id
+
+      Repo.update!(Ecto.Changeset.change(Repo.get!(Account, c.id), otp_required_for_login: true))
+
+      challenge =
+        response("login", %{"email" => c.email, "password" => "safepassword12"}, context)
+
+      assert challenge.status == 202
+      token = Jason.decode!(challenge.resp_body)["challenge_token"]
+
+      otp =
+        response(
+          "otp_challenge",
+          %{"challenge_token" => token, "otp_code" => Totp.at(@otp, DateTime.to_unix(@now))},
+          context
+        )
+
+      assert otp.status == 200
+      assert Jason.decode!(otp.resp_body)["user_id"] == c.id
+
+      registration =
+        framed_mobile(
+          "register",
+          %{
+            "email" => "framed-" <> c.email,
+            "password" => "safepassword12",
+            "password_confirmation" => "safepassword12"
+          },
+          context
+        )
+
+      assert registration.status == 201
+      assert Jason.decode!(registration.resp_body)["status"] == "pending_payment"
+
+      {private, key} = signing_key()
+
+      provider_context =
+        Map.merge(context, %{
+          audiences: ["synthetic-client"],
+          client_id: "synthetic-client",
+          jwks_uri: "http://localhost/keys/" <> Ecto.UUID.generate(),
+          http: fn :get, _, _, _ -> {:ok, %{"keys" => [key]}} end
+        })
+
+      for provider <- ["google", "apple"] do
+        claims = %{
+          "iss" =>
+            if(provider == "apple",
+              do: "https://appleid.apple.com",
+              else: "https://accounts.google.com"
+            ),
+          "aud" => "synthetic-client",
+          "sub" => "framed-#{provider}-#{c.id}",
+          "email" => "framed-#{provider}-" <> c.email,
+          "email_verified" => true,
+          "exp" => DateTime.to_unix(@now) + 300,
+          "iat" => DateTime.to_unix(@now)
+        }
+
+        result =
+          framed_mobile(provider, %{"id_token" => signed(private, claims)}, provider_context)
+
+        assert result.status == 201
+        assert Jason.decode!(result.resp_body)["email"] == claims["email"]
+      end
+
+      Repo.update!(
+        Ecto.Changeset.change(Repo.get!(Account, c.id),
+          provider: "apple",
+          uid: "framed-web-#{c.id}",
+          status: 3
+        )
+      )
+
+      claims = %{
+        "iss" => "https://appleid.apple.com",
+        "aud" => "synthetic-client",
+        "sub" => "framed-web-#{c.id}",
+        "exp" => DateTime.to_unix(@now) + 300,
+        "iat" => DateTime.to_unix(@now),
+        "nonce" => Base.encode16(:crypto.hash(:sha256, "synthetic-nonce"), case: :lower)
+      }
+
+      web =
+        apple_callback(
+          %{"id_token" => signed(private, claims), "state" => "synthetic-state"},
+          apple_context(provider_context)
+        )
+
+      assert is_binary(web.private[:dawarich_raw_body])
+      assert get_resp_header(web, "location") == ["http://www.example.com/trial/resume"]
+
+      subscription_context = subscription_context(context)
+      claims = subscription_claims(c.id, "active", "pro")
+
+      body =
+        URI.encode_query(%{
+          "token" => hs_token(claims, subscription_context.env["JWT_SECRET_KEY"])
+        })
+
+      subscription =
+        framed_conn("/api/v1/subscriptions/callback", body)
+        |> put_req_header("x-webhook-secret", "synthetic-h-webhook")
+        |> DawarichWeb.Api.SubscriptionsController.call(context: subscription_context)
+
+      assert subscription.status == 200
+      assert Repo.get!(Account, c.id).status == 1
+    after
+      if previous,
+        do: System.put_env("SELF_HOSTED", previous),
+        else: System.delete_env("SELF_HOSTED")
+    end
+  end
+
+  @tag :h_review_2
+  test "H2 Empty and missing mobile passwords perform one bcrypt operation for existing and absent accounts",
+       c do
+    Code.ensure_loaded!(Bcrypt)
+
+    for password <- [%{"password" => ""}, %{}], email <- [c.email, "absent-" <> c.email] do
+      functions = [{Bcrypt, :verify_pass, 2}, {Bcrypt, :no_user_verify, 1}]
+      for function <- functions, do: :erlang.trace_pattern(function, true, [:call_count])
+
+      try do
+        result = Dawarich.Auth.Api.Refusals.login(Map.put(password, "email", email), c.context)
+        assert elem(result, 1) == 401
+
+        counts =
+          for function <- functions do
+            {:call_count, count} = :erlang.trace_info(function, :call_count)
+            count
+          end
+
+        assert Enum.sum(counts) == 1, "bcrypt work differs for empty/missing password"
+      after
+        for function <- functions, do: :erlang.trace_pattern(function, false, [:call_count])
+      end
+    end
+  end
+
+  defmodule DeletedBeforeLockRepo do
+    def one(query, opts), do: Dawarich.Repo.one(query, opts)
+    def get(schema, id, opts), do: Dawarich.Repo.get(schema, id, opts)
+    def update!(changes, opts), do: Dawarich.Repo.update!(changes, opts)
+    def query!(sql, args, opts), do: Dawarich.Repo.query!(sql, args, opts)
+
+    def transaction(fun) do
+      Dawarich.Repo.query!(
+        "UPDATE users SET deleted_at=$2 WHERE id=$1",
+        [Process.get(:h_deleted_subject), ~N[2026-10-06 12:00:00]],
+        log: false
+      )
+
+      Dawarich.Repo.transaction(fun)
+    end
+
+    def rollback(reason), do: Dawarich.Repo.rollback(reason)
+  end
+
+  @tag :h_review_3
+  test "H3 Subscription rejects soft deleted subjects before and during locked recheck without family effects",
+       c do
+    context = subscription_context(Map.put(c.context, :self_hosted, false))
+
+    Repo.update!(
+      Ecto.Changeset.change(Repo.get!(Account, c.id), status: 0, plan: 0, deleted_at: @now)
+    )
+
+    [[outbox_before]] = Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows
+
+    for phase <- [:initial, :locked] do
+      if phase == :locked do
+        Repo.update!(Ecto.Changeset.change(Repo.get!(Account, c.id), deleted_at: nil))
+        Process.put(:h_deleted_subject, c.id)
+      end
+
+      selected =
+        if phase == :locked, do: Map.put(context, :repo, DeletedBeforeLockRepo), else: context
+
+      assert subscription_event(subscription_claims(c.id, "active", "pro"), selected) ==
+               {:error, 404, %{"error" => "unknown_dawarich_user_id", "user_id" => c.id}}
+
+      assert subscription_event(subscription_claims(c.id, "active", "family"), context) ==
+               {:error, 404, %{"error" => "unknown_dawarich_user_id", "user_id" => c.id}}
+
+      user = Repo.get!(Account, c.id)
+      assert user.status == 0 and user.plan == 0 and user.deleted_at != nil
+
+      assert Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows == [
+               [outbox_before]
+             ]
+    end
+  end
+
+  @tag :h_review_4
+  test "H4 Subscription promotion and downgrade invalidate the real native and Rails rate plan caches",
+       c do
+    context = subscription_context(c.context)
+    Repo.update!(Ecto.Changeset.change(Repo.get!(Account, c.id), plan: 0))
+    key = Repo.get!(Account, c.id).api_key
+    on_exit(fn -> Dawarich.TtlCache.delete({DawarichWeb.RateLimit, key}) end)
+    assert DawarichWeb.RateLimit.plan(key) == "lite"
+
+    for {plan, expected} <- [{"pro", 1}, {"lite", 0}] do
+      Redis.cache_command(["SET", "rack_attack/plan/" <> key, "synthetic-cached-plan"])
+
+      assert {:message, 200, _} =
+               subscription_event(subscription_claims(c.id, "active", plan), context)
+
+      assert Repo.get!(Account, c.id).plan == expected
+      assert DawarichWeb.RateLimit.plan(key) == plan
+      assert Redis.cache_command(["GET", "rack_attack/plan/" <> key]) == {:ok, nil}
+    end
+  end
+
+  @tag :h_review_5
+  test "H5 Subscription advances updated_at only when persisted subscription attributes change",
+       c do
+    old = ~U[2026-10-01 12:00:00.000000Z]
+
+    Repo.update!(
+      Ecto.Changeset.change(Repo.get!(Account, c.id), updated_at: old, status: 1, plan: 0)
+    )
+
+    context = subscription_context(c.context)
+
+    assert {:message, 200, _} =
+             subscription_event(subscription_claims(c.id, "inactive", "pro"), context)
+
+    assert Repo.get!(Account, c.id).updated_at == @now
+    later = Map.put(context, :clock, fn -> DateTime.add(@now, 30) end)
+
+    assert {:message, 200, _} =
+             subscription_event(subscription_claims(c.id, "inactive", "pro"), later)
+
+    assert Repo.get!(Account, c.id).updated_at == @now
+  end
+
+  @tag :h_review_6
+  test "H6 Mobile registration limits persisted attributes and leaves browser signup variants intact",
+       c do
+    params = %{
+      "email" => "mobile-" <> c.email,
+      "password" => "safepassword12",
+      "password_confirmation" => "safepassword12",
+      "first_name" => "injected-first",
+      "last_name" => "injected-last",
+      "signup_variant" => "injected-variant"
+    }
+
+    for hosted <- [false, true] do
+      context =
+        Map.merge(c.context, %{
+          self_hosted: hosted,
+          registration_enabled: true,
+          callbacks: %{webhook: fn _ -> :ok end}
+        })
+
+      attrs = Map.put(params, "email", "#{hosted}-" <> params["email"])
+
+      assert {:success, 201, {:object, payload}} =
+               Dawarich.Auth.Mobile.Registration.create(attrs, context)
+
+      id = Map.new(payload)["user_id"]
+
+      assert Repo.query!(
+               "SELECT first_name,last_name,signup_variant FROM users WHERE id=$1",
+               [id],
+               log: false
+             ).rows == [[nil, nil, nil]]
+
+      assert Repo.get!(Account, id).status == if(hosted, do: 1, else: 3)
+
+      assert {:ok, browser} =
+               Dawarich.Auth.Registration.create(
+                 Map.put(attrs, "email", "browser-" <> attrs["email"]),
+                 context
+               )
+
+      assert browser.first_name == "injected-first" and browser.last_name == "injected-last"
+
+      assert Repo.query!("SELECT signup_variant FROM users WHERE id=$1", [browser.id], log: false).rows ==
+               [[if(hosted, do: "legacy_trial", else: "reverse_trial")]]
+    end
+  end
+
+  @tag :h_review_7
+  test "H7 Cloud subscription family upgrade persists its outbox command with a UTC schedule",
+       c do
+    context = subscription_context(Map.put(c.context, :self_hosted, false))
+
+    assert {:message, 200, _} =
+             subscription_event(subscription_claims(c.id, "active", "family"), context)
+
+    assert Repo.get!(Account, c.id).plan == 2
+
+    rows =
+      Repo.query!(
+        "SELECT command_type,payload,aggregate_id,scheduled_at FROM job_outbox WHERE aggregate_id=$1",
+        [c.id],
+        log: false
+      ).rows
+
+    assert rows == [
+             ["families.auto_create", %{"user_id" => c.id, "time_zone" => "Etc/UTC"}, c.id, @now]
+           ]
+  end
+
+  defp subscription_context(context),
+    do:
+      Map.put(
+        context,
+        :env,
+        Map.put(context.env, "SUBSCRIPTION_WEBHOOK_SECRET", "synthetic-h-webhook")
+      )
+
+  defp subscription_claims(id, status, plan),
+    do: %{
+      "user_id" => id,
+      "event_id" => Ecto.UUID.generate(),
+      "exp" => DateTime.to_unix(@now) + 300,
+      "status" => status,
+      "plan" => plan,
+      "active_until" => nil
+    }
+
+  defp subscription_event(claims, context),
+    do:
+      Dawarich.Subscriptions.Callback.call(
+        hs_token(claims, context.env["JWT_SECRET_KEY"]),
+        "synthetic-h-webhook",
+        context
+      )
+
+  defp framed_conn(path, body),
+    do:
+      Plug.Test.conn(:post, path, body)
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> put_req_header("content-length", Integer.to_string(byte_size(body)))
+
+  defp framed_mobile(action, params, context),
+    do:
+      framed_conn("/api/v1/auth/" <> action, URI.encode_query(params))
+      |> DawarichWeb.AuthMobile.Http.call(enabled: true, context: context)
+
   @tag :a12f2_h_05
   test "Mobile login and OTP retain source invalid credentials lockouts cache JWT consumption and stateless responses",
        c do
@@ -369,8 +731,7 @@ defmodule DawarichWeb.A12f2HClosureTest do
     assert response.resp_cookies["apple_oauth_nonce"].max_age == 0
 
     clean =
-      Plug.Test.conn(:post, "/users/auth/apple/callback", URI.encode_query(params))
-      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      framed_conn("/users/auth/apple/callback", URI.encode_query(params))
 
     response = apple(clean, context)
     assert get_resp_header(response, "location") == ["http://www.example.com/users/sign_in"]
@@ -401,8 +762,7 @@ defmodule DawarichWeb.A12f2HClosureTest do
 
   defp apple_callback(params, context) do
     conn =
-      Plug.Test.conn(:post, "/users/auth/apple/callback", URI.encode_query(params))
-      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      framed_conn("/users/auth/apple/callback", URI.encode_query(params))
 
     conn =
       Enum.reduce(
