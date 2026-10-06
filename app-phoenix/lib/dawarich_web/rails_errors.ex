@@ -10,9 +10,12 @@ defmodule DawarichWeb.RailsErrors do
     500 => "Internal Server Error"
   }
 
-  def respond(%{state: state} = conn, _status) when state in [:sent, :chunked], do: halt(conn)
+  def respond(conn, status, opts \\ [])
 
-  def respond(conn, status) do
+  def respond(%{state: state} = conn, _status, _opts) when state in [:sent, :chunked],
+    do: halt(conn)
+
+  def respond(conn, status, opts) do
     conn = assign(conn, :api_params, conn.assigns[:api_params] || %{})
     format = DawarichWeb.Api.RequestFormat.decide(conn)
 
@@ -28,9 +31,13 @@ defmodule DawarichWeb.RailsErrors do
 
     conn = if conn.method == "HEAD", do: Plug.Head.call(conn, []), else: conn
 
+    conn =
+      if opts[:transport],
+        do: delete_resp_header(conn, "cache-control"),
+        else: DawarichWeb.RailsHeaders.call(conn, [])
+
     conn
-    |> DawarichWeb.RailsHeaders.call([])
-    |> put_resp_content_type(type)
+    |> put_resp_content_type(type, if(type == "text/html", do: "UTF-8", else: "utf-8"))
     |> send_resp(status, body)
     |> halt()
   end

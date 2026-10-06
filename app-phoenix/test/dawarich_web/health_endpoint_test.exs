@@ -25,6 +25,30 @@ defmodule DawarichWeb.HealthEndpointTest do
     end)
   end
 
+  @tag :review_query_error
+  test "malformed native API queries retain the captured Rails HTML error envelope" do
+    cases = Jason.decode!(File.read!("test/fixtures/admin_pages/api_health_queries.json"))
+
+    for path <- ~w(/api/v1/health /api/v1/ready) do
+      kase = Enum.find(cases, &(&1["path"] == path and &1["query"] == "x=%GG"))
+
+      conn =
+        Phoenix.ConnTest.dispatch(
+          Phoenix.ConnTest.build_conn(),
+          DawarichWeb.Endpoint,
+          :get,
+          path <> "?x=%GG"
+        )
+
+      assert conn.status == kase["status"]
+      assert conn.resp_body == kase["raw_body"]
+      assert Plug.Conn.get_resp_header(conn, "content-type") == kase["headers"]["content-type"]
+
+      assert Enum.sort(Enum.map(conn.resp_headers, &elem(&1, 0)) -- ["content-length"]) ==
+               Enum.sort(Map.keys(kase["headers"]) -- ["content-length"])
+    end
+  end
+
   test "health query envelopes preserve Rails errors and supported replies" do
     compare_queries(~w(/api/v1/health))
   end
@@ -90,7 +114,7 @@ defmodule DawarichWeb.HealthEndpointTest do
              ) ==
                Enum.sort(Map.keys(kase["headers"]) -- ~w(content-length))
 
-      if kase["query"] in ~w(x=1&x=2 x=%25GG format=xml) do
+      if path != "/ready" or kase["query"] in ~w(x=1&x=2 x=%25GG format=xml) do
         refute_received {:query_upstream, _}
       else
         assert_receive {:query_upstream, line}

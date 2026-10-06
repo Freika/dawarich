@@ -1,7 +1,7 @@
 defmodule DawarichWeb.Api.Transport do
   @moduledoc false
   import Plug.Conn
-  alias DawarichWeb.Api.{Respond, SourceParams}
+  alias DawarichWeb.Api.SourceParams
 
   @json ~w(application/json text/x-json application/jsonrequest)
 
@@ -97,7 +97,5 @@ defmodule DawarichWeb.Api.Transport do
   defp error(conn, status),
     do:
       conn
-      |> assign(:api_tag, conn.assigns[:api_tag] || "api")
-      |> Respond.prepare()
-      |> Respond.json(status, {:object, [{"status", status}, {"error", "Bad Request"}]})
+      |> DawarichWeb.RailsErrors.respond(status, transport: true)
 end
