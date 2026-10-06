@@ -29,6 +29,12 @@ defmodule DawarichWeb.Api.Body do
   end
 
   def replay(conn, reason) do
+    if Dawarich.Standalone.enabled?(),
+      do: DawarichWeb.StandaloneError.respond(conn, "api_body"),
+      else: proxy_replay(conn, reason)
+  end
+
+  defp proxy_replay(conn, reason) do
     Logger.info("[#{conn.assigns.api_tag}] #{conn.request_path} handed to Rails: #{reason}")
 
     conn |> RailsProxy.call(upstream()) |> halt()

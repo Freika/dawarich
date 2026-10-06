@@ -11,6 +11,12 @@ defmodule DawarichWeb.CableProxy do
   def upgrade_options, do: [timeout: :infinity, compress: false]
 
   def upgrade(conn, upstream) do
+    if Dawarich.Standalone.enabled?(),
+      do: DawarichWeb.StandaloneError.respond(conn, "cable_proxy"),
+      else: proxy_upgrade(conn, upstream)
+  end
+
+  defp proxy_upgrade(conn, upstream) do
     case WebSockAdapter.UpgradeValidation.validate_upgrade(conn) do
       :ok ->
         RailsProxy.with_upstream(conn, upstream, &handshake/2)

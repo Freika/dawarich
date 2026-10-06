@@ -39,11 +39,17 @@ defmodule DawarichWeb.AuthGate do
   end
 
   defp claimed(conn) do
-    flows = Application.get_env(:dawarich, :phoenix_auth, [])
+    flows = flows()
 
-    if System.get_env("SELF_HOSTED") == "true" do
+    if Dawarich.Standalone.enabled?() or System.get_env("SELF_HOSTED") == "true" do
       Enum.find(@handlers, fn {flow, handler} -> flow in flows and handler.route?(conn) end)
     end
+  end
+
+  def flows do
+    if Dawarich.Standalone.enabled?(),
+      do: Enum.map(@handlers, &elem(&1, 0)),
+      else: Application.get_env(:dawarich, :phoenix_auth, [])
   end
 
   defp options("account_link"),
@@ -73,7 +79,7 @@ defmodule DawarichWeb.AuthGate do
     [enabled: true, context: context]
   end
 
-  defp otp_enabled?, do: "otp" in Application.get_env(:dawarich, :phoenix_auth, [])
+  defp otp_enabled?, do: "otp" in flows()
 
   defp put_registration(context, {:ok, value}), do: Map.put(context, :registration_enabled, value)
   defp put_registration(context, :error), do: context

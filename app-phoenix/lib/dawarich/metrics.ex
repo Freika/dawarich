@@ -32,6 +32,12 @@ defmodule Dawarich.Metrics do
       Dawarich.Metrics.Jobs.definitions() ++
       Dawarich.Metrics.Web.definitions() ++
       [
+        sum("dawarich_standalone_handbacks",
+          event_name: [:dawarich, :standalone, :handback],
+          measurement: :count,
+          tags: [:method, :reason, :status],
+          description: "Terminal native handbacks in standalone mode"
+        ),
         last_value("dawarich_runtime_memory_bytes",
           event_name: [:dawarich, :runtime],
           measurement: :memory,
