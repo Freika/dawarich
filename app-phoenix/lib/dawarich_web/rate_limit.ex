@@ -22,6 +22,7 @@ defmodule DawarichWeb.RateLimit do
 
   def call(conn, _opts) do
     self_hosted = LayoutAssigns.self_hosted?()
+
     now =
       if conn.assigns[:api_now],
         do: DateTime.to_unix(conn.assigns.api_now),

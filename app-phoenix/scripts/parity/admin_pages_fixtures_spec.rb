@@ -426,7 +426,7 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
     status = wire_headers = raw = nil
     (limit_count + 1).times do
       env = Rack::MockRequest.env_for("http://staging.dawarich.app#{target}")
-                            .merge(Rails.application.env_config)
+                             .merge(Rails.application.env_config)
       headers.each { |name, value| env["HTTP_#{name.upcase.tr('-', '_')}"] = value }
       status, wire_headers, wire_body = Rails.application.call(env)
       raw = +''
@@ -442,8 +442,8 @@ RSpec.describe 'Phoenix fixtures: admin instance and background pages', type: :r
       'summary' => summary.stringify_keys, 'self_hosted' => DawarichSettings.self_hosted?,
       'limit_count' => limit_count, 'status' => status, 'body' => body, 'raw_body' => raw,
       'headers' => wire_headers.to_a.group_by { |name, _| name.downcase }
-                              .transform_values { |pairs| pairs.map(&:last) }
-                              .except('x-request-id', 'x-runtime', 'etag', 'set-cookie') }
+                               .transform_values { |pairs| pairs.map(&:last) }
+                               .except('x-request-id', 'x-runtime', 'etag', 'set-cookie') }
   end
 
   it 'writes the health and readiness HTTP corpus' do
