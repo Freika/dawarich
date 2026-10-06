@@ -17,8 +17,11 @@ defmodule Dawarich.Achievements.CheckWorker do
   def perform(%Oban.Job{
         args: %{"user_id" => id, "notify" => notify, "oldest_timestamp" => oldest}
       }) do
-    case Dawarich.Achievements.Checker.run(Dawarich.Jobs.repo(), id, notify, oldest) do
-      outcome when outcome in [:ok, :missing] -> :ok
+    repo = Dawarich.Jobs.repo()
+
+    case repo.transaction(fn -> Dawarich.Achievements.Checker.run(repo, id, notify, oldest) end) do
+      {:ok, outcome} when outcome in [:ok, :missing] -> :ok
+      {:error, reason} -> {:error, reason}
     end
   end
 end

@@ -162,12 +162,5 @@ defmodule DawarichWeb.AchievementActions.Request do
     end
   end
 
-  defp handoff(conn, opts) do
-    upstream =
-      Keyword.get_lazy(opts, :upstream, fn ->
-        Application.fetch_env!(:dawarich, :rails_upstream)
-      end)
-
-    conn |> RailsProxy.call(upstream) |> halt()
-  end
+  defp handoff(conn, opts), do: DawarichWeb.AchievementActions.Gate.refuse(conn, opts)
 end

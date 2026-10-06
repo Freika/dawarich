@@ -25,6 +25,7 @@ defmodule Dawarich.Achievements.BulkCheck do
       Enum.reduce_while(Enum.with_index(batches), :ok, fn {batch, index}, _ ->
         work = fn ->
           owner = Ownership.lock(repo, "command:achievements.check")
+          owner = if Dawarich.Standalone.enabled?(), do: :oban, else: owner
 
           unless Processed.done?(repo, args["event_id"]) do
             Enum.each(batch, fn id ->

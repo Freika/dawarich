@@ -9,6 +9,11 @@ defmodule DawarichWeb.OnboardingRoutes do
           match method, "/settings/onboarding", DawarichWeb.OnboardingActions, :update,
             metadata: %{rails_gate: {DawarichWeb.SettingsActions, :enabled?}}
         end
+
+        for method <- [:post, :delete] do
+          match method, "/settings/onboarding/demo_data", DawarichWeb.DemoDataActions, :demo_data,
+            metadata: %{rails_gate: {DawarichWeb.SettingsActions, :enabled?}}
+        end
       end
     end
   end

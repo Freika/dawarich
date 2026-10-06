@@ -1,7 +1,7 @@
 defmodule Dawarich.Imports.Lease do
   @moduledoc false
   alias Dawarich.Imports.LeaseLost
-  alias Dawarich.Jobs.Ownership
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
   alias Dawarich.State
   @lane "command:imports.process_gpx"
   @worker "Dawarich.Imports.ProcessGpxWorker"

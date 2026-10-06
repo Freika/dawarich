@@ -21,7 +21,15 @@ defmodule Dawarich.Imports.ManualExtraction do
               do: "enhanced_import.extract_gpx",
               else: "enhanced_import.destroy_gpx"
 
-          native = record.source == 4 and Ownership.lock(repo, "command:" <> command) == :oban
+          standalone = Dawarich.Standalone.enabled?()
+
+          if standalone and action == :extract and record.source != 4,
+            do: repo.rollback(:unsupported)
+
+          native =
+            record.source == 4 and
+              (standalone or Ownership.lock(repo, "command:" <> command) == :oban)
+
           data = record.additional_data_extraction || %{}
           unless is_map(data), do: repo.rollback(:legacy_metadata)
           if record.status == 4, do: repo.rollback(:not_found)
@@ -70,33 +78,38 @@ defmodule Dawarich.Imports.ManualExtraction do
               do: "imports.extraction_requested",
               else: "imports.extraction_destroy_requested"
 
-          if native do
-            if action == :remove and
-                 repo.query!(
-                   "SELECT EXISTS(SELECT 1 FROM visits WHERE user_id=$1 AND import_id=$2) OR EXISTS(SELECT 1 FROM tracks WHERE user_id=$1 AND import_id=$2)",
-                   [user_id, record.id],
-                   log: false
-                 ).rows == [[true]],
-               do: repo.rollback(:native_children)
+          children =
+            action == :remove and native and
+              repo.query!(
+                "SELECT EXISTS(SELECT 1 FROM visits WHERE user_id=$1 AND import_id=$2) OR EXISTS(SELECT 1 FROM tracks WHERE user_id=$1 AND import_id=$2)",
+                [user_id, record.id],
+                log: false
+              ).rows == [[true]]
 
-            args =
-              if action == :extract,
-                do: %{"import_id" => record.id, "lock_attempt" => 1},
-                else: %{"import_id" => record.id}
-
-            repo.query!(
-              "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES($1,$2,1,$3,$4,$5,now())",
-              [
-                Ecto.UUID.dump!(event),
-                command,
-                args,
-                %{"producer" => "Phoenix manual extraction"},
-                user_id
-              ],
-              log: false
-            )
+          if action == :remove and (standalone or children) do
+            args = Map.take(payload, ~w(import_id user_id source source_blob_id event_id))
+            repo.insert!(Dawarich.Imports.ExtractionRemovalWorker.new(args), prefix: "oban")
           else
-            Dawarich.RailsCommands.insert!(repo, kind, payload)
+            if native do
+              args =
+                if action == :extract,
+                  do: %{"import_id" => record.id, "lock_attempt" => 1},
+                  else: %{"import_id" => record.id}
+
+              repo.query!(
+                "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES($1,$2,1,$3,$4,$5,now())",
+                [
+                  Ecto.UUID.dump!(event),
+                  command,
+                  args,
+                  %{"producer" => "Phoenix manual extraction"},
+                  user_id
+                ],
+                log: false
+              )
+            else
+              Dawarich.RailsCommands.insert!(repo, kind, payload)
+            end
           end
 
           :queued

@@ -88,6 +88,10 @@ defmodule DawarichWeb.RouteVideoActionsTest do
       }
     ])
 
+    ScratchRepo.query!("SELECT setval(pg_get_serial_sequence('route_videos', 'id'), 7, true)", [],
+      log: false
+    )
+
     params = %{
       "route_video" => %{
         "name" => "Saved route",
@@ -95,6 +99,8 @@ defmodule DawarichWeb.RouteVideoActionsTest do
         "settings" => recipe
       }
     }
+
+    ScratchRepo.query!("SELECT setval(pg_get_serial_sequence('route_videos', 'id'), 7, true)")
 
     assert {:ok, %{id: id, evicted: [886_102]}} =
              RouteVideos.create(ScratchRepo, user, params, @now, "en", %{max_per_user: 1})
@@ -129,12 +135,12 @@ defmodule DawarichWeb.RouteVideoActionsTest do
         prefix <> "BLOB_SIGNED_ID/"
       end)
 
+    ids = %{"886102" => "886101", to_string(id) => "886102"}
+
     normalized =
-      normalized
-      |> String.replace("route_video_886102", "route_video_886101")
-      |> String.replace("/route_videos/886102", "/route_videos/886101")
-      |> String.replace("route_video_#{id}", "route_video_886102")
-      |> String.replace("/route_videos/#{id}", "/route_videos/886102")
+      Regex.replace(~r{(route_video_|/route_videos/)(\d+)\b}, normalized, fn _, prefix, value ->
+        prefix <> Map.fetch!(ids, value)
+      end)
 
     assert ParityHTML.normalize(normalized) ==
              ParityHTML.normalize(File.read!("test/fixtures/a8vv/videos/cap_one.html"))

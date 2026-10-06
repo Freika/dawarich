@@ -1,9 +1,8 @@
 defmodule DawarichWeb.AchievementActions.Unlocks do
   @moduledoc false
   @behaviour Plug
-  import Plug.Conn
   alias Dawarich.Achievements.{Deck, UnlockCard}
-  alias DawarichWeb.{AchievementUnlockReveal, Locale, RailsProxy}
+  alias DawarichWeb.{AchievementUnlockReveal, Locale}
   alias DawarichWeb.AchievementActions.{Gate, Request, Response}
 
   def init(opts), do: opts
@@ -35,6 +34,13 @@ defmodule DawarichWeb.AchievementActions.Unlocks do
   end
 
   defp execute(conn, actor, params, context) do
+    case DawarichWeb.AchievementActions.Gate.fresh(conn, actor, context) do
+      {:ok, conn, actor} -> execute_fresh(conn, actor, params, context)
+      :error -> conn |> DawarichWeb.StandaloneError.respond("achievement_actor", 401)
+    end
+  end
+
+  defp execute_fresh(conn, actor, params, context) do
     conn =
       if conn.assigns[:achievement_action],
         do: conn,
@@ -118,12 +124,5 @@ defmodule DawarichWeb.AchievementActions.Unlocks do
 
   def positive_id(_), do: nil
 
-  defp handoff(conn, opts) do
-    upstream =
-      Keyword.get_lazy(opts, :upstream, fn ->
-        Application.fetch_env!(:dawarich, :rails_upstream)
-      end)
-
-    conn |> RailsProxy.call(upstream) |> halt()
-  end
+  defp handoff(conn, opts), do: DawarichWeb.AchievementActions.Gate.refuse(conn, opts)
 end

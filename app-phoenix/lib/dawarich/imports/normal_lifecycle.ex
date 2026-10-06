@@ -79,47 +79,49 @@ defmodule Dawarich.Imports.NormalLifecycle do
   end
 
   defp run_import(lease, state, context, path, filename) do
-    try do
-      context = Dawarich.Imports.NormalResume.driver(lease, state, context)
-      Dawarich.Imports.NormalResume.start!(lease, state, context)
-      publish(lease, context)
-      source = NormalPreparation.source(lease, path, filename, context)
-      Dawarich.Imports.NormalResume.source!(lease, source, context)
+    result =
+      try do
+        context = Dawarich.Imports.NormalResume.driver(lease, state, context)
+        Dawarich.Imports.NormalResume.start!(lease, state, context)
+        publish(lease, context)
+        source = NormalPreparation.source(lease, path, filename, context)
+        Dawarich.Imports.NormalResume.source!(lease, source, context)
 
-      case Adapters.fetch(source) do
-        {:ok, adapter} ->
-          driver =
-            context
-            |> Map.put(:altitude_decimal?, altitude_decimal?(lease, context))
-            |> Map.put(:fail_import, fn message ->
-              ImportState.fail!(lease, %ArgumentError{message: message}, clock(context))
-            end)
+        case Adapters.fetch(source) do
+          {:ok, adapter} ->
+            driver =
+              context
+              |> Map.put(:altitude_decimal?, altitude_decimal?(lease, context))
+              |> Map.put(:fail_import, fn message ->
+                ImportState.fail!(lease, %ArgumentError{message: message}, clock(context))
+              end)
 
-          import = ImportState.import!(lease)
+            import = ImportState.import!(lease)
 
-          if source == 9 and String.ends_with?(String.downcase(filename), ".kmz"),
-            do: Kmz.with_kml(path, driver, fn leaf -> adapter.call(leaf, import, driver) end),
-            else: adapter.call(path, import, driver)
+            if source == 9 and String.ends_with?(String.downcase(filename), ".kmz"),
+              do: Kmz.with_kml(path, driver, fn leaf -> adapter.call(leaf, import, driver) end),
+              else: adapter.call(path, import, driver)
 
-          Postprocessing.call(lease, import, context)
-          :ok
+            Postprocessing.call(lease, import, context)
+            :ok
 
-        :error ->
-          {:legacy, :unsupported_normal_source}
+          :error ->
+            {:legacy, :unsupported_normal_source}
+        end
+      rescue
+        error in LeaseLost -> reraise error, __STACKTRACE__
+        error -> failure(lease, state.import, context, error, __STACKTRACE__)
       end
-    rescue
-      error in LeaseLost -> reraise error, __STACKTRACE__
-      error -> failure(lease, state.import, context, error, __STACKTRACE__)
-    after
-      ImportState.complete!(lease, clock(context))
-    end
+
+    ImportState.complete!(lease, clock(context))
+    result
   end
 
   defp finish(lease, context) do
     ImportState.effect!(lease, fn ->
       import = ImportState.import!(lease)
       if import.status == 2, do: Postprocessing.enqueue_extraction!(lease.repo, import, context)
-      if import.status == 2, do: publish(lease, context)
+      if import.status == 2, do: publish(lease, context, false)
       Map.get(context, :on_terminal, fn -> :ok end).()
     end)
 
@@ -146,18 +148,18 @@ defmodule Dawarich.Imports.NormalLifecycle do
     :ok
   end
 
-  defp publish(lease, context) do
+  defp publish(lease, context, native? \\ true) do
     ImportState.effect!(lease, fn ->
-      unless Dawarich.Standalone.enabled?(),
-        do:
-          RailsCommands.insert!(lease.repo, "imports.progress", %{
-            "import_id" => lease.import.id,
-            "user_id" => lease.import.user_id,
-            "locale" => context.locale
-          })
+      unless Dawarich.Standalone.enabled?() do
+        RailsCommands.insert!(lease.repo, "imports.progress", %{
+          "import_id" => lease.import.id,
+          "user_id" => lease.import.user_id,
+          "locale" => context.locale
+        })
+      end
     end)
 
-    Dawarich.Imports.Events.broadcast(lease.import.user_id)
+    if native?, do: Dawarich.Imports.Events.broadcast(lease.import.user_id)
   end
 
   defp altitude_decimal?(lease, context) do

@@ -61,7 +61,7 @@ defmodule Dawarich.Imports.Teslamate.Effects do
             {"points.anomaly_filter", %{"start_at" => min, "end_at" => max}},
             {"tracks.realtime", %{}}
           ] do
-        Dawarich.RailsCommands.insert!(ctx.repo, kind, Map.put(payload, "user_id", ctx.id))
+        publish(ctx.repo, kind, Map.put(payload, "user_id", ctx.id))
       end
     end
 
@@ -77,6 +77,11 @@ defmodule Dawarich.Imports.Teslamate.Effects do
       )
     end)
   end
+
+  defp publish(repo, "points.anomaly_filter", payload),
+    do: Dawarich.Points.AnomalyArrivalWorker.enqueue(repo, payload)
+
+  defp publish(repo, kind, payload), do: Dawarich.RailsCommands.insert!(repo, kind, payload)
 
   def failure(ctx, message) do
     locale = Dawarich.Mail.ExploreFeatures.locale(ctx.settings, nil)

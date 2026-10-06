@@ -5,7 +5,8 @@ defmodule Dawarich.Imports.ImportBlobPurgeWorker do
     max_attempts: 26,
     unique: [keys: [:event_id], states: :incomplete, period: :infinity]
 
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
   alias Dawarich.Imports.StorageContext
   alias Dawarich.Storage
   @command "imports.prepared_download_purge"
