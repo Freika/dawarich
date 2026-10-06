@@ -78,7 +78,9 @@ defmodule DawarichWeb.MapDataRoutesTest do
              {:get, "/api/v1/photos/:id/thumbnail", [:api_locations_photos],
               :api_locations_photos, nil},
              {:get, "/api/v1/photos/:id/thumbnail.jpg", [:api_locations_photos],
-              :api_locations_photos, nil}
+              :api_locations_photos, nil},
+             {:get, "/api/v1/health", [:health], nil, nil},
+             {:get, "/api/v1/ready", [:health], nil, nil}
            ]
   end
 

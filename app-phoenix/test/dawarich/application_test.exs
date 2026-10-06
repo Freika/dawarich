@@ -32,6 +32,50 @@ defmodule Dawarich.ApplicationTest do
   defp ids(plan),
     do: Enum.map(Dawarich.Application.children(plan), &Supervisor.child_spec(&1, []).id)
 
+  test "opt-in Cloud web selects the native listener without a Rails child or upstream" do
+    env = %{
+      "RAILS_ENV" => "production",
+      "SELF_HOSTED" => "false",
+      "DAWARICH_PHOENIX_LIFECYCLE" => "true",
+      "DAWARICH_PROXY" => "off"
+    }
+
+    for {argv, address} <- [
+          {~w(puma -C config/puma.rb -p 5000), {{0, 0, 0, 0}, 5000}},
+          {["puma", "--config=config/puma.rb", "--bind", "tcp://[::1]:5000"],
+           {{0, 0, 0, 0, 0, 0, 0, 1}, 5000}}
+        ] do
+      input = Map.put(env, "DAWARICH_NATIVE_ARGS", Enum.join(argv, "\x1F") <> "\x1F")
+      assert {:native, ^address} = plan = Dawarich.Application.plan(@argv, input)
+      assert Dawarich.Front.upstream(plan) == nil
+      refute RailsServer in ids(plan)
+      assert Dawarich.Front.Drainer in ids(plan)
+
+      for disabled <- [
+            Map.delete(input, "DAWARICH_PHOENIX_LIFECYCLE"),
+            Map.put(input, "DAWARICH_PHOENIX_LIFECYCLE", "false"),
+            Map.delete(input, "SELF_HOSTED"),
+            Map.put(input, "SELF_HOSTED", "true")
+          ] do
+        assert Dawarich.Application.plan(@argv, disabled) == @direct
+      end
+    end
+
+    for argv <- [
+          ~w(puma -C custom.rb -p 5000),
+          ["puma", "-C", "config/puma.rb", "--tag", "two words"],
+          ~w(puma -p 5000 -p 5001),
+          ~w(rails runner),
+          ~w(sidekiq),
+          []
+        ] do
+      input = Map.put(env, "DAWARICH_NATIVE_ARGS", Enum.join(argv, "\x1F") <> "\x1F")
+      assert_raise ArgumentError, fn -> Dawarich.Application.plan(nil, input) end
+    end
+
+    assert_raise ArgumentError, fn -> Dawarich.Application.plan(nil, env) end
+  end
+
   test "adding native front helpers preserves existing proxy and idle role selection" do
     {:ok, socket} = :gen_tcp.listen(0, ip: {127, 0, 0, 1})
     {:ok, port} = :inet.port(socket)

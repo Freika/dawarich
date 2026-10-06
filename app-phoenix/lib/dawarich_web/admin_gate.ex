@@ -20,7 +20,10 @@ defmodule DawarichWeb.AdminGate do
     _ -> false
   end
 
-  def background?(conn, _params), do: eligible?(conn, :background)
+  def background?(conn, _params),
+    do: eligible?(conn, :background) and DawarichWeb.OperatorRedirect.authorized?(conn)
+
+  def background_route?(conn, _params), do: eligible?(conn, :background)
 
   def supported?(%{settings: settings}) when is_map(settings) do
     case TripSettings.read(settings) do
@@ -42,7 +45,9 @@ defmodule DawarichWeb.AdminGate do
     conn = RailsAuth.call(conn, [])
     user = conn.assigns.current_user
 
-    LayoutAssigns.self_hosted?() and not is_nil(user) and
+    (LayoutAssigns.self_hosted?() or
+       (mode == :background and DawarichWeb.OperatorRedirect.operator?(user))) and
+      not is_nil(user) and
       (mode == :background or user.admin == true) and supported?(user) and
       Strangler.page_request?(conn) and Admission.headers(conn.req_headers) == :ok and
       conn.method in ["GET", "HEAD"] and

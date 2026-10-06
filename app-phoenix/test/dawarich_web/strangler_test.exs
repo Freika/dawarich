@@ -22,6 +22,7 @@ defmodule DawarichWeb.StranglerTest do
       Application.put_env(:dawarich, :rails_routes, [])
       System.put_env("SELF_HOSTED", "true")
       System.delete_env("DAWARICH_RAILS_SLICES")
+      Dawarich.Jobs.Health.reset()
       Ownership.put!(Repo, "command:a12h_handoff", :oban, pinned: true)
       Ownership.ensure_rows!(Repo, ["command:a12h_unowned"])
 
@@ -93,6 +94,84 @@ defmodule DawarichWeb.StranglerTest do
     hand_back!("/api/v1/places?source=a12h", ~s({"name":"a12h synthetic place"}))
   end
 
+  @tag a12h_route: true
+  test "health and ready keys replay original probes while unrelated routes stay native" do
+    parent = self()
+    id = {__MODULE__, make_ref()}
+
+    :telemetry.attach(
+      id,
+      [:dawarich, :repo, :query],
+      fn _, _, _, _ -> send(parent, :probe_sql) end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(id) end)
+    body = "synthetic=probe&unchanged=1"
+
+    for {key, paths} <- [
+          {"health", ~w(/api/v1/health)},
+          {"ready", ~w(/api/v1/ready /ready)},
+          {"api", ~w(/api/v1/health /api/v1/ready)}
+        ],
+        path <- paths,
+        method <- [:get, :head] do
+      Application.put_env(:dawarich, :rails_routes, [key])
+      target = path <> "?source=a12f&unchanged=1"
+      conn = probe(method, target, body)
+      assert conn.status == 218
+      assert conn.resp_body == if(method == :head, do: "", else: "Rails")
+      assert_receive {:a12h_upstream, line, received_body}
+      assert line == "#{String.upcase(to_string(method))} #{target} HTTP/1.1"
+      assert received_body == body
+      assert_receive {:a12f_headers, ["original"], ["application/x-www-form-urlencoded"]}
+      assert conn.halted
+      refute conn.private[:dawarich_method]
+    end
+
+    for {key, path} <- [
+          {"ready", "/api/v1/health"},
+          {"api", "/ready"},
+          {"health", "/api/v1/ready"},
+          {"trips", "/api/v1/health"}
+        ],
+        method <- [:get, :head] do
+      Application.put_env(:dawarich, :rails_routes, [key])
+      conn = probe(method, path, "")
+      assert conn.status == 200
+      assert conn.private.dawarich_method == String.upcase(to_string(method))
+
+      assert conn.resp_body ==
+               if(method == :head,
+                 do: "",
+                 else:
+                   if(path == "/api/v1/health",
+                     do: ~s({"status":"ok","phoenix":{"status":"unknown","alarm":false}}),
+                     else: ~s({"status":"ok"})
+                   )
+               )
+
+      refute_received {:a12h_upstream, _, _}
+
+      if path == "/api/v1/health",
+        do: refute_received(:probe_sql),
+        else: assert_received(:probe_sql)
+    end
+  end
+
+  defp probe(method, path, body) do
+    Phoenix.ConnTest.build_conn()
+    |> Plug.Conn.put_req_header("x-a12f-probe", "original")
+    |> Plug.Conn.put_req_header("content-type", "application/x-www-form-urlencoded")
+    |> Plug.Conn.put_req_header("content-length", Integer.to_string(byte_size(body)))
+    |> Plug.Conn.assign(:readiness_opts,
+      release: fn _ -> :ready end,
+      database: fn -> Repo.query("SELECT 1", [], log: false) end,
+      redis: fn -> {:ok, "PONG"} end
+    )
+    |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, method, path, body)
+  end
+
   defp hand_back!(path, body) do
     before = snapshot()
     auth = Application.get_env(:dawarich, :phoenix_auth)
@@ -142,6 +221,15 @@ defmodule DawarichWeb.StranglerTest do
     length = String.to_integer(size)
     body = binary_part(RawHTTP.read_at_least(socket, rest, length), 0, length)
     send(parent, {:a12h_upstream, RawHTTP.request_line(head), body})
+
+    if RawHTTP.header(head, "x-a12f-probe") != [] do
+      send(
+        parent,
+        {:a12f_headers, RawHTTP.header(head, "x-a12f-probe"),
+         RawHTTP.header(head, "content-type")}
+      )
+    end
+
     RawHTTP.reply(socket, "HTTP/1.1 218 Rails\r\ncontent-length: 5\r\n\r\nRails")
     :gen_tcp.close(socket)
     upstream_loop(server, parent)

@@ -35,6 +35,14 @@ defmodule Dawarich.RawData.Clearer do
     do: Enum.reduce(archive_ids, 0, &(&2 + clear_archive(repo, &1, opts)))
 
   defp clear_archive(repo, archive_id, opts) do
+    Dawarich.Metrics.Archive.track("clear", fn -> clear_points(repo, archive_id, opts) end, & &1)
+  rescue
+    error in [Postgrex.Error, DBConnection.ConnectionError] ->
+      Logger.error("✗ Failed to clear archive #{archive_id}: #{Exception.message(error)}")
+      0
+  end
+
+  defp clear_points(repo, archive_id, opts) do
     repo
     |> ids(@points, [archive_id])
     |> Enum.chunk_every(@batch)
@@ -42,10 +50,6 @@ defmodule Dawarich.RawData.Clearer do
       Keyword.get(opts, :before_clear, fn -> :ok end).()
       total + repo.query!(@clear, [batch, archive_id], log: false).num_rows
     end)
-  rescue
-    error in [Postgrex.Error, DBConnection.ConnectionError] ->
-      Logger.error("✗ Failed to clear archive #{archive_id}: #{Exception.message(error)}")
-      0
   end
 
   defp ids(repo, sql, params), do: repo.query!(sql, params, log: false).rows |> List.flatten()
