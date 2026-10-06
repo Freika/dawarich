@@ -114,3 +114,15 @@ path, host, symlink, compression and conditional-response checks still apply.
 `StandaloneShareAssetsTest` unlocks a public timeline through the real endpoint,
 then checks the complete repository importmap and extensionless module paths.
 Browser verification also checks that the unlocked page renders a route canvas.
+
+## Trip browser form admission
+
+Native trip create and update accept Trix's unscoped scalar `href` field while
+persisting only the permitted `trip` attributes. A8 also follows Rails' normal
+browser `Accept` rule: a non-XHR mixed header containing `*/*` selects HTML,
+including Chrome's weighted document header. Explicit Turbo format selection
+and the existing CSRF, session, parameter-shape and method checks remain active.
+Create redirects to the new trip with 302 and its notice; update uses 303.
+
+`StandaloneTripFormTest` exercises the new/edit endpoint flow, name/date/rich-text
+persistence, notices, redirects and rejected envelopes with the browser header.
