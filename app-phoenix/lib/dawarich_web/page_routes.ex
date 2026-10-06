@@ -41,6 +41,16 @@ defmodule DawarichWeb.PageRoutes do
       rails_pages_routes()
 
       scope "/" do
+        for path <- ["/map/v1", "/map/v1.:format"] do
+          get path, DawarichWeb.MapRedirects, :legacy, metadata: %{rails_key: "map"}
+        end
+
+        for path <- ["/maps/v2", "/maps/v2.:format"] do
+          get path, DawarichWeb.MapRedirects, :plural, metadata: %{rails_key: "map"}
+        end
+      end
+
+      scope "/" do
         pipe_through [:browser, :rails_user]
 
         live_session :rails_map,

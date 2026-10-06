@@ -58,6 +58,28 @@ defmodule DawarichWeb.A12f3aMClosureTest do
     assert effects() == {0, 0}
   end
 
+  @tag a12f3a_m02: true
+  test "M02: legacy map redirects matches current Rails contract without a native-owner Rails effect" do
+    user = FrameSeeds.user!(89002)
+
+    for mode <- ["true", "false", nil] do
+      self_hosted(mode)
+
+      for row <- load("m02")["cases"], signed <- [true, false] do
+        conn = if signed, do: RailsUser.signed_in(user.id), else: build_conn()
+
+        conn =
+          if row["method"] == "head", do: head(conn, row["path"]), else: get(conn, row["path"])
+
+        assert conn.status == row["status"]
+        assert get_resp_header(conn, "location") == [row["location"]]
+        assert conn.resp_body == row["body"]
+      end
+    end
+
+    assert effects() == {0, 0}
+  end
+
   defp effects do
     {Repo.query!("SELECT count(*) FROM public.job_outbox", []).rows |> hd() |> hd(),
      Dawarich.ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs", []).rows |> hd() |> hd()}

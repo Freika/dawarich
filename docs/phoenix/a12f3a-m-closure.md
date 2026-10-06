@@ -14,4 +14,10 @@ O03 source captures were not at this base. Package M extends the existing source
 
 M owns presentation and frame reads. No native jobs or reverse effects are produced. Map/track refresh uses the existing A12a channel contracts. W owns point/segment/area effects; V owns visit effects/cache invalidation; R owns video hooks. Global transport and final route wiring remain A12f-2/O-owned.
 
-M02–M07 closure and final full-suite gates are pending in this first commit. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.
+## M02 — legacy redirects
+
+`/map/v1` and `/maps/v2` return 301 natively, including guests, signed-in users, Cloud and HEAD. The former canonicalizes parsed query parameters; the latter drops them. Captured `.json` suffixes redirect to the same destination. Bodies are empty, matching Rails.
+
+The M02 aggregate initially reached the absent Rails upstream. Native implementation passed all 96 request combinations. Dropping the legacy query failed the exact Location assertion; restoring passed. Minimal wiring is in `page_routes.ex` with `rails_key: "map"`; O should retain these declarations in its serialized O06 pass.
+
+M03–M07 closure and final full-suite gates are pending. G44 browser proof and integrated producer-to-refresh proof remain controller release checks.
