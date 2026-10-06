@@ -63,6 +63,40 @@ defmodule Dawarich.Metrics.JobsTest do
     assert reset =~ "dawarich_outbox_oldest_due_seconds 0"
   end
 
+  test "queue latency measures eligible waiting jobs independently of running runtime" do
+    rows("""
+    INSERT INTO oban.oban_jobs (state, queue, worker, args, scheduled_at, attempted_at)
+    VALUES ('executing', 'maintenance', 'MetricsWorker', '{}',
+            now() - interval '600 seconds', now() - interval '600 seconds')
+    """)
+
+    Dawarich.Metrics.Jobs.sample(ScratchRepo, ScratchRepo)
+    body = Dawarich.Metrics.scrape()
+    assert gauge(body, "queue_latency") == 0
+    assert_in_delta gauge(body, "running_runtime"), 600, 10
+    assert body =~ ~s(dawarich_jobs_depth{queue="maintenance",state="executing"} 1)
+
+    rows("""
+    INSERT INTO oban.oban_jobs (state, queue, worker, args, scheduled_at)
+    VALUES ('available', 'maintenance', 'MetricsWorker', '{}', now() - interval '120 seconds'),
+           ('retryable', 'maintenance', 'MetricsWorker', '{}', now() - interval '300 seconds'),
+           ('retryable', 'maintenance', 'MetricsWorker', '{}', now() + interval '60 seconds'),
+           ('scheduled', 'maintenance', 'MetricsWorker', '{}', now() - interval '900 seconds')
+    """)
+
+    Dawarich.Metrics.Jobs.sample(ScratchRepo, ScratchRepo)
+    body = Dawarich.Metrics.scrape()
+    assert_in_delta gauge(body, "queue_latency"), 300, 10
+    assert_in_delta gauge(body, "running_runtime"), 600, 10
+
+    rows(
+      "UPDATE oban.oban_jobs SET state='completed' WHERE scheduled_at < now() AND state != 'executing'"
+    )
+
+    Dawarich.Metrics.Jobs.sample(ScratchRepo, ScratchRepo)
+    assert gauge(Dawarich.Metrics.scrape(), "queue_latency") == 0
+  end
+
   test "Cloud drain canonicalizes reordered archive labels and escaped label values" do
     cases = [
       {"dawarich_archive_count_mismatches_total", ~s(month="1",year="2020"),
@@ -114,4 +148,11 @@ defmodule Dawarich.Metrics.JobsTest do
     assert Dawarich.Metrics.Drain.scrape(local, config, fn _ -> raise "offline" end) == local
   end
 
+  defp gauge(body, name) do
+    [_, value] =
+      Regex.run(~r/dawarich_jobs_#{name}_seconds\{queue="maintenance"\} ([\d.e+-]+)/, body)
+
+    {number, ""} = Float.parse(value)
+    number
+  end
 end

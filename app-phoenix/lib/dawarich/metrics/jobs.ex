@@ -26,7 +26,8 @@ defmodule Dawarich.Metrics.Jobs do
   ]
   @queues "SELECT queue, state, count(*)::integer FROM oban.oban_jobs GROUP BY queue, state"
   @latency """
-  SELECT queue, greatest(0, extract(epoch FROM now() - min(scheduled_at)))::float,
+  SELECT queue, greatest(0, extract(epoch FROM now() - min(scheduled_at)
+           FILTER (WHERE state IN ('available', 'retryable') AND scheduled_at <= now())))::float,
          max(extract(epoch FROM now() - attempted_at)) FILTER (WHERE state='executing')::float
   FROM oban.oban_jobs WHERE state IN ('available', 'retryable', 'executing') GROUP BY queue
   """
