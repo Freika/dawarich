@@ -41,7 +41,10 @@ defmodule Dawarich.ReleaseOperations.ReverseOutboxContractTest do
 
     files =
       Path.wildcard(Path.join(@operations, "*.ex")) ++
-        [Path.join(@operations, "../tracks/effects.ex")]
+        Enum.map(
+          ["../tracks/effects.ex", "../visits/user_redetect_worker.ex"],
+          &Path.join(@operations, &1)
+        )
 
     kinds =
       files
