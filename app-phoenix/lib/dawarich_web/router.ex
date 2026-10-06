@@ -18,6 +18,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.SettingsFormRoutes
   import DawarichWeb.SettingsMiscRoutes
   import DawarichWeb.OnboardingRoutes
+  import DawarichWeb.IntegrationFormRoutes
   import DawarichWeb.NotificationFormRoutes
 
   pipeline :browser do
@@ -219,6 +220,7 @@ defmodule DawarichWeb.Router do
     post "/digests/:year", DawarichWeb.DigestActions, :destroy
   end
 
+  integration_form_routes()
   a10_routes()
   settings_form_routes()
   settings_misc_routes()
