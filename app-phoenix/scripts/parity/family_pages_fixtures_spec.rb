@@ -189,6 +189,36 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
     end
   end
 
+  it 'characterizes invitation create, cancellation and acceptance without member-joined mail' do
+    travel_to now do
+      owner, member, outsider, family = family_graph('en')
+      family_invitations!(family, owner, outsider.email)
+      write_family(owner, :post, '/family/invitations', { family_invitation: { email: ' NEW@EXAMPLE.TEST ' } })
+      expect(response.status).to eq(302)
+      invite = family.family_invitations.find_by!(email: 'new@example.test')
+      expect(invite.expires_at).to eq(now + 7.days)
+      write_family(owner, :post, '/family/invitations', { family_invitation: { email: invite.email } })
+      expect(response.status).to eq(302)
+      expect(family.family_invitations.where(email: invite.email).count).to eq(1)
+      write_family(member, :delete, "/family/invitations/#{invite.token}")
+      expect(response.status).to eq(303)
+      expect(invite.reload).to be_pending
+      write_family(owner, :delete, "/family/invitations/#{invite.token}")
+      expect(response.status).to eq(302)
+      expect(invite.reload).to be_cancelled
+      before_jobs = Sidekiq::Queues['mailers'].size
+      write_family(outsider, :post, '/family/memberships', { token: 'a9fpl-equal' })
+      expect(response.status).to eq(302)
+      expect(response.location).to end_with('/family')
+      expect(outsider.reload.family.id).to eq(family.id)
+      expect(Family::Invitation.find_by!(token: 'a9fpl-equal')).to be_accepted
+      expect(Sidekiq::Queues['mailers'].size).to eq(before_jobs)
+      write_family(outsider, :post, '/family/memberships', { token: 'a9fpl-equal' })
+      expect(response.location).to end_with('/')
+      expect(Family::Membership.where(user: outsider).count).to eq(1)
+    end
+  end
+
   it 'writes family pages with fixed actor state and scrubbed forms' do
     travel_to now do
       owner, member, outsider, family = family_graph('en')
