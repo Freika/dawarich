@@ -616,7 +616,7 @@ or release authorization. Explicit Cloud means `SELF_HOSTED=false`.
 | Task 2 / A12f-1 | Native opt-in clears inherited Rails argv, maps supported Puma5000/TCP listener args through native helpers, terminates on readiness exits 1/3/4/5, and starts inert `sidekiq_idle` workers. See [native Cloud web handoff](a12f-3c-native-cloud-web.md). Legacy off-mode still coexists. A12f-4 owns the final Ruby-free image/process proof. |
 | B/L1, tasks 3/4 | Not present as a completed Cloud proof here: lifecycle explicit Cloud/native opt-in still refuses. Account/trial/family/Manager/mail callbacks, release provisioning without CREATE, read-only web readiness, shared source/native row/object and registration authority proofs remain required. Loading a test schema is not provisioning evidence. |
 | C, tasks 6/7 | Ordered effect/owner locks and UUIDv5 receipts coordinate source/native trip effects; accepted due time and root identity survive materialized children. Completed roots add no effects; partial roots finish only missing effects. SQL receipts do not promise exactly-once external delivery. |
-| D, tasks 9/13 | Owner report supplies phased source observation and native shutdown/binary rollback contracts. They are **absent at this inspection head**; D review fix is being completed. Require its integrated candidate, named-test audit and final gates before using the new observer output or accepting rollback. |
+| D, tasks 9/13 | Owner report supplies phased source observation and native shutdown/binary rollback contracts. They are **absent at this inspection head**; D review fix `405a321f9` has passed its external final gate (8974 tests, zero failures). Require its controller-integrated candidate and focused revalidation before using the new observer output or accepting rollback. |
 | E, tasks 8/10 | Existing `cloud_smoke.sh` still characterizes coexistence. Two-deployment traffic switch, installed fetch quiet/settle/TERM and post-stop process/debt proof remain owner/release handoffs, not executed by P. |
 | R1/J1/J2/L2/L3 | Retained HTTP envelopes, every source payload/reverse-kind disposition, migration exclusion/recorded-operation and registration-copy proofs remain per-owner acceptance inputs. Historical 125-class/78-kind/24-schedule totals alone are not closure. |
 
@@ -715,8 +715,8 @@ from its isolated owner worktree, not a mutation rerun by P.
 | A review caller Redis isolation | M-R1-PATH/PROTECTED | RED and mutation each one/one; GREEN/restored one/zero. Open3 interception checks unsafe-target refusal without making unsafe connections; separate real-effect source batches prove portable Redis selection. |
 | C tasks 6/7: ordered locks, carried event, supported native continuation, unsupported source chain | M3C-06-LOCK/ID; M3C-07-FORWARD/CHAIN/CHILD-ID | One selected test per original native phase, eight excluded; mutations fail actual owner contention, event identity, duplicate outbox root, retained refusal or child token. Restored batches pass. Source strict joint/refusal/child-identity counterparts also fail their own assertions. |
 | C review real worker/source completion boundary | Owner/completion/partial/due/terminal mutations | Initial four-test RED has four intended failures; terminal test has its own RED. Each final named mutation has one selected test/one assertion failure; restored batch 25/zero. Actual root lock, no completed-effect replay, partial-effect replay, due time and terminal root contention are exercised. |
-| D task 9 and task 13 historical owner report | M3C-09-FETCH/UNKNOWN/REVERSE/SQL; M3C-PIN/DEBT/DRAIN | Logs show intended missing reservation/UNKNOWN, reverse/table-error, missing pin, accepted native debt and post-pin dispatch failures; restored source/native batches pass at D's historical candidate. **Not integrated at P's base.** D's final reviewed candidate and revalidation are pending. |
-| D review literal quiet state | M-D01-TRUTHY | Real ProcessSet vectors false/true/absent/unknown: own RED/mutation one example/one intended failure; restored one/zero. Complete reviewed D gate/integration still required. |
+| D task 9 and task 13 historical owner report | M3C-09-FETCH/UNKNOWN/REVERSE/SQL; M3C-PIN/DEBT/DRAIN | Logs show intended missing reservation/UNKNOWN, reverse/table-error, missing pin, accepted native debt and post-pin dispatch failures; restored source/native batches pass at D's historical candidate. **Not integrated at P's base.** D's reviewed `405a321f9` gate passed externally (8974/zero); integration and focused revalidation at the final handoff head remain pending. |
+| D review literal quiet state | M-D01-TRUTHY | Real ProcessSet vectors false/true/absent/unknown: own RED/mutation one example/one intended failure; restored one/zero. Reviewed D gate passed externally; integration remains required. |
 | B tasks 3/4 and E tasks 8/10 | M3C-03-*, M3C-04-*, M3C-08-*, task 10 stop vectors | No completed owner proof at this inspection head. Cloud lifecycle/shared data and actual two-deployment image/quiet/stop results remain **unrun/unaccepted** here. Existing Cloud refusal tests do not substitute. |
 
 Audit sources are the controller reports `impl-a12f3c-a.report.md`,
@@ -746,8 +746,12 @@ file: `app/services/job_commands.rb`, 298). P adds no executable comments or
 allocation/secret values. Only four explicit documentation paths are staged;
 no ignored environment, fixture, Swagger or schema changes.
 
-The branch full seed-404 gate and committed-range gitleaks are recorded in the
-controller's package P report after completion. Seed 202 runs only on the
+Branch full seed-404 via the required seedrun.sh: **8973 tests, zero failures**,
+all three partitions exit zero (2981 / 3207 / 2785 tests). There are 11 existing
+exclusions and three existing skips; P adds none. The committed-range gitleaks
+scan passes with no leaks. All started suites completed and private Redis services
+were stopped. Final branch status is clean with no Swagger/schema drift. Exact
+commands and logs are in the controller's package P report. Seed 202 runs only on the
 integration head per ruling 14. Complete task-11 cross-package acceptance remains
 pending D's reviewed integration, B/L1 shared-data/lifecycle and E image/stop owner
 proofs. This document supplies the final operator procedure and exact debt; a green
