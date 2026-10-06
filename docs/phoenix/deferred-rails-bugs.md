@@ -54,6 +54,12 @@ To add a row, use the next unused DRB ID, describe a synthetic reproduction and 
 
 | DRB-022 | Suggested-place cleanup schedules every live user once, but which user receives each 100 ms delay within a 100-user batch is unspecified. Synthetic users inserted in descending ID order enqueue as 100..1, then 101; cursor boundaries remain ascending. | `lib/tasks/dawarich_places.rake:7`; `lib/tasks/dawarich_places.rake:8`; `app/jobs/places/orphan_cleanup_job.rb:60` also selects victims without ordering. | **Preserved under ruling 13:** P08; `app-phoenix/lib/dawarich/cli/places.ex:45` keeps the batch reread unordered. `app-phoenix/test/dawarich_web/a12f3a_p_closure_test.exs` compares each batch's user membership independently of its schedule slots and probes reversed reread rows through the real enqueue path. | Order `batch.pluck(:id)` explicitly in a separate Rails fix, then align Phoenix and characterize per-user delays. | Low–medium: batch membership and spacing stay unchanged, but per-user delay assignments and partial-enqueue failures can change. |
 
+## Media
+
+| ID | Symptom (user-visible) | Rails source file:line | Phoenix parity location / ED / plan task | Suggested fix | Risk |
+| --- | --- | --- | --- | --- | --- |
+| DRB-024 | A legacy route video with a blank stored name makes retention raise validation failure; the video stays stored with its attachment instead of expiring. The Rails test adapter records a purge enqueue before the ownership transaction rolls back. | `app/models/route_video.rb:38`; `app/jobs/route_videos/purge_job.rb:47`; `app/services/job_ownership.rb:13` | **Preserved user-visible failure:** E13a in `app-phoenix/test/dawarich/a12f3b_e13_test.exs`; `app-phoenix/lib/dawarich/route_videos/retention.ex:84`. The existing native ownership transaction also rolls back the child enqueue; no retention repair is introduced by E13. | Repair invalid names before retention or validate before starting purge, in a separately approved source fix. | Medium: changes malformed-record failure and purge ordering; keep recipes and attachments safe. |
+
 ## Other
 
 | ID | Symptom (user-visible) | Rails source file:line | Phoenix parity location / ED / plan task | Suggested fix | Risk |
