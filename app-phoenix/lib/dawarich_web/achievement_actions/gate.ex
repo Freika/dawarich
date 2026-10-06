@@ -9,10 +9,47 @@ defmodule DawarichWeb.AchievementActions.Gate do
   @sharing ~r|\A/achievements/([a-z0-9_]+)/toggle_sharing\z|
   @seen ~r|\A/achievements/unlocks/([a-zA-Z0-9+_-]{1,40})/seen\z|
 
-  def sharing?(conn, _params), do: eligible?(conn, :sharing)
-  def next?(conn, _params), do: eligible?(conn, :next)
-  def seen?(conn, _params), do: eligible?(conn, :seen)
-  def dismiss?(conn, _params), do: eligible?(conn, :dismiss)
+  def sharing?(conn, _params), do: owned?(conn, :sharing)
+  def next?(conn, _params), do: owned?(conn, :next)
+  def seen?(conn, _params), do: owned?(conn, :seen)
+  def dismiss?(conn, _params), do: owned?(conn, :dismiss)
+
+  defp owned?(conn, action) do
+    if Dawarich.Standalone.enabled?(),
+      do: match?({:ok, _}, route(conn, action)),
+      else: eligible?(conn, action)
+  end
+
+  def current_user(actor) do
+    case Dawarich.Accounts.get(actor.id) do
+      %{encrypted_password: password} = current when password == actor.encrypted_password ->
+        current
+
+      _ ->
+        nil
+    end
+  end
+
+  def fresh(conn, actor, context) do
+    case actor(conn, context) do
+      {:ok, conn, %{id: id} = current} when id == actor.id -> {:ok, conn, current}
+      _ -> :error
+    end
+  end
+
+  def refuse(conn, opts) do
+    if Dawarich.Standalone.enabled?() do
+      status = if match?({:ok, _, _}, actor(conn, context(opts))), do: 422, else: 401
+      DawarichWeb.StandaloneError.respond(conn, "achievement_request", status)
+    else
+      upstream =
+        Keyword.get_lazy(opts, :upstream, fn ->
+          Application.fetch_env!(:dawarich, :rails_upstream)
+        end)
+
+      conn |> DawarichWeb.RailsProxy.call(upstream) |> Plug.Conn.halt()
+    end
+  end
 
   def context(opts) do
     Keyword.get(opts, :context, %{})
