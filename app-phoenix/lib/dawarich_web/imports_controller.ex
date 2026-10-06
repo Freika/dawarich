@@ -13,9 +13,9 @@ defmodule DawarichWeb.ImportsController do
   end
 
   def call(conn, :update) do
-    case method(conn) do
-      "DELETE" -> call(conn, :delete)
-      method when method in ["PATCH", "PUT"] -> update(conn)
+    case DawarichWeb.Imports.UpdateForm.action(method(conn)) do
+      :delete -> call(conn, :delete)
+      :update -> update(conn)
       _ -> replay(conn, "method override")
     end
   end
@@ -51,7 +51,7 @@ defmodule DawarichWeb.ImportsController do
         redirect(conn, 303, "/imports", notice, %{"size" => length(ids)})
 
       {:error, reason} ->
-        replay(conn, reason)
+        upload_error(conn, reason)
     end
   end
 
@@ -70,6 +70,15 @@ defmodule DawarichWeb.ImportsController do
 
       {:error, :invalid_source} ->
         invalid_source(conn)
+
+      {:error, reason} when reason in [:invalid_name, :duplicate_name] ->
+        redirect(
+          conn,
+          303,
+          "/imports",
+          "controllers.imports.import_was_successfully_updated",
+          %{}
+        )
 
       {:error, reason} ->
         replay(conn, reason)
@@ -90,6 +99,22 @@ defmodule DawarichWeb.ImportsController do
       {:ok, _} ->
         redirect(conn, 302, "/imports/" <> id, "controllers.imports.extractions." <> key, %{})
 
+      {:error, :native_in_flight} ->
+        redirect(
+          conn,
+          303,
+          "/",
+          "controllers.application.you_are_not_authorized_to_perform_this_action",
+          %{},
+          "alert"
+        )
+
+      {:error, :native_children} ->
+        conn
+        |> put_resp_content_type("text/html")
+        |> send_resp(422, "Removing extracted visits or tracks is unavailable")
+        |> halt()
+
       {:error, reason} ->
         replay(conn, reason)
     end
@@ -97,6 +122,26 @@ defmodule DawarichWeb.ImportsController do
 
   defp method(%{method: "POST", params: %{"_method" => override}}), do: String.upcase(override)
   defp method(%{method: method}), do: method
+
+  defp upload_error(conn, reason) do
+    key =
+      if reason == :no_files,
+        do: "controllers.imports.no_files_were_selected_for_upload",
+        else: "controllers.imports.no_valid_file_references_were_found_please_upload_files_using"
+
+    user = conn.assigns.current_user
+    locale = Locale.resolve(nil, user, conn.assigns.rails_session)
+
+    conn
+    |> RailsSession.put(%{
+      "flash" => %{"discard" => [], "flashes" => %{"alert" => Translate.t(locale, key, %{})}}
+    })
+    |> put_resp_header("location", RequestURL.base(conn) <> "/imports/new")
+    |> put_resp_header("cache-control", "no-cache")
+    |> put_resp_content_type("text/html")
+    |> send_resp(422, "")
+    |> halt()
+  end
 
   defp invalid_source(conn) do
     conn =
@@ -135,13 +180,13 @@ defmodule DawarichWeb.ImportsController do
     conn |> put_resp_content_type("text/html") |> send_resp(422, html) |> halt()
   end
 
-  defp redirect(conn, status, path, key, bindings) do
+  defp redirect(conn, status, path, key, bindings, type \\ "notice") do
     user = conn.assigns.current_user
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
     notice = Translate.t(locale, key, bindings)
 
     conn
-    |> RailsSession.stage(%{"flash" => %{"discard" => [], "flashes" => %{"notice" => notice}}})
+    |> RailsSession.stage(%{"flash" => %{"discard" => [], "flashes" => %{type => notice}}})
     |> put_resp_header("location", RequestURL.base(conn) <> path)
     |> put_resp_header("cache-control", "no-cache")
     |> put_resp_content_type("text/html")

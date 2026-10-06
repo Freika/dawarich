@@ -121,6 +121,52 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
     { blob_id: blob.id, filename:, byte_size: blob.byte_size, checksum: blob.checksum }
   end
 
+  def capture_import_requests!
+    user = User.find(9801)
+    settings = user.settings
+    user.update_columns(settings: settings.merge('locale' => 'en'))
+    sign_in user
+    get '/imports/980111/edit'
+    token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+    uploads = [nil, [], ['']].map do |files|
+      params = { authenticity_token: token }
+      params[:import] = { files: } unless files.nil?
+      post('/imports', params:)
+      expect(response.status).to eq(422)
+      { status: response.status, location: response.location, alert: flash[:alert] }
+    end
+    write_json('a12f3a-i02.json', uploads)
+    updates = [
+      [:put, { name: 'renamed.csv', source: 'geojson' }],
+      [:patch, { name: '', source: 'gpx' }],
+      [:post, { name: 'override.csv', source: 'gpx' }],
+      [:put, { source: 'unknown' }]
+    ].map do |method, attrs|
+      params = { authenticity_token: token, import: attrs }
+      params[:_method] = 'put' if method == :post
+      public_send(method, '/imports/980111', params:)
+      row = Import.find(980_111)
+      { method:, status: response.status, location: response.location,
+        name: row.name, source: row.source, notice: flash[:notice] }
+    end
+    expect(updates.map { _1[:status] }).to eq([303, 303, 303, 422])
+    expect(updates.map { _1[:name] }).to eq(%w[renamed.csv renamed.csv override.csv override.csv])
+    write_json('a12f3a-i03.json', updates)
+    extraction = []
+    post('/imports/980101/extraction', params: { authenticity_token: token, trust_source: 'false' })
+    extraction << { status: response.status, location: response.location }
+    post('/imports/980101/extraction', params: { authenticity_token: token })
+    extraction << { status: response.status, location: response.location }
+    Import.find(980_101).update_columns(additional_data_extraction_status: 3)
+    delete('/imports/980101/extraction', params: { authenticity_token: token })
+    extraction << { status: response.status, location: response.location }
+    expect(extraction.map { _1[:status] }).to eq([302, 303, 302])
+    write_json('a12f3a-i04.json', extraction)
+    Import.find(980_111).update_columns(name: 'normal.csv', source: 10)
+    sign_out :user
+    user.update_columns(settings:)
+  end
+
   it 'writes the pages and the seed they render' do
     expect(Rails.application.secret_key_base).to eq(secret)
 
@@ -144,6 +190,7 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
         sign_out :user
         { name:, user_id:, path:, status:, title: doc.at_css('title').text }
       end
+      capture_import_requests!
       write_json('pages.json', manifest)
       write_json('seed.json', { now: now.iso8601, users: seeded_users,
                                 imports: })
