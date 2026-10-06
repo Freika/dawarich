@@ -152,9 +152,9 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
       require 'sidekiq/api'
       require 'json'
       ActiveJob::Base.queue_adapter = :sidekiq
+      require './spec/support/phoenix_tables'
+      Object.new.extend(PhoenixTables).phoenix_tables!
       db = ActiveRecord::Base.connection
-      db.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
-      db.execute("CREATE TABLE IF NOT EXISTS phoenix.job_owners (key text PRIMARY KEY, owner text DEFAULT 'sidekiq')")
       Sidekiq.redis { |r| r.call('FLUSHDB') }
       ENV['DAWARICH_CLOUD_DRAIN_ONLY'] = 'true'
       type = 'trips.calculate'
