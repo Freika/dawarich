@@ -64,6 +64,23 @@ defmodule DawarichWeb.StandaloneActivationTest do
     }
   end
 
+  @tag :review_j_standalone_integration
+  test "J native timeline coexists with standalone registration security and explicit API rollback",
+       c do
+    System.delete_env("DAWARICH_RAILS")
+    timeline = api(:get, "/api/v1/timeline", c.user, %{})
+    assert timeline.status == 400
+    assert Jason.decode!(timeline.resp_body) == %{"error" => "start_at and end_at are required"}
+
+    System.put_env("DAWARICH_RAILS", "off")
+    form = request(:get, "/users/sign_up", c.guest)
+    assert form.status == 200
+    assert get_resp_header(form, "x-dawarich-auth-owner") == ["native-registration"]
+    assert request(:post, "/users", c.guest).status == 422
+    assert api(:get, "/api/v1/timeline", c.user, %{}).status == 400
+    guard_api(:get, "/api/v1/timeline", c.user, %{})
+  end
+
   @tag :activation_registration
   test "standalone registration reaches native forms and creation with policy CSRF and rotated sessions",
        c do
@@ -434,6 +451,8 @@ defmodule DawarichWeb.StandaloneActivationTest do
 
   defp guard_api(method, path, user, params) do
     System.delete_env("DAWARICH_RAILS")
+    previous = Application.get_env(:dawarich, :rails_routes, [])
+    Application.put_env(:dawarich, :rails_routes, ["api"])
     upstream = RailsFormRequests.upstream!()
 
     {{line, body}, response} =
@@ -442,6 +461,7 @@ defmodule DawarichWeb.StandaloneActivationTest do
     assert response.status == 204
     assert String.starts_with?(line, String.upcase(to_string(method)) <> " " <> path <> " ")
     assert body == if(method == :get, do: "", else: Jason.encode!(params))
+    Application.put_env(:dawarich, :rails_routes, previous)
     System.put_env("DAWARICH_RAILS", "off")
   end
 end

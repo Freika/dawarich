@@ -68,6 +68,7 @@ defmodule DawarichWeb.Api.Auth do
 
   defp native_user(%{private: %{dawarich_native_api: true}}, user) when is_map(user) do
     %{user | timezone: DawarichWeb.Api.UserZone.name(user.timezone)}
+    |> Map.put(:settings, Accounts.settings(user.id))
   end
 
   defp native_user(_conn, user), do: user
