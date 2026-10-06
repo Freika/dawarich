@@ -124,6 +124,7 @@ defmodule Dawarich.Achievements.BulkCheckTest do
     assert BulkCheckWorker.__opts__()[:max_attempts] == 26
   end
 
+  @tag a12f3b_case: "E05Ab"
   test "force stays inert and each check follows its current leaf owner", %{args: args} do
     id = user(1, "force")
     point(id)
@@ -170,6 +171,7 @@ defmodule Dawarich.Achievements.BulkCheckTest do
                %{
                  "user_id" => id,
                  "notify" => false,
+                 "force" => true,
                  "event_id" => BulkCheck.child_id(reverse["event_id"], id),
                  "run_at" => "2026-10-04T12:00:00Z"
                }

@@ -936,6 +936,7 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
                    "user_id" => id,
                    "notify" => false,
                    "run_at" => DateTime.to_iso8601(@achievement_now),
+                   "force" => true,
                    "event_id" => Dawarich.Achievements.BulkCheck.child_id(root, id)
                  }
                ]
