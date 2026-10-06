@@ -3,18 +3,28 @@
 require 'rails_helper'
 
 RSpec.describe TransportationModes::UserReclassifyJob do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
 
   it 'starts progress tracking and fans out per-track jobs for the user only' do
-    tracks = create_list(:track, 2, user: user)
+    tracks = create_list(:track, 101, user: user)
     create(:track, user: create(:user))
 
-    expect { described_class.perform_now(user.id) }
-      .to have_enqueued_job(TransportationModes::ReclassifyTrackJob).exactly(2).times
+    freeze_time do
+      expect { described_class.perform_now(user.id) }
+        .to have_enqueued_job(TransportationModes::ReclassifyTrackJob).exactly(101).times
+      jobs = enqueued_jobs.select { |job| job[:job] == TransportationModes::ReclassifyTrackJob }
+      expect(jobs.map { |job| job[:args].first }).to eq(tracks.map(&:id).sort)
+      expect(jobs.first[:at]).to eq(Time.current.to_f)
+      expect(jobs.last[:at]).to eq(10.seconds.from_now.to_f)
+    end
 
     status = Tracks::TransportationRecalculationStatus.new(user.id)
     expect(status.in_progress?).to be true
     expect(status.data['total_tracks']).to eq(tracks.size)
+    expect(status.data['processed_tracks']).to eq(0)
+    expect(described_class.get_sidekiq_options['retry']).to be false
   end
 
   it 'completes immediately for users without tracks' do
@@ -32,5 +42,6 @@ RSpec.describe TransportationModes::UserReclassifyJob do
 
     expect { described_class.perform_now(user.id) }.to raise_error(RedisClient::CannotConnectError)
     expect(Tracks::TransportationRecalculationStatus.new(user.id).current_status).to eq('failed')
+    expect(Tracks::TransportationRecalculationStatus.new(user.id).data['processed_tracks']).to eq(0)
   end
 end
