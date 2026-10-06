@@ -188,11 +188,82 @@ RSpec.describe 'Phoenix fixtures: map point writes', type: :request do
     end
   end
 
+  def capture_api_closure!
+    ActionController::Base.allow_forgery_protection = false
+    user = reader(9890)
+    foreign = reader(9891)
+    id = 989_000
+    seed(user, foreign, id)
+    headers = { 'Authorization' => "Bearer #{user.api_key}", 'Accept' => 'application/json' }
+    records = []
+    requests = [[:delete, '/api/v1/points/bulk_destroy', {}],
+                [:delete, '/api/v1/points/bulk_destroy', { point_ids: [(id + 9).to_s] }],
+                [:patch, "/api/v1/points/#{id + 9}", { point: { latitude: '1', longitude: '2' } }],
+                [:patch, "/api/v1/points/#{id + 4}", { point: { latitude: '50', longitude: '14', timestamp: 1 } }],
+                [:patch, "/api/v1/points/#{id + 4}/position", { point: { latitude: '51', longitude: '15', revision: 0 },
+                  history_scope: { start_at: '2026-01-01T10:30Z', end_at: '2026-10-03T10:00Z' } }],
+                [:post, '/api/v1/points/reapply_anomaly_filter', {}],
+                [:post, '/api/v1/points/reapply_anomaly_filter', {}],
+                [:delete, '/api/v1/points/bulk_destroy', { point_ids: [id.to_s, (id + 9).to_s] }]]
+    Rails.cache.clear
+    requests.each do |method, path, params|
+      clear_enqueued_jobs
+      public_send(method, path, params:, headers:)
+      records << { method:, path:, params:, status: response.status, body: response.body,
+                   jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args] } },
+                   own_count: user.reload.points_count, foreign_count: foreign.reload.points_count }
+    end
+    RSpec::Mocks.with_temporary_scope do
+      config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                  'action_dispatch.show_detailed_exceptions' => false)
+      allow(Rails.application).to receive(:env_config).and_return(config)
+      allow(Achievements::CheckJob).to receive(:schedule).and_raise('synthetic producer failure')
+      patch "/api/v1/points/#{id + 4}", params: { point: { latitude: '53', longitude: '16' } },
+                                       headers:, env: { 'action_dispatch.show_exceptions' => :all }
+      records << { name: 'relocation_callback_failure', status: response.status, body: response.body,
+                   position: Point.find(id + 4).lonlat.as_text }
+    end
+    RSpec::Mocks.with_temporary_scope do
+      config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                  'action_dispatch.show_detailed_exceptions' => false)
+      allow(Rails.application).to receive(:env_config).and_return(config)
+      allow(User).to receive(:update_counters).and_raise('synthetic counter failure')
+      delete "/api/v1/points/#{id + 3}", headers:, env: { 'action_dispatch.show_exceptions' => :all }
+      records << { name: 'delete_counter_failure', status: response.status, body: response.body,
+                   persisted: Point.exists?(id + 3), own_count: user.reload.points_count }
+    end
+    RSpec::Mocks.with_temporary_scope do
+      config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                  'action_dispatch.show_detailed_exceptions' => false)
+      allow(Rails.application).to receive(:env_config).and_return(config)
+      Rails.cache.delete("anomaly_backfill_pending:#{user.id}")
+      allow(Points::AnomalyBackfillUserJob).to receive(:perform_later).and_raise('synthetic producer failure')
+      post '/api/v1/points/reapply_anomaly_filter', headers: headers
+      records << { name: 'anomaly_producer_failure', status: response.status, body: response.body,
+                   pending: Rails.cache.read("anomaly_backfill_pending:#{user.id}") }
+    end
+    RSpec::Mocks.with_temporary_scope do
+      config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                  'action_dispatch.show_detailed_exceptions' => false)
+      allow(Rails.application).to receive(:env_config).and_return(config)
+      allow(Points::Move).to receive(:call).and_raise('synthetic position write failure')
+      patch "/api/v1/points/#{id + 4}/position",
+            params: { point: { latitude: '54', longitude: '17', revision: 0 },
+                      history_scope: { start_at: '1', end_at: '2147483647' } }, headers: headers
+      records << { name: 'position_write_failure', status: response.status, body: response.body,
+                   position: Point.find(id + 4).lonlat.as_text }
+    end
+    path = Rails.root.join('app-phoenix/test/fixtures/a12f2e/closure.json')
+    FileUtils.mkdir_p(path.dirname)
+    File.write(path, "#{JSON.pretty_generate(records)}\n")
+  end
+
   def generate!
     cases.each_with_index { |name, index| capture(name, index) }
   end
 
   it 'writes point counters filters and dependent scheduling' do
     generate!
+    capture_api_closure!
   end
 end
