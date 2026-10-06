@@ -199,5 +199,15 @@ duplicate.post('/users', params: { user: { email: created.email, password: 'safe
                                           password_confirmation: 'safepassword12' } })
 result[:duplicate_registration] = response(duplicate)
 
+ActionController::Base.allow_forgery_protection = true
+prepared = client
+prepared.get('/users/sign_in')
+jar = ActionDispatch::Cookies::CookieJar.build(prepared.request, {})
+jar.encrypted['_dawarich_session'] = { 'session_id' => nil, '_csrf_token' => nil }
+nil_keys = client('_dawarich_session' => jar['_dawarich_session'])
+nil_keys.get('/users/sign_in')
+result[:nil_session_keys] = { response: response(nil_keys), decoded: decoded(nil_keys) }
+ActionController::Base.allow_forgery_protection = false
+
 File.write(ARGV.fetch(0), "#{JSON.pretty_generate(result)}\n")
 puts "Captured A11 request oracle: #{result.keys.size - 5} bounded cases; test delivery only"

@@ -770,6 +770,51 @@ defmodule DawarichWeb.A12f2FClosureTest do
     assert source == "synthetic"
   end
 
+  @tag :a12f2_f_10
+  test "Credential recovery account and remember cookies cross runtimes with source CSRF keys flags and terminal writes",
+       ctx do
+    alias Dawarich.Auth.SessionCookie
+    incoming = %{"session_id" => nil, "_csrf_token" => nil, "locale" => "de"}
+    {form, value} = SessionCookie.for_form(incoming, RailsSecret.fetch())
+    assert is_binary(form["session_id"])
+    assert is_binary(form["_csrf_token"])
+    assert form["locale"] == "de"
+
+    assert {:ok, ^form} =
+             RailsCookies.decrypt(
+               value,
+               "_dawarich_session",
+               RailsSecret.fetch(),
+               DateTime.utc_now()
+             )
+
+    id = insert_user(ctx.email)
+    user = Repo.get!(Account, id)
+
+    {signed, signed_cookie} =
+      SessionCookie.for_login(form, user, "Signed in", RailsSecret.fetch())
+
+    assert signed["session_id"] != form["session_id"]
+    refute Map.has_key?(signed, "_csrf_token")
+    assert signed["locale"] == "de"
+
+    assert {:ok, ^signed} =
+             RailsCookies.decrypt(
+               signed_cookie,
+               "_dawarich_session",
+               RailsSecret.fetch(),
+               DateTime.utc_now()
+             )
+
+    salt = binary_part(user.encrypted_password, 0, 29)
+    assert [[^id], ^salt] = signed["warden.user.user.key"]
+    overflowing = Map.put(form, "large", String.duplicate("synthetic", 1000))
+
+    assert_raise DawarichWeb.RailsSession.Overflow, fn ->
+      SessionCookie.for_form(overflowing, RailsSecret.fetch())
+    end
+  end
+
   defp insert_user(email) do
     [[id]] =
       Repo.query!(
