@@ -14,7 +14,7 @@ defmodule DawarichWeb.Api.UsersController do
       conn
     else
       result =
-        if conn.assigns.api_format in [:json, :html, :all],
+        if conn.private[:dawarich_native_api] or conn.assigns.api_format in [:json, :html, :all],
           do:
             Exist.run(
               conn.assigns.api_params,
@@ -31,8 +31,8 @@ defmodule DawarichWeb.Api.UsersController do
 
   def call(conn, :me) do
     result =
-      if conn.assigns.api_format in [:json, :html, :all],
-        do: Payload.read(conn.assigns.api_user.id),
+      if conn.private[:dawarich_native_api] or conn.assigns.api_format in [:json, :html, :all],
+        do: Payload.read(conn.assigns.api_user.id, conn.assigns[:api_now] || DateTime.utc_now()),
         else: {:replay, "account format"}
 
     case result do

@@ -12,7 +12,7 @@ defmodule DawarichWeb.A12f2JClosureTest do
     for row <- kase["setup"], do: Dawarich.Test.ApiGolden.insert!("users", row)
 
     Dawarich.Test.ApiGolden.check(
-      Dawarich.Test.ActivatedPlanGolden.activate(kase),
+      Dawarich.Test.ActivatedApiGolden.activate(kase),
       c.port,
       c.upstream
     )
@@ -28,7 +28,7 @@ defmodule DawarichWeb.A12f2JClosureTest do
       for row <- kase["setup"], do: Dawarich.Test.ApiGolden.insert!("users", row)
 
       Dawarich.Test.ApiGolden.check(
-        Dawarich.Test.ActivatedPlanGolden.activate(kase),
+        Dawarich.Test.ActivatedApiGolden.activate(kase),
         c.port,
         c.upstream
       )

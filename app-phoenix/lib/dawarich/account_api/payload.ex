@@ -1,7 +1,7 @@
 defmodule Dawarich.AccountApi.Payload do
   @moduledoc false
 
-  alias Dawarich.{Accounts, RailsTime, Repo, UserSettings, UserTimeZone}
+  alias Dawarich.{Accounts, Entitlements, RailsTime, Repo, UserSettings, UserTimeZone}
   alias Dawarich.Geocoding.Config
   alias Dawarich.Ingest.Ruby
 
@@ -25,7 +25,7 @@ defmodule Dawarich.AccountApi.Payload do
   }
   @keys ~w(timezone maps fog_of_war_meters meters_between_routes preferred_map_layer speed_colored_routes points_rendering_mode minutes_between_routes time_threshold_minutes merge_threshold_minutes live_map_enabled route_opacity immich_url photoprism_url visits_suggestions_enabled speed_color_scale fog_of_war_threshold globe_projection)
 
-  def read(id) do
+  def read(id, now \\ DateTime.utc_now()) do
     raw = Accounts.settings(id)
     raw = if is_map(raw), do: raw, else: %{}
     timezone = raw["timezone"] || System.get_env("TIME_ZONE", "UTC")
@@ -40,9 +40,22 @@ defmodule Dawarich.AccountApi.Payload do
         ).rows
 
       settings = settings(raw, timezone)
+      hosted = DawarichWeb.LayoutAssigns.self_hosted?()
+
+      [[status, plan, active_until, until]] =
+        Repo.query!(
+          "SELECT status,plan,active_until,#{RailsTime.sql("active_until", 3)} FROM users WHERE id=$1",
+          [id]
+        ).rows
+
+      account = %{id: id, plan: plan, active_until: active_until}
 
       features =
-        {:object, [{"reverse_geocoding", Config.resolve(Repo).enabled}, {"family", true}]}
+        {:object,
+         [
+           {"reverse_geocoding", Config.resolve(Repo).enabled},
+           {"family", Entitlements.families?(account, hosted, now)}
+         ]}
 
       user =
         {:object,
@@ -55,7 +68,23 @@ defmodule Dawarich.AccountApi.Payload do
            {"settings", settings}
          ]}
 
-      {:ok, {:object, [{"user", user}, {"features", features}]}}
+      subscription =
+        if hosted do
+          []
+        else
+          [
+            {"subscription",
+             {:object,
+              [
+                {"status",
+                 %{0 => "inactive", 1 => "active", 2 => "trial", 3 => "pending_payment"}[status]},
+                {"active_until", until},
+                {"plan", %{0 => "lite", 1 => "pro", 2 => "family"}[plan]}
+              ]}}
+          ]
+        end
+
+      {:ok, {:object, [{"user", user}, {"features", features}] ++ subscription}}
     end)
   rescue
     error in [Dawarich.Ingest.Unsupported, ArgumentError] ->

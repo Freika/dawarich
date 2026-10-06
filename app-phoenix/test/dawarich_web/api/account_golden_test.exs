@@ -130,7 +130,7 @@ defmodule DawarichWeb.Api.AccountGoldenTest do
   end
 
   for kase <- (@path |> File.read!() |> Jason.decode!())["cases"] do
-    @kase kase
+    @kase Dawarich.Test.ActivatedApiGolden.activate(kase)
     @tag golden_case: String.to_atom(kase["name"])
     @tag mutation: "M-C1-account-#{kase["name"]}"
     @tag api_now: %{elem(DateTime.from_iso8601(kase["source_time"]), 1) | microsecond: {0, 6}}
