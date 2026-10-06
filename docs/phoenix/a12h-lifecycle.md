@@ -158,18 +158,28 @@ resolve from packaged priv assets; image/asset smoke execution remains deferred.
 | Cloud true | Explicit refusal; native Cloud provisioning is a follow-up. |
 | Route hand-back | Real upstream request/body receipt for DAWARICH_RAILS_ROUTES rails_key and DAWARICH_RAILS_SLICES, with auth and job-owner behavior unchanged. |
 | Same image, native on then Rails off | Real native public version/job insertion followed by actual Rails db:migrate, data:migrate and db:seed on the same private test database. Rails recognizes the versions without reinserting work; complete pending Oban rows retain IDs, payloads and state. |
-| Older Rails image / backup restore | Requires compatible public DDL/data, explicit native-job disposition and G48 rehearsal; same-image hand-back does not prove this. |
+| Stock Rails 1.15.3, same DB/storage | Controller rulings 4/7: fence producers, pin every key to Sidekiq, drain native work without transfer, stop Phoenix, then start Rails. Preserve Phoenix-era writes; deferred G48 proves the exact image/data boundary. |
 
-Pending Oban work remains explicitly undisposed when lifecycle is disabled. Stop
-boot writers/workers and inspect it before operational rollback; existing owner/
-rehome tools cover only their documented jobs. Release-only jobs need an explicit
-release-owner disposition. Route hand-back neither restores schemas nor cancels
-workers. G48 needs the existing snapshot/restore procedure and job disposition;
-G49 final drain remains A12d3.
+Pending Oban work remains debt when lifecycle is disabled: disabling an opt-in
+neither releases persisted owners nor cancels workers. Controller rulings 4 and
+7 supersede the earlier snapshot/restore and pending-rehome rollback proposal.
+Keep native relay/workers alive after every-key pinning until accepted outbox,
+Oban, release operations and durable successors finish naturally. Unknown,
+quarantined, dead, future and reverse work blocks the affected transition; no
+native-to-Sidekiq transfer is built or invoked. Stop all native/control-plane
+writers before starting stock Rails **1.15.3** on the same database/storage.
 
-The branch gate is existing resync-check.sh (seed 404) and seedrun.sh (seed 202),
-with Elixir 1.18.3/OTP 27, allocated private DBs/Redis and slot.sh for full suites.
-The controller owns the third seed. Scoped tests and named mutations run directly.
+The complete manual procedure, additive-boundary amendment for ADR0015/G48 and
+Cloud/self-hosted deferred rehearsal are in
+[a12f-ruby-free-release.md](a12f-ruby-free-release.md#a12f-3c-same-database-rollback-to-rails-1153).
+Same-image hand-back above remains historical coexistence evidence, not a stock
+1.15.3 rollback proof. G48/G49 require separately authorized release resources;
+backup hygiene is recommended, never a rollback restore prerequisite here.
+
+Controller ruling 14 sets the branch gate to seedrun.sh seed 404 only; seed 202
+runs once on the integration head after each merge batch. Use Elixir 1.18.3/OTP
+27 and allocated private DBs/Redis; seedrun.sh owns its suite slot. Scoped tests
+and named mutations run directly.
 The existing Rails fixture generator runs twice identically, then verifies without
 WRITE_PHOENIX_FIXTURES. Its same-image case records complete ledgers/raw intents/
 Oban rows and normalizes only the fixture clock, without masking random fields.
@@ -179,4 +189,19 @@ Browser/stand, Docker images, release/asset smokes, C3/C4 and topology checks ar
 **deferred to the controller mini lane**. G47's existing scripts still need the
 plan's separately authorized test-env/asdf/Redis/no-env-hashing fixes; G48 still
 needs its release procedure. Local tests do not close those release gates or
-authorize activation. No AFFiNE writes occur because seeds touch credentials.
+authorize activation. Operational documentation is mirrored without credentials;
+seed payloads and secrets must never enter the shared knowledge base.
+
+
+## A12f-3c Cloud handoff (2026-10-06)
+
+[Package P's two checkpoints](a12f-ruby-free-release.md#a12f-3c-operator-cut-over-and-old-shutdown-handoff)
+separate NEW traffic activation from OLD final shutdown. Native argv mapping
+and source fences are integrated preparation; explicit Cloud/native lifecycle
+still refuses at the package P inspection head. L1/B must supply real Cloud
+provisioning, source-equivalent trial/family/callback effects, registration-copy
+authority, migration exclusion and shared row/object proofs before traffic moves.
+Do not turn a self-hosted guard off to fabricate this handoff. Read-only readiness
+must not migrate/seed or duplicate callbacks. D's reviewed every-key pin/drain
+contract and E's two-deployment stop evidence remain acceptance prerequisites;
+local tests do not close G48/G49.

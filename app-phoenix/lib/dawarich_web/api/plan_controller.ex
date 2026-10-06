@@ -3,6 +3,7 @@ defmodule DawarichWeb.Api.PlanController do
   @behaviour Plug
 
   alias Dawarich.RailsTime
+  alias Dawarich.AccountApi.Closure
   alias DawarichWeb.Api.{Body, Respond}
 
   @plans %{0 => "lite", 1 => "pro", 2 => "family"}
@@ -26,9 +27,19 @@ defmodule DawarichWeb.Api.PlanController do
 
   @impl true
   def call(conn, :show) do
-    case fields(conn.assigns.api_user) do
-      {:ok, body} -> Respond.json(conn, 200, body)
-      {:replay, reason} -> Body.replay(conn, reason)
+    result =
+      if Dawarich.Standalone.enabled?(),
+        do: Closure.plan(conn.assigns.api_user, conn.assigns[:api_now] || DateTime.utc_now()),
+        else: fields(conn.assigns.api_user)
+
+    case result do
+      {:ok, body} ->
+        Respond.json(conn, 200, body)
+
+      {:replay, reason} ->
+        if Dawarich.Standalone.enabled?(),
+          do: Respond.json(conn, 500, {:object, [{"error", "internal_server_error"}]}),
+          else: Body.replay(conn, reason)
     end
   end
 

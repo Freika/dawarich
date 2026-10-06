@@ -23,6 +23,7 @@ defmodule Dawarich.ReleaseOperations.AddPointDimensionsTest do
     :ok
   end
 
+  @tag a12f3b_case: "E17a"
   test "adds source_id and starts dimensions only when the source gate permits" do
     changeset = AddPointDimensions.new(%{"version" => 1})
     assert changeset.valid?
@@ -45,6 +46,15 @@ defmodule Dawarich.ReleaseOperations.AddPointDimensionsTest do
              "repair_collisions" => false
            }
 
+    assert ScratchRepo.query!(
+             "SELECT count(*) FROM oban.oban_jobs WHERE state NOT IN ('completed','cancelled')",
+             [],
+             log: false
+           ).rows == [[1]]
+
+    assert ScratchRepo.query!("SELECT count(*) FROM phoenix.rails_commands", [], log: false).rows ==
+             [[0]]
+
     Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(oban.oban_jobs))
     assert AddPointDimensions.run(ScratchRepo) == :ok
     assert length(children()) == 1
@@ -60,17 +70,27 @@ defmodule Dawarich.ReleaseOperations.AddPointDimensionsTest do
     end
   end
 
+  @tag a12f3b_case: "E17b"
   test "child enqueue failure leaves committed source_id and no child" do
+    parent =
+      ScratchRepo.insert!(AddPointDimensions.new(%{"version" => 1}), prefix: "oban", log: false)
+
     scratch_sql!("""
     ALTER TABLE oban.oban_jobs ADD CONSTRAINT a12h_child_failure
     CHECK (worker <> 'Elixir.Dawarich.ReleaseOperations.PointBackfill'
       AND worker <> 'Dawarich.ReleaseOperations.PointBackfill')
     """)
 
-    error = assert_raise Ecto.ConstraintError, fn -> AddPointDimensions.run(ScratchRepo) end
+    error =
+      assert_raise Ecto.ConstraintError, fn -> AddPointDimensions.run(ScratchRepo, parent) end
+
     assert error.message =~ "a12h_child_failure"
     assert ReleaseMigration.column?(ScratchRepo, "points", "source_id")
     assert children() == []
+
+    assert ScratchRepo.query!("SELECT state FROM oban.oban_jobs WHERE id=$1", [parent.id],
+             log: false
+           ).rows == [["available"]]
   end
 
   test "failed add commits neither DDL nor child" do

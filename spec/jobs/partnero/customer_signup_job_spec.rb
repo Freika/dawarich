@@ -81,6 +81,25 @@ RSpec.describe Partnero::CustomerSignupJob, type: :job do
         .to raise_error(Partnero::CustomerSignupJob::AttributionFailed)
     end
 
+    it 'retries provider server errors without exposing the authorization header' do
+      allow(HTTParty).to receive(:post).and_return(
+        instance_double(HTTParty::Response, success?: false, code: 500, body: 'Provider unavailable')
+      )
+      allow(ExceptionReporter).to receive(:call)
+
+      expect { described_class.new.perform(user.id, partner_key) }
+        .to raise_error(Partnero::CustomerSignupJob::AttributionFailed, /500/) { |error|
+          expect(error.message).not_to include(api_key)
+        }
+    end
+
+    it 'skips customers deleted before the job executes' do
+      user.mark_as_deleted!
+      expect(HTTParty).not_to receive(:post)
+
+      described_class.perform_now(user.id, partner_key)
+    end
+
     it 'treats an already-registered customer as success' do
       allow(HTTParty).to receive(:post).and_return(
         instance_double(HTTParty::Response, success?: false, code: 409, body: 'Customer already exists')
