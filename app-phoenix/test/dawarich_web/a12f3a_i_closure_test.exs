@@ -147,3 +147,54 @@ defmodule DawarichWeb.A12f3aIClosureTest do
     |> dispatch(DawarichWeb.Endpoint, method, path, body)
   end
 end
+
+defmodule DawarichWeb.A12f3aIProducerClosureTest do
+  use Dawarich.JobsCase, async: false
+  alias Dawarich.Imports.Teslamate.Effects
+  alias Dawarich.Jobs.Ownership
+
+  @tag a12f3a_i09: true
+  test "I09: teslamate import producer matches current Rails contract without a native-owner Rails effect" do
+    user =
+      Dawarich.Test.RailsUser.insert!(
+        %{
+          id: 7819,
+          email: "teslamate-closure@example.test",
+          settings: %{"timezone" => "UTC", "gps_filtering_enabled" => false}
+        },
+        ScratchRepo
+      )
+
+    for key <- ~w(tracks.generate_realtime tracks.backfill),
+        do: Ownership.put!(ScratchRepo, "command:" <> key, :oban)
+
+    ctx = %{
+      repo: ScratchRepo,
+      id: user.id,
+      settings: user.settings,
+      event: Ecto.UUID.generate(),
+      now: ~U[2026-01-15 23:30:00Z]
+    }
+
+    acc = %{range: {1_768_000_000, 1_768_000_100}, months: [{2026, 1}]}
+    assert {:ok, :ok} = ScratchRepo.transaction(fn -> Effects.finalize(ctx, acc) end)
+
+    assert rows("SELECT command_type FROM job_outbox ORDER BY command_type") == [
+             ["tracks.backfill"],
+             ["tracks.generate_realtime"]
+           ]
+
+    assert rows("SELECT kind FROM phoenix.rails_commands") == [["stats.calculate_month"]]
+
+    assert [[payload]] =
+             rows("SELECT payload FROM job_outbox WHERE command_type='tracks.generate_realtime'")
+
+    assert payload == %{"user_id" => user.id}
+    assert {:ok, :ok} = ScratchRepo.transaction(fn -> Effects.finalize(ctx, acc) end)
+
+    assert rows("SELECT count(*) FROM job_outbox WHERE command_type='tracks.generate_realtime'") ==
+             [[1]]
+
+    assert rows("SELECT count(*) FROM job_outbox WHERE command_type='tracks.backfill'") == [[1]]
+  end
+end

@@ -12,11 +12,13 @@ Minimal O wiring: `import_routes.ex` adds PUT alongside PATCH with the same pipe
 
 ## Verification
 
-`a12f3a_i_closure_test.exs` contains the aggregate I02, I03 and I04 tests. Each initially failed on missing behavior, passed after implementation, failed its production mutation and passed after restoration. The tests disconnect the Rails upstream and inspect persisted imports, attachments and outbox/reverse-command rows.
+`a12f3a_i_closure_test.exs` contains the aggregate I02, I03, I04 and I09 tests. Each initially failed on missing behavior, passed after implementation, failed its production mutation and passed after restoration. The tests disconnect the Rails upstream and inspect persisted imports, attachments and outbox/reverse-command rows.
+
+TeslaMate completion uses the existing native anomaly filter inside its worker transaction and publishes `tracks.generate_realtime` with an event-based dedupe key when that downstream owner is Oban. Track backfill uses `BackfillCommands.put/4`, preserving its range accumulation, captured zone and delayed scheduling. Stats retain `Stats.Schedule.calculate/6` and its independent owner. Source-owned realtime retains the original reverse effects. Shared tile/anomaly-dependent effect sinks still belong to sibling rows19–22.
 
 The existing imports page generator now records `a12f3a-i02.json`, `a12f3a-i03.json` and `a12f3a-i04.json`. The writer ran twice with an empty whole-fixture byte diff; previous fixtures were unchanged. This package captured these independently because O04's additions were not present at its base. No newly named Rails example was added; the existing generator example was extended.
 
-I01, I05–I12 reuse existing implementations and characterization tests. They are not represented as newly RED-tested tasks. Evidence and final gate counts belong in the controller-assigned execution report.
+The existing normal import producer generator also records I07–I12 source captures independently. I01, I05–I08 and I10–I12 reuse existing implementations and characterization tests. They are not represented as newly RED-tested tasks. Evidence and final gate counts belong in the controller-assigned execution report.
 
 ## Remaining scope and handoff
 
@@ -25,7 +27,7 @@ I01, I05–I12 reuse existing implementations and characterization tests. They a
 - I03: full query/format/Turbo tails and coercion envelopes.
 - I04: package F's source/blob/attempt fencing and non-GPX extraction/removal interface; redirect-back envelopes and removal of extracted visits/tracks.
 - I05–I06: remaining download error envelopes, native delayed purge and terminal event integration.
-- I07–I12: existing native producers remain intact. Their full current-head capture/mutation reconciliation and downstream reverse-effect closure still need package completion evidence.
+- I07–I08, I10–I12: existing native producer tests pass against current-head Rails captures. Their remaining envelope/mutation reconciliation and downstream effect sink closure still need package completion evidence. I09 realtime/backfill production is now native; shared tile/anomaly-dependent effects remain sibling-owned.
 - F and sibling rows19–22 own worker/effect/schedule readiness. Keep job entries inert. The producer changes do not prove source-drain completion or authorize release deployment.
 
 The shared AFFiNE counterpart is the Dawarich Phoenix imports HTTP and producer closure document. The master source of implementation conventions remains the controller's A12f-3a plan D and Ruby-free release plan.

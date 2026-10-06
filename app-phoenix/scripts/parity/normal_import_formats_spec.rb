@@ -108,6 +108,16 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
         FileUtils.mkdir_p(NormalImportFormatsSupport::DIR.join('producers', provider))
         cases.each { |name, value| NormalImportFormatsSupport.write("producers/#{provider}/#{name}", value) }
       end
+      { watcher: 'i07', immich: 'i08', teslamate: 'i09', stale: 'i10', photoprism: 'i11', trek: 'i12' }
+        .each do |provider, task|
+          path = Rails.root.join("app-phoenix/test/fixtures/imports_pages/a12f3a-#{task}.json")
+          data = results.fetch(provider.to_s)
+          if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+            File.write(path, "#{JSON.pretty_generate(data)}\n")
+          else
+            expect(JSON.parse(path.read)).to eq(data.as_json)
+          end
+        end
       expect(results.keys).to eq(%w[immich photoprism watcher stale teslamate trek])
       %w[immich photoprism].each do |provider|
         expect(results.fetch(provider).fetch('success').fetch('error')).to be_nil
