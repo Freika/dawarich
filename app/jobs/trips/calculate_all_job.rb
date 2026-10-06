@@ -9,14 +9,16 @@ class Trips::CalculateAllJob < ApplicationJob
 
   def perform(trip_id, distance_unit = 'km')
     result = JobOwnership.with_owner(OWNER_KEY) { fan_out(trip_id, distance_unit) }
-    self.class.forward(trip_id, distance_unit, job_id) if result == :not_owner
+    return unless result == :not_owner
+
+    self.class.forward(trip_id, distance_unit, job_id, scheduled_at: scheduled_at || Time.current)
   end
 
-  def self.forward(trip_id, distance_unit, token)
+  def self.forward(trip_id, distance_unit, token, scheduled_at: Time.current)
     JobCommands.forward(
       'trips.calculate', { 'trip_id' => trip_id, 'distance_unit' => distance_unit },
       event_id: Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "trips.calculate:#{trip_id}:#{token}"),
-      aggregate_id: trip_id, dedupe_key: trip_id.to_s, producer: name
+      aggregate_id: trip_id, dedupe_key: trip_id.to_s, producer: name, scheduled_at:
     )
   end
 
@@ -59,6 +61,7 @@ class Trips::CalculateAllJob < ApplicationJob
   private
 
   def fan_out(trip_id, distance_unit)
+    JobOwnership.require_source_children!(OWNER_KEY)
     run_token = SecureRandom.uuid
     Rails.cache.write(self.class.pending_key(trip_id, run_token), 3, expires_in: PENDING_TTL, raw: true)
 

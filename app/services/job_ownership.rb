@@ -4,6 +4,7 @@ module JobOwnership
   OWNERS = %i[sidekiq oban].freeze
   LOCK_TIMEOUT = '5s'
   JOINT_KEYS = [%w[cron:lite_archival_warning_job command:mail.user.archival_approaching]].freeze
+  class UnsupportedSourceChain < StandardError; end
   class InconsistentOwners < StandardError; end
 
   module_function
@@ -41,6 +42,13 @@ module JobOwnership
     raise InconsistentOwners, "joint job ownership disagrees for #{key}" unless owners.map(&:last).uniq.one?
 
     owners.first.last.to_sym
+  end
+
+  def require_source_children!(key)
+    return unless ENV['DAWARICH_CLOUD_DRAIN_ONLY'] == 'true'
+
+    raise UnsupportedSourceChain,
+          "#{key}: accepted source chain requires new children; resolve or predrain before switch"
   end
 
   def release!(key, by:)

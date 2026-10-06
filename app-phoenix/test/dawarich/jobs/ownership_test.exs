@@ -202,6 +202,78 @@ defmodule Dawarich.Jobs.OwnershipTest do
     assert_trip_effect(fixture, event)
   end
 
+  test "accepted source trip continues through the native owner without a new source child" do
+    fixture = trip_fixture!()
+    id = fixture["trip"]["id"]
+    root = "00000000-0000-4000-8000-000000003307"
+    :ok = Ownership.put!(ScratchRepo, "command:trips.calculate", :oban)
+    event = source_run(~s|
+      before = Sidekiq::Queue.new('trips').size
+      job = Trips::CalculateAllJob.new(#{id}, 'mi')
+      job.job_id = '#{root}'
+      job.scheduled_at = Time.utc(2026, 6, 1, 12)
+
+      accepted = job.serialize.merge('locale' => 'de', 'timezone' => 'Pacific/Chatham')
+      2.times { ActiveJob::Base.execute(accepted) }
+      row = JobOutbox.sole
+      raise 'due time changed' unless row.scheduled_at == job.scheduled_at
+      raise 'source children appeared' unless Sidekiq::Queue.new('trips').size == before
+      raise 'wrapper context changed' unless accepted.values_at('locale', 'timezone') == ['de', 'Pacific/Chatham']
+      puts "CLOUD:\#{row.event_id}"
+    |) |> String.replace_prefix("CLOUD:", "")
+    oban = __MODULE__.TripOban
+    start_oban(oban)
+
+    assert Dispatch.run(repo: ScratchRepo, oban: oban, now: ~U[2026-06-01 12:00:00Z]) == %{
+             dispatched: 1
+           }
+
+    assert [[args]] = rows("SELECT args FROM oban.oban_jobs")
+    assert args["event_id"] == event
+    job = %Oban.Job{args: args, attempt: 1, max_attempts: 3}
+    assert Dawarich.Trips.CalculateWorker.perform(job) == :ok
+    assert source_run(~s|
+      before = Sidekiq::Queue.new('trips').size
+      job = Trips::CalculateAllJob.new(#{id}, 'mi')
+      job.job_id = '#{root}'
+      job.perform_now
+      Trips::CalculatePathJob.perform_now(#{id}, '#{root}')
+      Trips::CalculateDistanceJob.perform_now(#{id}, 'mi', '#{root}')
+      Trips::CalculateCountriesJob.perform_now(#{id}, 'mi', '#{root}')
+      raise 'source children appeared' unless Sidekiq::Queue.new('trips').size == before
+      puts "CLOUD:\#{JobOutbox.count}"
+    |) == "CLOUD:1"
+    assert Dawarich.Trips.CalculateWorker.perform(job) == :ok
+    assert_trip_effect(fixture, event)
+  end
+
+  test "unsupported accepted source chain stays retained and blocks the Cloud switch" do
+    trip_fixture!()
+    assert source_run(~s|
+      require 'sidekiq/api'
+      job = Trips::CalculateAllJob.new(990101, 'mi')
+      accepted = job.serialize
+      jid = Sidekiq::Client.push('class' => 'ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper',
+                                 'wrapped' => job.class.name, 'queue' => 'trips', 'args' => [accepted])
+      before = Sidekiq::Queue.new('trips').size
+      ENV['DAWARICH_CLOUD_DRAIN_ONLY'] = 'true'
+      begin
+        ActiveJob::Base.execute(accepted)
+        puts 'CLOUD:ACKNOWLEDGED'
+      rescue JobOwnership::UnsupportedSourceChain
+        raise 'owner changed' unless JobOwnership.with_owner(Trips::CalculateAllJob::OWNER_KEY) { :retained } == :retained
+        raise 'children appeared' unless Sidekiq::Queue.new('trips').size == before
+        raise 'success receipt appeared' unless ActiveRecord::Base.connection.select_value('SELECT count(*) FROM phoenix.processed_commands').zero?
+        raise 'forward appeared' unless JobOutbox.count.zero?
+        raise 'original was lost' unless Sidekiq::Queue.new('trips').find_job(jid).args == [accepted]
+        puts 'CLOUD:RETAINED'
+      ensure
+        Sidekiq::Queue.new('trips').find_job(jid)&.delete
+      end
+    |) == "CLOUD:RETAINED"
+    assert rows("SELECT owner FROM phoenix.job_owners") == [["sidekiq"]]
+  end
+
   defp trip_fixture! do
     fixture =
       Path.expand("../../fixtures/trips/calculation.json", __DIR__)
