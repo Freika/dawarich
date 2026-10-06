@@ -94,6 +94,17 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
     fixture_bytes(residual_path('effects'), fixture)
   end
 
+  it 'characterizes explicit reply-to on both source MIME formats' do
+    user = create(:user)
+    messages = [UsersMailer.with(user:).welcome.message,
+                DeviseMailer.reset_password_instructions(user, 'synthetic-token')]
+    messages.each do |message|
+      message.reply_to = 'reply@example.test'
+      parsed = Mail.read_from_string(message.encoded)
+      expect(parsed.reply_to).to eq(['reply@example.test'])
+    end
+  end
+
   context 'test mail HTTP capture', type: :request do
     it 'records test mail HTTP outcomes and retired mail no ops' do
       fixture = residual_mail_http
