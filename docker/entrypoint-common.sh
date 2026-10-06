@@ -78,6 +78,13 @@ exec_under_phoenix() {
   exec dawarich start
 }
 
+exec_native_phoenix() {
+  unset DAWARICH_RAILS_ARGS
+  DAWARICH_NATIVE_ARGS="$(printf '%s\037' "$@")"
+  export DAWARICH_NATIVE_ARGS DAWARICH_PROCESS_ROLE=web
+  exec dawarich start
+}
+
 exec_idle_phoenix() {
   unset DAWARICH_RAILS_ARGS
   export DAWARICH_PROCESS_ROLE=sidekiq_idle

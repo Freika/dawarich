@@ -5,9 +5,22 @@ set -e
 . "$(dirname "$0")/entrypoint-env-guard.sh"
 . "$(dirname "$0")/entrypoint-common.sh"
 validate_cloud_drain_argv "$0" "$@"
-validate_phoenix_lifecycle
+case "${DAWARICH_PHOENIX_LIFECYCLE-false}:${SELF_HOSTED-true}" in
+  true:false)
+    if ! is_server_command "$@"; then
+      echo "Native Cloud web requires a supported server command" >&2
+      exit 1
+    fi
+    ;;
+  *) validate_phoenix_lifecycle ;;
+esac
 
 bootstrap "$0" "$@"
+if phoenix_lifecycle_is_native && [ "${SELF_HOSTED-true}" = false ]; then
+  unset DAWARICH_RAILS_ARGS DAWARICH_NATIVE_ARGS DAWARICH_PROCESS_ROLE
+  dawarich eval 'Dawarich.Release.halt_unless_ready()' || exit "$?"
+  exec_native_phoenix "$@"
+fi
 echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
 sanitize_integer_env WEB_CONCURRENCY 1
 wait_for_database
