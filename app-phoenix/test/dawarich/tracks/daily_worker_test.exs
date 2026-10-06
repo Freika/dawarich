@@ -102,7 +102,7 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
     assert range_jobs() == expected
 
     assert run() == :ok
-    assert range_jobs() == expected ++ expected
+    assert range_jobs() == expected
 
     for args <- range_jobs(), do: assert(RangeWorker.run(ScratchRepo, oban(), args) == :ok)
 

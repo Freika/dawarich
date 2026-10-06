@@ -37,7 +37,7 @@ defmodule Dawarich.RawData.ClearWorker do
   def key, do: @key
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: args}), do: run(Dawarich.Jobs.repo(), Oban, args)
+  def perform(%Oban.Job{args: args, conf: conf}), do: run(Dawarich.Jobs.repo(), conf.name, args)
 
   @impl Oban.Worker
   def timeout(_job), do: :timer.minutes(20)

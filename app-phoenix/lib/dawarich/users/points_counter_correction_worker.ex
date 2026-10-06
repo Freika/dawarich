@@ -26,6 +26,7 @@ defmodule Dawarich.Users.PointsCounterCorrectionWorker do
       {:ok, {:next, last_id}} -> sweep(repo, last_id, batch_size)
       {:ok, :done} -> :ok
       {:skip, _owner} -> {:cancel, :not_owner}
+      {:error, reason} -> {:error, reason}
     end
   end
 end

@@ -114,14 +114,12 @@ defmodule Dawarich.Jobs.Claimer do
     do: Enum.map(entries, &{&1.key, claim(repo, oban, &1, lock_timeout)})
 
   def claim(repo, oban, entry, lock_timeout \\ "2s") do
-    {:ok, _} =
-      repo.transaction(fn ->
-        set_lock_timeout(repo, lock_timeout)
-
-        Ownership.ensure_rows!(repo, Ownership.joint_keys(entry.key))
-      end)
-
-    with {:ok, outcome} <- repo.transaction(fn -> flip(repo, oban, entry, lock_timeout) end) do
+    with {:ok, _} <-
+           repo.transaction(fn ->
+             set_lock_timeout(repo, lock_timeout)
+             Ownership.ensure_rows!(repo, Ownership.joint_keys(entry.key))
+           end),
+         {:ok, outcome} <- repo.transaction(fn -> flip(repo, oban, entry, lock_timeout) end) do
       if outcome == :claimed, do: Logger.info("[jobs.claimer] #{entry.key} now runs on Oban")
       outcome
     end
