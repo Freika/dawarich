@@ -31,86 +31,86 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   after(:all) do
     captured = NormalImportFormatsSupport.closure_cases.sort.to_h
     selected = captured.select { |name, _| %w[source_detection dispatch].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f01', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f01', selected) unless selected.empty?
     selected = captured.select { |name, _| %w[csv atomic].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f02', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f02', selected) unless selected.empty?
     selected = captured.select { |name, _| ['geojson'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f03', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f03', selected) unless selected.empty?
     selected = captured.select { |name, _| ['owntracks'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f04', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f04', selected) unless selected.empty?
     selected = captured.select { |name, _| ['gpx'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f05', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f05', selected) unless selected.empty?
     selected = captured.select { |name, _| ['kml'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f06', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f06', selected) unless selected.empty?
     selected = captured.select { |name, _| ['tcx'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f07', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f07', selected) unless selected.empty?
     selected = captured.select { |name, _| ['fit'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f08', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f08', selected) unless selected.empty?
     selected = captured.select { |name, _| ['polarsteps'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f09', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f09', selected) unless selected.empty?
     selected = captured.select { |name, _| ['mobile'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f10', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f10', selected) unless selected.empty?
     selected = captured.select { |name, _| ['records'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f11', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f11', selected) unless selected.empty?
     selected = captured.select { |name, _| ['semantic'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f12', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f12', selected) unless selected.empty?
     selected = captured.select { |name, _| ['phone'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f13', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f13', selected) unless selected.empty?
     selected = captured.select { |name, _| ['whole_create'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f14', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f14', selected) unless selected.empty?
     selected = captured.select { |name, _| ['resume/gpx'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f15', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f15', selected) unless selected.empty?
     selected = captured.select { |name, _| ['resume/normal'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f16', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f16', selected) unless selected.empty?
     selected = captured.select { |name, _| ['continuation'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f17', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f17', selected) unless selected.empty?
     selected = captured.select { |name, _| ['extraction'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f18', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f18', selected) unless selected.empty?
     selected = captured.select { |name, _| ['postprocess', 'whole_create/post'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f19', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f19', selected) unless selected.empty?
     selected = captured.select { |name, _| ['google_photos'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f20', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f20', selected) unless selected.empty?
     selected = captured.select { |name, _| ['photos'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f21', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f21', selected) unless selected.empty?
     selected = captured.select { |name, _| ['whole_create/kmz'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f22', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f22', selected) unless selected.empty?
     selected = captured.select { |name, _| ['enhanced/23'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f23', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f23', selected) unless selected.empty?
     selected = captured.select { |name, _| ['enhanced/24'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f24', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f24', selected) unless selected.empty?
     selected = captured.select { |name, _| ['enhanced/25'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f25', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f25', selected) unless selected.empty?
     selected = captured.select { |name, _| ['enhanced/26'].any? { name.start_with?(_1) } }
-    NormalImportFormatsSupport.write('a12f3a-f26', selected) unless selected.empty?
+    NormalImportFormatsSupport.source_write('a12f3a-f26', selected) unless selected.empty?
     selected = captured.select { |name, _| name.start_with?('producers/watcher/') }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i07.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i07.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = captured.select { |name, _| name.start_with?('producers/immich/') }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i08.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i08.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = captured.select { |name, _| name.start_with?('producers/teslamate/') }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i09.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i09.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = captured.select { |name, _| name.start_with?('producers/stale/') }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i10.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i10.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = captured.select { |name, _| name.start_with?('producers/photoprism/') }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i11.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i11.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
     selected = captured.select { |name, _| name.start_with?('producers/trek/') }
     unless selected.empty?
-      FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i12.json'),
-                              "#{JSON.pretty_generate(selected)}\n")
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/imports_pages/a12f3a-i12.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
     end
   end
 

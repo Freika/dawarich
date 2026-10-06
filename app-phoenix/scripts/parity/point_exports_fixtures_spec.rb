@@ -152,6 +152,9 @@ RSpec.describe 'Phoenix fixtures: POST /exports as Rails answers it', type: :req
                                     start_at: '2024-03-01', end_at: '2024-03-31', status: :created)
       clear_enqueued_jobs
       before = export.attributes
+      { 'active_storage_blobs' => 10_820_503, 'active_storage_attachments' => 10_820_585 }.each do |table, first|
+        connection.execute("SELECT setval('#{table}_id_seq', #{first + index}, false)")
+      end
       ExportJob.perform_now(export.id)
       export.reload
       expect(export.status).to eq('completed')
@@ -186,9 +189,14 @@ RSpec.describe 'Phoenix fixtures: POST /exports as Rails answers it', type: :req
     ensure
       ActionController::Base.allow_forgery_protection = false
     end
-    FixtureRecording.verify(Rails.root.join('app-phoenix/test/fixtures/user_data/a12f3a-e03.json'),
-                            "#{JSON.pretty_generate(rows.transform_values { _1[:delete] })}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/user_data/a12f3a-e03.json'),
+                                   "#{JSON.pretty_generate(rows.transform_values { _1[:delete] })}\n")
     rows
+  ensure
+    sequences&.each do |table, state|
+      connection.execute("SELECT setval('#{table}_id_seq', #{state.fetch('last_value')}, " \
+                         "#{connection.quote(state.fetch('is_called'))})")
+    end
   end
 
   it 'writes the create cases' do

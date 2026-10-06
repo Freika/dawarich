@@ -32,6 +32,11 @@ module NormalImportFormatsSupport
     FixtureRecording.verify(DIR.join("#{name}.json"), "#{JSON.pretty_generate(value)}\n")
   end
 
+  def source_write(name, value)
+    closure_cases[name] = value
+    FixtureRecording.source_verify(DIR.join("#{name}.json"), JSON.generate(value))
+  end
+
   def capture_csv(zone)
     output = nil
     ActiveRecord::Base.transaction(requires_new: true) do

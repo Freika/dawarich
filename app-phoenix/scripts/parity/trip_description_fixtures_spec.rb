@@ -90,7 +90,7 @@ RSpec.describe 'Phoenix fixtures: trip descriptions as Rails renders them on the
     captured = { cases:, embedded: before, after: { trip: Trip.exists?(trip.id), rich_text: text.destroyed?,
                       blob: ActiveStorage::Blob.exists?(blob.id) },
                  jobs: enqueued_jobs.map { { class: _1[:job].name, args: _1[:args], queue: _1[:queue] } } }
-    FixtureRecording.verify(path.dirname.join('a12f3a-t03.json'), "#{JSON.pretty_generate(captured)}\n")
+    FixtureRecording.source_verify(path.dirname.join('a12f3a-t03.json'), "#{JSON.pretty_generate(captured)}\n")
   end
 
   it 'writes each stored body with the HTML the trip page renders for it' do
