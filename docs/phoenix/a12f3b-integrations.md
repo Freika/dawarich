@@ -36,7 +36,8 @@ returns native errors without proxying.
 
 The final save locks and re-reads the user's settings after network activity,
 merges only requested fields and connection statuses, and preserves unrelated
-concurrent writes. SQL failure rolls back. Updates require a valid session,
+concurrent writes. It applies the Rails save callback that removes trailing
+slashes from Immich/PhotoPrism URLs before persistence. SQL failure rolls back. Updates require a valid session,
 CSRF token, active account and the source full-access entitlement. Optional
 photo-cache refresh clears that user's photo, search and thumbnail entries.
 

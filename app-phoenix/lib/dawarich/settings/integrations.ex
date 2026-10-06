@@ -18,7 +18,7 @@ defmodule Dawarich.Settings.Integrations do
         fn ->
           case read(repo, id, " FOR UPDATE") do
             [[%{} = current]] ->
-              settings = current |> Map.merge(changes) |> Map.merge(statuses)
+              settings = current |> Map.merge(changes) |> Map.merge(statuses) |> normalize_urls()
 
               repo.query!(
                 "UPDATE users SET settings=$2,updated_at=$3 WHERE id=$1",
@@ -142,6 +142,14 @@ defmodule Dawarich.Settings.Integrations do
       else
         result
       end
+    end)
+  end
+
+  defp normalize_urls(settings) do
+    Enum.reduce(~w(immich_url photoprism_url), settings, fn key, acc ->
+      if is_binary(acc[key]),
+        do: Map.update!(acc, key, &String.replace(&1, ~r{/+\z}, "")),
+        else: acc
     end)
   end
 

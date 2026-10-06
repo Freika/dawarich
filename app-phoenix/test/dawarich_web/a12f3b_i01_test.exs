@@ -290,6 +290,29 @@ defmodule DawarichWeb.A12f3bI01Test do
     assert Accounts.settings(actor.id) == before
   end
 
+  @tag a12f3b_case: "I01c"
+  test "integration settings save strips source photo URL suffixes", %{actor: actor} do
+    server = listen()
+    :gen_tcp.close(server.listen)
+    url = "http://127.0.0.1:#{server.port}/photos"
+
+    assert {:ok, result} =
+             Integrations.save(
+               Repo,
+               actor.id,
+               %{"immich_url" => url <> "///", "photoprism_url" => url <> "/"},
+               self_hosted: true,
+               locale: "en"
+             )
+
+    assert result.success
+    assert result.settings["immich_url"] == url
+    assert result.settings["photoprism_url"] == url
+    assert Accounts.settings(actor.id)["immich_url"] == url
+    assert Accounts.settings(actor.id)["photoprism_url"] == url
+    assert result.settings["keep"] == 7
+  end
+
   defp request(id, settings) do
     session = RailsUser.session(id)
 
