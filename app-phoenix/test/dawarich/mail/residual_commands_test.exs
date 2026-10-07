@@ -91,7 +91,7 @@ defmodule Dawarich.Mail.ResidualCommandsTest do
                  "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
                )
 
-      assert [[1]] =
+      assert [[2]] =
                rows(
                  "SELECT count(*) FROM phoenix.processed_commands WHERE handler LIKE 'digests.generate_%'"
                )

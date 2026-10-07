@@ -164,7 +164,7 @@ defmodule Dawarich.FixRxStatsTest do
                  Keyword.put(opts, :after_terminal, fault)
                )
 
-      assert [[1]] =
+      assert [[2]] =
                rows(
                  "SELECT count(*) FROM phoenix.processed_commands WHERE handler LIKE 'digests.generate_%'"
                )

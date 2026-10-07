@@ -20,7 +20,7 @@ defmodule Dawarich.Digests.Generation do
     else
       callback(opts, :before_claim)
 
-      case generate(repo, kind, args, opts) do
+      case generate(repo, kind, args, terminal_id, opts) do
         {:ok, {:failed, error}} ->
           {:error, error}
 
@@ -62,56 +62,85 @@ defmodule Dawarich.Digests.Generation do
       end)
   end
 
-  defp generate(repo, kind, args, opts) do
+  defp generate(repo, kind, args, terminal_id, opts) do
     handler = "digests.generate_" <> period(kind)
     checkpoint = EffectIdentity.id(args["event_id"], handler, args)
+    shared = EffectIdentity.id(terminal_id, handler, %{})
 
     Dawarich.Transaction.run(repo, fn ->
-      if Processed.claim!(repo, checkpoint, handler) do
-        function = if period(kind) == "month", do: :monthly, else: :yearly
-        result = apply(Run, function, [repo, args, opts])
+      repo.query!(
+        "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+        [terminal_id],
+        log: false
+      )
 
-        state =
-          case result do
-            {:ok, _id} ->
-              "mail"
+      cond do
+        Processed.done?(repo, terminal_id) or legacy_done?(repo, kind, args) ->
+          "complete"
 
-            :missing ->
-              "missing"
+        Processed.done?(repo, shared) ->
+          outcome(repo, shared, handler)
 
-            {:error, error, stack} ->
-              Failure.create!(repo, kind, args["user_id"], error, stack)
-              {:failed, error}
-          end
+        true ->
+          state = generate_claim(repo, kind, args, opts, checkpoint, handler)
 
-        case state do
-          {:failed, _} ->
-            repo.query!(
-              "DELETE FROM phoenix.processed_commands WHERE event_id=$1",
-              [Ecto.UUID.dump!(checkpoint)],
-              log: false
-            )
+          unless match?({:failed, _}, state),
+            do: Processed.mark!(repo, shared, handler <> ":" <> state)
 
-          _ ->
-            repo.query!(
-              "UPDATE phoenix.processed_commands SET handler=$2 WHERE event_id=$1",
-              [Ecto.UUID.dump!(checkpoint), handler <> ":" <> state],
-              log: false
-            )
-        end
-
-        state
-      else
-        [[saved]] =
-          repo.query!(
-            "SELECT handler FROM phoenix.processed_commands WHERE event_id=$1",
-            [Ecto.UUID.dump!(checkpoint)],
-            log: false
-          ).rows
-
-        String.replace_prefix(saved, handler <> ":", "")
+          state
       end
     end)
+  end
+
+  defp generate_claim(repo, kind, args, opts, checkpoint, handler) do
+    if Processed.claim!(repo, checkpoint, handler) do
+      function = if period(kind) == "month", do: :monthly, else: :yearly
+      result = apply(Run, function, [repo, args, opts])
+
+      state =
+        case result do
+          {:ok, _id} ->
+            "mail"
+
+          :missing ->
+            "missing"
+
+          {:error, error, stack} ->
+            Failure.create!(repo, kind, args["user_id"], error, stack)
+            {:failed, error}
+        end
+
+      case state do
+        {:failed, _} ->
+          repo.query!(
+            "DELETE FROM phoenix.processed_commands WHERE event_id=$1",
+            [Ecto.UUID.dump!(checkpoint)],
+            log: false
+          )
+
+        _ ->
+          repo.query!(
+            "UPDATE phoenix.processed_commands SET handler=$2 WHERE event_id=$1",
+            [Ecto.UUID.dump!(checkpoint), handler <> ":" <> state],
+            log: false
+          )
+      end
+
+      state
+    else
+      outcome(repo, checkpoint, handler)
+    end
+  end
+
+  defp outcome(repo, checkpoint, handler) do
+    [[saved]] =
+      repo.query!(
+        "SELECT handler FROM phoenix.processed_commands WHERE event_id=$1",
+        [Ecto.UUID.dump!(checkpoint)],
+        log: false
+      ).rows
+
+    String.replace_prefix(saved, handler <> ":", "")
   end
 
   defp legacy_done?(repo, kind, args) do
