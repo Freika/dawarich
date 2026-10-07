@@ -593,7 +593,10 @@ conditions, 125/78/24 inventories, source recording and G42–G49 owner links ar
 in [the part-B handoff](../../docs/phoenix/a12f3b-pages-producers.md) and
 [the drain runbook](../../docs/phoenix/a12d3-schedules-drain.md).
 
+## Media ownership review fix
 
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
 | ED-FIX-MEDIA-OWNERSHIP | Native media admission, revocation and execution fences | Rails route videos adopt any signed blob; deferred poster purges retain usable links until deletion; accepted source poster jobs ignore native ownership and leases. | Native adoption loads an owner-compatible blob and rechecks under its row lock. Legacy native poster purges use the shared graph marker and storage-first helper. Blob locking makes committed revocation win over earlier admission. Analysis claims its event and locks its blob before ffprobe, rolling back claims on failure. Retained source poster jobs forward under Oban ownership and hold the shared lease during source-owned generation. Valid signed downloads retain Rails bearer behavior (DRB-027). | fix-media-ownership; FRB-047/048/049; named coexistence/standalone tests and individual mutations | implemented; seed-404 evidence in controller report |
 
 ## MAIL review authorization and accepted-job receipts
