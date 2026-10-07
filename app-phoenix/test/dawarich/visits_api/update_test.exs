@@ -174,7 +174,7 @@ defmodule Dawarich.VisitsApi.UpdateTest do
                "visit_months_changed",
                %{
                  "user_id" => 953_001,
-                 "started_at" => ["2026-10-01T12:00:00.000000Z", "2026-09-01T12:00:00.000000Z"]
+                 "started_at" => ["2026-09-01T12:00:00.000000Z", "2026-10-01T12:00:00.000000Z"]
                }
              ]
            ]

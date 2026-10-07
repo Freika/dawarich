@@ -16,7 +16,8 @@ defmodule Dawarich.Visits.Calendar do
 
     payload = %{
       "user_id" => user_id,
-      "started_at" => stamps |> Enum.map(&DateTime.to_iso8601/1) |> Enum.uniq()
+      "started_at" =>
+        stamps |> Enum.sort(DateTime) |> Enum.map(&DateTime.to_iso8601/1) |> Enum.uniq()
     }
 
     unless Keyword.get(opts, :native_owner, false) or Dawarich.Standalone.enabled?() or

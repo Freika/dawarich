@@ -199,6 +199,65 @@ defmodule Dawarich.VisitsApi.MergeBulkTest do
     assert {:error, 422, _} = BulkUpdate.call(953_001, [953_303], "invalid")
   end
 
+  @tag mutation: "M-visit-months-producer-order"
+  test "visit month producer emits ascending distinct timestamps for both consumers" do
+    earlier = ~U[2026-12-31 13:00:00.000000Z]
+    later = ~U[2027-01-01 12:00:00.000000Z]
+
+    assert {:ok, :ok} =
+             ScratchRepo.transaction(fn ->
+               Dawarich.RailsEffects.visit_months(ScratchRepo, 953_001, [later, earlier, later])
+             end)
+
+    payload = %{
+      "user_id" => 953_001,
+      "started_at" => ["2026-12-31T13:00:00.000000Z", "2027-01-01T12:00:00.000000Z"]
+    }
+
+    assert commands() == [["visit_months_changed", payload]]
+
+    assert rows("SELECT args FROM oban.oban_jobs WHERE worker=$1 ORDER BY id", [
+             "Dawarich.Points.VisitMonthsWorker"
+           ]) == [[payload]]
+  end
+
+  @tag mutation: "M-orphan-places-producer-order"
+  test "orphan place producer emits ascending distinct IDs for both owners" do
+    ids = [953_202, 953_201, 953_202]
+    assert :ok = Dawarich.RailsEffects.orphan_places(ScratchRepo, 953_001, ids)
+
+    assert commands() == [
+             [
+               "places_delete_if_orphan",
+               %{"user_id" => 953_001, "place_ids" => [953_201, 953_202]}
+             ]
+           ]
+
+    Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:places.delete_if_orphan", :oban)
+    handler = "orphan-place-producer-order"
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:dawarich, :scratch_repo, :query],
+        fn _event, _measurements, %{query: query, params: params}, parent ->
+          if self() == parent && String.starts_with?(query, "INSERT INTO public.job_outbox"),
+            do: send(parent, {:orphan_published, Enum.at(params, 2)})
+        end,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+    assert :ok = Dawarich.RailsEffects.orphan_places(ScratchRepo, 953_001, ids)
+
+    assert_received {:orphan_published, first}
+    assert_received {:orphan_published, second}
+    refute_received {:orphan_published, _}
+    assert first == %{"user_id" => 953_001, "place_id" => 953_201}
+    assert second == %{"user_id" => 953_001, "place_id" => 953_202}
+    assert rows("SELECT count(*) FROM job_outbox") == [[2]]
+  end
+
   test "merge failure rolls every row and private effect back without replay" do
     before = snapshot()
 
