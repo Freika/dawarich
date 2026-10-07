@@ -6,8 +6,14 @@ defmodule Dawarich.Cable.EventsRelayTest do
   alias Dawarich.Cable.EventsRelay
   alias Dawarich.Test.A12a
 
-  setup do
+  setup context do
+    if context[:auto_sandbox] do
+      Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :auto)
+      on_exit(fn -> Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :manual) end)
+    end
+
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     A12a.seed!()
     A12a.start_bus!()
     :ok
@@ -82,6 +88,7 @@ defmodule Dawarich.Cable.EventsRelayTest do
     assert {302, _headers, _body} = Dawarich.Test.RawHTTP.read_response(client)
   end
 
+  @tag :auto_sandbox
   test "two relays never publish one event twice" do
     A12a.insert_events!(A12a.many_notification_events(150))
     {:ok, _} = A12a.listen_all()

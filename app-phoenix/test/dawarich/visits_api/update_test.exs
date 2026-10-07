@@ -182,7 +182,13 @@ defmodule Dawarich.VisitsApi.UpdateTest do
     Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.rails_commands))
     rows("UPDATE visits SET demo=true WHERE id=953301")
     assert {:ok, _} = update(%{"status" => "declined"})
-    assert commands() == []
+
+    assert commands() == [
+             [
+               "visit_months_changed",
+               %{"user_id" => 953_001, "started_at" => ["2026-10-01T12:00:00.000000Z"]}
+             ]
+           ]
   end
 
   defp update(attrs), do: Update.call(953_001, 953_301, attrs, "UTC", @now)

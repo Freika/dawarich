@@ -10,6 +10,14 @@ Realtime intake calls `Visits.RealtimeDebouncer` only for its `visits.realtime` 
 
 `SuggestWorker` clears the debounce claim at the start and rechecks user existence and suggestion preference before processing. Once execution starts, a later arrival can schedule another window. Standalone visit month invalidation also runs natively; coexistence keeps its existing owner choice.
 
+Native detection persistence now checks its captured policy, areas and provider
+configuration after acquiring the user-row lock. Obsolete batches are skipped
+before replacement; current work retains the window/evidence refresh. Final
+stitching revalidates its context and live visit rows under the same lock before
+atomic absorption and rescoring. Real
+settings-change interleavings and redelivery preserve newer visits in both modes.
+See [visit-cache-fence.md](visit-cache-fence.md#concurrent-detection-publication).
+
 ## Integration handoff
 
 HOT owns final registry activation and route mounting. This package edits no hot files and needs no new worker registry entry or route: the existing `visits.suggest` and `visits.full_history_redetect` mappings already dispatch both native workers.

@@ -15,14 +15,12 @@ defmodule Dawarich.Visits.Persister do
   RETURNING id
   """
 
-  def run(repo, user_id, start, stop, stays, points_by_id, policy) do
-    window = [user_id, naive(stop), naive(start)]
-
-    {:ok, created} =
+  def run(repo, user_id, start, stop, stays, points_by_id, policy, refresh) do
+    result =
       repo.transaction(fn ->
-        if advisory_locks?(System.get_env("DATABASE_ADVISORY_LOCKS")),
-          do: repo.query!("SELECT pg_advisory_xact_lock($1)", [user_id], log: false)
-
+        lock(repo, user_id)
+        {start, stop, stays, points_by_id} = refresh.({start, stop, stays, points_by_id})
+        window = [user_id, naive(stop), naive(start)]
         anchors = anchors(repo, window)
         prepared = Enum.flat_map(stays, &trim(&1, anchors, points_by_id, policy))
 
@@ -42,7 +40,17 @@ defmodule Dawarich.Visits.Persister do
         end
       end)
 
-    created
+    case result do
+      {:ok, created} -> created
+      {:error, reason} when reason in [:candidate_limit, :stale_context] -> :skipped
+    end
+  end
+
+  def lock(repo, user_id) do
+    if advisory_locks?(System.get_env("DATABASE_ADVISORY_LOCKS")),
+      do: repo.query!("SELECT pg_advisory_xact_lock($1)", [user_id], log: false)
+
+    repo.query!("SELECT id FROM users WHERE id=$1 FOR UPDATE", [user_id], log: false)
   end
 
   def advisory_locks?(value),

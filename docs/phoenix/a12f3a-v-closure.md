@@ -1,6 +1,6 @@
 # Visits and redetection closure
 
-Last updated: 2026-10-06. Package V, Rails 1.15.3 source contract.
+Last updated: 2026-10-07. Package V, Rails 1.15.3 source contract.
 
 ## Implemented native journey
 
@@ -30,8 +30,12 @@ terminal responses for that selected owner.
 
 `WebEffects.months/3` and the existing `RailsEffects.visit_months/3` API route
 through `Visits.Calendar.changed/3`. It locks `command:visits.suggest`:
-Sidekiq retains the `visit_months_changed` source command, while Oban invalidates
-the affected user-local month keys with the existing Redis cache API. Keys
+Sidekiq retains the `visit_months_changed` source command. Native ownership
+in coexistence and standalone queues `Points.VisitMonthsWorker` in the same SQL
+transaction as the visit write. The job becomes visible only after commit and
+invalidates the affected user-local month keys with the existing Redis cache API.
+Cache failure fails the worker attempt for Oban retry, without rolling back
+the committed visit. Native timeline summaries read SQL while the job is pending. Keys
 retain the Rails `timeline_month_summary/<user>/<month>/<zone>/<segment>/v3`
 shape for both Lite and Pro. Blank cache timezone uses UTC. MonthSummary reads
 native SQL and does not depend on a Rails cache worker.
@@ -161,3 +165,88 @@ pass with zero failures. The full suite retains its existing 11 exclusions and
 three skips. Six independent production mutations fail their assertions and
 restored targets pass. Forced compilation with warnings as errors, whole-tree
 format verification and Gitleaks pass; Swagger and schema show no drift.
+
+
+## Visit write review corrections (2026-10-07)
+
+Visit transactions atomically publish a fresh SQL month generation and a durable
+cache projection. Rails and Phoenix readers consult that committed generation;
+legacy and previous-generation entries cannot satisfy a read after the write
+becomes visible. Rails checks again after cache lookup/fill, rebuilding from SQL
+if the generation changed. A late fill from an older SQL snapshot stays under
+its captured older key. The month entry includes all day/week cells and
+aggregate status counts. Both Lite/Pro segments use the fence.
+
+Web writes, API writes including bulk status changes, area dependent deletion,
+detection/redetection, enhanced imports, import destruction, demo insertion and
+deletion, and user-data visit restoration use the common calendar seam. Source
+area/import paths no longer bypass it. Native month-cache housekeeping runs even
+when the visit producer is source-owned; its reverse compatibility command is
+retained. Worker cache failures snooze with durable exponential backoff capped
+at an hour and emit an operator-visible warning, without exhausting attempts.
+
+Both merge endpoints accept UTF-8 visit names using Rails' ASCII strip and the
+pinned Ruby 3.4.9 lowercase mappings for comparison. They retain first spellings,
+join distinct names with `, `, preserve composed/decomposed differences, and
+impose no byte limit. U+A7CB remains distinct from U+0264, as in Rails. Invalid
+place/area HTML redirects and Turbo maximum-count interpolation remain covered.
+
+The API, generation protocol, writer inventory, and after-commit coordination
+contract are documented in [visit-cache-fence.md](visit-cache-fence.md).
+Named regressions reproduce the authoritative scoped re-review and the live
+count-changing writer omissions. RED/GREEN/mutation/restoration evidence and
+release gates are recorded in the controller's fix2 report. The fix3 report adds
+the restored import-owned demo deletion worker scenario in coexistence and
+standalone, cache outage, immediate pre-drain freshness, durable intent and its
+filtering mutation.
+
+### ED-FIX-VISITS-CACHE — durable, fenced month invalidation
+
+Rails loses failed cache invalidations, and its old-snapshot fills can restore a
+stale month summary after a write commits. Phoenix commits SQL generations and
+retains indefinitely retryable projections. API bulk changes also correct Rails'
+callback-free `update_all` cache omission. Demo/restore count changes now retain
+month intents even if their old synchronous cache cleanup fails. Import deletion
+also includes restored demo visits in its month intents: Rails destroys these
+rows but skips their demo cache callback (`EnhancedImport::Destroy`,
+`Visit#bust_timeline_month_summary_cache`). Demo orphan-place exclusions remain. The repository
+ED/DRB registers are controller-owned; this scoped decision supplies their
+reconciliation evidence without editing shared rows.
+
+AFFiNE counterparts were read. The master execution plan forbids delegate AFFiNE
+writes for this assignment; controller synchronization remains pending.
+
+## Review follow-up: shared effects and stale suggestions (2026-10-07)
+
+Calendar publication now uses the shared `AfterCommit.enqueue/4` directly,
+retaining the transactionally committed month token, source reverse command,
+explicit native restore option and visit worker's indefinite snooze policy.
+`Points.NativeEffects.enqueue/4` is the shared delegation; the feature's direct
+Oban insertion is removed. RailsCache composes the shared visibility generation
+with the month fence, retaining generation rechecks and captured-key reads.
+Demo importer/destroyer publish supplemental point-month eviction and stats
+follow-ups inside their domain transaction. Their keys intent captures legacy,
+month-generated and shared-generated physical keys before the generation bump.
+
+Null-island cleanup publishes all deleted visit timestamps, including restored
+demos. Its orphan-place exclusion remains. The named archive-worker regressions
+cover both modes, a cache outage, committed absence, immediate logical misses,
+a durable month intent, consumer recovery and repeated execution.
+
+Detection persistence rechecks the overlapping machine window and reloads all
+candidate points and transportation segments while holding its per-user lock.
+Changed evidence or boundaries cause recomputation before anchor trimming and
+destructive replacement. The user row lock also serializes native persistence
+when advisory locking is disabled. Unchanged evidence still preserves visit IDs.
+The two deterministic realtime/outbox/dispatch interleavings preserve the newer
+50-minute/six-point visit and the same-range seven-point visit respectively.
+Settings.load excludes soft-deleted users for admission, suggestion execution,
+smart detection and fleet/redetection callers. Accepted workers still clear the
+debounce claim before skipping the deleted actor.
+
+Scoped reconciliation: ED-FIX-VISITS-NULL-ISLAND and ED-FIX-VISITS-CONCURRENT in
+`app-phoenix/parity/expected_diffs.md`; FRB-052 and FRB-053 in the fixed Rails bugs
+register (provisional feature IDs). Soft-deleted admission restores Rails parity
+and adds no intentional-difference row. Gate and mutation evidence belongs to
+the fix4 controller report. AFFiNE synchronization remains controller-owned
+under the master plan's delegate-write restriction.

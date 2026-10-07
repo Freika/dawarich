@@ -26,20 +26,20 @@ defmodule Dawarich.VisitsApi.Effects do
            ((old.deleted_at != new.deleted_at && new.deleted_at != nil) ||
               (old.status != new.status && new.status == 2)),
          do: RailsEffects.orphan_places(repo, new.user_id, List.wrap(new.place_id))
-
-      times =
-        if old && old.started_at != new.started_at,
-          do: [new.started_at, old.started_at],
-          else: [new.started_at]
-
-      RailsEffects.visit_months(
-        repo,
-        new.user_id,
-        Enum.map(times, &DateTime.from_naive!(&1, "Etc/UTC"))
-      )
-
-      if adopt? && new.place_id, do: adopt(repo, new.place_id, now)
     end
+
+    times =
+      if old && old.started_at != new.started_at,
+        do: [new.started_at, old.started_at],
+        else: [new.started_at]
+
+    RailsEffects.visit_months(
+      repo,
+      new.user_id,
+      Enum.map(times, &DateTime.from_naive!(&1, "Etc/UTC"))
+    )
+
+    if !new.demo && adopt? && new.place_id, do: adopt(repo, new.place_id, now)
   end
 
   defp adopt(repo, place, now) do
