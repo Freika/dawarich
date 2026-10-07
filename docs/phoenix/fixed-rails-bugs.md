@@ -7,14 +7,14 @@ This ledger records intentional security and replay corrections under controller
 | Finding | Rails-visible symptom and source evidence | Phoenix correction | Regression |
 | --- | --- | --- | --- |
 | F1: upload ownership | `app/controllers/imports_controller.rb:158` resolves a global signed blob and attaches it to `current_user` at line 164. Active Storage direct upload creation records no creator. A second authenticated user possessing an unattached signed reference can claim its bytes. | Native direct uploads create a server-owned `phoenix.upload_receipts` row in the blob transaction. Signed-reference import and user-data intake require the creating actor; import attachment rechecks ownership under the blob lock. CSRF-protected guest uploads retain the Rails wire protocol with ownerless receipts, which authenticated intake cannot claim. Historical uploads without a receipt are refused. Server-generated backup exports can be reimported only by their owning user, using the persisted Export attachment. Client metadata cannot establish ownership. | `another user cannot claim an upload created in the victim session` |
-| F2: delayed capability revocation | `app/models/import.rb:196` calls `purge_later`; `app/services/imports/prepared_download_purge_commands.rb:33` schedules cleanup. Blob redirects can continue resolving before delayed purge completes. | Standalone and native-owned coexistence deletion remove authorized attachments and revoke unshared blob rows in the deletion transaction. Durable native cleanup jobs retain service/key, including variants, for object deletion. Previously issued native disk links also require a live blob. Source-owned coexistence cleanup retains the source protocol. Already issued external S3 URLs remain subject to object deletion and expiry. | `deleting an import revokes its prepared blob capability immediately` |
+| F2: delayed capability revocation | `app/models/import.rb:196` calls `purge_later`; `app/services/imports/prepared_download_purge_commands.rb:33` schedules cleanup. Blob redirects can continue resolving before delayed purge completes. | Standalone and native-owned coexistence deletion remove authorized attachments and revoke unshared blob rows in the deletion transaction. Durable native cleanup jobs retain service/key, including variants, for object deletion. Previously issued native disk links also require a live blob. Source-owned coexistence cleanup retains the source protocol (DRB-029; original Rails 302/200 characterized). Already issued external S3 URLs remain subject to object deletion and expiry. | `deleting an import revokes its prepared blob capability immediately` |
 | F3: legacy extraction replay | `app/jobs/enhanced_import/extract_job.rb:43` defaults `expected` to nil; its ordinary legacy path runs without a completed-event receipt. Replay can repeat extraction/card/track effects. The typed Phoenix-to-Rails path already checks accepted identity (`app/services/imports/extraction_commands.rb:41`) and is not the dropped-fence defect. | Native GPX jobs retain actor/source/blob/event/request timestamp. Import leases and executing-attempt checks fence each place write and state/effect transaction. Terminal effects and the processed event commit together, making replay inert. | `the same completed extraction event does not execute its effects twice through dispatch` |
 | F3: stale legacy removal | `app/jobs/enhanced_import/destroy_job.rb:7` defaults `expected` to nil; `app/services/enhanced_import/destroy.rb:15` operates on current extracted data. An old ordinary legacy removal can remove newer extraction data. Accepted typed Rails removal already uses the request fence. | The retained native GPX removal worker checks the same request identity before each bounded deletion and reset; completed removal replay preserves newer data. Reduced legacy payloads cannot execute against an import carrying a typed manual request. | `a retried old removal cannot delete a newer extraction through dispatch` |
 | F4: purged disk object resurrection | Active Storage 8.1.3.1 `app/controllers/active_storage/disk_controller.rb:24` validates token/headers and calls disk upload without a blob-row lookup; `lib/active_storage/service/disk_service.rb:21` writes the key. A still-valid token can recreate a purged object. This is source evidence, not a claimed Rails HTTP replay experiment. | Native disk PUT stages and verifies bytes, then locks a live, unattached blob with a server upload receipt and matching service/size/checksum/type before publication. Purge and publication serialize on that row; revoked or attached receipts return 404. Purge removes the upload receipt. | `a successful purge cannot be undone with the old upload capability`; `purge between upload staging and publication prevents object resurrection` |
 
 F5 fixes a Phoenix admission bypass rather than an inherited current Rails defect. Rails GPX uses `app/services/enhanced_import/adapters/base_adapter.rb:25` and `app/services/imports/file_loader.rb:36` to download through the attachment's stored service. Active Storage 8.1.3.1 `DiskService#path_for` at line 114 already refuses traversal. Enhanced Phoenix SourceFile now uses the shared Reader, retaining observed-size/checksum errors, fixed temporary destinations, bounded archive extraction and deadline cancellation. Regressions: `manual GPX extraction refuses a key outside the storage root` and `manual GPX extraction refuses a mismatched stored service`.
 
-No shared ED/DRB row was added by this controller fix; this ledger is the ruling-17 handoff. Allocation names, ports and paths are deliberately absent.
+The initial F1–F5 correction added no shared ED/DRB row; the deletion follow-up adds DRB-029. This ledger is the ruling-17 handoff. Allocation names, ports and paths are deliberately absent.
 
 This register records Rails bugs fixed in the port (controller ruling 17).
 The controller compiles other packages' reports for the release-wide changelog.
@@ -97,3 +97,19 @@ AFFiNE decision counterpart: `kcLrxKCKEyl9xcbirP9V9`.
   `app-phoenix/test/dawarich/a12f3b_e13_shared_purge_test.exs`.
 - Expected difference: ED-A12F3B-E13-F2. Original Rails job and all hand-backs
   characterized by F3; Rails-owned coexistence remains preserved in DRB-025.
+
+## Import deletion authorization follow-up — 2026-10-07
+
+Distinct original and prepared blobs are a valid native destruction layout. The
+worker authenticates the intact attachment snapshot before entering destruction;
+its removal transaction authorizes every blob before any revocation. Immediate
+cleanup can no longer remove the original proof needed for the prepared blob.
+Ambiguous original identities fail admission with unchanged points, status and
+attachments. Shared attachments retain the existing protection. Cleanup jobs keep
+service/key targets and retry physical failures after capability revocation.
+
+This corrects a Phoenix ordering regression, not a Rails behavior change. The
+real-worker matrix covers both modes, both stored cleanup owners, prepared-only
+and distinct layouts, terminal replay, and durable native cleanup retry.
+Rails-owned delayed capability revocation is characterized separately in
+DRB-029. Original Rails code remains unchanged.
