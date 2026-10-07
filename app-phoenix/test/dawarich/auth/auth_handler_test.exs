@@ -1,6 +1,7 @@
 defmodule Dawarich.Auth.AuthHandlerTest do
   use ExUnit.Case, async: false
   import Plug.Conn
+  require Phoenix.LiveViewTest
 
   alias Dawarich.{Accounts, RailsCookies, RailsSecret, Repo}
   alias Dawarich.Auth.RememberCookie
@@ -376,6 +377,172 @@ defmodule Dawarich.Auth.AuthHandlerTest do
     end
 
     assert state(ctx.id).sign_in_count == 1
+  end
+
+  @tag :proxy_identity
+  test "forged forwarding headers from an untrusted peer cannot change sign in identity", ctx do
+    session = guest()
+
+    conn =
+      request(
+        :post,
+        "/users/sign_in",
+        [session_cookie(session)],
+        sign_in(session, ctx.email, "safepassword12"),
+        []
+      )
+
+    conn = %{conn | remote_ip: {198, 51, 100, 20}}
+
+    conn =
+      conn
+      |> put_req_header("x-forwarded-for", "192.0.2.99")
+      |> put_req_header("client-ip", "192.0.2.99")
+
+    response = AuthHandler.call(conn, enabled: true, native: true, registration_enabled: false)
+    assert response.status == 303
+
+    assert Repo.query!("SELECT current_sign_in_ip::text FROM users WHERE id=$1", [ctx.id],
+             log: false
+           ).rows == [["198.51.100.20"]]
+  end
+
+  @tag :signed_in_form
+  test "signed in GET sign in redirects with the Devise already authenticated alert", ctx do
+    before = state(ctx.id)
+
+    for native <- [false, true], query <- ["", "?locale=en"] do
+      session = Map.put(signed_in(ctx.id), "user_return_to", "/stats")
+      response = request(:get, "/users/sign_in" <> query, [session_cookie(session)], nil, [])
+
+      response =
+        AuthHandler.call(response,
+          enabled: true,
+          native: native,
+          registration_enabled: false,
+          fallback: &put_private(&1, :handed_to_rails, true)
+        )
+
+      assert response.status == 302
+      assert get_resp_header(response, "location") == [@base <> "/stats"]
+
+      assert response_session(response)["flash"]["flashes"]["alert"] ==
+               "You are already signed in."
+
+      assert response_session(response)["warden.user.user.key"] ==
+               signed_in(ctx.id)["warden.user.user.key"]
+
+      refute Map.has_key?(response_session(response), "user_return_to")
+    end
+
+    response = request(:get, "/users/sign_in", [session_cookie(signed_in(ctx.id))], nil, [])
+
+    response =
+      AuthHandler.call(response, enabled: true, native: true, registration_enabled: false)
+
+    assert response.status == 302
+    assert get_resp_header(response, "location") == [@base <> "/"]
+    assert state(ctx.id) == before
+  end
+
+  @tag :review_payment
+  test "signed in pending payment GET sign in resumes trial and retains stored location", ctx do
+    Repo.query!("UPDATE users SET status=3 WHERE id=$1", [ctx.id], log: false)
+    before = state(ctx.id)
+
+    for native <- [false, true], stored <- [nil, "/stats"], query <- ["", "?locale=en"] do
+      session = signed_in(ctx.id)
+      session = if stored, do: Map.put(session, "user_return_to", stored), else: session
+      response = request(:get, "/users/sign_in" <> query, [session_cookie(session)], nil, [])
+
+      response =
+        AuthHandler.call(response, enabled: true, native: native, registration_enabled: false)
+
+      assert response.status == 302
+      assert get_resp_header(response, "location") == [@base <> "/trial/resume"]
+      updated = response_session(response)
+      assert updated["user_return_to"] == stored
+      assert updated["warden.user.user.key"] == session["warden.user.user.key"]
+      assert updated["_csrf_token"] == session["_csrf_token"]
+      assert updated["flash"]["flashes"]["alert"] == "You are already signed in."
+    end
+
+    assert state(ctx.id) == before
+  end
+
+  @tag :review_flash
+  test "signed in redirect consumes incoming flash and shows the new alert for one request",
+       ctx do
+    for status <- [1, 3] do
+      Repo.query!("UPDATE users SET status=$1 WHERE id=$2", [status, ctx.id], log: false)
+      before = state(ctx.id)
+
+      for native <- [false, true],
+          query <- ["", "?locale=en"],
+          discard <- [[], ["expired"], ["notice", "expired"]] do
+        session =
+          signed_in(ctx.id)
+          |> Map.put("user_return_to", "/stats")
+          |> Map.put("flash", %{
+            "discard" => discard,
+            "flashes" => %{
+              "notice" => "Existing notice",
+              "expired" => "Old message",
+              "alert" => "Old alert"
+            }
+          })
+
+        response =
+          request(:get, "/users/sign_in" <> query, [session_cookie(session)], nil, [])
+          |> AuthHandler.call(enabled: true, native: native, registration_enabled: false)
+
+        target = if status == 3, do: "/trial/resume", else: "/stats"
+        assert response.status == 302
+        assert get_resp_header(response, "location") == [@base <> target]
+
+        redirected = flash_page(target, response)
+        assert redirected.assigns.flash_messages == [{"alert", "You are already signed in."}]
+        assert redirected.resp_body =~ "You are already signed in."
+        refute redirected.resp_body =~ "Existing notice"
+        refute Map.has_key?(response_session(redirected), "flash")
+
+        following = flash_page(target, redirected)
+        assert following.assigns.flash_messages == []
+        refute following.resp_body =~ "You are already signed in."
+        updated = response_session(redirected)
+        assert updated["_csrf_token"] == session["_csrf_token"]
+        assert updated["warden.user.user.key"] == session["warden.user.user.key"]
+        assert updated["user_return_to"] == if(status == 3, do: "/stats", else: nil)
+
+        assert response_session(response)["flash"] == %{
+                 "discard" => [],
+                 "flashes" => %{"alert" => "You are already signed in."}
+               }
+      end
+
+      assert state(ctx.id) == before
+    end
+  end
+
+  defp flash_page(path, previous) do
+    cookie = {"_dawarich_session", previous.resp_cookies["_dawarich_session"].value}
+
+    conn =
+      request(:get, path, [cookie], nil, [])
+      |> RailsAuth.call([])
+      |> fetch_query_params()
+      |> DawarichWeb.LayoutAssigns.call([])
+
+    body =
+      Enum.map_join(conn.assigns.flash_messages, fn {type, message} ->
+        Phoenix.LiveViewTest.render_component(&DawarichWeb.Chrome.flash_message/1,
+          type: type,
+          message: message,
+          locale: "en"
+        )
+      end)
+
+    send_resp(conn, 200, body)
   end
 
   defp call(method, path, cookies, body, headers \\ []) do

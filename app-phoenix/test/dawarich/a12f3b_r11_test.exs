@@ -46,6 +46,7 @@ defmodule Dawarich.A12f3bR11Test do
     assert {:ok, :ok} =
              F.with_destroy(c, fn lease ->
                DestroyEffects.status!(lease)
+               drain_events()
                assert_receive :imports_changed
 
                Dawarich.Imports.DestroyLease.effect!(lease, fn ->
@@ -61,9 +62,19 @@ defmodule Dawarich.A12f3bR11Test do
                :ok
              end)
 
+    drain_events()
     assert_receive :imports_changed
     assert [] == F.reverse()
     assert Dawarich.Jobs.Processed.done?(ScratchRepo, c.job.args["event_id"])
+  end
+
+  defp drain_events do
+    for [args] <-
+          rows(
+            "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Imports.EventsWorker' ORDER BY id"
+          ) do
+      assert :ok == Dawarich.Imports.EventsWorker.run(ScratchRepo, args)
+    end
   end
 
   @tag a12f3b_case: "R11k03"

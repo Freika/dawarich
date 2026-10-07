@@ -30,8 +30,30 @@ defmodule Dawarich.Imports.ExtractionRemovalWorker do
       Dawarich.Imports.Events.broadcast(job.args["user_id"])
       :ok
     end
+  rescue
+    error ->
+      fail(repo, job, error)
+      reraise error, __STACKTRACE__
   catch
     {:refused, reason} -> {:cancel, reason}
+  end
+
+  defp fail(repo, job, error) do
+    effect!(repo, job, fn ->
+      repo.query!(
+        "UPDATE imports SET additional_data_extraction_status=4,additional_data_extraction=additional_data_extraction||jsonb_build_object('error_message',$3::text) WHERE id=$1 AND user_id=$2",
+        [
+          job.args["import_id"],
+          job.args["user_id"],
+          "Removing extracted data failed: " <> Exception.message(error)
+        ],
+        log: false
+      )
+    end)
+
+    Dawarich.Imports.Events.broadcast(job.args["user_id"])
+  catch
+    {:refused, _reason} -> :ok
   end
 
   defp effect!(repo, job, fun) do
@@ -69,7 +91,7 @@ defmodule Dawarich.Imports.ExtractionRemovalWorker do
 
     current =
       repo.query!(
-        "SELECT i.source,(SELECT blob_id FROM active_storage_attachments WHERE record_type='Import' AND record_id=i.id AND name='file'),i.additional_data_extraction->>'phoenix_extraction_event',i.additional_data_extraction->>'phoenix_extraction_action' FROM imports i JOIN users u ON u.id=i.user_id WHERE i.id=$1 AND i.user_id=$2 AND i.status<>4 AND i.additional_data_extraction_status=2 AND u.deleted_at IS NULL FOR UPDATE OF i FOR SHARE OF u",
+        "SELECT i.source,(SELECT blob_id FROM active_storage_attachments WHERE record_type='Import' AND record_id=i.id AND name='file'),i.additional_data_extraction->>'phoenix_extraction_event',i.additional_data_extraction->>'phoenix_extraction_action' FROM imports i JOIN users u ON u.id=i.user_id WHERE i.id=$1 AND i.user_id=$2 AND i.status<>4 AND i.additional_data_extraction_status IN (2,4) AND u.deleted_at IS NULL FOR UPDATE OF i FOR SHARE OF u",
         [args["import_id"], args["user_id"]],
         log: false
       ).rows

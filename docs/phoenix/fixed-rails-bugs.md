@@ -656,3 +656,25 @@ deleted records through the shared storage-first native purge worker. Blob and
 variant rows survive physical deletion failure; shared objects and the other
 record's attachment remain intact. Unsupported place/visit-note content still
 returns an error with rollback before any records disappear.
+
+### FRB-051 — Nightly reverse cleanup acknowledges a failed cache deletion
+
+Rails' Redis cache store suppresses a transient `UNLINK` error and returns false.
+The user-cache invalidator previously ignored that result, allowing the reverse
+command poller to complete `stats.caches_invalidated` while cached countries or
+cities remained stale. A successful later Redis operation did not recover the
+lost retry.
+
+The shared Rails invalidator now uses a Redis cache store with a raising error
+handler, preserving the configured client, pool and namespace. The Phoenix
+nightly producer retains its existing durable after-commit reverse command.
+The Rails poller backs off that command on Redis or pool failure and completes
+it only after cleanup succeeds. Already absent keys remain successful, so
+partial cleanup and replay are idempotent. Ordinary application cache reads
+and writes keep their default error handler.
+
+- Rails: `app/services/cache/invalidate_user_caches.rb:23`; `app/services/stats/commands.rb:38`; `app/services/rails_commands/poller.rb:98`.
+- Phoenix: `app-phoenix/lib/dawarich/geocoding/nightly_sweep.ex:116`, `:121`; `app-phoenix/lib/dawarich/stats/cache_invalidation.ex:27`.
+- Test: `R3 retains a failed UNLINK command despite recovered later operations, then retries absent keys idempotently` in `spec/services/rails_commands/stats_cache_retry_spec.rb`.
+- Ledger: FRB-051 added; no ED/DRB row added because the shared adapter fix repairs the same cleanup contract for both consumers.
+- CHANGELOG-ready: Retry failed nightly cache cleanup instead of leaving countries and cities stale after a transient Redis timeout.

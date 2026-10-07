@@ -2,7 +2,7 @@ defmodule DawarichWeb.AdminWritesRequestTest do
   use ExUnit.Case, async: false
   import Plug.Conn
   alias Dawarich.{Accounts, Repo}
-  alias Dawarich.Auth.Admission
+  alias Dawarich.Auth.{ActionCsrf, Admission}
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{AdminWritesGate, RailsCsrf}
   alias DawarichWeb.AdminWrites.{Request, Response}
@@ -271,6 +271,145 @@ defmodule DawarichWeb.AdminWritesRequestTest do
     end
 
     assert snapshot() == before
+  end
+
+  @tag :proxy_admission
+  test "proxied admin writes preserve CSRF origin session and role admission", c do
+    Dawarich.State.put_registration_enabled(Repo, false)
+
+    for {action, method, path, fields} <- proxy_actions() do
+      effective = if action == :registration, do: "PATCH", else: method
+
+      raw =
+        URI.encode_query([
+          {"authenticity_token", csrf(c.session, effective, path, :per_form)} | fields
+        ])
+
+      conn = request(c.session, method, path, raw)
+      conn = %{conn | remote_ip: {127, 0, 0, 1}}
+      conn = put_req_header(conn, "x-forwarded-for", "192.0.2.5, 10.0.0.2")
+      admitted = match?({:ok, _, %{id: 14001}, _, _}, Request.load(conn, action, c.opts))
+      assert admitted, "proxied #{action} should be admitted"
+
+      if action == :registration do
+        response =
+          DawarichWeb.AdminWrites.Settings.call(conn,
+            action: :registration,
+            context: c.opts[:context]
+          )
+
+        assert response.status == 302
+
+        assert Repo.query!("SELECT enabled FROM phoenix.registration_setting", [], log: false).rows ==
+                 [[true]]
+      end
+
+      assert DawarichWeb.RailsRemoteIp.ip(conn) == "192.0.2.5"
+
+      for refused <- [
+            put_req_header(conn, "origin", "http://foreign.invalid"),
+            put_req_header(conn, "cookie", ""),
+            %{conn | req_headers: [{"x-forwarded-for", "192.0.2.6"} | conn.req_headers]},
+            put_req_header(conn, "client-ip", "198.51.100.4")
+          ] do
+        assert {:handoff, _} = Request.load(refused, action, c.opts)
+      end
+
+      invalid =
+        request(
+          c.session,
+          method,
+          path,
+          URI.encode_query([{"authenticity_token", "invalid"} | fields])
+        )
+
+      invalid = put_req_header(invalid, "x-forwarded-for", "192.0.2.5")
+      assert {:handoff, _} = Request.load(invalid, action, c.opts)
+
+      if action != :background do
+        nonadmin_session = RailsUser.session(14002)
+        nonadmin_raw = role_body(nonadmin_session, effective, path, fields)
+        nonadmin = request(nonadmin_session, method, path, nonadmin_raw)
+
+        assert {:handoff, _} =
+                 Request.load(
+                   put_req_header(nonadmin, "x-forwarded-for", "192.0.2.5"),
+                   action,
+                   c.opts
+                 )
+      end
+    end
+  end
+
+  @tag :review_conflict
+  test "untrusted conflicting Client-IP and XFF refuse a valid admin registration envelope", c do
+    path = "/settings/users/update_registration_settings"
+
+    raw =
+      URI.encode_query([
+        {"authenticity_token", csrf(c.session, "PATCH", path, :per_form)},
+        {"_method", "patch"},
+        {"registration_enabled", "1"}
+      ])
+
+    conn = request(c.session, "POST", path, raw)
+    conn = %{conn | remote_ip: {198, 51, 100, 20}}
+    conn = put_req_header(conn, "x-forwarded-for", "192.0.2.5")
+    assert match?({:ok, _, _, _, _}, Request.load(conn, :registration, c.opts))
+    assert DawarichWeb.RailsRemoteIp.ip(conn) == "198.51.100.20"
+    conflict = put_req_header(conn, "client-ip", "198.51.100.4")
+    assert Admission.context(c.session, conflict, false, true) == {:handoff, :client_ip}
+
+    assert_raise DawarichWeb.RailsRemoteIp.IpSpoofAttackError, fn ->
+      DawarichWeb.RailsRemoteIp.ip(conflict)
+    end
+
+    assert match?({:handoff, _}, Request.load(conflict, :registration, c.opts))
+  end
+
+  @tag :review_role
+  test "proxied nonadmin writes with valid session CSRF are refused solely by role", c do
+    session = RailsUser.session(14002)
+
+    for {action, method, path, fields} <- proxy_actions(), action != :background do
+      effective = if action == :registration, do: "PATCH", else: method
+      raw = role_body(session, effective, path, fields)
+      token = URI.decode_query(raw)["authenticity_token"]
+
+      assert ActionCsrf.valid?(session, token, effective, path),
+             "#{action} needs valid nonadmin CSRF"
+
+      conn = request(session, method, path, raw)
+      conn = %{conn | remote_ip: {127, 0, 0, 1}}
+      conn = put_req_header(conn, "x-forwarded-for", "192.0.2.5")
+      refute AdminWritesGate.eligible?(conn, action, c.opts), "#{action} must enforce role"
+      assert match?({:handoff, _}, Request.load(conn, action, c.opts))
+      Repo.query!("UPDATE users SET admin=true WHERE id=14002", [], log: false)
+      assert AdminWritesGate.eligible?(conn, action, c.opts)
+      assert match?({:ok, _, %{id: 14002}, _, _}, Request.load(conn, action, c.opts))
+      Repo.query!("UPDATE users SET admin=false WHERE id=14002", [], log: false)
+    end
+  end
+
+  defp role_body(session, method, path, fields) do
+    URI.encode_query([{"authenticity_token", csrf(session, method, path, :per_form)} | fields])
+  end
+
+  defp proxy_actions do
+    [
+      {:create, "POST", "/settings/users", [{"user[email]", ""}]},
+      {:update, "PATCH", "/settings/users/14002", [{"user[email]", ""}]},
+      {:registration, "POST", "/settings/users/update_registration_settings",
+       [{"_method", "patch"}, {"registration_enabled", "1"}]},
+      {:instance, "PATCH", "/admin/settings", []},
+      {:background, "PATCH", "/settings/background_jobs",
+       [{"settings[visits_suggestions_enabled]", "true"}]},
+      {:rotate, "POST", "/settings/users/14002/regenerate_api_key", []},
+      {:reset, "POST", "/settings/users/14002/send_password_reset", []},
+      {:destroy, "DELETE", "/settings/users/14002", []},
+      {:test_geocoding, "POST", "/admin/settings/test_geocoding", []},
+      {:test_map_matching, "POST", "/admin/settings/test_map_matching", []}
+    ]
   end
 
   defp fixture(dir, name), do: File.read!("test/fixtures/#{dir}/#{name}.json") |> Jason.decode!()

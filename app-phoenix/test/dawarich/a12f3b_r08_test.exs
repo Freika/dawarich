@@ -157,7 +157,9 @@ defmodule Dawarich.A12f3bR08Test do
         :ok
       end)
 
-    assert [] == rows("SELECT id FROM active_storage_blobs WHERE id=$1", [old.id])
+    assert [[old.id]] == rows("SELECT id FROM active_storage_blobs WHERE id=$1", [old.id])
+    [[metadata]] = rows("SELECT metadata FROM active_storage_blobs WHERE id=$1", [old.id])
+    assert Dawarich.Storage.NativePurge.pending?(metadata)
     assert [] == F.reverse()
     assert ["Dawarich.Imports.PreparedDownloadPurgeWorker"] == F.workers()
     [[args]] = rows("SELECT args FROM oban.oban_jobs WHERE state='available'")

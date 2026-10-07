@@ -2,72 +2,35 @@ defmodule Dawarich.Imports.PreparedDownloadPurgeWorker do
   @moduledoc false
   use Oban.Worker, queue: :imports, max_attempts: 26
   alias Dawarich.Imports.StorageContext
-  alias Dawarich.Storage
+  alias Dawarich.Storage.{ImportServices, NativePurge}
 
   def enqueue!(repo, ids) do
-    objects = ids |> Enum.sort() |> Enum.flat_map(&revoke!(repo, &1))
-    if objects != [], do: repo.insert!(new(%{"objects" => objects}), prefix: "oban")
+    Dawarich.Exports.PurgeWorker.enqueue!(repo, ids, __MODULE__)
+    objects = NativePurge.collect(repo, ids)
+
+    repo.query!(
+      "DELETE FROM phoenix.upload_receipts WHERE blob_id=ANY($1)",
+      [Enum.map(objects, & &1["blob_id"])],
+      log: false
+    )
+
     :ok
   end
 
-  defp revoke!(repo, id) do
-    case repo.query!(
-           "SELECT key,service_name FROM active_storage_blobs WHERE id=$1 FOR UPDATE",
-           [id],
-           log: false
-         ).rows do
-      [[key, service]] ->
-        [[shared]] =
-          repo.query!(
-            "SELECT EXISTS(SELECT 1 FROM active_storage_attachments WHERE blob_id=$1)",
-            [id],
-            log: false
-          ).rows
-
-        if shared do
-          []
-        else
-          children =
-            repo.query!(
-              "DELETE FROM active_storage_attachments WHERE record_type='ActiveStorage::VariantRecord' AND record_id IN(SELECT id FROM active_storage_variant_records WHERE blob_id=$1) RETURNING blob_id",
-              [id],
-              log: false
-            ).rows
-            |> List.flatten()
-            |> Enum.uniq()
-
-          repo.query!("DELETE FROM active_storage_variant_records WHERE blob_id=$1", [id],
-            log: false
-          )
-
-          repo.query!("DELETE FROM phoenix.upload_receipts WHERE blob_id=$1", [id], log: false)
-          repo.query!("DELETE FROM active_storage_blobs WHERE id=$1", [id], log: false)
-
-          [
-            %{"key" => key, "service_name" => service}
-            | Enum.flat_map(children, &revoke!(repo, &1))
-          ]
-        end
-
-      [] ->
-        []
-    end
-  end
-
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"objects" => objects}}) do
-    Enum.reduce_while(objects, :ok, fn object, :ok ->
-      with {:ok, config} <-
-             Storage.ImportServices.resolve(StorageContext.services(), %{
+  def perform(%Oban.Job{args: args}) do
+    services = StorageContext.services()
+
+    Dawarich.Exports.PurgeWorker.run(args,
+      resolve_service: fn object ->
+        case ImportServices.resolve(services, %{
                key: object["key"],
                service_name: object["service_name"]
-             }),
-           :ok <- Storage.delete(config, object["key"]) do
-        {:cont, :ok}
-      else
-        {:legacy, reason} -> {:halt, {:error, reason}}
-        {:error, reason} -> {:halt, {:error, {:storage_delete, reason}}}
+             }) do
+          {:ok, config} -> {:ok, config}
+          {:legacy, reason} -> {:error, reason}
+        end
       end
-    end)
+    )
   end
 end

@@ -169,9 +169,10 @@ defmodule Dawarich.MediaOwnershipTest do
                 AnalysisWorker.run(c.repo, delivery, services: c.services, ffprobe: probe)
               end)
 
-      observed = wait_count(c.root, 2, 20)
+      wait_count(c.root, 2, 20)
       File.write!(release, "go")
       results = Enum.map(tasks, &Task.await(&1, 15_000))
+      observed = c.root |> File.ls!() |> Enum.count(&String.starts_with?(&1, "started_"))
       IO.puts("F3 observed ffprobe_invocations=#{observed} results=#{inspect(results)}")
       assert observed == 1
     end

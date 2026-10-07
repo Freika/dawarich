@@ -50,7 +50,21 @@ defmodule Dawarich.Tracks.NativeChanges do
   end
 
   defp publish_changes(repo, payload) do
-    events = Map.get_lazy(payload, "events", fn -> snapshot(repo, payload)["events"] end)
+    current = snapshot(repo, Map.delete(payload, "events"))["events"]
+
+    events =
+      if payload["events"] do
+        Enum.map(payload["events"], fn
+          %{"track" => %{"id" => id}} = stored ->
+            Enum.find(current, stored, &match?(%{"track" => %{"id" => ^id}}, &1))
+
+          stored ->
+            stored
+        end)
+      else
+        current
+      end
+
     for message <- events, do: publish(repo, payload["user_id"], message)
     :ok
   end

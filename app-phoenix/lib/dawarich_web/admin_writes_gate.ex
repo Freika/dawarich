@@ -38,7 +38,7 @@ defmodule DawarichWeb.AdminWritesGate do
     route?(conn, action) and Strangler.page_request?(conn) and
       Admission.context(
         session,
-        conn.req_headers,
+        conn,
         context.oidc,
         context.self_hosted or
           (action == :background and conn.method == "POST")
