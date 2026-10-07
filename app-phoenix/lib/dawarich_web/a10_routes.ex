@@ -51,6 +51,7 @@ defmodule DawarichWeb.A10Routes do
         plug DawarichWeb.Locale
         plug DawarichWeb.LayoutAssigns
         plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
+        plug DawarichWeb.PageEnvelope, :layout
         plug :protect_from_forgery
         plug DawarichWeb.RailsHeaders
       end
@@ -120,6 +121,7 @@ defmodule DawarichWeb.A10Routes do
         plug DawarichWeb.Locale
         plug DawarichWeb.LayoutAssigns
         plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
+        plug DawarichWeb.PageEnvelope, :layout
         plug :protect_from_forgery
         plug DawarichWeb.RailsHeaders
         plug DawarichWeb.RequireUser
