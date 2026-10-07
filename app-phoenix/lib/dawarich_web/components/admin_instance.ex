@@ -8,7 +8,7 @@ defmodule DawarichWeb.AdminInstance do
 
   alias Dawarich.Admin.InstancePage
   alias Dawarich.Geocoding.Providers
-  alias DawarichWeb.{AdminJobHealth, AdminSettingField}
+  alias DawarichWeb.{AdminExperimental, AdminJobHealth, AdminSettingField}
 
   @providers ~w(photon geoapify nominatim locationiq)
   @sections @providers ++ ["rate_limit"]
@@ -39,7 +39,11 @@ defmodule DawarichWeb.AdminInstance do
       data-status={@status}
     >
       <.icon name={section_icon(@item)} class="size-5 shrink-0 text-base-content/70" />
-      <span class="font-medium flex-1 truncate">{section_title(@locale, @item)}</span>
+      <span class={
+        if @item == "experimental",
+          do: "font-medium flex-1 min-w-0 [overflow-wrap:anywhere]",
+          else: "font-medium flex-1 truncate"
+      }>{section_title(@locale, @item)}</span>
       <span :if={@badge} class="tooltip tooltip-left" data-tip={elem(@badge, 2)}>
         <.icon name={elem(@badge, 0)} class={"size-4 " <> elem(@badge, 1)} />
         <span class="sr-only">{elem(@badge, 2)}</span>
@@ -58,6 +62,11 @@ defmodule DawarichWeb.AdminInstance do
     do: t(locale, "admin.settings.show.geocoding.rate_limit", %{})
 
   defp section_title(locale, "points"), do: t(locale, "admin.settings.show.points.title", %{})
+
+  defp section_title(locale, "experimental"),
+    do: t(locale, "admin.settings.show.experimental.title", %{})
+
+  defp section_icon("experimental"), do: "shield"
   defp section_icon("rate_limit"), do: "clock"
   defp section_icon("points"), do: "map-pin"
   defp section_icon(_), do: "globe"

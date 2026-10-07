@@ -60,29 +60,31 @@ backfill, generation/boundary and trip-calculation tests. Plan-G E20/E21 reuse
 `jobs/drain_status_test.exs` and retained `spec/services/job_drain_spec.rb`.
 Missing planned test filenames therefore do not imply missing implementations.
 
-Producer closure is **BLOCKED** on the actual RX-PLACES R13 producer:
-`RailsEffects.reverse_place/3` inserts `reverse_geocode_place` unconditionally;
-`Visits.Suggest.run/5` calls it for newly detected places when geocoding is
-configured. This is reachable under Oban ownership and standalone mode. The
-registered `Geocoding.ReversePlaceWorker` alone does not replace this producer.
-H03a records its exact publication and preserves the blocker even before any
-reverse row exists. No closure kind or ownership ED is cleared on that evidence.
-R13 must connect the producer to its existing native worker, prove the fresh
-place terminal effect with zero reverse insertion, and retain source-pinned
-coexistence behavior. Two additional producer gaps were verified in a rolled-back
-native SQL probe with every registry owner Oban:
+The three producer gaps observed by H03 are now covered by native ownership
+adapters and terminal-effect tests:
 
-- R19k04: `ReleaseOperations.NullIsland.flag/2` marks the synthetic Null Island
-  point anomalous and still inserts `release_null_island_follow_up` in standalone.
-  Its native track/stats followups are missing.
-- R14/`achievements.check`: `Points.NativeEffects.achievements/2` selects Rails
-  whenever standalone is disabled, including coexistence with the achievement
-  key Oban. The native anomaly-backfill route already respects ownership, but
-  this separate point-effect helper does not. Standalone uses CheckWorker.
+- R13k05: `RailsEffects.reverse_place/3`, called by `Visits.Suggest.run/5`,
+  enqueues `Geocoding.ReversePlaceWorker` under native command ownership or
+  standalone mode. Native geocoding preserves the provider result and locked
+  place name; Rails-owned coexistence keeps the exact reverse payload.
+- R14 helper: `Points.NativeEffects.achievements/2` honours
+  `command:achievements.check` during coexistence, preserving the existing
+  native notification option and Rails-owned payload.
+- R19k04: `ReleaseOperations.NullIsland.flag/2` atomically flags points and
+  performs the native follow-up when `command:release.null_island` is native.
+  It invalidates tiles, destroys Null Island visits and their dependent rows,
+  and schedules distinct affected months and tracks. Month selection uses the
+  ambient Rails time zone. Each downstream command retains its ownership
+  hand-back; a Rails-owned parent keeps `release_null_island_follow_up` intact.
 
-The probe changed no persistent rows and introduced no new runner or dispatcher.
-These precise live producer gaps remain blockers alongside the full R01–R20
-audit; merged source payload packages do not close their reverse producers.
+Named tests in `a12f3b_r13_test.exs`, `a12f3b_r14_test.exs` and
+`a12f3b_r19_test.exs` prove zero reverse rows in native coexistence and
+standalone, worker terminal effects, Rails hand-back and mutation detection.
+The Null Island case also verifies replay, mixed ownership and transactional
+rollback on failed follow-up publication. H03a now exercises native place
+publication followed by explicit Rails hand-back while retaining every drain
+blocker. All 78 closure kinds remain; this scoped producer repair does not
+certify the full R01–R20 audit, source drain, any ownership ED or G49.
 
 `Jobs.Drain.status/1` now explicitly identifies `scope: native_sql`, source
 status `NOT_OBSERVED`, source certainty `UNKNOWN`, and

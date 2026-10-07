@@ -8,7 +8,8 @@ defmodule Dawarich.Photos.ThumbnailClosure do
 
     result =
       get(
-        to_string(settings[source <> "_url"]) <> path,
+        settings[source <> "_url"],
+        path,
         headers,
         settings[source <> "_skip_ssl_verification"],
         2
@@ -20,32 +21,6 @@ defmodule Dawarich.Photos.ThumbnailClosure do
     end
   rescue
     _ -> {:error, 500}
-  end
-
-  def http(method, url, headers, body, skip) do
-    headers = for {k, v} <- headers, do: {String.to_charlist(k), String.to_charlist(v)}
-
-    request =
-      if body,
-        do: {String.to_charlist(url), headers, ~c"application/json", body},
-        else: {String.to_charlist(url), headers}
-
-    timeout = Application.get_env(:dawarich, :photo_source_timeout, 10_000)
-
-    case :httpc.request(
-           method,
-           request,
-           [timeout: timeout, connect_timeout: timeout, ssl: Dawarich.Photos.Thumbnail.ssl(skip)],
-           body_format: :binary
-         ) do
-      {:ok, {{_, status, reason}, headers, raw}} ->
-        {:ok, status, [{"_status_reason", to_string(reason)} | headers], raw}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  rescue
-    _ -> {:error, :transport}
   end
 
   defp permission("immich", body) do
@@ -68,12 +43,12 @@ defmodule Dawarich.Photos.ThumbnailClosure do
       {"/api/assets/#{id}/thumbnail?size=preview",
        [{"accept", "application/octet-stream"}, {"x-api-key", settings["immich_api_key"]}]}
 
-  defp get(url, headers, skip, attempts) do
-    case Index.request(:get, url, headers, nil, skip) do
+  defp get(base, path, headers, skip, attempts) do
+    case Index.request(:get, base, path, headers, nil, skip) do
       {:ok, status, _, body} when status in 200..299 -> {:ok, body}
       {:ok, 403, _, body} -> {:error, 403, body}
       {:ok, status, _, _} -> {:error, status}
-      {:error, :timeout} when attempts > 1 -> get(url, headers, skip, attempts - 1)
+      {:error, :timeout} when attempts > 1 -> get(base, path, headers, skip, attempts - 1)
       {:error, _} -> :timeout
     end
   end

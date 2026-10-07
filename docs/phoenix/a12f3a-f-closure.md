@@ -1,7 +1,7 @@
 # Import codecs, continuations and extraction
 
-Last updated: 2026-10-06. Branch: feat/a12f3a-f. This is the standalone
-priority cut; complete package F closure remains open.
+Last updated: 2026-10-07. Original priority cut: feat/a12f3a-f.
+F17–F19 follow-up: feat/a12f3a-f17. Complete package F closure remains open.
 
 ## Implemented contracts
 
@@ -46,7 +46,7 @@ publication path for native month stats, achievement checks, calendar visit
 suggestions, track ranges, point counters and GPX extraction. RX-IMPORTS'
 upload, purge, extraction removal and destruction effects are retained.
 Unsupported native extraction sources keep their explicit native error;
-typed non-GPX extraction adapters still need their broader worker dispatcher.
+the later F18 follow-up below supplies the non-GPX worker dispatcher.
 
 The merged lifecycle regression interrupts actual GPX and CSV imports after
 1000 committed points, rejects changed attachment identity, resumes to 1001
@@ -124,11 +124,9 @@ Package I owns the HTTP upload/manual-extraction path. Package O owns Registry
 readiness and final wiring. Keep shared entries inert until integration proof;
 this branch does not advertise a Rails-free end-to-end HTTP worker journey.
 
-F17's strict native Google Takeout continuation adapter is not implemented.
-F18 still needs non-GPX adapter dispatch, fenced extraction worker, durable
-visit/track/segment attribution and the broader extraction envelopes. F19's
-native publication path is supplied by RX-IMPORTS; complete retry, ordering
-and domain-effect envelopes with Q/P/W/V still remain.
+The original priority cut left F17–F19 open. The follow-up sections below
+record their gap audit and completed native continuation, extraction, and
+postprocessing work, reusing RX-IMPORTS and the existing Q/P/W/V APIs.
 Complete F01/F15/F16 edge envelopes also remain open. These are unfinished
 tasks, not successful source drain or retirement evidence.
 
@@ -139,3 +137,261 @@ claimed here.
 
 AFFiNE counterpart: Dawarich — Phoenix import codecs and extraction closure
 (docId: ovFWRqfzsy2Jb5n1NB4Qc).
+
+## F17 follow-up audit and continuation
+
+The F17–F19 follow-up audits the merged F/RX implementations before adding
+missing behavior. F17 now accepts a typed native `continuation` containing
+`locations` objects and a nonnegative `current_index` on ProcessWorker's
+existing import command. It uses the existing fenced writer and receipt,
+with a digest of the complete continuation as its captured identity. Replay
+skips committed source-array rows; changed payloads lose the fence. Progress
+retains Rails' constant `current_index` for the supplied locations batch.
+Serialized Sidekiq payloads remain with the source drain owner.
+
+The named F17 selector initially fails on the absent adapter, passes after
+implementation, fails when the committed cursor advances twice, and passes
+after restoration. Retained Rails characterization passes 34 examples.
+
+## F18 native extraction follow-up
+
+The existing GPX extractor is retained. `EnhancedImport.Adapters` dispatches
+Phone, Semantic History, Records' source no-op, Polarsteps and GPX streams.
+`NormalWorker` runs all newly produced supported extraction, including GPX,
+under the shared import and
+per-user track locks. Every write checks the executing attempt, actor, source,
+attachment, extraction event/action, and current ownership. Existing State
+writes accept that fence; deadline cancellation, bounded lock waiting and
+retry status follow the retained source behavior.
+
+The existing PlaceWriter supports Photon source for non-GPX rows and retains
+GPX waypoint adoption. Native item/track/segment writers reuse the track
+builder and geometry/transportation APIs. Visits deduplicate by owner, place
+and start; tracks preserve device separation and adopt an already generated
+track. Source segments clip around corrected or higher-priority segments.
+Trust disabled resets source segments and uses inference. Extraction removal
+reuses RX's fenced worker and DestroyExtraction, retaining raw points and
+adopted tracks while resetting extraction state.
+
+Manual native admission is a small extension of ManualExtraction's existing
+producer. Source-owned coexistence still publishes its retained source
+command; native selected work uses the new direct child worker. Shared job
+registry/readiness entries are unchanged. Records intentionally remains
+unavailable for manual extraction, matching Translator.supported?.
+
+F18's named test fails first on unsupported manual extraction, passes native
+persistence/destroy/retry/fence cases, fails the Phone-as-GPX mutation, and
+passes after restoration. The extraction/GPX/R09 regression passes 46 tests. An additional GPX
+admission check first fails because manual GPX lacks the new worker envelope.
+Both manual and automatic producers now use the same fenced worker; GPX place
+prefetch and writes check its current attempt. The retained ExtractGpxWorker
+remains available for its existing accepted-work contract. The expanded
+F/R09/R10/extraction regression passes 70 tests.
+
+## F19 postprocessing follow-up
+
+Postprocessing retains RX's single native publication path and source step
+order. Automatic extraction for GPX and the missing non-GPX branches now calls
+`NormalWorker.enqueue!(repo, import, context)`. It captures actor/source/blob,
+locale and zone, derives the child UUID from the existing import event and
+payload, and preserves it across terminal replay. No new effect framework or
+reverse consumer is introduced.
+
+The named aggregate verifies both zone-local months, native stats/achievement/
+visit/count/extraction publication, extraction suppressing generic track
+ranges, stable child args on replay, all-skipped localization, a real failed
+count update with later effects retained, parser failure without followups,
+and deletion with affected-month stats and terminal replay. It runs in
+self-hosted, explicit Cloud and unset default modes. Dropping the last stats
+month fails the exact December/January assertion; restored code passes.
+
+### Caller contracts and ownership handoff
+
+| Caller | Callee / contract | Event, fence and source owner |
+| --- | --- | --- |
+| ProcessWorker typed continuation | GoogleTakeoutResume.call(lease, state, context, payload) | Existing process_normal import event/attempt/token; constant Rails progress index; old serialized work stays with source drain |
+| ManualExtraction native supported extraction | NormalWorker.enqueue!(repo, args, event, at) | Existing extraction event/action and actor/source/blob; queued on existing extraction lane |
+| Postprocessing.Native extract | NormalWorker.enqueue!(repo, import, context) | Stable child of import-run UUID; captured locale/zone and clock; executes after import completion |
+| NormalWorker | Extract.process(repo, import, storage, event, deadline, context) | Import and per-user locks; every child/status write uses the current executing-job and extraction identity fence |
+| ExtractionRemovalWorker | DestroyExtraction.call(lease, source) | Existing RX removal fence; raw points survive; source labels/corrected segments retain Rails semantics |
+| Native stats/visits/tracks/achievements/cache | Existing Q/V/W/P/RX owner APIs | Existing payloads, due times, and dedupe contracts unchanged |
+
+F17–F19's missing behavior and named tests/mutations are complete in the
+follow-up. This does not claim completion of other package F tasks or release,
+source-drain, production claimability, deployment, or shutdown readiness.
+
+## F17–F19 final verification
+
+The follow-up passes forced compile with warnings as errors (1,674 files),
+whole-tree format checking, and the required controller seed-404 gate:
+9,122 tests, zero failures. Existing exclusions/skips remain unchanged.
+Retained Rails characterization passes 34 examples; no Ruby production or
+spec file changed. Each F17–F19 aggregate has RED, GREEN, named mutation
+failure and restored GREEN evidence in the controller report. The expanded
+extraction regression passes 70 tests and affected lifecycle/HTTP/track/poster
+checks pass 26 tests, including all 17 actual poster styles.
+
+The worktree's renderer npm dependencies must be installed separately from
+the root package. Complete compilation and targeted tests before starting
+the partitioned gate; overlapping recompilation can invalidate lazy module
+loads. Swagger and schema are unchanged. All verification services are stopped.
+No Rails bug fixes were introduced. Other package F tasks and source drain
+remain with their existing owners.
+
+
+## F17–F19 review corrections
+
+Fresh typed continuation workers now discover the `altitude_decimal` column
+through the same fenced capability lookup as normal imports. Supported
+continuations keep event-specific attachment, source, payload-digest and cursor
+receipts inside the existing `phoenix.import_runs.attachment_snapshot`.
+The active receipt retains its scalar cursor for existing callers. Each accepted
+chunk has its own event UUID; replay of an earlier chunk recovers its own cursor.
+The shared per-import lease still excludes concurrent work, and ordinary
+whole-import events cannot replace an accepted event. No serialized Ruby payload
+is decoded and no schema or release-admission change is introduced.
+
+Continuation point insertion, counters and cursor advancement commit together
+under the import snapshot and job/attempt/token fence in standalone and native
+coexistence execution. A deterministic loss after the first committed batch
+resumes 1,001 rows with raw_points=1,001 and doubles=0 in both modes.
+
+Every existing-track adoption now selects the importing owner's track with a
+row lock inside the guarded item transaction, including fallback through point
+references. An inconsistent reference to another owner's track yields no adopted
+track or segment/mode changes. Imported non-demo visits adopt their matched demo
+place and its demo tags inside that same owner-scoped transaction; tags belonging
+to another owner remain unchanged.
+
+Extraction publication locks the import and verifies actor/source/blob before
+checking existing or processed child events. Duplicate automatic publication
+leaves current extraction metadata untouched, preserving a later manual removal.
+A different active extraction request also prevents publication from replacing
+its identity. This closes the publication seam without changing native lane
+ownership or the Cloud lifecycle refusal.
+
+Regression evidence lives in
+`test/dawarich/imports/continuation_review_test.exs`: six named review scenarios,
+each reproduced RED, passed GREEN, failed its distinct production mutation, and
+passed after restoration. The review corrections close Phoenix port omissions. Owner-scoped demo-tag
+adoption also prevents the Rails callback from mutating a foreign owner's tag
+through an inconsistent persisted tagging. Rails' callback traverses linked
+place tags without an owner predicate (`app/models/visit.rb:120`); Phoenix's
+writer checks `tags.user_id`. This difference is recorded in the review-fix
+report's Rails bugs changelog and the canonical AFFiNE document.
+
+
+E09 handover tests now assert the typed NormalWorker envelope for both GPX and
+Phone extraction, including current request identity and replay. Their child
+publication rejection trigger targets that worker; both sources keep drain
+pending until the child settles. Failed imports still publish neither the
+legacy nor the typed extraction worker. The reconciled targeted batch passes
+35 tests; the retained Rails oracle passes 34 examples.
+
+
+Final review-fix gate: the controller seed-404 runner passes 9,171 tests with
+zero failures (partitions 3,465 / 2,597 / 3,109). Existing skips/exclusions remain
+unchanged. Forced compile with warnings as errors, whole-tree format, the
+35-test targeted batch, 34-example Rails oracle and all six mutation/restoration
+selectors pass their required checks. The Cloud lifecycle guard, Swagger and
+schema are unchanged. Verification services are stopped.
+
+## F17 ordered continuation follow-up
+
+Continuation admission locks the import and its persisted receipt before an
+event can replace the active event. A successor waits while any accepted
+predecessor lacks durable completion. The adapter records completion only
+after all locations and progress effects have finished; retained completed
+event markers also recognize receipts created by the earlier implementation.
+Each event retains its payload identity, committed cursor and progress index.
+Unknown events below the persisted progress index are canceled. Ordinary
+whole-import fencing is retained.
+
+Continuation progress uses a database-side maximum inside the existing import
+fence. Retrying a previously overtaken predecessor can finish its uncommitted
+suffix without lowering an already advanced processed counter. Other import
+adapters retain their existing progress behavior. This adds receipt fields to
+the existing JSON, with no migration or change to Cloud lifecycle refusal.
+
+`test/dawarich/imports/continuation_order_test.exs` runs the reviewer's actual
+worker interruption in standalone and coexistence. A temporary private-test
+trigger rejects the final row of a 1,001-row predecessor, preserving its first
+1,000 committed rows. The successor waits without changing the receipt, points,
+counters or completion markers; predecessor and successor then finish in order
+and replay without regression. A second named invariant starts from already
+advanced durable progress and proves that predecessor retry preserves it.
+Both names fail before the fix and under their distinct completion/progress
+mutations, then pass after restoration. The expanded targeted batch passes
+60 tests with zero failures, including all six round-one review tests.
+
+Rails also writes the supplied index unconditionally through
+`Imports::Broadcaster` (`app/services/imports/broadcaster.rb:11`), called by
+`GoogleMaps::RecordsImporter` (`app/services/google_maps/records_importer.rb:25`).
+The port now prevents this late-continuation progress regression. The assigned
+fix report records the source defect and verification for the controller's
+Rails-bug changelog; no Rails production file or plan ledger is edited here.
+
+The final controller seed-404 gate passes 9,204 tests with zero failures
+(partitions 3,210 / 2,750 / 3,244). The first run exposed only stale cached
+private schemas from before the merged map-matching migrations. Applying those
+native migrations makes all failing areas pass in a 40-test targeted check,
+including both native lifecycle suites and Cloud refusal; no assertions or
+guards were changed. Relevant Rails RecordsImporter specs pass 13 examples.
+The supplementary full source oracle has one historical track-snapshot shape
+mismatch: exactly the five additive map-matching fields differ, with all
+retained fields and values identical. That fixture maintenance is outside RR1.
+No Ruby file changes in this correction. Feature-history and explicit-delta
+Gitleaks checks pass. All verification services are stopped.
+
+## F17 round-three durable continuation delivery
+
+The round-two review found that a deferred B had no receipt: after A completed,
+C could claim the import and B was then canceled below the high-water mark.
+Admission now consults persisted typed Oban jobs as well as unfinished receipt
+positions. The durable order is `(current_index, job_id)`; equal cursors retain
+job insertion order. This supersedes the earlier cancellation behavior.
+
+Pending and deferred payloads retain their event identity and source locations
+in Oban, including scheduled retries and events delivered before any receipt
+exists. An unapplied predecessor prevents a successor from claiming the writer.
+Its receipt commits each consumed-array cursor together with point/counter
+writes, then records completion; the processed-event marker makes replay inert.
+A completed receipt also permits progress if marker publication was interrupted.
+Canceled or discarded job state alone never proves its rows were applied;
+unapplied predecessors remain visible debt rather than disappearing from order.
+The fix creates no continuation cancellation transition. A lower-index event
+persisted after higher work finished remains executable, while the existing SQL
+maximum preserves monotonic progress. Ordinary whole-import refusal and the
+owner/job/attempt/token/attachment/payload fences remain in place.
+
+The actual-worker regression reproduces the reviewer's committed 1,000-row
+interruption and scheduled B, then forces C to wait until B commits. All three
+finish with 1,003 physical rows and replay-stable counters. The permutation test
+covers every delivery order of four persisted events, including equal cursors
+and delivery before a receipt, in standalone and coexistence. Each finishes
+with all twelve distinct source points, four processed markers and stable
+replays. The late lower-index test proves older work is applied without reducing
+progress. Literal `imports.points_count` retains its fixture baseline; physical
+point rows and raw/double counters are verified separately.
+
+The central ruling-17 register, `docs/phoenix/fixed-rails-bugs.md`, now records
+the actual Rails RecordsImporter **2,000 → 1,000** progress reproduction, source
+anchors, Phoenix's fenced maximum, the two-mode progress regression and ED/DRB
+disposition. A named register test prevents omission. No Ruby source or plan
+ledger is changed. AFFiNE counterpart remains `ovFWRqfzsy2Jb5n1NB4Qc`.
+
+Upgrade coverage also reproduces an interrupted equal-index legacy receipt with
+no saved job ID. Admission recovers its order from the persisted Oban event job,
+allowing the earlier queued event to finish before resuming the later prefix.
+The named legacy-receipt regression runs in both modes and ends with 1,002
+physical rows, stable counters and no ordering deadlock.
+
+Round-three gates pass: 69 targeted tests; unchanged reviewer probe batches
+2/0, 6/0 and 12/0; five named mutation failures with restored GREEN; forced
+warnings-as-errors compilation of 1,686 files; whole-tree format; controller
+seed 404 with 9,216 tests and zero failures (2,750 / 3,152 / 3,314). Existing
+exclusions/skips remain aggregated at six/three. Changed Ruby specs/RuboCop are
+not applicable because this correction changes no Ruby path. The current
+six-file delta passes Gitleaks. Cloud lifecycle guard files and Swagger/schema
+have no correction-relative changes. The scoped fix3 report records the full
+state machine and final commit/cleanup evidence.

@@ -136,7 +136,7 @@ defmodule Dawarich.Imports.MergedLifecycleTest do
 
     extract? = source == 4 and terminal?
 
-    assert Enum.count(workers, &(&1 == "Dawarich.EnhancedImport.ExtractGpxWorker")) ==
+    assert Enum.count(workers, &(&1 == "Dawarich.EnhancedImport.NormalWorker")) ==
              if(extract?, do: 1, else: 0)
 
     assert Enum.count(workers, &(&1 == "Dawarich.Tracks.RangeWorker")) ==

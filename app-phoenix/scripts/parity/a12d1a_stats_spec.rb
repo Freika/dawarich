@@ -569,13 +569,16 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
   end
 
   def digest_input
+    track_fields = Track.column_names - %w[map_matched_at map_matching_data map_matching_input_digest
+                                           map_matching_status matched_path]
     {
       'users' => digest_select('SELECT id, email, encrypted_password, settings, status, plan, active_until, ' \
                                'deleted_at, created_at, updated_at FROM users WHERE id IN (14101, 14102) ORDER BY id'),
       'families' => digest_select('SELECT * FROM families WHERE id = 14901 ORDER BY id'),
       'family_memberships' => digest_select('SELECT * FROM family_memberships WHERE id IN (14911, 14912) ORDER BY id'),
       'stats' => digest_select('SELECT * FROM stats WHERE user_id IN (14101, 14102) ORDER BY id'),
-      'tracks' => digest_select('SELECT * FROM tracks WHERE user_id IN (14101, 14102) ORDER BY id'),
+      'tracks' => digest_select("SELECT #{track_fields.join(', ')} FROM tracks " \
+                               'WHERE user_id IN (14101, 14102) ORDER BY id'),
       'track_segments' => digest_select('SELECT * FROM track_segments ' \
                                        'WHERE track_id BETWEEN 14401 AND 14404 ORDER BY id'),
       'points' => digest_select('SELECT id, user_id, track_id, timestamp, lonlat, country_name, city, ' \

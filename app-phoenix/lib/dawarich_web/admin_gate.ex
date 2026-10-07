@@ -9,7 +9,8 @@ defmodule DawarichWeb.AdminGate do
   @markers ~w(client aff via referral dawarich_client invitation_token pending_import_ticket)
 
   def instance?(conn, _params) do
-    eligible?(conn, :admin) and match?({:ok, _}, InstancePage.load(Repo, System.get_env()))
+    Dawarich.Standalone.enabled?() or
+      (eligible?(conn, :admin) and match?({:ok, _}, InstancePage.load(Repo, System.get_env())))
   rescue
     _ -> false
   end

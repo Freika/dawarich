@@ -10,7 +10,9 @@ defmodule Dawarich.UserData.Restore.Files do
     key = {__MODULE__, make_ref()}
 
     context =
-      Map.put(context, :stage_upload, fn upload ->
+      context
+      |> Map.put(:uploads_key, key)
+      |> Map.put(:stage_upload, fn upload ->
         Process.put(key, [upload | Process.get(key, [])])
       end)
 
@@ -21,13 +23,36 @@ defmodule Dawarich.UserData.Restore.Files do
       |> Process.get([])
       |> Enum.reverse()
       |> Enum.each(fn upload ->
-        Fence.run(context, upload)
+        Fence.run(context, fn ->
+          upload(
+            context,
+            upload["path"],
+            upload["filename"],
+            upload["content_type"],
+            upload["key"]
+          )
+        end)
       end)
 
       result
     after
       Process.delete(key)
     end
+  end
+
+  def manifest(context) do
+    context.uploads_key |> Process.get([]) |> Enum.reverse() |> Enum.map(&Map.delete(&1, "path"))
+  end
+
+  def resume(files, directory, context) do
+    Enum.each(files, fn file ->
+      path = Paths.attachment(Path.join(directory, "files"), file["file_name"])
+
+      unless path && File.regular?(path),
+        do: raise(ArgumentError, "Pending restore attachment is missing")
+
+      context.stage_upload.(Map.put(file, "path", path))
+    end)
   end
 
   def restore(repo, type, id, data, directory, context) do
@@ -64,7 +89,13 @@ defmodule Dawarich.UserData.Restore.Files do
       Blobs.attach!(repo, type, id, blob, context.now)
 
       if Map.has_key?(context, :stage_upload) do
-        context.stage_upload.(fn -> upload(context, path, filename, content_type, blob.key) end)
+        context.stage_upload.(%{
+          "path" => path,
+          "file_name" => Path.basename(path),
+          "filename" => filename,
+          "content_type" => content_type,
+          "key" => blob.key
+        })
       end
 
       true

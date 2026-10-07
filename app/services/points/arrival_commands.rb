@@ -9,7 +9,7 @@ module Points
         guard: 'TileEpoch.bump writes fresh year tokens; a repeat rotates them again (one extra tile-cache miss)',
         call: lambda { |p|
           timestamps = p.fetch('timestamps')
-          ArrivalCommands.for_user(p) { |id| Points::TileEpoch.bump(id, timestamps:) }
+          ArrivalCommands.for_user(p) { |id| Points::TileEpochCommand.bump(id, timestamps:) }
         }
       },
       'points.anomaly_filter' => {
