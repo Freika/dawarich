@@ -115,6 +115,7 @@ defmodule Dawarich.Imports.ProcessWorker do
 
     %{
       repo: repo,
+      progress_lane: "command:imports.process_normal",
       zone: Dawarich.TimeZoneName.to_iana(job.args["time_zone"]),
       locale: locale || "en",
       now: &DateTime.utc_now/0,

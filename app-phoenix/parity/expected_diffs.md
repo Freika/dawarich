@@ -600,7 +600,11 @@ All 14 real-worker disposition cases retain fixed owners and replay; R09gpxowner
 original coexistence publication and cover both modes plus Rails-owned bytes.
 
 H03 all-R01–R20 native producer acceptance and H04 final local ED disposition
-are complete on production commit `69977ef5f`. Final diagnostics record zero
+were recorded complete on production commit `69977ef5f`; review2 subsequently
+invalidated that claim for pending ZIP children, mixed-parent GPX progress and
+accepted-failure subscribers. The correction is recorded in
+`fix6-hot-h03-closure.report.md` and `accepted_disposition_review_test.exs`.
+The earlier diagnostics recorded zero
 all-native production reverse insertions in either mode; the stable terminal
 batch passes 1,891 tests and the required full seed-404 gate passes 9,451 tests,
 zero failures, exit 0. Forced warnings-as-errors compilation, whole-tree format

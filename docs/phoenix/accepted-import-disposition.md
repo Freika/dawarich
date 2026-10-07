@@ -9,13 +9,13 @@ durable handoff; it is not evidence that the import itself has already completed
 | --- | --- |
 | Supported normal import or GPX discovered by a normal job, either mode | Current normal Oban job processes it. Failure status, localized notification and terminal attachment receipt commit in one fenced transaction. Retry acknowledges the receipt without repeating failure effects. |
 | Successful normal or dedicated GPX import with zero points, either mode | Final no-points notification, completed status and terminal attachment receipt commit in one fenced transaction. An interruption rolls them back together; a successor commits one notice, and terminal replay only acknowledges the receipt. |
-| Native-owned normal job edited to GPX before admission, either mode | The current normal job admits the supported GPX adapter without requiring an older receipt. |
-| Native-owned legacy envelope or changed-source continuation, either mode | The current accepted native job commits failed status, one localized failure notification and processed acknowledgement transactionally when its parser cannot process the input. No Rails reverse row or handoff is published; ownership stays fixed and retry is inert. |
+| Native-owned normal job edited to GPX before admission, either mode | The current normal job admits the supported GPX adapter without requiring an older receipt. Progress uses the executing normal lane even when the GPX lane remains Rails-owned. |
+| Native-owned legacy envelope or changed-source continuation, either mode | The current accepted native job commits failed status, one localized failure notification and processed acknowledgement transactionally when its parser cannot process the input. No Rails reverse row or handoff is published; ownership stays fixed and retry is inert. Existing accepted ZIP children must pass the authenticated terminal barrier before settlement. A native import event is published after commit; rollback and replay publish none. |
 | Rails-owned legacy envelope or changed-source continuation, coexistence | Publish the unchanged durable Rails resume, retaining its source/fallback flag. Rails resumes the accepted import; explicit legacy or changed-source handoffs retain `native_fallback=true`. |
 | Native legacy or unsupported continuation, standalone | Native processing or transactional failed status plus localized failure notification and processed acknowledgement. A finite error retry chain cannot abandon an accepted row. |
 | ZIP parent with pending children, either mode | Persist fanout and queue each accepted child once; snooze the parent until every child is completed/failed or has a native removal receipt or completed Rails handoff. |
 | Partial ZIP build failure | Queue previously accepted children, retain the archive error, and defer the parent's failure notification until those children are terminal. Unaccepted reservations do not block settlement. |
-| ZIP parent with all children terminal | Preserve archive removal, cleanup publication and one parent acknowledgement. Child notifications remain unchanged. Child readiness and settlement share one fenced transaction; busy child rows cause a snooze, and shared child locks protect the terminal decision through removal. |
+| ZIP parent with all children terminal | Preserve archive removal, cleanup publication and one parent acknowledgement. Child notifications remain unchanged. The normal fanout and changed-source disposition share the same child readiness predicate. Child readiness and settlement share one fenced transaction; busy child rows cause a snooze, and shared child locks protect the terminal decision through removal. |
 
 Coexistence retains the executable source fallback only while Rails owns the
 parent lane. Native-owned parser limits and archive policy rejection settle as
@@ -42,6 +42,14 @@ job's attempt; retry and terminal replay must preserve one no-points notice.
 A removed Rails-owned legacy archive child remains pending while its Rails handoff is pending;
 only its completed handoff authorizes the outer native parent to settle. A failed
 native-owned legacy child is terminal status 3 and produces one failure notice.
+
+`accepted_disposition_review_test.exs` reproduces the five review scenarios through
+actual workers and authorized source edits. Both modes keep the changed ZIP parent
+pending through replay, execute its child, and then commit one terminal notice and
+native event. The mixed-owner GPX case completes one point with native progress
+and zero reverse progress commands. Accepted failure rejects processed-marker
+publication to prove rollback emits no import event, then commits one event and
+replays without duplicate effects. The source-owned progress payload is unchanged.
 
 Shared imports/source-execution history is indexed in AFFiNE document
 `OICwyQJkkxfUDp6macMX9`; assignment report synchronization is controller-owned.

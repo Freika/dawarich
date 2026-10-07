@@ -158,7 +158,8 @@ explicit source-owned continuation checks; no failed accepted import is left
 waiting for an operator to change ownership.
 
 H03 all-R01–R20 native producer acceptance and H04 final local ED disposition
-are **complete** on production commit `69977ef5f`. Final owner diagnostics
+were recorded as **complete** on production commit `69977ef5f`; review2 later
+invalidated that claim for the three scenarios corrected below. Final owner diagnostics
 record no production reverse insertions with all Registry owners native in
 either mode; all temporary instrumentation is restored. The stable terminal
 batch passes 1,891 tests. Forced compilation with warnings as errors (1,720
@@ -245,10 +246,28 @@ same DB/storage. No pending native-to-Sidekiq transfer or source deletion occurs
 ## Accepted-import disposition follow-up
 
 `accepted-import-disposition.md` specifies the consolidated R09 import fallback.
-Native-owned coexistence retains a durable per-import Rails continuation for
-legacy/changed-source inputs the current native worker cannot process; its
-`native_fallback` receipt prevents a forwarding cycle. Standalone processes a
-supported GPX source edit or settles unsupported work as failed with one localized
-notification. ZIP parents wait for child terminal states, including accepted
+Rails-owned coexistence retains the durable per-import Rails continuation for
+legacy/changed-source inputs, including its `native_fallback` receipt. Native-owned
+work in either mode processes a supported GPX source edit or settles unsupported
+work as failed with one localized notification and native import event after commit. ZIP parents wait for child terminal states, including accepted
 children retained by partial build failures. These executable dispositions do not
 certify source retirement or H03/H04/G49 closure.
+
+
+### Review2 accepted-import correction
+
+The review2 probes invalidated the earlier local acceptance claim for changed ZIP
+sources, edited GPX under mixed owners, and accepted failure subscribers. These
+paths now share archive child readiness with normal fanout, carry the executing
+ownership lane into every progress stage, and publish native terminal failure
+only after its transaction commits. Parent replay remains pending until accepted
+children settle; terminal replay emits no duplicate notification or import event.
+
+`accepted_disposition_review_test.exs` retains all five named actual-worker probes,
+with RED, GREEN, individual production mutation failures and restored GREEN.
+The failure cases additionally reject acknowledgement publication and retain the
+other source lane on Rails to check rollback and parent identity. Existing
+source-owned progress bytes and all reverse kinds remain. Final seed404, targeted,
+compile/format, secret-scan and cleanup evidence is recorded in
+`fix6-hot-h03-closure.report.md`. No source retirement, ownership activation,
+Cloud lifecycle change, or global G49 closure follows from this local correction.
