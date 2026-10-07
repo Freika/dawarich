@@ -49,14 +49,14 @@ defmodule Dawarich.Transportation.UserReclassify do
         :ok
 
       {:error, reason} ->
-        RecalculationStatus.fail(user, ctx.now, inspect(reason))
         RecalculationFence.release(repo, user, event)
+        RecalculationStatus.fail(user, ctx.now, inspect(reason))
         {:error, reason}
     end
   rescue
     error ->
-      RecalculationStatus.fail(user, ctx.now, Exception.message(error))
       RecalculationFence.release(repo, user, event)
+      RecalculationStatus.fail(user, ctx.now, Exception.message(error))
       reraise error, __STACKTRACE__
   end
 end

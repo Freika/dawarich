@@ -247,6 +247,31 @@ defmodule DawarichWeb.StandaloneRecalculationTest do
     assert web(session, "text/html").status == 302
   end
 
+  @tag review_finding: "F1_failure"
+  test "review failed reclassification releases its durable fence without Redis", %{id: id} do
+    Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
+    Ownership.put!(Repo, "command:transportation.reclassify_track", :sidekiq, pinned: true)
+    prepare_user(id)
+    assert web(RailsUser.session(id), "text/html").status == 302
+
+    [[event]] =
+      rows("SELECT event_id FROM phoenix.transportation_recalculations WHERE user_id=$1", [id])
+
+    stop_supervised!(Dawarich.Redis.Cache)
+
+    assert_raise RuntimeError, fn ->
+      Dawarich.Transportation.UserReclassify.run(
+        Repo,
+        %{"user_id" => id, "event_id" => Ecto.UUID.cast!(event)},
+        %{now: DateTime.utc_now()}
+      )
+    end
+
+    assert rows("SELECT count(*) FROM phoenix.transportation_recalculations WHERE user_id=$1", [
+             id
+           ]) == [[0]]
+  end
+
   @tag :review_fix
   @tag review_finding: "F2"
   test "review source ownership refusal leaves API retry eligible", %{id: id} do
