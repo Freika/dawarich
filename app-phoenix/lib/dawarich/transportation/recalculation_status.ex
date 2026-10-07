@@ -25,16 +25,46 @@ defmodule Dawarich.Transportation.RecalculationStatus do
     do: not Dawarich.Standalone.enabled?() and legacy(user)["status"] == "processing"
 
   def data(user) do
-    if rails_active?(user), do: legacy(user), else: native_data(user)
+    native = native_data(user)
+
+    if native && Dawarich.Standalone.enabled?() do
+      native
+    else
+      rails = legacy(user)
+
+      cond do
+        is_nil(native) -> rails
+        rails["status"] == "processing" -> rails
+        rails["status"] in ["completed", "failed"] and newer_rails?(rails, native) -> rails
+        true -> native
+      end
+    end
   end
 
   defp native_data(user) do
     case Redis.cache_command(["GET", key(user)]) do
-      {:ok, nil} -> legacy(user)
+      {:ok, nil} -> nil
       {:ok, raw} -> Jason.decode!(raw)
       {:error, reason} -> raise "transportation status unavailable: #{inspect(reason)}"
     end
   end
+
+  defp newer_rails?(rails, native) do
+    case {started_at(rails), started_at(native)} do
+      {nil, _} -> false
+      {_, nil} -> true
+      {rails_at, native_at} -> DateTime.compare(rails_at, native_at) != :lt
+    end
+  end
+
+  defp started_at(%{"started_at" => value}) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, at, _} -> at
+      _ -> nil
+    end
+  end
+
+  defp started_at(_state), do: nil
 
   def native?(user),
     do: match?({:ok, raw} when is_binary(raw), Redis.cache_command(["GET", key(user)]))

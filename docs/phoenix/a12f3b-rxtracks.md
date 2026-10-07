@@ -46,8 +46,12 @@ the persisted owner. This is a scoped domain seam, not a global ownership change
   native status without depending on a Rails consumer. During coexistence, an
   active Rails-created run keeps its Rails status, total and start time regardless
   of track execution ownership. Progress uses the existing `transport_progress`
-  Rails command with one receipt per event; no native key shadows that run.
-  Native-created runs retain their native counter across execution-owner changes.
+  Rails command with one receipt per event. Completed and failed Rails state
+  remains authoritative during its retention period when its start time is at
+  least as recent as the native run; native records without a start time are
+  obsolete in that comparison. A newer native run retains its own totals and
+  timestamp. Native-created runs retain their native counter across execution-owner
+  changes.
 - Trek trip calculation publishes the existing native composite command in
   standalone mode. Existing calculation workers retain ordered, replay-safe
   distance/country/completion effects and pending trip deduplication.
@@ -63,6 +67,19 @@ shared effects file. `RealtimeCommands.trigger/3` is available to that package;
 its no-Oban option publishes the registered realtime command to the outbox.
 Accepted foreign leases and coexistence handbacks remain separate from this
 producer closure. This package does not dispose preexisting reverse rows.
+
+## Rails cache-failure boundary
+
+Rails track callbacks use `Tracks::TileEpoch`, whose inherited
+`TileEpoch.write_tokens` (`app/services/tile_epoch.rb:53`) ignores failed cache
+write returns; `bump_range` also rescues exceptions. A committed track change
+can retain an old tile validator after cache writes recover. Phoenix records a
+database visibility generation with its domain write and retains failed Redis
+cleanup as durable retry debt. The review-fix report includes a source-level
+Rails probe with a cache that refuses writes and the native Redis ACL regression.
+The probe loads the actual Rails epoch classes without booting Rails or using
+a database; it establishes the unchecked-return behavior, not a full Rails
+request characterization.
 
 ## Verification
 
@@ -80,7 +97,7 @@ Seed 202 belongs to the controller's integrated head.
 probes for Cable row-lock failure, generation completion/publication replay,
 outer-commit/rollback epochs, and Rails run ownership. Each has RED, GREEN,
 a named failing mutation, and restored GREEN evidence in the fix report.
-Retained R05/E14A1 terminal-effect tests consume the committed notification jobs
+Retained R05/E14A1 terminal-effect tests consume the shared after-commit intents
 before checking Cable delivery. E151 treats those jobs as drain debt until
 they complete; release completion must not hide pending notification work.
 
@@ -92,3 +109,11 @@ JS dependencies are setup; neither correction changes product behavior.
 The matching AFFiNE document is titled
 “Dawarich — Native track follow-ups (A12f-3b R04–R05)”. The repository document is
 the code-coupled counterpart; the execution report contains exact gate totals.
+
+Round-two review regressions cover Redis SET refusal with committed tracks,
+durable failed-effect retry, legacy notification job compatibility and stable
+receipts, and Rails completion/failure with a stale native key. Both terminal
+ownership probes also verify that a later native run becomes authoritative.
+Each new named probe has behavioral RED, GREEN, a failing named mutation and
+restored GREEN evidence in the controller review-fix report. Track validators
+use the test's repository for shared database generations.

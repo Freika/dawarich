@@ -431,4 +431,126 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
       Dawarich.Redis.command(["ACL", "DELUSER", "rxtracks_legacy"])
     end
   end
+
+  test "review: Rails terminal status remains authoritative over stale native completion" do
+    System.delete_env("DAWARICH_RAILS")
+    Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:transportation.reclassify_track", :oban)
+
+    raw =
+      Base.decode64!(
+        "BAhbBnsJSSILc3RhdHVzBjoGRVRJIg9wcm9jZXNzaW5nBjsAVEkiD3N0YXJ0ZWRfYXQGOwBUSSIZMjAyNi0xMC0wN1QwMDowMDowMFoGOwBUSSIRdG90YWxfdHJhY2tzBjsAVGkGSSIVcHJvY2Vzc2VkX3RyYWNrcwY7AFRpAA=="
+      )
+
+    legacy_key = "transportation_mode_recalculation:user:1"
+    {:ok, "OK"} = Dawarich.Redis.cache_command(["SET", legacy_key, <<0, raw::binary>>])
+
+    stale =
+      Jason.encode!(%{"status" => "completed", "total_tracks" => 9, "processed_tracks" => 9})
+
+    {:ok, "OK"} =
+      Dawarich.Redis.cache_command(["SET", RecalculationStatus.key(1), stale, "EX", "300"])
+
+    assert RecalculationStatus.data(1)["total_tracks"] == 1
+
+    args = %{
+      "track_id" => -1,
+      "user_id" => 1,
+      "report_progress" => true,
+      "event_id" => Ecto.UUID.generate()
+    }
+
+    assert :ok = ReclassifyTrackWorker.run(ScratchRepo, __MODULE__, args)
+
+    assert rows("SELECT count(*) FROM phoenix.rails_commands WHERE kind='transport_progress'") ==
+             [[1]]
+
+    completed =
+      raw
+      |> :binary.replace(<<15, "processing">>, <<14, "completed">>)
+      |> :binary.replace(<<105, 0>>, <<105, 6>>)
+
+    {:ok, "OK"} = Dawarich.Redis.cache_command(["SET", legacy_key, <<0, completed::binary>>])
+    {:ok, expected} = Dawarich.RailsCache.get(legacy_key)
+    assert expected["status"] == "completed"
+    assert expected["processed_tracks"] == 1
+    actual = RecalculationStatus.data(1)
+    assert actual == expected
+
+    older =
+      Jason.encode!(%{
+        "status" => "completed",
+        "total_tracks" => 9,
+        "processed_tracks" => 9,
+        "started_at" => "2026-10-06T23:00:00Z"
+      })
+
+    assert {:ok, "OK"} =
+             Dawarich.Redis.cache_command(["SET", RecalculationStatus.key(1), older, "EX", "300"])
+
+    assert RecalculationStatus.data(1) == expected
+    RecalculationStatus.start(1, 2, ~U[2026-10-07 01:00:00Z])
+    assert RecalculationStatus.data(1)["total_tracks"] == 2
+    assert RecalculationStatus.data(1)["started_at"] == "2026-10-07T01:00:00Z"
+  end
+
+  test "review: Rails failed status remains authoritative over stale native completion" do
+    System.delete_env("DAWARICH_RAILS")
+    Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:transportation.reclassify_track", :oban)
+
+    raw =
+      Base.decode64!(
+        "BAhbBnsJSSILc3RhdHVzBjoGRVRJIg9wcm9jZXNzaW5nBjsAVEkiD3N0YXJ0ZWRfYXQGOwBUSSIZMjAyNi0xMC0wN1QwMDowMDowMFoGOwBUSSIRdG90YWxfdHJhY2tzBjsAVGkGSSIVcHJvY2Vzc2VkX3RyYWNrcwY7AFRpAA=="
+      )
+
+    legacy_key = "transportation_mode_recalculation:user:1"
+    {:ok, "OK"} = Dawarich.Redis.cache_command(["SET", legacy_key, <<0, raw::binary>>])
+
+    stale =
+      Jason.encode!(%{"status" => "completed", "total_tracks" => 9, "processed_tracks" => 9})
+
+    {:ok, "OK"} =
+      Dawarich.Redis.cache_command(["SET", RecalculationStatus.key(1), stale, "EX", "300"])
+
+    assert RecalculationStatus.data(1)["total_tracks"] == 1
+
+    args = %{
+      "track_id" => -1,
+      "user_id" => 1,
+      "report_progress" => true,
+      "event_id" => Ecto.UUID.generate()
+    }
+
+    assert :ok = ReclassifyTrackWorker.run(ScratchRepo, __MODULE__, args)
+
+    assert rows("SELECT count(*) FROM phoenix.rails_commands WHERE kind='transport_progress'") ==
+             [[1]]
+
+    completed =
+      raw
+      |> :binary.replace(<<15, "processing">>, <<11, "failed">>)
+      |> :binary.replace(<<105, 0>>, <<105, 6>>)
+
+    {:ok, "OK"} = Dawarich.Redis.cache_command(["SET", legacy_key, <<0, completed::binary>>])
+    {:ok, expected} = Dawarich.RailsCache.get(legacy_key)
+    assert expected["status"] == "failed"
+    assert expected["processed_tracks"] == 1
+    actual = RecalculationStatus.data(1)
+    assert actual == expected
+
+    older =
+      Jason.encode!(%{
+        "status" => "completed",
+        "total_tracks" => 9,
+        "processed_tracks" => 9,
+        "started_at" => "2026-10-06T23:00:00Z"
+      })
+
+    assert {:ok, "OK"} =
+             Dawarich.Redis.cache_command(["SET", RecalculationStatus.key(1), older, "EX", "300"])
+
+    assert RecalculationStatus.data(1) == expected
+    RecalculationStatus.start(1, 2, ~U[2026-10-07 01:00:00Z])
+    assert RecalculationStatus.data(1)["total_tracks"] == 2
+    assert RecalculationStatus.data(1)["started_at"] == "2026-10-07T01:00:00Z"
+  end
 end
