@@ -3,6 +3,7 @@ defmodule Dawarich.Jobs.ResidualEntries do
 
   def entries do
     commands = [
+      {"users.destroy", Dawarich.Users.DestroyWorker},
       {"tracks.backfill", Dawarich.Tracks.BackfillWorker},
       {"tracks.throttled_backfill", Dawarich.Tracks.ThrottledBackfillWorker},
       {"families.auto_create", Dawarich.Families.AutoCreateWorker},

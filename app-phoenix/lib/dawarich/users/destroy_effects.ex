@@ -28,6 +28,7 @@ defmodule Dawarich.Users.DestroyEffects do
             snapshot!(repo, id, email)
             attachments!(repo, id)
             cleanup!(repo, id)
+            cache!(repo, id)
             :ok
 
           blocked ->
@@ -36,24 +37,23 @@ defmodule Dawarich.Users.DestroyEffects do
     end
   end
 
-  def clear_cache(id) do
+  defp cache!(repo, id) do
     keys =
       for suffix <- ~w(countries_visited cities_visited total_distance years_tracked),
           do: "dawarich/user_#{id}_#{suffix}"
 
-    Dawarich.Redis.cache_command(["DEL" | keys ++ Enum.map(keys, &("phoenix/" <> &1))])
-    :ok
+    Dawarich.AfterCommit.cache(repo, "keys", %{
+      "user_id" => id,
+      "keys" => keys ++ Enum.map(keys, &("phoenix/" <> &1))
+    })
   end
 
   defp snapshot!(repo, id, email) do
-    repo.insert!(
-      DestructionWebhookWorker.new(%{
-        "user_id" => id,
-        "email" => email,
-        "event_id" => Ecto.UUID.generate()
-      }),
-      prefix: "oban"
-    )
+    Dawarich.AfterCommit.enqueue(repo, DestructionWebhookWorker, %{
+      "user_id" => id,
+      "email" => email,
+      "event_id" => Ecto.UUID.generate()
+    })
   end
 
   defp family_guard(repo, id) do

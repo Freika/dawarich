@@ -6,7 +6,8 @@ defmodule Dawarich.Users.DestroyWorker do
     max_attempts: 4,
     unique: [keys: [:event_id], states: :incomplete, period: :infinity]
 
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
+  alias Dawarich.Imports.NativeOwnership
   alias Dawarich.Users.DestroyEffects
 
   def args_from_command(1, %{"user_id" => id} = payload)
@@ -19,7 +20,7 @@ defmodule Dawarich.Users.DestroyWorker do
 
   def enqueue(repo, id, event \\ Ecto.UUID.generate()) do
     if repo.in_transaction?() do
-      case Ownership.lock(repo, "command:users.destroy") do
+      case NativeOwnership.lock(repo, "command:users.destroy") do
         :oban ->
           repo.query!(
             "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,aggregate_id,metadata,scheduled_at) VALUES($1,'users.destroy',1,$2,$3,$4,now()) ON CONFLICT(event_id) DO NOTHING",
@@ -46,13 +47,6 @@ defmodule Dawarich.Users.DestroyWorker do
          end) do
       {:error, {:cancel, reason}} ->
         {:cancel, reason}
-
-      :ok ->
-        if repo.query!("SELECT id FROM users WHERE id=$1", [args["user_id"]], log: false).rows ==
-             [],
-           do: DestroyEffects.clear_cache(args["user_id"])
-
-        :ok
 
       result ->
         result

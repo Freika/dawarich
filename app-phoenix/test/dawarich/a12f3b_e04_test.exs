@@ -128,7 +128,13 @@ defmodule Dawarich.A12f3bE04Test do
     assert :ok = DestroyWorker.run(Repo, args)
     assert Processed.done?(Repo, event)
     assert {:ok, values} = Dawarich.Redis.cache_command(["MGET" | keys])
-    assert Enum.all?(values, &is_nil/1)
+    assert Enum.all?(values, &(&1 == "synthetic"))
+
+    assert [[cache]] =
+             rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.AfterCommit.Worker'")
+
+    assert cache["operation"] == "keys"
+    assert cache["payload"]["keys"] == keys
 
     assert rows("SELECT aggregate_id FROM job_outbox WHERE command_type='mail.user.welcome'") == [
              [other]
