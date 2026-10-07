@@ -7,7 +7,7 @@ defmodule Dawarich.PointList do
 
   @per_page 50
   @max_page div(9_223_372_036_854_775_807, @per_page) + 1
-  @filters ~w(start_at end_at import_id order_by page)
+  @filters ~w(start_at end_at import_id order_by page commit)
   @where """
   WHERE p.user_id = $1 AND ($2::bigint IS NULL OR p.import_id = $2)
     AND p.timestamp BETWEEN $3::bigint AND $4::bigint

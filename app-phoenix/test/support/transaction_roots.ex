@@ -68,22 +68,28 @@ defmodule Dawarich.Test.TransactionRoots do
 
   defp forwarded_roots(target, name, args, aliases, module, definitions, bindings, seen) do
     key = {target, name, length(args)}
-    args = Enum.map(args, &resolve(&1, bindings))
+    functions = Map.get(definitions, key, [])
 
-    if not MapSet.member?(seen, key) and Enum.any?(args, &callback?/1) do
-      for {_, body, target_aliases, target_module, _, params} <- Map.get(definitions, key, []),
-          root <-
-            find(
-              body,
-              target_aliases,
-              target_module,
-              definitions,
-              bind(params, args, aliases, module, definitions),
-              MapSet.put(seen, key)
-            ),
-          do: root
-    else
+    if functions == [] or MapSet.member?(seen, key) do
       []
+    else
+      args = Enum.map(args, &resolve(&1, bindings))
+
+      if Enum.any?(args, &callback?/1) do
+        for {_, body, target_aliases, target_module, _, params} <- functions,
+            root <-
+              find(
+                body,
+                target_aliases,
+                target_module,
+                definitions,
+                bind(params, args, aliases, module, definitions),
+                MapSet.put(seen, key)
+              ),
+            do: root
+      else
+        []
+      end
     end
   end
 
@@ -130,6 +136,8 @@ defmodule Dawarich.Test.TransactionRoots do
     do: {module, name, args}
 
   defp call(_, _, _), do: nil
+
+  defp resolve(ast, bindings) when map_size(bindings) == 0, do: ast
 
   defp resolve(ast, bindings) do
     Macro.postwalk(ast, fn

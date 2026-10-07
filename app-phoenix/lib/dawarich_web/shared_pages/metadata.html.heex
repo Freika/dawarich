@@ -1,0 +1,10 @@
+<%= if @page in [:live, :timeline, :trip, :track, :missing_resource] do %>
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content={@link.name} />
+  <meta
+    property="og:description"
+    content={t(@locale, "shared.links.show.shared_from_dawarich", %{})}
+  />
+  <meta property="og:image" content={@base_url <> Assets.stylesheet_path("og_default.png")} />
+  <meta name="twitter:card" content="summary_large_image" />
+<% end %>

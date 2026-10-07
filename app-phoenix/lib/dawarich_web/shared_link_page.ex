@@ -24,7 +24,7 @@ defmodule DawarichWeb.SharedLinkPage do
 
       link ->
         if FamilyAudience.accessible?(link, conn.assigns[:current_user], now),
-          do: show(conn, link, now),
+          do: show(audience(conn, link), link, now),
           else: render(conn, 404, %{page: :not_found})
     end
   end
@@ -41,10 +41,12 @@ defmodule DawarichWeb.SharedLinkPage do
         if not FamilyAudience.accessible?(link, conn.assigns[:current_user], now) do
           conn |> LayoutAssigns.call([]) |> render(404, %{page: :not_found})
         else
-          unlock(conn, link, id, phrase, now)
+          unlock(audience(conn, link), link, id, phrase, now)
         end
     end
   end
+
+  defp audience(conn, link), do: assign(conn, :family_share, FamilyAudience.family_only?(link))
 
   defp unlock(conn, link, id, phrase, now) do
     if Plug.Crypto.secure_compare(link.magic_phrase || "", phrase) do
@@ -82,12 +84,33 @@ defmodule DawarichWeb.SharedLinkPage do
   defp page_assigns({:timeline, from, to}, link),
     do: %{page: :timeline, link: link, from: from, to: to}
 
+  defp page_assigns(page, link) when page in [:trip, :track],
+    do: %{page: page, link: link, resource: Dawarich.SharedLinks.ResourcePage.load(link)}
+
   defp page_assigns(page, link), do: %{page: page, link: link}
 
   defp render(conn, status, page) do
+    assigns =
+      if conn.assigns[:family_share] do
+        navbar =
+          Dawarich.Navbar.load(conn.assigns.current_user,
+            now: conn.assigns.now,
+            self_hosted: conn.assigns.self_hosted
+          )
+
+        Map.merge(conn.assigns, %{
+          navbar: navbar,
+          page_title: nil,
+          flash: %{},
+          rails_js: true,
+          rails_charts: false
+        })
+      else
+        conn.assigns
+      end
+
     html =
-      conn.assigns
-      |> Map.take([:locale, :rails_csrf_token, :rails_session, :base_url])
+      assigns
       |> Map.merge(page)
       |> SharedPages.html()
       |> IO.iodata_to_binary()
@@ -101,11 +124,19 @@ defmodule DawarichWeb.SharedLinkPage do
   end
 
   defp respond(conn, 200, html) do
-    conn |> Respond.rack_etag(html) |> finish(200, html)
+    conn
+    |> Respond.rack_etag(html, cache_control(conn, "max-age=0, private, must-revalidate"))
+    |> finish(200, html)
   end
 
   defp respond(conn, status, html),
-    do: conn |> put_resp_header("cache-control", "no-cache") |> finish(status, html)
+    do:
+      conn
+      |> put_resp_header("cache-control", cache_control(conn, "no-cache"))
+      |> finish(status, html)
+
+  defp cache_control(conn, public),
+    do: if(conn.assigns[:family_share], do: "private, no-store", else: public)
 
   defp finish(conn, status, html) do
     conn

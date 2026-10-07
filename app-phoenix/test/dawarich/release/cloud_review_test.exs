@@ -250,16 +250,30 @@ defmodule Dawarich.Release.CloudReviewTest do
         :gen_tcp.close(socket)
       end)
 
-    started = System.monotonic_time(:millisecond)
+    transport = fn method, base, path, headers, body, skip, timeout, options ->
+      send(self(), {:transport_cap, timeout, options[:total_timeout]})
+
+      Dawarich.Photos.ProviderHTTP.request(
+        method,
+        base,
+        path,
+        headers,
+        body,
+        skip,
+        timeout,
+        options
+      )
+    end
 
     result =
       Dawarich.Cloud.ProviderHTTP.post(:manager, "/api/v1/users", [], "{}",
         test_loopback: true,
+        transport: transport,
         env: %{"MANAGER_URL" => "http://127.0.0.1:#{port}"}
       )
 
-    elapsed = System.monotonic_time(:millisecond) - started
     Task.await(server, 15000)
-    assert {result, elapsed <= 10100} == {{:error, :timeout}, true}
+    assert_received {:transport_cap, 10000, 10000}
+    assert result == {:error, :timeout}
   end
 end

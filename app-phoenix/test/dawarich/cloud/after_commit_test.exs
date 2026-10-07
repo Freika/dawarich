@@ -141,29 +141,23 @@ defmodule Dawarich.Cloud.AfterCommitTest do
 
   test "L1 callback reuses provider idempotency after accepted send loses local receipt", ctx do
     provider = start_supervised!({Agent, fn -> MapSet.new() end})
-    parent = self()
 
     effect = fn ->
       identity = AfterCommit.identity(ctx.event, "provider")
       Agent.update(provider, &MapSet.put(&1, identity))
-      send(parent, {:accepted, self()})
-
-      receive do
-        :receipt -> :ok
-      end
     end
 
-    {pid, monitor} =
-      spawn_monitor(fn -> Callback.run(ScratchRepo, ctx.event, "welcome", effect) end)
+    first =
+      Task.Supervisor.async_nolink(start_supervised!(Task.Supervisor), fn ->
+        Callback.run(ScratchRepo, ctx.event, "welcome", fn ->
+          effect.()
+          Process.exit(self(), :kill)
+        end)
+      end)
 
-    assert_receive {:accepted, ^pid}
-    Process.exit(pid, :kill)
-    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}
+    assert {:killed, _} = catch_exit(Task.await(first))
     refute Processed.done?(ScratchRepo, ctx.event)
-    retry = Task.async(fn -> Callback.run(ScratchRepo, ctx.event, "welcome", effect) end)
-    assert_receive {:accepted, retry_pid}
-    send(retry_pid, :receipt)
-    assert Task.await(retry) == :ok
+    assert :ok = Callback.run(ScratchRepo, ctx.event, "welcome", effect)
     assert Agent.get(provider, &MapSet.size/1) == 1
     assert Processed.done?(ScratchRepo, ctx.event)
   end

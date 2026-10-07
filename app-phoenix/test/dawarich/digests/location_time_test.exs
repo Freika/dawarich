@@ -1,5 +1,5 @@
 defmodule Dawarich.Digests.LocationTimeTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: true, group: :digest_fixture_ids
   alias Dawarich.DigestFixtures
   alias Dawarich.Digests.{Context, LocationTime, Period, Queries}
 
