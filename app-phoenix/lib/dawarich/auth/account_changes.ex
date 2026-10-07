@@ -83,7 +83,11 @@ defmodule Dawarich.Auth.AccountChanges do
         [[settings]] =
           repo.query!("SELECT settings FROM users WHERE id=$1", [id], log: false).rows
 
-        support(%{user | settings: settings}, session_salt, context)
+        support(
+          %{user | settings: Dawarich.UserSettings.provided(settings)},
+          session_salt,
+          context
+        )
     end
   end
 

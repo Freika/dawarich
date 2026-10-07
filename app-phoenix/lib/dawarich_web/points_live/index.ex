@@ -26,7 +26,9 @@ defmodule DawarichWeb.PointsLive.Index do
             result.total_pages
           )
 
-        unit = get_in(socket.assigns.current_user.settings, ["maps", "distance_unit"]) || "km"
+        unit =
+          get_in(Dawarich.UserSettings.get(socket.assigns.current_user), ["maps", "distance_unit"]) ||
+            "km"
 
         {:noreply,
          socket |> assign(result) |> assign(query: params, summary: summary, unit: unit)}

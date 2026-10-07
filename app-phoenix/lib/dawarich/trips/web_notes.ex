@@ -5,7 +5,11 @@ defmodule Dawarich.Trips.WebNotes do
   @fields ~w(id user_id body noted_at created_at updated_at)a
 
   def run(repo, action, user, trip_id, note_id, attrs, context) do
-    zone = if is_map(user.settings), do: UserTimeZone.zone(user.settings), else: :unsupported
+    zone =
+      if is_map(Dawarich.UserSettings.get(user)),
+        do: UserTimeZone.zone(Dawarich.UserSettings.get(user)),
+        else: :unsupported
+
     zone = if zone in [nil, ""], do: System.get_env("TIME_ZONE", "UTC"), else: zone
 
     RailsTime.with_zone(repo, zone, fn ->

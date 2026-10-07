@@ -36,7 +36,7 @@ defmodule DawarichWeb.AuthOtp.Http do
       )
       |> Map.put(:native, Keyword.get(opts, :native, false))
       |> Map.put_new_lazy(:oidc, &Admission.oidc?/0)
-      |> Map.put_new_lazy(:ip, fn -> DawarichWeb.RackIp.ip(conn) end)
+      |> Map.put_new_lazy(:ip, fn -> DawarichWeb.RailsRemoteIp.ip(conn) end)
 
     case identity(conn, context) do
       {:ok, conn, context} -> parse(conn, opts, context)

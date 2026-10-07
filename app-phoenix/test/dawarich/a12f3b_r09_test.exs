@@ -125,35 +125,59 @@ defmodule Dawarich.A12f3bR09Test do
     assert [] == F.reverse()
   end
 
-  @tag a12f3b_case: "R09k03"
-  test "imports.resume native producer reaches its source terminal effect", c do
-    assert {:error, :unsupported_native_import} ==
-             Dawarich.Imports.GpxHandover.resume(ScratchRepo, c.job, :legacy)
+  for {key, kind, handover, worker, source} <- [
+        {"R09k03", "imports.resume", Dawarich.Imports.GpxHandover,
+         "Dawarich.Imports.ProcessGpxWorker", 4},
+        {"R09k04", "imports.normal_resume", Dawarich.Imports.NormalHandover,
+         "Dawarich.Imports.ProcessWorker", 10}
+      ] do
+    @tag a12f3b_case: key
+    test "#{kind} native producer reaches its source terminal effect", c do
+      rows("UPDATE imports SET source=$2 WHERE id=$1", [c.import.id, unquote(source)])
+      rows("UPDATE oban.oban_jobs SET worker=$2 WHERE id=$1", [c.job.id, unquote(worker)])
+      assert :ok == unquote(handover).resume(ScratchRepo, c.job, :legacy)
+      assert [] == F.reverse()
 
-    assert [] == F.reverse()
-    refute Dawarich.Jobs.Processed.done?(ScratchRepo, c.job.args["event_id"])
-    System.delete_env("DAWARICH_RAILS")
-    assert :ok == Dawarich.Imports.GpxHandover.resume(ScratchRepo, c.job, :legacy)
-    assert [["imports.resume"]] == F.reverse()
-  end
+      assert [[3, error]] =
+               rows("SELECT status,error_message FROM imports WHERE id=$1", [c.import.id])
 
-  @tag a12f3b_case: "R09k04"
-  test "imports.normal_resume native producer reaches its source terminal effect", c do
-    rows("UPDATE imports SET source=10 WHERE id=$1", [c.import.id])
+      assert error != ""
 
-    rows("UPDATE oban.oban_jobs SET worker='Dawarich.Imports.ProcessWorker' WHERE id=$1", [
-      c.job.id
-    ])
+      assert [[1]] ==
+               rows("SELECT count(*) FROM notifications WHERE user_id=$1 AND kind=2", [
+                 c.import.user_id
+               ])
 
-    Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.process_normal", :oban)
+      assert Dawarich.Jobs.Processed.done?(ScratchRepo, c.job.args["event_id"])
+      assert :ok == unquote(handover).resume(ScratchRepo, c.job, :legacy)
 
-    assert {:error, :unsupported_native_import} ==
-             Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
+      assert [[1]] ==
+               rows("SELECT count(*) FROM notifications WHERE user_id=$1 AND kind=2", [
+                 c.import.user_id
+               ])
 
-    assert [] == F.reverse()
-    refute Dawarich.Jobs.Processed.done?(ScratchRepo, c.job.args["event_id"])
-    System.delete_env("DAWARICH_RAILS")
-    assert :ok == Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
-    assert [["imports.normal_resume"]] == F.reverse()
+      reset!(ScratchRepo)
+      c = Map.merge(c, Dawarich.ImportLeaseFixture.create())
+      rows("UPDATE imports SET source=$2 WHERE id=$1", [c.import.id, unquote(source)])
+      rows("UPDATE oban.oban_jobs SET worker=$2 WHERE id=$1", [c.job.id, unquote(worker)])
+
+      lane =
+        if unquote(source) == 4,
+          do: "command:imports.process_gpx",
+          else: "command:imports.process_normal"
+
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, lane, :oban)
+      System.delete_env("DAWARICH_RAILS")
+      assert :ok == unquote(handover).resume(ScratchRepo, c.job, :legacy)
+      assert [[unquote(kind)]] == F.reverse()
+
+      assert [[true, "pending"]] ==
+               rows("SELECT native_fallback,state FROM phoenix.import_handoffs")
+
+      assert [["oban"]] == rows("SELECT owner FROM phoenix.job_owners WHERE key=$1", [lane])
+      assert [] == rows("SELECT id FROM notifications")
+      assert :ok == unquote(handover).resume(ScratchRepo, c.job, :legacy)
+      assert [[1]] == rows("SELECT count(*) FROM phoenix.rails_commands")
+    end
   end
 end

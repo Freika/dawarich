@@ -19,7 +19,7 @@ defmodule Dawarich.Mail.TestEmail do
   end
 
   def run(user, ambient, env, opts \\ []) do
-    locale = ExploreFeatures.locale(user.settings, ambient)
+    locale = ExploreFeatures.locale(Dawarich.UserSettings.get(user), ambient)
 
     cond do
       Map.get(user, :admin) != true ->
@@ -36,14 +36,14 @@ defmodule Dawarich.Mail.TestEmail do
   rescue
     error in ArgumentError ->
       failure(
-        ExploreFeatures.locale(user.settings, ambient),
+        ExploreFeatures.locale(Dawarich.UserSettings.get(user), ambient),
         "ArgumentError: " <> Exception.message(error)
       )
 
     _error ->
-      failure(ExploreFeatures.locale(user.settings, ambient), "IOError")
+      failure(ExploreFeatures.locale(Dawarich.UserSettings.get(user), ambient), "IOError")
   catch
-    _, _ -> failure(ExploreFeatures.locale(user.settings, ambient), "IOError")
+    _, _ -> failure(ExploreFeatures.locale(Dawarich.UserSettings.get(user), ambient), "IOError")
   end
 
   defp authorization_text(locale) do

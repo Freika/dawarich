@@ -52,7 +52,7 @@ defmodule DawarichWeb.SettingsLive.Integrations do
         ~w(immich_api_key photoprism_api_key airtrail_api_key teslamate_password teslamate_api_token)
 
       settings =
-        Map.new(user.settings || %{}, fn {key, value} ->
+        Map.new(Dawarich.UserSettings.get(user), fn {key, value} ->
           {key, if(key in secrets and Ruby.present?(value), do: "********", else: value)}
         end)
 

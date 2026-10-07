@@ -10,7 +10,7 @@ defmodule Dawarich.Residency do
   WHERE user_id = $1 AND timestamp >= $2 AND timestamp <= $3
     AND country_name IS NOT NULL AND country_name != '' AND (anomaly IS NOT TRUE)
   GROUP BY point_date, country_name
-  ORDER BY point_date
+  ORDER BY point_date, country_name COLLATE "C"
   """
 
   @bounds "SELECT extract(epoch FROM make_timestamptz($1, 1, 1, 0, 0, 0))::bigint, " <>

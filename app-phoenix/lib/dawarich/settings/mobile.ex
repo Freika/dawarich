@@ -30,6 +30,8 @@ defmodule Dawarich.Settings.Mobile do
               log: false
             ).rows
 
+          settings = UserSettings.provided(settings)
+
           mobile =
             Map.merge(settings["mobile"] || %{}, sanitized)
             |> Map.put(
@@ -89,6 +91,7 @@ defmodule Dawarich.Settings.Mobile do
         String.trim(Dawarich.Ingest.Ruby.to_s(value)) != ""
 
   defp response(settings) do
+    settings = UserSettings.safe(settings)
     mobile = settings["mobile"] || %{}
 
     %{

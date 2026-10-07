@@ -39,7 +39,7 @@ defmodule Dawarich.Auth.TwoFactor.ApiActor do
         [[settings]] =
           repo.query!("SELECT settings FROM users WHERE id=$1", [id], log: false).rows
 
-        support(%{user | settings: settings}, context)
+        support(%{user | settings: Dawarich.UserSettings.provided(settings)}, context)
     end
   end
 

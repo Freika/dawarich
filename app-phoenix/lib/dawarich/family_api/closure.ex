@@ -76,7 +76,7 @@ defmodule Dawarich.FamilyApi.Closure do
           members =
             for member <- Locations.members(family),
                 member.id != user.id,
-                Sharing.enabled?(member.settings, now),
+                Sharing.enabled?(Dawarich.UserSettings.get(member), now),
                 do: member
 
           {:ok, 200,
@@ -90,7 +90,7 @@ defmodule Dawarich.FamilyApi.Closure do
   end
 
   defp history(member, from, to, now) do
-    config = Sharing.config(member.settings)
+    config = Sharing.config(Dawarich.UserSettings.get(member))
     started = Clock.parse(config["started_at"])
     before = config["history_before_sharing"] == true
 

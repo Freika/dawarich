@@ -43,7 +43,23 @@ defmodule DawarichWeb.RateLimitTest do
 
     outcome = RateLimit.decide(conn, opts(scenario["mode"] == "self_hosted", at))
 
-    expected = Enum.map(step["increments"], &{RateLimitCorpus.key(&1), &1["ttl"]})
+    security_ip =
+      case Map.new(r["headers"], fn [key, value] -> {key, value} end) do
+        %{"x-forwarded-for" => "<garbage>"} -> "127.0.0.1"
+        %{"forwarded" => "for=198.51.100.4"} -> "10.0.0.5"
+        _ -> nil
+      end
+
+    expected =
+      Enum.map(step["increments"], fn increment ->
+        increment =
+          if security_ip,
+            do: Map.put(increment, "discriminator", security_ip <> ":abc"),
+            else: increment
+
+        {RateLimitCorpus.key(increment), increment["ttl"]}
+      end)
+
     label = "#{scenario["name"]} #{r["method"]} #{r["path"]}?#{r["query"]}"
 
     owner = if pending, do: nil, else: step["phoenix"]

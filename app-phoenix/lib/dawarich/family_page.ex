@@ -4,7 +4,7 @@ defmodule Dawarich.FamilyPage do
   alias Dawarich.{FamilyPageAccess, Repo, UserTimeZone}
 
   def read(user, action, opts) do
-    FamilyPageAccess.validate_settings!(user.settings)
+    FamilyPageAccess.validate_settings!(Dawarich.UserSettings.get(user))
     now = Keyword.get(opts, :now, DateTime.utc_now())
     self_hosted = Keyword.fetch!(opts, :self_hosted)
     family = membership(user)
@@ -162,10 +162,12 @@ defmodule Dawarich.FamilyPage do
     invitations = invitations(user, family.id, now, "created_at")
 
     created_date =
-      UserTimeZone.local(user.settings, family.created_at).local |> NaiveDateTime.to_date()
+      UserTimeZone.local(Dawarich.UserSettings.get(user), family.created_at).local
+      |> NaiveDateTime.to_date()
 
     updated_date =
-      UserTimeZone.local(user.settings, family.updated_at).local |> NaiveDateTime.to_date()
+      UserTimeZone.local(Dawarich.UserSettings.get(user), family.updated_at).local
+      |> NaiveDateTime.to_date()
 
     {:ok,
      %{
@@ -180,7 +182,10 @@ defmodule Dawarich.FamilyPage do
        trial_ends:
          if(user.status == 0 and not is_nil(user.active_until),
            do:
-             UserTimeZone.local(user.settings, DateTime.to_naive(user.active_until)).local
+             UserTimeZone.local(
+               Dawarich.UserSettings.get(user),
+               DateTime.to_naive(user.active_until)
+             ).local
              |> NaiveDateTime.to_date()
          ),
        pending_requests: if(action == :show, do: pending_requests(user, now), else: %{}),
@@ -245,12 +250,14 @@ defmodule Dawarich.FamilyPage do
         expires_at: expires_at,
         created_at: created_at,
         created_date:
-          UserTimeZone.local(user.settings, created_at).local |> NaiveDateTime.to_date(),
-        expires_local: UserTimeZone.local(user.settings, expires_at).local,
+          UserTimeZone.local(Dawarich.UserSettings.get(user), created_at).local
+          |> NaiveDateTime.to_date(),
+        expires_local: UserTimeZone.local(Dawarich.UserSettings.get(user), expires_at).local,
         invited_by: invited_by
       }
     end)
   end
 
-  defp query(user, sql, params), do: UserTimeZone.query!(sql, params, user.settings, Repo)
+  defp query(user, sql, params),
+    do: UserTimeZone.query!(sql, params, Dawarich.UserSettings.get(user), Repo)
 end

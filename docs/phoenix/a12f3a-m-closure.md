@@ -71,3 +71,15 @@ The second full run passed the map partition but exposed an existing metrics tes
 The final required three-partition seed-404 gate passed: 8,642 tests, zero failures (2,642 / 2,893 / 3,107 per partition). Existing suite exclusions and skips remain unchanged. Gitleaks found no leaks; git diff checks found no whitespace or swagger/schema drift. Final committed-head scan and cleanup evidence are in the execution report.
 
 AFFiNE counterpart: Dawarich — Phoenix A12f-3a map shell and frames implementation (`MLaNM8OY0qcTmNHoSGaYa`). Planning index: `cdFa14Gdde-iWiERUNqIo`; package M plan: `ZIKYW9aTewW7RQU6pjL2K`.
+
+## Post-hoc map/frame corrections — 2026-10-07
+
+The five package M post-hoc findings are covered by named tests in `app-phoenix/test/dawarich_web/map_frames_regression_test.exs`, dispatched through the real Endpoint.
+
+- Timeline scalar timestamps use the existing Rails `Time.zone.parse` compatibility parser (`Imports.ImportTime`), including slash, month-name, dotted, compact and RFC forms, civil-day rollover, source clamping and invalid-input fallback. Structured timestamps retain the source 500.
+- Calendar months use the existing `MapApi.RailsDate` parser on the source's appended `-01`, rather than an ISO-only grammar. Slash/name/ISO-week forms and the surprising `09/2026` interpretation remain source-compatible. A full date selects its source grid week while activity queries cover the entire local month.
+- Map day selection uses the same Date parser, with the user's current local day as its default. Invalid short month prefixes and oversized numeric days fall back to the selected import range/current day. Rails-accepted full month names, compact/ordinal/week dates and `Octopus` remain accepted.
+- Legacy redirects and ForceSSL destinations use the shared `RequestURL`/`RackScheme` URL handling. External HTTPS, forwarded host chains and explicit ports are preserved. The trial-welcome branch's separate `RailsRemoteIp` work owns trusted client-IP selection; this correction introduces no competing forwarded-header parser.
+- Terminal frame errors use `RailsErrors.respond/3`, retaining the public Rails error page and UTF-8 content type. The source residency-2038 failure remains a 500.
+
+Every named regression failed before implementation, passed after implementation, failed its production mutation, then passed after restoration. The focused map/parser batch passed 84 tests with zero failures; the expanded regression/setup batch passed 109 tests with zero failures. The final full seed-404 gate passed 9,417 tests with zero failures across three partitions. Forced compilation with warnings as errors and formatting passed. Release/browser and integrated producer checks retain the controller ownership described above; seed 202 remains an integration-head gate.

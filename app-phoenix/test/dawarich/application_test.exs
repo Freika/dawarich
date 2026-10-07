@@ -285,6 +285,7 @@ defmodule Dawarich.ApplicationTest do
     System.cmd("mix", ["run", "--no-start", "-e", script],
       cd: Path.expand("../..", __DIR__),
       env: [
+        {"MIX_ENV", "test"},
         {"DAWARICH_RAILS", "off"},
         {"DAWARICH_RAILS_ARGS", nil},
         {"DAWARICH_NATIVE_ARGS", nil},

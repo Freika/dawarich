@@ -26,7 +26,9 @@ defmodule Dawarich.Mail.TestEmailWorker do
           event_id,
           fn ->
             {:ok,
-             Residual.message(:test_email, user, locale, env, clock: clock(user.settings, env))}
+             Residual.message(:test_email, user, locale, env,
+               clock: clock(Dawarich.UserSettings.get(user), env)
+             )}
           end
         )
 

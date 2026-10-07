@@ -27,9 +27,9 @@ defmodule Dawarich.PlaceDrawer do
   """
 
   def load(user, id, repo \\ Dawarich.Repo) do
-    settings = user.settings || %{}
+    settings = Dawarich.UserSettings.get(user)
 
-    with true <- PlaceList.settings?(user.settings),
+    with true <- PlaceList.settings?(Dawarich.UserSettings.get(user)),
          [[id, name, note, city, country, source, locked, count, minutes, tags, visits, zone]]
          when source in 0..2 or is_nil(source) <-
            UserTimeZone.query!(@sql, [id, user.id], settings, repo).rows,

@@ -36,7 +36,7 @@ defmodule DawarichWeb.FamilyRequestActions do
 
         true ->
           params = Map.merge(conn.params, conn.path_params)
-          user = Map.put(user, :timezone, user.settings["timezone"])
+          user = Map.put(user, :timezone, Dawarich.UserSettings.get(user)["timezone"])
 
           result =
             if action == :create,

@@ -7,7 +7,7 @@ defmodule Dawarich.Families.AutoCreateSharing do
 
   def enable(repo, settings, now, zone) do
     RailsTime.with_zone(repo, TimeZoneName.to_iana(zone), fn ->
-      transform(repo, settings || %{}, now)
+      transform(repo, Dawarich.UserSettings.provided(settings), now)
     end)
   end
 

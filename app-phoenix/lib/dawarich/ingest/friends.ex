@@ -32,7 +32,7 @@ defmodule Dawarich.Ingest.Friends do
   end
 
   defp sharing?(settings, now) do
-    case get_in(settings || %{}, ["family", "location_sharing"]) do
+    case get_in(Dawarich.UserSettings.safe(settings), ["family", "location_sharing"]) do
       %{"enabled" => true} = sharing -> open?(sharing["expires_at"], now)
       _ -> false
     end

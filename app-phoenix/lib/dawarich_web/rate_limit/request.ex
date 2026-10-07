@@ -5,7 +5,7 @@ defmodule DawarichWeb.RateLimit.Request do
 
   alias Dawarich.{RailsCookies, RailsSecret, RubyInteger}
   alias DawarichWeb.Api.Body
-  alias DawarichWeb.{RackIp, RailsProxy}
+  alias DawarichWeb.{RailsRemoteIp, RailsProxy}
   alias DawarichWeb.RailsProxy.Headers
 
   @json ~w(application/json text/x-json application/jsonrequest)
@@ -90,7 +90,7 @@ defmodule DawarichWeb.RateLimit.Request do
     end)
   end
 
-  defp input(:ip, conn, _facts), do: {:ok, RackIp.ip(conn), conn}
+  defp input(:ip, conn, _facts), do: {:ok, RailsRemoteIp.ip(conn), conn}
   defp input(:webhook, conn, _facts), do: {:ok, header(conn, "x-webhook-secret"), conn}
   defp input(:session, conn, _facts), do: session(conn)
   defp input(:body, conn, facts), do: body_params(conn, facts)

@@ -57,7 +57,8 @@ defmodule Dawarich.Imports.UploadRecords do
       item.source == 8 ->
         Dawarich.UserData.ImportCommands.enqueue(repo, %{id: id, user_id: user.id}, %{
           zone: zone,
-          locale: Dawarich.Mail.ExploreFeatures.locale(user.settings, nil) || "en"
+          locale:
+            Dawarich.Mail.ExploreFeatures.locale(Dawarich.UserSettings.get(user), nil) || "en"
         })
 
       owner == :oban ->
@@ -78,11 +79,14 @@ defmodule Dawarich.Imports.UploadRecords do
   end
 
   defp captured_zone(user, repo) do
-    zone = Map.get(user.settings, "timezone") || System.get_env("TIME_ZONE", "UTC")
+    zone =
+      Map.get(Dawarich.UserSettings.get(user), "timezone") || System.get_env("TIME_ZONE", "UTC")
+
     Dawarich.Imports.ZonePeriod.load!(Dawarich.TimeZoneName.to_iana(zone))
     zone
   rescue
-    _ in [ArgumentError, File.Error] -> Dawarich.UserTimeZone.name(user.settings, repo)
+    _ in [ArgumentError, File.Error] ->
+      Dawarich.UserTimeZone.name(Dawarich.UserSettings.get(user), repo)
   end
 
   defp unique_name(repo, user, name) do
@@ -99,7 +103,7 @@ defmodule Dawarich.Imports.UploadRecords do
         Dawarich.UserTimeZone.query!(
           "SELECT to_char(now() AT TIME ZONE z.name,'YYYYMMDD_HH24MISS') FROM z",
           [],
-          user.settings,
+          Dawarich.UserSettings.get(user),
           repo
         ).rows
 

@@ -65,7 +65,7 @@ defmodule Dawarich.PendingImports.Claim do
     payload = %{
       "import_id" => id,
       "user_id" => user.id,
-      "time_zone" => Dawarich.UserTimeZone.name(user.settings, repo)
+      "time_zone" => Dawarich.UserTimeZone.name(Dawarich.UserSettings.get(user), repo)
     }
 
     if owner == :oban do

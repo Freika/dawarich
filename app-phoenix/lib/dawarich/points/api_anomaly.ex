@@ -37,7 +37,7 @@ defmodule Dawarich.Points.ApiAnomaly do
           "notify" => true,
           "rebuild" => "async",
           "source_job_id" => Ecto.UUID.generate(),
-          "ambient_zone" => Dawarich.UserTimeZone.name(user.settings, repo),
+          "ambient_zone" => Dawarich.UserTimeZone.name(Dawarich.UserSettings.get(user), repo),
           "progress" => %{}
         }
 

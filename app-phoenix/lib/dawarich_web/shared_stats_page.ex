@@ -18,11 +18,13 @@ defmodule DawarichWeb.SharedStatsPage do
 
   def call(conn, kind) do
     now = conn.assigns.now
+    viewer = conn.assigns.current_user
+    zone = Dawarich.RailsTimeZone.name(if(viewer, do: viewer.settings, else: %{"timezone" => ""}))
 
     data =
       case kind do
-        :digest -> Digests.Sharing.get(conn.path_params["uuid"], now)
-        :month -> Stats.Sharing.get(conn.path_params["uuid"], now)
+        :digest -> Digests.Sharing.get(conn.path_params["uuid"], now, zone)
+        :month -> Stats.Sharing.get(conn.path_params["uuid"], now, zone)
       end
 
     if data do
@@ -61,7 +63,7 @@ defmodule DawarichWeb.SharedStatsPage do
         rails_charts: true,
         flash: %{},
         navbar: navbar,
-        unit: StatsFormat.unit(data.user.settings)
+        unit: StatsFormat.unit(Dawarich.UserSettings.get(data.user))
       })
 
     content =
@@ -81,7 +83,7 @@ defmodule DawarichWeb.SharedStatsPage do
 
           viewer_settings =
             if conn.assigns.current_user,
-              do: conn.assigns.current_user.settings,
+              do: Dawarich.UserSettings.get(conn.assigns.current_user),
               else: %{"timezone" => ""}
 
           zone = UserTimeZone.name(viewer_settings)
@@ -101,7 +103,7 @@ defmodule DawarichWeb.SharedStatsPage do
               uuid: conn.path_params["uuid"],
               data_bounds: data.bounds,
               hexagons: data.hexagons,
-              timezone: UserTimeZone.zone(data.user.settings)
+              timezone: UserTimeZone.zone(Dawarich.UserSettings.get(data.user))
             })
           )
       end

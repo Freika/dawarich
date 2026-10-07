@@ -19,7 +19,7 @@ defmodule DawarichWeb.StatsLive.Year do
   def page(user, %{"year" => year}, %{locale: locale, now: now, self_hosted: self_hosted}) do
     year = Params.ruby_to_i(year)
     context = Stats.context(user, now, self_hosted)
-    unit = StatsFormat.unit(user.settings)
+    unit = StatsFormat.unit(Dawarich.UserSettings.get(user))
     data = Stats.year(user, year, context)
 
     Map.merge(data, %{

@@ -91,9 +91,13 @@ defmodule Dawarich.UserData.Restore do
   end
 
   def locale(repo, user, context) do
-    case repo.query!("SELECT settings->>'locale' FROM users WHERE id=$1", [user], log: false).rows do
-      [[locale]] when is_binary(locale) and locale != "" -> locale
-      _ -> context.locale
+    case repo.query!("SELECT settings FROM users WHERE id=$1", [user], log: false).rows do
+      [[settings]] ->
+        locale = Dawarich.UserSettings.safe(settings)["locale"]
+        if is_binary(locale) and locale != "", do: locale, else: context.locale
+
+      _ ->
+        context.locale
     end
   end
 

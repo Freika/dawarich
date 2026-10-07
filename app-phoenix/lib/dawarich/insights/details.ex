@@ -42,7 +42,7 @@ defmodule Dawarich.Insights.Details do
       all_time: raw == "all",
       year: year,
       selected: year || "all",
-      unit: StatsFormat.unit(user.settings),
+      unit: StatsFormat.unit(Dawarich.UserSettings.get(user)),
       today: context.today
     }
 
@@ -120,7 +120,7 @@ defmodule Dawarich.Insights.Details do
             WHERE user_id=$1 AND status=1 AND deleted_at IS NULL
               AND started_at BETWEEN make_timestamptz($2,1,1,0,0,0,$3)
                 AND (make_date($2,12,1)::timestamp + interval '1 month' - interval '1 microsecond') AT TIME ZONE $3
-            GROUP BY name ORDER BY COUNT(*) DESC,SUM(duration) DESC LIMIT 5
+            GROUP BY name ORDER BY COUNT(*) DESC,SUM(duration) DESC,name COLLATE "C" LIMIT 5
             """,
             [id, if(year <= 0, do: year - 1, else: year), zone]
           ).rows,

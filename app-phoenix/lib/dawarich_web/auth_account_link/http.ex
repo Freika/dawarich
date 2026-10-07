@@ -37,7 +37,7 @@ defmodule DawarichWeb.AuthAccountLink.Http do
     context =
       Keyword.get(opts, :context, %{})
       |> Map.put_new(:self_hosted, System.get_env("SELF_HOSTED") == "true")
-      |> Map.put_new_lazy(:ip, fn -> conn.remote_ip |> :inet.ntoa() |> to_string() end)
+      |> Map.put_new_lazy(:ip, fn -> DawarichWeb.RailsRemoteIp.ip(conn) end)
 
     case identity(conn, context) do
       {:ok, conn, context} -> parse(conn, opts, context)
@@ -222,7 +222,7 @@ defmodule DawarichWeb.AuthAccountLink.Http do
   defp closed_dispatch(conn, opts) do
     context =
       Keyword.get(opts, :context, %{})
-      |> Map.put_new(:ip, conn.remote_ip |> :inet.ntoa() |> to_string())
+      |> Map.put_new(:ip, DawarichWeb.RailsRemoteIp.ip(conn))
       |> Map.put_new(:base_url, RequestURL.base(conn))
 
     conn = RailsAuth.call(conn, [])

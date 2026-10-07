@@ -20,7 +20,7 @@ defmodule Dawarich.Trips.WebExport do
           not is_binary(name) and not is_nil(name) ->
             {:replay, "trip export name shape"}
 
-          not is_map(user.settings) ->
+          not is_map(Dawarich.UserSettings.get(user)) ->
             {:replay, "trip export settings"}
 
           true ->
@@ -30,7 +30,7 @@ defmodule Dawarich.Trips.WebExport do
   end
 
   defp export(repo, user, id, name, first, last, format) do
-    zone = UserTimeZone.zone(user.settings)
+    zone = UserTimeZone.zone(Dawarich.UserSettings.get(user))
     zone = if zone in [nil, ""], do: "UTC", else: zone
 
     RailsTime.with_zone(repo, zone, fn ->

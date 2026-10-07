@@ -23,7 +23,7 @@ defmodule DawarichWeb.InsightsLive.Index do
       page_title: t(locale, "insights.index.insights", %{}),
       rails_js: true,
       today: context.today,
-      unit: StatsFormat.unit(user.settings),
+      unit: StatsFormat.unit(Dawarich.UserSettings.get(user)),
       label:
         if(data.all_time,
           do: t(locale, "controllers.insights.all_time", %{}),

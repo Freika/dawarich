@@ -24,7 +24,7 @@ defmodule Dawarich.Integrations do
         ORDER BY t.created_at
         """,
         [user.id],
-        user.settings
+        Dawarich.UserSettings.get(user)
       )
 
     for [id, base_url, importing, last_error, status, synced] <- rows do

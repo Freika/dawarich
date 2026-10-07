@@ -22,6 +22,9 @@ defmodule Dawarich.Accounts do
 
   def get(_id), do: nil
 
+  def public_owner(id) when is_integer(id), do: find(id)
+  def public_owner(_id), do: nil
+
   def by_api_key(key) when is_binary(key) do
     from(u in "users",
       where: u.api_key == ^key and is_nil(u.deleted_at),
@@ -33,15 +36,23 @@ defmodule Dawarich.Accounts do
         active_until: u.active_until,
         plan: u.plan,
         subscription_source: u.subscription_source,
-        timezone: fragment("?->'timezone'", u.settings)
+        settings: u.settings
       }
     )
     |> Repo.one(log: false)
+    |> case do
+      nil ->
+        nil
+
+      user ->
+        {settings, user} = Map.pop(user, :settings)
+        Map.put(user, :timezone, Dawarich.UserSettings.safe(settings)["timezone"])
+    end
   end
 
   def settings(user_id) do
     [[settings]] = Repo.query!("SELECT settings FROM users WHERE id = $1", [user_id]).rows
-    settings
+    Dawarich.UserSettings.provided(settings)
   end
 
   def persist_locale(id, locale) do
@@ -59,7 +70,7 @@ defmodule Dawarich.Accounts do
       )
 
     case rows do
-      [[settings]] -> settings
+      [[settings]] -> Dawarich.UserSettings.provided(settings)
       [] -> nil
     end
   end

@@ -245,7 +245,7 @@ defmodule Dawarich.Points.ApiWrites do
               rows |> Enum.map(&Enum.at(&1, 2)) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
             "oldest_timestamp" => Enum.min(stamps),
             "locale" => "en",
-            "timezone" => Dawarich.UserTimeZone.iana(repo, user.settings)
+            "timezone" => Dawarich.UserTimeZone.iana(repo, Dawarich.UserSettings.get(user))
           })
         end
       end)

@@ -26,7 +26,7 @@ defmodule Dawarich.Auth.Api.Actor do
           [[settings]] =
             repo.query!("SELECT settings FROM users WHERE id=$1", [user.id], log: false).rows
 
-          user = %{user | settings: settings}
+          user = %{user | settings: Dawarich.UserSettings.provided(settings)}
 
           case support(user) do
             {:replay, reason} when include_rejected -> {:replay, reason, user}

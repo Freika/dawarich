@@ -12,7 +12,7 @@ defmodule Dawarich.Stats.Sharing do
            ).rows do
         [[id, uuid]] ->
           if Digests.to_i(month) not in 1..12, do: raise(ArgumentError, "invalid month")
-          settings = Sharing.settings(repo, user.settings, attrs, context.now)
+          settings = Sharing.settings(repo, Dawarich.UserSettings.get(user), attrs, context.now)
           uuid = uuid || Ecto.UUID.generate()
 
           repo.query!(
@@ -34,7 +34,7 @@ defmodule Dawarich.Stats.Sharing do
     end
   end
 
-  def get(uuid, now) do
+  def get(uuid, now, zone \\ System.get_env("TIME_ZONE", "Europe/Berlin")) do
     with {:ok, value} <- Ecto.UUID.dump(uuid),
          [[id, year, month, settings, h3]] <-
            Repo.query!(
@@ -42,8 +42,8 @@ defmodule Dawarich.Stats.Sharing do
              [value],
              log: false
            ).rows,
-         true <- Sharing.public?(settings, now) do
-      user = Accounts.get(id)
+         true <- Sharing.public?(settings, now, zone),
+         %Accounts.User{} = user <- Accounts.public_owner(id) do
       context = %{Stats.context(user, now, true) | cutoff: nil}
       stat = Stats.month(user, year, month, context).stat
 

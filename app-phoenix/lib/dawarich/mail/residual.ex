@@ -30,7 +30,7 @@ defmodule Dawarich.Mail.Residual do
   end
 
   def message(surface, recipient, ambient, env, opts) do
-    locale = ExploreFeatures.locale(recipient.settings, ambient)
+    locale = ExploreFeatures.locale(Dawarich.UserSettings.get(recipient), ambient)
     assigns = assigns(surface, recipient, locale, env, opts)
     {scope, subject} = Map.fetch!(@surfaces, surface)
     translate = &text!(locale, scope <> "." <> &1, %{})

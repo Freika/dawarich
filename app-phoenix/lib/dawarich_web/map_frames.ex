@@ -58,7 +58,7 @@ defmodule DawarichWeb.MapFrames do
         conn |> RailsSession.stage(changes) |> respond(accept, type, html)
 
       {:error, status} ->
-        conn |> put_resp_content_type("text/html") |> send_resp(status, "")
+        DawarichWeb.RailsErrors.respond(conn, status)
 
       :not_found ->
         raise DawarichWeb.NotFoundError
@@ -90,7 +90,7 @@ defmodule DawarichWeb.MapFrames do
              else: value
            )}
         end),
-        ctx.user.settings || %{},
+        Dawarich.UserSettings.get(ctx.user),
         ctx.now,
         nil
       )
@@ -162,7 +162,7 @@ defmodule DawarichWeb.MapFrames do
       track ->
         html(&TimelineCalendar.track_info_frame/1, %{
           track: track,
-          unit: Days.unit(ctx.user.settings),
+          unit: Days.unit(Dawarich.UserSettings.get(ctx.user)),
           locale: ctx.locale
         })
     end
@@ -194,7 +194,7 @@ defmodule DawarichWeb.MapFrames do
               locale: ctx.locale,
               csrf: ctx.csrf,
               now: ctx.now,
-              unit: Days.unit(ctx.user.settings)
+              unit: Days.unit(Dawarich.UserSettings.get(ctx.user))
             })
           )
 
