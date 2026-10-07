@@ -1,35 +1,31 @@
 defmodule Dawarich.Partnero.CustomerSignup do
   @moduledoc false
-  alias Dawarich.Jobs.Ownership
+  alias Dawarich.AfterCommit
   alias Dawarich.Users.WebhookCommands
 
-  def enqueue(repo, user, partner, event \\ Ecto.UUID.generate()) do
-    if repo.in_transaction?() do
-      case Ownership.lock(repo, "command:partnero.customer_signup") do
-        :oban ->
-          repo.query!(
-            "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,aggregate_id,metadata,scheduled_at) VALUES($1,'partnero.customer_signup',1,$2,$3,$4,$5) ON CONFLICT(event_id) DO NOTHING",
-            [
-              Ecto.UUID.dump!(event),
-              %{"user_id" => user, "partner_key" => partner},
-              user,
-              %{"producer" => "phoenix.partnero"},
-              DateTime.utc_now()
-            ],
-            log: false
-          )
+  def enqueue(repo, user, partner, event \\ nil) do
+    event = event || AfterCommit.identity(user, "partnero.customer_signup")
 
-          :ok
-
-        _ ->
-          {:error, :partnero_owner}
-      end
-    else
-      {:error, :transaction_required}
+    case AfterCommit.intent(
+           repo,
+           "partnero.customer_signup",
+           %{"user_id" => user, "partner_key" => partner},
+           event_id: event,
+           dedupe_key: event,
+           aggregate_id: user
+         ) do
+      {:error, :callback_owner} -> {:error, :partnero_owner}
+      result -> result
     end
   end
 
   def call(repo, user, partner, opts \\ []) do
+    if repo.in_transaction?(),
+      do: {:error, :transaction_required},
+      else: deliver(repo, user, partner, opts)
+  end
+
+  defp deliver(repo, user, partner, opts) do
     env = WebhookCommands.env(opts)
 
     if WebhookCommands.blank?(env["PARTNERO_API_KEY"]) or WebhookCommands.blank?(partner) do
@@ -55,21 +51,14 @@ defmodule Dawarich.Partnero.CustomerSignup do
             {"Accept", "application/json"}
           ]
 
-          http =
-            Keyword.get(
-              opts,
-              :http,
-              Application.get_env(:dawarich, :partnero_http, &WebhookCommands.request/4)
-            )
-
-          response(
-            http.(
-              "https://api.partnero.com/v1/customers",
-              headers,
-              Jason.encode!(payload),
-              10_000
-            )
+          Dawarich.Cloud.ProviderHTTP.post(
+            :partnero,
+            "/v1/customers",
+            headers,
+            Jason.encode!(payload),
+            transport_options(opts)
           )
+          |> response()
 
         [] ->
           :ok
@@ -77,7 +66,24 @@ defmodule Dawarich.Partnero.CustomerSignup do
     end
   end
 
+  defp transport_options(opts) do
+    legacy = Keyword.get(opts, :http, Application.get_env(:dawarich, :partnero_http))
+
+    if not Keyword.has_key?(opts, :transport) and is_function(legacy, 4) do
+      transport = fn :post, origin, path, headers, body, false, timeout, _opts ->
+        case legacy.(origin <> path, headers, body, timeout) do
+          {:ok, status, response} -> {:ok, status, [], response}
+          {:error, _} = error -> error
+        end
+      end
+
+      Keyword.put(opts, :transport, transport)
+    else
+      opts
+    end
+  end
+
   defp response({:ok, status, _body}) when status in 200..299 or status == 409, do: :ok
-  defp response({:ok, status, _body}), do: {:partnero_status, status}
-  defp response({:error, _reason}), do: :partnero_transport
+  defp response({:ok, status, _body}), do: {:error, {:partnero_status, status}}
+  defp response({:error, _reason}), do: {:error, :partnero_transport}
 end
