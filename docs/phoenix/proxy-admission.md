@@ -84,3 +84,13 @@ status 302, location `http://www.example.com/`, and the exact alert above.
 `signed in GET sign in redirects with the Devise already authenticated alert`
 was RED before implementation, then GREEN. M-SIGNIN-OWNED restores the old
 signed-out-only admission and fails the status assertion; restoration is GREEN.
+
+Final verification: targeted regressions **45 tests / zero failures**; prescribed
+full ExUnit seed 404 **9,476 tests / zero failures**, all three partitions exit 0.
+Forced compilation with warnings as errors, whole-tree formatting and feature
+commit Gitleaks pass. Fresh-worktree JS dependencies were installed after the
+first full gate reported only missing Tailwind and poster-renderer modules;
+the affected four tests then passed before the successful full gate.
+
+Shared decision counterpart:
+[Dawarich — ADR-20261007-proxy-admission](https://app.affine.pro/workspace/c309ded7-e11e-4e72-ba6f-aec8a31a740b/onP9gbm-WRiqvxxYkkI8p).
