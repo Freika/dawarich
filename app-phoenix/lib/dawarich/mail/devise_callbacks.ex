@@ -36,6 +36,7 @@ defmodule Dawarich.Mail.DeviseCallbacks do
         else
           case after_commit(jobs) do
             :ok -> {:ok, user}
+            {:snooze, _} -> {:ok, user}
             {:error, reason} -> {:error, {:delivery, reason}}
           end
         end
@@ -49,6 +50,7 @@ defmodule Dawarich.Mail.DeviseCallbacks do
     Enum.reduce_while(jobs, :ok, fn job, :ok ->
       case DeviseNotificationWorker.perform(job) do
         :ok -> {:cont, :ok}
+        {:snooze, _} -> {:cont, :ok}
         error -> {:halt, error}
       end
     end)

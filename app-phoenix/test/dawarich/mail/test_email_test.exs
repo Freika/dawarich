@@ -31,6 +31,7 @@ defmodule Dawarich.Mail.TestEmailTest do
     for row <- cases do
       recipient = %{
         id: 460_111,
+        admin: true,
         email: row["recipient"],
         settings: %{"locale" => row["preference"]}
       }
@@ -74,6 +75,7 @@ defmodule Dawarich.Mail.TestEmailTest do
 
     Dawarich.Test.RailsUser.insert!(%{
       id: 460_006,
+      admin: true,
       email: "a12c-body-marker@test",
       settings: %{"locale" => "en", "timezone" => "UTC"}
     })
@@ -102,10 +104,16 @@ defmodule Dawarich.Mail.TestEmailTest do
       System.put_env(previous)
     end)
 
-    user = %{id: 460_001, email: "a12c-body-marker@test", settings: %{"locale" => "en"}}
+    user = %{
+      id: 460_001,
+      admin: true,
+      email: "a12c-body-marker@test",
+      settings: %{"locale" => "en"}
+    }
 
     DigestFixtures.row!(ScratchRepo, "users", %{
       "id" => user.id,
+      "admin" => true,
       "email" => user.email,
       "settings" => user.settings,
       "created_at" => @clock.local,

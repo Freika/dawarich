@@ -74,6 +74,12 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
     repo = Dawarich.Jobs.repo()
     event_id = args["event_id"]
 
+    Delivery.with_lease(repo, @handler, "family-lapse:#{user_id}", fn ->
+      send_claimed(repo, user_id, family_id, event_id, args)
+    end)
+  end
+
+  defp send_claimed(repo, user_id, family_id, event_id, args) do
     case claim(repo, user_id, family_id, event_id) do
       {:ok, {key, [email, settings, family, owner_email]}} ->
         locale = ExploreFeatures.locale(settings, args["locale"])

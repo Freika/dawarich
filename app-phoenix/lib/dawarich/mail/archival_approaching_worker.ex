@@ -30,7 +30,9 @@ defmodule Dawarich.Mail.ArchivalApproachingWorker do
         |> Base.decode16!(case: :lower)
         |> Ecto.UUID.load!()
 
-      Wave2.archival_approaching(user_id, user, locale, env, issued_at, jti)
+      if issued_at + 1800 <= System.os_time(:second),
+        do: {:cancel, "archival upgrade link expired"},
+        else: Wave2.archival_approaching(user_id, user, locale, env, issued_at, jti)
     end)
   end
 end

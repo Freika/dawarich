@@ -21,12 +21,17 @@ defmodule Dawarich.Mail.TestEmail do
   def run(user, ambient, env, opts \\ []) do
     locale = ExploreFeatures.locale(user.settings, ambient)
 
-    if configured?(env) do
-      args = %{"user_id" => user.id, "locale" => locale}
-      Oban.insert!(Keyword.get(opts, :oban, Oban), Dawarich.Mail.TestEmailWorker.new(args))
-      {:notice, text(locale, "test_email_queued", %{"email" => user.email})}
-    else
-      {:alert, text(locale, "smtp_not_configured", %{})}
+    cond do
+      Map.get(user, :admin) != true ->
+        {:alert, authorization_text(locale)}
+
+      configured?(env) ->
+        args = %{"event_id" => Ecto.UUID.generate(), "user_id" => user.id, "locale" => locale}
+        Oban.insert!(Keyword.get(opts, :oban, Oban), Dawarich.Mail.TestEmailWorker.new(args))
+        {:notice, text(locale, "test_email_queued", %{"email" => user.email})}
+
+      true ->
+        {:alert, text(locale, "smtp_not_configured", %{})}
     end
   rescue
     error in ArgumentError ->
@@ -39,6 +44,13 @@ defmodule Dawarich.Mail.TestEmail do
       failure(ExploreFeatures.locale(user.settings, ambient), "IOError")
   catch
     _, _ -> failure(ExploreFeatures.locale(user.settings, ambient), "IOError")
+  end
+
+  defp authorization_text(locale) do
+    {:ok, message} =
+      I18n.t(locale, "controllers.application.you_are_not_authorized_to_perform_this_action")
+
+    message
   end
 
   defp failure(locale, detail),

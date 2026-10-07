@@ -8,10 +8,10 @@ defmodule Dawarich.A12f3bM08Test do
 
     [[id]] =
       rows(
-        "INSERT INTO users(email,settings,created_at,updated_at) VALUES('test@example.test','{\"locale\":\"de\"}',now(),now()) RETURNING id"
+        "INSERT INTO users(email,settings,admin,created_at,updated_at) VALUES('test@example.test','{\"locale\":\"de\"}',true,now(),now()) RETURNING id"
       )
 
-    user = %{id: id, email: "test@example.test", settings: %{"locale" => "de"}}
+    user = %{id: id, admin: true, email: "test@example.test", settings: %{"locale" => "de"}}
 
     for env <- [
           %{
@@ -40,10 +40,10 @@ defmodule Dawarich.A12f3bM08Test do
   test "test email worker reports failure without delivered marker" do
     [[id]] =
       rows(
-        "INSERT INTO users(email,settings,created_at,updated_at) VALUES('failure@example.test','{}',now(),now()) RETURNING id"
+        "INSERT INTO users(email,settings,admin,created_at,updated_at) VALUES('failure@example.test','{}',true,now(),now()) RETURNING id"
       )
 
-    args = %{"user_id" => id, "locale" => "fr"}
+    args = %{"event_id" => Ecto.UUID.generate(), "user_id" => id, "locale" => "fr"}
     Process.put(:transport_result, {:error, :rejected})
     assert TestEmailWorker.perform(%Oban.Job{args: args}) == {:error, :rejected}
     assert_received {:mail, _}
