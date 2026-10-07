@@ -120,6 +120,63 @@ defmodule Dawarich.Tracks.SegmentEditorTest do
     refute snapshot() == invalid_before
   end
 
+  test "exact dominant mode ties keep ID order under sequential and index scans", ctx do
+    user = %{
+      ctx.user
+      | settings:
+          Map.put(
+            ctx.user.settings,
+            "enabled_transportation_modes",
+            ~w(walking driving stationary unknown)
+          )
+    }
+
+    FrameSeeds.segment!(919_610, 9_196_099, %{
+      start_at: ~U[2026-10-03 09:11:00Z],
+      end_at: ~U[2026-10-03 09:21:00Z],
+      distance: 1000,
+      duration: 600,
+      transportation_mode: 5
+    })
+
+    for {scan, seq, index} <- [{"Seq Scan", "on", "off"}, {"Index Scan", "off", "on"}] do
+      Repo.query!("SET LOCAL enable_seqscan = #{seq}")
+      Repo.query!("SET LOCAL enable_indexscan = #{index}")
+      Repo.query!("SET LOCAL enable_indexonlyscan = off")
+      Repo.query!("SET LOCAL enable_bitmapscan = off")
+
+      plan =
+        Repo.query!(
+          "EXPLAIN SELECT transportation_mode,distance,duration FROM track_segments WHERE track_id=$1 ORDER BY id",
+          [919_610]
+        ).rows
+        |> List.flatten()
+        |> Enum.join("\n")
+
+      assert plan =~ scan
+
+      for {first, edited, distance} <- [
+            {"driving", "walking", 1000},
+            {"stationary", "unknown", 0}
+          ] do
+        Repo.query!(
+          "UPDATE track_segments SET transportation_mode=$1,distance=$2,duration=600 WHERE id=9196099",
+          [Dawarich.Transportation.Segments.mode_to_int(first), distance]
+        )
+
+        Repo.query!("UPDATE track_segments SET distance=$1,duration=600 WHERE id=9196100", [
+          distance
+        ])
+
+        assert {:ok, %{track: %{dominant_mode: ^first}}} =
+                 SegmentEditor.apply_override(Repo, user, 919_610, 9_196_100, edited, ctx.ctx)
+
+        assert Repo.query!("SELECT dominant_mode FROM tracks WHERE id=919610").rows ==
+                 [[Dawarich.Transportation.Segments.mode_to_int(first)]]
+      end
+    end
+  end
+
   defmodule DetectorFailureRepo do
     defdelegate transaction(fun), to: Dawarich.Repo
     defdelegate rollback(reason), to: Dawarich.Repo

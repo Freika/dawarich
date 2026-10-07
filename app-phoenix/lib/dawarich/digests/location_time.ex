@@ -13,7 +13,7 @@ defmodule Dawarich.Digests.LocationTime do
           "country_name, min(timestamp) AS min_timestamp, max(timestamp) AS max_timestamp " <>
           "FROM public.points WHERE user_id = $1 AND timestamp BETWEEN $2 AND $3 " <>
           "AND country_name IS NOT NULL AND country_name <> '' " <>
-          "GROUP BY point_date, country_name ORDER BY #{order}",
+          "GROUP BY point_date, country_name ORDER BY #{order}, country_name COLLATE \"C\"",
         [context.user_id, period.location_first, period.last, zone],
         log: false
       ).rows
