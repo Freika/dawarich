@@ -32,7 +32,7 @@ defmodule Dawarich.Admin.UsersPage do
       if Enum.all?(rows, &displayable?/1) do
         {:ok,
          %{
-           rows: Enum.map(rows, &dates(&1, actor.settings)),
+           rows: Enum.map(rows, &dates(&1, Dawarich.UserSettings.get(actor))),
            page: page,
            pages: ceil(count / @page_size),
            total: count,
@@ -70,7 +70,7 @@ defmodule Dawarich.Admin.UsersPage do
 
   defp detail(actor, target, :show) do
     if displayable?(target) and is_binary(target.api_key) and String.length(target.api_key) >= 8 do
-      zone_settings = actor.settings
+      zone_settings = Dawarich.UserSettings.get(actor)
 
       [[tracks, imports, exports, areas]] =
         Repo.query!(
@@ -113,7 +113,9 @@ defmodule Dawarich.Admin.UsersPage do
     ties
   end
 
-  defp supported?(%{settings: settings}) when is_map(settings) do
+  defp supported?(user) do
+    settings = Dawarich.UserSettings.get(user)
+
     with {:ok, _} <- TripSettings.read(settings) do
       zone = settings["timezone"] || System.get_env("TIME_ZONE", "Europe/Berlin")
       TripSettings.zone?(%{"timezone" => zone}, UserTimeZone.name(settings))
@@ -122,7 +124,6 @@ defmodule Dawarich.Admin.UsersPage do
     end
   end
 
-  defp supported?(_), do: false
   defp scalar?(value), do: is_nil(value) or is_binary(value)
 
   defp pattern(search) when search in [nil, ""], do: "%"

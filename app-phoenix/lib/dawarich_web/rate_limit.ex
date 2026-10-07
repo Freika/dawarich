@@ -22,6 +22,8 @@ defmodule DawarichWeb.RateLimit do
   def call(conn, _opts) do
     conn = native_params(conn)
     if conn.halted, do: conn, else: apply_limit(conn)
+  rescue
+    DawarichWeb.RailsRemoteIp.IpSpoofAttackError -> DawarichWeb.RailsErrors.respond(conn, 500)
   end
 
   defp native_params(

@@ -12,12 +12,17 @@ defmodule Dawarich.Photos.Thumbnail do
 
   defdelegate fetch(settings, source, id, user), to: Dawarich.Photos.ThumbnailClosure
 
-  def configured?(settings), do: pair?(settings, "immich") or pair?(settings, "photoprism")
+  def configured?(settings) do
+    settings = Dawarich.UserSettings.safe(settings)
+    pair?(settings, "immich") or pair?(settings, "photoprism")
+  end
 
   def fetch(_settings, "photoprism", _id),
     do: {:replay, "PhotoPrism preview token is in the Rails cache"}
 
   def fetch(settings, "immich", id) do
+    settings = Dawarich.UserSettings.safe(settings)
+
     with :ok <-
            check(
              Enum.all?(@environment, &(System.get_env(&1, "") == "")),

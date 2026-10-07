@@ -19,7 +19,7 @@ defmodule Dawarich.Imports.Teslamate.State do
         %{
           repo: repo,
           id: id,
-          settings: settings || %{},
+          settings: Dawarich.UserSettings.safe(settings),
           points_count: count || 0,
           plan: plan,
           active_until: active,

@@ -19,6 +19,7 @@ defmodule Dawarich.Imports.Trek.Sync do
            log: false
          ).rows do
       [[user, url, key, token, importing, status, settings]] ->
+        settings = Dawarich.UserSettings.safe(settings)
         now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
 
         %{

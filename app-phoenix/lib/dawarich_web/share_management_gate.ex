@@ -15,12 +15,13 @@ defmodule DawarichWeb.ShareManagementGate do
       (is_nil(params["trip_id"]) or params["trip_id"] =~ ~r/\A\d{1,18}\z/) and
       (is_nil(params["id"]) or Dawarich.SharedLinks.canonical?(params["id"])) and
       (is_nil(user) or
-         (is_map(user.settings) and
-            (is_nil(user.settings["timezone"]) or is_binary(user.settings["timezone"]))))
+         (is_map(Dawarich.UserSettings.get(user)) and
+            (is_nil(Dawarich.UserSettings.get(user)["timezone"]) or
+               is_binary(Dawarich.UserSettings.get(user)["timezone"]))))
   end
 
   def readable_hub?(user, params, now) do
-    FamilyPageAccess.validate_settings!(user.settings)
+    FamilyPageAccess.validate_settings!(Dawarich.UserSettings.get(user))
     {:ok, hub} = Read.hub(user, params, now)
     Enum.all?(hub.shares, &renderable?/1)
   rescue
@@ -41,15 +42,16 @@ defmodule DawarichWeb.ShareManagementGate do
       end) and
       (is_nil(params["trip_id"]) or params["trip_id"] =~ ~r/\A\d{1,18}\z/) and
       (is_nil(user) or
-         (is_map(user.settings) and
-            (is_nil(user.settings["timezone"]) or is_binary(user.settings["timezone"])))) and
+         (is_map(Dawarich.UserSettings.get(user)) and
+            (is_nil(Dawarich.UserSettings.get(user)["timezone"]) or
+               is_binary(Dawarich.UserSettings.get(user)["timezone"])))) and
       readable?(user, conn, params, query)
   end
 
   defp readable?(nil, _conn, _params, _query), do: true
 
   defp readable?(user, conn, params, query) do
-    FamilyPageAccess.validate_settings!(user.settings)
+    FamilyPageAccess.validate_settings!(Dawarich.UserSettings.get(user))
     now = DateTime.utc_now()
 
     result =

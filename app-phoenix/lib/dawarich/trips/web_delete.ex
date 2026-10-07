@@ -3,7 +3,7 @@ defmodule Dawarich.Trips.WebDelete do
 
   @planned ~w(planned_reservations planned_accommodations planned_travellers planned_unplanned_places)
 
-  def run(repo, user, id, _context) do
+  def run(repo, user, id, context) do
     repo.transaction(fn ->
       case repo.query!(
              "SELECT id FROM trips WHERE id = $1 AND user_id = $2 FOR UPDATE",
@@ -13,7 +13,7 @@ defmodule Dawarich.Trips.WebDelete do
         [[^id]] ->
           case Dawarich.Trips.PlanRead.supported?(repo, user.id, id) do
             true ->
-              delete(repo, id)
+              delete(repo, id, if(context[:owner_scoped], do: user.id))
               {:ok, :deleted}
 
             false ->
@@ -30,7 +30,7 @@ defmodule Dawarich.Trips.WebDelete do
     end
   end
 
-  defp delete(repo, id) do
+  defp delete(repo, id, owner) do
     rich_ids =
       repo.query!(
         "SELECT id FROM action_text_rich_texts WHERE record_type='Trip' AND record_id=$1 AND name='description' ORDER BY id FOR UPDATE",
@@ -46,8 +46,8 @@ defmodule Dawarich.Trips.WebDelete do
       |> Enum.map(&hd/1)
 
     repo.query!(
-      "UPDATE planned_reservations SET planned_day_id = NULL WHERE planned_day_id = ANY($1::bigint[])",
-      [days],
+      "UPDATE planned_reservations SET planned_day_id = NULL WHERE planned_day_id = ANY($1::bigint[]) AND ($2::bigint IS NULL OR trip_id IN (SELECT id FROM trips WHERE user_id=$2))",
+      [days, owner],
       log: false
     )
 
@@ -64,7 +64,9 @@ defmodule Dawarich.Trips.WebDelete do
     for table <- @planned,
         do: repo.query!("DELETE FROM #{table} WHERE trip_id = $1", [id], log: false)
 
-    repo.query!("DELETE FROM notes WHERE attachable_type = 'Trip' AND attachable_id = $1", [id],
+    repo.query!(
+      "DELETE FROM notes WHERE attachable_type = 'Trip' AND attachable_id = $1 AND ($2::bigint IS NULL OR user_id=$2)",
+      [id, owner],
       log: false
     )
 
@@ -74,7 +76,9 @@ defmodule Dawarich.Trips.WebDelete do
       log: false
     )
 
-    repo.query!("DELETE FROM shared_links WHERE resource_type = 0 AND resource_id = $1", [id],
+    repo.query!(
+      "DELETE FROM shared_links WHERE resource_type = 0 AND resource_id = $1 AND ($2::bigint IS NULL OR user_id=$2)",
+      [id, owner],
       log: false
     )
 

@@ -26,7 +26,7 @@ defmodule DawarichWeb.NotificationsLive.Index do
       Map.update!(
         Notifications.page(user.id, page),
         :notifications,
-        &Notifications.localize(&1, user.settings, now)
+        &Notifications.localize(&1, Dawarich.UserSettings.get(user), now)
       )
 
     {:noreply, socket |> assign(page: page, query: query) |> assign(result)}

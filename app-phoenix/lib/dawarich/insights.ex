@@ -43,7 +43,7 @@ defmodule Dawarich.Insights do
 
       Map.merge(page, %{
         selected_month: selected_month(params["month"], stats, year, context.today),
-        totals: totals(stats, StatsFormat.unit(user.settings)),
+        totals: totals(stats, StatsFormat.unit(Dawarich.UserSettings.get(user))),
         heatmap: if(all_time, do: nil, else: Heatmap.build(stats, year, context.today))
       })
     end

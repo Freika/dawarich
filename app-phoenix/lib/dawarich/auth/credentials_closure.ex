@@ -65,5 +65,5 @@ defmodule Dawarich.Auth.CredentialsClosure do
     Map.get(context, :enqueue, &MailWorker.enqueue/1).(intent)
   end
 
-  def client_ip(conn), do: {:ok, DawarichWeb.RackIp.ip(conn)}
+  def client_ip(conn), do: {:ok, DawarichWeb.RailsRemoteIp.ip(conn)}
 end

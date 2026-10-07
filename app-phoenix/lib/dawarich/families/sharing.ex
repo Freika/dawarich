@@ -3,7 +3,9 @@ defmodule Dawarich.Families.Sharing do
 
   alias Dawarich.Families.Clock
 
-  def enabled?(%{} = settings, now) do
+  def enabled?(settings, now) when is_map(settings) or is_nil(settings) do
+    settings = Dawarich.UserSettings.safe(settings)
+
     case settings["family"] do
       nil -> false
       %{} = family -> active?(family["location_sharing"], now)
@@ -13,7 +15,9 @@ defmodule Dawarich.Families.Sharing do
 
   def enabled?(_settings, _now), do: raise(ArgumentError, "settings are not an object")
 
-  def config(settings) do
+  def config(settings) when is_map(settings) or is_nil(settings) do
+    settings = Dawarich.UserSettings.safe(settings)
+
     case settings do
       %{"family" => nil} -> nil
       %{"family" => %{"location_sharing" => nil}} -> nil
@@ -23,6 +27,8 @@ defmodule Dawarich.Families.Sharing do
       _other -> raise ArgumentError, "sharing settings are not an object"
     end
   end
+
+  def config(_settings), do: raise(ArgumentError, "settings are not an object")
 
   defp active?(%{"enabled" => true} = sharing, now) do
     case Clock.parse(sharing["expires_at"]) do

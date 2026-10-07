@@ -10,7 +10,7 @@ defmodule Dawarich.Timeline.DayAssociations do
            #{local("t.start_at")}, #{offset("t.start_at")}, z.name
     FROM tracks t CROSS JOIN z WHERE t.id = $1 AND t.user_id = $2
     """
-    |> UserTimeZone.query!([id, user.id], user.settings || %{}, repo)
+    |> UserTimeZone.query!([id, user.id], Dawarich.UserSettings.get(user), repo)
     |> Map.fetch!(:rows)
     |> case do
       [[id, distance, speed, gain, loss, mode, start_local, start_offset, zone]] ->

@@ -7,8 +7,8 @@ defmodule DawarichWeb.ImportsContext do
     %{
       services: Dawarich.Imports.StorageContext.services(),
       temp_dir: Application.get_env(:dawarich, :imports_temp_dir, System.tmp_dir!()),
-      locale: Dawarich.Mail.ExploreFeatures.locale(user.settings, nil),
-      zone: Dawarich.UserTimeZone.name(user.settings),
+      locale: Dawarich.Mail.ExploreFeatures.locale(Dawarich.UserSettings.get(user), nil),
+      zone: Dawarich.UserTimeZone.name(Dawarich.UserSettings.get(user)),
       now: DateTime.utc_now(),
       self_hosted?: Dawarich.ReleaseMigration.self_hosted?()
     }

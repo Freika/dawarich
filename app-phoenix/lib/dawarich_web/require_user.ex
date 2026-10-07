@@ -24,6 +24,11 @@ defmodule DawarichWeb.RequireUser do
   def call(%{assigns: %{current_user: %{}}} = conn, _opts), do: conn
 
   def call(conn, _opts) do
+    conn =
+      if Dawarich.Standalone.enabled?() and conn.request_path in ~w(/trial/upgrade /trial/resume),
+        do: DawarichWeb.TrialHomeSession.call(conn, []),
+        else: conn
+
     locked = conn.assigns[:rails_locked]
     reason = if locked, do: "devise.failure.locked", else: "devise.failure.unauthenticated"
     message = Translate.t(conn.assigns.locale, reason, %{})

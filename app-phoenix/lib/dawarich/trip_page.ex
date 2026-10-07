@@ -29,12 +29,12 @@ defmodule Dawarich.TripPage do
   """
 
   def gate(user, trip_id) do
-    with {:ok, settings} <- TripSettings.read(user.settings),
+    with {:ok, settings} <- TripSettings.read(Dawarich.UserSettings.get(user)),
          true <- Dawarich.Trips.PlanRead.supported?(Repo, user.id, trip_id),
          [[zone, started_local, ended_local, seconds, near_transition, false, body]] <-
-           UserTimeZone.query!(@gate, [trip_id, user.id], user.settings).rows,
+           UserTimeZone.query!(@gate, [trip_id, user.id], Dawarich.UserSettings.get(user)).rows,
          {:ok, description} <- Dawarich.Trips.RichContent.read(body),
-         true <- TripSettings.zone?(user.settings, zone),
+         true <- TripSettings.zone?(Dawarich.UserSettings.get(user), zone),
          span = TripDays.span(started_local, ended_local, seconds, near_transition),
          {_parts, borrowed} =
            TripDays.duration_parts(span.started_local, span.ended_local, span.previous_month_days),
@@ -97,7 +97,7 @@ defmodule Dawarich.TripPage do
     notes = day_notes(id)
     photos = Dawarich.Trips.Photos.load(user, started, ended, zone)
     {:ok, plan} = Dawarich.Trips.PlanRead.load(Repo, user.id, id)
-    plan = DawarichWeb.TripPlanItems.prepare(plan, user.settings)
+    plan = DawarichWeb.TripPlanItems.prepare(plan, Dawarich.UserSettings.get(user))
 
     future =
       Ruby.present?(source_identifier) and

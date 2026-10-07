@@ -12,7 +12,7 @@ defmodule Dawarich.Stats.Accounts do
   defp one(repo, sql, id) do
     case repo.query!(sql, [id], log: false).rows do
       [[id, settings, swept_at]] ->
-        account(repo, id, if(is_map(settings), do: settings, else: %{}), swept_at)
+        account(repo, id, Dawarich.UserSettings.safe(settings), swept_at)
 
       [] ->
         nil

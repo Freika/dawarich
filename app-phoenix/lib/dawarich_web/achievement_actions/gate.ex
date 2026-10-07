@@ -120,11 +120,13 @@ defmodule DawarichWeb.AchievementActions.Gate do
   def snapshot(actor, action, route, params, context) do
     context = pending(actor.id, action, context)
 
-    with true <- PublicCard.supported_settings?(actor.settings, context.repo),
+    with true <- PublicCard.supported_settings?(Dawarich.UserSettings.get(actor), context.repo),
          true <- input?(action, params),
          {:ok, state} <- snapshot_state(actor.id, action, route, context) do
       {:ok,
-       Map.merge(context, route) |> Map.put(:state, state) |> Map.put(:settings, actor.settings)}
+       Map.merge(context, route)
+       |> Map.put(:state, state)
+       |> Map.put(:settings, Dawarich.UserSettings.get(actor))}
     else
       _ -> :handoff
     end

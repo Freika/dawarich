@@ -19,7 +19,8 @@ defmodule Dawarich.MapPage do
     self_hosted = Keyword.fetch!(opts, :self_hosted)
     family = Keyword.fetch!(opts, :family)
     env = Keyword.get(opts, :env, System.get_env())
-    settings = if is_map(user.settings), do: user.settings, else: %{}
+
+    settings = Dawarich.UserSettings.safe(user.settings, env)
 
     with {:ok, place} <- place(user.id, params["place_id"]) do
       picked = import_row(user.id, params["import_id"])

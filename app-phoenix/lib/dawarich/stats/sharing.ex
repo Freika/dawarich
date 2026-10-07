@@ -12,7 +12,7 @@ defmodule Dawarich.Stats.Sharing do
            ).rows do
         [[id, uuid]] ->
           if Digests.to_i(month) not in 1..12, do: raise(ArgumentError, "invalid month")
-          settings = Sharing.settings(repo, user.settings, attrs, context.now)
+          settings = Sharing.settings(repo, Dawarich.UserSettings.get(user), attrs, context.now)
           uuid = uuid || Ecto.UUID.generate()
 
           repo.query!(

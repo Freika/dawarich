@@ -116,7 +116,7 @@ defmodule Dawarich.Trial.Welcome do
       result(conn, "/", "another_user_is_already_signed_in", locale, context)
     else
       with :ok <- issuer(user),
-           {:ok, settings} <- sanitize(user.settings) do
+           {:ok, settings} <- sanitize(Dawarich.UserSettings.provided(user.settings)) do
         notice = notice(user, actor, locale, context)
         sign_in? = is_nil(actor)
         cookie = cookie(conn, user, notice, context.secret, sign_in?)
@@ -140,7 +140,7 @@ defmodule Dawarich.Trial.Welcome do
     cookie = conn.cookies["_dawarich_session"]
 
     cond do
-      context[:oidc] == true ->
+      context[:oidc] == true and not Dawarich.Standalone.enabled?() ->
         {:handoff, :oidc}
 
       not Dawarich.Standalone.enabled?() and Enum.any?(@markers, &Map.has_key?(session, &1)) ->
@@ -201,7 +201,8 @@ defmodule Dawarich.Trial.Welcome do
 
   defp issuer(user) do
     cond do
-      user.otp_required_for_login or user.provider not in [nil, ""] or not is_nil(user.locked_at) ->
+      user.otp_required_for_login or not is_nil(user.locked_at) or
+          (user.provider not in [nil, ""] and not Dawarich.Standalone.enabled?()) ->
         {:handoff, :account}
 
       not is_binary(user.encrypted_password) or byte_size(user.encrypted_password) < 29 ->
@@ -238,7 +239,9 @@ defmodule Dawarich.Trial.Welcome do
     env = Map.get(context, :env, System.get_env())
 
     settings =
-      if actor, do: actor.settings, else: %{"timezone" => env["TIME_ZONE"] || "Europe/Berlin"}
+      if actor,
+        do: Dawarich.UserSettings.get(actor),
+        else: %{"timezone" => env["TIME_ZONE"] || "Europe/Berlin"}
 
     date = UserTimeZone.local(settings, naive(user.active_until)).local |> NaiveDateTime.to_date()
 
@@ -253,7 +256,7 @@ defmodule Dawarich.Trial.Welcome do
   defp track(prepared, context) do
     repo = Map.get(context, :repo, Repo)
     user = Map.update!(prepared.user, :current_sign_in_at, &utc/1)
-    ip = :inet.ntoa(prepared.conn.remote_ip) |> to_string()
+    ip = DawarichWeb.RailsRemoteIp.ip(prepared.conn)
     changes = Trackable.changes(user, clock(context), ip)
 
     result =

@@ -222,7 +222,7 @@ defmodule Dawarich.Stats.ApiClosure do
 
   defp scoped_visits(owner, {from, to}, cutoff) do
     Repo.query!(
-      "SELECT name,count(*),sum(duration) FROM visits WHERE user_id=$1 AND deleted_at IS NULL AND status=1 AND started_at BETWEEN $2 AND $3 AND started_at>=to_timestamp($4) AT TIME ZONE 'UTC' GROUP BY name ORDER BY count(*) DESC,sum(duration) DESC LIMIT 5",
+      "SELECT name,count(*),sum(duration) FROM visits WHERE user_id=$1 AND deleted_at IS NULL AND status=1 AND started_at BETWEEN $2 AND $3 AND started_at>=to_timestamp($4) AT TIME ZONE 'UTC' GROUP BY name ORDER BY count(*) DESC,sum(duration) DESC,name COLLATE \"C\" LIMIT 5",
       [owner, from, to, cutoff]
     ).rows
     |> Enum.map(fn [name, count, duration] ->

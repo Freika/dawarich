@@ -83,7 +83,7 @@ defmodule Dawarich.DemoData.Importer do
           log: false
         ).rows
 
-    setting = user.settings["timezone"] || "UTC"
+    setting = Dawarich.UserSettings.get(user)["timezone"] || "UTC"
     setting = if setting == "", do: "UTC", else: setting
 
     for [year, month] <- months, segment <- ~w(lite pro) do
@@ -115,7 +115,7 @@ defmodule Dawarich.DemoData.Importer do
       |> Jason.decode!()
 
   def zone(user) do
-    value = user.settings["timezone"]
+    value = Dawarich.UserSettings.get(user)["timezone"]
     Dawarich.TimeZoneName.to_iana(if is_binary(value) and value != "", do: value, else: "UTC")
   end
 

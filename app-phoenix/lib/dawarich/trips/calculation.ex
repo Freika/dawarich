@@ -44,7 +44,7 @@ defmodule Dawarich.Trips.Calculation do
   end
 
   def minutes_between_routes(settings) do
-    minutes = RubyInteger.to_i(if is_map(settings), do: settings["minutes_between_routes"])
+    minutes = RubyInteger.to_i(Dawarich.UserSettings.safe(settings)["minutes_between_routes"])
     minutes = if minutes > 0, do: minutes, else: 30
     minutes |> max(1) |> min(1440)
   end

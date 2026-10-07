@@ -3,10 +3,10 @@ defmodule Dawarich.MapWindow do
 
   alias Dawarich.{LocalTime, Repo, TimeZoneName, UserTimeZone, ZoneDst}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+  alias Dawarich.Imports.{ImportTime, ZonePeriod}
+  alias Dawarich.MapApi.RailsDate
 
   @iso ~r/\A\s*(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?)?\s*(Z|[+-]\d{2}(?::?\d{2})?)?\s*\z/
-  @day ~r/\A\s*(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/
-  @months ~w(january february march april may june july august september october november december)
   @max_epoch 253_402_300_799
   @valid "SELECT name FROM pg_timezone_names WHERE name = ANY($1::text[])"
 
@@ -177,85 +177,46 @@ defmodule Dawarich.MapWindow do
   defp import_day([_first, last], _time), do: last
 
   defp timestamp(value, ctx) do
-    cond do
-      Regex.match?(~r/\A\d+\z/, value) ->
-        {{:epoch, min(String.to_integer(value), @max_epoch), ctx.main}, true}
-
-      match = Regex.run(@iso, value) ->
-        parsed(match, ctx)
-
-      true ->
-        {{:epoch, ctx.now, ctx.main}, false}
-    end
-  end
-
-  defp parsed([_, y, m, d | rest], ctx) do
-    [hh, mm, ss, offset] = Enum.map(0..3, &Enum.at(rest, &1, ""))
-
-    with {:ok, date} <- Date.new(int(y), int(m), int(d)),
-         {:ok, time} <- Time.new(int(hh), int(mm), int(ss)) do
-      naive = NaiveDateTime.new!(date, time)
-
-      case offset_seconds(offset) do
-        nil ->
-          {local(naive, ctx.main), true}
-
-        seconds ->
-          {{:epoch, DateTime.to_unix(DateTime.from_naive!(naive, "Etc/UTC")) - seconds, ctx.main},
-           true}
-      end
+    if Regex.match?(~r/\A\d+\z/, value) do
+      {{:epoch, min(String.to_integer(value), @max_epoch), ctx.main}, true}
     else
-      _ -> {{:epoch, ctx.now, ctx.main}, false}
+      epoch = ImportTime.parse(value, ctx.main, DateTime.from_unix!(ctx.now))
+
+      suspicious =
+        epoch != nil and not String.contains?(value, "2000") and
+          ZonePeriod.local_now(ZonePeriod.load!(ctx.main), DateTime.from_unix!(epoch)).year ==
+            2000
+
+      if epoch == nil or suspicious,
+        do: {{:epoch, ctx.now, ctx.main}, false},
+        else: {{:epoch, epoch, ctx.main}, true}
     end
-  end
-
-  defp int(""), do: 0
-  defp int(digits), do: String.to_integer(digits)
-
-  defp offset_seconds(""), do: nil
-  defp offset_seconds("Z"), do: 0
-
-  defp offset_seconds(<<sign, hours::binary-size(2), rest::binary>>) do
-    minutes = rest |> String.trim_leading(":") |> int()
-    (String.to_integer(hours) * 3600 + minutes * 60) * if(sign == ?-, do: -1, else: 1)
+  rescue
+    _error in [ArgumentError, FunctionClauseError] -> {{:epoch, ctx.now, ctx.main}, false}
   end
 
   defp requested_day(value, ctx) when is_binary(value) do
     cond do
       not Ruby.present?(value) -> nil
       value == "today" -> ctx.today_day
-      true -> parse_day(value)
+      true -> parse_day(value, ctx.today_day)
     end
   end
 
   defp requested_day(_value, _ctx), do: nil
 
-  defp parse_day(value) do
-    with [_, y, m, d] <- day_parts(value),
-         {:ok, date} <- Date.new(int(y), int(m), int(d)) do
-      date
-    else
+  defp parse_day(value, today) do
+    case RailsDate.parse(value, today) do
+      {:ok, date} -> date
       _ -> nil
     end
-  end
-
-  defp day_parts(value) do
-    Regex.run(@day, value) ||
-      case Regex.run(~r/\A\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/, value) do
-        [_, d, month, y] ->
-          m = Enum.find_index(@months, &String.starts_with?(&1, String.downcase(month)))
-          if m, do: [value, y, Integer.to_string(m + 1), d]
-
-        _ ->
-          nil
-      end
   end
 
   defp calendar_month(params, ctx) do
     source =
       Enum.find([params["date"], params["start_at"]], &(is_binary(&1) and Ruby.present?(&1)))
 
-    Calendar.strftime((source && parse_day(source)) || ctx.today_day, "%Y-%m")
+    Calendar.strftime((source && parse_day(source, ctx.today_day)) || ctx.today_day, "%Y-%m")
   end
 
   defp clamp(value, true, lo, hi), do: value |> max(lo) |> min(hi)

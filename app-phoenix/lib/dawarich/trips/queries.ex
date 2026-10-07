@@ -26,7 +26,7 @@ defmodule Dawarich.Trips.Queries do
           started_at: started_at,
           ended_at: ended_at,
           path_blank: path_blank,
-          settings: settings,
+          settings: Dawarich.UserSettings.safe(settings),
           from: epoch(started_at),
           to: epoch(ended_at)
         }

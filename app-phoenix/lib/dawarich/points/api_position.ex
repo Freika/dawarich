@@ -155,7 +155,7 @@ defmodule Dawarich.Points.ApiPosition do
   end
 
   defp history(scope, user, repo) do
-    zone = Dawarich.UserTimeZone.name(user.settings, repo)
+    zone = Dawarich.UserTimeZone.name(Dawarich.UserSettings.get(user), repo)
 
     with {:ok, start} <- timestamp(scope["start_at"], zone, repo),
          {:ok, stop} <- timestamp(scope["end_at"], zone, repo),

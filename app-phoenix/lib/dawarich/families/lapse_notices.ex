@@ -5,7 +5,10 @@ defmodule Dawarich.Families.LapseNotices do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   def notified?(settings),
-    do: Ruby.present?(get_in(settings, ["family", "plan_lapse_notified_at"]))
+    do:
+      Ruby.present?(
+        get_in(Dawarich.UserSettings.safe(settings), ["family", "plan_lapse_notified_at"])
+      )
 
   def clear(repo, user_id, settings, now) do
     if notified?(settings) do

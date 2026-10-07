@@ -153,7 +153,7 @@ defmodule Dawarich.Mail.Wave2 do
         :ok
 
       user ->
-        locale = ExploreFeatures.locale(user.settings, args["locale"])
+        locale = ExploreFeatures.locale(Dawarich.UserSettings.get(user), args["locale"])
 
         record = NaiveDateTime.to_iso8601(user.created_at)
 

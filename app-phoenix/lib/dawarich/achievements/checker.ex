@@ -39,7 +39,7 @@ defmodule Dawarich.Achievements.Checker do
   end
 
   def threshold_seconds(settings) do
-    value = if is_map(settings), do: Map.get(settings, "min_minutes_spent_in_city", 60), else: 60
+    value = Dawarich.UserSettings.safe(settings)["min_minutes_spent_in_city"]
     RubyInteger.to_i(value || 60) * 60
   end
 
@@ -178,7 +178,7 @@ defmodule Dawarich.Achievements.Checker do
     case repo.query!("SELECT settings FROM users WHERE id = $1 AND deleted_at IS NULL", [user_id],
            log: false
          ).rows do
-      [[settings]] -> {:ok, if(is_map(settings), do: settings, else: %{})}
+      [[settings]] -> {:ok, Dawarich.UserSettings.safe(settings)}
       [] -> :missing
     end
   end

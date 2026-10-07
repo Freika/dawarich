@@ -11,7 +11,7 @@ defmodule Dawarich.Timeline.DayRows do
   @statuses ~w(suggested confirmed declined)
 
   def fetch(user, {start_s, end_s}, {first, last}, window_now, repo \\ Repo, include_id \\ nil) do
-    settings = user.settings || %{}
+    settings = Dawarich.UserSettings.get(user)
     visits = visits(user.id, start_s, end_s, window_now, settings, repo, include_id)
     tracks = tracks(user.id, start_s, end_s, window_now, settings, repo)
 
@@ -19,13 +19,13 @@ defmodule Dawarich.Timeline.DayRows do
   end
 
   def visit(user, id, repo \\ Repo) do
-    visits = visits(user.id, nil, nil, nil, user.settings || %{}, repo, id)
+    visits = visits(user.id, nil, nil, nil, Dawarich.UserSettings.get(user), repo, id)
     day = hd(visits).day
     associations(user, visits, [], day, day, repo)
   end
 
   defp associations(user, visits, tracks, first, last, repo) do
-    settings = user.settings || %{}
+    settings = Dawarich.UserSettings.get(user)
 
     suggestions =
       DayAssociations.suggestions(

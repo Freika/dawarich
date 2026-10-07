@@ -19,7 +19,7 @@ defmodule Dawarich.Visits.HistoryRedetect do
     if cooldown?(last, now),
       do: repo.rollback(if(owner == :oban, do: {:cooldown, 429, :native}, else: {:cooldown, 429}))
 
-    zone = settings["timezone"] || Dawarich.UserTimeZone.zone(%{})
+    zone = Dawarich.UserSettings.safe(settings)["timezone"] || Dawarich.UserTimeZone.zone(%{})
 
     unless is_binary(zone) and
              repo.query!(

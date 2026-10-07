@@ -16,7 +16,7 @@ defmodule DawarichWeb.AuthApple.Http do
         context
         |> Map.put_new(:self_hosted, Dawarich.ReleaseMigration.self_hosted?(env))
         |> Map.put_new(:base_url, DawarichWeb.RequestURL.base(conn))
-        |> Map.put_new(:ip, conn.remote_ip |> :inet.ntoa() |> to_string())
+        |> Map.put_new(:ip, DawarichWeb.RailsRemoteIp.ip(conn))
 
       conn = conn |> DawarichWeb.HostAuthorization.call([]) |> DawarichWeb.ForceSSL.call([])
       conn = if conn.halted, do: conn, else: DawarichWeb.RateLimit.call(conn, [])

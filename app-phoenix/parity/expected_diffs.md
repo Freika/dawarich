@@ -660,3 +660,9 @@ source debt or weaken Cloud lifecycle refusal.
 | ID | Surface | Rails | Phoenix | Evidence / authority |
 | --- | --- | --- | --- | --- |
 | ED-FIX-PUBLIC-SHARE-OWNER | Public month and digest owner absence | Rails dereferences a nil association and crashes when a valid share belongs to a deleted or missing owner. | Phoenix redirects to the root with the existing unavailable-share alert. Login locks and NULL settings retain Rails rendering behavior. | fix-public-share-parity; `public month and digest refuse a deleted or absent owner without crashing`; controller report | implemented; seed-404 gate recorded in controller report |
+
+## Deterministic first-seen query ordering
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-TIE-ORDER | Dominant segment mode; tied visit/country ranking; equal-timestamp location/photo points | Unordered or partially ordered reads retain the first encountered row/group on ties, so planner choice can change mode, ranking or coordinates. | Segment edits reuse ascending-ID dominant-mode inputs; ranking SQL appends C-collated name/country keys; point reads append ID after timestamp. Existing strict tie refusals are retained. Only `override_tied` dominant mode and track-info golden change from Driving to Walking; its input rows and totals stay unchanged. | Explicit controller fix-segment-tie-order brief; DRB-033/034/035; [tie ordering](../../docs/phoenix/tie-order.md); forced scan/aggregation regressions and named mutations in controller report. |

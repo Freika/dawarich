@@ -138,13 +138,8 @@ defmodule Dawarich.Tracks.SegmentEditor do
   end
 
   defp dominant(repo, id) do
-    repo.query!(
-      "SELECT transportation_mode,distance,duration FROM track_segments WHERE track_id=$1",
-      [id]
-    ).rows
-    |> Enum.map(fn [mode, distance, duration] ->
-      %{transportation_mode: Segments.int_to_mode(mode), distance: distance, duration: duration}
-    end)
+    repo
+    |> Segments.load_segments_for_dominant_mode!(id)
     |> DominantMode.pick()
   end
 

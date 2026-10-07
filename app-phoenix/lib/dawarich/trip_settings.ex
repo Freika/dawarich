@@ -7,7 +7,9 @@ defmodule Dawarich.TripSettings do
 
   @factors %{"km" => 1000, "mi" => 1609.34, "m" => 1, "ft" => 0.3048, "yd" => 0.9144}
 
-  def read(%{} = settings) do
+  def read(settings) when is_map(settings) or is_nil(settings) do
+    settings = Dawarich.UserSettings.safe(settings)
+
     with {:ok, unit} <- unit(settings["maps"]),
          {:ok, style} <- style(settings["maps_maplibre_style"]),
          {:ok, meters} <- to_i(settings["meters_between_routes"]),

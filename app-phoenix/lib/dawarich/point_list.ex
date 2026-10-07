@@ -40,19 +40,32 @@ defmodule Dawarich.PointList do
   def load(user, params, now, opts) do
     page = TripsGate.page_number(params["page"])
 
-    with true <- valid_params?(params) and page <= @max_page and settings?(user.settings),
+    with true <-
+           valid_params?(params) and page <= @max_page and
+             settings?(Dawarich.UserSettings.get(user)),
          {:ok, imports} <- imports(user.id),
          {:ok, import_id} <- selected_import(params["import_id"], imports),
          %{} = window <-
-           PointListWindow.build(params, user.settings, now, import_range(user.id, import_id)),
-         true <- TripSettings.zone?(user.settings, window.zone) do
+           PointListWindow.build(
+             params,
+             Dawarich.UserSettings.get(user),
+             now,
+             import_range(user.id, import_id)
+           ),
+         true <- TripSettings.zone?(Dawarich.UserSettings.get(user), window.zone) do
       cutoff = cutoff(user, now, opts)
       args = [user.id, import_id, window.start_epoch, window.end_epoch, cutoff]
 
       [[count]] = Repo.query!("SELECT count(*) FROM public.points p " <> @where, args).rows
       order = String.upcase(params["order_by"] || "desc")
       sql = @rows <> @where <> " ORDER BY p.timestamp #{order} LIMIT #{@per_page} OFFSET $6"
-      rows = UserTimeZone.query!(sql, args ++ [(page - 1) * @per_page], user.settings).rows
+
+      rows =
+        UserTimeZone.query!(
+          sql,
+          args ++ [(page - 1) * @per_page],
+          Dawarich.UserSettings.get(user)
+        ).rows
 
       {:ok,
        %{
@@ -152,7 +165,9 @@ defmodule Dawarich.PointList do
     if Entitlements.full_access?(user, Keyword.fetch!(opts, :self_hosted), now) do
       nil
     else
-      [[epoch]] = UserTimeZone.query!(@cutoff, [DateTime.to_naive(now)], user.settings).rows
+      [[epoch]] =
+        UserTimeZone.query!(@cutoff, [DateTime.to_naive(now)], Dawarich.UserSettings.get(user)).rows
+
       epoch
     end
   end

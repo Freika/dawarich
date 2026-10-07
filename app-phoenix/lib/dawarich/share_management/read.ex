@@ -25,7 +25,8 @@ defmodule Dawarich.ShareManagement.Read do
     shares = links(user, now, "ORDER BY created_at DESC")
 
     today =
-      UserTimeZone.local(user.settings, DateTime.to_naive(now)).local |> NaiveDateTime.to_date()
+      UserTimeZone.local(Dawarich.UserSettings.get(user), DateTime.to_naive(now)).local
+      |> NaiveDateTime.to_date()
 
     tab = if Ruby.blank?(params["tab"]), do: "live", else: params["tab"]
 
@@ -72,7 +73,7 @@ defmodule Dawarich.ShareManagement.Read do
           ~w(unknown stationary walking running cycling driving bus train flying boat motorcycle)
 
         locale = locale || DawarichWeb.Locale.resolve(nil, user, %{})
-        unit = get_in(user.settings, ["maps", "distance_unit"]) || "km"
+        unit = get_in(Dawarich.UserSettings.get(user), ["maps", "distance_unit"]) || "km"
         factors = %{"km" => 1000, "mi" => 1609.34, "m" => 1, "ft" => 0.3048, "yd" => 0.9144}
 
         if Map.has_key?(factors, unit) do
@@ -83,7 +84,10 @@ defmodule Dawarich.ShareManagement.Read do
 
           {:ok, mode_name} = Dawarich.I18n.t(locale, mode_key)
 
-          date = UserTimeZone.local(user.settings, start).local |> NaiveDateTime.to_date()
+          date =
+            UserTimeZone.local(Dawarich.UserSettings.get(user), start).local
+            |> NaiveDateTime.to_date()
+
           date = DawarichWeb.LocalizedDate.l(locale, date, "day_month_year_abbreviated")
 
           {:ok, name} =

@@ -81,7 +81,7 @@ defmodule Dawarich.Auth.AccountLink.Pending do
 
       user ->
         case repo.query!("SELECT settings FROM users WHERE id=$1", [id], log: false).rows do
-          [[settings]] -> support(%{user | settings: settings})
+          [[settings]] -> support(%{user | settings: Dawarich.UserSettings.provided(settings)})
           [] -> {:handoff, :actor}
         end
     end

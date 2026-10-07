@@ -11,7 +11,8 @@ defmodule Dawarich.Settings.General do
              [id],
              log: false
            ).rows do
-        [[%{} = previous]] ->
+        [[previous]] when is_map(previous) or is_nil(previous) ->
+          previous = UserSettings.provided(previous)
           settings = changes(previous, params)
 
           if settings != previous do

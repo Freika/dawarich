@@ -131,7 +131,7 @@ defmodule Dawarich.Families.Requests do
   end
 
   defp notify(requester_email, target, id, at) do
-    locale = ExploreFeatures.locale(target.settings, "en")
+    locale = ExploreFeatures.locale(Dawarich.UserSettings.get(target), "en")
     href = "/family/location_requests/#{id}"
 
     link =

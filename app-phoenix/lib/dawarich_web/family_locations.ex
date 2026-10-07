@@ -44,7 +44,10 @@ defmodule DawarichWeb.FamilyLocations do
   end
 
   defp project(user, now) do
-    case Locations.read(Map.put(user, :timezone, user.settings["timezone"]), now) do
+    case Locations.read(
+           Map.put(user, :timezone, Dawarich.UserSettings.get(user)["timezone"]),
+           now
+         ) do
       {:ok, 200, {:object, pairs}} ->
         locations =
           pairs

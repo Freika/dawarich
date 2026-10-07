@@ -162,7 +162,7 @@ defmodule Dawarich.Auth.RegistrationSetup do
               log: false
             ).rows
 
-          owner_locale = if is_map(settings), do: settings["locale"] || "en", else: "en"
+          owner_locale = Dawarich.UserSettings.safe(settings)["locale"] || "en"
 
           title =
             DawarichWeb.Translate.t(

@@ -19,6 +19,8 @@ defmodule Dawarich.Achievements.OgImage do
            log: false
          ).rows do
       [[id, owner, key, settings, state]] ->
+        settings = Dawarich.UserSettings.safe(settings)
+
         case PublicCard.load(repo, uuid, %{}) do
           {:ok, view} ->
             cache_key = cache_key(id, owner, key, settings, state, view.locale)

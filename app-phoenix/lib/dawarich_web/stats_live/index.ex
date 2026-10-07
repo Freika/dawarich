@@ -29,7 +29,7 @@ defmodule DawarichWeb.StatsLive.Index do
       geocoding: geocoding.enabled,
       store_geodata: geocoding.store_geodata,
       table: if(geocoding.enabled and data.years != [], do: CountryNames.table(), else: []),
-      unit: StatsFormat.unit(user.settings),
+      unit: StatsFormat.unit(Dawarich.UserSettings.get(user)),
       active: user.status == 1,
       alert_href: upgrade.("data_window", "stats_index"),
       badge_href: upgrade.("badge", "pro_badge"),

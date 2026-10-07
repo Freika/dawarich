@@ -20,7 +20,8 @@ defmodule Dawarich.ShareManagement.Params do
 
     type in ["live", "trip", "track", "timeline"] and
       (type in ["live", "timeline"] or (is_map(trip) and is_integer(trip[:id]))) and
-      is_map(user.settings) and text?(user.settings["timezone"]) and is_map(params) and
+      is_map(Dawarich.UserSettings.get(user)) and
+      text?(Dawarich.UserSettings.get(user)["timezone"]) and is_map(params) and
       params["format"] in [nil, "json"] and
       Enum.all?(params, fn {key, value} ->
         key in @top and (key == "shared_link" or text?(value))
@@ -98,7 +99,7 @@ defmodule Dawarich.ShareManagement.Params do
        name: name,
        magic_phrase:
          if(family or Ruby.blank?(raw["magic_phrase"]), do: nil, else: raw["magic_phrase"]),
-       expires_at: expiry_from(raw["expires_at"], user.settings),
+       expires_at: expiry_from(raw["expires_at"], Dawarich.UserSettings.get(user)),
        settings:
          Map.merge(
            Map.merge(defaults, audience),
