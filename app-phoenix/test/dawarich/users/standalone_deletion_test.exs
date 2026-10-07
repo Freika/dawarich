@@ -9,6 +9,7 @@ defmodule Dawarich.Users.StandaloneDeletionTest do
     previous = System.get_env("DAWARICH_RAILS")
     System.put_env("DAWARICH_RAILS", "off")
     start_oban(__MODULE__)
+    Ownership.put!(ScratchRepo, "command:users.destruction_webhook", :oban)
     for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
     root = Path.join(System.tmp_dir!(), "deletion-#{Ecto.UUID.generate()}")
     File.mkdir_p!(root)
@@ -261,18 +262,32 @@ defmodule Dawarich.Users.StandaloneDeletionTest do
     assert {:ok, :ok} =
              ScratchRepo.transaction(fn -> DestroyWorker.enqueue(ScratchRepo, c.actor.id) end)
 
-    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+    consumer_now = DateTime.add(db_now(ScratchRepo), -86_400)
+    assert Dispatch.run(repo: ScratchRepo, oban: __MODULE__, now: consumer_now) == %{}
+    assert rows("SELECT id FROM users WHERE id=$1", [c.actor.id]) == [[c.actor.id]]
+    assert rows("SELECT id FROM oban.oban_jobs") == []
+
+    [[due]] =
+      rows("UPDATE job_outbox SET scheduled_at=$1 RETURNING scheduled_at", [
+        DateTime.add(db_now(ScratchRepo), 86_400)
+      ])
+
+    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__, now: due)
     assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :maintenance)
     assert rows("SELECT id FROM users WHERE id=$1", [c.actor.id]) == []
     assert rows("SELECT id FROM users WHERE id=$1", [c.other.id]) == [[c.other.id]]
-    assert rows("SELECT state,error_code FROM job_outbox") == [["dispatched", nil]]
+
+    assert rows("SELECT state,error_code FROM job_outbox WHERE command_type='users.destroy'") == [
+             ["dispatched", nil]
+           ]
+
     System.delete_env("DAWARICH_RAILS")
     Ownership.put!(ScratchRepo, "command:users.destroy", :sidekiq)
 
     assert {:ok, {:error, :worker_owner}} =
              ScratchRepo.transaction(fn -> DestroyWorker.enqueue(ScratchRepo, c.other.id) end)
 
-    assert rows("SELECT count(*) FROM job_outbox") == [[1]]
+    assert rows("SELECT count(*) FROM job_outbox WHERE command_type='users.destroy'") == [[1]]
   end
 
   @tag :sa_destroy_effects
@@ -369,9 +384,8 @@ defmodule Dawarich.Users.StandaloneDeletionTest do
     assert cache["payload"]["user_id"] == c.actor.id
     assert "dawarich/user_#{c.actor.id}_total_distance" in cache["payload"]["keys"]
 
-    assert rows(
-             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Users.DestructionWebhookWorker'"
-           ) == [[1]]
+    assert rows("SELECT count(*) FROM job_outbox WHERE command_type='users.destruction_webhook'") ==
+             [[1]]
 
     assert [[purge]] =
              rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PurgeWorker'")

@@ -61,7 +61,11 @@ defmodule Dawarich.Partnero.CloudSignupTest do
 
     refute_received {:customer, _}
     assert Registry.command("partnero.customer_signup") == {:ok, CustomerSignupWorker}
-    assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 1}
+
+    assert Dispatch.run(repo: ScratchRepo, oban: @oban, now: db_now(ScratchRepo)) == %{
+             dispatched: 1
+           }
+
     [[args]] = rows("SELECT args FROM oban.oban_jobs")
     assert args["event_id"] == event
 

@@ -1,7 +1,7 @@
 defmodule Dawarich.Users.CreationWebhookWorker do
   @moduledoc false
   use Oban.Worker, queue: :maintenance, priority: 0, max_attempts: 26
-  alias Dawarich.Jobs.Processed
+  alias Dawarich.AfterCommit.Callback
   alias Dawarich.Users.WebhookCommands
 
   def args_from_command(1, %{"user_id" => id} = payload)
@@ -16,7 +16,7 @@ defmodule Dawarich.Users.CreationWebhookWorker do
   def perform(%Oban.Job{args: args}), do: run(Dawarich.Jobs.repo(), args)
 
   def run(repo, args, opts \\ []) do
-    Processed.once(repo, args["event_id"], "users.creation_webhook", fn ->
+    Callback.run(repo, args["event_id"], "users.creation_webhook", fn ->
       if WebhookCommands.configured?(opts), do: deliver(repo, args["user_id"], opts), else: :ok
     end)
   end
@@ -38,7 +38,10 @@ defmodule Dawarich.Users.CreationWebhookWorker do
           action: "create_user"
         }
 
-        WebhookCommands.post(payload, "/api/v1/users", nil, opts)
+        case WebhookCommands.post(payload, "/api/v1/users", nil, opts) do
+          :ok -> :ok
+          reason -> {:error, reason}
+        end
 
       [] ->
         :ok

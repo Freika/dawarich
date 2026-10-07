@@ -5,7 +5,8 @@ defmodule Dawarich.Auth.Mobile.Providers do
   alias Dawarich.Auth.Mobile.Payload
 
   def exchange(provider, params, context) do
-    context = Map.put(context, :nonce, params["nonce"])
+    context =
+      context |> Dawarich.Auth.RegistrationCallbacks.context() |> Map.put(:nonce, params["nonce"])
 
     verify =
       if provider == "apple",
@@ -36,13 +37,6 @@ defmodule Dawarich.Auth.Mobile.Providers do
 
     case Accounts.resolve(identity, context) do
       {:ok, user, created} ->
-        if created and context[:self_hosted] == false do
-          callback = get_in(context, [:callbacks, :webhook])
-
-          if not is_function(callback, 1) or callback.(user.id) != :ok,
-            do: raise("Signup callback unavailable")
-        end
-
         Payload.success(user, created, context)
 
       {:link_required, link} ->

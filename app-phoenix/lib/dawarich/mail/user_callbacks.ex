@@ -85,7 +85,7 @@ defmodule Dawarich.Mail.UserCallbacks do
           List.last(types),
           payload,
           "explore-features:#{user_id}",
-          DateTime.add(now, 172_800)
+          Dawarich.Users.CreationEffects.calendar_days(repo, now, 2, env)
         )
       end
 
@@ -150,19 +150,15 @@ defmodule Dawarich.Mail.UserCallbacks do
   end
 
   defp publish!(repo, type, payload, key, at) do
-    repo.query!(
-      "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,aggregate_id,dedupe_key,scheduled_at,metadata) " <>
-        "SELECT $1::uuid,$2::varchar,1,$3::jsonb,$4::bigint,$5::varchar,$6::timestamptz,$7::jsonb WHERE NOT EXISTS(SELECT 1 FROM public.job_outbox WHERE command_type=$2 AND dedupe_key=$5)",
-      [
-        Ecto.UUID.dump!(Ecto.UUID.generate()),
-        type,
-        payload,
-        payload["user_id"],
-        key,
-        at,
-        %{"producer" => "Phoenix user callback"}
-      ],
-      log: false
-    )
+    event = Dawarich.AfterCommit.identity(payload["user_id"], key)
+
+    case Dawarich.AfterCommit.intent(repo, type, payload,
+           event_id: event,
+           dedupe_key: key,
+           scheduled_at: at
+         ) do
+      :ok -> :ok
+      {:error, reason} -> repo.rollback(reason)
+    end
   end
 end

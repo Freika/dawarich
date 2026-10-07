@@ -1,11 +1,20 @@
 defmodule Dawarich.A12f3bE04Test do
-  use Dawarich.IngestCase, async: false
+  use ExUnit.Case, async: false
+  alias Dawarich.Repo
+  import Dawarich.IngestCase, only: [user!: 0, user!: 1, commands: 0]
   import Dawarich.DataCase, only: [rows: 1, rows: 2]
   alias Dawarich.Auth.AccountDestroy
   alias Dawarich.Jobs.{Ownership, Processed}
   alias Dawarich.Users.{DestroyWorker, DestructionWebhookWorker}
 
   setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo, sandbox: false)
+
+    on_exit(fn ->
+      :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo, sandbox: false)
+      Dawarich.JobsCase.reset!(Repo)
+    end)
+
     Ecto.Migrator.run(Repo, Path.expand("../../priv/repo/oban_migrations", __DIR__), :up,
       all: true,
       prefix: "oban",
@@ -14,6 +23,7 @@ defmodule Dawarich.A12f3bE04Test do
 
     Dawarich.MigrationModules.purge()
     Dawarich.JobsCase.reset!(Repo)
+    Ownership.put!(Repo, "command:users.destruction_webhook", :oban)
     for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
     :ok
   end
@@ -123,7 +133,7 @@ defmodule Dawarich.A12f3bE04Test do
     assert DestroyWorker.args_from_command(2, %{}) == {:error, "unsupported_version"}
     assert DestroyWorker.new(args).changes.max_attempts == 4
     Ownership.put!(Repo, "command:users.destroy", :sidekiq, pinned: true)
-    Ownership.put!(Repo, "command:users.destruction_webhook", :sidekiq, pinned: true)
+    Ownership.put!(Repo, "command:users.destruction_webhook", :oban, pinned: true)
     assert {:cancel, "account deletion blocked by shared places"} = DestroyWorker.run(Repo, args)
     assert rows("SELECT place_id FROM visits WHERE id=$1", [foreign_visit]) == [[place]]
     assert rows("SELECT id FROM places WHERE id=$1", [place]) == [[place]]
@@ -198,7 +208,7 @@ defmodule Dawarich.A12f3bE04Test do
 
     assert [[snapshot]] =
              rows(
-               "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Users.DestructionWebhookWorker'"
+               "SELECT payload || jsonb_build_object('event_id',event_id::text) FROM job_outbox WHERE command_type='users.destruction_webhook'"
              )
 
     assert snapshot["user_id"] == id
@@ -260,9 +270,8 @@ defmodule Dawarich.A12f3bE04Test do
     assert :ok = DestroyWorker.run(Repo, args)
     assert Processed.done?(Repo, args["event_id"])
 
-    assert rows(
-             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Users.DestructionWebhookWorker'"
-           ) == [[1]]
+    assert rows("SELECT count(*) FROM job_outbox WHERE command_type='users.destruction_webhook'") ==
+             [[1]]
 
     assert rows("SELECT id FROM points WHERE id=$1", [foreign]) == [[foreign]]
     assert commands() == []
