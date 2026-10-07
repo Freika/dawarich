@@ -683,3 +683,9 @@ source debt or weaken Cloud lifecycle refusal.
 | ID | Surface | Rails | Phoenix | Evidence / authority |
 | --- | --- | --- | --- | --- |
 | ED-FIX-SWEEP6-RETRY | POST /tracks/recalculation before workers start | Two valid submissions enqueue two user reclassification jobs because processing state starts in the worker. | A per-user SQL primary-key fence and transactional outbox insertion accept one root event until its fan-out completes. | Controller review F1 exactly-once requirement; `review web queued retry produces exactly one event`; DRB-FIX-SWEEP6-RETRY; [recalculation contract](../../docs/phoenix/standalone-recalculation.md). |
+
+## Standalone pending OTP authentication
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-SA-PENDING | Active OTP challenge plus another valid credential | A successful full login leaves the earlier actor's challenge active; Warden or remember authentication can render protected pages while that challenge remains. | Standalone full sign-in clears all four OTP session keys; an active challenge refuses Warden and remember identities at shared page admission. Expired challenges and coexistence retain their existing behavior. | Controller fix2-fix-sa-auth-pages F1; `F1 full login of actor B clears actor A's active OTP challenge`; `F1 active pending challenge refuses Warden and remember credentials at shared pages`; [auth contract](../../docs/phoenix/standalone-auth-pages.md). |

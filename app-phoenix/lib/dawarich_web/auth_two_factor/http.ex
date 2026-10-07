@@ -17,7 +17,7 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
 
   def call(conn, opts) do
     if Keyword.get(opts, :enabled, false) == true and route?(conn) and
-         ordinary?(conn) and Admission.headers(conn.req_headers) == :ok do
+         ordinary?(conn, opts) and Admission.headers(conn.req_headers) == :ok do
       conn = conn |> DawarichWeb.HostAuthorization.call([]) |> DawarichWeb.ForceSSL.call([])
       conn = if conn.halted, do: conn, else: DawarichWeb.RateLimit.call(conn, [])
       if conn.halted, do: conn, else: admit(conn, opts)
@@ -27,6 +27,11 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
   end
 
   defp admit(conn, opts) do
+    conn =
+      if Keyword.get(opts, :native, false) and conn.method == "HEAD",
+        do: Plug.Head.call(conn, []),
+        else: conn
+
     conn =
       if Keyword.get(opts, :native, false) do
         conn
@@ -58,6 +63,17 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
     case identity(conn, context) do
       {:ok, conn, id, salt, context} -> parse(conn, id, salt, opts, context)
       _ -> fallback(conn, opts)
+    end
+  end
+
+  defp identity(
+         %{assigns: %{current_user: %Accounts.User{} = user}} = conn,
+         %{native: true} = context
+       ) do
+    salt = String.slice(user.encrypted_password, 0, 29)
+
+    with {:ok, _actor} <- actor(user.id, salt, context) do
+      {:ok, conn, user.id, salt, context}
     end
   end
 
@@ -229,8 +245,13 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
       ActionCsrf.valid?(conn.assigns.rails_session, hd(tokens), method, conn.request_path)
   end
 
-  defp ordinary?(conn) do
-    conn.query_string == "" and get_req_header(conn, "x-requested-with") == [] and
+  defp ordinary?(conn, opts) do
+    query? =
+      conn.query_string == "" or
+        (Keyword.get(opts, :native, false) and conn.method in ["GET", "HEAD"] and
+           DawarichWeb.Strangler.page_request?(conn))
+
+    query? and get_req_header(conn, "x-requested-with") == [] and
       Enum.all?(get_req_header(conn, "accept"), fn value ->
         hd(String.split(value, [",", ";"])) in ["text/html", "*/*"] and
           not String.contains?(value, ["application/json", "text/vnd.turbo-stream.html"])
