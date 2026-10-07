@@ -166,9 +166,19 @@ defmodule Dawarich.ReleaseMigrator do
   defp steps(module) do
     Enum.map(module.steps(), fn step ->
       {version, fun, transaction?} = ReleaseMigration.normalize(step)
-      %{release: module.release(), version: version, fun: fun, transaction: transaction?}
+
+      %{
+        release: module.release(),
+        version: version,
+        fun: fun,
+        transaction: transaction?,
+        transaction_opts: transaction_opts(step)
+      }
     end)
   end
+
+  defp transaction_opts({_, _, opts}), do: Keyword.take(opts, [:timeout])
+  defp transaction_opts({_, _}), do: []
 
   defp apply_versions(steps, repo, lease, job_mode) do
     Enum.reduce_while(steps, {:ok, []}, fn step, {:ok, done} ->
@@ -186,7 +196,10 @@ defmodule Dawarich.ReleaseMigrator do
   end
 
   defp run_version(repo, lease, %{transaction: true} = step, job_mode) do
-    repo.transaction(fn -> record(repo, lease, step, step.fun.(repo), job_mode) end)
+    repo.transaction(
+      fn -> record(repo, lease, step, step.fun.(repo), job_mode) end,
+      step.transaction_opts
+    )
     |> transaction_result()
   end
 

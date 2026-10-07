@@ -11,7 +11,8 @@ defmodule Dawarich.Admin.InstancePage do
     "nominatim" => ~w(nominatim_api_host nominatim_api_key nominatim_api_use_https),
     "locationiq" => ~w(locationiq_api_key),
     "rate_limit" => ~w(reverse_geocoding_rps),
-    "points" => ~w(store_geodata)
+    "points" => ~w(store_geodata),
+    "experimental" => ~w(map_matching_enabled map_matching_shadow_mode atlas_url)
   }
   @https_only ~w(photon.dawarich.app photon.komoot.io app.chibigeo.com)
 
@@ -28,7 +29,7 @@ defmodule Dawarich.Admin.InstancePage do
       end
 
     fields =
-      Map.new(InstanceSettingsRegistry.definitions(), fn definition ->
+      Map.new(InstanceSettingsRegistry.current_definitions(), fn definition ->
         {elem(definition, 0), field(definition, stored, env, key)}
       end)
 
