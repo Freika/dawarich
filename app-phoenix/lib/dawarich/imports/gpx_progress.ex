@@ -1,8 +1,7 @@
 defmodule Dawarich.Imports.GpxProgress do
   @moduledoc false
   require Logger
-  alias Dawarich.RailsCommands
-  alias Dawarich.Imports.{Fence, LeaseLost}
+  alias Dawarich.Imports.{Fence, LeaseLost, Progress}
 
   def record(import, index, state, context) do
     now = clock(context.now)
@@ -29,13 +28,7 @@ defmodule Dawarich.Imports.GpxProgress do
 
   defp publish(import, context) do
     Fence.run(context, fn ->
-      unless Dawarich.Standalone.enabled?() do
-        RailsCommands.insert!(context.repo, "imports.progress", %{
-          "user_id" => import.user_id,
-          "import_id" => import.id,
-          "locale" => context.locale
-        })
-      end
+      Progress.publish!(context.repo, import, context.locale)
     end)
   rescue
     error in LeaseLost -> reraise error, __STACKTRACE__

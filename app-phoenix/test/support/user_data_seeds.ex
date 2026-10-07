@@ -71,6 +71,17 @@ defmodule Dawarich.Test.UserDataSeeds do
     }
   end
 
+  def current_export_entries(zone) do
+    tracks =
+      @dir
+      |> Path.join("map_matching_columns.json")
+      |> File.read!()
+      |> Jason.decode!()
+      |> get_in(["exports", zone])
+
+    Map.merge(entries("export_" <> String.replace(zone, "/", "_")), tracks)
+  end
+
   def entries(name) do
     directory = Path.join([@dir, name, "entries"])
 

@@ -35,8 +35,8 @@ defmodule Dawarich.AirTrail.ClientTest do
     assert Client.flights(source(base <> "/")) == {:ok, []}
     assert_received {:airtrail_request, "/api/flight/list", _, _}
 
-    assert Client.flights(source(base <> "//")) == {:ok, []}
-    assert_received {:airtrail_request, "//api/flight/list", _, _}
+    assert Client.flights(source(base <> "//")) == {:error, "AirTrail request failed"}
+    refute_received {:airtrail_request, "//api/flight/list", _, _}
   end
 
   test "a missing flights key is an empty list" do
@@ -73,27 +73,41 @@ defmodule Dawarich.AirTrail.ClientTest do
              {:error, "Could not connect to AirTrail"}
   end
 
-  test "an http URL redirected to https still verifies the certificate" do
-    {listen, base} = tls_redirect()
-    task = Task.async(fn -> Client.flights(source(base)) end)
-
-    {:ok, socket} = :ssl.transport_accept(listen, :infinity)
-    assert {:error, {:tls_alert, {:unknown_ca, _}}} = :ssl.handshake(socket, :infinity)
-    :ssl.close(listen)
-    assert Task.await(task, :infinity) == {:error, "Could not connect to AirTrail"}
+  @tag :airtrail_redirect_verified
+  test "AirTrail refuses a cross-host HTTPS redirect with certificate verification enabled" do
+    assert_redirect_refused(false)
   end
 
-  test "skip_ssl_verification still skips verification after a redirect to https" do
+  @tag :airtrail_redirect_skipped
+  test "AirTrail refuses a cross-host HTTPS redirect even when certificate verification is skipped" do
+    assert_redirect_refused(true)
+  end
+
+  defp assert_redirect_refused(skip) do
     {listen, base} = tls_redirect()
-    task = Task.async(fn -> Client.flights(%{source(base) | skip_ssl_verification: true}) end)
+    parent = self()
+    ref = make_ref()
 
-    {:ok, socket} = :ssl.transport_accept(listen, :infinity)
-    {:ok, socket} = :ssl.handshake(socket, :infinity)
-    {:ok, _request} = :ssl.recv(socket, 0, :infinity)
-    :ok = :ssl.send(socket, "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}")
-    :ssl.close(socket)
+    target =
+      Task.async(fn ->
+        {:ok, socket} = :ssl.transport_accept(listen, :infinity)
+        send(parent, {ref, :contacted})
 
-    assert Task.await(task, :infinity) == {:ok, []}
+        case :ssl.handshake(socket, :infinity) do
+          {:ok, socket} ->
+            :ssl.recv(socket, 0, :infinity)
+            :ssl.send(socket, "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}")
+            :ssl.close(socket)
+
+          {:error, _} ->
+            :ok
+        end
+      end)
+
+    result = Client.flights(%{source(base) | skip_ssl_verification: skip})
+    Task.shutdown(target, :brutal_kill)
+    refute_received {^ref, :contacted}
+    assert result == {:error, "AirTrail responded with 302"}
   end
 
   test "asks AirTrail to close the connection so no keep-alive session is reused" do

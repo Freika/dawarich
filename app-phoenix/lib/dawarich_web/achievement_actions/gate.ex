@@ -39,8 +39,16 @@ defmodule DawarichWeb.AchievementActions.Gate do
 
   def refuse(conn, opts) do
     if Dawarich.Standalone.enabled?() do
-      status = if match?({:ok, _, _}, actor(conn, context(opts))), do: 422, else: 401
-      DawarichWeb.StandaloneError.respond(conn, "achievement_request", status)
+      context = context(opts)
+      auth_opts = if context[:secret], do: [secret: context.secret], else: []
+      conn = RailsAuth.call(conn, auth_opts)
+
+      if is_nil(conn.assigns.current_user) do
+        DawarichWeb.AuthenticationRefusal.respond(conn, context)
+      else
+        status = if match?({:ok, _, _}, actor(conn, context)), do: 422, else: 401
+        DawarichWeb.StandaloneError.respond(conn, "achievement_request", status)
+      end
     else
       upstream =
         Keyword.get_lazy(opts, :upstream, fn ->

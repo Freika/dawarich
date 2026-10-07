@@ -52,7 +52,8 @@ defmodule Dawarich.Settings.Integrations.Connection do
     result =
       request(
         :get,
-        settings["photoprism_url"] <> "/api/v1/photos?count=1&public=true",
+        settings["photoprism_url"],
+        "/api/v1/photos?count=1&public=true",
         [{"authorization", "Bearer " <> settings["photoprism_api_key"]}],
         nil,
         settings["photoprism_skip_ssl_verification"]
@@ -81,7 +82,8 @@ defmodule Dawarich.Settings.Integrations.Connection do
 
     case request(
            :post,
-           settings["immich_url"] <> "/api/search/metadata",
+           settings["immich_url"],
+           "/api/search/metadata",
            headers,
            body,
            settings["immich_skip_ssl_verification"]
@@ -101,11 +103,17 @@ defmodule Dawarich.Settings.Integrations.Connection do
   end
 
   defp thumbnail(settings, headers, id, locale) do
-    url =
-      settings["immich_url"] <>
-        "/api/assets/" <> URI.encode(id, &URI.char_unreserved?/1) <> "/thumbnail?size=preview"
+    path =
+      "/api/assets/" <> URI.encode(id, &URI.char_unreserved?/1) <> "/thumbnail?size=preview"
 
-    case request(:get, url, headers, nil, settings["immich_skip_ssl_verification"]) do
+    case request(
+           :get,
+           settings["immich_url"],
+           path,
+           headers,
+           nil,
+           settings["immich_skip_ssl_verification"]
+         ) do
       {:ok, status, _} when status in 200..299 ->
         success("immich", locale)
 
@@ -138,25 +146,16 @@ defmodule Dawarich.Settings.Integrations.Connection do
     end
   end
 
-  defp request(method, url, headers, body, skip) do
-    headers =
-      for {key, value} <- [{"accept", "application/json"} | headers],
-          do: {String.to_charlist(key), String.to_charlist(value)}
-
-    args =
-      if body,
-        do: {String.to_charlist(url), headers, ~c"application/json", body},
-        else: {String.to_charlist(url), headers}
-
-    ssl = if skip == true, do: [verify: :verify_none], else: Dawarich.Http.ssl_options()
-
-    case :httpc.request(
+  defp request(method, base, path, headers, body, skip) do
+    case Dawarich.Photos.ProviderHTTP.request(
            method,
-           args,
-           [timeout: 10_000, connect_timeout: 10_000, autoredirect: false, ssl: ssl],
-           body_format: :binary
+           base,
+           path,
+           [{"accept", "application/json"} | headers],
+           body,
+           skip
          ) do
-      {:ok, {{_, status, _}, _, data}} -> {:ok, status, data}
+      {:ok, status, _, data} -> {:ok, status, data}
       {:error, _} -> :error
     end
   end

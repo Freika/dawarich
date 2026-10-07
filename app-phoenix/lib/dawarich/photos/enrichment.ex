@@ -157,7 +157,8 @@ defmodule Dawarich.Photos.Enrichment do
 
     case Index.request(
            :put,
-           settings["immich_url"] <> "/api/assets/" <> id,
+           settings["immich_url"],
+           "/api/assets/" <> id,
            headers,
            Jason.encode!(Map.take(asset, ~w(latitude longitude))),
            settings["immich_skip_ssl_verification"]
@@ -165,9 +166,8 @@ defmodule Dawarich.Photos.Enrichment do
       {:ok, status, _, _} when status in 200..299 ->
         :ok
 
-      {:ok, status, headers, _} ->
-        {:error,
-         "HTTP #{status}: #{headers |> List.keyfind("_status_reason", 0, {"", reason(status)}) |> elem(1)}"}
+      {:ok, status, _, _} ->
+        {:error, "HTTP #{status}: #{reason(status)}"}
 
       {:error, reason} ->
         {:error, transport_message(reason)}
