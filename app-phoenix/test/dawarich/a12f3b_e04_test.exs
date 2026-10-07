@@ -154,10 +154,28 @@ defmodule Dawarich.A12f3bE04Test do
     assert rows("SELECT place_id FROM visits WHERE id=$1", [foreign_visit]) == [[nil]]
     assert rows("SELECT id FROM imports WHERE id=$1", [foreign_import]) == [[foreign_import]]
     assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [shared]) == [[shared]]
-    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+    assert [[metadata]] = rows("SELECT metadata FROM active_storage_blobs WHERE id=$1", [blob])
+    assert Jason.decode!(metadata)["phoenix_purge_pending"] == true
 
-    assert [[%{"objects" => [%{"key" => "owned", "service_name" => "test"}]}]] =
+    assert [[%{"objects" => [%{"key" => "owned", "service_name" => "test"}]} = purge]] =
              rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PurgeWorker'")
+
+    root =
+      Path.join(Application.fetch_env!(:dawarich, :test_tmp_dir), "e04-" <> Ecto.UUID.generate())
+
+    on_exit(fn -> File.rm_rf!(root) end)
+    services = %{services: %{"test" => %{service: "local", root: root}}}
+
+    for key <- ["owned", "shared"] do
+      path = Dawarich.Storage.disk_path(root, key)
+      File.mkdir_p!(Path.dirname(path))
+      File.write!(path, "synthetic")
+    end
+
+    assert :ok = Dawarich.Exports.PurgeWorker.run(purge, services: services, repo: Repo)
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+    refute File.exists?(Dawarich.Storage.disk_path(root, "owned"))
+    assert File.exists?(Dawarich.Storage.disk_path(root, "shared"))
 
     assert [[snapshot]] =
              rows(
@@ -249,15 +267,17 @@ defmodule Dawarich.A12f3bE04Test do
     File.mkdir_p!(path)
 
     assert {:error, {:storage_delete, :eperm}} =
-             Dawarich.Exports.PurgeWorker.run(purge, services: services)
+             Dawarich.Exports.PurgeWorker.run(purge, services: services, repo: Repo)
 
     assert rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PurgeWorker'") ==
              [[purge]]
 
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == [[blob]]
     File.rmdir!(path)
     File.write!(path, "synthetic")
-    assert :ok = Dawarich.Exports.PurgeWorker.run(purge, services: services)
+    assert :ok = Dawarich.Exports.PurgeWorker.run(purge, services: services, repo: Repo)
     refute File.exists?(path)
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
     assert commands() == []
   end
 

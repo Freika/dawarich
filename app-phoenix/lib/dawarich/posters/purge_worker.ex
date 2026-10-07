@@ -31,57 +31,53 @@ defmodule Dawarich.Posters.PurgeWorker do
   end
 
   defp purge(repo, poster, id, services) do
-    {:ok, blob} =
-      repo.transaction(fn ->
-        case repo.query!(
-               "SELECT key,service_name FROM active_storage_blobs WHERE id=$1 FOR UPDATE",
-               [id],
-               log: false
-             ).rows do
-          [[key, service]] ->
-            [[referenced]] =
-              repo.query!(
-                "SELECT EXISTS(SELECT 1 FROM posters WHERE id=$1) OR EXISTS(SELECT 1 FROM active_storage_attachments WHERE blob_id=$2)",
-                [poster, id],
-                log: false
-              ).rows
-
-            if referenced do
-              nil
-            else
-              children =
-                repo.query!(
-                  "DELETE FROM active_storage_attachments WHERE record_type='ActiveStorage::VariantRecord' AND record_id IN (SELECT id FROM active_storage_variant_records WHERE blob_id=$1) RETURNING blob_id",
+    case repo.transaction(fn ->
+           case repo.query!(
+                  "SELECT key,service_name FROM active_storage_blobs WHERE id=$1 FOR UPDATE",
                   [id],
                   log: false
-                ).rows
-                |> List.flatten()
-                |> Enum.uniq()
+                ).rows do
+             [[key, service]] ->
+               [[referenced]] =
+                 repo.query!(
+                   "SELECT EXISTS(SELECT 1 FROM posters WHERE id=$1) OR EXISTS(SELECT 1 FROM active_storage_attachments WHERE blob_id=$2)",
+                   [poster, id],
+                   log: false
+                 ).rows
 
-              if children != [], do: Command.purge(repo, :oban, %{"blob_ids" => children})
+               if referenced do
+                 :ok
+               else
+                 case Storage.delete(Storage.service!(services, service), key) do
+                   :ok -> :ok
+                   {:error, reason} -> repo.rollback({:storage_delete, reason})
+                 end
 
-              repo.query!("DELETE FROM active_storage_variant_records WHERE blob_id=$1", [id],
-                log: false
-              )
+                 children =
+                   repo.query!(
+                     "DELETE FROM active_storage_attachments WHERE record_type='ActiveStorage::VariantRecord' AND record_id IN (SELECT id FROM active_storage_variant_records WHERE blob_id=$1) RETURNING blob_id",
+                     [id],
+                     log: false
+                   ).rows
+                   |> List.flatten()
+                   |> Enum.uniq()
 
-              repo.query!("DELETE FROM active_storage_blobs WHERE id=$1", [id], log: false)
-              {key, service}
-            end
+                 if children != [], do: Command.purge(repo, :oban, %{"blob_ids" => children})
 
-          [] ->
-            nil
-        end
-      end)
+                 repo.query!("DELETE FROM active_storage_variant_records WHERE blob_id=$1", [id],
+                   log: false
+                 )
 
-    case blob do
-      nil ->
-        :ok
+                 repo.query!("DELETE FROM active_storage_blobs WHERE id=$1", [id], log: false)
+                 :ok
+               end
 
-      {key, service} ->
-        case Storage.delete(Storage.service!(services, service), key) do
-          :ok -> :ok
-          {:error, reason} -> {:error, {:storage_delete, reason}}
-        end
+             [] ->
+               :ok
+           end
+         end) do
+      {:ok, :ok} -> :ok
+      {:error, reason} -> {:error, reason}
     end
   end
 end
