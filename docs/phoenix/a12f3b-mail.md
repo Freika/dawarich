@@ -19,6 +19,8 @@ Test-email admission accepts the transport's existing STARTTLS, SSL and plain/lo
 
 ### Native SMTP authentication boundary
 
+Security decision: `Dawarich — ADR-20261007-native-smtp-auth-refusal — Refuse unenforceable SMTP authentication`, document `uV80V1dHKCmjQqcbsHbjW` in the shared AFFiNE workspace.
+
 Rails `lib/smtp_config.rb` accepts seven authentication names; this is a configuration allowlist, not a promise that the installed SMTP library implements every name. The locked Rails runtime uses Mail 2.9.1 and net-smtp 0.5.1. net-smtp registers PLAIN, LOGIN, CRAM-MD5 and XOAUTH2 authenticators, and `Net::SMTP#check_auth_args` raises `ArgumentError: wrong authentication type ...` for DIGEST-MD5, GSSAPI and NTLM unless an extension installs an authenticator.
 
 | `SMTP_AUTHENTICATION` | Rails with the locked gems | Native Phoenix |
