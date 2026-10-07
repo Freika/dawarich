@@ -95,6 +95,11 @@ defmodule DawarichWeb.HealthEndpointTest do
       conn =
         Phoenix.ConnTest.build_conn()
         |> Plug.Conn.assign(:readiness_opts,
+          env: %{
+            "SELF_HOSTED" => System.get_env("SELF_HOSTED", "true"),
+            "MANAGER_URL" => "https://manager.example.invalid",
+            "JWT_SECRET_KEY" => "synthetic-readiness-key"
+          },
           release: fn _ -> :ready end,
           database: fn -> {:ok, %{rows: [[1]]}} end,
           redis: fn -> {:ok, "PONG"} end
@@ -227,6 +232,11 @@ defmodule DawarichWeb.HealthEndpointTest do
         key = kase["query_key"]
 
         opts = [
+          env: %{
+            "SELF_HOSTED" => System.get_env("SELF_HOSTED", "true"),
+            "MANAGER_URL" => "https://manager.example.invalid",
+            "JWT_SECRET_KEY" => "synthetic-readiness-key"
+          },
           release: fn _ -> :ready end,
           database: fn -> {:ok, %{rows: [[1]]}} end,
           redis: fn -> {:ok, "PONG"} end

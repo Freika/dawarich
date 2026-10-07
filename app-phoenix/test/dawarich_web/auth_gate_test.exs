@@ -38,12 +38,19 @@ defmodule DawarichWeb.AuthGateTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Dawarich.State.put_registration_enabled(Repo, false)
     Application.delete_env(:dawarich, :phoenix_auth)
+    cloud_config = Map.new(~w(MANAGER_URL JWT_SECRET_KEY), &{&1, System.get_env(&1)})
+    System.put_env("MANAGER_URL", "https://manager.example.invalid")
+    System.put_env("JWT_SECRET_KEY", "synthetic-auth-gate-key")
     previous = System.get_env("SELF_HOSTED")
     previous_flows = System.get_env("DAWARICH_PHOENIX_AUTH")
     System.put_env("SELF_HOSTED", "true")
 
     on_exit(fn ->
       Application.delete_env(:dawarich, :phoenix_auth)
+
+      for {key, value} <- cloud_config do
+        if value, do: System.put_env(key, value), else: System.delete_env(key)
+      end
 
       if previous_flows,
         do: System.put_env("DAWARICH_PHOENIX_AUTH", previous_flows),

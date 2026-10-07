@@ -21,47 +21,16 @@ defmodule Dawarich.Users.DestructionWebhookWorker do
 
   def run(repo, args, opts \\ []) do
     Callback.run(repo, args["event_id"], "users.destruction_webhook", fn ->
-      if WebhookCommands.configured?(opts) do
-        post(args, opts)
-      else
-        :ok
+      case WebhookCommands.post(
+             %{user_id: args["user_id"], email: args["email"], action: "destroy_user"},
+             "/api/v1/users/unlink",
+             10_000,
+             opts
+           ) do
+        :ok -> :ok
+        {:error, _} = error -> error
+        reason -> {:error, reason}
       end
     end)
   end
-
-  defp post(args, opts) do
-    payload = %{user_id: args["user_id"], email: args["email"], action: "destroy_user"}
-    input = encode(~s({"alg":"HS256"})) <> "." <> encode(Jason.encode!(payload))
-    key = Map.fetch!(WebhookCommands.env(opts), "JWT_SECRET_KEY")
-    token = input <> "." <> encode(:crypto.mac(:hmac, :sha256, key, input))
-    headers = [{"Content-Type", "application/json"}, {"Accept", "application/json"}]
-
-    case Dawarich.Cloud.ProviderHTTP.post(
-           :manager,
-           "/api/v1/users/unlink",
-           headers,
-           Jason.encode!(%{token: token}),
-           transport_options(opts)
-         ) do
-      {:ok, _status, _body} -> :ok
-      {:error, _reason} -> {:error, :manager_transport}
-    end
-  end
-
-  defp transport_options(opts) do
-    http = Keyword.get(opts, :http, Application.get_env(:dawarich, :user_webhook_http))
-
-    if http && !Keyword.has_key?(opts, :transport) do
-      Keyword.put(opts, :transport, fn :post, origin, path, headers, body, false, timeout, _ ->
-        case http.(origin <> path, headers, body, timeout) do
-          {:ok, status, response} -> {:ok, status, [], response}
-          {:error, reason} -> {:error, reason}
-        end
-      end)
-    else
-      opts
-    end
-  end
-
-  defp encode(value), do: Base.url_encode64(value, padding: false)
 end

@@ -81,7 +81,10 @@ defmodule Dawarich.Release.Cloud do
   def ready?(repo, opts) do
     opts = Keyword.put(opts, :rails_lock_check, false)
 
-    CloudPreflight.schemas_present?(repo) and private_current?(repo) and
+    env = Keyword.get_lazy(opts, :env, &System.get_env/0)
+
+    Dawarich.Cloud.Configuration.manager(env) == :ok and
+      CloudPreflight.schemas_present?(repo) and private_current?(repo) and
       ReleaseMigrator.status(repo, opts) == {:ok, :current} and data_current?(repo, opts) and
       repo.query!("SELECT 1 FROM phoenix.registration_setting WHERE id=true", [], log: false).num_rows ==
         1 and CloudJobs.ready?(repo)

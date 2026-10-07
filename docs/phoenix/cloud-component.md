@@ -2,6 +2,20 @@
 
 `Dawarich.Release.Cloud` is a preparation API. Public native Cloud lifecycle admission remains refused in every runtime mode until the external L1 handoff.
 
+## Cloud configuration and delivery
+
+ADR-20261007-L1-configuration — implemented 2026-10-07 under the controller's B2/B3 hardening brief; external L1 acceptance remains pending. The review demonstrated plaintext signed-customer delivery and false successful receipts under missing configuration. The decision is to fail closed at configuration/admission and again at delivery, preserving optional Partnero and Rails HTTP-status behavior. Relying only on TLS verification after choosing an HTTP origin, or treating missing settings as successful skips, was rejected because both lose the intended security or retry boundary.
+
+Cloud boot, preparation preflight and readiness require a nonblank `JWT_SECRET_KEY` and a valid `MANAGER_URL`. Manager must use an HTTPS origin without embedded credentials, path, query or fragment. Failures name the setting and required correction without printing its value. Browser and mobile signup readiness applies the same validation; self-hosted boot and signup require no Cloud settings.
+
+Manager delivery validates configuration again before signing and sending. Missing or invalid configuration returns a retryable configuration error and does not create a delivery receipt. Repairing configuration permits the retained event to be delivered. HTTPS verifies peer certificates and hostnames; Partnero keeps its fixed `https://api.partnero.com` origin. Manager still acknowledges any HTTP status, matching Rails, and transport failures remain retryable.
+
+Partnero remains optional for Cloud boot. An attributed callback with a nonblank referral requires a nonblank `PARTNERO_API_KEY`; missing credentials retain failed work without a delivery receipt. A blank referral or a missing/deleted user is a semantic no-op, rather than a missing-configuration delivery success.
+
+Synthetic HTTP listeners require the explicit internal `test_loopback: true` option and the test-build-only `cloud_test_loopback` compile setting. Only numeric IPv4/IPv6 loopback origins qualify. Production builds default the setting to false and no environment variable enables it; boot and JWT signing never accept plaintext origins. Photo-provider behavior is separate and unchanged.
+
+These security corrections are recorded as `ED-FIX-L1-HTTPS`, `ED-FIX-L1-CONFIG` and `ED-FIX-L1-PARTNERO` in [expected differences](../../app-phoenix/parity/expected_diffs.md). Named regressions and mutation evidence are in `test/dawarich/cloud/hardening_test.exs` and the controller's hardening report. They do not authorize native Cloud lifecycle admission or the external L1 handoff.
+
 ## Session connections
 
 Cloud provisioning and after-commit callback delivery use dedicated Postgrex sessions for session advisory locks. A transaction-pooled application connection cannot carry those locks. Configure `DATABASE_SESSION_URL` with a direct PostgreSQL or session-pooling endpoint for the same database as the application Repo. `:database_session_url` application configuration and the provisioning `:session_url` option provide the same seam. The existing direct Repo configuration remains compatible when no separate URL is needed.

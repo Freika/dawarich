@@ -14,7 +14,11 @@ defmodule Dawarich.Auth.CloudRegistrationTest do
       repo: ScratchRepo,
       self_hosted: false,
       log_rounds: 4,
-      env: %{"SELF_HOSTED" => "false"},
+      env: %{
+        "SELF_HOSTED" => "false",
+        "MANAGER_URL" => "https://manager.example.invalid",
+        "JWT_SECRET_KEY" => "synthetic-l1-config"
+      },
       callbacks: %{webhook: fn _ -> {:error, :injected_publication_failure} end}
     }
 

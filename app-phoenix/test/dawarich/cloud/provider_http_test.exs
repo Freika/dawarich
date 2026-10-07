@@ -75,7 +75,10 @@ defmodule Dawarich.Cloud.ProviderHTTPTest do
       end)
 
     assert {:ok, 302, ""} =
-             ProviderHTTP.post(:manager, "/api/v1/users", [], "{}", env: %{"MANAGER_URL" => base})
+             ProviderHTTP.post(:manager, "/api/v1/users", [], "{}",
+               test_loopback: true,
+               env: %{"MANAGER_URL" => base}
+             )
 
     Task.await(task)
     assert {:error, :timeout} = :gen_tcp.accept(destination.listen, 20)
@@ -99,6 +102,7 @@ defmodule Dawarich.Cloud.ProviderHTTPTest do
 
         assert {:error, :timeout} =
                  ProviderHTTP.post(:manager, "/api/v1/users", [{"Authorization", marker}], marker,
+                   test_loopback: true,
                    env: %{"MANAGER_URL" => base}
                  )
 
@@ -113,6 +117,7 @@ defmodule Dawarich.Cloud.ProviderHTTPTest do
 
         assert {:error, :too_large} =
                  ProviderHTTP.post(:manager, "/api/v1/users", [{"Authorization", marker}], marker,
+                   test_loopback: true,
                    env: %{"MANAGER_URL" => base}
                  )
 

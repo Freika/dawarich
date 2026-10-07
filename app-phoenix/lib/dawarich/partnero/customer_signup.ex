@@ -28,40 +28,42 @@ defmodule Dawarich.Partnero.CustomerSignup do
   defp deliver(repo, user, partner, opts) do
     env = WebhookCommands.env(opts)
 
-    if WebhookCommands.blank?(env["PARTNERO_API_KEY"]) or WebhookCommands.blank?(partner) do
+    if WebhookCommands.blank?(partner) do
       :ok
     else
-      case repo.query!(
-             "SELECT email,first_name,last_name FROM users WHERE id=$1 AND deleted_at IS NULL",
-             [user],
-             log: false
-           ).rows do
-        [[email, first, last]] ->
-          payload = %{
-            partner: %{key: partner},
-            key: Integer.to_string(user),
-            email: email,
-            name: first,
-            surname: last
-          }
+      with :ok <- Dawarich.Cloud.Configuration.required(env, "PARTNERO_API_KEY") do
+        case repo.query!(
+               "SELECT email,first_name,last_name FROM users WHERE id=$1 AND deleted_at IS NULL",
+               [user],
+               log: false
+             ).rows do
+          [[email, first, last]] ->
+            payload = %{
+              partner: %{key: partner},
+              key: Integer.to_string(user),
+              email: email,
+              name: first,
+              surname: last
+            }
 
-          headers = [
-            {"Authorization", "Bearer " <> env["PARTNERO_API_KEY"]},
-            {"Content-Type", "application/json"},
-            {"Accept", "application/json"}
-          ]
+            headers = [
+              {"Authorization", "Bearer " <> env["PARTNERO_API_KEY"]},
+              {"Content-Type", "application/json"},
+              {"Accept", "application/json"}
+            ]
 
-          Dawarich.Cloud.ProviderHTTP.post(
-            :partnero,
-            "/v1/customers",
-            headers,
-            Jason.encode!(payload),
-            transport_options(opts)
-          )
-          |> response()
+            Dawarich.Cloud.ProviderHTTP.post(
+              :partnero,
+              "/v1/customers",
+              headers,
+              Jason.encode!(payload),
+              transport_options(opts)
+            )
+            |> response()
 
-        [] ->
-          :ok
+          [] ->
+            :ok
+        end
       end
     end
   end

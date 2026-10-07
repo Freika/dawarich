@@ -2,6 +2,8 @@ defmodule Dawarich.Cloud.ProviderHTTP do
   @moduledoc false
   alias Dawarich.Photos.ProviderHTTP, as: Transport
 
+  @test_loopback Application.compile_env(:dawarich, :cloud_test_loopback, false)
+
   @paths %{
     manager: ["/api/v1/users", "/api/v1/users/unlink"],
     partnero: ["/v1/customers"]
@@ -44,8 +46,14 @@ defmodule Dawarich.Cloud.ProviderHTTP do
     env = Keyword.get_lazy(opts, :env, &System.get_env/0)
     base = env["MANAGER_URL"]
 
-    if Transport.base_url?(base) and URI.parse(base).path in [nil, ""],
+    if Dawarich.Cloud.Configuration.manager_origin?(base) or test_loopback?(base, opts),
       do: {:ok, base},
       else: {:error, :invalid_origin}
+  end
+
+  defp test_loopback?(base, opts) do
+    @test_loopback and opts[:test_loopback] == true and Transport.base_url?(base) and
+      URI.parse(base).scheme == "http" and URI.parse(base).host in ["127.0.0.1", "::1"] and
+      URI.parse(base).path in [nil, ""]
   end
 end

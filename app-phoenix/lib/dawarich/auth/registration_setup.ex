@@ -3,13 +3,12 @@ defmodule Dawarich.Auth.RegistrationSetup do
   alias Dawarich.Auth.{Account, RegistrationAttribution}
   alias Dawarich.{Notifications, Repo, SubscriptionToken}
 
-  def ready?(%{self_hosted: false, registration_channel: :mobile} = context),
-    do: is_function(get_in(context, [:callbacks, :webhook]), 1)
+  def ready?(%{self_hosted: false} = context) do
+    env = Map.get_lazy(context, :env, &System.get_env/0)
 
-  def ready?(%{self_hosted: false} = context),
-    do:
-      is_function(get_in(context, [:callbacks, :webhook]), 1) and
-        is_binary(System.get_env("JWT_SECRET_KEY")) and is_binary(System.get_env("MANAGER_URL"))
+    is_function(get_in(context, [:callbacks, :webhook]), 1) and
+      Dawarich.Cloud.Configuration.manager(env) == :ok
+  end
 
   def ready?(_), do: true
 

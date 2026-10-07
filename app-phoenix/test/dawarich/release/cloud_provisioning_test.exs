@@ -346,7 +346,12 @@ defmodule Dawarich.Release.CloudProvisioningTest do
     do:
       Keyword.merge(
         [
-          env: %{"SELF_HOSTED" => "false", "ALLOW_EMAIL_PASSWORD_REGISTRATION" => "true"},
+          env: %{
+            "SELF_HOSTED" => "false",
+            "ALLOW_EMAIL_PASSWORD_REGISTRATION" => "true",
+            "MANAGER_URL" => "https://manager.example.invalid",
+            "JWT_SECRET_KEY" => "synthetic-l1-config"
+          },
           command: fn _ -> {:ok, nil} end
         ],
         extra
