@@ -64,7 +64,7 @@ defmodule Dawarich.Photos.ProviderHTTP do
           end
 
         {:error, reason} ->
-          transport_error(reason)
+          connect_error(reason)
       end
     else
       {:error, :invalid_url}
@@ -130,4 +130,6 @@ defmodule Dawarich.Photos.ProviderHTTP do
 
   defp transport_error(%Mint.TransportError{reason: :timeout}), do: {:error, :timeout}
   defp transport_error(_), do: {:error, :transport}
+  defp connect_error(%Mint.TransportError{reason: :timeout}), do: {:error, :connect_timeout}
+  defp connect_error(_), do: {:error, :connection}
 end

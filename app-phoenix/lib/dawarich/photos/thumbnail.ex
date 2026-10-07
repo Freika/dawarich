@@ -80,11 +80,8 @@ defmodule Dawarich.Photos.Thumbnail do
   defp classify(:too_large), do: {:replay, "photo source body exceeds the size cap"}
   defp classify({:error, :timeout}), do: :timeout
 
-  defp classify({:error, {:failed_connect, details}}) do
-    if Enum.any?(details, &match?({_family, _options, :timeout}, &1)),
-      do: :timeout,
-      else: {:replay, "photo source unreachable"}
-  end
+  defp classify({:error, :connect_timeout}), do: :timeout
+  defp classify({:error, :connection}), do: {:replay, "photo source unreachable"}
 
   defp classify({:error, _reason}), do: {:replay, "photo source transport failure"}
 
