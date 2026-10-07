@@ -193,6 +193,14 @@ path, host, symlink, compression and conditional-response checks still apply.
 then checks the complete repository importmap and extensionless module paths.
 Browser verification also checks that the unlocked page renders a route canvas.
 
+Every Phoenix app document includes the exported `config/importmap.rb` pins,
+including signed-out pages, in both standalone and coexistence mode. `app.js`
+eagerly imports the video studio hook, whose dependencies include the Rails-pinned
+`poster_studio`, `video_studio`, `i18n` and Stimulus modules. Omitting those pins
+breaks the module graph before LiveSocket starts. Phoenix's own script URLs win
+when names overlap. The asset test audits every literal bare import under
+`priv/static/js`, including dynamic imports, against the shared importmap.
+
 ## Trip browser form admission
 
 Native trip create and update accept Trix's unscoped scalar `href` field while

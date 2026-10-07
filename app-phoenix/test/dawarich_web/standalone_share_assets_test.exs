@@ -69,6 +69,35 @@ defmodule DawarichWeb.StandaloneShareAssetsTest do
 
   defp host_conn, do: %{build_conn() | req_headers: [{"host", "www.example.com"}]}
 
+  test "every native JavaScript bare import resolves through Rails pins in standalone and coexistence" do
+    specifiers =
+      for file <- Path.wildcard("priv/static/js/**/*.js"),
+          [_, name] <-
+            Regex.scan(~r/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)["']([^"']+)["']/, File.read!(file)),
+          not String.starts_with?(name, [".", "/"]),
+          do: name
+
+    assert "poster_studio/data/providers" in specifiers
+    assert "video_studio/video_renderer" in specifiers
+
+    for mode <- ["off", nil], rails_js <- [false, true] do
+      if mode,
+        do: System.put_env("DAWARICH_RAILS", mode),
+        else: System.delete_env("DAWARICH_RAILS")
+
+      imports =
+        DawarichWeb.Layouts.importmap(rails_js) |> Jason.decode!() |> Map.fetch!("imports")
+
+      for name <- Enum.uniq(specifiers) do
+        assert is_binary(imports[name]), "#{inspect(mode)}/#{rails_js}: missing #{name}"
+
+        if expected = Assets.rails_imports()[name], do: assert(imports[name] == expected)
+      end
+
+      assert Enum.any?(Map.keys(imports), &String.starts_with?(&1, "controllers/"))
+    end
+  end
+
   test "standalone phrase unlock serves every public importmap module and extensionless import",
        ctx do
     id = user!()
