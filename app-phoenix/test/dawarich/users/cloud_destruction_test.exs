@@ -9,12 +9,18 @@ defmodule Dawarich.Users.CloudDestructionTest do
 
   setup do
     saved = System.get_env("DAWARICH_RAILS")
+    previous_mode = System.get_env("SELF_HOSTED")
     System.put_env("DAWARICH_RAILS", "off")
+    System.put_env("SELF_HOSTED", "false")
 
     on_exit(fn ->
       if saved,
         do: System.put_env("DAWARICH_RAILS", saved),
         else: System.delete_env("DAWARICH_RAILS")
+
+      if previous_mode,
+        do: System.put_env("SELF_HOSTED", previous_mode),
+        else: System.delete_env("SELF_HOSTED")
     end)
 
     start_oban(__MODULE__)
