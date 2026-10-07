@@ -3,6 +3,39 @@ defmodule Dawarich.AfterCommitWrapperGuardTest do
 
   alias Dawarich.Test.AfterCommitGuard
 
+  @tag :sa_gate_graph_cost
+  test "ownership guard bounds converging graph work while retaining reachable eviction checks" do
+    layers =
+      Enum.map_join(0..10, "\n", fn n ->
+        "def layer#{n}, do: [layer#{n + 1}(), layer#{n + 1}()]"
+      end)
+
+    source = """
+    defmodule GuardConvergence do
+      def write(repo), do: repo.transaction(fn -> layer0() end)
+      #{layers}
+      def layer11, do: :ok
+      def unreachable, do: Dawarich.TtlCache.delete(:synthetic)
+    end
+    """
+
+    with_source(source, fn path ->
+      {:reductions, before} = Process.info(self(), :reductions)
+      violations = AfterCommitGuard.violations([path])
+      {:reductions, after_count} = Process.info(self(), :reductions)
+      assert violations == []
+      assert after_count - before < 50_000
+
+      File.write!(
+        path,
+        String.replace(source, "def layer11, do: :ok", "def layer11, do: unreachable()")
+      )
+
+      assert [{^path, {"Elixir.GuardConvergence", :write, 1}, _}] =
+               AfterCommitGuard.violations([path])
+    end)
+  end
+
   test "R2 production ownership closure follows the caller's captured and aliased callbacks" do
     sources =
       for callback <- ["&clear/0", "&Cleaner.clear/0", "fn -> Cache.delete(:synthetic) end"] do
