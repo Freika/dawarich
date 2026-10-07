@@ -12,7 +12,7 @@ defmodule Dawarich.Mail.SmtpPolicyTest do
     html: "<p>Policy</p>"
   }
 
-  @tag smtp_policy: "unsupported"
+  @tag a12f3b_case: "M01Unsupported", smtp_policy: "unsupported"
   test "unsupported Rails authentication refuses before connection including the E2E sink" do
     for mechanism <- ~w(digest_md5 gssapi ntlm xoauth2),
         env <- [
@@ -41,7 +41,7 @@ defmodule Dawarich.Mail.SmtpPolicyTest do
     end
   end
 
-  @tag smtp_policy: "negotiation"
+  @tag a12f3b_case: "M01Negotiation", smtp_policy: "negotiation"
   test "native SMTP refuses ambiguous AUTH and preserves required TLS without weaker fallback" do
     for mechanism <- ~w(plain login cram_md5) do
       wire = mechanism |> String.upcase() |> String.replace("_", "-")

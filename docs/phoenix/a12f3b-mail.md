@@ -1,6 +1,6 @@
 # A12f-3b MAIL producer contracts
 
-Last updated: 2026-10-06. Scope: plan C M01–M12. This package supplies native mail producer seams and preserves Rails behavior; it does not activate Cloud routing, flip owners, or certify source retirement.
+Last updated: 2026-10-07. Scope: plan C M01–M12. This package supplies native mail producer seams and preserves Rails behavior; it does not activate Cloud routing, flip owners, or certify source retirement.
 
 ## Producer interfaces
 
