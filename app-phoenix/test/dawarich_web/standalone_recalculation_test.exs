@@ -310,6 +310,55 @@ defmodule DawarichWeb.StandaloneRecalculationTest do
     assert rows("SELECT count(*) FROM job_outbox") == [[1]]
   end
 
+  @tag review_finding: "R1"
+  test "rereview Rails oracle padded per-form CSRF matches strict Rails verification", %{id: id} do
+    Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
+    prepare_user(id)
+    corpus = Jason.decode!(File.read!("test/fixtures/standalone/csrf.json"))
+    session = RailsUser.session(id, %{"_csrf_token" => corpus["synthetic_session"]})
+
+    for item <- corpus["cases"] do
+      token = Enum.join(item["token_parts"])
+      response = review_form(session, %{"authenticity_token" => token})
+      assert response.status == if(item["verified"], do: 302, else: 422), item["name"]
+
+      assert DawarichWeb.RailsCsrf.valid?(session, token, "/tracks/recalculation", "POST") ==
+               item["verified"],
+             item["name"]
+
+      assert Dawarich.Auth.ActionCsrf.valid?(
+               session,
+               token,
+               "POST",
+               "/tracks/recalculation"
+             ) ==
+               item["verified"],
+             item["name"]
+    end
+
+    padded =
+      corpus["cases"]
+      |> Enum.find(&(&1["name"] == "padded_per_form"))
+      |> Map.fetch!("token_parts")
+      |> Enum.join()
+
+    assert String.ends_with?(padded, "==")
+
+    assert review_form(session, %{"authenticity_token" => "invalid"}, [{"x-csrf-token", padded}]).status ==
+             302
+
+    assert review_form(session, %{"authenticity_token" => padded}, [{"x-csrf-token", "invalid"}]).status ==
+             302
+
+    padded_session = %{session | "_csrf_token" => session["_csrf_token"] <> "="}
+    assert review_form(padded_session, %{"authenticity_token" => padded}).status == 302
+
+    assert rows("SELECT command_type,payload->>'user_id' FROM job_outbox") ==
+             [["transportation.user_reclassify", Integer.to_string(id)]]
+
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+  end
+
   @tag :review_fix
   @tag review_finding: "F4"
   test "review anonymous form with valid CSRF redirects to sign in", _ctx do

@@ -6,8 +6,11 @@ flag, and inserts the outbox event before reserving pending state. Source-owned
 or failed production remains retryable without a false 30-minute reservation.
 
 The web action `POST /tracks/recalculation` accepts global and action/method
-specific Rails CSRF tokens. Either the body or header token can verify this
-request, as in Rails `verified_request?`; wrong action/method, missing tokens and
+specific Rails CSRF tokens. Strict Base64 decoding accepts padded and unpadded
+URL-safe or standard encodings, then XOR-unmasks 64-byte tokens. Rails legacy
+32-byte real tokens and masked real/global tokens are accepted; malformed
+padding, whitespace, nonzero pad bits and wrong decoded lengths are refused.
+Either the body or header token can verify this request, as in Rails `verified_request?`; wrong action/method, missing tokens and
 foreign origins still refuse. Existing conservative coexistence admission for
 all map writes remains. Extra body fields do not select a target: the action
 always uses the session actor. A valid anonymous form reaches the existing
@@ -36,17 +39,26 @@ DRB-FIX-SWEEP6-RETRY. Other admission changes restore Rails behavior.
 
 `app-phoenix/scripts/parity/standalone_recalculation_spec.rb` records the web
 fixture with `RECORD_RAILS_PARITY=true`, clearing jobs between scenarios and
-using Rails' own per-form token with forgery protection enabled. Ordinary runs
+using Rails' own per-form token with forgery protection enabled. The padded
+per-form request is independently checked for a 302 response, verified request
+and one transportation job. `test/fixtures/standalone/csrf.json` stores only a
+public synthetic session and Rails-generated tokens for 17 acceptance/refusal
+cases as reconstructable string parts; the ordinary recorder joins the parts
+and validates them against Rails again. Ordinary runs
 compare the stored web snapshot. A clean web request queues only
 `TransportationModes::UserReclassifyJob`. The source characterization also
 confirms actor-only extra parameters, anonymous redirect, and Rails' two queued
 jobs after two pre-worker submissions.
 
 `test/dawarich_web/standalone_recalculation_test.exs` retains the review's five
-named scenarios plus the isolated-fixture assertion. The retry scenario also
-covers SQL uniqueness, missing Redis progress, empty and nonempty fan-outs,
+named scenarios plus the isolated-fixture assertion and the padded-token
+regression. That regression submits the Rails corpus through the real Endpoint,
+checks both shared CSRF validators, verifies body/header alternatives and a
+padded session token, and proves actor-only exactly-once native queueing. The
+retry scenario also covers SQL uniqueness, missing Redis progress, empty and nonempty fan-outs,
 repeated progress delivery and a fresh request after completion. Named source
-mutations and release gates are recorded in the controller's fix2 review report.
+mutations and release gates are recorded in the controller's fix2 and fix3 review
+reports.
 
 Shared index: AFFiNE, **Dawarich — Standalone journey sweeps and native
 confirmation** (`yOmZHafRYnvfFikBv_3K0`).
