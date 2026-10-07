@@ -89,5 +89,8 @@ No signed-download policy, queue, migration or Cloud lifecycle change is made.
 Named mode-specific cases in `media_ownership_test.exs` and
 `spec/jobs/posters/media_ownership_spec.rb` reproduce each defect, including failed
 storage retries and concurrent independent analysis events for one blob. See
-FRB-047/048/049 and ED-FIX-MEDIA-OWNERSHIP; full evidence is recorded in the
+[FRB-028](fixed-rails-bugs.md#frb-028--a-signed-route-video-upload-can-be-adopted-across-accounts),
+[FRB-029](fixed-rails-bugs.md#frb-029--deferred-poster-purges-leave-old-native-downloads-usable),
+[FRB-030](fixed-rails-bugs.md#frb-030--accepted-rails-poster-jobs-bypass-the-native-handoff-fences)
+and ED-FIX-MEDIA-OWNERSHIP; full evidence is recorded in the
 controller's `impl-fix-media-ownership.report.md`.

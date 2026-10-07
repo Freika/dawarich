@@ -35,7 +35,7 @@ dependent references with the existing native error. Point nullification,
 extracted import links and place/trip dependent writes are owner-scoped.
 Foreign extracted import references without foreign-key constraints remain
 unchanged when the marker disappears. The inherited Rails isolation defect is
-registered as FRB-050 in `docs/phoenix/fixed-rails-bugs.md` under ruling 17.
+registered as [FRB-031](fixed-rails-bugs.md#frb-031--demo-removal-can-alter-another-accounts-dependent-records) in `docs/phoenix/fixed-rails-bugs.md` under ruling 17.
 
 ## HOT handoff
 

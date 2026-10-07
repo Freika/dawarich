@@ -245,8 +245,9 @@ smart detection and fleet/redetection callers. Accepted workers still clear the
 debounce claim before skipping the deleted actor.
 
 Scoped reconciliation: ED-FIX-VISITS-NULL-ISLAND and ED-FIX-VISITS-CONCURRENT in
-`app-phoenix/parity/expected_diffs.md`; FRB-052 and FRB-053 in the fixed Rails bugs
-register (provisional feature IDs). Soft-deleted admission restores Rails parity
+`app-phoenix/parity/expected_diffs.md`; [FRB-033](fixed-rails-bugs.md#frb-033--null-island-cleanup-leaves-restored-demo-visit-counts-cached)
+and [FRB-034](fixed-rails-bugs.md#frb-034--stale-concurrent-suggestions-truncate-newer-committed-visits)
+in the fixed Rails bugs register. Soft-deleted admission restores Rails parity
 and adds no intentional-difference row. Gate and mutation evidence belongs to
 the fix4 controller report. AFFiNE synchronization remains controller-owned
 under the master plan's delegate-write restriction.
