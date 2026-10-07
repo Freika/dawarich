@@ -83,7 +83,8 @@ defmodule Dawarich.Trips.RichAttachmentsTest do
     assert {:ok, roundtrip} = RichContent.canonical(form.description, ScratchRepo)
     assert roundtrip =~ "sgid="
     assert form.description =~ "auwald.txt"
-    refute form.description =~ "<script>"
+    assert {:ok, display} = RichContent.read(body, ScratchRepo)
+    refute display =~ "<script>"
 
     assert {:ok, _} =
              WebWrite.run(ScratchRepo, :update, c.user, trip.id, %{"name" => "Renamed"}, %{
@@ -268,7 +269,8 @@ defmodule Dawarich.Trips.RichAttachmentsTest do
            }
 
     assert {:ok, form} = WebForm.load(ScratchRepo, c.user, trip.id, %{})
-    assert form.description =~ "representations/redirect/"
+    assert {:ok, display} = RichContent.read(attachment(blob.id), ScratchRepo)
+    assert display =~ "representations/redirect/"
     assert form.description =~ "data-trix-attachment"
     [[composed]] = rows("SELECT metadata FROM active_storage_blobs WHERE id=$1", [blob.id])
 
@@ -332,6 +334,93 @@ defmodule Dawarich.Trips.RichAttachmentsTest do
     assert {:ok, canonical} = RichContent.canonical(form.description, ScratchRepo)
     assert {:ok, again} = RichContent.read(canonical, ScratchRepo)
     assert again =~ "attachment-gallery attachment-gallery--2"
+  end
+
+  @tag a12f3a_t04_editor: true
+  test "T04: Trix editor preserves source attachment types and nullable dimensions", c do
+    {id, _} = blob(c.root, "text/plain", "auwald.txt")
+
+    rows("UPDATE active_storage_blobs SET metadata=$2 WHERE id=$1", [
+      id,
+      Jason.encode!(%{"identified" => true, "analyzed" => true, "width" => 16.0, "height" => 9.0})
+    ])
+
+    cases = [
+      {attachment(id),
+       %{
+         "contentType" => "text/plain",
+         "filename" => "auwald.txt",
+         "filesize" => 9,
+         "width" => nil,
+         "height" => nil
+       }},
+      {"<action-text-attachment content-type=\"image/png\" url=\"https://example.test/picture.png\" width=\"16.0\"></action-text-attachment>",
+       %{
+         "contentType" => "image/png",
+         "url" => "https://example.test/picture.png",
+         "width" => nil
+       }},
+      {"<action-text-attachment content-type=\"text/html\" content=\"&lt;div&gt;Leipzig&lt;/div&gt;\"></action-text-attachment>",
+       %{"contentType" => "text/html", "content" => "<div>Leipzig</div>"}},
+      {attachment_sgid("invalid"), %{}}
+    ]
+
+    for {body, expected} <- cases do
+      assert {:ok, editor} = RichContent.editor(body, ScratchRepo)
+
+      [json] =
+        editor
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("figure[data-trix-attachment]")
+        |> LazyHTML.attribute("data-trix-attachment")
+
+      assert Map.delete(Jason.decode!(json), "sgid") == expected
+      assert {:ok, canonical} = RichContent.canonical(editor, ScratchRepo)
+      refute canonical =~ "width=\"\""
+    end
+
+    inline =
+      "<action-text-attachment content-type=\"text/html\" content=\"&lt;div&gt;Leipzig&lt;/div&gt;\"></action-text-attachment>"
+
+    assert {:ok, trip} =
+             WebWrite.run(ScratchRepo, :create, c.user, nil, attrs(inline), %{now: @now})
+
+    assert {:ok, form} = WebForm.load(ScratchRepo, c.user, trip.id, %{})
+    assert form.description =~ "data-trix-attachment"
+
+    assert {:invalid, errors, values} =
+             Dawarich.Trips.WebParams.parse(c.user, Map.put(attrs(inline), "name", ""), %{}, %{
+               repo: ScratchRepo
+             })
+
+    invalid = WebForm.invalid(form, errors, values, ScratchRepo)
+
+    assert invalid.description =~ "data-trix-attachment"
+
+    for previous <- [inline, "<action-text-attachment></action-text-attachment>"] do
+      rows(
+        "UPDATE action_text_rich_texts SET body=$2 WHERE record_type='Trip' AND record_id=$1",
+        [trip.id, previous]
+      )
+
+      assert {:ok, _} =
+               WebWrite.run(ScratchRepo, :update, c.user, trip.id, %{"name" => "Name only"}, %{
+                 now: @now
+               })
+
+      assert {:ok, _} =
+               WebWrite.run(
+                 ScratchRepo,
+                 :update,
+                 c.user,
+                 trip.id,
+                 %{"description" => "<div>After</div>"},
+                 %{now: @now}
+               )
+    end
+
+    assert :rails =
+             RichContent.editor("<action-text-attachment></action-text-attachment>", ScratchRepo)
   end
 
   defp attrs(body),

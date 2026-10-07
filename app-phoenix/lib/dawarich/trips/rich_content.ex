@@ -23,11 +23,15 @@ defmodule Dawarich.Trips.RichContent do
 
   def read(_, _repo), do: :rails
 
-  def editor(body, repo \\ Dawarich.Repo) do
-    with {:ok, html} <- read(body, repo) do
-      {:ok, if(html, do: Attachments.editor(html), else: nil)}
-    end
+  def editor(body, repo \\ Dawarich.Repo)
+  def editor(nil, _repo), do: {:ok, nil}
+
+  def editor(body, repo) when is_binary(body) and byte_size(body) <= 2_097_152 do
+    with {:ok, canonical} <- canonical_tree(body, repo),
+         do: Dawarich.Trips.AttachmentEditor.render(canonical, repo)
   end
+
+  def editor(_, _repo), do: :rails
 
   def canonical(body, repo \\ Dawarich.Repo)
 
@@ -63,9 +67,12 @@ defmodule Dawarich.Trips.RichContent do
              {:ok, composed} when is_map(composed) <-
                Jason.decode(attr(attrs, "data-trix-attributes") || "{}") do
           attributes =
-            Enum.map(Map.merge(data, composed), fn {key, value} ->
-              {Macro.underscore(key) |> String.replace("_", "-"), to_string(value)}
-            end)
+            Enum.map(
+              Enum.reject(Map.merge(data, composed), fn {_, value} -> is_nil(value) end),
+              fn {key, value} ->
+                {Macro.underscore(key) |> String.replace("_", "-"), to_string(value)}
+              end
+            )
 
           attributes =
             for key <- @attributes, pair = List.keyfind(attributes, key, 0), pair, do: pair

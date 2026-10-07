@@ -188,9 +188,8 @@ defmodule Dawarich.Trips.Attachments do
     Dawarich.Exports.PurgeWorker.enqueue!(repo, blobs)
   end
 
-  def render(blob, attrs, gallery \\ false) do
+  def attributes(blob, attrs) do
     preview = Representations.representable?(blob)
-    extension = blob.filename |> Path.extname() |> String.trim_leading(".")
     metadata = Jason.decode!(blob.metadata || "{}")
 
     additions =
@@ -199,10 +198,15 @@ defmodule Dawarich.Trips.Attachments do
         [{"filename", blob.filename}, {"filesize", to_string(blob.byte_size)}] ++
         for key <- ~w(width height), metadata[key], do: {key, to_string(metadata[key])}
 
-    full =
-      Enum.reduce(additions, attrs, fn {key, value}, acc ->
-        List.keystore(acc, key, 0, {key, value})
-      end)
+    Enum.reduce(additions, attrs, fn {key, value}, acc ->
+      List.keystore(acc, key, 0, {key, value})
+    end)
+  end
+
+  def render(blob, attrs, gallery \\ false) do
+    preview = Representations.representable?(blob)
+    extension = blob.filename |> Path.extname() |> String.trim_leading(".")
+    full = attributes(blob, attrs)
 
     caption =
       if value = full |> List.keyfind("caption", 0) |> then(&(&1 && elem(&1, 1))),
@@ -218,58 +222,6 @@ defmodule Dawarich.Trips.Attachments do
 
     {full, html}
   end
-
-  def editor(html),
-    do:
-      html
-      |> LazyHTML.from_fragment()
-      |> LazyHTML.to_tree()
-      |> editor_nodes()
-      |> LazyHTML.Tree.to_html()
-
-  defp editor_nodes(nodes), do: Enum.map(nodes, &editor_node/1)
-
-  defp editor_node({"action-text-attachment", attrs, children} = node) do
-    if List.keyfind(attrs, "sgid", 0) do
-      data =
-        Map.new(attrs, fn {key, value} ->
-          key = if key == "content-type", do: "contentType", else: key
-
-          value =
-            cond do
-              key == "previewable" ->
-                value == "true"
-
-              key in ~w(filesize width height) ->
-                case Integer.parse(value) do
-                  {number, ""} -> number
-                  _ -> value
-                end
-
-              true ->
-                value
-            end
-
-          {key, value}
-        end)
-        |> Map.put("content", LazyHTML.Tree.to_html(children))
-
-      composed = Map.take(data, ~w(caption presentation))
-      attrs = [{"data-trix-attachment", Jason.encode!(Map.drop(data, ~w(caption presentation)))}]
-
-      attrs =
-        if map_size(composed) > 0,
-          do: attrs ++ [{"data-trix-attributes", Jason.encode!(composed)}],
-          else: attrs
-
-      {"figure", attrs, []}
-    else
-      node
-    end
-  end
-
-  defp editor_node({tag, attrs, children}), do: {tag, attrs, editor_nodes(children)}
-  defp editor_node(node), do: node
 
   defp representation(blob, gallery) do
     extension = blob.filename |> Path.extname() |> String.trim_leading(".") |> String.downcase()

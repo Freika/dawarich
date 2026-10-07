@@ -156,7 +156,7 @@ defmodule Dawarich.Trips.WebParamsTest do
       end
     end
 
-    assert {:replay, _} =
+    assert {:ok, "<div>After</div>"} =
              WebDescription.prepare(
                "<div>After</div>",
                "<action-text-attachment></action-text-attachment>"

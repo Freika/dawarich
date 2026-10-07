@@ -27,13 +27,18 @@ defmodule Dawarich.Trips.WebForm do
   def active?(user, now),
     do: user.active_until != nil and DateTime.compare(user.active_until, now) == :gt
 
-  def invalid(form, errors, values) do
+  def invalid(form, errors, values, repo \\ Dawarich.Repo) do
     body = values.attributes.description
+
+    {:ok, description} =
+      if body == :unchanged,
+        do: {:ok, form.description},
+        else: Dawarich.Trips.RichContent.editor(body, repo)
 
     form
     |> Map.put(:errors, errors)
     |> Map.put(:values, values.values)
-    |> Map.put(:description, if(body == :unchanged, do: form.description, else: body))
+    |> Map.put(:description, description)
   end
 
   defp trip(_repo, _user_id, nil),

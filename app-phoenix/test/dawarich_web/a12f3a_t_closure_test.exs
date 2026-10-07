@@ -197,7 +197,9 @@ defmodule DawarichWeb.A12f3aTClosureTest do
     TripsSeeds.trip!(%{id: 980_401, user_id: user.id})
     TripsSeeds.rich_text!(980_401, "<p>Rich notes</p><script>alert(1)</script>")
     assert {:ok, form} = Dawarich.Trips.WebForm.load(Repo, user, 980_401, %{})
-    refute form.description =~ "<script>"
+    assert form.description =~ "<script>"
+    assert {:ok, displayed} = Dawarich.Trips.RichContent.read(form.description)
+    refute displayed =~ "<script>"
     assert {:ok, :deleted} = Dawarich.Trips.WebDelete.run(Repo, user, 980_401, %{})
 
     assert Repo.query!("SELECT count(*) FROM action_text_rich_texts WHERE record_id=$1", [980_401]).rows ==

@@ -71,7 +71,7 @@ defmodule Dawarich.Trips.WebNotes do
           commercial(parts, now)
 
         parts["yday"] ->
-          ordinal(parts, now)
+          ordinal_day(parts, now)
 
         is_integer(parts["mday"]) ->
           Date.new!(parts["year"] || now.year, parts["mon"] || now.month, parts["mday"])
@@ -98,7 +98,7 @@ defmodule Dawarich.Trips.WebNotes do
     if day in 1..7 and :calendar.iso_week_number(Date.to_erl(date)) == {year, week}, do: date
   end
 
-  defp ordinal(parts, now) do
+  defp ordinal_day(parts, now) do
     year = parts["year"] || now.year
     day = parts["yday"]
     maximum = if Calendar.ISO.leap_year?(year), do: 366, else: 365

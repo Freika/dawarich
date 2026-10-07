@@ -105,8 +105,11 @@ defmodule DawarichWeb.TripActions do
             conn |> send_resp(500, "") |> halt()
           else
             case WebForm.load(Jobs.repo(), user, id, ctx) do
-              {:ok, form} -> invalid(conn, WebForm.invalid(form, errors, values), ctx.locale)
-              _ -> DawarichWeb.TripRequest.replay(conn, "trip validation form")
+              {:ok, form} ->
+                invalid(conn, WebForm.invalid(form, errors, values, Jobs.repo()), ctx.locale)
+
+              _ ->
+                DawarichWeb.TripRequest.replay(conn, "trip validation form")
             end
           end
 
