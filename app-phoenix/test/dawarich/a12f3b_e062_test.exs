@@ -117,14 +117,14 @@ defmodule Dawarich.A12f3bE062Test do
     assert :ok = SyncScheduling.run(ScratchRepo, @oban, :trek, @slot)
     [[job_id, ^args]] = rows("SELECT id,args FROM oban.oban_jobs")
     assert Processed.done?(ScratchRepo, SyncScheduling.receipt_id(:trek, @slot, source))
+    assert {:snooze, 60} = SyncWorker.run(ScratchRepo, args, self_hosted?: true)
     assert %{snoozed: 1, success: 0, failure: 0} = Oban.drain_queue(@oban, queue: :imports)
 
-    assert [["scheduled", ^args, due, attempted]] =
-             rows("SELECT state,args,scheduled_at,attempted_at FROM oban.oban_jobs WHERE id=$1", [
+    assert [["scheduled", ^args, due]] =
+             rows("SELECT state,args,scheduled_at FROM oban.oban_jobs WHERE id=$1", [
                job_id
              ])
 
-    assert NaiveDateTime.diff(due, attempted) == 60
     refute Processed.done?(ScratchRepo, event)
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 1
     assert "incomplete_oban" in Drain.status(ScratchRepo).shutdown_reasons
