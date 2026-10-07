@@ -20,6 +20,43 @@ defmodule Dawarich.Digests.SeasonalityTest do
     end
   end
 
+  test "all 27 persisted southern aliases use pinned Rails northern seasons for January distance" do
+    kase = DigestFixtures.case!("southern_yearly")
+    DigestFixtures.load!(ScratchRepo, kase)
+
+    ScratchRepo.query!(
+      "UPDATE public.stats SET year = 2025, distance = CASE WHEN id = 14301 THEN 1000 ELSE 0 END"
+    )
+
+    for zone <- ~w(
+      Africa/Blantyre Africa/Brazzaville Africa/Bujumbura
+      Africa/Dar_es_Salaam Africa/Gaborone Africa/Harare
+      Africa/Kigali Africa/Kinshasa Africa/Luanda
+      Africa/Lubumbashi Africa/Lusaka Africa/Maseru
+      Africa/Mbabane Antarctica/DumontDUrville Antarctica/McMurdo
+      Antarctica/Syowa Atlantic/St_Helena Indian/Antananarivo
+      Indian/Christmas Indian/Cocos Indian/Comoro
+      Indian/Kerguelen Indian/Mahe Indian/Mayotte
+      Indian/Reunion Pacific/Funafuti Pacific/Wallis
+    ) do
+      ScratchRepo.query!(
+        "UPDATE public.users SET settings = jsonb_set(settings::jsonb, '{timezone}', to_jsonb($1::text)) WHERE id = 14101",
+        [zone]
+      )
+
+      context = Context.load!(ScratchRepo, 14101, DigestFixtures.options(kase))
+      assert context.raw_zone == zone
+
+      assert Seasonality.calculate(ScratchRepo, context, 2025) == %{
+               "winter" => 100,
+               "spring" => 0,
+               "summer" => 0,
+               "fall" => 0
+             },
+             zone
+    end
+  end
+
   test "seasonality uses scoped months and preserves independent integer rounding" do
     kase = DigestFixtures.case!("lite_partial_yearly")
     DigestFixtures.load!(ScratchRepo, kase)
