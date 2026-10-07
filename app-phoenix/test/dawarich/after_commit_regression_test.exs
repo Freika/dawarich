@@ -29,7 +29,7 @@ defmodule AfterCommitRegressionRepo do
     result
   end
 
-  def transaction(fun), do: Dawarich.ScratchRepo.transaction(fun)
+  def transaction(fun, opts \\ []), do: Dawarich.ScratchRepo.transaction(fun, opts)
   def in_transaction?(), do: Dawarich.ScratchRepo.in_transaction?()
   def rollback(reason), do: Dawarich.ScratchRepo.rollback(reason)
 
@@ -53,25 +53,28 @@ defmodule AfterCommitRegressionStatsRepo do
   def in_transaction?(), do: Dawarich.ScratchRepo.in_transaction?()
   def get_dynamic_repo(), do: Dawarich.ScratchRepo.get_dynamic_repo()
 
-  def transaction(fun) do
-    Dawarich.ScratchRepo.transaction(fn ->
-      result = fun.()
-      {user, key} = Process.get(:probe_repopulate)
+  def transaction(fun, opts \\ []) do
+    Dawarich.ScratchRepo.transaction(
+      fn ->
+        result = fun.()
+        {user, key} = Process.get(:probe_repopulate)
 
-      _old =
-        Task.async(fn ->
-          [[distance]] =
-            Dawarich.ScratchRepo.query!("SELECT distance FROM stats WHERE user_id=$1", [user],
-              log: false
-            ).rows
+        _old =
+          Task.async(fn ->
+            [[distance]] =
+              Dawarich.ScratchRepo.query!("SELECT distance FROM stats WHERE user_id=$1", [user],
+                log: false
+              ).rows
 
-          {:ok, _} = Dawarich.Redis.cache_command(["SET", key, to_string(distance)])
-          distance
-        end)
-        |> Task.await()
+            {:ok, _} = Dawarich.Redis.cache_command(["SET", key, to_string(distance)])
+            distance
+          end)
+          |> Task.await()
 
-      result
-    end)
+        result
+      end,
+      opts
+    )
   end
 end
 

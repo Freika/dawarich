@@ -7,18 +7,29 @@ defmodule Dawarich.Digests.Generation do
   alias Dawarich.Stats.EffectIdentity
 
   def receipt(kind, args) do
-    EffectIdentity.id(args["event_id"], "digests.calculate_" <> period(kind), args)
+    args["execution_receipt"] ||
+      EffectIdentity.id(args["event_id"], "digests.calculate_" <> period(kind), args)
   end
 
   def run(repo, kind, args, opts \\ []) do
     terminal_id = receipt(kind, args)
+    release_failed!(repo, kind, args, terminal_id)
 
-    if Processed.done?(repo, terminal_id) do
+    if Processed.done?(repo, terminal_id) or legacy_done?(repo, kind, args) do
       :ok
     else
       callback(opts, :before_claim)
-      result = generate(repo, kind, args, opts)
-      settle(repo, kind, args, terminal_id, result, opts)
+
+      case generate(repo, kind, args, opts) do
+        {:ok, {:failed, error}} ->
+          {:error, error}
+
+        {:ok, result} ->
+          settle(repo, kind, args, terminal_id, result, opts)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   rescue
     error -> {:error, error}
@@ -26,45 +37,89 @@ defmodule Dawarich.Digests.Generation do
     kind, reason -> {:error, {kind, reason}}
   end
 
+  defp release_failed!(repo, kind, args, terminal_id) do
+    handler = "digests.generate_" <> period(kind)
+    checkpoint = EffectIdentity.id(args["event_id"], handler, args)
+
+    {:ok, :ok} =
+      Dawarich.Transaction.run(repo, fn ->
+        deleted =
+          repo.query!(
+            "DELETE FROM phoenix.processed_commands WHERE event_id=$1 AND handler=$2 RETURNING event_id",
+            [Ecto.UUID.dump!(checkpoint), handler <> ":failed"],
+            log: false
+          )
+
+        if deleted.num_rows == 1 do
+          repo.query!(
+            "DELETE FROM phoenix.processed_commands WHERE event_id=$1 AND handler=$2",
+            [Ecto.UUID.dump!(terminal_id), "digests.calculate_" <> period(kind)],
+            log: false
+          )
+        end
+
+        :ok
+      end)
+  end
+
   defp generate(repo, kind, args, opts) do
     handler = "digests.generate_" <> period(kind)
     checkpoint = EffectIdentity.id(args["event_id"], handler, args)
 
-    {:ok, result} =
-      Dawarich.Transaction.run(repo, fn ->
-        if Processed.claim!(repo, checkpoint, handler) do
-          function = if period(kind) == "month", do: :monthly, else: :yearly
-          result = apply(Run, function, [repo, args, opts])
-          state = generated(repo, kind, args, result)
+    Dawarich.Transaction.run(repo, fn ->
+      if Processed.claim!(repo, checkpoint, handler) do
+        function = if period(kind) == "month", do: :monthly, else: :yearly
+        result = apply(Run, function, [repo, args, opts])
 
-          repo.query!(
-            "UPDATE phoenix.processed_commands SET handler=$2 WHERE event_id=$1",
-            [Ecto.UUID.dump!(checkpoint), handler <> ":" <> state],
-            log: false
-          )
+        state =
+          case result do
+            {:ok, _id} ->
+              "mail"
 
-          state
-        else
-          [[saved]] =
+            :missing ->
+              "missing"
+
+            {:error, error, stack} ->
+              Failure.create!(repo, kind, args["user_id"], error, stack)
+              {:failed, error}
+          end
+
+        case state do
+          {:failed, _} ->
             repo.query!(
-              "SELECT handler FROM phoenix.processed_commands WHERE event_id=$1",
+              "DELETE FROM phoenix.processed_commands WHERE event_id=$1",
               [Ecto.UUID.dump!(checkpoint)],
               log: false
-            ).rows
+            )
 
-          String.replace_prefix(saved, handler <> ":", "")
+          _ ->
+            repo.query!(
+              "UPDATE phoenix.processed_commands SET handler=$2 WHERE event_id=$1",
+              [Ecto.UUID.dump!(checkpoint), handler <> ":" <> state],
+              log: false
+            )
         end
-      end)
 
-    result
+        state
+      else
+        [[saved]] =
+          repo.query!(
+            "SELECT handler FROM phoenix.processed_commands WHERE event_id=$1",
+            [Ecto.UUID.dump!(checkpoint)],
+            log: false
+          ).rows
+
+        String.replace_prefix(saved, handler <> ":", "")
+      end
+    end)
   end
 
-  defp generated(_repo, _kind, _args, {:ok, _id}), do: "mail"
-  defp generated(_repo, _kind, _args, :missing), do: "missing"
-
-  defp generated(repo, kind, args, {:error, error, stack}) do
-    Failure.create!(repo, kind, args["user_id"], error, stack)
-    "failed"
+  defp legacy_done?(repo, kind, args) do
+    repo.query!(
+      "SELECT 1 FROM phoenix.processed_commands WHERE event_id=$1 AND handler=$2",
+      [Ecto.UUID.dump!(args["event_id"]), "digests.calculate_" <> period(kind)],
+      log: false
+    ).num_rows == 1
   end
 
   defp settle(repo, kind, args, terminal_id, result, opts) do

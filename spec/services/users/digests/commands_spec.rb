@@ -118,21 +118,25 @@ RSpec.describe 'Users::Digests::Commands' do
         ready = Queue.new
         store = Queue.new
         finish = Queue.new
-        held = false
+        entered = held = false
+        allow_any_instance_of(Stats::CalculateMonth).to receive(:call).and_wrap_original do |calculate|
+          unless entered
+            entered = true
+            ready << { 'op' => 'rails_ready', 'pid' => ActiveRecord::Base.connection.select_value('SELECT pg_backend_pid()') }
+            store.pop
+          end
+          calculate.call
+        end
         allow_any_instance_of(Users::Digest).to receive(:save!).and_wrap_original do |save, *args, **opts|
           next save.call(*args, **opts) if held
 
           held = true
-          ActiveRecord::Base.transaction do
-            ready << { 'op' => 'rails_ready', 'pid' => ActiveRecord::Base.connection.select_value('SELECT pg_backend_pid()') }
-            store.pop
-            result = save.call(*args, **opts)
-            if order == 'rails_first'
-              ready << { 'op' => 'rails_stored' }
-              finish.pop
-            end
-            result
+          result = save.call(*args, **opts)
+          if order == 'rails_first'
+            ready << { 'op' => 'rails_stored' }
+            finish.pop
           end
+          result
         end
         clear_enqueued_jobs
         calculator = kind == 'monthly' ? Users::Digests::Monthly::CalculatingJob : Users::Digests::Yearly::CalculatingJob
@@ -266,12 +270,12 @@ RSpec.describe 'Users::Digests::Commands' do
              )).to eq([['sidekiq', true]])
 
       failed = JobOutbox.create!(**attributes, event_id: SecureRandom.uuid)
-      allow(klass).to receive(:set).and_raise(IOError, 'digest enqueue down')
+      allow_any_instance_of(klass).to receive(:enqueue).and_raise(IOError, 'digest enqueue down')
       clear_enqueued_jobs
       expect(JobCommands.rehome!(type, by: 'digest-spec')).to eq(moved: 0, left: 1, error: 'IOError')
       expect(enqueued_jobs).to be_empty
       expect(failed.reload).to have_attributes(state: 'pending', scheduled_at: at, payload:)
-      allow(klass).to receive(:set).and_call_original
+      allow_any_instance_of(klass).to receive(:enqueue).and_call_original
     end
   end
 
@@ -453,7 +457,7 @@ RSpec.describe 'Users::Digests::Commands' do
       end
       ActiveRecord::Base.transaction do
         ActiveRecord::Base.connection.execute('DROP TABLE phoenix.job_owners')
-        expect { klass.perform_now(*arguments) }.to have_enqueued_job(mail).with(*arguments)
+        expect { klass.perform_now(*arguments) }.not_to have_enqueued_job(mail)
         raise ActiveRecord::Rollback
       end
     end

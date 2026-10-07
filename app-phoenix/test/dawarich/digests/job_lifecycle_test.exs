@@ -45,7 +45,12 @@ defmodule Dawarich.Digests.JobLifecycleTest do
         receive(do: (:finish -> :ok))
       end
 
-      opts = F.job_options(kase) ++ [before_store: before_store, after_store: after_store]
+      stats = fn repo, user, year, month, options ->
+        if month == (payload["month"] || 1), do: before_store.(nil)
+        Dawarich.Stats.CalculateMonth.call(repo, user, year, month, options)
+      end
+
+      opts = F.job_options(kase) ++ [stats: stats, after_store: after_store]
       task = Task.async(fn -> worker.perform(job, opts) end)
       task_pid = task.pid
       assert_receive {:ready, ^task_pid, pid}, 5_000
@@ -73,7 +78,7 @@ defmodule Dawarich.Digests.JobLifecycleTest do
       assert [[0]] = rows("SELECT count(*) FROM notifications WHERE user_id=14101")
       assert worker.perform(job, F.job_options(kase)) == :ok
 
-      assert [[1]] =
+      assert [[2]] =
                rows(
                  "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
                )

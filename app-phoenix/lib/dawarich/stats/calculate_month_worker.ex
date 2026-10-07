@@ -5,6 +5,15 @@ defmodule Dawarich.Stats.CalculateMonthWorker do
   alias Dawarich.Stats.{CalculateMonth, EffectIdentity}
   alias Dawarich.Jobs.Processed
 
+  def args_from_command(1, %{"execution_receipt" => receipt} = payload) do
+    with {:ok, ^receipt} <- Ecto.UUID.cast(receipt),
+         {:ok, args} <- args_from_command(1, Map.delete(payload, "execution_receipt")) do
+      {:ok, Map.put(args, "execution_receipt", receipt)}
+    else
+      _ -> {:error, "invalid_payload"}
+    end
+  end
+
   def args_from_command(
         1,
         %{"user_id" => id, "year" => year, "month" => month, "notify_on_failure" => notify} =
@@ -31,7 +40,9 @@ defmodule Dawarich.Stats.CalculateMonthWorker do
       ) do
     repo = Dawarich.Jobs.repo()
     source = args["event_id"] || "oban:#{job.id || Jason.encode!(args)}"
-    receipt = EffectIdentity.id(source, "stats.calculate_month", args)
+
+    receipt =
+      args["execution_receipt"] || EffectIdentity.id(source, "stats.calculate_month", args)
 
     case Dawarich.Transaction.run(repo, fn ->
            if Processed.claim!(repo, receipt, "stats.calculate_month") do

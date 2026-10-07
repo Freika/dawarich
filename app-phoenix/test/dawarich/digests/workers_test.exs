@@ -53,8 +53,11 @@ defmodule Dawarich.Digests.WorkersTest do
             do: [stats_opts: [hexagons: fn _, _, _, _ -> raise error end]],
             else: [before_store: fn _ -> raise error end]
 
-        assert worker.perform(%Oban.Job{args: args}, Keyword.merge(F.job_options(kase), extra)) ==
-                 :ok
+        result = worker.perform(%Oban.Job{args: args}, Keyword.merge(F.job_options(kase), extra))
+
+        if origin == :stats,
+          do: assert(result == :ok),
+          else: assert(match?({:error, %Postgrex.Error{}}, result))
 
         expected = if origin == :stats, do: 1, else: 0
 
@@ -63,7 +66,7 @@ defmodule Dawarich.Digests.WorkersTest do
                    "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'"
                  )
 
-        assert [[1]] =
+        assert [[^expected]] =
                  rows(
                    "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
                  )
@@ -103,7 +106,7 @@ defmodule Dawarich.Digests.WorkersTest do
           else: Calculation.yearly(ScratchRepo, 14101, 2025, opts)
 
       assert {:error, %ArgumentError{}} = result
-      assert worker.perform(%Oban.Job{args: args}, opts) == :ok
+      assert {:error, %ArgumentError{}} = worker.perform(%Oban.Job{args: args}, opts)
       assert [[content]] = rows("SELECT content FROM notifications WHERE user_id=14101")
       assert content =~ "invalid-uuid"
       assert content =~ "Dawarich.Digests.Store.save!"
@@ -117,10 +120,7 @@ defmodule Dawarich.Digests.WorkersTest do
 
       assert length(stack) <= 20
 
-      assert [[1]] =
-               rows(
-                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
-               )
+      assert [[0]] = rows("SELECT count(*) FROM phoenix.processed_commands")
 
       assert [[1]] = rows("SELECT count(*) FROM phoenix.notification_events")
 

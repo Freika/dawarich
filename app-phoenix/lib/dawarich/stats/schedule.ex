@@ -45,7 +45,12 @@ defmodule Dawarich.Stats.Schedule do
               RailsCommands.insert!(
                 repo,
                 "stats.calculate_month",
-                Map.put(args, "run_at", now + delay)
+                args
+                |> Map.put("run_at", now + delay)
+                |> Map.put(
+                  "source_job_id",
+                  EffectIdentity.id(event, "stats.calculate_month", args)
+                )
               )
           end
         end

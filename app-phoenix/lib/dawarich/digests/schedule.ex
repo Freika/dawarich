@@ -57,7 +57,14 @@ defmodule Dawarich.Digests.Schedule do
 
             :sidekiq ->
               due = DateTime.to_unix(at, :microsecond) / 1_000_000
-              RailsCommands.insert!(repo, type, Map.put(args, "run_at", due))
+
+              RailsCommands.insert!(
+                repo,
+                type,
+                args
+                |> Map.put("run_at", due)
+                |> Map.put("source_job_id", EffectIdentity.id(event, type, args))
+              )
           end
 
           :ok
