@@ -19,12 +19,34 @@ transition rules. UTC delegates to the standard library to preserve canonical
 DateTime metadata throughout native workers. Production images already install
 system tzdata.
 
+Constant-offset POSIX ambient zones, including `UTC0` and signed offsets with
+minutes or seconds, are resolved before falling back to `TIME_ZONE`. Named
+zoneinfo zones retain their DST gap and overlap behavior.
+
+`Jobs.TickScheduler` replaces ordinary Oban cron admission. The additive
+`phoenix.cron_ticks` table has a composite primary key on `(key, tick)`; the
+receipt and Oban job commit in one transaction. Completion and job pruning do
+not remove tick receipts. Repeated or concurrent leader evaluations cannot
+admit the same key and UTC scheduled instant twice.
+
+Boot and Oban database-peer leadership acquisition evaluate immediately.
+Evaluation considers only the latest preceding scheduled instant within
+Sidekiq-cron 2.4.0's inclusive 60-second grace, after the key's last durable
+receipt. The source's strict previous-time rule excludes the current tick at
+an exact minute boundary. Routine evaluations run just after that boundary.
+Older missed ticks are not replayed. Jobs carry `cron_tick` metadata so recovered
+nightly, integration and daily-track roots retain the original slot identity.
+
 Coexistence retains the existing UTC scheduler policy. This narrows ED-520 to
 coexistence; the controller owns the shared difference ledger. All source cron
 entries still disable immediate claim-time catch-up, including archive, clear,
 monthly and yearly digest schedules. Missing owner rows still mean Sidekiq,
 persisted pins survive claiming, and Lite warning/mail keys transfer jointly.
 Failed owner transactions return errors rather than becoming successful claims.
+Standalone nightly roots and per-batch reverse-geocoding routes use these same
+owner locks. Pins to Sidekiq reject fresh native nightly roots and route fresh
+children to the source; already accepted leaves and pending invalidation retain
+their existing drain behavior.
 
 Accepted TeslaMate/Trek scheduler wrappers remain visible debt in every
 nonterminal state, including discarded jobs. Their completion is required
@@ -51,6 +73,14 @@ returned and leaves neither a marker nor mail behind. Digest eligibility,
 calendar periods, delivery ownership and accepted continuations use their
 existing native implementations.
 
+Nightly cache invalidation is represented by a durable
+`Geocoding.NightlyInvalidationWorker` job committed with its receipt, or by the
+existing transactional Rails command when the source owns the effect. Redis
+eviction happens after commit; enclosing rollback removes the intent and leaves
+the cached value intact. Redis deletion is idempotent and worker errors remain
+retryable. This small local worker must be consolidated with `AfterCommit.cache`
+when the shared after-commit-effects package is integrated.
+
 ## Verification
 
 Task-specific contracts live in `test/dawarich/a12f3b_g01_test.exs` through
@@ -60,6 +90,14 @@ base. Each new named test has actual RED evidence and a failing named production
 mutation followed by restored GREEN; G01b has baseline and mutation evidence.
 The existing Sidekiq initializer spec characterizes all 24 source definitions
 and Berlin winter/summer and explicit-TZ firing times.
+
+Post-hoc cron regressions live in `test/dawarich/jobs/cron_ticks_test.exs` and
+`test/dawarich/geocoding/nightly_cron_fences_test.exs`: durable database identity,
+completion/pruning/concurrent admission and rollback, exact grace boundaries,
+boot/restart and leadership acquisition, POSIX fixed offsets, standalone rollback
+fences, and cache intent commit/rollback. Every new named regression has RED,
+GREEN, a failing production mutation, and restored GREEN evidence in the
+controller implementation report.
 
 The controller report records task commits, selectors, logs, peer suites and
 final gates. Feature acceptance requires warnings-as-errors compilation, whole

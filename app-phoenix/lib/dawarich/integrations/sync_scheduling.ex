@@ -18,6 +18,7 @@ defmodule Dawarich.Integrations.SyncScheduling do
   def key(:airtrail), do: "cron:airtrail_flight_import_job"
   def key(:teslamate), do: "cron:teslamate_sync_job"
   def key(:trek), do: "cron:trek_sync_job"
+  def slot(%Oban.Job{meta: %{"cron_tick" => tick}}), do: tick
   def slot(%Oban.Job{inserted_at: at}), do: at |> DateTime.to_unix() |> div(60) |> Kernel.*(60)
   def event_id(kind, slot, id), do: uuid("integrations.#{kind}:#{slot}:#{id}")
   def receipt_id(kind, slot, id), do: uuid("integrations.#{kind}.scheduled:#{slot}:#{id}")

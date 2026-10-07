@@ -204,7 +204,11 @@ defmodule Dawarich.ApplicationTest do
       {Dawarich.Jobs.Supervisor, jobs} = List.keyfind(children, Dawarich.Jobs.Supervisor, 0)
 
       assert oban[:node] == node
-      assert oban[:cron] == [crontab: Dawarich.Jobs.Registry.crontab(), timezone: "Etc/UTC"]
+
+      assert oban[:cron] ==
+               {Dawarich.Jobs.TickScheduler,
+                [crontab: Dawarich.Jobs.Registry.crontab(), timezone: "Etc/UTC"]}
+
       assert jobs[:node] == node
       assert jobs[:entries] == Dawarich.Jobs.Claimer.entries("command:visits.suggest")
       assert puma[:env] == [{"DAWARICH_PHOENIX_NODE", node}, {"DAWARICH_BEHIND_PHOENIX", marker}]
