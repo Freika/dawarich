@@ -150,7 +150,7 @@ defmodule Dawarich.Mail.UserCallbacks do
   end
 
   defp publish!(repo, type, payload, key, at) do
-    event = Dawarich.AfterCommit.identity(payload["user_id"], type)
+    event = Dawarich.AfterCommit.identity(payload["user_id"], key)
 
     case Dawarich.AfterCommit.intent(repo, type, payload,
            event_id: event,
