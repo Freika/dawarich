@@ -5,7 +5,13 @@ defmodule Dawarich.Mail.Smtp do
   def deliver(message, env) do
     envelope = {SmtpConfig.envelope_from(message.from), [message.to], data(message)}
 
-    case :gen_smtp_client.send_blocking(envelope, SmtpConfig.options(env)) do
+    options = SmtpConfig.options(env)
+
+    result =
+      Task.async(fn -> :gen_smtp_client.send_blocking(envelope, options) end)
+      |> Task.await(:infinity)
+
+    case result do
       receipt when is_binary(receipt) -> :ok
       {:error, type, detail} -> {:error, {type, detail}}
       {:error, reason} -> {:error, reason}

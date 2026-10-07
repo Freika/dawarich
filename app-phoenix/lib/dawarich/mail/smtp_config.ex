@@ -3,17 +3,31 @@ defmodule Dawarich.Mail.SmtpConfig do
   @speakable ~w(plain login cram_md5)
   @no_auth ~w(none nil false off disabled)
   def options(env) do
+    authenticate?(env)
+
     if blank?(env["SMTP_SERVER"]) and not blank?(env["E2E_SMTP_PORT"]),
-      do: [
-        relay: ~c"127.0.0.1",
-        port: String.to_integer(env["E2E_SMTP_PORT"]),
-        ssl: false,
-        tls: :never,
-        auth: :never,
-        retries: 0,
-        timeout: 60_000
-      ],
+      do: sink(env),
       else: server(env)
+  end
+
+  defp sink(env) do
+    if (authenticate?(env) and
+          (Map.has_key?(env, "SMTP_AUTHENTICATION") or not blank?(env["SMTP_USERNAME"]) or
+             not blank?(env["SMTP_PASSWORD"]))) or
+         String.trim(env["SMTP_SSL"] || "") == "true" or env["SMTP_STARTTLS"] == "true" do
+      raise ArgumentError,
+            "E2E SMTP sink cannot enforce configured authentication or TLS; configure SMTP_SERVER"
+    end
+
+    [
+      relay: ~c"127.0.0.1",
+      port: String.to_integer(env["E2E_SMTP_PORT"]),
+      ssl: false,
+      tls: :never,
+      auth: :never,
+      retries: 0,
+      timeout: 60_000
+    ]
   end
 
   def envelope_from(from) do
@@ -40,7 +54,7 @@ defmodule Dawarich.Mail.SmtpConfig do
       retries: 0,
       timeout: seconds(env["SMTP_READ_TIMEOUT"], 60) * 1_000,
       tls_options: tls_options(env, relay)
-    ] ++ port(env["SMTP_PORT"]) ++ credentials(env, auth?)
+    ] ++ port(env["SMTP_PORT"]) ++ credentials(env, auth?) ++ auth_policy(env, auth?)
   end
 
   defp authenticate?(env) do
@@ -55,8 +69,34 @@ defmodule Dawarich.Mail.SmtpConfig do
 
       true ->
         raise ArgumentError,
-              "SMTP_AUTHENTICATION=#{raw} is not supported by Phoenix mail; use plain, login, cram_md5 or none"
+              "SMTP_AUTHENTICATION=#{raw}: native mail refuses delivery because gen_smtp cannot enforce this mechanism; " <>
+                "no authentication or TLS fallback; supported selections are plain, login, cram_md5 or none"
     end
+  end
+
+  defp auth_policy(_env, false), do: []
+
+  defp auth_policy(env, true) do
+    selected = (env["SMTP_AUTHENTICATION"] || "plain") |> String.trim() |> String.downcase()
+    selected = if selected == "", do: "plain", else: selected
+    wire = selected |> String.upcase() |> String.replace("_", "-") |> String.to_charlist()
+
+    guard = fn
+      ~c"available authentication types, in order of preference: ~p~n", [types] ->
+        unless types == [wire] do
+          throw(
+            {:permanent_failure,
+             "native mail cannot enforce SMTP_AUTHENTICATION=#{selected}: " <>
+               "server must advertise only the selected supported AUTH mechanism; " <>
+               "delivery refused without authentication or TLS fallback"}
+          )
+        end
+
+      _, _ ->
+        :ok
+    end
+
+    [trace_fun: guard]
   end
 
   defp ssl?(env) do

@@ -17,7 +17,24 @@ Archival retry retains its first claim time and deterministic subscription JTI, 
 
 Test-email admission accepts the transport's existing STARTTLS, SSL and plain/login/CRAM-MD5 authentication configuration. Retained Rails test mail is HTML-only without a test MIME header; the Cloud HTTP endpoint rejects the action and self-hosted delivery queues it. The ADMIN owner consumes the existing `TestEmail.run/4` interface.
 
-The existing SMTP client negotiates supported authentication mechanisms from server capabilities. Mechanism selection is not forced to the configured Rails authentication name. This package's configuration matrix and predecessor wire tests do not certify forced-mechanism or live TLS-server parity; M01 remains incomplete. Phoenix also still rejects Rails-configurable `digest_md5`, `gssapi`, `ntlm` and `xoauth2` names. Closing M01 requires selected-mechanism and supported/error parity plus local authenticated/TLS wire tests.
+### Native SMTP authentication boundary
+
+Rails `lib/smtp_config.rb` accepts seven authentication names; this is a configuration allowlist, not a promise that the installed SMTP library implements every name. The locked Rails runtime uses Mail 2.9.1 and net-smtp 0.5.1. net-smtp registers PLAIN, LOGIN, CRAM-MD5 and XOAUTH2 authenticators, and `Net::SMTP#check_auth_args` raises `ArgumentError: wrong authentication type ...` for DIGEST-MD5, GSSAPI and NTLM unless an extension installs an authenticator.
+
+| `SMTP_AUTHENTICATION` | Rails with the locked gems | Native Phoenix |
+| --- | --- | --- |
+| absent, blank, `plain` | Forces PLAIN | PLAIN only when it is the sole mechanism supported by gen_smtp in the server advertisement |
+| `login` | Forces LOGIN | LOGIN under the same sole-mechanism condition |
+| `cram_md5` | Forces CRAM-MD5 | CRAM-MD5 under the same sole-mechanism condition |
+| `xoauth2` | Forces XOAUTH2; password contains the bearer credential | Refuses before connection: the current native client cannot force XOAUTH2 |
+| `digest_md5`, `gssapi`, `ntlm` | Config accepted, then runtime rejects without an authenticator extension | Refuses before connection with the selected name and a clear native operator error |
+| `none`, `nil`, `false`, `off`, `disabled` | Disables AUTH and drops credentials | Disables AUTH and drops credentials |
+
+Native error text states that delivery is refused without authentication or TLS fallback. Authentication failure never becomes unauthenticated mail. The pinned gen_smtp 1.3.0 client chooses CRAM-MD5, LOGIN, PLAIN, then XOAUTH2 and can fall through after rejection; its public options cannot force a mechanism. Native options therefore install a non-logging `trace_fun` guard at its pre-AUTH selection boundary. The guard accepts exactly one recognized mechanism matching the configured choice, and refuses missing, different or multiple recognized choices before sending AUTH or MAIL. Unrecognized advertised mechanisms are ignored by gen_smtp and cannot become fallback candidates. A multi-mechanism server is deliberately refused even if the selected mechanism is present. Keep that configuration on Rails or use a relay that advertises only the selected mechanism; do not disable AUTH or TLS to bypass refusal. The wire regression test must remain green before updating gen_smtp, because the pre-AUTH callback boundary is version-specific.
+
+`SMTP_SSL=true` (or port 465 with no SSL override) uses implicit TLS. Otherwise STARTTLS defaults to required; only an explicit `SMTP_STARTTLS=false` permits a non-TLS connection. Missing STARTTLS or failed TLS cannot fall back to plaintext. Certificate verification defaults to peer with hostname checking; `SMTP_OPENSSL_VERIFY_MODE=none` remains an explicit operator override matching Rails. SMTP sessions run in a short-lived task so failed pre-AUTH negotiation also releases its sockets. The E2E sink accepts no explicitly requested AUTH/SSL/STARTTLS policy and cannot bypass unsupported-mechanism validation.
+
+`test/dawarich/mail/smtp_policy_test.exs` covers unsupported names, sink bypass, all three supported mechanisms, ambiguous/mismatched server advertisements, rejected credentials and unavailable required STARTTLS using a local ephemeral server. Live certificate/implicit-TLS handshake certification and arbitrary forced-mechanism SMTP parity remain outside this refusal boundary; do not describe the transport as exhaustively equivalent to every Rails SMTP configuration.
 
 Location commands continue accepting the existing two-field payload and additionally accept an explicit ambient locale. Native workers use current target preferences first, then the accepted fallback locale. Owner OFF emits only a reverse command; owner ON emits only the forward intent. FAMILY owns request validation and cache-NX producer accounting.
 
@@ -27,7 +44,7 @@ Digest child events are deterministic from period and parent event. They differ 
 
 `Dawarich.Jobs.Drain.status/2` optionally accepts `source_status:` from retained Rails `JobDrain.status`, with observed queued/scheduled/retry/dead/busy/unknown counts. Unknown/nonzero wrapper debt blocks forward and binary rollback gates; an unreadable snapshot also blocks them. This interface never deserializes Ruby arguments or GlobalIDs. Native typed workers discard their own missing recipients without a delivery receipt.
 
-The controller must supply the retained-source census to the operational gate. An absent optional snapshot preserves the preexisting native-only status, and a private synthetic empty queue is not evidence for source retirement. Under master ruling 9, confirmation, member-joined and the four no-op trial APIs/templates may be removed only after retained wrappers are inventoried and disposed. They remain present in this package.
+The controller must supply the retained-source census to the operational gate. An absent optional snapshot preserves native SQL status with `scope: native_sql`, `g49: BLOCKED` and source inspection required, and a private synthetic empty queue is not evidence for source retirement. Under master ruling 9, confirmation, member-joined and the four no-op trial APIs/templates may be removed only after retained wrappers are inventoried and disposed. The merged Phoenix port includes the later retirement decisions and `UserCallbacks.enqueue/4`; MAIL retains its `created/3` and `link/5` producer interfaces alongside that API.
 
 ## Integration handoffs and verification
 
@@ -37,4 +54,4 @@ Named package tests are `app-phoenix/test/dawarich/a12f3b_m01_test.exs` through 
 
 Shared knowledge-base counterpart: `Dawarich — A12f-3b MAIL producer contracts and integration handoffs`, document ID `RufCwSB0sgxVYZGY1Jta_` in the shared AFFiNE engineering workspace.
 
-Mandatory seed-404 gate: 8,564 tests, 4 failures. The obsolete M08 HTTP admission assertion was corrected; its targeted batch passes 5 tests, 0 failures, and its regression mutation fails before restoration. Failures in unchanged monthly export file-writing, import lease-stage synchronization and visit-sweep timezone querying remain for their owners. The full suite was not retried without those root fixes. Package status is FAILED pending gate closure and the remaining M01 transport work. All test runners and session-owned Redis services have stopped.
+Historical pre-merge seed-404 gate: 8,564 tests, 4 failures. The obsolete M08 HTTP admission assertion was corrected; its targeted batch passes 5 tests, 0 failures, and its regression mutation fails before restoration. The current Phoenix port supplies root fixes for batched monthly export writes, deterministic import lease barriers and timezone validation once per sweep page. The review-fix report records their verification and the new seed-404 gate on the merged branch. The authentication refusal boundary above replaces the earlier silent negotiation limitation; broader SMTP certification remains deferred.
