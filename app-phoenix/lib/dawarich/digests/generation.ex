@@ -56,16 +56,29 @@ defmodule Dawarich.Digests.Generation do
 
     case apply(Run, function, [repo, args, opts]) do
       {:error, error, stack} ->
-        Execution.release!(repo, kind, args)
-        Failure.create!(repo, kind, args["user_id"], error, stack)
-        {:failed, error}
+        generation_failed(repo, kind, args, error, stack)
 
-      result ->
-        outcome = if result == :missing, do: "missing", else: "mail"
-        Execution.write!(repo, kind, args, "generated", outcome)
-        Execution.mirror!(repo, kind, args, terminal, outcome)
-        :ok
+      {:error, error} ->
+        generation_failed(repo, kind, args, error, [])
+
+      {:ok, _} ->
+        generated(repo, kind, args, terminal, "mail")
+
+      :missing ->
+        generated(repo, kind, args, terminal, "missing")
     end
+  end
+
+  defp generation_failed(repo, kind, args, error, stack) do
+    Execution.release!(repo, kind, args)
+    Failure.create!(repo, kind, args["user_id"], error, stack)
+    {:failed, error}
+  end
+
+  defp generated(repo, kind, args, terminal, outcome) do
+    Execution.write!(repo, kind, args, "generated", outcome)
+    Execution.mirror!(repo, kind, args, terminal, outcome)
+    :ok
   end
 
   defp publish(repo, kind, args, terminal, opts) do

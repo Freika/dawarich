@@ -30,8 +30,12 @@ upgrade inputs.
 | generated, missing | Complete without mail | No user lookup or calculation is repeated |
 | published | Finish | No generation or publication is repeated |
 
-Successful stats/digest writes commit with `generated`. Publication commits its
-durable mail intent with `published`. Source continuation after internally
+Successful stats/digest writes commit with `generated`. Native generation accepts
+only `{:ok, result}` and `:missing` as success. A returned `{:error, reason}`
+(including explicit calculator transaction rollback) or a raised failure releases
+the claim, records the failure notification, admits no mail, and returns an error
+for retry. Publication commits its durable mail intent with `published`.
+Source continuation after internally
 reported stats errors, partial intermediate stats writes on digest failure,
 locale, timezone, missing-user behavior and mail eligibility remain unchanged.
 Published means durable mail admission, not email delivery or `sent_at`.
@@ -86,3 +90,29 @@ publication, applies upgrade reconciliation, then checks both writer orders.
 synthetic public results and guards DDL ordering before reconciliation. RX30
 checks migration roles denied public schema/table access; RX31 covers the Rails
 1.15.3 schema before a native outbox exists.
+
+## Retained boundary coverage
+
+Round-five tests `fix5_rxstats_test.exs` add the exact monthly/yearly calculator
+rollback (RX32), monitored worker crash after storing the digest but before the
+period state commits (RX33), and resumption of a persisted `generated/missing`
+row while its user exists (RX34). RX35 starts with no period record and adopts
+legacy shared `mail` and `missing` markers. RX36 executes the historical native
+missing-user generator, rolls back terminal publication, retains accepted Oban
+arguments, restores the user, reconciles, and checks native-first and actual
+Rails-first completion without generation or mail.
+
+`period_boundaries_spec.rb` retains Rails persisted-missing resumption (RX37),
+raw source-job terminal adoption (RX38), shared-missing adoption (RX39), original
+job behavior with the period table hidden (RX40), and direct historical
+calculation classes with the additive table present (RX41). RX42 kills and waits
+for only its owned Ruby child at the actual saved-result/before-generated-state
+boundary, waits for the period lock, then retries twice with one monthly or
+twelve yearly stats calculations, one digest and one mail admission.
+
+Coverage-gap cases pass the current baseline and detect named mutations; they
+are characterization regressions. RX32 fails the unmodified round-four source
+and passes the returned-error fix. These targeted tests do not certify an entire
+historical Rails application or full historical suite. Existing RX05 covers the
+native raw terminal; RX20 covers Rails shared-mail adoption. No claim of full
+historical-app certification is made.
