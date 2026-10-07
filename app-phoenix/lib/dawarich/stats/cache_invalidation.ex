@@ -4,13 +4,15 @@ defmodule Dawarich.Stats.CacheInvalidation do
 
   def call(repo, payload, key \\ "command:stats.calculate_month") do
     if Standalone.enabled?() or Ownership.lock(repo, key) == :oban do
-      invalidate(repo, payload)
+      Dawarich.AfterCommit.cache(repo, "stats", payload)
     else
-      RailsCommands.insert!(repo, "stats.caches_invalidated", payload)
+      Dawarich.AfterCommit.with_visibility(repo, "stats", payload, fn ->
+        RailsCommands.insert!(repo, "stats.caches_invalidated", payload)
+      end)
     end
   end
 
-  defp invalidate(repo, %{"user_id" => user, "year" => year, "scope" => scope}) do
+  def invalidate(repo, %{"user_id" => user, "year" => year, "scope" => scope}) do
     if scope == "all",
       do:
         repo.query!("DELETE FROM phoenix.stats_point_counts WHERE user_id=$1", [user], log: false)
@@ -22,7 +24,7 @@ defmodule Dawarich.Stats.CacheInvalidation do
 
     keys = Enum.map(suffixes, &"dawarich/user_#{user}_#{&1}")
     keys = keys ++ Enum.map(keys, &("phoenix/" <> &1))
-    {:ok, _} = Redis.cache_command(["DEL" | keys])
+    {:ok, _} = Redis.cache_command(["UNLINK" | keys])
 
     pattern =
       if year,
@@ -42,7 +44,7 @@ defmodule Dawarich.Stats.CacheInvalidation do
 
   defp delete(keys) do
     for batch <- Enum.chunk_every(keys, 1000) do
-      {:ok, _} = Redis.cache_command(["DEL" | batch])
+      {:ok, _} = Redis.cache_command(["UNLINK" | batch])
     end
   end
 end

@@ -7,7 +7,7 @@ defmodule Dawarich.Geocoding.NightlyInvalidationWorker do
     if conf.repo.in_transaction?() do
       {:error, :uncommitted_transaction}
     else
-      Dawarich.Stats.CacheInvalidation.call(conf.repo, payload)
+      Dawarich.Stats.CacheInvalidation.invalidate(conf.repo, payload)
     end
   end
 end

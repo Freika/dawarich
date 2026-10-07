@@ -20,7 +20,11 @@ defmodule Dawarich.Points.DependentCaches do
 
   defp scan(cursor, pattern) do
     {:ok, [next, keys]} = Redis.cache_command(["SCAN", cursor, "MATCH", pattern, "COUNT", "100"])
-    if keys != [], do: Redis.cache_command(["UNLINK" | keys])
+
+    if keys != [] do
+      {:ok, _} = Redis.cache_command(["UNLINK" | keys])
+    end
+
     if next != "0", do: scan(next, pattern)
   end
 end

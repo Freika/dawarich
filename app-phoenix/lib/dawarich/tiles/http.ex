@@ -122,25 +122,30 @@ defmodule Dawarich.Tiles.Http do
     end
   end
 
-  def epoch(layer, id, {from, to}) do
+  def epoch(layer, id, {from, to}, repo \\ Repo) do
     years =
       (DateTime.from_unix!(from).year |> max(1970) |> min(2100))..(DateTime.from_unix!(to).year
                                                                    |> max(1970)
                                                                    |> min(2100))
 
-    Enum.map_join(Enum.to_list(years) ++ ["all"], "-", fn year ->
-      key = "#{layer}:tile_epoch:#{id}:#{year}"
+    generation = Dawarich.AfterCommit.Visibility.generation(repo, id)
 
-      case Redis.cache_command(["GET", key]) do
-        {:ok, value} when is_binary(value) ->
-          value
+    prefix = if generation == "", do: "", else: generation <> ":"
 
-        _ ->
-          token = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
-          Redis.cache_command(["SET", key, token])
-          token
-      end
-    end)
+    prefix <>
+      Enum.map_join(Enum.to_list(years) ++ ["all"], "-", fn year ->
+        key = "#{layer}:tile_epoch:#{id}:#{year}"
+
+        case Redis.cache_command(["GET", key]) do
+          {:ok, value} when is_binary(value) ->
+            value
+
+          _ ->
+            token = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
+            Redis.cache_command(["SET", key, token])
+            token
+        end
+      end)
   end
 
   def etag(parts) do

@@ -670,7 +670,7 @@ defmodule DawarichWeb.A12f2EClosureTest do
         |> DawarichWeb.Api.PointWritesController.call(:destroy)
 
       assert conn.status == 500
-      assert [[0]] = Repo.query!("SELECT count(*) FROM points WHERE id=$1", [doomed]).rows
+      assert [[1]] = Repo.query!("SELECT count(*) FROM points WHERE id=$1", [doomed]).rows
 
       assert [[1]] =
                Repo.query!("SELECT points_count FROM users WHERE id=$1", [delete_actor]).rows

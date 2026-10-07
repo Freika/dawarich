@@ -9,8 +9,7 @@ defmodule Dawarich.Points.NativeEffects do
         ).rows == [["oban"]]
 
   def enqueue(repo, worker, args, opts \\ []) do
-    repo.insert!(worker.new(args, opts), prefix: "oban", log: false)
-    :ok
+    Dawarich.AfterCommit.enqueue(repo, worker, args, opts)
   end
 
   def achievements(repo, payload) do

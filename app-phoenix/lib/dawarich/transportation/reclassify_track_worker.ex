@@ -65,17 +65,10 @@ defmodule Dawarich.Transportation.ReclassifyTrackWorker do
     if Processed.claim!(repo, event_id, @handler) do
       if Dawarich.Tracks.Owner.lock(repo, "command:transportation.reclassify_track") == :oban or
            Dawarich.Transportation.RecalculationStatus.native?(user_id) do
-        Dawarich.Transportation.RecalculationStatus.increment(user_id, event_id)
-
-        Dawarich.Cable.broadcast_to(
-          "tracks",
-          {:user, user_id},
-          %{
-            "action" => "transport_progress",
-            "status" => Dawarich.Transportation.RecalculationStatus.data(user_id)
-          },
-          repo: repo
-        )
+        Dawarich.AfterCommit.cache(repo, "transport_progress", %{
+          "user_id" => user_id,
+          "event_id" => event_id
+        })
       else
         RailsCommands.insert!(repo, "transport_progress", %{
           "user_id" => user_id,

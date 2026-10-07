@@ -13,6 +13,8 @@ defmodule DawarichWeb.AuthApiKeys.HttpTest do
 
   defmodule CountingRepo do
     defdelegate one(query), to: Dawarich.Repo
+    defdelegate transaction(fun), to: Dawarich.Repo
+    defdelegate insert!(changeset, opts), to: Dawarich.Repo
     defdelegate query!(query, params, opts), to: Dawarich.Repo
 
     def update!(changeset, opts) do

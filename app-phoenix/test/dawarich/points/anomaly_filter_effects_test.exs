@@ -193,7 +193,7 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
         do: assert({:error, "invalid_payload"} = RecalculateWorker.args_from_command(1, bad))
   end
 
-  test "dependent-stage cancellation retains flags and tile effect but forbids later effects" do
+  test "P7 dependent-stage lease loss rolls back flags and every intent" do
     user = user!()
     point!(user, @at, {0, 0})
     Process.put(:anomaly_stage, 0)
@@ -201,7 +201,7 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
     fence = fn fun ->
       n = Process.get(:anomaly_stage)
       Process.put(:anomaly_stage, n + 1)
-      if n == 2, do: raise(Dawarich.Imports.LeaseLost)
+      if n == 3, do: raise(Dawarich.Imports.LeaseLost)
       fun.()
     end
 
@@ -209,8 +209,9 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
       AnomalyFilter.call(ScratchRepo, user, @at, @at, fence: fence)
     end
 
-    assert length(flagged(user)) == 1
-    assert [["points.tile_epoch"]] == rows("SELECT kind FROM phoenix.rails_commands")
+    assert flagged(user) == []
+    assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+    assert [] == rows("SELECT user_id FROM phoenix.achievement_checks")
   end
 
   defp last_revision,
