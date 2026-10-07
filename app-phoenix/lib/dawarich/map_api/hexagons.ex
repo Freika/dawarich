@@ -147,7 +147,7 @@ defmodule Dawarich.MapApi.Hexagons do
              [params["uuid"]]
            ).rows do
         [[id, year, month, cells, sharing, settings, plan, active]] ->
-          if accessible?(sharing) do
+          if accessible?(sharing, user) do
             owner = %{
               id: id,
               timezone: settings["timezone"] || System.get_env("TIME_ZONE", "UTC"),
@@ -209,16 +209,15 @@ defmodule Dawarich.MapApi.Hexagons do
   defp month(_), do: :error
   defp missing, do: {:error, 404, "Shared stats not found or no longer available"}
 
-  defp accessible?(%{"enabled" => true} = settings) do
-    if settings["expiration"] in [nil, false, ""] do
-      true
-    else
-      with {:ok, n} <- Http.strict_timestamp(settings["expires_at"]),
-           do: n >= System.system_time(:second)
-    end == true
-  end
+  defp accessible?(settings, viewer) do
+    zone =
+      case viewer do
+        %{timezone: name} -> Dawarich.RailsTimeZone.name(%{"timezone" => name})
+        _ -> Dawarich.RailsTimeZone.name(%{"timezone" => ""})
+      end
 
-  defp accessible?(_), do: false
+    Dawarich.Digests.Sharing.public?(settings, DateTime.utc_now(), zone)
+  end
 
   defp empty,
     do: %{
