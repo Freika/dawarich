@@ -29,7 +29,7 @@ defmodule Dawarich.Photos.ProviderHTTP do
 
   def base_url?(_url), do: false
 
-  def request(method, base, path, headers, body, skip, default_timeout \\ 10_000) do
+  def request(method, base, path, headers, body, skip, default_timeout \\ 10_000, opts \\ []) do
     if base_url?(base) do
       uri = URI.parse(base <> path)
       timeout = Application.get_env(:dawarich, :photo_source_timeout, default_timeout)
@@ -39,7 +39,8 @@ defmodule Dawarich.Photos.ProviderHTTP do
       headers = Enum.map(headers, fn {k, v} -> {to_string(k), to_string(v)} end)
       headers = if body, do: [{"content-type", "application/json"} | headers], else: headers
 
-      case Mint.HTTP.connect(scheme, uri.host, uri.port,
+      case Mint.HTTP.connect(scheme, Keyword.get(opts, :address, uri.host), uri.port,
+             hostname: uri.host,
              mode: :passive,
              protocols: [:http1],
              transport_opts: [{:timeout, remaining!(deadline)} | ssl]

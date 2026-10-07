@@ -50,7 +50,8 @@ host receives the key. Rails source: `app/services/photos/thumbnail.rb:19`.
 
 Phoenix uses one passive Mint transport for thumbnail, listing and enrichment
 requests. It returns redirect statuses without following Location, matching the
-Atlas client policy. Provider credentials stay on the configured host.
+Atlas client policy. Native provider credentials stay on the configured host. Retained Rails handoffs
+in coexistence retain Rails transport behavior; this is a native guarantee.
 Phoenix source: `app-phoenix/lib/dawarich/photos/provider_http.ex:58`.
 Named test: “photo provider redirects never forward credentials to another
 host” in `app-phoenix/test/dawarich/photos/provider_client_test.exs`.
@@ -69,7 +70,8 @@ Phoenix enforces the existing 32 MiB policy in the shared transport, checking
 Content-Length before reading and counting streamed bytes for every status.
 Overflow closes the socket before the provider finishes its response; exactly
 32 MiB remains valid. Native and legacy thumbnails, provider listings and
-enrichment responses all use this transport.
+enrichment responses all use this transport on native paths. Coexistence Rails
+replays and Rails-owned shared listings retain the Rails response policy.
 Phoenix sources: `app-phoenix/lib/dawarich/photos/provider_http.ex:91` and
 `app-phoenix/lib/dawarich/photos/provider_http.ex:121`.
 Named test: “every photo response is capped during streaming before the provider
@@ -158,3 +160,69 @@ AFFiNE decision counterpart for these four photo fixes: `5-hALFzd96DSlwiLB8lt5`.
   `app-phoenix/test/dawarich/a12f3b_e13_shared_purge_test.exs`.
 - Expected difference: ED-A12F3B-E13-F2. Original Rails job and all hand-backs
   characterized by F3; Rails-owned coexistence remains preserved in DRB-025.
+
+
+## Immich enrichment verification — unsafe follow-up requests
+
+Rails verification follows cross-host redirects with the Immich key, buffers
+oversized EXIF responses, and confirms a provider root response after appending
+an asset path to a query-bearing base. Actual `Immich::VerifyEnrichment` loopback
+probes reproduce all three defects, including 33,554,473-byte valid JSON.
+Rails sources: `app/services/immich/verify_enrichment.rb:19` and `:20`.
+
+Phoenix's real verification worker now delegates its default transport to
+`ProviderHTTP` with the configured base separate from the asset path and its
+existing five-second timeout. A redirect, malformed base or oversized response
+cannot confirm the asset; notification/pass/event behavior remains unchanged.
+Phoenix sources: `app-phoenix/lib/dawarich/immich/enrichment.ex:88` and `:124`;
+shared policy at `app-phoenix/lib/dawarich/photos/provider_http.ex:33`.
+
+Named tests in `app-phoenix/test/dawarich/photos/provider_verification_test.exs`:
+“verification worker refuses cross-host redirects without forwarding its Immich
+key”; “verification and integration clients cancel oversized valid JSON before
+its terminator”; “verification and integration clients reject malformed bases
+instead of confirming the root”. Each has RED, GREEN and its named mutation;
+the real worker runs without an HTTP override in coexistence and standalone.
+
+CHANGELOG-ready: Prevent Immich verification from disclosing credentials through
+redirects or confirming oversized responses and unrelated provider resources.
+No ED/DRB row added; these extend the existing photo corrections under ruling 17.
+
+## Integration provider transport — imports and connection checks
+
+Immich and PhotoPrism connection checks and geodata imports now share native
+provider validation and streaming bounds. PhotoPrism preview-token caching and
+import ownership checks remain in their existing callers. Rails counterparts
+buffer and concatenate unchecked bases at
+`app/services/immich/connection_tester.rb:47`, `:70`,
+`app/services/photoprism/connection_tester.rb:33`,
+`app/services/immich/request_photos.rb:37`, and
+`app/services/photoprism/request_photos.rb:68`.
+
+The whole-tree census also found direct transports in user-configured AirTrail,
+TeslaMate and TREK clients. All now use `ProviderHTTP`. TREK retains its existing
+SSRF resolver and connects to that approved address with the original hostname;
+TeslaMate retains its existing retry classification and attempt budget.
+AirTrail and TeslaMate refuse redirects and malformed bases; one trailing slash
+is still normalized. Native integration bodies above 32 MiB close while streaming.
+
+Actual Rails probes show oversized JSON and query-base root responses accepted
+by AirTrail, TeslaMate and TREK. Rails sources:
+`app/services/air_trail/client.rb:16`, `app/services/tesla_mate/client.rb:83`, and
+`app/services/trek/client.rb:56`, `:68`. Phoenix sources:
+`app-phoenix/lib/dawarich/air_trail/client.ex:13`,
+`app-phoenix/lib/dawarich/imports/teslamate/client.ex:68`, and
+`app-phoenix/lib/dawarich/imports/trek/client.ex:42`.
+
+Named regression: “other user-configured integration providers refuse redirects,
+invalid bases and oversized streams” in
+`app-phoenix/test/dawarich/photos/provider_inventory_test.exs`. Two AirTrail
+regressions in `app-phoenix/test/dawarich/air_trail/client_test.exs` separately
+refuse cross-host HTTPS redirects with certificate verification enabled/skipped.
+All have RED, GREEN and named mutations. Existing malformed double-slash success
+expectations now require refusal; no retry counts or timeouts were widened.
+
+CHANGELOG-ready: Bound native integration responses and reject redirects and
+malformed integration endpoints before provider data can be accepted.
+No ED/DRB row added; controller owns ledger consolidation.
+AFFiNE counterpart remains `5-hALFzd96DSlwiLB8lt5`.

@@ -52,7 +52,7 @@ defmodule Dawarich.Imports.Integrations.Photoprism do
   defp request(settings, offset, cache) do
     query = %{q: "", public: true, quality: 3, after: "1970-01-01", count: 1000}
     query = if offset == 0, do: query, else: Map.put(query, :offset, offset)
-    url = settings["photoprism_url"] <> "/api/v1/photos?" <> URI.encode_query(query)
+    path = "/api/v1/photos?" <> URI.encode_query(query)
 
     headers = [
       {~c"authorization", String.to_charlist("Bearer " <> settings["photoprism_api_key"])},
@@ -60,23 +60,20 @@ defmodule Dawarich.Imports.Integrations.Photoprism do
       {~c"content-type", ~c"application/json"}
     ]
 
-    ssl =
-      if settings["photoprism_skip_ssl_verification"] == true,
-        do: [verify: :verify_none],
-        else: :httpc.ssl_verify_host_options(true)
-
-    case :httpc.request(
+    case Dawarich.Photos.ProviderHTTP.request(
            :get,
-           {String.to_charlist(url), headers},
-           [timeout: 10_000, connect_timeout: 10_000, autoredirect: false, ssl: ssl],
-           body_format: :binary
+           settings["photoprism_url"],
+           path,
+           headers,
+           nil,
+           settings["photoprism_skip_ssl_verification"]
          ) do
-      {:ok, {{_, status, _}, headers, body}} ->
-        type = headers |> List.keyfind(~c"content-type", 0, {nil, ~c""}) |> elem(1)
+      {:ok, status, headers, body} ->
+        type = headers |> List.keyfind("content-type", 0, {nil, ""}) |> elem(1)
 
         if status in 200..299 and String.contains?(to_string(type), "application/json") and
              match?({:ok, _}, Jason.decode(body)) do
-          token = headers |> List.keyfind(~c"x-preview-token", 0, {nil, nil}) |> elem(1)
+          token = headers |> List.keyfind("x-preview-token", 0, {nil, nil}) |> elem(1)
 
           case cache.(if(token, do: to_string(token))) do
             {:ok, _} -> {:ok, status, to_string(type), body}
