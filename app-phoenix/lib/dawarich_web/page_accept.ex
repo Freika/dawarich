@@ -16,42 +16,66 @@ defmodule DawarichWeb.PageAccept do
     "application/x-gzip" => "application/gzip"
   }
 
+  @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
+  @separator ~r/;\s*q="?/
+  @header ~r/[^,\s"](?:[^,"]|"[^"]*")*/
+  @mime ~r/\A(?:\*\/\*|[a-zA-Z0-9][a-zA-Z0-9!\#$&\-^_.+]{0,126}\/(?:\*|[a-zA-Z0-9][a-zA-Z0-9!\#$&\-^_.+]{0,126}))\z/
+  @number ~r/\A[\t\n\v\f\r ]*([+-]?(?:[0-9](?:_?[0-9])*(?:\.(?:[0-9](?:_?[0-9])*)?)?|\.[0-9](?:_?[0-9])*)(?:[eE][+-]?[0-9](?:_?[0-9])*)?)/
+
   def formats(accept, xhr?) do
+    accept = String.trim(accept)
+
     cond do
-      String.trim(accept) == "" ->
-        [if(xhr?, do: "text/javascript", else: "text/html")]
-
-      not xhr? and DawarichWeb.Strangler.browser_like?(accept) ->
-        ["text/html"]
-
-      true ->
-        parse(accept)
+      accept == "" -> [if(xhr?, do: "text/javascript", else: "text/html")]
+      not xhr? and Regex.match?(@browser_like, accept) -> ["text/html"]
+      true -> parse(accept)
     end
   end
 
+  def negotiate(formats, available) do
+    Enum.find_value(formats, fn type ->
+      cond do
+        type == "*/*" -> List.first(available)
+        type in available -> type
+        true -> nil
+      end
+    end)
+  end
+
   defp parse(accept) do
-    items =
+    names =
       if String.contains?(accept, ",") do
-        Regex.scan(~r/[^,\s"](?:[^,"]|"[^"]*")*/, accept)
+        Regex.scan(@header, accept)
         |> Enum.flat_map(fn [header] ->
-          [name | rest] = Regex.split(~r/;\s*q="?/, header)
+          [name | rest] = Regex.split(@separator, header)
           name = String.trim(name)
-          q = quality(List.first(rest), name)
+
+          q_text =
+            rest
+            |> Enum.reverse()
+            |> Enum.drop_while(&(&1 == ""))
+            |> Enum.reverse()
+            |> List.first()
+
+          q = quality(q_text, name)
           for type <- expand(name), do: {type, q}
         end)
         |> Enum.with_index()
         |> Enum.sort_by(fn {{_type, q}, index} -> {-q, index} end)
         |> Enum.map(fn {item, _index} -> item end)
         |> xml_order()
+        |> Enum.map(&elem(&1, 0))
       else
-        name = Regex.split(~r/;\s*q="?/, accept) |> hd() |> String.trim()
-        for type <- expand(name), do: {type, 100}
+        name = Regex.split(@separator, accept) |> hd()
+        name = if Regex.match?(@separator, accept), do: String.trim(name), else: name
+        expand(name)
       end
 
-    items
-    |> Enum.map(fn {name, _q} -> canonical(name) end)
-    |> Enum.filter(&(&1 in @types or &1 == "*/*"))
-    |> Enum.uniq()
+    types = Enum.map(names, &canonical/1)
+
+    if :invalid_type in types,
+      do: :invalid_type,
+      else: types |> Enum.uniq() |> Enum.filter(&(&1 in @types or &1 == "*/*"))
   end
 
   defp expand(""), do: []
@@ -59,12 +83,10 @@ defmodule DawarichWeb.PageAccept do
   defp expand(name) do
     case Regex.run(~r/^(text|application)\/\*/, name) do
       [_, family] ->
-        prefix = family <> "/"
-
         Enum.filter(@types, fn type ->
-          String.starts_with?(type, prefix) or
+          String.contains?(type, family) or
             Enum.any?(@aliases, fn {other, target} ->
-              target == type and String.starts_with?(other, prefix)
+              target == type and String.contains?(other, family)
             end)
         end)
 
@@ -75,62 +97,84 @@ defmodule DawarichWeb.PageAccept do
 
   defp canonical(name) do
     type = name |> String.split(";", parts: 2) |> hd() |> String.trim_trailing()
-    Map.get(@aliases, type, type)
+
+    if Regex.match?(@mime, type),
+      do: Map.get(@aliases, type, type),
+      else: :invalid_type
   end
 
   defp quality(nil, "*/*"), do: 0
   defp quality(nil, _name), do: 100
 
   defp quality(text, _name) do
-    case Float.parse(String.trim_leading(text)) do
-      {value, _} -> trunc(value * 100)
-      :error -> 0
+    case Regex.run(@number, text) do
+      [_, number] ->
+        number = String.replace(number, "_", "")
+        number = Regex.replace(~r/\A([+-]?)\./, number, "\\g{1}0.")
+        {value, _} = Float.parse(number)
+        trunc(value * 100)
+
+      _ ->
+        0
     end
   end
 
   defp xml_order(items) do
-    text = Enum.find(items, &(elem(&1, 0) == "text/xml"))
-    app = Enum.find(items, &(elem(&1, 0) == "application/xml"))
+    text_idx = Enum.find_index(items, &(elem(&1, 0) == "text/xml"))
+    app_idx = Enum.find_index(items, &(elem(&1, 0) == "application/xml"))
 
-    items =
-      if text do
-        q = max(elem(text, 1), if(app, do: elem(app, 1), else: 0))
-        first = Enum.find_index(items, &(elem(&1, 0) in ~w(text/xml application/xml)))
-        rest = Enum.reject(items, &(elem(&1, 0) in ~w(text/xml application/xml)))
-        List.insert_at(rest, first, {"application/xml", q})
-      else
-        items
+    {items, app_idx} =
+      cond do
+        text_idx != nil and app_idx != nil ->
+          app = Enum.at(items, app_idx)
+          text = Enum.at(items, text_idx)
+          app = {elem(app, 0), max(elem(app, 1), elem(text, 1))}
+          items = List.replace_at(items, app_idx, app)
+
+          if app_idx > text_idx do
+            items = items |> List.replace_at(app_idx, text) |> List.replace_at(text_idx, app)
+            {List.delete_at(items, app_idx), text_idx}
+          else
+            {List.delete_at(items, text_idx), app_idx}
+          end
+
+        text_idx != nil ->
+          {List.replace_at(
+             items,
+             text_idx,
+             {"application/xml", elem(Enum.at(items, text_idx), 1)}
+           ), nil}
+
+        true ->
+          {items, app_idx}
       end
 
-    case Enum.find_index(items, &(elem(&1, 0) == "application/xml")) do
-      nil ->
-        items
+    if app_idx == nil do
+      items
+    else
+      xml = Enum.at(items, app_idx)
 
-      index ->
-        xml = Enum.at(items, index)
+      {result, _} =
+        Enum.reduce_while(app_idx..(length(items) - 1), {items, app_idx}, fn idx,
+                                                                             {list, current} ->
+          {name, q} = Enum.at(list, idx)
 
-        {result, _index} =
-          Enum.reduce_while(index..(length(items) - 1), {items, index}, fn idx, {list, app_idx} ->
-            {name, q} = Enum.at(list, idx)
+          cond do
+            q < elem(xml, 1) ->
+              {:halt, {list, current}}
 
-            cond do
-              q < elem(xml, 1) ->
-                {:halt, {list, app_idx}}
+            String.ends_with?(name, "+xml") ->
+              swapped =
+                list |> List.replace_at(current, Enum.at(list, idx)) |> List.replace_at(idx, xml)
 
-              String.ends_with?(name, "+xml") ->
-                swapped =
-                  list
-                  |> List.replace_at(app_idx, Enum.at(list, idx))
-                  |> List.replace_at(idx, xml)
+              {:cont, {swapped, idx}}
 
-                {:cont, {swapped, idx}}
+            true ->
+              {:cont, {list, current}}
+          end
+        end)
 
-              true ->
-                {:cont, {list, app_idx}}
-            end
-          end)
-
-        result
+      result
     end
   end
 end

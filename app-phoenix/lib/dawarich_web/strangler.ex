@@ -76,6 +76,9 @@ defmodule DawarichWeb.Strangler do
     conn = DawarichWeb.PageEnvelope.prepare(conn)
 
     cond do
+      conn.halted ->
+        conn
+
       conn.private[:dawarich_api_pre_effect_pin] ->
         hand_back(conn)
 

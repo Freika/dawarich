@@ -3,6 +3,8 @@ defmodule DawarichWeb.PageEnvelope do
   import Plug.Conn
 
   @pipelines ~w(browser insights rails_frame sharing achievement_public trial_resume trial_welcome public_home standalone_settings achievement_image native_navigation family_form user_data_export native_share)a
+  @turbo "text/vnd.turbo-stream.html"
+  @calendar "/map/timeline_feeds/calendar"
   @redirects ~w(/ /settings/theme /trial/upgrade /trial/welcome)
   def init(opts), do: opts
 
@@ -28,11 +30,6 @@ defmodule DawarichWeb.PageEnvelope do
             |> put_private(:dawarich_page_envelope, true)
             |> put_private(:dawarich_page_format, selected)
             |> put_private(:dawarich_page_accept, get_req_header(conn, "accept"))
-            |> put_private(
-              :dawarich_page_bare,
-              selected != "html" and get_req_header(conn, "accept") in [[], [""]] and
-                xhr_header?(conn)
-            )
             |> put_private(:dawarich_page_frame, frame?(conn))
             |> put_private(:dawarich_page_route, route)
             |> put_private(:dawarich_page_original, {conn.request_path, conn.query_string})
@@ -85,32 +82,38 @@ defmodule DawarichWeb.PageEnvelope do
   defp html_accept(conn, _, true), do: put_req_header(conn, "accept", "text/html")
 
   defp html_accept(conn, "turbo_stream", _),
-    do: put_req_header(conn, "accept", "text/vnd.turbo-stream.html")
+    do: put_req_header(conn, "accept", @turbo)
 
   defp html_accept(conn, _, _) do
     accept = conn |> get_req_header("accept") |> Enum.join(", ")
     formats = DawarichWeb.PageAccept.formats(accept, xhr_header?(conn))
-    type = List.first(formats)
 
-    conn = put_private(conn, :dawarich_page_formats, formats)
-
-    if type == "text/javascript" do
-      conn
-      |> put_private(:dawarich_page_bare, true)
-      |> put_private(:dawarich_page_xhr_js, true)
-      |> put_req_header("accept", "text/html")
+    if formats == :invalid_type do
+      conn |> put_resp_content_type("text/plain") |> send_resp(406, "") |> halt()
     else
-      if type, do: put_req_header(conn, "accept", Enum.join(formats, ", ")), else: conn
+      available =
+        if conn.request_path == @calendar,
+          do: ~w(text/vnd.turbo-stream.html text/html),
+          else: ~w(text/html)
+
+      type = DawarichWeb.PageAccept.negotiate(formats, available)
+      fallback = formats == ["text/javascript"]
+
+      conn
+      |> put_private(:dawarich_page_formats, formats)
+      |> put_private(:dawarich_page_bare, fallback)
+      |> put_private(:dawarich_page_xhr_js, fallback)
+      |> put_private(:dawarich_page_template_missing, is_nil(type))
+      |> put_req_header("accept", type || "text/html")
     end
   end
 
   def accepted?(conn) do
+    accept = conn |> get_req_header("accept") |> Enum.join(", ")
+
     formats =
       conn.private[:dawarich_page_formats] ||
-        DawarichWeb.PageAccept.formats(
-          conn |> get_req_header("accept") |> Enum.join(", "),
-          xhr_header?(conn)
-        )
+        DawarichWeb.PageAccept.formats(accept, xhr_header?(conn))
 
     valued =
       conn.query_string |> String.split("&", trim: true) |> Enum.all?(&String.contains?(&1, "="))
@@ -142,8 +145,8 @@ defmodule DawarichWeb.PageEnvelope do
         conn.private[:dawarich_page_xhr_js] ->
           "text/javascript"
 
-        conn.private[:dawarich_page_accept] == ["text/vnd.turbo-stream.html"] ->
-          "text/vnd.turbo-stream.html"
+        conn.private[:dawarich_page_accept] == [@turbo] ->
+          @turbo
 
         true ->
           "text/html"
@@ -197,9 +200,10 @@ defmodule DawarichWeb.PageEnvelope do
   def call(conn, :router) do
     conn =
       if conn.private[:dawarich_page_envelope] == true and
-           ((turbo_only?(conn) and conn.request_path != "/map/timeline_feeds/calendar") or
-              (conn.private[:dawarich_page_xhr_js] == true and
-                 conn.request_path == "/map/timeline_feeds/calendar")) do
+           ((turbo_only?(conn) and conn.request_path != @calendar) or
+              (conn.private[:dawarich_page_template_missing] == true and
+                 (not conn.private[:dawarich_page_xhr_js] or
+                    conn.request_path == @calendar))) do
         conn
         |> put_req_header("accept", "text/html")
         |> register_before_send(&refuse_template/1)
@@ -227,8 +231,8 @@ defmodule DawarichWeb.PageEnvelope do
 
   defp turbo_only?(conn) do
     conn.private[:dawarich_page_format] == "turbo_stream" or
-      (conn.private[:dawarich_page_formats] == ["text/vnd.turbo-stream.html"] or
-         get_req_header(conn, "accept") == ["text/vnd.turbo-stream.html"])
+      (conn.private[:dawarich_page_formats] == [@turbo] or
+         get_req_header(conn, "accept") == [@turbo])
   end
 
   defp refuse_template(%{status: status} = conn) when status in [200, 202] do

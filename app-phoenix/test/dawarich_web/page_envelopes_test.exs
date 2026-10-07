@@ -10,7 +10,7 @@ defmodule DawarichWeb.PageEnvelopesTest do
 
   @source Jason.decode!(File.read!(Path.expand("../fixtures/page_envelopes/rails.json", __DIR__)))
 
-  @review Map.new(~w(f1 f2 f3 f4), fn name ->
+  @review Map.new(~w(f1 f2 f3 f4 f5 f6 f7), fn name ->
             {name,
              Jason.decode!(
                File.read!(Path.expand("../fixtures/page_envelopes/#{name}.json", __DIR__))
@@ -357,6 +357,42 @@ defmodule DawarichWeb.PageEnvelopesTest do
              ],
              false
            ).status == 302
+  end
+
+  @tag envelope: :review_leading_decimal
+  test "F5 leading decimal qualities select Rails calendar templates in both directions" do
+    for {accept, source} <- @review["f5"] do
+      conn =
+        request("/map/timeline_feeds/calendar?month=2026-10", [
+          {"accept", accept},
+          {"x-requested-with", "XMLHttpRequest"}
+        ])
+
+      assert_contract(conn, source)
+    end
+  end
+
+  @tag envelope: :review_invalid_mime
+  test "F6 mixed malformed MIME refuses before valid unknown alternatives are filtered" do
+    for {accept, source} <- @review["f6"] do
+      conn = request("/tags", [{"accept", accept}, {"x-requested-with", "XMLHttpRequest"}])
+      assert conn.status == source["status"], accept
+      assert_contract(conn, source)
+      refute conn.status == 406 and String.contains?(conn.resp_body, "<html")
+    end
+  end
+
+  @tag envelope: :review_mixed_js
+  test "F7 mixed JavaScript HTML keeps full tags layout and negotiates HTML calendar" do
+    for {accept, source} <- @review["f7"] do
+      headers = [{"accept", accept}, {"x-requested-with", "XMLHttpRequest"}]
+      assert_contract(request("/tags", headers), source["tags"])
+
+      assert_contract(
+        request("/map/timeline_feeds/calendar?month=2026-10", headers),
+        source["calendar"]
+      )
+    end
   end
 
   defp assert_contract(conn, source) do
