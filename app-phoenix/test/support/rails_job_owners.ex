@@ -127,7 +127,7 @@ defmodule Dawarich.RailsJobOwners do
     "Trips::CalculateDistanceJob" => {:oban, ["command:trips.calculate"]},
     "Trips::CalculatePathJob" => {:oban, ["command:trips.calculate"]},
     "Users::CreationWebhookJob" => {:oban, ["command:users.creation_webhook"]},
-    "Users::DestroyJob" => {:slice, :a12d2},
+    "Users::DestroyJob" => {:oban, ["command:users.destroy"], :a12d2},
     "Users::DestructionWebhookJob" => {:oban, ["command:users.destruction_webhook"]},
     "Users::Digests::CalculatingJob" => {:oban, ["command:digests.calculate_year"], :retire},
     "Users::Digests::EmailSendingJob" => :retire,

@@ -124,11 +124,30 @@ defmodule Dawarich.A12f3bE04Test do
     assert DestroyWorker.new(args).changes.max_attempts == 4
     Ownership.put!(Repo, "command:users.destroy", :sidekiq, pinned: true)
     Ownership.put!(Repo, "command:users.destruction_webhook", :sidekiq, pinned: true)
+    assert {:cancel, "account deletion blocked by shared places"} = DestroyWorker.run(Repo, args)
+    assert rows("SELECT place_id FROM visits WHERE id=$1", [foreign_visit]) == [[place]]
+    assert rows("SELECT id FROM places WHERE id=$1", [place]) == [[place]]
+    assert rows("SELECT id FROM users WHERE id=$1", [id]) == [[id]]
+
+    assert rows(
+             "SELECT blob_id FROM active_storage_attachments WHERE record_id=$1 AND record_type='Import' ORDER BY blob_id",
+             [import]
+           ) == Enum.map(Enum.sort([blob, shared]), &[&1])
+
+    assert rows("SELECT id FROM oban.oban_jobs") == []
+    refute Processed.done?(Repo, event)
+    rows("UPDATE visits SET place_id=NULL WHERE id=$1", [foreign_visit])
     assert :ok = DestroyWorker.run(Repo, args)
     assert :ok = DestroyWorker.run(Repo, args)
     assert Processed.done?(Repo, event)
     assert {:ok, values} = Dawarich.Redis.cache_command(["MGET" | keys])
-    assert Enum.all?(values, &is_nil/1)
+    assert Enum.all?(values, &(&1 == "synthetic"))
+
+    assert [[cache]] =
+             rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.AfterCommit.Worker'")
+
+    assert cache["operation"] == "keys"
+    assert cache["payload"]["keys"] == keys
 
     assert rows("SELECT aggregate_id FROM job_outbox WHERE command_type='mail.user.welcome'") == [
              [other]

@@ -17,6 +17,26 @@ defmodule DawarichWeb.ApiRoutes do
         plug DawarichWeb.Api.Auth, require_active: false
       end
 
+      pipeline :api_account_destroy do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug :method_override_to_rails
+        plug DawarichWeb.Api.Body
+        plug DawarichWeb.Api.Auth, require_active: false, reject_pending: false
+      end
+
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_account_destroy
+
+        delete "/users/me", AccountDestroyController, :destroy,
+          metadata: %{
+            slice: :api_account,
+            rails_gate: {DawarichWeb.Api.AccountDestroyController, :enabled?}
+          }
+      end
+
       pipeline :api_manager do
         plug :put_api_tag, "api"
         plug DawarichWeb.HostAuthorization

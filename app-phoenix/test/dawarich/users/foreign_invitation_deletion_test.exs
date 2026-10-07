@@ -98,7 +98,10 @@ defmodule Dawarich.Users.ForeignInvitationDeletionTest do
       for table <- ~w(points imports),
           do: query("DELETE FROM #{table} WHERE user_id=$1", [owner.id])
 
-      query("DELETE FROM oban.oban_jobs WHERE args->>'user_id'=$1", [to_string(owner.id)])
+      query(
+        "DELETE FROM oban.oban_jobs WHERE args->>'user_id'=$1 OR args->'payload'->>'user_id'=$1",
+        [to_string(owner.id)]
+      )
 
       query("DELETE FROM phoenix.processed_commands WHERE event_id=$1", [
         Ecto.UUID.dump!(args["event_id"])
@@ -106,6 +109,11 @@ defmodule Dawarich.Users.ForeignInvitationDeletionTest do
 
       query("DELETE FROM users WHERE id=ANY($1::bigint[])", [[owner.id, inviter.id]])
     end
+
+    assert query(
+             "SELECT count(*) FROM oban.oban_jobs WHERE args->>'user_id'=$1 OR args->'payload'->>'user_id'=$1",
+             [to_string(owner.id)]
+           ) == [[0]]
   end
 
   defp query(sql, params), do: Repo.query!(sql, params, log: false).rows
