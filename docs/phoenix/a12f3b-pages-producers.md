@@ -86,6 +86,35 @@ publication followed by explicit Rails hand-back while retaining every drain
 blocker. All 78 closure kinds remain; this scoped producer repair does not
 certify the full R01–R20 audit, source drain, any ownership ED or G49.
 
+### H03 closure recheck — R10 progress remains live
+
+The all-R01–R20 recheck runs the existing reverse-effect tests and the reused
+export, user-data, place, achievement, integration, family-mail, cache and
+release owner tests. The three repaired R13/R14/R19 adapters pass their native
+terminal-effect and Rails hand-back cases. This does not close H03 or H04:
+R10k01 still publishes `imports.progress` during native-owned coexistence.
+
+The actual publication sites are `Imports.GpxProgress.publish/2`
+(`imports/gpx_progress.ex:31`), `Imports.GpxLifecycle.publish/3`
+(`imports/gpx_lifecycle.ex:134`) and `Imports.NormalLifecycle.publish/3`
+(`imports/normal_lifecycle.ex:154`). They check only standalone mode; they do
+not consult the native parent keys `command:imports.process_gpx` and
+`command:imports.process_normal`. With every Registry owner Oban, the real
+progress helper inserts one reverse row in coexistence; successful GPX and
+normal-import lifecycles each insert two. The same native paths publish no
+reverse rows in standalone. The progress-only probe rolls back; the lifecycle
+probe uses existing synthetic owner fixtures and cleans its private data.
+
+The existing R10k01 test proves standalone publication and then expects a
+reverse row after leaving standalone, without testing the native-owned
+coexistence branch. Green owner tests therefore cannot certify this missing
+branch. RX-IMPORTS must supply native progress publication under the actual
+parent ownership, its terminal/subscriber effects and unchanged source-owned
+coexistence before H03 all-producer and H04 final ED closure. No producer kind,
+ownership ED or accepted source payload is closed over this finding. G49 and
+every-mode Cloud lifecycle refusal remain unchanged. Exact commands, current
+seed/head results and cleanup belong to the controller closure report.
+
 `Jobs.Drain.status/1` now explicitly identifies `scope: native_sql`, source
 status `NOT_OBSERVED`, source certainty `UNKNOWN`, and
 `source_inspection_required`. Its G49 field remains `BLOCKED` even when binary

@@ -363,6 +363,17 @@ reverse-debt assertions. All 78 closure kinds, residual producer blockers,
 source-inspection requirements and G49 refusal remain intact. These three
 repairs do not establish all-producer closure or release acceptance.
 
+The subsequent all-R01–R20 closure recheck identifies R10k01 as still live:
+`imports.progress` is inserted by `imports/gpx_progress.ex:31`,
+`imports/gpx_lifecycle.ex:134` and `imports/normal_lifecycle.ex:154` during
+coexistence even with every Registry owner Oban. The relevant parent keys are
+`command:imports.process_gpx` and `command:imports.process_normal`. A real
+progress call and successful GPX/normal lifecycles verify the reverse rows;
+standalone remains native. RX-IMPORTS owns this uncovered producer branch.
+H03 all-producer acceptance and H04 final ED closure remain blocked; the
+existing green standalone test is not native-owned coexistence proof. No
+closure kind or source disposition is removed.
+
 H03b retains unreadable-database and all-key pin safety. H04 reuses the existing
 Cloud operator HTTP/connected-auth test and the actual native trip/release
 rollback test; the latter asserts unchanged source queues while SQL native
