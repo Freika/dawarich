@@ -115,7 +115,8 @@ defmodule Dawarich.RailsJobOwners do
     "TransportationModes::ImportBackfillJob" => {:oban, ["command:release.import_backfill"]},
     "TransportationModes::ReclassifyTrackJob" =>
       {:oban, ["command:transportation.reclassify_track"]},
-    "TransportationModes::UserReclassifyJob" => {:slice, :a12d2},
+    "TransportationModes::UserReclassifyJob" =>
+      {:oban, ["command:transportation.user_reclassify"], :a12d2},
     "Trek::ImportTripsJob" => {:oban, ["command:imports.trek_import"]},
     "Trek::SyncJob" => {:oban, ["command:imports.trek_sync"]},
     "Trek::SyncSchedulingJob" => {:oban, ["cron:trek_sync_job"]},

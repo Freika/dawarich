@@ -1,0 +1,211 @@
+defmodule DawarichWeb.StandaloneRecalculationTest do
+  use Dawarich.DataCase, async: false
+  import Plug.Conn
+  alias Dawarich.Jobs.{Ownership, Registry}
+  alias Dawarich.Test.RailsUser
+
+  setup do
+    env = Map.take(System.get_env(), ~w(DAWARICH_RAILS SELF_HOSTED JWT_SECRET_KEY MANAGER_URL))
+
+    System.put_env(%{
+      "DAWARICH_RAILS" => "off",
+      "SELF_HOSTED" => "true",
+      "JWT_SECRET_KEY" => Enum.join(~w(sweep6 synthetic jwt), "-"),
+      "MANAGER_URL" => "https://manager.example.invalid"
+    })
+
+    for spec <- Dawarich.Redis.child_specs() ++ Dawarich.Redis.cache_child_specs(),
+        do: start_supervised!(spec)
+
+    id = user!(%{api_key: "sweep6-synthetic", plan: 1, settings: %{}})
+
+    on_exit(fn ->
+      for name <- ~w(DAWARICH_RAILS SELF_HOSTED JWT_SECRET_KEY MANAGER_URL) do
+        if env[name], do: System.put_env(name, env[name]), else: System.delete_env(name)
+      end
+
+      Dawarich.Redis.cache_command([
+        "DEL",
+        "recalculation_pending:#{id}",
+        Dawarich.Transportation.RecalculationStatus.key(id)
+      ])
+    end)
+
+    Dawarich.State.put_registration_enabled(Repo, true)
+    %{id: id}
+  end
+
+  @tag :sweep6_api
+  test "standalone rebuild API authenticates validates queues once and preserves coexistence", %{
+    id: id
+  } do
+    Ownership.put!(Repo, "command:users.recalculate_data", :oban)
+    assert api(%{}, "absent").status == 401
+    invalid = api(%{"year" => "1999"})
+    assert invalid.status == oracle("invalid")["status"]
+    assert Jason.decode!(invalid.resp_body) == oracle("invalid")["body"]
+    response = api(%{"year" => "2024tail", "user_id" => id + 1})
+    assert response.status == 202
+
+    assert Jason.decode!(response.resp_body) == oracle("accepted")["body"]
+    pending = api(%{})
+    assert pending.status == oracle("pending")["status"]
+    assert Jason.decode!(pending.resp_body) == oracle("pending")["body"]
+
+    assert [["users.recalculate_data", payload]] =
+             rows("SELECT command_type,payload FROM job_outbox WHERE aggregate_id=$1", [id])
+
+    assert payload["user_id"] == id
+    assert payload["year"] == 2024
+    assert payload["notify"] == true
+    assert {:ok, _} = Dawarich.Users.RecalculateWorker.args_from_command(1, payload)
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    Repo.query!("UPDATE users SET status=0 WHERE id=$1", [id])
+    assert api(%{}).status == 401
+    Dawarich.Redis.cache_command(["DEL", "recalculation_pending:#{id}"])
+    Repo.query!("UPDATE users SET status=1 WHERE id=$1", [id])
+    assert api(%{}).status == 202
+
+    assert [[nil]] ==
+             rows(
+               "SELECT payload->'year' FROM job_outbox WHERE aggregate_id=$1 AND payload->'year'='null'::jsonb",
+               [id]
+             )
+
+    Repo.query!("UPDATE users SET plan=0,active_until='3026-01-01' WHERE id=$1", [id])
+    System.put_env("SELF_HOSTED", "false")
+    assert api(%{}).status == 403
+    System.delete_env("DAWARICH_RAILS")
+    conn = Plug.Test.conn(:post, "/api/v1/recalculations")
+    assert DawarichWeb.ApiClosureRoutes.deferred?(conn)
+
+    assert Phoenix.Router.route_info(DawarichWeb.Router, "POST", conn.path_info, conn.host) ==
+             :error
+  end
+
+  @tag :sweep6_transport
+  test "standalone rebuild preserves native API transport and Cloud pending payment reply", %{
+    id: id
+  } do
+    Ownership.put!(Repo, "command:users.recalculate_data", :oban)
+
+    response =
+      Plug.Test.conn(:post, "/api/v1/recalculations")
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("authorization", "Bearer sweep6-synthetic")
+      |> DawarichWeb.Endpoint.call([])
+
+    assert response.status == 202
+    assert rows("SELECT payload->'year' FROM job_outbox WHERE aggregate_id=$1", [id]) == [[nil]]
+    Repo.query!("UPDATE users SET status=3 WHERE id=$1", [id])
+    System.put_env("SELF_HOSTED", "false")
+    response = api(%{})
+    assert response.status == oracle("payment")["status"]
+    body = Jason.decode!(response.resp_body)
+    assert body["error"] == oracle("payment")["error"]
+
+    assert body["message"] ==
+             Dawarich.I18n.en!("controllers.api.complete_your_subscription_to_continue")
+
+    assert is_binary(body["resume_url"])
+    assert URI.parse(body["resume_url"]).host == oracle("payment")["resume_host"]
+    assert URI.parse(body["resume_url"]).path == oracle("payment")["resume_path"]
+    assert rows("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]) == [[1]]
+  end
+
+  @tag :sweep6_web
+  test "standalone transportation rebuild claims its producer and resolves the existing worker",
+       %{id: id} do
+    entry =
+      Enum.find(
+        Dawarich.Standalone.job_entries(),
+        &(&1.key == "command:transportation.user_reclassify")
+      )
+
+    assert entry != nil
+    assert entry.worker == Dawarich.Transportation.UserReclassifyWorker
+    refute entry.claimable
+    Ownership.put!(Repo, entry.key, :oban)
+    assert Registry.command("transportation.user_reclassify") == {:ok, entry.worker}
+
+    Repo.query!("UPDATE users SET encrypted_password=$2 WHERE id=$1", [
+      id,
+      "$2a$04$" <> String.duplicate("phoenixa5fixture", 4)
+    ])
+
+    session = RailsUser.session(id)
+    response = web(session, "text/html")
+    assert response.status == 302
+    assert get_resp_header(response, "location") == [oracle("web")["location"]]
+
+    assert [["transportation.user_reclassify", %{"user_id" => ^id}]] =
+             rows("SELECT command_type,payload FROM job_outbox")
+
+    assert entry.worker.args_from_command(1, %{"user_id" => id}) == {:ok, %{"user_id" => id}}
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    Dawarich.Transportation.RecalculationStatus.start(id, 1, DateTime.utc_now())
+    response = web(session, "text/vnd.turbo-stream.html")
+    assert response.status == 200
+    assert response.resp_body =~ "already running"
+    assert rows("SELECT count(*) FROM job_outbox") == [[1]]
+    System.delete_env("DAWARICH_RAILS")
+    refute Enum.any?(Dawarich.Standalone.job_entries(), &(&1.key == entry.key))
+  end
+
+  @tag :sweep6_flash
+  test "signed in login alert survives root redirect and is shown once on the map", %{id: id} do
+    Repo.query!("UPDATE users SET encrypted_password=$2 WHERE id=$1", [
+      id,
+      "$2a$04$" <> String.duplicate("phoenixa5fixture", 4)
+    ])
+
+    session = RailsUser.session(id)
+    login = browser("/users/sign_in", RailsUser.cookie(session))
+    assert login.status == 302
+    assert get_resp_header(login, "location") == ["http://www.example.com/"]
+    root = browser("/", login.resp_cookies["_dawarich_session"].value)
+    assert root.status == 302
+    assert get_resp_header(root, "location") == ["http://www.example.com/map/v2"]
+
+    cookie =
+      (root.resp_cookies["_dawarich_session"] || login.resp_cookies["_dawarich_session"]).value
+
+    map = browser("/map/v2", cookie)
+    assert map.status == 200
+    assert map.resp_body =~ "You are already signed in."
+    second = browser("/map/v2", map.resp_cookies["_dawarich_session"].value)
+    assert second.status == 200
+    refute second.resp_body =~ "You are already signed in."
+  end
+
+  defp oracle(key),
+    do: Jason.decode!(File.read!("test/fixtures/standalone/recalculation.json"))[key]
+
+  defp browser(path, cookie) do
+    Plug.Test.conn(:get, path)
+    |> Phoenix.ConnTest.put_req_cookie("_dawarich_session", cookie)
+    |> put_req_header("accept", "text/html")
+    |> DawarichWeb.Endpoint.call([])
+  end
+
+  defp api(params, key \\ "sweep6-synthetic") do
+    raw = Jason.encode!(params)
+
+    Plug.Test.conn(:post, "/api/v1/recalculations", raw)
+    |> put_req_header("content-length", Integer.to_string(byte_size(raw)))
+    |> put_req_header("content-type", "application/json")
+    |> put_req_header("authorization", "Bearer " <> key)
+    |> DawarichWeb.Endpoint.call([])
+  end
+
+  defp web(session, accept) do
+    raw = URI.encode_query(%{"authenticity_token" => DawarichWeb.RailsCsrf.masked_token(session)})
+
+    Plug.Test.conn(:post, "/tracks/recalculation", raw)
+    |> Phoenix.ConnTest.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+    |> put_req_header("content-type", "application/x-www-form-urlencoded")
+    |> put_req_header("content-length", Integer.to_string(byte_size(raw)))
+    |> put_req_header("accept", accept)
+    |> DawarichWeb.Endpoint.call([])
+  end
+end
