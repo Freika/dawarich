@@ -47,8 +47,11 @@ defmodule Dawarich.Auth.RegistrationSetup do
         else: session
 
     invitation = context[:invitation]
-    accepted = if invitation, do: accept(repo, user, invitation, context), else: false
-    session = claim(repo, user, session, context)
+    acceptance = if invitation, do: accept(repo, user, invitation, context), else: false
+    accepted = acceptance == true
+
+    session =
+      session |> invitation_alert(acceptance, context) |> then(&claim(repo, user, &1, context))
 
     if cloud and not accepted and context[:registration_channel] != :mobile do
       user = repo.update!(Ecto.Changeset.change(user, %{status: 3}), log: false)
@@ -103,13 +106,15 @@ defmodule Dawarich.Auth.RegistrationSetup do
       if context[:self_hosted] == false do
         callback = get_in(context, [:callbacks, :accept_invitation])
 
-        if is_function(callback, 2),
-          do:
-            if(callback.(user.id, invitation.id) == :ok,
-              do: true,
-              else: repo.rollback(:family_owner)
-            ),
-          else: repo.rollback(:family_owner)
+        if is_function(callback, 2) do
+          case callback.(user.id, invitation.id) do
+            :ok -> true
+            {:refused, reason} = refusal when reason in [:family_lapsed, :family_full] -> refusal
+            _ -> repo.rollback(:family_owner)
+          end
+        else
+          repo.rollback(:family_owner)
+        end
       else
         self_hosted_invitation(repo, user, invitation, context)
       end
@@ -117,6 +122,38 @@ defmodule Dawarich.Auth.RegistrationSetup do
       false
     end
   end
+
+  defp invitation_alert(session, {:refused, reason}, context) do
+    if context[:registration_channel] == :mobile do
+      session
+    else
+      key =
+        case reason do
+          :family_lapsed -> "this_family_s_plan_is_no_longer_active"
+          :family_full -> "this_family_has_reached_the_maximum_number_of_members"
+        end
+
+      locale = Map.get(context, :locale, "en")
+      error = DawarichWeb.Translate.t(locale, "services.families.accept_invitation." <> key, %{})
+
+      alert =
+        DawarichWeb.Translate.t(
+          locale,
+          "controllers.users.registrations.account_created_successfully_but_there_was_an_issue_accepting_the",
+          %{"error_message" => error}
+        )
+
+      flash = Map.get(session, "flash", %{"discard" => [], "flashes" => %{}})
+
+      Map.put(
+        session,
+        "flash",
+        Map.update(flash, "flashes", %{"alert" => alert}, &Map.put(&1, "alert", alert))
+      )
+    end
+  end
+
+  defp invitation_alert(session, _, _), do: session
 
   defp self_hosted_invitation(repo, user, invitation, context) do
     now = Map.get(context, :clock, &DateTime.utc_now/0).() |> DateTime.to_naive()

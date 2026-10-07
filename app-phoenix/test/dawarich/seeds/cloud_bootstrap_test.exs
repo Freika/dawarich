@@ -62,6 +62,19 @@ defmodule Dawarich.Seeds.CloudBootstrapTest do
     assert rows("SELECT count(*) FROM phoenix.release_migrator_leases") == [[0]]
   end
 
+  test "R2 Cloud demo admin omission has an authorized ED row handoff to F" do
+    doc = File.read!(Path.expand("../../../../docs/phoenix/l1-b-cloud-registration.md", __DIR__))
+    row = Enum.find(String.split(doc, "\n"), &String.starts_with?(&1, "| F assigns ED ID |"))
+    assert is_binary(row)
+    assert row =~ "Ordinary Cloud demo administrator bootstrap"
+    assert row =~ "Eugene ruling 2026-10-07"
+    assert row =~ "seeds/cloud_bootstrap_test.exs"
+    assert row =~ "closed (approved difference; public Cloud lifecycle remains refused)"
+    assert BootstrapUser.run(ScratchRepo, env: @env, now: @now) == :ok
+    assert rows("SELECT count(*) FROM users") == [[0]]
+    assert rows("SELECT count(*) FROM job_outbox") == [[0]]
+  end
+
   defp snapshot do
     rows(
       "SELECT id,status,plan,active_until,length(api_key),api_key='synthetic-existing-key' FROM users ORDER BY id"

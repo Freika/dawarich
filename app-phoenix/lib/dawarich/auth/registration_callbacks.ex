@@ -56,6 +56,7 @@ defmodule Dawarich.Auth.RegistrationCallbacks do
 
         case Dawarich.Families.WebInvitations.accept(repo, user, token, ctx) do
           {:ok, _} -> :ok
+          {:error, reason} when reason in [:family_lapsed, :family_full] -> {:refused, reason}
           error -> error
         end
 

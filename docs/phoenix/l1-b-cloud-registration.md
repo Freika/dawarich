@@ -6,6 +6,8 @@ Preparation only: public native Cloud migrate/seed remains refused in every mode
 
 `RegistrationCallbacks.context/1` fills missing Manager, Partnero and real family-invitation callbacks using the context's repository; explicit injections remain supported. Browser insertion, setup, invitation and attribution publish in one transaction; mobile follows the same transaction with its existing input whitelist and response contract. Provider resolution publishes creation only for a new identity; existing identity/login/link paths publish no new creation. Ordinary OAuth consumes referral after successful creation; Apple retains Rails behavior without Partnero attribution. Referral precedence is aff before via, limited to 255 Unicode codepoints. Failed signup retains the session referral.
 
+A valid invitation to a lapsed or full Cloud family is an ordinary business refusal. Browser and mobile signup keep the account in pending-payment status, retain exactly one Manager intent and publish no welcome/explore or family-join mail. Browser checkout carries Rails' invitation refusal alert. Genuine callback/publication failures still roll back account and intents. OAuth retains Rails' separate flow: signup keeps the pending account and redirects to the invitation page without attempting acceptance; the default acceptance callback distinguishes these refusals from infrastructure errors.
+
 Manager delivery uses the shared committed-callback/HTTP primitives. No external effect runs inside an account transaction. Manager's non-2xx acknowledgement remains Rails-compatible; transport failures remain retryable. Shared transport supplies a bounded timeout, verified TLS, fixed configured origin/path and no redirects. Manager and Partnero retain Rails delivery parity without a remote dedup guarantee; PostgreSQL receipts do not make HTTP atomic.
 
 Cloud ordinary seeds omit the Rails demo administrator, by Eugene's 2026-10-07 ruling. Administrators are created manually. Reference seeds and populated/soft-deleted-account reentry remain unchanged; Cloud seed execution does not recreate accounts or restart trials. Self-hosted bootstrap retains existing behavior.
@@ -21,3 +23,11 @@ Cloud ordinary seeds omit the Rails demo administrator, by Eugene's 2026-10-07 r
 Evidence uses the real synthetic Rails oracle `test/support/cloud_creation_oracle.rb`, captured source projection `test/fixtures/cloud_creation/source.json`, default HTTP handler tests, concurrent account resolution, rollback and replay assertions, and one failing production mutation for each new named test. Exact commands and final gate results live in the controller's package B implementation report. Public lifecycle guards and package A's shared files are unchanged.
 
 AFFiNE counterpart: Dawarich — Phoenix A12f-3c Cloud cut-over, drain and rollback plan, L1 package B handoff (document `AVWr5ao5n-OKCZZbEphrP`).
+
+## Handoff to F — Cloud demo administrator omission
+
+Package F alone owns `app-phoenix/parity/expected_diffs.md`. Add the following exact row in the lifecycle expected-difference table, replacing only `F assigns ED ID` with the next available ID. The public lifecycle refusal remains unchanged; this approval covers only omission of the seeded account.
+
+| ID | Surface | Rails today | Phoenix | Owner | Status |
+|---|---|---|---|---|---|
+| F assigns ED ID | Ordinary Cloud demo administrator bootstrap | Empty ordinary Cloud seeds create the demo administrator and apply ordinary account creation effects. | Ordinary Cloud seeds create no demo administrator and publish no account creation effects; administrators are created manually. Self-hosted bootstrap and populated/soft-deleted account reentry remain unchanged. | L1 package B; Eugene ruling 2026-10-07; `seeds/cloud_bootstrap_test.exs`: `L1 Cloud bootstrap omits demo admin while ordinary creation retains Rails trial effects`, `L1 populated Cloud seed and release reentry never recreate user or callback identities`; register owned by package F | closed (approved difference; public Cloud lifecycle remains refused) |

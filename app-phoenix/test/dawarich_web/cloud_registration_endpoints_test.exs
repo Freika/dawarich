@@ -250,6 +250,158 @@ defmodule DawarichWeb.CloudRegistrationEndpointsTest do
     assert oidc.status == 404
   end
 
+  test "R1 browser lapsed and full family signup keeps pending account and checkout callbacks",
+       c do
+    for reason <- [:family_lapsed, :family_full] do
+      email = "browser-#{reason}@example.invalid"
+      {invitation, token} = refused_invitation(email, reason)
+      client = %{"_csrf_token" => Base.encode64(String.duplicate("x", 32))}
+      result = browser(email, client, c.context, %{"invitation_token" => token})
+      assert result.status == 302
+      [location] = get_resp_header(result, "location")
+      assert String.starts_with?(location, @env["MANAGER_URL"] <> "/checkout?token=")
+      refute session(result)["warden.user.user.key"]
+
+      expected =
+        if reason == :family_lapsed,
+          do: "This family's plan is no longer active.",
+          else: "This family has reached the maximum number of members."
+
+      assert session(result)["flash"]["flashes"]["alert"] ==
+               "Account created successfully, but there was an issue accepting the invitation: " <>
+                 expected
+
+      assert_refused_signup(email, invitation)
+    end
+  end
+
+  test "R1 mobile lapsed and full family signup returns 201 pending payment with one Manager intent",
+       c do
+    for reason <- [:family_lapsed, :family_full] do
+      email = "mobile-#{reason}@example.invalid"
+      {invitation, token} = refused_invitation(email, reason)
+      result = mobile(email, token, c.context)
+      assert result.status == 201
+      payload = Jason.decode!(result.resp_body)
+      assert payload["status"] == "pending_payment"
+      id = assert_refused_signup(email, invitation)
+      assert payload["user_id"] == id
+    end
+
+    for failure <- [:accept_failed, :mail_source_owned, :not_found] do
+      email = "failure-#{failure}@example.invalid"
+      {_invitation, token} = refused_invitation(email, :family_lapsed)
+      ctx = Map.put(c.context, :callbacks, %{accept_invitation: fn _, _ -> {:error, failure} end})
+      result = mobile(email, token, ctx)
+      assert result.status == 503
+      assert rows("SELECT count(*) FROM users WHERE email=$1", [email]) == [[0]]
+    end
+
+    assert rows("SELECT count(*) FROM job_outbox WHERE command_type='users.creation_webhook'") ==
+             [[2]]
+  end
+
+  test "R1 OAuth lapsed and full invitation signup retains pending account and default refusal contract",
+       c do
+    {private, key} = signing_key()
+
+    for reason <- [:family_lapsed, :family_full],
+        provider <- ["github", "google_oauth2", "apple"] do
+      Dawarich.JobsCase.reset!(ScratchRepo)
+
+      for type <- ~w(users.creation_webhook partnero.customer_signup),
+          do: Ownership.put!(ScratchRepo, "command:" <> type, :oban)
+
+      email = provider <> "@example.invalid"
+      {invitation, token} = refused_invitation(email, reason)
+      ctx = provider_context(c.context, provider, private, key)
+
+      client = %{
+        "omniauth.state" => "synthetic-state",
+        "invitation_token" => token,
+        "partnero_referral" => "synthetic-partner"
+      }
+
+      result = provider_request(provider, ctx, private, client)
+      assert result.status == 302
+
+      assert get_resp_header(result, "location") ==
+               [@base <> "/family/invitations/" <> token]
+
+      id = assert_refused_signup(email, invitation)
+      assert session(result)["warden.user.user.key"] |> hd() == [id]
+
+      assert rows(
+               "SELECT count(*) FROM job_outbox WHERE aggregate_id=$1 AND command_type='partnero.customer_signup'",
+               [id]
+             ) ==
+               [[if(provider == "apple", do: 0, else: 1)]]
+
+      callbacks = Dawarich.Auth.RegistrationCallbacks.context(c.context).callbacks
+      assert callbacks.accept_invitation.(id, invitation) == {:refused, reason}
+      assert_refused_signup(email, invitation)
+    end
+  end
+
+  defp refused_invitation(email, reason) do
+    owner = user!()
+
+    until =
+      if reason == :family_lapsed,
+        do: ~N[2026-01-01 00:00:00.000000],
+        else: ~N[2027-01-01 00:00:00.000000]
+
+    rows("UPDATE users SET plan=2,status=1,active_until=$2 WHERE id=$1", [owner, until])
+
+    [[family]] =
+      rows(
+        "INSERT INTO families(name,creator_id,access_until,created_at,updated_at) VALUES('Synthetic family',$1,$2,now(),now()) RETURNING id",
+        [owner, until]
+      )
+
+    rows(
+      "INSERT INTO family_memberships(family_id,user_id,role,created_at,updated_at) VALUES($1,$2,0,now(),now())",
+      [family, owner]
+    )
+
+    if reason == :family_full do
+      for _ <- 1..4 do
+        member = user!()
+
+        rows(
+          "INSERT INTO family_memberships(family_id,user_id,role,created_at,updated_at) VALUES($1,$2,1,now(),now())",
+          [family, member]
+        )
+      end
+    end
+
+    token = "synthetic-" <> Ecto.UUID.generate()
+
+    [[invitation]] =
+      rows(
+        "INSERT INTO family_invitations(family_id,email,token,status,invited_by_id,expires_at,created_at,updated_at) VALUES($1,$2,$3,0,$4,'2026-11-01',now(),now()) RETURNING id",
+        [family, email, token, owner]
+      )
+
+    {invitation, token}
+  end
+
+  defp assert_refused_signup(email, invitation) do
+    [[id, status]] = rows("SELECT id,status FROM users WHERE email=$1", [email])
+    assert status == 3
+    assert rows("SELECT count(*) FROM family_memberships WHERE user_id=$1", [id]) == [[0]]
+    assert rows("SELECT status FROM family_invitations WHERE id=$1", [invitation]) == [[0]]
+
+    assert rows(
+             "SELECT command_type FROM job_outbox WHERE aggregate_id=$1 ORDER BY command_type",
+             [id]
+           )
+           |> Enum.reject(&(&1 == ["partnero.customer_signup"])) == [["users.creation_webhook"]]
+
+    assert rows("SELECT count(*) FROM notifications WHERE user_id=$1", [id]) == [[0]]
+    id
+  end
+
   defp browser(email, session, ctx, attribution \\ %{}) do
     params = %{
       "user[email]" => email,
@@ -317,7 +469,7 @@ defmodule DawarichWeb.CloudRegistrationEndpointsTest do
 
     key = %{
       "kty" => "RSA",
-      "kid" => "synthetic-l1-key",
+      "kid" => key_id(private),
       "alg" => "RS256",
       "n" => Base.url_encode64(:binary.encode_unsigned(elem(private, 2)), padding: false),
       "e" => Base.url_encode64(:binary.encode_unsigned(elem(private, 3)), padding: false)
@@ -325,6 +477,12 @@ defmodule DawarichWeb.CloudRegistrationEndpointsTest do
 
     {private, key}
   end
+
+  defp key_id(private),
+    do:
+      Base.encode16(:crypto.hash(:sha256, :binary.encode_unsigned(elem(private, 2))),
+        case: :lower
+      )
 
   defp signed(private, provider) do
     issuer =
@@ -351,7 +509,7 @@ defmodule DawarichWeb.CloudRegistrationEndpointsTest do
         else: claims
 
     input =
-      Base.url_encode64(Jason.encode!(%{"alg" => "RS256", "kid" => "synthetic-l1-key"}),
+      Base.url_encode64(Jason.encode!(%{"alg" => "RS256", "kid" => key_id(private)}),
         padding: false
       ) <> "." <> Base.url_encode64(Jason.encode!(claims), padding: false)
 
