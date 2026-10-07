@@ -105,7 +105,10 @@ defmodule Dawarich.Application do
   def children(plan) do
     oban = Application.fetch_env!(:dawarich, Oban)
     node = oban[:node] || Oban.Config.node_name()
-    cron = [crontab: Dawarich.Jobs.Registry.crontab(), timezone: Dawarich.Jobs.Cron.timezone()]
+
+    cron =
+      oban[:cron] ||
+        [crontab: Dawarich.Jobs.Registry.crontab(), timezone: Dawarich.Jobs.Cron.timezone()]
 
     Dawarich.Metrics.children(plan) ++
       [Dawarich.Repo] ++
