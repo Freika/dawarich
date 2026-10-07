@@ -61,6 +61,13 @@ defmodule Dawarich.Storage.Blobs do
     end)
   end
 
+  def purging?(metadata) do
+    case Jason.decode(metadata || "{}") do
+      {:ok, %{"phoenix_purge_pending" => true}} -> true
+      _ -> false
+    end
+  end
+
   defp select(id) do
     sql =
       "SELECT *, " <>

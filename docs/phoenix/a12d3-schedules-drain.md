@@ -353,20 +353,15 @@ The retained Rails `JobDrain.status` independently counts source queued,
 scheduled, retry, dead, busy, reserved and unknown work, plus changed/read
 failures. Release acceptance combines observations with actual producer fences.
 
-H03a demonstrates a remaining live producer: `Visits.Suggest` calls
-`RailsEffects.reverse_place/3`, which unconditionally inserts
-`reverse_geocode_place` even in standalone with native owners. RX-PLACES R13
-must connect that producer to the registered native ReversePlaceWorker and
-prove terminal geocoding plus zero reverse work. H03 preserves all 78 closure
-kinds and the residual producer blocker. Plan-E source packages are present;
-their merge does not close this separate reverse producer. No ED is closed. Further all-owner-native probes found R19k04
-`ReleaseOperations.NullIsland.flag/2` still inserting
-`release_null_island_follow_up` in standalone after flagging points, and the
-R14 point-effect helper `Points.NativeEffects.achievements/2` still inserting
-`achievements.check` in coexistence even with its owner Oban. The dedicated
-anomaly-backfill producer already respects its owner; this is a separate helper.
-Probe writes were rolled back. These require their real native effect/ownership
-proof before any producer closure can be declared.
+H03 originally identified three live producer gaps: the place reverse-geocoding
+adapter, the point achievement helper during coexistence, and Null Island
+follow-ups. Their native adapters and terminal-effect/zero-reverse/Rails
+hand-back proofs are now implemented in R13k05, R14helper and R19k04; see
+[a12f3b-pages-producers.md](a12f3b-pages-producers.md). H03a exercises native
+place publication and explicitly pins that command back to Rails before its
+reverse-debt assertions. All 78 closure kinds, residual producer blockers,
+source-inspection requirements and G49 refusal remain intact. These three
+repairs do not establish all-producer closure or release acceptance.
 
 H03b retains unreadable-database and all-key pin safety. H04 reuses the existing
 Cloud operator HTTP/connected-auth test and the actual native trip/release

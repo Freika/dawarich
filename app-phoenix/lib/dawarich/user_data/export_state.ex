@@ -137,7 +137,7 @@ defmodule Dawarich.UserData.ExportState do
         ).rows
 
       state.repo.query!(
-        "DELETE FROM active_storage_attachments WHERE record_type='Export' AND record_id=$1 AND name='file'",
+        "UPDATE active_storage_attachments SET name='retired_file_' || id::text WHERE record_type='Export' AND record_id=$1 AND name='file'",
         [state.id],
         log: false
       )

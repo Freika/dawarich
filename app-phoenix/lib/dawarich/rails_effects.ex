@@ -46,10 +46,21 @@ defmodule Dawarich.RailsEffects do
   def place_name(repo, user_id, place_id),
     do: Dawarich.Places.JobCommands.name_fetch(repo, user_id, place_id)
 
-  def reverse_place(repo, user_id, place_id),
-    do:
-      RailsCommands.insert!(repo, "reverse_geocode_place", %{
-        "user_id" => user_id,
-        "place_id" => place_id
-      })
+  def reverse_place(repo, user_id, place_id) do
+    {:ok, :ok} =
+      repo.transaction(fn ->
+        if Dawarich.Points.NativeEffects.native?(repo, "command:geocoding.reverse_place"),
+          do:
+            Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Geocoding.ReversePlaceWorker, %{
+              "place_id" => place_id
+            }),
+          else:
+            RailsCommands.insert!(repo, "reverse_geocode_place", %{
+              "user_id" => user_id,
+              "place_id" => place_id
+            })
+      end)
+
+    :ok
+  end
 end

@@ -59,6 +59,34 @@ RSpec.describe RailsCommands::Poller do
     expect(dead).to be_empty
   end
 
+  it 'R2 retains Rails-owned tile invalidation through a real cache outage and consumes it after recovery' do
+    phoenix_tables!
+    timestamp = Time.utc(2026, 1, 1).to_i
+    key = "points:tile_epoch:#{user.id}:2026"
+    cache = ActiveSupport::Cache::RedisCacheStore.new(url: ENV.fetch('REDIS_URL'), driver: :ruby)
+    unavailable = ActiveSupport::Cache::RedisCacheStore.new(
+      url: "unix://#{File.join(Dir.tmpdir, "tile-#{Process.pid}.sock")}",
+      reconnect_attempts: 0, driver: :ruby
+    )
+    expect(cache.write(key, 'synthetic-before', raw: true)).to be(true)
+    expect(unavailable.write(key, 'probe', raw: true)).not_to be(true)
+    allow(Rails).to receive(:cache).and_return(unavailable)
+    id = command!('points.tile_epoch', { 'user_id' => user.id, 'timestamps' => [timestamp] })
+
+    expect(described_class.drain_once).to eq(1)
+    expect(commands.sole).to include('id' => id, 'attempts' => 1, 'leased_until' => nil)
+    expect(cache.read(key, raw: true)).to eq('synthetic-before')
+    expect(dead).to be_empty
+
+    allow(Rails).to receive(:cache).and_return(cache)
+    make_due!
+    expect(described_class.drain_once).to eq(1)
+    expect(commands).to be_empty
+    expect(cache.read(key, raw: true)).not_to eq('synthetic-before')
+  ensure
+    cache&.delete(key) if key
+  end
+
   it 'the claim leases the oldest due row for 60 s and counts the attempt' do
     phoenix_tables!
     id = command!('visit_months_changed', months(user))
