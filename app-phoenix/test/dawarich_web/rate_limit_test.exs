@@ -145,6 +145,7 @@ defmodule DawarichWeb.RateLimitTest do
     assert RateLimit.plan(lite["value"]) == "lite"
   end
 
+  @tag :uncached_miss_capacity
   test "unknown API keys do not cache misses or evict other features' cached entries" do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     expires_at = System.monotonic_time(:millisecond) + 120_000
