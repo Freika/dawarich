@@ -359,7 +359,14 @@ H03a demonstrates a remaining live producer: `Visits.Suggest` calls
 must connect that producer to the registered native ReversePlaceWorker and
 prove terminal geocoding plus zero reverse work. H03 preserves all 78 closure
 kinds and the residual producer blocker. Plan-E source packages are present;
-their merge does not close this separate reverse producer. No ED is closed.
+their merge does not close this separate reverse producer. No ED is closed. Further all-owner-native probes found R19k04
+`ReleaseOperations.NullIsland.flag/2` still inserting
+`release_null_island_follow_up` in standalone after flagging points, and the
+R14 point-effect helper `Points.NativeEffects.achievements/2` still inserting
+`achievements.check` in coexistence even with its owner Oban. The dedicated
+anomaly-backfill producer already respects its owner; this is a separate helper.
+Probe writes were rolled back. These require their real native effect/ownership
+proof before any producer closure can be declared.
 
 H03b retains unreadable-database and all-key pin safety. H04 reuses the existing
 Cloud operator HTTP/connected-auth test and the actual native trip/release

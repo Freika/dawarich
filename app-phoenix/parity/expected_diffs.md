@@ -563,7 +563,10 @@ drain output explicitly marks source Sidekiq as NOT_OBSERVED/UNKNOWN and G49
 blocked. A native empty binary-rollback observation is not source-drained proof.
 The remaining unconditional `reverse_geocode_place` producer in
 `RailsEffects.reverse_place/3` belongs to RX-PLACES R13; registered native worker
-availability does not close its producer/effect row. No ownership ED or retired
+availability does not close its producer/effect row. R19k04 Null Island still
+publishes `release_null_island_follow_up` in standalone, and the separate R14
+point-achievement helper publishes `achievements.check` in coexistence even
+with native ownership. Rolled-back probes verify both; neither row is closed. No ownership ED or retired
 payload row is marked closed. Final all-kind proof and source disposition stay
 with J1/J2/A12f-3c; Cloud lifecycle stays refused pending L1 in every mode.
 

@@ -69,7 +69,20 @@ H03a records its exact publication and preserves the blocker even before any
 reverse row exists. No closure kind or ownership ED is cleared on that evidence.
 R13 must connect the producer to its existing native worker, prove the fresh
 place terminal effect with zero reverse insertion, and retain source-pinned
-coexistence behavior. The remaining R01–R20 closure audit must then pass.
+coexistence behavior. Two additional producer gaps were verified in a rolled-back
+native SQL probe with every registry owner Oban:
+
+- R19k04: `ReleaseOperations.NullIsland.flag/2` marks the synthetic Null Island
+  point anomalous and still inserts `release_null_island_follow_up` in standalone.
+  Its native track/stats followups are missing.
+- R14/`achievements.check`: `Points.NativeEffects.achievements/2` selects Rails
+  whenever standalone is disabled, including coexistence with the achievement
+  key Oban. The native anomaly-backfill route already respects ownership, but
+  this separate point-effect helper does not. Standalone uses CheckWorker.
+
+The probe changed no persistent rows and introduced no new runner or dispatcher.
+These precise live producer gaps remain blockers alongside the full R01–R20
+audit; merged source payload packages do not close their reverse producers.
 
 `Jobs.Drain.status/1` now explicitly identifies `scope: native_sql`, source
 status `NOT_OBSERVED`, source certainty `UNKNOWN`, and
