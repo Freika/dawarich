@@ -28,7 +28,7 @@ defmodule Dawarich.Imports.GpxProgress do
 
   defp publish(import, context) do
     Fence.run(context, fn ->
-      Progress.publish!(context.repo, import, context.locale)
+      Progress.publish!(context.repo, import, context.locale, context[:progress_lane])
     end)
   rescue
     error in LeaseLost -> reraise error, __STACKTRACE__

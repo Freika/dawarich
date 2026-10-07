@@ -6,6 +6,7 @@ defmodule Dawarich.Jobs.RecalculationEntries do
       [
         {"stats.full_recalculation", Dawarich.Stats.FullRecalculationWorker},
         {"users.recalculate_data", Dawarich.Users.RecalculateWorker},
+        {"visits.user_redetect", Dawarich.Visits.UserRedetectWorker},
         {"points.anomaly_backfill", Dawarich.Points.AnomalyBackfillWorker},
         {"release.anomalies", Dawarich.ReleaseOperations.Anomalies},
         {"release.anomalies_user", Dawarich.ReleaseOperations.AnomaliesUser},
