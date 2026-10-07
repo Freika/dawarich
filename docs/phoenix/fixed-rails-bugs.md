@@ -1064,16 +1064,16 @@ Rails source: `app/services/visits/bulk_update.rb:47`.
 
 ### FRB-066 — Area deletion removes another user's linked records
 
-Rails destroys visits and notes by attachment alone, then nullifies those visits' points. A database-valid cross-owner graph can therefore lose another account's visit/note and point reference when the area owner deletes the area. This characterizes stored graph corruption; it does not assert that public creation endpoints permit it.
+Rails destroys visits and notes by attachment alone, then nullifies those visits' points. Its queued orphan-place cleanup also ignores declined/soft-deleted primary references and deletes suggestion links without checking the visit owner. A database-valid cross-owner graph can therefore lose another account's records or references during the area deletion or its scheduled cleanup. This characterizes stored graph corruption; it does not assert that public creation endpoints permit it.
 
-- Rails: `app/controllers/api/v1/areas_controller.rb:35`; `app/models/area.rb:9`; `app/models/visit.rb:11-12`; `app/models/concerns/notable.rb:7`.
-- Phoenix: `app-phoenix/lib/dawarich/areas/api.ex:111`; `app-phoenix/lib/dawarich/areas/cleanup_scope.ex:4`.
-- Behavior: lock the owned area/visits, reject foreign visits, points, area/visit notes and place links before modifying the graph, and constrain every dependent mutation to the area owner. Refusal returns 422 with `{"error":"Area has foreign dependents"}` and preserves all rows, references and jobs.
-- Modes: standalone API and native area domain calls. Coexistence requests retained by Rails still have the source defect.
-- Evidence: fix2-fix-sa-api-gaps.report.md (F2); rolled-back Rails oracle returns 200 with foreign visit/note deleted and foreign point reference cleared.
-- Test: “owned area deletion refuses every foreign dependent before changing the graph” in `app-phoenix/test/dawarich_web/standalone_api_review_test.exs`.
-- Ledger: FRB-066 added; no additional ED/DRB row.
-- CHANGELOG-ready: Refuse area deletion when its linked records belong to another account, preserving those records and references.
+- Rails: `app/controllers/api/v1/areas_controller.rb:35`; `app/models/area.rb:9`; `app/models/visit.rb:11-12`; `app/models/concerns/notable.rb:7`; `app/services/places/delete_if_orphan.rb:19`, `:25-27`.
+- Phoenix: `app-phoenix/lib/dawarich/areas/api.ex:111`; `app-phoenix/lib/dawarich/areas/cleanup_scope.ex:4`; `app-phoenix/lib/dawarich/places/orphans.ex`; `app-phoenix/lib/dawarich/places/orphan_cleanup_worker.ex`.
+- Behavior: lock the owned area/visits, reject foreign immediate dependents before modifying the graph, and constrain every dependent mutation to the area owner. Refusal returns 422 with `{"error":"Area has foreign dependents"}` and preserves all rows, references and jobs. Shared individual and batch orphan cleanup retains a place referenced by any user's visit, regardless of status/deleted_at, or by any suggestion link. Cleanup deletes only owned unreferenced places; it never detaches visits or deletes suggestion links. Eligibility is rechecked after the owned place lock.
+- Modes: standalone API and every native producer of the shared cleanup workers, including imports, visit writes, CLI cleanup and residual jobs. Coexistence effects retained by Rails still have the source defect.
+- Evidence: fix2-fix-sa-api-gaps.report.md (immediate F2); fix3-fix-sa-api-gaps.report.md (queued F2 follow-up). Rolled-back Rails oracles reproduce both immediate deletion and queued cleanup losses.
+- Tests: “owned area deletion refuses every foreign dependent before changing the graph” in `app-phoenix/test/dawarich_web/standalone_api_review_test.exs`; three “queued area cleanup preserves foreign shared place attachments” cases in `standalone_area_cleanup_test.exs`; “batch cleanup retains every visit status and foreign suggestion link” in `app-phoenix/test/dawarich/places/orphan_cleanup_worker_test.exs`; “deletes only unreferenced owned suggested orphans and preserves hidden references” in `orphans_test.exs`.
+- Ledger: FRB-066 extended; ED-FIX-ORPHAN-REFERENCES added; no additional DRB row.
+- CHANGELOG-ready: Preserve other accounts' records and all visit references through area deletion and scheduled orphan-place cleanup.
 
 ## Deferred Rails defects and retained policies
 

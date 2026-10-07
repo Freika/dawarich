@@ -30,7 +30,7 @@ actor-scoped row and owned visits before inspecting its dependent graph. A
 cross-owner visit, point, area/visit note or place link refuses deletion with 422
 and `{"error":"Area has foreign dependents"}`, preserving records, references and
 jobs. Every dependent mutation is owner-scoped. This fixes the inherited Rails
-attachment-only deletion defect documented as [FRB-066](fixed-rails-bugs.md#frb-066--area-deletion-removes-another-users-linked-records). Orphan-place and visit-month
+attachment-only deletion defect documented as [FRB-066](fixed-rails-bugs.md#frb-066--area-deletion-removes-another-users-linked-records). Shared orphan cleanup retains any user’s primary visit reference in every status, including declined/soft-deleted visits, and every suggestion link. It deletes only the owning user’s completely unreferenced places, without modifying visits or links; both single and batch paths recheck eligibility after locking. The area regression executes the actual queued worker arguments for all three foreign attachment scenarios. Orphan-place and visit-month
 jobs are recorded with `Dawarich.AfterCommit` in the deletion transaction.
 JSON writes and digest DELETE use the existing `Api.WriteResponse` transaction
 so domain changes, after-commit intents, encoding and response headers succeed together. A response preparation
@@ -43,7 +43,7 @@ added. An invalid response header cannot leave the digest durably deleted. Rails
 work before rendering; the controller report records these Rails bug fixes.
 The response correction extends FRB-052; no additional ED/DRB row is added.
 
-Verification lives in `standalone_api_gaps_test.exs`,
+Verification lives in `standalone_area_cleanup_test.exs`, `standalone_api_gaps_test.exs`,
 `standalone_api_gaps_commit_test.exs`, `standalone_api_review_test.exs` and
 `standalone_digest_response_test.exs`: endpoint contracts, native job counts,
 foreign/monthly record isolation, SQL and rendering failures, coexistence method

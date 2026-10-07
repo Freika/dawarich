@@ -63,7 +63,8 @@ defmodule Dawarich.Places.OrphanCleanupWorker do
         """
         SELECT p.id FROM places p JOIN users u ON u.id=p.user_id
         WHERE u.deleted_at IS NULL AND p.user_id=$1 AND p.id>$2 AND p.source=1 AND (p.note IS NULL OR p.note='')
-          AND NOT EXISTS(SELECT 1 FROM visits v WHERE v.place_id=p.id AND v.deleted_at IS NULL AND v.status<>2)
+          AND NOT EXISTS(SELECT 1 FROM visits v WHERE v.place_id=p.id)
+          AND NOT EXISTS(SELECT 1 FROM place_visits pv WHERE pv.place_id=p.id)
           AND NOT EXISTS(SELECT 1 FROM taggings t WHERE t.taggable_id=p.id AND t.taggable_type='Place')
         ORDER BY p.id LIMIT 500
         """,

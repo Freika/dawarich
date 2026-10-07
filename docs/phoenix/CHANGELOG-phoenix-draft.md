@@ -60,7 +60,7 @@ Compiled 2026-10-07 from integrated fixes at `3a20a0279`. Each item links to one
 - Retry calendar cache invalidation after a successful visit write instead of leaving old counts until expiry. [FRB-063](fixed-rails-bugs.md#frb-063--visit-cache-invalidation-failure-is-swallowed)
 - Prevent old in-flight calendar cache fills from overwriting counts after a committed visit change. [FRB-064](fixed-rails-bugs.md#frb-064--an-in-flight-visit-cache-fill-resurrects-stale-aggregates)
 - Refresh calendar counts after bulk visit confirmation or decline, including during cache outages. [FRB-065](fixed-rails-bugs.md#frb-065--bulk-visit-status-updates-omit-cache-invalidation)
-- Refuse area deletion when its linked records belong to another account, preserving those records and references. [FRB-066](fixed-rails-bugs.md#frb-066--area-deletion-removes-another-users-linked-records)
+- Preserve other accounts’ records and all visit references through area deletion and scheduled orphan-place cleanup. [FRB-066](fixed-rails-bugs.md#frb-066--area-deletion-removes-another-users-linked-records)
 
 ## Correctness
 

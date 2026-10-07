@@ -29,7 +29,11 @@ defmodule DawarichWeb.StandaloneRoutes do
         conn = conn |> assign(:api_tag, "api") |> Map.put(:path_params, params)
 
         conn =
-          if handler in [Api.DemoDataController, Api.DigestWritesController, Api.RecalculationsController] or
+          if handler in [
+               Api.DemoDataController,
+               Api.DigestWritesController,
+               Api.RecalculationsController
+             ] or
                (handler == Api.AreasController and action == :destroy),
              do: conn |> put_private(:dawarich_native_api, true) |> Plug.Head.call([]),
              else: conn
