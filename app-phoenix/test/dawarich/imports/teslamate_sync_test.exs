@@ -130,7 +130,9 @@ defmodule Dawarich.Imports.TeslamateSyncTest do
                "teslamate-sync:#{c.user_id}"
              ])
 
-    assert :ok == SyncWorker.run(ScratchRepo, args(c.user_id), now: @now, self_hosted?: true)
+    assert {:snooze, 60} ==
+             SyncWorker.run(ScratchRepo, args(c.user_id), now: @now, self_hosted?: true)
+
     answer(socket, hd(c.expected["requests"]))
     responder = Task.async(fn -> respond(server, tl(c.expected["requests"])) end)
     assert :ok == Task.await(first)

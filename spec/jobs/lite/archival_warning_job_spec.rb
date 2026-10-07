@@ -32,6 +32,7 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         create(:point, user: lite_user, timestamp: (11.months + 15.days).ago.to_i)
         create(:point, user: second_lite_user, timestamp: 12.months.ago.to_i)
         job_owner!(described_class::OWNERSHIP_KEY, :oban)
+        job_owner!('command:mail.user.archival_approaching', :oban)
         JobOutbox.delete_all
         clear_enqueued_jobs
         expect(JobOwnership).to receive(:with_owner).once.and_call_original
@@ -89,28 +90,23 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         expect(archival_warnings(lite_user)['11_5mo']).to be_present
       end
 
-      it '11_5mo produces mail.user.archival_approaching with epoch = the written mark (oban) ' \
-         'or enqueues MailerSendingJob with epoch (sidekiq)' do
+      it 'rejects split cron and mail ownership, then sends with source ownership' do
         create(:point, user: lite_user, timestamp: (11.months + 15.days).ago.to_i)
-        create(:point, user: second_lite_user, timestamp: (11.months + 15.days).ago.to_i)
         job_owner!('command:mail.user.archival_approaching', :oban)
         JobOutbox.delete_all
-        second_lite_user.update_column(:plan, User.plans[:pro])
+        clear_enqueued_jobs
 
-        described_class.perform_now
+        expect { described_class.perform_now }.to raise_error(JobOwnership::InconsistentOwners)
+        expect(archival_warnings(lite_user)).to be_nil
+        expect(JobOutbox.count).to eq(0)
+        expect(Users::MailerSendingJob).not_to have_been_enqueued
 
-        expect(JobOutbox.sole).to have_attributes(
-          command_type: 'mail.user.archival_approaching', aggregate_id: lite_user.id,
-          payload: { 'user_id' => lite_user.id, 'locale' => 'en', 'epoch' => archival_warnings(lite_user)['11_5mo'] }
-        )
-
-        job_owner!('command:mail.user.archival_approaching', :sidekiq)
-        second_lite_user.update_column(:plan, User.plans[:lite])
-
+        JobOwnership.put!(described_class::OWNERSHIP_KEY, :sidekiq, pinned: false, by: 'spec')
         described_class.perform_now
 
         expect(Users::MailerSendingJob).to have_been_enqueued
-          .with(second_lite_user.id, 'archival_approaching', epoch: archival_warnings(second_lite_user)['11_5mo'])
+          .with(lite_user.id, 'archival_approaching', epoch: archival_warnings(lite_user)['11_5mo'])
+        expect(JobOutbox.count).to eq(0)
       end
     end
 

@@ -60,11 +60,27 @@ defmodule Dawarich.Imports.NormalHandover do
           else: {:snooze, 5}
 
       [[^expected_user, source, 2, nil]] when source in @sources ->
-        finish_terminal(repo, job)
+        if pending_terminal?(repo, job),
+          do: {:snooze, 5},
+          else: finish_terminal(repo, job)
 
       _ ->
         Processed.mark!(repo, args["event_id"], "imports.process_normal.unavailable")
     end
+  end
+
+  defp pending_terminal?(repo, job) do
+    repo.query!(
+      "SELECT phase FROM phoenix.import_runs WHERE import_id=$1 AND event_id=$2 AND job_id=$3 AND attempt<=$4 AND user_id=$5 AND token IS NOT NULL FOR UPDATE",
+      [
+        job.args["import_id"],
+        Ecto.UUID.dump!(job.args["event_id"]),
+        job.id,
+        job.attempt,
+        job.args["user_id"]
+      ],
+      log: false
+    ).rows == [["processing"]]
   end
 
   defp handback(repo, args, owner, source, reason) do

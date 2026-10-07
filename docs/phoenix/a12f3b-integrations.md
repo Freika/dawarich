@@ -1,7 +1,8 @@
-# Standalone integration settings and photo imports
+# Standalone integration settings, producers and enrichment
 
-Controller ruling 15 limits this package to saving integration settings and
-starting Immich/PhotoPrism imports. The A12f-3b-B plan is the execution source.
+The A12f-3b-B plan covers integration settings and producers. The E061
+follow-up closes its omitted I04 dispatcher names and I05 Immich verifier
+prerequisites under the A12f-3b-E plan.
 
 ## HOT mounting handoff
 
@@ -47,11 +48,15 @@ an empty field clears it. Coexistence fixture rendering remains unchanged.
 Settings and provider credentials are excluded from SQL logs and command
 payloads. Provider error bodies are not included in alerts.
 
-## Photo-import contract
+## Background-job producer contract
 
-`Dawarich.Imports.IntegrationCommands` accepts exactly `start_immich_import`
-and `start_photoprism_import`. Authenticated, CSRF-protected POSTs redirect to
-`/imports` with the source success notice after inserting a native command.
+`Dawarich.Imports.IntegrationCommands` accepts `start_immich_import`,
+`start_photoprism_import`, `start_airtrail_import`, `start_teslamate_import`,
+`start_reverse_geocoding` and `continue_reverse_geocoding`.
+Authenticated, CSRF-protected POSTs insert a native command and retain the
+source redirect: photo imports use `/imports`, AirTrail uses
+`/settings/integrations`, TeslaMate adds `?service=teslamate`, and geocoding
+uses `/settings/background_jobs`.
 The source background-job controller does not apply the settings-save
 full-access/active-account check to these POSTs; this producer preserves that
 behavior.
@@ -61,15 +66,43 @@ Commands use the existing `imports.immich_geodata` and
 time zone. UUID event/dedupe identities are per accepted request, as source
 button submissions enqueue independently. Existing worker leases and import
 publication fences remain responsible for processing and duplicate imports.
+AirTrail and TeslaMate commands capture only the actor ID. Geocoding uses the
+existing native worker with cursor zero, actor locale and the source force
+mode; forced runs retain the paid-provider guard. Geocoding HTTP triggers
+retain the source self-host-only restriction.
 
 An owner pinned to Sidekiq yields 503 and accepts no command. Missing actors,
 unknown/nested names and unsupported triggers are refused; no Rails command
 is emitted. The standalone runtime's existing registry/claimer supplies native
 ownership. No registry change is required for these existing leaves.
 
+An accepted TeslaMate sync blocked by another lease snoozes for sixty seconds
+with the same native job/event identity. It remains incomplete for G49 and
+resumes after lease release. Direct synchronous callers retain their skipped
+response. Scheduler children retain deterministic slot identities and replay
+receipts; this follow-up does not transfer accepted work back to Rails.
+
+## Immich enrichment verification
+
+The existing authenticated enrichment API uses the native verifier as its
+default enqueue hook while retaining explicit callback overrides. Successful
+PUT submissions create the existing checking notification and schedule
+verification ten seconds later. Verification performs GET requests only.
+
+The verifier retains the source defaults, twenty-asset batches, accumulated
+confirmed and pending counts, immediate remaining-batch children and
+thirty-second retries, bounded to three passes. Coordinates use the source
+0.00001 tolerance, including zero. Missing or soft-deleted actors, missing
+notifications, changed configuration and provider/malformed-response errors
+retain the source outcomes. Completion updates the same localized notification
+and publishes its native broadcast event. Processed receipts and the
+notification row lock commit each effect and continuation atomically; queued
+continuations remain visible as incomplete work to G49.
+
 ## Verification and remaining scope
 
-The two task test files are `a12f3b_i01_test.exs` and `a12f3b_i04_test.exs`.
+The task test files are `a12f3b_i01_test.exs`, `a12f3b_i04_test.exs`,
+`a12f3b_i05_test.exs` and `a12f3b_e061_test.exs`.
 They exercise actual route macros, form parsing, encrypted session cookies,
 CSRF, local HTTP provider responses, owner pins, SQL footprints, secret
 masking, checkpoint reset, concurrent setting preservation and rollback.
@@ -79,11 +112,17 @@ and dispatcher batch characterizes the source without changing shared fixture
 generators.
 
 HOT must mount the routes and verify the final Endpoint/Strangler path.
-Trek source/picker/sync (I02/I03), the non-photo I04 trigger forms, Immich
-enrichment/verifier (I05), scheduled children (I06), and rare exception/legacy
-envelope parity remain deferred under ruling 15. Seed 202 belongs to the
+Trek source/picker forms (I02/I03), I06 producer surfaces and rare
+exception/legacy envelope parity keep their separate owner records. E062's accepted
+Trek sync proof is unchanged by E061. Seed 202 belongs to the
 controller's integration head. This package does not accept a Ruby-free
 release or change drain/rollback policy.
+
+Cloud native lifecycle remains refused until the external L1 handoff,
+including when `DAWARICH_RAILS=off`. Current migration ledgers do not bypass
+that refusal: readiness reports `:schemas_behind`, and migration and seed
+commands refuse without writes. `a12f3b_e061_cloud_guard_test.exs` verifies
+this constraint alongside the unchanged baseline release Cloud tests.
 
 ## TeslaMate effect ownership reconciliation
 

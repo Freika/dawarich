@@ -34,7 +34,7 @@ RSpec.describe Points::RawData::ArchiveUserJob, type: :job do
     context 'when the lease is held' do
       it 'skips without error' do
         # Simulate lock being held by not allowing the block to execute
-        allow(PhoenixLease).to receive(:try_hold).and_return(false)
+        expect(PhoenixLease).to receive(:try_hold).with("archive_raw_data:#{user.id}").and_return(false)
 
         expect(archiver).not_to receive(:archive_user)
 
