@@ -15,6 +15,8 @@ defmodule Dawarich.Imports.GpxLifecycle do
   require Logger
 
   def call(lease, context) do
+    context = Map.put(context, :progress_lane, lease.lane)
+
     ImportState.with_snapshot(lease, fn state ->
       context = Map.put(context, :fence, fn fun -> ImportState.effect!(lease, fun) end)
       result = if state.mode == :terminal, do: :ok, else: process(lease, state, context)
@@ -131,7 +133,7 @@ defmodule Dawarich.Imports.GpxLifecycle do
 
   defp publish(lease, context, native? \\ true) do
     ImportState.effect!(lease, fn ->
-      Progress.publish!(lease.repo, lease.import, context.locale)
+      Progress.publish!(lease.repo, lease.import, context.locale, lease.lane)
     end)
 
     if native?, do: broadcast(lease)

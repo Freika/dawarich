@@ -4,15 +4,16 @@ defmodule Dawarich.Exports.Delete do
   def call(repo, user_id, id) do
     with {id, ""} when id > 0 and id <= 9_223_372_036_854_775_807 <- Integer.parse(to_string(id)) do
       repo.transaction(fn ->
-        case repo.query!(
-               "SELECT e.id,e.url FROM public.exports e JOIN public.users u ON u.id=e.user_id WHERE e.id=$1 AND e.user_id=$2 AND u.deleted_at IS NULL FOR UPDATE OF e FOR SHARE OF u",
-               [id, user_id],
-               log: false
-             ).rows do
-          [[^id, url]] when url in [nil, ""] -> :ok
-          [[^id, _]] -> repo.rollback(:legacy_file)
-          _ -> repo.rollback(:not_found)
-        end
+        type =
+          case repo.query!(
+                 "SELECT e.id,e.url,e.file_type FROM public.exports e JOIN public.users u ON u.id=e.user_id WHERE e.id=$1 AND e.user_id=$2 AND u.deleted_at IS NULL FOR UPDATE OF e FOR SHARE OF u",
+                 [id, user_id],
+                 log: false
+               ).rows do
+            [[^id, url, type]] when url in [nil, ""] -> type
+            [[^id, _, _]] -> repo.rollback(:legacy_file)
+            _ -> repo.rollback(:not_found)
+          end
 
         attachments =
           repo.query!(
@@ -38,7 +39,10 @@ defmodule Dawarich.Exports.Delete do
         repo.query!("DELETE FROM exports WHERE id=$1 AND user_id=$2", [id, user_id], log: false)
 
         if blobs != [] do
-          if Dawarich.Standalone.enabled?() do
+          key = if type == 0, do: "command:exports.points", else: "command:users.export_data"
+          owner = Dawarich.Jobs.Ownership.lock(repo, key)
+
+          if Dawarich.Standalone.enabled?() or owner == :oban do
             Dawarich.Exports.PurgeWorker.enqueue_export!(repo, blobs)
           else
             Dawarich.RailsCommands.insert!(repo, "exports.purge", %{

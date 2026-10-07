@@ -16,6 +16,8 @@ defmodule Dawarich.Imports.NormalLifecycle do
   alias Dawarich.Notifications
 
   def call(lease, context) do
+    context = Map.put(context, :progress_lane, lease.lane)
+
     if Dawarich.Jobs.Processed.done?(lease.repo, lease.event_id) do
       :ok
     else
@@ -161,7 +163,7 @@ defmodule Dawarich.Imports.NormalLifecycle do
 
   defp publish(lease, context, native? \\ true) do
     ImportState.effect!(lease, fn ->
-      Progress.publish!(lease.repo, lease.import, context.locale)
+      Progress.publish!(lease.repo, lease.import, context.locale, lease.lane)
     end)
 
     if native?, do: Dawarich.Imports.Events.broadcast(lease.import.user_id)

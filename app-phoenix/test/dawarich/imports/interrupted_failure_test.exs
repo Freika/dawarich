@@ -2,7 +2,7 @@ defmodule Dawarich.Imports.InterruptedFailureTest do
   use Dawarich.JobsCase
   alias Dawarich.A12f3bImportsFixture, as: F
   alias Dawarich.Imports.{ProcessWorker, ProcessGpxWorker, NormalHandover}
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.{Ownership, Processed, Registry}
 
   setup do: F.setup()
 
@@ -77,6 +77,7 @@ defmodule Dawarich.Imports.InterruptedFailureTest do
     test "queued normal job edited to GPX has a terminal executor in #{mode}", base do
       c = normal(base)
       System.put_env("DAWARICH_RAILS", unquote(mode))
+      for entry <- Registry.entries(), do: Ownership.put!(ScratchRepo, entry.key, :oban)
 
       assert {:ok, :updated} =
                Dawarich.Imports.UiRecords.update(ScratchRepo, c.import.user_id, c.import.id, %{
@@ -92,16 +93,10 @@ defmodule Dawarich.Imports.InterruptedFailureTest do
 
       assert :ok = ProcessWorker.perform(c.job)
 
-      if unquote(mode) == "off" do
-        assert [[2]] == rows("SELECT status FROM imports WHERE id=$1", [c.import.id])
-        assert [[1]] == rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
-        assert [] == rows("SELECT kind FROM phoenix.rails_commands")
-      else
-        assert [["imports.normal_resume"]] == rows("SELECT kind FROM phoenix.rails_commands")
-
-        assert [[true, "pending"]] ==
-                 rows("SELECT native_fallback,state FROM phoenix.import_handoffs")
-      end
+      assert [[2]] == rows("SELECT status FROM imports WHERE id=$1", [c.import.id])
+      assert [[1]] == rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
+      assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+      assert [] == rows("SELECT event_id FROM phoenix.import_handoffs")
 
       assert Processed.done?(ScratchRepo, c.job.args["event_id"])
 
@@ -113,10 +108,10 @@ defmodule Dawarich.Imports.InterruptedFailureTest do
       assert [[0]] ==
                rows("SELECT count(*) FROM notifications WHERE user_id=$1", [c.import.user_id])
 
-      assert [[if(unquote(mode) == "off", do: 1, else: 0)]] ==
+      assert [[1]] ==
                rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
 
-      assert [[if(unquote(mode) == "on", do: 1, else: 0)]] ==
+      assert [[0]] ==
                rows(
                  "SELECT count(*) FROM phoenix.rails_commands WHERE kind='imports.normal_resume'"
                )
