@@ -37,14 +37,16 @@ module Users::Digests::Execution
       next if saved['state'] == 'published'
 
       failed = false
-      ActiveRecord::Base.transaction(requires_new: true) do
+      committed = ActiveRecord::Base.transaction(requires_new: true) do
         publication = yield(:publish) if saved['outcome'] == 'mail'
         if publication.is_a?(StandardError)
           failed = publication
           raise ActiveRecord::Rollback
         end
+        true
       end
       next yield(:failed, failed) if failed
+      raise IOError, 'Digest publication transaction rolled back' unless committed
 
       write(identity, 'published', saved['outcome'])
       mirror(receipt, effect)

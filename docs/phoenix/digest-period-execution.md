@@ -40,6 +40,13 @@ reported stats errors, partial intermediate stats writes on digest failure,
 locale, timezone, missing-user behavior and mail eligibility remain unchanged.
 Published means durable mail admission, not email delivery or `sent_at`.
 
+Rails checks the publication savepoint's successful transaction return before
+advancing the period to `published` and writing the terminal receipt. A swallowed
+`ActiveRecord::Rollback` raises `IOError`, retains `generated/mail`, and admits no
+mail. The period lock remains held, and mail admission, published state and the
+terminal receipt still commit together in the enclosing transaction. The existing
+returned-error notification path and successful no-data/mail behavior are retained.
+
 ## Alternatives and consequences
 
 Adding another checkpoint lookup retains multiple authoritative records and
@@ -116,3 +123,9 @@ and passes the returned-error fix. These targeted tests do not certify an entire
 historical Rails application or full historical suite. Existing RX05 covers the
 native raw terminal; RX20 covers Rails shared-mail adoption. No claim of full
 historical-app certification is made.
+
+`publication_rollback_spec.rb` retains RX43 for both monthly and yearly Rails
+jobs. Each probe rolls back the existing publication savepoint after its real
+callback, checks the pending period and absence of mail/terminal receipt, then
+runs two fault-free retries. Exactly one digest and one mail admission remain,
+with one monthly or twelve yearly stats calculations across all attempts.
