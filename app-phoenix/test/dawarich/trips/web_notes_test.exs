@@ -74,6 +74,56 @@ defmodule Dawarich.Trips.WebNotesTest do
 
   defp naive(raw), do: raw |> DateTime.from_iso8601() |> elem(1) |> DateTime.to_naive()
 
+  @tag a12f3a_t08_edges: true
+  test "T08: note dates retain Ruby ordinal and commercial week casting" do
+    user =
+      RailsUser.insert!(
+        %{id: 989_201, email: "trip-note-dates@example.test", settings: %{}},
+        ScratchRepo
+      )
+
+    rows(
+      "INSERT INTO trips(id,user_id,name,started_at,ended_at,created_at,updated_at) VALUES(989202,$1,'Auwald','2026-10-02','2026-10-04',$2,$2)",
+      [user.id, DateTime.to_naive(@now)]
+    )
+
+    for raw <- ~w(2026-W40-6 2026-276 20261003 2026W406) do
+      assert {:ok, %{date: ~D[2026-10-03], note: note}} =
+               WebNotes.run(
+                 ScratchRepo,
+                 :create,
+                 user,
+                 989_202,
+                 nil,
+                 %{"date" => raw, "body" => raw},
+                 %{now: @now}
+               )
+
+      assert note.noted_at == ~N[2026-10-03 12:00:00.000000]
+      assert length(saved(989_202)) == 1
+    end
+
+    before = saved(989_202)
+
+    for raw <- ~w(2026-W54-6 2026-367) do
+      assert {:invalid_date} =
+               WebNotes.run(
+                 ScratchRepo,
+                 :create,
+                 user,
+                 989_202,
+                 nil,
+                 %{"date" => raw, "body" => raw},
+                 %{now: @now}
+               )
+
+      assert saved(989_202) == before
+    end
+
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+  end
+
+  @tag a12f3a_t09: true
   test "nested notes preserve scope noon upsert and unique-date race" do
     for entry <- @effects,
         entry["request"]["method"] in ~w(POST PATCH DELETE),
@@ -203,6 +253,44 @@ defmodule Dawarich.Trips.WebNotesTest do
              WebNotes.run(ExternalInsert, :create, user, 899_903, nil, attrs, %{now: @now})
 
     assert [[_, "First", _, _, _, _]] = saved(899_903)
+
+    literal =
+      "<action-text-attachment sgid=\"synthetic-invalid\"></action-text-attachment><script>text</script>"
+
+    assert {:ok, %{note: note}} =
+             WebNotes.run(
+               ScratchRepo,
+               :create,
+               user,
+               899_903,
+               nil,
+               %{attrs | "body" => literal},
+               %{now: @now}
+             )
+
+    assert note.body == literal
+
+    assert rows("SELECT count(*) FROM active_storage_attachments WHERE record_type='Note'") == [
+             [0]
+           ]
+
+    assert {:ok, %{note: updated}} =
+             WebNotes.run(
+               ScratchRepo,
+               :update,
+               user,
+               899_903,
+               note.id,
+               %{"body" => literal <> " next"},
+               %{now: @now}
+             )
+
+    assert updated.body == literal <> " next"
+
+    assert {:ok, _} =
+             WebNotes.run(ScratchRepo, :destroy, user, 899_903, note.id, %{}, %{now: @now})
+
+    assert saved(899_903) == []
     assert rows("SELECT 1") == [[1]]
   end
 end
