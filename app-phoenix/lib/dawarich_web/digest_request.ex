@@ -29,6 +29,10 @@ defmodule DawarichWeb.DigestRequest do
     end
   end
 
+  defp method?(%{method: "POST", path_info: ["digests"]}, %{"_method" => method})
+       when is_binary(method),
+       do: String.upcase(method) == "POST"
+
   defp method?(%{method: "POST", path_info: ["digests"]}, params),
     do: not Map.has_key?(params, "_method")
 

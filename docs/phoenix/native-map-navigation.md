@@ -6,4 +6,6 @@ The shared API timestamp admission accepts ISO local date-times as well as dates
 
 Source characterization uses real Rails map Turbo requests and authenticated monthly points requests. Native regression names in `map_navigation_test.exs` cover these envelopes and client lifecycle, with production mutations disabling Turbo remounting or requiring a timestamp offset. Existing bridge, map shell, map API and timestamp caller tests supplement browser coverage.
 
+Cold digest creation also admits the retained method-link form’s `_method=post` body field. The digest request removes this transport field before applying the existing session/CSRF checks. Other method overrides and invalid CSRF tokens remain refused.
+
 These corrections restore working Rails behavior; they do not fix a Rails defect. The Cloud lifecycle admission is unchanged. Verification results are maintained in the controller implementation report and the AFFiNE counterpart titled `Dawarich — Native map Turbo navigation`.

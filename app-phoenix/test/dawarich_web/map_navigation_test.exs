@@ -99,4 +99,49 @@ defmodule DawarichWeb.MapNavigationTest do
       assert {:replay, _} = DawarichWeb.Api.Params.timestamp(invalid)
     end
   end
+
+  @tag :sa_g44_digest_navigation
+  test "cold digest generation accepts the native method link POST envelope with session CSRF", %{
+    user: user
+  } do
+    Dawarich.Test.StatsSeeds.stat!(user.id, %{year: 2023, month: 3, distance: 20_000})
+    Dawarich.Jobs.Ownership.put!(Repo, "command:digests.calculate_year", :oban)
+    session = RailsUser.session(user.id)
+    token = DawarichWeb.RailsCsrf.masked_token(session)
+    form = Plug.Conn.Query.encode(%{"_method" => "post", "authenticity_token" => token})
+
+    conn =
+      RailsUser.signed_in(user.id, session)
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> put_req_header("content-length", to_string(byte_size(form)))
+      |> put_req_header("accept", "text/html, application/xhtml+xml")
+      |> Phoenix.ConnTest.dispatch(Endpoint, :post, "/digests?year=2023", form)
+
+    assert conn.status == 303
+    assert get_resp_header(conn, "location") == ["http://www.example.com/digests"]
+
+    assert [["digests.calculate_year", %{"user_id" => id, "year" => 2023}]] =
+             Repo.query!(
+               "SELECT command_type,payload FROM job_outbox WHERE command_type='digests.calculate_year'"
+             ).rows
+
+    assert id == user.id
+
+    for {method, csrf} <- [{"delete", token}, {"put", token}, {"post", "invalid-csrf"}] do
+      raw = Plug.Conn.Query.encode(%{"_method" => method, "authenticity_token" => csrf})
+
+      refused =
+        RailsUser.signed_in(user.id, session)
+        |> put_req_header("content-type", "application/x-www-form-urlencoded")
+        |> put_req_header("content-length", to_string(byte_size(raw)))
+        |> put_req_header("accept", "text/html, application/xhtml+xml")
+        |> Phoenix.ConnTest.dispatch(Endpoint, :post, "/digests?year=2023", raw)
+
+      assert refused.status == 422
+    end
+
+    assert Repo.query!(
+             "SELECT count(*) FROM job_outbox WHERE command_type='digests.calculate_year'"
+           ).rows == [[1]]
+  end
 end
