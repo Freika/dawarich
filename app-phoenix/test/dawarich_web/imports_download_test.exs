@@ -35,7 +35,8 @@ defmodule DawarichWeb.ImportsDownloadTest do
   defp import!(c, name, bytes, original \\ nil) do
     blob =
       Dawarich.RailsBlobFixture.create!(Repo, c.config.root, name, bytes,
-        content_type: "application/gpx+xml"
+        content_type: "application/gpx+xml",
+        user_id: c.user.id
       )
 
     descriptor =

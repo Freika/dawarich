@@ -162,7 +162,7 @@ defmodule Dawarich.TripGateTest do
 
       TripsSeeds.rich_text!(
         880_127,
-        ~s(<action-text-attachment sgid="x"></action-text-attachment>)
+        ~s(<action-text-attachment content-type="text/html" content="&lt;div&gt;source render error&lt;/div&gt;"></action-text-attachment>)
       )
 
       assert {:ok, _} = TripPage.gate(user, 880_120)

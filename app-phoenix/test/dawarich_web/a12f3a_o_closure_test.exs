@@ -781,6 +781,9 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
         content_type: "application/zip"
       )
 
+    for reference <- [upload, archive],
+        do: Dawarich.Storage.UploadReceipts.bind!(Repo, reference.id, 8896)
+
     video =
       Dawarich.RailsBlobFixture.create!(Repo, ctx.tmp_dir, "Synthetic.mp4", "Synthetic",
         content_type: "video/mp4",

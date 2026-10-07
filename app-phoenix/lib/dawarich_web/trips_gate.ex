@@ -33,7 +33,9 @@ defmodule DawarichWeb.TripsGate do
     conn.query_string == "" and
       trip_open?(conn, fn user ->
         id = params["id"] && String.to_integer(params["id"])
-        match?({:ok, _}, Dawarich.Trips.WebForm.load(Dawarich.Repo, user, id, %{}))
+
+        (is_nil(id) and not Dawarich.Trips.WebForm.active?(user, DateTime.utc_now())) or
+          match?({:ok, _}, Dawarich.Trips.WebForm.load(Dawarich.Repo, user, id, %{}))
       end)
   end
 

@@ -22,6 +22,21 @@ defmodule Dawarich.RailsMessages do
     )
   end
 
+  def verified_attachable_blob_id(signed, now \\ DateTime.utc_now()) do
+    with {:ok, gid} when is_binary(gid) <-
+           open(signed, @sgid, :sha, RailsSecret.fetch(), "attachable", now),
+         [_, id] <-
+           Regex.run(
+             ~r/\Agid:\/\/dawarich\/ActiveStorage::Blob\/(\d+)(?:\?expires_in(?:=[^&]*)?)?\z/,
+             gid
+           ),
+         {id, ""} when id > 0 and id <= 9_223_372_036_854_775_807 <- Integer.parse(id) do
+      {:ok, id}
+    else
+      _ -> :error
+    end
+  end
+
   def stream_name(parts, secret \\ RailsSecret.fetch()),
     do:
       sign(@turbo, Jason.encode!(broadcasting(parts), escape: :javascript_safe), :sha256, secret)

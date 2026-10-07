@@ -44,6 +44,8 @@ defmodule DawarichWeb.ActiveStorageTest do
         ]
       )
 
+      Dawarich.Storage.UploadReceipts.bind!(Repo, row["id"], 9701)
+
       if row["stored"] do
         path = Storage.disk_path(roots[row["service_name"]], row["key"])
         File.mkdir_p!(Path.dirname(path))

@@ -26,7 +26,12 @@ defmodule DawarichWeb.TripDocument do
     end
   end
 
-  defp preflight(conn, user, ["new"], now), do: form(conn, user, nil, now)
+  defp preflight(conn, user, ["new"], now) do
+    if Dawarich.Trips.WebForm.active?(user, now),
+      do: form(conn, user, nil, now),
+      else: DawarichWeb.TripActions.inactive(conn)
+  end
+
   defp preflight(conn, user, [id, "edit"], now), do: form(conn, user, String.to_integer(id), now)
 
   defp preflight(conn, user, [id], now) do

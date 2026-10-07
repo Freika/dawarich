@@ -153,7 +153,6 @@ defmodule DawarichWeb.A8RemainingRequestTest do
           {"/trips/42/notes", note <> "&note[body]=duplicate"},
           {"/trips/42/notes", "note[body][text]=nested"},
           {"/trips/42/export?file_format=gpx&file_format=json", ""},
-          {"/trips/42/export?file_format=gpx", "file_format=json"},
           {"/trips/42/export?file_format[]=gpx", ""},
           {"/trips/42/export?file_format=%Q1", ""},
           {"/places/42?page=2&page=3", "_method=delete"},

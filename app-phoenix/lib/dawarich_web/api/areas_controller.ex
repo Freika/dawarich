@@ -10,7 +10,7 @@ defmodule DawarichWeb.Api.AreasController do
     params = Map.merge(conn.assigns.api_params, conn.path_params)
     ctx = Dawarich.Settings.Api.context(conn)
 
-    {_, status, body} =
+    result = fn ->
       case action do
         :index -> Api.index(Dawarich.Repo, user, ctx)
         :show -> Api.show(Dawarich.Repo, user, params["id"], ctx)
@@ -18,8 +18,14 @@ defmodule DawarichWeb.Api.AreasController do
         :update -> Api.update(Dawarich.Repo, user, params["id"], params, ctx)
         :destroy -> Api.destroy(Dawarich.Repo, user, params["id"], ctx)
       end
+    end
 
-    Respond.json(conn, status, body)
+    if action in [:create, :update] do
+      DawarichWeb.Api.WriteResponse.call(conn, result)
+    else
+      {_, status, body} = result.()
+      Respond.json(conn, status, body)
+    end
   rescue
     _ -> Respond.json(conn, 500, Dawarich.Settings.Api.failure())
   end
