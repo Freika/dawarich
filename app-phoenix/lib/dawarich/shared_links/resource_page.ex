@@ -83,8 +83,7 @@ defmodule Dawarich.SharedLinks.ResourcePage do
           do: Dawarich.TripPage.day_notes(link.resource_id),
           else: %{}
 
-      {:ok, photos} = Photos.response(link, :photos)
-      photos = Enum.map(photos, fn {:object, fields} -> Map.new(fields) end)
+      photos = Enum.map(Photos.gallery(link), fn {:object, fields} -> Map.new(fields) end)
 
       for date <-
             Date.range(

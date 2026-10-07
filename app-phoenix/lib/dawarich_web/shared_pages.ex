@@ -30,7 +30,21 @@ defmodule DawarichWeb.SharedPages do
         )
       )
 
-  def html(assigns), do: assigns |> document() |> Phoenix.HTML.Safe.to_iodata()
+  def html(assigns) do
+    if assigns[:family_share] do
+      assigns =
+        Map.merge(assigns, %{
+          inner_content: content(assigns),
+          page_title: title(assigns),
+          head_content: metadata(assigns)
+        })
+
+      Layouts.root(Map.put(assigns, :inner_content, Layouts.app(assigns)))
+    else
+      document(assigns)
+    end
+    |> Phoenix.HTML.Safe.to_iodata()
+  end
 
   def title(%{page: :not_found, locale: locale}),
     do: t(locale, "shared.links.not_found.not_found_dawarich", %{})

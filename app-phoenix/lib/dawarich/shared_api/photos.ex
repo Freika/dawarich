@@ -10,6 +10,14 @@ defmodule Dawarich.SharedApi.Photos do
       else: coexistence_response(link, action)
   end
 
+  def gallery(link) do
+    if link.settings["show_photos"] == true,
+      do: Enum.map(photos(link), &serialize(&1, link.id)),
+      else: []
+  rescue
+    _ -> []
+  end
+
   defp coexistence_response(%{settings: %{"show_photos" => true}}, _),
     do: {:replay, "shared photo search and ACL cache remain Rails"}
 

@@ -10,6 +10,16 @@ The sweep also closed standalone gaps for scalar tags pagination, admin users wi
 
 The synthetic import has no uploaded file, so its download action raises in Rails and is outside the HTML-200 class. Signed-in Devise redirects, trial routes requiring a token, disabled/self-hosted product routes, JSON/images and retired operator pages are also recorded but do not establish a Rails HTML-200 contract. The sweep does not claim that every redirected or unsuccessful source route succeeds natively.
 
+## Shared-page response and gallery parity
+
+Family-audience shared links use `Cache-Control: private, no-store` after access is authorized, including successful trip, track, timeline and live HTML, missing-resource pages, phrase prompts and unlock responses. Public shares retain their existing cache policy. Family pages render the application root and navigation with the signed-in viewer's theme and navbar context, retaining the shared title and social metadata; public shares retain the public marketing layout. Membership, grant and phrase checks remain in place.
+
+Trip HTML galleries use the complete privacy-filtered photo collection for the grant's owner and date range, matching Rails `SharedLinks::TripPhotos` (`Photos::Mappable` with `max: nil`). There is no HTML gallery limit or pagination. The shared JSON photo API retains its 100-photo cap. Thumbnail authorization continues to use the grant-scoped collection and privacy zones, including photos beyond the JSON cap.
+
+The three named review regressions in `StandaloneHtmlPagesTest` cover a family member across all four shared types, viewer theme, public layout/cache preservation, missing-resource and unlock policies, loss of family membership, and a 101-photo gallery with a later-day photo. The gallery regression also checks JSON limits and refusal of private, unmappable and unknown photo IDs. Each regression fails when its original cache, layout or API-gallery behavior is restored.
+
+The shared AFFiNE counterpart is “Dawarich — Standalone journey sweeps and native confirmation” (document `yOmZHafRYnvfFikBv_3K0`), under the standalone HTML review corrections record.
+
 ## Route inventory
 
 Status is the retained Rails response. `error` denotes a source fixture exception. Form values and concrete synthetic identifiers are retained in the JSON fixture rather than repeated here.
