@@ -7,12 +7,13 @@ defmodule Dawarich.Imports.NormalLifecycle do
     LeaseLost,
     NormalPreparation,
     Postprocessing,
+    Progress,
     Tempfiles,
     ZipFanout
   }
 
   alias Dawarich.Imports.Kml.Kmz
-  alias Dawarich.{Notifications, RailsCommands}
+  alias Dawarich.Notifications
 
   def call(lease, context) do
     if Dawarich.Jobs.Processed.done?(lease.repo, lease.event_id) do
@@ -150,13 +151,7 @@ defmodule Dawarich.Imports.NormalLifecycle do
 
   defp publish(lease, context, native? \\ true) do
     ImportState.effect!(lease, fn ->
-      unless Dawarich.Standalone.enabled?() do
-        RailsCommands.insert!(lease.repo, "imports.progress", %{
-          "import_id" => lease.import.id,
-          "user_id" => lease.import.user_id,
-          "locale" => context.locale
-        })
-      end
+      Progress.publish!(lease.repo, lease.import, context.locale)
     end)
 
     if native?, do: Dawarich.Imports.Events.broadcast(lease.import.user_id)

@@ -32,6 +32,7 @@ defmodule Dawarich.A12f3bR10Test do
     assert [[2]] == rows("SELECT status FROM imports WHERE id=$1", [c.import.id])
     assert [] == F.reverse()
     System.delete_env("DAWARICH_RAILS")
+    Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.process_gpx", :sidekiq)
     Dawarich.Imports.GpxProgress.record(c.import, 200, state, c.context)
     assert [["imports.progress"]] == F.reverse()
   end
