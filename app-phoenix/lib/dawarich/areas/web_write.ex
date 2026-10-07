@@ -25,7 +25,7 @@ defmodule Dawarich.Areas.WebWrite do
   defp relabel!(repo, id, values, before, now) do
     needed =
       is_nil(before) or
-        Enum.any?(~w(latitude longitude radius), &(number(values[&1]) != number(before[&1])))
+        geometry_changed?(values, before)
 
     if needed do
       if Dawarich.Jobs.Ownership.lock(repo, "command:areas.relabel_visits") != :oban,
@@ -101,6 +101,11 @@ defmodule Dawarich.Areas.WebWrite do
     value |> Decimal.new() |> Decimal.round(6, :half_up) |> Decimal.to_string(:normal)
   end
 
+  defp geometry_changed?(values, before) do
+    Dawarich.RubyInteger.to_i(values["radius"]) != Dawarich.RubyInteger.to_i(before["radius"]) or
+      Enum.any?(~w(latitude longitude), &(coordinate(values[&1]) != coordinate(before[&1])))
+  end
+
   defp save!(repo, user, nil, values, _before, now) do
     [[id]] =
       repo.query!(
@@ -121,7 +126,7 @@ defmodule Dawarich.Areas.WebWrite do
   defp save!(repo, user, id, values, before, now) do
     changed =
       values["name"] != before["name"] or
-        Enum.any?(~w(latitude longitude radius), &(number(values[&1]) != number(before[&1])))
+        geometry_changed?(values, before)
 
     if changed do
       repo.query!(

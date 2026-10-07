@@ -79,6 +79,68 @@ defmodule DawarichWeb.AreaWritesRegressionTest do
     end
   end
 
+  @tag area_retry: true
+  test "rounding-equivalent area retries preserve timestamps and relabel work after consumption",
+       ctx do
+    attrs = %{"name" => "Synthetic", "latitude" => "51", "longitude" => "12", "radius" => "200"}
+
+    for edit <- [
+          %{"radius" => "200.5"},
+          %{"latitude" => "51.0000004"},
+          %{"longitude" => "12.0000004"}
+        ] do
+      Repo.query!("DELETE FROM public.job_outbox")
+      assert_flash(request(ctx, :post, "/areas", attrs), "Area created successfully!")
+      [[id]] = Repo.query!("SELECT id FROM areas ORDER BY id DESC LIMIT 1").rows
+      before = Repo.query!("SELECT * FROM areas WHERE id=$1", [id]).rows
+      pending = Repo.query!("SELECT * FROM public.job_outbox").rows
+      assert length(pending) == 1
+
+      for {method, seconds} <- [{:patch, 1}, {:put, 2}] do
+        retry = %{ctx | now: DateTime.add(ctx.now, seconds)}
+        assert_flash(request(retry, method, "/areas/#{id}", edit), "Area updated successfully!")
+        assert Repo.query!("SELECT * FROM areas WHERE id=$1", [id]).rows == before
+
+        if seconds == 1 do
+          assert Repo.query!("SELECT * FROM public.job_outbox").rows == pending
+          Repo.query!("DELETE FROM public.job_outbox")
+        else
+          assert Repo.query!("SELECT * FROM public.job_outbox").rows == []
+        end
+      end
+
+      renamed = %{ctx | now: DateTime.add(ctx.now, 3)}
+
+      assert_flash(
+        request(renamed, :patch, "/areas/#{id}", %{"name" => "Renamed"}),
+        "Area updated successfully!"
+      )
+
+      assert Repo.query!("SELECT name,updated_at FROM areas WHERE id=$1", [id]).rows == [
+               ["Renamed", DateTime.to_naive(renamed.now)]
+             ]
+
+      assert Repo.query!("SELECT * FROM public.job_outbox").rows == []
+
+      reshaped = %{ctx | now: DateTime.add(ctx.now, 4)}
+
+      assert_flash(
+        request(reshaped, :patch, "/areas/#{id}", %{
+          "latitude" => "51.0000005",
+          "longitude" => "-12.0000005"
+        }),
+        "Area updated successfully!"
+      )
+
+      assert Repo.query!(
+               "SELECT latitude::text,longitude::text,updated_at FROM areas WHERE id=$1",
+               [id]
+             ).rows == [["51.000001", "-12.000001", DateTime.to_naive(reshaped.now)]]
+
+      assert [[%{"area_id" => ^id}]] = Repo.query!("SELECT payload FROM public.job_outbox").rows
+    end
+  end
+
   defp request(ctx, method, path, attrs, accept \\ "text/vnd.turbo-stream.html") do
     raw =
       URI.encode_query(Map.put(attrs, "authenticity_token", RailsCsrf.masked_token(ctx.session)))
