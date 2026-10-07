@@ -26,8 +26,10 @@ defmodule Dawarich.RailsJobOwners do
     "DataMigrations::BackfillAltitudeJob" => {:oban, ["command:release.altitude"]},
     "DataMigrations::BackfillAltitudeUserJob" => {:oban, ["command:release.altitude"]},
     "DataMigrations::BackfillCountryNameJob" => :retire,
-    "DataMigrations::BackfillFamiliesForFamilyPlanJob" => :retire,
-    "DataMigrations::BackfillFamilyMemberEntitlementsJob" => :retire,
+    "DataMigrations::BackfillFamiliesForFamilyPlanJob" =>
+      {:oban, ["command:release.family_backfill"]},
+    "DataMigrations::BackfillFamilyMemberEntitlementsJob" =>
+      {:oban, ["command:release.family_backfill"]},
     "DataMigrations::BackfillMotionDataJob" => {:oban, ["command:release.motion_data"]},
     "DataMigrations::BackfillOnboardingCompletedJob" =>
       {:oban, ["command:release.onboarding_completed"]},
@@ -76,7 +78,7 @@ defmodule Dawarich.RailsJobOwners do
     "Imports::DestroyJob" => {:oban, ["command:imports.destroy"], :a7},
     "Imports::PrepareDownloadJob" => {:oban, ["command:imports.prepare_download"], :a7},
     "Lite::ArchivalWarningJob" => {:oban, ["cron:lite_archival_warning_job"]},
-    "Partnero::CustomerSignupJob" => {:slice, :a12d2},
+    "Partnero::CustomerSignupJob" => {:oban, ["command:partnero.customer_signup"]},
     "PendingImports::CleanupJob" => {:oban, ["cron:pending_imports_cleanup"]},
     "Places::BulkNameFetchingJob" => {:oban, ["command:places.bulk_name_fetch"]},
     "Places::DeleteIfOrphanJob" => {:oban, ["command:places.delete_if_orphan"]},
@@ -123,9 +125,9 @@ defmodule Dawarich.RailsJobOwners do
     "Trips::CalculateCountriesJob" => {:oban, ["command:trips.calculate"]},
     "Trips::CalculateDistanceJob" => {:oban, ["command:trips.calculate"]},
     "Trips::CalculatePathJob" => {:oban, ["command:trips.calculate"]},
-    "Users::CreationWebhookJob" => {:slice, :a12d2},
+    "Users::CreationWebhookJob" => {:oban, ["command:users.creation_webhook"]},
     "Users::DestroyJob" => {:slice, :a12d2},
-    "Users::DestructionWebhookJob" => {:slice, :a12d2},
+    "Users::DestructionWebhookJob" => {:oban, ["command:users.destruction_webhook"]},
     "Users::Digests::CalculatingJob" => {:oban, ["command:digests.calculate_year"], :retire},
     "Users::Digests::EmailSendingJob" => :retire,
     "Users::Digests::Monthly::CalculatingJob" => {:oban, ["command:digests.calculate_month"]},
