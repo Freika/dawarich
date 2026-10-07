@@ -444,6 +444,60 @@ defmodule Dawarich.Auth.AuthHandlerTest do
     assert state(ctx.id) == before
   end
 
+  @tag :review_payment
+  test "signed in pending payment GET sign in resumes trial and retains stored location", ctx do
+    Repo.query!("UPDATE users SET status=3 WHERE id=$1", [ctx.id], log: false)
+    before = state(ctx.id)
+
+    for native <- [false, true], stored <- [nil, "/stats"], query <- ["", "?locale=en"] do
+      session = signed_in(ctx.id)
+      session = if stored, do: Map.put(session, "user_return_to", stored), else: session
+      response = request(:get, "/users/sign_in" <> query, [session_cookie(session)], nil, [])
+
+      response =
+        AuthHandler.call(response, enabled: true, native: native, registration_enabled: false)
+
+      assert response.status == 302
+      assert get_resp_header(response, "location") == [@base <> "/trial/resume"]
+      updated = response_session(response)
+      assert updated["user_return_to"] == stored
+      assert updated["warden.user.user.key"] == session["warden.user.user.key"]
+      assert updated["_csrf_token"] == session["_csrf_token"]
+      assert updated["flash"]["flashes"]["alert"] == "You are already signed in."
+    end
+
+    assert state(ctx.id) == before
+  end
+
+  @tag :review_flash
+  test "signed in GET sign in preserves live flash and expires discarded messages", ctx do
+    for native <- [false, true],
+        query <- ["", "?locale=en"],
+        discard <- [[], ["expired"], ["notice", "expired"]] do
+      flashes = %{
+        "notice" => "Existing notice",
+        "expired" => "Old message",
+        "alert" => "Old alert"
+      }
+
+      session = Map.put(signed_in(ctx.id), "flash", %{"discard" => discard, "flashes" => flashes})
+      response = request(:get, "/users/sign_in" <> query, [session_cookie(session)], nil, [])
+
+      response =
+        AuthHandler.call(response, enabled: true, native: native, registration_enabled: false)
+
+      assert response.status == 302
+
+      assert response_session(response)["flash"] == %{
+               "discard" => [],
+               "flashes" =>
+                 flashes |> Map.drop(discard) |> Map.put("alert", "You are already signed in.")
+             }
+
+      assert response_session(response)["_csrf_token"] == session["_csrf_token"]
+    end
+  end
+
   defp call(method, path, cookies, body, headers \\ []) do
     method
     |> request(path, cookies, body, headers)

@@ -39,18 +39,28 @@ defmodule DawarichWeb.AuthResponse do
     session = conn.assigns.rails_session
     message = AuthMessages.notice(conn, "devise.failure.already_authenticated")
 
+    {target, session} = already_authenticated_target(conn.assigns.current_user, session)
+    flash = Map.get(session, "flash") || %{}
+    flashes = Map.get(flash, "flashes", %{}) |> Map.drop(List.wrap(flash["discard"]))
+
     updated =
-      session
-      |> Map.delete("user_return_to")
-      |> Map.put("flash", %{"discard" => [], "flashes" => %{"alert" => message}})
+      Map.put(session, "flash", %{
+        "discard" => [],
+        "flashes" => Map.put(flashes, "alert", message)
+      })
 
     conn
     |> AuthCookie.session(SessionCookie.for_form(updated, RailsSecret.fetch()))
     |> DawarichWeb.RailsHeaders.call([])
-    |> put_resp_header("location", RequestURL.base(conn) <> return_to(session))
+    |> put_resp_header("location", RequestURL.base(conn) <> target)
     |> send_resp(302, "")
     |> halt()
   end
+
+  defp already_authenticated_target(%{status: 3}, session), do: {"/trial/resume", session}
+
+  defp already_authenticated_target(_user, session),
+    do: {return_to(session), Map.delete(session, "user_return_to")}
 
   def signed_out(conn) do
     conn
