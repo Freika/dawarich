@@ -127,15 +127,12 @@ With inconsistent persisted place/tag ownership, a real visit to a demo place ma
 
 ### FRB-010 — A late Takeout continuation lowers import progress
 
-An older worker overwrites newer progress; the source probe reproduced 2000 becoming 1000. Unfinished accepted predecessors order continuation admission, and continuation progress uses a database maximum.
+An older worker overwrites newer progress; the source probe reproduced 2,000 → 1,000 (a retried predecessor lowered `processed`). Unfinished accepted predecessors order continuation admission, and continuation progress uses a database maximum, so retrying a predecessor never lowers durable import progress and no deferred continuation is cancelled.
 
-- Rails: `app/services/imports/broadcaster.rb:11; app/services/google_maps/records_importer.rb:25; app/jobs/import/google_takeout_job.rb:11`.
+- Rails: `app/services/imports/broadcaster.rb:10; app/services/google_maps/records_importer.rb:23; app/jobs/import/google_takeout_job.rb:11`.
 - Phoenix: `app-phoenix/lib/dawarich/imports/continuation_receipt.ex:6,92; app-phoenix/lib/dawarich/imports/gpx_progress.ex:13; app-phoenix/lib/dawarich/imports/lease.ex:95`.
-- Fix/acceptance history: `a403f9219` (feature only).
-- Modes: standalone and coexistence accepted continuations.
-- Evidence: fix2-a12f3a-f17.report.md:158; rereview2-a12f3a-f17.report.md:84; fix3-a12f3a-f17.report.md:184. Ledger: none added.
-- Test: “retrying a predecessor never lowers durable import progress” in `app-phoenix/test/dawarich/imports/continuation_order_test.exs`.
-- Limits: Automatic Rails Takeout retries remain disabled; the defect concerns delayed/manual accepted continuations.
+- Fix/acceptance history: `a403f9219`, `5d0581805`, `bc4c398b2` (feat/a12f3a-f17, merged `5ef730845`; re-reviewed x3, 24 delivery permutations in both modes).
+- F17 progress: no ED/DRB row added (the Rails defect is fixed natively, not preserved).
 
 ### FRB-011 — Provider redirects disclose credentials
 

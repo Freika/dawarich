@@ -32,7 +32,11 @@ defmodule DawarichWeb.A12f3bA01Test do
   @tag a12f3b_case: "A01a"
   test "achievement pages and unlock writes own malformed source states" do
     session = RailsUser.session(81301)
-    guest = build_conn("POST", "/achievements/unlocks/next", "{}")
+
+    guest =
+      build_conn("POST", "/achievements/unlocks/next", "{}")
+      |> put_req_header("accept", "application/json")
+
     assert Unlocks.call(guest, []).status == 401
 
     for {action, path, body} <- [

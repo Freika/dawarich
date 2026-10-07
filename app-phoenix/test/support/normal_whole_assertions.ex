@@ -64,6 +64,15 @@ defmodule Dawarich.Test.NormalWholeAssertions do
     assert Enum.map(c.expected["notifications"], &notification/1) ==
              Enum.map(actual, &notification/1)
 
+    assert [["oban"]] ==
+             rows.(
+               "SELECT owner FROM phoenix.job_owners WHERE key='command:imports.process_normal'",
+               []
+             )
+
+    assert [] ==
+             rows.("SELECT kind FROM phoenix.rails_commands WHERE kind='imports.progress'", [])
+
     assert NormalWholeEffects.expected(c, owner) ==
              rows.(
                "SELECT kind,payload FROM (SELECT test_enqueue_order,kind,payload FROM phoenix.rails_commands UNION ALL SELECT test_enqueue_order,'native.command',jsonb_build_object('command_type',command_type,'command_payload',payload) FROM job_outbox) effects ORDER BY test_enqueue_order",

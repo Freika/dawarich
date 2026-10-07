@@ -146,7 +146,7 @@ defmodule Dawarich.UserData.ExportFilesTest do
 
     entries = Enum.flat_map(modules, & &1.write(ScratchRepo, c.user_id, dir, context))
     manifest = Manifest.write(ScratchRepo, c.user_id, dir, entries, context)
-    expected = UserDataSeeds.entries("export_UTC")
+    expected = UserDataSeeds.current_export_entries("UTC")
     assert File.read!(manifest.path) == expected["manifest.json"]
     path = Zip.write!(dir)
 

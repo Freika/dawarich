@@ -567,14 +567,24 @@ ADR0015/G48 amendment: `docs/phoenix/a12f-ruby-free-release.md`.
 H03/H04 retain Rails parity and the complete reverse-kind inventory. Native SQL
 drain output explicitly marks source Sidekiq as NOT_OBSERVED/UNKNOWN and G49
 blocked. A native empty binary-rollback observation is not source-drained proof.
-The remaining unconditional `reverse_geocode_place` producer in
-`RailsEffects.reverse_place/3` belongs to RX-PLACES R13; registered native worker
-availability does not close its producer/effect row. R19k04 Null Island still
-publishes `release_null_island_follow_up` in standalone, and the separate R14
-point-achievement helper publishes `achievements.check` in coexistence even
-with native ownership. Rolled-back probes verify both; neither row is closed. No ownership ED or retired
-payload row is marked closed. Final all-kind proof and source disposition stay
-with J1/J2/A12f-3c; Cloud lifecycle stays refused pending L1 in every mode.
+R13k05, the R14 achievement helper and R19k04 now have native producer,
+terminal-effect, zero-reverse and Rails-owned coexistence proofs. The subsequent
+all-R01–R20 recheck repaired R10k01 at the incremental GPX and GPX/normal
+lifecycle publishers through `Imports.Progress.publish!/3`. Its three named
+regressions prove both runtime modes, actual native parent ownership,
+terminal/subscriber effects, unchanged Rails payloads and individual mutation
+failures. Native lease refusal under a Rails parent remains intact.
+
+The next audit finds R12k02 `exports.purge` live at `exports/delete.ex:44`:
+export deletion still checks only standalone mode, publishing one reverse row
+with every Registry owner Oban during coexistence and no native purge job.
+Standalone queues the existing native worker. Both actual synthetic deletion
+probes roll back. There is no dedicated purge Registry key; RX-EXPORTS must
+resolve the producer contract. Per the brief, this distinct gap is reported
+without repair. H03 all-producer and H04 final ED closure remain blocked.
+No ownership ED or retired payload row is marked closed, and all 78 closure
+kinds remain. Final source disposition stays with J1/J2/A12f-3c; Cloud lifecycle
+stays refused pending L1 in every mode.
 
 Existing operator D01a and native trip/release DRAIN tests are reused for H04,
 with independent `h04_case:H04a` / `H04b` selectors. No new ED number is reserved

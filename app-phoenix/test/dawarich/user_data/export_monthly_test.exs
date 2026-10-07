@@ -73,7 +73,7 @@ defmodule Dawarich.UserData.ExportMonthlyTest do
     c = UserDataSeeds.seed!("UTC", ScratchRepo)
 
     for zone <- ["UTC", "Europe/Berlin", "America/New_York"] do
-      expected = UserDataSeeds.entries("export_" <> String.replace(zone, "/", "_"))
+      expected = UserDataSeeds.current_export_entries(zone)
       manifest = Jason.decode!(expected["manifest.json"])
       context = %{c.context | zone: zone}
       [place] = Places.write(ScratchRepo, c.user_id, dir, context)
