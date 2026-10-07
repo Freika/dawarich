@@ -97,7 +97,7 @@ defmodule DawarichWeb.ImportsController do
 
     case result do
       {:ok, _} ->
-        redirect(conn, 302, "/imports/" <> id, "controllers.imports.extractions." <> key, %{})
+        extraction_response(conn, id, key, context)
 
       {:error, :native_in_flight} ->
         redirect(
@@ -117,6 +117,28 @@ defmodule DawarichWeb.ImportsController do
 
       {:error, reason} ->
         replay(conn, reason)
+    end
+  end
+
+  defp extraction_response(conn, id, key, context) do
+    formats =
+      DawarichWeb.PageAccept.formats(Enum.join(get_req_header(conn, "accept"), ", "), false)
+
+    if DawarichWeb.PageAccept.negotiate(formats, ~w(text/vnd.turbo-stream.html text/html)) ==
+         "text/vnd.turbo-stream.html" do
+      {:ok, record} = UiRecords.get(ImportsContext.repo(), conn.assigns.current_user.id, id)
+      csrf = DawarichWeb.RailsCsrf.masked_token(conn.assigns.rails_session)
+
+      conn
+      |> put_resp_content_type("text/vnd.turbo-stream.html")
+      |> put_resp_header("vary", "Accept")
+      |> send_resp(
+        200,
+        DawarichWeb.ImportsExtractionStream.render(record, context.locale, csrf, context.now)
+      )
+      |> halt()
+    else
+      redirect(conn, 302, "/imports/" <> id, "controllers.imports.extractions." <> key, %{})
     end
   end
 

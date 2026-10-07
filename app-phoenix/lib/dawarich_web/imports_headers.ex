@@ -4,7 +4,9 @@ defmodule DawarichWeb.ImportsHeaders do
   def init(opts), do: opts
 
   def call(conn, _) do
-    if conn.path_info |> List.first() == "imports",
+    conn = DawarichWeb.ImportsAuthorization.call(conn)
+
+    if not conn.halted and List.first(conn.path_info) == "imports",
       do: Plug.Conn.put_resp_header(conn, "x-dawarich-handler", "phoenix-imports"),
       else: conn
   end

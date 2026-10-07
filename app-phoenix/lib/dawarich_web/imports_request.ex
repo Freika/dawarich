@@ -25,7 +25,11 @@ defmodule DawarichWeb.ImportsRequest do
 
   defp admit(conn) do
     with :ok <- page(conn), :ok <- RailsForm.admission(conn) do
-      put_resp_header(conn, "x-dawarich-handler", "phoenix-imports")
+      conn = DawarichWeb.ImportsAuthorization.call(conn)
+
+      if conn.halted,
+        do: conn,
+        else: put_resp_header(conn, "x-dawarich-handler", "phoenix-imports")
     else
       {:replay, reason} -> Body.replay(conn, reason)
     end
@@ -115,8 +119,16 @@ defmodule DawarichWeb.ImportsRequest do
   end
 
   defp page(conn) do
-    if Enum.any?(get_req_header(conn, "accept"), &String.contains?(&1, "turbo-stream")),
-      do: {:replay, "turbo stream"},
-      else: :ok
+    if Enum.any?(get_req_header(conn, "accept"), &String.contains?(&1, "turbo-stream")) do
+      formats =
+        DawarichWeb.PageAccept.formats(Enum.join(get_req_header(conn, "accept"), ", "), false)
+
+      if match?(["imports", _, "extraction"], conn.path_info) and is_list(formats) and
+           DawarichWeb.PageAccept.negotiate(formats, ~w(text/vnd.turbo-stream.html text/html)),
+         do: :ok,
+         else: {:replay, "turbo stream"}
+    else
+      :ok
+    end
   end
 end

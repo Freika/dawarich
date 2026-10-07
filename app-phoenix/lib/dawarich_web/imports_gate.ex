@@ -8,7 +8,7 @@ defmodule DawarichWeb.ImportsGate do
          {:ok, record} <- UiRecords.get(DawarichWeb.ImportsContext.repo(), user_id, id) do
       admitted?(record)
     else
-      _ -> false
+      _ -> Dawarich.Standalone.enabled?()
     end
   end
 
