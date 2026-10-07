@@ -36,6 +36,27 @@ defmodule Dawarich.AfterCommitWrapperGuardTest do
     end)
   end
 
+  @tag :sa_gate_unbound_cost
+  test "transaction roots bound traversal of callback-free unknown calls" do
+    tree = Enum.reduce(1..500, :leaf, fn _, tree -> {:unknown, [], [tree]} end)
+    {:reductions, before} = Process.info(self(), :reductions)
+    assert Dawarich.Test.TransactionRoots.find(tree, %{}, "Elixir.Probe", %{}) == []
+    {:reductions, after_count} = Process.info(self(), :reductions)
+    assert after_count - before < 50_000
+  end
+
+  @tag :sa_gate_known_cost
+  test "transaction roots bound traversal of callback-free known calls" do
+    module = "Elixir.Probe"
+    key = {module, :known, 1}
+    tree = Enum.reduce(1..500, :leaf, fn _, tree -> {:known, [], [tree]} end)
+    definitions = %{key => [{key, :leaf, %{}, module, "probe.ex", [{:value, [], nil}]}]}
+    {:reductions, before} = Process.info(self(), :reductions)
+    assert Dawarich.Test.TransactionRoots.find(tree, %{}, module, definitions) == []
+    {:reductions, after_count} = Process.info(self(), :reductions)
+    assert after_count - before < 50_000
+  end
+
   test "R2 production ownership closure follows the caller's captured and aliased callbacks" do
     sources =
       for callback <- ["&clear/0", "&Cleaner.clear/0", "fn -> Cache.delete(:synthetic) end"] do
