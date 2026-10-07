@@ -62,7 +62,7 @@ defmodule Dawarich.Mail.SmtpTransport do
     SmtpAuthentication.authenticate(socket, options)
     timeout = options[:timeout]
     command(socket, "MAIL FROM:<#{from}>", 250, timeout)
-    for recipient <- recipients, do: command(socket, "RCPT TO:<#{recipient}>", 250, timeout)
+    for recipient <- recipients, do: command(socket, "RCPT TO:<#{recipient}>", 200..299, timeout)
     command(socket, "DATA", 354, timeout)
     escaped = Regex.replace(~r/^\./m, body, "..")
     write(socket, [escaped, "\r\n.\r\n"])
@@ -93,31 +93,40 @@ defmodule Dawarich.Mail.SmtpTransport do
   end
 
   defp expect(socket, code, timeout) do
-    case reply(socket, timeout) do
-      {^code, lines} -> lines
-      {other, _} -> rejected(other)
-    end
+    codes = if is_integer(code), do: [code], else: code
+    {status, lines} = reply(socket, timeout)
+    if status in codes, do: lines, else: rejected(status)
   end
 
   def reply(socket, timeout), do: reply(socket, timeout, nil, [])
 
   defp reply(socket, timeout, expected, lines) do
     case :smtp_socket.recv(socket, 0, timeout) do
-      {:ok, <<digits::binary-size(3), separator, text::binary>>} when separator in [32, 45] ->
-        case Integer.parse(digits) do
-          {code, ""} when expected in [nil, code] ->
-            lines = [String.trim_trailing(text) | lines]
+      {:ok, line} ->
+        {code, separator, text} = reply_line(line)
 
-            if separator == 45,
-              do: reply(socket, timeout, code, lines),
-              else: {code, Enum.reverse(lines)}
+        if expected in [nil, code] do
+          lines = [String.trim_trailing(text) | lines]
 
-          _ ->
-            throw({:smtp_failure, :permanent_failure, :invalid_reply})
+          if separator == "-",
+            do: reply(socket, timeout, code, lines),
+            else: {code, Enum.reverse(lines)}
+        else
+          throw({:smtp_failure, :permanent_failure, :invalid_reply})
         end
 
       {:error, reason} ->
         throw({:smtp_failure, :network_failure, {:error, reason}})
+
+      _ ->
+        throw({:smtp_failure, :permanent_failure, :invalid_reply})
+    end
+  end
+
+  defp reply_line(line) do
+    case Regex.run(~r/\A([0-9]{3})([ -]?)([^\r\n]*)\r?\n?\z/, line, capture: :all_but_first) do
+      [digits, separator, text] when separator in [" ", "-"] or text == "" ->
+        {String.to_integer(digits), separator, text}
 
       _ ->
         throw({:smtp_failure, :permanent_failure, :invalid_reply})
