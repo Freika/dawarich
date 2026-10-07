@@ -666,6 +666,7 @@ all deleted visit timestamps in the cleanup transaction, including demos.
 - Rails: `app/jobs/data_migrations/cleanup_null_island_job.rb:28`; `app/models/visit.rb:22`.
 - Phoenix: `app-phoenix/lib/dawarich/release_operations/null_island.ex:141`.
 - Tests: “null island deletion fences restored demo visit calendar counts after visible deletion in coexistence” and the corresponding “in standalone” in `app-phoenix/test/dawarich_web/visit_writes_regression_test.exs`.
+- Stitch tests: “a settings change before stitching cannot publish obsolete visits in coexistence” and its standalone counterpart in the same file.
 - Evidence: fix4-fix-visits-writes.report.md; named demo-filter mutation, restored GREEN.
 - Ledger: ED-FIX-VISITS-NULL-ISLAND. Feature-only correction; ID provisional until controller consolidation. Rails cleanup remains unchanged; deployment acceptance pending.
 
@@ -673,11 +674,17 @@ all deleted visit timestamps in the cleanup transaction, including demos.
 
 A delayed Rails computation can replace a newer 50-minute/six-point visit with
 its older 30-minute/four-point result, or drop a seventh point from a same-range
-visit. Phoenix revalidates the machine window and full candidate evidence under
-the per-user persistence lock and recomputes changed work before replacement.
+visit. A settings change can also make an older empty computation erase a newer
+50-minute/six-point visit. Phoenix fences the captured policy, areas and provider
+configuration under the user-row persistence lock, skips obsolete batches, and
+revalidates the machine window and full candidate evidence before replacement.
+Final stitching is also fenced in one locked transaction with validation of its
+live visit inputs, preventing obsolete stitched output after a settings change.
 
 - Rails: `app/services/visits/detection/runner.rb:26,41`; `app/services/visits/detection/persister.rb:30,35`.
 - Phoenix: `app-phoenix/lib/dawarich/visits/persister.ex:26`; `app-phoenix/lib/dawarich/visits/runner.ex:101`.
 - Tests: “concurrent native suggestions preserve the longer committed stay: overlap” and “concurrent native suggestions preserve the longer committed stay: same_range” in `app-phoenix/test/dawarich/visits/concurrent_suggestions_test.exs`.
-- Evidence: fix4-fix-visits-writes.report.md; deterministic query barriers, failing locked-refresh mutation, restored GREEN.
+- Additional tests: “a precomputed suggestion cannot erase the newer result after detection settings change in coexistence” and its standalone counterpart in the same file; real settings writer, both lock configurations, complete-row/claim preservation and redelivery.
+- Stitch tests: “a settings change before stitching cannot publish obsolete visits in coexistence” and its standalone counterpart in the same file.
+- Evidence: fix4-fix-visits-writes.report.md and fix5-fix-visits-writes.report.md; deterministic query barriers, failing locked-refresh/policy-fence mutations, restored GREEN.
 - Ledger: ED-FIX-VISITS-CONCURRENT. Feature-only correction; ID provisional until controller consolidation. Confirmed/declined/tombstone anchors remain protected; Rails detection remains unchanged; deployment acceptance pending.

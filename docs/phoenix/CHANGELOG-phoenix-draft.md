@@ -19,7 +19,7 @@ Compiled 2026-10-07. Each item links to the [evidence register](fixed-rails-bugs
 
 ## Data integrity
 
-- Preserve newer visit duration and point associations when suggestions execute concurrently. [FRB-052](fixed-rails-bugs.md#frb-052--stale-concurrent-suggestions-truncate-newer-committed-visits)
+- Preserve newer visit duration and point associations when suggestions execute concurrently or detection settings change during a run. [FRB-052](fixed-rails-bugs.md#frb-052--stale-concurrent-suggestions-truncate-newer-committed-visits)
 - Refresh calendar counts when null-island cleanup deletes restored demo visits. [FRB-051](fixed-rails-bugs.md#frb-051--null-island-cleanup-leaves-restored-demo-visit-counts-cached)
 
 - Prevent completed extraction retries from repeating their saved effects. [FRB-005](fixed-rails-bugs.md#frb-005--legacy-extraction-replay-repeats-terminal-effects)

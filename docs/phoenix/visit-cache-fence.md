@@ -95,6 +95,42 @@ removal has its own account cleanup; historical release migrations run under
 the release reconciliation contract. Demo visit updates also publish month intents. Their place adoption and orphan
 cleanup exclusions are retained; these exclusions do not exempt calendar counts.
 
+## Concurrent detection publication
+
+Runner captures the effective detection policy, owned areas and resolved provider
+configuration before computing a batch. Persister takes its per-user advisory
+lock when enabled and always locks the user row. Under that row lock, Runner
+reloads the active user and compares the captured context before any anchor
+trimming or destructive replacement. A deleted user or changed context rolls
+back the batch as a skipped range. The settings writer updates this same user
+row, so a policy change cannot commit between validation and visit replacement.
+No detection result computed under the obsolete policy is published. Redelivery
+starts a fresh computation from current settings.
+
+Final cross-batch stitching takes the same user lock, rechecks the captured
+context, and locks/validates the returned visit IDs, times, attribution and
+active unnoted state before absorption. Stitching and rescoring share that
+transaction. A superseded context or replaced/confirmed/noted/deleted input
+cannot publish the old stitched output or alter the newer visit rows.
+Unrelated NULL-attachable notes retain the existing detection fixture behavior.
+
+When the context still matches, the existing locked window/evidence refresh
+widens overlapping machine visits and recomputes changed raw points or segments.
+The unchanged-result check preserves the newer visit ID and associations on
+replay. Context comparison also checks captured areas and provider configuration
+at the persistence boundary; it does not introduce a global provider lock or
+serialize all unrelated place/geodata writers. Accepted command timezone and
+plan-window arguments retain their existing contract.
+
+The settings-writer regression splits six ten-minute points into two clusters
+under a ten-metre/four-point policy, pauses its empty computation, changes the
+radius to 100 metres and commits a newer 50-minute/six-point visit. Resuming the
+old computation and repeated deliveries preserve the entire visit and all claims
+in coexistence and standalone, with advisory locking enabled or disabled.
+The older point-only demo cleanup regression now captures the original physical
+key, consumes committed cleanup, verifies the bytes are gone and repeats cleanup;
+a logical cache miss alone cannot prove physical eviction.
+
 ## Rails name comparison
 
 `Visits.NameKey.build/1` implements `name.to_s.strip.downcase` with Ruby's ASCII
