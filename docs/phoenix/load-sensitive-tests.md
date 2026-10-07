@@ -39,7 +39,37 @@ gated import effect reproduce the causes under `ELIXIR_ERL_OPTIONS="+S 1:1"`.
 Named mutations, repeated green runs and integration-gate results are recorded in
 the controller's task report. Host-wide stress must never be used on the shared
 machine.
-No retries, skips, quarantine or numeric timeout increases are part of these fixes.
+No retries, skips, quarantine or numeric timeout increases are part of the
+export, import and visit sweep fixes.
+
+The Rails schedule-cutover regression compiles the test-mode Phoenix application
+before starting its interactive peer, then runs the peer with `--no-compile`.
+Compilation failure fails the example before the peer starts. The peer must send
+its explicit `A12D3:ready` message after test database setup within a 120-second
+startup bound. Subsequent ownership and scheduling protocol replies retain their
+five-second bounds. A five-second startup wait includes VM boot, test-file
+compilation and scratch database preparation, even when application compilation
+has already finished. The source/native slot, lock, owner-flip, rollback and
+single-fanout assertions remain intact.
+
+The Rails digest crash probes reconnect only their forked worker with
+`gssencmode: 'disable'`. macOS crash reports for both failing period workers
+show SIGSEGV during libpq's Kerberos credential-cache discovery after a
+multithreaded fork, before the first job query. This is independent of leftover
+user/stat rows. The parent connection configuration and environment are retained;
+SSL settings and application connection defaults are unchanged. PostgreSQL
+[documents the GSS connection option](https://www.postgresql.org/docs/17/libpq-connect.html#LIBPQ-CONNECT-GSSENCMODE).
+
+Crash fixtures commit outside RSpec's transaction so their child can see them.
+Their ensure cleanup deletes the fixture's stats, digests, notifications, period
+claim, known receipt mirrors and user by ID, then restores the prior owner row.
+`User#destroy!` performs soft deletion and therefore cannot clean these fixtures.
+The pipe reports the reached execution states or exception class; early EOF also
+reports the reaped child's exit status and signal. Cleanup runs after setup,
+probe and assertion failures. Named regressions exercise early child exit,
+preservation of unrelated rows, the actual child connection's GSS mode and
+preservation of parent settings. RX42 retains the killed-worker rollback,
+advisory-lock release, regeneration and single-email assertions.
 
 The timezone execution plan is a function scan, with the name filter applied
 after enumeration; it is not a lookup into an indexed user table. PostgreSQL
