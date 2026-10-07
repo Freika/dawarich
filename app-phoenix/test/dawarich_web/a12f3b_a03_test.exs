@@ -98,8 +98,59 @@ defmodule DawarichWeb.A12f3bA03Test do
     assert image().status == 404
   end
 
-  defp image(method \\ "GET", uuid \\ @uuid) do
-    build_conn(method, "/shared/achievements/#{uuid}/og.png")
+  @tag :fix_ach_image_params
+  test "achievement PNG ignores crawler query keys without changing admission or responses" do
+    baseline = image()
+
+    for query <- [
+          "utm_source=x&release_probe=y",
+          "%75tm_source=x",
+          "utm_source=x&utm_source=y",
+          "utm_source[a]=x&embed=1",
+          "utm_source",
+          "locale=de&utm_source=x"
+        ] do
+      actual = image("GET", @uuid, query)
+      assert actual.status == 200, query
+      assert actual.resp_body == baseline.resp_body
+      assert actual.resp_headers == baseline.resp_headers
+      head = image("HEAD", @uuid, query)
+      assert head.status == 200 and head.resp_body == ""
+      assert head.resp_headers == baseline.resp_headers
+      missing = image("GET", "unknown", query)
+      assert missing.status == 404 and missing.resp_body == ""
+      assert get_resp_header(missing, "cache-control") == ["private, no-store"]
+    end
+
+    for query <- [
+          "utm_source=%GG",
+          "utm_source=%",
+          "%GG=x",
+          "utm_source=%FF",
+          "%FF=x",
+          "utm_source=x&utm_source[a]=y",
+          "utm_source" <> String.duplicate("[a]", 100) <> "=x",
+          "utm_source=" <> String.duplicate("x", 65_536),
+          "locale=en&locale=de"
+        ] do
+      assert image("GET", @uuid, query).status == 422
+    end
+
+    duplicate =
+      build_conn("GET", "/shared/achievements/#{@uuid}/og.png?utm_source=x")
+      |> Map.put(:req_headers, [{"accept", "image/png"}, {"accept", "image/png"}])
+      |> DawarichWeb.AchievementPublicImage.call([])
+
+    assert duplicate.status == 422
+    rows("UPDATE achievement_progresses SET sharing_enabled=false WHERE sharing_uuid=$1", [@uuid])
+    assert image("GET", @uuid, "utm_source=x").status == 404
+  end
+
+  defp image(method \\ "GET", uuid \\ @uuid, query \\ "") do
+    build_conn(
+      method,
+      "/shared/achievements/#{uuid}/og.png" <> if(query == "", do: "", else: "?" <> query)
+    )
     |> put_req_header("accept", "image/png")
     |> put_private(:dawarich_method, method)
     |> Plug.Head.call([])

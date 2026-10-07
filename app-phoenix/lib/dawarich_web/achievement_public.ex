@@ -26,7 +26,8 @@ defmodule DawarichWeb.AchievementPublic do
     conn = RailsAuth.call(conn, [])
 
     with true <- eligible?(conn),
-         {:ok, params} <- Admission.form(conn.query_string, "", ~w(locale embed)),
+         {:ok, params} <-
+           DawarichWeb.AchievementPublicQuery.decode(conn.query_string, ~w(locale embed)),
          true <- not Map.has_key?(params, "locale") or params["locale"] in Locale.locales(),
          true <- session?(conn),
          [_, uuid] <- Regex.run(@path, conn.request_path),
