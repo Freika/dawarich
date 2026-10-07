@@ -3,6 +3,22 @@
 require 'rails_helper'
 
 RSpec.describe FixtureRecording do
+  it 'records canonical IANA country latitudes independently of the ambient tzdata source' do
+    source = TZInfo::DataSources::RubyDataSource.new
+    expected = source.country_codes.each_with_object({}) do |code, latitudes|
+      source.get_country_info(code).zones.each do |zone|
+        latitudes[zone.identifier] ||= zone.latitude.to_f
+      end
+    end
+    allow(TZInfo::Country).to receive(:all).and_raise('ambient tzdata must not supply recording inputs')
+
+    expect(described_class.canonical_timezone_latitudes).to eq(expected)
+    expect(expected.keys - source.data_timezone_identifiers).to be_empty
+    expect(expected.fetch('Australia/Sydney')).to be_negative
+    expect(expected.fetch('Europe/Berlin')).to be_positive
+    expect(expected).not_to have_key('Australia/NSW')
+  end
+
   it 'normalizes diagnostic paths and stack lines while preserving visible error text' do
     gem = Gem.loaded_specs.fetch('actionpack')
     diagnostic = { 'error' => ["Missing template in #{Rails.root.join('app/views')}",

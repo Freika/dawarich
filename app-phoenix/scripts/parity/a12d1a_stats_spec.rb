@@ -231,7 +231,11 @@ end
 RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
   include ActiveSupport::Testing::TimeHelpers
 
-  before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+  before do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    stub_const('Users::Digests::SeasonalityCalculator::TIMEZONE_LATITUDES',
+               FixtureRecording.canonical_timezone_latitudes)
+  end
 
   let(:digest_now) { Time.utc(2026, 10, 3, 12) }
   let(:digest_uuid) { '00000000-0000-4000-8000-000000140500' }

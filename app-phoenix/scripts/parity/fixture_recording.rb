@@ -3,6 +3,15 @@
 module FixtureRecording
   SECRET = 'phoenix-a2-cookie-fixture-secret-not-for-production'
 
+  def self.canonical_timezone_latitudes
+    source = TZInfo::DataSources::RubyDataSource.new
+    source.country_codes.each_with_object({}) do |code, latitudes|
+      source.get_country_info(code).zones.each do |zone|
+        latitudes[zone.identifier] ||= zone.latitude.to_f
+      end
+    end.freeze
+  end
+
   module SyntheticSecret
     def self.included(base)
       base.before do
