@@ -23,16 +23,15 @@ defmodule Dawarich.Users.DestroyEffects do
         :ok
 
       [[email]] ->
-        case family_guard(repo, id) do
-          :ok ->
-            snapshot!(repo, id, email)
-            attachments!(repo, id)
-            cleanup!(repo, id)
-            cache!(repo, id)
-            :ok
-
-          blocked ->
-            blocked
+        with :ok <- family_guard(repo, id),
+             :ok <- Dawarich.Users.DestroyScope.check(repo, id) do
+          snapshot!(repo, id, email)
+          attachments!(repo, id)
+          cleanup!(repo, id)
+          cache!(repo, id)
+          :ok
+        else
+          blocked -> blocked
         end
     end
   end
@@ -121,7 +120,7 @@ defmodule Dawarich.Users.DestroyEffects do
     for table <- @direct, do: delete_user!(repo, table, id)
 
     repo.query!(
-      "DELETE FROM place_visits WHERE visit_id IN(SELECT id FROM visits WHERE user_id=$1) OR place_id IN(SELECT id FROM places WHERE user_id=$1)",
+      "DELETE FROM place_visits WHERE visit_id IN(SELECT id FROM visits WHERE user_id=$1)",
       [id],
       log: false
     )
@@ -130,20 +129,13 @@ defmodule Dawarich.Users.DestroyEffects do
     delete_user!(repo, "areas", id)
 
     repo.query!(
-      "UPDATE visits SET place_id=NULL WHERE place_id IN(SELECT id FROM places WHERE user_id=$1)",
-      [id],
-      log: false
-    )
-
-    delete_user!(repo, "places", id)
-
-    repo.query!(
-      "DELETE FROM taggings WHERE tag_id IN(SELECT id FROM tags WHERE user_id=$1)",
+      "DELETE FROM taggings WHERE tag_id IN(SELECT id FROM tags WHERE user_id=$1) AND taggable_type='Place' AND taggable_id IN(SELECT id FROM places WHERE user_id=$1)",
       [id],
       log: false
     )
 
     delete_user!(repo, "tags", id)
+    places!(repo, id)
     trips!(repo, id)
     delete_user!(repo, "trip_sources", id)
 
@@ -168,13 +160,13 @@ defmodule Dawarich.Users.DestroyEffects do
     )
 
     repo.query!(
-      "DELETE FROM family_location_requests WHERE requester_id=$1 OR target_user_id=$1 OR family_id IN(SELECT id FROM families WHERE creator_id=$1)",
+      "DELETE FROM family_location_requests WHERE requester_id=$1",
       [id],
       log: false
     )
 
     repo.query!(
-      "DELETE FROM family_memberships WHERE user_id=$1 OR family_id IN(SELECT id FROM families WHERE creator_id=$1)",
+      "DELETE FROM family_memberships WHERE user_id=$1",
       [id],
       log: false
     )
@@ -184,11 +176,22 @@ defmodule Dawarich.Users.DestroyEffects do
     repo.query!("DELETE FROM users WHERE id=$1", [id], log: false)
   end
 
+  defp places!(repo, id) do
+    ids =
+      repo.query!("SELECT id FROM places WHERE user_id=$1 ORDER BY id", [id], log: false).rows
+      |> List.flatten()
+
+    Dawarich.Places.Orphans.delete_batch(repo, id, ids, account_deletion: true)
+
+    if repo.query!("SELECT id FROM places WHERE user_id=$1 LIMIT 1", [id], log: false).rows != [],
+      do: repo.rollback({:cancel, "account deletion blocked by shared places"})
+  end
+
   defp trips!(repo, id) do
     days = "SELECT id FROM planned_days WHERE trip_id IN(SELECT id FROM trips WHERE user_id=$1)"
 
     repo.query!(
-      "UPDATE planned_reservations SET planned_day_id=NULL WHERE planned_day_id IN(#{days})",
+      "UPDATE planned_reservations SET planned_day_id=NULL WHERE trip_id IN(SELECT id FROM trips WHERE user_id=$1) AND planned_day_id IN(#{days})",
       [id],
       log: false
     )
@@ -205,7 +208,7 @@ defmodule Dawarich.Users.DestroyEffects do
           )
 
     repo.query!(
-      "DELETE FROM notes WHERE attachable_type='Trip' AND attachable_id IN(SELECT id FROM trips WHERE user_id=$1)",
+      "DELETE FROM notes WHERE user_id=$1 AND attachable_type='Trip' AND attachable_id IN(SELECT id FROM trips WHERE user_id=$1)",
       [id],
       log: false
     )
@@ -217,7 +220,7 @@ defmodule Dawarich.Users.DestroyEffects do
     )
 
     repo.query!(
-      "DELETE FROM shared_links WHERE resource_type=0 AND resource_id IN(SELECT id FROM trips WHERE user_id=$1)",
+      "DELETE FROM shared_links WHERE user_id=$1 AND resource_type=0 AND resource_id IN(SELECT id FROM trips WHERE user_id=$1)",
       [id],
       log: false
     )

@@ -11,9 +11,14 @@ defmodule Dawarich.Places.Orphans do
     end
   end
 
-  def delete_batch(_repo, _user_id, []), do: []
+  def delete_batch(repo, user_id, place_ids, opts \\ [])
 
-  def delete_batch(repo, user_id, place_ids) do
+  def delete_batch(_repo, _user_id, [], _opts), do: []
+
+  def delete_batch(repo, user_id, place_ids, opts) do
+    filter =
+      if opts[:account_deletion], do: "", else: "AND p.source=1 AND (p.note IS NULL OR p.note='')"
+
     {:ok, ids} =
       repo.transaction(fn ->
         repo.query!(
@@ -26,7 +31,7 @@ defmodule Dawarich.Places.Orphans do
           repo.query!(
             """
             SELECT p.id FROM places p
-            WHERE p.id=ANY($1) AND p.user_id=$2 AND p.source=1 AND (p.note IS NULL OR p.note='')
+            WHERE p.id=ANY($1) AND p.user_id=$2 #{filter}
               AND NOT EXISTS(SELECT 1 FROM visits v WHERE v.place_id=p.id)
               AND NOT EXISTS(SELECT 1 FROM place_visits pv WHERE pv.place_id=p.id)
               AND NOT EXISTS(SELECT 1 FROM taggings t WHERE t.taggable_id=p.id AND t.taggable_type='Place')

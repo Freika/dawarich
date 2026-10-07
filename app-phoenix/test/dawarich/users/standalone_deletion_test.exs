@@ -43,6 +43,216 @@ defmodule Dawarich.Users.StandaloneDeletionTest do
     %{actor: actor, other: other, root: root}
   end
 
+  @tag :sa_destroy_shared_place
+  test "deleting a family member preserves another user's shared-place visit", c do
+    rows("UPDATE users SET deleted_at=NULL, provider='openid_connect' WHERE id=$1", [c.actor.id])
+
+    [[family]] =
+      rows(
+        "INSERT INTO families(creator_id,name,created_at,updated_at) VALUES($1,'synthetic',now(),now()) RETURNING id",
+        [c.other.id]
+      )
+
+    for {id, role} <- [{c.other.id, 0}, {c.actor.id, 1}],
+        do:
+          rows(
+            "INSERT INTO family_memberships(family_id,user_id,role,created_at,updated_at) VALUES($1,$2,$3,now(),now())",
+            [family, id, role]
+          )
+
+    [[place]] =
+      rows(
+        "INSERT INTO places(user_id,name,latitude,longitude,created_at,updated_at) VALUES($1,'synthetic',1,1,now(),now()) RETURNING id",
+        [c.actor.id]
+      )
+
+    [[visit]] =
+      rows(
+        "INSERT INTO visits(user_id,place_id,name,duration,started_at,ended_at,created_at,updated_at) VALUES($1,$2,'synthetic',1,now(),now(),now(),now()) RETURNING id",
+        [c.other.id, place]
+      )
+
+    [[link]] =
+      rows(
+        "INSERT INTO place_visits(place_id,visit_id,created_at,updated_at) VALUES($1,$2,now(),now()) RETURNING id",
+        [place, visit]
+      )
+
+    rows("UPDATE places SET note='synthetic retained note' WHERE id=$1", [place])
+    context = Dawarich.Auth.AccountDestroy.context(%{repo: ScratchRepo, self_hosted: true})
+
+    assert {:ok, :scheduled} =
+             Dawarich.Auth.AccountDestroy.request(
+               c.actor.id,
+               %{"confirm_email" => c.actor.email},
+               context
+             )
+
+    args = %{"user_id" => c.actor.id, "event_id" => Ecto.UUID.generate()}
+
+    assert {:cancel, "account deletion blocked by shared places"} =
+             DestroyWorker.run(ScratchRepo, args)
+
+    assert rows("SELECT id FROM users WHERE id=ANY($1)", [[c.actor.id, c.other.id]])
+           |> List.flatten()
+           |> Enum.sort() == Enum.sort([c.actor.id, c.other.id])
+
+    assert rows("SELECT id FROM family_memberships WHERE user_id=$1", [c.other.id]) != []
+    assert rows("SELECT place_id FROM visits WHERE id=$1", [visit]) == [[place]]
+    assert rows("SELECT id FROM place_visits WHERE id=$1", [link]) == [[link]]
+    assert rows("SELECT id FROM oban.oban_jobs") == []
+    refute Processed.done?(ScratchRepo, args["event_id"])
+    rows("DELETE FROM place_visits WHERE id=$1", [link])
+    rows("UPDATE visits SET place_id=NULL WHERE id=$1", [visit])
+    assert :ok = DestroyWorker.run(ScratchRepo, args)
+    assert rows("SELECT id FROM users WHERE id=$1", [c.actor.id]) == []
+    assert rows("SELECT id FROM places WHERE id=$1", [place]) == []
+    assert rows("SELECT id FROM visits WHERE id=$1", [visit]) == [[visit]]
+  end
+
+  @tag :sa_destroy_foreign_dependents
+  test "account deletion refuses foreign dependent associations before cleanup", c do
+    [[trip]] =
+      rows(
+        "INSERT INTO trips(user_id,name,started_at,ended_at,created_at,updated_at) VALUES($1,'synthetic',now(),now()+interval '1 hour',now(),now()) RETURNING id",
+        [c.actor.id]
+      )
+
+    [[note]] =
+      rows(
+        "INSERT INTO notes(user_id,attachable_type,attachable_id,created_at,updated_at) VALUES($1,'Trip',$2,now(),now()) RETURNING id",
+        [c.other.id, trip]
+      )
+
+    [[share]] =
+      rows(
+        "INSERT INTO shared_links(user_id,resource_type,resource_id,name,created_at,updated_at) VALUES($1,0,$2,'synthetic',now(),now()) RETURNING id",
+        [c.other.id, trip]
+      )
+
+    args = %{"user_id" => c.actor.id, "event_id" => Ecto.UUID.generate()}
+
+    assert {:cancel, "account deletion blocked by foreign dependents"} =
+             DestroyWorker.run(ScratchRepo, args)
+
+    assert rows("SELECT attachable_id FROM notes WHERE id=$1", [note]) == [[trip]]
+    assert rows("SELECT resource_id FROM shared_links WHERE id=$1", [share]) == [[trip]]
+    assert rows("SELECT id FROM trips WHERE id=$1", [trip]) == [[trip]]
+    assert rows("SELECT id FROM users WHERE id=$1", [c.actor.id]) == [[c.actor.id]]
+    assert rows("SELECT id FROM oban.oban_jobs") == []
+    refute Processed.done?(ScratchRepo, args["event_id"])
+    rows("DELETE FROM notes WHERE id=$1", [note])
+
+    assert {:cancel, "account deletion blocked by foreign dependents"} =
+             DestroyWorker.run(ScratchRepo, args)
+
+    rows("DELETE FROM shared_links WHERE id=$1", [share])
+
+    [[place]] =
+      rows(
+        "INSERT INTO places(user_id,name,latitude,longitude,created_at,updated_at) VALUES($1,'synthetic',1,1,now(),now()) RETURNING id",
+        [c.other.id]
+      )
+
+    [[tag]] =
+      rows(
+        "INSERT INTO tags(user_id,name,created_at,updated_at) VALUES($1,'synthetic',now(),now()) RETURNING id",
+        [c.actor.id]
+      )
+
+    [[tagging]] =
+      rows(
+        "INSERT INTO taggings(tag_id,taggable_type,taggable_id,created_at,updated_at) VALUES($1,'Place',$2,now(),now()) RETURNING id",
+        [tag, place]
+      )
+
+    assert {:cancel, "account deletion blocked by foreign dependents"} =
+             DestroyWorker.run(ScratchRepo, args)
+
+    assert rows("SELECT taggable_id FROM taggings WHERE id=$1", [tagging]) == [[place]]
+    rows("DELETE FROM taggings WHERE id=$1", [tagging])
+
+    [[family]] =
+      rows(
+        "INSERT INTO families(creator_id,name,created_at,updated_at) VALUES($1,'synthetic',now(),now()) RETURNING id",
+        [c.actor.id]
+      )
+
+    [[membership]] =
+      rows(
+        "INSERT INTO family_memberships(family_id,user_id,role,created_at,updated_at) VALUES($1,$2,1,now(),now()) RETURNING id",
+        [family, c.other.id]
+      )
+
+    assert {:cancel, "account deletion blocked by foreign dependents"} =
+             DestroyWorker.run(ScratchRepo, args)
+
+    assert rows("SELECT user_id FROM family_memberships WHERE id=$1", [membership]) == [
+             [c.other.id]
+           ]
+
+    rows("DELETE FROM family_memberships WHERE id=$1", [membership])
+
+    [[request]] =
+      rows(
+        "INSERT INTO family_location_requests(family_id,requester_id,target_user_id,expires_at,created_at,updated_at) VALUES($1,$2,$3,now()+interval '1 day',now(),now()) RETURNING id",
+        [family, c.other.id, c.actor.id]
+      )
+
+    assert {:cancel, "account deletion blocked by foreign dependents"} =
+             DestroyWorker.run(ScratchRepo, args)
+
+    assert rows("SELECT requester_id,target_user_id FROM family_location_requests WHERE id=$1", [
+             request
+           ]) == [[c.other.id, c.actor.id]]
+
+    assert rows("SELECT id FROM oban.oban_jobs") == []
+    rows("DELETE FROM family_location_requests WHERE id=$1", [request])
+    assert :ok = DestroyWorker.run(ScratchRepo, args)
+    assert rows("SELECT id FROM places WHERE id=$1", [place]) == [[place]]
+    assert rows("SELECT id FROM users WHERE id=$1", [c.other.id]) == [[c.other.id]]
+  end
+
+  @tag :sa_destroy_foreign_reservation
+  test "account cleanup preserves another user's reservation day", c do
+    [[trip]] =
+      rows(
+        "INSERT INTO trips(user_id,name,started_at,ended_at,created_at,updated_at) VALUES($1,'synthetic',now(),now()+interval '1 hour',now(),now()) RETURNING id",
+        [c.actor.id]
+      )
+
+    [[other_trip]] =
+      rows(
+        "INSERT INTO trips(user_id,name,started_at,ended_at,created_at,updated_at) VALUES($1,'synthetic',now(),now()+interval '1 hour',now(),now()) RETURNING id",
+        [c.other.id]
+      )
+
+    [[day]] =
+      rows(
+        "INSERT INTO planned_days(trip_id,date,position,created_at,updated_at) VALUES($1,current_date,0,now(),now()) RETURNING id",
+        [trip]
+      )
+
+    [[reservation]] =
+      rows(
+        "INSERT INTO planned_reservations(trip_id,planned_day_id,title,created_at,updated_at) VALUES($1,$2,'synthetic',now(),now()) RETURNING id",
+        [other_trip, day]
+      )
+
+    args = %{"user_id" => c.actor.id, "event_id" => Ecto.UUID.generate()}
+    result = DestroyWorker.run(ScratchRepo, args)
+
+    assert rows("SELECT trip_id,planned_day_id FROM planned_reservations WHERE id=$1", [
+             reservation
+           ]) == [[other_trip, day]]
+
+    assert result == {:cancel, "account deletion blocked by foreign dependents"}
+    assert rows("SELECT id FROM planned_days WHERE id=$1", [day]) == [[day]]
+    assert rows("SELECT id FROM users WHERE id=$1", [c.actor.id]) == [[c.actor.id]]
+    assert rows("SELECT id FROM oban.oban_jobs") == []
+    refute Processed.done?(ScratchRepo, args["event_id"])
+  end
+
   @tag :sa_destroy_dispatch
   test "standalone typed deletion dispatches and coexistence retains its owner", c do
     assert Registry.command("users.destroy") == {:ok, DestroyWorker}
