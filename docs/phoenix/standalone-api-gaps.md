@@ -17,24 +17,35 @@ API keys work in Bearer headers and query parameters; optional `.json` suffixes
 use the native transport. Demo requests and digest writes require an active
 account. Area deletion retains ordinary API authentication. Pending-payment
 admission and English machine-contract messages use the existing API modules.
-Digest validation retains Ruby integer coercion, the user's local current year
+Digest POST validation retains Ruby integer coercion, the user's local current year
 and entitlement-scoped tracked statistics. Generation reuses `YearlyWorker`
 with one durable event identity per accepted request; no synchronous calculator,
-mail producer or Rails reverse command is added.
+mail producer or Rails reverse command is added. DELETE member years must match
+Rails' exactly four ASCII digits; malformed or oversized years return route 404
+without invoking deletion. Out-of-range area IDs return the Rails JSON 404 before
+querying the bigint identity.
 
 Demo writes reuse the existing locked importer/destroyer. Area deletion locks the
-actor-scoped row before removing its dependent graph. Orphan-place and visit-month
+actor-scoped row and owned visits before inspecting its dependent graph. A
+cross-owner visit, point, area/visit note or place link refuses deletion with 422
+and `{"error":"Area has foreign dependents"}`, preserving records, references and
+jobs. Every dependent mutation is owner-scoped. This fixes the inherited Rails
+attachment-only deletion defect documented as [FRB-066](fixed-rails-bugs.md#frb-066--area-deletion-removes-another-users-linked-records). Orphan-place and visit-month
 jobs are recorded with `Dawarich.AfterCommit` in the deletion transaction.
-JSON writes use the existing `Api.WriteResponse` transaction so domain changes,
-after-commit intents, encoding and response headers succeed together. A rendering
-exception rolls them back and returns 500 without replaying the request to Rails.
+JSON writes and digest DELETE use the existing `Api.WriteResponse` transaction
+so domain changes, after-commit intents, encoding and response headers succeed together. A response preparation
+exception rolls them back without replaying the request to Rails; existing native
+error handling returns 500 when its error response can be framed.
 This extends the existing native failed-response durability correction to demo,
-digest-generation and area-deletion APIs. Rails commits their writes or queues
+digest-generation, digest-deletion and area-deletion APIs. The empty digest 204
+and its headers are prepared inside the deletion transaction; no content-type is
+added. An invalid response header cannot leave the digest durably deleted. Rails commits these writes or queues
 work before rendering; the controller report records these Rails bug fixes.
-No shared ED/DRB row is added in this scoped fix.
+The response correction extends FRB-052; no additional ED/DRB row is added.
 
-Verification lives in `standalone_api_gaps_test.exs` and
-`standalone_api_gaps_commit_test.exs`: endpoint contracts, native job counts,
+Verification lives in `standalone_api_gaps_test.exs`,
+`standalone_api_gaps_commit_test.exs`, `standalone_api_review_test.exs` and
+`standalone_digest_response_test.exs`: endpoint contracts, native job counts,
 foreign/monthly record isolation, SQL and rendering failures, coexistence method
 and body preservation, and durable commits outside a sandbox transaction.
 Each newly named test has a separately observed production mutation.

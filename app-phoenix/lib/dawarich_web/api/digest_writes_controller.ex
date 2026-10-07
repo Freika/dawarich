@@ -20,15 +20,9 @@ defmodule DawarichWeb.Api.DigestWritesController do
   end
 
   def call(conn, :destroy) do
-    result =
-      Repo.transaction(fn ->
-        HttpWrites.destroy(Repo, conn.assigns.api_user, conn.path_params["year"])
-      end)
-
-    case result do
-      {:ok, {:ok, 204, nil}} -> Respond.head(conn, 204, nil)
-      {:ok, {:error, status, body}} -> Respond.json(conn, status, body)
-    end
+    WriteResponse.call(conn, fn ->
+      HttpWrites.destroy(Repo, conn.assigns.api_user, conn.path_params["year"])
+    end)
   rescue
     _ -> Respond.json(conn, 500, Dawarich.Settings.Api.failure())
   end

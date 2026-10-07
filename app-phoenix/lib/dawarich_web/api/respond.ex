@@ -74,11 +74,16 @@ defmodule DawarichWeb.Api.Respond do
   defp finish(status, conn, body), do: conn |> send_resp(status, body) |> halt()
 
   def head(conn, status, type \\ "text/html") do
+    {status, prepared, body} = prepare_head(conn, status, type)
+    prepared |> send_resp(status, body) |> halt()
+  end
+
+  def prepare_head(conn, status, type) do
     conn = frame(conn, type || "")
     conn = rate_headers(conn, status)
     conn = if is_nil(type), do: delete_resp_header(conn, "content-type"), else: conn
     log(conn, status)
-    conn |> cache(status, "", []) |> send_resp(status, "") |> halt()
+    {status, cache(conn, status, "", []), ""}
   end
 
   def not_modified(conn, validators) do

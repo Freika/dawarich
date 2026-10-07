@@ -60,79 +60,93 @@ defmodule Dawarich.Areas.Api do
   end
 
   def destroy(repo, user, id, ctx) do
-    if Dawarich.Standalone.enabled?() do
-      {:ok, result} =
-        repo.transaction(fn -> delete(repo, user, id, Map.put(ctx, :native_delete, true)) end)
+    ctx = Map.put(ctx, :native_delete, Dawarich.Standalone.enabled?())
 
-      result
-    else
-      delete(repo, user, id, ctx)
-    end
-  rescue
-    _ -> {:error, 500, Settings.failure()}
-  end
+    result =
+      repo.transaction(fn ->
+        with :ok <- Settings.guard(user, ctx),
+             {:ok, area} <- identity(repo, user.id, id, ctx.native_delete) do
+          {:ok, delete_graph(repo, user, area, ctx)}
+        end
+      end)
 
-  defp delete(repo, user, id, ctx) do
-    with :ok <- Settings.guard(user, ctx),
-         {:ok, area} <- identity(repo, user.id, id, Map.get(ctx, :native_delete, false)) do
-      {:ok, visits} =
-        repo.transaction(fn ->
-          visits =
-            repo.query!(
-              "SELECT id,place_id,started_at,demo FROM visits WHERE area_id=$1 FOR UPDATE",
-              [area["id"]],
-              log: false
-            ).rows
-
-          ids = Enum.map(visits, &hd/1)
-          repo.query!("UPDATE points SET visit_id=NULL WHERE visit_id=ANY($1)", [ids], log: false)
-          repo.query!("DELETE FROM place_visits WHERE visit_id=ANY($1)", [ids], log: false)
-
-          repo.query!(
-            "DELETE FROM notes WHERE (attachable_type='Visit' AND attachable_id=ANY($1)) OR (attachable_type='Area' AND attachable_id=$2)",
-            [ids, area["id"]],
-            log: false
+    case result do
+      {:ok, {:ok, visits}} ->
+        for [_, place, _, demo] <- visits,
+            not ctx.native_delete and not demo and not is_nil(place) do
+          Dawarich.Settings.Progress.produce(
+            repo,
+            "places.delete_if_orphan",
+            %{"user_id" => user.id, "place_id" => place},
+            place,
+            ctx
           )
+        end
 
-          repo.query!("DELETE FROM visits WHERE id=ANY($1)", [ids], log: false)
-          repo.query!("DELETE FROM areas WHERE id=$1", [area["id"]], log: false)
+        {:ok, 200,
+         %{
+           "message" =>
+             Dawarich.I18n.en!("controllers.api.v1.areas.area_was_successfully_deleted")
+         }}
 
-          stamps =
-            for [_, _, stamp, _demo] <- visits,
-                do: DateTime.from_naive!(stamp, "Etc/UTC")
+      {:ok, error} ->
+        error
 
-          Dawarich.RailsEffects.visit_months(repo, user.id, stamps)
-
-          if ctx[:native_delete] do
-            for [_, place, _, demo] <- visits, not demo and not is_nil(place) do
-              Dawarich.AfterCommit.enqueue(repo, Dawarich.Places.DeleteIfOrphanWorker, %{
-                "event_id" => Ecto.UUID.generate(),
-                "user_id" => user.id,
-                "place_id" => place
-              })
-            end
-          end
-
-          visits
-        end)
-
-      for [_, place, _, demo] <- visits,
-          ctx[:native_delete] != true and not demo and not is_nil(place) do
-        Dawarich.Settings.Progress.produce(
-          repo,
-          "places.delete_if_orphan",
-          %{"user_id" => user.id, "place_id" => place},
-          place,
-          ctx
-        )
-      end
-
-      {:ok, 200,
-       %{"message" => Dawarich.I18n.en!("controllers.api.v1.areas.area_was_successfully_deleted")}}
+      {:error, :foreign_area_dependency} ->
+        foreign_dependency()
     end
   rescue
     _ -> {:error, 500, Settings.failure()}
   end
+
+  defp delete_graph(repo, user, area, ctx) do
+    visits =
+      repo.query!(
+        "SELECT id,place_id,started_at,demo FROM visits WHERE area_id=$1 AND user_id=$2 ORDER BY id FOR UPDATE",
+        [area["id"], user.id],
+        log: false
+      ).rows
+
+    ids = Enum.map(visits, &hd/1)
+    Dawarich.Areas.CleanupScope.ensure!(repo, user.id, area["id"], ids)
+
+    repo.query!(
+      "UPDATE points SET visit_id=NULL WHERE visit_id=ANY($1) AND user_id=$2",
+      [ids, user.id],
+      log: false
+    )
+
+    repo.query!(
+      "DELETE FROM place_visits pv USING visits v,places p WHERE pv.visit_id=v.id AND pv.place_id=p.id AND v.id=ANY($1) AND v.user_id=$2 AND p.user_id=$2",
+      [ids, user.id],
+      log: false
+    )
+
+    repo.query!(
+      "DELETE FROM notes WHERE user_id=$3 AND ((attachable_type='Visit' AND attachable_id=ANY($1)) OR (attachable_type='Area' AND attachable_id=$2))",
+      [ids, area["id"], user.id],
+      log: false
+    )
+
+    repo.query!("DELETE FROM visits WHERE id=ANY($1) AND user_id=$2", [ids, user.id], log: false)
+    repo.query!("DELETE FROM areas WHERE id=$1 AND user_id=$2", [area["id"], user.id], log: false)
+    stamps = for [_, _, stamp, _demo] <- visits, do: DateTime.from_naive!(stamp, "Etc/UTC")
+    Dawarich.RailsEffects.visit_months(repo, user.id, stamps)
+
+    if ctx[:native_delete] do
+      for [_, place, _, demo] <- visits, not demo and not is_nil(place) do
+        Dawarich.AfterCommit.enqueue(repo, Dawarich.Places.DeleteIfOrphanWorker, %{
+          "event_id" => Ecto.UUID.generate(),
+          "user_id" => user.id,
+          "place_id" => place
+        })
+      end
+    end
+
+    visits
+  end
+
+  defp foreign_dependency, do: {:error, 422, %{"error" => "Area has foreign dependents"}}
 
   defp existing(_, _, nil), do: {:ok, nil}
   defp existing(repo, actor, id), do: identity(repo, actor, id)
@@ -140,9 +154,15 @@ defmodule Dawarich.Areas.Api do
   defp identity(repo, actor, id, lock \\ false) do
     suffix = "WHERE id=$1 AND user_id=$2" <> if(lock, do: " FOR UPDATE", else: "")
 
-    case rows(repo, suffix, [RubyInteger.to_i(id), actor]) do
-      [area] -> {:ok, area}
-      [] -> missing()
+    parsed = RubyInteger.to_i(id)
+
+    if parsed >= -9_223_372_036_854_775_808 and parsed <= 9_223_372_036_854_775_807 do
+      case rows(repo, suffix, [parsed, actor]) do
+        [area] -> {:ok, area}
+        [] -> missing()
+      end
+    else
+      missing()
     end
   end
 

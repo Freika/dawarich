@@ -67,8 +67,10 @@ defmodule DawarichWeb.StandaloneRoutes do
   defp route(%{method: "POST", path_info: ["api", "v1", "digests"]}),
     do: {Api.DigestWritesController, :create, true, %{}}
 
-  defp route(%{method: "DELETE", path_info: ["api", "v1", "digests", year]}),
-    do: {Api.DigestWritesController, :destroy, true, %{"year" => year}}
+  defp route(%{method: "DELETE", path_info: ["api", "v1", "digests", year]}) do
+    if year =~ ~r/\A[0-9]{4}\z/,
+      do: {Api.DigestWritesController, :destroy, true, %{"year" => year}}
+  end
 
   defp route(conn) do
     case @routes[{conn.method, conn.request_path}] do

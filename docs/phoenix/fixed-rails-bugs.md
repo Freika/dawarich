@@ -4,7 +4,7 @@ Status: **DRAFT**, consolidated 2026-10-07 under master-plan ruling 17. [User-fa
 
 The integration snapshot is `3a20a0279c164472b7d9b129576709acff94a552` on `feat/phoenix-port`. The audit reads every `## Rails bugs fixed (changelog)` section in the 391 top-level `*.report.md` files present at the snapshot (232 sections), then checks merge history and commit ancestry. Repeated report bullets and provider-package supplements are consolidated by defect. Unmerged fix-rxstats and mm-e reports are excluded. Report filenames and section lines identify external controller evidence; no runtime allocation belongs in this register.
 
-FRB-001–065 are unique final controller IDs, with one CHANGELOG-ready line each. Earlier IDs were renumbered or consolidated; explicit legacy anchors preserve existing links. Older ED candidates without established Rails/fix/test provenance remain in an appendix without confirmed FRB IDs. The withdrawn disabled-map-matching invalidation claim is not a release fix. The digest season change for 27 timezone aliases restores Phoenix parity and is not a Rails bug.
+FRB-001–066 are unique register IDs, with one CHANGELOG-ready line each. Earlier IDs were renumbered or consolidated; explicit legacy anchors preserve existing links. Older ED candidates without established Rails/fix/test provenance remain in an appendix without confirmed FRB IDs. The withdrawn disabled-map-matching invalidation claim is not a release fix. The digest season change for 27 timezone aliases restores Phoenix parity and is not a Rails bug.
 
 Source lines refer to the report or named source revision and may move. Tests are the implementation evidence; this documentation task reruns only tests that read these registers. Proposed Rails map-matching comparisons are clearly marked and must not be represented as Rails 1.15.3 defects. Native and retained Rails consumers have separate boundaries. Rails remains unchanged by this documentation task. Native Cloud lifecycle remains refused in every mode pending external L1 handoff; this register is not deployment acceptance.
 
@@ -876,6 +876,8 @@ SQL NULL and JSON null, absent keys and malformed containers share the settings-
 
 **Failed-response writes survive in Rails:** mobile PATCH and area POST/PATCH commit before rendering, so a render exception tells the client the request failed while settings or the area remain written (confirmed by render-oracle.log). Phoenix now encloses mobile/area writes, relabel outbox, JSON encoding and response headers in one transaction and rolls back on rendering/service failure. Rails: app/controllers/api/v1/settings/mobile_controller.rb:30 (commit ends at 38; render 45), app/controllers/api/v1/areas_controller.rb:19 (render 20; update 27–28). Phoenix: app-phoenix/lib/dawarich_web/api/write_response.ex:10, mobile_settings_controller.ex:20, areas_controller.ex:23. Test: `response rendering failures roll back mobile and area writes and outbox effects`. ED/DRB row added: **no**; this exact durability correction is explicitly mandated by the controller brief. Shared controller-owned difference/deferred-bug registers remain untouched.
 
+- Digest DELETE extension: Rails destroys the digest before preparing its empty response (`app/controllers/api/v1/digests_controller.rb:42-43`). Phoenix prepares the 204 body and headers inside `Api.WriteResponse`, preserving an empty body and absent content-type; response-framing failures roll back deletion even on an idle database connection. Phoenix: `app-phoenix/lib/dawarich_web/api/digest_writes_controller.ex:24`; `app-phoenix/lib/dawarich_web/api/write_response.ex:14`; `app-phoenix/lib/dawarich_web/api/respond.ex:82`. Test: “digest remains durable after failed response preparation on an idle connection” in `app-phoenix/test/dawarich_web/standalone_digest_response_test.exs`. Evidence: fix2-fix-sa-api-gaps.report.md (F3). Mode: standalone API; retained Rails remains unchanged. No additional ED/DRB row.
+
 - Evidence: impl-fix-settings-api-parity.report.md:91.
 
 - Test files: `app-phoenix/test/dawarich_web/settings_api_parity_test.exs`.
@@ -1059,6 +1061,19 @@ Rails source: `app/services/visits/bulk_update.rb:47`.
 - Test files: `app-phoenix/test/dawarich/imports/destroy_worker_test.exs`; `app-phoenix/test/dawarich_web/api/family_writes_golden_test.exs`; `app-phoenix/test/dawarich_web/api/places_golden_test.exs`; `app-phoenix/test/dawarich_web/map_writes_parity_test.exs`; `app-phoenix/test/dawarich_web/visit_writes_regression_test.exs`.
 
 - CHANGELOG-ready: Refresh calendar counts after bulk visit confirmation or decline, including during cache outages.
+
+### FRB-066 — Area deletion removes another user's linked records
+
+Rails destroys visits and notes by attachment alone, then nullifies those visits' points. A database-valid cross-owner graph can therefore lose another account's visit/note and point reference when the area owner deletes the area. This characterizes stored graph corruption; it does not assert that public creation endpoints permit it.
+
+- Rails: `app/controllers/api/v1/areas_controller.rb:35`; `app/models/area.rb:9`; `app/models/visit.rb:11-12`; `app/models/concerns/notable.rb:7`.
+- Phoenix: `app-phoenix/lib/dawarich/areas/api.ex:111`; `app-phoenix/lib/dawarich/areas/cleanup_scope.ex:4`.
+- Behavior: lock the owned area/visits, reject foreign visits, points, area/visit notes and place links before modifying the graph, and constrain every dependent mutation to the area owner. Refusal returns 422 with `{"error":"Area has foreign dependents"}` and preserves all rows, references and jobs.
+- Modes: standalone API and native area domain calls. Coexistence requests retained by Rails still have the source defect.
+- Evidence: fix2-fix-sa-api-gaps.report.md (F2); rolled-back Rails oracle returns 200 with foreign visit/note deleted and foreign point reference cleared.
+- Test: “owned area deletion refuses every foreign dependent before changing the graph” in `app-phoenix/test/dawarich_web/standalone_api_review_test.exs`.
+- Ledger: FRB-066 added; no additional ED/DRB row.
+- CHANGELOG-ready: Refuse area deletion when its linked records belong to another account, preserving those records and references.
 
 ## Deferred Rails defects and retained policies
 
