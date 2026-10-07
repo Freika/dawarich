@@ -79,10 +79,10 @@ defmodule Dawarich.PlacesApi.Nearby do
   end
 
   def format(data, lat, lon) do
-    {p, coords} = Suggestions.fields(data)
+    %{properties: p, coords: coords} = Dawarich.Geocoding.Normalizer.from_data(data)
     [longitude, latitude] = coords || [lon, lat]
     street = [p["street"], p["housenumber"]] |> Enum.reject(&is_nil/1) |> Enum.join(" ")
-    name = p["name"] || if(street == "", do: p["city"] || "Unknown Place", else: street)
+    name = p["name"] || if(Ruby.blank?(street), do: p["city"] || "Unknown Place", else: street)
 
     %{
       "id" => nil,

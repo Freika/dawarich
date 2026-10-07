@@ -17,6 +17,7 @@ end
 
 defmodule Dawarich.Places.NearbyTest do
   use ExUnit.Case, async: false
+  import Phoenix.LiveViewTest, only: [render_component: 2]
 
   alias Dawarich.Geocoding.{RateLimiter, ResponseCache}
   alias Dawarich.Places.Nearby
@@ -77,6 +78,37 @@ defmodule Dawarich.Places.NearbyTest do
     assert [_] = Nearby.fetch(nil, 55.0, 12.0, 0.5, 5, config: config)
     assert [] = Nearby.fetch(nil, 56.0, 12.0, 0.5, 5, config: config)
     assert length(Http.calls()) == 6
+  end
+
+  @tag nearby_name_fallback: true
+  test "blank nearby provider names use exactly Rails address city and unknown fallbacks" do
+    config = config("names-nearby.example.test", nil)
+
+    cases = [
+      {%{"name" => "", "street" => "Example Street", "housenumber" => "7"}, "Example Street 7"},
+      {%{"name" => " \t\n", "street" => "Example Street"}, "Example Street"},
+      {%{"name" => nil, "street" => " ", "city" => "Leipzig"}, "Leipzig"},
+      {%{"name" => "", "city" => "Leipzig"}, "Leipzig"},
+      {%{"name" => ""}, "Unknown Place"},
+      {%{"name" => "", "city" => ""}, ""},
+      {%{"name" => "Venue", "street" => "Example Street"}, "Venue"}
+    ]
+
+    Http.respond(Enum.map(cases, fn {props, _} -> feature(props) end))
+    places = Nearby.fetch(nil, 51.0, 12.0, 0.5, 10, config: config)
+    assert Enum.map(places, & &1["name"]) == Enum.map(cases, &elem(&1, 1))
+    assert Enum.map(places, & &1["geodata"]) == Enum.map(cases, fn {p, _} -> feature(p) end)
+
+    html =
+      render_component(&DawarichWeb.NearbyPlaces.render/1,
+        places: Enum.take(places, 1),
+        radius: 1.5,
+        params: %{},
+        locale: "en"
+      )
+
+    assert html =~ ~s(data-place-name="Example Street 7")
+    assert html =~ ~s(<h4 class="font-semibold">Example Street 7</h4>)
   end
 
   defp config(host, rps),
