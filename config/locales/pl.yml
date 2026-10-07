@@ -44,10 +44,18 @@ pl:
         points:
           title: "Punkty"
         experimental:
+          badge: "Eksperymentalne"
           title: "Funkcje eksperymentalne"
         map_matching:
           title: "Dopasowanie do mapy"
           description: "Dopasowuje niedokładne zapisane trasy do pobliskich dróg i ścieżek. Zmienia tylko sposób rysowania kwalifikujących się tras; zapisane punkty i oryginalna ścieżka pozostają bez zmian."
+          example_alt: "Niedokładna oryginalna ścieżka obok tej samej ścieżki dopasowanej do ulic"
+          original_label: "Oryginalna ścieżka"
+          matched_label: "Dopasowana ścieżka"
+          example_caption: "Oryginał zachowuje zapisany kształt. Dopasowana ścieżka podąża pobliską siecią i zawsze może wrócić do oryginału."
+          privacy: "Dawarich wysyła współrzędne, znaczniki czasu i dokładność GPS do skonfigurowanej usługi Atlas. Utrzymuj ją w zaufanej sieci."
+          test: "Testuj połączenie"
+          testing: "Testowanie…"
         fields:
           atlas_url: "Adres URL Atlas"
           map_matching_enabled: "Włącz dopasowanie do mapy"
@@ -76,6 +84,11 @@ pl:
         pinned: "Odrzucono: ustalone przez %{variables}."
         host_invalid: "Host musi być samą nazwą hosta z opcjonalnym portem lub ścieżką, bez spacji."
         chibigeo_key_required: "ChibiGeo wymaga klucza API. Darmowy plan Hobby obejmuje 2500 zapytań dziennie — odbierz swój klucz na chibigeo.com."
+      test_map_matching:
+        not_configured: "Najpierw zapisz adres URL Atlas."
+        success: "Atlas %{version} jest gotowy do dopasowania do mapy."
+        routing_unavailable: "Atlas %{version} odpowiedział, ale jego funkcja routingu nie jest jeszcze gotowa."
+        failure: "Połączenie z Atlas nie powiodło się (%{error})."
       test_geocoding:
         not_configured: "Nie skonfigurowano dostawcy geokodowania. Najpierw zapisz dostawcę."
         success: "Udało się! Twój dostawca rozpoznał testowe współrzędne jako: %{place}."

@@ -13,6 +13,11 @@ defmodule DawarichWeb.AdminFormRoutes do
              DawarichWeb.AdminWrites.Settings,
              [action: :test_geocoding],
              metadata: %{rails_gate: {DawarichWeb.AdminWritesGate, :test_geocoding?}}
+
+        post "/admin/settings/test_map_matching",
+             DawarichWeb.AdminWrites.Settings,
+             [action: :test_map_matching],
+             metadata: %{rails_gate: {DawarichWeb.AdminWritesGate, :test_map_matching?}}
       end
     end
   end

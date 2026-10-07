@@ -18,6 +18,8 @@ defmodule DawarichWeb.AdminWritesGate do
   def destroy?(conn, _params), do: owned?(conn, :destroy)
   def test_geocoding?(conn, _params), do: owned?(conn, :test_geocoding)
 
+  def test_map_matching?(conn, _params), do: owned?(conn, :test_map_matching)
+
   defp owned?(conn, action),
     do: Dawarich.Standalone.enabled?() or eligible?(conn, action)
 
@@ -67,6 +69,12 @@ defmodule DawarichWeb.AdminWritesGate do
 
   defp route?(%{method: "POST", request_path: "/admin/settings/test_geocoding"}, :test_geocoding),
     do: true
+
+  defp route?(
+         %{method: "POST", request_path: "/admin/settings/test_map_matching"},
+         :test_map_matching
+       ),
+       do: true
 
   defp route?(%{method: "POST", request_path: "/settings/users"}, :create), do: true
 

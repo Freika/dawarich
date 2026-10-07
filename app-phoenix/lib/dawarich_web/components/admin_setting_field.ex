@@ -107,12 +107,26 @@ defmodule DawarichWeb.AdminSettingField do
   defp hint(locale, field) do
     key =
       cond do
-        field.key in ~w(photon_api_host nominatim_api_host) -> "fields.host_hint"
-        field.locked_on -> "geocoding.https_locked"
-        field.key == "reverse_geocoding_rps" -> "fields.rps_hint"
-        field.key == "store_geodata" -> "fields.store_geodata_hint"
-        field.kind == :secret and field.present and not field.pinned -> "fields.api_key_keep_hint"
-        true -> nil
+        field.key in ~w(atlas_url map_matching_enabled map_matching_shadow_mode) ->
+          "fields." <> field.key <> "_hint"
+
+        field.key in ~w(photon_api_host nominatim_api_host) ->
+          "fields.host_hint"
+
+        field.locked_on ->
+          "geocoding.https_locked"
+
+        field.key == "reverse_geocoding_rps" ->
+          "fields.rps_hint"
+
+        field.key == "store_geodata" ->
+          "fields.store_geodata_hint"
+
+        field.kind == :secret and field.present and not field.pinned ->
+          "fields.api_key_keep_hint"
+
+        true ->
+          nil
       end
 
     if key, do: t(locale, "admin.settings.show." <> key, %{})
