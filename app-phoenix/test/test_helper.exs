@@ -9,6 +9,7 @@ end
 
 Application.put_env(:dawarich, :allowed_hosts, [])
 Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :auto)
+Dawarich.PublicBaseline.ensure_current!(Dawarich.Repo)
 
 Dawarich.Repo.query!("CREATE SCHEMA IF NOT EXISTS phoenix", [], log: false)
 
@@ -78,6 +79,7 @@ for repo <- scratch_repos do
   )
 
   Dawarich.MigrationModules.purge()
+  Dawarich.PublicBaseline.ensure_current!(repo)
 end
 
 Dawarich.LaneGuard.attach!()

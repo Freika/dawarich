@@ -554,3 +554,31 @@ ADR0015/G48 amendment: `docs/phoenix/a12f-ruby-free-release.md`.
 | ED-A12F3B-E13-F1 | Storage deletion failure while purging private media | Poster/export/video source handlers enqueue `blob.purge_later`; Active Storage destroys the blob row before storage deletion, losing the lookup needed after a failed delete. | Accepted poster blob-ID children delete storage under the reference guard and blob lock before removing rows; failure retains blob/variant references and retry/drain debt. Existing native poster/export/video durable-key children retain keys/services until physical deletion completes. | SOURCE-MEDIA F1; `a12f3b_e13_purge_retry_test.exs`, `a12f3b_r15_test.exs`, `exports_delete_test.exs`; controller ruling 17; `docs/phoenix/fixed-rails-bugs.md` |
 
 | ED-A12F3B-E13-F2 | Shared native media purge row ordering and immediate native download revocation | Active Storage destroys blob/variant rows before deleting objects; failed deletion loses serialized retry targets (DRB-025). | Shared native poster/export/video cleanup retains rows and durable keys, reserves `phoenix_purge_pending` metadata to revoke native downloads/uploads, rechecks references under locks, and removes rows only after all eligible parent/variant objects are deleted. Historical key-only jobs remain retryable. Rails-owned coexistence is preserved unchanged under ruling 13. | SOURCE-MEDIA F2/F3; `a12f3b_e13_shared_purge_test.exs`, `a12f3b_r15_test.exs`, `exports_delete_test.exs`, `purge_retry_characterization_spec.rb`; `docs/phoenix/fixed-rails-bugs.md`, DRB-025 |
+
+## Area write negotiation review fix
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-AREA-NEGOTIATION | POST `/areas`, PATCH/PUT `/areas/:id` with an unsupported Accept header | Saves valid attributes and can enqueue relabel work before `respond_to` raises UnknownFormat (406). | Decides format before mutation; unsupported formats return terminal empty 406 without changing areas or outbox. Missing/foreign update targets retain 404. Supported wildcard and HTML-first/Turbo-second headers return Rails-compatible 200 Turbo success/error flashes. | Explicit fix-area-writes controller brief requires negotiation before any write; `area Accept negotiation selects Rails Turbo responses before any write` in `area_writes_regression_test.exs`; Rails `app/controllers/areas_controller.rb:12–13,28–29`. |
+
+
+## A12f-3b HOT observation handoff — no ED closure
+
+H03/H04 retain Rails parity and the complete reverse-kind inventory. Native SQL
+drain output explicitly marks source Sidekiq as NOT_OBSERVED/UNKNOWN and G49
+blocked. A native empty binary-rollback observation is not source-drained proof.
+The remaining unconditional `reverse_geocode_place` producer in
+`RailsEffects.reverse_place/3` belongs to RX-PLACES R13; registered native worker
+availability does not close its producer/effect row. R19k04 Null Island still
+publishes `release_null_island_follow_up` in standalone, and the separate R14
+point-achievement helper publishes `achievements.check` in coexistence even
+with native ownership. Rolled-back probes verify both; neither row is closed. No ownership ED or retired
+payload row is marked closed. Final all-kind proof and source disposition stay
+with J1/J2/A12f-3c; Cloud lifecycle stays refused pending L1 in every mode.
+
+Existing operator D01a and native trip/release DRAIN tests are reused for H04,
+with independent `h04_case:H04a` / `H04b` selectors. No new ED number is reserved
+and no Rails bug is fixed. Approved NE decisions and accepted-work removal
+conditions, 125/78/24 inventories, source recording and G42–G49 owner links are
+in [the part-B handoff](../../docs/phoenix/a12f3b-pages-producers.md) and
+[the drain runbook](../../docs/phoenix/a12d3-schedules-drain.md).
