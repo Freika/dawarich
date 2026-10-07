@@ -56,8 +56,11 @@ operation rollback still rolls back its own input and matching changes.
 Every 15 minutes, the enabled sweeper scans non-demo tracks in 500-row keyset
 batches: non-pending tracks and pending claims older than one hour. Scanning
 non-pending tracks recovers hooks lost before preparation, including changed
-input with an old accepted result. The locked Enqueuer leaves unchanged results
-and fresh pending claims alone and avoids duplicate active jobs. This adds a
+input with an old accepted result. The locked Enqueuer preserves unchanged
+accepted and terminal failed/rejected/skipped results in recovery mode, leaves
+fresh pending claims alone and avoids
+duplicate active jobs. Changed terminal input queues normally; a fresh explicit
+completion operation can still retry unchanged terminal input. This adds a
 periodic enabled-only input check for existing results; OFF performs no scan.
 
 ## Atlas attempts

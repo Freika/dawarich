@@ -9,9 +9,9 @@ defmodule Dawarich.Tracks.MapMatching.Enqueuer do
       else: :disabled
   end
 
-  def call(repo, track_id) do
+  def call(repo, track_id, opts \\ []) do
     if Experimental.map_matching?(repo) do
-      {:ok, result} = repo.transaction(fn -> claim(repo, track_id) end)
+      {:ok, result} = repo.transaction(fn -> claim(repo, track_id, opts) end)
       result
     else
       :disabled
@@ -22,14 +22,14 @@ defmodule Dawarich.Tracks.MapMatching.Enqueuer do
       :error
   end
 
-  defp claim(repo, id) do
+  defp claim(repo, id, opts) do
     case repo.query!("SELECT demo FROM tracks WHERE id=$1 FOR UPDATE", [id], log: false).rows do
-      [[false]] -> prepare(repo, id)
+      [[false]] -> prepare(repo, id, opts)
       _ -> :skip
     end
   end
 
-  defp prepare(repo, id) do
+  defp prepare(repo, id, opts) do
     input = Input.load(repo, id)
     digest = Fingerprint.call(input)
     state = State.read(repo, id)
@@ -51,10 +51,13 @@ defmodule Dawarich.Tracks.MapMatching.Enqueuer do
 
     cond do
       not Input.eligible?(input) -> skipped(repo, id, digest, input, state)
-      State.result?(state) or live?(state) -> :current
+      State.result?(state) or live?(state) or terminal?(state, opts) -> :current
       true -> enqueue(repo, id, digest)
     end
   end
+
+  defp terminal?(state, opts),
+    do: Keyword.get(opts, :recover_only, false) and state.status in [:failed, :rejected, :skipped]
 
   defp live?(%{status: :pending, data: %{"claimed_at" => at}}) when is_binary(at) do
     case DateTime.from_iso8601(at) do

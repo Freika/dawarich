@@ -26,7 +26,7 @@ defmodule Dawarich.Tracks.MapMatching.Sweeper do
       ).rows
       |> List.flatten()
 
-    Enum.each(ids, &Enqueuer.call(repo, &1))
+    Enum.each(ids, &Enqueuer.call(repo, &1, recover_only: true))
     if length(ids) == 500, do: sweep(repo, cutoff, List.last(ids)), else: :ok
   end
 end
