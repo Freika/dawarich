@@ -12,6 +12,15 @@ defmodule DawarichWeb.RequireUser do
   def init(opts), do: opts
 
   @impl true
+  def call(%{request_path: "/admin/settings", assigns: %{current_user: %{} = user}} = conn, _opts) do
+    if Dawarich.Standalone.enabled?() and
+         (System.get_env("SELF_HOSTED") != "true" or user.admin != true) do
+      DawarichWeb.AdminWrites.Fallback.call(conn, action: :instance)
+    else
+      conn
+    end
+  end
+
   def call(%{assigns: %{current_user: %{}}} = conn, _opts), do: conn
 
   def call(conn, _opts) do
