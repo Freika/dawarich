@@ -39,6 +39,31 @@ defmodule DawarichWeb.AdminWrites.Settings do
     end
   end
 
+  defp dispatch(conn, _actor, _params, %{action: :test_map_matching} = context) do
+    url =
+      Dawarich.Experimental.value(
+        :atlas_url,
+        Map.get(context, :repo, Dawarich.Repo),
+        Map.get(context, :env, System.get_env())
+      )
+
+    {kind, key, values} =
+      case Dawarich.MapMatching.Atlas.ConnectionTest.call(url) do
+        {:ok, %{version: version, revision: revision}} ->
+          version = version <> if(revision, do: " (" <> revision <> ")", else: "")
+          {:notice, "success", %{"version" => version}}
+
+        {:error, "not_configured"} ->
+          {:alert, "not_configured", %{}}
+
+        {:error, code} ->
+          {:alert, "failure", %{"error" => code}}
+      end
+
+    {:ok, message} = I18n.t(context.locale, "admin.settings.test_map_matching." <> key, values)
+    Response.redirect(conn, 303, "/admin/settings?section=experimental", kind, message)
+  end
+
   defp dispatch(conn, actor, _params, %{action: :test_geocoding} = context) do
     case InstanceWrites.test_geocoding(actor, context) do
       {:ok, kind, message} -> Response.redirect(conn, 303, "/admin/settings", kind, message)
@@ -101,7 +126,7 @@ defmodule DawarichWeb.AdminWrites.Settings do
     section = params["section"]
 
     suffix =
-      if section in ~w(photon geoapify nominatim locationiq rate_limit points),
+      if section in ~w(photon geoapify nominatim locationiq rate_limit points experimental),
         do: "?" <> URI.encode_query(%{"section" => section}),
         else: ""
 

@@ -87,7 +87,7 @@ defmodule DawarichWeb.AdminWrites.Request do
   defp fields(:instance) do
     @common ++
       ["section"] ++
-      Enum.flat_map(Registry.definitions(), fn {key, _, kind, _} ->
+      Enum.flat_map(Registry.current_definitions(), fn {key, _, kind, _} ->
         ["instance_settings[#{key}]"] ++
           if(kind == :secret, do: ["instance_settings_clear[#{key}]"], else: [])
       end)
@@ -109,7 +109,7 @@ defmodule DawarichWeb.AdminWrites.Request do
   defp options(:instance) do
     pairs =
       Map.new(
-        for {key, _, :boolean, _} <- Registry.definitions(),
+        for {key, _, :boolean, _} <- Registry.current_definitions(),
             do: {"instance_settings[#{key}]", ["false", "true"]}
       )
 
@@ -118,8 +118,9 @@ defmodule DawarichWeb.AdminWrites.Request do
 
   defp options(_), do: []
 
-  defp method("POST", action, params) when action in [:create, :rotate, :reset, :test_geocoding],
-    do: if(Map.has_key?(params, "_method"), do: :handoff, else: {:ok, "POST"})
+  defp method("POST", action, params)
+       when action in [:create, :rotate, :reset, :test_geocoding, :test_map_matching],
+       do: if(Map.has_key?(params, "_method"), do: :handoff, else: {:ok, "POST"})
 
   defp method("DELETE", :destroy, params),
     do: if(params["_method"] in [nil, "delete"], do: {:ok, "DELETE"}, else: :handoff)

@@ -78,29 +78,10 @@ defmodule Dawarich.UserData.Restore.PointWriter do
     _ -> 0
   end
 
-  defp tile_epoch(repo, rows, context) do
+  defp tile_epoch(repo, rows, _context) do
     user = hd(rows)["user_id"]
     timestamps = Enum.map(rows, & &1["timestamp"])
 
-    if Map.get(context, :native_owner, false) do
-      pairs =
-        timestamps
-        |> Enum.map(
-          &(DateTime.from_unix!(min(max(&1, 0), 4_133_980_800)).year
-            |> max(1970)
-            |> min(2100))
-        )
-        |> Enum.uniq()
-        |> Enum.flat_map(fn year ->
-          [
-            "points:tile_epoch:#{user}:#{year}",
-            Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
-          ]
-        end)
-
-      Dawarich.Redis.cache_command(["MSET" | pairs])
-    else
-      Dawarich.RailsEffects.tile_epoch(repo, user, timestamps)
-    end
+    Dawarich.RailsEffects.tile_epoch(repo, user, timestamps)
   end
 end

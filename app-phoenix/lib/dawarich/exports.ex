@@ -102,7 +102,7 @@ defmodule Dawarich.Exports do
   VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
   """
 
-  @drop_attachment "DELETE FROM active_storage_attachments WHERE record_type = 'Export' AND record_id = $1 AND name = 'file'"
+  @drop_attachment "UPDATE active_storage_attachments SET name='retired_file_' || id::text WHERE record_type = 'Export' AND record_id = $1 AND name = 'file'"
 
   @attach """
   INSERT INTO active_storage_attachments (name, record_type, record_id, blob_id, created_at)

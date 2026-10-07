@@ -58,11 +58,16 @@ defmodule Dawarich.EnhancedImport.State do
       "UPDATE imports SET additional_data_extraction_status = #{status}, " <>
         "additional_data_extraction = #{payload} WHERE id = $1"
 
-    {:ok, :ok} =
-      repo.transaction(fn ->
-        repo.query!(sql, [import.id | params], log: false)
-        Enum.each(kinds, &kind!(repo, import, &1))
+    guard =
+      Map.get(import, :fence, fn fun ->
+        {:ok, value} = repo.transaction(fun)
+        value
       end)
+
+    guard.(fn ->
+      repo.query!(sql, [import.id | params], log: false)
+      Enum.each(kinds, &kind!(repo, import, &1))
+    end)
 
     :ok
   end

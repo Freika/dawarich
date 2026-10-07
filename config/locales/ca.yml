@@ -44,10 +44,18 @@ ca:
         points:
           title: "Punts"
         experimental:
+          badge: "Experimental"
           title: "Funcions experimentals"
         map_matching:
           title: "Ajust de rutes"
           description: "Alinea els trajectes enregistrats amb soroll a carreteres i camins propers. Només canvia com es dibuixen els trajectes compatibles; els punts enregistrats i el traçat original no es modifiquen."
+          example_alt: "Un traçat original imprecís al costat del mateix traçat ajustat als carrers"
+          original_label: "Traçat original"
+          matched_label: "Traçat ajustat"
+          example_caption: "L'original conserva la forma enregistrada. L'ajustat segueix la xarxa propera i sempre pot tornar a l'original."
+          privacy: "Dawarich envia coordenades, marques de temps i precisió GPS al servei Atlas configurat. Mantén aquest servei dins d'una xarxa de confiança."
+          test: "Prova la connexió"
+          testing: "S'està provant…"
         fields:
           atlas_url: "URL d'Atlas"
           map_matching_enabled: "Activa l'ajust de rutes"
@@ -76,6 +84,11 @@ ca:
         pinned: "Rebutjat: fixat per %{variables}."
         host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."
         chibigeo_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
+      test_map_matching:
+        not_configured: "Desa primer una URL d'Atlas."
+        success: "Atlas %{version} està preparat per a l'ajust de rutes."
+        routing_unavailable: "Atlas %{version} ha respost, però la seva capacitat d'encaminament encara no està preparada."
+        failure: "La connexió amb Atlas ha fallat (%{error})."
       test_geocoding:
         not_configured: "No hi ha cap proveïdor de geocodificació configurat. Desa primer un proveïdor."
         success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."

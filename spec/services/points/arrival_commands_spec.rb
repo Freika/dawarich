@@ -31,9 +31,9 @@ RSpec.describe Points::ArrivalCommands do
   before { Sidekiq.redis(&:flushdb) }
 
   it 'bumps the tile epoch with the slice timestamps' do
-    allow(Points::TileEpoch).to receive(:bump)
+    allow(Points::TileEpochCommand).to receive(:bump)
     run('points.tile_epoch')
-    expect(Points::TileEpoch).to have_received(:bump).with(user.id, timestamps: [1_704_110_400, 1_790_000_000])
+    expect(Points::TileEpochCommand).to have_received(:bump).with(user.id, timestamps: [1_704_110_400, 1_790_000_000])
   end
 
   it 'enqueues the anomaly filter over the batch range on the points queue' do
@@ -120,13 +120,13 @@ RSpec.describe Points::ArrivalCommands do
 
   it 'skips every kind for a missing or soft-deleted user without calling a producer' do
     deleted = create(:user).tap { _1.update_columns(deleted_at: Time.current) }
-    allow(Points::TileEpoch).to receive(:bump)
+    allow(Points::TileEpochCommand).to receive(:bump)
     allow(Points::AnomalyFilterJob).to receive(:perform_later)
     producers.each { allow(_1).to receive(:new) }
 
     payloads.each_key { |kind| [0, deleted.id].each { |id| expect(run(kind, user_id: id)).to be_nil } }
 
-    expect(Points::TileEpoch).not_to have_received(:bump)
+    expect(Points::TileEpochCommand).not_to have_received(:bump)
     expect(Points::AnomalyFilterJob).not_to have_received(:perform_later)
     producers.each { expect(_1).not_to have_received(:new) }
     expect(redis_keys).to be_empty
