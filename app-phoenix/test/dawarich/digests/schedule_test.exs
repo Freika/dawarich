@@ -36,7 +36,8 @@ defmodule Dawarich.Digests.ScheduleTest do
         else
           assert [[0]] = rows("SELECT count(*) FROM oban.oban_jobs")
           assert [[^type, reverse]] = rows("SELECT kind,payload FROM phoenix.rails_commands")
-          assert Map.delete(reverse, "run_at") == payload
+          assert Ecto.UUID.cast(reverse["source_job_id"]) == {:ok, reverse["source_job_id"]}
+          assert Map.drop(reverse, ["run_at", "source_job_id"]) == payload
           assert reverse["run_at"] == DateTime.to_unix(at, :microsecond) / 1_000_000
         end
 

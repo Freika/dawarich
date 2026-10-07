@@ -64,8 +64,16 @@ defmodule Dawarich.Digests.JobsCorpusTest do
       F.load!(ScratchRepo, kase)
       args = F.job_args(kase)
       worker = if row["kind"] == "monthly", do: MonthlyWorker, else: YearlyWorker
-      assert worker.perform(%Oban.Job{args: args}, options(kase, args)) == :ok
-      assert Processed.done?(ScratchRepo, args["event_id"])
+      result = worker.perform(%Oban.Job{args: args}, options(kase, args))
+
+      failed =
+        row["profile"] in ~w(stats_raise late_stats_raise digest_raise digest_database vanished)
+
+      if failed, do: assert(match?({:error, _}, result)), else: assert(result == :ok)
+
+      assert Processed.done?(ScratchRepo, Dawarich.Digests.Generation.receipt(row["kind"], args)) ==
+               not failed
+
       expected = row["expected"]
       actual = F.digests(ScratchRepo, 14101) |> Enum.map(&Map.delete(&1, "id"))
       assert actual == Enum.map(expected["rows"], &Map.delete(&1, "id")), row["id"]

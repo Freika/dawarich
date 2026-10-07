@@ -13,6 +13,8 @@ class Stats::CalculateMonth
     @notify_on_failure = notify_on_failure
   end
 
+  attr_reader :error
+
   def call
     if points.empty?
       reset_month_stats(year, month)
@@ -96,6 +98,7 @@ class Stats::CalculateMonth
   end
 
   def report_failure(error)
+    @error = error
     message = "Stats::CalculateMonth failed for user #{user.id} #{year}-#{month}"
 
     Rails.logger.error("#{message}: #{error.class}: #{error.message}")
