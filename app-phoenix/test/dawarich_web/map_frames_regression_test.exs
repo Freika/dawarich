@@ -188,6 +188,36 @@ defmodule DawarichWeb.MapFramesRegressionTest do
     end
   end
 
+  @tag frame_redirect: true
+  test "map frame Pro refusal falls back for foreign Referers and retains same-host URLs", %{
+    user: user
+  } do
+    Dawarich.Repo.query!(
+      "UPDATE users SET active_until='3026-01-01',plan=0 WHERE id=$1",
+      [user.id],
+      log: false
+    )
+
+    System.put_env("SELF_HOSTED", "false")
+
+    for {referer, location} <- [
+          {"https://external.example.test/offer", "http://www.example.com/"},
+          {"http://www.example.com/map/v2", "http://www.example.com/map/v2"},
+          {"https://www.example.com:8443/map/v2", "https://www.example.com:8443/map/v2"},
+          {"//external.example.test/offer", "http://www.example.com/"},
+          {"/map/v2", "http://www.example.com/map/v2"}
+        ] do
+      conn =
+        RailsUser.signed_in(user.id)
+        |> put_req_header("accept", "text/html")
+        |> put_req_header("referer", referer)
+        |> get("/map/residency?year=2026")
+
+      assert conn.status == 303
+      assert get_resp_header(conn, "location") == [location]
+    end
+  end
+
   defp host_conn, do: %{build_conn() | req_headers: [{"host", "www.example.com"}]}
 
   defp request(user, path, query) do
