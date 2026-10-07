@@ -19,6 +19,9 @@ defmodule DawarichWeb.A12f3bI04Test do
     for kind <- ~w(immich photoprism),
         do: Ownership.put!(Repo, "command:imports.#{kind}_geodata", :oban)
 
+    for kind <- ~w(imports.airtrail_flights imports.teslamate_sync geocoding.reverse_point),
+        do: Ownership.put!(Repo, "command:" <> kind, :oban)
+
     %{actor: actor}
   end
 
@@ -41,7 +44,30 @@ defmodule DawarichWeb.A12f3bI04Test do
              ]
            ]
 
-    assert rows("SELECT count(DISTINCT event_id) FROM job_outbox") == [[2]]
+    for {name, path} <- [
+          {"start_airtrail_import", "/settings/integrations"},
+          {"start_teslamate_sync", "/settings/integrations?service=teslamate"},
+          {"start_reverse_geocoding", "/settings/background_jobs"},
+          {"continue_reverse_geocoding", "/settings/background_jobs"}
+        ] do
+      conn = parsed_request(actor.id, name)
+      assert conn.status == 302
+      assert get_resp_header(conn, "location") == ["http://www.example.com" <> path]
+    end
+
+    assert rows(
+             "SELECT command_type,payload FROM job_outbox WHERE command_type IN ('imports.airtrail_flights','imports.teslamate_sync') ORDER BY command_type"
+           ) == [
+             ["imports.airtrail_flights", %{"user_id" => actor.id}],
+             ["imports.teslamate_sync", %{"user_id" => actor.id}]
+           ]
+
+    assert rows("SELECT args FROM oban.oban_jobs ORDER BY id") ==
+             Enum.map([true, false], fn force ->
+               [%{"user_id" => actor.id, "force" => force, "after_id" => 0, "locale" => "en"}]
+             end)
+
+    assert rows("SELECT count(DISTINCT event_id) FROM job_outbox") == [[4]]
     assert commands() == []
     assert rows("SELECT count(*) FROM imports") == [[0]]
     Ownership.put!(Repo, "command:imports.photoprism_geodata", :sidekiq)
@@ -51,7 +77,7 @@ defmodule DawarichWeb.A12f3bI04Test do
              :create
            ]).status == 503
 
-    assert rows("SELECT count(*) FROM job_outbox") == [[2]]
+    assert rows("SELECT count(*) FROM job_outbox") == [[4]]
     assert commands() == []
   end
 
@@ -62,11 +88,7 @@ defmodule DawarichWeb.A12f3bI04Test do
     for job <- [
           "unknown",
           %{"nested" => "start_immich_import"},
-          nil,
-          "start_airtrail_import",
-          "start_teslamate_sync",
-          "start_reverse_geocoding",
-          "continue_reverse_geocoding"
+          nil
         ] do
       assert apply(IntegrationJobActions, :call, [request(actor.id, job), :create]).status == 422
     end
@@ -82,6 +104,9 @@ defmodule DawarichWeb.A12f3bI04Test do
       )
 
     assert apply(IntegrationJobActions, :call, [invalid, :create]).status == 422
+    cloud = request(actor.id, "start_reverse_geocoding") |> assign(:self_hosted, false)
+    assert apply(IntegrationJobActions, :call, [cloud, :create]).status == 303
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
     assert rows("SELECT count(*) FROM job_outbox") == [[0]]
     assert commands() == []
   end
