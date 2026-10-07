@@ -49,6 +49,48 @@ defmodule Dawarich.Tracks.MapMatching.HooksTest do
     end
   end
 
+  for operation <- [
+        :builder,
+        :recalculator,
+        :reprocessor,
+        :reclassify,
+        :merger,
+        :segment_override,
+        :segment_reset,
+        :restore
+      ] do
+    @operation operation
+    @tag String.to_atom("r1_#{operation}")
+    test "R1 #{@operation} default OFF creates zero extra processes, queries or matching jobs" do
+      for stored? <- [false, true] do
+        rows("DELETE FROM instance_settings WHERE key='map_matching_enabled'")
+
+        if stored?,
+          do:
+            rows(
+              "INSERT INTO instance_settings(key,value,created_at,updated_at) VALUES('map_matching_enabled','false'::jsonb,now(),now())"
+            )
+
+        System.put_env("MAP_MATCHING_ENABLED", "false")
+        Dawarich.Experimental.refresh_map_matching(ScratchRepo)
+        baseline = fixture!(@operation)
+        counts = TestSupport.accounting(ScratchRepo, fn -> complete!(@operation, baseline) end)
+        System.delete_env("MAP_MATCHING_ENABLED")
+        Dawarich.Experimental.refresh_map_matching(ScratchRepo)
+        track = fixture!(@operation)
+        observed = TestSupport.accounting(ScratchRepo, fn -> complete!(@operation, track) end)
+        assert observed.sql == counts.sql
+        assert observed.spawned == counts.spawned
+        assert observed.spawned == 0
+        assert observed.supervised == 0
+
+        assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker=$1", [
+                 inspect(Dawarich.Tracks.MapMatching.Worker)
+               ]) == [[0]]
+      end
+    end
+  end
+
   defp repeatable?(operation), do: operation not in [:merger, :segment_reset]
 
   defp fixture!(operation) do

@@ -4,10 +4,9 @@ defmodule Dawarich.Tracks.MapMatching.Enqueuer do
   alias Dawarich.Tracks.MapMatching.{State, Worker}
 
   def defer(repo, track_id) do
-    if Experimental.pinned?(:map_matching_enabled) and
-         Experimental.value(:map_matching_enabled, repo) != true,
-       do: :disabled,
-       else: Dawarich.Tracks.MapMatching.Deferred.call(repo, track_id)
+    if Experimental.cached_map_matching?(repo),
+      do: Dawarich.Tracks.MapMatching.Deferred.call(repo, track_id),
+      else: :disabled
   end
 
   def call(repo, track_id) do

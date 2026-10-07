@@ -8,7 +8,7 @@ defmodule Dawarich.Tracks.MapMatching.Sweeper do
 
   def run(repo) do
     cutoff = DateTime.utc_now() |> DateTime.add(-3600) |> DateTime.to_iso8601()
-    sweep(repo, cutoff, 0)
+    if Dawarich.Experimental.map_matching?(repo), do: sweep(repo, cutoff, 0), else: :ok
   end
 
   defp sweep(repo, cutoff, last) do
@@ -17,8 +17,8 @@ defmodule Dawarich.Tracks.MapMatching.Sweeper do
         """
         SELECT id FROM tracks WHERE id>$1 AND (
           (map_matching_status=0 AND map_matching_data->>'claimed_at' <= $2)
-          OR (map_matching_status IS NULL AND map_matching_input_digest IS NOT NULL
-            AND map_matching_data->>'enqueue_failed' = 'true'))
+          OR map_matching_status IS DISTINCT FROM 0)
+          AND demo IS NOT TRUE
         ORDER BY id LIMIT 500
         """,
         [last, cutoff],

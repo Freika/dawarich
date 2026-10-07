@@ -1,8 +1,12 @@
 defmodule Dawarich.ExperimentalTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: false
 
   alias Dawarich.Admin.{InstancePage, InstanceWrites}
   alias Dawarich.{Accounts, Experimental, I18n}
+
+  setup do
+    on_exit(fn -> :persistent_term.put({Experimental, Repo, :map_matching}, false) end)
+  end
 
   test "env pin overrides the stored value and reports pinned" do
     assert Code.ensure_loaded?(Experimental)

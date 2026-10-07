@@ -22,6 +22,15 @@ defmodule Dawarich.Experimental do
 
   def entries, do: @entries
 
+  def cached_map_matching?(repo \\ Repo),
+    do: :persistent_term.get({__MODULE__, repo, :map_matching}, false)
+
+  def refresh_map_matching(repo \\ Repo, env \\ System.get_env()) do
+    enabled = map_matching?(repo, env)
+    :persistent_term.put({__MODULE__, repo, :map_matching}, enabled)
+    enabled
+  end
+
   def value(setting, repo \\ Repo, env \\ System.get_env()) do
     name = Atom.to_string(setting)
     definition = Registry.fetch(name)

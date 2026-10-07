@@ -116,6 +116,7 @@ defmodule Dawarich.Application do
       [
         {Oban, Keyword.put(oban, :cron, cron)},
         {Task.Supervisor, name: Dawarich.Tracks.MapMatching.Tasks},
+        Dawarich.Tracks.MapMatching.Deferred,
         {Phoenix.PubSub, name: Dawarich.PubSub}
       ] ++
       Dawarich.Cable.Bus.child_specs() ++

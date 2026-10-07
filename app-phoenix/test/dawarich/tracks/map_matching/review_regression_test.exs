@@ -14,6 +14,7 @@ defmodule Dawarich.Tracks.MapMatching.ReviewRegressionTest do
   test "F1 default OFF hook adds zero caller queries and leaves track input and state untouched" do
     track = TestSupport.input!(ScratchRepo)
     System.delete_env("MAP_MATCHING_ENABLED")
+    Dawarich.Experimental.refresh_map_matching(ScratchRepo)
     before = State.read(ScratchRepo, track.id)
     stored = Store.get(ScratchRepo, track.id)
 
@@ -45,6 +46,8 @@ defmodule Dawarich.Tracks.MapMatching.ReviewRegressionTest do
     rows(
       "INSERT INTO instance_settings(key,value,created_at,updated_at) VALUES('map_matching_enabled','true'::jsonb,now(),now())"
     )
+
+    Dawarich.Experimental.refresh_map_matching(ScratchRepo)
 
     assert queries(fn -> assert :deferred = Enqueuer.defer(ScratchRepo, stored_enabled.id) end) ==
              []
@@ -108,6 +111,7 @@ defmodule Dawarich.Tracks.MapMatching.ReviewRegressionTest do
 
       try do
         assert_receive :hook_ready
+        wait_tasks!()
         assert Task.Supervisor.children(Dawarich.Tracks.MapMatching.Tasks) != []
         assert TestSupport.jobs(ScratchRepo, track.id) == []
       after
@@ -205,6 +209,16 @@ defmodule Dawarich.Tracks.MapMatching.ReviewRegressionTest do
       {:sql, sql} -> collect([sql | acc])
     after
       0 -> Enum.reverse(acc)
+    end
+  end
+
+  defp wait_tasks!(remaining \\ 1000)
+  defp wait_tasks!(0), do: flunk("dispatch did not register the supervised task")
+
+  defp wait_tasks!(remaining) do
+    if Task.Supervisor.children(Dawarich.Tracks.MapMatching.Tasks) == [] do
+      Process.sleep(1)
+      wait_tasks!(remaining - 1)
     end
   end
 

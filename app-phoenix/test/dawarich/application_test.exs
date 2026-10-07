@@ -130,6 +130,7 @@ defmodule Dawarich.ApplicationTest do
       Dawarich.Redis.Cache,
       Oban,
       Dawarich.Tracks.MapMatching.Tasks,
+      Dawarich.Tracks.MapMatching.Deferred,
       Phoenix.PubSub.Supervisor
     ]
 
@@ -173,6 +174,7 @@ defmodule Dawarich.ApplicationTest do
              Dawarich.Repo,
              Oban,
              Dawarich.Tracks.MapMatching.Tasks,
+             Dawarich.Tracks.MapMatching.Deferred,
              Phoenix.PubSub.Supervisor,
              RailsServer,
              DawarichWeb.Endpoint,

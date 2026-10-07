@@ -94,6 +94,9 @@ defmodule Dawarich.Admin.InstanceWrites do
         end
       end)
 
+    if Enum.any?(values, fn {name, _} -> name in ~w(map_matching_enabled atlas_url) end),
+      do: Dawarich.Experimental.refresh_map_matching(repo, env)
+
     {:ok, refused}
   rescue
     _ -> {:terminal, :persistence}

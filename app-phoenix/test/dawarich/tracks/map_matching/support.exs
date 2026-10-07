@@ -13,6 +13,7 @@ defmodule Dawarich.MapMatching.TestSupport do
     System.put_env("ATLAS_URL", "http://atlas.test")
     System.delete_env("MAP_MATCHING_SHADOW_MODE")
     Application.put_env(:dawarich, :map_matching_oban, Dawarich.TracksCase.oban())
+    Dawarich.Experimental.refresh_map_matching(Dawarich.TracksScratchRepo)
 
     ExUnit.Callbacks.on_exit(fn ->
       await_hooks!()
@@ -21,11 +22,73 @@ defmodule Dawarich.MapMatching.TestSupport do
         if value, do: System.put_env(key, value), else: System.delete_env(key)
       end
 
+      :persistent_term.put(
+        {Dawarich.Experimental, Dawarich.TracksScratchRepo, :map_matching},
+        false
+      )
+
       restore(:map_matching_oban, old)
       restore(:map_matching_client, client)
     end)
 
     :ok
+  end
+
+  def accounting(repo, fun) do
+    caller = self()
+    tracer = spawn(fn -> account_loop(caller, %{sql: [], spawned: 0, supervised: 0}) end)
+    dispatcher = Process.whereis(Dawarich.Tracks.MapMatching.Deferred)
+    supervisor = Process.whereis(Dawarich.Tracks.MapMatching.Tasks)
+    handler = {__MODULE__, make_ref()}
+    event = repo.config()[:telemetry_prefix] ++ [:query]
+    :ok = :telemetry.attach(handler, event, &__MODULE__.account_query/4, tracer)
+    :erlang.trace(caller, true, [:procs, :set_on_spawn, {:tracer, tracer}])
+    :erlang.trace(dispatcher, true, [:procs, :set_on_spawn, {:tracer, tracer}])
+    :erlang.trace(supervisor, true, [:procs, :set_on_spawn, {:tracer, tracer}])
+
+    try do
+      fun.()
+      await_hooks!()
+      ref = :erlang.trace_delivered(:all)
+      receive do: ({:trace_delivered, :all, ^ref} -> :ok)
+      send(tracer, :snapshot)
+      receive do: ({:counts, counts} -> %{counts | sql: Enum.sort(counts.sql)})
+    after
+      :erlang.trace(caller, false, [:procs, :set_on_spawn])
+      :erlang.trace(dispatcher, false, [:procs, :set_on_spawn])
+      :erlang.trace(supervisor, false, [:procs, :set_on_spawn])
+      :telemetry.detach(handler)
+      send(tracer, :stop)
+    end
+  end
+
+  def account_query(_, _, meta, tracer), do: send(tracer, {:sql, meta.query})
+
+  defp account_loop(caller, counts) do
+    receive do
+      {:sql, query} ->
+        account_loop(caller, %{counts | sql: [query | counts.sql]})
+
+      {:trace, parent, :spawn, _, _} ->
+        supervised =
+          if parent == Process.whereis(Dawarich.Tracks.MapMatching.Tasks), do: 1, else: 0
+
+        account_loop(caller, %{
+          counts
+          | spawned: counts.spawned + 1,
+            supervised: counts.supervised + supervised
+        })
+
+      :snapshot ->
+        send(caller, {:counts, counts})
+        account_loop(caller, counts)
+
+      :stop ->
+        :ok
+
+      _ ->
+        account_loop(caller, counts)
+    end
   end
 
   defp restore(key, nil), do: Application.delete_env(:dawarich, key)
