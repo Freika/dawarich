@@ -51,6 +51,7 @@ defmodule Dawarich.DemoData.Points do
       ), country_parts AS MATERIALIZED (
         SELECT countries.id, part.geom FROM countries JOIN bounds ON countries.geom && bounds.geom
         CROSS JOIN LATERAL ST_Subdivide(countries.geom,256) AS part(geom)
+        WHERE part.geom && bounds.geom
       )
       UPDATE points SET country_id=country_parts.id FROM country_parts
       WHERE points.import_id=$1 AND points.country_id IS NULL
