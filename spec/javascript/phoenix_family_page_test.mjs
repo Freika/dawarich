@@ -22,7 +22,18 @@ const fixture = (fetch) => {
     classList: { add: (name) => classes.add(name), remove: (name) => classes.delete(name) },
     querySelector: () => slot,
   }
-  const empty = { hidden: false }
+  const emptyClasses = new Set()
+  const empty = {
+    classList: {
+      toggle(name, force) {
+        const present = force ?? !emptyClasses.has(name)
+        if (present) emptyClasses.add(name)
+        else emptyClasses.delete(name)
+        return present
+      },
+      contains: (name) => emptyClasses.has(name),
+    },
+  }
   const el = {
     querySelectorAll: () => [row],
     querySelector: () => empty,
@@ -59,7 +70,7 @@ test("family hook hydrates consented member map and clears refused data", async 
   assert.equal(calls[0][1].cache, "no-store")
   assert.equal(calls[0][1].headers.Accept, "application/json")
   assert.deepEqual(f.controller.locationsValue, [location])
-  assert.equal(f.empty.hidden, true)
+  assert.equal(f.empty.classList.contains("hidden"), true)
   assert.equal(f.slot.textContent, "· 5 minutes ago")
   assert.equal(f.classes.has("cursor-pointer"), true)
   f.handlers.get("click")({ target: { closest: () => f.row } })
@@ -69,7 +80,7 @@ test("family hook hydrates consented member map and clears refused data", async 
   await f.hook.reconnected()
   assert.equal(map.removed, true)
   assert.deepEqual(f.controller.locationsValue, [])
-  assert.equal(f.empty.hidden, false)
+  assert.equal(f.empty.classList.contains("hidden"), false)
   assert.equal(f.slot.textContent, "")
   assert.equal(f.classes.has("cursor-pointer"), false)
 })
