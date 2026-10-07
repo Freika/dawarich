@@ -23,12 +23,6 @@ module Stats::EffectReceipts
     return yield unless PhoenixSchema.table?('processed_commands')
 
     ActiveRecord::Base.transaction(requires_new: true) do
-      if handler.start_with?('digests.calculate_')
-        query('SELECT pg_advisory_xact_lock(hashtextextended(?,0))', receipt)
-        generation = id(receipt, handler.sub('calculate_', 'generate_'), nil, nil)
-        next if done?(generation)
-      end
-
       claimed = query('INSERT INTO phoenix.processed_commands(event_id,handler,processed_at) ' \
                       'VALUES(?,?,now()) ON CONFLICT(event_id) DO NOTHING RETURNING event_id', receipt, handler)
       next if claimed.empty?

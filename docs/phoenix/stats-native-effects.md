@@ -44,3 +44,11 @@ Native successful generation also commits a shared generation checkpoint derived
 No migration or new table is needed. Rails 1.15.3 keeps its existing positional arguments, calculation and mail behavior, and the helper still executes directly when the Phoenix receipt table is absent. Both runtimes must retain this lock protocol during coexistence and rollback.
 
 `test/dawarich/fix3_rxstats_test.exs` retains the reviewer's real Rails monthly/yearly completion-between-check-and-claim probes and adds reciprocal native-generation/terminal-retry probes. `spec/services/stats/effect_receipts_spec.rb` verifies the Rails lock through an independent PostgreSQL connection. The controller `fix3-fix-rxstats.report.md` records their RED, GREEN, mutation and gate evidence. Shared AFFiNE counterpart: `Dawarich — Phoenix RX-STATS native reverse effects` (`XWYD5Erib3gyCNduJLSx8`).
+
+## Single digest period record
+
+The digest checkpoint protocol above is superseded by
+[digest period execution](digest-period-execution.md), following the controller's
+fix4 RX-STATS ruling. Both runtimes use the additive period record and shared
+period lock for claim, generation and publication. Older successful results and
+retained accepted arguments are reconciled before upgraded consumers start.

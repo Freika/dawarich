@@ -189,7 +189,13 @@ defmodule Dawarich.FixRxStatsTest do
                )
 
       :ets.insert(counts, [{:stats, 0}, {:digests, 0}])
-      fresh = Map.put(args, "event_id", Ecto.UUID.generate())
+      fresh = sibling_period(@kind, Map.put(args, "event_id", Ecto.UUID.generate()))
+
+      rows(
+        "INSERT INTO public.stats(user_id,year,month,distance,created_at,updated_at) VALUES($1,$2,$3,0,now(),now())",
+        [fresh["user_id"], fresh["year"], fresh["month"] || 3]
+      )
+
       parent = self()
 
       barrier = fn ->
@@ -197,7 +203,8 @@ defmodule Dawarich.FixRxStatsTest do
         receive do: (:generate -> :ok)
       end
 
-      concurrent_opts = Keyword.put(opts, :before_claim, barrier)
+      concurrent_opts =
+        opts |> Keyword.put(:before_claim, barrier) |> Keyword.put(:uuid, Ecto.UUID.generate())
 
       tasks =
         for _ <- 1..2 do
@@ -230,7 +237,7 @@ defmodule Dawarich.FixRxStatsTest do
   defp next_identity(:yearly, event), do: {event, 2025}
   defp next_identity(_kind, event), do: {event, 2024}
 
-  defp sibling_period(:monthly, args), do: Map.put(args, "month", 4)
+  defp sibling_period(:monthly, args), do: Map.put(args, "month", args["month"] + 1)
   defp sibling_period(:yearly, args), do: Map.put(args, "year", args["year"] + 1)
 
   defp key(:stats), do: "command:stats.calculate_month"

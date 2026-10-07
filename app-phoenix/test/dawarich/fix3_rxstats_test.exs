@@ -72,7 +72,7 @@ defmodule Dawarich.Fix3RxStatsTest do
       refute Processed.done?(ScratchRepo, terminal)
       assert length(D.digests(ScratchRepo, args["user_id"])) == 1
       digest = D.digests(ScratchRepo, args["user_id"])
-      rails_complete!(@kind, args, terminal, false)
+      rails_complete!(@kind, args, terminal)
       assert D.digests(ScratchRepo, args["user_id"]) == digest
 
       assert Generation.run(

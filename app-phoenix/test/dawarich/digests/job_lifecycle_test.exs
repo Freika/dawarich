@@ -45,32 +45,53 @@ defmodule Dawarich.Digests.JobLifecycleTest do
         receive(do: (:finish -> :ok))
       end
 
-      stats = fn repo, user, year, month, options ->
-        if month == (payload["month"] || 1), do: before_store.(nil)
-        Dawarich.Stats.CalculateMonth.call(repo, user, year, month, options)
-      end
+      opts = F.job_options(kase) ++ [after_store: after_store]
 
-      opts = F.job_options(kase) ++ [stats: stats, after_store: after_store]
-      task = Task.async(fn -> worker.perform(job, opts) end)
+      task =
+        Task.async(fn ->
+          ScratchRepo.checkout(fn ->
+            before_store.(nil)
+            result = worker.perform(job, opts)
+            send(parent, {:completed, self(), result})
+            result
+          end)
+        end)
+
       task_pid = task.pid
       assert_receive {:ready, ^task_pid, pid}, 5_000
       peer_send(%{op: "native_ready", pid: pid})
       assert %{"op" => "store"} = peer_read()
       send(task.pid, :store)
-      assert_receive {:stored, ^task_pid, digest_id}, 5_000
-      peer_send(%{op: "native_stored", id: digest_id})
+
+      receive do
+        {:stored, ^task_pid, digest_id} -> peer_send(%{op: "native_stored", id: digest_id})
+        {:completed, ^task_pid, :ok} -> peer_send(%{op: "native_stored", id: nil})
+      after
+        5_000 -> flunk("native contender neither stored nor observed completed period")
+      end
+
       assert %{"op" => "finish"} = peer_read()
       send(task.pid, :finish)
       assert Task.await(task) == :ok
       peer_send(%{op: "native_done"})
-      assert %{"op" => "verify", "expected" => expected} = peer_read()
+
+      assert %{"op" => "verify", "expected" => expected, "rails_mail_count" => rails_mail_count} =
+               peer_read()
+
+      expected_native_mail = 1 - rails_mail_count
+
+      assert [["published", "mail"]] =
+               rows(
+                 "SELECT state,outcome FROM phoenix.digest_executions WHERE effect=$1 AND user_id=14101 AND year=$2 AND month=$3",
+                 [type, payload["year"], payload["month"] || 0]
+               )
 
       assert [[1]] =
-               rows("SELECT count(*) FROM phoenix.processed_commands WHERE event_id=$1", [
-                 Ecto.UUID.dump!(Dawarich.Digests.Generation.receipt(kind, job.args))
-               ])
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
 
-      assert [[1]] =
+      assert [[^expected_native_mail]] =
                rows(
                  "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'"
                )
@@ -78,12 +99,7 @@ defmodule Dawarich.Digests.JobLifecycleTest do
       assert [[0]] = rows("SELECT count(*) FROM notifications WHERE user_id=14101")
       assert worker.perform(job, F.job_options(kase)) == :ok
 
-      assert [[2]] =
-               rows(
-                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
-               )
-
-      assert [[1]] =
+      assert [[^expected_native_mail]] =
                rows(
                  "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'"
                )
@@ -164,7 +180,7 @@ defmodule Dawarich.Digests.JobLifecycleTest do
     end
   end
 
-  test "same-period monthly and yearly generation collisions keep indexed digest metadata and terminal effects per event" do
+  test "same-period monthly and yearly generation collisions keep indexed digest metadata and one period terminal effect" do
     for {kind, worker, _type} <- workers(), profile <- ~w(new existing) do
       reset!(ScratchRepo)
       kase = F.job_case!("#{profile}_#{kind}_en")
@@ -203,43 +219,65 @@ defmodule Dawarich.Digests.JobLifecycleTest do
       send(first_pid, :store)
       assert_receive {:stored, ^first_pid, _id}, 5_000
 
+      counter = :counters.new(1, [])
+
       stats = fn repo, user, year, month, options ->
-        if month == (second_args["month"] || 1), do: ready.(nil)
+        :counters.add(counter, 1, 1)
         Dawarich.Stats.CalculateMonth.call(repo, user, year, month, options)
       end
 
-      second_opts = Keyword.merge(opts, stats: stats, uuid: Ecto.UUID.generate())
-      second = Task.async(fn -> worker.perform(%Oban.Job{args: second_args}, second_opts) end)
-      second_pid = second.pid
-      assert_receive {:ready, ^second_pid, second_db}, 5_000
-      send(second_pid, :store)
-      assert_blocked(second, first_db, second_db)
-      send(first_pid, :finish)
-      assert Task.await(first) == :ok
-      assert Task.await(second) == :ok
-      assert worker.perform(%Oban.Job{args: first_args}, opts) == :ok
-      [actual] = F.digests(ScratchRepo, 14101)
-      [expected] = kase["expected"]["rows"]
-      expected = Map.put(expected, "id", actual["id"])
+      second_opts =
+        Keyword.merge(opts,
+          stats: stats,
+          uuid: Ecto.UUID.generate()
+        )
 
-      expected =
-        if profile == "new",
-          do: Map.put(expected, "sent_at", "2026-10-01T00:00:00"),
-          else: expected
+      second =
+        Task.async(fn ->
+          ScratchRepo.checkout(fn ->
+            ready.(nil)
+            worker.perform(%Oban.Job{args: second_args}, second_opts)
+          end)
+        end)
 
-      assert actual == expected
+      try do
+        second_pid = second.pid
+        assert_receive {:ready, ^second_pid, second_db}, 5_000
+        send(second_pid, :store)
+        assert_blocked(second, first_db, second_db)
+        send(first_pid, :finish)
+        assert Task.await(first) == :ok
+        assert Task.await(second) == :ok
+        assert worker.perform(%Oban.Job{args: first_args}, opts) == :ok
+        [actual] = F.digests(ScratchRepo, 14101)
+        [expected] = kase["expected"]["rows"]
+        expected = Map.put(expected, "id", actual["id"])
 
-      assert [[2]] =
-               rows(
-                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
-               )
+        expected =
+          if profile == "new",
+            do: Map.put(expected, "sent_at", "2026-10-01T00:00:00"),
+            else: expected
 
-      assert [[2]] =
-               rows(
-                 "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'"
-               )
+        assert actual == expected
 
-      assert [[0]] = rows("SELECT count(*) FROM public.notifications")
+        assert [[1]] =
+                 rows(
+                   "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+                 )
+
+        assert [[1]] =
+                 rows(
+                   "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'"
+                 )
+
+        assert [[0]] = rows("SELECT count(*) FROM public.notifications")
+        assert :counters.get(counter, 1) == 0
+      after
+        send(first.pid, :finish)
+        send(second.pid, :store)
+        Task.shutdown(first, :brutal_kill)
+        Task.shutdown(second, :brutal_kill)
+      end
     end
   end
 

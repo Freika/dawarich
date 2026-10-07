@@ -7,28 +7,41 @@ class Users::Digests::Monthly::CalculatingJob < ApplicationJob
   def perform(user_id, year, month, execution_receipt: nil)
     receipt = execution_receipt || Stats::EffectReceipts.id(job_id, 'digests.calculate_month', user_id, year.to_i,
                                                             month.to_i)
-    return if Stats::EffectReceipts.done?(receipt)
+    return if Users::Digests::Execution.published?('digests.calculate_month', user_id, year, month)
     return forward(user_id, year, month, execution_receipt) if JobOwnership.oban?(OWNER_KEY)
 
-    Stats::EffectReceipts.once(receipt, 'digests.calculate_month') do
-      calculate(user_id, year, month)
+    Users::Digests::Execution.run(receipt, 'digests.calculate_month', user_id, year, month,
+                                  source: job_id) do |step, error|
+      if step == :publish
+        publish(user_id, year, month)
+      elsif step == :failed
+        create_digest_failed_notification(user_id, error)
+        :failed
+      else
+        calculate(user_id, year, month)
+      end
     end
   end
 
   private
 
   def calculate(user_id, year, month)
-    user = find_user_or_skip(user_id) || return
+    user = find_user_or_skip(user_id)
+    return :missing unless user
 
     I18n.with_locale(user.locale) do
       Stats::CalculateMonth.new(user_id, year, month).call
       Users::Digests::CalculateMonth.new(user_id, year, month).call
-
-      Users::Digests::Commands.publish_email('month', user_id, year, month: month)
     end
   rescue StandardError => e
     create_digest_failed_notification(user_id, e)
     :failed
+  end
+
+  def publish(user_id, year, month)
+    Users::Digests::Commands.publish_email('month', user_id, year, month: month)
+  rescue StandardError => e
+    e
   end
 
   def forward(user_id, year, month, execution_receipt)

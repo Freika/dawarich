@@ -41,7 +41,7 @@ defmodule Dawarich.Digests.GenerationTest do
                  opts
                ) == :ok
 
-        assert [[2]] =
+        assert [[1]] =
                  rows(
                    "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'"
                  )

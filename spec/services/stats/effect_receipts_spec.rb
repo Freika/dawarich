@@ -10,7 +10,10 @@ RSpec.describe Stats::EffectReceipts do
                       user: config[:username], password: config[:password])
     result = nil
 
-    described_class.once(receipt, 'digests.calculate_month') do
+    user = create(:user)
+    Users::Digests::Execution.run(receipt, 'digests.calculate_month', user.id, 2024, 3) do |step|
+      next :ok if step == :publish
+
       result = peer.exec_params('SELECT pg_try_advisory_xact_lock(hashtextextended($1,0))', [receipt])[0].values.first
       :ok
     end

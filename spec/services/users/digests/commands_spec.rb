@@ -100,7 +100,7 @@ RSpec.describe 'Users::Digests::Commands' do
       messages << { 'op' => 'eof' }
     end
     error_reader = Thread.new { peer_error << stderr.read }
-    expect(collision_message(messages)).to eq('op' => 'ready', 'database' => shared_database)
+    expect(collision_message(messages, timeout: 30)).to eq('op' => 'ready', 'database' => shared_database)
     ActiveRecord::Base.establish_connection(original_config.merge(database: shared_database))
     cases = JSON.parse(Rails.root.join('app-phoenix/test/fixtures/a12d1b2/jobs.json').read).fetch('workers')
 
@@ -118,13 +118,10 @@ RSpec.describe 'Users::Digests::Commands' do
         ready = Queue.new
         store = Queue.new
         finish = Queue.new
-        entered = held = false
+        held = false
+        stats_calls = 0
         allow_any_instance_of(Stats::CalculateMonth).to receive(:call).and_wrap_original do |calculate|
-          unless entered
-            entered = true
-            ready << { 'op' => 'rails_ready', 'pid' => ActiveRecord::Base.connection.select_value('SELECT pg_backend_pid()') }
-            store.pop
-          end
+          stats_calls += 1
           calculate.call
         end
         allow_any_instance_of(Users::Digest).to receive(:save!).and_wrap_original do |save, *args, **opts|
@@ -143,6 +140,8 @@ RSpec.describe 'Users::Digests::Commands' do
         mail = kind == 'monthly' ? Users::Digests::Monthly::EmailSendingJob : Users::Digests::Yearly::EmailSendingJob
         rails_writer = Thread.new do
           ActiveRecord::Base.connection_pool.with_connection do
+            ready << { 'op' => 'rails_ready', 'pid' => ActiveRecord::Base.connection.select_value('SELECT pg_backend_pid()') }
+            store.pop
             Time.use_zone(kase.fetch('ambient_zone')) { calculator.perform_now(*kase.fetch('args')) }
           end
         end
@@ -171,7 +170,17 @@ RSpec.describe 'Users::Digests::Commands' do
 
         expect(rails_writer.join(5)).to eq(rails_writer)
         rails_writer.value
-        expect(enqueued_jobs.count { |job| job[:job] == mail && job[:args] == kase['args'] }).to eq(1)
+        rails_mail_count = enqueued_jobs.count { |job| job[:job] == mail && job[:args] == kase['args'] }
+        mail_period = kind == 'monthly' ? 'month' : 'year'
+        native_mail_count = ActiveRecord::Base.connection.select_value(
+          "SELECT count(*) FROM phoenix.rails_commands WHERE kind='digests.email_#{mail_period}'"
+        )
+        expect(rails_mail_count + native_mail_count).to eq(1)
+        expect(stats_calls).to eq(if order == 'rails_first'
+                                    kind == 'monthly' ? 1 : 12
+                                  else
+                                    0
+                                  end)
         actual = ActiveRecord::Base.connection.select_values(
           'SELECT row_to_json(d)::text FROM (SELECT * FROM public.digests WHERE user_id=14101) d'
         ).map { |row| JSON.parse(row) }.sole
@@ -179,7 +188,7 @@ RSpec.describe 'Users::Digests::Commands' do
         expected['sharing_uuid'] = rails_uuid if profile == 'new' && order == 'rails_first'
         expect(actual.except('id')).to eq(expected), "#{kind}/#{order}/#{profile}"
         expect(Notification.where(user_id: 14_101)).to be_empty
-        collision_send(stdin, op: 'verify', expected:)
+        collision_send(stdin, op: 'verify', expected:, rails_mail_count:)
         expect(collision_message(messages)).to eq('op' => 'verified')
         allow_any_instance_of(Users::Digest).to receive(:save!).and_call_original
         allow(SecureRandom).to receive(:uuid).and_call_original
@@ -212,7 +221,7 @@ RSpec.describe 'Users::Digests::Commands' do
     ActiveRecord::Base.establish_connection(original_config) if original_config
   end
 
-  def collision_message(queue) = Timeout.timeout(5) { queue.pop }
+  def collision_message(queue, timeout: 5) = Timeout.timeout(timeout) { queue.pop }
 
   def collision_send(input, message)
     input.puts(JSON.generate(message))
@@ -450,7 +459,8 @@ RSpec.describe 'Users::Digests::Commands' do
       arguments = period == 'month' ? [user.id, 2025, 3] : [user.id, 2025]
       JobOutbox.where(command_type: type).delete_all
       ActiveRecord::Base.connection.execute("DELETE FROM phoenix.job_owners WHERE key = 'command:#{type}'")
-      [nil, :sidekiq].each do |owner|
+      [nil, :sidekiq].each_with_index do |owner, index|
+        arguments[1] = 2025 + index
         job_owner!("command:#{type}", owner) if owner
         expect { klass.perform_now(*arguments) }.to have_enqueued_job(mail).with(*arguments)
         expect(JobOutbox.where(command_type: type)).to be_empty
