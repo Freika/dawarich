@@ -1,5 +1,23 @@
 defmodule Dawarich.SharedApi.Privacy do
   @moduledoc false
+  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+  alias Dawarich.SharedApi.Closure
+
+  def visible_photo?(photo, zones) do
+    Ruby.present?(photo["latitude"]) and Ruby.present?(photo["longitude"]) and
+      (zones == [] or
+         Closure.visible_photo?(
+           Map.merge(photo, %{
+             "latitude" => coordinate(photo["latitude"]),
+             "longitude" => coordinate(photo["longitude"])
+           }),
+           zones
+         ))
+  end
+
+  defp coordinate(value) when is_number(value), do: value
+  defp coordinate(value) when is_binary(value), do: Ruby.to_f(value)
+  defp coordinate(value), do: Ruby.no_method!("to_f", value)
 
   def outside(point, owner \\ "$1") do
     "NOT EXISTS (SELECT 1 FROM tags z JOIN taggings g ON g.tag_id = z.id " <>

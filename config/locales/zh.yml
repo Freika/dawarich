@@ -45,7 +45,18 @@ zh:
           locationiq: "托管服务。需要 API 密钥。"
         points:
           title: "轨迹点"
+        experimental:
+          title: "实验性功能"
+        map_matching:
+          title: "地图匹配"
+          description: "将有噪声的记录轨迹对齐到附近的道路和路径。它只改变符合条件的轨迹的绘制方式；记录点和原始路径保持不变。"
         fields:
+          atlas_url: "Atlas URL"
+          map_matching_enabled: "启用地图匹配"
+          atlas_url_hint: "您的私有 Dawarich Atlas 服务的完整 HTTP 或 HTTPS 基础 URL。"
+          map_matching_enabled_hint: "应用于整个实例。现有轨迹不会自动处理。"
+          map_matching_shadow_mode: "影子模式"
+          map_matching_shadow_mode_hint: "处理符合条件的轨迹，但不显示匹配后的路径。"
           photon_api_host: "主机"
           photon_api_key: "API 密钥"
           photon_api_use_https: "使用 HTTPS"
@@ -61,6 +72,8 @@ zh:
           api_key_keep_hint: "留空则保留已保存的密钥。"
           store_geodata_hint: "添加新轨迹点时查询所在城市和国家。只要配置了地理编码服务，关闭此选项后仍会在夜间进行查询。"
       update:
+        atlas_url_invalid: "Atlas URL 必须是完整的 HTTP 或 HTTPS URL，且不能包含凭据、查询参数或片段。"
+        atlas_url_required: "启用地图匹配前请先设置 Atlas URL。"
         saved: "设置已保存。"
         pinned: "已拒绝：由 %{variables} 固定。"
         host_invalid: "主机必须是单纯的主机名，可附带端口或路径，不能包含空格。"

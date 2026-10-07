@@ -43,7 +43,18 @@ ca:
           locationiq: "Servei allotjat. Necessita una clau d'API."
         points:
           title: "Punts"
+        experimental:
+          title: "Funcions experimentals"
+        map_matching:
+          title: "Ajust de rutes"
+          description: "Alinea els trajectes enregistrats amb soroll a carreteres i camins propers. Només canvia com es dibuixen els trajectes compatibles; els punts enregistrats i el traçat original no es modifiquen."
         fields:
+          atlas_url: "URL d'Atlas"
+          map_matching_enabled: "Activa l'ajust de rutes"
+          atlas_url_hint: "URL base HTTP o HTTPS completa del teu servei privat Dawarich Atlas."
+          map_matching_enabled_hint: "S'aplica a tota la instància. Els trajectes existents no es processen automàticament."
+          map_matching_shadow_mode: "Mode ombra"
+          map_matching_shadow_mode_hint: "Processa els trajectes aptes sense mostrar els camins ajustats."
           photon_api_host: "Amfitrió"
           photon_api_key: "Clau d'API"
           photon_api_use_https: "Utilitza HTTPS"
@@ -59,6 +70,8 @@ ca:
           api_key_keep_hint: "Deixa-ho en blanc per mantenir la clau desada."
           store_geodata_hint: "Cerca la ciutat i el país quan s’afegeixen punts nous. Les cerques nocturnes continuen si hi ha un proveïdor configurat, encara que aquesta opció estigui desactivada."
       update:
+        atlas_url_invalid: "La URL d'Atlas ha de ser una URL HTTP o HTTPS completa, sense credencials, consulta ni fragment."
+        atlas_url_required: "Defineix una URL d'Atlas abans d'activar l'ajust de rutes."
         saved: "Configuració desada."
         pinned: "Rebutjat: fixat per %{variables}."
         host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."

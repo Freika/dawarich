@@ -76,8 +76,8 @@ defmodule Dawarich.Storage.Blobs do
 
     case Repo.query!(sql, [id]) do
       %{columns: columns, rows: [row]} ->
-        result = blob(Enum.zip(columns, row))
-        unless purging?(result.metadata), do: result
+        value = blob(Enum.zip(columns, row))
+        unless Dawarich.Storage.NativePurge.pending?(value.metadata), do: value
 
       _ ->
         nil

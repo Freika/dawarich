@@ -161,6 +161,9 @@ defmodule DawarichWeb.ExportsDeleteTest do
     [[args]] =
       Repo.query!("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PurgeWorker'").rows
 
+    assert [[blob.id]] ==
+             Repo.query!("SELECT id FROM active_storage_blobs WHERE id=$1", [blob.id]).rows
+
     [object] = args["objects"]
     assert object["key"] != ""
     path = Dawarich.Storage.disk_path(c.root, object["key"])
@@ -170,6 +173,9 @@ defmodule DawarichWeb.ExportsDeleteTest do
     assert {:error, _} =
              apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services, repo: Repo]])
 
+    assert [[blob.id]] ==
+             Repo.query!("SELECT id FROM active_storage_blobs WHERE id=$1", [blob.id]).rows
+
     File.rmdir!(path)
     File.write!(path, "synthetic standalone export")
 
@@ -178,6 +184,8 @@ defmodule DawarichWeb.ExportsDeleteTest do
 
     assert :ok =
              apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services, repo: Repo]])
+
+    assert [] == Repo.query!("SELECT id FROM active_storage_blobs WHERE id=$1", [blob.id]).rows
 
     assert download.().status == 404
     assert redirect.(shared.signed_id).status == 302

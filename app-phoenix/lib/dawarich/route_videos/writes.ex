@@ -56,7 +56,9 @@ defmodule Dawarich.RouteVideos.Writes do
            log: false
          ).rows do
       [[type, size, metadata]] ->
-        {:ok, %{content_type: type, byte_size: size, metadata: metadata}}
+        if Dawarich.Storage.NativePurge.pending?(metadata),
+          do: {:error, %{phase: :invalid_signature}},
+          else: {:ok, %{content_type: type, byte_size: size, metadata: metadata}}
 
       [] ->
         {:error, %{phase: :invalid_signature}}

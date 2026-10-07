@@ -2,7 +2,7 @@ defmodule Dawarich.SharedApi.Photos do
   @moduledoc false
   alias Dawarich.{Accounts, RailsTime, Repo, UserTimeZone}
   alias Dawarich.Photos.{Index, ProviderCache, Thumbnail}
-  alias Dawarich.SharedApi.Closure
+  alias Dawarich.SharedApi.{Closure, Privacy}
 
   def response(link, action, params \\ %{}) do
     if Dawarich.Standalone.enabled?(),
@@ -29,29 +29,34 @@ defmodule Dawarich.SharedApi.Photos do
     _ -> if action == :photos, do: {:ok, []}, else: {:head, 404}
   end
 
-  def allowed_ids(link), do: photos(link) |> ids(link)
+  def grant_context(link) do
+    zone = UserTimeZone.iana(Repo, Accounts.settings(link.user_id))
+    %{range: range(link, zone), zones: Closure.zones(link.user_id)}
+  end
+
+  def allowed_ids(link, context), do: photos(link, context) |> ids(link, context)
 
   defp photos(link) do
-    settings = Accounts.settings(link.user_id)
-    user = %{id: link.user_id}
-    zone = UserTimeZone.iana(Repo, settings)
-
-    photos =
-      case range(link, zone) do
-        nil -> []
-        {from, to} -> Index.cached(user, start_date: from, end_date: to)
-      end
-
-    zones = Closure.zones(link.user_id)
-    photos = Enum.filter(photos, &Closure.visible_photo?(&1, zones))
-    ids(photos, link)
+    context = grant_context(link)
+    photos = photos(link, context)
+    ids(photos, link, context)
     photos
   end
 
-  defp ids(photos, link) do
+  defp photos(link, context) do
+    photos =
+      case context.range do
+        nil -> []
+        {from, to} -> Index.cached(%{id: link.user_id}, start_date: from, end_date: to)
+      end
+
+    Enum.filter(photos, &Privacy.visible_photo?(&1, context.zones))
+  end
+
+  defp ids(photos, link, context) do
     allowed = if link.type == "trip", do: photos, else: Enum.take(photos, 100)
     ids = Map.new(allowed, &{"#{&1["source"]}:#{&1["id"]}", true})
-    ProviderCache.put(Closure.photo_ids_key(link), ids, 600)
+    ProviderCache.put(Closure.photo_ids_key(link, context), ids, 600)
     ids
   end
 

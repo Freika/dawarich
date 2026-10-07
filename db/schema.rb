@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_27_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -724,6 +724,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_120000) do
     t.datetime "end_at", null: false
     t.bigint "import_id"
     t.integer "lock_version", default: 0, null: false
+    t.datetime "map_matched_at"
+    t.jsonb "map_matching_data", default: {}, null: false
+    t.string "map_matching_input_digest"
+    t.integer "map_matching_status"
+    t.geometry "matched_path", limit: {srid: 4326, type: "multi_line_string"}
     t.geometry "original_path", limit: {srid: 4326, type: "line_string"}, null: false
     t.datetime "start_at", null: false
     t.string "tracker_id"
@@ -733,6 +738,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_120000) do
     t.index ["demo"], name: "index_tracks_on_demo_true", where: "(demo = true)"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
     t.index ["import_id"], name: "idx_tracks_import_id_extracted", where: "(import_id IS NOT NULL)"
+    t.index ["matched_path"], name: "index_tracks_on_matched_path", where: "(matched_path IS NOT NULL)", using: :gist
     t.index ["original_path"], name: "index_tracks_on_original_path", using: :gist
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"

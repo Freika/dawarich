@@ -37,7 +37,12 @@ defmodule Dawarich.Posters.Command do
   def progress(repo, payload), do: child!(repo, Dawarich.Posters.ProgressWorker, payload)
 
   def purge(repo, :oban, payload), do: child!(repo, Dawarich.Posters.PurgeWorker, payload)
-  def purge(repo, :sidekiq, payload), do: RailsCommands.insert!(repo, "posters.purge", payload)
+
+  def purge(repo, :sidekiq, payload) do
+    if Dawarich.Standalone.enabled?(),
+      do: purge(repo, :oban, payload),
+      else: RailsCommands.insert!(repo, "posters.purge", payload)
+  end
 
   defp child!(repo, worker, payload) do
     payload = Map.put(payload, "event_id", Ecto.UUID.generate())

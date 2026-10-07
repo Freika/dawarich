@@ -244,10 +244,10 @@ defmodule DawarichWeb.Router do
     pipe_through :sharing
 
     get "/shared/digest/:uuid", DawarichWeb.SharedStatsPage, :digest,
-      metadata: %{rails_key: "digests"}
+      metadata: %{rails_key: "shared"}
 
     get "/shared/month/:uuid", DawarichWeb.SharedStatsPage, :month,
-      metadata: %{rails_key: "stats"}
+      metadata: %{rails_key: "shared"}
   end
 
   map_frame_routes()

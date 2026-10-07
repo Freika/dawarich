@@ -196,6 +196,10 @@ defmodule DawarichWeb.Strangler do
     end
   end
 
+  defp slice_owned?(%{slice: :api_shared, plug_opts: action}, %{method: "HEAD"})
+       when action in [:photos, :thumbnail],
+       do: Dawarich.Standalone.enabled?() and DawarichWeb.Slices.owned?(:api_shared)
+
   defp slice_owned?(%{slice: slice}, conn),
     do:
       (conn.method != "HEAD" or
