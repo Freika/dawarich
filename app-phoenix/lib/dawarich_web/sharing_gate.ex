@@ -14,7 +14,8 @@ defmodule DawarichWeb.SharingGate do
   def unlock?(conn, %{"id" => id}),
     do:
       open?(conn, id) and (Dawarich.Standalone.enabled?() or not family_only?(id)) and
-        Enum.all?(@forwarded, &(get_req_header(conn, &1) == []))
+        (Dawarich.Standalone.enabled?() or
+           Enum.all?(@forwarded, &(get_req_header(conn, &1) == [])))
 
   defp open?(conn, id) do
     (Dawarich.Standalone.enabled?() or conn.method != "HEAD") and

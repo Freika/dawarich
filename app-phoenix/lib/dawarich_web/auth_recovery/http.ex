@@ -44,7 +44,7 @@ defmodule DawarichWeb.AuthRecovery.Http do
       |> Map.merge(%{
         enabled: true,
         headers: conn.req_headers,
-        sign_in_ip: to_string(:inet.ntoa(conn.remote_ip)),
+        sign_in_ip: DawarichWeb.RailsRemoteIp.ip(conn),
         locale: DawarichWeb.Locale.resolve(nil, nil, conn.assigns.rails_session)
       })
 

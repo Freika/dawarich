@@ -30,7 +30,7 @@ defmodule DawarichWeb.AuthRestore do
     with cookie when is_binary(cookie) <- conn.cookies["remember_user_token"],
          {:ok, payload} <- RailsCookies.verify(cookie, "remember_user_token", secret, now),
          {:ok, %{user: user}} <-
-           Credentials.restore(payload, %{ip: to_string(:inet.ntoa(conn.remote_ip))}) do
+           Credentials.restore(payload, %{ip: DawarichWeb.RailsRemoteIp.ip(conn)}) do
       conn
       |> AuthCookie.session(SessionCookie.for_restore(session, user, secret))
       |> register_before_send(
