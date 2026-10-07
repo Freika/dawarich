@@ -52,7 +52,7 @@ defmodule Dawarich.Imports.DestroyEffects do
     active = Enum.reject(rows, fn [_id, _place, _time, demo] -> demo end)
 
     times =
-      Enum.map(active, fn [_id, _place, time, _demo] ->
+      Enum.map(rows, fn [_id, _place, time, _demo] ->
         DateTime.from_naive!(time, "Etc/UTC")
       end)
 

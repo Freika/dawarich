@@ -623,6 +623,82 @@ defmodule DawarichWeb.VisitWritesRegressionTest do
     end
   end
 
+  for {mode, label} <- [{nil, "coexistence"}, {"off", "standalone"}] do
+    @tag :import_demo_intent
+    test "import deletion fences restored demo visit counts after visible deletion in #{label}" do
+      env("DAWARICH_RAILS", unquote(mode))
+      ctx = fixture("rename")
+
+      [[import_id]] =
+        rows(
+          "INSERT INTO imports(user_id,name,source,status,created_at,updated_at) VALUES($1,'demo.csv',10,2,now(),now()) RETURNING id",
+          [ctx.user_id]
+        )
+
+      data = [
+        %{
+          "name" => "Imported demo visit",
+          "started_at" => "2026-10-04T12:00:00Z",
+          "ended_at" => "2026-10-04T13:00:00Z",
+          "duration" => 60,
+          "status" => "suggested",
+          "demo" => true,
+          "import_id" => import_id
+        }
+      ]
+
+      assert Dawarich.UserData.Restore.Visits.call(ScratchRepo, ctx.user_id, data, %{
+               now: ~U[2026-10-05 00:00:00Z],
+               repo: ScratchRepo
+             }) == 1
+
+      [[visit_id, true]] = rows("SELECT id,demo FROM visits WHERE import_id=$1", [import_id])
+      assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
+      rows("DELETE FROM oban.oban_jobs WHERE worker=$1", [@worker])
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.destroy", :oban)
+
+      args = %{
+        "import_id" => import_id,
+        "user_id" => ctx.user_id,
+        "event_id" => Ecto.UUID.generate()
+      }
+
+      [[job_id]] =
+        rows(
+          "INSERT INTO oban.oban_jobs(state,queue,worker,args,attempt,max_attempts,attempted_at) VALUES('executing','imports','Dawarich.Imports.DestroyWorker',$1,1,3,now()) RETURNING id",
+          [args]
+        )
+
+      keys =
+        for segment <- ~w(lite pro),
+            do: month_key(ctx.user_id, "2026-10", "Europe/Berlin", segment)
+
+      for key <- keys do
+        assert {:ok, "OK"} = RailsCache.put(key, "old demo visit count", expires_in: 300)
+      end
+
+      stop_supervised!(Dawarich.Redis.Cache)
+
+      assert :ok =
+               Dawarich.Imports.DestroyWorker.perform(%Oban.Job{
+                 id: job_id,
+                 attempt: 1,
+                 args: args
+               })
+
+      assert rows("SELECT id FROM visits WHERE id=$1", [visit_id]) == []
+      start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+      for key <- keys, do: assert(RailsCache.get(key) == :miss)
+
+      assert rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [@worker]) == [
+               [%{"user_id" => ctx.user_id, "started_at" => ["2026-10-04T12:00:00.000000Z"]}]
+             ]
+
+      assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
+      for key <- keys, do: assert(RailsCache.get(key) == :miss)
+    end
+  end
+
   defp fixture(name) do
     Dawarich.FixtureCleanup.delete!(ScratchRepo, @tables)
     state = File.read!("test/fixtures/a8vv/visits/#{name}.json") |> Jason.decode!()

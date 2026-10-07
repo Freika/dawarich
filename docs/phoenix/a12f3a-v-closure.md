@@ -195,7 +195,10 @@ The API, generation protocol, writer inventory, and after-commit coordination
 contract are documented in [visit-cache-fence.md](visit-cache-fence.md).
 Named regressions reproduce the authoritative scoped re-review and the live
 count-changing writer omissions. RED/GREEN/mutation/restoration evidence and
-release gates are recorded in the controller's fix2 report.
+release gates are recorded in the controller's fix2 report. The fix3 report adds
+the restored import-owned demo deletion worker scenario in coexistence and
+standalone, cache outage, immediate pre-drain freshness, durable intent and its
+filtering mutation.
 
 ### ED-FIX-VISITS-CACHE — durable, fenced month invalidation
 
@@ -203,7 +206,10 @@ Rails loses failed cache invalidations, and its old-snapshot fills can restore a
 stale month summary after a write commits. Phoenix commits SQL generations and
 retains indefinitely retryable projections. API bulk changes also correct Rails'
 callback-free `update_all` cache omission. Demo/restore count changes now retain
-month intents even if their old synchronous cache cleanup fails. The repository
+month intents even if their old synchronous cache cleanup fails. Import deletion
+also includes restored demo visits in its month intents: Rails destroys these
+rows but skips their demo cache callback (`EnhancedImport::Destroy`,
+`Visit#bust_timeline_month_summary_cache`). Demo orphan-place exclusions remain. The repository
 ED/DRB registers are controller-owned; this scoped decision supplies their
 reconciliation evidence without editing shared rows.
 

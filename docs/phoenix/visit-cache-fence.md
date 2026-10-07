@@ -72,7 +72,9 @@ SQL statements under arbitrary transaction isolation.
 Web single/bulk writes and merges, API create/update/delete/select-place/merge/
 batch/bulk writes, detection insertion/wipe/absorption, enhanced imports, area
 relabel/dependent deletion, import visit destruction, demo insertion/deletion,
-and restored visit insertion publish through the calendar seam. Demo supplemental
+and restored visit insertion publish through the calendar seam. Import destruction
+includes every deleted visit in its month stamps, including archive-restored demo
+visits; demo exclusion applies only to its orphan-place cleanup. Demo supplemental
 point-month cleanup evicts both legacy and current generated month keys. API bulk uses
 UPDATE RETURNING stamps so interleaved tombstones/declines cannot inflate the
 changed count or invalidate a captured row that was not updated.
