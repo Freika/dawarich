@@ -5,6 +5,30 @@ defmodule Dawarich.Auth.AccountDestroy do
   alias Dawarich.Auth.Recovery.Token
   alias Dawarich.{RailsCache.Wire, Redis, Repo}
 
+  def context(context) do
+    repo = Map.get(context, :repo, Repo)
+
+    if Dawarich.Standalone.enabled?() do
+      context
+      |> Map.put_new(:enqueue_destroy, &Dawarich.Users.DestroyWorker.enqueue(repo, &1))
+      |> Map.put_new(:enqueue_confirmation, fn payload ->
+        Dawarich.Mail.UserCallbacks.enqueue(repo, "account_destroy_confirmation", payload)
+      end)
+    else
+      context
+    end
+  end
+
+  def mail_base_url(context, request_url, api \\ false) do
+    env = Map.get_lazy(context, :env, &System.get_env/0)
+
+    case Dawarich.Mail.Wave2.base_url(env) do
+      {:ok, url} -> url
+      _ when api -> URI.to_string(%{URI.parse(request_url) | scheme: "https"})
+      _ -> request_url
+    end
+  end
+
   def request(id, params, context) do
     transaction(context, fn repo ->
       with {:ok, user} <- actor(repo, id),
@@ -115,21 +139,7 @@ defmodule Dawarich.Auth.AccountDestroy do
                "3600000"
              ]) do
           {:ok, "OK"} ->
-            with {:ok, token} <- DestroyToken.issue(user.id, context) do
-              url =
-                context.base_url <>
-                  "/users/me/destroy/confirm?" <> URI.encode_query(%{"token" => token})
-
-              payload = %{
-                "user_id" => user.id,
-                "locale" => Map.get(context, :locale, "en"),
-                "link_url" => url,
-                "link_token_sha256" => Base.encode16(:crypto.hash(:sha256, token), case: :lower),
-                "link_expires_at" => now + 3600
-              }
-
-              if enqueue.(payload) == :ok, do: {:ok, :sent}, else: {:error, :mail_owner}
-            end
+            confirmation_with_slot(user, context, enqueue)
 
           {:ok, nil} ->
             {:error, :rate_limited}
@@ -140,6 +150,42 @@ defmodule Dawarich.Auth.AccountDestroy do
 
       _ ->
         {:error, :mail_owner}
+    end
+  end
+
+  defp confirmation_with_slot(user, context, enqueue) do
+    result = send_confirmation(user, context, enqueue)
+    if result != {:ok, :sent}, do: release_rate_slot(user.id, context)
+    result
+  catch
+    kind, reason ->
+      release_rate_slot(user.id, context)
+      :erlang.raise(kind, reason, __STACKTRACE__)
+  end
+
+  defp release_rate_slot(id, context),
+    do:
+      Map.get(context, :cache_command, &Redis.cache_command/1).([
+        "DEL",
+        "account_destroy:rate_limit:#{id}"
+      ])
+
+  defp send_confirmation(user, context, enqueue) do
+    now = Map.get(context, :clock, &DateTime.utc_now/0).() |> DateTime.to_unix()
+
+    with {:ok, token} <- DestroyToken.issue(user.id, context) do
+      url =
+        context.base_url <> "/users/me/destroy/confirm?" <> URI.encode_query(%{"token" => token})
+
+      payload = %{
+        "user_id" => user.id,
+        "locale" => Map.get(context, :locale, "en"),
+        "link_url" => url,
+        "link_token_sha256" => Base.encode16(:crypto.hash(:sha256, token), case: :lower),
+        "link_expires_at" => now + 3600
+      }
+
+      if enqueue.(payload) == :ok, do: {:ok, :sent}, else: {:error, :mail_owner}
     end
   end
 
@@ -199,5 +245,7 @@ defmodule Dawarich.Auth.AccountDestroy do
       {:ok, result} -> result
       {:error, reason} -> {:error, reason}
     end
+  rescue
+    _ in Postgrex.Error -> {:error, :database}
   end
 end

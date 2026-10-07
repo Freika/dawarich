@@ -6,11 +6,20 @@ defmodule DawarichWeb.Api.AccountDestroyController do
 
   def init(opts), do: opts
 
+  def enabled?(_conn, _params), do: Dawarich.Standalone.enabled?()
+
   def call(conn, _opts) do
     context =
-      Application.get_env(:dawarich, :account_destroy_context, %{})
+      (Application.get_env(:dawarich, :account_destroy_context, %{}) || %{})
       |> Map.put_new(:self_hosted, System.get_env("SELF_HOSTED", "true") != "false")
-      |> Map.put_new(:base_url, DawarichWeb.RequestURL.base(conn))
+      |> AccountDestroy.context()
+
+    context =
+      Map.put_new(
+        context,
+        :base_url,
+        AccountDestroy.mail_base_url(context, DawarichWeb.RequestURL.base(conn), true)
+      )
 
     case AccountDestroy.request(conn.assigns.api_user.id, conn.assigns.api_params, context) do
       {:ok, :scheduled} ->
@@ -31,7 +40,7 @@ defmodule DawarichWeb.Api.AccountDestroyController do
         Respond.json(
           conn,
           401,
-          {:object, [{"error", "password_required"}, {"message", "Confirm with your password."}]}
+          {:object, [{"error", "password_required"}, {"message", confirmation_error(conn)}]}
         )
 
       {:error, :cannot_delete_account} ->
@@ -56,6 +65,18 @@ defmodule DawarichWeb.Api.AccountDestroyController do
       {:error, _} ->
         Respond.json(conn, 503, {:object, [{"error", "account_deletion_unavailable"}]})
     end
+  end
+
+  defp confirmation_error(conn) do
+    provider =
+      (Dawarich.Accounts.public_owner(conn.assigns.api_user.id) || %{}) |> Map.get(:provider)
+
+    key =
+      if Dawarich.Auth.Recovery.Token.blank?(provider),
+        do: "confirm_with_password",
+        else: "confirm_with_email"
+
+    Dawarich.I18n.en!("controllers.concerns.account_deletion_confirmable." <> key)
   end
 
   defp message(key), do: Dawarich.I18n.en!("controllers.api.v1.users.destroy." <> key)

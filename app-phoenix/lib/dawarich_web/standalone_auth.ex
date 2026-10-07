@@ -16,6 +16,7 @@ defmodule DawarichWeb.StandaloneAuth do
 
   @browser [
     AuthAccount.Http,
+    AuthAccount.Destroy,
     AuthAccountLink.Http,
     AuthApple.Http,
     AuthHandler,
@@ -73,6 +74,9 @@ defmodule DawarichWeb.StandaloneAuth do
       conn.method == "POST" and conn.request_path == "/users" ->
         registration_post(conn)
 
+      AuthAccount.Destroy.route?(conn) ->
+        AuthAccount.Destroy.call(conn, options(:account_destroy))
+
       AuthAccount.Http.route?(conn) ->
         AuthAccount.Http.call(conn, options(:account))
 
@@ -124,6 +128,9 @@ defmodule DawarichWeb.StandaloneAuth do
             conn
             |> put_private(:dawarich_rate_limit_method, String.upcase(method))
             |> AuthAccount.Http.call(options(:account))
+
+          [[_, "delete"]] ->
+            AuthAccount.Destroy.call(conn, options(:account_destroy))
 
           _ ->
             reject(conn)
@@ -183,6 +190,7 @@ defmodule DawarichWeb.StandaloneAuth do
   defp context_key(:apple_auth), do: :apple_auth_context
   defp context_key(:api_auth), do: :api_auth_context
   defp context_key(:subscription), do: :subscription_context
+  defp context_key(:account_destroy), do: :account_destroy_context
   defp context_key(:account), do: :account_context
   defp reject(conn), do: DawarichWeb.StandaloneError.respond(conn, "auth_envelope", 422)
 end
