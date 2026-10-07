@@ -28,7 +28,10 @@ defmodule Dawarich.Imports.UploadCreateTest do
   end
 
   defp uploaded(c, name, bytes),
-    do: Dawarich.RailsBlobFixture.create!(ScratchRepo, c.config.root, name, bytes)
+    do:
+      Dawarich.RailsBlobFixture.create!(ScratchRepo, c.config.root, name, bytes,
+        user_id: c.user.id
+      )
 
   test "unknown plaintext GPX source is classified and native enqueue captures current Rails zone",
        c do

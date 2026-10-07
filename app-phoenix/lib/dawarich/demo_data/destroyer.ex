@@ -4,7 +4,8 @@ defmodule Dawarich.DemoData.Destroyer do
 
   def call(repo, user) do
     result =
-      repo.transaction(
+      Dawarich.Transaction.run(
+        repo,
         fn ->
           repo.query!(
             "SELECT id FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE",
@@ -77,8 +78,7 @@ defmodule Dawarich.DemoData.Destroyer do
 
               {:destroyed, months, recalc}
           end
-        end,
-        mode: :savepoint
+        end
       )
 
     case result do

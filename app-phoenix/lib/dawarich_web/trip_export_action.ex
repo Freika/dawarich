@@ -31,12 +31,23 @@ defmodule DawarichWeb.TripExportAction do
       {:invalid, :format} ->
         error(conn, id, locale, "unsupported_export_format_choose_gpx_or_geojson")
 
-      {:replay, reason} ->
-        DawarichWeb.TripRequest.replay(conn, reason)
+      {:replay, _reason} ->
+        error(conn, id, locale, "export_failed_to_initiate_please_try_again")
 
       {:error, :not_found} ->
         TripActions.not_found(conn)
     end
+  rescue
+    _ ->
+      user = conn.assigns.current_user
+      locale = Locale.resolve(nil, user, conn.assigns.rails_session)
+
+      error(
+        conn,
+        String.to_integer(conn.path_params["id"]),
+        locale,
+        "export_failed_to_initiate_please_try_again"
+      )
   end
 
   defp error(conn, id, locale, key) do

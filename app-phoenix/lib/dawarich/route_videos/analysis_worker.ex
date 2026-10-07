@@ -31,55 +31,49 @@ defmodule Dawarich.RouteVideos.AnalysisWorker do
   def perform(%Oban.Job{args: args}), do: run(Jobs.repo(), args)
 
   def run(repo, args, opts \\ []) do
-    if Processed.done?(repo, args["event_id"]) do
-      :ok
-    else
-      case blob(repo, args) do
+    Processed.once(repo, args["event_id"], "route_videos.analysis", fn ->
+      case blob(repo, args, "FOR UPDATE OF b") do
         nil ->
           :ok
 
-        {key, service, type, metadata} ->
-          metadata = Jason.decode!(metadata || "{}")
+        {key, service, type, raw} ->
+          metadata = Jason.decode!(raw || "{}")
 
-          if metadata["identified"] == true and metadata["analyzed"] == true do
+          if Dawarich.Storage.NativePurge.pending?(raw) or
+               (metadata["identified"] == true and metadata["analyzed"] == true) do
             :ok
           else
-            services =
-              Keyword.get_lazy(opts, :services, fn -> Storage.services!(System.get_env()) end)
-
-            storage = Storage.service!(services, service)
-            dir = Storage.tmp_dir!(storage, "route-video-analysis-" <> args["event_id"])
-            path = Path.join(dir, "video")
-
-            try do
-              Storage.download!(storage, key, path)
-              type = Dawarich.Storage.ImageVariant.identify(path, type)
-
-              result =
-                if String.starts_with?(type, "video/"),
-                  do: VideoMetadata.read(path, opts),
-                  else: %{}
-
-              metadata =
-                Map.merge(metadata, result)
-                |> Map.merge(%{"identified" => true, "analyzed" => true})
-
-              Processed.once(repo, args["event_id"], "route_videos.analysis", fn ->
-                if blob(repo, args, "FOR UPDATE OF b") != nil do
-                  repo.query!(
-                    "UPDATE active_storage_blobs SET metadata=$2,content_type=$3 WHERE id=$1",
-                    [args["blob_id"], Jason.encode!(metadata), type],
-                    log: false
-                  )
-                end
-
-                :ok
-              end)
-            after
-              File.rm_rf!(dir)
-            end
+            analyze(repo, args, key, service, type, metadata, opts)
           end
       end
+    end)
+  end
+
+  defp analyze(repo, args, key, service, type, metadata, opts) do
+    services = Keyword.get_lazy(opts, :services, fn -> Storage.services!(System.get_env()) end)
+    storage = Storage.service!(services, service)
+    dir = Storage.tmp_dir!(storage, "route-video-analysis-" <> args["event_id"])
+    path = Path.join(dir, "video")
+
+    try do
+      Storage.download!(storage, key, path)
+      type = Dawarich.Storage.ImageVariant.identify(path, type)
+
+      result =
+        if String.starts_with?(type, "video/"), do: VideoMetadata.read(path, opts), else: %{}
+
+      metadata =
+        Map.merge(metadata, result) |> Map.merge(%{"identified" => true, "analyzed" => true})
+
+      repo.query!(
+        "UPDATE active_storage_blobs SET metadata=$2,content_type=$3 WHERE id=$1",
+        [args["blob_id"], Jason.encode!(metadata), type],
+        log: false
+      )
+
+      :ok
+    after
+      File.rm_rf!(dir)
     end
   end
 

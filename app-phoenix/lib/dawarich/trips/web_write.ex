@@ -1,24 +1,25 @@
 defmodule Dawarich.Trips.WebWrite do
   @moduledoc false
   alias Dawarich.TripSettings
-  alias Dawarich.Trips.{WebCommands, WebParams}
+  alias Dawarich.Trips.{WebCommands, WebParams, Attachments}
 
   @fields ~w(id name demo started_at ended_at created_at updated_at)a
 
   def run(repo, action, user, id, attrs, context) when action in [:create, :update] do
     repo.transaction(fn ->
       with {:ok, previous} <- load(repo, action, user.id, id),
-           :ok <- graph(repo, previous),
            {:ok, changes} <-
              WebParams.parse(user, attrs, previous, Map.put(context, :repo, repo)),
-           {:ok, settings} <- settings(user) do
+           {:ok, settings} <- settings(user),
+           {:ok, embeds} <- embeds(repo, previous, changes.description),
+           :ok <- lock_embeds(repo, previous, embeds) do
         calculate = calculate?(action, previous, changes)
 
         with :ok <- if(calculate, do: WebCommands.admission(repo), else: :ok) do
           now = Map.get_lazy(context, :now, &DateTime.utc_now/0)
           stamp = DateTime.to_naive(now)
           id = save(repo, action, user.id, previous, changes, stamp)
-          touched = description(repo, id, previous, changes.description, stamp)
+          touched = description(repo, id, previous, changes.description, embeds, stamp)
           if calculate, do: {:ok, _} = WebCommands.calculate!(repo, user, id, settings.unit, now)
 
           if touched,
@@ -77,18 +78,16 @@ defmodule Dawarich.Trips.WebWrite do
     end
   end
 
-  defp graph(repo, %{rich_id: id}) when not is_nil(id) do
-    case repo.query!(
-           "SELECT EXISTS (SELECT 1 FROM active_storage_attachments WHERE record_type = 'ActionText::RichText' AND record_id = $1)",
-           [id],
-           log: false
-         ).rows do
-      [[false]] -> :ok
-      _ -> {:replay, "trip description attachment graph"}
-    end
+  defp embeds(_repo, _previous, :unchanged), do: {:ok, :unchanged}
+
+  defp embeds(repo, _previous, body) do
+    if Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(body),
+      do: {:ok, :unchanged},
+      else: Attachments.ids(repo, body)
   end
 
-  defp graph(_repo, _previous), do: :ok
+  defp lock_embeds(_repo, _previous, :unchanged), do: :ok
+  defp lock_embeds(repo, previous, embeds), do: Attachments.lock(repo, previous[:rich_id], embeds)
 
   defp calculate?(:create, _previous, _changes), do: true
 
@@ -128,31 +127,42 @@ defmodule Dawarich.Trips.WebWrite do
     previous.id
   end
 
-  defp description(_repo, _id, _previous, :unchanged, _stamp), do: false
+  defp description(_repo, _id, _previous, :unchanged, _embeds, _stamp), do: false
 
-  defp description(repo, id, previous, body, stamp) do
-    cond do
-      is_nil(previous[:rich_id]) ->
-        repo.query!(
-          "INSERT INTO action_text_rich_texts (record_type, record_id, name, body, created_at, updated_at) VALUES ('Trip', $1, 'description', $2, $3, $3)",
-          [id, body, stamp],
-          log: false
-        )
+  defp description(repo, id, previous, body, embeds, stamp) do
+    touched =
+      cond do
+        is_nil(previous[:rich_id]) ->
+          repo.query!(
+            "INSERT INTO action_text_rich_texts (record_type, record_id, name, body, created_at, updated_at) VALUES ('Trip', $1, 'description', $2, $3, $3)",
+            [id, body, stamp],
+            log: false
+          )
 
-        true
+          true
 
-      previous.description != body ->
-        repo.query!(
-          "UPDATE action_text_rich_texts SET body = $2, updated_at = $3 WHERE id = $1",
-          [previous.rich_id, body, stamp],
-          log: false
-        )
+        previous.description != body ->
+          repo.query!(
+            "UPDATE action_text_rich_texts SET body = $2, updated_at = $3 WHERE id = $1",
+            [previous.rich_id, body, stamp],
+            log: false
+          )
 
-        true
+          true
 
-      true ->
-        false
-    end
+        true ->
+          false
+      end
+
+    [[rich]] =
+      repo.query!(
+        "SELECT id FROM action_text_rich_texts WHERE record_type='Trip' AND record_id=$1 AND name='description'",
+        [id],
+        log: false
+      ).rows
+
+    if embeds != :unchanged, do: Attachments.sync!(repo, rich, embeds, stamp)
+    touched
   end
 
   defp row(repo, id) do

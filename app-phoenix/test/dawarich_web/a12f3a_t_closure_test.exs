@@ -7,6 +7,10 @@ defmodule DawarichWeb.A12f3aTClosureTest do
   @endpoint DawarichWeb.Endpoint
   @now ~U[2026-10-03 10:00:00.000000Z]
 
+  defmodule ExportQueryFailure do
+    def query!(_sql, _params, _opts), do: raise("synthetic trip export query failure")
+  end
+
   setup do
     previous = Application.get_env(:dawarich, :jobs_repo)
     hosted = System.get_env("SELF_HOSTED")
@@ -193,7 +197,9 @@ defmodule DawarichWeb.A12f3aTClosureTest do
     TripsSeeds.trip!(%{id: 980_401, user_id: user.id})
     TripsSeeds.rich_text!(980_401, "<p>Rich notes</p><script>alert(1)</script>")
     assert {:ok, form} = Dawarich.Trips.WebForm.load(Repo, user, 980_401, %{})
-    refute form.description =~ "<script>"
+    assert form.description =~ "<script>"
+    assert {:ok, displayed} = Dawarich.Trips.RichContent.read(form.description)
+    refute displayed =~ "<script>"
     assert {:ok, :deleted} = Dawarich.Trips.WebDelete.run(Repo, user, 980_401, %{})
 
     assert Repo.query!("SELECT count(*) FROM action_text_rich_texts WHERE record_id=$1", [980_401]).rows ==
@@ -293,8 +299,131 @@ defmodule DawarichWeb.A12f3aTClosureTest do
       "<action-text-attachment sgid=\"invalid\"></action-text-attachment>"
     )
 
-    assert get(RailsUser.signed_in(user.id), "/trips/980201").status == 500
+    assert get(RailsUser.signed_in(user.id), "/trips/980201").status == 200
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+    assert commands() == []
+  end
+
+  @tag a12f3a_t_edges_inactive: true
+  test "T01 T05 T07: inactive accounts receive the source redirect before trip effects", %{
+    user: user
+  } do
+    TripsSeeds.trip!(%{id: 980_701, user_id: user.id})
+    Repo.query!("UPDATE users SET active_until=NULL WHERE id=$1", [user.id])
+    user = Dawarich.Accounts.get(user.id)
+
+    for mode <- ["true", "false", nil] do
+      if mode, do: System.put_env("SELF_HOSTED", mode), else: System.delete_env("SELF_HOSTED")
+
+      requests = [
+        fn -> get(RailsUser.signed_in(user.id), "/trips/new") end,
+        fn -> submit(user, "/trips", %{"trip" => %{"name" => "Inactive"}}) end,
+        fn -> submit(user, "/trips/980701/recalculate", %{}) end,
+        fn -> submit(user, "/trips/980799/recalculate", %{}) end
+      ]
+
+      for request <- requests do
+        conn = request.()
+        assert conn.status == 303
+        assert Plug.Conn.get_resp_header(conn, "location") == ["http://www.example.com/"]
+
+        assert Dawarich.Test.RailsFormRequests.rails_session(conn)["flash"]["flashes"]["notice"] ==
+                 "Your account is not active."
+      end
+    end
+
+    assert Repo.query!("SELECT count(*) FROM trips WHERE user_id=$1", [user.id]).rows == [[1]]
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+    assert commands() == []
+  end
+
+  @tag a12f3a_t_edges_export: true
+  test "T10: export body format overrides query and prepare failures remain terminal", %{
+    user: user
+  } do
+    Ownership.put!(Repo, "command:exports.points", :oban)
+    TripsSeeds.trip!(%{id: 980_1002, user_id: user.id})
+    conn = submit(user, "/trips/9801002/export?file_format=gpx", %{"file_format" => "json"})
+    assert conn.status == 302
+
+    assert Repo.query!("SELECT file_format FROM exports WHERE user_id=$1", [user.id]).rows == [
+             [0]
+           ]
+
+    assert Repo.query!("SELECT command_type FROM job_outbox").rows == [["exports.points"]]
+
+    Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [
+      user.id,
+      %{"timezone" => "Unknown/Zone"}
+    ])
+
+    conn = submit(user, "/trips/9801002/export", %{"file_format" => "gpx"})
+    assert conn.status == 422
+    assert Plug.Conn.get_resp_header(conn, "location") == ["http://www.example.com/trips/9801002"]
+
+    assert Dawarich.Test.RailsFormRequests.rails_session(conn)["flash"]["flashes"]["alert"] ==
+             "Export failed to initiate. Please try again."
+
+    assert Repo.query!("SELECT count(*) FROM exports WHERE user_id=$1", [user.id]).rows == [[1]]
+    Application.put_env(:dawarich, :jobs_repo, ExportQueryFailure)
+    exception = submit(user, "/trips/9801002/export", %{"file_format" => "gpx"})
+    assert exception.status == 422
+
+    assert Plug.Conn.get_resp_header(exception, "location") == [
+             "http://www.example.com/trips/9801002"
+           ]
+
+    assert Repo.query!("SELECT count(*) FROM exports WHERE user_id=$1", [user.id]).rows == [[1]]
+    assert commands() == []
+  end
+
+  @tag a12f3a_t05_edges: true
+  test "T05: legacy date strings and ignored scalar attributes retain source casting", %{
+    user: user
+  } do
+    expected = [
+      {"2026-10-03", ~N[2026-10-02 22:00:00.000000]},
+      {"October 3 2026", ~N[2026-10-02 22:00:00.000000]},
+      {"2026-10-03T09:00CET", ~N[2026-10-03 08:00:00.000000]},
+      {"2026-02-31T09:00", ~N[2026-03-03 08:00:00.000000]},
+      {"2026-10-03 09:00", ~N[2026-10-03 07:00:00.000000]},
+      {"2026-10-03 09:00:00.987654", ~N[2026-10-03 07:00:00.987654]},
+      {"03/10/2026 09:00", ~N[2026-10-03 07:00:00.000000]}
+    ]
+
+    for {raw, stamp} <- expected do
+      attrs = %{
+        "name" => "Auwald",
+        "started_at" => raw,
+        "ended_at" => "2026-10-04T19:00",
+        "ignored" => "source strong params"
+      }
+
+      assert {:ok, changes} =
+               Dawarich.Trips.WebParams.parse(user, attrs, %{}, %{repo: Repo, now: @now})
+
+      assert NaiveDateTime.compare(changes.started_at, stamp) == :eq
+    end
+
+    conn =
+      submit(user, "/trips", %{
+        "trip" => %{
+          "name" => "Date",
+          "started_at" => "October 3 2026",
+          "ended_at" => "2026-10-04T19:00",
+          "ignored" => "source strong params"
+        }
+      })
+
+    assert conn.status == 302
+
+    invalid =
+      submit(user, "/trips", %{
+        "trip" => %{"name" => "Date", "started_at" => "invalid", "ended_at" => "2026-10-04T19:00"}
+      })
+
+    assert invalid.status == 422
+    assert Repo.query!("SELECT count(*) FROM trips WHERE user_id=$1", [user.id]).rows == [[1]]
     assert commands() == []
   end
 

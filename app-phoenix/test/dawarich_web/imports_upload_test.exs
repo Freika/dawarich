@@ -40,7 +40,7 @@ defmodule DawarichWeb.ImportsUploadTest do
   end
 
   defp rails_blob!(c, name, bytes),
-    do: Dawarich.RailsBlobFixture.create!(Repo, c.root, name, bytes).signed_id
+    do: Dawarich.RailsBlobFixture.create!(Repo, c.root, name, bytes, user_id: 7581).signed_id
 
   defp create_body(signed_ids),
     do: Plug.Conn.Query.encode(%{"import" => %{"files" => signed_ids}})

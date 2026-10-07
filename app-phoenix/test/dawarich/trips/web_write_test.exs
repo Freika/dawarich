@@ -268,13 +268,13 @@ defmodule Dawarich.Trips.WebWriteTest do
 
     before = snapshot(rich["record_id"])
 
-    assert {:replay, _} =
+    assert {:ok, _} =
              WebWrite.run(
                Repo,
                :update,
                actor,
                rich["record_id"],
-               %{"description" => "<div>After</div>"},
+               %{"name" => before |> hd() |> hd() |> hd()},
                %{now: @now}
              )
 

@@ -33,6 +33,7 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
 
   def new(%{id: import_id, user_id: user_id} = import),
     do: %{
+      fence: Map.get(import, :fence),
       user_id: user_id,
       import_id: import_id,
       claimed: MapSet.new(),
@@ -54,8 +55,7 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
   end
 
   def upsert(repo, state, place) do
-    {:ok, state} = repo.transaction(fn -> write(repo, state, place) end)
-    state
+    Dawarich.EnhancedImport.State.effect!(repo, state, fn -> write(repo, state, place) end)
   end
 
   defp write(repo, state, place) do

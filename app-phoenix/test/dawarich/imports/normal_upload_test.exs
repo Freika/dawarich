@@ -23,7 +23,10 @@ defmodule Dawarich.Imports.NormalUploadTest do
   end
 
   defp upload(c, name, bytes),
-    do: Dawarich.RailsBlobFixture.create!(ScratchRepo, c.context.storage.root, name, bytes)
+    do:
+      Dawarich.RailsBlobFixture.create!(ScratchRepo, c.context.storage.root, name, bytes,
+        user_id: c.user.id
+      )
 
   test "normal mixed upload preserves limits signed ids and captured zone", c do
     gpx = upload(c, "route.gpx", "<gpx/>")
@@ -141,8 +144,10 @@ defmodule DawarichWeb.NormalUploadReplayTest do
       File.rm_rf!(root)
     end)
 
-    gpx = Dawarich.RailsBlobFixture.create!(Repo, root, "first.gpx", "<gpx/>")
-    unsupported = Dawarich.RailsBlobFixture.create!(Repo, root, "unknown.json", "{}")
+    gpx = Dawarich.RailsBlobFixture.create!(Repo, root, "first.gpx", "<gpx/>", user_id: user.id)
+
+    unsupported =
+      Dawarich.RailsBlobFixture.create!(Repo, root, "unknown.json", "{}", user_id: user.id)
 
     body =
       Plug.Conn.Query.encode(%{"import" => %{"files" => [gpx.signed_id, unsupported.signed_id]}})

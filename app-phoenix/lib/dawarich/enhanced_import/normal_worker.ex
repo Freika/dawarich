@@ -115,6 +115,7 @@ defmodule Dawarich.EnhancedImport.NormalWorker do
           source: job.args["source"],
           data: data,
           raw_data: raw,
+          request_started_at: job.args["started_at"],
           fence: guard,
           job: job
         }
@@ -194,6 +195,7 @@ defmodule Dawarich.EnhancedImport.NormalWorker do
             %{
               id: job.args["import_id"],
               user_id: job.args["user_id"],
+              request_started_at: job.args["started_at"],
               fence: fn fun -> effect!(repo, job, fun) end
             },
             Exception.message(error)
@@ -206,6 +208,7 @@ defmodule Dawarich.EnhancedImport.NormalWorker do
                 %{
                   id: job.args["import_id"],
                   user_id: job.args["user_id"],
+                  request_started_at: job.args["started_at"],
                   fence: fn fun -> effect!(repo, job, fun) end
                 },
                 Exception.message(error)
@@ -234,8 +237,8 @@ defmodule Dawarich.EnhancedImport.NormalWorker do
 
         current =
           repo.query!(
-            "SELECT i.source,(SELECT blob_id FROM active_storage_attachments WHERE record_type='Import' AND record_id=i.id AND name='file'),i.additional_data_extraction->>'phoenix_extraction_event',i.additional_data_extraction->>'phoenix_extraction_action' FROM imports i JOIN users u ON u.id=i.user_id WHERE i.id=$1 AND i.user_id=$2 AND i.status<>4 AND i.additional_data_extraction_status IN(1,2) AND u.deleted_at IS NULL FOR UPDATE OF i FOR SHARE OF u",
-            [args["import_id"], args["user_id"]],
+            "SELECT i.source,(SELECT blob_id FROM active_storage_attachments WHERE record_type='Import' AND record_id=i.id AND name='file'),i.additional_data_extraction->>'phoenix_extraction_event',i.additional_data_extraction->>'phoenix_extraction_action' FROM imports i JOIN users u ON u.id=i.user_id WHERE i.id=$1 AND i.user_id=$2 AND i.status<>4 AND i.additional_data_extraction_status IN(1,2) AND ($3::text IS NULL OR i.additional_data_extraction->>'started_at'=$3) AND u.deleted_at IS NULL FOR UPDATE OF i FOR SHARE OF u",
+            [args["import_id"], args["user_id"], args["started_at"]],
             log: false
           ).rows
 

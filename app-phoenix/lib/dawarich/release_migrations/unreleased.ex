@@ -99,9 +99,10 @@ defmodule Dawarich.ReleaseMigrations.Unreleased do
 
   defp add_map_matching_column(repo, name, type, attempt) do
     unless column?(repo, "tracks", name) do
-      repo.query!(~s|ALTER TABLE tracks ADD "#{name}" #{type}|, [],
-        mode: :savepoint,
-        log: false
+      repo.query!(
+        ~s|ALTER TABLE tracks ADD "#{name}" #{type}|,
+        [],
+        Dawarich.Transaction.options(repo, log: false)
       )
     end
   rescue

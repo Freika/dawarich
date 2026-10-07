@@ -114,6 +114,7 @@ defmodule Dawarich.Application do
       [Dawarich.Repo] ++
       redis() ++
       [
+        Dawarich.Geocoding.RateLimiter,
         {Oban, Keyword.put(oban, :cron, cron)},
         {Task.Supervisor, name: Dawarich.Tracks.MapMatching.Tasks},
         Dawarich.Tracks.MapMatching.Deferred,

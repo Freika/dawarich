@@ -80,9 +80,12 @@ defmodule DawarichWeb.A8Request do
     allowed = request_module(conn).query_keys(action)
 
     if Enum.all?(query, fn {key, value} ->
-         key in allowed and is_binary(value) and not Map.has_key?(params, key)
+         key in allowed and is_binary(value) and
+           (not Map.has_key?(params, key) or
+              (request_module(conn) == DawarichWeb.TripRequest and action == :trip_export and
+                 key == "file_format"))
        end),
-       do: {:ok, query},
+       do: {:ok, Map.drop(query, Map.keys(params))},
        else: :replay
   rescue
     _ -> :replay

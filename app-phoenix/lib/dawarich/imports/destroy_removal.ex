@@ -2,30 +2,18 @@ defmodule Dawarich.Imports.DestroyRemoval do
   @moduledoc false
   alias Dawarich.Imports.{DestroyLease, ImportBlobPurges, LeaseLost}
 
+  def authorize!(repo, id, user) do
+    for {blob, source, ids} <- ImportBlobPurges.removals!(repo, id),
+        do: ImportBlobPurges.authorize!(repo, id, user, blob, source, ids)
+
+    :ok
+  end
+
   def call(lease) do
     DestroyLease.effect!(lease, fn ->
-      attachments =
-        lease.repo.query!(
-          "SELECT id,blob_id,name FROM active_storage_attachments WHERE record_type='Import' AND record_id=$1 ORDER BY id FOR UPDATE",
-          [lease.id],
-          log: false
-        ).rows
+      removals = ImportBlobPurges.removals!(lease.repo, lease.id)
 
-      files = for [_id, blob, "file"] <- attachments, do: blob
-
-      source =
-        case Enum.uniq(files) do
-          [] -> nil
-          [blob] -> blob
-          _ -> raise ArgumentError, "Ambiguous import source attachment"
-        end
-
-      attachments
-      |> Enum.group_by(fn [_id, blob, _name] -> blob end)
-      |> Enum.each(fn {blob, rows} ->
-        ids = Enum.map(rows, &hd/1)
-        ImportBlobPurges.enqueue!(lease.repo, lease.id, lease.user, blob, source || blob, ids)
-      end)
+      ImportBlobPurges.enqueue_many!(lease.repo, lease.id, lease.user, removals)
 
       lease.repo.query!(
         "DELETE FROM active_storage_attachments WHERE record_type='Import' AND record_id=$1",

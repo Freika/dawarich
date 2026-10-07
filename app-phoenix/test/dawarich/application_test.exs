@@ -128,6 +128,7 @@ defmodule Dawarich.ApplicationTest do
       Dawarich.Repo,
       Redix,
       Dawarich.Redis.Cache,
+      Dawarich.Geocoding.RateLimiter,
       Oban,
       Dawarich.Tracks.MapMatching.Tasks,
       Dawarich.Tracks.MapMatching.Deferred,
@@ -149,7 +150,14 @@ defmodule Dawarich.ApplicationTest do
 
   test "Redis starts before Oban when the jobs runtime is on" do
     Application.put_env(:dawarich, :jobs_runtime, true)
-    assert Enum.take(ids(:none), 4) == [Dawarich.Repo, Redix, Dawarich.Redis.Cache, Oban]
+
+    assert Enum.take(ids(:none), 5) == [
+             Dawarich.Repo,
+             Redix,
+             Dawarich.Redis.Cache,
+             Dawarich.Geocoding.RateLimiter,
+             Oban
+           ]
 
     Application.put_env(:dawarich, :jobs_runtime, false)
     refute Redix in ids(:none)
@@ -159,10 +167,11 @@ defmodule Dawarich.ApplicationTest do
   test "both Redis connections start before Oban" do
     Application.put_env(:dawarich, :jobs_runtime, true)
 
-    assert Enum.take(ids(:none), 4) == [
+    assert Enum.take(ids(:none), 5) == [
              Dawarich.Repo,
              Redix,
              Dawarich.Redis.Cache,
+             Dawarich.Geocoding.RateLimiter,
              Oban
            ]
   end
@@ -172,6 +181,7 @@ defmodule Dawarich.ApplicationTest do
 
     assert ids(@proxy) == [
              Dawarich.Repo,
+             Dawarich.Geocoding.RateLimiter,
              Oban,
              Dawarich.Tracks.MapMatching.Tasks,
              Dawarich.Tracks.MapMatching.Deferred,
@@ -189,7 +199,7 @@ defmodule Dawarich.ApplicationTest do
 
     for {plan, marker} <- [{@proxy, "1"}, {@direct, false}] do
       children = Dawarich.Application.children(plan)
-      {Oban, oban} = Enum.at(children, 3)
+      {Oban, oban} = Enum.at(children, 4)
       {RailsServer, puma} = List.keyfind(children, RailsServer, 0)
       {Dawarich.Jobs.Supervisor, jobs} = List.keyfind(children, Dawarich.Jobs.Supervisor, 0)
 

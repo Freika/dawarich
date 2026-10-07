@@ -40,6 +40,7 @@ defmodule Dawarich.Imports.PreparedDownloadPurgeWorker do
             log: false
           )
 
+          repo.query!("DELETE FROM phoenix.upload_receipts WHERE blob_id=$1", [id], log: false)
           repo.query!("DELETE FROM active_storage_blobs WHERE id=$1", [id], log: false)
 
           [

@@ -19,7 +19,7 @@ defmodule Dawarich.Auth.ApiKeys do
 
   def rotate_session(%{"warden.user.user.key" => [[id], salt]} = session)
       when is_integer(id) and is_binary(salt) do
-    {:ok, result} =
+    {:ok, {result, retired}} =
       Repo.transaction(fn ->
         actor =
           Repo.one(
@@ -32,11 +32,14 @@ defmodule Dawarich.Auth.ApiKeys do
              %Accounts.User{id: ^id} <- Accounts.from_session(session, DateTime.utc_now()),
              false <- Token.blank?(actor.email),
              true <- Account.normalize_email(actor.email) == actor.email do
-          persist(actor, %{})
+          {persist(actor, %{}), actor.api_key}
         else
-          _ -> {:handoff, :invalid_resource}
+          _ -> {{:handoff, :invalid_resource}, nil}
         end
       end)
+
+    if match?({:ok, _}, result),
+      do: Dawarich.TtlCache.delete({DawarichWeb.RateLimit, retired})
 
     result
   end

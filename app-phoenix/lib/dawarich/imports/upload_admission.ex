@@ -16,10 +16,25 @@ defmodule Dawarich.Imports.UploadAdmission do
       descriptor = descriptor(raw)
 
       with {:ok, blob} <- Uploads.fetch(repo, descriptor["signed_id"]),
+           true <-
+             Dawarich.Storage.UploadReceipts.owned?(repo, blob.id, context.upload_user_id) ||
+               {:error, :forbidden},
            name = original(descriptor, blob.filename) || blob.filename,
            {:ok, source} <- classify(blob, name, context) do
         metadata = metadata(descriptor, blob.metadata, name, blob.filename)
-        {:cont, {:ok, acc ++ [%{blob: blob, name: name, source: source, metadata: metadata}]}}
+
+        {:cont,
+         {:ok,
+          acc ++
+            [
+              %{
+                blob: blob,
+                name: name,
+                source: source,
+                metadata: metadata,
+                upload_user_id: context.upload_user_id
+              }
+            ]}}
       else
         error -> {:halt, error}
       end
