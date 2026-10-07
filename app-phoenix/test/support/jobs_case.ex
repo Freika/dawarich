@@ -38,6 +38,11 @@ defmodule Dawarich.JobsCase do
 
   def rows(sql, params \\ []), do: ScratchRepo.query!(sql, params, log: false).rows
 
+  def db_now(repo) do
+    [[now]] = repo.query!("SELECT clock_timestamp()", [], log: false).rows
+    now
+  end
+
   def hold_lease!(repo, name, holder) do
     repo.query!(
       "INSERT INTO phoenix.leases (name, holder, expires_at) VALUES ($1, $2, statement_timestamp() + interval '60 seconds')",
@@ -83,7 +88,7 @@ defmodule Dawarich.JobsCase do
           payload: %{"n" => 1},
           aggregate_id: nil,
           dedupe_key: nil,
-          scheduled_at: DateTime.add(DateTime.utc_now(), -1)
+          scheduled_at: DateTime.add(db_now(ScratchRepo), -1)
         },
         Map.new(attrs)
       )
