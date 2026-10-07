@@ -220,7 +220,7 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
     FixtureRecording.source_verify(fixtures.join('map_frames/a12f3a-m02.json'), "#{JSON.pretty_generate(rows)}\n")
   end
 
-  it 'writes the map pages' do
+  it 'reads back the complete malformed UTF-8 map redirect packet after recorder helper changes' do
     travel_to now do
       plain = reader(6101)
       capture('self_hosted_en', plain, '/map/v2?start_at=2026-09-20T00:00&end_at=2026-09-20T23:59')

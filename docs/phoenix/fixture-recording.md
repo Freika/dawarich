@@ -27,6 +27,26 @@ that the package omits. The recorder supplies the same latitude table to the
 Rails calculators and southern-zone export, preserving exact corpus comparisons
 without making host tzdata an input.
 
+The southern-zone resource is compiled into native seasonality. Its pinned Ruby
+provider table changes 27 linked names from southern to northern seasons to
+match Rails' default for raw aliases without country latitude metadata. For
+January-only distance, `Africa/Blantyre` therefore returns 100% winter. Forcing
+Rails to use system zoneinfo is a different provider contract; a recorder run
+that replaces the latitude table does not prove runtime parity with it.
+
+The imports-page recorder pins the imports, blob and attachment sequences before
+creating its initial wrapped upload and restores both `last_value` and
+`is_called` afterwards, including failed captures. Stats routing-error captures
+temporarily clear the mounted ActionCable server's transient subscriber,
+event-loop, worker-pool and remote-connection state, then restore it after
+rendering. Places cleanup captures pin each batch's input order while
+preserving all user IDs and per-user delays.
+
+Serialized source packets compare complete diagnostic bodies, including escaped
+source line spans. Changes to recording hooks can invalidate those bytes even
+when status and request effects stay identical. Re-record every affected source
+packet through its existing recorder and read it back with writing disabled.
+
 The user-data recorder refreshes both E04 packets. Its map-matching restore
 oracle takes the old-schema input from the retained `old_v2` restore capture,
 so refreshing current export fixtures does not replace the backward-compatibility

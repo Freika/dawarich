@@ -15,7 +15,8 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
 
   around do |example|
     ActionController::Base.allow_forgery_protection = true
-    example.run
+    FixtureRecording.with_sequences(%w[imports active_storage_blobs active_storage_attachments]
+                                      .index_with { 9_800_000 }) { example.run }
   ensure
     ActionController::Base.allow_forgery_protection = false
   end
