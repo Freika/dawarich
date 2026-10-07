@@ -85,6 +85,7 @@ defmodule Dawarich.ReleaseJobs.CloudFamilyBackfillTest do
     user!(0)
     user!(1)
     inactive = user!(2, ~N[2020-01-01 00:00:00])
+    rows("UPDATE users SET status=0 WHERE id=$1", [inactive])
     expected = eligible ++ [inactive]
     assert {:ok, FamilyBackfill, args} = ReleaseJobs.decode(elem(hd(@classes), 0), [])
 
@@ -119,6 +120,7 @@ defmodule Dawarich.ReleaseJobs.CloudFamilyBackfillTest do
     assert rows("SELECT count(*) FROM families WHERE creator_id=$1", [deleted]) == [[0]]
     assert rows("SELECT count(*) FROM families WHERE creator_id=$1", [member]) == [[0]]
     assert rows("SELECT count(*) FROM families WHERE access_until='2020-01-01'") == [[1]]
+    assert rows("SELECT status FROM users WHERE id=$1", [inactive]) == [[0]]
   end
 
   test "L1 entitlement backfill crosses the 200 boundary without notifications or subscription loss" do
