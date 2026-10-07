@@ -379,7 +379,8 @@ export types, both modes, mixed ownership and actual storage terminal effects.
 The same pre-fix all-kind probe found R19k06's missing
 `command:visits.user_redetect` Registry entry and R09k03/R09k04's native-owned
 legacy handover. The existing user-redetect worker is now registered unclaimable;
-its real fleet child completes natively. GPX/normal handover refuses unsupported
+its real fleet child completes natively. The source-owner census names the
+native key and retains the accepted `:a12d2` source residue. GPX/normal handover refuses unsupported
 native work without source publication or false settlement while its parent is
 native; Rails-owned resume retains the exact payload and receipt. Named
 `R19k06`, `R09gpxownership` and `R09normalownership` tests and independent

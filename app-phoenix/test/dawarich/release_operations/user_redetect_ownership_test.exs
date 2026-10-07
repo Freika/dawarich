@@ -21,6 +21,9 @@ defmodule Dawarich.ReleaseOperations.UserRedetectOwnershipTest do
 
   @tag a12f3b_case: "R19k06"
   test "fleet user redetection completes natively with every registered owner and retains Rails hand-back" do
+    assert {:oban, ["command:visits.user_redetect"], :a12d2} ==
+             Dawarich.RailsJobOwners.owners()["Visits::UserRedetectJob"]
+
     for mode <- ["on", "off"] do
       System.put_env("DAWARICH_RAILS", mode)
       user = F.user!(%{"points_count" => 1})

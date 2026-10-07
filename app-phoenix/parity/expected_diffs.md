@@ -580,7 +580,9 @@ points/user-data export parent and the existing shared storage-first purge
 helper. R12k02/R12parents prove both runtime modes, mixed ownership, shared
 reference protection, physical terminal deletion, retry and literal Rails JSON
 bytes. R19k06 adds the missing unclaimable visits.user_redetect worker entry and
-proves real release/dispatch/terminal/replay effects. R09gpxownership and
+proves real release/dispatch/terminal/replay effects. Its source-owner census
+retains accepted `:a12d2` residue alongside the native key, without transfer or
+retirement. R09gpxownership and
 R09normalownership prove native-owned legacy handover refuses without source
 publication or false acknowledgement, while the Rails-owned resume receipt and
 payload stay exact. Every new case has actual RED/GREEN/named mutation evidence.

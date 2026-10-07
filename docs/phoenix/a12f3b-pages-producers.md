@@ -126,7 +126,9 @@ up `command:visits.user_redetect`, which was absent from Registry. The existing
 worker/decoder is now registered unclaimable in RecalculationEntries; standalone
 uses native publication. The named `R19k06` case executes a real fleet release,
 dispatches its child, observes completed redetection and checks replay and exact
-Rails-owned hand-back. Registration does not activate ownership.
+Rails-owned hand-back. The source-owner census names this native key while
+retaining the `:a12d2` accepted-source residue; no serialized job is transferred
+or retired. Registration does not activate ownership.
 
 R09k03/R09k04 legacy handover also inserted reverse work while their GPX/normal
 parent was Oban-owned. Both handovers now return the existing unsupported-native
