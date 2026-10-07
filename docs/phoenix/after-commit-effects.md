@@ -120,6 +120,16 @@ second cleanup intent or changing visibility again on retry. Eviction is
 idempotent; failed executions remain eligible for the worker's Oban retry policy.
 The source routing decision stays at the durable producer boundary.
 
+The reverse `stats.caches_invalidated` consumer uses a strict Redis cache store
+for user-cache eviction, sharing the configured client, connection pool and
+cache options. Redis and pool errors propagate to the Rails command poller,
+which retains the accepted command with backoff; only successful cleanup
+completes it. This fixes Rails' default cache-store failsafe acknowledging a
+failed `UNLINK`. Deleting an already absent key still succeeds, and replay after
+partial cleanup converges without creating another intent or generation.
+Digest scanning and deletion already raise on errors. The application's ordinary
+cache error handler remains unchanged.
+
 Stats workers return calculation failures to Oban. Demo writes record eviction
 and recalculation intents before commit. Transportation initialization runs
 only after commit; each track records its progress intent with its write. Native
