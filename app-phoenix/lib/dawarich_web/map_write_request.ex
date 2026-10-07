@@ -29,7 +29,7 @@ defmodule DawarichWeb.MapWriteRequest do
   defp admit(conn, body, query) do
     with {:ok, action, method} <- action(conn, body),
          true <- request_module(conn).fields?(action, body),
-         true <- csrf_consistent?(conn, body),
+         true <- csrf_valid?(conn, body, method),
          {:ok, format} <- request_module(conn).format(conn, action) do
       params = Map.merge(body, query)
       conn = %{conn | body_params: body, params: Map.merge(params, conn.path_params)}
@@ -42,7 +42,7 @@ defmodule DawarichWeb.MapWriteRequest do
         |> assign(:map_write_method, method)
         |> assign(:map_write_format, format)
 
-      case RailsForm.admission(conn) do
+      case RailsForm.admission(conn, anonymous: action == :track_recalculation) do
         :ok -> conn
         {:replay, reason} -> Body.replay(conn, reason)
       end
@@ -51,12 +51,18 @@ defmodule DawarichWeb.MapWriteRequest do
     end
   end
 
-  defp csrf_consistent?(conn, body) do
+  defp csrf_valid?(conn, body, method) do
     tokens =
       [body["authenticity_token"] | get_req_header(conn, "x-csrf-token")]
       |> Enum.reject(&is_nil/1)
 
-    Enum.all?(tokens, &RailsCsrf.valid?(conn.assigns.rails_session, &1))
+    if RailsForm.native_recalculation?(conn),
+      do:
+        Enum.any?(
+          tokens,
+          &RailsCsrf.valid?(conn.assigns.rails_session, &1, conn.request_path, method)
+        ),
+      else: Enum.all?(tokens, &RailsCsrf.valid?(conn.assigns.rails_session, &1))
   end
 
   defp headers?(conn) do

@@ -4,6 +4,7 @@ defmodule DawarichWeb.StandaloneRoutes do
   alias DawarichWeb.Api
 
   @routes %{
+    {"POST", "/api/v1/recalculations"} => {Api.RecalculationsController, :create, true},
     {"GET", "/api/v1/settings/mobile"} => {Api.MobileSettingsController, :show, false},
     {"PATCH", "/api/v1/settings/mobile"} => {Api.MobileSettingsController, :update, true},
     {"GET", "/api/v1/areas"} => {Api.AreasController, :index, false},
@@ -26,6 +27,12 @@ defmodule DawarichWeb.StandaloneRoutes do
 
       {handler, action, active, params} ->
         conn = conn |> assign(:api_tag, "api") |> Map.put(:path_params, params)
+
+        conn =
+          if handler == Api.RecalculationsController,
+            do: put_private(conn, :dawarich_native_api, true),
+            else: conn
+
         conn = Enum.reduce_while(@admission, conn, &admit/2)
         conn = if conn.halted, do: conn, else: authenticate(conn, active)
 

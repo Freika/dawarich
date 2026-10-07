@@ -11,12 +11,12 @@ defmodule DawarichWeb.RailsCsrf do
     do: masked(session, action <> "#" <> String.downcase(method))
 
   defp masked(%{"_csrf_token" => real}, identifier) when is_binary(real) do
-    case Base.url_decode64(real, padding: false) do
-      {:ok, raw} ->
+    case decode(real) do
+      {:ok, <<raw::binary-size(32)>>} ->
         pad = :crypto.strong_rand_bytes(32)
         Base.url_encode64(pad <> :crypto.exor(pad, hmac(raw, identifier)), padding: false)
 
-      :error ->
+      _ ->
         nil
     end
   end
@@ -36,17 +36,43 @@ defmodule DawarichWeb.RailsCsrf do
 
   defp valid_token?(%{"_csrf_token" => real}, token, identifier)
        when is_binary(real) and is_binary(token) do
-    with {:ok, raw} <- Base.url_decode64(real, padding: false),
-         {:ok, <<pad::binary-size(32), masked::binary-size(32)>> = decoded} <-
-           Base.url_decode64(token, padding: false),
-         true <- Base.url_encode64(decoded, padding: false) == token do
-      Plug.Crypto.secure_compare(:crypto.exor(pad, masked), hmac(raw, identifier))
+    with {:ok, <<raw::binary-size(32)>>} <- decode(real),
+         {:ok, decoded} <- decode(token) do
+      case decoded do
+        <<unmasked::binary-size(32)>> ->
+          Plug.Crypto.secure_compare(unmasked, raw)
+
+        <<pad::binary-size(32), masked::binary-size(32)>> ->
+          unmasked = :crypto.exor(pad, masked)
+
+          Plug.Crypto.secure_compare(unmasked, raw) or
+            Plug.Crypto.secure_compare(unmasked, hmac(raw, identifier))
+
+        _ ->
+          false
+      end
     else
       _ -> false
     end
   end
 
   defp valid_token?(_session, _token, _identifier), do: false
+
+  defp decode(token) do
+    encoded = token |> String.replace("-", "+") |> String.replace("_", "/")
+
+    padded =
+      if String.ends_with?(encoded, "="),
+        do: encoded,
+        else: String.pad_trailing(encoded, div(byte_size(encoded) + 3, 4) * 4, "=")
+
+    with {:ok, decoded} <- Base.decode64(padded),
+         true <- Base.encode64(decoded) == padded do
+      {:ok, decoded}
+    else
+      _ -> :error
+    end
+  end
 
   defp hmac(raw, identifier), do: :crypto.mac(:hmac, :sha256, raw, identifier)
 end
