@@ -18,8 +18,11 @@ caller's repository. Operations are `stats`, `keys`, `tracks`, `subscription`,
 user-dependent entries. `keys` also records generations for its exact keys;
 `rate_limit` accepts the retired API key's SHA-256 digest, never its usable key.
 The `tracks` operation snapshots serialized created, updated and destroyed
-messages inside this transaction. Consumers use that immutable snapshot even
-if a later transaction changes or deletes the track.
+messages inside this transaction. An incomplete tracks delivery attempt re-reads
+current committed values for surviving created/updated IDs; the stored message
+is retained for a row subsequently deleted. Durable destroyed IDs and the stored
+message ordering preserve delivery identity. A successful receipt suppresses
+further publication.
 
 `enqueue(repo, worker, args, opts \\ [])` inserts an Oban intent using the same
 repository and returns `:ok`. Tile epoch and visit month workers also record the
@@ -97,8 +100,10 @@ Successful legacy `live_broadcast:done:<id>` claims are adopted as consumed SQL
 intents without another publication. New failed batches roll back their legacy
 claim and SQL marker and remain retryable. Track snapshots apply to newly
 recorded intents; already queued ID-only intents cannot recover a deleted row's
-historical body. Drain legacy track intents before retiring their source rows
-when deploying this amendment.
+historical body. Preexisting `Tracks.NativeChangesWorker` jobs execute the shared
+tracks dispatcher using a stable intent derived from their persisted Oban ID.
+New writes enqueue only `AfterCommit.Worker` jobs. Drain legacy track intents
+before retiring their source rows or removing the compatibility worker.
 
 Subscription family creation/member synchronization intents now commit with
 the subscription update. Their reverse ownership, payload and metadata stay
