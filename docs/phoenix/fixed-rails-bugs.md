@@ -589,3 +589,33 @@ The lease and ownership checks apply in coexistence and standalone drain modes.
 - Tests: `F5 on/off forwards accepted source work to its command owner` and `F5 on/off refuses source generation while a native poster lease is live` in `spec/jobs/posters/media_ownership_spec.rb` (four individually named cases).
 - Ledger: ED-FIX-MEDIA-OWNERSHIP; no deferred row added.
 - CHANGELOG-ready: Fence accepted Rails poster generation during native job ownership handoff.
+
+### FRB-050 — Demo removal can alter another account's dependent records
+
+Rails demo destruction selects the requesting user's demo records but follows
+unscoped dependent associations. A persisted point owned by a second account
+can lose its visit/track links; a foreign extracted visit/place/track can lose
+its import link. Notes, shares and place/tag joins can also cross account
+boundaries. This corrects that inherited defect under controller ruling 17;
+Rails remains unchanged.
+
+Native demo removal scopes point updates, extracted import links and dependent
+writes to the requesting owner. It locks the owner's demo graph and returns
+the existing native error with full rollback when foreign points, notes,
+shares, visits or place/tag joins make cleanup unsafe. Unconstrained foreign
+import references remain unchanged after marker deletion, matching an
+owner-scoped deletion without rewriting the foreign record. Place/trip
+deletion receives an explicit owner-scoped option for its final writes.
+
+- Rails: `app/services/demo_data/destroyer.rb:16`, `app/models/visit.rb:10`, `app/models/track.rb:23`, `app/models/import.rb:8`.
+- Phoenix: `app-phoenix/lib/dawarich/demo_data/cleanup_scope.ex:39`; `app-phoenix/lib/dawarich/demo_data/destroyer.ex:25`, `:57`.
+- Tests in `app-phoenix/test/dawarich/demo_data_destroyer_test.exs`: `demo destroy refuses foreign point associations without changing either owner`; `demo destroy leaves foreign extracted records linked to the removed marker`; `demo destroy refuses foreign notes shares visits and tags before dependent cleanup`.
+- Ledger: FRB-050 added; no ED/DRB row added.
+- CHANGELOG-ready: Keep demo removal from changing another account's records, even when existing data contains cross-account references.
+
+The attached-marker leak reported alongside this issue is a Phoenix regression,
+not an inherited Rails bug. Demo removal now detaches every attachment of the
+deleted records through the shared storage-first native purge worker. Blob and
+variant rows survive physical deletion failure; shared objects and the other
+record's attachment remain intact. Unsupported place/visit-note content still
+returns an error with rollback before any records disappear.

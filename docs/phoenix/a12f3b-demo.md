@@ -23,6 +23,20 @@ cache keys, including on import. Post-commit failures preserve Rails' successful
 result. Unsupported attached content returns a native error and rolls back,
 consistent with tonight's ruling 15; full rare-envelope parity remains separate.
 
+Post-hoc cleanup corrections detach attachments from the deleted marker,
+points, stats, visits, tracks, tags and trips, including supported trip notes
+and rich descriptions. All use `Dawarich.Exports.PurgeWorker`, whose shared
+purge machinery removes stored objects before blob/variant rows and retains
+rows on storage failure. Shared blobs retain their other attachments and bytes.
+Place and visit-note graphs outside the supported envelope still roll back.
+
+Demo cleanup locks the owner's demo graph and refuses unsafe cross-owner
+dependent references with the existing native error. Point nullification,
+extracted import links and place/trip dependent writes are owner-scoped.
+Foreign extracted import references without foreign-key constraints remain
+unchanged when the marker disappears. The inherited Rails isolation defect is
+registered as FRB-050 in `docs/phoenix/fixed-rails-bugs.md` under ruling 17.
+
 ## HOT handoff
 
 Mount `DawarichWeb.OnboardingRoutes.onboarding_routes/0` in the shared router;
