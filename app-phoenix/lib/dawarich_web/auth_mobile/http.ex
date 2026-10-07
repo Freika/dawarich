@@ -32,6 +32,7 @@ defmodule DawarichWeb.AuthMobile.Http do
       context
       |> Map.put_new(:self_hosted, Dawarich.ReleaseMigration.self_hosted?(env))
       |> Map.put_new(:oidc, Dawarich.Auth.Admission.oidc?(env))
+      |> Dawarich.Auth.RegistrationCallbacks.context()
       |> Map.put_new(:base_url, DawarichWeb.RequestURL.base(conn))
 
     conn = frame(conn)

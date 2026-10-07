@@ -14,6 +14,11 @@ defmodule Dawarich.Auth.Providers.Completion do
   import Ecto.Query
 
   def run(conn, provider, exchange, context) do
+    context =
+      context
+      |> Dawarich.Auth.RegistrationCallbacks.context()
+      |> Map.put(:signup_session, conn.assigns.rails_session)
+
     with {:ok, identity} <- exchange.(),
          {:ok, user, created} <- resolve(identity, provider, context) do
       if user,
@@ -44,7 +49,7 @@ defmodule Dawarich.Auth.Providers.Completion do
 
     session =
       if created and context[:self_hosted] == false,
-        do: signup(repo, user, session, context),
+        do: signup(session, provider),
         else: session
 
     {:ok, {user, session}} =
@@ -144,17 +149,8 @@ defmodule Dawarich.Auth.Providers.Completion do
     end
   end
 
-  defp signup(repo, user, session, context) do
-    callback = get_in(context, [:callbacks, :webhook])
-
-    if not is_function(callback, 1) or callback.(user.id) != :ok,
-      do: raise(ArgumentError, "Signup callback unavailable")
-
-    {:ok, session} =
-      repo.transaction(fn -> RegistrationAttribution.apply(repo, user, %{}, session, context) end)
-
-    session
-  end
+  defp signup(session, "apple"), do: session
+  defp signup(session, _provider), do: RegistrationAttribution.consume(session)
 
   defp challenge(conn, link, provider, context) do
     pending = %{

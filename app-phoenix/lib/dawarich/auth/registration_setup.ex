@@ -3,6 +3,9 @@ defmodule Dawarich.Auth.RegistrationSetup do
   alias Dawarich.Auth.{Account, RegistrationAttribution}
   alias Dawarich.{Notifications, Repo, SubscriptionToken}
 
+  def ready?(%{self_hosted: false, registration_channel: :mobile} = context),
+    do: is_function(get_in(context, [:callbacks, :webhook]), 1)
+
   def ready?(%{self_hosted: false} = context),
     do:
       is_function(get_in(context, [:callbacks, :webhook]), 1) and
@@ -11,6 +14,7 @@ defmodule Dawarich.Auth.RegistrationSetup do
   def ready?(_), do: true
 
   def complete(user, params, session, context) do
+    context = Dawarich.Auth.RegistrationCallbacks.context(context)
     repo = Map.get(context, :repo, Repo)
 
     if ready?(context) do
@@ -27,8 +31,14 @@ defmodule Dawarich.Auth.RegistrationSetup do
     cloud = context[:self_hosted] == false
 
     if cloud do
-      if get_in(context, [:callbacks, :webhook]).(user.id) != :ok,
-        do: repo.rollback(:webhook_owner)
+      case Dawarich.Users.CreationEffects.apply(
+             repo,
+             user.id,
+             Dawarich.Auth.RegistrationCallbacks.creation_options(context)
+           ) do
+        :ok -> :ok
+        {:error, reason} -> repo.rollback(reason)
+      end
     end
 
     session =
@@ -40,7 +50,7 @@ defmodule Dawarich.Auth.RegistrationSetup do
     accepted = if invitation, do: accept(repo, user, invitation, context), else: false
     session = claim(repo, user, session, context)
 
-    if cloud and not accepted do
+    if cloud and not accepted and context[:registration_channel] != :mobile do
       user = repo.update!(Ecto.Changeset.change(user, %{status: 3}), log: false)
       {linker, session} = Map.pop(session, "gads_linker")
 

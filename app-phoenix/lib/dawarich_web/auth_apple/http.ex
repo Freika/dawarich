@@ -15,6 +15,7 @@ defmodule DawarichWeb.AuthApple.Http do
       context =
         context
         |> Map.put_new(:self_hosted, Dawarich.ReleaseMigration.self_hosted?(env))
+        |> Dawarich.Auth.RegistrationCallbacks.context()
         |> Map.put_new(:base_url, DawarichWeb.RequestURL.base(conn))
         |> Map.put_new(:ip, DawarichWeb.RailsRemoteIp.ip(conn))
 

@@ -150,6 +150,7 @@ defmodule Dawarich.Auth.Providers.Accounts do
   defp create(%{email: "", provider: "apple"}, _), do: {:error, :missing_email}
 
   defp create(identity, context) do
+    context = Dawarich.Auth.RegistrationCallbacks.context(context)
     repo = Map.get(context, :repo, Repo)
     now = Map.get(context, :clock, &DateTime.utc_now/0).()
 
@@ -173,40 +174,69 @@ defmodule Dawarich.Auth.Providers.Accounts do
     until = if self_hosted, do: active_until(now)
     if is_function(context[:before_insert], 0), do: context.before_insert.()
 
-    rows =
-      repo.query!(
-        "INSERT INTO users(email,encrypted_password,api_key,first_name,last_name,provider,uid,status,plan,active_until,signup_variant,settings,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,1,$9,$10,'{\"fog_of_war_meters\":\"100\",\"meters_between_routes\":\"500\",\"minutes_between_routes\":\"30\"}'::jsonb,$11,$11) ON CONFLICT DO NOTHING RETURNING id",
-        [
-          email,
-          password,
-          Base.encode16(:crypto.strong_rand_bytes(32), case: :lower),
-          identity[:first_name],
-          identity[:last_name],
-          identity.provider,
-          identity.uid,
-          if(self_hosted, do: 1, else: 3),
-          until,
-          nil,
-          DateTime.to_naive(now)
-        ],
-        log: false
-      ).rows
+    case repo.transaction(fn ->
+           rows =
+             repo.query!(
+               "INSERT INTO users(email,encrypted_password,api_key,first_name,last_name,provider,uid,status,plan,active_until,signup_variant,settings,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,1,$9,$10,'{\"fog_of_war_meters\":\"100\",\"meters_between_routes\":\"500\",\"minutes_between_routes\":\"30\"}'::jsonb,$11,$11) ON CONFLICT DO NOTHING RETURNING id",
+               [
+                 email,
+                 password,
+                 Base.encode16(:crypto.strong_rand_bytes(32), case: :lower),
+                 identity[:first_name],
+                 identity[:last_name],
+                 identity.provider,
+                 identity.uid,
+                 if(self_hosted, do: 1, else: 3),
+                 until,
+                 nil,
+                 DateTime.to_naive(now)
+               ],
+               log: false
+             ).rows
 
-    case rows do
-      [[id]] ->
-        {:ok, repo.get!(Account, id, log: false), true}
+           case rows do
+             [[id]] ->
+               case Dawarich.Users.CreationEffects.apply(
+                      repo,
+                      id,
+                      Dawarich.Auth.RegistrationCallbacks.creation_options(
+                        Map.put(context, :self_hosted, self_hosted)
+                      )
+                    ) do
+                 :ok -> :ok
+                 {:error, reason} -> repo.rollback(reason)
+               end
 
-      [] ->
-        case Conflicts.identity(identity.provider, identity.uid, context) do
-          nil ->
-            case Conflicts.email(email, context) do
-              nil -> {:error, :account_creation_failed}
-              user -> collision(user, identity, context)
-            end
+               user = repo.get!(Account, id, log: false)
 
-          user ->
-            Conflicts.account(user, false)
-        end
+               if not self_hosted and identity.provider != "apple" and
+                    is_map(context[:signup_session]),
+                  do:
+                    Dawarich.Auth.RegistrationAttribution.apply(
+                      repo,
+                      user,
+                      %{},
+                      context.signup_session,
+                      context
+                    )
+
+               {:ok, user, true}
+
+             [] ->
+               case Conflicts.identity(identity.provider, identity.uid, context) do
+                 nil ->
+                   case Conflicts.email(email, context) do
+                     nil -> {:error, :account_creation_failed}
+                     user -> collision(user, identity, context)
+                   end
+
+                 user ->
+                   Conflicts.account(user, false)
+               end
+           end
+         end) do
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
     end
   end
 

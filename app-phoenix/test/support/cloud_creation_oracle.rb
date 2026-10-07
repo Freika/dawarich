@@ -49,5 +49,15 @@ RSpec::Mocks.with_temporary_scope do
     %w[MANAGER_URL JWT_SECRET_KEY].each { |key| previous.key?(key) ? ENV[key] = previous[key] : ENV.delete(key) }
     user.delete
   end
-  puts JSON.generate(trials: observations, skip: skip, manager: payload)
+  failed = User.new(email: "l1-oracle-#{SecureRandom.hex(8)}@example.invalid", password: 'synthetic-password')
+  failed.skip_auto_trial = true
+  allow(Users::CreationWebhookJob).to receive(:perform_later).and_raise(StandardError, 'synthetic-publication-failure')
+  begin
+    failed.save!
+  rescue StandardError
+    failure = { account_persisted_without_callback: User.where(email: failed.email).exists? }
+  ensure
+    User.where(email: failed.email).delete_all
+  end
+  puts JSON.generate(trials: observations, skip: skip, manager: payload, failure:)
 end

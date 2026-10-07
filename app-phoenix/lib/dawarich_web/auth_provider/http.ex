@@ -33,6 +33,7 @@ defmodule DawarichWeb.AuthProvider.Http do
         :self_hosted,
         Dawarich.ReleaseMigration.self_hosted?(Map.get_lazy(context, :env, &System.get_env/0))
       )
+      |> Dawarich.Auth.RegistrationCallbacks.context()
       |> Map.put_new(:base_url, RequestURL.base(conn))
       |> Map.put_new(:ip, DawarichWeb.RailsRemoteIp.ip(conn))
 
@@ -70,7 +71,8 @@ defmodule DawarichWeb.AuthProvider.Http do
       _ -> conn |> send_resp(400, "Invalid provider request") |> halt()
     end
   rescue
-    _ -> Failure.terminal(conn)
+    _ ->
+      Failure.terminal(conn)
   end
 
   defp handle(conn, provider, action, params, context) do
