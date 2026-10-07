@@ -36,7 +36,7 @@ defmodule DawarichWeb.AchievementActions.Unlocks do
   defp execute(conn, actor, params, context) do
     case DawarichWeb.AchievementActions.Gate.fresh(conn, actor, context) do
       {:ok, conn, actor} -> execute_fresh(conn, actor, params, context)
-      :error -> conn |> DawarichWeb.StandaloneError.respond("achievement_actor", 401)
+      :error -> DawarichWeb.AuthenticationRefusal.respond(conn, context)
     end
   end
 

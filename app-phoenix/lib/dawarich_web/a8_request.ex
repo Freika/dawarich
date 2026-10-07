@@ -41,8 +41,16 @@ defmodule DawarichWeb.A8Request do
         |> assign(:a8_format, format)
 
       case RailsForm.admission(conn) do
-        :ok -> conn
-        {:replay, reason} -> Body.replay(conn, reason)
+        :ok ->
+          conn
+
+        {:replay, "not signed in by session" = reason} ->
+          if Dawarich.Standalone.enabled?(),
+            do: DawarichWeb.AuthenticationRefusal.respond(conn),
+            else: Body.replay(conn, reason)
+
+        {:replay, reason} ->
+          Body.replay(conn, reason)
       end
     else
       _ -> Body.replay(conn, "A8 action or parameter shape")

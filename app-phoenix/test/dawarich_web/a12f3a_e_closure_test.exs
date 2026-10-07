@@ -347,7 +347,7 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
        %{tmp_dir: dir} do
     c = UserDataSeeds.seed!("UTC", ScratchRepo)
     archive = Export.write(ScratchRepo, c.user_id, dir, export_context(c))
-    expected = UserDataSeeds.entries("export_UTC")
+    expected = UserDataSeeds.current_export_entries("UTC")
     assert zip_entries(archive.path) == expected
     assert archive.counts == Jason.decode!(expected["manifest.json"])["counts"]
     assert Jason.decode!(expected["manifest.json"]) == capture(5)["exports"]["UTC"]["manifest"]
@@ -361,7 +361,7 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
 
     for zone <- ["UTC", "Europe/Berlin", "America/New_York"] do
       context = %{c.context | zone: zone}
-      expected = UserDataSeeds.entries("export_" <> String.replace(zone, "/", "_"))
+      expected = UserDataSeeds.current_export_entries(zone)
       manifest = capture(6)["exports"][zone]["manifest"]
       assert manifest == Jason.decode!(expected["manifest.json"])
 
