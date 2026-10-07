@@ -23,6 +23,7 @@ defmodule DawarichWeb.TestEmailTest do
 
     RailsUser.insert!(%{
       id: @id,
+      admin: true,
       email: "test-email@test",
       settings: %{"locale" => "en", "timezone" => "UTC"}
     })
@@ -148,9 +149,29 @@ defmodule DawarichWeb.TestEmailTest do
           Map.put(@env, "SMTP_STARTTLS", "true"),
           Map.put(@env, "SMTP_SSL", "true")
         ] do
-      assert_handoff(TestEmail.admit(base, context: %{self_hosted: true, oidc: false, env: env}))
+      before = snapshot()
+
+      assert {:ok, _, _, _, _, _} =
+               TestEmail.admit(base, context: %{self_hosted: true, oidc: false, env: env})
+
+      assert snapshot() == before
       refute_received {:mail, _}
     end
+  end
+
+  @tag mail_review: "F5Action"
+  test "non admin test email POST is refused locally without Rails handoff or enqueue", c do
+    Repo.query!("UPDATE users SET admin=false WHERE id=$1", [@id], log: false)
+    before = snapshot()
+    conn = request(c.session, "POST", @path, "")
+    eligible = TestEmailGate.eligible?(conn, c.opts)
+    refute eligible
+    response = TestEmail.call(conn, c.opts)
+    assert response.status == 403
+    assert response.halted
+    assert get_resp_header(response, "x-dawarich-mail-owner") == ["native-test-email"]
+    assert snapshot() == before
+    refute_received {:mail, _}
   end
 
   defp request(session, method, path, raw, headers \\ []) do

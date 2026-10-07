@@ -61,9 +61,14 @@ defmodule Dawarich.Mail.FamilyLapseWorkerTest do
 
     error =
       assert_raise Postgrex.Error, fn ->
-        ScratchRepo.transaction(fn ->
-          ScratchRepo.query!("SET LOCAL lock_timeout = '200ms'")
-          perform_job(FamilyLapseWorker, args(member, family_id))
+        ScratchRepo.checkout(fn ->
+          ScratchRepo.query!("SET lock_timeout = '200ms'")
+
+          try do
+            perform_job(FamilyLapseWorker, args(member, family_id))
+          after
+            ScratchRepo.query!("RESET lock_timeout")
+          end
         end)
       end
 
@@ -130,8 +135,24 @@ defmodule Dawarich.Mail.FamilyLapseWorkerTest do
 
     assert_receive {:in_transport, %{message_id: message_id}}
     assert message_id =~ ~r/\A<[0-9a-f]{64}@/
+    monitor = Process.monitor(sender)
     Process.exit(sender, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^sender, :killed}
     assert %{"plan_lapse_notified_at" => _} = family_settings(member)
+
+    assert perform_job(FamilyLapseWorker, job) == {:snooze, 600}
+    refute_received {:mail, _}
+
+    lease =
+      "mail:" <>
+        Base.encode16(:crypto.hash(:sha256, "mail.family_lapse:family-lapse:#{member}"),
+          case: :lower
+        )
+
+    rows(
+      "UPDATE phoenix.leases SET expires_at=statement_timestamp()-interval '1 second' WHERE name=$1",
+      [lease]
+    )
 
     assert perform_job(FamilyLapseWorker, %{job | "event_id" => Ecto.UUID.generate()}) == :ok
     refute_received {:mail, _}

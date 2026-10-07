@@ -16,8 +16,20 @@ defmodule Dawarich.IngestCase do
 
   setup context do
     unless context[:account_link_committed] do
-      :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-      Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+      if context[:map_matching_tasks] do
+        owner = Ecto.Adapters.SQL.Sandbox.start_owner!(Repo, shared: true)
+
+        on_exit(fn ->
+          try do
+            Dawarich.MapMatchingTasks.await!()
+          after
+            Ecto.Adapters.SQL.Sandbox.stop_owner(owner)
+          end
+        end)
+      else
+        :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+        Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+      end
     end
 
     unless context[:api_public_only] do

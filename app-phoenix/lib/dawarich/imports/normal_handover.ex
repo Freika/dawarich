@@ -7,6 +7,22 @@ defmodule Dawarich.Imports.NormalHandover do
   @worker "Dawarich.Imports.ProcessWorker"
   @sources [nil, 0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15]
 
+  def owns_source?(repo, job, source) do
+    source in @sources or
+      (source == 4 and
+         repo.query!(
+           "SELECT 1 FROM phoenix.import_runs WHERE import_id=$1 AND user_id=$2 AND event_id=$3 AND job_id=$4 AND attempt<=$5 AND token IS NOT NULL",
+           [
+             job.args["import_id"],
+             job.args["user_id"],
+             Ecto.UUID.dump!(job.args["event_id"]),
+             job.id,
+             job.attempt
+           ],
+           log: false
+         ).rows == [[1]])
+  end
+
   def resume(repo, %Oban.Job{} = job, reason \\ :lost) when reason in [:lost, :legacy] do
     transfer = fn ->
       {:ok, result} = repo.transaction(fn -> transfer(repo, job, reason) end)
@@ -50,19 +66,26 @@ defmodule Dawarich.Imports.NormalHandover do
            log: false
          ).rows do
       [[^expected_user, source, 3, nil]] ->
-        if source in @sources and terminal?(repo, job),
+        if owns_source?(repo, job, source) and terminal?(repo, job),
           do: finish_terminal(repo, job),
-          else: handback(repo, args, owner, source, reason)
+          else: handback(repo, job, owner, source, reason)
 
       [[^expected_user, source, status, nil]] when status in [0, 1] ->
-        if owner == :sidekiq or source not in @sources or reason == :legacy,
-          do: enqueue(repo, args, reason == :legacy),
+        if owner == :sidekiq or not owns_source?(repo, job, source) or reason == :legacy,
+          do: enqueue(repo, args, reason == :legacy or not owns_source?(repo, job, source)),
           else: {:snooze, 5}
 
-      [[^expected_user, source, 2, nil]] when source in @sources ->
-        if pending_terminal?(repo, job),
-          do: {:snooze, 5},
-          else: finish_terminal(repo, job)
+      [[^expected_user, source, 2, nil]] ->
+        cond do
+          not owns_source?(repo, job, source) ->
+            Processed.mark!(repo, args["event_id"], "imports.process_normal.unavailable")
+
+          pending_terminal?(repo, job) ->
+            {:snooze, 5}
+
+          true ->
+            finish_terminal(repo, job)
+        end
 
       _ ->
         Processed.mark!(repo, args["event_id"], "imports.process_normal.unavailable")
@@ -83,9 +106,9 @@ defmodule Dawarich.Imports.NormalHandover do
     ).rows == [["processing"]]
   end
 
-  defp handback(repo, args, owner, source, reason) do
-    if owner == :sidekiq or source not in @sources or reason == :legacy,
-      do: enqueue(repo, args, reason == :legacy),
+  defp handback(repo, job, owner, source, reason) do
+    if owner == :sidekiq or not owns_source?(repo, job, source) or reason == :legacy,
+      do: enqueue(repo, job.args, reason == :legacy or not owns_source?(repo, job, source)),
       else: {:snooze, 5}
   end
 
@@ -165,24 +188,6 @@ defmodule Dawarich.Imports.NormalHandover do
     end
   end
 
-  defp enqueue(repo, args, fallback) do
-    if Dawarich.Standalone.enabled?() do
-      {:error, :unsupported_native_import}
-    else
-      repo.query!(
-        "INSERT INTO phoenix.import_handoffs(event_id,import_id,user_id,time_zone,native_fallback) VALUES ($1,$2,$3,$4,$5) ON CONFLICT(event_id) DO NOTHING",
-        [
-          Ecto.UUID.dump!(args["event_id"]),
-          args["import_id"],
-          args["user_id"],
-          args["time_zone"],
-          fallback
-        ],
-        log: false
-      )
-
-      Dawarich.RailsCommands.insert!(repo, "imports.normal_resume", args)
-      Processed.mark!(repo, args["event_id"], "imports.process_normal.handback")
-    end
-  end
+  defp enqueue(repo, args, fallback),
+    do: Dawarich.Imports.AcceptedDisposition.call(repo, args, "imports.normal_resume", fallback)
 end

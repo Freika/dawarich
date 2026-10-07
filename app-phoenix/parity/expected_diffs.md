@@ -593,5 +593,39 @@ conditions, 125/78/24 inventories, source recording and G42–G49 owner links ar
 in [the part-B handoff](../../docs/phoenix/a12f3b-pages-producers.md) and
 [the drain runbook](../../docs/phoenix/a12d3-schedules-drain.md).
 
+## Media ownership review fix
 
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
 | ED-FIX-MEDIA-OWNERSHIP | Native media admission, revocation and execution fences | Rails route videos adopt any signed blob; deferred poster purges retain usable links until deletion; accepted source poster jobs ignore native ownership and leases. | Native adoption loads an owner-compatible blob and rechecks under its row lock. Legacy native poster purges use the shared graph marker and storage-first helper. Blob locking makes committed revocation win over earlier admission. Analysis claims its event and locks its blob before ffprobe, rolling back claims on failure. Retained source poster jobs forward under Oban ownership and hold the shared lease during source-owned generation. Valid signed downloads retain Rails bearer behavior (DRB-027). | fix-media-ownership; FRB-047/048/049; named coexistence/standalone tests and individual mutations | implemented; seed-404 evidence in controller report |
+
+## ED-FIX-ACCEPTED-IMPORT-DISPOSITION
+
+Controller-authorized accepted-import repair: native ZIP parents settle only after
+all accepted children are terminal, including when a later member fails validation.
+Rails `Imports::ZipExtractor` removes the parent after enqueueing without waiting;
+a later build error skips the enqueue of earlier saved children. Native normal-GPX
+failure settlement atomically groups failed status, notification and terminal
+receipt, extending FRB-008's exactly-once failure guarantee to discovered GPX.
+Successful empty GPX/KML imports also commit the no-points notification with
+completed status and the terminal receipt; interrupted retry emits one notice.
+Rails publishes that notice before its ensure block records completion.
+Coexistence keeps executable Rails legacy/source-change fallback under fixed
+native lane ownership; standalone retains a terminal native disposition and never
+publishes a Rails resume. See `docs/phoenix/accepted-import-disposition.md` and the
+corresponding real-worker regression modules. This does not close H03/H04
+source debt or weaken Cloud lifecycle refusal.
+
+## MAIL review authorization and accepted-job receipts
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-MAIL-TEST-ADMIN | Test-email POST, producer and worker | Any authenticated self-hosted user can queue test mail; queued delivery does not recheck admin status. | Admin-only enqueue/delivery; authenticated non-admin POST returns 403 before Rails routing, including route pins, and demoted recipients' queued jobs cancel. | Explicit fix3 MAIL controller brief; `mail_review:F5Action`, `F5Endpoint`, `F5Worker`; Rails `app/controllers/settings/general_controller.rb:8,9,74`. |
+| ED-MAIL-TEST-REDELIVERY | Redelivery of one successful test-email job | `deliver_later` reaches the mailer again on job redelivery without an application receipt. | Each accepted POST has a distinct durable identity; an existing successful job receipt suppresses replay, including legacy jobs identified by Oban ID. SMTP acceptance followed by a local receipt-write crash can still resend. | Explicit fix3 MAIL controller brief; `mail_review:F4`; Rails `app/controllers/settings/general_controller.rb:74`, `app/mailers/users_mailer.rb:54`. |
+| ED-MAIL-ARCHIVAL-EXPIRY | Late retry of an accepted archival upgrade link | Re-renders a fresh thirty-minute token. | Preserves the accepted JTI and issuance time, then cancels at expiry without delivering an unusable link. | Stable replay identity in M05 and explicit F6 review permission to cancel or regenerate; `mail_review:F6`; Rails `app/mailers/users_mailer.rb:20`, `app/models/user.rb:303`. |
+
+## Public share owner review fix
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-PUBLIC-SHARE-OWNER | Public month and digest owner absence | Rails dereferences a nil association and crashes when a valid share belongs to a deleted or missing owner. | Phoenix redirects to the root with the existing unavailable-share alert. Login locks and NULL settings retain Rails rendering behavior. | fix-public-share-parity; `public month and digest refuse a deleted or absent owner without crashing`; controller report | implemented; seed-404 gate recorded in controller report |

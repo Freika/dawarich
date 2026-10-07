@@ -18,11 +18,13 @@ defmodule DawarichWeb.SharedStatsPage do
 
   def call(conn, kind) do
     now = conn.assigns.now
+    viewer = conn.assigns.current_user
+    zone = Dawarich.RailsTimeZone.name(if(viewer, do: viewer.settings, else: %{"timezone" => ""}))
 
     data =
       case kind do
-        :digest -> Digests.Sharing.get(conn.path_params["uuid"], now)
-        :month -> Stats.Sharing.get(conn.path_params["uuid"], now)
+        :digest -> Digests.Sharing.get(conn.path_params["uuid"], now, zone)
+        :month -> Stats.Sharing.get(conn.path_params["uuid"], now, zone)
       end
 
     if data do
