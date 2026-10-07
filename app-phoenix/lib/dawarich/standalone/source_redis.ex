@@ -19,6 +19,36 @@ defmodule Dawarich.Standalone.SourceRedis do
     until cursor == '0'
     return count
   end
+  local function live_processes()
+    local time = redis.call('TIME')
+    local now = tonumber(time[1]) + tonumber(time[2]) / 1000000
+    local count = 0
+    for _, process in ipairs(redis.call('SMEMBERS', 'processes')) do
+      if redis.call('EXISTS', process) == 1 then
+        local beat = tonumber(redis.call('HGET', process, 'beat'))
+        if not beat or beat ~= beat or math.abs(beat) == math.huge or beat < 0 then
+          error('invalid process heartbeat')
+        end
+        if beat >= now - 60 then
+          count = count + 1
+        end
+      end
+    end
+    return count
+  end
+  local function live_fetchers()
+    local count = 0
+    for _, process in ipairs(redis.call('SMEMBERS', 'limit:processes')) do
+      local heartbeat = redis.call('GET', 'limit:heartbeat:' .. process)
+      if heartbeat then
+        if heartbeat ~= '1' then
+          error('invalid fetcher heartbeat')
+        end
+        count = count + 1
+      end
+    end
+    return count
+  end
   return {
     scan_count('queue:*', 'LLEN'),
     redis.call('ZCARD', 'schedule'),
@@ -27,8 +57,8 @@ defmodule Dawarich.Standalone.SourceRedis do
     scan_count('*:work', 'HLEN'),
     scan_count('limit_fetch:busy:*', 'LLEN'),
     scan_count('limit_fetch:probed:*', 'LLEN'),
-    redis.call('SCARD', 'processes'),
-    redis.call('SCARD', 'limit:processes'),
+    live_processes(),
+    live_fetchers(),
     scan_count('limit:heartbeat:*', 'EXISTS')
   }
   """

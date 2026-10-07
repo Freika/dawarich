@@ -44,9 +44,9 @@ activation. Ordinary coexistence and the idle worker role are unchanged.
    using Sidekiq's normal TSTP/TERM lifecycle. Stop the existing native workers
    after their accepted work settles. Stop retained Rails web and manual
    processes after their in-flight requests settle. Reinspect after stop,
-   including fetcher registrations/reservations and heartbeats; stale registrations are not
-   proof of completion. Follow the retained
-   [source-drain procedure](a12d3-schedules-drain.md) for remediation.
+   including reservations and fresh worker heartbeats. Follow the heartbeat
+   recovery step below before retrying standalone startup. The retained
+   [source-drain procedure](a12d3-schedules-drain.md) covers unresolved work.
 5. With producers still fenced, start the self-hosted web with
    `DAWARICH_RAILS=off`, using the same database, Redis queue database and
    storage. The check runs after existing release readiness and before the
@@ -60,13 +60,39 @@ only fixed reason names and counts. It links to this runbook. No payload,
 credentials, process identity or exception details are emitted by the check.
 
 The check observes all `queue:*` lists, including queues missing from Sidekiq's
-queue registry; scheduled/retry/dead sets; registered source processes; orphan
-work hashes; and limit-fetch reservations, probes, registrations and heartbeat
-keys. Stored cron definitions, queue names and queue limits alone are not
-pending work. SQL checks cover all retained reverse rows (due, future, leased
+queue registry; scheduled/retry/dead sets; live source processes; orphan work
+hashes; and limit-fetch reservations, probes, live fetchers and heartbeat keys.
+A standard Sidekiq registration counts as live while its `beat` is at most
+60 seconds old, using Redis server time. Missing process hashes and expired
+beats are ignored, matching Sidekiq's process liveness window. A present process
+hash with a missing or malformed beat refuses inspection. A limit-fetch
+registration counts as live only while its heartbeat key exists (the installed
+plugin expires it after 20 seconds). Orphan heartbeat keys still block. Stored
+cron definitions, queue names and queue limits alone are not pending work. SQL checks cover all retained reverse rows (due, future, leased
 and retrying), reverse dead rows, pending forward outbox and quarantined outbox.
 Existing native Oban jobs are not historical Rails envelopes and are not copied
 or blocked by this source check.
+
+### After the final worker stops
+
+The limit-fetch plugin can leave `limit:processes` registrations permanently
+after a graceful shutdown. With producers fenced, every retained worker and
+Rails web/manual process stopped, and all accepted work/reservations settled,
+run:
+
+```sh
+sleep 60
+```
+
+Then retry the same standalone startup from step 5. This lets the last Sidekiq
+process heartbeat (60 seconds) and limit-fetch heartbeat (20 seconds) expire.
+The observer ignores their stale registrations without deleting them. Waiting
+is sufficient only after shutdown: a live worker renews its heartbeat and still
+refuses startup, even with empty queues. Queued, scheduled, retry, dead, busy,
+reserved, probed and SQL debt continue to block regardless of registration age.
+If refusal remains, inspect the reported work counts and finish or repair that
+work with the original consumers; do not remove registrations or payloads to
+bypass the check.
 
 Missing Redis configuration, wrong Redis types, unreadable Redis/SQL or missing
 source tables refuse startup. Restore access/configuration, finish the normal

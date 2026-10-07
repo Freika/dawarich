@@ -131,17 +131,149 @@ defmodule Dawarich.Standalone.SwitchoverTest do
 
   @tag :switchover_processes
   test "registered workers and orphan fetch heartbeats refuse even with empty queues", c do
-    for command <- [
-          ["SADD", "processes", "source-worker"],
-          ["SADD", "limit:processes", "source-fetcher"],
-          ["SET", "limit:heartbeat:orphan", "1"]
+    [now, _] = Redix.command!(c.conn, ["TIME"])
+
+    for commands <- [
+          [
+            ["HSET", "source-worker", "beat", now],
+            ["SADD", "processes", "source-worker"]
+          ],
+          [
+            ["SET", "limit:heartbeat:source-fetcher", "1", "EX", "20"],
+            ["SADD", "limit:processes", "source-fetcher"]
+          ],
+          [["SET", "limit:heartbeat:orphan", "1"]]
         ] do
-      Redix.command!(c.conn, command)
+      Enum.each(commands, &Redix.command!(c.conn, &1))
       assert {:error, {:pending, _}} = Switchover.status(c.opts)
       Redix.command!(c.conn, ["FLUSHDB"])
     end
 
     assert {:ok, _} = Switchover.status(c.opts)
+  end
+
+  @tag :switchover_worker_shutdown
+  test "real Sidekiq graceful shutdown admits expired fetcher registrations but refuses live or retained work",
+       c do
+    script = ~S"""
+    $stdout.sync = true
+    Sidekiq.logger.level = Logger::FATAL
+    Sidekiq::LimitFetch::Global::Monitor.singleton_class.prepend(Module.new do
+      def update_heartbeat(ttl)
+        super
+        puts "probe_fetcher"
+      end
+    end)
+    Sidekiq.configure_server do |config|
+      config.redis = {url: ENV.fetch("REDIS_URL"), db: Integer(ENV.fetch("RAILS_JOB_QUEUE_DB"))}
+    end
+    cli = Sidekiq::CLI.instance
+    cli.parse(["-r", Gem::Specification.find_by_name("sidekiq").full_gem_path + "/lib/sidekiq.rb", "-c", "1", "-q", "default"])
+    cli.run
+    """
+
+    port =
+      Port.open({:spawn_executable, System.find_executable("ruby")}, [
+        :binary,
+        :exit_status,
+        :stderr_to_stdout,
+        args: ["-rsidekiq/cli", "-rsidekiq/limit_fetch", "-e", script],
+        cd: Path.expand(".."),
+        env:
+          Enum.map(
+            [
+              {"RAILS_ENV", "test"},
+              {"DATABASE_NAME", Dawarich.Repo.config()[:database]},
+              {"REDIS_URL", c.opts[:redis][:url]},
+              {"RAILS_JOB_QUEUE_DB", to_string(c.opts[:redis][:database])}
+            ],
+            fn {key, value} -> {String.to_charlist(key), String.to_charlist(value)} end
+          )
+      ])
+
+    {:os_pid, pid} = Port.info(port, :os_pid)
+
+    try do
+      worker_ready(port, "")
+
+      assert {:error, {:pending, %{fetchers: 1, heartbeats: 1}}} =
+               Switchover.status(c.opts)
+
+      assert {_, 0} = System.cmd("kill", ["-TSTP", to_string(pid)])
+      assert {_, 0} = System.cmd("kill", ["-TERM", to_string(pid)])
+      worker_stopped(port)
+      assert Redix.command!(c.conn, ["SCARD", "processes"]) == 0
+      assert Redix.command!(c.conn, ["SCARD", "limit:processes"]) == 1
+      assert Redix.command!(c.conn, ["TTL", "limit:processes"]) == -1
+      assert {:error, {:pending, %{processes: 0, fetchers: 1}}} = Switchover.status(c.opts)
+
+      [fetcher] = Redix.command!(c.conn, ["SMEMBERS", "limit:processes"])
+      heartbeat = "limit:heartbeat:" <> fetcher
+      assert Redix.command!(c.conn, ["TTL", heartbeat]) > 0
+      [now, _] = Redix.command!(c.conn, ["TIME"])
+      assert Redix.command!(c.conn, ["EXPIREAT", heartbeat, now]) == 1
+      before = snapshot(c.conn)
+      assert {:ok, %{fetchers: 0, heartbeats: 0}} = Switchover.status(c.opts)
+
+      assert :ok =
+               Switchover.check!(
+                 {:native, {{127, 0, 0, 1}, 3000}},
+                 Keyword.put(c.opts, :env, %{"DAWARICH_RAILS" => "off"})
+               )
+
+      assert snapshot(c.conn) == before
+
+      for {command, key, count} <- [
+            {["RPUSH", "queue:default", "retained"], "queue:default", :queued},
+            {["ZADD", "schedule", "9999999999", "retained"], "schedule", :scheduled},
+            {["ZADD", "retry", "9999999999", "retained"], "retry", :retry},
+            {["RPUSH", "limit_fetch:busy:default", "retained"], "limit_fetch:busy:default",
+             :reserved}
+          ] do
+        Redix.command!(c.conn, command)
+        assert {:error, {:pending, counts}} = Switchover.status(c.opts)
+        assert counts[count] == 1
+        assert counts.fetchers == 0
+        Redix.command!(c.conn, ["DEL", key])
+      end
+
+      Redix.command!(c.conn, ["SET", "queue:default", "malformed"])
+      assert Switchover.status(c.opts) == {:error, :redis_unreadable}
+    after
+      if Port.info(port) do
+        System.cmd("kill", ["-TERM", to_string(pid)])
+        worker_stopped(port)
+      end
+    end
+  end
+
+  @tag :switchover_process_freshness
+  test "Sidekiq registrations require a fresh 60 second beat and preserve malformed or orphan work refusal",
+       c do
+    Redix.command!(c.conn, ["SADD", "processes", "source-worker"])
+    [now, _] = Redix.command!(c.conn, ["TIME"])
+    now = String.to_integer(now)
+    Redix.command!(c.conn, ["HSET", "source-worker", "info", "{}", "beat", to_string(now)])
+    assert {:error, {:pending, %{processes: 1}}} = Switchover.status(c.opts)
+
+    Redix.command!(c.conn, ["HSET", "source-worker", "beat", to_string(now - 61)])
+    before = snapshot(c.conn)
+    assert {:ok, %{processes: 0}} = Switchover.status(c.opts)
+    assert snapshot(c.conn) == before
+
+    Redix.command!(c.conn, ["HSET", "source-worker:work", "tid", "retained"])
+    assert {:error, {:pending, %{processes: 0, busy: 1}}} = Switchover.status(c.opts)
+    Redix.command!(c.conn, ["DEL", "source-worker:work"])
+
+    for beat <- ["malformed", ""] do
+      Redix.command!(c.conn, ["HSET", "source-worker", "beat", beat])
+      assert Switchover.status(c.opts) == {:error, :redis_unreadable}
+    end
+
+    Redix.command!(c.conn, ["HDEL", "source-worker", "beat"])
+    assert Switchover.status(c.opts) == {:error, :redis_unreadable}
+    Redix.command!(c.conn, ["DEL", "source-worker"])
+    assert {:ok, %{processes: 0}} = Switchover.status(c.opts)
   end
 
   @tag :switchover_unknown
@@ -281,6 +413,28 @@ defmodule Dawarich.Standalone.SwitchoverTest do
   defmodule Unreadable do
     def config, do: []
     def query!(_, _, _), do: raise("private-connection-options-must-not-leak")
+  end
+
+  defp worker_ready(port, output) do
+    if output =~ "probe_fetcher" do
+      :ok
+    else
+      receive do
+        {^port, {:data, data}} -> worker_ready(port, output <> data)
+        {^port, {:exit_status, status}} -> flunk("Sidekiq exited before readiness: #{status}")
+      after
+        5_000 -> flunk("Sidekiq did not publish its fetcher heartbeat readiness signal")
+      end
+    end
+  end
+
+  defp worker_stopped(port) do
+    receive do
+      {^port, {:data, _}} -> worker_stopped(port)
+      {^port, {:exit_status, status}} -> assert status == 0
+    after
+      5_000 -> flunk("owned Sidekiq worker did not exit gracefully")
+    end
   end
 
   defp snapshot(conn) do
