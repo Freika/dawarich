@@ -42,7 +42,7 @@ defmodule Dawarich.Release.CloudJobs do
     case repo.transaction(fn ->
            Native.fence!(repo, lease)
 
-           if Processed.done?(repo, identity(record)) do
+           if Processed.done?(repo, completion(record)) do
              :ok
            else
              case tagged(repo, record) do
@@ -52,7 +52,7 @@ defmodule Dawarich.Release.CloudJobs do
              end
 
              if record_complete?(repo, record),
-               do: Processed.mark!(repo, identity(record), "cloud.release_job")
+               do: Processed.mark!(repo, completion(record), "cloud.release_job")
            end
 
            Native.fence!(repo, lease)
@@ -119,7 +119,14 @@ defmodule Dawarich.Release.CloudJobs do
     end
   end
 
-  defp normalized(args), do: Map.drop(args, ~w(event_id operation_id source_job_id))
+  defp normalized(args) when is_map(args) do
+    args
+    |> Map.drop(~w(event_id operation_id source_job_id))
+    |> Map.new(fn {key, value} -> {key, normalized(value)} end)
+  end
+
+  defp normalized(args) when is_list(args), do: Enum.map(args, &normalized/1)
+  defp normalized(args), do: args
 
   defp tagged(repo, record),
     do:
@@ -130,13 +137,18 @@ defmodule Dawarich.Release.CloudJobs do
       ).rows
 
   defp record_complete?(repo, record) do
-    Processed.done?(repo, identity(record)) or
+    Processed.done?(repo, completion(record)) or
       case tagged(repo, record) do
         [["completed", args]] ->
-          if id = args["operation_id"] do
-            operation_complete?(repo, id)
-          else
-            true
+          cond do
+            record.class == "DataMigrations::BackfillAchievementsJob" ->
+              Dawarich.Release.CloudAchievementWork.complete?(repo, args["event_id"])
+
+            id = args["operation_id"] ->
+              operation_complete?(repo, id)
+
+            true ->
+              true
           end
 
         _ ->
@@ -159,6 +171,8 @@ defmodule Dawarich.Release.CloudJobs do
         [],
         log: false
       ).num_rows == 0
+
+  defp completion(record), do: Dawarich.AfterCommit.identity(identity(record), "completed")
 
   defp identity(record),
     do: Dawarich.AfterCommit.identity(record.id, "release_job:#{record.version}:#{record.class}")

@@ -32,11 +32,12 @@ defmodule Dawarich.AfterCommit do
   defp publish_intent(repo, command, payload, opts) do
     event = Keyword.fetch!(opts, :event_id)
     aggregate = Keyword.get(opts, :aggregate_id, payload["user_id"])
-    repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [event], log: false)
 
     if aggregate do
       repo.query!("SELECT id FROM public.users WHERE id=$1 FOR UPDATE", [aggregate], log: false)
     end
+
+    repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [event], log: false)
 
     unless Dawarich.Jobs.Processed.done?(repo, event) do
       repo.query!(

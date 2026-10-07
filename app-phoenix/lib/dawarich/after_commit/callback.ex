@@ -6,21 +6,15 @@ defmodule Dawarich.AfterCommit.Callback do
     if repo.in_transaction?() do
       {:error, :transaction_required}
     else
-      repo.checkout(fn ->
-        repo.query!("SELECT pg_advisory_lock(hashtextextended($1,0))", [event_id], log: false)
-
-        try do
-          if Processed.done?(repo, event_id) do
-            :ok
-          else
-            case effect.() do
-              :ok -> Processed.mark!(repo, event_id, handler)
-              {:error, _} = error -> error
-              _ -> {:error, :callback_failed}
-            end
+      Dawarich.Cloud.SessionConnection.with_callback_lock(repo, event_id, fn ->
+        if Processed.done?(repo, event_id) do
+          :ok
+        else
+          case effect.() do
+            :ok -> Processed.mark!(repo, event_id, handler)
+            {:error, _} = error -> error
+            _ -> {:error, :callback_failed}
           end
-        after
-          repo.query!("SELECT pg_advisory_unlock(hashtextextended($1,0))", [event_id], log: false)
         end
       end)
     end
