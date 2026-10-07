@@ -1,6 +1,6 @@
 defmodule Dawarich.Transportation.AfterCommit do
   @moduledoc false
-  alias Dawarich.Transportation.RecalculationStatus
+  alias Dawarich.Transportation.{RecalculationFence, RecalculationStatus}
 
   def start(repo, payload, intent) do
     user = payload["user_id"]
@@ -31,6 +31,7 @@ defmodule Dawarich.Transportation.AfterCommit do
         end)
       end)
 
+      RecalculationFence.start(repo, user, payload["event_id"], length(ids))
       :ok
     end)
   rescue
@@ -46,6 +47,8 @@ defmodule Dawarich.Transportation.AfterCommit do
     status = RecalculationStatus.data(user)
 
     Dawarich.AfterCommit.once(repo, intent, fn ->
+      RecalculationFence.progress(repo, user, payload["event_id"])
+
       :ok =
         Dawarich.Cable.broadcast_to(
           "tracks",

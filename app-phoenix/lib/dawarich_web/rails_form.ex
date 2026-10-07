@@ -27,7 +27,7 @@ defmodule DawarichWeb.RailsForm do
          :ok <- headers(conn),
          :ok <- method(conn, opts),
          :ok <- session_writers(conn),
-         :ok <- signed_in(conn),
+         :ok <- signed_in(conn, opts),
          :ok <- origin(get_req_header(conn, "origin"), conn),
          do: token(conn)
   end
@@ -73,7 +73,11 @@ defmodule DawarichWeb.RailsForm do
        else: :ok
   end
 
-  defp signed_in(conn) do
+  defp signed_in(%{assigns: %{current_user: nil}}, opts) do
+    if Keyword.get(opts, :anonymous, false), do: :ok, else: {:replay, "not signed in by session"}
+  end
+
+  defp signed_in(conn, _opts) do
     with %Accounts.User{id: id} <- conn.assigns.current_user,
          %Accounts.User{id: ^id} <-
            Accounts.from_session(conn.assigns.rails_session, DateTime.utc_now()) do
@@ -99,8 +103,25 @@ defmodule DawarichWeb.RailsForm do
       conn.assigns.api_params["authenticity_token"] | get_req_header(conn, "x-csrf-token")
     ]
 
-    if Enum.any?(tokens, &(is_binary(&1) and RailsCsrf.valid?(session, &1))),
+    if Enum.any?(tokens, &(is_binary(&1) and token_valid?(conn, session, &1))),
       do: :ok,
       else: {:replay, "authenticity token"}
+  end
+
+  def native_recalculation?(conn),
+    do:
+      Dawarich.Standalone.enabled?() and conn.method == "POST" and
+        conn.path_info == ["tracks", "recalculation"]
+
+  defp token_valid?(conn, session, token) do
+    if native_recalculation?(conn),
+      do:
+        RailsCsrf.valid?(
+          session,
+          token,
+          conn.request_path,
+          conn.assigns[:map_write_method] || conn.method
+        ),
+      else: RailsCsrf.valid?(session, token)
   end
 end
