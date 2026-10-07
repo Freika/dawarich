@@ -73,8 +73,10 @@ Production lifecycle/Cloud refusal files are outside this task and unchanged.
 GET `/users/sign_in` with a live Warden user now answers Rails/Devise's 302
 redirect and `alert: You are already signed in.` Pending-payment users first
 redirect to `/trial/resume` and retain `user_return_to`. Other users consume a stored local `user_return_to`, otherwise
-redirect to the absolute root URL. Live flash messages survive alongside the
-new alert; messages listed in the prior flash discard set expire. The Warden
+redirect to the absolute root URL. Incoming flash messages are consumed by
+this redirect request. Rails keeps them in its current-request FlashHash, but
+serializes only the newly assigned alert into the outgoing session. The redirect
+target displays that alert once; the following request has no flash. The Warden
 identity and CSRF token remain in the session, and no Trackable update occurs.
 The same behavior applies to ordinary query-bearing browser GETs. Locked,
 invalid, unsupported negotiation and POST envelopes retain their existing
@@ -98,8 +100,11 @@ and GREEN after restoration. For the test-quality finding, RED reproduces the
 prior admin-token/non-admin-session mismatch; M-ROLE removes the production
 role check and fails the corrected regression. M-CONFLICT restores the early
 untrusted-peer shortcut; M-PAYMENT removes pending-payment precedence;
-M-FLASH replaces existing messages. A fresh Rails oracle confirms conflict
-refusal, trial-resume precedence, stored-location consumption and live notices.
+The earlier M-FLASH test checked preservation of incoming messages in the
+outgoing cookie, an incorrect parity expectation superseded by the re-review.
+The earlier Rails oracle confirmed current-request live notices only; it did
+not establish their outgoing persistence. Conflict refusal, trial-resume
+precedence and stored-location consumption remain verified.
 Review follow-up targeted gate: **49 tests / zero failures**. The full gate
 also exposed an existing Trek test comparing Oban’s independent attempt and
 reschedule clocks. It now asserts the worker’s exact 60-second snooze result
@@ -115,6 +120,31 @@ Forced compilation with warnings as errors, whole-tree formatting and feature
 commit Gitleaks pass. Fresh-worktree JS dependencies were installed after the
 first full gate reported only missing Tailwind and poster-renderer modules;
 the affected four tests then passed before the successful full gate.
+
+## Flash lifetime re-review correction
+
+S1 is covered by `signed in redirect consumes incoming flash and shows the new
+alert for one request`. It reproduces the incoming notice with an empty discard
+set, also covers discarded messages, old-alert replacement, both runtime modes,
+active and pending-payment users, and query-bearing GETs. It follows the actual
+response cookie through two page requests using RailsAuth, LayoutAssigns and the
+shared flash component. The redirected page shows only the new alert; the next
+page shows none. The committed cookie, stored location, Warden/CSRF state and
+unchanged Trackable state are asserted independently.
+
+The test was RED with the old notice on the redirected page, GREEN after the
+serialization correction, RED under M-FLASH-CARRYOVER (restore the old merge of
+incoming messages into outgoing flash), then GREEN after restoration. The
+outgoing-session behavior follows ActionPack 8.1.3.1
+`action_dispatch/middleware/flash.rb:71–76,122–148,163–167`; Devise sets alert
+without calling flash.keep. A transactional Rails integration oracle confirms
+current-request notice retention, absent persisted notice, alert present on the
+redirect target, and absent alert on the following request for both account
+statuses. Targeted checks pass with **51 tests / zero failures**; forced
+warnings-as-errors compilation and whole-tree formatting pass. No security
+admission or lifecycle guard changed. Final prescribed full ExUnit seed 404:
+**9,549 tests / zero failures**, all three partitions exit 0 (2,687 / 3,314 /
+3,548 tests).
 
 Shared decision counterpart:
 [Dawarich — ADR-20261007-proxy-admission](https://app.affine.pro/workspace/c309ded7-e11e-4e72-ba6f-aec8a31a740b/onP9gbm-WRiqvxxYkkI8p).

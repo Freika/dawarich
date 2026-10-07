@@ -40,13 +40,11 @@ defmodule DawarichWeb.AuthResponse do
     message = AuthMessages.notice(conn, "devise.failure.already_authenticated")
 
     {target, session} = already_authenticated_target(conn.assigns.current_user, session)
-    flash = Map.get(session, "flash") || %{}
-    flashes = Map.get(flash, "flashes", %{}) |> Map.drop(List.wrap(flash["discard"]))
 
     updated =
       Map.put(session, "flash", %{
         "discard" => [],
-        "flashes" => Map.put(flashes, "alert", message)
+        "flashes" => %{"alert" => message}
       })
 
     conn

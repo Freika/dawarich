@@ -1,6 +1,7 @@
 defmodule Dawarich.Auth.AuthHandlerTest do
   use ExUnit.Case, async: false
   import Plug.Conn
+  require Phoenix.LiveViewTest
 
   alias Dawarich.{Accounts, RailsCookies, RailsSecret, Repo}
   alias Dawarich.Auth.RememberCookie
@@ -470,32 +471,78 @@ defmodule Dawarich.Auth.AuthHandlerTest do
   end
 
   @tag :review_flash
-  test "signed in GET sign in preserves live flash and expires discarded messages", ctx do
-    for native <- [false, true],
-        query <- ["", "?locale=en"],
-        discard <- [[], ["expired"], ["notice", "expired"]] do
-      flashes = %{
-        "notice" => "Existing notice",
-        "expired" => "Old message",
-        "alert" => "Old alert"
-      }
+  test "signed in redirect consumes incoming flash and shows the new alert for one request",
+       ctx do
+    for status <- [1, 3] do
+      Repo.query!("UPDATE users SET status=$1 WHERE id=$2", [status, ctx.id], log: false)
+      before = state(ctx.id)
 
-      session = Map.put(signed_in(ctx.id), "flash", %{"discard" => discard, "flashes" => flashes})
-      response = request(:get, "/users/sign_in" <> query, [session_cookie(session)], nil, [])
+      for native <- [false, true],
+          query <- ["", "?locale=en"],
+          discard <- [[], ["expired"], ["notice", "expired"]] do
+        session =
+          signed_in(ctx.id)
+          |> Map.put("user_return_to", "/stats")
+          |> Map.put("flash", %{
+            "discard" => discard,
+            "flashes" => %{
+              "notice" => "Existing notice",
+              "expired" => "Old message",
+              "alert" => "Old alert"
+            }
+          })
 
-      response =
-        AuthHandler.call(response, enabled: true, native: native, registration_enabled: false)
+        response =
+          request(:get, "/users/sign_in" <> query, [session_cookie(session)], nil, [])
+          |> AuthHandler.call(enabled: true, native: native, registration_enabled: false)
 
-      assert response.status == 302
+        target = if status == 3, do: "/trial/resume", else: "/stats"
+        assert response.status == 302
+        assert get_resp_header(response, "location") == [@base <> target]
 
-      assert response_session(response)["flash"] == %{
-               "discard" => [],
-               "flashes" =>
-                 flashes |> Map.drop(discard) |> Map.put("alert", "You are already signed in.")
-             }
+        redirected = flash_page(target, response)
+        assert redirected.assigns.flash_messages == [{"alert", "You are already signed in."}]
+        assert redirected.resp_body =~ "You are already signed in."
+        refute redirected.resp_body =~ "Existing notice"
+        refute Map.has_key?(response_session(redirected), "flash")
 
-      assert response_session(response)["_csrf_token"] == session["_csrf_token"]
+        following = flash_page(target, redirected)
+        assert following.assigns.flash_messages == []
+        refute following.resp_body =~ "You are already signed in."
+        updated = response_session(redirected)
+        assert updated["_csrf_token"] == session["_csrf_token"]
+        assert updated["warden.user.user.key"] == session["warden.user.user.key"]
+        assert updated["user_return_to"] == if(status == 3, do: "/stats", else: nil)
+
+        assert response_session(response)["flash"] == %{
+                 "discard" => [],
+                 "flashes" => %{"alert" => "You are already signed in."}
+               }
+      end
+
+      assert state(ctx.id) == before
     end
+  end
+
+  defp flash_page(path, previous) do
+    cookie = {"_dawarich_session", previous.resp_cookies["_dawarich_session"].value}
+
+    conn =
+      request(:get, path, [cookie], nil, [])
+      |> RailsAuth.call([])
+      |> fetch_query_params()
+      |> DawarichWeb.LayoutAssigns.call([])
+
+    body =
+      Enum.map_join(conn.assigns.flash_messages, fn {type, message} ->
+        Phoenix.LiveViewTest.render_component(&DawarichWeb.Chrome.flash_message/1,
+          type: type,
+          message: message,
+          locale: "en"
+        )
+      end)
+
+    send_resp(conn, 200, body)
   end
 
   defp call(method, path, cookies, body, headers \\ []) do
