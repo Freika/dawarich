@@ -46,14 +46,13 @@ RUN mkdir -p /out/public/api-docs \
 COPY app/assets app/assets
 COPY lib/assets lib/assets
 COPY app/javascript app/javascript
-COPY app/helpers app/helpers
-COPY app/views app/views
 COPY vendor/assets vendor/assets
 COPY vendor/javascript vendor/javascript
 COPY config/locales config/locales
 COPY config/achievements config/achievements
 COPY config/achievements.yml config/importmap.rb config/tailwind.config.js config/
 COPY app-phoenix/lib app-phoenix/lib
+COPY app-phoenix/priv/tailwind/retained_classes.html app-phoenix/priv/tailwind/retained_classes.html
 RUN BROWSERSLIST_IGNORE_OLD_DATA=1 node_modules/.bin/tailwindcss \
       -i app/assets/stylesheets/application.tailwind.css -o app/assets/builds/tailwind.css \
       -c config/tailwind.config.js --minify \
