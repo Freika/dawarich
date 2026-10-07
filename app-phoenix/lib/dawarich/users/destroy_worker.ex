@@ -43,7 +43,7 @@ defmodule Dawarich.Users.DestroyWorker do
 
   def run(repo, args) do
     case Processed.once(repo, args["event_id"], "users.destroy", fn ->
-           DestroyEffects.call(repo, args["user_id"])
+           DestroyEffects.call(repo, args["user_id"], args["event_id"])
          end) do
       {:error, {:cancel, reason}} ->
         {:cancel, reason}
