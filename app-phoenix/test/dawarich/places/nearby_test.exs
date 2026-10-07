@@ -5,10 +5,10 @@ defmodule Dawarich.Places.NearbyTest.Http do
   def respond(features), do: Agent.update(__MODULE__, fn {_, calls} -> {features, calls} end)
   def calls, do: Agent.get(__MODULE__, fn {_, calls} -> Enum.reverse(calls) end)
 
-  def request(_url, _headers) do
+  def request(url, _headers) do
     features =
       Agent.get_and_update(__MODULE__, fn {features, calls} ->
-        {features, {features, [System.monotonic_time(:microsecond) | calls]}}
+        {features, {features, [url | calls]}}
       end)
 
     {:ok, 200, Jason.encode!(%{"type" => "FeatureCollection", "features" => features})}
@@ -58,13 +58,16 @@ defmodule Dawarich.Places.NearbyTest do
         paced = config("paced-nearby.example.test", 20)
         assert [_] = Nearby.fetch(nil, 51.0, 12.0, 0.5, 5, config: paced)
 
+        bucket = RateLimiter.key(paced)
+        next_slot = Map.fetch!(:sys.get_state(RateLimiter), bucket)
+
         tasks =
           for lat <- [52.0, 53.0, 54.0],
               do: Task.async(fn -> Nearby.fetch(nil, lat, 12.0, 0.5, 5, config: paced) end)
 
         assert Enum.all?(Enum.map(tasks, &Task.await/1), &(length(&1) == 1))
-        [_ | starts] = Http.calls()
-        assert Enum.all?(Enum.zip(starts, tl(starts)), fn {a, b} -> b - a >= 49_000 end)
+        assert length(Http.calls()) == 5
+        assert Map.fetch!(:sys.get_state(RateLimiter), bucket) >= next_slot + 150_000
       end)
 
     assert log =~ "event=geocoding.rate_limiter_unavailable"
@@ -72,6 +75,7 @@ defmodule Dawarich.Places.NearbyTest do
     refute log =~ config.api_key
 
     start_supervised!(hd(Redis.child_specs()))
+    config = config("healthy-nearby.example.test", 0.25)
     key = "geocoding:rate_limit:" <> RateLimiter.key(config)
     assert {:ok, _} = Redis.command(["DEL", key])
     on_exit(fn -> Redis.command(["DEL", key]) end)
