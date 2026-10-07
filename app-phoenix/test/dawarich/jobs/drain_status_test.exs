@@ -225,6 +225,7 @@ defmodule Dawarich.Jobs.DrainStatusTest do
     assert "heartbeat_invalid" in Drain.status(ScratchRepo).binary_reasons
   end
 
+  @tag h04_case: "H04b"
   test "rollback drains pending and accepted native work after pinning without a Sidekiq transfer" do
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, Oban)
     start_oban(Oban)
@@ -322,7 +323,17 @@ defmodule Dawarich.Jobs.DrainStatusTest do
                [segment]
              ) == [[1_577_836_800, 1_577_836_860]]
 
-      assert Drain.status(ScratchRepo).binary_rollback == "OBSERVED_EMPTY"
+      status = Drain.status(ScratchRepo)
+      assert status.binary_rollback == "OBSERVED_EMPTY"
+      assert status.scope == "native_sql"
+      assert status.g49 == "BLOCKED"
+
+      assert status.source == %{
+               status: "NOT_OBSERVED",
+               certainty: "UNKNOWN",
+               reasons: ["source_inspection_required"]
+             }
+
       assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
 
       source_after =
