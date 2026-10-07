@@ -39,7 +39,18 @@ gated import effect reproduce the causes under `ELIXIR_ERL_OPTIONS="+S 1:1"`.
 Named mutations, repeated green runs and integration-gate results are recorded in
 the controller's task report. Host-wide stress must never be used on the shared
 machine.
-No retries, skips, quarantine or numeric timeout increases are part of these fixes.
+No retries, skips, quarantine or numeric timeout increases are part of the
+export, import and visit sweep fixes.
+
+The Rails schedule-cutover regression compiles the test-mode Phoenix application
+before starting its interactive peer, then runs the peer with `--no-compile`.
+Compilation failure fails the example before the peer starts. The peer must send
+its explicit `A12D3:ready` message after test database setup within a 120-second
+startup bound. Subsequent ownership and scheduling protocol replies retain their
+five-second bounds. A five-second startup wait includes VM boot, test-file
+compilation and scratch database preparation, even when application compilation
+has already finished. The source/native slot, lock, owner-flip, rollback and
+single-fanout assertions remain intact.
 
 The timezone execution plan is a function scan, with the name filter applied
 after enumeration; it is not a lookup into an indexed user table. PostgreSQL

@@ -23,7 +23,11 @@ RSpec.describe 'Phoenix schedule cutover' do
       'DATABASE_HOST' => '127.0.0.1', 'PHOENIX_TEST_DATABASE' => phoenix,
       'PHOENIX_TEST_REDIS_URL' => ENV.fetch('PHOENIX_TEST_REDIS_URL'), 'MIX_ENV' => 'test'
     }
-    command = %w[mix test test/dawarich/jobs/schedule_cutover_test.exs
+    compile_output, compile_errors, compile_status = Open3.capture3(
+      peer_env, 'mix', 'compile', chdir: Rails.root.join('app-phoenix').to_s
+    )
+    expect(compile_status.success?).to be(true), compile_output + compile_errors
+    command = %w[mix test --no-compile test/dawarich/jobs/schedule_cutover_test.exs
                  --include rails_parity --only rails_parity --seed 202]
     stdin, stdout, stderr, peer = Open3.popen3(peer_env, *command, chdir: Rails.root.join('app-phoenix').to_s)
     reader = Thread.new do
@@ -34,7 +38,7 @@ RSpec.describe 'Phoenix schedule cutover' do
       messages << { 'op' => 'eof' }
     end
     error_reader = Thread.new { errors << stderr.read }
-    ready = receive_peer(messages)
+    ready = receive_peer(messages, timeout: 120)
     expect(ready.fetch('op')).to eq('ready'), output + errors
     expect(ready.fetch('database')).to eq("#{phoenix}_scratch")
     ActiveRecord::Base.establish_connection(original.merge(database: ready.fetch('database')))
@@ -136,7 +140,7 @@ RSpec.describe 'Phoenix schedule cutover' do
     job.perform_now
   end
 
-  def receive_peer(messages) = Timeout.timeout(5) { messages.pop }
+  def receive_peer(messages, timeout: 5) = Timeout.timeout(timeout) { messages.pop }
 
   def send_peer(input, message)
     input.puts(JSON.generate(message))
