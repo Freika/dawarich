@@ -8,6 +8,7 @@ durable handoff; it is not evidence that the import itself has already completed
 | Mode and input | Disposition |
 | --- | --- |
 | Supported normal import or GPX discovered by a normal job, either mode | Current normal Oban job processes it. Failure status, localized notification and terminal attachment receipt commit in one fenced transaction. Retry acknowledges the receipt without repeating failure effects. |
+| Successful normal or dedicated GPX import with zero points, either mode | Final no-points notification, completed status and terminal attachment receipt commit in one fenced transaction. An interruption rolls them back together; a successor commits one notice, and terminal replay only acknowledges the receipt. |
 | Normal job edited to GPX before admission, standalone | The current normal job admits the supported GPX adapter without requiring an older receipt. |
 | Native legacy envelope or changed-source continuation, coexistence | Publish a durable Rails resume with `native_fallback=true` where the current native worker cannot process the source. Lane ownership stays fixed; Rails resumes the accepted import instead of forwarding it back into the rejected native parser. |
 | Native legacy or unsupported continuation, standalone | Native processing or transactional failed status plus localized failure notification and processed acknowledgement. A finite error retry chain cannot abandon an accepted row. |
@@ -30,6 +31,9 @@ partial-build regressions execute the actual child workers.
 Regression counterparts are `standalone_zip_test.exs`,
 `interrupted_failure_test.exs`, `accepted_disposition_test.exs`, and
 `partial_zip_disposition_test.exs`, and `legacy_zip_child_test.exs` under `app-phoenix/test/dawarich/imports/`.
+`interrupted_empty_success_test.exs` executes empty GPX and KML through the real
+normal worker in each mode. A notification trigger advances only the executing
+job's attempt; retry and terminal replay must preserve one no-points notice.
 A removed legacy archive child remains pending while its Rails handoff is pending;
 only its completed handoff authorizes the outer native parent to settle. A failed
 standalone legacy child is terminal status 3 and produces one failure notice.

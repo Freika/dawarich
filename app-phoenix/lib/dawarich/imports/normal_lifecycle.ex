@@ -109,7 +109,7 @@ defmodule Dawarich.Imports.NormalLifecycle do
               do: Kmz.with_kml(path, driver, fn leaf -> adapter.call(leaf, import, driver) end),
               else: adapter.call(path, import, driver)
 
-            Postprocessing.call(lease, import, context)
+            Postprocessing.complete!(lease, import, context)
             :ok
 
           :error ->

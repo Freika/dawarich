@@ -611,3 +611,18 @@ on/off` regressions exercise the notification/receipt interruption window with
 real retries. Rails source remains `app/services/imports/create.rb:47`;
 Phoenix counterpart is `normal_lifecycle.ex` (`failure/5`). The deterministic
 interruption is native; no Rails broker-ack crash reproduction is claimed.
+
+### Empty successful import retries repeat no-points notifications
+
+Rails creates a no-points notice before its ensure block records completion.
+An interrupted attempt can leave that notice committed and repeat it on retry.
+Native normal and dedicated GPX postprocessing now commit the final notice,
+completed status and terminal attachment receipt in one fenced transaction.
+Rails production remains unchanged.
+
+- Rails: `app/services/imports/create.rb:38`, `:52`, `:72`, `:153`.
+- Phoenix: `app-phoenix/lib/dawarich/imports/postprocessing.ex` (`complete!/3`, `settle/3`); `normal_lifecycle.ex` and `gpx_lifecycle.ex` (`run_import`).
+- Tests: `empty empty.gpx notification exactly once across interrupted success in on/off`; `empty empty.kml notification exactly once across interrupted success in on/off`.
+- Ledger: ED-FIX-ACCEPTED-IMPORT-DISPOSITION extended; no new deferred row.
+- Limits: Four real native worker interruption/retry probes; analogous Rails ordering is source-backed, without an executed Rails crash/retry experiment.
+- CHANGELOG-ready: Emit one no-points notice per successful import across interrupted processing and retry.

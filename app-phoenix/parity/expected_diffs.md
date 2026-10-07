@@ -607,10 +607,13 @@ Rails `Imports::ZipExtractor` removes the parent after enqueueing without waitin
 a later build error skips the enqueue of earlier saved children. Native normal-GPX
 failure settlement atomically groups failed status, notification and terminal
 receipt, extending FRB-008's exactly-once failure guarantee to discovered GPX.
+Successful empty GPX/KML imports also commit the no-points notification with
+completed status and the terminal receipt; interrupted retry emits one notice.
+Rails publishes that notice before its ensure block records completion.
 Coexistence keeps executable Rails legacy/source-change fallback under fixed
 native lane ownership; standalone retains a terminal native disposition and never
 publishes a Rails resume. See `docs/phoenix/accepted-import-disposition.md` and the
-four corresponding real-worker regression modules. This does not close H03/H04
+corresponding real-worker regression modules. This does not close H03/H04
 source debt or weaken Cloud lifecycle refusal.
 
 ## MAIL review authorization and accepted-job receipts
