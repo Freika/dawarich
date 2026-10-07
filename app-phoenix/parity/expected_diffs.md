@@ -582,19 +582,24 @@ reference protection, physical terminal deletion, retry and literal Rails JSON
 bytes. R19k06 adds the missing unclaimable visits.user_redetect worker entry and
 proves real release/dispatch/terminal/replay effects. Its source-owner census
 retains accepted `:a12d2` residue alongside the native key, without transfer or
-retirement. R09gpxownership and
-R09normalownership prove native-owned legacy handover refuses without source
-publication or false acknowledgement, while the Rails-owned resume receipt and
-payload stay exact. Every new case has actual RED/GREEN/named mutation evidence.
+retirement.
 
-H04's local ED disposition is complete: reverse timing differences such as
-ED-371/ED-482 apply to retained Rails-owned coexistence branches, not native-owned
-publication. Their source/live activation conditions are retained. Native export
-purge uses the already documented ED-A12F3B-E13-F1/F2 safety behavior; this task
-adds no new storage policy or Rails defect fix. Unsupported native import refusal
-retains durable work and is not source-drained evidence. No new ED number is
-reserved and no unrelated ownership, payload retirement or deployment row is
-marked closed. All 78 closure kinds remain; final source disposition stays with
+The accepted-import repair supersedes the historical R09 refusal boundary.
+`Imports.AcceptedDisposition.call/4` publishes `imports.resume` and
+`imports.normal_resume` under native ownership in coexistence, retaining an
+executable Rails fallback for legacy/source-change inputs. Standalone records a
+terminal native failure and localized notice. All 14 merged disposition cases
+pass in both modes; the unchanged `R09gpxownership` and `R09normalownership`
+zero-reverse assertions fail. The seed-404 targeted batch on `144827a3f` has
+16 tests, 2 failures. Evidence: `fix4-hot-h03-closure.report.md`.
+
+H03 all-R01–R20 native producer acceptance and H04 final local ED disposition
+remain **BLOCKED** on R09k03/R09k04. ED-371/ED-482 retain their source/live
+activation conditions; no zero-reverse closure is inferred from the executable
+fallback recorded in ED-FIX-ACCEPTED-IMPORT-DISPOSITION. Native export purge
+uses the documented ED-A12F3B-E13-F1/F2 safety behavior. No new ED number is
+reserved, and no ownership, payload retirement or deployment row is marked
+closed. All 78 closure kinds remain; final source disposition stays with
 J1/J2/A12f-3c, and Cloud lifecycle stays refused pending L1 in every mode.
 
 Existing operator D01a and native trip/release DRAIN tests are reused for H04,

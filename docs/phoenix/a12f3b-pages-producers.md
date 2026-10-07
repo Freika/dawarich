@@ -130,27 +130,30 @@ Rails-owned hand-back. The source-owner census names this native key while
 retaining the `:a12d2` accepted-source residue; no serialized job is transferred
 or retired. Registration does not activate ownership.
 
-R09k03/R09k04 legacy handover also inserted reverse work while their GPX/normal
-parent was Oban-owned. Both handovers now return the existing unsupported-native
-refusal under native ownership in either mode, without acknowledging or removing
-the accepted request. Rails-owned coexistence retains the original resume bytes,
-native-fallback receipt and replay settlement. Named selectors
-`R09gpxownership` and `R09normalownership` prove this boundary; the existing R09
-source assertions explicitly pin their parent Sidekiq.
+R09k03/R09k04 remain a native producer closure blocker after the accepted-import
+repair merged at `e8539adbe`. `Imports.AcceptedDisposition.call/4` publishes
+`imports.resume` or `imports.normal_resume` in coexistence even when every
+Registry key is Oban-owned. Standalone instead records failed status and a
+localized notification. This preserves an executor for previously stranded
+legacy/source-change imports, but coexistence still requires the Rails poller.
+See [accepted-import-disposition.md](accepted-import-disposition.md).
 
-All five new cases failed on actual pre-fix reverse rows, passed the repair,
-failed their named production mutation and passed restored. A supplemental R19
-mutation separately verifies standalone handling. The complete pre-fix live
-inventory has 85 insert sites; all 78 closure kinds exactly match plan-D R01–R20.
-The instrumented all-kind probe checks actual Registry owners and both modes;
-a direct serializer-oracle insertion is identified separately from production
-publishers. The final report contains probe results, restored terminal suites,
-seed/head, mutation and package-gate evidence: `fix2-hot-h03-closure.report.md`.
+The merged `AcceptedDispositionTest` passes all 14 cases: unsafe and duplicate
+ZIP envelopes, bounded TCX/CSV/REC inputs, and GPX/normal source changes, each in
+both modes, through actual Oban execution and replay. The unchanged
+`R09gpxownership` and `R09normalownership` regressions fail their zero-reverse
+assertions in coexistence. `AcceptedDisposition.call/4` inserts at line 22;
+GPX and normal handover delegate at lines 161 and 192 respectively. The
+seed-404 targeted batch reports 16 tests, 2 failures on merge head `144827a3f`.
+Exact evidence is in `fix4-hot-h03-closure.report.md`.
 
-H03 native producer boundary and H04 local ED disposition are complete only
-with these acceptance results. The reverse inventory and accepted source debt
-remain intact. This closes no source-drain, live ownership, image, provisioning
-or G49 gate. Every-mode Cloud lifecycle refusal remains unchanged pending L1.
+H03 all-R01–R20 terminal/no-native-reverse acceptance and H04 final local ED
+closure remain **BLOCKED** on these two publishers. Historical fix2 evidence
+established the old refusal boundary; it does not prove executable disposition
+or closure on this head. Per the controller stop rule, no further producer audit
+or full seed-404 gate was run after the native-owned publications were confirmed.
+No source-drain, live ownership, image, provisioning or G49 gate is closed.
+Every-mode Cloud lifecycle refusal remains unchanged pending L1.
 
 `Jobs.Drain.status/1` now explicitly identifies `scope: native_sql`, source
 status `NOT_OBSERVED`, source certainty `UNKNOWN`, and

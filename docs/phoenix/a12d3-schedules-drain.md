@@ -380,18 +380,23 @@ The same pre-fix all-kind probe found R19k06's missing
 `command:visits.user_redetect` Registry entry and R09k03/R09k04's native-owned
 legacy handover. The existing user-redetect worker is now registered unclaimable;
 its real fleet child completes natively. The source-owner census names the
-native key and retains the accepted `:a12d2` source residue. GPX/normal handover refuses unsupported
-native work without source publication or false settlement while its parent is
-native; Rails-owned resume retains the exact payload and receipt. Named
-`R19k06`, `R09gpxownership` and `R09normalownership` tests and independent
-mutations prove these boundaries.
+native key and retains the accepted `:a12d2` source residue.
 
-H03/H04 local producer and ED disposition evidence is recorded in
-`fix2-hot-h03-closure.report.md` and
-[a12f3b-pages-producers.md](a12f3b-pages-producers.md). No durable closure kind,
-source disposition, debt or release gate is removed. Native SQL still cannot
-certify source drain, and G49 remains blocked pending external observations,
-fences, quiescence and lifecycle acceptance.
+The accepted-import repair supersedes the old native refusal: GPX/normal
+handover delegates to `Imports.AcceptedDisposition.call/4`. In coexistence it
+publishes `imports.resume`/`imports.normal_resume` despite Oban parent ownership;
+in standalone it settles unsupported work as failed with a localized notice.
+The merged real-worker disposition tests pass all 14 cases in both modes, but
+the unchanged `R09gpxownership`/`R09normalownership` zero-reverse tests fail.
+H03 all-producer acceptance and H04 final ED closure remain **BLOCKED**. The
+controller stop condition precludes further acceptance gates on this head.
+
+Current evidence is recorded in `fix4-hot-h03-closure.report.md` and
+[a12f3b-pages-producers.md](a12f3b-pages-producers.md). Historical fix2 closure
+claims are superseded. No durable closure kind, source disposition, debt or
+release gate is removed. Native SQL still cannot certify source drain, and G49
+remains blocked pending external observations, fences, quiescence and lifecycle
+acceptance. Every-mode Cloud lifecycle refusal is unchanged.
 
 H03b retains unreadable-database and all-key pin safety. H04 reuses the existing
 Cloud operator HTTP/connected-auth test and the actual native trip/release
