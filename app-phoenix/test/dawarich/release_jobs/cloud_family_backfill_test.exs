@@ -186,7 +186,7 @@ defmodule Dawarich.ReleaseJobs.CloudFamilyBackfillTest do
       assert_raise Ecto.ConstraintError, fn -> run(args) end
 
       assert rows("SELECT cursor,status FROM phoenix.release_operations") == [
-               [args["cursor"], "running"]
+               [args["cursor"], "failed"]
              ]
 
       assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]

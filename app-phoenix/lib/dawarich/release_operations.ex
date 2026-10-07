@@ -20,6 +20,10 @@ defmodule Dawarich.ReleaseOperations do
   UPDATE phoenix.release_operations SET status = 'failed', error = $3, updated_at = now()
   WHERE id = $1 AND status = 'running' AND cursor = $2
   """
+  @retry """
+  UPDATE phoenix.release_operations SET status = 'running', error = NULL, updated_at = now()
+  WHERE id = $1 AND status = 'failed' AND cursor = $2
+  """
   @resume """
   UPDATE phoenix.release_operations SET status = 'running', error = NULL, updated_at = now()
   WHERE id = $1 AND (status = 'failed' OR status = 'running' AND NOT EXISTS (
@@ -36,6 +40,8 @@ defmodule Dawarich.ReleaseOperations do
          id when is_binary(id) <- args["operation_id"] || args["event_id"] do
       op = %{id: id, cursor: cursor, worker: worker, oban: oban, opts: opts}
       repo.query!(@start, [dump(id), worker.command_type(), cursor], log: false)
+
+      if opts[:fail_on_error], do: repo.query!(@retry, [dump(id), cursor], log: false)
 
       case repo.query!(@load, [dump(id)], log: false).rows do
         [[^cursor, "running"]] -> op |> step(repo, job) |> settle()
@@ -85,7 +91,12 @@ defmodule Dawarich.ReleaseOperations do
     op.worker.step(repo, op)
   rescue
     exception ->
-      if job.attempt >= job.max_attempts, do: fail!(repo, op, Exception.message(exception))
+      cond do
+        op.opts[:fail_on_error] -> fail!(repo, op, inspect(exception.__struct__))
+        job.attempt >= job.max_attempts -> fail!(repo, op, Exception.message(exception))
+        true -> :ok
+      end
+
       reraise exception, __STACKTRACE__
   end
 

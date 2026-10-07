@@ -143,12 +143,14 @@ defmodule Dawarich.ReleaseJobs.FamilyBackfill do
   ORDER BY u.id LIMIT 500
   """
   @entitlements "SELECT id FROM families WHERE id>$1 ORDER BY id LIMIT 200"
+  @max_id 9_223_372_036_854_775_807
+  @keys ~w(version cursor operation_id event_id)
 
   def command_type, do: "release.family_backfill"
 
   def args_from_command(1, %{"phase" => phase, "after_id" => id, "time_zone" => zone} = payload)
       when map_size(payload) == 3 and phase in ["families", "entitlements"] and
-             is_integer(id) and id >= 0 and is_binary(zone) do
+             is_integer(id) and id >= 0 and id <= @max_id and is_binary(zone) do
     Dawarich.Imports.ZonePeriod.load!(zone)
     {:ok, %{"version" => 1, "cursor" => payload}}
   rescue
@@ -159,14 +161,37 @@ defmodule Dawarich.ReleaseJobs.FamilyBackfill do
   def args_from_command(_, _), do: {:error, "unsupported_version"}
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: args} = job) do
-    with {:ok, _} <- args_from_command(args["version"], args["cursor"]),
-         {:ok, _} <- Ecto.UUID.cast(args["operation_id"] || args["event_id"]) do
+  def perform(%Oban.Job{args: %{"version" => version, "cursor" => cursor} = args} = job) do
+    with true <- Enum.all?(Map.keys(args), &(&1 in @keys)),
+         {:ok, _} <- args_from_command(version, cursor),
+         {:ok, args} <- identities(args) do
       oban = if job.conf, do: job.conf.name, else: Oban
-      ReleaseOperations.run(Dawarich.Jobs.repo(), oban, __MODULE__, job)
+
+      ReleaseOperations.run(Dawarich.Jobs.repo(), oban, __MODULE__, %{job | args: args},
+        fail_on_error: true
+      )
     else
       {:error, "unsupported_version"} -> {:cancel, :unsupported_version}
       _ -> {:cancel, :invalid_payload}
+    end
+  end
+
+  def perform(%Oban.Job{}), do: {:cancel, :invalid_payload}
+
+  defp identities(args) do
+    case Map.take(args, ~w(operation_id event_id)) do
+      ids when map_size(ids) > 0 ->
+        Enum.reduce_while(ids, {:ok, args}, fn {key, id}, {:ok, normalized} ->
+          with true <- is_binary(id) and byte_size(id) == 36,
+               {:ok, uuid} <- Ecto.UUID.cast(id) do
+            {:cont, {:ok, Map.put(normalized, key, uuid)}}
+          else
+            _ -> {:halt, :error}
+          end
+        end)
+
+      _ ->
+        :error
     end
   end
 
