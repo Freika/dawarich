@@ -73,6 +73,13 @@ defmodule Dawarich.A12f3bR10Test do
     assert {:ok, :ok} =
              F.with_destroy(c, fn lease ->
                Dawarich.Imports.DestroyEffects.status!(lease)
+
+               [[args]] =
+                 rows(
+                   "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Imports.EventsWorker'"
+                 )
+
+               assert :ok == Dawarich.Imports.EventsWorker.run(ScratchRepo, args)
                assert_receive :imports_changed
                assert [[4]] == rows("SELECT status FROM imports WHERE id=$1", [c.import.id])
                assert [] == F.reverse()

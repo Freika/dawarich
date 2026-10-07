@@ -1042,6 +1042,14 @@ defmodule DawarichWeb.A12f3aFPostprocessingTest do
 
     Dawarich.Imports.Events.subscribe(c.import.user_id)
     assert :ok = Dawarich.Imports.DestroyWorker.perform(c.job)
+
+    for [args] <-
+          rows(
+            "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Imports.EventsWorker' ORDER BY id"
+          ) do
+      assert :ok = Dawarich.Imports.EventsWorker.run(ScratchRepo, args)
+    end
+
     assert_receive :imports_changed
     assert [] == rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
     assert [] == rows("SELECT id FROM points WHERE import_id=$1", [c.import.id])
