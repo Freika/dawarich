@@ -4,13 +4,13 @@ defmodule Dawarich.Exports.PurgeWorker do
   alias Dawarich.Storage
   alias Dawarich.Storage.NativePurge
 
-  def enqueue!(repo, blob_ids) do
+  def enqueue!(repo, blob_ids, worker \\ __MODULE__) do
     blob_ids = NativePurge.unmarked_ids(repo, blob_ids)
     objects = NativePurge.collect(repo, blob_ids)
 
     if objects != [] do
       NativePurge.mark!(repo, objects)
-      repo.insert!(new(%{"blob_ids" => blob_ids, "objects" => objects}), prefix: "oban")
+      repo.insert!(worker.new(%{"blob_ids" => blob_ids, "objects" => objects}), prefix: "oban")
     end
 
     :ok
@@ -22,19 +22,29 @@ defmodule Dawarich.Exports.PurgeWorker do
   def perform(%Oban.Job{args: args}), do: run(args)
 
   def run(args, opts \\ []) do
-    services = Keyword.get_lazy(opts, :services, fn -> Storage.services!(System.get_env()) end)
+    resolve_service =
+      Keyword.get_lazy(opts, :resolve_service, fn ->
+        services =
+          Keyword.get_lazy(opts, :services, fn -> Storage.services!(System.get_env()) end)
+
+        fn object -> {:ok, Storage.service!(services, object["service_name"])} end
+      end)
+
     repo = Keyword.get_lazy(opts, :repo, &Dawarich.Jobs.repo/0)
 
     case repo.transaction(fn ->
            objects = current_objects(repo, args)
 
            for object <- objects do
-             case Storage.delete(
-                    Storage.service!(services, object["service_name"]),
-                    object["key"]
-                  ) do
-               :ok -> :ok
-               {:error, reason} -> repo.rollback({:storage_delete, reason})
+             case resolve_service.(object) do
+               {:ok, config} ->
+                 case Storage.delete(config, object["key"]) do
+                   :ok -> :ok
+                   {:error, reason} -> repo.rollback({:storage_delete, reason})
+                 end
+
+               {:error, reason} ->
+                 repo.rollback(reason)
              end
            end
 

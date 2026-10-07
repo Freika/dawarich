@@ -4,6 +4,38 @@ defmodule Dawarich.FixRximportsTest do
   alias Dawarich.Imports.{DestroyWorker, ManualExtraction}
   setup do: F.setup()
 
+  @tag a12f3b_case: "F3"
+  test "unavailable storage retains blob metadata until physical purge succeeds", c do
+    c = F.destroy(c)
+    blob = F.blob(c, "source.gpx", "<gpx/>", "file")
+    Application.put_env(:dawarich, :imports_services, %{})
+    assert :ok == DestroyWorker.perform(c.job)
+    assert [] == rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
+    assert Dawarich.Jobs.Processed.done?(ScratchRepo, c.job.args["event_id"])
+
+    [[args]] =
+      rows(
+        "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Imports.PreparedDownloadPurgeWorker'"
+      )
+
+    assert {:error, :unconfigured_storage_service} ==
+             Dawarich.Imports.PreparedDownloadPurgeWorker.perform(%Oban.Job{args: args})
+
+    assert File.exists?(Dawarich.Storage.disk_path(c.root, blob.key))
+    assert [[blob.id]] == rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob.id])
+    [[metadata]] = rows("SELECT metadata FROM active_storage_blobs WHERE id=$1", [blob.id])
+    assert Dawarich.Storage.NativePurge.pending?(metadata)
+
+    Application.put_env(:dawarich, :imports_services, %{
+      "local" => %{service: "local", root: c.root}
+    })
+
+    assert :ok == Dawarich.Imports.PreparedDownloadPurgeWorker.perform(%Oban.Job{args: args})
+    assert [] == rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob.id])
+    refute File.exists?(Dawarich.Storage.disk_path(c.root, blob.key))
+    assert :ok == Dawarich.Imports.PreparedDownloadPurgeWorker.perform(%Oban.Job{args: args})
+  end
+
   @tag a12f3b_case: "F1"
   test "extraction removal failure records the Rails failed state and error", c do
     context = %{c.context | now: DateTime.utc_now()}
