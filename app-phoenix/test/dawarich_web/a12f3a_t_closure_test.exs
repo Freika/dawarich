@@ -293,7 +293,7 @@ defmodule DawarichWeb.A12f3aTClosureTest do
       "<action-text-attachment sgid=\"invalid\"></action-text-attachment>"
     )
 
-    assert get(RailsUser.signed_in(user.id), "/trips/980201").status == 500
+    assert get(RailsUser.signed_in(user.id), "/trips/980201").status == 200
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
     assert commands() == []
   end

@@ -11,7 +11,7 @@ defmodule Dawarich.Trips.WebDelete do
              log: false
            ).rows do
         [[^id]] ->
-          case Dawarich.Trips.PlanRead.supported?(repo, user.id, id) and supported?(repo, id) do
+          case Dawarich.Trips.PlanRead.supported?(repo, user.id, id) do
             true ->
               delete(repo, id)
               {:ok, :deleted}
@@ -30,30 +30,17 @@ defmodule Dawarich.Trips.WebDelete do
     end
   end
 
-  defp supported?(repo, id) do
-    rich =
+  defp delete(repo, id) do
+    rich_ids =
       repo.query!(
-        "SELECT id, body FROM action_text_rich_texts WHERE record_type = 'Trip' AND record_id = $1 FOR UPDATE",
+        "SELECT id FROM action_text_rich_texts WHERE record_type='Trip' AND record_id=$1 ORDER BY id FOR UPDATE",
         [id],
         log: false
       ).rows
+      |> Enum.map(&hd/1)
 
-    bodies =
-      Enum.all?(rich, fn [_, body] -> match?({:ok, _}, Dawarich.Trips.RichContent.read(body)) end)
+    Dawarich.Trips.Attachments.detach!(repo, rich_ids)
 
-    ids = Enum.map(rich, &hd/1)
-
-    [[attached]] =
-      repo.query!(
-        "SELECT EXISTS (SELECT 1 FROM active_storage_attachments WHERE record_type = 'ActionText::RichText' AND record_id = ANY($1::bigint[]))",
-        [ids],
-        log: false
-      ).rows
-
-    bodies and not attached
-  end
-
-  defp delete(repo, id) do
     days =
       repo.query!("SELECT id FROM planned_days WHERE trip_id = $1 FOR UPDATE", [id], log: false).rows
       |> Enum.map(&hd/1)

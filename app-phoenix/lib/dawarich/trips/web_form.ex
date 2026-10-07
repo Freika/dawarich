@@ -6,7 +6,7 @@ defmodule Dawarich.Trips.WebForm do
     with true <- id != nil or active?(user, Map.get_lazy(context, :now, &DateTime.utc_now/0)),
          {:ok, settings} <- TripSettings.read(user.settings),
          {:ok, trip} <- trip(repo, user.id, id),
-         {:ok, description} <- Dawarich.Trips.RichContent.read(trip.description) do
+         {:ok, description} <- Dawarich.Trips.RichContent.editor(trip.description, repo) do
       {:ok,
        trip
        |> Map.put(:description, description)
