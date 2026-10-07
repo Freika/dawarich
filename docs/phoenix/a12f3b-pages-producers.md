@@ -86,7 +86,7 @@ publication followed by explicit Rails hand-back while retaining every drain
 blocker. All 78 closure kinds remain; this scoped producer repair does not
 certify the full R01–R20 audit, source drain, any ownership ED or G49.
 
-### H03 closure recheck — R10 repaired, R12 purge remains live
+### H03/H04 final local producer closure
 
 R10k01 now uses `Imports.Progress.publish!/3` at all three publication sites:
 `GpxProgress`, `GpxLifecycle` and `NormalLifecycle`. The publisher reads the
@@ -109,22 +109,71 @@ individual old-publisher mutation and passed after restoration. Retained Rails
 corpus files are unchanged; native lifecycle comparisons assert zero progress
 reverse rows and retain every other ordered effect.
 
-The all-R01–R20 audit then finds a distinct **R12k02 `exports.purge`** gap.
-`Exports.Delete.call/3` at `exports/delete.ex:44` checks only standalone mode.
-With every Registry owner Oban, an actual coexistence deletion removes the
-export and attachment but inserts one `exports.purge` reverse row, and queues
-no native purge worker. Standalone instead queues `Exports.PurgeWorker` and
-inserts no reverse row. Both synthetic probe transactions were rolled back.
-There is no dedicated `command:exports.purge` Registry entry; the native export
-parent entries are already Oban in the probe. RX-EXPORTS must resolve the
-producer's native ownership contract and prove storage terminal effects,
-zero-reverse native coexistence and unchanged Rails hand-back.
+The final all-R01–R20 recheck repaired **R12k02 `exports.purge`** and every
+additional small native-owned reverse publisher found in the same probe.
+`Exports.Delete.call/3` reads the locked export type and locks its actual parent:
+`command:exports.points` for points and `command:users.export_data` for user-data.
+Native ownership and standalone enqueue the existing `Exports.PurgeWorker`,
+using the same shared storage-first `Storage.NativePurge` helper as native media.
+Retry retains rows and keys, shared blobs remain protected, pending metadata
+revokes downloads, and physical deletion precedes row removal. Rails-owned
+coexistence retains the original kind and byte-identical payload. Named selectors
+`R12k02` and `R12parents` cover both modes/types, mixed ownership, actual storage
+terminal effects, retry/replay and literal SQL-bound JSON bytes.
 
-Per the closure brief, this new producer gap is reported without repair.
-H03 all-producer acceptance and H04 final ED closure remain blocked. No
-producer kind, ownership ED or accepted source payload is closed over it.
-G49 and every-mode Cloud lifecycle refusal remain unchanged. Exact seed/head,
-commands, evidence and cleanup are in `fix-hot-h03-closure.report.md`.
+The pre-fix probe also identified R19k06: `UserRedetectWorker.enqueue/4` looked
+up `command:visits.user_redetect`, which was absent from Registry. The existing
+worker/decoder is now registered unclaimable in RecalculationEntries; standalone
+uses native publication. The named `R19k06` case executes a real fleet release,
+dispatches its child, observes completed redetection and checks replay and exact
+Rails-owned hand-back. The source-owner census names this native key while
+retaining the `:a12d2` accepted-source residue; no serialized job is transferred
+or retired. Registration does not activate ownership.
+
+R09k03/R09k04 now select disposition from the locked actual parent lane through
+`Imports.AcceptedDisposition.call/4`. Native ownership settles unsupported
+accepted imports as failed with one localized notification and processed
+acknowledgement in either mode. The current job completes, retries are inert,
+and neither a reverse command nor a Rails handoff is created. Rails-owned
+coexistence keeps the original kind, payload bytes and durable fallback handoff.
+This uses the established standalone terminal disposition under the controller's
+fix5 authorization; native parser bounds and archive policies are retained.
+See [accepted-import-disposition.md](accepted-import-disposition.md).
+
+A native-owned normal job edited to GPX before admission now uses its existing
+GPX adapter in both modes. The edited-GPX regression proves completed status,
+one point, zero reverse publication and inert replay; restoring standalone-only
+admission fails the coexistence case. Unsupported envelopes retain terminal
+failure settlement and native parser/archive bounds.
+
+The 14 retained `AcceptedDispositionTest` cases cover unsafe/duplicate ZIP,
+bounded TCX/CSV/REC and GPX/normal source changes in both modes through real
+Oban execution, terminal failure, localized notification and replay. Named
+`R09gpxownership` and `R09normalownership` regressions reproduce the original
+native-owned coexistence publication, exercise both modes with fixed owners,
+and separately prove literal Rails-owned payload bytes. A native reverse
+publication mutation and a Rails payload mutation fail these assertions and
+pass after restoration. Stale refusal/operator-pin assertions are replaced by
+explicit source-owned continuation checks; no failed accepted import is left
+waiting for an operator to change ownership.
+
+H03 all-R01–R20 native producer acceptance and H04 final local ED disposition
+were recorded as **complete** on production commit `69977ef5f`; review2 later
+invalidated that claim for the three scenarios corrected below. Final owner diagnostics
+record no production reverse insertions with all Registry owners native in
+either mode; all temporary instrumentation is restored. The stable terminal
+batch passes 1,891 tests. Forced compilation with warnings as errors (1,720
+files) and whole-tree formatting pass. The required full seed-404 runner passes
+9,451 tests with zero failures, exit 0. The retained Rails drain oracle passes
+four examples, with Swagger restored. No Ruby source changed.
+
+The authoritative evidence, original RED, three failing/restored mutations,
+source-owned byte assertions and cleanup are in `fix5-hot-h03-closure.report.md`.
+Prior fix4 producer blockers are superseded by the ownership repair and actual
+supported GPX processing. Native parser/archive limits remain explicit terminal
+failure dispositions. No closure kind, accepted source payload or source owner
+is retired. No source-drain, live activation, image, provisioning or G49 gate is
+closed. Every-mode Cloud lifecycle refusal remains unchanged pending L1.
 
 `Jobs.Drain.status/1` now explicitly identifies `scope: native_sql`, source
 status `NOT_OBSERVED`, source certainty `UNKNOWN`, and
@@ -197,10 +246,28 @@ same DB/storage. No pending native-to-Sidekiq transfer or source deletion occurs
 ## Accepted-import disposition follow-up
 
 `accepted-import-disposition.md` specifies the consolidated R09 import fallback.
-Native-owned coexistence retains a durable per-import Rails continuation for
-legacy/changed-source inputs the current native worker cannot process; its
-`native_fallback` receipt prevents a forwarding cycle. Standalone processes a
-supported GPX source edit or settles unsupported work as failed with one localized
-notification. ZIP parents wait for child terminal states, including accepted
+Rails-owned coexistence retains the durable per-import Rails continuation for
+legacy/changed-source inputs, including its `native_fallback` receipt. Native-owned
+work in either mode processes a supported GPX source edit or settles unsupported
+work as failed with one localized notification and native import event after commit. ZIP parents wait for child terminal states, including accepted
 children retained by partial build failures. These executable dispositions do not
 certify source retirement or H03/H04/G49 closure.
+
+
+### Review2 accepted-import correction
+
+The review2 probes invalidated the earlier local acceptance claim for changed ZIP
+sources, edited GPX under mixed owners, and accepted failure subscribers. These
+paths now share archive child readiness with normal fanout, carry the executing
+ownership lane into every progress stage, and publish native terminal failure
+only after its transaction commits. Parent replay remains pending until accepted
+children settle; terminal replay emits no duplicate notification or import event.
+
+`accepted_disposition_review_test.exs` retains all five named actual-worker probes,
+with RED, GREEN, individual production mutation failures and restored GREEN.
+The failure cases additionally reject acknowledgement publication and retain the
+other source lane on Rails to check rollback and parent identity. Existing
+source-owned progress bytes and all reverse kinds remain. Final seed404, targeted,
+compile/format, secret-scan and cleanup evidence is recorded in
+`fix6-hot-h03-closure.report.md`. No source retirement, ownership activation,
+Cloud lifecycle change, or global G49 closure follows from this local correction.

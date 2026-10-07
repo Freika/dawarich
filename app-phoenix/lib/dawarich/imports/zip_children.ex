@@ -56,38 +56,7 @@ defmodule Dawarich.Imports.ZipChildren do
 
   def terminal?(lease, blob) do
     ImportState.effect!(lease, fn ->
-      params = [lease.import.id, blob.id]
-
-      children =
-        "FROM imports i JOIN phoenix.import_archive_children c ON i.id=c.child_id AND i.user_id=c.user_id WHERE c.parent_id=$1 AND c.blob_id=$2"
-
-      locked =
-        lease.repo.query!("SELECT i.id " <> children <> " FOR SHARE OF i SKIP LOCKED", params,
-          log: false
-        ).num_rows
-
-      [[count]] = lease.repo.query!("SELECT count(*) " <> children, params, log: false).rows
-
-      locked == count and
-        lease.repo.query!(
-          """
-          SELECT 1 FROM phoenix.import_archive_children c
-          LEFT JOIN imports i ON i.id=c.child_id AND i.user_id=c.user_id
-          WHERE c.parent_id=$1 AND c.blob_id=$2 AND c.entry_name<>''
-            AND c.child_id IS NOT NULL AND c.phase<>'skipped'
-            AND (c.phase<>'queued' OR (i.id IS NOT NULL AND i.status NOT IN (2,3))
-              OR (i.id IS NULL
-                AND NOT EXISTS(SELECT 1 FROM phoenix.import_destroy_runs d
-                  WHERE d.import_id=c.child_id AND d.user_id=c.user_id AND d.phase='removed')
-                AND NOT EXISTS(SELECT 1 FROM phoenix.import_archive_children a
-                  WHERE a.parent_id=c.child_id AND a.user_id=c.user_id AND a.entry_name='' AND a.phase='removed')
-                AND NOT EXISTS(SELECT 1 FROM phoenix.import_handoffs h
-                  WHERE h.import_id=c.child_id AND h.user_id=c.user_id AND h.state='completed')))
-          LIMIT 1
-          """,
-          params,
-          log: false
-        ).rows == []
+      Dawarich.Imports.ArchiveReadiness.terminal?(lease.repo, lease.import.id, blob.id)
     end)
   end
 
