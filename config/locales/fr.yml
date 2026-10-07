@@ -44,7 +44,18 @@ fr:
           locationiq: "Service hébergé. Nécessite une clé d'API."
         points:
           title: "Points"
+        experimental:
+          title: "Fonctionnalités expérimentales"
+        map_matching:
+          title: "Recalage sur le réseau"
+          description: "Aligne les tracés enregistrés imprécis sur les routes et chemins proches. Seul l'affichage des trajets éligibles change ; les points enregistrés et le tracé d'origine restent intacts."
         fields:
+          atlas_url: "URL d'Atlas"
+          map_matching_enabled: "Activer le recalage sur le réseau"
+          atlas_url_hint: "URL de base HTTP ou HTTPS complète de votre service privé Dawarich Atlas."
+          map_matching_enabled_hint: "S'applique à toute l'instance. Les trajets existants ne sont pas traités automatiquement."
+          map_matching_shadow_mode: "Mode fantôme"
+          map_matching_shadow_mode_hint: "Traite les traces éligibles sans afficher les chemins recalés."
           photon_api_host: "Hôte"
           photon_api_key: "Clé d'API"
           photon_api_use_https: "Utiliser HTTPS"
@@ -60,6 +71,8 @@ fr:
           api_key_keep_hint: "Laissez vide pour conserver la clé enregistrée."
           store_geodata_hint: "Recherche la ville et le pays à l’ajout de nouveaux points. Les recherches nocturnes continuent si un fournisseur est configuré, même lorsque cette option est désactivée."
       update:
+        atlas_url_invalid: "L'URL d'Atlas doit être une URL HTTP ou HTTPS complète, sans identifiants, requête ni fragment."
+        atlas_url_required: "Définissez une URL d'Atlas avant d'activer le recalage sur le réseau."
         saved: "Paramètres enregistrés."
         pinned: "Refusé : fixé par %{variables}."
         host_invalid: "L'hôte doit être un simple nom d'hôte, avec un port ou un chemin facultatif, sans espaces."

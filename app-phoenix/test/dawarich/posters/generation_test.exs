@@ -203,6 +203,6 @@ defmodule Dawarich.Posters.GenerationTest do
     do:
       rows(
         "INSERT INTO #{table} SELECT * FROM json_populate_record(NULL::#{table},$1::text::json)",
-        [Jason.encode!(row)]
+        [Jason.encode!(Dawarich.Test.ApiGolden.column_defaults(table, row))]
       )
 end

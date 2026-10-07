@@ -59,13 +59,13 @@ defmodule Dawarich.ReleaseMigration do
 
   def versions(module), do: Enum.map(module.steps(), &elem(&1, 0))
 
-  def sql!(repo, sql) do
+  def sql!(repo, sql, opts \\ []) do
     if not repo.in_transaction?() and statements(sql) > 1 do
       raise ArgumentError,
             "one statement per sql! outside a transaction: #{String.slice(sql, 0, 80)}"
     end
 
-    repo.query!(sql, [], query_type: :text, log: false)
+    repo.query!(sql, [], Keyword.merge([query_type: :text, log: false], opts))
     :ok
   end
 

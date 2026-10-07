@@ -42,7 +42,9 @@ defmodule Dawarich.ReleaseMigrations.Unreleased do
       {"20260923180000", &enqueue_ungated_achievements_backfill/1},
       {"20260925100000", &align_track_split_settings_defaults/1},
       {"20260925100100", &reenqueue_transportation_mode_backfills/1, transaction: false},
-      {"20260927120000", &create_job_outbox/1}
+      {"20260927120000", &create_job_outbox/1},
+      {"20261006120000", &add_map_matching_to_tracks/1, transaction: true, timeout: 400_000},
+      {"20261006120100", &add_matched_path_index_to_tracks/1, transaction: false}
     ]
   end
 
@@ -78,4 +80,63 @@ defmodule Dawarich.ReleaseMigrations.Unreleased do
   end
 
   def create_job_outbox(repo), do: sql!(repo, @job_outbox_sql)
+
+  defp add_map_matching_to_tracks(repo) do
+    sql!(repo, "SET LOCAL lock_timeout = '5s'")
+
+    for {name, type} <- [
+          {"matched_path", "geometry(MultiLineString,4326)"},
+          {"map_matching_status", "integer"},
+          {"map_matching_input_digest", "character varying"},
+          {"map_matching_data", "jsonb DEFAULT '{}'::jsonb NOT NULL"},
+          {"map_matched_at", "timestamp(6) without time zone"}
+        ] do
+      add_map_matching_column(repo, name, type, 1)
+    end
+
+    :ok
+  end
+
+  defp add_map_matching_column(repo, name, type, attempt) do
+    unless column?(repo, "tracks", name) do
+      repo.query!(~s|ALTER TABLE tracks ADD "#{name}" #{type}|, [],
+        mode: :savepoint,
+        log: false
+      )
+    end
+  rescue
+    error in Postgrex.Error ->
+      if error.postgres[:code] == :lock_not_available and attempt < 5 do
+        Process.sleep(5 * attempt * 1000)
+        add_map_matching_column(repo, name, type, attempt + 1)
+      else
+        reraise error, __STACKTRACE__
+      end
+  end
+
+  defp add_matched_path_index_to_tracks(repo) do
+    require_zero_lock_timeout!(repo)
+
+    invalid =
+      select_value(repo, """
+      SELECT NOT i.indisvalid FROM pg_index i
+      JOIN pg_class c ON c.oid=i.indexrelid
+      WHERE c.oid=to_regclass('index_tracks_on_matched_path')
+      """)
+
+    if invalid,
+      do:
+        sql!(repo, "DROP INDEX CONCURRENTLY IF EXISTS index_tracks_on_matched_path",
+          timeout: :infinity
+        )
+
+    sql!(
+      repo,
+      """
+      CREATE INDEX CONCURRENTLY IF NOT EXISTS index_tracks_on_matched_path
+      ON tracks USING gist(matched_path) WHERE matched_path IS NOT NULL
+      """,
+      timeout: :infinity
+    )
+  end
 end

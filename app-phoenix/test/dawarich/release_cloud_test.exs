@@ -554,6 +554,10 @@ defmodule Dawarich.ReleaseCloudCompatibilityTest do
     schema =
       Dawarich.RailsTree.read("db/schema.rb")
       |> String.replace(~r/^  create_table "job_outbox".*?^  end\n\n/ms, "")
+      |> String.replace(
+        ~r/^    t\.(?:datetime "map_matched_at"|jsonb "map_matching_data"|string "map_matching_input_digest"|integer "map_matching_status"|geometry "matched_path"|index \["matched_path"\]).*\n/m,
+        ""
+      )
       |> String.replace(~r/define\(version: [\d_]+\)/, "define(version: 2026_09_23_180000)")
       |> String.replace(
         ~s("meters_between_routes" => "500"),

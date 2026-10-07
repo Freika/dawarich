@@ -207,6 +207,8 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
     doc.css('[nonce]').each { _1['nonce'] = 'NONCE' }
     doc.css('[signed-stream-name]').each { _1['signed-stream-name'] = 'SIGNED_STREAM' }
     FixtureRecording.normalize(doc.to_html)
+                    .gsub(/(@mon_data_owner_object_id=)\d+/, '\\1OBJECT')
+                    .gsub(/(:logger_thread_safe_level_)\d+/, '\\1OBJECT')
   end
 
   def closure_response(method, path, params, user, error = nil)

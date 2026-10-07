@@ -12,7 +12,7 @@ defmodule Dawarich.Admin.InstanceInput do
 
     values =
       for {key, raw} <- Map.get(params, "instance_settings", []),
-          definition = List.keyfind(InstanceSettingsRegistry.definitions(), key, 0),
+          definition = List.keyfind(InstanceSettingsRegistry.current_definitions(), key, 0),
           definition != nil,
           elem(definition, 2) != :secret or Ruby.strip(raw || "") != "" or
             Ruby.present?(clear[key]),
@@ -42,7 +42,43 @@ defmodule Dawarich.Admin.InstanceInput do
          do: errors ++ [message(locale, "chibigeo_key_required")],
          else: errors
 
+    errors = errors ++ experimental_errors(values, resolved, env, locale)
+
     if errors == [], do: {:ok, values}, else: {:invalid, Enum.join(errors, " ")}
+  end
+
+  defp experimental_errors(values, resolved, env, locale) do
+    url = experimental_value(values, "atlas_url", resolved, env)
+    enabled = experimental_value(values, "map_matching_enabled", resolved, env)
+
+    errors =
+      if Ruby.present?(url) and not atlas_url?(url),
+        do: [message(locale, "atlas_url_invalid")],
+        else: []
+
+    if enabled == true and not Ruby.present?(url),
+      do: errors ++ [message(locale, "atlas_url_required")],
+      else: errors
+  end
+
+  defp experimental_value(values, key, resolved, env) do
+    definition = InstanceSettingsRegistry.fetch(key)
+    raw = env[InstanceSettingsRegistry.env_var(key)]
+
+    if InstanceSettingsRegistry.set?(raw),
+      do: InstanceSettingsRegistry.coerce(definition, raw),
+      else: value(values, key, resolved, env)
+  end
+
+  defp atlas_url?(url) do
+    case URI.new(url) do
+      {:ok, %URI{scheme: scheme, host: host, userinfo: nil, query: nil, fragment: nil}}
+      when scheme in ["http", "https"] and is_binary(host) and host != "" ->
+        true
+
+      _ ->
+        false
+    end
   end
 
   defp coerce({_, _, _, default} = definition, raw) do
