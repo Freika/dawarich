@@ -108,7 +108,11 @@ defmodule DawarichWeb.IntegrationActions do
     for pattern <- ["photos_#{id}_*", "photos_search/#{id}/*", "photo_thumbnail_#{id}_*"],
         do: clear(pattern, "0")
 
-    notices ++ [Translate.t(locale, "services.settings.update.photo_cache_refreshed", %{})]
+    List.insert_at(
+      notices,
+      1,
+      Translate.t(locale, "services.settings.update.photo_cache_refreshed", %{})
+    )
   end
 
   defp clear(pattern, cursor) do

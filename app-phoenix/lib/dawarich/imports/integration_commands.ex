@@ -23,7 +23,7 @@ defmodule Dawarich.Imports.IntegrationCommands do
   def enqueue(_repo, _user_id, _job, _opts), do: {:error, :unknown_job}
 
   defp enqueue_kind(repo, user_id, kind, job, opts) do
-    repo.transaction(fn ->
+    Dawarich.Transaction.run(repo, fn ->
       if Ownership.lock(repo, "command:" <> kind) != :oban,
         do: repo.rollback(:not_owned)
 
