@@ -107,6 +107,10 @@ defmodule Dawarich.Imports.ImportBlobPurgeWorker do
           args["blob_id"]
         ])
 
+        repo.query!("DELETE FROM phoenix.upload_receipts WHERE blob_id=$1", [args["blob_id"]],
+          log: false
+        )
+
         repo.query!("DELETE FROM active_storage_blobs WHERE id=$1", [args["blob_id"]])
         :ok
       else

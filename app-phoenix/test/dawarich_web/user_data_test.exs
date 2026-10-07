@@ -315,7 +315,8 @@ defmodule DawarichWeb.UserDataTest do
   defp blob(c, name),
     do:
       Dawarich.RailsBlobFixture.create!(Repo, c.root, name, "synthetic ZIP",
-        content_type: "application/zip"
+        content_type: "application/zip",
+        user_id: 9891
       )
 
   defp body(blob), do: "archive=" <> URI.encode_www_form(blob.signed_id)

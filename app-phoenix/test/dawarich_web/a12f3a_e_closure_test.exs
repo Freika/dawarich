@@ -165,6 +165,18 @@ defmodule DawarichWeb.A12f3aERequestClosureTest do
     manifest = entries |> Map.new() |> Map.fetch!(~c"manifest.json") |> Jason.decode!()
     assert manifest["counts"]["points"] == 1
     body = URI.encode_query(%{"archive" => Dawarich.RailsMessages.blob_id(blob_id)})
+    foreign = RailsUser.insert!(%{id: 9722, email: "foreign-backup@example.test"})
+    foreign_session = RailsUser.session(foreign.id)
+
+    assert post_form(
+             foreign_session,
+             body,
+             [{"x-csrf-token", DawarichWeb.RailsCsrf.masked_token(foreign_session)}],
+             "/settings/users/import"
+           ).status == 302
+
+    assert [[0]] ==
+             Repo.query!("SELECT count(*) FROM job_outbox WHERE command_type='users.import_data'").rows
 
     assert post_form(c.session, body, [{"x-csrf-token", c.token}], "/settings/users/import").status ==
              302

@@ -14,6 +14,32 @@ defmodule Dawarich.EnhancedImport.SourceFileTest do
     :zlib.unzip(binary_part(bytes, offset + 30 + n + e, size))
   end
 
+  test "manual GPX extraction refuses a key outside the storage root", %{storage: storage} do
+    [file] = load!("decimal_cast_waypoint")["files"]
+    attach!(storage, file)
+    sentinel = Path.join(Path.dirname(storage.root), "sentinel-" <> Ecto.UUID.generate())
+    bytes = Base.decode64!(file["base64"])
+    File.write!(sentinel, bytes)
+    on_exit(fn -> File.rm!(sentinel) end)
+    File.mkdir_p!(Path.join(storage.root, "ab/cd/abcd"))
+    key = "abcd/../../../../" <> Path.basename(sentinel)
+    rows("UPDATE active_storage_blobs SET key=$1", [key])
+
+    assert_raise ArgumentError, "Invalid import storage key", fn ->
+      fetch!(storage, file["import_id"])
+    end
+  end
+
+  test "manual GPX extraction refuses a mismatched stored service", %{storage: storage} do
+    [file] = load!("decimal_cast_waypoint")["files"]
+    attach!(storage, file)
+    rows("UPDATE active_storage_blobs SET service_name='other'")
+
+    assert_raise ArgumentError,
+                 "Import blob service does not match configured storage service",
+                 fn -> fetch!(storage, file["import_id"]) end
+  end
+
   test "Rails' verification messages", %{storage: storage} do
     fixture = load!("source_file_messages")
     Enum.each(fixture["files"], &attach!(storage, &1))

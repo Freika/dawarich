@@ -14,8 +14,17 @@ defmodule DawarichWeb.ActiveStorage.UploadClosure do
     with {:ok, params, conn} <- params(conn),
          true <- csrf?(conn, params) || :csrf,
          {:ok, attrs} <- attrs(params["blob"]) do
+      user_id = conn.assigns[:current_user] && conn.assigns.current_user.id
       service = Storage.service!(storage, storage.default)
-      {:ok, row} = Blobs.create_before_direct_upload(service, attrs, DateTime.to_naive(now), opts)
+
+      {:ok, row} =
+        Blobs.create_before_direct_upload(
+          service,
+          attrs,
+          DateTime.to_naive(now),
+          Keyword.put(opts, :user_id, user_id)
+        )
+
       if callback = opts[:after_blob], do: callback.(row)
       target = ActiveStorageUrls.direct_upload(service, row, RequestURL.base(conn), now)
       json = direct_upload_json(row, target)

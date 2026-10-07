@@ -2,7 +2,7 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorker do
   @moduledoc false
   use Oban.Worker, queue: :extractions, max_attempts: 3
 
-  alias Dawarich.EnhancedImport.{Extract, State}
+  alias Dawarich.EnhancedImport.{Extract, State, RequestFence}
   alias Dawarich.Storage
   alias Dawarich.Tracks.PerUserLock
 
@@ -13,7 +13,7 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorker do
       when is_integer(id) and is_integer(n) and n >= 1 and map_size(p) == 2,
       do: {:ok, p}
 
-  def args_from_command(1, _payload), do: {:error, "invalid_payload"}
+  def args_from_command(1, payload), do: RequestFence.decode(payload, :extract)
   def args_from_command(_version, _payload), do: {:error, "unsupported_version"}
 
   @impl Oban.Worker
@@ -38,7 +38,18 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorker do
 
     case State.load(repo, id) do
       %{source: 4} = import ->
-        extract(repo, import, first + Map.get(job.meta, "snoozed", 0), job, deadline, opts)
+        RequestFence.run(repo, job, :extract, fn fence ->
+          extract(
+            repo,
+            import
+            |> Map.put(:fence, fence)
+            |> Map.put(:request_started_at, job.args["started_at"]),
+            first + Map.get(job.meta, "snoozed", 0),
+            job,
+            deadline,
+            opts
+          )
+        end)
 
       _missing_or_not_gpx ->
         :ok

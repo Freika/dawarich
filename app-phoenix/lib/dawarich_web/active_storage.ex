@@ -73,11 +73,11 @@ defmodule DawarichWeb.ActiveStorage do
     end
   end
 
-  defp action(:disk_update, conn, storage, now, _opts) do
+  defp action(:disk_update, conn, storage, now, opts) do
     with {:ok, %{} = data} <-
            RailsMessages.verify_storage(conn.path_params["encoded_token"], "blob_token", now),
          %{service: "local"} = service <- Storage.disk_service(storage, data["service_name"]) do
-      if acceptable?(conn, data), do: upload(conn, service, data), else: head(conn, 422)
+      if acceptable?(conn, data), do: upload(conn, service, data, opts), else: head(conn, 422)
     else
       _ -> head(conn, 404)
     end
@@ -87,9 +87,8 @@ defmodule DawarichWeb.ActiveStorage do
     do: DawarichWeb.ActiveStorage.UploadClosure.call(conn, storage, now, opts)
 
   defp downloadable?(key) do
-    not Dawarich.Standalone.enabled?() or
-      Dawarich.Repo.query!("SELECT 1 FROM active_storage_blobs WHERE key=$1", [key], log: false).num_rows ==
-        1
+    Dawarich.Repo.query!("SELECT 1 FROM active_storage_blobs WHERE key=$1", [key], log: false).num_rows ==
+      1
   end
 
   defp acceptable?(conn, data) do
@@ -111,7 +110,7 @@ defmodule DawarichWeb.ActiveStorage do
     data["content_type"] == media and data["content_length"] == length
   end
 
-  defp upload(conn, service, %{"key" => key, "checksum" => checksum}) do
+  defp upload(conn, service, %{"key" => key, "checksum" => checksum} = data, opts) do
     with {:ok, path} <- Storage.safe_disk_path(service.root, key) do
       dir = Storage.tmp_dir!(service, "upload-" <> Storage.generate_key())
       tmp = Path.join(dir, "object")
@@ -119,12 +118,11 @@ defmodule DawarichWeb.ActiveStorage do
       try do
         case File.open!(tmp, [:write, :binary], &copy(conn, &1)) do
           {:ok, conn} ->
-            {digest, _size} = Storage.digest_file!(tmp)
+            {digest, size} = Storage.digest_file!(tmp)
 
-            if is_nil(checksum) or digest == checksum do
-              File.mkdir_p!(Path.dirname(path))
-              File.rename!(tmp, path)
-              head(conn, 204)
+            if (is_nil(checksum) or digest == checksum) and size == data["content_length"] do
+              if hook = opts[:before_publish], do: hook.()
+              head(conn, publish(service, data, tmp, path))
             else
               head(conn, 422)
             end
@@ -138,6 +136,28 @@ defmodule DawarichWeb.ActiveStorage do
     else
       :error -> head(conn, 422)
     end
+  end
+
+  defp publish(service, data, tmp, path) do
+    {:ok, status} =
+      Dawarich.Repo.transaction(fn ->
+        current =
+          Dawarich.Repo.query!(
+            "SELECT b.byte_size,b.checksum,b.content_type FROM active_storage_blobs b JOIN phoenix.upload_receipts r ON r.blob_id=b.id WHERE b.key=$1 AND b.service_name=$2 AND NOT EXISTS(SELECT 1 FROM active_storage_attachments WHERE blob_id=b.id) FOR UPDATE OF b",
+            [data["key"], service.stored_service],
+            log: false
+          ).rows
+
+        if current == [[data["content_length"], data["checksum"], data["content_type"]]] do
+          File.mkdir_p!(Path.dirname(path))
+          File.rename!(tmp, path)
+          204
+        else
+          404
+        end
+      end)
+
+    status
   end
 
   defp copy(conn, io) do

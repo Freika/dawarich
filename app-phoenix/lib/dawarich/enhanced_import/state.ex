@@ -21,12 +21,14 @@ defmodule Dawarich.EnhancedImport.State do
   end
 
   def running!(repo, import) do
-    payload = @merge <> "'started_at', #{@now}, 'completed_at', NULL, 'error_message', NULL)"
+    payload =
+      @merge <> "'started_at', #{started(import)}, 'completed_at', NULL, 'error_message', NULL)"
+
     write!(repo, import, 2, payload, [], [:card])
   end
 
   def pending!(repo, import),
-    do: write!(repo, import, 1, @merge <> "'started_at', #{@now})", [], [])
+    do: write!(repo, import, 1, @merge <> "'started_at', #{started(import)})", [], [])
 
   def completed!(repo, import, counts) do
     payload = @merge <> "'completed_at', #{@now}, 'counts', $2::jsonb, 'error_message', NULL)"
@@ -34,7 +36,7 @@ defmodule Dawarich.EnhancedImport.State do
   end
 
   def retrying!(repo, import, message) do
-    payload = @merge <> "'started_at', #{@now}, 'error_message', $2::text)"
+    payload = @merge <> "'started_at', #{started(import)}, 'error_message', $2::text)"
     write!(repo, import, 1, payload, [message], [:card])
   end
 
@@ -58,14 +60,31 @@ defmodule Dawarich.EnhancedImport.State do
       "UPDATE imports SET additional_data_extraction_status = #{status}, " <>
         "additional_data_extraction = #{payload} WHERE id = $1"
 
-    {:ok, :ok} =
-      repo.transaction(fn ->
+    effect!(
+      repo,
+      import,
+      fn ->
         repo.query!(sql, [import.id | params], log: false)
         Enum.each(kinds, &kind!(repo, import, &1))
-      end)
+      end,
+      status in [0, 3, 4]
+    )
 
     :ok
   end
+
+  def effect!(repo, import, fun, terminal \\ false) do
+    if fence = Map.get(import, :fence) do
+      fence.(fun, terminal)
+    else
+      {:ok, result} = repo.transaction(fun)
+      result
+    end
+  end
+
+  defp started(import),
+    do:
+      if(import[:request_started_at], do: "additional_data_extraction->'started_at'", else: @now)
 
   defp kind!(repo, import, :card), do: RailsEffects.import_card(repo, import.user_id, import.id)
 

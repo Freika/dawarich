@@ -63,7 +63,7 @@ defmodule Dawarich.Imports.ImportBlobPurges do
           "source_blob_id" => source_id
         }
 
-        if Dawarich.Standalone.enabled?() do
+        if Dawarich.Standalone.enabled?() or owner == :oban do
           ids =
             removed_ids ||
               repo.query!(

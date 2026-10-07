@@ -31,8 +31,9 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
   @attach "INSERT INTO taggings (tag_id, taggable_type, taggable_id, created_at, updated_at) " <>
             "VALUES ($1, 'Place', $2, now(), now()) ON CONFLICT (taggable_type, taggable_id, tag_id) DO NOTHING"
 
-  def new(%{id: import_id, user_id: user_id}),
+  def new(%{id: import_id, user_id: user_id} = import),
     do: %{
+      fence: Map.get(import, :fence),
       user_id: user_id,
       import_id: import_id,
       claimed: MapSet.new(),
@@ -52,8 +53,7 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
   end
 
   def upsert(repo, state, place) do
-    {:ok, state} = repo.transaction(fn -> write(repo, state, place) end)
-    state
+    Dawarich.EnhancedImport.State.effect!(repo, state, fn -> write(repo, state, place) end)
   end
 
   defp write(repo, state, place) do

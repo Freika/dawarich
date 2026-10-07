@@ -93,8 +93,8 @@ defmodule Dawarich.Imports.ManualExtraction do
             if native do
               args =
                 if action == :extract,
-                  do: %{"import_id" => record.id, "lock_attempt" => 1},
-                  else: %{"import_id" => record.id}
+                  do: Map.put(payload, "lock_attempt", 1),
+                  else: payload
 
               repo.query!(
                 "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES($1,$2,1,$3,$4,$5,now())",
