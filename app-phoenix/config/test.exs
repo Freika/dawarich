@@ -38,7 +38,7 @@ config :dawarich,
          [
            database: test_database,
            pool: Ecto.Adapters.SQL.Sandbox,
-           pool_size: System.schedulers_online() * 2
+           pool_size: max(5, System.schedulers_online() * 2)
          ]
 
 scratch =

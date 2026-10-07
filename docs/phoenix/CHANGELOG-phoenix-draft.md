@@ -17,6 +17,7 @@ Compiled 2026-10-07 from integrated fixes at `3a20a0279`. Each item links to one
 
 ## Privacy
 
+- Preserve other accounts' records and references when account deletion encounters shared places or foreign dependent associations. [FRB-067](fixed-rails-bugs.md#frb-067--account-deletion-changes-another-accounts-dependent-records)
 - Stop serving shared trip thumbnails after a trip boundary edit excludes them, including requests forwarded to Rails. [FRB-001](fixed-rails-bugs.md#frb-001--shared-trip-thumbnail-authorization-survives-a-boundary-edit)
 - Keep failed native media deletion retryable until eligible files are physically removed. Rails-owned cleanup retains its existing limitation. [FRB-002](fixed-rails-bugs.md#frb-002--failed-physical-media-deletion-loses-its-retry-target)
 - Revoke native prepared-import downloads when the import is deleted. Previously issued external storage links remain subject to deletion or expiry. [FRB-004](fixed-rails-bugs.md#frb-004--import-deletion-leaves-a-prepared-download-usable)
