@@ -151,6 +151,7 @@ defmodule Dawarich.A12f3bR02Test do
     key = "dawarich/user_#{user}_total_distance"
     {:ok, _} = Dawarich.Redis.cache_command(["SET", key, "stale"])
     assert :ok = Dawarich.Points.AnomalyStatsWorker.run(ScratchRepo, args)
+    Dawarich.Test.AfterCommit.drain(ScratchRepo)
     assert {:ok, nil} = Dawarich.Redis.cache_command(["GET", key])
 
     assert rows("SELECT distance FROM stats WHERE user_id=$1 AND year=2026 AND month=1", [user]) ==

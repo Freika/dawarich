@@ -195,6 +195,8 @@ defmodule Dawarich.Points.ApiWrites do
 
     {:ok, rows} =
       repo.transaction(fn ->
+        repo.query!("SELECT id FROM users WHERE id=$1 FOR UPDATE", [user.id], log: false)
+
         rows =
           repo.query!(
             "WITH deleted AS (DELETE FROM points WHERE user_id=$1 AND id=ANY($2::bigint[]) RETURNING id,timestamp,track_id,import_id) SELECT id,timestamp,track_id,import_id FROM deleted ORDER BY id",
@@ -211,48 +213,42 @@ defmodule Dawarich.Points.ApiWrites do
                   "UPDATE imports SET points_count=COALESCE(points_count,0)-$2 WHERE id=$1",
                   [import, count]
                 )
+
+          repo.query!("UPDATE users SET points_count=COALESCE(points_count,0)-$2 WHERE id=$1", [
+            user.id,
+            length(rows)
+          ])
+
+          deletion_effects(repo, user, rows, ctx)
         end
 
         rows
       end)
 
-    if rows != [] do
-      commit(repo, fn ->
-        repo.query!("UPDATE users SET points_count=COALESCE(points_count,0)-$2 WHERE id=$1", [
-          user.id,
-          length(rows)
-        ])
-      end)
-
-      commit(repo, fn ->
-        if Dawarich.Standalone.enabled?() do
-          deleted =
-            Enum.map(rows, fn [id, stamp, track, import] ->
-              %{id: id, timestamp: stamp, track_id: track, import_id: import}
-            end)
-
-          Dawarich.Points.DeletionEffects.publish(repo, user, deleted, %{
-            locale: "en",
-            now: ctx.now
-          })
-        else
-          stamps = Enum.map(rows, &Enum.at(&1, 1))
-
-          RailsCommands.insert!(repo, "points.web_destroy_follow_up", %{
-            "user_id" => user.id,
-            "timestamps" => stamps,
-            "track_ids" =>
-              rows |> Enum.map(&Enum.at(&1, 2)) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
-            "oldest_timestamp" => Enum.min(stamps),
-            "locale" => "en",
-            "timezone" => Dawarich.UserTimeZone.iana(repo, Dawarich.UserSettings.get(user))
-          })
-        end
-      end)
-    end
-
     Map.get(ctx, :after_commit, fn -> :ok end).()
     rows
+  end
+
+  defp deletion_effects(repo, user, rows, ctx) do
+    if Dawarich.Standalone.enabled?() do
+      deleted =
+        Enum.map(rows, fn [id, stamp, track, import] ->
+          %{id: id, timestamp: stamp, track_id: track, import_id: import}
+        end)
+
+      Dawarich.Points.DeletionEffects.publish(repo, user, deleted, %{locale: "en", now: ctx.now})
+    else
+      stamps = Enum.map(rows, &Enum.at(&1, 1))
+
+      RailsCommands.insert!(repo, "points.web_destroy_follow_up", %{
+        "user_id" => user.id,
+        "timestamps" => stamps,
+        "track_ids" => rows |> Enum.map(&Enum.at(&1, 2)) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
+        "oldest_timestamp" => Enum.min(stamps),
+        "locale" => "en",
+        "timezone" => Dawarich.UserTimeZone.iana(repo, Dawarich.UserSettings.get(user))
+      })
+    end
   end
 
   defp commit(repo, fun) do

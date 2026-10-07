@@ -21,7 +21,9 @@ defmodule Dawarich.Stats.CalculateMonthWorker do
   def perform(%Oban.Job{
         args: %{"user_id" => id, "year" => year, "month" => month, "notify_on_failure" => notify}
       }) do
-    CalculateMonth.call(Dawarich.Jobs.repo(), id, year, month, notify: notify)
-    :ok
+    case CalculateMonth.call(Dawarich.Jobs.repo(), id, year, month, notify: notify) do
+      :missing -> :ok
+      result -> result
+    end
   end
 end

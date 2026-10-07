@@ -55,7 +55,10 @@ defmodule Dawarich.A12f3bR06Test do
                  :ok
       end
 
-      assert rows("SELECT args->>'month' FROM oban.oban_jobs ORDER BY id") == [["3"], ["4"]]
+      assert rows(
+               "SELECT args->>'month' FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker' ORDER BY id"
+             ) == [["3"], ["4"]]
+
       rows("DELETE FROM oban.oban_jobs")
       F.point!(6012, 601, F.ts(2024, 4, 1))
 
@@ -209,6 +212,7 @@ defmodule Dawarich.A12f3bR06Test do
       for key <- keys, do: Dawarich.RailsCache.put(key, "snapshot", expires_in: 60)
       account = Dawarich.Stats.Accounts.find(ScratchRepo, 603)
       assert Dawarich.Stats.RefreshToponyms.call(ScratchRepo, account, 2024, 3, true)
+      Dawarich.Test.AfterCommit.drain(ScratchRepo)
       assert Dawarich.RailsCache.get(Enum.at(keys, 0)) == {:ok, "snapshot"}
       assert Dawarich.RailsCache.get(Enum.at(keys, 1)) == :miss
       assert Dawarich.RailsCache.get(Enum.at(keys, 2)) == :miss

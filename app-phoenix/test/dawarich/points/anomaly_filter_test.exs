@@ -280,16 +280,16 @@ defmodule Dawarich.Points.AnomalyFilterTest do
     assert flagged(user) == [inside]
   end
 
-  test "no enclosing transaction silently changes pass partial commits" do
+  test "P7 mid-pass lease loss rolls back every anomaly flag and intent" do
     user = user!()
-    id = point!(user, @base, {0, 0})
+    point!(user, @base, {0, 0})
     point!(user, @base + 60, @home, accuracy: 20_000)
     Process.put(:anomaly_writes, 0)
 
     fence = fn fun ->
       n = Process.get(:anomaly_writes)
       Process.put(:anomaly_writes, n + 1)
-      if n == 1, do: raise(Dawarich.Imports.LeaseLost)
+      if n == 2, do: raise(Dawarich.Imports.LeaseLost)
       fun.()
     end
 
@@ -297,7 +297,7 @@ defmodule Dawarich.Points.AnomalyFilterTest do
       filter(user, @base, @base + 100, fence: fence)
     end
 
-    assert flagged(user) == [id]
+    assert flagged(user) == []
     assert [] == rows("SELECT kind FROM phoenix.rails_commands")
   end
 
