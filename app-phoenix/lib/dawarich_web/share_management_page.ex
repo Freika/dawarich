@@ -3,7 +3,7 @@ defmodule DawarichWeb.ShareManagementPage do
 
   import Plug.Conn
   alias Dawarich.ShareManagement.Read
-  alias DawarichWeb.{LayoutAssigns, Layouts, ShareHub, ShareManagementDocument, Translate}
+  alias DawarichWeb.{LayoutAssigns, ShareHub, ShareManagementDocument, Translate}
 
   def init(action), do: action
 
@@ -67,7 +67,10 @@ defmodule DawarichWeb.ShareManagementPage do
 
   def respond(conn, content, status \\ 200) do
     html =
-      if get_req_header(conn, "turbo-frame") == ["share-link-modal"] do
+      if get_req_header(conn, "turbo-frame") == ["share-link-modal"] or
+           (conn.private[:dawarich_page_envelope] == true and
+              DawarichWeb.PageEnvelope.frame?(conn) and
+              String.ends_with?(conn.request_path, "/new")) do
         content
       else
         user = conn.assigns.current_user
@@ -86,8 +89,7 @@ defmodule DawarichWeb.ShareManagementPage do
               )
           })
 
-        app = Layouts.app(Map.put(assigns, :inner_content, content))
-        Layouts.root(Map.put(assigns, :inner_content, app))
+        DawarichWeb.PageEnvelope.document(conn, assigns, content)
       end
 
     conn

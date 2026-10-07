@@ -73,6 +73,8 @@ defmodule DawarichWeb.Strangler do
 
   @impl true
   def call(conn, _opts) do
+    conn = DawarichWeb.PageEnvelope.prepare(conn)
+
     cond do
       conn.private[:dawarich_api_pre_effect_pin] ->
         hand_back(conn)
@@ -208,8 +210,9 @@ defmodule DawarichWeb.Strangler do
 
   defp slice_owned?(_route, _conn), do: true
 
-  def gate_open?(%{rails_gate: {module, function}, path_params: params}, conn) do
-    apply(module, function, [conn, params])
+  def gate_open?(%{rails_gate: {module, function}, path_params: params} = route, conn) do
+    DawarichWeb.PageEnvelope.authenticate_first?(conn, route) or
+      apply(module, function, [conn, params])
   rescue
     error -> handed_to_rails(conn, inspect(error.__struct__))
   catch
@@ -252,6 +255,9 @@ defmodule DawarichWeb.Strangler do
 
     Enum.any?(keys, &(&1 in Application.get_env(:dawarich, :rails_routes, [])))
   end
+
+  def page_request?(%{private: %{dawarich_page_envelope: true}} = conn),
+    do: DawarichWeb.PageEnvelope.accepted?(conn)
 
   def page_request?(conn) do
     not String.contains?(List.last(conn.path_info) || "", ".") and

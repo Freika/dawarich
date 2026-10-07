@@ -11,9 +11,13 @@ defmodule DawarichWeb.HomeDispatch do
     else
       case PublicHomeLive.registration(LayoutAssigns.self_hosted?()) do
         {:ok, enabled} ->
-          Phoenix.LiveView.Controller.live_render(conn, PublicHomeLive,
-            session: Map.put(RailsAuth.live_session(conn), "registration_enabled", enabled),
-            layout: {DawarichWeb.Layouts, :app}
+          Phoenix.LiveView.Controller.live_render(
+            conn,
+            PublicHomeLive,
+            DawarichWeb.PageEnvelope.live_options(conn,
+              session: Map.put(RailsAuth.live_session(conn), "registration_enabled", enabled),
+              layout: {DawarichWeb.Layouts, :app}
+            )
           )
 
         :error ->

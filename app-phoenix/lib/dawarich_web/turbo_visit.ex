@@ -10,6 +10,8 @@ defmodule DawarichWeb.TurboVisit do
   def init(opts), do: opts
 
   @impl true
+  def call(%{private: %{dawarich_page_envelope: true}} = conn, _opts), do: conn
+
   def call(conn, _opts) do
     case get_req_header(conn, "x-turbo-request-id") do
       [] ->
