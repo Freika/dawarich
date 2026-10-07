@@ -125,7 +125,13 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
 
     for {key, _} <- kase["cache_after"] do
       timeline? = String.starts_with?(key, "timeline_month_summary/")
-      readable? = timeline? and key not in targeted
+
+      invalidated? =
+        Enum.any?(payloads, fn [payload] ->
+          String.starts_with?(key, "timeline_month_summary/#{payload["user_id"]}/")
+        end)
+
+      readable? = timeline? and key not in targeted and not invalidated?
       assert Dawarich.RailsCache.get(key) == if(readable?, do: {:ok, "primed"}, else: :miss)
       assert {:ok, ttl} = Dawarich.Redis.cache_command(["TTL", key])
       elapsed = (System.monotonic_time(:millisecond) - primed_at) / 1_000

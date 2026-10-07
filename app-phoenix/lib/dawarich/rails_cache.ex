@@ -25,7 +25,12 @@ defmodule Dawarich.RailsCache do
   end
 
   defp visible_key(key, opts) do
-    repo = Keyword.get(opts, :repo, Dawarich.Jobs.repo())
+    default_repo =
+      if String.starts_with?(key, "timeline_month_summary/"),
+        do: Dawarich.Jobs.repo(),
+        else: Dawarich.Repo
+
+    repo = Keyword.get(opts, :repo, default_repo)
     key = Dawarich.Visits.CacheGeneration.physical_key(key, repo)
 
     if Dawarich.AfterCommit.Visibility.user_key?(key),

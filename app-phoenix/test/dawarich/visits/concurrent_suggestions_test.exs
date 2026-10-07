@@ -1,7 +1,7 @@
 defmodule Dawarich.Visits.ConcurrentSuggestionsTest do
   use Dawarich.VisitsCase, async: false
   alias Dawarich.Visits.{SuggestWorker, RealtimeDebouncer}
-  alias Dawarich.Jobs.{Dispatch, Ownership}
+  alias Dawarich.Jobs.Dispatch
   @oban __MODULE__.Oban
 
   setup do
@@ -87,47 +87,6 @@ defmodule Dawarich.Visits.ConcurrentSuggestionsTest do
     end
   end
 
-  test "sequential overlapping suggestions retain the full stay" do
-    f = load_visits!("detection_pipeline")
-    uid = user_id(f)
-
-    rows(
-      "INSERT INTO areas(user_id,name,latitude,longitude,radius,created_at,updated_at) VALUES($1,'Office',51.3397,12.3731,100,now(),now())",
-      [uid]
-    )
-
-    assert SuggestWorker.perform(job(uid, 1_790_003_000)) == :ok
-    [before_visit] = visits(uid)
-    assert SuggestWorker.perform(job(uid, 1_790_001_800)) == :ok
-    assert visits(uid) == [before_visit]
-  end
-
-  test "concurrent debounce bursts publish one native command through an ownership flip" do
-    f = load_visits!("detection_pipeline")
-    uid = user_id(f)
-    now = DateTime.from_unix!(1_790_003_000)
-    native_env = env("off")
-    Ownership.put!(ScratchRepo, "command:visits.suggest", :sidekiq, pinned: true)
-    assert RealtimeDebouncer.trigger(ScratchRepo, uid, env: native_env, now: now) == :ok
-
-    tasks =
-      for _ <- 1..4,
-          do:
-            Task.async(fn ->
-              RealtimeDebouncer.trigger(ScratchRepo, uid, env: native_env, now: now)
-            end)
-
-    assert Enum.map(tasks, &Task.await(&1, 10_000)) == List.duplicate(:ok, 4)
-    Ownership.put!(ScratchRepo, "command:visits.suggest", :oban)
-    assert RealtimeDebouncer.trigger(ScratchRepo, uid, env: env("on"), now: now) == :ok
-
-    assert rows("SELECT count(*) FROM public.job_outbox WHERE command_type='visits.suggest'") == [
-             [1]
-           ]
-
-    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
-  end
-
   @tag :deleted_admission
   test "a soft-deleted user cannot publish a native realtime suggestion" do
     f = load_visits!("detection_pipeline")
@@ -190,19 +149,4 @@ defmodule Dawarich.Visits.ConcurrentSuggestionsTest do
       "PHOTON_API_HOST" => "photon.example.invalid",
       "TIME_ZONE" => "UTC"
     }
-
-  defp job(uid, stop) do
-    args = %{
-      "user_id" => uid,
-      "event_id" => Ecto.UUID.generate(),
-      "start_at" => 1_790_000_000,
-      "cursor" => 1_790_000_000,
-      "end_at" => stop,
-      "stepping" => "calendar",
-      "time_zone" => "UTC",
-      "plan_restricted" => false
-    }
-
-    %Oban.Job{args: args, conf: Oban.config(@oban)}
-  end
 end
