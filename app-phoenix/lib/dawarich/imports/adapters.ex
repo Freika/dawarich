@@ -7,6 +7,7 @@ defmodule Dawarich.Imports.Adapters do
     1 => Imports.Owntracks,
     2 => Imports.GoogleRecords,
     3 => Imports.GooglePhone,
+    4 => Imports.GpxImporter,
     5 => Imports.Photos,
     6 => Imports.Geojson,
     7 => Imports.Photos,
