@@ -73,7 +73,11 @@ defmodule Dawarich.A12f3bE123Test do
       assert rows("SELECT payload FROM job_outbox WHERE command_type='places.delete_if_orphan'") ==
                [[%{"user_id" => uid, "place_id" => place}]]
 
-      assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 1}
+      assert Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: @oban
+             ) == %{dispatched: 1}
 
       [[child]] =
         rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [inspect(DeleteIfOrphanWorker)])
@@ -112,7 +116,12 @@ defmodule Dawarich.A12f3bE123Test do
            ]
 
     assert Drain.status(ScratchRepo).counts.pending_outbox == 1
-    assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 1}
+
+    assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
+             repo: ScratchRepo,
+             oban: @oban
+           ) == %{dispatched: 1}
 
     [[id, child]] =
       rows("SELECT id,args FROM oban.oban_jobs WHERE worker=$1", [inspect(DeleteIfOrphanWorker)])

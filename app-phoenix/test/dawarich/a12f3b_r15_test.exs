@@ -46,7 +46,16 @@ defmodule Dawarich.A12f3bR15Test do
     assert [[payload]] = rows("SELECT payload FROM public.job_outbox")
     assert payload == %{"poster_id" => id, "user_id" => 1, "locale" => "de"}
     assert rows("SELECT kind FROM phoenix.rails_commands") == []
-    Command.produce(Repo, :sidekiq, id, %{id: 1}, "de", NaiveDateTime.utc_now())
+
+    Command.produce(
+      Repo,
+      :sidekiq,
+      id,
+      %{id: 1},
+      "de",
+      DateTime.to_naive(Dawarich.JobsCase.db_now(Repo))
+    )
+
     assert rows("SELECT count(*) FROM public.job_outbox") == [[1]]
 
     start_supervised!(
@@ -58,7 +67,8 @@ defmodule Dawarich.A12f3bR15Test do
        testing: :manual}
     )
 
-    assert %{dispatched: 1} = Dispatch.run(repo: Repo, oban: :r15_creation)
+    assert %{dispatched: 1} =
+             Dispatch.run(now: Dawarich.JobsCase.db_now(Repo), repo: Repo, oban: :r15_creation)
 
     [[args]] =
       rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Posters.CreateWorker'")
@@ -66,7 +76,16 @@ defmodule Dawarich.A12f3bR15Test do
     assert :ok = Generation.run(id, 1, args["event_id"], "de", repo: Repo)
     assert :ok = Generation.run(id, 1, args["event_id"], "de", repo: Repo)
     assert rows("SELECT status FROM posters WHERE id=$1", [id]) == [[3]]
-    Command.produce(Repo, :sidekiq, id, %{id: 1}, "de", NaiveDateTime.utc_now())
+
+    Command.produce(
+      Repo,
+      :sidekiq,
+      id,
+      %{id: 1},
+      "de",
+      DateTime.to_naive(Dawarich.JobsCase.db_now(Repo))
+    )
+
     assert rows("SELECT count(*) FROM public.job_outbox") == [[1]]
     System.delete_env("DAWARICH_RAILS")
     assert {:ok, _} = Persistence.create(%{}, %{id: 1}, "en", Repo)

@@ -43,7 +43,13 @@ defmodule DawarichWeb.A12f3bP03Test do
       )
 
     start_oban(:poster_producers)
-    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: :poster_producers)
+
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: :poster_producers
+             )
 
     assert [[args]] =
              rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Posters.CreateWorker'")

@@ -321,7 +321,14 @@ defmodule DawarichWeb.A12f3aINativePurgeTest do
     assert rows("SELECT command_type FROM job_outbox") == [["imports.prepared_download_purge"]]
     assert rows("SELECT kind FROM phoenix.rails_commands") == []
     start_oban(__MODULE__)
-    assert %{dispatched: 1} = Dispatch.run(oban: __MODULE__, repo: ScratchRepo)
+
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               oban: __MODULE__,
+               repo: ScratchRepo
+             )
+
     assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :imports)
     assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [old.id]) == []
     assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [source.id]) == [[source.id]]
@@ -332,7 +339,13 @@ defmodule DawarichWeb.A12f3aINativePurgeTest do
       [c.other, shared.id]
     )
 
-    assert %{dispatched: 1} = Dispatch.run(oban: __MODULE__, repo: ScratchRepo)
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               oban: __MODULE__,
+               repo: ScratchRepo
+             )
+
     assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :imports)
     assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [shared.id]) == [[shared.id]]
 

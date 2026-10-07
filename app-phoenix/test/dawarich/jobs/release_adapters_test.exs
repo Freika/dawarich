@@ -39,7 +39,12 @@ defmodule Dawarich.Jobs.ReleaseAdaptersTest do
 
       bad = outbox!(command_type: type, command_version: 2, payload: payload)
       extra = outbox!(command_type: type, payload: Map.put(payload, "extra", 1))
-      assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{quarantined: 2}
+
+      assert Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: @oban
+             ) == %{quarantined: 2}
 
       assert rows("SELECT state,error_code FROM job_outbox WHERE event_id=$1", [
                Ecto.UUID.dump!(bad)

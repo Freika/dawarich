@@ -32,7 +32,7 @@ defmodule Dawarich.Achievements.BulkCheck do
               if Processed.claim!(
                    repo,
                    receipt_id(args["event_id"], id),
-                   "achievements.bulk_check"
+                   "achievements.bulk_check:#{args["event_id"]}:#{id}"
                  ) do
                 publish(repo, oban, args, id, owner, DateTime.add(now, index * 300))
                 Keyword.get(opts, :hook, fn _ -> :ok end).(id)
@@ -40,7 +40,7 @@ defmodule Dawarich.Achievements.BulkCheck do
             end)
 
             if index == length(batches) - 1,
-              do: Processed.mark!(repo, args["event_id"], "achievements.bulk_check")
+              do: Processed.mark!(repo, args["event_id"], "achievements.bulk_check.completed")
           end
 
           :ok
