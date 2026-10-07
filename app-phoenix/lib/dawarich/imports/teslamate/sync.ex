@@ -16,8 +16,11 @@ defmodule Dawarich.Imports.Teslamate.Sync do
              fn holder -> begin(repo, args, holder, opts) end,
              timeout_ms: 0
            ) do
-        {:ok, result} -> result
-        {:error, :timeout} -> {:ok, %{"skipped" => true}}
+        {:ok, result} ->
+          result
+
+        {:error, :timeout} ->
+          if opts[:worker], do: {:snooze, 60}, else: {:ok, %{"skipped" => true}}
       end
     end
   end

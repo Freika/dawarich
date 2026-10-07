@@ -97,7 +97,15 @@ defmodule Dawarich.Photos.Enrichment do
       Enum.map(params["assets"] || [], &Map.take(&1, ~w(immich_asset_id latitude longitude)))
 
     enqueue =
-      Keyword.get(opts, :enqueue, Application.get_env(:dawarich, :immich_verification_enqueue))
+      Keyword.get(
+        opts,
+        :enqueue,
+        Application.get_env(
+          :dawarich,
+          :immich_verification_enqueue,
+          &Dawarich.Immich.Enrichment.enqueue/4
+        )
+      )
 
     if assets != [] and not is_function(enqueue, 4) do
       {:error, :verification_unavailable}

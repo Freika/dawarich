@@ -25,7 +25,7 @@ defmodule Dawarich.Areas.WebWrite do
   defp relabel!(repo, id, values, before, now) do
     needed =
       is_nil(before) or
-        Enum.any?(~w(latitude longitude radius), &(number(values[&1]) != number(before[&1])))
+        geometry_changed?(values, before)
 
     if needed do
       if Dawarich.Jobs.Ownership.lock(repo, "command:areas.relabel_visits") != :oban,
@@ -89,13 +89,24 @@ defmodule Dawarich.Areas.WebWrite do
   end
 
   defp number(value) when is_binary(value) do
-    case Float.parse(String.trim(value)) do
-      {n, ""} -> n
-      _ -> nil
-    end
+    if Regex.match?(~r/\A[+-]?0[xX]/, value), do: nil, else: Ruby.float(value)
   end
 
   defp number(_), do: nil
+
+  defp coordinate(value) do
+    value = value |> Ruby.strip() |> String.replace("_", "")
+    value = Regex.replace(~r/\A([+-]?)\./, value, "\\g{1}0.")
+    value = Regex.replace(~r/\.(?=[eE]|$)/, value, ".0")
+    value |> Decimal.new() |> Decimal.round(6, :half_up) |> Decimal.to_string(:normal)
+  end
+
+  defp geometry_changed?(values, before) do
+    Dawarich.RubyInteger.to_i(values["radius"]) != Dawarich.RubyInteger.to_i(before["radius"]) or
+      Enum.any?(~w(latitude longitude), fn field ->
+        not Decimal.equal?(coordinate(values[field]), coordinate(before[field]))
+      end)
+  end
 
   defp save!(repo, user, nil, values, _before, now) do
     [[id]] =
@@ -104,9 +115,9 @@ defmodule Dawarich.Areas.WebWrite do
         [
           user,
           values["name"],
-          values["latitude"],
-          values["longitude"],
-          trunc(number(values["radius"])),
+          coordinate(values["latitude"]),
+          coordinate(values["longitude"]),
+          Dawarich.RubyInteger.to_i(values["radius"]),
           DateTime.to_naive(now)
         ]
       ).rows
@@ -117,7 +128,7 @@ defmodule Dawarich.Areas.WebWrite do
   defp save!(repo, user, id, values, before, now) do
     changed =
       values["name"] != before["name"] or
-        Enum.any?(~w(latitude longitude radius), &(number(values[&1]) != number(before[&1])))
+        geometry_changed?(values, before)
 
     if changed do
       repo.query!(
@@ -126,9 +137,9 @@ defmodule Dawarich.Areas.WebWrite do
           id,
           user,
           values["name"],
-          values["latitude"],
-          values["longitude"],
-          trunc(number(values["radius"])),
+          coordinate(values["latitude"]),
+          coordinate(values["longitude"]),
+          Dawarich.RubyInteger.to_i(values["radius"]),
           DateTime.to_naive(now)
         ]
       )

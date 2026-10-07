@@ -407,6 +407,21 @@ ordinary web readiness must not create tables, migrate, seed or invoke callbacks
 Cloud database CREATE/schema-owner rights and L1 provisioning are unproved at
 this head; source schema-loading for tests does not prove NEW provisioning.
 
+Map-matching migration `20261006120000` adds all five track columns in one
+transaction with savepoint recovery, five attempts per column, 5-second
+PostgreSQL lock waits, and increasing 5/10/15/20-second backoffs. Its explicit
+400-second transaction budget covers the 375-second worst-case retry allowance
+across five columns plus recording overhead. Other release steps retain their
+existing deadlines. Index migration `20261006120100` runs outside a transaction;
+both concurrent invalid-index cleanup and concurrent creation have an infinite
+client execution deadline. The database role must retain zero `lock_timeout`
+for concurrent DDL. A retry checks validity and rebuilds an invalid leftover
+index before recording the version. The real-DB regression tests in
+`map_matching_deadline_test.exs` use ordinary production Repo deadlines, an
+open writer beyond 15 seconds, and two column lock timeouts through the release
+runner. These client deadline defects do not occur in the Rails migration
+probes with the same blockers.
+
 Registration copy authority is `ReleaseMigrations.V1_13_1.copy_registration_setting`:
 the migration owner copies the source Redis cache entry
 `dawarich/registration_enabled` into `phoenix.registration_setting`, preserving

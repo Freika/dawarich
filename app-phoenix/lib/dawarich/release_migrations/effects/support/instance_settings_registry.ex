@@ -16,9 +16,16 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.InstanceSettingsRegistry do
     {"store_geodata", "STORE_GEODATA", :boolean, true}
   ]
 
-  def definitions, do: @definitions
+  @experimental_definitions [
+    {"map_matching_enabled", "MAP_MATCHING_ENABLED", :boolean, false},
+    {"map_matching_shadow_mode", "MAP_MATCHING_SHADOW_MODE", :boolean, false},
+    {"atlas_url", "ATLAS_URL", :string, nil}
+  ]
 
-  def fetch(key), do: List.keyfind(@definitions, key, 0) || raise(KeyError, key: key)
+  def definitions, do: @definitions
+  def current_definitions, do: @definitions ++ @experimental_definitions
+
+  def fetch(key), do: List.keyfind(current_definitions(), key, 0) || raise(KeyError, key: key)
 
   def secret?(key), do: elem(fetch(key), 2) == :secret
 
@@ -29,6 +36,13 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.InstanceSettingsRegistry do
   def resolve(env, key) do
     {_key, var, _kind, default} = definition = fetch(key)
     if set?(env[var]), do: coerce(definition, env[var]), else: default
+  end
+
+  def coerce({"atlas_url", _var, :string, _default}, raw) do
+    case raw |> Ruby.strip() |> String.trim_trailing("/") do
+      "" -> nil
+      url -> url
+    end
   end
 
   def coerce({_key, _var, kind, default}, raw) do

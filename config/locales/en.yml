@@ -43,7 +43,18 @@ en:
           locationiq: "Hosted service. Needs an API key."
         points:
           title: "Points"
+        experimental:
+          title: "Experimental features"
+        map_matching:
+          title: "Map matching"
+          description: "Align noisy recorded paths to nearby roads and paths. This changes only how eligible tracks are drawn; recorded points and the original path stay unchanged."
         fields:
+          atlas_url: "Atlas URL"
+          map_matching_enabled: "Enable map matching"
+          atlas_url_hint: "Full HTTP or HTTPS base URL of your private Dawarich Atlas service."
+          map_matching_enabled_hint: "Applies to the whole instance. Existing tracks are not processed automatically."
+          map_matching_shadow_mode: "Shadow mode"
+          map_matching_shadow_mode_hint: "Processes eligible tracks without displaying matched paths."
           photon_api_host: "Host"
           photon_api_key: "API key"
           photon_api_use_https: "Use HTTPS"
@@ -59,6 +70,8 @@ en:
           api_key_keep_hint: "Leave blank to keep the saved key."
           store_geodata_hint: "Looks up city and country names when new points are added. Nightly lookups still run when a provider is configured, even with this option off."
       update:
+        atlas_url_invalid: "Atlas URL must be a full HTTP or HTTPS URL without credentials, a query, or a fragment."
+        atlas_url_required: "Set an Atlas URL before enabling map matching."
         saved: "Settings saved."
         pinned: "Refused: pinned by %{variables}."
         host_invalid: "The host must be a bare hostname with an optional port or path, with no spaces."

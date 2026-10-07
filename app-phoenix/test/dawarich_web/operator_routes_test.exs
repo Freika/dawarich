@@ -108,6 +108,7 @@ defmodule DawarichWeb.OperatorRoutesTest do
   end
 
   @tag a12f3b_case: "D01a"
+  @tag h04_case: "H04a"
   test "Cloud job health requires Basic authorization on HTTP and connected mounts" do
     cloud!()
 
@@ -127,6 +128,7 @@ defmodule DawarichWeb.OperatorRoutesTest do
     page = request(:get, "/settings/background_jobs", 10001, credentials())
     assert page.status == 200
     assert page.resp_body =~ ~s(data-testid="instance-settings-phoenix-jobs")
+    assert get_resp_header(page, "x-dawarich-rails-proxy") == []
     assert request(:head, "/settings/background_jobs", 10001, credentials()).resp_body == ""
 
     for context <- [%{}, %{"operator_grant" => "invalid"}] do

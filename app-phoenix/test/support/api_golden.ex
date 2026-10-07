@@ -60,6 +60,8 @@ defmodule Dawarich.Test.ApiGolden do
   def insert!(table, row, repo) when is_map(row), do: insert!(table, [row], repo)
 
   def insert!(table, rows, repo) when is_list(rows) do
+    rows = Enum.map(rows, &column_defaults(table, &1))
+
     result =
       repo.query!(
         "INSERT INTO #{table} SELECT * FROM json_populate_recordset(NULL::#{table}, $1::text::json)",
@@ -69,6 +71,20 @@ defmodule Dawarich.Test.ApiGolden do
     Dawarich.Test.SeedIds.advance!(repo, table, Enum.map(rows, & &1["id"]))
     result
   end
+
+  def column_defaults("tracks", row) do
+    defaults = %{
+      "matched_path" => nil,
+      "map_matching_status" => nil,
+      "map_matching_input_digest" => nil,
+      "map_matching_data" => %{},
+      "map_matched_at" => nil
+    }
+
+    Map.merge(defaults, row)
+  end
+
+  def column_defaults(_table, row), do: row
 
   defp raw(%{"method" => method, "target" => target, "headers" => headers} = request),
     do: [

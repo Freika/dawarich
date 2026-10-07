@@ -3,7 +3,9 @@ defmodule DawarichWeb.Api.SharedGoldenTest do
   use Dawarich.JobsCase, async: false
 
   alias Dawarich.Test.ApiGolden
-  alias Dawarich.{RailsCookies, RailsSecret}
+  alias Dawarich.{RailsCookies, RailsSecret, SharedLinks}
+  alias Dawarich.Photos.ProviderCache
+  alias Dawarich.SharedApi.{Closure, Photos}
   alias DawarichWeb.SharedLinkCookie
 
   @path "test/fixtures/api_shared/golden.json"
@@ -37,7 +39,27 @@ defmodule DawarichWeb.Api.SharedGoldenTest do
       for {key, _} <- @kase["cache_after"] || %{}, do: Dawarich.Redis.cache_command(["DEL", key])
 
       before = after_rows()
-      ApiGolden.check(cookie(@kase), ctx.port, ctx.upstream)
+      photo_search!(@kase)
+      kase = cookie(@kase)
+
+      if @kase["name"] in ~w(thumbnail_foreign thumbnail_private thumbnail_track_beyond_marker_cap thumbnail_unconfigured) do
+        client = connect(ctx.port)
+        request = kase["request"]
+
+        send_raw(client, [
+          "#{request["method"]} #{request["target"]} HTTP/1.1\r\n",
+          Enum.map(request["headers"], fn [name, value] -> "#{name}: #{value}\r\n" end),
+          "\r\n",
+          request["body"] || ""
+        ])
+
+        assert {status, _, body} = read_response(client)
+        assert status == kase["response"]["status"]
+        assert body == kase["response"]["body"]
+        no_upstream!(ctx.upstream)
+      else
+        ApiGolden.check(kase, ctx.port, ctx.upstream)
+      end
 
       assert after_rows() ==
                if(@kase["expect"] == "own", do: Map.merge(before, @kase["after"]), else: before)
@@ -76,6 +98,26 @@ defmodule DawarichWeb.Api.SharedGoldenTest do
     assert [[next]] = Repo.query!("SELECT nextval(pg_get_serial_sequence('points', 'id'))").rows
     assert next > id
   end
+
+  defp photo_search!(%{"name" => "thumbnail_" <> _, "cache_after" => caches}) do
+    [[id]] = Repo.query!("SELECT id::text FROM shared_links LIMIT 1").rows
+    link = SharedLinks.active(id, @now)
+    context = Photos.grant_context(link)
+
+    for {"photos_search/" <> _, %{"value" => photos}} <- caches,
+        is_list(photos),
+        {from, to} <- [context.range] do
+      key = "photos_search/#{link.user_id}/v2/#{from}/#{to}"
+      ProviderCache.put(key, photos, 60)
+    end
+
+    on_exit(fn ->
+      ProviderCache.invalidate(link.user_id)
+      Dawarich.Redis.cache_command(["UNLINK", Closure.photo_ids_key(link, context)])
+    end)
+  end
+
+  defp photo_search!(_), do: :ok
 
   def query(_event, _measurements, %{query: query}, parent), do: send(parent, {:query, query})
 

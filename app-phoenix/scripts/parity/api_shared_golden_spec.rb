@@ -88,6 +88,47 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
     expect(link.reload.view_count).to eq(0)
   end
 
+  it 'characterizes scoped public photo metadata and provider failures' do
+    original_setups = ApiSharedGoldenOracle.setups.dup
+    variants = [
+      ['strings', { json_ids: %w[public-0 public-1], acl_size: 2 }],
+      ['missing_exif', { json_ids: ['public-0'], acl_size: 1 }],
+      ['missing_time', { json_ids: ['public-0'], acl_size: 1 }],
+      ['missing_type', { json_ids: [], acl_size: nil }],
+      ['timeout', { json_ids: [], acl_size: 0 }],
+      ['prism_strings', { json_ids: %w[public-0 public-1], acl_size: 2 }],
+      ['head', { acl_size: 2 }]
+    ]
+    results = variants.map do |variant, expected|
+      entry = { name: "s02_#{variant}", action: 'photos', seed: :provider, photo_variant: variant,
+                method: variant == 'head' ? :head : :get,
+                link: { settings: { 'show_photos' => true } }, **expected }
+      kase = { method: :get, auth: :none, expect: :own, env: {}, content: {},
+               path: "/api/v1/shared/#{ApiSharedGoldenOracle::LINK}/photos" }.merge(entry)
+      result = places_record(kase, oracle: ApiSharedGoldenOracle, strict: true)
+      expect(result.dig('response', 'status')).to eq(200)
+      if entry[:method] == :head
+        expect(result.dig('response', 'body')).to eq('')
+      else
+        expect(JSON.parse(result.dig('response', 'body')).map { _1.fetch('id') }).to eq(expected[:json_ids])
+      end
+      expect(result.fetch('after').fetch('shared_links')).to eq(
+        ApiSharedGoldenOracle.setups.fetch(result.fetch('setup')).to_h.fetch('shared_links')
+      )
+      shared_assert_response(result, entry)
+      { 'name' => entry[:name], 'response' => result.fetch('response') }
+    end
+    path = Rails.root.join('app-phoenix/test/fixtures/api_shared/s02.json')
+    encoded = "#{Oj.dump(results, mode: :strict, indent: 2, float_precision: 0).rstrip}\n"
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(path, encoded)
+    else
+      expect(path.read).to eq(encoded)
+    end
+  ensure
+    ApiSharedGoldenOracle.setups.replace(original_setups)
+  end
+
   def places_seed(kase)
     oracle = ApiSharedGoldenOracle
     reset!
@@ -218,12 +259,50 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
 
   def shared_seed_provider(kase)
     oracle = ApiSharedGoldenOracle
+    if kase[:photo_variant] == 'prism_strings'
+      url = 'http://s02-photoprism.example.invalid'
+      user = User.find(oracle::OWNER)
+      user.update_columns(settings: user.settings.except('immich_url', 'immich_api_key').merge(
+        'photoprism_url' => url, 'photoprism_api_key' => 's02-synthetic'
+      ))
+      photos = [
+        { Hash: 'unlocated', Type: 'image', TakenAt: Time.at(oracle::T0 + 1800).utc.iso8601 },
+        { Hash: 'private', Type: 'image', TakenAt: Time.at(oracle::T0 + 1800).utc.iso8601,
+          Lat: '52', Lng: '13' },
+        *%w[public-0 public-1].map do |id|
+          { Hash: id, Type: 'image', TakenAt: Time.at(oracle::T0 + 1800).utc.iso8601,
+            Lat: '52.5', Lng: '13.4' }
+        end
+      ]
+      stub = stub_request(:get, "#{url}/api/v1/photos")
+      stub.with(query: hash_including('count' => '1000')).to_return do |request|
+        { status: 200, headers: { 'Content-Type' => 'application/json', 'X-Preview-Token' => 's02-preview' },
+          body: JSON.generate(request.uri.query.include?('offset=') ? [] : photos) }
+      end
+      return
+    end
     photos = (0..100).map do |i|
       { id: "public-#{i}", type: 'IMAGE', fileCreatedAt: Time.at(oracle::T0 + 1800).utc.iso8601,
         exifInfo: { latitude: 52.5, longitude: 13.4 } }
     end
     photos.prepend(photos.first.merge(id: 'unlocated', exifInfo: {}),
                    photos.first.merge(id: 'private', exifInfo: { latitude: 52, longitude: 13 }))
+    if kase[:photo_variant]
+      photos = photos.first(4)
+      case kase[:photo_variant]
+      when 'strings'
+        photos.each { |photo| photo[:exifInfo].transform_values!(&:to_s) }
+      when 'missing_exif'
+        photos.last.delete(:exifInfo)
+      when 'missing_time'
+        photos.last.delete(:fileCreatedAt)
+      when 'missing_type'
+        photos.last.delete(:type)
+      when 'timeout'
+        stub_request(:post, "#{oracle::IMMICH}/api/search/metadata").to_timeout
+        return
+      end
+    end
     stub_request(:post, "#{oracle::IMMICH}/api/search/metadata")
       .with { |request| JSON.parse(request.body)['page'] == 1 }
       .to_return(status: 200, headers: { 'Content-Type' => 'application/json' },

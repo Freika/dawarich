@@ -584,7 +584,7 @@ defmodule DawarichWeb.A12f2BClosureTest do
              :create,
              user,
              %{"assets" => [hd(assets)]},
-             []
+             [enqueue: nil]
            ]) == {:error, :verification_unavailable}
   end
 
