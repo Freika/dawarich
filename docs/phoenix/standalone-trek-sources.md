@@ -16,14 +16,21 @@ per-form tokens are refused before effects.
 
 A Pro-plan refusal returns 303 with the Rails application flash. All native
 Referer redirects use `DawarichWeb.RailsRedirect.back/2`. Admission compares the
-parsed host to `request.host`, as Rails does; another scheme or port on that
-host remains allowed. Root-relative paths retain queries and fragments.
-Backslashes, userinfo, control or whitespace characters, protocol-relative
-forms, malformed URLs and foreign hosts use the action's Rails fallback.
+parsed host to `request.host`, as Rails does. Only HTTP and HTTPS absolute URLs
+are allowed, including another HTTP(S) scheme or port on that host. Scheme
+comparison is case-insensitive after trimming surrounding whitespace.
+Scheme-less relative paths must start with a single `/` and retain queries and
+fragments. All other schemes, including same-host `javascript://`, `data://`,
+`vbscript://` and `file://`, use the action's Rails fallback. Backslashes,
+userinfo, embedded control or whitespace characters, protocol-relative forms,
+malformed URLs and foreign hosts also use that fallback.
 AFFiNE ADR: **Dawarich — ADR-20261007-native-safe-referer**
 (document `eyGRi0ZnLfOXhFXdR_-rG`).
 The syntax restrictions are an explicit controller security ruling, recorded
-as ED-FIX-SA-TREK-REFERER-SYNTAX in `app-phoenix/parity/expected_diffs.md`.
+as ED-FIX-SA-TREK-REFERER-SYNTAX and ED-FIX-SA-TREK-REFERER-SCHEME in
+`app-phoenix/parity/expected_diffs.md`. Rails itself admits same-host non-HTTP
+authority URLs; the scheme allowlist is a security restriction beyond that
+host-only behavior.
 
 | Native consumer | Fallback |
 | --- | --- |
@@ -43,7 +50,9 @@ Referer handling outside the shared helper, including newly added handlers.
 See `test/dawarich_web/rails_redirect_test.exs` and the named F1/F2/F3 request
 regressions in the achievement, API-key, visit, segment, recalculation and
 family tests. The signed achievement regression reproduces both browser
-backslash/userinfo probes from the security review.
+backslash/userinfo probes from the security review. The scheme regressions also
+cover uppercase, mixed-case and whitespace-prefixed schemes, and reproduce a
+signed standalone sharing request with a same-host JavaScript authority.
 
 Connection verification precedes credential persistence; credentials use the
 existing Active Record encryption format. Importing sources refuse credential

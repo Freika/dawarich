@@ -21,6 +21,45 @@ defmodule DawarichWeb.AchievementSharingTest do
     :ok
   end
 
+  @tag :safe_back4
+  @tag :safe_back4_signed
+  test "F1 signed standalone sharing rejects same-host non-HTTP schemes with the achievement fallback" do
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    for scheme <- ["javascript", "JAVASCRIPT", "data", "vbscript", "file", "JaVaScRiPt", "DaTa"],
+        whitespace <- ["", " \t"] do
+      referer = whitespace <> scheme <> "://www.example.com/%0Aalert(1)"
+
+      response =
+        request(
+          "POST",
+          "/achievements/country_de/toggle_sharing",
+          %{"_method" => "patch", "enabled" => true},
+          false,
+          referer
+        )
+        |> DawarichWeb.Endpoint.call([])
+
+      assert response.status == 302
+
+      assert get_resp_header(response, "location") ==
+               ["http://www.example.com/achievements/country_de"],
+             inspect(referer)
+
+      assert [[true]] =
+               rows(
+                 "SELECT sharing_enabled FROM achievement_progresses WHERE user_id=44001 AND achievement_key='country_de'"
+               )
+    end
+  end
+
   @tag :safe_back3
   test "F1 signed sharing rejects browser backslash userinfo tricks and preserves relative returns" do
     previous = System.get_env("DAWARICH_RAILS")

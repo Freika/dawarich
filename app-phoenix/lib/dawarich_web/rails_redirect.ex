@@ -6,10 +6,12 @@ defmodule DawarichWeb.RailsRedirect do
   def back(conn, fallback \\ "/") do
     with [value] <- get_req_header(conn, "referer"),
          true <- String.valid?(value),
+         value <- String.trim(value),
          false <- Regex.match?(~r/[\\\s\p{Cc}\p{Z}]/u, value),
          false <- String.starts_with?(value, "//"),
          {:ok, uri} <- URI.new(value),
          nil <- uri.userinfo,
+         true <- is_nil(uri.scheme) or String.downcase(uri.scheme) in ["http", "https"],
          true <-
            uri.host == conn.host or
              (is_nil(uri.host) and is_nil(uri.scheme) and String.starts_with?(value, "/")) do

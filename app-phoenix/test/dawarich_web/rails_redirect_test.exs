@@ -2,6 +2,61 @@ defmodule DawarichWeb.RailsRedirectTest do
   use ExUnit.Case, async: true
   alias DawarichWeb.RailsRedirect
 
+  for scheme <- ["javascript", "JAVASCRIPT", "data", "vbscript", "file"] do
+    @tag :safe_back4
+    @tag safe_back4_case: scheme
+    test "F1 rejects #{scheme}:// even with same-host authority and surrounding whitespace" do
+      conn = Plug.Test.conn(:get, "http://www.example.com/map/v2")
+
+      for prefix <- [unquote(scheme), String.capitalize(String.downcase(unquote(scheme)))],
+          whitespace <- ["", " ", "\t", "\r\n", "\u00A0"] do
+        value = whitespace <> prefix <> "://www.example.com/%0Aalert(1)" <> whitespace
+        input = %{conn | req_headers: [{"referer", value}]}
+
+        assert RailsRedirect.back(input) == "http://www.example.com/", inspect(value)
+
+        assert RailsRedirect.back(input, "/achievements/country_de") ==
+                 "http://www.example.com/achievements/country_de",
+               inspect(value)
+      end
+    end
+  end
+
+  @tag :safe_back4
+  @tag :safe_back4_normalization
+  test "F1 allows only case-insensitive HTTP HTTPS or single-slash relative returns after trimming" do
+    conn = Plug.Test.conn(:get, "http://www.example.com/map/v2")
+
+    for value <- [
+          " \tHtTp://www.example.com:8443/map/v2?date=2026-10-07#timeline\r\n",
+          " \tHtTpS://www.example.com:8443/map/v2?date=2026-10-07#timeline\r\n",
+          " \t/map/v2?date=2026-10-07#timeline\r\n"
+        ] do
+      trimmed = String.trim(value)
+
+      expected =
+        if String.starts_with?(trimmed, "/"),
+          do: "http://www.example.com" <> trimmed,
+          else: trimmed
+
+      input = %{conn | req_headers: [{"referer", value}]}
+      assert RailsRedirect.back(input) == expected
+    end
+
+    for value <- [
+          "ftp://www.example.com/offer",
+          "custom://www.example.com/offer",
+          "httpx://www.example.com/offer",
+          " https:evil.example",
+          " //www.example.com/offer",
+          " /\\evil.example/offer",
+          " /map/v2\tbad"
+        ] do
+      input = %{conn | req_headers: [{"referer", value}]}
+      assert RailsRedirect.back(input) == "http://www.example.com/", inspect(value)
+    end
+  end
+
   @tag :safe_back3
   test "F2 safe Referer uses request host while rejecting browser authority ambiguities" do
     conn = Plug.Test.conn(:get, "http://www.example.com/map/v2")
