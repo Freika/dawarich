@@ -30,7 +30,7 @@ defmodule DawarichWeb.A12f3bN04Test do
   end
 
   setup do
-    RailsUser.insert!(%{id: 73401, email: "n04@test", settings: %{"keep" => 7}})
+    RailsUser.insert!(%{id: 73401, admin: true, email: "n04@test", settings: %{"keep" => 7}})
 
     server =
       start_supervised!(

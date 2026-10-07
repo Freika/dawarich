@@ -7,7 +7,6 @@ defmodule Dawarich.Mail.TestEmailTest do
   alias Dawarich.Mail.Digests.{DeliveryWorker, Enqueue, Render}
 
   @http Path.expand("../../fixtures/mail/residual/http.json", __DIR__)
-  @content Path.expand("../../fixtures/mail/residual/content.json", __DIR__)
   @digests Path.expand("../../fixtures/mail/residual/digest_content.json", __DIR__)
   @clock %{local: ~N[2026-10-04 12:00:00], offset: 0, zone: "UTC", valid: true}
   @env %{
@@ -32,6 +31,7 @@ defmodule Dawarich.Mail.TestEmailTest do
     for row <- cases do
       recipient = %{
         id: 460_111,
+        admin: true,
         email: row["recipient"],
         settings: %{"locale" => row["preference"]}
       }
@@ -59,9 +59,9 @@ defmodule Dawarich.Mail.TestEmailTest do
     end
 
     assert TestEmail.supported?(Map.put(@env, "SMTP_AUTHENTICATION", "unsupported")) == false
-    assert TestEmail.supported?(Map.put(@env, "SMTP_AUTHENTICATION", "plain")) == false
-    assert TestEmail.supported?(Map.put(@env, "SMTP_STARTTLS", "true")) == false
-    assert TestEmail.supported?(Map.put(@env, "SMTP_SSL", "true")) == false
+    assert TestEmail.supported?(Map.put(@env, "SMTP_AUTHENTICATION", "plain")) == true
+    assert TestEmail.supported?(Map.put(@env, "SMTP_STARTTLS", "true")) == true
+    assert TestEmail.supported?(Map.put(@env, "SMTP_SSL", "true")) == true
     assert TestEmail.supported?(@env) == true
     assert TestEmail.supported?(Map.delete(@env, "SMTP_SERVER")) == true
   end
@@ -75,6 +75,7 @@ defmodule Dawarich.Mail.TestEmailTest do
 
     Dawarich.Test.RailsUser.insert!(%{
       id: 460_006,
+      admin: true,
       email: "a12c-body-marker@test",
       settings: %{"locale" => "en", "timezone" => "UTC"}
     })
@@ -103,10 +104,16 @@ defmodule Dawarich.Mail.TestEmailTest do
       System.put_env(previous)
     end)
 
-    user = %{id: 460_001, email: "a12c-body-marker@test", settings: %{"locale" => "en"}}
+    user = %{
+      id: 460_001,
+      admin: true,
+      email: "a12c-body-marker@test",
+      settings: %{"locale" => "en"}
+    }
 
     DigestFixtures.row!(ScratchRepo, "users", %{
       "id" => user.id,
+      "admin" => true,
       "email" => user.email,
       "settings" => user.settings,
       "created_at" => @clock.local,

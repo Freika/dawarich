@@ -871,8 +871,9 @@ module ResidualMailFixtureSupport
     producers = source.select { |file| File.read(file).match?(/\bmember_joined\b/) }
                       .map { |file| Pathname.new(file).relative_path_from(Rails.root).to_s }
     native = Dir[Rails.root.join('app-phoenix/lib/dawarich/{mail,jobs}/**/*.ex')].map { |file| File.read(file) }.join
+    trial_mapping = types.any? { |type| native.match?(/"(?:mail\.user\.)?#{Regexp.escape(type)}"\s*=>/) }
     { 'trial_types' => types, 'trial_deliveries' => ActionMailer::Base.deliveries.length - count,
-      'trial_enqueued' => enqueued_jobs.length, 'trial_native_mapping' => types.any? { |type| native.include?(type) },
+      'trial_enqueued' => enqueued_jobs.length, 'trial_native_mapping' => trial_mapping,
       'member_joined_producers' => producers, 'member_joined_native_mapping' => native.include?('member_joined'),
       'retained_member_joined_template' => Rails.root.join('app/views/family_mailer/member_joined.html.erb').file? }
   end

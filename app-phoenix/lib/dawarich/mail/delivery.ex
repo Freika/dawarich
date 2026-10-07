@@ -5,35 +5,72 @@ defmodule Dawarich.Mail.Delivery do
   @takeover_seconds 600
 
   @claim """
-  INSERT INTO phoenix.delivery_claims AS c (handler, provider_key, event_id, claimed_at)
-  VALUES ($1, $2, $3, $4)
+  INSERT INTO phoenix.delivery_claims AS c (handler, provider_key, event_id, claimed_at, issued_at)
+  VALUES ($1, $2, $3, $4, $4)
   ON CONFLICT (handler, provider_key) DO UPDATE
-    SET event_id = EXCLUDED.event_id, claimed_at = EXCLUDED.claimed_at
+    SET event_id = EXCLUDED.event_id,
+        claimed_at = EXCLUDED.claimed_at
     WHERE c.delivered_at IS NULL
       AND (c.event_id = EXCLUDED.event_id
-           OR c.claimed_at < EXCLUDED.claimed_at - make_interval(secs => #{@takeover_seconds}))
+           OR (c.claimed_at < EXCLUDED.claimed_at - make_interval(secs => #{@takeover_seconds})
+               AND NOT EXISTS (SELECT 1 FROM phoenix.leases WHERE name=$5 AND holder IS DISTINCT FROM $6 AND expires_at > statement_timestamp())))
   RETURNING c.event_id
   """
 
-  def claim(repo, handler, key, event_id, now \\ DateTime.utc_now()) do
-    case repo.query!(@claim, [handler, key, Ecto.UUID.dump!(event_id), now], log: false).rows do
+  def claim(repo, handler, key, event_id, now \\ DateTime.utc_now(), holder \\ nil) do
+    case repo.query!(
+           @claim,
+           [handler, key, Ecto.UUID.dump!(event_id), now, lease_name(handler, key), holder],
+           log: false
+         ).rows do
       [[_]] -> :send
       [] -> if delivered?(repo, handler, key), do: :delivered, else: :held
     end
   end
 
-  def delivered!(repo, handler, key, event_id, now \\ DateTime.utc_now()) do
-    repo.query!(
-      "UPDATE phoenix.delivery_claims SET delivered_at = $4 WHERE handler = $1 AND provider_key = $2 AND event_id = $3",
-      [handler, key, Ecto.UUID.dump!(event_id), now],
-      log: false
-    )
+  def issued_at(repo, handler, key) do
+    [[at]] =
+      repo.query!(
+        "SELECT issued_at FROM phoenix.delivery_claims WHERE handler=$1 AND provider_key=$2",
+        [handler, key],
+        log: false
+      ).rows
 
-    :ok
+    DateTime.to_unix(at)
+  end
+
+  def delivered!(repo, handler, key, event_id, now \\ DateTime.utc_now(), holder \\ nil) do
+    result =
+      repo.query!(
+        "UPDATE phoenix.delivery_claims SET delivered_at = $4 WHERE handler = $1 AND provider_key = $2 AND event_id = $3 AND ($5::text IS NULL OR EXISTS (SELECT 1 FROM phoenix.leases WHERE name=$6 AND holder=$5 AND expires_at > statement_timestamp()))",
+        [handler, key, Ecto.UUID.dump!(event_id), now, holder, lease_name(handler, key)],
+        log: false
+      )
+
+    if result.num_rows == 1, do: :ok, else: {:error, :claim_lost}
   end
 
   def deliver(repo, handler, key, record, event_id, build) when is_function(build, 0) do
-    case claim(repo, handler, key, event_id) do
+    with_lease(repo, handler, key, fn holder ->
+      send_claimed(repo, handler, key, record, event_id, build, holder)
+    end)
+  end
+
+  def with_lease(repo, handler, key, fun) do
+    case Dawarich.State.Lease.with_lease(repo, lease_name(handler, key), fun,
+           timeout_ms: 0,
+           ttl_ms: @takeover_seconds * 1000
+         ) do
+      {:ok, result} -> result
+      {:error, :timeout} -> {:snooze, @takeover_seconds}
+    end
+  end
+
+  defp lease_name(handler, key),
+    do: "mail:" <> Base.encode16(:crypto.hash(:sha256, handler <> ":" <> key), case: :lower)
+
+  defp send_claimed(repo, handler, key, record, event_id, build, holder) do
+    case claim(repo, handler, key, event_id, DateTime.utc_now(), holder) do
       :delivered ->
         :ok
 
@@ -44,9 +81,19 @@ defmodule Dawarich.Mail.Delivery do
         env = System.get_env()
 
         with {:ok, message} <- build.(),
+             true <-
+               Dawarich.State.Lease.renew(
+                 repo,
+                 lease_name(handler, key),
+                 holder,
+                 @takeover_seconds * 1000
+               ),
              message = Map.put(message, :message_id, message_id(handler, key, record, env)),
              :ok <- transport().deliver(message, env) do
-          delivered!(repo, handler, key, event_id)
+          delivered!(repo, handler, key, event_id, DateTime.utc_now(), holder)
+        else
+          false -> {:error, :claim_lost}
+          other -> other
         end
     end
   end
