@@ -88,10 +88,10 @@ defmodule Dawarich.Jobs.Drain do
         }
       end)
 
-    status
+    source_boundary(status)
   rescue
     _ ->
-      %{
+      source_boundary(%{
         shutdown: "BLOCKED",
         shutdown_reasons: ["database_unreadable"],
         certainty: "UNKNOWN",
@@ -100,7 +100,19 @@ defmodule Dawarich.Jobs.Drain do
         observation: true,
         forward_reasons: ["database_unreadable"],
         binary_reasons: ["database_unreadable"]
+      })
+  end
+
+  defp source_boundary(status) do
+    Map.merge(status, %{
+      scope: "native_sql",
+      g49: "BLOCKED",
+      source: %{
+        status: "NOT_OBSERVED",
+        certainty: "UNKNOWN",
+        reasons: ["source_inspection_required"]
       }
+    })
   end
 
   defp reasons(counts, keys),

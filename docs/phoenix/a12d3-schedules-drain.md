@@ -27,8 +27,12 @@ queued instances to finish or an explicit controller disposition.
 Native state purge at `17 * * * *` is additional correctness-state maintenance,
 not a Rails schedule. TeslaMate/Trek each have one registered wrapper; accepted
 older scheduler workers remain supported and block activation until complete.
-23 source schedules have native execution coverage; the 24th cache-preheat
-wrapper delegates to Rails and remains a coexistence blocker. No claim of all 24 being native or of an idle Sidekiq is made here.
+The earlier A12d3 coverage count was 23 native schedules plus the cache
+wrapper. A12f-3b G01–G04 now retain all 24 schedules in the native registry;
+see [cron closure](a12f3b-cron.md) for timezone, slot, child and accepted-work
+contracts. Cache source boot cleaning is retired under ruling 8 after reader
+proof; native warming remains and accepted cache jobs still drain. Schedule
+registration does not establish source quiescence or an idle Sidekiq.
 
 | Name | Expression / Rails queue | Native module and prerequisites |
 |---|---|---|
@@ -39,7 +43,7 @@ wrapper delegates to Rails and remains a coexistence blocker. No claim of all 24
 | teslamate_sync_job | `30 2 * * *` / imports | Keep `integrations/teslamate_scheduling_worker.ex`; older duplicate registration removed from ImportEntries; child routed by current owner. |
 | trek_sync_job | `0 */6 * * *` / imports | Keep `integrations/trek_scheduling_worker.ex`; older duplicate registration removed from ImportEntries; child routed by current owner. |
 | app_version_checking_job | `0 */6 * * *` / app_version_checking | `app_version/check_worker.ex`, existing. |
-| cache_preheating_job | `0 0 * * *` / cache | Retained `cache/preheat_sweep_worker.ex` delegates to Rails during b4 coexistence; warming and cleaning closure require separate authorization. |
+| cache_preheating_job | `0 0 * * *` / cache | `cache/preheat_sweep_worker.ex` retains native warming; source boot cleaning retirement follows ruling 8, accepted source warming drains. Coexistence pins retain Rails selection. |
 | daily_track_generation_job | `0 */12 * * *` / tracks | `tracks/daily_worker.ex`, existing K9 native path; accepted walkers drain independently. |
 | nightly_reverse_geocoding_job | `15 1 * * *` / reverse_geocoding | `geocoding/nightly_worker.ex`; A12d3 native composition and source shim. Preserve force and invalidation. |
 | nightly_family_invitations_cleanup_job | `30 2 * * *` / families | `families/invitation_cleanup_worker.ex`, existing. |
@@ -335,3 +339,45 @@ D's integrated review fix and E's actual smoke/stop evidence are prerequisites;
 this runbook is not their execution result. Resume native producers only after
 absence proof. Ruling 7's same-DB rollback pins every real key then drains natively;
 no pending transfer is used. Release dates/windows remain Eugene's values.
+
+
+## H03/H04 SQL observation boundary
+
+`Jobs.Drain.status/1` labels its observation `scope: native_sql` and source
+`NOT_OBSERVED` / `UNKNOWN`, with `source_inspection_required`. Its `g49` field
+is always `BLOCKED`; native `binary_rollback: OBSERVED_EMPTY` describes only
+SQL debt after every known owner is pinned Sidekiq. This is required even if
+source Redis is reachable, empty or unavailable: the native observer does not
+read it. Database read failure retains UNKNOWN and blocks every native result.
+The retained Rails `JobDrain.status` independently counts source queued,
+scheduled, retry, dead, busy, reserved and unknown work, plus changed/read
+failures. Release acceptance combines observations with actual producer fences.
+
+H03a demonstrates a remaining live producer: `Visits.Suggest` calls
+`RailsEffects.reverse_place/3`, which unconditionally inserts
+`reverse_geocode_place` even in standalone with native owners. RX-PLACES R13
+must connect that producer to the registered native ReversePlaceWorker and
+prove terminal geocoding plus zero reverse work. H03 preserves all 78 closure
+kinds and the residual producer blocker. Plan-E source packages are present;
+their merge does not close this separate reverse producer. No ED is closed. Further all-owner-native probes found R19k04
+`ReleaseOperations.NullIsland.flag/2` still inserting
+`release_null_island_follow_up` in standalone after flagging points, and the
+R14 point-effect helper `Points.NativeEffects.achievements/2` still inserting
+`achievements.check` in coexistence even with its owner Oban. The dedicated
+anomaly-backfill producer already respects its owner; this is a separate helper.
+Probe writes were rolled back. These require their real native effect/ownership
+proof before any producer closure can be declared.
+
+H03b retains unreadable-database and all-key pin safety. H04 reuses the existing
+Cloud operator HTTP/connected-auth test and the actual native trip/release
+rollback test; the latter asserts unchanged source queues while SQL native
+work drains and still reports source inspection required. Their independent
+selectors are `h04_case:H04a` and `h04_case:H04b`.
+
+The [part-B handoff](a12f3b-pages-producers.md) maps route, reverse, source and
+cron evidence, the 125/78/24 inventories and approved NE dispositions. The
+[release runbook](a12f-ruby-free-release.md) retains R1/J1/J2/L1, G42–G49 and
+A12f-3c fence/old-app shutdown owner requirements. Source and Cloud lifecycle
+refusals remain intact. Ruling 7 is authoritative: pin all keys Sidekiq, drain
+accepted native work, stop Phoenix, then start Rails 1.15.3 on the same data.
+No transfer, dead-payload purge or SQL-only source-drained success is allowed.
