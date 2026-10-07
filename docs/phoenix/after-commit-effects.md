@@ -18,8 +18,11 @@ caller's repository. Operations are `stats`, `keys`, `tracks`, `subscription`,
 user-dependent entries. `keys` also records generations for its exact keys;
 `rate_limit` accepts the retired API key's SHA-256 digest, never its usable key.
 The `tracks` operation snapshots serialized created, updated and destroyed
-messages inside this transaction. Consumers use that immutable snapshot even
-if a later transaction changes or deletes the track.
+messages inside this transaction. An incomplete tracks delivery attempt re-reads
+current committed values for surviving created/updated IDs; the stored message
+is retained for a row subsequently deleted. Durable destroyed IDs and the stored
+message ordering preserve delivery identity. A successful receipt suppresses
+further publication.
 
 `enqueue(repo, worker, args, opts \\ [])` inserts an Oban intent using the same
 repository and returns `:ok`. Tile epoch and visit month workers also record the
@@ -97,8 +100,10 @@ Successful legacy `live_broadcast:done:<id>` claims are adopted as consumed SQL
 intents without another publication. New failed batches roll back their legacy
 claim and SQL marker and remain retryable. Track snapshots apply to newly
 recorded intents; already queued ID-only intents cannot recover a deleted row's
-historical body. Drain legacy track intents before retiring their source rows
-when deploying this amendment.
+historical body. Preexisting `Tracks.NativeChangesWorker` jobs execute the shared
+tracks dispatcher using a stable intent derived from their persisted Oban ID.
+New writes enqueue only `AfterCommit.Worker` jobs. Drain legacy track intents
+before retiring their source rows or removing the compatibility worker.
 
 Subscription family creation/member synchronization intents now commit with
 the subscription update. Their reverse ownership, payload and metadata stay
@@ -130,12 +135,20 @@ arity, and checks every reachable function clause. Roots include `Repo.transacti
 and repository-variable transactions, `Dawarich.Transaction.run`, and both
 callback and module/function/arguments forms of `Ecto.Multi.run`. Run steps are
 conservatively checked even when the Multi is constructed before execution.
-Statically bound callbacks and callback arguments forwarded through local or
-remote transaction helpers are followed with their originating module context.
-Ten R1 rejection regressions cover these forms, retaining the aliased TTL and
-piped `UNLINK` regressions. The expanded production scan found no additional
-inline eviction site. Passive cleanup of expired Rails cache entries is excluded;
-reflection and dynamically selected callbacks still require review.
+Statically bound function callbacks retain their caller's aliases and module
+through local and remote wrappers, including invocation inside a transaction
+closure. Anonymous callback invocations bind their own parameters; caller
+bindings are resolved before crossing that scope. Helpers named `transaction`
+are followed through their definitions rather than mistaken for repository
+entry points. Context maps with runtime-selected callbacks are not expanded.
+Ten R1 rejection regressions and the R2 ownership, actual nightly batch,
+wrapper census and nested-context regressions cover these forms. Direct and
+wrapped post-commit controls remain accepted. The areas controller keeps only
+create/update in its write callback so its post-commit destroy action does not
+appear transactionally reachable. The expanded production scan found no
+additional actual inline eviction site. Passive cleanup of expired Rails cache
+entries is excluded; reflection and dynamically selected callbacks still require
+review.
 
 Generations add indexed database lookups and coarse user-wide invalidation.
 This is preferred to an age limit, pending-job scan, process-memory callback or
@@ -159,3 +172,13 @@ after restoration. The affected batch passed 50 tests with zero failures. The
 complete seed-404 gate passed 9530 tests with zero failures after resolving the
 nightly producer/consumer merge seam. Forced compilation with warnings as errors,
 whole-tree formatting and the unchanged suite exclusions/skips were verified.
+
+Round-4 verification: the ownership and actual nightly callback rejection
+regressions failed against the prior scanner. The 17-entry wrapper census,
+nested-context rejection, post-commit control and area dispatch control each
+have named mutation/restoration evidence. The affected batch passed 62 tests
+and the areas HTTP batch passed five tests, both with zero failures. Six named
+mutations failed their selected assertions and passed after restoration. The
+complete seed-404 gate passed 9548 tests with zero failures. Forced compilation
+with warnings as errors and whole-tree formatting passed; existing suite
+exclusions/skips were unchanged.

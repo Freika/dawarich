@@ -45,7 +45,7 @@ defmodule DawarichWeb.TrialWelcomeEndpointTest do
              {"forwarded", ~s(for="[2001:db8::8]:443";proto=https, for=10.0.0.2;proto=https)},
              {"x-forwarded-for", "192.0.2.99"}
            ], {127, 0, 0, 1}, "192.0.2.99"},
-          {[{"x-forwarded-for", "192.0.2.9, 10.0.0.2"}], {203, 0, 113, 8}, "192.0.2.9"}
+          {[{"x-forwarded-for", "192.0.2.9, 10.0.0.2"}], {203, 0, 113, 8}, "203.0.113.8"}
         ] do
       reset_trackable()
       path = welcome_path()

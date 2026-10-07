@@ -6,7 +6,13 @@ defmodule Dawarich.Imports.DestroyEffects do
   def status!(lease) do
     DestroyLease.effect!(lease, fn ->
       insert!(lease, "imports.destroy_status", %{})
-      Events.broadcast(lease.user)
+
+      Events.enqueue(
+        lease.repo,
+        lease.user,
+        lease.job.args["event_id"],
+        "destroy_status:#{lease.job.attempt}"
+      )
     end)
   end
 
@@ -71,7 +77,7 @@ defmodule Dawarich.Imports.DestroyEffects do
       insert!(lease, "imports.destroy_stats", %{})
       insert!(lease, "imports.destroy_complete", %{})
       Dawarich.Jobs.Processed.mark!(lease.repo, lease.job.args["event_id"], "imports.destroy")
-      Events.broadcast(lease.user)
+      Events.enqueue(lease.repo, lease.user, lease.job.args["event_id"], "destroy_complete")
     end)
   end
 end

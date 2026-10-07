@@ -6,7 +6,10 @@ defmodule Dawarich.Test.TransactionRoots do
       Macro.prewalk(ast, {bindings, []}, fn
         {:=, _, [{name, _, context}, value]} = node, {bindings, roots}
         when is_atom(name) and is_atom(context) ->
-          {node, {Map.put(bindings, name, resolve(value, bindings)), roots}}
+          value = resolve(value, bindings)
+          bindings = Map.delete(bindings, name)
+          bindings = if callback?(value), do: Map.put(bindings, name, value), else: bindings
+          {node, {bindings, roots}}
 
         node, {bindings, roots} ->
           found = roots(node, aliases, module, definitions, bindings, seen)
@@ -18,47 +21,107 @@ defmodule Dawarich.Test.TransactionRoots do
 
   defp roots(node, aliases, module, definitions, bindings, seen) do
     case call(node, aliases, module) do
-      {_, :transaction, [callback | _]} ->
-        callback_roots(resolve(callback, bindings))
+      {target, :transaction, [callback | _] = args} ->
+        if Map.has_key?(definitions, {target, :transaction, length(args)}) do
+          forwarded_roots(
+            target,
+            :transaction,
+            args,
+            aliases,
+            module,
+            definitions,
+            bindings,
+            seen
+          )
+        else
+          callback_roots(callback |> resolve(bindings) |> qualify(aliases, module, definitions))
+        end
 
       {"Elixir.Dawarich.Transaction", :run, [_repo, callback | _]} ->
-        callback_roots(resolve(callback, bindings))
+        callback_roots(callback |> resolve(bindings) |> qualify(aliases, module, definitions))
 
       {"Elixir.Ecto.Multi", :run, [_multi, _name, callback]} ->
-        [resolve(callback, bindings)]
+        [callback |> resolve(bindings) |> qualify(aliases, module, definitions)]
 
       {"Elixir.Ecto.Multi", :run, [_multi, _name, target, name, args]}
       when is_atom(name) and is_list(args) ->
         [{{:., [], [Guard.module_name(target, aliases), name]}, [], [nil, nil | args]}]
 
-      {target, name, args} when is_list(args) ->
-        key = {target, name, length(args)}
-        args = Enum.map(args, &resolve(&1, bindings))
+      {:anonymous, callback, args} ->
+        invoked_roots(
+          resolve(callback, bindings),
+          Enum.map(args, &resolve(&1, bindings)),
+          aliases,
+          module,
+          definitions,
+          bindings,
+          seen
+        )
 
-        if not MapSet.member?(seen, key) and Enum.any?(args, &callback?/1) do
-          for {_, body, target_aliases, target_module, _, params} <-
-                Map.get(definitions, key, []),
-              root <-
-                find(
-                  body,
-                  target_aliases,
-                  target_module,
-                  definitions,
-                  bind(params, args, aliases, module, definitions),
-                  MapSet.put(seen, key)
-                ),
-              do: root
-        else
-          []
-        end
+      {target, name, args} when is_list(args) ->
+        forwarded_roots(target, name, args, aliases, module, definitions, bindings, seen)
 
       _ ->
         []
     end
   end
 
+  defp forwarded_roots(target, name, args, aliases, module, definitions, bindings, seen) do
+    key = {target, name, length(args)}
+    args = Enum.map(args, &resolve(&1, bindings))
+
+    if not MapSet.member?(seen, key) and Enum.any?(args, &callback?/1) do
+      for {_, body, target_aliases, target_module, _, params} <- Map.get(definitions, key, []),
+          root <-
+            find(
+              body,
+              target_aliases,
+              target_module,
+              definitions,
+              bind(params, args, aliases, module, definitions),
+              MapSet.put(seen, key)
+            ),
+          do: root
+    else
+      []
+    end
+  end
+
   defp callback_roots({kind, _, _} = callback) when kind in [:fn, :&], do: [callback]
   defp callback_roots(_), do: []
+
+  defp invoked_roots({:fn, _, clauses}, args, aliases, module, definitions, _bindings, seen) do
+    for {:->, _, [params, body]} <- clauses,
+        root <-
+          find(
+            body,
+            aliases,
+            module,
+            definitions,
+            bind(params, args, aliases, module, definitions),
+            seen
+          ),
+        do: root
+  end
+
+  defp invoked_roots(
+         {:&, _, [{target, meta, params}]},
+         args,
+         aliases,
+         module,
+         definitions,
+         bindings,
+         seen
+       )
+       when is_list(params) do
+    params = if Enum.all?(params, &is_nil/1), do: args, else: params
+    find({target, meta, params}, aliases, module, definitions, bindings, seen)
+  end
+
+  defp invoked_roots(_, _, _, _, _, _, _), do: []
+
+  defp call({{:., _, [callback]}, _, args}, _, _) when is_list(args),
+    do: {:anonymous, callback, args}
 
   defp call({{:., _, [target, name]}, _, args}, aliases, _) when is_list(args),
     do: {Guard.module_name(target, aliases), name, args}
@@ -68,24 +131,23 @@ defmodule Dawarich.Test.TransactionRoots do
 
   defp call(_, _, _), do: nil
 
-  defp resolve({name, _, context} = node, bindings) when is_atom(name) and is_atom(context),
-    do: Map.get(bindings, name, node)
+  defp resolve(ast, bindings) do
+    Macro.postwalk(ast, fn
+      {name, _, context} = node when is_atom(name) and is_atom(context) ->
+        Map.get(bindings, name, node)
 
-  defp resolve(ast, _), do: ast
-
-  defp callback?(ast) do
-    {_ast, found} =
-      Macro.prewalk(ast, false, fn
-        {name, _, _} = node, _found when name in [:fn, :&] -> {node, true}
-        node, found -> {node, found}
-      end)
-
-    found
+      node ->
+        node
+    end)
   end
+
+  defp callback?({kind, _, _}) when kind in [:fn, :&], do: true
+  defp callback?(_), do: false
 
   defp bind(params, args, aliases, module, definitions) do
     for {{name, _, context}, arg} <- Enum.zip(params, args),
         is_atom(name) and is_atom(context),
+        callback?(arg),
         into: %{},
         do: {name, qualify(arg, aliases, module, definitions)}
   end
@@ -99,7 +161,11 @@ defmodule Dawarich.Test.TransactionRoots do
             else: node
 
         _ ->
-          node
+          case node do
+            {:__aliases__, _, _} -> Guard.module_name(node, aliases) || node
+            {:__MODULE__, _, _} -> module
+            _ -> node
+          end
       end
     end)
   end

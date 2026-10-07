@@ -200,7 +200,13 @@ defmodule Dawarich.Imports.DestroyService do
            log: false
          ).num_rows > 0 do
         DestroyEffects.insert!(lease, "imports.destroy_status", %{})
-        Dawarich.Imports.Events.broadcast(lease.user)
+
+        Dawarich.Imports.Events.enqueue(
+          lease.repo,
+          lease.user,
+          lease.job.args["event_id"],
+          "destroy_failed:#{lease.job.attempt}"
+        )
       end
     end)
   rescue

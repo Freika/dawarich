@@ -9,6 +9,21 @@ defmodule Dawarich.Auth.Admission do
     if length(names) == length(Enum.uniq(names)), do: :ok, else: {:handoff, :duplicate_headers}
   end
 
+  def context(session, %Plug.Conn{} = conn, oidc_enabled, self_hosted) do
+    with :ok <- headers(conn.req_headers) do
+      DawarichWeb.RailsRemoteIp.ip(conn)
+
+      headers =
+        Enum.reject(conn.req_headers, fn {key, _} ->
+          key in ~w(x-forwarded-for client-ip forwarded)
+        end)
+
+      context(session, headers, oidc_enabled, self_hosted)
+    end
+  rescue
+    DawarichWeb.RailsRemoteIp.IpSpoofAttackError -> {:handoff, :client_ip}
+  end
+
   def context(session, headers, oidc_enabled, self_hosted) do
     cond do
       headers(headers) != :ok ->
