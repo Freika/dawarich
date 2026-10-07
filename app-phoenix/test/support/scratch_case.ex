@@ -24,8 +24,14 @@ defmodule Dawarich.ScratchCase do
   def recreate_public!(repo) do
     repo.query!("DROP SCHEMA IF EXISTS public CASCADE", [], log: false)
     repo.query!("CREATE SCHEMA public", [], log: false)
-    :ok = Supervisor.terminate_child(Dawarich.ScratchSupervisor, repo)
-    {:ok, _} = Supervisor.restart_child(Dawarich.ScratchSupervisor, repo)
+
+    supervisor =
+      if repo == Dawarich.Repo, do: Dawarich.Supervisor, else: Dawarich.ScratchSupervisor
+
+    :ok = Supervisor.terminate_child(supervisor, repo)
+    {:ok, _} = Supervisor.restart_child(supervisor, repo)
+
+    if repo == Dawarich.Repo, do: Ecto.Adapters.SQL.Sandbox.mode(repo, :auto)
     :ok
   end
 
