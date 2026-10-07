@@ -29,12 +29,13 @@ defmodule Dawarich.Users.ApiRecalculation do
            if pending?(key),
              do: repo.rollback(error(409, "recalculation_already_in_progress_for_this_user"))
 
+           if Dawarich.Jobs.Ownership.lock(repo, "command:users.recalculate_data") != :oban,
+             do: repo.rollback({:error, 500, Api.failure()})
+
            bytes =
              Dawarich.RailsCache.Wire.encode_boolean(true,
                expires_at: System.system_time(:second) + 1800
              )
-
-           {:ok, "OK"} = Redis.cache_command(["SET", key, bytes, "EX", "1800"])
 
            payload = %{
              "user_id" => user.id,
@@ -46,6 +47,7 @@ defmodule Dawarich.Users.ApiRecalculation do
            }
 
            Progress.produce(repo, "users.recalculate_data", payload, user.id, ctx)
+           {:ok, "OK"} = Redis.cache_command(["SET", key, bytes, "EX", "1800"])
            :ok
          end) do
       {:ok, :ok} ->

@@ -17,6 +17,15 @@ defmodule DawarichWeb.StandaloneRecalculationTest do
     for spec <- Dawarich.Redis.child_specs() ++ Dawarich.Redis.cache_child_specs(),
         do: start_supervised!(spec)
 
+    previous_cable = Application.get_env(:dawarich, :cable)
+    Application.put_env(:dawarich, :cable, transport: :pg, repo: Repo)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, previous_cable) end)
+    Dawarich.TtlCache.delete({DawarichWeb.RateLimit, "sweep6-synthetic"})
+
+    Repo.query!("DELETE FROM phoenix.counters WHERE key LIKE '%:sweep6-synthetic'", [],
+      log: false
+    )
+
     id = user!(%{api_key: "sweep6-synthetic", plan: 1, settings: %{}})
 
     on_exit(fn ->
@@ -176,6 +185,166 @@ defmodule DawarichWeb.StandaloneRecalculationTest do
     second = browser("/map/v2", map.resp_cookies["_dawarich_session"].value)
     assert second.status == 200
     refute second.resp_body =~ "You are already signed in."
+  end
+
+  @tag :review_fix
+  @tag review_finding: "F1"
+  test "review web queued retry produces exactly one event", %{id: id} do
+    Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
+    prepare_user(id)
+    session = RailsUser.session(id)
+    assert web(session, "text/html").status == 302
+    assert web(session, "text/html").status == 302
+
+    assert rows(
+             "SELECT count(*) FROM job_outbox WHERE command_type='transportation.user_reclassify' AND aggregate_id=$1",
+             [id]
+           ) == [[1]]
+
+    [[event]] =
+      rows("SELECT event_id FROM phoenix.transportation_recalculations WHERE user_id=$1", [id])
+
+    event = Ecto.UUID.cast!(event)
+    refute Dawarich.Transportation.RecalculationFence.claim(Repo, id, Ecto.UUID.generate())
+    Dawarich.Transportation.RecalculationStatus.clear(id)
+    assert web(session, "text/html").status == 302
+    assert rows("SELECT count(*) FROM job_outbox") == [[1]]
+
+    payload = %{
+      "user_id" => id,
+      "event_id" => event,
+      "track_ids" => [],
+      "now" => DateTime.to_iso8601(DateTime.utc_now())
+    }
+
+    assert :ok = Dawarich.Transportation.AfterCommit.start(Repo, payload, Ecto.UUID.generate())
+    assert rows("SELECT count(*) FROM phoenix.transportation_recalculations") == [[0]]
+    assert web(session, "text/html").status == 302
+
+    [[next]] =
+      rows("SELECT event_id FROM phoenix.transportation_recalculations WHERE user_id=$1", [id])
+
+    next = Ecto.UUID.cast!(next)
+    payload = %{payload | "event_id" => next, "track_ids" => [101, 102]}
+    assert :ok = Dawarich.Transportation.AfterCommit.start(Repo, payload, Ecto.UUID.generate())
+
+    children =
+      rows(
+        "SELECT event_id FROM job_outbox WHERE metadata->>'parent_event_id'=$1 ORDER BY aggregate_id",
+        [next]
+      )
+
+    assert length(children) == 2
+
+    for [child] <- children do
+      intent = Ecto.UUID.generate()
+      progress = %{"user_id" => id, "event_id" => Ecto.UUID.cast!(child)}
+      assert :ok = Dawarich.Transportation.AfterCommit.progress(Repo, progress, intent)
+      assert :ok = Dawarich.Transportation.AfterCommit.progress(Repo, progress, intent)
+    end
+
+    assert rows("SELECT count(*) FROM phoenix.transportation_recalculations") == [[0]]
+    assert web(session, "text/html").status == 302
+  end
+
+  @tag :review_fix
+  @tag review_finding: "F2"
+  test "review source ownership refusal leaves API retry eligible", %{id: id} do
+    Ownership.put!(Repo, "command:users.recalculate_data", :sidekiq, pinned: true)
+    assert api(%{}).status == 500
+    assert rows("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]) == [[0]]
+    Ownership.put!(Repo, "command:users.recalculate_data", :oban)
+    assert Dawarich.RailsCache.get("recalculation_pending:#{id}") == :miss
+    retry = api(%{})
+    assert retry.status == 202
+  end
+
+  @tag :review_fix
+  @tag review_finding: "F3"
+  test "review valid per-form CSRF is accepted", %{id: id} do
+    Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
+    prepare_user(id)
+    session = RailsUser.session(id)
+    token = DawarichWeb.RailsCsrf.masked_form_token(session, "/tracks/recalculation", "POST")
+    assert DawarichWeb.RailsCsrf.valid?(session, token, "/tracks/recalculation", "POST")
+    response = review_form(session, %{"authenticity_token" => token})
+    assert response.status == 302
+
+    assert review_form(session, %{"authenticity_token" => token}, [{"x-csrf-token", "invalid"}]).status ==
+             302
+
+    assert review_form(session, %{"authenticity_token" => "invalid"}, [{"x-csrf-token", token}]).status ==
+             302
+
+    assert review_form(session, %{}).status == 422
+    assert review_form(session, %{"authenticity_token" => "invalid"}).status == 422
+    wrong = DawarichWeb.RailsCsrf.masked_form_token(session, "/other", "POST")
+    assert review_form(session, %{"authenticity_token" => wrong}).status == 422
+    wrong = DawarichWeb.RailsCsrf.masked_form_token(session, "/tracks/recalculation", "PATCH")
+    assert review_form(session, %{"authenticity_token" => wrong}).status == 422
+    assert rows("SELECT count(*) FROM job_outbox") == [[1]]
+  end
+
+  @tag :review_fix
+  @tag review_finding: "F4"
+  test "review anonymous form with valid CSRF redirects to sign in", _ctx do
+    session = %{"_csrf_token" => DawarichWeb.RailsCsrf.new_token()}
+
+    response =
+      review_form(session, %{"authenticity_token" => DawarichWeb.RailsCsrf.masked_token(session)})
+
+    assert response.status == 302
+    assert get_resp_header(response, "location") == ["http://www.example.com/users/sign_in"]
+    assert rows("SELECT count(*) FROM job_outbox") == [[0]]
+  end
+
+  @tag :review_fix
+  @tag review_finding: "F5"
+  test "review web ignores untrusted target params and uses actor", %{id: id} do
+    Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
+    prepare_user(id)
+    session = RailsUser.session(id)
+
+    response =
+      review_form(session, %{
+        "authenticity_token" => DawarichWeb.RailsCsrf.masked_token(session),
+        "user_id" => id + 1
+      })
+
+    assert response.status == 302
+    assert [[%{"user_id" => ^id}]] = rows("SELECT payload FROM job_outbox")
+  end
+
+  @tag :review_fixture
+  @tag review_finding: "F6"
+  test "review web oracle contains only its isolated reclassification job", %{id: id} do
+    Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
+    prepare_user(id)
+    assert web(RailsUser.session(id), "text/html").status == oracle("web")["status"]
+    assert [["transportation.user_reclassify"]] = rows("SELECT command_type FROM job_outbox")
+    assert oracle("web")["jobs"] == ["TransportationModes::UserReclassifyJob"]
+  end
+
+  defp prepare_user(id) do
+    Repo.query!(
+      "UPDATE users SET encrypted_password=$2 WHERE id=$1",
+      [id, "$2a$04$" <> String.duplicate("phoenixa5fixture", 4)],
+      log: false
+    )
+  end
+
+  defp review_form(session, params, headers \\ []) do
+    raw = URI.encode_query(params)
+
+    Plug.Test.conn(:post, "/tracks/recalculation", raw)
+    |> Phoenix.ConnTest.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+    |> put_req_header("content-type", "application/x-www-form-urlencoded")
+    |> put_req_header("content-length", Integer.to_string(byte_size(raw)))
+    |> put_req_header("accept", "text/html")
+    |> then(fn conn ->
+      Enum.reduce(headers, conn, fn {key, value}, conn -> put_req_header(conn, key, value) end)
+    end)
+    |> DawarichWeb.Endpoint.call([])
   end
 
   defp oracle(key),

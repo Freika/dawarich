@@ -670,3 +670,9 @@ source debt or weaken Cloud lifecycle refusal.
 | ID | Surface | Rails | Phoenix | Evidence / authority |
 | --- | --- | --- | --- | --- |
 | ED-FIX-TIE-ORDER | Dominant segment mode; tied visit/country ranking; equal-timestamp location/photo points | Unordered or partially ordered reads retain the first encountered row/group on ties, so planner choice can change mode, ranking or coordinates. | Segment edits reuse ascending-ID dominant-mode inputs; ranking SQL appends C-collated name/country keys; point reads append ID after timestamp. Existing strict tie refusals are retained. Only `override_tied` dominant mode and track-info golden change from Driving to Walking; its input rows and totals stay unchanged. | Explicit controller fix-segment-tie-order brief; DRB-033/034/035; [tie ordering](../../docs/phoenix/tie-order.md); forced scan/aggregation regressions and named mutations in controller report. |
+
+## Standalone recalculation queued retries
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-SWEEP6-RETRY | POST /tracks/recalculation before workers start | Two valid submissions enqueue two user reclassification jobs because processing state starts in the worker. | A per-user SQL primary-key fence and transactional outbox insertion accept one root event until its fan-out completes. | Controller review F1 exactly-once requirement; `review web queued retry produces exactly one event`; DRB-FIX-SWEEP6-RETRY; [recalculation contract](../../docs/phoenix/standalone-recalculation.md). |
