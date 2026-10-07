@@ -181,12 +181,15 @@ defmodule Dawarich.A12f3bE061Test do
     event = SyncScheduling.event_id(:teslamate, @slot, user)
     assert Processed.done?(ScratchRepo, SyncScheduling.receipt_id(:teslamate, @slot, user))
     hold_lease!(ScratchRepo, "teslamate-sync:#{user}", "source-holder")
-    assert %{success: 0, snoozed: 1, failure: 0} = Oban.drain_queue(@oban, queue: :imports)
+
+    assert {%{success: 0, snoozed: 1, failure: 0}, snoozed_at} =
+             Dawarich.Test.SnoozeClock.drain_queue(@oban, queue: :imports)
 
     assert [[id, %{"event_id" => ^event}, "scheduled", at, attempted]] =
              rows("SELECT id,args,state,scheduled_at,attempted_at FROM oban.oban_jobs")
 
-    assert NaiveDateTime.diff(at, attempted) == 60
+    assert NaiveDateTime.diff(DateTime.to_naive(snoozed_at), attempted) >= 1
+    assert at == DateTime.to_naive(DateTime.add(snoozed_at, 60, :second))
     refute Processed.done?(ScratchRepo, event)
     status = Drain.status(ScratchRepo)
     assert status.counts.incomplete_oban == 1
