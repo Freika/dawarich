@@ -60,13 +60,13 @@ defmodule Dawarich.A12f3bE01Test do
              {:ok, Map.delete(destroy, "event_id")}
 
     for blank <- [nil, "", "  \t"] do
-      assert :ok =
+      assert {:error, {:cloud_configuration, _}} =
                CreationWebhookWorker.run(Repo, %{creation | "event_id" => Ecto.UUID.generate()},
                  env: %{"MANAGER_URL" => blank},
                  http: http
                )
 
-      assert :ok =
+      assert {:error, {:cloud_configuration, _}} =
                DestructionWebhookWorker.run(Repo, %{destroy | "event_id" => Ecto.UUID.generate()},
                  env: %{"MANAGER_URL" => blank},
                  http: http

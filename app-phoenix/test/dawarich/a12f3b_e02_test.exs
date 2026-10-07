@@ -33,7 +33,7 @@ defmodule Dawarich.A12f3bE02Test do
              CustomerSignupWorker.args_from_command(1, %{"user_id" => id, "partner_key" => []})
 
     for blank <- [nil, "", " \t"] do
-      assert :ok =
+      assert {:error, {:cloud_configuration, _}} =
                CustomerSignupWorker.run(Repo, %{args | "event_id" => Ecto.UUID.generate()},
                  env: %{"PARTNERO_API_KEY" => blank},
                  http: http

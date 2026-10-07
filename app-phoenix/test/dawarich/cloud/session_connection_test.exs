@@ -19,7 +19,11 @@ defmodule Dawarich.Cloud.SessionConnectionTest do
 
     opts = [
       session_url: "postgres://synthetic.invalid:6432/synthetic",
-      env: %{"SELF_HOSTED" => "false"},
+      env: %{
+        "SELF_HOSTED" => "false",
+        "MANAGER_URL" => "https://manager.example.invalid",
+        "JWT_SECRET_KEY" => "synthetic-l1-config"
+      },
       command: fn _ -> {:ok, nil} end
     ]
 

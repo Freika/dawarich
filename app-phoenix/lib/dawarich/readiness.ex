@@ -9,10 +9,24 @@ defmodule Dawarich.Readiness do
     release = Keyword.get(opts, :release, &Dawarich.Release.readiness/1)
     redis = Keyword.get(opts, :redis, fn -> Dawarich.Redis.command(["PING"]) end)
 
-    with :ready <- lifecycle(release, opts),
+    with :ready <- configuration(opts),
+         :ready <- lifecycle(release, opts),
          :ready <- dependency(database, :database),
          :ready <- dependency(redis, :redis),
          do: :ready
+  end
+
+  defp configuration(opts) do
+    env = Keyword.get_lazy(opts, :env, &System.get_env/0)
+
+    case Dawarich.Cloud.Configuration.check(env) do
+      :ok ->
+        :ready
+
+      {:error, {:cloud_configuration, message}} ->
+        Logger.warning(message)
+        {:unavailable, :cloud_configuration}
+    end
   end
 
   defp lifecycle(release, opts) do

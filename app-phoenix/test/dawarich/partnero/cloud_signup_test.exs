@@ -161,7 +161,8 @@ defmodule Dawarich.Partnero.CloudSignupTest do
                  "partner_key" => session["partnero_referral"],
                  "event_id" => event
                },
-               env: %{}
+               env: @env,
+               transport: fn _, _, _, _, _, _, _, _ -> {:ok, 201, [], ""} end
              )
 
     rows("DELETE FROM public.job_outbox")
@@ -303,7 +304,7 @@ defmodule Dawarich.Partnero.CloudSignupTest do
     assert Processed.done?(ScratchRepo, event)
 
     for blank <- [nil, "", " \t"] do
-      assert :ok =
+      assert {:error, {:cloud_configuration, _}} =
                CustomerSignupWorker.run(ScratchRepo, %{args | "event_id" => Ecto.UUID.generate()},
                  env: %{"PARTNERO_API_KEY" => blank},
                  transport: forbidden

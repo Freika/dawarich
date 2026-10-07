@@ -31,6 +31,13 @@ defmodule Dawarich.Users.WebhookCommands do
 
   def post(payload, path, timeout, opts) do
     env = env(opts)
+
+    with :ok <- Dawarich.Cloud.Configuration.manager(env),
+         do: signed_post(payload, path, timeout, Keyword.put(opts, :env, env))
+  end
+
+  defp signed_post(payload, path, timeout, opts) do
+    env = env(opts)
     input = encode(~s({"alg":"HS256"})) <> "." <> encode(Jason.encode!(payload))
 
     token =

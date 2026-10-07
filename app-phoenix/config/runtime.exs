@@ -41,6 +41,8 @@ oban_node = fn hostname ->
 end
 
 if config_env() != :test do
+  Dawarich.Cloud.Configuration.validate!(System.get_env())
+
   default_database =
     if config_env() == :prod, do: "dawarich_production", else: "dawarich_development"
 

@@ -94,3 +94,5 @@ config :dawarich, :cable, bus: false
 config :dawarich,
        :cable_prefix,
        if(partition == "", do: "dawarich_a12a", else: "dawarich_a12a_part#{partition}")
+
+config :dawarich, :cloud_test_loopback, true

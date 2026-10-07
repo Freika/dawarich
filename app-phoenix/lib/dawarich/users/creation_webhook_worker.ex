@@ -17,7 +17,8 @@ defmodule Dawarich.Users.CreationWebhookWorker do
 
   def run(repo, args, opts \\ []) do
     Callback.run(repo, args["event_id"], "users.creation_webhook", fn ->
-      if WebhookCommands.configured?(opts), do: deliver(repo, args["user_id"], opts), else: :ok
+      with :ok <- Dawarich.Cloud.Configuration.manager(WebhookCommands.env(opts)),
+           do: deliver(repo, args["user_id"], opts)
     end)
   end
 

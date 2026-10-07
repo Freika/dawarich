@@ -43,7 +43,11 @@ defmodule DawarichWeb.A12f2HClosureTest do
       oidc: false,
       timezone: "Etc/UTC",
       clock: fn -> @now end,
-      env: Map.put(@env, "JWT_SECRET_KEY", "synthetic-h-otp-secret"),
+      env:
+        Map.merge(@env, %{
+          "JWT_SECRET_KEY" => "synthetic-h-otp-secret",
+          "MANAGER_URL" => "https://manager.example.invalid"
+        }),
       jti: fn -> jti end,
       log_rounds: 4
     }

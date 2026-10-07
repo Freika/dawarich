@@ -205,7 +205,11 @@ defmodule Dawarich.Release.CloudReadinessTest do
 
   defp opts,
     do: [
-      env: %{"SELF_HOSTED" => "false"},
+      env: %{
+        "SELF_HOSTED" => "false",
+        "MANAGER_URL" => "https://manager.example.invalid",
+        "JWT_SECRET_KEY" => "synthetic-l1-config"
+      },
       releases: ReleaseMigrations.all() ++ [__MODULE__.Pending],
       command: fn _ -> {:ok, nil} end
     ]

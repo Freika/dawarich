@@ -5,7 +5,13 @@ defmodule Dawarich.Seeds.CloudBootstrapTest do
   alias Dawarich.Users.CreationEffects
   alias Dawarich.Jobs.Ownership
   alias Dawarich.ReleaseMigrator.Lease
-  @env %{"SELF_HOSTED" => "false", "TIME_ZONE" => "Europe/Berlin"}
+
+  @env %{
+    "SELF_HOSTED" => "false",
+    "TIME_ZONE" => "Europe/Berlin",
+    "MANAGER_URL" => "https://manager.example.invalid",
+    "JWT_SECRET_KEY" => "synthetic-l1-config"
+  }
   @now ~N[2026-10-07 12:00:00.000000]
 
   test "L1 Cloud bootstrap omits demo admin while ordinary creation retains Rails trial effects" do

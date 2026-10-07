@@ -57,7 +57,15 @@ defmodule Dawarich.Release.CloudReviewTest do
   end
 
   test "achievement publication is not completed data work" do
-    opts = [env: %{"SELF_HOSTED" => "false"}, command: fn _ -> {:ok, nil} end]
+    opts = [
+      env: %{
+        "SELF_HOSTED" => "false",
+        "MANAGER_URL" => "https://manager.example.invalid",
+        "JWT_SECRET_KEY" => "synthetic-l1-config"
+      },
+      command: fn _ -> {:ok, nil} end
+    ]
+
     assert :ok = Cloud.migrate(ScratchRepo, opts)
     oban = Dawarich.Release.CloudReviewTest.Oban
     start_oban(oban)
@@ -132,7 +140,15 @@ defmodule Dawarich.Release.CloudReviewTest do
   end
 
   test "default readiness refuses a missing actual source data version" do
-    opts = [env: %{"SELF_HOSTED" => "false"}, command: fn _ -> {:ok, nil} end]
+    opts = [
+      env: %{
+        "SELF_HOSTED" => "false",
+        "MANAGER_URL" => "https://manager.example.invalid",
+        "JWT_SECRET_KEY" => "synthetic-l1-config"
+      },
+      command: fn _ -> {:ok, nil} end
+    ]
+
     assert :ok = Cloud.migrate(ScratchRepo, opts)
     versions = Dawarich.RailsTree.versions("data")
     rows("DELETE FROM public.data_migrations")
@@ -238,6 +254,7 @@ defmodule Dawarich.Release.CloudReviewTest do
 
     result =
       Dawarich.Cloud.ProviderHTTP.post(:manager, "/api/v1/users", [], "{}",
+        test_loopback: true,
         env: %{"MANAGER_URL" => "http://127.0.0.1:#{port}"}
       )
 

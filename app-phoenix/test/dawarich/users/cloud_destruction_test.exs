@@ -270,7 +270,7 @@ defmodule Dawarich.Users.CloudDestructionTest do
           "https://user:pass@manager.example.invalid",
           "https://manager.example.invalid?x=1"
         ] do
-      assert {:error, :manager_transport} =
+      assert {:error, {:cloud_configuration, _}} =
                DestructionWebhookWorker.run(ScratchRepo, args,
                  env: Map.put(@env, "MANAGER_URL", url),
                  transport: fn _, _, _, _, _, _, _, _ ->
@@ -323,7 +323,7 @@ defmodule Dawarich.Users.CloudDestructionTest do
              end)
              |> elem(1)
 
-    assert :ok =
+    assert {:error, {:cloud_configuration, _}} =
              DestructionWebhookWorker.run(
                ScratchRepo,
                %{args | "event_id" => Ecto.UUID.generate()},
