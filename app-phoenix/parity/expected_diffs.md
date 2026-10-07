@@ -599,6 +599,23 @@ in [the part-B handoff](../../docs/phoenix/a12f3b-pages-producers.md) and
 | --- | --- | --- | --- | --- |
 | ED-FIX-MEDIA-OWNERSHIP | Native media admission, revocation and execution fences | Rails route videos adopt any signed blob; deferred poster purges retain usable links until deletion; accepted source poster jobs ignore native ownership and leases. | Native adoption loads an owner-compatible blob and rechecks under its row lock. Legacy native poster purges use the shared graph marker and storage-first helper. Blob locking makes committed revocation win over earlier admission. Analysis claims its event and locks its blob before ffprobe, rolling back claims on failure. Retained source poster jobs forward under Oban ownership and hold the shared lease during source-owned generation. Valid signed downloads retain Rails bearer behavior (DRB-027). | fix-media-ownership; FRB-047/048/049; named coexistence/standalone tests and individual mutations | implemented; seed-404 evidence in controller report |
 
+## ED-FIX-ACCEPTED-IMPORT-DISPOSITION
+
+Controller-authorized accepted-import repair: native ZIP parents settle only after
+all accepted children are terminal, including when a later member fails validation.
+Rails `Imports::ZipExtractor` removes the parent after enqueueing without waiting;
+a later build error skips the enqueue of earlier saved children. Native normal-GPX
+failure settlement atomically groups failed status, notification and terminal
+receipt, extending FRB-008's exactly-once failure guarantee to discovered GPX.
+Successful empty GPX/KML imports also commit the no-points notification with
+completed status and the terminal receipt; interrupted retry emits one notice.
+Rails publishes that notice before its ensure block records completion.
+Coexistence keeps executable Rails legacy/source-change fallback under fixed
+native lane ownership; standalone retains a terminal native disposition and never
+publishes a Rails resume. See `docs/phoenix/accepted-import-disposition.md` and the
+corresponding real-worker regression modules. This does not close H03/H04
+source debt or weaken Cloud lifecycle refusal.
+
 ## MAIL review authorization and accepted-job receipts
 
 | ID | Surface | Rails | Phoenix | Evidence / authority |

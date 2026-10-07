@@ -41,7 +41,7 @@ defmodule Dawarich.Imports.ZipFanout do
 
     case state do
       {"failed", message} ->
-        {:error, %ArgumentError{message: message}, []}
+        failed(lease, blob, context, %ArgumentError{message: message}, [])
 
       {"built", _} ->
         complete(lease, blob, context)
@@ -69,8 +69,20 @@ defmodule Dawarich.Imports.ZipFanout do
         )
       end)
 
-      ImportState.fail!(lease, error, clock(context))
-      {:error, error, stack}
+      failed(lease, ImportState.with_blob(lease), context, error, stack)
+  end
+
+  defp failed(lease, blob, context, error, stack) do
+    ZipChildren.queue!(lease, blob, context)
+
+    ImportState.effect!(lease, fn ->
+      if ZipChildren.terminal?(lease, blob) do
+        ImportState.fail!(lease, error, clock(context))
+        {:error, error, stack}
+      else
+        {:snooze, 5}
+      end
+    end)
   end
 
   defp build(lease, blob, path, context) do
@@ -173,6 +185,16 @@ defmodule Dawarich.Imports.ZipFanout do
   defp complete(lease, blob, context) do
     ZipChildren.queue!(lease, blob, context)
 
+    ImportState.effect!(lease, fn ->
+      if ZipChildren.terminal?(lease, blob) do
+        remove(lease, blob, context)
+      else
+        {:snooze, 5}
+      end
+    end)
+  end
+
+  defp remove(lease, blob, context) do
     ImportState.effect!(lease, fn ->
       removals = ImportBlobPurges.removals!(lease.repo, lease.import.id)
       source = Enum.find(removals, fn {id, _, _} -> id == blob.id end)

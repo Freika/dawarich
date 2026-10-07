@@ -94,7 +94,7 @@ defmodule Dawarich.Imports.ProcessWorkerTest do
              rows("SELECT kind,payload FROM phoenix.rails_commands")
 
     assert payload == c.job.args
-    assert [[false]] = rows("SELECT native_fallback FROM phoenix.import_handoffs")
+    assert [[true]] = rows("SELECT native_fallback FROM phoenix.import_handoffs")
   end
 
   test "normal and GPX attempts cannot own the same import concurrently", c do
