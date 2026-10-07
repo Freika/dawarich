@@ -708,29 +708,52 @@ defmodule DawarichWeb.VisitWritesRegressionTest do
     end
   end
 
-  @tag :demo_cache_fence
-  test "demo cache cleanup clears generated month entries for point-only affected months" do
-    ctx = fixture("rename")
+  for {mode, label} <- [{nil, "coexistence"}, {"off", "standalone"}] do
+    @tag :demo_cache_fence
+    @tag demo_mode: label
+    test "demo cache cleanup clears generated month entries for point-only affected months in #{label}" do
+      env("DAWARICH_RAILS", unquote(mode))
+      ctx = fixture("rename")
 
-    assert {:ok, :ok} =
-             ScratchRepo.transaction(fn ->
-               Dawarich.Visits.Calendar.changed(ScratchRepo, ctx.user_id, [
-                 ~U[2026-10-03 12:00:00Z]
-               ])
-             end)
+      assert {:ok, :ok} =
+               ScratchRepo.transaction(fn ->
+                 Dawarich.Visits.Calendar.changed(ScratchRepo, ctx.user_id, [
+                   ~U[2026-10-03 12:00:00Z]
+                 ])
+               end)
 
-    assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
-    key = month_key(ctx.user_id, "2026-10", "Europe/Berlin", "pro")
-    assert {:ok, "OK"} = RailsCache.put(key, "point-only month counts", expires_in: 300)
+      assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
+      key = month_key(ctx.user_id, "2026-10", "Europe/Berlin", "pro")
 
-    assert :ok =
-             Dawarich.DemoData.Importer.invalidate(
-               ScratchRepo,
-               Dawarich.Accounts.get(ctx.user_id),
-               [[2026, 10]]
-             )
+      physical =
+        Dawarich.AfterCommit.Visibility.key(
+          ScratchRepo,
+          Dawarich.Visits.CacheGeneration.physical_key(key, ScratchRepo)
+        )
 
-    assert RailsCache.get(key) == :miss
+      assert {:ok, "OK"} = RailsCache.put(key, "point-only month counts", expires_in: 300)
+
+      assert :ok =
+               Dawarich.DemoData.Importer.invalidate(
+                 ScratchRepo,
+                 Dawarich.Accounts.get(ctx.user_id),
+                 [[2026, 10]]
+               )
+
+      assert RailsCache.get(key) == :miss
+      assert {:ok, bytes} = Dawarich.Redis.cache_command(["GET", physical])
+      assert is_binary(bytes)
+
+      [[args]] =
+        rows(
+          "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.AfterCommit.Worker' AND args->>'operation'='keys'"
+        )
+
+      assert :ok = Dawarich.Test.AfterCommit.drain(ScratchRepo)
+      assert {:ok, nil} = Dawarich.Redis.cache_command(["GET", physical])
+      assert :ok = Dawarich.AfterCommit.Worker.run(ScratchRepo, args)
+      assert {:ok, nil} = Dawarich.Redis.cache_command(["GET", physical])
+    end
   end
 
   @tag :restore_native_owner
@@ -830,7 +853,11 @@ defmodule DawarichWeb.VisitWritesRegressionTest do
                [%{"user_id" => ctx.user_id, "started_at" => ["2026-10-04T12:00:00.000000Z"]}]
              ]
 
-      assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
+      assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker=$1", [
+               "Dawarich.Imports.EventsWorker"
+             ]) == [[2]]
+
+      assert %{success: 3, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
       for key <- keys, do: assert(RailsCache.get(key) == :miss)
     end
   end
