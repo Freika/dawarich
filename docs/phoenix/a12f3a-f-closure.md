@@ -1,7 +1,7 @@
 # Import codecs, continuations and extraction
 
-Last updated: 2026-10-06. Branch: feat/a12f3a-f. This is the standalone
-priority cut; complete package F closure remains open.
+Last updated: 2026-10-07. Original priority cut: feat/a12f3a-f.
+F17–F19 follow-up: feat/a12f3a-f17. Complete package F closure remains open.
 
 ## Implemented contracts
 
@@ -219,3 +219,21 @@ month fails the exact December/January assertion; restored code passes.
 F17–F19's missing behavior and named tests/mutations are complete in the
 follow-up. This does not claim completion of other package F tasks or release,
 source-drain, production claimability, deployment, or shutdown readiness.
+
+## F17–F19 final verification
+
+The follow-up passes forced compile with warnings as errors (1,674 files),
+whole-tree format checking, and the required controller seed-404 gate:
+9,122 tests, zero failures. Existing exclusions/skips remain unchanged.
+Retained Rails characterization passes 34 examples; no Ruby production or
+spec file changed. Each F17–F19 aggregate has RED, GREEN, named mutation
+failure and restored GREEN evidence in the controller report. The expanded
+extraction regression passes 70 tests and affected lifecycle/HTTP/track/poster
+checks pass 26 tests, including all 17 actual poster styles.
+
+The worktree's renderer npm dependencies must be installed separately from
+the root package. Complete compilation and targeted tests before starting
+the partitioned gate; overlapping recompilation can invalidate lazy module
+loads. Swagger and schema are unchanged. All verification services are stopped.
+No Rails bug fixes were introduced. Other package F tasks and source drain
+remain with their existing owners.
