@@ -1,0 +1,59 @@
+<section class="container mx-auto px-4 py-6">
+  <h1 class="text-3xl font-bold mb-2">{track_label(@locale, @resource)}</h1>
+  <div
+    id="shared-trip-map"
+    data-controller="shared-trip-map"
+    data-shared-trip-map-link-id-value={@link.id}
+    data-shared-trip-map-show-photos-value={to_string(@link.settings["show_photos"] == true)}
+    style="height: 60vh; min-height: 400px;"
+    class="rounded-lg overflow-hidden bg-base-200 my-6"
+  >
+  </div>
+  <div :if={@link.settings["show_stats"] == true} class="stats shadow w-full">
+    <div :if={@resource.distance} class="stat">
+      <div class="stat-title">{t(@locale, "shared.links.track.distance", %{})}</div>
+      <div class="stat-value text-2xl">
+        {DawarichWeb.NumberFormat.with_precision_one(
+          @locale,
+          Dawarich.Distance.convert(@resource.distance, @resource.settings.unit) * 1.0
+        )} {@resource.settings.unit}
+      </div>
+    </div>
+    <div :if={@resource.track_duration && @resource.track_duration > 0} class="stat">
+      <div class="stat-title">{t(@locale, "shared.links.track.duration", %{})}</div>
+      <div class="stat-value text-2xl">
+        {DawarichWeb.TimeAgo.words(
+          @locale,
+          ~N[2000-01-01 00:00:00],
+          NaiveDateTime.add(~N[2000-01-01 00:00:00], @resource.track_duration)
+        )}
+      </div>
+    </div>
+    <div :if={@resource.speed} class="stat">
+      <div class="stat-title">{t(@locale, "shared.links.track.avg_speed", %{})}</div>
+      <div class="stat-value text-2xl">
+        {t(
+          @locale,
+          if(@resource.settings.unit == "mi", do: "units.speed_mph", else: "units.speed_kmh"),
+          %{
+            value:
+              DawarichWeb.NumberFormat.with_precision_one(
+                @locale,
+                @resource.speed * if(@resource.settings.unit == "mi", do: 0.621371, else: 1) * 1.0
+              )
+          }
+        )}
+      </div>
+    </div>
+    <div
+      :for={
+        {key, value} <- [{"elevation_gain", @resource.gain}, {"elevation_loss", @resource.loss}]
+      }
+      :if={value && value > 0}
+      class="stat"
+    >
+      <div class="stat-title">{t(@locale, "shared.links.track." <> key, %{})}</div>
+      <div class="stat-value text-2xl">{t(@locale, "units.meters", %{value: round(value)})}</div>
+    </div>
+  </div>
+</section>

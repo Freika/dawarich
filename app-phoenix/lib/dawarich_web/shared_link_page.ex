@@ -82,6 +82,9 @@ defmodule DawarichWeb.SharedLinkPage do
   defp page_assigns({:timeline, from, to}, link),
     do: %{page: :timeline, link: link, from: from, to: to}
 
+  defp page_assigns(page, link) when page in [:trip, :track],
+    do: %{page: page, link: link, resource: Dawarich.SharedLinks.ResourcePage.load(link)}
+
   defp page_assigns(page, link), do: %{page: page, link: link}
 
   defp render(conn, status, page) do

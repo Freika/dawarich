@@ -36,7 +36,7 @@
     <script type="module">
       import "application"
     </script>
-    <%= if @page in [:live, :timeline, :missing_resource] do %>
+    <%= if @page in [:live, :timeline, :trip, :track, :missing_resource] do %>
       <meta property="og:type" content="article" />
       <meta property="og:title" content={@link.name} />
       <meta
@@ -78,6 +78,12 @@
       />
       <.live :if={@page == :live} locale={@locale} link={@link} />
       <.timeline :if={@page == :timeline} locale={@locale} link={@link} from={@from} to={@to} />
+      <DawarichWeb.SharedResourcePage.resource
+        :if={@page in [:trip, :track]}
+        locale={@locale}
+        link={@link}
+        resource={@resource}
+      />
     </main>
     <footer class="relative mt-11 overflow-hidden bg-[#0E1320] text-white">
       <div
