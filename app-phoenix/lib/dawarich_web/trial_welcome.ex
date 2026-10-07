@@ -31,6 +31,9 @@ defmodule DawarichWeb.TrialWelcome do
             {:terminal, _} -> terminal(conn)
           end
 
+        {:handoff, :configuration} ->
+          if Dawarich.Standalone.enabled?(), do: terminal(conn), else: proxy(conn)
+
         {:handoff, _} ->
           proxy(conn)
       end
