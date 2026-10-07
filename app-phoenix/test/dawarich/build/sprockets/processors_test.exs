@@ -3,6 +3,16 @@ defmodule Dawarich.Build.Sprockets.ProcessorsTest do
 
   alias Dawarich.Build.Sprockets.Processors
 
+  @tag :sa_gate_js_cost
+  test "JavaScript termination examines the tail without rescanning interior whitespace" do
+    source = String.duplicate(" ", 2048) <> "var x=1;\n"
+    {:reductions, before} = Process.info(self(), :reductions)
+    result = Processors.concat_js([source])
+    {:reductions, after_count} = Process.info(self(), :reductions)
+    assert result == source
+    assert after_count - before < 10_000
+  end
+
   test "JavaScript parts get Sprockets' semicolon: before a final newline, space or tab, else appended" do
     assert Processors.concat_js(["a\n", "b", "c;\n", "d; \n", "e\r", "", "  \n"]) ==
              "a;\nb;c;\nd; \ne\r;  \n"

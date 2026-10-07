@@ -16,6 +16,7 @@ defmodule Dawarich.Auth.SessionCookie do
   def for_login(session, user, notice, secret) do
     session =
       session
+      |> clear_pending()
       |> Map.drop(@login_drop)
       |> Map.reject(fn {key, _value} -> String.starts_with?(key, "devise.") end)
       |> Map.put("session_id", session_id())
@@ -48,6 +49,7 @@ defmodule Dawarich.Auth.SessionCookie do
     session =
       if kind == :sign_in do
         session
+        |> clear_pending()
         |> Map.reject(fn {key, _} -> String.starts_with?(key, "devise.") end)
         |> Map.put("session_id", session_id())
         |> Map.put("warden.user.user.key", [
@@ -74,6 +76,7 @@ defmodule Dawarich.Auth.SessionCookie do
   def for_restore(session, user, secret) do
     session =
       session
+      |> clear_pending()
       |> Map.drop(@login_drop -- ["user_return_to", "_csrf_token"])
       |> Map.put("session_id", session_id())
       |> Map.put("warden.user.user.key", [[user.id], binary_part(user.encrypted_password, 0, 29)])
@@ -82,6 +85,10 @@ defmodule Dawarich.Auth.SessionCookie do
   end
 
   defp flash(notice), do: %{"discard" => [], "flashes" => %{"notice" => notice}}
+
+  defp clear_pending(session),
+    do: if(Dawarich.Standalone.enabled?(), do: Pending.clear(session), else: session)
+
   defp session_id, do: :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
 
   defp default(session, key, fun) do

@@ -59,7 +59,14 @@ defmodule DawarichWeb.SettingsApiParityTest do
     %{id: id, key: key}
   end
 
+  @tag :unboxed
   test "Rails accepted timezones render mobile and area endpoints using application data", c do
+    verifier =
+      start_supervised!(
+        {Postgrex,
+         Keyword.take(Repo.config(), [:hostname, :port, :username, :password, :database])}
+      )
+
     cases =
       Path.expand("../fixtures/settings_api_time_zones.json", __DIR__)
       |> File.read!()
@@ -70,6 +77,12 @@ defmodule DawarichWeb.SettingsApiParityTest do
                200
 
       assert settings(c.id)["timezone"] == row["zone"]
+
+      if index == 0 do
+        assert Postgrex.query!(verifier, "SELECT settings->>'timezone' FROM users WHERE id=$1", [
+                 c.id
+               ]).rows == [[row["zone"]]]
+      end
 
       {:ok, now, _} = DateTime.from_iso8601(row["at"])
       ctx = %{now: now}
