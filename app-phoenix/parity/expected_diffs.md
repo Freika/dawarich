@@ -683,3 +683,9 @@ source debt or weaken Cloud lifecycle refusal.
 | ID | Surface | Rails | Phoenix | Evidence / authority |
 | --- | --- | --- | --- | --- |
 | ED-FIX-SWEEP6-RETRY | POST /tracks/recalculation before workers start | Two valid submissions enqueue two user reclassification jobs because processing state starts in the worker. | A per-user SQL primary-key fence and transactional outbox insertion accept one root event until its fan-out completes. | Controller review F1 exactly-once requirement; `review web queued retry produces exactly one event`; DRB-FIX-SWEEP6-RETRY; [recalculation contract](../../docs/phoenix/standalone-recalculation.md). |
+
+## Native Referer syntax admission
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-SA-TREK-REFERER-SYNTAX | Native redirect-back and url-from sites | Rails compares the parsed host with request.host; valid same-host userinfo and protocol-relative targets can be admitted. | Shared RailsRedirect retains host-only comparison and other scheme/port acceptance, but rejects backslashes, userinfo, control/whitespace and protocol-relative forms before comparing hosts. Rejected targets use each action's Rails fallback. | Controller fix-sa-trek ruling 2026-10-07; named F1/F2/F3 regressions and the new-handler guard; [native redirect contract](../../docs/phoenix/standalone-trek-sources.md). |

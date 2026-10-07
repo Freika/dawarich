@@ -21,6 +21,48 @@ defmodule DawarichWeb.AchievementSharingTest do
     :ok
   end
 
+  @tag :safe_back3
+  test "F1 signed sharing rejects browser backslash userinfo tricks and preserves relative returns" do
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    for {referer, location} <- [
+          {"http://evil.example\\@www.example.com/offer",
+           "http://www.example.com/achievements/country_de"},
+          {"//evil.example\\@www.example.com/offer",
+           "http://www.example.com/achievements/country_de"},
+          {"http://user@www.example.com/offer", "http://www.example.com/achievements/country_de"},
+          {"/achievements/country_de?page=2#card",
+           "http://www.example.com/achievements/country_de?page=2#card"},
+          {"https://www.example.com:8443/achievements/country_de?page=2",
+           "https://www.example.com:8443/achievements/country_de?page=2"}
+        ] do
+      response =
+        request(
+          "POST",
+          "/achievements/country_de/toggle_sharing",
+          %{"_method" => "patch", "enabled" => true},
+          false,
+          referer
+        )
+        |> DawarichWeb.Endpoint.call([])
+
+      assert response.status == 302
+      assert get_resp_header(response, "location") == [location]
+
+      assert [[true]] =
+               rows(
+                 "SELECT sharing_enabled FROM achievement_progresses WHERE user_id=44001 AND achievement_key='country_de'"
+               )
+    end
+  end
+
   test "answers Rails sharing form and modal JSON with exact redirects and URLs" do
     fixtures =
       Path.expand("../fixtures/achievement_actions/responses.json", __DIR__)

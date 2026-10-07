@@ -98,6 +98,44 @@ defmodule DawarichWeb.VisitActionsTest do
           ParityHTML.normalize(File.read!("test/fixtures/a8vv/visits/#{name}.html"))
       )
 
+  @tag :safe_back3
+  test "F3 visit update uses Rails timeline fallback and preserves same-host returns" do
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    ctx = fixture("rename")
+    body = "_method=patch&visit%5Bname%5D=Renamed"
+
+    for {referer, location} <- [
+          {"https://outside.example/map",
+           "http://www.example.com/map/v2?date=today&panel=timeline&status=suggested"},
+          {"http://user@www.example.com/map",
+           "http://www.example.com/map/v2?date=today&panel=timeline&status=suggested"},
+          {"/map/v2?date=2026-10-03#timeline",
+           "http://www.example.com/map/v2?date=2026-10-03#timeline"},
+          {"https://www.example.com:8443/map/v2", "https://www.example.com:8443/map/v2"}
+        ] do
+      response =
+        post_form(
+          ctx.session,
+          body,
+          [{"accept", "text/html"}, {"x-csrf-token", ctx.token}, {"referer", referer}],
+          ctx.state["request"]["path"]
+        )
+
+      assert response.status == 302
+      assert get_resp_header(response, "location") == [location]
+      assert rows("SELECT name FROM visits WHERE id=902000") == [["Renamed"]]
+      assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    end
+  end
+
   test "single edit replaces the row calendar and notice in Rails order" do
     ctx = fixture("rename")
     assert {:ok, result} = change(:update, ctx)
@@ -197,24 +235,16 @@ defmodule DawarichWeb.VisitActionsTest do
     assert get_resp_header(conn, "location") ==
              ["http://www.example.com/map/v2?date=today&panel=timeline&status=suggested"]
 
-    upstream = upstream!()
-    before = rows("SELECT name,status,updated_at FROM visits WHERE id=902000")
-    commands = rows("SELECT id FROM phoenix.rails_commands ORDER BY id")
+    conn =
+      post_form(edit.session, body, [{"referer", "https://outside.example/map"} | headers], path)
 
-    {{line, ^body}, conn} =
-      forwarded(upstream, fn ->
-        post_form(
-          edit.session,
-          body,
-          [{"referer", "https://outside.example/map"} | headers],
-          path
-        )
-      end)
+    assert conn.status == 302
 
-    assert line == "POST #{path} HTTP/1.1"
-    assert conn.status == 204
-    assert rows("SELECT name,status,updated_at FROM visits WHERE id=902000") == before
-    assert rows("SELECT id FROM phoenix.rails_commands ORDER BY id") == commands
+    assert get_resp_header(conn, "location") == [
+             "http://www.example.com/map/v2?date=today&panel=timeline&status=suggested"
+           ]
+
+    assert rows("SELECT name FROM visits WHERE id=902000") == [["Renamed"]]
   end
 
   test "post-write render reads the same repository as the owning transaction" do

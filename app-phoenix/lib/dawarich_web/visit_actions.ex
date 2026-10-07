@@ -135,28 +135,8 @@ defmodule DawarichWeb.VisitActions do
 
   defp back(_conn, action) when action in [:destroy, :bulk_update], do: {:ok, nil}
 
-  defp back(conn, _action) do
-    case get_req_header(conn, "referer") do
-      [] ->
-        {:ok, nil}
-
-      [value] ->
-        uri = URI.parse(value)
-        base = URI.parse(RequestURL.base(conn))
-
-        if not String.contains?(value, ["\\", "\r", "\n"]) and is_nil(uri.userinfo) and
-             ((uri.host == base.host and uri.scheme == base.scheme and uri.port == base.port) or
-                (is_nil(uri.host) and is_nil(uri.scheme) and String.starts_with?(value, "/") and
-                   not String.starts_with?(value, "//"))) do
-          {:ok, value}
-        else
-          {:replay, "visit redirect origin"}
-        end
-
-      _ ->
-        {:replay, "visit referer shape"}
-    end
-  end
+  defp back(conn, action),
+    do: {:ok, DawarichWeb.RailsRedirect.back(conn, location(action, %{}, nil))}
 
   defp location(:bulk_update, params, _back),
     do: timeline(params["date"] || "today", params["source_status"] || "suggested")

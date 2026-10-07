@@ -30,6 +30,30 @@ defmodule DawarichWeb.FamilyPagesTest do
     assert found == expected, selector
   end
 
+  @tag :safe_back3
+  test "F2 family refusal uses shared syntax checks and host-only Rails redirects", ctx do
+    for {referer, location} <- [
+          {"http://user@www.example.com/return?x=1", "http://www.example.com/"},
+          {"http://evil.example\\@www.example.com/offer", "http://www.example.com/"},
+          {"//www.example.com/family", "http://www.example.com/"},
+          {"/family?tab=members#owner", "http://www.example.com/family?tab=members#owner"},
+          {"https://www.example.com:8443/return?x=1#family",
+           "https://www.example.com:8443/return?x=1#family"}
+        ] do
+      response =
+        RailsUser.signed_in(ctx.member.id)
+        |> freeze_clock()
+        |> put_req_header("referer", referer)
+        |> get("/family/edit")
+
+      assert response.status == 303
+      assert redirected_to(response, 303) == location
+
+      assert response.private.dawarich_rails_session_changes["flash"]["flashes"]["alert"] =~
+               "not authorized"
+    end
+  end
+
   test "show renders owner and member Rails controls", ctx do
     html = document(ctx.owner, "/family")
     assert_form_isolated(html)

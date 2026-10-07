@@ -3,7 +3,7 @@ defmodule DawarichWeb.SettingsMiscActions do
   @behaviour Plug
   import Plug.Conn
   alias Dawarich.Settings.Misc
-  alias DawarichWeb.{RequestURL, SettingsActions}
+  alias DawarichWeb.SettingsActions
 
   def init(action), do: action
 
@@ -84,21 +84,5 @@ defmodule DawarichWeb.SettingsMiscActions do
     end
   end
 
-  defp back(conn) do
-    base = RequestURL.base(conn)
-
-    case get_req_header(conn, "referer") do
-      [referer] ->
-        uri = URI.parse(referer)
-        origin = URI.parse(base)
-
-        if uri.scheme == origin.scheme and uri.host == origin.host and uri.port == origin.port and
-             is_nil(uri.userinfo),
-           do: referer,
-           else: base <> "/"
-
-      _ ->
-        base <> "/"
-    end
-  end
+  defp back(conn), do: DawarichWeb.RailsRedirect.back(conn)
 end

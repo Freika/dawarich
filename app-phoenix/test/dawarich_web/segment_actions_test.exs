@@ -2,7 +2,7 @@ defmodule DawarichWeb.SegmentActionsTest do
   use Dawarich.IngestCase, async: false
   import Plug.Conn
   import Plug.Test
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2, rails_session: 1]
+  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, rails_session: 1]
   alias Dawarich.Test.{FrameSeeds, RailsUser}
   alias DawarichWeb.{MapWriteRequest, RailsAuth, RailsCsrf, SegmentActions}
 
@@ -71,6 +71,29 @@ defmodule DawarichWeb.SegmentActionsTest do
     {result, raw}
   end
 
+  @tag :safe_back3
+  test "F3 segment writes use Rails root fallback without replaying foreign Referers", ctx do
+    for {referer, location} <- [
+          {"https://foreign.example.invalid/points", "http://www.example.com/"},
+          {"http://user@www.example.com/points", "http://www.example.com/"},
+          {"/points\\bad", "http://www.example.com/"},
+          {"//www.example.com/points", "http://www.example.com/"},
+          {"/points?order_by=asc#row", "http://www.example.com/points?order_by=asc#row"},
+          {"https://www.example.com:8443/points", "https://www.example.com:8443/points"}
+        ] do
+      {response, _} =
+        request(ctx, :patch, "track_segment[transportation_mode]=walking", "text/html", referer)
+
+      assert response.status == 302
+      assert get_resp_header(response, "location") == [location]
+
+      assert Repo.query!("SELECT transportation_mode FROM track_segments WHERE id=9197100").rows ==
+               [[2]]
+
+      assert rails_session(response)["flash"]["flashes"]["notice"] == "Segment updated"
+    end
+  end
+
   test "PATCH override POST call identical real override/reset", ctx do
     for method <- [:patch, :post] do
       if method == :post do
@@ -129,48 +152,6 @@ defmodule DawarichWeb.SegmentActionsTest do
                "discard" => [],
                "flashes" => %{kind => message}
              }
-    end
-  end
-
-  test "unsupported referer replays before DML or flash", ctx do
-    before = Repo.query!("SELECT to_jsonb(s)::text FROM track_segments s ORDER BY id").rows
-
-    {probe, _} =
-      request(
-        ctx,
-        :patch,
-        "track_segment[transportation_mode]=walking",
-        "text/html",
-        "https://foreign.example.invalid/points"
-      )
-
-    assert probe.status == 502
-
-    assert Repo.query!("SELECT to_jsonb(s)::text FROM track_segments s ORDER BY id").rows ==
-             before
-
-    assert commands() == []
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
-
-    for referer <- [
-          "https://foreign.example.invalid/points",
-          "//foreign.example.invalid/points",
-          "/points\\bad"
-        ] do
-      {{line, body}, {response, raw}} =
-        forwarded(ctx.upstream, fn ->
-          request(ctx, :patch, "track_segment[transportation_mode]=walking", "text/html", referer)
-        end)
-
-      assert line == "PATCH /tracks/919710/segments/9197100 HTTP/1.1"
-      assert body == raw
-      assert response.status == 204
-      assert response.resp_cookies == %{}
-
-      assert Repo.query!("SELECT to_jsonb(s)::text FROM track_segments s ORDER BY id").rows ==
-               before
-
-      assert commands() == []
     end
   end
 end

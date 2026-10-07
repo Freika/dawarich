@@ -357,7 +357,7 @@ defmodule DawarichWeb.StandaloneTrekSourcesTest do
           {"http://www.example.com/settings/integrations?service=trek",
            "http://www.example.com/settings/integrations?service=trek"},
           {"https://www.example.com:8443/settings", "https://www.example.com:8443/settings"},
-          {"//www.example.com/settings", "http://www.example.com/settings"},
+          {"//www.example.com/settings", "http://www.example.com/"},
           {"//external.example.test/offer", "http://www.example.com/"},
           {"/settings/integrations?service=trek",
            "http://www.example.com/settings/integrations?service=trek"},

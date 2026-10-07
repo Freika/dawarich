@@ -96,31 +96,19 @@ defmodule DawarichWeb.FamilyGate do
           }),
         else: conn
 
-    path = if reason == :not_authorized, do: referer(conn) || path, else: path
+    location =
+      if reason == :not_authorized,
+        do: DawarichWeb.RailsRedirect.back(conn, path),
+        else: DawarichWeb.RequestURL.base(conn) <> path
 
     conn
-    |> Plug.Conn.put_resp_header("location", DawarichWeb.RequestURL.base(conn) <> path)
+    |> Plug.Conn.put_resp_header("location", location)
     |> Plug.Conn.put_resp_content_type("text/html")
     |> Plug.Conn.send_resp(
       if(reason in [:not_authorized, :feature_unavailable], do: 303, else: 302),
       ""
     )
     |> Plug.Conn.halt()
-  end
-
-  defp referer(conn) do
-    with [header] <- Plug.Conn.get_req_header(conn, "referer"),
-         %URI{path: path} = uri <- URI.parse(header),
-         true <-
-           uri.scheme == URI.parse(DawarichWeb.RequestURL.base(conn)).scheme and
-             uri.host == conn.host,
-         true <-
-           is_binary(path) and String.starts_with?(path, "/") and
-             not String.starts_with?(path, "//") do
-      path <> if(uri.query, do: "?" <> uri.query, else: "")
-    else
-      _other -> nil
-    end
   end
 
   def show?(conn, _params), do: open?(conn, :show)

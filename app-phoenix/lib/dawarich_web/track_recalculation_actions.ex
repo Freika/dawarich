@@ -14,11 +14,7 @@ defmodule DawarichWeb.TrackRecalculationActions do
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
     ctx = %{now: Map.get(conn.assigns, :now, DateTime.utc_now())}
 
-    with {:ok, location} <- DawarichWeb.SegmentActions.back(conn) do
-      respond(conn, user, locale, ctx, location)
-    else
-      :rails -> DawarichWeb.Api.Body.replay(conn, "reclassification referer")
-    end
+    respond(conn, user, locale, ctx, DawarichWeb.RailsRedirect.back(conn))
   end
 
   defp respond(conn, user, locale, ctx, location) do
