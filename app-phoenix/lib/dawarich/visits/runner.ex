@@ -93,8 +93,48 @@ defmodule Dawarich.Visits.Runner do
       by_id = Map.new(evidence.points, &{&1.id, &1})
       stays = if evidence.points == [], do: [], else: stays(evidence, by_id, ctx.policy)
       scored = if stays == [], do: [], else: attribute_and_score(ctx, stays, by_id)
-      Persister.run(ctx.repo, ctx.user_id, bs, be, scored, by_id, ctx.policy)
+      refresh = fn prepared -> refresh(ctx, bs, be, evidence, prepared) end
+      Persister.run(ctx.repo, ctx.user_id, bs, be, scored, by_id, ctx.policy, refresh)
     end
+  end
+
+  defp refresh(ctx, start, stop, evidence, prepared) do
+    require_current_context(ctx)
+    {bs, be} = window(ctx, start, stop)
+    current = CandidateLoader.load(ctx.repo, ctx.user_id, bs, be)
+
+    cond do
+      current.skipped ->
+        ctx.repo.rollback(:candidate_limit)
+
+      {bs, be, current} == {start, stop, evidence} ->
+        prepared
+
+      true ->
+        by_id = Map.new(current.points, &{&1.id, &1})
+
+        scored =
+          current
+          |> stays(by_id, ctx.policy)
+          |> attribute_and_score_current(ctx, by_id)
+
+        {bs, be, scored, by_id}
+    end
+  end
+
+  defp require_current_context(ctx) do
+    case Settings.load(ctx.repo, ctx.user_id) do
+      nil ->
+        ctx.repo.rollback(:stale_context)
+
+      user ->
+        if context(ctx.repo, user, ctx.zone) != ctx, do: ctx.repo.rollback(:stale_context)
+    end
+  end
+
+  defp attribute_and_score_current(stays, ctx, by_id) do
+    ctx = %{ctx | areas: PlaceAttributor.areas(ctx.repo, ctx.user_id)}
+    attribute_and_score(ctx, stays, by_id)
   end
 
   defp stays(evidence, by_id, policy) do
@@ -108,6 +148,36 @@ defmodule Dawarich.Visits.Runner do
   defp stitch(_ctx, created) when length(created) < 2, do: created
 
   defp stitch(ctx, created) do
+    case ctx.repo.transaction(fn ->
+           Persister.lock(ctx.repo, ctx.user_id)
+           require_current_context(ctx)
+           require_current_visits(ctx, created)
+           stitch_current(ctx, created)
+         end) do
+      {:ok, visits} -> visits
+      {:error, :stale_context} -> []
+    end
+  end
+
+  defp require_current_visits(ctx, created) do
+    current =
+      ctx.repo.query!(
+        "SELECT v.id, floor(extract(epoch FROM v.started_at))::bigint, floor(extract(epoch FROM v.ended_at))::bigint, v.place_id, v.area_id " <>
+          "FROM visits v WHERE v.user_id=$1 AND v.id=ANY($2) AND v.deleted_at IS NULL AND v.status=0 AND v.import_id IS NULL AND v.demo=false " <>
+          "AND NOT EXISTS (SELECT 1 FROM notes WHERE attachable_type='Visit' AND attachable_id=v.id) ORDER BY v.id FOR UPDATE",
+        [ctx.user_id, Enum.map(created, & &1.id)],
+        log: false
+      ).rows
+
+    expected =
+      created
+      |> Enum.sort_by(& &1.id)
+      |> Enum.map(&[&1.id, &1.started_at, &1.ended_at, &1.place_id, &1.area_id])
+
+    if current != expected, do: ctx.repo.rollback(:stale_context)
+  end
+
+  defp stitch_current(ctx, created) do
     centers =
       Map.new(
         created,

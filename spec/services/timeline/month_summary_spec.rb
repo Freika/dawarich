@@ -5,6 +5,57 @@ require 'rails_helper'
 RSpec.describe Timeline::MonthSummary do
   let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
 
+  describe 'Phoenix month generation fence' do
+    it 'isolates an old snapshot fill from the current committed month generation' do
+      connection = ActiveRecord::Base.connection
+      connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
+      connection.execute(<<~SQL)
+        CREATE TABLE IF NOT EXISTS phoenix.epochs (
+          key text PRIMARY KEY, token text NOT NULL, updated_at timestamptz DEFAULT now()
+        )
+      SQL
+      epoch_key = "timeline_visit_month/#{user.id}/2026-04/Europe/Berlin"
+      store = ActiveSupport::Cache::MemoryStore.new
+      allow(Rails).to receive(:cache).and_return(store)
+      old_key = described_class.cache_key_for(user, '2026-04')
+      connection.execute("INSERT INTO phoenix.epochs(key,token) VALUES(#{connection.quote(epoch_key)},'first')")
+      first_key = described_class.cache_key_for(user, '2026-04')
+      expect(first_key).not_to eq(old_key)
+      connection.execute("UPDATE phoenix.epochs SET token='second' WHERE key=#{connection.quote(epoch_key)}")
+      store.write(first_key, { status_counts: { 'suggested' => 99 }, days: {} })
+      expect(described_class.cache_key_for(user, '2026-04')).not_to eq(first_key)
+      expect(described_class.new(user: user, month: '2026-04').call[:status_counts]).to eq({})
+    end
+
+    it 'rebuilds when a generation commits during the cache fill' do
+      connection = ActiveRecord::Base.connection
+      connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
+      connection.execute(<<~SQL)
+        CREATE TABLE IF NOT EXISTS phoenix.epochs (
+          key text PRIMARY KEY, token text NOT NULL, updated_at timestamptz DEFAULT now()
+        )
+      SQL
+      epoch_key = "timeline_visit_month/#{user.id}/2026-04/Europe/Berlin"
+      connection.execute("INSERT INTO phoenix.epochs(key,token) VALUES(#{connection.quote(epoch_key)},'first')")
+      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+      builds = 0
+      allow_any_instance_of(described_class).to receive(:build_summary) do
+        expect(ActiveRecord::Base.connection.query_cache_enabled).to be false
+        builds += 1
+        if builds == 1
+          connection.execute("UPDATE phoenix.epochs SET token='second' WHERE key=#{connection.quote(epoch_key)}")
+          { status_counts: { 'suggested' => 99 } }
+        else
+          { status_counts: {} }
+        end
+      end
+      ActiveRecord::Base.cache do
+        expect(described_class.new(user: user, month: '2026-04').call[:status_counts]).to eq({})
+      end
+      expect(builds).to eq(2)
+    end
+  end
+
   describe '#call' do
     subject(:summary) { described_class.new(user: user, month: '2026-04').call }
 
@@ -297,11 +348,13 @@ RSpec.describe Timeline::MonthSummary do
       allow(Rails.cache).to receive(:fetch).and_call_original
     end
 
-    it 'caches the result so a second call skips the database' do
+    it 'caches the result so a second call skips aggregate queries' do
       described_class.new(user: user, month: '2026-04').call
 
       queries = []
-      counter = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] if payload[:sql] }
+      counter = lambda do |_name, _start, _finish, _id, payload|
+        queries << payload[:sql] if payload[:sql] && payload[:name] != 'Timeline generation'
+      end
 
       ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
         described_class.new(user: user, month: '2026-04').call

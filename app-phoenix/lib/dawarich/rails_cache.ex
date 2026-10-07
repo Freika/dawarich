@@ -4,29 +4,37 @@ defmodule Dawarich.RailsCache do
   alias Dawarich.Redis
 
   def get(key, opts \\ []) do
-    key =
-      if opts[:resolved], do: key, else: visible_key(key, opts)
+    physical = if opts[:resolved], do: key, else: visible_key(key, opts)
 
-    case Redis.cache_command(["GET", key]) do
-      {:ok, nil} -> :miss
-      {:ok, bytes} -> entry(key, bytes, opts)
-      error -> error
-    end
+    result =
+      case Redis.cache_command(["GET", physical]) do
+        {:ok, nil} -> :miss
+        {:ok, bytes} -> entry(physical, bytes, opts)
+        error -> error
+      end
+
+    if opts[:resolved] == true or physical == visible_key(key, opts), do: result, else: :miss
   end
 
   def put(key, html, opts) do
     seconds = Keyword.fetch!(opts, :expires_in)
-
-    key =
-      if opts[:resolved], do: key, else: visible_key(key, opts)
+    key = if opts[:resolved], do: key, else: visible_key(key, opts)
 
     bytes = Wire.encode(html, expires_at: now() + seconds)
     Redis.cache_command(["SET", key, bytes, "PX", to_string(seconds * 1000)])
   end
 
   defp visible_key(key, opts) do
+    default_repo =
+      if String.starts_with?(key, "timeline_month_summary/"),
+        do: Dawarich.Jobs.repo(),
+        else: Dawarich.Repo
+
+    repo = Keyword.get(opts, :repo, default_repo)
+    key = Dawarich.Visits.CacheGeneration.physical_key(key, repo)
+
     if Dawarich.AfterCommit.Visibility.user_key?(key),
-      do: Dawarich.AfterCommit.Visibility.key(Keyword.get(opts, :repo, Dawarich.Repo), key),
+      do: Dawarich.AfterCommit.Visibility.key(repo, key),
       else: key
   end
 

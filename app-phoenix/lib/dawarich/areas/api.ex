@@ -82,6 +82,12 @@ defmodule Dawarich.Areas.Api do
 
           repo.query!("DELETE FROM visits WHERE id=ANY($1)", [ids], log: false)
           repo.query!("DELETE FROM areas WHERE id=$1", [area["id"]], log: false)
+
+          stamps =
+            for [_, _, stamp, _demo] <- visits,
+                do: DateTime.from_naive!(stamp, "Etc/UTC")
+
+          Dawarich.RailsEffects.visit_months(repo, user.id, stamps)
           visits
         end)
 
@@ -93,25 +99,6 @@ defmodule Dawarich.Areas.Api do
           place,
           ctx
         )
-      end
-
-      for [_, _, stamp, demo] <- visits, not demo do
-        settings = Settings.read(repo, user.id)
-        zone = settings["timezone"] || System.get_env("TIME_ZONE", "UTC")
-
-        [[month]] =
-          repo.query!(
-            "SELECT to_char($1::timestamp AT TIME ZONE 'UTC' AT TIME ZONE $2, 'YYYY-MM')",
-            [stamp, Dawarich.TimeZoneName.to_iana(zone)],
-            log: false
-          ).rows
-
-        plan = if Settings.restricted?(repo, user, ctx), do: "lite", else: "pro"
-
-        Dawarich.Redis.cache_command([
-          "UNLINK",
-          "timeline_month_summary/#{user.id}/#{month}/#{zone}/#{plan}/v3"
-        ])
       end
 
       {:ok, 200,

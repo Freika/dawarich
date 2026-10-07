@@ -79,7 +79,7 @@ defmodule Dawarich.VisitsApi.Merge do
     else
       {_, names} =
         Enum.reduce(visits, {MapSet.new(), []}, fn visit, {seen, names} ->
-          key = visit.name |> String.trim() |> String.downcase()
+          key = Dawarich.Visits.NameKey.build(visit.name)
 
           if key == "" || MapSet.member?(seen, key),
             do: {seen, names},

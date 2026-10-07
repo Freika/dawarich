@@ -321,11 +321,16 @@ defmodule DawarichWeb.A12f3aVClosureTest do
                ctx
              )
 
+    assert [[args]] =
+             rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [
+               "Dawarich.Points.VisitMonthsWorker"
+             ])
+
+    assert :ok = Dawarich.Points.VisitMonthsWorker.run(ScratchRepo, args)
     Dawarich.Test.AfterCommit.drain(ScratchRepo)
 
     for key <- keys do
-      assert Dawarich.RailsCache.get(key) ==
-               if(String.contains?(key, "/2026-11/"), do: {:ok, "primed"}, else: :miss)
+      assert Dawarich.RailsCache.get(key) == :miss
     end
 
     no_rails()

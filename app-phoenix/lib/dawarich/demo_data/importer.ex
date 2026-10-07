@@ -92,6 +92,20 @@ defmodule Dawarich.DemoData.Importer do
         "timeline_month_summary/#{user.id}/#{label}/#{setting}/#{segment}/v3"
       end
 
+    keys =
+      keys
+      |> Enum.flat_map(fn key ->
+        month = Dawarich.Visits.CacheGeneration.physical_key(key, repo)
+
+        [
+          key,
+          month,
+          Dawarich.AfterCommit.Visibility.key(repo, key),
+          Dawarich.AfterCommit.Visibility.key(repo, month)
+        ]
+      end)
+      |> Enum.uniq()
+
     Dawarich.AfterCommit.cache(repo, "keys", %{"user_id" => user.id, "keys" => keys})
 
     Dawarich.Stats.CacheInvalidation.call(repo, %{

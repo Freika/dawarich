@@ -1,37 +1,47 @@
 defmodule Dawarich.Visits.Calendar do
   @moduledoc false
 
-  def changed(repo, user_id, stamps) do
+  def changed(repo, user_id, stamps, opts \\ [])
+
+  def changed(_repo, _user_id, [], _opts), do: :ok
+
+  def changed(repo, user_id, stamps, opts) do
+    case repo.query!("SELECT settings FROM users WHERE id=$1", [user_id], log: false).rows do
+      [[settings]] ->
+        Dawarich.Visits.CacheGeneration.bump(repo, %{id: user_id, settings: settings}, stamps)
+
+      [] ->
+        :ok
+    end
+
     payload = %{
       "user_id" => user_id,
       "started_at" => stamps |> Enum.map(&DateTime.to_iso8601/1) |> Enum.uniq()
     }
 
-    if Dawarich.Standalone.enabled?() or
-         Dawarich.Jobs.Ownership.lock(repo, "command:visits.suggest") == :oban,
-       do: Dawarich.AfterCommit.enqueue(repo, Dawarich.Points.VisitMonthsWorker, payload),
-       else:
-         Dawarich.AfterCommit.with_visibility(repo, "visit_months", payload, fn ->
-           Dawarich.RailsCommands.insert!(repo, "visit_months_changed", payload)
-         end)
+    unless Keyword.get(opts, :native_owner, false) or Dawarich.Standalone.enabled?() or
+             Dawarich.Jobs.Ownership.lock(repo, "command:visits.suggest") == :oban do
+      Dawarich.RailsCommands.insert!(repo, "visit_months_changed", payload)
+    end
+
+    Dawarich.AfterCommit.enqueue(repo, Dawarich.Points.VisitMonthsWorker, payload)
   end
 
   def invalidate(repo, user, stamps) do
-    setting = Dawarich.UserSettings.get(user)["timezone"] || System.get_env("TIME_ZONE", "UTC")
-    setting = if setting == "", do: "UTC", else: setting
-    zone = Dawarich.TimeZoneName.to_iana(setting)
-
-    months =
-      repo.query!(
-        "SELECT DISTINCT to_char(stamp AT TIME ZONE $2, 'YYYY-MM') FROM unnest($1::timestamptz[]) stamp",
-        [stamps, zone],
-        log: false
-      ).rows
-      |> List.flatten()
+    {setting, months} = Dawarich.Visits.CacheGeneration.months(repo, user, stamps)
 
     for month <- months, segment <- ~w(lite pro) do
       key = Enum.join(["timeline_month_summary", user.id, month, setting, segment, "v3"], "/")
-      {:ok, _} = Dawarich.Redis.cache_command(["UNLINK", key])
+      versioned = Dawarich.Visits.CacheGeneration.physical_key(key, repo)
+
+      {:ok, _} =
+        Dawarich.Redis.cache_command([
+          "UNLINK",
+          key,
+          versioned,
+          Dawarich.AfterCommit.Visibility.key(repo, key),
+          Dawarich.AfterCommit.Visibility.key(repo, versioned)
+        ])
     end
 
     :ok

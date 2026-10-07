@@ -4,7 +4,9 @@ defmodule Dawarich.Visits.Settings do
   alias Dawarich.RubyInteger
 
   def load(repo, user_id) do
-    case repo.query!("SELECT settings FROM users WHERE id = $1", [user_id], log: false).rows do
+    case repo.query!("SELECT settings FROM users WHERE id = $1 AND deleted_at IS NULL", [user_id],
+           log: false
+         ).rows do
       [[settings]] -> %{id: user_id, settings: Dawarich.UserSettings.provided(settings)}
       [] -> nil
     end

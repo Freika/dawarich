@@ -130,6 +130,8 @@ defmodule Dawarich.A12f3bE03Test do
              [DateTime.to_naive(@now)]
            ]
 
+    assert %{success: 3, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
+
     Dawarich.Test.AfterCommit.drain(ScratchRepo)
     rows("DELETE FROM job_outbox")
     operation = Ecto.UUID.generate()
