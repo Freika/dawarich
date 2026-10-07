@@ -24,6 +24,7 @@ defmodule Dawarich.Jobs.RegistryTest do
     end
 
     assert Registry.claimable() == []
+    for entry <- Dawarich.Jobs.CloudEntries.entries(), do: assert(entry in entries)
   end
 
   test "cache entries remain unclaimable and only preheating has a cron" do
@@ -204,7 +205,7 @@ defmodule Dawarich.Jobs.RegistryTest do
     end
 
     assert Enum.count(Registry.entries(), &String.starts_with?(&1.key, "command:release.")) ==
-             map_size(@wave6_commands) + 5
+             map_size(@wave6_commands) + 6
 
     schedule = File.read!(Path.expand("../../../../config/schedule.yml", __DIR__))
 
