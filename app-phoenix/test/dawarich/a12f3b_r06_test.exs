@@ -189,6 +189,19 @@ defmodule Dawarich.A12f3bR06Test do
           do:
             assert(Dawarich.Geocoding.NightlySweep.run(ScratchRepo, @oban, args, env: %{}) == :ok)
 
+      for key <- keys, do: assert(Dawarich.RailsCache.get(key) == {:ok, "snapshot"})
+
+      assert [[payload]] =
+               rows(
+                 "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Geocoding.NightlyInvalidationWorker'"
+               )
+
+      assert :ok =
+               Dawarich.Geocoding.NightlyInvalidationWorker.perform(%Oban.Job{
+                 args: payload,
+                 conf: Oban.config(@oban)
+               })
+
       for key <- keys, do: assert(Dawarich.RailsCache.get(key) == :miss)
       assert Dawarich.RailsCache.get(other) == {:ok, "snapshot"}
       assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]

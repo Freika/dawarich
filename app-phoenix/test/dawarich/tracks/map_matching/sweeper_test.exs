@@ -21,7 +21,8 @@ defmodule Dawarich.Tracks.MapMatching.SweeperTest do
     {Oban, options} =
       List.keyfind(Dawarich.Application.children({:native, {{127, 0, 0, 1}, 4000}}), Oban, 0)
 
-    assert {"*/15 * * * *", Sweeper} in options[:cron][:crontab]
+    assert {Dawarich.Jobs.TickScheduler, cron} = options[:cron]
+    assert {"*/15 * * * *", Sweeper} in cron[:crontab]
   end
 
   test "stale pending older than 1 h is re-enqueued by the sweeper, fresh pending is not" do
