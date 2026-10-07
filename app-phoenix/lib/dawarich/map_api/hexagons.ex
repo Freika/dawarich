@@ -147,6 +147,8 @@ defmodule Dawarich.MapApi.Hexagons do
              [params["uuid"]]
            ).rows do
         [[id, year, month, cells, sharing, settings, plan, active]] ->
+          settings = Dawarich.UserSettings.safe(settings)
+
           if accessible?(sharing) do
             owner = %{
               id: id,

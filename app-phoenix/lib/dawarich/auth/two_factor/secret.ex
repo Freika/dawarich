@@ -48,7 +48,7 @@ defmodule Dawarich.Auth.TwoFactor.Secret do
         [[settings]] =
           repo.query!("SELECT settings FROM users WHERE id=$1", [id], log: false).rows
 
-        support(%{user | settings: settings}, salt, context)
+        support(%{user | settings: Dawarich.UserSettings.provided(settings)}, salt, context)
     end
   end
 

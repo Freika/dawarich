@@ -4,7 +4,7 @@ defmodule Dawarich.Trips.WebForm do
 
   def load(repo, user, id, context) do
     with true <- id != nil or active?(user, Map.get_lazy(context, :now, &DateTime.utc_now/0)),
-         {:ok, settings} <- TripSettings.read(user.settings),
+         {:ok, settings} <- TripSettings.read(Dawarich.UserSettings.get(user)),
          {:ok, trip} <- trip(repo, user.id, id),
          {:ok, description} <- Dawarich.Trips.RichContent.editor(trip.description, repo) do
       {:ok,
@@ -95,7 +95,7 @@ defmodule Dawarich.Trips.WebForm do
   defp display(_repo, _user, nil), do: nil
 
   defp display(repo, user, at) do
-    zone = UserTimeZone.zone(user.settings)
+    zone = UserTimeZone.zone(Dawarich.UserSettings.get(user))
     zone = if zone in [nil, ""], do: System.get_env("TIME_ZONE", "UTC"), else: zone
 
     [[local]] =

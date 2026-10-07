@@ -116,7 +116,7 @@ defmodule Dawarich.Trial.Welcome do
       result(conn, "/", "another_user_is_already_signed_in", locale, context)
     else
       with :ok <- issuer(user),
-           {:ok, settings} <- sanitize(user.settings) do
+           {:ok, settings} <- sanitize(Dawarich.UserSettings.provided(user.settings)) do
         notice = notice(user, actor, locale, context)
         sign_in? = is_nil(actor)
         cookie = cookie(conn, user, notice, context.secret, sign_in?)
@@ -238,7 +238,9 @@ defmodule Dawarich.Trial.Welcome do
     env = Map.get(context, :env, System.get_env())
 
     settings =
-      if actor, do: actor.settings, else: %{"timezone" => env["TIME_ZONE"] || "Europe/Berlin"}
+      if actor,
+        do: Dawarich.UserSettings.get(actor),
+        else: %{"timezone" => env["TIME_ZONE"] || "Europe/Berlin"}
 
     date = UserTimeZone.local(settings, naive(user.active_until)).local |> NaiveDateTime.to_date()
 

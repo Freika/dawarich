@@ -16,7 +16,7 @@ defmodule Dawarich.Timeline.MonthSummary do
   @empty %{tracked_seconds: 0, track_count: 0, point_count: 0, visit_count: 0, suggested_count: 0}
 
   def build(user, month, window_now, now, repo \\ Dawarich.Repo) do
-    settings = user.settings || %{}
+    settings = Dawarich.UserSettings.get(user)
     [[today, cutoff]] = context(now, window_now, settings, repo)
 
     start =

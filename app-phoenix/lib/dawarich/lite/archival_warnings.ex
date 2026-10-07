@@ -76,8 +76,12 @@ defmodule Dawarich.Lite.ArchivalWarnings do
         oldest <= cutoff and Ruby.blank?(warnings[key])
       end)
 
-  defp warnings(%{"archival_warnings" => %{} = warnings}), do: warnings
-  defp warnings(_settings), do: %{}
+  defp warnings(settings) do
+    case Dawarich.UserSettings.safe(settings) do
+      %{"archival_warnings" => %{} = warnings} -> warnings
+      _settings -> %{}
+    end
+  end
 
   defp mail_allowed?(:email, false, user_id) do
     Logger.warning("[lite.archival] mail key owned by sidekiq; user #{user_id} skipped")

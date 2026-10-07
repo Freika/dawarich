@@ -136,6 +136,7 @@ defmodule Dawarich.Settings.Api do
                    }}
                 )
 
+           before = UserSettings.provided(before)
            raw = attrs["enabled_transportation_modes"]
 
            if raw != nil and raw != [] and Enum.all?(raw, &(&1 not in @modes)),

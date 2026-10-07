@@ -46,7 +46,7 @@ defmodule DawarichWeb.DigestsLive.Show do
           page_title: t(locale, "users.digests.show.year_year_in_review", %{year: digest.year}),
           rails_js: true,
           digest: digest,
-          unit: StatsFormat.unit(user.settings),
+          unit: StatsFormat.unit(Dawarich.UserSettings.get(user)),
           full: full,
           table: Dawarich.CountryNames.table(),
           upgrade: StatsFormat.upgrade_url(user, now, self_hosted, "digest", "year_in_review"),

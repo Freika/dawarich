@@ -4,7 +4,12 @@ defmodule Dawarich.Points.DeletionEffects do
 
   def publish(repo, user, deleted, ctx) do
     stamps = Enum.map(deleted, & &1.timestamp)
-    zone = Map.get_lazy(ctx, :timezone, fn -> Dawarich.UserTimeZone.iana(repo, user.settings) end)
+
+    zone =
+      Map.get_lazy(ctx, :timezone, fn ->
+        Dawarich.UserTimeZone.iana(repo, Dawarich.UserSettings.get(user))
+      end)
+
     now = Map.get_lazy(ctx, :now, &DateTime.utc_now/0)
     Dawarich.RailsEffects.tile_epoch(repo, user.id, stamps)
 

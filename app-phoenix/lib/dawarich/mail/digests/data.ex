@@ -64,7 +64,7 @@ defmodule Dawarich.Mail.Digests.Data do
   end
 
   def project(repo, user, digest) do
-    unit = distance_unit(user.settings)
+    unit = distance_unit(Dawarich.UserSettings.get(user))
 
     distances =
       Map.new(object(digest["monthly_distances"]), fn {key, value} ->
@@ -133,7 +133,7 @@ defmodule Dawarich.Mail.Digests.Data do
   def array(_), do: raise(ArgumentError, "invalid digest array")
 
   defp distance_unit(settings) do
-    settings = object(settings)
+    settings = Dawarich.UserSettings.safe(settings)
     maps = object(settings["maps"])
     maps["distance_unit"] || "km"
   end

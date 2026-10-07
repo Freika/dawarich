@@ -106,7 +106,7 @@ defmodule Dawarich.Imports.Postprocessing do
           log: false
         ).rows
 
-      if (Map.get(settings || %{}, "visits_suggestions_enabled", "true") == "true" and first) &&
+      if (Dawarich.UserSettings.safe(settings)["visits_suggestions_enabled"] == "true" and first) &&
            last,
          do:
            Commands.reverse!(lease.repo, import, context, "schedule_visit_suggesting", %{

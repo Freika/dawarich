@@ -42,7 +42,7 @@ defmodule Dawarich.Insights.Details do
       all_time: raw == "all",
       year: year,
       selected: year || "all",
-      unit: StatsFormat.unit(user.settings),
+      unit: StatsFormat.unit(Dawarich.UserSettings.get(user)),
       today: context.today
     }
 

@@ -19,7 +19,7 @@ defmodule DawarichWeb.SegmentActions do
         now: Map.get(conn.assigns, :now, DateTime.utc_now()),
         locale: Locale.resolve(nil, user, conn.assigns.rails_session),
         csrf: RailsCsrf.masked_token(conn.assigns.rails_session),
-        unit: Days.unit(user.settings),
+        unit: Days.unit(Dawarich.UserSettings.get(user)),
         location: location
       }
 

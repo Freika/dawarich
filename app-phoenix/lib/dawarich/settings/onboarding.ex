@@ -9,7 +9,9 @@ defmodule Dawarich.Settings.Onboarding do
                [id],
                log: false
              ).rows do
-          [[%{} = settings]] ->
+          [[settings]] when is_map(settings) or is_nil(settings) ->
+            settings = Dawarich.UserSettings.provided(settings)
+
             if settings["onboarding_completed"] != true do
               repo.query!(
                 "UPDATE users SET settings=$2, updated_at=$3 WHERE id=$1",

@@ -64,7 +64,7 @@ defmodule Dawarich.Insights.Fragments do
       UserTimeZone.query!(
         "SELECT $1::timestamp AT TIME ZONE 'UTC' AT TIME ZONE z.name,EXTRACT(epoch FROM (($1::timestamp AT TIME ZONE 'UTC' AT TIME ZONE z.name)-$1::timestamp))::integer FROM z",
         [time],
-        user.settings
+        Dawarich.UserSettings.get(user)
       ).rows
 
     offset = abs(seconds) |> div(60)

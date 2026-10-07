@@ -33,7 +33,7 @@ defmodule Dawarich.Imports.IntegrationCommands do
                [user_id],
                log: false
              ).rows do
-          [[%{} = settings]] -> settings
+          [[settings]] when is_map(settings) or is_nil(settings) -> UserSettings.safe(settings)
           _ -> repo.rollback(:not_found)
         end
 

@@ -70,7 +70,7 @@ defmodule Dawarich.Timeline.Api do
   end
 
   defp build(user, params, from, to) do
-    settings = Accounts.settings(user.id) || %{}
+    settings = Dawarich.UserSettings.get(%{settings: Accounts.settings(user.id)})
     settings = Map.put(settings, "timezone", user.timezone)
 
     [[first, last]] =

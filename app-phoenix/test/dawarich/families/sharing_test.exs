@@ -9,12 +9,14 @@ defmodule Dawarich.Families.SharingTest do
     do: %{"family" => %{"location_sharing" => %{"enabled" => true, "expires_at" => expires_at}}}
 
   test "an expiry equal to now has expired, one microsecond later has not" do
+    refute Sharing.enabled?(nil, @now)
+    assert Sharing.config(nil) == nil
     refute Sharing.enabled?(settings("2026-10-01T14:00:00+02:00"), @now)
     assert Sharing.enabled?(settings("2026-10-01T12:00:00.000001Z"), @now)
   end
 
   test "settings Rails cannot dig through raise instead of answering" do
-    for bad <- [nil, [], "x", %{"family" => "x"}, %{"family" => []}, %{"family" => 1}] do
+    for bad <- [[], "x", %{"family" => "x"}, %{"family" => []}, %{"family" => 1}] do
       assert_raise ArgumentError, fn -> Sharing.enabled?(bad, @now) end
     end
 

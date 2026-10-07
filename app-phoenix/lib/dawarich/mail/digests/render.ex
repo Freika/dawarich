@@ -21,7 +21,7 @@ defmodule Dawarich.Mail.Digests.Render do
   end
 
   def message(repo, user, digest, ambient, env, base_url) do
-    locale = ExploreFeatures.locale(user.settings, ambient)
+    locale = ExploreFeatures.locale(Dawarich.UserSettings.get(user), ambient)
     period = digest["period_type"]
     projection = Data.project(repo, user, digest)
 

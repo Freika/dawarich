@@ -19,7 +19,9 @@ defmodule Dawarich.Mail.TestEmailWorker do
         transport = Application.get_env(:dawarich, :mail_transport, Dawarich.Mail.Smtp)
 
         transport.deliver(
-          Residual.message(:test_email, user, locale, env, clock: clock(user.settings, env)),
+          Residual.message(:test_email, user, locale, env,
+            clock: clock(Dawarich.UserSettings.get(user), env)
+          ),
           env
         )
     end

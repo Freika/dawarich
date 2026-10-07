@@ -22,7 +22,7 @@ defmodule DawarichWeb.NotificationsLive.Show do
         [notification] =
           Notifications.localize(
             [Notifications.mark_read(user_id, notification)],
-            socket.assigns.current_user.settings,
+            Dawarich.UserSettings.get(socket.assigns.current_user),
             socket.assigns.now
           )
 

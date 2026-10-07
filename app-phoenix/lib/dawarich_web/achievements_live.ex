@@ -40,7 +40,7 @@ defmodule DawarichWeb.AchievementsLive do
               do: celebrations(view, socket.assigns.achievement_celebrations),
               else: view
 
-          settings = if(is_map(user.settings), do: user.settings, else: %{})
+          settings = Dawarich.UserSettings.get(user)
           threshold = DawarichWeb.Params.ruby_to_i(settings["min_minutes_spent_in_city"] || 60)
 
           {:noreply,

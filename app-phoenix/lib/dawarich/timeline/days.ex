@@ -20,11 +20,12 @@ defmodule Dawarich.Timeline.Days do
       %{days: [], redetected: false}
     else
       rows = DayRows.fetch(user, range, {window.start_date, window.end_date}, window_now, repo)
-      %{days: build(rows, unit(user.settings)), redetected: rows.redetected}
+      %{days: build(rows, unit(Dawarich.UserSettings.get(user))), redetected: rows.redetected}
     end
   end
 
-  def unit(settings), do: get_in(settings || %{}, ["maps", "distance_unit"]) || "km"
+  def unit(settings),
+    do: get_in(Dawarich.UserSettings.safe(settings), ["maps", "distance_unit"]) || "km"
 
   def distance(nil, _unit), do: 0.0
   def distance(meters, unit), do: RubyFloat.round(Distance.convert(meters, unit), 1)

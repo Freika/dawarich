@@ -181,8 +181,21 @@ defmodule Dawarich.Photos.ThumbnailTest do
       assert sized(Thumbnail.fetch(settings(base), "immich", @id)) == {:ok, @cap}, "#{status}"
       Task.await(task)
 
-      {base, task} = immich(answer(status, [], :binary.copy("a", @cap + 1)))
-      assert sized(Thumbnail.fetch(settings(base), "immich", @id)) == @too_large, "#{status}"
+      server = listen()
+
+      task =
+        Task.async(fn ->
+          socket = accept(server)
+          read_head(socket)
+          reply(socket, "HTTP/1.1 #{status} X\r\ncontent-length: #{@cap + 1}\r\n\r\n")
+          assert {:error, :closed} = :gen_tcp.recv(socket, 0, :infinity)
+          :gen_tcp.close(socket)
+        end)
+
+      assert sized(Thumbnail.fetch(settings("http://127.0.0.1:#{server.port}"), "immich", @id)) ==
+               @too_large,
+             "#{status}"
+
       Task.await(task)
     end
   end

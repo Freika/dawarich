@@ -63,7 +63,13 @@ defmodule Dawarich.Imports.Integrations.PhotoImportRecord do
            log: false
          ).rows do
       [[email, settings, status, sub]] ->
-        %{email: email, settings: settings, status: status, sub: sub, stamp: stamp}
+        %{
+          email: email,
+          settings: Dawarich.UserSettings.safe(settings),
+          status: status,
+          sub: sub,
+          stamp: stamp
+        }
 
       _ ->
         ctx.repo.rollback(:lost)

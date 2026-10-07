@@ -35,7 +35,7 @@ defmodule Dawarich.ReleaseOperations.AnomaliesUser do
         terminal(repo, op, :missing, nil)
 
       [[settings]] ->
-        settings = if is_map(settings), do: settings, else: %{}
+        settings = Dawarich.UserSettings.safe(settings)
 
         cond do
           Ruby.present?(settings[@done]) ->

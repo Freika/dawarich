@@ -61,7 +61,7 @@ defmodule DawarichWeb.SharedStatsPage do
         rails_charts: true,
         flash: %{},
         navbar: navbar,
-        unit: StatsFormat.unit(data.user.settings)
+        unit: StatsFormat.unit(Dawarich.UserSettings.get(data.user))
       })
 
     content =
@@ -81,7 +81,7 @@ defmodule DawarichWeb.SharedStatsPage do
 
           viewer_settings =
             if conn.assigns.current_user,
-              do: conn.assigns.current_user.settings,
+              do: Dawarich.UserSettings.get(conn.assigns.current_user),
               else: %{"timezone" => ""}
 
           zone = UserTimeZone.name(viewer_settings)
@@ -101,7 +101,7 @@ defmodule DawarichWeb.SharedStatsPage do
               uuid: conn.path_params["uuid"],
               data_bounds: data.bounds,
               hexagons: data.hexagons,
-              timezone: UserTimeZone.zone(data.user.settings)
+              timezone: UserTimeZone.zone(Dawarich.UserSettings.get(data.user))
             })
           )
       end

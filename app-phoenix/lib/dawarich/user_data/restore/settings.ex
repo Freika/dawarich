@@ -9,7 +9,7 @@ defmodule Dawarich.UserData.Restore.Settings do
           [[current]] =
             repo.query!("SELECT settings FROM users WHERE id=$1 FOR UPDATE", [user], log: false).rows
 
-          current = current || %{}
+          current = Dawarich.UserSettings.provided(current)
           settings = Map.merge(current, data)
 
           repo.query!(
