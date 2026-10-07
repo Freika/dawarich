@@ -1,5 +1,5 @@
 defmodule Dawarich.Digests.QueriesTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: true, group: :digest_fixture_ids
   alias Dawarich.DigestFixtures
   alias Dawarich.Digests.{Context, Queries}
 
