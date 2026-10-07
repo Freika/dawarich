@@ -41,9 +41,9 @@ defmodule Dawarich.VisitsApi.BulkUpdate do
     else
       ids = Enum.map(selected, &hd/1)
 
-      %{num_rows: count} =
+      %{num_rows: count, rows: stamps} =
         repo.query!(
-          "UPDATE visits SET status=$3 WHERE user_id=$1 AND id=ANY($2) AND deleted_at IS NULL AND status!=2",
+          "UPDATE visits SET status=$3 WHERE user_id=$1 AND id=ANY($2) AND deleted_at IS NULL AND status!=2 RETURNING started_at",
           [
             owner,
             ids,
@@ -58,6 +58,12 @@ defmodule Dawarich.VisitsApi.BulkUpdate do
             owner,
             selected |> Enum.map(&List.last/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
           )
+
+      RailsEffects.visit_months(
+        repo,
+        owner,
+        Enum.map(stamps, fn [stamp] -> DateTime.from_naive!(stamp, "Etc/UTC") end)
+      )
 
       {:ok, count}
     end

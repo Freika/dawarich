@@ -16,18 +16,20 @@ defmodule Dawarich.Places.JobCommands do
           })
       end)
 
-  def orphan_places(repo, user, ids),
-    do:
-      resolve(repo, "places.delete_if_orphan", fn
-        :oban ->
-          Enum.each(Enum.uniq(ids), &leaf(repo, "places.delete_if_orphan", user, &1))
+  def orphan_places(repo, user, ids) do
+    ids = ids |> Enum.uniq() |> Enum.sort()
 
-        :sidekiq ->
-          RailsCommands.insert!(repo, "places_delete_if_orphan", %{
-            "user_id" => user,
-            "place_ids" => Enum.uniq(ids)
-          })
-      end)
+    resolve(repo, "places.delete_if_orphan", fn
+      :oban ->
+        Enum.each(ids, &leaf(repo, "places.delete_if_orphan", user, &1))
+
+      :sidekiq ->
+        RailsCommands.insert!(repo, "places_delete_if_orphan", %{
+          "user_id" => user,
+          "place_ids" => ids
+        })
+    end)
+  end
 
   def orphan_cleanup(repo, user, scheduled_at \\ nil),
     do:

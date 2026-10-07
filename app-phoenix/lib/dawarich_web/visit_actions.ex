@@ -107,10 +107,10 @@ defmodule DawarichWeb.VisitActions do
         conn
         |> put_resp_content_type("text/vnd.turbo-stream.html")
         |> put_resp_header("vary", "Accept")
-        |> send_resp(status, VisitStreams.error(ctx.locale, key))
+        |> send_resp(status, VisitStreams.error(ctx.locale, key, %{count: 500}))
         |> halt()
 
-      action in [:update, :destroy] ->
+      action in [:update, :destroy] and reason not in [:invalid_place, :invalid_area] ->
         conn |> send_resp(status, "") |> halt()
 
       true ->

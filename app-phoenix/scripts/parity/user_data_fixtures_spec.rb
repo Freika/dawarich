@@ -311,6 +311,8 @@ RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request d
 'invalid' => invalid, 'containers' => containers, 'trial' => trial }]
     end
     UserDataFixturesSupport.write('http.json', result)
-    UserDataFixturesSupport.source_write('a12f3a-e04.json', { summary: result, traces: })
+    packet = { summary: result, traces: }
+    UserDataFixturesSupport.write('a12f3a-e04.json', packet)
+    UserDataFixturesSupport.source_write('a12f3a-e04.json', packet)
   end
 end

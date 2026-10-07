@@ -129,5 +129,8 @@ and lease checks are unchanged.
 Regressions: `app-phoenix/test/dawarich/media_ownership_test.exs` (eight named
 coexistence/standalone cases) and `spec/jobs/posters/media_ownership_spec.rb`
 (four named source cases), each with RED/GREEN and individual mutation evidence.
-Rails fixes are FRB-047/048/049; intentional differences are ED-FIX-MEDIA-OWNERSHIP.
+Rails fixes are [FRB-028](fixed-rails-bugs.md#frb-028--a-signed-route-video-upload-can-be-adopted-across-accounts),
+[FRB-029](fixed-rails-bugs.md#frb-029--deferred-poster-purges-leave-old-native-downloads-usable),
+[FRB-030](fixed-rails-bugs.md#frb-030--accepted-rails-poster-jobs-bypass-the-native-handoff-fences);
+intentional differences are ED-FIX-MEDIA-OWNERSHIP.
 Controller evidence: `impl-fix-media-ownership.report.md`.

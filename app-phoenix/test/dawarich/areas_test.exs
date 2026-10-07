@@ -212,7 +212,7 @@ defmodule Dawarich.AreasTest do
            ]
 
     assert rows("SELECT payload->'started_at' FROM phoenix.rails_commands ORDER BY id") == [
-             [["2026-06-01T10:00:00.000000Z", "2026-06-01T10:00:00.000000Z"]],
+             [["2026-06-01T10:00:00.000000Z"]],
              [["2026-06-01T10:00:00.000000Z"]]
            ]
 

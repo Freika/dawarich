@@ -236,8 +236,15 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
     get(guest ? '/users/sign_in' : '/tags/new')
     token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
     clear_enqueued_jobs
-    public_send(method, path, params:, headers: { 'Accept' => accept, 'X-CSRF-Token' => token })
-    closure_response(method, path, params, user)
+    request = lambda do
+      public_send(method, path, params:, headers: { 'Accept' => accept, 'X-CSRF-Token' => token })
+      closure_response(method, path, params, user)
+    end
+    if path == '/stats/2024/bogus/update'
+      FixtureRecording.with_clean_cable_state(&request)
+    else
+      request.call
+    end
   end
 
   def capture_closure_actions(self_hosted: true)
@@ -318,7 +325,8 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
     end
   end
 
-  it 'writes the stats and digest pages' do
+  it 'reads back Q06 routing errors after ActionCable subscriber initialization' do
+    subscriber = ActionCable.server.pubsub
     allow(File).to receive(:write).and_call_original
     allow(File).to receive(:binwrite).and_call_original
     unless ENV['WRITE_PHOENIX_FIXTURES'] == '1'
@@ -445,5 +453,6 @@ RSpec.describe 'Phoenix fixtures: stats and digests as Rails renders them', type
       allow(DawarichSettings).to receive(:self_hosted?).and_return(hosted)
       capture_q_commands
     end
+    expect(ActionCable.server.pubsub).to equal(subscriber)
   end
 end

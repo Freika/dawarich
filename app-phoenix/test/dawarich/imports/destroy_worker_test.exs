@@ -145,6 +145,46 @@ defmodule Dawarich.Imports.DestroyWorkerTest do
     assert [] = rows("SELECT name FROM phoenix.leases")
   end
 
+  @tag mutation: "M-import-orphan-places-producer-order"
+  test "import deletion queues ascending distinct orphan-place IDs", c do
+    ids =
+      for _ <- 1..2 do
+        [[id]] =
+          rows(
+            "INSERT INTO places(user_id,name,latitude,longitude,created_at,updated_at) VALUES($1,'Synthetic',50,10,now(),now()) RETURNING id",
+            [c.user]
+          )
+
+        id
+      end
+
+    [first, last] = Enum.sort(ids)
+    stamp = ~N[2026-09-01 12:00:00.000000]
+
+    ScratchRepo.insert_all(
+      "visits",
+      for {place, offset} <- [{last, 0}, {first, 3600}, {last, 7200}] do
+        %{
+          user_id: c.user,
+          import_id: c.id,
+          place_id: place,
+          name: "Synthetic",
+          duration: 60,
+          started_at: NaiveDateTime.add(stamp, offset),
+          ended_at: NaiveDateTime.add(stamp, offset + 3600),
+          created_at: stamp,
+          updated_at: stamp
+        }
+      end
+    )
+
+    assert :ok = DestroyWorker.perform(c.job)
+
+    assert rows(
+             "SELECT payload->'place_ids' FROM phoenix.rails_commands WHERE kind='imports.destroy_callbacks' AND payload->>'step'='places_cleanup'"
+           ) == [[[first, last]]]
+  end
+
   test "extracted visits and tracks release other points and remove dependent records", c do
     [[place]] =
       rows(

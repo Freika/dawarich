@@ -104,13 +104,7 @@ defmodule Dawarich.Areas do
           started ->
             times = Enum.map(started, fn [time] -> DateTime.from_naive!(time, "Etc/UTC") end)
 
-            if Dawarich.Points.NativeEffects.native?(repo, "command:visits.suggest"),
-              do: Dawarich.RailsEffects.visit_months(repo, area.user_id, times),
-              else:
-                Dawarich.RailsCommands.insert!(repo, "visit_months_changed", %{
-                  "user_id" => area.user_id,
-                  "started_at" => Enum.map(times, &DateTime.to_iso8601/1)
-                })
+            Dawarich.RailsEffects.visit_months(repo, area.user_id, times)
         end
       end)
   end

@@ -629,7 +629,7 @@ in [the part-B handoff](../../docs/phoenix/a12f3b-pages-producers.md) and
 
 | ID | Surface | Rails | Phoenix | Evidence / authority |
 | --- | --- | --- | --- | --- |
-| ED-FIX-MEDIA-OWNERSHIP | Native media admission, revocation and execution fences | Rails route videos adopt any signed blob; deferred poster purges retain usable links until deletion; accepted source poster jobs ignore native ownership and leases. | Native adoption loads an owner-compatible blob and rechecks under its row lock. Legacy native poster purges use the shared graph marker and storage-first helper. Blob locking makes committed revocation win over earlier admission. Analysis claims its event and locks its blob before ffprobe, rolling back claims on failure. Retained source poster jobs forward under Oban ownership and hold the shared lease during source-owned generation. Valid signed downloads retain Rails bearer behavior (DRB-027). | fix-media-ownership; FRB-047/048/049; named coexistence/standalone tests and individual mutations | implemented; seed-404 evidence in controller report |
+| ED-FIX-MEDIA-OWNERSHIP | Native media admission, revocation and execution fences | Rails route videos adopt any signed blob; deferred poster purges retain usable links until deletion; accepted source poster jobs ignore native ownership and leases. | Native adoption loads an owner-compatible blob and rechecks under its row lock. Legacy native poster purges use the shared graph marker and storage-first helper. Blob locking makes committed revocation win over earlier admission. Analysis claims its event and locks its blob before ffprobe, rolling back claims on failure. Retained source poster jobs forward under Oban ownership and hold the shared lease during source-owned generation. Valid signed downloads retain Rails bearer behavior (DRB-027). | fix-media-ownership; [FRB-028](../../docs/phoenix/fixed-rails-bugs.md#frb-028--a-signed-route-video-upload-can-be-adopted-across-accounts), [FRB-029](../../docs/phoenix/fixed-rails-bugs.md#frb-029--deferred-poster-purges-leave-old-native-downloads-usable), [FRB-030](../../docs/phoenix/fixed-rails-bugs.md#frb-030--accepted-rails-poster-jobs-bypass-the-native-handoff-fences); named coexistence/standalone tests and individual mutations | implemented; seed-404 evidence in controller report |
 
 ## ED-FIX-ACCEPTED-IMPORT-DISPOSITION
 
@@ -638,7 +638,7 @@ all accepted children are terminal, including when a later member fails validati
 Rails `Imports::ZipExtractor` removes the parent after enqueueing without waiting;
 a later build error skips the enqueue of earlier saved children. Native normal-GPX
 failure settlement atomically groups failed status, notification and terminal
-receipt, extending FRB-008's exactly-once failure guarantee to discovered GPX.
+receipt, extending [FRB-008](../../docs/phoenix/fixed-rails-bugs.md#frb-008--failed-gpx-retries-repeat-failure-notifications)'s exactly-once failure guarantee to discovered GPX.
 Successful empty GPX/KML imports also commit the no-points notification with
 completed status and the terminal receipt; interrupted retry emits one notice.
 Rails publishes that notice before its ensure block records completion.
@@ -670,6 +670,13 @@ source debt or weaken Cloud lifecycle refusal.
 | ID | Surface | Rails | Phoenix | Evidence / authority |
 | --- | --- | --- | --- | --- |
 | ED-FIX-TIE-ORDER | Dominant segment mode; tied visit/country ranking; equal-timestamp location/photo points | Unordered or partially ordered reads retain the first encountered row/group on ties, so planner choice can change mode, ranking or coordinates. | Segment edits reuse ascending-ID dominant-mode inputs; ranking SQL appends C-collated name/country keys; point reads append ID after timestamp. Existing strict tie refusals are retained. Only `override_tied` dominant mode and track-info golden change from Driving to Walking; its input rows and totals stay unchanged. | Explicit controller fix-segment-tie-order brief; DRB-033/034/035; [tie ordering](../../docs/phoenix/tie-order.md); forced scan/aggregation regressions and named mutations in controller report. |
+
+## Visit review corrections
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-VISITS-NULL-ISLAND | Null-island cleanup of archive-restored demo visits | Rails destroys demo visits but skips their month-cache callback (`cleanup_null_island_job.rb:28`, `visit.rb:22`). | Every native deletion publishes a month generation and durable visit intent inside its transaction; demo exclusion remains only for orphan-place effects. Both-mode archive-worker outage, freshness, recovery and demo-filter mutation regressions pass. | fix-visits-writes review; [FRB-033](../../docs/phoenix/fixed-rails-bugs.md#frb-033--null-island-cleanup-leaves-restored-demo-visit-counts-cached). |
+| ED-FIX-VISITS-CONCURRENT | Concurrent overlapping or same-range visit suggestions | Rails computes before its persistence lock; stale work can replace a newer longer visit or remove newer point associations (`visits/detection/runner.rb:26,41`, `persister.rb:30,35`). | Native persistence fences the captured detection policy, areas and provider configuration under the user-row lock, skipping obsolete contexts. It revalidates window and full candidate evidence before replacement, retaining anchor protections. Deterministic realtime/outbox/dispatch overlap, same-range and real-settings-change regressions preserve newer duration, complete rows, claims and visit identity through redelivery in both modes. Final stitching rechecks context and locks/validates live visit inputs before atomic absorption/rescoring. | fix-visits-writes review; [FRB-034](../../docs/phoenix/fixed-rails-bugs.md#frb-034--stale-concurrent-suggestions-truncate-newer-committed-visits). |
 
 ## Standalone recalculation queued retries
 

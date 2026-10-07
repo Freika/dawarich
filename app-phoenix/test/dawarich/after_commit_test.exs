@@ -95,6 +95,7 @@ defmodule Dawarich.AfterCommitTest do
 
   test "transport initialization is committed before fanout and retry cannot reset progress" do
     user = user!()
+    :ok = Dawarich.Transportation.RecalculationStatus.clear(user)
     Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:transportation.reclassify_track", :oban)
     now = ~U[2026-01-01 00:00:00Z]
     event = Ecto.UUID.generate()

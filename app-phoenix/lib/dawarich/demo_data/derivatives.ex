@@ -81,34 +81,38 @@ defmodule Dawarich.DemoData.Derivatives do
         {row["key"], id}
       end)
 
-    for row <- fixture["visits"] || [] do
-      place = Map.fetch!(places, row["place_key"])
-      [[name]] = repo.query!("SELECT name FROM places WHERE id=$1", [place], log: false).rows
+    stamps =
+      for row <- fixture["visits"] || [] do
+        place = Map.fetch!(places, row["place_key"])
+        [[name]] = repo.query!("SELECT name FROM places WHERE id=$1", [place], log: false).rows
 
-      [[id]] =
-        repo.query!(
-          "INSERT INTO visits(user_id,place_id,name,started_at,ended_at,duration,status,demo,created_at,updated_at) VALUES ($1,$2,$3,to_timestamp($4::bigint) AT TIME ZONE 'UTC',to_timestamp($5::bigint) AT TIME ZONE 'UTC',$6,$7,true,now(),now()) RETURNING id",
-          [
-            user.id,
-            place,
-            row["name"] || name,
-            anchor + row["starts_offset_seconds"],
-            anchor + row["ends_offset_seconds"],
-            div(row["ends_offset_seconds"] - row["starts_offset_seconds"], 60),
-            Map.fetch!(%{"suggested" => 0, "confirmed" => 1, "declined" => 2}, row["status"])
-          ],
-          log: false
-        ).rows
+        [[id]] =
+          repo.query!(
+            "INSERT INTO visits(user_id,place_id,name,started_at,ended_at,duration,status,demo,created_at,updated_at) VALUES ($1,$2,$3,to_timestamp($4::bigint) AT TIME ZONE 'UTC',to_timestamp($5::bigint) AT TIME ZONE 'UTC',$6,$7,true,now(),now()) RETURNING id",
+            [
+              user.id,
+              place,
+              row["name"] || name,
+              anchor + row["starts_offset_seconds"],
+              anchor + row["ends_offset_seconds"],
+              div(row["ends_offset_seconds"] - row["starts_offset_seconds"], 60),
+              Map.fetch!(%{"suggested" => 0, "confirmed" => 1, "declined" => 2}, row["status"])
+            ],
+            log: false
+          ).rows
 
-      for key <- row["alternates"] || [] do
-        repo.query!(
-          "INSERT INTO place_visits(visit_id,place_id,created_at,updated_at) VALUES ($1,$2,now(),now()) ON CONFLICT DO NOTHING",
-          [id, Map.fetch!(places, key)],
-          log: false
-        )
+        for key <- row["alternates"] || [] do
+          repo.query!(
+            "INSERT INTO place_visits(visit_id,place_id,created_at,updated_at) VALUES ($1,$2,now(),now()) ON CONFLICT DO NOTHING",
+            [id, Map.fetch!(places, key)],
+            log: false
+          )
+        end
+
+        DateTime.from_unix!(anchor + row["starts_offset_seconds"])
       end
-    end
 
+    Dawarich.RailsEffects.visit_months(repo, user.id, stamps)
     trip(repo, user.id, anchor, fixture["trip"])
     stats(repo, user, anchor, fixture["stats_daily"] || [])
   end

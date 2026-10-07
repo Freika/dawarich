@@ -44,6 +44,17 @@ defmodule Dawarich.UserData.Restore.Visits do
 
                 try do
                   id = Batch.create_record!(repo, "visits", attrs, context)
+
+                  [[stamp]] =
+                    repo.query!("SELECT started_at FROM visits WHERE id=$1", [id], log: false).rows
+
+                  Dawarich.Visits.Calendar.changed(
+                    repo,
+                    user,
+                    [DateTime.from_naive!(stamp, "Etc/UTC")],
+                    native_owner: Map.get(context, :native_owner, false)
+                  )
+
                   repo.query!("RELEASE SAVEPOINT restore_visit", [], log: false)
                   id && 1
                 rescue

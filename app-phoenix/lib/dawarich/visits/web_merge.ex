@@ -57,20 +57,16 @@ defmodule Dawarich.Visits.WebMerge do
     if Enum.all?(places, &(not is_nil(&1))) and length(Enum.uniq(places)) == 1 do
       {:ok, base["name"]}
     else
-      if Enum.all?(rows, &(is_binary(&1["name"]) and &1["name"] =~ ~r/\A[\x00-\x7F]*\z/)) do
-        {_seen, names} =
-          Enum.reduce(rows, {MapSet.new(), []}, fn row, {seen, names} ->
-            key = row["name"] |> Ruby.strip() |> String.downcase()
+      {_seen, names} =
+        Enum.reduce(rows, {MapSet.new(), []}, fn row, {seen, names} ->
+          key = Dawarich.Visits.NameKey.build(row["name"])
 
-            if key == "" or MapSet.member?(seen, key),
-              do: {seen, names},
-              else: {MapSet.put(seen, key), names ++ [row["name"]]}
-          end)
+          if key == "" or MapSet.member?(seen, key),
+            do: {seen, names},
+            else: {MapSet.put(seen, key), names ++ [row["name"]]}
+        end)
 
-        {:ok, if(names == [], do: base["name"], else: Enum.join(names, ", "))}
-      else
-        {:replay, "uncaptured visit name folding"}
-      end
+      {:ok, if(names == [], do: base["name"], else: Enum.join(names, ", "))}
     end
   end
 
