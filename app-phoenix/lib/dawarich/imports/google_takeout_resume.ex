@@ -15,7 +15,7 @@ defmodule Dawarich.Imports.GoogleTakeoutResume do
   def call(lease, state, context, payload) do
     unless match?({:ok, _}, validate(payload)), do: raise(ArgumentError, "invalid_payload")
     digest = :crypto.hash(:sha256, Jason.encode!(payload)) |> Base.encode16(case: :lower)
-    context = ContinuationReceipt.driver(lease, state, context, digest)
+    context = ContinuationReceipt.driver(lease, state, context, digest, payload["current_index"])
 
     context =
       Map.put(context, :altitude_decimal?, NormalLifecycle.altitude_decimal?(lease, context))
@@ -38,6 +38,6 @@ defmodule Dawarich.Imports.GoogleTakeoutResume do
       {index + length(locations), cache, progress}
     end)
 
-    :ok
+    ContinuationReceipt.complete(context, length(payload["locations"]))
   end
 end

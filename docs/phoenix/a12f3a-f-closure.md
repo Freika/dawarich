@@ -295,3 +295,50 @@ unchanged. Forced compile with warnings as errors, whole-tree format, the
 35-test targeted batch, 34-example Rails oracle and all six mutation/restoration
 selectors pass their required checks. The Cloud lifecycle guard, Swagger and
 schema are unchanged. Verification services are stopped.
+
+## F17 ordered continuation follow-up
+
+Continuation admission locks the import and its persisted receipt before an
+event can replace the active event. A successor waits while any accepted
+predecessor lacks durable completion. The adapter records completion only
+after all locations and progress effects have finished; retained completed
+event markers also recognize receipts created by the earlier implementation.
+Each event retains its payload identity, committed cursor and progress index.
+Unknown events below the persisted progress index are canceled. Ordinary
+whole-import fencing is retained.
+
+Continuation progress uses a database-side maximum inside the existing import
+fence. Retrying a previously overtaken predecessor can finish its uncommitted
+suffix without lowering an already advanced processed counter. Other import
+adapters retain their existing progress behavior. This adds receipt fields to
+the existing JSON, with no migration or change to Cloud lifecycle refusal.
+
+`test/dawarich/imports/continuation_order_test.exs` runs the reviewer's actual
+worker interruption in standalone and coexistence. A temporary private-test
+trigger rejects the final row of a 1,001-row predecessor, preserving its first
+1,000 committed rows. The successor waits without changing the receipt, points,
+counters or completion markers; predecessor and successor then finish in order
+and replay without regression. A second named invariant starts from already
+advanced durable progress and proves that predecessor retry preserves it.
+Both names fail before the fix and under their distinct completion/progress
+mutations, then pass after restoration. The expanded targeted batch passes
+60 tests with zero failures, including all six round-one review tests.
+
+Rails also writes the supplied index unconditionally through
+`Imports::Broadcaster` (`app/services/imports/broadcaster.rb:11`), called by
+`GoogleMaps::RecordsImporter` (`app/services/google_maps/records_importer.rb:25`).
+The port now prevents this late-continuation progress regression. The assigned
+fix report records the source defect and verification for the controller's
+Rails-bug changelog; no Rails production file or plan ledger is edited here.
+
+The final controller seed-404 gate passes 9,204 tests with zero failures
+(partitions 3,210 / 2,750 / 3,244). The first run exposed only stale cached
+private schemas from before the merged map-matching migrations. Applying those
+native migrations makes all failing areas pass in a 40-test targeted check,
+including both native lifecycle suites and Cloud refusal; no assertions or
+guards were changed. Relevant Rails RecordsImporter specs pass 13 examples.
+The supplementary full source oracle has one historical track-snapshot shape
+mismatch: exactly the five additive map-matching fields differ, with all
+retained fields and values identical. That fixture maintenance is outside RR1.
+No Ruby file changes in this correction. Feature-history and explicit-delta
+Gitleaks checks pass. All verification services are stopped.

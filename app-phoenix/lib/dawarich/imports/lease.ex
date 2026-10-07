@@ -91,6 +91,13 @@ defmodule Dawarich.Imports.Lease do
         unless current?(lease), do: lease.repo.rollback(:unavailable)
         if legacy_metadata?(lease), do: lease.repo.rollback(:legacy)
 
+        if continuation?(lease) do
+          case Dawarich.Imports.ContinuationReceipt.admission(lease) do
+            :ok -> :ok
+            reason -> lease.repo.rollback(reason)
+          end
+        end
+
         result =
           lease.repo.query!(
             """

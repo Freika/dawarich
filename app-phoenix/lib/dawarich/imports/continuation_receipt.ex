@@ -1,8 +1,40 @@
 defmodule Dawarich.Imports.ContinuationReceipt do
   @moduledoc false
   alias Dawarich.Imports.{Fence, ImportState, LeaseLost}
+  alias Dawarich.Jobs.Processed
 
-  def driver(lease, state, context, digest) do
+  def admission(lease) do
+    case lease.repo.query!(
+           "SELECT r.attachment_snapshot,i.processed FROM phoenix.import_runs r JOIN imports i ON i.id=r.import_id WHERE r.import_id=$1 FOR UPDATE OF r,i",
+           [lease.import.id],
+           log: false
+         ).rows do
+      [[%{"kind" => "continuation", "events" => events}, processed]] when is_map(events) ->
+        cond do
+          Map.has_key?(events, lease.event_id) ->
+            :ok
+
+          Enum.any?(events, fn {event, receipt} ->
+            receipt["complete"] != true and not Processed.done?(lease.repo, event)
+          end) ->
+            :predecessor
+
+          lease.continuation["current_index"] <
+              Enum.reduce(events, processed || 0, fn {_event, receipt}, index ->
+                max(index, receipt["index"] || 0)
+              end) ->
+            :stale_continuation
+
+          true ->
+            :ok
+        end
+
+      _ ->
+        :ok
+    end
+  end
+
+  def driver(lease, state, context, digest, index) do
     cursor =
       ImportState.effect!(lease, fn ->
         saved = load!(lease)
@@ -35,7 +67,12 @@ defmodule Dawarich.Imports.ContinuationReceipt do
               raise LeaseLost
           end
 
-        receipt = %{"identity" => identity, "cursor" => cursor}
+        receipt =
+          Map.merge(receipt || %{}, %{
+            "identity" => identity,
+            "cursor" => cursor,
+            "index" => index
+          })
 
         save!(
           lease,
@@ -45,7 +82,20 @@ defmodule Dawarich.Imports.ContinuationReceipt do
         cursor
       end)
 
-    Map.merge(context, %{resume_lease: lease, resume_offset: cursor})
+    Map.merge(context, %{
+      resume_lease: lease,
+      resume_offset: cursor,
+      continuation_progress?: true
+    })
+  end
+
+  def complete(%{resume_lease: lease} = context, size) do
+    Fence.run(context, fn ->
+      saved = load!(lease)
+      unless get_in(saved, ["events", lease.event_id, "cursor"]) == size, do: raise(LeaseLost)
+      save!(lease, put_in(saved, ["events", lease.event_id, "complete"], true))
+      :ok
+    end)
   end
 
   def batch(%{resume_lease: lease} = context, offset, size, fun) do
