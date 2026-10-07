@@ -79,7 +79,12 @@ defmodule Dawarich.Trips.WebWrite do
   end
 
   defp embeds(_repo, _previous, :unchanged), do: {:ok, :unchanged}
-  defp embeds(repo, _previous, body), do: Attachments.ids(repo, body)
+
+  defp embeds(repo, _previous, body) do
+    if Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(body),
+      do: {:ok, :unchanged},
+      else: Attachments.ids(repo, body)
+  end
 
   defp lock_embeds(_repo, _previous, :unchanged), do: :ok
   defp lock_embeds(repo, previous, embeds), do: Attachments.lock(repo, previous[:rich_id], embeds)
@@ -156,7 +161,7 @@ defmodule Dawarich.Trips.WebWrite do
         log: false
       ).rows
 
-    Attachments.sync!(repo, rich, embeds, stamp)
+    if embeds != :unchanged, do: Attachments.sync!(repo, rich, embeds, stamp)
     touched
   end
 

@@ -6,14 +6,19 @@ defmodule Dawarich.Trips.AnalyzeAttachmentWorker do
     unique: [keys: [:blob_id], states: :incomplete, period: :infinity]
 
   alias Dawarich.Storage
-  alias Dawarich.Storage.{ImageVariant, NativePurge}
+  alias Dawarich.Storage.{ContentType, NativePurge}
 
   def enqueue!(repo, id) do
-    [[metadata]] =
-      repo.query!("SELECT metadata FROM active_storage_blobs WHERE id=$1", [id], log: false).rows
+    [[type, metadata]] =
+      repo.query!("SELECT content_type,metadata FROM active_storage_blobs WHERE id=$1", [id],
+        log: false
+      ).rows
 
-    unless Jason.decode!(metadata || "{}")["analyzed"],
-      do: repo.insert!(new(%{"blob_id" => id}), prefix: "oban")
+    unless Jason.decode!(metadata || "{}")["analyzed"] do
+      if null_analyzer?(type),
+        do: null_analyze!(repo, id, metadata),
+        else: repo.insert!(new(%{"blob_id" => id}), prefix: "oban")
+    end
 
     :ok
   end
@@ -34,43 +39,48 @@ defmodule Dawarich.Trips.AnalyzeAttachmentWorker do
            [id],
            log: false
          ).rows do
-      [[key, _filename, service, type, checksum, metadata]] ->
-        if NativePurge.pending?(metadata) do
-          :ok
-        else
-          config = Storage.service!(Storage.services!(System.get_env()), service)
-          dir = Storage.tmp_dir!(config, "trip-analysis-" <> Ecto.UUID.generate())
-          file = Path.join(dir, "input")
-
-          try do
-            Storage.download!(config, key, file)
-            {digest, _} = Storage.digest_file!(file)
-
-            unless Jason.decode!(metadata || "{}")["composed"] || digest == checksum,
-              do: raise(ArgumentError, "ActiveStorage integrity error")
-
-            type =
-              if Jason.decode!(metadata || "{}")["identified"],
-                do: type,
-                else: ImageVariant.identify(file, type)
-
-            analyzed = metadata(file, type || "")
-
-            value =
-              Jason.decode!(metadata || "{}")
-              |> Map.merge(analyzed)
-              |> Map.merge(%{"identified" => true, "analyzed" => true})
-
-            repo.query!(
-              "UPDATE active_storage_blobs SET metadata=$2,content_type=$3 WHERE id=$1",
-              [id, Jason.encode!(value), type],
-              log: false
-            )
-
+      [[key, filename, service, type, checksum, metadata]] ->
+        cond do
+          NativePurge.pending?(metadata) ->
             :ok
-          after
-            File.rm_rf!(dir)
-          end
+
+          null_analyzer?(type) ->
+            null_analyze!(repo, id, metadata)
+
+          true ->
+            config = Storage.service!(Storage.services!(System.get_env()), service)
+            dir = Storage.tmp_dir!(config, "trip-analysis-" <> Ecto.UUID.generate())
+            file = Path.join(dir, "input")
+
+            try do
+              Storage.download!(config, key, file)
+              {digest, _} = Storage.digest_file!(file)
+
+              unless Jason.decode!(metadata || "{}")["composed"] || digest == checksum,
+                do: raise(ArgumentError, "ActiveStorage integrity error")
+
+              type =
+                if Jason.decode!(metadata || "{}")["identified"],
+                  do: type,
+                  else: ContentType.identify(file, filename, type)
+
+              analyzed = metadata(file, type || "")
+
+              value =
+                Jason.decode!(metadata || "{}")
+                |> Map.merge(analyzed)
+                |> Map.merge(%{"identified" => true, "analyzed" => true})
+
+              repo.query!(
+                "UPDATE active_storage_blobs SET metadata=$2,content_type=$3 WHERE id=$1",
+                [id, Jason.encode!(value), type],
+                log: false
+              )
+
+              :ok
+            after
+              File.rm_rf!(dir)
+            end
         end
 
       [] ->
@@ -78,15 +88,28 @@ defmodule Dawarich.Trips.AnalyzeAttachmentWorker do
     end
   end
 
+  defp null_analyzer?(type), do: not String.starts_with?(type || "", ["video/", "audio/"])
+
+  defp null_analyze!(repo, id, metadata) do
+    value = Jason.decode!(metadata || "{}") |> Map.put("analyzed", true)
+
+    repo.query!(
+      "UPDATE active_storage_blobs SET metadata=$2 WHERE id=$1",
+      [id, Jason.encode!(value)],
+      log: false
+    )
+
+    :ok
+  end
+
   defp metadata(file, type) do
-    if String.starts_with?(type, ["image/", "video/", "audio/"]) do
+    if String.starts_with?(type, ["video/", "audio/"]) do
       probe = probe(file)
       streams = probe["streams"] || []
       video = Enum.find(streams, &(&1["codec_type"] == "video")) || %{}
       audio = Enum.find(streams, &(&1["codec_type"] == "audio")) || %{}
 
       cond do
-        String.starts_with?(type, "image/") -> Map.take(video, ~w(width height))
         String.starts_with?(type, "audio/") -> audio_metadata(audio)
         true -> video_metadata(video, audio, probe["format"] || %{})
       end

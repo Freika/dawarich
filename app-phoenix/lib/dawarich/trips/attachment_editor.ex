@@ -73,9 +73,29 @@ defmodule Dawarich.Trips.AttachmentEditor do
   end
 
   defp integer(value) do
-    case Integer.parse(value) do
-      {number, ""} -> number
-      _ -> nil
+    value = Regex.replace(~r/\A[\t\n\x0B\f\r ]*|[\t\n\x0B\f\r ]*\z/, value, "")
+
+    case Regex.run(
+           ~r/\A([+-]?)(0[xX]|0[bB]|0[oO]|0[dD])?([0-9a-fA-F](?:_?[0-9a-fA-F])*)\z/,
+           value
+         ) do
+      [_, sign, prefix, digits] ->
+        base =
+          case String.downcase(prefix) do
+            "0x" -> 16
+            "0b" -> 2
+            "0o" -> 8
+            "0d" -> 10
+            "" -> if String.starts_with?(digits, "0"), do: 8, else: 10
+          end
+
+        case Integer.parse(String.replace(digits, "_", ""), base) do
+          {number, ""} -> if sign == "-", do: -number, else: number
+          _ -> nil
+        end
+
+      _ ->
+        nil
     end
   end
 end

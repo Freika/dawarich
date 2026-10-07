@@ -216,7 +216,7 @@ defmodule Dawarich.Trips.RichAttachmentsTest do
   end
 
   @tag a12f3a_t04_analysis: true
-  test "T04: attached image analysis is native and retryable before metadata publication", c do
+  test "T04: attached images retain caption metadata under the disabled source analyzer", c do
     bytes =
       Base.decode64!(
         "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAEElEQVR4nGNgGAWjYBTAAAADEAABPywr7AAAAABJRU5ErkJggg=="
@@ -239,33 +239,18 @@ defmodule Dawarich.Trips.RichAttachmentsTest do
 
     [[identified]] = rows("SELECT metadata FROM active_storage_blobs WHERE id=$1", [blob.id])
     assert Jason.decode!(identified)["identified"] == true
-    refute Jason.decode!(identified)["analyzed"]
+    assert Jason.decode!(identified)["analyzed"]
 
-    assert [[job]] =
-             rows(
-               "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.Trips.AnalyzeAttachmentWorker'"
-             )
-
-    [[key]] = rows("SELECT key FROM active_storage_blobs WHERE id=$1", [blob.id])
-    file = Storage.disk_path(Path.join(c.root, "storage"), key)
-    File.rm!(file)
-    assert %{success: 0, failure: 1} = Oban.drain_queue(__MODULE__, queue: :trips)
-    assert rows("SELECT state FROM oban.oban_jobs WHERE id=$1", [job]) == [["retryable"]]
-    [[metadata]] = rows("SELECT metadata FROM active_storage_blobs WHERE id=$1", [blob.id])
-    refute Jason.decode!(metadata)["analyzed"]
-    File.write!(file, bytes)
-
-    assert %{success: 1, failure: 0} =
-             Oban.drain_queue(__MODULE__, queue: :trips, with_scheduled: true)
+    assert rows(
+             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Trips.AnalyzeAttachmentWorker'"
+           ) == [[0]]
 
     [[metadata]] = rows("SELECT metadata FROM active_storage_blobs WHERE id=$1", [blob.id])
 
     assert Jason.decode!(metadata) == %{
              "caption" => "Leipzig",
              "identified" => true,
-             "analyzed" => true,
-             "width" => 16,
-             "height" => 16
+             "analyzed" => true
            }
 
     assert {:ok, form} = WebForm.load(ScratchRepo, c.user, trip.id, %{})

@@ -130,10 +130,7 @@ defmodule Dawarich.Trips.Attachments do
       try do
         File.write!(path, if(size > 0, do: chunk!(service, key), else: ""))
 
-        declared =
-          if type in [nil, "application/octet-stream"], do: MIME.from_path(filename), else: type
-
-        type = Dawarich.Storage.ImageVariant.identify(path, declared)
+        type = Dawarich.Storage.ContentType.identify(path, filename, type)
 
         repo.query!(
           "UPDATE active_storage_blobs SET metadata=$2,content_type=$3 WHERE id=$1",
@@ -177,7 +174,7 @@ defmodule Dawarich.Trips.Attachments do
   def detach!(repo, ids) do
     blobs =
       repo.query!(
-        "DELETE FROM active_storage_attachments WHERE record_type='ActionText::RichText' AND record_id=ANY($1::bigint[]) RETURNING blob_id",
+        "DELETE FROM active_storage_attachments WHERE record_type='ActionText::RichText' AND name='embeds' AND record_id=ANY($1::bigint[]) RETURNING blob_id",
         [ids],
         log: false
       ).rows
