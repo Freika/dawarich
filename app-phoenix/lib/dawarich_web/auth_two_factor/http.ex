@@ -27,6 +27,22 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
   end
 
   defp admit(conn, opts) do
+    conn =
+      if Keyword.get(opts, :native, false) do
+        conn
+        |> RailsAuth.call([])
+        |> fetch_query_params()
+        |> DawarichWeb.Locale.call([])
+        |> DawarichWeb.RailsHeaders.call([])
+        |> DawarichWeb.RequireUser.call([])
+      else
+        conn
+      end
+
+    if conn.halted, do: conn, else: authenticated(conn, opts)
+  end
+
+  defp authenticated(conn, opts) do
     context =
       Keyword.get(opts, :context, %{})
       |> Map.put_new(

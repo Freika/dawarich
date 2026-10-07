@@ -22,7 +22,8 @@ defmodule DawarichWeb.StandaloneAuth do
     AuthOtp.Http,
     AuthProvider.Http,
     AuthRecovery.Http,
-    AuthRegistration.Http
+    AuthRegistration.Http,
+    DawarichWeb.AuthTwoFactor.Http
   ]
 
   def call(conn) do
