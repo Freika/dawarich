@@ -53,8 +53,10 @@ defmodule Dawarich.Families.Mine do
   end
 
   defp member(member, now) do
-    config = Sharing.config(member.settings) || %{}
-    shared = Sharing.enabled?(member.settings, now) and config["share_history"] == true
+    config = Sharing.config(Dawarich.UserSettings.get(member)) || %{}
+
+    shared =
+      Sharing.enabled?(Dawarich.UserSettings.get(member), now) and config["share_history"] == true
 
     {:object,
      [
@@ -63,7 +65,7 @@ defmodule Dawarich.Families.Mine do
        {"name", member.name},
        {"email_initial", Locations.initial(member.email)},
        {"owner", member.role == 0},
-       {"sharing_enabled", Sharing.enabled?(member.settings, now)},
+       {"sharing_enabled", Sharing.enabled?(Dawarich.UserSettings.get(member), now)},
        {"share_history", shared},
        {"history_window", if(shared, do: config["history_window"] || "7d")},
        {"history_before_sharing", config["history_before_sharing"] == true},

@@ -12,7 +12,7 @@ defmodule Dawarich.Points.PositionEffects do
     safe("stats", fn ->
       local =
         Dawarich.UserTimeZone.local(
-          user.settings,
+          Dawarich.UserSettings.get(user),
           DateTime.from_unix!(point.timestamp) |> DateTime.to_naive()
         )
 

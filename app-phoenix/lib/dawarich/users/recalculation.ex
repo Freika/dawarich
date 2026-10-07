@@ -16,7 +16,7 @@ defmodule Dawarich.Users.Recalculation do
 
       [[settings]] ->
         with {:ok, years} <- Period.years(repo, user_id, args["year"]) do
-          settings = if is_map(settings), do: settings, else: %{}
+          settings = Dawarich.UserSettings.safe(settings)
 
           state = %{
             user_id: user_id,

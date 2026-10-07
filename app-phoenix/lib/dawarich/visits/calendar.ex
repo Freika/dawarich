@@ -17,7 +17,7 @@ defmodule Dawarich.Visits.Calendar do
   end
 
   def invalidate(repo, user, stamps) do
-    setting = user.settings["timezone"] || System.get_env("TIME_ZONE", "UTC")
+    setting = Dawarich.UserSettings.get(user)["timezone"] || System.get_env("TIME_ZONE", "UTC")
     setting = if setting == "", do: "UTC", else: setting
     zone = Dawarich.TimeZoneName.to_iana(setting)
 

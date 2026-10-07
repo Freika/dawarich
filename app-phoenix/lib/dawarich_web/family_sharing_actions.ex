@@ -15,7 +15,7 @@ defmodule DawarichWeb.FamilySharingActions do
     else
       user =
         conn.assigns.current_user
-        |> Map.put(:timezone, conn.assigns.current_user.settings["timezone"])
+        |> Map.put(:timezone, Dawarich.UserSettings.get(conn.assigns.current_user)["timezone"])
         |> Map.put(:locale, conn.assigns.locale)
 
       result =

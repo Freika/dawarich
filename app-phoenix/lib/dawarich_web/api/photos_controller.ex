@@ -72,7 +72,7 @@ defmodule DawarichWeb.Api.PhotosController do
   end
 
   defp read(user, source, id, closure) do
-    settings = Accounts.settings(user.id)
+    settings = Dawarich.UserSettings.get(%{settings: Accounts.settings(user.id)})
 
     cond do
       not is_map(settings) ->

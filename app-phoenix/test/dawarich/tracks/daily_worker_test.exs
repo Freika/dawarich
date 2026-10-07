@@ -169,6 +169,23 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
            ]
   end
 
+  @tag review_r1: true
+  test "stored timezone types schedule every due user with Rails resolved zones" do
+    owned!()
+    System.put_env("TIME_ZONE", "UTC")
+    corpus = File.read!("test/fixtures/daily_timezone_oracle.json") |> Jason.decode!()
+
+    expected =
+      for row <- corpus do
+        user = daily_user!(%{"timezone" => row["input"]}) |> with_points!([@slot - 100])
+        {user, row["zone"]}
+      end
+
+    log = ExUnit.CaptureLog.capture_log(fn -> assert run() == :ok end)
+    assert Enum.map(range_jobs(), &{&1["user_id"], &1["time_zone"]}) == expected
+    refute log =~ "Failed to process daily tracks"
+  end
+
   test "one user's SQL error rolls back only that user" do
     owned!()
 

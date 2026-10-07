@@ -172,7 +172,7 @@ defmodule DawarichWeb.Api.SharedController do
          {:ok, session} <-
            RailsCookies.decrypt(value, "_dawarich_session", RailsSecret.fetch(), now),
          %Accounts.User{} = user <- Accounts.from_session(session, now) do
-      UserTimeZone.name(user.settings)
+      UserTimeZone.name(Dawarich.UserSettings.get(user))
     else
       _ -> UserTimeZone.name(%{"timezone" => ""})
     end

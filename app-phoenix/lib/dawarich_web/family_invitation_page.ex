@@ -21,7 +21,7 @@ defmodule DawarichWeb.FamilyInvitationPage do
         read(params["token"], RailsAuth.call(conn, []).assigns.current_user) != :rails
 
   def read(token, user, opts \\ []) do
-    if user, do: FamilyPageAccess.validate_settings!(user.settings)
+    if user, do: FamilyPageAccess.validate_settings!(Dawarich.UserSettings.get(user))
     now = Keyword.get(opts, :now, DateTime.utc_now())
     self_hosted = Keyword.get_lazy(opts, :self_hosted, &LayoutAssigns.self_hosted?/0)
 
@@ -40,7 +40,7 @@ defmodule DawarichWeb.FamilyInvitationPage do
         {:error, 404}
 
       [[token, email, status, expires, name, access_until, plan, active_until, invited_by]] ->
-        settings = if user, do: user.settings, else: %{}
+        settings = if user, do: Dawarich.UserSettings.get(user), else: %{}
         date = UserTimeZone.local(settings, expires).local |> NaiveDateTime.to_date()
 
         cond do

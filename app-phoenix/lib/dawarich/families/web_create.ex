@@ -116,7 +116,7 @@ defmodule Dawarich.Families.WebCreate do
         log: false
       )
 
-      locale = ExploreFeatures.locale(user.settings, "en")
+      locale = ExploreFeatures.locale(Dawarich.UserSettings.get(user), "en")
 
       notify(fn ->
         Keyword.get(opts, :notify, fn ->

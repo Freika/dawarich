@@ -42,8 +42,11 @@ defmodule Dawarich.Visits.WebSettings do
                   [user_id],
                   log: false
                 ).rows do
-             [[%{} = settings, last]] -> fun.(%{settings: settings, last_redetected: last})
-             _ -> repo.rollback({:replay, "visit settings user"})
+             [[settings, last]] when is_map(settings) or is_nil(settings) ->
+               fun.(%{settings: Dawarich.UserSettings.provided(settings), last_redetected: last})
+
+             _ ->
+               repo.rollback({:replay, "visit settings user"})
            end
          end) do
       {:ok, result} -> {:ok, result}
@@ -58,8 +61,11 @@ defmodule Dawarich.Visits.WebSettings do
     case repo.query!("SELECT settings, visits_redetected_at FROM users WHERE id = $1", [user_id],
            log: false
          ).rows do
-      [[settings, last]] -> %{settings: settings, last_redetected: last}
-      [] -> nil
+      [[settings, last]] ->
+        %{settings: Dawarich.UserSettings.provided(settings), last_redetected: last}
+
+      [] ->
+        nil
     end
   end
 

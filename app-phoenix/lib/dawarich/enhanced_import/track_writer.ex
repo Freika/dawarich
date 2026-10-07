@@ -19,13 +19,13 @@ defmodule Dawarich.EnhancedImport.TrackWriter do
     first = epoch(item["start_at"])
     last = epoch(item["end_at"])
     [[settings]] = query(repo, "SELECT settings FROM users WHERE id=$1", [import.user_id])
-    user = %{id: import.user_id, settings: settings || %{}}
+    user = %{id: import.user_id, settings: Dawarich.UserSettings.safe(settings)}
     id = existing(repo, import, item["tracker_id"])
 
     id =
       if id do
         query(repo, "DELETE FROM track_segments WHERE track_id=$1 AND corrected_at IS NULL", [id])
-        unless trust, do: Segments.reclassify!(repo, id, user.settings)
+        unless trust, do: Segments.reclassify!(repo, id, Dawarich.UserSettings.get(user))
         id
       else
         build(repo, user, import, item, first, last, trust)

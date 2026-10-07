@@ -3,6 +3,7 @@ defmodule Dawarich.Photos.ThumbnailClosure do
   alias Dawarich.Photos.{Index, ProviderCache}
 
   def fetch(settings, source, id, user) do
+    settings = Dawarich.UserSettings.safe(settings)
     escaped = URI.encode(id, &URI.char_unreserved?/1)
     {path, headers} = request(source, escaped, settings, user)
 

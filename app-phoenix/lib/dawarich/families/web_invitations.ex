@@ -164,13 +164,18 @@ defmodule Dawarich.Families.WebInvitations do
             user.id,
             :info,
             t(
-              Dawarich.Mail.ExploreFeatures.locale(user.settings, "en"),
+              Dawarich.Mail.ExploreFeatures.locale(Dawarich.UserSettings.get(user), "en"),
               "invite",
               "invitation_sent"
             ),
-            t(Dawarich.Mail.ExploreFeatures.locale(user.settings, "en"), "invite", key, %{
-              "email" => email
-            }),
+            t(
+              Dawarich.Mail.ExploreFeatures.locale(Dawarich.UserSettings.get(user), "en"),
+              "invite",
+              key,
+              %{
+                "email" => email
+              }
+            ),
             at
           )
         end).()
@@ -244,7 +249,7 @@ defmodule Dawarich.Families.WebInvitations do
     )
 
     Keyword.get(opts, :settled, fn -> :ok end).()
-    locale = Dawarich.Mail.ExploreFeatures.locale(user.settings, "en")
+    locale = Dawarich.Mail.ExploreFeatures.locale(Dawarich.UserSettings.get(user), "en")
 
     Notifications.create!(
       repo,

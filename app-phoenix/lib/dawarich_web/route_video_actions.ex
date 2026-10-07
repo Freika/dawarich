@@ -17,7 +17,7 @@ defmodule DawarichWeb.RouteVideoActions do
     user = conn.assigns.current_user
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
 
-    with {:ok, zone} <- zone(repo, user.settings) do
+    with {:ok, zone} <- zone(repo, Dawarich.UserSettings.get(user)) do
       case RouteVideos.create(
              repo,
              user,

@@ -61,11 +61,12 @@ defmodule Dawarich.Points.AnomalyFilter do
   end
 
   defp enabled?(repo, user_id) do
-    case repo.query!("SELECT settings->'gps_filtering_enabled' FROM users WHERE id=$1", [user_id],
-           log: false
-         ).rows do
-      [[value]] -> value not in @false_values
-      [] -> raise ArgumentError, "anomaly filter user does not exist"
+    case repo.query!("SELECT settings FROM users WHERE id=$1", [user_id], log: false).rows do
+      [[settings]] ->
+        Dawarich.UserSettings.safe(settings)["gps_filtering_enabled"] not in @false_values
+
+      [] ->
+        raise ArgumentError, "anomaly filter user does not exist"
     end
   end
 

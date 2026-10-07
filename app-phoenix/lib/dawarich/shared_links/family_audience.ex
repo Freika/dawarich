@@ -58,8 +58,11 @@ defmodule Dawarich.SharedLinks.FamilyAudience do
               name: name,
               share_id: share,
               started_on:
-                UserTimeZone.local(user.settings, started).local |> NaiveDateTime.to_date(),
-              ended_on: UserTimeZone.local(user.settings, ended).local |> NaiveDateTime.to_date()
+                UserTimeZone.local(Dawarich.UserSettings.get(user), started).local
+                |> NaiveDateTime.to_date(),
+              ended_on:
+                UserTimeZone.local(Dawarich.UserSettings.get(user), ended).local
+                |> NaiveDateTime.to_date()
             }
           end)
 

@@ -53,7 +53,7 @@ defmodule Dawarich.Visits.Runner do
       repo: repo,
       user_id: user.id,
       zone: zone,
-      policy: Settings.policy(user.settings),
+      policy: Settings.policy(Dawarich.UserSettings.get(user)),
       config: Config.resolve(repo),
       areas: PlaceAttributor.areas(repo, user.id)
     }

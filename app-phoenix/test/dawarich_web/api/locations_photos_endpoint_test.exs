@@ -48,6 +48,51 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
     end
   end
 
+  test "photo scan equal timestamps keep point ID order across query plans" do
+    photo = %{
+      "id" => "tied-photo",
+      "fileCreatedAt" => "2026-10-03T10:00:00Z",
+      "originalFileName" => "synthetic.jpg"
+    }
+
+    json_reply = fn items ->
+      body = Jason.encode!(%{"assets" => %{"items" => items}})
+
+      "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-type: application/json\r\ncontent-length: #{byte_size(body)}\r\n\r\n#{body}"
+    end
+
+    {base, provider} =
+      immich([json_reply.([photo]), json_reply.([]), json_reply.([photo]), json_reply.([])])
+
+    user_id = owner!(@key, immich_settings(base))
+    user = Dawarich.Accounts.get(user_id)
+
+    for {id, lat} <- [{919_641, 51.3398}, {919_640, 51.3397}] do
+      Dawarich.Test.FrameSeeds.point!(user.id, id, DateTime.to_unix(~U[2026-10-03 10:00:00Z]))
+
+      Repo.query!(
+        "UPDATE points SET lonlat=ST_SetSRID(ST_MakePoint(12.3731,$1),4326)::geography WHERE id=$2",
+        [lat, id]
+      )
+    end
+
+    for {seq, index} <- [{"on", "off"}, {"off", "on"}] do
+      Repo.query!("SET LOCAL enable_seqscan = #{seq}")
+      Repo.query!("SET LOCAL enable_indexscan = #{index}")
+      Repo.query!("SET LOCAL enable_indexonlyscan = off")
+      Repo.query!("SET LOCAL enable_bitmapscan = off")
+
+      assert {:ok, 200, %{"matches" => [match]}} =
+               Dawarich.Photos.Enrichment.run(:scan, user, %{})
+
+      assert match["latitude"] == 51.3398
+      assert match["longitude"] == 12.3731
+      assert match["match_method"] == "nearest"
+    end
+
+    assert length(Task.await(provider)) == 4
+  end
+
   test "Phoenix answers /locations and both thumbnail routes of a self-hosted user", %{
     port: port,
     upstream: upstream
@@ -222,16 +267,23 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
     assert Task.await(immich) == [@preview, @preview]
   end
 
-  test "a user whose settings column is NULL or JSON null goes to Puma, which answers its own 500",
+  test "NULL and JSON null settings use the default unconfigured photo response",
        %{port: port, upstream: upstream} do
     user!(%{api_key: "phoenix-a4g3-key-sql-null", settings: nil})
     json_null = user!(%{api_key: "phoenix-a4g3-key-json-null"})
     Repo.query!("UPDATE users SET settings = 'null'::jsonb WHERE id = $1", [json_null])
 
     for key <- ~w(phoenix-a4g3-key-sql-null phoenix-a4g3-key-json-null) do
-      client = request(port, "#{@thumb}?source=immich", bearer(key))
-      assert puma(upstream) == "GET #{@thumb}?source=immich HTTP/1.1", key
-      assert {200, _, "rails"} = read_response(client)
+      proxy = Task.async(fn -> puma(upstream) end)
+
+      try do
+        client = request(port, "#{@thumb}?source=immich", bearer(key))
+        assert {401, _, body} = read_response(client)
+        assert Jason.decode!(body) == %{"error" => "Immich integration not configured"}
+        refute Task.yield(proxy, 0)
+      after
+        Task.shutdown(proxy, :brutal_kill)
+      end
     end
   end
 

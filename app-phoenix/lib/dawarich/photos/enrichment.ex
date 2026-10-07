@@ -30,7 +30,7 @@ defmodule Dawarich.Photos.Enrichment do
   def pro?(user, now), do: Entitlements.full_access?(user, ReleaseMigration.self_hosted?(), now)
 
   def run(action, user, params, opts \\ []) do
-    settings = Accounts.settings(user.id) || %{}
+    settings = Dawarich.UserSettings.get(%{settings: Accounts.settings(user.id)})
 
     case missing(settings) do
       nil -> dispatch(action, user, params, settings, opts)
@@ -70,7 +70,7 @@ defmodule Dawarich.Photos.Enrichment do
 
         points =
           Repo.query!(
-            "SELECT timestamp,ST_Y(lonlat::geometry),ST_X(lonlat::geometry) FROM points WHERE user_id=$1 AND timestamp IS NOT NULL AND lonlat IS NOT NULL ORDER BY timestamp",
+            "SELECT timestamp,ST_Y(lonlat::geometry),ST_X(lonlat::geometry) FROM points WHERE user_id=$1 AND timestamp IS NOT NULL AND lonlat IS NOT NULL ORDER BY timestamp, id",
             [user.id]
           ).rows
 

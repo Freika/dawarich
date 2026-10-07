@@ -7,7 +7,7 @@ defmodule Dawarich.Digests.ReadClosure do
   def index(user, now) do
     RailsTime.with_zone(user.timezone, fn ->
       with {:ok, {:object, pairs}} <- Api.index(user.id, now) do
-        settings = Accounts.settings(user.id) || %{}
+        settings = Dawarich.UserSettings.get(%{settings: Accounts.settings(user.id)})
 
         context =
           Stats.context(

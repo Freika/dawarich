@@ -2,7 +2,7 @@ defmodule Dawarich.Places.WebDelete do
   @moduledoc false
   alias Dawarich.PlaceCascade
 
-  def run(repo, user, id, _context) do
+  def run(repo, user, id, context) do
     repo.transaction(fn ->
       case repo.query!(
              "SELECT id FROM places WHERE id=$1 AND user_id=$2 FOR UPDATE",
@@ -22,7 +22,7 @@ defmodule Dawarich.Places.WebDelete do
           if unsupported?(repo, id) do
             {:replay, "place dependent content graph"}
           else
-            PlaceCascade.delete!(repo, [id])
+            PlaceCascade.delete!(repo, [id], if(context[:owner_scoped], do: user.id))
             {:ok, id}
           end
       end

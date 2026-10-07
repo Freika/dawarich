@@ -38,9 +38,14 @@ returns native errors without proxying.
 The final save locks and re-reads the user's settings after network activity,
 merges only requested fields and connection statuses, and preserves unrelated
 concurrent writes. It applies the Rails save callback that removes trailing
-slashes from Immich/PhotoPrism URLs before persistence. SQL failure rolls back. Updates require a valid session,
+slashes from Immich/PhotoPrism URLs before persistence. Connection checks pass
+that same canonical URL to the shared ProviderHTTP helper, including when a
+submitted trailing slash is the only changed field. SQL failure rolls back.
+Updates require a valid session,
 CSRF token, active account and the source full-access entitlement. Optional
 photo-cache refresh clears that user's photo, search and thumbnail entries.
+Success notices retain Rails order: settings updated, photo cache refreshed,
+then provider connection notices.
 
 Standalone form rendering replaces stored API keys/passwords with `********`.
 Submitting that unchanged marker preserves the current credential; submitting
@@ -149,12 +154,12 @@ from stale pooled sessions without retries or timeout changes.
 
 ## Standalone transaction regression
 
-Integration saves use a regular `Repo.transaction/1`, which starts a transaction
-when no outer transaction exists. A top-level `mode: :savepoint` leaves Postgrex
-idle and causes `DBConnection.TransactionError` before the normal form can save.
-Sandboxed tests already have a database transaction and therefore concealed
-this runtime failure. Ecto Sandbox supplies its own savepoint handling for
-ordinary transactions.
+Integration saves and background-job triggers use `Dawarich.Transaction.run/3`.
+It starts a plain transaction when no outer transaction exists and a real SQL
+SAVEPOINT inside a caller's transaction. A rejected settings update or refused
+trigger rolls back only its local work, leaving the caller able to query, write
+and commit. Ordinary nested `Repo.transaction/1` can poison the outer transaction
+on failure; unconditional top-level `mode: :savepoint` fails on an idle connection.
 
 `StandaloneIntegrationsFlowTest` checks out a connection with `sandbox: false`,
 loads the actual integration form, submits blank Immich fields with SSL
@@ -162,6 +167,12 @@ verification enabled, follows the save redirect and verifies persisted settings.
 A database constraint then rejects a changed SSL flag and verifies rollback and
 connection usability. Existing integration tests retain provider, concurrent
 merge, masking and sandbox rollback coverage.
+
+`SmallParityIntegrationsTest` also uses `sandbox: false`. It proves provider
+contact for single and repeated trailing slashes, nested SQL-failure recovery
+followed by a successful save and outer commit, refused photo triggers with no
+accepted intent and a usable outer commit, and the exact cache-refresh notice
+order. Each named test has its own RED/GREEN/mutation/restored-GREEN evidence.
 
 The shared AFFiNE counterpart is **Dawarich — Standalone integration settings
 and photo imports**. The sweep-2 fix report records RED/GREEN/mutation and final

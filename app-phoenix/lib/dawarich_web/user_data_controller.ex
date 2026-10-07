@@ -169,7 +169,7 @@ defmodule DawarichWeb.UserDataController do
 
   defp context(conn),
     do: %{
-      zone: captured_zone(conn.assigns.current_user.settings),
+      zone: captured_zone(Dawarich.UserSettings.get(conn.assigns.current_user)),
       locale: Locale.resolve(nil, conn.assigns.current_user, conn.assigns.rails_session)
     }
 

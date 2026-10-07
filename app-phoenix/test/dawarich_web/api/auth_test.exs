@@ -338,7 +338,16 @@ defmodule DawarichWeb.Api.AuthTest do
              plan_run(%{"api_key" => "phoenix-a4-fields"}).assigns.api_user
 
     user!(%{api_key: "phoenix-a4-nozone", settings: %{"other" => 1}})
-    assert plan_run(%{"api_key" => "phoenix-a4-nozone"}).assigns.api_user.timezone == nil
+    default = System.get_env("TIME_ZONE", "UTC")
+    assert plan_run(%{"api_key" => "phoenix-a4-nozone"}).assigns.api_user.timezone == default
+
+    user!(%{api_key: "phoenix-a4-null-settings", settings: nil})
+
+    assert plan_run(%{"api_key" => "phoenix-a4-null-settings"}).assigns.api_user.timezone ==
+             default
+
+    user!(%{api_key: "phoenix-a4-null-zone", settings: %{"timezone" => nil}})
+    assert plan_run(%{"api_key" => "phoenix-a4-null-zone"}).assigns.api_user.timezone == nil
   end
 
   test "a GET 200 whose ETag equals If-None-Match becomes Rails' 304; another tag, a POST or another status does not" do

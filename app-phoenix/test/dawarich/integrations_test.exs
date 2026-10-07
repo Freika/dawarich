@@ -99,7 +99,7 @@ defmodule Dawarich.IntegrationsTest do
              "news_emails_enabled"
            )
 
-    assert UserSettings.get(%{settings: ["not", "an", "object"]}) == %{}
+    assert UserSettings.get(%{settings: ["not", "an", "object"]}) == ["not", "an", "object"]
   end
 
   test "statuses follow Integrations::Status: URL and key, TeslaMate URL only, TREK by an active source",

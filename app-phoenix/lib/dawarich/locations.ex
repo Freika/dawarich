@@ -24,6 +24,7 @@ defmodule Dawarich.Locations do
              #{RailsTime.sql("(to_timestamp(COALESCE(p.timestamp, 0)) AT TIME ZONE 'UTC')", 0)}
       FROM points p, search_point
       WHERE p.user_id = $3 AND ST_DWithin(p.lonlat, search_point.geom, $4::float8)#{Enum.join(clauses)}
+      ORDER BY p.timestamp, p.id
       """,
       [search.lon, search.lat, user_id, search.radius * 1.0 | dates]
     }

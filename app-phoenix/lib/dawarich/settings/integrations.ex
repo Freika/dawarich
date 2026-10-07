@@ -8,15 +8,17 @@ defmodule Dawarich.Settings.Integrations do
   @fields ~w(immich_url immich_api_key immich_skip_ssl_verification photoprism_url photoprism_api_key photoprism_skip_ssl_verification airtrail_url airtrail_api_key airtrail_skip_ssl_verification teslamate_url teslamate_username teslamate_password teslamate_api_token teslamate_skip_ssl_verification)
 
   def save(repo, id, params, opts \\ []) when is_map(params) do
-    with [[%{} = previous]] <- read(repo, id),
+    with [[previous]] when is_map(previous) or is_nil(previous) <- read(repo, id),
+         previous = UserSettings.provided(previous),
          {:ok, changes} <- changes(params, previous),
          updated = Map.merge(UserSettings.safe(previous), changes),
          :ok <- validate(updated, opts) do
       {statuses, notices, alerts} = test_connections(previous, updated, opts)
 
-      repo.transaction(fn ->
+      Dawarich.Transaction.run(repo, fn ->
         case read(repo, id, " FOR UPDATE") do
-          [[%{} = current]] ->
+          [[current]] when is_map(current) or is_nil(current) ->
+            current = UserSettings.provided(current)
             settings = current |> Map.merge(changes) |> Map.merge(statuses) |> normalize_urls()
 
             repo.query!(
@@ -127,7 +129,7 @@ defmodule Dawarich.Settings.Integrations do
       keys = Enum.filter(@fields, &String.starts_with?(&1, provider <> "_"))
 
       if Enum.any?(keys, &(UserSettings.safe(previous)[&1] != updated[&1])) do
-        case Connection.test(provider, updated, Keyword.get(opts, :locale, "en")) do
+        case Connection.test(provider, normalize_urls(updated), Keyword.get(opts, :locale, "en")) do
           {:ok, message} ->
             {Map.put(statuses, provider <> "_connection_status", "ok"), notices ++ [message],
              alerts}

@@ -4,17 +4,21 @@ defmodule Dawarich.TripSettingsTest do
   alias Dawarich.TripSettings
 
   test "Rails' defaults: km, light, 500 m, 30 min, no AirTrail, no photos" do
-    assert TripSettings.read(%{}) ==
-             {:ok,
-              %{
-                unit: "km",
-                factor: 1000,
-                style: "light",
-                meters: 500,
-                minutes: 30,
-                airtrail: false,
-                photos: false
-              }}
+    for settings <- [nil, %{}],
+        do:
+          assert(
+            TripSettings.read(settings) ==
+              {:ok,
+               %{
+                 unit: "km",
+                 factor: 1000,
+                 style: "light",
+                 meters: 500,
+                 minutes: 30,
+                 airtrail: false,
+                 photos: false
+               }}
+          )
   end
 
   test "strings and floats are read with Ruby's to_i; non-positive values fall back; minutes are capped" do
@@ -65,7 +69,6 @@ defmodule Dawarich.TripSettingsTest do
 
   test "values Rails would raise on hand the page back" do
     for settings <- [
-          nil,
           %{"maps" => "km"},
           %{"maps" => %{"distance_unit" => "KM"}},
           %{"maps_maplibre_style" => 3},

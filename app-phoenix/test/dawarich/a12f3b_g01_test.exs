@@ -112,6 +112,6 @@ defmodule Dawarich.A12f3bG01Test do
 
   defp cron_timezone do
     {Oban, opts} = Enum.find(Dawarich.Application.children(:none), &match?({Oban, _}, &1))
-    opts[:cron][:timezone]
+    elem(opts[:cron], 1)[:timezone]
   end
 end

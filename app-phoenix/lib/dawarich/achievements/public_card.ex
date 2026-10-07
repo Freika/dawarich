@@ -10,7 +10,7 @@ defmodule Dawarich.Achievements.PublicCard do
            [uuid]
          ) do
       [[owner_id, key, settings]] ->
-        settings = if is_nil(settings), do: %{}, else: settings
+        settings = Dawarich.UserSettings.safe(settings)
 
         cond do
           definition = Registry.find(key) ->

@@ -7,7 +7,12 @@ defmodule Dawarich.Mail.Recipient do
            log: false
          ).rows do
       [[email, settings, created_at, admin]] ->
-        %{email: email, settings: settings, created_at: created_at, admin: admin}
+        %{
+          email: email,
+          settings: Dawarich.UserSettings.safe(settings),
+          created_at: created_at,
+          admin: admin
+        }
 
       [] ->
         nil

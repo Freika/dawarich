@@ -66,6 +66,11 @@ defmodule Dawarich.UserTimeZone do
   end
 
   def zone(settings, env \\ System.get_env())
-  def zone(%{"timezone" => zone}, _env) when is_binary(zone), do: zone
-  def zone(_settings, env), do: env["TIME_ZONE"] || "UTC"
+
+  def zone(settings, env) do
+    case Dawarich.UserSettings.safe(settings, env)["timezone"] do
+      zone when is_binary(zone) -> zone
+      _ -> env["TIME_ZONE"] || "UTC"
+    end
+  end
 end

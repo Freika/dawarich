@@ -28,6 +28,8 @@ defmodule DawarichWeb.Api.Params do
   def year(value), do: {:replay, "year parameter #{inspect(value)}"}
 
   def unit(param, settings) do
+    settings = Dawarich.UserSettings.safe(settings)
+
     chosen =
       cond do
         is_binary(param) and Ruby.present?(param) -> {:ok, param}
@@ -49,8 +51,8 @@ defmodule DawarichWeb.Api.Params do
     end
   end
 
-  def min_minutes(%{"min_minutes_spent_in_city" => value}), do: minutes(value)
-  def min_minutes(_settings), do: {:ok, 60}
+  def min_minutes(settings),
+    do: minutes(Dawarich.UserSettings.safe(settings)["min_minutes_spent_in_city"])
 
   def timestamp(value) when is_binary(value) do
     cond do

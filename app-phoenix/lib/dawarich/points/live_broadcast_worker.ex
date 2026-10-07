@@ -38,6 +38,8 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
            log: false
          ).rows do
       [[email, first, last, settings]] when points != [] ->
+        settings = Dawarich.UserSettings.safe(settings)
+
         Dawarich.AfterCommit.once(repo, args["broadcast_id"], fn ->
           if State.claim(repo, "live_broadcast:done:#{args["broadcast_id"]}", 86_400) do
             now = DateTime.utc_now()
