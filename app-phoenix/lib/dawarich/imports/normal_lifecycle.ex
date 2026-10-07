@@ -162,7 +162,7 @@ defmodule Dawarich.Imports.NormalLifecycle do
     if native?, do: Dawarich.Imports.Events.broadcast(lease.import.user_id)
   end
 
-  defp altitude_decimal?(lease, context) do
+  def altitude_decimal?(lease, context) do
     Map.get_lazy(context, :altitude_decimal?, fn ->
       ImportState.effect!(lease, fn ->
         lease.repo.query!(

@@ -23,7 +23,12 @@ defmodule DawarichWeb.AreaRequest do
   def format(conn, _) do
     case get_req_header(conn, "accept") do
       [accept] ->
-        if String.starts_with?(accept, "text/vnd.turbo-stream.html"),
+        types =
+          accept
+          |> String.split(",")
+          |> Enum.map(&(&1 |> String.split(";", parts: 2) |> hd() |> String.trim()))
+
+        if Enum.any?(types, &(&1 in ~w(text/vnd.turbo-stream.html text/* */*))),
           do: {:ok, :turbo_stream},
           else: {:ok, :unsupported}
 

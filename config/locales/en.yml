@@ -44,10 +44,18 @@ en:
         points:
           title: "Points"
         experimental:
+          badge: "Experimental"
           title: "Experimental features"
         map_matching:
           title: "Map matching"
           description: "Align noisy recorded paths to nearby roads and paths. This changes only how eligible tracks are drawn; recorded points and the original path stay unchanged."
+          example_alt: "A noisy original path beside the same path aligned to streets"
+          original_label: "Original path"
+          matched_label: "Matched path"
+          example_caption: "Original keeps the recorded shape. Matched follows the nearby routable network and can always fall back to Original."
+          privacy: "Dawarich sends coordinates, timestamps, and GPS accuracy to the configured Atlas service. Keep that service inside a network you trust."
+          test: "Test connection"
+          testing: "Testing…"
         fields:
           atlas_url: "Atlas URL"
           map_matching_enabled: "Enable map matching"
@@ -76,6 +84,11 @@ en:
         pinned: "Refused: pinned by %{variables}."
         host_invalid: "The host must be a bare hostname with an optional port or path, with no spaces."
         chibigeo_key_required: "ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com."
+      test_map_matching:
+        not_configured: "Save an Atlas URL first."
+        success: "Atlas %{version} is ready for map matching."
+        routing_unavailable: "Atlas %{version} responded, but its routing capability is not ready."
+        failure: "Atlas connection failed (%{error})."
       test_geocoding:
         not_configured: "No geocoding provider is configured. Save a provider first."
         success: "Your provider resolved the test coordinates to %{place}."

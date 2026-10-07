@@ -14,6 +14,65 @@ defmodule Dawarich.UserData.RestorePointsTest do
     %{c: c}
   end
 
+  @tag :restore_tile_retry
+  test "restore cache outage retains durable invalidation through duplicate replay", %{c: c} do
+    previous = System.get_env("DAWARICH_RAILS")
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+    key = "points:tile_epoch:#{c.user_id}:2026"
+
+    try do
+      for {mode, owner, offset} <-
+            Enum.filter([{"on", :oban, 0}, {"on", :sidekiq, 1}, {"off", :sidekiq, 2}], fn {mode,
+                                                                                           _,
+                                                                                           _} ->
+              System.get_env("DAWARICH_REDELIVERY_TEST_MODE", mode) == mode
+            end) do
+        System.put_env("DAWARICH_RAILS", mode)
+        Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:points.tile_epoch", owner)
+        rows("DELETE FROM oban.oban_jobs WHERE worker='Dawarich.Points.TileEpochWorker'")
+        rows("DELETE FROM phoenix.rails_commands WHERE kind='points.tile_epoch'")
+        assert {:ok, "OK"} = Dawarich.Redis.cache_command(["SET", key, "synthetic-before"])
+        stop_supervised(Dawarich.Redis.Cache)
+        context = Map.put(c.context, :native_owner, true)
+        data = [%{"timestamp" => 1_767_225_600 + offset, "longitude" => 12.4, "latitude" => 51.3}]
+        assert Points.call(ScratchRepo, c.user_id, data, context) == 1
+        assert Points.call(ScratchRepo, c.user_id, data, context) == 0
+
+        payload =
+          if mode == "on" and owner == :sidekiq do
+            assert [[payload]] =
+                     rows(
+                       "SELECT payload FROM phoenix.rails_commands WHERE kind='points.tile_epoch'"
+                     )
+
+            payload
+          else
+            assert [[payload]] =
+                     rows(
+                       "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Points.TileEpochWorker'"
+                     )
+
+            payload
+          end
+
+        assert_raise MatchError, fn ->
+          Dawarich.Points.TileEpochWorker.run(ScratchRepo, payload)
+        end
+
+        start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+        assert :ok = Dawarich.Points.TileEpochWorker.run(ScratchRepo, payload)
+        assert {:ok, token} = Dawarich.Redis.cache_command(["GET", key])
+        refute token == "synthetic-before"
+      end
+    after
+      Dawarich.Redis.cache_command(["DEL", key])
+
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end
+  end
+
   @tag :tmp_dir
   test "restore points preserve references columns conflicts and 5000 boundary", %{
     c: c,

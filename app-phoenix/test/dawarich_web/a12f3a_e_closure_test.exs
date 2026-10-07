@@ -440,6 +440,7 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
       reset!(ScratchRepo)
       clean()
       c = UserDataSeeds.seed!(name, ScratchRepo)
+      Ownership.put!(ScratchRepo, "command:points.tile_epoch", :oban)
 
       assert Restore.call(
                ScratchRepo,
@@ -487,6 +488,13 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
           :ok
       end
 
+      assert [[count]] =
+               rows(
+                 "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Points.TileEpochWorker'"
+               )
+
+      assert count > 0
+
       assert Enum.all?(
                rows("SELECT kind FROM phoenix.rails_commands"),
                &(&1 == ["tracks_changed"])
@@ -501,11 +509,13 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
        %{tmp_dir: dir} do
     start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
     c = UserDataSeeds.seed!("v2", ScratchRepo)
+    Ownership.put!(ScratchRepo, "command:points.tile_epoch", :oban)
 
     for boundary <- capture(10)["boundaries"] do
       count = boundary["count"]
       assert count == boundary["result"]["points_created"]
       rows("DELETE FROM points")
+      rows("DELETE FROM oban.oban_jobs WHERE worker='Dawarich.Points.TileEpochWorker'")
       path = "test/fixtures/user_data/boundary_#{count}/entries/points.jsonl"
       stream = File.stream!(path) |> Stream.map(&Jason.decode!/1)
 
@@ -516,6 +526,16 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
                  stream,
                  Map.put(c.context, :native_owner, true)
                )
+
+      jobs =
+        rows(
+          "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Points.TileEpochWorker' ORDER BY id"
+        )
+
+      assert jobs != []
+
+      for [payload] <- jobs,
+          do: assert(:ok == Dawarich.Points.TileEpochWorker.run(ScratchRepo, payload))
 
       key = "points:tile_epoch:#{c.user_id}:2026"
       assert {:ok, epoch} = Dawarich.Redis.cache_command(["GET", key])
@@ -528,6 +548,11 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
                  c.user_id,
                  stream,
                  Map.put(c.context, :native_owner, true)
+               )
+
+      assert jobs ==
+               rows(
+                 "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Points.TileEpochWorker' ORDER BY id"
                )
 
       assert {:ok, ^epoch} = Dawarich.Redis.cache_command(["GET", key])

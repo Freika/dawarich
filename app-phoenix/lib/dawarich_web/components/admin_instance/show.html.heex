@@ -44,10 +44,20 @@
           </div>
           <div class="mt-6">
             <.section_link locale={@locale} item="points" section={@section} data={@data} />
+            <div class="mt-2" data-testid="experimental-navigation">
+              <.section_link locale={@locale} item="experimental" section={@section} data={@data} />
+            </div>
           </div>
         </nav>
         <div class="flex-1 min-w-0 w-full">
+          <AdminExperimental.section
+            :if={@section == "experimental"}
+            locale={@locale}
+            data={@data}
+            rails_csrf_token={@rails_csrf_token}
+          />
           <.pane
+            :if={@section != "experimental"}
             locale={@locale}
             data={@data}
             section={@section}
