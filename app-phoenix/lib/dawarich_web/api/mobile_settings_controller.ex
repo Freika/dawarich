@@ -9,13 +9,19 @@ defmodule DawarichWeb.Api.MobileSettingsController do
     user = conn.assigns.api_user
     ctx = Api.context(conn)
 
-    {_, status, body} =
+    result = fn ->
       case action do
         :show -> Mobile.show(Dawarich.Repo, user, ctx)
         :update -> Mobile.update(Dawarich.Repo, user, conn.assigns.api_params, ctx)
       end
+    end
 
-    Respond.json(conn, status, body)
+    if action == :update do
+      DawarichWeb.Api.WriteResponse.call(conn, result)
+    else
+      {_, status, body} = result.()
+      Respond.json(conn, status, body)
+    end
   rescue
     _ -> Respond.json(conn, 500, Api.failure())
   end

@@ -47,6 +47,7 @@ defmodule Dawarich.Settings.Api do
   end
 
   def config(raw, restricted) do
+    raw = if is_map(raw), do: raw, else: %{}
     s = UserSettings.safe(raw)
 
     maps =
@@ -67,6 +68,7 @@ defmodule Dawarich.Settings.Api do
 
     Map.new(@fields, &{&1, s[&1]})
     |> Map.merge(%{
+      "timezone" => s["timezone"] || System.get_env("TIME_ZONE", "UTC"),
       "maps" => maps,
       "distance_unit" => maps["distance_unit"] || "km",
       "enabled_map_layers" => layers,
@@ -240,15 +242,7 @@ defmodule Dawarich.Settings.Api do
     _ -> {:error, 500, failure()}
   end
 
-  def zone?(repo, value) when is_binary(value) do
-    repo.query!(
-      "SELECT EXISTS(SELECT 1 FROM pg_timezone_names WHERE name=$1)",
-      [Dawarich.TimeZoneName.to_iana(value)],
-      log: false
-    ).rows == [[true]]
-  end
-
-  def zone?(_, _), do: false
+  def zone?(_repo, value), do: Dawarich.RailsTimeZone.valid?(value)
 
   defp sanitize(settings),
     do:

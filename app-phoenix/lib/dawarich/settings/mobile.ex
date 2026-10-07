@@ -61,19 +61,8 @@ defmodule Dawarich.Settings.Mobile do
     _ -> {:error, 500, Api.failure()}
   end
 
-  defp timestamp(repo, settings, now) do
-    zone = Dawarich.UserTimeZone.iana(repo, settings)
-
-    Dawarich.RailsTime.with_zone(repo, zone, fn ->
-      [[stamp]] =
-        repo.query!(
-          "SELECT " <> Dawarich.RailsTime.sql("$1::timestamp", 0),
-          [DateTime.to_naive(now)],
-          log: false
-        ).rows
-
-      stamp
-    end)
+  defp timestamp(_repo, settings, now) do
+    Dawarich.RailsTimeZone.format(now, settings, 0)
   end
 
   defp sanitize(raw) do
