@@ -1,6 +1,6 @@
 defmodule Dawarich.Points.LiveBroadcastWorker do
   @moduledoc false
-  use Oban.Worker, queue: :projections, max_attempts: 1
+  use Oban.Worker, queue: :projections, max_attempts: 10
 
   alias Dawarich.{Cable, State}
   alias Dawarich.Families.{Locations, Sharing}
@@ -40,26 +40,29 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
       [[email, first, last, settings]] when points != [] ->
         settings = Dawarich.UserSettings.safe(settings)
 
-        if State.claim(repo, "live_broadcast:done:#{args["broadcast_id"]}", 86_400) do
-          now = DateTime.utc_now()
-          payloads = Map.new(args["payloads"], &{&1["timestamp"], &1})
-          family = family(repo, user, settings, now)
+        Dawarich.AfterCommit.once(repo, args["broadcast_id"], fn ->
+          if State.claim(repo, "live_broadcast:done:#{args["broadcast_id"]}", 86_400) do
+            now = DateTime.utc_now()
+            payloads = Map.new(args["payloads"], &{&1["timestamp"], &1})
+            family = family(repo, user, settings, now)
 
-          for point <- points do
-            if Map.get(settings, "live_map_enabled", true) not in [nil, false],
-              do: publish_point(repo, user, point, Map.get(payloads, point["timestamp"], %{}))
+            for point <- points do
+              if Map.get(settings, "live_map_enabled", true) not in [nil, false],
+                do: publish_point(repo, user, point, Map.get(payloads, point["timestamp"], %{}))
 
-            if family, do: publish_family(repo, family, user, email, first, last, settings, point)
+              if family,
+                do: publish_family(repo, family, user, email, first, last, settings, point)
+            end
+
+            publish_shares(repo, user, Enum.max_by(points, & &1["timestamp"]), now)
           end
 
-          publish_shares(repo, user, Enum.max_by(points, & &1["timestamp"]), now)
-        end
+          :ok
+        end)
 
       _ ->
         :ok
     end
-
-    :ok
   end
 
   defp publish_point(repo, user, p, data) do

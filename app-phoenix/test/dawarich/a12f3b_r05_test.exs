@@ -57,6 +57,7 @@ defmodule Dawarich.A12f3bR05Test do
 
     for _ <- 1..2, do: assert(Dawarich.ReleaseOperations.OrphanedTracks.run(ScratchRepo) == :ok)
     assert rows("SELECT id FROM tracks") == []
+    Dawarich.Test.AfterCommit.drain(ScratchRepo)
 
     for key <- tokens do
       assert {:ok, token} = Dawarich.Redis.cache_command(["GET", key])
@@ -75,6 +76,7 @@ defmodule Dawarich.A12f3bR05Test do
       )
 
     Dawarich.Tracks.Effects.write!(ScratchRepo, 1, %{stamps: [from, to], created: [created]})
+    Dawarich.Test.AfterCommit.drain(ScratchRepo)
     [[message]] = rows("SELECT payload FROM phoenix.cable_events ORDER BY seq DESC LIMIT 1")
     message = Jason.decode!(message)
     assert message["action"] == "created"
@@ -126,6 +128,7 @@ defmodule Dawarich.A12f3bR05Test do
     event = Ecto.UUID.generate()
     args = %{"track_id" => -1, "report_progress" => true, "user_id" => 1, "event_id" => event}
     for _ <- 1..2, do: assert(ReclassifyTrackWorker.run(ScratchRepo, __MODULE__, args) == :ok)
+    Dawarich.Test.AfterCommit.drain(ScratchRepo)
     assert RecalculationStatus.data(1)["processed_tracks"] == 1
     assert RecalculationStatus.data(1)["status"] == "completed"
     assert [[channel, payload]] = rows("SELECT channel,payload FROM phoenix.cable_events")
@@ -135,6 +138,7 @@ defmodule Dawarich.A12f3bR05Test do
     RecalculationStatus.clear(1)
     orphan = Map.put(args, "event_id", Ecto.UUID.generate())
     for _ <- 1..2, do: assert(ReclassifyTrackWorker.run(ScratchRepo, __MODULE__, orphan) == :ok)
+    Dawarich.Test.AfterCommit.drain(ScratchRepo)
     assert RecalculationStatus.data(1)["processed_tracks"] == 1
     System.delete_env("DAWARICH_RAILS")
     RecalculationStatus.clear(1)

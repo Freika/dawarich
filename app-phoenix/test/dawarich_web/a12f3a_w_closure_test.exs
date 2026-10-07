@@ -1,3 +1,20 @@
+defmodule DawarichWeb.AfterCommitFanoutRepo do
+  alias Dawarich.Repo
+
+  def query!(sql, params \\ [], opts \\ []) do
+    if Process.get(:synthetic_fanout_failure) &&
+         String.starts_with?(sql, "INSERT INTO public.job_outbox"),
+       do: raise("synthetic fanout failure")
+
+    Repo.query!(sql, params, opts)
+  end
+
+  def checkout(fun), do: Repo.checkout(fun)
+  def transaction(fun), do: Repo.transaction(fun)
+  def rollback(reason), do: Repo.rollback(reason)
+  def in_transaction?(), do: Repo.in_transaction?()
+end
+
 defmodule DawarichWeb.A12f3aWClosureTest do
   use Dawarich.IngestCase, async: false
   import Plug.Conn
@@ -7,6 +24,9 @@ defmodule DawarichWeb.A12f3aWClosureTest do
   alias DawarichWeb.{RailsAuth, RailsCsrf, MapWriteRequest}
 
   setup do
+    previous_cable = Application.get_env(:dawarich, :cable)
+    Application.put_env(:dawarich, :cable, transport: :pg, repo: Repo)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, previous_cable) end)
     for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
     user = FrameSeeds.user!(88101, %{"timezone" => "UTC"}, %{plan: 0, status: 0})
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
@@ -203,6 +223,7 @@ defmodule DawarichWeb.A12f3aWClosureTest do
     event = Ecto.UUID.generate()
     args = %{"user_id" => ctx.user.id, "event_id" => event}
     assert :ok = Dawarich.Transportation.UserReclassify.run(Repo, args, %{now: ctx.now})
+    Dawarich.Test.AfterCommit.drain(Repo)
     children = outbox()
     assert length(children) == 101
 
@@ -245,6 +266,7 @@ defmodule DawarichWeb.A12f3aWClosureTest do
                Map.put(payload, "event_id", child_event)
              )
 
+    Dawarich.Test.AfterCommit.drain(Repo)
     assert Dawarich.Transportation.RecalculationStatus.data(ctx.user.id)["processed_tracks"] == 1
     assert :ok = Dawarich.Transportation.RecalculationStatus.increment(ctx.user.id, child_event)
     assert Dawarich.Transportation.RecalculationStatus.data(ctx.user.id)["processed_tracks"] == 1
@@ -256,13 +278,29 @@ defmodule DawarichWeb.A12f3aWClosureTest do
     refute Enum.any?(commands(), fn [kind, _] -> kind == "transport_progress" end)
     Repo.query!("DELETE FROM public.job_outbox")
 
-    assert_raise RuntimeError, "synthetic fanout failure", fn ->
-      Dawarich.Transportation.UserReclassify.run(
-        Repo,
-        %{"user_id" => ctx.user.id, "event_id" => Ecto.UUID.generate()},
-        %{now: ctx.now, before_enqueue: fn -> raise "synthetic fanout failure" end}
-      )
-    end
+    event = Ecto.UUID.generate()
+
+    assert :ok =
+             Dawarich.Transportation.UserReclassify.run(
+               Repo,
+               %{"user_id" => ctx.user.id, "event_id" => event},
+               %{now: ctx.now}
+             )
+
+    [[intent]] =
+      Repo.query!(
+        "SELECT args FROM oban.oban_jobs WHERE args->>'operation'='transport_start' AND args->'payload'->>'event_id'=$1",
+        [event],
+        log: false
+      ).rows
+
+    Process.put(:synthetic_fanout_failure, true)
+
+    assert {:error, %RuntimeError{message: "synthetic fanout failure"}} =
+             Dawarich.AfterCommit.Worker.run(DawarichWeb.AfterCommitFanoutRepo, intent)
+
+    Process.delete(:synthetic_fanout_failure)
+    refute Dawarich.Jobs.Processed.done?(Repo, intent["intent_id"])
 
     assert outbox() == []
     assert Dawarich.Transportation.RecalculationStatus.data(ctx.user.id)["status"] == "failed"

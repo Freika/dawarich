@@ -93,14 +93,14 @@ defmodule Dawarich.DemoData.Destroyer do
                   end
                 end)
 
-              {:destroyed, months, recalc}
+              follow_up(repo, user, months, recalc)
+              :destroyed
           end
         end
       )
 
     case result do
-      {:ok, {:destroyed, months, recalc}} ->
-        follow_up(repo, user, months, recalc)
+      {:ok, :destroyed} ->
         :destroyed
 
       {:ok, :no_demo_data} ->
@@ -236,7 +236,5 @@ defmodule Dawarich.DemoData.Destroyer do
     end
 
     Importer.invalidate(repo, user, months)
-  rescue
-    _ -> :ok
   end
 end

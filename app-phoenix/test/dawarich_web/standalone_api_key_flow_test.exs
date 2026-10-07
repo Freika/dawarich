@@ -39,6 +39,13 @@ defmodule DawarichWeb.StandaloneApiKeyFlowTest do
       for user <- users do
         TtlCache.delete({DawarichWeb.RateLimit, key(user.id)})
         TtlCache.delete({DawarichWeb.RateLimit, user.api_key})
+
+        Repo.query!(
+          "DELETE FROM oban.oban_jobs WHERE args->'payload'->>'user_id'=$1",
+          [to_string(user.id)],
+          log: false
+        )
+
         Repo.query!("DELETE FROM users WHERE id=$1", [user.id], log: false)
       end
     end)

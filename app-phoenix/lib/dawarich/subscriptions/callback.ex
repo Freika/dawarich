@@ -115,7 +115,7 @@ defmodule Dawarich.Subscriptions.Callback do
           user = repo.update!(changes, log: false)
 
           if Map.has_key?(changes.changes, :plan) do
-            Cache.invalidate(user.api_key, context)
+            Dawarich.AfterCommit.cache(repo, "subscription", %{"user_id" => user.id})
 
             repo.query!(
               "UPDATE users SET settings=COALESCE(settings,'{}'::jsonb)-'archival_warnings'-'lite_since' WHERE id=$1",
@@ -124,6 +124,10 @@ defmodule Dawarich.Subscriptions.Callback do
             )
           end
 
+          if map_size(changes.changes) > 0 and not Map.has_key?(changes.changes, :plan),
+            do: Dawarich.AfterCommit.cache(repo, "subscription", %{"user_id" => user.id})
+
+          callbacks(repo, user, changes.changes, context)
           Cache.advance(claims, context)
           {user, changes.changes}
         end)
@@ -140,9 +144,7 @@ defmodule Dawarich.Subscriptions.Callback do
       {:error, :stale} ->
         response(200, "stale_event")
 
-      {:ok, {user, changes}} ->
-        if map_size(changes) > 0, do: Cache.invalidate(user.api_key, context)
-        callbacks(repo, user, changes, context)
+      {:ok, {_user, _changes}} ->
         committed_response(context)
     end
   rescue

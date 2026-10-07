@@ -18,6 +18,8 @@ defmodule Dawarich.Geocoding.HookRepo do
 
   def insert!(changeset, opts \\ []), do: ScratchRepo.insert!(changeset, opts)
 
+  def checkout(fun, opts \\ []), do: ScratchRepo.checkout(fun, opts)
+
   def transaction(fun, opts \\ []), do: ScratchRepo.transaction(fun, opts)
   def in_transaction?, do: ScratchRepo.in_transaction?()
   def rollback(value), do: ScratchRepo.rollback(value)

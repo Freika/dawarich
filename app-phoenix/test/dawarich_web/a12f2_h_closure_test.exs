@@ -291,6 +291,7 @@ defmodule DawarichWeb.A12f2HClosureTest do
                subscription_event(subscription_claims(c.id, "active", plan), context)
 
       assert Repo.get!(Account, c.id).plan == expected
+      Dawarich.Test.AfterCommit.drain(Repo)
       assert DawarichWeb.RateLimit.plan(key) == plan
       assert Redis.cache_command(["GET", "rack_attack/plan/" <> key]) == {:ok, nil}
     end

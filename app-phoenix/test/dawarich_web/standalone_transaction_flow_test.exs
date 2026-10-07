@@ -30,7 +30,9 @@ defmodule DawarichWeb.StandaloneTransactionFlowTest do
         log: false
       )
 
-      Repo.query!("DELETE FROM oban.oban_jobs WHERE args->>'user_id'=$1", [to_string(actor.id)],
+      Repo.query!(
+        "DELETE FROM oban.oban_jobs WHERE args->>'user_id'=$1 OR args->'payload'->>'user_id'=$1 OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(COALESCE(args->'payload'->'keys','[]'::jsonb)) key WHERE key LIKE 'timeline_month_summary/' || $1 || '/%')",
+        [to_string(actor.id)],
         log: false
       )
 

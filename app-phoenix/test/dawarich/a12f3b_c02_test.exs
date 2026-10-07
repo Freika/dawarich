@@ -142,11 +142,16 @@ defmodule Dawarich.A12f3bC02Test do
     assert [[0]] = rows("SELECT count(*) FROM public.job_outbox")
     native = "phoenix/dawarich/user_14101_total_distance"
     summary = [%{distance: 1000, toponyms: []}]
-    assert Dawarich.Cache.Readers.summary(14101, summary).total_distance == 1000
+
+    assert Dawarich.Cache.Readers.summary(14101, summary, repo: ScratchRepo).total_distance ==
+             1000
+
     {:ok, 1} = Redis.cache_command(["PEXPIRE", native, "0"])
     assert {:ok, nil} = Redis.cache_command(["GET", native])
 
-    assert Dawarich.Cache.Readers.summary(14101, [%{distance: 2000, toponyms: []}]).total_distance ==
+    assert Dawarich.Cache.Readers.summary(14101, [%{distance: 2000, toponyms: []}],
+             repo: ScratchRepo
+           ).total_distance ==
              2000
 
     assert {:ok, ttl} = Redis.cache_command(["TTL", native])

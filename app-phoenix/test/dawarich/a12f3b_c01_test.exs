@@ -84,6 +84,7 @@ defmodule Dawarich.A12f3bC01Test do
                "scope" => "all"
              })
 
+    Dawarich.Test.AfterCommit.drain(Repo)
     assert {:ok, nil} = Redis.cache_command(["GET", key])
 
     assert [[0]] =

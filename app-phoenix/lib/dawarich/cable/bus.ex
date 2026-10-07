@@ -83,7 +83,7 @@ defmodule Dawarich.Cable.Bus do
 
       store.append(repo, prefix() || "", broadcasting, payload)
     else
-      Redis.command(["PUBLISH", channel(broadcasting), payload], @publisher)
+      Dawarich.Cable.Delivery.publish(channel(broadcasting), payload, @publisher)
     end
   end
 

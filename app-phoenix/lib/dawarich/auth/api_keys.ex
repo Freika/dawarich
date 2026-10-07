@@ -38,7 +38,7 @@ defmodule Dawarich.Auth.ApiKeys do
         end
       end)
 
-    if match?({:ok, _}, result),
+    if match?({:ok, _}, result) and not Repo.in_transaction?(),
       do: Dawarich.TtlCache.delete({DawarichWeb.RateLimit, retired})
 
     result
@@ -52,10 +52,23 @@ defmodule Dawarich.Auth.ApiKeys do
       updated_at: Map.get(context, :clock, &DateTime.utc_now/0).()
     }
 
-    updated =
-      Map.get(context, :repo, Repo).update!(Ecto.Changeset.change(actor, changes), log: false)
+    repo = Map.get(context, :repo, Repo)
 
-    Dawarich.TtlCache.delete({DawarichWeb.RateLimit, actor.api_key})
+    {:ok, updated} =
+      repo.transaction(fn ->
+        updated =
+          Map.get(context, :repo, Repo).update!(Ecto.Changeset.change(actor, changes), log: false)
+
+        if is_binary(actor.api_key) do
+          Dawarich.AfterCommit.cache(Map.get(context, :repo, Repo), "rate_limit", %{
+            "user_id" => actor.id,
+            "key_hash" => Base.encode16(:crypto.hash(:sha256, actor.api_key), case: :lower)
+          })
+        end
+
+        updated
+      end)
+
     {:ok, updated}
   end
 end
