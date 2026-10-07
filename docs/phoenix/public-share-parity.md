@@ -56,8 +56,10 @@ reused synthetic trip IDs on later suite runs.
 ## Achievement query admission
 
 Achievement PNGs and public cards ignore unknown query keys after validating the
-whole query. Tracking keys, encoded keys, repeated unknown keys and nested
-unknown values no longer trigger the closed form allow-list. PNG locale handling
+whole query. Tracking keys, encoded keys, repeated unknown keys, valueless unknown keys and
+nested unknown values no longer trigger the closed form allow-list. The card
+ownership gate validates and filters the query before applying page admission;
+this exception is scoped to the public achievement card path. PNG locale handling
 and card locale/embed handling retain their existing admission and effects.
 Header admission, HEAD, cache headers and unavailable-share responses are unchanged.
 Public month/digest and `/s/:id` viewers already admit ordinary tracking keys.
@@ -68,9 +70,15 @@ scalar/object parameters and nesting at depth 100. Native malformed queries
 retain the existing terminal 422 response. Native achievement queries retain
 the existing 65,536-byte ceiling and locale duplicate refusal; Rails accepts
 queries beyond that ceiling (including a value over 4 MiB in-process) and uses
-the last duplicate locale. Validation uses the existing `Api.SourceParams`
-parser, whose nesting limit is 32. Public card valueless queries still encounter
-the existing page-envelope refusal; this change does not alter that shared gate.
+the last duplicate locale. Achievement query validation follows the source
+ActionDispatch parameter normalization, including unclosed unknown brackets,
+trailing names after brackets, array/hash type checks, scalar replacement,
+valueless fields and the source depth limit (99 nested keys accepted, 100
+rejected). Unknown pair counts have no separate limit within the size ceiling.
+The shared API parser and other pages' valueless gates remain unchanged.
 These are retained admission differences, not Rails query-size guarantees for
 an HTTP server or reverse proxy. Regression evidence is in
-`a12f3b_a02_test.exs` and `a12f3b_a03_test.exs`, tagged `fix_ach_image_params`.
+`a12f3b_a02_test.exs` and `a12f3b_a03_test.exs`, tagged `fix_ach_image_params`,
+and `achievement_public_query_test.exs`, tagged `fix2_ach_query`. The latter
+covers GET/HEAD through the plug and full Endpoint for every reviewed query
+shape, malformed encoding and source depth/type boundaries.
