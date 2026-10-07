@@ -33,16 +33,24 @@ defmodule Dawarich.Release do
   end
 
   def readiness(opts \\ []) do
-    mode = Dawarich.Release.Lifecycle.mode(Keyword.get(opts, :env, System.get_env()))
+    env = Keyword.get(opts, :env, System.get_env())
+    mode = Dawarich.Release.Lifecycle.mode(env)
 
     ready =
       map_repos(
         fn repo ->
           schemas_ready?(repo) and
             case mode do
-              {:ok, :rails} -> true
-              {:ok, :native} -> Dawarich.Release.Native.ready?(repo, opts)
-              {:error, _} -> false
+              {:ok, :rails} ->
+                true
+
+              {:ok, :native} ->
+                if Dawarich.ReleaseMigration.self_hosted?(env),
+                  do: Dawarich.Release.Native.ready?(repo, opts),
+                  else: Dawarich.Release.Cloud.ready?(repo, opts)
+
+              {:error, _} ->
+                false
             end
         end,
         opts

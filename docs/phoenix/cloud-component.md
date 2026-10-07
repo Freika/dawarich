@@ -1,6 +1,6 @@
 # Cloud preparation component
 
-`Dawarich.Release.Cloud` is a preparation API. Public native Cloud lifecycle admission remains refused in every runtime mode until the external L1 handoff.
+`Dawarich.Release.Cloud` is a preparation API. The integration head keeps public native Cloud lifecycle refused until the external L1 handoff. The conditional admission candidate on `feat/l1-guard-flip` remains subject to independent security review and controller integration.
 
 ## Cloud configuration and delivery
 
@@ -37,3 +37,23 @@ Achievement parent and bulk receipts prove publication. Readiness requires a bul
 The default supported source data ledger contains the 24 data migration versions from the supported Rails source. Readiness compares the entire set: missing and extra versions both refuse. Fresh native provisioning atomically writes `phoenix_native_baseline=1` in `public.ar_internal_metadata` with the native baseline; this explicitly selects the empty historical data ledger for that origin. It never stamps historical source data migrations performed. Future declared release data versions are still required for both origins. Readiness remains SELECT-only and never reconciles, drains, copies registration settings or performs callbacks.
 
 Code counterparts are `cloud/session_connection.ex`, `release/cloud_data_ledger.ex`, `release/cloud_jobs.ex` and `release/cloud_achievement_work.ex` under `app-phoenix/lib/dawarich`. Regressions are in `test/dawarich/cloud/session_connection_test.exs` and `test/dawarich/release/cloud_review_test.exs`. The canonical shared index is AFFiNE document `AVWr5ao5n-OKCZZbEphrP`; controller fix evidence is in the package A fix report.
+
+## ADR-20261007-l1-admission-validation — one release admission rule
+
+**Status/date:** Implemented on the conditional admission feature candidate, 2026-10-07; independent security acceptance, integration and rollout remain pending. This corrects review findings B1–B3 and does not certify an external endpoint's session capability.
+
+**Decision:** `Dawarich.Cloud.EndpointURL` supplies fail-closed Manager-origin and session-URL validation to Cloud configuration, lifecycle admission and session connections. The shell environment guard calls `dawarich eval` with `Dawarich.Release.Lifecycle.admitted?/0`; it contains no separate URL grammar. A missing or failing release executable refuses native Cloud boot before downstream commands, retaining the existing refusal message. Guard evaluation output is suppressed to keep configuration errors from disclosing environment values.
+
+Manager origins require HTTPS, a valid DNS or IPv4 host and a port in 1–65535, without credentials, path, query or fragment. Session URLs require PostgreSQL, a valid DNS/IP host, a decoded nonblank database, a valid port, no fragment and only the supported TLS/session query declarations. Whitespace, malformed escapes, ambiguous numeric hosts, repeated query keys and conflicting pooling declarations refuse. PgBouncer host markers, port 6432 (including zero-padded spelling), transaction/statement declarations and unsupported parameters refuse as session endpoints.
+
+Known pooled application endpoints cannot be reused for leases. Identity comparison normalizes scheme-independent host/port, DNS case and one root dot, default/zero-padded ports and IPv6 spelling; credentials and database spelling cannot hide reuse. A genuinely distinct direct/session endpoint remains allowed. The operator must still guarantee actual session advisory-lock continuity and the existing runtime database-identity check must still pass.
+
+**B1-R2 correction (2026-10-07):** Every URL and Repo hostname/endpoint passes the same canonical host parser before comparison. IP parsing uses `:inet.parse_address`; IPv4-mapped and IPv4-compatible IPv6 become the corresponding dotted IPv4 identity, including hexadecimal, expanded, uppercase and bracketed spellings. IPv6 unspecified and loopback addresses retain their IPv6 identities. Other IPv6 addresses normalize compression/case. Numeric IPv4 must equal its canonical dotted-decimal spelling: decimal/octal/hexadecimal integers, short forms and leading-zero octets refuse. Malformed IP literals and invalid hostnames fail closed; valid DNS names compare without case or a trailing root dot. Unrelated DNS aliases remain an operator responsibility.
+
+Maintained shell/Elixir coverage retains the original 648 inputs and adds 732 host cases, including the reviewer's exact six mapped vectors across all five native selections (30 previously unsafe admissions). Repo URL, hostname and endpoint checks cover both pooling modes and environment masking; public/direct entry calls refuse before Repo queries, and actual release/web/worker scripts refuse before downstream effects. Distinct IPs/ports, pure IPv6 and mapped/compatible direct-session controls remain accepted. Evidence and named RED/GREEN/mutation checks are in the controller's `fix3-l1-guard-flip.report.md`; independent security acceptance and controller integration gating remain pending.
+
+**Alternatives:** Maintaining a shell regex alongside Elixir was rejected because the independent 648-case review demonstrated divergent and unsafe admissions. A successful connection alone cannot prove session lock continuity through a pooler.
+
+**Verification:** Maintained regressions reproduce pooled reuse, malformed inputs, all 648 reviewer combinations, actual release/web/worker entry before effects, and complete public/private migration-ledger plus registration snapshots after each refused public/direct call. Named mutations target endpoint reuse, lower-level session checking, port validation, shell delegation and private writes. No self-hosted behavior or coexistence defaults change. The fix report records targeted checks; the controller owns the full integration gate.
+
+Code counterparts: `app-phoenix/lib/dawarich/cloud/endpoint_url.ex`, `cloud/configuration.ex`, `cloud/session_connection.ex`, `release/lifecycle.ex`, `docker/entrypoint-env-guard.sh`. Regressions: `test/dawarich/release/admission_security_test.exs`, `test/dawarich/release_cloud_test.exs` and the existing entrypoint specs. Shared counterpart: AFFiNE `[dawarich] Doc: Cloud preparation component` (`CVRUdArG6nqbgf06wK-LC`). Evidence: controller report `fix2-l1-guard-flip.report.md`.

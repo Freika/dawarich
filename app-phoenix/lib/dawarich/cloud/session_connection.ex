@@ -11,6 +11,11 @@ defmodule Dawarich.Cloud.SessionConnection do
         Application.get_env(:dawarich, :database_session_url) ||
         System.get_env("DATABASE_SESSION_URL")
 
+    env = Keyword.get(opts, :env, System.get_env())
+
+    if url not in [nil, ""] and not Dawarich.Cloud.EndpointURL.session?(url, env, config),
+      do: raise(ArgumentError, "session connection required")
+
     direct = if url in [nil, ""], do: config, else: direct_config(config, url)
     mode = direct[:pool_mode] || direct[:pooling_mode]
     ports = Enum.map(direct[:endpoints] || [], &elem(&1, 1))
@@ -18,7 +23,7 @@ defmodule Dawarich.Cloud.SessionConnection do
     if direct[:port] == 6432 or 6432 in ports or
          mode in ["transaction", "statement", :transaction, :statement] or
          (url in [nil, ""] and
-            System.get_env("DATABASE_POOLING_MODE") in ["transaction", "statement"]) do
+            env["DATABASE_POOLING_MODE"] in ["transaction", "statement"]) do
       {:error, :session_connection_required}
     else
       {:ok, Keyword.take(direct, @options)}

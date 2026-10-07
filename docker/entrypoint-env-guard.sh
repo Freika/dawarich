@@ -4,12 +4,7 @@ validate_phoenix_lifecycle() {
   validate_cloud_drain_argv "$0" "$@"
   case "${DAWARICH_PHOENIX_LIFECYCLE-false}" in
     false) ;;
-    true)
-      if ! env_value_is_truthy "${SELF_HOSTED-true}"; then
-        echo "Native lifecycle requires self-hosted mode" >&2
-        exit 1
-      fi
-      ;;
+    true) ;;
     *)
       echo "DAWARICH_PHOENIX_LIFECYCLE must be true or false" >&2
       exit 1
@@ -35,6 +30,7 @@ validate_cloud_drain_mode() {
 
 validate_cloud_drain_argv() {
   validate_cloud_drain_mode
+  validate_native_admission
   [ "${DAWARICH_CLOUD_DRAIN_ONLY-false}" = true ] || return 0
   if [ "${1##*/}" = cloud-sidekiq-entrypoint.sh ]; then
     shift
@@ -48,11 +44,8 @@ validate_cloud_drain_argv() {
 }
 
 validate_cloud_native_worker() {
-  case "${DAWARICH_PHOENIX_LIFECYCLE-false}" in
-    false) return ;;
-    true) ;;
-    *) echo "DAWARICH_PHOENIX_LIFECYCLE must be true or false" >&2; exit 1 ;;
-  esac
+  validate_native_admission
+  phoenix_lifecycle_is_native || return 0
   [ "${SELF_HOSTED-true}" = false ] || return 0
   case "$#" in
     1) [ "$1" = sidekiq ] && return 0 ;;
@@ -62,8 +55,28 @@ validate_cloud_native_worker() {
   exit 1
 }
 
+validate_native_admission() {
+  case "${DAWARICH_PHOENIX_LIFECYCLE-false}" in
+    false | true) ;;
+    *) echo "DAWARICH_PHOENIX_LIFECYCLE must be true or false" >&2; exit 1 ;;
+  esac
+  phoenix_lifecycle_is_native || return 0
+  env_value_is_truthy "${SELF_HOSTED-true}" && return 0
+  if dawarich eval 'if !Dawarich.Release.Lifecycle.admitted?(), do: System.halt(1)' >/dev/null 2>&1; then
+    case "${0##*/}" in
+      web-entrypoint.sh | sidekiq-entrypoint.sh)
+        echo "Native Cloud requires the Cloud web or worker entrypoint" >&2
+        exit 1
+        ;;
+    esac
+    return 0
+  fi
+  echo "Native lifecycle requires self-hosted mode" >&2
+  exit 1
+}
+
 phoenix_lifecycle_is_native() {
-  [ "${DAWARICH_PHOENIX_LIFECYCLE-false}" = true ]
+  [ "${DAWARICH_PHOENIX_LIFECYCLE-false}" = true ] || [ "${DAWARICH_RAILS:-}" = off ]
 }
 
 sanitize_integer_env() {
@@ -108,3 +121,8 @@ https://dawarich.app/docs/self-hosting/environment-variables/#switching-an-exist
 EOF
   fi
 }
+
+if [ "${0##*/}" = sidekiq-entrypoint.sh ] &&
+   ! env_value_is_truthy "${SELF_HOSTED-true}" && phoenix_lifecycle_is_native; then
+  validate_phoenix_lifecycle "$@"
+fi

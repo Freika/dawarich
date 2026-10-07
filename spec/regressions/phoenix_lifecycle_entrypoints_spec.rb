@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require_relative '../support/phoenix_admission_probe'
 require 'fileutils'
 require 'json'
 require 'open3'
@@ -8,6 +9,8 @@ require 'tmpdir'
 require 'uri'
 
 RSpec.describe 'Phoenix lifecycle entrypoints' do
+  include PhoenixAdmissionProbe
+
   let(:root) { File.expand_path('../..', __dir__) }
   let(:stubs) { Dir.mktmpdir('phoenix-lifecycle') }
   let(:calls_file) { File.join(stubs, 'calls.log') }
@@ -35,7 +38,7 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
 
   def stub_command(name, body)
     path = File.join(stubs, name)
-    File.write(path, "#!/bin/sh\n#{body}\n")
+    File.write(path, "#!/bin/sh\n#{name == 'dawarich' ? admission_probe : ''}#{body}\n")
     File.chmod(0o755, path)
   end
 
@@ -43,6 +46,10 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
     FileUtils.rm_f(calls_file)
     base = {
       'PATH' => "#{stubs}:#{ENV.fetch('PATH')}", 'APP_PATH' => stubs, 'RAILS_ENV' => 'test',
+      'MANAGER_URL' => 'https://manager.example.invalid',
+      'JWT_SECRET_KEY' => 'synthetic-shell-key',
+      'DATABASE_SESSION_URL' => 'postgres://session.example.invalid/cloud',
+      'DAWARICH_RAILS' => 'proxy', 'DAWARICH_CLOUD_DRAIN_ONLY' => 'false',
       'PUID' => nil, 'PGID' => nil, 'DATABASE_URL' => nil, 'DATABASE_HOST' => '127.0.0.1',
       'DATABASE_NAME' => 'dawarich_test_a12h', 'DATABASE_PASSWORD' => '',
       'DAWARICH_PHOENIX_LIFECYCLE' => 'true', 'SELF_HOSTED' => 'true'
@@ -249,13 +256,95 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
     end
   end
 
-  it 'Cloud native lifecycle refuses before either migrator runs' do
-    %w[release.sh web-entrypoint.sh].each do |script|
-      result = run_script(script, *server, SELF_HOSTED: 'false')
-      expect(result[:status]).not_to be_success
-      expect(result[:stderr]).to include('requires self-hosted mode')
-      expect(result[:calls]).to be_empty
+  it 'L1 final Cloud release admits complete configuration and refuses missing preconditions before effects' do
+    result = run_script('release.sh', SELF_HOSTED: 'false')
+    expect(result[:status]).to be_success
+    expect(result[:calls]).to eq(['dawarich migrate', 'dawarich seeds'])
+
+    [nil, 'false'].each do |flag|
+      result = run_script('release.sh', SELF_HOSTED: 'false', DAWARICH_RAILS: 'off',
+                          DAWARICH_PHOENIX_LIFECYCLE: flag)
+      expect(result[:status]).to be_success
+      expect(result[:calls]).to eq(['dawarich migrate', 'dawarich seeds'])
     end
+
+    invalid = [
+      { MANAGER_URL: nil }, { JWT_SECRET_KEY: ' ' }, { DATABASE_SESSION_URL: nil },
+      { MANAGER_URL: 'http://manager.example.invalid' },
+      { DATABASE_SESSION_URL: 'postgres://session.example.invalid:6432/cloud' },
+      { DAWARICH_CLOUD_DRAIN_ONLY: 'true' }, { DAWARICH_PHOENIX_LIFECYCLE: 'invalid' }
+    ]
+    invalid.each do |config|
+      %w[release.sh web-entrypoint.sh cloud-entrypoint.sh cloud-sidekiq-entrypoint.sh].each do |script|
+        argv = script.include?('sidekiq') ? ['sidekiq'] : server
+        result = run_script(script, *argv, SELF_HOSTED: 'false', DAWARICH_RAILS: 'off', **config)
+        expect(result[:status]).not_to be_success
+        expect(result[:calls]).to be_empty
+      end
+    end
+  end
+
+  it 'B1 actual Cloud scripts refuse normalized reuse of transaction and statement endpoints' do
+    %w[transaction statement].each do |mode|
+      %w[release.sh cloud-entrypoint.sh cloud-sidekiq-entrypoint.sh].each do |script|
+        args = script == 'cloud-sidekiq-entrypoint.sh' ? %w[sidekiq -C config/sidekiq.yml] : server
+        result = run_script(script, *args, SELF_HOSTED: 'false', DAWARICH_RAILS: 'off',
+                            DATABASE_POOLING_MODE: mode, DATABASE_URL: 'postgres://pool.example.invalid/cloud',
+                            DATABASE_SESSION_URL: 'postgresql://POOL.EXAMPLE.INVALID.:05432/%63loud')
+        expect(result[:status]).not_to be_success
+        expect(result[:calls]).to be_empty
+      end
+    end
+  end
+
+  it 'B1-R2 actual Cloud scripts refuse mapped and compatible aliases before downstream effects' do
+    matrix = JSON.parse(File.read(File.join(root, 'app-phoenix/test/fixtures/cloud_admission_matrix.json')))
+    vectors = matrix.fetch('vectors').select do |vector|
+      vector.fetch('case').start_with?('B1-R2-review-', 'B1-R2-transaction-alias-2-')
+    end
+    expect(vectors.size).to eq(8)
+    vectors.each do |vector|
+      %w[release.sh cloud-entrypoint.sh cloud-sidekiq-entrypoint.sh].each do |script|
+        FileUtils.rm_f(calls_file)
+        args = script == 'cloud-sidekiq-entrypoint.sh' ? %w[sidekiq -C config/sidekiq.yml] : server
+        result = run_script(script, *args, **vector.fetch('changes'), SELF_HOSTED: 'false', DAWARICH_RAILS: 'off')
+        expect(result[:status]).not_to be_success, vector.fetch('case')
+        expect(result[:calls]).to be_empty
+        expect(result[:stderr]).not_to include('synthetic-shell-key')
+      end
+    end
+  end
+
+  it 'B2 actual Cloud scripts refuse malformed URLs before downstream effects' do
+    vectors = [
+      { MANAGER_URL: 'https://manager.example.invalid:0' },
+      { MANAGER_URL: 'https://manager.example.invalid:99999' },
+      { MANAGER_URL: "garbage\nhttps://manager.example.invalid" },
+      { DATABASE_SESSION_URL: 'postgres://session.example.invalid:99999/cloud' },
+      { DATABASE_SESSION_URL: 'postgres://session.example.invalid/%20' },
+      { DATABASE_SESSION_URL: 'postgres://session.example.invalid:06432/cloud' },
+      { DATABASE_SESSION_URL: "garbage\npostgres://session.example.invalid/cloud" },
+      { DAWARICH_CLOUD_DRAIN_ONLY: '' }, { MANAGER_URL: '' },
+      { JWT_SECRET_KEY: '' }, { DATABASE_SESSION_URL: '' }
+    ]
+    vectors.each do |values|
+      %w[release.sh cloud-entrypoint.sh cloud-sidekiq-entrypoint.sh].each do |script|
+        args = script == 'cloud-sidekiq-entrypoint.sh' ? %w[sidekiq -C config/sidekiq.yml] : server
+        result = run_script(script, *args, **values, SELF_HOSTED: 'false', DAWARICH_RAILS: 'off')
+        expect(result[:status]).not_to be_success
+        expect(result[:calls]).to be_empty
+        expect(result[:stderr]).not_to include('synthetic-shell-key')
+      end
+    end
+  end
+
+  it 'native Cloud refuses self-hosted web and worker entrypoints before effects' do
+    results = [
+      run_script('web-entrypoint.sh', *server, SELF_HOSTED: 'false'),
+      run_script('sidekiq-entrypoint.sh', 'sidekiq', '-C', 'config/sidekiq.yml', SELF_HOSTED: 'false')
+    ]
+    expect(results.map { |result| result[:status].success? }).to eq([false, false])
+    expect(results.map { |result| result[:calls] }).to eq([[], []])
   end
 
   it 'native web boot stops on migration or seed failure' do
