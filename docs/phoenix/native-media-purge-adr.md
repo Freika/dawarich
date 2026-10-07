@@ -84,7 +84,7 @@ serialize event and blob publication; that simpler database fence is chosen.
 Background locks now also span analysis. Failed analysis rolls back its claim;
 a process crash after probing but before commit can require another probe.
 Source lease contention retries rather than acknowledging unperformed work.
-No ownership/download policy, queue, migration or Cloud lifecycle change is made.
+No signed-download policy, queue, migration or Cloud lifecycle change is made.
 
 Named mode-specific cases in `media_ownership_test.exs` and
 `spec/jobs/posters/media_ownership_spec.rb` reproduce each defect, including failed
