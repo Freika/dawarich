@@ -35,7 +35,7 @@ defmodule DawarichWeb.RackIp do
 
   defp forwarded(_list, remote), do: List.first(remote)
 
-  defp forwarded_for(conn) do
+  def forwarded_for(conn) do
     case RackScheme.forwarded_values(header(conn, "forwarded")) do
       %{"for" => values} ->
         Enum.map(values, &address/1)

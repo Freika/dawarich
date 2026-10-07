@@ -37,8 +37,13 @@ defmodule DawarichWeb.WelcomeGate do
       length(pairs) == length(Enum.uniq_by(pairs, &elem(&1, 0))) and
       Enum.all?(pairs, fn {key, value} -> key in allowed and String.valid?(value) end) and
       not Regex.match?(~r/%(?![0-9a-fA-F]{2})/, conn.query_string) and
+      (Dawarich.Standalone.enabled?() or
+         Enum.all?(
+           ~w(x-forwarded-for client-ip forwarded),
+           &(Plug.Conn.get_req_header(conn, &1) == [])
+         )) and
       Enum.all?(
-        ~w(turbo-frame x-http-method-override x-forwarded-for client-ip forwarded transfer-encoding),
+        ~w(turbo-frame x-http-method-override transfer-encoding),
         &(Plug.Conn.get_req_header(conn, &1) == [])
       ) and
       Plug.Conn.get_req_header(conn, "content-length") in [[], ["0"]]
