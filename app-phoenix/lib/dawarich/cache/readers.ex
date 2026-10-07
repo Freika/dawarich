@@ -25,7 +25,7 @@ defmodule Dawarich.Cache.Readers do
     value = compute.()
 
     if value do
-      key = Dawarich.Insights.Details.Digests.key(id, year, value["updated_at"])
+      key = versioned(Dawarich.Insights.Details.Digests.key(id, year, value["updated_at"]), opts)
 
       case read(key) do
         %{digest: ^digest} when value == digest ->
@@ -48,6 +48,8 @@ defmodule Dawarich.Cache.Readers do
   end
 
   def warm(repo, id, opts) do
+    opts = Keyword.put(opts, :repo, repo)
+
     if repo.query!("SELECT id FROM users WHERE id=$1 AND deleted_at IS NULL", [id]).rows != [] do
       result =
         repo.query!("SELECT distance,toponyms FROM stats WHERE user_id=$1 ORDER BY id", [id])
@@ -68,6 +70,7 @@ defmodule Dawarich.Cache.Readers do
   end
 
   def warm_digests(repo, id, opts) do
+    opts = Keyword.put(opts, :repo, repo)
     now = opts[:now] || DateTime.utc_now()
     zone = opts[:ambient_zone] || System.get_env("TIME_ZONE", "Europe/Berlin")
 
@@ -90,13 +93,23 @@ defmodule Dawarich.Cache.Readers do
   end
 
   defp fetch(key, signature, ttl, compute, opts) do
+    key = versioned(key, opts)
+
     case read(key) do
       %{signature: ^signature, value: value} ->
         value
 
       _ ->
         value = compute.()
-        result = write(key, %{signature: signature, value: value}, ttl, opts)
+
+        result =
+          write(
+            key,
+            %{signature: signature, value: value},
+            ttl,
+            Keyword.put(opts, :resolved, true)
+          )
+
         if opts[:strict], do: match_write!(result)
         value
     end
@@ -112,12 +125,22 @@ defmodule Dawarich.Cache.Readers do
   end
 
   defp write(key, value, ttl, opts) do
+    key = if opts[:resolved], do: key, else: versioned(key, opts)
+
     if hook = opts[:before_warm_write],
       do: hook.(String.replace(key, ~r/^dawarich\/user_\d+_/, ""))
 
     bytes = "DW1" <> :erlang.term_to_binary(value)
     Redis.cache_command(["SET", "phoenix/" <> key, bytes, "EX", to_string(ttl)])
   end
+
+  defp versioned(key, opts),
+    do:
+      Dawarich.AfterCommit.Visibility.key(
+        Keyword.get(opts, :repo, Dawarich.Repo),
+        "phoenix/" <> key
+      )
+      |> String.replace_prefix("phoenix/", "")
 
   defp match_write!({:ok, "OK"}), do: :ok
   defp match_write!(error), do: raise("Native cache warming failed: #{inspect(elem(error, 0))}")

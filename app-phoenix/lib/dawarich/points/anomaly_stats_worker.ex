@@ -6,12 +6,11 @@ defmodule Dawarich.Points.AnomalyStatsWorker do
   def perform(%Oban.Job{args: args}), do: run(Dawarich.Jobs.repo(), args)
 
   def run(repo, args) do
-    Dawarich.Stats.CalculateMonth.call(repo, args["user_id"], args["year"], args["month"],
-      invalidated: fn ->
-        Dawarich.Points.DependentCaches.invalidate(args["user_id"], args["year"])
-      end
-    )
-
-    :ok
+    case Dawarich.Stats.CalculateMonth.call(repo, args["user_id"], args["year"], args["month"],
+           notify: Map.get(args, "notify_on_failure", true)
+         ) do
+      :missing -> :ok
+      result -> result
+    end
   end
 end

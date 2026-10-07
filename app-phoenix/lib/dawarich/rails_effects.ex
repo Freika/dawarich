@@ -8,7 +8,10 @@ defmodule Dawarich.RailsEffects do
 
     if Dawarich.Points.NativeEffects.native?(repo, "command:points.tile_epoch"),
       do: Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Points.TileEpochWorker, payload),
-      else: RailsCommands.insert!(repo, "points.tile_epoch", payload)
+      else:
+        Dawarich.AfterCommit.with_visibility(repo, "points", payload, fn ->
+          RailsCommands.insert!(repo, "points.tile_epoch", payload)
+        end)
   end
 
   def untracked_tracks(repo, user_id, import_id) do

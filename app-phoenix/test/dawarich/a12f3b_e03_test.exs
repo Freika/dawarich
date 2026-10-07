@@ -12,6 +12,9 @@ defmodule Dawarich.A12f3bE03Test do
   @oban __MODULE__.Oban
 
   setup do
+    previous_cable = Application.get_env(:dawarich, :cable)
+    Application.put_env(:dawarich, :cable, transport: :pg, repo: ScratchRepo)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, previous_cable) end)
     start_oban(@oban)
     for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
     assert {:ok, "OK"} = Dawarich.Redis.cache_command(["FLUSHDB"])
@@ -127,6 +130,7 @@ defmodule Dawarich.A12f3bE03Test do
              [DateTime.to_naive(@now)]
            ]
 
+    Dawarich.Test.AfterCommit.drain(ScratchRepo)
     rows("DELETE FROM job_outbox")
     operation = Ecto.UUID.generate()
 
@@ -177,6 +181,7 @@ defmodule Dawarich.A12f3bE03Test do
     parent = Ecto.UUID.generate()
     fanout = %{"user_id" => owner, "event_id" => parent}
     assert :ok = UserReclassify.run(ScratchRepo, fanout, %{now: @now})
+    Dawarich.Test.AfterCommit.drain(ScratchRepo)
     children = track_children(parent)
     assert Enum.map(children, fn [_, payload, _] -> payload["track_id"] end) == ids
 
@@ -195,6 +200,7 @@ defmodule Dawarich.A12f3bE03Test do
       assert :ok = ReclassifyTrackWorker.run(ScratchRepo, @oban, child)
     end
 
+    Dawarich.Test.AfterCommit.drain(ScratchRepo)
     assert RecalculationStatus.data(owner)["status"] == "completed"
     assert RecalculationStatus.data(owner)["processed_tracks"] == 101
     assert kinds() == []
@@ -288,16 +294,24 @@ defmodule Dawarich.A12f3bE03Test do
       end
     end)
 
-    assert_raise RuntimeError, "track unavailable", fn ->
-      UserReclassify.run(HookRepo, fanout, %{now: @now, before_enqueue: probe})
-    end
+    assert :ok = UserReclassify.run(ScratchRepo, fanout, %{now: @now})
+
+    [[intent]] =
+      rows(
+        "SELECT args FROM oban.oban_jobs WHERE args->>'operation'='transport_start' AND args->'payload'->>'event_id'=$1",
+        [event]
+      )
+
+    assert {:error, %RuntimeError{message: "track unavailable"}} =
+             Dawarich.AfterCommit.Worker.run(HookRepo, intent)
 
     assert RecalculationStatus.data(owner)["status"] == "failed"
     assert RecalculationStatus.data(owner)["processed_tracks"] == 0
     assert track_children(event) == []
-    refute Processed.done?(ScratchRepo, event)
+    assert Processed.done?(ScratchRepo, event)
+    refute Processed.done?(ScratchRepo, intent["intent_id"])
     HookRepo.clear_hook()
-    assert :ok = UserReclassify.run(ScratchRepo, fanout, %{now: @now, before_enqueue: probe})
+    assert :ok = Dawarich.AfterCommit.Worker.run(ScratchRepo, intent)
     assert length(track_children(event)) == 2
     assert RecalculationStatus.data(owner)["status"] == "processing"
     assert kinds() == []

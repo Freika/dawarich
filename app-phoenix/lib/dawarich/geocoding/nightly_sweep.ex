@@ -113,12 +113,14 @@ defmodule Dawarich.Geocoding.NightlySweep do
       if Processed.claim!(repo, receipt, "geocoding.nightly") do
         payload = %{"user_id" => user, "year" => nil, "scope" => "all"}
 
-        if Dawarich.Standalone.enabled?() or
-             Ownership.lock(repo, "command:stats.calculate_month") == :oban do
-          Oban.insert!(oban, NightlyInvalidationWorker.new(payload))
-        else
-          RailsCommands.insert!(repo, "stats.caches_invalidated", payload)
-        end
+        Dawarich.AfterCommit.with_visibility(repo, "stats", payload, fn ->
+          if Dawarich.Standalone.enabled?() or
+               Ownership.lock(repo, "command:stats.calculate_month") == :oban do
+            Oban.insert!(oban, NightlyInvalidationWorker.new(payload))
+          else
+            RailsCommands.insert!(repo, "stats.caches_invalidated", payload)
+          end
+        end)
       end
     end
   end
