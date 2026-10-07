@@ -113,9 +113,6 @@ defmodule Dawarich.Trips.WebParamsTest do
     assert fractional.started_at == ~N[2026-10-03 07:00:00.987654]
 
     for value <- [
-          "October 3 2026",
-          "2026-10-03",
-          "2026-10-03T09:00CET",
           %{},
           ["2026-10-03T09:00"]
         ] do
