@@ -87,9 +87,12 @@ defmodule DawarichWeb.ActiveStorage do
     do: DawarichWeb.ActiveStorage.UploadClosure.call(conn, storage, now, opts)
 
   defp downloadable?(key) do
-    not Dawarich.Standalone.enabled?() or
-      Dawarich.Repo.query!("SELECT 1 FROM active_storage_blobs WHERE key=$1", [key], log: false).num_rows ==
-        1
+    case Dawarich.Repo.query!("SELECT metadata FROM active_storage_blobs WHERE key=$1", [key],
+           log: false
+         ).rows do
+      [[metadata]] -> not Blobs.purging?(metadata)
+      [] -> not Dawarich.Standalone.enabled?()
+    end
   end
 
   defp acceptable?(conn, data) do

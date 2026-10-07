@@ -103,6 +103,256 @@ defmodule Dawarich.UserData.ExportWorkerTest do
              )
   end
 
+  @tag :export_redelivery
+  test "backup and export redelivery purge every generation storage before rows", %{
+    context: context,
+    args: args,
+    c: c
+  } do
+    previous = System.get_env("DAWARICH_RAILS")
+
+    try do
+      for mode <-
+            Enum.filter(
+              ["on", "off"],
+              &(System.get_env("DAWARICH_REDELIVERY_TEST_MODE", &1) == &1)
+            ) do
+        System.put_env("DAWARICH_RAILS", mode)
+        event = %{args | "event_id" => Ecto.UUID.generate()}
+        notify = fn _, _, _, _, _ -> throw(:simulated_shutdown) end
+
+        assert catch_throw(ExportWorker.run(ScratchRepo, event, context: context, notify: notify)) ==
+                 :simulated_shutdown
+
+        refute Processed.done?(ScratchRepo, event["event_id"])
+
+        [[id]] =
+          rows("SELECT export_id FROM phoenix.export_claims WHERE event_id=$1", [
+            Ecto.UUID.dump!(event["event_id"])
+          ])
+
+        [[old_id, old_key]] =
+          rows(
+            "SELECT b.id,b.key FROM active_storage_blobs b JOIN active_storage_attachments a ON a.blob_id=b.id WHERE a.record_type='Export' AND a.record_id=$1",
+            [id]
+          )
+
+        assert :ok = ExportWorker.run(ScratchRepo, event, context: context)
+        assert Processed.done?(ScratchRepo, event["event_id"])
+
+        generations =
+          rows(
+            "SELECT blob_id FROM active_storage_attachments WHERE record_type='Export' AND record_id=$1 ORDER BY blob_id",
+            [id]
+          )
+          |> List.flatten()
+
+        assert old_id in generations
+        assert length(generations) == 2
+
+        shared =
+          Dawarich.RailsBlobFixture.create!(
+            ScratchRepo,
+            context.storage.root,
+            "shared.zip",
+            "synthetic shared export"
+          )
+
+        for record <- [id, 988_203_999],
+            do:
+              rows(
+                "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('shared','Export',$1,$2,now())",
+                [record, shared.id]
+              )
+
+        variant =
+          Dawarich.RailsBlobFixture.create!(
+            ScratchRepo,
+            context.storage.root,
+            "variant.zip",
+            "synthetic variant"
+          )
+
+        leaf =
+          Dawarich.RailsBlobFixture.create!(
+            ScratchRepo,
+            context.storage.root,
+            "leaf.zip",
+            "synthetic descendant"
+          )
+
+        for {parent, child} <- [{old_id, variant.id}, {variant.id, leaf.id}] do
+          [[variant_record]] =
+            rows(
+              "INSERT INTO active_storage_variant_records(blob_id,variation_digest) VALUES($1,'synthetic') RETURNING id",
+              [parent]
+            )
+
+          rows(
+            "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('image','ActiveStorage::VariantRecord',$1,$2,now())",
+            [variant_record, child]
+          )
+        end
+
+        [[leaf_key]] = rows("SELECT key FROM active_storage_blobs WHERE id=$1", [leaf.id])
+        assert {:ok, :deleted} = Dawarich.Exports.Delete.call(ScratchRepo, c.user_id, id)
+
+        if mode == "on" do
+          [[payload]] =
+            rows(
+              "SELECT payload FROM phoenix.rails_commands WHERE kind='exports.purge' ORDER BY id DESC LIMIT 1"
+            )
+
+          assert Enum.sort(payload["blob_ids"]) == Enum.sort(generations ++ [shared.id])
+
+          assert {:ok, :ok} =
+                   ScratchRepo.transaction(fn ->
+                     Dawarich.Exports.PurgeWorker.enqueue!(ScratchRepo, payload["blob_ids"])
+                   end)
+        end
+
+        [[purge]] =
+          rows(
+            "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PurgeWorker' ORDER BY id DESC LIMIT 1"
+          )
+
+        queued_ids = generations ++ [variant.id, leaf.id]
+
+        assert Enum.sort(queued_ids) ==
+                 rows("SELECT id FROM active_storage_blobs WHERE id=ANY($1) ORDER BY id", [
+                   queued_ids
+                 ])
+                 |> List.flatten()
+
+        rows(
+          "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('late-reference','Export',988203998,$1,now())",
+          [variant.id]
+        )
+
+        path = Dawarich.Storage.disk_path(context.storage.root, old_key)
+        File.rm!(path)
+        File.mkdir_p!(path)
+
+        assert {:error, _} =
+                 Dawarich.Exports.PurgeWorker.run(purge,
+                   services: %{default: "local", services: context.storage_services},
+                   repo: ScratchRepo
+                 )
+
+        assert [[old_id]] == rows("SELECT id FROM active_storage_blobs WHERE id=$1", [old_id])
+        File.rmdir!(path)
+        File.write!(path, "synthetic retry")
+
+        assert :ok =
+                 Dawarich.Exports.PurgeWorker.run(purge,
+                   services: %{default: "local", services: context.storage_services},
+                   repo: ScratchRepo
+                 )
+
+        assert :ok =
+                 Dawarich.Exports.PurgeWorker.run(purge,
+                   services: %{default: "local", services: context.storage_services},
+                   repo: ScratchRepo
+                 )
+
+        assert [] == rows("SELECT id FROM active_storage_blobs WHERE id=ANY($1)", [generations])
+        refute File.exists?(path)
+
+        assert [[variant.id], [leaf.id]] ==
+                 rows("SELECT id FROM active_storage_blobs WHERE id=ANY($1) ORDER BY id", [
+                   [variant.id, leaf.id]
+                 ])
+
+        assert File.regular?(Dawarich.Storage.disk_path(context.storage.root, leaf_key))
+
+        [[variant_metadata], [leaf_metadata]] =
+          rows("SELECT metadata FROM active_storage_blobs WHERE id=ANY($1) ORDER BY id", [
+            [variant.id, leaf.id]
+          ])
+
+        refute Dawarich.Storage.Blobs.purging?(variant_metadata)
+        refute Dawarich.Storage.Blobs.purging?(leaf_metadata)
+
+        assert [[shared.id]] ==
+                 rows("SELECT id FROM active_storage_blobs WHERE id=$1", [shared.id])
+
+        [[shared_key]] = rows("SELECT key FROM active_storage_blobs WHERE id=$1", [shared.id])
+        assert File.regular?(Dawarich.Storage.disk_path(context.storage.root, shared_key))
+
+        [[point_id]] =
+          rows(
+            "INSERT INTO exports(user_id,name,file_format,file_type,status,created_at,updated_at) VALUES($1,'points',0,0,0,now(),now()) RETURNING id",
+            [c.user_id]
+          )
+
+        first =
+          Dawarich.RailsBlobFixture.create!(
+            ScratchRepo,
+            context.storage.root,
+            "old-points.zip",
+            "synthetic prior points"
+          )
+
+        rows(
+          "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('file','Export',$1,$2,now())",
+          [point_id, first.id]
+        )
+
+        [[first_key]] = rows("SELECT key FROM active_storage_blobs WHERE id=$1", [first.id])
+        point_event = Ecto.UUID.generate()
+
+        assert {:run, point_export} =
+                 Dawarich.Exports.claim(ScratchRepo, point_id, c.user_id, point_event)
+
+        temp = Path.join(context.storage.root, "synthetic-new-points")
+        File.write!(temp, "synthetic new points")
+        next = Dawarich.Storage.put!(context.storage, temp, "new-points.zip", "application/zip")
+
+        assert :ok =
+                 Dawarich.Exports.complete(ScratchRepo, point_export, point_event, next, %{
+                   title: "Export finished",
+                   content: "Synthetic points"
+                 })
+
+        point_blobs =
+          rows(
+            "SELECT blob_id FROM active_storage_attachments WHERE record_type='Export' AND record_id=$1",
+            [point_id]
+          )
+          |> List.flatten()
+
+        assert first.id in point_blobs
+        assert length(point_blobs) == 2
+        assert {:ok, :deleted} = Dawarich.Exports.Delete.call(ScratchRepo, c.user_id, point_id)
+
+        if mode == "on",
+          do:
+            ScratchRepo.transaction(fn ->
+              Dawarich.Exports.PurgeWorker.enqueue!(ScratchRepo, point_blobs)
+            end)
+
+        [[point_purge]] =
+          rows(
+            "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PurgeWorker' ORDER BY id DESC LIMIT 1"
+          )
+
+        assert :ok =
+                 Dawarich.Exports.PurgeWorker.run(point_purge,
+                   services: %{default: "local", services: context.storage_services},
+                   repo: ScratchRepo
+                 )
+
+        assert [] == rows("SELECT id FROM active_storage_blobs WHERE id=ANY($1)", [point_blobs])
+        refute File.exists?(Dawarich.Storage.disk_path(context.storage.root, first_key))
+        refute File.exists?(Dawarich.Storage.disk_path(context.storage.root, next.key))
+      end
+    after
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end
+  end
+
   test "backup worker failure and owner loss leave no false completed export", %{
     c: c,
     context: context,

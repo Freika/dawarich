@@ -166,11 +166,19 @@ defmodule DawarichWeb.ExportsDeleteTest do
     path = Dawarich.Storage.disk_path(c.root, object["key"])
     File.rm!(path)
     File.mkdir_p!(path)
-    assert {:error, _} = apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services]])
+
+    assert {:error, _} =
+             apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services, repo: Repo]])
+
     File.rmdir!(path)
     File.write!(path, "synthetic standalone export")
-    assert :ok = apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services]])
-    assert :ok = apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services]])
+
+    assert :ok =
+             apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services, repo: Repo]])
+
+    assert :ok =
+             apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services, repo: Repo]])
+
     assert download.().status == 404
     assert redirect.(shared.signed_id).status == 302
   end

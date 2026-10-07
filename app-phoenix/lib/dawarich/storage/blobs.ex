@@ -3,7 +3,7 @@ defmodule Dawarich.Storage.Blobs do
 
   alias Dawarich.{RailsMessages, RailsTime, Repo, Storage}
 
-  @protected ~w(analyzed identified composed)
+  @protected ~w(analyzed identified composed phoenix_purge_pending)
 
   @insert """
   INSERT INTO active_storage_blobs (key, filename, content_type, metadata, service_name, byte_size, checksum, created_at)
@@ -61,6 +61,13 @@ defmodule Dawarich.Storage.Blobs do
     end)
   end
 
+  def purging?(metadata) do
+    case Jason.decode(metadata || "{}") do
+      {:ok, %{"phoenix_purge_pending" => true}} -> true
+      _ -> false
+    end
+  end
+
   defp select(id) do
     sql =
       "SELECT *, " <>
@@ -68,8 +75,12 @@ defmodule Dawarich.Storage.Blobs do
         " AS created_at_json FROM active_storage_blobs WHERE id = $1"
 
     case Repo.query!(sql, [id]) do
-      %{columns: columns, rows: [row]} -> blob(Enum.zip(columns, row))
-      _ -> nil
+      %{columns: columns, rows: [row]} ->
+        result = blob(Enum.zip(columns, row))
+        unless purging?(result.metadata), do: result
+
+      _ ->
+        nil
     end
   end
 
