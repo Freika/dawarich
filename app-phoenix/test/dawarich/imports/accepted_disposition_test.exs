@@ -33,7 +33,8 @@ defmodule Dawarich.Imports.AcceptedDispositionTest do
         ~w(zip_unsafe_skip zip_duplicate_entries bounded_tcx_nodes bounded_csv_line bounded_rec_line),
       mode <- ["on", "off"] do
     @tag disposition_case: name
-    test "accepted #{name} has an executor with fixed native ownership in #{mode}", c do
+    test "accepted #{name} has an executor with fixed native ownership in #{mode}",
+         c do
       mode = unquote(mode)
 
       (fn ->
@@ -52,7 +53,8 @@ defmodule Dawarich.Imports.AcceptedDispositionTest do
       ],
       mode <- ["on", "off"] do
     @tag disposition_case: lane
-    test "accepted #{lane} changed source has an executor with fixed ownership in #{mode}", _c do
+    test "accepted #{lane} changed source has an executor with fixed ownership in #{mode}",
+         _c do
       mode = unquote(mode)
 
       (fn ->
@@ -71,7 +73,7 @@ defmodule Dawarich.Imports.AcceptedDispositionTest do
     end
   end
 
-  defp execute(c, worker, lane, kind, mode) do
+  defp execute(c, worker, lane, _kind, _mode) do
     for entry <- Registry.entries(), do: Ownership.put!(ScratchRepo, entry.key, :oban)
 
     rows("UPDATE users SET settings=jsonb_build_object('locale','fr') WHERE id=$1", [
@@ -93,35 +95,21 @@ defmodule Dawarich.Imports.AcceptedDispositionTest do
     assert Processed.done?(ScratchRepo, c.job.args["event_id"])
     assert [] == rows("SELECT id FROM points WHERE import_id=$1", [c.import.id])
 
-    if mode == "on" do
-      assert [[^kind, payload]] = rows("SELECT kind,payload FROM phoenix.rails_commands")
-      assert payload == c.job.args
+    assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+    assert [] == rows("SELECT event_id FROM phoenix.import_handoffs")
 
-      assert [[c.import.id, c.import.user_id, c.job.args["time_zone"], true, "pending"]] ==
-               rows(
-                 "SELECT import_id,user_id,time_zone,native_fallback,state FROM phoenix.import_handoffs"
-               )
+    assert [[3, message]] =
+             rows("SELECT status,error_message FROM imports WHERE id=$1", [c.import.id])
 
-      assert [[status]] = rows("SELECT status FROM imports WHERE id=$1", [c.import.id])
-      assert status in [0, 1]
-      assert [] == rows("SELECT id FROM notifications")
-    else
-      assert [] == rows("SELECT kind FROM phoenix.rails_commands")
-      assert [] == rows("SELECT event_id FROM phoenix.import_handoffs")
+    assert is_binary(message) and message != ""
 
-      assert [[3, message]] =
-               rows("SELECT status,error_message FROM imports WHERE id=$1", [c.import.id])
+    assert [[2, title, content]] =
+             rows("SELECT kind,title,content FROM notifications WHERE user_id=$1", [
+               c.import.user_id
+             ])
 
-      assert is_binary(message) and message != ""
-
-      assert [[2, title, content]] =
-               rows("SELECT kind,title,content FROM notifications WHERE user_id=$1", [
-                 c.import.user_id
-               ])
-
-      assert title =~ "échoué"
-      assert content != ""
-    end
+    assert title =~ "échoué"
+    assert content != ""
 
     before =
       rows("SELECT status,raw_points,doubles,error_message FROM imports WHERE id=$1", [
@@ -137,10 +125,10 @@ defmodule Dawarich.Imports.AcceptedDispositionTest do
                ])
     end
 
-    assert [[if(mode == "on", do: 1, else: 0)]] ==
+    assert [[0]] ==
              rows("SELECT count(*) FROM phoenix.rails_commands")
 
-    assert [[if(mode == "off", do: 1, else: 0)]] ==
+    assert [[1]] ==
              rows("SELECT count(*) FROM notifications WHERE user_id=$1", [c.import.user_id])
 
     stop_supervised!(__MODULE__)

@@ -215,3 +215,38 @@ reconciliation evidence without editing shared rows.
 
 AFFiNE counterparts were read. The master execution plan forbids delegate AFFiNE
 writes for this assignment; controller synchronization remains pending.
+
+## Review follow-up: shared effects and stale suggestions (2026-10-07)
+
+Calendar publication now uses the shared `AfterCommit.enqueue/4` directly,
+retaining the transactionally committed month token, source reverse command,
+explicit native restore option and visit worker's indefinite snooze policy.
+`Points.NativeEffects.enqueue/4` is the shared delegation; the feature's direct
+Oban insertion is removed. RailsCache composes the shared visibility generation
+with the month fence, retaining generation rechecks and captured-key reads.
+Demo importer/destroyer publish supplemental point-month eviction and stats
+follow-ups inside their domain transaction. Their keys intent captures legacy,
+month-generated and shared-generated physical keys before the generation bump.
+
+Null-island cleanup publishes all deleted visit timestamps, including restored
+demos. Its orphan-place exclusion remains. The named archive-worker regressions
+cover both modes, a cache outage, committed absence, immediate logical misses,
+a durable month intent, consumer recovery and repeated execution.
+
+Detection persistence rechecks the overlapping machine window and reloads all
+candidate points and transportation segments while holding its per-user lock.
+Changed evidence or boundaries cause recomputation before anchor trimming and
+destructive replacement. The user row lock also serializes native persistence
+when advisory locking is disabled. Unchanged evidence still preserves visit IDs.
+The two deterministic realtime/outbox/dispatch interleavings preserve the newer
+50-minute/six-point visit and the same-range seven-point visit respectively.
+Settings.load excludes soft-deleted users for admission, suggestion execution,
+smart detection and fleet/redetection callers. Accepted workers still clear the
+debounce claim before skipping the deleted actor.
+
+Scoped reconciliation: ED-FIX-VISITS-NULL-ISLAND and ED-FIX-VISITS-CONCURRENT in
+`app-phoenix/parity/expected_diffs.md`; FRB-051 and FRB-052 in the fixed Rails bugs
+register (provisional feature IDs). Soft-deleted admission restores Rails parity
+and adds no intentional-difference row. Gate and mutation evidence belongs to
+the fix4 controller report. AFFiNE synchronization remains controller-owned
+under the master plan's delegate-write restriction.

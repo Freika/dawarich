@@ -22,6 +22,8 @@ defmodule DawarichWeb.RateLimit do
   def call(conn, _opts) do
     conn = native_params(conn)
     if conn.halted, do: conn, else: apply_limit(conn)
+  rescue
+    DawarichWeb.RailsRemoteIp.IpSpoofAttackError -> DawarichWeb.RailsErrors.respond(conn, 500)
   end
 
   defp native_params(
@@ -169,8 +171,11 @@ defmodule DawarichWeb.RateLimit do
   end
 
   def plan(key) do
+    generation = Dawarich.AfterCommit.Visibility.plan(Dawarich.Repo, key)
+    cache_key = if generation == "", do: {__MODULE__, key}, else: {__MODULE__, key, generation}
+
     TtlCache.fetch(
-      {__MODULE__, key},
+      cache_key,
       120_000,
       fn ->
         with %{} = user <- Accounts.by_api_key(key),

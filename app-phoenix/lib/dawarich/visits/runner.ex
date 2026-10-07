@@ -93,8 +93,37 @@ defmodule Dawarich.Visits.Runner do
       by_id = Map.new(evidence.points, &{&1.id, &1})
       stays = if evidence.points == [], do: [], else: stays(evidence, by_id, ctx.policy)
       scored = if stays == [], do: [], else: attribute_and_score(ctx, stays, by_id)
-      Persister.run(ctx.repo, ctx.user_id, bs, be, scored, by_id, ctx.policy)
+      refresh = fn prepared -> refresh(ctx, bs, be, evidence, prepared) end
+      Persister.run(ctx.repo, ctx.user_id, bs, be, scored, by_id, ctx.policy, refresh)
     end
+  end
+
+  defp refresh(ctx, start, stop, evidence, prepared) do
+    {bs, be} = window(ctx, start, stop)
+    current = CandidateLoader.load(ctx.repo, ctx.user_id, bs, be)
+
+    cond do
+      current.skipped ->
+        ctx.repo.rollback(:candidate_limit)
+
+      {bs, be, current} == {start, stop, evidence} ->
+        prepared
+
+      true ->
+        by_id = Map.new(current.points, &{&1.id, &1})
+
+        scored =
+          current
+          |> stays(by_id, ctx.policy)
+          |> attribute_and_score_current(ctx, by_id)
+
+        {bs, be, scored, by_id}
+    end
+  end
+
+  defp attribute_and_score_current(stays, ctx, by_id) do
+    ctx = %{ctx | areas: PlaceAttributor.areas(ctx.repo, ctx.user_id)}
+    attribute_and_score(ctx, stays, by_id)
   end
 
   defp stays(evidence, by_id, policy) do

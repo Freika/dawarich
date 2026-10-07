@@ -9,7 +9,7 @@ defmodule Dawarich.Imports.GpxHandover do
   def resume(repo, %Oban.Job{} = job, reason \\ :lost) when reason in [:lost, :legacy] do
     transfer = fn ->
       {:ok, result} = repo.transaction(fn -> transfer(repo, job, reason) end)
-      result
+      Dawarich.Imports.AcceptedDisposition.after_commit(result)
     end
 
     case Lease.with_lease(repo, "import:#{job.args["import_id"]}", transfer, timeout_ms: 0) do

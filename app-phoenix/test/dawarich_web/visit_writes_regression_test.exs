@@ -59,6 +59,89 @@ defmodule DawarichWeb.VisitWritesRegressionTest do
     :ok
   end
 
+  for {mode, label} <- [{nil, "coexistence"}, {"off", "standalone"}] do
+    @tag :null_island_demo
+    test "null island deletion fences restored demo visit calendar counts after visible deletion in #{label}" do
+      env("DAWARICH_RAILS", unquote(mode))
+      ctx = fixture("rename")
+
+      data = [
+        %{
+          "name" => "Restored island demo",
+          "started_at" => "2026-10-04T12:00:00Z",
+          "ended_at" => "2026-10-04T13:00:00Z",
+          "duration" => 60,
+          "status" => "suggested",
+          "demo" => true,
+          "place_reference" => %{
+            "name" => "Restored null island",
+            "latitude" => 0.01,
+            "longitude" => 0.01
+          }
+        }
+      ]
+
+      assert Dawarich.UserData.Restore.Visits.call(ScratchRepo, ctx.user_id, data, %{
+               now: ~U[2026-10-05 00:00:00Z],
+               repo: ScratchRepo
+             }) == 1
+
+      [[visit_id, true, place_id]] =
+        rows(
+          "SELECT id,demo,place_id FROM visits WHERE name='Restored island demo' AND user_id=$1",
+          [ctx.user_id]
+        )
+
+      assert is_integer(place_id)
+      assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
+      rows("DELETE FROM oban.oban_jobs WHERE worker=$1", [@worker])
+
+      assert Dawarich.UserData.Restore.Points.call(
+               ScratchRepo,
+               ctx.user_id,
+               [
+                 %{
+                   "timestamp" => DateTime.to_unix(~U[2026-10-04 12:00:00Z]),
+                   "lonlat" => "POINT(0.01 0.01)"
+                 }
+               ],
+               %{now: ~U[2026-10-05 00:00:00Z], repo: ScratchRepo}
+             ) == 1
+
+      assert rows(
+               "SELECT EXISTS(SELECT 1 FROM points WHERE user_id=$1 AND " <>
+                 Dawarich.ReleaseOperations.NullIsland.predicate() <> ")",
+               [ctx.user_id]
+             ) == [[true]]
+
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:release.null_island", :oban)
+
+      keys =
+        for segment <- ~w(lite pro),
+            do: month_key(ctx.user_id, "2026-10", "Europe/Berlin", segment)
+
+      for key <- keys,
+          do:
+            assert({:ok, "OK"} = RailsCache.put(key, "old restored demo count", expires_in: 300))
+
+      stop_supervised!(Dawarich.Redis.Cache)
+
+      assert :ok =
+               Dawarich.ReleaseOperations.NullIsland.perform(%Oban.Job{
+                 args: %{"version" => 1, "user_id" => ctx.user_id}
+               })
+
+      assert rows("SELECT id FROM visits WHERE id=$1", [visit_id]) == []
+      start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+      for key <- keys, do: assert(RailsCache.get(key) == :miss)
+      assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker=$1", [@worker]) == [[1]]
+      assert :ok = Dawarich.Test.AfterCommit.drain(ScratchRepo)
+      for key <- keys, do: assert(RailsCache.get(key) == :miss)
+      [[args]] = rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [@worker])
+      assert :ok = Dawarich.Points.VisitMonthsWorker.run(ScratchRepo, args)
+    end
+  end
+
   @tag :cache_outage
   test "visit write endpoints commit during cache outage and retry durable month invalidation" do
     stop_supervised(Dawarich.Redis.Cache)
@@ -181,13 +264,7 @@ defmodule DawarichWeb.VisitWritesRegressionTest do
 
     assert %{success: 1, failure: 0} = Oban.drain_queue(@oban, queue: :projections)
 
-    for key <- keys do
-      assert RailsCache.get(key) ==
-               if(String.contains?(key, "/2026-11/"),
-                 do: {:ok, "old committed snapshot"},
-                 else: :miss
-               )
-    end
+    for key <- keys, do: assert(RailsCache.get(key) == :miss)
 
     generations = rows("SELECT key,token FROM phoenix.epochs ORDER BY key")
     jobs = rows("SELECT id FROM oban.oban_jobs WHERE worker=$1 ORDER BY id", [@worker])
@@ -309,7 +386,8 @@ defmodule DawarichWeb.VisitWritesRegressionTest do
       end
 
       key = month_key(ctx.user_id, "2026-10", "Europe/Berlin", "pro")
-      physical = Dawarich.Visits.CacheGeneration.physical_key(key, ScratchRepo)
+      physical = key |> Dawarich.Visits.CacheGeneration.physical_key(ScratchRepo)
+      physical = Dawarich.AfterCommit.Visibility.key(ScratchRepo, physical)
       assert {:ok, "OK"} = RailsCache.put(key, "old day and aggregate counts", expires_in: 300)
       assert {:ok, bytes} = Dawarich.Redis.cache_command(["GET", physical])
 
@@ -569,6 +647,64 @@ defmodule DawarichWeb.VisitWritesRegressionTest do
       rows("DELETE FROM oban.oban_jobs WHERE worker=$1", [@worker])
       assert Dawarich.DemoData.Destroyer.call(ScratchRepo, user) == :destroyed
       assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker=$1", [@worker]) == [[1]]
+    end
+  end
+
+  @tag :shared_demo_intent
+  test "supplemental demo eviction records captured month keys atomically with its caller" do
+    for mode <- [nil, "off"] do
+      env("DAWARICH_RAILS", mode)
+      reset!(ScratchRepo)
+      ctx = fixture("rename")
+      user = Dawarich.Accounts.get(ctx.user_id)
+
+      assert {:ok, :ok} =
+               ScratchRepo.transaction(fn ->
+                 Dawarich.Visits.Calendar.changed(ScratchRepo, ctx.user_id, [
+                   ~U[2026-10-03 12:00:00Z]
+                 ])
+               end)
+
+      Dawarich.Test.AfterCommit.drain(ScratchRepo)
+      key = month_key(ctx.user_id, "2026-10", "Europe/Berlin", "pro")
+      month = Dawarich.Visits.CacheGeneration.physical_key(key, ScratchRepo)
+      physical = Dawarich.AfterCommit.Visibility.key(ScratchRepo, month)
+      assert {:ok, "OK"} = RailsCache.put(key, "captured point month", expires_in: 300)
+
+      sql =
+        "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.AfterCommit.Worker' AND args->>'operation'='keys'"
+
+      assert {:error, :rollback_probe} =
+               ScratchRepo.transaction(fn ->
+                 assert :ok =
+                          Dawarich.DemoData.Importer.invalidate(ScratchRepo, user, [[2026, 10]])
+
+                 [[args]] = rows(sql)
+                 assert physical in args["payload"]["keys"]
+                 ScratchRepo.rollback(:rollback_probe)
+               end)
+
+      assert rows(sql) == []
+      assert RailsCache.get(key) == {:ok, "captured point month"}
+      stop_supervised!(Dawarich.Redis.Cache)
+
+      assert {:ok, :ok} =
+               ScratchRepo.transaction(fn ->
+                 Dawarich.DemoData.Importer.invalidate(ScratchRepo, user, [[2026, 10]])
+               end)
+
+      [[args]] = rows(sql)
+      assert key in args["payload"]["keys"]
+      assert month in args["payload"]["keys"]
+      assert physical in args["payload"]["keys"]
+      assert {:error, _} = Dawarich.AfterCommit.Worker.run(ScratchRepo, args)
+      start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+      assert RailsCache.get(key) == :miss
+      assert {:ok, bytes} = Dawarich.Redis.cache_command(["GET", physical])
+      assert is_binary(bytes)
+      assert :ok = Dawarich.AfterCommit.Worker.run(ScratchRepo, args)
+      assert {:ok, nil} = Dawarich.Redis.cache_command(["GET", physical])
+      assert :ok = Dawarich.AfterCommit.Worker.run(ScratchRepo, args)
     end
   end
 

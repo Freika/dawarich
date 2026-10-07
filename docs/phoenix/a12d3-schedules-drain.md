@@ -369,17 +369,46 @@ terminal/subscriber effects and unchanged Rails-owned coexistence payloads.
 The named `R10progress`, `R10gpx` and `R10normal` regressions cover both modes
 and fail individual old-publisher mutations.
 
-The next all-R01–R20 audit identifies **R12k02 `exports.purge`** as still live:
-`Exports.Delete.call/3` at `exports/delete.ex:44` uses only standalone mode.
-An actual synthetic export deletion with every Registry owner Oban inserts a
-reverse row during coexistence and no native purge job; standalone queues
-`Exports.PurgeWorker` and inserts no reverse row. Both SQL probes roll back.
-There is no dedicated purge Registry key. RX-EXPORTS must establish the native
-producer ownership contract and zero-reverse/terminal/Rails hand-back proof.
-Per the closure brief this new gap is reported, not repaired. H03 all-producer
-acceptance and H04 final ED closure remain blocked. No closure kind or source
-disposition is removed; green package gates cannot substitute for this failed
-contract. The controller report is `fix-hot-h03-closure.report.md`.
+The final R01–R20 recheck repairs **R12k02 `exports.purge`** through the actual
+export parent ownership and the unchanged shared storage-first purge helper.
+Native-owned coexistence and standalone delete physical objects before blob
+rows, retain retry targets and protect shared attachments. Rails-owned
+coexistence keeps the original payload bytes. `R12k02`/`R12parents` prove both
+export types, both modes, mixed ownership and actual storage terminal effects.
+
+The same pre-fix all-kind probe found R19k06's missing
+`command:visits.user_redetect` Registry entry and R09k03/R09k04's native-owned
+legacy handover. The existing user-redetect worker is now registered unclaimable;
+its real fleet child completes natively. The source-owner census names the
+native key and retains the accepted `:a12d2` source residue.
+
+The accepted-import repair now selects the locked GPX/normal parent owner in
+`Imports.AcceptedDisposition.call/4`. Native-owned unsupported accepted imports
+settle failed with one localized notice and acknowledgement in either mode,
+without reverse rows or a Rails handoff. Rails-owned coexistence keeps the
+original durable fallback and payload bytes. A native-owned normal job edited to GPX before admission now uses its existing
+GPX adapter in both modes. The edited-GPX regression proves completed status,
+one point, zero reverse publication and inert replay; restoring standalone-only
+admission fails the coexistence case. Unsupported envelopes retain terminal
+failure settlement and native parser/archive bounds.
+
+All 14 actual-worker cases retain
+fixed native owners, terminal settlement and replay; the two ownership
+regressions cover both modes and preserve source-owned payloads.
+
+H03 all-R01–R20 native producer acceptance and H04 local ED disposition are
+complete on production commit `69977ef5f`: final diagnostics show no all-native
+production reverse insertion in either mode; the stable terminal batch passes
+1,891 tests and the required full seed-404 runner passes 9,451 tests, zero
+failures, exit 0. Forced warnings-as-errors compilation and whole-tree formatting
+pass. The retained Rails drain oracle passes four examples with Swagger restored. Current evidence is recorded in
+`fix5-hot-h03-closure.report.md` and
+[a12f3b-pages-producers.md](a12f3b-pages-producers.md). Prior fix4 producer
+blockers are superseded by the ownership repair. No durable closure kind,
+source disposition, debt or release gate is removed. Native SQL still cannot
+certify source drain, and G49 remains blocked pending external observations,
+fences, quiescence and lifecycle acceptance. Every-mode Cloud lifecycle
+refusal is unchanged.
 
 H03b retains unreadable-database and all-key pin safety. H04 reuses the existing
 Cloud operator HTTP/connected-auth test and the actual native trip/release

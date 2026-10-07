@@ -143,7 +143,7 @@ defmodule Dawarich.RailsJobOwners do
     "VisitSuggestingJob" => {:oban, ["command:visits.suggest"]},
     "Visits::FleetRedetectJob" => {:oban, ["command:release.visits_fleet_redetect"]},
     "Visits::FullHistoryRedetectJob" => {:oban, ["command:visits.full_history_redetect"]},
-    "Visits::UserRedetectJob" => {:slice, :a12d2}
+    "Visits::UserRedetectJob" => {:oban, ["command:visits.user_redetect"], :a12d2}
   }
 
   def owners, do: @owners

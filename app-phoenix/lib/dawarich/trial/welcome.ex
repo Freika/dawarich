@@ -140,7 +140,7 @@ defmodule Dawarich.Trial.Welcome do
     cookie = conn.cookies["_dawarich_session"]
 
     cond do
-      context[:oidc] == true ->
+      context[:oidc] == true and not Dawarich.Standalone.enabled?() ->
         {:handoff, :oidc}
 
       not Dawarich.Standalone.enabled?() and Enum.any?(@markers, &Map.has_key?(session, &1)) ->
@@ -201,7 +201,8 @@ defmodule Dawarich.Trial.Welcome do
 
   defp issuer(user) do
     cond do
-      user.otp_required_for_login or user.provider not in [nil, ""] or not is_nil(user.locked_at) ->
+      user.otp_required_for_login or not is_nil(user.locked_at) or
+          (user.provider not in [nil, ""] and not Dawarich.Standalone.enabled?()) ->
         {:handoff, :account}
 
       not is_binary(user.encrypted_password) or byte_size(user.encrypted_password) < 29 ->
@@ -255,7 +256,7 @@ defmodule Dawarich.Trial.Welcome do
   defp track(prepared, context) do
     repo = Map.get(context, :repo, Repo)
     user = Map.update!(prepared.user, :current_sign_in_at, &utc/1)
-    ip = :inet.ntoa(prepared.conn.remote_ip) |> to_string()
+    ip = DawarichWeb.RailsRemoteIp.ip(prepared.conn)
     changes = Trackable.changes(user, clock(context), ip)
 
     result =

@@ -24,7 +24,7 @@ defmodule Dawarich.Visits.Calendar do
       Dawarich.RailsCommands.insert!(repo, "visit_months_changed", payload)
     end
 
-    Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Points.VisitMonthsWorker, payload)
+    Dawarich.AfterCommit.enqueue(repo, Dawarich.Points.VisitMonthsWorker, payload)
   end
 
   def invalidate(repo, user, stamps) do
@@ -33,7 +33,15 @@ defmodule Dawarich.Visits.Calendar do
     for month <- months, segment <- ~w(lite pro) do
       key = Enum.join(["timeline_month_summary", user.id, month, setting, segment, "v3"], "/")
       versioned = Dawarich.Visits.CacheGeneration.physical_key(key, repo)
-      {:ok, _} = Dawarich.Redis.cache_command(["UNLINK", key, versioned])
+
+      {:ok, _} =
+        Dawarich.Redis.cache_command([
+          "UNLINK",
+          key,
+          versioned,
+          Dawarich.AfterCommit.Visibility.key(repo, key),
+          Dawarich.AfterCommit.Visibility.key(repo, versioned)
+        ])
     end
 
     :ok

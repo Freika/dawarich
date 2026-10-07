@@ -19,6 +19,9 @@ Compiled 2026-10-07. Each item links to the [evidence register](fixed-rails-bugs
 
 ## Data integrity
 
+- Preserve newer visit duration and point associations when suggestions execute concurrently. [FRB-052](fixed-rails-bugs.md#frb-052--stale-concurrent-suggestions-truncate-newer-committed-visits)
+- Refresh calendar counts when null-island cleanup deletes restored demo visits. [FRB-051](fixed-rails-bugs.md#frb-051--null-island-cleanup-leaves-restored-demo-visit-counts-cached)
+
 - Prevent completed extraction retries from repeating their saved effects. [FRB-005](fixed-rails-bugs.md#frb-005--legacy-extraction-replay-repeats-terminal-effects)
 - Prevent an older extraction-removal retry from deleting a newer extraction. [FRB-006](fixed-rails-bugs.md#frb-006--an-old-removal-retry-can-remove-newer-extraction-data)
 - Keep another account’s demo tags unchanged when importing a visit into inconsistently linked demo data. [FRB-009](fixed-rails-bugs.md#frb-009--demo-adoption-changes-another-accounts-tag)

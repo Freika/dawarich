@@ -656,3 +656,28 @@ deleted records through the shared storage-first native purge worker. Blob and
 variant rows survive physical deletion failure; shared objects and the other
 record's attachment remain intact. Unsupported place/visit-note content still
 returns an error with rollback before any records disappear.
+
+### FRB-051 — Null-island cleanup leaves restored demo visit counts cached
+
+Rails deletes an archive-restored demo visit near null island but its demo
+callback exclusion leaves cached calendar counts unchanged. Phoenix publishes
+all deleted visit timestamps in the cleanup transaction, including demos.
+
+- Rails: `app/jobs/data_migrations/cleanup_null_island_job.rb:28`; `app/models/visit.rb:22`.
+- Phoenix: `app-phoenix/lib/dawarich/release_operations/null_island.ex:141`.
+- Tests: “null island deletion fences restored demo visit calendar counts after visible deletion in coexistence” and the corresponding “in standalone” in `app-phoenix/test/dawarich_web/visit_writes_regression_test.exs`.
+- Evidence: fix4-fix-visits-writes.report.md; named demo-filter mutation, restored GREEN.
+- Ledger: ED-FIX-VISITS-NULL-ISLAND. Feature-only correction; ID provisional until controller consolidation. Rails cleanup remains unchanged; deployment acceptance pending.
+
+### FRB-052 — Stale concurrent suggestions truncate newer committed visits
+
+A delayed Rails computation can replace a newer 50-minute/six-point visit with
+its older 30-minute/four-point result, or drop a seventh point from a same-range
+visit. Phoenix revalidates the machine window and full candidate evidence under
+the per-user persistence lock and recomputes changed work before replacement.
+
+- Rails: `app/services/visits/detection/runner.rb:26,41`; `app/services/visits/detection/persister.rb:30,35`.
+- Phoenix: `app-phoenix/lib/dawarich/visits/persister.ex:26`; `app-phoenix/lib/dawarich/visits/runner.ex:101`.
+- Tests: “concurrent native suggestions preserve the longer committed stay: overlap” and “concurrent native suggestions preserve the longer committed stay: same_range” in `app-phoenix/test/dawarich/visits/concurrent_suggestions_test.exs`.
+- Evidence: fix4-fix-visits-writes.report.md; deterministic query barriers, failing locked-refresh mutation, restored GREEN.
+- Ledger: ED-FIX-VISITS-CONCURRENT. Feature-only correction; ID provisional until controller consolidation. Confirmed/declined/tombstone anchors remain protected; Rails detection remains unchanged; deployment acceptance pending.

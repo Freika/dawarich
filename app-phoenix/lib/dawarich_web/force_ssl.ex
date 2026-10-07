@@ -48,8 +48,8 @@ defmodule DawarichWeb.ForceSSL do
   end
 
   defp location(conn) do
-    port = if conn.port in [80, 443], do: "", else: ":#{conn.port}"
+    base = conn |> as_https() |> DawarichWeb.RequestURL.base() |> String.replace(~r/:80\z/, "")
     query = if conn.query_string == "", do: "", else: "?" <> conn.query_string
-    "https://" <> conn.host <> port <> conn.request_path <> query
+    base <> conn.request_path <> query
   end
 end

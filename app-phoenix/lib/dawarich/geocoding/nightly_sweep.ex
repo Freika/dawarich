@@ -1,8 +1,8 @@
 defmodule Dawarich.Geocoding.NightlySweep do
   @moduledoc false
 
-  alias Dawarich.{RailsCommands, Standalone, State}
-  alias Dawarich.Geocoding.{Config, NightlyWorker, ReversePointWorker}
+  alias Dawarich.{RailsCommands, State}
+  alias Dawarich.Geocoding.{Config, NightlyInvalidationWorker, NightlyWorker, ReversePointWorker}
   alias Dawarich.Jobs.{Ownership, Processed}
 
   @namespace <<0x6B, 0xA7, 0xB8, 0x11, 0x9D, 0xAD, 0x11, 0xD1, 0x80, 0xB4, 0x00, 0xC0, 0x4F, 0xD4,
@@ -19,42 +19,36 @@ defmodule Dawarich.Geocoding.NightlySweep do
     env = Keyword.get_lazy(opts, :env, &System.get_env/0)
 
     if Config.resolve(repo, env).enabled do
-      work = fn -> batch(repo, oban, args, opts, env) end
+      work = fn -> batch(repo, oban, args, opts) end
 
-      result =
-        if Standalone.enabled?(env),
-          do: repo.transaction(work),
-          else: Ownership.with_owner(repo, NightlyWorker.key(), :oban, work)
+      result = Ownership.with_owner(repo, NightlyWorker.key(), :oban, work)
 
       case result do
         {:ok, :ok} ->
           :ok
 
         {:skip, _} ->
-          finish_accepted(repo, args)
+          finish_accepted(repo, oban, args)
           {:cancel, :not_owner}
 
         {:error, reason} ->
           {:error, reason}
       end
     else
-      finish_accepted(repo, args)
+      finish_accepted(repo, oban, args)
       :ok
     end
   end
 
-  defp batch(repo, oban, args, opts, env) do
+  defp batch(repo, oban, args, opts) do
     root = root_id(args["slot"])
 
     if Processed.done?(repo, root) do
-      finish!(repo, root, args["affected_user_ids"])
+      finish!(repo, oban, root, args["affected_user_ids"])
     else
       rows = repo.query!(@points, [args["after_id"]], log: false).rows
 
-      owner =
-        if Standalone.enabled?(env),
-          do: :oban,
-          else: Ownership.lock(repo, "command:geocoding.reverse_point")
+      owner = Ownership.lock(repo, "command:geocoding.reverse_point")
 
       selected =
         Enum.filter(rows, fn [id, _] ->
@@ -95,34 +89,38 @@ defmodule Dawarich.Geocoding.NightlySweep do
 
         Oban.insert!(oban, NightlyWorker.new(next))
       else
-        finish!(repo, root, affected)
+        finish!(repo, oban, root, affected)
       end
     end
 
     :ok
   end
 
-  defp finish_accepted(_repo, %{"affected_user_ids" => []}), do: :ok
+  defp finish_accepted(_repo, _oban, %{"affected_user_ids" => []}), do: :ok
 
-  defp finish_accepted(repo, args) do
-    repo.transaction(fn -> finish!(repo, root_id(args["slot"]), args["affected_user_ids"]) end)
+  defp finish_accepted(repo, oban, args) do
+    repo.transaction(fn ->
+      finish!(repo, oban, root_id(args["slot"]), args["affected_user_ids"])
+    end)
   end
 
-  defp finish!(repo, root, affected) do
+  defp finish!(repo, oban, root, affected) do
     Processed.claim!(repo, root, "geocoding.nightly")
 
     for user <- affected do
       receipt = uuid(Ecto.UUID.dump!(root), "invalidated:#{user}")
 
       if Processed.claim!(repo, receipt, "geocoding.nightly") do
-        Dawarich.Stats.CacheInvalidation.call(
-          repo,
-          %{
-            "user_id" => user,
-            "year" => nil,
-            "scope" => "all"
-          }
-        )
+        payload = %{"user_id" => user, "year" => nil, "scope" => "all"}
+
+        Dawarich.AfterCommit.with_visibility(repo, "stats", payload, fn ->
+          if Dawarich.Standalone.enabled?() or
+               Ownership.lock(repo, "command:stats.calculate_month") == :oban do
+            Oban.insert!(oban, NightlyInvalidationWorker.new(payload))
+          else
+            RailsCommands.insert!(repo, "stats.caches_invalidated", payload)
+          end
+        end)
       end
     end
   end

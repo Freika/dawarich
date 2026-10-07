@@ -12,16 +12,24 @@ defmodule Dawarich.Stats.PointCounts do
     cache_repo =
       Keyword.get_lazy(opts, :cache_repo, fn -> if opts[:repo], do: repo, else: Jobs.repo() end)
 
-    case cached(cache_repo, user_id, now) do
-      nil -> tap(compute(repo, user_id, store_geodata), &store(cache_repo, user_id, &1, now))
-      counts -> counts
+    generation = Dawarich.AfterCommit.Visibility.generation(repo, user_id)
+
+    case cached(cache_repo, user_id, now, generation) do
+      nil ->
+        tap(
+          compute(repo, user_id, store_geodata),
+          &store(cache_repo, user_id, &1, now, generation)
+        )
+
+      counts ->
+        counts
     end
   end
 
-  defp cached(cache_repo, user_id, now) do
+  defp cached(cache_repo, user_id, now, generation) do
     case cache_repo.query!(
-           "SELECT geocoded, without_data FROM phoenix.stats_point_counts WHERE user_id = $1 AND computed_at > $2",
-           [user_id, DateTime.add(now, -@ttl)],
+           "SELECT geocoded, without_data FROM phoenix.stats_point_counts WHERE user_id = $1 AND computed_at > $2 AND COALESCE((SELECT value FROM phoenix.cursors WHERE key=$3),'')=$4",
+           [user_id, DateTime.add(now, -@ttl), "stats_point_counts:#{user_id}", generation],
            log: false
          ) do
       %{rows: [[geocoded, without_data]]} -> %{geocoded: geocoded, without_data: without_data}
@@ -46,8 +54,8 @@ defmodule Dawarich.Stats.PointCounts do
     count
   end
 
-  defp store(cache_repo, user_id, counts, now),
-    do:
+  defp store(cache_repo, user_id, counts, now, generation) do
+    cache_repo.transaction(fn ->
       cache_repo.query!(
         """
         INSERT INTO phoenix.stats_point_counts (user_id, geocoded, without_data, computed_at)
@@ -58,4 +66,8 @@ defmodule Dawarich.Stats.PointCounts do
         [user_id, counts.geocoded, counts.without_data, now],
         log: false
       )
+
+      Dawarich.State.put_cursor(cache_repo, "stats_point_counts:#{user_id}", generation)
+    end)
+  end
 end

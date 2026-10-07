@@ -38,7 +38,8 @@ defmodule Dawarich.Visits.UserRedetectWorker do
   def enqueue(repo, user, run_at, parent_event) do
     unless repo.in_transaction?(), do: raise(ArgumentError, "transaction required")
 
-    if Ownership.lock(repo, "command:" <> @command_type) == :oban do
+    if Dawarich.Standalone.enabled?() or
+         Ownership.lock(repo, "command:" <> @command_type) == :oban do
       publish(
         repo,
         %{"user_id" => user, "lock_attempts" => 0, "time_zone" => default_zone()},

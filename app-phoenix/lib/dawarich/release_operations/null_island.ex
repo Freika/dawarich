@@ -138,15 +138,17 @@ defmodule Dawarich.ReleaseOperations.NullIsland do
     repo.query!("DELETE FROM visits WHERE id=ANY($1)", [ids], log: false)
     ordinary = Enum.reject(visits, fn [_id, _place, _stamp, demo] -> demo end)
 
-    if ordinary != [] do
+    if visits != [] do
       Dawarich.RailsEffects.visit_months(
         repo,
         user_id,
-        Enum.map(ordinary, fn [_id, _place, stamp, _demo] ->
+        Enum.map(visits, fn [_id, _place, stamp, _demo] ->
           DateTime.from_naive!(stamp, "Etc/UTC")
         end)
       )
+    end
 
+    if ordinary != [] do
       Dawarich.RailsEffects.orphan_places(
         repo,
         user_id,

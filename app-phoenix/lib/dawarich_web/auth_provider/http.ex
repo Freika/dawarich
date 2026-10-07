@@ -34,7 +34,7 @@ defmodule DawarichWeb.AuthProvider.Http do
         Dawarich.ReleaseMigration.self_hosted?(Map.get_lazy(context, :env, &System.get_env/0))
       )
       |> Map.put_new(:base_url, RequestURL.base(conn))
-      |> Map.put_new(:ip, conn.remote_ip |> :inet.ntoa() |> to_string())
+      |> Map.put_new(:ip, DawarichWeb.RailsRemoteIp.ip(conn))
 
     conn = RailsAuth.call(conn, [])
     {provider, action} = route(conn.request_path)

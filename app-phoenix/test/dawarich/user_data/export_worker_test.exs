@@ -197,22 +197,7 @@ defmodule Dawarich.UserData.ExportWorkerTest do
         [[leaf_key]] = rows("SELECT key FROM active_storage_blobs WHERE id=$1", [leaf.id])
         assert {:ok, :deleted} = Dawarich.Exports.Delete.call(ScratchRepo, c.user_id, id)
 
-        if mode == "on" do
-          [[payload]] =
-            rows(
-              "SELECT payload FROM phoenix.rails_commands WHERE kind='exports.purge' ORDER BY id DESC LIMIT 1"
-            )
-
-          assert Enum.sort(payload["blob_ids"]) == Enum.sort(generations ++ [shared.id])
-
-          assert {:ok, :ok} =
-                   ScratchRepo.transaction(fn ->
-                     Dawarich.Exports.PurgeWorker.enqueue_export!(
-                       ScratchRepo,
-                       payload["blob_ids"]
-                     )
-                   end)
-        end
+        assert [] == rows("SELECT kind FROM phoenix.rails_commands WHERE kind='exports.purge'")
 
         [[purge]] =
           rows(
@@ -326,13 +311,10 @@ defmodule Dawarich.UserData.ExportWorkerTest do
 
         assert first.id in point_blobs
         assert length(point_blobs) == 2
+        Ownership.put!(ScratchRepo, "command:exports.points", :oban)
         assert {:ok, :deleted} = Dawarich.Exports.Delete.call(ScratchRepo, c.user_id, point_id)
 
-        if mode == "on",
-          do:
-            ScratchRepo.transaction(fn ->
-              Dawarich.Exports.PurgeWorker.enqueue_export!(ScratchRepo, point_blobs)
-            end)
+        assert [] == rows("SELECT kind FROM phoenix.rails_commands WHERE kind='exports.purge'")
 
         [[point_purge]] =
           rows(

@@ -4,7 +4,7 @@ defmodule Dawarich.RailsCache do
   alias Dawarich.Redis
 
   def get(key, opts \\ []) do
-    physical = Dawarich.Visits.CacheGeneration.physical_key(key, Dawarich.Jobs.repo())
+    physical = if opts[:resolved], do: key, else: visible_key(key, opts)
 
     result =
       case Redis.cache_command(["GET", physical]) do
@@ -13,15 +13,24 @@ defmodule Dawarich.RailsCache do
         error -> error
       end
 
-    if physical == Dawarich.Visits.CacheGeneration.physical_key(key, Dawarich.Jobs.repo()),
-      do: result,
-      else: :miss
+    if opts[:resolved] == true or physical == visible_key(key, opts), do: result, else: :miss
   end
 
-  def put(key, html, expires_in: seconds) do
-    key = Dawarich.Visits.CacheGeneration.physical_key(key, Dawarich.Jobs.repo())
+  def put(key, html, opts) do
+    seconds = Keyword.fetch!(opts, :expires_in)
+    key = if opts[:resolved], do: key, else: visible_key(key, opts)
+
     bytes = Wire.encode(html, expires_at: now() + seconds)
     Redis.cache_command(["SET", key, bytes, "PX", to_string(seconds * 1000)])
+  end
+
+  defp visible_key(key, opts) do
+    repo = Keyword.get(opts, :repo, Dawarich.Jobs.repo())
+    key = Dawarich.Visits.CacheGeneration.physical_key(key, repo)
+
+    if Dawarich.AfterCommit.Visibility.user_key?(key),
+      do: Dawarich.AfterCommit.Visibility.key(repo, key),
+      else: key
   end
 
   defp entry(key, bytes, opts) do
