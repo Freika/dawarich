@@ -87,6 +87,7 @@ defmodule Dawarich.Application do
 
     Dawarich.QrCache.create_table()
     Dawarich.TtlCache.create_table()
+    Dawarich.Experimental.create_cache_table()
 
     if jobs_runtime?() do
       Oban.Telemetry.attach_default_logger(level: :info, events: [:job, :peer])
@@ -105,7 +106,10 @@ defmodule Dawarich.Application do
   def children(plan) do
     oban = Application.fetch_env!(:dawarich, Oban)
     node = oban[:node] || Oban.Config.node_name()
-    cron = [crontab: Dawarich.Jobs.Registry.crontab(), timezone: Dawarich.Jobs.Cron.timezone()]
+
+    cron =
+      oban[:cron] ||
+        [crontab: Dawarich.Jobs.Registry.crontab(), timezone: Dawarich.Jobs.Cron.timezone()]
 
     Dawarich.Metrics.children(plan) ++
       [Dawarich.Repo] ++
@@ -113,6 +117,8 @@ defmodule Dawarich.Application do
       [
         Dawarich.Geocoding.RateLimiter,
         {Oban, Keyword.put(oban, :cron, cron)},
+        {Task.Supervisor, name: Dawarich.Tracks.MapMatching.Tasks},
+        Dawarich.Tracks.MapMatching.Deferred,
         {Phoenix.PubSub, name: Dawarich.PubSub}
       ] ++
       Dawarich.Cable.Bus.child_specs() ++

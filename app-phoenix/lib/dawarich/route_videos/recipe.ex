@@ -34,12 +34,15 @@ defmodule Dawarich.RouteVideos.Recipe do
   defp inspect_ruby(value) when is_list(value),
     do: "[" <> Enum.map_join(value, ", ", &inspect_ruby/1) <> "]"
 
-  defp inspect_ruby(value) when is_map(value),
+  defp inspect_ruby(%Jason.OrderedObject{values: pairs}), do: inspect_pairs(pairs)
+  defp inspect_ruby(value) when is_map(value), do: inspect_pairs(value)
+
+  defp inspect_ruby(value), do: stringify(value)
+
+  defp inspect_pairs(value),
     do:
       "{" <>
         Enum.map_join(value, ", ", fn {key, item} ->
           inspect_ruby(key) <> " => " <> inspect_ruby(item)
         end) <> "}"
-
-  defp inspect_ruby(value), do: stringify(value)
 end
