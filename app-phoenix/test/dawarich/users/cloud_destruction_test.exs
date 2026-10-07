@@ -39,7 +39,18 @@ defmodule Dawarich.Users.CloudDestructionTest do
              AccountDestroy.request(c.user.id, %{"confirm_email" => c.user.email}, c.context)
 
     [[root]] = rows("SELECT event_id::text FROM job_outbox WHERE command_type='users.destroy'")
-    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+    consumer_now = DateTime.add(db_now(ScratchRepo), -86_400)
+
+    assert Dispatch.run(repo: ScratchRepo, oban: __MODULE__, now: consumer_now) == %{}
+    assert rows("SELECT id FROM users WHERE id=$1", [c.user.id]) == [[c.user.id]]
+    assert rows("SELECT id FROM oban.oban_jobs") == []
+
+    [[due]] =
+      rows("UPDATE job_outbox SET scheduled_at=$1 RETURNING scheduled_at", [
+        DateTime.add(db_now(ScratchRepo), 86_400)
+      ])
+
+    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__, now: due)
 
     [[deletion]] =
       rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Users.DestroyWorker'")
@@ -57,7 +68,11 @@ defmodule Dawarich.Users.CloudDestructionTest do
              "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.Users.DestructionWebhookWorker'"
            ) == []
 
-    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+    [[unlink_due]] =
+      rows("SELECT scheduled_at FROM job_outbox WHERE command_type='users.destruction_webhook'")
+
+    assert %{dispatched: 1} =
+             Dispatch.run(repo: ScratchRepo, oban: __MODULE__, now: unlink_due)
 
     [[args]] =
       rows(

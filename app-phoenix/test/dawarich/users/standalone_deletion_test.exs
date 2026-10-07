@@ -262,7 +262,17 @@ defmodule Dawarich.Users.StandaloneDeletionTest do
     assert {:ok, :ok} =
              ScratchRepo.transaction(fn -> DestroyWorker.enqueue(ScratchRepo, c.actor.id) end)
 
-    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+    consumer_now = DateTime.add(db_now(ScratchRepo), -86_400)
+    assert Dispatch.run(repo: ScratchRepo, oban: __MODULE__, now: consumer_now) == %{}
+    assert rows("SELECT id FROM users WHERE id=$1", [c.actor.id]) == [[c.actor.id]]
+    assert rows("SELECT id FROM oban.oban_jobs") == []
+
+    [[due]] =
+      rows("UPDATE job_outbox SET scheduled_at=$1 RETURNING scheduled_at", [
+        DateTime.add(db_now(ScratchRepo), 86_400)
+      ])
+
+    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__, now: due)
     assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :maintenance)
     assert rows("SELECT id FROM users WHERE id=$1", [c.actor.id]) == []
     assert rows("SELECT id FROM users WHERE id=$1", [c.other.id]) == [[c.other.id]]
