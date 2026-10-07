@@ -52,6 +52,9 @@ defmodule Dawarich.Geocoding.Search do
         if wait > 0, do: Process.sleep(div(wait + 999, 1000))
         fun.()
 
+      {:error, _reason} ->
+        RateLimiter.local_throttle(config, fun, 1_000_000)
+
       _ ->
         nil
     end

@@ -58,7 +58,7 @@ defmodule Dawarich.Tracks.SegmentEditor do
              [id, now]
            )
 
-           Reprocessor.reprocess!(repo, user, track, ctx.now)
+           Reprocessor.reprocess!(repo, user, track, ctx.now, map_matching: false)
 
            mode =
              repo |> Segments.load_segments_for_dominant_mode!(track_id) |> DominantMode.pick()
@@ -84,7 +84,7 @@ defmodule Dawarich.Tracks.SegmentEditor do
              ctx
            )
          end) do
-      {:ok, result} -> result
+      {:ok, result} -> completed(repo, result)
       {:error, :rails} -> :rails
       {:error, :not_found} -> :not_found
     end
@@ -187,9 +187,16 @@ defmodule Dawarich.Tracks.SegmentEditor do
     end
   end
 
+  defp completed(repo, {:ok, %{track: track}} = result) do
+    Dawarich.Tracks.MapMatching.Enqueuer.defer(repo, track.id)
+    result
+  end
+
+  defp completed(_repo, result), do: result
+
   defp transaction(repo, fun) do
     case repo.transaction(fun) do
-      {:ok, result} -> result
+      {:ok, result} -> completed(repo, result)
       {:error, :rails} -> :rails
       {:error, :not_found} -> :not_found
     end

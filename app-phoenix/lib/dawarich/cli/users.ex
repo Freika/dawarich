@@ -5,14 +5,11 @@ defmodule Dawarich.CLI.Users do
 
   alias Dawarich.ReleaseMigration
 
-  @reset "reset_password_token = NULL, reset_password_sent_at = NULL, updated_at = now()"
   @email ~r/\A[^@\s]+@[^@\s]+\z/
   @find "SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL"
   @taken "SELECT EXISTS (SELECT 1 FROM users WHERE email = $1 AND id <> $2)"
   @activate "UPDATE users SET status = 1 WHERE deleted_at IS NULL"
   @admin "UPDATE users SET admin = true, updated_at = now() WHERE id = $1 AND admin IS DISTINCT FROM true"
-  @set_email "UPDATE users SET email = $2, #{@reset} WHERE id = $1 AND email <> $2"
-  @set_password "UPDATE users SET encrypted_password = $2, #{@reset} WHERE id = $1"
   @password_usage "usage: dawarich users password EMAIL, with the new password on standard input"
 
   def activate([], ctx) do
@@ -44,7 +41,12 @@ defmodule Dawarich.CLI.Users do
 
     with {:ok, id} <- find(ctx, email),
          :ok <- if(new_email == normalize(email), do: :ok, else: valid_email(ctx, id, new_email)) do
-      ctx.repo.query!(@set_email, [id, new_email], log: false)
+      {:ok, _} =
+        Dawarich.Mail.DeviseCallbacks.update(ctx.repo, id, %{email: new_email},
+          env: ctx.env,
+          oban: Map.get(ctx, :oban, Oban)
+        )
+
       puts(ctx, "#{normalize(email)} is now #{new_email}")
       0
     end
@@ -55,7 +57,15 @@ defmodule Dawarich.CLI.Users do
   def password([email], ctx) do
     with {:ok, id} <- find(ctx, email),
          {:ok, password} <- read_password(ctx) do
-      ctx.repo.query!(@set_password, [id, hash_password(password)], log: false)
+      {:ok, _} =
+        Dawarich.Mail.DeviseCallbacks.update(
+          ctx.repo,
+          id,
+          %{encrypted_password: hash_password(password)},
+          env: ctx.env,
+          oban: Map.get(ctx, :oban, Oban)
+        )
+
       puts(ctx, "Password updated for #{normalize(email)}")
       0
     end

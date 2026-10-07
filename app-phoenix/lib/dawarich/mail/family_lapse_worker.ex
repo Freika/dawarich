@@ -74,6 +74,12 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
     repo = Dawarich.Jobs.repo()
     event_id = args["event_id"]
 
+    Delivery.with_lease(repo, @handler, "family-lapse:#{user_id}", fn ->
+      send_claimed(repo, user_id, family_id, event_id, args)
+    end)
+  end
+
+  defp send_claimed(repo, user_id, family_id, event_id, args) do
     case claim(repo, user_id, family_id, event_id) do
       {:ok, {key, [email, settings, family, owner_email]}} ->
         locale = ExploreFeatures.locale(settings, args["locale"])
@@ -114,7 +120,16 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
   end
 
   defp mark!(repo, user_id, event_id) do
-    marked_at = DateTime.utc_now() |> DateTime.to_iso8601()
+    marked_at =
+      case repo.query!(
+             "SELECT provider_key FROM phoenix.delivery_claims WHERE handler=$1 AND event_id=$2",
+             [@handler, Ecto.UUID.dump!(event_id)],
+             log: false
+           ).rows do
+        [[previous]] -> String.replace_prefix(previous, "family-lapse:#{user_id}:", "")
+        [] -> DateTime.utc_now() |> DateTime.to_iso8601()
+      end
+
     repo.query!(@mark, [user_id, marked_at, NaiveDateTime.utc_now()], log: false)
     :send = Delivery.claim(repo, @handler, key(user_id, marked_at), event_id)
     key(user_id, marked_at)

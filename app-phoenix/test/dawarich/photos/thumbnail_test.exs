@@ -29,15 +29,17 @@ defmodule Dawarich.Photos.ThumbnailTest do
     ]
   end
 
-  defp immich(reply) do
+  defp immich(reply, opts \\ []) do
     server = listen()
-    {"http://127.0.0.1:#{server.port}", Task.async(fn -> serve(server, reply) end)}
+    {"http://127.0.0.1:#{server.port}", Task.async(fn -> serve(server, reply, opts) end)}
   end
 
-  defp serve(server, reply) do
+  defp serve(server, reply, opts) do
     socket = accept(server)
     {head, _rest} = read_head(socket)
-    reply(socket, reply)
+    Keyword.get(opts, :before_send, fn _socket -> :ok end).(socket)
+    sent = :gen_tcp.send(socket, reply)
+    assert sent == :ok or (opts[:allow_closed] == true and sent == {:error, :closed})
     :gen_tcp.close(socket)
     head
   end
@@ -195,8 +197,31 @@ defmodule Dawarich.Photos.ThumbnailTest do
       assert sized(Thumbnail.fetch(settings("http://127.0.0.1:#{server.port}"), "immich", @id)) ==
                @too_large,
              "#{status}"
-
       Task.await(task)
+    end
+  end
+
+  @tag a12f3b_case: "ThumbnailClosedFixture"
+  test "thumbnail fixture finishes when oversized headers close the peer before its body send" do
+    for status <- [200, 201] do
+      server = listen()
+      on_exit(fn -> :gen_tcp.close(server.listen) end)
+
+      task =
+        Task.async(fn ->
+          serve(server, "late body",
+            allow_closed: true,
+            before_send: fn socket ->
+              reply(socket, "HTTP/1.1 #{status} X\r\ncontent-length: #{@cap + 1}\r\n\r\n")
+              assert {:error, :closed} = :gen_tcp.recv(socket, 0, :infinity)
+            end
+          )
+        end)
+
+      assert Thumbnail.fetch(settings("http://127.0.0.1:#{server.port}"), "immich", @id) ==
+               @too_large
+
+      assert request_line(Task.await(task)) == @preview
     end
   end
 

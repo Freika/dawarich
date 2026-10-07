@@ -38,9 +38,11 @@ defmodule Dawarich.Settings.General do
   defp changes(previous, params) do
     changes = Map.take(params, ~w(supporter_email supporter_github_username))
 
+    locale = if is_binary(params["locale"]), do: String.downcase(params["locale"])
+
     changes =
-      if params["locale"] in DawarichWeb.Locale.locales(),
-        do: Map.put(changes, "locale", params["locale"]),
+      if locale in DawarichWeb.Locale.locales(),
+        do: Map.put(changes, "locale", locale),
         else: changes
 
     zone = params["timezone"]

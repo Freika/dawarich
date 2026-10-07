@@ -209,7 +209,7 @@ defmodule Dawarich.RouteVideos.Writes do
     end
   end
 
-  def destroy(repo, user_id, id, now) when is_integer(id) and id > 0 do
+  def destroy(repo, user_id, id, now) when is_integer(id) and id >= 0 do
     repo.transaction(fn ->
       case repo.query!(
              "SELECT id FROM route_videos WHERE id=$1 AND user_id=$2 FOR UPDATE",

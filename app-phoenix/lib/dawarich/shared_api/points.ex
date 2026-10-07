@@ -3,6 +3,7 @@ defmodule Dawarich.SharedApi.Points do
 
   alias Dawarich.{RailsTime, Repo, UserTimeZone}
   alias Dawarich.SharedApi.Privacy
+  alias Dawarich.Spatial.CalendarWindow
 
   @false_flags [nil, false, "", "0", "false", "FALSE", "f", "F", "off", "OFF"]
 
@@ -54,13 +55,15 @@ defmodule Dawarich.SharedApi.Points do
   def index(link) do
     [[settings]] = Repo.query!("SELECT settings FROM users WHERE id = $1", [link.user_id]).rows
 
-    RailsTime.with_zone(UserTimeZone.name(settings), fn ->
-      with {:ok, predicate, params} <- scope(link),
+    zone = UserTimeZone.name(settings)
+
+    RailsTime.with_zone(zone, fn ->
+      with {:ok, predicate, params} <- scope(link, zone),
            do: sample(predicate, params)
     end)
   end
 
-  defp scope(%{type: "trip"} = link) do
+  defp scope(%{type: "trip"} = link, _zone) do
     {:ok,
      "p.user_id = $1 AND p.anomaly IS NOT TRUE AND EXISTS (SELECT 1 FROM trips t " <>
        "WHERE t.id = $2 AND t.user_id = $1 AND p.timestamp BETWEEN " <>
@@ -68,25 +71,25 @@ defmodule Dawarich.SharedApi.Points do
      [link.user_id, link.resource_id]}
   end
 
-  defp scope(%{type: "track"} = link) do
+  defp scope(%{type: "track"} = link, _zone) do
     {:ok,
      "p.track_id = $2 AND EXISTS (SELECT 1 FROM tracks t WHERE t.id = $2 AND t.user_id = $1)",
      [link.user_id, link.resource_id]}
   end
 
-  defp scope(%{type: "timeline", settings: settings} = link) do
-    with {:ok, from} <- date(settings["start_date"]), {:ok, to} <- date(settings["end_date"]) do
-      {:ok,
-       "p.user_id = $1 AND p.anomaly IS NOT TRUE AND p.timestamp BETWEEN " <>
-         "extract(epoch FROM $2::date::timestamp AT TIME ZONE current_setting('TimeZone'))::bigint AND " <>
-         "extract(epoch FROM ($3::date + 1)::timestamp AT TIME ZONE current_setting('TimeZone'))::bigint - 1",
-       [link.user_id, from, to]}
+  defp scope(%{type: "timeline", settings: settings} = link, zone) do
+    with {:ok, from} <- CalendarWindow.date(settings["start_date"], zone),
+         {:ok, to} <- CalendarWindow.date(settings["end_date"], zone) do
+      {first, last} = CalendarWindow.days(zone, from, to)
+
+      {:ok, "p.user_id = $1 AND p.anomaly IS NOT TRUE AND p.timestamp BETWEEN $2 AND $3",
+       [link.user_id, first, last]}
     else
       _ -> {:replay, "shared timeline dates"}
     end
   end
 
-  defp scope(_link), do: {:replay, "shared points resource type"}
+  defp scope(_link, _zone), do: {:replay, "shared points resource type"}
 
   defp sample(predicate, params) do
     from = " FROM points p WHERE #{predicate} AND #{Privacy.outside("p.lonlat")}"
@@ -114,7 +117,4 @@ defmodule Dawarich.SharedApi.Points do
         {:ok, Enum.map(rows, fn [lon, lat, ts] -> [lon || 0.0, lat || 0.0, ts || 0] end)}
     end
   end
-
-  defp date(value) when is_binary(value), do: Date.from_iso8601(value)
-  defp date(_value), do: :error
 end

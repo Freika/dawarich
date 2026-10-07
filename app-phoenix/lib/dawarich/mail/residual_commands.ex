@@ -43,6 +43,12 @@ defmodule Dawarich.Mail.ResidualCommands do
     )
   end
 
+  defp mail_event(type, dedupe) do
+    :crypto.hash(:sha256, "dawarich-mail:" <> type <> ":" <> dedupe)
+    |> binary_part(0, 16)
+    |> Ecto.UUID.load!()
+  end
+
   defp select(repo, type, reverse, rails, native, dedupe) do
     {:ok, :ok} =
       repo.transaction(fn ->
@@ -59,7 +65,7 @@ defmodule Dawarich.Mail.ResidualCommands do
             repo.query!(
               "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at) VALUES($1,$2,1,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING",
               [
-                Ecto.UUID.dump!(Ecto.UUID.generate()),
+                Ecto.UUID.dump!(mail_event(type, dedupe)),
                 type,
                 native,
                 %{"producer" => "Phoenix residual mail"},

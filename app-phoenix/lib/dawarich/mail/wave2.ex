@@ -37,13 +37,20 @@ defmodule Dawarich.Mail.Wave2 do
   def welcome(user, locale, env),
     do: build(:welcome, user.email, locale, %{email: user.email}, %{}, env)
 
-  def archival_approaching(user_id, user, locale, env, now_unix \\ System.os_time(:second)) do
+  def archival_approaching(
+        user_id,
+        user,
+        locale,
+        env,
+        now_unix \\ System.os_time(:second),
+        jti \\ Ecto.UUID.generate()
+      ) do
     case env["JWT_SECRET_KEY"] do
       nil ->
         {:error, "JWT_SECRET_KEY is not set"}
 
       secret ->
-        token = subscription_token(user_id, user.email, secret, now_unix)
+        token = subscription_token(user_id, user.email, secret, now_unix, jti)
         url = "#{manager_url(env)}/auth/dawarich?token=#{token}" <> @utm
         assigns = %{email: user.email, upgrade_url: url}
         build(:archival_approaching, user.email, locale, assigns, %{}, env)

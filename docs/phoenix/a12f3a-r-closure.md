@@ -39,8 +39,14 @@ route-video domain gate admits standalone Cloud while preserving coexistence
 delegation to Rails. Initial RED was a native 500
 for explicit Cloud; GREEN 27 endpoint table cases plus scalar coercion;
 M-R01 retained `unknown` and failed persisted recipe equality; restored GREEN.
-Container coercion is source-code-backed but has no additional recorded source
-envelope; ordered multi-key nested hashes remain an edge parity handoff.
+The small parity follow-up characterizes Rails nested settings and ignored
+video fields through the form endpoint. Native decoding now applies the source
+strong-parameter filtering and retains insertion order in nested hashes before
+Ruby stringification and 64-codepoint truncation. Arrays and deeper hashes with
+mixed member keys are admitted. Zero-ID deletion reaches the actor-scoped
+not-found lookup and returns 404 in standalone mode. Four endpoint regressions
+passed; each failed its named admission, filtering, ordering or ID mutation and
+passed again after restoration.
 
 R03 reconciled with merged retention: initial aggregate was already GREEN.
 Cap zero/one, age boundary, gallery prepend/replacement order and durable
@@ -100,9 +106,8 @@ Handled native save/retention failures use the configured Sentry interface;
 shared privacy/transport acceptance remains its owner's gate.
 
 Outstanding edge envelope proof: exhaustive guest/expired-session/CSRF and
-unsupported-format matrices; ordered nested/container recipe coercion; tied
-created-at ordering; full locale Rails HTML captures and real codec-unavailable
-browser workflows. Standalone rejects unsupported admitted envelopes natively,
+unsupported-format matrices; tied created-at ordering; full locale Rails HTML
+captures and real codec-unavailable browser workflows. Standalone rejects unsupported admitted envelopes natively,
 per tonight ruling 15. Existing coexistent replay behavior is retained outside
 this proven native scope. HEAD/media capabilities belong to the storage owner.
 O08 must repeat affected source generators twice at the reconciled integration

@@ -2,29 +2,44 @@ defmodule Dawarich.Mail.TestEmailWorker do
   @moduledoc false
   use Oban.Worker, queue: :mailers, max_attempts: 20
 
-  alias Dawarich.Mail.{Recipient, Residual}
+  alias Dawarich.Mail.{Delivery, Recipient, Residual}
   alias Dawarich.{TimeZoneName, UserTimeZone}
 
   @impl Oban.Worker
   def timeout(_job), do: :timer.minutes(5)
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"user_id" => id, "locale" => locale}}) do
+  def perform(%Oban.Job{args: %{"user_id" => id, "locale" => locale} = args} = job) do
     case Recipient.fetch(Dawarich.Jobs.repo(), id) do
       nil ->
         :ok
 
-      user ->
+      %{admin: true} = user ->
         env = System.get_env()
-        transport = Application.get_env(:dawarich, :mail_transport, Dawarich.Mail.Smtp)
+        event_id = event_id(job, args)
 
-        transport.deliver(
-          Residual.message(:test_email, user, locale, env,
-            clock: clock(Dawarich.UserSettings.get(user), env)
-          ),
-          env
+        Delivery.deliver(
+          Dawarich.Jobs.repo(),
+          "mail.test_email",
+          event_id,
+          NaiveDateTime.to_iso8601(user.created_at),
+          event_id,
+          fn ->
+            {:ok,
+             Residual.message(:test_email, user, locale, env, clock: clock(Dawarich.UserSettings.get(user), env))}
+          end
         )
+
+      _ ->
+        {:cancel, "admin required"}
     end
+  end
+
+  defp event_id(_job, %{"event_id" => event_id}), do: event_id
+
+  defp event_id(%Oban.Job{id: id}, _args) when is_integer(id) and id > 0 do
+    <<uuid::binary-size(16), _::binary>> = :crypto.hash(:sha256, "mail.test_email:#{id}")
+    Ecto.UUID.load!(uuid)
   end
 
   defp clock(settings, env) do

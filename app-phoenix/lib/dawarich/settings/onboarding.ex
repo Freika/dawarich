@@ -2,7 +2,8 @@ defmodule Dawarich.Settings.Onboarding do
   @moduledoc false
 
   def complete(repo, id) do
-    repo.transaction(
+    Dawarich.Transaction.run(
+      repo,
       fn ->
         case repo.query!(
                "SELECT settings FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE",
@@ -25,8 +26,7 @@ defmodule Dawarich.Settings.Onboarding do
           _ ->
             repo.rollback(:invalid_settings)
         end
-      end,
-      mode: :savepoint
+      end
     )
   rescue
     _ -> {:error, :save_failed}

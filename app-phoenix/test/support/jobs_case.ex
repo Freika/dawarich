@@ -23,6 +23,7 @@ defmodule Dawarich.JobsCase do
   end
 
   def reset!(repo) do
+    Dawarich.MapMatchingTasks.await!()
     Dawarich.PublicBaseline.ensure_current!(repo)
 
     tables =

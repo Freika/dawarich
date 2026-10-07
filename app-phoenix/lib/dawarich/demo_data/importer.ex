@@ -4,7 +4,8 @@ defmodule Dawarich.DemoData.Importer do
 
   def call(repo, user, opts \\ []) do
     result =
-      repo.transaction(
+      Dawarich.Transaction.run(
+        repo,
         fn ->
           repo.query!(
             "SELECT id FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE",
@@ -55,8 +56,7 @@ defmodule Dawarich.DemoData.Importer do
 
             :created
           end
-        end,
-        mode: :savepoint
+        end
       )
 
     case result do

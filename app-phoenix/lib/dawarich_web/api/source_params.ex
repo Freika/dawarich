@@ -6,19 +6,29 @@ defmodule DawarichWeb.Api.SourceParams do
 
     if length(entries) > 4096 or byte_size(text) > 4_194_304, do: throw(:bad_request)
 
-    params =
-      Enum.reduce(entries, %{}, fn entry, params ->
+    pairs =
+      for entry <- entries do
         [key | value] = String.split(entry, "=", parts: 2)
-        key = component(key)
-        value = if value == [], do: nil, else: component(hd(value))
-        if key == "", do: params, else: insert(params, keys(key), value)
-      end)
+        {component(key), if(value == [], do: nil, else: component(hd(value)))}
+      end
 
-    {:ok, munge(params)}
+    {:ok, from_pairs(pairs)}
   rescue
     _ -> {:error, 400}
   catch
     :bad_request -> {:error, 400}
+  end
+
+  def from_pairs(pairs, opts \\ []) do
+    ordered? = Keyword.get(opts, :ordered, false)
+    empty = if ordered?, do: Jason.OrderedObject.new([]), else: %{}
+
+    params =
+      Enum.reduce(pairs, empty, fn {key, value}, params ->
+        if key == "", do: params, else: insert(params, keys(key), value, ordered?)
+      end)
+
+    if ordered?, do: params, else: munge(params)
   end
 
   def munge(%Jason.OrderedObject{values: pairs}),
@@ -52,29 +62,71 @@ defmodule DawarichWeb.Api.SourceParams do
     end
   end
 
-  defp insert(map, [key], value) when is_map(map), do: Map.put(map, key, value)
+  defp insert(%Jason.OrderedObject{values: pairs} = object, [key | rest], value, ordered?) do
+    value =
+      if rest == [] do
+        value
+      else
+        empty = if hd(rest) == :array, do: [], else: Jason.OrderedObject.new([])
 
-  defp insert(map, [key | rest], value) when is_map(map) do
-    empty = if hd(rest) == :array, do: [], else: %{}
-    previous = Map.get(map, key, empty)
-    Map.put(map, key, insert(previous, rest, value))
+        previous =
+          case List.keyfind(pairs, key, 0) do
+            {^key, previous} -> previous
+            nil -> empty
+          end
+
+        insert(previous, rest, value, ordered?)
+      end
+
+    pairs =
+      if List.keymember?(pairs, key, 0),
+        do: List.keyreplace(pairs, key, 0, {key, value}),
+        else: pairs ++ [{key, value}]
+
+    %{object | values: pairs}
   end
 
-  defp insert(list, [:array], value) when is_list(list), do: list ++ [value]
+  defp insert(map, [key], value, _ordered?) when is_map(map), do: Map.put(map, key, value)
 
-  defp insert(list, [:array | rest], value) when is_list(list) do
+  defp insert(map, [key | rest], value, ordered?) when is_map(map) do
+    empty = if hd(rest) == :array, do: [], else: %{}
+    previous = Map.get(map, key, empty)
+    Map.put(map, key, insert(previous, rest, value, ordered?))
+  end
+
+  defp insert(list, [:array], value, _ordered?) when is_list(list), do: list ++ [value]
+
+  defp insert(list, [:array | rest], value, ordered?) when is_list(list) do
     case List.last(list) do
       %{} = last ->
         if available?(last, rest),
-          do: List.replace_at(list, -1, insert(last, rest, value)),
-          else: list ++ [insert(%{}, rest, value)]
+          do: List.replace_at(list, -1, insert(last, rest, value, ordered?)),
+          else: list ++ [insert(empty_map(ordered?), rest, value, ordered?)]
 
       _ ->
-        list ++ [insert(if(hd(rest) == :array, do: [], else: %{}), rest, value)]
+        list ++
+          [
+            insert(
+              if(hd(rest) == :array, do: [], else: empty_map(ordered?)),
+              rest,
+              value,
+              ordered?
+            )
+          ]
     end
   end
 
-  defp insert(_container, _keys, _value), do: throw(:bad_request)
+  defp insert(_container, _keys, _value, _ordered?), do: throw(:bad_request)
+
+  defp empty_map(true), do: Jason.OrderedObject.new([])
+  defp empty_map(_), do: %{}
+
+  defp available?(%Jason.OrderedObject{values: pairs}, [key | rest]) do
+    case List.keyfind(pairs, key, 0) do
+      nil -> true
+      {^key, value} -> rest != [] and available?(value, rest)
+    end
+  end
 
   defp available?(map, [key]), do: not Map.has_key?(map, key)
 
