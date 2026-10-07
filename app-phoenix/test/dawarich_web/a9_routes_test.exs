@@ -11,8 +11,9 @@ defmodule DawarichWeb.A9RoutesTest do
      :api_stats},
     {"GET", "/api/v1/residency", DawarichWeb.Api.StatsController, :residency, :api_stats,
      :api_stats},
-    {"GET", "/api/v1/digests", DawarichWeb.Api.DigestsController, :index, :api_stats, :api_stats},
-    {"GET", "/api/v1/digests/:year", DawarichWeb.Api.DigestsController, :show, :api_stats,
+    {"GET", "/api/v1/digests", DawarichWeb.Api.DigestsController, :closure_index, :api_stats,
+     :api_stats},
+    {"GET", "/api/v1/digests/:year", DawarichWeb.Api.DigestsController, :closure_show, :api_stats,
      :api_stats},
     {"GET", "/api/v1/countries/visited_cities", DawarichWeb.Api.GeoController, :visited_cities,
      :api_stats, :api_stats},
@@ -23,17 +24,18 @@ defmodule DawarichWeb.A9RoutesTest do
      :api_map_reads},
     {"GET", "/api/v1/tracks/:track_id/points", DawarichWeb.Api.MapController, :track_points,
      :api_stats, :api_map_reads},
-    {"GET", "/api/v1/places", DawarichWeb.Api.PlacesController, :index, :api_places, :api_places},
-    {"POST", "/api/v1/places", DawarichWeb.Api.PlacesController, :create, :api_places,
+    {"GET", "/api/v1/places", DawarichWeb.Api.PlacesController, {:closure, :index}, :api_places,
      :api_places},
-    {"GET", "/api/v1/places/:id", DawarichWeb.Api.PlacesController, :show, :api_places,
+    {"POST", "/api/v1/places", DawarichWeb.Api.PlacesController, {:closure, :create}, :api_places,
      :api_places},
-    {"PATCH", "/api/v1/places/:id", DawarichWeb.Api.PlacesController, :update, :api_places,
-     :api_places},
-    {"PUT", "/api/v1/places/:id", DawarichWeb.Api.PlacesController, :update, :api_places,
-     :api_places},
-    {"DELETE", "/api/v1/places/:id", DawarichWeb.Api.PlacesController, :destroy, :api_places,
-     :api_places},
+    {"GET", "/api/v1/places/:id", DawarichWeb.Api.PlacesController, {:closure, :show},
+     :api_places, :api_places},
+    {"PATCH", "/api/v1/places/:id", DawarichWeb.Api.PlacesController, {:closure, :update},
+     :api_places, :api_places},
+    {"PUT", "/api/v1/places/:id", DawarichWeb.Api.PlacesController, {:closure, :update},
+     :api_places, :api_places},
+    {"DELETE", "/api/v1/places/:id", DawarichWeb.Api.PlacesController, {:closure, :destroy},
+     :api_places, :api_places},
     {"GET", "/api/v1/families/locations", DawarichWeb.Api.FamilyController, :locations,
      :api_stats, :api_family},
     {"GET", "/api/v1/families/locations/history", DawarichWeb.Api.FamilyController, :history,
@@ -50,12 +52,12 @@ defmodule DawarichWeb.A9RoutesTest do
      :accept, :api_stats, :api_family},
     {"POST", "/api/v1/families/location_requests/:id/decline", DawarichWeb.Api.FamilyController,
      :decline, :api_stats, :api_family},
-    {"GET", "/api/v1/locations", DawarichWeb.Api.LocationsController, :index,
+    {"GET", "/api/v1/locations", DawarichWeb.Api.LocationsController, :index_closure,
      :api_locations_photos, :api_locations_photos},
-    {"GET", "/api/v1/photos/:id/thumbnail", DawarichWeb.Api.PhotosController, :thumbnail,
+    {"GET", "/api/v1/photos/:id/thumbnail", DawarichWeb.Api.PhotosController, :thumbnail_closure,
      :api_locations_photos, :api_locations_photos},
-    {"GET", "/api/v1/photos/:id/thumbnail.jpg", DawarichWeb.Api.PhotosController, :thumbnail,
-     :api_locations_photos, :api_locations_photos}
+    {"GET", "/api/v1/photos/:id/thumbnail.jpg", DawarichWeb.Api.PhotosController,
+     :thumbnail_closure, :api_locations_photos, :api_locations_photos}
   ]
 
   @pages [
@@ -112,17 +114,35 @@ defmodule DawarichWeb.A9RoutesTest do
 
       assert {^view, ^action, opts, session} = info.phoenix_live_view
       assert opts == [action: action, router: Router, container: {:div, class: "contents"}]
-      assert session.name == :rails_pages
+      family = String.starts_with?(path, "/family")
+      assert session.name == if(family, do: :family_pages, else: :rails_pages)
+
+      hooks = [
+        %{
+          id: {DawarichWeb.LiveAuth, :default},
+          stage: :mount,
+          function: &DawarichWeb.LiveAuth.on_mount/4
+        }
+      ]
+
+      hooks =
+        if family,
+          do:
+            hooks ++
+              [
+                %{
+                  id: {DawarichWeb.FamilyGate, :default},
+                  stage: :mount,
+                  function: &DawarichWeb.FamilyGate.on_mount/4
+                }
+              ],
+          else: hooks
 
       assert session.extra == %{
-               session: {DawarichWeb.TagsLive.Form, :live_session, []},
-               on_mount: [
-                 %{
-                   id: {DawarichWeb.LiveAuth, :default},
-                   stage: :mount,
-                   function: &DawarichWeb.LiveAuth.on_mount/4
-                 }
-               ],
+               session:
+                 {if(family, do: DawarichWeb.RailsAuth, else: DawarichWeb.TagsLive.Form),
+                  :live_session, []},
+               on_mount: hooks,
                root_layout: {DawarichWeb.Layouts, :root},
                layout: {DawarichWeb.Layouts, :app}
              }

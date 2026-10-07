@@ -38,11 +38,15 @@ defmodule Dawarich.Exports.Delete do
         repo.query!("DELETE FROM exports WHERE id=$1 AND user_id=$2", [id, user_id], log: false)
 
         if blobs != [] do
-          Dawarich.RailsCommands.insert!(repo, "exports.purge", %{
-            "export_id" => id,
-            "user_id" => user_id,
-            "blob_ids" => blobs
-          })
+          if Dawarich.Standalone.enabled?() do
+            Dawarich.Exports.PurgeWorker.enqueue_export!(repo, blobs)
+          else
+            Dawarich.RailsCommands.insert!(repo, "exports.purge", %{
+              "export_id" => id,
+              "user_id" => user_id,
+              "blob_ids" => blobs
+            })
+          end
         end
 
         :deleted

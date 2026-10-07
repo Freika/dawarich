@@ -39,6 +39,10 @@ defmodule Dawarich.ReleaseOperations.NullIslandTest do
   end
 
   test "a full parent page continues after its last user" do
+    [[value, called]] = rows("SELECT last_value,is_called FROM users_id_seq")
+    on_exit(fn -> rows("SELECT setval('users_id_seq',$1,$2)", [value, called]) end)
+    rows("SELECT setval('users_id_seq',600000000,true)")
+
     rows("""
     INSERT INTO users (email, status, points_count, settings, created_at, updated_at)
     SELECT 'island-' || g || '@example.test', 1, 1, '{}', now(), now() FROM generate_series(1, 1000) g
@@ -46,7 +50,7 @@ defmodule Dawarich.ReleaseOperations.NullIslandTest do
 
     rows("""
     INSERT INTO points (user_id, timestamp, lonlat, created_at, updated_at)
-    SELECT id, 1577836800 + id, ST_SetSRID(ST_MakePoint(0.01, 0.01), 4326)::geography, now(), now()
+    SELECT id, 1577836800, ST_SetSRID(ST_MakePoint(0.01, 0.01), 4326)::geography, now(), now()
     FROM users
     """)
 

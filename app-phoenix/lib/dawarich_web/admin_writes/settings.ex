@@ -4,7 +4,7 @@ defmodule DawarichWeb.AdminWrites.Settings do
   alias Dawarich.Admin.{InstanceWrites, SettingWrites}
   alias Dawarich.I18n
   alias DawarichWeb.AdminWrites.{Request, Response}
-  alias DawarichWeb.RailsProxy
+  alias DawarichWeb.AdminWrites.Fallback
   def init(opts), do: opts
 
   def call(conn, opts) do
@@ -13,7 +13,7 @@ defmodule DawarichWeb.AdminWrites.Settings do
     case Request.load(conn, action, opts) do
       {:ok, conn, actor, params, context} -> dispatch(conn, actor, params, context)
       {:handoff, %{halted: true} = conn} -> conn
-      {:handoff, conn} -> proxy(conn)
+      {:handoff, conn} -> Fallback.call(conn, opts)
     end
   end
 
@@ -32,7 +32,62 @@ defmodule DawarichWeb.AdminWrites.Settings do
         Response.redirect(conn, 302, "/settings/users", :notice, message)
 
       {:handoff, _} ->
-        proxy(conn)
+        Fallback.call(conn, action: context.action, context: context)
+
+      {:terminal, _} ->
+        conn |> send_resp(500, "") |> halt()
+    end
+  end
+
+  defp dispatch(conn, _actor, _params, %{action: :test_map_matching} = context) do
+    url =
+      Dawarich.Experimental.value(
+        :atlas_url,
+        Map.get(context, :repo, Dawarich.Repo),
+        Map.get(context, :env, System.get_env())
+      )
+
+    {kind, key, values} =
+      case Dawarich.MapMatching.Atlas.ConnectionTest.call(url) do
+        {:ok, %{version: version, revision: revision}} ->
+          version = version <> if(revision, do: " (" <> revision <> ")", else: "")
+          {:notice, "success", %{"version" => version}}
+
+        {:error, "not_configured"} ->
+          {:alert, "not_configured", %{}}
+
+        {:error, code} ->
+          {:alert, "failure", %{"error" => code}}
+      end
+
+    {:ok, message} = I18n.t(context.locale, "admin.settings.test_map_matching." <> key, values)
+    Response.redirect(conn, 303, "/admin/settings?section=experimental", kind, message)
+  end
+
+  defp dispatch(conn, actor, _params, %{action: :test_geocoding} = context) do
+    case InstanceWrites.test_geocoding(actor, context) do
+      {:ok, kind, message} -> Response.redirect(conn, 303, "/admin/settings", kind, message)
+      {:handoff, _} -> Fallback.call(conn, action: :test_geocoding, context: context)
+      {:terminal, _} -> conn |> send_resp(500, "") |> halt()
+    end
+  end
+
+  defp dispatch(conn, actor, params, %{action: :background, method: "POST"} = context) do
+    case Dawarich.Admin.BackgroundCommands.call(actor, params["job_name"], context) do
+      {:ok, path} ->
+        {:ok, message} =
+          I18n.t(
+            context.locale,
+            "controllers.settings.background_jobs.job_was_successfully_created"
+          )
+
+        Response.redirect(conn, 302, path, :notice, message)
+
+      {:handoff, _} ->
+        Fallback.call(conn, action: :background, context: context)
+
+      {:invalid, _} ->
+        Fallback.call(conn, action: :background, context: context)
 
       {:terminal, _} ->
         conn |> send_resp(500, "") |> halt()
@@ -53,7 +108,7 @@ defmodule DawarichWeb.AdminWrites.Settings do
         Response.redirect(conn, 302, "/settings/background_jobs", :notice, message)
 
       {:handoff, _} ->
-        proxy(conn)
+        Fallback.call(conn, action: context.action, context: context)
 
       {:terminal, _} ->
         conn |> send_resp(500, "") |> halt()
@@ -71,7 +126,7 @@ defmodule DawarichWeb.AdminWrites.Settings do
     section = params["section"]
 
     suffix =
-      if section in ~w(photon geoapify nominatim locationiq rate_limit points),
+      if section in ~w(photon geoapify nominatim locationiq rate_limit points experimental),
         do: "?" <> URI.encode_query(%{"section" => section}),
         else: ""
 
@@ -94,7 +149,7 @@ defmodule DawarichWeb.AdminWrites.Settings do
         Response.redirect(conn, 303, path, :alert, message)
 
       {:handoff, _} ->
-        proxy(conn)
+        Fallback.call(conn, action: context.action, context: context)
 
       {:terminal, _} ->
         conn |> send_resp(500, "") |> halt()
@@ -107,6 +162,4 @@ defmodule DawarichWeb.AdminWrites.Settings do
         do:
           {field |> String.replace_prefix(prefix <> "[", "") |> String.trim_trailing("]"), value}
   end
-
-  defp proxy(conn), do: RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
 end

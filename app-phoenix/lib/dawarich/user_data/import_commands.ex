@@ -27,7 +27,7 @@ defmodule Dawarich.UserData.ImportCommands do
       "locale" => context.locale
     }
 
-    if Dawarich.Jobs.Ownership.lock(repo, "command:" <> @command) == :oban do
+    if Dawarich.Imports.NativeOwnership.lock(repo, "command:" <> @command) == :oban do
       repo.query!(
         "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at) VALUES(gen_random_uuid(),$1,1,$2,$3,$4,$5,now())",
         [

@@ -3,6 +3,7 @@
 require 'rails_helper'
 require_relative 'a12d2_jobs_support'
 require_relative 'a12d2_release_support'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixture: A12d2 residual jobs' do
   include ActiveSupport::Testing::TimeHelpers
@@ -88,6 +89,9 @@ RSpec.describe 'Phoenix fixture: A12d2 residual jobs' do
     achievements = corpus.fetch('classes').fetch('Achievements::BulkCheckJob').fetch('cases')
     batch = achievements.find { _1.fetch('id') == 'batches' }.fetch('jobs')
     expect(batch.map { _1.fetch('due_offset') }.uniq).to eq([0, 300, 600])
+    place_jobs = corpus.fetch('classes').select { |name, _| name.start_with?('Places::') }
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p06.json'),
+                                   "#{JSON.pretty_generate(place_jobs)}\n")
     serialized = "#{JSON.pretty_generate(corpus)}\n"
     second = capture_jobs
     corpus.fetch('classes').each do |name, entry|

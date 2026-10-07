@@ -14,18 +14,29 @@ defmodule Dawarich.Imports.DestroyEffects do
     do: insert!(lease, "imports.destroy_callbacks", Map.put(payload, "step", step))
 
   def insert!(lease, kind, payload) do
-    RailsCommands.insert!(
-      lease.repo,
-      kind,
-      Map.merge(
-        %{
-          "import_id" => lease.id,
-          "user_id" => lease.user,
-          "event_id" => lease.job.args["event_id"]
-        },
+    if Dawarich.Imports.DestroyNativeEffects.selected?(lease.repo, kind, payload) do
+      Dawarich.Imports.DestroyNativeEffects.run!(
+        lease.repo,
+        lease.user,
+        lease.id,
+        lease.job.args["event_id"],
+        kind,
         payload
       )
-    )
+    else
+      RailsCommands.insert!(
+        lease.repo,
+        kind,
+        Map.merge(
+          %{
+            "import_id" => lease.id,
+            "user_id" => lease.user,
+            "event_id" => lease.job.args["event_id"]
+          },
+          payload
+        )
+      )
+    end
   end
 
   def points!(lease, timestamps) do
@@ -34,10 +45,7 @@ defmodule Dawarich.Imports.DestroyEffects do
         DateTime.from_unix!(at || 0).year |> max(1970) |> min(2100)
       end)
 
-    RailsCommands.insert!(lease.repo, "points.tile_epoch", %{
-      "user_id" => lease.user,
-      "timestamps" => stamps
-    })
+    Dawarich.RailsEffects.tile_epoch(lease.repo, lease.user, stamps)
   end
 
   def visits!(lease, rows) do
@@ -45,7 +53,7 @@ defmodule Dawarich.Imports.DestroyEffects do
 
     times =
       Enum.map(active, fn [_id, _place, time, _demo] ->
-        DateTime.from_naive!(time, "Etc/UTC") |> DateTime.to_iso8601()
+        DateTime.from_naive!(time, "Etc/UTC")
       end)
 
     places =
@@ -55,10 +63,14 @@ defmodule Dawarich.Imports.DestroyEffects do
 
     if times != [],
       do:
-        RailsCommands.insert!(lease.repo, "visit_months_changed", %{
-          "user_id" => lease.user,
-          "started_at" => times
-        })
+        if(Dawarich.Points.NativeEffects.native?(lease.repo, "command:visits.suggest"),
+          do: Dawarich.RailsEffects.visit_months(lease.repo, lease.user, times),
+          else:
+            RailsCommands.insert!(lease.repo, "visit_months_changed", %{
+              "user_id" => lease.user,
+              "started_at" => Enum.map(times, &DateTime.to_iso8601/1)
+            })
+        )
 
     if places != [], do: callback!(lease, "places_cleanup", %{"place_ids" => places})
   end

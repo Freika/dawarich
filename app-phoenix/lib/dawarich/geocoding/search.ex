@@ -24,6 +24,39 @@ defmodule Dawarich.Geocoding.Search do
     end
   end
 
+  def nearby(%{enabled: false}, _coords, _opts), do: {:ok, []}
+
+  def nearby(config, coords, opts) do
+    if incomplete?(config) do
+      {:ok, []}
+    else
+      {url, key, headers} = Query.build(config, coords, opts, version())
+      interactive(config, fn -> fetch(config, url, key, headers) end)
+    end
+  end
+
+  defp interactive(%{rps: rps}, fun) when is_nil(rps) or rps <= 0, do: fun.()
+
+  defp interactive(config, fun) do
+    interval = round(1_000_000 / config.rps)
+
+    case Dawarich.Redis.command([
+           "EVAL",
+           RateLimiter.lua(),
+           "1",
+           "geocoding:rate_limit:" <> RateLimiter.key(config),
+           to_string(interval),
+           "1000000"
+         ]) do
+      {:ok, wait} when is_integer(wait) and wait >= 0 ->
+        if wait > 0, do: Process.sleep(div(wait + 999, 1000))
+        fun.()
+
+      _ ->
+        nil
+    end
+  end
+
   defp incomplete?(c),
     do:
       (Providers.host_required?(c.provider) and Ruby.blank?(c.host)) or

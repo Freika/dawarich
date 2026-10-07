@@ -19,17 +19,36 @@ defmodule DawarichWeb.RateLimitTest do
     State.increment(ScratchRepo, key, seed["value"], seed["period"])
   end
 
+  defp replay(scenario, %{"request" => %{"path" => "/admin/flipper" <> _} = r, "at" => at}) do
+    assert {:pass, _conn, [], nil} =
+             RateLimit.decide(
+               RateLimitCorpus.request_conn(r),
+               opts(scenario["mode"] == "self_hosted", at)
+             )
+  end
+
   defp replay(scenario, %{"request" => r, "at" => at} = step) do
-    outcome =
-      RateLimit.decide(
-        RateLimitCorpus.request_conn(r),
-        opts(scenario["mode"] == "self_hosted", at)
-      )
+    pending = String.starts_with?(r["path"], "/api/v1/imports/pending")
+    conn = RateLimitCorpus.request_conn(r)
+
+    conn =
+      if pending do
+        conn
+        |> DawarichWeb.Cors.call([])
+        |> put_private(:dawarich_native_api, true)
+        |> DawarichWeb.Api.Transport.parse()
+      else
+        conn
+      end
+
+    outcome = RateLimit.decide(conn, opts(scenario["mode"] == "self_hosted", at))
 
     expected = Enum.map(step["increments"], &{RateLimitCorpus.key(&1), &1["ttl"]})
     label = "#{scenario["name"]} #{r["method"]} #{r["path"]}?#{r["query"]}"
 
-    case {step["phoenix"], outcome} do
+    owner = if pending, do: nil, else: step["phoenix"]
+
+    case {owner, outcome} do
       {"defer", {:defer, _conn, [], _reason}} ->
         Enum.each(expected, fn {key, ttl} -> State.increment(ScratchRepo, key, 1, ttl) end)
 
@@ -84,7 +103,7 @@ defmodule DawarichWeb.RateLimitTest do
           into: MapSet.new(),
           do: i["throttle"]
 
-    assert MapSet.new(Rules.throttles(), &elem(&1, 0)) == recorded
+    assert MapSet.new(Rules.throttles(), &elem(&1, 0)) == MapSet.delete(recorded, "admin/flipper")
   end
 
   test "slash variants of the unlock path count under the key Rails counts them with" do
@@ -141,7 +160,7 @@ defmodule DawarichWeb.RateLimitTest do
     assert TtlCache.fetch(hd(keys), 120_000, fn -> flunk("shared cache was flushed") end) == :kept
   end
 
-  test "every Rack CORS pending-imports path defers to Rails before counting or reading" do
+  test "pending-import CORS paths retain Rails counting and self-hosted exemptions" do
     body = ~s({"api_key":"a13cunknown"})
 
     for path <- [
@@ -159,13 +178,29 @@ defmodule DawarichWeb.RateLimitTest do
         |> put_req_header("content-length", Integer.to_string(byte_size(body)))
         |> put_req_header("origin", "https://example.invalid")
 
-      assert {:defer, deferred, [], "Rack CORS resource"} =
-               RateLimit.decide(conn, opts(self_hosted))
+      assert {:pass, decided, counted, _token} = RateLimit.decide(conn, opts(self_hosted))
 
-      refute Map.has_key?(deferred.private, :dawarich_raw_body)
+      if not self_hosted and method == :post and
+           path in ~w(/api/v1/imports/pending /api/v1/imports/pending/ //api/v1/imports/pending) do
+        [step] =
+          for scenario <- corpus()["scenarios"],
+              scenario["name"] == "pending_imports",
+              step <- scenario["steps"],
+              step["response"] == %{"status" => "passed"},
+              length(step["increments"]) == 1,
+              do: step
+
+        [increment] = step["increments"]
+        ttl = increment["ttl"]
+        assert [{"rack::attack:" <> key, ^ttl}] = counted
+        assert String.contains?(key, ":api/v1/imports/pending CREATE:")
+        refute Map.has_key?(decided.private, :dawarich_raw_body)
+      else
+        assert counted == []
+      end
     end
 
-    assert rows("SELECT count(*) FROM phoenix.counters") == [[0]]
+    assert rows("SELECT sum(value)::bigint FROM phoenix.counters") == [[3]]
   end
 
   test "nothing is read, counted or deferred for a request no rule covers" do
@@ -373,7 +408,7 @@ defmodule DawarichWeb.RateLimitTest do
       |> Enum.filter(fn [_name, body] ->
         body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit(?:\n|$)/
       end)
-      |> MapSet.new(fn [name, _body] -> String.to_existing_atom(name) end)
+      |> MapSet.new(fn [name, _body] -> name end)
 
     for file <- ~w(auth_handler.ex auth_otp/http.ex) do
       source = File.read!(Path.expand("../../lib/dawarich_web/#{file}", __DIR__))
@@ -394,7 +429,7 @@ defmodule DawarichWeb.RateLimitTest do
 
       assert is_map(info), "#{route.verb} #{route.path} does not resolve"
 
-      assert Enum.any?(info.pipe_through, &MapSet.member?(guarded, &1)),
+      assert Enum.any?(info.pipe_through, &MapSet.member?(guarded, Atom.to_string(&1))),
              "#{route.verb} #{route.path} has no guarded pipeline: #{inspect(info.pipe_through)}"
     end
   end

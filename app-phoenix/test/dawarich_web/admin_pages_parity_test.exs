@@ -57,6 +57,15 @@ defmodule DawarichWeb.AdminPagesParityTest do
       assert {:ok, page} = Instance.page(params, context)
       html = render_component(&Instance.render/1, Map.merge(context, page))
       assert_form_isolated(html, "form[action='/admin/settings']")
+      assert html =~ ~s(data-testid="instance-settings-section-experimental")
+
+      html =
+        Regex.replace(
+          ~r/<div class="mt-2" data-testid="experimental-navigation">.*?<\/div>/s,
+          html,
+          ""
+        )
+
       html = String.replace(html, ~s( data-turbo="false"), "")
       rails = File.read!(Path.join(@dir, @name <> ".html"))
       assert ParityHTML.normalize(html) == ParityHTML.normalize(rails)

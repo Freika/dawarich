@@ -83,7 +83,18 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
         for fragment <- request["fragment_keys"],
             do: Dawarich.Redis.cache_command(["DEL", fragment])
 
-        InsightsSeeds.cache!(key["key"], Base.decode64!(key["wire"]))
+        [[updated]] =
+          Dawarich.Repo.query!(
+            "SELECT updated_at FROM digests WHERE user_id=$1 AND year=2024 AND period_type=1",
+            [request["user_id"]]
+          ).rows
+
+        current_key = Details.yearly_key(request["user_id"], 2024, updated)
+
+        case_before =
+          Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows
+
+        InsightsSeeds.cache!(current_key, Base.decode64!(key["wire"]))
 
         if state == :stale,
           do:
@@ -95,11 +106,11 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
         if state == nil,
           do:
             InsightsSeeds.cache!(
-              key["key"],
+              current_key,
               Dawarich.RailsCache.Wire.encode_boolean(nil, expires_at: nil)
             )
 
-        if state == :cold, do: Dawarich.Redis.cache_command(["DEL", key["key"]])
+        if state == :cold, do: Dawarich.Redis.cache_command(["DEL", current_key])
         client = connect(ctx.port)
 
         send_raw(
@@ -107,18 +118,14 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
           "GET #{request["path"]} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\nTurbo-Frame: insights_details\r\n\r\n"
         )
 
-        if state == :cold do
-          upstream = accept(ctx.upstream)
-          {head, _} = read_head(upstream)
-          assert request_line(head) == "GET #{request["path"]} HTTP/1.1"
-
-          reply(
-            upstream,
-            "HTTP/1.1 200 OK\r\nContent-Length: #{byte_size(expected_bytes)}\r\n\r\n#{expected_bytes}"
-          )
-        end
-
         assert {200, _, body} = read_response(client)
+
+        if state != :cold,
+          do:
+            assert(
+              Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows ==
+                case_before
+            )
 
         if state == nil do
           locale =
@@ -141,8 +148,12 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
       end
     end
 
-    assert Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows ==
-             before
+    assert Enum.map(
+             Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows,
+             &hd/1
+           ) == Enum.map(before, &hd/1)
+
+    assert Dawarich.Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
   end
 
   for request <- @corpus["requests"] do

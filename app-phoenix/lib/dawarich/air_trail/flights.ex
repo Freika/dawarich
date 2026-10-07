@@ -109,29 +109,33 @@ defmodule Dawarich.AirTrail.Flights do
     end
   end
 
-  def store(repo, user_id, flights, event_id, time_zone) do
+  def store(repo, user_id, flights, event_id, time_zone, opts \\ []) do
     distances = Enum.map(flights, &distance_km/1)
 
     {:ok, :ok} =
       repo.transaction(fn ->
-        repo.query!("SELECT set_config('TimeZone', $1, true)", [time_zone], log: false)
-        %{rows: [[months, epochs]]} = repo.query!(@months_before, [user_id], log: false)
+        if Processed.claim!(repo, event_id, @handler) do
+          repo.query!("SELECT set_config('TimeZone', $1, true)", [time_zone], log: false)
+          %{rows: [[months, epochs]]} = repo.query!(@months_before, [user_id], log: false)
 
-        repo.query!(@upsert, [user_id, Jason.encode!(flights), distances, @iso, flights],
-          log: false
-        )
+          repo.query!(@upsert, [user_id, Jason.encode!(flights), distances, @iso, flights],
+            log: false
+          )
 
-        repo.query!(@delete_unseen, [user_id, Enum.map(flights, & &1["id"])], log: false)
-        repo.query!(@synced_at, [user_id], log: false)
+          repo.query!(@delete_unseen, [user_id, Enum.map(flights, & &1["id"])], log: false)
+          repo.query!(@synced_at, [user_id], log: false)
 
-        :ok =
-          Dawarich.RailsCommands.insert!(repo, "airtrail_stats", %{
-            "user_id" => user_id,
-            "months" => months,
-            "departure_epochs" => epochs
-          })
+          payload = %{"user_id" => user_id, "months" => months, "departure_epochs" => epochs}
 
-        Processed.mark!(repo, event_id, @handler)
+          if Dawarich.Standalone.enabled?() or
+               Dawarich.Jobs.Ownership.lock(repo, "command:stats.calculate_month") == :oban do
+            Dawarich.AirTrail.StatsFollowUp.call(repo, payload, opts)
+          else
+            Dawarich.RailsCommands.insert!(repo, "airtrail_stats", payload)
+          end
+        end
+
+        :ok
       end)
 
     :ok

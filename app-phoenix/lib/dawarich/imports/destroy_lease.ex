@@ -1,7 +1,7 @@
 defmodule Dawarich.Imports.DestroyLease do
   @moduledoc false
   alias Dawarich.Imports.{DestroyLock, LeaseLost}
-  alias Dawarich.Jobs.Ownership
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
   @lane "command:imports.destroy"
   @worker "Dawarich.Imports.DestroyWorker"
 

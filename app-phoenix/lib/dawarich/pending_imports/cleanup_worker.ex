@@ -33,17 +33,21 @@ defmodule Dawarich.PendingImports.CleanupWorker do
       end)
 
     if result == :ok and length(ids) == 1000 do
-      Ownership.with_owner(repo, key(), :oban, fn ->
-        Oban.insert!(
-          oban,
-          new(%{"now" => DateTime.to_iso8601(now), "after_id" => List.last(ids)},
-            unique: [keys: [:now, :after_id], period: :infinity, states: :all]
-          )
-        )
-      end)
+      case Ownership.with_owner(repo, key(), :oban, fn ->
+             Oban.insert!(
+               oban,
+               new(%{"now" => DateTime.to_iso8601(now), "after_id" => List.last(ids)},
+                 unique: [keys: [:now, :after_id], period: :infinity, states: :all]
+               )
+             )
+           end) do
+        {:ok, _job} -> :ok
+        {:skip, _} -> {:cancel, :not_owner}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      result
     end
-
-    result
   end
 
   @impl Oban.Worker

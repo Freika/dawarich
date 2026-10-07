@@ -7,6 +7,10 @@ defmodule Dawarich.Release do
   def migrate, do: migrate([])
 
   def migrate(opts) do
+    Dawarich.ErrorReporting.release(fn -> migrate_command(opts) end)
+  end
+
+  defp migrate_command(opts) do
     case Dawarich.Release.Lifecycle.mode(Keyword.get(opts, :env, System.get_env())) do
       {:ok, :rails} -> with_repos(&migrate_schemas(&1, opts), opts)
       {:ok, :native} -> with_repos(&Dawarich.Release.Native.migrate(&1, opts), opts)
@@ -17,6 +21,10 @@ defmodule Dawarich.Release do
   def migrate_oban, do: with_repos(&install_oban/1)
 
   def seed(opts \\ []) do
+    Dawarich.ErrorReporting.release(fn -> seed_command(opts) end)
+  end
+
+  defp seed_command(opts) do
     case Dawarich.Release.Lifecycle.mode(Keyword.get(opts, :env, System.get_env())) do
       {:ok, :native} -> with_repos(&Dawarich.Release.Native.seed(&1, opts), opts)
       {:ok, :rails} -> raise Dawarich.CLI.Migrate.describe(:lifecycle_disabled)
@@ -54,7 +62,7 @@ defmodule Dawarich.Release do
   end
 
   def check_runtime_apps! do
-    check_runtime_apps!(Application.spec(@app, :applications) || [], &Application.load/1)
+    check_runtime_apps!([@app, :sentry, :telemetry_metrics_prometheus_core], &Application.load/1)
   end
 
   def check_runtime_apps!(root_apps, loader) when is_list(root_apps) and is_function(loader, 1) do

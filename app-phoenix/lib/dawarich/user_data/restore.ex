@@ -2,7 +2,7 @@ defmodule Dawarich.UserData.Restore do
   @moduledoc false
   require Logger
   alias Dawarich.UserData.{Archive, Versions}
-  alias Dawarich.UserData.Restore.{V1, V2, Messages, Files}
+  alias Dawarich.UserData.Restore.{V1, V2, Messages, Files, Resume}
   alias Dawarich.Imports.Fence
 
   @entities ~w(areas places tags taggings imports exports trips stats digests notifications visits tracks points raw_data_archives)
@@ -21,27 +21,29 @@ defmodule Dawarich.UserData.Restore do
           Fence.run(context, fn ->
             {:ok, stats} =
               repo.transaction(fn ->
-                stats =
-                  case Versions.detect(directory) do
-                    1 ->
-                      V1.call(repo, user, directory, context)
+                Resume.call(repo, directory, context, fn ->
+                  stats =
+                    case Versions.detect(directory) do
+                      1 ->
+                        V1.call(repo, user, directory, context)
 
-                    2 ->
-                      V2.call(repo, user, directory, context)
+                      2 ->
+                        V2.call(repo, user, directory, context)
 
-                    version ->
-                      raise elem(
-                              Dawarich.I18n.t(
-                                locale(repo, user, context),
-                                "services.users.import_data.unsupported_format_version",
-                                %{"version" => version}
-                              ),
-                              1
-                            )
-                  end
+                      version ->
+                        raise elem(
+                                Dawarich.I18n.t(
+                                  locale(repo, user, context),
+                                  "services.users.import_data.unsupported_format_version",
+                                  %{"version" => version}
+                                ),
+                                1
+                              )
+                    end
 
-                Messages.success(repo, user, stats, context)
-                stats
+                  Messages.success(repo, user, stats, context)
+                  stats
+                end)
               end)
 
             stats

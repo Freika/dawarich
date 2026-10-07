@@ -75,7 +75,7 @@ defmodule DawarichWeb.TripMissingDataTest do
   defp shell(html),
     do: html |> LazyHTML.from_document() |> LazyHTML.query("#trip-shell") |> LazyHTML.to_html()
 
-  test "Cloud calculation documents return the original GET to Rails without effects" do
+  test "Cloud calculation documents produce native work without Rails effects" do
     previous = System.get_env("SELF_HOSTED")
 
     on_exit(fn ->
@@ -87,25 +87,14 @@ defmodule DawarichWeb.TripMissingDataTest do
     entry = Enum.find(@effects, &(&1["name"] == "show_nil_path_oban"))
     {user, id} = seed(entry)
     System.put_env("SELF_HOSTED", "false")
-    refute ShowCalculation.admitted?(Repo, user, id, @now)
-    assert {:replay, _} = ShowCalculation.run(SpyRepo, user, id, %{now: @now, connected: false})
-    upstream = upstream!()
-    path = "/trips/#{id}?locale=de"
-    before = Repo.query!("SELECT to_jsonb(t) FROM trips t WHERE id=$1", [id]).rows
-
-    {{line, body}, conn} =
-      forwarded(upstream, fn -> RailsUser.signed_in(user.id) |> get(path) end)
-
-    assert line == "GET #{path} HTTP/1.1"
-    assert body == ""
-    assert conn.status == 204
-    assert Repo.query!("SELECT to_jsonb(t) FROM trips t WHERE id=$1", [id]).rows == before
-    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+    assert ShowCalculation.admitted?(Repo, user, id, @now)
+    assert {:ok, :queued} = ShowCalculation.run(SpyRepo, user, id, %{now: @now, connected: false})
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[1]]
     assert commands() == []
     TripsSeeds.path!(id, [[12.3712, 51.3391], [12.3801, 51.3422]])
     assert ShowCalculation.admitted?(Repo, user, id, @now)
     assert {:ok, :ready} = ShowCalculation.run(SpyRepo, user, id, %{now: @now, connected: false})
-    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[1]]
   end
 
   test "an owner flip before document production replays the Rails GET and response" do

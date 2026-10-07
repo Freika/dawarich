@@ -6,7 +6,7 @@ defmodule Dawarich.Imports.DestroyExtraction do
 
   def call(lease, source) do
     places =
-      DestroyLease.effect!(lease, fn ->
+      effect!(lease, fn ->
         query(lease, "SELECT id FROM places WHERE import_id=$1 AND user_id=$2", [
           lease.id,
           lease.user
@@ -19,7 +19,7 @@ defmodule Dawarich.Imports.DestroyExtraction do
     orphaned_places(lease, places)
     reset_segments(lease, source)
 
-    DestroyLease.effect!(lease, fn ->
+    effect!(lease, fn ->
       query(
         lease,
         "UPDATE imports SET additional_data_extraction_status=0,additional_data_extraction='{}' WHERE id=$1 AND user_id=$2",
@@ -30,7 +30,7 @@ defmodule Dawarich.Imports.DestroyExtraction do
 
   defp batches(lease, table, fun) when table in ["visits", "tracks"] do
     count =
-      DestroyLease.effect!(lease, fn ->
+      effect!(lease, fn ->
         columns =
           if table == "visits",
             do: "id,place_id,started_at,demo",
@@ -102,7 +102,7 @@ defmodule Dawarich.Imports.DestroyExtraction do
 
   defp orphaned_places(lease, ids) do
     deleted =
-      DestroyLease.effect!(lease, fn ->
+      effect!(lease, fn ->
         rows =
           query(
             lease,
@@ -139,10 +139,10 @@ defmodule Dawarich.Imports.DestroyExtraction do
     if deleted != [], do: orphaned_places(lease, ids -- deleted), else: :ok
   end
 
-  defp reset_segments(lease, source) do
+  def reset_segments(lease, source) do
     label = if is_integer(source) and source >= 0, do: Enum.at(@sources, source)
 
-    DestroyLease.effect!(lease, fn ->
+    effect!(lease, fn ->
       tracks =
         query(
           lease,
@@ -156,6 +156,9 @@ defmodule Dawarich.Imports.DestroyExtraction do
         do: DestroyEffects.callback!(lease, "reclassify_tracks", %{"track_ids" => tracks})
     end)
   end
+
+  defp effect!(%{extraction_fence: fence}, fun), do: fence.(fun)
+  defp effect!(lease, fun), do: DestroyLease.effect!(lease, fun)
 
   defp query(lease, sql, params), do: lease.repo.query!(sql, params, log: false).rows
 end

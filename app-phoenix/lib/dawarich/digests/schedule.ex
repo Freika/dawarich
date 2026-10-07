@@ -1,7 +1,7 @@
 defmodule Dawarich.Digests.Schedule do
   @moduledoc false
 
-  alias Dawarich.Digests.{MonthlyWorker, YearlyWorker}
+  alias Dawarich.Stats.{DigestsCalculateMonthEffects, DigestsCalculateYearEffects}
   alias Dawarich.Jobs.Ownership
   alias Dawarich.RailsCommands
 
@@ -9,13 +9,23 @@ defmodule Dawarich.Digests.Schedule do
     enqueue(
       repo,
       "month",
-      %{"user_id" => user_id, "year" => year, "month" => month, "time_zone" => zone},
+      %{
+        "user_id" => user_id,
+        "year" => Dawarich.RubyInteger.to_i(year),
+        "month" => Dawarich.RubyInteger.to_i(month),
+        "time_zone" => zone
+      },
       opts
     )
   end
 
   def yearly(repo, user_id, year, zone, opts \\ []) do
-    enqueue(repo, "year", %{"user_id" => user_id, "year" => year, "time_zone" => zone}, opts)
+    enqueue(
+      repo,
+      "year",
+      %{"user_id" => user_id, "year" => Dawarich.RubyInteger.to_i(year), "time_zone" => zone},
+      opts
+    )
   end
 
   defp enqueue(repo, period, args, opts) do
@@ -24,11 +34,17 @@ defmodule Dawarich.Digests.Schedule do
 
     {:ok, :ok} =
       repo.transaction(fn ->
-        case Ownership.lock(repo, "command:" <> type) do
+        case if(Dawarich.Standalone.enabled?(),
+               do: :oban,
+               else: Ownership.lock(repo, "command:" <> type)
+             ) do
           :oban ->
-            worker = if period == "month", do: MonthlyWorker, else: YearlyWorker
-            args = Map.put(args, "event_id", Ecto.UUID.generate())
-            Oban.insert!(Keyword.get(opts, :oban, Oban), worker.new(args, scheduled_at: at))
+            effect =
+              if period == "month",
+                do: DigestsCalculateMonthEffects,
+                else: DigestsCalculateYearEffects
+
+            effect.publish(repo, args, Keyword.put(opts, :scheduled_at, at))
 
           :sidekiq ->
             due = DateTime.to_unix(at, :microsecond) / 1_000_000

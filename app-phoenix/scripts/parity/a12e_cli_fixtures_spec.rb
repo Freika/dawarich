@@ -44,6 +44,7 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
     end
     phoenix_tables!
     fx.reset!
+    fx.sql('DELETE FROM oban.oban_jobs') if fx.conn.data_source_exists?('oban.oban_jobs')
   end
 
   after(:all) { fx.finish(recorded) }
@@ -63,8 +64,121 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
     fx.user!(1003, 'deleted@example.invalid', status: 0, deleted: true)
   end
 
+  def capture_places_cli
+    fx = A12eFixtureSupport
+    outputs = {}
+    %w[dawarich:backfill_place_names dawarich:cleanup_suggested_places].each do |task|
+      rows = []
+      [0, 103].each do |count|
+        fx.reset!
+        count.times { |index| fx.user!(97_800 + index, "places-cli-#{index}@example.test") }
+        fx.user!(97_999, 'places-cli-deleted@example.test', deleted: true) if count.positive?
+        fx.sql('CLUSTER users USING users_pkey')
+        clear_enqueued_jobs
+        out, err, code = fx.rake(task)
+        jobs = enqueued_jobs.map do |job|
+          { job: job[:job].name, args: job[:args], queue: job[:queue],
+            delay: job[:at] && (job[:at] - fx::NOW.to_f).round(6) }
+        end
+        expected = task.end_with?('backfill_place_names') ? 1 : count
+        expect(code).to eq(0)
+        expect(jobs.size).to eq(expected)
+        expect([out, err]).to eq(['', ''])
+        if task.end_with?('cleanup_suggested_places')
+          expect(jobs.map { _1[:args] }).to eq((97_800...97_800 + count).map { [_1] })
+          expect(jobs.map { _1[:delay] }).to eq(count.times.map { (_1 * 0.1).round(6) })
+        end
+        rows << { argv: [task], count:, stdout: out, stderr: err, exit: code, jobs: }
+        clear_enqueued_jobs
+        out, err, code = fx.rake(task, 'ignored-extra')
+        expect(code).to eq(0)
+        rows << { argv: [task, 'ignored-extra'], count:, stdout: out, stderr: err, exit: code,
+                  jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args], queue: _1[:queue] } } }
+      end
+      fx.reset!
+      fx.user!(97_800, 'places-cli-error@example.test')
+      RSpec::Mocks.with_temporary_scope do
+        if task.end_with?('backfill_place_names')
+          allow(Places::BulkNameFetchingJob).to receive(:perform_later).and_raise(RuntimeError,
+                                                                                  'synthetic enqueue failure')
+        else
+          allow(User).to receive(:in_batches).and_raise(ActiveRecord::StatementInvalid, 'synthetic SQL failure')
+        end
+        clear_enqueued_jobs
+        out, err, code = fx.rake(task)
+        expect(code).to eq(1)
+        expect(err).to include('synthetic')
+        expect(enqueued_jobs).to be_empty
+        rows << { argv: [task], failure: true, stdout: out, stderr: err, exit: code, jobs: [] }
+      end
+      if task.end_with?('cleanup_suggested_places')
+        fx.reset!
+        103.times { |index| fx.user!(97_800 + index, "places-cli-partial-#{index}@example.test") }
+        fx.sql('CLUSTER users USING users_pkey')
+        clear_enqueued_jobs
+        calls = 0
+        RSpec::Mocks.with_temporary_scope do
+          allow_any_instance_of(Places::OrphanCleanupJob).to receive(:enqueue)
+            .and_wrap_original do |original, *args, **options|
+            calls += 1
+            raise 'synthetic second-batch enqueue failure' if calls == 101
+
+            original.call(*args, **options)
+          end
+          out, err, code = fx.rake(task)
+          expect(code).to eq(1)
+          expect(enqueued_jobs.size).to eq(100)
+          rows << { argv: [task], partial_failure: true, stdout: out, stderr: err, exit: code,
+                    jobs: enqueued_jobs.map do
+                      { job: _1[:job].name, args: _1[:args],
+                                          delay: (_1[:at] - fx::NOW.to_f).round(6) }
+                    end }
+        end
+      end
+      outputs[task.end_with?('backfill_place_names') ? '07' : '08'] = rows
+    end
+    fx.reset!
+    fx.user!(97_800, 'places-orphan@example.test')
+    rows = []
+    [nil, '', 'Keep note'].each_with_index do |note, index|
+      Place.insert!({ id: 978_000 + index, user_id: 97_800, name: 'Suggested', source: Place.sources[:photon],
+                      latitude: 51.3397, longitude: 12.3734,
+                      lonlat: 'POINT(12.373468 51.339700)', note:, created_at: fx::NOW, updated_at: fx::NOW })
+      stdout = StringIO.new
+      stderr = StringIO.new
+      code = fx.capture(stdout, stderr, nil) do
+        puts Place.where(source: :photon, note: [nil, '']).where.missing(:visits, :taggings).count
+      end
+      out = stdout.string
+      err = stderr.string
+      expect(code).to eq(0)
+      expect(out.to_i).to eq(index.zero? ? 1 : 2)
+      rows << { recipe: 'Place.where(source: :photon, note: [nil, ""]).where.missing(:visits, :taggings).count',
+                note:, stdout: out, stderr: err, exit: code }
+    end
+    RSpec::Mocks.with_temporary_scope do
+      allow(Place).to receive(:where).and_raise(ActiveRecord::StatementInvalid, 'synthetic orphan SQL failure')
+      stdout = StringIO.new
+      stderr = StringIO.new
+      code = fx.capture(stdout, stderr, nil) do
+        puts Place.where(source: :photon, note: [nil, '']).where.missing(:visits, :taggings).count
+      end
+      expect(code).to eq(1)
+      rows << { recipe: 'orphan count', failure: true, stdout: stdout.string, stderr: stderr.string, exit: code }
+    end
+    outputs['09'] = rows
+    outputs['10'] = { backfill: outputs['07'], cleanup: outputs['08'],
+                      aliases: ['dawarich:backfill_place_names', 'dawarich:cleanup_suggested_places'] }
+    outputs.each do |id, cases|
+      path = Rails.root.join("app-phoenix/test/fixtures/places/a12f3a-p#{id}.json")
+      FixtureRecording.source_verify(path, "#{JSON.pretty_generate(cases)}\n")
+    end
+    fx.reset!
+  end
+
   it 'number_to_human_size' do
     expect(fx.human_sizes).to eq(fx.stored['human_sizes']) unless fx.write?
+    capture_places_cli
   end
 
   it 'users:activate' do
@@ -370,13 +484,9 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
       allow(BCrypt::Engine).to receive(:generate_salt).and_return(fx::SALT)
       allow(SecureRandom).to receive(:hex).and_call_original
       allow(SecureRandom).to receive(:hex).with(32).and_return('a12e' * 16)
-      allow(Region.connection).to receive(:execute).and_wrap_original do |original, query, *args|
-        if query.start_with?('INSERT INTO regions')
-          query = query.gsub('NOW()',
-                             "timestamp '#{fx::NOW.strftime('%F %T')}'")
-        end
-        original.call(query, *args)
-      end
+      stub_const('Achievements::LoadRegions::UPSERT_SQL',
+                 Achievements::LoadRegions::UPSERT_SQL.gsub(/NOW\(\)/i,
+                                                            "timestamp '#{fx::NOW.strftime('%F %T')}'"))
     end
 
     after do

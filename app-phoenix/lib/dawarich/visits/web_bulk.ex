@@ -13,7 +13,7 @@ defmodule Dawarich.Visits.WebBulk do
         with {:ok, selected} <- select(repo, action, user, ids, params, bounds, context),
              :ok <- validate(action, selected, params["status"]) do
           write(repo, action, selected, params["status"], context.now)
-          RailsEffects.visit_months(repo, user.id, WebEffects.stamps(selected))
+          WebEffects.months(repo, user, selected)
 
           if action == :destroy or params["status"] == "declined" do
             RailsEffects.orphan_places(

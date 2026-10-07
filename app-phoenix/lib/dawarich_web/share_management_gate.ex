@@ -9,7 +9,8 @@ defmodule DawarichWeb.ShareManagementGate do
   def mutation?(conn, params) do
     user = RailsAuth.call(conn, []).assigns.current_user
 
-    conn.method in ~w(POST PATCH DELETE) and LayoutAssigns.self_hosted?() and
+    conn.method in ~w(POST PATCH DELETE) and
+      (Dawarich.Standalone.enabled?() or LayoutAssigns.self_hosted?()) and
       get_req_header(conn, "turbo-frame") in [[], ["share-link-modal"]] and
       (is_nil(params["trip_id"]) or params["trip_id"] =~ ~r/\A\d{1,18}\z/) and
       (is_nil(params["id"]) or Dawarich.SharedLinks.canonical?(params["id"])) and
@@ -30,7 +31,8 @@ defmodule DawarichWeb.ShareManagementGate do
     query = Plug.Conn.Query.decode(conn.query_string)
     user = RailsAuth.call(conn, []).assigns.current_user
 
-    conn.method == "GET" and LayoutAssigns.self_hosted?() and
+    conn.method in ~w(GET HEAD) and
+      (Dawarich.Standalone.enabled?() or LayoutAssigns.self_hosted?()) and
       get_req_header(conn, "turbo-frame") in [[], ["share-link-modal"]] and
       get_req_header(conn, "x-dawarich-client") == [] and
       Enum.all?(query, fn {key, value} ->

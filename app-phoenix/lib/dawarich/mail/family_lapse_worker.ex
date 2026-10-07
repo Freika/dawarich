@@ -39,7 +39,32 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
   WHERE id = $1 AND settings->'family'->>'plan_lapse_notified_at' IS NOT NULL
   """
 
-  def args_from_command(version, payload), do: Wave2.decode(version, payload, @payload)
+  def args_from_command(1, payload) when is_map(payload) do
+    with {:ok, user_id} <- id(Map.get(payload, "user_id")),
+         {:ok, family_id} <- id(Map.get(payload, "family_id")) do
+      Wave2.decode(
+        1,
+        payload |> Map.put("user_id", user_id) |> Map.put("family_id", family_id),
+        @payload
+      )
+    end
+  end
+
+  def args_from_command(1, _payload), do: {:error, "invalid_payload"}
+  def args_from_command(_version, _payload), do: {:error, "unsupported_version"}
+
+  defp id(value)
+       when is_integer(value) and value in -9_223_372_036_854_775_808..9_223_372_036_854_775_807,
+       do: {:ok, value}
+
+  defp id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {integer, ""} -> id(integer)
+      _ -> {:error, "invalid_payload"}
+    end
+  end
+
+  defp id(_value), do: {:error, "invalid_payload"}
 
   @impl Oban.Worker
   def timeout(_job), do: :timer.minutes(5)

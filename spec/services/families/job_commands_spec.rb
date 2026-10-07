@@ -71,4 +71,86 @@ RSpec.describe 'Families::JobCommands' do
     expect(member.reload).to be_pro
     expect(JobOutbox.pending.count).to eq(0)
   end
+  it 'retains string positional ids and source context when forwarding family jobs' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    auto_user = create(:user, plan: :family, skip_auto_trial: true)
+    owner = create(:user, plan: :family, active_until: 1.day.from_now, skip_auto_trial: true)
+    family = create(:family, creator: owner)
+    member = create(:user, plan: :lite, status: :inactive, skip_auto_trial: true)
+    create(:family_membership, family: family, user: member)
+    JobOutbox.delete_all
+    clear_enqueued_jobs
+
+    Time.use_zone('Asia/Tokyo') do
+      I18n.with_locale(:de) do
+        Families::AutoCreationJob.new.perform(auto_user.id.to_s)
+        Families::MemberSyncJob.new.perform(family.id.to_s)
+      end
+    end
+    expect(auto_user.reload).to be_in_family
+    expect(member.reload).to be_pro
+    expect(JobOutbox.count).to eq(0)
+
+    job_owner!('command:families.auto_create', :oban)
+    job_owner!('command:families.member_sync', :oban)
+    Time.use_zone('Asia/Tokyo') do
+      I18n.with_locale(:de) do
+        Families::AutoCreationJob.new.perform(auto_user.id.to_s)
+        Families::MemberSyncJob.new.perform(family.id.to_s)
+      end
+    end
+    expect(JobOutbox.pending.find_by!(command_type: 'families.auto_create').payload)
+      .to eq('user_id' => auto_user.id.to_s, 'time_zone' => 'Asia/Tokyo')
+    expect(JobOutbox.pending.find_by!(command_type: 'families.member_sync').payload)
+      .to eq('family_id' => family.id.to_s, 'locale' => 'de', 'time_zone' => 'Asia/Tokyo')
+    expect(enqueued_jobs).to be_empty
+  end
+  it 'R1 retains integer and numeric string family mail ids through local delivery and forwarding' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    allow(FamilyMailer).to receive(:default).and_return(FamilyMailer.default.merge(from: 'noreply@example.test'))
+    owner = create(:user, plan: :family, skip_auto_trial: true)
+    family = create(:family, creator: owner)
+    member = create(:user, skip_auto_trial: true)
+    invitation = create(:family_invitation, family: family, invited_by: owner, status: :pending)
+    JobOutbox.delete_all
+    ActionMailer::Base.deliveries.clear
+
+    [->(id) { id }, ->(id) { id.to_s }, ->(id) { "+000#{id}" }].each do |form|
+      invitation_id, user_id, family_id = [invitation.id, member.id, family.id].map(&form)
+      job_owner!('command:mail.family_invitation', :sidekiq)
+      job_owner!('command:mail.family_lapse', :sidekiq)
+      Families::LapseNotice.clear(member.reload)
+      I18n.with_locale(:de) do
+        expect do
+          Family::Invitations::SendingJob.new.perform(invitation_id)
+          Families::LapseNotificationJob.new.perform(user_id, family_id)
+        end.to change { ActionMailer::Base.deliveries.size }.by(2)
+      end
+      expect(ActionMailer::Base.deliveries.last(2).map(&:to)).to eq([[invitation.email], [member.email]])
+
+      job_owner!('command:mail.family_invitation', :oban)
+      job_owner!('command:mail.family_lapse', :oban)
+      I18n.with_locale(:de) do
+        expect do
+          Family::Invitations::SendingJob.new.perform(invitation_id)
+          Families::LapseNotificationJob.new.perform(user_id, family_id)
+        end.not_to(change { ActionMailer::Base.deliveries.size })
+      end
+      expect(JobOutbox.pending.find_by!(command_type: 'mail.family_invitation').payload)
+        .to eq('invitation_id' => invitation_id, 'locale' => 'de')
+      expect(JobOutbox.pending.find_by!(command_type: 'mail.family_lapse').payload)
+        .to eq('user_id' => user_id, 'family_id' => family_id, 'locale' => 'de', 'lapse_at' => 'none')
+      JobOutbox.delete_all
+    end
+
+    job_owner!('command:mail.family_invitation', :sidekiq)
+    job_owner!('command:mail.family_lapse', :sidekiq)
+    [nil, '', 'invalid', '9223372036854775808', '-9223372036854775809'].each do |bad|
+      expect do
+        Family::Invitations::SendingJob.new.perform(bad)
+        Families::LapseNotificationJob.new.perform(bad, family.id)
+        Families::LapseNotificationJob.new.perform(member.id, bad)
+      end.not_to(change { ActionMailer::Base.deliveries.size })
+    end
+  end
 end

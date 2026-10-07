@@ -219,7 +219,7 @@ defmodule Dawarich.Jobs.RelayTest do
              id: :workers,
              type: :supervisor,
              restart: :transient,
-             start: {Supervisor, :start_link, [[relay, claimer], flags]}
+             start: {Supervisor, :start_link, [[relay, _health, claimer], flags]}
            } = workers
 
     assert flags[:max_restarts] == 1_000 and flags[:max_seconds] == 60

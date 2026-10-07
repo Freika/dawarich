@@ -102,7 +102,7 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
     assert range_jobs() == expected
 
     assert run() == :ok
-    assert range_jobs() == expected ++ expected
+    assert range_jobs() == expected
 
     for args <- range_jobs(), do: assert(RangeWorker.run(ScratchRepo, oban(), args) == :ok)
 
@@ -155,7 +155,7 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
     assert range_jobs() == []
   end
 
-  test "time zone falls back when Postgres does not know it" do
+  test "time zone resolves Rails aliases before Postgres lookup" do
     :ok = Ownership.put!(ScratchRepo, @cron_key, :oban)
     :ok = Ownership.put!(ScratchRepo, @range_key, :oban)
     rails_name = daily_user!(%{"timezone" => "Berlin"}) |> with_points!([@slot - 7_200])
@@ -164,7 +164,7 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
     assert run() == :ok
 
     assert Enum.map(range_jobs(), &{&1["user_id"], &1["time_zone"]}) == [
-             {rails_name, "UTC"},
+             {rails_name, "Europe/Berlin"},
              {iana, "Europe/Berlin"}
            ]
   end

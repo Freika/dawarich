@@ -41,14 +41,14 @@ defmodule Dawarich.Visits.WebMerge do
   end
 
   defp graph(repo, ids) do
-    case repo.query!(
-           "SELECT EXISTS(SELECT 1 FROM notes WHERE attachable_type='Visit' AND attachable_id=ANY($1))",
+    if Dawarich.Jobs.Ownership.lock(repo, "command:visits.suggest") == :oban or
+         repo.query!(
+           "SELECT 1 FROM notes WHERE attachable_type='Visit' AND attachable_id=ANY($1) LIMIT 1",
            [ids],
            log: false
-         ).rows do
-      [[true]] -> {:replay, "noted visit merge requires Rails dependent deletion"}
-      [[false]] -> :ok
-    end
+         ).num_rows == 0,
+       do: :ok,
+       else: {:replay, "noted visit merge requires Rails dependent deletion"}
   end
 
   defp name([base | _] = rows) do
@@ -102,8 +102,15 @@ defmodule Dawarich.Visits.WebMerge do
         )
 
         repo.query!("DELETE FROM place_visits WHERE visit_id=ANY($1)", [source_ids], log: false)
+
+        repo.query!(
+          "DELETE FROM notes WHERE attachable_type='Visit' AND attachable_id=ANY($1)",
+          [source_ids],
+          log: false
+        )
+
         repo.query!("DELETE FROM visits WHERE id=ANY($1)", [source_ids], log: false)
-        RailsEffects.visit_months(repo, user.id, WebEffects.stamps(rows ++ [new]))
+        WebEffects.months(repo, user, rows ++ [new])
 
         RailsEffects.orphan_places(
           repo,

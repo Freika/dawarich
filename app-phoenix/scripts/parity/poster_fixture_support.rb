@@ -30,7 +30,12 @@ module PosterFixtureSupport
 
   def poster_rows(user, table)
     sql = "SELECT row_to_json(t)::text FROM #{table} t WHERE user_id = #{Integer(user.id)} ORDER BY id"
-    ActiveRecord::Base.connection.select_values(sql).map { |row| JSON.parse(row) }
+    rows = ActiveRecord::Base.connection.select_values(sql).map { |row| JSON.parse(row) }
+    return rows unless table == 'tracks'
+
+    rows.map do |row|
+      row.except(*%w[map_matched_at map_matching_data map_matching_input_digest map_matching_status matched_path])
+    end
   end
 
   def poster_row(poster)

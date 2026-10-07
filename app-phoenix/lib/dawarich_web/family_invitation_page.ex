@@ -67,6 +67,8 @@ defmodule DawarichWeb.FamilyInvitationPage do
     ArgumentError -> :rails
   end
 
+  def call(conn, :new), do: conn |> send_resp(404, "") |> halt()
+
   def call(conn, :show) do
     respond(
       conn,

@@ -193,6 +193,15 @@ RSpec.describe 'Phoenix fixtures: public achievement cards and retained routes',
     expect(dimensions).to eq([1200, 630])
     expect(response.headers['Cache-Control']).to include('private', 'no-store')
     row = response_row('png').merge('type' => response.media_type, 'dimensions' => dimensions)
+    original = response.body.b
+    previous_settings = owner.settings
+    owner.update!(settings: previous_settings.merge('locale' => 'de'))
+    get shared_achievement_image_path(carrier.sharing_uuid)
+    expect(response.status).to eq(200)
+    expect(response.body.b).not_to eq(original)
+    owner.update!(settings: previous_settings)
+    get shared_achievement_image_path(carrier.sharing_uuid)
+    expect(response.body.b).to eq(original)
     head shared_achievement_image_path(carrier.sharing_uuid)
     expect([response.status, response.body.empty?]).to eq([200, true])
     row['head'] = response_row('png_head')

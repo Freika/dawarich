@@ -5,6 +5,7 @@ defmodule DawarichWeb.SharedLinkPage do
   import Plug.Conn
 
   alias Dawarich.SharedLinks
+  alias Dawarich.SharedLinks.FamilyAudience
   alias DawarichWeb.{LayoutAssigns, RailsSession, RequestURL, SharedLinkCookie, SharedPages}
   alias DawarichWeb.Api.{Body, Respond}
 
@@ -18,8 +19,13 @@ defmodule DawarichWeb.SharedLinkPage do
     now = DateTime.utc_now()
 
     case SharedLinks.active(id, now) do
-      nil -> render(conn, 404, %{page: :not_found})
-      link -> show(conn, link, now)
+      nil ->
+        render(conn, 404, %{page: :not_found})
+
+      link ->
+        if FamilyAudience.accessible?(link, conn.assigns[:current_user], now),
+          do: show(conn, link, now),
+          else: render(conn, 404, %{page: :not_found})
     end
   end
 
@@ -32,18 +38,26 @@ defmodule DawarichWeb.SharedLinkPage do
         conn |> LayoutAssigns.call([]) |> render(404, %{page: :not_found})
 
       link ->
-        if Plug.Crypto.secure_compare(link.magic_phrase || "", phrase) do
-          conn
-          |> SharedLinkCookie.put(link, SharedLinkCookie.expires_at(link, now, nil))
-          |> put_resp_header("location", RequestURL.base(conn) <> "/s/" <> id)
-          |> respond(302, "")
+        if not FamilyAudience.accessible?(link, conn.assigns[:current_user], now) do
+          conn |> LayoutAssigns.call([]) |> render(404, %{page: :not_found})
         else
-          error = DawarichWeb.Translate.t(conn.assigns.locale, @incorrect, %{})
-
-          conn
-          |> LayoutAssigns.call([])
-          |> render(401, %{page: :phrase_prompt, link: link, error: error})
+          unlock(conn, link, id, phrase, now)
         end
+    end
+  end
+
+  defp unlock(conn, link, id, phrase, now) do
+    if Plug.Crypto.secure_compare(link.magic_phrase || "", phrase) do
+      conn
+      |> SharedLinkCookie.put(link, SharedLinkCookie.expires_at(link, now, nil))
+      |> put_resp_header("location", RequestURL.base(conn) <> "/s/" <> id)
+      |> respond(302, "")
+    else
+      error = DawarichWeb.Translate.t(conn.assigns.locale, @incorrect, %{})
+
+      conn
+      |> LayoutAssigns.call([])
+      |> render(401, %{page: :phrase_prompt, link: link, error: error})
     end
   end
 

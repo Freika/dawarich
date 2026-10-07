@@ -1,9 +1,36 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 require_relative 'wave5b_fixture_support'
 
 RSpec.describe 'Phoenix fixture: Rails visit detection' do
+  include FixtureRecording::DeterministicInputs
+
+  def fixture_models
+    [User, Import, Export, ActiveStorage::Blob, ActiveStorage::Attachment, Place, Visit, Point, Tag, Tagging,
+     PlaceVisit, Note, Area, Track, TrackSegment, Notification, ActionText::RichText, Trip, InstanceSetting]
+  end
+
+  closure_cases = {}
+  define_method(:closure_stage_case) { |name, data| closure_cases[name] = data }
+  define_method(:write_fixture) do |directory, name, data|
+    closure_cases[name] = data.merge('postgis_build' => postgis_build)
+    super(directory, name, data)
+  end
+  after(:all) do
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v05.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v06.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v07.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v08.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+    FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/visits/a12f3a-v09.json'),
+                                   "#{JSON.pretty_generate(closure_cases.sort.to_h)}\n")
+  end
+
   include Wave5bFixtureSupport
 
   let!(:http) { record_http! }
@@ -144,6 +171,7 @@ RSpec.describe 'Phoenix fixture: Rails visit detection' do
   def write_stage_fixture(dir, name, data)
     path = Rails.root.join("app-phoenix/test/fixtures/#{dir}/#{name}.json")
     FileUtils.mkdir_p(path.dirname)
+    closure_stage_case(name, data.merge('postgis_build' => postgis_build))
     File.write(path, "#{exact_json(data.merge('postgis_build' => postgis_build))}\n")
   end
 

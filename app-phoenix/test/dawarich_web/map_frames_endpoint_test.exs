@@ -17,7 +17,7 @@ defmodule DawarichWeb.MapFramesEndpointTest do
     %{upstream: upstream, user: S.user!(7031)}
   end
 
-  test "a residency year with tied countries goes to Puma unchanged", ctx do
+  test "a residency year with tied countries is native without a Puma request", ctx do
     for {id, day, country} <- [
           {7891, ~U[2026-03-21 12:00:00Z], "Atlantis"},
           {7892, ~U[2026-03-22 12:00:00Z], "Narnia"}
@@ -39,13 +39,10 @@ defmodule DawarichWeb.MapFramesEndpointTest do
         "Cookie: _dawarich_session=#{cookie}\r\n\r\n"
     )
 
-    puma = accept(ctx.upstream)
-    {head, _rest} = read_head(puma)
-    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-
-    assert request_line(head) == "GET /map/residency?year=2026 HTTP/1.1"
-    assert header(head, "cookie") == ["_dawarich_session=#{cookie}"]
-    assert {200, headers, "puma"} = read_response(client)
-    assert Enum.map(headers, &elem(&1, 0)) -- ["date"] == ["content-length"]
+    assert {200, headers, body} = read_response(client)
+    assert body =~ "Atlantis"
+    assert body =~ "Narnia"
+    assert {"content-type", "text/html; charset=utf-8"} in headers
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
   end
 end

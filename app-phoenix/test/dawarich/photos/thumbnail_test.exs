@@ -75,9 +75,9 @@ defmodule Dawarich.Photos.ThumbnailTest do
     end
   end
 
-  defp httpc_attempts(fun) do
+  defp connect_attempts(fun) do
     tracer = spawn_link(fn -> count_calls(0) end)
-    :erlang.trace_pattern({:httpc, :request, 4}, true, [])
+    :erlang.trace_pattern({Mint.HTTP, :connect, 4}, true, [])
     :erlang.trace(self(), true, [:call, {:tracer, tracer}])
 
     try do
@@ -90,13 +90,13 @@ defmodule Dawarich.Photos.ThumbnailTest do
       end
     after
       :erlang.trace(self(), false, [:call])
-      :erlang.trace_pattern({:httpc, :request, 4}, false, [])
+      :erlang.trace_pattern({Mint.HTTP, :connect, 4}, false, [])
     end
   end
 
   defp count_calls(count) do
     receive do
-      {:trace, _pid, :call, {:httpc, :request, _args}} -> count_calls(count + 1)
+      {:trace, _pid, :call, {Mint.HTTP, :connect, _args}} -> count_calls(count + 1)
       {:report, from} -> send(from, {:calls, count})
     end
   end
@@ -237,7 +237,7 @@ defmodule Dawarich.Photos.ThumbnailTest do
     fillers = fill_backlog(server, [])
 
     {result, attempts} =
-      httpc_attempts(fn ->
+      connect_attempts(fn ->
         Thumbnail.fetch(settings("http://127.0.0.1:#{server.port}"), "immich", @id)
       end)
 

@@ -160,6 +160,11 @@ RSpec.describe 'Phoenix fixtures: achievement unlock deck', type: :request do
     row = post_unlock('/achievements/unlocks/dismiss', token, { batch_end_id: '42002' }, form: true)
     expect(row['status']).to eq(204)
     rows << row
+    untouched = Achievements::UnlockEvent.where(user: actor).order(:id).map(&:attributes)
+    forged = post_unlock('/achievements/unlocks/next', 'invalid-token')
+    expect(forged['status']).to eq(422)
+    expect(Achievements::UnlockEvent.where(user: actor).order(:id).map(&:attributes)).to eq(untouched)
+    rows << forged.merge('name' => 'csrf_refused_without_claim')
     empty_actor = synthetic_user(42_004)
     empty_token = login(empty_actor)
     row = post_unlock('/achievements/unlocks/next', empty_token)

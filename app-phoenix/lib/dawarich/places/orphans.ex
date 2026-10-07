@@ -11,6 +11,46 @@ defmodule Dawarich.Places.Orphans do
     end
   end
 
+  def delete_batch(_repo, _user_id, []), do: []
+
+  def delete_batch(repo, user_id, place_ids) do
+    {:ok, ids} =
+      repo.transaction(fn ->
+        repo.query!(
+          "SELECT source, note FROM places WHERE id=ANY($1) AND user_id=$2 ORDER BY id FOR UPDATE",
+          [place_ids, user_id],
+          log: false
+        )
+
+        ids =
+          repo.query!(
+            """
+            SELECT p.id FROM places p
+            WHERE p.id=ANY($1) AND p.user_id=$2 AND p.source=1 AND (p.note IS NULL OR p.note='')
+              AND NOT EXISTS(SELECT 1 FROM visits v WHERE v.place_id=p.id AND v.deleted_at IS NULL AND v.status<>2)
+              AND NOT EXISTS(SELECT 1 FROM taggings t WHERE t.taggable_id=p.id AND t.taggable_type='Place')
+            ORDER BY p.id
+            """,
+            [place_ids, user_id],
+            log: false
+          ).rows
+          |> List.flatten()
+
+        if ids != [] do
+          repo.query!("UPDATE visits SET place_id=NULL WHERE place_id=ANY($1)", [ids], log: false)
+          repo.query!("DELETE FROM place_visits WHERE place_id=ANY($1)", [ids], log: false)
+
+          repo.query!("DELETE FROM places WHERE id=ANY($1) AND user_id=$2", [ids, user_id],
+            log: false
+          )
+        end
+
+        ids
+      end)
+
+    ids
+  end
+
   defp delete_locked(repo, user_id, place_id, opts) do
     repo.query!("SAVEPOINT guarded_orphan", [], log: false)
 

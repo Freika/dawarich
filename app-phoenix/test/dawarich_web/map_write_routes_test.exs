@@ -32,6 +32,7 @@ defmodule DawarichWeb.MapWriteRoutesTest do
       {"DELETE", "/tags/42", DawarichWeb.TagActions},
       {"POST", "/tags/42", DawarichWeb.TagActions},
       {"PATCH", "/tracks/91830/segments/43", DawarichWeb.SegmentActions},
+      {"PUT", "/tracks/91830/segments/43", DawarichWeb.SegmentActions},
       {"POST", "/tracks/91830/segments/43", DawarichWeb.SegmentActions},
       {"DELETE", "/points/bulk_destroy", DawarichWeb.PointListActions},
       {"POST", "/points/bulk_destroy", DawarichWeb.PointListActions}
@@ -86,7 +87,6 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     end
 
     for {method, path} <- [
-          {"PUT", "/tracks/91830/segments/43"},
           {"GET", "/tags/42"},
           {"PATCH", "/points/bulk_destroy"}
         ] do
@@ -128,7 +128,12 @@ defmodule DawarichWeb.MapWriteRoutesTest do
       refute Map.get(route, :rails_gate) == {MapWriteGate, :owned?}
     end
 
-    assert info("DELETE", "/api/v1/points/42") == :error
+    route = info("DELETE", "/api/v1/points/42")
+    assert route.plug == DawarichWeb.Api.PointWritesController
+    assert route.plug_opts == :destroy
+    assert route.pipe_through == [:api_ingest]
+    assert route.slice == :ingest
+    refute Map.get(route, :rails_gate) == {MapWriteGate, :owned?}
     assert info("PATCH", "/api/v1/tracks/42") == :error
   end
 

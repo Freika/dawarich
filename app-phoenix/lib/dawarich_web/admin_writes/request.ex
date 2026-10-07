@@ -38,6 +38,7 @@ defmodule DawarichWeb.AdminWrites.Request do
 
   defp parse(conn, raw, action, context) do
     with {:ok, params} <- Admission.form(raw, conn.query_string, fields(action), options(action)),
+         action <- effective_action(action, params),
          true <- required_group?(params, action),
          {:ok, method} <- method(conn.method, action, params),
          true <- csrf?(conn, params, method),
@@ -58,10 +59,15 @@ defmodule DawarichWeb.AdminWrites.Request do
     end
   end
 
+  defp effective_action(:update, %{"_method" => "delete"}), do: :destroy
+  defp effective_action(action, _), do: action
+
   defp required_group?(params, action) when action in [:create, :update],
     do: Enum.any?(@users, &Map.has_key?(params, &1))
 
-  defp required_group?(params, :background), do: Map.has_key?(params, @background)
+  defp required_group?(params, :background),
+    do: Map.has_key?(params, @background) or Map.has_key?(params, "job_name")
+
   defp required_group?(_params, _action), do: true
 
   defp transport?(conn) do
@@ -76,12 +82,12 @@ defmodule DawarichWeb.AdminWrites.Request do
 
   defp fields(action) when action in [:create, :update], do: @common ++ @users
   defp fields(:registration), do: @common ++ ["registration_enabled"]
-  defp fields(:background), do: @common ++ [@background]
+  defp fields(:background), do: @common ++ [@background, "job_name"]
 
   defp fields(:instance) do
     @common ++
       ["section"] ++
-      Enum.flat_map(Registry.definitions(), fn {key, _, kind, _} ->
+      Enum.flat_map(Registry.current_definitions(), fn {key, _, kind, _} ->
         ["instance_settings[#{key}]"] ++
           if(kind == :secret, do: ["instance_settings_clear[#{key}]"], else: [])
       end)
@@ -91,12 +97,19 @@ defmodule DawarichWeb.AdminWrites.Request do
 
   defp options(:update), do: [checkbox_pairs: %{"user[admin]" => ["0", "1"]}]
   defp options(:registration), do: [checkbox_pairs: %{"registration_enabled" => ["0", "1"]}]
-  defp options(:background), do: [query_fields: %{@background => ["true", "false"]}]
+
+  defp options(:background),
+    do: [
+      query_fields: %{
+        @background => ["true", "false"],
+        "job_name" => Dawarich.Admin.BackgroundCommands.names()
+      }
+    ]
 
   defp options(:instance) do
     pairs =
       Map.new(
-        for {key, _, :boolean, _} <- Registry.definitions(),
+        for {key, _, :boolean, _} <- Registry.current_definitions(),
             do: {"instance_settings[#{key}]", ["false", "true"]}
       )
 
@@ -105,7 +118,16 @@ defmodule DawarichWeb.AdminWrites.Request do
 
   defp options(_), do: []
 
-  defp method("POST", action, params) when action in [:create, :rotate, :reset],
+  defp method("POST", action, params)
+       when action in [:create, :rotate, :reset, :test_geocoding, :test_map_matching],
+       do: if(Map.has_key?(params, "_method"), do: :handoff, else: {:ok, "POST"})
+
+  defp method("DELETE", :destroy, params),
+    do: if(params["_method"] in [nil, "delete"], do: {:ok, "DELETE"}, else: :handoff)
+
+  defp method("POST", :destroy, %{"_method" => "delete"}), do: {:ok, "DELETE"}
+
+  defp method("POST", :background, %{"job_name" => _} = params),
     do: if(Map.has_key?(params, "_method"), do: :handoff, else: {:ok, "POST"})
 
   defp method("POST", action, %{"_method" => override}) do

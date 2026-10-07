@@ -194,13 +194,33 @@ defmodule DawarichWeb.MapWritesHandbackTest do
     end
 
     forwarded(ctx, :patch, "/api/v1/tracks/920010", raw(ctx, "track[distance]=500"))
+    before = snapshot()
+    previous = System.get_env("DAWARICH_RAILS")
 
-    forwarded(
-      ctx,
-      :put,
-      "/tracks/920010/segments/9200100",
-      raw(ctx, "track_segment[transportation_mode]=cycling")
-    )
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    System.put_env("DAWARICH_RAILS", "off")
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
+    missing = request(ctx, :patch, "/api/v1/tracks/920010", raw(ctx, "track[distance]=500"))
+    assert missing.status == 404
+    assert missing.resp_body == File.read!(Dawarich.RailsRoot.join("public/404.html"))
+    assert get_resp_header(missing, "content-type") == ["text/html; charset=UTF-8"]
+    assert snapshot() == before
+
+    route =
+      Phoenix.Router.route_info(
+        Router,
+        "PUT",
+        "/tracks/920010/segments/9200100",
+        "www.example.com"
+      )
+
+    assert route.plug == DawarichWeb.SegmentActions
+    assert route.pipe_through == [:map_write]
   end
 
   test "rejected write commits no cookie outbox RailsCommands", ctx do

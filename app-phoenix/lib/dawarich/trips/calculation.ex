@@ -4,20 +4,20 @@ defmodule Dawarich.Trips.Calculation do
   alias Dawarich.{RubyFloat, RubyInteger}
   alias Dawarich.Trips.{DeviceWindows, Queries}
 
-  def run(repo, trip_id, unit, hook \\ fn _step -> :ok end) do
+  def run(repo, trip_id, unit, hook \\ fn _step -> :ok end, event_id \\ nil) do
     with %{} = trip <- Queries.trip(repo, trip_id) || :missing,
          windows = primary_windows(repo, trip),
          wkt = path_wkt(repo, trip, windows),
          _ = hook.(:path_computed),
-         :ok <- step(repo, trip, fn -> path!(repo, trip, wkt, unit) end),
+         :ok <- step(repo, trip, event_id, "path", fn -> path!(repo, trip, wkt, unit) end),
          distance = round(Queries.distance_meters(repo, trip, windows)),
          :ok <-
-           step(repo, trip, fn ->
+           step(repo, trip, event_id, "distance", fn ->
              reported!(repo, trip, "distance", unit, &Queries.write_distance(&1, trip, distance))
            end),
          countries = repo |> Queries.country_names(trip) |> Enum.uniq() |> Enum.reject(&is_nil/1),
          :ok <-
-           step(repo, trip, fn ->
+           step(repo, trip, event_id, "countries", fn ->
              reported!(
                repo,
                trip,
@@ -26,7 +26,7 @@ defmodule Dawarich.Trips.Calculation do
                &Queries.write_countries(&1, trip, countries)
              )
            end) do
-      step(repo, trip, fn ->
+      step(repo, trip, event_id, "finished", fn ->
         Queries.clear_cooldown(repo, trip.id)
         Queries.event!(repo, trip.id, "finished", unit)
       end)
@@ -49,12 +49,30 @@ defmodule Dawarich.Trips.Calculation do
     minutes |> max(1) |> min(1440)
   end
 
-  defp step(repo, trip, write) do
+  def receipt_id(event_id, kind) do
+    namespace = Ecto.UUID.dump!(event_id)
+    <<a::48, _::4, b::12, _::2, c::62, _::binary>> = :crypto.hash(:sha, namespace <> kind)
+    Ecto.UUID.load!(<<a::48, 5::4, b::12, 2::2, c::62>>)
+  end
+
+  defp step(repo, trip, event_id, kind, write) do
     {:ok, outcome} =
       repo.transaction(fn ->
         case Queries.lock(repo, trip) do
-          :ok -> write.()
-          other -> other
+          :ok ->
+            if event_id do
+              Dawarich.Jobs.Processed.once(
+                repo,
+                receipt_id(event_id, kind),
+                Atom.to_string(__MODULE__),
+                write
+              )
+            else
+              write.()
+            end
+
+          other ->
+            other
         end
       end)
 

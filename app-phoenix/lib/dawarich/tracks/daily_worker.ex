@@ -116,9 +116,17 @@ defmodule Dawarich.Tracks.DailyWorker do
         one!(repo, @history, [user_id]) > @bootstrap_limit
 
   defp start(repo, oban, payload, event_id) do
-    case Ownership.lock(repo, @range_key) do
-      :oban -> Oban.insert!(oban, RangeWorker.new(Map.put(payload, "event_id", event_id)))
-      :sidekiq -> RailsCommands.insert!(repo, "tracks_generate_range", payload)
+    case Dawarich.Tracks.Owner.lock(repo, @range_key) do
+      :oban ->
+        Oban.insert!(
+          oban,
+          RangeWorker.new(Map.put(payload, "event_id", event_id),
+            unique: [keys: [:event_id], period: :infinity, states: :all]
+          )
+        )
+
+      :sidekiq ->
+        RailsCommands.insert!(repo, "tracks_generate_range", payload)
     end
   end
 
@@ -127,7 +135,13 @@ defmodule Dawarich.Tracks.DailyWorker do
       "user_id" => user_id,
       "start_at" => start_ts |> DateTime.from_unix!() |> iso(),
       "end_at" => iso(now),
-      "time_zone" => one!(repo, @zone, [[timezone, System.get_env("TIME_ZONE"), "UTC"]]),
+      "time_zone" =>
+        one!(repo, @zone, [
+          Enum.map(
+            [timezone, System.get_env("TIME_ZONE", "UTC"), "UTC"],
+            &Dawarich.TimeZoneName.to_iana/1
+          )
+        ]),
       "mode" => "daily",
       "untracked_only" => false,
       "import_id" => nil,

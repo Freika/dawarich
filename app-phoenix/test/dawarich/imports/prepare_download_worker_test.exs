@@ -198,16 +198,12 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
     assert Processed.done?(ScratchRepo, j.args["event_id"])
   end
 
-  test "unsupported catalog returns a durable legacy continuation without preparing", c do
+  test "unsupported catalog retains a native retry without preparing or reversing", c do
     j = job(c, attach(c))
     Application.put_env(:dawarich, :imports_services, %{})
-    assert :ok = PrepareDownloadWorker.perform(j)
-
-    assert [[%{"native_fallback" => true}]] =
-             rows(
-               "SELECT payload-'import_id'-'user_id'-'source_blob_id' FROM phoenix.rails_commands"
-             )
-
+    assert {:error, :unconfigured_storage_service} = PrepareDownloadWorker.perform(j)
+    refute Processed.done?(ScratchRepo, j.args["event_id"])
+    assert [] == rows("SELECT payload FROM phoenix.rails_commands")
     assert [] == rows("SELECT id FROM active_storage_attachments WHERE name='prepared_download'")
   end
 

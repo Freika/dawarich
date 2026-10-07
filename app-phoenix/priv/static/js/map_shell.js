@@ -1,3 +1,4 @@
+import { mountVideoStudio, destroyVideoStudio } from "./hooks/video_studio.js"
 import "@hotwired/turbo-rails"
 import { Application } from "@hotwired/stimulus"
 import { lazyLoadControllersFrom } from "@hotwired/stimulus-loading"
@@ -83,9 +84,17 @@ export const mount = (element, hook = null) => {
     document.body.appendChild(studio)
   }
   const application = start(element, family)
-  for (const studio of studios) start(studio, family)
+  for (const studio of studios) {
+    if (
+      studio.id === "video-studio" &&
+      studio.getAttribute("phx-hook") === "VideoStudio"
+    )
+      mountVideoStudio(studio, application)
+    else start(studio, family)
+  }
   portals.set(element, studios)
-  if (element.id === "map-shell" || element.id === "trip-shell") window.Stimulus = application
+  if (element.id === "map-shell" || element.id === "trip-shell")
+    window.Stimulus = application
   return application
 }
 
@@ -99,6 +108,11 @@ export const leave = (hook) => {
 
 export const unmount = (element) => {
   for (const studio of portals.get(element) || []) {
+    if (
+      studio.id === "video-studio" &&
+      studio.getAttribute("phx-hook") === "VideoStudio"
+    )
+      destroyVideoStudio(studio)
     applications.get(studio)?.dispose()
     applications.delete(studio)
     studio.remove()

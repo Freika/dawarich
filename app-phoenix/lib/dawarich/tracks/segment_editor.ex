@@ -1,6 +1,6 @@
 defmodule Dawarich.Tracks.SegmentEditor do
   @moduledoc false
-  alias Dawarich.Tracks.{Effects, Reprocessor, Settings, Store}
+  alias Dawarich.Tracks.{SegmentEditEffects, Reprocessor, Settings, Store}
   alias Dawarich.TrackSegmentPage
   alias Dawarich.Transportation.{DominantMode, Segments}
 
@@ -65,7 +65,7 @@ defmodule Dawarich.Tracks.SegmentEditor do
 
            if mode,
              do:
-               Effects.write!(repo, user.id, %{
+               SegmentEditEffects.reset!(repo, user.id, %{
                  updated: [track.id],
                  stamps: [track.start_at, track.end_at]
                })
@@ -86,6 +86,7 @@ defmodule Dawarich.Tracks.SegmentEditor do
          end) do
       {:ok, result} -> result
       {:error, :rails} -> :rails
+      {:error, :not_found} -> :not_found
     end
   rescue
     _ -> {:error, %{error_code: :reprocess_failed}}
@@ -100,7 +101,7 @@ defmodule Dawarich.Tracks.SegmentEditor do
 
   defp owned!(repo, user, track_id, id) do
     track = Store.get(repo, track_id, true)
-    if is_nil(track) or track.user_id != user.id, do: repo.rollback(:rails)
+    if is_nil(track) or track.user_id != user.id, do: repo.rollback(:not_found)
 
     case repo.query!(
            "SELECT #{Enum.join(@segment_columns, ",")} FROM track_segments WHERE id=$1 AND track_id=$2 FOR UPDATE",
@@ -112,7 +113,7 @@ defmodule Dawarich.Tracks.SegmentEditor do
         {track, segment}
 
       [] ->
-        repo.rollback(:rails)
+        repo.rollback(:not_found)
     end
   end
 
@@ -155,7 +156,10 @@ defmodule Dawarich.Tracks.SegmentEditor do
       [track.id, Segments.mode_to_int(mode), now]
     )
 
-    Effects.write!(repo, user.id, %{updated: [track.id], stamps: [track.start_at, track.end_at]})
+    SegmentEditEffects.write!(repo, user.id, %{
+      updated: [track.id],
+      stamps: [track.start_at, track.end_at]
+    })
   end
 
   defp mode_for(repo, id) do
@@ -187,6 +191,7 @@ defmodule Dawarich.Tracks.SegmentEditor do
     case repo.transaction(fun) do
       {:ok, result} -> result
       {:error, :rails} -> :rails
+      {:error, :not_found} -> :not_found
     end
   rescue
     _ in [Postgrex.Error, DBConnection.ConnectionError] -> :rails

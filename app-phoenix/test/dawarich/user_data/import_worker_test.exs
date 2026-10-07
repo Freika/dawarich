@@ -84,12 +84,13 @@ defmodule Dawarich.UserData.ImportWorkerTest do
 
       assert [[1]] == rows("SELECT count(*) FROM points")
       assert [] == rows("SELECT id FROM areas")
-      refute Processed.done?(ScratchRepo, job.args["event_id"])
+      assert Processed.done?(ScratchRepo, job.args["event_id"])
       assert [] == File.ls!(dir)
     end
   end
 
   @tag :tmp_dir
+  @tag a12f3b_case: "E16b"
   test "archive discovery queues only the fenced owner-routed restore command", %{tmp_dir: dir} do
     for owner <- [:oban, :sidekiq, :missing], changed <- [:none, :blob, :source] do
       reset!(ScratchRepo)
@@ -153,6 +154,37 @@ defmodule Dawarich.UserData.ImportWorkerTest do
 
         assert [] == rows("SELECT import_id FROM phoenix.import_runs")
       end
+    end
+
+    reset!(ScratchRepo)
+    c = NormalFormats.whole!("v1_profile", ScratchRepo, dir)
+    Ownership.put!(ScratchRepo, "command:users.import_data", :oban)
+    source = rows("SELECT source FROM imports WHERE id=$1", [c.import.id])
+
+    rows(
+      "ALTER TABLE job_outbox ADD CONSTRAINT e16_child_failure CHECK(command_type <> 'users.import_data')"
+    )
+
+    try do
+      assert_raise Postgrex.Error, fn ->
+        Lease.with_import(
+          ScratchRepo,
+          c.job,
+          c.import,
+          fn lease ->
+            ImportState.with_snapshot(lease, fn _ -> ImportCommands.discover(lease, c.context) end)
+          end,
+          ProcessWorker.lease_options()
+        )
+      end
+
+      refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+      assert [] == rows("SELECT command_type FROM job_outbox")
+      assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+      assert source == rows("SELECT source FROM imports WHERE id=$1", [c.import.id])
+      assert [[c.import.id]] == rows("SELECT import_id FROM phoenix.import_runs")
+    after
+      rows("ALTER TABLE job_outbox DROP CONSTRAINT e16_child_failure")
     end
   end
 
@@ -218,6 +250,89 @@ defmodule Dawarich.UserData.ImportWorkerTest do
 
     assert [["users.import_data"]] == rows("SELECT command_type FROM job_outbox")
     assert [] == rows("SELECT id FROM notifications")
+  end
+
+  @tag :tmp_dir
+  @tag :restore_redelivery
+  test "restore redelivery resumes committed attachments with exactly one success", %{
+    tmp_dir: dir
+  } do
+    previous = System.get_env("DAWARICH_RAILS")
+
+    try do
+      for mode <-
+            Enum.filter(
+              ["on", "off"],
+              &(System.get_env("DAWARICH_REDELIVERY_TEST_MODE", &1) == &1)
+            ) do
+        System.put_env("DAWARICH_RAILS", mode)
+        reset!(ScratchRepo)
+        clean()
+        {c, job} = fixture("v2", dir)
+        counter = :counters.new(1, [])
+
+        upload = fn storage, path, filename, type, key ->
+          blob = Dawarich.Storage.put!(storage, path, filename, type, key)
+          :counters.add(counter, 1, 1)
+
+          if :counters.get(counter, 1) == 1,
+            do: rows("UPDATE oban.oban_jobs SET state='retryable' WHERE id=$1", [job.id])
+
+          blob
+        end
+
+        assert {:cancel, :ownership_lost} =
+                 ImportWorker.run(ScratchRepo, job, context: Map.put(c.context, :upload, upload))
+
+        refute Processed.done?(ScratchRepo, job.args["event_id"])
+        assert [[3]] == rows("SELECT count(*) FROM points")
+
+        notes =
+          rows(
+            "SELECT title,content FROM notifications WHERE title='Data import completed' ORDER BY id"
+          )
+
+        assert length(notes) == 1
+        blobs = rows("SELECT id,key,checksum FROM active_storage_blobs ORDER BY id")
+        assert length(blobs) == 4
+
+        assert Enum.count(blobs, fn [_, key, _] ->
+                 File.regular?(Dawarich.Storage.disk_path(c.context.storage.root, key))
+               end) == 2
+
+        rows("UPDATE oban.oban_jobs SET state='executing',attempt=2,max_attempts=2 WHERE id=$1", [
+          job.id
+        ])
+
+        retry = %{job | attempt: 2}
+        assert :ok = ImportWorker.run(ScratchRepo, retry, context: c.context)
+        assert Processed.done?(ScratchRepo, job.args["event_id"])
+
+        assert notes ==
+                 rows(
+                   "SELECT title,content FROM notifications WHERE title='Data import completed' ORDER BY id"
+                 )
+
+        assert blobs == rows("SELECT id,key,checksum FROM active_storage_blobs ORDER BY id")
+
+        for [_, key, checksum] <- blobs do
+          path = Dawarich.Storage.disk_path(c.context.storage.root, key)
+          assert File.regular?(path)
+          assert {^checksum, _} = Dawarich.Storage.digest_file!(path)
+        end
+
+        assert :ok = ImportWorker.run(ScratchRepo, retry, context: c.context)
+
+        assert notes ==
+                 rows(
+                   "SELECT title,content FROM notifications WHERE title='Data import completed' ORDER BY id"
+                 )
+      end
+    after
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end
   end
 
   defp fixture(name, dir) do

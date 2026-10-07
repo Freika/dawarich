@@ -1,9 +1,31 @@
 defmodule Dawarich.Imports.DestroyHandover do
   @moduledoc false
   alias Dawarich.Imports.{DestroyLock, DestroyLease}
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
 
   def resume(repo, job) do
+    if Dawarich.Standalone.enabled?() and
+         repo.query!(
+           "SELECT phase FROM phoenix.import_destroy_runs WHERE import_id=$1 AND user_id=$2 AND event_id=$3",
+           [job.args["import_id"], job.args["user_id"], Ecto.UUID.dump!(job.args["event_id"])],
+           log: false
+         ).rows == [["removed"]] do
+      if Processed.done?(repo, job.args["event_id"]) do
+        :ok
+      else
+        case DestroyLease.with_import(repo, job, &Dawarich.Imports.DestroyService.call/1) do
+          {:ok, value} -> value
+          {:skip, :busy} -> {:snooze, 5}
+          _ -> {:cancel, "import destruction lease lost"}
+        end
+      end
+    else
+      resume_source(repo, job)
+    end
+  end
+
+  defp resume_source(repo, job) do
     case DestroyLock.run(repo, job.args["import_id"], fn ->
            {:ok, value} = repo.transaction(fn -> transfer(repo, job) end)
            value

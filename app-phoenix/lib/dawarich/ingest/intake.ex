@@ -2,6 +2,7 @@ defmodule Dawarich.Ingest.Intake do
   @moduledoc false
 
   alias Dawarich.Ingest.{Cast, Geo, Sources}
+  alias Dawarich.Visits.RealtimeDebouncer
   alias Dawarich.{RailsCommands, Repo}
 
   @slice 1_000
@@ -89,10 +90,7 @@ defmodule Dawarich.Ingest.Intake do
 
     rows = upsert!(repo, sorted)
 
-    RailsCommands.insert!(repo, "points.tile_epoch", %{
-      "user_id" => user_id,
-      "timestamps" => Enum.map(chunk, & &1.payload.timestamp)
-    })
+    Dawarich.RailsEffects.tile_epoch(repo, user_id, Enum.map(chunk, & &1.payload.timestamp))
 
     {rows, cache}
   end
@@ -176,10 +174,33 @@ defmodule Dawarich.Ingest.Intake do
        %{"broadcast_id" => Ecto.UUID.generate(), "upserted" => upserted, "payloads" => payloads}}
     ]
     |> Enum.each(fn {kind, payload} ->
-      if kind == "tracks.backfill" do
-        Dawarich.Tracks.BackfillCommands.ingest(repo, user_id, payload["timestamps"], opts)
-      else
-        RailsCommands.insert!(repo, kind, Map.put(payload, "user_id", user_id))
+      payload = Map.put(payload, "user_id", user_id)
+
+      case kind do
+        "tracks.backfill" ->
+          Dawarich.Tracks.BackfillCommands.ingest(repo, user_id, payload["timestamps"], opts)
+
+        "points.anomaly_filter" ->
+          Dawarich.Points.AnomalyArrivalWorker.enqueue(repo, payload)
+
+        "tracks.realtime" ->
+          Dawarich.Points.Realtime.tracks(repo, payload, opts)
+
+        "visits.realtime" ->
+          RealtimeDebouncer.trigger(repo, user_id, opts)
+
+        "points.live_broadcast" ->
+          if Dawarich.Points.NativeEffects.native?(repo, "command:points.live_broadcast"),
+            do:
+              Dawarich.Points.NativeEffects.enqueue(
+                repo,
+                Dawarich.Points.LiveBroadcastWorker,
+                payload
+              ),
+            else: RailsCommands.insert!(repo, kind, payload)
+
+        _ ->
+          RailsCommands.insert!(repo, kind, payload)
       end
     end)
   end

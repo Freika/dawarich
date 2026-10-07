@@ -49,32 +49,24 @@ defmodule Dawarich.PointList do
       cutoff = cutoff(user, now, opts)
       args = [user.id, import_id, window.start_epoch, window.end_epoch, cutoff]
 
-      [[count, distinct]] =
-        Repo.query!(
-          "SELECT count(*), count(DISTINCT p.timestamp) FROM public.points p " <> @where,
-          args
-        ).rows
+      [[count]] = Repo.query!("SELECT count(*) FROM public.points p " <> @where, args).rows
+      order = String.upcase(params["order_by"] || "desc")
+      sql = @rows <> @where <> " ORDER BY p.timestamp #{order} LIMIT #{@per_page} OFFSET $6"
+      rows = UserTimeZone.query!(sql, args ++ [(page - 1) * @per_page], user.settings).rows
 
-      if count == distinct do
-        order = String.upcase(params["order_by"] || "desc")
-        sql = @rows <> @where <> " ORDER BY p.timestamp #{order} LIMIT #{@per_page} OFFSET $6"
-        rows = UserTimeZone.query!(sql, args ++ [(page - 1) * @per_page], user.settings).rows
-
-        {:ok,
-         %{
-           window: window,
-           rows: Enum.map(rows, &row(&1, window.zone)),
-           imports: imports,
-           count: count,
-           page: page,
-           total_pages: div(count + @per_page - 1, @per_page),
-           geocoding:
-             Dawarich.Geocoding.Config.resolve(Repo, Keyword.get(opts, :env, System.get_env())).enabled
-         }}
-      else
-        :rails
-      end
+      {:ok,
+       %{
+         window: window,
+         rows: Enum.map(rows, &row(&1, window.zone)),
+         imports: imports,
+         count: count,
+         page: page,
+         total_pages: div(count + @per_page - 1, @per_page),
+         geocoding:
+           Dawarich.Geocoding.Config.resolve(Repo, Keyword.get(opts, :env, System.get_env())).enabled
+       }}
     else
+      :not_found -> :not_found
       _ -> :rails
     end
   end
@@ -132,24 +124,15 @@ defmodule Dawarich.PointList do
         [user_id]
       ).rows
 
-    stamps = Enum.map(rows, &List.last/1)
-
-    if length(stamps) == length(Enum.uniq(stamps)),
-      do: {:ok, Enum.map(rows, fn [id, name, at] -> %{id: id, name: name, created_at: at} end)},
-      else: :rails
+    {:ok, Enum.map(rows, fn [id, name, at] -> %{id: id, name: name, created_at: at} end)}
   end
 
   defp selected_import(value, imports) do
-    cond do
-      Ruby.blank?(value) ->
-        {:ok, nil}
-
-      Regex.match?(~r/\A[0-9]{1,18}\z/, value) ->
-        id = String.to_integer(value)
-        if Enum.any?(imports, &(&1.id == id)), do: {:ok, id}, else: :rails
-
-      true ->
-        :rails
+    if Ruby.blank?(value) do
+      {:ok, nil}
+    else
+      id = Dawarich.RubyInteger.to_i(value)
+      if Enum.any?(imports, &(&1.id == id)), do: {:ok, id}, else: :not_found
     end
   end
 

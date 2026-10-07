@@ -25,6 +25,11 @@ defmodule DawarichWeb.ExportsDelete do
         |> send_resp(303, "")
         |> halt()
 
+      {:error, :not_found} when conn.method in ["DELETE", "POST"] ->
+        if Dawarich.Standalone.enabled?(),
+          do: DawarichWeb.StandaloneError.respond(conn, "export_not_found", 404),
+          else: DawarichWeb.Api.Body.replay(conn, "export delete not_found")
+
       {:error, reason} ->
         DawarichWeb.Api.Body.replay(conn, "export delete #{reason}")
     end

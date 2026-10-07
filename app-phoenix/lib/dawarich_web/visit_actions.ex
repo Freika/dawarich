@@ -74,13 +74,48 @@ defmodule DawarichWeb.VisitActions do
           end
 
         {:error, reason} ->
-          Body.replay(conn, "visit error flash #{reason}")
+          if native?(ctx),
+            do: error(conn, action, reason, params, back, ctx),
+            else: Body.replay(conn, "visit error flash #{reason}")
 
         {:replay, reason} ->
-          Body.replay(conn, reason)
+          if native?(ctx),
+            do: error(conn, action, :invalid_visit, params, back, ctx),
+            else: Body.replay(conn, reason)
       end
     else
       {:replay, reason} -> Body.replay(conn, reason)
+    end
+  end
+
+  defp native?(ctx), do: Dawarich.Jobs.Ownership.lock(ctx.repo, "command:visits.suggest") == :oban
+
+  defp error(conn, action, reason, params, back, ctx) do
+    key =
+      case reason do
+        :missing -> "missing_visits"
+        :archived -> "plan_window_visits"
+        :too_many -> "too_many_visits"
+        :invalid_visit -> "failed_to_update_visit"
+        other -> Atom.to_string(other)
+      end
+
+    status = if reason in [:missing, :archived], do: 404, else: 422
+
+    cond do
+      conn.assigns.a8_format == :turbo_stream ->
+        conn
+        |> put_resp_content_type("text/vnd.turbo-stream.html")
+        |> put_resp_header("vary", "Accept")
+        |> send_resp(status, VisitStreams.error(ctx.locale, key))
+        |> halt()
+
+      action in [:update, :destroy] ->
+        conn |> send_resp(status, "") |> halt()
+
+      true ->
+        message = Translate.t(ctx.locale, "controllers.visits." <> key, %{count: 500})
+        redirect(conn, 302, location(:merge, params, back), "alert", message)
     end
   end
 

@@ -1,6 +1,7 @@
 defmodule Dawarich.Imports.GpxHandover do
   @moduledoc false
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
   alias Dawarich.State.Lease
   @lane "command:imports.process_gpx"
   @worker "Dawarich.Imports.ProcessGpxWorker"
@@ -47,16 +48,44 @@ defmodule Dawarich.Imports.GpxHandover do
            [args["import_id"]],
            log: false
          ).rows do
+      [[^expected_user, 4, 3, nil]] ->
+        if terminal_phase(repo, job) == "terminal",
+          do: finish_terminal(repo, job),
+          else: handback(repo, args, owner, 4, reason)
+
       [[^expected_user, source, status, nil]] when status in [0, 1, 3] ->
-        if owner == :sidekiq or source != 4 or reason == :legacy,
-          do: enqueue(repo, args, reason == :legacy),
-          else: {:snooze, 5}
+        handback(repo, args, owner, source, reason)
 
       [[^expected_user, 4, 2, nil]] ->
-        finish_terminal(repo, job)
+        if terminal_phase(repo, job) == "processing",
+          do: {:snooze, 5},
+          else: finish_terminal(repo, job)
 
       _ ->
         Processed.mark!(repo, args["event_id"], "imports.process_gpx.unavailable")
+    end
+  end
+
+  defp handback(repo, args, owner, source, reason) do
+    if owner == :sidekiq or source != 4 or reason == :legacy,
+      do: enqueue(repo, args, reason == :legacy),
+      else: {:snooze, 5}
+  end
+
+  defp terminal_phase(repo, job) do
+    case repo.query!(
+           "SELECT phase FROM phoenix.import_runs WHERE import_id=$1 AND event_id=$2 AND job_id=$3 AND attempt<=$4 AND user_id=$5 AND token IS NOT NULL FOR UPDATE",
+           [
+             job.args["import_id"],
+             Ecto.UUID.dump!(job.args["event_id"]),
+             job.id,
+             job.attempt,
+             job.args["user_id"]
+           ],
+           log: false
+         ).rows do
+      [[phase]] -> phase
+      [] -> nil
     end
   end
 
@@ -91,9 +120,9 @@ defmodule Dawarich.Imports.GpxHandover do
       end
 
     if attachment == %{"attachment" => current} do
-      [[name, source, raw, doubles, data, status, extraction]] =
+      [[name, source, raw, doubles, data, status, extraction, import_status]] =
         repo.query!(
-          "SELECT name,source,raw_points,doubles,raw_data,additional_data_extraction_status,additional_data_extraction FROM imports WHERE id=$1",
+          "SELECT name,source,raw_points,doubles,raw_data,additional_data_extraction_status,additional_data_extraction,status FROM imports WHERE id=$1",
           [args["import_id"]],
           log: false
         ).rows
@@ -119,7 +148,9 @@ defmodule Dawarich.Imports.GpxHandover do
         now: DateTime.utc_now()
       }
 
-      Dawarich.Imports.Postprocessing.enqueue_extraction!(repo, import, context)
+      if import_status == 2,
+        do: Dawarich.Imports.Postprocessing.enqueue_extraction!(repo, import, context)
+
       Processed.mark!(repo, args["event_id"], "imports.process_gpx.terminal_handback")
     else
       Processed.mark!(repo, args["event_id"], "imports.process_gpx.unavailable")
@@ -127,19 +158,23 @@ defmodule Dawarich.Imports.GpxHandover do
   end
 
   defp enqueue(repo, args, fallback) do
-    repo.query!(
-      "INSERT INTO phoenix.import_handoffs(event_id,import_id,user_id,time_zone,native_fallback) VALUES ($1,$2,$3,$4,$5) ON CONFLICT(event_id) DO NOTHING",
-      [
-        Ecto.UUID.dump!(args["event_id"]),
-        args["import_id"],
-        args["user_id"],
-        args["time_zone"],
-        fallback
-      ],
-      log: false
-    )
+    if Dawarich.Standalone.enabled?() do
+      {:error, :unsupported_native_import}
+    else
+      repo.query!(
+        "INSERT INTO phoenix.import_handoffs(event_id,import_id,user_id,time_zone,native_fallback) VALUES ($1,$2,$3,$4,$5) ON CONFLICT(event_id) DO NOTHING",
+        [
+          Ecto.UUID.dump!(args["event_id"]),
+          args["import_id"],
+          args["user_id"],
+          args["time_zone"],
+          fallback
+        ],
+        log: false
+      )
 
-    Dawarich.RailsCommands.insert!(repo, "imports.resume", args)
-    Processed.mark!(repo, args["event_id"], "imports.process_gpx.handback")
+      Dawarich.RailsCommands.insert!(repo, "imports.resume", args)
+      Processed.mark!(repo, args["event_id"], "imports.process_gpx.handback")
+    end
   end
 end

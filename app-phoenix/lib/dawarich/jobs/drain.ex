@@ -23,6 +23,7 @@ defmodule Dawarich.Jobs.Drain do
     (SELECT count(*) FROM phoenix.job_owners WHERE NOT (key = ANY($1)))::integer AS unknown_owners,
     (SELECT count(*) FROM phoenix.job_owners WHERE key = ANY($1) AND (owner <> 'sidekiq' OR NOT pinned))::integer AS unpinned_rollback_owners,
     (SELECT count(*) FROM phoenix.job_owners WHERE owner = 'oban')::integer AS oban_owners,
+    (SELECT count(*) FROM phoenix.runtime_nodes WHERE beat_at <= now() - interval '60 seconds')::integer AS stale_nodes,
     (SELECT count(*) FROM phoenix.runtime_nodes WHERE beat_at > now() - interval '60 seconds')::integer AS fresh_nodes
   """
 
@@ -32,6 +33,7 @@ defmodule Dawarich.Jobs.Drain do
   def status(repo, opts \\ []) do
     {:ok, status} =
       repo.transaction(fn ->
+        repo.query!("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ", [], log: false)
         repo.query!("SET LOCAL statement_timeout = '500ms'", [], log: false)
 
         %{columns: columns, rows: [values]} =
@@ -49,7 +51,7 @@ defmodule Dawarich.Jobs.Drain do
         forward = common ++ reasons(counts, ~w(missing_owners mixed_owners unknown_owners)a)
 
         forward =
-          if counts.oban_owners > 0 and counts.fresh_nodes == 0,
+          if counts.stale_nodes > 0 or (counts.oban_owners > 0 and counts.fresh_nodes == 0),
             do: ["heartbeat_invalid" | forward],
             else: forward
 
@@ -65,7 +67,15 @@ defmodule Dawarich.Jobs.Drain do
               ~w(incomplete_oban unfinished_generations missing_owners unknown_owners unpinned_rollback_owners)a
             )
 
+        binary =
+          if "heartbeat_invalid" in forward, do: ["heartbeat_invalid" | binary], else: binary
+
+        shutdown = forward ++ reasons(counts, ~w(incomplete_oban unfinished_generations)a)
+
         %{
+          shutdown: result(shutdown),
+          shutdown_reasons: Enum.sort(shutdown),
+          certainty: if("heartbeat_invalid" in forward, do: "UNKNOWN", else: "OBSERVED"),
           forward: result(forward),
           binary_rollback: result(binary),
           observation: true,
@@ -78,16 +88,31 @@ defmodule Dawarich.Jobs.Drain do
         }
       end)
 
-    with_source(status, Keyword.fetch(opts, :source_status))
+    status |> source_boundary() |> with_source(Keyword.fetch(opts, :source_status))
   rescue
     _ ->
-      %{
+      source_boundary(%{
+        shutdown: "BLOCKED",
+        shutdown_reasons: ["database_unreadable"],
+        certainty: "UNKNOWN",
         forward: "BLOCKED",
         binary_rollback: "BLOCKED",
         observation: true,
         forward_reasons: ["database_unreadable"],
         binary_reasons: ["database_unreadable"]
+      })
+  end
+
+  defp source_boundary(status) do
+    Map.merge(status, %{
+      scope: "native_sql",
+      g49: "BLOCKED",
+      source: %{
+        status: "NOT_OBSERVED",
+        certainty: "UNKNOWN",
+        reasons: ["source_inspection_required"]
       }
+    })
   end
 
   defp with_source(status, :error), do: status

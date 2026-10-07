@@ -6,6 +6,11 @@ defmodule Dawarich.Imports.Trek.SyncWorker do
     unique: [keys: [:event_id], states: :incomplete, period: :infinity]
 
   alias Dawarich.Imports.Trek.{Sync, WorkerState}
+  alias Dawarich.Jobs.Processed
+
+  def args_from_command(1, %{"source_id" => id} = args)
+      when is_integer(id) and id > 0 and map_size(args) == 1,
+      do: {:ok, Map.put(args, "after_id", nil)}
 
   def args_from_command(1, %{"source_id" => id, "after_id" => after_id} = args)
       when is_integer(id) and id > 0 and
@@ -17,8 +22,15 @@ defmodule Dawarich.Imports.Trek.SyncWorker do
   @impl Oban.Worker
   def perform(job), do: run(Dawarich.Jobs.repo(), job.args, job: job)
 
-  def run(repo, args, opts \\ []),
-    do: WorkerState.run(repo, args, "imports.trek_sync", opts, &sync/1)
+  def run(repo, args, opts \\ []) do
+    case WorkerState.run(repo, args, "imports.trek_sync", opts, &sync/1) do
+      :ok ->
+        if Processed.done?(repo, args["event_id"]), do: :ok, else: {:snooze, 60}
+
+      result ->
+        result
+    end
+  end
 
   defp sync(ctx) do
     case Sync.call(

@@ -23,18 +23,30 @@ defmodule DawarichWeb.RailsCsrf do
 
   defp masked(_session, _identifier), do: nil
 
-  def valid?(%{"_csrf_token" => real}, token) when is_binary(real) and is_binary(token) do
+  def valid?(session, token), do: valid_token?(session, token, @global)
+
+  def valid?(session, token, path, method),
+    do:
+      valid?(session, token) or
+        valid_token?(
+          session,
+          token,
+          String.trim_trailing(path, "/") <> "#" <> String.downcase(method)
+        )
+
+  defp valid_token?(%{"_csrf_token" => real}, token, identifier)
+       when is_binary(real) and is_binary(token) do
     with {:ok, raw} <- Base.url_decode64(real, padding: false),
          {:ok, <<pad::binary-size(32), masked::binary-size(32)>> = decoded} <-
            Base.url_decode64(token, padding: false),
          true <- Base.url_encode64(decoded, padding: false) == token do
-      Plug.Crypto.secure_compare(:crypto.exor(pad, masked), hmac(raw, @global))
+      Plug.Crypto.secure_compare(:crypto.exor(pad, masked), hmac(raw, identifier))
     else
       _ -> false
     end
   end
 
-  def valid?(_session, _token), do: false
+  defp valid_token?(_session, _token, _identifier), do: false
 
   defp hmac(raw, identifier), do: :crypto.mac(:hmac, :sha256, raw, identifier)
 end

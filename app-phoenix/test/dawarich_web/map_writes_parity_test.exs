@@ -87,8 +87,8 @@ defmodule DawarichWeb.MapWritesParityTest do
           :rails
         end
 
-      if result == :rails do
-        assert state["status"] in [302, 404], name
+      if result in [:rails, :not_found] do
+        assert state["status"] == if(result == :not_found, do: 404, else: 302), name
         assert_state(state["before"], name)
       else
         {_, result} = result
@@ -163,8 +163,8 @@ defmodule DawarichWeb.MapWritesParityTest do
             )
         end
 
-      if result == :rails do
-        assert state["status"] in [302, 404], name
+      if result in [:rails, :not_found] do
+        assert state["status"] == if(result == :not_found, do: 404, else: 302), name
         assert_state(state["before"], name)
       else
         response =
@@ -445,6 +445,7 @@ defmodule DawarichWeb.MapWritesParityTest do
         Repo.query!("SELECT (#{projection})::text FROM #{table} t ORDER BY id").rows
         |> Enum.map(fn [json] -> Jason.decode!(json) end)
 
+      rows = Enum.map(rows, &Dawarich.Test.ApiGolden.column_defaults(table, &1))
       assert actual == rows, "#{name}: #{table}: " <> ParityHTML.first_difference(actual, rows)
     end
   end

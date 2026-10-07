@@ -7,13 +7,21 @@ defmodule DawarichWeb.AdminWritesGate do
   @member ~r/\A\/settings\/users\/[1-9][0-9]{0,17}\z/
   @security ~r/\A\/settings\/users\/[1-9][0-9]{0,17}\/(regenerate_api_key|send_password_reset)\z/
 
-  def create?(conn, _params), do: eligible?(conn, :create)
-  def update?(conn, _params), do: eligible?(conn, :update)
-  def registration?(conn, _params), do: eligible?(conn, :registration)
-  def instance?(conn, _params), do: eligible?(conn, :instance)
-  def background?(conn, _params), do: eligible?(conn, :background)
-  def rotate?(conn, _params), do: eligible?(conn, :rotate)
-  def reset?(conn, _params), do: eligible?(conn, :reset)
+  def create?(conn, _params), do: owned?(conn, :create)
+  def update?(conn, _params), do: owned?(conn, :update)
+  def registration?(conn, _params), do: owned?(conn, :registration)
+  def instance?(conn, _params), do: owned?(conn, :instance)
+  def background?(conn, _params), do: owned?(conn, :background)
+  def rotate?(conn, _params), do: owned?(conn, :rotate)
+  def reset?(conn, _params), do: owned?(conn, :reset)
+
+  def destroy?(conn, _params), do: owned?(conn, :destroy)
+  def test_geocoding?(conn, _params), do: owned?(conn, :test_geocoding)
+
+  def test_map_matching?(conn, _params), do: owned?(conn, :test_map_matching)
+
+  defp owned?(conn, action),
+    do: Dawarich.Standalone.enabled?() or eligible?(conn, action)
 
   def context(opts) do
     Keyword.get(opts, :context, %{})
@@ -28,7 +36,13 @@ defmodule DawarichWeb.AdminWritesGate do
     actor = conn.assigns.current_user
 
     route?(conn, action) and Strangler.page_request?(conn) and
-      Admission.context(session, conn.req_headers, context.oidc, context.self_hosted) == :ok and
+      Admission.context(
+        session,
+        conn.req_headers,
+        context.oidc,
+        context.self_hosted or
+          (action == :background and conn.method == "POST")
+      ) == :ok and
       session_identity?(session, actor) and AdminGate.supported?(actor) and
       (action == :background or actor.admin == true) and
       not Enum.any?(@markers, &Map.has_key?(session, &1)) and
@@ -49,6 +63,18 @@ defmodule DawarichWeb.AdminWritesGate do
        do: true
 
   defp session_identity?(_, _), do: false
+
+  defp route?(%{method: method, request_path: path}, :destroy),
+    do: method in ~w(POST DELETE) and Regex.match?(@member, path)
+
+  defp route?(%{method: "POST", request_path: "/admin/settings/test_geocoding"}, :test_geocoding),
+    do: true
+
+  defp route?(
+         %{method: "POST", request_path: "/admin/settings/test_map_matching"},
+         :test_map_matching
+       ),
+       do: true
 
   defp route?(%{method: "POST", request_path: "/settings/users"}, :create), do: true
 

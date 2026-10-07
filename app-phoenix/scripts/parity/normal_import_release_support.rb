@@ -331,7 +331,8 @@ module NormalImportReleaseSupport
   end
 
   def release_track_snapshot(connection = ActiveRecord::Base.connection)
-    fields = Track.column_names - ['original_path']
+    fields = Track.column_names - %w[original_path map_matched_at map_matching_data map_matching_input_digest
+                                     map_matching_status matched_path]
     tracks = connection.select_all("SELECT #{fields.join(', ')}, encode(ST_AsEWKB(original_path), 'hex') AS ewkb " \
                                    "FROM tracks WHERE id IN (#{TRACK_IDS.join(',')}) ORDER BY id").to_a
     tracks.each { |row| row['dominant_mode'] = Track.dominant_modes.key(row.fetch('dominant_mode')) }

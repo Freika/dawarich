@@ -4,9 +4,27 @@ defmodule Dawarich.Release.Native do
   alias Dawarich.{Release, ReleaseMigrator, ReleaseMigrations}
   alias Dawarich.ReleaseMigrator.Lease
 
-  def ready?(repo, opts), do: ReleaseMigrator.status(repo, opts) == {:ok, :current}
+  def ready?(repo, opts) do
+    ReleaseMigrator.status(repo, opts) == {:ok, :current} and data_current?(repo, opts)
+  end
+
+  defp data_current?(repo, opts) do
+    required =
+      Keyword.get_lazy(opts, :releases, &ReleaseMigrations.all/0)
+      |> Enum.flat_map(& &1.data_versions())
+
+    required == [] or
+      repo.query!(
+        "SELECT version FROM public.data_migrations WHERE version = ANY($1::text[])",
+        [required],
+        log: false
+      ).num_rows == length(Enum.uniq(required))
+  rescue
+    Postgrex.Error -> false
+  end
 
   def seed(repo, opts) do
+    require_supported!(opts)
     opts = Keyword.put(opts, :rails_lock_check, false)
     require_current!(repo, opts)
 
@@ -24,12 +42,18 @@ defmodule Dawarich.Release.Native do
     end)
   end
 
+  defp require_supported!(opts) do
+    unless Dawarich.ReleaseMigration.self_hosted?(Keyword.get(opts, :env, System.get_env())),
+      do: refuse!(:cloud_native_lifecycle)
+  end
+
   defp require_current!(repo, opts) do
     unless classify!(repo, opts) == :current and Release.readiness(opts) == :ready,
       do: refuse!(:seeds_require_current)
   end
 
   def migrate(repo, opts) do
+    require_supported!(opts)
     opts = Keyword.put(opts, :rails_lock_check, false)
     classify!(repo, opts)
     bootstrap_metadata(repo)

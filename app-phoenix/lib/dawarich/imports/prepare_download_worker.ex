@@ -6,7 +6,8 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
     unique: [keys: [:event_id], states: :incomplete, period: :infinity]
 
   alias Dawarich.Imports.{Download, Download.Snapshot, LeaseLost, StorageContext}
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
   alias Dawarich.State.Lease
   @lane "command:imports.prepare_download"
   @worker "Dawarich.Imports.PrepareDownloadWorker"
@@ -84,7 +85,7 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
     case Download.prepare!(repo, job.args["user_id"], job.args["import_id"], source.id, context) do
       :ok -> effect(repo, job, source, fn -> mark(repo, job) end)
       {:error, :changed} -> handback(repo, job)
-      {:legacy, _} -> handback(repo, job, true)
+      {:legacy, reason} -> {:error, reason}
     end
   end
 
@@ -103,7 +104,7 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
     end
   end
 
-  defp handback(repo, job, legacy? \\ false) do
+  defp handback(repo, job) do
     {:ok, result} =
       repo.transaction(fn ->
         owner = Ownership.lock(repo, @lane)
@@ -126,7 +127,7 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
                   snapshot.source.id != job.args["source_blob_id"] ->
                 mark(repo, job)
 
-              owner == :sidekiq or legacy? ->
+              owner == :sidekiq ->
                 reverse(repo, job)
 
               true ->

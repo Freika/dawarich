@@ -6,7 +6,9 @@ defmodule Dawarich.Ingest.Traccar do
 
   @false_values [false, "0", "f", "F", "false", "FALSE", "off", "OFF"]
 
-  def payloads(params) do
+  def payloads(params), do: payloads(params, false)
+
+  def payloads(params, native?) do
     raw = Permit.traccar(params)
 
     form? =
@@ -19,14 +21,21 @@ defmodule Dawarich.Ingest.Traccar do
     if Ruby.present?(coords) and Ruby.present?(coords["latitude"]) and
          Ruby.present?(coords["longitude"]) and
          Ruby.present?(location["timestamp"]),
-       do: build(raw, payload, location, coords, form?),
+       do: build(raw, payload, location, coords, form?, native?),
        else: []
   end
 
-  defp build(raw, payload, location, coords, form?) do
+  defp build(raw, payload, location, coords, form?, native?) do
     lon = coordinate(coords["longitude"], -180.0, 180.0)
     lat = coordinate(coords["latitude"], -90.0, 90.0)
-    timestamp = if lon && lat, do: Timestamp.traccar(location["timestamp"])
+
+    timestamp =
+      if lon && lat,
+        do:
+          if(native?,
+            do: Dawarich.Ingest.Closure.timestamp(location["timestamp"], :traccar),
+            else: Timestamp.traccar(location["timestamp"])
+          )
 
     if is_nil(lon) or is_nil(lat) or is_nil(timestamp) do
       []

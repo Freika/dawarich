@@ -25,13 +25,20 @@ defmodule DawarichWeb.WelcomeGate do
   def envelope?(conn) do
     pairs = conn.query_string |> URI.query_decoder() |> Enum.to_list()
 
-    conn.request_path == "/trial/welcome" and conn.method in ["GET", "HEAD"] and
+    allowed =
+      if Dawarich.Standalone.enabled?(),
+        do: ~w(token locale client aff via referral),
+        else: ["token"]
+
+    (Dawarich.Standalone.enabled?() or Plug.Conn.get_req_header(conn, "x-dawarich-client") == []) and
+      conn.request_path == "/trial/welcome" and conn.method in ["GET", "HEAD"] and
       Strangler.page_request?(conn) and Admission.headers(conn.req_headers) == :ok and
-      byte_size(conn.query_string) <= 65_536 and length(pairs) <= 1 and
-      Enum.all?(pairs, fn {key, value} -> key == "token" and String.valid?(value) end) and
+      byte_size(conn.query_string) <= 65_536 and length(pairs) <= length(allowed) and
+      length(pairs) == length(Enum.uniq_by(pairs, &elem(&1, 0))) and
+      Enum.all?(pairs, fn {key, value} -> key in allowed and String.valid?(value) end) and
       not Regex.match?(~r/%(?![0-9a-fA-F]{2})/, conn.query_string) and
       Enum.all?(
-        ~w(turbo-frame x-dawarich-client x-http-method-override x-forwarded-for client-ip forwarded transfer-encoding),
+        ~w(turbo-frame x-http-method-override x-forwarded-for client-ip forwarded transfer-encoding),
         &(Plug.Conn.get_req_header(conn, &1) == [])
       ) and
       Plug.Conn.get_req_header(conn, "content-length") in [[], ["0"]]

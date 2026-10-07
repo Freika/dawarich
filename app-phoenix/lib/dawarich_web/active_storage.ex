@@ -6,13 +6,11 @@ defmodule DawarichWeb.ActiveStorage do
 
   alias Dawarich.{RailsMessages, RubyInteger, Storage}
   alias Dawarich.Storage.Blobs
-  alias DawarichWeb.{ActiveStorageUrls, RailsCsrf, RequestURL}
+  alias DawarichWeb.{ActiveStorageUrls, RequestURL}
   alias DawarichWeb.ActiveStorage.FileServer
-  alias DawarichWeb.Api.{Params, Respond}
+  alias DawarichWeb.Api.Params
 
   @reasons %{400 => "Bad Request", 404 => "Not Found", 422 => "Unprocessable Content"}
-  @fields ~w(filename byte_size checksum content_type metadata)
-  @required ~w(filename byte_size checksum)
   @browser_accept ~r/,\s*\*\/\*|\*\/\*\s*,/
 
   @impl true
@@ -53,18 +51,23 @@ defmodule DawarichWeb.ActiveStorage do
   defp action(:disk, conn, storage, now, _opts) do
     with {:ok, %{"key" => key} = data} <-
            RailsMessages.verify_storage(conn.path_params["encoded_key"], "blob_key", now),
+         true <- downloadable?(key),
          %{service: "local", root: root} <- Storage.disk_service(storage, data["service_name"]),
          {:ok, path} <- Storage.safe_disk_path(root, key),
          {:ok, %File.Stat{type: :regular, size: size, mtime: mtime}} <-
            File.stat(path, time: :posix) do
-      conn
-      |> put_resp_header("content-type", data["content_type"] || "application/octet-stream")
-      |> put_resp_header("content-disposition", data["disposition"] || "attachment")
-      |> FileServer.serve(
-        path,
-        size,
-        mtime |> DateTime.from_unix!() |> DateTime.to_naive() |> Params.http_date()
-      )
+      if is_nil(data["content_type"]) do
+        DawarichWeb.ActiveStorage.Proxy.page(conn, 500)
+      else
+        conn
+        |> put_resp_header("content-type", data["content_type"])
+        |> put_resp_header("content-disposition", data["disposition"] || "attachment")
+        |> FileServer.serve(
+          path,
+          size,
+          mtime |> DateTime.from_unix!() |> DateTime.to_naive() |> Params.http_date()
+        )
+      end
     else
       _ -> head(conn, 404)
     end
@@ -73,6 +76,7 @@ defmodule DawarichWeb.ActiveStorage do
   defp action(:disk_update, conn, storage, now, _opts) do
     with {:ok, %{} = data} <-
            RailsMessages.verify_storage(conn.path_params["encoded_token"], "blob_token", now),
+         true <- downloadable?(data["key"]),
          %{service: "local"} = service <- Storage.disk_service(storage, data["service_name"]) do
       if acceptable?(conn, data), do: upload(conn, service, data), else: head(conn, 422)
     else
@@ -80,31 +84,15 @@ defmodule DawarichWeb.ActiveStorage do
     end
   end
 
-  defp action(:direct_upload, conn, storage, now, opts) do
-    with {:ok, body, conn} <- read_body(conn, length: 1_000_000),
-         {:ok, %{} = params} <- json_object(body),
-         true <- csrf?(conn, params) || :csrf,
-         {:ok, %{} = blob} <- Map.fetch(params, "blob"),
-         {:ok, attrs} <- blob_attrs(blob) do
-      service = Storage.service!(storage, storage.default)
+  defp action(:direct_upload, conn, storage, now, opts),
+    do: DawarichWeb.ActiveStorage.UploadClosure.call(conn, storage, now, opts)
 
-      case Blobs.create_before_direct_upload(service, attrs, DateTime.to_naive(now), opts) do
-        {:ok, row} ->
-          target = ActiveStorageUrls.direct_upload(service, row, RequestURL.base(conn), now)
-          json = direct_upload_json(row, target)
-
-          conn
-          |> put_resp_content_type("application/json")
-          |> Respond.rack_etag(json)
-          |> send_resp(200, json)
-
-        {:replay, reason} ->
-          raise ArgumentError, reason
-      end
-    else
-      :csrf -> page(conn, 422)
-      {:error, :invalid} -> page(conn, 422)
-      _ -> page(conn, 400)
+  defp downloadable?(key) do
+    case Dawarich.Repo.query!("SELECT metadata FROM active_storage_blobs WHERE key=$1", [key],
+           log: false
+         ).rows do
+      [[metadata]] -> not Dawarich.Storage.NativePurge.pending?(metadata)
+      [] -> not Dawarich.Standalone.enabled?()
     end
   end
 
@@ -162,65 +150,6 @@ defmodule DawarichWeb.ActiveStorage do
       {:more, chunk, conn} -> IO.binwrite(io, chunk) && copy(conn, io)
       {:error, _reason} -> {:error, conn}
     end
-  end
-
-  defp json_object(""), do: {:ok, %{}}
-  defp json_object(body), do: Jason.decode(body)
-
-  defp csrf?(conn, params) do
-    session = conn.assigns[:rails_session] || %{}
-    tokens = [params["authenticity_token"] | get_req_header(conn, "x-csrf-token")]
-
-    origin? =
-      case get_req_header(conn, "origin") do
-        [] -> true
-        [origin] -> origin == RequestURL.base(conn)
-        _ -> false
-      end
-
-    origin? and Enum.any?(tokens, &(is_binary(&1) and RailsCsrf.valid?(session, &1)))
-  end
-
-  defp blob_attrs(blob) do
-    checksum = blob["checksum"]
-
-    cond do
-      not Enum.all?(@required, &Map.has_key?(blob, &1)) ->
-        :error
-
-      is_nil(checksum) or (is_binary(checksum) and String.trim(checksum) == "") ->
-        {:error, :invalid}
-
-      is_binary(blob["filename"]) and is_integer(blob["byte_size"]) and blob["byte_size"] >= 0 and
-        is_binary(checksum) and (is_nil(blob["content_type"]) or is_binary(blob["content_type"])) and
-          (is_nil(blob["metadata"]) or is_map(blob["metadata"])) ->
-        {:ok, Map.take(blob, @fields)}
-
-      true ->
-        :error
-    end
-  end
-
-  defp direct_upload_json(row, {url, headers}) do
-    fields =
-      Enum.map(row.pairs, fn
-        {"metadata", value} ->
-          {"metadata", Jason.decode!(value || "{}", objects: :ordered_objects)}
-
-        {"created_at", _value} ->
-          {"created_at", row.created_at_json}
-
-        pair ->
-          pair
-      end)
-
-    extra = [
-      {"attachable_sgid", RailsMessages.attachable_sgid(row.id)},
-      {"signed_id", RailsMessages.blob_id(row.id)},
-      {"direct_upload", Jason.OrderedObject.new(url: url, headers: headers)}
-    ]
-
-    RailsMessages.json(Jason.OrderedObject.new(fields ++ extra))
   end
 
   defp head(conn, 204), do: conn |> no_cache() |> send_resp(204, "")

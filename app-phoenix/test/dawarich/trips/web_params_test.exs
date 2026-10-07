@@ -50,9 +50,6 @@ defmodule Dawarich.Trips.WebParamsTest do
       result = WebParams.parse(user, attrs, previous(entry), %{repo: Repo, locale: "en"})
 
       cond do
-        String.contains?(entry["name"], "embedded") ->
-          assert {:replay, _} = result
-
         response["error"] != nil ->
           assert {:invalid, _, _} = result
 
@@ -157,7 +154,8 @@ defmodule Dawarich.Trips.WebParamsTest do
 
         assert body == expected, entry["name"]
       else
-        assert {:replay, _} = WebDescription.prepare(entry["body"], nil)
+        assert {:ok, body} = WebDescription.prepare(entry["body"], nil)
+        assert is_binary(body)
       end
     end
 

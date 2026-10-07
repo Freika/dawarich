@@ -10,11 +10,25 @@ defmodule DawarichWeb.TrialWelcome do
     context = WelcomeGate.context(opts)
 
     if WelcomeGate.envelope?(conn) do
-      case Welcome.prepare(conn, URI.decode_query(conn.query_string), context) do
+      conn =
+        if Dawarich.Standalone.enabled?() do
+          conn
+          |> DawarichWeb.RailsAuth.call(
+            secret: context.secret,
+            now: (context[:clock] && context.clock.()) || DateTime.utc_now()
+          )
+          |> fetch_query_params()
+          |> DawarichWeb.Locale.call([])
+          |> DawarichWeb.TrialHomeSession.call([])
+        else
+          conn
+        end
+
+      case Welcome.prepare(conn, Plug.Conn.Query.decode(conn.query_string), context) do
         {:ok, prepared} ->
           case Welcome.consume(prepared, context) do
-            {:ok, result} -> redirect(conn, result)
-            {:terminal, _} -> conn |> headers() |> send_resp(500, "") |> halt()
+            {:ok, result} -> respond(conn, result)
+            {:terminal, _} -> terminal(conn)
           end
 
         {:handoff, _} ->
@@ -24,6 +38,14 @@ defmodule DawarichWeb.TrialWelcome do
       proxy(conn)
     end
   end
+
+  defp respond(conn, result) do
+    redirect(conn, result)
+  rescue
+    _ -> terminal(conn)
+  end
+
+  defp terminal(conn), do: conn |> headers() |> send_resp(500, "") |> halt()
 
   defp redirect(conn, result) do
     conn = if result.cookie, do: AuthCookie.session(conn, result.cookie), else: conn
@@ -45,5 +67,9 @@ defmodule DawarichWeb.TrialWelcome do
     |> put_resp_header("referrer-policy", "no-referrer")
   end
 
-  defp proxy(conn), do: RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+  defp proxy(conn) do
+    if Dawarich.Standalone.enabled?(),
+      do: conn |> headers() |> DawarichWeb.StandaloneError.respond("welcome_envelope", 422),
+      else: RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+  end
 end

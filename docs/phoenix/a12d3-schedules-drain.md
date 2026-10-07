@@ -27,8 +27,12 @@ queued instances to finish or an explicit controller disposition.
 Native state purge at `17 * * * *` is additional correctness-state maintenance,
 not a Rails schedule. TeslaMate/Trek each have one registered wrapper; accepted
 older scheduler workers remain supported and block activation until complete.
-23 source schedules have native execution coverage; the 24th cache-preheat
-wrapper delegates to Rails and remains a coexistence blocker. No claim of all 24 being native or of an idle Sidekiq is made here.
+The earlier A12d3 coverage count was 23 native schedules plus the cache
+wrapper. A12f-3b G01–G04 now retain all 24 schedules in the native registry;
+see [cron closure](a12f3b-cron.md) for timezone, slot, child and accepted-work
+contracts. Cache source boot cleaning is retired under ruling 8 after reader
+proof; native warming remains and accepted cache jobs still drain. Schedule
+registration does not establish source quiescence or an idle Sidekiq.
 
 | Name | Expression / Rails queue | Native module and prerequisites |
 |---|---|---|
@@ -39,7 +43,7 @@ wrapper delegates to Rails and remains a coexistence blocker. No claim of all 24
 | teslamate_sync_job | `30 2 * * *` / imports | Keep `integrations/teslamate_scheduling_worker.ex`; older duplicate registration removed from ImportEntries; child routed by current owner. |
 | trek_sync_job | `0 */6 * * *` / imports | Keep `integrations/trek_scheduling_worker.ex`; older duplicate registration removed from ImportEntries; child routed by current owner. |
 | app_version_checking_job | `0 */6 * * *` / app_version_checking | `app_version/check_worker.ex`, existing. |
-| cache_preheating_job | `0 0 * * *` / cache | Retained `cache/preheat_sweep_worker.ex` delegates to Rails during b4 coexistence; warming and cleaning closure require separate authorization. |
+| cache_preheating_job | `0 0 * * *` / cache | `cache/preheat_sweep_worker.ex` retains native warming; source boot cleaning retirement follows ruling 8, accepted source warming drains. Coexistence pins retain Rails selection. |
 | daily_track_generation_job | `0 */12 * * *` / tracks | `tracks/daily_worker.ex`, existing K9 native path; accepted walkers drain independently. |
 | nightly_reverse_geocoding_job | `15 1 * * *` / reverse_geocoding | `geocoding/nightly_worker.ex`; A12d3 native composition and source shim. Preserve force and invalidation. |
 | nightly_family_invitations_cleanup_job | `30 2 * * *` / families | `families/invitation_cleanup_worker.ex`, existing. |
@@ -140,8 +144,10 @@ remain debt. Never decode arbitrary serialized Ruby as a migration strategy.
    Verify outcome per key, not just claimer process exit.
 4. **Drain old work while producers move.** Existing queued source jobs finish/forward under
    compatibility shims with original job UUID. New native child work uses current owner and
-   stable publication identity. Keep Sidekiq consuming all source queues and reverse Poller
-   running. Scheduled and retry work remains debt until processed/resolved; never bulk-delete,
+   stable publication identity. During incremental coexistence retain the source reverse
+   Poller; at the final Cloud switch fence it and first close native-to-Rails dependencies.
+   OLD consumes only proved-safe accepted source chains. Scheduled and retry work remains
+   debt until processed/resolved; never bulk-delete,
    pull all future work forward or clear dead jobs. If a source payload is unsupported, stop
    final cutover and ask the controller for its concrete disposition, retaining the payload.
 5. **Final producer quiescence.** In the approved maintenance window pause incoming mutations,
@@ -171,18 +177,24 @@ remain debt. Never decode arbitrary serialized Ruby as a migration strategy.
    sidekiq_idle. One web BEAM handles Oban; the worker container is inert and its actual argv
    matches health checks. Topology smoke proves privileges, health, SIGTERM and no extra DB
    pool/cron. Redis remains for cache/Cable/other owners; A13f removal is separate.
-9. **Rollback while window is open.** Stop new native/source producers for affected keys; bring
-   back compatible Sidekiq + Poller first. Use existing pinned release for cron keys and
-   pending-only rehome for command keys, then keep Phoenix alive until accepted native workers
-   and durable successors settle. Unsupported versions/quarantined rows are not discarded.
-   Verify affected owners are pinned Sidekiq, supported pending rehome is complete, and accepted
-   native work has drained; unresolved unsupported debt remains retained/BLOCKED. Restore
-   the installed source cron loading/enqueue controls disabled in step 5, verify one source
-   schedule slot produces once, then reopen affected incoming/manual/callback producers.
-   Hand back routes separately with existing keys. Turning opt-in off does not release persisted
-   owners. An old Rails binary missing current PG ownership/state contracts stays blocked as
-   a rollback target. No guarantee of exactly-once external sends across process crashes;
-   preserve existing convergent/idempotent effects and at-least-once bridge semantics.
+9. **Rollback while window is open (rulings 4/7, 2026-10-06).** Fence all new
+   native/source producers, incoming mutations, callbacks and manual work. Enumerate
+   every Registry key and persisted owner, resolve unknown rows and release each actual
+   key to Sidekiq with pinned=true; joint releases are atomic and held locks are never
+   forced. Keep Phoenix workers/relay alive until pre-fence outbox, accepted Oban,
+   release operations and successors finish with original identities and due times.
+   Require the binary rollback observation to be empty with OBSERVED certainty;
+   unknown/read failures, dead/quarantined/future/reverse or unfinished work block.
+   No rehome/transfer, backup restore, inverse migration or deletion is performed.
+   Stop all Phoenix writers/claimers and retained helpers/Poller, verify absence and
+   re-inspect debt, then start stock Rails **1.15.3** on the same DB/storage. Restore
+   source producers once and verify pins, health/auth/API keys, Phoenix-era rows and
+   objects, and one source schedule slot before reopening traffic. Stock 1.15.3 has
+   no port ownership CLI: run release/status on the retained control plane before
+   stopping it. See the full
+   [manual rollback and deferred G48](a12f-ruby-free-release.md#a12f-3c-same-database-rollback-to-rails-1153).
+   This supersedes the earlier pending-rehome proposal; existing coexistence tools
+   remain historical interfaces for their owners. External delivery stays at least once.
 10. **Close rollback window only by Eugene's release decision.** A12f deletes Rails/Ruby/source
     payload support and owns irreversible upgrade refusal/rollback matrix. This branch makes
     no such decision. Retain Redis until A13f's stable-release prerequisites are satisfied.
@@ -193,7 +205,7 @@ Operator commands in tests/local rehearsal carry the command convention's Ruby a
 ```zsh
 eval "$RUBY_ACTIVATION" && RAILS_ENV=test DATABASE_NAME="$RDB" REDIS_URL="$TEST_REDIS_URL" bundle exec rails dawarich:jobs:drain_status
 eval "$RUBY_ACTIVATION" && RAILS_ENV=test DATABASE_NAME="$RDB" REDIS_URL="$TEST_REDIS_URL" bundle exec rails 'dawarich:jobs:release[cron:visit_suggesting_job]'
-eval "$RUBY_ACTIVATION" && RAILS_ENV=test DATABASE_NAME="$RDB" REDIS_URL="$TEST_REDIS_URL" bundle exec rails 'dawarich:jobs:rehome[command:visits.bulk_suggest]'
+eval "$RUBY_ACTIVATION" && RAILS_ENV=test DATABASE_NAME="$RDB" REDIS_URL="$TEST_REDIS_URL" bundle exec rails dawarich:jobs:status
 ```
 
 Production deployment commands/resources are a separate operator assignment, not executable
@@ -305,3 +317,62 @@ Open questions for Eugene (release decisions only):
 The assigned local rehearsal resources are Redis 7247, Rails database
 `dawarich_test_a12d3` and Phoenix database `dawarich_phoenix_test_a12d3`.
 The open release decisions preserve cache coexistence and retain/block defaults.
+
+
+## A12f-3c final Cloud checkpoints (2026-10-06)
+
+The phase list above preserves incremental coexistence history. Controller
+ruling 2's final Cloud cut uses separate NEW Phoenix-only and OLD drain-only
+roles, with two independent checkpoints detailed in
+[the package P handoff](a12f-ruby-free-release.md#a12f-3c-operator-cut-over-and-old-shutdown-handoff).
+At traffic switch, NEW's image/HTTP/lifecycle/shared-storage proof and accepted
+chain isolation must be complete; disable OLD publication, boot/cron/manual/
+callback producers and reverse Poller. Only proved-safe accepted source debt
+may drain on OLD. NEW never uses OLD as an upstream.
+
+OLD shutdown follows full G49 under producer quiescence: D pre_quiet observations,
+quiet all identified fetchers, settle effects, require explicit stopping state
+and no probes, check native shutdown debt, TERM, then independently inspect
+process absence and repeat post_stop/source/native observations. UNKNOWN,
+unreadable, newly appearing, unknown/retired/dead work blocks and remains stored.
+D's integrated review fix and E's actual smoke/stop evidence are prerequisites;
+this runbook is not their execution result. Resume native producers only after
+absence proof. Ruling 7's same-DB rollback pins every real key then drains natively;
+no pending transfer is used. Release dates/windows remain Eugene's values.
+
+
+## H03/H04 SQL observation boundary
+
+`Jobs.Drain.status/1` labels its observation `scope: native_sql` and source
+`NOT_OBSERVED` / `UNKNOWN`, with `source_inspection_required`. Its `g49` field
+is always `BLOCKED`; native `binary_rollback: OBSERVED_EMPTY` describes only
+SQL debt after every known owner is pinned Sidekiq. This is required even if
+source Redis is reachable, empty or unavailable: the native observer does not
+read it. Database read failure retains UNKNOWN and blocks every native result.
+The retained Rails `JobDrain.status` independently counts source queued,
+scheduled, retry, dead, busy, reserved and unknown work, plus changed/read
+failures. Release acceptance combines observations with actual producer fences.
+
+H03 originally identified three live producer gaps: the place reverse-geocoding
+adapter, the point achievement helper during coexistence, and Null Island
+follow-ups. Their native adapters and terminal-effect/zero-reverse/Rails
+hand-back proofs are now implemented in R13k05, R14helper and R19k04; see
+[a12f3b-pages-producers.md](a12f3b-pages-producers.md). H03a exercises native
+place publication and explicitly pins that command back to Rails before its
+reverse-debt assertions. All 78 closure kinds, residual producer blockers,
+source-inspection requirements and G49 refusal remain intact. These three
+repairs do not establish all-producer closure or release acceptance.
+
+H03b retains unreadable-database and all-key pin safety. H04 reuses the existing
+Cloud operator HTTP/connected-auth test and the actual native trip/release
+rollback test; the latter asserts unchanged source queues while SQL native
+work drains and still reports source inspection required. Their independent
+selectors are `h04_case:H04a` and `h04_case:H04b`.
+
+The [part-B handoff](a12f3b-pages-producers.md) maps route, reverse, source and
+cron evidence, the 125/78/24 inventories and approved NE dispositions. The
+[release runbook](a12f-ruby-free-release.md) retains R1/J1/J2/L1, G42–G49 and
+A12f-3c fence/old-app shutdown owner requirements. Source and Cloud lifecycle
+refusals remain intact. Ruling 7 is authoritative: pin all keys Sidekiq, drain
+accepted native work, stop Phoenix, then start Rails 1.15.3 on the same data.
+No transfer, dead-payload purge or SQL-only source-drained success is allowed.

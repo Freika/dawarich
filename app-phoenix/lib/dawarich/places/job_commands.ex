@@ -1,7 +1,7 @@
 defmodule Dawarich.Places.JobCommands do
   @moduledoc false
   alias Dawarich.Jobs.Ownership
-  alias Dawarich.RailsCommands
+  alias Dawarich.{RailsCommands, Standalone}
 
   def name_fetch(repo, user, place),
     do:
@@ -29,11 +29,19 @@ defmodule Dawarich.Places.JobCommands do
           })
       end)
 
-  def orphan_cleanup(repo, user),
+  def orphan_cleanup(repo, user, scheduled_at \\ nil),
     do:
       resolve(repo, "places.orphan_cleanup", fn
-        :oban -> publish(repo, "places.orphan_cleanup", %{"user_id" => user}, user)
-        :sidekiq -> RailsCommands.insert!(repo, "places_orphan_cleanup", %{"user_id" => user})
+        :oban ->
+          publish(repo, "places.orphan_cleanup", %{"user_id" => user}, user, scheduled_at)
+
+        :sidekiq ->
+          payload =
+            if scheduled_at,
+              do: %{"user_id" => user, "scheduled_at" => DateTime.to_iso8601(scheduled_at)},
+              else: %{"user_id" => user}
+
+          RailsCommands.insert!(repo, "places_orphan_cleanup", payload)
       end)
 
   def bulk_name_fetch(repo),
@@ -44,7 +52,14 @@ defmodule Dawarich.Places.JobCommands do
       end)
 
   defp resolve(repo, type, fun) do
-    {:ok, _} = repo.transaction(fn -> fun.(Ownership.lock(repo, "command:" <> type)) end)
+    {:ok, _} =
+      repo.transaction(fn ->
+        owner =
+          if Standalone.enabled?(), do: :oban, else: Ownership.lock(repo, "command:" <> type)
+
+        fun.(owner)
+      end)
+
     :ok
   end
 
@@ -57,7 +72,7 @@ defmodule Dawarich.Places.JobCommands do
     :ok
   end
 
-  defp publish(repo, type, payload, aggregate) do
+  defp publish(repo, type, payload, aggregate, scheduled_at \\ nil) do
     repo.query!(
       "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,aggregate_id,metadata,scheduled_at) VALUES($1,$2,1,$3,$4,$5,$6)",
       [
@@ -66,7 +81,7 @@ defmodule Dawarich.Places.JobCommands do
         payload,
         aggregate,
         %{"producer" => "phoenix.places"},
-        DateTime.utc_now()
+        scheduled_at || DateTime.utc_now()
       ],
       log: false
     )

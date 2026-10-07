@@ -75,7 +75,13 @@ defmodule Dawarich.ReleaseJobs do
     do: chain(Ops.Altitude, %{"phase" => "users", "after_id" => 0})
 
   def decode(class, []) when class in @families do
-    if Dawarich.ReleaseMigration.self_hosted?(), do: :skip, else: {:error, :cloud_family_backfill}
+    if Dawarich.ReleaseMigration.self_hosted?() do
+      :skip
+    else
+      phase = if class == hd(@families), do: "families", else: "entitlements"
+      zone = Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+      chain(__MODULE__.FamilyBackfill, %{"phase" => phase, "after_id" => 0, "time_zone" => zone})
+    end
   end
 
   def decode("TransportationModes::ImportBackfillJob", [import_id])
@@ -115,4 +121,70 @@ defmodule Dawarich.ReleaseJobs do
   defp chain(worker, cursor),
     do:
       {:ok, worker, %{"version" => 1, "operation_id" => Ecto.UUID.generate(), "cursor" => cursor}}
+end
+
+defmodule Dawarich.ReleaseJobs.FamilyBackfill do
+  @moduledoc false
+  use Oban.Worker, queue: :maintenance, priority: 3, max_attempts: 26
+
+  alias Dawarich.Families.{AutoCreateWorker, MemberSync}
+  alias Dawarich.ReleaseOperations
+
+  @families """
+  SELECT u.id FROM users u
+  WHERE u.deleted_at IS NULL AND u.plan=2 AND u.id>$1
+    AND NOT EXISTS(SELECT 1 FROM family_memberships m WHERE m.user_id=u.id)
+    AND NOT EXISTS(SELECT 1 FROM families f WHERE f.creator_id=u.id)
+  ORDER BY u.id LIMIT 500
+  """
+  @entitlements "SELECT id FROM families WHERE id>$1 ORDER BY id LIMIT 200"
+
+  def command_type, do: "release.family_backfill"
+
+  def args_from_command(1, %{"phase" => phase, "after_id" => id, "time_zone" => zone} = payload)
+      when map_size(payload) == 3 and phase in ["families", "entitlements"] and
+             is_integer(id) and id >= 0 and is_binary(zone) do
+    Dawarich.Imports.ZonePeriod.load!(zone)
+    {:ok, %{"version" => 1, "cursor" => payload}}
+  rescue
+    _ -> {:error, "invalid_payload"}
+  end
+
+  def args_from_command(1, _), do: {:error, "invalid_payload"}
+  def args_from_command(_, _), do: {:error, "unsupported_version"}
+
+  @impl Oban.Worker
+  def perform(job), do: ReleaseOperations.run(Dawarich.Jobs.repo(), Oban, __MODULE__, job)
+
+  def step(repo, %{cursor: %{"phase" => "families", "after_id" => after_id} = cursor} = op) do
+    ReleaseOperations.commit(repo, op, fn ->
+      ids = ReleaseOperations.ids(repo, @families, [after_id])
+
+      for id <- ids do
+        Oban.insert!(
+          op.oban,
+          AutoCreateWorker.new(%{
+            "event_id" => Ecto.UUID.generate(),
+            "user_id" => id,
+            "time_zone" => cursor["time_zone"]
+          })
+        )
+      end
+
+      advance(cursor, ids, 500)
+    end)
+  end
+
+  def step(repo, %{cursor: %{"phase" => "entitlements", "after_id" => after_id} = cursor} = op) do
+    ids = ReleaseOperations.ids(repo, @entitlements, [after_id])
+
+    for id <- ids,
+        do: MemberSync.run(repo, id, notify: false, time_zone: cursor["time_zone"])
+
+    ReleaseOperations.commit(repo, op, fn -> advance(cursor, ids, 200) end)
+  end
+
+  defp advance(cursor, ids, size) do
+    if length(ids) < size, do: :done, else: {%{cursor | "after_id" => List.last(ids)}, 0}
+  end
 end

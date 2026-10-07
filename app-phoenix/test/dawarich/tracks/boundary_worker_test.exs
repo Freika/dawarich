@@ -15,6 +15,7 @@ defmodule Dawarich.Tracks.BoundaryWorkerTest do
   defp hold_lock!(user_id),
     do: Dawarich.JobsCase.hold_lease!(ScratchRepo, PerUserLock.key(user_id), "rails-token")
 
+  @tag a12f3b_case: "E14Ba"
   test "completes after all chunks under the lock" do
     %{call: [call], expected: expected} = TracksFixtures.load!(ScratchRepo, "range_dst")
     user = Settings.load!(ScratchRepo, 1)
@@ -24,6 +25,7 @@ defmodule Dawarich.Tracks.BoundaryWorkerTest do
     known = Map.merge(known, identities())
     chunk_tracks = actual_tracks()
     assert [["running", 3, 3, 0, 0, nil]] = generation(id)
+    assert Dawarich.Jobs.Drain.status(ScratchRepo).counts.unfinished_generations == 1
 
     hold_lock!(user.id)
     assert look(id) == {:error, :lock_busy}
@@ -34,6 +36,7 @@ defmodule Dawarich.Tracks.BoundaryWorkerTest do
     assert look(id) == :ok
 
     assert generation(id) == [["completed", 3, 3, 0, 0, nil]]
+    assert Dawarich.Jobs.Drain.status(ScratchRepo).counts.unfinished_generations == 0
     assert actual_tracks() == expected_tracks(expected)
     assert point_identities() == expected_point_identities(expected)
     assert actual_segments() == expected_segments(expected)

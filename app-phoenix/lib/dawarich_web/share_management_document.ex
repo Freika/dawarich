@@ -4,9 +4,28 @@ defmodule DawarichWeb.ShareManagementDocument do
   alias DawarichWeb.{ShareHub, ShareLinkActive, ShareLinkForm}
 
   def frame(assigns) do
-    close_path = if assigns.page.trip, do: "/trips/#{assigns.page.trip.id}", else: "/map/v2"
-    paths = ShareHub.paths(if(assigns.page.trip, do: assigns.page.trip.id, else: "live"))
-    assigns = assigns |> assign(:close_path, close_path) |> assign(:paths, paths)
+    track? = assigns.type == "track"
+
+    close_path =
+      if assigns.page.trip && !track?, do: "/trips/#{assigns.page.trip.id}", else: "/map/v2"
+
+    paths =
+      if track?,
+        do:
+          Map.new(ShareHub.paths(assigns.page.trip.id), fn {key, path} ->
+            {key, String.replace(path, "/trips/", "/tracks/")}
+          end),
+        else: ShareHub.paths(if(assigns.page.trip, do: assigns.page.trip.id, else: assigns.type))
+
+    {:ok, range} =
+      Dawarich.ShareManagement.Read.hub(
+        %{id: assigns.ctx.user_id, settings: assigns.ctx.settings},
+        %{},
+        assigns.ctx.now
+      )
+
+    assigns =
+      assigns |> assign(:close_path, close_path) |> assign(:paths, paths) |> assign(:range, range)
 
     ~H"""
     <turbo-frame id="share-link-modal" phx-hook="RailsStimulus" phx-update="ignore">
@@ -27,9 +46,13 @@ defmodule DawarichWeb.ShareManagementDocument do
               subtitle={subtitle(@ctx, @page.trip, @page.share)}
             />
           <% else %>
-            <h3 class="font-bold text-lg mb-1">{title(@ctx, @page.trip)}</h3>
+            <h3 class="font-bold text-lg mb-1">
+              {if @type == "timeline",
+                do: t(@ctx.locale, "share_links.timelines.new.share_a_date_range", %{}),
+                else: title(@ctx, @page.trip)}
+            </h3>
             <p class="text-sm text-base-content/70 mb-5">
-              {if @page.trip,
+              {if @type == "trip",
                 do: t(@ctx.locale, "shared_links.family.choose_audience", %{}),
                 else: m(@ctx, "anyone_with_the_link_will_be_able_to_view_this")}
             </p>
@@ -38,8 +61,9 @@ defmodule DawarichWeb.ShareManagementDocument do
               type={@type}
               paths={@paths}
               close_path={@close_path}
-              start_date={nil}
-              end_date={nil}
+              errors={Map.get(@page, :errors, [])}
+              start_date={Map.get(@page, :start_date, @range.start_date)}
+              end_date={Map.get(@page, :end_date, @range.end_date)}
             />
           <% end %>
         </div>
@@ -56,10 +80,28 @@ defmodule DawarichWeb.ShareManagementDocument do
   end
 
   defp title(ctx, nil), do: t(ctx.locale, "share_links.lives.new.share_your_live_location", %{})
+
+  defp title(ctx, %{type: "track"} = track),
+    do: t(ctx.locale, "tracks.share_links.new.share_track", %{track: track.name})
+
   defp title(ctx, trip), do: t(ctx.locale, "trips.share_links.new.share_trip", %{trip: trip.name})
+
+  defp subtitle(ctx, nil, %{type: "timeline", settings: settings}) do
+    range =
+      DawarichWeb.SharedPages.date_range(
+        ctx.locale,
+        Date.from_iso8601!(settings["start_date"]),
+        Date.from_iso8601!(settings["end_date"])
+      )
+
+    t(ctx.locale, "helpers.shared_links.timeline_subtitle", %{range: range})
+  end
 
   defp subtitle(ctx, nil, _share),
     do: t(ctx.locale, "share_links.lives.new.your_live_location_is_shared_via_a_public_link", %{})
+
+  defp subtitle(ctx, %{type: "track"}, _share),
+    do: t(ctx.locale, "tracks.share_links.new.this_track_is_shared_via_a_public_link", %{})
 
   defp subtitle(ctx, trip, share),
     do:

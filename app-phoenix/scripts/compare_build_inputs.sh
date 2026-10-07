@@ -9,7 +9,7 @@ proc='s/,"nth":{"ordinals":"#<Proc:[^"]*","ordinalized":"#<Proc:[^"]*"}//'
 maps='del(.files[].mtime) | .files |= (to_entries | sort_by(.key) | from_entries) | .assets |= (to_entries | sort_by(.key) | from_entries)'
 for side in a b; do
   eval dir=\$$side
-  (cd "$dir" && find public/assets config/sprockets-manifest.json tmp/phoenix/i18n.json tmp/phoenix/achievements.json tmp/phoenix/importmap.json -type f) >"$work/$side.found"
+  (cd "$dir" && find public/assets config/sprockets-manifest.json tmp/phoenix/i18n.json tmp/phoenix/achievements.json tmp/phoenix/importmap.json tmp/phoenix/time_zones.json -type f) >"$work/$side.found"
   LC_ALL=C sort "$work/$side.found" >"$work/$side.list"
 done
 diff "$work/a.list" "$work/b.list" || { echo "the file sets differ" >&2; exit 1; }

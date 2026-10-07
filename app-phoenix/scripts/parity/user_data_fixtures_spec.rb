@@ -4,11 +4,19 @@ require 'rails_helper'
 require_relative 'user_data_fixtures_support'
 
 RSpec.describe 'Phoenix fixtures: Rails user data' do
+  before do
+    @previous_urls = Rails.application.routes.default_url_options.dup
+    Rails.application.routes.default_url_options = @previous_urls.merge(host: 'www.example.com')
+  end
+
+  after { Rails.application.routes.default_url_options = @previous_urls }
+
   include ActiveSupport::Testing::TimeHelpers
   self.use_transactional_tests = false
 
   before do
     allow(Rails.application).to receive(:secret_key_base).and_return(A12bFixtureSupport::SECRET)
+    Notification.connection.execute("SELECT setval(pg_get_serial_sequence('notifications','id'),1,false)")
   end
 
   around do |example|
@@ -84,6 +92,7 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
     result['nil_source_restores'] = %w[v1 v2].to_h do |version|
       outcome = UserDataFixturesSupport.with_users do
         user = UserDataFixturesSupport.owner
+        Import.connection.execute("SELECT setval(pg_get_serial_sequence('imports','id'),988001,false)")
         UserDataFixturesSupport.insert(Import, user, 988_105, name: 'pending upload', source: nil)
         UserDataFixturesSupport.restore("nil_source_#{version}", UserDataFixturesSupport.read_entries(version), user,
                                         save: false)
@@ -132,6 +141,13 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
     end
     UserDataFixturesSupport.write('v1_reader_events.json', events)
     UserDataFixturesSupport.write('capture.json', result)
+    { '05' => result.slice('sections', 'exports'), '06' => result.slice('exports', 'boundaries'),
+      '07' => result.slice('exports', 'export_errors'), '08' => result.slice('versions', 'restores', 'cases'),
+      '09' => result.slice('restores', 'cases', 'post_commit_storage_failure'),
+      '10' => result.slice('restores', 'boundaries', 'nil_source_restores'),
+      '11' => result.slice('post_commit_anomaly', 'post_commit_storage_failure') }.each do |id, captured|
+      UserDataFixturesSupport.source_write("a12f3a-e#{id}.json", captured)
+    end
   end
 
   it 'captures rescued point SQL failure aborting the outer transaction' do
@@ -189,14 +205,40 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
 end
 
 RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+  around { |example| Time.use_zone('UTC') { travel_to(Time.utc(2026, 10, 2, 12)) { example.run } } }
   after { ActionController::Base.allow_forgery_protection = false }
   it 'captures the backup form and endpoint flashes in all shipped locales' do
-    user = create(:user, admin: false, settings: { 'timezone' => 'UTC' })
+    [Import, Export, ActiveStorage::Blob, ActiveStorage::Attachment].each do |model|
+      sequence = model.connection.select_value("SELECT pg_get_serial_sequence('#{model.table_name}','id')")
+      model.connection.execute("SELECT setval('#{sequence}',9888000,false)")
+    end
+    user = create(:user, id: 988_800, email: 'backup-http@example.test', admin: false,
+                         settings: { 'timezone' => 'UTC' })
+    user.update_columns(api_key: 'a12f' * 16)
+    clear_enqueued_jobs
+    traces = {}
+    observe = lambda do
+      document = Nokogiri::HTML5(response.body)
+      document.css('meta[name="csrf-token"],meta[name="csp-nonce"],input[name="authenticity_token"]').each do |node|
+        node[node.name == 'meta' ? 'content' : 'value'] = 'CSRF'
+      end
+      document.css('[nonce]').each { _1['nonce'] = 'NONCE' }
+      document.css('turbo-cable-stream-source[signed-stream-name]').each { _1['signed-stream-name'] = 'STREAM' }
+      { status: response.status, media_type: response.media_type, body: FixtureRecording.normalize(document.to_html),
+        headers: response.headers.slice('Location', 'Content-Type', 'Cache-Control', 'Vary', 'X-Frame-Options'),
+        set_cookie: response.headers['Set-Cookie'].present?, flash: flash.to_hash,
+        imports: user.imports.order(:id).pluck(:id, :name, :source, :status, :additional_data_extraction_status),
+        exports: user.exports.order(:id).pluck(:id, :name, :status),
+        jobs: enqueued_jobs.map { { class: _1[:job].name, args: _1[:args], queue: _1[:queue] } } }
+    end
     result = %w[en de es fr pl ca zh].to_h do |locale|
+      traces[locale] = {}
       user.update!(settings: user.settings.merge('locale' => locale))
       sign_in(user)
       ActionController::Base.allow_forgery_protection = true
       get '/users/edit'
+      traces[locale]['edit'] = observe.call
       ActionController::Base.allow_forgery_protection = false
       expect(response).to have_http_status(:ok)
       form = Nokogiri::HTML5(response.body).at_css('form[action="/settings/users/import"]')
@@ -206,25 +248,36 @@ RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request d
       form['data-upload-url-value'] = 'UPLOAD'
       get '/settings/users/export'
       expect(response).to have_http_status(:found)
+      traces[locale]['export'] = observe.call
       export = { 'status' => response.status, 'location' => URI(response.location).path, 'flash' => flash.to_hash }
       get '/users/edit'
       post '/settings/users/import', params: { archive: '' }
       expect(response).to have_http_status(:found)
+      traces[locale]['blank'] = observe.call
       blank = { 'status' => response.status, 'location' => URI(response.location).path, 'flash' => flash.to_hash }
       post '/settings/users/import', params: { archive: 'invalid-signed-id' }
       expect(response).to have_http_status(:found)
+      traces[locale]['invalid'] = observe.call
       invalid = { 'status' => response.status, 'location' => URI(response.location).path, 'flash' => flash.to_hash }
+      containers = { array: ['synthetic'], object: { nested: 'synthetic' } }.to_h do |kind, value|
+        post '/settings/users/import', params: { archive: value }
+        expect(response).to have_http_status(:found)
+        expect(flash.to_hash).to have_key('alert')
+        [kind, { status: response.status, location: URI(response.location).path, flash: flash.to_hash.slice('alert') }]
+      end
       filename = %w[en de].include?(locale) ? 'backup.zip' : "#{locale}-backup.zip"
       blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('synthetic archive'), filename: filename,
                                                     content_type: 'application/zip')
       post '/settings/users/import', params: { archive: blob.signed_id }
       expect(response).to have_http_status(:found)
       expect(flash.to_hash).to have_key('notice')
+      traces[locale]['valid'] = observe.call
       valid = { 'status' => response.status, 'location' => URI(response.location).path,
                 'flash' => flash.to_hash.slice('notice') }
       blob.update_column(:filename, '')
       post '/settings/users/import', params: { archive: blob.signed_id }
       expect(response).to have_http_status(:found)
+      traces[locale]['failed'] = observe.call
       failed = { 'status' => response.status, 'location' => URI(response.location).path,
                  'flash' => flash.to_hash.slice('alert') }
       user.update_columns(status: User.statuses.fetch('trial'), subscription_source: 0)
@@ -245,6 +298,7 @@ RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request d
         rejected = %w[count_five size_over].include?(boundary)
         expect(flash.to_hash).to have_key(rejected ? 'alert' : 'notice')
         expect(user.imports.count - before[0]).to eq(rejected ? 0 : 1)
+        traces[locale][boundary] = observe.call
         trial[boundary] = { 'status' => response.status, 'location' => URI(response.location).path,
                             'flash' => flash.to_hash.slice(rejected ? 'alert' : 'notice'),
                             'imports_created' => user.imports.count - before[0],
@@ -254,8 +308,9 @@ RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request d
       sign_out(:user)
       [locale,
        { 'valid' => valid, 'failed' => failed, 'form' => form.to_html, 'export' => export, 'blank' => blank,
-'invalid' => invalid, 'trial' => trial }]
+'invalid' => invalid, 'containers' => containers, 'trial' => trial }]
     end
     UserDataFixturesSupport.write('http.json', result)
+    UserDataFixturesSupport.source_write('a12f3a-e04.json', { summary: result, traces: })
   end
 end

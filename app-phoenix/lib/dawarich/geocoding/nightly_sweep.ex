@@ -1,7 +1,7 @@
 defmodule Dawarich.Geocoding.NightlySweep do
   @moduledoc false
 
-  alias Dawarich.{RailsCommands, State}
+  alias Dawarich.{RailsCommands, Standalone, State}
   alias Dawarich.Geocoding.{Config, NightlyWorker, ReversePointWorker}
   alias Dawarich.Jobs.{Ownership, Processed}
 
@@ -19,9 +19,14 @@ defmodule Dawarich.Geocoding.NightlySweep do
     env = Keyword.get_lazy(opts, :env, &System.get_env/0)
 
     if Config.resolve(repo, env).enabled do
-      case Ownership.with_owner(repo, NightlyWorker.key(), :oban, fn ->
-             batch(repo, oban, args, opts)
-           end) do
+      work = fn -> batch(repo, oban, args, opts, env) end
+
+      result =
+        if Standalone.enabled?(env),
+          do: repo.transaction(work),
+          else: Ownership.with_owner(repo, NightlyWorker.key(), :oban, work)
+
+      case result do
         {:ok, :ok} ->
           :ok
 
@@ -38,14 +43,18 @@ defmodule Dawarich.Geocoding.NightlySweep do
     end
   end
 
-  defp batch(repo, oban, args, opts) do
+  defp batch(repo, oban, args, opts, env) do
     root = root_id(args["slot"])
 
     if Processed.done?(repo, root) do
       finish!(repo, root, args["affected_user_ids"])
     else
       rows = repo.query!(@points, [args["after_id"]], log: false).rows
-      owner = Ownership.lock(repo, "command:geocoding.reverse_point")
+
+      owner =
+        if Standalone.enabled?(env),
+          do: :oban,
+          else: Ownership.lock(repo, "command:geocoding.reverse_point")
 
       selected =
         Enum.filter(rows, fn [id, _] ->
@@ -106,11 +115,14 @@ defmodule Dawarich.Geocoding.NightlySweep do
       receipt = uuid(Ecto.UUID.dump!(root), "invalidated:#{user}")
 
       if Processed.claim!(repo, receipt, "geocoding.nightly") do
-        RailsCommands.insert!(repo, "stats.caches_invalidated", %{
-          "user_id" => user,
-          "year" => nil,
-          "scope" => "all"
-        })
+        Dawarich.Stats.CacheInvalidation.call(
+          repo,
+          %{
+            "user_id" => user,
+            "year" => nil,
+            "scope" => "all"
+          }
+        )
       end
     end
   end

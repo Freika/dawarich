@@ -37,7 +37,21 @@ end
 defmodule Dawarich.Release.NativeTest.BootstrapRepo do
   alias Dawarich.ScratchCaseRepo
 
-  def config, do: Keyword.put(ScratchCaseRepo.config(), :migration_repo, ScratchCaseRepo)
+  def config do
+    config = Keyword.put(ScratchCaseRepo.config(), :migration_repo, ScratchCaseRepo)
+
+    if observer = Process.get(:native_lock_observer) do
+      caller = self()
+
+      Keyword.put(config, :configure, fn opts ->
+        send(observer, {:native_stage, caller, {:lock_connection, self()}})
+        opts
+      end)
+    else
+      config
+    end
+  end
+
   defdelegate __adapter__(), to: ScratchCaseRepo
   defdelegate get_dynamic_repo(), to: ScratchCaseRepo
   defdelegate put_dynamic_repo(repo), to: ScratchCaseRepo
@@ -61,7 +75,7 @@ end
 defmodule Dawarich.Release.NativeTest do
   use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
-  alias Dawarich.{Release, ReleaseMigrator}
+  alias Dawarich.{NativeWorker, Release, ReleaseMigrator}
   alias Dawarich.ReleaseMigrator.Floor
   alias Dawarich.Release.NativeTest.{BootstrapRepo, Inet6Repo, Pending, Probe}
 
@@ -76,6 +90,17 @@ defmodule Dawarich.Release.NativeTest do
     end)
 
     :ok
+  end
+
+  test "standalone flag migrates fresh and existing ledgers natively without the lifecycle opt in" do
+    options = opts(env: %{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => "true"})
+    assert :ok = Release.migrate(options)
+    assert ScratchRepo.query!("SELECT id FROM native_items").rows == [[1]]
+    assert {:ok, :current} = ReleaseMigrator.status(ScratchRepo, releases: [Probe])
+    ScratchRepo.query!("INSERT INTO native_items VALUES (2)")
+    assert :ok = Release.migrate(options)
+    assert ScratchRepo.query!("SELECT id FROM native_items ORDER BY id").rows == [[1], [2]]
+    assert ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
   end
 
   test "below-floor or unsupported public ledger refuses before private schema writes" do
@@ -111,40 +136,33 @@ defmodule Dawarich.Release.NativeTest do
     refute relation?("oban.oban_jobs")
 
     first =
-      Task.async(fn ->
+      {caller, _} =
+      NativeWorker.start(fn ->
         Process.put(:private_write_gate, fn ->
-          send(parent, {:first_private_write, self()})
-          receive do: (:continue -> :ok)
+          NativeWorker.barrier(parent, :first_private_write)
         end)
 
         Release.migrate(opts(repo: BootstrapRepo))
       end)
 
-    on_exit(fn -> Process.exit(first.pid, :kill) end)
-    assert_receive {:first_private_write, caller}, 5_000
+    assert NativeWorker.stage(first) == {:ok, :first_private_write}
 
     assert ScratchRepo.query!(
              "SELECT nspname FROM pg_namespace WHERE nspname IN ('phoenix','oban')"
            ).rows == []
 
     second =
-      Task.async(fn ->
+      {waiter, _} =
+      NativeWorker.start(fn ->
         Process.put(:private_write_gate, fn ->
-          send(parent, {:second_stage, :private_write, self()})
-          receive do: (:continue -> :ok)
+          NativeWorker.barrier(parent, :private_write)
         end)
 
-        wait = fn _ ->
-          send(parent, {:second_stage, :lock_waiting, self()})
-          receive do: (:continue -> :ok)
-        end
-
+        wait = fn _ -> NativeWorker.barrier(parent, :lock_waiting) end
         Release.migrate(opts(repo: BootstrapRepo, lease_sleep: wait))
       end)
 
-    on_exit(fn -> Process.exit(second.pid, :kill) end)
-    assert_receive {:second_stage, stage, waiter}, 5_000
-    assert stage == :lock_waiting
+    assert NativeWorker.stage(second) == {:ok, :lock_waiting}
     assert advisory_held?()
 
     assert ScratchRepo.query!(
@@ -152,9 +170,9 @@ defmodule Dawarich.Release.NativeTest do
            ).rows == []
 
     send(caller, :continue)
-    assert Task.await(first) == :ok
+    assert NativeWorker.complete(first) == {:ok, :ok}
     send(waiter, :continue)
-    assert Task.await(second) == :ok
+    assert NativeWorker.complete(second) == {:ok, :ok}
     assert ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
     assert ScratchRepo.query!("SELECT count(*) FROM phoenix.registration_setting").rows == [[1]]
     assert {:ok, :current} = ReleaseMigrator.status(ScratchRepo, releases: [Probe])
@@ -213,27 +231,25 @@ defmodule Dawarich.Release.NativeTest do
   test "backend loss stops native writes before Rails can migrate under the released key" do
     parent = self()
 
-    {native, ref} =
-      spawn_monitor(fn ->
-        Process.put(:native_gate, fn ->
-          send(parent, {:native_writing, self()})
-          receive do: (:continue -> :ok)
-        end)
-
-        Release.migrate(opts())
+    worker =
+      {native, _} =
+      NativeWorker.start(fn ->
+        Process.put(:native_lock_observer, parent)
+        Process.put(:native_gate, fn -> NativeWorker.barrier(parent, :native_writing) end)
+        Release.migrate(opts(repo: BootstrapRepo))
       end)
 
-    on_exit(fn -> Process.exit(native, :kill) end)
-    assert_receive {:native_writing, ^native}, 5_000
+    assert {:ok, {:lock_connection, connection}} = NativeWorker.stage(worker)
+    assert NativeWorker.stage(worker) == {:ok, :native_writing}
 
-    [[backend]] =
-      ScratchRepo.query!(
-        "SELECT pid FROM pg_locks WHERE locktype='advisory' AND objsubid=1 AND database=(SELECT oid FROM pg_database WHERE datname=current_database())"
-      ).rows
+    {:no_state, %{client: {token, :pool}, state: protocol, pool: pool}} =
+      :sys.get_state(connection)
 
-    assert ScratchRepo.query!("SELECT pg_terminate_backend($1)", [backend]).rows == [[true]]
-    assert_receive {:DOWN, ^ref, :process, ^native, reason}, 5_000
-    refute reason == :normal
+    assert pool in elem(Process.info(native, :links), 1)
+    {:gen_tcp, socket} = protocol.sock
+    :ok = :gen_tcp.close(socket)
+    DBConnection.Connection.ping({connection, token}, protocol)
+    refute NativeWorker.exit_reason(worker) == :normal
 
     ScratchRepo.checkout(fn ->
       [[database]] = ScratchRepo.query!("SELECT current_database()::text").rows

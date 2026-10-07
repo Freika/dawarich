@@ -3,7 +3,6 @@ defmodule DawarichWeb.TripExportAction do
   import Plug.Conn
   alias Dawarich.{Jobs, PointExports, Trips.WebExport}
   alias DawarichWeb.{Locale, RailsSession, RequestURL, Translate, TripActions}
-  alias DawarichWeb.Api.Body
 
   def call(conn) do
     user = conn.assigns.current_user
@@ -33,7 +32,7 @@ defmodule DawarichWeb.TripExportAction do
         error(conn, id, locale, "unsupported_export_format_choose_gpx_or_geojson")
 
       {:replay, reason} ->
-        Body.replay(conn, reason)
+        DawarichWeb.TripRequest.replay(conn, reason)
 
       {:error, :not_found} ->
         TripActions.not_found(conn)

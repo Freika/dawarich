@@ -1,7 +1,7 @@
 defmodule Dawarich.Imports.Lease do
   @moduledoc false
   alias Dawarich.Imports.LeaseLost
-  alias Dawarich.Jobs.Ownership
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
   alias Dawarich.State
   @lane "command:imports.process_gpx"
   @worker "Dawarich.Imports.ProcessGpxWorker"
@@ -29,12 +29,13 @@ defmodule Dawarich.Imports.Lease do
       attempt: attempt,
       event: event,
       event_id: args["event_id"],
+      continuation: args["continuation"],
       token: Ecto.UUID.dump!(Ecto.UUID.generate()),
       scope: make_ref(),
       lane: Keyword.get(opts, :lane, @lane),
       worker: Keyword.get(opts, :worker, @worker),
       sources: Keyword.get(opts, :sources, [4]),
-      terminal_statuses: Keyword.get(opts, :terminal_statuses, [2])
+      terminal_statuses: Keyword.get(opts, :terminal_statuses, [2, 3])
     }
 
     case State.Lease.with_lease(repo, "import:#{import.id}", fn -> run(lease, fun) end,
@@ -90,18 +91,26 @@ defmodule Dawarich.Imports.Lease do
         unless current?(lease), do: lease.repo.rollback(:unavailable)
         if legacy_metadata?(lease), do: lease.repo.rollback(:legacy)
 
+        if continuation?(lease) do
+          case Dawarich.Imports.ContinuationReceipt.admission(lease) do
+            :ok -> :ok
+            reason -> lease.repo.rollback(reason)
+          end
+        end
+
         result =
           lease.repo.query!(
             """
             INSERT INTO phoenix.import_runs (import_id,user_id,event_id,job_id,attempt,token,updated_at)
             VALUES ($1,$2,$3,$4,$5,$6,now())
             ON CONFLICT (import_id) DO UPDATE SET
-              user_id=EXCLUDED.user_id, job_id=EXCLUDED.job_id, attempt=EXCLUDED.attempt,
+              user_id=EXCLUDED.user_id, event_id=EXCLUDED.event_id, job_id=EXCLUDED.job_id, attempt=EXCLUDED.attempt,
               token=EXCLUDED.token, updated_at=EXCLUDED.updated_at
             WHERE import_runs.event_id=EXCLUDED.event_id
+              OR ($7 AND import_runs.attachment_snapshot->>'kind'='continuation')
             RETURNING token
             """,
-            values(lease),
+            values(lease) ++ [continuation?(lease)],
             log: false
           )
 
@@ -136,6 +145,7 @@ defmodule Dawarich.Imports.Lease do
          ).rows do
       [["executing", attempt, worker, args]] ->
         worker == lease.worker and attempt == lease.attempt and args["event_id"] == lease.event_id and
+          args["continuation"] == lease.continuation and
           args["import_id"] == lease.import.id and args["user_id"] == lease.import.user_id
 
       _ ->
@@ -201,4 +211,10 @@ defmodule Dawarich.Imports.Lease do
       lease.attempt,
       lease.token
     ]
+
+  defp continuation?(lease),
+    do:
+      lease.worker == "Dawarich.Imports.ProcessWorker" and
+        lease.lane == "command:imports.process_normal" and
+        match?({:ok, _}, Dawarich.Imports.GoogleTakeoutResume.validate(lease.continuation))
 end

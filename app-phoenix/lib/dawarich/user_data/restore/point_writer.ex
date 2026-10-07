@@ -64,10 +64,7 @@ defmodule Dawarich.UserData.Restore.PointWriter do
            ) do
         {:ok, %{num_rows: count}} ->
           if count > 0 do
-            Dawarich.RailsCommands.insert!(repo, "points.tile_epoch", %{
-              "user_id" => hd(cast)["user_id"],
-              "timestamps" => Enum.map(cast, & &1["timestamp"])
-            })
+            tile_epoch(repo, cast, context)
           end
 
           count
@@ -79,5 +76,12 @@ defmodule Dawarich.UserData.Restore.PointWriter do
   rescue
     e in Dawarich.Imports.LeaseLost -> reraise e, __STACKTRACE__
     _ -> 0
+  end
+
+  defp tile_epoch(repo, rows, _context) do
+    user = hd(rows)["user_id"]
+    timestamps = Enum.map(rows, & &1["timestamp"])
+
+    Dawarich.RailsEffects.tile_epoch(repo, user, timestamps)
   end
 end

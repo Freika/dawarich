@@ -78,19 +78,15 @@ defmodule Dawarich.Imports.Integrations.Immich do
 
       headers = [{~c"x-api-key", String.to_charlist(key)}, {~c"accept", ~c"application/json"}]
 
-      ssl =
-        if settings["immich_skip_ssl_verification"] == true,
-          do: [verify: :verify_none],
-          else: :httpc.ssl_verify_host_options(true)
-
-      case :httpc.request(
+      case Dawarich.Photos.ProviderHTTP.request(
              :post,
-             {String.to_charlist(url <> "/api/search/metadata"), headers, ~c"application/json",
-              body},
-             [timeout: 10_000, connect_timeout: 10_000, autoredirect: false, ssl: ssl],
-             body_format: :binary
+             url,
+             "/api/search/metadata",
+             headers,
+             body,
+             settings["immich_skip_ssl_verification"]
            ) do
-        {:ok, {{_, status, _}, _, body}} -> {:ok, status, body}
+        {:ok, status, _, body} -> {:ok, status, body}
         {:error, reason} -> {:error, reason}
       end
     end

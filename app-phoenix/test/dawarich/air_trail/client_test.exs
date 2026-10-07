@@ -1,5 +1,5 @@
 defmodule Dawarich.AirTrail.ClientTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Dawarich.AirTrail.Client
   alias Dawarich.AirTrailStub
@@ -17,6 +17,7 @@ defmodule Dawarich.AirTrail.ClientTest do
       })
 
     {:ok, listen} = :ssl.listen(0, [ip: {127, 0, 0, 1}, active: false, reuseaddr: true] ++ config)
+    on_exit(fn -> :ssl.close(listen) end)
     {:ok, {_ip, port}} = :ssl.sockname(listen)
     {listen, AirTrailStub.redirect("https://127.0.0.1:#{port}/api/flight/list?scope=mine")}
   end
@@ -34,8 +35,8 @@ defmodule Dawarich.AirTrail.ClientTest do
     assert Client.flights(source(base <> "/")) == {:ok, []}
     assert_received {:airtrail_request, "/api/flight/list", _, _}
 
-    assert Client.flights(source(base <> "//")) == {:ok, []}
-    assert_received {:airtrail_request, "//api/flight/list", _, _}
+    assert Client.flights(source(base <> "//")) == {:error, "AirTrail request failed"}
+    refute_received {:airtrail_request, "//api/flight/list", _, _}
   end
 
   test "a missing flights key is an empty list" do
@@ -72,36 +73,84 @@ defmodule Dawarich.AirTrail.ClientTest do
              {:error, "Could not connect to AirTrail"}
   end
 
-  test "an http URL redirected to https still verifies the certificate" do
-    {listen, base} = tls_redirect()
-    task = Task.async(fn -> Client.flights(source(base)) end)
-
-    {:ok, socket} = :ssl.transport_accept(listen, :infinity)
-    assert {:error, {:tls_alert, {:unknown_ca, _}}} = :ssl.handshake(socket, :infinity)
-    assert Task.await(task, :infinity) == {:error, "Could not connect to AirTrail"}
+  @tag :airtrail_redirect_verified
+  test "AirTrail refuses a cross-host HTTPS redirect with certificate verification enabled" do
+    assert_redirect_refused(false)
   end
 
-  test "skip_ssl_verification still skips verification after a redirect to https" do
+  @tag :airtrail_redirect_skipped
+  test "AirTrail refuses a cross-host HTTPS redirect even when certificate verification is skipped" do
+    assert_redirect_refused(true)
+  end
+
+  defp assert_redirect_refused(skip) do
     {listen, base} = tls_redirect()
-    task = Task.async(fn -> Client.flights(%{source(base) | skip_ssl_verification: true}) end)
+    parent = self()
+    ref = make_ref()
 
-    {:ok, socket} = :ssl.transport_accept(listen, :infinity)
-    {:ok, socket} = :ssl.handshake(socket, :infinity)
-    {:ok, _request} = :ssl.recv(socket, 0, :infinity)
-    :ok = :ssl.send(socket, "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}")
+    target =
+      Task.async(fn ->
+        {:ok, socket} = :ssl.transport_accept(listen, :infinity)
+        send(parent, {ref, :contacted})
 
-    assert Task.await(task, :infinity) == {:ok, []}
+        case :ssl.handshake(socket, :infinity) do
+          {:ok, socket} ->
+            :ssl.recv(socket, 0, :infinity)
+            :ssl.send(socket, "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}")
+            :ssl.close(socket)
+
+          {:error, _} ->
+            :ok
+        end
+      end)
+
+    result = Client.flights(%{source(base) | skip_ssl_verification: skip})
+    Task.shutdown(target, :brutal_kill)
+    refute_received {^ref, :contacted}
+    assert result == {:error, "AirTrail responded with 302"}
   end
 
   test "asks AirTrail to close the connection so no keep-alive session is reused" do
     server = RawHTTP.listen()
-    task = Task.async(fn -> Client.flights(source("http://127.0.0.1:#{server.port}")) end)
+    base = "http://127.0.0.1:#{server.port}"
+    response = "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}"
 
-    socket = RawHTTP.accept(server)
-    {head, _rest} = RawHTTP.read_head(socket)
-    RawHTTP.reply(socket, "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}")
+    warmup =
+      Task.async(fn ->
+        :httpc.request(:get, {String.to_charlist(base), []}, [], body_format: :binary)
+      end)
 
-    assert Task.await(task, :infinity) == {:ok, []}
-    assert RawHTTP.header(head, "connection") == ["close"]
+    pooled_socket = RawHTTP.accept(server)
+    RawHTTP.read_head(pooled_socket)
+    RawHTTP.reply(pooled_socket, response)
+    assert {:ok, _} = Task.await(warmup, :infinity)
+    owner = self()
+    ref = make_ref()
+
+    fresh =
+      Task.async(fn ->
+        socket = RawHTTP.accept(server)
+        {head, _} = RawHTTP.read_head(socket)
+        send(owner, {ref, :fresh, head})
+        RawHTTP.reply(socket, response)
+      end)
+
+    pooled =
+      Task.async(fn ->
+        {head, _} = RawHTTP.read_head(pooled_socket)
+        send(owner, {ref, :pooled, head})
+        RawHTTP.reply(pooled_socket, response)
+      end)
+
+    try do
+      assert Client.flights(source(base)) == {:ok, []}
+      assert_received {^ref, :fresh, head}
+      assert RawHTTP.header(head, "connection") == ["close"]
+    after
+      Task.shutdown(fresh, :brutal_kill)
+      Task.shutdown(pooled, :brutal_kill)
+      :gen_tcp.close(pooled_socket)
+      :gen_tcp.close(server.listen)
+    end
   end
 end

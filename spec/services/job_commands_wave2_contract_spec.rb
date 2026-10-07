@@ -24,7 +24,7 @@ RSpec.describe JobCommands do
     }.each do |type, (job_class, arguments)|
       it type do
         payload = payloads.fetch(type)
-        job_owner!("command:#{type}", :oban)
+        JobOwnership.joint_keys("command:#{type}").each { |key| job_owner!(key, :oban) }
         described_class.produce(type, payload, aggregate_id: 1, producer: 'spec')
 
         expect(described_class.rehome!(type, by: 'spec')).to eq({ moved: 1, left: 0 })

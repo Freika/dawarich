@@ -3,36 +3,39 @@ defmodule Dawarich.RailsEffects do
 
   alias Dawarich.RailsCommands
 
-  def tile_epoch(repo, user_id, timestamps),
-    do:
-      RailsCommands.insert!(repo, "points.tile_epoch", %{
-        "user_id" => user_id,
-        "timestamps" => timestamps
-      })
+  def tile_epoch(repo, user_id, timestamps) do
+    payload = %{"user_id" => user_id, "timestamps" => timestamps}
 
-  def untracked_tracks(repo, user_id, import_id),
-    do:
-      RailsCommands.insert!(repo, "schedule_untracked_tracks", %{
-        "user_id" => user_id,
-        "import_id" => import_id
-      })
+    if Dawarich.Points.NativeEffects.native?(repo, "command:points.tile_epoch"),
+      do: Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Points.TileEpochWorker, payload),
+      else: RailsCommands.insert!(repo, "points.tile_epoch", payload)
+  end
 
-  def import_card(repo, user_id, import_id),
-    do:
-      RailsCommands.insert!(repo, "enhanced_import_card", %{
-        "user_id" => user_id,
-        "import_id" => import_id
-      })
+  def untracked_tracks(repo, user_id, import_id) do
+    payload = %{"user_id" => user_id, "import_id" => import_id}
+
+    if Dawarich.Points.NativeEffects.native?(repo, "command:tracks.generate_range"),
+      do:
+        Dawarich.Points.NativeEffects.enqueue(
+          repo,
+          Dawarich.Points.UntrackedTracksWorker,
+          Map.put(payload, "event_id", Ecto.UUID.generate())
+        ),
+      else: RailsCommands.insert!(repo, "schedule_untracked_tracks", payload)
+  end
+
+  def import_card(repo, user_id, import_id) do
+    payload = %{"user_id" => user_id, "import_id" => import_id}
+
+    if Dawarich.Points.NativeEffects.native?(repo, "command:enhanced_import.extract_gpx"),
+      do: Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Points.ImportCardWorker, payload),
+      else: RailsCommands.insert!(repo, "enhanced_import_card", payload)
+  end
 
   def visit_months(_repo, _user_id, []), do: :ok
 
   def visit_months(repo, user_id, started_at) do
-    stamps = started_at |> Enum.map(&DateTime.to_iso8601/1) |> Enum.uniq()
-
-    RailsCommands.insert!(repo, "visit_months_changed", %{
-      "user_id" => user_id,
-      "started_at" => stamps
-    })
+    Dawarich.Visits.Calendar.changed(repo, user_id, started_at)
   end
 
   def orphan_places(_repo, _user_id, []), do: :ok
@@ -43,10 +46,21 @@ defmodule Dawarich.RailsEffects do
   def place_name(repo, user_id, place_id),
     do: Dawarich.Places.JobCommands.name_fetch(repo, user_id, place_id)
 
-  def reverse_place(repo, user_id, place_id),
-    do:
-      RailsCommands.insert!(repo, "reverse_geocode_place", %{
-        "user_id" => user_id,
-        "place_id" => place_id
-      })
+  def reverse_place(repo, user_id, place_id) do
+    {:ok, :ok} =
+      repo.transaction(fn ->
+        if Dawarich.Points.NativeEffects.native?(repo, "command:geocoding.reverse_place"),
+          do:
+            Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Geocoding.ReversePlaceWorker, %{
+              "place_id" => place_id
+            }),
+          else:
+            RailsCommands.insert!(repo, "reverse_geocode_place", %{
+              "user_id" => user_id,
+              "place_id" => place_id
+            })
+      end)
+
+    :ok
+  end
 end

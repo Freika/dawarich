@@ -24,6 +24,9 @@ defmodule Dawarich.MixProject do
   defp deps do
     [
       {:ecto_sql, "~> 3.13"},
+      {:geo, "~> 4.1"},
+      {:telemetry_metrics, "~> 1.1"},
+      {:telemetry_metrics_prometheus_core, "~> 1.2"},
       {:postgrex, ">= 0.0.0"},
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
@@ -37,7 +40,8 @@ defmodule Dawarich.MixProject do
       {:redix, "~> 1.5"},
       {:gen_smtp, "~> 1.3"},
       {:ex_aws, "~> 2.7"},
-      {:mint, "~> 1.11.0"}
+      {:mint, "~> 1.11.0"},
+      {:sentry, "== 13.5.1"}
     ]
   end
 

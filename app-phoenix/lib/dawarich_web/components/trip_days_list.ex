@@ -61,6 +61,14 @@ defmodule DawarichWeb.TripDaysList do
             locale={@locale}
             rails_csrf_token={@rails_csrf_token}
           />
+          <div :if={Map.get(day, :photos, []) != []} class="grid grid-cols-3 gap-2 mt-3">
+            <div
+              :for={photo <- day.photos}
+              class="aspect-square overflow-hidden rounded-lg transition-transform duration-200 hover:scale-105 hover:shadow-lg"
+            >
+              <img src={photo.url} loading="lazy" alt="" class="h-full w-full object-cover" />
+            </div>
+          </div>
         </div>
       </details>
     </div>

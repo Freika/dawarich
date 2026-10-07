@@ -1,7 +1,8 @@
 defmodule Dawarich.Imports.Integrations.PhotoImportRecord do
   @moduledoc false
   alias Dawarich.{Storage, Notifications, RailsCommands}
-  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Jobs.Processed
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
   alias Dawarich.State.Lease
   alias DawarichWeb.Translate
 

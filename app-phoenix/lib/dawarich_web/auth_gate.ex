@@ -32,18 +32,37 @@ defmodule DawarichWeb.AuthGate do
 
   @impl true
   def call(conn, _opts) do
-    case claimed(conn) do
+    conn =
+      if Dawarich.Standalone.enabled?(), do: DawarichWeb.StandaloneAuth.call(conn), else: conn
+
+    case if(conn.halted, do: nil, else: claimed(conn)) do
       nil -> conn
-      {flow, handler} -> handler.call(conn, options(flow))
+      {flow, handler} -> handler.call(conn, native_options(flow, options(flow)))
     end
   end
 
   defp claimed(conn) do
-    flows = Application.get_env(:dawarich, :phoenix_auth, [])
+    flows = flows()
+    standalone = Dawarich.Standalone.enabled?()
 
-    if System.get_env("SELF_HOSTED") == "true" do
-      Enum.find(@handlers, fn {flow, handler} -> flow in flows and handler.route?(conn) end)
+    if not DawarichWeb.Strangler.handed_back?(conn.path_info) and
+         (standalone or System.get_env("SELF_HOSTED") == "true") do
+      Enum.find(@handlers, fn {flow, handler} ->
+        flow in flows and handler.route?(conn) and (flow != "api_keys" or not standalone)
+      end)
     end
+  end
+
+  def flows do
+    if Dawarich.Standalone.enabled?(),
+      do: Enum.map(@handlers, &elem(&1, 0)),
+      else: Application.get_env(:dawarich, :phoenix_auth, []) || []
+  end
+
+  defp native_options(flow, opts) do
+    if Dawarich.Standalone.enabled?() and flow in ["credentials", "otp"],
+      do: Keyword.put(opts, :native, true),
+      else: opts
   end
 
   defp options("account_link"),
@@ -73,7 +92,7 @@ defmodule DawarichWeb.AuthGate do
     [enabled: true, context: context]
   end
 
-  defp otp_enabled?, do: "otp" in Application.get_env(:dawarich, :phoenix_auth, [])
+  defp otp_enabled?, do: "otp" in flows()
 
   defp put_registration(context, {:ok, value}), do: Map.put(context, :registration_enabled, value)
   defp put_registration(context, :error), do: context

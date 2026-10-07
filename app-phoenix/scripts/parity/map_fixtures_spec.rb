@@ -1,8 +1,24 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :request do
+  closure_cases = {}
+  define_method(:closure_case) { |name, data| closure_cases[name] = data }
+  after(:all) do
+    selected = closure_cases.sort.to_h.select { |name, _| ['page_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_frames/a12f3a-m01.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['page_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_frames/a12f3a-m07.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:fixtures) { Rails.root.join('app-phoenix/test/fixtures') }
@@ -130,6 +146,13 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
               changelog_consent: User.changelog_consents[user.changelog_consent], api_key: user.api_key },
       **rows(user)
                })
+    jobs = enqueued_jobs.map { { 'class' => _1[:job].name, 'args' => _1[:args] } }
+    captured = { 'path' => path, 'self_hosted' => self_hosted,
+                 'body' => doc.to_html, 'status' => response.status, 'media_type' => response.media_type,
+                 'location' => response.location, 'headers' => response.headers.slice('Vary', 'Cache-Control'),
+                 'set_cookie' => response.headers['Set-Cookie'].present?, 'flash' => flash.to_hash,
+                 'rows' => rows(user), 'jobs' => jobs }
+    closure_case("page_#{name}", captured)
     sign_out user
   end
 
@@ -175,11 +198,34 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
     attach!(stored, 'file', blob!(6601, 'trip ü video.mp4', 'video/mp4'))
   end
 
+  def capture_redirects
+    rows = []
+    [true, false].each do |self_hosted|
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+      %w[/map/v1 /maps/v2 /map/v1.html /maps/v2.html].each do |path|
+        ['', '?date=2026-08-01&panel=timeline&name=%C3%BC%26', '?start_at=%C3%28'].each do |query|
+          %i[get head].each do |method|
+            reset!
+            public_send(method, path + query)
+            expected = path.start_with?('/map/v1') && query.include?('%C3%28') ? 400 : 301
+            expect(response.status).to eq(expected)
+            rows << { method: method.to_s.upcase, path: path + query, self_hosted:, status: response.status,
+                      location: response.location, media_type: response.media_type, body: response.body,
+                      cookie: response.headers['Set-Cookie'].present?, flash: flash.to_hash,
+                      cache_control: response.headers['Cache-Control'] }
+          end
+        end
+      end
+    end
+    FixtureRecording.source_verify(fixtures.join('map_frames/a12f3a-m02.json'), "#{JSON.pretty_generate(rows)}\n")
+  end
+
   it 'writes the map pages' do
     travel_to now do
       plain = reader(6101)
       capture('self_hosted_en', plain, '/map/v2?start_at=2026-09-20T00:00&end_at=2026-09-20T23:59')
       capture('map_path_en', plain, '/map')
+      capture_map_closure(plain)
 
       rich = reader(6102, live_map_enabled: false, fog_of_war_mode: 'hexagons',
                         enabled_transportation_modes: %w[walking cycling train], airtrail_url: 'https://air.example.test',
@@ -208,7 +254,36 @@ RSpec.describe 'Phoenix fixtures: the map page as Rails renders it', type: :requ
       InstanceSetting.create!(key: 'photon_api_host', value: 'photon.a6-fixture.test')
       galleries!(pro)
       capture('cloud_pro_en', pro, '/map/v2?import_id=999999&panel=timeline', self_hosted: false)
+      capture_redirects
     end
+  end
+
+  def capture_map_closure(user)
+    cases = ['2026-05-28', '2026/05/28', '28 May 2026', '2026-3-29'].map do |date|
+      reset!
+      sign_in user
+      path = "/map/v2?#{{ date:, panel: 'timeline' }.to_query}"
+      get path
+      expect(response).to have_http_status(:ok)
+      { path:, params: { date:, panel: 'timeline' }, expected: window_values(Nokogiri::HTML5(response.body)) }
+    end
+    write_json(fixtures.join('map_frames/a12f3a-m01.json'), { now: now.iso8601, settings: user.settings,
+      env: { 'TIME_ZONE' => ENV.fetch('TIME_ZONE', nil) }, cases: })
+    markers = %w[map-shell poster-studio video-studio timeline-calendar-frame timeline-feed-frame]
+    write_json(fixtures.join('map_frames/a12f3a-m07.json'), { source: 'app/views/map/maplibre/index.html.erb',
+      markers: markers.select { |id| Nokogiri::HTML5(response.body).at_css("##{id}") } })
+    redirects = %w[/map/v1 /maps/v2].flat_map do |base|
+      ['', '?start_at=2026-08-01T00%3A00%3A00&panel=timeline', '?q=Tom+%26+Jerry&tag[]=a&tag[]=b',
+       '.json?x=1'].flat_map do |query|
+        %w[get head].map do |method|
+          reset!
+          path = base + query
+          public_send(method, path)
+          { method:, path:, status: response.status, location: response.headers['Location'], body: response.body }
+        end
+      end
+    end
+    write_json(fixtures.join('map_frames/a12f3a-m02.json'), { cases: redirects })
   end
 
   def window_cases

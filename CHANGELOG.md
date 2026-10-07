@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Native Phoenix routes for photos, places/search, spatial map reads and tiles, MCP, import intake, point mutations and signed storage proxy/representations. API transport now handles Cloud, HEAD, format suffixes, nested parameters and streaming uploads, with narrow pending-import CORS and terminal post-write errors. Existing route and slice rollback controls remain; auth/settings package activation and release acceptance follow separately.
+
 ## [1.15.3] - 2026-09-30, Berlin
 
 ### Added

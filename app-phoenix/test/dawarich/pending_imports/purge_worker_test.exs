@@ -21,6 +21,7 @@ defmodule Dawarich.PendingImports.PurgeWorkerTest do
     %{root: root}
   end
 
+  @tag a12f3b_case: "E20b"
   test "a failed object delete retains recoverable cleanup work and retry cannot purge a newly shared blob",
        %{root: root} do
     for service <- ["test", "s3"] do
@@ -33,6 +34,10 @@ defmodule Dawarich.PendingImports.PurgeWorkerTest do
       rows(
         "INSERT INTO active_storage_blobs (id,key,filename,service_name,byte_size,created_at) VALUES (48500,'a12d3purgeobject','synthetic.zip',$1,30,now())",
         [service]
+      )
+
+      rows(
+        "UPDATE active_storage_blobs SET metadata='{\"analyzed\":true,\"identified\":true}' WHERE id=48500"
       )
 
       rows(
@@ -62,6 +67,10 @@ defmodule Dawarich.PendingImports.PurgeWorkerTest do
       assert rows("SELECT count(*) FROM active_storage_attachments") == [[1]]
       assert rows("SELECT count(*) FROM active_storage_blobs") == [[1]]
 
+      assert rows("SELECT metadata FROM active_storage_blobs") == [
+               ["{\"analyzed\":true,\"identified\":true}"]
+             ]
+
       rows(
         "INSERT INTO active_storage_attachments (id,name,record_type,record_id,blob_id,created_at) VALUES (48502,'file','Import',48902,48500,now())"
       )
@@ -70,6 +79,11 @@ defmodule Dawarich.PendingImports.PurgeWorkerTest do
       assert rows("SELECT count(*) FROM pending_imports") == [[0]]
       assert rows("SELECT record_type FROM active_storage_attachments") == [["Import"]]
       assert rows("SELECT count(*) FROM active_storage_blobs") == [[1]]
+
+      assert rows("SELECT metadata FROM active_storage_blobs") == [
+               ["{\"analyzed\":true,\"identified\":true}"]
+             ]
+
       assert File.dir?(path)
       assert PurgeWorker.run(ScratchRepo, args, services: services) == :ok
 

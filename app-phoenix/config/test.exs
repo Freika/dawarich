@@ -1,5 +1,7 @@
 import Config
 
+config :sentry, dsn: nil, enable_logs: false
+
 connection = [
   hostname: System.get_env("DATABASE_HOST", "localhost"),
   port: String.to_integer(System.get_env("DATABASE_PORT", "5432")),
@@ -68,6 +70,7 @@ config :dawarich, :redis,
   database: 1,
   cache_database: 0
 
+config :dawarich, :front_runtime, false
 config :dawarich, :jobs_runtime, false
 config :dawarich, :jobs_repo, Dawarich.ScratchRepo
 config :dawarich, :geocoding_http, Dawarich.Geocoding.FakeHttp

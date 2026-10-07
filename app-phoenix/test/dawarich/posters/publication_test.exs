@@ -41,9 +41,11 @@ defmodule Dawarich.Posters.PublicationTest do
 
     assert Processed.done?(ScratchRepo, c.event)
 
-    assert rows("SELECT payload FROM phoenix.rails_commands ORDER BY id")
+    assert rows(
+             "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Posters.ProgressWorker' ORDER BY id"
+           )
            |> Enum.all?(fn [payload] ->
-             Enum.sort(Map.keys(payload)) == ~w(locale poster_id user_id)
+             Enum.sort(Map.keys(payload)) == ~w(event_id locale poster_id user_id)
            end)
   end
 
@@ -75,10 +77,17 @@ defmodule Dawarich.Posters.PublicationTest do
              [2, %{"progress_phase" => "drawing_map"}]
            ]
 
-    assert [["posters.progress", payload]] =
-             rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id DESC LIMIT 1")
+    assert [[payload]] =
+             rows(
+               "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Posters.ProgressWorker' ORDER BY id DESC LIMIT 1"
+             )
 
-    assert payload == %{"poster_id" => 1, "user_id" => 1, "locale" => "de"}
+    assert Map.drop(payload, ["event_id"]) == %{
+             "poster_id" => 1,
+             "user_id" => 1,
+             "locale" => "de"
+           }
+
     assert {:ok, :skip} = Publication.progress(ScratchRepo, ctx, "saving")
   end
 

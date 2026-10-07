@@ -11,11 +11,13 @@ defmodule Dawarich.Achievements.PublicCard do
          ) do
       [[owner_id, key, settings]] ->
         cond do
-          context[:viewer_id] == owner_id and is_binary(context[:requested_locale]) and
-              context[:requested_locale] != Locale.resolve(nil, %{settings: settings}, %{}) ->
-            :handoff
-
           definition = Registry.find(key) ->
+            settings =
+              if context[:viewer_id] == owner_id and is_binary(context[:requested_locale]) and
+                   is_map(settings),
+                 do: Map.put(settings, "locale", context[:requested_locale]),
+                 else: settings
+
             read(repo, owner_id, definition, settings, uuid, context)
 
           true ->

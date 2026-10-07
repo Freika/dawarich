@@ -46,6 +46,22 @@ defmodule DawarichWeb.SettingsLive.Integrations do
     end
   end
 
+  def form_user(user) do
+    if Dawarich.Standalone.enabled?() do
+      secrets =
+        ~w(immich_api_key photoprism_api_key airtrail_api_key teslamate_password teslamate_api_token)
+
+      settings =
+        Map.new(user.settings || %{}, fn {key, value} ->
+          {key, if(key in secrets and Ruby.present?(value), do: "********", else: value)}
+        end)
+
+      %{user | settings: settings}
+    else
+      user
+    end
+  end
+
   @impl true
   def render(assigns) do
     assigns =
@@ -174,7 +190,7 @@ defmodule DawarichWeb.SettingsLive.Integrations do
               :if={@service != "trek"}
               service={@service}
               locale={@locale}
-              user={@current_user}
+              user={form_user(@current_user)}
               rails_csrf_token={@rails_csrf_token}
               synced={@synced}
             />

@@ -1,8 +1,26 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: map point writes', type: :request do
+  source_cases = {}
+  define_method(:source_case) do |name, data|
+    source_cases[name] = data.merge('user' => data.fetch('user').merge('api_key' => 'API_KEY'))
+  end
+  after(:all) do
+    selected = source_cases.sort.to_h.select { |name, _| [''].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w03.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = source_cases.sort.to_h.select { |name, _| [''].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/map_writes/a12f3a-w04.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/map_writes/points') }
@@ -153,6 +171,11 @@ RSpec.describe 'Phoenix fixtures: map point writes', type: :request do
               'pending_oldest' => Achievements::PendingChecks.read(user.id).first,
               'jobs' => enqueued_jobs.map { { 'job' => _1[:job].name, 'args' => _1[:args], 'queue' => _1[:queue] } } }
     File.write(dir.join("#{name}.html"), '')
+    token_pattern = /(name="(?:authenticity_token|csrf-token|csp-nonce)" (?:value|content)=")[^"]*/
+    source_body = FixtureRecording.normalize(response.body).gsub(token_pattern, '\\1CSRF')
+                                  .gsub(/(nonce=")[^"]*/, '\\1NONCE')
+                                  .gsub(/(signed-stream-name=")[^"]*/, '\\1SIGNED')
+    source_case(name, state.merge('body' => source_body))
     File.write(dir.join("#{name}.json"), "#{Oj.dump(state, mode: :strict, float_precision: 0, indent: 2)}\n")
   end
 
@@ -188,11 +211,154 @@ RSpec.describe 'Phoenix fixtures: map point writes', type: :request do
     end
   end
 
+  def capture_api_closure!
+    ActionController::Base.allow_forgery_protection = false
+    user = reader(9890)
+    foreign = reader(9891)
+    id = 989_000
+    seed(user, foreign, id)
+    headers = { 'Authorization' => "Bearer #{user.api_key}", 'Accept' => 'application/json' }
+    records = []
+    requests = [[:delete, '/api/v1/points/bulk_destroy', {}],
+                [:delete, '/api/v1/points/bulk_destroy', { point_ids: [(id + 9).to_s] }],
+                [:patch, "/api/v1/points/#{id + 9}", { point: { latitude: '1', longitude: '2' } }],
+                [:patch, "/api/v1/points/#{id + 4}", { point: { latitude: '50', longitude: '14', timestamp: 1 } }],
+                [:patch, "/api/v1/points/#{id + 4}/position", { point: { latitude: '51', longitude: '15', revision: 0 },
+                  history_scope: { start_at: '2026-01-01T10:30Z', end_at: '2026-10-03T10:00Z' } }],
+                [:post, '/api/v1/points/reapply_anomaly_filter', {}],
+                [:post, '/api/v1/points/reapply_anomaly_filter', {}],
+                [:delete, '/api/v1/points/bulk_destroy', { point_ids: [id.to_s, (id + 9).to_s] }]]
+    Rails.cache.clear
+    requests.each do |method, path, params|
+      clear_enqueued_jobs
+      public_send(method, path, params:, headers:)
+      records << { method:, path:, params:, status: response.status, body: response.body,
+                   jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args] } },
+                   own_count: user.reload.points_count, foreign_count: foreign.reload.points_count }
+    end
+    RSpec::Mocks.with_temporary_scope do
+      config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                  'action_dispatch.show_detailed_exceptions' => false)
+      allow(Rails.application).to receive(:env_config).and_return(config)
+      allow(Achievements::CheckJob).to receive(:schedule).and_raise('synthetic producer failure')
+      patch "/api/v1/points/#{id + 4}", params: { point: { latitude: '53', longitude: '16' } },
+                                       headers:, env: { 'action_dispatch.show_exceptions' => :all }
+      records << { name: 'relocation_callback_failure', status: response.status, body: response.body,
+                   position: Point.find(id + 4).lonlat.as_text }
+    end
+    RSpec::Mocks.with_temporary_scope do
+      config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                  'action_dispatch.show_detailed_exceptions' => false)
+      allow(Rails.application).to receive(:env_config).and_return(config)
+      allow(User).to receive(:update_counters).and_raise('synthetic counter failure')
+      delete "/api/v1/points/#{id + 3}", headers:, env: { 'action_dispatch.show_exceptions' => :all }
+      records << { name: 'delete_counter_failure', status: response.status, body: response.body,
+                   persisted: Point.exists?(id + 3), own_count: user.reload.points_count }
+    end
+    RSpec::Mocks.with_temporary_scope do
+      config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                  'action_dispatch.show_detailed_exceptions' => false)
+      allow(Rails.application).to receive(:env_config).and_return(config)
+      Rails.cache.delete("anomaly_backfill_pending:#{user.id}")
+      allow(Points::AnomalyBackfillUserJob).to receive(:perform_later).and_raise('synthetic producer failure')
+      post '/api/v1/points/reapply_anomaly_filter', headers: headers
+      records << { name: 'anomaly_producer_failure', status: response.status, body: response.body,
+                   pending: Rails.cache.read("anomaly_backfill_pending:#{user.id}") }
+    end
+    RSpec::Mocks.with_temporary_scope do
+      config = Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                                  'action_dispatch.show_detailed_exceptions' => false)
+      allow(Rails.application).to receive(:env_config).and_return(config)
+      allow(Points::Move).to receive(:call).and_raise('synthetic position write failure')
+      patch "/api/v1/points/#{id + 4}/position",
+            params: { point: { latitude: '54', longitude: '17', revision: 0 },
+                      history_scope: { start_at: '1', end_at: '2147483647' } }, headers: headers
+      records << { name: 'position_write_failure', status: response.status, body: response.body,
+                   position: Point.find(id + 4).lonlat.as_text }
+    end
+    path = Rails.root.join('app-phoenix/test/fixtures/a12f2e/closure.json')
+    FileUtils.mkdir_p(path.dirname)
+    File.write(path, "#{JSON.pretty_generate(records)}\n")
+  end
+
+  def capture_source_areas
+    ActionController::Base.allow_forgery_protection = true
+    target = dir.dirname.join('a12f3a-w10.json')
+    relabel_target = dir.dirname.join('a12f3a-w11.json')
+    snapshots = []
+    recipes = [
+      [:post, :create, {}, 200], [:post, :create, { name: '' }, 200],
+      [:post, :create, { radius: '0' }, 200], [:post, :create, { latitude: '91' }, 200],
+      [:post, :create, { longitude: '-181' }, 200], [:post, :nested, {}, 200],
+      [:patch, :reshape, { radius: '250' }, 200], [:put, :reshape, { radius: '250' }, 200],
+      [:patch, :rename, { name: 'Renamed' }, 200], [:put, :unchanged, {}, 200],
+      [:patch, :invalid, { radius: '-5' }, 200], [:patch, :foreign, {}, 404],
+      [:put, :missing, {}, 404], [:post, :guest, {}, 302], [:post, :html, {}, 406],
+      [:post, :override, { _method: 'put', radius: '250' }, 200]
+    ]
+    recipes.each_with_index do |(method, kind, changes, expected), index|
+      user = reader(95_800 + index * 2)
+      foreign = reader(95_801 + index * 2)
+      id = 958_000 + index * 10
+      unless method == :post && kind != :override
+        Area.insert!({ id:, user_id: kind == :foreign ? foreign.id : user.id, name: 'Synthetic area',
+                       latitude: 51.3397, longitude: 12.3734, radius: 200, created_at: now, updated_at: now })
+      end
+      ActiveRecord::Base.connection.execute("SELECT setval(pg_get_serial_sequence('areas', 'id'), #{id + 1}, false)")
+      path = if method == :post && kind != :override
+               '/areas'
+             else
+               "/areas/#{kind == :missing ? id + 9 : id}"
+             end
+      params = { name: 'Synthetic area', latitude: '51.3397', longitude: '12.3734', radius: '200' }.merge(changes)
+      params = { area: params } if kind == :nested
+      accept = kind == :html ? 'text/html' : 'text/vnd.turbo-stream.html'
+      reset!
+      sign_in user unless kind == :guest
+      get(kind == :guest ? '/users/sign_in' : '/tags/new')
+      token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      before = Area.where(user_id: [user.id, foreign.id]).order(:id).map(&:attributes)
+      commands = []
+      clear_enqueued_jobs
+      RSpec::Mocks.with_temporary_scope do
+        allow(JobCommands).to receive(:produce).and_wrap_original do |original, type, payload, **options|
+          commands << { type:, payload:, **options }
+          original.call(type, payload, **options)
+        end
+        public_send(method, path, params:, headers: { 'Accept' => accept, 'X-CSRF-Token' => token })
+      end
+      expect(response.status).to eq(expected), kind.to_s
+      after = Area.where(user_id: [user.id, foreign.id]).order(:id).map(&:attributes)
+      changed = before != after
+      invalid_radius = ['0', '-5'].include?(changes[:radius])
+      invalid_coordinate = changes[:latitude] == '91' || changes[:longitude] == '-181'
+      expected_change = %i[create reshape rename html override].include?(kind) && changes[:name] != '' &&
+                        !invalid_radius && !invalid_coordinate
+      expect(changed).to eq(expected_change), kind.to_s
+      expect(commands.map do
+        _1[:type]
+      end).to eq(%i[create reshape html
+                    override].include?(kind) && expected_change ? ['areas.relabel_visits'] : []), kind.to_s
+      snapshots << {
+        method: method.to_s.upcase, path:, params:, accept:, kind:, status: response.status,
+        body: FixtureRecording.normalize(response.body), media_type: response.media_type, location: response.location,
+        vary: response.headers['Vary'], cookie: response.headers['Set-Cookie'].present?, flash: flash.to_hash,
+        before:, after:, commands:,
+        jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args], queue: _1[:queue] } }
+      }
+    end
+    bytes = "#{Oj.dump(snapshots.as_json, mode: :strict, float_precision: 0, indent: 2)}\n"
+    FixtureRecording.source_verify(target, bytes)
+    FixtureRecording.source_verify(relabel_target, bytes)
+  end
+
   def generate!
     cases.each_with_index { |name, index| capture(name, index) }
   end
 
   it 'writes point counters filters and dependent scheduling' do
     generate!
+    capture_api_closure!
+    capture_source_areas
   end
 end

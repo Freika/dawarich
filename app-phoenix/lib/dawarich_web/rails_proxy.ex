@@ -25,6 +25,18 @@ defmodule DawarichWeb.RailsProxy do
 
   @impl true
   def call(conn, upstream) do
+    conn = DawarichWeb.SharedPhotoGuard.admit(conn)
+
+    if conn.halted, do: conn, else: admitted(conn, upstream)
+  end
+
+  defp admitted(conn, upstream) do
+    if Dawarich.Standalone.enabled?(),
+      do: DawarichWeb.StandaloneError.respond(conn, "rails_proxy"),
+      else: proxy(conn, upstream)
+  end
+
+  defp proxy(conn, upstream) do
     conn =
       case DawarichWeb.RateLimit.release(conn) do
         {:error, _conn} -> raise "rate limit refund failed"
@@ -38,6 +50,12 @@ defmodule DawarichWeb.RailsProxy do
 
   @doc false
   def with_upstream(conn, upstream, fun) do
+    if Dawarich.Standalone.enabled?(),
+      do: DawarichWeb.StandaloneError.respond(conn, "rails_upstream"),
+      else: open_upstream(conn, upstream, fun)
+  end
+
+  defp open_upstream(conn, upstream, fun) do
     case Upstream.open(upstream) do
       {:ok, socket} -> fun.(conn, socket)
       {:error, reason} -> bad_gateway(conn, reason)
@@ -76,7 +94,9 @@ defmodule DawarichWeb.RailsProxy do
   defp send_body(conn, socket) do
     cond do
       Map.has_key?(conn.private, :dawarich_raw_body) ->
-        with :ok <- :gen_tcp.send(socket, conn.private.dawarich_raw_body), do: {:ok, conn}
+        body = conn.private.dawarich_raw_body
+        bytes = if Headers.chunked?(conn), do: [chunk_frame(body), "0\r\n\r\n"], else: body
+        with :ok <- :gen_tcp.send(socket, bytes), do: {:ok, conn}
 
       Headers.chunked?(conn) ->
         relay_body(conn, socket, &chunk_frame/1, "0\r\n\r\n")

@@ -10,8 +10,10 @@ defmodule Dawarich.Imports.GpxProgress do
     if index == 0 || is_nil(state.at) || DateTime.diff(now, state.at, :microsecond) >= 5_000_000 ||
          index - state.index >= 100 do
       Fence.run(context, fn ->
+        value = if context[:continuation_progress?], do: "GREATEST(processed,$3)", else: "$3"
+
         context.repo.query!(
-          "UPDATE imports SET processed=$3 WHERE id=$1 AND user_id=$2 AND processed IS DISTINCT FROM $3",
+          "UPDATE imports SET processed=#{value} WHERE id=$1 AND user_id=$2 AND processed IS DISTINCT FROM #{value}",
           [import.id, import.user_id, index],
           log: false
         )
@@ -27,11 +29,13 @@ defmodule Dawarich.Imports.GpxProgress do
 
   defp publish(import, context) do
     Fence.run(context, fn ->
-      RailsCommands.insert!(context.repo, "imports.progress", %{
-        "user_id" => import.user_id,
-        "import_id" => import.id,
-        "locale" => context.locale
-      })
+      unless Dawarich.Standalone.enabled?() do
+        RailsCommands.insert!(context.repo, "imports.progress", %{
+          "user_id" => import.user_id,
+          "import_id" => import.id,
+          "locale" => context.locale
+        })
+      end
     end)
   rescue
     error in LeaseLost -> reraise error, __STACKTRACE__

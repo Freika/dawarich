@@ -1,8 +1,94 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: :request do
+  closure_cases = {}
+  define_method(:closure_case) { |name, data| closure_cases[name] = data }
+  after(:all) do
+    selected = closure_cases.sort.to_h.select { |name, _| ['page_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t01.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t02.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t06.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t07.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t08.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t09.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['remaining_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/trips/a12f3a-t10.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r01.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r02.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r03.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r04.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r05.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r06.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['video_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r07.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| %w[page_ video_].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r08.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| %w[page_ video_].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/a12f3a-r09.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/trips') }
@@ -303,6 +389,8 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
           entry.merge(name: entry[:name].sub('_de_', "_#{locale}_"), locale:)
         end
       end
+      cases << { name: 'note_date_named_month_stream', action: :note_create, body: 'Date boundary',
+                 date: 'Oct 3 2026', accept: 'text/vnd.turbo-stream.html', expected: 200 }
       cases
     end
 
@@ -386,17 +474,19 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
 
     def remaining_fault(entry)
       if entry[:fault]
-        target = if entry[:owner] == :oban
-                   allow(JobOutbox).to(receive(:insert_all))
-                 else
-                   allow_any_instance_of(Sidekiq::Client).to(receive(:push))
-                 end
-        target.and_wrap_original do |original, *args, **kwargs|
+        fault = lambda do |original, *args, **kwargs|
           raise 'synthetic queue failure' if entry[:fault] == :enqueue
 
           result = original.call(*args, **kwargs)
           ActiveRecord::Base.connection.execute('SELECT a8_remaining_missing_column FROM trips')
           result
+        end
+        if entry[:owner] == :oban
+          allow(JobOutbox).to receive(:insert_all).and_wrap_original(&fault)
+        else
+          allow(Sidekiq::Client).to receive(:new).and_wrap_original do |original, *args, **kwargs|
+            original.call(*args, **kwargs).tap { |client| allow(client).to receive(:push).and_wrap_original(&fault) }
+          end
         end
       end
       return unless entry[:race]
@@ -485,6 +575,7 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         expect(queue[:sidekiq].length + queue[:outbox].length).to eq(count), name
       elsif %i[note_create note_update].include?(entry[:action]) && !entry[:error] && !entry[:foreign]
         date = entry.fetch(:date, '2026-10-03')
+        date = Date.parse(date).iso8601 unless date == 'bad-date'
         valid = entry[:body].present? && entry[:body].length <= Note::MAX_BODY_LENGTH &&
                 %w[2026-10-03 2026-10-04].include?(date)
         note = trip.notes.for_date('2026-10-03').first
@@ -584,6 +675,10 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
                       fault: entry[:fault], race: entry[:race] }
           responses << remaining_response(entry[:name], error).merge(request:)
           effects << { name: entry[:name], request:, before:, after: remaining_graph(user, id), queue: }
+          captured = responses.last.merge(effects: effects.last,
+                                          body: error ? nil : remaining_html(response.body),
+                                          set_cookie: !error && response.headers['Set-Cookie'].present?)
+          closure_case("remaining_#{entry[:name]}", captured)
           next unless !error && accept == 'text/html' && entry[:action].to_s.start_with?('note_')
 
           follow_redirect!
@@ -592,6 +687,37 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         end
         write_json('responses.json', { now: now.iso8601, responses: })
         write_json('effects.json', { now: now.iso8601, effects: })
+        groups = {
+          't01' => /\A(?:new|edit|foreign_edit|plan_)/,
+          't02' => /show/,
+          't05' => /\A(?:create|update)_/,
+          't06' => /\A(?:create|update|.*show)_/,
+          't07' => /recalculate/,
+          't08' => /\Anote_(?:create|date|upsert|race)/,
+          't09' => /\A(?:note_update|note_destroy|foreign_note)/,
+          't10' => /\Aexport_/
+        }
+        groups.each do |task, pattern|
+          write_json("../a12f3a-#{task}.json", { now: now.iso8601,
+                                              responses: responses.select { _1[:name].match?(pattern) },
+                                              effects: effects.select { _1[:name].match?(pattern) } })
+        end
+        photo_user = remaining_user(98_980)
+        photo_user.update_columns(settings: photo_user.settings.merge('immich_url' => 'https://photos.example.test',
+                                                                      'immich_api_key' => 'SYNTHETIC'))
+        photo_trip = remaining_trip(photo_user.reload, 9_898_001)
+        assets = [
+          { id: 'late', source: 'immich', orientation: 'portrait', capturedAt: '2026-10-02T23:30:00Z' },
+          { id: 'early', source: 'photoprism', orientation: 'landscape', capturedAt: '2026-10-03T01:00:00Z' },
+          { id: 'invalid', source: 'immich', orientation: 'landscape', capturedAt: 'not-a-date' }
+        ]
+        allow_any_instance_of(Photos::Search).to receive(:call).and_return(assets)
+        write_json('../a12f3a-t03.json', { assets:, photos: photo_trip.send(:photos),
+                                         days: photo_trip.photos_by_day('Europe/Berlin').transform_keys(&:iso8601),
+                                         sources: photo_trip.photo_sources,
+                                         previews: photo_trip.send(:select_dominant_orientation,
+                                                                   photo_trip.send(:photos)) })
+
         user = remaining_user(98_981)
         foreign = remaining_user(98_982)
         trip = remaining_trip(user, 9_898_101)
@@ -693,6 +819,14 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
                           {}
                         end,
                jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args], queue: _1[:queue] } } }
+      captured = data.deep_dup.merge(body:,
+                                     set_cookie: request[:method] && response.headers['Set-Cookie'].present?)
+      %i[before after].each do |phase|
+        captured.fetch(phase).fetch(:active_storage_blobs).each do |blob|
+          blob['key'] = "blob-#{blob.fetch('id')}"
+        end
+      end
+      closure_case("video_#{name}", captured)
       File.write(target.join("#{name}.json"),
                  "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n")
     end
@@ -1154,6 +1288,10 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
     else
       expect(dir.join("pages/#{name}.html").read).to eq(html)
     end
+    closure_case("page_#{name}", { path:, status: response.status, media_type: response.media_type, body: html,
+                 location: response.location, flash: flash.to_hash, set_cookie: response.headers['Set-Cookie'].present?,
+                 headers: response.headers.slice('Vary', 'Cache-Control'),
+                 trips: User.find(user_id).trips.order(:id).map(&:attributes) })
     sign_out :user
     { name:, user_id:, path:, title: doc.at_css('title').text }
   end
@@ -1187,6 +1325,7 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
           end }
       end
       write_json('windows.json', { trips: cases })
+      FixtureRecording.source_verify(dir.join('a12f3a-t05.json'), JSON.generate({ trips: cases }))
     end
   end
 

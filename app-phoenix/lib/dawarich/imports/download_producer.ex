@@ -1,6 +1,6 @@
 defmodule Dawarich.Imports.DownloadProducer do
   @moduledoc false
-  alias Dawarich.Jobs.Ownership
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
 
   def enqueue(repo, user_id, import_id, source_blob_id, now \\ DateTime.utc_now()) do
     repo.transaction(fn ->

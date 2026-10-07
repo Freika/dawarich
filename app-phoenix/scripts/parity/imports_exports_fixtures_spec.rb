@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders them', type: :request do
   include ActiveSupport::Testing::TimeHelpers
@@ -213,6 +214,138 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
     ]
   end
 
+  def capture_api_closure!
+    user = User.find(9701)
+    user.update_columns(api_key: 'a12f2e-import-key', plan: :pro)
+    headers = { 'Authorization' => 'Bearer a12f2e-import-key', 'Accept' => 'application/json' }
+    records = []
+    requests = [[:get, '/api/v1/imports', { per_page: '2', page: '2abc' }],
+                [:get, '/api/v1/imports/971101', {}],
+                [:post, '/api/v1/imports', {}],
+                [:post, '/api/v1/imports', { file: 'scalar' }]]
+    requests.each do |method, path, params|
+      public_send(method, path, params:, headers:)
+      records << { method:, path:, params:, status: response.status, body: response.body,
+                   pagination: response.headers.slice('X-Current-Page', 'X-Total-Pages') }
+    end
+    records.concat(capture_pagination!(headers))
+    upload_path = Rails.root.join('tmp/a12f2e-source.json')
+    File.write(upload_path, '{}')
+    records.concat(capture_uploads!(user, headers, upload_path))
+    records.concat(capture_pending!(upload_path))
+    records.concat(capture_storage_failures!(user, headers, upload_path))
+    pending = PendingImport.find_by!(original_filename: 'source.json')
+    begin
+      PendingImports::Claim.new(pending, user).call
+    rescue ActiveRecord::RecordInvalid => e
+      records << { name: 'claim_same_second_collision', error: e.record.errors.full_messages,
+                   claimed_at: pending.reload.claimed_at }
+    end
+    travel_to(now + 1.second)
+    first = PendingImports::Claim.new(pending, user).call
+    second = PendingImports::Claim.new(pending, User.find(9711)).call
+    records << { name: 'claim', import_name: first.name, replay: second, claimed_by: pending.reload.claimed_by_user_id }
+    records << capture_claim_failure!(pending, user)
+    write_json('api_closure.json', records)
+  ensure
+    FileUtils.rm_f(upload_path) if upload_path
+  end
+
+  def capture_claim_failure!(pending, user)
+    failed = PendingImport.create!(claim_ticket: '11530000-0000-4000-8000-000000000003',
+                                   original_filename: 'callback-claim.json', origin: 'https://dawarich.app',
+                                   expires_at: now + 1.day)
+    failed.file.attach(pending.file.blob)
+    RSpec::Mocks.with_temporary_scope do
+      allow(ImportCommands).to receive(:process).and_raise('synthetic producer failure')
+      expect { PendingImports::Claim.new(failed, user).call }.to raise_error(RuntimeError, 'synthetic producer failure')
+    end
+    { name: 'claim_producer_failure', claimed: failed.reload.claimed_at.present?,
+      persisted: user.imports.exists?(name: 'callback-claim.json') }
+  end
+
+  def capture_pagination!(headers)
+    RSpec::Mocks.with_temporary_scope do
+      allow(Rails.application).to receive(:env_config).and_return(
+        Rails.application.env_config.merge('action_dispatch.show_exceptions' => :all,
+                                           'action_dispatch.show_detailed_exceptions' => false)
+      )
+      ['0', '-1', 'false', 'garbage'].map do |per_page|
+        get '/api/v1/imports', params: { per_page: }, headers: headers
+        { name: 'pagination', per_page:, status: response.status, body: response.body,
+          pagination: response.headers.slice('X-Current-Page', 'X-Total-Pages') }
+      end
+    end
+  end
+
+  def capture_uploads!(user, headers, path)
+    ActiveRecord::Base.connection.execute("SELECT setval('imports_id_seq', 98100000, false)")
+    ['source.json', 'source.json', 'bad.exe'].map do |name|
+      clear_enqueued_jobs
+      upload = Rack::Test::UploadedFile.new(path, 'application/json', false, original_filename: name)
+      post '/api/v1/imports', params: { file: upload }, headers: headers
+      body = response.body
+      import = user.imports.order(id: :desc).first
+      { name:, status: response.status, body:,
+        blob: if response.status == 201
+                import.file.blob.attributes
+                      .slice('filename', 'byte_size', 'content_type', 'metadata')
+              end,
+        jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args] } } }
+    end
+  end
+
+  def capture_storage_failures!(user, headers, path)
+    RSpec::Mocks.with_temporary_scope do
+      allow_any_instance_of(ActiveStorage::Service::DiskService).to receive(:upload)
+        .and_raise('synthetic storage failure')
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      stub_const('SELF_HOSTED', false)
+      cache = ActiveSupport::Cache::MemoryStore.new
+      allow(Rails).to receive(:cache).and_return(cache)
+      clear_enqueued_jobs
+      file = Rack::Test::UploadedFile.new(path, 'application/json', false, original_filename: 'failed-storage.json')
+      post '/api/v1/imports', params: { file: file }, headers: headers
+      records = [{ name: 'import_storage_failure', status: response.status, body: response.body,
+                   persisted: user.imports.exists?(name: 'failed-storage.json'),
+                   jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args] } } }]
+      post '/api/v1/imports/pending', params: { file: file, original_filename: 'failed-storage.json' },
+                                    headers: { 'Origin' => 'https://dawarich.app', 'Accept' => 'application/json' }
+      records << { name: 'pending_storage_failure', status: response.status, body: response.body,
+                   persisted: PendingImport.exists?(original_filename: 'failed-storage.json'),
+                   quota: cache.read("pending_imports/storage_bytes/#{now.utc.to_date}") }
+      records
+    end
+  end
+
+  def capture_pending!(path)
+    allow(PendingImport).to receive(:new).and_wrap_original do |original, *args|
+      original.call(*args).tap do |pending|
+        next if pending.claim_ticket.present?
+
+        suffix = pending.original_filename == 'failed-storage.json' ? '2' : '1'
+        pending.claim_ticket = "11530000-0000-4000-8000-00000000000#{suffix}"
+      end
+    end
+    RSpec::Mocks.with_temporary_scope do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      stub_const('SELF_HOSTED', false)
+      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+      Rails.cache.clear
+      accepted = { file: Rack::Test::UploadedFile.new(path, 'application/json'), original_filename: 'source.json' }
+      extension = accepted.merge(original_filename: 'bad.exe')
+      [['missing', {}, 'https://dawarich.app'],
+       ['origin', {}, 'https://evil.example'],
+       ['filename', { file: Rack::Test::UploadedFile.new(path, 'application/json') }, 'https://dawarich.app'],
+       ['extension', extension, 'https://dawarich.app'],
+       ['accepted', accepted, 'https://dawarich.app']].map do |name, params, origin|
+        post '/api/v1/imports/pending', params:, headers: { 'Origin' => origin, 'Accept' => 'application/json' }
+        { name:, status: response.status, body: response.body,
+          quota: Rails.cache.read("pending_imports/storage_bytes/#{now.utc.to_date}") }
+      end
+    end
+  end
+
   it 'writes the list pages and the seed they render' do
     expect(Rails.application.secret_key_base).to eq(secret)
     imports = state_imports(9701, 970_100) + many_imports + sort_imports + foreign_imports
@@ -233,10 +366,19 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
         else
           expect(dir.join("pages/#{name}.html").read).to eq(html)
         end
+        (@closure_pages ||= {})[name] = { path:, body: html, status: response.status, media_type: response.media_type,
+              location: response.location, flash: flash.to_hash, set_cookie: response.headers['Set-Cookie'].present?,
+              headers: response.headers.slice('Vary', 'Cache-Control'),
+              imports: imports.select { _1[:user_id] == user_id }, exports: exports.select { _1[:user_id] == user_id } }
         sign_out :user
         { name:, user_id:, path:, title: doc.at_css('title').text }
       end
+      capture_api_closure!
       write_json('pages.json', manifest)
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/user_data/a12f3a-e01.json'),
+                                     "#{JSON.pretty_generate(@closure_pages.select do |name, _|
+                                       name.start_with?('exports_')
+                                     end)}\n")
       write_json('seed.json', { users:, imports: imports.map { |r| r.except(:file, :prepared) },
                                 exports: exports.map { |r| r.except(:file) }, blobs:, attachments: })
     end
@@ -266,7 +408,7 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
   end
 
   it 'writes the blob path corpus' do
-    previous_host = Rails.application.routes.default_url_options[:host]
+    previous_urls = Rails.application.routes.default_url_options.dup
     expect(Rails.application.secret_key_base).to eq(secret)
     Rails.application.routes.default_url_options[:host] = 'www.example.com'
     names = ['export_from_2024-03-01_to_2024-03-31.json.zip', 'a b.gpx.zip', 'ümlaut ß.json.zip', 'q?x.zip',
@@ -285,6 +427,6 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
     end
     write_json('blob_paths.json', corpus)
   ensure
-    Rails.application.routes.default_url_options[:host] = previous_host
+    Rails.application.routes.default_url_options = previous_urls
   end
 end

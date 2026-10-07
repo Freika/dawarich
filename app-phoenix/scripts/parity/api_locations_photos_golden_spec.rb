@@ -97,6 +97,24 @@ module ApiLocationsPhotosGoldenOracle
     { name: 'rails_enrich_scan', expect: :rails, method: :post, path: '/api/v1/immich/enrich/scan', auth: :none },
     { name: 'rails_enrich_create', expect: :rails, method: :post, path: '/api/v1/immich/enrich', auth: :none }
   ].freeze
+  CLOSURE_CASES = [
+    { name: 'closure_photos_photoprism', path: '/api/v1/photos?start_date=2024-01-01&end_date=2024-01-02',
+      user: { integrations: :photoprism }, seed: :index_photoprism },
+    { name: 'closure_photos_immich', path: '/api/v1/photos?start_date=2024-01-01&end_date=2024-01-02',
+      seed: :index_immich },
+    { name: 'closure_photos_not_configured', path: '/api/v1/photos', user: { integrations: :none } },
+    { name: 'closure_suggestions_empty', path: "#{LOC}/suggestions?q=" },
+    { name: 'closure_suggestions_nested', expect: :rails, path: "#{LOC}/suggestions?q[nested]=1" },
+    { name: 'closure_suggestions_nbsp', path: "#{LOC}/suggestions?q=#{'%C2%A0' * 201}" },
+    { name: 'closure_suggestions_combining', path: "#{LOC}/suggestions?q=#{'%65%CC%81' * 150}" },
+    { name: 'closure_suggestions_short', path: "#{LOC}/suggestions?q=A" },
+    { name: 'closure_suggestions_long', path: "#{LOC}/suggestions?q=#{'a' * 201}" },
+    { name: 'closure_thumbnail_dotted_id', path: '/api/v1/photos/a.b/thumbnail?source=immich',
+      upstream: OK, asset_id: 'a.b' },
+    { name: 'closure_enrich_scan_missing', method: :post, path: '/api/v1/immich/enrich/scan',
+      user: { integrations: :none } },
+    { name: 'closure_enrich_empty', method: :post, path: '/api/v1/immich/enrich', seed: :enrich_empty }
+  ].freeze
 
   def self.results
     @results ||= []
@@ -109,12 +127,19 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
   after(:all) do
     path = Rails.root.join('app-phoenix/test/fixtures/api_locations_photos/golden.json')
     FileUtils.mkdir_p(path.dirname)
-    fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil),
-                'cases' => ApiLocationsPhotosGoldenOracle.results.sort_by { _1['name'] } }
+    cases = ApiLocationsPhotosGoldenOracle.results.reject { _1['name'].start_with?('closure_') }
+    fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'cases' => cases.sort_by { _1['name'] } }
     File.write(path, "#{g3_exact_json(fixture)}\n")
+    closure_path = Rails.root.join('app-phoenix/test/fixtures/a12f2b/closure.json')
+    FileUtils.mkdir_p(closure_path.dirname)
+    closure = closure_path.exist? ? JSON.parse(closure_path.read) : {}
+    closure['locations_photos'] = ApiLocationsPhotosGoldenOracle.results
+                                                                .select { _1['name'].start_with?('closure_') }
+                                                                .sort_by { _1['name'] }
+    File.write(closure_path, "#{g3_exact_json(closure.sort.to_h)}\n")
   end
 
-  ApiLocationsPhotosGoldenOracle::CASES.each do |kase|
+  (ApiLocationsPhotosGoldenOracle::CASES + ApiLocationsPhotosGoldenOracle::CLOSURE_CASES).each do |kase|
     it(kase[:name]) do
       defaults = { method: :get, auth: :bearer, accept: :json, expect: :own, env: {}, seed: :none, user: {} }
       ApiLocationsPhotosGoldenOracle.results << g3_record(kase.reverse_merge(defaults))
@@ -144,6 +169,10 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
   def g3_record(kase)
     user = g3_user(kase)
     send("g3_seed_#{kase[:seed]}", user)
+    if kase[:seed] == :tie
+      ActiveRecord::Base.connection.execute('SET LOCAL enable_indexscan=off')
+      ActiveRecord::Base.connection.execute('SET LOCAL enable_bitmapscan=off')
+    end
     g3_stub(kase)
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false) if kase[:env]['SELF_HOSTED'] == 'false'
     headers = g3_headers(kase, user)
@@ -154,12 +183,21 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
       [table, rows.map { JSON.parse(_1) }]
     end
 
-    send(kase[:method], path, headers: headers)
+    captured = g3_request(kase, path, headers)
 
     { 'name' => kase[:name], 'expect' => kase[:expect].to_s, 'ignore' => kase[:ignore] || [], 'env' => kase[:env],
       'setup' => setup, 'upstream' => g3_upstream(kase),
       'request' => { 'method' => kase[:method].to_s.upcase, 'target' => path, 'headers' => headers.to_a },
-      'response' => g3_response }
+      'response' => captured }
+  end
+
+  def g3_request(kase, path, headers)
+    send(kase[:method], path, headers: headers)
+    g3_response
+  rescue NoMethodError
+    raise unless kase[:name] == 'closure_suggestions_nested'
+
+    { 'status' => 500, 'headers' => {}, 'body' => '' }
   end
 
   def g3_response
@@ -205,7 +243,7 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
 
   def g3_upstream_url(kase)
     base = kase.dig(:user, :settings, 'immich_url') || ApiLocationsPhotosGoldenOracle::IMMICH
-    "#{base}/api/assets/#{ApiLocationsPhotosGoldenOracle::ASSET}/thumbnail?size=preview"
+    "#{base}/api/assets/#{kase.fetch(:asset_id, ApiLocationsPhotosGoldenOracle::ASSET)}/thumbnail?size=preview"
   end
 
   def g3_stub(kase)
@@ -240,6 +278,28 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
                            accuracy: attrs.fetch(:accuracy, 10), altitude: attrs.fetch(:altitude, 30))
     point.update_columns(country: attrs[:country], timestamp: attrs.fetch(:stored_timestamp, timestamp))
   end
+
+  def g3_seed_index_photoprism(_user)
+    photo = { 'Hash' => 'a.b', 'Type' => 'image', 'Lat' => 52.52, 'Lng' => 13.405,
+              'TakenAt' => '2024-01-01T12:00:00Z', 'TakenAtLocal' => '2024-01-01T13:00:00Z',
+              'OriginalName' => 'synthetic.jpg', 'Portrait' => true }
+    stub_request(:get, %r{http://photoprism.golden.test/api/v1/photos})
+      .to_return(body: [photo].to_json, headers: { 'X-Preview-Token' => 'synthetic-preview',
+                                'Content-Type' => 'application/json' })
+      .then.to_return(body: '[]', headers: { 'X-Preview-Token' => 'synthetic-preview',
+                                'Content-Type' => 'application/json' })
+  end
+
+  def g3_seed_index_immich(_user)
+    photo = { 'id' => 'asset.one', 'type' => 'IMAGE', 'fileCreatedAt' => '2024-01-01T12:00:00Z',
+              'localDateTime' => '2024-01-01T13:00:00', 'originalFileName' => 'synthetic.jpg',
+              'exifInfo' => { 'latitude' => 52.52, 'longitude' => 13.405, 'orientation' => '6' } }
+    stub_request(:post, 'http://immich.golden.test/api/search/metadata')
+      .to_return(body: { assets: { items: [photo] } }.to_json, headers: { 'Content-Type' => 'application/json' })
+      .then.to_return(body: { assets: { items: [] } }.to_json, headers: { 'Content-Type' => 'application/json' })
+  end
+
+  def g3_seed_enrich_empty(_user); end
 
   def g3_seed_none(_user); end
 

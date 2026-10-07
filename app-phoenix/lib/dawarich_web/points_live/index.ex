@@ -31,6 +31,9 @@ defmodule DawarichWeb.PointsLive.Index do
         {:noreply,
          socket |> assign(result) |> assign(query: params, summary: summary, unit: unit)}
 
+      :not_found ->
+        raise DawarichWeb.NotFoundError
+
       :rails ->
         %URI{path: path, query: query} = URI.parse(uri)
         {:noreply, redirect(socket, to: if(query, do: path <> "?" <> query, else: path))}

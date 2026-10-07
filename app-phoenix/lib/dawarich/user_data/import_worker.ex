@@ -62,6 +62,12 @@ defmodule Dawarich.UserData.ImportWorker do
         |> Map.put_new_lazy(:storage, &Dawarich.Imports.StorageContext.storage/0)
         |> Map.put_new_lazy(:storage_services, &Dawarich.Imports.StorageContext.services/0)
         |> Map.put(:fence, fn fun -> ImportState.effect!(lease, fun) end)
+        |> Map.put(:native_owner, true)
+        |> Map.put(:restore_run, %{
+          import_id: lease.import.id,
+          event_id: lease.event_id,
+          attachment: state.attachment
+        })
 
       try do
         Tempfiles.with_files(fn adopt ->
@@ -95,7 +101,12 @@ defmodule Dawarich.UserData.ImportWorker do
 
         error ->
           ImportState.fail!(lease, error, DateTime.from_naive!(context.now, "Etc/UTC"))
-          ImportState.effect!(lease, fn -> job_failure(lease, error, context) end)
+
+          ImportState.effect!(lease, fn ->
+            job_failure(lease, error, context)
+            Dawarich.Jobs.Processed.mark!(lease.repo, lease.event_id, "users.import_data")
+          end)
+
           Restore.report(context, error, "Import job failed for user #{lease.import.user_id}")
           reraise error, __STACKTRACE__
       end

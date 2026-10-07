@@ -8,6 +8,23 @@ defmodule DawarichWeb.Api.Respond do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.RailsHeaders
 
+  def init(opts), do: opts
+  def call(conn, :prepare), do: prepare(conn)
+
+  def prepare(conn) do
+    conn
+    |> assign(:api_started, System.monotonic_time())
+    |> assign(:api_format, :json)
+    |> assign(:api_vary, false)
+    |> assign(:api_request_id, Ecto.UUID.generate())
+    |> assign(
+      :api_headers,
+      DawarichWeb.Api.Headers.dawarich(false, Dawarich.AppVersion.current())
+    )
+    |> assign(:api_if_none_match, List.first(get_req_header(conn, "if-none-match")))
+    |> assign(:api_user, nil)
+  end
+
   def json(conn, status, term, opts \\ []),
     do:
       send_body(
@@ -27,6 +44,7 @@ defmodule DawarichWeb.Api.Respond do
 
   defp send_body(conn, status, body, type, opts) do
     conn = frame(conn, type)
+    conn = rate_headers(conn, status)
     conn = if conn.assigns.api_vary, do: put_resp_header(conn, "vary", "Accept"), else: conn
     conn = cache(conn, status, body, opts)
     final = final_status(conn, status)
@@ -47,6 +65,7 @@ defmodule DawarichWeb.Api.Respond do
 
   def head(conn, status, type \\ "text/html") do
     conn = frame(conn, type || "")
+    conn = rate_headers(conn, status)
     conn = if is_nil(type), do: delete_resp_header(conn, "content-type"), else: conn
     log(conn, status)
     conn |> cache(status, "", []) |> send_resp(status, "") |> halt()
@@ -54,6 +73,7 @@ defmodule DawarichWeb.Api.Respond do
 
   def not_modified(conn, validators) do
     conn = frame(conn, "")
+    conn = rate_headers(conn, 304)
     log(conn, 304)
 
     conn
@@ -66,7 +86,7 @@ defmodule DawarichWeb.Api.Respond do
 
   defp log(conn, status) do
     Logger.info(
-      "[#{conn.assigns.api_tag}] #{conn.method} #{conn.request_path} #{status} #{elapsed_ms(conn)}ms request_id=#{conn.assigns.api_request_id}"
+      "[#{conn.assigns[:api_tag] || "api"}] #{conn.method} #{conn.request_path} #{status} #{elapsed_ms(conn)}ms request_id=#{conn.assigns.api_request_id}"
     )
   end
 
@@ -92,6 +112,23 @@ defmodule DawarichWeb.Api.Respond do
     |> merge_resp_headers(conn.assigns.api_headers)
     |> put_resp_header("x-request-id", conn.assigns.api_request_id)
     |> put_resp_header("x-runtime", :erlang.float_to_binary(elapsed / 1_000_000, decimals: 6))
+  end
+
+  defp rate_headers(conn, status) do
+    if conn.private[:dawarich_native_api] == true and conn.assigns[:api_user] != nil and
+         status in 200..399 and conn.path_info not in [["api", "v1", "ready"], ["ready"]] do
+      headers =
+        DawarichWeb.Api.Headers.rate_limit(%{
+          self_hosted: DawarichWeb.LayoutAssigns.self_hosted?(),
+          authenticated: true,
+          throttle: conn.assigns[:rate_limit_token],
+          now: DateTime.to_unix(conn.assigns[:api_now] || DateTime.utc_now())
+        })
+
+      merge_resp_headers(conn, headers)
+    else
+      conn
+    end
   end
 
   defp cache(conn, status, body, opts) when status in [200, 201] and body != "" do

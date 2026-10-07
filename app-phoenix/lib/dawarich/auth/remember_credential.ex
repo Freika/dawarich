@@ -1,7 +1,7 @@
 defmodule Dawarich.Auth.RememberCredential do
   @moduledoc false
-  alias Dawarich.Accounts
+  alias Dawarich.Auth.Remember
 
   def valid?(user, payload, now),
-    do: Accounts.remembered?(user, payload, now) and Accounts.unlocked?(user, now)
+    do: Remember.valid?(user, payload, now)
 end

@@ -27,6 +27,11 @@ RSpec.describe Imports::PreparedDownloadPurgeCommands do
   it 'enqueues the actual purge job only for an authorized detached blob' do
     receipt!
     expect { described_class.call(payload) }.to have_enqueued_job(ActiveStorage::PurgeJob).with(blob)
+    clear_enqueued_jobs
+    command = JobCommands::COMMANDS.fetch('imports.prepared_download_purge')
+    expect(command.fetch(:version)).to eq(1)
+    expect { command.fetch(:sidekiq).call(payload, Time.current) }
+      .to have_enqueued_job(ActiveStorage::PurgeJob).with(blob)
   end
 
   it 'rejects missing, forged and foreign authorization' do

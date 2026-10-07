@@ -11,9 +11,11 @@ defmodule DawarichWeb.Endpoint do
 
   def session_options, do: @session_options
 
-  socket "/phoenix/live", Phoenix.LiveView.Socket,
+  socket "/phoenix/live", DawarichWeb.LiveSocket,
     websocket: [connect_info: [session: @session_options]],
     longpoll: false
+
+  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   plug Plug.Static,
     at: "/phoenix/js",
@@ -28,10 +30,13 @@ defmodule DawarichWeb.Endpoint do
   plug Plug.Static,
     at: "/phoenix/js",
     from: {:dawarich, "priv/static/js"},
-    only: ~w(app.js map_shell.js rails_bridge.js family_page.js)
+    only: ~w(app.js map_shell.js rails_bridge.js family_page.js hooks)
 
   plug DawarichWeb.PublicFiles
+  plug DawarichWeb.Cors
   plug DawarichWeb.AuthGate
+  plug DawarichWeb.Api.RequestFormat
+  plug DawarichWeb.Api.MethodOverride
   plug DawarichWeb.Strangler
-  plug DawarichWeb.Router
+  plug DawarichWeb.Api.Transport, :router
 end

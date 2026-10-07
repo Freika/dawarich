@@ -73,7 +73,9 @@ module Places
       id = payload.fetch('user_id')
       return unless User.exists?(id: id)
 
-      ::JobCommands.produce('places.orphan_cleanup', { 'user_id' => id }, aggregate_id: id, producer: name)
+      at = payload['scheduled_at'] ? Time.iso8601(payload.fetch('scheduled_at')) : Time.current
+      ::JobCommands.produce('places.orphan_cleanup', { 'user_id' => id }, aggregate_id: id, producer: name,
+                            scheduled_at: at)
     end
   end
 end

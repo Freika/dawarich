@@ -71,7 +71,8 @@ defmodule Dawarich.Imports.GpxLifecycle do
 
   defp run_import(lease, state, context, path) do
     try do
-      ImportState.start!(lease, clock(context))
+      context = Dawarich.Imports.GpxResume.driver(lease, state, context)
+      Dawarich.Imports.GpxResume.start!(lease, state, context)
       publish(lease, context)
       driver = Map.put(context, :altitude_decimal?, altitude_decimal?(lease, context))
       GpxImporter.call(path, state.import, driver)
@@ -79,9 +80,9 @@ defmodule Dawarich.Imports.GpxLifecycle do
     rescue
       error in LeaseLost -> reraise error, __STACKTRACE__
       error -> failure(lease, state.import, context, error, __STACKTRACE__)
-    after
-      ImportState.complete!(lease, clock(context))
     end
+
+    ImportState.complete!(lease, clock(context))
 
     :ok
   end
@@ -90,8 +91,11 @@ defmodule Dawarich.Imports.GpxLifecycle do
     ImportState.effect!(lease, fn ->
       if ImportState.mode(lease) == :terminal do
         import = ImportState.import!(lease)
-        Postprocessing.enqueue_extraction!(lease.repo, import, context)
-        publish(lease, context, false)
+
+        if import.status == 2 do
+          Postprocessing.enqueue_extraction!(lease.repo, import, context)
+          publish(lease, context, false)
+        end
       end
 
       Map.get(context, :on_terminal, fn -> :ok end).()
@@ -101,11 +105,12 @@ defmodule Dawarich.Imports.GpxLifecycle do
   end
 
   defp failure(lease, import, context, error, stack) do
-    ImportState.fail!(lease, error, clock(context))
-    publish(lease, context)
     message = ImportMessages.failure(import, context, error, stack)
 
     ImportState.effect!(lease, fn ->
+      ImportState.fail!(lease, error, clock(context))
+      publish(lease, context, false)
+
       Notifications.create!(
         lease.repo,
         import.user_id,
@@ -114,19 +119,24 @@ defmodule Dawarich.Imports.GpxLifecycle do
         message.content,
         DateTime.to_naive(clock(context))
       )
+
+      ImportState.complete!(lease, clock(context))
     end)
 
+    broadcast(lease)
     if report = Map.get(context, :report_error), do: report.(error, "Import failed")
     :ok
   end
 
   defp publish(lease, context, native? \\ true) do
     ImportState.effect!(lease, fn ->
-      RailsCommands.insert!(lease.repo, "imports.progress", %{
-        "import_id" => lease.import.id,
-        "user_id" => lease.import.user_id,
-        "locale" => context.locale
-      })
+      unless Dawarich.Standalone.enabled?() do
+        RailsCommands.insert!(lease.repo, "imports.progress", %{
+          "import_id" => lease.import.id,
+          "user_id" => lease.import.user_id,
+          "locale" => context.locale
+        })
+      end
     end)
 
     if native?, do: broadcast(lease)

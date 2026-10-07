@@ -7,12 +7,15 @@ defmodule Dawarich.ShareManagement.MutationsTest do
   @now ~U[2026-10-03 10:00:00Z]
 
   setup do
+    old = Application.get_env(:dawarich, :cable)
+    Application.put_env(:dawarich, :cable, transport: :pg, bus: false)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, old) end)
     actor = FrameSeeds.seed_management!("hub_active_shared_en")
     %{actor: actor}
   end
 
   @tag mutation: :rollback
-  test "invalid active live replacement replays before native writes and retains Rails rollback plus revoked event",
+  test "invalid active live replacement retains Rails rollback plus native revoked events",
        ctx do
     fixture =
       "test/fixtures/share_management/failed_live_replacement.json"
@@ -29,7 +32,8 @@ defmodule Dawarich.ShareManagement.MutationsTest do
 
     before = rows()
     params = fixture["params"]
-    assert Mutations.run(ctx.actor, "live", nil, :create, params, "en", now: @now) == :rails
+    assert {:invalid, _} = Mutations.run(ctx.actor, "live", nil, :create, params, "en", now: @now)
+    assert Enum.sort(event_ids()) == [id(1), id(2)]
     assert rows() == before
     assert commands() == []
   end
@@ -88,18 +92,17 @@ defmodule Dawarich.ShareManagement.MutationsTest do
   end
 
   @tag mutation: :broadcast
-  test "live revoke queues old share broadcast atomically but trip does not", ctx do
+  test "live revoke publishes old share broadcast atomically but trip does not", ctx do
     assert {:ok, %{committed?: true}} =
              Mutations.run(ctx.actor, "live", nil, :revoke, %{}, "en", now: @now)
 
-    assert commands() == [
-             ["share_management.live_revoked", %{"user_id" => ctx.actor.id, "share_id" => id(1)}]
-           ]
+    assert event_ids() == [id(1)]
+    assert commands() == []
 
     assert {:ok, %{committed?: true}} =
              Mutations.run(ctx.actor, "trip", 99101, :revoke, %{}, "en", now: @now)
 
-    assert length(commands()) == 1
+    assert length(event_ids()) == 1
 
     assert Repo.query!(
              "SELECT revoked_at IS NOT NULL FROM shared_links WHERE id IN ($1::text::uuid, $2::text::uuid) ORDER BY id",
@@ -107,7 +110,7 @@ defmodule Dawarich.ShareManagement.MutationsTest do
            ).rows == [[true], [true]]
 
     Repo.query!(
-      "ALTER TABLE phoenix.rails_commands ADD CONSTRAINT a9_reject_revocation CHECK(kind != 'share_management.live_revoked') NOT VALID"
+      ~s|ALTER TABLE phoenix.cable_events ADD CONSTRAINT a9_reject_revocation CHECK(convert_from(payload,'UTF8') != '{"revoked":true}') NOT VALID|
     )
 
     before = rows()
@@ -117,8 +120,8 @@ defmodule Dawarich.ShareManagement.MutationsTest do
     end
 
     assert rows() == before
-    assert length(commands()) == 1
-    Repo.query!("ALTER TABLE phoenix.rails_commands DROP CONSTRAINT a9_reject_revocation")
+    assert length(event_ids()) == 1
+    Repo.query!("ALTER TABLE phoenix.cable_events DROP CONSTRAINT a9_reject_revocation")
 
     assert {:ok, %{share: share, committed?: true}} =
              Mutations.run(
@@ -147,7 +150,7 @@ defmodule Dawarich.ShareManagement.MutationsTest do
              )
 
     assert rows() == before
-    assert length(commands()) == 1
+    assert length(event_ids()) == 1
 
     Repo.query!("UPDATE shared_links SET revoked_at = NULL WHERE id = $1::text::uuid", [id(1)])
 
@@ -170,7 +173,7 @@ defmodule Dawarich.ShareManagement.MutationsTest do
              [id(1), id(2)]
            ).rows == [[true], [true]]
 
-    assert Enum.sort(Enum.map(commands(), fn [_, payload] -> payload["share_id"] end)) ==
+    assert Enum.sort(event_ids()) ==
              Enum.sort([id(1), id(1), id(2)])
 
     assert Repo.query!(
@@ -180,15 +183,17 @@ defmodule Dawarich.ShareManagement.MutationsTest do
   end
 
   @tag mutation: :list_owner
-  test "owner scope protects shared list revoke and leaves timeline track to Rails", ctx do
-    before = rows()
-
+  test "owner scope protects shared list revoke for every resource", ctx do
     for target <- [id(5), id(7)] do
-      assert Mutations.run(ctx.actor, "shared", target, :revoke, %{}, "en", now: @now) == :rails
+      assert {:ok, %{committed?: true}} =
+               Mutations.run(ctx.actor, "shared", target, :revoke, %{}, "en", now: @now)
+
+      refute Dawarich.SharedLinks.active(target, @now)
     end
 
-    assert rows() == before
     assert commands() == []
+    assert event_ids() == []
+    before = rows()
 
     for target <- [id(8), id(99)] do
       assert Mutations.run(ctx.actor, "shared", target, :revoke, %{}, "en", now: @now) ==
@@ -207,9 +212,8 @@ defmodule Dawarich.ShareManagement.MutationsTest do
 
     assert trip_id == id(6)
 
-    assert commands() == [
-             ["share_management.live_revoked", %{"user_id" => ctx.actor.id, "share_id" => id(1)}]
-           ]
+    assert event_ids() == [id(1)]
+    assert commands() == []
   end
 
   @tag mutation: :missing
@@ -241,6 +245,17 @@ defmodule Dawarich.ShareManagement.MutationsTest do
 
     assert rows() == before
     assert commands() == []
+  end
+
+  defp event_ids do
+    Repo.query!("SELECT channel FROM phoenix.cable_events ORDER BY seq").rows
+    |> Enum.map(fn [stream] ->
+      stream
+      |> String.replace_prefix("shared_location:", "")
+      |> Base.url_decode64!(padding: false)
+      |> String.split("/")
+      |> List.last()
+    end)
   end
 
   defp id(n), do: "a9f10000-0000-4000-8000-" <> String.pad_leading(to_string(n), 12, "0")

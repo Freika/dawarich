@@ -51,6 +51,10 @@ defmodule DawarichWeb.ShareManagementEndpointTest do
       deleted = request(ctx.session, :delete, base, "")
       assert deleted.status == 302
       assert length(ids(ctx.actor.id)) == length(prior) - 1
+      assert request(ctx.session, :post, base, "").status == 302
+      prior = ids(ctx.actor.id)
+      assert request(ctx.session, :post, base, "_method=delete").status == 302
+      assert length(ids(ctx.actor.id)) == length(prior) - 1
     end
 
     conn =
@@ -86,7 +90,8 @@ defmodule DawarichWeb.ShareManagementEndpointTest do
           {token(ctx.session) <> "&shared_link[name]=untouched",
            [{"origin", "https://foreign.test"}]},
           {~s({"shared_link":{"name":"untouched"}}), [{"content-type", "application/json"}]},
-          {token(ctx.session) <> "&_method=delete", []}
+          {~s({"shared_link":{"name":"untouched"}}), [{"content-type", "application/xml"}]},
+          {token(ctx.session) <> "&_method=put", []}
         ] do
       task = Task.async(fn -> raw(ctx.session, :post, "/share_links/live", body, headers) end)
       socket = accept(upstream)
@@ -176,7 +181,7 @@ defmodule DawarichWeb.ShareManagementEndpointTest do
   end
 
   @tag mutation: "failed-live"
-  test "invalid active live replacement reaches Rails before native DML and keeps old stream revoked event",
+  test "invalid active live replacement is native and preserves rows and old stream revoked event",
        ctx do
     assert %{plug: DawarichWeb.ShareManagementForm} =
              Phoenix.Router.route_info(
@@ -186,38 +191,26 @@ defmodule DawarichWeb.ShareManagementEndpointTest do
                "www.example.com"
              )
 
-    upstream = RailsFormRequests.upstream!()
-    original = Repo.query!("SELECT id::text, revoked_at FROM shared_links ORDER BY id").rows
-
-    fixture =
-      "test/fixtures/share_management/failed_live_replacement.json"
-      |> File.read!()
-      |> Jason.decode!()
-
-    assert [%{"message" => %{"revoked" => true}}] = fixture["events"]
-    assert fixture["before"] == fixture["after"]
+    old = Application.get_env(:dawarich, :cable)
+    Application.put_env(:dawarich, :cable, transport: :pg, bus: false)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, old) end)
+    original = Repo.query!("SELECT id::text,revoked_at FROM shared_links ORDER BY id").rows
     body = "shared_link[magic_phrase]=" <> String.duplicate("a", 256)
-    task = Task.async(fn -> request(ctx.session, :post, "/share_links/live", body) end)
-    socket = accept(upstream)
-    {head, rest} = read_head(socket)
-    length = header(head, "content-length") |> hd() |> String.to_integer()
-    assert read_at_least(socket, rest, length) =~ body
+    conn = request(ctx.session, :post, "/share_links/live", body)
+    assert conn.status == 422
 
-    assert Repo.query!("SELECT id::text, revoked_at FROM shared_links ORDER BY id").rows ==
+    assert Repo.query!("SELECT id::text,revoked_at FROM shared_links ORDER BY id").rows ==
              original
 
-    html = File.read!("test/fixtures/share_management/failed_live_replacement.html")
+    assert commands() == []
 
-    reply(
-      socket,
-      "HTTP/1.1 422 Unprocessable Entity\r\nContent-Type: text/html\r\nContent-Length: #{byte_size(html)}\r\n\r\n" <>
-        html
-    )
+    assert Repo.query!("SELECT payload FROM phoenix.cable_events ORDER BY seq").rows
+           |> Enum.map(fn [payload] -> Jason.decode!(payload) end) == [
+             %{"revoked" => true},
+             %{"revoked" => true}
+           ]
 
-    conn = Task.await(task)
-    assert conn.status == fixture["status"]
-    assert conn.resp_body == html
-    :gen_tcp.close(socket)
+    assert conn.resp_body =~ ~s(<turbo-frame id="share-link-modal")
   end
 
   @tag mutation: "nested"
@@ -257,6 +250,10 @@ defmodule DawarichWeb.ShareManagementEndpointTest do
 
   @tag mutation: "broadcast-order"
   test "replacement follows Rails primary key order for old live broadcasts", ctx do
+    saved = Application.get_env(:dawarich, :cable)
+    Application.put_env(:dawarich, :cable, transport: :pg, bus: false)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, saved) end)
+
     fixture =
       "test/fixtures/share_management/hub_active_shared_en.json"
       |> File.read!()
@@ -276,7 +273,14 @@ defmodule DawarichWeb.ShareManagementEndpointTest do
     for row <- Enum.reverse(old), do: Dawarich.Test.ApiGolden.insert!("shared_links", row)
     assert request(ctx.session, :post, "/share_links/live", "").status == 302
 
-    assert Enum.map(commands(), fn [_, payload] -> payload["share_id"] end) ==
+    assert Repo.query!("SELECT channel FROM phoenix.cable_events ORDER BY seq").rows
+           |> Enum.map(fn [stream] ->
+             stream
+             |> String.replace_prefix("shared_location:", "")
+             |> Base.url_decode64!(padding: false)
+             |> String.split("/")
+             |> List.last()
+           end) ==
              Enum.map(old, & &1["id"])
   end
 

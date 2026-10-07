@@ -11,6 +11,17 @@ defmodule DawarichWeb.PageRoutes do
       scope "/" do
         pipe_through :map_write
 
+        post "/tracks/recalculation", DawarichWeb.TrackRecalculationActions, :create,
+          metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+
+        post "/areas", DawarichWeb.AreaActions, :create,
+          metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+
+        for method <- [:patch, :put, :post] do
+          match method, "/areas/:id", DawarichWeb.AreaActions, :update,
+            metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+        end
+
         post "/tags", DawarichWeb.TagActions, :create,
           metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
 
@@ -39,6 +50,25 @@ defmodule DawarichWeb.PageRoutes do
       end
 
       rails_pages_routes()
+
+      pipeline :map_redirect do
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.RailsHeaders
+      end
+
+      scope "/" do
+        pipe_through :map_redirect
+
+        for path <- ["/map/v1", "/map/v1.:format"] do
+          get path, DawarichWeb.MapRedirects, :legacy, metadata: %{rails_key: "map"}
+        end
+
+        for path <- ["/maps/v2", "/maps/v2.:format"] do
+          get path, DawarichWeb.MapRedirects, :plural, metadata: %{rails_key: "map"}
+        end
+      end
 
       scope "/" do
         pipe_through [:browser, :rails_user]

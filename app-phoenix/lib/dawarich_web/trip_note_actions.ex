@@ -15,8 +15,6 @@ defmodule DawarichWeb.TripNoteActions do
     TripNoteForm
   }
 
-  alias DawarichWeb.Api.Body
-
   def init(action), do: action
 
   def call(conn, :member),
@@ -63,7 +61,7 @@ defmodule DawarichWeb.TripNoteActions do
             )
 
       {:replay, reason} ->
-        Body.replay(conn, reason)
+        DawarichWeb.TripRequest.replay(conn, reason)
 
       {:error, :not_found} ->
         DawarichWeb.TripActions.not_found(conn)

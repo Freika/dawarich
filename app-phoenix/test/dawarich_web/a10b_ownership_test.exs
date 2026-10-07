@@ -211,6 +211,12 @@ defmodule DawarichWeb.A10bOwnershipTest do
 
   test "retained mounts producers frames and unsupported requests reach Rails byte identical" do
     before = snapshot()
+    assert request("GET", "/sidekiq", "", 15801).status == 302
+    assert request("GET", "/admin/flipper", "", 15801).status == 404
+    refute_received {:upstream, _, _, _}
+    assert snapshot() == before
+
+    before = snapshot()
 
     Application.put_env(:dawarich, :rails_routes, ["user_data"])
 
@@ -228,8 +234,6 @@ defmodule DawarichWeb.A10bOwnershipTest do
           {"POST", "/settings/users/15802", "_method=delete"},
           {"POST", "/settings/background_jobs", "job=synthetic"},
           {"POST", "/admin/settings/test_geocoding", "provider=synthetic"},
-          {"GET", "/sidekiq", ""},
-          {"GET", "/admin/flipper", ""},
           {"PATCH", "/settings/users/015802", "user%5Bemail%5D=changed"},
           {"PATCH", "/settings/users/15999", "user%5Bemail%5D=changed"},
           {"PATCH", "/settings/users/15802", "user%5Badmin%5D=1&user%5Badmin%5D=0"},
@@ -265,9 +269,18 @@ defmodule DawarichWeb.A10bOwnershipTest do
       handoff!("PATCH", "/settings/users/15802", "user%5Bemail%5D=refused", 15801, headers)
     end
 
-    handoff!("POST", "/settings/users/15802/send_password_reset", "", 15801)
     same = snapshot() == before
     assert same, "retained requests changed users"
+
+    conn = request("POST", "/settings/users/15802/send_password_reset", "", 15801)
+    assert conn.status == 302
+    assert get_resp_header(conn, "location") == ["http://www.example.com/settings/users/15802"]
+
+    assert [[token]] =
+             Repo.query!("SELECT reset_password_token FROM users WHERE id=15802", [], log: false).rows
+
+    assert is_binary(token)
+    refute_received {:upstream, _, _, _}
   end
 
   test "timezone callback hands background update back before rows or jobs change" do

@@ -15,6 +15,48 @@ defmodule Dawarich.ReleaseTest do
     Dawarich.MigrationModules.purge()
   end
 
+  @tag :a12f4_b03_1
+  test "release closure requires installed Sentry and Prometheus runtime modules" do
+    loader = fn app ->
+      send(self(), {:runtime_app, app})
+      Application.load(app)
+    end
+
+    assert :ok = Release.check_runtime_apps!([:dawarich], loader)
+    assert :ok = Release.check_runtime_apps!()
+
+    for app <- [
+          :dawarich,
+          :sentry,
+          :telemetry_metrics_prometheus_core,
+          :postgrex,
+          :crypto,
+          :ssl,
+          :phoenix,
+          :bandit,
+          :oban,
+          :redix,
+          :ex_aws,
+          :gen_smtp
+        ] do
+      assert_received {:runtime_app, ^app}
+    end
+
+    assert Application.spec(:sentry, :vsn) == ~c"13.5.1"
+    assert Code.ensure_loaded?(Sentry)
+    assert Code.ensure_loaded?(TelemetryMetricsPrometheus.Core)
+
+    for missing <- [:sentry, :telemetry_metrics_prometheus_core] do
+      loader = fn app ->
+        if app == missing, do: {:error, :missing_release_application}, else: Application.load(app)
+      end
+
+      assert_raise RuntimeError, ~r/failed to load runtime application #{missing}/, fn ->
+        Release.check_runtime_apps!([:dawarich], loader)
+      end
+    end
+  end
+
   test "raises with the application and unavailable declared module" do
     app = :dawarich_release_runtime_apps_probe
     missing_module = Dawarich.ReleaseTest.MissingRuntimeAppModule
@@ -135,7 +177,7 @@ defmodule Dawarich.ReleaseTest do
 
     assert SchemaFingerprint.public() == baseline
     assert ledger_versions("phoenix") == source_versions("migrations")
-    assert ledger_versions("oban") == [20_260_904_103_515, 20_260_927_120_200]
+    assert ledger_versions("oban") == [20_260_904_103_515, 20_260_927_120_200, 20_261_007_120_000]
     refute relation?("public.phoenix_schema_migrations")
     refute relation?("public.oban_jobs")
   end

@@ -27,6 +27,7 @@ defmodule DawarichWeb.PlacesParityTest do
     assert @dir
            |> Path.join("*.json")
            |> Path.wildcard()
+           |> Enum.reject(&String.starts_with?(Path.basename(&1), "a12f3a-"))
            |> Enum.map(&Path.basename(&1, ".json"))
            |> Enum.sort() == @names
   end

@@ -348,9 +348,9 @@ A Phoenix page, endpoint or email may differ from Rails only when the difference
 | ED-342 | `users email` / `users password` / `users admin` vs the FAQ console recipes | `User#sanitize_input` rewrites `settings` URLs on save; on Cloud production Devise mails "email changed" / "password changed"; a failed validation returns `false` in the console | only `email`/`encrypted_password`/`admin` and `updated_at` change, plus `reset_password_token`/`reset_password_sent_at` cleared on an email or password change as Devise Recoverable does (`recoverable.rb:32,84-87,102-109`; corpus cases `users_email_recipe`, `users_password_recipe`, `users_admin_recipe`); no mail until A12c renders Devise mail (OQ9); an unchanged address is not validated, as Devise skips it; the email argument is stripped and downcased before the lookup; one confirmation line on success, Devise's validation message and exit 1 on failure | A12e → A12c | open |
 | ED-343 | Retired rake tasks: `points:raw_data:restore_temporary`, `import:big_file`, `imports:migrate_to_new_storage`, `exports:migrate_to_new_storage`, `data_cleanup:remove_duplicate_points`, `data:migrate`; FAQ recipe for `0,0` points | run (two of them broken today, see the plan's inventory S20, S22) | the CLI prints the replacement and exits 1; exports still holding a legacy `url` must be migrated on a Rails image or deleted | A12e | open |
 | ED-344 | `db:migrate:status` | Rails' table of up/down versions | `dawarich migrate status`: phoenix/oban readiness, then `public schema: current` / `empty` / `N pending versions` with `release version` lines / `refused: …` (ED-002 texts); exit 1 when refused | A12e | open |
-| ED-345 | `/admin/flipper` | Flipper UI for admins | removed at A12f: no flag gates anything (`app/services/feature_flags.rb:6`) | A12f | open |
-| ED-346 | `/sidekiq` | Sidekiq::Web (admin; basic auth on Cloud) | removed with Sidekiq at A12f; `dawarich jobs status` shows owners, outbox, nodes and Oban counts; the route keeps Rails' 302 to `/` | A12f | open |
-| ED-347 | `/api-docs` | Rswag UI; YAML parsed and re-dumped by `Rswag::Api::Middleware` | `DawarichWeb.ApiDocs` (unmounted until A12f): the stored YAML bytes as `text/yaml`; an index page linking the YAML and `https://dawarich.app/docs/api/dawarich-api` instead of Swagger UI | A12f | open |
+| ED-345 | `/admin/flipper` root and nested paths | Admin Flipper UI | Terminal native empty 404 for all methods/roles/hosting modes, including coexistence admin hand-back; no flag gates behavior. Flipper-specific throttle retired. Stored tables/historical migrations retained; Rails engine/gems cleanup is A12f-4 task 22. | A12f-3o task 18; ruling 5 | closed |
+| ED-346 | `/sidekiq` and background job-health destination | Sidekiq::Web for admins, with configured Basic auth on Cloud; unauthorized root redirects 302 to `/` with error flash | GET/HEAD redirect 302 to `/settings/background_jobs`, retaining admin/session/Cloud Basic restrictions. Existing JobHealth card is also rendered there for admins; Cloud destination admits configured admins and rechecks role on LiveView events. No Sidekiq CRUD UI. Self-hosted ordinary background-page access remains. | A12f-3o task 2; ruling 5 | closed |
+| ED-347 | `/api-docs` | Rswag UI; YAML parsed and re-dumped by `Rswag::Api::Middleware` | Public native Swagger UI with pinned local distribution and the existing stored YAML bytes as `text/yaml`; GET/HEAD on self-hosted and Cloud. Unknown docs methods/versions terminate 404. No alternate spec or external validator. | A12f-3o tasks 3–4; ruling 5 | native route/assets closed; Ruby-free image/browser acceptance A12f-4 |
 | ED-348 | `/metrics` (`PROMETHEUS_EXPORTER_ENABLED`) | Yabeda `rails_*`, `puma_*`, `sidekiq_*`, `dawarich_archive_*` | not served from A12f (OQ2) | A12f | open |
 | ED-349 | Sentry (`SENTRY_DSN`) | errors and logs reported | not reported from A12f (OQ2) | A12f | open |
 | ED-350 | Arguments of the operator commands | rake splits `task[a,b]`, ignores missing or extra bracket arguments (`clear_verified[1,2026]` and `verify[1,2026]` run the all-users variant), treats a malformed token as an unknown task, and takes `KEY=VALUE` words as environment | every command runs only on its exact argument shape (`raw-data verify` / `clear-verified`: none or `USER_ID YEAR MONTH`; `restore`: three; `restore-all`: one; `archive`, `archive-full`, `status`, `reset-all`, `users activate`: none); anything else, a partial bracket list, a malformed rake token or any word after a rake name prints the usage and exits 1 without touching the database | A12e | open |
@@ -507,3 +507,78 @@ this cut. Operator scope and A12h dependency: `docs/phoenix/a12rel-adapters.md`.
 | ID | Surface | Rails today | Phoenix | Owner | Status |
 |---|---|---|---|---|---|
 | ED-551 | Document titles containing apostrophes | Rails double-escapes (title shows `&#39;`) | Phoenix escapes once (title shows the apostrophe); affects any locale whose translated title contains an apostrophe — observed ca stats year, ca digest index, fr digest detail | release | accepted |
+
+## A12f-2J activated branches (ruling 15)
+
+At the Rails 1.15.3 base, J declares the accepted B/C/E/I handlers and removes
+transport replay for their owned API requests. ED-119 duplicate scalar/nested
+query/form, mobile markers, ordinary suffixes and streaming multipart branches
+are native. ED-121/152/194/370/400 API Cloud and HEAD branches are native when
+their existing slice is enabled. ED-152 borders/visited/digest reads and ED-194
+photos/suggestions/enrichment reach their package handlers. Storage proxy and
+representations are native under the retained `active_storage` key.
+
+These entries remain open: rare envelopes return native errors under ruling 15,
+and complete source parity for encoding, MIME/legacy cookies/settings and stored
+malformed values needs follow-up. D/F/G/H declarations/auth activation await
+accepted packages. ED-249/295/335/355/383/392/410/411 browser/worker/provider
+branches remain with their named owners. Intentional route/slice pins retain
+coexistence replay. Accepted API errors and sent/chunked replies never replay;
+the new point after-commit test proves one SQL transition. Mail/token/provider
+boundaries require their accepted owner handlers. See `docs/phoenix/a12f2-j.md`.
+
+
+## A12f-3c Cloud cut-over, drain and same-DB rollback
+
+Dated 2026-10-06; controller rulings 2/4/7/10/11. Earlier coexistence entries
+remain historical contracts. These bounded operational differences do not waive
+unclosed HTTP, Cloud lifecycle, source payload or reverse-kind parity owners.
+
+| ID | Surface | Rails / coexistence | Final Phoenix transition contract | Evidence / owner |
+| --- | --- | --- | --- | --- |
+| ED-A12F3C-1 | Cloud deployment roles | Rails and Phoenix may coexist with route hand-back | NEW is Phoenix-only with no OLD upstream; OLD is isolated drain-only. Traffic switch and OLD shutdown are distinct checkpoints. Preparatory flags remain default off. | A/task 2 argv and producer tests; B/L1/R1 plus A12f-4 image and E/G49 evidence required |
+| ED-A12F3C-2 | OLD publication during drain | Source callbacks, cache boot, cron, manual and application enqueue may publish | Drain-only fences fresh roots/children and reverse Poller; accepted scheduled/retry bookkeeping remains. Unsupported accepted chains remain retained/BLOCKED. | A M3C-05-*; C M3C-07-CHAIN/FORWARD/CHILD-ID; domain continuation dispositions required |
+| ED-A12F3C-3 | Drain observation and old shutdown | Queue/status snapshots alone do not prove process absence | D phased source fetch/registration observations plus native shutdown debt fail closed on UNKNOWN. E quiets/settles/TERMs and reinspects absent processes/debt. | D/task 9 reviewed integration and E/tasks 8/10/G49 remain prerequisites; no operational acceptance from counts alone |
+| ED-A12F3C-4 | First-release rollback | Earlier docs proposed pending rehome or snapshot restore | Pin every Registry/persisted key to Sidekiq, drain accepted native work without transfer, stop Phoenix, start stock Rails 1.15.3 on SAME DB/storage preserving Phoenix-era writes. | Rulings 4/7; D/task 13 proof and deferred Cloud/self-hosted G48; future non-additive changes reopen ruling 4 |
+
+No new exactly-once external delivery guarantee, payload deletion allowance,
+owner bypass or mutation exemption is introduced. Unknown/retired/dead work is
+preserved and blocks the affected transition (ruling 10). Eugene sets dates and
+image retention at release time (ruling 11). Procedure and staged external
+ADR0015/G48 amendment: `docs/phoenix/a12f-ruby-free-release.md`.
+
+## E13 retryable media storage purge
+
+| ID | Surface | Rails today | Phoenix | Evidence / owner |
+| --- | --- | --- | --- | --- |
+| ED-A12F3B-E13-F1 | Storage deletion failure while purging private media | Poster/export/video source handlers enqueue `blob.purge_later`; Active Storage destroys the blob row before storage deletion, losing the lookup needed after a failed delete. | Accepted poster blob-ID children delete storage under the reference guard and blob lock before removing rows; failure retains blob/variant references and retry/drain debt. Existing native poster/export/video durable-key children retain keys/services until physical deletion completes. | SOURCE-MEDIA F1; `a12f3b_e13_purge_retry_test.exs`, `a12f3b_r15_test.exs`, `exports_delete_test.exs`; controller ruling 17; `docs/phoenix/fixed-rails-bugs.md` |
+
+| ED-A12F3B-E13-F2 | Shared native media purge row ordering and immediate native download revocation | Active Storage destroys blob/variant rows before deleting objects; failed deletion loses serialized retry targets (DRB-025). | Shared native poster/export/video cleanup retains rows and durable keys, reserves `phoenix_purge_pending` metadata to revoke native downloads/uploads, rechecks references under locks, and removes rows only after all eligible parent/variant objects are deleted. Historical key-only jobs remain retryable. Rails-owned coexistence is preserved unchanged under ruling 13. | SOURCE-MEDIA F2/F3; `a12f3b_e13_shared_purge_test.exs`, `a12f3b_r15_test.exs`, `exports_delete_test.exs`, `purge_retry_characterization_spec.rb`; `docs/phoenix/fixed-rails-bugs.md`, DRB-025 |
+
+## Area write negotiation review fix
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-AREA-NEGOTIATION | POST `/areas`, PATCH/PUT `/areas/:id` with an unsupported Accept header | Saves valid attributes and can enqueue relabel work before `respond_to` raises UnknownFormat (406). | Decides format before mutation; unsupported formats return terminal empty 406 without changing areas or outbox. Missing/foreign update targets retain 404. Supported wildcard and HTML-first/Turbo-second headers return Rails-compatible 200 Turbo success/error flashes. | Explicit fix-area-writes controller brief requires negotiation before any write; `area Accept negotiation selects Rails Turbo responses before any write` in `area_writes_regression_test.exs`; Rails `app/controllers/areas_controller.rb:12–13,28–29`. |
+
+
+## A12f-3b HOT observation handoff — no ED closure
+
+H03/H04 retain Rails parity and the complete reverse-kind inventory. Native SQL
+drain output explicitly marks source Sidekiq as NOT_OBSERVED/UNKNOWN and G49
+blocked. A native empty binary-rollback observation is not source-drained proof.
+The remaining unconditional `reverse_geocode_place` producer in
+`RailsEffects.reverse_place/3` belongs to RX-PLACES R13; registered native worker
+availability does not close its producer/effect row. R19k04 Null Island still
+publishes `release_null_island_follow_up` in standalone, and the separate R14
+point-achievement helper publishes `achievements.check` in coexistence even
+with native ownership. Rolled-back probes verify both; neither row is closed. No ownership ED or retired
+payload row is marked closed. Final all-kind proof and source disposition stay
+with J1/J2/A12f-3c; Cloud lifecycle stays refused pending L1 in every mode.
+
+Existing operator D01a and native trip/release DRAIN tests are reused for H04,
+with independent `h04_case:H04a` / `H04b` selectors. No new ED number is reserved
+and no Rails bug is fixed. Approved NE decisions and accepted-work removal
+conditions, 125/78/24 inventories, source recording and G42–G49 owner links are
+in [the part-B handoff](../../docs/phoenix/a12f3b-pages-producers.md) and
+[the drain runbook](../../docs/phoenix/a12d3-schedules-drain.md).

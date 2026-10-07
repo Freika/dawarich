@@ -1,7 +1,7 @@
 defmodule Dawarich.Imports.UploadCreate do
   @moduledoc false
   alias Dawarich.Imports.{UploadAdmission, UploadRecords}
-  alias Dawarich.Jobs.Ownership
+  alias Dawarich.Imports.NativeOwnership, as: Ownership
 
   def create(repo, user, files, context) when is_list(files),
     do: files |> Enum.reject(&(&1 == "")) |> create_present(repo, user, context)

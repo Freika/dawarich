@@ -1,8 +1,6 @@
 defmodule Dawarich.Build.ServedAssetCheckTest do
   use ExUnit.Case, async: true
 
-  alias Dawarich.RailsTree
-
   @moduletag :tmp_dir
 
   @script Path.expand("../../../scripts/served_asset_check.sh", __DIR__)
@@ -53,19 +51,38 @@ defmodule Dawarich.Build.ServedAssetCheckTest do
     assert output =~ "is not the built file"
   end
 
-  test "image_smoke.sh asks Rails for the stylesheet path and checks Phoenix and Puma against the image" do
-    smoke = RailsTree.read("app-phoenix/scripts/image_smoke.sh")
+  @tag :a12f4_a24_1
+  test "served asset check resolves candidate CSS from native manifest", %{tmp_dir: root} do
+    built = tree!(root, "built", "a{}")
+    served = tree!(root, "served", "a{}")
+    manifest = Path.join(root, "sprockets-manifest.json")
+    File.write!(manifest, Jason.encode!(%{"assets" => %{"tailwind.css" => "tailwind-1.css"}}))
+    File.mkdir_p!(Path.join(built, "bin"))
+    log = Path.join(root, "rails-called")
+    rails = Path.join(built, "bin/rails")
+    File.write!(rails, "#!/bin/sh\ntouch '#{log}'\nprintf '/assets/tailwind-1.css\\n'\n")
+    File.chmod!(rails, 0o755)
 
-    assert smoke =~
-             ~S|bin/rails runner 'puts ActionController::Base.helpers.asset_path("tailwind.css")'|
+    {output, status} =
+      System.cmd(
+        "/bin/sh",
+        [@script, "--stylesheet", built, manifest, "file://" <> served, "x"],
+        stderr_to_stdout: true
+      )
 
-    refute smoke =~ "rails_css=\"$(curl"
-    assert smoke =~ "served_asset_check.sh"
-    assert smoke =~ ~S|for base in http://127.0.0.1:3000 "http://127.0.0.1:$upstream"|
-    assert smoke =~ "/var/app/public_dist"
+    assert status == 0, output
+    refute File.exists?(log)
 
-    upstream = :binary.match(smoke, "upstream=\"$(docker logs")
-    check = :binary.match(smoke, "served_asset_check.sh")
-    assert elem(upstream, 0) < elem(check, 0)
+    File.write!(manifest, Jason.encode!(%{"assets" => %{}}))
+
+    {output, status} =
+      System.cmd(
+        "/bin/sh",
+        [@script, "--stylesheet", built, manifest, "file://" <> served, "x"],
+        stderr_to_stdout: true
+      )
+
+    assert status != 0
+    assert output =~ "tailwind.css is missing from the native manifest"
   end
 end

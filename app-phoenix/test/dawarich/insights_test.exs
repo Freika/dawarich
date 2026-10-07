@@ -135,8 +135,8 @@ defmodule Dawarich.InsightsTest do
     stat(user, 53_928, 2024, 3, 1_000, nil)
     stat(user, 53_929, 2024, 4, 2_000, [[1, 2_000], 7, [2]])
 
-    assert %{year: 2024, totals: %{days: 1}, heatmap: %{active_days: 1}} =
-             page(user, %{"year" => ["2024"]})
+    assert_raise ArgumentError, fn -> page(user, %{"year" => ["2024"]}) end
+    assert_raise ArgumentError, fn -> page(user, %{"year" => "2024"}) end
 
     assert %{year: 0, totals: %{any: false}} = page(user, %{"year" => "abc"})
     assert_raise DawarichWeb.NotFoundError, fn -> page(user, %{"year" => "99999"}) end

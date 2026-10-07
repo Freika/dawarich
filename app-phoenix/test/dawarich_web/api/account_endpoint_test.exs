@@ -164,7 +164,7 @@ defmodule DawarichWeb.Api.AccountEndpointTest do
 
   defp replay!(ctx, method, target, body) do
     client = submit(ctx, method, target, body, [])
-    puma = accept(ctx.upstream)
+    puma = Dawarich.Test.ApiGolden.rails_connection(client, ctx.upstream)
     {head, rest} = read_head(puma)
     assert request_line(head) == "#{method} #{target} HTTP/1.1"
     assert read_at_least(puma, rest, byte_size(body)) == body

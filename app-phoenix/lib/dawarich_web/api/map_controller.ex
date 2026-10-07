@@ -4,7 +4,8 @@ defmodule DawarichWeb.Api.MapController do
 
   import Plug.Conn, only: [get_req_header: 2, merge_resp_headers: 2, register_before_send: 2]
 
-  alias Dawarich.{I18n, MapApi}
+  alias Dawarich.I18n
+  alias Dawarich.MapApi.Closure
   alias Dawarich.MapApi.Cache
   alias DawarichWeb.Api.{Body, Params, Respond}
 
@@ -23,7 +24,14 @@ defmodule DawarichWeb.Api.MapController do
   def call(conn, action) do
     params = Map.merge(conn.assigns.api_params, conn.path_params)
 
-    case MapApi.read(action, conn.assigns.api_user, params, DateTime.utc_now()) do
+    now = conn.assigns[:api_now] || DateTime.utc_now()
+
+    result =
+      if Dawarich.Standalone.enabled?(),
+        do: Closure.read(action, conn.assigns.api_user, params, now),
+        else: Dawarich.MapApi.read(action, conn.assigns.api_user, params, now)
+
+    case result do
       {:points, term, headers, meta} ->
         points(conn, params, term, headers, meta)
 
@@ -42,9 +50,23 @@ defmodule DawarichWeb.Api.MapController do
 
       {:replay, reason} ->
         Body.replay(conn, reason)
+
+      {:error, status} ->
+        Respond.json(
+          conn,
+          status,
+          {:object,
+           [
+             {"error",
+              if(status == 500, do: "internal_server_error", else: "Unprocessable Entity")}
+           ]}
+        )
     end
   rescue
-    error -> Body.replay(conn, inspect(error.__struct__))
+    error ->
+      if Dawarich.Standalone.enabled?(),
+        do: Respond.json(conn, 500, {:object, [{"error", "internal_server_error"}]}),
+        else: Body.replay(conn, inspect(error.__struct__))
   end
 
   defp points(conn, params, term, headers, meta) do

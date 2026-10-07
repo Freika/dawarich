@@ -25,8 +25,16 @@ module NormalImportFormatsSupport
 
   module_function
 
+  def closure_cases = @closure_cases ||= {}
+
   def write(name, value)
+    closure_cases[name] = value
     FixtureRecording.verify(DIR.join("#{name}.json"), "#{JSON.pretty_generate(value)}\n")
+  end
+
+  def source_write(name, value)
+    closure_cases[name] = value
+    FixtureRecording.source_verify(DIR.join("#{name}.json"), JSON.generate(value))
   end
 
   def capture_csv(zone)

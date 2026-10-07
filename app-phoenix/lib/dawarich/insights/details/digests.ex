@@ -2,6 +2,63 @@ defmodule Dawarich.Insights.Details.Digests do
   @moduledoc false
   alias Dawarich.{Digests, RailsCache, Repo}
   alias Dawarich.RailsCache.Snapshot
+  alias Dawarich.Digests.Calculation
+
+  def native_yearly(id, year, stats, opts) do
+    if Dawarich.Standalone.enabled?(),
+      do: standalone_yearly(id, year, stats, opts),
+      else: coexistence_yearly(id, year, stats, opts)
+  end
+
+  defp coexistence_yearly(id, year, stats, opts) do
+    case yearly(id, year, stats) do
+      {digest, true} ->
+        selected = Enum.filter(stats, &(&1["year"] == year))
+
+        if digest == nil or blank?(digest["travel_patterns"]) or stale?(digest, selected) do
+          calculate!(Calculation.yearly(Repo, id, year, opts))
+          {find(id, year, nil), false}
+        else
+          {digest, false}
+        end
+
+      result ->
+        result
+    end
+  end
+
+  defp standalone_yearly(id, year, stats, opts) do
+    repo = Keyword.get(opts, :repo, Repo)
+    digest = find(id, year, nil, repo)
+    selected = Enum.filter(stats, &(&1["year"] == year))
+
+    compute = fn ->
+      if selected != [] and
+           (digest == nil or blank?(digest["travel_patterns"]) or
+              stale?(digest, selected)) do
+        calculate!(Calculation.yearly(repo, id, year, opts))
+        find(id, year, nil, repo)
+      else
+        digest
+      end
+    end
+
+    {Dawarich.Cache.Readers.yearly(id, year, digest, selected, compute, opts), false}
+  end
+
+  def native_monthly(id, year, month, available, stats, opts) do
+    case monthly(id, year, month, available, stats) do
+      {_digest, true} ->
+        calculate!(Calculation.monthly(Repo, id, year, month, opts))
+        {find(id, year, month), false}
+
+      result ->
+        result
+    end
+  end
+
+  defp calculate!({:ok, _id}), do: :ok
+  defp calculate!({:error, error}), do: raise(error)
 
   def yearly(id, year, stats) do
     case find(id, year, nil) do
@@ -68,10 +125,10 @@ defmodule Dawarich.Insights.Details.Digests do
     end)
   end
 
-  defp find(id, year, month) do
+  defp find(id, year, month, repo \\ Repo) do
     period = if month == nil, do: 1, else: 0
 
-    case Repo.query!(
+    case repo.query!(
            "SELECT *,travel_patterns::text AS _rails_patterns FROM digests WHERE user_id=$1 AND year=$2 AND period_type=$3 AND ($4::integer IS NULL OR month=$4) LIMIT 1",
            [id, year, period, month]
          ) do
@@ -83,6 +140,10 @@ defmodule Dawarich.Insights.Details.Digests do
         Map.put(digest, "_rails_json", %{"travel_patterns" => raw})
     end
   end
+
+  defp blank?(value) when value in [nil, false, %{}, []], do: true
+  defp blank?(value) when is_binary(value), do: String.trim(value) == ""
+  defp blank?(_value), do: false
 
   defp stale?(_digest, []), do: false
 

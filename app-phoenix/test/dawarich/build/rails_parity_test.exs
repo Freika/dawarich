@@ -2,119 +2,91 @@ defmodule Dawarich.Build.RailsParityTest do
   use ExUnit.Case, async: false
 
   alias Dawarich.Build
-  alias Dawarich.Build.Sprockets.{Compiler, Writer}
   alias Jason.OrderedObject
 
-  @moduletag :rails_parity
-  @moduletag timeout: :infinity
+  @moduletag :tmp_dir
+  @moduletag timeout: 300_000
 
-  @env [{"RAILS_ENV", "test"}, {"SECRET_KEY_BASE_DUMMY", "1"}, {"LANG", "en_US.UTF-8"}]
+  @i18n "696bedade70b858db9ef59e556306a7abef74716277cf5790e1b754e904eeec6"
+  @achievements "6709610e637f512e76f7e5e1531f3be92c51e70fbf17564f6c3d609458a78198"
+  @importmap "285e1582c34cd0077430983506cd849ed9c8a704b9e2a0316a54d240aee46aa6"
+  @assets "f5eac41c61aea9ec2d70f4d9c33c45eaeb7a48694d658e1a6de8ddae71fa172a"
+  @manifest "3a7b4171d9c9173a2c4b48e28efde792e1b4259fb7d04c5b53915e1627d6f07f"
+  @css "b917e17e662f7c0c7c506ab2cf39ec69de5e0384a9af9bc5c99512e70d13fa6c"
 
   setup_all do
     root = Build.root()
-    dir = Path.join(System.tmp_dir!(), "a12g-parity-#{System.unique_integer([:positive])}")
-    elixir = Path.join(dir, "elixir")
-    assets = Writer.write!(elixir, Compiler.compile(root), Writer.now())
-    manifest = Path.join(elixir, "config/sprockets-manifest.json")
 
-    run!(root, "bundle", [
-      "exec",
-      "rake",
-      "phoenix:i18n[#{dir}/i18n.json]",
-      "phoenix:achievements[#{dir}/achievements.json]",
-      "phoenix:importmap[#{dir}/importmap.json,#{manifest}]",
-      "phoenix:assets[#{dir}/ruby,#{dir}/ruby-manifest.json]"
-    ])
+    dir =
+      Path.join(System.tmp_dir!(), "native-build-parity-#{System.unique_integer([:positive])}")
 
+    Mix.Tasks.Dawarich.BuildInputs.run(["--root", root, "--out", dir])
     on_exit(fn -> File.rm_rf!(dir) end)
-    %{root: root, dir: dir, elixir: elixir, assets: assets}
+    %{root: root, dir: dir}
   end
 
   test "the locales tree export is Rails' byte for byte, including the empty Active Support nth object",
-       %{
-         root: root,
-         dir: dir
-       } do
-    ruby = File.read!(Path.join(dir, "i18n.json"))
-
-    assert get_in(Jason.decode!(ruby), ["en", "number", "nth"]) == %{}
-    assert IO.iodata_to_binary(Build.I18n.export(root)) == ruby
+       %{dir: dir} do
+    bytes = File.read!(Path.join(dir, "tmp/phoenix/i18n.json"))
+    assert get_in(Jason.decode!(bytes), ["en", "number", "nth"]) == %{}
+    assert sha(bytes) == @i18n
   end
 
-  test "the achievements export is Rails' byte for byte", %{root: root, dir: dir} do
-    translations = root |> Build.I18n.export() |> IO.iodata_to_binary() |> Jason.decode!()
-
-    assert IO.iodata_to_binary(Build.Achievements.export(root, translations)) ==
-             File.read!(Path.join(dir, "achievements.json"))
+  test "the achievements export is Rails' byte for byte", %{dir: dir} do
+    assert sha(File.read!(Path.join(dir, "tmp/phoenix/achievements.json"))) == @achievements
   end
 
-  test "the importmap export is Rails' byte for byte over the same manifest", %{
-    root: root,
-    dir: dir,
-    assets: assets
-  } do
-    assert IO.iodata_to_binary(Build.Importmap.export(root, assets)) ==
-             File.read!(Path.join(dir, "importmap.json"))
+  test "the importmap export is Rails' byte for byte over the same manifest", %{dir: dir} do
+    assert sha(File.read!(Path.join(dir, "tmp/phoenix/importmap.json"))) == @importmap
   end
 
-  test "every compiled asset is Rails' byte for byte", %{dir: dir, elixir: elixir} do
-    ruby = Path.join(dir, "ruby")
-    ours = Path.join(elixir, "public/assets")
-    files = relative_files(ruby)
+  test "every compiled asset is Rails' byte for byte", %{dir: dir} do
+    base = Path.join(dir, "public/assets")
 
-    assert files == relative_files(ours)
+    bytes =
+      for file <- relative_files(base) do
+        raw = File.read!(Path.join(base, file))
 
-    for f <- files do
-      a = File.read!(Path.join(ruby, f))
-      b = File.read!(Path.join(ours, f))
+        normalized =
+          if String.ends_with?(file, ".gz") do
+            <<head::binary-4, _mtime::binary-4, rest::binary>> = raw
+            [head, <<0, 0, 0, 0>>, rest]
+          else
+            raw
+          end
 
-      if String.ends_with?(f, ".gz") do
-        <<a_head::binary-4, _::binary-4, a_rest::binary>> = a
-        <<b_head::binary-4, _::binary-4, b_rest::binary>> = b
-        assert {b_head, b_rest} == {a_head, a_rest}, f
-      else
-        assert b == a, f
+        [file, <<0>>, normalized]
       end
-    end
 
-    assert manifest(Path.join(dir, "ruby-manifest.json")) ==
-             manifest(Path.join(elixir, "config/sprockets-manifest.json"))
+    assert sha(bytes) == @assets
+    assert sha(manifest(Path.join(dir, "config/sprockets-manifest.json"))) == @manifest
   end
 
-  test "npm's Tailwind CLI writes the standalone binary's bytes", %{root: root, dir: dir} do
-    standalone =
-      run!(root, "bundle", [
-        "exec",
-        "ruby",
-        "-e",
-        ~s(require "tailwindcss/ruby"; print Tailwindcss::Ruby.executable)
-      ])
+  test "npm's Tailwind CLI writes the standalone binary's bytes", %{root: root, tmp_dir: tmp} do
+    target = Path.join(tmp, "tailwind.css")
 
-    args =
-      ~w(-i app/assets/stylesheets/application.tailwind.css -c config/tailwind.config.js --minify -o)
-
-    run!(root, standalone, args ++ [Path.join(dir, "standalone.css")])
-
-    run!(
-      root,
-      Path.join(root, "node_modules/.bin/tailwindcss"),
-      args ++ [Path.join(dir, "npm.css")]
-    )
-
-    assert File.read!(Path.join(dir, "npm.css")) == File.read!(Path.join(dir, "standalone.css"))
-  end
-
-  defp run!(root, command, args) do
     {output, status} =
-      System.cmd(command, args,
+      System.cmd(
+        Path.join(root, "node_modules/.bin/tailwindcss"),
+        [
+          "-i",
+          "app/assets/stylesheets/application.tailwind.css",
+          "-c",
+          "config/tailwind.config.js",
+          "--minify",
+          "-o",
+          target
+        ],
         cd: root,
-        env: [{"BROWSERSLIST_IGNORE_OLD_DATA", "1"} | @env],
+        env: [{"BROWSERSLIST_IGNORE_OLD_DATA", "1"}],
         stderr_to_stdout: true
       )
 
-    if status != 0, do: flunk("#{command} #{Enum.join(args, " ")} exited #{status}:\n#{output}")
-    output
+    assert status == 0, output
+    assert sha(File.read!(target)) == @css
   end
+
+  defp sha(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)
 
   defp relative_files(dir) do
     dir
@@ -127,10 +99,8 @@ defmodule Dawarich.Build.RailsParityTest do
 
   defp manifest(path) do
     raw = File.read!(path)
-    decoded = Jason.decode!(raw, objects: :ordered_objects)
-    assert Jason.encode!(decoded) == raw, "#{path} is not compact JSON"
-
-    %OrderedObject{values: sections} = decoded
+    %OrderedObject{values: sections} = decoded = Jason.decode!(raw, objects: :ordered_objects)
+    assert Jason.encode!(decoded) == raw
 
     sections
     |> Enum.map(fn

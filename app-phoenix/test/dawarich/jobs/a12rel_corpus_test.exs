@@ -377,6 +377,7 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
     for row <- profile["before"]["tracks"] do
       row =
         row
+        |> then(&ApiGolden.column_defaults("tracks", &1))
         |> Map.put("original_path", row["ewkb"])
         |> Map.delete("ewkb")
         |> Map.update!("dominant_mode", &Segments.mode_to_int/1)
@@ -435,6 +436,7 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
     expected_tracks =
       Enum.map(expected["tracks"], fn row ->
         row
+        |> then(&ApiGolden.column_defaults("tracks", &1))
         |> Map.put("original_path", row["ewkb"])
         |> Map.delete("ewkb")
         |> Map.update!("dominant_mode", &Segments.mode_to_int/1)
@@ -644,10 +646,21 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
       rows("DELETE FROM phoenix.rails_commands")
       if profile["id"] != "countries_empty", do: achievement_country()
 
-      for row <- profile["before"] do
+      for chunk <- Enum.chunk_every(profile["before"], 500) do
+        values =
+          Enum.map(chunk, fn row ->
+            [row["id"], row["code"], Enum.at(fixture["geometries"], row["geometry"])]
+          end)
+          |> Enum.zip()
+          |> Enum.map(&Tuple.to_list/1)
+
         rows(
-          "INSERT INTO regions(id,code,geom,created_at,updated_at) VALUES($1,$2,ST_GeomFromEWKB(decode($3,'hex')),'2026-01-01','2026-01-01')",
-          [row["id"], row["code"], Enum.at(fixture["geometries"], row["geometry"])]
+          """
+          INSERT INTO regions(id,code,geom,created_at,updated_at)
+          SELECT id,code,ST_GeomFromEWKB(decode(ewkb,'hex')),'2026-01-01','2026-01-01'
+          FROM unnest($1::bigint[],$2::text[],$3::text[]) AS input(id,code,ewkb)
+          """,
+          values
         )
       end
 
@@ -925,6 +938,7 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
                    "user_id" => id,
                    "notify" => false,
                    "run_at" => DateTime.to_iso8601(@achievement_now),
+                   "force" => true,
                    "event_id" => Dawarich.Achievements.BulkCheck.child_id(root, id)
                  }
                ]

@@ -1,8 +1,7 @@
 defmodule DawarichWeb.FamilyGate do
   @moduledoc false
 
-  alias Dawarich.FamilyPage
-  alias DawarichWeb.{LayoutAssigns, RailsAuth}
+  alias Dawarich.{Accounts, FamilyPage}
 
   def init(opts), do: opts
 
@@ -10,20 +9,55 @@ defmodule DawarichWeb.FamilyGate do
     action = action(conn)
 
     if action do
-      case FamilyPage.read(conn.assigns.current_user, action,
+      case FamilyPage.read(Accounts.get(conn.assigns.current_user.id), action,
              now: conn.assigns.now,
              self_hosted: conn.assigns.self_hosted
            ) do
         {:redirect, path, reason} -> redirect(conn, path, reason)
         {:error, 404} -> raise DawarichWeb.NotFoundError
+        :rails -> conn |> Plug.Conn.send_resp(500, "") |> Plug.Conn.halt()
         _other -> conn
       end
     else
       conn
     end
+  rescue
+    ArgumentError -> conn |> Plug.Conn.send_resp(500, "") |> Plug.Conn.halt()
   end
 
-  defp redirect(conn, path, reason) do
+  def on_mount(:default, _params, _session, socket) do
+    {:cont, Phoenix.LiveView.attach_hook(socket, :family_access, :handle_event, &refresh/3)}
+  end
+
+  def refresh(_event, _params, socket) do
+    user = Accounts.get(socket.assigns.current_user.id)
+    action = action(%{request_path: socket.assigns.request_path})
+
+    result =
+      if user && action do
+        FamilyPage.read(user, action,
+          now: DateTime.utc_now(),
+          self_hosted: socket.assigns.self_hosted
+        )
+      else
+        {:redirect, "/users/sign_in", nil}
+      end
+
+    case result do
+      {:ok, page} ->
+        {:cont, Phoenix.Component.assign(socket, current_user: user, page: page)}
+
+      {:redirect, path, _reason} ->
+        socket = Phoenix.Component.assign(socket, :page, nil)
+        {:halt, Phoenix.LiveView.redirect(socket, to: path)}
+
+      _other ->
+        socket = Phoenix.Component.assign(socket, :page, nil)
+        {:halt, Phoenix.LiveView.redirect(socket, to: socket.assigns.request_path)}
+    end
+  end
+
+  def redirect(conn, path, reason) do
     key =
       case reason do
         :not_authorized ->
@@ -108,7 +142,7 @@ defmodule DawarichWeb.FamilyGate do
       }[conn.request_path]
 
   def open?(conn, action) do
-    session_supported?(conn) and readable?(conn, action)
+    session_supported?(conn) and not is_nil(action)
   end
 
   def session_supported?(conn) do
@@ -117,18 +151,5 @@ defmodule DawarichWeb.FamilyGate do
     Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and
       not Enum.any?(~w(client aff via), &Map.has_key?(query, &1)) and
       not DawarichWeb.RailsProxy.Headers.body?(conn)
-  end
-
-  defp readable?(conn, action) do
-    case RailsAuth.call(conn, []).assigns.current_user do
-      nil ->
-        true
-
-      user ->
-        FamilyPage.read(user, action,
-          now: DateTime.utc_now(),
-          self_hosted: LayoutAssigns.self_hosted?()
-        ) != :rails
-    end
   end
 end

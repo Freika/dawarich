@@ -29,6 +29,12 @@ defmodule Dawarich.Jobs.Registry do
       claimable: false
     },
     %{
+      key: "command:imports.prepared_download_purge",
+      kind: :command,
+      worker: Dawarich.Imports.ImportBlobPurgeWorker,
+      claimable: false
+    },
+    %{
       key: "command:points.anomaly_recalculate",
       kind: :command,
       worker: Dawarich.Points.AnomalyFilter.RecalculateWorker,
@@ -251,6 +257,7 @@ defmodule Dawarich.Jobs.Registry do
   ]
 
   @entries @base_entries ++
+             Dawarich.Points.JobEntries.entries() ++
              Dawarich.Jobs.RecalculationEntries.entries() ++
              Dawarich.Jobs.ReleaseEntries.entries() ++
              Dawarich.Jobs.ImportEntries.entries() ++

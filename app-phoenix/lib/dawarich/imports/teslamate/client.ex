@@ -64,18 +64,19 @@ defmodule Dawarich.Imports.Teslamate.Client do
   end
 
   defp fetch(client, path, attempt) do
-    ssl =
-      if client.skip_ssl_verification,
-        do: [verify: :verify_none],
-        else: :httpc.ssl_verify_host_options(true)
-
     result =
-      :httpc.request(
-        :get,
-        {String.to_charlist(client.url <> path), headers(client)},
-        [timeout: client.timeout, connect_timeout: client.timeout, ssl: ssl],
-        body_format: :binary
-      )
+      case Dawarich.Photos.ProviderHTTP.request(
+             :get,
+             client.url,
+             path,
+             headers(client),
+             nil,
+             client.skip_ssl_verification,
+             client.timeout
+           ) do
+        {:ok, status, headers, body} -> {:ok, {{~c"HTTP/1.1", status, ~c""}, headers, body}}
+        {:error, reason} -> {:error, reason}
+      end
 
     retry? =
       case result do

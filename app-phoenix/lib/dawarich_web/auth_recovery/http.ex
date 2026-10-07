@@ -13,6 +13,7 @@ defmodule DawarichWeb.AuthRecovery.Http do
     {"GET", "/users/unlock"},
     {"POST", "/users/password"},
     {"POST", "/users/unlock"},
+    {"PATCH", "/users/password"},
     {"PUT", "/users/password"}
   ]
   def init(opts), do: opts
@@ -23,6 +24,12 @@ defmodule DawarichWeb.AuthRecovery.Http do
     if Keyword.get(opts, :enabled, false) == true and route?(conn) and
          Admission.headers(conn.req_headers) == :ok do
       conn = conn |> DawarichWeb.HostAuthorization.call([]) |> DawarichWeb.ForceSSL.call([])
+
+      conn =
+        if not conn.halted and Keyword.get(opts, :native, false),
+          do: DawarichWeb.RateLimit.call(conn, []),
+          else: conn
+
       if conn.halted, do: conn, else: admit(conn, opts)
     else
       fallback(conn, opts)
@@ -41,14 +48,24 @@ defmodule DawarichWeb.AuthRecovery.Http do
         locale: DawarichWeb.Locale.resolve(nil, nil, conn.assigns.rails_session)
       })
 
+    context =
+      if Keyword.get(opts, :native, false) do
+        context
+        |> Map.put_new(:registration_enabled, false)
+        |> Map.put_new(:enqueue, &Dawarich.Auth.Recovery.MailWorker.enqueue/1)
+      else
+        context
+      end
+
     if not is_boolean(context[:registration_enabled]) or conn.assigns.current_user != nil or
          Enum.any?(get_req_header(conn, "accept"), &String.contains?(&1, "application/json")) or
-         Admission.context(
-           conn.assigns.rails_session,
-           conn.req_headers,
-           Map.get(context, :oidc, true),
-           Map.get(context, :self_hosted, false)
-         ) != :ok do
+         (not Keyword.get(opts, :native, false) and
+            Admission.context(
+              conn.assigns.rails_session,
+              conn.req_headers,
+              Map.get(context, :oidc, true),
+              Map.get(context, :self_hosted, false)
+            ) != :ok) do
       fallback(conn, opts)
     else
       parse(conn, opts, context)
@@ -99,15 +116,30 @@ defmodule DawarichWeb.AuthRecovery.Http do
   end
 
   defp read_all(conn, acc) do
-    case read_body(conn, length: 65_536, read_length: 65_536) do
-      {:more, raw, conn} -> read_all(conn, [acc, raw])
-      {:ok, raw, conn} -> {:ok, IO.iodata_to_binary([acc, raw]), conn}
-      {:error, reason} -> {:error, reason}
+    remaining = 65_536 - IO.iodata_length(acc)
+
+    case read_body(conn, length: max(remaining, 1), read_length: 65_536) do
+      {:more, raw, conn} when byte_size(raw) < remaining ->
+        read_all(conn, [acc, raw])
+
+      {:ok, raw, conn} when byte_size(raw) <= remaining ->
+        {:ok, IO.iodata_to_binary([acc, raw]), conn}
+
+      {:more, _, conn} ->
+        {:error, conn}
+
+      {:ok, _, conn} ->
+        {:error, conn}
+
+      {:error, _} ->
+        {:error, conn}
     end
   end
 
   defp dispatch(conn, method, params, opts, context) do
-    case Flow.dispatch(method, conn.request_path, params, conn.assigns.rails_session, context) do
+    flow = if Keyword.get(opts, :native, false), do: Dawarich.Auth.Recovery.Closure, else: Flow
+
+    case flow.dispatch(method, conn.request_path, params, conn.assigns.rails_session, context) do
       {:ok, %{location: nil} = result} ->
         form(conn, result, context)
 
@@ -121,6 +153,9 @@ defmodule DawarichWeb.AuthRecovery.Http do
         |> put_resp_header("location", RequestURL.base(conn) <> result.location)
         |> send_resp(result.status, "")
         |> halt()
+
+      {:error, :notification_owner} ->
+        conn |> send_resp(503, "Security notifications unavailable") |> halt()
 
       {:error, {:delivery, _}} ->
         conn |> headers() |> send_resp(500, "Recovery delivery failed") |> halt()
@@ -186,6 +221,9 @@ defmodule DawarichWeb.AuthRecovery.Http do
   defp method(%{method: "POST", request_path: "/users/password"}, %{"_method" => "put"}),
     do: {:ok, "PUT"}
 
+  defp method(%{method: "POST", request_path: "/users/password"}, %{"_method" => "patch"}),
+    do: {:ok, "PATCH"}
+
   defp method(conn, params),
     do: if(Map.has_key?(params, "_method"), do: {:handoff, :method}, else: {:ok, conn.method})
 
@@ -218,8 +256,9 @@ defmodule DawarichWeb.AuthRecovery.Http do
   defp decode(_), do: {:handoff, :parameters}
 
   defp fallback(conn, opts) do
-    case Keyword.get(opts, :fallback) do
-      fun when is_function(fun, 1) -> fun.(conn)
+    case {Keyword.get(opts, :native, false), Keyword.get(opts, :fallback)} do
+      {true, _} -> conn |> send_resp(422, "Invalid recovery request") |> halt()
+      {_, fun} when is_function(fun, 1) -> fun.(conn)
       _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
     end
   end

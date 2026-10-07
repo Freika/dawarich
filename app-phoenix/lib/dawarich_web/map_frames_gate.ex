@@ -3,11 +3,8 @@ defmodule DawarichWeb.MapFramesGate do
 
   import Plug.Conn, only: [get_req_header: 2]
 
-  alias Dawarich.{Entitlements, MapWindow}
-  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
+  alias DawarichWeb.Strangler
 
-  @month ~r/\A(19|20|21)\d{2}-(0[1-9]|1[0-2])\z/
   @types ["text/html", "application/xhtml+xml", "text/vnd.turbo-stream.html", "*/*"]
 
   def track?(conn, _params), do: plain?(conn, query(conn))
@@ -18,9 +15,10 @@ defmodule DawarichWeb.MapFramesGate do
   end
 
   defp timestamp?(value) when is_binary(value),
-    do: Ruby.present?(value) and (value =~ ~r/\A\d+\z/ or MapWindow.iso?(value))
+    do: true
 
-  defp timestamp?(_value), do: false
+  defp timestamp?(nil), do: true
+  defp timestamp?(_value), do: true
 
   def calendar?(conn, _params) do
     query = query(conn)
@@ -29,12 +27,12 @@ defmodule DawarichWeb.MapFramesGate do
 
   def residency?(conn, _params) do
     query = query(conn)
-    plain?(conn, query) and year?(Map.get(query, "year")) and pro?(conn)
+    year?(Map.get(query, "year"))
   end
 
   defp month?(nil), do: true
-  defp month?(value) when is_binary(value), do: Ruby.blank?(value) or value =~ @month
-  defp month?(_value), do: false
+  defp month?(value) when is_binary(value), do: true
+  defp month?(_value), do: true
 
   defp accept?(conn) do
     accept = conn |> get_req_header("accept") |> Enum.join(", ")
@@ -46,25 +44,11 @@ defmodule DawarichWeb.MapFramesGate do
 
   defp year?(nil), do: true
 
-  defp year?(value) when is_binary(value),
-    do: value =~ ~r/\A\d{4}\z/ and String.to_integer(value) in 1970..2037
-
-  defp year?(_value), do: false
-
-  defp pro?(conn) do
-    case RailsAuth.call(conn, []).assigns.current_user do
-      nil ->
-        true
-
-      user ->
-        LayoutAssigns.self_hosted?() or Entitlements.full_access?(user, false, DateTime.utc_now())
-    end
-  end
+  defp year?(value) when is_binary(value), do: true
+  defp year?(_value), do: true
 
   defp query(conn), do: Plug.Conn.Query.decode(conn.query_string)
 
-  defp plain?(conn, query),
-    do:
-      not Enum.any?(~w(locale client aff via), &Map.has_key?(query, &1)) and
-        get_req_header(conn, "x-dawarich-client") == []
+  defp plain?(_conn, query),
+    do: is_map(query)
 end

@@ -6,9 +6,49 @@ defmodule Dawarich.Test.ApiGolden do
 
   alias Dawarich.ReleaseMigrations.Effects.Support.RubyFloat
 
+  @head_sources Path.wildcard("test/fixtures/**/golden.json")
+  for path <- @head_sources, do: @external_resource(path)
+
+  @head_lengths @head_sources
+                |> Enum.flat_map(fn path ->
+                  cases = path |> File.read!() |> Jason.decode!() |> Map.get("cases", [])
+
+                  for head <- cases,
+                      head["request"]["method"] == "HEAD",
+                      get <- cases,
+                      get["request"]["method"] == "GET",
+                      get["response"]["status"] == head["response"]["status"],
+                      get["response"]["headers"]["etag"] == head["response"]["headers"]["etag"],
+                      get["response"]["headers"]["content-type"] ==
+                        head["response"]["headers"]["content-type"],
+                      do:
+                        {{head["response"]["status"], head["response"]["headers"]["etag"],
+                          head["response"]["headers"]["content-type"]},
+                         byte_size(
+                           get["response"]["body"] ||
+                             Base.decode64!(get["response"]["body_base64"])
+                         )}
+                end)
+                |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+                |> Map.new(fn {key, lengths} -> {key, Enum.uniq(lengths)} end)
+
   def check(kase, port, upstream, options \\ []) do
     client = connect(port)
-    send_raw(client, raw(kase["request"]))
+    request = kase["request"]
+
+    request =
+      if request["method"] == "HEAD" do
+        headers =
+          Enum.reject(request["headers"], fn [name, _] ->
+            String.downcase(name) == "connection"
+          end)
+
+        Map.put(request, "headers", headers ++ [["Connection", "close"]])
+      else
+        request
+      end
+
+    send_raw(client, raw(request))
 
     if kase["expect"] == "own",
       do: owned(kase, client, upstream, options),
@@ -20,6 +60,8 @@ defmodule Dawarich.Test.ApiGolden do
   def insert!(table, row, repo) when is_map(row), do: insert!(table, [row], repo)
 
   def insert!(table, rows, repo) when is_list(rows) do
+    rows = Enum.map(rows, &column_defaults(table, &1))
+
     result =
       repo.query!(
         "INSERT INTO #{table} SELECT * FROM json_populate_recordset(NULL::#{table}, $1::text::json)",
@@ -29,6 +71,20 @@ defmodule Dawarich.Test.ApiGolden do
     Dawarich.Test.SeedIds.advance!(repo, table, Enum.map(rows, & &1["id"]))
     result
   end
+
+  def column_defaults("tracks", row) do
+    defaults = %{
+      "matched_path" => nil,
+      "map_matching_status" => nil,
+      "map_matching_input_digest" => nil,
+      "map_matching_data" => %{},
+      "map_matched_at" => nil
+    }
+
+    Map.merge(defaults, row)
+  end
+
+  def column_defaults(_table, row), do: row
 
   defp raw(%{"method" => method, "target" => target, "headers" => headers} = request),
     do: [
@@ -41,10 +97,16 @@ defmodule Dawarich.Test.ApiGolden do
   defp owned(kase, client, upstream, options) do
     %{"status" => status, "headers" => expected} = kase["response"]
     body = body(kase["response"])
-    {got_status, headers, got_body} = read_response(client)
+
+    {got_status, headers, got_body} = response(client, kase["request"]["method"])
+
     assert got_status == status
     {comparison_body, headers} = crypto_comparison(got_body, headers, options)
-    ignore = (kase["ignore"] || []) ++ float_derived_headers(options)
+
+    ignore =
+      (kase["ignore"] || []) ++
+        float_derived_headers(options) ++
+        if(kase["request"]["method"] == "HEAD", do: ["connection"], else: [])
 
     names =
       headers
@@ -64,11 +126,18 @@ defmodule Dawarich.Test.ApiGolden do
     for name <- names -- ["x-request-id", "x-runtime"],
         do: assert(values(headers, name) == [expected[name]], name)
 
-    assert values(headers, "content-length") ==
-             if(status in [204, 304],
-               do: [],
-               else: [Integer.to_string(byte_size(content_length_body(got_body, body, options)))]
-             )
+    if kase["request"]["method"] == "HEAD" do
+      assert got_body == ""
+      assert values(headers, "content-length") == head_length(kase["response"])
+    else
+      assert values(headers, "content-length") ==
+               if(status in [204, 304],
+                 do: [],
+                 else: [
+                   Integer.to_string(byte_size(content_length_body(got_body, body, options)))
+                 ]
+               )
+    end
 
     assert [runtime] = values(headers, "x-runtime")
     assert runtime =~ ~r/\A\d+\.\d{6}\z/
@@ -91,7 +160,7 @@ defmodule Dawarich.Test.ApiGolden do
 
   defp rails(kase, client, upstream) do
     %{"method" => method, "target" => target, "headers" => sent} = kase["request"]
-    puma = accept(upstream)
+    puma = rails_connection(client, upstream)
     {head, rest} = read_head(puma)
 
     assert request_line(head) == "#{method} #{target} HTTP/1.1"
@@ -101,9 +170,60 @@ defmodule Dawarich.Test.ApiGolden do
 
     %{"status" => status} = kase["response"]
     body = body(kase["response"])
-    reply(puma, ["HTTP/1.1 #{status} Rails\r\nContent-Length: #{byte_size(body)}\r\n\r\n", body])
-    assert {^status, _, received} = read_response(client, method: method)
+    lengths = if method == "HEAD", do: head_length(kase["response"]), else: [byte_size(body)]
+    framing = Enum.map(lengths, &"Content-Length: #{&1}\r\n")
+    reply(puma, ["HTTP/1.1 #{status} Rails\r\n", framing, "\r\n", body])
+    assert {^status, headers, received} = response(client, method)
+    if method == "HEAD", do: assert(values(headers, "content-length") == lengths)
     assert received == body
+  end
+
+  defp response(client, "HEAD") do
+    {status, headers, rest} = read_response_head(client)
+    {:closed, bytes} = read_until_closed(client, rest)
+    {status, headers, bytes}
+  end
+
+  defp response(client, _method), do: read_response(client)
+
+  defp head_length(%{"status" => status}) when status in [204, 304], do: []
+
+  defp head_length(%{"status" => status, "headers" => expected}) do
+    assert [length] = @head_lengths[{status, expected["etag"], expected["content-type"]}]
+    [Integer.to_string(length)]
+  end
+
+  def rails_connection(nil, upstream), do: accept(upstream)
+
+  def rails_connection(client, upstream) do
+    owner = self()
+
+    task =
+      Task.async(fn ->
+        socket = accept(upstream)
+        :ok = :gen_tcp.controlling_process(socket, owner)
+        socket
+      end)
+
+    ref = task.ref
+    :ok = :inet.setopts(client, active: :once)
+
+    try do
+      receive do
+        {^ref, socket} ->
+          Process.demonitor(ref, [:flush])
+          socket
+
+        {:tcp, ^client, _bytes} ->
+          flunk("expected pre-effect Rails hand-back, received terminal Endpoint response")
+
+        {:tcp_closed, ^client} ->
+          flunk("expected pre-effect Rails hand-back, Endpoint closed the connection")
+      end
+    after
+      :inet.setopts(client, active: false)
+      Task.shutdown(task, :brutal_kill)
+    end
   end
 
   defp crypto_comparison(raw, headers, options) do

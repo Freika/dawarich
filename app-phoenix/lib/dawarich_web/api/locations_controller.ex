@@ -6,9 +6,26 @@ defmodule DawarichWeb.Api.LocationsController do
   alias DawarichWeb.Api.{Body, Params, Respond}
 
   @impl true
+  def init(:index_closure),
+    do: if(Dawarich.Standalone.enabled?(), do: :index_closure, else: :index)
+
   def init(action), do: action
 
   @impl true
+  def call(conn, :index_closure),
+    do:
+      closure(
+        conn,
+        Dawarich.Locations.Closure.read(conn.assigns.api_user, conn.assigns.api_params)
+      )
+
+  def call(conn, :suggestions),
+    do:
+      closure(
+        conn,
+        suggestions(conn.assigns.api_user, conn.assigns.api_params)
+      )
+
   def call(conn, :index) do
     params = conn.assigns.api_params
 
@@ -25,6 +42,11 @@ defmodule DawarichWeb.Api.LocationsController do
       {:replay, reason} ->
         Body.replay(conn, reason)
     end
+  end
+
+  defp suggestions(user, params) do
+    {:ok, status, term} = Dawarich.Locations.Suggestions.run(user, params)
+    {:ok, status, Dawarich.Locations.Suggestions.term(term)}
   end
 
   defp answer(conn, lat, lon) do
@@ -71,4 +93,6 @@ defmodule DawarichWeb.Api.LocationsController do
         400,
         {:object, [{"error", I18n.en!("controllers.api.v1.locations." <> key)}]}
       )
+
+  defp closure(conn, {:ok, status, term}), do: Respond.json(conn, status, term)
 end

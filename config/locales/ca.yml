@@ -43,7 +43,26 @@ ca:
           locationiq: "Servei allotjat. Necessita una clau d'API."
         points:
           title: "Punts"
+        experimental:
+          badge: "Experimental"
+          title: "Funcions experimentals"
+        map_matching:
+          title: "Ajust de rutes"
+          description: "Alinea els trajectes enregistrats amb soroll a carreteres i camins propers. Només canvia com es dibuixen els trajectes compatibles; els punts enregistrats i el traçat original no es modifiquen."
+          example_alt: "Un traçat original imprecís al costat del mateix traçat ajustat als carrers"
+          original_label: "Traçat original"
+          matched_label: "Traçat ajustat"
+          example_caption: "L'original conserva la forma enregistrada. L'ajustat segueix la xarxa propera i sempre pot tornar a l'original."
+          privacy: "Dawarich envia coordenades, marques de temps i precisió GPS al servei Atlas configurat. Mantén aquest servei dins d'una xarxa de confiança."
+          test: "Prova la connexió"
+          testing: "S'està provant…"
         fields:
+          atlas_url: "URL d'Atlas"
+          map_matching_enabled: "Activa l'ajust de rutes"
+          atlas_url_hint: "URL base HTTP o HTTPS completa del teu servei privat Dawarich Atlas."
+          map_matching_enabled_hint: "S'aplica a tota la instància. Els trajectes existents no es processen automàticament."
+          map_matching_shadow_mode: "Mode ombra"
+          map_matching_shadow_mode_hint: "Processa els trajectes aptes sense mostrar els camins ajustats."
           photon_api_host: "Amfitrió"
           photon_api_key: "Clau d'API"
           photon_api_use_https: "Utilitza HTTPS"
@@ -59,10 +78,17 @@ ca:
           api_key_keep_hint: "Deixa-ho en blanc per mantenir la clau desada."
           store_geodata_hint: "Cerca la ciutat i el país quan s’afegeixen punts nous. Les cerques nocturnes continuen si hi ha un proveïdor configurat, encara que aquesta opció estigui desactivada."
       update:
+        atlas_url_invalid: "La URL d'Atlas ha de ser una URL HTTP o HTTPS completa, sense credencials, consulta ni fragment."
+        atlas_url_required: "Defineix una URL d'Atlas abans d'activar l'ajust de rutes."
         saved: "Configuració desada."
         pinned: "Rebutjat: fixat per %{variables}."
         host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."
         chibigeo_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
+      test_map_matching:
+        not_configured: "Desa primer una URL d'Atlas."
+        success: "Atlas %{version} està preparat per a l'ajust de rutes."
+        routing_unavailable: "Atlas %{version} ha respost, però la seva capacitat d'encaminament encara no està preparada."
+        failure: "La connexió amb Atlas ha fallat (%{error})."
       test_geocoding:
         not_configured: "No hi ha cap proveïdor de geocodificació configurat. Desa primer un proveïdor."
         success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."

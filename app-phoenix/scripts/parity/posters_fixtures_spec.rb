@@ -129,6 +129,123 @@ RSpec.describe 'Phoenix fixtures: poster persistence and generation', type: :req
     end
   end
 
+  it 'characterizes residual formats coercions and Cloud without entitlement gating' do
+    travel_to now do
+      user = poster_actor(97_101)
+      foreign = poster_actor(97_102)
+      sign_in user
+      ActionController::Base.allow_forgery_protection = false
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      %w[html turbo_stream json].each do |format|
+        count = user.posters.count
+        post '/posters', params: { poster: { name: 'Residual', theme: 'missing', distance: 'nonsense',
+                                            start_at: 'bad', route_width: '-10', title: { nested: 'ignored' } } },
+                         headers: { 'Accept' => { 'html' => 'text/html', 'turbo_stream' => 'text/vnd.turbo-stream.html',
+                                                'json' => 'application/json' }.fetch(format) }
+        expect(response.status).to eq(if format == 'json'
+                                        406
+                                      else
+                                        (format == 'html' ? 302 : 200)
+                                      end)
+        expect(user.posters.count).to eq(count + 1)
+        expect(user.posters.last.settings).to eq({ 'theme' => 'missing', 'distance' => 'nonsense',
+                                                  'start_at' => 'bad', 'route_width' => '-10' })
+      end
+      ['application/json, text/html', 'application/json, */*'].each do |accept|
+        count = user.posters.count
+        post '/posters', params: { poster: { name: 'Mixed' } }, headers: { 'Accept' => accept }
+        expect(response.status).to eq(302)
+        expect(response.location).to eq('http://www.example.com/map/v2')
+        expect(user.posters.count).to eq(count + 1)
+        mixed = user.posters.last
+        delete "/posters/#{mixed.id}", headers: { 'Accept' => accept }
+        expect(response.status).to eq(303)
+        expect(response.location).to eq('http://www.example.com/map/v2')
+        expect(Poster.exists?(mixed.id)).to be(false)
+      end
+      [['text/vnd.turbo-stream.html;q=0.2, text/html;q=0.9', 302],
+       ['text/html;q=0.2, text/vnd.turbo-stream.html;q=0.9', 200],
+       ['application/json, text/vnd.turbo-stream.html', 200]].each do |accept, status|
+        post '/posters', params: { poster: { name: 'Negotiated' } }, headers: { 'Accept' => accept }
+        expect(response.status).to eq(status)
+        mixed = user.posters.last
+        delete "/posters/#{mixed.id}", headers: { 'Accept' => accept }
+        expect(response.status).to eq(status == 302 ? 303 : 200)
+        expect(Poster.exists?(mixed.id)).to be(false)
+      end
+      own = user.posters.last
+      delete "/posters/#{own.id}tail", headers: { 'Accept' => 'application/json' }
+      expect(response.status).to eq(406)
+      expect(Poster.exists?(own.id)).to be(false)
+      poster = fixture_poster(foreign, 96_901)
+      [poster.id.to_s, 'missing', '999999999'].each do |id|
+        delete "/posters/#{id}", headers: { 'Accept' => 'text/html' }
+        expect(response.status).to eq(404)
+      end
+      expect(Poster.exists?(poster.id)).to be(true)
+      post '/posters', params: { poster: { name: 123 } }, as: :json
+      expect(response.status).to eq(406)
+      expect(user.posters.last.name).to eq('123')
+      sign_out user
+      post '/posters', params: { poster: { name: 'Guest' } }, headers: { 'Accept' => 'text/html' }
+      expect(response.status).to eq(302)
+      expect(response.location).to end_with('/users/sign_in')
+      expect(request.session[:user_return_to]).to be_nil
+      ['application/json, text/html', 'application/json, */*'].each do |accept|
+        post '/posters', params: { poster: { name: 'Guest' } }, headers: { 'Accept' => accept }
+        expect(response.status).to eq(accept.include?('*/*') ? 302 : 401)
+      end
+      post '/posters', params: { poster: { name: 'Guest' } }, as: :json
+      expect(response.status).to eq(401)
+      expect(response.headers['WWW-Authenticate']).to be_nil
+      expect(response.parsed_body).to eq({ 'error' => 'You need to sign in or sign up before continuing.' })
+    end
+  end
+
+  it 'characterizes rendering upload failure and shared attachment purge' do
+    travel_to now do
+      user = poster_actor(97_101)
+      poster_point(user, 97_201, -300)
+      poster_point(user, 97_202, -200)
+      poster = fixture_poster(user, 96_902)
+      allow_any_instance_of(ActiveStorage::Blob).to receive(:upload_without_unfurling).and_raise(IOError, 'upload')
+      Posters::CreateJob.perform_now(poster.id)
+      expect(poster.reload.status).to eq('failed')
+      expect(poster.image.attached?).to be(false)
+      expect(poster.print_pdf.attached?).to be(false)
+      expect(ActiveStorage::Blob.count).to eq(0)
+      source = ActiveStorage::Blob.create!(key: 'synthetic-variant-source', filename: 'poster.png',
+                                           service_name: 'test', byte_size: 3, checksum: 'CY9rzUYh03PK3k6DJie09g==')
+      child = ActiveStorage::Blob.create!(key: 'synthetic-variant-image', filename: 'variant.png',
+                                          service_name: 'test', byte_size: 3, checksum: 'CY9rzUYh03PK3k6DJie09g==')
+      variant = ActiveStorage::VariantRecord.create!(blob: source, variation_digest: 'synthetic')
+      ActiveStorage::Attachment.create!(record: variant, name: 'image', blob: child)
+      source.service.upload(source.key, StringIO.new('png'))
+      child.service.upload(child.key, StringIO.new('png'))
+      source.purge
+      expect(ActiveStorage::VariantRecord.exists?(variant.id)).to be(false)
+      expect(ActiveStorage::Attachment.where(record_type: 'ActiveStorage::VariantRecord',
+                                             record_id: variant.id)).to be_empty
+      expect(enqueued_jobs.any? { |job| job[:job] == ActiveStorage::PurgeJob }).to be(true)
+      ActiveStorage::PurgeJob.perform_now(child)
+      expect(ActiveStorage::Blob.exists?(child.id)).to be(false)
+      expect(source.service.exist?(source.key)).to be(false)
+      expect(child.service.exist?(child.key)).to be(false)
+      clear_enqueued_jobs
+      blob = ActiveStorage::Blob.create!(key: 'synthetic-shared-poster', filename: 'poster.png', service_name: 'test',
+                                         byte_size: 3, checksum: 'CY9rzUYh03PK3k6DJie09g==')
+      other = fixture_poster(user, 96_903)
+      ActiveStorage::Attachment.create!(record: other, name: 'image', blob: blob)
+      Posters::PurgeCommands.call({ 'poster_id' => 96_999, 'blob_ids' => [blob.id] })
+      expect(ActiveStorage::Blob.exists?(blob.id)).to be(true)
+      expect(enqueued_jobs.none? { |job| job[:job] == ActiveStorage::PurgeJob }).to be(true)
+      ActiveStorage::Attachment.where(blob_id: blob.id).delete_all
+      allow(blob.service).to receive(:delete).and_raise(IOError, 'purge storage failure')
+      expect { blob.purge }.to raise_error(IOError, 'purge storage failure')
+      expect(ActiveStorage::Blob.exists?(blob.id)).to be(false)
+    end
+  end
+
   it 'writes poster whitelist gallery streams and renderer job contracts' do
     travel_to now do
       user = poster_actor(97_101)

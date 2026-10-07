@@ -1,8 +1,38 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'places_closure_capture'
 
 RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders them', type: :request do
+  closure_cases = {}
+  define_method(:closure_case) { |name, data| closure_cases[name] = data }
+  after(:all) do
+    selected = closure_cases.sort.to_h.select { |name, _| %w[list_ drawer_].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p01.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| ['nearby_'].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p02.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select { |name, _| %w[create_ update_].any? { name.start_with?(_1) } }
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p04.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+    selected = closure_cases.sort.to_h.select do |name, _|
+      %w[delete_ foreign_ show_].any? do
+        name.start_with?(_1)
+      end
+    end
+    unless selected.empty?
+      FixtureRecording.source_verify(Rails.root.join('app-phoenix/test/fixtures/places/a12f3a-p05.json'),
+                                     "#{JSON.pretty_generate(selected)}\n")
+    end
+  end
+
   include ActiveSupport::Testing::TimeHelpers
 
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/places') }
@@ -157,6 +187,11 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
     doc = Nokogiri::HTML5(response.body)
     File.write(dir.join("#{name}.html"), scrub(doc.at_css('body > div.container > div.w-full > div.flex').inner_html))
     write_json(dir.join("#{name}.json"), state('list', user, path, {}).merge('title' => doc.at_css('title').text))
+    source_body = scrub(doc.to_html).gsub(/(name="(?:csrf-token|csp-nonce)" content=")[^"]*/, '\\1CSRF')
+                                    .gsub(/(signed-stream-name=")[^"]*/, '\\1SIGNED')
+    jobs = enqueued_jobs.map { { 'class' => _1[:job].name, 'args' => _1[:args] } }
+    captured = state('list', user, path, {}).merge('body' => source_body, 'flash' => flash.to_hash, 'jobs' => jobs)
+    closure_case("list_#{name}", captured)
     sign_out user
   end
 
@@ -168,6 +203,9 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
     get "/places/#{place_id}", headers: frame
     File.write(dir.join("#{name}.html"), response.status == 200 ? scrub(response.body) : '')
     write_json(dir.join("#{name}.json"), state('drawer', user, "/places/#{place_id}", frame))
+    closure_case("drawer_#{name}", state('drawer', user, "/places/#{place_id}", frame)
+                 .merge('body' => scrub(response.body), 'flash' => flash.to_hash,
+                        'jobs' => enqueued_jobs.map { { 'class' => _1[:job].name, 'args' => _1[:args] } }))
     sign_out user if user
   end
 
@@ -440,9 +478,33 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
           remainder_assert(entry, id, before, after, error)
           responses << remainder_response(entry, error).merge(request:)
           effects << { name: entry[:name], request:, before:, after: }
+          closure_case(entry[:name], responses.last.merge(before:, after:,
+                                                          body: error ? nil : scrub(response.body),
+                                                          set_cookie: !error && response.headers['Set-Cookie'].present?,
+                                                          jobs: enqueued_jobs.map do
+                                                            { class: _1[:job].name, args: _1[:args], queue: _1[:queue] }
+                                                          end))
         end
         remainder_json('responses.json', { now: now.iso8601, responses: })
         remainder_json('effects.json', { now: now.iso8601, effects: })
+        %w[p04 p05].each do |task|
+          names = if task == 'p04'
+                    %w[create_tags_turbo_false update_omitted_tags_turbo_true
+                       update_empty_tags_turbo_true]
+                  else
+                    %w[delete_html_false delete_turbo_true
+                       foreign_destroy_html_false]
+                  end
+          data = { responses: responses.select { names.include?(_1[:name]) },
+                   effects: effects.select { names.include?(_1[:name]) } }
+          target = dir.parent.join("a12f3a-#{task}.json")
+          encoded = "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2).rstrip}\n"
+          if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+            File.write(target, encoded)
+          else
+            expect(JSON.parse(target.read)).to eq(JSON.parse(encoded))
+          end
+        end
         %i[create update].each_with_index do |action, index|
           user = reader(98_950 + index, 'timezone' => 'Europe/Berlin')
           id = 989_000 + index * 20
@@ -462,14 +524,78 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
     end
   end
 
+  def capture_source_nearby_service(user)
+    expect(Geocoding::Config.resolved_config.enabled?).to be(true)
+    rows = {}
+    feature = { 'type' => 'Feature', 'geometry' => { 'type' => 'Point', 'coordinates' => [12.37, 51.34] },
+                'properties' => { 'name' => 'Synthetic Café', 'osm_id' => 123, 'osm_type' => 'N',
+                                  'city' => 'Leipzig', 'country' => 'Germany' } }
+    result = Geocoder::Result::Photon.new(feature)
+    %w[success empty nil timeout unexpected tls].each do |name|
+      Rails.cache.clear
+      calls = []
+      reported = []
+      RSpec::Mocks.with_temporary_scope do
+        allow(ExceptionReporter).to receive(:call) { |error, *| reported << error.class.name }
+        allow(Geocoding::Search).to receive(:call) do |**args|
+          calls << args.except(:user)
+          case name
+          when 'success' then [result]
+          when 'empty' then []
+          when 'nil' then nil
+          when 'timeout' then raise Timeout::Error, 'synthetic timeout'
+          when 'unexpected' then raise 'synthetic provider failure'
+          when 'tls' then raise OpenSSL::SSL::SSLError, 'SSL_read: unexpected eof while reading'
+          end
+        end
+        search = lambda {
+          Places::NearbySearch.new(user:, latitude: 51.33971, longitude: 12.37341,
+                                   radius: 0.5, limit: 3, cache: true).call
+        }
+        first = search.call
+        second = search.call
+        expect(first).to eq(second)
+        expect(first.size).to eq(name == 'success' ? 1 : 0)
+        expect(calls.size).to eq(%w[success empty].include?(name) ? 1 : 2)
+        expected_reports = { 'unexpected' => %w[RuntimeError RuntimeError],
+          'timeout' => ['Timeout::Error', 'Timeout::Error'] }
+        expect(reported).to eq(expected_reports.fetch(name, []))
+        key = Places::NearbySearch.new(user:, latitude: 51.33971, longitude: 12.37341,
+                                       radius: 0.5, limit: 3, cache: true).send(:cache_key)
+        cached = Rails.cache.exist?(key)
+        service_calls = calls.dup
+        reset!
+        sign_in user
+        before = self.rows(user)
+        clear_enqueued_jobs
+        get '/places/nearby?latitude=51.33971&longitude=12.37341&radius=0.5&limit=3'
+        expect(response.status).to eq(200)
+        expect(self.rows(user)).to eq(before)
+        expect(enqueued_jobs).to be_empty
+        rows[name] = { first:, second:, calls: service_calls, reported:, cache_key: key, cached:,
+                       http: { path: request.fullpath, status: response.status, body: response.body,
+                               media_type: response.media_type, location: response.location,
+                               headers: response.headers.slice('Vary', 'Cache-Control'), flash: flash.to_hash,
+                               set_cookie: response.headers['Set-Cookie'].present?, before:,
+                                 after: self.rows(user), jobs: [] } }
+      end
+    end
+    FixtureRecording.source_verify(dir.join('a12f3a-p03.json'), "#{JSON.pretty_generate(rows)}\n")
+  end
+
   it 'writes the places list and drawer renders' do
     expect(ENV.fetch('TIME_ZONE', nil)).to be_nil
     expect(DawarichSettings.self_hosted?).to be(true)
 
     travel_to now do
       seed!
+      capture_places_closure
       lists.each { |name, user_id, path| capture_list(name, user_id, path) }
       drawers.each { |name, user_id, place_id| capture_drawer(name, user_id, place_id) }
+      closure_write('p01', { cases: %w[list_page1 list_page2 drawer_full drawer_signed_out].map do |name|
+        { response: JSON.parse(dir.join("#{name}.json").read), html: dir.join("#{name}.html").read }
+      end })
+      capture_source_nearby_service(User.find(lists.first[1]))
     end
   end
 end

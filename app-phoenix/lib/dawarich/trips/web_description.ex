@@ -1,9 +1,9 @@
 defmodule Dawarich.Trips.WebDescription do
   @moduledoc false
-  alias Dawarich.TripDescription
+  alias Dawarich.Trips.RichContent
 
   def prepare(raw, previous) do
-    with {:ok, _} <- TripDescription.read(previous) do
+    with {:ok, _} <- RichContent.read(previous) do
       case raw do
         :omitted ->
           {:ok, :unchanged}
@@ -12,7 +12,7 @@ defmodule Dawarich.Trips.WebDescription do
           {:ok, nil}
 
         body when is_binary(body) ->
-          case TripDescription.read(body) do
+          case RichContent.canonical(body) do
             {:ok, normalized} -> {:ok, normalized || ""}
             :rails -> {:replay, "trip description content"}
           end
