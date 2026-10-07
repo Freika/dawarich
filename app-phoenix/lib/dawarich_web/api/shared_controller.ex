@@ -10,13 +10,13 @@ defmodule DawarichWeb.Api.SharedController do
   alias Dawarich.SharedLinks.FamilyAudience
 
   def photos_owned?(conn, %{"id" => id}) do
-    if SharedLinks.api_uuid?(id) do
+    if Dawarich.Standalone.enabled?() or not SharedLinks.api_uuid?(id) do
+      true
+    else
       case SharedLinks.active(id, conn.assigns[:api_now] || DateTime.utc_now()) do
         %{settings: %{"show_photos" => true}} -> false
         _ -> true
       end
-    else
-      true
     end
   end
 

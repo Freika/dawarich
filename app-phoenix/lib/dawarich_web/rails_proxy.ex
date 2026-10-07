@@ -25,6 +25,12 @@ defmodule DawarichWeb.RailsProxy do
 
   @impl true
   def call(conn, upstream) do
+    conn = DawarichWeb.SharedPhotoGuard.admit(conn)
+
+    if conn.halted, do: conn, else: admitted(conn, upstream)
+  end
+
+  defp admitted(conn, upstream) do
     if Dawarich.Standalone.enabled?(),
       do: DawarichWeb.StandaloneError.respond(conn, "rails_proxy"),
       else: proxy(conn, upstream)
