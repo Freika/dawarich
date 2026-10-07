@@ -108,6 +108,13 @@ restoration. Lease checks between flag/effect stages are retained; a mid-stage
 lease loss rolls back the complete filter. A failed enqueue leaves the point eligible for replay. API point
 deletion and achievement debounce retain their atomic, user-serialized behavior.
 
+Nightly geocoding records the stats visibility generation with its accepted
+cleanup job or reverse Rails command. The native cleanup worker refuses an open
+transaction and consumes the accepted eviction directly, without creating a
+second cleanup intent or changing visibility again on retry. Eviction is
+idempotent; failed executions remain eligible for the worker's Oban retry policy.
+The source routing decision stays at the durable producer boundary.
+
 Stats workers return calculation failures to Oban. Demo writes record eviction
 and recalculation intents before commit. Transportation initialization runs
 only after commit; each track records its progress intent with its write. Native
@@ -116,10 +123,18 @@ publishing again.
 
 ## Verification and trade-offs
 
-The AST guard resolves aliases for both calls and sinks, expands pipelines
-before building its graph, and checks every function clause reachable from
-transaction closures. Aliased TTL deletes and piped `UNLINK` each have rejection
-regressions. Passive cleanup of expired Rails cache entries is excluded;
+The whole-tree AST guard lives in `test/support/after_commit_guard.ex` and
+`test/support/transaction_roots.ex`. It resolves chained aliases, `__MODULE__`, explicit `Elixir` references and literal
+module atoms for transaction entry points, calls and sinks, expands pipelines and named captures with their declared
+arity, and checks every reachable function clause. Roots include `Repo.transaction`
+and repository-variable transactions, `Dawarich.Transaction.run`, and both
+callback and module/function/arguments forms of `Ecto.Multi.run`. Run steps are
+conservatively checked even when the Multi is constructed before execution.
+Statically bound callbacks and callback arguments forwarded through local or
+remote transaction helpers are followed with their originating module context.
+Ten R1 rejection regressions cover these forms, retaining the aliased TTL and
+piped `UNLINK` regressions. The expanded production scan found no additional
+inline eviction site. Passive cleanup of expired Rails cache entries is excluded;
 reflection and dynamically selected callbacks still require review.
 
 Generations add indexed database lookups and coarse user-wide invalidation.
@@ -137,3 +152,10 @@ Round-2 verification: twelve named regression mutations failed their assertions
 and passed after restoration. The complete seed-404 gate passed 9476 tests with
 zero failures. Force compilation with warnings as errors and whole-tree
 formatting passed. Existing suite exclusions/skips were unchanged.
+
+Round-3 verification: ten static guard regressions and two nightly merge
+regressions each failed before their fix, failed their named mutation, and passed
+after restoration. The affected batch passed 50 tests with zero failures. The
+complete seed-404 gate passed 9530 tests with zero failures after resolving the
+nightly producer/consumer merge seam. Forced compilation with warnings as errors,
+whole-tree formatting and the unchanged suite exclusions/skips were verified.

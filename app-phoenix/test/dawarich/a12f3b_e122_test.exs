@@ -89,9 +89,21 @@ defmodule Dawarich.A12f3bE122Test do
            ) == [[1000]]
 
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
-    assert Drain.status(ScratchRepo).counts.incomplete_oban == 12
-    Dawarich.Test.AfterCommit.drain(ScratchRepo)
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 11
+
+    assert [[cleanup_id, payload]] =
+             rows(
+               "SELECT id,args FROM oban.oban_jobs WHERE worker='Dawarich.Geocoding.NightlyInvalidationWorker'"
+             )
+
+    assert :ok =
+             Dawarich.Geocoding.NightlyInvalidationWorker.perform(%Oban.Job{
+               args: payload,
+               conf: Oban.config(@oban)
+             })
+
+    complete(cleanup_id)
+    assert Drain.status(ScratchRepo).counts.incomplete_oban == 10
   end
 
   defp points(count),

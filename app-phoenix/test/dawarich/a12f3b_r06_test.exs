@@ -205,8 +205,6 @@ defmodule Dawarich.A12f3bR06Test do
                  conf: Oban.config(@oban)
                })
 
-      Dawarich.Test.AfterCommit.drain(ScratchRepo)
-
       for key <- keys, do: assert(Dawarich.RailsCache.get(key) == :miss)
       assert Dawarich.RailsCache.get(other) == {:ok, "snapshot"}
       assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
