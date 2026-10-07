@@ -404,7 +404,8 @@ defmodule Dawarich.Release.CloudHandoffTest do
     user.id
   end
 
-  defp dispatch, do: Dispatch.run(repo: ScratchRepo, oban: @oban)
+  defp dispatch,
+    do: Dispatch.run(repo: ScratchRepo, oban: @oban, now: Dawarich.JobsCase.db_now(ScratchRepo))
 
   defp args(worker),
     do:
