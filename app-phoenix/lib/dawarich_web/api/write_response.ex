@@ -9,7 +9,12 @@ defmodule DawarichWeb.Api.WriteResponse do
     result =
       Repo.transaction(fn ->
         {kind, status, body} = write.()
-        rendered = Respond.prepare_encoded_json(conn, status, render.(body))
+
+        rendered =
+          if status == 204 and is_nil(body),
+            do: Respond.prepare_head(conn, status, nil),
+            else: Respond.prepare_encoded_json(conn, status, render.(body))
+
         if kind == :error, do: Repo.rollback(rendered), else: rendered
       end)
 

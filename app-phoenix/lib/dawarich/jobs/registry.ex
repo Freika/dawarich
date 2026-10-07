@@ -260,6 +260,7 @@ defmodule Dawarich.Jobs.Registry do
              Dawarich.Points.JobEntries.entries() ++
              Dawarich.Jobs.RecalculationEntries.entries() ++
              Dawarich.Jobs.ReleaseEntries.entries() ++
+             Dawarich.Jobs.CloudEntries.entries() ++
              Dawarich.Jobs.ImportEntries.entries() ++
              Dawarich.UserData.Entries.entries() ++
              Dawarich.Digests.JobEntries.entries() ++
