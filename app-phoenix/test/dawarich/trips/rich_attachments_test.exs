@@ -56,6 +56,14 @@ defmodule Dawarich.Trips.RichAttachmentsTest do
       )
 
     attach("ActiveStorage::VariantRecord", variant, child, "image")
+
+    assert {:ok, href_html} =
+             RichContent.read(
+               String.replace(attachment(blob), " sgid=", " href=\"javascript:alert(1)\" sgid="),
+               ScratchRepo
+             )
+
+    refute href_html =~ "href=", "Rails strips the javascript href from a signed attachment"
     body = "<div>Leipzig<script>alert(1)</script></div>" <> attachment(blob)
     assert {:ok, file_html} = RichContent.read(attachment(blob), ScratchRepo)
 
@@ -264,15 +272,22 @@ defmodule Dawarich.Trips.RichAttachmentsTest do
     assert form.description =~ "data-trix-attachment"
     [[composed]] = rows("SELECT metadata FROM active_storage_blobs WHERE id=$1", [blob.id])
 
-    rows("UPDATE active_storage_blobs SET checksum='synthetic',metadata=$2 WHERE id=$1", [
-      blob.id,
-      Jason.encode!(Map.put(Jason.decode!(composed), "composed", true))
-    ])
+    rows(
+      "UPDATE active_storage_blobs SET checksum='synthetic',content_type='application/octet-stream',metadata=$2 WHERE id=$1",
+      [
+        blob.id,
+        Jason.encode!(Map.put(Jason.decode!(composed), "composed", true))
+      ]
+    )
 
     assert :ok =
              Dawarich.Trips.AnalyzeAttachmentWorker.perform(%Oban.Job{
                args: %{"blob_id" => blob.id}
              })
+
+    assert rows("SELECT content_type FROM active_storage_blobs WHERE id=$1", [blob.id]) == [
+             ["application/octet-stream"]
+           ]
 
     assert rows("SELECT kind FROM phoenix.rails_commands") == []
   end

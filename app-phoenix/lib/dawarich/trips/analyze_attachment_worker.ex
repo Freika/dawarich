@@ -49,7 +49,11 @@ defmodule Dawarich.Trips.AnalyzeAttachmentWorker do
             unless Jason.decode!(metadata || "{}")["composed"] || digest == checksum,
               do: raise(ArgumentError, "ActiveStorage integrity error")
 
-            type = ImageVariant.identify(file, type)
+            type =
+              if Jason.decode!(metadata || "{}")["identified"],
+                do: type,
+                else: ImageVariant.identify(file, type)
+
             analyzed = metadata(file, type || "")
 
             value =

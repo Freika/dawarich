@@ -199,13 +199,25 @@ defmodule Dawarich.Trips.RichContent do
       end)
   end
 
-  defp wrap(attrs, html),
-    do:
-      LazyHTML.Tree.to_html([
-        {"action-text-attachment",
-         Enum.sort_by(attrs, fn {key, _} -> Enum.find_index(@attributes, &(&1 == key)) end), []}
-      ])
-      |> String.replace("</action-text-attachment>", html <> "</action-text-attachment>")
+  defp wrap(attrs, html) do
+    attrs =
+      Enum.flat_map(attrs, fn
+        {"href", value} ->
+          HtmlSanitizer.sanitize("<a href=\"#{escape(value)}\"></a>")
+          |> LazyHTML.from_fragment()
+          |> LazyHTML.attribute("href")
+          |> Enum.map(&{"href", &1})
+
+        pair ->
+          [pair]
+      end)
+
+    LazyHTML.Tree.to_html([
+      {"action-text-attachment",
+       Enum.sort_by(attrs, fn {key, _} -> Enum.find_index(@attributes, &(&1 == key)) end), []}
+    ])
+    |> String.replace("</action-text-attachment>", html <> "</action-text-attachment>")
+  end
 
   defp remote_image(attrs) do
     url = attr(attrs, "url")
