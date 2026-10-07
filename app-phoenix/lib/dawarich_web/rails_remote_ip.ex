@@ -18,10 +18,7 @@ defmodule DawarichWeb.RailsRemoteIp do
 
   def ip(conn) do
     remote = Headers.peer(conn.remote_ip)
-    if trusted?(remote), do: forwarded_ip(conn, remote), else: remote
-  end
 
-  defp forwarded_ip(conn, remote) do
     clients =
       conn |> Plug.Conn.get_req_header("client-ip") |> Enum.join(", ") |> split() |> valid()
 
@@ -36,8 +33,12 @@ defmodule DawarichWeb.RailsRemoteIp do
     if clients != [] and forwarded != [] and hd(clients) not in forwarded,
       do: raise(IpSpoofAttackError)
 
-    ips = Enum.reverse(forwarded) ++ Enum.reverse(clients)
-    Enum.find(ips ++ [remote], &(not trusted?(&1))) || List.last(ips) || remote
+    if trusted?(remote) do
+      ips = Enum.reverse(forwarded) ++ Enum.reverse(clients)
+      Enum.find(ips ++ [remote], &(not trusted?(&1))) || List.last(ips) || remote
+    else
+      remote
+    end
   end
 
   defp split(value), do: String.split(String.trim(value), ~r/[,\s]+/, trim: true)
