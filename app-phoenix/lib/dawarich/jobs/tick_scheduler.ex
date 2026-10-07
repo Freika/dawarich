@@ -101,7 +101,7 @@ defmodule Dawarich.Jobs.TickScheduler do
 
     latest =
       second - local.second -
-        if(local.second == 0 and elem(now.microsecond, 0) == 0, do: 60, else: 0)
+        if(local.second == 0, do: 60, else: 0)
 
     Enum.find_value([latest, latest - 60], fn slot ->
       tick = DateTime.from_unix!(slot)
@@ -130,11 +130,33 @@ defmodule Dawarich.Jobs.TickScheduler do
         "cron_name" => key
       }
 
-      opts = Keyword.update(opts, :meta, meta, &Map.merge(&1, meta))
-      [Oban.insert!(conf.name, worker.new(args, opts))]
+      opts =
+        opts |> Keyword.put(:unique, false) |> Keyword.update(:meta, meta, &Map.merge(&1, meta))
+
+      job = Oban.insert!(conf.name, worker.new(args, opts))
+
+      if admitted?(conf, job, meta),
+        do: [job],
+        else: conf.repo.rollback({:unadmitted_cron_tick, key})
     else
       []
     end
+  end
+
+  defp admitted?(_conf, %{id: nil}, _meta), do: false
+  defp admitted?(_conf, %{conflict?: false}, _meta), do: true
+
+  defp admitted?(conf, job, meta) do
+    conf.repo.query!(
+      """
+      SELECT id FROM #{conf.prefix}.oban_jobs
+      WHERE id=$1 AND worker=$2 AND meta->>'cron_name'=$3 AND meta->>'cron_tick'=$4
+        AND state IN ('available','scheduled','executing','retryable')
+      FOR UPDATE
+      """,
+      [job.id, job.worker, meta["cron_name"], to_string(meta["cron_tick"])],
+      log: false
+    ).num_rows == 1
   end
 
   defp normalize({expression, worker}), do: {expression, worker, []}
