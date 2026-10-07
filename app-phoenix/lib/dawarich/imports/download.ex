@@ -15,7 +15,9 @@ defmodule Dawarich.Imports.Download do
       Tempfiles.with_files(fn adopt ->
         path = Reader.download!(config, blob, opts(context, adopt))
 
-        case repo.transaction(fn -> Snapshot.load(repo, user, id, true) == snapshot end) do
+        case repo.transaction(fn ->
+               same_download?(Snapshot.load(repo, user, id, true), snapshot, context)
+             end) do
           {:ok, true} ->
             names =
               if Map.get(context, :original?, false),
@@ -35,6 +37,14 @@ defmodule Dawarich.Imports.Download do
       false -> {:error, :pending}
       {:legacy, _} = legacy -> legacy
     end
+  end
+
+  defp same_download?(nil, _snapshot, _context), do: false
+
+  defp same_download?(current, snapshot, context) do
+    if Map.get(context, :original?, false) or not Names.wrapped?(snapshot.source),
+      do: Map.delete(current, :prepared) == Map.delete(snapshot, :prepared),
+      else: current == snapshot
   end
 
   def prepare!(repo, user, id, source_id, context) do
