@@ -26,7 +26,7 @@ defmodule Dawarich.Mcp.SearchVisits do
         args ++ [params["limit"] || 20]
       ).rows
 
-    settings = Accounts.settings(user.id) || %{}
+    settings = Dawarich.UserSettings.get(%{settings: Accounts.settings(user.id)})
     user = Map.put(user, :settings, Map.put(settings, "timezone", user.timezone))
 
     visits =

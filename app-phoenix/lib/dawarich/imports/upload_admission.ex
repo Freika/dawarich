@@ -115,7 +115,7 @@ defmodule Dawarich.Imports.UploadAdmission do
           subscription_source: subscription,
           active_until: active,
           points_count: count || 0,
-          settings: settings || %{}
+          settings: Dawarich.UserSettings.safe(settings)
         }
 
       _ ->

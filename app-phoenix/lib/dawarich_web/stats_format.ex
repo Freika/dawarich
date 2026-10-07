@@ -22,8 +22,12 @@ defmodule DawarichWeb.StatsFormat do
                   foto-phanatic-8LaUOtP-de4 henry-schneider-FqKPySIaxuE)
   @progress ~w(progress-primary progress-secondary progress-accent progress-info progress-success progress-warning)
 
-  def unit(%{"maps" => %{"distance_unit" => unit}}) when unit not in [nil, false], do: unit
-  def unit(_settings), do: "km"
+  def unit(settings) do
+    case Dawarich.UserSettings.safe(settings)["maps"] do
+      %{"distance_unit" => unit} when unit not in [nil, false] -> unit
+      _ -> "km"
+    end
+  end
 
   def convert(nil, _unit), do: 0.0
 

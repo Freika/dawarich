@@ -13,13 +13,13 @@ defmodule Dawarich.Digests.Context do
     now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
     ambient = Keyword.get(opts, :ambient_zone, env["TIME_ZONE"] || "Europe/Berlin")
     ambient_zone = resolve(repo, ambient) || raise(ArgumentError, "Invalid Timezone: #{ambient}")
-    raw = user.settings["timezone"]
+    raw = Dawarich.UserSettings.provided(user.settings)["timezone"]
     effective = raw || env["TIME_ZONE"] || "UTC"
 
     context = %{
       user_id: user.id,
       user: user,
-      settings: user.settings,
+      settings: Dawarich.UserSettings.safe(user.settings, env),
       raw_zone: raw,
       effective_zone: effective,
       user_zone: resolve(repo, effective),
@@ -66,7 +66,8 @@ defmodule Dawarich.Digests.Context do
            log: false
          ).rows do
       [[id, settings, plan]] ->
-        %{id: id, settings: if(is_map(settings), do: settings, else: %{}), plan: plan}
+        settings = if is_map(settings), do: settings, else: nil
+        %{id: id, settings: Dawarich.UserSettings.provided(settings), plan: plan}
 
       [] ->
         raise UserNotFound,

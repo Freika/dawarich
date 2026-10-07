@@ -54,7 +54,7 @@ defmodule Dawarich.Families.History do
   end
 
   defp member(member, from, to, now) do
-    config = Sharing.config(member.settings)
+    config = Sharing.config(Dawarich.UserSettings.get(member))
     started = if config["share_history"] == true, do: Clock.parse(config["started_at"])
     before = config["history_before_sharing"] == true
 

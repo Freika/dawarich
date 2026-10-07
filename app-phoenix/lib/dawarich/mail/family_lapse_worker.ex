@@ -161,8 +161,12 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
   defp clear!(repo, user_id),
     do: repo.query!(@clear, [user_id, NaiveDateTime.utc_now()], log: false)
 
-  defp notified_at(%{"family" => %{} = family}), do: family["plan_lapse_notified_at"]
-  defp notified_at(_settings), do: nil
+  defp notified_at(settings) do
+    case Dawarich.UserSettings.safe(settings) do
+      %{"family" => %{} = family} -> family["plan_lapse_notified_at"]
+      _settings -> nil
+    end
+  end
 
   defp transport, do: Application.get_env(:dawarich, :mail_transport, Dawarich.Mail.Smtp)
 end

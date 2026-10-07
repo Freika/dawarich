@@ -9,7 +9,7 @@ defmodule Dawarich.Tracks.Settings do
     %{rows: [[settings]]} =
       repo.query!("SELECT settings FROM users WHERE id = $1", [user_id], log: false)
 
-    %{id: user_id, settings: if(is_map(settings), do: settings, else: %{})}
+    %{id: user_id, settings: Dawarich.UserSettings.safe(settings)}
   end
 
   def find(repo, user_id) do
@@ -19,7 +19,7 @@ defmodule Dawarich.Tracks.Settings do
            log: false
          ).rows do
       [[settings, status]] ->
-        %{id: user_id, settings: if(is_map(settings), do: settings, else: %{}), status: status}
+        %{id: user_id, settings: Dawarich.UserSettings.safe(settings), status: status}
 
       [] ->
         nil

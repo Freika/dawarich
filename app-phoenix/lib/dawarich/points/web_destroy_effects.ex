@@ -8,7 +8,11 @@ defmodule Dawarich.Points.WebDestroyEffects do
     owners = Enum.map(@types, &Ownership.lock(repo, "command:" <> &1))
     stamps = Enum.map(deleted, & &1.timestamp)
     tracks = deleted |> Enum.map(& &1.track_id) |> Enum.reject(&is_nil/1) |> Enum.uniq()
-    zone = Map.get_lazy(ctx, :timezone, fn -> UserTimeZone.iana(repo, user.settings) end)
+
+    zone =
+      Map.get_lazy(ctx, :timezone, fn ->
+        UserTimeZone.iana(repo, Dawarich.UserSettings.get(user))
+      end)
 
     if Enum.all?(owners, &(&1 == :oban)) do
       now = Map.get_lazy(ctx, :now, &DateTime.utc_now/0)

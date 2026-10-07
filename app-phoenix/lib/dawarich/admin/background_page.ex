@@ -2,7 +2,9 @@ defmodule Dawarich.Admin.BackgroundPage do
   @moduledoc false
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
-  def read(%{settings: settings}) do
+  def read(user) do
+    settings = Dawarich.UserSettings.safe(Dawarich.UserSettings.get(user))
+
     %{
       visits: Map.get(settings, "visits_suggestions_enabled", "true") == "true",
       notice:

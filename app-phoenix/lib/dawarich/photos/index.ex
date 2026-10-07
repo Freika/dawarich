@@ -9,6 +9,7 @@ defmodule Dawarich.Photos.Index do
 
   def fetch(user, params, opts \\ []) do
     settings = Keyword.get_lazy(opts, :settings, fn -> Accounts.settings(user.id) end)
+    settings = Dawarich.UserSettings.get(%{settings: settings})
     key = ProviderCache.key(user.id, params["start_date"], params["end_date"])
 
     if Thumbnail.configured?(settings || %{}) do

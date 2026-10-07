@@ -84,17 +84,21 @@ defmodule Dawarich.UserSettings do
     end)
   end
 
-  def get(%{settings: %{} = settings}), do: settings
-  def get(_user), do: %{}
+  def provided(nil), do: %{}
+  def provided(settings), do: settings
 
-  def value(user, key), do: get(user)[key]
+  def get(%{settings: settings}) when is_map(settings) or is_nil(settings), do: safe(settings)
+  def get(%{settings: settings}), do: settings
+  def get(_user), do: safe(nil)
+
+  def value(user, key), do: safe(get(user))[key]
 
   def cast(value) when value in [nil, ""], do: nil
   def cast(value) when value in @false_values, do: false
   def cast(_value), do: true
 
   def digest?(user, key) do
-    settings = get(user)
+    settings = safe(get(user))
 
     cond do
       Map.has_key?(settings, key) ->

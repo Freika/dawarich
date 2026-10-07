@@ -80,7 +80,11 @@ defmodule Dawarich.ImportExportIndex do
 
   defp page(sql, user, list, row) do
     %{rows: rows} =
-      UserTimeZone.query!(sql, [user.id, (list.page - 1) * @per_page], user.settings)
+      UserTimeZone.query!(
+        sql,
+        [user.id, (list.page - 1) * @per_page],
+        Dawarich.UserSettings.get(user)
+      )
 
     total = if rows == [], do: 0, else: rows |> hd() |> List.last()
     %{entries: Enum.map(rows, row), total_pages: div(total + @per_page - 1, @per_page)}

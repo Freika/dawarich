@@ -156,7 +156,7 @@ defmodule Dawarich.Stats.CalculateMonth do
   end
 
   defp notify!(%{repo: repo, user: user} = ctx, message, backtrace) do
-    locale = ExploreFeatures.locale(user.settings, nil)
+    locale = ExploreFeatures.locale(Dawarich.UserSettings.get(user), nil)
     {:ok, title} = I18n.t(locale, "services.stats.calculate_month.stats_update_failed")
 
     {:ok, content} =

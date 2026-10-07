@@ -25,7 +25,7 @@ defmodule Dawarich.Tracks.DailyWorker do
              (SELECT min(p.timestamp) FROM points p WHERE p.user_id = u.id),
              floor(extract(epoch FROM to_timestamp($2) - interval '1 week'))::bigint) AS start_ts,
     EXISTS (SELECT 1 FROM tracks t WHERE t.user_id = u.id) AS has_tracks,
-    COALESCE(u.settings->>'timezone', '') AS timezone
+    u.settings
   FROM users u
   WHERE u.deleted_at IS NULL AND u.status IN (1, 2) AND u.points_count IS DISTINCT FROM 0 AND u.id > $1
   ORDER BY u.id LIMIT #{@batch_size}
@@ -91,7 +91,13 @@ defmodule Dawarich.Tracks.DailyWorker do
     end
   end
 
-  defp process(repo, oban, slot, opts, [user_id, start_ts, has_tracks, timezone]) do
+  defp process(repo, oban, slot, opts, [user_id, start_ts, has_tracks, settings]) do
+    timezone =
+      Dawarich.TimeZoneName.stored(
+        Dawarich.UserSettings.safe(settings)["timezone"],
+        System.get_env("TIME_ZONE", "UTC")
+      )
+
     cond do
       not one!(repo, @due, [user_id, start_ts]) ->
         :skipped

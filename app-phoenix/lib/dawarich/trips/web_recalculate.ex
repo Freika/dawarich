@@ -46,7 +46,7 @@ defmodule Dawarich.Trips.WebRecalculate do
   end
 
   defp settings(user) do
-    case TripSettings.read(user.settings) do
+    case TripSettings.read(Dawarich.UserSettings.get(user)) do
       {:ok, settings} -> {:ok, settings}
       :rails -> {:replay, "trip recalculate settings"}
     end

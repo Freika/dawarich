@@ -5,10 +5,14 @@ defmodule Dawarich.Tracks.BackfillCommands do
   alias Dawarich.{RailsCommands, TimeZoneName}
 
   def ingest(repo, user_id, timestamps, opts) do
-    [[zone]] =
-      repo.query!("SELECT settings->>'timezone' FROM users WHERE id = $1", [user_id], log: false).rows
+    [[settings]] =
+      repo.query!("SELECT settings FROM users WHERE id = $1", [user_id], log: false).rows
 
-    opts = opts |> Keyword.put_new(:time_zone, zone) |> Keyword.put(:legacy_ingest, true)
+    opts =
+      opts
+      |> Keyword.put_new(:time_zone, Dawarich.UserSettings.safe(settings)["timezone"])
+      |> Keyword.put(:legacy_ingest, true)
+
     put(repo, user_id, timestamps, opts)
   end
 

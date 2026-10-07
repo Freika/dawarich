@@ -19,7 +19,7 @@ defmodule Dawarich.Visits.WebEffects do
   end
 
   def zone(repo, user, context) do
-    with {:ok, setting} <- WebScope.zone(repo, user.settings),
+    with {:ok, setting} <- WebScope.zone(repo, Dawarich.UserSettings.get(user)),
          {:ok, _} <-
            WebScope.day_bounds(setting, Date.to_iso8601(DateTime.to_date(context.now)), repo),
          do: {:ok, TimeZoneName.to_iana(setting)}

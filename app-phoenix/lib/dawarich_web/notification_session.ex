@@ -83,7 +83,11 @@ defmodule DawarichWeb.NotificationSession do
           Map.update!(
             result,
             :notifications,
-            &Notifications.localize(&1, socket.assigns.current_user.settings, socket.assigns.now)
+            &Notifications.localize(
+              &1,
+              Dawarich.UserSettings.get(socket.assigns.current_user),
+              socket.assigns.now
+            )
           )
 
         Phoenix.Component.assign(socket, result)
@@ -97,7 +101,7 @@ defmodule DawarichWeb.NotificationSession do
             [notification] =
               Notifications.localize(
                 [notification],
-                socket.assigns.current_user.settings,
+                Dawarich.UserSettings.get(socket.assigns.current_user),
                 socket.assigns.now
               )
 

@@ -23,7 +23,7 @@ defmodule Dawarich.Mail.ExploreFeatures do
   ])
 
   def message(recipient, fallback_locale, env) do
-    locale = locale(recipient.settings, fallback_locale)
+    locale = locale(Dawarich.UserSettings.get(recipient), fallback_locale)
     Map.merge(render(recipient.email, locale), %{from: env["SMTP_FROM"], to: recipient.email})
   end
 
@@ -40,7 +40,7 @@ defmodule Dawarich.Mail.ExploreFeatures do
 
   def locale(settings, fallback) do
     available = Dawarich.I18n.available_locales()
-    preferred = preferred(settings)
+    preferred = preferred(Dawarich.UserSettings.safe(settings))
     fallback = normalized_locale(fallback)
 
     cond do

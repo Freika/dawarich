@@ -21,8 +21,8 @@ defmodule Dawarich.PlaceList do
   def load(user, page) do
     number = max(RubyInteger.to_i(page), 1)
 
-    if number <= @max_page and settings?(user.settings),
-      do: page(user, number, user.settings || %{}),
+    if number <= @max_page and settings?(Dawarich.UserSettings.get(user)),
+      do: page(user, number, Dawarich.UserSettings.get(user)),
       else: :rails
   end
 

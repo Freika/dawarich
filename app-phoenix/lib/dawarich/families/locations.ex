@@ -15,7 +15,7 @@ defmodule Dawarich.Families.Locations do
         sharing =
           for member <- members(family_id),
               member.id != user.id,
-              Sharing.enabled?(member.settings, now),
+              Sharing.enabled?(Dawarich.UserSettings.get(member), now),
               do: member
 
         own = Sharing.enabled?(settings, now)

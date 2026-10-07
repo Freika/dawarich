@@ -15,6 +15,8 @@ defmodule Dawarich.Transportation.UserReclassify do
               :missing
 
             [[settings]] ->
+              settings = Dawarich.UserSettings.safe(settings)
+
               if Ownership.lock(repo, "command:transportation.reclassify_track") != :oban,
                 do: repo.rollback(:source_owner)
 

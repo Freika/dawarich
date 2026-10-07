@@ -14,7 +14,7 @@ defmodule DawarichWeb.DigestsLive.Index do
 
     Map.merge(Digests.index(user.id, context), %{
       page_title: t(locale, "users.digests.index.year_end_digests", %{}),
-      unit: StatsFormat.unit(user.settings),
+      unit: StatsFormat.unit(Dawarich.UserSettings.get(user)),
       generate: user.status == 1
     })
   end

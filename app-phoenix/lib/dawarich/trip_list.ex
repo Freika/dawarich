@@ -22,10 +22,10 @@ defmodule Dawarich.TripList do
   def gate(_user, page) when page > @max_page, do: :rails
 
   def gate(user, page) do
-    with {:ok, _settings} <- TripSettings.read(user.settings),
+    with {:ok, _settings} <- TripSettings.read(Dawarich.UserSettings.get(user)),
          [[false, zone]] <-
-           UserTimeZone.query!(@gate, [user.id, offset(page)], user.settings).rows,
-         true <- TripSettings.zone?(user.settings, zone),
+           UserTimeZone.query!(@gate, [user.id, offset(page)], Dawarich.UserSettings.get(user)).rows,
+         true <- TripSettings.zone?(Dawarich.UserSettings.get(user), zone),
          true <- supported_plans?(user.id, page) do
       :phoenix
     else
@@ -57,10 +57,11 @@ defmodule Dawarich.TripList do
   def load(_user, page) when page > @max_page, do: :rails
 
   def load(user, page) do
-    with {:ok, settings} <- TripSettings.read(user.settings),
-         %{rows: rows} <- UserTimeZone.query!(@page, [user.id, offset(page)], user.settings),
+    with {:ok, settings} <- TripSettings.read(Dawarich.UserSettings.get(user)),
+         %{rows: rows} <-
+           UserTimeZone.query!(@page, [user.id, offset(page)], Dawarich.UserSettings.get(user)),
          false <- Enum.any?(rows, &Enum.at(&1, 8)),
-         true <- zone_ok?(user.settings, rows),
+         true <- zone_ok?(Dawarich.UserSettings.get(user), rows),
          true <- supported_plans?(user.id, page) do
       {:ok,
        %{

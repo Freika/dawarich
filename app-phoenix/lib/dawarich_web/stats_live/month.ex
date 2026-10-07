@@ -28,7 +28,7 @@ defmodule DawarichWeb.StatsLive.Month do
     data = Stats.month(user, year, month, context, previous_month: month - 1)
     if data.stat, do: validate_daily!(data.stat.daily)
     peak = data.stat && StatsFormat.peak(data.stat.daily)
-    settings = if is_map(user.settings), do: user.settings, else: %{}
+    settings = Dawarich.UserSettings.safe(Dawarich.UserSettings.get(user))
 
     %{
       page_title:
