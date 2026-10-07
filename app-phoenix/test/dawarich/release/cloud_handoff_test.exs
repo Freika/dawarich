@@ -101,7 +101,65 @@ defmodule Dawarich.Release.CloudHandoffTest do
     :ok
   end
 
-  test "L1 handoff component provisions schema-owner Cloud with all real callback owners" do
+  test "L1 handoff self-hosted creation and registration send no Cloud callbacks" do
+    assert :ok = Cloud.migrate(ScratchRepo, opts())
+    start_jobs()
+    cloud_keys = ~w(SELF_HOSTED DAWARICH_RAILS DAWARICH_PHOENIX_LIFECYCLE)
+    env = Map.drop(@env, cloud_keys)
+    for key <- cloud_keys, do: System.delete_env(key)
+
+    ctx =
+      context()
+      |> Map.delete(:self_hosted)
+      |> Map.put(:env, env)
+      |> Map.put(:registration_enabled, true)
+      |> Map.put(:oidc, false)
+
+    assert {:ok, result} =
+             Registration.register(
+               %{
+                 "email" => "signup@example.invalid",
+                 "password" => "synthetic-password",
+                 "password_confirmation" => "synthetic-password"
+               },
+               %{"partnero_referral" => "synthetic-referral"},
+               ctx
+             )
+
+    assert result.signed_in
+    assert result.location == "/"
+    assert result.session["partnero_referral"] == "synthetic-referral"
+    ordinary = ordinary!(env)
+
+    for id <- [result.user.id, ordinary] do
+      assert sql("SELECT status,length(api_key),active_until > $2 FROM users WHERE id=$1", [
+               id,
+               DateTime.to_naive(@now)
+             ]) == [[1, 64, true]]
+
+      assert Processed.done?(
+               ScratchRepo,
+               Dawarich.AfterCommit.identity(id, "users.creation_effects")
+             )
+    end
+
+    assert sql("SELECT command_type FROM job_outbox") == []
+    assert dispatch() == %{}
+
+    for worker <- [
+          CreationWebhookWorker,
+          CustomerSignupWorker,
+          Dawarich.Mail.WelcomeWorker,
+          Dawarich.Mail.ExploreFeaturesWorker
+        ],
+        do: deliver(worker)
+
+    assert effects() == []
+    refute_received {:provider, _, _}
+    refute_received {:mail, _}
+  end
+
+  test "L1 handoff provisions schema-owner Cloud and delivers each callback to its own user" do
     role = "l1_handoff_" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
     sql("CREATE ROLE #{role} LOGIN PASSWORD 'synthetic-handoff-role'")
     for schema <- ~w(public phoenix oban), do: sql("ALTER SCHEMA #{schema} OWNER TO #{role}")
@@ -164,6 +222,14 @@ defmodule Dawarich.Release.CloudHandoffTest do
     ordinary = ordinary!()
     dispatch()
     deliver(CreationWebhookWorker)
+
+    assert_receive {:provider, "/api/v1/users",
+                    %{
+                      "action" => "create_user",
+                      "user_id" => ^ordinary,
+                      "email" => "ordinary@example.invalid"
+                    }}
+
     deliver(Dawarich.Mail.WelcomeWorker)
     assert_receive {:mail, %{to: "ordinary@example.invalid"}}
 
@@ -188,12 +254,7 @@ defmodule Dawarich.Release.CloudHandoffTest do
     assert_receive {:provider, "/api/v1/users/unlink",
                     %{"user_id" => ^ordinary, "action" => "destroy_user"}}
 
-    assert Enum.frequencies_by(effects(), &elem(&1, 0)) == %{
-             "/api/v1/users" => 2,
-             "/api/v1/users/unlink" => 1,
-             "/v1/customers" => 1,
-             :mail => 2
-           }
+    assert_effects(user.id, ordinary, 2, true)
 
     assert_handoff("ED-552")
   end
@@ -221,6 +282,7 @@ defmodule Dawarich.Release.CloudHandoffTest do
     deliver(CreationWebhookWorker)
     deliver(CustomerSignupWorker)
     deliver(Dawarich.Mail.WelcomeWorker)
+    assert_effects(user.id, ordinary, 1)
     assert_receive {:mail, %{to: "ordinary@example.invalid"}}
     backfill(user.id)
     before = snapshot()
@@ -245,6 +307,7 @@ defmodule Dawarich.Release.CloudHandoffTest do
 
     refute_received {:mail, _}
     delete(ordinary)
+    assert_effects(user.id, ordinary, 1, true)
 
     [[unlink]] =
       sql("SELECT event_id::text FROM job_outbox WHERE command_type='users.destruction_webhook'")
@@ -321,7 +384,7 @@ defmodule Dawarich.Release.CloudHandoffTest do
     result.user
   end
 
-  defp ordinary! do
+  defp ordinary!(env \\ @env) do
     user =
       Dawarich.Test.RailsUser.insert!(
         %{
@@ -335,7 +398,7 @@ defmodule Dawarich.Release.CloudHandoffTest do
 
     assert {:ok, :ok} =
              ScratchRepo.transaction(fn ->
-               CreationEffects.apply(ScratchRepo, user.id, env: @env, now: @now)
+               CreationEffects.apply(ScratchRepo, user.id, env: env, now: @now)
              end)
 
     user.id
@@ -393,7 +456,7 @@ defmodule Dawarich.Release.CloudHandoffTest do
 
     Agent.update(
       Application.fetch_env!(:dawarich, :l1_handoff_effects),
-      &[{path, payload["user_id"] || payload["key"]} | &1]
+      &[{path, {payload["user_id"] || payload["key"], payload["action"]}} | &1]
     )
 
     send(Application.fetch_env!(:dawarich, :l1_handoff_receiver), {:provider, path, payload})
@@ -469,6 +532,22 @@ defmodule Dawarich.Release.CloudHandoffTest do
   end
 
   defp effects, do: Agent.get(Application.fetch_env!(:dawarich, :l1_handoff_effects), & &1)
+
+  defp assert_effects(signup, ordinary, mails, unlinked \\ false) do
+    expected = %{
+      {"/api/v1/users", {signup, "create_user"}} => 1,
+      {"/api/v1/users", {ordinary, "create_user"}} => 1,
+      {"/v1/customers", {Integer.to_string(signup), nil}} => 1,
+      {:mail, "ordinary@example.invalid"} => mails
+    }
+
+    expected =
+      if unlinked,
+        do: Map.put(expected, {"/api/v1/users/unlink", {ordinary, "destroy_user"}}, 1),
+        else: expected
+
+    assert Enum.frequencies(effects()) == expected
+  end
 
   defp snapshot do
     for table <-
