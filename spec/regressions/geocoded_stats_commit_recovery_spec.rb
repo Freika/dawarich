@@ -87,15 +87,17 @@ RSpec.describe 'Geocoded statistics commit recovery', :non_transactional, thread
   it 'retries cache invalidation after the result has already committed' do
     stat.id
     ReverseGeocoding::Points::FetchData.new(point.id).call
-    allow(Rails.cache).to receive(:delete).and_raise(IOError, 'cache unavailable')
+    cache = Cache::InvalidateUserCaches.new(user.id).send(:cache)
+    allow(ActiveSupport::Cache::RedisCacheStore).to receive(:new).and_return(cache)
+    allow(cache).to receive(:delete).and_raise(IOError, 'cache unavailable')
     expect { Stats::RefreshToponyms.new(user, 2014, 6, invalidate_cache: true).call }.to raise_error(IOError)
     expect(stat.reload.toponyms.first['country']).to eq('Germany')
-    allow(Rails.cache).to receive(:delete).and_call_original
+    allow(cache).to receive(:delete).and_call_original
     travel 61.minutes do
       Stats::ToponymsRefreshJob.perform_now
       expect(Stats::GeocodedDays.due(limit: 10)).to be_empty
     end
-    expect(Rails.cache).to have_received(:delete).with("dawarich/user_#{user.id}_countries_visited").twice
+    expect(cache).to have_received(:delete).with("dawarich/user_#{user.id}_countries_visited").twice
   end
 
   it 'excludes a second worker while another holder keeps the global refresh lease' do

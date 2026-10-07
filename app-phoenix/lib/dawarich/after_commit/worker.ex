@@ -11,20 +11,21 @@ defmodule Dawarich.AfterCommit.Worker do
 
     intent = args["intent_id"]
 
-    repo.checkout(fn ->
-      repo.query!("SELECT pg_advisory_lock(hashtextextended($1,0))", [intent], log: false)
+    case repo.transaction(fn ->
+           repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [intent],
+             log: false
+           )
 
-      try do
-        if not Dawarich.Jobs.Processed.done?(repo, intent) do
-          :ok = execute(repo, args["operation"], args["payload"], intent)
-          Dawarich.Jobs.Processed.mark!(repo, intent, "after_commit")
-        end
+           if not Dawarich.Jobs.Processed.done?(repo, intent) do
+             :ok = execute(repo, args["operation"], args["payload"], intent)
+             Dawarich.Jobs.Processed.mark!(repo, intent, "after_commit")
+           end
 
-        :ok
-      after
-        repo.query!("SELECT pg_advisory_unlock(hashtextextended($1,0))", [intent], log: false)
-      end
-    end)
+           :ok
+         end) do
+      {:ok, :ok} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
   rescue
     error -> {:error, error}
   catch
