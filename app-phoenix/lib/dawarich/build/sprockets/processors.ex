@@ -74,9 +74,15 @@ defmodule Dawarich.Build.Sprockets.Processors do
     end
   end
 
-  defp semicolon_end?(part) do
-    stripped = Regex.replace(~r/[\n \t]+\z/, part, "")
-    stripped == "" or String.ends_with?(stripped, ";")
+  defp semicolon_end?(part), do: semicolon_end?(part, byte_size(part) - 1)
+  defp semicolon_end?(_part, -1), do: true
+
+  defp semicolon_end?(part, index) do
+    case :binary.at(part, index) do
+      char when char in [?\n, ?\s, ?\t] -> semicolon_end?(part, index - 1)
+      ?; -> true
+      _ -> false
+    end
   end
 
   defp strip_bom(<<0xEF, 0xBB, 0xBF, rest::binary>>, _file), do: rest

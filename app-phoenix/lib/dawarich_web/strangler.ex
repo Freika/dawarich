@@ -208,8 +208,9 @@ defmodule DawarichWeb.Strangler do
 
   defp slice_owned?(_route, _conn), do: true
 
-  def gate_open?(%{rails_gate: {module, function}, path_params: params}, conn) do
-    apply(module, function, [conn, params])
+  def gate_open?(%{rails_gate: {module, function}, path_params: params} = route, conn) do
+    DawarichWeb.AuthenticatedPageGate.admit?(route, conn) or
+      apply(module, function, [conn, params])
   rescue
     error -> handed_to_rails(conn, inspect(error.__struct__))
   catch

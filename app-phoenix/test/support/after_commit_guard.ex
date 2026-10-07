@@ -17,10 +17,12 @@ defmodule Dawarich.Test.AfterCommitGuard do
           into: MapSet.new(),
           do: key
 
+    reachable = reachable_sinks(graph, sinks)
+
     for {key, body, aliases, module, file, _params} <- modules,
         closure <- Dawarich.Test.TransactionRoots.find(body, aliases, module, definitions),
         target <- if(sink?(closure, aliases), do: [key], else: calls(closure, aliases, module)),
-        reaches?(target, graph, sinks, MapSet.new()),
+        MapSet.member?(reachable, target),
         do: {file, key, target}
   end
 
@@ -186,22 +188,31 @@ defmodule Dawarich.Test.AfterCommitGuard do
     found
   end
 
-  defp reaches?(target, graph, sinks, seen) do
-    cond do
-      target == {"Elixir.Dawarich.RailsCache", :entry, 3} ->
-        false
+  defp reachable_sinks(graph, sinks) do
+    barrier = {"Elixir.Dawarich.RailsCache", :entry, 3}
 
-      MapSet.member?(sinks, target) ->
-        true
+    reverse =
+      for {source, targets} <- graph,
+          source != barrier,
+          target <- targets,
+          target != barrier,
+          reduce: %{} do
+        acc -> Map.update(acc, target, [source], &[source | &1])
+      end
 
-      MapSet.member?(seen, target) ->
-        false
+    mark_reachable(sinks |> MapSet.delete(barrier) |> MapSet.to_list(), reverse, MapSet.new())
+  end
 
-      true ->
-        Enum.any?(
-          Map.get(graph, target, []),
-          &reaches?(&1, graph, sinks, MapSet.put(seen, target))
+  defp mark_reachable([], _reverse, reachable), do: reachable
+
+  defp mark_reachable([target | rest], reverse, reachable) do
+    if MapSet.member?(reachable, target),
+      do: mark_reachable(rest, reverse, reachable),
+      else:
+        mark_reachable(
+          Map.get(reverse, target, []) ++ rest,
+          reverse,
+          MapSet.put(reachable, target)
         )
-    end
   end
 end
