@@ -35,6 +35,8 @@ defmodule Dawarich.Auth.RegistrationAttribution do
     session
   end
 
+  def consume(session), do: Map.drop(session, @utm ++ ["partnero_referral"])
+
   def store(session, params) do
     session =
       Enum.reduce(@utm, session, fn key, acc ->
@@ -55,7 +57,12 @@ defmodule Dawarich.Auth.RegistrationAttribution do
       Enum.find_value(~w(aff via), fn key -> if present?(params[key]), do: params[key] end)
 
     if referral,
-      do: Map.put(session, "partnero_referral", String.slice(referral, 0, 255)),
+      do:
+        Map.put(
+          session,
+          "partnero_referral",
+          referral |> String.codepoints() |> Enum.take(255) |> Enum.join()
+        ),
       else: session
   end
 

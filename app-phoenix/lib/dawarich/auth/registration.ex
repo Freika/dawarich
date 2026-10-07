@@ -14,7 +14,25 @@ defmodule Dawarich.Auth.Registration do
     )
   end
 
+  def register(params, session, context) do
+    repo = Map.get(context, :repo, Repo)
+    context = RegistrationPolicy.context(context)
+
+    repo.transaction(fn ->
+      create = if context[:registration_channel] == :mobile, do: &create_mobile/2, else: &create/2
+
+      with {:ok, user} <- create.(params, context),
+           {:ok, result} <-
+             Dawarich.Auth.RegistrationSetup.complete(user, params, session, context) do
+        result
+      else
+        {:error, reason} -> repo.rollback(reason)
+      end
+    end)
+  end
+
   defp create_account(params, context) do
+    context = RegistrationPolicy.context(context)
     repo = Map.get(context, :repo, Repo)
     email = Account.normalize_email(params["email"] || "")
     invitation = context[:invitation]
@@ -105,8 +123,18 @@ defmodule Dawarich.Auth.Registration do
                   ],
                   log: false
                 ).rows do
-             [[id]] -> id
-             [] -> repo.rollback(:duplicate)
+             [[id]] ->
+               case Dawarich.Users.CreationEffects.apply(
+                      repo,
+                      id,
+                      Dawarich.Auth.RegistrationCallbacks.creation_options(context)
+                    ) do
+                 :ok -> id
+                 {:error, reason} -> repo.rollback(reason)
+               end
+
+             [] ->
+               repo.rollback(:duplicate)
            end
          end) do
       {:ok, id} ->
@@ -120,6 +148,9 @@ defmodule Dawarich.Auth.Registration do
            messages:
              AccountValidation.messages([{:email, :taken, %{}}], Map.get(context, :locale, "en"))
          }}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 end

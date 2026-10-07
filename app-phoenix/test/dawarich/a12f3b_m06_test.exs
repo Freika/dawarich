@@ -84,4 +84,35 @@ defmodule Dawarich.A12f3bM06Test do
     assert_received {:mail, _}
     assert rows("SELECT deleted_at FROM users WHERE id=$1", [id]) == [[nil]]
   end
+
+  test "L1 distinct account link tokens retain independent mail intents and replay receipts" do
+    id = user!()
+
+    for action <- ["oauth_account_link", "account_destroy_confirmation"] do
+      payload =
+        Base.url_encode64(Jason.encode!(%{"exp" => System.os_time(:second) + 1800}),
+          padding: false
+        )
+
+      first = "https://account.example.test/confirm?token=first.#{payload}.signature"
+      second = "https://account.example.test/confirm?token=second.#{payload}.signature"
+      opts = [provider_label: "Google", locale: "fr"]
+      assert {:ok, :ok} = UserCallbacks.link(ScratchRepo, action, id, first, opts)
+      assert {:ok, :ok} = UserCallbacks.link(ScratchRepo, action, id, second, opts)
+      assert {:ok, :ok} = UserCallbacks.link(ScratchRepo, action, id, first, opts)
+      command = "mail.user." <> action
+      assert rows("SELECT count(*) FROM job_outbox WHERE command_type=$1", [command]) == [[2]]
+
+      [[event]] =
+        rows(
+          "SELECT event_id FROM job_outbox WHERE command_type=$1 AND payload->>'link_url'=$2",
+          [command, first]
+        )
+
+      Dawarich.Jobs.Processed.mark!(ScratchRepo, Ecto.UUID.load!(event), command)
+      rows("DELETE FROM job_outbox WHERE event_id=$1", [event])
+      assert {:ok, :ok} = UserCallbacks.link(ScratchRepo, action, id, first, opts)
+      assert rows("SELECT count(*) FROM job_outbox WHERE command_type=$1", [command]) == [[1]]
+    end
+  end
 end
