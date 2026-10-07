@@ -12,6 +12,10 @@ Manual removal with extracted children uses a native worker carrying actor, sour
 
 Native deletion callbacks schedule actor-scoped place cleanup and track reclassification. Deletion stores affected months before removing points, then schedules affected/current/stat-record months and achievement invalidation. Status and completion notify the existing native imports stream under the destruction fence. A removed import can finish native terminal effects using the original actor/event/job proof. Coexistence source-owned callbacks and handbacks remain.
 
+## Post-hoc correction dependency
+
+Extraction failure settlement and storage-first native purge are corrected with named regression probes in `fix_rximports_test.exs`. The deletion completion rollback probe remains pending on the shared after-commit primitive reaching the integration branch. Status/completion publication in `DestroyEffects` still occurs inside its fenced transaction; a rejected terminal commit can emit a completion wakeup. This package does not introduce a local substitute for the shared primitive.
+
 ## Integration handoff
 
 HOT owns final registry, routing, and reverse-kind readiness. Existing roots already have registry entries; the new purge and extraction-removal jobs are direct native children. Do not remove retained source kinds or accepted-work handlers as part of this package.
