@@ -33,6 +33,98 @@ defmodule DawarichWeb.PointsLiveTest do
   defp attr(html, selector, name),
     do: html |> LazyHTML.from_fragment() |> LazyHTML.query(selector) |> LazyHTML.attribute(name)
 
+  @tag :standalone_search
+  test "standalone Rails search form retains filters pagination user scope and signed bulk deletion",
+       %{user: user} do
+    previous = Map.take(System.get_env(), ~w(DAWARICH_RAILS SELF_HOSTED))
+    System.put_env(%{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => "true"})
+
+    on_exit(fn ->
+      for key <- ~w(DAWARICH_RAILS SELF_HOSTED) do
+        if previous[key], do: System.put_env(key, previous[key]), else: System.delete_env(key)
+      end
+    end)
+
+    fill(user, 51)
+    foreign = FrameSeeds.user!(8372, %{"timezone" => "UTC"})
+    FrameSeeds.point!(foreign.id, 837_201, 1_772_359_200)
+    FrameSeeds.point!(user.id, 837_202, 1_600_000_000)
+    stamp = ~N[2026-03-01 10:00:00]
+
+    Repo.insert_all("imports", [
+      %{id: 83711, user_id: user.id, name: "Synthetic.json", created_at: stamp, updated_at: stamp}
+    ])
+
+    Repo.query!("UPDATE points SET import_id=83711 WHERE id=837101")
+
+    query =
+      "start_at=2026-03-01T10%3A00&end_at=2026-03-02T10%3A00&import_id=&commit=Search&order_by=asc"
+
+    session = Dawarich.Test.RailsUser.session(user.id)
+
+    conn =
+      RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id) |> get("/points?" <> query)
+
+    assert conn.status == 200
+    {:ok, view, html} = live(conn)
+
+    assert attr(html, "#points input[name='point_ids[]']", "value") ==
+             Enum.map(837_101..837_150, &to_string/1)
+
+    refute html =~ "point_837201"
+    refute html =~ "point_837202"
+    assert attr(html, "#bulk_destroy_form input[name='authenticity_token']", "value") != []
+    assert attr(html, "#bulk_destroy_form input[name='_method']", "value") == ["delete"]
+    assert attr(html, "input[name='start_at']", "value") == ["2026-03-01T10:00"]
+    assert attr(html, "select[name='import_id'] option", "value") == ["", "83711"]
+
+    html =
+      view |> element(".flex.justify-center.mb-4 [aria-label='pager'] a", "2") |> render_click()
+
+    assert attr(html, "#points input[name='point_ids[]']", "value") == ["837151"]
+
+    assert_patch(
+      view,
+      "/points?end_at=2026-03-02T10%3A00&import_id=&order_by=asc&page=2&start_at=2026-03-01T10%3A00"
+    )
+
+    {:ok, _, filtered} =
+      live_as(user, "/points?" <> String.replace(query, "import_id=", "import_id=83711"))
+
+    assert attr(filtered, "#points input[name='point_ids[]']", "value") == ["837101"]
+
+    path = "/points/bulk_destroy?" <> query
+    unsigned = post_bulk(session, path, "_method=delete&point_ids[]=837101")
+    assert unsigned.status == 422
+
+    signed =
+      "_method=delete&point_ids[]=837101&point_ids[]=837201&authenticity_token=" <>
+        URI.encode_www_form(DawarichWeb.RailsCsrf.masked_token(session))
+
+    deleted = post_bulk(session, path, signed)
+    assert deleted.status == 303
+
+    assert URI.decode_query(URI.parse(hd(get_resp_header(deleted, "location"))).query) == %{
+             "start_at" => "2026-03-01T10:00",
+             "end_at" => "2026-03-02T10:00",
+             "import_id" => "",
+             "order_by" => "asc"
+           }
+
+    assert Repo.query!("SELECT id FROM points WHERE id IN (837101,837201) ORDER BY id").rows == [
+             [837_201]
+           ]
+  end
+
+  defp post_bulk(session, path, body) do
+    build_conn()
+    |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+    |> put_req_header("content-type", "application/x-www-form-urlencoded")
+    |> put_req_header("content-length", to_string(byte_size(body)))
+    |> put_req_header("accept", "text/html")
+    |> post(path, body)
+  end
+
   test "coordinates velocity and seconds match Rails table formatting" do
     assert PointListFormat.coordinates(%{lat: 51.339700123456, lon: 12.373468123456}) ==
              "51.339700, 12.373468"
