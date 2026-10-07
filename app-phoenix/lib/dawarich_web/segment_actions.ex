@@ -3,7 +3,7 @@ defmodule DawarichWeb.SegmentActions do
   @behaviour Plug
   import Plug.Conn
   alias Dawarich.{Repo, Timeline.Days, Tracks.SegmentEditor}
-  alias DawarichWeb.{Locale, RailsCsrf, RequestURL, SegmentWriteResponse}
+  alias DawarichWeb.{Locale, RailsCsrf, SegmentWriteResponse}
   alias DawarichWeb.Api.Body
 
   @impl true
@@ -64,28 +64,5 @@ defmodule DawarichWeb.SegmentActions do
     end
   end
 
-  def back(conn) do
-    case get_req_header(conn, "referer") do
-      [] ->
-        {:ok, RequestURL.base(conn) <> "/"}
-
-      [value] ->
-        uri = URI.parse(value)
-        base = URI.parse(RequestURL.base(conn))
-
-        relative =
-          is_nil(uri.host) and is_nil(uri.scheme) and String.starts_with?(value, "/") and
-            not String.starts_with?(value, "//")
-
-        same = uri.host == base.host and uri.scheme == base.scheme and uri.port == base.port
-
-        if not String.contains?(value, ["\\", "\r", "\n"]) and is_nil(uri.userinfo) and
-             (relative or same),
-           do: {:ok, if(relative, do: RequestURL.base(conn) <> value, else: value)},
-           else: :rails
-
-      _ ->
-        :rails
-    end
-  end
+  def back(conn), do: {:ok, DawarichWeb.RailsRedirect.back(conn)}
 end

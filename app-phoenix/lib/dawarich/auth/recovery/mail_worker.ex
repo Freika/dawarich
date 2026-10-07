@@ -102,8 +102,7 @@ defmodule Dawarich.Auth.Recovery.MailWorker do
   end
 
   defp transport?(env) do
-    SmtpConfig.options(env)
-    true
+    SmtpConfig.admitted?(env)
   rescue
     ArgumentError -> false
   end

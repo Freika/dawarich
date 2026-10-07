@@ -690,6 +690,13 @@ source debt or weaken Cloud lifecycle refusal.
 | --- | --- | --- | --- | --- |
 | ED-FIX-SA-PENDING | Active OTP challenge plus another valid credential | A successful full login leaves the earlier actor's challenge active; Warden or remember authentication can render protected pages while that challenge remains. | Standalone full sign-in clears all four OTP session keys; an active challenge refuses Warden and remember identities at shared page admission. Expired challenges and coexistence retain their existing behavior. | Controller fix2-fix-sa-auth-pages F1; `F1 full login of actor B clears actor A's active OTP challenge`; `F1 active pending challenge refuses Warden and remember credentials at shared pages`; [auth contract](../../docs/phoenix/standalone-auth-pages.md). |
 
+## Native Referer syntax admission
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-SA-TREK-REFERER-SYNTAX | Native redirect-back and url-from sites | Rails compares the parsed host with request.host; valid same-host userinfo and protocol-relative targets can be admitted. | Shared RailsRedirect retains host comparison and other HTTP(S) scheme/port acceptance, but rejects backslashes, userinfo, embedded control/whitespace and protocol-relative forms before comparing hosts. Surrounding whitespace is trimmed. Rejected targets use each action's Rails fallback. | Controller fix-sa-trek ruling 2026-10-07; named F1/F2/F3 regressions and the new-handler guard; [native redirect contract](../../docs/phoenix/standalone-trek-sources.md). |
+| ED-FIX-SA-TREK-REFERER-SCHEME | Native redirect-back scheme admission | Rails host-only validation admits same-host authority URLs with JavaScript, data and other non-HTTP schemes (`app/controllers/achievements_controller.rb:45`). | After trimming, only case-insensitive HTTP/HTTPS absolute URLs on the request host or scheme-less single-slash relative paths are admitted. Every other scheme selects the action's Rails fallback. | Controller fix4-fix-sa-trek security ruling 2026-10-07; named scheme matrix and signed standalone sharing regression, each with RED/GREEN/mutation evidence; [native redirect contract](../../docs/phoenix/standalone-trek-sources.md). |
+
 ## Orphan-place reference preservation
 
 | ID | Surface | Rails | Phoenix | Evidence / authority |

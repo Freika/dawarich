@@ -38,14 +38,6 @@ defmodule DawarichWeb.AdminWrites.Fallback do
         "controllers.application.you_are_not_authorized_to_perform_this_action"
       )
 
-    base = DawarichWeb.RequestURL.base(conn)
-    referer = List.first(get_req_header(conn, "referer"))
-
-    path =
-      if is_binary(referer) and String.starts_with?(referer, base <> "/"),
-        do: String.replace_prefix(referer, base, ""),
-        else: "/"
-
-    Response.redirect(conn, 303, path, :alert, message)
+    Response.redirect(conn, 303, DawarichWeb.RailsRedirect.back(conn), :alert, message)
   end
 end

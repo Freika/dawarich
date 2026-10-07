@@ -119,6 +119,13 @@ defmodule Dawarich.UserData.RestoreEntitiesTest do
                c.user_id
              ])
 
+    assert [[source]] =
+             rows(
+               "SELECT payload->>'source_job_id' FROM phoenix.rails_commands WHERE kind='stats.calculate_month'"
+             )
+
+    assert Ecto.UUID.cast(source) == {:ok, source}
+
     assert [
              [
                %{
@@ -130,7 +137,9 @@ defmodule Dawarich.UserData.RestoreEntitiesTest do
                }
              ]
            ] ==
-             rows("SELECT payload FROM phoenix.rails_commands WHERE kind='stats.calculate_month'")
+             rows(
+               "SELECT payload - 'source_job_id' FROM phoenix.rails_commands WHERE kind='stats.calculate_month'"
+             )
 
     assert {:error, :synthetic_rollback} =
              ScratchRepo.transaction(fn ->

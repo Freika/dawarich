@@ -85,7 +85,9 @@ defmodule DawarichWeb.StandaloneSettingsFlowTest do
                to_string(c.actor.id)
              ])
 
-    assert args == %{
+    assert {:ok, _} = Ecto.UUID.cast(args["event_id"])
+
+    assert Map.delete(args, "event_id") == %{
              "user_id" => c.actor.id,
              "year" => 2025,
              "month" => 10,

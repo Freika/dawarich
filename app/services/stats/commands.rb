@@ -23,8 +23,7 @@ module Stats
         }
       },
       'stats.calculate_month' => {
-        guard: 'Stats::CalculatingJob recomputes the month from current points and flights under stat.lock!; ' \
-               'a repeat costs one more convergent calculation',
+        guard: 'The monthly execution receipt commits atomically with the accepted result',
         call: lambda { |payload|
           next unless User.exists?(id: payload.fetch('user_id'))
 
@@ -53,10 +52,14 @@ module Stats
     end
 
     def calculate(payload, at)
-      Stats::CalculatingJob.set(wait_until: at).perform_later(
+      options = { notify_on_failure: payload.fetch('notify_on_failure') }
+      options[:execution_receipt] = payload['source_job_id'] if payload['source_job_id']
+      job = Stats::CalculatingJob.new(
         payload.fetch('user_id'), payload.fetch('year'), payload.fetch('month'),
-        notify_on_failure: payload.fetch('notify_on_failure')
+        **options
       )
+      job.job_id = payload['source_job_id'] if payload['source_job_id']
+      job.enqueue(wait_until: at)
     end
   end
 end

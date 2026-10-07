@@ -1,6 +1,6 @@
 defmodule Dawarich.Mail.Smtp do
   @moduledoc false
-  alias Dawarich.Mail.SmtpConfig
+  alias Dawarich.Mail.{SmtpConfig, SmtpTransport}
 
   def deliver(message, env) do
     envelope = {SmtpConfig.envelope_from(message.from), [message.to], data(message)}
@@ -8,7 +8,11 @@ defmodule Dawarich.Mail.Smtp do
     options = SmtpConfig.options(env)
 
     result =
-      Task.async(fn -> :gen_smtp_client.send_blocking(envelope, options) end)
+      Task.async(fn ->
+        if options[:auth] == :always,
+          do: SmtpTransport.send(envelope, options),
+          else: :gen_smtp_client.send_blocking(envelope, options)
+      end)
       |> Task.await(:infinity)
 
     case result do

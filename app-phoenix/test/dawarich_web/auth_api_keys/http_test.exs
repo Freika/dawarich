@@ -13,6 +13,7 @@ defmodule DawarichWeb.AuthApiKeys.HttpTest do
 
   defmodule CountingRepo do
     defdelegate one(query), to: Dawarich.Repo
+    defdelegate one(query, opts), to: Dawarich.Repo
     defdelegate transaction(fun), to: Dawarich.Repo
     defdelegate insert!(changeset, opts), to: Dawarich.Repo
     defdelegate query!(query, params, opts), to: Dawarich.Repo
@@ -72,6 +73,31 @@ defmodule DawarichWeb.AuthApiKeys.HttpTest do
     %{session: session, opts: opts}
   end
 
+  @tag :safe_back3
+  test "F3 API key rotation admits relative returns and falls back after unsafe Referers", c do
+    for {referer, location} <- [
+          {"/users/edit", "http://www.example.com/users/edit"},
+          {"https://foreign.dawarich.test/users/edit", "http://www.example.com/"},
+          {"http://user@www.example.com/users/edit", "http://www.example.com/"},
+          {"https://www.example.com:8443/users/edit?tab=key#api",
+           "https://www.example.com:8443/users/edit?tab=key#api"}
+        ] do
+      before = snapshot()["api_key"]
+
+      result =
+        request(c.session, "")
+        |> put_req_header("x-csrf-token", RailsCsrf.masked_token(c.session))
+        |> put_req_header("referer", referer)
+        |> Http.call(Keyword.put(c.opts, :native, true))
+
+      assert result.status == 302
+      assert get_resp_header(result, "location") == [location]
+      assert snapshot()["api_key"] != before
+      assert_received :key_write
+      refute_received {:replayed, _, _}
+    end
+  end
+
   test "key rotation matches the Rails redirect and CSRF contract", c do
     assert Code.ensure_loaded?(Http), "key HTTP module must exist"
 
@@ -111,9 +137,6 @@ defmodule DawarichWeb.AuthApiKeys.HttpTest do
 
     invalid =
       [
-        put_req_header(base, "referer", "https://foreign.dawarich.test/users/edit"),
-        put_req_header(base, "referer", "/users/edit"),
-        put_req_header(base, "referer", "http://user@www.example.com/users/edit"),
         put_req_header(base, "x-csrf-token", "bad"),
         delete_req_header(base, "x-csrf-token"),
         put_req_header(base, "origin", "https://foreign.dawarich.test"),

@@ -103,21 +103,7 @@ defmodule DawarichWeb.AuthApiKeys.Http do
     end
   end
 
-  defp location(conn) do
-    case get_req_header(conn, "referer") do
-      [] ->
-        {:ok, RequestURL.base(conn) <> "/"}
-
-      [referer] ->
-        uri = URI.parse(referer)
-        base = URI.parse(RequestURL.base(conn))
-
-        if uri.scheme == base.scheme and uri.host == base.host and uri.port == base.port and
-             is_nil(uri.userinfo) and is_binary(uri.path) and String.starts_with?(uri.path, "/"),
-           do: {:ok, referer},
-           else: {:handoff, :referer}
-    end
-  end
+  defp location(conn), do: {:ok, DawarichWeb.RailsRedirect.back(conn)}
 
   defp read_all(conn, acc) do
     case read_body(conn, RailsProxy.read_options()) do

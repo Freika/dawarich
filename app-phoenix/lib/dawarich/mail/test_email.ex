@@ -9,8 +9,7 @@ defmodule Dawarich.Mail.TestEmail do
 
   def supported?(env) do
     if configured?(env) do
-      SmtpConfig.options(env)
-      true
+      SmtpConfig.admitted?(env)
     else
       true
     end
