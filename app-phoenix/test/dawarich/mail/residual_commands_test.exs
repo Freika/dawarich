@@ -60,8 +60,19 @@ defmodule Dawarich.Mail.ResidualCommandsTest do
           |> Map.put("locale", if(preference == "invalid", do: "en", else: "de"))
 
         assert payload == expected
-        assert Dispatch.run(repo: ScratchRepo, oban: :residual_commands) == %{dispatched: 1}
-        assert Dispatch.run(repo: ScratchRepo, oban: :residual_commands) == %{}
+
+        assert Dispatch.run(
+                 now: Dawarich.JobsCase.db_now(ScratchRepo),
+                 repo: ScratchRepo,
+                 oban: :residual_commands
+               ) == %{dispatched: 1}
+
+        assert Dispatch.run(
+                 now: Dawarich.JobsCase.db_now(ScratchRepo),
+                 repo: ScratchRepo,
+                 oban: :residual_commands
+               ) == %{}
+
         assert [[1]] = rows("SELECT count(*) FROM oban.oban_jobs")
         assert [[job_args]] = rows("SELECT args FROM oban.oban_jobs")
         assert Map.delete(job_args, "event_id") == expected
@@ -104,7 +115,12 @@ defmodule Dawarich.Mail.ResidualCommandsTest do
         assert [["mail.family_location_request", ^payload]] =
                  rows("SELECT command_type,payload FROM public.job_outbox")
 
-        assert Dispatch.run(repo: ScratchRepo, oban: :residual_commands) == %{dispatched: 1}
+        assert Dispatch.run(
+                 now: Dawarich.JobsCase.db_now(ScratchRepo),
+                 repo: ScratchRepo,
+                 oban: :residual_commands
+               ) == %{dispatched: 1}
+
         assert [[1]] = rows("SELECT count(*) FROM oban.oban_jobs")
       end
     end

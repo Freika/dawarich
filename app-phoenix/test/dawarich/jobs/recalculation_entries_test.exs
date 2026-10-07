@@ -119,7 +119,9 @@ defmodule Dawarich.Jobs.RecalculationEntriesTest do
 
     assert RecalculateWorker.args_from_command(1, payload) == {:ok, payload}
     event = outbox!(command_type: "users.recalculate_data", payload: payload)
-    assert Dispatch.run(repo: ScratchRepo, oban: oban) == %{dispatched: 1}
+
+    assert Dispatch.run(now: Dawarich.JobsCase.db_now(ScratchRepo), repo: ScratchRepo, oban: oban) ==
+             %{dispatched: 1}
 
     assert [[args, "Dawarich.Users.RecalculateWorker", "projections"]] =
              rows("SELECT args,worker,queue FROM oban.oban_jobs")

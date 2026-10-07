@@ -32,7 +32,12 @@ defmodule Dawarich.Photos.ProviderHTTP do
   def request(method, base, path, headers, body, skip, default_timeout \\ 10_000, opts \\ []) do
     if base_url?(base) do
       uri = URI.parse(base <> path)
-      timeout = Application.get_env(:dawarich, :photo_source_timeout, default_timeout)
+
+      timeout =
+        Keyword.get_lazy(opts, :total_timeout, fn ->
+          Application.get_env(:dawarich, :photo_source_timeout, default_timeout)
+        end)
+
       deadline = System.monotonic_time(:millisecond) + timeout
       scheme = if uri.scheme == "https", do: :https, else: :http
       ssl = if scheme == :https, do: Dawarich.Photos.Thumbnail.ssl(skip), else: []

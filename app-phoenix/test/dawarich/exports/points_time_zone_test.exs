@@ -82,7 +82,12 @@ defmodule Dawarich.Exports.PointsTimeZoneTest do
 
     event = outbox!(command_type: "exports.points", command_version: 2, payload: payload)
 
-    assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 1}
+    assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
+             repo: ScratchRepo,
+             oban: @oban
+           ) == %{dispatched: 1}
+
     assert [[args, %{"command_version" => 2}]] = rows("SELECT args, meta FROM oban.oban_jobs")
     assert args == Map.put(payload, "event_id", event)
   end

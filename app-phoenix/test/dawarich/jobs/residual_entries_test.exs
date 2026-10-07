@@ -40,6 +40,29 @@ defmodule Dawarich.Jobs.ResidualEntriesTest do
     ]
   }
 
+  @tag :sa_destroy_inventory
+  test "merged inventory preserves users destroy and every L1 native binding" do
+    bindings = [
+      {"Users::DestroyJob", "users.destroy", Dawarich.Users.DestroyWorker},
+      {"Users::CreationWebhookJob", "users.creation_webhook",
+       Dawarich.Users.CreationWebhookWorker},
+      {"Users::DestructionWebhookJob", "users.destruction_webhook",
+       Dawarich.Users.DestructionWebhookWorker},
+      {"Partnero::CustomerSignupJob", "partnero.customer_signup",
+       Dawarich.Partnero.CustomerSignupWorker}
+    ]
+
+    for {class, command, worker} <- bindings do
+      assert {:ok, ^worker} = Registry.command(command)
+      owner = RailsJobOwners.owners()[class]
+      assert elem(owner, 0) == :oban
+      assert ("command:" <> command) in elem(owner, 1)
+    end
+
+    assert {:ok, Dawarich.ReleaseJobs.FamilyBackfill} =
+             Registry.command("release.family_backfill")
+  end
+
   test "all thirteen classes map to exact default-off keys and four retained cron expressions" do
     entries = Map.new(ResidualEntries.entries(), &{&1.key, &1})
     assert map_size(entries) == 14
@@ -86,7 +109,11 @@ defmodule Dawarich.Jobs.ResidualEntriesTest do
       outbox!(command_type: type, payload: Map.put(payload, "extra", 1))
     end)
 
-    assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 9, quarantined: 18}
+    assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
+             repo: ScratchRepo,
+             oban: @oban
+           ) == %{dispatched: 9, quarantined: 18}
 
     assert rows(
              "SELECT error_code,count(*) FROM job_outbox WHERE state='quarantined' GROUP BY error_code ORDER BY error_code"
