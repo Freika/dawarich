@@ -71,7 +71,13 @@ defmodule DawarichWeb.AuthGate do
   defp options("api_auth"),
     do: [enabled: true, context: Application.get_env(:dawarich, :api_auth_context, %{})]
 
-  defp options(flow) when flow in ["account", "api_keys", "two_factor", "otp"],
+  defp options("otp"),
+    do: [
+      enabled: true,
+      context: %{enqueue_otp_lock: &Dawarich.Mail.OtpAccountLockedWorker.enqueue/1}
+    ]
+
+  defp options(flow) when flow in ["account", "api_keys", "two_factor"],
     do: [enabled: true]
 
   defp options(flow), do: options(flow, RegistrationSetting.fetch())

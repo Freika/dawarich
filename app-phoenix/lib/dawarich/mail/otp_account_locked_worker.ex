@@ -4,6 +4,15 @@ defmodule Dawarich.Mail.OtpAccountLockedWorker do
 
   alias Dawarich.Mail.{Delivery, Recipient, Residual, Wave2}
 
+  def enqueue(user) do
+    args = %{"user_id" => user.id, "locale" => "en", "event_id" => Ecto.UUID.generate()}
+
+    case Oban.insert(new(args)) do
+      {:ok, _job} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   @impl Oban.Worker
   def timeout(_job), do: :timer.minutes(5)
 
