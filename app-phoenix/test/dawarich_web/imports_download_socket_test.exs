@@ -30,7 +30,8 @@ defmodule DawarichWeb.ImportsDownloadSocketTest do
 
     blob =
       Dawarich.RailsBlobFixture.create!(Repo, root, "socket.gpx", bytes,
-        content_type: "application/gpx+xml"
+        content_type: "application/gpx+xml",
+        user_id: user.id
       )
 
     {:ok, [id]} =

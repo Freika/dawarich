@@ -13,7 +13,9 @@ defmodule Dawarich.A12f3bR08Test do
     rows("UPDATE users SET active_until=now()+interval '1 day' WHERE id=$1", [c.import.user_id])
 
     blob =
-      Dawarich.RailsBlobFixture.create!(ScratchRepo, c.root, "upload.gpx", "<gpx><trk/></gpx>")
+      Dawarich.RailsBlobFixture.create!(ScratchRepo, c.root, "upload.gpx", "<gpx><trk/></gpx>",
+        user_id: c.import.user_id
+      )
 
     assert {:ok, [id]} =
              Dawarich.Imports.UploadCreate.create(
@@ -43,7 +45,11 @@ defmodule Dawarich.A12f3bR08Test do
 
     assert [] == F.reverse()
     System.delete_env("DAWARICH_RAILS")
-    other = Dawarich.RailsBlobFixture.create!(ScratchRepo, c.root, "coexist.gpx", "<gpx/>")
+
+    other =
+      Dawarich.RailsBlobFixture.create!(ScratchRepo, c.root, "coexist.gpx", "<gpx/>",
+        user_id: c.import.user_id
+      )
 
     assert {:ok, [_]} =
              Dawarich.Imports.UploadCreate.create(

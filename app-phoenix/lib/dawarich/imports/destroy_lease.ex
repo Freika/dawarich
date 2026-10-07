@@ -96,6 +96,9 @@ defmodule Dawarich.Imports.DestroyLease do
                  lease.repo.rollback(:unavailable)
              end
 
+           if phase == "deleting",
+             do: Dawarich.Imports.DestroyRemoval.authorize!(lease.repo, lease.id, lease.user)
+
            result =
              lease.repo.query!(
                "INSERT INTO phoenix.import_destroy_runs(import_id,user_id,event_id,job_id,attempt,token,phase) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(import_id) DO UPDATE SET job_id=EXCLUDED.job_id,attempt=EXCLUDED.attempt,token=EXCLUDED.token,phase=EXCLUDED.phase,updated_at=now() WHERE import_destroy_runs.event_id=EXCLUDED.event_id AND import_destroy_runs.user_id=EXCLUDED.user_id AND NOT import_destroy_runs.native_fallback RETURNING import_id",

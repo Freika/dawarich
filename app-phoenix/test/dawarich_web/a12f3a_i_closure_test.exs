@@ -40,7 +40,8 @@ defmodule DawarichWeb.A12f3aIClosureTest do
       assert Repo.query!("SELECT count(*) FROM imports").rows == [[0]]
     end
 
-    blob = Dawarich.RailsBlobFixture.create!(Repo, c.root, "Leipzig.gpx", "<gpx/>")
+    blob =
+      Dawarich.RailsBlobFixture.create!(Repo, c.root, "Leipzig.gpx", "<gpx/>", user_id: c.user.id)
 
     rejected =
       request(c, :post, "/imports", %{"import" => %{"files" => [blob.signed_id, "invalid"]}})
@@ -109,18 +110,23 @@ defmodule DawarichWeb.A12f3aIClosureTest do
     assert request(c, :post, "/imports/781104/extraction", %{"trust_source" => "false"}).status ==
              302
 
-    assert Repo.query!("SELECT command_type,payload FROM job_outbox").rows == []
-
-    assert [[args]] =
+    assert [[payload]] =
              Repo.query!(
                "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker'"
              ).rows
 
-    assert args["import_id"] == 781_104
-    assert args["user_id"] == c.user.id
-    assert args["source"] == 4
-    assert args["lock_attempt"] == 1
-    assert is_binary(args["event_id"])
+    assert %{
+             "import_id" => 781_104,
+             "lock_attempt" => 1,
+             "user_id" => 7811,
+             "source" => 4,
+             "source_blob_id" => nil
+           } = payload
+
+    assert [[payload["event_id"], payload["started_at"]]] ==
+             Repo.query!(
+               "SELECT additional_data_extraction->>'phoenix_extraction_event',additional_data_extraction->>'started_at' FROM imports WHERE id=781104"
+             ).rows
 
     assert commands() == []
     assert request(c, :post, "/imports/781104/extraction", %{}).status == 303
@@ -154,7 +160,9 @@ defmodule DawarichWeb.A12f3aIClosureTest do
        c do
     oracle = capture("i05")
     {:ok, {_, zip}} = :zip.create(~c"wrapped.zip", [{~c"wrapped.gpx", "<gpx/>"}], [:memory])
-    blob = Dawarich.RailsBlobFixture.create!(Repo, c.root, "wrapped.gpx.zip", zip)
+
+    blob =
+      Dawarich.RailsBlobFixture.create!(Repo, c.root, "wrapped.gpx.zip", zip, user_id: c.user.id)
 
     descriptor = %{
       "signed_id" => blob.signed_id,
@@ -407,12 +415,17 @@ defmodule DawarichWeb.A12f3aINativePurgeTest do
 
     assert {:ok, :ok} =
              ScratchRepo.transaction(fn ->
-               ImportBlobPurges.enqueue!(
+               ImportBlobPurges.authorize!(
                  ScratchRepo,
                  c.import.id,
                  c.import.user_id,
                  blob.id,
                  source
+               )
+
+               outbox!(
+                 command_type: "imports.prepared_download_purge",
+                 payload: payload(c, source, blob.id)
                )
 
                rows(

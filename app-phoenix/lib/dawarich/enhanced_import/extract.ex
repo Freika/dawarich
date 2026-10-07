@@ -34,7 +34,7 @@ defmodule Dawarich.EnhancedImport.Extract do
   end
 
   defp gpx(repo, import, path, deadline) do
-    guard = Map.get(import, :fence, fn fun -> fun.() end)
+    guard = fn fun -> Dawarich.EnhancedImport.State.effect!(repo, import, fun) end
 
     {state, chunk, _size} =
       Adapters.reduce(path, import, %{}, {PlaceWriter.new(import), [], 0}, fn
