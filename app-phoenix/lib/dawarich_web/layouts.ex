@@ -19,7 +19,7 @@ defmodule DawarichWeb.Layouts do
     t(locale, "helpers.application.full_title", %{page_title: title, app_name: app_name})
   end
 
-  def importmap(rails_js \\ false) do
+  def importmap(_rails_js \\ false) do
     versions = DawarichWeb.Assets.script_versions()
 
     phoenix = %{
@@ -31,8 +31,7 @@ defmodule DawarichWeb.Layouts do
       "phoenix_live_view" => "/phoenix/js/phoenix_live_view.esm.js?vsn=#{versions.live_view}"
     }
 
-    imports =
-      if rails_js, do: Map.merge(DawarichWeb.Assets.rails_imports(), phoenix), else: phoenix
+    imports = Map.merge(DawarichWeb.Assets.rails_imports(), phoenix)
 
     Jason.encode!(%{"imports" => imports})
   end

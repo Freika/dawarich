@@ -28,3 +28,9 @@ Known source bugs are retained under ruling 13, including the invitation `new` m
 Review regressions `R1`–`R5` are named in `a12f3b_review_r*_test.exs`; each has RED, GREEN, a failing production mutation and restored GREEN evidence in the fix report. The existing family form tests now use the declared router seam.
 
 Shared knowledge counterpart: **Dawarich — A12f-3b family producers and activation handoff** in AFFiNE. The implementation report records task commits, RED/GREEN/mutation logs, source fixture determinism and final gates; runtime allocations stay outside versioned documentation.
+
+## E07 retained family mail IDs
+
+The retained `Family::Invitations::SendingJob` and `Families::LapseNotificationJob` forward positional IDs unchanged. Their native mail workers normalize signed decimal string IDs, including leading zeroes, to signed 64-bit integers before dispatch. Integer IDs remain accepted. Invalid scalar IDs, overflow, extra keys and unsupported versions remain rejected. The normalization is local to these two mail workers; shared mail decoding and ownership selection are unchanged.
+
+`app-phoenix/test/dawarich/a12f3b_e07_test.exs`, selector `a12f3b_case:E07R1`, drives the real outbox dispatcher for both mail commands using integer and numeric string IDs, then asserts delivery, replay without duplicate mail, and no pending, quarantined or incomplete mail work. `spec/services/families/job_commands_spec.rb` characterizes the corresponding Rails delivery and forwarding forms. This repairs a Phoenix source-handoff gap; it fixes no Rails bug and adds no ED/DRB entry.

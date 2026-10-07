@@ -35,8 +35,12 @@ defmodule Dawarich.Mail.Wave2ArgsTest do
 
   defp payloads, do: @payloads |> File.read!() |> Jason.decode!()
 
-  defp mistyped(value) when is_integer(value), do: to_string(value)
-  defp mistyped(value) when is_binary(value), do: 1
+  defp mistyped(value, worker)
+       when is_integer(value) and worker in [FamilyInvitationWorker, FamilyLapseWorker],
+       do: "invalid"
+
+  defp mistyped(value, _worker) when is_integer(value), do: to_string(value)
+  defp mistyped(value, _worker) when is_binary(value), do: 1
 
   test "each decoder accepts its exact payload and rejects extra, missing and mistyped keys and other versions" do
     payloads = payloads()
@@ -51,7 +55,7 @@ defmodule Dawarich.Mail.Wave2ArgsTest do
                {:error, "invalid_payload"},
              type
 
-      for key <- Map.keys(payload), broken <- [nil, mistyped(payload[key])] do
+      for key <- Map.keys(payload), broken <- [nil, mistyped(payload[key], worker)] do
         assert worker.args_from_command(1, Map.delete(payload, key)) ==
                  {:error, "invalid_payload"},
                "#{type} without #{key}"
