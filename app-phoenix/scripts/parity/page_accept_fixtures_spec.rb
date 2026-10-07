@@ -48,6 +48,34 @@ RSpec.describe 'Phoenix fixtures: Rails Accept algorithm', type: :request do
     verify('f7', corpus)
   end
 
+  it 'F8 records Ruby dotted exponent numeric prefixes in both calendar directions and XHR modes' do
+    expect('1.e-1'.to_f).to eq(0.1)
+    expect('.9'.to_f).to eq(0.9)
+    expect('garbage'.to_f).to eq(0.0)
+    corpus = ['1.e-1', '.9', 'garbage'].product([false, true], [false, true]).map do |q, turbo, xhr|
+      preferred, alternative = if turbo
+                                 ['text/vnd.turbo-stream.html', 'text/html']
+                               else
+                                 ['text/html', 'text/vnd.turbo-stream.html']
+                               end
+      accept = "#{preferred}; q=#{q}, #{alternative}; q=0.5"
+      result = contract('/map/timeline_feeds/calendar?month=2026-10', accept, xhr:)
+      expect(result).to include('status' => 200, 'type' => (q.to_f > 0.5 ? preferred : alternative))
+      { 'accept' => accept, 'xhr' => xhr, 'response' => result }
+    end
+    verify('f8', corpus)
+  end
+
+  it 'F9 records clean malformed MIME refusals on place and share hub routes' do
+    create(:place, id: 880_004, user:)
+    corpus = ['/places/880004', '/share_links/hub'].to_h do |path|
+      result = contract(path, 'text/html, bogus')
+      expect(result).to include('status' => 406, 'type' => 'text/plain')
+      [path, result]
+    end
+    verify('f9', corpus)
+  end
+
   it 'records a generated corpus of Rails formats and calendar negotiation' do
     headers = generated_headers
     expect(headers.uniq.length).to be >= 200
@@ -75,22 +103,26 @@ RSpec.describe 'Phoenix fixtures: Rails Accept algorithm', type: :request do
       'text/*', 'application/*', 'text/*garbage', 'text/html; note="a,b"; q=.9, text/javascript; q=.5',
       'application/xml, text/html, text/xml, application/rss+xml, application/atom+xml',
       'text/xml, application/rss+xml', 'application/xml, text/html, text/xml; q=0.9',
-      'text/html,,text/javascript', ', ; q=0.5, text/html', '"', 'text/html, "unterminated'
+      'text/html,,text/javascript', ', ; q=0.5, text/html', '"', 'text/html, "unterminated',
+      'text/html; q=1.e-1, text/vnd.turbo-stream.html; q=0.5'
     ]
     types = %w[text/html text/javascript application/javascript text/vnd.turbo-stream.html application/json
                application/unknown text/xml application/xml application/rss+xml bogus text/ /html ; */*]
-    qualities = ['.9', '.5', '-.5', '+.9', '0', '1', '0.999', '0.991', 'bad', '', '2', '-1',
-                 '1e-1', '1e+1', '.9suffix', '1_0', '0.9_9', '0x1', 'NaN', 'Infinity', '".9"', '  .9']
+    qualities = ['.9', '.5', '-.5', '+.9', '0', '1', '0.999', '0.991', 'bad', 'garbage', '', '2', '-1',
+                 '1e-1', '1e+1', '1.e-1', '1.e+1', '1.e', '.9suffix', '1_0', '0.9_9', '0x1',
+                 'NaN', 'Infinity', '".9"', '  .9']
     generated = types.product(qualities).map { |type, q| "#{type}; q=#{q}, text/html; q=0.5" }
     params = types.product(['; charset=utf-8', '; Q=0.1', ';q=0.5', '; note="a,b"', '; q=.9; q=.1'])
                   .flat_map { |type, param| ["#{type}#{param}", "#{type}#{param}, text/javascript"] }
     (defaults + generated + params).uniq
   end
 
-  def contract(path, accept)
+  def contract(path, accept, xhr: true)
     Warden.on_next_request { _1.set_user(user, scope: :user) }
     session = ActionDispatch::Integration::Session.new(Rails.application)
-    session.get(path, headers: { 'Accept' => accept, 'X-Requested-With' => 'XMLHttpRequest' })
+    headers = { 'Accept' => accept }
+    headers['X-Requested-With'] = 'XMLHttpRequest' if xhr
+    session.get(path, headers:)
     result = session.response
     { 'status' => result.status, 'type' => result.media_type,
       'document' => result.body.include?('<html'), 'assets' => result.body.include?('/assets/application'),

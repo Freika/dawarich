@@ -10,7 +10,7 @@ defmodule DawarichWeb.PageEnvelopesTest do
 
   @source Jason.decode!(File.read!(Path.expand("../fixtures/page_envelopes/rails.json", __DIR__)))
 
-  @review Map.new(~w(f1 f2 f3 f4 f5 f6 f7), fn name ->
+  @review Map.new(~w(f1 f2 f3 f4 f5 f6 f7 f8 f9), fn name ->
             {name,
              Jason.decode!(
                File.read!(Path.expand("../fixtures/page_envelopes/#{name}.json", __DIR__))
@@ -392,6 +392,35 @@ defmodule DawarichWeb.PageEnvelopesTest do
         request("/map/timeline_feeds/calendar?month=2026-10", headers),
         source["calendar"]
       )
+    end
+  end
+
+  @tag envelope: :review_dotted_exponent
+  test "F8 dotted exponent numeric prefixes preserve Rails calendar responses in both XHR modes" do
+    for %{"accept" => accept, "xhr" => xhr, "response" => source} <- @review["f8"] do
+      headers = [{"accept", accept}]
+      headers = if xhr, do: [{"x-requested-with", "XMLHttpRequest"} | headers], else: headers
+      assert_contract(request("/map/timeline_feeds/calendar?month=2026-10", headers), source)
+    end
+  end
+
+  @tag envelope: :review_halted_refusal
+  test "F9 malformed MIME halts once before place and neutral layout frame header mutations" do
+    Dawarich.Test.FrameSeeds.place!(880_001, 880_004, "Envelope place")
+
+    for {path, source} <- @review["f9"], frame <- [nil, "review-frame"] do
+      conn =
+        request(path, [
+          {"accept", "text/html, bogus"},
+          {"x-requested-with", "XMLHttpRequest"},
+          {"turbo-frame", frame}
+        ])
+
+      assert_contract(conn, source)
+      assert conn.halted
+      assert conn.state == :sent
+      assert_received {:plug_conn, :sent}
+      refute_received {:plug_conn, :sent}
     end
   end
 

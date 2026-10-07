@@ -37,7 +37,7 @@ defmodule DawarichWeb.PageEnvelope do
             |> Map.put(:request_path, "/" <> Enum.join(path, "/"))
             |> Map.put(:query_string, without_format(conn.query_string))
             |> html_accept(selected, navigation or conn.request_path in @redirects)
-            |> frame_header(route)
+            |> then(fn conn -> if conn.halted, do: conn, else: frame_header(conn, route) end)
           else
             conn
           end

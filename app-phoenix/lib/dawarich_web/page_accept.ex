@@ -111,6 +111,7 @@ defmodule DawarichWeb.PageAccept do
       [_, number] ->
         number = String.replace(number, "_", "")
         number = Regex.replace(~r/\A([+-]?)\./, number, "\\g{1}0.")
+        number = Regex.replace(~r/\.(?=[eE])/, number, ".0")
         {value, _} = Float.parse(number)
         trunc(value * 100)
 
