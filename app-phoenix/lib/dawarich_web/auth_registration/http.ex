@@ -103,41 +103,38 @@ defmodule DawarichWeb.AuthRegistration.Http do
     if not RegistrationSetup.ready?(context) do
       conn |> send_resp(503, "Signup callbacks unavailable") |> halt()
     else
-      case Registration.create(attrs, context) do
-        {:ok, user} ->
-          case RegistrationSetup.complete(user, attrs, conn.assigns.rails_session, context) do
-            {:ok, %{signed_in: true} = result} ->
-              conn =
-                AuthCookie.session(
-                  conn,
-                  SessionCookie.for_login(
-                    result.session,
-                    result.user,
-                    message(context.locale, "devise.registrations.signed_up"),
-                    Dawarich.RailsSecret.fetch()
-                  )
-                )
-
-              redirect(conn, result.location, nil, 303)
-
-            {:ok, result} ->
-              conn
-              |> AuthCookie.session(
-                SessionCookie.for_form(result.session, Dawarich.RailsSecret.fetch())
+      case Registration.register(attrs, conn.assigns.rails_session, context) do
+        {:ok, %{signed_in: true} = result} ->
+          conn =
+            AuthCookie.session(
+              conn,
+              SessionCookie.for_login(
+                result.session,
+                result.user,
+                message(context.locale, "devise.registrations.signed_up"),
+                Dawarich.RailsSecret.fetch()
               )
-              |> put_resp_header("location", result.location)
-              |> send_resp(302, "")
-              |> halt()
+            )
 
-            {:error, _} ->
-              conn |> send_resp(503, "Signup callbacks unavailable") |> halt()
-          end
+          redirect(conn, result.location, nil, 303)
+
+        {:ok, result} ->
+          conn
+          |> AuthCookie.session(
+            SessionCookie.for_form(result.session, Dawarich.RailsSecret.fetch())
+          )
+          |> put_resp_header("location", result.location)
+          |> send_resp(302, "")
+          |> halt()
 
         {:error, %{messages: messages, email: email}} ->
           form(conn, email, messages, context, 422)
 
         {:error, :denied} ->
           redirect(conn, "/", nil, 302)
+
+        {:error, _} ->
+          conn |> send_resp(503, "Signup callbacks unavailable") |> halt()
       end
     end
   end

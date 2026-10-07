@@ -4,7 +4,9 @@ defmodule Dawarich.Auth.RegistrationPolicy do
 
   def context(opts) do
     opts
-    |> Map.put_new_lazy(:self_hosted, fn -> System.get_env("SELF_HOSTED", "true") != "false" end)
+    |> Map.put_new_lazy(:self_hosted, fn ->
+      Dawarich.ReleaseMigration.self_hosted?(Map.get_lazy(opts, :env, &System.get_env/0))
+    end)
     |> Map.put_new_lazy(:oidc, &Admission.oidc?/0)
     |> Map.put_new_lazy(:registration_enabled, fn ->
       case RegistrationSetting.fetch() do
@@ -12,6 +14,7 @@ defmodule Dawarich.Auth.RegistrationPolicy do
         :error -> nil
       end
     end)
+    |> Dawarich.Auth.RegistrationCallbacks.context()
   end
 
   def allowed?(context, invitation, email) do

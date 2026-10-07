@@ -1,37 +1,29 @@
 defmodule Dawarich.Users.WebhookCommands do
   @moduledoc false
-  alias Dawarich.Jobs.Ownership
+  alias Dawarich.AfterCommit
 
-  def creation(repo, user, event \\ Ecto.UUID.generate()),
-    do: enqueue(repo, "users.creation_webhook", %{"user_id" => user}, event)
+  def creation(repo, user, event \\ Ecto.UUID.generate(), opts \\ []),
+    do: enqueue(repo, "users.creation_webhook", %{"user_id" => user}, event, opts)
 
   def destruction(repo, user, email, event \\ Ecto.UUID.generate()),
-    do: enqueue(repo, "users.destruction_webhook", %{"user_id" => user, "email" => email}, event)
+    do:
+      enqueue(
+        repo,
+        "users.destruction_webhook",
+        %{"user_id" => user, "email" => email},
+        event,
+        []
+      )
 
-  defp enqueue(repo, type, payload, event) do
-    if repo.in_transaction?() do
-      case Ownership.lock(repo, "command:" <> type) do
-        :oban ->
-          repo.query!(
-            "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,aggregate_id,metadata,scheduled_at) VALUES($1,$2,1,$3,$4,$5,$6) ON CONFLICT(event_id) DO NOTHING",
-            [
-              Ecto.UUID.dump!(event),
-              type,
-              payload,
-              payload["user_id"],
-              %{"producer" => "phoenix.users"},
-              DateTime.utc_now()
-            ],
-            log: false
-          )
-
-          :ok
-
-        _ ->
-          {:error, :webhook_owner}
-      end
-    else
-      {:error, :transaction_required}
+  defp enqueue(repo, type, payload, event, opts) do
+    case AfterCommit.intent(
+           repo,
+           type,
+           payload,
+           Keyword.merge(opts, event_id: event, aggregate_id: payload["user_id"])
+         ) do
+      {:error, :callback_owner} -> {:error, :webhook_owner}
+      result -> result
     end
   end
 
@@ -47,10 +39,27 @@ defmodule Dawarich.Users.WebhookCommands do
 
     headers = [{"Content-Type", "application/json"}, {"Accept", "application/json"}]
 
-    http =
-      Keyword.get(opts, :http, Application.get_env(:dawarich, :user_webhook_http, &request/4))
+    opts =
+      case Keyword.get(opts, :http, Application.get_env(:dawarich, :user_webhook_http)) do
+        http when is_function(http, 4) ->
+          Keyword.put(opts, :transport, fn _, origin, path, headers, body, _, _, _ ->
+            case http.(origin <> path, headers, body, timeout) do
+              {:ok, status, body} -> {:ok, status, [], body}
+              error -> error
+            end
+          end)
 
-    case http.(env["MANAGER_URL"] <> path, headers, Jason.encode!(%{token: token}), timeout) do
+        _ ->
+          opts
+      end
+
+    case Dawarich.Cloud.ProviderHTTP.post(
+           :manager,
+           path,
+           headers,
+           Jason.encode!(%{token: token}),
+           opts
+         ) do
       {:ok, _status, _body} -> :ok
       {:error, _reason} -> :manager_transport
     end

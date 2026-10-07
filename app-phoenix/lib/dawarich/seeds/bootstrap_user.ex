@@ -9,14 +9,15 @@ defmodule Dawarich.Seeds.BootstrapUser do
   @password "safepassword"
 
   def run(repo, opts \\ []) do
-    if repo.query!("SELECT NOT EXISTS (SELECT 1 FROM users WHERE deleted_at IS NULL)", [],
-         log: false
-       ).rows == [[true]] do
-      now = Keyword.get_lazy(opts, :now, &NaiveDateTime.utc_now/0)
+    env =
+      Keyword.get_lazy(opts, :env, &System.get_env/0)
+      |> Map.put_new("TIME_ZONE", "Europe/Berlin")
 
-      env =
-        Keyword.get_lazy(opts, :env, &System.get_env/0)
-        |> Map.put_new("TIME_ZONE", "Europe/Berlin")
+    if Dawarich.ReleaseMigration.self_hosted?(env) and
+         repo.query!("SELECT NOT EXISTS (SELECT 1 FROM users WHERE deleted_at IS NULL)", [],
+           log: false
+         ).rows == [[true]] do
+      now = Keyword.get_lazy(opts, :now, &NaiveDateTime.utc_now/0)
 
       hash =
         case Keyword.fetch(opts, :salt) do
