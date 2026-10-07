@@ -21,7 +21,11 @@ defmodule Dawarich.Digests.GenerationTest do
                  "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'"
                )
 
-      assert [[1]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+      assert [[1]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
+
       if profile == "no_data", do: assert(F.digests(ScratchRepo, 14101) == [])
 
       if expected == 1 do
@@ -37,7 +41,7 @@ defmodule Dawarich.Digests.GenerationTest do
                  opts
                ) == :ok
 
-        assert [[2]] =
+        assert [[1]] =
                  rows(
                    "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'"
                  )
@@ -65,7 +69,11 @@ defmodule Dawarich.Digests.GenerationTest do
     send(second_pid, :claim)
     assert Task.await(first) == :ok
     assert Task.await(second) == :ok
-    assert [[1]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+
+    assert [[1]] =
+             rows(
+               "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+             )
 
     assert [[1]] =
              rows("SELECT count(*) FROM phoenix.rails_commands WHERE kind='digests.email_month'")
@@ -78,7 +86,10 @@ defmodule Dawarich.Digests.GenerationTest do
     fault = %RuntimeError{message: "terminal fault after reverse insert"}
 
     fail = fn ->
-      assert [[1]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+      assert [[1]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
 
       assert [[1]] =
                rows(
@@ -90,7 +101,11 @@ defmodule Dawarich.Digests.GenerationTest do
 
     opts = Keyword.put(F.job_options(kase), :after_terminal, fail)
     assert Generation.run(ScratchRepo, "monthly", args, opts) == {:error, fault}
-    assert [[0]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+
+    assert [[0]] =
+             rows(
+               "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+             )
 
     assert [[0]] =
              rows("SELECT count(*) FROM phoenix.rails_commands WHERE kind='digests.email_month'")
@@ -105,7 +120,11 @@ defmodule Dawarich.Digests.GenerationTest do
              )
 
     assert Generation.run(ScratchRepo, "monthly", args, F.job_options(kase)) == :ok
-    assert [[1]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+
+    assert [[1]] =
+             rows(
+               "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+             )
 
     assert [[1]] =
              rows("SELECT count(*) FROM phoenix.rails_commands WHERE kind='digests.email_month'")

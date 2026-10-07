@@ -49,6 +49,23 @@ defmodule DawarichWeb.PageRoutes do
         end
       end
 
+      pipeline :native_navigation do
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.RailsHeaders
+      end
+
+      scope "/" do
+        pipe_through :native_navigation
+
+        for path <-
+              ~w(/recede_historical_location /resume_historical_location /refresh_historical_location) do
+          get path, DawarichWeb.PageEnvelope, :navigation,
+            metadata: %{rails_gate: {DawarichWeb.PageEnvelope, :navigation?}}
+        end
+      end
+
       rails_pages_routes()
 
       pipeline :map_redirect do

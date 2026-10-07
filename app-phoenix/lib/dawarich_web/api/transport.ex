@@ -8,7 +8,7 @@ defmodule DawarichWeb.Api.Transport do
   def init(opts), do: opts
 
   def call(conn, :router) do
-    DawarichWeb.Router.call(conn, DawarichWeb.Router.init([]))
+    DawarichWeb.PageEnvelope.call(conn, :router)
   rescue
     exception in Plug.Conn.WrapperError ->
       if conn.private[:dawarich_native_api],

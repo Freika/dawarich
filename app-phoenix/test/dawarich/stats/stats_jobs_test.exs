@@ -34,9 +34,11 @@ defmodule Dawarich.Stats.StatsJobsTest do
     Ownership.put!(ScratchRepo, "command:stats.calculate_month", :oban)
     assert Schedule.calculate(ScratchRepo, 7, 2024, 3, true, oban: @oban, schedule_in: 60) == :ok
 
-    assert [["Dawarich.Stats.CalculateMonthWorker", @payload, "projections", scheduled_at]] =
+    assert [["Dawarich.Stats.CalculateMonthWorker", args, "projections", scheduled_at]] =
              rows("SELECT worker, args, queue, scheduled_at FROM oban.oban_jobs")
 
+    assert Map.delete(args, "event_id") == @payload
+    assert {:ok, _} = Ecto.UUID.cast(args["event_id"])
     assert NaiveDateTime.diff(scheduled_at, NaiveDateTime.utc_now()) in 50..60
     assert F.calculations() == []
   end

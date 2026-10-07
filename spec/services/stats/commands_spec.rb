@@ -49,13 +49,16 @@ RSpec.describe Stats::Commands do
   end
 
   it 'stats.caches_invalidated deletes the toponym caches, or every user cache for scope all' do
-    allow(Rails.cache).to receive(:delete).and_call_original
+    country = "dawarich/user_#{user.id}_countries_visited"
+    distance = "dawarich/user_#{user.id}_total_distance"
+    Rails.cache.write(country, 'countries')
+    Rails.cache.write(distance, 99)
     handle('stats.caches_invalidated', { 'user_id' => user.id, 'year' => 2024, 'scope' => 'toponyms' })
-    expect(Rails.cache).to have_received(:delete).with("dawarich/user_#{user.id}_countries_visited")
-    expect(Rails.cache).not_to have_received(:delete).with("dawarich/user_#{user.id}_total_distance")
+    expect(Rails.cache.read(country)).to be_nil
+    expect(Rails.cache.read(distance)).to eq(99)
 
     handle('stats.caches_invalidated', { 'user_id' => user.id, 'year' => 2024, 'scope' => 'all' })
-    expect(Rails.cache).to have_received(:delete).with("dawarich/user_#{user.id}_total_distance")
+    expect(Rails.cache.read(distance)).to be_nil
   end
 
   context 'full recalculation routing' do

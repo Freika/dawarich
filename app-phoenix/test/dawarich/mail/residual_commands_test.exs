@@ -34,7 +34,11 @@ defmodule Dawarich.Mail.ResidualCommandsTest do
       args = F.job_args(kase)
       assert Generation.run(ScratchRepo, period, args, F.job_options(kase)) == :ok
       assert Generation.run(ScratchRepo, period, args, F.job_options(kase)) == :ok
-      assert [[1]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+
+      assert [[1]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
 
       if owner == :sidekiq do
         kind = if period == "monthly", do: "digests.email_month", else: "digests.email_year"
@@ -93,7 +97,16 @@ defmodule Dawarich.Mail.ResidualCommandsTest do
                Keyword.put(F.job_options(kase), :after_terminal, fn -> raise fault end)
              ) == {:error, fault}
 
-      assert [[0]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+      assert [[0]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
+
+      assert [[2]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler LIKE 'digests.generate_%'"
+               )
+
       assert [] == rows("SELECT event_id FROM public.job_outbox")
       assert [] == rows("SELECT id FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'")
     end

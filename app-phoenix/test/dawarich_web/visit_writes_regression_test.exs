@@ -348,6 +348,56 @@ defmodule DawarichWeb.VisitWritesRegressionTest do
     end
   end
 
+  @tag :visit_error_fallback
+  test "F5 rejected HTML visit updates use the status-free Rails fallback while success keeps suggested status" do
+    ctx = fixture("rename")
+
+    for mode <- [nil, "off"] do
+      env("DAWARICH_RAILS", mode)
+      before = rows("SELECT row_to_json(v) FROM visits v WHERE user_id=$1", [ctx.user_id])
+      fallback = "http://www.example.com/map/v2?date=today&panel=timeline"
+
+      for {field, message} <- [{"place_id", "Invalid place"}, {"area_id", "Invalid area"}],
+          {referer, expected} <- [
+            {nil, fallback},
+            {"https://outside.example/map", fallback},
+            {"javascript://www.example.com/map", fallback},
+            {"/map/v2?date=2026-10-03&status=confirmed#timeline",
+             "http://www.example.com/map/v2?date=2026-10-03&status=confirmed#timeline"}
+          ] do
+        conn =
+          request(
+            ctx,
+            "PATCH",
+            ctx.request["path"],
+            %{"visit" => %{field => "999999999"}},
+            "text/html",
+            if(referer, do: [{"referer", referer}], else: [])
+          )
+
+        assert conn.status == 302
+        assert get_resp_header(conn, "location") == [expected]
+        assert rails_session(conn)["flash"]["flashes"]["alert"] == message
+
+        assert rows("SELECT row_to_json(v) FROM visits v WHERE user_id=$1", [ctx.user_id]) ==
+                 before
+      end
+
+      conn =
+        request(
+          ctx,
+          "PATCH",
+          ctx.request["path"],
+          %{"visit" => %{"name" => "Renamed"}},
+          "text/html"
+        )
+
+      assert conn.status == 302
+      assert get_resp_header(conn, "location") == [fallback <> "&status=suggested"]
+      assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    end
+  end
+
   @tag :bulk_count
   test "over limit Turbo visit writes interpolate the maximum count in the flash" do
     ctx = fixture("rename")

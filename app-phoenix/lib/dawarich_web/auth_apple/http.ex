@@ -40,7 +40,7 @@ defmodule DawarichWeb.AuthApple.Http do
         do: conn,
         else:
           DawarichWeb.RailsAuth.call(conn,
-            now: fn -> Map.get(context, :clock, &DateTime.utc_now/0).() end
+            now: Map.get(context, :clock, &DateTime.utc_now/0).()
           )
 
     case {conn.method, conn.request_path} do

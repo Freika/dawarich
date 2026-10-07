@@ -45,6 +45,36 @@ defmodule DawarichWeb.StandaloneRecalculationTest do
   end
 
   @tag :sweep6_api
+  @tag :safe_back3
+  test "F3 track recalculation uses Rails fallback and keeps its native command", %{id: id} do
+    Ownership.put!(Repo, "command:transportation.user_reclassify", :oban)
+    prepare_user(id)
+    session = RailsUser.session(id)
+
+    for {referer, location} <- [
+          {"https://foreign.example.invalid/points", "http://www.example.com/"},
+          {"//www.example.com/points", "http://www.example.com/"},
+          {"/points?order_by=asc#row", "http://www.example.com/points?order_by=asc#row"},
+          {"https://www.example.com:8443/points", "https://www.example.com:8443/points"}
+        ] do
+      response =
+        review_form(
+          session,
+          %{"authenticity_token" => DawarichWeb.RailsCsrf.masked_token(session)},
+          [{"referer", referer}]
+        )
+
+      assert response.status == 302
+      assert get_resp_header(response, "location") == [location]
+
+      assert rows(
+               "SELECT count(*) FROM job_outbox WHERE command_type='transportation.user_reclassify'"
+             ) == [[1]]
+
+      assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    end
+  end
+
   test "standalone rebuild API authenticates validates queues once and preserves coexistence", %{
     id: id
   } do

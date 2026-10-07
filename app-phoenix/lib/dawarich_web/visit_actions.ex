@@ -75,12 +75,12 @@ defmodule DawarichWeb.VisitActions do
 
         {:error, reason} ->
           if native?(ctx),
-            do: error(conn, action, reason, params, back, ctx),
+            do: error(conn, action, reason, ctx),
             else: Body.replay(conn, "visit error flash #{reason}")
 
         {:replay, reason} ->
           if native?(ctx),
-            do: error(conn, action, :invalid_visit, params, back, ctx),
+            do: error(conn, action, :invalid_visit, ctx),
             else: Body.replay(conn, reason)
       end
     else
@@ -90,7 +90,7 @@ defmodule DawarichWeb.VisitActions do
 
   defp native?(ctx), do: Dawarich.Jobs.Ownership.lock(ctx.repo, "command:visits.suggest") == :oban
 
-  defp error(conn, action, reason, params, back, ctx) do
+  defp error(conn, action, reason, ctx) do
     key =
       case reason do
         :missing -> "missing_visits"
@@ -115,7 +115,8 @@ defmodule DawarichWeb.VisitActions do
 
       true ->
         message = Translate.t(ctx.locale, "controllers.visits." <> key, %{count: 500})
-        redirect(conn, 302, location(:merge, params, back), "alert", message)
+        location = DawarichWeb.RailsRedirect.back(conn, timeline("today", nil))
+        redirect(conn, 302, location, "alert", message)
     end
   end
 
@@ -135,28 +136,8 @@ defmodule DawarichWeb.VisitActions do
 
   defp back(_conn, action) when action in [:destroy, :bulk_update], do: {:ok, nil}
 
-  defp back(conn, _action) do
-    case get_req_header(conn, "referer") do
-      [] ->
-        {:ok, nil}
-
-      [value] ->
-        uri = URI.parse(value)
-        base = URI.parse(RequestURL.base(conn))
-
-        if not String.contains?(value, ["\\", "\r", "\n"]) and is_nil(uri.userinfo) and
-             ((uri.host == base.host and uri.scheme == base.scheme and uri.port == base.port) or
-                (is_nil(uri.host) and is_nil(uri.scheme) and String.starts_with?(value, "/") and
-                   not String.starts_with?(value, "//"))) do
-          {:ok, value}
-        else
-          {:replay, "visit redirect origin"}
-        end
-
-      _ ->
-        {:replay, "visit referer shape"}
-    end
-  end
+  defp back(conn, action),
+    do: {:ok, DawarichWeb.RailsRedirect.back(conn, location(action, %{}, nil))}
 
   defp location(:bulk_update, params, _back),
     do: timeline(params["date"] || "today", params["source_status"] || "suggested")

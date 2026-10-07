@@ -64,7 +64,11 @@ defmodule DawarichWeb.SettingsActions do
            do: :ok,
            else: {:error, 302}
 
-      RailsForm.admission(check, allowed_overrides: methods) != :ok ->
+      RailsForm.admission(check,
+        allowed_overrides: methods,
+        per_form: opts[:per_form],
+        csrf_method: method
+      ) != :ok ->
         {:error, 422}
 
       true ->

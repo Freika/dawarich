@@ -38,16 +38,21 @@ defmodule DawarichWeb.RequireUser do
       "flash" => %{"discard" => [], "flashes" => %{"alert" => message}}
     }
 
-    conn
-    |> RailsSession.stage(if locked == :session, do: Map.merge(changes, @logout), else: changes)
-    |> put_resp_header("location", RequestURL.base(conn) <> "/users/sign_in")
-    |> put_resp_content_type("text/html")
-    |> send_resp(302, "")
-    |> halt()
+    if DawarichWeb.PageEnvelope.xhr?(conn) do
+      DawarichWeb.PageEnvelope.unauthorized(conn, message)
+    else
+      conn
+      |> RailsSession.stage(if locked == :session, do: Map.merge(changes, @logout), else: changes)
+      |> put_resp_header("location", RequestURL.base(conn) <> "/users/sign_in")
+      |> put_resp_content_type("text/html")
+      |> send_resp(302, "")
+      |> halt()
+    end
   end
 
   defp return_to(conn) do
-    path = String.replace(conn.request_path, ~r/\A\/+/, "/")
-    if conn.query_string == "", do: path, else: path <> "?" <> conn.query_string
+    {original_path, original_query} = DawarichWeb.PageEnvelope.original_target(conn)
+    path = String.replace(original_path, ~r/\A\/+/, "/")
+    if original_query == "", do: path, else: path <> "?" <> original_query
   end
 end

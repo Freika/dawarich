@@ -7,7 +7,6 @@ defmodule DawarichWeb.FamilyInvitationPage do
   alias DawarichWeb.{
     FamilyInvitationDocument,
     LayoutAssigns,
-    Layouts,
     RailsAuth,
     RailsSession,
     RequestURL
@@ -126,8 +125,10 @@ defmodule DawarichWeb.FamilyInvitationPage do
       })
 
     content = FamilyInvitationDocument.document(assigns)
-    app = Layouts.app(Map.put(assigns, :inner_content, content))
-    html = Layouts.root(Map.put(assigns, :inner_content, app)) |> Phoenix.HTML.Safe.to_iodata()
+
+    html =
+      DawarichWeb.PageEnvelope.document(conn, assigns, content) |> Phoenix.HTML.Safe.to_iodata()
+
     conn |> put_resp_content_type("text/html") |> send_resp(200, html) |> halt()
   end
 end

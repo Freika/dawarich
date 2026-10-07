@@ -71,7 +71,7 @@ defmodule Dawarich.StatsFixtures do
           query(
             "SELECT payload FROM phoenix.rails_commands WHERE kind = 'stats.calculate_month' ORDER BY id"
           ),
-        do: payload
+        do: Map.delete(payload, "source_job_id")
   end
 
   def row!(table, row) do

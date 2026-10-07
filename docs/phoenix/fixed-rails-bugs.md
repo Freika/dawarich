@@ -4,7 +4,7 @@ Status: **DRAFT**, consolidated 2026-10-07 under master-plan ruling 17. [User-fa
 
 The integration snapshot is `3a20a0279c164472b7d9b129576709acff94a552` on `feat/phoenix-port`. The audit reads every `## Rails bugs fixed (changelog)` section in the 391 top-level `*.report.md` files present at the snapshot (232 sections), then checks merge history and commit ancestry. Repeated report bullets and provider-package supplements are consolidated by defect. Unmerged fix-rxstats and mm-e reports are excluded. Report filenames and section lines identify external controller evidence; no runtime allocation belongs in this register.
 
-FRB-001–066 are unique register IDs, with one CHANGELOG-ready line each. Earlier IDs were renumbered or consolidated; explicit legacy anchors preserve existing links. Older ED candidates without established Rails/fix/test provenance remain in an appendix without confirmed FRB IDs. The withdrawn disabled-map-matching invalidation claim is not a release fix. The digest season change for 27 timezone aliases restores Phoenix parity and is not a Rails bug.
+FRB-001–067 are unique register IDs, with one CHANGELOG-ready line each. Earlier IDs were renumbered or consolidated; explicit legacy anchors preserve existing links. Older ED candidates without established Rails/fix/test provenance remain in an appendix without confirmed FRB IDs. The withdrawn disabled-map-matching invalidation claim is not a release fix. The digest season change for 27 timezone aliases restores Phoenix parity and is not a Rails bug.
 
 Source lines refer to the report or named source revision and may move. Tests are the implementation evidence; this documentation task reruns only tests that read these registers. Proposed Rails map-matching comparisons are clearly marked and must not be represented as Rails 1.15.3 defects. Native and retained Rails consumers have separate boundaries. Rails remains unchanged by this documentation task. Native Cloud lifecycle remains refused in every mode pending external L1 handoff; this register is not deployment acceptance.
 
@@ -1074,6 +1074,21 @@ Rails destroys visits and notes by attachment alone, then nullifies those visits
 - Tests: “owned area deletion refuses every foreign dependent before changing the graph” in `app-phoenix/test/dawarich_web/standalone_api_review_test.exs`; three “queued area cleanup preserves foreign shared place attachments” cases in `standalone_area_cleanup_test.exs`; “batch cleanup retains every visit status and foreign suggestion link” in `app-phoenix/test/dawarich/places/orphan_cleanup_worker_test.exs`; “deletes only unreferenced owned suggested orphans and preserves hidden references” in `orphans_test.exs`.
 - Ledger: FRB-066 extended; ED-FIX-ORPHAN-REFERENCES added; no additional DRB row.
 - CHANGELOG-ready: Preserve other accounts' records and all visit references through area deletion and scheduled orphan-place cleanup.
+
+
+### FRB-067 — Account deletion changes another account's dependent records
+
+Rails removes suggestion links and clears visits by the deleted user's place IDs without checking the visit owner. Its trip, tag and family cleanup can also remove foreign notes, shares and associations or clear another trip's reservation day in a database-valid cross-owner graph. The probes characterize existing stored graphs; they do not claim public creation endpoints accept every such graph.
+
+- Rails: `app/services/users/destroy.rb:57,63,67,83,96`; `app/models/trip.rb:19`; `app/models/concerns/notable.rb:7`; `app/models/planned_day.rb:7`.
+- Phoenix: `app-phoenix/lib/dawarich/users/destroy_effects.ex`; `app-phoenix/lib/dawarich/users/destroy_scope.ex`; shared `app-phoenix/lib/dawarich/places/orphans.ex`.
+- Behavior: constrain dependent cleanup to the deleted account. Reject foreign notes, trip shares, reservation day links, tag targets and family dependents before purge/cache/webhook intents. Account place cleanup calls the shared locked orphan batch with all source/note types eligible, retaining its complete reference checks. A remaining referenced place cancels and rolls back the entire worker transaction, including rows, receipts and effect intents. It never rewrites another user's visit or removes their suggestion link.
+- Modes: native worker; standalone bindings activate it. Retained Rails-owned cleanup remains unchanged. Cloud lifecycle refusal remains in every mode pending L1.
+- Tests: “deleting a family member preserves another user's shared-place visit”, “account deletion refuses foreign dependent associations before cleanup” and “account cleanup preserves another user's reservation day” in `app-phoenix/test/dawarich/users/standalone_deletion_test.exs`; each has RED, GREEN, named mutation failure and restored GREEN evidence.
+- Evidence: `fix2-fix-sa-account-deletion.report.md`; local Rails transactional oracles reproduce every destructive projection without retaining their synthetic rows. Review fix awaits controller integration.
+- Ledger: ED-FIX-ACCOUNT-DEPENDENTS added; shared ED-FIX-ORPHAN-REFERENCES retained; no new DRB row.
+- Limits: admission still schedules and marks the account deleted as before. Refused worker cleanup retains that account and all dependencies, emits no committed effects and records no processed receipt. Resolve foreign references explicitly before redelivering the worker; no reference reassignment or automatic retry escalation occurs.
+- CHANGELOG-ready: Preserve other accounts' records and references when account deletion encounters shared places or foreign dependent associations.
 
 ## Deferred Rails defects and retained policies
 

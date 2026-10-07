@@ -684,8 +684,27 @@ source debt or weaken Cloud lifecycle refusal.
 | --- | --- | --- | --- | --- |
 | ED-FIX-SWEEP6-RETRY | POST /tracks/recalculation before workers start | Two valid submissions enqueue two user reclassification jobs because processing state starts in the worker. | A per-user SQL primary-key fence and transactional outbox insertion accept one root event until its fan-out completes. | Controller review F1 exactly-once requirement; `review web queued retry produces exactly one event`; DRB-FIX-SWEEP6-RETRY; [recalculation contract](../../docs/phoenix/standalone-recalculation.md). |
 
+## Standalone pending OTP authentication
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-SA-PENDING | Active OTP challenge plus another valid credential | A successful full login leaves the earlier actor's challenge active; Warden or remember authentication can render protected pages while that challenge remains. | Standalone full sign-in clears all four OTP session keys; an active challenge refuses Warden and remember identities at shared page admission. Expired challenges and coexistence retain their existing behavior. | Controller fix2-fix-sa-auth-pages F1; `F1 full login of actor B clears actor A's active OTP challenge`; `F1 active pending challenge refuses Warden and remember credentials at shared pages`; [auth contract](../../docs/phoenix/standalone-auth-pages.md). |
+
+## Native Referer syntax admission
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-SA-TREK-REFERER-SYNTAX | Native redirect-back and url-from sites | Rails compares the parsed host with request.host; valid same-host userinfo and protocol-relative targets can be admitted. | Shared RailsRedirect retains host comparison and other HTTP(S) scheme/port acceptance, but rejects backslashes, userinfo, embedded control/whitespace and protocol-relative forms before comparing hosts. Surrounding whitespace is trimmed. Rejected targets use each action's Rails fallback. | Controller fix-sa-trek ruling 2026-10-07; named F1/F2/F3 regressions and the new-handler guard; [native redirect contract](../../docs/phoenix/standalone-trek-sources.md). |
+| ED-FIX-SA-TREK-REFERER-SCHEME | Native redirect-back scheme admission | Rails host-only validation admits same-host authority URLs with JavaScript, data and other non-HTTP schemes (`app/controllers/achievements_controller.rb:45`). | After trimming, only case-insensitive HTTP/HTTPS absolute URLs on the request host or scheme-less single-slash relative paths are admitted. Every other scheme selects the action's Rails fallback. | Controller fix4-fix-sa-trek security ruling 2026-10-07; named scheme matrix and signed standalone sharing regression, each with RED/GREEN/mutation evidence; [native redirect contract](../../docs/phoenix/standalone-trek-sources.md). |
+
 ## Orphan-place reference preservation
 
 | ID | Surface | Rails | Phoenix | Evidence / authority |
 | --- | --- | --- | --- | --- |
 | ED-FIX-ORPHAN-REFERENCES | Shared orphan-place cleanup eligibility | Rails ignores declined/soft-deleted visits and detaches their primary references, then deletes place-visits without checking the visit owner (`app/services/places/delete_if_orphan.rb:19,25-27`). | Native individual and batch cleanup retains any primary visit reference in every status, including deleted visits, and any suggestion link across all users. Only owned, completely unreferenced places are deleted; no visit/link mutation occurs. The residual source corpus adjusts only the four hidden/declined result projections; recorded Rails fixtures remain unchanged. Three actual queued-area-job regressions plus single/batch ownership tests and named legacy-cleanup mutations verify the difference. | fix-sa-api-gaps queued F2 follow-up; [FRB-066](../../docs/phoenix/fixed-rails-bugs.md#frb-066--area-deletion-removes-another-users-linked-records); fixed-in-port, Rails-owned effects retain source behavior. |
+
+## Account deletion reference preservation
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-ACCOUNT-DEPENDENTS | Native account cleanup of a cross-owner graph | Rails removes foreign place suggestion links, clears foreign visit references, and deletes foreign trip notes/shares, tag links and family associations (`app/services/users/destroy.rb:57,63,67,83,96`; `app/models/trip.rb:19`; `app/models/concerns/notable.rb:7`). | Every dependent mutation is scoped to the deleted account. Foreign immediate dependents refuse before cleanup. Shared locked orphan-place cleanup applies complete reference checks to every owned source/note type; a retained place cancels and rolls back all worker writes, receipts and purge/cache/webhook intents. Admission's deleted marker remains until references are explicitly resolved and the worker is redelivered. Rails-owned cleanup remains unchanged. | Controller fix2 review F1 privacy/data-loss requirement; named shared-place and foreign-dependent regressions with mutation proofs; [FRB-067](../../docs/phoenix/fixed-rails-bugs.md#frb-067--account-deletion-changes-another-accounts-dependent-records). |
