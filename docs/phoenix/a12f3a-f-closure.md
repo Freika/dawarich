@@ -342,3 +342,56 @@ mismatch: exactly the five additive map-matching fields differ, with all
 retained fields and values identical. That fixture maintenance is outside RR1.
 No Ruby file changes in this correction. Feature-history and explicit-delta
 Gitleaks checks pass. All verification services are stopped.
+
+## F17 round-three durable continuation delivery
+
+The round-two review found that a deferred B had no receipt: after A completed,
+C could claim the import and B was then canceled below the high-water mark.
+Admission now consults persisted typed Oban jobs as well as unfinished receipt
+positions. The durable order is `(current_index, job_id)`; equal cursors retain
+job insertion order. This supersedes the earlier cancellation behavior.
+
+Pending and deferred payloads retain their event identity and source locations
+in Oban, including scheduled retries and events delivered before any receipt
+exists. An unapplied predecessor prevents a successor from claiming the writer.
+Its receipt commits each consumed-array cursor together with point/counter
+writes, then records completion; the processed-event marker makes replay inert.
+A completed receipt also permits progress if marker publication was interrupted.
+Canceled or discarded job state alone never proves its rows were applied;
+unapplied predecessors remain visible debt rather than disappearing from order.
+The fix creates no continuation cancellation transition. A lower-index event
+persisted after higher work finished remains executable, while the existing SQL
+maximum preserves monotonic progress. Ordinary whole-import refusal and the
+owner/job/attempt/token/attachment/payload fences remain in place.
+
+The actual-worker regression reproduces the reviewer's committed 1,000-row
+interruption and scheduled B, then forces C to wait until B commits. All three
+finish with 1,003 physical rows and replay-stable counters. The permutation test
+covers every delivery order of four persisted events, including equal cursors
+and delivery before a receipt, in standalone and coexistence. Each finishes
+with all twelve distinct source points, four processed markers and stable
+replays. The late lower-index test proves older work is applied without reducing
+progress. Literal `imports.points_count` retains its fixture baseline; physical
+point rows and raw/double counters are verified separately.
+
+The central ruling-17 register, `docs/phoenix/fixed-rails-bugs.md`, now records
+the actual Rails RecordsImporter **2,000 → 1,000** progress reproduction, source
+anchors, Phoenix's fenced maximum, the two-mode progress regression and ED/DRB
+disposition. A named register test prevents omission. No Ruby source or plan
+ledger is changed. AFFiNE counterpart remains `ovFWRqfzsy2Jb5n1NB4Qc`.
+
+Upgrade coverage also reproduces an interrupted equal-index legacy receipt with
+no saved job ID. Admission recovers its order from the persisted Oban event job,
+allowing the earlier queued event to finish before resuming the later prefix.
+The named legacy-receipt regression runs in both modes and ends with 1,002
+physical rows, stable counters and no ordering deadlock.
+
+Round-three gates pass: 69 targeted tests; unchanged reviewer probe batches
+2/0, 6/0 and 12/0; five named mutation failures with restored GREEN; forced
+warnings-as-errors compilation of 1,686 files; whole-tree format; controller
+seed 404 with 9,216 tests and zero failures (2,750 / 3,152 / 3,314). Existing
+exclusions/skips remain aggregated at six/three. Changed Ruby specs/RuboCop are
+not applicable because this correction changes no Ruby path. The current
+six-file delta passes Gitleaks. Cloud lifecycle guard files and Swagger/schema
+have no correction-relative changes. The scoped fix3 report records the full
+state machine and final commit/cleanup evidence.

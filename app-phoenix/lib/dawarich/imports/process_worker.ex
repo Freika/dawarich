@@ -75,7 +75,6 @@ defmodule Dawarich.Imports.ProcessWorker do
       {:ok, value} -> value
       {:skip, :busy} -> {:snooze, 5}
       {:skip, :predecessor} -> {:snooze, 5}
-      {:skip, :stale_continuation} -> {:cancel, "out-of-order continuation"}
       {:skip, :legacy} -> NormalHandover.resume(repo, job, :legacy)
       {:skip, _} -> NormalHandover.resume(repo, job)
     end

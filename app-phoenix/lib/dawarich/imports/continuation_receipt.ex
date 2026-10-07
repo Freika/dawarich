@@ -4,35 +4,72 @@ defmodule Dawarich.Imports.ContinuationReceipt do
   alias Dawarich.Jobs.Processed
 
   def admission(lease) do
-    case lease.repo.query!(
-           "SELECT r.attachment_snapshot,i.processed FROM phoenix.import_runs r JOIN imports i ON i.id=r.import_id WHERE r.import_id=$1 FOR UPDATE OF r,i",
-           [lease.import.id],
-           log: false
-         ).rows do
-      [[%{"kind" => "continuation", "events" => events}, processed]] when is_map(events) ->
-        cond do
-          Map.has_key?(events, lease.event_id) ->
-            :ok
+    events =
+      case lease.repo.query!(
+             "SELECT attachment_snapshot FROM phoenix.import_runs WHERE import_id=$1 FOR UPDATE",
+             [lease.import.id],
+             log: false
+           ).rows do
+        [[%{"kind" => "continuation", "events" => events}]] when is_map(events) -> events
+        _ -> %{}
+      end
 
-          Enum.any?(events, fn {event, receipt} ->
-            receipt["complete"] != true and not Processed.done?(lease.repo, event)
-          end) ->
-            :predecessor
+    if receipt_predecessor?(lease, events) or pending_predecessor?(lease, events),
+      do: :predecessor,
+      else: :ok
+  end
 
-          lease.continuation["current_index"] <
-              Enum.reduce(events, processed || 0, fn {_event, receipt}, index ->
-                max(index, receipt["index"] || 0)
-              end) ->
-            :stale_continuation
+  defp receipt_predecessor?(lease, events) do
+    Enum.any?(events, fn {event, receipt} ->
+      event != lease.event_id and unfinished?(lease.repo, event, receipt) and
+        receipt_position(lease, event, receipt) < position(lease)
+    end)
+  end
 
-          true ->
-            :ok
+  defp receipt_position(lease, event, receipt) do
+    job_id =
+      receipt["job_id"] ||
+        case lease.repo.query!(
+               "SELECT id FROM oban.oban_jobs WHERE worker=$1 AND args @> $2 ORDER BY id LIMIT 1",
+               [
+                 lease.worker,
+                 %{
+                   "event_id" => event,
+                   "import_id" => lease.import.id,
+                   "user_id" => lease.import.user_id
+                 }
+               ],
+               log: false
+             ).rows do
+          [[id]] -> id
+          [] -> 0
         end
 
-      _ ->
-        :ok
-    end
+    {receipt["index"] || 0, job_id}
   end
+
+  defp pending_predecessor?(lease, events) do
+    lease.repo.query!(
+      "SELECT id,args FROM oban.oban_jobs WHERE worker=$1 AND args @> $2",
+      [lease.worker, %{"import_id" => lease.import.id, "user_id" => lease.import.user_id}],
+      log: false
+    ).rows
+    |> Enum.any?(fn [id, args] ->
+      with event when is_binary(event) and event != lease.event_id <- args["event_id"],
+           {:ok, _} <- Ecto.UUID.cast(event),
+           {:ok, payload} <- Dawarich.Imports.GoogleTakeoutResume.validate(args["continuation"]) do
+        {payload["current_index"], id} < position(lease) and
+          unfinished?(lease.repo, event, events[event] || %{})
+      else
+        _ -> false
+      end
+    end)
+  end
+
+  defp unfinished?(repo, event, receipt),
+    do: receipt["complete"] != true and not Processed.done?(repo, event)
+
+  defp position(lease), do: {lease.continuation["current_index"], lease.job_id}
 
   def driver(lease, state, context, digest, index) do
     cursor =
@@ -71,7 +108,8 @@ defmodule Dawarich.Imports.ContinuationReceipt do
           Map.merge(receipt || %{}, %{
             "identity" => identity,
             "cursor" => cursor,
-            "index" => index
+            "index" => index,
+            "job_id" => lease.job_id
           })
 
         save!(
