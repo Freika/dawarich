@@ -15,13 +15,17 @@ defmodule Dawarich.Storage.NativePurge do
     blobs =
       repo.query!(
         """
-        WITH RECURSIVE purge(id) AS (
-          SELECT id FROM active_storage_blobs WHERE id=ANY($1)
-          UNION
-          SELECT a.blob_id FROM purge p
-          JOIN active_storage_variant_records v ON v.blob_id=p.id
+        WITH RECURSIVE derivatives(parent,child) AS (
+          SELECT v.blob_id,a.blob_id FROM active_storage_variant_records v
           JOIN active_storage_attachments a ON a.record_id=v.id
             AND a.record_type='ActiveStorage::VariantRecord'
+          UNION ALL
+          SELECT record_id,blob_id FROM active_storage_attachments
+          WHERE record_type='ActiveStorage::Blob' AND name='preview_image'
+        ), purge(id) AS (
+          SELECT id FROM active_storage_blobs WHERE id=ANY($1)
+          UNION
+          SELECT d.child FROM purge p JOIN derivatives d ON d.parent=p.id
         )
         SELECT b.id,b.key,b.service_name FROM active_storage_blobs b
         JOIN purge p ON p.id=b.id ORDER BY b.id FOR UPDATE OF b
@@ -33,7 +37,10 @@ defmodule Dawarich.Storage.NativePurge do
     references =
       repo.query!(
         """
-        SELECT a.blob_id,v.blob_id FROM active_storage_attachments a
+        SELECT a.blob_id,CASE
+          WHEN a.record_type='ActiveStorage::Blob' AND a.name='preview_image' THEN a.record_id
+          WHEN a.record_type='ActiveStorage::VariantRecord' THEN v.blob_id
+        END FROM active_storage_attachments a
         LEFT JOIN active_storage_variant_records v ON v.id=a.record_id
           AND a.record_type='ActiveStorage::VariantRecord'
         WHERE a.blob_id=ANY($1)
@@ -84,6 +91,12 @@ defmodule Dawarich.Storage.NativePurge do
 
     repo.query!(
       "DELETE FROM active_storage_attachments WHERE record_type='ActiveStorage::VariantRecord' AND record_id IN (SELECT id FROM active_storage_variant_records WHERE blob_id=ANY($1))",
+      [ids],
+      log: false
+    )
+
+    repo.query!(
+      "DELETE FROM active_storage_attachments WHERE record_type='ActiveStorage::Blob' AND name='preview_image' AND record_id=ANY($1)",
       [ids],
       log: false
     )

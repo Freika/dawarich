@@ -86,7 +86,14 @@ defmodule Dawarich.UserData.RestoreMonthlyTest do
       actual =
         entry.path |> File.read!() |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
 
-      expected = data[name]
+      expected =
+        if name == "tracks" do
+          UserDataSeeds.current_export_entries("UTC")[entry.name]
+          |> String.split("\n", trim: true)
+          |> Enum.map(&Jason.decode!/1)
+        else
+          data[name]
+        end
 
       normalize = fn row ->
         if name in ~w(stats digests), do: Map.put(row, "sharing_uuid", "generated"), else: row

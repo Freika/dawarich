@@ -69,7 +69,9 @@ defmodule Dawarich.Test.NormalWholeEffects do
           {[[kind, payload] | effects], months}
       end)
 
-    Enum.reverse(effects)
+    effects
+    |> Enum.reverse()
+    |> Enum.reject(fn [kind, _] -> kind == "imports.progress" end)
   end
 
   def assert_routes(c, repo, owner) do

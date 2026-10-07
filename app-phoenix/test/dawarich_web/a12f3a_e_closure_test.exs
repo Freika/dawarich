@@ -165,6 +165,18 @@ defmodule DawarichWeb.A12f3aERequestClosureTest do
     manifest = entries |> Map.new() |> Map.fetch!(~c"manifest.json") |> Jason.decode!()
     assert manifest["counts"]["points"] == 1
     body = URI.encode_query(%{"archive" => Dawarich.RailsMessages.blob_id(blob_id)})
+    foreign = RailsUser.insert!(%{id: 9722, email: "foreign-backup@example.test"})
+    foreign_session = RailsUser.session(foreign.id)
+
+    assert post_form(
+             foreign_session,
+             body,
+             [{"x-csrf-token", DawarichWeb.RailsCsrf.masked_token(foreign_session)}],
+             "/settings/users/import"
+           ).status == 302
+
+    assert [[0]] ==
+             Repo.query!("SELECT count(*) FROM job_outbox WHERE command_type='users.import_data'").rows
 
     assert post_form(c.session, body, [{"x-csrf-token", c.token}], "/settings/users/import").status ==
              302
@@ -347,7 +359,7 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
        %{tmp_dir: dir} do
     c = UserDataSeeds.seed!("UTC", ScratchRepo)
     archive = Export.write(ScratchRepo, c.user_id, dir, export_context(c))
-    expected = UserDataSeeds.entries("export_UTC")
+    expected = UserDataSeeds.current_export_entries("UTC")
     assert zip_entries(archive.path) == expected
     assert archive.counts == Jason.decode!(expected["manifest.json"])["counts"]
     assert Jason.decode!(expected["manifest.json"]) == capture(5)["exports"]["UTC"]["manifest"]
@@ -361,7 +373,7 @@ defmodule DawarichWeb.A12f3aEWorkerClosureTest do
 
     for zone <- ["UTC", "Europe/Berlin", "America/New_York"] do
       context = %{c.context | zone: zone}
-      expected = UserDataSeeds.entries("export_" <> String.replace(zone, "/", "_"))
+      expected = UserDataSeeds.current_export_entries(zone)
       manifest = capture(6)["exports"][zone]["manifest"]
       assert manifest == Jason.decode!(expected["manifest.json"])
 

@@ -4,7 +4,7 @@ defmodule Dawarich.EnhancedImport.SourceFile do
   alias Dawarich.{RubyInteger, Storage}
 
   @blob """
-  SELECT b.key, b.byte_size, b.checksum FROM active_storage_attachments a
+  SELECT b.key, b.byte_size, b.checksum, b.service_name, b.filename FROM active_storage_attachments a
   JOIN active_storage_blobs b ON b.id = a.blob_id
   WHERE a.record_type = 'Import' AND a.record_id = $1 AND a.name = 'file'
   ORDER BY a.id DESC LIMIT 1
@@ -18,32 +18,25 @@ defmodule Dawarich.EnhancedImport.SourceFile do
       [] ->
         raise "undefined method 'download' for nil"
 
-      [[_key, 0, _checksum]] ->
+      [[_key, 0, _checksum, _service, _filename]] ->
         raise @no_content
 
-      [[key, byte_size, checksum]] ->
+      [[key, byte_size, checksum, service, filename]] ->
         path = Path.join(tmp, "source")
-        Storage.download!(storage, key, path)
-        verify!(path, byte_size, checksum)
+
+        blob = %{
+          key: key,
+          byte_size: byte_size,
+          checksum: checksum,
+          service_name: service,
+          filename: filename
+        }
+
+        downloaded =
+          Storage.Reader.download!(storage, blob, temp_dir: tmp, checksum_details: true)
+
+        File.rename!(downloaded, path)
         if zip?(path), do: extract!(path, Path.join(tmp, "entry")), else: path
-    end
-  end
-
-  defp verify!(path, expected_size, expected_checksum) do
-    {checksum, size} = Storage.digest_file!(path)
-
-    cond do
-      size == 0 ->
-        raise @no_content
-
-      size != expected_size ->
-        raise "Incomplete download: expected #{expected_size} bytes, got #{size} bytes"
-
-      checksum != expected_checksum ->
-        raise "Checksum mismatch: expected #{expected_checksum}, got #{checksum}"
-
-      true ->
-        :ok
     end
   end
 

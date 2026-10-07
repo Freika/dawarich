@@ -4,6 +4,10 @@ defmodule DawarichWeb.StandaloneRoutes do
   alias DawarichWeb.Api
 
   @routes %{
+    {"GET", "/api/v1/settings/mobile"} => {Api.MobileSettingsController, :show, false},
+    {"PATCH", "/api/v1/settings/mobile"} => {Api.MobileSettingsController, :update, true},
+    {"GET", "/api/v1/areas"} => {Api.AreasController, :index, false},
+    {"POST", "/api/v1/areas"} => {Api.AreasController, :create, false},
     {"PATCH", "/api/v1/settings"} => {Api.SettingsController, :update, true},
     {"GET", "/api/v1/timeline"} => {Api.TimelineController, :index, false},
     {"GET", "/api/v1/maps/hexagons"} => {Api.HexagonsController, :index, false}
@@ -37,6 +41,12 @@ defmodule DawarichWeb.StandaloneRoutes do
   defp route(%{method: "PATCH", path_info: ["api", "v1", "points", id, "position"]}) do
     if id =~ ~r/\A\d{1,18}\z/,
       do: {Api.PointPositionsController, :update, true, %{"point_id" => id}}
+  end
+
+  defp route(%{method: method, path_info: ["api", "v1", "areas", id]})
+       when method in ["GET", "PATCH", "PUT"] do
+    action = if method == "GET", do: :show, else: :update
+    {Api.AreasController, action, false, %{"id" => id}}
   end
 
   defp route(conn) do

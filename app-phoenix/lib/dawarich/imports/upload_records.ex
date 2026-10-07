@@ -14,6 +14,11 @@ defmodule Dawarich.Imports.UploadRecords do
       ).rows
 
     unless locked != [], do: repo.rollback(:not_found)
+
+    if Map.get(item, :upload_user_id) &&
+         not Dawarich.Storage.UploadReceipts.owned?(repo, blob.id, user.id),
+       do: repo.rollback(:forbidden)
+
     if trial?(user) and blob.byte_size > 11 * 1024 * 1024, do: repo.rollback(:file_too_large)
 
     if repo.query!(

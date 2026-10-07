@@ -58,6 +58,7 @@ RSpec.describe Imports::PreparedDownloadPurgeCommands do
 
   it 'can purge after import deletion and source replacement' do
     receipt!
+    blob.update!(metadata: blob.metadata.merge('phoenix_purge_pending' => true))
     import.update_columns(name: 'replaced.gpx')
     import.file.attach(io: StringIO.new('<gpx/>'), filename: 'replacement.gpx')
     expect { described_class.call(payload) }.to have_enqueued_job(ActiveStorage::PurgeJob).with(blob)

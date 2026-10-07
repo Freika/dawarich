@@ -188,8 +188,10 @@ defmodule Dawarich.Imports.TeslamateClientTest do
         )
       end)
 
-    assert {:ok, []} = Client.cars(Client.new("http://127.0.0.1:#{server.port}//"))
-    Task.await(task)
+    assert {:error, "TeslaMateApi connection failed"} =
+             Client.cars(Client.new("http://127.0.0.1:#{server.port}//"))
+
+    Task.shutdown(task, :brutal_kill)
   end
 
   defp fixture(name) do

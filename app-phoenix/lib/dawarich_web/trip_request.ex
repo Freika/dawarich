@@ -1,7 +1,6 @@
 defmodule DawarichWeb.TripRequest do
   @moduledoc false
   import DawarichWeb.A8Request, only: [member: 4, nested?: 3, root?: 2, scalar_map?: 1]
-  @trip ~w(name started_at ended_at description)
   @note ~w(date body)
 
   def target(["trips"]), do: {:trip_create, ["POST"], "POST"}
@@ -28,7 +27,12 @@ defmodule DawarichWeb.TripRequest do
 
   def fields?(action, params) when action in [:trip_create, :trip_update] do
     {href, fields} = Map.pop(params, "href", "")
-    is_binary(href) and nested?(fields, "trip", @trip)
+
+    is_binary(href) and root?(fields, ["trip"]) and
+      case fields["trip"] do
+        %{} = attrs when map_size(attrs) > 0 -> scalar_map?(attrs)
+        _ -> false
+      end
   end
 
   def fields?(action, params) when action in [:note_create, :note_update],

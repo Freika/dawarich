@@ -65,15 +65,45 @@ defmodule Dawarich.Trips.WebNotes do
     parts = Dawarich.Imports.DateParts.parse(raw)
     now = Date.utc_today()
 
-    with day when is_integer(day) <- parts["mday"],
-         {:ok, date} <- Date.new(parts["year"] || now.year, parts["mon"] || now.month, day),
-         do: {:ok, date},
-         else: (_ -> {:invalid_date})
+    date =
+      cond do
+        parts["cweek"] || parts["cwday"] ->
+          commercial(parts, now)
+
+        parts["yday"] ->
+          ordinal_day(parts, now)
+
+        is_integer(parts["mday"]) ->
+          Date.new!(parts["year"] || now.year, parts["mon"] || now.month, parts["mday"])
+
+        true ->
+          nil
+      end
+
+    if date, do: {:ok, date}, else: {:invalid_date}
   rescue
     _ -> {:invalid_date}
   end
 
   defp date(_), do: {:invalid_date}
+
+  defp commercial(parts, now) do
+    {current_year, current_week} = :calendar.iso_week_number(Date.to_erl(now))
+    year = parts["cwyear"] || current_year
+    week = parts["cweek"] || current_week
+    day = parts["cwday"] || 1
+    january = Date.new!(year, 1, 4)
+    monday = Date.add(january, 1 - Date.day_of_week(january))
+    date = Date.add(monday, (week - 1) * 7 + day - 1)
+    if day in 1..7 and :calendar.iso_week_number(Date.to_erl(date)) == {year, week}, do: date
+  end
+
+  defp ordinal_day(parts, now) do
+    year = parts["year"] || now.year
+    day = parts["yday"]
+    maximum = if Calendar.ISO.leap_year?(year), do: 366, else: 365
+    if day in 1..maximum, do: Date.add(Date.new!(year, 1, 1), day - 1)
+  end
 
   defp save(repo, user, trip_id, old, body, context) when is_binary(body) or is_nil(body) do
     note = %{old | body: body}

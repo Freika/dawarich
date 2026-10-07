@@ -11,7 +11,8 @@ defmodule Dawarich.Imports.UploadCreate do
   defp create_present([], _repo, _user, _context), do: {:error, :no_files}
 
   defp create_present(files, repo, user, context) do
-    with {:ok, blobs} <- UploadAdmission.prepare(repo, files, context) do
+    with {:ok, blobs} <-
+           UploadAdmission.prepare(repo, files, Map.put(context, :upload_user_id, user.id)) do
       repo.transaction(fn ->
         owners =
           blobs

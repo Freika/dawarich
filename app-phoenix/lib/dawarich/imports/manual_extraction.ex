@@ -92,16 +92,15 @@ defmodule Dawarich.Imports.ManualExtraction do
           else
             if native and action == :extract and record.source in [0, 3, 4, 13] do
               args =
-                Map.take(payload, ~w(import_id user_id source source_blob_id time_zone locale))
-                |> Map.put("lock_attempt", 1)
+                Map.put(payload, "lock_attempt", 1)
 
               Dawarich.EnhancedImport.NormalWorker.enqueue!(repo, args, event, context.now)
             else
               if native do
                 args =
                   if action == :extract,
-                    do: %{"import_id" => record.id, "lock_attempt" => 1},
-                    else: %{"import_id" => record.id}
+                    do: Map.put(payload, "lock_attempt", 1),
+                    else: payload
 
                 repo.query!(
                   "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES($1,$2,1,$3,$4,$5,now())",

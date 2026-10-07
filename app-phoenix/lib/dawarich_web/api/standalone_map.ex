@@ -2,13 +2,13 @@ defmodule DawarichWeb.Api.StandaloneMap do
   @moduledoc false
   @behaviour Plug
   import Plug.Conn
-  alias Dawarich.{Repo, UserSettings}
+  alias Dawarich.Repo
   alias DawarichWeb.StandaloneError
-
-  @settings ~w(timezone maps distance_unit fog_of_war_meters preferred_map_layer time_threshold_minutes merge_threshold_minutes live_map_enabled track_color immich_url immich_api_key photoprism_url photoprism_api_key airtrail_url airtrail_api_key visits_suggestions_enabled fog_of_war_threshold fog_of_war_mode enabled_map_layers places_tag_filters maps_maplibre_style maps_maplibre_tiles_url maps_maplibre_tiles_fallback maps_maplibre_custom_theme globe_projection enabled_transportation_modes min_minutes_spent_in_city gps_filtering_enabled visit_radius_meters visit_min_points visit_min_duration_minutes point_dragging_enabled meters_between_routes speed_colored_routes points_rendering_mode minutes_between_routes route_opacity route_color speed_color_scale points_tiled_rendering)
 
   def enabled?(_conn, _params), do: Dawarich.Standalone.enabled?()
   def init(action), do: action
+
+  def call(conn, :settings), do: DawarichWeb.Api.SettingsController.call(conn, :index)
 
   def call(conn, :progress) do
     conn = DawarichWeb.Api.Auth.admit(conn, conn.assigns.api_user, [])
@@ -30,14 +30,6 @@ defmodule DawarichWeb.Api.StandaloneMap do
     end
   rescue
     _ -> StandaloneError.respond(conn, "standalone_map_failure", 500)
-  end
-
-  defp run(conn, :settings, _params) do
-    settings =
-      UserSettings.safe(Dawarich.Accounts.settings(conn.assigns.api_user.id))
-      |> Map.take(@settings)
-
-    json(conn, 200, %{settings: settings, status: "success"})
   end
 
   defp run(conn, :progress, _params) do

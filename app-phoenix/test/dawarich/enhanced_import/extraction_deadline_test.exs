@@ -5,23 +5,6 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
   alias Dawarich.Storage
   alias Dawarich.Tracks.PerUserLock
 
-  defmodule BlockedClient do
-    @moduledoc false
-    @behaviour ExAws.Request.HttpClient
-
-    @impl true
-    def request(:get, _url, _body, _headers, opts) do
-      send(Keyword.fetch!(opts, :caller), {:blocked, self()})
-
-      receive do
-        :release -> :ok
-      end
-
-      xml = "<gpx/>"
-      {:ok, %{status_code: 206, headers: [{"content-range", "bytes 0-5/6"}], body: xml}}
-    end
-  end
-
   setup do
     previous = Application.fetch_env!(:dawarich, :extraction_timeout_ms)
     Application.put_env(:dawarich, :extraction_timeout_ms, 60_200)
@@ -45,7 +28,7 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
     {import["id"], import["user_id"]}
   end
 
-  defp run(id, attempt, storage, repo \\ ScratchRepo, opts \\ []) do
+  defp run(id, attempt, storage, repo, opts) do
     job = %Oban.Job{
       args: %{"import_id" => id, "lock_attempt" => 1, "event_id" => Ecto.UUID.generate()},
       attempt: attempt,
@@ -58,7 +41,7 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
     end
   end
 
-  defp run_blocked(id, attempt, storage, repo \\ ScratchRepo) do
+  defp run_blocked(id, attempt, storage, repo) do
     deadline = %{at: :deferred, timeout_ms: 200, minutes: 0}
     extraction = Task.async(fn -> run(id, attempt, storage, repo, deadline: deadline) end)
 
@@ -80,23 +63,18 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
     } do
       {id, uid} = prepare(storage, "<gpx/>")
 
-      s3 =
-        Storage.config!(%{
-          "STORAGE_BACKEND" => "s3",
-          "AWS_ACCESS_KEY_ID" => "AKIA",
-          "AWS_SECRET_ACCESS_KEY" => "synthetic",
-          "AWS_REGION" => "eu-central-1",
-          "AWS_BUCKET" => "dawarich"
-        })
+      caller = self()
 
-      s3 = %{
-        s3
-        | root: storage.root,
-          ex_aws:
-            Keyword.merge(s3.ex_aws, http_client: BlockedClient, http_opts: [caller: self()])
-      }
+      HookRepo.set_hook(fn sql, _params ->
+        if sql =~ "SELECT b.key" do
+          send(caller, {:blocked, self()})
+          receive do: (:release -> :ok)
+        end
 
-      pid = run_blocked(id, unquote(attempt), s3)
+        :ok
+      end)
+
+      pid = run_blocked(id, unquote(attempt), storage, HookRepo)
 
       assert {unquote(status),
               %{"error_message" => "GPX extraction did not finish within 0 minutes"},
@@ -143,6 +121,7 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
     storage: storage
   } do
     {id, uid} = prepare(storage, "<gpx/>")
+    rows("UPDATE active_storage_blobs SET service_name='s3'")
     Application.put_env(:dawarich, :extraction_timeout_ms, 60_000)
     server = Dawarich.Test.RawHTTP.listen()
     on_exit(fn -> :gen_tcp.close(server.listen) end)

@@ -86,6 +86,46 @@ publication followed by explicit Rails hand-back while retaining every drain
 blocker. All 78 closure kinds remain; this scoped producer repair does not
 certify the full R01–R20 audit, source drain, any ownership ED or G49.
 
+### H03 closure recheck — R10 repaired, R12 purge remains live
+
+R10k01 now uses `Imports.Progress.publish!/3` at all three publication sites:
+`GpxProgress`, `GpxLifecycle` and `NormalLifecycle`. The publisher reads the
+import source and locks `command:imports.process_gpx` for GPX or
+`command:imports.process_normal` for normal formats. Native parent ownership
+and standalone keep progress on the existing native subscriber transport;
+Rails-owned coexistence retains the original `imports.progress` kind and
+user/import/locale payload through the same exact Ruby JSON serializer.
+
+`imports/progress_ownership_test.exs` names three regressions: incremental
+progress respects each parent and preserves the Rails payload; GPX lifecycle
+publishes native terminal progress; normal lifecycle publishes native terminal
+progress. Selectors `R10progress`, `R10gpx` and `R10normal` cover coexistence and
+standalone, all-native ownership, real subscribers and completed imports.
+Incremental progress also checks the other parent pinned to Rails. Lifecycle
+Rails payload proof exercises their shared publisher after pinning the parent;
+a real Rails-owned native lease still refuses processing. Each new test failed
+on the original producer's actual reverse rows, passed the repair, failed its
+individual old-publisher mutation and passed after restoration. Retained Rails
+corpus files are unchanged; native lifecycle comparisons assert zero progress
+reverse rows and retain every other ordered effect.
+
+The all-R01–R20 audit then finds a distinct **R12k02 `exports.purge`** gap.
+`Exports.Delete.call/3` at `exports/delete.ex:44` checks only standalone mode.
+With every Registry owner Oban, an actual coexistence deletion removes the
+export and attachment but inserts one `exports.purge` reverse row, and queues
+no native purge worker. Standalone instead queues `Exports.PurgeWorker` and
+inserts no reverse row. Both synthetic probe transactions were rolled back.
+There is no dedicated `command:exports.purge` Registry entry; the native export
+parent entries are already Oban in the probe. RX-EXPORTS must resolve the
+producer's native ownership contract and prove storage terminal effects,
+zero-reverse native coexistence and unchanged Rails hand-back.
+
+Per the closure brief, this new producer gap is reported without repair.
+H03 all-producer acceptance and H04 final ED closure remain blocked. No
+producer kind, ownership ED or accepted source payload is closed over it.
+G49 and every-mode Cloud lifecycle refusal remain unchanged. Exact seed/head,
+commands, evidence and cleanup are in `fix-hot-h03-closure.report.md`.
+
 `Jobs.Drain.status/1` now explicitly identifies `scope: native_sql`, source
 status `NOT_OBSERVED`, source certainty `UNKNOWN`, and
 `source_inspection_required`. Its G49 field remains `BLOCKED` even when binary

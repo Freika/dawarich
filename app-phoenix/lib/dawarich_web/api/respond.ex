@@ -30,10 +30,17 @@ defmodule DawarichWeb.Api.Respond do
       send_body(
         conn,
         status,
-        term |> Ruby.json() |> IO.iodata_to_binary(),
+        encode(term),
         "application/json; charset=utf-8",
         opts
       )
+
+  def encode(term), do: term |> Ruby.json() |> IO.iodata_to_binary()
+
+  def prepare_encoded_json(conn, status, body),
+    do: prepare_body(conn, status, body, "application/json; charset=utf-8", [])
+
+  def send_prepared({status, conn, body}), do: finish(status, conn, body)
 
   def data(conn, body, type, opts) do
     conn
@@ -42,14 +49,17 @@ defmodule DawarichWeb.Api.Respond do
     |> send_body(200, body, type, opts)
   end
 
-  defp send_body(conn, status, body, type, opts) do
+  defp send_body(conn, status, body, type, opts),
+    do: conn |> prepare_body(status, body, type, opts) |> send_prepared()
+
+  defp prepare_body(conn, status, body, type, opts) do
     conn = frame(conn, type)
     conn = rate_headers(conn, status)
     conn = if conn.assigns.api_vary, do: put_resp_header(conn, "vary", "Accept"), else: conn
     conn = cache(conn, status, body, opts)
     final = final_status(conn, status)
     log(conn, final)
-    finish(final, conn, body)
+    {final, conn, body}
   end
 
   defp final_status(%{method: "GET"} = conn, 200) do

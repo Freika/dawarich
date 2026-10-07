@@ -7,10 +7,11 @@ defmodule Dawarich.Imports.GpxLifecycle do
     ImportState,
     LeaseLost,
     Postprocessing,
+    Progress,
     Tempfiles
   }
 
-  alias Dawarich.{Notifications, RailsCommands, Storage.Reader, Storage.ImportServices}
+  alias Dawarich.{Notifications, Storage.Reader, Storage.ImportServices}
   require Logger
 
   def call(lease, context) do
@@ -130,13 +131,7 @@ defmodule Dawarich.Imports.GpxLifecycle do
 
   defp publish(lease, context, native? \\ true) do
     ImportState.effect!(lease, fn ->
-      unless Dawarich.Standalone.enabled?() do
-        RailsCommands.insert!(lease.repo, "imports.progress", %{
-          "import_id" => lease.import.id,
-          "user_id" => lease.import.user_id,
-          "locale" => context.locale
-        })
-      end
+      Progress.publish!(lease.repo, lease.import, context.locale)
     end)
 
     if native?, do: broadcast(lease)

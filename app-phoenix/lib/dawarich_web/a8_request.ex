@@ -41,8 +41,16 @@ defmodule DawarichWeb.A8Request do
         |> assign(:a8_format, format)
 
       case RailsForm.admission(conn) do
-        :ok -> conn
-        {:replay, reason} -> Body.replay(conn, reason)
+        :ok ->
+          conn
+
+        {:replay, "not signed in by session" = reason} ->
+          if Dawarich.Standalone.enabled?(),
+            do: DawarichWeb.AuthenticationRefusal.respond(conn),
+            else: Body.replay(conn, reason)
+
+        {:replay, reason} ->
+          Body.replay(conn, reason)
       end
     else
       _ -> Body.replay(conn, "A8 action or parameter shape")
@@ -72,9 +80,12 @@ defmodule DawarichWeb.A8Request do
     allowed = request_module(conn).query_keys(action)
 
     if Enum.all?(query, fn {key, value} ->
-         key in allowed and is_binary(value) and not Map.has_key?(params, key)
+         key in allowed and is_binary(value) and
+           (not Map.has_key?(params, key) or
+              (request_module(conn) == DawarichWeb.TripRequest and action == :trip_export and
+                 key == "file_format"))
        end),
-       do: {:ok, query},
+       do: {:ok, Map.drop(query, Map.keys(params))},
        else: :replay
   rescue
     _ -> :replay

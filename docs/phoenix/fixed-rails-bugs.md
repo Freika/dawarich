@@ -127,11 +127,12 @@ With inconsistent persisted place/tag ownership, a real visit to a demo place ma
 
 ### FRB-010 — A late Takeout continuation lowers import progress
 
-An older worker overwrites newer progress; the source probe reproduced 2,000 → 1,000. Unfinished accepted predecessors order continuation admission, and continuation progress uses a database maximum.
+An older worker overwrites newer progress; the source probe reproduced 2,000 → 1,000 (a retried predecessor lowered `processed`). Unfinished accepted predecessors order continuation admission, and continuation progress uses a database maximum, so retrying a predecessor never lowers durable import progress and no deferred continuation is cancelled.
 
 - Rails: `app/services/imports/broadcaster.rb:10; app/services/google_maps/records_importer.rb:23; app/jobs/import/google_takeout_job.rb:11`.
 - Phoenix: `app-phoenix/lib/dawarich/imports/continuation_receipt.ex:6,92; app-phoenix/lib/dawarich/imports/gpx_progress.ex:13; app-phoenix/lib/dawarich/imports/lease.ex:95`.
-- Fix/acceptance history: `a403f9219` (feature only).
+- Fix/acceptance history: `a403f9219`, `5d0581805`, `bc4c398b2` (feat/a12f3a-f17, merged `5ef730845`; re-reviewed x3, 24 delivery permutations in both modes).
+- F17 progress: no ED/DRB row added (the Rails defect is fixed natively, not preserved).
 - Modes: standalone and coexistence accepted continuations.
 - Evidence: fix2-a12f3a-f17.report.md:158; rereview2-a12f3a-f17.report.md:84; fix3-a12f3a-f17.report.md:184. Ledger: F17 progress: no ED/DRB row added.
 - Test: “retrying a predecessor never lowers durable import progress” in `app-phoenix/test/dawarich/imports/continuation_order_test.exs`.
@@ -401,3 +402,146 @@ This summary follows [deferred-rails-bugs.md](deferred-rails-bugs.md), with late
 DRB-019 is already corrected by accepted ED-551 (FRB-018), not a deliberately preserved Phoenix bug. DRB-023 is the deferred Rails repair for the fixed Phoenix thumbnail leak (FRB-001). DRB-028 is the deferred Rails cache repair for FRB-015, recorded in `e5b48b6e1`; native-consumer retry and the port’s Rails-owned durable command consumer are fixed; original Rails direct writers retain best-effort loss. DRB-027/028/029 identities come from those reports/commits and must be reconciled with subsequent integration edits, not silently renumbered here.
 
 ED-542 (FRB-043) also explicitly needs Eugene acceptance before native ownership/lifecycle activation. No ruling here authorizes Cloud native lifecycle, changes signed-link policy, or edits the ED/DRB ledgers.
+
+## Provider transport corrections merged after consolidation
+
+### FRB-045 — Immich enrichment verification follows unsafe requests
+
+
+Rails verification follows cross-host redirects with the Immich key, buffers
+oversized EXIF responses, and confirms a provider root response after appending
+an asset path to a query-bearing base. Actual `Immich::VerifyEnrichment` loopback
+probes reproduce all three defects, including 33,554,473-byte valid JSON.
+Rails sources: `app/services/immich/verify_enrichment.rb:19` and `:20`.
+
+Phoenix's real verification worker now delegates its default transport to
+`ProviderHTTP` with the configured base separate from the asset path and its
+existing five-second timeout. A redirect, malformed base or oversized response
+cannot confirm the asset; notification/pass/event behavior remains unchanged.
+Phoenix sources: `app-phoenix/lib/dawarich/immich/enrichment.ex:88` and `:124`;
+shared policy at `app-phoenix/lib/dawarich/photos/provider_http.ex:33`.
+
+Named tests in `app-phoenix/test/dawarich/photos/provider_verification_test.exs`:
+“verification worker refuses cross-host redirects without forwarding its Immich
+key”; “verification and integration clients cancel oversized valid JSON before
+its terminator”; “verification and integration clients reject malformed bases
+instead of confirming the root”. Each has RED, GREEN and its named mutation;
+the real worker runs without an HTTP override in coexistence and standalone.
+
+CHANGELOG-ready: Prevent Immich verification from disclosing credentials through
+redirects or confirming oversized responses and unrelated provider resources.
+No ED/DRB row added; these extend the existing photo corrections under ruling 17.
+
+### FRB-046 — Integration provider transports skip the shared request limits
+
+
+Immich and PhotoPrism connection checks and geodata imports now share native
+provider validation and streaming bounds. PhotoPrism preview-token caching and
+import ownership checks remain in their existing callers. Rails counterparts
+buffer and concatenate unchecked bases at
+`app/services/immich/connection_tester.rb:47`, `:70`,
+`app/services/photoprism/connection_tester.rb:33`,
+`app/services/immich/request_photos.rb:37`, and
+`app/services/photoprism/request_photos.rb:68`.
+
+The whole-tree census also found direct transports in user-configured AirTrail,
+TeslaMate and TREK clients. All now use `ProviderHTTP`. TREK retains its existing
+SSRF resolver and connects to that approved address with the original hostname;
+TeslaMate retains its existing retry classification and attempt budget.
+AirTrail and TeslaMate refuse redirects and malformed bases; one trailing slash
+is still normalized. Native integration bodies above 32 MiB close while streaming.
+
+Actual Rails probes show oversized JSON and query-base root responses accepted
+by AirTrail, TeslaMate and TREK. Rails sources:
+`app/services/air_trail/client.rb:16`, `app/services/tesla_mate/client.rb:83`, and
+`app/services/trek/client.rb:56`, `:68`. Phoenix sources:
+`app-phoenix/lib/dawarich/air_trail/client.ex:13`,
+`app-phoenix/lib/dawarich/imports/teslamate/client.ex:68`, and
+`app-phoenix/lib/dawarich/imports/trek/client.ex:42`.
+
+Named regression: “other user-configured integration providers refuse redirects,
+invalid bases and oversized streams” in
+`app-phoenix/test/dawarich/photos/provider_inventory_test.exs`. Two AirTrail
+regressions in `app-phoenix/test/dawarich/air_trail/client_test.exs` separately
+refuse cross-host HTTPS redirects with certificate verification enabled/skipped.
+All have RED, GREEN and named mutations. Existing malformed double-slash success
+expectations now require refusal; no retry counts or timeouts were widened.
+
+CHANGELOG-ready: Bound native integration responses and reject redirects and
+malformed integration endpoints before provider data can be accepted.
+No ED/DRB row added; controller owns ledger consolidation.
+AFFiNE counterpart remains `5-hALFzd96DSlwiLB8lt5`.
+
+## Import storage corrections merged after consolidation (supplements FRB-003 to FRB-007; no new ids)
+
+### Import and storage review corrections — 2026-10-07
+
+| Finding | Rails-visible symptom and source evidence | Phoenix correction | Regression |
+| --- | --- | --- | --- |
+| F1: upload ownership | `app/controllers/imports_controller.rb:158` resolves a global signed blob and attaches it to `current_user` at line 164. Active Storage direct upload creation records no creator. A second authenticated user possessing an unattached signed reference can claim its bytes. | Native direct uploads create a server-owned `phoenix.upload_receipts` row in the blob transaction. Signed-reference import and user-data intake require the creating actor; import attachment rechecks ownership under the blob lock. CSRF-protected guest uploads retain the Rails wire protocol with ownerless receipts, which authenticated intake cannot claim. Historical uploads without a receipt are refused. Server-generated backup exports can be reimported only by their owning user, using the persisted Export attachment. Client metadata cannot establish ownership. | `another user cannot claim an upload created in the victim session` |
+| F2: delayed capability revocation | `app/models/import.rb:197` calls `purge_later`; `app/services/imports/prepared_download_purge_commands.rb:33` schedules cleanup. Blob redirects can continue resolving before delayed purge completes. | Every native-initiated deletion revokes unshared application capabilities in its transaction, independent of physical cleanup ownership. Oban cleanup jobs retain service/key after removing blob rows; Sidekiq cleanup retains marked blob rows and immutable authorization receipts for the existing Rails handler. Prepared caches and other owned derived attachments join the complete locked snapshot. Source-initiated Rails destruction retains the DRB-029 delayed behavior. Already issued external S3 URLs remain subject to object deletion and expiry. | `deleting an import revokes its prepared blob capability immediately` |
+| F3: legacy extraction replay | `app/jobs/enhanced_import/extract_job.rb:43` defaults `expected` to nil; its ordinary legacy path runs without a completed-event receipt. Replay can repeat extraction/card/track effects. The typed Phoenix-to-Rails path already checks accepted identity (`app/services/imports/extraction_commands.rb:41`) and is not the dropped-fence defect. | Manual native extraction uses the integration NormalWorker route and retains actor/source/blob/event/request timestamp. Its executing-attempt and current import checks fence each place write and state/effect transaction, including timestamp changes; running/retrying state preserves the request timestamp. Accepted legacy GPX workers retain RequestFence checks. Terminal effects and the processed event commit together, making replay inert. | `the same completed extraction event does not execute its effects twice through dispatch` |
+| F3: stale legacy removal | `app/jobs/enhanced_import/destroy_job.rb:7` defaults `expected` to nil; `app/services/enhanced_import/destroy.rb:15` operates on current extracted data. An old ordinary legacy removal can remove newer extraction data. Accepted typed Rails removal already uses the request fence. | The retained native GPX removal worker checks the same request identity before each bounded deletion and reset; completed removal replay preserves newer data. Reduced legacy payloads cannot execute against an import carrying a typed manual request. | `a retried old removal cannot delete a newer extraction through dispatch` |
+| F4: purged disk object resurrection | Active Storage 8.1.3.1 `app/controllers/active_storage/disk_controller.rb:24` validates token/headers and calls disk upload without a blob-row lookup; `lib/active_storage/service/disk_service.rb:21` writes the key. A still-valid token can recreate a purged object. This is source evidence, not a claimed Rails HTTP replay experiment. | Native disk PUT stages and verifies bytes, then locks a live, unattached blob with a server upload receipt and matching service/size/checksum/type before publication. Purge and publication serialize on that row; revoked or attached receipts return 404. Purge removes the upload receipt. | `a successful purge cannot be undone with the old upload capability`; `purge between upload staging and publication prevents object resurrection` |
+
+F5 fixes a Phoenix admission bypass rather than an inherited current Rails defect. Rails GPX uses `app/services/enhanced_import/adapters/base_adapter.rb:25` and `app/services/imports/file_loader.rb:36` to download through the attachment's stored service. Active Storage 8.1.3.1 `DiskService#path_for` at line 114 already refuses traversal. Enhanced Phoenix SourceFile now uses the shared Reader, retaining observed-size/checksum errors, fixed temporary destinations, bounded archive extraction and deadline cancellation. Regressions: `manual GPX extraction refuses a key outside the storage root` and `manual GPX extraction refuses a mismatched stored service`.
+
+The initial F1–F5 correction added no shared ED/DRB row; the deletion follow-up adds DRB-029. This ledger is the ruling-17 handoff. Allocation names, ports and paths are deliberately absent.
+
+This register records Rails bugs fixed in the port (controller ruling 17).
+The controller compiles other packages' reports for the release-wide changelog.
+Repository source anchors identify the current implementation; runtime allocations
+and private records are excluded.
+
+### Import deletion authorization follow-up — 2026-10-07
+
+Distinct original and prepared blobs are a valid native destruction layout. The
+worker authenticates the intact attachment snapshot before entering destruction;
+its removal transaction authorizes every blob before any revocation. Immediate
+cleanup can no longer remove the original proof needed for the prepared blob.
+Ambiguous original identities fail admission with unchanged points, status and
+attachments. Shared attachments retain the existing protection. Cleanup jobs keep
+service/key targets and retry physical failures after capability revocation.
+
+This corrects a Phoenix ordering regression, not a Rails behavior change. The
+real-worker matrix covers both modes, both stored cleanup owners, prepared-only
+and distinct layouts, terminal replay, and durable native cleanup retry.
+Source-initiated Rails delayed capability revocation is characterized separately
+in DRB-029. Physical cleanup ownership does not exempt a native deletion.
+Original Rails code remains unchanged.
+
+### Native import deletion revocation across cleanup owners — 2026-10-07
+
+The round-3 controller brief corrects DRB-029 for every native removal in both
+modes. Previously, native destruction with Sidekiq cleanup kept prepared links
+usable (302/200); native ZIP removal could also omit the prepared cleanup target.
+The deletion transaction now marks unshared Sidekiq-bound blobs unavailable to
+native redirects, disk downloads and uploads, removes upload receipts, and keeps
+exact stored service/key rows plus actor/source purge receipts for Rails cleanup.
+Native cleanup retains immutable service/key jobs. Shared objects are excluded.
+External storage URLs still depend on physical deletion and expiry.
+
+ZIP completion captures the complete parent attachment set and authorizes all
+entries before detaching any of them. Its duplicate original cleanup publication
+is authorized from that same intact snapshot, preserving the Rails enqueue
+footprint without the Phoenix `Unowned purge attachment` regression. ZIP child
+imports own their member files and survive parent removal; ordinary retained
+Import attachment names are admitted by import/actor identity rather than name.
+
+Regressions: `native destruction revokes issued links before either cleanup owner
+runs` and `native ZIP removal authorizes every owned attachment before revoking`,
+each parameterized across coexistence/standalone and both cleanup pins. The
+latter also covers original-only and distinct prepared/derived layouts, point
+removal, terminal phase, immutable cleanup targets and worker replay. Every
+parameterized name has its own mutation run. Existing shared/foreign ownership
+and download tests remain required neighbors. The ZIP crash is Phoenix-specific;
+the delayed native-link fix is a documented divergence from original Rails.
+DRB-029 is updated; no additional ED/DRB ID is introduced. Rails code is unchanged.
+
+The integration follow-up keeps manual source-4 admission on NormalWorker,
+consistent with F18 completion admission. The existing RequestFence regressions
+exercise the actual direct native job, its timestamp fence and terminal replay;
+accepted older GPX jobs remain supported by their retained workers. This is a
+Phoenix merge reconciliation, with no additional Rails-visible correction or
+ED/DRB entry.
+

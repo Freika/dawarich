@@ -43,10 +43,12 @@ defmodule Dawarich.Imports.GpxFenceTest do
   defp commands, do: rows("SELECT kind FROM phoenix.rails_commands ORDER BY id")
 
   test "a live fenced driver persists points, counters, progress and raw metadata", c do
+    Dawarich.Imports.Events.subscribe(c.import.user_id)
     assert {:ok, :ok} = run(c, fn lease -> fn fun -> Lease.effect!(lease, fun) end end)
     assert point_count(c) == [[1]]
     assert counters(c) == [[1, 0, 1, %{"trackpoints_seen" => 1}]]
-    assert commands() == [["points.tile_epoch"], ["imports.progress"]]
+    assert commands() == [["points.tile_epoch"]]
+    assert_receive :imports_changed
   end
 
   test "transfer after point commit retains that point and prevents all later effects", c do
@@ -189,11 +191,13 @@ defmodule Dawarich.Imports.GpxFenceTest do
         rows("DROP FUNCTION fence_stage_failure()")
       end)
 
+      Dawarich.Imports.Events.subscribe(c.import.user_id)
       assert {:ok, :ok} = run(c, fn lease -> fn fun -> Lease.effect!(lease, fun) end end)
       assert point_count(c) == [[1]]
       assert counters(c) == [[unquote(want_raw), 0, 0, %{"trackpoints_seen" => 1}]]
       assert rows("SELECT title,kind FROM notifications") == [["GPX Importfehler", 2]]
-      assert commands() == [["imports.progress"]]
+      assert commands() == []
+      assert_receive :imports_changed
     end
   end
 end
