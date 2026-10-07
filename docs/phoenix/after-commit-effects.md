@@ -35,6 +35,21 @@ maintaining a second postcommit primitive.
 `effect` in one transaction, returning its result. Reverse Rails tile, stats and
 visit intents use it while preserving their command kinds and payloads.
 
+Visit month intents serialize distinct timestamps in chronological order at
+`Dawarich.Visits.Calendar.changed/4`, for both reverse Rails commands and native
+eviction jobs. SQL `UPDATE ... RETURNING` does not guarantee row order, so callers
+must not define the payload order. `Dawarich.Places.JobCommands.orphan_places/3`
+similarly sorts and deduplicates place IDs before either the reverse command or
+native leaf jobs are emitted. Batch name fetching and orphan cleanup already
+select places with `ORDER BY id`; other place commands carry scalar IDs. Import
+deletion sorts and deduplicates its `places_cleanup` callback IDs in
+`Dawarich.Imports.DestroyEffects.visits!/2`; its native dispatcher also selects
+places with `ORDER BY id`. The real import worker regression is in
+`test/dawarich/imports/destroy_worker_test.exs`. The
+producer regressions in `test/dawarich/visits_api/merge_bulk_test.exs` cover
+descending duplicate inputs and both delivery paths without relying on query
+plans or test seeds.
+
 `once(repo, intent_uuid, effect)` serializes and acknowledges a successful SQL
 batch through `phoenix.processed_commands`. The callback must return `:ok`;
 errors roll back its SQL completion marker. Native PG Cable appends share that
