@@ -115,6 +115,7 @@ defmodule Dawarich.Application do
       redis() ++
       [
         {Oban, Keyword.put(oban, :cron, cron)},
+        {Task.Supervisor, name: Dawarich.Tracks.MapMatching.Tasks},
         {Phoenix.PubSub, name: Dawarich.PubSub}
       ] ++
       Dawarich.Cable.Bus.child_specs() ++

@@ -102,7 +102,7 @@ defmodule Dawarich.UserData.Restore.Tracks do
           {0, refreshed}
       end
 
-    if id, do: Dawarich.Tracks.MapMatching.Enqueuer.call(repo, id)
+    if id, do: Dawarich.Tracks.MapMatching.Enqueuer.defer(repo, id)
     count
   end
 

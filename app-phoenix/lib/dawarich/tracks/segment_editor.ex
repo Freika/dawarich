@@ -188,7 +188,7 @@ defmodule Dawarich.Tracks.SegmentEditor do
   end
 
   defp completed(repo, {:ok, %{track: track}} = result) do
-    Dawarich.Tracks.MapMatching.Enqueuer.call(repo, track.id)
+    Dawarich.Tracks.MapMatching.Enqueuer.defer(repo, track.id)
     result
   end
 

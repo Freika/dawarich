@@ -21,8 +21,16 @@ defmodule DawarichWeb.MapWritesParityTest do
     lite_old filter_start filter_end filter_order filter_import query_precedence override_delete guest)
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    owner = Ecto.Adapters.SQL.Sandbox.start_owner!(Repo, shared: true)
+
+    on_exit(fn ->
+      try do
+        Dawarich.MapMatchingTasks.await!()
+      after
+        Ecto.Adapters.SQL.Sandbox.stop_owner(owner)
+      end
+    end)
+
     Repo.query!("CREATE SCHEMA IF NOT EXISTS phoenix")
 
     Repo.query!(File.read!("priv/repo/sql/20260928130000_rails_commands.sql"), [],
@@ -446,20 +454,6 @@ defmodule DawarichWeb.MapWritesParityTest do
         |> Enum.map(fn [json] -> Jason.decode!(json) end)
 
       rows = Enum.map(rows, &Dawarich.Test.ApiGolden.column_defaults(table, &1))
-
-      {actual, rows} =
-        if table == "tracks" do
-          Enum.each(actual, fn row ->
-            digest = row["map_matching_input_digest"]
-            assert is_nil(digest) or (is_binary(digest) and digest =~ ~r/\A[0-9a-f]{64}\z/)
-          end)
-
-          {Enum.map(actual, &Map.delete(&1, "map_matching_input_digest")),
-           Enum.map(rows, &Map.delete(&1, "map_matching_input_digest"))}
-        else
-          {actual, rows}
-        end
-
       assert actual == rows, "#{name}: #{table}: " <> ParityHTML.first_difference(actual, rows)
     end
   end

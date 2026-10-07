@@ -3,25 +3,20 @@ defmodule Dawarich.Tracks.MapMatching.Enqueuer do
   alias Dawarich.MapMatching.{Fingerprint, Input, Processor}
   alias Dawarich.Tracks.MapMatching.{State, Worker}
 
+  def defer(repo, track_id) do
+    if Experimental.pinned?(:map_matching_enabled) and
+         Experimental.value(:map_matching_enabled, repo) != true,
+       do: :disabled,
+       else: Dawarich.Tracks.MapMatching.Deferred.call(repo, track_id)
+  end
+
   def call(repo, track_id) do
-    {:ok, result} =
-      repo.transaction(fn ->
-        repo.query!("SAVEPOINT map_matching_claim", [], log: false)
-
-        try do
-          result = claim(repo, track_id)
-          repo.query!("RELEASE SAVEPOINT map_matching_claim", [], log: false)
-          result
-        rescue
-          _ ->
-            repo.query!("ROLLBACK TO SAVEPOINT map_matching_claim", [], log: false)
-            repo.query!("RELEASE SAVEPOINT map_matching_claim", [], log: false)
-            report(track_id)
-            :error
-        end
-      end)
-
-    result
+    if Experimental.map_matching?(repo) do
+      {:ok, result} = repo.transaction(fn -> claim(repo, track_id) end)
+      result
+    else
+      :disabled
+    end
   rescue
     _ ->
       report(track_id)
@@ -42,14 +37,20 @@ defmodule Dawarich.Tracks.MapMatching.Enqueuer do
 
     state =
       if state.digest != digest do
-        State.write!(repo, id, %{status: nil, digest: digest, data: %{}, matched_at: nil})
+        State.write!(repo, id, %{
+          status: nil,
+          digest: digest,
+          matched_path: nil,
+          data: %{},
+          matched_at: nil
+        })
+
         State.read(repo, id)
       else
         state
       end
 
     cond do
-      not Experimental.map_matching?(repo) -> :disabled
       not Input.eligible?(input) -> skipped(repo, id, digest, input, state)
       State.result?(state) or live?(state) -> :current
       true -> enqueue(repo, id, digest)
@@ -82,6 +83,23 @@ defmodule Dawarich.Tracks.MapMatching.Enqueuer do
   end
 
   defp enqueue(repo, id, digest) do
+    repo.query!("SAVEPOINT map_matching_claim", [], log: false)
+
+    try do
+      insert(repo, id, digest)
+      repo.query!("RELEASE SAVEPOINT map_matching_claim", [], log: false)
+      :enqueued
+    rescue
+      _ ->
+        repo.query!("ROLLBACK TO SAVEPOINT map_matching_claim", [], log: false)
+        repo.query!("RELEASE SAVEPOINT map_matching_claim", [], log: false)
+        State.write!(repo, id, %{data: %{enqueue_failed: true}})
+        report(id)
+        :error
+    end
+  end
+
+  defp insert(repo, id, digest) do
     oban = Application.get_env(:dawarich, :map_matching_oban, Oban)
     if Oban.config(oban).repo != repo, do: raise(ArgumentError, "Map matching repo mismatch")
 
@@ -100,7 +118,7 @@ defmodule Dawarich.Tracks.MapMatching.Enqueuer do
       Oban.insert!(oban, Worker.new(%{track_id: id, digest: digest}, unique: false), retry: false)
     end
 
-    :enqueued
+    :ok
   end
 
   defp report(id),

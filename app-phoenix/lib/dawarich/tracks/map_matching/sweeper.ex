@@ -15,8 +15,10 @@ defmodule Dawarich.Tracks.MapMatching.Sweeper do
     ids =
       repo.query!(
         """
-        SELECT id FROM tracks WHERE id>$1 AND map_matching_status=0
-          AND map_matching_data->>'claimed_at' <= $2
+        SELECT id FROM tracks WHERE id>$1 AND (
+          (map_matching_status=0 AND map_matching_data->>'claimed_at' <= $2)
+          OR (map_matching_status IS NULL AND map_matching_input_digest IS NOT NULL
+            AND map_matching_data->>'enqueue_failed' = 'true'))
         ORDER BY id LIMIT 500
         """,
         [last, cutoff],

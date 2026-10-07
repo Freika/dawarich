@@ -14,7 +14,11 @@ defmodule Dawarich.Tracks.MapMatching.EnqueuerTest do
     before = State.read(ScratchRepo, track.id)
     TestSupport.fail_insert!(ScratchRepo)
     assert :error = Enqueuer.call(ScratchRepo, track.id)
-    assert State.read(ScratchRepo, track.id) == before
+    failed = State.read(ScratchRepo, track.id)
+    assert failed.status == before.status
+    assert failed.matched_path == nil
+    assert failed.digest == Fingerprint.call(Input.load(ScratchRepo, track.id))
+    assert failed.data == %{"enqueue_failed" => true}
     assert TestSupport.jobs(ScratchRepo, track.id) == []
 
     assert {:ok, :operation_survived} =
@@ -24,7 +28,7 @@ defmodule Dawarich.Tracks.MapMatching.EnqueuerTest do
                :operation_survived
              end)
 
-    assert State.read(ScratchRepo, track.id) == before
+    assert State.read(ScratchRepo, track.id) == failed
 
     ScratchRepo.query!("ALTER TABLE oban.oban_jobs DROP CONSTRAINT mm_insert_probe", [],
       log: false
@@ -79,7 +83,7 @@ defmodule Dawarich.Tracks.MapMatching.EnqueuerTest do
     assert TestSupport.jobs(ScratchRepo, track.id) == []
   end
 
-  test "input change while disabled clears displayability, re-enable does not show the old path" do
+  test "disabled enqueue leaves state untouched; re-enable invalidates old input before claiming" do
     track = TestSupport.input!(ScratchRepo)
     digest = Fingerprint.call(Input.load(ScratchRepo, track.id))
 
@@ -92,15 +96,17 @@ defmodule Dawarich.Tracks.MapMatching.EnqueuerTest do
       }
     })
 
+    before = State.read(ScratchRepo, track.id)
     System.put_env("MAP_MATCHING_ENABLED", "false")
     ScratchRepo.query!("UPDATE points SET accuracy=43 WHERE track_id=$1", [track.id], log: false)
     assert :disabled = Enqueuer.call(ScratchRepo, track.id)
-    refute State.result?(State.read(ScratchRepo, track.id))
-    refute State.read(ScratchRepo, track.id).digest == digest
+    assert State.read(ScratchRepo, track.id) == before
     assert TestSupport.jobs(ScratchRepo, track.id) == []
     System.put_env("MAP_MATCHING_ENABLED", "true")
     assert :enqueued = Enqueuer.call(ScratchRepo, track.id)
     assert State.read(ScratchRepo, track.id).status == :pending
+    assert State.read(ScratchRepo, track.id).matched_path == nil
+    refute State.read(ScratchRepo, track.id).digest == digest
   end
 
   test "unique job per track+digest" do

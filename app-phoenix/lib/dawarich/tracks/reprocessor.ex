@@ -40,7 +40,7 @@ defmodule Dawarich.Tracks.Reprocessor do
       end
 
     if Keyword.get(opts, :map_matching, true),
-      do: Dawarich.Tracks.MapMatching.Enqueuer.call(repo, track.id)
+      do: Dawarich.Tracks.MapMatching.Enqueuer.defer(repo, track.id)
 
     result
   end

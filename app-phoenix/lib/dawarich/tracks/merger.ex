@@ -39,7 +39,7 @@ defmodule Dawarich.Tracks.Merger do
     case merge(repo, user, older, newer) do
       {:ok, merged} ->
         detect_after_merge(repo, user, merged)
-        Dawarich.Tracks.MapMatching.Enqueuer.call(repo, merged.id)
+        Dawarich.Tracks.MapMatching.Enqueuer.defer(repo, merged.id)
         true
 
       :error ->

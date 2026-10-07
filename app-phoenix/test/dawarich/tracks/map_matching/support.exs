@@ -2,6 +2,8 @@ defmodule Dawarich.MapMatching.TestSupport do
   alias Dawarich.Tracks.{Points, Settings}
   alias Dawarich.Tracks.MapMatching.{State, Worker}
 
+  def await_hooks!, do: Dawarich.MapMatchingTasks.await!()
+
   def setup! do
     settings = ~w(MAP_MATCHING_ENABLED ATLAS_URL MAP_MATCHING_SHADOW_MODE)
     saved = Map.new(settings, &{&1, System.get_env(&1)})
@@ -13,6 +15,8 @@ defmodule Dawarich.MapMatching.TestSupport do
     Application.put_env(:dawarich, :map_matching_oban, Dawarich.TracksCase.oban())
 
     ExUnit.Callbacks.on_exit(fn ->
+      await_hooks!()
+
       for {key, value} <- saved do
         if value, do: System.put_env(key, value), else: System.delete_env(key)
       end

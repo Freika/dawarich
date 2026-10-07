@@ -1,5 +1,6 @@
 defmodule Dawarich.Tracks.SegmentEditorTest do
   use Dawarich.IngestCase, async: false
+  @moduletag :map_matching_tasks
   alias Dawarich.{Repo, Tracks.SegmentEditor, Transportation.DominantMode}
   alias Dawarich.Test.FrameSeeds
 

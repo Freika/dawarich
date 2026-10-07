@@ -129,6 +129,7 @@ defmodule Dawarich.ApplicationTest do
       Redix,
       Dawarich.Redis.Cache,
       Oban,
+      Dawarich.Tracks.MapMatching.Tasks,
       Phoenix.PubSub.Supervisor
     ]
 
@@ -171,6 +172,7 @@ defmodule Dawarich.ApplicationTest do
     assert ids(@proxy) == [
              Dawarich.Repo,
              Oban,
+             Dawarich.Tracks.MapMatching.Tasks,
              Phoenix.PubSub.Supervisor,
              RailsServer,
              DawarichWeb.Endpoint,

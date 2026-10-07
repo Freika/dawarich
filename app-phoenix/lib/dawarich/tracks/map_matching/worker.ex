@@ -49,8 +49,10 @@ defmodule Dawarich.Tracks.MapMatching.Worker do
   defp current?(_, _), do: false
 
   defp failed(repo, id, digest, error, job) do
+    attempt = job.attempt + Map.get(job.meta || %{}, "snoozed", 0)
+
     cond do
-      job.attempt >= 5 or not error.transient? ->
+      attempt >= 5 or not error.transient? ->
         publish(repo, id, digest, %{
           status: :failed,
           path: nil,
@@ -62,7 +64,7 @@ defmodule Dawarich.Tracks.MapMatching.Worker do
             error: %{
               code: error.code,
               status: error.status,
-              attempt: job.attempt,
+              attempt: attempt,
               message: error.code
             }
           }

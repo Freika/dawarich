@@ -26,6 +26,7 @@ defmodule Dawarich.Tracks.MapMatching.HooksTest do
     test "#{operation} enqueues map matching for affected tracks once; a failing enqueue does not fail the operation" do
       track = fixture!(@operation)
       id = complete!(@operation, track)
+      TestSupport.await_hooks!()
       track = %{track | id: id}
       assert id == track.id
       assert length(TestSupport.jobs(ScratchRepo, track.id)) == 1
@@ -33,12 +34,14 @@ defmodule Dawarich.Tracks.MapMatching.HooksTest do
 
       if repeatable?(@operation) do
         assert complete!(@operation, track) == track.id
+        TestSupport.await_hooks!()
         assert length(TestSupport.jobs(ScratchRepo, track.id)) == 1
       end
 
       failing = fixture!(@operation)
       TestSupport.fail_insert!(ScratchRepo)
       id = complete!(@operation, failing)
+      TestSupport.await_hooks!()
       failing = %{failing | id: id}
       assert TestSupport.jobs(ScratchRepo, failing.id) == []
       assert State.read(ScratchRepo, failing.id).status == nil
