@@ -190,8 +190,17 @@ defmodule Dawarich.ExportsTest do
 
     assert [[new_blob]] = rows("SELECT id FROM active_storage_blobs WHERE key = 'new'")
 
-    assert rows("SELECT blob_id FROM active_storage_attachments WHERE record_id = $1", [export.id]) ==
+    assert rows(
+             "SELECT blob_id FROM active_storage_attachments WHERE record_type='Export' AND record_id = $1 AND name='file'",
+             [export.id]
+           ) ==
              [[new_blob]]
+
+    assert [[old_blob]] ==
+             rows(
+               "SELECT blob_id FROM active_storage_attachments WHERE record_type='Export' AND record_id=$1 AND name LIKE 'retired_file_%'",
+               [export.id]
+             )
 
     assert rows("SELECT key FROM active_storage_blobs ORDER BY id") == [["old"], ["new"]]
   end

@@ -5,6 +5,60 @@ defmodule Dawarich.Exports.PurgeWorker do
   alias Dawarich.Storage.Blobs
 
   def enqueue!(repo, blob_ids) do
+    objects = blob_ids |> Enum.flat_map(&revoke_legacy!(repo, &1)) |> Enum.uniq()
+
+    if objects != [] do
+      repo.insert!(new(%{"objects" => objects}), prefix: "oban")
+    end
+
+    :ok
+  end
+
+  defp revoke_legacy!(repo, id) do
+    case repo.query!(
+           "SELECT key,service_name FROM active_storage_blobs WHERE id=$1 FOR UPDATE",
+           [id],
+           log: false
+         ).rows do
+      [[key, service]] ->
+        [[shared]] =
+          repo.query!(
+            "SELECT EXISTS(SELECT 1 FROM active_storage_attachments WHERE blob_id=$1)",
+            [id],
+            log: false
+          ).rows
+
+        if shared do
+          []
+        else
+          children =
+            repo.query!(
+              "DELETE FROM active_storage_attachments WHERE record_type='ActiveStorage::VariantRecord' AND record_id IN (SELECT id FROM active_storage_variant_records WHERE blob_id=$1) RETURNING blob_id",
+              [id],
+              log: false
+            ).rows
+            |> List.flatten()
+            |> Enum.uniq()
+            |> Enum.sort()
+
+          repo.query!("DELETE FROM active_storage_variant_records WHERE blob_id=$1", [id],
+            log: false
+          )
+
+          repo.query!("DELETE FROM active_storage_blobs WHERE id=$1", [id], log: false)
+
+          [
+            %{"key" => key, "service_name" => service}
+            | Enum.flat_map(children, &revoke_legacy!(repo, &1))
+          ]
+        end
+
+      [] ->
+        []
+    end
+  end
+
+  def enqueue_export!(repo, blob_ids) do
     ids = collect(repo, blob_ids, MapSet.new()) |> MapSet.to_list()
     blobs = locked(repo, ids)
     eligible = eligible(repo, Enum.map(blobs, &hd/1))
@@ -84,7 +138,7 @@ defmodule Dawarich.Exports.PurgeWorker do
     {bound, legacy} = Enum.split_with(objects, &is_integer(&1["blob_id"]))
 
     with :ok <- delete_objects(services, legacy) do
-      purge(repo, services, bound)
+      if bound == [], do: :ok, else: purge(repo, services, bound)
     end
   end
 

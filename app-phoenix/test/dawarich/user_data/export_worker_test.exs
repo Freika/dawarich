@@ -207,7 +207,10 @@ defmodule Dawarich.UserData.ExportWorkerTest do
 
           assert {:ok, :ok} =
                    ScratchRepo.transaction(fn ->
-                     Dawarich.Exports.PurgeWorker.enqueue!(ScratchRepo, payload["blob_ids"])
+                     Dawarich.Exports.PurgeWorker.enqueue_export!(
+                       ScratchRepo,
+                       payload["blob_ids"]
+                     )
                    end)
         end
 
@@ -328,7 +331,7 @@ defmodule Dawarich.UserData.ExportWorkerTest do
         if mode == "on",
           do:
             ScratchRepo.transaction(fn ->
-              Dawarich.Exports.PurgeWorker.enqueue!(ScratchRepo, point_blobs)
+              Dawarich.Exports.PurgeWorker.enqueue_export!(ScratchRepo, point_blobs)
             end)
 
         [[point_purge]] =
