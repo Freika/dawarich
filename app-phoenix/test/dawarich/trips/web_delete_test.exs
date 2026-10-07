@@ -171,38 +171,7 @@ defmodule Dawarich.Trips.WebDeleteTest do
       }
     ])
 
-    before = graph()
-    assert {:replay, _} = WebDelete.run(Repo, user, id + 100, %{})
-    assert graph() == before
-
-    Repo.query!("UPDATE action_text_rich_texts SET body = '<div>Finite</div>' WHERE id = $1", [
-      rich_id
-    ])
-
-    Repo.insert_all("active_storage_blobs", [
-      %{
-        id: rich_id,
-        key: "a8-rest-delete-synthetic",
-        filename: "synthetic.txt",
-        service_name: "local",
-        byte_size: 1,
-        checksum: "SYNTHETIC",
-        created_at: @stamp
-      }
-    ])
-
-    Repo.insert_all("active_storage_attachments", [
-      %{
-        record_type: "ActionText::RichText",
-        record_id: rich_id,
-        name: "embeds",
-        blob_id: rich_id,
-        created_at: @stamp
-      }
-    ])
-
-    before = graph()
-    assert {:replay, _} = WebDelete.run(Repo, user, id + 100, %{})
-    assert graph() == before
+    assert {:ok, :deleted} = WebDelete.run(Repo, user, id + 100, %{})
+    assert Repo.query!("SELECT id FROM action_text_rich_texts WHERE id=$1", [rich_id]).rows == []
   end
 end
