@@ -36,55 +36,28 @@ defmodule Dawarich.Imports.Trek.Client do
   end
 
   defp get(client, path) do
-    {uri, address} = Endpoint.resolve!(client.source.base_url <> path, client.opts)
-    scheme = if uri.scheme == "https", do: :https, else: :http
+    {_uri, address} = Endpoint.resolve!(client.source.base_url <> path, client.opts)
     headers = [{"authorization", "Bearer " <> key!(client)}, {"accept", "application/json"}]
 
-    case Mint.HTTP.connect(scheme, address, uri.port,
-           hostname: uri.host,
-           mode: :passive,
-           protocols: [:http1],
-           transport_opts: [timeout: 10_000]
+    case Dawarich.Photos.ProviderHTTP.request(
+           :get,
+           client.source.base_url,
+           path,
+           headers,
+           nil,
+           false,
+           10_000,
+           address: address
          ) do
-      {:ok, conn} ->
-        try do
-          target = (uri.path || "/") <> if(uri.query, do: "?" <> uri.query, else: "")
-
-          case Mint.HTTP.request(conn, "GET", target, headers, nil) do
-            {:ok, conn, ref} -> receive_body(conn, ref, nil, [])
-            {:error, _, _} -> error("TREK connection failed")
-          end
-        after
-          Mint.HTTP.close(conn)
-        end
-
-      {:error, _} ->
-        error("TREK connection failed")
+      {:ok, status, _, body} -> decode(status, body)
+      {:error, _} -> error("TREK connection failed")
     end
   rescue
     e in Error -> {:error, e}
   end
 
-  defp receive_body(conn, ref, status, body) do
-    case Mint.HTTP.recv(conn, 0, 10_000) do
-      {:ok, conn, responses} ->
-        {status, body, done} =
-          Enum.reduce(responses, {status, body, false}, fn
-            {:status, ^ref, s}, {_, b, d} -> {s, b, d}
-            {:data, ^ref, bytes}, {s, b, d} -> {s, [bytes | b], d}
-            {:done, ^ref}, {s, b, _} -> {s, b, true}
-            _, acc -> acc
-          end)
-
-        if done, do: decode(status, body), else: receive_body(conn, ref, status, body)
-
-      {:error, _, _, _} ->
-        error("TREK connection failed")
-    end
-  end
-
   defp decode(status, body) when status in 200..299 do
-    case Jason.decode(body |> Enum.reverse() |> IO.iodata_to_binary()) do
+    case Jason.decode(body) do
       {:ok, payload} -> {:ok, payload}
       _ -> error("TREK returned invalid JSON")
     end

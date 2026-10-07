@@ -105,7 +105,8 @@ defmodule Dawarich.Photos.Index do
     with {:ok, status, response_headers, raw} <-
            request(
              :post,
-             settings["immich_url"] <> "/api/search/metadata",
+             settings["immich_url"],
+             "/api/search/metadata",
              headers(settings, "immich"),
              Jason.encode!(body),
              settings["immich_skip_ssl_verification"]
@@ -149,12 +150,13 @@ defmodule Dawarich.Photos.Index do
         do: Map.put(query, "before", utc_date(params["end_date"], 1)),
         else: query
 
-    url = settings["photoprism_url"] <> "/api/v1/photos?" <> URI.encode_query(query)
+    path = "/api/v1/photos?" <> URI.encode_query(query)
 
     with {:ok, status, response_headers, raw} <-
            request(
              :get,
-             url,
+             settings["photoprism_url"],
+             path,
              headers(settings, "photoprism"),
              nil,
              settings["photoprism_skip_ssl_verification"]
@@ -183,9 +185,8 @@ defmodule Dawarich.Photos.Index do
           String.contains?(to_string(v), "application/json")
       end)
 
-  defdelegate request(method, url, headers, body, skip),
-    to: Dawarich.Photos.ThumbnailClosure,
-    as: :http
+  defdelegate request(method, base, path, headers, body, skip),
+    to: Dawarich.Photos.ProviderHTTP
 
   defp headers(s, "immich"),
     do: [{"x-api-key", s["immich_api_key"]}, {"accept", "application/json"}]

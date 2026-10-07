@@ -85,15 +85,15 @@ defmodule Dawarich.Immich.Enrichment do
   defp confirmed?(settings, asset, opts) do
     id = URI.encode(to_string(asset["immich_asset_id"]), &URI.char_unreserved?/1)
     headers = [{"x-api-key", settings["immich_api_key"]}, {"accept", "application/json"}]
-    http = Keyword.get(opts, :http, &request/5)
+    http = Keyword.get(opts, :http)
 
     with {:ok, status, _, body} <-
-           http.(
-             :get,
-             settings["immich_url"] <> "/api/assets/" <> id,
+           request(
+             settings["immich_url"],
+             "/api/assets/" <> id,
              headers,
-             nil,
-             settings["immich_skip_ssl_verification"]
+             settings["immich_skip_ssl_verification"],
+             http
            ),
          true <- status in 200..299,
          {:ok, %{"exifInfo" => exif}} when is_map(exif) <- Jason.decode(body) do
@@ -121,19 +121,11 @@ defmodule Dawarich.Immich.Enrichment do
 
   defp number(_), do: :error
 
-  defp request(:get, url, headers, nil, skip) do
-    headers = Enum.map(headers, fn {k, v} -> {String.to_charlist(k), String.to_charlist(v)} end)
+  defp request(base, path, headers, skip, nil),
+    do: Dawarich.Photos.ProviderHTTP.request(:get, base, path, headers, nil, skip, 5000)
 
-    case :httpc.request(
-           :get,
-           {String.to_charlist(url), headers},
-           [timeout: 5000, connect_timeout: 5000, ssl: Dawarich.Photos.Thumbnail.ssl(skip)],
-           body_format: :binary
-         ) do
-      {:ok, {{_, status, _}, headers, body}} -> {:ok, status, headers, body}
-      {:error, reason} -> {:error, reason}
-    end
-  end
+  defp request(base, path, headers, skip, http),
+    do: http.(:get, base <> path, headers, nil, skip)
 
   defp finish(repo, user, settings, args, confirmed, unconfirmed) do
     locale = Dawarich.Mail.ExploreFeatures.locale(settings, nil)
