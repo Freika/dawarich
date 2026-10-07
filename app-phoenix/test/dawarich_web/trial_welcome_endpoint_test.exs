@@ -44,7 +44,7 @@ defmodule DawarichWeb.TrialWelcomeEndpointTest do
           {[
              {"forwarded", ~s(for="[2001:db8::8]:443";proto=https, for=10.0.0.2;proto=https)},
              {"x-forwarded-for", "192.0.2.99"}
-           ], {127, 0, 0, 1}, "2001:db8::8"},
+           ], {127, 0, 0, 1}, "192.0.2.99"},
           {[{"x-forwarded-for", "192.0.2.9, 10.0.0.2"}], {203, 0, 113, 8}, "192.0.2.9"}
         ] do
       reset_trackable()
@@ -197,6 +197,67 @@ defmodule DawarichWeb.TrialWelcomeEndpointTest do
     assert result.status == 302
     assert get_resp_header(result, "location") == ["https://cloud.example.test/s/#{id}"]
     assert map_size(result.resp_cookies) > 0
+  end
+
+  test "rotating Forwarded XFF prefixes and X-Real-IP cannot evade unlock or OAuth challenge limits in either mode" do
+    SharingSeeds.load!()
+    hosts = Application.get_env(:dawarich, :allowed_hosts)
+
+    Application.put_env(
+      :dawarich,
+      :allowed_hosts,
+      DawarichWeb.HostAuthorization.boot_config(%{
+        "RAILS_ENV" => "production",
+        "APPLICATION_HOSTS" => "www.example.com"
+      })
+    )
+
+    on_exit(fn -> Application.put_env(:dawarich, :allowed_hosts, hosts) end)
+
+    for mode <- ~w(false true),
+        {path, body, denied} <- [
+          {"/s/a9500000-0000-4000-8000-000000000002/unlock", "phrase=wrong", 401},
+          {"/auth/account_link/challenge", "password=wrong", 422}
+        ],
+        forged? <- [false, true] do
+      System.put_env("SELF_HOSTED", mode)
+      ScratchRepo.query!("DELETE FROM phoenix.counters", [], log: false)
+
+      statuses =
+        for attempt <- 1..6 do
+          conn = %{
+            Phoenix.ConnTest.build_conn()
+            | remote_ip: {10, 0, 0, 2},
+              req_headers: [{"host", "www.example.com"}]
+          }
+
+          conn =
+            conn
+            |> put_req_header("x-forwarded-proto", "https")
+            |> put_req_header(
+              "x-forwarded-for",
+              if(forged?,
+                do: "198.51.100.#{attempt}, 203.0.113.25, 10.0.0.3",
+                else: "203.0.113.25"
+              )
+            )
+            |> put_req_header("content-type", "application/x-www-form-urlencoded")
+            |> put_req_header("content-length", to_string(byte_size(body)))
+
+          conn =
+            if forged?,
+              do:
+                conn
+                |> put_req_header("forwarded", "for=198.51.100.#{attempt}")
+                |> put_req_header("x-real-ip", "192.0.2.#{attempt}"),
+              else: conn
+
+          Phoenix.ConnTest.dispatch(conn, DawarichWeb.Endpoint, :post, path, body).status
+        end
+
+      assert statuses == [denied, denied, denied, denied, denied, 429],
+             inspect({mode, path, forged?, statuses})
+    end
   end
 
   defp proxy_headers,
