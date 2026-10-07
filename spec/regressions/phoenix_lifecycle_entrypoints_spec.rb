@@ -43,6 +43,10 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
     FileUtils.rm_f(calls_file)
     base = {
       'PATH' => "#{stubs}:#{ENV.fetch('PATH')}", 'APP_PATH' => stubs, 'RAILS_ENV' => 'test',
+      'MANAGER_URL' => 'https://manager.example.invalid',
+      'JWT_SECRET_KEY' => 'synthetic-shell-key',
+      'DATABASE_SESSION_URL' => 'postgres://session.example.invalid/cloud',
+      'DAWARICH_RAILS' => 'proxy', 'DAWARICH_CLOUD_DRAIN_ONLY' => 'false',
       'PUID' => nil, 'PGID' => nil, 'DATABASE_URL' => nil, 'DATABASE_HOST' => '127.0.0.1',
       'DATABASE_NAME' => 'dawarich_test_a12h', 'DATABASE_PASSWORD' => '',
       'DAWARICH_PHOENIX_LIFECYCLE' => 'true', 'SELF_HOSTED' => 'true'
@@ -249,13 +253,41 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
     end
   end
 
-  it 'Cloud native lifecycle refuses before either migrator runs' do
-    %w[release.sh web-entrypoint.sh].each do |script|
-      result = run_script(script, *server, SELF_HOSTED: 'false')
-      expect(result[:status]).not_to be_success
-      expect(result[:stderr]).to include('requires self-hosted mode')
-      expect(result[:calls]).to be_empty
+  it 'L1 final Cloud release admits complete configuration and refuses missing preconditions before effects' do
+    result = run_script('release.sh', SELF_HOSTED: 'false')
+    expect(result[:status]).to be_success
+    expect(result[:calls]).to eq(['dawarich migrate', 'dawarich seeds'])
+
+    [nil, 'false'].each do |flag|
+      result = run_script('release.sh', SELF_HOSTED: 'false', DAWARICH_RAILS: 'off',
+                          DAWARICH_PHOENIX_LIFECYCLE: flag)
+      expect(result[:status]).to be_success
+      expect(result[:calls]).to eq(['dawarich migrate', 'dawarich seeds'])
     end
+
+    invalid = [
+      { MANAGER_URL: nil }, { JWT_SECRET_KEY: ' ' }, { DATABASE_SESSION_URL: nil },
+      { MANAGER_URL: 'http://manager.example.invalid' },
+      { DATABASE_SESSION_URL: 'postgres://session.example.invalid:6432/cloud' },
+      { DAWARICH_CLOUD_DRAIN_ONLY: 'true' }, { DAWARICH_PHOENIX_LIFECYCLE: 'invalid' }
+    ]
+    invalid.each do |config|
+      %w[release.sh web-entrypoint.sh cloud-entrypoint.sh cloud-sidekiq-entrypoint.sh].each do |script|
+        argv = script.include?('sidekiq') ? ['sidekiq'] : server
+        result = run_script(script, *argv, SELF_HOSTED: 'false', DAWARICH_RAILS: 'off', **config)
+        expect(result[:status]).not_to be_success
+        expect(result[:calls]).to be_empty
+      end
+    end
+  end
+
+  it 'native Cloud refuses self-hosted web and worker entrypoints before effects' do
+    results = [
+      run_script('web-entrypoint.sh', *server, SELF_HOSTED: 'false'),
+      run_script('sidekiq-entrypoint.sh', 'sidekiq', '-C', 'config/sidekiq.yml', SELF_HOSTED: 'false')
+    ]
+    expect(results.map { |result| result[:status].success? }).to eq([false, false])
+    expect(results.map { |result| result[:calls] }).to eq([[], []])
   end
 
   it 'native web boot stops on migration or seed failure' do

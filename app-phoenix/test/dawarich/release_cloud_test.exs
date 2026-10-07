@@ -16,51 +16,82 @@ defmodule Dawarich.ReleaseCloudTest do
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.mode(Repo, :manual) end)
   end
 
-  test "native Cloud lifecycle remains refused without L1 even when Rails is off" do
-    before = Repo.query!("SELECT version FROM public.schema_migrations ORDER BY version").rows
+  @cloud_env %{
+    "SELF_HOSTED" => "false",
+    "DAWARICH_PHOENIX_LIFECYCLE" => "true",
+    "MANAGER_URL" => "https://manager.example.invalid",
+    "JWT_SECRET_KEY" => "synthetic-admission-key",
+    "DATABASE_SESSION_URL" => "postgres://session.example.invalid/cloud"
+  }
 
-    for env <- [
-          %{"DAWARICH_PHOENIX_LIFECYCLE" => "true", "SELF_HOSTED" => "false"},
-          %{"DAWARICH_RAILS" => "off", "SELF_HOSTED" => "false"}
-        ] do
-      opts = Keyword.put(copy_opts(), :env, env)
+  for {name, key, value} <- [
+        {"Manager origin", "MANAGER_URL", nil},
+        {"JWT signing secret", "JWT_SECRET_KEY", " \t"},
+        {"dedicated session URL", "DATABASE_SESSION_URL", nil},
+        {"direct session endpoint", "DATABASE_SESSION_URL",
+         "postgres://session.example.invalid:6432/cloud"},
+        {"HTTPS Manager", "MANAGER_URL", "http://manager.example.invalid"},
+        {"explicit Cloud mode", "SELF_HOSTED", "off"},
+        {"source drain isolation", "DAWARICH_CLOUD_DRAIN_ONLY", "true"}
+      ] do
+    test "native Cloud admission refuses missing #{name}" do
+      assert Dawarich.Release.Lifecycle.mode(@cloud_env) == {:ok, :native}
+      before = Repo.query!("SELECT version FROM public.schema_migrations ORDER BY version").rows
+      invalid = Map.put(@cloud_env, unquote(key), unquote(value))
 
-      assert_raise RuntimeError, ~r/native lifecycle requires self-hosted mode/, fn ->
-        Release.migrate(opts)
+      for env <- [invalid, Map.put(invalid, "DAWARICH_RAILS", "off")] do
+        opts = Keyword.put(copy_opts(), :env, env)
+        assert Dawarich.Release.Lifecycle.mode(env) == {:error, :cloud_native_lifecycle}
+
+        for command <- [&Release.migrate/1, &Release.seed/1] do
+          assert_raise RuntimeError, ~r/native lifecycle requires self-hosted mode/, fn ->
+            command.(opts)
+          end
+        end
+
+        for command <- [&Dawarich.Release.Native.migrate/2, &Dawarich.Release.Native.seed/2] do
+          assert_raise RuntimeError, ~r/native lifecycle requires self-hosted mode/, fn ->
+            command.(Repo, opts)
+          end
+        end
+
+        assert Release.readiness(opts) == :schemas_behind
+
+        assert Repo.query!("SELECT version FROM public.schema_migrations ORDER BY version").rows ==
+                 before
       end
-
-      assert_raise RuntimeError, ~r/native lifecycle requires self-hosted mode/, fn ->
-        Release.seed(opts)
-      end
-
-      assert Release.readiness(opts) == :schemas_behind
-
-      assert Repo.query!("SELECT version FROM public.schema_migrations ORDER BY version").rows ==
-               before
     end
   end
 
-  test "direct native Cloud provisioning refuses before public or private writes" do
-    assert Release.migrate(copy_opts()) == :ok
+  test "native Cloud admission requires a valid session URL and origin in every mode" do
+    assert Dawarich.Release.Lifecycle.mode(@cloud_env) == {:ok, :native}
 
-    tables =
-      ~w(public.schema_migrations phoenix.phoenix_schema_migrations oban.phoenix_schema_migrations phoenix.registration_setting)
-
-    snapshot = fn ->
-      Enum.map(
-        tables,
-        &Repo.query!("SELECT row_to_json(t) FROM #{&1} t ORDER BY row_to_json(t)::text").rows
-      )
+    for mode <- ["off", "proxy"],
+        {key, values} <- [
+          {"DATABASE_SESSION_URL",
+           [
+             "",
+             " ",
+             "garbage",
+             "http://db.invalid/cloud",
+             "postgres://db.invalid",
+             "postgres://db.invalid/cloud?pool_mode=transaction",
+             "postgres://db.invalid/cloud#fragment"
+           ]},
+          {"MANAGER_URL",
+           [
+             "",
+             " ",
+             "https://user:password@manager.example.invalid",
+             "https://manager.example.invalid/path",
+             "https://manager.example.invalid?query",
+             "https://manager.example.invalid#fragment"
+           ]}
+        ],
+        value <- values do
+      env = @cloud_env |> Map.put("DAWARICH_RAILS", mode) |> Map.put(key, value)
+      assert Dawarich.Release.Lifecycle.mode(env) == {:error, :cloud_native_lifecycle}
     end
-
-    before = snapshot.()
-    opts = Keyword.put(copy_opts(), :env, %{"SELF_HOSTED" => "false", "DAWARICH_RAILS" => "off"})
-
-    assert_raise RuntimeError, ~r/native lifecycle requires self-hosted mode/, fn ->
-      Dawarich.Release.Native.migrate(Repo, opts)
-    end
-
-    assert snapshot.() == before
   end
 
   describe "readiness/0" do
@@ -676,4 +707,266 @@ defmodule Dawarich.ReleaseCloudCompatibilityTest do
 
   defp relation?(name),
     do: ScratchRepo.query!("SELECT to_regclass($1) IS NOT NULL", [name]).rows == [[true]]
+end
+
+defmodule Dawarich.ReleaseCloudAdmissionTest do
+  use Dawarich.ScratchCase, async: false
+  alias Dawarich.Release
+  alias Dawarich.Release.Native
+
+  @env %{
+    "SELF_HOSTED" => "false",
+    "DAWARICH_PHOENIX_LIFECYCLE" => "true",
+    "MANAGER_URL" => "https://manager.example.invalid",
+    "JWT_SECRET_KEY" => "synthetic-public-cloud",
+    "TIME_ZONE" => "Europe/Berlin"
+  }
+  @now ~N[2026-10-07 12:00:00.000000]
+
+  setup do
+    previous = System.get_env("SELF_HOSTED")
+    System.put_env("SELF_HOSTED", "false")
+    Dawarich.MigrationModules.purge()
+
+    for schema <- ~w(phoenix oban) do
+      sql("DROP SCHEMA IF EXISTS #{schema} CASCADE")
+      sql("CREATE SCHEMA #{schema}")
+    end
+
+    for extension <- ~w(postgis pgcrypto),
+        do: sql("CREATE EXTENSION IF NOT EXISTS #{extension}")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("SELF_HOSTED", previous),
+        else: System.delete_env("SELF_HOSTED")
+
+      Dawarich.ScratchCase.recreate_public!(ScratchRepo)
+      Dawarich.MigrationModules.purge()
+      Release.install_schemas(ScratchRepo)
+    end)
+
+    :ok
+  end
+
+  test "native Cloud release provisions precreated schemas without database CREATE" do
+    role = "l1_public_" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
+    password = "synthetic-public-role"
+    sql("CREATE ROLE #{role} LOGIN PASSWORD '#{password}'")
+
+    for schema <- ~w(public phoenix oban),
+        do: sql("ALTER SCHEMA #{schema} OWNER TO #{role}")
+
+    pool =
+      start_supervised!(
+        {ScratchRepo, name: nil, pool_size: 3, username: role, password: password}
+      )
+
+    on_exit(fn ->
+      sql("DROP OWNED BY #{role} CASCADE")
+      sql("DROP ROLE #{role}")
+
+      for schema <- ~w(public phoenix oban),
+          do: sql("CREATE SCHEMA IF NOT EXISTS #{schema}")
+    end)
+
+    previous = ScratchRepo.get_dynamic_repo()
+    ScratchRepo.put_dynamic_repo(pool)
+    config = Keyword.merge(ScratchRepo.config(), username: role, password: password)
+    opts = opts(config: config)
+
+    try do
+      assert sql("SELECT has_database_privilege(current_user,current_database(),'CREATE')") == [
+               [false]
+             ]
+
+      assert :ok = Release.migrate(opts)
+      assert Release.readiness(opts) == :ready
+      before = snapshot()
+
+      assert :ok =
+               Release.migrate(Keyword.update!(opts, :env, &Map.put(&1, "DAWARICH_RAILS", "off")))
+
+      assert :ok = Native.migrate(ScratchRepo, opts)
+      assert snapshot() == before
+    after
+      ScratchRepo.put_dynamic_repo(previous)
+    end
+  end
+
+  test "native Cloud web readiness is read only and refuses missing public or private versions" do
+    opts = opts()
+    assert :ok = Release.migrate(opts)
+    assert Release.readiness(opts) == :ready
+    sql("DELETE FROM public.ar_internal_metadata WHERE key='phoenix_native_baseline'")
+
+    sql("INSERT INTO public.data_migrations(version) SELECT unnest($1::text[])", [
+      Dawarich.RailsTree.versions("data")
+    ])
+
+    assert Release.readiness(opts) == :ready
+    parent = self()
+    telemetry = {__MODULE__, make_ref()}
+
+    :telemetry.attach(
+      telemetry,
+      [:dawarich, :scratch_case_repo, :query],
+      fn _, _, meta, _ ->
+        if self() == parent, do: send(parent, {:readiness_sql, meta.query})
+      end,
+      nil
+    )
+
+    try do
+      for table <-
+            ~w(public.schema_migrations public.data_migrations phoenix.phoenix_schema_migrations oban.phoenix_schema_migrations) do
+        [[removed]] =
+          sql(
+            "DELETE FROM #{table} WHERE version=(SELECT max(version) FROM #{table}) RETURNING row_to_json(#{List.last(String.split(table, "."))})"
+          )
+
+        flush_queries()
+        before = snapshot()
+        flush_queries()
+        assert Release.readiness(opts) == :schemas_behind
+        queries = flush_queries()
+        assert queries != []
+        assert Enum.all?(queries, &String.starts_with?(String.trim(&1), "SELECT"))
+        assert snapshot() == before
+
+        sql("INSERT INTO #{table} SELECT * FROM json_populate_record(NULL::#{table},$1)", [
+          removed
+        ])
+
+        assert Release.readiness(opts) == :ready
+      end
+
+      sql(
+        "INSERT INTO phoenix.release_operations(id,command_type,cursor,status) VALUES($1,'release.family_backfill','{}','failed')",
+        [Ecto.UUID.dump!(Ecto.UUID.generate())]
+      )
+
+      flush_queries()
+      assert Release.readiness(opts) == :schemas_behind
+      assert Enum.all?(flush_queries(), &String.starts_with?(String.trim(&1), "SELECT"))
+    after
+      :telemetry.detach(telemetry)
+    end
+  end
+
+  test "native Cloud provisioning preserves source trial family and callback effects exactly across reentry" do
+    opts = opts()
+    assert :ok = Release.migrate(opts)
+    assert :ok = Release.seed(seed_opts(opts))
+    assert sql("SELECT count(*) FROM users") == [[0]]
+
+    [[user]] =
+      sql(
+        "INSERT INTO users(email,created_at,updated_at) VALUES('public-cloud@example.test',$1,$1) RETURNING id",
+        [@now]
+      )
+
+    for type <- ~w(mail.user.welcome users.explore_features_mail users.creation_webhook),
+        do: Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:" <> type, :oban)
+
+    assert {:ok, :ok} =
+             ScratchRepo.transaction(fn ->
+               Dawarich.Users.CreationEffects.apply(ScratchRepo, user, env: opts[:env], now: @now)
+             end)
+
+    assert sql("SELECT admin,status,active_until,length(api_key) FROM users WHERE id=$1", [user]) ==
+             [[false, 2, ~N[2026-10-14 12:00:00.000000], 64]]
+
+    assert sql("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [user]) == [[3]]
+
+    [[family]] =
+      sql(
+        "INSERT INTO families(name,creator_id,access_until,created_at,updated_at) VALUES('Synthetic source family',$1,'2027-01-01',$2,$2) RETURNING id",
+        [user, @now]
+      )
+
+    sql(
+      "INSERT INTO family_memberships(family_id,user_id,role,created_at,updated_at) VALUES($1,$2,0,$3,$3)",
+      [family, user, @now]
+    )
+
+    before =
+      snapshot() ++ sql("SELECT status,plan,active_until,api_key FROM users WHERE id=$1", [user])
+
+    for _ <- 1..2 do
+      assert :ok = Release.migrate(opts)
+      assert :ok = Release.seed(seed_opts(opts))
+      assert :ok = Native.seed(ScratchRepo, seed_opts(opts))
+
+      assert snapshot() ++
+               sql("SELECT status,plan,active_until,api_key FROM users WHERE id=$1", [user]) ==
+               before
+    end
+  end
+
+  test "public and direct Cloud provisioning refuse incomplete schemas before effects" do
+    opts = opts()
+    sql("DROP SCHEMA phoenix CASCADE")
+    before = sql("SELECT count(*) FROM pg_class")
+
+    for command <- [
+          fn -> Release.migrate(opts) end,
+          fn -> Release.seed(opts) end,
+          fn -> Native.migrate(ScratchRepo, opts) end,
+          fn -> Native.seed(ScratchRepo, opts) end
+        ] do
+      assert_raise RuntimeError, ~r/native lifecycle requires self-hosted mode/, command
+    end
+
+    assert Release.readiness(opts) == :schemas_behind
+    assert sql("SELECT count(*) FROM pg_class") == before
+    sql("CREATE SCHEMA phoenix")
+    assert :ok = Release.migrate(opts)
+  end
+
+  defp opts(extra \\ []) do
+    config = extra[:config] || ScratchRepo.config()
+
+    uri = %URI{
+      scheme: "postgres",
+      host: config[:hostname],
+      port: config[:port],
+      path: "/" <> config[:database],
+      userinfo:
+        URI.encode_www_form(config[:username]) <>
+          ":" <> URI.encode_www_form(config[:password] || "")
+    }
+
+    [
+      repo: ScratchRepo,
+      env: Map.put(@env, "DATABASE_SESSION_URL", URI.to_string(uri)),
+      command: fn _ -> {:ok, nil} end,
+      now: @now
+    ]
+  end
+
+  defp seed_opts(opts) do
+    c = Dawarich.A12hSeeds.case!("A12h_fresh")
+    priv = Dawarich.A12hSeeds.country_priv!(c["sources"]["countries"])
+    asset = Path.join(priv, "regions.json")
+    File.write!(asset, Jason.encode!(c["sources"]["regions"]))
+    Keyword.merge(opts, priv_dir: priv, asset: asset)
+  end
+
+  defp snapshot do
+    for table <-
+          ~w(public.schema_migrations public.data_migrations phoenix.phoenix_schema_migrations oban.phoenix_schema_migrations phoenix.registration_setting job_outbox families family_memberships phoenix.processed_commands) do
+      {table, sql("SELECT row_to_json(t) FROM #{table} t ORDER BY row_to_json(t)::text")}
+    end
+  end
+
+  defp flush_queries(acc \\ []) do
+    receive do
+      {:readiness_sql, query} -> flush_queries([query | acc])
+    after
+      0 -> Enum.reverse(acc)
+    end
+  end
+
+  defp sql(query, params \\ []), do: ScratchRepo.query!(query, params, log: false).rows
 end

@@ -5,6 +5,15 @@ defmodule Dawarich.Release.Native do
   alias Dawarich.ReleaseMigrator.Lease
 
   def ready?(repo, opts) do
+    if Dawarich.ReleaseMigration.self_hosted?(Keyword.get(opts, :env, System.get_env())) do
+      self_hosted_ready?(repo, opts)
+    else
+      Dawarich.Release.Lifecycle.mode(Keyword.get(opts, :env, System.get_env())) == {:ok, :native} and
+        Dawarich.Release.Cloud.ready?(repo, cloud_opts(opts))
+    end
+  end
+
+  defp self_hosted_ready?(repo, opts) do
     ReleaseMigrator.status(repo, opts) == {:ok, :current} and data_current?(repo, opts)
   end
 
@@ -24,7 +33,13 @@ defmodule Dawarich.Release.Native do
   end
 
   def seed(repo, opts) do
-    require_supported!(opts)
+    case require_supported!(opts) do
+      :self_hosted -> self_hosted_seed(repo, opts)
+      :cloud -> cloud_result!(Dawarich.Release.Cloud.seed(repo, cloud_opts(opts)))
+    end
+  end
+
+  defp self_hosted_seed(repo, opts) do
     opts = Keyword.put(opts, :rails_lock_check, false)
     require_current!(repo, opts)
 
@@ -43,9 +58,23 @@ defmodule Dawarich.Release.Native do
   end
 
   defp require_supported!(opts) do
-    unless Dawarich.ReleaseMigration.self_hosted?(Keyword.get(opts, :env, System.get_env())),
-      do: refuse!(:cloud_native_lifecycle)
+    env = Keyword.get(opts, :env, System.get_env())
+
+    cond do
+      Dawarich.ReleaseMigration.self_hosted?(env) -> :self_hosted
+      Dawarich.Release.Lifecycle.mode(env) == {:ok, :native} -> :cloud
+      true -> refuse!(:cloud_native_lifecycle)
+    end
   end
+
+  defp cloud_opts(opts) do
+    env = Keyword.get(opts, :env, System.get_env())
+    Keyword.put(opts, :session_url, env["DATABASE_SESSION_URL"])
+  end
+
+  defp cloud_result!(:ok), do: :ok
+  defp cloud_result!({:error, {:pending_data, _} = reason}), do: refuse!(reason)
+  defp cloud_result!(_), do: refuse!(:cloud_native_lifecycle)
 
   defp require_current!(repo, opts) do
     unless classify!(repo, opts) == :current and Release.readiness(opts) == :ready,
@@ -53,7 +82,13 @@ defmodule Dawarich.Release.Native do
   end
 
   def migrate(repo, opts) do
-    require_supported!(opts)
+    case require_supported!(opts) do
+      :self_hosted -> self_hosted_migrate(repo, opts)
+      :cloud -> cloud_result!(Dawarich.Release.Cloud.migrate(repo, cloud_opts(opts)))
+    end
+  end
+
+  defp self_hosted_migrate(repo, opts) do
     opts = Keyword.put(opts, :rails_lock_check, false)
     classify!(repo, opts)
     bootstrap_metadata(repo)

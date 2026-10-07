@@ -44,6 +44,10 @@ RSpec.describe 'Cloud entrypoints' do
   def run_script(name, *args, **env)
     base = {
       'PATH' => "#{stubs}:#{ENV.fetch('PATH')}",
+      'MANAGER_URL' => 'https://manager.example.invalid',
+      'JWT_SECRET_KEY' => 'synthetic-shell-key',
+      'DATABASE_SESSION_URL' => 'postgres://session.example.invalid/cloud',
+      'DAWARICH_RAILS' => 'proxy', 'DAWARICH_CLOUD_DRAIN_ONLY' => 'false',
       'APP_PATH' => stubs,
       'RAILS_ENV' => 'test',
       'PUID' => nil,
