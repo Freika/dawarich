@@ -85,6 +85,8 @@ defmodule DawarichWeb.A12f3bN09Test do
 
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
 
+    Dawarich.Test.AfterCommit.drain(Repo)
+
     for key <- [
           "dawarich/user_73901_total_distance",
           "timeline_month_summary/73901/2026-03/Europe/Berlin/pro/v3",

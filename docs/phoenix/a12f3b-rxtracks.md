@@ -21,20 +21,22 @@ the persisted owner. This is a scoped domain seam, not a global ownership change
 - A realtime lock timeout uses `RealtimeCommands` and the existing shared
   120-second debounce claim to schedule one native realtime job after 45 seconds.
   `RealtimeWorker.perform/1` clears that claim before execution.
-- `Tracks.Effects` routes native range ownership to `NativeChanges`, which saves
-  a `NativeChangesWorker` job in the track transaction. After commit, the worker
-  reads committed tracks and publishes Rails-compatible created/updated/destroyed
-  messages to the authenticated user's TracksChannel. Cable exceptions and
-  returned errors fail this separate job for retry; they cannot roll back tracks
-  or turn a completed generation into missing tracks. Replaying publication
-  re-derives current track data, even after range/chunk completion. Delivery is
-  at least once, so a retry may repeat a message. Orphan deletion uses the same
-  seam. Empty change sets do nothing.
-- Track tile epochs change after the outer transaction commits. Rollback discards
-  pending invalidations. `Tracks.CommittedEpoch` is a local telemetry commit hook:
-  the shared after-commit primitive was absent at implementation start. Consolidate
-  this hook when that primitive lands. The durable publication worker also bumps
-  epochs, recovering an interrupted or unavailable Redis invalidation.
+- `Tracks.Effects` routes native range ownership to `NativeChanges`, which records
+  a shared `AfterCommit.Worker` tracks intent and database visibility generation
+  in the track transaction. The worker checks Redis epoch writes before Cable
+  delivery; errors retain retry debt without rolling back committed tracks.
+  Every incomplete attempt re-reads committed created/updated track values.
+  Stored messages remain a fallback for rows deleted since intent creation,
+  preserving historical creation and stable delivery positions. Destroyed IDs
+  remain durable. SQL receipts and shared Cable event identities suppress
+  successful replay; failed publication rolls back its receipt and can retry.
+- Tile validators include the shared database generation, which becomes visible
+  at outer commit and rolls back with track changes. Redis cleanup is retryable
+  and cannot restore a stale validator. The local telemetry commit hook is removed.
+  Preexisting `NativeChangesWorker` rows dispatch through the same shared worker
+  with a stable intent derived from their Oban job ID. Keep this compatibility
+  module until all legacy notification debt has drained. New writes create only
+  shared intents on the projections queue.
 - Realtime success selects points created strictly after the captured five-minute
   boundary, with no reverse-geocoding timestamp. Provider configuration gates the
   selection. Persistent point claims suppress duplicate enqueue; jobs contain at

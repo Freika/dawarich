@@ -28,7 +28,7 @@ defmodule Dawarich.A12f3bR01Test do
   @tag a12f3b_case: "R01k01"
   test "points.tile_epoch native producer reaches its source terminal effect" do
     user = user!()
-    before = Dawarich.Tiles.Http.epoch("points", user, {@at - 1, @at})
+    before = Dawarich.Tiles.Http.epoch("points", user, {@at - 1, @at}, ScratchRepo)
 
     {:ok, _} =
       ScratchRepo.transaction(fn ->
@@ -37,7 +37,7 @@ defmodule Dawarich.A12f3bR01Test do
 
     assert [[args]] = jobs("Dawarich.Points.TileEpochWorker")
     assert :ok = Dawarich.Points.TileEpochWorker.run(ScratchRepo, args)
-    refute Dawarich.Tiles.Http.epoch("points", user, {@at - 1, @at}) == before
+    refute Dawarich.Tiles.Http.epoch("points", user, {@at - 1, @at}, ScratchRepo) == before
     assert :ok = Dawarich.Points.TileEpochWorker.run(ScratchRepo, args)
     assert reverse("points.tile_epoch") == []
 

@@ -85,7 +85,7 @@ defmodule Dawarich.A12f3bE151Test do
     ])
 
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 1
-    assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :tracks)
+    Dawarich.Test.AfterCommit.drain(ScratchRepo)
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 0
   end
 

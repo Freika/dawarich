@@ -67,17 +67,10 @@ defmodule Dawarich.Transportation.ReclassifyTrackWorker do
       status = Dawarich.Transportation.RecalculationStatus
 
       if (owner == :oban or status.native?(user_id)) and not status.rails_active?(user_id) do
-        Dawarich.Transportation.RecalculationStatus.increment(user_id, event_id)
-
-        Dawarich.Cable.broadcast_to(
-          "tracks",
-          {:user, user_id},
-          %{
-            "action" => "transport_progress",
-            "status" => Dawarich.Transportation.RecalculationStatus.data(user_id)
-          },
-          repo: repo
-        )
+        Dawarich.AfterCommit.cache(repo, "transport_progress", %{
+          "user_id" => user_id,
+          "event_id" => event_id
+        })
       else
         RailsCommands.insert!(repo, "transport_progress", %{
           "user_id" => user_id,

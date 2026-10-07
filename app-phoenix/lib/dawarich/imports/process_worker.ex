@@ -99,10 +99,7 @@ defmodule Dawarich.Imports.ProcessWorker do
            log: false
          ).rows do
       [[source]] when is_nil(source) or source == 4 ->
-        if Dawarich.Standalone.enabled?() or is_nil(source) or
-             NormalHandover.owns_source?(repo, job, source),
-           do: Keyword.update!(options, :sources, &[4 | &1]),
-           else: options
+        Keyword.update!(options, :sources, &[4 | &1])
 
       _ ->
         options
@@ -118,6 +115,7 @@ defmodule Dawarich.Imports.ProcessWorker do
 
     %{
       repo: repo,
+      progress_lane: "command:imports.process_normal",
       zone: Dawarich.TimeZoneName.to_iana(job.args["time_zone"]),
       locale: locale || "en",
       now: &DateTime.utc_now/0,

@@ -74,7 +74,7 @@ defmodule Dawarich.Digests.JobEntriesTest do
 
   test "digest cron firing instants retain Oban UTC and disclose Rails zone offsets" do
     {Oban, config} = Enum.find(Dawarich.Application.children(:none), &match?({Oban, _}, &1))
-    cron = Keyword.fetch!(config, :cron)
+    {Dawarich.Jobs.TickScheduler, cron} = Keyword.fetch!(config, :cron)
     assert cron[:timezone] == "Etc/UTC"
 
     triggers =

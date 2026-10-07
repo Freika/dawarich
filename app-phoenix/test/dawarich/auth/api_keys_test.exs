@@ -150,6 +150,7 @@ defmodule Dawarich.Auth.ApiKeysTest do
   defp effects,
     do:
       {Repo.query!("SELECT count(*) FROM job_outbox").rows,
-       Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows,
-       Repo.query!("SELECT count(*) FROM family_memberships").rows}
+       Repo.query!(
+         "SELECT count(*) FROM oban.oban_jobs WHERE worker<>'Dawarich.AfterCommit.Worker'"
+       ).rows, Repo.query!("SELECT count(*) FROM family_memberships").rows}
 end

@@ -58,12 +58,17 @@ defmodule Dawarich.Imports.LegacyZipChildTest do
               "UPDATE oban.oban_jobs SET state='executing',attempt=1 WHERE id<>$1 AND worker='Dawarich.Imports.ProcessWorker' RETURNING id,args,worker",
               [c.job.id]
             ) do
+        owner = if unquote(mode) == "on" and args["import_id"] == child, do: :sidekiq, else: :oban
+        Ownership.put!(ScratchRepo, "command:imports.process_normal", owner, pinned: true)
+
         assert :ok =
                  ProcessWorker.perform(%Oban.Job{id: id, args: args, worker: worker, attempt: 1})
       end
 
+      Ownership.put!(ScratchRepo, "command:imports.process_normal", :oban, pinned: true)
+
       if unquote(mode) == "on" do
-        assert [[true, "pending"]] ==
+        assert [[false, "pending"]] ==
                  rows(
                    "SELECT native_fallback,state FROM phoenix.import_handoffs WHERE import_id=$1",
                    [child]

@@ -166,7 +166,7 @@ defmodule Dawarich.A12f3bR09Test do
           do: "command:imports.process_gpx",
           else: "command:imports.process_normal"
 
-      Dawarich.Jobs.Ownership.put!(ScratchRepo, lane, :oban)
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, lane, :sidekiq)
       System.delete_env("DAWARICH_RAILS")
       assert :ok == unquote(handover).resume(ScratchRepo, c.job, :legacy)
       assert [[unquote(kind)]] == F.reverse()
@@ -174,7 +174,7 @@ defmodule Dawarich.A12f3bR09Test do
       assert [[true, "pending"]] ==
                rows("SELECT native_fallback,state FROM phoenix.import_handoffs")
 
-      assert [["oban"]] == rows("SELECT owner FROM phoenix.job_owners WHERE key=$1", [lane])
+      assert [["sidekiq"]] == rows("SELECT owner FROM phoenix.job_owners WHERE key=$1", [lane])
       assert [] == rows("SELECT id FROM notifications")
       assert :ok == unquote(handover).resume(ScratchRepo, c.job, :legacy)
       assert [[1]] == rows("SELECT count(*) FROM phoenix.rails_commands")

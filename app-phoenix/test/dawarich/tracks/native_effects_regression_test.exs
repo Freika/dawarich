@@ -1,6 +1,7 @@
 defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
   use Dawarich.JobsCase, async: false
   alias Dawarich.Tracks.{Builder, NativeChangesWorker}
+  alias Dawarich.AfterCommit.Worker
   alias Dawarich.Transportation.{RecalculationStatus, ReclassifyTrackWorker}
 
   @t 1_790_000_000
@@ -56,7 +57,7 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
   test "track epoch invalidates a tile cached between effect and commit" do
     points = points()
     range = {@t - 60, @t + 120}
-    before_epoch = Dawarich.Tiles.Http.epoch("tracks", 1, range)
+    before_epoch = Dawarich.Tiles.Http.epoch("tracks", 1, range, ScratchRepo)
 
     {:ok, observed} =
       ScratchRepo.transaction(fn ->
@@ -66,14 +67,14 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
                  )
 
         Task.async(fn ->
-          {Dawarich.Tiles.Http.epoch("tracks", 1, range),
+          {Dawarich.Tiles.Http.epoch("tracks", 1, range, ScratchRepo),
            rows("SELECT count(*) FROM tracks WHERE user_id=1")}
         end)
         |> Task.await()
       end)
 
     {mid_epoch, mid_rows} = observed
-    after_epoch = Dawarich.Tiles.Http.epoch("tracks", 1, range)
+    after_epoch = Dawarich.Tiles.Http.epoch("tracks", 1, range, ScratchRepo)
     assert before_epoch == mid_epoch
     assert mid_rows == [[0]]
     refute mid_epoch == after_epoch
@@ -84,8 +85,12 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
                ScratchRepo.rollback(:rollback)
              end)
 
-    assert Dawarich.Tiles.Http.epoch("tracks", 1, range) == after_epoch
+    assert Dawarich.Tiles.Http.epoch("tracks", 1, range, ScratchRepo) == after_epoch
     assert length(effects()) == 1
+
+    assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker=$1", [
+             inspect(NativeChangesWorker)
+           ]) == [[0]]
   end
 
   test "native execution preserves Rails run ownership status total and progress receipt" do
@@ -255,19 +260,22 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
     assert state == [["completed", 1, 1]]
     assert rows("SELECT count(*) FROM tracks") == [[1]]
     assert [[payload]] = effects()
-    rows("UPDATE tracks SET distance=123 WHERE id=$1", [hd(payload["created"])])
+    rows("UPDATE tracks SET distance=123 WHERE id=$1", [hd(payload["payload"]["created"])])
     assert_publish_replay(payload)
     assert [%{"track" => %{"distance" => 123}}] = messages()
     rows("DELETE FROM phoenix.cable_events")
-    assert :ok = NativeChangesWorker.run(ScratchRepo, payload)
-    assert [%{"track" => %{"distance" => 123}}] = messages()
+    assert :ok = Worker.run(ScratchRepo, payload)
+    assert messages() == []
   end
 
   defp effects,
     do:
-      rows("SELECT args FROM oban.oban_jobs WHERE worker=$1 ORDER BY id", [
-        inspect(NativeChangesWorker)
-      ])
+      rows(
+        "SELECT args FROM oban.oban_jobs WHERE worker=$1 AND args->>'operation'='tracks' ORDER BY id",
+        [
+          inspect(Worker)
+        ]
+      )
 
   defp messages,
     do:
@@ -297,12 +305,15 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
     assert_receive :locked, 5_000
 
     try do
-      assert_raise Postgrex.Error, fn ->
-        ScratchRepo.transaction(fn ->
-          rows("SET LOCAL lock_timeout = '100ms'")
-          NativeChangesWorker.run(ScratchRepo, payload)
-        end)
-      end
+      ScratchRepo.checkout(fn ->
+        rows("SET lock_timeout = '100ms'")
+
+        try do
+          assert {:error, %Postgrex.Error{}} = Worker.run(ScratchRepo, payload)
+        after
+          rows("SET lock_timeout = '0'")
+        end
+      end)
 
       assert effects() == [[payload]]
       assert rows("SELECT count(*) FROM tracks") == [[1]]
@@ -311,7 +322,113 @@ defmodule Dawarich.Tracks.NativeEffectsRegressionTest do
       Task.await(task)
     end
 
-    assert :ok = NativeChangesWorker.run(ScratchRepo, payload)
+    assert :ok = Worker.run(ScratchRepo, payload)
     assert [%{"action" => "created"}] = messages()
+  end
+
+  test "review: failed epoch invalidation retains durable retry debt" do
+    points = points()
+    range = {@t - 60, @t + 120}
+    before_epoch = Dawarich.Tiles.Http.epoch("tracks", 1, range, ScratchRepo)
+
+    {:ok, "OK"} =
+      Dawarich.Redis.command([
+        "ACL",
+        "SETUSER",
+        "rxtracks_epochs",
+        "on",
+        "nopass",
+        "~*",
+        "+@all",
+        "-set"
+      ])
+
+    {:ok, "OK"} = Dawarich.Redis.cache_command(["AUTH", "rxtracks_epochs", ""])
+
+    try do
+      assert {:ok, _} =
+               Builder.create_track!(ScratchRepo, %{id: 1, settings: %{}}, points, 70,
+                 skip_segment_detection: true
+               )
+
+      assert rows("SELECT count(*) FROM tracks") == [[1]]
+
+      results =
+        for queue <- [:tracks, :projections], do: Oban.drain_queue(__MODULE__, queue: queue)
+
+      assert Enum.sum(Enum.map(results, & &1.failure)) == 1
+      assert rows("SELECT state FROM oban.oban_jobs") == [["retryable"]]
+      assert messages() == []
+      {:ok, "OK"} = Dawarich.Redis.cache_command(["AUTH", "default", ""])
+      after_epoch = Dawarich.Tiles.Http.epoch("tracks", 1, range, ScratchRepo)
+      refute before_epoch == after_epoch
+
+      results =
+        for queue <- [:tracks, :projections],
+            do: Oban.drain_queue(__MODULE__, queue: queue, with_scheduled: true)
+
+      assert Enum.sum(Enum.map(results, & &1.success)) == 1
+      assert rows("SELECT state FROM oban.oban_jobs") == [["completed"]]
+      assert [%{"action" => "created"}] = messages()
+      assert {:ok, token} = Dawarich.Redis.cache_command(["GET", "tracks:tile_epoch:1:2026"])
+      assert is_binary(token)
+    after
+      Dawarich.Redis.cache_command(["AUTH", "default", ""])
+      Dawarich.Redis.command(["ACL", "DELUSER", "rxtracks_epochs"])
+    end
+  end
+
+  test "review: legacy notification jobs retain retry debt and a stable receipt" do
+    assert {:ok, track} =
+             Builder.create_track!(ScratchRepo, %{id: 1, settings: %{}}, points(), 70,
+               skip_segment_detection: true
+             )
+
+    payload = %{
+      "user_id" => 1,
+      "created" => [track.id],
+      "updated" => [],
+      "destroyed" => [],
+      "min_ts" => @t,
+      "max_ts" => @t + 60
+    }
+
+    rows("DELETE FROM oban.oban_jobs")
+    job = ScratchRepo.insert!(NativeChangesWorker.new(payload), prefix: "oban")
+
+    {:ok, "OK"} =
+      Dawarich.Redis.command([
+        "ACL",
+        "SETUSER",
+        "rxtracks_legacy",
+        "on",
+        "nopass",
+        "~*",
+        "+@all",
+        "-set"
+      ])
+
+    {:ok, "OK"} = Dawarich.Redis.cache_command(["AUTH", "rxtracks_legacy", ""])
+
+    try do
+      assert %{failure: 1, success: 0} = Oban.drain_queue(__MODULE__, queue: :tracks)
+      assert rows("SELECT state FROM oban.oban_jobs") == [["retryable"]]
+      assert messages() == []
+      {:ok, "OK"} = Dawarich.Redis.cache_command(["AUTH", "default", ""])
+
+      assert %{failure: 0, success: 1} =
+               Oban.drain_queue(__MODULE__, queue: :tracks, with_scheduled: true)
+
+      assert [%{"action" => "created", "track" => %{"id" => id}}] = messages()
+      assert id == track.id
+      assert :ok = NativeChangesWorker.perform(job)
+      assert length(messages()) == 1
+
+      assert rows("SELECT count(*) FROM phoenix.processed_commands WHERE handler='after_commit'") ==
+               [[1]]
+    after
+      Dawarich.Redis.cache_command(["AUTH", "default", ""])
+      Dawarich.Redis.command(["ACL", "DELUSER", "rxtracks_legacy"])
+    end
   end
 end

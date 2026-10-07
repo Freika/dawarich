@@ -4,6 +4,9 @@ defmodule Dawarich.RailsCache do
   alias Dawarich.Redis
 
   def get(key, opts \\ []) do
+    key =
+      if opts[:resolved], do: key, else: visible_key(key, opts)
+
     case Redis.cache_command(["GET", key]) do
       {:ok, nil} -> :miss
       {:ok, bytes} -> entry(key, bytes, opts)
@@ -11,9 +14,20 @@ defmodule Dawarich.RailsCache do
     end
   end
 
-  def put(key, html, expires_in: seconds) do
+  def put(key, html, opts) do
+    seconds = Keyword.fetch!(opts, :expires_in)
+
+    key =
+      if opts[:resolved], do: key, else: visible_key(key, opts)
+
     bytes = Wire.encode(html, expires_at: now() + seconds)
     Redis.cache_command(["SET", key, bytes, "PX", to_string(seconds * 1000)])
+  end
+
+  defp visible_key(key, opts) do
+    if Dawarich.AfterCommit.Visibility.user_key?(key),
+      do: Dawarich.AfterCommit.Visibility.key(Keyword.get(opts, :repo, Dawarich.Repo), key),
+      else: key
   end
 
   defp entry(key, bytes, opts) do
