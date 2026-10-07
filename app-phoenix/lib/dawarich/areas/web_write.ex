@@ -89,13 +89,17 @@ defmodule Dawarich.Areas.WebWrite do
   end
 
   defp number(value) when is_binary(value) do
-    case Float.parse(String.trim(value)) do
-      {n, ""} -> n
-      _ -> nil
-    end
+    if Regex.match?(~r/\A[+-]?0[xX]/, value), do: nil, else: Ruby.float(value)
   end
 
   defp number(_), do: nil
+
+  defp coordinate(value) do
+    value = value |> Ruby.strip() |> String.replace("_", "")
+    value = Regex.replace(~r/\A([+-]?)\./, value, "\\g{1}0.")
+    value = Regex.replace(~r/\.(?=[eE]|$)/, value, ".0")
+    value |> Decimal.new() |> Decimal.round(6, :half_up) |> Decimal.to_string(:normal)
+  end
 
   defp save!(repo, user, nil, values, _before, now) do
     [[id]] =
@@ -104,9 +108,9 @@ defmodule Dawarich.Areas.WebWrite do
         [
           user,
           values["name"],
-          values["latitude"],
-          values["longitude"],
-          trunc(number(values["radius"])),
+          coordinate(values["latitude"]),
+          coordinate(values["longitude"]),
+          Dawarich.RubyInteger.to_i(values["radius"]),
           DateTime.to_naive(now)
         ]
       ).rows
@@ -126,9 +130,9 @@ defmodule Dawarich.Areas.WebWrite do
           id,
           user,
           values["name"],
-          values["latitude"],
-          values["longitude"],
-          trunc(number(values["radius"])),
+          coordinate(values["latitude"]),
+          coordinate(values["longitude"]),
+          Dawarich.RubyInteger.to_i(values["radius"]),
           DateTime.to_naive(now)
         ]
       )
