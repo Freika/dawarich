@@ -23,15 +23,7 @@ defmodule Dawarich.JobsCase do
   end
 
   def reset!(repo) do
-    unless repo.query!("SELECT to_regclass('public.job_outbox') IS NOT NULL", [], log: false).rows ==
-             [[true]] do
-      Dawarich.ScratchCase.recreate_public!(repo)
-
-      repo.query!(Dawarich.ReleaseMigrator.baseline_sql(), [],
-        query_type: :text,
-        log: false
-      )
-    end
+    Dawarich.PublicBaseline.ensure_current!(repo)
 
     tables =
       ~w(public.job_outbox public.exports public.imports public.pending_imports public.users public.point_sources
