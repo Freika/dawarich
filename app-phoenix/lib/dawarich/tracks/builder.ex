@@ -35,6 +35,9 @@ defmodule Dawarich.Tracks.Builder do
     {:ok, result} =
       repo.transaction(fn -> insert_or_reuse(repo, user, points, distance, opts) end)
 
+    if match?({:ok, _}, result),
+      do: Dawarich.Tracks.MapMatching.Enqueuer.defer(repo, elem(result, 1).id)
+
     result
   end
 

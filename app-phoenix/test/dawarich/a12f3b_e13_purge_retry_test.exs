@@ -83,18 +83,14 @@ defmodule Dawarich.A12f3bE13PurgeRetryTest do
         File.write!(path, "synthetic media")
       end
 
-      assert %{success: 1, failure: 0} =
-               Oban.drain_queue(__MODULE__, queue: :posters, with_scheduled: true, with_limit: 1)
-
-      refute File.exists?(path)
-      assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
-      assert rows("SELECT id FROM active_storage_variant_records WHERE id=$1", [variant]) == []
-      assert Processed.done?(ScratchRepo, args["event_id"])
-      assert Drain.status(ScratchRepo).counts.incomplete_oban == 1
-
       File.rm!(child_path)
       File.mkdir!(child_path)
-      assert %{success: 0, failure: 1} = Oban.drain_queue(__MODULE__, queue: :posters)
+
+      assert %{success: 0, failure: 1} =
+               Oban.drain_queue(__MODULE__, queue: :posters, with_scheduled: true)
+
+      assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == [[blob]]
+      refute Processed.done?(ScratchRepo, args["event_id"])
       assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [child]) == [[child]]
       assert Drain.status(ScratchRepo).counts.incomplete_oban == 1
       File.rmdir!(child_path)
@@ -103,6 +99,10 @@ defmodule Dawarich.A12f3bE13PurgeRetryTest do
       assert %{success: 1, failure: 0} =
                Oban.drain_queue(__MODULE__, queue: :posters, with_scheduled: true)
 
+      refute File.exists?(path)
+      assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [blob]) == []
+      assert rows("SELECT id FROM active_storage_variant_records WHERE id=$1", [variant]) == []
+      assert Processed.done?(ScratchRepo, args["event_id"])
       refute File.exists?(child_path)
       assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [child]) == []
       assert :ok = PurgeWorker.run(ScratchRepo, args)

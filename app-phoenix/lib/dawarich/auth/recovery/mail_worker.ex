@@ -3,7 +3,7 @@ defmodule Dawarich.Auth.Recovery.MailWorker do
   use Oban.Worker, queue: :mailers, max_attempts: 20
 
   alias Dawarich.Auth.Recovery.{Mail, Notification}
-  alias Dawarich.Mail.{Delivery, Recipient, SmtpConfig, Wave2}
+  alias Dawarich.Mail.{Delivery, ExploreFeatures, Recipient, SmtpConfig, Wave2}
   alias Dawarich.{RailsCookies, RailsSecret}
 
   @seal "dawarich.auth.recovery"
@@ -75,7 +75,10 @@ defmodule Dawarich.Auth.Recovery.MailWorker do
         "#{args["user_id"]}:#{args["digest"]}",
         NaiveDateTime.to_iso8601(user.created_at),
         args["event_id"],
-        fn -> Mail.build(kind, user.email, args["locale"], raw, base_url, env) end
+        fn ->
+          locale = ExploreFeatures.locale(user.settings, args["locale"])
+          Mail.build(kind, user.email, locale, raw, base_url, env)
+        end
       )
     else
       nil -> :ok

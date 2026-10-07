@@ -80,6 +80,24 @@ defmodule Dawarich.RouteVideos.WritesTest do
     RouteVideos.create(repo, @user, params, @now, "en", %{max_per_user: cap})
   end
 
+  defp attach_to_owned_video(blob_id) do
+    [[video]] =
+      rows(
+        "INSERT INTO route_videos(user_id,name,status,settings,created_at,updated_at) VALUES($1,'Existing route',0,'{}',$2,$2) RETURNING id",
+        [@user.id, @stamp]
+      )
+
+    ScratchRepo.insert_all("active_storage_attachments", [
+      %{
+        name: "file",
+        record_type: "RouteVideo",
+        record_id: video,
+        blob_id: blob_id,
+        created_at: @stamp
+      }
+    ])
+  end
+
   defp commands do
     rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id")
   end
@@ -87,9 +105,7 @@ defmodule Dawarich.RouteVideos.WritesTest do
   test "signed MP4 at the inclusive ceiling attaches to the authenticated owner" do
     id = blob(886_000, %{byte_size: 250 * 1024 * 1024})
 
-    ScratchRepo.insert_all("active_storage_attachments", [
-      %{name: "file", record_type: "OtherRecord", record_id: 999, blob_id: id, created_at: @stamp}
-    ])
+    attach_to_owned_video(id)
 
     assert {:ok, %{id: video, evicted: []}} = create(id)
 
@@ -158,9 +174,7 @@ defmodule Dawarich.RouteVideos.WritesTest do
     assert length(commands()) == 1
     rows("DELETE FROM phoenix.rails_commands")
 
-    ScratchRepo.insert_all("active_storage_attachments", [
-      %{name: "file", record_type: "OtherRecord", record_id: 999, blob_id: id, created_at: @stamp}
-    ])
+    attach_to_owned_video(id)
 
     assert {:error, %{phase: :pre_attach}} = create(id, %{}, SaveFailureRepo)
     assert commands() == []

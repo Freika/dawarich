@@ -36,7 +36,15 @@ defmodule Dawarich.Posters.Command do
 
   def progress(repo, payload), do: child!(repo, Dawarich.Posters.ProgressWorker, payload)
 
-  def purge(repo, :oban, payload), do: child!(repo, Dawarich.Posters.PurgeWorker, payload)
+  def purge(repo, :oban, payload) do
+    {:ok, :ok} =
+      repo.transaction(fn ->
+        payload = Dawarich.Posters.PurgeWorker.prepare!(repo, payload)
+        child!(repo, Dawarich.Posters.PurgeWorker, payload)
+      end)
+
+    :ok
+  end
 
   def purge(repo, :sidekiq, payload) do
     if Dawarich.Standalone.enabled?(),

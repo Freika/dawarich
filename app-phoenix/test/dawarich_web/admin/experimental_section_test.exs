@@ -9,12 +9,14 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Repo.query!("DELETE FROM instance_settings", [], log: false)
+    Dawarich.Experimental.refresh_map_matching(Repo, %{})
     previous = System.get_env("DAWARICH_RAILS")
     hosted = System.get_env("SELF_HOSTED")
     System.put_env("DAWARICH_RAILS", "off")
     System.put_env("SELF_HOSTED", "true")
 
     on_exit(fn ->
+      Dawarich.Experimental.cache_map_matching(Repo, false)
       restore("DAWARICH_RAILS", previous)
       restore("SELF_HOSTED", hosted)
     end)
@@ -95,6 +97,29 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
            ]
 
     assert page(c.context) =~ "Set an Atlas URL before enabling map matching."
+  end
+
+  @tag :r1_admin_refresh
+  test "R1 admin UI enable and disable refresh the completion gate without restart", c do
+    alias Dawarich.Tracks.MapMatching.Enqueuer
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    assert :disabled = Enqueuer.defer(Repo, 0)
+
+    for {value, result} <- [{"true", :deferred}, {"false", :disabled}] do
+      conn =
+        request(c.session, "/admin/settings", [
+          {"_method", "patch"},
+          {"section", "experimental"},
+          {"instance_settings[atlas_url]", "http://atlas.example.invalid"},
+          {"instance_settings[map_matching_enabled]", value}
+        ])
+        |> Settings.call(action: :instance, context: c.context)
+
+      assert conn.status == 303
+      assert flash(conn, "notice") == "Settings saved."
+      assert Enqueuer.defer(Repo, 0) == result
+      Dawarich.MapMatchingTasks.await!()
+    end
   end
 
   test "test connection shows version", c do

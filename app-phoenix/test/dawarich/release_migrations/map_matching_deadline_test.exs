@@ -67,7 +67,9 @@ defmodule Dawarich.ReleaseMigrations.MapMatchingDeadlineTest do
              ReleaseMigrator.apply_release_for_proof(DeadlineRepo, Unreleased)
   end
 
+  @tag :migration_transaction_boundary
   test "atomic map-matching column migration survives two lock waits with the production runner" do
+    refute DeadlineRepo.in_transaction?()
     ledger_except!("20261006120000")
     blocker = hold_lock!("LOCK TABLE tracks IN ACCESS SHARE MODE", :two_retries)
     handler = {__MODULE__, make_ref()}
@@ -78,6 +80,10 @@ defmodule Dawarich.ReleaseMigrations.MapMatchingDeadlineTest do
         handler,
         DeadlineRepo.config()[:telemetry_prefix] ++ [:query],
         fn _, _, metadata, _ ->
+          if String.starts_with?(metadata.query, "ALTER TABLE tracks ADD") do
+            send(parent, {:column_transaction, DeadlineRepo.in_transaction?()})
+          end
+
           case metadata.result do
             {:error, %Postgrex.Error{postgres: %{code: :lock_not_available}}} ->
               send(parent, :lock_retry)
@@ -100,6 +106,8 @@ defmodule Dawarich.ReleaseMigrations.MapMatchingDeadlineTest do
       end
 
     assert {:ok, %{applied: ["20261006120000"]}} = result
+    assert_received {:column_transaction, true}
+    refute_received {:column_transaction, false}
     assert_received :lock_retry
     assert_received :lock_retry
     assert_received {:visible_columns, [["id"]]}

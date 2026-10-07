@@ -162,7 +162,7 @@ defmodule Dawarich.Users.DestroyEffects do
     delete_user!(repo, "digests", id)
 
     repo.query!(
-      "DELETE FROM family_invitations WHERE invited_by_id=$1 OR family_id IN(SELECT id FROM families WHERE creator_id=$1)",
+      "DELETE FROM family_invitations WHERE invited_by_id=$1",
       [id],
       log: false
     )
