@@ -99,9 +99,10 @@ defmodule Dawarich.Imports.ProcessWorker do
            log: false
          ).rows do
       [[source]] when is_nil(source) or source == 4 ->
-        if is_nil(source) or NormalHandover.owns_source?(repo, job, source),
-          do: Keyword.update!(options, :sources, &[4 | &1]),
-          else: options
+        if Dawarich.Standalone.enabled?() or is_nil(source) or
+             NormalHandover.owns_source?(repo, job, source),
+           do: Keyword.update!(options, :sources, &[4 | &1]),
+           else: options
 
       _ ->
         options

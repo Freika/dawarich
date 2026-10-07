@@ -63,131 +63,173 @@ defmodule Dawarich.Imports.StandaloneZipTest do
     end)
   end
 
-  test "real mixed ZIP upload settles children parent map points and Rails notifications in both modes",
-       c do
-    for mode <- ["on", "off"] do
-      reset!(ScratchRepo)
+  for mode <- ["on", "off"] do
+    test "ZIP parent waits for all five terminal children in #{mode}",
+         c do
+      mode = unquote(mode)
 
-      user =
-        RailsUser.insert!(
-          %{
-            id: 871_101,
-            email: "zip@example.test",
-            api_key: "synthetic-zip-map",
-            settings: %{
-              "timezone" => "UTC",
-              "locale" => "en",
-              "visits_suggestions_enabled" => "false"
-            }
-          },
-          ScratchRepo
-        )
+      (fn ->
+         reset!(ScratchRepo)
 
-      session = RailsUser.session(user.id)
+         user =
+           RailsUser.insert!(
+             %{
+               id: 871_101,
+               email: "zip@example.test",
+               api_key: "synthetic-zip-map",
+               settings: %{
+                 "timezone" => "UTC",
+                 "locale" => "en",
+                 "visits_suggestions_enabled" => "false"
+               }
+             },
+             ScratchRepo
+           )
 
-      for type <-
-            ~w(imports.process_normal imports.process_gpx imports.update_points_count imports.prepared_download_purge),
-          do: Jobs.Ownership.put!(ScratchRepo, "command:" <> type, :oban)
+         session = RailsUser.session(user.id)
 
-      Dawarich.EnhancedImportCase.with_env("DAWARICH_RAILS", mode, fn ->
-        {:ok, {_, bytes}} = :zip.create(~c"mixed.zip", members(), [:memory])
-        signed = direct_upload!(session, user, c.root, bytes)
+         for type <-
+               ~w(imports.process_normal imports.process_gpx imports.update_points_count imports.prepared_download_purge),
+             do: Jobs.Ownership.put!(ScratchRepo, "command:" <> type, :oban)
 
-        response =
-          request(
-            session,
-            :post,
-            "/imports",
-            Plug.Conn.Query.encode(%{"import" => %{"files" => [signed]}}),
-            "application/x-www-form-urlencoded"
-          )
+         Dawarich.EnhancedImportCase.with_env("DAWARICH_RAILS", mode, fn ->
+           {:ok, {_, bytes}} = :zip.create(~c"mixed.zip", members(), [:memory])
+           signed = direct_upload!(session, user, c.root, bytes)
 
-        assert response.status == 303
-        assert [[parent]] = rows("SELECT id FROM imports WHERE user_id=$1", [user.id])
-        assert %{dispatched: 1} = Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
-        parent_job = job!(parent)
-        assert :ok = Dawarich.Imports.ProcessWorker.perform(parent_job)
-        assert [] == rows("SELECT id FROM imports WHERE id=$1", [parent])
+           response =
+             request(
+               session,
+               :post,
+               "/imports",
+               Plug.Conn.Query.encode(%{"import" => %{"files" => [signed]}}),
+               "application/x-www-form-urlencoded"
+             )
 
-        assert [["removed"]] ==
-                 rows(
-                   "SELECT phase FROM phoenix.import_archive_children WHERE parent_id=$1 AND entry_name=''",
-                   [parent]
-                 )
+           assert response.status == 303
+           assert [[parent]] = rows("SELECT id FROM imports WHERE user_id=$1", [user.id])
+           assert %{dispatched: 1} = Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+           parent_job = job!(parent)
+           assert {:snooze, 5} = Dawarich.Imports.ProcessWorker.perform(parent_job)
+           assert [[1]] == rows("SELECT status FROM imports WHERE id=$1", [parent])
 
-        assert Jobs.Processed.done?(ScratchRepo, parent_job.args["event_id"])
+           assert [["built"]] ==
+                    rows(
+                      "SELECT phase FROM phoenix.import_archive_children WHERE parent_id=$1 AND entry_name=''",
+                      [parent]
+                    )
 
-        children =
-          rows(
-            "SELECT child_id,entry_name,phase FROM phoenix.import_archive_children WHERE parent_id=$1 AND child_id IS NOT NULL ORDER BY entry_name",
-            [parent]
-          )
+           refute Jobs.Processed.done?(ScratchRepo, parent_job.args["event_id"])
 
-        assert length(children) == length(members())
-        assert Enum.all?(children, fn [_, _, phase] -> phase == "queued" end)
+           children =
+             rows(
+               "SELECT child_id,entry_name,phase FROM phoenix.import_archive_children WHERE parent_id=$1 AND child_id IS NOT NULL ORDER BY entry_name",
+               [parent]
+             )
 
-        if mode == "on",
-          do:
-            assert(
-              Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__) == %{
-                dispatched: length(children)
-              }
-            )
+           assert length(children) == length(members())
+           assert Enum.all?(children, fn [_, _, phase] -> phase == "queued" end)
 
-        for [child, _, _] <- children do
-          job = job!(child)
-          assert :ok = Dawarich.Imports.ProcessWorker.perform(job)
+           if mode == "on",
+             do:
+               assert(
+                 Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__) == %{
+                   dispatched: length(children)
+                 }
+               )
 
-          assert [[2, nil]] ==
-                   rows("SELECT status,error_message FROM imports WHERE id=$1", [child])
+           for [child, _, _] <- children do
+             job = job!(child)
+             assert :ok = Dawarich.Imports.ProcessWorker.perform(job)
 
-          assert Jobs.Processed.done?(ScratchRepo, job.args["event_id"])
-          assert :ok = Dawarich.Imports.ProcessWorker.perform(job)
+             assert [[2, nil]] ==
+                      rows("SELECT status,error_message FROM imports WHERE id=$1", [child])
 
-          if rows("SELECT source FROM imports WHERE id=$1", [child]) == [[4]] do
-            rows("DELETE FROM phoenix.processed_commands WHERE event_id=$1", [
-              Ecto.UUID.dump!(job.args["event_id"])
-            ])
+             assert Jobs.Processed.done?(ScratchRepo, job.args["event_id"])
+             assert :ok = Dawarich.Imports.ProcessWorker.perform(job)
 
-            rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [job.id])
-            assert :ok = Dawarich.Imports.ProcessWorker.perform(%{job | attempt: 2})
+             if rows("SELECT source FROM imports WHERE id=$1", [child]) == [[4]] do
+               rows("DELETE FROM phoenix.processed_commands WHERE event_id=$1", [
+                 Ecto.UUID.dump!(job.args["event_id"])
+               ])
 
-            assert [["imports.process_normal"]] ==
-                     rows("SELECT handler FROM phoenix.processed_commands WHERE event_id=$1", [
-                       Ecto.UUID.dump!(job.args["event_id"])
-                     ])
-          end
-        end
+               rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [job.id])
+               assert :ok = Dawarich.Imports.ProcessWorker.perform(%{job | attempt: 2})
 
-        assert [] ==
-                 rows("SELECT id FROM phoenix.rails_commands WHERE kind='imports.normal_resume'")
+               assert [["imports.process_normal"]] ==
+                        rows("SELECT handler FROM phoenix.processed_commands WHERE event_id=$1", [
+                          Ecto.UUID.dump!(job.args["event_id"])
+                        ])
+             end
+           end
 
-        assert [[5]] == rows("SELECT count(*) FROM points WHERE user_id=$1", [user.id])
-        assert [[5]] == rows("SELECT points_count FROM users WHERE id=$1", [user.id])
+           assert [] ==
+                    rows(
+                      "SELECT id FROM phoenix.rails_commands WHERE kind='imports.normal_resume'"
+                    )
 
-        assert [["Import completed with no points", content, 1]] =
-                 rows("SELECT title,content,kind FROM notifications WHERE user_id=$1", [user.id])
+           assert [[5]] == rows("SELECT count(*) FROM points WHERE user_id=$1", [user.id])
+           assert [[5]] == rows("SELECT points_count FROM users WHERE id=$1", [user.id])
 
-        assert content =~ "empty.kml (from mixed.zip)"
-        assert :ok = Dawarich.Imports.ProcessWorker.perform(parent_job)
+           assert [["Import completed with no points", content, 1]] =
+                    rows("SELECT title,content,kind FROM notifications WHERE user_id=$1", [
+                      user.id
+                    ])
 
-        assert length(children) ==
-                 length(rows("SELECT id FROM imports WHERE user_id=$1", [user.id]))
+           assert content =~ "empty.kml (from mixed.zip)"
+           owner = self()
+           [child | _] = hd(children)
 
-        assert File.ls!(c.root) != []
+           holder =
+             Task.async(fn ->
+               ScratchRepo.transaction(fn ->
+                 rows("SELECT id FROM imports WHERE id=$1 FOR UPDATE", [child])
+                 send(owner, :child_locked)
 
-        conn =
-          build_conn()
-          |> put_req_header("authorization", "Bearer " <> user.api_key)
-          |> dispatch(
-            DawarichWeb.Endpoint,
-            :get,
-            "/api/v1/points?start_at=2026-01-15&end_at=2026-01-17"
-          )
+                 receive do
+                   :release_child -> :ok
+                 end
+               end)
+             end)
 
-        assert conn.status == 200
-        assert length(Jason.decode!(conn.resp_body)) == 5
-      end)
+           assert_receive :child_locked
+
+           try do
+             assert {:snooze, 5} = Dawarich.Imports.ProcessWorker.perform(parent_job)
+           after
+             send(holder.pid, :release_child)
+             assert {:ok, :ok} = Task.await(holder)
+           end
+
+           assert :ok = Dawarich.Imports.ProcessWorker.perform(parent_job)
+           assert [] == rows("SELECT id FROM imports WHERE id=$1", [parent])
+           assert Jobs.Processed.done?(ScratchRepo, parent_job.args["event_id"])
+
+           assert [["removed"]] ==
+                    rows(
+                      "SELECT phase FROM phoenix.import_archive_children WHERE parent_id=$1 AND entry_name=''",
+                      [parent]
+                    )
+
+           assert :ok = Dawarich.Imports.ProcessWorker.perform(parent_job)
+
+           assert length(children) ==
+                    length(rows("SELECT id FROM imports WHERE user_id=$1", [user.id]))
+
+           assert File.ls!(c.root) != []
+
+           conn =
+             build_conn()
+             |> put_req_header("authorization", "Bearer " <> user.api_key)
+             |> dispatch(
+               DawarichWeb.Endpoint,
+               :get,
+               "/api/v1/points?start_at=2026-01-15&end_at=2026-01-17"
+             )
+
+           assert conn.status == 200
+           assert length(Jason.decode!(conn.resp_body)) == 5
+         end)
+       end).()
     end
   end
 

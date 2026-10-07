@@ -72,7 +72,7 @@ defmodule Dawarich.Imports.NormalHandover do
 
       [[^expected_user, source, status, nil]] when status in [0, 1] ->
         if owner == :sidekiq or not owns_source?(repo, job, source) or reason == :legacy,
-          do: enqueue(repo, args, reason == :legacy),
+          do: enqueue(repo, args, reason == :legacy or not owns_source?(repo, job, source)),
           else: {:snooze, 5}
 
       [[^expected_user, source, 2, nil]] ->
@@ -108,7 +108,7 @@ defmodule Dawarich.Imports.NormalHandover do
 
   defp handback(repo, job, owner, source, reason) do
     if owner == :sidekiq or not owns_source?(repo, job, source) or reason == :legacy,
-      do: enqueue(repo, job.args, reason == :legacy),
+      do: enqueue(repo, job.args, reason == :legacy or not owns_source?(repo, job, source)),
       else: {:snooze, 5}
   end
 
@@ -188,24 +188,6 @@ defmodule Dawarich.Imports.NormalHandover do
     end
   end
 
-  defp enqueue(repo, args, fallback) do
-    if Dawarich.Standalone.enabled?() do
-      {:error, :unsupported_native_import}
-    else
-      repo.query!(
-        "INSERT INTO phoenix.import_handoffs(event_id,import_id,user_id,time_zone,native_fallback) VALUES ($1,$2,$3,$4,$5) ON CONFLICT(event_id) DO NOTHING",
-        [
-          Ecto.UUID.dump!(args["event_id"]),
-          args["import_id"],
-          args["user_id"],
-          args["time_zone"],
-          fallback
-        ],
-        log: false
-      )
-
-      Dawarich.RailsCommands.insert!(repo, "imports.normal_resume", args)
-      Processed.mark!(repo, args["event_id"], "imports.process_normal.handback")
-    end
-  end
+  defp enqueue(repo, args, fallback),
+    do: Dawarich.Imports.AcceptedDisposition.call(repo, args, "imports.normal_resume", fallback)
 end

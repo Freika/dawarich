@@ -589,3 +589,25 @@ The lease and ownership checks apply in coexistence and standalone drain modes.
 - Tests: `F5 on/off forwards accepted source work to its command owner` and `F5 on/off refuses source generation while a native poster lease is live` in `spec/jobs/posters/media_ownership_spec.rb` (four individually named cases).
 - Ledger: ED-FIX-MEDIA-OWNERSHIP; no deferred row added.
 - CHANGELOG-ready: Fence accepted Rails poster generation during native job ownership handoff.
+
+### Accepted ZIP children and terminal parent ordering
+
+Rails removes a successful ZIP parent while its children remain pending. If a
+later member fails validation, earlier saved members can remain created without
+processing work. Native ZIP fanout now queues every accepted member after a
+partial build error and waits for terminal children before parent failure or
+removal. Rails production remains unchanged.
+
+- Rails: `app/services/imports/zip_extractor.rb:45`, `:130`, `:138`, `:157`.
+- Phoenix: `app-phoenix/lib/dawarich/imports/zip_fanout.ex` (`failed/5`, `complete/3`); `zip_children.ex` (`terminal?/2`).
+- Tests: `ZIP parent waits for all five terminal children in on/off`; `partial ZIP build retains an executor for accepted children before parent failure in on/off`.
+- Ledger: ED-FIX-ACCEPTED-IMPORT-DISPOSITION; no new deferred row.
+- CHANGELOG-ready: Keep accepted ZIP members processing through partial archive failures and wait for member completion before settling their parent.
+
+FRB-008 also covers GPX discovered by a queued normal import: normal lifecycle
+failure now commits its notification and terminal receipt atomically. The named
+`normal-discovered GPX notification is exactly once after interrupted failure in
+on/off` regressions exercise the notification/receipt interruption window with
+real retries. Rails source remains `app/services/imports/create.rb:47`;
+Phoenix counterpart is `normal_lifecycle.ex` (`failure/5`). The deterministic
+interruption is native; no Rails broker-ack crash reproduction is claimed.

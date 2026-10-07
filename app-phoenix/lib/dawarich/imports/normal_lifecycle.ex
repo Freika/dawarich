@@ -27,6 +27,9 @@ defmodule Dawarich.Imports.NormalLifecycle do
           {:legacy, _} = legacy ->
             legacy
 
+          {:snooze, _} = waiting ->
+            waiting
+
           :restore_handoff ->
             :ok
 
@@ -69,6 +72,9 @@ defmodule Dawarich.Imports.NormalLifecycle do
     publish(lease, context)
 
     case ZipFanout.call(lease, path, context) do
+      {:snooze, _} = waiting ->
+        waiting
+
       :removed ->
         :removed
 
@@ -130,11 +136,12 @@ defmodule Dawarich.Imports.NormalLifecycle do
   end
 
   defp failure(lease, import, context, error, stack) do
-    ImportState.fail!(lease, error, clock(context))
-    publish(lease, context)
     message = ImportMessages.failure(import, context, error, stack)
 
     ImportState.effect!(lease, fn ->
+      ImportState.fail!(lease, error, clock(context))
+      publish(lease, context, false)
+
       Notifications.create!(
         lease.repo,
         import.user_id,
@@ -143,8 +150,11 @@ defmodule Dawarich.Imports.NormalLifecycle do
         message.content,
         DateTime.to_naive(clock(context))
       )
+
+      ImportState.complete!(lease, clock(context))
     end)
 
+    Dawarich.Imports.Events.broadcast(lease.import.user_id)
     if report = Map.get(context, :report_error), do: report.(error, "Import failed")
     :ok
   end
