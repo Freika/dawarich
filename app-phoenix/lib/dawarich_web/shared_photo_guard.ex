@@ -24,7 +24,6 @@ defmodule DawarichWeb.SharedPhotoGuard do
     now = conn.assigns[:api_now] || DateTime.utc_now()
 
     with true <- SharedLinks.api_uuid?(id),
-         true <- SharedLinks.api_owner_available?(id),
          %{settings: %{"show_photos" => true}} = link <- SharedLinks.active(id, now),
          true <- FamilyAudience.family_only?(link) or SharedLinkCookie.unlocked?(conn, link, now) do
       params = conn.assigns[:api_params] || fetch_query_params(conn).query_params

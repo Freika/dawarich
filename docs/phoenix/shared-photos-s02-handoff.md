@@ -103,3 +103,8 @@ GREEN after removing the viewer-dependent bypass, fails M-S02C1V when that
 predicate is restored, and passes after restoration. This probe does not
 claim that Rails authenticates the synthetic cookie; the separate S02C1Rails
 probe supplies the real-backend public-share proof.
+
+S02C1O covers unavailable native owners on Rails slice handoff: valid scope
+can forward, but an edited trip window must still deny GET/HEAD 404/404.
+Its RED and owner-predicate mutation both return 200/200; restored scope
+checking passes. Rails retains lifecycle authorization for valid forwarding.

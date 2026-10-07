@@ -614,6 +614,42 @@ defmodule DawarichWeb.A12f3bS02Test do
     no_upstream!(c.upstream)
   end
 
+  @tag a12f3b_case: "S02C1O"
+  test "unavailable native owner cannot skip current thumbnail scope on Rails handoff", c do
+    configure(c, [asset("public-0")])
+    link = link!(c.owner, 0, c.trip)
+    assert {200, _, _} = response(c, link, "photos")
+    Repo.query!("UPDATE users SET deleted_at=$2 WHERE id=$1", [c.owner, DateTime.to_naive(@now)])
+    refute SharedLinks.api_owner_available?(link)
+    System.delete_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS_SLICES", "api_shared")
+    action = "photos/public-0/thumbnail?source=immich"
+    assert {200, _, @image} = routed_response(c, link, action, "GET", @image)
+    assert_receive {:s02_rails_request, _}
+
+    Repo.query!(
+      "UPDATE trips SET started_at=started_at + interval '1 day', ended_at=ended_at + interval '1 day' WHERE id=$1",
+      [c.trip]
+    )
+
+    before_denial = requests(c)
+    get = routed_response(c, link, action, "GET", @image)
+    head = routed_response(c, link, action, "HEAD", @image)
+    assert {elem(get, 0), elem(head, 0)} == {404, 404}
+    assert elem(get, 2) == ""
+    assert elem(head, 2) == ""
+    refute_received {:s02_rails_request, _}
+
+    assert Enum.all?(
+             Enum.drop(requests(c), length(before_denial)),
+             &(&1.path == "/api/search/metadata")
+           )
+
+    assert commands() == []
+    assert effects() == c.effects
+    no_upstream!(c.upstream)
+  end
+
   @tag a12f3b_case: "S02C2"
   test "S02 Rails bug registers identify the fixed leak and deferred Rails repair" do
     fixed = File.read!("../docs/phoenix/fixed-rails-bugs.md")

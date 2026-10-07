@@ -81,3 +81,8 @@ must deny even when no native viewer is recognized. It tests the proxy
 boundary, not authentication of that synthetic cookie by Rails. M-S02C1V
 reintroduces the native family-viewer predicate and fails at 200/200.
 Family authorization remains Rails' decision for valid handoff thumbnails.
+
+S02C1O also denies excluded thumbnails when native owner availability routes
+the request back to Rails. The scope check uses the stored owner settings;
+owner lifecycle authorization for valid handoff thumbnails remains with Rails.
+M-S02C1O reinstates the owner-availability predicate and fails at 200/200.
