@@ -226,3 +226,30 @@ CHANGELOG-ready: Bound native integration responses and reject redirects and
 malformed integration endpoints before provider data can be accepted.
 No ED/DRB row added; controller owns ledger consolidation.
 AFFiNE counterpart remains `5-hALFzd96DSlwiLB8lt5`.
+
+## F17 Google Takeout continuation progress regression
+
+- Rails symptom: a late or retried RecordsImporter continuation overwrites newer
+  visible import progress with its older constant index. The actual Rails importer
+  reproduced **2,000 → 1,000** in the rollback-only fix2 source probe.
+- Rails sources: `app/services/imports/broadcaster.rb:10` unconditionally writes
+  processed; `app/services/google_maps/records_importer.rb:23` calls it with the
+  supplied continuation index after each batch.
+- Phoenix: `app-phoenix/lib/dawarich/imports/gpx_progress.ex:13` uses a fenced SQL
+  maximum. `app-phoenix/lib/dawarich/imports/continuation_receipt.ex:6` admits
+  work only after durable predecessors commit, retaining every pending/deferred
+  event rather than canceling lower indices. Event cursors and writer counters
+  commit together; a predecessor retry finishes its suffix without reducing
+  progress in standalone or coexistence.
+- Regression: `retrying a predecessor never lowers durable import progress`
+  in `app-phoenix/test/dawarich/imports/continuation_order_test.exs`, both modes.
+  Delivery regressions also prove a deferred event survives an overtaking attempt
+  and all source points are applied once under all four-event delivery permutations.
+- F17 progress: no ED/DRB row added; no plan ledger is assigned for this correction.
+  This central register and the scoped reports record the divergence for the
+  controller's release changelog. Rails production remains unchanged.
+
+CHANGELOG-ready: Keep Google Takeout import progress monotonic when continuation
+workers retry or arrive out of order, while preserving all pending source rows.
+
+AFFiNE counterpart: `ovFWRqfzsy2Jb5n1NB4Qc`.

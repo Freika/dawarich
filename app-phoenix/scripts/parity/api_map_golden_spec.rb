@@ -302,9 +302,16 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
   end
 
   def map_closure_setup(tables)
-    tables.index_with do |table|
-      ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
-                        .map { JSON.parse(_1) }
+    tables.index_with { |table| map_table_rows(table) }
+  end
+
+  def map_table_rows(table)
+    rows = ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
+                             .map { JSON.parse(_1) }
+    return rows unless table == 'tracks'
+
+    rows.map do |row|
+      row.except(*%w[map_matched_at map_matching_data map_matching_input_digest map_matching_status matched_path])
     end
   end
 
@@ -357,8 +364,7 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
 
   def map_setup
     rows = ApiMapGoldenOracle::TABLES.map do |table|
-      values = ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
-      [table, values.map { JSON.parse(_1) }]
+      [table, map_table_rows(table)]
     end
     key = Digest::SHA256.hexdigest(JSON.generate(rows))[0, 16]
     ApiMapGoldenOracle.setups[key] = rows

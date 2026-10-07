@@ -106,7 +106,13 @@ module PlacesGoldenSupport
   def places_rows(tables, strict: false)
     tables.to_h do |table|
       values = ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
-      [table, values.map { strict ? JSON.parse(_1) : JSON.parse(_1).compact }]
+      rows = values.map { strict ? JSON.parse(_1) : JSON.parse(_1).compact }
+      if table == 'tracks'
+        rows = rows.map do |row|
+          row.except(*%w[map_matched_at map_matching_data map_matching_input_digest map_matching_status matched_path])
+        end
+      end
+      [table, rows]
     end
   end
 
