@@ -3,36 +3,15 @@ defmodule Dawarich.Imports.DestroyRemoval do
   alias Dawarich.Imports.{DestroyLease, ImportBlobPurges, LeaseLost}
 
   def authorize!(repo, id, user) do
-    for {blob, source, ids} <- removals!(repo, id),
+    for {blob, source, ids} <- ImportBlobPurges.removals!(repo, id),
         do: ImportBlobPurges.authorize!(repo, id, user, blob, source, ids)
 
     :ok
   end
 
-  defp removals!(repo, id) do
-    attachments =
-      repo.query!(
-        "SELECT id,blob_id,name FROM active_storage_attachments WHERE record_type='Import' AND record_id=$1 ORDER BY id FOR UPDATE",
-        [id],
-        log: false
-      ).rows
-
-    source =
-      case Enum.uniq(for [_id, blob, "file"] <- attachments, do: blob) do
-        [] -> nil
-        [blob] -> blob
-        _ -> raise ArgumentError, "Ambiguous import source attachment"
-      end
-
-    attachments
-    |> Enum.group_by(fn [_id, blob, _name] -> blob end)
-    |> Enum.map(fn {blob, rows} -> {blob, source || blob, Enum.map(rows, &hd/1)} end)
-    |> Enum.sort()
-  end
-
   def call(lease) do
     DestroyLease.effect!(lease, fn ->
-      removals = removals!(lease.repo, lease.id)
+      removals = ImportBlobPurges.removals!(lease.repo, lease.id)
 
       ImportBlobPurges.enqueue_many!(lease.repo, lease.id, lease.user, removals)
 

@@ -9,7 +9,8 @@ defmodule DawarichWeb.ImportDeletionSecurityTest do
           layout <- [:prepared_only, :distinct],
           do: {mode, owner, layout}
         ) do
-    test "real destruction completes with authorized cleanup and issued links mode=#{mode} purge_owner=#{owner} layout=#{layout}" do
+    @tag fix3_case: "destroy-#{mode}-#{owner}-#{layout}"
+    test "native destruction revokes issued links before either cleanup owner runs mode=#{mode} purge_owner=#{owner} layout=#{layout}" do
       Dawarich.EnhancedImportCase.with_env("DAWARICH_RAILS", unquote(mode), fn ->
         c = Dawarich.ImportLeaseFixture.create()
         rows("DELETE FROM oban.oban_jobs WHERE id=$1", [c.job.id])
@@ -116,8 +117,8 @@ defmodule DawarichWeb.ImportDeletionSecurityTest do
             )
 
           source_owned = unquote(mode) == "on" and unquote(owner) == :sidekiq
-          assert redirect.status == if(source_owned, do: 302, else: 404)
-          assert disk.status == if(source_owned, do: 200, else: 404)
+          assert redirect.status == 404
+          assert disk.status == 404
 
           assert rows("SELECT phase FROM phoenix.import_destroy_runs WHERE import_id=$1", [
                    c.import.id

@@ -1,6 +1,27 @@
 defmodule Dawarich.Imports.ImportBlobPurges do
   @moduledoc false
 
+  def removals!(repo, id) do
+    attachments =
+      repo.query!(
+        "SELECT id,blob_id,name FROM active_storage_attachments WHERE record_type='Import' AND record_id=$1 ORDER BY id FOR UPDATE",
+        [id],
+        log: false
+      ).rows
+
+    source =
+      case Enum.uniq(for [_id, blob, "file"] <- attachments, do: blob) do
+        [] -> nil
+        [blob] -> blob
+        _ -> raise ArgumentError, "Ambiguous import source attachment"
+      end
+
+    attachments
+    |> Enum.group_by(fn [_id, blob, _name] -> blob end)
+    |> Enum.map(fn {blob, rows} -> {blob, source || blob, Enum.map(rows, &hd/1)} end)
+    |> Enum.sort()
+  end
+
   def authorize!(repo, import_id, user_id, blob_id, source_id, removed_ids \\ nil) do
     unless repo.in_transaction?(),
       do: raise(ArgumentError, "Purge authorization requires a transaction")
@@ -74,19 +95,29 @@ defmodule Dawarich.Imports.ImportBlobPurges do
   end
 
   defp enqueue_authorized!(repo, import_id, user_id, blob_id, source_id, removed_ids, owner) do
-    if Dawarich.Standalone.enabled?() or owner == :oban do
-      ids =
-        removed_ids ||
-          repo.query!(
-            "SELECT id FROM active_storage_attachments WHERE record_type='Import' AND record_id=$1 AND blob_id=$2",
-            [import_id, blob_id],
-            log: false
-          ).rows
-          |> List.flatten()
+    ids =
+      removed_ids ||
+        repo.query!(
+          "SELECT id FROM active_storage_attachments WHERE record_type='Import' AND record_id=$1 AND blob_id=$2",
+          [import_id, blob_id],
+          log: false
+        ).rows
+        |> List.flatten()
 
-      repo.query!("DELETE FROM active_storage_attachments WHERE id=ANY($1)", [ids], log: false)
+    repo.query!("DELETE FROM active_storage_attachments WHERE id=ANY($1)", [ids], log: false)
+
+    if Dawarich.Standalone.enabled?() or owner == :oban do
       Dawarich.Imports.PreparedDownloadPurgeWorker.enqueue!(repo, [blob_id])
     else
+      objects = Dawarich.Storage.NativePurge.collect(repo, [blob_id])
+      Dawarich.Storage.NativePurge.mark!(repo, objects)
+
+      repo.query!(
+        "DELETE FROM phoenix.upload_receipts WHERE blob_id=ANY($1)",
+        [Enum.map(objects, & &1["blob_id"])],
+        log: false
+      )
+
       Dawarich.RailsCommands.insert!(repo, "imports.prepared_download_purge", %{
         "blob_id" => blob_id,
         "import_id" => import_id,
