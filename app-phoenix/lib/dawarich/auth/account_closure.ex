@@ -101,8 +101,7 @@ defmodule Dawarich.Auth.AccountClosure do
       case repo.update(
              Ecto.Changeset.change(user, changes)
              |> Ecto.Changeset.unique_constraint(:email, name: :index_users_on_email),
-             log: false,
-             mode: :savepoint
+             Dawarich.Transaction.options(repo, log: false)
            ) do
         {:ok, updated} ->
           SecurityNotifications.enqueue(repo, user, updated, changes, context)

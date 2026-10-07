@@ -58,46 +58,52 @@ defmodule Dawarich.UserData.Restore.Tracks do
   defp restore(_, _, _, _), do: 0
 
   defp write(repo, user, attrs, cast, existing, segments, context) do
-    case existing do
-      [] ->
-        id = Batch.create_record!(repo, "tracks", attrs, context)
-        effect(repo, user, id, cast, :created)
-        segments(repo, id, segments, context)
-        1
+    {count, id} =
+      case existing do
+        [] ->
+          id = Batch.create_record!(repo, "tracks", attrs, context)
+          effect(repo, user, id, cast, :created)
+          segments(repo, id, segments, context)
+          {1, id}
 
-      [[id, _]] ->
-        {:ok, _} =
-          repo.transaction(fn ->
-            repo.query!("SAVEPOINT restore_track_refresh", [], log: false)
+        [[id, _]] ->
+          {:ok, refreshed} =
+            repo.transaction(fn ->
+              repo.query!("SAVEPOINT restore_track_refresh", [], log: false)
 
-            try do
-              Batch.update!(
-                repo,
-                "tracks",
-                id,
-                Map.drop(attrs, ~w(start_at end_at created_at)),
-                context
-              )
+              try do
+                Batch.update!(
+                  repo,
+                  "tracks",
+                  id,
+                  Map.drop(attrs, ~w(start_at end_at created_at)),
+                  context
+                )
 
-              if Ruby.present?(segments) do
-                repo.query!("DELETE FROM track_segments WHERE track_id=$1", [id], log: false)
-                segments(repo, id, segments, context)
-              end
+                if Ruby.present?(segments) do
+                  repo.query!("DELETE FROM track_segments WHERE track_id=$1", [id], log: false)
+                  segments(repo, id, segments, context)
+                end
 
-              effect(repo, user, id, cast, :updated)
-              repo.query!("RELEASE SAVEPOINT restore_track_refresh", [], log: false)
-            rescue
-              e in Dawarich.Imports.LeaseLost ->
-                reraise e, __STACKTRACE__
-
-              _ ->
-                repo.query!("ROLLBACK TO SAVEPOINT restore_track_refresh", [], log: false)
+                effect(repo, user, id, cast, :updated)
                 repo.query!("RELEASE SAVEPOINT restore_track_refresh", [], log: false)
-            end
-          end)
+                id
+              rescue
+                e in Dawarich.Imports.LeaseLost ->
+                  reraise e, __STACKTRACE__
 
-        0
-    end
+                _ ->
+                  repo.query!("ROLLBACK TO SAVEPOINT restore_track_refresh", [], log: false)
+                  repo.query!("RELEASE SAVEPOINT restore_track_refresh", [], log: false)
+                  nil
+              end
+            end)
+
+          {0, refreshed}
+      end
+
+    if id, do: Dawarich.Tracks.MapMatching.Enqueuer.defer(repo, id)
+    count
   end
 
   defp valid?(row),

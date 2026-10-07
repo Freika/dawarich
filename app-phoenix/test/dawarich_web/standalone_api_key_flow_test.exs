@@ -123,6 +123,66 @@ defmodule DawarichWeb.StandaloneApiKeyFlowTest do
     end
   end
 
+  @tag :api_key_fill_race
+  test "rotation invalidation wins over an in-flight retired key plan lookup", c do
+    old = key(c.actor.id)
+    cache = {DawarichWeb.RateLimit, old}
+    TtlCache.delete(cache)
+    parent = self()
+    handler = {__MODULE__, make_ref()}
+    marker = make_ref()
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        Repo.config()[:telemetry_prefix] ++ [:query],
+        fn _, _, metadata, _ ->
+          if Process.get(:rotation_cache_commit_probe) == marker and
+               String.upcase(metadata.query) == "COMMIT" do
+            TtlCache.fetch(cache, 120_000, fn -> "pro" end)
+            send(parent, :commit_boundary_fill)
+          end
+
+          if Process.get(:retired_key_lookup) == marker and
+               String.contains?(metadata.query, "api_key") do
+            send(parent, {:lookup_selected, self()})
+
+            receive do
+              :release_lookup -> :ok
+            after
+              5_000 -> raise "lookup synchronization expired"
+            end
+          end
+        end,
+        nil
+      )
+
+    reader =
+      Task.async(fn ->
+        :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo, sandbox: false)
+        Process.put(:retired_key_lookup, marker)
+        DawarichWeb.RateLimit.plan(old)
+      end)
+
+    try do
+      assert_receive {:lookup_selected, pid} when pid == reader.pid, 5_000
+      Process.put(:rotation_cache_commit_probe, marker)
+      assert rotate(c.session, page(c.session)).status == 302
+      assert_received :commit_boundary_fill
+      assert TtlCache.lookup(cache) == :error
+      send(reader.pid, :release_lookup)
+      assert Task.await(reader, 5_000) != nil
+      assert TtlCache.lookup(cache) == :error
+      assert DawarichWeb.RateLimit.plan(old) == nil
+      assert Accounts.by_api_key(old) == nil
+    after
+      Process.delete(:rotation_cache_commit_probe)
+      :telemetry.detach(handler)
+      send(reader.pid, :release_lookup)
+      if Process.alive?(reader.pid), do: Task.await(reader, 5_000)
+    end
+  end
+
   defp rotate(session, page) do
     [token] =
       page.resp_body

@@ -72,7 +72,7 @@ defmodule Dawarich.Auth.Recovery.MailWorkerTest do
            ) == {:ok, @raw}
   end
 
-  test "perform mails the current link once, in the request's locale" do
+  test "perform mails the current link once, in the recipient's current locale" do
     id = user!()
     args = enqueued!(id)
 
@@ -85,7 +85,7 @@ defmodule Dawarich.Auth.Recovery.MailWorkerTest do
              ~s(href="https://dawarich.example.test/users/password/edit?reset_password_token=#{@raw}")
 
     assert {:ok, mail.subject} ==
-             Dawarich.I18n.t("fr", "devise.mailer.reset_password_instructions.subject")
+             Dawarich.I18n.t("de", "devise.mailer.reset_password_instructions.subject")
 
     assert mail.message_id =~ "@dawarich.example.test>"
 

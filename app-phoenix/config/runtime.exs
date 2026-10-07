@@ -77,6 +77,7 @@ if config_env() != :test do
     projections: 1,
     imports: 1,
     tracks: 2,
+    map_matching: env_integer.("MAP_MATCHING_CONCURRENCY", 2),
     reverse_geocoding: 2,
     visit_suggesting: 1,
     extractions: 1
@@ -101,6 +102,12 @@ if config_env() != :test do
     peer: Oban.Peers.Database,
     stager: {Oban.Stager, []},
     queues: queues,
+    cron: [
+      crontab:
+        Dawarich.Jobs.Registry.crontab() ++
+          [{"*/15 * * * *", Dawarich.Tracks.MapMatching.Sweeper}],
+      timezone: Dawarich.Jobs.Cron.timezone()
+    ],
     pruner: false,
     lifeline: [rescue_after: {60, :minute}],
     shutdown_grace_period: 12_000
