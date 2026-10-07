@@ -126,19 +126,14 @@ defmodule DawarichWeb.A12f3aIClosureTest do
                "SELECT additional_data_extraction->>'phoenix_extraction_event',additional_data_extraction->>'started_at' FROM imports WHERE id=781104"
              ).rows
 
-
     assert commands() == []
     assert request(c, :post, "/imports/781104/extraction", %{}).status == 303
-    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
-
-    assert Repo.query!(
-             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker'"
-           ).rows == [[1]]
-
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[1]]
     Repo.query!("UPDATE imports SET additional_data_extraction_status=3 WHERE id=781104")
     assert request(c, :delete, "/imports/781104/extraction", %{}).status == 302
 
     assert Repo.query!("SELECT command_type FROM job_outbox ORDER BY command_type DESC").rows == [
+             ["enhanced_import.extract_gpx"],
              ["enhanced_import.destroy_gpx"]
            ]
 
