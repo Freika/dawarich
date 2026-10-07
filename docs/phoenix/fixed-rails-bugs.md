@@ -232,12 +232,12 @@ The initial account’s credentials are printed in the debug log during install.
 Some translated document titles display the literal entity instead of an apostrophe. The native document title escapes once.
 
 - Rails: `app/helpers/application_helper.rb:45; app/views/layouts/application.html.erb:4`.
-- Phoenix: `app-phoenix/lib/dawarich_web/components/head.ex (precise correction line unverified)`.
+- Phoenix: `app-phoenix/lib/dawarich_web/layouts.ex:17; app-phoenix/lib/dawarich_web/layouts/root.html.heex:4`.
 - Fix/acceptance history: `ba56fd03e` (integrated); `8c69f9404` (integrated).
 - Modes: native page rendering; self-hosted/Cloud-specific test matrix unverified.
 - Evidence: expected_diffs.md ED-551; deferred-rails-bugs.md DRB-019. Ledger: ED-551; DRB-019 is already corrected, not preserved.
 - Test: “unverified: ED-551 names the locale corpus, not an exact regression title”.
-- Limits: ED-551 explicitly accepts the correction; do not reintroduce it for parity. The test-only acceptance commit is not claimed to introduce the renderer.
+- Limits: ED-551 explicitly accepts the correction; do not reintroduce it for parity. The test-only acceptance commit is not claimed to introduce the renderer; the originating renderer fix commit is unverified.
 
 ## Older ED corrections needing release reconciliation
 
