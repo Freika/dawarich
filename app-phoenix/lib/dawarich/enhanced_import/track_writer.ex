@@ -71,7 +71,7 @@ defmodule Dawarich.EnhancedImport.TrackWriter do
       nil ->
         case query(
                repo,
-               "SELECT DISTINCT track_id FROM points WHERE user_id=$1 AND import_id=$2 AND track_id IS NOT NULL AND timestamp BETWEEN $3 AND $4",
+               "SELECT t.id FROM tracks t WHERE t.user_id=$1 AND EXISTS(SELECT 1 FROM points p WHERE p.track_id=t.id AND p.user_id=$1 AND p.import_id=$2 AND p.timestamp BETWEEN $3 AND $4) ORDER BY t.id FOR UPDATE OF t",
                [user.id, import.id, first, last]
              ) do
           [[id]] -> id
@@ -83,7 +83,7 @@ defmodule Dawarich.EnhancedImport.TrackWriter do
   defp existing(repo, import, tracker) do
     case query(
            repo,
-           "SELECT id FROM tracks WHERE user_id=$1 AND tracker_id=$2 ORDER BY id LIMIT 1",
+           "SELECT id FROM tracks WHERE user_id=$1 AND tracker_id=$2 ORDER BY id LIMIT 1 FOR UPDATE",
            [import.user_id, tracker]
          ) do
       [[id]] -> id

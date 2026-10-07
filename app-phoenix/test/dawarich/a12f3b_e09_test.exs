@@ -34,24 +34,28 @@ defmodule Dawarich.A12f3bE09Test do
       children =
         rows("SELECT worker,args FROM oban.oban_jobs WHERE state IN ('available','scheduled')")
 
-      assert length(children) == if(status == 2 and source == 4, do: 1, else: 0)
+      assert length(children) == if(status == 2, do: 1, else: 0)
 
-      if status == 2 and source == 4 do
-        assert [
-                 [
-                   "Dawarich.EnhancedImport.ExtractGpxWorker",
-                   %{"import_id" => id, "lock_attempt" => 1}
-                 ]
-               ] = children
+      if status == 2 do
+        assert [["Dawarich.EnhancedImport.NormalWorker", args]] = children
 
-        assert id == c.import.id
-      end
+        assert Map.drop(args, ["event_id"]) == %{
+                 "import_id" => c.import.id,
+                 "user_id" => c.import.user_id,
+                 "source" => source,
+                 "source_blob_id" => nil,
+                 "time_zone" => "Europe/Berlin",
+                 "locale" => "fr",
+                 "lock_attempt" => 1
+               }
 
-      if status == 2 and source == 3 do
-        assert [[4]] =
-                 rows("SELECT additional_data_extraction_status FROM imports WHERE id=$1", [
-                   c.import.id
-                 ])
+        assert {:ok, _} = Ecto.UUID.cast(args["event_id"])
+
+        assert [[1, args["event_id"], "extract"]] ==
+                 rows(
+                   "SELECT additional_data_extraction_status,additional_data_extraction->>'phoenix_extraction_event',additional_data_extraction->>'phoenix_extraction_action' FROM imports WHERE id=$1",
+                   [c.import.id]
+                 )
       end
 
       assert :ok = c.handover.resume(ScratchRepo, c.job)
@@ -85,7 +89,7 @@ defmodule Dawarich.A12f3bE09Test do
 
       if source == 4 do
         rows(
-          "CREATE FUNCTION public.e09_reject_child() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.worker='Dawarich.EnhancedImport.ExtractGpxWorker' THEN RAISE EXCEPTION 'E09 child unavailable'; END IF; RETURN NEW; END $$"
+          "CREATE FUNCTION public.e09_reject_child() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.worker='Dawarich.EnhancedImport.NormalWorker' THEN RAISE EXCEPTION 'E09 child unavailable'; END IF; RETURN NEW; END $$"
         )
 
         rows(
@@ -112,8 +116,8 @@ defmodule Dawarich.A12f3bE09Test do
       assert :ok = c.handover.resume(ScratchRepo, c.job)
       rows("UPDATE oban.oban_jobs SET state='completed' WHERE id=$1", [c.job.id])
       status = Drain.status(ScratchRepo)
-      assert status.counts.incomplete_oban == if(source == 4, do: 1, else: 0)
-      if source == 4, do: assert("incomplete_oban" in status.shutdown_reasons)
+      assert status.counts.incomplete_oban == 1
+      assert "incomplete_oban" in status.shutdown_reasons
       assert [] = F.reverse()
       rows("UPDATE oban.oban_jobs SET state='completed' WHERE state IN ('available','scheduled')")
       refute "incomplete_oban" in Drain.status(ScratchRepo).shutdown_reasons
@@ -193,7 +197,7 @@ defmodule Dawarich.A12f3bE09Test do
 
         assert [] ==
                  rows(
-                   "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.ExtractGpxWorker'"
+                   "SELECT id FROM oban.oban_jobs WHERE worker IN('Dawarich.EnhancedImport.ExtractGpxWorker','Dawarich.EnhancedImport.NormalWorker')"
                  )
 
         assert [] == F.reverse()

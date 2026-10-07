@@ -1,6 +1,6 @@
 defmodule Dawarich.Imports.GoogleTakeoutResume do
   @moduledoc false
-  alias Dawarich.Imports.{BulkWriter, Fence, GpxProgress, NormalResume}
+  alias Dawarich.Imports.{BulkWriter, ContinuationReceipt, Fence, GpxProgress, NormalLifecycle}
   alias Dawarich.Imports.GoogleRecords.Point
 
   def validate(%{"locations" => locations, "current_index" => index} = payload)
@@ -15,8 +15,11 @@ defmodule Dawarich.Imports.GoogleTakeoutResume do
   def call(lease, state, context, payload) do
     unless match?({:ok, _}, validate(payload)), do: raise(ArgumentError, "invalid_payload")
     digest = :crypto.hash(:sha256, Jason.encode!(payload)) |> Base.encode16(case: :lower)
-    state = %{state | attachment: %{"continuation" => digest}}
-    context = NormalResume.driver(lease, state, context)
+    context = ContinuationReceipt.driver(lease, state, context, digest)
+
+    context =
+      Map.put(context, :altitude_decimal?, NormalLifecycle.altitude_decimal?(lease, context))
+
     offset = Map.get(context, :resume_offset, 0)
 
     payload["locations"]
@@ -27,7 +30,7 @@ defmodule Dawarich.Imports.GoogleTakeoutResume do
       batch = Enum.map(locations, &Point.prepare(&1, state.import, context))
 
       {_inserted, cache} =
-        NormalResume.batch(context, index, length(locations), fn ->
+        ContinuationReceipt.batch(context, index, length(locations), fn ->
           BulkWriter.write(batch, state.import, cache, lease.repo, &Fence.run(context, &1))
         end)
 

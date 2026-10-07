@@ -237,3 +237,61 @@ the partitioned gate; overlapping recompilation can invalidate lazy module
 loads. Swagger and schema are unchanged. All verification services are stopped.
 No Rails bug fixes were introduced. Other package F tasks and source drain
 remain with their existing owners.
+
+
+## F17–F19 review corrections
+
+Fresh typed continuation workers now discover the `altitude_decimal` column
+through the same fenced capability lookup as normal imports. Supported
+continuations keep event-specific attachment, source, payload-digest and cursor
+receipts inside the existing `phoenix.import_runs.attachment_snapshot`.
+The active receipt retains its scalar cursor for existing callers. Each accepted
+chunk has its own event UUID; replay of an earlier chunk recovers its own cursor.
+The shared per-import lease still excludes concurrent work, and ordinary
+whole-import events cannot replace an accepted event. No serialized Ruby payload
+is decoded and no schema or release-admission change is introduced.
+
+Continuation point insertion, counters and cursor advancement commit together
+under the import snapshot and job/attempt/token fence in standalone and native
+coexistence execution. A deterministic loss after the first committed batch
+resumes 1,001 rows with raw_points=1,001 and doubles=0 in both modes.
+
+Every existing-track adoption now selects the importing owner's track with a
+row lock inside the guarded item transaction, including fallback through point
+references. An inconsistent reference to another owner's track yields no adopted
+track or segment/mode changes. Imported non-demo visits adopt their matched demo
+place and its demo tags inside that same owner-scoped transaction; tags belonging
+to another owner remain unchanged.
+
+Extraction publication locks the import and verifies actor/source/blob before
+checking existing or processed child events. Duplicate automatic publication
+leaves current extraction metadata untouched, preserving a later manual removal.
+A different active extraction request also prevents publication from replacing
+its identity. This closes the publication seam without changing native lane
+ownership or the Cloud lifecycle refusal.
+
+Regression evidence lives in
+`test/dawarich/imports/continuation_review_test.exs`: six named review scenarios,
+each reproduced RED, passed GREEN, failed its distinct production mutation, and
+passed after restoration. The review corrections close Phoenix port omissions. Owner-scoped demo-tag
+adoption also prevents the Rails callback from mutating a foreign owner's tag
+through an inconsistent persisted tagging. Rails' callback traverses linked
+place tags without an owner predicate (`app/models/visit.rb:120`); Phoenix's
+writer checks `tags.user_id`. This difference is recorded in the review-fix
+report's Rails bugs changelog and the canonical AFFiNE document.
+
+
+E09 handover tests now assert the typed NormalWorker envelope for both GPX and
+Phone extraction, including current request identity and replay. Their child
+publication rejection trigger targets that worker; both sources keep drain
+pending until the child settles. Failed imports still publish neither the
+legacy nor the typed extraction worker. The reconciled targeted batch passes
+35 tests; the retained Rails oracle passes 34 examples.
+
+
+Final review-fix gate: the controller seed-404 runner passes 9,171 tests with
+zero failures (partitions 3,465 / 2,597 / 3,109). Existing skips/exclusions remain
+unchanged. Forced compile with warnings as errors, whole-tree format, the
+35-test targeted batch, 34-example Rails oracle and all six mutation/restoration
+selectors pass their required checks. The Cloud lifecycle guard, Swagger and
+schema are unchanged. Verification services are stopped.

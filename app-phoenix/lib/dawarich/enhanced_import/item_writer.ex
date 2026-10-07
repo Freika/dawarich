@@ -37,11 +37,13 @@ defmodule Dawarich.EnhancedImport.ItemWriter do
           log: false
         )
 
-      if result.rows != [],
-        do:
-          Dawarich.RailsEffects.visit_months(repo, import.user_id, [
-            DateTime.from_naive!(start, "Etc/UTC")
-          ])
+      if result.rows != [] do
+        adopt(repo, import.user_id, id)
+
+        Dawarich.RailsEffects.visit_months(repo, import.user_id, [
+          DateTime.from_naive!(start, "Etc/UTC")
+        ])
+      end
 
       bump(state, "visits")
     else
@@ -74,6 +76,24 @@ defmodule Dawarich.EnhancedImport.ItemWriter do
   end
 
   defp bump(state, key), do: %{state | counts: Map.update(state.counts, key, 1, &(&1 + 1))}
+
+  defp adopt(repo, user, place) do
+    adopted =
+      repo.query!(
+        "UPDATE places SET demo=false,updated_at=now() WHERE id=$1 AND user_id=$2 AND demo RETURNING id",
+        [place, user],
+        log: false
+      ).rows
+
+    if adopted != [] do
+      repo.query!(
+        "UPDATE tags SET demo=false,updated_at=now() WHERE user_id=$2 AND demo AND id IN(SELECT tag_id FROM taggings WHERE taggable_type='Place' AND taggable_id=$1)",
+        [place, user],
+        log: false
+      )
+    end
+  end
+
   defp naive(text), do: text |> DateTime.from_iso8601() |> elem(1) |> DateTime.to_naive()
 
   defp trust?(import),

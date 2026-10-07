@@ -36,20 +36,50 @@ defmodule Dawarich.EnhancedImport.NormalWorker do
   end
 
   def enqueue!(repo, args, event, at) do
-    repo.query!(
-      "UPDATE imports SET additional_data_extraction=additional_data_extraction||jsonb_build_object('phoenix_extraction_event',$2::text,'phoenix_extraction_action','extract') WHERE id=$1",
-      [args["import_id"], event],
-      log: false
-    )
+    {:ok, :ok} =
+      repo.transaction(fn ->
+        current =
+          repo.query!(
+            "SELECT i.source,(SELECT blob_id FROM active_storage_attachments WHERE record_type='Import' AND record_id=i.id AND name='file'),i.additional_data_extraction_status,i.additional_data_extraction FROM imports i JOIN users u ON u.id=i.user_id WHERE i.id=$1 AND i.user_id=$2 AND i.status<>4 AND u.deleted_at IS NULL FOR UPDATE OF i FOR SHARE OF u",
+            [args["import_id"], args["user_id"]],
+            log: false
+          ).rows
 
-    unless repo.query!(
-             "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker' AND args->>'event_id'=$1",
-             [event],
-             log: false
-           ).rows != [] do
-      at = if is_function(at, 0), do: at.(), else: at
-      repo.insert!(new(Map.put(args, "event_id", event), scheduled_at: at), prefix: "oban")
-    end
+        duplicate =
+          Processed.done?(repo, event) or
+            repo.query!(
+              "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker' AND args->>'event_id'=$1",
+              [event],
+              log: false
+            ).rows != []
+
+        case current do
+          [[source, blob, status, data]] ->
+            unless source == args["source"] and blob == args["source_blob_id"],
+              do: raise(LeaseLost)
+
+            superseded = status in [1, 2] and data["phoenix_extraction_event"] not in [nil, event]
+
+            unless duplicate or superseded do
+              repo.query!(
+                "UPDATE imports SET additional_data_extraction=additional_data_extraction||jsonb_build_object('phoenix_extraction_event',$2::text,'phoenix_extraction_action','extract') WHERE id=$1 AND user_id=$3",
+                [args["import_id"], event, args["user_id"]],
+                log: false
+              )
+
+              at = if is_function(at, 0), do: at.(), else: at
+
+              repo.insert!(new(Map.put(args, "event_id", event), scheduled_at: at),
+                prefix: "oban"
+              )
+            end
+
+          _ ->
+            raise LeaseLost
+        end
+
+        :ok
+      end)
 
     :ok
   end

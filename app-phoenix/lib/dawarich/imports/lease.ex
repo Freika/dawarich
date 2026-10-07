@@ -29,6 +29,7 @@ defmodule Dawarich.Imports.Lease do
       attempt: attempt,
       event: event,
       event_id: args["event_id"],
+      continuation: args["continuation"],
       token: Ecto.UUID.dump!(Ecto.UUID.generate()),
       scope: make_ref(),
       lane: Keyword.get(opts, :lane, @lane),
@@ -96,12 +97,13 @@ defmodule Dawarich.Imports.Lease do
             INSERT INTO phoenix.import_runs (import_id,user_id,event_id,job_id,attempt,token,updated_at)
             VALUES ($1,$2,$3,$4,$5,$6,now())
             ON CONFLICT (import_id) DO UPDATE SET
-              user_id=EXCLUDED.user_id, job_id=EXCLUDED.job_id, attempt=EXCLUDED.attempt,
+              user_id=EXCLUDED.user_id, event_id=EXCLUDED.event_id, job_id=EXCLUDED.job_id, attempt=EXCLUDED.attempt,
               token=EXCLUDED.token, updated_at=EXCLUDED.updated_at
             WHERE import_runs.event_id=EXCLUDED.event_id
+              OR ($7 AND import_runs.attachment_snapshot->>'kind'='continuation')
             RETURNING token
             """,
-            values(lease),
+            values(lease) ++ [continuation?(lease)],
             log: false
           )
 
@@ -136,6 +138,7 @@ defmodule Dawarich.Imports.Lease do
          ).rows do
       [["executing", attempt, worker, args]] ->
         worker == lease.worker and attempt == lease.attempt and args["event_id"] == lease.event_id and
+          args["continuation"] == lease.continuation and
           args["import_id"] == lease.import.id and args["user_id"] == lease.import.user_id
 
       _ ->
@@ -201,4 +204,10 @@ defmodule Dawarich.Imports.Lease do
       lease.attempt,
       lease.token
     ]
+
+  defp continuation?(lease),
+    do:
+      lease.worker == "Dawarich.Imports.ProcessWorker" and
+        lease.lane == "command:imports.process_normal" and
+        match?({:ok, _}, Dawarich.Imports.GoogleTakeoutResume.validate(lease.continuation))
 end
