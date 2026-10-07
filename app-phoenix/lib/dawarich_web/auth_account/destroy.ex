@@ -52,7 +52,7 @@ defmodule DawarichWeb.AuthAccount.Destroy do
            Admission.form(
              body,
              conn.query_string,
-             ~w(password confirm_email authenticity_token commit utf8 _method)
+             ~w(password confirm_email authenticity_token commit utf8 _method id)
            ),
          true <- valid_method?(conn, params),
          true <- csrf?(conn, params) do
@@ -75,8 +75,8 @@ defmodule DawarichWeb.AuthAccount.Destroy do
         &is_nil/1
       )
 
-    get_req_header(conn, "origin") in [[], [RequestURL.base(conn)]] and length(tokens) == 1 and
-      ActionCsrf.valid?(conn.assigns.rails_session, hd(tokens), "DELETE", "/users")
+    get_req_header(conn, "origin") in [[], [RequestURL.base(conn)]] and
+      Enum.any?(tokens, &ActionCsrf.valid?(conn.assigns.rails_session, &1, "DELETE", "/users"))
   end
 
   defp valid_method?(%{method: "POST"}, params), do: params["_method"] == "delete"

@@ -35,6 +35,61 @@ defmodule DawarichWeb.StandaloneAccountDeletionTest do
     %{actor: actor, other: other, session: session}
   end
 
+  @tag :sa_destroy_csrf_sources
+  test "browser accepts valid form and header CSRF together as Rails does", c do
+    token = RailsCsrf.masked_form_token(c.session, "/users", "delete")
+
+    for {form_token, header_token} <- [{token, token}, {"invalid", token}, {token, "invalid"}] do
+      raw =
+        URI.encode_query(%{
+          "_method" => "delete",
+          "confirm_email" => c.actor.email,
+          "authenticity_token" => form_token
+        })
+
+      conn =
+        RailsFormRequests.post_form(
+          c.session,
+          raw,
+          [{"accept", "text/html"}, {"x-csrf-token", header_token}],
+          "/users"
+        )
+
+      assert conn.status == 302
+      assert get_resp_header(conn, "location") == ["http://www.example.com/"]
+      assert count(c.actor.id) == 1
+      assert live?(c.other.id)
+      rows("UPDATE users SET deleted_at=NULL WHERE id=$1", [c.actor.id])
+      rows("DELETE FROM job_outbox WHERE aggregate_id=$1", [c.actor.id])
+    end
+
+    invalid =
+      RailsFormRequests.post_form(
+        c.session,
+        URI.encode_query(%{
+          "_method" => "delete",
+          "confirm_email" => c.actor.email,
+          "authenticity_token" => "invalid"
+        }),
+        [{"accept", "text/html"}, {"x-csrf-token", "invalid"}],
+        "/users"
+      )
+
+    assert invalid.status == 422
+    assert count(c.actor.id) == 0
+  end
+
+  @tag :sa_destroy_irrelevant_id
+  test "browser ignores irrelevant target id as Rails does", c do
+    conn = form(c, %{"confirm_email" => c.actor.email, "id" => to_string(c.other.id)})
+    assert conn.status == 302
+    assert get_resp_header(conn, "location") == ["http://www.example.com/"]
+    assert count(c.actor.id) == 1
+    refute live?(c.actor.id)
+    assert live?(c.other.id)
+    assert count(c.other.id) == 0
+  end
+
   @tag :sa_destroy_browser
   test "standalone browser deletion authenticates owner and CSRF then schedules once", c do
     invalid = form(c, %{"confirm_email" => c.actor.email, "authenticity_token" => "invalid"})
