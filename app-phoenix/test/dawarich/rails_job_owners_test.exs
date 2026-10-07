@@ -89,8 +89,16 @@ defmodule Dawarich.RailsJobOwnersTest do
 
       case Map.fetch!(RailsJobOwners.owners(), class) do
         {:oban, keys} ->
-          assert {:ok, worker, _args} = outcome, class
-          assert worker in Enum.map(keys, &Map.fetch!(workers, &1)), class
+          if class in ~w(DataMigrations::BackfillFamiliesForFamilyPlanJob DataMigrations::BackfillFamilyMemberEntitlementsJob) and
+               Dawarich.ReleaseMigration.self_hosted?() do
+            assert outcome == :skip, class
+
+            assert Dawarich.ReleaseJobs.FamilyBackfill in Enum.map(keys, &Map.fetch!(workers, &1)),
+                   class
+          else
+            assert {:ok, worker, _args} = outcome, class
+            assert worker in Enum.map(keys, &Map.fetch!(workers, &1)), class
+          end
 
         {:migrator, worker} ->
           assert match?({:ok, ^worker, _args}, outcome), class
