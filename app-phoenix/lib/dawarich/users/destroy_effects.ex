@@ -24,7 +24,7 @@ defmodule Dawarich.Users.DestroyEffects do
       [[email]] ->
         with :ok <- family_guard(repo, id),
              :ok <- Dawarich.Users.DestroyScope.check(repo, id) do
-          snapshot!(repo, id, email, event)
+          unless Dawarich.ReleaseMigration.self_hosted?(), do: snapshot!(repo, id, email, event)
           attachments!(repo, id)
           cleanup!(repo, id)
           cache!(repo, id)
