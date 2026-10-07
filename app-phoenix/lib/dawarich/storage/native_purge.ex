@@ -11,7 +11,43 @@ defmodule Dawarich.Storage.NativePurge do
     |> Enum.map(&hd/1)
   end
 
-  def collect(repo, ids), do: Enum.flat_map(ids, &collect(repo, &1, [], [])) |> Enum.uniq()
+  def collect(repo, ids) do
+    blobs =
+      repo.query!(
+        """
+        WITH RECURSIVE purge(id) AS (
+          SELECT id FROM active_storage_blobs WHERE id=ANY($1)
+          UNION
+          SELECT a.blob_id FROM purge p
+          JOIN active_storage_variant_records v ON v.blob_id=p.id
+          JOIN active_storage_attachments a ON a.record_id=v.id
+            AND a.record_type='ActiveStorage::VariantRecord'
+        )
+        SELECT b.id,b.key,b.service_name FROM active_storage_blobs b
+        JOIN purge p ON p.id=b.id ORDER BY b.id FOR UPDATE OF b
+        """,
+        [ids],
+        log: false
+      ).rows
+
+    references =
+      repo.query!(
+        """
+        SELECT a.blob_id,v.blob_id FROM active_storage_attachments a
+        LEFT JOIN active_storage_variant_records v ON v.id=a.record_id
+          AND a.record_type='ActiveStorage::VariantRecord'
+        WHERE a.blob_id=ANY($1)
+        """,
+        [Enum.map(blobs, &hd/1)],
+        log: false
+      ).rows
+
+    eligible = eligible_ids(MapSet.new(blobs, &hd/1), references)
+
+    for [id, key, service] <- blobs,
+        MapSet.member?(eligible, id),
+        do: %{"blob_id" => id, "key" => key, "service_name" => service}
+  end
 
   def mark!(repo, objects) do
     for object <- objects do
@@ -59,47 +95,12 @@ defmodule Dawarich.Storage.NativePurge do
     repo.query!("DELETE FROM active_storage_blobs WHERE id=ANY($1)", [ids], log: false)
   end
 
-  defp collect(repo, id, ignored, ancestors) do
-    if id in ancestors do
-      []
-    else
-      case repo.query!(
-             "SELECT key,service_name FROM active_storage_blobs WHERE id=$1 FOR UPDATE",
-             [id],
-             log: false
-           ).rows do
-        [[key, service]] ->
-          [[referenced]] =
-            repo.query!(
-              "SELECT EXISTS(SELECT 1 FROM active_storage_attachments WHERE blob_id=$1 AND NOT(id=ANY($2)))",
-              [id, ignored],
-              log: false
-            ).rows
+  defp eligible_ids(ids, references) do
+    remaining =
+      Enum.reduce(references, ids, fn [blob, parent], eligible ->
+        if MapSet.member?(ids, parent), do: eligible, else: MapSet.delete(eligible, blob)
+      end)
 
-          if referenced do
-            []
-          else
-            children =
-              repo.query!(
-                "SELECT a.id,a.blob_id FROM active_storage_attachments a JOIN active_storage_variant_records v ON v.id=a.record_id WHERE a.record_type='ActiveStorage::VariantRecord' AND v.blob_id=$1 ORDER BY a.blob_id,a.id",
-                [id],
-                log: false
-              ).rows
-
-            child_objects =
-              children
-              |> Enum.group_by(&List.last/1, &hd/1)
-              |> Enum.sort()
-              |> Enum.flat_map(fn {child, attachments} ->
-                collect(repo, child, attachments, [id | ancestors])
-              end)
-
-            [%{"blob_id" => id, "key" => key, "service_name" => service} | child_objects]
-          end
-
-        [] ->
-          []
-      end
-    end
+    if remaining == ids, do: ids, else: eligible_ids(remaining, references)
   end
 end

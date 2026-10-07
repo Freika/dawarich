@@ -28,7 +28,13 @@ eligible parent/variant storage object first, then removes their attachment,
 variant and blob rows in the same transaction. A storage error or missing service
 configuration retains all rows and durable retry targets. An already deleted
 object is safe on retry after another object or the database fails. Shared
-attachments protect their blobs, including shared variant children. Historical
+attachments protect their blobs, including shared variant children. Eligibility
+is computed over the whole reachable variant graph: links from every eligible
+parent in the same purge are removed together, so those links do not protect a
+shared child. External references exclude their target and propagate protection
+to its descendants until the eligible set is stable. The worker rechecks this
+graph under blob locks before deleting any object. Accepted keys/services retain
+every eligible descendant for retry and serialized replay. Historical
 key/service-only jobs remain supported for objects whose rows were already
 removed by the former producer. No schema migration is needed.
 
@@ -85,3 +91,12 @@ ED-A12F3B-E13-F2 in the expected-difference and fixed Rails bug registers;
 Rails-owned coexistence remains deferred, not repaired.
 
 Decision: [retain storage rows until deletion succeeds](native-media-purge-adr.md).
+
+Shared-variant regression: `test/dawarich/a12f3b_e13_shared_variant_test.exs`
+(`F4-standalone` and `F4-coexistence`) deletes a poster whose `image` and
+`print_pdf` roots share one child, with a further descendant. Actual parent
+storage failure, still-broken retry, recovery and serialized replay remove every
+unreferenced object and row. A separate shared-child storage failure retains all
+rows and drain debt until recovery. External-parent and post-enqueue attachment
+references preserve both child and descendant. This repairs a Phoenix graph
+collection defect; Rails-owned DRB-025 behavior remains as recorded.

@@ -21,6 +21,13 @@ one transaction. Preserve historical key-only job arguments. Native admission,
 redirect/proxy/representation lookup and local download/upload endpoints reject
 marked blobs. Clients cannot set the reserved metadata through direct upload.
 
+Compute deletion eligibility across the whole reachable variant graph, rather
+than traversing each root independently. Ignore variant references only when
+their parent also belongs to the eligible purge set. Remove externally referenced
+nodes and propagate that protection to descendants until the set is stable.
+Persist every eligible target and repeat the same guarded collection at execution;
+a shared child referenced only by purged parents must be deleted before success.
+
 Keep Rails-owned handlers and the original purge job unchanged. Record their
 original-job reproduction as DRB-025; native cleanup does not inherit target loss.
 
@@ -47,3 +54,9 @@ RED/GREEN/mutation/restoration evidence. See [native media effects](native-media
 [deferred Rails bugs](deferred-rails-bugs.md) and [fixed Rails bugs](fixed-rails-bugs.md).
 
 Shared knowledge counterpart: AFFiNE document `OMdiuR28X8dfoxOAGppCn`, same title.
+
+F4 regressions cover standalone and native-owned coexistence with two purged
+poster roots sharing a child and further descendant, real parent/child storage
+failures, still-broken retries, recovery and serialized replay. External parents
+and references added after enqueue continue to protect their children and
+subtrees. See `test/dawarich/a12f3b_e13_shared_variant_test.exs`.
