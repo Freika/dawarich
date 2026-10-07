@@ -1,6 +1,5 @@
 defmodule Dawarich.Users.DestroyEffects do
   @moduledoc false
-  alias Dawarich.Users.DestructionWebhookWorker
 
   @attachments [
     {"Import", "imports"},
@@ -13,7 +12,7 @@ defmodule Dawarich.Users.DestroyEffects do
   @direct ~w(imports stats exports posters route_videos notifications achievement_progresses user_achievements flights notes service_settings)
   @planned ~w(planned_reservations planned_accommodations planned_travellers planned_unplanned_places)
 
-  def call(repo, id) do
+  def call(repo, id, event) do
     case repo.query!(
            "SELECT email FROM users WHERE id=$1 AND deleted_at IS NOT NULL FOR UPDATE",
            [id],
@@ -25,7 +24,7 @@ defmodule Dawarich.Users.DestroyEffects do
       [[email]] ->
         with :ok <- family_guard(repo, id),
              :ok <- Dawarich.Users.DestroyScope.check(repo, id) do
-          snapshot!(repo, id, email)
+          snapshot!(repo, id, email, event)
           attachments!(repo, id)
           cleanup!(repo, id)
           cache!(repo, id)
@@ -47,12 +46,19 @@ defmodule Dawarich.Users.DestroyEffects do
     })
   end
 
-  defp snapshot!(repo, id, email) do
-    Dawarich.AfterCommit.enqueue(repo, DestructionWebhookWorker, %{
-      "user_id" => id,
-      "email" => email,
-      "event_id" => Ecto.UUID.generate()
-    })
+  defp snapshot!(repo, id, email, root) do
+    event = Dawarich.AfterCommit.identity(root, "users.destruction_webhook")
+
+    case Dawarich.AfterCommit.intent(
+           repo,
+           "users.destruction_webhook",
+           %{"user_id" => id, "email" => email},
+           event_id: event,
+           aggregate_id: id
+         ) do
+      :ok -> :ok
+      {:error, reason} -> repo.rollback(reason)
+    end
   end
 
   defp family_guard(repo, id) do

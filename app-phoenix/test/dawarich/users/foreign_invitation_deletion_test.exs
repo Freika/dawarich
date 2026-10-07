@@ -21,6 +21,9 @@ defmodule Dawarich.Users.ForeignInvitationDeletionTest do
       })
 
     args = %{"user_id" => owner.id, "event_id" => Ecto.UUID.generate()}
+    key = "command:users.destruction_webhook"
+    previous = query("SELECT owner,pinned FROM phoenix.job_owners WHERE key=$1", [key])
+    Dawarich.Jobs.Ownership.put!(Repo, key, :oban)
 
     try do
       [[family]] =
@@ -87,6 +90,16 @@ defmodule Dawarich.Users.ForeignInvitationDeletionTest do
       assert query("SELECT id FROM family_invitations WHERE id=$1", [sent]) == []
       assert query("SELECT id FROM users WHERE id=$1", [inviter.id]) == [[inviter.id]]
     after
+      query("DELETE FROM job_outbox WHERE aggregate_id=$1", [owner.id])
+
+      case previous do
+        [] ->
+          query("DELETE FROM phoenix.job_owners WHERE key=$1", [key])
+
+        [[value, pinned]] ->
+          Dawarich.Jobs.Ownership.put!(Repo, key, String.to_existing_atom(value), pinned: pinned)
+      end
+
       query(
         "DELETE FROM family_invitations WHERE family_id IN(SELECT id FROM families WHERE creator_id=$1)",
         [owner.id]
