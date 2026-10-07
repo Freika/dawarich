@@ -51,15 +51,14 @@ defmodule Dawarich.MapApi.Hexagons do
   def bounds(user, params) do
     with {:ok, ctx} <- context(user, params),
          true <- Http.present?(ctx.from) and Http.present?(ctx.to),
-         {:ok, range} <-
-           RailsTime.with_zone(ctx.user.timezone, fn ->
-             with {:ok, from} <- Http.strict_timestamp(ctx.from),
-                  {:ok, to} <- Http.strict_timestamp(ctx.to),
-                  do: {:ok, {from, to}}
-           end) do
-      {where, args} = Http.point_scope(ctx.user, if(ctx.shared, do: %{}, else: params), range)
-      where = if ctx.shared, do: "p.user_id = $1 AND p.timestamp BETWEEN $2 AND $3", else: where
-      args = if ctx.shared, do: [ctx.user.id, elem(range, 0), elem(range, 1)], else: args
+         {:ok, range} <- range(ctx) do
+      {where, args} =
+        if ctx.shared do
+          {"p.user_id = $1 AND p.timestamp BETWEEN $2 AND $3",
+           [ctx.user.id, elem(range, 0), elem(range, 1)]}
+        else
+          Http.point_scope(ctx.user, params, range)
+        end
 
       rows =
         if params["robust"] == "true",
@@ -73,7 +72,9 @@ defmodule Dawarich.MapApi.Hexagons do
       [[count, minlat, maxlat, minlng, maxlng]] = rows
 
       if count == 0,
-        do: {:error, 404, "No data found for the specified date range"},
+        do:
+          {:error, 404,
+           %{"error" => "No data found for the specified date range", "point_count" => 0}},
         else:
           {:ok,
            %{
@@ -92,6 +93,16 @@ defmodule Dawarich.MapApi.Hexagons do
       if match?(%Postgrex.Error{postgres: %{code: :query_canceled}}, error),
         do: {:error, 503, "History bounds request timed out"},
         else: {:error, 400, "Invalid date format"}
+  end
+
+  defp range(%{shared: true, range: range}), do: {:ok, range}
+
+  defp range(ctx) do
+    RailsTime.with_zone(ctx.user.timezone, fn ->
+      with {:ok, from} <- Http.strict_timestamp(ctx.from),
+           {:ok, to} <- Http.strict_timestamp(ctx.to),
+           do: {:ok, {from, to}}
+    end)
   end
 
   defp robust(where, args) do
@@ -156,14 +167,16 @@ defmodule Dawarich.MapApi.Hexagons do
             }
 
             first = Date.new!(year, month, 1)
+            {from, to} = Dawarich.Spatial.CalendarWindow.month(user, first)
 
             {:ok,
              %{
                user: owner,
                stat: %{cells: cells},
                shared: true,
-               from: Date.to_iso8601(first),
-               to: Date.to_iso8601(Date.end_of_month(first)) <> "T23:59:59Z"
+               range: {from, to},
+               from: from |> DateTime.from_unix!() |> DateTime.to_iso8601(),
+               to: to |> DateTime.from_unix!() |> DateTime.to_iso8601()
              }}
           else
             missing()
@@ -200,7 +213,7 @@ defmodule Dawarich.MapApi.Hexagons do
   end
 
   defp month(value) when is_binary(value) do
-    case Date.from_iso8601(String.slice(value, 0, 10)) do
+    case Dawarich.MapApi.RailsDate.parse(value) do
       {:ok, d} -> {:ok, d.year, d.month}
       _ -> :error
     end
