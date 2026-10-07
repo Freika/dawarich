@@ -68,6 +68,11 @@ RSpec.describe 'Phoenix fixtures: Rails page envelopes', type: :request do
         end
         [route, cases]
       end
+      corpus['_formatted_xhr'] = %w[/tags.html /tags?format=html].to_h do |path|
+        get path, headers: { 'Accept' => nil, 'X-Requested-With' => 'XMLHttpRequest' }
+        [path, { 'status' => response.status, 'document' => response.body.include?('<html') }]
+      end
+      expect(corpus['_formatted_xhr'].values).to all(include('status' => 200, 'document' => true))
       Warden.on_next_request { _1.set_user(user, scope: :user) }
       raw_env = Rack::MockRequest.env_for('/tags', 'HTTP_HOST' => 'www.example.com',
                                                 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest')

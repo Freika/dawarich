@@ -30,7 +30,8 @@ defmodule DawarichWeb.PageEnvelope do
             |> put_private(:dawarich_page_accept, get_req_header(conn, "accept"))
             |> put_private(
               :dawarich_page_bare,
-              get_req_header(conn, "accept") in [[], [""]] and xhr_header?(conn)
+              selected != "html" and get_req_header(conn, "accept") in [[], [""]] and
+                xhr_header?(conn)
             )
             |> put_private(:dawarich_page_frame, frame?(conn))
             |> put_private(:dawarich_page_route, route)
@@ -113,9 +114,7 @@ defmodule DawarichWeb.PageEnvelope do
     accept = conn |> get_req_header("accept") |> Enum.join(", ")
     selected = conn.private[:dawarich_page_format]
 
-    types =
-      for entry <- String.split(accept, ","),
-          do: entry |> String.split(";") |> hd() |> String.trim()
+    types = Enum.map(String.split(accept, ","), &String.trim(hd(String.split(&1, ";"))))
 
     valued =
       conn.query_string |> String.split("&", trim: true) |> Enum.all?(&String.contains?(&1, "="))

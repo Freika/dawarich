@@ -2,7 +2,7 @@
 
 When `DAWARICH_RAILS=off`, `DawarichWeb.PageEnvelope` normalizes successful Rails page envelopes before Strangler admission. Coexistence keeps its existing handback rules and Turbo visit reload. Cloud native lifecycle refusal is unchanged.
 
-HTML suffixes and `format=html` select the existing native handler, with suffix precedence over the query format. The format query key is removed before existing query gates run. Authentication stores the original target, including its suffix and query.
+HTML suffixes and `format=html` select the existing native handler, with suffix precedence over the query format. Explicit HTML also overrides the implicit XHR fragment layout. The format query key is removed before existing query gates run. Authentication stores the original target, including its suffix and query.
 
 XHR with an HTML Accept header renders the ordinary document. A JavaScript, absent or empty XHR Accept header uses Rails' JavaScript-to-HTML template fallback without a layout; the calendar action retains its Rails 406 because it explicitly negotiates formats. Unauthenticated HTML XHR receives the Rails 401 message rather than a sign-in redirect.
 
@@ -12,7 +12,7 @@ The three historical navigation actions return the exact turbo-rails HTML text, 
 
 ## Verification
 
-`test/fixtures/page_envelopes/routes.json` records the 62 assigned audit rows. `scripts/parity/page_envelopes_fixtures_spec.rb` records Rails status, media type, redirects, template identifiers, document shape, flash and job classes for nine request variants and the three historical actions. `test/dawarich_web/page_envelopes_test.exs` verifies envelope classes, route selection, authentication, layout exceptions, Turbo streams, refusals and coexistence. Each envelope class has a named mutation.
+`test/fixtures/page_envelopes/routes.json` records the 62 assigned audit rows. `scripts/parity/page_envelopes_fixtures_spec.rb` records Rails status, media type, redirects, template identifiers, document shape, flash and job classes for nine request variants and the three historical actions, plus raw, unauthenticated and formatted XHR probes. `test/dawarich_web/page_envelopes_test.exs` verifies envelope classes, route selection, authentication, layout exceptions, Turbo streams, refusals and coexistence. Each envelope class has a named mutation.
 
 ## Covered GET/HEAD routes
 

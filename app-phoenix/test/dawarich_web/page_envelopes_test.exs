@@ -122,6 +122,19 @@ defmodule DawarichWeb.PageEnvelopesTest do
     assert get_resp_header(guest, "location") == []
   end
 
+  @tag envelope: :formatted_xhr
+  test "explicit HTML formats override the implicit XHR fragment layout" do
+    for target <- ~w(/tags.html /tags?format=html /tags.html?format=turbo_stream),
+        accept <- [nil, ""] do
+      conn = request(target, [{"x-requested-with", "XMLHttpRequest"}, {"accept", accept}])
+      document? = String.contains?(conn.resp_body, "<html")
+      assets? = String.contains?(conn.resp_body, "/assets/application.css")
+      assert conn.status == 200
+      assert document?, target
+      assert assets?, target
+    end
+  end
+
   @tag envelope: :stream
   test "Turbo-only calendar streams and redirect actions preserve Rails successes" do
     conn =
