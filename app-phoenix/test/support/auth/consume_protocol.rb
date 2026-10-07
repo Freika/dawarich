@@ -10,7 +10,9 @@ mode = ARGV[1]
 fixture = JSON.parse(File.read(ARGV.fetch(0)))
 database_allowed = if %w[api_auth api_auth_password_work api_auth_otp_work].include?(mode)
                      ENV.fetch('DATABASE_NAME') == fixture.fetch('database') &&
-                       ENV.fetch('DATABASE_NAME').match?(/\Adawarich_(?:phoenix_)?test_/) &&
+                       ENV.fetch('DATABASE_NAME') == ENV.fetch('PHOENIX_TEST_DATABASE') &&
+                       !%w[dawarich_development dawarich_test
+                           dawarich_phoenix_test].include?(ENV.fetch('DATABASE_NAME')) &&
                        ENV.fetch('DATABASE_HOST') == '127.0.0.1'
                    else
                      ENV.fetch('DATABASE_NAME').start_with?('dawarich_test')

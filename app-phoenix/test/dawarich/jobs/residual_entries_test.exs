@@ -82,7 +82,11 @@ defmodule Dawarich.Jobs.ResidualEntriesTest do
       outbox!(command_type: type, payload: Map.put(payload, "extra", 1))
     end)
 
-    assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 9, quarantined: 18}
+    assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
+             repo: ScratchRepo,
+             oban: @oban
+           ) == %{dispatched: 9, quarantined: 18}
 
     assert rows(
              "SELECT error_code,count(*) FROM job_outbox WHERE state='quarantined' GROUP BY error_code ORDER BY error_code"

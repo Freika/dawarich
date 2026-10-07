@@ -6,6 +6,9 @@ defmodule DawarichWeb.TrackRecalculationActions do
 
   def init(action), do: action
 
+  def call(%{assigns: %{current_user: nil}} = conn, _),
+    do: conn |> Locale.call([]) |> DawarichWeb.RequireUser.call([])
+
   def call(conn, _) do
     user = conn.assigns.current_user
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
