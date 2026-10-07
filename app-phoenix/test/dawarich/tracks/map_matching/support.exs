@@ -85,7 +85,7 @@ defmodule Dawarich.MapMatching.TestSupport do
 
   def fail_insert!(repo) do
     repo.query!(
-      "ALTER TABLE oban.oban_jobs ADD CONSTRAINT mm_insert_probe CHECK (queue <> 'map_matching')",
+      "ALTER TABLE oban.oban_jobs ADD CONSTRAINT mm_insert_probe CHECK (queue <> 'map_matching') NOT VALID",
       [],
       log: false
     )
