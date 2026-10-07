@@ -133,6 +133,11 @@ defmodule Dawarich.A12f3bR09Test do
     assert [] == F.reverse()
     refute Dawarich.Jobs.Processed.done?(ScratchRepo, c.job.args["event_id"])
     System.delete_env("DAWARICH_RAILS")
+
+    Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.process_gpx", :sidekiq,
+      pinned: true
+    )
+
     assert :ok == Dawarich.Imports.GpxHandover.resume(ScratchRepo, c.job, :legacy)
     assert [["imports.resume"]] == F.reverse()
   end
@@ -153,6 +158,11 @@ defmodule Dawarich.A12f3bR09Test do
     assert [] == F.reverse()
     refute Dawarich.Jobs.Processed.done?(ScratchRepo, c.job.args["event_id"])
     System.delete_env("DAWARICH_RAILS")
+
+    Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.process_normal", :sidekiq,
+      pinned: true
+    )
+
     assert :ok == Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
     assert [["imports.normal_resume"]] == F.reverse()
   end

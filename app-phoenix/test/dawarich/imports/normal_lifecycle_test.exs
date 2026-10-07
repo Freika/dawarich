@@ -252,6 +252,13 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       assert [] == rows("SELECT id FROM notifications")
       assert [] == rows("SELECT child_id FROM phoenix.import_archive_children")
       assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+
+      assert {:error, :unsupported_native_import} =
+               Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
+
+      assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+      refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+      Ownership.put!(ScratchRepo, "command:imports.process_normal", :sidekiq, pinned: true)
       assert :ok = Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
 
       assert [[c.import.id, c.import.user_id, c.expected["zone"], true]] ==
@@ -330,6 +337,13 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     assert [] = rows("SELECT id FROM points")
     assert [] = rows("SELECT id FROM notifications")
     assert [] = rows("SELECT kind FROM phoenix.rails_commands")
+
+    assert {:error, :unsupported_native_import} =
+             Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
+
+    assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+    refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+    Ownership.put!(ScratchRepo, "command:imports.process_normal", :sidekiq, pinned: true)
     assert :ok = Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
 
     assert [[c.import.id, true]] ==

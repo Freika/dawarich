@@ -88,6 +88,10 @@ defmodule Dawarich.Imports.ProcessWorkerTest do
     reset!(ScratchRepo)
     c = fixture(c, "csv_known")
     rows("UPDATE imports SET source=4,status=3 WHERE id=$1", [c.import.id])
+    assert {:error, :unsupported_native_import} = ProcessWorker.perform(c.job)
+    assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+    refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+    Ownership.put!(ScratchRepo, "command:imports.process_normal", :sidekiq, pinned: true)
     assert :ok = ProcessWorker.perform(c.job)
 
     assert [["imports.normal_resume", payload]] =

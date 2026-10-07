@@ -98,12 +98,20 @@ defmodule Dawarich.Imports.ProcessGpxWorkerTest do
 
   test "a changed source retains a legacy continuation even while Oban owns GPX", c do
     rows("UPDATE imports SET source=6 WHERE id=$1", [c.import.id])
+    assert {:error, :unsupported_native_import} = ProcessGpxWorker.perform(c.job)
+    assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+    refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+    Ownership.put!(ScratchRepo, "command:imports.process_gpx", :sidekiq, pinned: true)
     assert :ok = ProcessGpxWorker.perform(c.job)
     assert [["imports.resume"]] = rows("SELECT kind FROM phoenix.rails_commands")
     assert Processed.done?(ScratchRepo, c.job.args["event_id"])
   end
 
   test "legacy admission persists a fallback instead of cycling into native GPX", c do
+    assert {:error, :unsupported_native_import} = GpxHandover.resume(ScratchRepo, c.job, :legacy)
+    assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+    refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+    Ownership.put!(ScratchRepo, "command:imports.process_gpx", :sidekiq, pinned: true)
     assert :ok = GpxHandover.resume(ScratchRepo, c.job, :legacy)
     assert [[true]] = rows("SELECT native_fallback FROM phoenix.import_handoffs")
     assert [["imports.resume"]] = rows("SELECT kind FROM phoenix.rails_commands")
@@ -224,6 +232,7 @@ defmodule Dawarich.Imports.ProcessGpxWorkerTest do
   end
 
   test "a Rails-held import lease snoozes the handover", c do
+    Ownership.put!(ScratchRepo, "command:imports.process_gpx", :sidekiq, pinned: true)
     foreign_lease!("import:#{c.import.id}")
     assert {:snooze, 5} = GpxHandover.resume(ScratchRepo, c.job, :legacy)
     assert [] == rows("SELECT id FROM phoenix.rails_commands")

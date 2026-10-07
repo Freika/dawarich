@@ -166,7 +166,7 @@ defmodule Dawarich.Imports.NormalHandover do
   end
 
   defp enqueue(repo, args, fallback) do
-    if Dawarich.Standalone.enabled?() do
+    if Dawarich.Standalone.enabled?() or Ownership.lock(repo, @lane) == :oban do
       {:error, :unsupported_native_import}
     else
       repo.query!(
