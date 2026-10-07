@@ -589,3 +589,40 @@ The lease and ownership checks apply in coexistence and standalone drain modes.
 - Tests: `F5 on/off forwards accepted source work to its command owner` and `F5 on/off refuses source generation while a native poster lease is live` in `spec/jobs/posters/media_ownership_spec.rb` (four individually named cases).
 - Ledger: ED-FIX-MEDIA-OWNERSHIP; no deferred row added.
 - CHANGELOG-ready: Fence accepted Rails poster generation during native job ownership handoff.
+
+### Accepted ZIP children and terminal parent ordering
+
+Rails removes a successful ZIP parent while its children remain pending. If a
+later member fails validation, earlier saved members can remain created without
+processing work. Native ZIP fanout now queues every accepted member after a
+partial build error and waits for terminal children before parent failure or
+removal. Rails production remains unchanged.
+
+- Rails: `app/services/imports/zip_extractor.rb:45`, `:130`, `:138`, `:157`.
+- Phoenix: `app-phoenix/lib/dawarich/imports/zip_fanout.ex` (`failed/5`, `complete/3`); `zip_children.ex` (`terminal?/2`).
+- Tests: `ZIP parent waits for all five terminal children in on/off`; `partial ZIP build retains an executor for accepted children before parent failure in on/off`.
+- Ledger: ED-FIX-ACCEPTED-IMPORT-DISPOSITION; no new deferred row.
+- CHANGELOG-ready: Keep accepted ZIP members processing through partial archive failures and wait for member completion before settling their parent.
+
+FRB-008 also covers GPX discovered by a queued normal import: normal lifecycle
+failure now commits its notification and terminal receipt atomically. The named
+`normal-discovered GPX notification is exactly once after interrupted failure in
+on/off` regressions exercise the notification/receipt interruption window with
+real retries. Rails source remains `app/services/imports/create.rb:47`;
+Phoenix counterpart is `normal_lifecycle.ex` (`failure/5`). The deterministic
+interruption is native; no Rails broker-ack crash reproduction is claimed.
+
+### Empty successful import retries repeat no-points notifications
+
+Rails creates a no-points notice before its ensure block records completion.
+An interrupted attempt can leave that notice committed and repeat it on retry.
+Native normal and dedicated GPX postprocessing now commit the final notice,
+completed status and terminal attachment receipt in one fenced transaction.
+Rails production remains unchanged.
+
+- Rails: `app/services/imports/create.rb:38`, `:52`, `:72`, `:153`.
+- Phoenix: `app-phoenix/lib/dawarich/imports/postprocessing.ex` (`complete!/3`, `settle/3`); `normal_lifecycle.ex` and `gpx_lifecycle.ex` (`run_import`).
+- Tests: `empty empty.gpx notification exactly once across interrupted success in on/off`; `empty empty.kml notification exactly once across interrupted success in on/off`.
+- Ledger: ED-FIX-ACCEPTED-IMPORT-DISPOSITION extended; no new deferred row.
+- Limits: Four real native worker interruption/retry probes; analogous Rails ordering is source-backed, without an executed Rails crash/retry experiment.
+- CHANGELOG-ready: Emit one no-points notice per successful import across interrupted processing and retry.

@@ -68,7 +68,7 @@ defmodule Dawarich.Imports.GpxHandover do
 
   defp handback(repo, args, owner, source, reason) do
     if owner == :sidekiq or source != 4 or reason == :legacy,
-      do: enqueue(repo, args, reason == :legacy),
+      do: enqueue(repo, args, reason == :legacy or source != 4),
       else: {:snooze, 5}
   end
 
@@ -157,24 +157,6 @@ defmodule Dawarich.Imports.GpxHandover do
     end
   end
 
-  defp enqueue(repo, args, fallback) do
-    if Dawarich.Standalone.enabled?() or Ownership.lock(repo, @lane) == :oban do
-      {:error, :unsupported_native_import}
-    else
-      repo.query!(
-        "INSERT INTO phoenix.import_handoffs(event_id,import_id,user_id,time_zone,native_fallback) VALUES ($1,$2,$3,$4,$5) ON CONFLICT(event_id) DO NOTHING",
-        [
-          Ecto.UUID.dump!(args["event_id"]),
-          args["import_id"],
-          args["user_id"],
-          args["time_zone"],
-          fallback
-        ],
-        log: false
-      )
-
-      Dawarich.RailsCommands.insert!(repo, "imports.resume", args)
-      Processed.mark!(repo, args["event_id"], "imports.process_gpx.handback")
-    end
-  end
+  defp enqueue(repo, args, fallback),
+    do: Dawarich.Imports.AcceptedDisposition.call(repo, args, "imports.resume", fallback)
 end

@@ -35,7 +35,7 @@ defmodule Dawarich.Mail.LocationRequestWorkerTest do
       assert LocationRequestWorker.args_from_command(2, payload) ==
                {:error, "unsupported_version"}
 
-      assert LocationRequestWorker.args_from_command(1, Map.put(payload, "locale", "fr")) ==
+      assert LocationRequestWorker.args_from_command(1, Map.put(payload, "unexpected", "fr")) ==
                {:error, "invalid_payload"}
 
       args = Map.put(payload, "event_id", Ecto.UUID.generate())

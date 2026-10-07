@@ -94,6 +94,46 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
     fixture_bytes(residual_path('effects'), fixture)
   end
 
+  it 'matches source capture bytes for all four residual fixture contracts' do
+    { 'content' => :residual_content, 'auth_intents' => :residual_auth_intents,
+      'digest_content' => :residual_digest_content, 'effects' => :residual_mail_effects }.each do |name, capture|
+      RSpec::Mocks.with_temporary_scope { fixture_bytes(residual_path(name), send(capture)) }
+    end
+  end
+
+  it 'characterizes unknown serialized mail wrappers as source debt without decoding GlobalIDs' do
+    counts = { unknown: 0 }
+    classes = Hash.new(0)
+    item = { 'class' => 'Sidekiq::ActiveJob::Wrapper', 'wrapped' => 'RetiredSyntheticMailerJob',
+             'args' => [{ 'arguments' => [{ '_aj_globalid' => 'gid://dawarich/User/12345' }] }] }
+    before = Marshal.dump(item)
+    JobDrain.count_job(item, counts, classes)
+    expect(counts).to eq(unknown: 1)
+    expect(classes).to eq('unknown' => 1)
+    expect(Marshal.dump(item)).to eq(before)
+  end
+
+  it 'characterizes trial mail commands and the two-day explore delay' do
+    user = fresh_intent_user('creation')
+    allow(JobOwnership).to receive(:lock_owner).and_return(:oban)
+    user.send(:start_trial)
+    mails = JobOutbox.where(command_type: ['mail.user.welcome', 'users.explore_features_mail']).order(:scheduled_at)
+    expect(mails.pluck(:command_type)).to eq(['mail.user.welcome', 'users.explore_features_mail'])
+    expect(mails.pluck(:scheduled_at)).to eq([Time.current, 2.days.from_now])
+    expect(mails.map(&:payload)).to eq(Array.new(2) { { 'user_id' => user.id, 'locale' => 'en' } })
+  end
+
+  it 'characterizes explicit reply-to on both source MIME formats' do
+    user = create(:user)
+    messages = [UsersMailer.with(user:).welcome.message,
+                DeviseMailer.reset_password_instructions(user, 'synthetic-token')]
+    messages.each do |message|
+      message.reply_to = 'reply@example.test'
+      parsed = Mail.read_from_string(message.encoded)
+      expect(parsed.reply_to).to eq(['reply@example.test'])
+    end
+  end
+
   context 'test mail HTTP capture', type: :request do
     it 'records test mail HTTP outcomes and retired mail no ops' do
       fixture = residual_mail_http

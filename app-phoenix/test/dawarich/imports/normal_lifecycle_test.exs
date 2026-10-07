@@ -26,7 +26,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
           ~w(csv_known csv_detected csv_duplicate csv_all_skipped fit_failed_return kmz_wrapped directory_single malformed_zip empty_zip kmz_missing_leaf invalid_manifest) do
       reset!(ScratchRepo)
       c = fixture(c, name)
-      assert {:ok, :ok} = run(c)
+      c = run_settled(c)
       assert_parent(c)
     end
   end
@@ -146,7 +146,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     for name <- ~w(kmz_plain kmz_wrapped) do
       reset!(ScratchRepo)
       c = fixture(c, name)
-      assert {:ok, :ok} = run(c)
+      c = run_settled(c)
 
       if name == "kmz_plain" do
         assert [] = rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
@@ -166,7 +166,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     for name <- ~w(zip_known_preference zip_later_child_failure unsupported_single) do
       reset!(ScratchRepo)
       c = fixture(c, name)
-      assert {:ok, :ok} = run(c)
+      c = run_settled(c)
 
       rows(
         "UPDATE job_outbox SET error_code=error_code WHERE aggregate_id=(SELECT min(aggregate_id) FROM job_outbox)"
@@ -211,7 +211,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
         index <- 0..1 do
       reset!(ScratchRepo)
       c = fixture(c, "duplicate_section_#{source}_#{index}")
-      assert {:ok, :ok} = run(c)
+      c = run_settled(c)
       assert_parent(c)
 
       expected =
@@ -231,7 +231,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
           ~w(records_shape_0 records_shape_1 records_shape_2 records_shape_3 records_shape_4 records_shape_5 records_shape_missing) do
       reset!(ScratchRepo)
       c = fixture(c, name)
-      assert {:ok, :ok} = run(c)
+      c = run_settled(c)
       assert_parent(c)
     end
   end
@@ -280,7 +280,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     for name <- ~w(zip_dotfiles zip_supported_source zip_path_skip) do
       reset!(ScratchRepo)
       c = fixture(c, name)
-      assert {:ok, :ok} = run(c)
+      c = run_settled(c)
 
       rows(
         "UPDATE job_outbox SET error_code=error_code WHERE aggregate_id=(SELECT min(aggregate_id) FROM job_outbox)"
@@ -362,7 +362,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     for name <- ~w(duplicate_section_polarsteps_0 zip_known_preference) do
       reset!(ScratchRepo)
       c = fixture(c, name)
-      assert {:ok, :ok} = run(c)
+      c = run_settled(c)
 
       ScratchRepo.query!(
         "UPDATE phoenix.rails_commands SET attempts=attempts WHERE payload->>'step'='extract'"
@@ -394,7 +394,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       for type <- ~w(tracks.generate_range imports.update_points_count),
           do: Ownership.put!(ScratchRepo, "command:" <> type, owner)
 
-      assert {:ok, :ok} = run(c)
+      c = run_settled(c)
       NormalWholeAssertions.assert_contract(c, ScratchRepo, owner)
       assert Processed.done?(ScratchRepo, c.job.args["event_id"])
       assert_clean(c)
@@ -407,7 +407,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     for type <- ~w(tracks.generate_range imports.update_points_count),
         do: Ownership.put!(ScratchRepo, "command:" <> type, :oban)
 
-    assert {:ok, :ok} = run(c)
+    c = run_settled(c)
 
     for table <- ~w(job_outbox phoenix.rails_commands) do
       assert [[count]] = rows("SELECT count(*) FROM #{table}")
@@ -441,7 +441,17 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     assert rows(
              "SELECT id,name,status FROM imports WHERE id<>$1 AND NOT(id=ANY($2)) ORDER BY id",
              [c.import.id, initial]
-           ) == Enum.map(children, &[&1["id"], &1["name"], 0])
+           ) ==
+             Enum.map(
+               children,
+               &[
+                 &1["id"],
+                 &1["name"],
+                 Enum.find_index(~w(created processing completed failed deleting), fn status ->
+                   status == &1["status"]
+                 end)
+               ]
+             )
 
     for child <- children do
       assert [[key, filename, type]] =
@@ -459,6 +469,20 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
   end
 
   defp fixture(c, name), do: Map.merge(c, NormalFormats.whole!(name, ScratchRepo, c.root))
+
+  defp run_settled(c) do
+    case run(c) do
+      {:ok, :ok} ->
+        c
+
+      {:ok, {:snooze, 5}} ->
+        refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+        assert_archive_children(c)
+        c = Dawarich.Test.ArchiveTerminalFixture.acknowledge_children!(c, ScratchRepo)
+        assert {:ok, :ok} = run(c)
+        c
+    end
+  end
 
   defp run(c),
     do:

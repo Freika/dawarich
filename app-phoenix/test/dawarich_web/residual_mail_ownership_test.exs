@@ -17,6 +17,7 @@ defmodule DawarichWeb.ResidualMailOwnershipTest do
 
     RailsUser.insert!(%{
       id: @id,
+      admin: true,
       email: "a12c-route@test",
       settings: %{"locale" => "en", "timezone" => "UTC"}
     })
@@ -92,6 +93,24 @@ defmodule DawarichWeb.ResidualMailOwnershipTest do
     refute_received {:mail, _}
     refute_received {:upstream, _, _}
     Process.delete(:transport_result)
+  end
+
+  @tag mail_review: "F5Endpoint"
+  test "non admin test email never reaches Rails even with the route pinned to Rails" do
+    Repo.query!("UPDATE users SET admin=false WHERE id=$1", [@id], log: false)
+    System.put_env("SMTP_AUTHENTICATION", "plain")
+    System.put_env("SMTP_STARTTLS", "true")
+
+    for routes <- [[], ["test_email"], ["settings"]] do
+      Application.put_env(:dawarich, :rails_routes, routes)
+      before = queued()
+      response = request("POST", @path, "", "text/html")
+      assert response.status == 403
+      assert get_resp_header(response, "x-dawarich-mail-owner") == ["native-test-email"]
+      assert queued() == before
+      refute_received {:upstream, _, _}
+      refute_received {:mail, _}
+    end
   end
 
   defp queued do

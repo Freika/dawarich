@@ -36,20 +36,28 @@ defmodule DawarichWeb.TestEmail do
   def call(conn, opts) do
     context = TestEmailGate.context(opts)
 
-    if Dawarich.Standalone.enabled?() and not context.self_hosted and conn.method == "POST" and
-         conn.request_path == "/settings/general/test_email" do
-      with true <- transport?(conn),
-           {:ok, raw, conn} <- read_all(conn, []),
-           {:ok, params} <-
-             Admission.form(raw, conn.query_string, ~w(authenticity_token commit utf8)),
-           conn = RailsAuth.call(conn, []),
-           true <- csrf?(conn, params) do
-        cloud_refusal(conn)
-      else
-        _ -> DawarichWeb.SettingsActions.reject(conn, 422)
-      end
-    else
-      dispatch(conn, opts)
+    cond do
+      TestEmailGate.non_admin?(conn) ->
+        conn
+        |> put_resp_header("x-dawarich-mail-owner", "native-test-email")
+        |> send_resp(403, "")
+        |> halt()
+
+      Dawarich.Standalone.enabled?() and not context.self_hosted and conn.method == "POST" and
+          conn.request_path == "/settings/general/test_email" ->
+        with true <- transport?(conn),
+             {:ok, raw, conn} <- read_all(conn, []),
+             {:ok, params} <-
+               Admission.form(raw, conn.query_string, ~w(authenticity_token commit utf8)),
+             conn = RailsAuth.call(conn, []),
+             true <- csrf?(conn, params) do
+          cloud_refusal(conn)
+        else
+          _ -> DawarichWeb.SettingsActions.reject(conn, 422)
+        end
+
+      true ->
+        dispatch(conn, opts)
     end
   end
 

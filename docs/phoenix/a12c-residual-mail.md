@@ -197,7 +197,11 @@ job forwards without another mail enqueue. Separate monthly/yearly fence mutatio
 the same named test. Enqueue-before-save and queued-mail-on-validation-failure remain
 pinned by the unchanged effects corpus.
 
-P11 adds immediate test-email delivery using the existing configured transport and pure renderer.
+P11 originally added immediate test-email delivery using the existing configured transport and pure renderer.
+This paragraph records the historical P11 seam; Rails 1.15.3 sync and A12f-3b M08 supersede its
+synchronous delivery and auth/TLS admission limits. Test email now queues the native worker,
+and supported transport settings are admitted without sending during admission. See
+[a12f3b-mail.md](a12f3b-mail.md) for the current interface, limitations and integration handoffs.
 SMTP_SERVER presence matches Rails' configuration predicate. Repeated calls send again with no
 queue, persistent claim or row writes. Corpus-proved category/detail pairs preserve source alert
 text. Tests exercise the actual gen_smtp result shapes returned by `Smtp.deliver/2`.

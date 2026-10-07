@@ -130,6 +130,8 @@ defmodule Dawarich.ApplicationTest do
       Dawarich.Redis.Cache,
       Dawarich.Geocoding.RateLimiter,
       Oban,
+      Dawarich.Tracks.MapMatching.Tasks,
+      Dawarich.Tracks.MapMatching.Deferred,
       Phoenix.PubSub.Supervisor
     ]
 
@@ -181,6 +183,8 @@ defmodule Dawarich.ApplicationTest do
              Dawarich.Repo,
              Dawarich.Geocoding.RateLimiter,
              Oban,
+             Dawarich.Tracks.MapMatching.Tasks,
+             Dawarich.Tracks.MapMatching.Deferred,
              Phoenix.PubSub.Supervisor,
              RailsServer,
              DawarichWeb.Endpoint,
@@ -277,6 +281,7 @@ defmodule Dawarich.ApplicationTest do
     System.cmd("mix", ["run", "--no-start", "-e", script],
       cd: Path.expand("../..", __DIR__),
       env: [
+        {"MIX_ENV", "test"},
         {"DAWARICH_RAILS", "off"},
         {"DAWARICH_RAILS_ARGS", nil},
         {"DAWARICH_NATIVE_ARGS", nil},

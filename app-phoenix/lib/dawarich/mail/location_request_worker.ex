@@ -8,6 +8,10 @@ defmodule Dawarich.Mail.LocationRequestWorker do
       when is_integer(request) and is_integer(user) and map_size(payload) == 2,
       do: {:ok, payload}
 
+  def args_from_command(1, %{"locale" => locale} = payload) when is_binary(locale) do
+    with {:ok, _} <- args_from_command(1, Map.delete(payload, "locale")), do: {:ok, payload}
+  end
+
   def args_from_command(1, _), do: {:error, "invalid_payload"}
   def args_from_command(_, _), do: {:error, "unsupported_version"}
 
@@ -52,7 +56,7 @@ defmodule Dawarich.Mail.LocationRequestWorker do
         args["event_id"],
         fn ->
           {:ok,
-           Residual.message(:location_request, target, "en", env,
+           Residual.message(:location_request, target, args["locale"] || "en", env,
              base_url: base_url,
              requester: requester,
              request_id: args["request_id"]

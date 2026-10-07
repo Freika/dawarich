@@ -69,7 +69,7 @@ defmodule Dawarich.Imports.ProcessWorker do
                NormalLifecycle.call(lease, context(repo, job))
              end
            end,
-           lease_options()
+           lease_options(repo, job)
          ) do
       {:ok, {:legacy, _kind}} -> NormalHandover.resume(repo, job, :legacy)
       {:ok, value} -> value
@@ -89,6 +89,25 @@ defmodule Dawarich.Imports.ProcessWorker do
       sources: [nil, 0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15],
       terminal_statuses: [2, 3]
     ]
+
+  defp lease_options(repo, job) do
+    options = lease_options()
+
+    case repo.query!(
+           "SELECT source FROM imports WHERE id=$1 AND user_id=$2",
+           [job.args["import_id"], job.args["user_id"]],
+           log: false
+         ).rows do
+      [[source]] when is_nil(source) or source == 4 ->
+        if Dawarich.Standalone.enabled?() or is_nil(source) or
+             NormalHandover.owns_source?(repo, job, source),
+           do: Keyword.update!(options, :sources, &[4 | &1]),
+           else: options
+
+      _ ->
+        options
+    end
+  end
 
   @doc false
   def context(repo, job) do

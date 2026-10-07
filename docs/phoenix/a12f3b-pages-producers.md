@@ -219,3 +219,14 @@ handoff. The A12f-3c fences, source quiescence, graceful stop and post-stop sour
 inspection remain mandatory. Ruling 7 supersedes transfer/rehome: pin every key
 Sidekiq, drain accepted native work, stop Phoenix, then start Rails 1.15.3 on the
 same DB/storage. No pending native-to-Sidekiq transfer or source deletion occurs.
+
+## Accepted-import disposition follow-up
+
+`accepted-import-disposition.md` specifies the consolidated R09 import fallback.
+Native-owned coexistence retains a durable per-import Rails continuation for
+legacy/changed-source inputs the current native worker cannot process; its
+`native_fallback` receipt prevents a forwarding cycle. Standalone processes a
+supported GPX source edit or settles unsupported work as failed with one localized
+notification. ZIP parents wait for child terminal states, including accepted
+children retained by partial build failures. These executable dispositions do not
+certify source retirement or H03/H04/G49 closure.
