@@ -75,12 +75,12 @@ defmodule DawarichWeb.VisitActions do
 
         {:error, reason} ->
           if native?(ctx),
-            do: error(conn, action, reason, params, back, ctx),
+            do: error(conn, action, reason, ctx),
             else: Body.replay(conn, "visit error flash #{reason}")
 
         {:replay, reason} ->
           if native?(ctx),
-            do: error(conn, action, :invalid_visit, params, back, ctx),
+            do: error(conn, action, :invalid_visit, ctx),
             else: Body.replay(conn, reason)
       end
     else
@@ -90,7 +90,7 @@ defmodule DawarichWeb.VisitActions do
 
   defp native?(ctx), do: Dawarich.Jobs.Ownership.lock(ctx.repo, "command:visits.suggest") == :oban
 
-  defp error(conn, action, reason, params, back, ctx) do
+  defp error(conn, action, reason, ctx) do
     key =
       case reason do
         :missing -> "missing_visits"
@@ -115,7 +115,8 @@ defmodule DawarichWeb.VisitActions do
 
       true ->
         message = Translate.t(ctx.locale, "controllers.visits." <> key, %{count: 500})
-        redirect(conn, 302, location(:merge, params, back), "alert", message)
+        location = DawarichWeb.RailsRedirect.back(conn, timeline("today", nil))
+        redirect(conn, 302, location, "alert", message)
     end
   end
 

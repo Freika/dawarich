@@ -38,11 +38,16 @@ host-only behavior.
 | Achievement sharing | The achievement's page |
 | Family and admin refusal | Application root |
 | API-key rotation and miscellaneous settings | Application root |
-| Visit update | Timeline for today with suggested status |
+| Successful visit update | Timeline for today with suggested status |
+| Invalid place/area visit update and other HTML validation alerts | Timeline for today without a status filter |
 | Visit bulk deletion and merge | Timeline for today |
 | Segment writes and track recalculation | Application root |
 
 Visit deletion and bulk update retain their explicit Rails timeline redirects.
+Visit validation alerts resolve their fallback after validation, independently
+of the successful update fallback. Rails `VisitsController#render_unprocessable`
+uses `build_timeline_url` with its default date and no status, preserving the
+alert and leaving the visit unchanged.
 An unsafe Referer does not invalidate an otherwise admitted native write or
 cause standalone replay/422. Existing authentication, CSRF, ownership, job
 routing and coexistence route gates still apply. An AST guard test rejects
