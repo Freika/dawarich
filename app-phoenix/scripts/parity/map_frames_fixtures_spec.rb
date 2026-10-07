@@ -726,7 +726,7 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
     end
   end
 
-  it 'writes the track cards' do
+  def capture_track_cards
     travel_to now do
       km = reader(7111)
       track!(km, 7481, at('2026-09-27', '07:00'), at('2026-09-27', '08:00'), mode: :cycling, distance: 12_345,
@@ -832,5 +832,10 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
         capture_closure('m06-access', lite, ['/map/residency?year=not-valid'], write: false)['cases']
       write_json(dir.join('a12f3a-m06.json'), data)
     end
+  end
+  it 'reads back complete M05 track rows including map-matching defaults and foreign refusals' do
+    capture_track_cards
+    selected = source_cases.sort.to_h.select { |name, _| name.start_with?('track_') }
+    FixtureRecording.source_verify(dir.join('a12f3a-m05.json'), JSON.pretty_generate(selected))
   end
 end
