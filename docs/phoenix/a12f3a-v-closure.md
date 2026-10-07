@@ -169,39 +169,43 @@ format verification and Gitleaks pass; Swagger and schema show no drift.
 
 ## Visit write review corrections (2026-10-07)
 
-The shared calendar seam no longer calls Redis inside visit write transactions.
-Web single update/delete, bulk update/delete and merge, API create/update/delete,
-merge and batch, detection/redetection, area labeling and import destruction all
-retain their existing routing through that seam. Old and new starts remain in
-its durable payload; the worker clears both plan segments and leaves unrelated
-months alone. Job retries are idempotent. The retained source-owner command is
-unchanged. API bulk status updates retain Rails' callback-free `update_all`
-behavior; this correction does not invent a month effect for that operation.
+Visit transactions atomically publish a fresh SQL month generation and a durable
+cache projection. Rails and Phoenix readers consult that committed generation;
+legacy and previous-generation entries cannot satisfy a read after the write
+becomes visible. Rails checks again after cache lookup/fill, rebuilding from SQL
+if the generation changed. A late fill from an older SQL snapshot stays under
+its captured older key. The month entry includes all day/week cells and
+aggregate status counts. Both Lite/Pro segments use the fence.
 
-Merge accepts UTF-8 names using Rails' ASCII strip and Unicode lowercase for
-comparison, retains the first original spelling, and joins distinct names with
-`, `. It does not normalize composed and decomposed strings into one name or
-impose a byte cap: Rails' visit name has no length validator or database limit.
-The same-place branch continues to retain the survivor's original name.
-Invalid place/area HTML updates redirect to the safe referer or timeline fallback
-with the Rails alert. Over-limit Turbo bulk errors interpolate the 500-visit
-limit just as HTML does.
+Web writes, API writes including bulk status changes, area dependent deletion,
+detection/redetection, enhanced imports, import destruction, demo insertion and
+deletion, and user-data visit restoration use the common calendar seam. Source
+area/import paths no longer bypass it. Native month-cache housekeeping runs even
+when the visit producer is source-owned; its reverse compatibility command is
+retained. Worker cache failures snooze with durable exponential backoff capped
+at an hour and emit an operator-visible warning, without exhausting attempts.
 
-`VisitWritesRegressionTest` exercises the real web and API endpoints, an
-independent SQL commit observer, and a failed Oban attempt followed by retry.
-Its five named regressions have RED/GREEN/mutation/restored-GREEN evidence in
-the controller's assigned implementation report. V09 now executes the committed
-projection before checking Redis keys. Native readers use current SQL before
-that projection runs; Redis keys can remain until the projection succeeds.
+Both merge endpoints accept UTF-8 visit names using Rails' ASCII strip and the
+pinned Ruby 3.4.9 lowercase mappings for comparison. They retain first spellings,
+join distinct names with `, `, preserve composed/decomposed differences, and
+impose no byte limit. U+A7CB remains distinct from U+0264, as in Rails. Invalid
+place/area HTML redirects and Turbo maximum-count interpolation remain covered.
 
-### ED-FIX-VISITS-CACHE — durable native month invalidation
+The API, generation protocol, writer inventory, and after-commit coordination
+contract are documented in [visit-cache-fence.md](visit-cache-fence.md).
+Named regressions reproduce the authoritative scoped re-review and the live
+count-changing writer omissions. RED/GREEN/mutation/restoration evidence and
+release gates are recorded in the controller's fix2 report.
 
-Rails' after-commit callback logs and swallows cache errors, losing that attempt.
-Phoenix retains the native projection job when Redis is unavailable and retries
-it after the valid SQL write commits. This is a correction of that Rails failure
-rather than a change to accepted visit data. The shared ED/DRB registers remain
-controller-owned; this scoped decision records the deviation for reconciliation.
+### ED-FIX-VISITS-CACHE — durable, fenced month invalidation
 
-The AFFiNE counterpart was read. Synchronization of this security-sensitive
-write-integrity correction is pending the controller's documentation handoff;
-the execution plan prohibits delegate AFFiNE writes for this assignment.
+Rails loses failed cache invalidations, and its old-snapshot fills can restore a
+stale month summary after a write commits. Phoenix commits SQL generations and
+retains indefinitely retryable projections. API bulk changes also correct Rails'
+callback-free `update_all` cache omission. Demo/restore count changes now retain
+month intents even if their old synchronous cache cleanup fails. The repository
+ED/DRB registers are controller-owned; this scoped decision supplies their
+reconciliation evidence without editing shared rows.
+
+AFFiNE counterparts were read. The master execution plan forbids delegate AFFiNE
+writes for this assignment; controller synchronization remains pending.

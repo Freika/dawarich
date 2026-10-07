@@ -121,7 +121,14 @@ defmodule Dawarich.DemoData.Destroyer do
       log: false
     )
 
-    repo.query!("DELETE FROM visits WHERE id=ANY($1)", [ids], log: false)
+    stamps =
+      repo.query!("DELETE FROM visits WHERE id=ANY($1) RETURNING started_at", [ids], log: false).rows
+
+    Dawarich.RailsEffects.visit_months(
+      repo,
+      user,
+      Enum.map(stamps, fn [stamp] -> DateTime.from_naive!(stamp, "Etc/UTC") end)
+    )
   end
 
   defp trips(repo, user) do

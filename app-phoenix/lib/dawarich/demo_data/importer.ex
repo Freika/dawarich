@@ -89,11 +89,9 @@ defmodule Dawarich.DemoData.Importer do
     for [year, month] <- months, segment <- ~w(lite pro) do
       label = "#{year}-" <> String.pad_leading(Integer.to_string(month), 2, "0")
 
-      {:ok, _} =
-        Dawarich.Redis.cache_command([
-          "UNLINK",
-          "timeline_month_summary/#{user.id}/#{label}/#{setting}/#{segment}/v3"
-        ])
+      key = "timeline_month_summary/#{user.id}/#{label}/#{setting}/#{segment}/v3"
+      versioned = Dawarich.Visits.CacheGeneration.physical_key(key, repo)
+      {:ok, _} = Dawarich.Redis.cache_command(["UNLINK", key, versioned])
     end
 
     Dawarich.Stats.CacheInvalidation.call(repo, %{

@@ -61,16 +61,7 @@ defmodule Dawarich.Imports.DestroyEffects do
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
 
-    if times != [],
-      do:
-        if(Dawarich.Points.NativeEffects.native?(lease.repo, "command:visits.suggest"),
-          do: Dawarich.RailsEffects.visit_months(lease.repo, lease.user, times),
-          else:
-            RailsCommands.insert!(lease.repo, "visit_months_changed", %{
-              "user_id" => lease.user,
-              "started_at" => Enum.map(times, &DateTime.to_iso8601/1)
-            })
-        )
+    Dawarich.RailsEffects.visit_months(lease.repo, lease.user, times)
 
     if places != [], do: callback!(lease, "places_cleanup", %{"place_ids" => places})
   end

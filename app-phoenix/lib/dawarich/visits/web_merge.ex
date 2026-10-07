@@ -59,7 +59,7 @@ defmodule Dawarich.Visits.WebMerge do
     else
       {_seen, names} =
         Enum.reduce(rows, {MapSet.new(), []}, fn row, {seen, names} ->
-          key = row["name"] |> Ruby.strip() |> String.downcase()
+          key = Dawarich.Visits.NameKey.build(row["name"])
 
           if key == "" or MapSet.member?(seen, key),
             do: {seen, names},

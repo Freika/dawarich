@@ -107,9 +107,26 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
   end
 
   defp assert_months(effects, kase, primed_at) do
+    payloads =
+      rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Points.VisitMonthsWorker'")
+
+    targeted =
+      for [payload] <- payloads,
+          at <- payload["started_at"],
+          {key, _} <- kase["cache_after"],
+          String.starts_with?(key, "timeline_month_summary/"),
+          [_prefix, owner, month | suffix] = String.split(key, "/"),
+          zone = suffix |> Enum.drop(-2) |> Enum.join("/"),
+          String.to_integer(owner) == payload["user_id"],
+          month == month(at, zone),
+          do: key
+
+    targeted = Enum.sort(Enum.uniq(targeted))
+
     for {key, _} <- kase["cache_after"] do
       timeline? = String.starts_with?(key, "timeline_month_summary/")
-      assert Dawarich.RailsCache.get(key) == if(timeline?, do: {:ok, "primed"}, else: :miss)
+      readable? = timeline? and key not in targeted
+      assert Dawarich.RailsCache.get(key) == if(readable?, do: {:ok, "primed"}, else: :miss)
       assert {:ok, ttl} = Dawarich.Redis.cache_command(["TTL", key])
       elapsed = (System.monotonic_time(:millisecond) - primed_at) / 1_000
 
@@ -121,22 +138,18 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
 
     if kase["expect"] == "own" do
       keys =
-        for {key, %{"value" => nil}} <- kase["cache_after"],
+        for {key, %{"value" => value}} <- kase["cache_after"],
             String.starts_with?(key, "timeline_month_summary/"),
+            value == nil or
+              (kase["name"] in ~w(bulk_decline bulk_partial destroy_demo) and
+                 String.contains?(key, "/2026-09/")),
             do: key
 
-      targeted =
-        for ["visit_months_changed", payload] <- effects,
-            at <- payload["started_at"],
-            {key, _} <- kase["cache_after"],
-            String.starts_with?(key, "timeline_month_summary/"),
-            [_prefix, owner, month | suffix] = String.split(key, "/"),
-            zone = suffix |> Enum.drop(-2) |> Enum.join("/"),
-            String.to_integer(owner) == payload["user_id"],
-            month == month(at, zone),
-            do: key
-
-      assert Enum.sort(Enum.uniq(targeted)) == Enum.sort(keys)
+      assert targeted == Enum.sort(keys)
+      reverse = for ["visit_months_changed", payload] <- effects, do: payload
+      assert Enum.sort(reverse) == Enum.sort(List.flatten(payloads))
+    else
+      assert targeted == []
     end
   end
 

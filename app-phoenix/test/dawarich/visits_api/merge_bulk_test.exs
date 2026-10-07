@@ -78,7 +78,13 @@ defmodule Dawarich.VisitsApi.MergeBulkTest do
   test "bulk confirm counts only IDs still active after an interleaved decline" do
     interleaved_bulk("confirmed", "UPDATE visits SET status=2 WHERE id=953301")
     assert rows("SELECT status FROM visits WHERE id=953301") == [[2]]
-    assert commands() == []
+
+    assert commands() == [
+             [
+               "visit_months_changed",
+               %{"user_id" => 953_001, "started_at" => ["2026-09-01T13:00:00.000000Z"]}
+             ]
+           ]
   end
 
   @tag mutation: "M-review-bulk-tombstone"
@@ -90,6 +96,13 @@ defmodule Dawarich.VisitsApi.MergeBulkTest do
              [
                "places_delete_if_orphan",
                %{"user_id" => 953_001, "place_ids" => [953_201, 953_202]}
+             ],
+             [
+               "visit_months_changed",
+               %{
+                 "user_id" => 953_001,
+                 "started_at" => ["2026-09-01T13:00:00.000000Z"]
+               }
              ]
            ]
   end
@@ -171,6 +184,13 @@ defmodule Dawarich.VisitsApi.MergeBulkTest do
              [
                "places_delete_if_orphan",
                %{"user_id" => 953_001, "place_ids" => [953_201, 953_202]}
+             ],
+             [
+               "visit_months_changed",
+               %{
+                 "user_id" => 953_001,
+                 "started_at" => ["2026-09-01T12:00:00.000000Z", "2026-09-01T13:00:00.000000Z"]
+               }
              ]
            ]
 
