@@ -20,7 +20,11 @@ defmodule Dawarich.Jobs.CloudEntriesTest do
   test "L1 registry resolves creation destruction referral and family commands exactly once" do
     for {type, worker, payload} <- @commands do
       outbox!(command_type: type, payload: payload)
-      assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 1}
+
+      assert Dispatch.run(repo: ScratchRepo, oban: @oban, now: db_now(ScratchRepo)) == %{
+               dispatched: 1
+             }
+
       assert Registry.command(type) == {:ok, worker}
 
       assert [%{worker: ^worker, claimable: false}] =
@@ -33,7 +37,10 @@ defmodule Dawarich.Jobs.CloudEntriesTest do
     end
 
     outbox!(command_type: "unknown.cloud.command")
-    assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{quarantined: 9}
+
+    assert Dispatch.run(repo: ScratchRepo, oban: @oban, now: db_now(ScratchRepo)) == %{
+             quarantined: 9
+           }
 
     assert rows("SELECT count(*) FROM public.job_outbox WHERE error_code='unsupported_version'") ==
              [[4]]
@@ -55,7 +62,11 @@ defmodule Dawarich.Jobs.CloudEntriesTest do
   test "L1 dispatch preserves Cloud callback and family operation envelopes" do
     for {type, worker, payload} <- @commands do
       id = outbox!(command_type: type, payload: payload, aggregate_id: 42)
-      assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 1}
+
+      assert Dispatch.run(repo: ScratchRepo, oban: @oban, now: db_now(ScratchRepo)) == %{
+               dispatched: 1
+             }
+
       name = inspect(worker)
 
       assert [[^name, args, %{"command_version" => 1}]] =
