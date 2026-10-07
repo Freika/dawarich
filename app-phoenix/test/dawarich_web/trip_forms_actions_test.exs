@@ -226,13 +226,12 @@ defmodule DawarichWeb.TripFormsActionsTest do
     remove = Map.drop(rename, ["trip"]) |> Map.put("_method", "delete")
     assert post_form(session, Plug.Conn.Query.encode(remove), [], "/trips/895020").status == 303
 
-    {{_, _}, new} =
-      forwarded(upstream, fn ->
-        RailsUser.signed_in(8950)
-        |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, :get, "/trips/new", nil)
-      end)
+    new =
+      RailsUser.signed_in(8950)
+      |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, :get, "/trips/new", nil)
 
-    assert new.status == 204
+    assert new.status == 303
+    assert get_resp_header(new, "location") == ["http://www.example.com/"]
 
     session = RailsUser.session(8950)
 
@@ -246,11 +245,9 @@ defmodule DawarichWeb.TripFormsActionsTest do
         }
       })
 
-    {{_, received}, inactive_create} =
-      forwarded(upstream, fn -> post_form(session, raw, [], "/trips") end)
-
-    assert inactive_create.status == 204
-    assert received == raw
+    inactive_create = post_form(session, raw, [], "/trips")
+    assert inactive_create.status == 303
+    assert get_resp_header(inactive_create, "location") == ["http://www.example.com/"]
 
     Repo.query!("UPDATE users SET active_until = '3026-10-03' WHERE id = 8950")
     Ownership.put!(Repo, "command:trips.calculate", :oban)

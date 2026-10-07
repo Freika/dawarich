@@ -111,6 +111,7 @@ defmodule Dawarich.Application do
       [Dawarich.Repo] ++
       redis() ++
       [
+        Dawarich.Geocoding.RateLimiter,
         {Oban, Keyword.put(oban, :cron, cron)},
         {Phoenix.PubSub, name: Dawarich.PubSub}
       ] ++

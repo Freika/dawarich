@@ -12,7 +12,18 @@ defmodule DawarichWeb.TripActions do
   def call(conn, :member),
     do: call(conn, if(conn.assigns.a8_action == :trip_destroy, do: :destroy, else: :update))
 
-  def call(conn, :recalculate) do
+  def call(%{assigns: %{current_user: user}} = conn, action)
+      when action in [:create, :recalculate] do
+    if WebForm.active?(user, conn.assigns[:now] || DateTime.utc_now()),
+      do: active_call(conn, action),
+      else: inactive(conn)
+  end
+
+  def call(conn, action), do: write(conn, action)
+
+  defp active_call(conn, :create), do: write(conn, :create)
+
+  defp active_call(conn, :recalculate) do
     user = conn.assigns.current_user
 
     ctx = %{
@@ -58,7 +69,7 @@ defmodule DawarichWeb.TripActions do
     end
   end
 
-  def call(conn, action) do
+  defp write(conn, action) do
     user = conn.assigns.current_user
 
     ctx = %{
@@ -94,8 +105,11 @@ defmodule DawarichWeb.TripActions do
             conn |> send_resp(500, "") |> halt()
           else
             case WebForm.load(Jobs.repo(), user, id, ctx) do
-              {:ok, form} -> invalid(conn, WebForm.invalid(form, errors, values), ctx.locale)
-              _ -> DawarichWeb.TripRequest.replay(conn, "trip validation form")
+              {:ok, form} ->
+                invalid(conn, WebForm.invalid(form, errors, values, Jobs.repo()), ctx.locale)
+
+              _ ->
+                DawarichWeb.TripRequest.replay(conn, "trip validation form")
             end
           end
 
@@ -170,6 +184,17 @@ defmodule DawarichWeb.TripActions do
     |> put_resp_content_type("text/html")
     |> send_resp(status, "")
     |> halt()
+  end
+
+  def inactive(conn) do
+    locale = Locale.resolve(nil, conn.assigns.current_user, conn.assigns.rails_session)
+
+    redirect(
+      conn,
+      303,
+      "/",
+      Translate.t(locale, "controllers.application.your_account_is_not_active", %{})
+    )
   end
 
   def not_found(conn) do

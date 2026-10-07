@@ -133,7 +133,12 @@ defmodule DawarichWeb.TripsGateEndpointTest do
        ctx do
     TripsSeeds.trip!(%{id: 881_102, user_id: 8811, path: nil})
     TripsSeeds.trip!(%{id: 881_103, user_id: 8811, path: [[12.37, 51.338], [12.381, 51.341]]})
-    TripsSeeds.rich_text!(881_103, ~s(<action-text-attachment sgid="x"></action-text-attachment>))
+
+    TripsSeeds.rich_text!(
+      881_103,
+      ~s(<action-text-attachment content-type="text/html" content="&lt;div&gt;source render error&lt;/div&gt;"></action-text-attachment>)
+    )
+
     port = serve()
 
     for target <- ~w(/trips/881102 /trips/881103 /trips/881199) do

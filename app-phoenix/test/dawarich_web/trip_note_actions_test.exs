@@ -163,5 +163,59 @@ defmodule DawarichWeb.TripNoteActionsTest do
                [note["body"]]
              ]
     end
+
+    actor = RailsUser.insert!(%{id: 989_110, email: "trip-note-edge@example.test", settings: %{}})
+
+    trip =
+      TripsSeeds.trip!(%{
+        id: 989_111,
+        user_id: actor.id,
+        started_at: ~N[2026-10-02 00:00:00],
+        ended_at: ~N[2026-10-04 23:00:00]
+      })
+
+    literal =
+      "<action-text-attachment sgid=\"invalid\"></action-text-attachment><script>literal</script>"
+
+    session = RailsUser.session(actor.id)
+
+    conn =
+      Plug.Test.conn(:post, "/trips/#{trip}/notes", "")
+      |> assign(:current_user, Dawarich.Accounts.get(actor.id))
+      |> assign(:rails_session, session)
+      |> assign(:api_params, %{"note" => %{"date" => "Oct 3 2026", "body" => literal}})
+      |> assign(:a8_format, :turbo_stream)
+      |> Map.put(:path_params, %{"trip_id" => to_string(trip)})
+
+    response = DawarichWeb.TripNoteActions.call(conn, :create)
+    assert response.status == 200
+    refute response.resp_body =~ "<script>literal</script>"
+    assert response.resp_body =~ "&lt;script&gt;literal&lt;/script&gt;"
+
+    assert Repo.query!(
+             "SELECT body FROM notes WHERE attachable_type='Trip' AND attachable_id=$1",
+             [trip]
+           ).rows == [[literal]]
+
+    failure =
+      conn
+      |> assign(:api_params, %{
+        "note" => %{"date" => "Oct 3 2026", "body" => literal <> " committed"}
+      })
+      |> register_before_send(fn _ -> raise "synthetic response failure after note commit" end)
+
+    assert_raise RuntimeError, "synthetic response failure after note commit", fn ->
+      DawarichWeb.TripNoteActions.call(failure, :create)
+    end
+
+    assert Repo.query!(
+             "SELECT body FROM notes WHERE attachable_type='Trip' AND attachable_id=$1",
+             [trip]
+           ).rows == [[literal <> " committed"]]
+
+    assert Repo.query!("SELECT count(*) FROM active_storage_attachments WHERE record_type='Note'").rows ==
+             [[0]]
+
+    assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands").rows == [[0]]
   end
 end

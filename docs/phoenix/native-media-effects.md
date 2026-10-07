@@ -100,3 +100,34 @@ unreferenced object and row. A separate shared-child storage failure retains all
 rows and drain debt until recovery. External-parent and post-enqueue attachment
 references preserve both child and descendant. This repairs a Phoenix graph
 collection defect; Rails-owned DRB-025 behavior remains as recorded.
+
+
+## Media ownership repair — 2026-10-07
+
+Route-video adoption refuses a signed blob attached to another owner's route
+video, poster, import or export. Unknown attachment owners are refused. Blob
+loading includes the owner predicate in coexistence and standalone; the attach
+transaction first locks the blob and then repeats admission with a fresh query
+snapshot. Committed purge revocation cannot be undone by an earlier admission.
+Unattached uploads and same-owner reuse stay supported. Download bearer links
+remain unchanged under the controller ruling; DRB-027 includes poster/video links.
+
+Video analysis claims the accepted event and locks the owned blob before storage
+reads or ffprobe. Concurrent same-event replay and different events for the same
+blob run the expensive effect once after successful completion. Storage/probe
+failures roll back the claim and permit retry. The background transaction holds
+the blob lock across analysis; no schema migration or runtime lease expiry is
+needed. This does not promise exactly-once across a process crash after ffprobe
+but before the database commits; that unfinished attempt must retry.
+
+Accepted Rails Posters::CreateJob now forwards to Oban with its original job ID
+when the command owner changes. Source-owned generation holds the shared native
+poster lease and retains the ownership row lock through generation; live lease
+contention raises so delivery can retry. Native generation's existing ownership
+and lease checks are unchanged.
+
+Regressions: `app-phoenix/test/dawarich/media_ownership_test.exs` (eight named
+coexistence/standalone cases) and `spec/jobs/posters/media_ownership_spec.rb`
+(four named source cases), each with RED/GREEN and individual mutation evidence.
+Rails fixes are FRB-047/048/049; intentional differences are ED-FIX-MEDIA-OWNERSHIP.
+Controller evidence: `impl-fix-media-ownership.report.md`.
