@@ -4,6 +4,7 @@ defmodule DawarichWeb.StandaloneRoutes do
   alias DawarichWeb.Api
 
   @routes %{
+    {"POST", "/api/v1/recalculations"} => {Api.RecalculationsController, :create, true},
     {"GET", "/api/v1/settings/mobile"} => {Api.MobileSettingsController, :show, false},
     {"PATCH", "/api/v1/settings/mobile"} => {Api.MobileSettingsController, :update, true},
     {"GET", "/api/v1/areas"} => {Api.AreasController, :index, false},
@@ -28,7 +29,7 @@ defmodule DawarichWeb.StandaloneRoutes do
         conn = conn |> assign(:api_tag, "api") |> Map.put(:path_params, params)
 
         conn =
-          if handler in [Api.DemoDataController, Api.DigestWritesController] or
+          if handler in [Api.DemoDataController, Api.DigestWritesController, Api.RecalculationsController] or
                (handler == Api.AreasController and action == :destroy),
              do: conn |> put_private(:dawarich_native_api, true) |> Plug.Head.call([]),
              else: conn

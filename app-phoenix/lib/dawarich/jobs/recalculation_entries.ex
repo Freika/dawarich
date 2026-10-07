@@ -4,6 +4,7 @@ defmodule Dawarich.Jobs.RecalculationEntries do
   def entries do
     Enum.map(
       [
+        {"transportation.user_reclassify", Dawarich.Transportation.UserReclassifyWorker},
         {"stats.full_recalculation", Dawarich.Stats.FullRecalculationWorker},
         {"users.recalculate_data", Dawarich.Users.RecalculateWorker},
         {"visits.user_redetect", Dawarich.Visits.UserRedetectWorker},
