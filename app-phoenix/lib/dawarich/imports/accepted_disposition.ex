@@ -4,7 +4,13 @@ defmodule Dawarich.Imports.AcceptedDisposition do
   alias Dawarich.Jobs.Processed
 
   def call(repo, args, kind, fallback) do
-    if Dawarich.Standalone.enabled?() do
+    lane =
+      case kind do
+        "imports.resume" -> "command:imports.process_gpx"
+        "imports.normal_resume" -> "command:imports.process_normal"
+      end
+
+    if Dawarich.Imports.NativeOwnership.lock(repo, lane) == :oban do
       fail!(repo, args, kind)
     else
       repo.query!(
