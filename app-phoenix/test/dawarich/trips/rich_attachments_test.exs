@@ -423,6 +423,46 @@ defmodule Dawarich.Trips.RichAttachmentsTest do
              RichContent.editor("<action-text-attachment></action-text-attachment>", ScratchRepo)
   end
 
+  @tag a12f3a_t04_dependent_scope: true
+  test "T04: dependent deletion retains rich fields outside the source description association",
+       c do
+    assert {:ok, trip} =
+             WebWrite.run(ScratchRepo, :create, c.user, nil, attrs("<div>Description</div>"), %{
+               now: @now
+             })
+
+    [[description]] =
+      rows(
+        "SELECT id FROM action_text_rich_texts WHERE record_type='Trip' AND record_id=$1 AND name='description'",
+        [trip.id]
+      )
+
+    [[other]] =
+      rows(
+        "INSERT INTO action_text_rich_texts(record_type,record_id,name,body,created_at,updated_at) VALUES('Trip',$1,'legacy_extra','<div>Other content</div>',$2,$2) RETURNING id",
+        [trip.id, DateTime.to_naive(@now)]
+      )
+
+    {id, file} = blob(c.root, "text/plain", "other.txt")
+    attach("ActionText::RichText", other, id, "embeds")
+    assert {:ok, :deleted} = WebDelete.run(ScratchRepo, c.user, trip.id, %{})
+    assert rows("SELECT id FROM action_text_rich_texts WHERE id=$1", [description]) == []
+    assert rows("SELECT id FROM action_text_rich_texts WHERE id=$1", [other]) == [[other]]
+
+    assert rows(
+             "SELECT blob_id FROM active_storage_attachments WHERE record_type='ActionText::RichText' AND record_id=$1",
+             [other]
+           ) == [[id]]
+
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=$1", [id]) == [[id]]
+    assert File.read!(file) == "synthetic"
+
+    assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PurgeWorker'") ==
+             [[0]]
+
+    assert rows("SELECT kind FROM phoenix.rails_commands") == []
+  end
+
   defp attrs(body),
     do: %{
       "name" => "Auwald",

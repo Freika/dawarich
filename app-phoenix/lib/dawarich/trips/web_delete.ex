@@ -33,7 +33,7 @@ defmodule Dawarich.Trips.WebDelete do
   defp delete(repo, id) do
     rich_ids =
       repo.query!(
-        "SELECT id FROM action_text_rich_texts WHERE record_type='Trip' AND record_id=$1 ORDER BY id FOR UPDATE",
+        "SELECT id FROM action_text_rich_texts WHERE record_type='Trip' AND record_id=$1 AND name='description' ORDER BY id FOR UPDATE",
         [id],
         log: false
       ).rows
@@ -69,7 +69,7 @@ defmodule Dawarich.Trips.WebDelete do
     )
 
     repo.query!(
-      "DELETE FROM action_text_rich_texts WHERE record_type = 'Trip' AND record_id = $1",
+      "DELETE FROM action_text_rich_texts WHERE record_type = 'Trip' AND record_id = $1 AND name = 'description'",
       [id],
       log: false
     )
