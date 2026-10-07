@@ -20,6 +20,18 @@ The per-example environment, Rails zone and frozen defaults are restored after
 each example; the context environment is restored after its capture hooks.
 Recorders that intentionally override timezone inside an example keep doing so.
 
+Digest recordings also pin country latitudes with
+`FixtureRecording.canonical_timezone_latitudes`, using the locked `tzinfo-data`
+package's canonical IANA country zones. System zoneinfo can include linked names
+that the package omits. The recorder supplies the same latitude table to the
+Rails calculators and southern-zone export, preserving exact corpus comparisons
+without making host tzdata an input.
+
+The user-data recorder refreshes both E04 packets. Its map-matching restore
+oracle takes the old-schema input from the retained `old_v2` restore capture,
+so refreshing current export fixtures does not replace the backward-compatibility
+input with a current-schema track.
+
 Ordinary `FixtureRecording.verify` remains an exact byte comparison. The map
 closure explicitly selects `timeline.body` for parsed JSON comparison because
 Rails mode-distance object key order is unspecified (DRB-021 in

@@ -53,8 +53,12 @@ RSpec.describe 'Phoenix fixtures: user data map matching' do
         end
       end
     end
-    old = JSON.parse(UserDataFixturesSupport.read_entries('export_UTC').fetch('tracks/2026/2026-01.jsonl'))
+    recorded = JSON.parse(UserDataFixturesSupport::DIR.join('map_matching_columns.json').read)
+    old = JSON.parse(recorded.dig('restores', 'old_v2', 'entries', 'tracks/2026/2026-01.jsonl'))
     current = JSON.parse(capture.fetch('matched').fetch('UTC').last.fetch('bytes'))
+    columns = %w[map_matching_status map_matching_data map_matching_input_digest map_matched_at matched_path]
+    expect(old.keys).not_to include(*columns)
+    expect(current.keys).to include(*columns)
     { 'old' => old, 'new' => current }.each do |shape, track|
       %w[v2 v2_root].each do |version|
         entries = case version
