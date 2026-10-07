@@ -129,4 +129,21 @@ defmodule Dawarich.Jobs.CronTicksTest do
       assert {:ok, ^local} = DateTime.from_naive(DateTime.to_naive(local), zone)
     end
   end
+
+  test "POSIX second offsets retain the actual scheduled instant and grace boundary" do
+    conf = Oban.config(@oban)
+    tick = ~U[2026-10-02 04:00:20Z]
+    tab = [{"45 0 2 * *", ToponymsRefreshWorker}]
+
+    for seconds <- [0, 30, 60, 61] do
+      rows("DELETE FROM phoenix.cron_ticks")
+      rows("DELETE FROM oban.oban_jobs")
+
+      assert {:ok, jobs} =
+               TickScheduler.evaluate(conf, tab, "ABC3:15:20", DateTime.add(tick, seconds))
+
+      assert length(jobs) == if(seconds in [30, 60], do: 1, else: 0)
+      for job <- jobs, do: assert(job.meta["cron_tick"] == DateTime.to_unix(tick))
+    end
+  end
 end

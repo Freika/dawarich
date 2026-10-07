@@ -21,7 +21,9 @@ system tzdata.
 
 Constant-offset POSIX ambient zones, including `UTC0` and signed offsets with
 minutes or seconds, are resolved before falling back to `TIME_ZONE`. Named
-zoneinfo zones retain their DST gap and overlap behavior.
+zoneinfo zones retain their DST gap and overlap behavior. Scheduled instants
+follow local minute boundaries, including nonzero seconds in POSIX offsets;
+tick identity and the grace window use the resulting exact UTC instant.
 
 `Jobs.TickScheduler` replaces ordinary Oban cron admission. The additive
 `phoenix.cron_ticks` table has a composite primary key on `(key, tick)`; the

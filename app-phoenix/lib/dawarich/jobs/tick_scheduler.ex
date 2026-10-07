@@ -97,9 +97,11 @@ defmodule Dawarich.Jobs.TickScheduler do
   defp due(expression, zone, now) do
     parsed = Expression.parse!(expression)
     second = DateTime.to_unix(now)
+    local = DateTime.shift_zone!(now, zone)
 
     latest =
-      div(second - if(now.second == 0 and elem(now.microsecond, 0) == 0, do: 1, else: 0), 60) * 60
+      second - local.second -
+        if(local.second == 0 and elem(now.microsecond, 0) == 0, do: 60, else: 0)
 
     Enum.find_value([latest, latest - 60], fn slot ->
       tick = DateTime.from_unix!(slot)
