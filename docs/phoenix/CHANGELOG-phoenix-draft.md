@@ -1,9 +1,13 @@
 # Phoenix release changelog — DRAFT
 
-Compiled 2026-10-07 from integrated fixes at `3a20a0279`. Each item links to one final [FRB evidence entry](fixed-rails-bugs.md). Native fixes do not automatically repair retained Rails-owned consumers. Proposed map-matching comparisons below refer to the Rails feature branch, not Rails 1.15.3. This is a review draft; native Cloud lifecycle remains refused pending external L1 handoff.
+Compiled 2026-10-07 from integrated fixes through `069b5dbcd`, including the final delta after the 13:30 consolidation. Each item links to one final [FRB evidence entry](fixed-rails-bugs.md). Native fixes do not automatically repair retained Rails-owned consumers. Proposed map-matching comparisons below refer to the Rails feature branch, not Rails 1.15.3. This is a review draft; native Cloud lifecycle remains refused pending external L1 handoff.
 
 ## Security
 
+- Clear stale two-factor challenges on full login and refuse protected pages while a challenge is active. [FRB-071](fixed-rails-bugs.md#frb-071--an-old-otp-challenge-survives-a-different-account-login)
+- Reject non-HTTP redirect-back targets and use the action's safe fallback. [FRB-072](fixed-rails-bugs.md#frb-072--redirect-back-accepts-same-host-non-http-schemes)
+- Require verified HTTPS for Manager account callbacks. [FRB-081](fixed-rails-bugs.md#frb-081--plaintext-manager-configuration-exposes-signed-account-data)
+- Refuse incomplete Cloud callback configuration and retain undelivered work for repair. [FRB-082](fixed-rails-bugs.md#frb-082--missing-manager-configuration-silently-loses-callbacks)
 - Bind import uploads to the account that created them. [FRB-003](fixed-rails-bugs.md#frb-003--an-upload-can-be-claimed-by-a-different-account)
 - Prevent an old upload capability from recreating a file after it has been purged. [FRB-007](fixed-rails-bugs.md#frb-007--an-old-upload-capability-can-recreate-purged-storage)
 - Prevent photo and integration redirects from sending credentials to another host. [FRB-011](fixed-rails-bugs.md#frb-011--provider-redirects-disclose-credentials)
@@ -17,6 +21,7 @@ Compiled 2026-10-07 from integrated fixes at `3a20a0279`. Each item links to one
 
 ## Privacy
 
+- Keep Partnero customer data, response bodies and credentials out of signup failure diagnostics. [FRB-069](fixed-rails-bugs.md#frb-069--partnero-error-reporting-exposes-customerprovider-details)
 - Preserve other accounts' records and references when account deletion encounters shared places or foreign dependent associations. [FRB-067](fixed-rails-bugs.md#frb-067--account-deletion-changes-another-accounts-dependent-records)
 - Stop serving shared trip thumbnails after a trip boundary edit excludes them, including requests forwarded to Rails. [FRB-001](fixed-rails-bugs.md#frb-001--shared-trip-thumbnail-authorization-survives-a-boundary-edit)
 - Keep failed native media deletion retryable until eligible files are physically removed. Rails-owned cleanup retains its existing limitation. [FRB-002](fixed-rails-bugs.md#frb-002--failed-physical-media-deletion-loses-its-retry-target)
@@ -34,6 +39,9 @@ Compiled 2026-10-07 from integrated fixes at `3a20a0279`. Each item links to one
 
 ## Imports and data integrity
 
+- Roll back failed Cloud signups when durable account creation callbacks cannot be published. [FRB-068](fixed-rails-bugs.md#frb-068--signup-callback-failure-leaves-an-orphan-account)
+- Allow account deletion confirmation to be retried when its email could not be queued. [FRB-078](fixed-rails-bugs.md#frb-078--failed-deletion-confirmation-consumes-the-rate-slot)
+- Serialize standalone area deletion and avoid repeating cleanup for an already deleted area. [FRB-080](fixed-rails-bugs.md#frb-080--stale-area-lookups-both-proceed-with-deletion)
 - Prevent completed extraction retries from repeating their saved effects. [FRB-005](fixed-rails-bugs.md#frb-005--legacy-extraction-replay-repeats-terminal-effects)
 - Prevent an older extraction-removal retry from deleting a newer extraction. [FRB-006](fixed-rails-bugs.md#frb-006--an-old-removal-retry-can-remove-newer-extraction-data)
 - Keep another account’s demo tags unchanged when importing a visit into inconsistently linked demo data. [FRB-009](fixed-rails-bugs.md#frb-009--demo-adoption-changes-another-accounts-tag)
@@ -45,10 +53,11 @@ Compiled 2026-10-07 from integrated fixes at `3a20a0279`. Each item links to one
 - Emit one no-points notice per successful empty import across interrupted processing and retry. [FRB-037](fixed-rails-bugs.md#frb-037--empty-successful-import-retries-repeat-no-points-notifications)
 - Commit anomaly flags and their track, statistics and achievement rebuilds together, including restored points. [FRB-042](fixed-rails-bugs.md#frb-042--anomaly-flags-commit-without-their-derived-rebuilds)
 - Keep point deletion, counters and derived-data rebuild work consistent when a follow-up fails. [FRB-043](fixed-rails-bugs.md#frb-043--point-deletion-commits-without-counters-or-rebuilds)
-- Roll back mobile settings, area changes, digest deletion and follow-up work when response preparation fails. [FRB-052](fixed-rails-bugs.md#frb-052--a-failed-settings-or-area-response-leaves-changes-committed)
+- Roll back mobile settings, demo changes, digest generation/deletion, area changes and follow-up work when response preparation fails. [FRB-052](fixed-rails-bugs.md#frb-052--a-failed-settings-or-area-response-leaves-changes-committed)
 
 ## Visits and caches
 
+- Retry statistics cache cleanup after account deletion when Redis is unavailable. [FRB-079](fixed-rails-bugs.md#frb-079--account-deletion-drops-failed-statistics-cache-cleanup)
 - Retry failed nightly cache cleanup instead of leaving countries and cities stale after a transient Redis timeout. [FRB-032](fixed-rails-bugs.md#frb-032--nightly-reverse-cleanup-acknowledges-a-failed-cache-deletion)
 - Refresh calendar counts after demo visit edits or deletion, including import and null-island cleanup. [FRB-033](fixed-rails-bugs.md#frb-033--null-island-cleanup-leaves-restored-demo-visit-counts-cached)
 - Preserve newer visit duration and point associations when suggestions execute concurrently or detection settings change during a run. [FRB-034](fixed-rails-bugs.md#frb-034--stale-concurrent-suggestions-truncate-newer-committed-visits)
@@ -65,6 +74,13 @@ Compiled 2026-10-07 from integrated fixes at `3a20a0279`. Each item links to one
 
 ## Correctness
 
+- Suppress duplicate queued full-user reclassifications before the worker starts. [FRB-070](fixed-rails-bugs.md#frb-070--queued-reclassification-retries-start-duplicate-runs)
+- Keep an accepted monthly statistics calculation from running again on redelivery. [FRB-073](fixed-rails-bugs.md#frb-073--stats-redelivery-repeats-an-accepted-month-calculation)
+- Admit each stable statistics or digest event once across Rails/Phoenix ownership changes. [FRB-074](fixed-rails-bugs.md#frb-074--ownership-flips-admit-one-stable-event-into-both-runtimes)
+- Reuse generated monthly and yearly digests when mail publication needs a retry. [FRB-075](fixed-rails-bugs.md#frb-075--digest-publication-retry-repeats-successful-generation)
+- Reuse one digest calculation and publication state per account and period across accepted job IDs. [FRB-076](fixed-rails-bugs.md#frb-076--separate-job-ids-repeat-one-completed-digest-period)
+- Keep failed Rails/Phoenix coexistence digest publication retryable after a publication-savepoint rollback. [FRB-077](fixed-rails-bugs.md#frb-077--rails-bridge-marks-rolled-back-digest-publication-complete)
+- Retain attributed Partnero signup work for retry when integration credentials are missing. [FRB-083](fixed-rails-bugs.md#frb-083--missing-partnero-credentials-discard-attributed-signup-work)
 - Avoid duplicate failure notifications when retrying an accepted failed GPX import. [FRB-008](fixed-rails-bugs.md#frb-008--failed-gpx-retries-repeat-failure-notifications)
 - Validate photo and integration base URLs before requesting an asset, avoiding the wrong resource or an incorrect verification result. [FRB-014](fixed-rails-bugs.md#frb-014--malformed-provider-bases-fetch-the-wrong-resource)
 - Display apostrophes correctly in translated document titles. [FRB-018](fixed-rails-bugs.md#frb-018--localized-titles-double-escape-apostrophes)
@@ -95,3 +111,11 @@ These comparisons are with the proposed Rails map-matching branch and are not Ra
 ## Deferred behavior and release decisions
 
 See the [DRB status register](deferred-rails-bugs.md) for preserved behavior and native-only corrections. Signed backup/export bearer policy (DRB-027), trusted-ingress pass-through (DRB-036), optional mobile nonce policy (DRB-001), digest sent-marker ordering (DRB-013), malformed-data parity and Rails-owned physical purge remain outside these native fixes. Older ED candidates with incomplete provenance remain in the [evidence appendix](fixed-rails-bugs.md#older-ed-candidates-requiring-provenance).
+
+## Deferred follow-ups (non-blocking)
+
+The controller recorded these deferrals on 2026-10-07; they remain follow-up work, not completed fixes.
+
+- Broader outer Rails digest rollback retry signalling and the synthetic calculator-return limitation (17:49 ruling; `rereview5-fix-rxstats.report.md`, D1/D2). See [rollback limits](deferred-rails-bugs.md#digest-publication-and-rollback-limits).
+- After-commit cache eviction can repeat after a crash between eviction and completion, invalidating a newer value and causing extra recomputation; it does not serve stale data (19:19 ruling; `app-phoenix/lib/dawarich/after_commit/worker.ex:22`).
+- `/sidekiq` retains `Cache-Control: private,must-revalidate` rather than Rails' `private,no-store`; it is already private (22:32 ruling; `rereview-fix-sa-points-page.report.md`).
