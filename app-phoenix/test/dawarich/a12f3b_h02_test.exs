@@ -184,7 +184,12 @@ defmodule Dawarich.A12f3bH02Test do
       outbox!(command_type: type, payload: payload)
     end
 
-    assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 3}
+    assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
+             repo: ScratchRepo,
+             oban: @oban
+           ) == %{dispatched: 3}
+
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
     System.delete_env("DAWARICH_RAILS")
     assert Dawarich.Standalone.job_entries(%{}) == Registry.claimable()
@@ -205,8 +210,19 @@ defmodule Dawarich.A12f3bH02Test do
 
       for _ <- 1..2, do: publish_mail(type, payload)
       assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
-      assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 1}
-      assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{}
+
+      assert Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: @oban
+             ) == %{dispatched: 1}
+
+      assert Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: @oban
+             ) == %{}
+
       assert [[args]] = rows("SELECT args FROM oban.oban_jobs")
       assert {:ok, worker} = Registry.command(type)
 
@@ -253,7 +269,13 @@ defmodule Dawarich.A12f3bH02Test do
 
       Dawarich.Points.ApiWrites.produce(ScratchRepo, type, payload, 701)
       assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
-      assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 1}
+
+      assert Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: @oban
+             ) == %{dispatched: 1}
+
       assert [[args]] = rows("SELECT args FROM oban.oban_jobs")
       assert {:ok, worker} = Registry.command(type)
 
@@ -274,7 +296,7 @@ defmodule Dawarich.A12f3bH02Test do
         do: Ownership.put!(ScratchRepo, "command:" <> type, :sidekiq, pinned: true)
 
     user = %{id: 711, status: 1, plan: 1, active_until: nil, settings: %{"timezone" => "Etc/UTC"}}
-    ctx = %{self_hosted?: true, now: DateTime.utc_now()}
+    ctx = %{self_hosted?: true, now: Dawarich.JobsCase.db_now(ScratchRepo)}
 
     for mode <- [:standalone, :coexistence] do
       if mode == :standalone,
@@ -348,7 +370,13 @@ defmodule Dawarich.A12f3bH02Test do
     do: Dawarich.Mail.ResidualCommands.location(ScratchRepo, payload)
 
   defp publish_mail("mail.family_lapse", payload),
-    do: Dawarich.Families.LapseNotices.publish(ScratchRepo, :sidekiq, payload, DateTime.utc_now())
+    do:
+      Dawarich.Families.LapseNotices.publish(
+        ScratchRepo,
+        :sidekiq,
+        payload,
+        Dawarich.JobsCase.db_now(ScratchRepo)
+      )
 
   defp load_family! do
     for {id, email} <- [{701, "requester@dawarich.test"}, {702, "target@dawarich.test"}] do

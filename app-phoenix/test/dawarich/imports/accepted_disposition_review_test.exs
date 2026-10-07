@@ -102,7 +102,12 @@ defmodule Dawarich.Imports.AcceptedDispositionReviewTest do
       if unquote(mode) == "on",
         do:
           assert(
-            %{dispatched: 1} = Dawarich.Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+            %{dispatched: 1} =
+              Dawarich.Jobs.Dispatch.run(
+                now: Dawarich.JobsCase.db_now(ScratchRepo),
+                repo: ScratchRepo,
+                oban: __MODULE__
+              )
           )
 
       assert [[id, args, worker]] =

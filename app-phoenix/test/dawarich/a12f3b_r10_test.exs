@@ -51,7 +51,14 @@ defmodule Dawarich.A12f3bR10Test do
 
     assert [] == F.reverse()
     start_oban(__MODULE__)
-    assert %{dispatched: 1} == Dawarich.Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+
+    assert %{dispatched: 1} ==
+             Dawarich.Jobs.Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: __MODULE__
+             )
+
     foreign_lease!("import:#{c.import.id}")
     assert %{snoozed: 1} = Oban.drain_queue(__MODULE__, queue: :imports)
     assert [[4]] == rows("SELECT status FROM imports WHERE id=$1", [c.import.id])

@@ -6,8 +6,7 @@ if Enum.at(System.argv(), 1) in [
    ] do
   database = System.fetch_env!("PHOENIX_TEST_DATABASE")
 
-  unless (String.starts_with?(database, "dawarich_phoenix_test_") or
-            String.starts_with?(database, "dawarich_test_")) and
+  unless database not in ["dawarich_development", "dawarich_test", "dawarich_phoenix_test"] and
            database == Application.fetch_env!(:dawarich, Dawarich.Repo)[:database] and
            System.get_env("DATABASE_HOST") == "127.0.0.1" and System.get_env("MIX_ENV") == "test",
          do: raise("Allocated local private test DB required")

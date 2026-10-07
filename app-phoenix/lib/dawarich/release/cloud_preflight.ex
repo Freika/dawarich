@@ -9,6 +9,7 @@ defmodule Dawarich.Release.CloudPreflight do
 
     with false <- ReleaseMigration.self_hosted?(env),
          false <- env["DAWARICH_CLOUD_DRAIN_ONLY"] == "true",
+         {:ok, _} <- Dawarich.Cloud.SessionConnection.check(repo, opts),
          :ok <- schemas(repo),
          :ok <- ownership(repo),
          :ok <- extensions(repo),

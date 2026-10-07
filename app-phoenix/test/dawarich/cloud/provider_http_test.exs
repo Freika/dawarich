@@ -95,7 +95,7 @@ defmodule Dawarich.Cloud.ProviderHTTPTest do
 
     logs =
       capture_log(fn ->
-        {base, task} = provider(fn socket -> :gen_tcp.recv(socket, 0, 500) end)
+        {base, task} = provider(fn socket -> :gen_tcp.recv(socket, 0, 11_000) end)
 
         assert {:error, :timeout} =
                  ProviderHTTP.post(:manager, "/api/v1/users", [{"Authorization", marker}], marker,

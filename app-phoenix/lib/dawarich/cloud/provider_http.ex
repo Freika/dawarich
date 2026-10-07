@@ -13,6 +13,8 @@ defmodule Dawarich.Cloud.ProviderHTTP do
          {:ok, origin} <- origin(provider, opts) do
       transport = Keyword.get(opts, :transport, &Transport.request/8)
 
+      opts = Keyword.put(opts, :total_timeout, 10_000)
+
       case transport.(:post, origin, path, headers, encoded_body, false, 10_000, opts) do
         {:ok, status, _headers, body} ->
           {:ok, status, body}
