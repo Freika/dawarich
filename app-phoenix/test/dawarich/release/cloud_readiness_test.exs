@@ -11,11 +11,17 @@ defmodule Dawarich.Release.CloudReadinessTest do
 
   setup do
     scratch_sql!(ReleaseMigrator.baseline_sql())
+
+    ScratchRepo.query!("DELETE FROM ar_internal_metadata WHERE key='phoenix_native_baseline'", [],
+      log: false
+    )
+
     Release.install_schemas(ScratchRepo)
 
     versions =
       (ReleaseMigrations.all() ++ [__MODULE__.Pending])
       |> Enum.flat_map(& &1.data_versions())
+      |> Kernel.++(Dawarich.RailsTree.versions("data"))
       |> Enum.uniq()
 
     ScratchRepo.query!(

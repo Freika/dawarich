@@ -7,7 +7,7 @@ defmodule Dawarich.Release.Cloud do
   def migrate(repo, opts) do
     safely(fn ->
       with {:ok, opts} <- CloudPreflight.check(repo, opts) do
-        Native.with_lock(repo, opts, fn ->
+        Dawarich.Cloud.SessionConnection.with_migration_lock(repo, opts, fn ->
           with {:ok, opts} <- CloudPreflight.check(repo, opts) do
             install_private(repo)
             Lease.with_lease(repo, opts, fn lease -> provision(repo, opts, lease) end)
@@ -19,6 +19,7 @@ defmodule Dawarich.Release.Cloud do
 
   defp provision(repo, opts, lease) do
     fence!(repo, lease)
+    opts = Dawarich.Release.CloudDataLedger.baseline(repo, opts)
 
     with {:ok, result} <-
            ReleaseMigrator.migrate(repo, Keyword.merge(opts, lease: lease, job_mode: :enqueue)),
@@ -58,7 +59,7 @@ defmodule Dawarich.Release.Cloud do
            true <-
              Code.ensure_loaded?(Dawarich.Users.CreationEffects) and
                function_exported?(Dawarich.Users.CreationEffects, :apply, 3) do
-        Native.with_lock(repo, opts, fn ->
+        Dawarich.Cloud.SessionConnection.with_migration_lock(repo, opts, fn ->
           if ready?(repo, opts) do
             Lease.with_lease(repo, opts, fn lease ->
               fence!(repo, lease)
@@ -102,18 +103,7 @@ defmodule Dawarich.Release.Cloud do
     end)
   end
 
-  defp data_current?(repo, opts) do
-    required =
-      Keyword.get_lazy(opts, :releases, &ReleaseMigrations.all/0)
-      |> Enum.flat_map(& &1.data_versions())
-      |> Enum.uniq()
-
-    repo.query!(
-      "SELECT version FROM public.data_migrations WHERE version=ANY($1::text[])",
-      [required],
-      log: false
-    ).num_rows == length(required)
-  end
+  defp data_current?(repo, opts), do: Dawarich.Release.CloudDataLedger.current?(repo, opts)
 
   defp install_private(repo) do
     for {schema, path} <- CloudPreflight.private_paths() do
