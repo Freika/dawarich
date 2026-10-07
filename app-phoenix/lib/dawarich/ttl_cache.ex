@@ -15,24 +15,71 @@ defmodule Dawarich.TtlCache do
 
   def fetch(key, ttl_ms, fun, opts \\ [])
       when is_integer(ttl_ms) and ttl_ms >= 0 and is_function(fun, 0) do
-    case lookup(key) do
+    case claim(key) do
       {:ok, value} ->
         value
 
-      :error ->
-        value = fun.()
+      {:load, token} ->
+        try do
+          value = fun.()
 
-        if is_nil(value) and not Keyword.get(opts, :cache_nil, true),
-          do: nil,
-          else: store(key, value, ttl_ms)
+          unless is_nil(value) and not Keyword.get(opts, :cache_nil, true) do
+            now = System.monotonic_time(:millisecond)
+            if :ets.info(__MODULE__, :size) > @max, do: evict(now, {key, token, :loading})
+
+            replace(
+              {key, token, :loading},
+              {key, value, System.monotonic_time(:millisecond) + ttl_ms}
+            )
+          end
+
+          value
+        after
+          :ets.delete_object(__MODULE__, {key, token, :loading})
+        end
     end
+  end
+
+  defp claim(key) do
+    now = System.monotonic_time(:millisecond)
+
+    case :ets.lookup(__MODULE__, key) do
+      [{^key, value, expires_at}] when is_integer(expires_at) and expires_at > now ->
+        {:ok, value}
+
+      old ->
+        token = make_ref()
+        pending = {key, token, :loading}
+
+        claimed =
+          case old do
+            [] ->
+              :ets.insert_new(__MODULE__, pending)
+
+            [entry] ->
+              replace(entry, pending) == 1
+          end
+
+        if claimed, do: {:load, token}, else: claim(key)
+    end
+  end
+
+  defp replace({key, previous, expires_at}, {key, value, expires}) do
+    :ets.select_replace(__MODULE__, [
+      {{:"$1", :"$2", :"$3"},
+       [
+         {:"=:=", :"$1", {:const, key}},
+         {:"=:=", :"$2", {:const, previous}},
+         {:"=:=", :"$3", {:const, expires_at}}
+       ], [{{:"$1", {:const, value}, {:const, expires}}}]}
+    ])
   end
 
   def lookup(key) do
     now = System.monotonic_time(:millisecond)
 
     case :ets.lookup(__MODULE__, key) do
-      [{^key, value, expires_at}] when expires_at > now -> {:ok, value}
+      [{^key, value, expires_at}] when is_integer(expires_at) and expires_at > now -> {:ok, value}
       _ -> :error
     end
   end
@@ -52,8 +99,16 @@ defmodule Dawarich.TtlCache do
     value
   end
 
-  defp evict(now) do
+  defp evict(now, preserved \\ nil) do
     :ets.select_delete(__MODULE__, [{{:_, :_, :"$1"}, [{:"=<", :"$1", now}], [true]}])
-    if :ets.info(__MODULE__, :size) >= @max, do: :ets.delete_all_objects(__MODULE__)
+    threshold = if preserved, do: @max + 1, else: @max
+
+    if :ets.info(__MODULE__, :size) >= threshold do
+      if preserved do
+        :ets.select_delete(__MODULE__, [{:"$1", [{:"=/=", :"$1", {:const, preserved}}], [true]}])
+      else
+        :ets.delete_all_objects(__MODULE__)
+      end
+    end
   end
 end
