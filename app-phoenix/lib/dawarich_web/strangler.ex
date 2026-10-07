@@ -215,6 +215,7 @@ defmodule DawarichWeb.Strangler do
 
   def gate_open?(%{rails_gate: {module, function}, path_params: params} = route, conn) do
     DawarichWeb.PageEnvelope.authenticate_first?(conn, route) or
+      DawarichWeb.AuthenticatedPageGate.admit?(route, conn) or
       apply(module, function, [conn, params])
   rescue
     error -> handed_to_rails(conn, inspect(error.__struct__))

@@ -60,10 +60,15 @@ defmodule DawarichWeb.RailsAuth do
   end
 
   defp current_user(conn, session, secret, now) do
-    case Accounts.from_session(session, now) do
-      {:locked, _user} -> {nil, :session}
-      nil -> conn |> remembered(secret, now) |> remembered_user()
-      user -> {user, nil}
+    if Dawarich.Standalone.enabled?() and
+         match?({:ok, _, _}, Dawarich.Auth.Otp.Pending.valid(session, DateTime.to_unix(now))) do
+      {nil, nil}
+    else
+      case Accounts.from_session(session, now) do
+        {:locked, _user} -> {nil, :session}
+        nil -> conn |> remembered(secret, now) |> remembered_user()
+        user -> {user, nil}
+      end
     end
   end
 

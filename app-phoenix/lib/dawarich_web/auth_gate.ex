@@ -60,7 +60,7 @@ defmodule DawarichWeb.AuthGate do
   end
 
   defp native_options(flow, opts) do
-    if Dawarich.Standalone.enabled?() and flow in ["credentials", "otp"],
+    if Dawarich.Standalone.enabled?() and flow in ["credentials", "otp", "two_factor"],
       do: Keyword.put(opts, :native, true),
       else: opts
   end
