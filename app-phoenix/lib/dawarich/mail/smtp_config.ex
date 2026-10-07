@@ -1,7 +1,13 @@
 defmodule Dawarich.Mail.SmtpConfig do
   @moduledoc false
-  @speakable ~w(plain login cram_md5)
+  @speakable ~w(plain login cram_md5 xoauth2)
   @no_auth ~w(none nil false off disabled)
+
+  def admitted?(env) do
+    configured = options(env)
+    Dawarich.Standalone.enabled?(env) or configured[:auth_mechanism] != "xoauth2"
+  end
+
   def options(env) do
     authenticate?(env)
 
@@ -71,8 +77,8 @@ defmodule Dawarich.Mail.SmtpConfig do
 
       true ->
         raise ArgumentError,
-              "SMTP_AUTHENTICATION=#{raw}: native mail refuses delivery because gen_smtp cannot enforce this mechanism; " <>
-                "no authentication or TLS fallback; supported selections are plain, login, cram_md5 or none"
+              "SMTP_AUTHENTICATION=#{raw}: native mail refuses delivery because the mechanism is unsupported; " <>
+                "no authentication or TLS fallback; supported selections are plain, login, cram_md5, xoauth2 or none"
     end
   end
 
@@ -81,24 +87,7 @@ defmodule Dawarich.Mail.SmtpConfig do
   defp auth_policy(env, true) do
     selected = (env["SMTP_AUTHENTICATION"] || "plain") |> String.trim() |> String.downcase()
     selected = if selected == "", do: "plain", else: selected
-    wire = selected |> String.upcase() |> String.replace("_", "-") |> String.to_charlist()
-
-    guard = fn
-      ~c"available authentication types, in order of preference: ~p~n", [types] ->
-        unless types == [wire] do
-          throw(
-            {:permanent_failure,
-             "native mail cannot enforce SMTP_AUTHENTICATION=#{selected}: " <>
-               "server must advertise only the selected supported AUTH mechanism; " <>
-               "delivery refused without authentication or TLS fallback"}
-          )
-        end
-
-      _, _ ->
-        :ok
-    end
-
-    [trace_fun: guard]
+    [auth_mechanism: selected]
   end
 
   defp ssl?(env) do

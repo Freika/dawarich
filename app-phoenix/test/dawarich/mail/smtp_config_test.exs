@@ -16,6 +16,7 @@ defmodule Dawarich.Mail.SmtpConfigTest do
     assert options[:ssl] == false
     assert options[:tls] == :always
     assert options[:auth] == :always
+    assert options[:auth_mechanism] == "plain"
     assert options[:username] == ~c"u"
     assert options[:password] == ~c"p"
     assert options[:hostname] == ~c"localhost"
