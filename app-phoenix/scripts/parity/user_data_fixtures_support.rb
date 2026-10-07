@@ -161,6 +161,8 @@ module UserDataFixturesSupport
   end
 
   def save_entries(name, entries)
+    return unless ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+
     unsafe = {}
     entries.each do |path, bytes|
       if path.start_with?('/', '\\') || path.split('/').include?('..')
