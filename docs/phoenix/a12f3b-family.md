@@ -34,3 +34,13 @@ Shared knowledge counterpart: **Dawarich — A12f-3b family producers and activa
 The retained `Family::Invitations::SendingJob` and `Families::LapseNotificationJob` forward positional IDs unchanged. Their native mail workers normalize signed decimal string IDs, including leading zeroes, to signed 64-bit integers before dispatch. Integer IDs remain accepted. Invalid scalar IDs, overflow, extra keys and unsupported versions remain rejected. The normalization is local to these two mail workers; shared mail decoding and ownership selection are unchanged.
 
 `app-phoenix/test/dawarich/a12f3b_e07_test.exs`, selector `a12f3b_case:E07R1`, drives the real outbox dispatcher for both mail commands using integer and numeric string IDs, then asserts delivery, replay without duplicate mail, and no pending, quarantined or incomplete mail work. `spec/services/families/job_commands_spec.rb` characterizes the corresponding Rails delivery and forwarding forms. This repairs a Phoenix source-handoff gap; it fixes no Rails bug and adds no ED/DRB entry.
+
+## Standalone Families browser envelopes
+
+The G44 Families confirmation, lifecycle and sharing specs pass unchanged in standalone mode on the integration baseline. Their browser requests already reach native family actions; no broader admission or negotiation change is required for these scenarios.
+
+Confirmed Leave, Remove and Delete links send `POST` with `_method=delete` in both the query and URL-encoded body, a valid `X-CSRF-Token`, and `Accept: text/vnd.turbo-stream.html, text/html, application/xhtml+xml`. Native responses match Rails: 302 HTML redirects. The invitation acceptance link uses a regular URL-encoded navigation form, `_method=post`, a body authenticity token and the invitation token in the query. It joins once and redirects to `/family`.
+
+Sharing submits a URL-encoded `POST` with `_method=patch`, a body authenticity token, the Turbo Accept list, and `Turbo-Frame: location-sharing-<user id>`. Its fields are `enabled`, `duration`, `share_history` and `history_window`. Rails and Phoenix return a 200 Turbo stream. The sharing update remains available to members, while family locations include only consenting members and immediately omit revoked consent.
+
+`app-phoenix/test/dawarich_web/family_browser_envelopes_test.exs` exercises these requests through the full Endpoint in standalone mode, including method admission, CSRF, routing, redirects, persistent consent and the locations reader. Each of its six named regressions has characterization RED, restored GREEN, a failing mutation in the real family form dispatcher, and restored GREEN evidence. Existing behavior is characterized; these tests do not claim a new production fix or a Rails bug fix.
