@@ -927,3 +927,24 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   defp restore_env(name, nil), do: System.delete_env(name)
   defp restore_env(name, value), do: System.put_env(name, value)
 end
+
+defmodule DawarichWeb.A12f3aOEdHandoffTest do
+  use ExUnit.Case, async: true
+
+  @tag a12f3a_o08_review: true
+  test "R2: row 24 can reconcile every historical ED by branch, disposition, evidence and prerequisite" do
+    ledger = File.read!(Path.expand("../../../docs/phoenix/a12f3a-closure.md", __DIR__))
+
+    for id <- ~w(119 152 194 212 249 295 335 355 370 383 392 400 410 411) do
+      rows = ledger |> String.split("\n") |> Enum.filter(&String.starts_with?(&1, "| ED-#{id} |"))
+      assert length(rows) == 1, "one actionable mapping required for ED-#{id}"
+      [row] = rows
+      cells = row |> String.split("|") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+      assert ["ED-" <> ^id, branch, disposition, evidence, prerequisite] = cells
+      assert byte_size(branch) > 10
+      assert disposition =~ ~r/\A(No change proposed|Propose bounded native)/
+      assert evidence =~ "`"
+      assert byte_size(prerequisite) > 10
+    end
+  end
+end

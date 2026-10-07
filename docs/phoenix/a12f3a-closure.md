@@ -218,14 +218,28 @@ map redirects and VideoStudio hook registration. No duplicate routes or hook
 registrations were added. Handler existence was checked against that integration
 base before native registration was asserted.
 
-The O01 ledger contains 90 source method/path rows. The O06 aggregate exercises
-47 declarations, and O07 exercises the remaining 43. Each uses the real Endpoint
-for independent-key rollback, explicit self-hosted and Cloud modes, fresh and
-legacy stored settings, original query/entity bytes, and unchanged domain and
-outbox/reverse-command counts. The 39 GET rows additionally exercise original
-HEAD rollback. This gives 516 real rollback requests. These assertions establish
-registration and pre-effect rollback; domain-specific rendering, validation,
-workers and storage retain their own closure evidence and residual boundaries.
+The O01 ledger contains 90 source method/path rows. O06 checks 47 declarations
+and O07 checks the remaining 43. Review R1 showed that the original 516 replay
+probes used unsupported envelopes, so they did not establish key independence.
+Those probes remain only raw-envelope replay evidence across explicit Cloud and
+self-hosted modes and fresh/legacy settings; their results are not native
+admission evidence.
+
+The corrected aggregates pair every source method and its original HEAD variant
+with an eligible request through the real Endpoint on self-hosted: 90 methods and
+39 HEAD variants, 129 pairs. Each pair first clears rollback keys, asserts its
+eligibility gate, a native 200/301/302/303 outcome and original native-method
+marker, and no Rails connection. It rolls that probe's database transaction back,
+then sends the identical method, path, query and body with only the selected key
+pinned. Rails must receive the exact request line and entity bytes, return 204,
+and leave full domain/user/attachment/outbox rows and reverse commands unchanged.
+GET/HEAD probes are bodyless; writes use the signed synthetic session and valid
+CSRF token. Owned imports/trips/segments/visits/tags/areas and signed synthetic
+upload blobs provide eligible state. The current public missing-capability branch
+is tested as a native redirect. Backup GET/HEAD also gets the same behavioral
+pair in explicit Cloud mode. Places/video Cloud gates and unsupported legacy
+settings remain their owners' deferred boundaries. No Cloud admission is inferred
+from self-hosted evidence.
 
 | Source routes / key | Rows | Native handler disposition |
 |---|---:|---|
@@ -293,9 +307,34 @@ registry, scheduler, effect sinks or ownership policy:
 | `visits.full_history_redetect`, visit suggestions and month invalidation | Version-1 actor/zone/plan/locale, accepted event identity and completion-based cooldown; actor/owner lock and existing month-worker fences | `a12f3a-v-closure.md` |
 | route-video attachment cleanup | Attachment record/name/ID, blob and actor snapshot, retained/shared blob safety and durable deletion dedupe; native storage job, compatible explicit source pin | `a12f3a-r-closure.md` |
 
-These are branch-scoped ED proposals, not closure of a historical ED or the master
-125/78/24 inventories. Sibling row 24 remains the only expected-diffs writer.
-No Rails application defect was fixed by this wiring cut.
+### Branch-specific expected-diff handoff (review R2)
+
+The producer table above describes contracts; it is not an ED disposition table.
+The following proposals apply only to the named branches. Sibling row 24 alone
+edits `app-phoenix/parity/expected_diffs.md`; this cut leaves it untouched. No
+historical ED is proposed closed in full. `O06` and `O07` evidence below means
+the correspondingly named aggregates in
+`test/dawarich_web/a12f3a_o_closure_test.exs`; their supported HTTP observations
+establish route ownership, not worker/cron readiness or release acceptance.
+
+| ED | Precise affected branch | Proposed disposition | Supporting test/source evidence | Remaining owner prerequisite |
+|---|---|---|---|---|
+| ED-119 | Shared ingestion/transport refusals: malformed JSON, ambiguous headers/session/CSRF, unsupported browser shapes | No change proposed; remains open for every unproven envelope | O02 malformed replay table; `a8_request.ex`, `map_write_request.ex`, `imports_request.ex`; O06/O07 valid forms do not exercise ingestion JSON | A12f-2 J transport and ingestion owners must prove each retained shape; original replay probes supply no closure credit |
+| ED-152 | API countries/visited/digest writes, Cloud/HEAD and stored summary refusal tails | No change proposed; API branches remain open; browser digest routes do not close their API counterparts | O06 exercises web `/digests` and `/stats`; `digest_actions.ex`, `stats_actions.ex` | A12f-2 API read/write owners and shared tile/cache owner; Q owns residual stored summaries |
+| ED-194 | API geocoding/photos/provider enrichment, thumbnail and provider failure/cache branches | No change proposed; remains open in this route-wiring cut | O06 places navigation is a web branch; `place_navigation.ex`; provider evidence remains in `a12f3a-p-closure.md` | Provider/API/cache owners must reconcile their separate evidence; no provider execution proven here |
+| ED-212 | API tracked-months/tiles/hexagons, point writes, Cloud/HEAD and coercion tails | No change proposed; API branches remain open; browser bulk deletion supplies no API closure | O06 web `/points/bulk_destroy`; `point_list_actions.ex`; `a12f3a-w-closure.md` | A12f-2 point APIs and sibling tile/cache/invalidation owners; no API admission or sink retirement inferred |
+| ED-249 | Self-hosted web imports eligible GET/new/show/edit/download, POST/create, PATCH/PUT/update, DELETE and extraction methods, with supported owned stored state | Propose bounded native ownership for the O07 eligible HTTP rows; retain explicit imports rollback and all untested envelope/state/storage branches | O07 paired Endpoint methods; `import_routes.ex`, `imports_gate.ex`, `imports_request.ex`; `a12f3a-i-closure.md` | I/F own remaining format/state/storage failures; J owns malformed transport; registry/drain owners own accepted continuation lineage |
+| ED-295 | Achievement collection/detail admission, redirected/unsupported keys, sharing/unlock additions | No change proposed; no achievement route is in the 90-row census | O06/O07 route tables contain no `/achievements`; existing counterpart `a10c-achievement-actions.md` | Achievement owner and release lane retain their existing dispositions |
+| ED-335 | Credentials/recovery/remember/registration/OAuth, Cloud/provider/forwarding/session refusal branches | No change proposed; authentication behavior remains open as recorded | O06/O07 consume `RailsAuth` and `RequireUser`, not native sign-in/recovery transitions; `rails_auth.ex` | A12f-2 auth owners and external lifecycle handoff; these request pairs grant no lifecycle credit |
+| ED-355 | Self-hosted web points index/address, tags index/new/edit and owned track-segment GET/HEAD; independent points/tags/tracks rollback | Propose bounded native ownership for the O06 eligible reads, retaining unsupported/foreign/legacy branches | O06 paired Endpoint reads with seeded track/segment/tag/point; `map_data_gate.ex`, `map_frames.ex` | M owns foreign/missing frame and rare settings/ordering outcomes; J owns unsupported envelopes |
+| ED-370 | Shared-link/notes/visits/account APIs, Cloud/HEAD/providers/deletion/remember-state branches | No change proposed; web trip notes/visits do not close API branches | O07 web `/trips/:trip_id/notes` and `/visits`; `trip_note_actions.ex`, `visit_actions.ex` | A12f-2 API owners, providers/cache, auth and external lifecycle handoff retain their boundaries |
+| ED-383 | Self-hosted web tag CRUD, segment PATCH/PUT and point bulk deletion; areas and transportation recalculation web admission | Propose bounded native ownership for O06 eligible writes and independent keys; retain coercion/session/legacy/error tails | O06 paired CSRF-valid forms; `map_write_request.ex`, `area_actions.ex`, `segment_actions.ex`; `a12f3a-w-closure.md` | W and J own residual coercions/envelopes; shared achievement/cache/live sinks and controller stand acceptance remain |
+| ED-392 | Current-user `/settings/users/export` GET/HEAD in self-hosted and Cloud; self-hosted `/settings/users/import` POST; admin mutations/deletion/mail/provider branches unaffected | Propose bounded native ownership for only current-user backup HTTP; retain the broad settings pin and independent user_data pin | O07 pairs and explicit Cloud backup pairs; `user_data_routes.ex`, `user_data_controller.ex`; `a12f3a-e-closure.md` | E owns storage/restore follow-ups; sibling registry/producer/drain owners and release lane; no admin/lifecycle expansion |
+| ED-400 | Four `/api/v1/users/me/two_factor` management methods, Cloud/duplicate/trailing-slash refusals | No change proposed; no OTP request or assertion changed | O06/O07 route census has no OTP API; `a12f3a-closure.md` source-method census | A12f-2 OTP owner and controller integration/stand/image lane; existing local disposition retained |
+| ED-410 | Achievement sharing/unlock/public presentation, runtime headers/session cookies/embeds | No change proposed; web shared month/digest metadata does not prove achievement presentation | O06 public `/shared/month` and `/shared/digest` only; `shared_stats_page.ex`; `a10c-achievement-actions.md` | Achievement/public media owners and controller browser/stand/image lane retain their evidence |
+| ED-411 | Retained backup HTTP clause only: export GET/HEAD self-hosted and Cloud, import POST self-hosted; achievement sharing/unlock/public HTML, PNG/providers/admin/background producers unaffected | Propose bounded native ownership for current-user backup HTTP only; retain independent user_data/shared rollback and all unrelated achievement branches | O07 backup HTTP and no post-publication replay; `user_data_routes.ex`, `user_data_controller.ex`; O06 public stats uses shared metadata | E and typed registry/producer/drain owners must prove backup worker/restore readiness; achievement/media/release owners unchanged |
+
+No Rails application defect was fixed by this test/doc correction.
 
 ### Reconciled source and verification evidence
 
@@ -317,15 +356,31 @@ goldens and unrelated legacy visit timezone/track locale captures retain their
 pre-task bytes. The subsequent complete six-generator assertion batch passed
 59 examples with zero failures. Swagger and schema remain unchanged.
 
-The O06 and O07 aggregate tests have missing-behavior RED, GREEN, prescribed
-mutation failures and restored GREEN. M-O06 removes area PUT and fails that
-method's declaration; M-O07 removes user_data metadata and fails the independent
-backup-key assertion. The expanded regression batch, including the established visit-settings
-rollback contract and all retained native poster styles, passes 26 tests with
-zero failures. Forced warnings-as-errors compile of 1668 files, whole-tree
-formatting, changed-generator RuboCop and explicit source-packet secret scans
-pass. Full seed404 acceptance and final branch state follow below; seed202 and
-browser/stand/image acceptance remain the controller's integration/release lane.
+Historical O06/O07 evidence below predates review R1. M-O06 removed area PUT
+and checked its declaration. M-O07 removed user_data metadata and failed a
+metadata assertion before its behavioral probe. Those mutations did not prove
+independent rollback; the original 516 replay requests were already ineligible.
+Their expanded 26-test regression batch, forced compile, format and source
+recorder verification remain historical evidence for the implementation cut.
+
+Review corrections retain the same two named route aggregates. Their initial
+native-first assertions fail against the old helper; eligible resource/form
+setup makes them pass. M-R1-O06 ignores the areas rollback key and fails the
+behavioral `rollback areas: POST /areas` assertion. M-R1-O07 removes user_data
+metadata and now fails `rollback user_data: GET /settings/users/export`, after
+native eligibility and native Endpoint outcome have been proven. Both restored
+selectors pass. R2's named row-24 handoff test fails on missing ED119 before the
+mapping table, passes with it, fails M-R2-ED400 (omitted ED400 mapping), and passes
+after restoration. Full row snapshots are collected in one SQL statement per
+observation to preserve the checks without repeated database round trips.
+
+The final focused regression batch includes the corrected closure aggregates,
+existing backup/page/map/visit-settings behavior and Cloud/native lifecycle
+transition guards: **34 tests, 0 failures**, seed404. No production routing or
+lifecycle guard change was needed. Changed Ruby specs/RuboCop are inapplicable
+to this test/doc-only correction. The forced compile, full format and controller
+seed404 gate results for this correction are recorded in its fix report.
+
 
 
 The first seed404 suite finished 9125 tests with two failures: missing vendor
@@ -337,7 +392,7 @@ source, then passes, fails M-O07 and passes after restoration. No existing
 contract assertion, timeout or skip was weakened. Final seed404 acceptance is recorded below.
 
 
-Final O08 acceptance: the required controller seed404 wrapper completed with
+Historical O08 acceptance: the required controller seed404 wrapper completed with
 exit0, **9125 tests, 0 failures**. Partition summaries:
 
 - partition-1.log: 3213 tests, 0 failures, 2 excluded, 1 skipped
@@ -348,3 +403,15 @@ The inherited six exclusions and three skips are unchanged. Forced production
 compile with warnings-as-errors, whole-tree format check, the 59-example Rails
 source batch and changed-generator RuboCop all pass. Seed202 and the recorded
 shared-owner/release prerequisites remain the controller's separate lanes.
+
+Review-fix acceptance (2026-10-07): the required controller seed404 wrapper
+completed with exit0, **9173 tests, 0 failures**. Partition summaries:
+
+- partition-1.log: 3150 tests, 0 failures, 2 excluded, 1 skipped
+- partition-2.log: 2768 tests, 0 failures, 3 excluded, 2 skipped
+- partition-3.log: 3255 tests, 0 failures, 1 excluded
+
+The six exclusions and three skips belong to the existing suite. Forced
+`MIX_ENV=test mix compile --warnings-as-errors --force` and whole-tree
+`mix format --check-formatted` also pass. The correction changes tests and this
+ledger only; Cloud lifecycle refusal remains intact.
