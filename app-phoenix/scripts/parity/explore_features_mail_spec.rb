@@ -94,6 +94,13 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
     fixture_bytes(residual_path('effects'), fixture)
   end
 
+  it 'matches source capture bytes for all four residual fixture contracts' do
+    { 'content' => :residual_content, 'auth_intents' => :residual_auth_intents,
+      'digest_content' => :residual_digest_content, 'effects' => :residual_mail_effects }.each do |name, capture|
+      RSpec::Mocks.with_temporary_scope { fixture_bytes(residual_path(name), send(capture)) }
+    end
+  end
+
   it 'characterizes unknown serialized mail wrappers as source debt without decoding GlobalIDs' do
     counts = { unknown: 0 }
     classes = Hash.new(0)
