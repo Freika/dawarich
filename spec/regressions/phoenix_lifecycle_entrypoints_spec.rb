@@ -297,6 +297,24 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
     end
   end
 
+  it 'B1-R2 actual Cloud scripts refuse mapped and compatible aliases before downstream effects' do
+    matrix = JSON.parse(File.read(File.join(root, 'app-phoenix/test/fixtures/cloud_admission_matrix.json')))
+    vectors = matrix.fetch('vectors').select do |vector|
+      vector.fetch('case').start_with?('B1-R2-review-', 'B1-R2-transaction-alias-2-')
+    end
+    expect(vectors.size).to eq(8)
+    vectors.each do |vector|
+      %w[release.sh cloud-entrypoint.sh cloud-sidekiq-entrypoint.sh].each do |script|
+        FileUtils.rm_f(calls_file)
+        args = script == 'cloud-sidekiq-entrypoint.sh' ? %w[sidekiq -C config/sidekiq.yml] : server
+        result = run_script(script, *args, **vector.fetch('changes'), SELF_HOSTED: 'false', DAWARICH_RAILS: 'off')
+        expect(result[:status]).not_to be_success, vector.fetch('case')
+        expect(result[:calls]).to be_empty
+        expect(result[:stderr]).not_to include('synthetic-shell-key')
+      end
+    end
+  end
+
   it 'B2 actual Cloud scripts refuse malformed URLs before downstream effects' do
     vectors = [
       { MANAGER_URL: 'https://manager.example.invalid:0' },

@@ -5,7 +5,7 @@ defmodule Dawarich.Cloud.EndpointURL do
   def origin?(url) do
     with {:ok, uri} <- uri(url),
          true <- uri.scheme == "https" and uri.port in 1..65_535,
-         true <- host?(uri.host, false),
+         {:ok, _} <- canonical_host(uri.host, false),
          true <- uri.userinfo == nil and uri.path in [nil, ""] and uri.query == nil,
          do: true,
          else: (_ -> false)
@@ -38,49 +38,63 @@ defmodule Dawarich.Cloud.EndpointURL do
 
   defp database(url) do
     with {:ok, uri} <- uri(url),
-         true <- uri.scheme in ["postgres", "postgresql"] and host?(uri.host, true),
+         true <- uri.scheme in ["postgres", "postgresql"],
+         {:ok, host} <- canonical_host(uri.host, true),
          true <- is_binary(uri.path) and String.starts_with?(uri.path, "/"),
          db <- uri.path |> String.slice(1..-1//1) |> URI.decode(),
          true <- db != "" and not Regex.match?(~r/[\s\/\x{00a0}\x00-\x1f]/u, db),
          port <- uri.port || 5432,
          true <- port in 1..65_535,
          query <- URI.query_decoder(uri.query || "") |> Enum.to_list() do
-      {:ok, %{host: normalize_host(uri.host), port: port, query: query}}
+      {:ok, %{host: host, port: port, query: query}}
     else
       _ -> :error
     end
   end
 
-  defp host?(host, ipv6) when is_binary(host) do
-    normalized = host |> String.downcase() |> String.replace_suffix(".", "")
-
-    cond do
-      String.contains?(normalized, ":") ->
-        ipv6 and match?({:ok, _}, :inet.parse_ipv6_address(String.to_charlist(normalized)))
-
-      Regex.match?(~r/\A(?:0x[0-9a-f]+|[0-9]+)(?:\.(?:0x[0-9a-f]+|[0-9]+))*\z/, normalized) ->
-        String.split(normalized, ".") |> length() == 4 and
-          match?({:ok, _}, :inet.parse_ipv4strict_address(String.to_charlist(normalized)))
-
-      true ->
-        byte_size(normalized) <= 253 and
-          Enum.all?(String.split(normalized, "."), fn label ->
-            byte_size(label) in 1..63 and
-              Regex.match?(~r/\A[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\z/, label)
-          end)
-    end
-  end
-
-  defp host?(_, _), do: false
-
-  defp normalize_host(host) do
+  defp canonical_host(host, ipv6) when is_binary(host) do
     host = host |> String.downcase() |> String.replace_suffix(".", "")
 
+    host =
+      if String.starts_with?(host, "[") and String.ends_with?(host, "]") and
+           String.contains?(host, ":"),
+         do: String.slice(host, 1..-2//1),
+         else: host
+
     case :inet.parse_address(String.to_charlist(host)) do
-      {:ok, address} -> address |> :inet.ntoa() |> to_string()
-      _ -> host
+      {:ok, address} when tuple_size(address) == 4 ->
+        if host == to_string(:inet.ntoa(address)), do: {:ok, host}, else: :error
+
+      {:ok, address} when ipv6 ->
+        if Regex.match?(~r/\A[0-9a-f:.]+\z/, host),
+          do: {:ok, address |> canonical_address() |> :inet.ntoa() |> to_string()},
+          else: :error
+
+      {:error, _} ->
+        numeric = Regex.match?(~r/\A(?:0x[0-9a-f]+|[0-9]+)(?:\.(?:0x[0-9a-f]+|[0-9]+))*\z/, host)
+
+        valid =
+          not numeric and byte_size(host) <= 253 and
+            Enum.all?(String.split(host, "."), fn label ->
+              byte_size(label) in 1..63 and
+                Regex.match?(~r/\A[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\z/, label)
+            end)
+
+        if valid, do: {:ok, host}, else: :error
+
+      _ ->
+        :error
     end
   end
+
+  defp canonical_host(_, _), do: :error
+
+  defp canonical_address({0, 0, 0, 0, 0, prefix, high, low})
+       when prefix == 65_535 or (prefix == 0 and (high > 0 or low > 1)) do
+    {div(high, 256), rem(high, 256), div(low, 256), rem(low, 256)}
+  end
+
+  defp canonical_address(address), do: address
 
   defp pooled?(endpoint) do
     endpoint.port == 6432 or String.contains?(endpoint.host, "pgbouncer") or
@@ -123,8 +137,9 @@ defmodule Dawarich.Cloud.EndpointURL do
         true -> []
       end
       |> Enum.map(fn {host, port} ->
-        true = host?(host, true) and port in 1..65_535
-        %{host: normalize_host(host), port: port, query: []}
+        {:ok, host} = canonical_host(host, true)
+        true = port in 1..65_535
+        %{host: host, port: port, query: []}
       end)
 
     endpoints = urls ++ configured

@@ -111,7 +111,19 @@ defmodule Dawarich.Release.AdmissionSecurityTest do
 
   test "B2 all 648 reviewer cases have identical shell and Elixir admission decisions" do
     matrix = File.read!("test/fixtures/cloud_admission_matrix.json") |> Jason.decode!()
+    vectors = Enum.reject(matrix["vectors"], &String.starts_with?(&1["case"], "B1-R2-"))
+    assert length(vectors) * 12 == 648
+    assert_matrix(Map.put(matrix, "vectors", vectors))
+  end
 
+  test "B1-R2 shared host matrix refuses all 30 reviewer aliases with identical shell and Elixir decisions" do
+    matrix = File.read!("test/fixtures/cloud_admission_matrix.json") |> Jason.decode!()
+    vectors = Enum.filter(matrix["vectors"], &String.starts_with?(&1["case"], "B1-R2-"))
+    assert length(vectors) * 12 == 732
+    assert_matrix(Map.put(matrix, "vectors", vectors))
+  end
+
+  defp assert_matrix(matrix) do
     rows =
       for vector <- matrix["vectors"],
           rails <- [nil, "proxy", "off"],
@@ -123,10 +135,9 @@ defmodule Dawarich.Release.AdmissionSecurityTest do
           |> Enum.reject(fn {_, value} -> is_nil(value) end)
           |> Map.new()
 
-        %{"case" => vector["case"], "env" => env}
+        %{"case" => vector["case"], "env" => env, "native" => vector["native"] == true}
       end
 
-    assert length(rows) == 648
     root = Path.expand("..")
     dir = Path.join(System.tmp_dir!(), "admission-#{System.unique_integer([:positive])}")
     File.mkdir_p!(dir)
@@ -184,7 +195,7 @@ defmodule Dawarich.Release.AdmissionSecurityTest do
 
         if row["env"]["DAWARICH_PHOENIX_LIFECYCLE"] == "true" or
              row["env"]["DAWARICH_RAILS"] == "off" do
-          if row["case"] in ["valid", "session_tls"] and
+          if (row["native"] or row["case"] in ["valid", "session_tls"]) and
                row["env"]["DAWARICH_PHOENIX_LIFECYCLE"] != "invalid" do
             assert result == {:ok, :native}, row["case"]
           else
