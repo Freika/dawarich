@@ -75,6 +75,66 @@ defmodule Dawarich.Seeds.CloudBootstrapTest do
     assert rows("SELECT count(*) FROM job_outbox") == [[0]]
   end
 
+  test "R4 Cloud creation and seed reentry preserve source and private migration ledgers" do
+    rows("DELETE FROM phoenix.release_migration_jobs")
+    rows("DELETE FROM phoenix.release_migrator_leases")
+    rows("DELETE FROM public.data_migrations")
+    rows("DELETE FROM public.ar_internal_metadata WHERE key='phoenix_native_baseline'")
+
+    rows("INSERT INTO public.data_migrations(version) SELECT unnest($1::text[])", [
+      Dawarich.RailsTree.versions("data")
+    ])
+
+    opts = [env: @env, command: fn _ -> {:ok, nil} end]
+    assert :ok = Dawarich.Release.Cloud.migrate(ScratchRepo, opts)
+    assert Dawarich.Release.Cloud.ready?(ScratchRepo, opts)
+    id = user!()
+
+    for type <- ~w(mail.user.welcome users.explore_features_mail users.creation_webhook),
+        do: Ownership.put!(ScratchRepo, "command:" <> type, :oban)
+
+    for table <-
+          ~w(public.data_migrations phoenix.phoenix_schema_migrations oban.phoenix_schema_migrations) do
+      [[removed]] =
+        rows(
+          "DELETE FROM #{table} WHERE version=(SELECT max(version) FROM #{table}) RETURNING row_to_json(#{List.last(String.split(table, "."))})"
+        )
+
+      try do
+        refute Dawarich.Release.Cloud.ready?(ScratchRepo, opts)
+        before = migration_ledgers()
+
+        assert {:ok, :ok} =
+                 ScratchRepo.transaction(fn ->
+                   CreationEffects.apply(ScratchRepo, id, env: @env, now: @now)
+                 end)
+
+        seed_opts = fixture_options()
+
+        assert :ok =
+                 Lease.with_lease(ScratchRepo, seed_opts, fn lease ->
+                   Dawarich.Seeds.run(ScratchRepo, Keyword.put(seed_opts, :lease, lease))
+                 end)
+
+        assert migration_ledgers() == before
+        refute Dawarich.Release.Cloud.ready?(ScratchRepo, opts)
+      after
+        rows("INSERT INTO #{table} SELECT * FROM json_populate_record(NULL::#{table},$1)", [
+          removed
+        ])
+      end
+
+      assert Dawarich.Release.Cloud.ready?(ScratchRepo, opts)
+    end
+  end
+
+  defp migration_ledgers do
+    for table <-
+          ~w(public.schema_migrations public.data_migrations phoenix.phoenix_schema_migrations oban.phoenix_schema_migrations public.ar_internal_metadata) do
+      {table, rows("SELECT row_to_json(t) FROM #{table} t ORDER BY row_to_json(t)::text")}
+    end
+  end
+
   defp snapshot do
     rows(
       "SELECT id,status,plan,active_until,length(api_key),api_key='synthetic-existing-key' FROM users ORDER BY id"
