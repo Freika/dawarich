@@ -10,6 +10,13 @@ defmodule DawarichWeb.PageEnvelopesTest do
 
   @source Jason.decode!(File.read!(Path.expand("../fixtures/page_envelopes/rails.json", __DIR__)))
 
+  @review Map.new(~w(f1 f2 f3 f4), fn name ->
+            {name,
+             Jason.decode!(
+               File.read!(Path.expand("../fixtures/page_envelopes/#{name}.json", __DIR__))
+             )}
+          end)
+
   setup do
     keys = [:rails_routes, :rails_upstream]
     previous = Map.new(keys, &{&1, Application.fetch_env(:dawarich, &1)})
@@ -248,6 +255,144 @@ defmodule DawarichWeb.PageEnvelopesTest do
              Plug.Test.conn(:get, "/tags") |> put_req_header("x-turbo-request-id", "synthetic"),
              []
            ).resp_body =~ "turbo-visit-control"
+  end
+
+  @tag envelope: :review_shared_layout
+  test "F1 accessible shared monthly and digest pages use frame and XHR envelope layouts" do
+    seed_shared!()
+
+    for kind <- ~w(month digest) do
+      path = "/shared/#{kind}/00000000-0000-4000-8000-000000000077"
+      document = request(path <> ".html", [], false)
+      assert_contract(document, @review["f1"][kind]["html"])
+      assert document.status == 200
+      assert document.resp_body =~ "<html"
+      assert document.resp_body =~ "/assets/application.css"
+
+      frame = request(path, [{"turbo-frame", "review-frame"}], false)
+      assert_contract(frame, @review["f1"][kind]["frame"])
+      assert frame.status == 200
+      assert String.contains?(frame.resp_body, "<html")
+      refute String.contains?(frame.resp_body, "/assets/application.css")
+
+      for accept <- ["text/javascript", "text/javascript; charset=utf-8", nil, ""] do
+        fragment =
+          request(path, [{"x-requested-with", "XMLHttpRequest"}, {"accept", accept}], false)
+
+        name = if accept in [nil, ""], do: "absent", else: "js"
+        assert_contract(fragment, @review["f1"][kind][name])
+        assert fragment.status == 200
+        assert byte_size(fragment.resp_body) > 0
+        refute String.contains?(fragment.resp_body, "<html")
+        refute String.contains?(fragment.resp_body, "/assets/application.css")
+      end
+    end
+  end
+
+  @tag envelope: :review_js_parameters
+  test "F2 parameterized JavaScript XHR selects the Rails HTML fragment fallback" do
+    for accept <- ["text/javascript; charset=utf-8", "application/javascript; charset=utf-8"] do
+      headers = [{"x-requested-with", "XMLHttpRequest"}, {"accept", accept}]
+      conn = request("/tags", headers)
+      type = accept |> String.split(";") |> hd()
+      assert_contract(conn, @review["f2"][type]["tags"])
+      assert conn.status == 200
+      assert get_resp_header(conn, "content-type") == ["text/html; charset=utf-8"]
+      refute String.contains?(conn.resp_body, "<html")
+      assert request("/tags.html", headers).resp_body =~ "<html"
+      assert request("/tags?format=html", headers).resp_body =~ "<html"
+      assert request("/map/timeline_feeds/calendar", headers).status == 406
+    end
+  end
+
+  @tag envelope: :review_quality
+  test "F3 calendar honours Rails Accept qualities parameters and stable ties" do
+    for probe <- @review["f3"]["negotiation"] do
+      assert DawarichWeb.PageAccept.formats(probe["accept"], probe["xhr"]) == probe["formats"],
+             probe["accept"]
+    end
+
+    cases = [
+      {"text/vnd.turbo-stream.html; q=0.5, text/html; q=1.0", false},
+      {"text/html; q=0.5, text/vnd.turbo-stream.html; q=1.0", true},
+      {"text/html; charset=utf-8; q=1, text/vnd.turbo-stream.html; q=0.5", false},
+      {"text/vnd.turbo-stream.html; q=1, text/html; q=1", true},
+      {"text/html; q=1, text/vnd.turbo-stream.html; q=1", false},
+      {"text/vnd.turbo-stream.html; q=0, text/html; q=1", false},
+      {"text/vnd.turbo-stream.html; q=\"0.5\", text/html; q=\"1\"", false},
+      {"text/html; note=\"a,b\"; q=1, text/vnd.turbo-stream.html; q=0.5", false}
+    ]
+
+    for {accept, stream?} <- cases do
+      conn = request("/map/timeline_feeds/calendar?month=2026-10", [{"accept", accept}])
+      assert_contract(conn, @review["f3"]["responses"][accept])
+      type = if stream?, do: "text/vnd.turbo-stream.html", else: "text/html"
+      assert conn.status == 200
+      assert get_resp_header(conn, "content-type") == [type <> "; charset=utf-8"], accept
+      assert String.contains?(conn.resp_body, "<turbo-stream") == stream?, accept
+      assert conn.resp_body =~ ~s(id="timeline-calendar-frame")
+      tags = request("/tags", [{"accept", accept}])
+      assert tags.status == 200
+      assert String.contains?(tags.resp_body, "<html")
+    end
+  end
+
+  @tag envelope: :review_shared_refusal
+  test "F4 accessible shared explicit templates retain Rails MissingTemplate status for Turbo" do
+    seed_shared!()
+
+    for kind <- ~w(month digest),
+        suffix <- ["", ".turbo_stream", "?format=turbo_stream"] do
+      path = "/shared/#{kind}/00000000-0000-4000-8000-000000000077"
+      conn = request(path <> suffix, [{"accept", "text/vnd.turbo-stream.html"}], false)
+      assert conn.status == @review["f4"][kind]["status"]
+      assert conn.status == 500
+      assert conn.resp_body == ""
+    end
+
+    assert request(
+             "/shared/month/00000000-0000-4000-8000-000000000078",
+             [
+               {"accept", "text/vnd.turbo-stream.html"}
+             ],
+             false
+           ).status == 302
+  end
+
+  defp assert_contract(conn, source) do
+    assert conn.status == source["status"]
+    assert get_resp_header(conn, "content-type") == [source["type"] <> "; charset=utf-8"]
+    assert String.contains?(conn.resp_body, "<html") == source["document"]
+    assert String.contains?(conn.resp_body, "/assets/application") == source["assets"]
+    assert String.contains?(conn.resp_body, "<turbo-stream") == source["stream"]
+  end
+
+  defp seed_shared! do
+    stamp = ~N[2026-10-07 12:00:00]
+
+    shared = %{
+      user_id: 880_001,
+      year: 2026,
+      distance: 1000,
+      sharing_uuid: Ecto.UUID.dump!("00000000-0000-4000-8000-000000000077"),
+      sharing_settings: %{"enabled" => true, "expires_at" => nil},
+      toponyms: [],
+      created_at: stamp,
+      updated_at: stamp
+    }
+
+    Dawarich.Repo.insert_all("stats", [Map.merge(shared, %{month: 10, daily_distance: []})])
+
+    Dawarich.Repo.insert_all("digests", [
+      Map.merge(shared, %{
+        period_type: 1,
+        monthly_distances: %{},
+        first_time_visits: %{},
+        time_spent_by_location: %{},
+        year_over_year: %{},
+        all_time_stats: %{}
+      })
+    ])
   end
 
   defp concrete(pattern) do

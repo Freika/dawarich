@@ -88,44 +88,35 @@ defmodule DawarichWeb.PageEnvelope do
     do: put_req_header(conn, "accept", "text/vnd.turbo-stream.html")
 
   defp html_accept(conn, _, _) do
-    accept = conn |> get_req_header("accept") |> Enum.join(", ") |> String.trim()
+    accept = conn |> get_req_header("accept") |> Enum.join(", ")
+    formats = DawarichWeb.PageAccept.formats(accept, xhr_header?(conn))
+    type = List.first(formats)
 
-    cond do
-      accept in ~w(text/javascript application/javascript) ->
-        conn
-        |> put_private(:dawarich_page_bare, true)
-        |> put_private(:dawarich_page_xhr_js, true)
-        |> put_req_header("accept", "text/html")
+    conn = put_private(conn, :dawarich_page_formats, formats)
 
-      accept == "" ->
-        conn
-        |> put_private(:dawarich_page_xhr_js, xhr_header?(conn))
-        |> put_req_header("accept", "text/html")
-
-      String.match?(accept, ~r/\Atext\/vnd\.turbo-stream\.html(?:\s*;.*)?\z/) ->
-        put_req_header(conn, "accept", "text/vnd.turbo-stream.html")
-
-      true ->
-        conn
+    if type == "text/javascript" do
+      conn
+      |> put_private(:dawarich_page_bare, true)
+      |> put_private(:dawarich_page_xhr_js, true)
+      |> put_req_header("accept", "text/html")
+    else
+      if type, do: put_req_header(conn, "accept", Enum.join(formats, ", ")), else: conn
     end
   end
 
   def accepted?(conn) do
-    accept = conn |> get_req_header("accept") |> Enum.join(", ")
-    selected = conn.private[:dawarich_page_format]
-
-    types = Enum.map(String.split(accept, ","), &String.trim(hd(String.split(&1, ";"))))
+    formats =
+      conn.private[:dawarich_page_formats] ||
+        DawarichWeb.PageAccept.formats(
+          conn |> get_req_header("accept") |> Enum.join(", "),
+          xhr_header?(conn)
+        )
 
     valued =
       conn.query_string |> String.split("&", trim: true) |> Enum.all?(&String.contains?(&1, "="))
 
     valued and
-      (selected == "html" or String.trim(accept) == "" or
-         DawarichWeb.Strangler.browser_like?(accept) or
-         Enum.any?(
-           types,
-           &(&1 in ~w(text/html application/xhtml+xml */* text/vnd.turbo-stream.html))
-         ))
+      Enum.any?(formats, &(&1 in ~w(text/html text/javascript */* text/vnd.turbo-stream.html)))
   end
 
   def authenticate_first?(conn, route) do
@@ -236,7 +227,8 @@ defmodule DawarichWeb.PageEnvelope do
 
   defp turbo_only?(conn) do
     conn.private[:dawarich_page_format] == "turbo_stream" or
-      get_req_header(conn, "accept") == ["text/vnd.turbo-stream.html"]
+      (conn.private[:dawarich_page_formats] == ["text/vnd.turbo-stream.html"] or
+         get_req_header(conn, "accept") == ["text/vnd.turbo-stream.html"])
   end
 
   defp refuse_template(%{status: status} = conn) when status in [200, 202] do
@@ -247,7 +239,12 @@ defmodule DawarichWeb.PageEnvelope do
          :achievement_image in route.pipe_through do
       conn
     else
-      status = if conn.request_path in ~w(/map/residency /places/nearby), do: 500, else: 406
+      status =
+        if conn.request_path in ~w(/map/residency /places/nearby) or
+             route.plug == DawarichWeb.SharedStatsPage,
+           do: 500,
+           else: 406
+
       %{conn | status: status, resp_body: ""}
     end
   end
