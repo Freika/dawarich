@@ -344,12 +344,12 @@ defmodule DawarichWeb.RailsSessionTest do
       refute ForceSSL.call(conn, ForceSSL.init([])).halted
     end
 
-    test "the redirect keeps the request's own Host where Rails would follow X-Forwarded-Host" do
+    test "the redirect follows the Rails recorded forwarded host" do
       rails = @fixture["force_ssl"]["forwarded_host"]
       assert rails["location"] == "https://evil.example/map"
 
       assert answer(force(rails)) ==
-               {rails["status"], "https://dawarich.example/map", nil, rails["content_type"]}
+               {rails["status"], rails["location"], nil, rails["content_type"]}
     end
   end
 end

@@ -2,9 +2,10 @@ defmodule Dawarich.MapApi.RailsDate do
   @moduledoc false
   alias Dawarich.Imports.DateParts
 
-  def parse(value) when is_binary(value) do
+  def parse(value, today \\ Date.utc_today())
+
+  def parse(value, today) when is_binary(value) do
     fields = DateParts.parse(value)
-    today = Date.utc_today()
     year = year(fields["year"] || fields["cwyear"] || today.year, value, fields)
 
     cond do
@@ -41,7 +42,7 @@ defmodule Dawarich.MapApi.RailsDate do
     _ -> :error
   end
 
-  def parse(_), do: :error
+  def parse(_, _today), do: :error
 
   defp year(n, text, fields) when n in 0..99 do
     explicit =

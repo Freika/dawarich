@@ -22,9 +22,9 @@ defmodule Dawarich.Timeline.MonthSummary do
     start =
       if Ruby.blank?(month),
         do: Date.beginning_of_month(today),
-        else: Date.from_iso8601!(String.replace(month, ~r/-(\d)\z/, "-0\\1") <> "-01")
+        else: normalize_month(month, today)
 
-    args = [user.id, start, window_now]
+    args = [user.id, Date.beginning_of_month(start), window_now]
 
     days =
       %{}
@@ -33,6 +33,13 @@ defmodule Dawarich.Timeline.MonthSummary do
       |> add_tracks(UserTimeZone.query!(tracks_sql(), args, settings, repo).rows)
 
     %{month: Calendar.strftime(start, "%Y-%m"), weeks: weeks(start, days, cutoff)}
+  end
+
+  defp normalize_month(month, today) when is_binary(month) do
+    case Dawarich.MapApi.RailsDate.parse(month <> "-01", today) do
+      {:ok, date} -> date
+      _ -> raise ArgumentError, "invalid date"
+    end
   end
 
   defp context(now, window_now, settings, repo) do

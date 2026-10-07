@@ -58,7 +58,7 @@ defmodule DawarichWeb.MapFrames do
         conn |> RailsSession.stage(changes) |> respond(accept, type, html)
 
       {:error, status} ->
-        conn |> put_resp_content_type("text/html") |> send_resp(status, "")
+        DawarichWeb.RailsErrors.respond(conn, status)
 
       :not_found ->
         raise DawarichWeb.NotFoundError
