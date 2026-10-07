@@ -63,6 +63,11 @@ defmodule Dawarich.UserData.ImportWorker do
         |> Map.put_new_lazy(:storage_services, &Dawarich.Imports.StorageContext.services/0)
         |> Map.put(:fence, fn fun -> ImportState.effect!(lease, fun) end)
         |> Map.put(:native_owner, true)
+        |> Map.put(:restore_run, %{
+          import_id: lease.import.id,
+          event_id: lease.event_id,
+          attachment: state.attachment
+        })
 
       try do
         Tempfiles.with_files(fn adopt ->
