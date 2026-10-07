@@ -186,6 +186,7 @@ defmodule DawarichWeb.ExportsDeleteTest do
              apply(Dawarich.Exports.PurgeWorker, :run, [args, [services: services, repo: Repo]])
 
     assert [] == Repo.query!("SELECT id FROM active_storage_blobs WHERE id=$1", [blob.id]).rows
+
     assert download.().status == 404
     assert redirect.(shared.signed_id).status == 302
   end

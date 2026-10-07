@@ -74,11 +74,12 @@ defmodule Dawarich.EnhancedImport.State do
   end
 
   def effect!(repo, import, fun, terminal \\ false) do
-    if fence = Map.get(import, :fence) do
-      fence.(fun, terminal)
-    else
-      {:ok, result} = repo.transaction(fun)
-      result
+    case Map.get(import, :fence) do
+      fence when is_function(fence, 2) -> fence.(fun, terminal)
+      fence when is_function(fence, 1) -> fence.(fun)
+      nil ->
+        {:ok, result} = repo.transaction(fun)
+        result
     end
   end
 

@@ -23,11 +23,11 @@ defmodule Dawarich.Imports.ManualExtraction do
 
           standalone = Dawarich.Standalone.enabled?()
 
-          if standalone and action == :extract and record.source != 4,
+          if standalone and action == :extract and record.source not in [0, 3, 4, 13],
             do: repo.rollback(:unsupported)
 
           native =
-            record.source == 4 and
+            record.source in [0, 3, 4, 13] and
               (standalone or Ownership.lock(repo, "command:" <> command) == :oban)
 
           data = record.additional_data_extraction || %{}
@@ -90,25 +90,32 @@ defmodule Dawarich.Imports.ManualExtraction do
             args = Map.take(payload, ~w(import_id user_id source source_blob_id event_id))
             repo.insert!(Dawarich.Imports.ExtractionRemovalWorker.new(args), prefix: "oban")
           else
-            if native do
+            if native and action == :extract and record.source in [0, 3, 13] do
               args =
-                if action == :extract,
-                  do: Map.put(payload, "lock_attempt", 1),
-                  else: payload
+                Map.put(payload, "lock_attempt", 1)
 
-              repo.query!(
-                "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES($1,$2,1,$3,$4,$5,now())",
-                [
-                  Ecto.UUID.dump!(event),
-                  command,
-                  args,
-                  %{"producer" => "Phoenix manual extraction"},
-                  user_id
-                ],
-                log: false
-              )
+              Dawarich.EnhancedImport.NormalWorker.enqueue!(repo, args, event, context.now)
             else
-              Dawarich.RailsCommands.insert!(repo, kind, payload)
+              if native do
+                args =
+                  if action == :extract,
+                    do: Map.put(payload, "lock_attempt", 1),
+                    else: payload
+
+                repo.query!(
+                  "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,scheduled_at) VALUES($1,$2,1,$3,$4,$5,now())",
+                  [
+                    Ecto.UUID.dump!(event),
+                    command,
+                    args,
+                    %{"producer" => "Phoenix manual extraction"},
+                    user_id
+                  ],
+                  log: false
+                )
+              else
+                Dawarich.RailsCommands.insert!(repo, kind, payload)
+              end
             end
           end
 

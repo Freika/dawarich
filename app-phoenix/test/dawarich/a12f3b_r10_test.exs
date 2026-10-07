@@ -110,7 +110,7 @@ defmodule Dawarich.A12f3bR10Test do
     assert Enum.count(workers, &(&1 == "Dawarich.Stats.CalculateMonthWorker")) == 2
     assert Enum.count(workers, &(&1 == "Dawarich.Achievements.CheckWorker")) == 1
     assert Enum.count(workers, &(&1 == "Dawarich.Visits.SuggestWorker")) == 1
-    assert Enum.count(workers, &(&1 == "Dawarich.EnhancedImport.ExtractGpxWorker")) == 1
+    assert Enum.count(workers, &(&1 == "Dawarich.EnhancedImport.NormalWorker")) == 1
 
     assert [
              [

@@ -14,8 +14,13 @@ defmodule Dawarich.Points.NativeEffects do
   end
 
   def achievements(repo, payload) do
-    if Dawarich.Standalone.enabled?(),
-      do: enqueue(repo, Dawarich.Achievements.CheckWorker, Map.put(payload, "notify", true)),
-      else: Dawarich.RailsCommands.insert!(repo, "achievements.check", payload)
+    {:ok, :ok} =
+      repo.transaction(fn ->
+        if native?(repo, "command:achievements.check"),
+          do: enqueue(repo, Dawarich.Achievements.CheckWorker, Map.put(payload, "notify", true)),
+          else: Dawarich.RailsCommands.insert!(repo, "achievements.check", payload)
+      end)
+
+    :ok
   end
 end

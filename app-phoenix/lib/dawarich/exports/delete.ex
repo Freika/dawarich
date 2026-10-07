@@ -39,7 +39,7 @@ defmodule Dawarich.Exports.Delete do
 
         if blobs != [] do
           if Dawarich.Standalone.enabled?() do
-            Dawarich.Exports.PurgeWorker.enqueue!(repo, blobs)
+            Dawarich.Exports.PurgeWorker.enqueue_export!(repo, blobs)
           else
             Dawarich.RailsCommands.insert!(repo, "exports.purge", %{
               "export_id" => id,

@@ -7,12 +7,12 @@ defmodule Dawarich.Build.RailsParityTest do
   @moduletag :tmp_dir
   @moduletag timeout: 300_000
 
-  @i18n "32051136057c13f58bf7a325e72096812f6b52c8ec21ac6c3639dcf22d36d8e2"
+  @i18n "696bedade70b858db9ef59e556306a7abef74716277cf5790e1b754e904eeec6"
   @achievements "6709610e637f512e76f7e5e1531f3be92c51e70fbf17564f6c3d609458a78198"
-  @importmap "8dc620ccd7d952c6cd361045fc950ee742ce50992cd5b7f12f92297af2edae3c"
-  @assets "3e60c65c2d9e229fcb09de4763d58fb02d557618fc8edf95a06ca840b20238f2"
-  @manifest "69057173bf5070d088dd47807a1bcc46982426aa8e1c1d655f4a2d3e01c158e6"
-  @css "484ff4f16a2e65b27a7c82a0e5ea2bb5dcbe86ba2147be22f8461537d674ed63"
+  @importmap "285e1582c34cd0077430983506cd849ed9c8a704b9e2a0316a54d240aee46aa6"
+  @assets "f5eac41c61aea9ec2d70f4d9c33c45eaeb7a48694d658e1a6de8ddae71fa172a"
+  @manifest "3a7b4171d9c9173a2c4b48e28efde792e1b4259fb7d04c5b53915e1627d6f07f"
+  @css "b917e17e662f7c0c7c506ab2cf39ec69de5e0384a9af9bc5c99512e70d13fa6c"
 
   setup_all do
     root = Build.root()

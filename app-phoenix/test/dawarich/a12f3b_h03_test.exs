@@ -37,6 +37,14 @@ defmodule Dawarich.A12f3bH03Test do
     assert length(status.producer_kinds) == length(Dawarich.RailsCommands.closure_kinds())
 
     assert Dawarich.RailsEffects.reverse_place(ScratchRepo, 1, 9) == :ok
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+
+    assert rows("SELECT worker,args FROM oban.oban_jobs") ==
+             [["Dawarich.Geocoding.ReversePlaceWorker", %{"place_id" => 9}]]
+
+    System.put_env("DAWARICH_RAILS", "on")
+    Ownership.put!(ScratchRepo, "command:geocoding.reverse_place", :sidekiq, pinned: true)
+    assert Dawarich.RailsEffects.reverse_place(ScratchRepo, 1, 9) == :ok
 
     assert rows("SELECT kind,payload FROM phoenix.rails_commands") ==
              [["reverse_geocode_place", %{"user_id" => 1, "place_id" => 9}]]

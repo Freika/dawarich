@@ -16,6 +16,8 @@ defmodule Dawarich.Exports.PurgeWorker do
     :ok
   end
 
+  def enqueue_export!(repo, blob_ids), do: enqueue!(repo, blob_ids)
+
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}), do: run(args)
 
@@ -46,6 +48,13 @@ defmodule Dawarich.Exports.PurgeWorker do
 
   defp current_objects(repo, %{"blob_ids" => ids, "objects" => accepted}) do
     current = NativePurge.collect(repo, ids)
+    protected = Enum.map(accepted, & &1["blob_id"]) -- Enum.map(current, & &1["blob_id"])
+
+    repo.query!(
+      "UPDATE active_storage_blobs SET metadata=(metadata::jsonb - 'phoenix_purge_pending')::text WHERE id=ANY($1)",
+      [protected],
+      log: false
+    )
 
     missing =
       Enum.filter(accepted, fn object ->
