@@ -44,8 +44,8 @@ Rails sources, fallback plans and existing opt-in configuration are retained thr
 
 | Task / tag | Executable preparation | Mutation proof |
 | --- | --- | --- |
-| A02 / `a12f4_a02_1` | Standalone lifecycle mandatory for unset/self-hosted/explicit Cloud, including conflicting old lifecycle flags; absent standalone still Rails | M-A02-MODE restores Rails dispatch |
-| A02 / `a12f4_a02_2` | Pending public version refuses readiness without schema, ledger, registration, outbox or Oban writes in all deployment modes | M-A02-READY accepts private-ledger-only readiness |
+| A02 / `a12f4_a02_1` | Standalone lifecycle native for unset/self-hosted, including conflicting old lifecycle flags; explicit Cloud refuses pending external L1 handoff; absent standalone still Rails | M-A02-MODE restores Rails dispatch |
+| A02 / `a12f4_a02_2` | Unset/self-hosted pending public version refuses readiness without schema, ledger, registration, outbox or Oban writes; explicit Cloud returns `:schemas_behind` without provisioning or writes pending L1 | M-A02-READY accepts private-ledger-only readiness |
 | A03 / `a12f4_a03_1` | Requested native listener has one Endpoint and Drainer, no Rails child or upstream | M-A03-CHILD inserts a second transport listener |
 | A03 / `a12f4_a03_2` | Occupied native bind fails terminally; exact listener serves after release of the occupied port | M-A03-BIND supplies an alternate port only on occupied bind |
 | A03 / `a12f4_a03_3` | Ordinary test application has no public listener; enabled native startup refuses a pending public version before children | M-A03-TEST ignores compile-time suppression; M-A03-READY removes readiness halt |

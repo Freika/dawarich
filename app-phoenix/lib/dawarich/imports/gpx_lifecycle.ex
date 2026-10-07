@@ -91,8 +91,11 @@ defmodule Dawarich.Imports.GpxLifecycle do
     ImportState.effect!(lease, fn ->
       if ImportState.mode(lease) == :terminal do
         import = ImportState.import!(lease)
-        Postprocessing.enqueue_extraction!(lease.repo, import, context)
-        publish(lease, context, false)
+
+        if import.status == 2 do
+          Postprocessing.enqueue_extraction!(lease.repo, import, context)
+          publish(lease, context, false)
+        end
       end
 
       Map.get(context, :on_terminal, fn -> :ok end).()
@@ -102,11 +105,12 @@ defmodule Dawarich.Imports.GpxLifecycle do
   end
 
   defp failure(lease, import, context, error, stack) do
-    ImportState.fail!(lease, error, clock(context))
-    publish(lease, context)
     message = ImportMessages.failure(import, context, error, stack)
 
     ImportState.effect!(lease, fn ->
+      ImportState.fail!(lease, error, clock(context))
+      publish(lease, context, false)
+
       Notifications.create!(
         lease.repo,
         import.user_id,
@@ -115,8 +119,11 @@ defmodule Dawarich.Imports.GpxLifecycle do
         message.content,
         DateTime.to_naive(clock(context))
       )
+
+      ImportState.complete!(lease, clock(context))
     end)
 
+    broadcast(lease)
     if report = Map.get(context, :report_error), do: report.(error, "Import failed")
     :ok
   end

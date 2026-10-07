@@ -15,7 +15,27 @@ defmodule Dawarich.Mail.FamilyInvitationWorker do
   WHERE i.id = $1
   """
 
-  def args_from_command(version, payload), do: Wave2.decode(version, payload, @payload)
+  def args_from_command(1, payload) when is_map(payload) do
+    with {:ok, invitation_id} <- id(Map.get(payload, "invitation_id")) do
+      Wave2.decode(1, Map.put(payload, "invitation_id", invitation_id), @payload)
+    end
+  end
+
+  def args_from_command(1, _payload), do: {:error, "invalid_payload"}
+  def args_from_command(_version, _payload), do: {:error, "unsupported_version"}
+
+  defp id(value)
+       when is_integer(value) and value in -9_223_372_036_854_775_808..9_223_372_036_854_775_807,
+       do: {:ok, value}
+
+  defp id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {integer, ""} -> id(integer)
+      _ -> {:error, "invalid_payload"}
+    end
+  end
+
+  defp id(_value), do: {:error, "invalid_payload"}
 
   def provider_key(%{"invitation_id" => invitation_id}), do: "family-invitation:#{invitation_id}"
 
