@@ -130,30 +130,49 @@ Rails-owned hand-back. The source-owner census names this native key while
 retaining the `:a12d2` accepted-source residue; no serialized job is transferred
 or retired. Registration does not activate ownership.
 
-R09k03/R09k04 remain a native producer closure blocker after the accepted-import
-repair merged at `e8539adbe`. `Imports.AcceptedDisposition.call/4` publishes
-`imports.resume` or `imports.normal_resume` in coexistence even when every
-Registry key is Oban-owned. Standalone instead records failed status and a
-localized notification. This preserves an executor for previously stranded
-legacy/source-change imports, but coexistence still requires the Rails poller.
+R09k03/R09k04 now select disposition from the locked actual parent lane through
+`Imports.AcceptedDisposition.call/4`. Native ownership settles unsupported
+accepted imports as failed with one localized notification and processed
+acknowledgement in either mode. The current job completes, retries are inert,
+and neither a reverse command nor a Rails handoff is created. Rails-owned
+coexistence keeps the original kind, payload bytes and durable fallback handoff.
+This uses the established standalone terminal disposition under the controller's
+fix5 authorization; native parser bounds and archive policies are retained.
 See [accepted-import-disposition.md](accepted-import-disposition.md).
 
-The merged `AcceptedDispositionTest` passes all 14 cases: unsafe and duplicate
-ZIP envelopes, bounded TCX/CSV/REC inputs, and GPX/normal source changes, each in
-both modes, through actual Oban execution and replay. The unchanged
-`R09gpxownership` and `R09normalownership` regressions fail their zero-reverse
-assertions in coexistence. `AcceptedDisposition.call/4` inserts at line 22;
-GPX and normal handover delegate at lines 161 and 192 respectively. The
-seed-404 targeted batch reports 16 tests, 2 failures on merge head `144827a3f`.
-Exact evidence is in `fix4-hot-h03-closure.report.md`.
+A native-owned normal job edited to GPX before admission now uses its existing
+GPX adapter in both modes. The edited-GPX regression proves completed status,
+one point, zero reverse publication and inert replay; restoring standalone-only
+admission fails the coexistence case. Unsupported envelopes retain terminal
+failure settlement and native parser/archive bounds.
 
-H03 all-R01–R20 terminal/no-native-reverse acceptance and H04 final local ED
-closure remain **BLOCKED** on these two publishers. Historical fix2 evidence
-established the old refusal boundary; it does not prove executable disposition
-or closure on this head. Per the controller stop rule, no further producer audit
-or full seed-404 gate was run after the native-owned publications were confirmed.
-No source-drain, live ownership, image, provisioning or G49 gate is closed.
-Every-mode Cloud lifecycle refusal remains unchanged pending L1.
+The 14 retained `AcceptedDispositionTest` cases cover unsafe/duplicate ZIP,
+bounded TCX/CSV/REC and GPX/normal source changes in both modes through real
+Oban execution, terminal failure, localized notification and replay. Named
+`R09gpxownership` and `R09normalownership` regressions reproduce the original
+native-owned coexistence publication, exercise both modes with fixed owners,
+and separately prove literal Rails-owned payload bytes. A native reverse
+publication mutation and a Rails payload mutation fail these assertions and
+pass after restoration. Stale refusal/operator-pin assertions are replaced by
+explicit source-owned continuation checks; no failed accepted import is left
+waiting for an operator to change ownership.
+
+H03 all-R01–R20 native producer acceptance and H04 final local ED disposition
+are **complete** on production commit `69977ef5f`. Final owner diagnostics
+record no production reverse insertions with all Registry owners native in
+either mode; all temporary instrumentation is restored. The stable terminal
+batch passes 1,891 tests. Forced compilation with warnings as errors (1,720
+files) and whole-tree formatting pass. The required full seed-404 runner passes
+9,451 tests with zero failures, exit 0. The retained Rails drain oracle passes
+four examples, with Swagger restored. No Ruby source changed.
+
+The authoritative evidence, original RED, three failing/restored mutations,
+source-owned byte assertions and cleanup are in `fix5-hot-h03-closure.report.md`.
+Prior fix4 producer blockers are superseded by the ownership repair and actual
+supported GPX processing. Native parser/archive limits remain explicit terminal
+failure dispositions. No closure kind, accepted source payload or source owner
+is retired. No source-drain, live activation, image, provisioning or G49 gate is
+closed. Every-mode Cloud lifecycle refusal remains unchanged pending L1.
 
 `Jobs.Drain.status/1` now explicitly identifies `scope: native_sql`, source
 status `NOT_OBSERVED`, source certainty `UNKNOWN`, and

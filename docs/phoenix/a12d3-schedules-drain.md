@@ -382,21 +382,33 @@ legacy handover. The existing user-redetect worker is now registered unclaimable
 its real fleet child completes natively. The source-owner census names the
 native key and retains the accepted `:a12d2` source residue.
 
-The accepted-import repair supersedes the old native refusal: GPX/normal
-handover delegates to `Imports.AcceptedDisposition.call/4`. In coexistence it
-publishes `imports.resume`/`imports.normal_resume` despite Oban parent ownership;
-in standalone it settles unsupported work as failed with a localized notice.
-The merged real-worker disposition tests pass all 14 cases in both modes, but
-the unchanged `R09gpxownership`/`R09normalownership` zero-reverse tests fail.
-H03 all-producer acceptance and H04 final ED closure remain **BLOCKED**. The
-controller stop condition precludes further acceptance gates on this head.
+The accepted-import repair now selects the locked GPX/normal parent owner in
+`Imports.AcceptedDisposition.call/4`. Native-owned unsupported accepted imports
+settle failed with one localized notice and acknowledgement in either mode,
+without reverse rows or a Rails handoff. Rails-owned coexistence keeps the
+original durable fallback and payload bytes. A native-owned normal job edited to GPX before admission now uses its existing
+GPX adapter in both modes. The edited-GPX regression proves completed status,
+one point, zero reverse publication and inert replay; restoring standalone-only
+admission fails the coexistence case. Unsupported envelopes retain terminal
+failure settlement and native parser/archive bounds.
 
-Current evidence is recorded in `fix4-hot-h03-closure.report.md` and
-[a12f3b-pages-producers.md](a12f3b-pages-producers.md). Historical fix2 closure
-claims are superseded. No durable closure kind, source disposition, debt or
-release gate is removed. Native SQL still cannot certify source drain, and G49
-remains blocked pending external observations, fences, quiescence and lifecycle
-acceptance. Every-mode Cloud lifecycle refusal is unchanged.
+All 14 actual-worker cases retain
+fixed native owners, terminal settlement and replay; the two ownership
+regressions cover both modes and preserve source-owned payloads.
+
+H03 all-R01–R20 native producer acceptance and H04 local ED disposition are
+complete on production commit `69977ef5f`: final diagnostics show no all-native
+production reverse insertion in either mode; the stable terminal batch passes
+1,891 tests and the required full seed-404 runner passes 9,451 tests, zero
+failures, exit 0. Forced warnings-as-errors compilation and whole-tree formatting
+pass. The retained Rails drain oracle passes four examples with Swagger restored. Current evidence is recorded in
+`fix5-hot-h03-closure.report.md` and
+[a12f3b-pages-producers.md](a12f3b-pages-producers.md). Prior fix4 producer
+blockers are superseded by the ownership repair. No durable closure kind,
+source disposition, debt or release gate is removed. Native SQL still cannot
+certify source drain, and G49 remains blocked pending external observations,
+fences, quiescence and lifecycle acceptance. Every-mode Cloud lifecycle
+refusal is unchanged.
 
 H03b retains unreadable-database and all-key pin safety. H04 reuses the existing
 Cloud operator HTTP/connected-auth test and the actual native trip/release
