@@ -38,6 +38,7 @@ defmodule Dawarich.Transportation.ReclassifyTrackWorker do
         if args["report_progress"], do: progress!(repo, report_user, args["event_id"])
       end)
 
+    if track, do: Dawarich.Tracks.MapMatching.Enqueuer.defer(repo, track_id)
     :ok
   rescue
     error ->

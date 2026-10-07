@@ -21,8 +21,16 @@ defmodule DawarichWeb.MapWritesParityTest do
     lite_old filter_start filter_end filter_order filter_import query_precedence override_delete guest)
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    owner = Ecto.Adapters.SQL.Sandbox.start_owner!(Repo, shared: true)
+
+    on_exit(fn ->
+      try do
+        Dawarich.MapMatchingTasks.await!()
+      after
+        Ecto.Adapters.SQL.Sandbox.stop_owner(owner)
+      end
+    end)
+
     Repo.query!("CREATE SCHEMA IF NOT EXISTS phoenix")
 
     Repo.query!(File.read!("priv/repo/sql/20260928130000_rails_commands.sql"), [],

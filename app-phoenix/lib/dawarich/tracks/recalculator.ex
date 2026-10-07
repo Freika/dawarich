@@ -73,6 +73,7 @@ defmodule Dawarich.Tracks.Recalculator do
     repo.query!(@segments_sql, [track.id], log: false).rows
     |> Enum.each(&update_segment(repo, &1, points))
 
+    Dawarich.Tracks.MapMatching.Enqueuer.defer(repo, track.id)
     Map.merge(track, Map.new(attrs))
   end
 
