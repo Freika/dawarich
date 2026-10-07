@@ -5,6 +5,10 @@ module PhoenixTables
   SQL_TABLES = SQL_FILES.flat_map do |file|
     File.read(file).scan(/CREATE TABLE (?:IF NOT EXISTS )?(phoenix\.\w+)/).flatten
   end.freeze
+  DIGEST_MIGRATION = Rails.root.join('app-phoenix/priv/repo/migrations/20261007235900_create_digest_executions.exs')
+  NATIVE_TABLES = {
+    'phoenix.digest_executions' => File.read(DIGEST_MIGRATION)[/execute\("""\n(.*?)\n\s*"""\)/m, 1]
+  }.freeze
   LEASES = 'CREATE TABLE IF NOT EXISTS phoenix.leases ' \
            '(name text PRIMARY KEY, holder text NOT NULL, expires_at timestamptz NOT NULL)'
   COUNTERS = 'CREATE TABLE IF NOT EXISTS phoenix.counters ' \
@@ -60,26 +64,27 @@ module PhoenixTables
     connection = ActiveRecord::Base.connection
     install_state!
     connection.execute(COUNTERS)
-    SQL_FILES.each do |file|
-      File.read(file).split(";\n").map(&:strip).reject(&:empty?).each do |statement|
-        table = statement[/\ACREATE TABLE (?:IF NOT EXISTS )?(phoenix\.\w+)/, 1]
-        next if table && connection.select_value("SELECT to_regclass(#{connection.quote(table)})")
-
-        connection.execute(statement)
-      end
+    NATIVE_TABLES.each do |table, statement|
+      connection.execute(statement) unless connection.select_value("SELECT to_regclass(#{connection.quote(table)})")
     end
+    SQL_FILES.each do |file|
+      sql = File.read(file).gsub(/\bCREATE TABLE (?!IF NOT EXISTS )(phoenix\.\w+)/, 'CREATE TABLE IF NOT EXISTS \1')
+      connection.execute(sql)
+    end
+    PhoenixSchema.reset!
   end
 
   def self.installed?
     connection = ActiveRecord::Base.connection
-    tables = SQL_TABLES + %w[phoenix.counters] + PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" }
+    tables = SQL_TABLES + NATIVE_TABLES.keys + %w[phoenix.counters] + PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" }
     names = tables.map { connection.quote(_1) }.join(', ')
     connection.select_value("SELECT bool_and(to_regclass(name) IS NOT NULL) FROM unnest(ARRAY[#{names}]) name")
   end
 
   def self.clear!
     connection = ActiveRecord::Base.connection
-    (SQL_TABLES.reverse + %w[phoenix.counters] + PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" }).each do |table|
+    (SQL_TABLES.reverse + NATIVE_TABLES.keys + %w[phoenix.counters] + PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" })
+      .each do |table|
       connection.execute("DELETE FROM #{table}")
     end
     PhoenixSchema.reset!
