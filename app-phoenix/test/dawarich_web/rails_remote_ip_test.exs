@@ -100,6 +100,8 @@ defmodule DawarichWeb.RailsRemoteIpTest do
 
     Application.put_env(:dawarich, :trusted_proxies, ["203.0.113.0/24", "2001:db8::/32"])
 
+    conn = %{conn | remote_ip: {203, 0, 113, 9}}
+
     assert RailsRemoteIp.ip(
              put_req_header(conn, "x-forwarded-for", "192.0.2.1, 203.0.113.25, 2001:db8::5")
            ) == "192.0.2.1"

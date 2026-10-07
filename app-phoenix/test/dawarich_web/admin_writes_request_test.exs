@@ -273,6 +273,85 @@ defmodule DawarichWeb.AdminWritesRequestTest do
     assert snapshot() == before
   end
 
+  @tag :proxy_admission
+  test "proxied admin writes preserve CSRF origin session and role admission", c do
+    Dawarich.State.put_registration_enabled(Repo, false)
+
+    for {action, method, path, fields} <- [
+          {:create, "POST", "/settings/users", [{"user[email]", ""}]},
+          {:update, "PATCH", "/settings/users/14002", [{"user[email]", ""}]},
+          {:registration, "POST", "/settings/users/update_registration_settings",
+           [{"_method", "patch"}, {"registration_enabled", "1"}]},
+          {:instance, "PATCH", "/admin/settings", []},
+          {:background, "PATCH", "/settings/background_jobs",
+           [{"settings[visits_suggestions_enabled]", "true"}]},
+          {:rotate, "POST", "/settings/users/14002/regenerate_api_key", []},
+          {:reset, "POST", "/settings/users/14002/send_password_reset", []},
+          {:destroy, "DELETE", "/settings/users/14002", []},
+          {:test_geocoding, "POST", "/admin/settings/test_geocoding", []},
+          {:test_map_matching, "POST", "/admin/settings/test_map_matching", []}
+        ] do
+      effective = if action == :registration, do: "PATCH", else: method
+
+      raw =
+        URI.encode_query([
+          {"authenticity_token", csrf(c.session, effective, path, :per_form)} | fields
+        ])
+
+      conn = request(c.session, method, path, raw)
+      conn = %{conn | remote_ip: {127, 0, 0, 1}}
+      conn = put_req_header(conn, "x-forwarded-for", "192.0.2.5, 10.0.0.2")
+      admitted = match?({:ok, _, %{id: 14001}, _, _}, Request.load(conn, action, c.opts))
+      assert admitted, "proxied #{action} should be admitted"
+
+      if action == :registration do
+        response =
+          DawarichWeb.AdminWrites.Settings.call(conn,
+            action: :registration,
+            context: c.opts[:context]
+          )
+
+        assert response.status == 302
+
+        assert Repo.query!("SELECT enabled FROM phoenix.registration_setting", [], log: false).rows ==
+                 [[true]]
+      end
+
+      assert DawarichWeb.RailsRemoteIp.ip(conn) == "192.0.2.5"
+
+      for refused <- [
+            put_req_header(conn, "origin", "http://foreign.invalid"),
+            put_req_header(conn, "cookie", ""),
+            %{conn | req_headers: [{"x-forwarded-for", "192.0.2.6"} | conn.req_headers]},
+            put_req_header(conn, "client-ip", "198.51.100.4")
+          ] do
+        assert {:handoff, _} = Request.load(refused, action, c.opts)
+      end
+
+      invalid =
+        request(
+          c.session,
+          method,
+          path,
+          URI.encode_query([{"authenticity_token", "invalid"} | fields])
+        )
+
+      invalid = put_req_header(invalid, "x-forwarded-for", "192.0.2.5")
+      assert {:handoff, _} = Request.load(invalid, action, c.opts)
+
+      if action != :background do
+        nonadmin = request(RailsUser.session(14002), method, path, raw)
+
+        assert {:handoff, _} =
+                 Request.load(
+                   put_req_header(nonadmin, "x-forwarded-for", "192.0.2.5"),
+                   action,
+                   c.opts
+                 )
+      end
+    end
+  end
+
   defp fixture(dir, name), do: File.read!("test/fixtures/#{dir}/#{name}.json") |> Jason.decode!()
 
   defp snapshot,

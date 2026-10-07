@@ -18,7 +18,10 @@ defmodule DawarichWeb.RailsRemoteIp do
 
   def ip(conn) do
     remote = Headers.peer(conn.remote_ip)
+    if trusted?(remote), do: forwarded_ip(conn, remote), else: remote
+  end
 
+  defp forwarded_ip(conn, remote) do
     clients =
       conn |> Plug.Conn.get_req_header("client-ip") |> Enum.join(", ") |> split() |> valid()
 

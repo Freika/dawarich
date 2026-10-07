@@ -378,6 +378,34 @@ defmodule Dawarich.Auth.AuthHandlerTest do
     assert state(ctx.id).sign_in_count == 1
   end
 
+  @tag :proxy_identity
+  test "forged forwarding headers from an untrusted peer cannot change sign in identity", ctx do
+    session = guest()
+
+    conn =
+      request(
+        :post,
+        "/users/sign_in",
+        [session_cookie(session)],
+        sign_in(session, ctx.email, "safepassword12"),
+        []
+      )
+
+    conn = %{conn | remote_ip: {198, 51, 100, 20}}
+
+    conn =
+      conn
+      |> put_req_header("x-forwarded-for", "192.0.2.99")
+      |> put_req_header("client-ip", "192.0.2.99")
+
+    response = AuthHandler.call(conn, enabled: true, native: true, registration_enabled: false)
+    assert response.status == 303
+
+    assert Repo.query!("SELECT current_sign_in_ip::text FROM users WHERE id=$1", [ctx.id],
+             log: false
+           ).rows == [["198.51.100.20"]]
+  end
+
   defp call(method, path, cookies, body, headers \\ []) do
     method
     |> request(path, cookies, body, headers)
