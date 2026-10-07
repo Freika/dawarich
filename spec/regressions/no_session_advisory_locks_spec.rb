@@ -5,6 +5,12 @@ require 'rails_helper'
 RSpec.describe 'Session-level advisory locks behind PgBouncer transaction pooling' do
   let(:sources) { Dir[Rails.root.join('{app,lib,app-phoenix/lib}/**/*.{rb,rake,ex}')].sort }
   let(:allowed_session_gem_locks) { %w[app/services/phoenix_lease.rb] }
+  let(:allowed_session_modules) do
+    {
+      'app-phoenix/lib/dawarich/cloud/session_connection.ex' =>
+        'Cloud L1 leases use a dedicated direct Postgrex connection that refuses transaction pooling'
+    }
+  end
 
   def relative(path) = Pathname(path).relative_path_from(Rails.root).to_s
 
@@ -28,9 +34,10 @@ RSpec.describe 'Session-level advisory locks behind PgBouncer transaction poolin
     source.sub(migration, migration.gsub(/pg_(try_)?advisory_(lock|unlock)\(\$1\)/, 'migrator_lock'))
   end
 
-  it 'allows only the dedicated Rails-compatible migrator session lock in Rails or Phoenix code' do
+  it 'allows only dedicated direct-connection session locks in Rails or Phoenix code' do
     offenders = sources.select do |path|
-      without_migrator_lock(path).match?(/pg_(try_)?advisory_(lock|unlock)(_shared|_all)?\(/i)
+      !allowed_session_modules.key?(relative(path)) &&
+        without_migrator_lock(path).match?(/pg_(try_)?advisory_(lock|unlock)(_shared|_all)?\(/i)
     end
     expect(offenders.map { relative(_1) }).to be_empty
   end

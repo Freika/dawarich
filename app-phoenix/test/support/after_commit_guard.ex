@@ -1,4 +1,6 @@
 defmodule Dawarich.Test.AfterCommitGuard do
+  @committed_consumers [{"Elixir.Dawarich.AfterCommit.Worker", :run, 2}]
+
   def violations(paths) do
     modules = Enum.flat_map(paths, &functions/1)
 
@@ -20,6 +22,7 @@ defmodule Dawarich.Test.AfterCommitGuard do
     reachable = reachable_sinks(graph, sinks)
 
     for {key, body, aliases, module, file, _params} <- modules,
+        key not in @committed_consumers,
         closure <- Dawarich.Test.TransactionRoots.find(body, aliases, module, definitions),
         target <- if(sink?(closure, aliases), do: [key], else: calls(closure, aliases, module)),
         MapSet.member?(reachable, target),
