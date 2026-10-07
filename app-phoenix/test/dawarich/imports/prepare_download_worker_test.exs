@@ -109,7 +109,14 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
       )
 
     start_oban(__MODULE__)
-    assert %{dispatched: 1} = Dispatch.run(oban: __MODULE__, repo: ScratchRepo)
+
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               oban: __MODULE__,
+               repo: ScratchRepo
+             )
+
     assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :imports)
 
     assert [[key, metadata]] =

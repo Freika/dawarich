@@ -882,12 +882,17 @@ defmodule DawarichWeb.A12f2HClosureTest do
   test "Mobile and callback tokens cross Rails and native consumers while accepted provider effects never replay",
        c do
     path = Path.join(System.tmp_dir!(), "h-protocol-#{Ecto.UUID.generate()}.json")
-    database = Repo.config()[:database]
+
+    database =
+      System.fetch_env!("PHOENIX_TEST_DATABASE") <> System.get_env("MIX_TEST_PARTITION", "")
+
+    assert database == Repo.config()[:database]
 
     env = [
       {"MIX_ENV", "test"},
       {"MIX_TEST_PARTITION", ""},
       {"PHOENIX_TEST_DATABASE", database},
+      {"PHOENIX_TEST_REDIS_URL", Application.fetch_env!(:dawarich, :redis)[:url]},
       {"DATABASE_HOST", "127.0.0.1"},
       {"ASDF_ERLANG_VERSION", "27.3.4.1"},
       {"ASDF_ELIXIR_VERSION", "1.18.3-otp-27"},

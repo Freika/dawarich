@@ -175,7 +175,7 @@ defmodule Dawarich.A12f3bR05Test do
     assert Dawarich.Jobs.Dispatch.run(
              repo: ScratchRepo,
              oban: __MODULE__,
-             now: DateTime.utc_now()
+             now: Dawarich.JobsCase.db_now(ScratchRepo)
            ) == %{dispatched: 1}
 
     assert [[job_args]] =

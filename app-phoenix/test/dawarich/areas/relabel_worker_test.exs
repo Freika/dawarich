@@ -10,6 +10,7 @@ defmodule Dawarich.Areas.RelabelWorkerTest do
   defp dispatch,
     do:
       Dispatch.run(
+        now: Dawarich.JobsCase.db_now(ScratchRepo),
         repo: ScratchRepo,
         oban: @oban,
         commands: fn "areas.relabel_visits" -> {:ok, RelabelWorker} end

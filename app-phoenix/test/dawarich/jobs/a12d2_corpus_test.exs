@@ -103,6 +103,13 @@ defmodule Dawarich.Jobs.A12d2CorpusTest do
       name == "Tracks::ThrottledBackfillJob" and row["id"] == "error" ->
         Map.put(projection, "ttl", 43200)
 
+      name in ["Places::DeleteIfOrphanJob", "Places::OrphanCleanupJob"] and
+          row["id"] in ["hidden", "declined"] ->
+        projection
+        |> Map.put("place_exists", true)
+        |> Map.put("visit_place_ids", [row["input"]["place_id"]])
+        |> Map.put("result", if(name == "Places::DeleteIfOrphanJob", do: false))
+
       true ->
         projection
     end
@@ -1122,7 +1129,7 @@ defmodule Dawarich.Jobs.A12d2CorpusTest do
 
     Dawarich.Geocoding.HookRepo.set_hook(fn sql, _ ->
       cond do
-        profile == "fk" and String.starts_with?(sql, "UPDATE visits SET place_id=NULL") ->
+        profile == "fk" and String.starts_with?(sql, "DELETE FROM places") ->
           raise %Postgrex.Error{
             postgres: %{code: :foreign_key_violation, message: "fixture FK failure"}
           }

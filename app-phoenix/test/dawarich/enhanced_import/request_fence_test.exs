@@ -29,7 +29,7 @@ defmodule Dawarich.EnhancedImport.RequestFenceTest do
   defp dispatch!(c, action) do
     assert {:ok, :queued} =
              ManualExtraction.enqueue(ScratchRepo, c.user, c.id, action, %{}, %{
-               now: DateTime.utc_now(),
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
                zone: "UTC",
                locale: "en",
                self_hosted?: true
@@ -58,7 +58,7 @@ defmodule Dawarich.EnhancedImport.RequestFenceTest do
                    Dispatch.run(
                      repo: ScratchRepo,
                      oban: c.oban,
-                     now: DateTime.add(DateTime.utc_now(), 1)
+                     now: Dawarich.JobsCase.db_now(ScratchRepo)
                    )
 
           [[id]] = rows("SELECT oban_job_id FROM job_outbox ORDER BY created_at DESC LIMIT 1")

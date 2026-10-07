@@ -40,7 +40,14 @@ defmodule Dawarich.Imports.ProcessGpxWorkerTest do
       )
 
     start_oban(__MODULE__)
-    assert %{dispatched: 1} = Dispatch.run(oban: __MODULE__, repo: ScratchRepo)
+
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               oban: __MODULE__,
+               repo: ScratchRepo
+             )
+
     assert [[args]] = rows("SELECT args FROM oban.oban_jobs WHERE args->>'event_id'=$1", [event])
 
     assert args == %{
@@ -327,7 +334,12 @@ defmodule Dawarich.Imports.ProcessGpxWorkerTest do
       payload: Map.delete(c.job.args, "event_id")
     )
 
-    assert %{dispatched: 1} = Dispatch.run(oban: __MODULE__, repo: ScratchRepo)
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               oban: __MODULE__,
+               repo: ScratchRepo
+             )
 
     assert %{success: 1, failure: 0, cancelled: 0, snoozed: 0, discard: 0} =
              Oban.drain_queue(__MODULE__, queue: :imports)
