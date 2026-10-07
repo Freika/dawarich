@@ -346,8 +346,113 @@ defmodule DawarichWeb.StandaloneTrekSourcesTest do
     assert conn.status == 204
   end
 
-  defp post(c, suffix, params) do
+  @tag trek_redirect: true
+  test "standalone TREK Pro refusal uses Rails same-host Referer policy", c do
+    id = source(c)
+    rows("UPDATE users SET active_until='3026-01-01',plan=0 WHERE id=$1", [c.actor.id])
+    System.put_env("SELF_HOSTED", "false")
+
+    for {referer, location} <- [
+          {"https://external.example.test/offer", "http://www.example.com/"},
+          {"http://www.example.com/settings/integrations?service=trek",
+           "http://www.example.com/settings/integrations?service=trek"},
+          {"https://www.example.com:8443/settings", "https://www.example.com:8443/settings"},
+          {"//www.example.com/settings", "http://www.example.com/settings"},
+          {"//external.example.test/offer", "http://www.example.com/"},
+          {"/settings/integrations?service=trek",
+           "http://www.example.com/settings/integrations?service=trek"},
+          {"settings/integrations", "http://www.example.com/"},
+          {"http://www.example.com.external.example.test/offer", "http://www.example.com/"},
+          {"https://www.example.com@external.example.test/offer", "http://www.example.com/"},
+          {"/\\external.example.test/offer", "http://www.example.com/"},
+          {"https://[invalid/offer", "http://www.example.com/"}
+        ] do
+      conn = post(c, "/#{id}/sync", %{}, [{"referer", referer}])
+      assert conn.status == 303
+      assert get_resp_header(conn, "location") == [location]
+
+      assert RailsFormRequests.rails_session(conn)["flash"]["flashes"]["alert"] ==
+               "This feature requires a Pro plan."
+    end
+
+    assert get_resp_header(post(c, "/#{id}/sync", %{}), "location") ==
+             ["http://www.example.com/"]
+
+    assert rows("SELECT count(*) FROM job_outbox") == [[0]]
+  end
+
+  @tag trek_form_csrf: true
+  test "standalone TREK writes accept bound padded per-form CSRF and effective DELETE only", c do
+    id = source(c)
+    own("imports.trek_sync")
+    path = "/settings/trek_sources/#{id}/sync"
+
+    for token <- [
+          RailsCsrf.masked_form_token(c.session, path <> "/wrong", "POST"),
+          RailsCsrf.masked_form_token(c.session, path, "DELETE"),
+          nil,
+          "invalid"
+        ] do
+      assert post(c, "/#{id}/sync", %{"authenticity_token" => token}).status == 422
+    end
+
+    assert rows("SELECT count(*) FROM job_outbox") == [[0]]
+    token = RailsCsrf.masked_form_token(c.session, path, "POST")
+    {:ok, raw} = Base.url_decode64(token, padding: false)
+
+    for valid <- [token, Base.url_encode64(raw), Base.encode64(raw)] do
+      redirect(
+        post(c, "/#{id}/sync", %{"authenticity_token" => valid}),
+        integrations(),
+        "notice",
+        "TREK synchronization was queued."
+      )
+    end
+
+    task = provider(c, [])
+    create = source_params(c, "synthetic-trek-key")
+    token = RailsCsrf.masked_form_token(c.session, "/settings/trek_sources", "POST")
+    assert post(c, "", Map.put(create, "authenticity_token", token)).status == 302
+    Task.await(task)
+
+    token =
+      RailsCsrf.masked_form_token(c.session, "/settings/trek_sources/#{id}/import_trips", "POST")
+
+    assert post(c, "/#{id}/import_trips", %{"authenticity_token" => token}).status == 302
+
+    for method <- ["POST", "DELETE"] do
+      id = if method == "POST", do: id, else: source(c)
+      delete_path = "/settings/trek_sources/#{id}"
+      wrong = RailsCsrf.masked_form_token(c.session, delete_path, "POST")
+      params = %{"_method" => "delete", "authenticity_token" => wrong}
+      assert write(c, method, delete_path, params).status == 422
+      assert rows("SELECT id FROM trip_sources WHERE id=$1", [id]) == [[id]]
+      token = RailsCsrf.masked_form_token(c.session, delete_path, "DELETE")
+      {:ok, raw} = Base.url_decode64(token, padding: false)
+      params = Map.put(params, "authenticity_token", Base.url_encode64(raw))
+      assert write(c, method, delete_path, params).status == 302
+      assert rows("SELECT id FROM trip_sources WHERE id=$1", [id]) == []
+    end
+  end
+
+  defp write(c, method, path, params) do
+    body = URI.encode_query(params)
+
+    build_conn()
+    |> put_req_cookie("_dawarich_session", RailsUser.cookie(c.session))
+    |> put_req_header("accept", "text/html")
+    |> put_req_header("content-type", "application/x-www-form-urlencoded")
+    |> put_req_header("content-length", Integer.to_string(byte_size(body)))
+    |> dispatch(@endpoint, method, path, body)
+  end
+
+  defp post(c, suffix, params, headers \\ []) do
     params = Map.merge(%{"authenticity_token" => RailsCsrf.masked_token(c.session)}, params)
+
+    params =
+      if is_nil(params["authenticity_token"]),
+        do: Map.delete(params, "authenticity_token"),
+        else: params
 
     body =
       Enum.flat_map(params, fn
@@ -360,7 +465,7 @@ defmodule DawarichWeb.StandaloneTrekSourcesTest do
     RailsFormRequests.post_form(
       c.session,
       body,
-      [{"accept", "text/html"}],
+      [{"accept", "text/html"} | headers],
       "/settings/trek_sources" <> suffix
     )
   end

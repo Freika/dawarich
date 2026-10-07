@@ -7,7 +7,19 @@ and the picker locale navigation. Coexistence keeps these
 requests Rails-owned. Cloud native lifecycle refusal is unchanged.
 
 All actions require an authenticated, active account with full access and an
-owned TREK source. Writes require a valid Rails-compatible CSRF token.
+owned TREK source. Writes require a valid Rails-compatible CSRF token. The shared
+Rails verifier
+accepts global and correctly path/method-bound per-form tokens, including padded
+encodings. Disconnect forms verify their effective DELETE method when submitted
+through POST with `_method=delete`. Missing, invalid, wrong-path and wrong-method
+per-form tokens are refused before effects.
+
+A Pro-plan refusal returns 303 with the Rails application flash. The shared
+`DawarichWeb.RailsRedirect` helper accepts safe same-host Referers (including a
+different HTTP scheme or port) and root-relative paths, and falls back to the
+application root for foreign or unsafe targets. The map-frame Pro refusal uses
+the same helper.
+
 Connection verification precedes credential persistence; credentials use the
 existing Active Record encryption format. Importing sources refuse credential
 replacement and selection/sync changes. Disconnect remains available during

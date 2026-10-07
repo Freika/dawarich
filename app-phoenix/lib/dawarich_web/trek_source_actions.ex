@@ -26,7 +26,7 @@ defmodule DawarichWeb.TrekSourceActions do
          {:ok, conn, params} <- WebFormParams.params(conn, query: true, repeated: ["trip_ids[]"]),
          params = Map.merge(params, conn.query_params),
          conn = conn |> assign(:api_params, params) |> assign(:api_query, %{}),
-         :ok <- SettingsActions.admit(conn, methods(action), locale: true) do
+         :ok <- SettingsActions.admit(conn, methods(action), locale: true, per_form: true) do
       conn |> DawarichWeb.Locale.call([]) |> authorize(action)
     else
       false -> SettingsActions.reject(conn, 422)
@@ -72,13 +72,12 @@ defmodule DawarichWeb.TrekSourceActions do
         application_redirect(conn, "/", "notice", "your_account_is_not_active")
 
       not Entitlements.full_access?(user, IntegrationActions.hosted?(conn), now) ->
-        target =
-          case get_req_header(conn, "referer") do
-            [url] -> url
-            _ -> "/"
-          end
-
-        application_redirect(conn, target, "alert", "this_feature_requires_a_pro_plan")
+        application_redirect(
+          conn,
+          DawarichWeb.RailsRedirect.back(conn),
+          "alert",
+          "this_feature_requires_a_pro_plan"
+        )
 
       action == :create ->
         create(conn)
