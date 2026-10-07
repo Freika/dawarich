@@ -19,7 +19,7 @@ defmodule DawarichWeb.MapSegmentRequest do
       end)
   end
 
-  def fields?(:track_recalculation, params), do: root?(params, [])
+  def fields?(:track_recalculation, _params), do: true
 
   def fields?(_, _), do: false
 

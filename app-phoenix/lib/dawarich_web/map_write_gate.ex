@@ -10,8 +10,14 @@ defmodule DawarichWeb.MapWriteGate do
       get_req_header(conn, "x-dawarich-client") == [] and
       get_req_header(conn, "x-http-method-override") == [] and
       get_req_header(conn, "x-requested-with") == [] and
-      single_session?(conn) and content?(conn) and not is_nil(RailsAuth.session_user(conn))
+      single_session?(conn) and content?(conn) and
+      (not is_nil(RailsAuth.session_user(conn)) or anonymous_recalculation?(conn))
   end
+
+  defp anonymous_recalculation?(conn),
+    do:
+      Dawarich.Standalone.enabled?() and conn.method == "POST" and
+        conn.path_info == ["tracks", "recalculation"]
 
   defp single_session?(conn) do
     names =

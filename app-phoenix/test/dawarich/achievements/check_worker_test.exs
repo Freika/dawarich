@@ -39,7 +39,12 @@ defmodule Dawarich.Achievements.CheckWorkerTest do
 
     commands = fn "achievements.check" -> {:ok, CheckWorker} end
 
-    assert Dispatch.run(repo: ScratchRepo, oban: @oban, commands: commands) == %{dispatched: 1}
+    assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
+             repo: ScratchRepo,
+             oban: @oban,
+             commands: commands
+           ) == %{dispatched: 1}
 
     assert rows("SELECT worker, queue, max_attempts, args FROM oban.oban_jobs") == [
              [

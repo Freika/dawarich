@@ -66,6 +66,7 @@ defmodule Dawarich.Imports.DestroyEffects do
       Enum.map(active, fn [_id, place, _time, _demo] -> place end)
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
+      |> Enum.sort()
 
     Dawarich.RailsEffects.visit_months(lease.repo, lease.user, times)
 

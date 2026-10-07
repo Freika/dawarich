@@ -4,6 +4,7 @@ defmodule DawarichWeb.StandaloneRoutes do
   alias DawarichWeb.Api
 
   @routes %{
+    {"POST", "/api/v1/recalculations"} => {Api.RecalculationsController, :create, true},
     {"GET", "/api/v1/settings/mobile"} => {Api.MobileSettingsController, :show, false},
     {"PATCH", "/api/v1/settings/mobile"} => {Api.MobileSettingsController, :update, true},
     {"GET", "/api/v1/areas"} => {Api.AreasController, :index, false},
@@ -26,6 +27,17 @@ defmodule DawarichWeb.StandaloneRoutes do
 
       {handler, action, active, params} ->
         conn = conn |> assign(:api_tag, "api") |> Map.put(:path_params, params)
+
+        conn =
+          if handler in [
+               Api.DemoDataController,
+               Api.DigestWritesController,
+               Api.RecalculationsController
+             ] or
+               (handler == Api.AreasController and action == :destroy),
+             do: conn |> put_private(:dawarich_native_api, true) |> Plug.Head.call([]),
+             else: conn
+
         conn = Enum.reduce_while(@admission, conn, &admit/2)
         conn = if conn.halted, do: conn, else: authenticate(conn, active)
 
@@ -44,9 +56,25 @@ defmodule DawarichWeb.StandaloneRoutes do
   end
 
   defp route(%{method: method, path_info: ["api", "v1", "areas", id]})
-       when method in ["GET", "PATCH", "PUT"] do
-    action = if method == "GET", do: :show, else: :update
+       when method in ["GET", "PATCH", "PUT", "DELETE"] do
+    action =
+      if method == "DELETE", do: :destroy, else: if(method == "GET", do: :show, else: :update)
+
     {Api.AreasController, action, false, %{"id" => id}}
+  end
+
+  defp route(%{method: method, path_info: ["api", "v1", "demo_data"]})
+       when method in ["GET", "HEAD", "POST", "DELETE"] do
+    action = %{"GET" => :show, "HEAD" => :show, "POST" => :create, "DELETE" => :destroy}[method]
+    {Api.DemoDataController, action, true, %{}}
+  end
+
+  defp route(%{method: "POST", path_info: ["api", "v1", "digests"]}),
+    do: {Api.DigestWritesController, :create, true, %{}}
+
+  defp route(%{method: "DELETE", path_info: ["api", "v1", "digests", year]}) do
+    if year =~ ~r/\A[0-9]{4}\z/,
+      do: {Api.DigestWritesController, :destroy, true, %{"year" => year}}
   end
 
   defp route(conn) do

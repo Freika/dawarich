@@ -82,8 +82,10 @@ defmodule Dawarich.Application do
   end
 
   defp start_plan(plan) do
-    if Dawarich.Standalone.enabled?() and match?({:native, _}, plan),
-      do: Dawarich.Release.halt_unless_ready()
+    if Dawarich.Standalone.enabled?() and match?({:native, _}, plan) do
+      Dawarich.Release.halt_unless_ready()
+      Dawarich.Standalone.Switchover.check!(plan)
+    end
 
     Dawarich.QrCache.create_table()
     Dawarich.TtlCache.create_table()

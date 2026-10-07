@@ -160,7 +160,13 @@ defmodule Dawarich.Posters.CreateWorkerTest do
       payload: Map.put(payload(state), "poster_id", 99_999_999)
     )
 
-    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: __MODULE__
+             )
+
     assert %{success: 0, failure: 1} = Oban.drain_queue(__MODULE__, queue: :posters)
 
     assert [["retryable", 1, 2, errors]] =
@@ -173,7 +179,14 @@ defmodule Dawarich.Posters.CreateWorkerTest do
 
   defp enqueue(state) do
     event = outbox!(command_type: "posters.create", payload: payload(state))
-    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: __MODULE__
+             )
+
     event
   end
 

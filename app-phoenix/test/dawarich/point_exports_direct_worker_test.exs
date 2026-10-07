@@ -51,7 +51,13 @@ defmodule Dawarich.PointExportsDirectWorkerTest do
     )
 
     start_oban(@oban)
-    assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{dispatched: 1}
+
+    assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
+             repo: ScratchRepo,
+             oban: @oban
+           ) == %{dispatched: 1}
+
     assert [[args]] = rows("SELECT args FROM oban.oban_jobs")
     assert args["export_id"] == export_id
     assert args["time_zone"] == "America/New_York"

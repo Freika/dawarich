@@ -3,6 +3,15 @@
 module FixtureRecording
   SECRET = 'phoenix-a2-cookie-fixture-secret-not-for-production'
 
+  def self.canonical_timezone_latitudes
+    source = TZInfo::DataSources::RubyDataSource.new
+    source.country_codes.each_with_object({}) do |code, latitudes|
+      source.get_country_info(code).zones.each do |zone|
+        latitudes[zone.identifier] ||= zone.latitude.to_f
+      end
+    end.freeze
+  end
+
   module SyntheticSecret
     def self.included(base)
       base.before do
@@ -163,5 +172,34 @@ module FixtureRecording
           match = Regexp.last_match
           "#{match[1]}#{match[2].gsub(/>\d+</, '>LINE<')}#{match[3]}"
         end
+  end
+
+  def self.with_sequences(tables)
+    connection = ActiveRecord::Base.connection
+    saved = tables.map do |table, first|
+      sequence = connection.select_value("SELECT pg_get_serial_sequence('#{table}', 'id')")
+      state = connection.select_one("SELECT last_value, is_called FROM #{sequence}")
+      connection.execute("SELECT setval('#{sequence}', #{first}, false)")
+      [sequence, state]
+    end
+    yield
+  ensure
+    saved&.each do |sequence, state|
+      connection.execute("SELECT setval('#{sequence}', #{state.fetch('last_value')}, #{state.fetch('is_called')})")
+    end
+  end
+
+  def self.with_clean_cable_state
+    server = ActionCable.server
+    saved = %i[@remote_connections @event_loop @worker_pool @pubsub].to_h do |key|
+      value = server.instance_variable_get(key)
+      server.instance_variable_set(key, nil)
+      [key, value]
+    end
+    yield
+  ensure
+    current = server.instance_variable_get(:@pubsub)
+    current.shutdown if current && !current.equal?(saved.fetch(:@pubsub))
+    saved.each { |key, value| server.instance_variable_set(key, value) }
   end
 end

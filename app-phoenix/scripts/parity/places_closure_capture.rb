@@ -79,7 +79,7 @@ jobs: [{ type: 'places.bulk_name_fetch', payload: {} }] })
       end
       task = Rake::Task['dawarich:cleanup_suggested_places']
       task.reenable
-      task.invoke
+      capture_cleanup_task(task)
       expected_ids = User.order(:id).pluck(:id)
       expect(due.pluck(:user_id).sort).to eq(expected_ids)
       expect(due.pluck(:delay)).to eq(expected_ids.each_index.map { |index| index * 0.1 })
@@ -101,6 +101,15 @@ jobs: [{ type: 'places.bulk_name_fetch', payload: {} }] })
                              unlinked_count:, retained_count: })
       closure_write('p10', { backfill: 'dawarich:backfill_place_names', cleanup: task.name,
                              no_args: true, delays: due.map { |item| item[:delay] } })
+    end
+  end
+
+  def capture_cleanup_task(task)
+    RSpec::Mocks.with_temporary_scope do
+      allow(User).to receive(:in_batches).and_wrap_original do |original, **options|
+        original.call(**options).map { _1.reorder(:id) }
+      end
+      task.invoke
     end
   end
 end

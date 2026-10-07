@@ -44,7 +44,12 @@ defmodule Dawarich.Imports.LegacyZipChildTest do
       if unquote(mode) == "on",
         do:
           assert(
-            %{dispatched: 2} = Dawarich.Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+            %{dispatched: 2} =
+              Dawarich.Jobs.Dispatch.run(
+                now: Dawarich.JobsCase.db_now(ScratchRepo),
+                repo: ScratchRepo,
+                oban: __MODULE__
+              )
           )
 
       assert [[child]] =

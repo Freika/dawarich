@@ -29,7 +29,13 @@ defmodule Dawarich.Digests.JobLifecycleTest do
       Ownership.put!(ScratchRepo, "command:" <> type, :oban)
       payload = F.job_args(kase) |> Map.delete("event_id")
       _event = outbox!(command_type: type, payload: payload)
-      assert Dispatch.run(repo: ScratchRepo, oban: __MODULE__) == %{dispatched: 1}
+
+      assert Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: __MODULE__
+             ) == %{dispatched: 1}
+
       [[id]] = rows("SELECT id FROM oban.oban_jobs")
       job = ScratchRepo.get!(Oban.Job, id, prefix: "oban")
       parent = self()
@@ -145,7 +151,12 @@ defmodule Dawarich.Digests.JobLifecycleTest do
 
       bad_version = outbox!(command_type: type, command_version: 2, payload: payload)
       bad_payload = outbox!(command_type: type, payload: Map.put(payload, "extra", true))
-      assert Dispatch.run(repo: ScratchRepo, oban: __MODULE__) == %{dispatched: 1, quarantined: 2}
+
+      assert Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: __MODULE__
+             ) == %{dispatched: 1, quarantined: 2}
 
       assert [[job_id, args, %{"command_version" => 1}]] =
                rows("SELECT id, args, meta FROM oban.oban_jobs")

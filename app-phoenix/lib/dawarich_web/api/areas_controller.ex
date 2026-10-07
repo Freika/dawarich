@@ -10,11 +10,12 @@ defmodule DawarichWeb.Api.AreasController do
     params = Map.merge(conn.assigns.api_params, conn.path_params)
     ctx = Dawarich.Settings.Api.context(conn)
 
-    if action in [:create, :update] do
+    if action in [:create, :update] or (action == :destroy and Dawarich.Standalone.enabled?()) do
       DawarichWeb.Api.WriteResponse.call(conn, fn ->
         case action do
           :create -> Api.create(Dawarich.Repo, user, params, ctx)
           :update -> Api.update(Dawarich.Repo, user, params["id"], params, ctx)
+          :destroy -> Api.destroy(Dawarich.Repo, user, params["id"], ctx)
         end
       end)
     else

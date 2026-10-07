@@ -175,7 +175,14 @@ defmodule Dawarich.Imports.ProcessWorkerTest do
     )
 
     start_oban(__MODULE__)
-    assert %{dispatched: 1} = Dispatch.run(oban: __MODULE__, repo: ScratchRepo)
+
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               oban: __MODULE__,
+               repo: ScratchRepo
+             )
+
     assert [[args]] = rows("SELECT args FROM oban.oban_jobs WHERE args->>'event_id'=$1", [event])
     assert args["time_zone"] == "Europe/Berlin"
     assert ProcessWorker.context(ScratchRepo, %Oban.Job{args: args}).zone == "Europe/Berlin"
