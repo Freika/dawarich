@@ -80,7 +80,12 @@ defmodule Dawarich.ReleaseJobs do
     else
       phase = if class == hd(@families), do: "families", else: "entitlements"
       zone = Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
-      chain(__MODULE__.FamilyBackfill, %{"phase" => phase, "after_id" => 0, "time_zone" => zone})
+      cursor = %{"phase" => phase, "after_id" => 0, "time_zone" => zone}
+
+      case __MODULE__.FamilyBackfill.args_from_command(1, cursor) do
+        {:ok, _} -> chain(__MODULE__.FamilyBackfill, cursor)
+        {:error, _} -> {:error, :invalid_arguments}
+      end
     end
   end
 
@@ -154,7 +159,16 @@ defmodule Dawarich.ReleaseJobs.FamilyBackfill do
   def args_from_command(_, _), do: {:error, "unsupported_version"}
 
   @impl Oban.Worker
-  def perform(job), do: ReleaseOperations.run(Dawarich.Jobs.repo(), Oban, __MODULE__, job)
+  def perform(%Oban.Job{args: args} = job) do
+    with {:ok, _} <- args_from_command(args["version"], args["cursor"]),
+         {:ok, _} <- Ecto.UUID.cast(args["operation_id"] || args["event_id"]) do
+      oban = if job.conf, do: job.conf.name, else: Oban
+      ReleaseOperations.run(Dawarich.Jobs.repo(), oban, __MODULE__, job)
+    else
+      {:error, "unsupported_version"} -> {:cancel, :unsupported_version}
+      _ -> {:cancel, :invalid_payload}
+    end
+  end
 
   def step(repo, %{cursor: %{"phase" => "families", "after_id" => after_id} = cursor} = op) do
     ReleaseOperations.commit(repo, op, fn ->
