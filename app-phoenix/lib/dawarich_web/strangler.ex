@@ -260,10 +260,13 @@ defmodule DawarichWeb.Strangler do
     Enum.any?(keys, &(&1 in Application.get_env(:dawarich, :rails_routes, [])))
   end
 
-  def page_request?(%{private: %{dawarich_page_envelope: true}} = conn),
+  def page_request?(conn),
+    do: page_envelope?(DawarichWeb.AchievementPublicQuery.page_conn(conn))
+
+  defp page_envelope?(%{private: %{dawarich_page_envelope: true}} = conn),
     do: DawarichWeb.PageEnvelope.accepted?(conn)
 
-  def page_request?(conn) do
+  defp page_envelope?(conn) do
     not String.contains?(List.last(conn.path_info) || "", ".") and
       not String.match?(header(conn, "x-requested-with"), ~r/XMLHttpRequest/i) and
       not valueless_query?(conn.query_string) and
