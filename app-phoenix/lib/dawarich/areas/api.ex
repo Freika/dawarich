@@ -60,7 +60,21 @@ defmodule Dawarich.Areas.Api do
   end
 
   def destroy(repo, user, id, ctx) do
-    with :ok <- Settings.guard(user, ctx), {:ok, area} <- identity(repo, user.id, id) do
+    if Dawarich.Standalone.enabled?() do
+      {:ok, result} =
+        repo.transaction(fn -> delete(repo, user, id, Map.put(ctx, :native_delete, true)) end)
+
+      result
+    else
+      delete(repo, user, id, ctx)
+    end
+  rescue
+    _ -> {:error, 500, Settings.failure()}
+  end
+
+  defp delete(repo, user, id, ctx) do
+    with :ok <- Settings.guard(user, ctx),
+         {:ok, area} <- identity(repo, user.id, id, Map.get(ctx, :native_delete, false)) do
       {:ok, visits} =
         repo.transaction(fn ->
           visits =
@@ -88,10 +102,22 @@ defmodule Dawarich.Areas.Api do
                 do: DateTime.from_naive!(stamp, "Etc/UTC")
 
           Dawarich.RailsEffects.visit_months(repo, user.id, stamps)
+
+          if ctx[:native_delete] do
+            for [_, place, _, demo] <- visits, not demo and not is_nil(place) do
+              Dawarich.AfterCommit.enqueue(repo, Dawarich.Places.DeleteIfOrphanWorker, %{
+                "event_id" => Ecto.UUID.generate(),
+                "user_id" => user.id,
+                "place_id" => place
+              })
+            end
+          end
+
           visits
         end)
 
-      for [_, place, _, demo] <- visits, not demo and not is_nil(place) do
+      for [_, place, _, demo] <- visits,
+          ctx[:native_delete] != true and not demo and not is_nil(place) do
         Dawarich.Settings.Progress.produce(
           repo,
           "places.delete_if_orphan",
@@ -111,8 +137,10 @@ defmodule Dawarich.Areas.Api do
   defp existing(_, _, nil), do: {:ok, nil}
   defp existing(repo, actor, id), do: identity(repo, actor, id)
 
-  defp identity(repo, actor, id) do
-    case rows(repo, "WHERE id=$1 AND user_id=$2", [RubyInteger.to_i(id), actor]) do
+  defp identity(repo, actor, id, lock \\ false) do
+    suffix = "WHERE id=$1 AND user_id=$2" <> if(lock, do: " FOR UPDATE", else: "")
+
+    case rows(repo, suffix, [RubyInteger.to_i(id), actor]) do
       [area] -> {:ok, area}
       [] -> missing()
     end
