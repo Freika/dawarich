@@ -43,7 +43,10 @@ defmodule Dawarich.ReleaseJobs.CloudFamilyBackfillTest do
       assert ReleaseJobs.decode(class, [1]) == {:error, :invalid_arguments}
       assert {:ok, FamilyBackfill} = Dawarich.Jobs.Registry.command("release.family_backfill")
       event = outbox!(command_type: "release.family_backfill", payload: decoded["cursor"])
-      assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: @oban)
+
+      assert %{dispatched: 1} =
+               Dispatch.run(repo: ScratchRepo, oban: @oban, now: db_now(ScratchRepo))
+
       [[args]] = rows("SELECT args FROM oban.oban_jobs WHERE args->>'event_id'=$1", [event])
       assert run(args) == :ok
       assert run(args) == :ok

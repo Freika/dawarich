@@ -46,7 +46,10 @@ defmodule Dawarich.ReleaseJobs.CloudFamilyAdmissionTest do
       for class <- @classes do
         {:ok, FamilyBackfill, args} = ReleaseJobs.decode(class, [])
         event = outbox!(command_type: FamilyBackfill.command_type(), payload: args["cursor"])
-        assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: @oban)
+
+        assert %{dispatched: 1} =
+                 Dispatch.run(repo: ScratchRepo, oban: @oban, now: db_now(ScratchRepo))
+
         rows("DELETE FROM oban.oban_jobs")
         combined = Map.put(args, "event_id", event)
 
@@ -138,7 +141,9 @@ defmodule Dawarich.ReleaseJobs.CloudFamilyAdmissionTest do
         {:error, observation} =
           ScratchRepo.transaction(fn ->
             event = outbox!(command_type: FamilyBackfill.command_type(), payload: args["cursor"])
-            assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: @oban)
+
+            assert %{dispatched: 1} =
+                     Dispatch.run(repo: ScratchRepo, oban: @oban, now: db_now(ScratchRepo))
 
             rows("DELETE FROM oban.oban_jobs")
             combined = Map.put(args, "event_id", event)
@@ -250,7 +255,10 @@ defmodule Dawarich.ReleaseJobs.CloudFamilyAdmissionTest do
       assert effects(member) == before
       event = outbox!(command_type: "release.family_backfill", payload: invalid["cursor"])
       before_dispatch = effects(member)
-      assert Dispatch.run(repo: ScratchRepo, oban: @oban) == %{quarantined: 1}
+
+      assert Dispatch.run(repo: ScratchRepo, oban: @oban, now: db_now(ScratchRepo)) == %{
+               quarantined: 1
+             }
 
       assert rows("SELECT state,error_code FROM job_outbox WHERE event_id=$1", [
                Ecto.UUID.dump!(event)
