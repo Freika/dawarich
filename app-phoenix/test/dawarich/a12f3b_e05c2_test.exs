@@ -34,7 +34,17 @@ defmodule Dawarich.A12f3bE05C2Test do
              opts ++ [now: ~U[2026-01-02 12:00:00Z], zone: args["time_zone"]]
            ) == :ok
 
-    assert [[job, at]] = rows("SELECT args, scheduled_at FROM oban.oban_jobs")
+    jobs =
+      rows("SELECT args, scheduled_at FROM oban.oban_jobs ORDER BY (args->>'user_id')::integer")
+
+    assert length(jobs) == 2
+    assert Enum.map(jobs, fn [child, _] -> child["user_id"] end) == [14101, 14102]
+
+    assert Enum.all?(jobs, fn [child, at] ->
+             child["event_id"] == args["event_id"] and at == DateTime.to_naive(due)
+           end)
+
+    [[job, at]] = Enum.filter(jobs, fn [child, _] -> child["user_id"] == args["user_id"] end)
     assert job == args
     assert at == DateTime.to_naive(due)
 

@@ -36,7 +36,8 @@ defmodule Dawarich.Places.OrphansTest do
     %{user: user, other: other}
   end
 
-  test "deletes only eligible owned suggested orphan and detaches hidden references", %{
+  @tag :single_references
+  test "deletes only unreferenced owned suggested orphans and preserves hidden references", %{
     user: user,
     other: other
   } do
@@ -69,14 +70,15 @@ defmodule Dawarich.Places.OrphansTest do
     for id <- [sentinel, manual, gpx, noted, tagged, active],
         do: refute(Orphans.delete(ScratchRepo, user, id))
 
-    assert Orphans.delete(ScratchRepo, user, target)
+    refute Orphans.delete(ScratchRepo, user, target)
+    assert Orphans.delete(ScratchRepo, user, place(user, 1, " \t\n"))
 
     assert rows("SELECT place_id FROM visits WHERE id IN ($1,$2)", [declined, deleted]) == [
-             [nil],
-             [nil]
+             [target],
+             [target]
            ]
 
-    assert rows("SELECT count(*) FROM place_visits WHERE place_id=$1", [target]) == [[0]]
+    assert rows("SELECT count(*) FROM place_visits WHERE place_id=$1", [target]) == [[2]]
     refute Orphans.delete(ScratchRepo, user, target)
     assert rows("SELECT count(*) FROM places WHERE id=$1", [sentinel]) == [[1]]
     assert rows("SELECT place_id FROM visits WHERE id=$1", [sentinel_visit]) == [[sentinel]]
@@ -104,8 +106,6 @@ defmodule Dawarich.Places.OrphansTest do
 
   test "new active reference or FK conflict keeps the place and references intact", %{user: user} do
     target = place(user, 1, nil)
-    hidden = visit(user, target, 2, nil)
-    link(target, hidden)
 
     holder =
       Dawarich.LockRace.hold(fn ->
@@ -120,12 +120,10 @@ defmodule Dawarich.Places.OrphansTest do
 
     Dawarich.LockRace.commit(holder)
     assert Task.await(deletion) == {:ok, false}
-    assert rows("SELECT count(*) FROM visits WHERE place_id=$1", [target]) == [[2]]
-    assert rows("SELECT count(*) FROM place_visits WHERE place_id=$1", [target]) == [[1]]
+    assert rows("SELECT count(*) FROM visits WHERE place_id=$1", [target]) == [[1]]
+    assert rows("SELECT count(*) FROM place_visits WHERE place_id=$1", [target]) == [[0]]
 
     constrained = place(user, 1, nil)
-    hidden = visit(user, constrained, 2, nil)
-    link(constrained, hidden)
 
     rows(
       "CREATE TABLE public.a12d2_orphan_reference(place_id bigint REFERENCES public.places(id))"
@@ -137,8 +135,6 @@ defmodule Dawarich.Places.OrphansTest do
       args = %{"user_id" => user, "place_id" => constrained, "event_id" => Ecto.UUID.generate()}
       assert DeleteIfOrphanWorker.run(ScratchRepo, args) == :ok
       assert Dawarich.Jobs.Processed.done?(ScratchRepo, args["event_id"])
-      assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[constrained]]
-      assert rows("SELECT count(*) FROM place_visits WHERE place_id=$1", [constrained]) == [[1]]
       assert rows("SELECT count(*) FROM places WHERE id=$1", [constrained]) == [[1]]
     after
       rows("DROP TABLE public.a12d2_orphan_reference")
@@ -146,16 +142,20 @@ defmodule Dawarich.Places.OrphansTest do
 
     args = %{"user_id" => user, "place_id" => constrained, "event_id" => Ecto.UUID.generate()}
 
-    rows(
-      "ALTER TABLE visits ADD CONSTRAINT a12d2_orphan_update_failure CHECK(place_id IS NOT NULL) NOT VALID"
-    )
+    Dawarich.Geocoding.HookRepo.set_hook(fn sql, _ ->
+      if String.starts_with?(sql, "DELETE FROM places"), do: rows("SELECT 1/0")
+      :ok
+    end)
 
     try do
-      assert_raise Postgrex.Error, fn -> DeleteIfOrphanWorker.run(ScratchRepo, args) end
+      assert_raise Postgrex.Error, fn ->
+        DeleteIfOrphanWorker.run(Dawarich.Geocoding.HookRepo, args)
+      end
+
       refute Dawarich.Jobs.Processed.done?(ScratchRepo, args["event_id"])
-      assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[constrained]]
+      assert rows("SELECT id FROM places WHERE id=$1", [constrained]) == [[constrained]]
     after
-      rows("ALTER TABLE visits DROP CONSTRAINT a12d2_orphan_update_failure")
+      Dawarich.Geocoding.HookRepo.clear_hook()
     end
   end
 

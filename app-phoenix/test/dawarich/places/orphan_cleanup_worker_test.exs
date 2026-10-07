@@ -45,6 +45,63 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
     }
   end
 
+  @tag :orphan_references
+  test "batch cleanup retains every visit status and foreign suggestion link", %{
+    user: user,
+    other: other,
+    args: args
+  } do
+    retained =
+      for owner <- [user, other], status <- [0, 1, 2], deleted <- [false, true] do
+        id = place(user, 1, nil)
+        visit = visit(owner, id, status)
+        if deleted, do: rows("UPDATE visits SET deleted_at=now() WHERE id=$1", [visit])
+        id
+      end
+
+    suggestion = place(user, 1, nil)
+    foreign = visit(other, place(other, 1, nil), 1)
+
+    rows(
+      "INSERT INTO place_visits(place_id,visit_id,created_at,updated_at) VALUES($1,$2,now(),now())",
+      [suggestion, foreign]
+    )
+
+    owned_suggestion = place(user, 1, nil)
+    owned = visit(user, place(user, 0, nil), 2)
+
+    rows(
+      "INSERT INTO place_visits(place_id,visit_id,created_at,updated_at) VALUES($1,$2,now(),now())",
+      [owned_suggestion, owned]
+    )
+
+    before = rows("SELECT row_to_json(v)::text FROM visits v ORDER BY id")
+    links = rows("SELECT row_to_json(pv)::text FROM place_visits pv ORDER BY id")
+
+    assert Dawarich.Places.Orphans.delete_batch(
+             ScratchRepo,
+             user,
+             retained ++ [suggestion, owned_suggestion]
+           ) == []
+
+    orphan = place(user, 1, nil)
+
+    assert Worker.run(ScratchRepo, @oban, args,
+             hook: fn
+               {:selected, ids} -> assert ids == [orphan]
+               _ -> :ok
+             end
+           ) == :ok
+
+    assert rows("SELECT id FROM places WHERE id=$1", [orphan]) == []
+
+    for id <- retained ++ [suggestion, owned_suggestion],
+        do: assert(rows("SELECT id FROM places WHERE id=$1", [id]) == [[id]])
+
+    assert rows("SELECT row_to_json(v)::text FROM visits v ORDER BY id") == before
+    assert rows("SELECT row_to_json(pv)::text FROM place_visits pv ORDER BY id") == links
+  end
+
   test "source deleted-user cleanup retains orphan places", %{user: user, args: args} do
     id = place(user, 1, nil)
     rows("UPDATE users SET deleted_at=now() WHERE id=$1", [user])
@@ -65,11 +122,12 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
       |> List.flatten()
       |> Enum.sort()
 
-    hidden = visit(user, hd(victims), 2)
+    retained = place(user, 1, nil)
+    hidden = visit(user, retained, 2)
 
     rows(
       "INSERT INTO place_visits(place_id,visit_id,created_at,updated_at) VALUES($1,$2,now(),now())",
-      [hd(victims), hidden]
+      [retained, hidden]
     )
 
     sentinel = place(other, 1, nil)
@@ -87,9 +145,13 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
       Dawarich.Geocoding.HookRepo.clear_hook()
     end
 
-    assert rows("SELECT id FROM places WHERE user_id=ANY($1)", [[user, other]]) == [[sentinel]]
-    assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[nil]]
-    assert rows("SELECT count(*) FROM place_visits WHERE visit_id=$1", [hidden]) == [[0]]
+    assert rows("SELECT id FROM places WHERE user_id=ANY($1) ORDER BY id", [[user, other]]) == [
+             [retained],
+             [sentinel]
+           ]
+
+    assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[retained]]
+    assert rows("SELECT count(*) FROM place_visits WHERE visit_id=$1", [hidden]) == [[1]]
 
     [[next]] =
       rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [
@@ -135,11 +197,12 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
       )
       |> List.flatten()
 
-    hidden = visit(user, hd(victims), 2)
+    retained = place(user, 1, nil)
+    hidden = visit(user, retained, 2)
 
     rows(
       "INSERT INTO place_visits(place_id,visit_id,created_at,updated_at) VALUES($1,$2,now(),now())",
-      [hd(victims), hidden]
+      [retained, hidden]
     )
 
     assert Worker.args_from_command(1, %{"user_id" => user}) ==
@@ -151,8 +214,8 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
     assert Worker.args_from_command(2, %{"user_id" => user}) == {:error, "unsupported_version"}
     assert Worker.run(ScratchRepo, @oban, args) == :ok
     assert rows("SELECT count(*) FROM places WHERE id=ANY($1)", [victims]) == [[1]]
-    assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[nil]]
-    assert rows("SELECT count(*) FROM place_visits WHERE visit_id=$1", [hidden]) == [[0]]
+    assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[retained]]
+    assert rows("SELECT count(*) FROM place_visits WHERE visit_id=$1", [hidden]) == [[1]]
 
     [[next]] =
       rows("SELECT args FROM oban.oban_jobs WHERE worker=$1", [
@@ -166,7 +229,7 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
     assert rows("SELECT count(*) FROM places WHERE id=ANY($1)", [victims]) == [[0]]
 
     assert rows("SELECT id FROM places WHERE user_id=ANY($1) ORDER BY id", [[user, other]]) ==
-             Enum.map([custom, gpx, noted, whitespace, active, tagged, sentinel], &[&1])
+             Enum.map([custom, gpx, noted, whitespace, active, tagged, sentinel, retained], &[&1])
 
     assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker=$1", [
              "Dawarich.Places.OrphanCleanupWorker"
@@ -194,11 +257,12 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
       ])
 
     remaining = Enum.drop(victims, 500)
-    hidden = visit(user, hd(remaining), 2)
+    retained = place(user, 0, nil)
+    hidden = visit(user, retained, 2)
 
     rows(
       "INSERT INTO place_visits(place_id,visit_id,created_at,updated_at) VALUES($1,$2,now(),now())",
-      [hd(remaining), hidden]
+      [retained, hidden]
     )
 
     assert_raise Postgrex.Error, fn ->
@@ -213,9 +277,9 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
     refute Processed.done?(ScratchRepo, Worker.batch_id(next))
 
     assert rows("SELECT id FROM places WHERE user_id=$1 ORDER BY id", [user]) ==
-             Enum.map(remaining, &[&1])
+             Enum.map(remaining ++ [retained], &[&1])
 
-    assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[hd(remaining)]]
+    assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[retained]]
     assert rows("SELECT count(*) FROM place_visits WHERE visit_id=$1", [hidden]) == [[1]]
     assert Processed.done?(ScratchRepo, Worker.batch_id(args))
 
@@ -232,9 +296,9 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
       refute Processed.done?(ScratchRepo, Worker.batch_id(next))
 
       assert rows("SELECT id FROM places WHERE user_id=$1 ORDER BY id", [user]) ==
-               Enum.map(remaining, &[&1])
+               Enum.map(remaining ++ [retained], &[&1])
 
-      assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[hd(remaining)]]
+      assert rows("SELECT place_id FROM visits WHERE id=$1", [hidden]) == [[retained]]
       assert rows("SELECT count(*) FROM place_visits WHERE visit_id=$1", [hidden]) == [[1]]
     after
       rows("DROP TABLE public.a12d2_cleanup_reference")
@@ -255,9 +319,14 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
 
     Dawarich.LockRace.commit(holder)
     assert Task.await(attempt) == {:ok, :ok}
-    assert rows("SELECT id FROM places WHERE user_id=$1", [user]) == [[target]]
-    assert rows("SELECT count(*) FROM visits WHERE place_id=$1", [target]) == [[2]]
-    assert rows("SELECT count(*) FROM place_visits WHERE place_id=$1", [target]) == [[1]]
+
+    assert rows("SELECT id FROM places WHERE user_id=$1 ORDER BY id", [user]) == [
+             [target],
+             [retained]
+           ]
+
+    assert rows("SELECT count(*) FROM visits WHERE place_id=$1", [target]) == [[1]]
+    assert rows("SELECT count(*) FROM place_visits WHERE place_id=$1", [target]) == [[0]]
     assert Worker.run(ScratchRepo, @oban, next) == :ok
     assert Processed.done?(ScratchRepo, Worker.batch_id(next))
 
@@ -270,7 +339,10 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
              ["places_orphan_cleanup", %{"user_id" => user}]
            ]
 
-    assert rows("SELECT id FROM places WHERE user_id=$1", [user]) == [[target]]
+    assert rows("SELECT id FROM places WHERE user_id=$1 ORDER BY id", [user]) == [
+             [target],
+             [retained]
+           ]
   end
 
   defp place(user, source, note) do

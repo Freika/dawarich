@@ -44,6 +44,7 @@ defmodule DawarichWeb.RailsFormTest do
   test "the page's token as X-CSRF-Token or authenticity_token admits a session sign-in", ctx do
     assert admission(ctx.session, %{}, [{"x-csrf-token", ctx.token}]) == :ok
     assert admission(ctx.session, %{"authenticity_token" => ctx.token}) == :ok
+    assert admission(ctx.session, %{"authenticity_token" => ctx.session["_csrf_token"]}) == :ok
 
     assert admission(ctx.session, %{"authenticity_token" => "x"}, [{"x-csrf-token", ctx.token}]) ==
              :ok
@@ -72,7 +73,6 @@ defmodule DawarichWeb.RailsFormTest do
     for token <- [
           String.reverse(ctx.token),
           other,
-          ctx.session["_csrf_token"],
           "",
           "%%%",
           flip_unused_bit(ctx.token)

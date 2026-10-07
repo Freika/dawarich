@@ -64,22 +64,6 @@ defmodule DawarichWeb.AchievementActions.Response do
 
   defp public_url(_, _), do: nil
 
-  defp redirect(conn, key) do
-    base = RequestURL.base(conn)
-    fallback = base <> "/achievements/" <> key
-
-    case get_req_header(conn, "referer") do
-      [value] ->
-        uri = URI.parse(value)
-        origin = URI.parse(base)
-
-        if uri.host == origin.host and uri.scheme in [nil, origin.scheme] and
-             uri.port in [nil, origin.port] and not String.contains?(value, ["\r", "\n"]),
-           do: value,
-           else: fallback
-
-      _ ->
-        fallback
-    end
-  end
+  defp redirect(conn, key),
+    do: DawarichWeb.RailsRedirect.back(conn, "/achievements/" <> key)
 end

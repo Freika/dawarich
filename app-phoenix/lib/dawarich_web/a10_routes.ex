@@ -51,6 +51,7 @@ defmodule DawarichWeb.A10Routes do
         plug DawarichWeb.Locale
         plug DawarichWeb.LayoutAssigns
         plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
+        plug DawarichWeb.PageEnvelope, :layout
         plug :protect_from_forgery
         plug DawarichWeb.RailsHeaders
       end
@@ -120,6 +121,7 @@ defmodule DawarichWeb.A10Routes do
         plug DawarichWeb.Locale
         plug DawarichWeb.LayoutAssigns
         plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
+        plug DawarichWeb.PageEnvelope, :layout
         plug :protect_from_forgery
         plug DawarichWeb.RailsHeaders
         plug DawarichWeb.RequireUser
@@ -130,8 +132,12 @@ defmodule DawarichWeb.A10Routes do
         plug DawarichWeb.OperatorRedirect, background: true
       end
 
+      pipeline :admin_page do
+        plug DawarichWeb.AuthenticatedPageGate
+      end
+
       scope "/" do
-        pipe_through [:browser, :rails_user]
+        pipe_through [:browser, :rails_user, :admin_page]
 
         live_session :admin_reads,
           session: {DawarichWeb.RailsAuth, :live_session, []},

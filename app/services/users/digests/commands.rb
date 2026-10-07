@@ -16,11 +16,11 @@ module Users
 
       HANDLERS = {
         'digests.calculate_month' => {
-          guard: 'Each calculation recomputes the period; a repeat costs one convergent calculation',
+          guard: 'The period execution receipt commits atomically with generation and mail admission',
           call: ->(payload) { reverse_calculate('digests.calculate_month', payload) }
         },
         'digests.calculate_year' => {
-          guard: 'Each calculation recomputes the period; a repeat costs one convergent calculation',
+          guard: 'The period execution receipt commits atomically with generation and mail admission',
           call: ->(payload) { reverse_calculate('digests.calculate_year', payload) }
         },
         'digests.email_month' => {
@@ -38,8 +38,19 @@ module Users
       def reverse_calculate(type, payload)
         return unless User.exists?(id: payload.fetch('user_id'))
 
+        if payload['source_job_id']
+          return calculate(type.end_with?('month') ? :monthly : :yearly, payload,
+                           Time.zone.at(payload.fetch('run_at')))
+        end
+
         JobCommands.produce(type, payload.except('run_at'), aggregate_id: payload.fetch('user_id'),
                             producer: name, scheduled_at: Time.zone.at(payload.fetch('run_at')))
+      end
+
+      def publish_email(period, user_id, year, month: nil)
+        payload = { 'user_id' => user_id, 'year' => year, 'time_zone' => Time.zone.name }
+        payload['month'] = month if period == 'month'
+        RailsCommands::Poller.publish("digests.email_#{period}", payload)
       end
 
       def email(kind, payload)
@@ -59,7 +70,10 @@ module Users
         args << payload.fetch('month') if kind == :monthly
 
         Time.use_zone(payload.fetch('time_zone')) do
-          klass.set(wait_until: at).perform_later(*args)
+          options = payload['source_job_id'] ? { execution_receipt: payload['source_job_id'] } : {}
+          job = klass.new(*args, **options)
+          job.job_id = payload['source_job_id'] if payload['source_job_id']
+          job.enqueue(wait_until: at)
         end
       end
     end

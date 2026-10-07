@@ -486,6 +486,26 @@ integration schedulers (AirTrail/TeslaMate/Trek), digest scheduling/mail,
 GoogleTakeout/GPX resumptions, EnhancedImport extraction and family callbacks.
 Task 7 must settle any path requiring a fresh source child before switching.
 
+Standalone account deletion binds `DELETE /users`, `DELETE /api/v1/users/me`
+and the signed deletion-confirmation GET to the existing account service.
+Browser owner authentication and CSRF, API-key ownership, confirmation flashes
+and redirects retain Rails behavior. The native `users.destroy` command uses
+the existing exactly-once destroy worker and shared storage-first purge ledger;
+webhook and cache effects commit as durable AfterCommit intents. Failed enqueue,
+cache delivery and object removal remain retryable. Coexistence keeps source
+route handback and job ownership. These bindings do not authorize Cloud native
+lifecycle: Cloud lifecycle refusal remains in every mode pending L1.
+
+Account cleanup refuses foreign dependent graphs rather than deleting another
+account's records ([FRB-067](fixed-rails-bugs.md#frb-067--account-deletion-changes-another-accounts-dependent-records)).
+It uses the shared owner-scoped orphan batch for places of every source and note
+type. Any retained reference cancels the worker transaction and rolls back all
+cleanup and effect intents; the scheduled account remains marked deleted until
+its foreign references are resolved and the worker is redelivered. Browser CSRF
+accepts either a valid Rails form token or header token, including mixed valid
+and invalid sources. An irrelevant form `id` is ignored; the session always
+chooses the account.
+
 Current dependencies remain: cache cron wrapper delegates to Rails; native
 RailsCommands reverse kinds are not closed; source RailsCommands::Poller starts
 on worker startup; cache_jobs publishes Cleaning/Preheating on Rails server boot;

@@ -10,7 +10,7 @@ defmodule DawarichWeb.LayoutAssigns do
 
   def call(conn, _opts) do
     read = conn.assigns[:rails_session] || %{}
-    changes = Map.merge(consume_flash(read), create_csrf(read))
+    changes = Map.merge(consume_flash(conn, read), create_csrf(read))
     session = read |> Map.merge(changes) |> Map.reject(fn {_key, value} -> is_nil(value) end)
     conn = if changes == %{}, do: conn, else: RailsSession.stage(conn, changes)
 
@@ -47,8 +47,12 @@ defmodule DawarichWeb.LayoutAssigns do
 
   defp flashes(_session), do: []
 
-  defp consume_flash(%{"flash" => _flash}), do: %{"flash" => nil}
-  defp consume_flash(_session), do: %{}
+  defp consume_flash(%{request_path: "/", assigns: %{current_user: user}}, _read)
+       when not is_nil(user),
+       do: %{}
+
+  defp consume_flash(_conn, %{"flash" => _flash}), do: %{"flash" => nil}
+  defp consume_flash(_conn, _session), do: %{}
 
   defp create_csrf(%{"_csrf_token" => token}) when is_binary(token), do: %{}
   defp create_csrf(_session), do: %{"_csrf_token" => RailsCsrf.new_token()}

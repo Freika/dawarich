@@ -11,9 +11,14 @@ defmodule Dawarich.Places.Orphans do
     end
   end
 
-  def delete_batch(_repo, _user_id, []), do: []
+  def delete_batch(repo, user_id, place_ids, opts \\ [])
 
-  def delete_batch(repo, user_id, place_ids) do
+  def delete_batch(_repo, _user_id, [], _opts), do: []
+
+  def delete_batch(repo, user_id, place_ids, opts) do
+    filter =
+      if opts[:account_deletion], do: "", else: "AND p.source=1 AND (p.note IS NULL OR p.note='')"
+
     {:ok, ids} =
       repo.transaction(fn ->
         repo.query!(
@@ -26,8 +31,9 @@ defmodule Dawarich.Places.Orphans do
           repo.query!(
             """
             SELECT p.id FROM places p
-            WHERE p.id=ANY($1) AND p.user_id=$2 AND p.source=1 AND (p.note IS NULL OR p.note='')
-              AND NOT EXISTS(SELECT 1 FROM visits v WHERE v.place_id=p.id AND v.deleted_at IS NULL AND v.status<>2)
+            WHERE p.id=ANY($1) AND p.user_id=$2 #{filter}
+              AND NOT EXISTS(SELECT 1 FROM visits v WHERE v.place_id=p.id)
+              AND NOT EXISTS(SELECT 1 FROM place_visits pv WHERE pv.place_id=p.id)
               AND NOT EXISTS(SELECT 1 FROM taggings t WHERE t.taggable_id=p.id AND t.taggable_type='Place')
             ORDER BY p.id
             """,
@@ -37,9 +43,6 @@ defmodule Dawarich.Places.Orphans do
           |> List.flatten()
 
         if ids != [] do
-          repo.query!("UPDATE visits SET place_id=NULL WHERE place_id=ANY($1)", [ids], log: false)
-          repo.query!("DELETE FROM place_visits WHERE place_id=ANY($1)", [ids], log: false)
-
           repo.query!("DELETE FROM places WHERE id=ANY($1) AND user_id=$2", [ids, user_id],
             log: false
           )
@@ -57,9 +60,6 @@ defmodule Dawarich.Places.Orphans do
     try do
       result =
         if eligible?(repo, user_id, place_id, " FOR UPDATE", opts) do
-          repo.query!("UPDATE visits SET place_id=NULL WHERE place_id=$1", [place_id], log: false)
-          repo.query!("DELETE FROM place_visits WHERE place_id=$1", [place_id], log: false)
-
           repo.query!("DELETE FROM places WHERE id=$1 AND user_id=$2", [place_id, user_id],
             log: false
           )
@@ -93,7 +93,12 @@ defmodule Dawarich.Places.Orphans do
       [[1, note]] ->
         blank?(note, opts) &&
           repo.query!(
-            "SELECT 1 FROM visits WHERE place_id=$1 AND deleted_at IS NULL AND status<>2 LIMIT 1",
+            "SELECT 1 FROM visits WHERE place_id=$1 LIMIT 1",
+            [place_id],
+            log: false
+          ).rows == [] &&
+          repo.query!(
+            "SELECT 1 FROM place_visits WHERE place_id=$1 LIMIT 1",
             [place_id],
             log: false
           ).rows == [] &&

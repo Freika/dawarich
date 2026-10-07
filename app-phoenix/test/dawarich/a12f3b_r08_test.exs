@@ -27,7 +27,14 @@ defmodule Dawarich.A12f3bR08Test do
 
     assert [] == F.reverse()
     start_oban(__MODULE__)
-    assert %{dispatched: 1} == Dawarich.Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+
+    assert %{dispatched: 1} ==
+             Dawarich.Jobs.Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: __MODULE__
+             )
+
     assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :imports)
 
     assert %{success: 1, failure: 0} =
@@ -112,7 +119,14 @@ defmodule Dawarich.A12f3bR08Test do
 
     assert [] == F.reverse()
     start_oban(__MODULE__)
-    assert %{dispatched: 1} == Dawarich.Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+
+    assert %{dispatched: 1} ==
+             Dawarich.Jobs.Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: __MODULE__
+             )
+
     assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :imports)
 
     [[key]] =

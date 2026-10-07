@@ -4,7 +4,7 @@ defmodule Dawarich.JobsCase do
 
   alias Dawarich.ScratchRepo
 
-  @phoenix ~w(upload_receipts cable_events cable_streams job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events notification_events delivery_claims export_claims rails_commands rails_commands_dead track_generations track_generation_chunks stats_point_counts import_archive_children import_runs import_handoffs import_download_requests import_destroy_runs import_blob_purges release_operations raw_data_archive_chunks once_claims counters epochs leases registration_setting stats_geocoded_days cursors achievement_checks)
+  @phoenix ~w(digest_executions upload_receipts cable_events cable_streams job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events notification_events delivery_claims export_claims rails_commands rails_commands_dead track_generations track_generation_chunks stats_point_counts import_archive_children import_runs import_handoffs import_download_requests import_destroy_runs import_blob_purges release_operations raw_data_archive_chunks once_claims counters epochs leases registration_setting stats_geocoded_days cursors achievement_checks)
   @backfill ~w(track_backfill_ranges track_backfill_walks)
   @oban ~w(oban_jobs oban_peers)
 
@@ -37,6 +37,11 @@ defmodule Dawarich.JobsCase do
   end
 
   def rows(sql, params \\ []), do: ScratchRepo.query!(sql, params, log: false).rows
+
+  def db_now(repo) do
+    [[now]] = repo.query!("SELECT clock_timestamp()", [], log: false).rows
+    now
+  end
 
   def hold_lease!(repo, name, holder) do
     repo.query!(
@@ -83,7 +88,7 @@ defmodule Dawarich.JobsCase do
           payload: %{"n" => 1},
           aggregate_id: nil,
           dedupe_key: nil,
-          scheduled_at: DateTime.add(DateTime.utc_now(), -1)
+          scheduled_at: DateTime.add(db_now(ScratchRepo), -1)
         },
         Map.new(attrs)
       )

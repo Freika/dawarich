@@ -6,16 +6,15 @@ defmodule DawarichWeb.TrackRecalculationActions do
 
   def init(action), do: action
 
+  def call(%{assigns: %{current_user: nil}} = conn, _),
+    do: conn |> Locale.call([]) |> DawarichWeb.RequireUser.call([])
+
   def call(conn, _) do
     user = conn.assigns.current_user
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
     ctx = %{now: Map.get(conn.assigns, :now, DateTime.utc_now())}
 
-    with {:ok, location} <- DawarichWeb.SegmentActions.back(conn) do
-      respond(conn, user, locale, ctx, location)
-    else
-      :rails -> DawarichWeb.Api.Body.replay(conn, "reclassification referer")
-    end
+    respond(conn, user, locale, ctx, DawarichWeb.RailsRedirect.back(conn))
   end
 
   defp respond(conn, user, locale, ctx, location) do

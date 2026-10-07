@@ -17,6 +17,7 @@ Compiled 2026-10-07 from integrated fixes at `3a20a0279`. Each item links to one
 
 ## Privacy
 
+- Preserve other accounts' records and references when account deletion encounters shared places or foreign dependent associations. [FRB-067](fixed-rails-bugs.md#frb-067--account-deletion-changes-another-accounts-dependent-records)
 - Stop serving shared trip thumbnails after a trip boundary edit excludes them, including requests forwarded to Rails. [FRB-001](fixed-rails-bugs.md#frb-001--shared-trip-thumbnail-authorization-survives-a-boundary-edit)
 - Keep failed native media deletion retryable until eligible files are physically removed. Rails-owned cleanup retains its existing limitation. [FRB-002](fixed-rails-bugs.md#frb-002--failed-physical-media-deletion-loses-its-retry-target)
 - Revoke native prepared-import downloads when the import is deleted. Previously issued external storage links remain subject to deletion or expiry. [FRB-004](fixed-rails-bugs.md#frb-004--import-deletion-leaves-a-prepared-download-usable)
@@ -44,7 +45,7 @@ Compiled 2026-10-07 from integrated fixes at `3a20a0279`. Each item links to one
 - Emit one no-points notice per successful empty import across interrupted processing and retry. [FRB-037](fixed-rails-bugs.md#frb-037--empty-successful-import-retries-repeat-no-points-notifications)
 - Commit anomaly flags and their track, statistics and achievement rebuilds together, including restored points. [FRB-042](fixed-rails-bugs.md#frb-042--anomaly-flags-commit-without-their-derived-rebuilds)
 - Keep point deletion, counters and derived-data rebuild work consistent when a follow-up fails. [FRB-043](fixed-rails-bugs.md#frb-043--point-deletion-commits-without-counters-or-rebuilds)
-- Roll back mobile settings, area changes and follow-up work when response rendering fails. [FRB-052](fixed-rails-bugs.md#frb-052--a-failed-settings-or-area-response-leaves-changes-committed)
+- Roll back mobile settings, area changes, digest deletion and follow-up work when response preparation fails. [FRB-052](fixed-rails-bugs.md#frb-052--a-failed-settings-or-area-response-leaves-changes-committed)
 
 ## Visits and caches
 
@@ -60,6 +61,7 @@ Compiled 2026-10-07 from integrated fixes at `3a20a0279`. Each item links to one
 - Retry calendar cache invalidation after a successful visit write instead of leaving old counts until expiry. [FRB-063](fixed-rails-bugs.md#frb-063--visit-cache-invalidation-failure-is-swallowed)
 - Prevent old in-flight calendar cache fills from overwriting counts after a committed visit change. [FRB-064](fixed-rails-bugs.md#frb-064--an-in-flight-visit-cache-fill-resurrects-stale-aggregates)
 - Refresh calendar counts after bulk visit confirmation or decline, including during cache outages. [FRB-065](fixed-rails-bugs.md#frb-065--bulk-visit-status-updates-omit-cache-invalidation)
+- Preserve other accounts’ records and all visit references through area deletion and scheduled orphan-place cleanup. [FRB-066](fixed-rails-bugs.md#frb-066--area-deletion-removes-another-users-linked-records)
 
 ## Correctness
 

@@ -88,8 +88,15 @@ defmodule Dawarich.Imports.TeslamateSyncTest do
                    ["stats.calculate_month"]
                  ] ++ if(name == "duplicate", do: [["points.tile_epoch"]], else: [])
 
+        assert [[source]] =
+                 rows(
+                   "SELECT payload->>'source_job_id' FROM phoenix.rails_commands WHERE kind='stats.calculate_month'"
+                 )
+
+        assert Ecto.UUID.cast(source) == {:ok, source}
+
         assert rows(
-                 "SELECT payload FROM phoenix.rails_commands WHERE kind='stats.calculate_month'"
+                 "SELECT payload - 'source_job_id' FROM phoenix.rails_commands WHERE kind='stats.calculate_month'"
                ) == [
                  [
                    %{

@@ -21,6 +21,39 @@ defmodule DawarichWeb.IntegrationFormRoutes do
         end
       end
 
+      pipeline :trek_sources do
+        plug :put_api_tag, "integrations"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.RailsAuth
+        plug DawarichWeb.RailsHeaders
+      end
+
+      scope "/settings" do
+        pipe_through :trek_sources
+
+        for suffix <- ["", ".html"] do
+          post "/trek_sources#{suffix}", DawarichWeb.TrekSourceActions, :create,
+            metadata: %{rails_gate: {DawarichWeb.TrekSourceActions, :enabled?}}
+
+          get "/trek_sources/:id/select_trips#{suffix}",
+              DawarichWeb.TrekSourceActions,
+              :select_trips,
+              metadata: %{rails_gate: {DawarichWeb.TrekSourceActions, :enabled?}}
+
+          for action <- [:import_trips, :sync] do
+            post "/trek_sources/:id/#{action}#{suffix}", DawarichWeb.TrekSourceActions, action,
+              metadata: %{rails_gate: {DawarichWeb.TrekSourceActions, :enabled?}}
+          end
+        end
+
+        for method <- [:post, :delete] do
+          match method, "/trek_sources/:id", DawarichWeb.TrekSourceActions, :destroy,
+            metadata: %{rails_gate: {DawarichWeb.TrekSourceActions, :enabled?}}
+        end
+      end
+
       pipeline :integration_jobs do
         plug :put_api_tag, "integrations"
         plug DawarichWeb.HostAuthorization

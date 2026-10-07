@@ -222,8 +222,7 @@ defmodule DawarichWeb.MapFrames do
         %{}
       )
 
-    location =
-      List.first(get_req_header(conn, "referer")) || DawarichWeb.RequestURL.base(conn) <> "/"
+    location = DawarichWeb.RailsRedirect.back(conn)
 
     conn
     |> RailsSession.stage(%{"flash" => %{"discard" => [], "flashes" => %{"alert" => alert}}})

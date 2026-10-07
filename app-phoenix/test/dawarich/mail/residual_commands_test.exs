@@ -34,7 +34,11 @@ defmodule Dawarich.Mail.ResidualCommandsTest do
       args = F.job_args(kase)
       assert Generation.run(ScratchRepo, period, args, F.job_options(kase)) == :ok
       assert Generation.run(ScratchRepo, period, args, F.job_options(kase)) == :ok
-      assert [[1]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+
+      assert [[1]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
 
       if owner == :sidekiq do
         kind = if period == "monthly", do: "digests.email_month", else: "digests.email_year"
@@ -60,8 +64,19 @@ defmodule Dawarich.Mail.ResidualCommandsTest do
           |> Map.put("locale", if(preference == "invalid", do: "en", else: "de"))
 
         assert payload == expected
-        assert Dispatch.run(repo: ScratchRepo, oban: :residual_commands) == %{dispatched: 1}
-        assert Dispatch.run(repo: ScratchRepo, oban: :residual_commands) == %{}
+
+        assert Dispatch.run(
+                 now: Dawarich.JobsCase.db_now(ScratchRepo),
+                 repo: ScratchRepo,
+                 oban: :residual_commands
+               ) == %{dispatched: 1}
+
+        assert Dispatch.run(
+                 now: Dawarich.JobsCase.db_now(ScratchRepo),
+                 repo: ScratchRepo,
+                 oban: :residual_commands
+               ) == %{}
+
         assert [[1]] = rows("SELECT count(*) FROM oban.oban_jobs")
         assert [[job_args]] = rows("SELECT args FROM oban.oban_jobs")
         assert Map.delete(job_args, "event_id") == expected
@@ -82,7 +97,16 @@ defmodule Dawarich.Mail.ResidualCommandsTest do
                Keyword.put(F.job_options(kase), :after_terminal, fn -> raise fault end)
              ) == {:error, fault}
 
-      assert [[0]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+      assert [[0]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
+
+      assert [[2]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler LIKE 'digests.generate_%'"
+               )
+
       assert [] == rows("SELECT event_id FROM public.job_outbox")
       assert [] == rows("SELECT id FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'")
     end
@@ -104,7 +128,12 @@ defmodule Dawarich.Mail.ResidualCommandsTest do
         assert [["mail.family_location_request", ^payload]] =
                  rows("SELECT command_type,payload FROM public.job_outbox")
 
-        assert Dispatch.run(repo: ScratchRepo, oban: :residual_commands) == %{dispatched: 1}
+        assert Dispatch.run(
+                 now: Dawarich.JobsCase.db_now(ScratchRepo),
+                 repo: ScratchRepo,
+                 oban: :residual_commands
+               ) == %{dispatched: 1}
+
         assert [[1]] = rows("SELECT count(*) FROM oban.oban_jobs")
       end
     end

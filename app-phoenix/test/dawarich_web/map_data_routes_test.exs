@@ -11,6 +11,8 @@ defmodule DawarichWeb.MapDataRoutesTest do
       end
 
     assert actual == [
+             {:delete, "/api/v1/users/me", [:api_account_destroy], :api_account,
+              {DawarichWeb.Api.AccountDestroyController, :enabled?}},
              {:post, "/api/v1/users/exist", [:api_manager], :api_account, nil},
              {:get, "/api/v1/users/me", [:api_account], :api_account, nil},
              {:post, "/api/v1/users/me/two_factor/setup", [:api_account], :api_account, nil},

@@ -61,7 +61,12 @@ defmodule Dawarich.ReleaseOperations.UserRedetectOwnershipTest do
                  Ecto.UUID.dump!(parent)
                ])
 
-      assert %{dispatched: 1} == Dawarich.Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+      assert %{dispatched: 1} ==
+               Dawarich.Jobs.Dispatch.run(
+                 now: Dawarich.JobsCase.db_now(ScratchRepo),
+                 repo: ScratchRepo,
+                 oban: __MODULE__
+               )
 
       assert %{success: 1, failure: 0} =
                Oban.drain_queue(__MODULE__, queue: :visit_suggesting, with_scheduled: true)

@@ -11,7 +11,7 @@ defmodule Dawarich.Digests.Calculation do
     do: calculate(repo, user_id, year, nil, "yearly", opts)
 
   defp calculate(repo, user_id, year, month, kind, opts) do
-    repo.transaction(fn ->
+    Dawarich.Transaction.run(repo, fn ->
       context = Context.load!(repo, user_id, opts)
       year = RubyInteger.to_i(year)
       month = if month, do: RubyInteger.to_i(month)

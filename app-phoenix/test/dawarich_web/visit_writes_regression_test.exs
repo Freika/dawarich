@@ -348,6 +348,56 @@ defmodule DawarichWeb.VisitWritesRegressionTest do
     end
   end
 
+  @tag :visit_error_fallback
+  test "F5 rejected HTML visit updates use the status-free Rails fallback while success keeps suggested status" do
+    ctx = fixture("rename")
+
+    for mode <- [nil, "off"] do
+      env("DAWARICH_RAILS", mode)
+      before = rows("SELECT row_to_json(v) FROM visits v WHERE user_id=$1", [ctx.user_id])
+      fallback = "http://www.example.com/map/v2?date=today&panel=timeline"
+
+      for {field, message} <- [{"place_id", "Invalid place"}, {"area_id", "Invalid area"}],
+          {referer, expected} <- [
+            {nil, fallback},
+            {"https://outside.example/map", fallback},
+            {"javascript://www.example.com/map", fallback},
+            {"/map/v2?date=2026-10-03&status=confirmed#timeline",
+             "http://www.example.com/map/v2?date=2026-10-03&status=confirmed#timeline"}
+          ] do
+        conn =
+          request(
+            ctx,
+            "PATCH",
+            ctx.request["path"],
+            %{"visit" => %{field => "999999999"}},
+            "text/html",
+            if(referer, do: [{"referer", referer}], else: [])
+          )
+
+        assert conn.status == 302
+        assert get_resp_header(conn, "location") == [expected]
+        assert rails_session(conn)["flash"]["flashes"]["alert"] == message
+
+        assert rows("SELECT row_to_json(v) FROM visits v WHERE user_id=$1", [ctx.user_id]) ==
+                 before
+      end
+
+      conn =
+        request(
+          ctx,
+          "PATCH",
+          ctx.request["path"],
+          %{"visit" => %{"name" => "Renamed"}},
+          "text/html"
+        )
+
+      assert conn.status == 302
+      assert get_resp_header(conn, "location") == [fallback <> "&status=suggested"]
+      assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    end
+  end
+
   @tag :bulk_count
   test "over limit Turbo visit writes interpolate the maximum count in the flash" do
     ctx = fixture("rename")
@@ -462,30 +512,38 @@ defmodule DawarichWeb.VisitWritesRegressionTest do
 
     for attempt <- 1..5 do
       if attempt > 1, do: assert(:ok = Oban.retry_job(@oban, id))
-      Oban.drain_queue(@oban, queue: :projections)
 
-      assert [["scheduled", 0, max_attempts, snoozed, seconds]] =
+      assert {%{snoozed: 1, success: 0, failure: 0}, snoozed_at} =
+               Dawarich.Test.SnoozeClock.drain_queue(@oban, queue: :projections)
+
+      assert [["scheduled", 0, max_attempts, snoozed, scheduled_at]] =
                rows(
-                 "SELECT state,attempt,max_attempts,(meta->>'snoozed')::int,extract(epoch FROM scheduled_at-attempted_at)::float FROM oban.oban_jobs WHERE id=$1",
+                 "SELECT state,attempt,max_attempts,(meta->>'snoozed')::int,scheduled_at FROM oban.oban_jobs WHERE id=$1",
                  [id]
                )
 
       assert max_attempts > 0
       assert snoozed == attempt
-      assert seconds >= 5 * Integer.pow(2, attempt - 1) and seconds <= 3601
+
+      assert scheduled_at ==
+               DateTime.to_naive(
+                 DateTime.add(snoozed_at, 5 * Integer.pow(2, attempt - 1), :second)
+               )
     end
 
     rows("UPDATE oban.oban_jobs SET meta=jsonb_set(meta,'{snoozed}','100') WHERE id=$1", [id])
     assert :ok = Oban.retry_job(@oban, id)
-    assert %{snoozed: 1, success: 0} = Oban.drain_queue(@oban, queue: :projections)
 
-    assert [["scheduled", seconds]] =
+    assert {%{snoozed: 1, success: 0}, snoozed_at} =
+             Dawarich.Test.SnoozeClock.drain_queue(@oban, queue: :projections)
+
+    assert [["scheduled", scheduled_at]] =
              rows(
-               "SELECT state,extract(epoch FROM scheduled_at-attempted_at)::float FROM oban.oban_jobs WHERE id=$1",
+               "SELECT state,scheduled_at FROM oban.oban_jobs WHERE id=$1",
                [id]
              )
 
-    assert seconds >= 3600 and seconds <= 3601
+    assert scheduled_at == DateTime.to_naive(DateTime.add(snoozed_at, 3600, :second))
     assert rows("SELECT name FROM visits WHERE id=902000") == [["Prolonged outage"]]
     start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
     assert :ok = Oban.retry_job(@oban, id)

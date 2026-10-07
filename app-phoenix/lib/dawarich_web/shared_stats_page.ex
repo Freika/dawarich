@@ -6,7 +6,6 @@ defmodule DawarichWeb.SharedStatsPage do
 
   alias DawarichWeb.{
     Assets,
-    Layouts,
     PublicDigest,
     PublicMonth,
     StatsActions,
@@ -108,8 +107,8 @@ defmodule DawarichWeb.SharedStatsPage do
           )
       end
 
-    app = Layouts.app(Map.put(assigns, :inner_content, content))
-    html = Layouts.root(Map.put(assigns, :inner_content, app)) |> Phoenix.HTML.Safe.to_iodata()
+    html =
+      DawarichWeb.PageEnvelope.document(conn, assigns, content) |> Phoenix.HTML.Safe.to_iodata()
 
     conn
     |> put_resp_content_type("text/html")

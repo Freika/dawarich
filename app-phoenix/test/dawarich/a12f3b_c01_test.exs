@@ -113,12 +113,38 @@ defmodule Dawarich.A12f3bC01Test do
     args = args()
     fault = %RuntimeError{message: "last native warm write failed"}
     hook = fn suffix -> if suffix == "points_geocoded_stats", do: raise(fault) end
+
+    [[receipts_before]] =
+      Repo.query!("SELECT count(*) FROM phoenix.processed_commands", [], log: false).rows
+
     assert Worker.run(Repo, args, Keyword.put(opts, :before_warm_write, hook)) == {:error, fault}
     assert {:ok, [_ | _]} = Redis.cache_command(["KEYS", "phoenix/dawarich/user_14101_*"])
-    assert [[0]] = Repo.query!("SELECT count(*) FROM phoenix.processed_commands").rows
+
+    assert [[0]] =
+             Repo.query!(
+               "SELECT count(*) FROM phoenix.processed_commands WHERE event_id=$1",
+               [Ecto.UUID.dump!(args["event_id"])],
+               log: false
+             ).rows
+
+    assert [[^receipts_before]] =
+             Repo.query!("SELECT count(*) FROM phoenix.processed_commands", [], log: false).rows
+
     assert Worker.run(Repo, args, opts) == :ok
     assert Worker.run(Repo, args, opts) == :ok
-    assert [[1]] = Repo.query!("SELECT count(*) FROM phoenix.processed_commands").rows
+
+    [[receipts_after]] =
+      Repo.query!("SELECT count(*) FROM phoenix.processed_commands", [], log: false).rows
+
+    assert receipts_after == receipts_before + 1
+
+    assert [[1]] =
+             Repo.query!(
+               "SELECT count(*) FROM phoenix.processed_commands WHERE event_id=$1",
+               [Ecto.UUID.dump!(args["event_id"])],
+               log: false
+             ).rows
+
     assert [[0]] = Repo.query!("SELECT count(*) FROM phoenix.rails_commands").rows
   end
 
