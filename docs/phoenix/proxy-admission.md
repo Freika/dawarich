@@ -12,16 +12,16 @@ was later reused by admin writes, which prevented a legitimate reverse proxy
 from enabling registration.
 
 `Admission.context/4` now also accepts a connection. It checks duplicate headers
-before invoking the shared `RailsRemoteIp.ip/1`, refuses conflicting trusted
-XFF/Client-IP identities, then runs every existing context check. AdminWritesGate
-uses this connection form. The original header-list form stays conservative;
+before invoking the shared `RailsRemoteIp.ip/1`, refuses conflicting
+XFF/Client-IP identities for trusted and untrusted peers, then runs every
+existing context check. AdminWritesGate uses this connection form. The original header-list form stays conservative;
 no other admission caller is widened.
 
 The shared IP helper accepts XFF and Client-IP only when the socket peer is a
-trusted proxy. Untrusted peers use their socket address regardless of those
-headers. Trusted chains retain Rails address validation, rightmost non-proxy
-selection, configured proxy replacement and textual spoof checks. Forwarded
-and X-Real-IP remain excluded from identity. Ingress must still sanitize client
+trusted proxy. All peers undergo Rails address validation and textual spoof
+checks before identity selection. Untrusted peers use their socket address for nonconflicting
+headers. Trusted chains retain rightmost non-proxy selection and configured
+proxy replacement. Forwarded and X-Real-IP remain excluded from identity. Ingress must still sanitize client
 identity headers: a trusted proxy passing a forged identity through unchanged
 remains DRB-036, and this task does not close that defect.
 
@@ -50,8 +50,12 @@ settings, background settings, API-key rotation, password reset, delete,
 geocoding test and map-matching test. Registration executes the real HTTP
 handler and proves the setting persists. Each shape also retains duplicate
 header, spoofed trusted identity, missing session, invalid CSRF and foreign
-origin refusal; admin-only shapes retain role refusal. The existing tests
-retain method, route, special-session, OIDC, Cloud and current-role checks.
+origin refusal; admin-only shapes retain role refusal. A separate regression
+uses each non-admin session’s valid per-form CSRF for all nine admin-only shapes.
+Changing only the persisted admin flag admits the same request, proving role
+enforcement independently of CSRF. Untrusted conflicting Client-IP/XFF also
+refuses an otherwise valid registration form through both the shared helper
+and the full request gate. The existing tests retain method, route, special-session, OIDC, Cloud and current-role checks.
 
 ## Regression evidence
 
@@ -67,8 +71,10 @@ Production lifecycle/Cloud refusal files are outside this task and unchanged.
 ## Signed-in sign-in page
 
 GET `/users/sign_in` with a live Warden user now answers Rails/Devise's 302
-redirect and `alert: You are already signed in.` It consumes a stored local
-`user_return_to`, otherwise redirects to the absolute root URL. The Warden
+redirect and `alert: You are already signed in.` Pending-payment users first
+redirect to `/trial/resume` and retain `user_return_to`. Other users consume a stored local `user_return_to`, otherwise
+redirect to the absolute root URL. Live flash messages survive alongside the
+new alert; messages listed in the prior flash discard set expire. The Warden
 identity and CSRF token remain in the session, and no Trackable update occurs.
 The same behavior applies to ordinary query-bearing browser GETs. Locked,
 invalid, unsupported negotiation and POST envelopes retain their existing
@@ -77,7 +83,7 @@ admission behavior.
 Source: `Users::SessionsController#new`,
 `devise-5.0.4/app/controllers/devise_controller.rb:116–131`,
 `devise-5.0.4/lib/devise/controllers/helpers.rb:217–218`,
-`app/controllers/application_controller.rb:95`, and
+`app/controllers/application_controller.rb:95–118`, and
 `config/locales/devise.en.yml:10`. A targeted Rails request oracle records
 status 302, location `http://www.example.com/`, and the exact alert above.
 
@@ -85,8 +91,26 @@ status 302, location `http://www.example.com/`, and the exact alert above.
 was RED before implementation, then GREEN. M-SIGNIN-OWNED restores the old
 signed-out-only admission and fails the status assertion; restoration is GREEN.
 
-Final verification: targeted regressions **45 tests / zero failures**; prescribed
-full ExUnit seed 404 **9,476 tests / zero failures**, all three partitions exit 0.
+Review follow-up adds four named regressions: untrusted conflicting headers,
+pending-payment precedence, live flash/discard handling, and valid-CSRF role
+refusal. Each was RED before its fix, GREEN, failed under one named mutation,
+and GREEN after restoration. For the test-quality finding, RED reproduces the
+prior admin-token/non-admin-session mismatch; M-ROLE removes the production
+role check and fails the corrected regression. M-CONFLICT restores the early
+untrusted-peer shortcut; M-PAYMENT removes pending-payment precedence;
+M-FLASH replaces existing messages. A fresh Rails oracle confirms conflict
+refusal, trial-resume precedence, stored-location consumption and live notices.
+Review follow-up targeted gate: **49 tests / zero failures**. The full gate
+also exposed an existing Trek test comparing Oban’s independent attempt and
+reschedule clocks. It now asserts the worker’s exact 60-second snooze result
+and retains scheduling/completion checks; a 59-second mutation fails it.
+No worker behavior, timeout or retry policy changed. Final follow-up full
+ExUnit seed 404: **9,505 tests / zero failures**, all three partitions exit 0
+(2,725 / 3,311 / 3,469 tests). Warnings-as-errors compilation and whole-tree
+formatting pass.
+
+Initial implementation verification: targeted regressions **45 tests / zero
+failures**; prescribed full ExUnit seed 404 **9,476 tests / zero failures**, all three partitions exit 0.
 Forced compilation with warnings as errors, whole-tree formatting and feature
 commit Gitleaks pass. Fresh-worktree JS dependencies were installed after the
 first full gate reported only missing Tailwind and poster-renderer modules;
