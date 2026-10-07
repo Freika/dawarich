@@ -206,3 +206,145 @@ The required whole-tree format gate also exposed two baseline share-link templat
 Seed202 then exposed a baseline release-operation test input that formed a 32-bit point epoch by adding the retained user sequence. The minimum test-only seam uses the fixed valid synthetic epoch, preserves all1000 users and the exact pagination/cursor/job assertions, and seeds a high user identity to prove independence from prior suite order. The sequence is saved/restored. Existing named test evidence: RED integer overflow, GREEN, M-O-GATE-timestamp failure when identity-derived epoch is restored, restored full-module GREEN for202/404. No production change, new test exclusion or timeout increase; both prescribed full seeds are rerun after this committed input correction.
 
 Under concurrent suite load, the retained A12rel adapter test exceeded its unchanged60-second limit while seeding6309 region rows individually. Its fixture setup now inserts the exact rows in500-row batches (19 statements), keeping every source geometry/identity/clock/worker/committed-connection assertion. Focused GREEN completed in11 seconds. M-O-GATE-corpus omitting source region55001 fails the exact source row projection; restored202/404 GREEN is recorded. This is a test-only setup optimization, with no reduced corpus, production change, skip or longer timeout.
+
+## O06–O08: integration route reconciliation
+
+Integration baseline: `aa5270f9f939ab138447f7f1271495ecbe0afab4`,
+`feat/phoenix-port`, 2026-10-07. This supplement supersedes the bootstrap's
+missing-route observations above; it preserves their historical source census.
+The assigned base already contains the Q/M/W/P/I/F/E/T/V/R handlers, area
+POST/PATCH/PUT, segment PUT, import PUT/extraction, native stats/digest actions,
+map redirects and VideoStudio hook registration. No duplicate routes or hook
+registrations were added. Handler existence was checked against that integration
+base before native registration was asserted.
+
+The O01 ledger contains 90 source method/path rows. The O06 aggregate exercises
+47 declarations, and O07 exercises the remaining 43. Each uses the real Endpoint
+for independent-key rollback, explicit self-hosted and Cloud modes, fresh and
+legacy stored settings, original query/entity bytes, and unchanged domain and
+outbox/reverse-command counts. The 39 GET rows additionally exercise original
+HEAD rollback. This gives 516 real rollback requests. These assertions establish
+registration and pre-effect rollback; domain-specific rendering, validation,
+workers and storage retain their own closure evidence and residual boundaries.
+
+| Source routes / key | Rows | Native handler disposition |
+|---|---:|---|
+| stats | 6 | Native implemented: StatsLive, StatsActions and StatSharing |
+| digests | 5 | Native implemented: DigestsLive, DigestActions and DigestSharing |
+| insights | 2 | Native implemented: InsightsLive and details frame |
+| shared month/digest | 2 | Native implemented: SharedStatsPage; independent `shared` key |
+| map and bookmark redirects | 8 | Native implemented: MapLive, MapFrames and MapRedirects |
+| points / tags / tracks / areas | 17 | Native implemented: scoped reads and existing point/tag/segment/area/recalculation actions |
+| places | 7 | Native implemented: PlacesLive, PlaceNavigation and PlaceActions; CLI stays outside HTTP |
+| imports / extraction / downloads | 11 | Native implemented: ImportsLive, ImportsController and ImportsDownload |
+| exports / current-user backup | 5 | Native implemented: ExportsLive/Create/Delete and UserDataController |
+| trips / private notes | 14 | Native implemented: TripsLive, TripActions and TripNoteActions |
+| visits / redetection / visit settings | 11 | Native implemented: VisitsNavigation, VisitActions and VisitSettingsActions |
+| route videos | 2 | Native implemented: RouteVideoActions; existing native VideoStudio hook |
+
+O06 changes only public month/digest metadata: `router.ex:246–250` uses `shared`,
+so private `stats` or `digests` pins leave public capability routes native.
+The broad shared pin still restores Rails before auth, data access or effects.
+Areas, tags, points, tracks and places retain independent first-segment keys;
+pinning map alone leaves the declared write handlers eligible.
+
+O07 preserves visit settings under the broad `settings` pin; the existing
+`visits` pin covers visits and redetection independently. `user_data` remains
+independent. `UserDataRoutes.native?/2` delegates HEAD eligibility to the existing
+GET gate; J's Strangler/Plug.Head still preserves the original method and removes
+the wire entity. The real backup GET/HEAD in self-hosted and Cloud creates one
+native export outbox row, returns the recorded redirect and emits no reverse
+command. An injected before-send failure after publication leaves exactly one
+row and makes no Rails connection. Unsupported form/client/CSRF envelopes retain
+pre-effect coexistence replay and native standalone terminal refusal.
+
+### Deferred owner prerequisites and retained branches
+
+All 90 ordinary handlers exist on the integration base. No route is deferred
+because its handler module is missing. Registration does not close every rare
+source envelope or make its worker claimable.
+
+| Reachable branch | Disposition / owner |
+|---|---|
+| Dotted/JSON/XHR/valueless browser envelopes; ambiguous body/session/CSRF; strict stats update/sharing year/month route constraints | Deferred owner prerequisite: A12f-2 J shared Strangler/transport constraints. Existing source refusals and standalone native errors remain; no shared guard was bypassed here. |
+| Places and video coexistence Cloud gates; missing/foreign segment frame admission; unrecognized stored import state | Deferred owner prerequisite: P/R/M/I domain gates and their documented source-error matrices. Existing eligible native journeys are retained. |
+| W legacy date/settings/container/numeric coercion tails and achievement debounce after outbox dispatch | Deferred owner prerequisite: W and shared achievement worker; see `a12f3a-w-closure.md`. |
+| Cold cache invalidation, tile epochs, track/visit live events, restore follow-up sinks | Deferred owner prerequisite: sibling rows 19–22; Q/W/I/E/V owner handoffs remain authoritative. |
+| Typed worker registration, producer/cron readiness, accepted legacy lineage and unknown serialized payload disposition | Deferred owner prerequisite: sibling registry/drain owners. Preserve inert entries and accepted UUID/blob/cursor/receipt fences; unknown payloads block their affected transition. |
+| Browser/codec workflows, real stands/images, production pins and G42–G49 | Deferred controller release lane; seed 202 runs on the integration head under ruling 14. |
+
+No needs-Eugene retirement remains open here: rulings 9–17 retain bookmarks and
+maintenance aliases, preserve characterized Rails defects, drain accepted source
+work before retirement, and retain the Rails application for same-DB rollback.
+
+### Shared owner handoff
+
+The native reverse-kind/key/identity contracts were reused without modifying
+registry, scheduler, effect sinks or ownership policy:
+
+| Producer / native key | Identity, due time and fence | Existing detailed counterpart |
+|---|---|---|
+| `stats.calculate_month`, `stats.full_recalculation`, `digests.calculate_year` | Versioned outbox, actor/year/month/zone and producer metadata, fresh event UUID, captured current due time; persisted owner lock and transaction | `a12f3a-q-closure.md`, `stats/web_commands.ex`, `digests/web_commands.ex` |
+| points stats/track/achievement follow-ups; `areas.relabel_visits`; `transportation.user_reclassify` | Actor/track/area identities, achievement pending dedupe/minimum timestamp and 60-second due time, child batches of 100 with 10-second spacing; owner/actor/event fences | `a12f3a-w-closure.md` |
+| `places.name_fetch`, `places.delete_if_orphan`, `places.orphan_cleanup`, `places.bulk_name_fetch` | Scoped user/place, unique event UUID; supplied cleanup due time retained in native and compatible reverse paths; owner lock/publication transaction | `a12f3a-p-closure.md` |
+| GPX/normal continuations and extraction; prepared-download purge | Import/blob/user/source-blob and accepted event/immutable receipt/cursor lineage; immediate extraction scheduling and lease/owner/attachment fences | `a12f3a-i-closure.md`, `a12f3a-f-closure.md` |
+| `exports.points`, `users.export_data`, `users.import_data` | Existing export/user/locale/zone payloads, current due time, accepted event and import/blob identity; lease, transaction and storage attachment fences | `a12f3a-e-closure.md` |
+| `trips.calculate`, trip exports and private notes | Existing actor/trip/note and attachment identity, native calculation/export event; existing context/export APIs and resource transactions | `a12f3a-t-closure.md` |
+| `visits.full_history_redetect`, visit suggestions and month invalidation | Version-1 actor/zone/plan/locale, accepted event identity and completion-based cooldown; actor/owner lock and existing month-worker fences | `a12f3a-v-closure.md` |
+| route-video attachment cleanup | Attachment record/name/ID, blob and actor snapshot, retained/shared blob safety and durable deletion dedupe; native storage job, compatible explicit source pin | `a12f3a-r-closure.md` |
+
+These are branch-scoped ED proposals, not closure of a historical ED or the master
+125/78/24 inventories. Sibling row 24 remains the only expected-diffs writer.
+No Rails application defect was fixed by this wiring cut.
+
+### Reconciled source and verification evidence
+
+The six affected existing Rails generators were rerun on the reconciled head:
+stats, map frames, imports pages, trips, current-user backup and visits.
+The first assertion batch completed 59 examples with three stale source-packet
+failures. Stats' source 404 diagnostics included runtime logger object IDs;
+imports referenced the earlier video upload asset fingerprint; backup source
+summaries omitted E's captured container cases. The stats recorder now normalizes
+only the two logger identity fields in those diagnostics, in addition to its
+existing normalization. Source status, headers, state and effects remain asserted.
+No named generator test or source application behavior was added.
+
+Two corrected recordings of those three existing examples each passed three
+examples with zero failures. Complete fixture-tree comparison and country-name
+comparison both exited zero: every captured byte was identical. Updated source
+packets are Q06/Q12/Q14, I01–I06 and E04 under `a12f3a_source`; the existing domain
+goldens and unrelated legacy visit timezone/track locale captures retain their
+pre-task bytes. The subsequent complete six-generator assertion batch passed
+59 examples with zero failures. Swagger and schema remain unchanged.
+
+The O06 and O07 aggregate tests have missing-behavior RED, GREEN, prescribed
+mutation failures and restored GREEN. M-O06 removes area PUT and fails that
+method's declaration; M-O07 removes user_data metadata and fails the independent
+backup-key assertion. The expanded regression batch, including the established visit-settings
+rollback contract and all retained native poster styles, passes 26 tests with
+zero failures. Forced warnings-as-errors compile of 1668 files, whole-tree
+formatting, changed-generator RuboCop and explicit source-packet secret scans
+pass. Full seed404 acceptance and final branch state follow below; seed202 and
+browser/stand/image acceptance remain the controller's integration/release lane.
+
+
+The first seed404 suite finished 9125 tests with two failures: missing vendor
+poster-renderer dependencies and an incorrect draft visit-settings rollback key.
+The vendor setup was completed using the exact matching local compiled cache;
+visit settings retained its established independent `settings` contract. The
+corrected O07 aggregate fails HEAD eligibility on its exact pre-change production
+source, then passes, fails M-O07 and passes after restoration. No existing
+contract assertion, timeout or skip was weakened. Final seed404 acceptance is recorded below.
+
+
+Final O08 acceptance: the required controller seed404 wrapper completed with
+exit0, **9125 tests, 0 failures**. Partition summaries:
+
+- partition-1.log: 3213 tests, 0 failures, 2 excluded, 1 skipped
+- partition-2.log: 3262 tests, 0 failures, 1 excluded
+- partition-3.log: 2650 tests, 0 failures, 3 excluded, 2 skipped
+
+The inherited six exclusions and three skips are unchanged. Forced production
+compile with warnings-as-errors, whole-tree format check, the 59-example Rails
+source batch and changed-generator RuboCop all pass. Seed202 and the recorded
+shared-owner/release prerequisites remain the controller's separate lanes.

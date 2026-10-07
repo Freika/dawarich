@@ -1,5 +1,10 @@
 defmodule DawarichWeb.UserDataRoutes do
   @moduledoc false
+  def native?(conn, params) do
+    method = if conn.method == "HEAD", do: "GET", else: conn.method
+    DawarichWeb.UserDataGate.native?(%{conn | method: method}, params)
+  end
+
   defmacro user_data_routes do
     quote do
       pipeline :user_data_export do
@@ -29,14 +34,14 @@ defmodule DawarichWeb.UserDataRoutes do
         pipe_through :user_data_export
 
         get "/settings/users/export", DawarichWeb.UserDataController, :export,
-          metadata: %{rails_key: "user_data", rails_gate: {DawarichWeb.UserDataGate, :native?}}
+          metadata: %{rails_key: "user_data", rails_gate: {DawarichWeb.UserDataRoutes, :native?}}
       end
 
       scope "/" do
         pipe_through :user_data_import
 
         post "/settings/users/import", DawarichWeb.UserDataController, :import,
-          metadata: %{rails_key: "user_data", rails_gate: {DawarichWeb.UserDataGate, :native?}}
+          metadata: %{rails_key: "user_data", rails_gate: {DawarichWeb.UserDataRoutes, :native?}}
       end
     end
   end
