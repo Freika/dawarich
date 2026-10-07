@@ -52,3 +52,25 @@ recursive fixture cleanup to follow. The minimal test-harness seam includes
 `action_text_rich_texts` and a deterministic reset regression. This changes no
 runtime trip behavior and prevents persisted rich-text rows from colliding with
 reused synthetic trip IDs on later suite runs.
+
+## Achievement query admission
+
+Achievement PNGs and public cards ignore unknown query keys after validating the
+whole query. Tracking keys, encoded keys, repeated unknown keys and nested
+unknown values no longer trigger the closed form allow-list. PNG locale handling
+and card locale/embed handling retain their existing admission and effects.
+Header admission, HEAD, cache headers and unavailable-share responses are unchanged.
+Public month/digest and `/s/:id` viewers already admit ordinary tracking keys.
+
+Real Rails 1.15.3 Rack requests return PNG 200 for tracking keys, including
+valueless keys, and 400 for malformed percent encoding, invalid UTF-8, conflicting
+scalar/object parameters and nesting at depth 100. Native malformed queries
+retain the existing terminal 422 response. Native achievement queries retain
+the existing 65,536-byte ceiling and locale duplicate refusal; Rails accepts
+queries beyond that ceiling (including a value over 4 MiB in-process) and uses
+the last duplicate locale. Validation uses the existing `Api.SourceParams`
+parser, whose nesting limit is 32. Public card valueless queries still encounter
+the existing page-envelope refusal; this change does not alter that shared gate.
+These are retained admission differences, not Rails query-size guarantees for
+an HTTP server or reverse proxy. Regression evidence is in
+`a12f3b_a02_test.exs` and `a12f3b_a03_test.exs`, tagged `fix_ach_image_params`.

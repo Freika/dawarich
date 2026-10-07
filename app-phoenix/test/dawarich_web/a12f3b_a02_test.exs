@@ -67,6 +67,56 @@ defmodule DawarichWeb.A12f3bA02Test do
     assert rows("SELECT count(*) FROM achievement_progresses WHERE user_id=81302") == [[1]]
   end
 
+  @tag :fix_ach_image_params
+  test "public achievement cards ignore crawler query keys and preserve locale and embeds" do
+    result =
+      Sharing.call(
+        sharing("PATCH", "/achievements/country_fr/toggle_sharing", RailsUser.session(81302), %{
+          "enabled" => true
+        }),
+        []
+      )
+
+    uuid = Jason.decode!(result.resp_body)["uuid"]
+    path = "/shared/achievements/" <> uuid
+
+    for query <- [
+          "utm_source=x&release_probe=y",
+          "%75tm_source=x",
+          "utm_source=x&utm_source=y",
+          "utm_source[a]=x"
+        ] do
+      page = AchievementPublicPage.call(build_conn("GET", path <> "?embed=1&" <> query), [])
+      assert page.status == 200, query
+      assert page.resp_body =~ "ach-embed-page"
+      assert page.resp_body =~ ~s(lang="en")
+      assert get_resp_header(page, "content-security-policy") == ["frame-ancestors *"]
+      assert get_resp_header(page, "x-frame-options") == []
+      head = AchievementPublicPage.call(build_conn("HEAD", path <> "?embed=1&" <> query), [])
+      assert head.status == 200 and head.resp_body == ""
+
+      missing =
+        AchievementPublicPage.call(
+          build_conn("GET", "/shared/achievements/unknown?" <> query),
+          []
+        )
+
+      assert missing.status == 302
+    end
+
+    owner =
+      build_conn("GET", path <> "?locale=de&embed=1&utm_source=x")
+      |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(RailsUser.session(81302)))
+
+    page = AchievementPublicPage.call(owner, [])
+    assert page.status == 200 and page.resp_body =~ ~s(lang="de")
+    assert rows("SELECT settings->>'locale' FROM users WHERE id=81302") == [["de"]]
+
+    for query <- ["utm_source=%GG", "utm_source=%FF", "locale=no&utm_source=x"] do
+      assert AchievementPublicPage.call(build_conn("GET", path <> "?" <> query), []).status == 422
+    end
+  end
+
   defp sharing(method, path, session, params) do
     form = method == "POST"
     token = RailsCsrf.masked_form_token(session, path, "PATCH")

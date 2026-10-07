@@ -14,7 +14,7 @@ defmodule DawarichWeb.AchievementPublicImage do
     with true <- conn.method in ~w(GET HEAD),
          [_, uuid] <- Regex.run(@path, conn.request_path),
          :ok <- Dawarich.Auth.Admission.headers(conn.req_headers),
-         {:ok, _} <- Dawarich.Auth.Admission.form(conn.query_string, "", ~w(locale)) do
+         {:ok, _} <- DawarichWeb.AchievementPublicQuery.decode(conn.query_string, ~w(locale)) do
       case OgImage.call(Keyword.get(opts, :repo, Dawarich.Repo), uuid, opts) do
         {:ok, png} ->
           conn
