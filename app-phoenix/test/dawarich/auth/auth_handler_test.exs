@@ -406,6 +406,44 @@ defmodule Dawarich.Auth.AuthHandlerTest do
            ).rows == [["198.51.100.20"]]
   end
 
+  @tag :signed_in_form
+  test "signed in GET sign in redirects with the Devise already authenticated alert", ctx do
+    before = state(ctx.id)
+
+    for native <- [false, true], query <- ["", "?locale=en"] do
+      session = Map.put(signed_in(ctx.id), "user_return_to", "/stats")
+      response = request(:get, "/users/sign_in" <> query, [session_cookie(session)], nil, [])
+
+      response =
+        AuthHandler.call(response,
+          enabled: true,
+          native: native,
+          registration_enabled: false,
+          fallback: &put_private(&1, :handed_to_rails, true)
+        )
+
+      assert response.status == 302
+      assert get_resp_header(response, "location") == [@base <> "/stats"]
+
+      assert response_session(response)["flash"]["flashes"]["alert"] ==
+               "You are already signed in."
+
+      assert response_session(response)["warden.user.user.key"] ==
+               signed_in(ctx.id)["warden.user.user.key"]
+
+      refute Map.has_key?(response_session(response), "user_return_to")
+    end
+
+    response = request(:get, "/users/sign_in", [session_cookie(signed_in(ctx.id))], nil, [])
+
+    response =
+      AuthHandler.call(response, enabled: true, native: true, registration_enabled: false)
+
+    assert response.status == 302
+    assert get_resp_header(response, "location") == [@base <> "/"]
+    assert state(ctx.id) == before
+  end
+
   defp call(method, path, cookies, body, headers \\ []) do
     method
     |> request(path, cookies, body, headers)

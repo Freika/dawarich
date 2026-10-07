@@ -63,3 +63,24 @@ retain method, route, special-session, OIDC, Cloud and current-role checks.
   boundary and persists the forged address again; restored GREEN.
 
 Production lifecycle/Cloud refusal files are outside this task and unchanged.
+
+## Signed-in sign-in page
+
+GET `/users/sign_in` with a live Warden user now answers Rails/Devise's 302
+redirect and `alert: You are already signed in.` It consumes a stored local
+`user_return_to`, otherwise redirects to the absolute root URL. The Warden
+identity and CSRF token remain in the session, and no Trackable update occurs.
+The same behavior applies to ordinary query-bearing browser GETs. Locked,
+invalid, unsupported negotiation and POST envelopes retain their existing
+admission behavior.
+
+Source: `Users::SessionsController#new`,
+`devise-5.0.4/app/controllers/devise_controller.rb:116–131`,
+`devise-5.0.4/lib/devise/controllers/helpers.rb:217–218`,
+`app/controllers/application_controller.rb:95`, and
+`config/locales/devise.en.yml:10`. A targeted Rails request oracle records
+status 302, location `http://www.example.com/`, and the exact alert above.
+
+`signed in GET sign in redirects with the Devise already authenticated alert`
+was RED before implementation, then GREEN. M-SIGNIN-OWNED restores the old
+signed-out-only admission and fails the status assertion; restoration is GREEN.

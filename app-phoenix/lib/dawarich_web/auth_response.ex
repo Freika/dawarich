@@ -35,6 +35,23 @@ defmodule DawarichWeb.AuthResponse do
     redirect(conn, return_to(session))
   end
 
+  def already_authenticated(conn) do
+    session = conn.assigns.rails_session
+    message = AuthMessages.notice(conn, "devise.failure.already_authenticated")
+
+    updated =
+      session
+      |> Map.delete("user_return_to")
+      |> Map.put("flash", %{"discard" => [], "flashes" => %{"alert" => message}})
+
+    conn
+    |> AuthCookie.session(SessionCookie.for_form(updated, RailsSecret.fetch()))
+    |> DawarichWeb.RailsHeaders.call([])
+    |> put_resp_header("location", RequestURL.base(conn) <> return_to(session))
+    |> send_resp(302, "")
+    |> halt()
+  end
+
   def signed_out(conn) do
     conn
     |> AuthCookie.session(
