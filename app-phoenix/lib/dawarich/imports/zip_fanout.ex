@@ -174,15 +174,15 @@ defmodule Dawarich.Imports.ZipFanout do
     ZipChildren.queue!(lease, blob, context)
 
     ImportState.effect!(lease, fn ->
-      for _ <- 1..2,
-          do:
-            ImportBlobPurges.enqueue!(
-              lease.repo,
-              lease.import.id,
-              lease.import.user_id,
-              blob.id,
-              blob.id
-            )
+      removals = ImportBlobPurges.removals!(lease.repo, lease.import.id)
+      source = Enum.find(removals, fn {id, _, _} -> id == blob.id end)
+
+      ImportBlobPurges.enqueue_many!(
+        lease.repo,
+        lease.import.id,
+        lease.import.user_id,
+        removals ++ [source]
+      )
 
       lease.repo.query!(
         "DELETE FROM active_storage_attachments WHERE record_type='Import' AND record_id=$1",
