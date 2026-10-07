@@ -4,6 +4,7 @@ import { LiveSocket } from "phoenix_live_view"
 import { FamilyPage } from "family_page"
 import {
   bootRailsBridges,
+  stopRailsBridges,
   bootTurboFrames,
   MapShell,
   meta,
@@ -65,6 +66,19 @@ if (document.readyState === "loading") {
 } else {
   boot()
 }
+
+const teardown = () => {
+  liveSocket.destroyAllViews()
+  liveSocket.disconnect()
+  stopRailsBridges()
+}
+
+document.addEventListener("turbo:before-cache", teardown)
+document.addEventListener("turbo:before-render", teardown)
+document.addEventListener("turbo:load", () => {
+  boot()
+  liveSocket.connect()
+})
 
 const joined = () => liveSocket.main?.isConnected() === true
 

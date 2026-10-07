@@ -158,6 +158,7 @@ export const RailsStimulus = {
     document.removeEventListener("turbo:before-stream-render", bridge.onStream)
     if (streamBridge === bridge) streamBridge = null
     bridge.ready.then((app) => {
+      app.unload(app.controllers.map((controller) => controller.identifier))
       app.stop()
       islands.delete(app)
     })
@@ -165,7 +166,11 @@ export const RailsStimulus = {
   },
 }
 
-const mapShell = () => import("map_shell")
+let loadedMapShell = null
+const mapShell = () => import("map_shell").then((shell) => {
+  loadedMapShell = shell
+  return shell
+})
 
 export const MapShell = {
   mounted() {
@@ -189,6 +194,13 @@ export const bootRailsBridges = () => {
     mapShell().then((shell) => shell.mount(element))
 }
 
+export const stopRailsBridges = () => {
+  for (const element of document.querySelectorAll("[phx-hook='RailsStimulus']"))
+    RailsStimulus.destroyed.call({ el: element })
+  for (const element of document.querySelectorAll("[phx-hook='MapShell']"))
+    loadedMapShell?.unmount(element)
+}
+
 export const bootTurboFrames = () => {
   if (!document.querySelector("turbo-frame")) return
   return import("@hotwired/turbo-rails").then(({ Turbo }) => {
@@ -205,9 +217,12 @@ const expireRailsAlert = (node) => {
     window.setTimeout(() => node.remove(), 5000)
 }
 
+const watchedFlashes = new WeakSet()
+
 export const watchFlashes = () => {
   const container = document.getElementById("flash-messages")
-  if (!container) return
+  if (!container || watchedFlashes.has(container)) return
+  watchedFlashes.add(container)
   new MutationObserver((mutations) => {
     for (const { addedNodes } of mutations) addedNodes.forEach(expireRailsAlert)
   }).observe(container, { childList: true })
