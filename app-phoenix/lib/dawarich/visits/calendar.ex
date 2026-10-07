@@ -2,26 +2,16 @@ defmodule Dawarich.Visits.Calendar do
   @moduledoc false
 
   def changed(repo, user_id, stamps) do
-    if Dawarich.Standalone.enabled?() do
-      Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Points.VisitMonthsWorker, %{
-        "user_id" => user_id,
-        "started_at" => Enum.map(stamps, &DateTime.to_iso8601/1)
-      })
-    else
-      case Dawarich.Jobs.Ownership.lock(repo, "command:visits.suggest") do
-        :oban ->
-          case repo.query!("SELECT settings FROM users WHERE id=$1", [user_id], log: false).rows do
-            [[settings]] -> invalidate(repo, %{id: user_id, settings: settings}, stamps)
-            [] -> :ok
-          end
+    payload = %{
+      "user_id" => user_id,
+      "started_at" => stamps |> Enum.map(&DateTime.to_iso8601/1) |> Enum.uniq()
+    }
 
-        :sidekiq ->
-          Dawarich.RailsCommands.insert!(repo, "visit_months_changed", %{
-            "user_id" => user_id,
-            "started_at" => stamps |> Enum.map(&DateTime.to_iso8601/1) |> Enum.uniq()
-          })
-      end
-    end
+    if Dawarich.Standalone.enabled?() or
+         Dawarich.Jobs.Ownership.lock(repo, "command:visits.suggest") == :oban,
+       do:
+         Dawarich.Points.NativeEffects.enqueue(repo, Dawarich.Points.VisitMonthsWorker, payload),
+       else: Dawarich.RailsCommands.insert!(repo, "visit_months_changed", payload)
   end
 
   def invalidate(repo, user, stamps) do

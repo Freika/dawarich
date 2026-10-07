@@ -94,11 +94,11 @@ defmodule DawarichWeb.VisitStreams do
   def notice(:bulk_destroy, result, locale),
     do: Translate.t(locale, "controllers.visits.bulk_removed", %{count: result.count})
 
-  def error(locale, key) do
+  def error(locale, key, bindings \\ %{}) do
     flash(%{
       locale: locale,
       type: "error",
-      message: Translate.t(locale, "controllers.visits." <> key, %{}),
+      message: Translate.t(locale, "controllers.visits." <> key, bindings),
       __changed__: nil
     })
     |> Phoenix.HTML.Safe.to_iodata()

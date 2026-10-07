@@ -1,6 +1,6 @@
 # Visits and redetection closure
 
-Last updated: 2026-10-06. Package V, Rails 1.15.3 source contract.
+Last updated: 2026-10-07. Package V, Rails 1.15.3 source contract.
 
 ## Implemented native journey
 
@@ -30,8 +30,12 @@ terminal responses for that selected owner.
 
 `WebEffects.months/3` and the existing `RailsEffects.visit_months/3` API route
 through `Visits.Calendar.changed/3`. It locks `command:visits.suggest`:
-Sidekiq retains the `visit_months_changed` source command, while Oban invalidates
-the affected user-local month keys with the existing Redis cache API. Keys
+Sidekiq retains the `visit_months_changed` source command. Native ownership
+in coexistence and standalone queues `Points.VisitMonthsWorker` in the same SQL
+transaction as the visit write. The job becomes visible only after commit and
+invalidates the affected user-local month keys with the existing Redis cache API.
+Cache failure fails the worker attempt for Oban retry, without rolling back
+the committed visit. Native timeline summaries read SQL while the job is pending. Keys
 retain the Rails `timeline_month_summary/<user>/<month>/<zone>/<segment>/v3`
 shape for both Lite and Pro. Blank cache timezone uses UTC. MonthSummary reads
 native SQL and does not depend on a Rails cache worker.
@@ -161,3 +165,43 @@ pass with zero failures. The full suite retains its existing 11 exclusions and
 three skips. Six independent production mutations fail their assertions and
 restored targets pass. Forced compilation with warnings as errors, whole-tree
 format verification and Gitleaks pass; Swagger and schema show no drift.
+
+
+## Visit write review corrections (2026-10-07)
+
+The shared calendar seam no longer calls Redis inside visit write transactions.
+Web single update/delete, bulk update/delete and merge, API create/update/delete,
+merge and batch, detection/redetection, area labeling and import destruction all
+retain their existing routing through that seam. Old and new starts remain in
+its durable payload; the worker clears both plan segments and leaves unrelated
+months alone. Job retries are idempotent. The retained source-owner command is
+unchanged. API bulk status updates retain Rails' callback-free `update_all`
+behavior; this correction does not invent a month effect for that operation.
+
+Merge accepts UTF-8 names using Rails' ASCII strip and Unicode lowercase for
+comparison, retains the first original spelling, and joins distinct names with
+`, `. It does not normalize composed and decomposed strings into one name or
+impose a byte cap: Rails' visit name has no length validator or database limit.
+The same-place branch continues to retain the survivor's original name.
+Invalid place/area HTML updates redirect to the safe referer or timeline fallback
+with the Rails alert. Over-limit Turbo bulk errors interpolate the 500-visit
+limit just as HTML does.
+
+`VisitWritesRegressionTest` exercises the real web and API endpoints, an
+independent SQL commit observer, and a failed Oban attempt followed by retry.
+Its five named regressions have RED/GREEN/mutation/restored-GREEN evidence in
+the controller's assigned implementation report. V09 now executes the committed
+projection before checking Redis keys. Native readers use current SQL before
+that projection runs; Redis keys can remain until the projection succeeds.
+
+### ED-FIX-VISITS-CACHE — durable native month invalidation
+
+Rails' after-commit callback logs and swallows cache errors, losing that attempt.
+Phoenix retains the native projection job when Redis is unavailable and retries
+it after the valid SQL write commits. This is a correction of that Rails failure
+rather than a change to accepted visit data. The shared ED/DRB registers remain
+controller-owned; this scoped decision records the deviation for reconciliation.
+
+The AFFiNE counterpart was read. Synchronization of this security-sensitive
+write-integrity correction is pending the controller's documentation handoff;
+the execution plan prohibits delegate AFFiNE writes for this assignment.
