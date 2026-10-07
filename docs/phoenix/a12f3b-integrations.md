@@ -118,6 +118,12 @@ Trek sync proof is unchanged by E061. Seed 202 belongs to the
 controller's integration head. This package does not accept a Ruby-free
 release or change drain/rollback policy.
 
+Cloud native lifecycle remains refused until the external L1 handoff,
+including when `DAWARICH_RAILS=off`. Current migration ledgers do not bypass
+that refusal: readiness reports `:schemas_behind`, and migration and seed
+commands refuse without writes. `a12f3b_e061_cloud_guard_test.exs` verifies
+this constraint alongside the unchanged baseline release Cloud tests.
+
 ## TeslaMate effect ownership reconciliation
 
 Finalization preserves the explicit native realtime owner path: filter anomalies
