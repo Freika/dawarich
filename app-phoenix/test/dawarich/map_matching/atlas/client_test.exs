@@ -189,41 +189,42 @@ defmodule Dawarich.MapMatching.Atlas.ClientTest do
 
   test "cuts off a drip response at the overall request deadline", c do
     body = Jason.encode!(@health)
+    owner = self()
 
     task =
       Task.async(fn ->
+        send(owner, {self(), :accepting})
         socket = accept(c.server)
-        read_head(socket)
-        reply(socket, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n")
 
         try do
-          Enum.reduce_while(:binary.bin_to_list(body), 0, fn byte, count ->
-            case :gen_tcp.send(socket, chunk(<<byte>>)) do
-              :ok ->
-                Process.sleep(20)
-
-                case :gen_tcp.recv(socket, 0, 0) do
-                  {:error, :closed} -> {:halt, count + 1}
-                  {:error, :timeout} -> {:cont, count + 1}
-                end
-
-              {:error, :closed} ->
-                {:halt, count}
-            end
-          end)
+          read_head(socket)
+          reply(socket, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n")
+          drip_response(socket, :binary.bin_to_list(body), owner, 0)
         after
-          :gen_tcp.send(socket, "0\r\n\r\n")
           :gen_tcp.close(socket)
         end
       end)
 
-    started = System.monotonic_time(:millisecond)
-    result = Client.health(c.url, receive_timeout: 100, request_timeout: 120)
-    elapsed = System.monotonic_time(:millisecond) - started
+    receive do
+      {pid, :accepting} when pid == task.pid -> :ok
+    end
+
+    Code.ensure_loaded!(Mint.HTTP)
+    :erlang.trace_pattern({Mint.HTTP, :recv, 3}, true, [])
+    :erlang.trace(self(), true, [:call, {:tracer, task.pid}])
+
+    result =
+      try do
+        Client.health(c.url, receive_timeout: 100, request_timeout: 100)
+      after
+        :erlang.trace(self(), false, [:call])
+        :erlang.trace_pattern({Mint.HTTP, :recv, 3}, false, [])
+        send(task.pid, :finished)
+      end
+
     count = Task.await(task)
     assert {:error, %Client.Error{code: "request_timeout", transient?: true}} = result
     assert count < byte_size(body)
-    assert elapsed < 500
   end
 
   test "connection failure is transient", c do
@@ -415,6 +416,26 @@ defmodule Dawarich.MapMatching.Atlas.ClientTest do
   test "connection test reports not configured" do
     for url <- [nil, "", "  "] do
       assert {:error, "not_configured"} = ConnectionTest.call(url)
+    end
+  end
+
+  defp drip_response(socket, bytes, owner, count) do
+    receive do
+      {:trace, ^owner, :call, {Mint.HTTP, :recv, _}} ->
+        case bytes do
+          [byte, _ | _] ->
+            case :gen_tcp.send(socket, chunk(<<byte>>)) do
+              :ok -> drip_response(socket, tl(bytes), owner, count + 1)
+              {:error, :closed} -> count
+            end
+
+          [_] ->
+            drip_response(socket, bytes, owner, count)
+        end
+
+      :finished ->
+        assert {:error, :closed} = :gen_tcp.recv(socket, 0, :infinity)
+        count
     end
   end
 
