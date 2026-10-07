@@ -70,7 +70,7 @@ defmodule Dawarich.Photos.Enrichment do
 
         points =
           Repo.query!(
-            "SELECT timestamp,ST_Y(lonlat::geometry),ST_X(lonlat::geometry) FROM points WHERE user_id=$1 AND timestamp IS NOT NULL AND lonlat IS NOT NULL ORDER BY timestamp",
+            "SELECT timestamp,ST_Y(lonlat::geometry),ST_X(lonlat::geometry) FROM points WHERE user_id=$1 AND timestamp IS NOT NULL AND lonlat IS NOT NULL ORDER BY timestamp, id",
             [user.id]
           ).rows
 

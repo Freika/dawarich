@@ -14,7 +14,7 @@ defmodule Dawarich.Stats.Insights do
   FROM visits
   WHERE user_id = $1 AND deleted_at IS NULL AND status != 2 AND status = 1 AND started_at BETWEEN $2 AND $3
   GROUP BY name
-  ORDER BY visit_count DESC, total_duration DESC
+  ORDER BY visit_count DESC, total_duration DESC, name COLLATE "C"
   LIMIT 6
   """
 
