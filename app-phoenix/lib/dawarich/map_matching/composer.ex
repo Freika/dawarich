@@ -1,7 +1,3 @@
-defmodule Geo.MultiLineString do
-  defstruct coordinates: [], srid: nil
-end
-
 defmodule Dawarich.MapMatching.Composer do
   def call(lines) do
     coordinates =

@@ -43,7 +43,7 @@ defmodule Dawarich.ReleaseMigrations.Unreleased do
       {"20260925100000", &align_track_split_settings_defaults/1},
       {"20260925100100", &reenqueue_transportation_mode_backfills/1, transaction: false},
       {"20260927120000", &create_job_outbox/1},
-      {"20261006120000", &add_map_matching_to_tracks/1},
+      {"20261006120000", &add_map_matching_to_tracks/1, transaction: true, timeout: 400_000},
       {"20261006120100", &add_matched_path_index_to_tracks/1, transaction: false}
     ]
   end
@@ -125,11 +125,18 @@ defmodule Dawarich.ReleaseMigrations.Unreleased do
       """)
 
     if invalid,
-      do: sql!(repo, "DROP INDEX CONCURRENTLY IF EXISTS index_tracks_on_matched_path")
+      do:
+        sql!(repo, "DROP INDEX CONCURRENTLY IF EXISTS index_tracks_on_matched_path",
+          timeout: :infinity
+        )
 
-    sql!(repo, """
-    CREATE INDEX CONCURRENTLY IF NOT EXISTS index_tracks_on_matched_path
-    ON tracks USING gist(matched_path) WHERE matched_path IS NOT NULL
-    """)
+    sql!(
+      repo,
+      """
+      CREATE INDEX CONCURRENTLY IF NOT EXISTS index_tracks_on_matched_path
+      ON tracks USING gist(matched_path) WHERE matched_path IS NOT NULL
+      """,
+      timeout: :infinity
+    )
   end
 end
