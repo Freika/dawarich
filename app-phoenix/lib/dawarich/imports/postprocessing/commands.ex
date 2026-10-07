@@ -39,11 +39,7 @@ defmodule Dawarich.Imports.Postprocessing.Commands do
 
   def produce!(repo, import, context, type, payload, aggregate) do
     if Dawarich.Standalone.enabled?() do
-      worker =
-        case type do
-          "imports.update_points_count" -> Dawarich.Imports.UpdatePointsCountWorker
-          "tracks.generate_range" -> Dawarich.Tracks.RangeWorker
-        end
+      {:ok, worker} = Dawarich.Jobs.Registry.command(type)
 
       Dawarich.Imports.Postprocessing.Native.publish!(
         repo,

@@ -20,7 +20,7 @@ defmodule Dawarich.Imports.ZipFanoutTest do
       Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.process_normal", owner)
       Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.archive_test", :oban)
       c = Map.put(c, :lane, "command:imports.archive_test")
-      assert {:ok, :removed} = run(c)
+      c = run_settled(c)
 
       rows(
         "UPDATE job_outbox SET error_code=error_code WHERE aggregate_id=(SELECT min(aggregate_id) FROM job_outbox)"
@@ -61,7 +61,7 @@ defmodule Dawarich.Imports.ZipFanoutTest do
                })
 
       assert queued(c) == []
-      assert {:ok, :removed} = run(c)
+      c = run_settled(c)
       assert_children(c)
       assert queued(c) == expected_queue(c)
       assert :ok = Dawarich.Imports.ProcessWorker.perform(c.job)
@@ -72,7 +72,7 @@ defmodule Dawarich.Imports.ZipFanoutTest do
 
   test "zip fanout retains Rails enqueue order after physical row reordering", c do
     c = fixture(c, "zip_known_preference")
-    assert {:ok, :removed} = run(c)
+    c = run_settled(c)
     assert length(expected_queue(c)) == 2
 
     ScratchRepo.transaction(fn ->
@@ -107,12 +107,34 @@ defmodule Dawarich.Imports.ZipFanoutTest do
     assert_clean(c)
   end
 
-  test "zip later-child validation failure retains prior rows without queued work", c do
+  test "zip later-child validation failure queues accepted rows and waits for terminal children",
+       c do
     c = fixture(c, "zip_extractor_later_child_failure")
+    assert {:ok, {:snooze, 5}} = run(c)
+    assert_children(c)
+
+    assert [[child]] =
+             rows(
+               "SELECT child_id FROM phoenix.import_archive_children WHERE parent_id=$1 AND child_id IS NOT NULL",
+               [c.import.id]
+             )
+
+    assert queued(c) == [
+             [
+               "imports.process_normal",
+               %{
+                 "import_id" => child,
+                 "user_id" => c.import.user_id,
+                 "time_zone" => c.expected["zone"]
+               }
+             ]
+           ]
+
+    c = Dawarich.Test.ArchiveTerminalFixture.acknowledge_children!(c, ScratchRepo)
     assert {:ok, {:error, error, _}} = run(c)
     assert Exception.message(error) == c.expected["parent"]["error_message"]
     assert_children(c)
-    assert queued(c) == []
+    assert queued(c) == expected_queue(c)
 
     assert [[3, c.expected["parent"]["error_message"]]] ==
              rows("SELECT status,error_message FROM imports WHERE id=$1", [c.import.id])
@@ -120,11 +142,25 @@ defmodule Dawarich.Imports.ZipFanoutTest do
     assert {:ok, {:error, error, _}} = run(c)
     assert Exception.message(error) == c.expected["parent"]["error_message"]
     assert_children(c)
-    assert queued(c) == []
+    assert queued(c) == expected_queue(c)
     assert_clean(c)
   end
 
   defp fixture(c, name), do: Map.merge(c, NormalFormats.whole!(name, ScratchRepo, c.root))
+
+  defp run_settled(c) do
+    case run(c) do
+      {:ok, :removed} ->
+        c
+
+      {:ok, {:snooze, 5}} ->
+        refute Dawarich.Jobs.Processed.done?(ScratchRepo, c.job.args["event_id"])
+        assert_children(c)
+        c = Dawarich.Test.ArchiveTerminalFixture.acknowledge_children!(c, ScratchRepo)
+        assert {:ok, :removed} = run(c)
+        c
+    end
+  end
 
   defp run(c) do
     Lease.with_import(
@@ -170,7 +206,9 @@ defmodule Dawarich.Imports.ZipFanoutTest do
                  &1["id"],
                  &1["name"],
                  Enum.find_index(sources, fn source -> source == &1["source"] end),
-                 0
+                 Enum.find_index(~w(created processing completed failed deleting), fn status ->
+                   status == &1["status"]
+                 end)
                ]
              )
 

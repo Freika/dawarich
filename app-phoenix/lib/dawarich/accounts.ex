@@ -22,6 +22,9 @@ defmodule Dawarich.Accounts do
 
   def get(_id), do: nil
 
+  def public_owner(id) when is_integer(id), do: find(id)
+  def public_owner(_id), do: nil
+
   def by_api_key(key) when is_binary(key) do
     from(u in "users",
       where: u.api_key == ^key and is_nil(u.deleted_at),

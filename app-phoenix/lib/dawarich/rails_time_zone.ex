@@ -12,6 +12,13 @@ defmodule Dawarich.RailsTimeZone do
 
   def valid?(name), do: is_binary(name) and not is_nil(canonical(name))
 
+  def name(settings), do: resolve(Dawarich.UserTimeZone.zone(settings))
+
+  def periods(name) do
+    zone = resolve(name)
+    {zone, Map.fetch!(@zones, zone)}
+  end
+
   def format(nil, _settings, _digits), do: nil
 
   def format(%NaiveDateTime{} = utc, settings, digits),

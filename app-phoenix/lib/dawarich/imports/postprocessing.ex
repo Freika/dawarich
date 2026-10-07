@@ -1,11 +1,21 @@
 defmodule Dawarich.Imports.Postprocessing do
   @moduledoc false
   require Logger
-  alias Dawarich.Imports.{ImportMessages, Lease, LeaseLost}
+  alias Dawarich.Imports.{ImportMessages, ImportState, Lease, LeaseLost}
   alias Dawarich.Imports.Postprocessing.{Commands, Policy, Snapshot}
   alias Dawarich.Notifications
 
   @steps ~w(points_count filter_anomalies schedule_stats schedule_visit_suggesting schedule_track_generation update_points_count notify_if_all_skipped)
+
+  def complete!(lease, import, context) do
+    call(
+      lease,
+      import,
+      Map.put(context, :on_completion, fn ->
+        ImportState.complete!(lease, Snapshot.clock(context))
+      end)
+    )
+  end
 
   def call(lease, import, context) do
     lease =
@@ -148,19 +158,35 @@ defmodule Dawarich.Imports.Postprocessing do
   end
 
   defp run("notify_if_all_skipped", lease, import, context) do
-    current = Snapshot.import!(lease, import.id)
-    summary = Snapshot.summary!(lease, import.id)
+    settle(lease, context, fn ->
+      current = Snapshot.import!(lease, import.id)
+      summary = Snapshot.summary!(lease, import.id)
 
-    if summary.count == 0,
-      do: notice(lease, current, context, ImportMessages.zero(current, context))
+      if summary.count == 0,
+        do: notice(lease, current, context, ImportMessages.zero(current, context))
+    end)
   end
 
   defp warn(lease, import, context, step) do
     current = Snapshot.import!(lease, import.id)
-    notice(lease, current, context, ImportMessages.post_failure(current, context, step))
+
+    notify = fn ->
+      notice(lease, current, context, ImportMessages.post_failure(current, context, step))
+    end
+
+    if step == "notify_if_all_skipped",
+      do: settle(lease, context, notify),
+      else: notify.()
   rescue
     error in LeaseLost -> reraise error, __STACKTRACE__
     error -> report(context, error, "Failed to create post-import failure notification")
+  end
+
+  defp settle(lease, context, fun) do
+    Snapshot.effect!(lease, fn ->
+      fun.()
+      Map.get(context, :on_completion, fn -> :ok end).()
+    end)
   end
 
   defp notice(lease, import, context, message) do
