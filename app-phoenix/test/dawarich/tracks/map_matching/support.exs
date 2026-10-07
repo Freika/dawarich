@@ -22,10 +22,7 @@ defmodule Dawarich.MapMatching.TestSupport do
         if value, do: System.put_env(key, value), else: System.delete_env(key)
       end
 
-      :persistent_term.put(
-        {Dawarich.Experimental, Dawarich.TracksScratchRepo, :map_matching},
-        false
-      )
+      Dawarich.Experimental.cache_map_matching(Dawarich.TracksScratchRepo, false)
 
       restore(:map_matching_oban, old)
       restore(:map_matching_client, client)

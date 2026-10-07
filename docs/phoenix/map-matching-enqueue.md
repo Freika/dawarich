@@ -1,17 +1,30 @@
 # Map matching enqueue and recovery
 
-The experimental setting is OFF by default. Completion hooks read one boolean
-from `:persistent_term` and return while OFF. This applies to default OFF, stored
-OFF and an OFF environment pin: no settings SQL, process/task creation, hashing,
-state mutation, job insertion or Atlas request happens per completion.
+The experimental setting is OFF by default. Completion hooks read a
+repository-scoped ETS snapshot and return while OFF.
+Each snapshot carries the boolean, monotonic load timestamp and refresh token.
+Within the 30-second TTL, default OFF, stored OFF and an OFF environment pin
+perform no settings SQL, process/task creation, hashing, state mutation, job
+insertion or Atlas request per completion.
 
 `Experimental.refresh_map_matching/2` resolves the toggle and Atlas URL
 prerequisite when the deferred dispatcher boots after Repo and Oban. Successful
 native admin writes to either setting refresh that repository's cache before
 the response returns. Environment pins retain precedence. A failed boot lookup
 fails closed and logs `map_matching.cache_refresh_failed`. The cache is local to
-the node; writes made outside that node's native admin path require a refresh or
-restart on that node.
+the node and uses the Rails instance-settings resolver's 30-second refresh
+interval. The first expired read atomically claims one asynchronous refresher;
+concurrent reads keep the previous boolean until it lands. One SELECT loads
+the toggle and Atlas URL together, with environment pins retaining precedence.
+A pinned OFF refresh does no SQL. Atomic replacement prevents an older in-flight
+reload from overwriting an immediate local admin or sweeper refresh. Failed
+reloads retain the previous value, log the failure and retry after another TTL;
+Enqueuer and Worker still check authoritative settings before matching.
+
+Writes through Rails, direct SQL or another node converge on this node at the
+next read after at most one TTL, plus query completion. No clustering or PubSub
+consumer is needed. The sweeper refreshes its local snapshot before its enabled
+check, so a sweep also reconciles OFF nodes and recovers missed dispatch.
 
 Disabled calls leave existing state untouched. After enabling, changed input
 clears status, matched geometry and match timestamp before a new claim is
@@ -77,6 +90,9 @@ stale input; publication preserves recorded geometry and track statistics.
 `hooks_test.exs` counts SQL across processes and traces process creation for all
 eight operations under default and stored OFF. `experimental_section_test.exs`
 proves admin enable/disable changes dispatch without restart.
+`cache_refresh_test.exs` simulates stale node snapshots for both transitions,
+counts zero settings queries within TTL, blocks the single refresh while 32
+concurrent readers return the old value, and checks sweeper refresh/recovery.
 `dispatch_regression_test.exs` terminates or suspends the optional supervisor in
 its own test VM and proves successful Builder return, bounded failure logging,
 no late preparation, and sweeper recovery. `review_regression_test.exs` preserves

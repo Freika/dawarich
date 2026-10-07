@@ -16,7 +16,7 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
     System.put_env("SELF_HOSTED", "true")
 
     on_exit(fn ->
-      :persistent_term.put({Dawarich.Experimental, Repo, :map_matching}, false)
+      Dawarich.Experimental.cache_map_matching(Repo, false)
       restore("DAWARICH_RAILS", previous)
       restore("SELF_HOSTED", hosted)
     end)

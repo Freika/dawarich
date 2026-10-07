@@ -87,6 +87,7 @@ defmodule Dawarich.Application do
 
     Dawarich.QrCache.create_table()
     Dawarich.TtlCache.create_table()
+    Dawarich.Experimental.create_cache_table()
 
     if jobs_runtime?() do
       Oban.Telemetry.attach_default_logger(level: :info, events: [:job, :peer])

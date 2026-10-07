@@ -13,19 +13,13 @@ defmodule Dawarich.Tracks.MapMatching.Deferred do
     {:ok, %{}}
   rescue
     _ ->
-      :persistent_term.put(
-        {Dawarich.Experimental, Keyword.get(opts, :repo, Dawarich.Repo), :map_matching},
-        false
-      )
+      Dawarich.Experimental.cache_map_matching(Keyword.get(opts, :repo, Dawarich.Repo), false)
 
       Logger.warning("map_matching.cache_refresh_failed")
       {:ok, %{}}
   catch
     _, _ ->
-      :persistent_term.put(
-        {Dawarich.Experimental, Keyword.get(opts, :repo, Dawarich.Repo), :map_matching},
-        false
-      )
+      Dawarich.Experimental.cache_map_matching(Keyword.get(opts, :repo, Dawarich.Repo), false)
 
       Logger.warning("map_matching.cache_refresh_failed")
       {:ok, %{}}

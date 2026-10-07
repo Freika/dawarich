@@ -8,7 +8,7 @@ defmodule Dawarich.Tracks.MapMatching.Sweeper do
 
   def run(repo) do
     cutoff = DateTime.utc_now() |> DateTime.add(-3600) |> DateTime.to_iso8601()
-    if Dawarich.Experimental.map_matching?(repo), do: sweep(repo, cutoff, 0), else: :ok
+    if Dawarich.Experimental.refresh_map_matching(repo), do: sweep(repo, cutoff, 0), else: :ok
   end
 
   defp sweep(repo, cutoff, last) do

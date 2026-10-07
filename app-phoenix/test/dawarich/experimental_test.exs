@@ -5,7 +5,7 @@ defmodule Dawarich.ExperimentalTest do
   alias Dawarich.{Accounts, Experimental, I18n}
 
   setup do
-    on_exit(fn -> :persistent_term.put({Experimental, Repo, :map_matching}, false) end)
+    on_exit(fn -> Experimental.cache_map_matching(Repo, false) end)
   end
 
   test "env pin overrides the stored value and reports pinned" do
