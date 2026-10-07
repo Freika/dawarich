@@ -70,7 +70,7 @@ defmodule Dawarich.UserData.ExportWorkerTest do
     assert {:ok, extracted} = :zip.unzip(String.to_charlist(path), [:memory])
 
     assert Map.new(extracted, fn {name, bytes} -> {List.to_string(name), bytes} end) ==
-             UserDataSeeds.entries("export_UTC")
+             UserDataSeeds.current_export_entries("UTC")
 
     expected = c.expected["notifications"] |> Enum.find(&(&1["title"] == "Export completed"))
 
