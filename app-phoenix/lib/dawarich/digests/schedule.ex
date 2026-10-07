@@ -4,6 +4,8 @@ defmodule Dawarich.Digests.Schedule do
   alias Dawarich.Stats.{DigestsCalculateMonthEffects, DigestsCalculateYearEffects}
   alias Dawarich.Jobs.Ownership
   alias Dawarich.RailsCommands
+  alias Dawarich.Jobs.Processed
+  alias Dawarich.Stats.EffectIdentity
 
   def monthly(repo, user_id, year, month, zone, opts \\ []) do
     enqueue(
@@ -32,27 +34,35 @@ defmodule Dawarich.Digests.Schedule do
     type = "digests.calculate_" <> period
     at = Keyword.get_lazy(opts, :scheduled_at, &DateTime.utc_now/0)
 
-    {:ok, :ok} =
-      repo.transaction(fn ->
-        case if(Dawarich.Standalone.enabled?(),
-               do: :oban,
-               else: Ownership.lock(repo, "command:" <> type)
-             ) do
-          :oban ->
-            effect =
-              if period == "month",
-                do: DigestsCalculateMonthEffects,
-                else: DigestsCalculateYearEffects
+    event = opts[:event_id] || Ecto.UUID.generate()
+    opts = Keyword.put(opts, :event_id, event)
 
-            effect.publish(repo, args, Keyword.put(opts, :scheduled_at, at))
+    :ok =
+      Processed.once(
+        repo,
+        EffectIdentity.id(event, type <> ":schedule", args),
+        type <> ":schedule",
+        fn ->
+          case if(Dawarich.Standalone.enabled?(),
+                 do: :oban,
+                 else: Ownership.lock(repo, "command:" <> type)
+               ) do
+            :oban ->
+              effect =
+                if period == "month",
+                  do: DigestsCalculateMonthEffects,
+                  else: DigestsCalculateYearEffects
 
-          :sidekiq ->
-            due = DateTime.to_unix(at, :microsecond) / 1_000_000
-            RailsCommands.insert!(repo, type, Map.put(args, "run_at", due))
+              effect.publish(repo, args, Keyword.put(opts, :scheduled_at, at))
+
+            :sidekiq ->
+              due = DateTime.to_unix(at, :microsecond) / 1_000_000
+              RailsCommands.insert!(repo, type, Map.put(args, "run_at", due))
+          end
+
+          :ok
         end
-
-        :ok
-      end)
+      )
 
     :ok
   end

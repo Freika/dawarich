@@ -154,6 +154,9 @@ defmodule Dawarich.A12f3bR06Test do
       Ownership.put!(ScratchRepo, "command:stats.full_recalculation", :sidekiq, pinned: true)
       System.delete_env("DAWARICH_RAILS")
       assert StatsFullRecalculationEffects.call(ScratchRepo, payload) == :ok
+      assert rows("SELECT kind FROM phoenix.rails_commands") == []
+      fresh = Map.put(payload, "source_job_id", Ecto.UUID.generate())
+      assert StatsFullRecalculationEffects.call(ScratchRepo, fresh) == :ok
       assert rows("SELECT kind FROM phoenix.rails_commands") == [["stats.full_recalculation"]]
     end
   end

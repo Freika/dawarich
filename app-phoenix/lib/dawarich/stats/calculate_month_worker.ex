@@ -2,7 +2,8 @@ defmodule Dawarich.Stats.CalculateMonthWorker do
   @moduledoc false
   use Oban.Worker, queue: :projections, max_attempts: 3
 
-  alias Dawarich.Stats.CalculateMonth
+  alias Dawarich.Stats.{CalculateMonth, EffectIdentity}
+  alias Dawarich.Jobs.Processed
 
   def args_from_command(
         1,
@@ -18,10 +19,41 @@ defmodule Dawarich.Stats.CalculateMonthWorker do
   def args_from_command(_version, _payload), do: {:error, "unsupported_version"}
 
   @impl Oban.Worker
-  def perform(%Oban.Job{
-        args: %{"user_id" => id, "year" => year, "month" => month, "notify_on_failure" => notify}
-      }) do
-    CalculateMonth.call(Dawarich.Jobs.repo(), id, year, month, notify: notify)
-    :ok
+  def perform(job), do: perform(job, [])
+
+  def perform(
+        %Oban.Job{
+          args:
+            %{"user_id" => id, "year" => year, "month" => month, "notify_on_failure" => notify} =
+              args
+        } = job,
+        opts
+      ) do
+    repo = Dawarich.Jobs.repo()
+    source = args["event_id"] || "oban:#{job.id || Jason.encode!(args)}"
+    receipt = EffectIdentity.id(source, "stats.calculate_month", args)
+
+    case Dawarich.Transaction.run(repo, fn ->
+           if Processed.claim!(repo, receipt, "stats.calculate_month") do
+             case CalculateMonth.call(repo, id, year, month, Keyword.put(opts, :notify, notify)) do
+               result when result in [:ok, :missing] ->
+                 :ok
+
+               {:error, reason} ->
+                 repo.query!(
+                   "DELETE FROM phoenix.processed_commands WHERE event_id=$1",
+                   [Ecto.UUID.dump!(receipt)],
+                   log: false
+                 )
+
+                 {:error, reason}
+             end
+           else
+             :ok
+           end
+         end) do
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
+    end
   end
 end

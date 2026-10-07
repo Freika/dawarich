@@ -18,7 +18,16 @@ defmodule Dawarich.Stats.FullRecalculation do
           for %{year: year, months: months} <- TrackedMonths.call(repo, user_id),
               month <- months do
             number = Enum.find_index(@months, &(&1 == month)) + 1
-            Schedule.calculate(repo, user_id, year, number, true, opts)
+
+            Schedule.calculate(
+              repo,
+              user_id,
+              year,
+              number,
+              true,
+              Keyword.put(opts, :event_id, event_id)
+            )
+
             Keyword.get(opts, :after_child, fn _, _ -> :ok end).(year, number)
           end
         end

@@ -63,7 +63,10 @@ defmodule Dawarich.Digests.WorkersTest do
                    "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.email_%'"
                  )
 
-        assert [[1]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+        assert [[1]] =
+                 rows(
+                   "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+                 )
 
         assert [[count]] =
                  rows("SELECT count(*) FROM notifications WHERE user_id=14101 AND kind=2")
@@ -113,7 +116,12 @@ defmodule Dawarich.Digests.WorkersTest do
         |> String.split("\n", trim: true)
 
       assert length(stack) <= 20
-      assert [[1]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+
+      assert [[1]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
+
       assert [[1]] = rows("SELECT count(*) FROM phoenix.notification_events")
 
       assert [[0]] =

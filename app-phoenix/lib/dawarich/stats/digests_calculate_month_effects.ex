@@ -5,7 +5,12 @@ defmodule Dawarich.Stats.DigestsCalculateMonthEffects do
   def publish(_repo, args, opts) do
     event = opts[:event_id]
     args = Map.put(args, "event_id", event || Ecto.UUID.generate())
-    unique = if event, do: [unique: [period: :infinity, keys: [:event_id]]], else: []
+
+    unique =
+      if event,
+        do: [unique: [period: :infinity, keys: [:event_id, :user_id, :year, :month]]],
+        else: []
+
     at = Keyword.get_lazy(opts, :scheduled_at, &DateTime.utc_now/0)
 
     Oban.insert!(

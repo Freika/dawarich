@@ -3,7 +3,8 @@ defmodule Dawarich.Stats.Schedule do
 
   alias Dawarich.Jobs.Ownership
   alias Dawarich.RailsCommands
-  alias Dawarich.Stats.CalculateMonthWorker
+  alias Dawarich.Stats.{CalculateMonthWorker, EffectIdentity}
+  alias Dawarich.Jobs.Processed
 
   @key "command:stats.calculate_month"
 
@@ -17,35 +18,38 @@ defmodule Dawarich.Stats.Schedule do
 
     delay = Keyword.get(opts, :schedule_in, 0)
 
-    {:ok, :ok} =
-      repo.transaction(fn ->
-        case if(Dawarich.Standalone.enabled?(), do: :oban, else: Ownership.lock(repo, @key)) do
-          :oban ->
-            event = opts[:event_id]
-            native = if event, do: Map.put(args, "event_id", event), else: args
+    event = opts[:event_id] || Ecto.UUID.generate()
 
-            options =
-              if event,
-                do: [unique: [period: :infinity, keys: [:event_id, :user_id, :year, :month]]],
-                else: []
+    :ok =
+      Processed.once(
+        repo,
+        EffectIdentity.id(event, @key <> ":schedule", args),
+        @key <> ":schedule",
+        fn ->
+          case if(Dawarich.Standalone.enabled?(), do: :oban, else: Ownership.lock(repo, @key)) do
+            :oban ->
+              native = Map.put(args, "event_id", event)
 
-            Oban.insert!(
-              Keyword.get(opts, :oban, Oban),
-              CalculateMonthWorker.new(native, due_options(opts, delay) ++ options)
-            )
+              options = [unique: [period: :infinity, keys: [:event_id, :user_id, :year, :month]]]
 
-            :ok
+              Oban.insert!(
+                Keyword.get(opts, :oban, Oban),
+                CalculateMonthWorker.new(native, due_options(opts, delay) ++ options)
+              )
 
-          :sidekiq ->
-            now = Keyword.get_lazy(opts, :clock, fn -> System.os_time(:second) end)
+              :ok
 
-            RailsCommands.insert!(
-              repo,
-              "stats.calculate_month",
-              Map.put(args, "run_at", now + delay)
-            )
+            :sidekiq ->
+              now = Keyword.get_lazy(opts, :clock, fn -> System.os_time(:second) end)
+
+              RailsCommands.insert!(
+                repo,
+                "stats.calculate_month",
+                Map.put(args, "run_at", now + delay)
+              )
+          end
         end
-      end)
+      )
 
     :ok
   end

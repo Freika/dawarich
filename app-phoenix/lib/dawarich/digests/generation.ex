@@ -4,16 +4,21 @@ defmodule Dawarich.Digests.Generation do
   alias Dawarich.Digests.{Failure, Run}
   alias Dawarich.Jobs.Processed
   alias Dawarich.Mail.ResidualCommands
+  alias Dawarich.Stats.EffectIdentity
+
+  def receipt(kind, args) do
+    EffectIdentity.id(args["event_id"], "digests.calculate_" <> period(kind), args)
+  end
 
   def run(repo, kind, args, opts \\ []) do
-    event_id = Map.fetch!(args, "event_id")
+    terminal_id = receipt(kind, args)
 
-    if Processed.done?(repo, event_id) do
+    if Processed.done?(repo, terminal_id) do
       :ok
     else
-      function = if kind in [:monthly, "monthly"], do: :monthly, else: :yearly
-      result = apply(Run, function, [repo, args, opts])
-      settle(repo, kind, args, result, opts)
+      callback(opts, :before_claim)
+      result = generate(repo, kind, args, opts)
+      settle(repo, kind, args, terminal_id, result, opts)
     end
   rescue
     error -> {:error, error}
@@ -21,33 +26,58 @@ defmodule Dawarich.Digests.Generation do
     kind, reason -> {:error, {kind, reason}}
   end
 
-  defp settle(repo, kind, args, result, opts) do
-    period = if kind in [:monthly, "monthly"], do: "month", else: "year"
+  defp generate(repo, kind, args, opts) do
+    handler = "digests.generate_" <> period(kind)
+    checkpoint = EffectIdentity.id(args["event_id"], handler, args)
 
-    repo.transaction(fn ->
-      callback(opts, :before_claim)
+    {:ok, result} =
+      Dawarich.Transaction.run(repo, fn ->
+        if Processed.claim!(repo, checkpoint, handler) do
+          function = if period(kind) == "month", do: :monthly, else: :yearly
+          result = apply(Run, function, [repo, args, opts])
+          state = generated(repo, kind, args, result)
 
-      if Processed.claim!(repo, args["event_id"], "digests.calculate_" <> period) do
-        terminal(repo, kind, period, args, result)
-        callback(opts, :after_terminal)
-      end
+          repo.query!(
+            "UPDATE phoenix.processed_commands SET handler=$2 WHERE event_id=$1",
+            [Ecto.UUID.dump!(checkpoint), handler <> ":" <> state],
+            log: false
+          )
 
+          state
+        else
+          [[saved]] =
+            repo.query!(
+              "SELECT handler FROM phoenix.processed_commands WHERE event_id=$1",
+              [Ecto.UUID.dump!(checkpoint)],
+              log: false
+            ).rows
+
+          String.replace_prefix(saved, handler <> ":", "")
+        end
+      end)
+
+    result
+  end
+
+  defp generated(_repo, _kind, _args, {:ok, _id}), do: "mail"
+  defp generated(_repo, _kind, _args, :missing), do: "missing"
+
+  defp generated(repo, kind, args, {:error, error, stack}) do
+    Failure.create!(repo, kind, args["user_id"], error, stack)
+    "failed"
+  end
+
+  defp settle(repo, kind, args, terminal_id, result, opts) do
+    Processed.once(repo, terminal_id, "digests.calculate_" <> period(kind), fn ->
+      if result == "mail",
+        do: ResidualCommands.digest(repo, period(kind), Map.put(args, "event_id", terminal_id))
+
+      callback(opts, :after_terminal)
       :ok
     end)
-    |> case do
-      {:ok, :ok} -> :ok
-      {:error, reason} -> {:error, reason}
-    end
   end
 
-  defp terminal(repo, _kind, period, args, {:ok, _id}) do
-    ResidualCommands.digest(repo, period, args)
-  end
-
-  defp terminal(repo, kind, _period, args, {:error, error, stack}),
-    do: Failure.create!(repo, kind, args["user_id"], error, stack)
-
-  defp terminal(_repo, _kind, _period, _args, :missing), do: :ok
+  defp period(kind), do: if(kind in [:monthly, "monthly"], do: "month", else: "year")
 
   defp callback(opts, key) do
     if fun = Keyword.get(opts, key), do: fun.()

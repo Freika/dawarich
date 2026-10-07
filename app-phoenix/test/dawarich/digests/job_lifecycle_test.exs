@@ -28,7 +28,7 @@ defmodule Dawarich.Digests.JobLifecycleTest do
       assert %{"op" => "start"} = peer_read()
       Ownership.put!(ScratchRepo, "command:" <> type, :oban)
       payload = F.job_args(kase) |> Map.delete("event_id")
-      event = outbox!(command_type: type, payload: payload)
+      _event = outbox!(command_type: type, payload: payload)
       assert Dispatch.run(repo: ScratchRepo, oban: __MODULE__) == %{dispatched: 1}
       [[id]] = rows("SELECT id FROM oban.oban_jobs")
       job = ScratchRepo.get!(Oban.Job, id, prefix: "oban")
@@ -62,7 +62,7 @@ defmodule Dawarich.Digests.JobLifecycleTest do
 
       assert [[1]] =
                rows("SELECT count(*) FROM phoenix.processed_commands WHERE event_id=$1", [
-                 Ecto.UUID.dump!(event)
+                 Ecto.UUID.dump!(Dawarich.Digests.Generation.receipt(kind, job.args))
                ])
 
       assert [[1]] =
@@ -72,7 +72,11 @@ defmodule Dawarich.Digests.JobLifecycleTest do
 
       assert [[0]] = rows("SELECT count(*) FROM notifications WHERE user_id=14101")
       assert worker.perform(job, F.job_options(kase)) == :ok
-      assert [[1]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+
+      assert [[1]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
 
       assert [[1]] =
                rows(
@@ -139,7 +143,11 @@ defmodule Dawarich.Digests.JobLifecycleTest do
       [actual] = F.digests(ScratchRepo, 14101)
       [expected] = kase["expected"]["rows"]
       assert actual == Map.put(expected, "id", actual["id"])
-      assert [[1]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+
+      assert [[1]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
 
       assert [[1]] =
                rows(
@@ -189,7 +197,13 @@ defmodule Dawarich.Digests.JobLifecycleTest do
       assert_receive {:ready, ^first_pid, first_db}, 5_000
       send(first_pid, :store)
       assert_receive {:stored, ^first_pid, _id}, 5_000
-      second_opts = Keyword.merge(opts, before_store: ready, uuid: Ecto.UUID.generate())
+
+      stats = fn repo, user, year, month, options ->
+        if month == (second_args["month"] || 1), do: ready.(nil)
+        Dawarich.Stats.CalculateMonth.call(repo, user, year, month, options)
+      end
+
+      second_opts = Keyword.merge(opts, stats: stats, uuid: Ecto.UUID.generate())
       second = Task.async(fn -> worker.perform(%Oban.Job{args: second_args}, second_opts) end)
       second_pid = second.pid
       assert_receive {:ready, ^second_pid, second_db}, 5_000
@@ -209,7 +223,11 @@ defmodule Dawarich.Digests.JobLifecycleTest do
           else: expected
 
       assert actual == expected
-      assert [[2]] = rows("SELECT count(*) FROM phoenix.processed_commands")
+
+      assert [[2]] =
+               rows(
+                 "SELECT count(*) FROM phoenix.processed_commands WHERE handler NOT LIKE 'digests.generate_%'"
+               )
 
       assert [[2]] =
                rows(

@@ -60,7 +60,7 @@ defmodule Dawarich.Stats.CalculateMonth do
 
   defp update!(%{repo: repo, user: user, year: year, month: month} = ctx, window) do
     {:ok, :ok} =
-      repo.transaction(fn ->
+      Dawarich.Transaction.run(repo, fn ->
         fence!(ctx)
         id = locked(ctx) || insert!(ctx)
         pending = GeocodedDays.snapshot_month(repo, user.id, user.zone, year, month)
@@ -91,7 +91,7 @@ defmodule Dawarich.Stats.CalculateMonth do
 
   defp reset!(%{repo: repo, user: user, year: year, month: month} = ctx, window) do
     {:ok, :ok} =
-      repo.transaction(fn ->
+      Dawarich.Transaction.run(repo, fn ->
         fence!(ctx)
 
         case locked(ctx) do
@@ -166,7 +166,7 @@ defmodule Dawarich.Stats.CalculateMonth do
       })
 
     {:ok, _} =
-      repo.transaction(fn ->
+      Dawarich.Transaction.run(repo, fn ->
         fence!(ctx)
         result = Notifications.create!(repo, user.id, :error, title, content)
         fence!(ctx)

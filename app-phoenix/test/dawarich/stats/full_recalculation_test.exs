@@ -105,7 +105,7 @@ defmodule Dawarich.Stats.FullRecalculationTest do
   defp children(:oban),
     do:
       rows(
-        "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker' ORDER BY id"
+        "SELECT args - 'event_id' FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker' ORDER BY id"
       )
       |> Enum.map(&hd/1)
 end
