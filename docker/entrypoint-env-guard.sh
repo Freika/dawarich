@@ -62,11 +62,7 @@ validate_native_admission() {
   esac
   phoenix_lifecycle_is_native || return 0
   env_value_is_truthy "${SELF_HOSTED-true}" && return 0
-  if [ "${SELF_HOSTED-true}" = false ] &&
-     [ "${DAWARICH_CLOUD_DRAIN_ONLY-false}" = false ] &&
-     [ -n "$(printf '%s' "${JWT_SECRET_KEY:-}" | tr -d '[:space:]')" ] &&
-     printf '%s' "${MANAGER_URL:-}" | grep -Eq '^https://([A-Za-z0-9][A-Za-z0-9.-]*|\[[0-9A-Fa-f:]+\])(:[0-9]+)?$' &&
-     cloud_session_url_is_direct; then
+  if dawarich eval 'if !Dawarich.Release.Lifecycle.admitted?(), do: System.halt(1)' >/dev/null 2>&1; then
     case "${0##*/}" in
       web-entrypoint.sh | sidekiq-entrypoint.sh)
         echo "Native Cloud requires the Cloud web or worker entrypoint" >&2
@@ -77,14 +73,6 @@ validate_native_admission() {
   fi
   echo "Native lifecycle requires self-hosted mode" >&2
   exit 1
-}
-
-cloud_session_url_is_direct() {
-  printf '%s' "${DATABASE_SESSION_URL:-}" |
-    grep -Eq '^postgres(ql)?://([^/@[:space:]]+@)?([A-Za-z0-9][A-Za-z0-9.-]*|\[[0-9A-Fa-f:]+\])(:[0-9]+)?/[^/?#[:space:]]+(\?(sslmode=(disable|require|verify-ca|verify-full)|pool_mode=session|pooling_mode=session)(&(sslmode=(disable|require|verify-ca|verify-full)|pool_mode=session|pooling_mode=session))*)?$' || return 1
-  case "${DATABASE_SESSION_URL%%\?*}" in
-    *:6432/*) return 1 ;;
-  esac
 }
 
 phoenix_lifecycle_is_native() {

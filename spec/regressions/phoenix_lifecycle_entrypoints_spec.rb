@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require_relative '../support/phoenix_admission_probe'
 require 'fileutils'
 require 'json'
 require 'open3'
@@ -8,6 +9,8 @@ require 'tmpdir'
 require 'uri'
 
 RSpec.describe 'Phoenix lifecycle entrypoints' do
+  include PhoenixAdmissionProbe
+
   let(:root) { File.expand_path('../..', __dir__) }
   let(:stubs) { Dir.mktmpdir('phoenix-lifecycle') }
   let(:calls_file) { File.join(stubs, 'calls.log') }
@@ -35,7 +38,7 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
 
   def stub_command(name, body)
     path = File.join(stubs, name)
-    File.write(path, "#!/bin/sh\n#{body}\n")
+    File.write(path, "#!/bin/sh\n#{name == 'dawarich' ? admission_probe : ''}#{body}\n")
     File.chmod(0o755, path)
   end
 
@@ -277,6 +280,42 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
         result = run_script(script, *argv, SELF_HOSTED: 'false', DAWARICH_RAILS: 'off', **config)
         expect(result[:status]).not_to be_success
         expect(result[:calls]).to be_empty
+      end
+    end
+  end
+
+  it 'B1 actual Cloud scripts refuse normalized reuse of transaction and statement endpoints' do
+    %w[transaction statement].each do |mode|
+      %w[release.sh cloud-entrypoint.sh cloud-sidekiq-entrypoint.sh].each do |script|
+        args = script == 'cloud-sidekiq-entrypoint.sh' ? %w[sidekiq -C config/sidekiq.yml] : server
+        result = run_script(script, *args, SELF_HOSTED: 'false', DAWARICH_RAILS: 'off',
+                            DATABASE_POOLING_MODE: mode, DATABASE_URL: 'postgres://pool.example.invalid/cloud',
+                            DATABASE_SESSION_URL: 'postgresql://POOL.EXAMPLE.INVALID.:05432/%63loud')
+        expect(result[:status]).not_to be_success
+        expect(result[:calls]).to be_empty
+      end
+    end
+  end
+
+  it 'B2 actual Cloud scripts refuse malformed URLs before downstream effects' do
+    vectors = [
+      { MANAGER_URL: 'https://manager.example.invalid:0' },
+      { MANAGER_URL: 'https://manager.example.invalid:99999' },
+      { MANAGER_URL: "garbage\nhttps://manager.example.invalid" },
+      { DATABASE_SESSION_URL: 'postgres://session.example.invalid:99999/cloud' },
+      { DATABASE_SESSION_URL: 'postgres://session.example.invalid/%20' },
+      { DATABASE_SESSION_URL: 'postgres://session.example.invalid:06432/cloud' },
+      { DATABASE_SESSION_URL: "garbage\npostgres://session.example.invalid/cloud" },
+      { DAWARICH_CLOUD_DRAIN_ONLY: '' }, { MANAGER_URL: '' },
+      { JWT_SECRET_KEY: '' }, { DATABASE_SESSION_URL: '' }
+    ]
+    vectors.each do |values|
+      %w[release.sh cloud-entrypoint.sh cloud-sidekiq-entrypoint.sh].each do |script|
+        args = script == 'cloud-sidekiq-entrypoint.sh' ? %w[sidekiq -C config/sidekiq.yml] : server
+        result = run_script(script, *args, **values, SELF_HOSTED: 'false', DAWARICH_RAILS: 'off')
+        expect(result[:status]).not_to be_success
+        expect(result[:calls]).to be_empty
+        expect(result[:stderr]).not_to include('synthetic-shell-key')
       end
     end
   end

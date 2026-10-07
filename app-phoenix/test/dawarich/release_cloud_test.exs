@@ -36,7 +36,7 @@ defmodule Dawarich.ReleaseCloudTest do
       ] do
     test "native Cloud admission refuses missing #{name}" do
       assert Dawarich.Release.Lifecycle.mode(@cloud_env) == {:ok, :native}
-      before = Repo.query!("SELECT version FROM public.schema_migrations ORDER BY version").rows
+      before = refusal_snapshot()
       invalid = Map.put(@cloud_env, unquote(key), unquote(value))
 
       for env <- [invalid, Map.put(invalid, "DAWARICH_RAILS", "off")] do
@@ -57,8 +57,7 @@ defmodule Dawarich.ReleaseCloudTest do
 
         assert Release.readiness(opts) == :schemas_behind
 
-        assert Repo.query!("SELECT version FROM public.schema_migrations ORDER BY version").rows ==
-                 before
+        assert refusal_snapshot() == before
       end
     end
   end
@@ -91,6 +90,64 @@ defmodule Dawarich.ReleaseCloudTest do
         value <- values do
       env = @cloud_env |> Map.put("DAWARICH_RAILS", mode) |> Map.put(key, value)
       assert Dawarich.Release.Lifecycle.mode(env) == {:error, :cloud_native_lifecycle}
+    end
+  end
+
+  test "B3 invalid public and direct Cloud calls preserve complete public private and registration rows" do
+    assert {:error, :snapshot_complete} =
+             Repo.transaction(fn ->
+               Repo.query!(
+                 "INSERT INTO phoenix.registration_setting(id,enabled) VALUES(true,false) ON CONFLICT(id) DO NOTHING"
+               )
+
+               invalids =
+                 [
+                   %{"SELF_HOSTED" => "false", "DAWARICH_RAILS" => "off"},
+                   Map.put(@cloud_env, "DATABASE_SESSION_URL", "postgres://db.invalid/%20"),
+                   Map.merge(@cloud_env, %{
+                     "DATABASE_URL" => @cloud_env["DATABASE_SESSION_URL"],
+                     "DATABASE_POOLING_MODE" => "transaction"
+                   })
+                 ] ++
+                   Enum.map(
+                     ~w(MANAGER_URL JWT_SECRET_KEY DATABASE_SESSION_URL),
+                     &Map.delete(@cloud_env, &1)
+                   )
+
+               before = refusal_snapshot()
+
+               for invalid <- invalids, mode <- ["off", "proxy"] do
+                 env = Map.put(invalid, "DAWARICH_RAILS", mode)
+                 env = Map.put(env, "DAWARICH_PHOENIX_LIFECYCLE", "true")
+                 assert Dawarich.Release.Lifecycle.mode(env) == {:error, :cloud_native_lifecycle}
+                 opts = Keyword.put(copy_opts(), :env, env)
+
+                 for command <- [
+                       fn -> Release.migrate(opts) end,
+                       fn -> Release.seed(opts) end,
+                       fn -> Dawarich.Release.Native.migrate(Repo, opts) end,
+                       fn -> Dawarich.Release.Native.seed(Repo, opts) end
+                     ] do
+                   assert_raise RuntimeError,
+                                ~r/native lifecycle requires self-hosted mode/,
+                                command
+
+                   assert refusal_snapshot() == before
+                 end
+
+                 assert Release.readiness(opts) == :schemas_behind
+                 assert refusal_snapshot() == before
+               end
+
+               Repo.rollback(:snapshot_complete)
+             end)
+  end
+
+  defp refusal_snapshot do
+    for table <-
+          ~w(public.schema_migrations phoenix.phoenix_schema_migrations oban.phoenix_schema_migrations phoenix.registration_setting) do
+      {table,
+       Repo.query!("SELECT row_to_json(t) FROM #{table} t ORDER BY row_to_json(t)::text").rows}
     end
   end
 

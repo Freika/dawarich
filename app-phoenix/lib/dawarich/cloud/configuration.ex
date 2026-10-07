@@ -1,6 +1,5 @@
 defmodule Dawarich.Cloud.Configuration do
   @moduledoc false
-  alias Dawarich.Photos.ProviderHTTP
 
   def check(env) do
     if Dawarich.ReleaseMigration.self_hosted?(env), do: :ok, else: manager(env)
@@ -30,10 +29,7 @@ defmodule Dawarich.Cloud.Configuration do
     end
   end
 
-  def manager_origin?(base) do
-    ProviderHTTP.base_url?(base) and URI.parse(base).scheme == "https" and
-      URI.parse(base).path in [nil, ""]
-  end
+  def manager_origin?(base), do: Dawarich.Cloud.EndpointURL.origin?(base)
 
   defp secure_origin(base) do
     if manager_origin?(base),

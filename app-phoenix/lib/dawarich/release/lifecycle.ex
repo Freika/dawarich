@@ -13,6 +13,8 @@ defmodule Dawarich.Release.Lifecycle do
 
   def mode(env), do: flagged_mode(env)
 
+  def admitted?(env \\ System.get_env()), do: mode(env) in [{:ok, :native}, {:ok, :rails}]
+
   defp flagged_mode(env) do
     case Map.get(env, "DAWARICH_PHOENIX_LIFECYCLE", "false") do
       flag when flag in ["false", "true"] ->
@@ -37,26 +39,6 @@ defmodule Dawarich.Release.Lifecycle do
     env["SELF_HOSTED"] == "false" and
       env["DAWARICH_CLOUD_DRAIN_ONLY"] in [nil, "false"] and
       Dawarich.Cloud.Configuration.manager(env) == :ok and
-      session_url?(env["DATABASE_SESSION_URL"])
+      Dawarich.Cloud.EndpointURL.session?(env["DATABASE_SESSION_URL"], env)
   end
-
-  defp session_url?(url) when is_binary(url) do
-    uri = URI.parse(url)
-    query = URI.decode_query(uri.query || "")
-    config = Ecto.Repo.Supervisor.parse_url(url)
-
-    uri.scheme in ["postgres", "postgresql"] and is_binary(uri.host) and uri.host != "" and
-      uri.fragment == nil and config[:database] not in [nil, ""] and
-      config[:port] != 6432 and
-      Enum.all?(query, fn
-        {"sslmode", value} -> value in ~w(disable require verify-ca verify-full)
-        {"pool_mode", "session"} -> true
-        {"pooling_mode", "session"} -> true
-        _ -> false
-      end)
-  rescue
-    _ -> false
-  end
-
-  defp session_url?(_), do: false
 end

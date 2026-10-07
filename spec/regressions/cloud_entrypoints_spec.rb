@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require_relative '../support/phoenix_admission_probe'
 require 'fileutils'
 require 'json'
 require 'open3'
 require 'tmpdir'
 
 RSpec.describe 'Cloud entrypoints' do
+  include PhoenixAdmissionProbe
+
   let(:root) { File.expand_path('../..', __dir__) }
   let(:stubs) { Dir.mktmpdir('cloud-entrypoints') }
   let(:calls_file) { File.join(stubs, 'calls.log') }
@@ -37,7 +40,7 @@ RSpec.describe 'Cloud entrypoints' do
 
   def stub_command(name, body)
     path = File.join(stubs, name)
-    File.write(path, "#!/bin/sh\n#{body}\n")
+    File.write(path, "#!/bin/sh\n#{name == 'dawarich' ? admission_probe : ''}#{body}\n")
     File.chmod(0o755, path)
   end
 
