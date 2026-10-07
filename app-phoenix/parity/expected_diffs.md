@@ -592,3 +592,11 @@ and no Rails bug is fixed. Approved NE decisions and accepted-work removal
 conditions, 125/78/24 inventories, source recording and G42–G49 owner links are
 in [the part-B handoff](../../docs/phoenix/a12f3b-pages-producers.md) and
 [the drain runbook](../../docs/phoenix/a12d3-schedules-drain.md).
+
+## MAIL review authorization and accepted-job receipts
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-MAIL-TEST-ADMIN | Test-email POST, producer and worker | Any authenticated self-hosted user can queue test mail; queued delivery does not recheck admin status. | Admin-only enqueue/delivery; authenticated non-admin POST returns 403 before Rails routing, including route pins, and demoted recipients' queued jobs cancel. | Explicit fix3 MAIL controller brief; `mail_review:F5Action`, `F5Endpoint`, `F5Worker`; Rails `app/controllers/settings/general_controller.rb:8,9,74`. |
+| ED-MAIL-TEST-REDELIVERY | Redelivery of one successful test-email job | `deliver_later` reaches the mailer again on job redelivery without an application receipt. | Each accepted POST has a distinct durable identity; an existing successful job receipt suppresses replay, including legacy jobs identified by Oban ID. SMTP acceptance followed by a local receipt-write crash can still resend. | Explicit fix3 MAIL controller brief; `mail_review:F4`; Rails `app/controllers/settings/general_controller.rb:74`, `app/mailers/users_mailer.rb:54`. |
+| ED-MAIL-ARCHIVAL-EXPIRY | Late retry of an accepted archival upgrade link | Re-renders a fresh thirty-minute token. | Preserves the accepted JTI and issuance time, then cancels at expiry without delivering an unusable link. | Stable replay identity in M05 and explicit F6 review permission to cancel or regenerate; `mail_review:F6`; Rails `app/mailers/users_mailer.rb:20`, `app/models/user.rb:303`. |
