@@ -369,17 +369,28 @@ terminal/subscriber effects and unchanged Rails-owned coexistence payloads.
 The named `R10progress`, `R10gpx` and `R10normal` regressions cover both modes
 and fail individual old-publisher mutations.
 
-The next all-R01–R20 audit identifies **R12k02 `exports.purge`** as still live:
-`Exports.Delete.call/3` at `exports/delete.ex:44` uses only standalone mode.
-An actual synthetic export deletion with every Registry owner Oban inserts a
-reverse row during coexistence and no native purge job; standalone queues
-`Exports.PurgeWorker` and inserts no reverse row. Both SQL probes roll back.
-There is no dedicated purge Registry key. RX-EXPORTS must establish the native
-producer ownership contract and zero-reverse/terminal/Rails hand-back proof.
-Per the closure brief this new gap is reported, not repaired. H03 all-producer
-acceptance and H04 final ED closure remain blocked. No closure kind or source
-disposition is removed; green package gates cannot substitute for this failed
-contract. The controller report is `fix-hot-h03-closure.report.md`.
+The final R01–R20 recheck repairs **R12k02 `exports.purge`** through the actual
+export parent ownership and the unchanged shared storage-first purge helper.
+Native-owned coexistence and standalone delete physical objects before blob
+rows, retain retry targets and protect shared attachments. Rails-owned
+coexistence keeps the original payload bytes. `R12k02`/`R12parents` prove both
+export types, both modes, mixed ownership and actual storage terminal effects.
+
+The same pre-fix all-kind probe found R19k06's missing
+`command:visits.user_redetect` Registry entry and R09k03/R09k04's native-owned
+legacy handover. The existing user-redetect worker is now registered unclaimable;
+its real fleet child completes natively. GPX/normal handover refuses unsupported
+native work without source publication or false settlement while its parent is
+native; Rails-owned resume retains the exact payload and receipt. Named
+`R19k06`, `R09gpxownership` and `R09normalownership` tests and independent
+mutations prove these boundaries.
+
+H03/H04 local producer and ED disposition evidence is recorded in
+`fix2-hot-h03-closure.report.md` and
+[a12f3b-pages-producers.md](a12f3b-pages-producers.md). No durable closure kind,
+source disposition, debt or release gate is removed. Native SQL still cannot
+certify source drain, and G49 remains blocked pending external observations,
+fences, quiescence and lifecycle acceptance.
 
 H03b retains unreadable-database and all-key pin safety. H04 reuses the existing
 Cloud operator HTTP/connected-auth test and the actual native trip/release

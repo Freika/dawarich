@@ -562,7 +562,7 @@ ADR0015/G48 amendment: `docs/phoenix/a12f-ruby-free-release.md`.
 | ED-FIX-AREA-NEGOTIATION | POST `/areas`, PATCH/PUT `/areas/:id` with an unsupported Accept header | Saves valid attributes and can enqueue relabel work before `respond_to` raises UnknownFormat (406). | Decides format before mutation; unsupported formats return terminal empty 406 without changing areas or outbox. Missing/foreign update targets retain 404. Supported wildcard and HTML-first/Turbo-second headers return Rails-compatible 200 Turbo success/error flashes. | Explicit fix-area-writes controller brief requires negotiation before any write; `area Accept negotiation selects Rails Turbo responses before any write` in `area_writes_regression_test.exs`; Rails `app/controllers/areas_controller.rb:12–13,28–29`. |
 
 
-## A12f-3b HOT observation handoff — no ED closure
+## A12f-3b HOT final local producer and ED disposition
 
 H03/H04 retain Rails parity and the complete reverse-kind inventory. Native SQL
 drain output explicitly marks source Sidekiq as NOT_OBSERVED/UNKNOWN and G49
@@ -575,16 +575,25 @@ regressions prove both runtime modes, actual native parent ownership,
 terminal/subscriber effects, unchanged Rails payloads and individual mutation
 failures. Native lease refusal under a Rails parent remains intact.
 
-The next audit finds R12k02 `exports.purge` live at `exports/delete.ex:44`:
-export deletion still checks only standalone mode, publishing one reverse row
-with every Registry owner Oban during coexistence and no native purge job.
-Standalone queues the existing native worker. Both actual synthetic deletion
-probes roll back. There is no dedicated purge Registry key; RX-EXPORTS must
-resolve the producer contract. Per the brief, this distinct gap is reported
-without repair. H03 all-producer and H04 final ED closure remain blocked.
-No ownership ED or retired payload row is marked closed, and all 78 closure
-kinds remain. Final source disposition stays with J1/J2/A12f-3c; Cloud lifecycle
-stays refused pending L1 in every mode.
+The final all-R01–R20 recheck repairs R12k02 export purge through the actual
+points/user-data export parent and the existing shared storage-first purge
+helper. R12k02/R12parents prove both runtime modes, mixed ownership, shared
+reference protection, physical terminal deletion, retry and literal Rails JSON
+bytes. R19k06 adds the missing unclaimable visits.user_redetect worker entry and
+proves real release/dispatch/terminal/replay effects. R09gpxownership and
+R09normalownership prove native-owned legacy handover refuses without source
+publication or false acknowledgement, while the Rails-owned resume receipt and
+payload stay exact. Every new case has actual RED/GREEN/named mutation evidence.
+
+H04's local ED disposition is complete: reverse timing differences such as
+ED-371/ED-482 apply to retained Rails-owned coexistence branches, not native-owned
+publication. Their source/live activation conditions are retained. Native export
+purge uses the already documented ED-A12F3B-E13-F1/F2 safety behavior; this task
+adds no new storage policy or Rails defect fix. Unsupported native import refusal
+retains durable work and is not source-drained evidence. No new ED number is
+reserved and no unrelated ownership, payload retirement or deployment row is
+marked closed. All 78 closure kinds remain; final source disposition stays with
+J1/J2/A12f-3c, and Cloud lifecycle stays refused pending L1 in every mode.
 
 Existing operator D01a and native trip/release DRAIN tests are reused for H04,
 with independent `h04_case:H04a` / `H04b` selectors. No new ED number is reserved

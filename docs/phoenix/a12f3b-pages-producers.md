@@ -86,7 +86,7 @@ publication followed by explicit Rails hand-back while retaining every drain
 blocker. All 78 closure kinds remain; this scoped producer repair does not
 certify the full R01–R20 audit, source drain, any ownership ED or G49.
 
-### H03 closure recheck — R10 repaired, R12 purge remains live
+### H03/H04 final local producer closure
 
 R10k01 now uses `Imports.Progress.publish!/3` at all three publication sites:
 `GpxProgress`, `GpxLifecycle` and `NormalLifecycle`. The publisher reads the
@@ -109,22 +109,46 @@ individual old-publisher mutation and passed after restoration. Retained Rails
 corpus files are unchanged; native lifecycle comparisons assert zero progress
 reverse rows and retain every other ordered effect.
 
-The all-R01–R20 audit then finds a distinct **R12k02 `exports.purge`** gap.
-`Exports.Delete.call/3` at `exports/delete.ex:44` checks only standalone mode.
-With every Registry owner Oban, an actual coexistence deletion removes the
-export and attachment but inserts one `exports.purge` reverse row, and queues
-no native purge worker. Standalone instead queues `Exports.PurgeWorker` and
-inserts no reverse row. Both synthetic probe transactions were rolled back.
-There is no dedicated `command:exports.purge` Registry entry; the native export
-parent entries are already Oban in the probe. RX-EXPORTS must resolve the
-producer's native ownership contract and prove storage terminal effects,
-zero-reverse native coexistence and unchanged Rails hand-back.
+The final all-R01–R20 recheck repaired **R12k02 `exports.purge`** and every
+additional small native-owned reverse publisher found in the same probe.
+`Exports.Delete.call/3` reads the locked export type and locks its actual parent:
+`command:exports.points` for points and `command:users.export_data` for user-data.
+Native ownership and standalone enqueue the existing `Exports.PurgeWorker`,
+using the same shared storage-first `Storage.NativePurge` helper as native media.
+Retry retains rows and keys, shared blobs remain protected, pending metadata
+revokes downloads, and physical deletion precedes row removal. Rails-owned
+coexistence retains the original kind and byte-identical payload. Named selectors
+`R12k02` and `R12parents` cover both modes/types, mixed ownership, actual storage
+terminal effects, retry/replay and literal SQL-bound JSON bytes.
 
-Per the closure brief, this new producer gap is reported without repair.
-H03 all-producer acceptance and H04 final ED closure remain blocked. No
-producer kind, ownership ED or accepted source payload is closed over it.
-G49 and every-mode Cloud lifecycle refusal remain unchanged. Exact seed/head,
-commands, evidence and cleanup are in `fix-hot-h03-closure.report.md`.
+The pre-fix probe also identified R19k06: `UserRedetectWorker.enqueue/4` looked
+up `command:visits.user_redetect`, which was absent from Registry. The existing
+worker/decoder is now registered unclaimable in RecalculationEntries; standalone
+uses native publication. The named `R19k06` case executes a real fleet release,
+dispatches its child, observes completed redetection and checks replay and exact
+Rails-owned hand-back. Registration does not activate ownership.
+
+R09k03/R09k04 legacy handover also inserted reverse work while their GPX/normal
+parent was Oban-owned. Both handovers now return the existing unsupported-native
+refusal under native ownership in either mode, without acknowledging or removing
+the accepted request. Rails-owned coexistence retains the original resume bytes,
+native-fallback receipt and replay settlement. Named selectors
+`R09gpxownership` and `R09normalownership` prove this boundary; the existing R09
+source assertions explicitly pin their parent Sidekiq.
+
+All five new cases failed on actual pre-fix reverse rows, passed the repair,
+failed their named production mutation and passed restored. A supplemental R19
+mutation separately verifies standalone handling. The complete pre-fix live
+inventory has 85 insert sites; all 78 closure kinds exactly match plan-D R01–R20.
+The instrumented all-kind probe checks actual Registry owners and both modes;
+a direct serializer-oracle insertion is identified separately from production
+publishers. The final report contains probe results, restored terminal suites,
+seed/head, mutation and package-gate evidence: `fix2-hot-h03-closure.report.md`.
+
+H03 native producer boundary and H04 local ED disposition are complete only
+with these acceptance results. The reverse inventory and accepted source debt
+remain intact. This closes no source-drain, live ownership, image, provisioning
+or G49 gate. Every-mode Cloud lifecycle refusal remains unchanged pending L1.
 
 `Jobs.Drain.status/1` now explicitly identifies `scope: native_sql`, source
 status `NOT_OBSERVED`, source certainty `UNKNOWN`, and
