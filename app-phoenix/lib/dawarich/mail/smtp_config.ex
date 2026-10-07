@@ -41,6 +41,7 @@ defmodule Dawarich.Mail.SmtpConfig do
     ssl = ssl?(env)
     auth? = authenticate?(env)
     relay = String.to_charlist(env["SMTP_SERVER"] || "")
+    certificate_options = tls_options(env, relay)
 
     [
       relay: relay,
@@ -53,7 +54,8 @@ defmodule Dawarich.Mail.SmtpConfig do
       auth: if(auth?, do: :always, else: :never),
       retries: 0,
       timeout: seconds(env["SMTP_READ_TIMEOUT"], 60) * 1_000,
-      tls_options: tls_options(env, relay)
+      tls_options: certificate_options,
+      sockopts: if(ssl, do: certificate_options, else: [])
     ] ++ port(env["SMTP_PORT"]) ++ credentials(env, auth?) ++ auth_policy(env, auth?)
   end
 
@@ -114,17 +116,22 @@ defmodule Dawarich.Mail.SmtpConfig do
       mode when mode in ["", "peer"] ->
         [
           verify: :verify_peer,
-          cacerts: :public_key.cacerts_get(),
           server_name_indication: relay,
           customize_hostname_check: [
             match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
           ]
-        ]
+        ] ++ trust_options(env)
 
       mode ->
         raise ArgumentError,
               "SMTP_OPENSSL_VERIFY_MODE=#{mode} is not supported; expected none or peer"
     end
+  end
+
+  defp trust_options(env) do
+    if blank?(env["SMTP_CA_FILE"]),
+      do: [cacerts: :public_key.cacerts_get()],
+      else: [cacertfile: String.to_charlist(env["SMTP_CA_FILE"])]
   end
 
   defp credentials(env, true),
