@@ -133,6 +133,10 @@ An older worker overwrites newer progress; the source probe reproduced 2,000 →
 - Phoenix: `app-phoenix/lib/dawarich/imports/continuation_receipt.ex:6,92; app-phoenix/lib/dawarich/imports/gpx_progress.ex:13; app-phoenix/lib/dawarich/imports/lease.ex:95`.
 - Fix/acceptance history: `a403f9219`, `5d0581805`, `bc4c398b2` (feat/a12f3a-f17, merged `5ef730845`; re-reviewed x3, 24 delivery permutations in both modes).
 - F17 progress: no ED/DRB row added (the Rails defect is fixed natively, not preserved).
+- Modes: standalone and coexistence accepted continuations.
+- Evidence: fix2-a12f3a-f17.report.md:158; rereview2-a12f3a-f17.report.md:84; fix3-a12f3a-f17.report.md:184. F17 progress: no ED/DRB row added.
+- Test: “retrying a predecessor never lowers durable import progress” in `app-phoenix/test/dawarich/imports/continuation_order_test.exs`.
+- Limits: Automatic Rails Takeout retries remain disabled; the defect concerns delayed/manual accepted continuations.
 
 ### FRB-011 — Provider redirects disclose credentials
 
@@ -541,3 +545,47 @@ accepted older GPX jobs remain supported by their retained workers. This is a
 Phoenix merge reconciliation, with no additional Rails-visible correction or
 ED/DRB entry.
 
+
+### FRB-047 — A signed route-video upload can be adopted across accounts
+
+Rails resolves any valid signed blob before attaching it to the requesting user's
+route video, including a blob attached to another account's record. Phoenix
+loads only owner-compatible blobs and repeats that admission under the blob row
+lock in the attachment transaction. Unknown attachment owners are refused.
+Unattached uploads and compatible same-owner attachments remain supported.
+
+- Rails: `app/controllers/route_videos_controller.rb:18`.
+- Phoenix: `app-phoenix/lib/dawarich/route_videos/writes.ex:52`.
+- Tests: `F1 on refuses another owner blob at adoption` and `F1 off refuses another owner blob at adoption` in `app-phoenix/test/dawarich/media_ownership_test.exs`.
+- Ledger: ED-FIX-MEDIA-OWNERSHIP; download bearer policy stays open in DRB-027.
+- CHANGELOG-ready: Refuse adopting another account's attached route-video media.
+
+### FRB-048 — Deferred poster purges leave old native downloads usable
+
+Rails queues physical deletion without immediate logical revocation. Native
+legacy poster purge producers now mark eligible parent and variant blobs before
+queueing. Already accepted old payloads mark their graph before execution and
+retain the marker and durable targets on storage failure. They execute through
+the shared storage-first purge helper, preserving arguments and event receipts.
+Rails-owned coexistence purges retain their existing behavior (DRB-025).
+
+- Rails: `app/services/posters/purge_commands.rb:14`.
+- Phoenix: `app-phoenix/lib/dawarich/posters/purge_worker.ex:10`; `app-phoenix/lib/dawarich/posters/command.ex:39`.
+- Tests: `F2 on legacy poster purge immediately revokes parent and variants` and `F2 off legacy poster purge immediately revokes parent and variants` in `app-phoenix/test/dawarich/media_ownership_test.exs`.
+- Ledger: ED-FIX-MEDIA-OWNERSHIP; extends FRB-002's shared storage repair.
+- CHANGELOG-ready: Revoke native poster download capabilities while deferred purge retries wait.
+
+### FRB-049 — Accepted Rails poster jobs bypass the native handoff fences
+
+An accepted source poster job can generate after its command switches to Oban,
+or while a native poster lease remains live. The retained Rails wrapper now
+forwards accepted work using its original job ID when Oban owns the command;
+source-owned generation holds the shared poster lease and locks command ownership
+through the effect. Lease contention raises for retry, preserving the work.
+The lease and ownership checks apply in coexistence and standalone drain modes.
+
+- Rails: `app/jobs/posters/create_job.rb:7` (original); corrected wrapper at `:9`.
+- Phoenix counterpart: `app-phoenix/lib/dawarich/posters/generation.ex:19` and `app-phoenix/lib/dawarich/posters/publication.ex:12`.
+- Tests: `F5 on/off forwards accepted source work to its command owner` and `F5 on/off refuses source generation while a native poster lease is live` in `spec/jobs/posters/media_ownership_spec.rb` (four individually named cases).
+- Ledger: ED-FIX-MEDIA-OWNERSHIP; no deferred row added.
+- CHANGELOG-ready: Fence accepted Rails poster generation during native job ownership handoff.
