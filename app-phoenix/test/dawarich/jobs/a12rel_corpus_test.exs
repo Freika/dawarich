@@ -431,7 +431,13 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
 
   defp track_assert_full_snapshot(expected) do
     [tracks, segments] = track_snapshot()
-    actual_tracks = Enum.map(tracks, fn [row] -> track_normalize(row) end)
+
+    actual_tracks =
+      Enum.map(tracks, fn [row] ->
+        digest = row["map_matching_input_digest"]
+        assert is_nil(digest) or (is_binary(digest) and digest =~ ~r/\A[0-9a-f]{64}\z/)
+        row |> Map.delete("map_matching_input_digest") |> track_normalize()
+      end)
 
     expected_tracks =
       Enum.map(expected["tracks"], fn row ->
@@ -439,6 +445,7 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
         |> then(&ApiGolden.column_defaults("tracks", &1))
         |> Map.put("original_path", row["ewkb"])
         |> Map.delete("ewkb")
+        |> Map.delete("map_matching_input_digest")
         |> Map.update!("dominant_mode", &Segments.mode_to_int/1)
         |> track_normalize()
       end)

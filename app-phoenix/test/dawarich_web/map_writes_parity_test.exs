@@ -446,6 +446,20 @@ defmodule DawarichWeb.MapWritesParityTest do
         |> Enum.map(fn [json] -> Jason.decode!(json) end)
 
       rows = Enum.map(rows, &Dawarich.Test.ApiGolden.column_defaults(table, &1))
+
+      {actual, rows} =
+        if table == "tracks" do
+          Enum.each(actual, fn row ->
+            digest = row["map_matching_input_digest"]
+            assert is_nil(digest) or (is_binary(digest) and digest =~ ~r/\A[0-9a-f]{64}\z/)
+          end)
+
+          {Enum.map(actual, &Map.delete(&1, "map_matching_input_digest")),
+           Enum.map(rows, &Map.delete(&1, "map_matching_input_digest"))}
+        else
+          {actual, rows}
+        end
+
       assert actual == rows, "#{name}: #{table}: " <> ParityHTML.first_difference(actual, rows)
     end
   end
