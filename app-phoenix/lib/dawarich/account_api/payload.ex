@@ -28,7 +28,7 @@ defmodule Dawarich.AccountApi.Payload do
 
   def read(id, now \\ DateTime.utc_now()) do
     raw = Accounts.settings(id)
-    raw = if is_map(raw), do: raw, else: %{}
+    raw = UserSettings.safe(raw)
     timezone = raw["timezone"] || System.get_env("TIME_ZONE", "UTC")
     unless is_binary(timezone), do: Ruby.unsupported!("account timezone shape")
     zone = UserTimeZone.name(raw)

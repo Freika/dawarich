@@ -26,7 +26,7 @@ defmodule Dawarich.SharedApi.Trip do
   def show(_link, _zone), do: {:replay, "shared trip resource type"}
 
   defp stats(fields, %{"show_stats" => true}, distance, settings) when not is_nil(distance) do
-    unit = get_in(settings || %{}, ["maps", "distance_unit"]) || "km"
+    unit = get_in(Dawarich.UserSettings.safe(settings), ["maps", "distance_unit"]) || "km"
 
     if Distance.unit?(unit),
       do:

@@ -58,7 +58,7 @@ defmodule DawarichWeb.ShareManagementPage do
       user_id: conn.assigns.current_user.id,
       locale: conn.assigns.locale,
       csrf: conn.assigns.rails_csrf_token,
-      settings: conn.assigns.current_user.settings,
+      settings: Dawarich.UserSettings.get(conn.assigns.current_user),
       now: conn.assigns.now,
       base_url: conn.assigns.base_url,
       phrase: &Read.phrase/0

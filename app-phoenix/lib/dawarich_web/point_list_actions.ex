@@ -29,7 +29,7 @@ defmodule DawarichWeb.PointListActions do
 
     ctx = %{
       locale: Locale.resolve(nil, user, conn.assigns.rails_session),
-      timezone: UserTimeZone.iana(Repo, user.settings),
+      timezone: UserTimeZone.iana(Repo, Dawarich.UserSettings.get(user)),
       now: Map.get(conn.assigns, :now, DateTime.utc_now())
     }
 

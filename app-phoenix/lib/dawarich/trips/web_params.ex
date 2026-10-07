@@ -8,12 +8,14 @@ defmodule Dawarich.Trips.WebParams do
   @local ~r/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?\z/
   @iso ~r/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})\z/
 
-  def parse(%{settings: %{} = settings}, %{} = attrs, previous, context) do
+  def parse(%{} = user, %{} = attrs, previous, context) do
+    settings = Dawarich.UserSettings.get(user)
     repo = Map.get(context, :repo, Repo)
     zone = UserTimeZone.zone(settings)
     zone = if Ruby.blank?(zone), do: System.get_env("TIME_ZONE", "UTC"), else: zone
 
-    if is_binary(zone) and (is_nil(settings["timezone"]) or is_binary(settings["timezone"])) do
+    if is_map(settings) and is_binary(zone) and
+         (is_nil(settings["timezone"]) or is_binary(settings["timezone"])) do
       RailsTime.with_zone(repo, zone, fn ->
         cast(
           repo,

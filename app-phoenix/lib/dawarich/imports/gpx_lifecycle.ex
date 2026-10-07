@@ -77,7 +77,7 @@ defmodule Dawarich.Imports.GpxLifecycle do
       publish(lease, context)
       driver = Map.put(context, :altitude_decimal?, altitude_decimal?(lease, context))
       GpxImporter.call(path, state.import, driver)
-      Postprocessing.call(lease, state.import, context)
+      Postprocessing.complete!(lease, state.import, context)
     rescue
       error in LeaseLost -> reraise error, __STACKTRACE__
       error -> failure(lease, state.import, context, error, __STACKTRACE__)

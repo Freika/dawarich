@@ -196,7 +196,7 @@ defmodule Dawarich.AirTrail.Flights do
 
   defp settings(repo, user_id) do
     case settings_row(repo, user_id) do
-      {:ok, settings} when is_map(settings) -> settings
+      {:ok, settings} -> Dawarich.UserSettings.safe(settings)
       _ -> nil
     end
   end

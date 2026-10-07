@@ -222,16 +222,23 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
     assert Task.await(immich) == [@preview, @preview]
   end
 
-  test "a user whose settings column is NULL or JSON null goes to Puma, which answers its own 500",
+  test "NULL and JSON null settings use the default unconfigured photo response",
        %{port: port, upstream: upstream} do
     user!(%{api_key: "phoenix-a4g3-key-sql-null", settings: nil})
     json_null = user!(%{api_key: "phoenix-a4g3-key-json-null"})
     Repo.query!("UPDATE users SET settings = 'null'::jsonb WHERE id = $1", [json_null])
 
     for key <- ~w(phoenix-a4g3-key-sql-null phoenix-a4g3-key-json-null) do
-      client = request(port, "#{@thumb}?source=immich", bearer(key))
-      assert puma(upstream) == "GET #{@thumb}?source=immich HTTP/1.1", key
-      assert {200, _, "rails"} = read_response(client)
+      proxy = Task.async(fn -> puma(upstream) end)
+
+      try do
+        client = request(port, "#{@thumb}?source=immich", bearer(key))
+        assert {401, _, body} = read_response(client)
+        assert Jason.decode!(body) == %{"error" => "Immich integration not configured"}
+        refute Task.yield(proxy, 0)
+      after
+        Task.shutdown(proxy, :brutal_kill)
+      end
     end
   end
 

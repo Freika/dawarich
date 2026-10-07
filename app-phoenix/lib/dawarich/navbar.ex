@@ -25,8 +25,8 @@ defmodule Dawarich.Navbar do
       family: family(user, now, self_hosted),
       subscription: subscription(user, now, self_hosted),
       version: version(user, self_hosted, now, running_version),
-      onboarding: onboarding?(user.settings),
-      supporter: Supporters.badge?(user.settings, now, running_version)
+      onboarding: onboarding?(Dawarich.UserSettings.get(user)),
+      supporter: Supporters.badge?(Dawarich.UserSettings.get(user), now, running_version)
     }
   end
 
@@ -86,7 +86,11 @@ defmodule Dawarich.Navbar do
       self_hosted or inherited or
         (user.plan == @family_plan and Entitlements.future?(user.active_until, now))
 
-    %{member: member, available: available, sharing: member and sharing?(user.settings, now)}
+    %{
+      member: member,
+      available: available,
+      sharing: member and sharing?(Dawarich.UserSettings.get(user), now)
+    }
   end
 
   defp sharing?(%{"family" => %{"location_sharing" => %{"enabled" => true} = sharing}}, now) do
@@ -120,7 +124,8 @@ defmodule Dawarich.Navbar do
         active_until: user.active_until,
         expired: expired,
         days:
-          user.active_until && not expired && days_between(user.active_until, now, user.settings)
+          user.active_until && not expired &&
+            days_between(user.active_until, now, Dawarich.UserSettings.get(user))
       }
     end
   end

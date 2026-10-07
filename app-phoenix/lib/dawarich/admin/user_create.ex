@@ -11,7 +11,7 @@ defmodule Dawarich.Admin.UserCreate do
     with :ok <- authorize(actor, repo, context),
          {:ok, changes} <-
            UserValidation.create(params, validation_context(params, repo, context)) do
-      create(changes, repo, Map.put(context, :settings, actor.settings))
+      create(changes, repo, Map.put(context, :settings, Dawarich.UserSettings.get(actor)))
     end
   end
 

@@ -83,7 +83,7 @@ defmodule DawarichWeb.ImportsLive.Index do
        list: list,
        query: URI.decode_query(query),
        columns: @columns,
-       integrations: integrations(user.settings)
+       integrations: integrations(Dawarich.UserSettings.get(user))
      )
      |> assign(Dawarich.ImportExportIndex.imports(user, list))
      |> poll()}
@@ -92,7 +92,7 @@ defmodule DawarichWeb.ImportsLive.Index do
   defp poll(socket), do: DawarichWeb.ImportsPolling.schedule(socket, socket.assigns.entries)
 
   defp integrations(settings) do
-    settings = if is_map(settings), do: settings, else: %{}
+    settings = Dawarich.UserSettings.safe(settings)
 
     for {name, job, key} <- @integrations,
         Ruby.present?(settings[name <> "_url"]) and Ruby.present?(settings[name <> "_api_key"]),

@@ -8,7 +8,7 @@ defmodule Dawarich.Trips.Photos do
     params = %{"start_date" => iso(first), "end_date" => iso(last)}
 
     photos =
-      case Index.fetch(user, params, settings: user.settings) do
+      case Index.fetch(user, params, settings: Dawarich.UserSettings.get(user)) do
         {:ok, assets, _errors} -> Enum.map(assets, &thumbnail(&1, user))
         _ -> []
       end
@@ -20,7 +20,7 @@ defmodule Dawarich.Trips.Photos do
       days: group(photos, zone),
       sources: sources,
       previews: dominant(photos) |> Enum.take_random(12),
-      links: Map.new(sources, &{&1, search_url(&1, user.settings, first, last)})
+      links: Map.new(sources, &{&1, search_url(&1, Dawarich.UserSettings.get(user), first, last)})
     }
   end
 

@@ -589,3 +589,70 @@ The lease and ownership checks apply in coexistence and standalone drain modes.
 - Tests: `F5 on/off forwards accepted source work to its command owner` and `F5 on/off refuses source generation while a native poster lease is live` in `spec/jobs/posters/media_ownership_spec.rb` (four individually named cases).
 - Ledger: ED-FIX-MEDIA-OWNERSHIP; no deferred row added.
 - CHANGELOG-ready: Fence accepted Rails poster generation during native job ownership handoff.
+
+### Accepted ZIP children and terminal parent ordering
+
+Rails removes a successful ZIP parent while its children remain pending. If a
+later member fails validation, earlier saved members can remain created without
+processing work. Native ZIP fanout now queues every accepted member after a
+partial build error and waits for terminal children before parent failure or
+removal. Rails production remains unchanged.
+
+- Rails: `app/services/imports/zip_extractor.rb:45`, `:130`, `:138`, `:157`.
+- Phoenix: `app-phoenix/lib/dawarich/imports/zip_fanout.ex` (`failed/5`, `complete/3`); `zip_children.ex` (`terminal?/2`).
+- Tests: `ZIP parent waits for all five terminal children in on/off`; `partial ZIP build retains an executor for accepted children before parent failure in on/off`.
+- Ledger: ED-FIX-ACCEPTED-IMPORT-DISPOSITION; no new deferred row.
+- CHANGELOG-ready: Keep accepted ZIP members processing through partial archive failures and wait for member completion before settling their parent.
+
+FRB-008 also covers GPX discovered by a queued normal import: normal lifecycle
+failure now commits its notification and terminal receipt atomically. The named
+`normal-discovered GPX notification is exactly once after interrupted failure in
+on/off` regressions exercise the notification/receipt interruption window with
+real retries. Rails source remains `app/services/imports/create.rb:47`;
+Phoenix counterpart is `normal_lifecycle.ex` (`failure/5`). The deterministic
+interruption is native; no Rails broker-ack crash reproduction is claimed.
+
+### Empty successful import retries repeat no-points notifications
+
+Rails creates a no-points notice before its ensure block records completion.
+An interrupted attempt can leave that notice committed and repeat it on retry.
+Native normal and dedicated GPX postprocessing now commit the final notice,
+completed status and terminal attachment receipt in one fenced transaction.
+Rails production remains unchanged.
+
+- Rails: `app/services/imports/create.rb:38`, `:52`, `:72`, `:153`.
+- Phoenix: `app-phoenix/lib/dawarich/imports/postprocessing.ex` (`complete!/3`, `settle/3`); `normal_lifecycle.ex` and `gpx_lifecycle.ex` (`run_import`).
+- Tests: `empty empty.gpx notification exactly once across interrupted success in on/off`; `empty empty.kml notification exactly once across interrupted success in on/off`.
+- Ledger: ED-FIX-ACCEPTED-IMPORT-DISPOSITION extended; no new deferred row.
+- Limits: Four real native worker interruption/retry probes; analogous Rails ordering is source-backed, without an executed Rails crash/retry experiment.
+- CHANGELOG-ready: Emit one no-points notice per successful import across interrupted processing and retry.
+
+### FRB-050 — Demo removal can alter another account's dependent records
+
+Rails demo destruction selects the requesting user's demo records but follows
+unscoped dependent associations. A persisted point owned by a second account
+can lose its visit/track links; a foreign extracted visit/place/track can lose
+its import link. Notes, shares and place/tag joins can also cross account
+boundaries. This corrects that inherited defect under controller ruling 17;
+Rails remains unchanged.
+
+Native demo removal scopes point updates, extracted import links and dependent
+writes to the requesting owner. It locks the owner's demo graph and returns
+the existing native error with full rollback when foreign points, notes,
+shares, visits or place/tag joins make cleanup unsafe. Unconstrained foreign
+import references remain unchanged after marker deletion, matching an
+owner-scoped deletion without rewriting the foreign record. Place/trip
+deletion receives an explicit owner-scoped option for its final writes.
+
+- Rails: `app/services/demo_data/destroyer.rb:16`, `app/models/visit.rb:10`, `app/models/track.rb:23`, `app/models/import.rb:8`.
+- Phoenix: `app-phoenix/lib/dawarich/demo_data/cleanup_scope.ex:39`; `app-phoenix/lib/dawarich/demo_data/destroyer.ex:25`, `:57`.
+- Tests in `app-phoenix/test/dawarich/demo_data_destroyer_test.exs`: `demo destroy refuses foreign point associations without changing either owner`; `demo destroy leaves foreign extracted records linked to the removed marker`; `demo destroy refuses foreign notes shares visits and tags before dependent cleanup`.
+- Ledger: FRB-050 added; no ED/DRB row added.
+- CHANGELOG-ready: Keep demo removal from changing another account's records, even when existing data contains cross-account references.
+
+The attached-marker leak reported alongside this issue is a Phoenix regression,
+not an inherited Rails bug. Demo removal now detaches every attachment of the
+deleted records through the shared storage-first native purge worker. Blob and
+variant rows survive physical deletion failure; shared objects and the other
+record's attachment remain intact. Unsupported place/visit-note content still
+returns an error with rollback before any records disappear.

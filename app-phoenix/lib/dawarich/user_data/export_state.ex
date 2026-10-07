@@ -22,6 +22,8 @@ defmodule Dawarich.UserData.ExportState do
           :skip
 
         [[settings]] ->
+          settings = Dawarich.UserSettings.safe(settings)
+
           [[stamp]] =
             repo.query!("SELECT updated_at FROM phoenix.job_owners WHERE key=$1", [@key],
               log: false

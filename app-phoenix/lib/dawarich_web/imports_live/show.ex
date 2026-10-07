@@ -28,7 +28,10 @@ defmodule DawarichWeb.ImportsLive.Show do
            record: record,
            points: points,
            created:
-             Dawarich.UserTimeZone.local(socket.assigns.current_user.settings, record.created_at),
+             Dawarich.UserTimeZone.local(
+               Dawarich.UserSettings.get(socket.assigns.current_user),
+               record.created_at
+             ),
            notice: Phoenix.Flash.get(socket.assigns.flash, "notice"),
            page_title: t(socket.assigns.locale, "imports.show.import", %{})
          )

@@ -57,8 +57,11 @@ defmodule DawarichWeb.PlaceActions do
     do: {:replay, "place create HTML negotiation"}
 
   defp preflight(_conn, action, user, id) do
-    if Dawarich.PlaceList.settings?(user.settings) and
-         Dawarich.TripSettings.zone?(user.settings, Dawarich.UserTimeZone.name(user.settings)) do
+    if Dawarich.PlaceList.settings?(Dawarich.UserSettings.get(user)) and
+         Dawarich.TripSettings.zone?(
+           Dawarich.UserSettings.get(user),
+           Dawarich.UserTimeZone.name(Dawarich.UserSettings.get(user))
+         ) do
       if action == :update do
         case PlaceDrawer.load(user, id) do
           {:ok, _} ->

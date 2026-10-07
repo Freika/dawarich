@@ -53,6 +53,7 @@ defmodule Dawarich.Families.SharingUpdate do
       Repo.query!("SELECT settings, email FROM users WHERE id = $1 FOR UPDATE", [user_id]).rows
 
     if Ruby.blank?(email), do: raise(ArgumentError, "a blank email fails Rails' validation")
+    settings = Dawarich.UserSettings.provided(settings)
     stored = settings
 
     settings =

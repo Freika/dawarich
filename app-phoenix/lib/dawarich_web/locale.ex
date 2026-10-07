@@ -90,12 +90,16 @@ defmodule DawarichWeb.Locale do
 
   defp exact(_value), do: nil
 
-  defp preferred(%{settings: %{"locale" => value}}) when is_binary(value) do
-    locale = value |> String.trim() |> String.downcase()
-    if locale in @locales, do: locale
-  end
+  defp preferred(user) do
+    case Dawarich.UserSettings.value(user, "locale") do
+      value when is_binary(value) ->
+        locale = value |> String.trim() |> String.downcase()
+        if locale in @locales, do: locale
 
-  defp preferred(_user), do: nil
+      _ ->
+        nil
+    end
+  end
 
   defp present?(value) when is_binary(value), do: String.trim(value) != ""
   defp present?(value) when is_list(value), do: value != []

@@ -26,7 +26,9 @@ defmodule DawarichWeb.AdminGate do
 
   def background_route?(conn, _params), do: eligible?(conn, :background)
 
-  def supported?(%{settings: settings}) when is_map(settings) do
+  def supported?(user) do
+    settings = Dawarich.UserSettings.get(user)
+
     case TripSettings.read(settings) do
       {:ok, _} ->
         zone = settings["timezone"] || System.get_env("TIME_ZONE", "Europe/Berlin")
@@ -38,8 +40,6 @@ defmodule DawarichWeb.AdminGate do
   rescue
     _ -> false
   end
-
-  def supported?(_), do: false
 
   defp eligible?(conn, mode) do
     query = Plug.Conn.Query.decode(conn.query_string)

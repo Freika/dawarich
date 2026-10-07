@@ -40,7 +40,7 @@ defmodule Dawarich.Visits.WebScope do
     if Entitlements.full_access?(repo, user, self_hosted, now) do
       {:ok, nil}
     else
-      with {:ok, zone} <- zone(repo, user.settings) do
+      with {:ok, zone} <- zone(repo, Dawarich.UserSettings.get(user)) do
         [[at]] =
           UserTimeZone.query!(
             "SELECT #{Sql.window_start("$1")} AT TIME ZONE 'UTC' FROM z",

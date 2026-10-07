@@ -28,7 +28,7 @@ defmodule Dawarich.JobsCase do
 
     tables =
       ~w(public.job_outbox public.exports public.imports public.pending_imports public.users public.point_sources
-         public.active_storage_attachments public.active_storage_blobs public.family_invitations
+         public.active_storage_attachments public.active_storage_blobs public.action_text_rich_texts public.family_invitations
          public.families public.places public.countries public.instance_settings public.regions) ++
         Enum.map(@phoenix ++ @backfill, &("phoenix." <> &1)) ++ Enum.map(@oban, &("oban." <> &1))
 

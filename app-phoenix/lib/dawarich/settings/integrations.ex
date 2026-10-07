@@ -8,7 +8,8 @@ defmodule Dawarich.Settings.Integrations do
   @fields ~w(immich_url immich_api_key immich_skip_ssl_verification photoprism_url photoprism_api_key photoprism_skip_ssl_verification airtrail_url airtrail_api_key airtrail_skip_ssl_verification teslamate_url teslamate_username teslamate_password teslamate_api_token teslamate_skip_ssl_verification)
 
   def save(repo, id, params, opts \\ []) when is_map(params) do
-    with [[%{} = previous]] <- read(repo, id),
+    with [[previous]] when is_map(previous) or is_nil(previous) <- read(repo, id),
+         previous = UserSettings.provided(previous),
          {:ok, changes} <- changes(params, previous),
          updated = Map.merge(UserSettings.safe(previous), changes),
          :ok <- validate(updated, opts) do
@@ -16,7 +17,8 @@ defmodule Dawarich.Settings.Integrations do
 
       repo.transaction(fn ->
         case read(repo, id, " FOR UPDATE") do
-          [[%{} = current]] ->
+          [[current]] when is_map(current) or is_nil(current) ->
+            current = UserSettings.provided(current)
             settings = current |> Map.merge(changes) |> Map.merge(statuses) |> normalize_urls()
 
             repo.query!(

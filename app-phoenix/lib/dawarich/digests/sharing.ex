@@ -12,7 +12,7 @@ defmodule Dawarich.Digests.Sharing do
            ).rows do
         [[id, month, uuid]] ->
           if month != nil and month not in 1..12, do: raise(ArgumentError, "invalid month")
-          settings = settings(repo, user.settings, attrs, context.now)
+          settings = settings(repo, Dawarich.UserSettings.get(user), attrs, context.now)
           uuid = uuid || Ecto.UUID.generate()
 
           repo.query!(
@@ -85,20 +85,10 @@ defmodule Dawarich.Digests.Sharing do
     }
   end
 
-  def public?(%{"enabled" => true} = settings, now) do
-    if settings["expiration"] in [nil, "", false] do
-      true
-    else
-      with raw when is_binary(raw) <- settings["expires_at"],
-           {:ok, at, _} <- DateTime.from_iso8601(raw),
-           do: DateTime.compare(now, at) != :gt,
-           else: (_ -> false)
-    end
-  end
+  def public?(settings, now, zone \\ System.get_env("TIME_ZONE", "Europe/Berlin")),
+    do: Dawarich.SharingExpiry.public?(settings, now, zone)
 
-  def public?(_, _), do: false
-
-  def get(uuid, now) do
+  def get(uuid, now, zone \\ System.get_env("TIME_ZONE", "Europe/Berlin")) do
     with {:ok, value} <- Ecto.UUID.dump(uuid),
          [[id, settings]] <-
            Repo.query!(
@@ -106,8 +96,9 @@ defmodule Dawarich.Digests.Sharing do
              [value],
              log: false
            ).rows,
-         true <- public?(settings, now) do
-      %{user: Accounts.get(id), digest: Digests.get_shared(uuid)}
+         true <- public?(settings, now, zone),
+         %Accounts.User{} = user <- Accounts.public_owner(id) do
+      %{user: user, digest: Digests.get_shared(uuid)}
     else
       _ -> nil
     end

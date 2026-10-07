@@ -5,7 +5,7 @@ defmodule Dawarich.Stats do
   alias Dawarich.Stats.{PointCounts, Toponyms}
 
   def context(user, now, self_hosted) do
-    {zone, today} = LocalTime.local(user.settings, now)
+    {zone, today} = LocalTime.local(Dawarich.UserSettings.get(user), now)
     restricted = not Entitlements.full_access?(user, self_hosted, now)
 
     %{

@@ -30,7 +30,7 @@ defmodule Dawarich.Photos.Enrichment do
   def pro?(user, now), do: Entitlements.full_access?(user, ReleaseMigration.self_hosted?(), now)
 
   def run(action, user, params, opts \\ []) do
-    settings = Accounts.settings(user.id) || %{}
+    settings = Dawarich.UserSettings.get(%{settings: Accounts.settings(user.id)})
 
     case missing(settings) do
       nil -> dispatch(action, user, params, settings, opts)

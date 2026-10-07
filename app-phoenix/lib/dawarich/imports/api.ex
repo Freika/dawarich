@@ -255,7 +255,7 @@ defmodule Dawarich.Imports.Api do
   defp select(repo, actor, where, params) do
     settings =
       case repo.query!("SELECT settings FROM users WHERE id=$1", [actor]).rows do
-        [[settings]] -> settings || %{}
+        [[settings]] -> Dawarich.UserSettings.safe(settings)
         _ -> %{}
       end
 

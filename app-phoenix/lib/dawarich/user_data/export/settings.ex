@@ -86,14 +86,7 @@ defmodule Dawarich.UserData.Export.Settings do
     [[raw]] = repo.query!("SELECT settings::text FROM users WHERE id=$1", [user]).rows
     provided = Jason.decode!(raw || "null", objects: :ordered_objects)
 
-    defaults = %{
-      @defaults
-      | values:
-          Enum.map(@defaults.values, fn
-            {"timezone", _} -> {"timezone", System.get_env("TIME_ZONE", "UTC")}
-            pair -> pair
-          end)
-    }
+    defaults = ordered(@defaults, Dawarich.UserSettings.safe(nil))
 
     value =
       case provided do
@@ -104,6 +97,21 @@ defmodule Dawarich.UserData.Export.Settings do
     path = Path.join(dir, "settings.jsonl")
     File.write!(path, Serializer.encode(value) <> "\n")
     [%{name: "settings.jsonl", path: path, count: 1, attachments: []}]
+  end
+
+  defp ordered(%Jason.OrderedObject{values: pairs}, settings) do
+    %Jason.OrderedObject{
+      values:
+        Enum.map(pairs, fn {key, template} ->
+          value = settings[key]
+
+          {key,
+           if(is_struct(template, Jason.OrderedObject) and is_map(value),
+             do: ordered(template, value),
+             else: value
+           )}
+        end)
+    }
   end
 
   defp merge(%Jason.OrderedObject{values: left}, %Jason.OrderedObject{values: right}) do
