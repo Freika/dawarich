@@ -41,7 +41,53 @@ defmodule DawarichWeb.RailsRemoteIp do
 
   defp valid(ips), do: Enum.filter(ips, &(is_binary(&1) and match?({:ok, _}, parse(&1))))
 
-  defp parse(ip), do: :inet.parse_strict_address(String.to_charlist(ip))
+  defp parse(ip) do
+    [address | mask] = String.split(ip, "/", parts: 2)
+
+    with {:ok, parsed} <- literal(address),
+         true <- host_mask?(mask, parsed) do
+      {:ok, parsed}
+    else
+      _ -> {:error, :einval}
+    end
+  end
+
+  defp literal(ip) do
+    {ip, ipv6?} =
+      case Regex.run(~r/\A\[(.*)\]\z/, ip) do
+        [_, address] -> {address, true}
+        _ -> {ip, false}
+      end
+
+    {ip, ipv6?} =
+      case Regex.run(~r/\A(.*)%\w+\z/, ip) do
+        [_, address] -> {address, true}
+        _ -> {ip, ipv6?}
+      end
+
+    with {:ok, parsed} <- :inet.parse_strict_address(String.to_charlist(ip)),
+         true <- not ipv6? or tuple_size(parsed) == 8 do
+      {:ok, parsed}
+    else
+      _ -> {:error, :einval}
+    end
+  end
+
+  defp host_mask?([], _ip), do: true
+
+  defp host_mask?([mask], ip) do
+    width = if tuple_size(ip) == 4, do: 8, else: 16
+    bits = tuple_size(ip) * width
+
+    mask == Integer.to_string(bits) or
+      case literal(mask) do
+        {:ok, parsed} ->
+          tuple_size(parsed) == tuple_size(ip) and number(parsed) == bsl(1, bits) - 1
+
+        _ ->
+          false
+      end
+  end
 
   defp trusted?(ip) do
     configured = Application.get_env(:dawarich, :trusted_proxies)

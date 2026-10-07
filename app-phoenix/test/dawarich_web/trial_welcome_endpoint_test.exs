@@ -260,6 +260,64 @@ defmodule DawarichWeb.TrialWelcomeEndpointTest do
     end
   end
 
+  test "pass-through XFF and Client-IP preserve Rails fresh buckets without ingress-written identity in both modes" do
+    SharingSeeds.load!()
+    hosts = Application.get_env(:dawarich, :allowed_hosts)
+
+    Application.put_env(
+      :dawarich,
+      :allowed_hosts,
+      DawarichWeb.HostAuthorization.boot_config(%{
+        "RAILS_ENV" => "production",
+        "APPLICATION_HOSTS" => "www.example.com"
+      })
+    )
+
+    on_exit(fn -> Application.put_env(:dawarich, :allowed_hosts, hosts) end)
+
+    for mode <- ~w(false true),
+        {path, body, denied} <- [
+          {"/s/a9500000-0000-4000-8000-000000000002/unlock", "phrase=wrong", 401},
+          {"/auth/account_link/challenge", "password=wrong", 422}
+        ],
+        form <- [:none, :xff, :client, :client_v4_host, :client_bracket, :client_v6_host] do
+      System.put_env("SELF_HOSTED", mode)
+      ScratchRepo.query!("DELETE FROM phoenix.counters", [], log: false)
+
+      statuses =
+        for attempt <- 1..6 do
+          conn = %{
+            Phoenix.ConnTest.build_conn()
+            | remote_ip: {10, 0, 0, 2},
+              req_headers: [{"host", "www.example.com"}]
+          }
+
+          headers =
+            case form do
+              :none -> []
+              :xff -> [{"x-forwarded-for", "198.51.100.#{attempt}"}]
+              :client -> [{"client-ip", "198.51.100.#{attempt}"}]
+              :client_v4_host -> [{"client-ip", "198.51.100.#{attempt}/32"}]
+              :client_bracket -> [{"client-ip", "[2001:db8::#{attempt}]"}]
+              :client_v6_host -> [{"client-ip", "2001:db8::#{attempt}/128"}]
+            end
+
+          conn =
+            Enum.reduce(headers, conn, fn {key, value}, c -> put_req_header(c, key, value) end)
+            |> put_req_header("x-forwarded-proto", "https")
+            |> put_req_header("content-type", "application/x-www-form-urlencoded")
+            |> put_req_header("content-length", to_string(byte_size(body)))
+
+          Phoenix.ConnTest.dispatch(conn, DawarichWeb.Endpoint, :post, path, body).status
+        end
+
+      expected =
+        if form == :none, do: List.duplicate(denied, 5) ++ [429], else: List.duplicate(denied, 6)
+
+      assert statuses == expected, inspect({mode, path, form, statuses})
+    end
+  end
+
   defp proxy_headers,
     do: [
       {"x-forwarded-proto", "http, https"},

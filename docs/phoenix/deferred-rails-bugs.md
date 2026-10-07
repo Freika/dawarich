@@ -12,6 +12,22 @@ To add a row, use the next unused DRB ID, describe a synthetic reproduction and 
 | --- | --- | --- | --- | --- | --- |
 | DRB-001 | Google and Apple mobile ID-token exchanges accept an omitted/blank nonce. This is an explicitly retained legacy policy quirk, not a newly discovered verification bypass. | `app/services/auth/verify_google_token.rb:46`; `app/services/auth/verify_apple_token.rb:19` | Required parity: 2G Task 3, 2H Tasks 3/6; A12f-2 NE-5, ruling 12. | After client rollout, require a nonce and bind it to a one-use login challenge. | High: breaks older mobile clients; coordinate provider and replay-policy changes. |
 
+## Reverse-proxy identity security
+
+| ID | Symptom / deployment condition | Rails source file:line | Phoenix parity boundary / regression | Recommended operator configuration | Risk |
+| --- | --- | --- | --- | --- | --- |
+| DRB-036 | **SECURITY — preserved Rails behavior; needs a separate ingress/Rails fix.** A reverse proxy passes client-supplied `X-Forwarded-For` or `Client-IP` through without writing the real client identity. With unchanged socket peer `10.0.0.2`, rotate either header through `198.51.100.1`–`198.51.100.6`: this app's `request.remote_ip` produces six identities and fresh IP budgets. Shared-link unlock and OAuth link challenge can evade their IP-derived sixth-attempt limit in Cloud and self-hosted modes; this does not bypass OAuth/CSRF or a separately authenticated pending-user budget. Private Docker-network peers are trusted by Rails defaults. | `config/application.rb:15` loads Rails 8.1 defaults; no `config.action_dispatch.trusted_proxies` override. Installed ActionPack 8.1.3.1 `lib/action_dispatch/middleware/remote_ip.rb:36–47` (defaults), `:150–156` (spoof check), `:129–169` (selection), `:185–203` (validation/filtering); Railties 8.1.3.1 `lib/rails/application/default_middleware_stack.rb:55`; request/budget anchors `config/initializers/rack_attack.rb:243–248`, `:323–325`. | **Preserved by explicit fix3-fix-trial-welcome ruling:** `app-phoenix/lib/dawarich_web/rails_remote_ip.ex` matches XFF/Client-IP selection, host-form validation, trusted-proxy replacement and textual spoof checks. Real Endpoint regression `pass-through XFF and Client-IP preserve Rails fresh buckets without ingress-written identity in both modes` includes stable controls and both routes/modes. The earlier intentional exclusion of RFC `Forwarded` and `X-Real-IP` remains. | At the externally reachable ingress, **overwrite, do not append, XFF and Client-IP** with the verified client address, or remove the unused family. Strip client-supplied identity headers before constructing any internal proxy chain; configure downstream trusted ranges for the actual proxies. If ingress writes neither family, remove both before forwarding so the socket peer supplies identity. Block direct application access that circumvents this ingress contract. Verify spoofed and stable requests reach the same sixth-attempt 429 budget. | IP impersonation, attribution errors and fresh brute-force budgets when ingress sanitation is absent. Application-only header rejection would also discard legitimate proxy identity and break the required Rails parity. No stricter native policy or Rails production change is authorized here. |
+
+A Ruby 3.4.9 probe booted this Rails app and invoked its actual configured
+`ActionDispatch::RemoteIp` middleware with `ActionDispatch::Request#remote_ip`.
+Configuration arguments were `[true, nil]`: spoof checks enabled and default
+trusted proxies, including all eight private/link-local IPv4/IPv6 ranges. Both
+pass-through families returned six distinct supplied identities. Accepted
+`Client-IP` host forms retain their original text (`[2001:db8::5]`,
+`203.0.113.25/32`, `2001:db8::5/128`); equivalent canonical XFF strings conflict
+and raise `IpSpoofAttackError`. Non-host masks are discarded. Phoenix preserves
+these rules and the 500 refusal before counting conflicting identities.
+
 ## API
 
 | ID | Symptom (user-visible) | Rails source file:line | Phoenix parity location / ED / plan task | Suggested fix | Risk |
