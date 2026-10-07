@@ -15,7 +15,7 @@ defmodule Dawarich.Settings.Integrations do
          :ok <- validate(updated, opts) do
       {statuses, notices, alerts} = test_connections(previous, updated, opts)
 
-      repo.transaction(fn ->
+      Dawarich.Transaction.run(repo, fn ->
         case read(repo, id, " FOR UPDATE") do
           [[current]] when is_map(current) or is_nil(current) ->
             current = UserSettings.provided(current)
@@ -129,7 +129,7 @@ defmodule Dawarich.Settings.Integrations do
       keys = Enum.filter(@fields, &String.starts_with?(&1, provider <> "_"))
 
       if Enum.any?(keys, &(UserSettings.safe(previous)[&1] != updated[&1])) do
-        case Connection.test(provider, updated, Keyword.get(opts, :locale, "en")) do
+        case Connection.test(provider, normalize_urls(updated), Keyword.get(opts, :locale, "en")) do
           {:ok, message} ->
             {Map.put(statuses, provider <> "_connection_status", "ok"), notices ++ [message],
              alerts}
