@@ -34,8 +34,8 @@ defmodule Dawarich.A12f3bE122Test do
   @tag a12f3b_case: "E122a"
   test "E122 native source shapes reach their terminal effects" do
     points(1)
-    Ownership.put!(ScratchRepo, NightlyWorker.key(), :sidekiq, pinned: true)
-    Ownership.put!(ScratchRepo, "command:geocoding.reverse_point", :sidekiq, pinned: true)
+    Ownership.put!(ScratchRepo, NightlyWorker.key(), :oban)
+    Ownership.put!(ScratchRepo, "command:geocoding.reverse_point", :oban)
     assert NightlyWorker.run(ScratchRepo, @oban, @slot, env: @env) == :ok
 
     [[id, args]] =
@@ -44,6 +44,8 @@ defmodule Dawarich.A12f3bE122Test do
     assert args["force"] == false
     assert args["cursor"] == 0
     assert args["event_id"] == NightlySweep.child_id(NightlySweep.root_id(@slot), 61101, [61201])
+    Ownership.put!(ScratchRepo, NightlyWorker.key(), :sidekiq, pinned: true)
+    Ownership.put!(ScratchRepo, "command:geocoding.reverse_point", :sidekiq, pinned: true)
     config = Dawarich.Geocoding.Config.resolve(ScratchRepo)
     {url, _, _} = Dawarich.Geocoding.Query.build(config, {52.0, 13.0}, [], "synthetic")
     FakeHttp.stub(url, 200, Jason.encode!(%{"features" => []}))
@@ -56,7 +58,7 @@ defmodule Dawarich.A12f3bE122Test do
 
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
     accepted = rows("SELECT id,worker,args FROM oban.oban_jobs ORDER BY id")
-    assert NightlyWorker.run(ScratchRepo, @oban, @slot, env: @env) == :ok
+    assert NightlyWorker.run(ScratchRepo, @oban, @slot, env: @env) == {:cancel, :not_owner}
     assert rows("SELECT id,worker,args FROM oban.oban_jobs ORDER BY id") == accepted
   end
 
@@ -64,6 +66,7 @@ defmodule Dawarich.A12f3bE122Test do
   test "E122 accepted children prevent premature completion" do
     points(1001)
     Ownership.put!(ScratchRepo, NightlyWorker.key(), :oban)
+    Ownership.put!(ScratchRepo, "command:geocoding.reverse_point", :oban)
     assert NightlyWorker.run(ScratchRepo, @oban, @slot, env: @env) == :ok
     status = Drain.status(ScratchRepo)
     assert status.counts.incomplete_oban == 11
@@ -76,14 +79,14 @@ defmodule Dawarich.A12f3bE122Test do
     assert args["after_id"] == 62200
     assert args["affected_user_ids"] == [61101]
     Ownership.put!(ScratchRepo, NightlyWorker.key(), :sidekiq, pinned: true)
-    assert NightlySweep.run(ScratchRepo, @oban, args, env: @env) == :ok
+    assert NightlySweep.run(ScratchRepo, @oban, args, env: @env) == {:cancel, :not_owner}
     complete(id)
-    assert NightlySweep.run(ScratchRepo, @oban, args, env: @env) == :ok
+    assert NightlySweep.run(ScratchRepo, @oban, args, env: @env) == {:cancel, :not_owner}
 
     assert rows(
              "SELECT sum(jsonb_array_length(args->'point_ids')) FROM oban.oban_jobs WHERE worker=$1",
              [inspect(ReversePointWorker)]
-           ) == [[1001]]
+           ) == [[1000]]
 
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 11

@@ -12,7 +12,7 @@ defmodule Dawarich.Jobs.CronTimeZoneDatabase do
 
   def time_zone_period_from_utc_iso_days(days, zone) do
     epoch = Calendar.ISO.iso_days_to_unit(days, :second) - @epoch
-    {:ok, period(ZonePeriod.load!(zone), zone, epoch)}
+    {:ok, period(load!(zone), zone, epoch)}
   rescue
     _ in [File.Error, ArgumentError] -> {:error, :time_zone_not_found}
   end
@@ -22,7 +22,7 @@ defmodule Dawarich.Jobs.CronTimeZoneDatabase do
     do: Calendar.UTCOnlyTimeZoneDatabase.time_zone_periods_from_wall_datetime(naive, "Etc/UTC")
 
   def time_zone_periods_from_wall_datetime(naive, zone) do
-    data = ZonePeriod.load!(zone)
+    data = load!(zone)
     wall = naive |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
 
     matches =
@@ -38,6 +38,12 @@ defmodule Dawarich.Jobs.CronTimeZoneDatabase do
     end
   rescue
     _ in [File.Error, ArgumentError] -> {:error, :time_zone_not_found}
+  end
+
+  defp load!(zone) do
+    ZonePeriod.load!(zone)
+  rescue
+    _ in [File.Error, ArgumentError] -> Dawarich.Jobs.PosixZone.load!(zone)
   end
 
   defp gap(data, zone, wall) do

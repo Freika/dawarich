@@ -43,6 +43,8 @@ defmodule Dawarich.Tracks.DailyWorker do
   @impl Oban.Worker
   def timeout(_job), do: :timer.minutes(55)
 
+  def slot(%Oban.Job{meta: %{"cron_tick" => tick}}), do: tick
+
   def slot(%Oban.Job{inserted_at: inserted_at}),
     do: inserted_at |> DateTime.to_unix() |> div(60) |> Kernel.*(60)
 

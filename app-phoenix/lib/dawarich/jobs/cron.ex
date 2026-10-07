@@ -5,9 +5,9 @@ defmodule Dawarich.Jobs.Cron do
     if Dawarich.Standalone.enabled?(env) do
       case env["TZ"] do
         zone when is_binary(zone) and zone != "" ->
-          case DateTime.now(zone) do
-            {:ok, _} -> zone
-            {:error, _} -> default_zone(env)
+          case Dawarich.Jobs.PosixZone.resolve(zone) do
+            nil -> default_zone(env)
+            resolved -> resolved
           end
 
         _ ->
