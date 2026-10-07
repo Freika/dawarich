@@ -45,3 +45,10 @@ ED-FIX-PUBLIC-SHARE-OWNER. No Cloud lifecycle admission is changed.
 
 AFFiNE counterpart: Dawarich — Phoenix A12f-3a Q native stats and digest
 implementation (`poskgp6EKQz4qU2XYFUC6`).
+
+Repeated full gates require `JobsCase.reset!` to clear polymorphic Action Text
+rows explicitly; their record references have no database foreign keys for the
+recursive fixture cleanup to follow. The minimal test-harness seam includes
+`action_text_rich_texts` and a deterministic reset regression. This changes no
+runtime trip behavior and prevents persisted rich-text rows from colliding with
+reused synthetic trip IDs on later suite runs.
