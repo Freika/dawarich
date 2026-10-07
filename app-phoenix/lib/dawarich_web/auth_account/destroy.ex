@@ -48,10 +48,11 @@ defmodule DawarichWeb.AuthAccount.Destroy do
          [type] <- get_req_header(conn, "content-type"),
          true <- hd(String.split(type, ";")) == "application/x-www-form-urlencoded",
          {:ok, body, conn} <- body(conn),
+         {:ok, _query} <- Admission.form(conn.query_string, "", ~w(id)),
          {:ok, params} <-
            Admission.form(
              body,
-             conn.query_string,
+             "",
              ~w(password confirm_email authenticity_token commit utf8 _method id)
            ),
          true <- valid_method?(conn, params),

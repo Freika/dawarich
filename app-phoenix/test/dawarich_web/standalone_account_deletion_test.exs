@@ -90,6 +90,76 @@ defmodule DawarichWeb.StandaloneAccountDeletionTest do
     assert count(c.other.id) == 0
   end
 
+  @tag :sa_destroy_query_id
+  test "a scalar query id is ignored without selecting another user", c do
+    other_before =
+      rows("SELECT id,email,deleted_at,updated_at FROM users WHERE id=$1", [c.other.id])
+
+    for entry <- [:post, :delete, :api], placement <- [:query, :body, :both] do
+      params = %{"confirm_email" => c.actor.email}
+
+      params =
+        if placement in [:body, :both],
+          do: Map.put(params, "id", to_string(c.other.id)),
+          else: params
+
+      query = if placement in [:query, :both], do: "?id=#{c.other.id}", else: ""
+
+      conn =
+        case entry do
+          :post ->
+            form(c, params, "/users" <> query)
+
+          :delete ->
+            raw =
+              params
+              |> Map.put(
+                "authenticity_token",
+                RailsCsrf.masked_form_token(c.session, "/users", "delete")
+              )
+              |> URI.encode_query()
+
+            build_conn()
+            |> put_req_cookie("_dawarich_session", RailsUser.cookie(c.session))
+            |> put_req_header("content-type", "application/x-www-form-urlencoded")
+            |> put_req_header("content-length", to_string(byte_size(raw)))
+            |> dispatch(@endpoint, :delete, "/users" <> query, raw)
+
+          :api ->
+            api(c.actor, params, "/api/v1/users/me" <> query)
+        end
+
+      assert conn.status == if(entry == :api, do: 200, else: 302)
+
+      if entry != :api do
+        assert get_resp_header(conn, "location") == ["http://www.example.com/"]
+        refute Map.has_key?(RailsFormRequests.rails_session(conn), "warden.user.user.key")
+      end
+
+      refute live?(c.actor.id)
+      assert count(c.actor.id) == 1
+      assert count(c.other.id) == 0
+
+      assert rows("SELECT id,email,deleted_at,updated_at FROM users WHERE id=$1", [c.other.id]) ==
+               other_before
+
+      rows("UPDATE users SET deleted_at=NULL WHERE id=$1", [c.actor.id])
+      rows("DELETE FROM job_outbox WHERE aggregate_id=$1", [c.actor.id])
+    end
+
+    for query <- [
+          "id=#{c.other.id}&id=#{c.actor.id}",
+          "id[]=#{c.other.id}",
+          "id=%ZZ",
+          "password=x"
+        ] do
+      assert form(c, %{"confirm_email" => c.actor.email}, "/users?" <> query).status == 422
+      assert count(c.actor.id) == 0
+      assert live?(c.actor.id)
+      assert live?(c.other.id)
+    end
+  end
+
   @tag :sa_destroy_browser
   test "standalone browser deletion authenticates owner and CSRF then schedules once", c do
     invalid = form(c, %{"confirm_email" => c.actor.email, "authenticity_token" => "invalid"})
@@ -332,7 +402,7 @@ defmodule DawarichWeb.StandaloneAccountDeletionTest do
     })
   end
 
-  defp form(c, params) do
+  defp form(c, params, path \\ "/users") do
     params =
       Map.merge(
         %{
@@ -346,11 +416,11 @@ defmodule DawarichWeb.StandaloneAccountDeletionTest do
       c.session,
       URI.encode_query(params),
       [{"accept", "text/html"}],
-      "/users"
+      path
     )
   end
 
-  defp api(user, params) do
+  defp api(user, params, path \\ "/api/v1/users/me") do
     body = Jason.encode!(params)
 
     conn =
@@ -362,7 +432,7 @@ defmodule DawarichWeb.StandaloneAccountDeletionTest do
     conn =
       if user, do: put_req_header(conn, "authorization", "Bearer " <> user.api_key), else: conn
 
-    dispatch(conn, @endpoint, :delete, "/api/v1/users/me", body)
+    dispatch(conn, @endpoint, :delete, path, body)
   end
 
   defp browser_get(session, path),
