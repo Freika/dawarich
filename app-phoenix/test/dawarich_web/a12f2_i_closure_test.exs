@@ -665,7 +665,46 @@ defmodule DawarichWeb.A12f2IClosureTest do
              "#{request["name"]} #{header}"
     end
 
-    unless request["method"] == "HEAD",
-      do: assert(conn.resp_body == Base.decode64!(request["response_body"]), request["name"])
+    unless request["method"] == "HEAD" do
+      expected = Base.decode64!(request["response_body"])
+
+      if request["name"] == "preview_1",
+        do: assert(decoded_pixels(conn.resp_body) == decoded_pixels(expected), request["name"]),
+        else: assert(conn.resp_body == expected, request["name"])
+    end
+  end
+
+  defp decoded_pixels(bytes) do
+    path = Path.join(System.tmp_dir!(), "preview-pixels-#{Ecto.UUID.generate()}")
+    File.write!(path, bytes)
+
+    try do
+      {pixels, status} =
+        System.cmd("ffmpeg", [
+          "-v",
+          "error",
+          "-threads",
+          "1",
+          "-i",
+          path,
+          "-frames:v",
+          "1",
+          "-f",
+          "image2pipe",
+          "-c:v",
+          "ppm",
+          "-pix_fmt",
+          "rgb24",
+          "-threads",
+          "1",
+          "pipe:1"
+        ])
+
+      assert status == 0
+      assert byte_size(pixels) > 0
+      pixels
+    after
+      File.rm!(path)
+    end
   end
 end

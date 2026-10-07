@@ -107,7 +107,14 @@ defmodule Dawarich.Imports.StandaloneZipTest do
 
            assert response.status == 303
            assert [[parent]] = rows("SELECT id FROM imports WHERE user_id=$1", [user.id])
-           assert %{dispatched: 1} = Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+
+           assert %{dispatched: 1} =
+                    Jobs.Dispatch.run(
+                      now: Dawarich.JobsCase.db_now(ScratchRepo),
+                      repo: ScratchRepo,
+                      oban: __MODULE__
+                    )
+
            parent_job = job!(parent)
            assert {:snooze, 5} = Dawarich.Imports.ProcessWorker.perform(parent_job)
            assert [[1]] == rows("SELECT status FROM imports WHERE id=$1", [parent])
@@ -132,7 +139,11 @@ defmodule Dawarich.Imports.StandaloneZipTest do
            if mode == "on",
              do:
                assert(
-                 Jobs.Dispatch.run(repo: ScratchRepo, oban: __MODULE__) == %{
+                 Jobs.Dispatch.run(
+                   now: Dawarich.JobsCase.db_now(ScratchRepo),
+                   repo: ScratchRepo,
+                   oban: __MODULE__
+                 ) == %{
                    dispatched: length(children)
                  }
                )

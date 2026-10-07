@@ -602,10 +602,12 @@ defmodule Dawarich.ReleaseCloudCompatibilityTest do
   end
 
   defp rails!(root, script, drain \\ false) do
-    database = ScratchRepo.config()[:database]
+    database =
+      System.fetch_env!("PHOENIX_TEST_DATABASE") <>
+        System.get_env("MIX_TEST_PARTITION", "") <> "_scratch_case"
 
-    unless String.starts_with?(database, "dawarich_phoenix_test"),
-      do: raise("private test DB required")
+    unless database == ScratchRepo.config()[:database],
+      do: raise("allocated private test DB required")
 
     path = Path.join(root, "runner.rb")
 

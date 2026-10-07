@@ -29,7 +29,17 @@ defmodule Dawarich.Jobs.DispatchTest do
 
   defp dispatch(extra \\ []),
     do:
-      Dispatch.run(Keyword.merge([repo: ScratchRepo, oban: @oban, commands: &commands/1], extra))
+      Dispatch.run(
+        Keyword.merge(
+          [
+            now: Dawarich.JobsCase.db_now(ScratchRepo),
+            repo: ScratchRepo,
+            oban: @oban,
+            commands: &commands/1
+          ],
+          extra
+        )
+      )
 
   defp with_lock_timeout(fun) do
     ScratchRepo.transaction(fn ->
@@ -55,13 +65,17 @@ defmodule Dawarich.Jobs.DispatchTest do
   end
 
   test "a row scheduled in the future waits in the outbox until the relay's clock reaches it" do
-    id = outbox!(payload: %{"n" => 2}, scheduled_at: DateTime.add(DateTime.utc_now(), 3600))
+    id =
+      outbox!(
+        payload: %{"n" => 2},
+        scheduled_at: DateTime.add(Dawarich.JobsCase.db_now(ScratchRepo), 3600)
+      )
 
     assert dispatch() == %{}
     assert jobs() == []
     assert [["pending", nil, nil]] = outbox_state(id)
 
-    later = DateTime.add(DateTime.utc_now(), 7200)
+    later = DateTime.add(Dawarich.JobsCase.db_now(ScratchRepo), 7200)
 
     assert dispatch(now: later) == %{dispatched: 1}
 
@@ -148,6 +162,7 @@ defmodule Dawarich.Jobs.DispatchTest do
       end)
 
     assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
              repo: ScratchRepo,
              oban: @oban,
              commands: &Dawarich.Jobs.Registry.command/1
@@ -220,6 +235,7 @@ defmodule Dawarich.Jobs.DispatchTest do
           do: outbox!(command_type: type, payload: payload)
 
     assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
              repo: ScratchRepo,
              oban: @oban,
              commands: &Dawarich.Jobs.Registry.command/1
@@ -248,6 +264,7 @@ defmodule Dawarich.Jobs.DispatchTest do
       )
 
     assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
              repo: ScratchRepo,
              oban: @oban,
              commands: &Dawarich.Jobs.Registry.command/1
@@ -265,6 +282,7 @@ defmodule Dawarich.Jobs.DispatchTest do
       )
 
     assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
              repo: ScratchRepo,
              oban: @oban,
              commands: &Dawarich.Jobs.Registry.command/1
@@ -284,6 +302,7 @@ defmodule Dawarich.Jobs.DispatchTest do
       )
 
     assert Dispatch.run(
+             now: Dawarich.JobsCase.db_now(ScratchRepo),
              repo: ScratchRepo,
              oban: @oban,
              commands: &Dawarich.Jobs.Registry.command/1
@@ -297,7 +316,10 @@ defmodule Dawarich.Jobs.DispatchTest do
 
   test "a decoder that raises quarantines only its own row; the rest of the batch is delivered" do
     bad =
-      outbox!(command_type: "test.raises", scheduled_at: DateTime.add(DateTime.utc_now(), -60))
+      outbox!(
+        command_type: "test.raises",
+        scheduled_at: DateTime.add(Dawarich.JobsCase.db_now(ScratchRepo), -60)
+      )
 
     good = outbox!(payload: %{"n" => 12})
 
@@ -308,7 +330,12 @@ defmodule Dawarich.Jobs.DispatchTest do
 
     log =
       capture_log(fn ->
-        assert Dispatch.run(repo: ScratchRepo, oban: @oban, commands: raising) == %{
+        assert Dispatch.run(
+                 now: Dawarich.JobsCase.db_now(ScratchRepo),
+                 repo: ScratchRepo,
+                 oban: @oban,
+                 commands: raising
+               ) == %{
                  dispatched: 1,
                  quarantined: 1
                }
@@ -324,7 +351,10 @@ defmodule Dawarich.Jobs.DispatchTest do
   @tag :capture_log
   test "a row whose decoded args cannot be encoded is quarantined alone; the rest of the batch is delivered" do
     poison =
-      outbox!(command_type: "test.poison", scheduled_at: DateTime.add(DateTime.utc_now(), -60))
+      outbox!(
+        command_type: "test.poison",
+        scheduled_at: DateTime.add(Dawarich.JobsCase.db_now(ScratchRepo), -60)
+      )
 
     good = outbox!(payload: %{"n" => 16})
 
@@ -426,7 +456,13 @@ defmodule Dawarich.Jobs.DispatchTest do
 
   test "a unique job another relay's open transaction holds is acknowledged as deduped_locked" do
     start_oban(@live, testing: :disabled, stager: false, peer: false)
-    held = outbox!(payload: %{"n" => 14}, scheduled_at: DateTime.add(DateTime.utc_now(), -60))
+
+    held =
+      outbox!(
+        payload: %{"n" => 14},
+        scheduled_at: DateTime.add(Dawarich.JobsCase.db_now(ScratchRepo), -60)
+      )
+
     other = outbox!(payload: %{"n" => 14})
     parent = self()
 
@@ -470,15 +506,21 @@ defmodule Dawarich.Jobs.DispatchTest do
   end
 
   test "pruning removes only dispatched rows older than the cutoff" do
-    old = DateTime.add(DateTime.utc_now(), -8 * 86_400)
+    old = DateTime.add(Dawarich.JobsCase.db_now(ScratchRepo), -8 * 86_400)
     kept = outbox!(payload: %{"n" => 9})
     gone = outbox!(payload: %{"n" => 10})
-    pending = outbox!(payload: %{"n" => 11}, scheduled_at: DateTime.add(DateTime.utc_now(), 3600))
+
+    pending =
+      outbox!(
+        payload: %{"n" => 11},
+        scheduled_at: DateTime.add(Dawarich.JobsCase.db_now(ScratchRepo), 3600)
+      )
+
     quarantined = outbox!(payload: %{"n" => 13})
 
     Outbox.update_delivery!(ScratchRepo, kept,
       state: "dispatched",
-      dispatched_at: DateTime.utc_now()
+      dispatched_at: Dawarich.JobsCase.db_now(ScratchRepo)
     )
 
     Outbox.update_delivery!(ScratchRepo, gone, state: "dispatched", dispatched_at: old)
@@ -489,7 +531,11 @@ defmodule Dawarich.Jobs.DispatchTest do
       error_code: "invalid_payload"
     )
 
-    assert Outbox.prune!(ScratchRepo, DateTime.add(DateTime.utc_now(), -7 * 86_400)) == 1
+    assert Outbox.prune!(
+             ScratchRepo,
+             DateTime.add(Dawarich.JobsCase.db_now(ScratchRepo), -7 * 86_400)
+           ) == 1
+
     assert [_] = outbox_state(kept)
     assert [] = outbox_state(gone)
     assert [_] = outbox_state(pending)
