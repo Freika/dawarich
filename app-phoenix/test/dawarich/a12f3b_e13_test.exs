@@ -37,10 +37,17 @@ defmodule Dawarich.A12f3bE13Test do
     state = poster_fixture!()
     user = %{id: state["actor_id"], settings: %{"timezone" => "America/New_York"}}
     id = state["before"]["id"]
-    now = NaiveDateTime.add(NaiveDateTime.utc_now(), -1)
+    now = NaiveDateTime.add(DateTime.to_naive(Dawarich.JobsCase.db_now(ScratchRepo)), -1)
 
     Command.produce(ScratchRepo, :sidekiq, id, user, "fr", now)
-    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: __MODULE__
+             )
+
     [[args]] = rows("SELECT args FROM oban.oban_jobs")
     assert args["locale"] == "fr"
     assert Ecto.UUID.cast(args["event_id"]) == {:ok, args["event_id"]}
@@ -92,7 +99,13 @@ defmodule Dawarich.A12f3bE13Test do
                )
 
       assert %DateTime{} = scheduled
-      assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+
+      assert %{dispatched: 1} =
+               Dispatch.run(
+                 now: Dawarich.JobsCase.db_now(ScratchRepo),
+                 repo: ScratchRepo,
+                 oban: __MODULE__
+               )
 
       assert %{success: 1, failure: 0} =
                File.cd!(c.root, fn -> Oban.drain_queue(__MODULE__, queue: :exports) end)
@@ -200,10 +213,15 @@ defmodule Dawarich.A12f3bE13Test do
       id,
       user,
       "de",
-      NaiveDateTime.add(NaiveDateTime.utc_now(), -1)
+      NaiveDateTime.add(DateTime.to_naive(Dawarich.JobsCase.db_now(ScratchRepo)), -1)
     )
 
-    assert %{dispatched: 1} = Dispatch.run(repo: ScratchRepo, oban: __MODULE__)
+    assert %{dispatched: 1} =
+             Dispatch.run(
+               now: Dawarich.JobsCase.db_now(ScratchRepo),
+               repo: ScratchRepo,
+               oban: __MODULE__
+             )
 
     assert %{success: 1, failure: 0} =
              Oban.drain_queue(__MODULE__, queue: :posters, with_limit: 1)
