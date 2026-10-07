@@ -7,7 +7,9 @@ defmodule Dawarich.Users.StandaloneDeletionTest do
 
   setup do
     previous = System.get_env("DAWARICH_RAILS")
+    previous_mode = System.get_env("SELF_HOSTED")
     System.put_env("DAWARICH_RAILS", "off")
+    System.put_env("SELF_HOSTED", "true")
     start_oban(__MODULE__)
     Ownership.put!(ScratchRepo, "command:users.destruction_webhook", :oban)
     for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
@@ -18,6 +20,10 @@ defmodule Dawarich.Users.StandaloneDeletionTest do
       if previous,
         do: System.put_env("DAWARICH_RAILS", previous),
         else: System.delete_env("DAWARICH_RAILS")
+
+      if previous_mode,
+        do: System.put_env("SELF_HOSTED", previous_mode),
+        else: System.delete_env("SELF_HOSTED")
 
       File.rm_rf!(root)
     end)
@@ -385,7 +391,7 @@ defmodule Dawarich.Users.StandaloneDeletionTest do
     assert "dawarich/user_#{c.actor.id}_total_distance" in cache["payload"]["keys"]
 
     assert rows("SELECT count(*) FROM job_outbox WHERE command_type='users.destruction_webhook'") ==
-             [[1]]
+             [[0]]
 
     assert [[purge]] =
              rows("SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PurgeWorker'")

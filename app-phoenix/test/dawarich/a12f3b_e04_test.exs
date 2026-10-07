@@ -8,9 +8,15 @@ defmodule Dawarich.A12f3bE04Test do
   alias Dawarich.Users.{DestroyWorker, DestructionWebhookWorker}
 
   setup do
+    previous_mode = System.get_env("SELF_HOSTED")
+    System.put_env("SELF_HOSTED", "false")
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo, sandbox: false)
 
     on_exit(fn ->
+      if previous_mode,
+        do: System.put_env("SELF_HOSTED", previous_mode),
+        else: System.delete_env("SELF_HOSTED")
+
       :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo, sandbox: false)
       Dawarich.JobsCase.reset!(Repo)
     end)
