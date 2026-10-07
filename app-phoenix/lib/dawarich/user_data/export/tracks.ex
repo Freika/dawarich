@@ -11,7 +11,7 @@ defmodule Dawarich.UserData.Export.Tracks do
       "tracks",
       dir,
       context,
-      [],
+      ~w(matched_path map_matching_status map_matching_input_digest map_matching_data map_matched_at),
       Monthly.timestamp_month("start_at"),
       fn id, pairs ->
         segments =

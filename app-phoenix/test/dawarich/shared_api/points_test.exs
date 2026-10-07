@@ -77,7 +77,7 @@ defmodule Dawarich.SharedApi.PointsTest do
     for [table, rows] <- fixture["setups"][kase["setup"]], rows != [] do
       Repo.query!(
         "INSERT INTO #{table} SELECT * FROM json_populate_recordset(NULL::#{table}, $1::text::json)",
-        [Jason.encode!(rows)]
+        [Jason.encode!(Enum.map(rows, &Dawarich.Test.ApiGolden.column_defaults(table, &1)))]
       )
     end
 

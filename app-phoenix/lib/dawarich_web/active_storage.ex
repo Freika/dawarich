@@ -76,6 +76,7 @@ defmodule DawarichWeb.ActiveStorage do
   defp action(:disk_update, conn, storage, now, _opts) do
     with {:ok, %{} = data} <-
            RailsMessages.verify_storage(conn.path_params["encoded_token"], "blob_token", now),
+         true <- downloadable?(data["key"]),
          %{service: "local"} = service <- Storage.disk_service(storage, data["service_name"]) do
       if acceptable?(conn, data), do: upload(conn, service, data), else: head(conn, 422)
     else
@@ -87,9 +88,12 @@ defmodule DawarichWeb.ActiveStorage do
     do: DawarichWeb.ActiveStorage.UploadClosure.call(conn, storage, now, opts)
 
   defp downloadable?(key) do
-    not Dawarich.Standalone.enabled?() or
-      Dawarich.Repo.query!("SELECT 1 FROM active_storage_blobs WHERE key=$1", [key], log: false).num_rows ==
-        1
+    case Dawarich.Repo.query!("SELECT metadata FROM active_storage_blobs WHERE key=$1", [key],
+           log: false
+         ).rows do
+      [[metadata]] -> not Dawarich.Storage.NativePurge.pending?(metadata)
+      [] -> not Dawarich.Standalone.enabled?()
+    end
   end
 
   defp acceptable?(conn, data) do

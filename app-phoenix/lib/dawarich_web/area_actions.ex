@@ -8,6 +8,17 @@ defmodule DawarichWeb.AreaActions do
 
   def init(action), do: action
 
+  def call(%{assigns: %{map_write_format: :unsupported}} = conn, _) do
+    found =
+      conn.assigns.map_write_action == :area_create or
+        Dawarich.Repo.query!(
+          "SELECT 1 FROM areas WHERE id=$1 AND user_id=$2",
+          [conn.path_info |> List.last() |> String.to_integer(), conn.assigns.current_user.id]
+        ).rows != []
+
+    conn |> send_resp(if(found, do: 406, else: 404), "") |> halt()
+  end
+
   def call(conn, _) do
     user = conn.assigns.current_user
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
@@ -35,9 +46,6 @@ defmodule DawarichWeb.AreaActions do
 
       {:not_found, _} ->
         conn |> send_resp(404, "") |> halt()
-
-      {_, :unsupported} ->
-        conn |> send_resp(406, "") |> halt()
 
       {{:ok, _}, _} ->
         key = if conn.assigns.map_write_action == :area_create, do: "created", else: "updated"

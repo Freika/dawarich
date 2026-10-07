@@ -47,7 +47,7 @@ defmodule Dawarich.Admin.InstanceWrites do
 
       _ ->
         if Enum.any?(Map.get(params, "instance_settings", []), fn {name, raw} ->
-             List.keymember?(Registry.definitions(), name, 0) and Registry.secret?(name) and
+             List.keymember?(Registry.current_definitions(), name, 0) and Registry.secret?(name) and
                String.trim(raw || "") != ""
            end),
            do: {:handoff, :encryption},
@@ -59,7 +59,9 @@ defmodule Dawarich.Admin.InstanceWrites do
     Map.new(
       repo.query!("SELECT key,value,encrypted_value FROM instance_settings", [], log: false).rows,
       fn [name, value, encrypted] ->
-        secret? = List.keymember?(Registry.definitions(), name, 0) and Registry.secret?(name)
+        secret? =
+          List.keymember?(Registry.current_definitions(), name, 0) and Registry.secret?(name)
+
         {name, if(secret?, do: decrypt(encrypted, key), else: value)}
       end
     )

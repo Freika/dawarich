@@ -43,7 +43,18 @@ de:
           locationiq: "Gehosteter Dienst. Benötigt einen API-Schlüssel."
         points:
           title: "Punkte"
+        experimental:
+          title: "Experimentelle Funktionen"
+        map_matching:
+          title: "Map-Matching"
+          description: "Richtet ungenaue aufgezeichnete Wege an nahe gelegenen Straßen und Wegen aus. Es ändert sich nur die Darstellung geeigneter Tracks; aufgezeichnete Punkte und der ursprüngliche Pfad bleiben unverändert."
         fields:
+          atlas_url: "Atlas-URL"
+          map_matching_enabled: "Map-Matching aktivieren"
+          atlas_url_hint: "Vollständige HTTP- oder HTTPS-Basis-URL deines privaten Dawarich-Atlas-Dienstes."
+          map_matching_enabled_hint: "Gilt für die gesamte Instanz. Vorhandene Tracks werden nicht automatisch verarbeitet."
+          map_matching_shadow_mode: "Schattenmodus"
+          map_matching_shadow_mode_hint: "Verarbeitet geeignete Tracks, ohne angepasste Pfade anzuzeigen."
           photon_api_host: "Host"
           photon_api_key: "API-Schlüssel"
           photon_api_use_https: "HTTPS verwenden"
@@ -59,6 +70,8 @@ de:
           api_key_keep_hint: "Leer lassen, um den gespeicherten Schlüssel zu behalten."
           store_geodata_hint: "Ermittelt Stadt und Land beim Hinzufügen neuer Punkte. Nächtliche Abfragen laufen bei konfiguriertem Anbieter auch dann weiter, wenn diese Option ausgeschaltet ist."
       update:
+        atlas_url_invalid: "Die Atlas-URL muss eine vollständige HTTP- oder HTTPS-URL ohne Zugangsdaten, Abfrage oder Fragment sein."
+        atlas_url_required: "Lege eine Atlas-URL fest, bevor du Map-Matching aktivierst."
         saved: "Einstellungen gespeichert."
         pinned: "Abgelehnt: festgelegt durch %{variables}."
         host_invalid: "Der Host muss ein reiner Hostname mit optionalem Port oder Pfad sein, ohne Leerzeichen."

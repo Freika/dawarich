@@ -168,11 +168,12 @@ CREATE UNIQUE INDEX "idx_track_segments_track_start_at_unique" ON "track_segment
 CREATE INDEX "index_track_segments_on_track_and_indices" ON "track_segments" ("track_id", "start_index", "end_index");
 CREATE UNIQUE INDEX "idx_track_segments_track_start_index_unique" ON "track_segments" ("track_id", "start_index");
 CREATE INDEX "index_track_segments_on_track_id_and_transportation_mode" ON "track_segments" ("track_id", "transportation_mode");
-CREATE TABLE "tracks" ("id" bigserial primary key, "avg_speed" float, "created_at" timestamp(6) NOT NULL, "demo" boolean DEFAULT FALSE NOT NULL, "distance" bigint, "dominant_mode" integer DEFAULT 0, "duration" integer, "elevation_gain" integer, "elevation_loss" integer, "elevation_max" integer, "elevation_min" integer, "end_at" timestamp(6) NOT NULL, "import_id" bigint, "lock_version" integer DEFAULT 0 NOT NULL, "original_path" geometry(LINESTRING,4326) NOT NULL, "start_at" timestamp(6) NOT NULL, "tracker_id" character varying, "updated_at" timestamp(6) NOT NULL, "user_id" bigint NOT NULL);
+CREATE TABLE "tracks" ("id" bigserial primary key, "avg_speed" float, "created_at" timestamp(6) NOT NULL, "demo" boolean DEFAULT FALSE NOT NULL, "distance" bigint, "dominant_mode" integer DEFAULT 0, "duration" integer, "elevation_gain" integer, "elevation_loss" integer, "elevation_max" integer, "elevation_min" integer, "end_at" timestamp(6) NOT NULL, "import_id" bigint, "lock_version" integer DEFAULT 0 NOT NULL, "map_matched_at" timestamp(6), "map_matching_data" jsonb DEFAULT '{}' NOT NULL, "map_matching_input_digest" character varying, "map_matching_status" integer, "matched_path" geometry(MULTILINESTRING,4326), "original_path" geometry(LINESTRING,4326) NOT NULL, "start_at" timestamp(6) NOT NULL, "tracker_id" character varying, "updated_at" timestamp(6) NOT NULL, "user_id" bigint NOT NULL);
 CREATE UNIQUE INDEX "index_tracks_on_user_tracker_start_end_unique" ON "tracks" (user_id, COALESCE(tracker_id, ''::character varying), start_at, end_at);
 CREATE INDEX "index_tracks_on_demo_true" ON "tracks" ("demo") WHERE (demo = true);
 CREATE INDEX "index_tracks_on_dominant_mode" ON "tracks" ("dominant_mode");
 CREATE INDEX "idx_tracks_import_id_extracted" ON "tracks" ("import_id") WHERE (import_id IS NOT NULL);
+CREATE INDEX "index_tracks_on_matched_path" ON "tracks" USING gist ("matched_path") WHERE (matched_path IS NOT NULL);
 CREATE INDEX "index_tracks_on_original_path" ON "tracks" USING gist ("original_path");
 CREATE INDEX "idx_tracks_user_id_start_at" ON "tracks" ("user_id", "start_at");
 CREATE INDEX "idx_tracks_user_tracker_end_at" ON "tracks" ("user_id", "tracker_id", "end_at");
@@ -360,6 +361,8 @@ ALTER TABLE "visits" ADD CONSTRAINT "fk_rails_09e5e7c20b"
 FOREIGN KEY ("user_id")
   REFERENCES "users" ("id");
 CREATE TABLE IF NOT EXISTS "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY);
+INSERT INTO "schema_migrations" (version) VALUES (20261006120100);
+INSERT INTO "schema_migrations" (version) VALUES (20261006120000);
 INSERT INTO "schema_migrations" (version) VALUES (20260927120000);
 INSERT INTO "schema_migrations" (version) VALUES
 (20260925100100),

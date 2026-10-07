@@ -27,7 +27,7 @@ defmodule Dawarich.PointExports do
     now = NaiveDateTime.truncate(NaiveDateTime.utc_now(), :microsecond)
 
     repo.transaction(fn ->
-      owner = Ownership.lock(repo, "command:exports.points")
+      owner = owner(repo)
 
       %{rows: [[id]]} =
         repo.query!(
@@ -49,8 +49,13 @@ defmodule Dawarich.PointExports do
   end
 
   def enqueue_created(repo, id, user, locale, now) do
-    owner = Ownership.lock(repo, "command:exports.points")
+    owner = owner(repo)
     produce(repo, owner, id, user, locale, now)
+  end
+
+  defp owner(repo) do
+    owner = Ownership.lock(repo, "command:exports.points")
+    if Dawarich.Standalone.enabled?(), do: :oban, else: owner
   end
 
   defp produce(repo, :oban, id, user, _locale, now) do
