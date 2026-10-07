@@ -103,7 +103,9 @@ defmodule Dawarich.Areas.WebWrite do
 
   defp geometry_changed?(values, before) do
     Dawarich.RubyInteger.to_i(values["radius"]) != Dawarich.RubyInteger.to_i(before["radius"]) or
-      Enum.any?(~w(latitude longitude), &(coordinate(values[&1]) != coordinate(before[&1])))
+      Enum.any?(~w(latitude longitude), fn field ->
+        not Decimal.equal?(coordinate(values[field]), coordinate(before[field]))
+      end)
   end
 
   defp save!(repo, user, nil, values, _before, now) do

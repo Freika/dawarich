@@ -84,11 +84,13 @@ defmodule DawarichWeb.AreaWritesRegressionTest do
        ctx do
     attrs = %{"name" => "Synthetic", "latitude" => "51", "longitude" => "12", "radius" => "200"}
 
-    for edit <- [
-          %{"radius" => "200.5"},
-          %{"latitude" => "51.0000004"},
-          %{"longitude" => "12.0000004"}
+    for {{latitude, longitude}, edit} <- [
+          {{"51", "12"}, %{"radius" => "200.5"}},
+          {{"51", "12"}, %{"latitude" => "51.0000004"}},
+          {{"51", "12"}, %{"longitude" => "12.0000004"}},
+          {{"0", "0"}, %{"latitude" => "-0.0000004", "longitude" => "-0.0000004"}}
         ] do
+      attrs = Map.merge(attrs, %{"latitude" => latitude, "longitude" => longitude})
       Repo.query!("DELETE FROM public.job_outbox")
       assert_flash(request(ctx, :post, "/areas", attrs), "Area created successfully!")
       [[id]] = Repo.query!("SELECT id FROM areas ORDER BY id DESC LIMIT 1").rows
