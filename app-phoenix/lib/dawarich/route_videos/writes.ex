@@ -11,7 +11,7 @@ defmodule Dawarich.RouteVideos.Writes do
     with {:ok, recipe} <- Recipe.read(params["settings"]),
          {:ok, name} <- name(params["name"], locale),
          {:ok, blob_id} <- verified(params["file"], now),
-         {:ok, blob} <- blob(repo, blob_id) do
+         {:ok, blob} <- blob(repo, blob_id, user.id) do
       cond do
         blob.content_type != "video/mp4" or blob.byte_size > @ceiling ->
           refuse(repo, user.id, blob_id)
@@ -49,10 +49,20 @@ defmodule Dawarich.RouteVideos.Writes do
     end
   end
 
-  defp blob(repo, id) do
+  defp blob(repo, id, user_id, lock \\ "") do
     case repo.query!(
-           "SELECT content_type,byte_size,metadata FROM active_storage_blobs WHERE id=$1",
-           [id],
+           """
+           SELECT content_type,byte_size,metadata FROM active_storage_blobs b
+           WHERE b.id=$1 AND NOT EXISTS (
+             SELECT 1 FROM active_storage_attachments a
+             LEFT JOIN route_videos v ON a.record_type='RouteVideo' AND v.id=a.record_id
+             LEFT JOIN posters p ON a.record_type='Poster' AND p.id=a.record_id
+             LEFT JOIN imports i ON a.record_type='Import' AND i.id=a.record_id
+             LEFT JOIN exports e ON a.record_type='Export' AND e.id=a.record_id
+             WHERE a.blob_id=b.id AND COALESCE(v.user_id,p.user_id,i.user_id,e.user_id,0)<>$2
+           ) #{lock}
+           """,
+           [id, user_id],
            log: false
          ).rows do
       [[type, size, metadata]] ->
@@ -90,6 +100,9 @@ defmodule Dawarich.RouteVideos.Writes do
       {:ok, id} ->
         cap(repo, user_id, id, policy.max_per_user, now)
 
+      {:error, :admission_refused} ->
+        {:error, %{phase: :invalid_signature}}
+
       {:error, _} ->
         repo.transaction(fn ->
           Dawarich.RouteVideos.AttachmentEffects.cleanup_failed_save!(repo, user_id, blob_id)
@@ -101,6 +114,15 @@ defmodule Dawarich.RouteVideos.Writes do
 
   defp insert(repo, user_id, blob_id, name, recipe, now) do
     repo.transaction(fn ->
+      repo.query!("SELECT id FROM active_storage_blobs WHERE id=$1 FOR UPDATE", [blob_id],
+        log: false
+      )
+
+      case blob(repo, blob_id, user_id, "FOR UPDATE OF b") do
+        {:ok, _} -> :ok
+        {:error, _} -> repo.rollback(:admission_refused)
+      end
+
       [[id]] =
         repo.query!(
           "INSERT INTO route_videos (user_id,name,status,settings,created_at,updated_at) VALUES ($1,$2,0,$3,$4,$4) RETURNING id",
