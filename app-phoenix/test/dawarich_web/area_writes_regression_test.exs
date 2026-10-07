@@ -141,6 +141,71 @@ defmodule DawarichWeb.AreaWritesRegressionTest do
     end
   end
 
+  @tag area_accept: true
+  test "area Accept negotiation selects Rails Turbo responses before any write", ctx do
+    attrs = %{"name" => "Synthetic", "latitude" => "51", "longitude" => "12", "radius" => "200"}
+
+    for accept <- [
+          "*/*",
+          "text/html, text/vnd.turbo-stream.html",
+          "text/*",
+          "text/html;q=1, text/vnd.turbo-stream.html;q=0"
+        ] do
+      before = Repo.query!("SELECT count(*) FROM areas").rows
+      assert_flash(request(ctx, :post, "/areas", attrs, accept), "Area created successfully!")
+      [[count]] = before
+      assert Repo.query!("SELECT count(*) FROM areas").rows == [[count + 1]]
+      [[id]] = Repo.query!("SELECT id FROM areas ORDER BY id DESC LIMIT 1").rows
+
+      for {method, radius} <- [{:patch, "300"}, {:put, "400"}] do
+        assert_flash(
+          request(ctx, method, "/areas/#{id}", %{"radius" => radius}, accept),
+          "Area updated successfully!"
+        )
+
+        assert Repo.query!("SELECT radius FROM areas WHERE id=$1", [id]).rows == [
+                 [String.to_integer(radius)]
+               ]
+
+        assert Repo.query!("SELECT count(*) FROM areas").rows == [[count + 1]]
+      end
+    end
+
+    [[id]] = Repo.query!("SELECT id FROM areas ORDER BY id DESC LIMIT 1").rows
+    before = Repo.query!("SELECT * FROM areas ORDER BY id").rows
+    pending = Repo.query!("SELECT * FROM public.job_outbox ORDER BY event_id").rows
+
+    for accept <- ["application/json", "text/html", "text/vnd.turbo-stream.html.invalid"],
+        {method, path} <- [{:post, "/areas"}, {:patch, "/areas/#{id}"}, {:put, "/areas/#{id}"}] do
+      response =
+        request(
+          %{ctx | now: DateTime.add(ctx.now, 1)},
+          method,
+          path,
+          Map.put(attrs, "radius", "500"),
+          accept
+        )
+
+      assert response.status == 406
+      assert response.resp_body == ""
+      assert Repo.query!("SELECT * FROM areas ORDER BY id").rows == before
+      assert Repo.query!("SELECT * FROM public.job_outbox ORDER BY event_id").rows == pending
+    end
+
+    foreign = FrameSeeds.user!(88102)
+
+    Repo.query!(
+      "INSERT INTO areas(id,user_id,name,latitude,longitude,radius,created_at,updated_at) VALUES(88102,$1,'Other',51,12,100,$2,$2)",
+      [foreign.id, DateTime.to_naive(ctx.now)]
+    )
+
+    for target <- [88102, 999_999] do
+      assert request(ctx, :patch, "/areas/#{target}", attrs, "application/json").status == 404
+    end
+
+    assert Repo.query!("SELECT radius FROM areas WHERE id=88102").rows == [[100]]
+  end
+
   defp request(ctx, method, path, attrs, accept \\ "text/vnd.turbo-stream.html") do
     raw =
       URI.encode_query(Map.put(attrs, "authenticity_token", RailsCsrf.masked_token(ctx.session)))

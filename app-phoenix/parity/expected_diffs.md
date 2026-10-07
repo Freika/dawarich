@@ -546,3 +546,9 @@ owner bypass or mutation exemption is introduced. Unknown/retired/dead work is
 preserved and blocks the affected transition (ruling 10). Eugene sets dates and
 image retention at release time (ruling 11). Procedure and staged external
 ADR0015/G48 amendment: `docs/phoenix/a12f-ruby-free-release.md`.
+
+## Area write negotiation review fix
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-FIX-AREA-NEGOTIATION | POST `/areas`, PATCH/PUT `/areas/:id` with an unsupported Accept header | Saves valid attributes and can enqueue relabel work before `respond_to` raises UnknownFormat (406). | Decides format before mutation; unsupported formats return terminal empty 406 without changing areas or outbox. Missing/foreign update targets retain 404. Supported wildcard and HTML-first/Turbo-second headers return Rails-compatible 200 Turbo success/error flashes. | Explicit fix-area-writes controller brief requires negotiation before any write; `area Accept negotiation selects Rails Turbo responses before any write` in `area_writes_regression_test.exs`; Rails `app/controllers/areas_controller.rb:12–13,28–29`. |
