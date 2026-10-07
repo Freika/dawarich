@@ -10,8 +10,7 @@ defmodule Dawarich.Mail.SmtpTlsReviewTest do
     html: "<p>TLS</p>"
   }
 
-  @tag mail_review: "F2"
-  test "implicit TLS and STARTTLS verify CA and hostname independently of configured read deadlines" do
+  setup do
     dir = Path.join(System.tmp_dir!(), "mail-tls-#{System.unique_integer([:positive])}")
     File.mkdir_p!(dir)
     on_exit(fn -> File.rm_rf!(dir) end)
@@ -77,6 +76,24 @@ defmodule Dawarich.Mail.SmtpTlsReviewTest do
       ext
     ])
 
+    {:ok, cert: cert, key: key, ca: ca}
+  end
+
+  @tag configured_auth_tls: true
+  test "configured authentication runs only after verified implicit TLS or STARTTLS", %{
+    cert: cert,
+    key: key,
+    ca: ca
+  } do
+    for protocol <- [:implicit, :starttls], auth <- ~w(plain login cram_md5 xoauth2) do
+      assert {:ok, true} = deliver(protocol, "localhost", "peer", ca, cert, key, auth)
+      assert {{:error, _}, false} = deliver(protocol, "127.0.0.1", "peer", ca, cert, key, auth)
+    end
+  end
+
+  @tag mail_review: "F2"
+  test "implicit TLS and STARTTLS verify CA and hostname independently of configured read deadlines",
+       %{cert: cert, key: key, ca: ca} do
     for protocol <- [:implicit, :starttls] do
       assert {:ok, true} = deliver(protocol, "localhost", "none", nil, cert, key)
       assert {:ok, true} = deliver(protocol, "localhost", "peer", ca, cert, key)
@@ -128,7 +145,7 @@ defmodule Dawarich.Mail.SmtpTlsReviewTest do
     assert status == 0
   end
 
-  defp deliver(protocol, hostname, mode, ca, cert, key) do
+  defp deliver(protocol, hostname, mode, ca, cert, key, auth \\ "none") do
     {:ok, listen} =
       :gen_tcp.listen(0, [:binary, packet: :line, active: false, ip: {127, 0, 0, 1}])
 
@@ -140,7 +157,7 @@ defmodule Dawarich.Mail.SmtpTlsReviewTest do
           {:ok, socket} ->
             try do
               if protocol == :implicit do
-                upgrade(socket, cert, key)
+                upgrade(socket, cert, key, true, auth)
               else
                 :gen_tcp.send(socket, "220 sink ESMTP\r\n")
 
@@ -148,7 +165,7 @@ defmodule Dawarich.Mail.SmtpTlsReviewTest do
                      :ok <- :gen_tcp.send(socket, "250-sink\r\n250 STARTTLS\r\n"),
                      {:ok, "STARTTLS\r\n"} <- :gen_tcp.recv(socket, 0, :infinity),
                      :ok <- :gen_tcp.send(socket, "220 upgrade\r\n") do
-                  upgrade(socket, cert, key, false)
+                  upgrade(socket, cert, key, false, auth)
                 else
                   _ -> false
                 end
@@ -167,15 +184,21 @@ defmodule Dawarich.Mail.SmtpTlsReviewTest do
       "SMTP_PORT" => to_string(port),
       "SMTP_SSL" => to_string(protocol == :implicit),
       "SMTP_STARTTLS" => "true",
-      "SMTP_AUTHENTICATION" => "none",
+      "SMTP_AUTHENTICATION" => auth,
+      "SMTP_USERNAME" => "fixture-user",
+      "SMTP_PASSWORD" => "fixture-password",
       "SMTP_OPENSSL_VERIFY_MODE" => mode,
-      "SMTP_READ_TIMEOUT" => "0"
+      "SMTP_READ_TIMEOUT" => "5"
     }
 
     env = if ca, do: Map.put(env, "SMTP_CA_FILE", ca), else: env
 
     try do
-      result = wire_deliver(SmtpConfig.options(env))
+      result =
+        if auth == "none",
+          do: wire_deliver(SmtpConfig.options(env)),
+          else: Smtp.deliver(@message, env)
+
       {result, Task.await(server, :infinity)}
     after
       :gen_tcp.close(listen)
@@ -232,7 +255,7 @@ defmodule Dawarich.Mail.SmtpTlsReviewTest do
     assert {:ok, <<^code::binary-size(3), _rest::binary>>} = :smtp_socket.recv(socket, 0)
   end
 
-  defp upgrade(socket, cert, key, greeting \\ true) do
+  defp upgrade(socket, cert, key, greeting, auth) do
     case :ssl.handshake(
            socket,
            [
@@ -247,6 +270,7 @@ defmodule Dawarich.Mail.SmtpTlsReviewTest do
       {:ok, secure} ->
         try do
           if greeting, do: :ssl.send(secure, "220 sink ESMTP\r\n")
+          authenticate_server(secure, auth)
           serve(secure, :command, false)
         after
           :ssl.close(secure)
@@ -254,6 +278,49 @@ defmodule Dawarich.Mail.SmtpTlsReviewTest do
 
       _ ->
         false
+    end
+  end
+
+  defp authenticate_server(_socket, "none"), do: :ok
+
+  defp authenticate_server(socket, auth) do
+    assert {:ok, "EHLO " <> _} = :ssl.recv(socket, 0, :infinity)
+    :ok = :ssl.send(socket, "250-sink\r\n250 AUTH CRAM-MD5 LOGIN PLAIN XOAUTH2\r\n")
+
+    credentials =
+      case auth do
+        "plain" ->
+          [{"AUTH PLAIN " <> Base.encode64("\0fixture-user\0fixture-password"), "235 accepted"}]
+
+        "xoauth2" ->
+          [
+            {"AUTH XOAUTH2 " <>
+               Base.encode64("user=fixture-user\x01auth=Bearer fixture-password\x01\x01"),
+             "235 accepted"}
+          ]
+
+        "login" ->
+          [
+            {"AUTH LOGIN", "334 username"},
+            {Base.encode64("fixture-user"), "334 password"},
+            {Base.encode64("fixture-password"), "235 accepted"}
+          ]
+
+        "cram_md5" ->
+          digest =
+            :crypto.mac(:hmac, :md5, "fixture-password", "challenge")
+            |> Base.encode16(case: :lower)
+
+          [
+            {"AUTH CRAM-MD5", "334 " <> Base.encode64("challenge")},
+            {Base.encode64("fixture-user " <> digest), "235 accepted"}
+          ]
+      end
+
+    for {command, response} <- credentials do
+      assert {:ok, line} = :ssl.recv(socket, 0, :infinity)
+      assert line == command <> "\r\n"
+      :ok = :ssl.send(socket, response <> "\r\n")
     end
   end
 
