@@ -6,7 +6,9 @@ defmodule Dawarich.Stats.CacheInvalidation do
     if Standalone.enabled?() or Ownership.lock(repo, key) == :oban do
       Dawarich.AfterCommit.cache(repo, "stats", payload)
     else
-      RailsCommands.insert!(repo, "stats.caches_invalidated", payload)
+      Dawarich.AfterCommit.with_visibility(repo, "stats", payload, fn ->
+        RailsCommands.insert!(repo, "stats.caches_invalidated", payload)
+      end)
     end
   end
 

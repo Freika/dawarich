@@ -10,7 +10,10 @@ defmodule Dawarich.Visits.Calendar do
     if Dawarich.Standalone.enabled?() or
          Dawarich.Jobs.Ownership.lock(repo, "command:visits.suggest") == :oban,
        do: Dawarich.AfterCommit.enqueue(repo, Dawarich.Points.VisitMonthsWorker, payload),
-       else: Dawarich.RailsCommands.insert!(repo, "visit_months_changed", payload)
+       else:
+         Dawarich.AfterCommit.with_visibility(repo, "visit_months", payload, fn ->
+           Dawarich.RailsCommands.insert!(repo, "visit_months_changed", payload)
+         end)
   end
 
   def invalidate(repo, user, stamps) do

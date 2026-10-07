@@ -282,6 +282,7 @@ defmodule Dawarich.Ingest.IntakeTest do
         else: Dawarich.Repo.transaction(fun)
     end
 
+    def in_transaction?(), do: Dawarich.Repo.in_transaction?()
     def query!(sql, params, opts), do: Dawarich.Repo.query!(sql, params, opts)
   end
 
@@ -295,6 +296,7 @@ defmodule Dawarich.Ingest.IntakeTest do
         else: Dawarich.Repo.transaction(fun)
     end
 
+    def in_transaction?(), do: Dawarich.Repo.in_transaction?()
     def query!(sql, params, opts), do: Dawarich.Repo.query!(sql, params, opts)
   end
 

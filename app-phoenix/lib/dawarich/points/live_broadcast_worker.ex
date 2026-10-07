@@ -39,19 +39,22 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
          ).rows do
       [[email, first, last, settings]] when points != [] ->
         Dawarich.AfterCommit.once(repo, args["broadcast_id"], fn ->
-          State.claim(repo, "live_broadcast:done:#{args["broadcast_id"]}", 86_400)
-          now = DateTime.utc_now()
-          payloads = Map.new(args["payloads"], &{&1["timestamp"], &1})
-          family = family(repo, user, settings, now)
+          if State.claim(repo, "live_broadcast:done:#{args["broadcast_id"]}", 86_400) do
+            now = DateTime.utc_now()
+            payloads = Map.new(args["payloads"], &{&1["timestamp"], &1})
+            family = family(repo, user, settings, now)
 
-          for point <- points do
-            if Map.get(settings, "live_map_enabled", true) not in [nil, false],
-              do: publish_point(repo, user, point, Map.get(payloads, point["timestamp"], %{}))
+            for point <- points do
+              if Map.get(settings, "live_map_enabled", true) not in [nil, false],
+                do: publish_point(repo, user, point, Map.get(payloads, point["timestamp"], %{}))
 
-            if family, do: publish_family(repo, family, user, email, first, last, settings, point)
+              if family,
+                do: publish_family(repo, family, user, email, first, last, settings, point)
+            end
+
+            publish_shares(repo, user, Enum.max_by(points, & &1["timestamp"]), now)
           end
 
-          publish_shares(repo, user, Enum.max_by(points, & &1["timestamp"]), now)
           :ok
         end)
 

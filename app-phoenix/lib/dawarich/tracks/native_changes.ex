@@ -17,7 +17,9 @@ defmodule Dawarich.Tracks.NativeChanges do
     Dawarich.AfterCommit.once(repo, intent, fn -> publish_changes(repo, payload) end)
   end
 
-  defp publish_changes(repo, payload) do
+  def snapshot(_repo, %{"events" => _} = payload), do: payload
+
+  def snapshot(repo, payload) do
     created = payload["created"]
     ids = created ++ payload["updated"]
 
@@ -29,22 +31,27 @@ defmodule Dawarich.Tracks.NativeChanges do
         log: false
       )
 
-    for values <- result.rows do
-      track = @columns |> Enum.zip(values) |> Map.new()
+    events =
+      for values <- result.rows do
+        track = @columns |> Enum.zip(values) |> Map.new()
 
-      track =
-        track
-        |> Map.update!("start_at", &iso/1)
-        |> Map.update!("end_at", &iso/1)
-        |> Map.update!("original_path", &wkt/1)
+        track =
+          track
+          |> Map.update!("start_at", &iso/1)
+          |> Map.update!("end_at", &iso/1)
+          |> Map.update!("original_path", &wkt/1)
 
-      action = if track["id"] in created, do: "created", else: "updated"
-      publish(repo, payload["user_id"], %{"action" => action, "track" => track})
-    end
+        action = if track["id"] in created, do: "created", else: "updated"
+        %{"action" => action, "track" => track}
+      end
 
-    for id <- payload["destroyed"],
-        do: publish(repo, payload["user_id"], %{"action" => "destroyed", "track_id" => id})
+    destroyed = for id <- payload["destroyed"], do: %{"action" => "destroyed", "track_id" => id}
+    Map.put(payload, "events", events ++ destroyed)
+  end
 
+  defp publish_changes(repo, payload) do
+    events = Map.get_lazy(payload, "events", fn -> snapshot(repo, payload)["events"] end)
+    for message <- events, do: publish(repo, payload["user_id"], message)
     :ok
   end
 

@@ -1,79 +1,139 @@
 # Durable after-commit effects
 
-Status: accepted. Date: 2026-10-07.
+Status: accepted. Date: 2026-10-07. Review amendment: 2026-10-07.
 
-Writes must persist cache eviction and dependent work in the same PostgreSQL
-transaction as their domain changes. `Dawarich.AfterCommit.enqueue/4` inserts
-an Oban intent using the caller's repository; `cache/3` inserts the shared
-consumer with an operation, payload and UUID. Existing reverse Rails commands
-remain transactional rows in `phoenix.rails_commands`. Nothing reaches Redis
-or an external Rails executor before these records commit.
+Domain writes persist cache generations, eviction intents and dependent work in
+the same PostgreSQL transaction. Phoenix readers consult that generation before
+using a cache or validating a tile. Redis eviction runs after commit as cleanup.
+Worker delay, Redis outage and discarded jobs cannot make an old generation
+readable again. The earlier implementation relied on eventual eviction; this
+amendment replaces that unbounded visibility contract.
 
-The shared consumer rejects an open application transaction. It checks out a
-connection and serializes each intent with a PostgreSQL session advisory lock,
-without opening a write transaction around Redis. A persistent
-`phoenix.processed_commands` marker acknowledges successful execution. An
-error or connection exit returns a retryable error to Oban; the consumer has
-20 attempts. Its advisory lock is released in an `after` block. Connection
-loss releases the database session lock. An outage does not roll back the
-already committed domain write or discard its pending intent.
+## Shared API
 
-Redis deletion may repeat when a process dies after eviction but before the
-completion marker commits. Deletion is idempotent. An incomplete track epoch
-attempt uses a fresh generation on retry, so an older attempt cannot resurrect
-a generation already superseded by a newer write. Completed intents do not
-repeat epoch changes or broadcasts. Native PG Cable batches and their durable
-completion markers commit in one transaction through `AfterCommit.once/3`.
-This guarantees one committed batch per intent, including owner, family and
-share messages, even if an append fails partway through a batch.
+`Dawarich.AfterCommit.cache(repo, operation, payload)` returns `:ok`. It records
+an Oban job, UUID and applicable database generations atomically using the
+caller's repository. Operations are `stats`, `keys`, `tracks`, `subscription`,
+`rate_limit`, `transport_start` and `transport_progress`. Supply `user_id` for
+user-dependent entries. `keys` also records generations for its exact keys;
+`rate_limit` accepts the retired API key's SHA-256 digest, never its usable key.
+The `tracks` operation snapshots serialized created, updated and destroyed
+messages inside this transaction. Consumers use that immutable snapshot even
+if a later transaction changes or deletes the track.
 
-Stats calculation and toponym refresh record eviction intents; both stats
-workers return calculation errors to Oban. Visit calendar producers queue
-`VisitMonthsWorker` in standalone and coexistence modes. Native track changes
-queue their epoch and broadcast work. Demo import/destruction record cache
-and recalculation intents before their enclosing transaction commits.
-Subscription updates and API-key rotation record cache eviction intents with
-their writes. API-key housekeeping stores a digest, never a usable key, in
-job arguments.
+`enqueue(repo, worker, args, opts \\ [])` inserts an Oban intent using the same
+repository and returns `:ok`. Tile epoch and visit month workers also record the
+user's cache generation. Call it inside the domain transaction; the helper joins an existing transaction
+and opens one only when necessary. A failure propagates and rolls back
+the domain write. The visits write helper should adopt this API rather than
+maintaining a second postcommit primitive.
 
-Anomaly arrival locks the user row while changing flags and recording follow-up
-jobs. A failed enqueue rolls back both. API point deletion commits counters,
-removed-row metadata and dependent intents together. Achievement debounce also
-locks the user row before checking for a pending job and preserves the minimum
-removed timestamp. Native live broadcasts commit their replay claim with the
-complete PG event batch.
+`with_visibility(repo, operation, payload, effect)` records generations and runs
+`effect` in one transaction, returning its result. Reverse Rails tile, stats and
+visit intents use it while preserving their command kinds and payloads.
 
-Transportation initialization runs after commit and before publishing the track
-fanout. Each track records a progress intent with its database change; the
-consumer increments Redis idempotently by event and commits its native PG
-notification once. A rolled-back track change cannot advance progress.
+`once(repo, intent_uuid, effect)` serializes and acknowledges a successful SQL
+batch through `phoenix.processed_commands`. The callback must return `:ok`;
+errors roll back its SQL completion marker. Native PG Cable appends share that
+transaction. Redis Cable broadcasts inside the callback receive stable event
+identities derived from the intent UUID, stream and position within that stream.
 
-The alternative of keeping callbacks in process memory was rejected because a
-process crash loses them. Running Redis inline was rejected because rollback
-and pre-commit readers invalidate the cache/write ordering. Existing Oban and
-processed-command tables supply durability without a new schema or queueing
-system. The consequence is asynchronous cache visibility: committed values may
-remain cached until the worker consumes its intent. Operators use existing Oban
-retry and drain tooling; failed intents must be resolved before a runtime drain
-is declared complete.
+## Cache visibility
 
-`test/dawarich/after_commit_*_test.exs` contains deterministic rollback,
-concurrency, outage, replay and epoch-generation regressions. The AST guard
-follows every function clause and local or aliased module calls throughout
-`app-phoenix/lib` from transaction closures, and rejects
-both direct and indirect cache eviction or epoch changes. Passive cleanup of
-an already expired Rails cache entry is excluded because it does not invalidate
-values in response to a domain write. Reflection and dynamically selected
-callbacks still require review.
+The server-side stale-entry bound is **zero committed writes**: a read begun
+after a domain transaction commits cannot use an entry from its previous
+generation. User generations live in `phoenix.epochs`, have no expiration, and
+roll back with the write. Missing generations retain legacy key compatibility.
+Tile validators combine the database generation with Rails-compatible Redis
+epochs, so even a discarded track/point eviction intent cannot produce an old
+304. Database errors fail the request instead of trusting the old validator.
+Existing browser freshness is still `max-age=300, private`; a browser may reuse
+its already received response for that interval without contacting the server.
 
-Related: the existing Phoenix A1 outbox/job-ownership plans, and the A12f controller review of native point
-producers. The implementation report records the individual test mutations and
-release-gate results.
+`AfterCommit.Visibility.key(repo, key)` resolves an exact/user-dependent cache
+key. Call it before loading the value and retain the resolved key through the
+write. Redis-backed native stats/digests and Rails-compatible user summaries,
+yearly digests, timeline summaries and insights fragments use generations.
+`RailsCache.get/2` resolves these user keys automatically; code that resolves a
+key before rendering uses `resolved: true` for both get and put. Generic exact
+key consumers can explicitly resolve their key through `Visibility.key/2`.
+Do not resolve again after computing an entry: a concurrent commit would attach
+precommit data to the new generation. The deterministic warming regression
+covers this boundary, including the first transition from a legacy key.
 
+Rate-plan ETS keys use a database generation of the API key digest, resolved
+before loading the account. Old entries expire normally; cleanup removes both
+legacy and versioned entries. PostgreSQL point-count caches store their captured
+generation alongside their counts in a cursor, in one transaction. Counts from
+an older generation are recomputed without disabling caching permanently.
+
+Redis eviction may repeat after a crash between deletion and SQL acknowledgement.
+Deletion is idempotent. An incomplete legacy Redis epoch cleanup attempt uses a
+fresh token; retry cannot restore an older token. A completed intent does not
+repeat broadcasts or cleanup. Unreferenced versioned entries expire under their
+existing TTLs; asynchronous eviction can additionally remove them.
+
+## Delivery and follow-ups
+
+The shared worker rejects an open application transaction, checks out a
+connection and takes a PostgreSQL session advisory lock per intent. It retains
+errors for Oban retry (20 attempts). Its lock is released in an `after` block;
+connection loss releases the session lock. Operators must resolve failed jobs
+before declaring runtime drain complete, even though cache visibility no longer
+depends on draining them.
+
+Redis Cable atomically tests a per-event marker, publishes the unchanged Rails
+message and records the marker in one Lua execution. A lost response or a later
+batch failure retries already delivered messages without republishing them.
+Markers have no TTL: deleting them while their intent can replay would remove
+the deduplication guarantee. They belong to the Cable Redis database, not the
+cache database. Redis must retain its delivery ledger across restarts (persistent
+storage/replication and a no-eviction policy for that database). Restoring Redis
+to an older snapshot also restores its deduplication boundary; PostgreSQL alone
+cannot guarantee external exactly-once publication across a lost Redis ledger.
+Unscoped broadcasts retain their existing transport behavior.
+
+Successful legacy `live_broadcast:done:<id>` claims are adopted as consumed SQL
+intents without another publication. New failed batches roll back their legacy
+claim and SQL marker and remain retryable. Track snapshots apply to newly
+recorded intents; already queued ID-only intents cannot recover a deleted row's
+historical body. Drain legacy track intents before retiring their source rows
+when deploying this amendment.
+
+Subscription family creation/member synchronization intents now commit with
+the subscription update. Their reverse ownership, payload and metadata stay
+unchanged. Anomaly filtering takes a user-row lock and wraps all flags and
+follow-up intents in one fenced transaction for every caller, including archive
+restoration. Lease checks between flag/effect stages are retained; a mid-stage
+lease loss rolls back the complete filter. A failed enqueue leaves the point eligible for replay. API point
+deletion and achievement debounce retain their atomic, user-serialized behavior.
+
+Stats workers return calculation failures to Oban. Demo writes record eviction
+and recalculation intents before commit. Transportation initialization runs
+only after commit; each track records its progress intent with its write. Native
+PG messages and Redis event markers prevent completed progress retries from
+publishing again.
+
+## Verification and trade-offs
+
+The AST guard resolves aliases for both calls and sinks, expands pipelines
+before building its graph, and checks every function clause reachable from
+transaction closures. Aliased TTL deletes and piped `UNLINK` each have rejection
+regressions. Passive cleanup of expired Rails cache entries is excluded;
+reflection and dynamically selected callbacks still require review.
+
+Generations add indexed database lookups and coarse user-wide invalidation.
+This is preferred to an age limit, pending-job scan, process-memory callback or
+inline Redis call because correctness survives terminal job failure and rollback.
+The existing epoch/cursor, processed-command and Oban tables need no migration.
+Redis delivery markers require retention and capacity planning.
+
+The implementation report records RED/GREEN/mutation evidence and release gates.
+Related: Phoenix A1 outbox/job-ownership plans and the A12f native producer review.
 AFFiNE counterpart: `Dawarich — ADR-20261007-after-commit-effects — Persist effects with domain writes`
 (document `mUh3WnOxB9X3PvgbNqBG-`).
 
-Verification: all 22 named regressions passed, and all 22 named mutations failed
-their assertions before restoration passed. Force compilation with warnings as
-errors and formatting checks passed. The full seed-404 gate passed 9341 tests
-with zero failures through the shared suite runner.
+Round-2 verification: twelve named regression mutations failed their assertions
+and passed after restoration. The complete seed-404 gate passed 9476 tests with
+zero failures. Force compilation with warnings as errors and whole-tree
+formatting passed. Existing suite exclusions/skips were unchanged.

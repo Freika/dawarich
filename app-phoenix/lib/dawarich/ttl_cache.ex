@@ -87,13 +87,23 @@ defmodule Dawarich.TtlCache do
   def put(key, value, ttl_ms) when is_integer(ttl_ms) and ttl_ms >= 0,
     do: store(key, value, ttl_ms)
 
+  def delete({namespace, key} = cache_key) do
+    :ets.match_delete(__MODULE__, {{namespace, key, :_}, :_, :_})
+    :ets.delete(__MODULE__, cache_key)
+    :ok
+  end
+
   def delete(key) do
     :ets.delete(__MODULE__, key)
     :ok
   end
 
   def delete_digest(namespace, digest) do
-    for {{^namespace, key} = cache_key, _, _} <- :ets.tab2list(__MODULE__),
+    for {cache_key, _, _} <- :ets.tab2list(__MODULE__),
+        is_tuple(cache_key),
+        tuple_size(cache_key) in [2, 3],
+        elem(cache_key, 0) == namespace,
+        key = elem(cache_key, 1),
         is_binary(key),
         Base.encode16(:crypto.hash(:sha256, key), case: :lower) == digest,
         do: delete(cache_key)

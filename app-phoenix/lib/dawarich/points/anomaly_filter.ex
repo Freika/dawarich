@@ -6,6 +6,27 @@ defmodule Dawarich.Points.AnomalyFilter do
   @false_values [false, 0, "0", "f", "F", "false", "FALSE", "off", "OFF", ""]
 
   def call(repo, user_id, start_ts, end_ts, opts \\ []) do
+    fence = Keyword.get(opts, :fence, fn effect -> effect.() end)
+
+    fence.(fn ->
+      {:ok, count} =
+        repo.transaction(fn ->
+          repo.query!("SELECT id FROM users WHERE id=$1 FOR UPDATE", [user_id], log: false)
+
+          filter(
+            repo,
+            user_id,
+            start_ts,
+            end_ts,
+            opts
+          )
+        end)
+
+      count
+    end)
+  end
+
+  defp filter(repo, user_id, start_ts, end_ts, opts) do
     if enabled?(repo, user_id) do
       context = %{
         repo: repo,

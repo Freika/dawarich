@@ -5,6 +5,30 @@ defmodule Dawarich.AfterCommitGuardTest do
     assert violations(Path.wildcard("lib/**/*.ex")) == []
   end
 
+  test "P2 alias cache deletion is rejected inside a transaction" do
+    assert_fixture("alias Dawarich.TtlCache, as: Cache", "Cache.delete(key)")
+  end
+
+  test "P2 piped UNLINK is rejected inside a transaction" do
+    assert_fixture("", "[\"UNLINK\", key] |> Dawarich.Redis.cache_command()")
+  end
+
+  defp assert_fixture(alias_source, expression) do
+    path =
+      Path.join(System.tmp_dir!(), "after-commit-guard-#{System.unique_integer([:positive])}.ex")
+
+    File.write!(
+      path,
+      "defmodule GuardProbe do\n#{alias_source}\ndef write(repo, key), do: repo.transaction(fn -> #{expression} end)\nend"
+    )
+
+    try do
+      assert length(violations([path])) == 1
+    after
+      File.rm!(path)
+    end
+  end
+
   defp violations(paths) do
     modules = Enum.flat_map(paths, &functions/1)
 
@@ -15,17 +39,18 @@ defmodule Dawarich.AfterCommitGuardTest do
         end)
       end)
 
-    sinks = for {key, body, _, _, _} <- modules, sink?(body), into: MapSet.new(), do: key
+    sinks =
+      for {key, body, aliases, _, _} <- modules, sink?(body, aliases), into: MapSet.new(), do: key
 
     for {key, body, aliases, module, file} <- modules,
         closure <- transactions(body),
-        target <- if(sink?(closure), do: [key], else: calls(closure, aliases, module)),
+        target <- if(sink?(closure, aliases), do: [key], else: calls(closure, aliases, module)),
         reaches?(target, graph, sinks, MapSet.new()),
         do: {file, key, target}
   end
 
   defp functions(path) do
-    ast = path |> File.read!() |> Code.string_to_quoted!()
+    ast = path |> File.read!() |> Code.string_to_quoted!() |> normalize()
 
     {_ast, modules} =
       Macro.prewalk(ast, [], fn
@@ -121,15 +146,37 @@ defmodule Dawarich.AfterCommitGuardTest do
     calls
   end
 
-  defp sink?(ast) do
+  defp normalize(ast) do
+    Macro.prewalk(ast, fn
+      {:|>, _, [left, right]} -> Macro.pipe(left, right, 0)
+      node -> node
+    end)
+  end
+
+  defp sink?(ast, aliases) do
     {_ast, found} =
       Macro.prewalk(ast, false, fn
-        {{:., _, [{:__aliases__, _, names}, :delete]}, _, _} = node, acc ->
-          {node, acc or List.last(names) == :TtlCache}
+        {{:., _, [target, name]}, _, args} = node, acc when is_list(args) ->
+          module = module_name(target, aliases)
 
-        {{:., _, [_, :cache_command]}, _, [args | _]} = node, acc ->
-          source = Macro.to_string(args)
-          {node, acc or String.contains?(source, ["\"DEL\"", "\"UNLINK\"", "tile_epoch"])}
+          invalidates =
+            (module == "Elixir.Dawarich.TtlCache" and name in [:delete, :delete_digest]) or
+              (module == "Elixir.Dawarich.Redis" and name == :cache_command and eviction?(args))
+
+          {node, acc or invalidates}
+
+        node, acc ->
+          {node, acc}
+      end)
+
+    found
+  end
+
+  defp eviction?(args) do
+    {_ast, found} =
+      Macro.prewalk(args, false, fn
+        value, acc when is_binary(value) ->
+          {value, acc or value in ["DEL", "UNLINK"] or String.contains?(value, "tile_epoch")}
 
         node, acc ->
           {node, acc}

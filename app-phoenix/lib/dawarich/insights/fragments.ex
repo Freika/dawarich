@@ -15,10 +15,11 @@ defmodule Dawarich.Insights.Fragments do
 
   def render(user, locale, data, opts) do
     for {name, module} <- @parts, into: %{} do
-      cache_key = key(user, locale, data, name)
+      cache_key =
+        Dawarich.AfterCommit.Visibility.key(Dawarich.Repo, key(user, locale, data, name))
 
       value =
-        case RailsCache.get(cache_key) do
+        case RailsCache.get(cache_key, resolved: true) do
           {:ok, value} ->
             Snapshot.html(value)
 
@@ -28,7 +29,8 @@ defmodule Dawarich.Insights.Fragments do
               |> Phoenix.HTML.Safe.to_iodata()
               |> IO.iodata_to_binary()
 
-            if opts[:write], do: RailsCache.put(cache_key, html, expires_in: 86400)
+            if opts[:write],
+              do: RailsCache.put(cache_key, html, expires_in: 86400, resolved: true)
 
             html
         end

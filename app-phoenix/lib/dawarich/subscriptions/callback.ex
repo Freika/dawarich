@@ -127,6 +127,7 @@ defmodule Dawarich.Subscriptions.Callback do
           if map_size(changes.changes) > 0 and not Map.has_key?(changes.changes, :plan),
             do: Dawarich.AfterCommit.cache(repo, "subscription", %{"user_id" => user.id})
 
+          callbacks(repo, user, changes.changes, context)
           Cache.advance(claims, context)
           {user, changes.changes}
         end)
@@ -143,8 +144,7 @@ defmodule Dawarich.Subscriptions.Callback do
       {:error, :stale} ->
         response(200, "stale_event")
 
-      {:ok, {user, changes}} ->
-        callbacks(repo, user, changes, context)
+      {:ok, {_user, _changes}} ->
         committed_response(context)
     end
   rescue

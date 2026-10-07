@@ -169,8 +169,11 @@ defmodule DawarichWeb.RateLimit do
   end
 
   def plan(key) do
+    generation = Dawarich.AfterCommit.Visibility.plan(Dawarich.Repo, key)
+    cache_key = if generation == "", do: {__MODULE__, key}, else: {__MODULE__, key, generation}
+
     TtlCache.fetch(
-      {__MODULE__, key},
+      cache_key,
       120_000,
       fn ->
         with %{} = user <- Accounts.by_api_key(key),
