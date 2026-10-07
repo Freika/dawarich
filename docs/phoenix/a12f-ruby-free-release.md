@@ -486,6 +486,16 @@ integration schedulers (AirTrail/TeslaMate/Trek), digest scheduling/mail,
 GoogleTakeout/GPX resumptions, EnhancedImport extraction and family callbacks.
 Task 7 must settle any path requiring a fresh source child before switching.
 
+Standalone account deletion binds `DELETE /users`, `DELETE /api/v1/users/me`
+and the signed deletion-confirmation GET to the existing account service.
+Browser owner authentication and CSRF, API-key ownership, confirmation flashes
+and redirects retain Rails behavior. The native `users.destroy` command uses
+the existing exactly-once destroy worker and shared storage-first purge ledger;
+webhook and cache effects commit as durable AfterCommit intents. Failed enqueue,
+cache delivery and object removal remain retryable. Coexistence keeps source
+route handback and job ownership. These bindings do not authorize Cloud native
+lifecycle: Cloud lifecycle refusal remains in every mode pending L1.
+
 Current dependencies remain: cache cron wrapper delegates to Rails; native
 RailsCommands reverse kinds are not closed; source RailsCommands::Poller starts
 on worker startup; cache_jobs publishes Cleaning/Preheating on Rails server boot;

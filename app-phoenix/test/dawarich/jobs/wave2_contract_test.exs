@@ -109,7 +109,7 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
 
     native_effects =
       MapSet.new(
-        ~w(points.anomaly_recalculate points.tile_epoch points.live_broadcast points.anomaly_filter visits.user_redetect)
+        ~w(points.anomaly_recalculate points.tile_epoch points.live_broadcast points.anomaly_filter visits.user_redetect users.destroy)
       )
 
     assert phoenix == MapSet.union(rails, native_effects)
