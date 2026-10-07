@@ -2,9 +2,8 @@ defmodule Dawarich.Posters.Time do
   @moduledoc false
   alias Dawarich.Imports.{DateParts, ImportTime}
 
-  def parse(text, now \\ DateTime.utc_now()) do
+  def parse(text, now \\ DateTime.utc_now(), zone \\ System.get_env("TIME_ZONE", "Europe/Berlin")) do
     parts = DateParts.parse(text)
-    zone = System.get_env("TIME_ZONE", "Europe/Berlin")
 
     case ImportTime.parse(text, zone, now) do
       nil -> nil
@@ -29,5 +28,5 @@ defmodule Dawarich.Posters.Time do
   defp rational(integer), do: {integer, 1}
 
   defp utc(microseconds),
-    do: microseconds |> DateTime.from_unix!(:microsecond) |> DateTime.to_naive()
+    do: NaiveDateTime.add(~N[1970-01-01 00:00:00], microseconds, :microsecond)
 end
