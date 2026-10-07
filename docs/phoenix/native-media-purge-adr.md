@@ -60,3 +60,34 @@ poster roots sharing a child and further descendant, real parent/child storage
 failures, still-broken retries, recovery and serialized replay. External parents
 and references added after enqueue continue to protect their children and
 subtrees. See `test/dawarich/a12f3b_e13_shared_variant_test.exs`.
+
+## Ownership and legacy continuation extension — 2026-10-07
+
+The post-hoc review demonstrated cross-account blob adoption, legacy purge
+continuations bypassing the marker, attachment admission after revocation,
+duplicate ffprobe on concurrent redelivery, and source poster jobs ignoring
+native ownership/leases. The controller preserves signed download bearer policy
+pending the same DRB-027 policy decision; adoption is explicitly refused.
+
+Extend the existing database fence: lock the blob before the final owner-compatible
+admission query and attachment write. The fresh query also rejects the pending
+marker, so a pre-revocation read cannot authorize later attachment. Legacy poster
+purges collect/mark the same graph and execute through the shared purge helper,
+retaining accepted arguments and processed-event semantics. Analysis takes the
+event claim and owned blob lock before ffprobe. Retained Rails poster generation
+uses the shared lease and command ownership lock; accepted Oban-owned work is
+forwarded with its original event identity.
+
+Pre-transaction validation leaves a revocation race. A lease around analysis
+requires expiry/fencing while the existing transaction claim and blob lock already
+serialize event and blob publication; that simpler database fence is chosen.
+Background locks now also span analysis. Failed analysis rolls back its claim;
+a process crash after probing but before commit can require another probe.
+Source lease contention retries rather than acknowledging unperformed work.
+No signed-download policy, queue, migration or Cloud lifecycle change is made.
+
+Named mode-specific cases in `media_ownership_test.exs` and
+`spec/jobs/posters/media_ownership_spec.rb` reproduce each defect, including failed
+storage retries and concurrent independent analysis events for one blob. See
+FRB-047/048/049 and ED-FIX-MEDIA-OWNERSHIP; full evidence is recorded in the
+controller's `impl-fix-media-ownership.report.md`.

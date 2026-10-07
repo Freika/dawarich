@@ -52,6 +52,7 @@ defmodule DawarichWeb.TripRecalculateTest do
   defp stamp(id),
     do: rows("SELECT last_recalculated_at, updated_at FROM trips WHERE id = $1", [id])
 
+  @tag a12f3a_t07: true
   test "recalculation is strict at sixty seconds and preserves owner phases" do
     user =
       RailsUser.insert!(

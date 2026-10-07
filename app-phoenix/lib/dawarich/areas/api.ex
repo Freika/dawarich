@@ -2,7 +2,7 @@ defmodule Dawarich.Areas.Api do
   @moduledoc false
   alias Dawarich.Areas.WebWrite
   alias Dawarich.Settings.Api, as: Settings
-  alias Dawarich.{RailsTime, RubyInteger}
+  alias Dawarich.{RailsTimeZone, RubyInteger}
   @fields ~w(id name latitude longitude radius created_at updated_at user_id)
   @select "id,name,latitude::text,longitude::text,radius,created_at,updated_at,user_id"
 
@@ -137,31 +137,21 @@ defmodule Dawarich.Areas.Api do
     if rows == [] do
       []
     else
-      zone = Dawarich.UserTimeZone.iana(repo, Settings.read(repo, List.last(hd(rows))))
+      settings = Settings.read(repo, List.last(hd(rows)))
 
-      RailsTime.with_zone(repo, zone, fn ->
-        Enum.map(rows, fn [id, name, lat, lon, radius, created, updated, owner] ->
-          [[created, updated]] =
-            repo.query!(
-              "SELECT " <>
-                RailsTime.sql("$1::timestamp", 3) <> "," <> RailsTime.sql("$2::timestamp", 3),
-              [created, updated],
-              log: false
-            ).rows
-
-          Map.new(
-            Enum.zip(@fields, [
-              id,
-              name,
-              decimal(lat),
-              decimal(lon),
-              radius,
-              created,
-              updated,
-              owner
-            ])
-          )
-        end)
+      Enum.map(rows, fn [id, name, lat, lon, radius, created, updated, owner] ->
+        Map.new(
+          Enum.zip(@fields, [
+            id,
+            name,
+            decimal(lat),
+            decimal(lon),
+            radius,
+            RailsTimeZone.format(created, settings, 3),
+            RailsTimeZone.format(updated, settings, 3),
+            owner
+          ])
+        )
       end)
     end
   end

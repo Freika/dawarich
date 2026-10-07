@@ -76,7 +76,9 @@ defmodule DawarichWeb.UserDataController do
             log: false
           ).rows
 
-        with {:ok, blob} <- Uploads.fetch(repo, value), true <- zip?(blob) do
+        with {:ok, blob} <- Uploads.fetch(repo, value),
+             true <- Dawarich.Storage.UploadReceipts.owned_archive?(repo, blob.id, user.id),
+             true <- zip?(blob) do
           if status == 2 and subscription == 0 and
                (blob.byte_size > 11 * 1024 * 1024 or trial_count(repo, user.id) >= 5),
              do: repo.rollback(:validation)

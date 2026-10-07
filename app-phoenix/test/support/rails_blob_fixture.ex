@@ -21,6 +21,8 @@ defmodule Dawarich.RailsBlobFixture do
         log: false
       ).rows
 
+    if user_id = opts[:user_id], do: Dawarich.Storage.UploadReceipts.bind!(repo, id, user_id)
+
     %{id: id, signed_id: Dawarich.RailsMessages.blob_id(id)}
   end
 end

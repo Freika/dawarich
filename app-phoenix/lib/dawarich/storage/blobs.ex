@@ -56,8 +56,14 @@ defmodule Dawarich.Storage.Blobs do
     ]
 
     RailsTime.with_zone(zone, fn ->
-      %{rows: [[id]]} = Repo.query!(@insert, row)
-      {:ok, select(id)}
+      Repo.transaction(fn ->
+        %{rows: [[id]]} = Repo.query!(@insert, row)
+
+        if Keyword.has_key?(opts, :user_id),
+          do: Dawarich.Storage.UploadReceipts.bind!(Repo, id, opts[:user_id])
+
+        select(id)
+      end)
     end)
   end
 

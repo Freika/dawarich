@@ -119,10 +119,11 @@ defmodule DawarichWeb.Api.SettingsController do
     locator = url |> String.split(~r/[?#]/) |> hd() |> String.downcase()
 
     style =
-      not String.match?(url, ~r/[{}]/) and
+      valid_style_syntax?(url) and not String.match?(url, ~r/[{}]/) and
         not Enum.any?(~w(.png .jpg .jpeg .webp .mvt .pbf), &String.ends_with?(locator, &1)) and
         ((uri.scheme in ~w(http https) and uri.host not in [nil, ""]) or
-           (is_nil(uri.scheme) and is_nil(uri.host) and String.starts_with?(uri.path || "", "/")))
+           (is_nil(uri.scheme) and uri.host in [nil, ""] and
+              String.starts_with?(uri.path || "", "/")))
 
     style or Enum.all?(~w({z} {x} {y}), &String.contains?(url, &1))
   rescue
@@ -130,6 +131,49 @@ defmodule DawarichWeb.Api.SettingsController do
   end
 
   def valid_tiles?(_), do: false
+
+  defp valid_style_syntax?(url) do
+    uri = URI.parse(url)
+
+    fragment =
+      case String.split(url, "#", parts: 2) do
+        [_, value] -> value
+        _ -> ""
+      end
+
+    String.match?(url, ~r/\A[\x00-\x7f]*\z/) and
+      String.match?(uri.path || "", ~r/\A(?:%[0-9a-fA-F]{2}|[A-Za-z0-9._~!$&'()*+,;=:@\/-])*\z/) and
+      String.match?(
+        fragment,
+        ~r/\A(?:%[0-9a-fA-F]{2}|[A-Za-z0-9._~!$&'()*+,;=:@\/?-])*\z/
+      ) and
+      valid_authority?(uri.authority)
+  end
+
+  defp valid_authority?(nil), do: true
+
+  defp valid_authority?(authority) do
+    case Regex.run(~r/\A(?:([^@]*)@)?(\[[^\]]+\]|[^:]*)(?::[0-9]*)?\z/, authority) do
+      [_, userinfo, host] ->
+        String.match?(userinfo, ~r/\A(?:%[0-9a-fA-F]{2}|[A-Za-z0-9._~!$&'()*+,;=:-])*\z/) and
+          valid_host?(host)
+
+      _ ->
+        false
+    end
+  end
+
+  defp valid_host?("[" <> literal) do
+    address = String.trim_trailing(literal, "]")
+
+    case :inet.parse_strict_address(String.to_charlist(address)) do
+      {:ok, ip} when tuple_size(ip) == 8 -> true
+      _ -> String.match?(address, ~r/\Av[0-9a-fA-F]+\.[A-Za-z0-9._~!$&'()*+,;=:-]+\z/)
+    end
+  end
+
+  defp valid_host?(host),
+    do: String.match?(host, ~r/\A(?:%[0-9a-fA-F]{2}|[A-Za-z0-9._~!$&'()*+,;=-])*\z/)
 
   defp general(conn) do
     params = conn.assigns.api_params
