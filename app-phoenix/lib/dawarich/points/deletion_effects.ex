@@ -35,6 +35,8 @@ defmodule Dawarich.Points.DeletionEffects do
   end
 
   defp achievements(repo, user, oldest, now) do
+    repo.query!("SELECT id FROM users WHERE id=$1 FOR UPDATE", [user], log: false)
+
     pending =
       repo.query!(
         "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.Achievements.CheckWorker' AND args->>'user_id'=$1 AND state IN ('available','scheduled') AND tags @> ARRAY['point-delete']::text[] ORDER BY id FOR UPDATE",

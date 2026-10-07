@@ -92,6 +92,15 @@ defmodule Dawarich.TtlCache do
     :ok
   end
 
+  def delete_digest(namespace, digest) do
+    for {{^namespace, key} = cache_key, _, _} <- :ets.tab2list(__MODULE__),
+        is_binary(key),
+        Base.encode16(:crypto.hash(:sha256, key), case: :lower) == digest,
+        do: delete(cache_key)
+
+    :ok
+  end
+
   defp store(key, value, ttl_ms) do
     now = System.monotonic_time(:millisecond)
     if :ets.info(__MODULE__, :size) >= @max, do: evict(now)

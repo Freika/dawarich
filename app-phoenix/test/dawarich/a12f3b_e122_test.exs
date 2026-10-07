@@ -86,6 +86,8 @@ defmodule Dawarich.A12f3bE122Test do
            ) == [[1001]]
 
     assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    assert Drain.status(ScratchRepo).counts.incomplete_oban == 12
+    Dawarich.Test.AfterCommit.drain(ScratchRepo)
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 11
   end
 

@@ -1,6 +1,6 @@
 defmodule Dawarich.Points.LiveBroadcastWorker do
   @moduledoc false
-  use Oban.Worker, queue: :projections, max_attempts: 1
+  use Oban.Worker, queue: :projections, max_attempts: 10
 
   alias Dawarich.{Cable, State}
   alias Dawarich.Families.{Locations, Sharing}
@@ -38,7 +38,8 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
            log: false
          ).rows do
       [[email, first, last, settings]] when points != [] ->
-        if State.claim(repo, "live_broadcast:done:#{args["broadcast_id"]}", 86_400) do
+        Dawarich.AfterCommit.once(repo, args["broadcast_id"], fn ->
+          State.claim(repo, "live_broadcast:done:#{args["broadcast_id"]}", 86_400)
           now = DateTime.utc_now()
           payloads = Map.new(args["payloads"], &{&1["timestamp"], &1})
           family = family(repo, user, settings, now)
@@ -51,13 +52,12 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
           end
 
           publish_shares(repo, user, Enum.max_by(points, & &1["timestamp"]), now)
-        end
+          :ok
+        end)
 
       _ ->
         :ok
     end
-
-    :ok
   end
 
   defp publish_point(repo, user, p, data) do

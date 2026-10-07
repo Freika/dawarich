@@ -1,13 +1,23 @@
 defmodule Dawarich.Tracks.NativeChanges do
   @moduledoc false
 
-  require Logger
   alias Dawarich.{Cable, Redis}
 
   @columns ~w(id start_at end_at distance avg_speed duration elevation_gain elevation_loss elevation_max elevation_min original_path)
 
   def write!(repo, payload) do
-    bump(payload)
+    Dawarich.AfterCommit.cache(repo, "tracks", payload)
+  end
+
+  def deliver(repo, payload, intent) do
+    if not Dawarich.Jobs.Processed.done?(repo, intent) do
+      bump(payload, Ecto.UUID.generate())
+    end
+
+    Dawarich.AfterCommit.once(repo, intent, fn -> publish_changes(repo, payload) end)
+  end
+
+  defp publish_changes(repo, payload) do
     created = payload["created"]
     ids = created ++ payload["updated"]
 
@@ -39,24 +49,17 @@ defmodule Dawarich.Tracks.NativeChanges do
   end
 
   defp publish(repo, user, message) do
-    case Cable.broadcast_to("tracks", {:user, user}, message, repo: repo) do
-      :ok -> :ok
-      {:error, _} -> Logger.warning("event=tracks.broadcast_failed user_id=#{user}")
-    end
+    :ok = Cable.broadcast_to("tracks", {:user, user}, message, repo: repo)
   end
 
-  defp bump(payload) do
+  defp bump(payload, token) do
     from = year(payload["min_ts"])
     to = year(payload["max_ts"])
     years = if from <= to, do: Enum.to_list(from..to), else: ["all"]
 
     for year <- years do
-      token = Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
-
-      case Redis.cache_command(["SET", "tracks:tile_epoch:#{payload["user_id"]}:#{year}", token]) do
-        {:ok, _} -> :ok
-        {:error, _} -> Logger.warning("event=tracks.epoch_failed user_id=#{payload["user_id"]}")
-      end
+      {:ok, _} =
+        Redis.cache_command(["SET", "tracks:tile_epoch:#{payload["user_id"]}:#{year}", token])
     end
   end
 

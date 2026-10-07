@@ -54,6 +54,7 @@ defmodule Dawarich.DemoData.Importer do
               Keyword.get_lazy(opts, :derivatives, fn -> fixture("demo_derivatives") end)
             )
 
+            invalidate(repo, user)
             :created
           end
         end
@@ -61,7 +62,6 @@ defmodule Dawarich.DemoData.Importer do
 
     case result do
       {:ok, :created} ->
-        invalidate(repo, user)
         :created
 
       {:ok, status} ->
@@ -86,23 +86,19 @@ defmodule Dawarich.DemoData.Importer do
     setting = user.settings["timezone"] || "UTC"
     setting = if setting == "", do: "UTC", else: setting
 
-    for [year, month] <- months, segment <- ~w(lite pro) do
-      label = "#{year}-" <> String.pad_leading(Integer.to_string(month), 2, "0")
+    keys =
+      for [year, month] <- months, segment <- ~w(lite pro) do
+        label = "#{year}-" <> String.pad_leading(Integer.to_string(month), 2, "0")
+        "timeline_month_summary/#{user.id}/#{label}/#{setting}/#{segment}/v3"
+      end
 
-      {:ok, _} =
-        Dawarich.Redis.cache_command([
-          "UNLINK",
-          "timeline_month_summary/#{user.id}/#{label}/#{setting}/#{segment}/v3"
-        ])
-    end
+    Dawarich.AfterCommit.cache(repo, "keys", %{"user_id" => user.id, "keys" => keys})
 
     Dawarich.Stats.CacheInvalidation.call(repo, %{
       "user_id" => user.id,
       "year" => nil,
       "scope" => "all"
     })
-  rescue
-    _ -> :ok
   end
 
   def fixture(name),
