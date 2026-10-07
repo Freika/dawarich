@@ -68,6 +68,9 @@ defmodule Dawarich.SharedLinks do
 
   def page(%{type: "live"}), do: :live
 
+  def page(%{type: type}) when type in ["trip", "track"],
+    do: if(Dawarich.Standalone.enabled?(), do: String.to_existing_atom(type), else: :rails)
+
   def page(%{type: "timeline", settings: settings}) do
     with %{"start_date" => from, "end_date" => to} <- settings,
          {:ok, from} <- iso_date(from),

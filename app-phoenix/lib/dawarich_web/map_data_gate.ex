@@ -15,8 +15,14 @@ defmodule DawarichWeb.MapDataGate do
       end)
   end
 
-  def tags?(conn, _params),
-    do: conn.query_string == "" and Plug.Conn.get_req_header(conn, "x-dawarich-client") == []
+  def tags?(conn, _params) do
+    query = Plug.Conn.Query.decode(conn.query_string)
+
+    (conn.query_string == "" or
+       (Dawarich.Standalone.enabled?() and
+          Enum.all?(query, fn {key, value} -> key in ~w(page commit) and is_binary(value) end))) and
+      Plug.Conn.get_req_header(conn, "x-dawarich-client") == []
+  end
 
   def tag_edit?(conn, %{"id" => id}) do
     tags?(conn, %{}) and Regex.match?(~r/\A\d{1,18}\z/, id)

@@ -81,34 +81,26 @@ defmodule Dawarich.Trips.WebCommandsTest do
     assert {:ok, :queued} = WebCommands.calculate!(ScratchRepo, user, 896_903, "km", @now)
     assert length(requests()) == 2
 
-    parent = self()
+    assert {:ok, :lock_not_available} =
+             ScratchRepo.transaction(fn ->
+               assert :ok = WebCommands.admission(ScratchRepo)
 
-    holder =
-      Task.async(fn ->
-        ScratchRepo.transaction(fn ->
-          assert :ok = WebCommands.admission(ScratchRepo)
-          send(parent, :owner_locked)
-          receive do: (:release -> :ok)
-        end)
-      end)
+               contender =
+                 Task.async(fn ->
+                   error =
+                     assert_raise Postgrex.Error, fn ->
+                       ScratchRepo.transaction(fn ->
+                         ScratchRepo.query!("SET LOCAL lock_timeout = '50ms'")
+                         Ownership.put!(ScratchRepo, @key, :sidekiq)
+                       end)
+                     end
 
-    try do
-      assert_receive :owner_locked
+                   error.postgres.code
+                 end)
 
-      error =
-        assert_raise Postgrex.Error, fn ->
-          ScratchRepo.transaction(fn ->
-            ScratchRepo.query!("SET LOCAL lock_timeout = '50ms'")
-            Ownership.put!(ScratchRepo, @key, :sidekiq)
-          end)
-        end
+               Task.await(contender)
+             end)
 
-      assert error.postgres.code == :lock_not_available
-    after
-      send(holder.pid, :release)
-    end
-
-    assert Task.await(holder) == {:ok, :ok}
     Ownership.put!(ScratchRepo, @key, :sidekiq)
     before = requests()
     assert {:replay, _} = WebCommands.calculate!(ScratchRepo, user, 896_903, "mi", @now)

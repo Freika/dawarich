@@ -1,0 +1,19 @@
+<main>
+  <.not_found :if={@page == :not_found} locale={@locale} />
+  <.missing_resource :if={@page == :missing_resource} locale={@locale} />
+  <.phrase_prompt
+    :if={@page == :phrase_prompt}
+    locale={@locale}
+    link={@link}
+    error={@error}
+    rails_session={@rails_session}
+  />
+  <.live :if={@page == :live} locale={@locale} link={@link} />
+  <.timeline :if={@page == :timeline} locale={@locale} link={@link} from={@from} to={@to} />
+  <DawarichWeb.SharedResourcePage.resource
+    :if={@page in [:trip, :track]}
+    locale={@locale}
+    link={@link}
+    resource={@resource}
+  />
+</main>

@@ -30,7 +30,7 @@ defmodule DawarichWeb.MapPointRequest do
            Enum.all?(pairs, fn
              {"controller", value} -> value == "points"
              {"action", value} -> value == "index"
-             {key, value} -> key in ["page" | @filters] and is_binary(value)
+             {key, value} -> key in ["page", "commit" | @filters] and is_binary(value)
            end),
          true <- length(pairs) == length(Enum.uniq_by(pairs, &elem(&1, 0))) do
       {:ok, Map.new(pairs)}

@@ -36,16 +36,7 @@
     <script type="module">
       import "application"
     </script>
-    <%= if @page in [:live, :timeline, :missing_resource] do %>
-      <meta property="og:type" content="article" />
-      <meta property="og:title" content={@link.name} />
-      <meta
-        property="og:description"
-        content={t(@locale, "shared.links.show.shared_from_dawarich", %{})}
-      />
-      <meta property="og:image" content={@base_url <> Assets.stylesheet_path("og_default.png")} />
-      <meta name="twitter:card" content="summary_large_image" />
-    <% end %>
+    <.metadata {assigns} />
   </head>
   <body class="bg-base-100">
     <header class="sticky top-0 z-30 border-b border-base-300 bg-base-100/85 backdrop-blur">
@@ -66,19 +57,7 @@
         </a>
       </div>
     </header>
-    <main>
-      <.not_found :if={@page == :not_found} locale={@locale} />
-      <.missing_resource :if={@page == :missing_resource} locale={@locale} />
-      <.phrase_prompt
-        :if={@page == :phrase_prompt}
-        locale={@locale}
-        link={@link}
-        error={@error}
-        rails_session={@rails_session}
-      />
-      <.live :if={@page == :live} locale={@locale} link={@link} />
-      <.timeline :if={@page == :timeline} locale={@locale} link={@link} from={@from} to={@to} />
-    </main>
+    <.content {assigns} />
     <footer class="relative mt-11 overflow-hidden bg-[#0E1320] text-white">
       <div
         class="pointer-events-none absolute -right-[8%] -top-[40%] h-[540px] w-[540px]"

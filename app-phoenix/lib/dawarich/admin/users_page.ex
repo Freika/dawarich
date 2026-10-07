@@ -18,7 +18,7 @@ defmodule Dawarich.Admin.UsersPage do
          page = TripsGate.page_number(query["page"]),
          true <- page <= @max_page,
          pattern = pattern(query["search"]),
-         false <- ties?(pattern),
+         true <- Dawarich.Standalone.enabled?() or not ties?(pattern),
          {:ok, registration} <- registration() do
       [[count]] =
         Repo.query!("SELECT count(*) FROM users WHERE " <> @relation, [pattern], log: false).rows

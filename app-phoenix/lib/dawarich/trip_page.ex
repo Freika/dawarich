@@ -17,7 +17,7 @@ defmodule Dawarich.TripPage do
   SELECT z.name, s.sl, s.el, s.seconds, s.near_transition,
          t.started_at < '1901-12-13 20:45:52'
            OR t.ended_at >= '2038-01-19 03:14:08'
-           OR NOT CASE WHEN t.visited_countries IN ('null'::jsonb, '{}'::jsonb) THEN true
+           OR NOT CASE WHEN t.visited_countries IS NULL OR t.visited_countries IN ('null'::jsonb, '{}'::jsonb) THEN true
                        WHEN jsonb_typeof(t.visited_countries) <> 'array' THEN false
                        ELSE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(t.visited_countries) e
                                         WHERE jsonb_typeof(e) <> 'string') END,

@@ -1,5 +1,5 @@
 defmodule Dawarich.Digests.PeriodTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: true, group: :digest_fixture_ids
   alias Dawarich.DigestFixtures
   alias Dawarich.Digests.{Context, Period}
 

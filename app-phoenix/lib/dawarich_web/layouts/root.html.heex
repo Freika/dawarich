@@ -48,6 +48,7 @@
         import "Chart.bundle"
       </script>
     <% end %>
+    {assigns[:head_content]}
     <.favicon />
     <script :if={assigns[:rails_trix] == true} type="module">
       import "trix"
