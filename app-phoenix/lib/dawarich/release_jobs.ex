@@ -164,7 +164,8 @@ defmodule Dawarich.ReleaseJobs.FamilyBackfill do
   def perform(%Oban.Job{args: %{"version" => version, "cursor" => cursor} = args} = job) do
     with true <- Enum.all?(Map.keys(args), &(&1 in @keys)),
          {:ok, _} <- args_from_command(version, cursor),
-         {:ok, args} <- identities(args) do
+         {:ok, args} <- identities(args),
+         true <- bound?(Dawarich.Jobs.repo(), %{job | args: args}) do
       oban = if job.conf, do: job.conf.name, else: Oban
 
       ReleaseOperations.run(Dawarich.Jobs.repo(), oban, __MODULE__, %{job | args: args},
@@ -192,6 +193,67 @@ defmodule Dawarich.ReleaseJobs.FamilyBackfill do
 
       _ ->
         :error
+    end
+  end
+
+  defp bound?(repo, %{args: args, id: id} = job) do
+    binding = job_binding(repo, job)
+
+    binding != false and event_binding?(repo, args, id, binding) and
+      operation_binding?(repo, args)
+  end
+
+  defp job_binding(_repo, %{id: nil}), do: :unrecorded
+
+  defp job_binding(repo, %{id: id, args: args}) do
+    case repo.query!("SELECT worker,args,state FROM oban.oban_jobs WHERE id=$1", [id], log: false).rows do
+      [["Dawarich.ReleaseJobs.FamilyBackfill", stored, state]]
+      when state in ~w(available scheduled executing retryable suspended completed) ->
+        identities(stored) == {:ok, args}
+
+      _ ->
+        false
+    end
+  end
+
+  defp event_binding?(repo, %{"event_id" => event, "cursor" => cursor}, id, binding) do
+    case repo.query!(
+           "SELECT command_type,command_version,payload,state,oban_job_id FROM job_outbox WHERE event_id=$1",
+           [Ecto.UUID.dump!(event)],
+           log: false
+         ).rows do
+      [["release.family_backfill", 1, ^cursor, "dispatched", job_id]] ->
+        is_nil(id) or id == job_id
+
+      [] ->
+        binding == true
+
+      _ ->
+        false
+    end
+  end
+
+  defp event_binding?(_repo, _args, _id, _binding), do: true
+
+  defp operation_binding?(repo, args) do
+    id = args["operation_id"] || args["event_id"]
+    cursor = args["cursor"]
+
+    case repo.query!(
+           "SELECT command_type,cursor,status FROM phoenix.release_operations WHERE id=$1",
+           [Ecto.UUID.dump!(id)],
+           log: false
+         ).rows do
+      [] ->
+        true
+
+      [["release.family_backfill", stored, state]] when state in ~w(running failed completed) ->
+        match?({:ok, _}, args_from_command(1, stored)) and
+          Map.drop(stored, ["after_id"]) == Map.drop(cursor, ["after_id"]) and
+          cursor["after_id"] <= stored["after_id"]
+
+      _ ->
+        false
     end
   end
 
