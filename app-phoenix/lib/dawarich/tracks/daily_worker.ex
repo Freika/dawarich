@@ -92,7 +92,11 @@ defmodule Dawarich.Tracks.DailyWorker do
   end
 
   defp process(repo, oban, slot, opts, [user_id, start_ts, has_tracks, settings]) do
-    timezone = Dawarich.UserSettings.safe(settings)["timezone"] || ""
+    timezone =
+      Dawarich.TimeZoneName.stored(
+        Dawarich.UserSettings.safe(settings)["timezone"],
+        System.get_env("TIME_ZONE", "UTC")
+      )
 
     cond do
       not one!(repo, @due, [user_id, start_ts]) ->

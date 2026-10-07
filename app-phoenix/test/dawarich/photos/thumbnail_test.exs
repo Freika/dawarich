@@ -197,6 +197,7 @@ defmodule Dawarich.Photos.ThumbnailTest do
       assert sized(Thumbnail.fetch(settings("http://127.0.0.1:#{server.port}"), "immich", @id)) ==
                @too_large,
              "#{status}"
+
       Task.await(task)
     end
   end

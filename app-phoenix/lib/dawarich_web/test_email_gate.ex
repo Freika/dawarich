@@ -48,7 +48,8 @@ defmodule DawarichWeb.TestEmailGate do
     conn.method == "POST" and conn.request_path == @path and conn.query_string == "" and
       format(conn) != nil and
       Admission.context(session, conn.req_headers, context.oidc, context.self_hosted) == :ok and
-      identity?(session, actor) and actor.admin == true and is_map(Dawarich.UserSettings.get(actor)) and
+      identity?(session, actor) and actor.admin == true and
+      is_map(Dawarich.UserSettings.get(actor)) and
       not Enum.any?(@markers, &Map.has_key?(session, &1)) and
       Enum.all?(~w(turbo-frame x-requested-with), &(Plug.Conn.get_req_header(conn, &1) == [])) and
       TestEmail.supported?(context.env)

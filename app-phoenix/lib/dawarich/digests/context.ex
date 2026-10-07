@@ -66,6 +66,7 @@ defmodule Dawarich.Digests.Context do
            log: false
          ).rows do
       [[id, settings, plan]] ->
+        settings = if is_map(settings), do: settings, else: nil
         %{id: id, settings: Dawarich.UserSettings.provided(settings), plan: plan}
 
       [] ->
