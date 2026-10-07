@@ -4,7 +4,9 @@ Status: **DRAFT**, consolidated 2026-10-07 under master-plan ruling 17. [User-fa
 
 The integration snapshot is `3a20a0279c164472b7d9b129576709acff94a552` on `feat/phoenix-port`. The audit reads every `## Rails bugs fixed (changelog)` section in the 391 top-level `*.report.md` files present at the snapshot (232 sections), then checks merge history and commit ancestry. Repeated report bullets and provider-package supplements are consolidated by defect. Unmerged fix-rxstats and mm-e reports are excluded. Report filenames and section lines identify external controller evidence; no runtime allocation belongs in this register.
 
-FRB-001–069 are unique register IDs, with one CHANGELOG-ready line each. Earlier IDs were renumbered or consolidated; explicit legacy anchors preserve existing links. Older ED candidates without established Rails/fix/test provenance remain in an appendix without confirmed FRB IDs. The withdrawn disabled-map-matching invalidation claim is not a release fix. The digest season change for 27 timezone aliases restores Phoenix parity and is not a Rails bug.
+The final delta audits all 109 top-level reports modified after 2026-10-07 13:30 and the branches merged after consolidation (`2db1646d3` / `060633521`), through integration head `069b5dbcd`. Earlier fix-rxstats evidence is now included because that branch merged as `31b4bbe9e`; unmerged L1 guard-flip evidence remains excluded. FRB-066–069 were already added by integrated owners; the delta extends existing entries and adds FRB-070–083 without counting repeated report bullets twice.
+
+FRB-001–083 are unique register IDs, with one CHANGELOG-ready line each. Earlier IDs were renumbered or consolidated; explicit legacy anchors preserve existing links. Older ED candidates without established Rails/fix/test provenance remain in an appendix without confirmed FRB IDs. The withdrawn disabled-map-matching invalidation claim is not a release fix. The digest season change for 27 timezone aliases restores Phoenix parity and is not a Rails bug.
 
 Source lines refer to the report or named source revision and may move. Tests are the implementation evidence; this documentation task reruns only tests that read these registers. Proposed Rails map-matching comparisons are clearly marked and must not be represented as Rails 1.15.3 defects. Native and retained Rails consumers have separate boundaries. Rails remains unchanged by this documentation task. Native Cloud lifecycle remains refused in every mode pending external L1 handoff; this register is not deployment acceptance.
 
@@ -42,6 +44,7 @@ Storage deletion can fail after the blob/variant rows disappear, leaving private
 - Test: “T04: signed trip attachments persist and dependent purge retries storage before rows” in `app-phoenix/test/dawarich/trips/rich_attachments_test.exs`.
 - Limits: Deduplicates F1/F2, export redelivery and trip attachment reports. F4 graph collection is a Phoenix defect, not another inherited bug. ED-522 pending-import cleanup shares the storage-before-row principle, and the import cleanup report supplies its source/test provenance below.
 - Pending-import extension: Rails `app/models/import.rb:12-13,22`; Phoenix `app-phoenix/lib/dawarich/imports/prepared_download_purge_worker.ex:7,24`. Evidence: impl-fix-rximports.report.md:51; test “unavailable storage retains blob metadata until physical purge succeeds” in `app-phoenix/test/dawarich/fix_rximports_test.exs`. ED-522 shares this storage-before-metadata root cause; no new ED/DRB row was added.
+- Account-deletion extension: Rails `app/services/users/destroy.rb:20,142`; Phoenix `app-phoenix/lib/dawarich/users/destroy_effects.ex:29` and shared `app-phoenix/lib/dawarich/exports/purge_worker.ex:49`. Test “deletion commits purge and after-commit intents once and storage failure keeps its ledger” in `app-phoenix/test/dawarich/users/standalone_deletion_test.exs`; evidence `impl-fix-sa-account-deletion.report.md`. Reuses ED-A12F3B-E13-F1/F2; no new DRB or separate storage-ordering defect.
 - Trip preview extension: fix-a12f3a-t-edges.report.md:39; Rails `app/models/trip.rb:15`; Phoenix `app-phoenix/lib/dawarich/trips/attachments.ex:185`; test “R1: trip purge removes preview graph storage-first and revokes capabilities while preserving shared variants”.
 
 - Test files: `app-phoenix/test/dawarich/a12f3b_e13_purge_retry_test.exs`; `app-phoenix/test/dawarich/a12f3b_e13_shared_purge_test.exs`; `app-phoenix/test/dawarich/fix_rximports_test.exs`; `app-phoenix/test/dawarich/trips/review_findings_test.exs`; `app-phoenix/test/dawarich/trips/rich_attachments_test.exs`; `app-phoenix/test/dawarich/user_data/export_worker_test.exs`.
@@ -877,12 +880,13 @@ SQL NULL and JSON null, absent keys and malformed containers share the settings-
 **Failed-response writes survive in Rails:** mobile PATCH and area POST/PATCH commit before rendering, so a render exception tells the client the request failed while settings or the area remain written (confirmed by render-oracle.log). Phoenix now encloses mobile/area writes, relabel outbox, JSON encoding and response headers in one transaction and rolls back on rendering/service failure. Rails: app/controllers/api/v1/settings/mobile_controller.rb:30 (commit ends at 38; render 45), app/controllers/api/v1/areas_controller.rb:19 (render 20; update 27–28). Phoenix: app-phoenix/lib/dawarich_web/api/write_response.ex:10, mobile_settings_controller.ex:20, areas_controller.ex:23. Test: `response rendering failures roll back mobile and area writes and outbox effects`. ED/DRB row added: **no**; this exact durability correction is explicitly mandated by the controller brief. Shared controller-owned difference/deferred-bug registers remain untouched.
 
 - Digest DELETE extension: Rails destroys the digest before preparing its empty response (`app/controllers/api/v1/digests_controller.rb:42-43`). Phoenix prepares the 204 body and headers inside `Api.WriteResponse`, preserving an empty body and absent content-type; response-framing failures roll back deletion even on an idle database connection. Phoenix: `app-phoenix/lib/dawarich_web/api/digest_writes_controller.ex:24`; `app-phoenix/lib/dawarich_web/api/write_response.ex:14`; `app-phoenix/lib/dawarich_web/api/respond.ex:82`. Test: “digest remains durable after failed response preparation on an idle connection” in `app-phoenix/test/dawarich_web/standalone_digest_response_test.exs`. Evidence: fix2-fix-sa-api-gaps.report.md (F3). Mode: standalone API; retained Rails remains unchanged. No additional ED/DRB row.
+- Standalone demo/digest/area extension: Rails commits demo import/removal, digest calculation enqueue or area deletion before response rendering (`app/controllers/api/v1/demo_data_controller.rb:11,15,24,28`; `app/controllers/api/v1/digests_controller.rb:35,36`; `app/controllers/api/v1/areas_controller.rb:35,37`). Phoenix stages each write and durable follow-up with response preparation (`app-phoenix/lib/dawarich_web/api/demo_data_controller.ex:15`; `app-phoenix/lib/dawarich_web/api/digest_writes_controller.ex:10`; `app-phoenix/lib/dawarich_web/api/areas_controller.ex:14`). Test “standalone API response failures roll back domain writes and after commit jobs” in `app-phoenix/test/dawarich_web/standalone_api_gaps_test.exs`; evidence `impl-fix-sa-api-gaps.report.md`. No ED/DRB row added; these surfaces share the existing response-atomicity defect.
 
 - Evidence: impl-fix-settings-api-parity.report.md:91.
 
 - Test files: `app-phoenix/test/dawarich_web/settings_api_parity_test.exs`.
 
-- CHANGELOG-ready: Roll back mobile settings, area changes and follow-up work when response rendering fails.
+- CHANGELOG-ready: Roll back mobile settings, demo changes, digest generation/deletion, area changes and follow-up work when response preparation fails.
 
 ### FRB-053 — Public month and digest pages crash for a deleted owner
 
@@ -1066,8 +1070,8 @@ Rails source: `app/services/visits/bulk_update.rb:47`.
 
 Rails destroys visits and notes by attachment alone, then nullifies those visits' points. Its queued orphan-place cleanup also ignores declined/soft-deleted primary references and deletes suggestion links without checking the visit owner. A database-valid cross-owner graph can therefore lose another account's records or references during the area deletion or its scheduled cleanup. This characterizes stored graph corruption; it does not assert that public creation endpoints permit it.
 
-- Rails: `app/controllers/api/v1/areas_controller.rb:35`; `app/models/area.rb:9`; `app/models/visit.rb:11-12`; `app/models/concerns/notable.rb:7`; `app/services/places/delete_if_orphan.rb:19`, `:25-27`.
-- Phoenix: `app-phoenix/lib/dawarich/areas/api.ex:111`; `app-phoenix/lib/dawarich/areas/cleanup_scope.ex:4`; `app-phoenix/lib/dawarich/places/orphans.ex`; `app-phoenix/lib/dawarich/places/orphan_cleanup_worker.ex`.
+- Rails: `app/controllers/api/v1/areas_controller.rb:35`; `app/models/area.rb:9`; `app/models/visit.rb:11-12`; `app/models/concerns/notable.rb:7`; `app/services/places/delete_if_orphan.rb:19,25-27`; batch `app/jobs/places/orphan_cleanup_job.rb:44-46,62-64`.
+- Phoenix: `app-phoenix/lib/dawarich/areas/api.ex:111`; `app-phoenix/lib/dawarich/areas/cleanup_scope.ex:4`; `app-phoenix/lib/dawarich/places/orphans.ex:30,40,58,91`; `app-phoenix/lib/dawarich/places/orphan_cleanup_worker.ex:66`.
 - Behavior: lock the owned area/visits, reject foreign immediate dependents before modifying the graph, and constrain every dependent mutation to the area owner. Refusal returns 422 with `{"error":"Area has foreign dependents"}` and preserves all rows, references and jobs. Shared individual and batch orphan cleanup retains a place referenced by any user's visit, regardless of status/deleted_at, or by any suggestion link. Cleanup deletes only owned unreferenced places; it never detaches visits or deletes suggestion links. Eligibility is rechecked after the owned place lock.
 - Modes: standalone API and every native producer of the shared cleanup workers, including imports, visit writes, CLI cleanup and residual jobs. Coexistence effects retained by Rails still have the source defect.
 - Evidence: fix2-fix-sa-api-gaps.report.md (immediate F2); fix3-fix-sa-api-gaps.report.md (queued F2 follow-up). Rolled-back Rails oracles reproduce both immediate deletion and queued cleanup losses.
@@ -1080,19 +1084,19 @@ Rails destroys visits and notes by attachment alone, then nullifies those visits
 
 Rails removes suggestion links and clears visits by the deleted user's place IDs without checking the visit owner. Its trip, tag and family cleanup can also remove foreign notes, shares and associations or clear another trip's reservation day in a database-valid cross-owner graph. The probes characterize existing stored graphs; they do not claim public creation endpoints accept every such graph.
 
-- Rails: `app/services/users/destroy.rb:57,63,67,83,96`; `app/models/trip.rb:19`; `app/models/concerns/notable.rb:7`; `app/models/planned_day.rb:7`.
-- Phoenix: `app-phoenix/lib/dawarich/users/destroy_effects.ex`; `app-phoenix/lib/dawarich/users/destroy_scope.ex`; shared `app-phoenix/lib/dawarich/places/orphans.ex`.
+- Rails: `app/services/users/destroy.rb:57,63,67,70,83,96`; `app/models/trip.rb:19`; `app/models/concerns/notable.rb:7`; `app/models/planned_day.rb:7`.
+- Phoenix: `app-phoenix/lib/dawarich/users/destroy_effects.ex:124,132,163,169,179,194,211,223`; `app-phoenix/lib/dawarich/users/destroy_scope.ex:8,13,15,18,20,22`; shared `app-phoenix/lib/dawarich/places/orphans.ex:16`.
 - Behavior: constrain dependent cleanup to the deleted account. Reject foreign notes, trip shares, reservation day links, tag targets and family dependents before purge/cache/webhook intents. Account place cleanup calls the shared locked orphan batch with all source/note types eligible, retaining its complete reference checks. A remaining referenced place cancels and rolls back the entire worker transaction, including rows, receipts and effect intents. It never rewrites another user's visit or removes their suggestion link.
 - Modes: native worker; standalone bindings activate it. Retained Rails-owned cleanup remains unchanged. Cloud lifecycle refusal remains in every mode pending L1.
 - Tests: “deleting a family member preserves another user's shared-place visit”, “account deletion refuses foreign dependent associations before cleanup” and “account cleanup preserves another user's reservation day” in `app-phoenix/test/dawarich/users/standalone_deletion_test.exs`; each has RED, GREEN, named mutation failure and restored GREEN evidence.
-- Evidence: `fix2-fix-sa-account-deletion.report.md`; local Rails transactional oracles reproduce every destructive projection without retaining their synthetic rows. Review fix awaits controller integration.
+- Evidence: `fix2-fix-sa-account-deletion.report.md`; local Rails transactional oracles reproduce every destructive projection without retaining their synthetic rows. Integrated as `fc3f1fd87`.
 - Ledger: ED-FIX-ACCOUNT-DEPENDENTS added; shared ED-FIX-ORPHAN-REFERENCES retained; no new DRB row.
 - Limits: admission still schedules and marks the account deleted as before. Refused worker cleanup retains that account and all dependencies, emits no committed effects and records no processed receipt. Resolve foreign references explicitly before redelivering the worker; no reference reassignment or automatic retry escalation occurs.
 - CHANGELOG-ready: Preserve other accounts' records and references when account deletion encounters shared places or foreign dependent associations.
 
 ## Deferred Rails defects and retained policies
 
-The canonical [DRB register](deferred-rails-bugs.md) gives every row an explicit `preserved` or `fixed-in-port` status. `fixed-in-port` describes the native boundary; retained Rails consumers can remain defective. DRB-019 → FRB-018; DRB-023 → FRB-001; DRB-025 → FRB-002 (storage-first import/media cleanup); DRB-028 → FRB-015/038; DRB-029 → FRB-004; DRB-030–032 → FRB-011/012/014; DRB-033–035 → FRB-056–060. DRB-018 is partly fixed by FRB-051 for settings containers while malformed non-string expiry remains preserved. All other DRBs remain preserved, including optional mobile nonce policy, signed bearer downloads, digest sent-marker ordering and trusted-ingress pass-through.
+The canonical [DRB register](deferred-rails-bugs.md) gives every row an explicit `preserved` or `fixed-in-port` status. `fixed-in-port` describes the native boundary; retained Rails consumers can remain defective. DRB-019 → FRB-018; DRB-023 → FRB-001; DRB-025 → FRB-002 (storage-first import/media cleanup); DRB-028 → FRB-015/038; DRB-029 → FRB-004; DRB-030–032 → FRB-011/012/014; DRB-033–035 → FRB-056–060; DRB-FIX-SWEEP6-RETRY → FRB-070; DRB-038/039 → FRB-068/069. DRB-018 is partly fixed by FRB-051 for settings containers while malformed non-string expiry remains preserved. All other DRBs remain preserved, including optional mobile nonce policy, signed bearer downloads, digest sent-marker ordering and trusted-ingress pass-through. FRB-075–077 concern calculation/publication state, not successful SMTP delivery or closure of DRB-013; broader rollback limitations remain deferred.
 
 ## Older ED candidates requiring provenance
 
@@ -1156,3 +1160,159 @@ Rails interpolates the raw rejection body and customer user ID into exception re
 - Evidence: `impl-l1-d.report.md`; `app-phoenix/test/dawarich/partnero/cloud_signup_test.exs`, “L1 Partnero accepts 409 retries rejection and suppresses accepted-send replay”. The test checks log sanitation, retryable failures, customer-key replay and 409 acceptance.
 - Ledger: ED-554; DRB-039. Retained Rails behavior is unchanged; live Partnero receiver acceptance remains external.
 - CHANGELOG-ready: Keep Partnero customer data, response bodies and credentials out of signup failure diagnostics.
+
+## Final merged delta (2026-10-07)
+
+### FRB-070 — Queued reclassification retries start duplicate runs
+
+Double-clicks or retries before a Rails worker starts enqueue duplicate full-user reclassifications, restarting progress and fan-out. Phoenix claims a durable per-user fence in the same transaction as root enqueue and releases it after fan-out completion.
+
+- Rails: `app/controllers/tracks/recalculations_controller.rb:25`.
+- Phoenix: `app-phoenix/lib/dawarich/tracks/web_recalculation.ex:18`; `app-phoenix/lib/dawarich/transportation/recalculation_fence.ex:4`; `app-phoenix/lib/dawarich/transportation/after_commit.ex:34`.
+- Test: “review web queued retry produces exactly one event” in `app-phoenix/test/dawarich_web/standalone_recalculation_test.exs:222`.
+- Evidence: `fix2-fix-sweep6.report.md`; integrated `59b7849e2`.
+- Ledger: ED-FIX-SWEEP6-RETRY; DRB-FIX-SWEEP6-RETRY. Retained Rails producer remains unchanged.
+- CHANGELOG-ready: Suppress duplicate queued full-user reclassifications before the worker starts.
+
+### FRB-071 — An old OTP challenge survives a different account login
+
+Rails can show another account's protected/2FA page while an earlier account's OTP challenge remains active, including through a remember credential. Phoenix clears all four OTP keys on full authentication and refuses active challenges before either credential strategy admits a protected page.
+
+- Rails: `app/controllers/users/sessions_controller.rb:33`; `app/controllers/settings/two_factor_controller.rb:4`; Devise 5.0.4 `lib/devise/controllers/sign_in_out.rb:99`.
+- Phoenix: `app-phoenix/lib/dawarich/auth/session_cookie.ex:19`; `app-phoenix/lib/dawarich_web/rails_auth.ex:63`.
+- Tests: “F1 full login of actor B clears actor A's active OTP challenge” and “F1 active pending challenge refuses Warden and remember credentials at shared pages” in `app-phoenix/test/dawarich_web/standalone_auth_findings_test.exs:50,112`.
+- Evidence: `fix2-fix-sa-auth-pages.report.md`; integrated `0fe8f1273`.
+- Ledger: ED-FIX-SA-PENDING; no DRB added. Standalone admission correction; Rails remains unchanged.
+- CHANGELOG-ready: Clear stale two-factor challenges on full login and refuse protected pages while a challenge is active.
+
+### FRB-072 — Redirect-back accepts same-host non-HTTP schemes
+
+Rails achievement sharing can return a supplied same-host `javascript://`, `data://`, `vbscript://` or `file://` URL in Location. Phoenix accepts only case-insensitive HTTP(S) absolute URLs or single-slash scheme-less relative paths after trimming, otherwise using the action fallback. This evidence establishes redirect admission, not browser execution.
+
+- Rails: `app/controllers/achievements_controller.rb:45`; ActionPack 8.1.3.1 `lib/action_controller/metal/redirecting.rb:304`.
+- Phoenix: `app-phoenix/lib/dawarich_web/rails_redirect.ex:14`.
+- Test: “F1 signed standalone sharing rejects same-host non-HTTP schemes with the achievement fallback” in `app-phoenix/test/dawarich_web/achievement_sharing_test.exs:26`; helper scheme cases in `app-phoenix/test/dawarich_web/rails_redirect_test.exs`.
+- Evidence: `fix4-fix-sa-trek.report.md`; integrated `afb162eaf`.
+- Ledger: ED-FIX-SA-TREK-REFERER-SCHEME; no DRB added. Separate valid-userinfo/protocol-relative restrictions are accepted differences, not additional demonstrated Rails defects. Rails remains unchanged.
+- CHANGELOG-ready: Reject non-HTTP redirect-back targets and use the action's safe fallback.
+
+### FRB-073 — Stats redelivery repeats an accepted month calculation
+
+Replaying a successful source stats event can repeat calculation and replace the accepted result after points change. Native calculation claims a durable scoped receipt atomically with the result; failed calculations remain retryable.
+
+- Rails: `app/jobs/stats/calculating_job.rb:19`; `app/services/stats/commands.rb:25` (source dispatch seams cited by the implementation report).
+- Phoenix: `app-phoenix/lib/dawarich/stats/calculate_month_worker.ex:49,53`.
+- Test: “stable monthly stats event does not execute again on redelivery” in `app-phoenix/test/dawarich/fix_rxstats_test.exs:26`.
+- Evidence: `impl-fix-rxstats.report.md`; integrated `31b4bbe9e`.
+- Ledger: no ED/DRB row added; shared period-state contract in [stats-native-effects](stats-native-effects.md). Stable accepted event identity is distinct from a fresh recalculation request.
+- CHANGELOG-ready: Keep an accepted monthly statistics calculation from running again on redelivery.
+
+### FRB-074 — Ownership flips admit one stable event into both runtimes
+
+Coexistence replay after a job ownership change can publish the same stable event to Rails and Phoenix. Native schedulers persist one destination-independent admission receipt atomically with the chosen Oban/outbox/reverse delivery; fresh events still use current ownership.
+
+- Rails: `app/services/stats/commands.rb:49`; `app/services/users/digests/commands.rb:38`; `app/services/job_commands.rb:206` (source dispatch seams).
+- Phoenix: `app-phoenix/lib/dawarich/stats/schedule.ex:24`; `app-phoenix/lib/dawarich/digests/schedule.ex:41`; `app-phoenix/lib/dawarich/stats/stats_full_recalculation_effects.ex:13`.
+- Tests: “stable stats schedule stays in one runtime after ownership flip”, monthly/yearly/full counterparts in `app-phoenix/test/dawarich/fix_rxstats_test.exs:86`.
+- Evidence: `impl-fix-rxstats.report.md`; integrated `31b4bbe9e`.
+- Ledger: no ED/DRB row added; [stats-native-effects](stats-native-effects.md). This suppresses replay, not a pending-work transfer or remote exactly-once delivery guarantee.
+- CHANGELOG-ready: Admit each stable statistics or digest event once across Rails/Phoenix ownership changes.
+
+### FRB-075 — Digest publication retry repeats successful generation
+
+Rails publication failure can rerun successful digest generation and its monthly calculations (twelve for a yearly digest). Phoenix and the updated coexistence Rails bridge checkpoint generated output independently, retry publication only and retain the source failure notification.
+
+- Rails: `app/jobs/users/digests/monthly/calculating_job.rb:19,20`; `app/jobs/users/digests/yearly/calculating_job.rb:19,20` (pre-fix boundary); shared fix `app/services/users/digests/execution.rb:35`.
+- Phoenix: `app-phoenix/lib/dawarich/digests/generation.ex:14,75,84`.
+- Tests: “monthly generation does not recalculate after terminal rollback” and yearly counterpart in `app-phoenix/test/dawarich/fix_rxstats_test.exs:139`; RX12 monthly/yearly publication rollback and RX18 cross-runtime continuation in `app-phoenix/test/dawarich/fix4_rxstats_test.exs:59,135`; “RX16 month Rails publication failure preserves generation for retry” and year counterpart in `spec/jobs/users/digests/period_execution_spec.rb:38`.
+- Evidence: `impl-fix-rxstats.report.md`; `fix4-fix-rxstats.report.md`; integrated `31b4bbe9e`.
+- Ledger: no ED/DRB row added; [stats-native-effects](stats-native-effects.md). DRB-013's enqueue-before-sent-marker behavior remains preserved; this checkpoint is not an SMTP delivery receipt.
+- CHANGELOG-ready: Reuse generated monthly and yearly digests when mail publication needs a retry.
+
+### FRB-076 — Separate job IDs repeat one completed digest period
+
+Distinct accepted jobs for the same user/period can repeat calculations and admit duplicate mail work. Native and coexistence Rails consumers share one period-state record, preserving generated/published state across job IDs and runtime changes.
+
+- Rails: `app/jobs/users/digests/monthly/calculating_job.rb:7`; `app/jobs/users/digests/yearly/calculating_job.rb:7` (source flow); shared fix `app/services/users/digests/execution.rb:17`.
+- Phoenix: `app-phoenix/lib/dawarich/digests/execution.ex:7`; `app-phoenix/lib/dawarich/digests/generation.ex:14`.
+- Tests: “RX10 monthly native resumes published from the single period record” and yearly counterpart in `app-phoenix/test/dawarich/fix4_rxstats_test.exs:18`; “RX15 month Rails resumes published from the single period record” and year counterpart in `spec/jobs/users/digests/period_execution_spec.rb:25`; real mixed-runtime collision in `spec/jobs/users/digests/period_boundaries_spec.rb`.
+- Evidence: `fix4-fix-rxstats.report.md`; integrated `31b4bbe9e`.
+- Ledger: no ED/DRB row added; [stats-native-effects](stats-native-effects.md). Rails without the additive period table retains its source flow; rollback is drain-first. DRB-013 remains preserved.
+- CHANGELOG-ready: Reuse one digest calculation and publication state per account and period across accepted job IDs.
+
+### FRB-077 — Rails bridge marks rolled-back digest publication complete
+
+The port's coexistence Rails helper could swallow a publication-savepoint rollback, mark the period published and consume its receipt, permanently skipping missing mail on retry. It now requires a successful transaction return and raises a retryable IOError before advancing state; generated output remains reusable. This is an introduced bridge regression, not a Rails 1.15.3 defect or an observed production incident.
+
+- Rails fix: `app/services/users/digests/execution.rb:40,49`.
+- Phoenix: `app-phoenix/lib/dawarich/digests/generation.ex:84,106` already returns publication rollback as error; unchanged in this round.
+- Tests: “RX43 month rollback at the existing publication savepoint preserves generated and remains retryable” and year counterpart in `spec/jobs/users/digests/publication_rollback_spec.rb:7`.
+- Evidence: `fix6-fix-rxstats.report.md`; `rereview5-fix-rxstats.report.md`; integrated `31b4bbe9e`.
+- Ledger: no ED/DRB row added. Broader outer-transaction retry signalling and synthetic calculator-return behavior remain controller-deferred; see [rollback limits](deferred-rails-bugs.md#digest-publication-and-rollback-limits). DRB-013 is unchanged.
+- CHANGELOG-ready: Keep failed Rails/Phoenix coexistence digest publication retryable after a publication-savepoint rollback.
+
+### FRB-078 — Failed deletion confirmation consumes the rate slot
+
+Rails confirmation-mail enqueue failure rate-limits the account for an hour although no email was accepted. Phoenix releases its acquired slot on enqueue/token failure, allowing one successful retry.
+
+- Rails: `app/services/users/request_account_destroy.rb:29,37`.
+- Phoenix: `app-phoenix/lib/dawarich/auth/account_destroy.ex:156`.
+- Test: “standalone confirmation mail failure releases its rate slot for one retry” in `app-phoenix/test/dawarich_web/standalone_account_deletion_test.exs:349`.
+- Evidence: `impl-fix-sa-account-deletion.report.md`; integrated `fc3f1fd87`.
+- Ledger: no ED/DRB row added. Standalone account-deletion admission; retained Rails remains unchanged.
+- CHANGELOG-ready: Allow account deletion confirmation to be retried when its email could not be queued.
+
+### FRB-079 — Account deletion drops failed statistics cache cleanup
+
+Rails swallows Redis cleanup errors after account deletion, leaving stale statistics without retry. Native deletion commits durable AfterCommit cache intents with its SQL effects and retains failed eviction for idempotent retry.
+
+- Rails: `app/services/users/destroy.rb:168,171`.
+- Phoenix: `app-phoenix/lib/dawarich/users/destroy_effects.ex:40,45`.
+- Test: “deletion commits purge and after-commit intents once and storage failure keeps its ledger” in `app-phoenix/test/dawarich/users/standalone_deletion_test.exs:300`.
+- Evidence: `impl-fix-sa-account-deletion.report.md`; integrated `fc3f1fd87`.
+- Ledger: no ED/DRB row added. Storage-first purge is the separate existing FRB-002, not counted here. Retained Rails remains unchanged.
+- CHANGELOG-ready: Retry statistics cache cleanup after account deletion when Redis is unavailable.
+
+### FRB-080 — Stale area lookups both proceed with deletion
+
+Rails looks up an area before destroying it, allowing stale contenders to proceed with the same deletion. Standalone Phoenix locks the actor-scoped area inside the write transaction before inspecting its graph; a later lookup returns 404 after the winner commits.
+
+- Rails: `app/controllers/api/v1/areas_controller.rb:43,35`.
+- Phoenix: `app-phoenix/lib/dawarich/areas/api.ex:62,68,154`.
+- Test: “standalone area deletion scopes records removes dependents and queues each effect once” in `app-phoenix/test/dawarich_web/standalone_api_gaps_test.exs:142` verifies repeated deletion and effect counts. The report adds no separate concurrent-race characterization; do not infer one.
+- Evidence: `impl-fix-sa-api-gaps.report.md`; integrated `4370930c9`.
+- Ledger: no ED/DRB row added. Distinct from FRB-052 response rollback and FRB-066 foreign-dependent protection; retained Rails remains unchanged.
+- CHANGELOG-ready: Serialize standalone area deletion and avoid repeating cleanup for an already deleted area.
+
+### FRB-081 — Plaintext Manager configuration exposes signed account data
+
+Rails Manager callbacks accept plaintext transport for signed account/customer data. Phoenix refuses insecure origins during Cloud configuration/preflight and before transport, retaining TLS verification. The loopback test override is explicit and compiled out of production.
+
+- Rails: `app/jobs/users/creation_webhook_job.rb:23,29`; `app/jobs/users/destruction_webhook_job.rb:25,31`.
+- Phoenix: `app-phoenix/lib/dawarich/cloud/configuration.ex:33`; `app-phoenix/lib/dawarich/cloud/provider_http.ex:44`.
+- Tests: “L1 hardening rejects plaintext Manager before any transport” and “L1 hardening loopback override is explicit and compiled out of production” in `app-phoenix/test/dawarich/cloud/hardening_test.exs:17,45`.
+- Evidence: `impl-fix-l1-hardening.report.md`; integrated `fcf994223`.
+- Ledger: ED-FIX-L1-HTTPS; no DRB added. Retained Rails remains unchanged; public native Cloud lifecycle is still refused pending external L1 handoff.
+- CHANGELOG-ready: Require verified HTTPS for Manager account callbacks.
+
+### FRB-082 — Missing Manager configuration silently loses callbacks
+
+Blank/missing Manager or JWT settings let Rails skip callbacks or sign with an empty key. Phoenix refuses invalid Cloud boot/readiness/signup and delivery configuration, retaining creation/deletion callback work without delivery receipts for repair and retry.
+
+- Rails: `app/jobs/users/creation_webhook_job.rb:7,21`; `app/jobs/users/destruction_webhook_job.rb:15,23`; `app/services/subscription/encode_jwt_token.rb:10`.
+- Phoenix: `app-phoenix/lib/dawarich/cloud/configuration.ex:16`; `app-phoenix/lib/dawarich/users/webhook_commands.ex:32`; `app-phoenix/lib/dawarich/users/creation_webhook_worker.ex:23`; `app-phoenix/lib/dawarich/users/destruction_webhook_worker.ex:23`; `app-phoenix/config/runtime.exs:44`; `app-phoenix/lib/dawarich/readiness.ex:22`.
+- Tests: “L1 hardening Cloud runtime boot and health refuse invalid config with safe operator messages”, “L1 hardening provisioning readiness and signup refuse missing Cloud config” and “L1 hardening Manager config failures retain both callback receipts for repair” in `app-phoenix/test/dawarich/cloud/hardening_test.exs:98,161,191`.
+- Evidence: `impl-fix-l1-hardening.report.md`; integrated `fcf994223`.
+- Ledger: ED-FIX-L1-CONFIG; no DRB added. Configuration validation is not external L1 acceptance, public Cloud lifecycle activation or remote exactly-once delivery. Retained Rails remains unchanged.
+- CHANGELOG-ready: Refuse incomplete Cloud callback configuration and retain undelivered work for repair.
+
+### FRB-083 — Missing Partnero credentials discard attributed signup work
+
+Rails silently skips an attributed Partnero signup when credentials are missing. Phoenix keeps Partnero optional at boot but refuses attributed delivery without credentials, retaining retryable work without a delivery receipt.
+
+- Rails: `app/jobs/partnero/customer_signup_job.rb:29`.
+- Phoenix: `app-phoenix/lib/dawarich/partnero/customer_signup.ex:34`.
+- Test: “L1 hardening missing Partnero credentials retain attributed work without making Partnero mandatory” in `app-phoenix/test/dawarich/cloud/hardening_test.exs:227`.
+- Evidence: `impl-fix-l1-hardening.report.md`; integrated `fcf994223`.
+- Ledger: ED-FIX-L1-PARTNERO; no DRB added. Distinct from FRB-069 diagnostic privacy; retained Rails remains unchanged.
+- CHANGELOG-ready: Retain attributed Partnero signup work for retry when integration credentials are missing.
