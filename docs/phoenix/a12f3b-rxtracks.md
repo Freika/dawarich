@@ -21,20 +21,31 @@ the persisted owner. This is a scoped domain seam, not a global ownership change
 - A realtime lock timeout uses `RealtimeCommands` and the existing shared
   120-second debounce claim to schedule one native realtime job after 45 seconds.
   `RealtimeWorker.perform/1` clears that claim before execution.
-- `Tracks.Effects` routes native range ownership to `NativeChanges`, which bumps
-  every UTC year covered by the changed interval using the existing track tile
-  keys and publishes Rails-compatible created/updated/destroyed messages to the
-  authenticated user's TracksChannel. Orphan deletion uses the same seam.
-  Empty change sets do nothing. Tile and Cable failures retain Rails' best-effort
-  behavior. PostgreSQL Cable publication participates in the caller transaction.
+- `Tracks.Effects` routes native range ownership to `NativeChanges`, which saves
+  a `NativeChangesWorker` job in the track transaction. After commit, the worker
+  reads committed tracks and publishes Rails-compatible created/updated/destroyed
+  messages to the authenticated user's TracksChannel. Cable exceptions and
+  returned errors fail this separate job for retry; they cannot roll back tracks
+  or turn a completed generation into missing tracks. Replaying publication
+  re-derives current track data, even after range/chunk completion. Delivery is
+  at least once, so a retry may repeat a message. Orphan deletion uses the same
+  seam. Empty change sets do nothing.
+- Track tile epochs change after the outer transaction commits. Rollback discards
+  pending invalidations. `Tracks.CommittedEpoch` is a local telemetry commit hook:
+  the shared after-commit primitive was absent at implementation start. Consolidate
+  this hook when that primitive lands. The durable publication worker also bumps
+  epochs, recovering an interrupted or unavailable Redis invalidation.
 - Realtime success selects points created strictly after the captured five-minute
   boundary, with no reverse-geocoding timestamp. Provider configuration gates the
   selection. Persistent point claims suppress duplicate enqueue; jobs contain at
   most 100 IDs, `force=false`, and the existing reverse worker cursor/identity.
 - Transportation progress retains event receipts and the atomic native counter,
   publishes current status on the user's TracksChannel, and handles missing
-  native status without depending on a Rails consumer. Coexistence with a Rails
-  owner and legacy status retains the source command.
+  native status without depending on a Rails consumer. During coexistence, an
+  active Rails-created run keeps its Rails status, total and start time regardless
+  of track execution ownership. Progress uses the existing `transport_progress`
+  Rails command with one receipt per event; no native key shadows that run.
+  Native-created runs retain their native counter across execution-owner changes.
 - Trek trip calculation publishes the existing native composite command in
   standalone mode. Existing calculation workers retain ordered, replay-safe
   distance/country/completion effects and pending trip deduplication.
@@ -62,6 +73,14 @@ Source characterization uses the existing backfill/job-command RSpec batch.
 Package gates are compile with warnings as errors, formatting, full ExUnit seed
 404 through the controller suite runner, secret scanning, and a clean tree.
 Seed 202 belongs to the controller's integrated head.
+
+`tracks/native_effects_regression_test.exs` adds four deterministic regression
+probes for Cable row-lock failure, generation completion/publication replay,
+outer-commit/rollback epochs, and Rails run ownership. Each has RED, GREEN,
+a named failing mutation, and restored GREEN evidence in the fix report.
+Retained R05/E14A1 terminal-effect tests consume the committed notification jobs
+before checking Cable delivery. E151 treats those jobs as drain debt until
+they complete; release completion must not hide pending notification work.
 
 The retained release audit follows the delegated track effect seam without
 removing a handler assertion. The A8 census requires both sets of JSON-only

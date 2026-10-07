@@ -57,6 +57,7 @@ defmodule Dawarich.A12f3bR05Test do
 
     for _ <- 1..2, do: assert(Dawarich.ReleaseOperations.OrphanedTracks.run(ScratchRepo) == :ok)
     assert rows("SELECT id FROM tracks") == []
+    assert %{failure: 0, success: 1} = Oban.drain_queue(__MODULE__, queue: :tracks)
 
     for key <- tokens do
       assert {:ok, token} = Dawarich.Redis.cache_command(["GET", key])
@@ -75,6 +76,7 @@ defmodule Dawarich.A12f3bR05Test do
       )
 
     Dawarich.Tracks.Effects.write!(ScratchRepo, 1, %{stamps: [from, to], created: [created]})
+    assert %{failure: 0, success: 1} = Oban.drain_queue(__MODULE__, queue: :tracks)
     [[message]] = rows("SELECT payload FROM phoenix.cable_events ORDER BY seq DESC LIMIT 1")
     message = Jason.decode!(message)
     assert message["action"] == "created"

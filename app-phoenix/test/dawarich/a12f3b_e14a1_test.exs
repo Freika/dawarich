@@ -58,6 +58,14 @@ defmodule Dawarich.A12f3bE14A1Test do
     assert rows("SELECT count(*) FROM tracks") == [[2]]
     assert rows("SELECT count(*) FROM points WHERE track_id IS NULL") == [[0]]
     assert rows("SELECT kind FROM phoenix.rails_commands") == []
+
+    for [payload] <-
+          rows(
+            "SELECT args FROM oban.oban_jobs WHERE worker=$1",
+            [inspect(Dawarich.Tracks.NativeChangesWorker)]
+          ),
+        do: assert(Dawarich.Tracks.NativeChangesWorker.run(ScratchRepo, payload) == :ok)
+
     assert [[count]] = rows("SELECT count(*) FROM phoenix.cable_events")
     assert count > 0
 

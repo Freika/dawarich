@@ -7,7 +7,16 @@ defmodule Dawarich.Tracks.NativeChanges do
   @columns ~w(id start_at end_at distance avg_speed duration elevation_gain elevation_loss elevation_max elevation_min original_path)
 
   def write!(repo, payload) do
-    bump(payload)
+    {:ok, _} =
+      repo.transaction(fn ->
+        repo.insert!(Dawarich.Tracks.NativeChangesWorker.new(payload), prefix: "oban", log: false)
+        Dawarich.Tracks.CommittedEpoch.defer(repo, payload)
+      end)
+
+    :ok
+  end
+
+  def publish!(repo, payload) do
     created = payload["created"]
     ids = created ++ payload["updated"]
 
@@ -41,11 +50,11 @@ defmodule Dawarich.Tracks.NativeChanges do
   defp publish(repo, user, message) do
     case Cable.broadcast_to("tracks", {:user, user}, message, repo: repo) do
       :ok -> :ok
-      {:error, _} -> Logger.warning("event=tracks.broadcast_failed user_id=#{user}")
+      {:error, _} -> raise "track broadcast unavailable"
     end
   end
 
-  defp bump(payload) do
+  def bump(payload) do
     from = year(payload["min_ts"])
     to = year(payload["max_ts"])
     years = if from <= to, do: Enum.to_list(from..to), else: ["all"]

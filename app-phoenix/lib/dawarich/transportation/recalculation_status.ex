@@ -21,7 +21,14 @@ defmodule Dawarich.Transportation.RecalculationStatus do
 
   def key(user), do: "phoenix:transportation_mode_recalculation:user:#{user}"
 
+  def rails_active?(user),
+    do: not Dawarich.Standalone.enabled?() and legacy(user)["status"] == "processing"
+
   def data(user) do
+    if rails_active?(user), do: legacy(user), else: native_data(user)
+  end
+
+  defp native_data(user) do
     case Redis.cache_command(["GET", key(user)]) do
       {:ok, nil} -> legacy(user)
       {:ok, raw} -> Jason.decode!(raw)

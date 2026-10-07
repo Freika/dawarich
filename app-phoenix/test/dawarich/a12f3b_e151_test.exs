@@ -11,6 +11,7 @@ defmodule Dawarich.A12f3bE151Test do
     Wave6Fixtures.reset!()
     start_oban(__MODULE__)
     start_supervised!(hd(Dawarich.Redis.child_specs()))
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
 
     for key <- ~w(command:transportation.reclassify_track command:tracks.generate_range),
         do: Ownership.put!(ScratchRepo, key, :oban)
@@ -83,6 +84,8 @@ defmodule Dawarich.A12f3bE151Test do
       inspect(ReclassifyTrackWorker)
     ])
 
+    assert Drain.status(ScratchRepo).counts.incomplete_oban == 1
+    assert %{success: 1, failure: 0} = Oban.drain_queue(__MODULE__, queue: :tracks)
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 0
   end
 

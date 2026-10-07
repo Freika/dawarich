@@ -63,8 +63,10 @@ defmodule Dawarich.Transportation.ReclassifyTrackWorker do
 
   defp progress!(repo, user_id, event_id) do
     if Processed.claim!(repo, event_id, @handler) do
-      if Dawarich.Tracks.Owner.lock(repo, "command:transportation.reclassify_track") == :oban or
-           Dawarich.Transportation.RecalculationStatus.native?(user_id) do
+      owner = Dawarich.Tracks.Owner.lock(repo, "command:transportation.reclassify_track")
+      status = Dawarich.Transportation.RecalculationStatus
+
+      if (owner == :oban or status.native?(user_id)) and not status.rails_active?(user_id) do
         Dawarich.Transportation.RecalculationStatus.increment(user_id, event_id)
 
         Dawarich.Cable.broadcast_to(
