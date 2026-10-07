@@ -1,7 +1,7 @@
 defmodule Dawarich.EnhancedImport.RequestFenceTest do
   use Dawarich.EnhancedImportCase
 
-  alias Dawarich.EnhancedImport.{ExtractGpxWorker, DestroyGpxWorker}
+  alias Dawarich.EnhancedImport.{NormalWorker, DestroyGpxWorker}
   alias Dawarich.Imports.ManualExtraction
   alias Dawarich.Jobs.{Dispatch, Ownership}
 
@@ -35,20 +35,47 @@ defmodule Dawarich.EnhancedImport.RequestFenceTest do
                self_hosted?: true
              })
 
-    assert %{dispatched: 1} =
-             Dispatch.run(
-               repo: ScratchRepo,
-               oban: c.oban,
-               now: DateTime.add(DateTime.utc_now(), 1)
-             )
+    id =
+      cond do
+        action == :extract ->
+          [[id]] =
+            rows(
+              "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker' ORDER BY id DESC LIMIT 1"
+            )
 
-    [[id]] = rows("SELECT oban_job_id FROM job_outbox ORDER BY created_at DESC LIMIT 1")
+          id
+
+        Dawarich.Standalone.enabled?() ->
+          [[id]] =
+            rows(
+              "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.Imports.ExtractionRemovalWorker' ORDER BY id DESC LIMIT 1"
+            )
+
+          id
+
+        true ->
+          assert %{dispatched: 1} =
+                   Dispatch.run(
+                     repo: ScratchRepo,
+                     oban: c.oban,
+                     now: DateTime.add(DateTime.utc_now(), 1)
+                   )
+
+          [[id]] = rows("SELECT oban_job_id FROM job_outbox ORDER BY created_at DESC LIMIT 1")
+          id
+      end
+
     rows("UPDATE oban.oban_jobs SET state='executing',attempt=1 WHERE id=$1", [id])
     ScratchRepo.get!(Oban.Job, id, prefix: "oban")
   end
 
   defp extract(c, job),
-    do: ExtractGpxWorker.run(HookRepo, job, storage: c.storage, lock: [timeout_ms: 0])
+    do: NormalWorker.run(HookRepo, job, storage: c.storage, lock: [timeout_ms: 0])
+
+  defp destroy(%{worker: "Dawarich.Imports.ExtractionRemovalWorker"} = job),
+    do: Dawarich.Imports.ExtractionRemovalWorker.run(ScratchRepo, job)
+
+  defp destroy(job), do: DestroyGpxWorker.run(ScratchRepo, job)
 
   defp effects do
     rows(
@@ -107,6 +134,7 @@ defmodule Dawarich.EnhancedImport.RequestFenceTest do
 
       assert extract(c, job) in [
                :ok,
+               {:cancel, "changed extraction"},
                {:cancel, :changed_import},
                {:cancel, :changed_source},
                {:cancel, :stale_attempt}
@@ -137,11 +165,11 @@ defmodule Dawarich.EnhancedImport.RequestFenceTest do
   test "a retried old removal cannot delete a newer extraction through dispatch", c do
     assert :ok = extract(c, dispatch!(c, :extract))
     old = dispatch!(c, :remove)
-    assert :ok = DestroyGpxWorker.run(ScratchRepo, old)
+    assert :ok = destroy(old)
     assert :ok = extract(c, dispatch!(c, :extract))
     effects = effects()
     rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [old.id])
-    assert :ok = DestroyGpxWorker.run(ScratchRepo, %{old | attempt: 2})
+    assert :ok = destroy(%{old | attempt: 2})
     assert rows("SELECT count(*) FROM places WHERE import_id=$1", [c.id]) == [[1]]
     assert {3, _, _} = import_state(c.id)
     assert effects() == effects

@@ -110,8 +110,10 @@ defmodule DawarichWeb.A12f3aIClosureTest do
     assert request(c, :post, "/imports/781104/extraction", %{"trust_source" => "false"}).status ==
              302
 
-    assert [["enhanced_import.extract_gpx", payload]] =
-             Repo.query!("SELECT command_type,payload FROM job_outbox").rows
+    assert [[payload]] =
+             Repo.query!(
+               "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker'"
+             ).rows
 
     assert %{
              "import_id" => 781_104,
@@ -128,12 +130,16 @@ defmodule DawarichWeb.A12f3aIClosureTest do
 
     assert commands() == []
     assert request(c, :post, "/imports/781104/extraction", %{}).status == 303
-    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[1]]
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+
+    assert Repo.query!(
+             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker'"
+           ).rows == [[1]]
+
     Repo.query!("UPDATE imports SET additional_data_extraction_status=3 WHERE id=781104")
     assert request(c, :delete, "/imports/781104/extraction", %{}).status == 302
 
     assert Repo.query!("SELECT command_type FROM job_outbox ORDER BY command_type DESC").rows == [
-             ["enhanced_import.extract_gpx"],
              ["enhanced_import.destroy_gpx"]
            ]
 

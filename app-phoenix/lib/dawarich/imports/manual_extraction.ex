@@ -90,7 +90,7 @@ defmodule Dawarich.Imports.ManualExtraction do
             args = Map.take(payload, ~w(import_id user_id source source_blob_id event_id))
             repo.insert!(Dawarich.Imports.ExtractionRemovalWorker.new(args), prefix: "oban")
           else
-            if native and action == :extract and record.source in [0, 3, 13] do
+            if native and action == :extract and record.source in [0, 3, 4, 13] do
               args =
                 Map.put(payload, "lock_attempt", 1)
 
