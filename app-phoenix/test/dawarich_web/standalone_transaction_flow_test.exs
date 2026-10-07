@@ -118,6 +118,124 @@ defmodule DawarichWeb.StandaloneTransactionFlowTest do
              DawarichWeb.Translate.t("de", "controllers.settings.general.settings_updated", %{})
   end
 
+  @tag :recoverable_onboarding
+  test "onboarding SQL failure rolls back inner work and preserves the outer commit", c do
+    recoverable_failure(
+      c,
+      "users",
+      "UPDATE OF settings",
+      "NEW.id",
+      "/settings/onboarding",
+      %{"_method" => "patch"},
+      500
+    )
+  end
+
+  @tag :recoverable_demo_import
+  test "demo import SQL failure rolls back inner work and preserves the outer commit", c do
+    recoverable_failure(
+      c,
+      "points",
+      "INSERT",
+      "NEW.user_id",
+      "/settings/onboarding/demo_data",
+      %{},
+      302
+    )
+  end
+
+  @tag :recoverable_demo_destroy
+  test "demo removal SQL failure restores earlier deletes and preserves the outer commit", c do
+    [[import]] =
+      Repo.query!(
+        "INSERT INTO imports(user_id,name,source,status,demo,created_at,updated_at) VALUES($1,'Synthetic',6,2,true,now(),now()) RETURNING id",
+        [c.actor.id],
+        log: false
+      ).rows
+
+    Repo.query!(
+      "INSERT INTO points(user_id,import_id,timestamp,lonlat,created_at,updated_at) VALUES($1,$2,1,ST_GeomFromText('POINT(0 0)',4326),now(),now())",
+      [c.actor.id, import],
+      log: false
+    )
+
+    recoverable_failure(
+      c,
+      "imports",
+      "DELETE",
+      "OLD.user_id",
+      "/settings/onboarding/demo_data",
+      %{"_method" => "delete"},
+      302
+    )
+  end
+
+  defp recoverable_failure(c, table, operation, owner, path, params, status) do
+    name = "inner_failure_#{c.actor.id}"
+
+    Repo.query!(
+      "CREATE FUNCTION public.#{name}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'deterministic inner failure'; END $$",
+      [],
+      log: false
+    )
+
+    Repo.query!(
+      "CREATE TRIGGER #{name} BEFORE #{operation} ON #{table} FOR EACH ROW WHEN (#{owner}=#{c.actor.id}) EXECUTE FUNCTION public.#{name}()",
+      [],
+      log: false
+    )
+
+    before = snapshot(c.actor.id)
+
+    try do
+      refute Repo.in_transaction?()
+      assert_failure(form(c, path, params), status)
+      assert snapshot(c.actor.id) == before
+      assert Repo.query!("SELECT 1", [], log: false).rows == [[1]]
+      refute Repo.in_transaction?()
+
+      assert {:ok, :handled} =
+               Repo.transaction(fn ->
+                 Repo.query!(
+                   "UPDATE users SET first_name='Outer committed' WHERE id=$1",
+                   [c.actor.id],
+                   log: false
+                 )
+
+                 assert_failure(form(c, path, params), status)
+                 assert snapshot(c.actor.id) == before
+                 assert Repo.query!("SELECT 1", [], log: false).rows == [[1]]
+                 :handled
+               end)
+
+      assert Repo.query!("SELECT first_name FROM users WHERE id=$1", [c.actor.id], log: false).rows ==
+               [["Outer committed"]]
+
+      assert snapshot(c.actor.id) == before
+    after
+      Repo.query!("DROP TRIGGER IF EXISTS #{name} ON #{table}", [], log: false)
+      Repo.query!("DROP FUNCTION IF EXISTS public.#{name}()", [], log: false)
+    end
+  end
+
+  defp snapshot(id) do
+    Repo.query!(
+      "SELECT settings,(SELECT count(*) FROM imports WHERE user_id=$1),(SELECT count(*) FROM points WHERE user_id=$1) FROM users WHERE id=$1",
+      [id],
+      log: false
+    ).rows
+  end
+
+  defp assert_failure(conn, status) do
+    assert conn.status == status
+
+    if status == 302 do
+      flashes = RailsFormRequests.rails_session(conn)["flash"]["flashes"]
+      assert flashes["alert"]
+      refute flashes["notice"]
+    end
+  end
+
   defp form(c, path, params) do
     params = Map.put(params, "authenticity_token", DawarichWeb.RailsCsrf.masked_token(c.session))
 

@@ -26,6 +26,50 @@ defmodule Dawarich.TransactionTest do
              end)
   end
 
+  @tag :recoverable_callback
+  test "nested callback rollback removes inner writes while outer writes commit" do
+    Repo.query!("CREATE TEMP TABLE callback_markers(label text)", [], log: false)
+
+    try do
+      assert {:ok, :handled} =
+               Repo.transaction(fn ->
+                 Repo.query!("INSERT INTO callback_markers VALUES('outer')", [], log: false)
+
+                 assert {:error, :inner_failed} =
+                          Transaction.run(Repo, fn ->
+                            Repo.query!("INSERT INTO callback_markers VALUES('inner')", [],
+                              log: false
+                            )
+
+                            Repo.rollback(:inner_failed)
+                          end)
+
+                 assert {:ok, :nested} =
+                          Transaction.run(Repo, fn ->
+                            assert {:error, :deeper_failed} =
+                                     Transaction.run(Repo, fn ->
+                                       Repo.query!(
+                                         "INSERT INTO callback_markers VALUES('deeper')",
+                                         [],
+                                         log: false
+                                       )
+
+                                       Repo.rollback(:deeper_failed)
+                                     end)
+
+                            :nested
+                          end)
+
+                 assert Repo.query!("SELECT 1", [], log: false).rows == [[1]]
+                 :handled
+               end)
+
+      assert Repo.query!("SELECT label FROM callback_markers", [], log: false).rows == [["outer"]]
+    after
+      Repo.query!("DROP TABLE IF EXISTS callback_markers", [], log: false)
+    end
+  end
+
   @tag :savepoint_guard
   test "savepoint mode is confined to the shared transaction helper" do
     root = Path.expand("../../lib", __DIR__)
