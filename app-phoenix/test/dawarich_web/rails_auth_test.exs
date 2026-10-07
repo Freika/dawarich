@@ -333,7 +333,7 @@ defmodule DawarichWeb.RailsAuthTest do
       refute Map.has_key?(stored, "rails_user_id")
     end
 
-    test "a CSRF token is refused without a Rails CSRF secret or when it is not a masked token" do
+    test "CSRF refuses missing secrets and malformed tokens but accepts the Rails legacy real token" do
       session = csrf_session()
       token = RailsCsrf.masked_token(session)
       refute RailsCsrf.valid?(%{}, token)
@@ -341,7 +341,7 @@ defmodule DawarichWeb.RailsAuthTest do
       refute RailsCsrf.valid?(session, "not base64!")
       refute RailsCsrf.valid?(session, binary_part(token, 0, 43))
       refute RailsCsrf.valid?(session, nil)
-      refute RailsCsrf.valid?(session, session["_csrf_token"])
+      assert RailsCsrf.valid?(session, session["_csrf_token"])
     end
 
     test "the user's password hash never appears when the user is inspected" do

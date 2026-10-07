@@ -1,7 +1,7 @@
 defmodule Dawarich.Transportation.UserReclassify do
   @moduledoc false
   alias Dawarich.Jobs.{Ownership, Processed}
-  alias Dawarich.Transportation.RecalculationStatus
+  alias Dawarich.Transportation.{RecalculationFence, RecalculationStatus}
 
   def run(repo, %{"user_id" => user, "event_id" => event}, ctx) do
     result =
@@ -12,6 +12,7 @@ defmodule Dawarich.Transportation.UserReclassify do
                  [user]
                ).rows do
             [] ->
+              RecalculationFence.release(repo, user, event)
               :missing
 
             [[settings]] ->
@@ -48,11 +49,13 @@ defmodule Dawarich.Transportation.UserReclassify do
         :ok
 
       {:error, reason} ->
+        RecalculationFence.release(repo, user, event)
         RecalculationStatus.fail(user, ctx.now, inspect(reason))
         {:error, reason}
     end
   rescue
     error ->
+      RecalculationFence.release(repo, user, event)
       RecalculationStatus.fail(user, ctx.now, Exception.message(error))
       reraise error, __STACKTRACE__
   end
