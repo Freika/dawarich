@@ -829,3 +829,11 @@ with warnings as errors, whole-tree formatting, merge-content secret scanning
 and Swagger/schema drift checks pass. All started suite processes complete and
 private verification services are stopped. Broader release acceptance remains
 with the controller.
+
+## L1 preparation handoff (2026-10-07)
+
+Packages A–E are composed through preparation-only `Dawarich.Release.Cloud` in `release/cloud_handoff_test.exs`: fresh precreated schema-owner provisioning without database CREATE, actual populated Rails rows, default registration/creation/referral intent publication, typed Dispatch/Oban delivery, ordinary trial/mail, deletion/unlink and both family backfill effects. Reentry preserves identities and historical state; callback transport failures remain retryable and pending family data closes readiness. Endpoint-specific package suites retain their source-distinct browser/mobile/Apple/provider contracts. This is component-level proof; no public native Cloud success is claimed.
+
+Public native Cloud lifecycle remains refused in every mode, including Rails off. Task 12 is outside this package and requires controller acceptance plus independent security review. Local receipts do not guarantee exactly-once remote effects across accepted-send/process-death. Manager keeps the controller's Rails-parity replay limitation; live receiver and SMTP acceptance remain external.
+
+The [L1 rollout procedure](l1-cloud-rollout.md) supplies exact conditional release/web/worker commands, direct/session-capable database requirements alongside the pooled application URL, configured Manager/Partnero contracts, staging rehearsal and same-DB Rails 1.15.3 rollback. Eugene runs all remote changes. Cloud seeds omit the demo administrator by Eugene's 2026-10-07 ruling (ED-552); administrators are provisioned manually. Signup publication atomicity and Partnero diagnostics are registered as FRB-068/069, ED-553/554 and DRB-038/039. No ownership activation, traffic switch, old-app shutdown or G48/G49 acceptance follows from this handoff.

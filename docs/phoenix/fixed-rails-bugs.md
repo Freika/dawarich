@@ -4,7 +4,7 @@ Status: **DRAFT**, consolidated 2026-10-07 under master-plan ruling 17. [User-fa
 
 The integration snapshot is `3a20a0279c164472b7d9b129576709acff94a552` on `feat/phoenix-port`. The audit reads every `## Rails bugs fixed (changelog)` section in the 391 top-level `*.report.md` files present at the snapshot (232 sections), then checks merge history and commit ancestry. Repeated report bullets and provider-package supplements are consolidated by defect. Unmerged fix-rxstats and mm-e reports are excluded. Report filenames and section lines identify external controller evidence; no runtime allocation belongs in this register.
 
-FRB-001–067 are unique register IDs, with one CHANGELOG-ready line each. Earlier IDs were renumbered or consolidated; explicit legacy anchors preserve existing links. Older ED candidates without established Rails/fix/test provenance remain in an appendix without confirmed FRB IDs. The withdrawn disabled-map-matching invalidation claim is not a release fix. The digest season change for 27 timezone aliases restores Phoenix parity and is not a Rails bug.
+FRB-001–069 are unique register IDs, with one CHANGELOG-ready line each. Earlier IDs were renumbered or consolidated; explicit legacy anchors preserve existing links. Older ED candidates without established Rails/fix/test provenance remain in an appendix without confirmed FRB IDs. The withdrawn disabled-map-matching invalidation claim is not a release fix. The digest season change for 27 timezone aliases restores Phoenix parity and is not a Rails bug.
 
 Source lines refer to the report or named source revision and may move. Tests are the implementation evidence; this documentation task reruns only tests that read these registers. Proposed Rails map-matching comparisons are clearly marked and must not be represented as Rails 1.15.3 defects. Native and retained Rails consumers have separate boundaries. Rails remains unchanged by this documentation task. Native Cloud lifecycle remains refused in every mode pending external L1 handoff; this register is not deployment acceptance.
 
@@ -1132,3 +1132,27 @@ The following anchors preserve links to the earlier package supplements and grou
 <a id="native-import-deletion-revocation-across-cleanup-owners--2026-10-07"></a>
 <a id="accepted-zip-children-and-terminal-parent-ordering"></a>
 <a id="empty-successful-import-retries-repeat-no-points-notifications"></a>
+
+## L1 package handoffs (2026-10-07)
+
+The earlier integration snapshot above remains historical. Package F publishes B/D's demonstrated fixes from the integrated L1 preparation candidate; this does not enable public native Cloud lifecycle or certify remote delivery exactly once.
+
+### FRB-068 — Signup callback failure leaves an orphan account
+
+Rails can commit a new account and then fail its after_commit callback enqueue, leaving no durable creation intent. Native registration and provider account creation publish state and callback intents in the account transaction; publication failure rolls back the account.
+
+- Rails: `app/models/user.rb:56`; `app/controllers/users/registrations_controller.rb:28`.
+- Phoenix: `app-phoenix/lib/dawarich/auth/registration.ex:109`; `app-phoenix/lib/dawarich/auth/providers/accounts.ex:177`.
+- Evidence: `impl-l1-b.report.md`, real Rails creation oracle; `app-phoenix/test/dawarich/auth/cloud_registration_test.exs`, “L1 registration callback failure cannot leave an account without durable creation intent”.
+- Ledger: ED-553; DRB-038. Retained Rails behavior is unchanged. Local atomic publication is distinct from remote HTTP atomicity.
+- CHANGELOG-ready: Roll back failed Cloud signups when durable account creation callbacks cannot be published.
+
+### FRB-069 — Partnero error reporting exposes customer/provider details
+
+Rails interpolates the raw rejection body and customer user ID into exception reporting. Native delivery retains retries and 2xx/409 acceptance while reporting only numeric status or sanitized transport class.
+
+- Rails: `app/jobs/partnero/customer_signup_job.rb:42,44`.
+- Phoenix: `app-phoenix/lib/dawarich/partnero/customer_signup.ex:87,88`; `app-phoenix/lib/dawarich/partnero/customer_signup_worker.ex:24`.
+- Evidence: `impl-l1-d.report.md`; `app-phoenix/test/dawarich/partnero/cloud_signup_test.exs`, “L1 Partnero accepts 409 retries rejection and suppresses accepted-send replay”. The test checks log sanitation, retryable failures, customer-key replay and 409 acceptance.
+- Ledger: ED-554; DRB-039. Retained Rails behavior is unchanged; live Partnero receiver acceptance remains external.
+- CHANGELOG-ready: Keep Partnero customer data, response bodies and credentials out of signup failure diagnostics.
