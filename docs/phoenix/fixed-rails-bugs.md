@@ -2,7 +2,7 @@
 
 Status: **DRAFT**, compiled 2026-10-07 under master-plan ruling 17. This is a release-wide evidence register, not deployment or release acceptance. [User-facing draft](CHANGELOG-phoenix-draft.md); [deferred source register](deferred-rails-bugs.md); [intentional differences](../../app-phoenix/parity/expected_diffs.md).
 
-Sources are all 471 top-level controller Markdown reports dated 2026-10-06/07 at the snapshot, plus the three registers on `feat/phoenix-port` at `5088704cce284a765cfb540d3eb87377246e4871`. Report references below identify external evidence by filename and line; no runtime allocation is part of this document. Commit ancestry is checked against that pinned integration revision, not a moving branch. Later reports/merges require a refresh.
+Sources are all 471 top-level controller Markdown reports dated 2026-10-06/07 at the snapshot, plus the three registers on `feat/phoenix-port` at `5088704cce284a765cfb540d3eb87377246e4871`. Report references below identify external evidence by filename and line; no runtime allocation is part of this document. Commit ancestry is checked against that pinned integration revision, not a moving branch. A follow-up audit checked 14 new/updated reports (8 new files); it adds the completed real-consumer correction from `fix2-fix-exports-redelivery.report.md` and the carried-forward progress entry from `fix3-a12f3a-f17.report.md`. Later reports/merges require a refresh.
 
 **Reading the evidence:** “integrated” means the commit exists in that integration history; “feature only” means its local commit exists but was not integrated at the snapshot. Source anchors are the report/commit revision's lines and can move. Installed-gem anchors belong to Active Storage 8.1.3.1, not repository paths. “unverified” means the report/ledger did not establish that field or the local commit/test check could not confirm it. Tests cited here are original evidence, not tests rerun by this documentation task.
 
@@ -133,7 +133,7 @@ An older worker overwrites newer progress; the source probe reproduced 2000 beco
 - Phoenix: `app-phoenix/lib/dawarich/imports/continuation_receipt.ex:6,92; app-phoenix/lib/dawarich/imports/gpx_progress.ex:13; app-phoenix/lib/dawarich/imports/lease.ex:95`.
 - Fix/acceptance history: `a403f9219` (feature only).
 - Modes: standalone and coexistence accepted continuations.
-- Evidence: fix2-a12f3a-f17.report.md:158; rereview2-a12f3a-f17.report.md:84. Ledger: none added.
+- Evidence: fix2-a12f3a-f17.report.md:158; rereview2-a12f3a-f17.report.md:84; fix3-a12f3a-f17.report.md:184. Ledger: none added.
 - Test: “retrying a predecessor never lowers durable import progress” in `app-phoenix/test/dawarich/imports/continuation_order_test.exs`.
 - Limits: Automatic Rails Takeout retries remain disabled; the defect concerns delayed/manual accepted continuations.
 
@@ -192,16 +192,17 @@ Appending an asset path to a query-bearing base can fetch the provider root and 
 
 ### FRB-015 — A restore loses tile invalidation during a cache outage
 
-Points can commit while the old tile token remains; a duplicate replay inserts no points and skips invalidation. Accepted point writes publish durable owner-routed invalidation, and native cache errors retain retry work.
+Points can commit while the old tile token remains; a duplicate replay inserts no points and skips invalidation. Accepted point writes publish durable owner-routed invalidation. Native workers and the port’s strict Rails-owned command consumer retain retry work on cache failure.
 
 - Rails: `app/services/users/import_data/points.rb:115-117; app/services/tile_epoch.rb:21-24,55`.
-- Phoenix: `app-phoenix/lib/dawarich/user_data/restore/point_writer.ex:81-85; existing RailsEffects.tile_epoch and Points.TileEpochWorker`.
-- Fix/acceptance history: `660180efa` (feature only).
-- Modes: standalone and native-owned coexistence invalidation; Rails-owned coexistence publishes durable intent but its consumer remains unchanged.
-- Evidence: impl-fix-exports-redelivery.report.md:55. Ledger: DRB-028; ED-FIX-EXPORTS-TILE in scoped export docs.
+- Phoenix: `app-phoenix/lib/dawarich/user_data/restore/point_writer.ex:81-85; existing RailsEffects.tile_epoch and Points.TileEpochWorker; app/services/points/tile_epoch_command.rb:7-17; app/services/points/arrival_commands.rb:12`.
+- Fix/acceptance history: `660180efa` (feature only); `f0f12e185` (feature only).
+- Modes: standalone and coexistence, including the real Rails-owned port command consumer after f0f12e185; original direct Rails writers remain best effort.
+- Evidence: impl-fix-exports-redelivery.report.md:55; fix2-fix-exports-redelivery.report.md:25,68. Ledger: DRB-028; ED-FIX-EXPORTS-TILE in scoped export docs.
 - Test: “restore cache outage retains durable invalidation through duplicate replay” in `app-phoenix/test/dawarich/user_data/restore_points_test.exs`.
-- Limits: Do not claim the Rails cache consumer itself was hardened.
-- Review boundary: `rereview-fix-exports-redelivery.report.md:31` independently reproduces loss of the Rails-owned intent during outage. Its R1/R2 review verdict is CHANGES for stronger both-consumer guarantees; only the native-consumer correction is a confirmed fix.
+- Test: “R2 retains Rails-owned tile invalidation through a real cache outage and consumes it after recovery” in `spec/services/rails_commands/poller_spec.rb:62`, verified in `f0f12e185`.
+- Limits: The port-owned command consumer is hardened; original Rails direct writes remain unchanged. This follow-up is a port consumption repair, not a new inherited Rails bug.
+- Review history: `rereview-fix-exports-redelivery.report.md:31` reproduced lost Rails-owned intent. `fix2-fix-exports-redelivery.report.md:25` resolves that R2 through the actual strict consumer; R1 retains and characterizes inherited physical purge loss. The earlier CHANGES verdict must not be mistaken for the current consumer state.
 
 ### FRB-016 — An unsupported response format commits an area write
 
@@ -397,6 +398,6 @@ This summary follows [deferred-rails-bugs.md](deferred-rails-bugs.md), with late
 | DRB-027 | A live signed backup/export link grants bytes to any bearer, including guests/foreign accounts. | **NEEDS EUGENE DECISION:** owner-only download policy versus retained bearer behavior. Report-backed row in `e5b48b6e1`, `impl-fix-exports-redelivery.report.md:18`; independently verified by `rereview-fix-exports-redelivery.report.md:51`. Not in the pinned integration deferred register. |
 | DRB-029 | Rails-owned import deletion leaves prepared redirect/disk capabilities usable until async purge. | Preserved source consumer; native revocation is FRB-004. Report-backed row in `de698433d`, `fix2-fix-imports-storage.report.md:13`. Not in the pinned integration deferred register. |
 
-DRB-019 is already corrected by accepted ED-551 (FRB-018), not a deliberately preserved Phoenix bug. DRB-023 is the deferred Rails repair for the fixed Phoenix thumbnail leak (FRB-001). DRB-028 is the deferred Rails cache repair for FRB-015, recorded in `e5b48b6e1`; native-consumer retry is fixed while the Rails consumer remains defective. DRB-027/028/029 identities come from those reports/commits and must be reconciled with subsequent integration edits, not silently renumbered here.
+DRB-019 is already corrected by accepted ED-551 (FRB-018), not a deliberately preserved Phoenix bug. DRB-023 is the deferred Rails repair for the fixed Phoenix thumbnail leak (FRB-001). DRB-028 is the deferred Rails cache repair for FRB-015, recorded in `e5b48b6e1`; native-consumer retry and the port’s Rails-owned durable command consumer are fixed; original Rails direct writers retain best-effort loss. DRB-027/028/029 identities come from those reports/commits and must be reconciled with subsequent integration edits, not silently renumbered here.
 
 ED-542 (FRB-043) also explicitly needs Eugene acceptance before native ownership/lifecycle activation. No ruling here authorizes Cloud native lifecycle, changes signed-link policy, or edits the ED/DRB ledgers.

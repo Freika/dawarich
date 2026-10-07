@@ -22,7 +22,7 @@ Compiled 2026-10-07. Each item links to the [evidence register](fixed-rails-bugs
 - Prevent completed extraction retries from repeating their saved effects. [FRB-005](fixed-rails-bugs.md#frb-005--legacy-extraction-replay-repeats-terminal-effects)
 - Prevent an older extraction-removal retry from deleting a newer extraction. [FRB-006](fixed-rails-bugs.md#frb-006--an-old-removal-retry-can-remove-newer-extraction-data)
 - Keep another account’s demo tags unchanged when importing a visit into inconsistently linked demo data. [FRB-009](fixed-rails-bugs.md#frb-009--demo-adoption-changes-another-accounts-tag)
-- Retain tile-cache refresh work through a cache outage when restoring points with native cache-invalidation ownership. [FRB-015](fixed-rails-bugs.md#frb-015--a-restore-loses-tile-invalidation-during-a-cache-outage)
+- Retain tile-cache refresh work through a cache outage when restoring points, including the durable command processed by Rails during coexistence. [FRB-015](fixed-rails-bugs.md#frb-015--a-restore-loses-tile-invalidation-during-a-cache-outage)
 - Reject unsupported area response formats before saving changes or scheduling follow-up work. [FRB-016](fixed-rails-bugs.md#frb-016--an-unsupported-response-format-commits-an-area-write)
 
 ## Correctness
@@ -38,7 +38,7 @@ These are preserved defects/policies, not release fixes. See the register’s [d
 
 - **Needs Eugene decision:** valid signed backup/export links remain bearer links; possession can grant download access without owner authentication (DRB-027).
 - Legacy optional mobile-login nonce behavior remains (DRB-001); tightening it needs a coordinated policy/client decision.
-- Rails-owned media purge and prepared-import download revocation retain their asynchronous cleanup defects (DRB-025/029). Rails-owned tile invalidation can still lose refresh work during a cache outage (DRB-028).
+- Rails-owned media purge and prepared-import download revocation retain their asynchronous cleanup defects (DRB-025/029). Original Rails direct tile-cache writes remain best effort (DRB-028); the port’s durable command consumer now retries failures.
 - Malformed input/data failures, invitation/sharing partial effects, duplicate digest-mail risk, unspecified ordering, blank-name video retention and area-radius casting quirks remain deferred (DRB-002–018, DRB-020–022, DRB-024/026).
 - The shared-thumbnail leak and title escaping defect are fixed in native paths (DRB-023/019); their presence in a deferred Rails register does not mean Phoenix deliberately preserves them.
 
