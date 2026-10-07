@@ -569,17 +569,22 @@ drain output explicitly marks source Sidekiq as NOT_OBSERVED/UNKNOWN and G49
 blocked. A native empty binary-rollback observation is not source-drained proof.
 R13k05, the R14 achievement helper and R19k04 now have native producer,
 terminal-effect, zero-reverse and Rails-owned coexistence proofs. The subsequent
-all-R01–R20 recheck still finds R10k01 `imports.progress` live under native
-ownership during coexistence: `imports/gpx_progress.ex:31`,
-`imports/gpx_lifecycle.ex:134` and `imports/normal_lifecycle.ex:154` check only
-standalone mode. The parent keys are `command:imports.process_gpx` and
-`command:imports.process_normal`. Real native calls with all owners Oban
-publish one progress-helper reverse row and two rows per successful lifecycle;
-standalone publishes none. RX-IMPORTS must close that actual producer branch.
-H03 all-producer and H04 final ED closure remain blocked. No ownership ED or
-retired payload row is marked closed, and all 78 closure kinds remain. Final
-source disposition stays with J1/J2/A12f-3c; Cloud lifecycle stays refused
-pending L1 in every mode.
+all-R01–R20 recheck repaired R10k01 at the incremental GPX and GPX/normal
+lifecycle publishers through `Imports.Progress.publish!/3`. Its three named
+regressions prove both runtime modes, actual native parent ownership,
+terminal/subscriber effects, unchanged Rails payloads and individual mutation
+failures. Native lease refusal under a Rails parent remains intact.
+
+The next audit finds R12k02 `exports.purge` live at `exports/delete.ex:44`:
+export deletion still checks only standalone mode, publishing one reverse row
+with every Registry owner Oban during coexistence and no native purge job.
+Standalone queues the existing native worker. Both actual synthetic deletion
+probes roll back. There is no dedicated purge Registry key; RX-EXPORTS must
+resolve the producer contract. Per the brief, this distinct gap is reported
+without repair. H03 all-producer and H04 final ED closure remain blocked.
+No ownership ED or retired payload row is marked closed, and all 78 closure
+kinds remain. Final source disposition stays with J1/J2/A12f-3c; Cloud lifecycle
+stays refused pending L1 in every mode.
 
 Existing operator D01a and native trip/release DRAIN tests are reused for H04,
 with independent `h04_case:H04a` / `H04b` selectors. No new ED number is reserved

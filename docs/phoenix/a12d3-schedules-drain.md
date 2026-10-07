@@ -363,16 +363,23 @@ reverse-debt assertions. All 78 closure kinds, residual producer blockers,
 source-inspection requirements and G49 refusal remain intact. These three
 repairs do not establish all-producer closure or release acceptance.
 
-The subsequent all-R01–R20 closure recheck identifies R10k01 as still live:
-`imports.progress` is inserted by `imports/gpx_progress.ex:31`,
-`imports/gpx_lifecycle.ex:134` and `imports/normal_lifecycle.ex:154` during
-coexistence even with every Registry owner Oban. The relevant parent keys are
-`command:imports.process_gpx` and `command:imports.process_normal`. A real
-progress call and successful GPX/normal lifecycles verify the reverse rows;
-standalone remains native. RX-IMPORTS owns this uncovered producer branch.
-H03 all-producer acceptance and H04 final ED closure remain blocked; the
-existing green standalone test is not native-owned coexistence proof. No
-closure kind or source disposition is removed.
+R10k01 is now repaired at all three progress publication sites through
+`Imports.Progress.publish!/3`, with actual native parent ownership, native
+terminal/subscriber effects and unchanged Rails-owned coexistence payloads.
+The named `R10progress`, `R10gpx` and `R10normal` regressions cover both modes
+and fail individual old-publisher mutations.
+
+The next all-R01–R20 audit identifies **R12k02 `exports.purge`** as still live:
+`Exports.Delete.call/3` at `exports/delete.ex:44` uses only standalone mode.
+An actual synthetic export deletion with every Registry owner Oban inserts a
+reverse row during coexistence and no native purge job; standalone queues
+`Exports.PurgeWorker` and inserts no reverse row. Both SQL probes roll back.
+There is no dedicated purge Registry key. RX-EXPORTS must establish the native
+producer ownership contract and zero-reverse/terminal/Rails hand-back proof.
+Per the closure brief this new gap is reported, not repaired. H03 all-producer
+acceptance and H04 final ED closure remain blocked. No closure kind or source
+disposition is removed; green package gates cannot substitute for this failed
+contract. The controller report is `fix-hot-h03-closure.report.md`.
 
 H03b retains unreadable-database and all-key pin safety. H04 reuses the existing
 Cloud operator HTTP/connected-auth test and the actual native trip/release
