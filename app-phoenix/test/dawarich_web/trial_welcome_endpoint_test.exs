@@ -31,6 +31,26 @@ defmodule DawarichWeb.TrialWelcomeEndpointTest do
     :ok
   end
 
+  @tag :sa_g44_welcome_configuration
+  test "anonymous browser welcome without JWT key preserves the Rails server error" do
+    System.delete_env("JWT_SECRET_KEY")
+
+    for path <- ["/trial/welcome", "/trial/welcome?token=invalid"] do
+      response =
+        Phoenix.ConnTest.build_conn()
+        |> put_req_header(
+          "accept",
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        )
+        |> dispatch(:get, path)
+
+      assert response.status == 500
+      assert get_resp_header(response, "cache-control") == ["no-store"]
+      assert get_resp_header(response, "location") == []
+      assert response.resp_cookies == %{}
+    end
+  end
+
   test "Cloud proxy welcome redirects and tracks Rails client IP across IPv4 and IPv6 chains" do
     for {headers, peer, expected} <- [
           {[{"x-forwarded-for", "192.0.2.5, 10.0.0.2, 127.0.0.1"}], {127, 0, 0, 1}, "192.0.2.5"},

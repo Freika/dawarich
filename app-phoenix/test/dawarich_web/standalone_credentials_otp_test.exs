@@ -2,6 +2,7 @@ defmodule DawarichWeb.StandaloneCredentialsOtpTest do
   use ExUnit.Case, async: false
   import Phoenix.ConnTest
   import Plug.Conn
+  import Ecto.Query
   alias Dawarich.{Repo, State}
   alias Dawarich.Auth.Account
   alias Dawarich.Test.{RailsFormRequests, RailsUser}
@@ -227,6 +228,42 @@ defmodule DawarichWeb.StandaloneCredentialsOtpTest do
       guard(pending, "/users/otp_challenge", params)
       assert Repo.get!(Account, id).sign_in_count == 1
     end
+  end
+
+  @tag :sa_g44_otp_lock
+  test "tenth invalid browser OTP queues the native lock mail and redirects", c do
+    System.put_env("SELF_HOSTED", "true")
+    Repo.query!("UPDATE users SET failed_otp_attempts=9 WHERE id=$1", [c.user.id], log: false)
+    for spec <- Dawarich.Redis.cache_child_specs(), do: start_supervised!(spec)
+    key = "otp_lockout_email_throttle/user/#{c.user.id}"
+    assert Dawarich.Redis.cache_command(["DEL", key]) == {:ok, 0}
+    on_exit(fn -> Dawarich.Redis.cache_command(["DEL", key]) end)
+
+    pending =
+      Dawarich.Auth.Otp.Pending.start(c.guest, c.user.id, nil, System.system_time(:second))
+
+    pending = Map.put(pending, "otp_failed_attempts", 4)
+
+    response =
+      web(
+        pending,
+        "/users/otp_challenge",
+        csrf(%{"otp_attempt" => "invalid-code", "commit" => "Verify"}, pending)
+      )
+
+    assert response.status == 302, response.resp_body
+    assert get_resp_header(response, "location") == ["http://www.example.com/users/sign_in"]
+    assert Repo.get!(Account, c.user.id).failed_otp_attempts == 10
+    assert Repo.get!(Account, c.user.id).otp_locked_at
+    refute RailsFormRequests.rails_session(response)["otp_user_id"]
+
+    assert [%Oban.Job{args: %{"user_id" => id}}] =
+             Repo.all(
+               from(j in Oban.Job, where: j.worker == "Dawarich.Mail.OtpAccountLockedWorker"),
+               prefix: "oban"
+             )
+
+    assert id == c.user.id
   end
 
   defp password_request(session, email, password),

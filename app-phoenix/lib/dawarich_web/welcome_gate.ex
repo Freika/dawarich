@@ -17,7 +17,8 @@ defmodule DawarichWeb.WelcomeGate do
     context = context(opts)
 
     envelope?(conn) and
-      match?({:ok, _}, Welcome.prepare(conn, URI.decode_query(conn.query_string), context))
+      ((Dawarich.Standalone.enabled?() and is_nil(context[:jwt_secret])) or
+         match?({:ok, _}, Welcome.prepare(conn, URI.decode_query(conn.query_string), context)))
   rescue
     _ -> false
   end
