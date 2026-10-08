@@ -26,13 +26,26 @@ trip-note operations replace the day frame.
 
 Required browser acceptance is the four assigned Playwright files at the
 controller's pinned E2E commit, three standalone runs and one coexistence run,
-with one worker and zero retries. At implementation time the required private
-detached E2E checkout was denied by automatic approval review, so browser
-acceptance remains pending. See the task execution report for exact gate
-results and the approval decision. The prescribed full-suite runner also
-derives Redis ports occupied by another task; a private gate allocation is
-pending controller approval. No Rails defect is fixed by this parity
-correction; no fixed/deferred Rails bug register entry is required.
+with one worker and zero retries. The controller authorized the pinned checkout
+and a fresh full-gate allocation for the crash continuation. Browser acceptance
+and full-gate results are recorded in the task execution report. No Rails
+defect is fixed by these parity corrections; no fixed/deferred Rails bug
+register entry is required.
 
 The shared AFFiNE counterpart is the places follow-up in
 `Dawarich — Final G44 and image smoke launch runbook`.
+
+Browser continuation found two further request incompatibilities. The retained
+map controller submits full-precision coordinates. Place web writes now accept
+that decimal precision and round with Decimal to the Rails columns' six-decimal
+scale before constructing geometry, so subsequent drawer edits see coherent
+coordinates. The existing coordinate bounds remain enforced.
+
+Standalone drawer/navigation and nearby reads now validate ignored query
+fields using the existing Rails-compatible ignored-query decoder. Known nearby
+fields retain their scalar validation; session and ownership gates remain.
+Coexistence keeps its existing extra-query handoff. No shared decoder changed.
+A real Rails request oracle accepts scalar, hash and array extra fields and
+confirms identical decimal/geometry rounding. Both new tagged regressions
+first fail their status assertions, pass the fixes, fail named production
+mutations, and pass again after restoration.

@@ -16,7 +16,8 @@ defmodule DawarichWeb.PlacesGate do
   end
 
   def drawer?(conn, %{"id" => id}) do
-    Plug.Conn.get_req_header(conn, "turbo-frame") == ["place-drawer"] and conn.query_string == "" and
+    Plug.Conn.get_req_header(conn, "turbo-frame") == ["place-drawer"] and
+      navigation_query?(conn.query_string) and
       Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and
       TripsGate.open?(conn, fn user ->
         PlaceDrawer.load(user, String.to_integer(id)) != :rails or
@@ -31,16 +32,39 @@ defmodule DawarichWeb.PlacesGate do
 
   def navigation?(conn, params) do
     case Plug.Conn.get_req_header(conn, "turbo-frame") do
-      ["place-drawer"] -> drawer?(conn, params)
-      [] -> conn.query_string == "" and Plug.Conn.get_req_header(conn, "x-dawarich-client") == []
-      _ -> false
+      ["place-drawer"] ->
+        drawer?(conn, params)
+
+      [] ->
+        navigation_query?(conn.query_string) and
+          Plug.Conn.get_req_header(conn, "x-dawarich-client") == []
+
+      _ ->
+        false
     end
   end
 
   def nearby?(conn, _params) do
-    Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and valued?(conn.query_string) and
-      scalar_nearby?(conn.query_string) and
+    Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and
+      nearby_query?(conn.query_string) and
       TripsGate.open?(conn, fn _user -> true end)
+  end
+
+  defp navigation_query?(query) do
+    query == "" or
+      (Dawarich.Standalone.enabled?() and
+         match?({:ok, _}, DawarichWeb.AchievementPublicQuery.decode(query, [])))
+  end
+
+  defp nearby_query?(query) do
+    if Dawarich.Standalone.enabled?() do
+      match?(
+        {:ok, _},
+        DawarichWeb.AchievementPublicQuery.decode(query, ~w(latitude longitude radius limit))
+      )
+    else
+      valued?(query) and scalar_nearby?(query)
+    end
   end
 
   defp scalar_nearby?(query) do

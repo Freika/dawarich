@@ -104,9 +104,12 @@ defmodule Dawarich.Places.WebWrite do
   defp coordinate(value, _limit) when value in [nil, ""], do: nil
 
   defp coordinate(value, limit) when is_binary(value) do
-    if value =~ ~r/\A-?\d+(?:\.\d{1,6})?\z/ do
+    if value =~ ~r/\A-?\d+(?:\.\d+)?\z/ do
       {number, ""} = Float.parse(value)
-      if abs(number) <= limit, do: number, else: :unsupported
+
+      if abs(number) <= limit,
+        do: value |> Decimal.new() |> Decimal.round(6) |> Decimal.to_float(),
+        else: :unsupported
     else
       :unsupported
     end

@@ -1,6 +1,7 @@
 defmodule DawarichWeb.StandalonePlaceBrowserTest do
   use Dawarich.IngestCase, async: false
 
+  import Phoenix.ConnTest, only: [dispatch: 4]
   import Dawarich.Test.RailsFormRequests
   alias Dawarich.Test.{RailsUser, SeedIds, TripsSeeds}
   alias DawarichWeb.{PlaceRequest, RailsCsrf, TripRequest}
@@ -20,6 +21,12 @@ defmodule DawarichWeb.StandalonePlaceBrowserTest do
         if env[name], do: System.put_env(name, env[name]), else: System.delete_env(name)
       end
     end)
+
+    Repo.query!(
+      "SELECT setval(pg_get_serial_sequence('places','id'),COALESCE((SELECT MAX(id) FROM places),0)+1,false)",
+      [],
+      log: false
+    )
 
     id = user!(%{encrypted_password: "$2a$04$" <> String.duplicate("phoenixa5fixture", 4)})
     %{id: id, session: RailsUser.session(id)}
@@ -172,6 +179,78 @@ defmodule DawarichWeb.StandalonePlaceBrowserTest do
     assert deleted.status == 200
     assert deleted.resp_body =~ ~s(target="#{frame}")
     assert Repo.query!("SELECT id FROM notes WHERE id=$1", [id]).rows == []
+    assert commands() == []
+  end
+
+  @tag :sa_g44_place_precision
+  test "standalone map modal preserves full browser coordinate input at Rails storage precision",
+       ctx do
+    params = %{
+      "_method_url" => "",
+      "commit" => "Create Place",
+      "place" => %{
+        "name" => "Precision place",
+        "latitude" => "52.444541348981886",
+        "longitude" => "13.26398331296545",
+        "source" => "manual",
+        "note" => ""
+      }
+    }
+
+    created = submit(ctx.session, "/places", params)
+    assert created.status == 200
+    assert created.resp_body =~ ~s(data-created="true")
+
+    [[id, lat, lon, y, x]] =
+      Repo.query!(
+        "SELECT id,latitude::float8,longitude::float8,ST_Y(lonlat::geometry),ST_X(lonlat::geometry) FROM places WHERE user_id=$1",
+        [ctx.id]
+      ).rows
+
+    assert [lat, lon, y, x] == [52.444541, 13.263983, 52.444541, 13.263983]
+    edited = submit(ctx.session, "/places/#{id}", Map.put(params, "_method", "patch"))
+    assert edited.status == 200
+    assert edited.resp_body =~ ~s(data-updated="true")
+    assert commands() == []
+  end
+
+  @tag :sa_g44_place_query
+  test "standalone place drawer and nearby ignore Rails-accepted extra query fields", ctx do
+    created =
+      submit(ctx.session, "/places", %{
+        "_method_url" => "",
+        "place" => %{"name" => "Query place", "latitude" => "52.52", "longitude" => "13.405"}
+      })
+
+    assert created.status == 200
+    [[id]] = Repo.query!("SELECT id FROM places WHERE user_id=$1", [ctx.id]).rows
+
+    for query <- ["extra=1", "extra[nested]=1", "extra[]=1&extra[]=2"] do
+      drawer =
+        RailsUser.signed_in(ctx.id)
+        |> Plug.Conn.put_req_header("turbo-frame", "place-drawer")
+        |> dispatch(DawarichWeb.Endpoint, :get, "/places/#{id}?#{query}")
+
+      assert drawer.status == 200
+      assert drawer.resp_body =~ "Query place"
+
+      nearby =
+        RailsUser.signed_in(ctx.id)
+        |> Plug.Conn.put_req_header("turbo-frame", "place-drawer")
+        |> dispatch(DawarichWeb.Endpoint, :get, "/places/nearby?latitude=0&longitude=0&#{query}")
+
+      assert nearby.status == 200
+      assert nearby.resp_body =~ "No nearby places found"
+    end
+
+    foreign =
+      RailsUser.signed_in(
+        user!(%{encrypted_password: "$2a$04$" <> String.duplicate("phoenixa5fixture", 4)})
+      )
+      |> Plug.Conn.put_req_header("turbo-frame", "place-drawer")
+      |> dispatch(DawarichWeb.Endpoint, :get, "/places/#{id}?extra=1")
+
+    assert foreign.status == 404
     assert commands() == []
   end
 
