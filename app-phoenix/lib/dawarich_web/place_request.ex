@@ -15,8 +15,10 @@ defmodule DawarichWeb.PlaceRequest do
   def action(action, _method), do: action
 
   def fields?(action, params) when action in [:place_create, :place_update] do
-    root?(params, ~w(place)) and
-      case params["place"] do
+    {method_url, fields} = Map.pop(params, "_method_url", "")
+
+    is_binary(method_url) and root?(fields, ~w(place)) and
+      case fields["place"] do
         %{} = map when map_size(map) > 0 ->
           Enum.all?(map, fn
             {"tag_ids", ids} when is_list(ids) -> Enum.all?(ids, &is_binary/1)
