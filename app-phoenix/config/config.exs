@@ -37,7 +37,7 @@ config :esbuild,
       ~w(js/app.js --bundle --format=esm --splitting --target=es2022 --outdir=../priv/static/native --metafile=../priv/static/native/meta.json),
     cd: Path.expand("../assets", __DIR__),
     env: %{
-      "NODE_PATH" => Enum.join([Path.expand("../deps", __DIR__), Mix.Project.build_path()], ":")
+      "NODE_PATH" => Path.expand("../deps", __DIR__)
     }
   ]
 
