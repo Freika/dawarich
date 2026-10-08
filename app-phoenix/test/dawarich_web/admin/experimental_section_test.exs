@@ -177,8 +177,8 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
       |> put_req_header("accept", "text/html")
       |> DawarichWeb.Endpoint.call(DawarichWeb.Endpoint.init([]))
 
-    assert conn.status == 303
-    assert flash(conn, "alert") == "You are not authorized to perform this action."
+    assert conn.status == 404
+    assert get_resp_header(conn, "location") == []
     refute conn.resp_body =~ "map-matching-demo"
 
     refute DawarichWeb.AdminWritesGate.eligible?(

@@ -46,7 +46,7 @@ defmodule DawarichWeb.RefererConsumersTest do
       assert get_resp_header(result, "location") == [location]
 
       refused =
-        Plug.Test.conn(:post, "http://www.example.com/admin/settings")
+        Plug.Test.conn(:post, "http://www.example.com/settings/users")
         |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(ctx.session))
         |> put_req_header("referer", referer)
         |> DawarichWeb.AdminWrites.Fallback.call(

@@ -48,8 +48,9 @@ defmodule DawarichWeb.TestEmail do
         with true <- transport?(conn),
              {:ok, raw, conn} <- read_all(conn, []),
              {:ok, params} <-
-               Admission.form(raw, conn.query_string, ~w(authenticity_token commit utf8)),
+               Admission.form(raw, conn.query_string, ~w(authenticity_token commit utf8 _method)),
              conn = RailsAuth.call(conn, []),
+             true <- params["_method"] in [nil, "post", "POST"],
              true <- csrf?(conn, params) do
           cloud_refusal(conn)
         else
@@ -70,7 +71,10 @@ defmodule DawarichWeb.TestEmail do
         conn
 
       {:handoff, conn} ->
-        conn |> RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream)) |> halt()
+        if Dawarich.Standalone.enabled?(),
+          do: DawarichWeb.SettingsActions.reject(conn, 422),
+          else:
+            conn |> RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream)) |> halt()
     end
   end
 
@@ -105,7 +109,8 @@ defmodule DawarichWeb.TestEmail do
         conn = put_private(conn, :dawarich_raw_body, raw)
 
         with {:ok, params} <-
-               Admission.form(raw, conn.query_string, ~w(authenticity_token commit utf8)),
+               Admission.form(raw, conn.query_string, ~w(authenticity_token commit utf8 _method)),
+             true <- params["_method"] in [nil, "post", "POST"],
              true <- csrf?(conn, params) do
           context = TestEmailGate.context(opts)
           actor = conn.assigns.current_user

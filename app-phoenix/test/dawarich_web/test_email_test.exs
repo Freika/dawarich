@@ -89,7 +89,7 @@ defmodule DawarichWeb.TestEmailTest do
           {"HEAD", @path, "", []},
           {"POST", @path <> ".json", "", []},
           {"POST", @path <> "?locale=de", "", []},
-          {"POST", @path, "_method=post", []},
+          {"POST", @path, "_method=patch", []},
           {"POST", @path, "user_id=460999", []},
           {"POST", @path, "commit=a&commit=b", []},
           {"POST", @path, "commit=%ZZ", []},

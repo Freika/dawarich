@@ -30,7 +30,7 @@ defmodule DawarichWeb.TestEmailGate do
       else: conn
   end
 
-  def owned?(conn, _params), do: eligible?(conn)
+  def owned?(conn, _params), do: Dawarich.Standalone.enabled?() or eligible?(conn)
 
   def context(opts) do
     Keyword.get(opts, :context, %{})
@@ -75,6 +75,12 @@ defmodule DawarichWeb.TestEmailGate do
 
       [accept] when accept in @accepts ->
         if String.starts_with?(accept, "text/vnd.turbo-stream.html"), do: :turbo, else: :html
+
+      [accept] ->
+        case DawarichWeb.PageAccept.formats(accept, false) do
+          ["text/html" | _] -> :html
+          _ -> nil
+        end
 
       _ ->
         nil

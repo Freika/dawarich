@@ -15,6 +15,9 @@ defmodule DawarichWeb.AdminWrites.Fallback do
         is_nil(actor) ->
           conn |> put_resp_header("location", "/users/sign_in") |> send_resp(302, "") |> halt()
 
+        conn.request_path == "/admin/settings" and actor.admin != true ->
+          conn |> send_resp(404, "") |> halt()
+
         context.self_hosted != true and action != :background ->
           refuse(conn, actor)
 
