@@ -57,6 +57,7 @@ defmodule DawarichWeb.RouteVideoRequest do
 
   def fields?(_, _), do: false
 
+  def query_keys(:video_destroy), do: ["_method"]
   def query_keys(_), do: []
   def repeated_keys, do: ["visit_ids[]"]
 end

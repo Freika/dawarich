@@ -82,6 +82,9 @@ defmodule DawarichWeb.A8Request do
     if Enum.all?(query, fn {key, value} ->
          key in allowed and is_binary(value) and
            (not Map.has_key?(params, key) or
+              (request_module(conn) == DawarichWeb.RouteVideoRequest and
+                 action == :video_destroy and conn.method == "POST" and key == "_method" and
+                 value == "delete" and params[key] == value) or
               (request_module(conn) == DawarichWeb.TripRequest and action == :trip_export and
                  key == "file_format"))
        end),

@@ -202,6 +202,89 @@ defmodule DawarichWeb.RouteVideoActionsTest do
     end
   end
 
+  @tag :g44_video_delete
+  test "Turbo gallery deletion repeats the method in query and body and stays deleted after reload",
+       ctx do
+    previous = System.get_env("DAWARICH_RAILS")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    for {mode, blob} <- [{"off", 886_130}, {nil, 886_131}] do
+      if mode,
+        do: System.put_env("DAWARICH_RAILS", mode),
+        else: System.delete_env("DAWARICH_RAILS")
+
+      blob!(blob)
+
+      assert {:ok, %{id: id}} =
+               RouteVideos.create(
+                 ScratchRepo,
+                 ctx.user,
+                 %{
+                   "route_video" => %{
+                     "name" => "Browser gallery",
+                     "file" => RailsMessages.blob_id(blob)
+                   }
+                 },
+                 @now,
+                 "en",
+                 %{max_per_user: 0}
+               )
+
+      video = MapGallery.route_video(ctx.user.id, id, "Europe/Berlin", ScratchRepo)
+      assert RouteVideoStreams.save(video, [], "en") =~ "Download MP4"
+
+      if mode == "off" do
+        for {query, body, token} <- [
+              {"_method=patch", "_method=delete", ctx.token},
+              {"_method=delete&extra=1", "_method=delete", ctx.token},
+              {"_method=delete&_method=delete", "_method=delete", ctx.token},
+              {"_method=delete", "", ctx.token},
+              {"_method=delete", "_method=delete", "invalid"}
+            ] do
+          conn =
+            post_form(
+              ctx.session,
+              body,
+              [
+                {"accept", "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"},
+                {"x-csrf-token", token}
+              ],
+              "/route_videos/#{id}?" <> query
+            )
+
+          assert conn.status in [422, 500]
+          assert MapGallery.route_video(ctx.user.id, id, "Europe/Berlin", ScratchRepo)
+        end
+      end
+
+      conn =
+        post_form(
+          ctx.session,
+          "_method=delete",
+          [
+            {"accept", "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"},
+            {"x-csrf-token", ctx.token}
+          ],
+          "/route_videos/#{id}?_method=delete"
+        )
+
+      assert conn.status == 200
+
+      assert get_resp_header(conn, "content-type") == [
+               "text/vnd.turbo-stream.html; charset=utf-8"
+             ]
+
+      assert conn.resp_body =~ ~s(action="remove" target="route_video_#{id}")
+      assert ScratchRepo.query!("SELECT id FROM route_videos WHERE id=$1", [id]).rows == []
+      refute MapGallery.route_video(ctx.user.id, id, "Europe/Berlin", ScratchRepo)
+    end
+  end
+
   test "unknown or nonstring video zones replay before saving", ctx do
     blob!(886_120)
     upstream = upstream!()
