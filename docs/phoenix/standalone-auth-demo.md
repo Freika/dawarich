@@ -34,5 +34,11 @@ all 12 scenarios plus authentication setup with one worker, zero retries and
 no skipped or flaky tests. The harness supplied `DOMAIN` and JWT configuration,
 and each standalone run passed the source-drain and native-readiness checks.
 
+Browser preparation generates Sprockets manifests in the app worktree. Archive
+that generated asset output before running the native suite: page-envelope
+fixtures expect logical stylesheet URLs when no manifest is present. Keeping
+browser manifests selects valid digested URLs and invalidates those fixture
+assertions. Preserve the browser results and generated output for review.
+
 Rails bugs fixed: none. These changes repair native wiring, failure handling and
 work amplification; no new ED or DRB row is needed.
