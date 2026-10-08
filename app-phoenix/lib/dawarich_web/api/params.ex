@@ -6,7 +6,7 @@ defmodule DawarichWeb.Api.Params do
   alias Dawarich.Distance
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
-  @stamp ~r/\A(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-](\d{2}):(\d{2})))?\z/
+  @stamp ~r/\A(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-](\d{2}):(\d{2}))?)?\z/
   @http ~r/\A(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), (\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT\z/
   @months ~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
   @coordinate ~r/\A-?\d{1,3}(?:\.\d{1,20})?(?:e-\d{1,2})?\z/

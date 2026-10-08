@@ -11,7 +11,7 @@ const globals = {
     constructor(_path, _socket, config) { options = config }
     connect() {}
   },
-  MapShell: {}, RailsStimulus: {}, FamilyPage: {}, meta: () => null,
+  MapShell: {}, RailsStimulus: {}, FamilyPage: {}, VideoStudio: {}, meta: () => null,
   document: { readyState: "loading", addEventListener() {}, querySelectorAll: () => [] },
   window: { addEventListener() {}, setTimeout() {} },
 }
