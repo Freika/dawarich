@@ -72,7 +72,7 @@ defmodule Dawarich.Settings.General do
        else: settings
   end
 
-  defp rebucket(repo, id, opts) do
+  def rebucket(repo, id, opts) do
     months =
       repo.query!(
         "UPDATE stats SET calculation_version=0, repair_deferred_at=$2 WHERE user_id=$1 RETURNING year, month",

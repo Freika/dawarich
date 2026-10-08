@@ -2,7 +2,7 @@ defmodule Dawarich.Admin.SettingWrites do
   @moduledoc false
   alias Dawarich.Auth.RegistrationSetting
   alias Dawarich.Auth.Recovery.Settings
-  alias Dawarich.{Repo, UserSettings}
+  alias Dawarich.{Repo, Transaction, UserSettings}
 
   def registration(actor, params, context) do
     repo = Map.get(context, :repo, Repo)
@@ -20,6 +20,15 @@ defmodule Dawarich.Admin.SettingWrites do
   def background(actor, params, context) do
     repo = Map.get(context, :repo, Repo)
 
+    case Transaction.run(repo, fn -> write_background(actor, params, context, repo) end) do
+      {:ok, result} -> result
+      _ -> {:terminal, :settings}
+    end
+  rescue
+    _ -> {:terminal, :settings}
+  end
+
+  defp write_background(actor, params, context, repo) do
     with {:ok, raw} <- actor(actor, repo, context, false),
          {:ok, settings} <- sanitize(raw, params, context) do
       now = Map.get(context, :clock, &DateTime.utc_now/0).() |> DateTime.to_naive()
@@ -31,7 +40,16 @@ defmodule Dawarich.Admin.SettingWrites do
           log: false
         )
 
-      if result.num_rows == 1, do: {:ok, actor.id}, else: {:terminal, :actor}
+      if result.num_rows == 1 do
+        previous = if is_map(raw), do: raw["timezone"], else: nil
+
+        if previous != settings["timezone"],
+          do: Dawarich.Settings.General.rebucket(repo, actor.id, [])
+
+        {:ok, actor.id}
+      else
+        {:terminal, :actor}
+      end
     end
   end
 
@@ -64,7 +82,7 @@ defmodule Dawarich.Admin.SettingWrites do
       {:ok, settings} ->
         previous = if is_map(raw), do: raw["timezone"], else: nil
 
-        if previous == settings["timezone"],
+        if previous == settings["timezone"] or Dawarich.Standalone.enabled?(),
           do: {:ok, settings},
           else: {:handoff, :timezone_callback}
 
