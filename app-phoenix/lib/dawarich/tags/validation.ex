@@ -121,7 +121,7 @@ defmodule Dawarich.Tags.Validation do
 
   defp number(_), do: :error
 
-  defp messages(errors, locale) do
+  def messages(errors, locale) do
     Enum.map(errors, fn {field, kind, bindings} ->
       key =
         if kind == :ascii_icon,
