@@ -33,13 +33,7 @@ defmodule DawarichWeb.Api.StandaloneMap do
   end
 
   defp run(conn, :progress, _params) do
-    key = "transportation_mode_recalculation:user:#{conn.assigns.api_user.id}"
-
-    case Dawarich.RailsCache.get(key) do
-      :miss -> json(conn, 200, %{status: "idle"})
-      {:ok, value} when is_map(value) -> json(conn, 200, value)
-      _ -> StandaloneError.respond(conn, "standalone_map_progress", 500)
-    end
+    json(conn, 200, Dawarich.Transportation.RecalculationStatus.data(conn.assigns.api_user.id))
   end
 
   defp run(conn, :bounds, params) do

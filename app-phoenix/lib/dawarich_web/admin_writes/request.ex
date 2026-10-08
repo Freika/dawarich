@@ -86,7 +86,7 @@ defmodule DawarichWeb.AdminWrites.Request do
 
   defp fields(:instance) do
     @common ++
-      ["section"] ++
+      ["section", "button"] ++
       Enum.flat_map(Registry.current_definitions(), fn {key, _, kind, _} ->
         ["instance_settings[#{key}]"] ++
           if(kind == :secret, do: ["instance_settings_clear[#{key}]"], else: [])
@@ -147,9 +147,16 @@ defmodule DawarichWeb.AdminWrites.Request do
         &is_nil/1
       )
 
-    get_req_header(conn, "origin") in [[], [RequestURL.base(conn)]] and length(tokens) == 1 and
-      ActionCsrf.valid?(conn.assigns.rails_session, hd(tokens), method, conn.request_path)
+    get_req_header(conn, "origin") in [[], [RequestURL.base(conn)]] and
+      length(get_req_header(conn, "x-csrf-token")) <= 1 and
+      Enum.any?(
+        tokens,
+        &ActionCsrf.valid?(conn.assigns.rails_session, &1, method, conn.request_path)
+      )
   end
+
+  defp read_all(%{private: %{dawarich_raw_body: raw}} = conn, []) when is_binary(raw),
+    do: {:ok, raw, conn}
 
   defp read_all(conn, acc) do
     case read_body(conn, RailsProxy.read_options()) do
