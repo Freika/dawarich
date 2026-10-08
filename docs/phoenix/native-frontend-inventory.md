@@ -298,7 +298,7 @@ Ecto queries per mount:
 
 The first form render used to build its changeset through the Rails validation, which cost one uniqueness query on `/tags/new` and `/tags/:id/edit`; the initial changeset now skips validation (`Tags.change_tag/2`), pinned by `tags_live_form_test.exs` "opening the forms reads the database no more often than the Rails-era pages".
 
-JavaScript loaded after `networkidle` (`tags/assets-budget.spec.js`, three standalone runs on `37d4af083`, identical each time):
+JavaScript loaded after `networkidle` (`tags/assets-budget.spec.js`, the three final standalone lanes on `b3536ead3`, identical each time; same figures on `37d4af083`):
 
 | Route | Script requests | Bytes | Hotwire modules among them |
 | --- | ---: | ---: | ---: |
