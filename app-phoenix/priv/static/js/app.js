@@ -76,6 +76,9 @@ const teardown = () => {
 document.addEventListener("turbo:before-cache", teardown)
 document.addEventListener("turbo:before-render", teardown)
 document.addEventListener("turbo:load", () => {
+  liveSocket.unloaded = false
+  liveSocket.href = window.location.href
+  liveSocket.registerNewLocation(window.location)
   boot()
   liveSocket.connect()
 })
