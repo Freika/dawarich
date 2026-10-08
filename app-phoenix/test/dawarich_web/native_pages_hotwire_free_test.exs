@@ -15,7 +15,9 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     "turbo-frame",
     "turbo-stream",
     "RailsStimulus",
-    "rails_bridge"
+    "rails_bridge",
+    " inert",
+    "data-rails-form-ready"
   ]
 
   setup do
@@ -60,6 +62,11 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       end
 
       assert static =~ "/native/app"
+      assert static =~ ~r/<script[^>]*phx-track-static[^>]*\/native\/app/
+
+      for html <- [static, connected], html =~ ~s(phx-submit="save") do
+        assert html =~ ~r/<button[^>]*type="submit"[^>]*phx-disable-with/, "#{path} submit"
+      end
     end
   end
 end

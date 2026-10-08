@@ -100,6 +100,8 @@ defmodule DawarichWeb.TagsLive.Form do
 
   defp chosen_color(params, _target), do: params
 
+  defp shown_errors(field), do: if(used_input?(field), do: field.errors, else: [])
+
   defp keep_unused_markers(changeset, params) do
     unused = Map.filter(params, fn {key, _} -> String.starts_with?(key, "_unused_") end)
     %{changeset | params: Map.merge(changeset.params || %{}, unused)}

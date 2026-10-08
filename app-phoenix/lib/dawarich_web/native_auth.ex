@@ -33,12 +33,8 @@ defmodule DawarichWeb.NativeAuth do
     end
   end
 
-  defp track_uri(_params, uri, socket) do
-    %URI{path: path, query: query} = URI.parse(uri)
-
-    {:cont,
-     socket
-     |> assign(:request_path, path)
-     |> assign(:query_params, URI.decode_query(query || ""))}
-  end
+  defp track_uri(_params, uri, socket),
+    do:
+      {:cont,
+       assign(socket, :request_path, DawarichWeb.LayoutAssigns.safe_path(URI.parse(uri).path))}
 end

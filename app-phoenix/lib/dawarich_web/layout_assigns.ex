@@ -57,7 +57,7 @@ defmodule DawarichWeb.LayoutAssigns do
   defp create_csrf(%{"_csrf_token" => token}) when is_binary(token), do: %{}
   defp create_csrf(_session), do: %{"_csrf_token" => RailsCsrf.new_token()}
 
-  defp safe_path(path) do
+  def safe_path(path) do
     path
     |> to_string()
     |> String.replace(~r/[^\w\-.~!$&'()*+,;=:@%\/]/, "")

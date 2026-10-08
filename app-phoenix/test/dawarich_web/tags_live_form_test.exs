@@ -263,6 +263,10 @@ defmodule DawarichWeb.TagsLiveFormTest do
 
     {:ok, view, _html} = live_redirect(index, to: "/tags/new")
     assert has_element?(view, "a[href='/tags/new?locale=de']")
+
+    {:ok, view, _html} = live(conn, "http://www.example.com//tags/new")
+    assert has_element?(view, "a[href='/tags/new?locale=de']")
+    refute has_element?(view, "a[href^='//']")
   end
 
   def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)

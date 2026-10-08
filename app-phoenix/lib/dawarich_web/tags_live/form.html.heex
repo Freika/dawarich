@@ -50,7 +50,7 @@
               </div>
               <input type="hidden" name="tag[icon]" id="tag_icon" value={@icon} />
             </div>
-            <.error :for={{message, _} <- @form[:icon].errors}>{message}</.error>
+            <.error :for={{message, _} <- shown_errors(@form[:icon])}>{message}</.error>
             <label class="label">
               <span class="label-text-alt">
                 {t(@locale, "tags.form.click_to_select_an_emoji", %{})}
@@ -103,7 +103,7 @@
               </label>
               <span class="text-sm text-base-content/60">{@color}</span>
             </div>
-            <.error :for={{message, _} <- @form[:color].errors}>{message}</.error>
+            <.error :for={{message, _} <- shown_errors(@form[:color])}>{message}</.error>
             <label class="label">
               <span class="label-text-alt">
                 {t(@locale, "tags.form.choose_from_swatches_or_pick_a_custom_color", %{})}
@@ -156,7 +156,9 @@
             <span class="font-semibold">{@radius}m</span>
             <span>{t(@locale, "units.meters_compact", %{value: 5000})}</span>
           </div>
-          <.error :for={{message, _} <- @form[:privacy_radius_meters].errors}>{message}</.error>
+          <.error :for={{message, _} <- shown_errors(@form[:privacy_radius_meters])}>
+            {message}
+          </.error>
           <label class="label">
             <span class="label-text-alt">
               {t(@locale, "tags.form.data_within_this_radius_will_be_hidden_from_the_map", %{})}
