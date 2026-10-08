@@ -67,7 +67,7 @@ defmodule Dawarich.TagsTest do
     assert {:ok, _} = Tags.create_tag(other, params())
   end
 
-  test "two creates of the same name from separate processes keep one row and report taken", %{
+  test "a second create of the same name from another process keeps one row and reports taken", %{
     scope: scope
   } do
     parent = self()

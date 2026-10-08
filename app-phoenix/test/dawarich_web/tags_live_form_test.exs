@@ -56,9 +56,8 @@ defmodule DawarichWeb.TagsLiveFormTest do
     assert tag_rows(user) == [["Gym", "🏋️", "#ef4444", nil, false]]
   end
 
-  test "the submit button disables while saving and one submit stores one row", %{user: user} do
-    {:ok, view, html} = live_as(user, "/tags/new")
-    assert html =~ ~s(phx-disable-with)
+  test "one submit stores exactly one row", %{user: user} do
+    {:ok, view, _html} = live_as(user, "/tags/new")
 
     view |> form() |> render_submit(%{"tag" => fill(%{})})
     assert length(tag_rows(user)) == 1
@@ -146,6 +145,27 @@ defmodule DawarichWeb.TagsLiveFormTest do
     assert [[_, _, _, nil, _]] = tag_rows(user)
   end
 
+  test "picking a color before typing a name does not complain about the name yet", %{
+    user: user
+  } do
+    {:ok, view, _html} = live_as(user, "/tags/new")
+
+    html =
+      view
+      |> form()
+      |> render_change(%{
+        "_target" => ["tag", "color"],
+        "tag" => %{"name" => "", "_unused_name" => "", "icon" => "🏠", "color" => "#ef4444"}
+      })
+
+    refute html =~ "Name can&#39;t be blank"
+    refute has_element?(view, "#tag-form [role=alert]")
+
+    html = view |> form() |> render_submit(%{"tag" => %{"name" => "", "icon" => "🏠"}})
+    assert html =~ "Name can&#39;t be blank"
+    assert has_element?(view, "#tag-form [role=alert]")
+  end
+
   test "the radius label follows the slider while editing", %{user: user} do
     {:ok, view, _html} = live_as(user, "/tags/new")
 
@@ -215,16 +235,34 @@ defmodule DawarichWeb.TagsLiveFormTest do
     assert static in String.split(list)
   end
 
-  test "values typed before a reconnect come back through form recovery", %{user: user} do
-    {:ok, view, html} = live_as(user, "/tags/new")
-    assert html =~ ~s(id="tag-form")
-    assert html =~ ~s(phx-change="validate")
+  test "opening the new form from the list also starts with a Rails emoji", %{user: user} do
+    {:ok, index, _html} = live_as(user, "/tags")
+    {:ok, view, _html} = live_redirect(index, to: "/tags/new")
 
-    view
-    |> form()
-    |> render_change(%{"_target" => ["tag", "name"], "tag" => fill(%{"name" => "Recovered"})})
+    [icon] =
+      view
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("input[name='tag[icon]']")
+      |> LazyHTML.attribute("value")
 
-    assert has_element?(view, "input[name='tag[name]'][value='Recovered']")
+    source = File.read!(Path.expand("../../../app/helpers/tags_helper.rb", __DIR__))
+    [_, list] = Regex.run(~r/COMMON_TAG_EMOJIS = %w\[(.*?)\]/s, source)
+    assert icon in String.split(list)
+  end
+
+  test "after moving from the list to the form the language switch keeps the user on the form",
+       %{user: user} do
+    conn =
+      RailsUser.signed_in(user.id)
+      |> RailsUser.connecting_as(user.id)
+      |> Plug.Conn.put_req_header("accept-language", "de")
+
+    {:ok, index, _html} = live(conn, "/tags")
+    assert has_element?(index, "a[href='/tags?locale=de']")
+
+    {:ok, view, _html} = live_redirect(index, to: "/tags/new")
+    assert has_element?(view, "a[href='/tags/new?locale=de']")
   end
 
   def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
@@ -256,23 +294,5 @@ defmodule DawarichWeb.TagsLiveFormTest do
       assert_received {:conn, conn}
       assert queries(fn -> {:ok, _view, _html} = live(conn) end) <= budget, path
     end
-  end
-
-  test "the native form has no Stimulus, island or Rails form plumbing", %{user: user} do
-    {:ok, view, page} = live_as(user, "/tags/new")
-    html = view |> form() |> render()
-
-    for marker <- [
-          "data-controller",
-          "data-action",
-          "inert",
-          "data-rails-form-ready",
-          "authenticity_token",
-          "data-turbo"
-        ],
-        do: refute(page =~ marker and html =~ marker, marker)
-
-    assert Regex.scan(~r/phx-update="ignore"/, html) |> length() == 1
-    assert html =~ ~s(phx-hook="EmojiPicker")
   end
 end

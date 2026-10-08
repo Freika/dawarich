@@ -59,7 +59,7 @@ defmodule Dawarich.Tags do
 
   def delete_tag(%Scope{} = scope, raw_id) do
     with {:ok, id} <- parse_id(raw_id),
-         {:ok, %{tag: tag}} <- Writes.destroy(Repo, scope.user, id, ctx(scope)) do
+         {:ok, %{tag: tag}} <- Writes.destroy(Repo, scope.user, id) do
       {:ok, tag}
     else
       _ -> {:error, :not_found}

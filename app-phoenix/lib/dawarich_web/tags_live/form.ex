@@ -15,7 +15,12 @@ defmodule DawarichWeb.TagsLive.Form do
 
   @impl true
   def mount(_params, session, socket),
-    do: {:ok, assign(socket, default_emoji: session["tag_default_emoji"], colors: @colors)}
+    do:
+      {:ok,
+       assign(socket,
+         default_emoji: session["tag_default_emoji"] || DawarichWeb.TagEmoji.random(),
+         colors: @colors
+       )}
 
   @impl true
   def handle_params(params, _uri, socket) do
@@ -55,6 +60,7 @@ defmodule DawarichWeb.TagsLive.Form do
       socket.assigns.current_scope
       |> Tags.change_tag(socket.assigns.tag, params)
       |> Map.put(:action, :validate)
+      |> keep_unused_markers(params)
 
     {:noreply,
      socket |> assign(:privacy, params["privacy_enabled"] == "true") |> assign_form(changeset)}
@@ -94,6 +100,17 @@ defmodule DawarichWeb.TagsLive.Form do
 
   defp chosen_color(params, _target), do: params
 
+  defp keep_unused_markers(changeset, params) do
+    unused = Map.filter(params, fn {key, _} -> String.starts_with?(key, "_unused_") end)
+    %{changeset | params: Map.merge(changeset.params || %{}, unused)}
+  end
+
+  defp submitted_errors(%Changeset{action: action, errors: errors})
+       when action in [:insert, :update],
+       do: Enum.map(errors, fn {_field, {message, _}} -> message end)
+
+  defp submitted_errors(_changeset), do: []
+
   defp assign_form(socket, changeset) do
     color = Changeset.get_field(changeset, :color) || @default_color
     radius = Changeset.get_field(changeset, :privacy_radius_meters)
@@ -104,7 +121,7 @@ defmodule DawarichWeb.TagsLive.Form do
       color: color,
       custom: color not in @colors,
       radius: if(Ruby.blank?(radius), do: "1000", else: radius),
-      errors: Enum.map(changeset.errors, fn {_field, {message, _}} -> message end)
+      errors: submitted_errors(changeset)
     )
   end
 

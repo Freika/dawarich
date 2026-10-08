@@ -41,6 +41,20 @@ defmodule Dawarich.Build.FrontendInventoryTest do
            ]
   end
 
+  test "reports controllers and hooks set through conditional expressions", %{tmp_dir: root} do
+    write!(root, "lib/dawarich_web/shell.ex", """
+    <div data-controller={!@native && "removals"} phx-hook={assigns[:native] && "Dismissible"}>
+    <ul data-controller={if @native, do: nil, else: "notifications clipboard"}>
+    """)
+
+    assert FrontendInventory.scan(root) == [
+             %{file: "lib/dawarich_web/shell.ex", kind: :hook, value: "Dismissible"},
+             %{file: "lib/dawarich_web/shell.ex", kind: :stimulus, value: "clipboard"},
+             %{file: "lib/dawarich_web/shell.ex", kind: :stimulus, value: "notifications"},
+             %{file: "lib/dawarich_web/shell.ex", kind: :stimulus, value: "removals"}
+           ]
+  end
+
   test "finds nothing in Hotwire-free sources", %{tmp_dir: root} do
     write!(
       root,

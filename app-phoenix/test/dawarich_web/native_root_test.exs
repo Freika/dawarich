@@ -4,7 +4,7 @@ defmodule DawarichWeb.NativeRootTest do
 
   alias Dawarich.Accounts.Scope
 
-  defp render_root(extra \\ %{}) do
+  defp render_root(extra) do
     %{
       locale: "en",
       current_user: %{id: 1, theme: "dark"},
@@ -16,27 +16,6 @@ defmodule DawarichWeb.NativeRootTest do
     |> Map.merge(extra)
     |> DawarichWeb.Layouts.native_root()
     |> rendered_to_string()
-  end
-
-  test "the native root loads only the native bundle" do
-    html = render_root()
-
-    assert html =~ ~s(src="/native/app.js")
-    assert html =~ "phx-track-static"
-    refute html =~ "importmap"
-    refute html =~ "/phoenix/js/"
-    refute html =~ "turbo"
-    refute html =~ "i18n-translations"
-    assert html =~ "<main>page</main>"
-  end
-
-  test "the native root keeps both CSRF tokens, the theme and the stylesheets" do
-    html = render_root()
-
-    assert html =~ ~s(<meta name="csrf-token" content="rails-token">)
-    assert html =~ ~s(name="phoenix-csrf-token")
-    assert html =~ ~s(data-theme="dawarich-dark")
-    assert html =~ "tailwind"
   end
 
   test "cloud analytics stay on native pages without Turbo tracking" do

@@ -88,11 +88,6 @@ defmodule DawarichWeb.TagsLiveTest do
     assert row =~ ~r/>\s*1\s*</
     refute html =~ "Foreign secret"
     assert native_clean?(html)
-
-    assert %Dawarich.Accounts.Scope{user: %{id: id}, locale: "en"} =
-             :sys.get_state(view.pid).socket.assigns.current_scope
-
-    assert id == user.id
   end
 
   test "deleting a tag removes the row, its taggings and shows the Rails notice", %{user: user} do

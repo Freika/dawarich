@@ -83,14 +83,6 @@ defmodule DawarichWeb.NativeOnboardingTest do
     assert query(html, "dialog#getting_started form[method=dialog] button") |> Enum.count() >= 1
   end
 
-  test "screen switches happen in the browser with LiveView JS commands" do
-    html = modal(onboarding_user!(), "token")
-
-    for screen <- ["onboarding-import-screen", "onboarding-track-screen"] do
-      assert query(html, "[phx-click*='#{screen}']") |> Enum.count() >= 1
-    end
-  end
-
   test "an account that already has demo data cannot load it again" do
     user = onboarding_user!()
     html = modal(user, "token", %{imports: %{count: 1, demo: true}})

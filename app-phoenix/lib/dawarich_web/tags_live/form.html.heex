@@ -29,13 +29,15 @@
         <.input
           field={@form[:name]}
           label="Name"
+          phx-debounce="300"
           placeholder={t(@locale, "tags.form.home_work_restaurant", %{})}
         />
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="form-control">
-            <label class="label" for="tag_icon">Icon</label>
+            <label class="label" for="tag-icon-toggle">Icon</label>
             <div id="tag-icon-picker" class="relative w-full" phx-hook="EmojiPicker">
               <button
+                id="tag-icon-toggle"
                 type="button"
                 data-emoji-toggle
                 aria-label={t(@locale, "tags.form.click_to_select_an_emoji", %{})}
@@ -147,6 +149,7 @@
             name="tag[privacy_radius_meters]"
             value={@radius}
             class="range range-error"
+            phx-throttle="150"
           />
           <div class="flex justify-between text-xs px-2">
             <span>{t(@locale, "units.meters_compact", %{value: 50})}</span>

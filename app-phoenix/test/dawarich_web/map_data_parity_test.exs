@@ -15,7 +15,7 @@ defmodule DawarichWeb.MapDataParityTest do
     RailsUser
   }
 
-  alias DawarichWeb.{Locale, MapFrames, PointsLive, TagsLive}
+  alias DawarichWeb.{Locale, MapFrames, PointsLive}
   @endpoint DawarichWeb.Endpoint
   @dir "test/fixtures/map_data"
   @points ~w(address_direct address_empty address_foreign address_full address_guest points_asc
@@ -168,39 +168,6 @@ defmodule DawarichWeb.MapDataParityTest do
     render_component(&PointsLive.Index.render/1, assigns)
   end
 
-  defp body(%{"kind" => "tags"}, ctx, _path),
-    do:
-      render_component(&TagsLive.Index.render/1,
-        locale: ctx.locale,
-        tags: Dawarich.TagPages.index(ctx.user),
-        rails_csrf_token: "CSRF"
-      )
-
-  defp body(%{"kind" => "tag_form"} = state, ctx, path) do
-    kind = if path == "/tags/new", do: "new", else: "edit"
-
-    tag =
-      if kind == "new",
-        do: %{id: nil, name: nil, icon: nil, color: nil, privacy_radius_meters: nil},
-        else:
-          elem(
-            Dawarich.TagPages.edit(
-              ctx.user,
-              path |> String.split("/") |> Enum.at(2) |> String.to_integer()
-            ),
-            1
-          )
-
-    render_component(&TagsLive.Form.render/1,
-      locale: ctx.locale,
-      tag: tag,
-      kind: kind,
-      tag_title: DawarichWeb.Translate.t(ctx.locale, "tags.#{kind}.#{kind}_tag", %{}),
-      rails_csrf_token: "CSRF",
-      default_emoji: state["default_icon"]
-    )
-  end
-
   defp body(%{"kind" => kind}, ctx, path) do
     %{plug_opts: action, path_params: params} =
       Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com")
@@ -225,10 +192,6 @@ defmodule DawarichWeb.MapDataParityTest do
       cond do
         fallback ->
           replay(conn, state, rails)
-
-        state["status"] == 404 and state["kind"] == "tag_form" ->
-          {404, headers, body} = assert_error_sent(404, fn -> get(conn, state["path"]) end)
-          %{conn | status: 404, resp_headers: headers, resp_body: body, state: :sent}
 
         true ->
           get(conn, state["path"])
@@ -270,7 +233,7 @@ defmodule DawarichWeb.MapDataParityTest do
       refute conn.private[:dawarich_rails_session_changes], name
 
       if state["status"] == 200 and not fallback and
-           state["kind"] in ["points", "tags", "tag_form"] do
+           state["kind"] == "points" do
         title =
           Map.fetch!(state, "title")
           |> Phoenix.HTML.html_escape()
@@ -327,34 +290,21 @@ defmodule DawarichWeb.MapDataParityTest do
     html
     |> LazyHTML.from_fragment()
     |> LazyHTML.to_tree()
-    |> tag_island()
+    |> island()
     |> ParityHTML.normalize()
   end
 
-  defp tag_island(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &tag_island/1)
+  defp island(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &island/1)
 
-  defp tag_island({"fieldset", attrs, children}) do
+  defp island({"fieldset", attrs, children}) do
     assert Enum.sort(attrs) ==
              Enum.sort([{"disabled", ""}, {"data-rails-form-ready", ""}, {"class", "contents"}])
 
-    tag_island(children)
+    island(children)
   end
 
-  defp tag_island({"div", attrs, children} = node) do
+  defp island({"div", attrs, children} = node) do
     case Map.new(attrs) do
-      %{"id" => "tag-fields-" <> id, "phx-hook" => "RailsStimulus", "phx-update" => "ignore"} ->
-        assert id == "new" or id =~ ~r/\A\d+\z/
-
-        assert Enum.sort(attrs) ==
-                 Enum.sort([
-                   {"id", "tag-fields-" <> id},
-                   {"phx-hook", "RailsStimulus"},
-                   {"phx-update", "ignore"},
-                   {"inert", ""}
-                 ])
-
-        tag_island(children)
-
       %{"id" => "points-page-" <> key, "phx-hook" => "RailsStimulus"} ->
         assert {:ok, _query} = Base.url_decode64(key, padding: false)
 
@@ -367,15 +317,15 @@ defmodule DawarichWeb.MapDataParityTest do
                    {"inert", ""}
                  ])
 
-        tag_island(children)
+        island(children)
 
       _ ->
-        [{elem(node, 0), attrs, tag_island(children)}]
+        [{elem(node, 0), attrs, island(children)}]
     end
   end
 
-  defp tag_island({tag, attrs, children}), do: [{tag, attrs, tag_island(children)}]
-  defp tag_island(node), do: [node]
+  defp island({tag, attrs, children}), do: [{tag, attrs, island(children)}]
+  defp island(node), do: [node]
 
   defp point_checkbox_projection(html),
     do: String.replace(html, ~r/(name="point_ids\[\]" id=")point_ids_\d+(")/, "\\1point_ids_\\2")

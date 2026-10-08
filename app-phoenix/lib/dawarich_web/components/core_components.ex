@@ -9,7 +9,8 @@ defmodule DawarichWeb.CoreComponents do
   attr :rest, :global, include: ~w(placeholder autocomplete min max step)
 
   def input(assigns) do
-    assigns = assign(assigns, :errors, Enum.map(assigns.field.errors, &translate_error/1))
+    errors = if used_input?(assigns.field), do: assigns.field.errors, else: []
+    assigns = assign(assigns, :errors, Enum.map(errors, &translate_error/1))
 
     ~H"""
     <div class="form-control">

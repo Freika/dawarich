@@ -15,25 +15,21 @@ defmodule DawarichWeb.MapDataGate do
       end)
   end
 
-  def tags?(conn, _params) do
+  def segments?(conn, %{"track_id" => id}) do
+    plain_request?(conn) and Regex.match?(~r/\A\d{1,18}\z/, id) and
+      TripsGate.open?(conn, &(TrackSegmentPage.load(&1, String.to_integer(id)) != :rails))
+  end
+
+  def point_address?(conn, %{"id" => id}) do
+    plain_request?(conn) and is_binary(id)
+  end
+
+  defp plain_request?(conn) do
     query = Plug.Conn.Query.decode(conn.query_string)
 
     (conn.query_string == "" or
        (Dawarich.Standalone.enabled?() and
           Enum.all?(query, fn {key, value} -> key in ~w(page commit) and is_binary(value) end))) and
       Plug.Conn.get_req_header(conn, "x-dawarich-client") == []
-  end
-
-  def tag_edit?(conn, %{"id" => id}) do
-    tags?(conn, %{}) and Regex.match?(~r/\A\d{1,18}\z/, id)
-  end
-
-  def segments?(conn, %{"track_id" => id}) do
-    tags?(conn, %{}) and Regex.match?(~r/\A\d{1,18}\z/, id) and
-      TripsGate.open?(conn, &(TrackSegmentPage.load(&1, String.to_integer(id)) != :rails))
-  end
-
-  def point_address?(conn, %{"id" => id}) do
-    tags?(conn, %{}) and is_binary(id)
   end
 end

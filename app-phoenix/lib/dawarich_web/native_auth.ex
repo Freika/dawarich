@@ -2,7 +2,7 @@ defmodule DawarichWeb.NativeAuth do
   @moduledoc false
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [redirect: 2]
+  import Phoenix.LiveView, only: [attach_hook: 4, redirect: 2]
 
   alias Dawarich.Accounts.Scope
 
@@ -21,10 +21,24 @@ defmodule DawarichWeb.NativeAuth do
 
       {:cont, socket} ->
         scope = Scope.for_user(socket.assigns.current_user, socket.assigns.locale)
-        {:cont, socket |> assign(:current_scope, scope) |> assign(:native, true)}
+
+        {:cont,
+         socket
+         |> assign(:current_scope, scope)
+         |> assign(:native, true)
+         |> attach_hook(:native_request_path, :handle_params, &track_uri/3)}
 
       halt ->
         halt
     end
+  end
+
+  defp track_uri(_params, uri, socket) do
+    %URI{path: path, query: query} = URI.parse(uri)
+
+    {:cont,
+     socket
+     |> assign(:request_path, path)
+     |> assign(:query_params, URI.decode_query(query || ""))}
   end
 end

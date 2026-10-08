@@ -149,7 +149,7 @@ defmodule Dawarich.Tags.WritesTest do
 
     for id <- [91951, 999_999] do
       assert :not_found = Writes.update(Repo, ctx.user, id, %{"name" => "Changed"}, ctx.write_ctx)
-      assert :not_found = Writes.destroy(Repo, ctx.user, id, ctx.write_ctx)
+      assert :not_found = Writes.destroy(Repo, ctx.user, id)
       assert state() == before
     end
 
@@ -193,7 +193,7 @@ defmodule Dawarich.Tags.WritesTest do
     places = Repo.query!("SELECT to_jsonb(p)::text FROM places p ORDER BY id").rows
     visits = Repo.query!("SELECT * FROM visits ORDER BY id").rows
 
-    assert {:ok, %{tag: %{id: 91941}}} = Writes.destroy(Repo, ctx.user, 91941, ctx.write_ctx)
+    assert {:ok, %{tag: %{id: 91941}}} = Writes.destroy(Repo, ctx.user, 91941)
     assert Repo.query!("SELECT id FROM tags ORDER BY id").rows == [[91942], [91951]]
     assert Repo.query!("SELECT id FROM taggings ORDER BY id").rows == [[919_414], [919_415]]
     assert Repo.query!("SELECT to_jsonb(p)::text FROM places p ORDER BY id").rows == places

@@ -87,7 +87,7 @@ defmodule DawarichWeb.MapWritesParityTest do
           case action do
             :tag_create -> Dawarich.Tags.Writes.create(Repo, user, attrs, ctx)
             :tag_update -> Dawarich.Tags.Writes.update(Repo, user, elem(id, 0), attrs, ctx)
-            :tag_destroy -> Dawarich.Tags.Writes.destroy(Repo, user, elem(id, 0), ctx)
+            :tag_destroy -> Dawarich.Tags.Writes.destroy(Repo, user, elem(id, 0))
           end
         else
           :rails

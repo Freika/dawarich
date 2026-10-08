@@ -305,7 +305,7 @@ JavaScript loaded after `networkidle` (`tags/assets-budget.spec.js`, the three f
 | `/tags` | 1 | 153,750 | 0 |
 | `/tags/new` | 1 | 153,750 | 0 |
 
-emoji-mart is a separate chunk that loads only when the picker opens, so it is not part of the `/tags/new` figure.
+emoji-mart is a separate chunk that loads only when the picker opens, so it is not part of the `/tags/new` figure. `/tags/:id/edit` renders the same LiveView, root layout and bundle as `/tags/new` and is not measured separately (neither in the baseline nor after).
 
 ## Removed Tags tests and their behaviour replacements
 

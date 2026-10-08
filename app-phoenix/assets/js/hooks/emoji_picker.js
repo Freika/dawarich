@@ -24,23 +24,31 @@ export const EmojiPicker = {
     this.container.hidden = false
     document.addEventListener("click", this.outside)
     document.addEventListener("keydown", this.escape)
-    if (this.picker) return
-    loadPicker().then(({ Picker, data }) => {
-      if (this.destroyedAlready) return
-      this.picker = new Picker({
-        data,
-        onEmojiSelect: (emoji) => this.select(emoji.native),
-        theme: document.documentElement.dataset.theme?.endsWith("dark")
-          ? "dark"
-          : "light",
-        previewPosition: "none",
-        skinTonePosition: "search",
-        maxFrequentRows: 2,
-        perLine: 8,
-        navPosition: "bottom",
+    if (this.picker || this.loading) return
+    this.loading = loadPicker()
+      .then(({ Picker, data }) => {
+        if (this.destroyedAlready) return
+        this.picker = new Picker({
+          data,
+          onEmojiSelect: (emoji) => this.select(emoji.native),
+          theme: document.documentElement.dataset.theme?.endsWith("dark")
+            ? "dark"
+            : "light",
+          previewPosition: "none",
+          skinTonePosition: "search",
+          maxFrequentRows: 2,
+          perLine: 8,
+          navPosition: "bottom",
+        })
+        this.container.appendChild(this.picker)
       })
-      this.container.appendChild(this.picker)
-    })
+      .catch((error) => {
+        console.error(error)
+        this.close()
+      })
+      .finally(() => {
+        this.loading = null
+      })
   },
   close() {
     this.container.hidden = true

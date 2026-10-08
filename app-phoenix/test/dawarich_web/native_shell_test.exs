@@ -111,11 +111,6 @@ defmodule DawarichWeb.NativeShellTest do
     assert query(notice, "#flash-messages [role=alert] button[phx-click]") |> Enum.count() == 1
   end
 
-  test "the hybrid flash keeps its current markup" do
-    hybrid = render_component(&Chrome.flash/1, locale: "en", flash: %{"notice" => "Saved"})
-    assert hybrid =~ ~s(data-controller="removals")
-  end
-
   test "core input renders its label, value and every error" do
     form =
       Phoenix.Component.to_form(%{"name" => "Home"},
@@ -129,12 +124,5 @@ defmodule DawarichWeb.NativeShellTest do
     assert query(html, "input[name='tag[name]']") |> LazyHTML.attribute("value") == ["Home"]
     assert html =~ "is bad"
     assert html =~ "is taken"
-  end
-
-  test "core button forwards phx-disable-with" do
-    html =
-      render_component(&CoreComponents.button/1, inner_block: [], "phx-disable-with": "Saving…")
-
-    assert html =~ ~s(phx-disable-with="Saving…")
   end
 end

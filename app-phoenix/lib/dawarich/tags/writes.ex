@@ -50,7 +50,7 @@ defmodule Dawarich.Tags.Writes do
     end)
   end
 
-  def destroy(repo, user, id, _ctx) do
+  def destroy(repo, user, id) do
     transaction(repo, fn ->
       tag = owned!(repo, user.id, id)
       repo.query!("DELETE FROM public.taggings WHERE tag_id=$1", [tag.id])

@@ -166,6 +166,7 @@ export const AchievementUnlocks = {
   },
 
   acknowledge() {
+    if (this.stopped) return Promise.resolve(false)
     if (!this.current?.token) return Promise.resolve(true)
     if (!canReveal()) {
       this.ackTimer = setTimeout(() => this.acknowledge(), 1000)
@@ -176,7 +177,7 @@ export const AchievementUnlocks = {
     const url = this.el.dataset.seenUrl.replace("__ID__", String(item.id))
     this.ackPromise = post(url, { claim_token: item.token })
       .then((response) => {
-        if (!response.ok)
+        if (!response.ok && response.status !== 409)
           throw new Error(`Unlock acknowledgement failed: ${response.status}`)
         item.token = null
         this.saved = null
@@ -185,7 +186,8 @@ export const AchievementUnlocks = {
       })
       .catch((error) => {
         console.error(error)
-        this.retryTimer = setTimeout(() => this.acknowledge(), 5000)
+        if (!this.stopped)
+          this.retryTimer = setTimeout(() => this.acknowledge(), 5000)
         return false
       })
       .finally(() => {

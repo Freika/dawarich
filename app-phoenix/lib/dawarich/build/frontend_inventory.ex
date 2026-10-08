@@ -5,8 +5,8 @@ defmodule Dawarich.Build.FrontendInventory do
   @tests ["test/**/*.exs"]
 
   @patterns [
-    stimulus: ~r/data-controller(?:=|"\s*=>\s*|=\{)"([^"]+)"/,
-    hook: ~r/phx-hook(?:=|=\{)"([A-Za-z0-9_.]+)"/,
+    stimulus: ~r/data-controller(?:=|"\s*=>\s*)(?:"([^"]+)"|\{([^}]*)\})/,
+    hook: ~r/phx-hook=(?:"([A-Za-z0-9_.]+)"|\{([^}]*)\})/,
     turbo: ~r/\b(data-turbo[a-z-]*|turbo-frame|turbo-stream)\b/,
     action_cable: ~r/\b(createConsumer|ActionCable)\b/,
     action_text: ~r/(@rails\/actiontext|\btrix\b)/,
@@ -36,10 +36,19 @@ defmodule Dawarich.Build.FrontendInventory do
     file = Path.relative_to(path, root)
 
     for {kind, regex} <- patterns,
-        [_, captured] <- Regex.scan(regex, text),
-        value <- values(kind, captured),
+        [_ | groups] <- Regex.scan(regex, text),
+        captured <- Enum.reject(groups, &(&1 == "")),
+        literal <- literals(captured),
+        value <- values(kind, literal),
         uniq: true,
         do: %{file: file, kind: kind, value: value}
+  end
+
+  defp literals(captured) do
+    case Regex.scan(~r/"([^"]+)"/, captured, capture: :all_but_first) do
+      [] -> [captured]
+      quoted -> List.flatten(quoted)
+    end
   end
 
   defp values(:stimulus, captured), do: String.split(captured)
