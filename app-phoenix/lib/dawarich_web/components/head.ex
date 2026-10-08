@@ -51,6 +51,7 @@ defmodule DawarichWeb.Head do
     """
 
   attr :self_hosted, :boolean, required: true
+  attr :native, :boolean, default: false
 
   def head_scripts(assigns) do
     assigns =
@@ -64,7 +65,10 @@ defmodule DawarichWeb.Head do
 
     ~H"""
     <%= if System.get_env("POSTHOG_ENABLED") == "true" do %>
-      <script src={DawarichWeb.Assets.stylesheet_path("posthog.js")} data-turbo-track="reload">
+      <script
+        src={DawarichWeb.Assets.stylesheet_path("posthog.js")}
+        data-turbo-track={if !@native, do: "reload"}
+      >
       </script>
     <% end %>
     <%= unless @self_hosted do %>

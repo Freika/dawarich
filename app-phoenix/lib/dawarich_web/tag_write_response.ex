@@ -53,7 +53,7 @@ defmodule DawarichWeb.TagWriteResponse do
         page_title: nil,
         tag_title: Translate.t(ctx.locale, "tags.#{kind}.#{kind}_tag", %{}),
         tag_errors: invalid.errors,
-        default_emoji: Map.get_lazy(ctx, :default_emoji, &Form.default_emoji/0),
+        default_emoji: Map.get_lazy(ctx, :default_emoji, &DawarichWeb.TagEmoji.random/0),
         navbar:
           Navbar.load(conn.assigns.current_user,
             now: ctx.now,

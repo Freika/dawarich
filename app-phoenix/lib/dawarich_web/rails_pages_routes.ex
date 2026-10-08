@@ -10,7 +10,7 @@ defmodule DawarichWeb.RailsPagesRoutes do
         get "/imports/:id/download", DawarichWeb.ImportsDownload, :show, metadata: @native_import
 
         live_session :rails_pages,
-          session: {DawarichWeb.TagsLive.Form, :live_session, []},
+          session: {DawarichWeb.NativeAuth, :live_session, []},
           on_mount: DawarichWeb.LiveAuth,
           root_layout: {DawarichWeb.Layouts, :root},
           layout: {DawarichWeb.Layouts, :app} do

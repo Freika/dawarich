@@ -4,29 +4,6 @@ defmodule DawarichWeb.TagsLive.Form do
   alias Dawarich.TagPages
   alias DawarichWeb.TagForm
 
-  @emojis ~w(
-    🏠 🏢 🏫 🏥 🏪 🏨 🏦 🏛️ 🏟️ 🏖️
-    ⛪ 🕌 🕍 ⛩️ 🗼 🗽 🗿 💒 🏰 🏯
-    🍕 🍔 🍟 🍣 🍱 🍜 🍝 🍛 🥘 🍲
-    ☕ 🍺 🍷 🥂 🍹 🍸 🥃 🍻 🥤 🧃
-    🏃 ⚽ 🏀 🏈 ⚾ 🎾 🏐 🏓 🏸 🏒
-    🚗 🚕 🚙 🚌 🚎 🏎️ 🚓 🚑 🚒 🚐
-    ✈️ 🚁 ⛵ 🚤 🛥️ ⛴️ 🚂 🚆 🚇 🚊
-    🎭 🎪 🎨 🎬 🎤 🎧 🎼 🎹 🎸 🎺
-    📚 📖 ✏️ 🖊️ 📝 📋 📌 📍 🗺️ 🧭
-    💼 👔 🎓 🏆 🎯 🎲 🎮 🎰 🛍️ 💍
-  )
-
-  def default_emoji, do: Enum.random(@emojis)
-
-  def live_session(conn) do
-    session = DawarichWeb.RailsAuth.live_session(conn)
-
-    if conn.request_path == "/tags/new",
-      do: Map.put(session, "tag_default_emoji", default_emoji()),
-      else: session
-  end
-
   @impl true
   def mount(_params, session, socket),
     do: {:ok, assign(socket, default_emoji: session["tag_default_emoji"])}
