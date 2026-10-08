@@ -12,6 +12,9 @@ defmodule DawarichWeb.OnboardingModal do
   attr :base_url, :string, required: true
   attr :rails_csrf_token, :string, default: nil
   attr :auto_open, :boolean, default: false
+  attr :native, :boolean, default: false
+
+  def onboarding_modal(%{native: true} = assigns), do: DawarichWeb.NativeOnboarding.modal(assigns)
 
   def onboarding_modal(assigns) do
     %{current_user: user, navbar: %{family: family}} = assigns

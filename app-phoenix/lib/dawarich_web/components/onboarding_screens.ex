@@ -104,12 +104,21 @@ defmodule DawarichWeb.OnboardingScreens do
   attr :locale, :string, required: true
   attr :base_url, :string, required: true
   attr :current_user, :map, required: true
+  attr :native, :boolean, default: false
 
   def track_screen(assigns) do
     ~H"""
-    <div data-onboarding-modal-target="trackScreen" class="hidden">
+    <div
+      data-onboarding-modal-target={!@native && "trackScreen"}
+      id={@native && "onboarding-track-screen"}
+      class="hidden"
+    >
       <div class="flex items-center gap-2 mb-4">
-        <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
+        <button
+          class="btn btn-ghost btn-sm btn-circle"
+          data-action={!@native && "onboarding-modal#showChoice"}
+          phx-click={@native && DawarichWeb.NativeOnboarding.show("onboarding-choice-screen")}
+        >
           <Icon.icon name="arrow-left" class="w-4 h-4" />
         </button>
         <h3 class="text-xl font-bold">{tm(@locale, "start_tracking")}</h3>
@@ -174,12 +183,27 @@ defmodule DawarichWeb.OnboardingScreens do
           </p>
           <p class="text-xs text-base-content/60">
             {tm(@locale, "have_old_location_history_like_a_google_takeout_tracking_works")}
-            <button type="button" class="link link-primary" data-action="onboarding-modal#showImport">{tm(@locale, "import_your_history_anytime")}</button>.
+            <button
+              type="button"
+              class="link link-primary"
+              data-action={!@native && "onboarding-modal#showImport"}
+              phx-click={
+                @native &&
+                  DawarichWeb.NativeOnboarding.show(
+                    "onboarding-import-screen",
+                    "onboarding_import_selected"
+                  )
+              }
+            >{tm(@locale, "import_your_history_anytime")}</button>.
           </p>
         </div>
       </div>
       <div class="flex justify-end mt-4">
-        <button class="btn btn-primary" data-action="onboarding-modal#dismiss">
+        <button
+          class="btn btn-primary"
+          data-action={!@native && "onboarding-modal#dismiss"}
+          form={@native && "onboarding-dismiss"}
+        >
           {tm(@locale, "got_it_let_s_start")}
         </button>
       </div>

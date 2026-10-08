@@ -728,3 +728,9 @@ source debt or weaken Cloud lifecycle refusal.
 | ED-FIX-BODY-BUDGET | Native API request bodies | Puma/Rack accept a JSON, form or multipart body of any size and materialize non-file bodies in memory. | Non-multipart bodies over `DAWARICH_MAX_REQUEST_BODY_BYTES` (default 8 MiB, counted from bytes actually read, chunked included) and multipart bodies over `DAWARICH_MAX_MULTIPART_BODY_BYTES` (default 256 MiB) get 413 `{"status":413,"error":"Content Too Large"}` (plain text for non-JSON clients); multipart raw bytes are retained in memory only up to 2 MiB, files stream to disk. Largest recorded batch fixture is 1.3 MB (2001 points); the mobile app sends 100 points per request; the import intake keeps its own 100 MiB `file_too_large` answer below the multipart budget. | Eugene 2026-10-08 (framework-practices review finding 1) |
 | ED-FIX-NATIVE-ERROR-CAPTURE | Unexpected exceptions in native API requests | Rails reports unhandled controller exceptions to Sentry and renders 500. | Native transport now reports the exception once with its stacktrace (surface `web`, scrubbed by the shared redactor) before rendering the same 500; previously it rendered 500 without reporting. | Eugene 2026-10-08 |
 
+## Native frontend (ADR-0017)
+
+| ID | Surface | Rails | Phoenix | Evidence / authority |
+| --- | --- | --- | --- | --- |
+| ED-NATIVE-ONBOARDING-IMPORT | Onboarding modal "I have data" step on native pages | The step embeds the ActiveStorage direct-upload import form (`app/views/map/_onboarding_modal.html.erb`, `upload_controller.js`). | On native pages the step lists the supported formats and links to `/imports/new`; uploading happens on the imports page. Hybrid pages keep the embedded form until imports migrate (milestone 4). | Eugene 2026-10-08, ADR-0017 |
+

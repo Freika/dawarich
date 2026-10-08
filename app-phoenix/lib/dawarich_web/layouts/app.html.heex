@@ -57,6 +57,7 @@
     locale={@locale}
     base_url={assigns[:base_url] || ""}
     rails_csrf_token={@rails_csrf_token}
+    native={assigns[:native] == true}
   />
   <.achievement_host user_id={@current_user.id} />
 <% end %>
