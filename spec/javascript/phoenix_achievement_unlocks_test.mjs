@@ -59,9 +59,9 @@ test("a failure that lands after the hook is destroyed schedules no retry", asyn
   const { hook, timers } = fixture(
     t,
     () =>
-      new Promise(
-        (resolve) => (fail = () => resolve({ ok: false, status: 500 })),
-      ),
+      new Promise((resolve) => {
+        fail = () => resolve({ ok: false, status: 500 })
+      }),
   )
 
   const pending = hook.acknowledge()
