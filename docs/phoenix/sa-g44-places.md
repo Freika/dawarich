@@ -61,3 +61,13 @@ reported unchanged for controller correction, so complete standalone browser
 acceptance remains blocked. Every lane uses one worker and zero retries, with
 zero skipped or flaky cases. The final caller batch passes 35 tests. Exact
 browser and full-suite evidence is in the task execution report.
+
+
+The single full seed-404 gate completed with 9,898 tests and three layout
+assertion failures caused by generated browser asset manifests selecting
+fingerprinted CSS paths. Moving that generated asset state aside restores the
+ordinary test URLs: the unchanged layout and places batch passes 21 tests.
+Keep generated browser manifests/assets aside for ExUnit layout gates and
+restore them for browser runs. A passing full-gate rerun remains pending
+controller authorization under the one-run limit; targeted proof does not
+replace that gate.
