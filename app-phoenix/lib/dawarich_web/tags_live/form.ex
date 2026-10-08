@@ -1,65 +1,118 @@
 defmodule DawarichWeb.TagsLive.Form do
   @moduledoc false
   use DawarichWeb, :live_view
-  alias Dawarich.TagPages
-  alias DawarichWeb.TagForm
+  use DawarichWeb, :verified_routes
+
+  import DawarichWeb.CoreComponents
+  import DawarichWeb.Icon, only: [icon: 1]
+
+  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+  alias Dawarich.Tags
+  alias Ecto.Changeset
+
+  @colors ~w(#ef4444 #f97316 #f59e0b #eab308 #84cc16 #22c55e #10b981 #14b8a6 #06b6d4 #0ea5e9 #3b82f6 #6366f1 #8b5cf6 #a855f7 #d946ef #ec4899 #f43f5e #64748b)
+  @default_color "#6ab0a4"
 
   @impl true
   def mount(_params, session, socket),
-    do: {:ok, assign(socket, default_emoji: session["tag_default_emoji"])}
+    do: {:ok, assign(socket, default_emoji: session["tag_default_emoji"], colors: @colors)}
 
   @impl true
   def handle_params(params, _uri, socket) do
+    scope = socket.assigns.current_scope
+
+    tag =
+      case socket.assigns.live_action do
+        :new ->
+          %{Tags.new_tag() | icon: socket.assigns.default_emoji, color: @default_color}
+
+        :edit ->
+          case Tags.get_tag(scope, params["id"]) do
+            {:ok, tag} -> with_defaults(tag)
+            {:error, :not_found} -> raise DawarichWeb.NotFoundError
+          end
+      end
+
+    kind = if tag.id, do: "edit", else: "new"
+
+    {:noreply,
+     socket
+     |> assign(
+       tag: tag,
+       kind: kind,
+       page_title: nil,
+       privacy: not is_nil(tag.privacy_radius_meters)
+     )
+     |> assign(:tag_title, t(socket.assigns.locale, "tags.#{kind}.#{kind}_tag", %{}))
+     |> assign_form(Tags.change_tag(scope, tag, %{}))}
+  end
+
+  @impl true
+  def handle_event("validate", %{"tag" => params} = event, socket) do
+    params = chosen_color(params, event["_target"])
+
+    changeset =
+      socket.assigns.current_scope
+      |> Tags.change_tag(socket.assigns.tag, params)
+      |> Map.put(:action, :validate)
+
+    {:noreply,
+     socket |> assign(:privacy, params["privacy_enabled"] == "true") |> assign_form(changeset)}
+  end
+
+  def handle_event("save", %{"tag" => params}, socket) do
+    scope = socket.assigns.current_scope
+
     result =
-      if socket.assigns.live_action == :new,
-        do: {:ok, %{id: nil, name: nil, icon: nil, color: nil, privacy_radius_meters: nil}},
-        else: TagPages.edit(socket.assigns.current_user, String.to_integer(params["id"]))
+      if socket.assigns.tag.id,
+        do: Tags.update_tag(scope, socket.assigns.tag, params),
+        else: Tags.create_tag(scope, params)
 
     case result do
-      {:ok, tag} ->
-        kind = if tag.id, do: "edit", else: "new"
-        title = t(socket.assigns.locale, "tags.#{kind}.#{kind}_tag", %{})
-        {:noreply, assign(socket, tag: tag, kind: kind, tag_title: title, page_title: nil)}
+      {:ok, _tag} ->
+        kind = if socket.assigns.tag.id, do: "updated", else: "created"
 
-      :not_found ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :notice,
+           t(socket.assigns.locale, "controllers.tags.tag_was_successfully_#{kind}", %{})
+         )
+         |> push_navigate(to: ~p"/tags")}
+
+      {:error, %Changeset{} = changeset} ->
+        {:noreply,
+         socket |> assign(:privacy, params["privacy_enabled"] == "true") |> assign_form(changeset)}
+
+      {:error, :not_found} ->
         raise DawarichWeb.NotFoundError
     end
   end
 
-  @impl true
-  def render(assigns), do: page(assigns)
+  defp chosen_color(params, ["tag", "custom_color"]),
+    do: Map.put(params, "color", params["custom_color"])
 
-  def page(assigns) do
-    assigns = Map.put_new(assigns, :tag_errors, [])
+  defp chosen_color(params, _target), do: params
 
-    ~H"""
-    <div class="container mx-auto px-4 py-8 max-w-2xl">
-      <div class="mb-6">
-        <h1 class="text-3xl font-bold">{@tag_title}</h1>
-        <p class="text-gray-600 mt-2">
-          {t(
-            @locale,
-            "tags.#{@kind}." <>
-              if(@kind == "new",
-                do: "create_a_new_tag_to_organize_your_places",
-                else: "update_your_tag_details"
-              ),
-            %{}
-          )}
-        </p>
-      </div>
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <TagForm.form
-            locale={@locale}
-            tag={@tag}
-            csrf={@rails_csrf_token}
-            emoji={@default_emoji}
-            errors={@tag_errors}
-          />
-        </div>
-      </div>
-    </div>
-    """
+  defp assign_form(socket, changeset) do
+    color = Changeset.get_field(changeset, :color) || @default_color
+    radius = Changeset.get_field(changeset, :privacy_radius_meters)
+
+    assign(socket,
+      form: to_form(changeset, as: :tag, id: "tag-form"),
+      icon: Changeset.get_field(changeset, :icon),
+      color: color,
+      custom: color not in @colors,
+      radius: if(Ruby.blank?(radius), do: "1000", else: radius),
+      errors: Enum.map(changeset.errors, fn {_field, {message, _}} -> message end)
+    )
+  end
+
+  defp with_defaults(tag) do
+    %{
+      tag
+      | icon: if(Ruby.blank?(tag.icon), do: "🏠", else: tag.icon),
+        color: if(Ruby.blank?(tag.color), do: @default_color, else: tag.color)
+    }
   end
 end

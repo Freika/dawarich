@@ -40,7 +40,6 @@ defmodule DawarichWeb.Strangler do
     "/trips/:trip_id/notes" => %{"trip_id" => ~r/\A\d{1,18}\z/},
     "/trips/:trip_id/notes/:id" => %{"trip_id" => ~r/\A\d{1,18}\z/, "id" => ~r/\A\d{1,18}\z/},
     "/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},
-    "/tags/:id/edit" => %{"id" => ~r/\A\d{1,18}\z/},
     "/tags/:id" => %{"id" => ~r/\A[1-9]\d{0,17}\z/},
     "/tracks/:track_id/segments/:id" => %{
       "track_id" => ~r/\A[1-9]\d{0,17}\z/,

@@ -26,7 +26,7 @@ defmodule DawarichWeb.PageRoutesTest do
       assert opts[:container] == {:div, class: "contents"}
 
       session_module =
-        if session == :rails_pages, do: DawarichWeb.TagsLive.Form, else: DawarichWeb.RailsAuth
+        if session == :rails_pages, do: DawarichWeb.NativeAuth, else: DawarichWeb.RailsAuth
 
       assert extra.session == {session_module, :live_session, []}
       assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.LiveAuth, :default}]

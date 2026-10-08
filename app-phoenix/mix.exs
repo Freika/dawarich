@@ -34,6 +34,7 @@ defmodule Dawarich.MixProject do
       {:bcrypt_elixir, "~> 3.3.2"},
       {:phoenix, "~> 1.8.1"},
       {:phoenix_html, "~> 4.2"},
+      {:phoenix_ecto, "~> 4.6"},
       {:phoenix_live_view, "~> 1.1"},
       {:lazy_html, "~> 0.1.0"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},

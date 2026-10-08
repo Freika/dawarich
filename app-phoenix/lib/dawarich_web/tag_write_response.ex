@@ -1,9 +1,7 @@
 defmodule DawarichWeb.TagWriteResponse do
   @moduledoc false
   import Plug.Conn
-  alias Dawarich.Navbar
-  alias DawarichWeb.{LayoutAssigns, Layouts, Locale, RailsSession, RequestURL, Translate}
-  alias DawarichWeb.TagsLive.Form
+  alias DawarichWeb.{RailsSession, RequestURL, Translate}
 
   def prepare(conn, action, outcome, ctx) do
     case outcome do
@@ -31,42 +29,5 @@ defmodule DawarichWeb.TagWriteResponse do
     {:ok, %{conn: conn, status: if(action == :tag_destroy, do: 303, else: 302), body: ""}}
   end
 
-  defp form(conn, invalid, ctx) do
-    conn = %{conn | params: conn.assigns.api_params}
-
-    conn =
-      conn
-      |> fetch_query_params()
-      |> Locale.call([])
-      |> LayoutAssigns.call([])
-      |> assign(:now, ctx.now)
-
-    tag = Map.put_new(invalid.tag, :id, nil)
-    kind = if tag.id, do: "edit", else: "new"
-
-    assigns =
-      Map.merge(conn.assigns, %{
-        __changed__: nil,
-        flash: %{},
-        tag: tag,
-        kind: kind,
-        page_title: nil,
-        tag_title: Translate.t(ctx.locale, "tags.#{kind}.#{kind}_tag", %{}),
-        tag_errors: invalid.errors,
-        default_emoji: Map.get_lazy(ctx, :default_emoji, &DawarichWeb.TagEmoji.random/0),
-        navbar:
-          Navbar.load(conn.assigns.current_user,
-            now: ctx.now,
-            self_hosted: conn.assigns.self_hosted
-          )
-      })
-
-    body = Form.page(assigns)
-    app = Layouts.app(Map.put(assigns, :inner_content, body))
-    html = Layouts.root(Map.put(assigns, :inner_content, app)) |> Phoenix.HTML.Safe.to_iodata()
-    changes = Map.get(conn.private, :dawarich_rails_session_changes, %{})
-    conn = if changes == %{}, do: conn, else: RailsSession.put(conn, changes)
-    conn = conn |> put_resp_content_type("text/html") |> put_resp_header("vary", "Accept")
-    {:ok, %{conn: conn, status: 422, body: html}}
-  end
+  defp form(_conn, _invalid, _ctx), do: :rails
 end

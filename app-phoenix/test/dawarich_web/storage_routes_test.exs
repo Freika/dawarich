@@ -151,7 +151,7 @@ defmodule DawarichWeb.StorageRoutesTest do
 
   test "route extraction preserves every existing LiveView session" do
     for path <-
-          ~w(/notifications /notifications/17 /imports/new /imports/17 /imports/17/edit /imports /exports /stats /stats/2024 /stats/2024/2 /digests /digests/2024 /trips /trips/17 /places /points /tags /tags/new /tags/17/edit /settings/general /settings/visits /settings/integrations /users/edit /insights) do
+          ~w(/notifications /notifications/17 /imports/new /imports/17 /imports/17/edit /imports /exports /stats /stats/2024 /stats/2024/2 /digests /digests/2024 /trips /trips/17 /places /points /settings/general /settings/visits /settings/integrations /users/edit /insights) do
       route =
         Phoenix.Router.route_info(
           DawarichWeb.Router,
@@ -167,6 +167,24 @@ defmodule DawarichWeb.StorageRoutesTest do
       assert extra.layout == {DawarichWeb.Layouts, :app}
       assert extra.root_layout == {DawarichWeb.Layouts, :root}
       assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.LiveAuth, :default}]
+    end
+  end
+
+  test "tag pages live in the native live_session" do
+    for path <- ~w(/tags /tags/new /tags/17/edit) do
+      route =
+        Phoenix.Router.route_info(
+          DawarichWeb.Router,
+          "GET",
+          String.split(path, "/", trim: true),
+          "www.example.com"
+        )
+
+      assert route.pipe_through == [:browser, :rails_user]
+      assert {_, _, _opts, %{name: :native_pages, extra: extra}} = route.phoenix_live_view
+      assert extra.root_layout == {DawarichWeb.Layouts, :native_root}
+      assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.NativeAuth, :require_user}]
+      refute Map.has_key?(route, :rails_gate)
     end
   end
 

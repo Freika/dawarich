@@ -2,11 +2,10 @@ defmodule DawarichWeb.TagsLiveTest do
   use Dawarich.JobsCase, async: false
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
-  import Dawarich.Test.FormIsolation
   import Plug.Conn
   alias Dawarich.Repo
   alias Dawarich.Test.{FrameSeeds, RailsUser}
-  alias DawarichWeb.{MapDataGate, Router}
+  alias DawarichWeb.Router
 
   @endpoint DawarichWeb.Endpoint
 
@@ -37,9 +36,6 @@ defmodule DawarichWeb.TagsLiveTest do
 
     live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
   end
-
-  defp attr(html, selector, name),
-    do: html |> LazyHTML.from_fragment() |> LazyHTML.query(selector) |> LazyHTML.attribute(name)
 
   defp place_tagging!(user, tag_id, place_id) do
     FrameSeeds.place!(user.id, place_id, "Synthetic")
@@ -191,111 +187,7 @@ defmodule DawarichWeb.TagsLiveTest do
     assert conn.resp_body =~ "turbo-visit-control"
   end
 
-  test "new form defaults come from the Rails emoji set and are stable within a mount", %{
-    user: user
-  } do
-    assert %{plug: Phoenix.LiveView.Plug} =
-             Phoenix.Router.route_info(Router, "GET", "/tags/new", "localhost")
-
-    conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/tags/new")
-    static_emoji = attr(conn.resp_body, "input[name='tag[icon]']", "value")
-    assert_form_isolated(conn.resp_body, "form.space-y-4")
-    {:ok, view, html} = live(conn)
-    assert_form_isolated(html, "form.space-y-4")
-    [emoji] = attr(html, "input[name='tag[icon]']", "value")
-    source = File.read!(Path.expand("../../../app/helpers/tags_helper.rb", __DIR__))
-    [_, list] = Regex.run(~r/COMMON_TAG_EMOJIS = %w\[(.*?)\]/s, source)
-    assert emoji in String.split(list)
-    assert static_emoji == [emoji]
-    assert attr(render(view), "input[name='tag[icon]']", "value") == [emoji]
-    assert attr(html, "input[name='tag[color]']", "value") == ["#6ab0a4"]
-    assert attr(html, "form.space-y-4", "action") == ["/tags"]
-    assert attr(html, "form.space-y-4 input[name='_method']", "value") == []
-    assert attr(html, "#tag-fields-new[phx-hook='RailsStimulus']", "phx-update") == ["ignore"]
-  end
-
-  test "edit form preserves exact Rails field names methods and blank defaults", %{user: user} do
-    tag!(user, 83921, %{icon: "", color: "", demo: true})
-    {:ok, _view, html} = live_as(user, "/tags/83921/edit")
-    assert_form_isolated(html, "form.space-y-4")
-    assert attr(html, "form.space-y-4", "action") == ["/tags/83921"]
-    assert attr(html, "form.space-y-4", "method") == ["post"]
-    assert attr(html, "form.space-y-4 input[name='_method']", "value") == ["patch"]
-    assert attr(html, "input[name='tag[name]']", "value") == ["Home & <café>"]
-    assert attr(html, "input[name='tag[icon]']", "value") == ["🏠"]
-    assert attr(html, "input[name='tag[color]']", "value") == ["#6ab0a4"]
-
-    assert attr(html, "input[name='tag[privacy_radius_meters]']", "id") == [
-             "tag_privacy_radius_meters"
-           ]
-
-    assert length(attr(html, "form.space-y-4 input[name='authenticity_token']", "value")) == 1
-    assert attr(html, "form.space-y-4 input[name='commit']", "value") == ["Update Tag"]
-    assert attr(html, "form.space-y-4", "phx-change") == []
-
-    assert attr(html, "[data-controller='emoji-picker']", "data-emoji-picker-auto-submit-value") ==
-             ["false"]
-
-    assert attr(html, "[data-color-picker-target='swatch']", "data-color") |> length() == 18
-  end
-
-  test "tag name and picker values share the client-owned form island", %{user: user} do
-    tag!(user, 83922)
-
-    conn =
-      get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/tags/83922/edit")
-
-    assert attr(conn.resp_body, "#tag-fields-83922 input[name='tag[name]']", "value") == [
-             "Home & <café>"
-           ]
-
-    {:ok, _view, html} = live(conn)
-    assert attr(html, "#tag-fields-83922", "phx-update") == ["ignore"]
-    assert attr(html, "#tag-fields-83922 input[name='tag[name]']", "value") == ["Home & <café>"]
-    assert attr(html, "#tag-fields-83922 input[name='tag[color]']", "id") == ["tag_color"]
-  end
-
-  test "form islands wait for their controllers before accepting input", %{user: user} do
-    for path <- ["/tags/new", "/points"] do
-      conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
-      assert attr(conn.resp_body, "[phx-hook='RailsStimulus']", "inert") == [""]
-      assert attr(conn.resp_body, "fieldset[data-rails-form-ready]", "disabled") == [""]
-    end
-  end
-
-  test "privacy controls mirror enabled and disabled states", %{user: user} do
-    tag!(user, 83931)
-    {:ok, _view, html} = live_as(user, "/tags/83931/edit")
-    assert attr(html, "[data-privacy-radius-target='toggle']", "checked") == []
-
-    assert attr(html, "[data-privacy-radius-target='radiusInput']", "class") == [
-             "form-control hidden"
-           ]
-
-    assert attr(html, "[data-privacy-radius-target='slider']", "value") == ["1000"]
-    Repo.query!("UPDATE tags SET privacy_radius_meters = 750 WHERE id = 83931")
-    {:ok, _view, html} = live_as(user, "/tags/83931/edit")
-    assert attr(html, "[data-privacy-radius-target='toggle']", "checked") != []
-    assert attr(html, "[data-privacy-radius-target='radiusInput']", "class") == ["form-control"]
-    assert attr(html, "input[name='tag[privacy_radius_meters]']", "value") == ["750"]
-    assert attr(html, "[data-privacy-radius-target='slider']", "min") == ["50"]
-    assert attr(html, "[data-privacy-radius-target='slider']", "max") == ["5000"]
-  end
-
-  test "foreign edit malformed ids and writers reach Rails", %{user: user} do
-    foreign = FrameSeeds.user!(8392)
-    tag!(foreign, 83941)
-    conn = RailsUser.signed_in(user.id)
-
-    assert %{rails_gate: {MapDataGate, :tag_edit?}} =
-             Phoenix.Router.route_info(Router, "GET", "/tags/83941/edit", "localhost")
-
-    assert MapDataGate.tag_edit?(conn, %{"id" => "83941"})
-    assert MapDataGate.tag_edit?(conn, %{"id" => "999999"})
-
-    for id <- ["bad", "1e3", "1abc", "9999999999999999999"],
-        do: refute(MapDataGate.tag_edit?(conn, %{"id" => id}))
-
+  test "tag page writers still route to the Rails-compatible actions" do
     for method <- ["POST", "PATCH", "PUT", "DELETE"] do
       if method == "POST",
         do:

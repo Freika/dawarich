@@ -275,3 +275,9 @@ _Pending._
 | `tags_live_test.exs` gate test: `/tags` `rails_gate` and `MapDataGate.tags?` query/header handback | coexistence only | — (ADR-0017: no coexistence) |
 | `map_data_parity_test.exs`: `tags_list`, `tags_empty`, `tags_guest` recorded Rails pages | markup only | index list/empty-state/guest-redirect tests in `tags_live_test.exs` |
 | `map_data_handback_test.exs`: `/tags?locale=de` hands back to Rails | coexistence only | — |
+| `tags_live_test.exs`: "new form defaults come from the Rails emoji set…" | behaviour (emoji from the Rails set, stable across connect) + markup (Rails form action/method) | `tags_live_form_test.exs`: "a new form starts with one Rails emoji…" |
+| `tags_live_test.exs`: "edit form preserves exact Rails field names…" | markup (Rails names, `_method`, Stimulus values) + behaviour (blank icon → 🏠, blank color → #6ab0a4, 18 swatches) | `tags_live_form_test.exs`: "editing prefills the tag…", "a swatch, a custom color and the untouched default…" |
+| `tags_live_test.exs`: "tag name and picker values share the client-owned form island", "form islands wait for their controllers…" | hybrid mechanism only | — (no islands; `tags_live_form_test.exs` "the native form has no Stimulus, island or Rails form plumbing") |
+| `tags_live_test.exs`: "privacy controls mirror enabled and disabled states" | markup (Stimulus targets) + behaviour (toggle state, 50–5000 range, default 1000) | `tags_live_form_test.exs`: "privacy on stores 1000…", "the radius label follows the slider…", "an invalid radius is reported…" |
+| `tags_live_test.exs` gate test: `MapDataGate.tag_edit?` id regex | coexistence only | `tags_live_form_test.exs`: "foreign, malformed and oversized ids are not found" (native 404) |
+| `map_data_parity_test.exs`: `tags_new`, `tags_new_guest`, `tags_edit`, `tags_edit_blank`, `tags_edit_guest`, `tags_foreign_edit` recorded Rails pages | markup only | form tests above; guest redirect in `tags_live_test.exs` |

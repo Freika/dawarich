@@ -15,6 +15,10 @@ defmodule DawarichWeb.RailsPagesRoutes do
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
           live "/tags", DawarichWeb.TagsLive.Index, :index, container: {:div, class: "contents"}
+          live "/tags/new", DawarichWeb.TagsLive.Form, :new, container: {:div, class: "contents"}
+
+          live "/tags/:id/edit", DawarichWeb.TagsLive.Form, :edit,
+            container: {:div, class: "contents"}
         end
 
         live_session :rails_pages,
@@ -82,14 +86,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/points", DawarichWeb.PointsLive.Index, :index,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.MapDataGate, :points?}}
-
-          live "/tags/new", DawarichWeb.TagsLive.Form, :new,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.MapDataGate, :tags?}}
-
-          live "/tags/:id/edit", DawarichWeb.TagsLive.Form, :edit,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.MapDataGate, :tag_edit?}}
 
           live "/settings/general", DawarichWeb.SettingsLive.General, :index,
             container: {:div, class: "contents"}

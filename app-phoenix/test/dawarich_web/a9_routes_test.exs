@@ -139,7 +139,7 @@ defmodule DawarichWeb.A9RoutesTest do
 
       assert session.extra == %{
                session:
-                 {if(family, do: DawarichWeb.RailsAuth, else: DawarichWeb.TagsLive.Form),
+                 {if(family, do: DawarichWeb.RailsAuth, else: DawarichWeb.NativeAuth),
                   :live_session, []},
                on_mount: hooks,
                root_layout: {DawarichWeb.Layouts, :root},

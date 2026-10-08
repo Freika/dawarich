@@ -23,7 +23,6 @@ defmodule DawarichWeb.MapDataParityTest do
     points_geocoding_disabled points_guest points_import points_iso points_lite points_lite_dst
     points_lite_leap points_march_default points_mi points_named_start points_named_end
     points_page1 points_page2 points_page_out points_pre_epoch_import points_pre_epoch_explicit)
-  @tags ~w(tags_edit tags_edit_blank tags_edit_guest tags_foreign_edit tags_new tags_new_guest)
   @segments ~w(segments_corrected segments_disabled_mi segments_empty segments_enabled
     segments_foreign segments_gap_239 segments_gap_240 segments_guest segments_isolated_short
     segments_legacy_durations segments_long_leg segments_ordinary segments_stationary
@@ -43,7 +42,7 @@ defmodule DawarichWeb.MapDataParityTest do
 
   test "all declared map-data oracle cases are present" do
     expected =
-      for name <- @points ++ @tags ++ @segments, suffix <- [".json", ".html"], do: name <> suffix
+      for name <- @points ++ @segments, suffix <- [".json", ".html"], do: name <> suffix
 
     expected = expected ++ ~w(address_empty.target.html address_full.target.html)
     assert @dir |> File.ls!() |> Enum.sort() == Enum.sort(expected)
@@ -51,10 +50,6 @@ defmodule DawarichWeb.MapDataParityTest do
 
   test "point page corpus and address targets match Rails" do
     for name <- @points, do: compare(name)
-  end
-
-  test "tag page corpus preserves form fields and Stimulus attributes" do
-    for name <- @tags, do: compare(name)
   end
 
   test "segment corpus preserves forms condensed legs and Stimulus attributes" do
