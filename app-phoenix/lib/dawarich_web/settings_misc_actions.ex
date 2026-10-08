@@ -36,26 +36,44 @@ defmodule DawarichWeb.SettingsMiscActions do
       end
 
     if result == :ok or match?({:ok, _}, result) do
-      if action == :changelog_consent and
-           Enum.any?(
-             get_req_header(conn, "accept"),
-             &String.contains?(&1, "text/vnd.turbo-stream.html")
-           ) do
-        conn
-        |> put_resp_content_type("text/vnd.turbo-stream.html")
-        |> send_resp(200, consent_body(conn))
-        |> halt()
-      else
-        conn
-        |> put_resp_header("location", back(conn))
-        |> put_resp_content_type("text/html")
-        |> send_resp(302, "")
-        |> halt()
+      case response_format(conn, action) do
+        "text/vnd.turbo-stream.html" ->
+          conn
+          |> put_resp_content_type("text/vnd.turbo-stream.html")
+          |> send_resp(200, consent_body(conn))
+          |> halt()
+
+        "text/html" ->
+          conn
+          |> put_resp_header("location", back(conn))
+          |> put_resp_content_type("text/html")
+          |> send_resp(302, "")
+          |> halt()
+
+        nil ->
+          SettingsActions.reject(conn, 406)
       end
     else
       SettingsActions.reject(conn, 422)
     end
   end
+
+  defp response_format(conn, :changelog_consent) do
+    accept = get_req_header(conn, "accept") |> Enum.join(", ")
+
+    xhr? =
+      Enum.any?(get_req_header(conn, "x-requested-with"), &String.match?(&1, ~r/XMLHttpRequest/i))
+
+    case DawarichWeb.PageAccept.formats(accept, xhr?) do
+      :invalid_type ->
+        nil
+
+      formats ->
+        DawarichWeb.PageAccept.negotiate(formats, ~w(text/vnd.turbo-stream.html text/html))
+    end
+  end
+
+  defp response_format(_conn, _action), do: "text/html"
 
   defp consent_body(conn) do
     user = Dawarich.Accounts.get(conn.assigns.current_user.id)
