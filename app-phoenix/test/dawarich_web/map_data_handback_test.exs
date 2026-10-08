@@ -199,7 +199,6 @@ defmodule DawarichWeb.MapDataHandbackTest do
           {"/points.json", []},
           {"/points?format=json", []},
           {"/points?start_at[]=1", []},
-          {"/tags?locale=de", []},
           {"/tracks/8380/segments?via=x", []}
         ] do
       {{line, _}, conn} =

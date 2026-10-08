@@ -9,6 +9,14 @@ defmodule DawarichWeb.RailsPagesRoutes do
 
         get "/imports/:id/download", DawarichWeb.ImportsDownload, :show, metadata: @native_import
 
+        live_session :native_pages,
+          session: {DawarichWeb.NativeAuth, :live_session, []},
+          on_mount: {DawarichWeb.NativeAuth, :require_user},
+          root_layout: {DawarichWeb.Layouts, :native_root},
+          layout: {DawarichWeb.Layouts, :app} do
+          live "/tags", DawarichWeb.TagsLive.Index, :index, container: {:div, class: "contents"}
+        end
+
         live_session :rails_pages,
           session: {DawarichWeb.NativeAuth, :live_session, []},
           on_mount: DawarichWeb.LiveAuth,
@@ -74,10 +82,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/points", DawarichWeb.PointsLive.Index, :index,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.MapDataGate, :points?}}
-
-          live "/tags", DawarichWeb.TagsLive.Index, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.MapDataGate, :tags?}}
 
           live "/tags/new", DawarichWeb.TagsLive.Form, :new,
             container: {:div, class: "contents"},

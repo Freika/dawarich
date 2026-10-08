@@ -16,5 +16,14 @@ defmodule DawarichWeb do
     end
   end
 
+  def verified_routes do
+    quote do
+      use Phoenix.VerifiedRoutes,
+        endpoint: DawarichWeb.Endpoint,
+        router: DawarichWeb.Router,
+        statics: ~w(native)
+    end
+  end
+
   defmacro __using__(which) when is_atom(which), do: apply(__MODULE__, which, [])
 end

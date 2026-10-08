@@ -269,4 +269,9 @@ _Pending._
 
 ## Removed Tags tests and their behaviour replacements
 
-_Pending (Task 12)._
+| Removed test (file: case) | Kind | Covered by |
+| --- | --- | --- |
+| `tags_live_test.exs`: "tag index matches badges counts links and delete button form" | markup (classes, Rails form/turbo attributes) + behaviour (name, radius) | `tags_live_test.exs`: "the native index lists own tags…", "deleting a tag removes the row…" |
+| `tags_live_test.exs` gate test: `/tags` `rails_gate` and `MapDataGate.tags?` query/header handback | coexistence only | — (ADR-0017: no coexistence) |
+| `map_data_parity_test.exs`: `tags_list`, `tags_empty`, `tags_guest` recorded Rails pages | markup only | index list/empty-state/guest-redirect tests in `tags_live_test.exs` |
+| `map_data_handback_test.exs`: `/tags?locale=de` hands back to Rails | coexistence only | — |

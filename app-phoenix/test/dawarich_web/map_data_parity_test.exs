@@ -23,8 +23,7 @@ defmodule DawarichWeb.MapDataParityTest do
     points_geocoding_disabled points_guest points_import points_iso points_lite points_lite_dst
     points_lite_leap points_march_default points_mi points_named_start points_named_end
     points_page1 points_page2 points_page_out points_pre_epoch_import points_pre_epoch_explicit)
-  @tags ~w(tags_edit tags_edit_blank tags_edit_guest tags_empty tags_foreign_edit tags_guest
-    tags_list tags_new tags_new_guest)
+  @tags ~w(tags_edit tags_edit_blank tags_edit_guest tags_foreign_edit tags_new tags_new_guest)
   @segments ~w(segments_corrected segments_disabled_mi segments_empty segments_enabled
     segments_foreign segments_gap_239 segments_gap_240 segments_guest segments_isolated_short
     segments_legacy_durations segments_long_leg segments_ordinary segments_stationary
