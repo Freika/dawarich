@@ -101,34 +101,6 @@ defmodule DawarichWeb.MapWritesHandbackTest do
     assert snapshot() == before
   end
 
-  test "Unicode radius numeric whitespace returns the Rails recorded endpoint error", ctx do
-    body = raw(ctx, "tag[name]=Radius&tag[privacy_radius_meters]=%C2%A01%C2%A0")
-    response = request(ctx, :post, "/tags", body)
-
-    state =
-      File.read!("test/fixtures/map_writes/tags/radius_unicode_space.json") |> Jason.decode!()
-
-    assert response.status == state["status"]
-    assert response.resp_body =~ hd(state["validation"]["errors"])["message"]
-    assert Repo.query!("SELECT count(*) FROM tags WHERE name='Radius'").rows == [[0]]
-  end
-
-  test "high precision radius endpoint accepts Rails rounded numericality", ctx do
-    for name <- ~w(radius_precision_limit radius_precision_exponent) do
-      state = File.read!("test/fixtures/map_writes/tags/#{name}.json") |> Jason.decode!()
-      radius = state["validation"]["raw_radius"]
-
-      body =
-        raw(ctx, "tag[name]=#{name}&tag[privacy_radius_meters]=#{URI.encode_www_form(radius)}")
-
-      response = request(ctx, :post, "/tags", body)
-      assert response.status == state["status"]
-
-      assert Repo.query!("SELECT privacy_radius_meters FROM tags WHERE name=$1", [name]).rows ==
-               [[state["validation"]["cast_radius"]]]
-    end
-  end
-
   test "unowned query format session token override shapes forward bytes", ctx do
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
     probe = request(ctx, :post, "/tags", "authenticity_token=BAD&tag[name]=Synthetic-new")

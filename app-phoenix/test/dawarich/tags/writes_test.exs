@@ -76,17 +76,6 @@ defmodule Dawarich.Tags.WritesTest do
              Writes.create(Repo, ctx.user, Map.put(attrs, "user_id", "9195"), ctx.write_ctx)
 
     assert state() == before
-
-    assert :rails =
-             Writes.create(
-               Repo,
-               ctx.user,
-               %{"name" => "Render race"},
-               Map.put(ctx.write_ctx, :render, fn _ -> :rails end)
-             )
-
-    assert state() == before
-    assert commands() == []
   end
 
   test "invalid create changes no tags taggings effects", ctx do
@@ -151,20 +140,6 @@ defmodule Dawarich.Tags.WritesTest do
     assert Repo.query!("SELECT name,demo,updated_at FROM tags WHERE id=91941").rows == [
              ["Adopted", false, ~N[2026-10-03 10:00:00.000000]]
            ]
-
-    after_update = state()
-
-    assert :rails =
-             Writes.update(
-               Repo,
-               ctx.user,
-               91941,
-               %{"name" => "Render race"},
-               Map.put(ctx.write_ctx, :render, fn _ -> :rails end)
-             )
-
-    assert state() == after_update
-    assert commands() == []
   end
 
   test "missing foreign tag cannot mutate actor or foreign rows", ctx do
@@ -217,17 +192,7 @@ defmodule Dawarich.Tags.WritesTest do
 
     places = Repo.query!("SELECT to_jsonb(p)::text FROM places p ORDER BY id").rows
     visits = Repo.query!("SELECT * FROM visits ORDER BY id").rows
-    before = state()
 
-    assert :rails =
-             Writes.destroy(
-               Repo,
-               ctx.user,
-               91941,
-               Map.put(ctx.write_ctx, :render, fn _ -> :rails end)
-             )
-
-    assert state() == before
     assert {:ok, %{tag: %{id: 91941}}} = Writes.destroy(Repo, ctx.user, 91941, ctx.write_ctx)
     assert Repo.query!("SELECT id FROM tags ORDER BY id").rows == [[91942], [91951]]
     assert Repo.query!("SELECT id FROM taggings ORDER BY id").rows == [[919_414], [919_415]]

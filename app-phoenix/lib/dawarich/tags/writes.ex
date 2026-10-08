@@ -13,7 +13,7 @@ defmodule Dawarich.Tags.Writes do
           repo.rollback(:rails)
 
         %{valid: false} = invalid ->
-          render(repo, {:invalid, invalid}, ctx)
+          {:invalid, invalid}
 
         %{valid: true} = valid ->
           now = DateTime.to_naive(ctx.now)
@@ -26,7 +26,7 @@ defmodule Dawarich.Tags.Writes do
               [tag.user_id, tag.name, tag.icon, tag.color, tag.privacy_radius_meters, now]
             ).rows
 
-          render(repo, {:ok, %{tag: Map.put(tag, :id, id)}}, ctx)
+          {:ok, %{tag: Map.put(tag, :id, id)}}
       end
     end)
   end
@@ -40,22 +40,22 @@ defmodule Dawarich.Tags.Writes do
           repo.rollback(:rails)
 
         %{valid: false} = invalid ->
-          render(repo, {:invalid, invalid}, ctx)
+          {:invalid, invalid}
 
         %{valid: true} = valid ->
           tag = update_fields(repo, current, valid.tag, ctx)
           tag = adopt(repo, tag, ctx)
-          render(repo, {:ok, %{tag: tag}}, ctx)
+          {:ok, %{tag: tag}}
       end
     end)
   end
 
-  def destroy(repo, user, id, ctx) do
+  def destroy(repo, user, id, _ctx) do
     transaction(repo, fn ->
       tag = owned!(repo, user.id, id)
       repo.query!("DELETE FROM public.taggings WHERE tag_id=$1", [tag.id])
       repo.query!("DELETE FROM public.tags WHERE id=$1 AND user_id=$2", [tag.id, user.id])
-      render(repo, {:ok, %{tag: tag}}, ctx)
+      {:ok, %{tag: tag}}
     end)
   end
 
@@ -93,19 +93,6 @@ defmodule Dawarich.Tags.Writes do
   defp adopt(_repo, tag, _ctx), do: tag
   defp stamp(fun) when is_function(fun, 0), do: stamp(fun.())
   defp stamp(now), do: DateTime.to_naive(now)
-
-  defp render(repo, {status, result} = outcome, ctx) do
-    case Map.get(ctx, :render) do
-      nil ->
-        outcome
-
-      fun when is_function(fun, 1) ->
-        case fun.(outcome) do
-          {:ok, response} -> {status, Map.put(result, :response, response)}
-          :rails -> repo.rollback(:rails)
-        end
-    end
-  end
 
   defp transaction(repo, fun) do
     case repo.transaction(fun) do

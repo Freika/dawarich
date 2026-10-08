@@ -81,8 +81,6 @@ defmodule DawarichWeb.A12f3aOClosureTest do
     end
 
     for {method, path, attrs, action, domain, accept} <- [
-          {:post, "/tags", %{"tag" => %{"name" => "Synthetic"}}, :tag_create,
-           DawarichWeb.MapTagRequest, "text/html"},
           {:delete, "/points/bulk_destroy", %{"point_ids" => ["1", "2"]}, :point_destroy,
            DawarichWeb.MapPointRequest, "text/html"},
           {:patch, "/tracks/41/segments/42",
@@ -306,7 +304,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   test "O06: every Q M W P method is native and each source key restores raw pre-effect Rails routing",
        ctx do
     routes = q_m_w_p()
-    assert length(routes) == 47
+    assert length(routes) == 40
     ctx = seed_routes(ctx)
     System.put_env("SELF_HOSTED", "true")
 
@@ -342,7 +340,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
 
     Application.put_env(:dawarich, :rails_routes, ["map"])
 
-    for {method, path, key, _} <- routes, key in ~w(tags points tracks areas), method != "GET" do
+    for {method, path, key, _} <- routes, key in ~w(points tracks areas), method != "GET" do
       admitted = Strangler.call(raw(ctx, method, path, ""), [])
       refute admitted.halted, "map must leave #{key} independent"
     end
@@ -564,9 +562,6 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       {"/map/timeline_feeds/42/track_info", "map", DawarichWeb.MapFrames},
       {"/points", "points", DawarichWeb.PointsLive.Index},
       {"/points/42/address", "points", DawarichWeb.PointAddress},
-      {"/tags", "tags", DawarichWeb.TagsLive.Index},
-      {"/tags/new", "tags", DawarichWeb.TagsLive.Form},
-      {"/tags/42/edit", "tags", DawarichWeb.TagsLive.Form},
       {"/tracks/41/segments", "tracks", DawarichWeb.MapFrames},
       {"/places", "places", DawarichWeb.PlacesLive.Index},
       {"/places/42", "places", DawarichWeb.PlaceNavigation},
@@ -587,10 +582,6 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
         {"PATCH", "/tracks/41/segments/42", "tracks", DawarichWeb.SegmentActions},
         {"PUT", "/tracks/41/segments/42", "tracks", DawarichWeb.SegmentActions},
         {"POST", "/tracks/recalculation", "tracks", DawarichWeb.TrackRecalculationActions},
-        {"POST", "/tags", "tags", DawarichWeb.TagActions},
-        {"PATCH", "/tags/42", "tags", DawarichWeb.TagActions},
-        {"PUT", "/tags/42", "tags", DawarichWeb.TagActions},
-        {"DELETE", "/tags/42", "tags", DawarichWeb.TagActions},
         {"DELETE", "/points/bulk_destroy", "points", DawarichWeb.PointListActions},
         {"POST", "/places", "places", DawarichWeb.PlaceActions},
         {"PATCH", "/places/42", "places", DawarichWeb.PlaceActions},
@@ -820,12 +811,6 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
 
         {_, "/tracks/41/segments/42"} ->
           %{"track_segment" => %{"transportation_mode" => "walking"}}
-
-        {_, "/tags"} ->
-          %{"tag" => %{"name" => "Synthetic + &", "color" => "#aa33cc"}}
-
-        {m, "/tags/42"} when m != "DELETE" ->
-          %{"tag" => %{"name" => "Synthetic + &"}}
 
         {_, "/points/bulk_destroy"} ->
           %{"point_ids" => ["42"]}

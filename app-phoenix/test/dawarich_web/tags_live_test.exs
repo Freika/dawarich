@@ -186,19 +186,4 @@ defmodule DawarichWeb.TagsLiveTest do
 
     assert conn.resp_body =~ "turbo-visit-control"
   end
-
-  test "tag page writers still route to the Rails-compatible actions" do
-    for method <- ["POST", "PATCH", "PUT", "DELETE"] do
-      if method == "POST",
-        do:
-          assert(
-            %{plug: DawarichWeb.TagActions} =
-              Phoenix.Router.route_info(Router, method, "/tags", "localhost")
-          ),
-        else: assert(:error = Phoenix.Router.route_info(Router, method, "/tags", "localhost"))
-
-      assert %{plug: DawarichWeb.TagActions} =
-               Phoenix.Router.route_info(Router, method, "/tags/83941", "localhost")
-    end
-  end
 end

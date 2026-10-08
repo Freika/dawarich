@@ -733,4 +733,7 @@ source debt or weaken Cloud lifecycle refusal.
 | ID | Surface | Rails | Phoenix | Evidence / authority |
 | --- | --- | --- | --- | --- |
 | ED-NATIVE-ONBOARDING-IMPORT | Onboarding modal "I have data" step on native pages | The step embeds the ActiveStorage direct-upload import form (`app/views/map/_onboarding_modal.html.erb`, `upload_controller.js`). | On native pages the step lists the supported formats and links to `/imports/new`; uploading happens on the imports page. Hybrid pages keep the embedded form until imports migrate (milestone 4). | Eugene 2026-10-08, ADR-0017 |
+| ED-NATIVE-TAGS-PAGES | Tag page writes (`POST /tags`, `PATCH`/`PUT`/`DELETE`/`POST /tags/:id`) | Rails form endpoints answer 302/303 with a flash, 422 with the re-rendered form, 400/500 for container shapes. | The native tag pages write through LiveView events (`Dawarich.Tags`); the page write endpoints no longer exist in Phoenix (unknown route). Validation outcome and stored state for all 48 recorded Rails cases are still asserted (`map_writes_parity_test.exs`). | Eugene 2026-10-08, ADR-0017 |
+| ED-NATIVE-TAG-SHAPES | Tag radius values Rails' cast hands back (underscored digits, beyond int32) | Phoenix handed the request back to Rails. | Native form reports "Privacy radius meters is not a number". | ADR-0017 (no coexistence) |
+| ED-NATIVE-PAGE-ENVELOPES | `/tags.html`, `?format=html` and XHR envelope variants of tag pages | Rails served/negotiated them. | Native tag pages are LiveView documents only; guest redirect with `user_return_to` is unchanged. | ADR-0017 |
 

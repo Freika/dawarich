@@ -26,11 +26,6 @@ defmodule DawarichWeb.MapWriteRoutesTest do
 
   defp writes do
     [
-      {"POST", "/tags", DawarichWeb.TagActions},
-      {"PATCH", "/tags/42", DawarichWeb.TagActions},
-      {"PUT", "/tags/42", DawarichWeb.TagActions},
-      {"DELETE", "/tags/42", DawarichWeb.TagActions},
-      {"POST", "/tags/42", DawarichWeb.TagActions},
       {"PATCH", "/tracks/91830/segments/43", DawarichWeb.SegmentActions},
       {"PUT", "/tracks/91830/segments/43", DawarichWeb.SegmentActions},
       {"POST", "/tracks/91830/segments/43", DawarichWeb.SegmentActions},
@@ -74,7 +69,7 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
   end
 
-  test "only declared tag segment point methods become native", ctx do
+  test "only declared segment and point methods become native", ctx do
     for {method, path, plug} <- writes() do
       route = info(method, path)
       assert route.plug == plug
@@ -94,9 +89,8 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     end
   end
 
-  test "tags tracks points keys hand GETs and writes back", ctx do
+  test "tracks and points keys hand GETs and writes back", ctx do
     for {key, get_path, write_path} <- [
-          {"tags", "/tags", "/tags/42"},
           {"tracks", "/tracks/91830/segments", "/tracks/91830/segments/43"},
           {"points", "/points", "/points/bulk_destroy"}
         ] do
@@ -139,9 +133,6 @@ defmodule DawarichWeb.MapWriteRoutesTest do
 
   test "malformed IDs and missing session hand back before pipeline", ctx do
     for path <- [
-          "/tags/042",
-          "/tags/-1",
-          "/tags/42.json",
           "/tracks/91830/segments/zero",
           "/tracks/91830/segments/0"
         ] do
@@ -150,7 +141,7 @@ defmodule DawarichWeb.MapWriteRoutesTest do
       forwarded(ctx, request(ctx.user, "PATCH", path))
     end
 
-    conn = request(ctx.user, "PATCH", "/tags/42") |> delete_req_header("cookie")
+    conn = request(ctx.user, "PATCH", "/tracks/91830/segments/43") |> delete_req_header("cookie")
     forwarded(ctx, conn)
   end
 end

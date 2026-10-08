@@ -41,7 +41,6 @@ defmodule DawarichWeb.MapSegmentRequest do
   def format(conn, action) do
     case get_req_header(conn, "accept") do
       [accept] -> negotiate(accept, action)
-      [] when action in [:tag_create, :tag_update, :tag_destroy] -> {:ok, :html}
       _ -> :replay
     end
   end
@@ -56,7 +55,7 @@ defmodule DawarichWeb.MapSegmentRequest do
   end
 
   defp negotiate(accept, action)
-       when action in [:tag_create, :tag_update, :tag_destroy, :point_destroy] do
+       when action == :point_destroy do
     if String.trim(accept) in ["", "*/*"] or DawarichWeb.Strangler.browser_like?(accept) do
       {:ok, :html}
     else

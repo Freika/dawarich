@@ -60,14 +60,6 @@ defmodule DawarichWeb.MapWriteRequestTest do
 
   test "nested fields repeated point IDs and effective methods match Rails", ctx do
     for {method, path, suffix, action, effective} <- [
-          {:post, "/tags", "tag[name]=Caf%C3%A9&tag[privacy_radius_meters]=0.5", :tag_create,
-           "POST"},
-          {:patch, "/tags/42", "tag[icon]=%E2%98%95", :tag_update, "PATCH"},
-          {:put, "/tags/42", "tag[name]=Partial", :tag_update, "PUT"},
-          {:delete, "/tags/42", "commit=Delete", :tag_destroy, "DELETE"},
-          {:post, "/tags/42", "_method=patch&tag[name]=Partial", :tag_update, "PATCH"},
-          {:post, "/tags/42", "_method=put&tag[name]=Partial", :tag_update, "PUT"},
-          {:post, "/tags/42", "_method=delete", :tag_destroy, "DELETE"},
           {:patch, "/tracks/42/segments/43", "track_segment[transportation_mode]=walking",
            :segment_update, "PATCH"},
           {:post, "/tracks/42/segments/43", "_method=patch&reset=true", :segment_update, "PATCH"},
@@ -99,64 +91,79 @@ defmodule DawarichWeb.MapWriteRequestTest do
   end
 
   test "ambiguous headers session tokens origin and writers replay raw", ctx do
-    raw = body(ctx, "tag[name]=Synthetic")
-    rejected = request(ctx, :post, "/tags", raw, [{"origin", "http://foreign.test"}])
+    raw = body(ctx, "_method=patch&track_segment[transportation_mode]=walking")
+
+    rejected =
+      request(ctx, :post, "/tracks/42/segments/43", raw, [{"origin", "http://foreign.test"}])
+
     assert rejected.halted
-    replay(ctx, :post, "/tags", raw, [{"origin", "http://foreign.test"}])
-    replay(%{ctx | session: %{}}, :post, "/tags", raw)
-    replay(ctx, :post, "/tags", "tag[name]=Synthetic&authenticity_token=invalid")
-    per_form = RailsCsrf.masked_form_token(ctx.session, "/tags", "post")
+    replay(ctx, :post, "/tracks/42/segments/43", raw, [{"origin", "http://foreign.test"}])
+    replay(%{ctx | session: %{}}, :post, "/tracks/42/segments/43", raw)
+
+    replay(
+      ctx,
+      :post,
+      "/tracks/42/segments/43",
+      "_method=patch&track_segment[transportation_mode]=walking&authenticity_token=invalid"
+    )
+
+    per_form = RailsCsrf.masked_form_token(ctx.session, "/tracks/42/segments/43", "post")
 
     replay(
       ctx,
       :post,
       "/tags",
-      "tag[name]=Synthetic&authenticity_token=" <> URI.encode_www_form(per_form)
+      "_method=patch&track_segment[transportation_mode]=walking&authenticity_token=" <>
+        URI.encode_www_form(per_form)
     )
 
-    replay(ctx, :post, "/tags", raw, [{"x-http-method-override", "POST"}])
-    replay(ctx, :post, "/tags", raw, [{"x_csrf_token", "ambiguous"}])
-    replay(ctx, :post, "/tags", raw, [{"x-dawarich-client", "synthetic"}])
+    replay(ctx, :post, "/tracks/42/segments/43", raw, [{"x-http-method-override", "POST"}])
+    replay(ctx, :post, "/tracks/42/segments/43", raw, [{"x_csrf_token", "ambiguous"}])
+    replay(ctx, :post, "/tracks/42/segments/43", raw, [{"x-dawarich-client", "synthetic"}])
 
     for key <- ~w(locale client aff via) do
-      replay(ctx, :post, "/tags", raw <> "&#{key}=value")
+      replay(ctx, :post, "/tracks/42/segments/43", raw <> "&#{key}=value")
     end
 
     cookie = RailsUser.cookie(ctx.session)
 
-    replay(ctx, :post, "/tags", raw, [
+    replay(ctx, :post, "/tracks/42/segments/43", raw, [
       {"cookie", "_dawarich_session=#{cookie}; _dawarich_session=#{cookie}"}
     ])
   end
 
   test "unsupported formats and scalar coercions replay without effects", ctx do
     rejected =
-      request(ctx, :post, "/tags", body(ctx, "tag[name]=Synthetic"), [
-        {"content-type", "application/json"}
-      ])
+      request(
+        ctx,
+        :post,
+        "/tracks/42/segments/43",
+        body(ctx, "_method=patch&track_segment[transportation_mode]=walking"),
+        [
+          {"content-type", "application/json"}
+        ]
+      )
 
     assert rejected.halted
 
-    replay(ctx, :post, "/tags", ~s({"tag":{"name":"JSON"}}), [
-      {"content-type", "application/json"}
-    ])
+    replay(
+      ctx,
+      :post,
+      "/tracks/42/segments/43",
+      ~s({"track_segment":{"transportation_mode":"walking"}}),
+      [
+        {"content-type", "application/json"}
+      ]
+    )
 
-    raw = body(ctx, "tag[name]=Synthetic")
-    replay(ctx, :post, "/tags", raw, [{"content-type", "application/json"}])
-    replay(ctx, :post, "/tags", raw, [{"accept", "application/json"}])
-    replay(ctx, :post, "/tags", raw, [{"x-requested-with", "XMLHttpRequest"}])
+    raw = body(ctx, "_method=patch&track_segment[transportation_mode]=walking")
+    replay(ctx, :post, "/tracks/42/segments/43", raw, [{"content-type", "application/json"}])
+    replay(ctx, :post, "/tracks/42/segments/43", raw, [{"accept", "application/json"}])
+    replay(ctx, :post, "/tracks/42/segments/43", raw, [{"x-requested-with", "XMLHttpRequest"}])
 
     for {method, path, suffix} <- [
-          {:post, "/tags", "tag[name][]=nested"},
-          {:post, "/tags", "tag[user_id]=9182&tag[name]=Synthetic"},
-          {:post, "/tags", "tag[name]=first&tag[name]=second"},
-          {:post, "/tags", "tag[name]=Synthetic&commit[nested]=value"},
-          {:post, "/tags?locale=de", "tag[name]=Synthetic"},
-          {:post, "/tags/42", "tag[name]=Bare"},
-          {:patch, "/tags/042", "tag[name]=LeadingZero"},
           {:delete, "/points/bulk_destroy", "point_ids[bad]=42"},
-          {:delete, "/points/bulk_destroy?start_at=1&start_at=2", "point_ids[]=42"},
-          {:post, "/tags", "tag[name]=%FF"}
+          {:delete, "/points/bulk_destroy?start_at=1&start_at=2", "point_ids[]=42"}
         ] do
       replay(ctx, method, path, body(ctx, suffix))
     end
@@ -177,27 +184,6 @@ defmodule DawarichWeb.MapWriteRequestTest do
       refute conn.halted
       assert conn.assigns.map_write_format == expected
     end
-  end
-
-  test "browser tag document Accept admits create update delete with CSRF intact", ctx do
-    for accept <- [
-          "text/vnd.turbo-stream.html, text/html, application/xhtml+xml",
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
-        ],
-        {path, suffix, action} <- [
-          {"/tags", "tag[name]=Browser", :tag_create},
-          {"/tags/42", "_method=patch&tag[name]=Browser", :tag_update},
-          {"/tags/42", "_method=delete", :tag_destroy}
-        ] do
-      conn = request(ctx, :post, path, body(ctx, suffix), [{"accept", accept}])
-      refute conn.halted
-      assert conn.assigns.map_write_action == action
-      assert conn.assigns.map_write_format == :html
-      replay(ctx, :post, path, "authenticity_token=invalid&" <> suffix, [{"accept", accept}])
-    end
-
-    assert snapshot() == [[0, 0, 0]]
-    assert commands() == []
   end
 
   test "captured points list browser POST admits fixed routing query and document Accept", ctx do

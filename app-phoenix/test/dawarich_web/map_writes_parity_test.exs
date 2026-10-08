@@ -4,7 +4,7 @@ defmodule DawarichWeb.MapWritesParityTest do
   import Plug.Test
   alias Dawarich.Repo
   alias Dawarich.Test.{ApiGolden, FrameSeeds, ParityHTML, RailsUser}
-  alias DawarichWeb.{TagWriteResponse, SegmentWriteResponse, PointListActions}
+  alias DawarichWeb.{SegmentWriteResponse, PointListActions}
   @dir "test/fixtures/map_writes"
   @tags ~w(create_full create_omitted create_foreign_name blank_name unicode_blank_name duplicate_name
     icon_ten icon_eleven icon_ascii icon_symbol icon_blank color_short color_bad color_blank
@@ -47,9 +47,9 @@ defmodule DawarichWeb.MapWritesParityTest do
     end
   end
 
-  test "tag state validation HTML response metadata match Rails" do
+  test "tag writes keep the Rails validation outcome and stored state" do
     for name <- @tags do
-      {state, user, ctx, conn} = seed("tags", name)
+      {state, user, ctx, _conn} = seed("tags", name)
       request = state["request"]
       attrs = Map.drop(request["params"]["tag"] || %{}, ["ignored"])
       id = request["path"] |> String.split("/") |> List.last() |> Integer.parse()
@@ -61,8 +61,6 @@ defmodule DawarichWeb.MapWritesParityTest do
           id == :error -> :tag_create
           true -> :tag_update
         end
-
-      ctx = Map.put(ctx, :render, &TagWriteResponse.prepare(conn, action, &1, ctx))
 
       if state["validation"] && user do
         current =
@@ -99,25 +97,6 @@ defmodule DawarichWeb.MapWritesParityTest do
         assert state["status"] == if(result == :not_found, do: 404, else: 302), name
         assert_state(state["before"], name)
       else
-        {_, result} = result
-        response = result.response
-        assert_metadata(response, state, name)
-
-        if response.status == 422 do
-          native =
-            response.body
-            |> IO.iodata_to_binary()
-            |> LazyHTML.from_document()
-            |> LazyHTML.query("body > div.container > div.w-full > div.flex")
-            |> LazyHTML.to_tree()
-
-          [{"div", _, native}] = native
-          expected = html(File.read!("#{@dir}/tags/#{name}.html"))
-
-          assert html(native) == expected,
-                 name <> ": " <> ParityHTML.first_difference(html(native), expected)
-        end
-
         assert_state(state["after"], name)
         assert commands() == [], name
       end
@@ -294,18 +273,6 @@ defmodule DawarichWeb.MapWritesParityTest do
   end
 
   test "write cookie metadata preserves session changes and declares unchanged session exceptions" do
-    for name <- ~w(blank_name prior_flash_invalid) do
-      {state, user, ctx, conn} = seed("tags", name)
-      attrs = state["request"]["params"]["tag"]
-
-      current =
-        if name == "prior_flash_invalid", do: atom_keys(hd(state["before"]["tags"])), else: %{}
-
-      invalid = Dawarich.Tags.Validation.validate(Repo, user, attrs, current)
-      {:ok, response} = TagWriteResponse.prepare(conn, :tag_create, {:invalid, invalid}, ctx)
-      assert_metadata(response, state, name)
-    end
-
     {state, _, ctx, conn} = seed("segments", "disabled")
     conn = assign(conn, :map_write_format, :turbo_stream)
 

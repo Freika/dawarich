@@ -525,58 +525,6 @@ defmodule DawarichWeb.A12f3aWClosureTest do
     assert {:ok, %{name: "Private"}} = Dawarich.TagPages.edit(foreign, 882_010)
   end
 
-  @tag a12f3a_w07: true
-  test "W07: tag update and delete matches current Rails contract without a native-owner Rails effect",
-       ctx do
-    FrameSeeds.place!(ctx.user.id, 881_010, "Home")
-    FrameSeeds.tag!(ctx.user.id, 881_010, "Home", 881_010, ~N[2026-10-03 09:00:00])
-
-    assert request(
-             ctx,
-             :put,
-             "/tags/881010",
-             "tag[name]=Renamed",
-             DawarichWeb.TagActions,
-             "text/html"
-           ).status == 302
-
-    assert request(ctx, :delete, "/tags/881010", "", DawarichWeb.TagActions, "text/html").status ==
-             303
-
-    assert Repo.query!("SELECT count(*) FROM taggings WHERE tag_id=881010").rows == [[0]]
-    assert Repo.query!("SELECT count(*) FROM places WHERE id=881010").rows == [[1]]
-
-    assert request(ctx, :delete, "/tags/881010", "", DawarichWeb.TagActions, "text/html").status ==
-             404
-  end
-
-  @tag a12f3a_w06: true
-  test "W06: tag create and validation matches current Rails contract without a native-owner Rails effect",
-       ctx do
-    invalid =
-      request(
-        ctx,
-        :post,
-        "/tags",
-        "tag[name]=Leipzig&tag[privacy_radius_meters]=-1",
-        DawarichWeb.TagActions,
-        "text/html"
-      )
-
-    assert invalid.status == 422
-    assert Repo.query!("SELECT count(*) FROM tags WHERE user_id=$1", [ctx.user.id]).rows == [[0]]
-    missing = request(ctx, :post, "/tags", "", DawarichWeb.TagActions, "text/html")
-    assert missing.status == 400
-
-    assert request(ctx, :post, "/tags", "tag=++", DawarichWeb.TagActions, "text/html").status ==
-             400
-
-    assert request(ctx, :post, "/tags", "tag=scalar", DawarichWeb.TagActions, "text/html").status ==
-             500
-
-    assert commands() == []
-  end
-
   @tag a12f3a_w01: true
   test "W01: point list residual reads matches current Rails contract without a native-owner Rails effect",
        ctx do

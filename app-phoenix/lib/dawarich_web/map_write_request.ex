@@ -105,7 +105,6 @@ defmodule DawarichWeb.MapWriteRequest do
 
   defp effective_method(conn, params, _), do: if(is_nil(params["_method"]), do: conn.method)
 
-  def request_module(%{path_info: ["tags" | _]}), do: DawarichWeb.MapTagRequest
   def request_module(%{path_info: ["points" | _]}), do: DawarichWeb.MapPointRequest
   def request_module(%{path_info: ["tracks" | _]}), do: DawarichWeb.MapSegmentRequest
   def request_module(_), do: DawarichWeb.AreaRequest

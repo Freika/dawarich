@@ -22,14 +22,6 @@ defmodule DawarichWeb.PageRoutes do
             metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
         end
 
-        post "/tags", DawarichWeb.TagActions, :create,
-          metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
-
-        for method <- [:patch, :put, :delete, :post] do
-          match method, "/tags/:id", DawarichWeb.TagActions, :member,
-            metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
-        end
-
         for method <- [:delete, :post] do
           match method, "/points/bulk_destroy", DawarichWeb.PointListActions, :destroy,
             metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
