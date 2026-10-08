@@ -51,7 +51,14 @@ defmodule DawarichWeb.MapNavigationTest do
     end
 
     {output, status} =
-      System.cmd("node", ["--experimental-vm-modules", "test/client/turbo_navigation_test.mjs"],
+      System.cmd(
+        "node",
+        [
+          "--experimental-vm-modules",
+          "--test",
+          "test/client/turbo_navigation_test.mjs",
+          "test/client/retained_turbo_actions_test.mjs"
+        ],
         stderr_to_stdout: true
       )
 

@@ -10,6 +10,7 @@ const globals = {
   Socket: class {},
   LiveSocket: class {
     connect() { calls.push(`connect:${page}`) }
+    registerNewLocation() {}
     disconnect() { calls.push(`disconnect:${page}`) }
     destroyAllViews() { calls.push(`destroy:${page}`) }
   },
@@ -26,7 +27,7 @@ const globals = {
     },
     querySelectorAll: () => [],
   },
-  window: { addEventListener() {}, setTimeout() {} },
+  window: { location: { href: "https://dawarich.test/map/v2" }, addEventListener() {}, setTimeout() {} },
 }
 vm.runInNewContext(source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, ""), globals)
 const emit = (name) => {
