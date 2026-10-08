@@ -1,5 +1,7 @@
 # Native map navigation
 
+> Hybrid navigation (Turbo ↔ LiveView) is the transitional mechanism for pages not yet migrated. Pages in the `:native_pages` live_session (currently Tags, ADR-0017) load only the `/native` esbuild bundle; navigating between them and hybrid pages is a full page load.
+
 Native pages keep Rails Turbo HTML responses in standalone mode. The Phoenix client tears down LiveView roots and retained Stimulus bridges before Turbo replaces or caches a body, then mounts bridges and reconnects LiveView on `turbo:load`. This covers map date searches, tracks, replay, studios, and controls on stats/digest pages. Map applications unload controllers and remove their portaled studios through the existing map shell lifecycle. Repeated bridge boot is idempotent; flash observers attach once per container.
 
 Before reconnecting on `turbo:load`, the client synchronizes LiveSocket’s join URL and current location with the rendered document and clears its unloaded state. Reusing the initial join URL after Turbo navigation mounts the destination root against the previous route: trip edit/export actions return to the trip, and family redirects can consume their flash before it is displayed. The installed LiveSocket client regression covers retained trip and family destinations, reload prevention, and location tracking; the existing map navigation ExUnit test runs both client regressions. Map teardown and remount behavior remains in place.

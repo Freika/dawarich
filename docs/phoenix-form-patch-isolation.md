@@ -1,5 +1,7 @@
 # Ordinary forms inside native pages
 
+> Superseded for migrated pages by ADR-0017 (2026-10-08): native pages (`:native_pages` live_session, currently the Tags pages) use LiveView forms (`to_form`, `phx-change`, `phx-submit`) and have no islands. This document still describes the remaining hybrid pages.
+
 LiveView's connected render starts from persisted assigns. An ordinary browser/Turbo/Stimulus form does not send edits through `phx-change`, so a patch can restore server defaults while a user is editing, especially a selected option or checkbox before the initial join. Put editable forms in an island with a deterministic, unique `id` and `phx-update="ignore"`. Existing keyed field islands are also valid. LiveView-bound forms must remain patchable. Turbo document/frame/stream responses still own ordinary form validation and replacement.
 
 The shared `Dawarich.Test.FormIsolation.assert_form_isolated/2` checks rendered forms, including ignored ancestors and field islands. Every editable input, select, textarea and Trix editor must have a keyed ignored owner; that owner's id must occur exactly once. The import regression checks the same record-specific form id before join, after join and after rendering again. Points keep their page-specific owner so pagination can replace the island.
@@ -23,7 +25,7 @@ Audit: `rg -n '<\.?form\b' app-phoenix/lib/dawarich_web` on the fix-formiso bran
 | `imports_live/new.ex` upload POST via Stimulus | Protected already | `phx-import-upload` form. |
 | `components/imports_extraction_dialog.ex` extraction POST | Protected already | `extraction-dialog-<id>` ancestor covers checkboxes; dialog backdrop only closes. |
 | `components/admin_user_dialogs.ex` create POST | Protected already | `create_user` dialog ancestor. User DELETE has no editable input; dialog forms only close. |
-| `components/tag_form.ex` tag POST/PATCH | Protected already | `tag-fields-<id or new>` island includes name and pickers. |
+| ~~`components/tag_form.ex` tag POST/PATCH~~ | Removed | Native LiveView form since ADR-0017 (`tags_live/form.html.heex`). |
 | `components/point_list_table.ex` bulk DELETE | Protected already | `points-page-<page identity>` ancestor owns selection checkboxes. |
 | `components/family_forms.ex` create POST/edit PATCH | Protected already | `family-form-shell` ancestor. |
 | `components/family_controls.ex` sharing PATCH | Protected already | `family-shell` or `family-form-shell` ancestor. |
@@ -54,7 +56,7 @@ Audit: `rg -n '<\.?form\b' app-phoenix/lib/dawarich_web` on the fix-formiso bran
 | `components/visit_redetect_panel.ex` redetection POST | Not needed | Button and CSRF only. |
 | `layouts/map.html.heex` demo DELETE | Not needed | Button and hidden payload only; banner already ignored. |
 | `settings_live/user_show/show.html.heex` key regeneration/reset POST | Not needed | Buttons and CSRF only. |
-| `tags_live/index.ex` tag DELETE | Not needed | Button and hidden payload only. |
+| ~~`tags_live/index.ex` tag DELETE~~ | Removed | Native `phx-click="delete"` since ADR-0017. |
 | `auth_form.ex` sign-in POST | Not needed | HTTP-rendered authentication document, no LiveView mount. |
 | `auth_recovery/form.ex` recovery POST/PUT | Not needed | HTTP-rendered authentication document, no LiveView mount. |
 | `auth_otp/form/challenge.html.heex` OTP POST | Not needed | HTTP-rendered authentication document, no LiveView mount. |
