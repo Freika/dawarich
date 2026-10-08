@@ -1,6 +1,6 @@
 # Phoenix-native frontend, LiveView and contexts — implementation plan
 
-Date: 2026-10-08. Status: proposed implementation sequence; target direction explicitly requested by the user. Planning only: no application code changes, benchmarks, service starts or deployment in this turn.
+Date: 2026-10-08. Status: decisions taken (ADR-0017, workspace `docs/adr/0017-phoenix-native-frontend-without-hotwire.md`); milestones 0–2 are executed by `superpowers/plans/2026-10-08-phoenix-native-frontend-plan.md`, which defers admin/public live_sessions, the idle-connection memory baseline beyond Tags and native uploads to later milestones. Coexistence is not kept; only the standalone Playwright lane gates.
 
 ## Target and scope
 
