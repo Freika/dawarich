@@ -276,7 +276,9 @@ export async function createClientZipImport(page, input, evidence) {
     buffer: input.buffer,
   })
   const form = page.locator("form").filter({ has: file })
-  await expect(page.getByTestId("import-upload-progress")).toBeVisible()
+  await expect(
+    form.locator('progress[data-upload-target="progress"]'),
+  ).toBeVisible()
   await expect(form.getByText("100%", { exact: true })).toBeVisible({
     timeout: 30000,
   })
