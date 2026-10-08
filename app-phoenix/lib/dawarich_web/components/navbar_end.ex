@@ -71,7 +71,7 @@ defmodule DawarichWeb.NavbarEnd do
             )}</span>
           </a>
           <ul class="menu menu-horizontal px-1 flex-nowrap">
-            <li data-controller="notifications">
+            <li data-controller={!@native && "notifications"}>
               <details>
                 <summary class="relative">
                   <Icon.icon name="bell" class="size-6" />

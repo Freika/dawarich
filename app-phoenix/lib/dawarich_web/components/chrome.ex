@@ -72,6 +72,24 @@ defmodule DawarichWeb.Chrome do
   end
 
   attr :user_id, :integer, required: true
+  attr :native, :boolean, default: false
+
+  def achievement_host(%{native: true} = assigns) do
+    ~H"""
+    <div
+      id="achievement-unlocks"
+      class="ach-unlock-host"
+      aria-live="polite"
+      phx-hook="AchievementUnlocks"
+      phx-update="ignore"
+      data-user-id={@user_id}
+      data-next-url="/achievements/unlocks/next"
+      data-seen-url="/achievements/unlocks/__ID__/seen"
+      data-dismiss-url="/achievements/unlocks/dismiss"
+    >
+    </div>
+    """
+  end
 
   def achievement_host(assigns) do
     ~H"""
