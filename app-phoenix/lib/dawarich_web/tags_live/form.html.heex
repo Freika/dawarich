@@ -60,7 +60,7 @@
             <div class="grid grid-cols-6 gap-2">
               <label
                 :for={color <- @colors}
-                class="w-10 h-10 rounded-lg cursor-pointer transition-all hover:scale-110 border-2 border-base-300 has-[:checked]:ring-2 has-[:checked]:ring-offset-2 has-[:checked]:ring-primary"
+                class="relative w-10 h-10 rounded-lg cursor-pointer transition-all hover:scale-110 border-2 border-base-300 has-[:checked]:ring-2 has-[:checked]:ring-offset-2 has-[:checked]:ring-primary has-[:focus-visible]:outline has-[:focus-visible]:outline-2"
                 style={"background-color: #{color};"}
                 title={color}
               >
@@ -70,12 +70,12 @@
                   value={color}
                   checked={color == @color}
                   aria-label={color}
-                  class="sr-only"
+                  class="absolute inset-0 w-full h-full m-0 opacity-0 cursor-pointer"
                 />
               </label>
               <label
                 :if={@custom}
-                class="w-10 h-10 rounded-lg cursor-pointer border-2 border-base-300 ring-2 ring-offset-2 ring-primary"
+                class="relative w-10 h-10 rounded-lg cursor-pointer border-2 border-base-300 ring-2 ring-offset-2 ring-primary"
                 style={"background-color: #{@color};"}
                 title={@color}
               >
@@ -85,7 +85,7 @@
                   value={@color}
                   checked
                   aria-label={@color}
-                  class="sr-only"
+                  class="absolute inset-0 w-full h-full m-0 opacity-0 cursor-pointer"
                 />
               </label>
             </div>
