@@ -240,14 +240,17 @@ defmodule Dawarich.Points.ApiWrites do
     else
       stamps = Enum.map(rows, &Enum.at(&1, 1))
 
-      RailsCommands.insert!(repo, "points.web_destroy_follow_up", %{
-        "user_id" => user.id,
-        "timestamps" => stamps,
-        "track_ids" => rows |> Enum.map(&Enum.at(&1, 2)) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
-        "oldest_timestamp" => Enum.min(stamps),
-        "locale" => "en",
-        "timezone" => Dawarich.UserTimeZone.iana(repo, Dawarich.UserSettings.get(user))
-      })
+      Dawarich.AfterCommit.with_visibility(repo, "points", %{"user_id" => user.id}, fn ->
+        RailsCommands.insert!(repo, "points.web_destroy_follow_up", %{
+          "user_id" => user.id,
+          "timestamps" => stamps,
+          "track_ids" =>
+            rows |> Enum.map(&Enum.at(&1, 2)) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
+          "oldest_timestamp" => Enum.min(stamps),
+          "locale" => "en",
+          "timezone" => Dawarich.UserTimeZone.iana(repo, Dawarich.UserSettings.get(user))
+        })
+      end)
     end
   end
 

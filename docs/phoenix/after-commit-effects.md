@@ -207,3 +207,21 @@ mutations failed their selected assertions and passed after restoration. The
 complete seed-404 gate passed 9548 tests with zero failures. Forced compilation
 with warnings as errors and whole-tree formatting passed; existing suite
 exclusions/skips were unchanged.
+
+## Coexistence API point deletion and tile validators
+
+Single and bulk API point deletion commit a user visibility generation with
+`points.web_destroy_follow_up`. Native point and track tile ETags read this
+generation, so an immediate refresh observes the deletion before the retained
+Rails worker rotates Redis epochs. Rollback preserves the previous generation;
+the durable follow-up still handles source epochs, statistics, tracks and
+achievements.
+
+This ordering matches `Points::Destroyer`, which bumps its tile epoch before
+Rails returns success. Deferring the only invalidation makes a changed tile
+body carry its previous ETag. MapLibre 6.4.1 discards such a body even after
+HTTP 200; changing the request URL alone does not repair the displayed point.
+`PointDeleteTileVisibilityTest` warms a tile, deletes through the API controller
+and revalidates immediately with the retained worker idle, for both deletion
+routes. The G44 point-delete investigation report records the Rails request,
+RED/GREEN/mutation and browser evidence. No Rails defect is changed.
