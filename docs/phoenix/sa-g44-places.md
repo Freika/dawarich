@@ -49,3 +49,15 @@ A real Rails request oracle accepts scalar, hash and array extra fields and
 confirms identical decimal/geometry rounding. Both new tagged regressions
 first fail their status assertions, pass the fixes, fail named production
 mutations, and pass again after restoration.
+
+
+The crash continuation's final-head browser runs pass marker editing, place-note
+creation, and modal-close persistence three consecutive times in standalone.
+All four assigned files pass once in coexistence. The pinned direct-open spec
+saves both drawer notes and gets 200 for the extra-query drawer request, then
+fails solely because it requires Rails' `x-runtime` header. That retained-owner
+assertion belongs to coexistence; standalone serves the drawer natively. It was
+reported unchanged for controller correction, so complete standalone browser
+acceptance remains blocked. Every lane uses one worker and zero retries, with
+zero skipped or flaky cases. The final caller batch passes 35 tests. Exact
+browser and full-suite evidence is in the task execution report.
