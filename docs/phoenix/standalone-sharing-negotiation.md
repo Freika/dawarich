@@ -30,3 +30,17 @@ It covers the exact browser PATCH, ordered formats, form method override,
 Turbo-Frame, session authentication and CSRF refusal. Each named test has a
 recorded RED/GREEN/production-mutation/restored-GREEN cycle in the controller's
 implementation report. Rails behavior is preserved; no Rails bug is fixed.
+
+The scoped browser checks cover live/timeline links, public reports, shared
+tracks and trips, and achievement share/revoke. Three consecutive standalone
+runs and one coexistence run pass with one worker and zero retries. The exact
+results and the remaining full-suite gate are recorded in the implementation
+report.
+
+Preserve generated browser-build artifacts before running tests that expect
+fallback asset URLs. The ignored `config/sprockets-manifest.json` and
+`public/assets` manifests make stylesheet URLs fingerprinted; the PageEnvelopes
+fixtures expect the unbuilt `/assets/application.css` path. Temporarily move
+those artifacts and `tmp/phoenix` outside their discovery paths, then restore
+them on exit. This isolates the test setup while preserving the prepared
+browser build and the existing assertions.
