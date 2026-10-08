@@ -16,6 +16,10 @@ env_integer = fn name, default ->
   end
 end
 
+config :dawarich, :api_body_limits,
+  json: env_integer.("DAWARICH_MAX_REQUEST_BODY_BYTES", 8_388_608),
+  multipart: env_integer.("DAWARICH_MAX_MULTIPART_BODY_BYTES", 268_435_456)
+
 ssl_options = fn mode, root_cert ->
   case mode do
     "require" -> [verify: :verify_none]

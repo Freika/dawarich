@@ -26,7 +26,11 @@ defmodule DawarichWeb.RailsErrors do
            Jason.OrderedObject.new([{"status", status}, {"error", @reasons[status]}])
          )}
       else
-        {"text/html", File.read!(Dawarich.RailsRoot.join("public/#{status}.html"))}
+        page = Dawarich.RailsRoot.join("public/#{status}.html")
+
+        if File.exists?(page),
+          do: {"text/html", File.read!(page)},
+          else: {"text/plain", @reasons[status]}
       end
 
     conn = if conn.method == "HEAD", do: Plug.Head.call(conn, []), else: conn

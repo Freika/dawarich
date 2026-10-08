@@ -4,6 +4,7 @@ defmodule DawarichWeb.Api.Transport do
   alias DawarichWeb.Api.SourceParams
 
   @json ~w(application/json text/x-json application/jsonrequest)
+  @retained_multipart 2_097_152
 
   def init(opts), do: opts
 
@@ -11,14 +12,21 @@ defmodule DawarichWeb.Api.Transport do
     DawarichWeb.PageEnvelope.call(conn, :router)
   rescue
     exception in Plug.Conn.WrapperError ->
-      if conn.private[:dawarich_native_api],
-        do: DawarichWeb.RailsErrors.respond(exception.conn, 500),
-        else: reraise(exception, __STACKTRACE__)
+      if conn.private[:dawarich_native_api] do
+        %{kind: kind, reason: reason, stack: stack} = exception
+        Dawarich.ErrorReporting.capture_web(Exception.normalize(kind, reason, stack), stack)
+        DawarichWeb.RailsErrors.respond(exception.conn, 500)
+      else
+        reraise(exception, __STACKTRACE__)
+      end
 
     exception ->
-      if conn.private[:dawarich_native_api],
-        do: DawarichWeb.RailsErrors.respond(conn, 500),
-        else: reraise(exception, __STACKTRACE__)
+      if conn.private[:dawarich_native_api] do
+        Dawarich.ErrorReporting.capture_web(exception, __STACKTRACE__)
+        DawarichWeb.RailsErrors.respond(conn, 500)
+      else
+        reraise(exception, __STACKTRACE__)
+      end
   end
 
   def parse(%{private: %{dawarich_body_parsed: true}} = conn), do: conn
@@ -32,8 +40,10 @@ defmodule DawarichWeb.Api.Transport do
       |> assign(:api_params, Map.merge(body, query))
     else
       {:error, status} -> error(conn, status)
+      {:error, status, conn} -> error(conn, status)
     end
   rescue
+    Plug.Parsers.RequestTooLargeError -> error(conn, 413)
     _ -> error(conn, 400)
   end
 
@@ -52,26 +62,31 @@ defmodule DawarichWeb.Api.Transport do
 
     if type == "multipart/form-data" do
       opts =
-        Plug.Parsers.init(parsers: [:multipart], pass: ["*/*"], length: 9_223_372_036_854_775_807)
+        Plug.Parsers.init(parsers: [:multipart], pass: ["*/*"], length: limit(:multipart))
 
-      parsed = DawarichWeb.Api.MultipartReplay.parse(conn, opts)
+      parsed = DawarichWeb.Api.MultipartReplay.parse(conn, opts, @retained_multipart)
       {:ok, SourceParams.munge(parsed.body_params), parsed}
     else
-      {raw, conn} = raw(conn, [])
-      conn = put_private(conn, :dawarich_raw_body, raw)
+      with {:ok, raw, conn} <- raw(conn, [], 0) do
+        conn = put_private(conn, :dawarich_raw_body, raw)
 
-      result =
-        cond do
-          type in @json -> json(raw)
-          type == "application/x-www-form-urlencoded" -> SourceParams.decode(raw)
-          true -> {:ok, %{}}
+        result =
+          cond do
+            type in @json -> json(raw)
+            type == "application/x-www-form-urlencoded" -> SourceParams.decode(raw)
+            true -> {:ok, %{}}
+          end
+
+        case result do
+          {:ok, params} -> {:ok, params, conn}
+          error -> error
         end
-
-      case result do
-        {:ok, params} -> {:ok, params, conn}
-        error -> error
       end
     end
+  end
+
+  defp limit(kind) do
+    :dawarich |> Application.fetch_env!(:api_body_limits) |> Keyword.fetch!(kind)
   end
 
   defp json(""), do: {:ok, %{}}
@@ -84,13 +99,23 @@ defmodule DawarichWeb.Api.Transport do
     end
   end
 
-  defp raw(%{private: %{dawarich_raw_body: raw}} = conn, []), do: {raw, conn}
+  defp raw(%{private: %{dawarich_raw_body: raw}} = conn, [], 0) do
+    if byte_size(raw) > limit(:json), do: {:error, 413, conn}, else: {:ok, raw, conn}
+  end
 
-  defp raw(conn, acc) do
+  defp raw(conn, acc, size) do
     case read_body(conn, length: 1_048_576, read_length: 1_048_576) do
-      {:ok, data, conn} -> {IO.iodata_to_binary(Enum.reverse([data | acc])), conn}
-      {:more, data, conn} -> raw(conn, [data | acc])
-      _ -> throw(:bad_body)
+      {status, data, conn} when status in [:ok, :more] ->
+        size = size + byte_size(data)
+
+        cond do
+          size > limit(:json) -> {:error, 413, conn}
+          status == :ok -> {:ok, IO.iodata_to_binary(Enum.reverse([data | acc])), conn}
+          true -> raw(conn, [data | acc], size)
+        end
+
+      _ ->
+        {:error, 400, conn}
     end
   end
 

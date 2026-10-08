@@ -49,6 +49,22 @@ defmodule Dawarich.ErrorReporting do
     _, _ -> :ok
   end
 
+  def capture_web(exception, stack) do
+    if Sentry.get_dsn(),
+      do:
+        Sentry.capture_exception(exception,
+          stacktrace: stack,
+          handled: false,
+          tags: %{"surface" => "web"}
+        )
+
+    :ok
+  rescue
+    _ -> :ok
+  catch
+    _, _ -> :ok
+  end
+
   def start do
     if Sentry.get_dsn() do
       :telemetry.attach(__MODULE__, [:oban, :job, :exception], &__MODULE__.oban_exception/4, nil)
