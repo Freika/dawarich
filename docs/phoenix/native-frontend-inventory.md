@@ -1,6 +1,6 @@
 # Native frontend inventory and baseline
 
-Milestone 0 of the native frontend plan (`superpowers/plans/2026-10-08-phoenix-native-frontend-plan.md`, ADR-0017). The matrix below is generated; the baseline and test-mapping sections are written by hand.
+Milestone 0 of the native frontend plan (`superpowers/plans/2026-10-08-phoenix-native-frontend-plan.md`, ADR-0017). The matrix below was generated at the base commit `51a6713bc` (rerun `mix dawarich.frontend_inventory` for the current state; it still lists the Tags modules removed later); the baseline, after and test-mapping sections are written by hand.
 
 ## Matrix
 
