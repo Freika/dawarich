@@ -282,6 +282,31 @@ JavaScript loaded after `networkidle` (`tags/assets-budget.spec.js`, E2E `103375
 | `/tags` | 51 | 1,867,685 | 9 |
 | `/tags/new` | 56 | 1,941,381 | 12 |
 
+## After (Tags pilot, milestones 0–2)
+
+Same measurements on the branch head (`feat/native-frontend` `b3536ead3`, E2E `0ff3bda`).
+
+Standalone G44 (3 lanes): every lane 523 passed, 0 failed, 51 skipped (quarantine unchanged). The two extra tests are `tags/assets-budget.spec.js` and the native-page case in `achievements/unlock.spec.js`; no reference spec failed. Full ExUnit seeds 404 and 202: 9991 tests, 0 failures each.
+
+Ecto queries per mount:
+
+| Route | Static | Connected | vs. baseline |
+| --- | ---: | ---: | --- |
+| `/tags` | 5 | 5 | equal |
+| `/tags/new` | 4 | 4 | equal |
+| `/tags/:id/edit` | 5 | 5 | equal |
+
+The first form render used to build its changeset through the Rails validation, which cost one uniqueness query on `/tags/new` and `/tags/:id/edit`; the initial changeset now skips validation (`Tags.change_tag/2`), pinned by `tags_live_form_test.exs` "opening the forms reads the database no more often than the Rails-era pages".
+
+JavaScript loaded after `networkidle` (`tags/assets-budget.spec.js`, three standalone runs on `37d4af083`, identical each time):
+
+| Route | Script requests | Bytes | Hotwire modules among them |
+| --- | ---: | ---: | ---: |
+| `/tags` | 1 | 153,750 | 0 |
+| `/tags/new` | 1 | 153,750 | 0 |
+
+emoji-mart is a separate chunk that loads only when the picker opens, so it is not part of the `/tags/new` figure.
+
 ## Removed Tags tests and their behaviour replacements
 
 | Removed test (file: case) | Kind | Covered by |
