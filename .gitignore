@@ -97,3 +97,6 @@ node_modules/
 DESIGN.md
 
 docs/agents/
+
+# Phoenix test fixtures live in e2e-dawarich-playwright/phoenix-fixtures (scripts/link_fixtures.sh)
+/app-phoenix/test/fixtures

@@ -1,3 +1,7 @@
+unless File.dir?(Path.expand("fixtures", __DIR__)) do
+  raise "test/fixtures is missing: run scripts/link_fixtures.sh /path/to/e2e-dawarich-playwright"
+end
+
 ExUnit.start(exclude: [:rails_parity])
 
 if System.get_env("MIX_TEST_PARTITION", "") != "" do
