@@ -26,6 +26,8 @@ defmodule Dawarich.Tags do
     end
   end
 
+  def change_tag(%Scope{}, tag), do: changeset(tag, %{}, [])
+
   def change_tag(%Scope{} = scope, tag, params) do
     attrs = normalize(params)
 

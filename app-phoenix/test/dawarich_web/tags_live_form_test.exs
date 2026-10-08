@@ -227,6 +227,37 @@ defmodule DawarichWeb.TagsLiveFormTest do
     assert has_element?(view, "input[name='tag[name]'][value='Recovered']")
   end
 
+  def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
+
+  defp queries(fun) do
+    id = "tag-form-queries-#{System.unique_integer([:positive])}"
+    :telemetry.attach(id, [:dawarich, :repo, :query], &__MODULE__.handle_query/4, self())
+    fun.()
+    :telemetry.detach(id)
+    count_queries(0)
+  end
+
+  defp count_queries(n) do
+    receive do
+      :query -> count_queries(n + 1)
+    after
+      0 -> n
+    end
+  end
+
+  test "opening the forms reads the database no more often than the Rails-era pages", %{
+    user: user
+  } do
+    tag!(user, 84014)
+
+    for {path, budget} <- [{"/tags/new", 4}, {"/tags/84014/edit", 5}] do
+      conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id)
+      assert queries(fn -> send(self(), {:conn, get(conn, path)}) end) <= budget, path
+      assert_received {:conn, conn}
+      assert queries(fn -> {:ok, _view, _html} = live(conn) end) <= budget, path
+    end
+  end
+
   test "the native form has no Stimulus, island or Rails form plumbing", %{user: user} do
     {:ok, view, page} = live_as(user, "/tags/new")
     html = view |> form() |> render()

@@ -44,7 +44,7 @@ defmodule DawarichWeb.TagsLive.Form do
        privacy: not is_nil(tag.privacy_radius_meters)
      )
      |> assign(:tag_title, t(socket.assigns.locale, "tags.#{kind}.#{kind}_tag", %{}))
-     |> assign_form(Tags.change_tag(scope, tag, %{}))}
+     |> assign_form(Tags.change_tag(scope, tag))}
   end
 
   @impl true
