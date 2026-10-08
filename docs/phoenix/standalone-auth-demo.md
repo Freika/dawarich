@@ -27,5 +27,12 @@ Verification lives in `standalone_credentials_otp_test.exs`,
 recovery mail tests, and demo importer/adoption/destroy callers. Controller browser
 acceptance remains separate from these ExUnit and Rails characterizations.
 
+The unchanged browser specs passed three consecutive standalone runs and one
+coexistence run: OTP lockout, four password recovery cases, two trial routing
+cases, three demo-load cases, demo adoption and demo deletion. Each run passed
+all 12 scenarios plus authentication setup with one worker, zero retries and
+no skipped or flaky tests. The harness supplied `DOMAIN` and JWT configuration,
+and each standalone run passed the source-drain and native-readiness checks.
+
 Rails bugs fixed: none. These changes repair native wiring, failure handling and
 work amplification; no new ED or DRB row is needed.
