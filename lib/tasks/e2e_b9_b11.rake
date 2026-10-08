@@ -122,7 +122,9 @@ namespace :e2e do
     carrier = user.achievement_progresses.find_by(achievement_key: 'country_de')
     carrier&.update!(sharing_enabled: false)
 
-    unlock_emails = ['b11-unlock@dawarich.test'] + (1..4).map { |number| "b11-unlock-repeat#{number}@dawarich.test" }
+    unlock_emails = %w[b11-unlock b11-unlock-native].flat_map do |name|
+      ["#{name}@dawarich.test"] + (1..4).map { |number| "#{name}-repeat#{number}@dawarich.test" }
+    end
     unlock_emails.each { |email| E2eUnlockFixtures.prepare!(email) }
   end
 

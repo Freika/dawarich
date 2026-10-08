@@ -56,6 +56,15 @@ describe 'e2e:seed_b11_achievements' do
     expect(user.achievement_unlock_events.pending.pluck(:key)).to eq(['DE'])
   end
 
+  it 'prepares a separate pending unlock for each native-page browser repetition' do
+    Rake::Task['e2e:seed_b11_achievements'].execute
+
+    ['b11-unlock-native'].concat((1..4).map { |number| "b11-unlock-native-repeat#{number}" }).each do |name|
+      user = User.find_by!(email: "#{name}@dawarich.test")
+      expect(user.achievement_unlock_events.pending.pluck(:key)).to eq(['DE'])
+    end
+  end
+
   it 'prepares independent unlock events for five browser repetitions' do
     Rake::Task['e2e:seed_b11_achievements'].execute
 
