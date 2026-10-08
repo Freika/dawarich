@@ -13,7 +13,7 @@ defmodule DawarichWeb.Api.MapGoldenTest do
 
   for kase <- @golden["cases"] do
     @kase if(
-            kase["name"] in ~w(rails_point_tiles rails_tracked_months rails_point_update rails_points_bulk_destroy),
+            kase["name"] in ~w(rails_point_tiles rails_tracked_months rails_point_update rails_points_bulk_destroy replay_points_local_time_without_offset),
             do: Map.put(kase, "expect", "own"),
             else: kase
           )
