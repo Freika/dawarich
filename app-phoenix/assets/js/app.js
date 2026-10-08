@@ -20,3 +20,7 @@ const liveSocket = new LiveSocket("/phoenix/live", Socket, {
 
 liveSocket.connect()
 window.liveSocket = liveSocket
+
+window.addEventListener("dawarich:flash-timeout", (event) => {
+  window.setTimeout(() => event.target.querySelector("button")?.click(), 5000)
+})

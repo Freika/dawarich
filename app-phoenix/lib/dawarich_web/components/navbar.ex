@@ -17,6 +17,7 @@ defmodule DawarichWeb.Navbar do
   attr :self_hosted, :boolean, required: true
   attr :rails_csrf_token, :string, default: nil
   attr :now, :any, required: true
+  attr :native, :boolean, default: false
 
   def navbar(assigns) do
     ~H"""
@@ -52,6 +53,7 @@ defmodule DawarichWeb.Navbar do
               base_url={@base_url}
               current_user={@current_user}
               family={@data[:family]}
+              native={@native}
             />
             <li :if={@data[:subscription]}>
               <a
@@ -67,6 +69,7 @@ defmodule DawarichWeb.Navbar do
                   theme={@current_user.theme}
                   class="flex items-center gap-2"
                   label
+                  native={@native}
                 />
               </li>
               <li>
@@ -99,9 +102,10 @@ defmodule DawarichWeb.Navbar do
           locale={@locale}
           version={@data.version}
           rails_csrf_token={@rails_csrf_token}
+          native={@native}
         />
         <div :if={@current_user} class="hidden xl:block">
-          <.theme_toggle locale={@locale} theme={@current_user.theme} />
+          <.theme_toggle locale={@locale} theme={@current_user.theme} native={@native} />
         </div>
       </div>
       <div class="navbar-center hidden xl:flex">
@@ -113,6 +117,7 @@ defmodule DawarichWeb.Navbar do
             base_url={@base_url}
             current_user={@current_user}
             family={@data[:family]}
+            native={@native}
           />
         </ul>
       </div>
@@ -122,6 +127,8 @@ defmodule DawarichWeb.Navbar do
         locale={@locale}
         self_hosted={@self_hosted}
         now={@now}
+        rails_csrf_token={@rails_csrf_token}
+        native={@native}
       />
     </div>
     """
@@ -133,6 +140,7 @@ defmodule DawarichWeb.Navbar do
   attr :base_url, :string, required: true
   attr :current_user, :any, required: true
   attr :family, :any, required: true
+  attr :native, :boolean, default: false
 
   def main_links(assigns) do
     assigns =
@@ -184,7 +192,7 @@ defmodule DawarichWeb.Navbar do
           href={@home}
         >
           <span>{t(@locale, "shared.navbar.family", %{})}<sup :if={not @mobile}>α</sup></span>
-          <.family_indicator locale={@locale} sharing={@family.sharing} />
+          <.family_indicator locale={@locale} sharing={@family.sharing} native={@native} />
         </a>
       <% else %>
         <a class={link_class(@mobile, @request_path, "/family/new")} href="/family/new">{t(

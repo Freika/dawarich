@@ -30,7 +30,9 @@ export const EmojiPicker = {
       this.picker = new Picker({
         data,
         onEmojiSelect: (emoji) => this.select(emoji.native),
-        theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light",
+        theme: document.documentElement.dataset.theme?.endsWith("dark")
+          ? "dark"
+          : "light",
         previewPosition: "none",
         skinTonePosition: "search",
         maxFrequentRows: 2,

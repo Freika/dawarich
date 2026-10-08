@@ -50,12 +50,13 @@ defmodule DawarichWeb.NavbarParts do
   attr :theme, :string, default: nil
   attr :class, :string, default: "btn btn-ghost"
   attr :label, :boolean, default: false
+  attr :native, :boolean, default: false
 
   def theme_toggle(assigns) do
     assigns = assign(assigns, :target, if(assigns.theme == "light", do: "dark", else: "light"))
 
     ~H"""
-    <a data-turbo="false" class={@class} href={"/settings/theme?theme=#{@target}"}>
+    <a data-turbo={!@native && "false"} class={@class} href={"/settings/theme?theme=#{@target}"}>
       <Icon.icon name={if @target == "dark", do: "moon", else: "sun"} class="size-6" />
       <span :if={@label}>{t(@locale, "shared.navbar.theme_toggle.#{@target}_mode", %{})}</span>
     </a>
@@ -64,6 +65,23 @@ defmodule DawarichWeb.NavbarParts do
 
   attr :locale, :string, required: true
   attr :sharing, :boolean, required: true
+  attr :native, :boolean, default: false
+
+  def family_indicator(%{native: true} = assigns) do
+    ~H"""
+    <span
+      id="family-navbar-indicator"
+      class={"tooltip tooltip-bottom inline-block w-2 h-2 #{if @sharing, do: "bg-green-500 animate-pulse", else: "bg-gray-400"} rounded-full"}
+      data-tip={
+        t(
+          @locale,
+          "families.navbar_indicator.#{if @sharing, do: "location_shared", else: "location_not_shared"}",
+          %{}
+        )
+      }
+    ></span>
+    """
+  end
 
   def family_indicator(assigns) do
     ~H"""
@@ -92,6 +110,7 @@ defmodule DawarichWeb.NavbarParts do
   attr :locale, :string, required: true
   attr :version, :map, required: true
   attr :rails_csrf_token, :string, default: nil
+  attr :native, :boolean, default: false
 
   def version_indicator(assigns) do
     ~H"""
@@ -128,7 +147,7 @@ defmodule DawarichWeb.NavbarParts do
         :if={@version.state == :widget}
         id="chgtool-mount"
         class="inline-flex items-center"
-        data-controller="changelog-widget"
+        data-controller={!@native && "changelog-widget"}
         data-changelog-widget-src-value={@version.widget_src}
         data-changelog-widget-slug-value={@version.slug}
         data-changelog-widget-version-value={@version.number}
@@ -165,6 +184,7 @@ defmodule DawarichWeb.NavbarParts do
                 class={class}
                 label={t(@locale, "shared.navbar.changelog_prompt.#{label}", %{})}
                 rails_csrf_token={@rails_csrf_token}
+                native={@native}
               />
             </div>
           </div>
@@ -178,11 +198,12 @@ defmodule DawarichWeb.NavbarParts do
   attr :class, :string, required: true
   attr :label, :string, required: true
   attr :rails_csrf_token, :string, default: nil
+  attr :native, :boolean, default: false
 
   def consent_form(assigns) do
     ~H"""
     <form
-      data-turbo-stream="true"
+      data-turbo-stream={!@native && "true"}
       class="button_to"
       method="post"
       action="/settings/changelog_consent"

@@ -12,6 +12,8 @@ defmodule DawarichWeb.NavbarEnd do
   attr :locale, :string, required: true
   attr :self_hosted, :boolean, required: true
   attr :now, :any, required: true
+  attr :rails_csrf_token, :string, default: nil
+  attr :native, :boolean, default: false
 
   def navbar_end(assigns) do
     ~H"""
@@ -45,6 +47,8 @@ defmodule DawarichWeb.NavbarEnd do
                 current_user={@current_user}
                 onboarding={@data.onboarding}
                 now={@now}
+                rails_csrf_token={@rails_csrf_token}
+                native={@native}
               />
             </ul>
           </div>
@@ -115,6 +119,8 @@ defmodule DawarichWeb.NavbarEnd do
                     current_user={@current_user}
                     onboarding={@data.onboarding}
                     now={@now}
+                    rails_csrf_token={@rails_csrf_token}
+                    native={@native}
                   />
                 </ul>
               </details>
@@ -135,6 +141,8 @@ defmodule DawarichWeb.NavbarEnd do
   attr :current_user, :any, required: true
   attr :onboarding, :boolean, required: true
   attr :now, :any, required: true
+  attr :rails_csrf_token, :string, default: nil
+  attr :native, :boolean, default: false
 
   def account_items(assigns) do
     ~H"""
@@ -156,7 +164,14 @@ defmodule DawarichWeb.NavbarEnd do
         ></span>
       </a>
     </li>
-    <li>
+    <li :if={@native}>
+      <form method="post" action="/users/sign_out" class="contents">
+        <input type="hidden" name="_method" value="delete" />
+        <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+        <button type="submit" class="w-full text-left">{t(@locale, "shared.navbar.logout", %{})}</button>
+      </form>
+    </li>
+    <li :if={!@native}>
       <a data-turbo="false" rel="nofollow" data-method="delete" href="/users/sign_out">{t(
         @locale,
         "shared.navbar.logout",

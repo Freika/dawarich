@@ -21,7 +21,7 @@ defmodule DawarichWeb.NativeAuth do
 
       {:cont, socket} ->
         scope = Scope.for_user(socket.assigns.current_user, socket.assigns.locale)
-        {:cont, assign(socket, :current_scope, scope)}
+        {:cont, socket |> assign(:current_scope, scope) |> assign(:native, true)}
 
       halt ->
         halt
