@@ -29,6 +29,8 @@ defmodule DawarichWeb.Assets do
                      |> then(&:crypto.hash(:md5, &1))
                      |> Base.url_encode64(padding: false)
 
+  def native_path(logical), do: DawarichWeb.Endpoint.static_path("/native/" <> logical)
+
   def stylesheet_path(logical), do: "/assets/" <> Map.get(manifest(), logical, logical)
 
   def stylesheet_path(rails_root, logical),

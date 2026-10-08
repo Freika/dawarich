@@ -46,6 +46,10 @@ COPY lib/assets/admin1_world.geojson priv/admin1_world.geojson
 COPY lib/assets/countries.geojson.gz priv/countries.geojson.gz
 COPY app-phoenix/rel rel
 COPY app-phoenix/config/runtime.exs config/
+COPY app-phoenix/assets/package.json app-phoenix/assets/package-lock.json assets/
+RUN npm ci --prefix assets --no-audit --no-fund && rm -rf ~/.npm
+COPY app-phoenix/assets/js assets/js
+RUN mix esbuild.install --if-missing && mix assets.deploy
 RUN mix release
 
 WORKDIR /src
@@ -64,6 +68,7 @@ COPY config/locales config/locales
 COPY config/achievements config/achievements
 COPY config/achievements.yml config/importmap.rb config/tailwind.config.js config/
 COPY app-phoenix/lib app-phoenix/lib
+COPY app-phoenix/assets/js app-phoenix/assets/js
 COPY app-phoenix/priv/tailwind/retained_classes.html app-phoenix/priv/tailwind/retained_classes.html
 RUN BROWSERSLIST_IGNORE_OLD_DATA=1 node_modules/.bin/tailwindcss \
       -i app/assets/stylesheets/application.tailwind.css -o app/assets/builds/tailwind.css \

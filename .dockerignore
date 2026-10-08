@@ -44,3 +44,6 @@ storage/
 config/master.key
 config/credentials/*.key
 *.pem
+
+# Native bundles are built inside the image
+/app-phoenix/priv/static/native/

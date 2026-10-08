@@ -100,3 +100,7 @@ docs/agents/
 
 # Phoenix test fixtures live in e2e-dawarich-playwright/phoenix-fixtures (scripts/link_fixtures.sh)
 /app-phoenix/test/fixtures
+
+/app-phoenix/priv/static/native
+/app-phoenix/assets/node_modules
+/app-phoenix/priv/static/cache_manifest.json

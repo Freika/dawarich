@@ -36,6 +36,7 @@ defmodule Dawarich.MixProject do
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.1"},
       {:lazy_html, "~> 0.1.0"},
+      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:bandit, "~> 1.12"},
       {:redix, "~> 1.5"},
       {:gen_smtp, "~> 1.3"},
@@ -54,6 +55,12 @@ defmodule Dawarich.MixProject do
       "ecto.reset": fn _ ->
         Mix.raise("Rails owns the Dawarich database; Phoenix never resets it")
       end,
+      "assets.setup": ["esbuild.install --if-missing"],
+      "assets.build": ["esbuild native"],
+      "assets.deploy": [
+        "esbuild native --minify",
+        "phx.digest"
+      ],
       test: [
         "app.config",
         fn _ -> Dawarich.Release.migrate_oban() end,

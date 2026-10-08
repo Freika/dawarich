@@ -23,6 +23,11 @@ defmodule DawarichWeb.Endpoint do
     only: ~w(phoenix.mjs)
 
   plug Plug.Static,
+    at: "/native",
+    from: {:dawarich, "priv/static/native"},
+    gzip: true
+
+  plug Plug.Static,
     at: "/phoenix/js",
     from: {:phoenix_live_view, "priv/static"},
     only: ~w(phoenix_live_view.esm.js)

@@ -4,6 +4,7 @@ module.exports = {
   content: [
     "./app/javascript/**/*.js",
     "./app-phoenix/lib/**/*.{ex,heex}",
+    "./app-phoenix/assets/js/**/*.js",
     "./app-phoenix/priv/tailwind/retained_classes.html",
   ],
   theme: {
