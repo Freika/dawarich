@@ -1,5 +1,5 @@
 defmodule Dawarich.MapApi.ReadsTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: false
   alias Dawarich.MapApi
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
@@ -56,6 +56,82 @@ defmodule Dawarich.MapApi.ReadsTest do
     refute rows =~ "geodata"
     refute rows =~ "accuracy"
   end
+
+  test "track lists omit segment geometry, while track detail retains coordinates and timeline" do
+    user = owner()
+    [id] = tracks!(user.id, 0..0)
+
+    {list_queries, {:ok, list, _headers, 200}} =
+      queries(fn ->
+        MapApi.read(:tracks, user, %{}, DateTime.utc_now())
+      end)
+
+    [segment_sql] = Enum.filter(list_queries, &String.contains?(&1, "FROM track_segments"))
+    refute segment_sql =~ "ST_DumpPoints"
+    refute segment_sql =~ "s.path"
+    refute segment_sql =~ "s.confidence"
+
+    {detail_queries, {:ok, detail, _headers, 200}} =
+      queries(fn ->
+        MapApi.read(:track, user, %{"id" => to_string(id)}, DateTime.utc_now())
+      end)
+
+    [detail_sql] = Enum.filter(detail_queries, &String.contains?(&1, "FROM track_segments"))
+    assert detail_sql =~ "ST_DumpPoints"
+    [%{"properties" => list_properties}] = decode(list)["features"]
+    [%{"properties" => detail_properties}] = decode(detail)["features"]
+    assert list_properties["mode_timeline"] == detail_properties["mode_timeline"]
+    assert length(list_properties["mode_timeline"]) == 2
+    refute Map.has_key?(list_properties, "segments")
+
+    assert Enum.map(detail_properties["segments"], & &1["coordinates"]) ==
+             List.duplicate([[13.0, 52.0], [13.002, 52.002]], 2)
+  end
+
+  test "a warm points schema avoids repeated catalogue queries" do
+    Dawarich.MapApi.PointRecord.invalidate()
+    {cold, {:ok, columns}} = queries(&Dawarich.MapApi.PointRecord.columns/0)
+    assert Enum.any?(cold, &String.contains?(&1, "pg_attribute"))
+    {warm, {:ok, ^columns}} = queries(&Dawarich.MapApi.PointRecord.columns/0)
+    refute Enum.any?(warm, &String.contains?(&1, "pg_attribute"))
+  end
+
+  test "a large page preserves ordering, coordinates and common fields in full and slim JSON" do
+    user = owner()
+
+    Repo.query!(
+      """
+      INSERT INTO points (user_id, timestamp, lonlat, velocity, created_at, updated_at)
+      SELECT $1, $2::bigint + n, ST_SetSRID(ST_MakePoint(13 + n / 100000.0, 52.25), 4326)::geography,
+             1.25, now(), now() FROM generate_series(1, 1000) n
+      """,
+      [user.id, @t0]
+    )
+
+    params = %{"per_page" => "1000", "order" => "asc", "end_at" => to_string(@t0 + 1000)}
+
+    {:points, full, full_headers, full_meta} =
+      MapApi.read(:points, user, params, DateTime.utc_now())
+
+    {:points, slim, slim_headers, slim_meta} =
+      MapApi.read(:points, user, Map.put(params, "slim", "true"), DateTime.utc_now())
+
+    full_rows = decode(full.())
+    slim_rows = decode(slim.())
+    assert length(full_rows) == 1000
+    assert length(slim_rows) == 1000
+    assert full_headers == slim_headers
+    assert full_meta.count == slim_meta.count
+    assert Enum.map(full_rows, & &1["timestamp"]) == Enum.to_list((@t0 + 1)..(@t0 + 1000))
+
+    for {full, slim} <- Enum.zip(full_rows, slim_rows) do
+      assert Map.take(full, Map.keys(slim)) == slim
+      assert full["revision"] == 0
+      assert full["lonlat"] == "POINT (#{slim["longitude"]} #{slim["latitude"]})"
+    end
+  end
+
+  defp decode(term), do: term |> Ruby.json() |> IO.iodata_to_binary() |> Jason.decode!()
 
   defp owner,
     do: %{id: user!(%{settings: %{"timezone" => "Europe/Berlin"}}), timezone: "Europe/Berlin"}

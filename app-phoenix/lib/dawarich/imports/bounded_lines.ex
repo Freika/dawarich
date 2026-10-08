@@ -36,7 +36,7 @@ defmodule Dawarich.Imports.BoundedLines do
 
       {index, 1} ->
         size = index + 1
-        <<piece::binary-size(size), rest::binary>> = state.pending
+        <<piece::binary-size(^size), rest::binary>> = state.pending
         state = append(%{state | pending: rest}, piece)
         {[line(state)], %{state | parts: [], size: 0}}
     end

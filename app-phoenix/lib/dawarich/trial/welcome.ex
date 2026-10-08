@@ -66,16 +66,16 @@ defmodule Dawarich.Trial.Welcome do
         {:ok, %{path: "/map/v2", flash: nil, cookie: nil}}
 
       :consumed ->
-        case result(
-               prepared.conn,
-               "/users/sign_in",
-               "this_welcome_link_has_already_been_used",
-               prepared.locale,
-               context
-             ) do
-          {:ok, %{result: result}} -> {:ok, result}
-          _ -> {:terminal, :issuer}
-        end
+        {:ok, %{result: result}} =
+          result(
+            prepared.conn,
+            "/users/sign_in",
+            "this_welcome_link_has_already_been_used",
+            prepared.locale,
+            context
+          )
+
+        {:ok, result}
 
       {:error, _} ->
         {:terminal, :claim}

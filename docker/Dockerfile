@@ -12,11 +12,23 @@ RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ]; then \
 
 FROM debian:trixie-slim AS phoenix_builder
 
+ARG ELIXIR_VERSION=1.20.4
+ARG ELIXIR_SHA256=4389f216eec086b34a08d70a3eb0a649d00e6631987d1cbb649a2f81092f034c
+
 RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    erlang-nox erlang-dev elixir git ca-certificates build-essential nodejs npm \
+    erlang-nox erlang-dev curl unzip git ca-certificates build-essential nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
+# Release artifacts include Elixir, while Debian supplies OTP 27 in both runtimes.
+# Verify the official precompiled Elixir archive instead of relying on apt's older version.
+RUN curl -fsSL --retry 3 "https://github.com/elixir-lang/elixir/releases/download/v${ELIXIR_VERSION}/elixir-otp-27.zip" -o /tmp/elixir.zip \
+    && echo "${ELIXIR_SHA256}  /tmp/elixir.zip" | sha256sum -c - \
+    && unzip -q /tmp/elixir.zip -d /opt/elixir \
+    && rm /tmp/elixir.zip \
+    && erl -noshell -eval '"27" = erlang:system_info(otp_release), halt().'
+
+ENV PATH=/opt/elixir/bin:$PATH
 ENV MIX_ENV=prod LANG=C.UTF-8
 WORKDIR /build
 
@@ -105,6 +117,7 @@ COPY public/poster_themes public/poster_themes
 COPY app/javascript app/javascript
 COPY app/assets/fonts app/assets/fonts
 COPY app/assets/images app/assets/images
+COPY app/assets/svg app/assets/svg
 COPY vendor/javascript vendor/javascript
 COPY config/storage.yml config/storage.yml
 COPY .app_version .app_version

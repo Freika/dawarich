@@ -106,7 +106,7 @@ defmodule Dawarich.RailsMessages do
     size = byte_size(signed) - hex - 2
 
     with true <- size > 0 and String.valid?(signed),
-         <<data::binary-size(size), "--", signature::binary-size(hex)>> <- signed,
+         <<data::binary-size(^size), "--", signature::binary-size(^hex)>> <- signed,
          true <-
            Plug.Crypto.secure_compare(signature, mac(digest, key(secret, salt, 1000, 64), data)),
          {:ok, json} <- Base.decode64(data),

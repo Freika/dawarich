@@ -4,6 +4,8 @@ defmodule Dawarich.RailsTime do
   alias Dawarich.Repo
   alias Dawarich.TimeZoneName
 
+  @context_key {__MODULE__, :zone_context}
+
   @zone ~r{\A[A-Z][A-Za-z_\-]*(?:/[A-Za-z0-9_+\-]+)+\z}
 
   def iso8601(nil, _setting), do: {:ok, nil}
@@ -25,8 +27,8 @@ defmodule Dawarich.RailsTime do
 
     if is_binary(zone) and zone =~ @zone do
       repo.transaction(fn ->
-        case set_zone(repo, zone) do
-          :ok -> fun.()
+        case in_zone(repo, zone, fun) do
+          {:ok, result} -> result
           replay -> repo.rollback(replay)
         end
       end)
@@ -36,6 +38,49 @@ defmodule Dawarich.RailsTime do
       end
     else
       {:replay, "time zone setting #{inspect(setting)}"}
+    end
+  end
+
+  defp in_zone(repo, zone, fun) do
+    # Query/transaction adapters need not expose an Ecto dynamic repository.
+    # Only optimize a context whose repository identity we can establish.
+    if function_exported?(repo, :get_dynamic_repo, 0) do
+      scoped_zone(repo, zone, fun)
+    else
+      Process.delete(@context_key)
+
+      try do
+        case set_zone(repo, zone) do
+          :ok -> {:ok, fun.()}
+          replay -> replay
+        end
+      after
+        Process.delete(@context_key)
+      end
+    end
+  end
+
+  defp scoped_zone(repo, zone, fun) do
+    context = {repo, repo.get_dynamic_repo(), zone}
+    previous = Process.get(@context_key)
+    result = if previous == context, do: :ok, else: set_zone(repo, zone)
+
+    case result do
+      :ok ->
+        Process.put(@context_key, context)
+
+        try do
+          {:ok, fun.()}
+        after
+          # A different nested zone changes PostgreSQL's transaction-local state.
+          # Invalidate the outer marker so its next use sets the zone again.
+          if previous == context and Process.get(@context_key) == context,
+            do: Process.put(@context_key, previous),
+            else: Process.delete(@context_key)
+        end
+
+      replay ->
+        replay
     end
   end
 

@@ -41,7 +41,7 @@ defmodule Dawarich.Imports.ZonePeriod do
 
     if version in [?2, ?3, ?4] do
       skip = size(counts, 4)
-      <<_first::binary-size(skip), next::binary>> = block
+      <<_first::binary-size(^skip), next::binary>> = block
       {_v, counts, block} = header(next)
       decode(counts, block, 8)
     else
@@ -108,8 +108,10 @@ defmodule Dawarich.Imports.ZonePeriod do
     types_len = c.type * 6
     remaining = size(c, width) - len - c.time - types_len
 
-    <<times::binary-size(len), indices::binary-size(c.time), types::binary-size(types_len),
-      _metadata::binary-size(remaining), footer::binary>> = block
+    time_count = c.time
+
+    <<times::binary-size(^len), indices::binary-size(^time_count), types::binary-size(^types_len),
+      _metadata::binary-size(^remaining), footer::binary>> = block
 
     timestamps =
       if width == 8,

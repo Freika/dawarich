@@ -100,8 +100,7 @@ defmodule DawarichWeb.A9RoutesTest do
       info = Phoenix.Router.route_info(Router, verb, path, "www.example.com")
 
       assert {info.route, info.plug, info.plug_opts, info.pipe_through, info.slice,
-              info[:rails_gate],
-              info[:phoenix_live_view]} ==
+              info[:rails_gate], info[:phoenix_live_view]} ==
                {path, controller, action, [pipeline], slice, nil, nil}
     end
 
@@ -152,8 +151,7 @@ defmodule DawarichWeb.A9RoutesTest do
       info = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
 
       assert {info.route, info.plug, info.plug_opts, info.pipe_through, info[:slice],
-              info[:rails_gate],
-              info[:phoenix_live_view]} ==
+              info[:rails_gate], info[:phoenix_live_view]} ==
                {path, plug, action, [:rails_frame], nil, gate, nil}
     end
 
@@ -165,8 +163,7 @@ defmodule DawarichWeb.A9RoutesTest do
       info = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
 
       assert {info.route, info.plug, info.plug_opts, info.pipe_through, info[:rails_key],
-              info[:rails_gate],
-              info[:phoenix_live_view]} ==
+              info[:rails_gate], info[:phoenix_live_view]} ==
                {path, DawarichWeb.ShareManagementPage, action, [:rails_frame], key,
                 {DawarichWeb.ShareManagementGate, :native?}, nil}
     end

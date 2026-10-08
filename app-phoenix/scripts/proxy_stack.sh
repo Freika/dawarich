@@ -94,10 +94,10 @@ stack bin/rails phoenix:i18n phoenix:achievements >/dev/null
 [ -n "$(ls -A public/assets 2>/dev/null)" ] || stack bin/rails assets:precompile >/dev/null
 stack bin/rails phoenix:importmap phoenix:time_zones >/dev/null
 (cd app-phoenix && stack env PATH="$HOME/.asdf/shims:$PATH" \
-  ASDF_ERLANG_VERSION=27.3.4.1 ASDF_ELIXIR_VERSION=1.18.3-otp-27 \
+  ASDF_ERLANG_VERSION=27.3.4.1 ASDF_ELIXIR_VERSION=1.20.4-otp-27 \
   DATABASE_HOST=127.0.0.1 PHOENIX_TEST_REDIS_URL="redis://127.0.0.1:$REDIS_PORT/1" \
   PHOENIX_TEST_DATABASE="$STAND_DATABASE_NAME" MIX_ENV=prod \
-  sh -c 'mix --version | grep -q "^Mix 1.18.3 " && mix compile --force >/dev/null && mix release --overwrite >/dev/null')
+  sh -c 'mix --version | grep -q "^Mix 1.20.4 " && mix compile --force >/dev/null && mix release --overwrite >/dev/null')
 stack "$rel" eval 'Dawarich.Release.migrate()'
 stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -b 127.0.0.1 -p "$PORT")" \
   ruby -e 'Process.daemon(true, true); File.write(ARGV.shift, Process.pid.to_s); exec(*ARGV)' "$pidfile" "$rel" start >>"$log" 2>&1

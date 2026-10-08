@@ -205,8 +205,11 @@ defmodule Dawarich.Test.NormalWholeEffects do
     time |> DateTime.to_unix() |> DateTime.from_unix!() |> DateTime.to_iso8601()
   end
 
-  defp decode(%{"_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer", "value" => value}),
-    do: value
+  defp decode(%{
+         "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+         "value" => value
+       }),
+       do: value
 
   defp decode(map) when is_map(map),
     do:

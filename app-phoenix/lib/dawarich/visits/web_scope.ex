@@ -101,9 +101,8 @@ defmodule Dawarich.Visits.WebScope do
   defp known_zone(repo, name) do
     zone = TimeZoneName.to_iana(name)
 
-    case repo.query!("SELECT name FROM pg_timezone_names WHERE name=$1", [zone], log: false).rows do
-      [[^zone]] -> {:ok, zone}
-      [] -> {:replay, "unknown visit time zone"}
-    end
+    if Dawarich.TimeZoneNames.member?(repo, zone),
+      do: {:ok, zone},
+      else: {:replay, "unknown visit time zone"}
   end
 end

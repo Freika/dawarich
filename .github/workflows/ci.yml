@@ -125,7 +125,7 @@ jobs:
         uses: erlef/setup-beam@v1
         with:
           otp-version: "27.3.4.1"
-          elixir-version: "1.18.3"
+          elixir-version: "1.20.4"
           version-type: strict
 
       - name: Cache Mix
@@ -134,7 +134,7 @@ jobs:
           path: |
             app-phoenix/deps
             app-phoenix/_build
-          key: mix-${{ runner.os }}-${{ hashFiles('app-phoenix/mix.lock') }}
+          key: mix-${{ runner.os }}-${{ hashFiles('app-phoenix/.tool-versions', 'app-phoenix/mix.lock') }}
 
       - name: Set up Node
         uses: actions/setup-node@v7

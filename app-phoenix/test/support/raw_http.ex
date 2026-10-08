@@ -76,7 +76,7 @@ defmodule Dawarich.Test.RawHTTP do
         []
 
       length ->
-        <<chunk::binary-size(length), "\r\n", tail::binary>> =
+        <<chunk::binary-size(^length), "\r\n", tail::binary>> =
           read_at_least(socket, rest, length + 2)
 
         [chunk | chunks(socket, tail)]

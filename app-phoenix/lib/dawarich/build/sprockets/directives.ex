@@ -17,11 +17,11 @@ defmodule Dawarich.Build.Sprockets.Directives do
     start = skip_space(source, pos)
 
     case source do
-      <<_::binary-size(start), "//", _::binary>> ->
+      <<_::binary-size(^start), "//", _::binary>> ->
         stop = line_end(source, start)
         header_size(source, stop, stop)
 
-      <<_::binary-size(start), "/*", _::binary>> ->
+      <<_::binary-size(^start), "/*", _::binary>> ->
         case :binary.match(source, "*/", scope: {start + 2, byte_size(source) - start - 2}) do
           {close, 2} -> header_size(source, close + 2, close + 2)
           :nomatch -> last
@@ -34,7 +34,7 @@ defmodule Dawarich.Build.Sprockets.Directives do
 
   defp skip_space(source, pos) do
     case source do
-      <<_::binary-size(pos), c, _::binary>> when c in [?\s, ?\t, ?\n, ?\r, ?\f, ?\v] ->
+      <<_::binary-size(^pos), c, _::binary>> when c in [?\s, ?\t, ?\n, ?\r, ?\f, ?\v] ->
         skip_space(source, pos + 1)
 
       _ ->

@@ -100,8 +100,7 @@ defmodule Dawarich.EnhancedImport.DestroyGpxWorkerTest do
             %{
               "error_message" => "Removing extracted data failed: boom",
               "counts" => %{"places" => 2}
-            },
-            _} =
+            }, _} =
              import_state(id)
 
     assert Enum.map(kinds(), & &1["kind"]) == ["enhanced_import_card"]
@@ -119,8 +118,7 @@ defmodule Dawarich.EnhancedImport.DestroyGpxWorkerTest do
             %{
               "error_message" =>
                 "Removing extracted data failed: extracted visits or tracks present"
-            },
-            _} =
+            }, _} =
              import_state(id)
   end
 end

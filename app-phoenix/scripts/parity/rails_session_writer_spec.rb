@@ -116,7 +116,7 @@ RSpec.describe 'Phoenix fixture: the Rails session Phoenix writes', type: :reque
     environment = {
       'MIX_ENV' => 'test', 'RAILS_ENV' => 'test',
       'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
-      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27',
+      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.20.4-otp-27',
       'DATABASE_HOST' => ENV.fetch('DATABASE_HOST'),
       'PHOENIX_TEST_DATABASE' => ENV.fetch('PHOENIX_TEST_DATABASE'),
       'PHOENIX_TEST_REDIS_URL' => ENV.fetch('PHOENIX_TEST_REDIS_URL'),

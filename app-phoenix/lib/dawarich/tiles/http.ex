@@ -203,7 +203,10 @@ defmodule Dawarich.Tiles.Http do
     error ->
       error(
         conn,
-        if(match?(%Postgrex.Error{postgres: %{code: :query_canceled}}, error), do: 503, else: 500),
+        if(match?(%Postgrex.Error{postgres: %{code: :query_canceled}}, error),
+          do: 503,
+          else: 500
+        ),
         if(match?(%Postgrex.Error{postgres: %{code: :query_canceled}}, error),
           do: "Tile query timed out",
           else: "Tile query failed"

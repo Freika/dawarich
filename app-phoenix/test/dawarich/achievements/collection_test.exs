@@ -106,7 +106,7 @@ defmodule Dawarich.Achievements.CollectionTest do
              )
   end
 
-  test "a render converts every unlock date with one time-zone query" do
+  test "a render converts every unlock date with one cold catalogue query and no warm queries" do
     earned =
       Dawarich.Achievements.Registry.find("country_de").region_codes
       |> Map.new(&{&1, "2026-07-19T10:00:00Z"})
@@ -133,8 +133,11 @@ defmodule Dawarich.Achievements.CollectionTest do
     on_exit(fn -> :telemetry.detach(id) end)
 
     for params <- [%{}, %{"key" => "country_de"}] do
-      assert {:ok, _view} = Collection.load(ScratchRepo, 901, params, context)
+      Dawarich.TimeZoneNames.invalidate(Dawarich.Repo)
+      assert {:ok, view} = Collection.load(ScratchRepo, 901, params, context)
       assert zone_queries() == 1, inspect(params)
+      assert {:ok, ^view} = Collection.load(ScratchRepo, 901, params, context)
+      assert zone_queries() == 0, inspect(params)
     end
   end
 

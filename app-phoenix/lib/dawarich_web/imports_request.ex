@@ -77,7 +77,9 @@ defmodule DawarichWeb.ImportsRequest do
   defp decode(conn, parse) do
     body = parse.(conn.private.dawarich_raw_body)
 
-    if Enum.all?(body, &request_module(conn).field?/1),
+    module = request_module(conn)
+
+    if Enum.all?(body, &module.field?/1),
       do: {:ok, assign_params(conn, body)},
       else: {:replay, conn, "parameter shape"}
   rescue

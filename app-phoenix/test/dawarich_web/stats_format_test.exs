@@ -90,8 +90,7 @@ defmodule DawarichWeb.StatsFormatTest do
 
   test "month styling and header colors follow MonthStylingHelper and header_colors" do
     assert {StatsFormat.month_icon(1), StatsFormat.month_icon(4), StatsFormat.month_icon(7),
-            StatsFormat.month_icon(10),
-            StatsFormat.month_icon(12)} ==
+            StatsFormat.month_icon(10), StatsFormat.month_icon(12)} ==
              {"snowflake", "flower", "tree-palm", "leaf", "snowflake"}
 
     assert StatsFormat.month_color(3) == "#3B945E"

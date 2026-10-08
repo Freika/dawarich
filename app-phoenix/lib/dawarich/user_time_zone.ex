@@ -20,23 +20,16 @@ defmodule Dawarich.UserTimeZone do
   def zoned(at, offset, zone),
     do: %{local: NaiveDateTime.add(at, offset), offset: offset, utc: zone in @utc_zones}
 
-  def name(settings, repo \\ Repo) do
-    %{rows: [[name]]} = query!("SELECT name FROM z", [], settings, repo)
-    name
+  def name(settings, repo \\ Repo, env \\ System.get_env()) do
+    resolved_name(settings, repo, env)
   end
 
   def iana(repo, settings, env \\ System.get_env()) do
     effective = zone(settings, env)
     raw = if Ruby.present?(effective), do: effective, else: env["TIME_ZONE"] || "Europe/Berlin"
 
-    case repo.query!(
-           "SELECT name FROM pg_timezone_names WHERE name = $1",
-           [Dawarich.TimeZoneName.to_iana(raw)],
-           log: false
-         ).rows do
-      [[name] | _] -> name
-      [] -> "Etc/UTC"
-    end
+    name = Dawarich.TimeZoneName.to_iana(raw)
+    if Dawarich.TimeZoneNames.member?(repo, name), do: name, else: "Etc/UTC"
   end
 
   def query!(sql, params, settings, repo_or_env \\ Repo)
@@ -51,18 +44,20 @@ defmodule Dawarich.UserTimeZone do
     n = length(params)
 
     repo.query!(
-      """
-      WITH z AS MATERIALIZED (SELECT coalesce(
-        (SELECT name FROM pg_timezone_names WHERE name = $#{n + 1}),
-        (SELECT name FROM pg_timezone_names WHERE name = $#{n + 2}),
-        'UTC') AS name)
-      """ <> sql,
-      params ++
-        [
-          Dawarich.TimeZoneName.to_iana(zone(settings, env)),
-          Dawarich.TimeZoneName.to_iana(env["TIME_ZONE"] || "Europe/Berlin")
-        ]
+      "WITH z AS MATERIALIZED (SELECT $#{n + 1}::text AS name) " <> sql,
+      params ++ [resolved_name(settings, repo, env)]
     )
+  end
+
+  defp resolved_name(settings, repo, env) do
+    preferred = Dawarich.TimeZoneName.to_iana(zone(settings, env))
+    fallback = Dawarich.TimeZoneName.to_iana(env["TIME_ZONE"] || "Europe/Berlin")
+
+    cond do
+      Dawarich.TimeZoneNames.member?(repo, preferred) -> preferred
+      Dawarich.TimeZoneNames.member?(repo, fallback) -> fallback
+      true -> "UTC"
+    end
   end
 
   def zone(settings, env \\ System.get_env())

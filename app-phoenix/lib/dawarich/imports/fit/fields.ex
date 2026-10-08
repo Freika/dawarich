@@ -145,7 +145,7 @@ defmodule Dawarich.Imports.Fit.Fields do
       do: raise(ArgumentError, "FIT field size does not match base type")
 
     values =
-      for <<part::binary-size(width) <- bytes>> do
+      for <<part::binary-size(^width) <- bytes>> do
         raw = :binary.decode_unsigned(part, endian)
 
         cond do

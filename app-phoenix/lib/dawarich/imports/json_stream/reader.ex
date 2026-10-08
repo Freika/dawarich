@@ -42,7 +42,7 @@ defmodule Dawarich.Imports.JsonStream.Reader do
             :nomatch -> byte_size(buffer)
           end
 
-        <<piece::binary-size(size), rest::binary>> = buffer
+        <<piece::binary-size(^size), rest::binary>> = buffer
         {piece, %{r | buffer: rest, remaining: r.remaining - size}}
     end
   end

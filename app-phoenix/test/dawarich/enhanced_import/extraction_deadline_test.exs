@@ -77,8 +77,7 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
       pid = run_blocked(id, unquote(attempt), storage, HookRepo)
 
       assert {unquote(status),
-              %{"error_message" => "GPX extraction did not finish within 0 minutes"},
-              _} =
+              %{"error_message" => "GPX extraction did not finish within 0 minutes"}, _} =
                import_state(id)
 
       assert_cleanup(storage, uid, pid)

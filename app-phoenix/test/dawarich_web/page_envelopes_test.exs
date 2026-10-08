@@ -18,6 +18,16 @@ defmodule DawarichWeb.PageEnvelopesTest do
           end)
 
   setup do
+    # Envelope assertions use logical paths; asset digest lookup has separate coverage.
+    assets = :persistent_term.get(DawarichWeb.Assets, :absent)
+    :persistent_term.put(DawarichWeb.Assets, %{})
+
+    on_exit(fn ->
+      if assets == :absent,
+        do: :persistent_term.erase(DawarichWeb.Assets),
+        else: :persistent_term.put(DawarichWeb.Assets, assets)
+    end)
+
     keys = [:rails_routes, :rails_upstream]
     previous = Map.new(keys, &{&1, Application.fetch_env(:dawarich, &1)})
     env = Map.new(~w(DAWARICH_RAILS SELF_HOSTED), &{&1, System.get_env(&1)})

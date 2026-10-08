@@ -41,7 +41,7 @@ jobs:
         uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
         with:
           otp-version: "27.3.4.1"
-          elixir-version: "1.18.3"
+          elixir-version: "1.20.4"
           version-type: strict
 
       - name: Cache Mix
@@ -141,7 +141,7 @@ jobs:
         uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
         with:
           otp-version: "27.3.4.1"
-          elixir-version: "1.18.3"
+          elixir-version: "1.20.4"
           version-type: strict
 
       - name: Cache Mix

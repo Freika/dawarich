@@ -496,7 +496,10 @@ defmodule DawarichWeb.A12f2GClosureTest do
     current = Repo.get!(Account, local.id)
 
     Repo.update!(
-      Ecto.Changeset.change(current, otp_required_for_login: false, locked_at: DateTime.utc_now()),
+      Ecto.Changeset.change(current,
+        otp_required_for_login: false,
+        locked_at: DateTime.utc_now()
+      ),
       log: false
     )
 

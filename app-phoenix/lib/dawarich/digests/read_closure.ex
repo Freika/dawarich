@@ -51,7 +51,6 @@ defmodule Dawarich.Digests.ReadClosure do
         end
       else
         :not_found -> :not_found
-        _ -> {:error, 500}
       end
     end)
   rescue

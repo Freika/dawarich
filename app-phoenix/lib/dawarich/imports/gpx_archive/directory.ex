@@ -65,8 +65,8 @@ defmodule Dawarich.Imports.GpxArchive.Directory do
 
   def data!(file, entry, central_offset) do
     <<0x04034B50::little-32, _version::little-16, flags::little-16, method::little-16, _time::32,
-      crc::little-32, compressed::little-32, size::little-32, nlen::little-16,
-      xlen::little-16>> = read!(file, entry.offset, 30)
+      crc::little-32, compressed::little-32, size::little-32, nlen::little-16, xlen::little-16>> =
+      read!(file, entry.offset, 30)
 
     name = read!(file, entry.offset + 30, nlen)
     extra = read!(file, entry.offset + 30 + nlen, xlen)
@@ -164,8 +164,8 @@ defmodule Dawarich.Imports.GpxArchive.Directory do
       read!(file, trailer.trailer - 20, 20)
 
     <<0x06064B50::little-32, length::little-64, _made::16, _need::16, 0::32, 0::32,
-      count::little-64, count::little-64, size::little-64,
-      position::little-64>> = read!(file, offset, 56)
+      count::little-64, count::little-64, size::little-64, position::little-64>> =
+      read!(file, offset, 56)
 
     unless length >= 44 and offset + 12 + length == trailer.trailer - 20,
       do: fail!("Invalid ZIP64 trailer")

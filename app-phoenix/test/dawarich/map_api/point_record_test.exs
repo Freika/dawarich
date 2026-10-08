@@ -21,4 +21,32 @@ defmodule Dawarich.MapApi.PointRecordTest do
     assert {:replay, _} = PointRecord.columns(@migration_order ++ ["extra"])
     assert {:replay, _} = PointRecord.columns(@migration_order -- ["mode"])
   end
+
+  defmodule CatalogueRepo do
+    def get_dynamic_repo, do: Process.get(:point_schema_repo, self())
+
+    def query!(_sql) do
+      send(self(), :catalogue_query)
+      %{rows: Enum.map(Process.get(:point_schema_columns), &[&1])}
+    end
+  end
+
+  test "cached schema is isolated by dynamic repo and invalidation retains schema validation" do
+    Process.put(:point_schema_columns, @migration_order)
+    assert {:ok, @serialized} = PointRecord.columns(CatalogueRepo)
+    assert_received :catalogue_query
+    assert {:ok, @serialized} = PointRecord.columns(CatalogueRepo)
+    refute_received :catalogue_query
+
+    Process.put(:point_schema_columns, @migration_order ++ ["unknown_column"])
+    PointRecord.invalidate(CatalogueRepo)
+    assert {:replay, _} = PointRecord.columns(CatalogueRepo)
+    assert_received :catalogue_query
+
+    Process.put(:point_schema_repo, make_ref())
+    Process.put(:point_schema_columns, @migration_order)
+    assert {:ok, @serialized} = PointRecord.columns(CatalogueRepo)
+    assert_received :catalogue_query
+    PointRecord.invalidate(CatalogueRepo)
+  end
 end

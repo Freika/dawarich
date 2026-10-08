@@ -11,7 +11,7 @@ RSpec.describe 'Native F authentication issuance read back by Rails', type: :req
       'PHOENIX_TEST_REDIS_URL' => ENV.fetch('PHOENIX_TEST_REDIS_URL'),
       'DATABASE_HOST' => ENV.fetch('DATABASE_HOST'),
       'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
-      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27'
+      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.20.4-otp-27'
     }
     output, status = Open3.capture2e(environment, 'mix', 'run', 'scripts/parity/native_auth_issuance.exs',
                                      chdir: Rails.root.join('app-phoenix').to_s)

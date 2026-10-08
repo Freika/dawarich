@@ -15,6 +15,20 @@ defmodule Dawarich.TtlCache do
 
   def fetch(key, ttl_ms, fun, opts \\ [])
       when is_integer(ttl_ms) and ttl_ms >= 0 and is_function(fun, 0) do
+    case lookup(key) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        # Keep the loader in its caller (including its SQL sandbox context).
+        # The lock is released automatically if that caller exits.
+        :global.trans({{__MODULE__, key}, self()}, fn -> load(key, ttl_ms, fun, opts) end, [
+          node()
+        ])
+    end
+  end
+
+  defp load(key, ttl_ms, fun, opts) do
     case claim(key) do
       {:ok, value} ->
         value

@@ -253,7 +253,7 @@ RSpec.describe 'Phoenix fixtures: achievement sharing actions', type: :request d
   def phoenix(code, data)
     native_env = {
       'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
-      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27',
+      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.20.4-otp-27',
       'MIX_ENV' => 'test', 'DATABASE_HOST' => '127.0.0.1',
       'PHOENIX_TEST_DATABASE' => ENV.fetch('DATABASE_NAME'),
       'PHOENIX_TEST_REDIS_URL' => ENV.fetch('PHOENIX_TEST_REDIS_URL'),

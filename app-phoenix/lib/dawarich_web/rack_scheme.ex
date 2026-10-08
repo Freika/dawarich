@@ -60,7 +60,7 @@ defmodule DawarichWeb.RackScheme do
         params
 
       {i, 1} when count < @limit ->
-        <<name::binary-size(i), "=", rest::binary>> = header
+        <<name::binary-size(^i), "=", rest::binary>> = header
         name = name |> strip() |> String.downcase()
 
         with true <- name in @params,
@@ -81,7 +81,7 @@ defmodule DawarichWeb.RackScheme do
   defp value(rest, escapes) do
     case :binary.match(rest, [";", ","]) do
       {i, 1} ->
-        <<value::binary-size(i), tail::binary>> = rest
+        <<value::binary-size(^i), tail::binary>> = rest
         {strip(value), tail, escapes}
 
       :nomatch ->
@@ -96,16 +96,16 @@ defmodule DawarichWeb.RackScheme do
 
       {i, 1} ->
         case rest do
-          <<chunk::binary-size(i), ?", tail::binary>> ->
+          <<chunk::binary-size(^i), ?", tail::binary>> ->
             {acc <> chunk, tail, escapes}
 
           _ when escapes >= @limit ->
             nil
 
-          <<chunk::binary-size(i), ?\\, char::binary-size(1), tail::binary>> ->
+          <<chunk::binary-size(^i), ?\\, char::binary-size(1), tail::binary>> ->
             quoted(tail, acc <> chunk <> char, escapes + 1)
 
-          <<chunk::binary-size(i), ?\\>> ->
+          <<chunk::binary-size(^i), ?\\>> ->
             {acc <> chunk, "", escapes + 1}
         end
     end

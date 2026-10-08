@@ -35,13 +35,7 @@ defmodule Dawarich.UserData.Archive do
                   entry,
                   central.offset,
                   fn bytes ->
-                    case IO.binwrite(file, bytes) do
-                      :ok ->
-                        :ok
-
-                      {:error, reason} ->
-                        raise File.Error, reason: reason, action: "write", path: target
-                    end
+                    IO.binwrite(file, bytes)
                   end,
                   Keyword.get(opts, :max_entry_bytes, @max_entry_bytes)
                 )

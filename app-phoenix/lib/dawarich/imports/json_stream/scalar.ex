@@ -255,13 +255,13 @@ defmodule Dawarich.Imports.JsonStream.Scalar do
 
   defp scrub(bytes, from, at, acc) do
     case bytes do
-      <<_::binary-size(at)>> ->
+      <<_::binary-size(^at)>> ->
         [acc, binary_part(bytes, from, at - from)]
 
-      <<_::binary-size(at), cp::utf8, _::binary>> ->
+      <<_::binary-size(^at), cp::utf8, _::binary>> ->
         scrub(bytes, from, at + width(cp), acc)
 
-      <<_::binary-size(at), byte, rest::binary>> ->
+      <<_::binary-size(^at), byte, rest::binary>> ->
         skip = 1 + continuation(rest, lead_width(byte), byte)
         scrub(bytes, at + skip, at + skip, [acc, binary_part(bytes, from, at - from), "�"])
     end

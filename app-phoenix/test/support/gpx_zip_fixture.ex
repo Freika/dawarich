@@ -48,8 +48,8 @@ defmodule Dawarich.GpxZipFixture do
 
     eocd =
       <<0x06054B50::little-32, 0::32, count::little-16, count::little-16,
-        byte_size(central)::little-32, offset::little-32,
-        byte_size(comment)::little-16>> <> comment
+        byte_size(central)::little-32, offset::little-32, byte_size(comment)::little-16>> <>
+        comment
 
     File.write!(path, [Enum.reverse(files), central, eocd])
     path

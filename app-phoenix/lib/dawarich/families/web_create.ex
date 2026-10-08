@@ -56,7 +56,6 @@ defmodule Dawarich.Families.WebCreate do
       cond do
         plan == 2 -> until
         is_nil(access) -> nil
-        is_nil(until) -> access
         NaiveDateTime.compare(access, until) == :gt -> until
         true -> access
       end

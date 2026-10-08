@@ -80,8 +80,13 @@ defmodule Dawarich.MapApi.Closure do
 
   defp points_params(params, cutoff, now) do
     {:ok, {from, _to}} = Params.safe_range(params["start_at"], params["end_at"], now)
-    Map.put(params, "start_at", to_string(max(from || cutoff, cutoff)))
+    Map.put(params, "start_at", to_string(lower_bound(from, cutoff)))
   end
+
+  defp lower_bound(nil, cutoff) when is_integer(cutoff), do: cutoff
+
+  defp lower_bound(from, cutoff) when is_integer(from) and is_integer(cutoff),
+    do: max(from, cutoff)
 
   defp track(user, params, cutoff, now) do
     id = RubyInteger.to_i(params["id"])
@@ -109,7 +114,7 @@ defmodule Dawarich.MapApi.Closure do
             {from, to} = range || {cutoff, 253_402_300_799}
 
             params
-            |> Map.put("start_at", to_string(max(from, cutoff)))
+            |> Map.put("start_at", to_string(lower_bound(from, cutoff)))
             |> Map.put("end_at", to_string(to))
           else
             params
@@ -180,7 +185,7 @@ defmodule Dawarich.MapApi.Closure do
                [id, cutoff]},
             else:
               {"WHERE p.user_id=$1 AND p.timestamp BETWEEN $2 AND $3 AND p.anomaly IS NOT TRUE",
-               [user.id, max(from, cutoff), to]}
+               [user.id, lower_bound(from, cutoff), to]}
 
         {where, args} =
           if params["import_id"] in [nil, ""],

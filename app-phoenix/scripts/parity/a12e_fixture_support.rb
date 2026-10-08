@@ -197,7 +197,7 @@ module A12eFixtureSupport
 
   def phoenix_env
     { 'MIX_ENV' => 'test', 'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
-      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27',
+      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.20.4-otp-27',
       'PHOENIX_TEST_REDIS_URL' => "#{ENV.fetch('REDIS_URL').sub(%r{/\d+\z}, '')}/1", 'DATABASE_HOST' => '127.0.0.1' }
   end
 

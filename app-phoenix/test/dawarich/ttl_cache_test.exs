@@ -11,11 +11,86 @@ defmodule Dawarich.TtlCacheTest do
   test "fetch computes a value once and serves it until its TTL" do
     test = self()
 
-    assert TtlCache.fetch(:places_nearby, 60_000, fn -> send(test, :computed) && :value end) ==
+    assert TtlCache.fetch(:places_nearby, 60_000, fn ->
+             send(test, :computed)
+             :value
+           end) ==
              :value
 
     assert_received :computed
     assert TtlCache.fetch(:places_nearby, 60_000, fn -> flunk("recomputed") end) == :value
+  end
+
+  test "concurrent cold misses share one loader, running in its caller" do
+    parent = self()
+    key = {:concurrent, make_ref()}
+
+    tasks =
+      for _ <- 1..20 do
+        Task.async(fn ->
+          send(parent, {:ready, self()})
+
+          TtlCache.fetch(key, 60_000, fn ->
+            send(parent, {:loaded, self()})
+            receive do: (:release -> self())
+          end)
+        end)
+      end
+
+    try do
+      for _ <- tasks, do: assert_receive({:ready, _})
+      assert_receive {:loaded, loader}
+      refute_receive {:loaded, _}, 100
+      for task <- tasks, do: send(task.pid, :release)
+      assert Enum.map(tasks, &Task.await(&1, 10_000)) == List.duplicate(loader, 20)
+    after
+      for task <- tasks do
+        send(task.pid, :release)
+        Task.shutdown(task, :brutal_kill)
+      end
+    end
+  end
+
+  test "a failed or killed loader does not prevent a retry" do
+    assert_raise RuntimeError, "load failed", fn ->
+      TtlCache.fetch(:failed, 60_000, fn -> raise "load failed" end)
+    end
+
+    assert TtlCache.fetch(:failed, 60_000, fn -> :recovered end) == :recovered
+
+    parent = self()
+
+    {pid, monitor} =
+      spawn_monitor(fn ->
+        TtlCache.fetch(:killed, 60_000, fn ->
+          send(parent, :loading)
+          receive do: (:never -> nil)
+        end)
+      end)
+
+    assert_receive :loading
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}
+    assert TtlCache.fetch(:killed, 60_000, fn -> :retried end) == :retried
+  end
+
+  test "invalidation during a load prevents the stale result being cached" do
+    parent = self()
+
+    task =
+      Task.async(fn ->
+        TtlCache.fetch(:invalidated, 60_000, fn ->
+          send(parent, :loading)
+          receive do: (:release -> :stale)
+        end)
+      end)
+
+    assert_receive :loading
+    TtlCache.delete(:invalidated)
+    send(task.pid, :release)
+    assert Task.await(task) == :stale
+    assert TtlCache.lookup(:invalidated) == :error
+    assert TtlCache.fetch(:invalidated, 60_000, fn -> :fresh end) == :fresh
   end
 
   test "an expired value is computed again" do

@@ -145,8 +145,11 @@ defmodule Dawarich.Accounts do
 
   defp generated(value) when is_binary(value) do
     if value =~ ~r/\A\d+\.\d+\z/ do
-      {seconds, ""} = Float.parse(value)
-      DateTime.from_unix(round(seconds * 1_000_000), :microsecond)
+      with {seconds, ""} <- Float.parse(value) do
+        DateTime.from_unix(round(seconds * 1_000_000), :microsecond)
+      else
+        _ -> :error
+      end
     else
       with {:ok, at, _offset} <- DateTime.from_iso8601(value), do: {:ok, at}
     end

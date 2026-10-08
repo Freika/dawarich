@@ -114,6 +114,8 @@ defmodule Dawarich.CLI.Migrate do
 
   def describe(:cloud_native_lifecycle), do: "refused: native lifecycle requires self-hosted mode"
 
+  def describe(:migration_lock_lost), do: "refused: migration advisory lock lost"
+
   def describe(:migration_lock_busy),
     do: "refused: another migrator holds the database advisory lock"
 

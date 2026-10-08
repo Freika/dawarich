@@ -155,7 +155,7 @@ defmodule Dawarich.Auth.Providers.Jwks do
          {:ok, y} <- Base.url_decode64(y, padding: false),
          true <-
            byte_size(x) == size and byte_size(y) == size and byte_size(signature) == size * 2 do
-      <<r::binary-size(size), s::binary-size(size)>> = signature
+      <<r::binary-size(^size), s::binary-size(^size)>> = signature
 
       der =
         :public_key.der_encode(

@@ -8,7 +8,6 @@ defmodule Dawarich.MapWindow do
 
   @iso ~r/\A\s*(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?)?\s*(Z|[+-]\d{2}(?::?\d{2})?)?\s*\z/
   @max_epoch 253_402_300_799
-  @valid "SELECT name FROM pg_timezone_names WHERE name = ANY($1::text[])"
 
   @points """
   SELECT r.e, to_char(to_timestamp(r.e) AT TIME ZONE r.z, 'YYYY-MM-DD"T"HH24:MI:SS'),
@@ -60,7 +59,7 @@ defmodule Dawarich.MapWindow do
   end
 
   def build(params, settings, now, import_range, env \\ System.get_env()) do
-    %{rows: [[main]]} = UserTimeZone.query!("SELECT z.name FROM z", [], settings, env)
+    main = UserTimeZone.name(settings, Repo, env)
     names = zone_names(settings, env)
     valid = names |> Map.values() |> Enum.uniq() |> valid_zones()
     ctx = %{main: main, day: pick([names.day], valid, main), now: DateTime.to_unix(now)}
@@ -148,7 +147,8 @@ defmodule Dawarich.MapWindow do
     }
   end
 
-  defp valid_zones(names), do: Repo.query!(@valid, [names]).rows |> List.flatten() |> MapSet.new()
+  defp valid_zones(names),
+    do: names |> Enum.filter(&Dawarich.TimeZoneNames.member?(Repo, &1)) |> MapSet.new()
 
   defp pick(names, valid, default), do: Enum.find(names, default, &MapSet.member?(valid, &1))
 

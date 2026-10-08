@@ -96,6 +96,79 @@ defmodule Dawarich.RailsTimeTest do
     assert RailsTime.with_zone("Europe/Berlin", fn -> :ok end) == :ok
   end
 
+  test "nested equal zones set the database timezone once, and deferred calls set it again" do
+    parent = self()
+    handler = {__MODULE__, make_ref()}
+
+    :telemetry.attach(
+      handler,
+      [:dawarich, :repo, :query],
+      fn _, _, meta, _ ->
+        if self() == parent and String.contains?(meta.query, "set_config('TimeZone'"),
+          do: send(parent, :set_zone)
+      end,
+      nil
+    )
+
+    try do
+      deferred =
+        RailsTime.with_zone("Berlin", fn ->
+          RailsTime.with_zone("Europe/Berlin", fn ->
+            assert RailsTime.iso8601(~N[2027-07-01 10:00:00], "Berlin") ==
+                     {:ok, "2027-07-01T12:00:00+02:00"}
+
+            fn -> RailsTime.iso8601(~N[2027-01-15 10:00:00], "Berlin") end
+          end)
+        end)
+
+      assert_receive :set_zone
+      refute_receive :set_zone
+      assert deferred.() == {:ok, "2027-01-15T11:00:00+01:00"}
+      assert_receive :set_zone
+      refute_receive :set_zone
+    after
+      :telemetry.detach(handler)
+    end
+  end
+
+  test "different nested zones do not leave a false cache of the outer zone" do
+    RailsTime.with_zone("Europe/Berlin", fn ->
+      RailsTime.with_zone("Europe/Berlin", fn ->
+        assert RailsTime.iso8601(~N[2027-07-01 10:00:00], "America/New_York") ==
+                 {:ok, "2027-07-01T06:00:00-04:00"}
+      end)
+
+      assert RailsTime.iso8601(~N[2027-07-01 10:00:00], "Europe/Berlin") ==
+               {:ok, "2027-07-01T12:00:00+02:00"}
+    end)
+
+    assert catch_throw(RailsTime.with_zone("Berlin", fn -> throw(:aborted) end)) == :aborted
+
+    assert RailsTime.iso8601(~N[2027-01-15 10:00:00], "America/New_York") ==
+             {:ok, "2027-01-15T05:00:00-05:00"}
+  end
+
+  defmodule QueryAdapter do
+    defdelegate transaction(fun), to: Dawarich.Repo
+    defdelegate query(sql, params), to: Dawarich.Repo
+    defdelegate rollback(reason), to: Dawarich.Repo
+  end
+
+  test "query adapters without a dynamic repository retain the timezone contract" do
+    assert RailsTime.with_zone(QueryAdapter, "Berlin", fn ->
+             Repo.query!("SELECT current_setting('TimeZone')").rows
+           end) == [["Europe/Berlin"]]
+  end
+
+  test "a query adapter inside an Ecto scope invalidates the previous timezone marker" do
+    RailsTime.with_zone("Berlin", fn ->
+      RailsTime.with_zone(QueryAdapter, "America/New_York", fn -> :ok end)
+
+      assert RailsTime.iso8601(~N[2027-07-01 10:00:00], "Berlin") ==
+               {:ok, "2027-07-01T12:00:00+02:00"}
+    end)
+  end
+
   test "sql/2 prints Rails' iso8601 (0) and JSON time (3) of a UTC timestamp in the session zone" do
     row = fn zone, at ->
       RailsTime.with_zone(zone, fn ->

@@ -83,8 +83,6 @@ defmodule DawarichWeb.VisitActions do
             do: error(conn, action, :invalid_visit, ctx),
             else: Body.replay(conn, reason)
       end
-    else
-      {:replay, reason} -> Body.replay(conn, reason)
     end
   end
 

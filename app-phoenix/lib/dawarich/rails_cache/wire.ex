@@ -40,7 +40,7 @@ defmodule Dawarich.RailsCache.Wire do
          opts
        )
        when length >= -1 do
-    <<_version::binary-size(max(length, 0)), payload::binary>> = rest
+    <<_version::binary-size(max(^length, 0)), payload::binary>> = rest
     payload = if (type &&& 128) != 0, do: :zlib.uncompress(payload), else: payload
 
     with {:ok, value} <- value(type &&& 127, payload, opts),

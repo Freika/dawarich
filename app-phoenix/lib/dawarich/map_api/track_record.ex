@@ -20,7 +20,7 @@ defmodule Dawarich.MapApi.TrackRecord do
   end
 
   def features(rows, full?) do
-    segments = rows |> Enum.map(& &1["id"]) |> segments()
+    segments = rows |> Enum.map(& &1["id"]) |> segments(full?)
     Enum.map(rows, &feature(&1, Map.get(segments, &1["id"], []), full?))
   end
 
@@ -56,14 +56,19 @@ defmodule Dawarich.MapApi.TrackRecord do
       "'[]'::jsonb) END"
   end
 
-  defp segments([]), do: %{}
+  defp segments([], _full?), do: %{}
 
-  defp segments(ids) do
+  defp segments(ids, full?) do
+    details =
+      if full?,
+        do:
+          ", s.distance, s.duration, s.avg_speed, s.confidence, " <>
+            coordinates("s.path") <> " AS coordinates",
+        else: ""
+
     Repo.query!(
-      "SELECT s.track_id, s.id, s.start_at, s.end_at, s.start_index, s.end_index, s.transportation_mode, " <>
-        "s.distance, s.duration, s.avg_speed, s.confidence, " <>
-        coordinates("s.path") <>
-        " AS coordinates FROM track_segments s WHERE s.track_id = ANY($1) ORDER BY s.track_id, s.id",
+      "SELECT s.track_id, s.id, s.start_at, s.end_at, s.start_index, s.end_index, s.transportation_mode" <>
+        details <> " FROM track_segments s WHERE s.track_id = ANY($1) ORDER BY s.track_id, s.id",
       [ids]
     )
     |> records()
@@ -72,7 +77,11 @@ defmodule Dawarich.MapApi.TrackRecord do
 
   defp records(result) do
     for row <- result.rows do
-      result.columns |> Enum.zip(row) |> Map.new() |> Map.update!("coordinates", &floats/1)
+      record = result.columns |> Enum.zip(row) |> Map.new()
+
+      if Map.has_key?(record, "coordinates"),
+        do: Map.update!(record, "coordinates", &floats/1),
+        else: record
     end
   end
 

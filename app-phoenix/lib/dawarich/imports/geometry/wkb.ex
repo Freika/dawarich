@@ -64,7 +64,7 @@ defmodule Dawarich.Imports.Geometry.Wkb do
   defp line(rest, endian) do
     with {:ok, count, rest} <- uint(rest, endian),
          true <- byte_size(rest) >= count * 16,
-         <<_::binary-size(count * 16), rest::binary>> <- rest,
+         <<_::binary-size(^count * 16), rest::binary>> <- rest,
          do: {:ok, :other, rest},
          else: (_ -> :error)
   end
@@ -101,11 +101,11 @@ defmodule Dawarich.Imports.Geometry.Wkb do
 
   defp without_srid(<<1, code::little-32, _srid::32, rest::binary>>)
        when (code &&& 0x20000000) != 0,
-       do: <<1, code &&& ~~~0x20000000::little-32, rest::binary>>
+       do: <<1, code &&& bnot(0x20000000)::little-32, rest::binary>>
 
   defp without_srid(<<0, code::big-32, _srid::32, rest::binary>>)
        when (code &&& 0x20000000) != 0,
-       do: <<0, code &&& ~~~0x20000000::big-32, rest::binary>>
+       do: <<0, code &&& bnot(0x20000000)::big-32, rest::binary>>
 
   defp without_srid(bytes), do: bytes
 end

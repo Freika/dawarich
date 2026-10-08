@@ -113,8 +113,7 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
       assert {200, headers, @image} = port |> request(target, bearer()) |> read_response(), target
 
       assert {values(headers, "content-type"), values(headers, "content-disposition"),
-              values(headers, "content-transfer-encoding"),
-              values(headers, "cache-control")} ==
+              values(headers, "content-transfer-encoding"), values(headers, "cache-control")} ==
                {["image/jpeg"], ["inline"], ["binary"], ["max-age=1800, private"]},
              target
     end
@@ -147,8 +146,8 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
              |> read_response()
 
     assert {values(again, "content-disposition"), values(again, "content-transfer-encoding"),
-            values(again, "content-type"),
-            values(again, "etag")} == {["inline"], ["binary"], [], [etag]}
+            values(again, "content-type"), values(again, "etag")} ==
+             {["inline"], ["binary"], [], [etag]}
 
     Task.await(immich)
   end

@@ -166,4 +166,25 @@ defmodule Dawarich.MapWindowTest do
     source = params["date"] || params["start_at"]
     is_nil(source) or source == "today" or Regex.match?(~r/\A\d{4}-/, source)
   end
+
+  test "warmed map and point-list windows do not rescan the timezone catalogue" do
+    build(%{})
+    owner = self()
+    id = {__MODULE__, make_ref()}
+
+    :telemetry.attach(
+      id,
+      [:dawarich, :repo, :query],
+      fn _, _, metadata, _ ->
+        if self() == owner and String.contains?(metadata.query, "pg_timezone_names"),
+          do: send(owner, :timezone_catalogue_query)
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(id) end)
+    assert build(%{"date" => "2026-05-28"}, %{"timezone" => "Tokyo"}).zone == "Asia/Tokyo"
+    assert build(%{}, %{"timezone" => "invalid"}, nil, %{"TIME_ZONE" => "UTC"}).zone == "Etc/UTC"
+    refute_receive :timezone_catalogue_query
+  end
 end

@@ -87,4 +87,9 @@ defmodule Dawarich.CLI.MigrateTest do
     assert CLI.run(["db:migrate"], %{out: out, err: out, stdin: out, env: %{}}) == 1
     assert StringIO.contents(out) |> elem(1) =~ "native lifecycle is disabled"
   end
+
+  test "migration lock loss has an actionable failure message" do
+    assert Dawarich.CLI.Migrate.describe(:migration_lock_lost) ==
+             "refused: migration advisory lock lost"
+  end
 end

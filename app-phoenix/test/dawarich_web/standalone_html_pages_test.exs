@@ -4,6 +4,7 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
   import Plug.Conn
   alias Dawarich.Test.{ApiGolden, RailsUser}
   @endpoint DawarichWeb.Endpoint
+  @fixture_now ~U[2026-10-07 12:00:00Z]
 
   setup do
     previous = Map.new(~w(DAWARICH_RAILS SELF_HOSTED FORCE_SSL), &{&1, System.get_env(&1)})
@@ -161,6 +162,7 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
 
       unlock =
         RailsUser.signed_in(94802)
+        |> assign(:now, @fixture_now)
         |> put_req_header("accept", "text/html")
         |> put_req_header("content-type", "application/x-www-form-urlencoded")
         |> put_req_header("content-length", to_string(byte_size(body)))
@@ -333,12 +335,14 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
 
   defp page(user_id, target) do
     RailsUser.signed_in(user_id)
+    |> assign(:now, @fixture_now)
     |> put_req_header("accept", "text/html")
     |> get(target)
   end
 
   defp request(user_id, target) do
     RailsUser.signed_in(user_id)
+    |> assign(:now, @fixture_now)
     |> put_req_header("accept", "text/html")
     |> get(target)
     |> Map.fetch!(:status)

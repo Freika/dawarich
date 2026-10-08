@@ -59,8 +59,6 @@ defmodule DawarichWeb.SegmentActions do
         :rails ->
           Body.replay(conn, "segment write unsupported")
       end
-    else
-      :rails -> Body.replay(conn, "segment referer unsupported")
     end
   end
 

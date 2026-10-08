@@ -1,7 +1,7 @@
 defmodule Dawarich.MapApi.PointRecord do
   @moduledoc false
 
-  alias Dawarich.{RailsTime, Repo}
+  alias Dawarich.{RailsTime, Repo, TtlCache}
   alias Dawarich.ReleaseMigrations.Effects.Support.RubyFloat
 
   @excluded ~w(created_at updated_at visit_id import_id user_id raw_data country_id source_id lock_version)
@@ -16,8 +16,30 @@ defmodule Dawarich.MapApi.PointRecord do
     "connection" => %{0 => "mobile", 1 => "wifi", 2 => "offline", 4 => "unknown"}
   }
 
-  def columns do
-    Repo.query!(
+  @schema_ttl_ms :timer.minutes(1)
+
+  def columns, do: columns(Repo)
+
+  def columns(names) when is_list(names) do
+    names = names -- ~w(latitude longitude)
+
+    if Enum.sort(names) == @schema,
+      do: {:ok, names -- @excluded},
+      else: {:replay, "points columns outside the known schema"}
+  end
+
+  def columns(repo) when is_atom(repo) do
+    load = fn -> catalogue(repo) end
+
+    if :ets.whereis(TtlCache) == :undefined,
+      do: load.(),
+      else: TtlCache.fetch(cache_key(repo), @schema_ttl_ms, load)
+  end
+
+  def invalidate(repo \\ Repo), do: TtlCache.delete(cache_key(repo))
+
+  defp catalogue(repo) do
+    repo.query!(
       "SELECT attname::text FROM pg_attribute WHERE attrelid = 'public.points'::regclass " <>
         "AND attnum > 0 AND NOT attisdropped ORDER BY attnum"
     ).rows
@@ -25,12 +47,10 @@ defmodule Dawarich.MapApi.PointRecord do
     |> columns()
   end
 
-  def columns(names) do
-    names = names -- ~w(latitude longitude)
-
-    if Enum.sort(names) == @schema,
-      do: {:ok, names -- @excluded},
-      else: {:replay, "points columns outside the known schema"}
+  defp cache_key(repo) do
+    dynamic = repo.get_dynamic_repo()
+    process = if is_atom(dynamic), do: Process.whereis(dynamic), else: dynamic
+    {__MODULE__, repo, dynamic, process}
   end
 
   def joins,

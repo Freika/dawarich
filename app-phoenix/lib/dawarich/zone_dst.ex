@@ -43,7 +43,7 @@ defmodule Dawarich.ZoneDst do
     skip = time * 5 + type * 6 + char + leap * 8 + isstd + isut
 
     case rest do
-      <<_::binary-size(skip), "TZif", _::binary-size(16), second::binary-size(24), body::binary>> ->
+      <<_::binary-size(^skip), "TZif", _::binary-size(16), second::binary-size(24), body::binary>> ->
         table(second, body)
 
       _ ->
@@ -55,9 +55,9 @@ defmodule Dawarich.ZoneDst do
 
   defp table(<<isut::32, isstd::32, leap::32, time::32, type::32, char::32>>, body) do
     case body do
-      <<times::binary-size(time * 8), indexes::binary-size(time), types::binary-size(type * 6),
-        _chars::binary-size(char), _leap::binary-size(leap * 12),
-        _flags::binary-size(isstd + isut), footer::binary>> ->
+      <<times::binary-size(^time * 8), indexes::binary-size(^time), types::binary-size(^type * 6),
+        _chars::binary-size(^char), _leap::binary-size(^leap * 12),
+        _flags::binary-size(^isstd + ^isut), footer::binary>> ->
         indexes = :binary.bin_to_list(indexes)
 
         if Enum.all?(indexes, &(&1 < type)) do

@@ -149,7 +149,7 @@ defmodule Dawarich.RailsCache.Marshal do
 
   defp scalar(?l, <<sign, rest::binary>>) do
     {words, rest} = long(rest)
-    <<digits::binary-size(words * 2), rest::binary>> = rest
+    <<digits::binary-size(^words * 2), rest::binary>> = rest
     value = :binary.decode_unsigned(digits, :little)
     {if(sign == ?-, do: -value, else: value), rest}
   end
@@ -181,7 +181,7 @@ defmodule Dawarich.RailsCache.Marshal do
 
   defp bytes(rest) do
     {size, rest} = long(rest)
-    <<value::binary-size(size), rest::binary>> = rest
+    <<value::binary-size(^size), rest::binary>> = rest
     {value, rest}
   end
 
@@ -197,12 +197,12 @@ defmodule Dawarich.RailsCache.Marshal do
         {byte + 5, rest}
 
       byte > 0 ->
-        <<value::little-unsigned-size(byte * 8), rest::binary>> = rest
+        <<value::little-unsigned-size(^byte * 8), rest::binary>> = rest
         {value, rest}
 
       true ->
         n = -byte
-        <<value::little-unsigned-size(n * 8), rest::binary>> = rest
+        <<value::little-unsigned-size(^n * 8), rest::binary>> = rest
         {value - (1 <<< (n * 8)), rest}
     end
   end

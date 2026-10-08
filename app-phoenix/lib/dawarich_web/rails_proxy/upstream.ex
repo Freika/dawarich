@@ -75,7 +75,7 @@ defmodule DawarichWeb.RailsProxy.Upstream do
 
   defp body({kind, left}, socket, buffer, acc, fun) do
     size = min(left, byte_size(buffer))
-    <<data::binary-size(size), rest::binary>> = buffer
+    <<data::binary-size(^size), rest::binary>> = buffer
     with {:ok, acc} <- fun.(data, acc), do: body({kind, left - size}, socket, rest, acc, fun)
   end
 

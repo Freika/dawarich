@@ -175,8 +175,7 @@ defmodule Dawarich.Imports.Trek.Sync do
 
     if is_nil(current) or
          {current.user_id, current.base_url, current.api_key, current.selection_token,
-          current.importing,
-          current.status} !=
+          current.importing, current.status} !=
            {ctx.user_id, ctx.base_url, ctx.api_key, ctx.selection_token, ctx.importing,
             ctx.status},
        do: ctx.repo.rollback(:lost)

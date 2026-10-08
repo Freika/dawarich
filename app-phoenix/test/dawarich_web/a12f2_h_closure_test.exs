@@ -899,7 +899,7 @@ defmodule DawarichWeb.A12f2HClosureTest do
       {"PHOENIX_TEST_REDIS_URL", Application.fetch_env!(:dawarich, :redis)[:url]},
       {"DATABASE_HOST", "127.0.0.1"},
       {"ASDF_ERLANG_VERSION", "27.3.4.1"},
-      {"ASDF_ELIXIR_VERSION", "1.18.3-otp-27"},
+      {"ASDF_ELIXIR_VERSION", "1.20.4-otp-27"},
       {"PATH", Path.join(System.user_home!(), ".asdf/shims") <> ":" <> System.get_env("PATH")}
     ]
 

@@ -233,10 +233,10 @@ defmodule Dawarich.Imports.Api do
       ).rows
 
     if repo.query!("SELECT 1 FROM imports WHERE user_id=$1 AND name=$2", [actor, name]).rows == [],
-      do: name,
-      else:
-        Path.rootname(name) <>
-          "_" <> stamp <> Path.extname(name)
+       do: name,
+       else:
+         Path.rootname(name) <>
+           "_" <> stamp <> Path.extname(name)
   end
 
   defp mime(name), do: MIME.from_path(name)

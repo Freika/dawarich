@@ -165,8 +165,7 @@ defmodule Dawarich.LocationsTest do
 
     assert {Jsonb.get(location, "place_name"), Jsonb.get(location, "coordinates"),
             Jsonb.get(location, "address"), Jsonb.get(location, "total_visits"),
-            Jsonb.get(location, "first_visit"),
-            Jsonb.get(location, "last_visit")} ==
+            Jsonb.get(location, "first_visit"), Jsonb.get(location, "last_visit")} ==
              {"Cafe", [52.52, 13.405], "", 5, "d#{@t0 + 30_000}", "d#{@t0}"}
 
     assert [newest, minute] = Jsonb.get(location, "visits")
@@ -196,8 +195,7 @@ defmodule Dawarich.LocationsTest do
 
     assert {Jsonb.get(four, "points_count"), Jsonb.get(four, "accuracy_meters"),
             Jsonb.get(details, "city"), Jsonb.get(details, "altitude_range"),
-            Jsonb.get(details, "start_time"),
-            Jsonb.get(details, "end_time")} ==
+            Jsonb.get(details, "start_time"), Jsonb.get(details, "end_time")} ==
              {4, 15, "C#{@t0 + 9000}", "30m - 33m", "d#{@t0 + 9000}", "d#{@t0 + 12_900}"}
 
     assert {Jsonb.get(single, "accuracy_meters"), Jsonb.get(single, "distance_meters"),

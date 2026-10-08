@@ -22,7 +22,7 @@ PHOENIX_TEST_REDIS_URL=redis://127.0.0.1:7271/1 \
   app-phoenix/scripts/test_partitions.sh 3 --seed 404
 ```
 
-The runner pins Elixir 1.18.3 / OTP 27.3.4.1 and starts one Mix process per
+The runner pins Elixir 1.20.4 / OTP 27.3.4.1 and starts one Mix process per
 partition. Set PostgreSQL connection variables before running it. Create the
 main databases first and load the Rails schema into each one. For example, from
 the repository root, with the private Rails Redis URL configured:
@@ -71,7 +71,10 @@ the seed go to `mix test`; all processes receive the same seed. Logs default to
 `app-phoenix/tmp/partition-logs/partition-k.log`; override their directory with
 `PHOENIX_TEST_PARTITION_LOG_DIR`. The runner waits for every process, prints its
 log and seed, and prints the summed test/failure counts. A failed process,
-missing/ambiguous summary, or missing seed makes the runner exit nonzero.
+missing/ambiguous summary, or missing seed makes the runner exit nonzero. Elixir 1.20 prints `Result: N passed` or `Result: P/N passed` instead of the old `N tests, F failures` line; `scripts/test_summary.awk` accepts both and aggregates failures without weakening the process exit-status checks.
+
+When limiting the local parent's scheduler count, use `ERL_AFLAGS='+S 4:4'` rather than `ERL_FLAGS`: several peer tests explicitly launch two schedulers, and trailing `ERL_FLAGS` would override that contract. After an interrupted run use fresh private databases: committed peer fixtures may remain. Tests that launch Rails peers also require `DATABASE_PORT`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, and an installed Ruby selected through asdf. Use isolated PostgreSQL databases and one isolated Redis server per partition.
+
 Whole-suite runs still require the controller's `slot.sh` around this runner.
 
 The 2026-10-05 sync of `feat/phoenix-port` was checked for new shared resources.

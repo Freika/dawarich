@@ -23,8 +23,7 @@ defmodule Dawarich.UserData.RestorePointsTest do
     try do
       for {mode, owner, offset} <-
             Enum.filter([{"on", :oban, 0}, {"on", :sidekiq, 1}, {"off", :sidekiq, 2}], fn {mode,
-                                                                                           _,
-                                                                                           _} ->
+                                                                                           _, _} ->
               System.get_env("DAWARICH_REDELIVERY_TEST_MODE", mode) == mode
             end) do
         System.put_env("DAWARICH_RAILS", mode)

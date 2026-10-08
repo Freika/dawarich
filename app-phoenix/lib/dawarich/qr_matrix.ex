@@ -117,7 +117,7 @@ defmodule Dawarich.QrMatrix do
   end
 
   defp bit(data, i) when i < bit_size(data) do
-    <<_::size(i), b::1, _::bitstring>> = data
+    <<_::size(^i), b::1, _::bitstring>> = data
     b == 1
   end
 

@@ -13,7 +13,7 @@ defmodule Dawarich.Test.A12b do
   end
 
   def flip(value, at) do
-    <<head::binary-size(at), char, tail::binary>> = value
+    <<head::binary-size(^at), char, tail::binary>> = value
     head <> <<if(char == ?A, do: ?B, else: ?A)>> <> tail
   end
 
