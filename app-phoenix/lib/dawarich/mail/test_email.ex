@@ -24,7 +24,7 @@ defmodule Dawarich.Mail.TestEmail do
       Map.get(user, :admin) != true ->
         {:alert, authorization_text(locale)}
 
-      configured?(env) ->
+      configured?(env) and supported?(env) ->
         args = %{"event_id" => Ecto.UUID.generate(), "user_id" => user.id, "locale" => locale}
         Oban.insert!(Keyword.get(opts, :oban, Oban), Dawarich.Mail.TestEmailWorker.new(args))
         {:notice, text(locale, "test_email_queued", %{"email" => user.email})}

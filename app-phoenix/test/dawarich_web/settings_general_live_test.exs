@@ -35,7 +35,12 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
       [user.id]
     )
 
-    env = Map.new(~w(SELF_HOSTED SMTP_SERVER JWT_SECRET_KEY), &{&1, System.get_env(&1)})
+    env =
+      Map.new(
+        ~w(SELF_HOSTED SMTP_SERVER SMTP_AUTHENTICATION JWT_SECRET_KEY),
+        &{&1, System.get_env(&1)}
+      )
+
     System.put_env("SELF_HOSTED", "true")
     System.put_env("SMTP_SERVER", "smtp.settings-general.test")
 
@@ -175,6 +180,17 @@ defmodule DawarichWeb.SettingsGeneralLiveTest do
     System.delete_env("SMTP_SERVER")
     {:ok, view, _html} = live_as(user)
     refute has_element?(view, "#send-test-email")
+  end
+
+  test "unsupported SMTP authentication refuses test email without enqueueing", %{user: user} do
+    System.put_env("SMTP_AUTHENTICATION", "unsupported")
+    Repo.query!("UPDATE users SET admin=true WHERE id=$1", [user.id])
+    {:ok, view, _} = live_as(user)
+    assert has_element?(view, "#send-test-email")
+    html = view |> element("#send-test-email") |> render_click()
+    assert html =~ text("en", "smtp_not_configured")
+    assert Process.alive?(view.pid)
+    assert jobs(user) == [[0]]
   end
 
   test "on Cloud even an admin gets no test email, supporter, What's New or Background Jobs", %{
