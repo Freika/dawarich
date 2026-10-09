@@ -3015,6 +3015,8 @@ en:
         traccar:
           points:
             point_creation_failed: Point creation failed
+        trips:
+          trip_was_successfully_deleted: Trip was successfully deleted
         users:
           destroy:
             cannot_delete: You own a family with other members. Transfer ownership or remove members before deleting your account.
