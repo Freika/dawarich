@@ -28,7 +28,7 @@ defmodule DawarichWeb.AdminUI do
     do: alert(socket, "controllers.application.admin_writes_unavailable_with_oidc")
 
   def refuse(socket, :encryption),
-    do: alert(socket, "controllers.application.admin_writes_unavailable_with_encryption")
+    do: alert(socket, "controllers.application.admin_encryption_unavailable")
 
   def refuse(socket, {:validation, message}), do: put_flash(socket, :alert, message)
   def refuse(socket, {:blocked, message}), do: put_flash(socket, :alert, message)

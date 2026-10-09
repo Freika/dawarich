@@ -16,9 +16,25 @@ defmodule DawarichWeb.AdminMountFallbackTest do
     assert refused.redirected == {:redirect, %{to: "/users/sign_in", status: 302}}
   end
 
+  test "native user detail stale read clears credentials and redirects to sign-in" do
+    socket = %Phoenix.LiveView.Socket{
+      endpoint: DawarichWeb.Endpoint,
+      assigns: %{__changed__: %{}, current_scope: nil, target: nil, target_user: nil, flash: %{}}
+    }
+
+    assert {:noreply, refused} =
+             UserShow.handle_params(
+               %{"id" => "10001"},
+               "http://www.example.com/settings/users/10001",
+               socket
+             )
+
+    assert refused.assigns.target_user == nil
+    assert refused.redirected == {:redirect, %{to: "/users/sign_in", status: 302}}
+  end
+
   test "mount-time Rails fallbacks retain the original query parameters" do
     for {view, path, params, query} <- [
-          {UserShow, "/settings/users/10001", %{"id" => "10001"}, %{"section" => "account"}},
           {UserEdit, "/settings/users/10001/edit", %{"id" => "10001"}, %{"section" => "account"}},
           {Instance, "/admin/settings", %{"section" => "geoapify"}, %{"section" => "geoapify"}}
         ] do

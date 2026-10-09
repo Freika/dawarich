@@ -71,22 +71,42 @@ defmodule DawarichWeb.AdminUsersParityTest do
       state = fixture(name)
       context = seed_detail!(state)
       assert {:ok, page} = UserShow.page(%{"id" => to_string(state["target"]["id"])}, context)
-      html = render_component(&UserShow.render/1, Map.merge(context, page))
-      assert_markup!(html, name)
-      button = LazyHTML.from_fragment(html) |> LazyHTML.query("[data-controller='clipboard']")
 
-      assert LazyHTML.attribute(button, "data-clipboard-text-value") == [
-               state["target"]["api_key"]
-             ]
+      html =
+        render_component(
+          &UserShow.render/1,
+          Map.merge(
+            context,
+            Map.merge(page, %{
+              security_accepted: MapSet.new(),
+              rotate_pending: false,
+              dialog_open: false
+            })
+          )
+        )
 
-      assert LazyHTML.attribute(button, "data-action") == ["click->clipboard#copy"]
+      assert page.target.id == state["target"]["id"]
+      assert page.target.email == state["target"]["email"]
+      assert page.counts == state["target"]["counts"]
+      assert page.target.points_count == state["target"]["points_count"]
+      assert page.target.sign_in_count == state["target"]["sign_in_count"]
+      assert page.target.last_sign_in_ip == state["target"]["last_sign_in_ip"]
+      assert page.target.current_sign_in_ip == state["target"]["current_sign_in_ip"]
 
-      assert html
-             |> LazyHTML.from_fragment()
-             |> LazyHTML.query(
-               "#admin-user-clipboard[phx-hook='RailsStimulus'] [data-controller='clipboard']"
-             )
-             |> Enum.count() == 1
+      button =
+        LazyHTML.from_fragment(html) |> LazyHTML.query("#admin-user-copy[phx-hook=Clipboard]")
+
+      assert LazyHTML.attribute(button, "data-clipboard-text") == [state["target"]["api_key"]]
+      assert html =~ String.slice(state["target"]["api_key"], 0, 8) <> String.duplicate("•", 24)
+
+      assert page.target.created_at ==
+               Dawarich.UserTimeZone.local(
+                 state["user"]["settings"],
+                 naive(state["target"]["created_at"])
+               )
+
+      refute Map.has_key?(page.target, :api_key)
+      assert page.target_user.encrypted_password == nil
 
       conn = %{Plug.Test.conn(:get, state["path"]) | assigns: Map.merge(context, page)}
       session = DawarichWeb.RailsAuth.live_session(conn)

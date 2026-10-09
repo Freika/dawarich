@@ -1,4 +1,4 @@
-<div class="min-h-content w-full my-5">
+<div :if={@target} class="min-h-content w-full my-5">
   <h1 class="text-3xl font-bold mb-6">{label(@locale, "user_details")}</h1>
   <SettingsParts.navigation
     locale={@locale}
@@ -6,6 +6,7 @@
     self_hosted={@self_hosted}
     admin={@current_user.admin == true}
     two_factor={@two_factor}
+    native
   />
   <div class="flex flex-col w-full my-10">
     <div class="w-10/12 mx-auto space-y-6">
@@ -24,11 +25,14 @@
           </div>
         </div>
         <div class="flex gap-2">
-          <a class="btn btn-primary btn-sm" href={"/settings/users/#{@target.id}/edit"}>{label(
+          <.link class="btn btn-primary btn-sm" navigate={"/settings/users/#{@target.id}/edit"}>{label(
             @locale,
             "edit"
-          )}</a>
-          <a class="btn btn-ghost btn-sm" href="/settings/users">{label(@locale, "back_to_users")}</a>
+          )}</.link>
+          <.link class="btn btn-ghost btn-sm" navigate="/settings/users">{label(
+            @locale,
+            "back_to_users"
+          )}</.link>
         </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -45,7 +49,7 @@
                         @locale,
                         if(key == "points",
                           do: @target.points_count || 0,
-                          else: @target.counts[key]
+                          else: @counts[key]
                         )
                       )}
                     </td>
@@ -98,43 +102,39 @@
         <div class="card bg-base-200">
           <div class="card-body">
             <h3 class="card-title">{label(@locale, "api_key")}</h3>
-            <div
-              id="admin-user-clipboard"
-              phx-hook="RailsStimulus"
-              class="flex items-center gap-2"
-            >
+            <div id="admin-user-clipboard" class="flex flex-wrap items-center gap-2">
               <code class="bg-base-300 px-3 py-2 rounded-lg text-sm flex-1 break-all">{String.slice(
-                @target.api_key,
+                @target_user.api_key,
                 0,
                 8
               )}{String.duplicate("•", 24)}</code>
               <button
+                id="admin-user-copy"
+                type="button"
                 class="btn btn-ghost btn-sm"
-                data-controller="clipboard"
-                data-clipboard-text-value={@target.api_key}
-                data-action="click->clipboard#copy"
+                phx-hook="Clipboard"
+                data-clipboard-text={@target_user.api_key}
+                data-copied-label={t(@locale, "javascript.messages.copied_to_clipboard", %{})}
+                data-failed-label={
+                  t(@locale, "javascript.messages.failed_to_copy_please_copy_manually", %{})
+                }
+                data-status-id="admin-user-copy-status"
               >
                 <.icon name="copy" class="inline-block w-4" /> {label(@locale, "copy")}
               </button>
+              <span id="admin-user-copy-status" role="status" aria-live="polite" class="text-sm"></span>
             </div>
             <div class="card-actions mt-4">
-              <form
-                class="button_to"
-                method="post"
-                action={"/settings/users/#{@target.id}/regenerate_api_key"}
-              >
-                <button
-                  class="btn btn-warning btn-sm"
-                  data-turbo-confirm={
-                    label(@locale, "are_you_sure_this_will_invalidate_the_current_api_key")
-                  }
-                  type="submit"
-                >{label(@locale, "regenerate_api_key")}</button><input
-                  type="hidden"
-                  name="authenticity_token"
-                  value={@rails_csrf_token}
-                />
-              </form>
+              <button
+                id="open-rotate"
+                type="button"
+                class="btn btn-warning btn-sm"
+                phx-click={
+                  JS.push("open_rotate")
+                  |> JS.dispatch("dawarich:open-dialog", to: "#rotate_api_key")
+                }
+                disabled={MapSet.member?(@security_accepted, "rotate_api_key")}
+              >{label(@locale, "regenerate_api_key")}</button>
             </div>
           </div>
         </div>
@@ -142,28 +142,53 @@
           <div class="card-body">
             <h3 class="card-title">{label(@locale, "actions")}</h3>
             <div class="flex flex-col gap-3">
-              <form
-                class="button_to"
-                method="post"
-                action={"/settings/users/#{@target.id}/send_password_reset"}
-              >
-                <button class="btn btn-outline btn-sm" type="submit">{label(
-                  @locale,
-                  "send_password_reset_email"
-                )}</button><input
-                  type="hidden"
-                  name="authenticity_token"
-                  value={@rails_csrf_token}
-                />
-              </form>
-              <a class="btn btn-primary btn-sm" href={"/settings/users/#{@target.id}/edit"}>{label(
+              <button
+                id="send-password-reset"
+                type="button"
+                class="btn btn-outline btn-sm"
+                phx-click="send_password_reset"
+                phx-disable-with={label(@locale, "send_password_reset_email")}
+                disabled={MapSet.member?(@security_accepted, "send_password_reset")}
+              >{label(@locale, "send_password_reset_email")}</button>
+              <.link
+                class="btn btn-primary btn-sm"
+                navigate={"/settings/users/#{@target.id}/edit"}
+              >{label(
                 @locale,
                 "edit_user"
-              )}</a>
+              )}</.link>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
+  <dialog
+    id="rotate_api_key"
+    class="modal"
+    open={@dialog_open}
+    phx-mounted={JS.ignore_attributes("open")}
+  >
+    <div class="modal-box">
+      <p>{label(@locale, "are_you_sure_this_will_invalidate_the_current_api_key")}</p>
+      <div class="modal-action flex-wrap">
+        <button
+          type="button"
+          class="btn"
+          phx-click={
+            JS.push("cancel_rotate")
+            |> JS.dispatch("dawarich:close-dialog", to: "#rotate_api_key")
+          }
+        >{t(@locale, "settings.users.index.cancel", %{})}</button>
+        <button
+          id="confirm-rotate"
+          type="button"
+          class="btn btn-warning"
+          phx-click="rotate_api_key"
+          phx-disable-with={label(@locale, "regenerate_api_key")}
+          disabled={MapSet.member?(@security_accepted, "rotate_api_key")}
+        >{label(@locale, "regenerate_api_key")}</button>
+      </div>
+    </div>
+  </dialog>
 </div>
