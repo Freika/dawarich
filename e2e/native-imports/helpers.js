@@ -206,9 +206,14 @@ export async function nativePage(page, path) {
 
 export async function settings(page, locale, zone) {
   await nativePage(page, "/settings/general")
+  await expect(page.locator("[data-phx-main].phx-connected")).toBeVisible()
   await page.locator("#timezone").selectOption(zone)
-  await page.locator(`#locale_${locale}`).check({ force: true })
-  await page.locator('form[action="/settings/general"] [type="submit"]').click()
+  await page.locator(`label:has(#locale_${locale})`).click()
+  await page.locator('#general-settings button[type="submit"]').click()
+  await expect(page.locator("html")).toHaveAttribute("lang", locale)
+  await expect(
+    page.locator("#flash-messages [role=alert]").first(),
+  ).toBeVisible()
   await nativePage(page, "/imports")
   await expect(page.locator("html")).toHaveAttribute("lang", locale)
 }
