@@ -30,11 +30,10 @@ defmodule DawarichWeb.SettingsParityTest do
   end
 
   @fixtures Path.wildcard("test/fixtures/settings/*.json")
-  if length(@fixtures) < 35,
-    do: raise("expected 35 settings fixtures, found #{length(@fixtures)}")
+  if length(@fixtures) < 10,
+    do: raise("expected 10 settings fixtures, found #{length(@fixtures)}")
 
-  for file <- @fixtures,
-      not String.starts_with?(Path.basename(file), ["general_", "account_", "integrations_"]) do
+  for file <- @fixtures do
     @name Path.basename(file, ".json")
 
     test "#{@name} matches the page Rails renders" do

@@ -23,8 +23,8 @@ defmodule DawarichWeb.SettingsLiveTest do
     %{user: user}
   end
 
-  defp live_as(user, path, opts \\ []),
-    do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path, opts)
+  defp live_as(user, path),
+    do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
   describe "routes" do
     test "each page mounts for a signed-in user with Rails' title", %{user: user} do
@@ -34,7 +34,7 @@ defmodule DawarichWeb.SettingsLiveTest do
             {"/users/edit", "Account | Dawarich"},
             {"/insights", "Insights | Dawarich"}
           ] do
-        {:ok, _view, html} = live_as(user, path, on_error: [duplicate_id: :warn])
+        {:ok, _view, html} = live_as(user, path)
         assert html =~ ">#{title}</title>", path
       end
     end
@@ -73,7 +73,7 @@ defmodule DawarichWeb.SettingsLiveTest do
         [user.id]
       )
 
-      {:ok, view, _html} = live_as(user, "/settings/general", on_error: [duplicate_id: :warn])
+      {:ok, view, _html} = live_as(user, "/settings/general")
 
       assert view
              |> element(
@@ -89,7 +89,7 @@ defmodule DawarichWeb.SettingsLiveTest do
 
     test "without SMTP the notice replaces the digest toggles and the test email", %{user: user} do
       System.delete_env("SMTP_SERVER")
-      {:ok, view, html} = live_as(user, "/settings/general", on_error: [duplicate_id: :warn])
+      {:ok, view, html} = live_as(user, "/settings/general")
       assert html =~ "https://dawarich.app/docs/self-hosting/configuration/smtp/"
       refute has_element?(view, "input[name='monthly_digest_emails_enabled']")
       refute has_element?(view, "#send-test-email")
@@ -101,14 +101,14 @@ defmodule DawarichWeb.SettingsLiveTest do
         [user.id]
       )
 
-      {:ok, view, _html} = live_as(user, "/settings/general", on_error: [duplicate_id: :warn])
+      {:ok, view, _html} = live_as(user, "/settings/general")
       refute has_element?(view, "#monthly_digest_emails_enabled[checked]")
       refute has_element?(view, "#yearly_digest_emails_enabled[checked]")
       assert has_element?(view, "#news_emails_enabled[checked]")
     end
 
     test "the What's New card toggles through slice 1's handler while joined", %{user: user} do
-      {:ok, view, _html} = live_as(user, "/settings/general", on_error: [duplicate_id: :warn])
+      {:ok, view, _html} = live_as(user, "/settings/general")
 
       view
       |> element("#changelog-consent-setting form")
@@ -142,7 +142,7 @@ defmodule DawarichWeb.SettingsLiveTest do
         ])
       end)
 
-      {:ok, view, html} = live_as(user, "/settings/general", on_error: [duplicate_id: :warn])
+      {:ok, view, html} = live_as(user, "/settings/general")
 
       assert html =~ "Thank you for supporting Dawarich via Patreon!"
       assert has_element?(view, "input#show_supporter_badge[type='checkbox'][checked]")
@@ -195,7 +195,7 @@ defmodule DawarichWeb.SettingsLiveTest do
       })
 
       {:ok, view, _html} =
-        live_as(user, "/settings/integrations", on_error: [duplicate_id: :warn])
+        live_as(user, "/settings/integrations")
 
       assert has_element?(
                view,
@@ -210,7 +210,7 @@ defmodule DawarichWeb.SettingsLiveTest do
     test "an unknown service shows Immich; a self-hosted admin's old geocoding link goes to Instance settings",
          %{user: user} do
       {:ok, view, _html} =
-        live_as(user, "/settings/integrations?service=geocoding", on_error: [duplicate_id: :warn])
+        live_as(user, "/settings/integrations?service=geocoding")
 
       assert has_element?(view, "a[data-testid='integration-immich'][aria-current='page']")
 
@@ -247,7 +247,7 @@ defmodule DawarichWeb.SettingsLiveTest do
       refute Map.has_key?(page, :service)
 
       {:ok, _view, html} =
-        live_as(lite, "/settings/integrations", on_error: [duplicate_id: :warn])
+        live_as(lite, "/settings/integrations")
 
       assert html =~ "/auth/dawarich?token="
       assert html =~ "utm_content=integrations"
@@ -282,7 +282,7 @@ defmodule DawarichWeb.SettingsLiveTest do
       end
 
       {:ok, view, html} =
-        live_as(user, "/settings/integrations?service=trek", on_error: [duplicate_id: :warn])
+        live_as(user, "/settings/integrations?service=trek")
 
       assert [_, first, second, third | _] = String.split(html, "https://trek-")
       assert first =~ "53932" and second =~ "53931" and third =~ "53933"
@@ -306,14 +306,14 @@ defmodule DawarichWeb.SettingsLiveTest do
         "teslamate_password" => "a5s3-k-secret-pw"
       })
 
-      {:ok, view, html} = live_as(user, "/settings/integrations", on_error: [duplicate_id: :warn])
+      {:ok, view, html} = live_as(user, "/settings/integrations")
       assert html =~ ~s(value="********")
       refute html =~ "a5s3-imk-1"
       refute inspect(:sys.get_state(view.pid)) =~ "a5s3-k-secret"
       refute inspect(:sys.get_state(view.pid)) =~ "a5s3-imk-1"
 
       {:ok, tesla, html} =
-        live_as(user, "/settings/integrations?service=teslamate", on_error: [duplicate_id: :warn])
+        live_as(user, "/settings/integrations?service=teslamate")
 
       assert html =~ ~s(value="********")
       refute html =~ "a5s3-k-secret-pw"
