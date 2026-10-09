@@ -59,7 +59,7 @@ defmodule DawarichWeb.A12f3bD01Test do
     )
 
     assert {:halt, revoked} = Phoenix.LiveView.Lifecycle.handle_info(:navbar_refresh, mounted)
-    assert revoked.redirected == {:redirect, %{to: "/settings/background_jobs", status: 302}}
+    assert revoked.redirected == {:redirect, %{to: "/users/sign_in", status: 302}}
     assert revoked.assigns.health == nil
   end
 end

@@ -41,7 +41,7 @@ defmodule DawarichWeb.AdminLiveAuthTest do
     stale = Accounts.get(10001)
     Repo.query!("UPDATE users SET admin = false WHERE id = 10001", [], log: false)
     assert {:halt, socket} = AdminLiveAuth.on_mount(:admin, %{}, session, socket(stale))
-    assert socket.redirected == {:redirect, %{to: "/settings/users", status: 302}}
+    assert socket.redirected == {:redirect, %{to: "/", status: 302}}
     assert {:cont, background} = AdminLiveAuth.on_mount(:background, %{}, session, socket(stale))
     refute background.assigns.current_user.admin
     Repo.query!("UPDATE users SET admin = true WHERE id = 10001", [], log: false)
@@ -58,16 +58,59 @@ defmodule DawarichWeb.AdminLiveAuthTest do
                authorized
              )
 
-    assert demoted.redirected == {:redirect, %{to: "/settings/users", status: 302}}
+    assert demoted.redirected == {:redirect, %{to: "/", status: 302}}
 
     assert Repo.query!("SELECT changelog_consent FROM users WHERE id = 10001", [], log: false).rows ==
              [[0]]
 
     Repo.query!("UPDATE users SET deleted_at = now() WHERE id = 10001", [], log: false)
     assert {:halt, deleted} = Phoenix.LiveView.Lifecycle.handle_info(:navbar_refresh, background)
-    assert deleted.redirected == {:redirect, %{to: "/settings/users", status: 302}}
+    assert deleted.redirected == {:redirect, %{to: "/users/sign_in", status: 302}}
     assert {:halt, deleted_mount} = AdminLiveAuth.on_mount(:admin, %{}, session, socket(stale))
-    assert deleted_mount.redirected == {:redirect, %{to: "/settings/users", status: 302}}
+    assert deleted_mount.redirected == {:redirect, %{to: "/users/sign_in", status: 302}}
+  end
+
+  test "refusals go to their own destination, never back to the same URL" do
+    session = %{"rails_user_id" => 10001, "locale" => "en", "request_path" => "/admin/settings"}
+
+    Repo.query!(
+      "UPDATE users SET encrypted_password = 'changed-salt-0000000000000000000' WHERE id = 10001"
+    )
+
+    assert {:halt, stale} =
+             AdminLiveAuth.on_mount(
+               :admin,
+               %{},
+               session,
+               socket(
+                 Accounts.get(10001)
+                 |> Map.put(:encrypted_password, "original-salt-000000000000000000")
+               )
+             )
+
+    assert stale.redirected == {:redirect, %{to: "/users/sign_in", status: 302}}
+
+    Repo.query!(~s(UPDATE users SET settings = '{"timezone":"Not/AZone"}' WHERE id = 10001))
+    current = Accounts.get(10001)
+    assert {:halt, unsupported} = AdminLiveAuth.on_mount(:admin, %{}, session, socket(current))
+    assert unsupported.redirected == {:redirect, %{to: "/settings/general", status: 302}}
+  end
+
+  test "native admin mode assigns a scope and drops an async result after demotion" do
+    session = %{"rails_user_id" => 10001, "locale" => "en", "request_path" => "/admin/settings"}
+
+    assert {:cont, socket} =
+             AdminLiveAuth.on_mount(:native_admin, %{}, session, socket(Accounts.get(10001)))
+
+    assert socket.assigns.native == true
+    assert socket.assigns.current_scope.user.id == 10001
+
+    Repo.query!("UPDATE users SET admin = false WHERE id = 10001", [], log: false)
+
+    assert {:halt, dropped} =
+             Phoenix.LiveView.Lifecycle.handle_async(:geocoding, {:ok, :done}, socket)
+
+    assert dropped.redirected == {:redirect, %{to: "/", status: 302}}
   end
 
   defp socket(user) do
@@ -79,7 +122,8 @@ defmodule DawarichWeb.AdminLiveAuthTest do
       assigns: %{__changed__: %{}, current_user: user, flash: %{}},
       private: %{
         connect_info: %{session: %{"rails_user_id" => 10001}},
-        lifecycle: %Phoenix.LiveView.Lifecycle{}
+        lifecycle: %Phoenix.LiveView.Lifecycle{},
+        live_temp: %{}
       }
     }
   end
