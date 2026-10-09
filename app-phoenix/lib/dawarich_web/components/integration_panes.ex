@@ -4,8 +4,6 @@ defmodule DawarichWeb.IntegrationPanes do
 
   import DawarichWeb.Icon, only: [icon: 1, brand: 1]
 
-  alias Dawarich.UserSettings
-
   @brands ~w(immich photoprism airtrail)
   @lucide %{"teslamate" => "car", "trek" => "map-pin-check"}
   @placeholders %{
@@ -57,18 +55,18 @@ defmodule DawarichWeb.IntegrationPanes do
 
   attr :service, :string, required: true
   attr :locale, :string, required: true
-  attr :user, :map, required: true
-  attr :rails_csrf_token, :string, default: nil
+  attr :form, :any, required: true
+  attr :queued, :any, default: MapSet.new()
   attr :synced, :string, default: nil
 
   def pane(%{service: service} = assigns) when service in ~w(immich photoprism) do
     ~H"""
     <div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl">
-      <.form_head service={@service} rails_csrf_token={@rails_csrf_token}>
+      <.form_head service={@service} form={@form}>
         <div class="card-body space-y-5">
           <.heading service={@service} locale={@locale} />
-          <.url_field service={@service} locale={@locale} user={@user} />
-          <.key_field service={@service} locale={@locale} user={@user}>
+          <.url_field service={@service} locale={@locale} form={@form} />
+          <.key_field service={@service} locale={@locale} form={@form}>
             <%= if @service == "immich" do %>
               {t(
                 @locale,
@@ -92,11 +90,17 @@ defmodule DawarichWeb.IntegrationPanes do
               )}
             <% end %>
           </.key_field>
-          <.ssl_toggle service={@service} locale={@locale} user={@user}>
+          <.ssl_toggle service={@service} locale={@locale} form={@form}>
             <.icon name="triangle-alert" class="size-6" />
           </.ssl_toggle>
           <div :if={@service == "immich"} class="flex flex-wrap items-center gap-2">
-            <button name="refresh_photos_cache" type="submit" value="1" class="btn btn-sm btn-outline">{t(
+            <button
+              name="refresh_photos_cache"
+              type="submit"
+              value="1"
+              class="btn btn-sm btn-outline"
+              phx-disable-with={t(@locale, "settings.integrations.index.refresh_photo_cache", %{})}
+            >{t(
               @locale,
               "settings.integrations.index.refresh_photo_cache",
               %{}
@@ -118,28 +122,21 @@ defmodule DawarichWeb.IntegrationPanes do
   def pane(%{service: "teslamate"} = assigns), do: DawarichWeb.TeslamatePane.pane(assigns)
 
   attr :service, :string, required: true
-  attr :rails_csrf_token, :string, default: nil
+  attr :form, :any, required: true
   slot :inner_block, required: true
 
   def form_head(assigns) do
     ~H"""
-    <form data-turbo="false" action="/settings/integrations" accept-charset="UTF-8" method="post">
-      <input type="hidden" name="_method" value="patch" /><input
-        :if={@rails_csrf_token}
-        type="hidden"
-        name="authenticity_token"
-        value={@rails_csrf_token}
-      />
-      <input type="hidden" name="service" id="service" value={@service} />
+    <.form for={@form} id="integration-settings" phx-change="change" phx-submit="save">
       {render_slot(@inner_block)}
-    </form>
+    </.form>
     """
   end
 
   def heading(assigns) do
     ~H"""
     <div class="flex items-center gap-3">
-      <.service_icon service={@service} css="size-6" />
+      <.icon name="link" class="size-6 shrink-0" />
       <h2 class="text-xl font-semibold">
         {t(@locale, "settings.integrations.index.#{@service}_integration", %{})}
       </h2>
@@ -158,13 +155,12 @@ defmodule DawarichWeb.IntegrationPanes do
         %{}
       )}</span></label>
       <input
-        value={UserSettings.value(@user, @service <> "_url")}
+        value={@form[@service <> "_url"].value}
         class="input input-bordered w-full"
         placeholder={@placeholder}
         type="url"
         name={"settings[#{@service}_url]"}
         id={"settings_#{@service}_url"}
-        phx-update="ignore"
       />
       <span class="label-text-alt mt-1 text-base-content/60">{t(
         @locale,
@@ -177,7 +173,7 @@ defmodule DawarichWeb.IntegrationPanes do
 
   attr :service, :string, required: true
   attr :locale, :string, required: true
-  attr :user, :map, required: true
+  attr :form, :any, required: true
   slot :inner_block, required: true
 
   def key_field(assigns) do
@@ -188,14 +184,11 @@ defmodule DawarichWeb.IntegrationPanes do
         "settings.integrations.index.#{@service}_api_key",
         %{}
       )}</span></label>
-      <input
-        value={UserSettings.value(@user, @service <> "_api_key")}
-        class="input input-bordered w-full"
-        placeholder={t(@locale, "settings.integrations.index.xxxxxxxxxxxxxx", %{})}
+      <DawarichWeb.CoreComponents.input
+        field={@form[@service <> "_api_key"]}
         type="password"
-        name={"settings[#{@service}_api_key]"}
-        id={"settings_#{@service}_api_key"}
-        phx-update="ignore"
+        display={@form[@service <> "_api_key"].value}
+        label={t(@locale, "settings.integrations.index.#{@service}_api_key", %{})}
       />
       <span class="label-text-alt mt-1 text-base-content/60">{render_slot(@inner_block)}</span>
     </div>
@@ -204,7 +197,7 @@ defmodule DawarichWeb.IntegrationPanes do
 
   attr :service, :string, required: true
   attr :locale, :string, required: true
-  attr :user, :map, required: true
+  attr :form, :any, required: true
   slot :inner_block, required: true
 
   def ssl_toggle(assigns) do
@@ -212,8 +205,8 @@ defmodule DawarichWeb.IntegrationPanes do
       assign(
         assigns,
         :on,
-        UserSettings.cast(
-          UserSettings.value(assigns.user, assigns.service <> "_skip_ssl_verification")
+        Dawarich.UserSettings.cast(
+          assigns.form[assigns.service <> "_skip_ssl_verification"].value
         ) == true
       )
 
@@ -222,13 +215,11 @@ defmodule DawarichWeb.IntegrationPanes do
       <label class="label cursor-pointer justify-start gap-3">
         <input name={"settings[#{@service}_skip_ssl_verification]"} type="hidden" value="0" /><input
           class="toggle toggle-warning"
-          onchange={"document.getElementById('#{@service}-ssl-warning').classList.toggle('hidden', !this.checked)"}
           type="checkbox"
           value="1"
           checked={@on && "checked"}
           name={"settings[#{@service}_skip_ssl_verification]"}
           id={"settings_#{@service}_skip_ssl_verification"}
-          phx-update="ignore"
         />
         <span class="label-text">{t(
           @locale,
@@ -238,7 +229,6 @@ defmodule DawarichWeb.IntegrationPanes do
       </label>
       <div
         id={"#{@service}-ssl-warning"}
-        phx-update="ignore"
         class={"alert alert-warning mt-2 #{unless @on, do: "hidden"}"}
       >
         {render_slot(@inner_block)}
@@ -256,19 +246,17 @@ defmodule DawarichWeb.IntegrationPanes do
 
   def save(assigns) do
     ~H"""
-    <input
+    <button
       type="submit"
-      name="commit"
-      value={t(@locale, "settings.integrations.index.save_test_connection", %{})}
       class="btn btn-primary"
-      data-disable-with={t(@locale, "settings.integrations.index.save_test_connection", %{})}
-    />
+      phx-disable-with={t(@locale, "settings.integrations.index.save_test_connection", %{})}
+    >{t(@locale, "settings.integrations.index.save_test_connection", %{})}</button>
     """
   end
 
   attr :locale, :string, required: true
-  attr :job, :string, required: true
-  attr :rails_csrf_token, :string, default: nil
+  attr :service, :string, required: true
+  attr :queued, :any, default: MapSet.new()
   slot :inner_block, required: true
 
   def sync_row(assigns) do
@@ -276,18 +264,14 @@ defmodule DawarichWeb.IntegrationPanes do
     <div class="border-t border-base-content/10 px-8 py-5">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>{render_slot(@inner_block)}</div>
-        <form class="button_to" method="post" action={"/settings/background_jobs?job_name=#{@job}"}>
-          <button class="btn btn-primary btn-sm" type="submit">{t(
-            @locale,
-            "settings.integrations.index.sync_now",
-            %{}
-          )}</button><input
-            :if={@rails_csrf_token}
-            type="hidden"
-            name="authenticity_token"
-            value={@rails_csrf_token}
-          />
-        </form>
+        <button
+          id="integration-sync"
+          type="button"
+          class="btn btn-primary btn-sm"
+          phx-click="sync"
+          phx-disable-with={t(@locale, "settings.integrations.index.sync_now", %{})}
+          disabled={MapSet.member?(@queued, @service)}
+        >{t(@locale, "settings.integrations.index.sync_now", %{})}</button>
       </div>
     </div>
     """

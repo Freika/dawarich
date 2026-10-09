@@ -20,7 +20,7 @@ defmodule Dawarich.Integrations do
     end
   end
 
-  def self_hosted?, do: System.get_env("SELF_HOSTED") == "true"
+  def self_hosted?, do: Dawarich.ReleaseMigration.self_hosted?()
 
   def update_credentials(%Scope{user: user, locale: locale} = scope, service, params) do
     with :ok <- authorize(scope) do

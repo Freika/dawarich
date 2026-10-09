@@ -9,23 +9,17 @@ defmodule DawarichWeb.TrekPane do
 
   attr :locale, :string, required: true
   attr :sources, :list, required: true
-  attr :rails_csrf_token, :string, default: nil
+  attr :form, :any, required: true
+  attr :queued, :any, default: MapSet.new()
 
   def pane(assigns) do
     ~H"""
     <div class="space-y-6 max-w-3xl">
       <div
-        id="trek-source-form"
+        id="trek-source-card"
         class="rounded-box border border-base-content/10 bg-base-200"
-        phx-update="ignore"
       >
-        <form data-turbo="false" action="/settings/trek_sources" accept-charset="UTF-8" method="post">
-          <input
-            :if={@rails_csrf_token}
-            type="hidden"
-            name="authenticity_token"
-            value={@rails_csrf_token}
-          />
+        <.form for={@form} id="trek-source-form" phx-submit="trek-create">
           <div class="card-body space-y-5">
             <div class="flex items-center gap-3">
               <.service_icon service="trek" css="size-6" />
@@ -79,16 +73,14 @@ defmodule DawarichWeb.TrekPane do
               )}</span>
             </div>
             <div class="card-actions">
-              <input
+              <button
                 type="submit"
-                name="commit"
-                value={t(@locale, "settings.integrations.trek.connect", %{})}
                 class="btn btn-primary"
-                data-disable-with={t(@locale, "settings.integrations.trek.connect", %{})}
-              />
+                phx-disable-with={t(@locale, "settings.integrations.trek.connect", %{})}
+              >{t(@locale, "settings.integrations.trek.connect", %{})}</button>
             </div>
           </div>
-        </form>
+        </.form>
       </div>
 
       <div :for={source <- @sources} class="rounded-box border border-base-content/10 bg-base-200">
@@ -106,26 +98,19 @@ defmodule DawarichWeb.TrekPane do
           <div class="flex flex-wrap gap-2">
             <%= cond do %>
               <% source.active and not source.importing -> %>
-                <a
+                <.link
                   class="btn btn-primary btn-sm"
-                  href={"/settings/trek_sources/#{source.id}/select_trips"}
-                >{t(@locale, "settings.integrations.trek.choose_trips", %{})}</a>
-                <form
-                  class="button_to"
-                  method="post"
-                  action={"/settings/trek_sources/#{source.id}/sync"}
-                >
-                  <button class="btn btn-outline btn-sm" type="submit">{t(
-                    @locale,
-                    "settings.integrations.trek.sync_now",
-                    %{}
-                  )}</button><input
-                    :if={@rails_csrf_token}
-                    type="hidden"
-                    name="authenticity_token"
-                    value={@rails_csrf_token}
-                  />
-                </form>
+                  navigate={"/settings/trek_sources/#{source.id}/select_trips"}
+                >{t(@locale, "settings.integrations.trek.choose_trips", %{})}</.link>
+                <button
+                  id={"trek-sync-#{source.id}"}
+                  type="button"
+                  class="btn btn-outline btn-sm"
+                  phx-click="trek-sync"
+                  phx-value-id={source.id}
+                  phx-disable-with={t(@locale, "settings.integrations.trek.sync_now", %{})}
+                  disabled={MapSet.member?(@queued, to_string(source.id))}
+                >{t(@locale, "settings.integrations.trek.sync_now", %{})}</button>
               <% source.status == "disabled" -> %>
                 <a class="btn btn-outline btn-sm" href="#trek-source-form">{t(
                   @locale,
@@ -134,20 +119,15 @@ defmodule DawarichWeb.TrekPane do
                 )}</a>
               <% true -> %>
             <% end %>
-            <form class="button_to" method="post" action={"/settings/trek_sources/#{source.id}"}>
-              <input type="hidden" name="_method" value="delete" /><button
-                class="btn btn-ghost btn-sm text-error"
-                data-turbo-confirm={
-                  t(@locale, "settings.integrations.trek.disconnect_confirmation", %{})
-                }
-                type="submit"
-              >{t(@locale, "settings.integrations.trek.disconnect", %{})}</button><input
-                :if={@rails_csrf_token}
-                type="hidden"
-                name="authenticity_token"
-                value={@rails_csrf_token}
-              />
-            </form>
+            <button
+              id={"trek-delete-#{source.id}"}
+              type="button"
+              class="btn btn-ghost btn-sm text-error"
+              phx-click="trek-delete"
+              phx-value-id={source.id}
+              data-confirm={t(@locale, "settings.integrations.trek.disconnect_confirmation", %{})}
+              phx-disable-with={t(@locale, "settings.integrations.trek.disconnect", %{})}
+            >{t(@locale, "settings.integrations.trek.disconnect", %{})}</button>
           </div>
         </div>
       </div>

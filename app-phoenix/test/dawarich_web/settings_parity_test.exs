@@ -5,14 +5,13 @@ defmodule DawarichWeb.SettingsParityTest do
 
   alias Dawarich.Repo
   alias Dawarich.Test.{ParityHTML, RailsUser}
-  alias DawarichWeb.{AccountLive, InsightsLive, SettingsLive}
+  alias DawarichWeb.{AccountLive, InsightsLive}
 
   @dir "test/fixtures/settings"
   @corpus "test/fixtures/settings_corpus.json" |> File.read!() |> Jason.decode!()
   @env ~w(TIME_ZONE MANAGER_URL OIDC_PROVIDER_NAME CHIBICHANGE_WIDGET_HOST SMTP_SERVER)
   @stimulus "[data-controller], [data-action], [data-activity-heatmap-target], [data-upload-target], [data-turbo], [data-turbo-method], [data-turbo-confirm], [data-turbo-stream]"
   @pages %{
-    "/settings/integrations" => SettingsLive.Integrations,
     "/users/edit" => AccountLive.Edit,
     "/insights" => InsightsLive.Index
   }
@@ -114,7 +113,8 @@ defmodule DawarichWeb.SettingsParityTest do
     end
   end
 
-  for file <- @fixtures, not String.starts_with?(Path.basename(file), "general_") do
+  for file <- @fixtures,
+      not String.starts_with?(Path.basename(file), ["general_", "integrations_"]) do
     @name Path.basename(file, ".json")
 
     test "#{@name} matches the page Rails renders" do

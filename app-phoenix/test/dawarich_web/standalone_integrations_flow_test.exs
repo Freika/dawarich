@@ -43,12 +43,7 @@ defmodule DawarichWeb.StandaloneIntegrationsFlowTest do
 
     assert page.status == 200
 
-    [token] =
-      page.resp_body
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("form[action='/settings/integrations'] input[name=authenticity_token]")
-      |> LazyHTML.attribute("value")
-      |> Enum.take(1)
+    token = DawarichWeb.RailsCsrf.masked_token(c.session)
 
     saved = submit(c.session, token, "0")
     assert saved.status == 302

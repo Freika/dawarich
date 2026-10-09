@@ -5,19 +5,18 @@ defmodule DawarichWeb.TeslamatePane do
   import DawarichWeb.IntegrationPanes,
     only: [form_head: 1, heading: 1, ssl_toggle: 1, save: 1, sync_row: 1]
 
-  alias Dawarich.UserSettings
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   attr :service, :string, required: true
   attr :locale, :string, required: true
-  attr :user, :map, required: true
-  attr :rails_csrf_token, :string, default: nil
+  attr :form, :any, required: true
+  attr :queued, :any, default: MapSet.new()
   attr :synced, :string, default: nil
 
   def pane(assigns) do
     ~H"""
     <div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl">
-      <.form_head service="teslamate" rails_csrf_token={@rails_csrf_token}>
+      <.form_head service="teslamate" form={@form}>
         <div class="card-body space-y-5">
           <.heading service="teslamate" locale={@locale} />
           <div class="form-control w-full max-w-md">
@@ -27,13 +26,12 @@ defmodule DawarichWeb.TeslamatePane do
               %{}
             )}</span></label>
             <input
-              value={UserSettings.value(@user, "teslamate_url")}
+              value={@form["teslamate_url"].value}
               class="input input-bordered w-full"
               placeholder="https://teslamateapi.example.com"
               type="url"
               name="settings[teslamate_url]"
               id="settings_teslamate_url"
-              phx-update="ignore"
             />
             <span class="label-text-alt mt-1 text-base-content/60">
               {t(
@@ -57,13 +55,12 @@ defmodule DawarichWeb.TeslamatePane do
                 %{}
               )}</label>
               <input
-                value={UserSettings.value(@user, "teslamate_username")}
+                value={@form["teslamate_username"].value}
                 class="input input-bordered w-full"
                 autocomplete="username"
                 type="text"
                 name="settings[teslamate_username]"
                 id="settings_teslamate_username"
-                phx-update="ignore"
               />
             </div>
             <div class="form-control w-full">
@@ -72,14 +69,11 @@ defmodule DawarichWeb.TeslamatePane do
                 "settings.integrations.index.teslamate_password",
                 %{}
               )}</label>
-              <input
-                value={UserSettings.value(@user, "teslamate_password")}
-                class="input input-bordered w-full"
-                autocomplete="current-password"
+              <DawarichWeb.CoreComponents.input
+                field={@form["teslamate_password"]}
                 type="password"
-                name="settings[teslamate_password]"
-                id="settings_teslamate_password"
-                phx-update="ignore"
+                display={@form["teslamate_password"].value}
+                label={t(@locale, "settings.integrations.index.teslamate_password", %{})}
               />
             </div>
           </div>
@@ -89,13 +83,11 @@ defmodule DawarichWeb.TeslamatePane do
               "settings.integrations.index.teslamate_api_token",
               %{}
             )}</label>
-            <input
-              value={UserSettings.value(@user, "teslamate_api_token")}
-              class="input input-bordered w-full"
+            <DawarichWeb.CoreComponents.input
+              field={@form["teslamate_api_token"]}
               type="password"
-              name="settings[teslamate_api_token]"
-              id="settings_teslamate_api_token"
-              phx-update="ignore"
+              display={@form["teslamate_api_token"].value}
+              label={t(@locale, "settings.integrations.index.teslamate_api_token", %{})}
             />
             <span class="label-text-alt mt-1 text-base-content/60">{t(
               @locale,
@@ -103,7 +95,7 @@ defmodule DawarichWeb.TeslamatePane do
               %{}
             )}</span>
           </div>
-          <.ssl_toggle service="teslamate" locale={@locale} user={@user}>
+          <.ssl_toggle service="teslamate" locale={@locale} form={@form}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-6 w-6 shrink-0 stroke-current"
@@ -124,10 +116,10 @@ defmodule DawarichWeb.TeslamatePane do
         </div>
       </.form_head>
       <.sync_row
-        :if={Ruby.present?(UserSettings.value(@user, "teslamate_url"))}
+        :if={Ruby.present?(@form["teslamate_url"].value)}
         locale={@locale}
-        job="start_teslamate_sync"
-        rails_csrf_token={@rails_csrf_token}
+        service="teslamate"
+        queued={@queued}
       >
         <h3 class="font-semibold">
           {t(@locale, "settings.integrations.index.sync_teslamate_drives", %{})}
