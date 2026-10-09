@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Self-hosted instances with OIDC can send signed-out visitors straight to the identity provider by setting `OIDC_AUTO_LOGIN=true`. Signing out, a failed or abandoned provider login, and family invitation links land on the regular sign-in page instead; `/users/sign_in?auto_login=false` reaches it at any time.
+
 ## [1.15.3] - 2026-09-30, Berlin
 
 ### Added

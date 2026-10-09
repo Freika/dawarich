@@ -288,6 +288,9 @@ es:
         sign_in_accept_invitation: Iniciar sesión y aceptar invitación
         log_in: "Iniciar sesión"
         sign_in_to_join_family: "¡Inicia sesión para unirte a %{family}!"
+      oidc_auto_login:
+        redirecting_to_your_identity_provider: Redirigiendo a tu proveedor de identidad…
+        use_another_sign_in_method: Usar otro método de inicio de sesión
       otp_challenge:
         two_factor_authentication: Autenticación de dos factores
         enter_the_6_digit_code_from_your_authenticator_app_to: Introduce el código de 6 dígitos de tu aplicación autenticadora para continuar.

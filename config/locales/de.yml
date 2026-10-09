@@ -288,6 +288,9 @@ de:
         sign_in_accept_invitation: Anmelden & Einladung annehmen
         log_in: Anmelden
         sign_in_to_join_family: "Melde dich an, um %{family} beizutreten!"
+      oidc_auto_login:
+        redirecting_to_your_identity_provider: Weiterleitung zu deinem Identitätsanbieter…
+        use_another_sign_in_method: Andere Anmeldemethode verwenden
       otp_challenge:
         two_factor_authentication: Zwei-Faktor-Authentifizierung
         enter_the_6_digit_code_from_your_authenticator_app_to: Gib den 6-stelligen Code aus deiner Authenticator-App ein, um fortzufahren.

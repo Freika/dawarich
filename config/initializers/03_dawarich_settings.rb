@@ -104,6 +104,10 @@ class DawarichSettings
       @oidc_enabled ||= self_hosted? && OMNIAUTH_PROVIDERS.include?(:openid_connect)
     end
 
+    def oidc_auto_login_enabled?
+      oidc_enabled? && OIDC_AUTO_LOGIN
+    end
+
     def features_for(user)
       {
         reverse_geocoding: Geocoding::Config.for(user).enabled?,
