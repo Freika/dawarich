@@ -1,6 +1,6 @@
 # Phoenix-native frontend, LiveView and contexts — implementation plan
 
-Date: 2026-10-08. Status: decisions taken (ADR-0017, workspace `docs/adr/0017-phoenix-native-frontend-without-hotwire.md`); milestones 0–2 are done (2026-10-09, branch `feat/native-frontend`, results in `native-frontend-inventory.md`) by `superpowers/plans/2026-10-08-phoenix-native-frontend-plan.md`; the next milestone needs its own plan. That plan defers admin/public live_sessions, the idle-connection memory baseline beyond Tags and native uploads to later milestones. Coexistence is not kept; only the standalone Playwright lane gates.
+Date: 2026-10-08. Status: decisions taken (ADR-0017, workspace `docs/adr/0017-phoenix-native-frontend-without-hotwire.md`); milestones 0–2 are done (2026-10-09, branch `feat/native-frontend`, results in `native-frontend-inventory.md`) by `superpowers/plans/2026-10-08-phoenix-native-frontend-plan.md`; milestone 3 is split into 3a–3d: 3a (general/visits/integrations settings with TREK, `/users/edit` with native ZIP upload) is done (2026-10-09, branch `feat/native-m3a`, results in `native-m3a-inventory.md`) by `superpowers/plans/2026-10-09-phoenix-native-milestone-3-plan.md`; the rest is inventoried in `native-m3b-inventory.md` (branch `feat/native-m3b-inventory`) and needs its own plan. That plan defers admin/public live_sessions, the idle-connection memory baseline beyond Tags and native uploads to later milestones. Coexistence is not kept; only the standalone Playwright lane gates.
 
 ## Target and scope
 

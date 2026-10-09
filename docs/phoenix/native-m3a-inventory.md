@@ -26,6 +26,15 @@ Standalone G44 reference: the pilot's final run on app `1bc05f892` / E2E `e6161a
 
 Pre-existing defect found while measuring: `/users/edit` renders two elements with the HTML id `Flower` (an inline SVG asset), which LiveViewTest rejects unless `on_error: :warn` is passed. The native page must not carry duplicate ids (Task 9a).
 
+## Results (Task 12, app `8a5a2555d`, E2E `bc2fcea`)
+
+- Full ExUnit, seeds 404 and 202: 7147 tests; the only failures were the two pinned Tailwind output hashes, which moved with the new page classes and were re-pinned (`aadedd502`); both build tests green afterwards.
+- Standalone G44, three full lanes run one after another: 525 passed / 0 failed / 51 skipped each (reference 524/0/51; skip set unchanged). Two earlier attempts with the three lanes in parallel on a heavily loaded machine (load average ~34) timed out in different specs each time, all outside the 3a pages except `imports-exports/user-data.spec.js`, whose import job was cancelled after a 15 s DB connection wait; every one of them passed on a single lane. Root-cause analysis: `.scratch/orch/out/g44-flakes.report.md` (follow-up, not 3a). The app-owned `e2e/native-imports` helper still posted the old Rails general-settings form and was fixed (`8a5a2555d`).
+- Queries per mount stay within the baseline (asserted by each page's budget test; visits measured 7 static / 6 connected).
+- JavaScript on the four routes: 2 script requests, 164,080–164,624 decoded bytes, 0 Hotwire modules (was 53–54 requests, ~2.77–2.80 MB, 9–10 Hotwire modules).
+- `mix compile --warnings-as-errors`, `mix format --check-formatted`, `biome ci app-phoenix/assets`, `node --test spec/javascript/*_test.mjs` (598 passed): clean.
+- German and English at 390 px: no horizontal page scroll and no label overflowing its control on `/settings/general`, `/settings/visits`, `/settings/integrations`, `/users/edit` (measured on the stand).
+
 ## Behaviour map
 
 Kinds: **B** behaviour (must keep passing, ported into the new context/LiveView tests), **M** markup only (replaced or dropped), **C** coexistence/Rails hand-back only (dropped, ADR-0017), **R** route/ownership table (updated when routes move or disappear).
