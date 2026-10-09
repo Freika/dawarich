@@ -2,7 +2,9 @@ defmodule Dawarich.Test.NativeIntegrationStub do
   import Plug.Conn
   def init(opts), do: opts
 
-  def call(conn, _opts) do
+  def call(conn, opts) do
+    send(opts[:owner], {:native_provider_request, conn.request_path})
+
     body =
       case conn.request_path do
         "/api/v1/trips" ->
@@ -36,7 +38,8 @@ defmodule Dawarich.Test.NativeIntegrationStub do
   def start! do
     server =
       ExUnit.Callbacks.start_supervised!(
-        {Bandit, plug: __MODULE__, port: 0, ip: {127, 0, 0, 1}, startup_log: false}
+        {Bandit,
+         plug: {__MODULE__, owner: self()}, port: 0, ip: {127, 0, 0, 1}, startup_log: false}
       )
 
     {:ok, {_, port}} = ThousandIsland.listener_info(server)

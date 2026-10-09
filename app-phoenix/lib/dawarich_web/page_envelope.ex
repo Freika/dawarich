@@ -52,17 +52,16 @@ defmodule DawarichWeb.PageEnvelope do
     Plug.Conn.InvalidQueryError -> conn
   end
 
-  defp path_format(conn) do
-    path = conn.path_info
-
+  defp path_format(%{path_info: path} = conn) do
     case Regex.run(~r/\A(.+)\.([^\.\/]+)\z/, List.last(path) || "") do
       [_, name, format] ->
         candidate = List.replace_at(path, -1, name)
         method = if conn.method == "HEAD", do: "GET", else: conn.method
 
-        if Phoenix.Router.route_info(DawarichWeb.Router, method, candidate, conn.host) == :error,
-          do: {path, nil},
-          else: {candidate, format}
+        if match?(["settings", "trek_sources", _, "select_trips"], candidate) or
+             Phoenix.Router.route_info(DawarichWeb.Router, method, candidate, conn.host) == :error,
+           do: {path, nil},
+           else: {candidate, format}
 
       _ ->
         {path, nil}

@@ -172,7 +172,7 @@ defmodule DawarichWeb.StorageRoutesTest do
 
   test "tag pages and native settings pages live in the native live_session" do
     for path <-
-          ~w(/tags /tags/new /tags/17/edit /settings/general /settings/visits /settings/integrations) do
+          ~w(/tags /tags/new /tags/17/edit /settings/general /settings/visits /settings/integrations /settings/trek_sources/17/select_trips) do
       route =
         Phoenix.Router.route_info(
           DawarichWeb.Router,

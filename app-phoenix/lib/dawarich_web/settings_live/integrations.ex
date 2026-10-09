@@ -17,6 +17,7 @@ defmodule DawarichWeb.SettingsLive.Integrations do
      assign(socket,
        sync_queued: MapSet.new(),
        trek_queued: MapSet.new(),
+       trek_created: false,
        trek_form: to_form(%{}, as: :trip_source)
      )}
   end
@@ -97,11 +98,15 @@ defmodule DawarichWeb.SettingsLive.Integrations do
     end
   end
 
+  def handle_event("trek-create", _params, %{assigns: %{trek_created: true}} = socket),
+    do: {:noreply, socket}
+
   def handle_event("trek-create", %{"trip_source" => params}, socket) do
     case Dawarich.Integrations.Trek.create_source(socket.assigns.current_scope, params) do
       {:ok, id} ->
         {:noreply,
          socket
+         |> assign(:trek_created, true)
          |> trek_notice(:notice, "create.connected_choose_trips")
          |> push_navigate(to: "/settings/trek_sources/#{id}/select_trips")}
 

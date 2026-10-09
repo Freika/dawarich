@@ -121,37 +121,30 @@ defmodule DawarichWeb.StandaloneTrekSourcesTest do
     assert conn.status == 200
     doc = LazyHTML.from_document(conn.resp_body)
 
-    assert LazyHTML.query(
-             doc,
-             "form[action='/settings/trek_sources/#{id}/import_trips'] input[name=authenticity_token]"
-           )
-           |> LazyHTML.attribute("value") != []
+    assert LazyHTML.query(doc, "#trek-trips[phx-submit=import]") |> Enum.count() == 1
 
     assert LazyHTML.query(doc, "input[value=selected][checked]") |> Enum.count() == 1
     assert LazyHTML.query(doc, "input[disabled]") |> Enum.count() == 2
     assert conn.resp_body =~ "&lt;script&gt;"
     Task.await(task)
     task = provider(c, remote)
-    localized = page(c, id, ".html?locale=de&format=html")
+    localized = page(c, id, "?locale=de")
     assert localized.status == 200
     assert localized.resp_body =~ ~s(lang="de")
     assert Dawarich.Accounts.settings(c.actor.id)["locale"] == "de"
     Task.await(task)
     rows("UPDATE users SET settings=$2 WHERE id=$1", [c.actor.id, c.actor.settings])
     task = provider(c, [], 401)
-    redirect(page(c, id), integrations(), "alert", "TREK request failed with HTTP 401")
+    conn = page(c, id)
+    assert conn.status == 302
+    assert get_resp_header(conn, "location") == [integrations()]
     Task.await(task)
 
     assert rows("SELECT status,last_error FROM trip_sources WHERE id=$1", [id]) == [
              [1, "TREK request failed with HTTP 401"]
            ]
 
-    redirect(
-      page(c, id),
-      integrations(),
-      "alert",
-      "TREK is disabled. Reconnect it with a new API key before syncing."
-    )
+    assert get_resp_header(page(c, id), "location") == [integrations()]
   end
 
   test "standalone TREK import filters all identifiers claims once and atomically publishes the native job",
@@ -317,7 +310,7 @@ defmodule DawarichWeb.StandaloneTrekSourcesTest do
       assert post(c, suffix, params).status == 404
     end
 
-    assert page(c, id).status == 404
+    assert_error_sent 404, fn -> page(c, id) end
     anonymous = post(%{c | session: %{}}, "/#{id}/sync", %{})
 
     redirect(

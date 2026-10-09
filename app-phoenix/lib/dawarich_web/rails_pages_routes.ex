@@ -28,6 +28,10 @@ defmodule DawarichWeb.RailsPagesRoutes do
 
           live "/settings/integrations", DawarichWeb.SettingsLive.Integrations, :index,
             container: {:div, class: "contents"}
+
+          live "/settings/trek_sources/:id/select_trips",
+               DawarichWeb.SettingsLive.TrekTrips,
+               :select_trips, container: {:div, class: "contents"}
         end
 
         live_session :rails_pages,
