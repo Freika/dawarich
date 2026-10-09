@@ -135,10 +135,6 @@ defmodule DawarichWeb.A10Routes do
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.AdminGate, :instance?}}
 
-          live "/settings/users", DawarichWeb.SettingsLive.UsersIndex, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.AdminGate, :users?}}
-
           live "/settings/users/:id", DawarichWeb.SettingsLive.UserShow, :show,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.AdminGate, :users?}}

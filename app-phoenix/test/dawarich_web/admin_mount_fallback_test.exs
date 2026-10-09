@@ -4,10 +4,20 @@ defmodule DawarichWeb.AdminMountFallbackTest do
   alias DawarichWeb.AdminLive.Instance
   alias DawarichWeb.SettingsLive.{UserEdit, UserShow, UsersIndex}
 
+  test "native users index stale read redirects to sign-in" do
+    socket = %Phoenix.LiveView.Socket{
+      endpoint: DawarichWeb.Endpoint,
+      assigns: %{__changed__: %{}, current_scope: nil, flash: %{}}
+    }
+
+    assert {:noreply, refused} =
+             UsersIndex.handle_params(%{}, "http://www.example.com/settings/users", socket)
+
+    assert refused.redirected == {:redirect, %{to: "/users/sign_in", status: 302}}
+  end
+
   test "mount-time Rails fallbacks retain the original query parameters" do
     for {view, path, params, query} <- [
-          {UsersIndex, "/settings/users", %{"search" => "literal %_", "page" => "2"},
-           %{"search" => "literal %_", "page" => "2"}},
           {UserShow, "/settings/users/10001", %{"id" => "10001"}, %{"section" => "account"}},
           {UserEdit, "/settings/users/10001/edit", %{"id" => "10001"}, %{"section" => "account"}},
           {Instance, "/admin/settings", %{"section" => "geoapify"}, %{"section" => "geoapify"}}

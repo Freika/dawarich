@@ -10,6 +10,9 @@ defmodule DawarichWeb.NativeAdminRoutes do
           on_mount: {DawarichWeb.AdminLiveAuth, :native_admin},
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
+          live "/settings/users", DawarichWeb.SettingsLive.UsersIndex, :index,
+            container: {:div, class: "contents"},
+            metadata: %{rails_gate: {DawarichWeb.AdminGate, :users?}}
         end
       end
 

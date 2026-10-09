@@ -1,0 +1,119 @@
+<div class="min-h-content w-full my-5">
+  <.page_header title={t(@locale, "settings.users.index.users_management", %{})} />
+  <SettingsParts.navigation
+    locale={@locale}
+    active="users"
+    self_hosted={@self_hosted}
+    admin={@current_user.admin == true}
+    two_factor={@two_factor}
+    native
+  />
+  <div class="w-10/12 mx-auto my-6 card bg-base-200 compact">
+    <div class="card-body flex flex-wrap items-center justify-between">
+      <h3 class="font-semibold">{t(@locale, "settings.users.index.user_registration", %{})}</h3>
+      <.form
+        :if={assigns[:registration_form]}
+        for={@registration_form}
+        id="phx-registration-settings"
+        phx-submit="update_registration"
+        class="flex flex-wrap items-center gap-3"
+      >
+        <.input
+          field={@registration_form[:registration_enabled]}
+          type="rails_checkbox"
+          label={
+            t(
+              @locale,
+              "settings.users.index.allow_new_users_to_register_via_email_and_password",
+              %{}
+            )
+          }
+        />
+        <button
+          type="submit"
+          class="btn btn-sm"
+          phx-disable-with={t(@locale, "settings.users.edit.update", %{})}
+        >{t(@locale, "settings.users.edit.update", %{})}</button>
+      </.form>
+    </div>
+  </div>
+  <div class="w-10/12 mx-auto my-10">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <button
+        class="btn"
+        phx-click={
+          JS.push("open_create") |> JS.dispatch("dawarich:open-dialog", to: "#create_user")
+        }
+      >{t(@locale, "settings.users.index.add_new_user", %{})}</button>
+      <form id="users-search" phx-submit="search" class="flex flex-wrap gap-2">
+        <label class="sr-only" for="users-search-value">{t(
+          @locale,
+          "settings.users.index.search_by_email",
+          %{}
+        )}</label>
+        <input
+          id="users-search-value"
+          type="text"
+          name="search"
+          value={@data.search || ""}
+          placeholder={t(@locale, "settings.users.index.search_by_email", %{})}
+          class="input input-bordered input-sm w-full sm:w-64"
+        />
+        <button
+          type="submit"
+          class="btn btn-sm btn-ghost"
+          phx-disable-with={t(@locale, "settings.users.index.search", %{})}
+        >{t(@locale, "settings.users.index.search", %{})}</button>
+        <.link
+          :if={@data.search not in [nil, ""]}
+          id="clear-users-search"
+          patch="/settings/users"
+          class="btn btn-sm btn-ghost"
+        >{t(@locale, "settings.users.index.clear", %{})}</.link>
+      </form>
+    </div>
+    <div class="overflow-x-auto">
+      <AdminUsersTable.table locale={@locale} rows={@data.rows} actor={@current_user} />
+    </div>
+    <div class="mt-4 overflow-x-auto">
+      <Paginator.paginator
+        locale={@locale}
+        path="/settings/users"
+        query={@query}
+        page={@data.page}
+        total_pages={@data.pages}
+      />
+    </div>
+  </div>
+</div>
+<dialog id="create_user" class="modal">
+  <div class="modal-box">
+    <h2 class="text-2xl font-bold">
+      {t(@locale, "settings.users.index.create_a_new_user", %{})}
+    </h2>
+    <form id={"create-user-form-#{@form_version}"}>
+      <label for="create-user-email">{t(@locale, "settings.users.index.email", %{})}</label>
+      <input
+        id="create-user-email"
+        type="email"
+        name="user[email]"
+        value={@create_email}
+        class="input input-bordered w-full"
+      />
+      <label for="create-user-password">{t(@locale, "settings.users.index.password", %{})}</label>
+      <input
+        id="create-user-password"
+        type="password"
+        name="user[password]"
+        value=""
+        autocomplete="new-password"
+        class="input input-bordered w-full"
+      />
+    </form>
+    <button
+      type="button"
+      class="btn"
+      phx-click={JS.dispatch("dawarich:close-dialog", to: "#create_user")}
+    >{t(@locale, "settings.users.index.close", %{})}</button>
+  </div>
+</dialog>

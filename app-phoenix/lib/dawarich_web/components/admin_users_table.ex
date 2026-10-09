@@ -19,10 +19,13 @@ defmodule DawarichWeb.AdminUsersTable do
         </tr>
       </thead>
       <tbody>
-        <tr :for={user <- @rows}>
+        <tr :for={user <- @rows} data-user-id={user.id}>
           <td>
             <div>
-              <a class="font-bold underline hover:no-underline" href={"/settings/users/#{user.id}"}>{user.email}</a>
+              <.link
+                class="font-bold underline hover:no-underline"
+                navigate={"/settings/users/#{user.id}"}
+              >{user.email}</.link>
             </div>
           </td>
           <td>
@@ -49,15 +52,16 @@ defmodule DawarichWeb.AdminUsersTable do
           </td>
           <td><.human_datetime locale={@locale} at={user.created_at} /></td>
           <td class="flex gap-2">
-            <a class="btn btn-ghost btn-sm" href={"/settings/users/#{user.id}/edit"}>{t(
+            <.link class="btn btn-ghost btn-sm" navigate={"/settings/users/#{user.id}/edit"}>{t(
               @locale,
               "settings.users.index.edit",
               %{}
-            )}</a>
+            )}</.link>
             <button
               :if={user.id != @actor.id}
               class="btn btn-error btn-sm"
-              onclick={"delete_user_#{user.id}.showModal()"}
+              phx-click="open_delete"
+              phx-value-id={user.id}
             >{t(@locale, "settings.users.index.delete", %{})}</button>
           </td>
         </tr>
