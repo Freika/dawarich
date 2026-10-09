@@ -4,7 +4,7 @@ defmodule DawarichWeb.AuthAccount.ResponseTest do
   import ExUnit.CaptureLog
   alias Dawarich.{Accounts, RailsCookies, Repo}
   alias Dawarich.Auth.SessionCookie
-  alias Dawarich.Test.{ParityHTML, RailsUser}
+  alias Dawarich.Test.RailsUser
   alias DawarichWeb.AuthAccount.Response
 
   @secret "a11rest-response-cookie-secret-not-for-production"
@@ -68,29 +68,32 @@ defmodule DawarichWeb.AuthAccount.ResponseTest do
     log =
       capture_log(fn ->
         failure = Response.form(request(session, user), user, render, context)
-        assert failure.status == row["status"]
+        assert failure.status == 303
         assert failure.halted
+        assert failure.resp_body == ""
+        assert get_resp_header(failure, "location") == ["http://www.example.com/users/edit"]
         assert get_resp_header(failure, "x-dawarich-auth-owner") == ["native-account"]
-        assert get_resp_header(failure, "content-type") == ["text/html; charset=utf-8"]
         assert get_resp_header(failure, "x-frame-options") == ["SAMEORIGIN"]
 
-        assert ParityHTML.fragment(failure.resp_body, "div.w-full.min-w-0.my-5") ==
-                 ParityHTML.normalize(
-                   File.read!("test/fixtures/auth/account/multiple_errors_en.html")
-                 )
+        assert failure.assigns.rails_session["dawarich.account_form"] == %{
+                 "email" => row["submitted_email"],
+                 "errors" => [
+                   ["email", "invalid", %{}],
+                   ["password_confirmation", "confirmation", %{}],
+                   ["password", "too_short", %{"count" => 12}],
+                   ["current_password", "blank", %{}]
+                 ]
+               }
 
-        assert length(
-                 LazyHTML.from_document(failure.resp_body)
-                 |> LazyHTML.query("input[type=password][value]")
-                 |> LazyHTML.to_tree()
-               ) == 0
+        assert Response.errors(failure.assigns.rails_session["dawarich.account_form"]) == errors
 
         cookie = failure.resp_cookies["_dawarich_session"]
 
         assert cookie.http_only and cookie.same_site == "Lax" and cookie.path == "/" and
                  not cookie.secure
 
-        assert decrypted?(cookie.value, session)
+        assert decrypted?(cookie.value, failure.assigns.rails_session)
+        assert Map.delete(failure.assigns.rails_session, "dawarich.account_form") == session
         assert failure.assigns.current_user.id == user.id
         assert failure.private.dawarich_rails_user.id == user.id
 

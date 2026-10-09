@@ -1,19 +1,10 @@
 defmodule DawarichWeb.AuthAccount.Response do
   @moduledoc false
   import Plug.Conn
-  alias Dawarich.{Accounts, Navbar, RailsSecret}
+  alias Dawarich.{Accounts, RailsSecret}
   alias Dawarich.Auth.SessionCookie
 
-  alias DawarichWeb.{
-    AuthCookie,
-    AuthMessages,
-    LayoutAssigns,
-    Layouts,
-    Locale,
-    RailsCsrf,
-    RailsHeaders,
-    RequestURL
-  }
+  alias DawarichWeb.{AuthCookie, AuthMessages, RailsHeaders, RequestURL}
 
   def updated(conn, user, context \\ %{}) do
     user = %{
@@ -42,36 +33,37 @@ defmodule DawarichWeb.AuthAccount.Response do
   end
 
   def form(conn, actor, render, context \\ %{}) do
-    user = Accounts.get(actor.id)
+    conn = current(conn, Accounts.get(actor.id))
 
-    conn =
-      conn |> current(user) |> fetch_query_params() |> Locale.call([]) |> LayoutAssigns.call([])
-
-    {session, _} = encoded = SessionCookie.for_form(conn.assigns.rails_session, secret(context))
-    token = RailsCsrf.masked_token(session)
-
-    assigns =
-      Map.merge(conn.assigns, %{
-        __changed__: nil,
-        flash: %{},
-        rails_csrf_token: token,
-        account_errors: render.errors,
-        account_email: render.email,
-        navbar: Navbar.load(user, now: conn.assigns.now, self_hosted: conn.assigns.self_hosted)
-      })
-
-    assigns = Map.merge(assigns, DawarichWeb.AccountLive.Edit.page(user, %{}, assigns))
-    body = DawarichWeb.AccountLive.Edit.render(assigns)
-    app = Layouts.app(Map.put(assigns, :inner_content, body))
-    html = Layouts.root(Map.put(assigns, :inner_content, app)) |> Phoenix.HTML.Safe.to_iodata()
+    form = %{
+      "email" => render.email,
+      "errors" =>
+        Enum.map(render.errors, fn {field, kind, bindings} ->
+          [Atom.to_string(field), Atom.to_string(kind), bindings]
+        end)
+    }
 
     conn
-    |> AuthCookie.session(encoded)
+    |> AuthCookie.session(
+      SessionCookie.for_form(
+        Map.put(conn.assigns.rails_session, "dawarich.account_form", form),
+        secret(context)
+      )
+    )
     |> headers()
-    |> put_resp_content_type("text/html")
-    |> send_resp(422, html)
+    |> put_resp_header("location", RequestURL.base(conn) <> "/users/edit")
+    |> send_resp(303, "")
     |> halt()
   end
+
+  def errors(%{"errors" => errors}) when is_list(errors),
+    do:
+      for(
+        [field, kind, bindings] <- errors,
+        do: {String.to_existing_atom(field), String.to_existing_atom(kind), bindings}
+      )
+
+  def errors(_form), do: []
 
   defp current(conn, user),
     do: conn |> assign(:current_user, user) |> put_private(:dawarich_rails_user, user)

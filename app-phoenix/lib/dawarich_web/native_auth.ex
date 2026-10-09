@@ -9,9 +9,11 @@ defmodule DawarichWeb.NativeAuth do
   def live_session(conn) do
     session = DawarichWeb.RailsAuth.live_session(conn)
 
-    if conn.request_path == "/tags/new",
-      do: Map.put(session, "tag_default_emoji", DawarichWeb.TagEmoji.random()),
-      else: session
+    case conn.request_path do
+      "/tags/new" -> Map.put(session, "tag_default_emoji", DawarichWeb.TagEmoji.random())
+      "/users/edit" -> Map.put(session, "account_form", conn.assigns[:account_form])
+      _ -> session
+    end
   end
 
   def on_mount(:require_user, params, session, socket) do

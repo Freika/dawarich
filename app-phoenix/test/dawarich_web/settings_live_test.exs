@@ -344,11 +344,6 @@ defmodule DawarichWeb.SettingsLiveTest do
       assert doc |> LazyHTML.query("div.max-w-xs svg path") |> LazyHTML.attribute("d") ==
                [Dawarich.QrSvg.path(Dawarich.QrCode.modules(payload))]
 
-      assert has_element?(
-               view,
-               "a[href='/settings/generate_api_key'][data-turbo-method='post'][data-turbo-confirm]"
-             )
-
       refute inspect(:sys.get_state(view.pid)) =~ "a5s3-k-5390"
       refute inspect(:sys.get_state(view.pid)) =~ "<svg"
     end
@@ -385,8 +380,6 @@ defmodule DawarichWeb.SettingsLiveTest do
                view,
                "dialog#import_modal[phx-hook='RailsStimulus'][phx-update='ignore'] form[data-controller='upload'][data-upload-url-value='http://www.example.com/rails/active_storage/direct_uploads'][data-upload-user-trial-value='false']"
              )
-
-      assert has_element?(view, "dialog#delete_account_modal[phx-update='ignore']")
     end
 
     test "Cloud cards: plan usage, subscription text by status, the trial card for trials", %{
@@ -415,7 +408,14 @@ defmodule DawarichWeb.SettingsLiveTest do
 
         render_component(
           &DawarichWeb.AccountLive.Edit.render/1,
-          Map.merge(context, Map.merge(page, %{current_user: current, rails_csrf_token: "CSRF"}))
+          Map.merge(
+            context,
+            Map.merge(page, %{
+              current_user: current,
+              profile_user: current,
+              rails_csrf_token: "CSRF"
+            })
+          )
         )
       end
 
@@ -466,7 +466,7 @@ defmodule DawarichWeb.SettingsLiveTest do
     test "every control a user edits in a Rails form stays out of LiveView's patches, so input made before the join survives it",
          %{user: user} do
       for path <-
-            ~w(/settings/integrations /settings/integrations?service=photoprism /settings/integrations?service=airtrail /settings/integrations?service=teslamate /settings/integrations?service=trek /users/edit) do
+            ~w(/settings/integrations /settings/integrations?service=photoprism /settings/integrations?service=airtrail /settings/integrations?service=teslamate /settings/integrations?service=trek) do
         {:ok, view, _html} = live_as(user, path, on_error: [duplicate_id: :warn])
         doc = view |> render() |> LazyHTML.from_fragment()
         assert_form_isolated(render(view))

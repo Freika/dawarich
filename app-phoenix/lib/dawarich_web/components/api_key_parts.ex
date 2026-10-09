@@ -75,18 +75,22 @@ defmodule DawarichWeb.ApiKeyParts do
       </div>
 
       <div>
-        <a
-          data-turbo-confirm={
+        <button
+          id="rotate-api-key"
+          type="button"
+          class="btn btn-primary w-full sm:w-auto"
+          phx-click="rotate_api_key"
+          phx-disable-with={t(@locale, "devise.registrations.api_key.generate_new_api_key", %{})}
+          data-confirm={
             t(
               @locale,
               "devise.registrations.api_key.are_you_sure_this_will_invalidate_the_current_api_key",
               %{}
             )
           }
-          data-turbo-method="post"
-          class="btn btn-primary w-full sm:w-auto"
-          href="/settings/generate_api_key"
-        >{t(@locale, "devise.registrations.api_key.generate_new_api_key", %{})}</a>
+        >
+          {t(@locale, "devise.registrations.api_key.generate_new_api_key", %{})}
+        </button>
       </div>
     </div>
     """

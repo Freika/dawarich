@@ -8,7 +8,7 @@ defmodule DawarichWeb.RailsSession do
 
   @name "_dawarich_session"
   @writable ["flash", "_csrf_token", "locale", "user_return_to"]
-  @deletable ["warden.user.user.key", "warden.user.user.session"]
+  @deletable ["warden.user.user.key", "warden.user.user.session", "dawarich.account_form"]
   @max_size 4096
 
   defmodule Overflow do

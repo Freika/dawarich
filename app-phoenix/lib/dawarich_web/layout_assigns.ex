@@ -10,7 +10,13 @@ defmodule DawarichWeb.LayoutAssigns do
 
   def call(conn, _opts) do
     read = conn.assigns[:rails_session] || %{}
-    changes = Map.merge(consume_flash(conn, read), create_csrf(read))
+
+    changes =
+      conn
+      |> consume_flash(read)
+      |> Map.merge(create_csrf(read))
+      |> Map.merge(consume_account_form(conn, read))
+
     session = read |> Map.merge(changes) |> Map.reject(fn {_key, value} -> is_nil(value) end)
     conn = if changes == %{}, do: conn, else: RailsSession.stage(conn, changes)
 
@@ -22,6 +28,7 @@ defmodule DawarichWeb.LayoutAssigns do
     |> assign(:query_params, conn.query_params)
     |> assign(:base_url, RequestURL.base(conn))
     |> assign(:flash_messages, flashes(read))
+    |> assign(:account_form, account_form(conn, read))
     |> assign(:rails_csrf_token, RailsCsrf.masked_token(session))
   end
 
@@ -53,6 +60,16 @@ defmodule DawarichWeb.LayoutAssigns do
 
   defp consume_flash(_conn, %{"flash" => _flash}), do: %{"flash" => nil}
   defp consume_flash(_conn, _session), do: %{}
+
+  @account_form "dawarich.account_form"
+
+  defp consume_account_form(%{request_path: "/users/edit"}, %{@account_form => _}),
+    do: %{@account_form => nil}
+
+  defp consume_account_form(_conn, _session), do: %{}
+
+  defp account_form(%{request_path: "/users/edit"}, session), do: session[@account_form]
+  defp account_form(_conn, _session), do: nil
 
   defp create_csrf(%{"_csrf_token" => token}) when is_binary(token), do: %{}
   defp create_csrf(_session), do: %{"_csrf_token" => RailsCsrf.new_token()}

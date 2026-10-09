@@ -70,7 +70,7 @@ defmodule DawarichWeb.StandaloneApiKeyFlowTest do
 
       page = page(c.session)
       assert page.status == 200
-      assert page.resp_body =~ "href=\"/settings/generate_api_key\""
+      assert page.resp_body =~ ~s(id="rotate-api-key")
       before = snapshot(c.actor.id)
       old = key(c.actor.id)
       TtlCache.put({DawarichWeb.RateLimit, old}, %{plan: 1}, 60_000)

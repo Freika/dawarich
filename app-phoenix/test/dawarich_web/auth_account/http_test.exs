@@ -110,8 +110,13 @@ defmodule DawarichWeb.AuthAccount.HttpTest do
 
     before = snapshot()
     conn = request(c.session, "PUT", "/users", raw) |> Http.call(c.opts)
-    assert conn.status == 422 and conn.halted
-    assert conn.resp_body =~ "Current password is invalid"
+    assert conn.status == 303 and conn.halted
+    assert get_resp_header(conn, "location") == ["http://www.example.com/users/edit"]
+
+    assert ["current_password", "invalid", %{}] in conn.assigns.rails_session[
+             "dawarich.account_form"
+           ]["errors"]
+
     assert same?(snapshot(), before)
     refute_received {:replayed, _, _, _, _}
 

@@ -5,12 +5,58 @@ defmodule DawarichWeb.AccountLive.Edit do
   import DawarichWeb.AccountParts
   import DawarichWeb.ApiKeyParts, only: [api_key: 1]
 
-  alias Dawarich.{Entitlements, SubscriptionToken, UserSettings, UserTimeZone}
+  alias Dawarich.{Entitlements, Settings, SubscriptionToken, UserData, UserSettings}
+  alias Dawarich.Accounts.Scope
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+  alias Dawarich.UserTimeZone
+  alias DawarichWeb.AuthAccount.Response
 
   @impl true
-  def mount(params, _session, socket),
-    do: {:ok, assign(socket, page(socket.assigns.current_user, params, socket.assigns))}
+  def mount(params, session, socket) do
+    form = session["account_form"] || %{}
+
+    context =
+      Map.merge(socket.assigns, %{
+        account_errors: Response.errors(form),
+        account_email: form["email"]
+      })
+
+    {:ok,
+     socket
+     |> assign(page(socket.assigns.current_user, params, context))
+     |> assign(:profile_user, socket.assigns.current_user)}
+  end
+
+  @impl true
+  def handle_event("rotate_api_key", _params, socket) do
+    user = socket.assigns.current_user
+
+    case Settings.rotate_api_key(scope(socket), binary_part(user.encrypted_password, 0, 29)) do
+      {:ok, updated} ->
+        {:noreply, assign(socket, :current_user, %{user | api_key: updated.api_key})}
+
+      {:error, :stale_session} ->
+        {:noreply, redirect(socket, to: "/users/sign_in")}
+    end
+  end
+
+  def handle_event("export_data", _params, socket) do
+    :ok = UserData.request_export(scope(socket))
+
+    {:noreply,
+     socket
+     |> put_flash(
+       :notice,
+       t(
+         socket.assigns.locale,
+         "controllers.settings.users.your_data_is_being_exported_you_will_receive_a_notification",
+         %{}
+       )
+     )
+     |> redirect(to: "/exports")}
+  end
+
+  defp scope(socket), do: Scope.for_user(socket.assigns.current_user, socket.assigns.locale)
 
   def page(
         user,
@@ -27,7 +73,6 @@ defmodule DawarichWeb.AccountLive.Edit do
 
     %{
       page_title: t(locale, "devise.registrations.edit.account", %{}),
-      rails_js: true,
       account_errors: Map.get(context, :account_errors, []),
       account_email: Map.get(context, :account_email),
       oauth: provider_name(locale, user.provider),
@@ -90,7 +135,7 @@ defmodule DawarichWeb.AccountLive.Edit do
           <div class="order-1 space-y-6 lg:sticky lg:top-6">
             <.profile
               locale={@locale}
-              user={@current_user}
+              user={@profile_user}
               errors={@account_errors}
               submitted_email={@account_email}
               oauth={@oauth}

@@ -40,14 +40,18 @@ defmodule DawarichWeb.DangerZone do
           </p>
         </div>
         <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <a
+          <button
+            id="export-data"
+            type="button"
             class="btn btn-primary w-full sm:w-auto"
-            data-turbo-confirm={
+            phx-click="export_data"
+            phx-disable-with={t(@locale, "devise.registrations.edit.export_my_data", %{})}
+            data-confirm={
               t(@locale, "devise.registrations.edit.are_you_sure_you_want_to_export_your_data", %{})
             }
-            data-turbo-method="get"
-            href="/settings/users/export"
-          >{t(@locale, "devise.registrations.edit.export_my_data", %{})}</a>
+          >
+            {t(@locale, "devise.registrations.edit.export_my_data", %{})}
+          </button>
           <button
             type="button"
             class="btn btn-outline w-full sm:w-auto"
@@ -76,7 +80,6 @@ defmodule DawarichWeb.DangerZone do
         <dialog
           id="delete_account_modal"
           class="modal"
-          phx-update="ignore"
           onclose="this.querySelector('.modal-box form')?.reset()"
         >
           <div class="modal-box">
@@ -99,7 +102,6 @@ defmodule DawarichWeb.DangerZone do
             </p>
             <form
               class="space-y-4"
-              data-turbo="false"
               action="/users"
               accept-charset="UTF-8"
               method="post"
@@ -150,13 +152,7 @@ defmodule DawarichWeb.DangerZone do
                   class="btn w-full sm:w-auto"
                   onclick="delete_account_modal.close()"
                 >{t(@locale, "devise.registrations.edit.cancel", %{})}</button>
-                <input
-                  type="submit"
-                  name="commit"
-                  value={@submit}
-                  class="btn btn-error w-full sm:w-auto"
-                  data-disable-with={@submit}
-                />
+                <button type="submit" class="btn btn-error w-full sm:w-auto">{@submit}</button>
               </div>
             </form>
           </div>

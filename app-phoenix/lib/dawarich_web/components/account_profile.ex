@@ -56,9 +56,6 @@ defmodule DawarichWeb.AccountProfile do
         <form
           class="edit_user"
           id="edit_user"
-          phx-update="ignore"
-          data-turbo-method="put"
-          data-turbo="false"
           action="/users"
           accept-charset="UTF-8"
           method="post"
@@ -73,7 +70,6 @@ defmodule DawarichWeb.AccountProfile do
             :if={@errors != []}
             id="error_explanation"
             class="alert alert-error mb-4"
-            data-turbo-cache="false"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -206,13 +202,9 @@ defmodule DawarichWeb.AccountProfile do
             </.field_error>
           </div>
           <div class="form-control mt-6">
-            <input
-              type="submit"
-              name="commit"
-              value={t(@locale, "devise.registrations.edit.save_changes", %{})}
-              class="btn btn-primary w-full sm:w-auto"
-              data-disable-with={t(@locale, "devise.registrations.edit.save_changes", %{})}
-            />
+            <button type="submit" class="btn btn-primary w-full sm:w-auto">
+              {t(@locale, "devise.registrations.edit.save_changes", %{})}
+            </button>
           </div>
         </form>
         <div class="mt-5 space-y-2 text-sm">
