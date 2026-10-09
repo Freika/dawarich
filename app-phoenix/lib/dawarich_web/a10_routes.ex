@@ -134,10 +134,6 @@ defmodule DawarichWeb.A10Routes do
           live "/admin/settings", DawarichWeb.AdminLive.Instance, :show,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.AdminGate, :instance?}}
-
-          live "/settings/users/:id/edit", DawarichWeb.SettingsLive.UserEdit, :edit,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.AdminGate, :users?}}
         end
       end
 

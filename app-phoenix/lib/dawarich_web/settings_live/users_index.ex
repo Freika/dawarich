@@ -88,7 +88,11 @@ defmodule DawarichWeb.SettingsLive.UsersIndex do
         {:noreply, socket |> assign(:create_email, email) |> AdminUI.refuse(reason)}
     end
   rescue
-    _ -> {:noreply, AdminUI.refuse(socket, :unavailable)}
+    _ ->
+      {:noreply,
+       socket
+       |> assign(:form_version, Map.get(socket.assigns, :form_version, 0) + 1)
+       |> AdminUI.refuse(:unavailable)}
   end
 
   def handle_event("open_delete", %{"id" => id}, socket) do

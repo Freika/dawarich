@@ -33,9 +33,24 @@ defmodule DawarichWeb.AdminMountFallbackTest do
     assert refused.redirected == {:redirect, %{to: "/users/sign_in", status: 302}}
   end
 
+  test "native user edit stale read redirects to sign-in" do
+    socket = %Phoenix.LiveView.Socket{
+      endpoint: DawarichWeb.Endpoint,
+      assigns: %{__changed__: %{}, current_scope: nil, target: nil, flash: %{}}
+    }
+
+    assert {:noreply, refused} =
+             UserEdit.handle_params(
+               %{"id" => "10001"},
+               "http://www.example.com/settings/users/10001/edit",
+               socket
+             )
+
+    assert refused.redirected == {:redirect, %{to: "/users/sign_in", status: 302}}
+  end
+
   test "mount-time Rails fallbacks retain the original query parameters" do
     for {view, path, params, query} <- [
-          {UserEdit, "/settings/users/10001/edit", %{"id" => "10001"}, %{"section" => "account"}},
           {Instance, "/admin/settings", %{"section" => "geoapify"}, %{"section" => "geoapify"}}
         ] do
       socket = %Phoenix.LiveView.Socket{
