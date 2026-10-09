@@ -9,6 +9,23 @@ defmodule Dawarich.Admin.UserUpdate do
   def call(actor, id, params, context) do
     repo = Map.get(context, :repo, Repo)
 
+    case repo.transaction(fn ->
+           if Map.has_key?(params, "admin") or Map.has_key?(params, "status"),
+             do: UserRoles.lock(repo)
+
+           update(actor, id, params, context, repo)
+         end) do
+      {:ok, result} -> result
+      {:error, _} -> {:terminal, :database}
+    end
+  rescue
+    error in Postgrex.Error ->
+      if error.postgres[:code] in [:lock_not_available, :deadlock_detected],
+        do: {:handoff, :actor},
+        else: {:terminal, :database}
+  end
+
+  defp update(actor, id, params, context, repo) do
     with :ok <- authorize(actor, repo, context),
          {:ok, target} <- target(repo, id),
          :ok <- UserRoles.guard(target, params, repo, Map.get(context, :locale, "en")),
