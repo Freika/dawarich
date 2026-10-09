@@ -2,6 +2,7 @@ import "phoenix_html"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import { hooks } from "./hooks/index.js"
+import { Direct } from "./uploaders/direct.js"
 
 const csrfToken = document
   .querySelector("meta[name='phoenix-csrf-token']")
@@ -15,6 +16,7 @@ const keepOpen = (fromEl, toEl) => {
 const liveSocket = new LiveSocket("/phoenix/live", Socket, {
   params: { _csrf_token: csrfToken },
   hooks,
+  uploaders: { Direct },
   dom: { onBeforeElUpdated: keepOpen },
 })
 
@@ -27,4 +29,8 @@ window.addEventListener("dawarich:flash-timeout", (event) => {
 
 window.addEventListener("dawarich:track", (event) => {
   if (typeof window.sa_event === "function") window.sa_event(event.detail.event)
+})
+
+window.addEventListener("phx:close-dialog", (event) => {
+  document.getElementById(event.detail.id)?.close()
 })

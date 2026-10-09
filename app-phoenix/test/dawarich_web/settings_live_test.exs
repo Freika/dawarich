@@ -374,17 +374,6 @@ defmodule DawarichWeb.SettingsLiveTest do
       assert has_element?(oauth, "#delete_account_modal input#confirm_email[required='required']")
     end
 
-    test "the import dialog is a Stimulus island with Rails' absolute direct-upload URL", %{
-      user: user
-    } do
-      {:ok, view, _html} = live_as(user, "/users/edit")
-
-      assert has_element?(
-               view,
-               "dialog#import_modal[phx-hook='RailsStimulus'][phx-update='ignore'] form[data-controller='upload'][data-upload-url-value='http://www.example.com/rails/active_storage/direct_uploads'][data-upload-user-trial-value='false']"
-             )
-    end
-
     test "Cloud cards: plan usage, subscription text by status, the trial card for trials", %{
       user: user
     } do
@@ -392,37 +381,32 @@ defmodule DawarichWeb.SettingsLiveTest do
       on_exit(fn -> System.delete_env("JWT_SECRET_KEY") end)
       now = ~U[2026-09-26 12:00:00Z]
 
+      previous = System.get_env("SELF_HOSTED")
+      System.put_env("SELF_HOSTED", "false")
+
+      on_exit(fn ->
+        if previous,
+          do: System.put_env("SELF_HOSTED", previous),
+          else: System.delete_env("SELF_HOSTED")
+      end)
+
+      ahead = fn days ->
+        NaiveDateTime.utc_now()
+        |> NaiveDateTime.add(days * 86_400)
+        |> NaiveDateTime.truncate(:second)
+      end
+
       render = fn attrs ->
         Dawarich.Repo.query!(
           "UPDATE users SET status = $2, active_until = $3, subscription_source = $4, points_count = 1234567 WHERE id = $1",
           [user.id, attrs.status, attrs.until, attrs.source]
         )
 
-        current = Dawarich.Accounts.get(user.id)
-
-        context = %{
-          locale: "en",
-          now: now,
-          self_hosted: false,
-          base_url: "http://www.example.com"
-        }
-
-        page = DawarichWeb.AccountLive.Edit.page(current, %{}, context)
-
-        render_component(
-          &DawarichWeb.AccountLive.Edit.render/1,
-          Map.merge(
-            context,
-            Map.merge(page, %{
-              current_user: current,
-              profile_user: current,
-              rails_csrf_token: "CSRF"
-            })
-          )
-        )
+        {:ok, _view, html} = live_as(user, "/users/edit")
+        html
       end
 
-      active = render.(%{status: 1, until: ~N[2027-01-01 00:00:00], source: 1})
+      active = render.(%{status: 1, until: ahead.(365), source: 1})
       assert active =~ "1,234,567"
 
       assert active =~
@@ -430,11 +414,11 @@ defmodule DawarichWeb.SettingsLiveTest do
 
       refute active =~ "Trial status"
 
-      trial = render.(%{status: 2, until: ~N[2026-10-01 00:00:00], source: 0})
+      trial = render.(%{status: 2, until: ahead.(5), source: 0})
       assert trial =~ "Trial status"
       assert trial =~ ">Subscribe</a>"
 
-      auto = render.(%{status: 2, until: ~N[2026-10-01 00:00:00], source: 1})
+      auto = render.(%{status: 2, until: ahead.(5), source: 1})
       assert auto =~ "btn btn-primary btn-sm glass"
 
       current = Dawarich.Accounts.get(user.id)

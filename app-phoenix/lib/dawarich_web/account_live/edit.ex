@@ -10,6 +10,9 @@ defmodule DawarichWeb.AccountLive.Edit do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias Dawarich.UserTimeZone
   alias DawarichWeb.AuthAccount.Response
+  alias DawarichWeb.DirectUpload
+
+  @max_archive_bytes 50 * 1024 * 1024 * 1024
 
   @impl true
   def mount(params, session, socket) do
@@ -24,7 +27,13 @@ defmodule DawarichWeb.AccountLive.Edit do
     {:ok,
      socket
      |> assign(page(socket.assigns.current_user, params, context))
-     |> assign(:profile_user, socket.assigns.current_user)}
+     |> assign(profile_user: socket.assigns.current_user, checksums: %{})
+     |> allow_upload(:archive,
+       accept: ~w(.zip application/zip),
+       max_entries: 1,
+       max_file_size: @max_archive_bytes,
+       external: &DirectUpload.presign/2
+     )}
   end
 
   @impl true
@@ -56,6 +65,43 @@ defmodule DawarichWeb.AccountLive.Edit do
      |> redirect(to: "/exports")}
   end
 
+  def handle_event("validate_archive", _params, socket), do: {:noreply, socket}
+
+  def handle_event("archive_checksum", %{"ref" => ref, "checksum" => checksum}, socket)
+      when is_binary(ref) and is_binary(checksum),
+      do: {:noreply, update(socket, :checksums, &Map.put(&1, ref, checksum))}
+
+  def handle_event("cancel_archive", %{"ref" => ref}, socket),
+    do: {:noreply, cancel_upload(socket, :archive, ref)}
+
+  def handle_event("import_archive", _params, socket) do
+    case uploaded_entries(socket, :archive) do
+      {[_ | _], []} ->
+        [signed_id] =
+          consume_uploaded_entries(socket, :archive, fn %{signed_id: id}, _entry -> {:ok, id} end)
+
+        {kind, key} = import_outcome(UserData.start_import(scope(socket), signed_id))
+
+        {:noreply,
+         socket
+         |> assign(:checksums, %{})
+         |> put_flash(kind, t(socket.assigns.locale, "controllers.settings.users." <> key, %{}))
+         |> push_event("close-dialog", %{id: "import_modal"})}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  defp import_outcome(:ok), do: {:notice, "your_data_import_has_been_started_you_will_receive_a"}
+  defp import_outcome({:error, :blank}), do: {:alert, "please_select_a_zip_archive_to_import"}
+
+  defp import_outcome({:error, :validation}),
+    do: {:alert, "failed_to_start_import_please_try_again"}
+
+  defp import_outcome({:error, _}),
+    do: {:alert, "an_error_occurred_while_starting_the_import_please_try_again"}
+
   defp scope(socket), do: Scope.for_user(socket.assigns.current_user, socket.assigns.locale)
 
   def page(
@@ -64,8 +110,7 @@ defmodule DawarichWeb.AccountLive.Edit do
         %{
           locale: locale,
           now: now,
-          self_hosted: _self_hosted,
-          base_url: base_url
+          self_hosted: _self_hosted
         } = context
       ) do
     trial = user.status == 2
@@ -81,10 +126,8 @@ defmodule DawarichWeb.AccountLive.Edit do
         trial && user.active_until &&
           UserTimeZone.local(UserSettings.get(user), DateTime.to_naive(user.active_until)),
       auto_converting: trial and Entitlements.future?(user.active_until, now) and not source_none,
-      legacy_trial: trial and source_none,
       subscription: subscription(user, now),
-      points: user.points_count || 0,
-      upload_url: base_url <> "/rails/active_storage/direct_uploads"
+      points: user.points_count || 0
     }
   end
 
@@ -141,12 +184,7 @@ defmodule DawarichWeb.AccountLive.Edit do
               oauth={@oauth}
               rails_csrf_token={@rails_csrf_token}
             />
-            <.import_dialog
-              locale={@locale}
-              upload_url={@upload_url}
-              legacy_trial={@legacy_trial}
-              rails_csrf_token={@rails_csrf_token}
-            />
+            <.import_dialog locale={@locale} upload={@uploads.archive} checksums={@checksums} />
           </div>
 
           <div class="order-2 space-y-6">

@@ -3,7 +3,7 @@ defmodule DawarichWeb.UserDataTest do
   import Phoenix.ConnTest
   import Plug.Conn
   import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2, rails_session: 1]
-  alias Dawarich.Test.{RailsUser, ParityHTML}
+  alias Dawarich.Test.RailsUser
   alias Dawarich.Jobs.Ownership
   @http Path.expand("../fixtures/user_data/http.json", __DIR__)
 
@@ -186,27 +186,10 @@ defmodule DawarichWeb.UserDataTest do
     end
   end
 
-  test "backup form and endpoint result equal Rails markup in all shipped locales", c do
+  test "backup endpoint results equal Rails in all shipped locales", c do
     route!()
 
     for locale <- ~w(en de es fr pl ca zh) do
-      html =
-        DawarichWeb.AccountParts.import_dialog(%{
-          __changed__: nil,
-          locale: locale,
-          upload_url: "UPLOAD",
-          legacy_trial: false,
-          rails_csrf_token: "CSRF"
-        })
-        |> Phoenix.HTML.Safe.to_iodata()
-        |> IO.iodata_to_binary()
-
-      assert ParityHTML.fragment(html, "form[action='/settings/users/import']") ==
-               ParityHTML.normalize(c.expected[locale]["form"])
-
-      assert html =~ ~s(name="archive")
-      refute html =~ ~s(name="import[files][]")
-
       Repo.query!(
         "UPDATE users SET settings=jsonb_set(settings,'{locale}',$1::text::jsonb) WHERE id=9891",
         [Jason.encode!(locale)]
