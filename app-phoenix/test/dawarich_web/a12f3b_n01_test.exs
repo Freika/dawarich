@@ -18,11 +18,9 @@ defmodule DawarichWeb.A12f3bN01Test do
     end
 
     import DawarichWeb.NotificationFormRoutes
-    import DawarichWeb.SettingsFormRoutes
     import DawarichWeb.SettingsMiscRoutes
     import DawarichWeb.OnboardingRoutes
     notification_form_routes()
-    settings_form_routes()
     settings_misc_routes()
     onboarding_routes()
   end
