@@ -82,8 +82,6 @@ defmodule DawarichWeb.EndpointTest do
           {"GET", "/settings/users/export/edit", ""},
           {"GET", "/settings/users/99999", ""},
           {"GET", "/settings/users/10001.json", ""},
-          {"GET", "/admin/settings?format=json", ""},
-          {"GET", "/admin/settings", "Turbo-Frame: instance-settings-sections\r\n"},
           {"GET", "/settings/users", "Accept: application/json\r\n"},
           {"PATCH", "/settings/background_jobs", ""},
           {"POST", "/settings/background_jobs?job_name=start_immich_import", ""}

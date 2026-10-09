@@ -4,7 +4,7 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
   import Phoenix.LiveViewTest, only: [render_component: 2]
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{RailsUser, RawHTTP}
-  alias DawarichWeb.{AdminLive.Instance, AdminWrites.Settings, RailsCsrf}
+  alias DawarichWeb.{AdminWrites.Settings, RailsCsrf}
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -75,7 +75,7 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
     assert Enum.count(
              LazyHTML.query(
                LazyHTML.from_fragment(html),
-               "form[action='/admin/settings/test_map_matching']"
+               "button#test-map-matching[phx-click=test_map_matching]"
              )
            ) == 1
   end
@@ -269,8 +269,14 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
   end
 
   defp page(context) do
-    {:ok, data} = Instance.page(%{"section" => "experimental"}, context)
-    render_component(&Instance.render/1, Map.merge(context, data))
+    {:ok, data} = Dawarich.Admin.InstancePage.load(context.repo, context.env)
+
+    render_component(&DawarichWeb.AdminExperimental.section/1,
+      locale: context.locale,
+      data: data,
+      testing: MapSet.new(),
+      saves: 0
+    )
   end
 
   defp request(session, path, values, token \\ nil) do

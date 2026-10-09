@@ -1,7 +1,6 @@
 defmodule DawarichWeb.AdminMountFallbackTest do
   use ExUnit.Case, async: true
 
-  alias DawarichWeb.AdminLive.Instance
   alias DawarichWeb.SettingsLive.{UserEdit, UserShow, UsersIndex}
 
   test "mount-time Rails fallbacks retain the original query parameters" do
@@ -9,8 +8,7 @@ defmodule DawarichWeb.AdminMountFallbackTest do
           {UsersIndex, "/settings/users", %{"search" => "literal %_", "page" => "2"},
            %{"search" => "literal %_", "page" => "2"}},
           {UserShow, "/settings/users/10001", %{"id" => "10001"}, %{"section" => "account"}},
-          {UserEdit, "/settings/users/10001/edit", %{"id" => "10001"}, %{"section" => "account"}},
-          {Instance, "/admin/settings", %{"section" => "geoapify"}, %{"section" => "geoapify"}}
+          {UserEdit, "/settings/users/10001/edit", %{"id" => "10001"}, %{"section" => "account"}}
         ] do
       socket = %Phoenix.LiveView.Socket{
         endpoint: DawarichWeb.Endpoint,

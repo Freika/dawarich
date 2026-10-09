@@ -51,17 +51,15 @@
     <% end %>
   </div>
   <div :if={@data.geocoding.enabled} class="shrink-0 sm:text-right">
-    <form class="inline-block" method="post" action="/admin/settings/test_geocoding">
-      <button
-        class="btn btn-sm btn-outline"
-        data-turbo-submits-with={t(@locale, "admin.settings.show.geocoding.testing", %{})}
-        type="submit"
-      >{t(@locale, "admin.settings.show.geocoding.test", %{})}</button><input
-        type="hidden"
-        name="authenticity_token"
-        value={@rails_csrf_token}
-      />
-    </form>
+    <button
+      id="test-geocoding"
+      type="button"
+      class="btn btn-sm btn-outline"
+      phx-click="test_geocoding"
+      disabled={MapSet.member?(@testing, :geocoding)}
+    >{if MapSet.member?(@testing, :geocoding),
+      do: t(@locale, "admin.settings.show.geocoding.testing", %{}),
+      else: t(@locale, "admin.settings.show.geocoding.test", %{})}</button>
     <p class="mt-1.5 text-xs text-base-content/70">
       {t(@locale, "admin.settings.show.geocoding.test_hint", %{})}
     </p>

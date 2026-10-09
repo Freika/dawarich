@@ -9,7 +9,8 @@ defmodule DawarichWeb.AdminExperimental do
 
   attr :locale, :string, required: true
   attr :data, :map, required: true
-  attr :rails_csrf_token, :string, required: true
+  attr :testing, :any, required: true
+  attr :saves, :integer, required: true
 
   def section(assigns) do
     assigns = assign(assigns, :entries, Experimental.entries())
@@ -50,20 +51,16 @@ defmodule DawarichWeb.AdminExperimental do
             </div>
           <% end %>
           <form
-            id={"phx-experimental-" <> to_string(entry.key)}
-            phx-update="ignore"
-            action="/admin/settings"
-            method="post"
-            data-turbo="false"
+            id={"experimental-" <> to_string(entry.key) <> "-#{@saves}"}
+            data-testid="instance-settings-form-experimental"
+            phx-submit="save"
           >
-            <input type="hidden" name="_method" value="patch" />
-            <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
             <input type="hidden" name="section" value="experimental" />
             <div class="divide-y divide-base-content/10">
               <AdminSettingField.field
-                :for={key <- entry.config ++ entry.toggles}
+                :for={key <- Enum.map(entry.config ++ entry.toggles, &to_string/1)}
                 locale={@locale}
-                field={@data.fields[to_string(key)]}
+                field={@data.fields[key]}
               />
             </div>
             <p
@@ -80,24 +77,19 @@ defmodule DawarichWeb.AdminExperimental do
               }
               type="submit"
               class="btn btn-primary"
+              phx-disable-with={t(@locale, "admin.settings.show.saving", %{})}
             >
               {t(@locale, "admin.settings.show.save", %{})}
             </button>
           </form>
-          <form
+          <button
             :if={entry.key == :map_matching}
-            action="/admin/settings/test_map_matching"
-            method="post"
-            data-turbo="false"
-            class="self-start"
-          >
-            <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
-            <button type="submit" class="btn btn-sm btn-outline">{t(
-              @locale,
-              "admin.settings.show.map_matching.test",
-              %{}
-            )}</button>
-          </form>
+            id="test-map-matching"
+            type="button"
+            class="btn btn-sm btn-outline self-start"
+            phx-click="test_map_matching"
+            disabled={MapSet.member?(@testing, :map_matching)}
+          >{t(@locale, "admin.settings.show.map_matching.test", %{})}</button>
         </div>
       </article>
     </section>

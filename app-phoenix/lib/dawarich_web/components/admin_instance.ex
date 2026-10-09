@@ -30,9 +30,8 @@ defmodule DawarichWeb.AdminInstance do
       assign(assigns, status: status, active: active, badge: status_badge(assigns.locale, status))
 
     ~H"""
-    <a
-      href={"/admin/settings?section=" <> @item}
-      data-turbo="false"
+    <.link
+      patch={"/admin/settings?section=" <> @item}
       class={"flex items-center gap-3 rounded-box border p-3 transition-colors " <> if(@active, do: "border-primary/60 bg-base-200", else: "border-base-content/10 hover:border-base-content/25")}
       aria-current={@active && "page"}
       data-testid={"instance-settings-section-" <> @item}
@@ -48,7 +47,7 @@ defmodule DawarichWeb.AdminInstance do
         <.icon name={elem(@badge, 0)} class={"size-4 " <> elem(@badge, 1)} />
         <span class="sr-only">{elem(@badge, 2)}</span>
       </span>
-    </a>
+    </.link>
     """
   end
 

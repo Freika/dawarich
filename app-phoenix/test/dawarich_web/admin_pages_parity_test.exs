@@ -2,12 +2,10 @@ defmodule DawarichWeb.AdminPagesParityTest do
   use Dawarich.JobsCase, async: false
 
   import Phoenix.LiveViewTest, only: [render_component: 2]
-  import Dawarich.Test.FormIsolation
 
   alias Dawarich.{ActiveRecordEncryption, Repo}
   alias Dawarich.ReleaseMigrations.Effects.Support.InstanceSettingsRegistry
-  alias Dawarich.Test.{MapStimulus, ParityHTML, RailsUser}
-  alias DawarichWeb.AdminLive.Instance
+  alias Dawarich.Test.RailsUser
 
   @dir "test/fixtures/admin_pages"
   @cases ~w(photon geoapify nominatim locationiq rate_limit points invalid default pinned tls unreadable legacy health_absent health_ok health_alarm health_unknown)
@@ -21,7 +19,7 @@ defmodule DawarichWeb.AdminPagesParityTest do
   for name <- @cases do
     @name name
     @tag a10_case: String.to_atom(@name)
-    test "instance #{@name} matches Rails" do
+    test "instance #{@name} shows the same section, field, health and status content as Rails" do
       state = Jason.decode!(File.read!(Path.join(@dir, @name <> ".json")))
       user = seed_user!(state["user"])
       env = seed_fields!(state)
@@ -41,48 +39,34 @@ defmodule DawarichWeb.AdminPagesParityTest do
         ])
       end
 
-      params = URI.decode_query(URI.parse(state["path"]).query || "")
-
-      context = %{
-        locale: "en",
-        current_user: user,
-        rails_csrf_token: "CSRF",
-        self_hosted: true,
-        two_factor: false,
-        repo: Repo,
-        env: env,
-        health: state["health"]
-      }
-
-      assert {:ok, page} = Instance.page(params, context)
-      html = render_component(&Instance.render/1, Map.merge(context, page))
-      assert_form_isolated(html, "form[action='/admin/settings']")
-      assert html =~ ~s(data-testid="instance-settings-section-experimental")
+      section = URI.decode_query(URI.parse(state["path"]).query || "")["section"]
+      scope = Dawarich.Accounts.Scope.for_user(user, "en")
+      opts = [repo: Repo, env: Map.put(env, "SELF_HOSTED", "true"), health: state["health"]]
+      assert {:ok, page} = Dawarich.Admin.Instance.page(scope, section, opts)
 
       html =
-        Regex.replace(
-          ~r/<div class="mt-2" data-testid="experimental-navigation">.*?<\/div>/s,
-          html,
-          ""
-        )
+        render_component(&DawarichWeb.AdminInstance.show/1, %{
+          locale: "en",
+          current_user: user,
+          self_hosted: true,
+          two_factor: false,
+          data: page.data,
+          section: page.section,
+          health: page.health,
+          testing: MapSet.new(),
+          saves: 0
+        })
 
-      html = String.replace(html, ~s( data-turbo="false"), "")
       rails = File.read!(Path.join(@dir, @name <> ".html"))
-      assert ParityHTML.normalize(html) == ParityHTML.normalize(rails)
+      expected = facts(rails)
+      assert Map.take(facts(html), Map.keys(expected)) == expected
 
-      assert MapStimulus.attributes(html, [".min-h-content"]) ==
-               MapStimulus.attributes(rails, [".min-h-content"])
-
-      assert DawarichWeb.Layouts.page_title("en", page.page_title) == state["title"]
-
-      assert attributes(html, "form, input, button, turbo-frame, [data-testid], [aria-current]") ==
-               attributes(
-                 rails,
-                 "form, input, button, turbo-frame, [data-testid], [aria-current]"
-               )
+      assert DawarichWeb.Layouts.page_title(
+               "en",
+               DawarichWeb.Translate.t("en", "admin.settings.show.title", %{})
+             ) == state["title"]
 
       refute html =~ "synthetic-a10-reader-secret"
-      refute html =~ "phx-submit"
     end
   end
 
@@ -151,22 +135,15 @@ defmodule DawarichWeb.AdminPagesParityTest do
     end
   end
 
-  defp attributes(html, selector) do
+  defp facts(html) do
     html
     |> LazyHTML.from_fragment()
-    |> LazyHTML.query(selector)
-    |> LazyHTML.to_tree()
-    |> Enum.map(fn {tag, attrs, _} ->
-      {tag,
-       Enum.reject(attrs, fn
-         {"id", "phx-" <> _} -> true
-         {name, _} -> String.starts_with?(name, "phx-")
-       end)
-       |> Enum.map(fn
-         {"class", value} -> {"class", value |> String.split() |> Enum.join(" ")}
-         attr -> attr
-       end)
-       |> Enum.sort()}
+    |> LazyHTML.query("[data-testid]")
+    |> Enum.reject(&(LazyHTML.attribute(&1, "data-testid") == ["experimental-navigation"]))
+    |> Map.new(fn node ->
+      {hd(LazyHTML.attribute(node, "data-testid")),
+       {node |> LazyHTML.text() |> String.split() |> Enum.join(" "),
+        LazyHTML.attribute(node, "data-status")}}
     end)
   end
 end

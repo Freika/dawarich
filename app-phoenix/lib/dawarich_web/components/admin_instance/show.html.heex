@@ -6,6 +6,7 @@
     self_hosted={@self_hosted}
     admin={@current_user.admin == true}
     two_factor={@two_factor}
+    native
   />
   <div class="max-w-5xl">
     <p class="max-w-3xl mb-6 text-base-content/70 [text-wrap:pretty]">
@@ -19,12 +20,12 @@
       <p class="mt-1 mb-4 max-w-3xl text-base-content/70 [text-wrap:pretty]">
         {t(@locale, "admin.settings.show.geocoding.description", %{})}
       </p>
-      <.geocoding_status locale={@locale} data={@data} rails_csrf_token={@rails_csrf_token} />
+      <.geocoding_status locale={@locale} data={@data} testing={@testing} />
       <p class="mt-3 max-w-3xl text-sm text-base-content/70 [text-wrap:pretty]">
         {t(@locale, "admin.settings.show.geocoding.chain_hint", %{})}
       </p>
     </section>
-    <turbo-frame data-turbo-action="advance" id="instance-settings-sections">
+    <div id="instance-settings-sections">
       <div class="flex flex-col lg:flex-row gap-6 items-start">
         <nav
           class="w-full lg:w-64 shrink-0"
@@ -54,17 +55,18 @@
             :if={@section == "experimental"}
             locale={@locale}
             data={@data}
-            rails_csrf_token={@rails_csrf_token}
+            testing={@testing}
+            saves={@saves}
           />
           <.pane
             :if={@section != "experimental"}
             locale={@locale}
             data={@data}
             section={@section}
-            rails_csrf_token={@rails_csrf_token}
+            saves={@saves}
           />
         </div>
       </div>
-    </turbo-frame>
+    </div>
   </div>
 </div>

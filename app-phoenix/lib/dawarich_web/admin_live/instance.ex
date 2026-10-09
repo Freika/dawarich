@@ -2,43 +2,169 @@ defmodule DawarichWeb.AdminLive.Instance do
   @moduledoc false
   use DawarichWeb, :live_view
 
-  alias Dawarich.Admin.{InstancePage, JobHealth}
+  alias Dawarich.Admin.{Instance, InstancePage}
   alias DawarichWeb.{AdminInstance, SettingsParts}
 
+  @timeout 10_000
+  @tests %{"test_geocoding" => :geocoding, "test_map_matching" => :map_matching}
+
   @impl true
-  def mount(params, _session, socket) do
-    case page(params, socket.assigns) do
-      {:ok, page} -> {:ok, assign(socket, page)}
-      :rails -> {:ok, redirect(socket, to: DawarichWeb.AdminLiveAuth.request_url(socket))}
+  def mount(_params, _session, socket) do
+    {:ok,
+     assign(socket,
+       page_title: t(socket.assigns.locale, "admin.settings.show.title", %{}),
+       two_factor: SettingsParts.two_factor_available?(),
+       saves: 0,
+       testing: MapSet.new(),
+       data: nil
+     )}
+  end
+
+  @impl true
+  def handle_params(params, _uri, %{assigns: %{data: nil}} = socket),
+    do: {:noreply, load(socket, params["section"])}
+
+  def handle_params(params, _uri, socket),
+    do:
+      {:noreply,
+       assign(socket, :section, InstancePage.section(socket.assigns.data, params["section"]))}
+
+  @impl true
+  def handle_event("save", params, socket) do
+    socket.assigns.current_scope
+    |> Instance.save(params, opts())
+    |> saved(socket)
+  rescue
+    _ -> {:noreply, alert(socket, "controllers.application.admin_action_failed")}
+  end
+
+  def handle_event(event, _params, socket) when is_map_key(@tests, event) do
+    name = Map.fetch!(@tests, event)
+
+    if MapSet.member?(socket.assigns.testing, name) do
+      {:noreply, socket}
+    else
+      scope = socket.assigns.current_scope
+      opts = opts()
+      Process.send_after(self(), {:admin_async_timeout, name}, @timeout)
+
+      {:noreply,
+       socket
+       |> update(:testing, &MapSet.put(&1, name))
+       |> start_async(name, fn -> run(name, scope, opts) end)}
     end
   end
 
-  def page(params, context) do
-    repo = Map.get(context, :repo, Dawarich.Repo)
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
 
-    with {:ok, data} <- InstancePage.load(repo, Map.get(context, :env, System.get_env())) do
-      health =
-        Map.get_lazy(context, :health, fn ->
-          JobHealth.load(repo, Dawarich.Jobs.repo(), System.get_env("DAWARICH_PHOENIX_NODE"))
-        end)
+  @impl true
+  def handle_async(name, result, socket) do
+    if MapSet.member?(socket.assigns.testing, name) do
+      socket = update(socket, :testing, &MapSet.delete(&1, name))
 
-      health =
-        if Map.has_key?(health, "summary"),
-          do: %{summary: health["summary"], gauges: health["gauges"]},
-          else: health
-
-      {:ok,
-       %{
-         page_title: t(context.locale, "admin.settings.show.title", %{}),
-         rails_js: true,
-         data: data,
-         section: InstancePage.section(data, params["section"]),
-         health: health,
-         two_factor: Map.get_lazy(context, :two_factor, &SettingsParts.two_factor_available?/0)
-       }}
+      case result do
+        {:ok, outcome} -> {:noreply, tested(socket, name, outcome)}
+        {:exit, _} -> {:noreply, failed(socket, name, "Geocoding::Error")}
+      end
+    else
+      {:noreply, socket}
     end
   end
+
+  @impl true
+  def handle_info({:admin_async_timeout, name}, socket) do
+    if MapSet.member?(socket.assigns.testing, name) do
+      {:noreply,
+       socket
+       |> cancel_async(name)
+       |> update(:testing, &MapSet.delete(&1, name))
+       |> failed(name, "timeout")}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info(_message, socket), do: {:noreply, socket}
 
   @impl true
   def render(assigns), do: AdminInstance.show(assigns)
+
+  defp load(socket, section) do
+    case Instance.page(socket.assigns.current_scope, section, opts()) do
+      {:ok, page} -> assign(socket, data: page.data, section: page.section, health: page.health)
+      {:error, reason} -> refuse(socket, reason)
+    end
+  end
+
+  defp reload(socket),
+    do: socket |> update(:saves, &(&1 + 1)) |> load(socket.assigns.section)
+
+  defp saved({:ok, :saved}, socket),
+    do: {:noreply, socket |> reload() |> notice("admin.settings.update.saved")}
+
+  defp saved({:ok, {:pinned, variables}}, socket),
+    do:
+      {:noreply,
+       socket
+       |> reload()
+       |> put_flash(
+         :alert,
+         t(socket.assigns.locale, "admin.settings.update.pinned", %{
+           variables: Enum.join(variables, ", ")
+         })
+       )}
+
+  defp saved({:error, {:invalid, message}}, socket),
+    do: {:noreply, put_flash(socket, :alert, message)}
+
+  defp saved({:error, reason}, socket), do: {:noreply, refuse(socket, reason)}
+
+  defp tested(socket, _name, {kind, message})
+       when kind in [:notice, :alert] and is_binary(message),
+       do: put_flash(socket, kind, message)
+
+  defp tested(socket, _name, {kind, key, bindings}) when kind in [:notice, :alert],
+    do: put_flash(socket, kind, t(socket.assigns.locale, key, bindings))
+
+  defp tested(socket, _name, {:error, reason}), do: refuse(socket, reason)
+
+  defp failed(socket, :geocoding, error),
+    do:
+      put_flash(
+        socket,
+        :alert,
+        t(socket.assigns.locale, "admin.settings.test_geocoding.failure", %{error: error})
+      )
+
+  defp failed(socket, :map_matching, error),
+    do:
+      put_flash(
+        socket,
+        :alert,
+        t(socket.assigns.locale, "admin.settings.test_map_matching.failure", %{error: error})
+      )
+
+  defp run(:geocoding, scope, opts), do: Instance.test_geocoding(scope, opts)
+  defp run(:map_matching, scope, opts), do: Instance.test_map_matching(scope, opts)
+
+  defp refuse(socket, :stale_session), do: redirect(socket, to: "/users/sign_in")
+
+  defp refuse(socket, :oidc),
+    do: alert(socket, "controllers.application.admin_writes_unavailable_with_oidc")
+
+  defp refuse(socket, :encryption),
+    do: alert(socket, "controllers.application.admin_encryption_unavailable")
+
+  defp refuse(socket, :unauthorized),
+    do:
+      socket
+      |> alert("controllers.application.you_are_not_authorized_to_perform_this_action")
+      |> redirect(to: "/")
+
+  defp refuse(socket, _reason), do: alert(socket, "controllers.application.admin_action_failed")
+
+  defp notice(socket, key), do: put_flash(socket, :notice, t(socket.assigns.locale, key, %{}))
+  defp alert(socket, key), do: put_flash(socket, :alert, t(socket.assigns.locale, key, %{}))
+
+  defp opts, do: Application.get_env(:dawarich, :admin_instance_opts, [])
 end

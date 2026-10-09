@@ -85,22 +85,14 @@ defmodule Dawarich.Admin.Instance do
   end
 
   defp health(opts) do
-    case Keyword.fetch(opts, :health) do
-      {:ok, health} ->
-        health
+    health =
+      Keyword.get_lazy(opts, :health, fn ->
+        JobHealth.load(repo(opts), Dawarich.Jobs.repo(), System.get_env("DAWARICH_PHOENIX_NODE"))
+      end)
 
-      :error ->
-        health =
-          JobHealth.load(
-            repo(opts),
-            Dawarich.Jobs.repo(),
-            System.get_env("DAWARICH_PHOENIX_NODE")
-          )
-
-        if Map.has_key?(health, "summary"),
-          do: %{summary: health["summary"], gauges: health["gauges"]},
-          else: health
-    end
+    if is_map(health) and Map.has_key?(health, "summary"),
+      do: %{summary: health["summary"], gauges: health["gauges"]},
+      else: health
   end
 
   defp context(scope, opts) do

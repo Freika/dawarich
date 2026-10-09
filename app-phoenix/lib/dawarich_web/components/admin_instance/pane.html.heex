@@ -3,19 +3,11 @@
   data-testid={"instance-settings-pane-" <> @section}
 >
   <form
-    id={"phx-instance-settings-#{@section}"}
-    phx-update="ignore"
-    data-turbo-frame="_top"
-    action="/admin/settings"
-    accept-charset="UTF-8"
-    method="post"
+    id={"instance-settings-#{@section}-#{@saves}"}
+    data-testid={"instance-settings-form-" <> @section}
+    phx-submit="save"
   >
-    <input type="hidden" name="_method" value="patch" /><input
-      type="hidden"
-      name="authenticity_token"
-      value={@rails_csrf_token}
-    />
-    <input type="hidden" name="section" id="section" value={@section} />
+    <input type="hidden" name="section" value={@section} />
     <div class="card-body">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
         <.icon name={section_icon(@section)} class="size-6 shrink-0 text-base-content/70" />
@@ -47,7 +39,7 @@
       <% end %>
       <div class="divide-y divide-base-content/10">
         <AdminSettingField.field
-          :for={key <- InstancePage.section_keys(@section)}
+          :for={key <- InstancePage.field_order(@section)}
           locale={@locale}
           field={@data.fields[key]}
         />
@@ -57,10 +49,9 @@
         class="card-actions border-t border-base-content/10 pt-5"
       >
         <button
-          name="button"
           type="submit"
           class="btn btn-primary"
-          data-turbo-submits-with={t(@locale, "admin.settings.show.saving", %{})}
+          phx-disable-with={t(@locale, "admin.settings.show.saving", %{})}
         >{t(@locale, "admin.settings.show.save", %{})}</button>
       </div>
     </div>
