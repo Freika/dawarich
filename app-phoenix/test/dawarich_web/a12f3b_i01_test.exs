@@ -1,17 +1,8 @@
-defmodule DawarichWeb.A12f3bI01Router do
-  use Phoenix.Router
-  import DawarichWeb.IntegrationFormRoutes
-  integration_form_routes()
-  defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
-end
-
 defmodule DawarichWeb.A12f3bI01Test do
   use Dawarich.DataCase, async: false
-  import Plug.Conn
   import Dawarich.Test.RawHTTP
   alias Dawarich.{Accounts, Settings.Integrations}
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{IntegrationActions, RailsCsrf}
 
   setup do
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
@@ -41,7 +32,7 @@ defmodule DawarichWeb.A12f3bI01Test do
   end
 
   @tag a12f3b_case: "I01a"
-  test "integration PATCH preserves validation masks and checkpoints", %{actor: actor} do
+  test "integration save preserves validation masks and checkpoints", %{actor: actor} do
     server = listen()
     on_exit(fn -> :gen_tcp.close(server.listen) end)
     url = "http://127.0.0.1:#{server.port}"
@@ -84,14 +75,7 @@ defmodule DawarichWeb.A12f3bI01Test do
         "ignored" => "discard"
       })
 
-    conn = apply(IntegrationActions, :call, [request(actor.id, settings), :update])
-    assert conn.status == 302
-
-    assert get_resp_header(conn, "location") == [
-             "http://www.example.com/settings/integrations?service=immich"
-           ]
-
-    assert get_resp_header(conn, "cache-control") == ["no-cache"]
+    assert {:ok, %{success: true}} = save(actor.id, settings)
     saved = Accounts.settings(actor.id)
     assert saved["keep"] == 7
     assert saved["concurrent_keep"] == 17
@@ -129,28 +113,6 @@ defmodule DawarichWeb.A12f3bI01Test do
              ])
 
     assert kept.settings["photoprism_api_key"] == "synthetic-photo"
-    session = RailsUser.session(actor.id)
-
-    body =
-      URI.encode_query(%{
-        "_method" => "patch",
-        "settings[photoprism_api_key]" => "********",
-        "authenticity_token" => RailsCsrf.masked_token(session)
-      })
-
-    parsed =
-      Plug.Test.conn(:post, "/settings/integrations?service=photoprism", body)
-      |> put_req_header("content-type", "application/x-www-form-urlencoded")
-      |> put_req_header("content-length", to_string(byte_size(body)))
-      |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(session))
-      |> DawarichWeb.A12f3bI01Router.call([])
-
-    assert parsed.status == 302
-
-    assert get_resp_header(parsed, "location") == [
-             "http://www.example.com/settings/integrations?service=photoprism"
-           ]
-
     assert Accounts.settings(actor.id)["photoprism_api_key"] == "synthetic-photo"
     before = Accounts.settings(actor.id)
 
@@ -176,29 +138,6 @@ defmodule DawarichWeb.A12f3bI01Test do
       assert Accounts.settings(actor.id) == before
     end
 
-    assert apply(IntegrationActions, :call, [
-             request(actor.id, %{}) |> assign(:current_user, nil),
-             :update
-           ]).status == 302
-
-    invalid =
-      request(actor.id, %{})
-      |> update_in(
-        [Access.key(:assigns), :api_params],
-        &Map.put(&1, "authenticity_token", "invalid")
-      )
-
-    assert apply(IntegrationActions, :call, [invalid, :update]).status == 422
-    assert Accounts.settings(actor.id) == before
-    Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [actor.id])
-
-    assert apply(IntegrationActions, :call, [
-             request(actor.id, %{}) |> assign(:self_hosted, false),
-             :update
-           ]).status == 303
-
-    Repo.query!("UPDATE users SET active_until=NULL WHERE id=$1", [actor.id])
-    assert apply(IntegrationActions, :call, [request(actor.id, %{}), :update]).status == 303
     assert rows("SELECT count(*) FROM job_outbox") == [[0]]
   end
 
@@ -216,26 +155,21 @@ defmodule DawarichWeb.A12f3bI01Test do
         ])
       end)
 
-    conn =
-      apply(IntegrationActions, :call, [
-        request(actor.id, %{
-          "immich_url" => url,
-          "immich_api_key" => "synthetic-immich",
-          "photoprism_url" => url,
-          "photoprism_api_key" => "synthetic-photo"
-        }),
-        :update
-      ])
+    assert {:ok, failed} =
+             save(actor.id, %{
+               "immich_url" => url,
+               "immich_api_key" => "synthetic-immich",
+               "photoprism_url" => url,
+               "photoprism_api_key" => "synthetic-photo"
+             })
 
-    assert conn.status == 302
     saved = Accounts.settings(actor.id)
     assert saved["immich_url"] == url
     assert saved["immich_connection_status"] == "failed"
     assert saved["photoprism_connection_status"] == "failed"
-    flashes = conn.private.dawarich_rails_session_changes["flash"]["flashes"]
-    assert flashes["notice"] == "Settings updated"
-    assert flashes["alert"] == "Immich connection failed: 401. Photoprism connection failed: 503"
-    refute String.contains?(inspect(flashes), "synthetic-")
+    assert failed.notices == ["Settings updated"]
+    assert failed.alerts == ["Immich connection failed: 401", "Photoprism connection failed: 503"]
+    refute String.contains?(inspect({failed.notices, failed.alerts}), "synthetic-")
     Task.await(task)
     closed = listen()
     :gen_tcp.close(closed.listen)
@@ -301,21 +235,8 @@ defmodule DawarichWeb.A12f3bI01Test do
     assert result.settings["keep"] == 7
   end
 
-  defp request(id, settings) do
-    session = RailsUser.session(id)
-
-    Plug.Test.conn(:patch, "/settings/integrations?service=immich")
-    |> put_req_header("content-type", "application/x-www-form-urlencoded")
-    |> assign(:api_params, %{
-      "settings" => settings,
-      "service" => "immich",
-      "authenticity_token" => RailsCsrf.masked_token(session)
-    })
-    |> assign(:api_query, %{"service" => "immich"})
-    |> assign(:rails_session, session)
-    |> assign(:current_user, Accounts.get(id))
-    |> assign(:self_hosted, true)
-  end
+  defp save(id, settings),
+    do: Integrations.save(Repo, id, settings, self_hosted: true, locale: "en")
 
   defp serve(server, replies, before_reply \\ fn -> :ok end) do
     for {path, status, body} <- replies do

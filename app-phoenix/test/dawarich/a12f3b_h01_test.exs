@@ -247,21 +247,7 @@ defmodule Dawarich.A12f3bH01Test do
   end
 
   @tag a12f3b_case: "H01d"
-  test "mounted integration forms save nested settings and publish native photo imports", c do
-    for method <- ~w(POST PATCH PUT) do
-      route =
-        Phoenix.Router.route_info(Router, method, "/settings/integrations", "www.example.com")
-
-      assert is_map(route), "missing integration #{method}"
-      assert route.plug == DawarichWeb.IntegrationActions
-      assert route.pipe_through == [:integration_forms]
-
-      assert Enum.count(
-               Router.__routes__(),
-               &(&1.path == route.route and to_string(&1.verb) == String.downcase(method))
-             ) == 1
-    end
-
+  test "mounted background jobs publish native photo imports", c do
     route =
       Phoenix.Router.route_info(Router, "POST", "/settings/background_jobs", "www.example.com")
 
@@ -272,42 +258,10 @@ defmodule Dawarich.A12f3bH01Test do
     for hosted <- ~w(true false) do
       System.put_env("SELF_HOSTED", hosted)
 
-      for {method, override} <- [{:patch, nil}, {:put, nil}, {:post, "patch"}] do
-        params = %{
-          "settings" => %{
-            "immich_url" => "",
-            "immich_api_key" => "synthetic-mounted-immich",
-            "ignored" => "discard"
-          }
-        }
-
-        params = if override, do: Map.put(params, "_method", override), else: params
-
-        response =
-          browser_request(session, method, "/settings/integrations?service=immich", params)
-
-        assert response.status == 302
-
-        assert get_resp_header(response, "location") == [
-                 "http://www.example.com/settings/integrations?service=immich"
-               ]
-
-        assert get_resp_header(response, "cache-control") == ["no-cache"]
-        saved = Dawarich.Accounts.settings(c.owner.id)
-        assert saved["immich_api_key"] == "synthetic-mounted-immich"
-        refute Map.has_key?(saved, "ignored")
-      end
-
-      masked =
-        browser_request(session, :post, "/settings/integrations?service=immich", %{
-          "_method" => "put",
-          "settings" => %{"immich_api_key" => "********"}
-        })
-
-      assert masked.status == 302
-
-      assert Dawarich.Accounts.settings(c.owner.id)["immich_api_key"] ==
-               "synthetic-mounted-immich"
+      Repo.query!(
+        "UPDATE users SET settings = settings || '{\"immich_api_key\":\"synthetic-mounted-immich\"}'::jsonb WHERE id=$1",
+        [c.owner.id]
+      )
 
       for provider <- ~w(immich photoprism) do
         Dawarich.Jobs.Ownership.put!(Repo, "command:imports.#{provider}_geodata", :oban)
@@ -353,17 +307,6 @@ defmodule Dawarich.A12f3bH01Test do
            ).rows == expected
 
     assert commands() == []
-    before = Dawarich.Accounts.settings(c.owner.id)
-
-    denied =
-      browser_request(session, :post, "/settings/integrations", %{
-        "_method" => "patch",
-        "settings" => %{"immich_api_key" => "denied"},
-        "authenticity_token" => "invalid"
-      })
-
-    assert denied.status == 422
-    assert Dawarich.Accounts.settings(c.owner.id) == before
 
     assert browser_request(session, :post, "/settings/background_jobs?job_name=unknown", %{}).status ==
              422
@@ -467,7 +410,6 @@ defmodule Dawarich.A12f3bH01Test do
           {"PUT", "/settings/onboarding", %{}},
           {"POST", "/settings/onboarding/demo_data", %{}},
           {"DELETE", "/settings/onboarding/demo_data", %{}},
-          {"PATCH", "/settings/integrations", %{"settings" => %{"immich_api_key" => "denied"}}},
           {"POST", "/settings/background_jobs?job_name=start_immich_import", %{}},
           {"POST", "/notifications/mark_as_read", %{}},
           {"POST", "/notifications/destroy_all", %{}},

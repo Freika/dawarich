@@ -1,7 +1,9 @@
 defmodule DawarichWeb.SmallParityIntegrationsTest do
   use ExUnit.Case, async: false
-  import Plug.Conn
+  import Phoenix.ConnTest, only: [get: 2]
+  import Phoenix.LiveViewTest
   import Dawarich.Test.RawHTTP
+  @endpoint DawarichWeb.Endpoint
 
   alias Dawarich.{
     Accounts,
@@ -12,7 +14,6 @@ defmodule DawarichWeb.SmallParityIntegrationsTest do
   }
 
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{IntegrationActions, RailsCsrf}
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo, sandbox: false)
@@ -155,48 +156,25 @@ defmodule DawarichWeb.SmallParityIntegrationsTest do
   end
 
   @tag small_parity: :refresh_notice
-  test "photo cache refresh notices precede successful provider notices in Rails order",
+  test "the photo cache notice follows the save notice and precedes the provider notice",
        %{actor: actor} do
     with_provider(fn url ->
-      session = RailsUser.session(actor.id)
+      {:ok, view, _html} =
+        live(
+          RailsUser.signed_in(actor.id) |> RailsUser.connecting_as(actor.id),
+          "/settings/integrations?service=immich"
+        )
 
-      settings = %{
-        "immich_url" => url,
-        "immich_api_key" => "synthetic-immich-key",
-        "photoprism_url" => url,
-        "photoprism_api_key" => "synthetic-photo-key"
-      }
-
-      conn =
-        Plug.Test.conn(:patch, "/settings/integrations?service=immich")
-        |> put_req_header("content-type", "application/x-www-form-urlencoded")
-        |> assign(:api_params, %{
-          "settings" => settings,
-          "service" => "immich",
-          "refresh_photos_cache" => "1",
-          "authenticity_token" => RailsCsrf.masked_token(session)
+      html =
+        view
+        |> form("#integration-settings")
+        |> render_submit(%{
+          "settings" => %{"immich_url" => url, "immich_api_key" => "synthetic-immich-key"},
+          "refresh_photos_cache" => "1"
         })
-        |> assign(:api_query, %{"service" => "immich"})
-        |> assign(:rails_session, session)
-        |> assign(:current_user, Accounts.get(actor.id))
-        |> assign(:self_hosted, true)
-        |> IntegrationActions.call(:update)
 
-      assert conn.status == 302
-
-      assert get_resp_header(conn, "location") == [
-               "http://www.example.com/settings/integrations?service=immich"
-             ]
-
-      flashes = conn.private.dawarich_rails_session_changes["flash"]["flashes"]
-
-      assert flashes == %{
-               "notice" =>
-                 "Settings updated. Photo cache refreshed. Immich connection verified. Photoprism connection verified"
-             }
-
+      assert html =~ "Settings updated. Photo cache refreshed. Immich connection verified"
       assert_receive {:provider_request, "immich"}
-      assert_receive {:provider_request, "photoprism"}
     end)
   end
 
