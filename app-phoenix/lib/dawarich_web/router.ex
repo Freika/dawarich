@@ -16,7 +16,6 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.HealthRoutes
   import DawarichWeb.OperatorRoutes
   import DawarichWeb.DomainRoutes
-  import DawarichWeb.SettingsFormRoutes
   import DawarichWeb.SettingsMiscRoutes
   import DawarichWeb.OnboardingRoutes
   import DawarichWeb.IntegrationFormRoutes
@@ -219,7 +218,6 @@ defmodule DawarichWeb.Router do
   a10_routes()
   admin_form_routes()
   trial_home_routes()
-  settings_form_routes()
   settings_misc_routes()
   onboarding_routes()
   notification_form_routes()

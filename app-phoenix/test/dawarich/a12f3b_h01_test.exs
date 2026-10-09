@@ -462,8 +462,6 @@ defmodule Dawarich.A12f3bH01Test do
     before = footprint()
 
     for {method, path, params} <- [
-          {"PATCH", "/settings/general", %{"locale" => "de"}},
-          {"POST", "/settings/general/verify_supporter", %{}},
           {"PATCH", "/settings/changelog_consent", %{"decision" => "granted"}},
           {"POST", "/settings/generate_api_key", %{}},
           {"PUT", "/settings/onboarding", %{}},
@@ -479,7 +477,6 @@ defmodule Dawarich.A12f3bH01Test do
                422
     end
 
-    assert raw_request("PATCH", "/settings/general", "", "").status == 302
     assert raw_request("GET", "/settings/theme?theme=light", "", "").status == 302
     assert request(c.outsider, "POST", "/family", %{"family" => %{"name" => ""}}).status == 422
 
@@ -679,36 +676,19 @@ defmodule Dawarich.A12f3bH01Test do
 
   defp settings_declarations do
     for {path, methods, plug} <- [
-          {"/settings/general", ~w(POST PATCH PUT), DawarichWeb.SettingsActions},
-          {"/settings/general/verify_supporter", ["POST"], DawarichWeb.SettingsSupporterActions},
           {"/settings/theme", ["GET"], DawarichWeb.SettingsMiscActions},
           {"/settings/changelog_consent", ~w(PATCH POST), DawarichWeb.SettingsMiscActions},
           {"/settings/generate_api_key", ["POST"], DawarichWeb.SettingsMiscActions},
           {"/settings/onboarding", ~w(POST PATCH PUT), DawarichWeb.OnboardingActions},
           {"/notifications/mark_as_read", ["POST"], DawarichWeb.NotificationActions},
           {"/notifications/destroy_all", ["POST"], DawarichWeb.NotificationActions},
-          {"/notifications/1", ~w(DELETE POST), DawarichWeb.NotificationActions},
-          {"/settings/general/test_email", ["POST"], DawarichWeb.TestEmail}
+          {"/notifications/1", ~w(DELETE POST), DawarichWeb.NotificationActions}
         ],
         method <- methods,
         do: {method, path, plug}
   end
 
   defp assert_settings(user, other) do
-    for {method, params} <- [
-          {"PATCH", %{"news_emails_enabled" => "false"}},
-          {"PUT", %{"news_emails_enabled" => "true"}},
-          {"POST", %{"_method" => "patch", "news_emails_enabled" => "false"}}
-        ] do
-      result = request(user, method, "/settings/general", params)
-      assert result.status == 302
-      assert get_resp_header(result, "location") == ["http://www.example.com/settings/general"]
-
-      assert Dawarich.Accounts.settings(user.id)["news_emails_enabled"] ==
-               (params["news_emails_enabled"] == "true")
-    end
-
-    assert request(user, "POST", "/settings/general/verify_supporter").status == 302
     get = request(user, "GET", "/settings/theme?theme=light")
     head = request(user, "HEAD", "/settings/theme?theme=light")
     assert get.status == 302

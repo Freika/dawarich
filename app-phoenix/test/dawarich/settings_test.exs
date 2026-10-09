@@ -48,6 +48,11 @@ defmodule Dawarich.SettingsTest do
     assert stored["news_emails_enabled"] in [false, "0", "false"]
   end
 
+  test "an uppercase locale is stored normalized", %{scope: scope} do
+    assert {:ok, _} = Settings.update_general(scope, %{"locale" => "DE"})
+    assert settings(scope)["locale"] == "de"
+  end
+
   test "an unknown locale or time zone is ignored and the save still succeeds", %{scope: scope} do
     assert {:ok, _} =
              Settings.update_general(scope, %{"locale" => "xx", "timezone" => "Mars/Olympus"})

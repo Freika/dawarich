@@ -170,23 +170,6 @@ defmodule DawarichWeb.G44AdminBrowserTest do
   end
 
   @tag :g44_email
-  test "real test email link POST override queues native mail with browser Accept", c do
-    path = "/settings/general/test_email"
-    saved = submit(c.session, path, %{"_method" => "post"})
-    assert saved.status == 302
-    assert get_resp_header(saved, "x-dawarich-mail-owner") == ["native-test-email"]
-    assert get_resp_header(saved, "location") == ["http://www.example.com/settings/general"]
-
-    assert rows(
-             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Mail.TestEmailWorker' AND args->>'user_id'=$1",
-             [to_string(c.actor.id)]
-           ) == [[1]]
-
-    assert submit(c.session, path, %{"_method" => "post", "authenticity_token" => "invalid"}).status ==
-             422
-  end
-
-  @tag :g44_access
   test "non-admin browser retains admin route 404 and users referrer refusal", c do
     Repo.query!("UPDATE users SET admin=false WHERE id=$1", [c.actor.id], log: false)
     assert page(c.session, "/admin/settings").status == 404

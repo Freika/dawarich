@@ -109,17 +109,6 @@ defmodule DawarichWeb.StandaloneTransactionFlowTest do
   end
 
   @tag :standalone_locale
-  test "uppercase general locale persists and stages the normalized Rails locale", c do
-    conn = form(c, "/settings/general", %{"_method" => "patch", "locale" => "DE"})
-    assert conn.status == 302
-    assert Accounts.settings(c.actor.id)["locale"] == "de"
-    session = RailsFormRequests.rails_session(conn)
-    assert session["locale"] == "de"
-
-    assert session["flash"]["flashes"]["notice"] ==
-             DawarichWeb.Translate.t("de", "controllers.settings.general.settings_updated", %{})
-  end
-
   @tag :recoverable_onboarding
   test "onboarding SQL failure rolls back inner work and preserves the outer commit", c do
     recoverable_failure(

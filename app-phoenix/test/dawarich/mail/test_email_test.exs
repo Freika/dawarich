@@ -312,54 +312,17 @@ defmodule Dawarich.Mail.TestEmailTest do
           end
         end
 
-        path = "/settings/general/test_email"
-        session = Dawarich.Test.RailsUser.session(460_006)
+        actor = Dawarich.Accounts.get(460_006)
 
-        for accept <- ["text/html", "text/vnd.turbo-stream.html"], failure <- [false, true] do
+        for failure <- [false, true] do
           if failure,
             do: Process.put(:transport_result, {:error, {"IOError", Enum.join(@markers)}}),
             else: Process.delete(:transport_result)
 
-          conn =
-            Phoenix.ConnTest.build_conn()
-            |> Plug.Conn.put_req_header("content-type", "application/x-www-form-urlencoded")
-            |> Plug.Conn.put_req_header("content-length", "0")
-            |> Plug.Conn.put_req_header("accept", accept)
-            |> Plug.Conn.put_req_header(
-              "x-csrf-token",
-              DawarichWeb.RailsCsrf.masked_form_token(session, path, "POST")
-            )
-            |> Plug.Test.put_req_cookie(
-              "_dawarich_session",
-              Dawarich.Test.RailsUser.cookie(session)
-            )
-
-          response = Phoenix.ConnTest.dispatch(conn, DawarichWeb.Endpoint, "POST", path, "")
-          assert response.status == if(accept == "text/html", do: 302, else: 200)
-
-          assert Plug.Conn.get_resp_header(response, "x-dawarich-mail-owner") == [
-                   "native-test-email"
-                 ]
-
+          assert {:notice, _} = TestEmail.run(actor, "en", System.get_env(), oban: :residual_log)
           refute_received {:mail, _}
+
           Process.delete(:transport_result)
-
-          fault = %{
-            conn
-            | method: "POST",
-              request_path: path,
-              query_string: "",
-              path_info: String.split(path, "/", trim: true)
-          }
-
-          response = DawarichWeb.TestEmail.call(fault, clock: %{})
-          assert response.status == if(accept == "text/html", do: 302, else: 200)
-
-          assert Plug.Conn.get_resp_header(response, "x-dawarich-mail-owner") == [
-                   "native-test-email"
-                 ]
-
-          refute_received {:mail, _}
         end
       end)
 

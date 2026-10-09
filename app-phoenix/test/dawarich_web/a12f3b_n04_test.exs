@@ -1,9 +1,8 @@
 defmodule DawarichWeb.A12f3bN04Test do
   use Dawarich.DataCase, async: false
-  import Plug.Conn
-  alias Dawarich.{Accounts}
+  alias Dawarich.{Accounts, Settings}
+  alias Dawarich.Accounts.Scope
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{RailsCsrf, SettingsSupporterActions, TestEmail}
 
   defmodule Verify do
     import Plug.Conn
@@ -58,15 +57,11 @@ defmodule DawarichWeb.A12f3bN04Test do
   test "supporter verification preserves provider outcomes and flags" do
     for name <- ["", "denied", "invalid", "truthy", " Supported "] do
       params = %{"supporter_github_username" => name}
-      conn = apply(SettingsSupporterActions, :call, [request(params), :verify])
-      assert conn.status == 302
-      flashes = conn.private.dawarich_rails_session_changes["flash"]["flashes"]
+      result = Settings.verify_supporter(scope(), params)
 
-      if String.trim(name) == "Supported" do
-        assert flashes["notice"] =~ "Github"
-      else
-        assert flashes["alert"]
-      end
+      if String.trim(name) == "Supported",
+        do: assert({:ok, %{"supporter" => true, "platform" => "github"}} = result),
+        else: refute(match?({:ok, %{"supporter" => true}}, result))
 
       assert Accounts.settings(73401)["keep"] == 7
     end
@@ -80,7 +75,7 @@ defmodule DawarichWeb.A12f3bN04Test do
   end
 
   @tag a12f3b_case: "N04b"
-  test "Cloud test email refusal is native and self hosted queue failure preserves response" do
+  test "Cloud test email refusal and a self-hosted queue failure both answer with an alert" do
     previous = System.get_env("DAWARICH_RAILS")
     System.put_env("DAWARICH_RAILS", "off")
 
@@ -96,41 +91,15 @@ defmodule DawarichWeb.A12f3bN04Test do
       "SMTP_STARTTLS" => "false"
     }
 
-    conn = email_request()
-    result = TestEmail.call(conn, context: %{self_hosted: false, oidc: false, env: env})
-    assert result.status == 303
-    assert get_resp_header(result, "location") == ["http://www.example.com/"]
-    assert result.private.dawarich_rails_session_changes["flash"]["flashes"]["alert"]
+    assert {:alert, _} = Settings.send_test_email(scope(), env: env, self_hosted: false)
 
-    failed =
-      TestEmail.call(email_request(),
-        context: %{self_hosted: true, oidc: false, env: env},
-        oban: :nonexistent_n04
-      )
-
-    assert failed.status == 302
-    assert failed.private.dawarich_rails_session_changes["flash"]["flashes"]["alert"]
-    refute failed.private.dawarich_rails_session_changes["flash"]["flashes"]["notice"]
+    assert {:alert, _} =
+             Settings.send_test_email(scope(),
+               env: env,
+               self_hosted: true,
+               oban: :nonexistent_n04
+             )
   end
 
-  defp request(params) do
-    session = RailsUser.session(73401)
-
-    Plug.Test.conn(:post, "/settings/general/verify_supporter")
-    |> put_req_header("content-type", "application/x-www-form-urlencoded")
-    |> assign(:api_params, Map.put(params, "authenticity_token", RailsCsrf.masked_token(session)))
-    |> assign(:api_query, %{})
-    |> assign(:rails_session, session)
-    |> assign(:current_user, Accounts.get(73401))
-  end
-
-  defp email_request do
-    session = RailsUser.session(73401)
-    body = URI.encode_query(%{"authenticity_token" => RailsCsrf.masked_token(session)})
-
-    Plug.Test.conn(:post, "/settings/general/test_email", body)
-    |> put_req_header("content-type", "application/x-www-form-urlencoded")
-    |> put_req_header("content-length", "#{byte_size(body)}")
-    |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(session))
-  end
+  defp scope, do: Scope.for_user(Accounts.get(73401), "en")
 end

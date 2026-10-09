@@ -1,9 +1,8 @@
 defmodule DawarichWeb.A12f3bN03Test do
   use Dawarich.DataCase, async: false
-  import Plug.Conn
-  alias Dawarich.{Accounts, Jobs.Ownership}
+  alias Dawarich.{Accounts, Jobs.Ownership, Settings}
+  alias Dawarich.Accounts.Scope
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{RailsCsrf, SettingsActions}
 
   setup do
     actor =
@@ -23,7 +22,7 @@ defmodule DawarichWeb.A12f3bN03Test do
   end
 
   @tag a12f3b_case: "N03a"
-  test "general settings PATCH preserves coercion locale timezone and email flags", %{
+  test "general settings save preserves coercion locale timezone and email flags", %{
     actor: actor
   } do
     params = %{
@@ -35,8 +34,7 @@ defmodule DawarichWeb.A12f3bN03Test do
       "ignored" => %{"nested" => "x"}
     }
 
-    conn = request(actor.id, :patch, params)
-    assert apply(SettingsActions, :call, [conn, :update]).status == 302
+    assert {:ok, _} = Settings.update_general(scope(actor), params)
     settings = Accounts.settings(actor.id)
     assert settings["timezone"] == "Berlin"
     assert settings["locale"] == "de"
@@ -54,20 +52,15 @@ defmodule DawarichWeb.A12f3bN03Test do
     assert [["stats.calculate_month", payload]] = commands()
     assert payload["notify_on_failure"] == false
 
-    assert apply(SettingsActions, :call, [
-             request(actor.id, :post, Map.put(params, "_method", "patch")),
-             :update
-           ]).status == 302
+    assert {:ok, _} = Settings.update_general(scope(actor), params)
 
     assert length(commands()) == 1
 
-    assert apply(SettingsActions, :call, [
-             request(actor.id, :patch, %{
+    assert {:ok, _} =
+             Settings.update_general(scope(actor), %{
                "timezone" => "invalid",
                "news_emails_enabled" => "false"
-             }),
-             :update
-           ]).status == 302
+             })
 
     assert Accounts.settings(actor.id)["timezone"] == "Berlin"
   end
@@ -84,26 +77,13 @@ defmodule DawarichWeb.A12f3bN03Test do
 
     before = Accounts.settings(actor.id)
 
-    conn =
-      apply(SettingsActions, :call, [
-        request(actor.id, :patch, %{"timezone" => "Berlin"}),
-        :update
-      ])
+    assert {:error, :save_failed} =
+             Settings.update_general(scope(actor), %{"timezone" => "Berlin"})
 
-    assert conn.status == 500
     assert Accounts.settings(actor.id) == before
     assert commands() == []
     assert rows("SELECT calculation_version FROM stats WHERE user_id=$1", [actor.id]) == [[3]]
   end
 
-  defp request(id, method, params) do
-    session = RailsUser.session(id)
-
-    Plug.Test.conn(method, "/settings/general")
-    |> put_req_header("content-type", "application/x-www-form-urlencoded")
-    |> assign(:api_params, Map.put(params, "authenticity_token", RailsCsrf.masked_token(session)))
-    |> assign(:api_query, %{})
-    |> assign(:rails_session, session)
-    |> assign(:current_user, Accounts.get(id))
-  end
+  defp scope(actor), do: Scope.for_user(Accounts.get(actor.id), "en")
 end
