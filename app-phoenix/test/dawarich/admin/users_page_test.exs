@@ -38,9 +38,9 @@ defmodule Dawarich.Admin.UsersPageTest do
       created_at: ~N[2026-09-01 09:00:00]
     })
 
-    assert {:ok, result} = UsersPage.list(actor, %{"search" => "%_"})
+    assert {:ok, result} = list(actor, %{"search" => "%_"})
     assert Enum.map(result.rows, & &1.id) == fixture("list_literal")["visible_ids"]
-    assert {:ok, result} = UsersPage.list(actor, %{})
+    assert {:ok, result} = list(actor, %{})
     refute 10999 in Enum.map(result.rows, & &1.id)
 
     RailsUser.insert!(%{
@@ -49,10 +49,10 @@ defmodule Dawarich.Admin.UsersPageTest do
       created_at: ~N[2026-09-01 10:00:00]
     })
 
-    assert {:ok, result} = UsersPage.list(actor, %{"search" => "back\\slash"})
+    assert {:ok, result} = list(actor, %{"search" => "back\\slash"})
     assert Enum.map(result.rows, & &1.id) == [10888]
     refute Enum.any?(result.rows, &Map.has_key?(&1, :api_key))
-    assert {:ok, empty} = UsersPage.list(actor, %{"search" => "no-match"})
+    assert {:ok, empty} = list(actor, %{"search" => "no-match"})
     assert empty.rows == []
   end
 
@@ -62,28 +62,33 @@ defmodule Dawarich.Admin.UsersPageTest do
           {"list_page2", %{"page" => "2"}},
           {"list_out", %{"page" => "3"}}
         ] do
-      assert {:ok, result} = UsersPage.list(actor, query)
+      assert {:ok, result} = list(actor, query)
       assert Enum.map(result.rows, & &1.id) == fixture(name)["visible_ids"]
       assert result.pages == 2
     end
 
-    assert {:ok, first} = UsersPage.list(actor, %{"page" => "garbage"})
+    assert {:ok, first} = list(actor, %{"page" => "garbage"})
     assert first.page == 1
-    assert :rails == UsersPage.list(actor, %{"page" => "999999999999999999999"})
+    assert {:error, :invalid_input} == list(actor, %{"page" => "999999999999999999999"})
   end
 
-  test "users with equal creation timestamps hand back rather than inventing order", %{
-    actor: actor
-  } do
-    Repo.query!(
-      "UPDATE users SET created_at = (SELECT created_at FROM users WHERE id = 10001) WHERE id = 10002",
-      [],
+  test "tied users paginate in descending id order without overlap", %{actor: actor} do
+    Repo.query!("UPDATE users SET created_at='2026-10-03 10:00:00' WHERE deleted_at IS NULL", [],
       log: false
     )
 
-    assert :rails == UsersPage.list(actor, %{})
-    assert {:ok, unrelated} = UsersPage.list(actor, %{"search" => "a10-user-03"})
-    assert Enum.map(unrelated.rows, & &1.id) == [10003]
+    assert {:ok, first} = list(actor, %{})
+    assert {:ok, second} = list(actor, %{"page" => "2"})
+    ids = Enum.map(first.rows ++ second.rows, & &1.id)
+
+    expected =
+      Repo.query!("SELECT id FROM users WHERE deleted_at IS NULL ORDER BY id DESC", [],
+        log: false
+      ).rows
+      |> List.flatten()
+
+    assert ids == expected
+    assert length(Enum.uniq(ids)) == length(ids)
   end
 
   test "user detail counts and timestamps belong to target but zone belongs to actor", %{
@@ -128,38 +133,57 @@ defmodule Dawarich.Admin.UsersPageTest do
       }
     ])
 
-    assert {:ok, target} = UsersPage.find(actor, 10002, :show)
+    assert {:ok, target} = find(actor, 10002, :show)
     assert target.counts == row["counts"]
     assert target.last_sign_in_at.local == ~N[2026-10-03 10:00:00.000000]
     assert target.last_sign_in_at.offset == 7200
     assert target.api_key == row["api_key"]
     assert target.last_sign_in_ip == "192.0.2.10"
     assert target.current_sign_in_ip == "192.0.2.20"
-    assert {:ok, edit} = UsersPage.find(actor, 10002, :edit)
+    assert {:ok, edit} = find(actor, 10002, :edit)
     refute Map.has_key?(edit, :api_key)
-    assert :rails == UsersPage.find(actor, 10999, :show)
-    assert :rails == UsersPage.find(actor, 99999, :edit)
+    assert {:error, :not_found} == find(actor, 10999, :show)
+    assert {:error, :not_found} == find(actor, 99999, :edit)
     Repo.query!("UPDATE users SET api_key = '' WHERE id = 10002", [], log: false)
-    assert :rails == UsersPage.find(actor, 10002, :show)
+    assert {:error, :unavailable} == find(actor, 10002, :show)
   end
 
-  test "admin list registration comes from PG and stored nil retains pre-render hand-back", %{
-    actor: actor
-  } do
+  test "stored nil renders disabled without rewriting policy", %{actor: actor} do
     bytes = Dawarich.RailsCache.Wire.encode_boolean(true, expires_at: nil)
     assert {:ok, "OK"} = Redis.cache_command(["SET", "dawarich/registration_enabled", bytes])
 
-    for value <- [false, true] do
+    for value <- [false, true, nil] do
       Dawarich.State.put_registration_enabled(Repo, value)
-      assert {:ok, result} = UsersPage.list(actor, %{})
+      assert {:ok, result} = list(actor, %{})
       assert result.registration == value
+
+      assert Repo.query!("SELECT enabled FROM phoenix.registration_setting", [], log: false).rows ==
+               [[value]]
+    end
+  end
+
+  test "missing registration row refuses without a permissive default", %{actor: actor} do
+    Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
+    assert {:error, :unavailable} = list(actor, %{})
+
+    assert Repo.query!("SELECT count(*) FROM phoenix.registration_setting", [], log: false).rows ==
+             [[0]]
+  end
+
+  test "users page normalizes scalar pages and refuses malformed inputs", %{actor: actor} do
+    for page <- [nil, "", "garbage", "-8", "0"] do
+      assert {:ok, %{page: 1}} = list(actor, %{"page" => page})
     end
 
-    Dawarich.State.put_registration_enabled(Repo, nil)
-    assert :rails == UsersPage.list(actor, %{})
-    Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
-    assert :rails == UsersPage.list(actor, %{})
+    for query <- [%{"page" => []}, %{"search" => %{}}, %{"page" => "999999999999999999999"}] do
+      assert {:error, :invalid_input} = list(actor, query)
+    end
+
+    assert {:error, :not_found} = find(actor, "oops", :edit)
   end
+
+  defp list(actor, query), do: UsersPage.list(actor, query, :native)
+  defp find(actor, id, kind), do: UsersPage.find(actor, id, kind, :native)
 
   defp fixture(name), do: Jason.decode!(File.read!("test/fixtures/admin_users/#{name}.json"))
 

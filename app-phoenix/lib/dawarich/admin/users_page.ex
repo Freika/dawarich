@@ -3,7 +3,6 @@ defmodule Dawarich.Admin.UsersPage do
 
   alias Dawarich.{Repo, TripSettings, UserTimeZone}
   alias Dawarich.Auth.RegistrationSetting
-  alias DawarichWeb.TripsGate
 
   @page_size 25
   @max_page div(9_223_372_036_854_775_807, @page_size)
@@ -12,20 +11,24 @@ defmodule Dawarich.Admin.UsersPage do
   @show_fields @list_fields <>
                  ", settings, api_key, sign_in_count, last_sign_in_ip, current_sign_in_ip"
 
-  def list(actor, query) do
+  def list(actor, query, mode \\ :legacy) do
+    result = read_list(actor, query)
+    if mode == :native or match?({:ok, _}, result), do: result, else: :rails
+  end
+
+  defp read_list(actor, query) do
     with true <- supported?(actor),
-         true <- scalar?(query["search"]) and scalar?(query["page"]),
-         page = TripsGate.page_number(query["page"]),
+         {:ok, query} <- query(query),
+         page = max(Dawarich.RubyInteger.to_i(query["page"]), 1),
          true <- page <= @max_page,
          pattern = pattern(query["search"]),
-         true <- Dawarich.Standalone.enabled?() or not ties?(pattern),
          {:ok, registration} <- registration() do
       [[count]] =
         Repo.query!("SELECT count(*) FROM users WHERE " <> @relation, [pattern], log: false).rows
 
       rows =
         rows(
-          "SELECT #{@list_fields} FROM users WHERE #{@relation} ORDER BY created_at DESC LIMIT #{@page_size} OFFSET $2",
+          "SELECT #{@list_fields} FROM users WHERE #{@relation} ORDER BY created_at DESC, id DESC LIMIT #{@page_size} OFFSET $2",
           [pattern, (page - 1) * @page_size]
         )
 
@@ -40,31 +43,37 @@ defmodule Dawarich.Admin.UsersPage do
            search: query["search"]
          }}
       else
-        :rails
+        {:error, :unavailable}
       end
     else
-      _ -> :rails
+      {:error, _} = error -> error
+      _ -> {:error, :invalid_input}
     end
   rescue
-    _ -> :rails
+    _ -> {:error, :unavailable}
   end
 
-  def find(actor, id, kind) when is_integer(id) and id > 0 and kind in [:show, :edit] do
+  def find(actor, id, kind, mode \\ :legacy) do
+    result = read_target(actor, id, kind)
+    if mode == :native or match?({:ok, _}, result), do: result, else: :rails
+  end
+
+  defp read_target(actor, id, kind) when is_integer(id) and id > 0 and kind in [:show, :edit] do
     if supported?(actor) do
       columns = if kind == :show, do: @show_fields, else: "id, email, admin, status"
 
       case rows("SELECT #{columns} FROM users WHERE id = $1 AND deleted_at IS NULL", [id]) do
         [target] -> detail(actor, target, kind)
-        _ -> :rails
+        _ -> {:error, :not_found}
       end
     else
-      :rails
+      {:error, :unavailable}
     end
   rescue
-    _ -> :rails
+    _ -> {:error, :unavailable}
   end
 
-  def find(_actor, _id, _kind), do: :rails
+  defp read_target(_actor, _id, _kind), do: {:error, :not_found}
 
   defp detail(_actor, %{status: status} = target, :edit) when status in 0..3, do: {:ok, target}
 
@@ -89,29 +98,26 @@ defmodule Dawarich.Admin.UsersPage do
          "areas" => areas
        })}
     else
-      :rails
+      {:error, :unavailable}
     end
   end
 
-  defp detail(_actor, _target, _kind), do: :rails
+  defp detail(_actor, _target, _kind), do: {:error, :unavailable}
 
   defp registration do
     case RegistrationSetting.fetch() do
-      {:ok, value} when is_boolean(value) -> {:ok, value}
-      _ -> :rails
+      {:ok, value} when value in [true, false, nil] -> {:ok, value}
+      _ -> {:error, :unavailable}
     end
   end
 
-  defp ties?(pattern) do
-    [[ties]] =
-      Repo.query!(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE #{@relation} GROUP BY created_at HAVING count(*) > 1)",
-        [pattern],
-        log: false
-      ).rows
-
-    ties
+  defp query(query) when is_map(query) do
+    if scalar?(query["search"]) and scalar?(query["page"]),
+      do: {:ok, query},
+      else: {:error, :invalid_input}
   end
+
+  defp query(_), do: {:error, :invalid_input}
 
   defp supported?(user) do
     settings = Dawarich.UserSettings.get(user)
