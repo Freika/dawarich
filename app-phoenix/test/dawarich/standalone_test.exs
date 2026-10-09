@@ -132,7 +132,7 @@ defmodule Dawarich.StandaloneTest do
     Application.put_env(:dawarich, :phoenix_auth, [])
 
     assert DawarichWeb.AuthGate.flows() ==
-             ~w(credentials recovery account api_keys two_factor otp account_link api_auth)
+             ~w(credentials recovery account two_factor otp account_link api_auth)
 
     Dawarich.State.put_registration_enabled(Repo, false)
     conn = Plug.Test.conn(:get, "/users/sign_in") |> DawarichWeb.AuthGate.call([])

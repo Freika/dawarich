@@ -41,13 +41,10 @@ defmodule DawarichWeb.AuthGate do
 
   defp claimed(conn) do
     flows = flows()
-    standalone = Dawarich.Standalone.enabled?()
 
     if not DawarichWeb.Strangler.handed_back?(conn.path_info) and
-         (standalone or System.get_env("SELF_HOSTED") == "true") do
-      Enum.find(@handlers, fn {flow, handler} ->
-        flow in flows and handler.route?(conn) and (flow != "api_keys" or not standalone)
-      end)
+         (Dawarich.Standalone.enabled?() or System.get_env("SELF_HOSTED") == "true") do
+      Enum.find(@handlers, fn {flow, handler} -> flow in flows and handler.route?(conn) end)
     end
   end
 
@@ -75,7 +72,7 @@ defmodule DawarichWeb.AuthGate do
       context: %{enqueue_otp_lock: &Dawarich.Mail.OtpAccountLockedWorker.enqueue/1}
     ]
 
-  defp options(flow) when flow in ["account", "api_keys", "two_factor"],
+  defp options(flow) when flow in ["account", "two_factor"],
     do: [enabled: true]
 
   defp options(flow), do: options(flow, RegistrationSetting.fetch())
