@@ -5,12 +5,88 @@ defmodule DawarichWeb.CoreComponents do
   attr :field, Phoenix.HTML.FormField, required: true
   attr :label, :string, required: true
   attr :type, :string, default: "text"
-  attr :class, :string, default: "input input-bordered w-full"
-  attr :rest, :global, include: ~w(placeholder autocomplete min max step)
+  attr :class, :string, default: nil
+  attr :options, :list, default: []
+  attr :display, :string, default: nil
+  attr :rest, :global, include: ~w(placeholder autocomplete min max step rows disabled required)
 
   def input(assigns) do
     errors = if used_input?(assigns.field), do: assigns.field.errors, else: []
-    assigns = assign(assigns, :errors, Enum.map(errors, &translate_error/1))
+    assign(assigns, :errors, Enum.map(errors, &translate_error/1)) |> field()
+  end
+
+  defp field(%{type: "checkbox"} = assigns) do
+    assigns =
+      assign(
+        assigns,
+        :checked,
+        Phoenix.HTML.Form.normalize_value("checkbox", assigns.field.value)
+      )
+
+    ~H"""
+    <div class="form-control">
+      <label class="label cursor-pointer justify-start gap-4" for={@field.id}>
+        <input type="hidden" name={@field.name} value="false" />
+        <input
+          type="checkbox"
+          id={@field.id}
+          name={@field.name}
+          value="true"
+          checked={@checked}
+          class={@class || "toggle toggle-primary"}
+          {@rest}
+        />
+        <span class="label-text font-medium">{@label}</span>
+      </label>
+      <.error :for={message <- @errors}>{message}</.error>
+    </div>
+    """
+  end
+
+  defp field(%{type: "select"} = assigns) do
+    ~H"""
+    <div class="form-control">
+      <label class="label" for={@field.id}>{@label}</label>
+      <select
+        id={@field.id}
+        name={@field.name}
+        class={[@class || "select select-bordered w-full", @errors != [] && "select-error"]}
+        aria-invalid={@errors != [] && "true"}
+        {@rest}
+      >
+        {Phoenix.HTML.Form.options_for_select(@options, @field.value)}
+      </select>
+      <.error :for={message <- @errors}>{message}</.error>
+    </div>
+    """
+  end
+
+  defp field(%{type: "textarea"} = assigns) do
+    ~H"""
+    <div class="form-control">
+      <label class="label" for={@field.id}>{@label}</label>
+      <textarea
+        id={@field.id}
+        name={@field.name}
+        class={[@class || "textarea textarea-bordered w-full", @errors != [] && "textarea-error"]}
+        aria-invalid={@errors != [] && "true"}
+        {@rest}
+      >{Phoenix.HTML.Form.normalize_value("textarea", @field.value)}</textarea>
+      <.error :for={message <- @errors}>{message}</.error>
+    </div>
+    """
+  end
+
+  defp field(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :value,
+        if(assigns.type == "password",
+          do: assigns.display,
+          else: Phoenix.HTML.Form.normalize_value(assigns.type, assigns.field.value)
+        )
+      )
 
     ~H"""
     <div class="form-control">
@@ -19,8 +95,8 @@ defmodule DawarichWeb.CoreComponents do
         type={@type}
         name={@field.name}
         id={@field.id}
-        value={Phoenix.HTML.Form.normalize_value(@type, @field.value)}
-        class={[@class, @errors != [] && "input-error"]}
+        value={@value}
+        class={[@class || "input input-bordered w-full", @errors != [] && "input-error"]}
         aria-invalid={@errors != [] && "true"}
         {@rest}
       />

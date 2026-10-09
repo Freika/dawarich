@@ -11,14 +11,15 @@ defmodule DawarichWeb.SettingsParts do
   attr :self_hosted, :boolean, required: true
   attr :admin, :boolean, required: true
   attr :two_factor, :boolean, required: true
+  attr :native, :boolean, default: false
 
   def navigation(assigns) do
     ~H"""
     <div
       id="settings-navigation"
-      phx-hook="RailsStimulus"
+      phx-hook={if @native, do: "ScrollIntoView", else: "RailsStimulus"}
       class="mb-6 overflow-x-auto pb-1"
-      data-controller="scroll-into-view"
+      data-controller={!@native && "scroll-into-view"}
     >
       <div class="tabs tabs-boxed inline-flex min-w-max flex-nowrap">
         <a role="tab" class={tab(@active, "general")} href="/settings/general">{t(
