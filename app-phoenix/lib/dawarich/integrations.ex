@@ -5,6 +5,66 @@ defmodule Dawarich.Integrations do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.LocalizedDate
 
+  alias Dawarich.Accounts.Scope
+  alias Dawarich.{Accounts, Entitlements, Repo}
+
+  def authorize(%Scope{user: user}) do
+    actor = Accounts.get(user.id)
+    now = DateTime.utc_now()
+
+    cond do
+      is_nil(actor) -> {:error, :not_found}
+      not Entitlements.future?(actor.active_until, now) -> {:error, :inactive}
+      not Entitlements.full_access?(actor, self_hosted?(), now) -> {:error, :pro_required}
+      true -> :ok
+    end
+  end
+
+  def self_hosted?, do: System.get_env("SELF_HOSTED") == "true"
+
+  def update_credentials(%Scope{user: user, locale: locale} = scope, service, params) do
+    with :ok <- authorize(scope) do
+      fields = Enum.filter(Map.keys(params), &String.starts_with?(&1, service <> "_"))
+
+      Dawarich.Settings.Integrations.save(Repo, user.id, Map.take(params, fields),
+        self_hosted: self_hosted?(),
+        locale: locale
+      )
+    end
+  end
+
+  def start_sync(%Scope{user: user, locale: locale}, service)
+      when service in [:airtrail, :teslamate] do
+    job = if service == :airtrail, do: "start_airtrail_import", else: "start_teslamate_sync"
+
+    Dawarich.Imports.IntegrationCommands.enqueue(Repo, user.id, job,
+      locale: locale,
+      self_hosted: self_hosted?()
+    )
+  end
+
+  def refresh_photos_cache(%Scope{user: user}) do
+    for pattern <- [
+          "photos_#{user.id}_*",
+          "photos_search/#{user.id}/*",
+          "photo_thumbnail_#{user.id}_*"
+        ],
+        do: clear_cache(pattern, "0")
+
+    :ok
+  end
+
+  defp clear_cache(pattern, cursor) do
+    case Dawarich.Redis.cache_command(["SCAN", cursor, "MATCH", pattern, "COUNT", "100"]) do
+      {:ok, [next, keys]} ->
+        if keys != [], do: Dawarich.Redis.cache_command(["UNLINK" | keys])
+        if next != "0", do: clear_cache(pattern, next)
+
+      _ ->
+        :ok
+    end
+  end
+
   @services ~w(immich photoprism airtrail teslamate trek)
   @statuses %{0 => "active", 1 => "disabled"}
 
