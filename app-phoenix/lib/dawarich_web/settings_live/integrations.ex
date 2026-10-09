@@ -9,6 +9,7 @@ defmodule DawarichWeb.SettingsLive.Integrations do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.{StatsFormat, TrekPane}
 
+  @sync_services %{"airtrail" => :airtrail, "teslamate" => :teslamate}
   @secrets ~w(immich_api_key photoprism_api_key airtrail_api_key teslamate_password teslamate_api_token)
 
   @impl true
@@ -34,6 +35,10 @@ defmodule DawarichWeb.SettingsLive.Integrations do
   end
 
   @impl true
+  def handle_event(event, _params, %{assigns: %{pro_required: true}} = socket)
+      when event in ~w(save sync),
+      do: {:noreply, failure(socket, :pro_required)}
+
   def handle_event("change", %{"settings" => params}, socket) do
     values = Map.merge(socket.assigns.form.params, params)
     {:noreply, assign(socket, :form, to_form(values, as: :settings))}
@@ -72,13 +77,15 @@ defmodule DawarichWeb.SettingsLive.Integrations do
     end
   end
 
-  def handle_event("sync", _params, socket) do
-    service = socket.assigns.service
-
+  def handle_event("sync", _params, %{assigns: %{service: service}} = socket)
+      when service in ~w(airtrail teslamate) do
     if MapSet.member?(socket.assigns.sync_queued, service) do
       {:noreply, socket}
     else
-      case Integrations.start_sync(socket.assigns.current_scope, String.to_existing_atom(service)) do
+      case Integrations.start_sync(
+             socket.assigns.current_scope,
+             Map.fetch!(@sync_services, service)
+           ) do
         {:ok, :queued} ->
           {:noreply,
            socket
@@ -97,6 +104,8 @@ defmodule DawarichWeb.SettingsLive.Integrations do
       end
     end
   end
+
+  def handle_event("sync", _params, socket), do: {:noreply, socket}
 
   def handle_event("trek-create", _params, %{assigns: %{trek_created: true}} = socket),
     do: {:noreply, socket}

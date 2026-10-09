@@ -197,6 +197,46 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     refute Accounts.settings(c.user.id)["immich_api_key"] == "blocked"
   end
 
+  for service <- ~w(immich photoprism trek) do
+    test "pushed sync on #{service} refuses without writing", c do
+      {:ok, view, _} = live_as(c.user, unquote(service))
+      settings = Accounts.settings(c.user.id)
+      before = Repo.query!("SELECT count(*) FROM job_outbox").rows
+      render_hook(view, "sync", %{"service" => "airtrail"})
+      assert Process.alive?(view.pid)
+      assert Accounts.settings(c.user.id) == settings
+      assert Repo.query!("SELECT count(*) FROM job_outbox").rows == before
+    end
+  end
+
+  for event <- ~w(save sync) do
+    test "pushed #{event} on the Pro-required page refuses without writing", c do
+      previous = Map.new(~w(SELF_HOSTED JWT_SECRET_KEY), &{&1, System.get_env(&1)})
+      System.put_env("SELF_HOSTED", "false")
+      System.put_env("JWT_SECRET_KEY", "synthetic-native-jwt")
+
+      on_exit(fn ->
+        for {key, value} <- previous,
+            do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+      end)
+
+      Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [c.user.id])
+      {:ok, view, _} = live_as(c.user, "airtrail")
+      settings = Accounts.settings(c.user.id)
+      before = Repo.query!("SELECT count(*) FROM job_outbox").rows
+
+      html =
+        render_hook(view, unquote(event), %{
+          "settings" => %{"airtrail_api_key" => "synthetic-refused"}
+        })
+
+      assert html =~ escaped("controllers.application.this_feature_requires_a_pro_plan")
+      assert Process.alive?(view.pid)
+      assert Accounts.settings(c.user.id) == settings
+      assert Repo.query!("SELECT count(*) FROM job_outbox").rows == before
+    end
+  end
+
   def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
 
   defp queries(fun) do
