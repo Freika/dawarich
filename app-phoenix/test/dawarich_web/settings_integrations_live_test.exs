@@ -88,7 +88,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
         "settings" => %{(service <> "_url") => c.url, secret => "synthetic-new"}
       })
 
-      assert has_element?(view, "input[name='settings[#{secret}]'][value='synthetic-new']")
+      refute render(view) =~ "synthetic-new"
 
       html =
         view
@@ -116,6 +116,52 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
              escaped("services.immich.connection_tester.immich_connection_failed_code", %{
                code: 401
              })
+  end
+
+  for {service, secret} <- [
+        {"immich", "immich_api_key"},
+        {"photoprism", "photoprism_api_key"},
+        {"airtrail", "airtrail_api_key"},
+        {"teslamate", "teslamate_password"},
+        {"teslamate", "teslamate_api_token"}
+      ] do
+    test "#{secret} changes never echo typed secrets and submission persists them", c do
+      service = unquote(service)
+      secret = unquote(secret)
+
+      for stored <- [nil, "synthetic-stored"] do
+        store(c.user, %{"timezone" => "UTC", secret => stored})
+        {:ok, view, _} = live_as(c.user, service)
+        params = %{"settings" => %{(service <> "_url") => c.url, secret => "synthetic-typed"}}
+        html = view |> form("#integration-settings") |> render_change(params)
+        refute html =~ "synthetic-typed"
+        display = if stored, do: "********", else: ""
+        assert has_element?(view, "#settings_#{secret}[value='#{display}'][phx-update='ignore']")
+        refute Accounts.settings(c.user.id)[secret] == "synthetic-typed"
+        view |> form("#integration-settings") |> render_submit(params)
+        assert Process.alive?(view.pid)
+        assert Accounts.settings(c.user.id)[secret] == "synthetic-typed"
+      end
+    end
+  end
+
+  test "Phoenix filters nested integration credentials while retaining ordinary fields" do
+    params = %{
+      "settings" =>
+        Map.new(
+          ~w(password immich_api_key airtrail_api_key teslamate_password teslamate_api_token token secret),
+          &{&1, "synthetic-filtered"}
+        )
+    }
+
+    params = put_in(params, ["settings", "immich_url"], "https://example.test")
+    filtered = Phoenix.Logger.filter_values(params)
+
+    for key <-
+          ~w(password immich_api_key airtrail_api_key teslamate_password teslamate_api_token token secret),
+        do: assert(filtered["settings"][key] == "[FILTERED]")
+
+    assert filtered["settings"]["immich_url"] == "https://example.test"
   end
 
   test "pane patches survive reload and SSL changes are local until save without photo import buttons",
@@ -195,6 +241,46 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
 
     assert_redirect(view, "/")
     refute Accounts.settings(c.user.id)["immich_api_key"] == "blocked"
+  end
+
+  for service <- ~w(immich photoprism trek) do
+    test "pushed sync on #{service} refuses without writing", c do
+      {:ok, view, _} = live_as(c.user, unquote(service))
+      settings = Accounts.settings(c.user.id)
+      before = Repo.query!("SELECT count(*) FROM job_outbox").rows
+      render_hook(view, "sync", %{"service" => "airtrail"})
+      assert Process.alive?(view.pid)
+      assert Accounts.settings(c.user.id) == settings
+      assert Repo.query!("SELECT count(*) FROM job_outbox").rows == before
+    end
+  end
+
+  for event <- ~w(save sync) do
+    test "pushed #{event} on the Pro-required page refuses without writing", c do
+      previous = Map.new(~w(SELF_HOSTED JWT_SECRET_KEY), &{&1, System.get_env(&1)})
+      System.put_env("SELF_HOSTED", "false")
+      System.put_env("JWT_SECRET_KEY", "synthetic-native-jwt")
+
+      on_exit(fn ->
+        for {key, value} <- previous,
+            do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+      end)
+
+      Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [c.user.id])
+      {:ok, view, _} = live_as(c.user, "airtrail")
+      settings = Accounts.settings(c.user.id)
+      before = Repo.query!("SELECT count(*) FROM job_outbox").rows
+
+      html =
+        render_hook(view, unquote(event), %{
+          "settings" => %{"airtrail_api_key" => "synthetic-refused"}
+        })
+
+      assert html =~ escaped("controllers.application.this_feature_requires_a_pro_plan")
+      assert Process.alive?(view.pid)
+      assert Accounts.settings(c.user.id) == settings
+      assert Repo.query!("SELECT count(*) FROM job_outbox").rows == before
+    end
   end
 
   def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)

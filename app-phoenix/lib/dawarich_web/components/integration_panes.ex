@@ -187,7 +187,8 @@ defmodule DawarichWeb.IntegrationPanes do
       <DawarichWeb.CoreComponents.input
         field={@form[@service <> "_api_key"]}
         type="password"
-        display={@form[@service <> "_api_key"].value}
+        display={secret_display(@form[@service <> "_api_key"].value)}
+        phx-update="ignore"
         label={t(@locale, "settings.integrations.index.#{@service}_api_key", %{})}
       />
       <span class="label-text-alt mt-1 text-base-content/60">{render_slot(@inner_block)}</span>
@@ -276,4 +277,7 @@ defmodule DawarichWeb.IntegrationPanes do
     </div>
     """
   end
+
+  def secret_display("********"), do: "********"
+  def secret_display(_value), do: ""
 end
