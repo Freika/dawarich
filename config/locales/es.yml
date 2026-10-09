@@ -3097,6 +3097,9 @@ es:
       this_feature_requires_a_pro_plan: Esta función requiere un plan Pro.
       your_account_has_been_deleted: Tu cuenta ha sido eliminada.
       you_are_not_authorized_to_perform_this_action: No estás autorizado a realizar esta acción.
+      admin_writes_unavailable_with_oidc: "Los cambios de administración no están disponibles en instancias que inician sesión con OIDC o Google. Define estos valores con variables de entorno."
+      admin_encryption_unavailable: "Los secretos no se pueden guardar porque el cifrado no está configurado en esta instancia."
+      admin_action_failed: "Algo salió mal. Inténtalo de nuevo."
       family_plan_required: Esta función requiere un plan familiar.
     areas:
       created: Área creada con éxito!

@@ -3086,6 +3086,9 @@ ca:
       this_feature_requires_a_pro_plan: Aquesta funció requereix el pla Pro.
       your_account_has_been_deleted: El teu compte s'ha suprimit.
       you_are_not_authorized_to_perform_this_action: No tens autorització per fer aquesta acció.
+      admin_writes_unavailable_with_oidc: "Els canvis d'administració no estan disponibles en instàncies que inicien sessió amb OIDC o Google. Defineix aquests valors amb variables d'entorn."
+      admin_encryption_unavailable: "Els secrets no es poden desar perquè el xifratge no està configurat en aquesta instància."
+      admin_action_failed: "Alguna cosa ha anat malament. Torna-ho a provar."
       family_plan_required: Aquesta funció requereix el pla Family.
     areas:
       created: L'àrea s'ha creat correctament!
