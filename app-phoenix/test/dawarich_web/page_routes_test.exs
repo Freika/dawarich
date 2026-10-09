@@ -13,7 +13,6 @@ defmodule DawarichWeb.PageRoutesTest do
            {DawarichWeb.ImportsGate, :native?}, :rails_pages},
           {"/places", DawarichWeb.PlacesLive.Index, :index, %{},
            {DawarichWeb.PlacesGate, :index?}, :rails_pages},
-          {"/settings/general", DawarichWeb.SettingsLive.General, :index, %{}, nil, :rails_pages},
           {"/map/v2", DawarichWeb.MapLive, :index, %{}, nil, :rails_map}
         ] do
       route = info(path)

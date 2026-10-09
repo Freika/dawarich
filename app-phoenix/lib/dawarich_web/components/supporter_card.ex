@@ -31,18 +31,7 @@ defmodule DawarichWeb.Components.SupporterCard do
               platform: platform(@locale, @platform)
             })}</span>
           </div>
-          <form
-            data-turbo="false"
-            action="/settings/general/verify_supporter"
-            accept-charset="UTF-8"
-            method="post"
-          >
-            <input
-              :if={@rails_csrf_token}
-              type="hidden"
-              name="authenticity_token"
-              value={@rails_csrf_token}
-            />
+          <form id="supporter-form" phx-submit="verify_supporter">
             <div class="form-control">
               <label class="label" for="supporter_email"><span class="label-text font-medium">{t(
                 @locale,
@@ -58,7 +47,6 @@ defmodule DawarichWeb.Components.SupporterCard do
                 type="email"
                 name="supporter_email"
                 id="supporter_email"
-                phx-update="ignore"
               />
             </div>
             <div class="form-control mt-3">
@@ -76,16 +64,15 @@ defmodule DawarichWeb.Components.SupporterCard do
                 type="text"
                 name="supporter_github_username"
                 id="supporter_github_username"
-                phx-update="ignore"
               />
             </div>
-            <input
+            <button
               type="submit"
-              name="commit"
-              value={t(@locale, "settings.general.supporter_status.verify", %{})}
               class="btn btn-primary mt-3"
-              data-disable-with={t(@locale, "settings.general.supporter_status.verify", %{})}
-            />
+              phx-disable-with={t(@locale, "settings.general.supporter_status.verify", %{})}
+            >
+              {t(@locale, "settings.general.supporter_status.verify", %{})}
+            </button>
           </form>
           <div
             :if={(Ruby.present?(@email) or Ruby.present?(@github)) and not @supporter}

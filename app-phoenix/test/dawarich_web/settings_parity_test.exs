@@ -12,7 +12,6 @@ defmodule DawarichWeb.SettingsParityTest do
   @env ~w(TIME_ZONE MANAGER_URL OIDC_PROVIDER_NAME CHIBICHANGE_WIDGET_HOST SMTP_SERVER)
   @stimulus "[data-controller], [data-action], [data-activity-heatmap-target], [data-upload-target], [data-turbo], [data-turbo-method], [data-turbo-confirm], [data-turbo-stream]"
   @pages %{
-    "/settings/general" => SettingsLive.General,
     "/settings/integrations" => SettingsLive.Integrations,
     "/users/edit" => AccountLive.Edit,
     "/insights" => InsightsLive.Index
@@ -115,7 +114,7 @@ defmodule DawarichWeb.SettingsParityTest do
     end
   end
 
-  for file <- @fixtures do
+  for file <- @fixtures, not String.starts_with?(Path.basename(file), "general_") do
     @name Path.basename(file, ".json")
 
     test "#{@name} matches the page Rails renders" do

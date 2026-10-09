@@ -151,7 +151,7 @@ defmodule DawarichWeb.StorageRoutesTest do
 
   test "route extraction preserves every existing LiveView session" do
     for path <-
-          ~w(/notifications /notifications/17 /imports/new /imports/17 /imports/17/edit /imports /exports /stats /stats/2024 /stats/2024/2 /digests /digests/2024 /trips /trips/17 /places /points /settings/general /settings/visits /settings/integrations /users/edit /insights) do
+          ~w(/notifications /notifications/17 /imports/new /imports/17 /imports/17/edit /imports /exports /stats /stats/2024 /stats/2024/2 /digests /digests/2024 /trips /trips/17 /places /points /settings/visits /settings/integrations /users/edit /insights) do
       route =
         Phoenix.Router.route_info(
           DawarichWeb.Router,
@@ -170,8 +170,8 @@ defmodule DawarichWeb.StorageRoutesTest do
     end
   end
 
-  test "tag pages live in the native live_session" do
-    for path <- ~w(/tags /tags/new /tags/17/edit) do
+  test "tag pages and general settings live in the native live_session" do
+    for path <- ~w(/tags /tags/new /tags/17/edit /settings/general) do
       route =
         Phoenix.Router.route_info(
           DawarichWeb.Router,

@@ -111,13 +111,13 @@ defmodule DawarichWeb.SettingsParts do
   attr :user, :map, required: true
   attr :supporter, :boolean, required: true
   attr :platform, :string, default: nil
-  attr :rails_csrf_token, :string, default: nil
 
   def supporter_card(assigns), do: DawarichWeb.Components.SupporterCard.card(assigns)
 
   attr :locale, :string, required: true
   attr :granted, :boolean, required: true
   attr :rails_csrf_token, :string, default: nil
+  attr :native, :boolean, default: false
 
   def consent_card(assigns) do
     assigns = assign(assigns, :host, Dawarich.Navbar.changelog_host())
@@ -151,6 +151,7 @@ defmodule DawarichWeb.SettingsParts do
               class="btn btn-ghost btn-sm"
               label={t(@locale, "settings.general.changelog_consent.turn_off_notices", %{})}
               rails_csrf_token={@rails_csrf_token}
+              native={@native}
             />
           <% else %>
             <p class="text-sm text-base-content/70">
@@ -170,6 +171,7 @@ defmodule DawarichWeb.SettingsParts do
               class="btn btn-primary btn-sm"
               label={t(@locale, "settings.general.changelog_consent.turn_on_notices", %{})}
               rails_csrf_token={@rails_csrf_token}
+              native={@native}
             />
           <% end %>
         </div>

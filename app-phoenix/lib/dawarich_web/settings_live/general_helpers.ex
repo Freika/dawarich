@@ -27,4 +27,13 @@ defmodule DawarichWeb.SettingsLive.GeneralHelpers do
     {:safe,
      ~s(<a target="_blank" rel="noopener" class="link link-primary" href="https://dawarich.app/docs/self-hosting/configuration/smtp/">#{text}</a>)}
   end
+
+  def platform_name(platform) when is_binary(platform),
+    do:
+      platform
+      |> String.replace("_", " ")
+      |> String.split()
+      |> Enum.map_join(" ", &String.capitalize/1)
+
+  def platform_name(_platform), do: ""
 end

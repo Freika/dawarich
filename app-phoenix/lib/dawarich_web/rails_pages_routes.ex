@@ -19,6 +19,9 @@ defmodule DawarichWeb.RailsPagesRoutes do
 
           live "/tags/:id/edit", DawarichWeb.TagsLive.Form, :edit,
             container: {:div, class: "contents"}
+
+          live "/settings/general", DawarichWeb.SettingsLive.General, :index,
+            container: {:div, class: "contents"}
         end
 
         live_session :rails_pages,
@@ -86,9 +89,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/points", DawarichWeb.PointsLive.Index, :index,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.MapDataGate, :points?}}
-
-          live "/settings/general", DawarichWeb.SettingsLive.General, :index,
-            container: {:div, class: "contents"}
 
           live "/settings/visits", DawarichWeb.SettingsLive.Visits, :index,
             container: {:div, class: "contents"},

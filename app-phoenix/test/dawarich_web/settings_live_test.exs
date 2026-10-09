@@ -66,16 +66,6 @@ defmodule DawarichWeb.SettingsLiveTest do
       %{user: user}
     end
 
-    test "Rails' morph metas are on here and nowhere else in this slice", %{user: user} do
-      {:ok, _view, html} = live_as(user, "/settings/general", on_error: [duplicate_id: :warn])
-      assert html =~ ~s(<meta name="turbo-refresh-method" content="morph")
-
-      for path <- ~w(/settings/integrations /users/edit /insights) do
-        {:ok, _view, other} = live_as(user, path, on_error: [duplicate_id: :warn])
-        refute other =~ "turbo-refresh-method", path
-      end
-    end
-
     test "languages in Rails' order with the page's locale checked; the user's zone selected", %{
       user: user
     } do
@@ -103,7 +93,7 @@ defmodule DawarichWeb.SettingsLiveTest do
       {:ok, view, html} = live_as(user, "/settings/general", on_error: [duplicate_id: :warn])
       assert html =~ "https://dawarich.app/docs/self-hosting/configuration/smtp/"
       refute has_element?(view, "input[name='monthly_digest_emails_enabled']")
-      refute has_element?(view, "a[href='/settings/general/test_email']")
+      refute has_element?(view, "#send-test-email")
     end
 
     test "the legacy digest key sets both toggles; news stays on by default", %{user: user} do
@@ -159,36 +149,6 @@ defmodule DawarichWeb.SettingsLiveTest do
       assert has_element?(view, "input#show_supporter_badge[type='checkbox'][checked]")
       assert has_element?(view, "input#supporter_email[value='a5s3-fan@dawarich.test']")
       refute inspect(:sys.get_state(view.pid)) =~ "a5s3-fan@dawarich.test"
-    end
-
-    test "Cloud hides the test email, the supporter and What's New cards and the Background Jobs tab",
-         %{user: user} do
-      user = Dawarich.Accounts.get(user.id)
-
-      context = %{
-        locale: "en",
-        now: DateTime.utc_now(),
-        self_hosted: false,
-        supporter: %{"supporter" => false},
-        zones: []
-      }
-
-      page = DawarichWeb.SettingsLive.General.page(user, %{}, context)
-
-      assigns =
-        Map.merge(context, %{
-          rails_csrf_token: "CSRF",
-          current_user: user,
-          base_url: "http://www.example.com"
-        })
-
-      html =
-        render_component(&DawarichWeb.SettingsLive.General.render/1, Map.merge(assigns, page))
-
-      refute html =~ "/settings/general/test_email"
-      refute html =~ "changelog-consent-setting"
-      refute html =~ "/settings/general/verify_supporter"
-      refute html =~ "/settings/background_jobs"
     end
 
     test "the supporter lookup never runs on Cloud, even with a cached yes", %{user: user} do
@@ -506,7 +466,7 @@ defmodule DawarichWeb.SettingsLiveTest do
     test "every control a user edits in a Rails form stays out of LiveView's patches, so input made before the join survives it",
          %{user: user} do
       for path <-
-            ~w(/settings/general /settings/integrations /settings/integrations?service=photoprism /settings/integrations?service=airtrail /settings/integrations?service=teslamate /settings/integrations?service=trek /users/edit) do
+            ~w(/settings/integrations /settings/integrations?service=photoprism /settings/integrations?service=airtrail /settings/integrations?service=teslamate /settings/integrations?service=trek /users/edit) do
         {:ok, view, _html} = live_as(user, path, on_error: [duplicate_id: :warn])
         doc = view |> render() |> LazyHTML.from_fragment()
         assert_form_isolated(render(view))

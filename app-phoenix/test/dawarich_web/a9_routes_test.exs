@@ -75,7 +75,6 @@ defmodule DawarichWeb.A9RoutesTest do
     {"/trips", DawarichWeb.TripsLive.Index, :index, {DawarichWeb.TripsGate, :index?}},
     {"/trips/:id", DawarichWeb.TripsLive.Show, :show, {DawarichWeb.TripsGate, :show?}},
     {"/places", DawarichWeb.PlacesLive.Index, :index, {DawarichWeb.PlacesGate, :index?}},
-    {"/settings/general", DawarichWeb.SettingsLive.General, :index, nil},
     {"/settings/integrations", DawarichWeb.SettingsLive.Integrations, :index, nil},
     {"/users/edit", DawarichWeb.AccountLive.Edit, :edit, nil},
     {"/insights", DawarichWeb.InsightsLive.Index, :index, nil},

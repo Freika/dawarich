@@ -70,6 +70,66 @@ defmodule Dawarich.SettingsTest do
            ) == [[0, true]]
   end
 
+  test "a time zone change schedules each existing month once and a failed enqueue changes nothing",
+       %{scope: scope} do
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    Repo.query!(
+      "INSERT INTO stats(user_id,year,month,calculation_version,distance,created_at,updated_at) VALUES($1,2025,10,3,0,now(),now())",
+      [scope.user.id]
+    )
+
+    jobs = fn ->
+      db(
+        "SELECT args - 'event_id' FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker' AND args->>'user_id'=$1",
+        [to_string(scope.user.id)]
+      )
+    end
+
+    assert {:ok, _} = Settings.update_general(scope, %{"timezone" => "Europe/Berlin"})
+
+    assert jobs.() == [
+             [
+               %{
+                 "user_id" => scope.user.id,
+                 "year" => 2025,
+                 "month" => 10,
+                 "notify_on_failure" => false
+               }
+             ]
+           ]
+
+    assert {:ok, _} = Settings.update_general(scope, %{"timezone" => "Europe/Berlin"})
+    assert length(jobs.()) == 1
+
+    Repo.query!(
+      "UPDATE stats SET calculation_version=3, repair_deferred_at=NULL WHERE user_id=$1",
+      [scope.user.id]
+    )
+
+    Repo.query!(
+      "ALTER TABLE oban.oban_jobs ADD CONSTRAINT settings_enqueue_refused CHECK(args->>'user_id' <> '#{scope.user.id}') NOT VALID"
+    )
+
+    assert {:error, :save_failed} = Settings.update_general(scope, %{"timezone" => "Asia/Tokyo"})
+    assert settings(scope)["timezone"] == "Europe/Berlin"
+    assert length(jobs.()) == 1
+
+    assert db(
+             "SELECT calculation_version, repair_deferred_at IS NULL FROM stats WHERE user_id=$1",
+             [
+               scope.user.id
+             ]
+           ) == [[3, true]]
+  end
+
   describe "visits" do
     setup do
       ScratchRepo.insert_all("users", [

@@ -10,14 +10,7 @@ defmodule DawarichWeb.SettingsSupporterActions do
       :ok ->
         case Supporter.verify(Repo, conn.assigns.current_user.id, conn.assigns.api_params) do
           {:ok, %{"supporter" => true} = info} ->
-            platform =
-              if is_binary(info["platform"]),
-                do:
-                  info["platform"]
-                  |> String.replace("_", " ")
-                  |> String.split()
-                  |> Enum.map_join(" ", &String.capitalize/1),
-                else: ""
+            platform = DawarichWeb.SettingsLive.GeneralHelpers.platform_name(info["platform"])
 
             SettingsActions.redirect(
               conn,

@@ -8,6 +8,7 @@ defmodule DawarichWeb.CoreComponents do
   attr :class, :string, default: nil
   attr :options, :list, default: []
   attr :display, :string, default: nil
+  attr :hint, :string, default: nil
   attr :rest, :global, include: ~w(placeholder autocomplete min max step rows disabled required)
 
   def input(assigns) do
@@ -36,7 +37,10 @@ defmodule DawarichWeb.CoreComponents do
           class={@class || "toggle toggle-primary"}
           {@rest}
         />
-        <span class="label-text font-medium">{@label}</span>
+        <div>
+          <span class="label-text font-medium">{@label}</span>
+          <p :if={@hint} class="text-sm text-base-content/70 mt-1">{@hint}</p>
+        </div>
       </label>
       <.error :for={message <- @errors}>{message}</.error>
     </div>

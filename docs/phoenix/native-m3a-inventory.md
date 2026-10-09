@@ -122,3 +122,8 @@ Filled in by Tasks 4–11 as tests are removed.
 
 | Removed test (file: case) | Kind | Covered by |
 | --- | --- | --- |
+| `standalone_settings_flow_test.exs`: "standalone general form saves timezone and schedules existing stats atomically" | B (Rails form handler) | `test/dawarich/settings_test.exs` "a time zone change schedules each existing month once and a failed enqueue changes nothing"; `settings_general_live_test.exs` "saving the toggles and the time zone…" (notice, stored zone, re-rendered selection). The 302/session-flash/warden assertions are C (handler-only) |
+| `settings_live_test.exs`: "Rails' morph metas are on here and nowhere else in this slice" | M | none needed: the native page has no Turbo (`native_pages_hotwire_free_test.exs`) |
+| `settings_live_test.exs`: "Cloud hides the test email, the supporter and What's New cards and the Background Jobs tab" (direct `render/1`) | B via markup | `settings_general_live_test.exs` "on Cloud even an admin gets no test email, supporter, What's New or Background Jobs" (mounted page, plus the refused event) |
+| `settings_live_test.exs`: "Rails form controls …" — `/settings/general` entry | C | the native form owns its state (`@form`); "picking a language without saving keeps the choice on the page" |
+| `settings_parity_test.exs`: `general_*_en` (6 Rails HTML parity cases) | M | `settings_general_live_test.exs` (behaviour) and `settings_live_test.exs` rendered-state cases (language order, checked locale, selected zone, SMTP notice, legacy digest key, supporter thanks) |
