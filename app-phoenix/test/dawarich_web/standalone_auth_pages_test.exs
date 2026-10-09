@@ -7,7 +7,7 @@ defmodule DawarichWeb.StandaloneAuthPagesTest do
 
   @endpoint DawarichWeb.Endpoint
   @protected_routes ~w(
-    /achievements /achievements/:key /settings/users/export /insights/details
+    /achievements /achievements/:key /insights/details
     /imports/:id/download /imports/:id /imports/:id/edit /trips /trips/new
     /trips/:id/edit /trips/:id /places /points /tags /tags/new /tags/:id/edit
     /settings/visits /family /family/new /family/edit /family/invitations

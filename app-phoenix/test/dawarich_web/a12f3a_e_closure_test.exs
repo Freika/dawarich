@@ -107,20 +107,23 @@ defmodule DawarichWeb.A12f3aERequestClosureTest do
       |> Jason.decode!()
       |> get_in(["summary", "en"])
 
-    export = get_request(c, "/settings/users/export?id=999999")
-    assert export.status == expected["export"]["status"]
-
-    assert Enum.map(get_resp_header(export, "location"), &URI.parse(&1).path) == [
-             expected["export"]["location"]
-           ]
+    owner = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(9721), "en")
+    assert :ok = Dawarich.UserData.request_export(owner)
 
     assert [[%{"user_id" => 9721}]] =
              Repo.query!("SELECT payload FROM job_outbox WHERE command_type='users.export_data'").rows
 
-    for {kind, body} <- [{"array", "archive[]=x"}, {"object", "archive[nested]=x"}] do
-      conn = post_form(c.session, body, [{"x-csrf-token", c.token}], "/settings/users/import")
-      assert conn.status == expected["containers"][kind]["status"]
-      assert rails_session(conn)["flash"]["flashes"] == expected["containers"][kind]["flash"]
+    for {kind, value} <- [{"array", ["x"]}, {"object", %{"nested" => "x"}}] do
+      assert {:error, :invalid_archive} = Dawarich.UserData.start_import(owner, value)
+
+      assert expected["containers"][kind]["flash"] == %{
+               "alert" =>
+                 DawarichWeb.Translate.t(
+                   "en",
+                   "controllers.settings.users.an_error_occurred_while_starting_the_import_please_try_again",
+                   %{}
+                 )
+             }
     end
 
     Repo.query!(
@@ -164,22 +167,19 @@ defmodule DawarichWeb.A12f3aERequestClosureTest do
 
     manifest = entries |> Map.new() |> Map.fetch!(~c"manifest.json") |> Jason.decode!()
     assert manifest["counts"]["points"] == 1
-    body = URI.encode_query(%{"archive" => Dawarich.RailsMessages.blob_id(blob_id)})
+    signed_id = Dawarich.RailsMessages.blob_id(blob_id)
     foreign = RailsUser.insert!(%{id: 9722, email: "foreign-backup@example.test"})
-    foreign_session = RailsUser.session(foreign.id)
 
-    assert post_form(
-             foreign_session,
-             body,
-             [{"x-csrf-token", DawarichWeb.RailsCsrf.masked_token(foreign_session)}],
-             "/settings/users/import"
-           ).status == 302
+    assert {:error, :invalid_archive} =
+             Dawarich.UserData.start_import(
+               Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(foreign.id), "en"),
+               signed_id
+             )
 
     assert [[0]] ==
              Repo.query!("SELECT count(*) FROM job_outbox WHERE command_type='users.import_data'").rows
 
-    assert post_form(c.session, body, [{"x-csrf-token", c.token}], "/settings/users/import").status ==
-             302
+    assert :ok = Dawarich.UserData.start_import(owner, signed_id)
 
     [[import_event, import_payload]] =
       Repo.query!(
@@ -269,12 +269,6 @@ defmodule DawarichWeb.A12f3aERequestClosureTest do
              ).rows
 
     assert commands() == []
-  end
-
-  defp get_request(c, path) do
-    Phoenix.ConnTest.build_conn()
-    |> Phoenix.ConnTest.put_req_cookie("_dawarich_session", RailsUser.cookie(c.session))
-    |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, :get, path, nil)
   end
 
   defp iso(%NaiveDateTime{} = value),

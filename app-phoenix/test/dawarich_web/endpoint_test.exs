@@ -993,7 +993,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings/general /settings/visits /settings/integrations /settings/integrations?service=trek /settings/trek_sources/1/select_trips /settings/users/export /users/edit /insights /insights?year=all&month=3 /insights/details?year=2024) do
+          ~w(/settings/general /settings/visits /settings/integrations /settings/integrations?service=trek /settings/trek_sources/1/select_trips /users/edit /insights /insights?year=all&month=3 /insights/details?year=2024) do
       assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
     end
   end

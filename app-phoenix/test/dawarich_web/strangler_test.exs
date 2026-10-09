@@ -74,13 +74,13 @@ defmodule DawarichWeb.StranglerTest do
       Phoenix.Router.route_info(
         DawarichWeb.Router,
         "POST",
-        "/settings/users/import",
+        "/trips/42/share_link",
         "www.example.com"
       )
 
-    assert route.rails_key == "user_data"
-    Application.put_env(:dawarich, :rails_routes, ["user_data"])
-    hand_back!("/settings/users/import?source=a12h", "synthetic=a12h&unchanged=1")
+    assert route.rails_key == "trip_shares"
+    Application.put_env(:dawarich, :rails_routes, ["trip_shares"])
+    hand_back!("/trips/42/share_link?source=a12h", "synthetic=a12h&unchanged=1")
   end
 
   @tag a12h_route: true

@@ -12,7 +12,6 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.A9Routes
   import DawarichWeb.StorageRoutes
   import DawarichWeb.MetricsRoutes
-  import DawarichWeb.UserDataRoutes
   import DawarichWeb.HealthRoutes
   import DawarichWeb.OperatorRoutes
   import DawarichWeb.DomainRoutes
@@ -163,7 +162,6 @@ defmodule DawarichWeb.Router do
 
   @native_import %{rails_gate: {DawarichWeb.ImportsGate, :native?}}
 
-  user_data_routes()
 
   pipeline :map_write do
     plug DawarichWeb.HostAuthorization

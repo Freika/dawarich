@@ -374,13 +374,8 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   @tag a12f3a_o07: true
   test "O07: import export trip visit video methods consume native owner outcomes exactly once",
        ctx do
-    assert Strangler.gate_open?(
-             info("GET", "/settings/users/export"),
-             raw(ctx, "HEAD", "/settings/users/export", "")
-           )
-
     routes = i_f_e_t_v_r()
-    assert length(routes) == 40
+    assert length(routes) == 38
     ctx = seed_routes(ctx)
     System.put_env("SELF_HOSTED", "true")
 
@@ -404,49 +399,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     end
 
     Repo.query!("UPDATE users SET settings='{}' WHERE id=8896")
-    Dawarich.Jobs.Ownership.put!(Repo, "command:users.export_data", :oban)
-
-    expected =
-      File.read!("test/fixtures/user_data/http.json")
-      |> Jason.decode!()
-      |> get_in(["en", "export"])
-
-    for hosted <- ["true", "false"], method <- ["GET", "HEAD"] do
-      System.put_env("SELF_HOSTED", hosted)
-      if hosted == "false", do: pinned(ctx, method, "/settings/users/export", "user_data")
-      before = Repo.query!("SELECT count(*) FROM job_outbox").rows
-
-      response =
-        @endpoint.call(raw(ctx, method, "/settings/users/export", ""), @endpoint.init([]))
-
-      assert response.status == expected["status"]
-
-      assert get_resp_header(response, "location") == [
-               "http://www.example.com" <> expected["location"]
-             ]
-
-      assert get_resp_header(response, "x-dawarich-handler") == ["phoenix-user-data"]
-      assert response.resp_body == ""
-      assert [[count]] = before
-      assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[count + 1]]
-      assert commands() == []
-      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-    end
-
     Application.put_env(:dawarich, :rails_routes, [])
-
-    before = Repo.query!("SELECT count(*) FROM job_outbox").rows
-
-    doomed =
-      raw(ctx, "GET", "/settings/users/export", "")
-      |> register_before_send(fn _ -> raise "synthetic post-commit response failure" end)
-
-    error = assert_raise RuntimeError, fn -> @endpoint.call(doomed, @endpoint.init([])) end
-    assert Exception.message(error) =~ "synthetic post-commit response failure"
-    assert [[count]] = before
-    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[count + 1]]
-    assert commands() == []
-    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
 
     for {method, path, headers, bytes} <- [
           {"POST", "/route_videos", [], "foreign_domain=x"},
@@ -489,7 +442,6 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       {"/imports/42/edit", "imports", DawarichWeb.ImportsLive.Edit},
       {"/imports/42/download", "imports", DawarichWeb.ImportsDownload},
       {"/exports", "exports", DawarichWeb.ExportsLive.Index},
-      {"/settings/users/export", "user_data", DawarichWeb.UserDataController},
       {"/trips", "trips", DawarichWeb.TripsLive.Index},
       {"/trips/new", "trips", DawarichWeb.TripsLive.Form},
       {"/trips/42", "trips", DawarichWeb.TripsLive.Show},
@@ -508,7 +460,6 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
         {"DELETE", "/imports/42/extraction", "imports", DawarichWeb.ImportsController},
         {"POST", "/exports", "exports", DawarichWeb.ExportsCreate},
         {"DELETE", "/exports/42", "exports", DawarichWeb.ExportsDelete},
-        {"POST", "/settings/users/import", "user_data", DawarichWeb.UserDataController},
         {"POST", "/trips", "trips", DawarichWeb.TripActions},
         {"PATCH", "/trips/42", "trips", DawarichWeb.TripActions},
         {"PUT", "/trips/42", "trips", DawarichWeb.TripActions},
