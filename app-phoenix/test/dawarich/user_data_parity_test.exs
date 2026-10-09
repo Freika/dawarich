@@ -47,7 +47,6 @@ defmodule Dawarich.UserDataParityTest do
         "SELECT (SELECT count(*) FROM imports),(SELECT count(*) FROM active_storage_attachments),(SELECT count(*) FROM job_outbox)"
       ).rows
 
-
   defp assert_recorded(locale, result, recorded) do
     {kind, key} = Map.fetch!(@outcomes, result)
     assert recorded["flash"] == %{kind => Translate.t(locale, @prefix <> key, %{})}

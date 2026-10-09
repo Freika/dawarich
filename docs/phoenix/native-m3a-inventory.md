@@ -150,28 +150,9 @@ Filled in by Tasks 4–11 as tests are removed.
 | `settings_live_test.exs`: "Rails form controls …" — five integration pane entries | C | `settings_integrations_live_test.exs` "pane patches survive reload and SSL changes are local until save without photo import buttons"; LiveView form state owns edits |
 | `settings_parity_test.exs`: `integrations_*` Rails HTML/Stimulus parity cases | M | `settings_integrations_live_test.exs`, `trek_sources_live_test.exs`, retained `settings_live_test.exs` status/default/upgrade/source-order behaviours; fixtures retained for Task 11 |
 | `standalone_trek_sources_test.exs`: selection-form CSRF/HTTP-action selector, `.html` locale navigation and blank redirect-body assertions | M/R | Native selection form selector; locale tested on canonical `?locale=de` URL; provider failure/disabled state and redirect destinations retained. `.html` refusal: `trek_sources_live_test.exs`; ED-NATIVE-TREK-HTML-VARIANTS |
-
 | `standalone_integrations_flow_test.exs`: Rails form-action/CSRF-token selector | M | Handler transaction and rollback assertions retained with the established `RailsCsrf.masked_token` helper; native form save covered by `settings_integrations_live_test.exs` |
 | `a12f3b_i01_test.exs`: direct legacy pane rendering for masked-secret HTML | M | Existing credential/validation/checkpoint/sentinel behaviours retained; all providers' mounted secret masking covered by `settings_integrations_live_test.exs` |
 | `endpoint_test.exs`: TREK selection in the Puma-owned URL list | R/C | Canonical selection moved to the Phoenix-owned list; `storage_routes_test.exs` asserts `:native_pages` ownership and `trek_sources_live_test.exs` asserts 404 variants |
-
-## Native integrations behaviour coverage (Tasks 6–8)
-
-| Behaviour from the map | Covering tests |
-| --- | --- |
-| Credential saves, sentinel preservation/replacement and URL-only changes for all four providers | `integrations_test.exs`: "credentials save every provider…"; `settings_integrations_live_test.exs`: "each credential pane…", "saving every provider…" |
-| Expired/full-access refusals, Cloud Lite upgrade state, event-time expiry | `integrations_test.exs`: "credential failures…"; `settings_integrations_live_test.exs`: "Lite shows…"; retained `settings_live_test.exs` Cloud Lite case |
-| Normalized connection URLs, failure alerts, notice order/cache refresh, top-level and nested SQL transaction behaviour | Retained `small_parity_integrations_test.exs`, `standalone_integrations_flow_test.exs`, `a12f3b_i01_test.exs`; `integrations_test.exs`: "credential failures…", "photo cache refresh…" |
-| Stored secrets absent from both static and connected HTML | `settings_integrations_live_test.exs`: "each credential pane…"; rewritten `settings_live_test.exs` masked-secret case |
-| Default/unknown pane, nav statuses, admin geocoding link, patch/reload state, SSL warning without saving | Retained `settings_live_test.exs` default/status/geocoding cases; `settings_integrations_live_test.exs`: "pane patches…" |
-| AirTrail/TeslaMate durable jobs, conditional URL rows, repeated sync clicks, selected-pane notice; photo import controls remain elsewhere | `integrations_test.exs`: "sync writes…"; `settings_integrations_live_test.exs`: "AirTrail and TeslaMate sync…", "pane patches…"; existing job-action tests retained |
-| TREK verification, encryption, reconnect/import claim, provider failure and disabled state | `integrations/trek_test.exs`: "create verifies…"; retained `standalone_trek_sources_test.exs`; `trek_sources_live_test.exs`: "foreign malformed…" |
-| Dated active selection, filtered/deduplicated identifiers, atomic job publication, repeat import refusal, clear-token rotation | `integrations/trek_test.exs`: "list and import…", "manual sync…"; `trek_sources_live_test.exs`: "native trip selection…"; retained handler atomic-publication rollback probe |
-| TREK source-order/actions, create navigation, once-per-page sync, disconnect confirmation and retained trip data | Retained `settings_live_test.exs` source-order case; `trek_sources_live_test.exs`: "native create…", "native sync…"; `integrations/trek_test.exs`: "manual sync…" |
-| Owner/malformed ID, active/Pro refusal; existing HTTP CSRF/verbs/referer policy until Task 11 | `integrations/trek_test.exs`: "foreign malformed…"; `trek_sources_live_test.exs`: "foreign malformed…"; retained `standalone_trek_sources_test.exs` HTTP refusal cases |
-| Native route ownership, no Hotwire, integrations query budget at most 6 static / 5 connected | `storage_routes_test.exs`, `native_pages_hotwire_free_test.exs`, `settings_integrations_live_test.exs`: "integrations stays…" |
-
-Repository decisions: ADR-0017 and ED-NATIVE-INTEGRATION-SECRETS / ED-NATIVE-TREK-HTML-VARIANTS. Shared knowledge counterparts: AFFiNE “Dawarich — Standalone integration settings and photo imports” and “Dawarich — Standalone TREK source management” (native milestone 3a addenda).
 | `settings_live_test.exs`: "Rails form controls — every control a user edits in a Rails form stays out of LiveView's patches…" (whole case, after the integrations and account entries were removed) | C (hybrid mechanism) | native forms own their state (`@form`/`phx-change`, or plain posts with no server-rendered values); covered per page by the "typed value stays" / "picking a language" cases |
 | `settings_live_test.exs`: "the import dialog is a Stimulus island with Rails' absolute direct-upload URL" | M | `account_import_upload_test.exs` (presigner, completed upload starts one import, nothing without an upload, cancel) and the node tests for the checksum hook and the direct uploader |
 | `user_data_test.exs`: import-form markup half of "backup form and endpoint result equal Rails markup…" | M | same as above; the endpoint half stays ("backup endpoint results equal Rails in all shipped locales") |
@@ -205,3 +186,21 @@ Repository decisions: ADR-0017 and ED-NATIVE-INTEGRATION-SECRETS / ED-NATIVE-TRE
 | Task 11 — `standalone_auth_pages_test.exs`, `endpoint_test.exs`: `/settings/users/export` in the protected/Phoenix page lists | R | route removed (coexistence still forwards it to Puma) |
 | Task 11 — fixtures `phoenix-fixtures/settings/{general,account,integrations}_*` (40 files) and `phoenix-fixtures/auth/account/*.html` (19 Rails 422 page renders) | M | no remaining reader: the HTML parity cases were removed in Tasks 4, 7 and 9a (rows above); recorded request/response JSON stays (`auth/account/requests.json`, `validation.json`, `api_keys.json`, `user_data/http.json`, `user_data/a12f3a-e04.json`) |
 | Task 11 — `page_envelopes/{rails,routes}.json`, `standalone/html_pages.json` entries for the migrated pages | kept | still read by `page_envelopes_test.exs` and `standalone_html_pages_test.exs`, which pass unchanged |
+
+## Native integrations behaviour coverage (Tasks 6–8)
+
+| Behaviour from the map | Covering tests |
+| --- | --- |
+| Credential saves, sentinel preservation/replacement and URL-only changes for all four providers | `integrations_test.exs`: "credentials save every provider…"; `settings_integrations_live_test.exs`: "each credential pane…", "saving every provider…" |
+| Expired/full-access refusals, Cloud Lite upgrade state, event-time expiry | `integrations_test.exs`: "credential failures…"; `settings_integrations_live_test.exs`: "Lite shows…"; retained `settings_live_test.exs` Cloud Lite case |
+| Normalized connection URLs, failure alerts, notice order/cache refresh, top-level and nested SQL transaction behaviour | Retained `small_parity_integrations_test.exs`, `standalone_integrations_flow_test.exs`, `a12f3b_i01_test.exs`; `integrations_test.exs`: "credential failures…", "photo cache refresh…" |
+| Stored secrets absent from both static and connected HTML | `settings_integrations_live_test.exs`: "each credential pane…"; rewritten `settings_live_test.exs` masked-secret case |
+| Default/unknown pane, nav statuses, admin geocoding link, patch/reload state, SSL warning without saving | Retained `settings_live_test.exs` default/status/geocoding cases; `settings_integrations_live_test.exs`: "pane patches…" |
+| AirTrail/TeslaMate durable jobs, conditional URL rows, repeated sync clicks, selected-pane notice; photo import controls remain elsewhere | `integrations_test.exs`: "sync writes…"; `settings_integrations_live_test.exs`: "AirTrail and TeslaMate sync…", "pane patches…"; existing job-action tests retained |
+| TREK verification, encryption, reconnect/import claim, provider failure and disabled state | `integrations/trek_test.exs`: "create verifies…"; retained `standalone_trek_sources_test.exs`; `trek_sources_live_test.exs`: "foreign malformed…" |
+| Dated active selection, filtered/deduplicated identifiers, atomic job publication, repeat import refusal, clear-token rotation | `integrations/trek_test.exs`: "list and import…", "manual sync…"; `trek_sources_live_test.exs`: "native trip selection…"; retained handler atomic-publication rollback probe |
+| TREK source-order/actions, create navigation, once-per-page sync, disconnect confirmation and retained trip data | Retained `settings_live_test.exs` source-order case; `trek_sources_live_test.exs`: "native create…", "native sync…"; `integrations/trek_test.exs`: "manual sync…" |
+| Owner/malformed ID, active/Pro refusal; existing HTTP CSRF/verbs/referer policy until Task 11 | `integrations/trek_test.exs`: "foreign malformed…"; `trek_sources_live_test.exs`: "foreign malformed…"; retained `standalone_trek_sources_test.exs` HTTP refusal cases |
+| Native route ownership, no Hotwire, integrations query budget at most 6 static / 5 connected | `storage_routes_test.exs`, `native_pages_hotwire_free_test.exs`, `settings_integrations_live_test.exs`: "integrations stays…" |
+
+Repository decisions: ADR-0017 and ED-NATIVE-INTEGRATION-SECRETS / ED-NATIVE-TREK-HTML-VARIANTS. Shared knowledge counterparts: AFFiNE “Dawarich — Standalone integration settings and photo imports” and “Dawarich — Standalone TREK source management” (native milestone 3a addenda).
