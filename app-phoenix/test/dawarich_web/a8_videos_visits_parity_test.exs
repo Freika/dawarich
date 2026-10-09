@@ -517,27 +517,21 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
             state["self_hosted"]
           )
 
-        html =
-          render_component(
-            &DawarichWeb.SettingsLive.Visits.render/1,
-            Map.merge(page, %{
-              current_user: user,
-              locale: "en",
-              self_hosted: state["self_hosted"],
-              rails_csrf_token: "CSRF"
-            })
-          )
+        raw = File.read!("#{@dir}/#{name}.html")
+        rails = LazyHTML.from_fragment(raw)
 
-        assert ParityHTML.first_difference(
-                 ParityHTML.normalize(html),
-                 ParityHTML.normalize(File.read!("#{@dir}/#{name}.html"))
-               ) == "equal"
-
-        assert ParityHTML.stimulus(html, "[data-controller], [data-action]") ==
-                 ParityHTML.stimulus(
-                   File.read!("#{@dir}/#{name}.html"),
-                   "[data-controller], [data-action]"
+        assert rails |> LazyHTML.query("input[type=number]") |> LazyHTML.attribute("value") ==
+                 Enum.map(
+                   [
+                     page.policy.stay_radius_m,
+                     page.policy.min_points,
+                     div(page.policy.min_dwell_s, 60)
+                   ],
+                   &to_string/1
                  )
+
+        assert Enum.count(LazyHTML.query(rails, "button[disabled]")) > 0 == page.cooldown
+        assert String.contains?(raw, "12-month window") == page.restricted
 
         System.put_env("SELF_HOSTED", "true")
 

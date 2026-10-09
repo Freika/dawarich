@@ -175,7 +175,7 @@ defmodule DawarichWeb.A12f3aVClosureTest do
       env("SELF_HOSTED", mode)
       conn = RailsUser.signed_in(ctx.user.id) |> get("/settings/visits")
       assert conn.status == 200
-      assert conn.resp_body =~ "phx-visit-detection-settings"
+      assert conn.resp_body =~ ~s(id="visit-detection-settings")
 
       for method <- [:patch, :put] do
         saved = request(ctx, method, "/settings/visits", ctx.state["params"], "text/html")

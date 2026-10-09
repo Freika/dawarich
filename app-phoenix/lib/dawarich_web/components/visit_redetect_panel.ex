@@ -3,9 +3,9 @@ defmodule DawarichWeb.VisitRedetectPanel do
   use DawarichWeb, :html
   attr :locale, :string, required: true
   attr :cooldown, :boolean, required: true
+  attr :queued, :boolean, default: false
   attr :restricted, :boolean, required: true
   attr :available_at, :string, default: nil
-  attr :rails_csrf_token, :string, default: nil
 
   def panel(assigns) do
     ~H"""
@@ -18,24 +18,21 @@ defmodule DawarichWeb.VisitRedetectPanel do
         <p :if={@restricted} class="text-xs opacity-70">
           {text(@locale, "on_the_lite_plan_re_detection_covers_your_visible_12")}
         </p>
-        <form class="button_to" method="post" action="/visits/redetections">
+        <div>
           <button
-            class={"btn btn-warning " <> if(@cooldown, do: "btn-disabled", else: "")}
-            disabled={if @cooldown, do: "disabled"}
-            data-turbo-confirm={
+            id="redetect-visits"
+            type="button"
+            class="btn btn-warning"
+            disabled={@cooldown or @queued}
+            phx-click="redetect"
+            phx-disable-with={text(@locale, "re_run_detection_on_full_history")}
+            data-confirm={
               text(@locale, "replace_all_suggested_visits_across_your_full_history_confirmed_visits")
             }
-            type="submit"
           >
             {text(@locale, "re_run_detection_on_full_history")}
           </button>
-          <input
-            :if={@rails_csrf_token}
-            type="hidden"
-            name="authenticity_token"
-            value={@rails_csrf_token}
-          />
-        </form>
+        </div>
         <span :if={@cooldown} class="text-xs opacity-70">{text(@locale, "available_again_at")} {@available_at}.</span>
       </div>
     </div>

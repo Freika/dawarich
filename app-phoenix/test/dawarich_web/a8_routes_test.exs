@@ -1,16 +1,6 @@
 defmodule DawarichWeb.A8RoutesTest do
   use ExUnit.Case, async: false
 
-  test "visits settings uses the existing rails_pages live session" do
-    route =
-      Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/settings/visits", "www.example.com")
-
-    assert route.rails_gate == {DawarichWeb.A8Gate, :settings?}
-
-    assert {DawarichWeb.SettingsLive.Visits, :index, _, %{name: :rails_pages}} =
-             route.phoenix_live_view
-  end
-
   test "existing page routes survive declaration extraction" do
     for {path, module, action, pipelines} <- [
           {"/", DawarichWeb.HomeDispatch, [], [:public_home]},

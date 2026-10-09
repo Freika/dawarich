@@ -42,7 +42,6 @@ defmodule DawarichWeb.A8Gate do
   defp bounded_length?(_), do: false
 
   def navigation?(conn, params), do: DawarichWeb.VisitRequestGate.navigation?(conn, params)
-  def settings?(conn, params), do: DawarichWeb.VisitRequestGate.settings?(conn, params)
 
   def scalar_query?(raw, allowed) do
     false = Regex.match?(~r/%(?![0-9A-Fa-f]{2})/, raw)

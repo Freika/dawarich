@@ -19,21 +19,13 @@ defmodule Dawarich.Visits.HistoryRedetect do
     if cooldown?(last, now),
       do: repo.rollback(if(owner == :oban, do: {:cooldown, 429, :native}, else: {:cooldown, 429}))
 
-    zone = Dawarich.UserSettings.safe(settings)["timezone"] || Dawarich.UserTimeZone.zone(%{})
-
-    unless is_binary(zone) and
-             repo.query!(
-               "SELECT 1 FROM pg_timezone_names WHERE name=$1",
-               [Dawarich.TimeZoneName.to_iana(zone)],
-               log: false
-             ).num_rows == 1,
-           do: repo.rollback({:replay, "visit time zone"})
+    zone = Dawarich.UserTimeZone.name(settings, repo)
 
     if owner == :sidekiq do
       Dawarich.RailsCommands.insert!(repo, "visits.web_redetect", %{
         "user_id" => user_id,
         "locale" => locale,
-        "timezone" => Dawarich.TimeZoneName.to_iana(zone)
+        "timezone" => zone
       })
     else
       [[plan]] = repo.query!("SELECT plan FROM users WHERE id=$1", [user_id], log: false).rows
@@ -49,7 +41,7 @@ defmodule Dawarich.Visits.HistoryRedetect do
 
       payload = %{
         "user_id" => user_id,
-        "time_zone" => Dawarich.TimeZoneName.to_iana(zone),
+        "time_zone" => zone,
         "plan_restricted" => restricted
       }
 

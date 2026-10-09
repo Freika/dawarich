@@ -22,6 +22,9 @@ defmodule DawarichWeb.RailsPagesRoutes do
 
           live "/settings/general", DawarichWeb.SettingsLive.General, :index,
             container: {:div, class: "contents"}
+
+          live "/settings/visits", DawarichWeb.SettingsLive.Visits, :index,
+            container: {:div, class: "contents"}
         end
 
         live_session :rails_pages,
@@ -89,10 +92,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/points", DawarichWeb.PointsLive.Index, :index,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.MapDataGate, :points?}}
-
-          live "/settings/visits", DawarichWeb.SettingsLive.Visits, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.A8Gate, :settings?}}
 
           live "/settings/integrations", DawarichWeb.SettingsLive.Integrations, :index,
             container: {:div, class: "contents"}
