@@ -239,6 +239,9 @@ pl:
         create_one_here: Utwórz konto tutaj
         sign_in_accept_invitation: Zaloguj się i zaakceptuj zaproszenie
         log_in: Zaloguj się
+      oidc_auto_login:
+        redirecting_to_your_identity_provider: Przekierowywanie do dostawcy tożsamości…
+        use_another_sign_in_method: Użyj innej metody logowania
       otp_challenge:
         two_factor_authentication: Uwierzytelnianie dwuskładnikowe
         enter_the_6_digit_code_from_your_authenticator_app_to: Wpisz 6-cyfrowy kod z aplikacji uwierzytelniającej, aby kontynuować.

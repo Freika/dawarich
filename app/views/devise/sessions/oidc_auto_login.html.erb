@@ -1,0 +1,29 @@
+<% content_for :head do %>
+  <meta name="turbo-cache-control" content="no-cache">
+<% end %>
+
+<div class="hero min-h-content bg-base-200">
+  <div class="hero-content flex-col w-full my-10">
+    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5 text-center">
+      <span class="loading loading-spinner loading-lg mx-auto mb-4"></span>
+      <p class="text-base-content opacity-70 mb-4"><%= t('.redirecting_to_your_identity_provider') %></p>
+
+      <% config = oauth_button_config(:openid_connect) %>
+      <%= button_to user_openid_connect_omniauth_authorize_path,
+          class: "btn w-full gap-2 #{config[:css_class]}",
+          form: {
+            data: {
+              turbo: false,
+              controller: 'oidc-auto-login',
+              oidc_auto_login_fallback_url_value: new_user_session_path(auto_login: false)
+            }
+          } do %>
+        <%= config[:icon] %>
+        <%= config[:label] %>
+      <% end %>
+
+      <%= link_to t('.use_another_sign_in_method'), new_user_session_path(auto_login: false),
+          class: 'link link-hover text-sm mt-4 block' %>
+    </div>
+  </div>
+</div>

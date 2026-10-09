@@ -8,7 +8,11 @@ class Users::SessionsController < Devise::SessionsController
   prepend_before_action :check_email_password_login_allowed, only: [:create]
 
   def new
-    super
+    attempted = take_oidc_auto_login_attempt
+    return super unless oidc_auto_login?(attempted)
+
+    session[:oidc_auto_login_attempted] = true unless prefetch_request?
+    render :oidc_auto_login
   end
 
   protected
@@ -43,6 +47,24 @@ class Users::SessionsController < Devise::SessionsController
 
     redirect_to root_path,
                 alert: I18n.t('controllers.users.sessions.email_password_login_is_disabled_please_use_oidc_to_sign')
+  end
+
+  # One automatic attempt per visit: the flag set before handing off to the
+  # identity provider is consumed by the next visit, so any return to the
+  # sign-in page (failed callback, abandoned login, back button) shows the
+  # page instead of bouncing straight back to the provider. Prefetches (Turbo
+  # hover, browser speculation) only read the flag; a real visit consumes it.
+  def take_oidc_auto_login_attempt
+    return session[:oidc_auto_login_attempted] if prefetch_request?
+
+    session.delete(:oidc_auto_login_attempted)
+  end
+
+  def oidc_auto_login?(attempted)
+    DawarichSettings.oidc_auto_login_enabled? &&
+      !attempted &&
+      params[:auto_login] != 'false' &&
+      invitation_token.blank?
   end
 
   def load_invitation_context
