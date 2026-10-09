@@ -52,21 +52,28 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     paths = native_paths()
     assert "/tags" in paths
 
-    for path <- paths do
-      conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
-      static = html_response(conn, 200)
-      {:ok, _view, connected} = live(conn)
+    saving =
+      for path <- paths do
+        conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
+        static = html_response(conn, 200)
+        {:ok, _view, connected} = live(conn)
 
-      for {html, phase} <- [{static, :static}, {connected, :connected}], marker <- @markers do
-        refute html =~ marker, "#{path} (#{phase}) contains #{marker}"
+        for {html, phase} <- [{static, :static}, {connected, :connected}], marker <- @markers do
+          refute html =~ marker, "#{path} (#{phase}) contains #{marker}"
+        end
+
+        assert static =~ "/native/app"
+        assert static =~ ~r/<script[^>]*phx-track-static[^>]*\/native\/app/
+
+        forms = for html <- [static, connected], html =~ ~s(phx-submit="save"), do: html
+
+        for html <- forms,
+            do:
+              assert(html =~ ~r/<button[^>]*type="submit"[^>]*phx-disable-with/, "#{path} submit")
+
+        forms != []
       end
 
-      assert static =~ "/native/app"
-      assert static =~ ~r/<script[^>]*phx-track-static[^>]*\/native\/app/
-
-      for html <- [static, connected], html =~ ~s(phx-submit="save") do
-        assert html =~ ~r/<button[^>]*type="submit"[^>]*phx-disable-with/, "#{path} submit"
-      end
-    end
+    assert Enum.count(saving, & &1) >= 2
   end
 end
