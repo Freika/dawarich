@@ -26,6 +26,14 @@ Standalone G44 reference: the pilot's final run on app `1bc05f892` / E2E `e6161a
 
 Pre-existing defect found while measuring: `/users/edit` renders two elements with the HTML id `Flower` (an inline SVG asset), which LiveViewTest rejects unless `on_error: :warn` is passed. The native page must not carry duplicate ids (Task 9a).
 
+## Results after spec-verify (app `3ca5a0654`, E2E `bc2fcea`)
+
+- Full ExUnit, seeds 404 and 202: 10,012 tests, 0 failures, exit 0, all three partitions exit 0.
+- Correction to the Task 12 line below: from Task 11 on, partition 1 never ran. `a12f3b_n01_test.exs` still imported the removed `SettingsFormRoutes` and failed to compile, and the partition summary counted only partitions 2 and 3 ("7147 tests"). Fixed in `808b535f1`. The test then uncovered one stale expectation, the removed `api_keys` auth flow, fixed in `3ca5a0654` together with the dead `api_keys` branches in `AuthGate`.
+- Standalone G44, three full lanes one after another: 525 passed / 0 failed / 51 skipped each.
+- Code identity, checked on the stand: each secret field has one `label[for]`, the API-key placeholder, TeslaMate `autocomplete="current-password"` and `phx-update="ignore"`. In the browser a typed key survives a form change, the server patch carries an empty `value`, and the key is absent from the page HTML.
+- `mix format --check-formatted` and `mix compile --warnings-as-errors --all-warnings` both exit 0. JS is unchanged since Task 12.
+
 ## Results (Task 12, app `8a5a2555d`, E2E `bc2fcea`)
 
 - Full ExUnit, seeds 404 and 202: 7147 tests; the only failures were the two pinned Tailwind output hashes, which moved with the new page classes and were re-pinned (`aadedd502`); both build tests green afterwards.
