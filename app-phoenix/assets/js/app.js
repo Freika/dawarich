@@ -34,3 +34,11 @@ window.addEventListener("dawarich:track", (event) => {
 window.addEventListener("phx:close-dialog", (event) => {
   document.getElementById(event.detail.id)?.close()
 })
+
+window.addEventListener("dawarich:open-dialog", (event) => {
+  event.target.showModal?.()
+})
+
+window.addEventListener("dawarich:close-dialog", (event) => {
+  event.target.close?.()
+})

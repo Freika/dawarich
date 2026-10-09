@@ -17,13 +17,18 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     "RailsStimulus",
     "rails_bridge",
     " inert",
-    "data-rails-form-ready"
+    "data-rails-form-ready",
+    "onclick=",
+    "onchange="
   ]
+  @sessions [:native_pages, :native_admin, :native_background]
+  @secret_free_change_forms ["integration-settings"]
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
     user = FrameSeeds.user!(8411)
+    Repo.query!("UPDATE users SET admin = true WHERE id = 8411")
 
     Repo.insert_all("tags", [
       %{
@@ -71,12 +76,24 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
         do: LazyHTML.to_html(control)
   end
 
+  defp password_forms_with_change(html) do
+    html
+    |> LazyHTML.from_document()
+    |> LazyHTML.query("form[phx-change]")
+    |> Enum.reject(&(List.first(LazyHTML.attribute(&1, "id")) in @secret_free_change_forms))
+    |> Enum.filter(&(LazyHTML.query(&1, "input[type=password]") |> Enum.count() > 0))
+  end
+
   defp native_paths do
     DawarichWeb.Router.__routes__()
-    |> Enum.filter(
-      &match?(%{metadata: %{phoenix_live_view: {_, _, _, %{name: :native_pages}}}}, &1)
-    )
-    |> Enum.map(&String.replace(&1.path, ":id", "84111"))
+    |> Enum.filter(fn
+      %{metadata: %{phoenix_live_view: {_, _, _, %{name: name}}}} -> name in @sessions
+      _ -> false
+    end)
+    |> Enum.map(fn %{path: path} ->
+      id = if String.starts_with?(path, "/settings/users"), do: "8411", else: "84111"
+      String.replace(path, ":id", id)
+    end)
   end
 
   test "every native page renders without Turbo, Stimulus or the importmap", %{user: user} do
@@ -99,9 +116,10 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
           refute html =~ marker, "#{path} (#{phase}) contains #{marker}"
         end
 
-        for html <- [static, connected],
-            do:
-              assert(unlabelled(html) == [], "#{path} has unlabelled or doubly labelled controls")
+        for html <- [static, connected] do
+          assert unlabelled(html) == [], "#{path} has unlabelled or doubly labelled controls"
+          assert password_forms_with_change(html) == [], "#{path} sends passwords on phx-change"
+        end
 
         assert static =~ "/native/app"
         assert static =~ ~r/<script[^>]*phx-track-static[^>]*\/native\/app/

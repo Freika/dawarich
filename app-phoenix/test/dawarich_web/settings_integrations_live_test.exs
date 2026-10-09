@@ -135,6 +135,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
         params = %{"settings" => %{(service <> "_url") => c.url, secret => "synthetic-typed"}}
         view |> form("#integration-settings") |> render_change(params)
         refute server_html(view) =~ "synthetic-typed"
+        refute inspect(:sys.get_state(view.pid), limit: :infinity) =~ "synthetic-typed"
         assert has_element?(view, "#settings_#{secret}[phx-update='ignore']")
         refute Accounts.settings(c.user.id)[secret] == "synthetic-typed"
         view |> form("#integration-settings") |> render_submit(params)

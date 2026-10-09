@@ -48,6 +48,29 @@ defmodule DawarichWeb.CoreComponents do
     """
   end
 
+  defp field(%{type: "rails_checkbox"} = assigns) do
+    assigns = assign(assigns, :checked, assigns.field.value in [true, "1", 1, "true"])
+
+    ~H"""
+    <div class="form-control">
+      <label class="label cursor-pointer justify-start gap-4" for={@field.id}>
+        <input type="hidden" name={@field.name} value="0" />
+        <input
+          type="checkbox"
+          id={@field.id}
+          name={@field.name}
+          value="1"
+          checked={@checked}
+          class={@class || "checkbox checkbox-primary"}
+          {@rest}
+        />
+        <span class="label-text font-medium">{@label}</span>
+      </label>
+      <.error :for={message <- @errors}>{message}</.error>
+    </div>
+    """
+  end
+
   defp field(%{type: "select"} = assigns) do
     ~H"""
     <div class="form-control">

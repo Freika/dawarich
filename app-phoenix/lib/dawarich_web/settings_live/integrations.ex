@@ -40,7 +40,7 @@ defmodule DawarichWeb.SettingsLive.Integrations do
       do: {:noreply, failure(socket, :pro_required)}
 
   def handle_event("change", %{"settings" => params}, socket) do
-    values = Map.merge(socket.assigns.form.params, params)
+    values = Map.merge(socket.assigns.form.params, Map.drop(params, @secrets))
     {:noreply, assign(socket, :form, to_form(values, as: :settings))}
   end
 
