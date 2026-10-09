@@ -38,10 +38,7 @@ defmodule DawarichWeb.OperatorRedirect do
     end
   end
 
-  def operator?(%{admin: true}),
-    do: LayoutAssigns.self_hosted?() or configured?()
-
-  def operator?(_), do: false
+  def operator?(user), do: Dawarich.Admin.OperatorGrant.operator?(user)
 
   def background?(user),
     do: not is_nil(user) and (LayoutAssigns.self_hosted?() or operator?(user))
@@ -56,13 +53,6 @@ defmodule DawarichWeb.OperatorRedirect do
       do: Map.put(session, "operator_authorized", true),
       else: session
   end
-
-  defp configured?,
-    do:
-      present?(System.get_env("SIDEKIQ_USERNAME")) and
-        present?(System.get_env("SIDEKIQ_PASSWORD"))
-
-  defp present?(value), do: is_binary(value) and String.trim(value) != ""
 
   defp basic?(conn) do
     case Plug.BasicAuth.parse_basic_auth(conn) do

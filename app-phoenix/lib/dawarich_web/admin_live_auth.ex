@@ -53,11 +53,8 @@ defmodule DawarichWeb.AdminLiveAuth do
     end
   end
 
-  defp current_identity?(%{encrypted_password: original}, %{encrypted_password: current})
-       when is_binary(original) and is_binary(current),
-       do: Plug.Crypto.secure_compare(String.slice(original, 0, 29), String.slice(current, 0, 29))
-
-  defp current_identity?(_, _), do: false
+  defp current_identity?(original, current),
+    do: Dawarich.Admin.Access.same_identity?(original, current)
 
   defp operator_context(session, socket) do
     if connected?(socket),

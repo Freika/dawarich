@@ -3,7 +3,7 @@ defmodule DawarichWeb.AdminGate do
 
   alias Dawarich.Admin.{InstancePage, UsersPage}
   alias Dawarich.Auth.Admission
-  alias Dawarich.{Repo, TripSettings, UserTimeZone}
+  alias Dawarich.Repo
   alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
 
   @markers ~w(client aff via referral dawarich_client invitation_token pending_import_ticket)
@@ -26,20 +26,7 @@ defmodule DawarichWeb.AdminGate do
 
   def background_route?(conn, _params), do: eligible?(conn, :background)
 
-  def supported?(user) do
-    settings = Dawarich.UserSettings.get(user)
-
-    case TripSettings.read(settings) do
-      {:ok, _} ->
-        zone = settings["timezone"] || System.get_env("TIME_ZONE", "Europe/Berlin")
-        TripSettings.zone?(%{"timezone" => zone}, UserTimeZone.name(settings))
-
-      _ ->
-        false
-    end
-  rescue
-    _ -> false
-  end
+  def supported?(user), do: Dawarich.Admin.Access.supported?(user)
 
   defp eligible?(conn, mode) do
     query = Plug.Conn.Query.decode(conn.query_string)
