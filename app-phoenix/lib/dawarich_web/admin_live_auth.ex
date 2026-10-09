@@ -2,10 +2,27 @@ defmodule DawarichWeb.AdminLiveAuth do
   @moduledoc false
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [attach_hook: 4, redirect: 2, connected?: 1, get_connect_info: 2]
+
+  import Phoenix.LiveView,
+    only: [attach_hook: 4, redirect: 2, connected?: 1, get_connect_info: 2, put_flash: 3]
 
   alias Dawarich.Accounts
-  alias DawarichWeb.{AdminGate, LayoutAssigns, LiveAuth, OperatorGrant, OperatorRedirect}
+  alias Dawarich.Accounts.Scope
+
+  alias DawarichWeb.{
+    AdminGate,
+    LayoutAssigns,
+    LiveAuth,
+    OperatorGrant,
+    OperatorRedirect,
+    Translate
+  }
+
+  def on_mount(:native_admin, params, session, socket),
+    do: on_mount(:admin, params, session, assign(socket, :native, true))
+
+  def on_mount(:native_background, params, session, socket),
+    do: on_mount(:background, params, session, assign(socket, :native, true))
 
   def on_mount(mode, params, session, socket) when mode in [:admin, :background] do
     socket =
@@ -15,10 +32,13 @@ defmodule DawarichWeb.AdminLiveAuth do
       |> attach_hook(:admin_role_event, :handle_event, fn _event, _params, socket ->
         authorize(socket)
       end)
-      |> attach_hook(:admin_role_params, :handle_params, fn _params, _uri, socket ->
-        authorize(socket)
+      |> attach_hook(:admin_role_params, :handle_params, fn _params, uri, socket ->
+        socket |> track_uri(uri) |> authorize()
       end)
       |> attach_hook(:admin_role_info, :handle_info, fn _message, socket -> authorize(socket) end)
+      |> attach_hook(:admin_role_async, :handle_async, fn _name, _result, socket ->
+        authorize(socket)
+      end)
 
     case LiveAuth.on_mount(:default, params, session, socket) do
       {:cont, socket} -> authorize(socket)
@@ -38,10 +58,22 @@ defmodule DawarichWeb.AdminLiveAuth do
         (socket.assigns.admin_mode == :background and
            operator_authorized?(user, socket))
 
-    if hosting and not is_nil(user) and current_identity?(actor, user) and
-         (socket.assigns.admin_mode == :background or user.admin == true) and
-         AdminGate.supported?(user) do
-      socket = assign(socket, :current_user, user)
+    refusal =
+      cond do
+        is_nil(user) or not current_identity?(actor, user) -> :stale_session
+        not hosting and socket.assigns.admin_mode == :background -> :operator
+        not hosting -> :unauthorized
+        socket.assigns.admin_mode == :admin and user.admin != true -> :unauthorized
+        not AdminGate.supported?(user) -> :unsupported
+        true -> nil
+      end
+
+    if is_nil(refusal) do
+      socket =
+        socket
+        |> assign(:current_user, user)
+        |> assign(:current_scope, Scope.for_user(user, socket.assigns[:locale]))
+
       socket = if user.admin == true, do: socket, else: assign(socket, :health, nil)
       {:cont, socket}
     else
@@ -49,8 +81,33 @@ defmodule DawarichWeb.AdminLiveAuth do
        socket
        |> assign(:current_user, user)
        |> assign(:health, nil)
-       |> redirect(to: request_url(socket))}
+       |> refuse(refusal)}
     end
+  end
+
+  defp refuse(socket, :stale_session), do: redirect(socket, to: "/users/sign_in")
+  defp refuse(socket, :unsupported), do: redirect(socket, to: "/settings/general")
+  defp refuse(socket, :operator), do: redirect(socket, to: request_url(socket))
+
+  defp refuse(socket, :unauthorized),
+    do:
+      socket
+      |> put_flash(
+        :alert,
+        Translate.t(
+          socket.assigns[:locale] || "en",
+          "controllers.application.you_are_not_authorized_to_perform_this_action",
+          %{}
+        )
+      )
+      |> redirect(to: "/")
+
+  defp track_uri(socket, uri) do
+    %URI{path: path, query: query} = URI.parse(uri)
+
+    socket
+    |> assign(:request_path, LayoutAssigns.safe_path(path))
+    |> assign(:query_params, if(query, do: URI.decode_query(query), else: %{}))
   end
 
   defp current_identity?(original, current),

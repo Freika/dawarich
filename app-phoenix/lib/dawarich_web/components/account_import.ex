@@ -1,6 +1,7 @@
 defmodule DawarichWeb.AccountImport do
   @moduledoc false
   use DawarichWeb, :html
+  alias Phoenix.LiveView.JS
 
   def dialog(assigns) do
     assigns =
@@ -69,7 +70,11 @@ defmodule DawarichWeb.AccountImport do
             {error_text(@locale, error)}
           </p>
           <div class="modal-action flex-col-reverse sm:flex-row">
-            <button type="button" class="btn w-full sm:w-auto" onclick="import_modal.close()">
+            <button
+              type="button"
+              class="btn w-full sm:w-auto"
+              phx-click={JS.dispatch("dawarich:close-dialog", to: "#import_modal")}
+            >
               {t(@locale, "devise.registrations.edit.cancel", %{})}
             </button>
             <button

@@ -3141,6 +3141,9 @@ zh:
       this_feature_requires_a_pro_plan: 此功能需要 Pro 计划。
       your_account_has_been_deleted: 您的帐户已被删除。
       you_are_not_authorized_to_perform_this_action: 您无权执行此操作。
+      admin_writes_unavailable_with_oidc: "通过 OIDC 或 Google 登录的实例无法进行管理更改。请改用环境变量设置这些值。"
+      admin_encryption_unavailable: "无法保存密钥，因为此实例未配置加密。"
+      admin_action_failed: "出了点问题，请重试。"
       family_plan_required: 此功能需要家庭计划。
     areas:
       created: 区域创建成功！

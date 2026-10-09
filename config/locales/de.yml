@@ -3152,6 +3152,9 @@ de:
       this_feature_requires_a_pro_plan: Diese Funktion benötigt einen Pro-Plan.
       your_account_has_been_deleted: Dein Konto wurde gelöscht.
       you_are_not_authorized_to_perform_this_action: Du bist nicht berechtigt, diese Aktion auszuführen.
+      admin_writes_unavailable_with_oidc: "Admin-Änderungen sind auf Instanzen mit Anmeldung über OIDC oder Google nicht verfügbar. Setze diese Werte stattdessen über Umgebungsvariablen."
+      admin_encryption_unavailable: "Geheime Werte können nicht gespeichert werden, weil auf dieser Instanz keine Verschlüsselung eingerichtet ist."
+      admin_action_failed: "Etwas ist schiefgelaufen. Bitte versuche es erneut."
       family_plan_required: Für diese Funktion ist der Family-Tarif erforderlich.
     areas:
       created: Bereich erfolgreich erstellt!

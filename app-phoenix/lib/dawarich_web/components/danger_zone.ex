@@ -1,6 +1,7 @@
 defmodule DawarichWeb.DangerZone do
   @moduledoc false
   use DawarichWeb, :html
+  alias Phoenix.LiveView.JS
 
   attr :locale, :string, required: true
   attr :user, :map, required: true
@@ -55,7 +56,7 @@ defmodule DawarichWeb.DangerZone do
           <button
             type="button"
             class="btn btn-outline w-full sm:w-auto"
-            onclick="import_modal.showModal()"
+            phx-click={JS.dispatch("dawarich:open-dialog", to: "#import_modal")}
           >{t(@locale, "devise.registrations.edit.import_my_data", %{})}</button>
         </div>
         <div class="rounded-2xl border border-error/30 bg-error/5 p-4">
@@ -73,7 +74,7 @@ defmodule DawarichWeb.DangerZone do
             <button
               type="button"
               class="btn btn-error btn-outline w-full sm:w-auto"
-              onclick="delete_account_modal.showModal()"
+              phx-click={JS.dispatch("dawarich:open-dialog", to: "#delete_account_modal")}
             >{t(@locale, "devise.registrations.edit.cancel_my_account", %{})}</button>
           </div>
         </div>
@@ -150,7 +151,7 @@ defmodule DawarichWeb.DangerZone do
                 <button
                   type="button"
                   class="btn w-full sm:w-auto"
-                  onclick="delete_account_modal.close()"
+                  phx-click={JS.dispatch("dawarich:close-dialog", to: "#delete_account_modal")}
                 >{t(@locale, "devise.registrations.edit.cancel", %{})}</button>
                 <button type="submit" class="btn btn-error w-full sm:w-auto">{@submit}</button>
               </div>

@@ -4038,6 +4038,9 @@ fr:
       your_account_has_been_deleted: Votre compte a été supprimé.
       you_are_not_authorized_to_perform_this_action: Vous n'êtes pas autorisé à effectuer
         cette action.
+      admin_writes_unavailable_with_oidc: "Les modifications d'administration ne sont pas disponibles sur les instances qui se connectent via OIDC ou Google. Définissez plutôt ces valeurs avec des variables d'environnement."
+      admin_encryption_unavailable: "Les secrets ne peuvent pas être enregistrés, car le chiffrement n'est pas configuré sur cette instance."
+      admin_action_failed: "Une erreur s'est produite. Veuillez réessayer."
       family_plan_required: Cette fonctionnalité nécessite un plan Familial.
     areas:
       created: Zone créée avec succès !

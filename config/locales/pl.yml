@@ -3141,6 +3141,9 @@ pl:
       this_feature_requires_a_pro_plan: Ta funkcja wymaga planu Pro.
       your_account_has_been_deleted: Twoje konto zostało usunięte.
       you_are_not_authorized_to_perform_this_action: Nie masz uprawnień do wykonania tej akcji.
+      admin_writes_unavailable_with_oidc: "Zmiany administracyjne nie są dostępne w instancjach z logowaniem przez OIDC lub Google. Ustaw te wartości za pomocą zmiennych środowiskowych."
+      admin_encryption_unavailable: "Nie można zapisać sekretów, ponieważ szyfrowanie nie jest skonfigurowane w tej instancji."
+      admin_action_failed: "Coś poszło nie tak. Spróbuj ponownie."
       family_plan_required: Ta funkcja wymaga planu Rodzinnego.
     areas:
       created: Obszar utworzono pomyślnie!

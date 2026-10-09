@@ -125,4 +125,25 @@ defmodule DawarichWeb.NativeShellTest do
     assert html =~ "is bad"
     assert html =~ "is taken"
   end
+
+  test "rails checkbox posts 0 when unchecked and 1 when checked with one label" do
+    for {value, checked} <- [{"1", true}, {"0", false}, {true, true}, {nil, false}] do
+      form = Phoenix.Component.to_form(%{"admin" => value}, as: :user)
+
+      html =
+        render_component(&CoreComponents.input/1,
+          field: form[:admin],
+          type: "rails_checkbox",
+          label: "Admin"
+        )
+
+      assert query(html, "input[type=hidden][name='user[admin]']") |> LazyHTML.attribute("value") ==
+               ["0"]
+
+      box = query(html, "input[type=checkbox][name='user[admin]']")
+      assert LazyHTML.attribute(box, "value") == ["1"]
+      assert LazyHTML.attribute(box, "checked") != [] == checked
+      assert query(html, "label") |> Enum.count() == 1
+    end
+  end
 end

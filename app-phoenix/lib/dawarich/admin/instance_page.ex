@@ -71,6 +71,15 @@ defmodule Dawarich.Admin.InstancePage do
 
   def section_keys(section), do: Map.fetch!(@sections, section)
 
+  def sections, do: Map.keys(@sections)
+
+  def field_order("experimental"),
+    do:
+      Enum.flat_map(Dawarich.Experimental.entries(), &(&1.config ++ &1.toggles))
+      |> Enum.map(&to_string/1)
+
+  def field_order(section), do: section_keys(section)
+
   def section_status(data, section) do
     fields = Enum.map(section_keys(section), &Map.fetch!(data.fields, &1))
 

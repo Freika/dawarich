@@ -1,6 +1,7 @@
 defmodule DawarichWeb.NavbarEnd do
   @moduledoc false
   use DawarichWeb, :html
+  alias Phoenix.LiveView.JS
 
   import DawarichWeb.NavbarParts, only: [help_links: 1]
 
@@ -156,7 +157,11 @@ defmodule DawarichWeb.NavbarEnd do
       )}</a>
     </li>
     <li>
-      <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
+      <a
+        onclick={!@native && "getting_started.showModal()"}
+        phx-click={@native && JS.dispatch("dawarich:open-dialog", to: "#getting_started")}
+        class="relative whitespace-nowrap"
+      >
         {t(@locale, "shared.navbar.get_started", %{})}
         <span
           :if={@onboarding}

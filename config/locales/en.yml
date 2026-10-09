@@ -3074,6 +3074,9 @@ en:
       this_feature_requires_a_pro_plan: This feature requires a Pro plan.
       your_account_has_been_deleted: Your account has been deleted.
       you_are_not_authorized_to_perform_this_action: You are not authorized to perform this action.
+      admin_writes_unavailable_with_oidc: "Admin changes are not available on instances that sign in through OIDC or Google. Set these values with environment variables instead."
+      admin_encryption_unavailable: "Secrets can't be saved because encryption is not configured on this instance."
+      admin_action_failed: "Something went wrong. Please try again."
       family_plan_required: This feature requires a Family plan.
     areas:
       created: Area created successfully!
