@@ -57,7 +57,7 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
     assert html =~ "Pinned by MAP_MATCHING_ENABLED"
     assert html =~ "Pinned by MAP_MATCHING_SHADOW_MODE"
     assert html =~ "coordinates, timestamps, and GPS accuracy"
-    assert html =~ "data-controller=\"map-matching-demo\""
+    assert html =~ ~s(phx-hook="MapMatchingDemo")
 
     for key <- ~w(map_matching_enabled map_matching_shadow_mode) do
       assert Enum.count(
@@ -257,15 +257,19 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
     end
   end
 
-  test "Berlin demo mounts the native Stimulus bridge", c do
+  test "Berlin demo mounts the native map hook with both route buttons", c do
     html = page(c.context)
 
     assert Enum.count(
              LazyHTML.query(
                LazyHTML.from_fragment(html),
-               "#map-matching-demo[phx-hook='RailsStimulus'][phx-update='ignore'][data-controller='map-matching-demo']"
+               "#map-matching-demo[phx-hook='MapMatchingDemo'][phx-update='ignore']:not([data-controller]) [data-demo-map]"
              )
            ) == 1
+
+    assert Enum.count(
+             LazyHTML.query(LazyHTML.from_fragment(html), "#map-matching-demo button[data-mode]")
+           ) == 2
   end
 
   defp page(context) do

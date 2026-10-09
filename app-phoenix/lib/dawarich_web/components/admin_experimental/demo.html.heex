@@ -1,9 +1,8 @@
 <figure
   class="overflow-hidden rounded-box border border-base-content/10 bg-base-100"
-  data-controller="map-matching-demo"
   data-testid="map-matching-example"
   id="map-matching-demo"
-  phx-hook="RailsStimulus"
+  phx-hook="MapMatchingDemo"
   phx-update="ignore"
 >
   <div class="relative">
@@ -11,13 +10,13 @@
       class="h-72 w-full bg-base-300 sm:h-80"
       role="img"
       aria-label={t(@locale, "admin.settings.show.map_matching.example_alt", %{})}
-      data-map-matching-demo-target="map"
+      data-demo-map
       data-testid="map-matching-demo-map"
     >
     </div>
     <div
       class="pointer-events-none absolute inset-0 grid place-items-center bg-base-200"
-      data-map-matching-demo-target="loading"
+      data-demo-loading
     >
       <span class="loading loading-spinner loading-md text-primary" aria-hidden="true"></span>
     </div>
@@ -37,8 +36,6 @@
         class={"btn btn-sm h-auto min-h-8 py-2 whitespace-normal " <> if(mode == "matched", do: "btn-success", else: "btn-ghost btn-outline")}
         aria-pressed={to_string(mode == "matched")}
         data-mode={mode}
-        data-map-matching-demo-target="button"
-        data-action="map-matching-demo#select"
       >
         {t(@locale, "admin.settings.show.map_matching." <> mode <> "_label", %{})}
       </button>

@@ -102,7 +102,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
         for(
           service <- ~w(photoprism airtrail teslamate trek),
           do: "/settings/integrations?service=#{service}"
-        )
+        ) ++ ["/admin/settings?section=experimental"]
 
     assert "/tags" in paths
 

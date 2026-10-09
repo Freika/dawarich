@@ -40,6 +40,26 @@ defmodule Dawarich.Build.NativeAssetsTest do
     assert length(chunks) > 1
   end
 
+  test "the map-matching demo is a lazily loaded chunk and MapLibre stays an external URL import",
+       %{tmp_dir: dir} do
+    inputs = dir |> build!() |> inputs()
+    app = File.read!(Path.join(dir, "app.js"))
+    chunks = for path <- Path.wildcard(Path.join(dir, "*.js")), do: File.read!(path)
+
+    refute app =~ "mttdcBceuqX"
+    assert Enum.any?(chunks, &(&1 =~ "mttdcBceuqX"))
+    assert app =~ ~s|import("/maplibre/6.4.1/maplibre-gl.mjs")|
+    refute Enum.any?(inputs, &String.contains?(&1, "maplibre"))
+    refute Enum.any?(inputs, &String.contains?(&1, "app/javascript"))
+  end
+
+  test "the vendored MapLibre module and the basemap styles the demo loads ship in the public root" do
+    for path <-
+          ~w(maplibre/6.4.1/maplibre-gl.mjs maps_maplibre/styles/light.json maps_maplibre/styles/dark.json) do
+      assert File.regular?(Dawarich.RailsRoot.join("public/" <> path)), path
+    end
+  end
+
   test "the endpoint serves files from the native output directory" do
     native = Application.app_dir(:dawarich, "priv/static/native")
     probe = "probe-#{System.unique_integer([:positive])}.js"
