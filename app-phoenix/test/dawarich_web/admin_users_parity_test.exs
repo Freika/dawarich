@@ -14,34 +14,20 @@ defmodule DawarichWeb.AdminUsersParityTest do
     :ok
   end
 
-  test "client-owned admin and extraction dialogs ignore LiveView child patches" do
-    admin =
-      render_component(&DawarichWeb.AdminUserDialogs.dialogs/1,
-        locale: "en",
-        rows: [%{id: 2, email: "dialog@dawarich.test"}],
-        actor: %{id: 1},
-        rails_csrf_token: "synthetic-csrf"
-      )
-
-    extraction =
+  test "unmigrated extraction dialog keeps its isolated HTTP behavior" do
+    html =
       render_component(&DawarichWeb.ImportsExtractionDialog.dialog/1,
         id: 3,
         locale: "en",
         csrf: "synthetic-csrf"
       )
 
-    dialogs = LazyHTML.from_fragment(admin <> extraction) |> LazyHTML.query("dialog")
+    assert LazyHTML.attribute(
+             LazyHTML.query(LazyHTML.from_fragment(html), "dialog"),
+             "phx-update"
+           ) == ["ignore"]
 
-    assert LazyHTML.attribute(dialogs, "id") == [
-             "create_user",
-             "delete_user_2",
-             "extraction-dialog-3"
-           ]
-
-    assert LazyHTML.attribute(dialogs, "phx-update") == ["ignore", "ignore", "ignore"]
-    assert LazyHTML.attribute(dialogs, "open") == []
-    assert_form_isolated(admin)
-    assert_form_isolated(extraction)
+    assert_form_isolated(html)
   end
 
   for name <- @cases do
@@ -56,7 +42,10 @@ defmodule DawarichWeb.AdminUsersParityTest do
       html =
         render_component(
           &UsersIndex.render/1,
-          Map.merge(context, Map.merge(page, %{create_email: "", form_version: 0}))
+          Map.merge(
+            context,
+            Map.merge(page, %{create_email: "", form_version: 0, delete_id: nil, flash: %{}})
+          )
         )
 
       ids =

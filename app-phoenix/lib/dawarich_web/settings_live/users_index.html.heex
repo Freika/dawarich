@@ -86,34 +86,11 @@
     </div>
   </div>
 </div>
-<dialog id="create_user" class="modal">
-  <div class="modal-box">
-    <h2 class="text-2xl font-bold">
-      {t(@locale, "settings.users.index.create_a_new_user", %{})}
-    </h2>
-    <form id={"create-user-form-#{@form_version}"}>
-      <label for="create-user-email">{t(@locale, "settings.users.index.email", %{})}</label>
-      <input
-        id="create-user-email"
-        type="email"
-        name="user[email]"
-        value={@create_email}
-        class="input input-bordered w-full"
-      />
-      <label for="create-user-password">{t(@locale, "settings.users.index.password", %{})}</label>
-      <input
-        id="create-user-password"
-        type="password"
-        name="user[password]"
-        value=""
-        autocomplete="new-password"
-        class="input input-bordered w-full"
-      />
-    </form>
-    <button
-      type="button"
-      class="btn"
-      phx-click={JS.dispatch("dawarich:close-dialog", to: "#create_user")}
-    >{t(@locale, "settings.users.index.close", %{})}</button>
-  </div>
-</dialog>
+<AdminUserDialogs.dialogs
+  locale={@locale}
+  rows={@data.rows}
+  create_email={@create_email}
+  form_version={@form_version}
+  delete_id={@delete_id}
+  error={@flash["alert"]}
+/>

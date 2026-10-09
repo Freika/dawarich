@@ -4,7 +4,7 @@ defmodule DawarichWeb.SettingsLive.UsersIndex do
   import DawarichWeb.ListParts, only: [page_header: 1]
   import DawarichWeb.CoreComponents, only: [input: 1]
   alias Dawarich.Admin.Users
-  alias DawarichWeb.{AdminUI, AdminUsersTable, Paginator, SettingsParts}
+  alias DawarichWeb.{AdminUI, AdminUserDialogs, AdminUsersTable, Paginator, SettingsParts}
   alias Phoenix.LiveView.JS
 
   @impl true
@@ -12,6 +12,7 @@ defmodule DawarichWeb.SettingsLive.UsersIndex do
     {:ok,
      assign(socket,
        create_open: false,
+       delete_id: nil,
        create_email: "",
        form_version: 0,
        data: %{rows: [], registration: false, search: nil, page: 1, pages: 0},
@@ -52,7 +53,72 @@ defmodule DawarichWeb.SettingsLive.UsersIndex do
     {:noreply, push_patch(socket, to: path)}
   end
 
-  def handle_event("open_create", _, socket), do: {:noreply, assign(socket, :create_open, true)}
+  def handle_event("open_create", _, socket),
+    do:
+      {:noreply,
+       assign(socket,
+         create_open: true,
+         create_email: "",
+         form_version: socket.assigns.form_version + 1
+       )}
+
+  def handle_event("close_create", _, socket),
+    do:
+      {:noreply,
+       assign(socket,
+         create_open: false,
+         create_email: "",
+         form_version: socket.assigns.form_version + 1
+       )}
+
+  def handle_event("create_user", %{"user" => params}, socket) do
+    socket = assign(socket, :form_version, socket.assigns.form_version + 1)
+
+    case Users.create(socket.assigns.current_scope, params) do
+      {:ok, _id} ->
+        {:noreply,
+         socket
+         |> assign(create_email: "", create_open: false)
+         |> reload()
+         |> push_event("close-dialog", %{id: "create_user"})
+         |> AdminUI.notice("controllers.settings.users.user_was_successfully_created")}
+
+      {:error, reason} ->
+        email = if is_map(params) and is_binary(params["email"]), do: params["email"], else: ""
+        {:noreply, socket |> assign(:create_email, email) |> AdminUI.refuse(reason)}
+    end
+  rescue
+    _ -> {:noreply, AdminUI.refuse(socket, :unavailable)}
+  end
+
+  def handle_event("open_delete", %{"id" => id}, socket) do
+    case Users.get(socket.assigns.current_scope, id, :edit) do
+      {:ok, target} -> {:noreply, assign(socket, :delete_id, target.id)}
+      {:error, reason} -> {:noreply, AdminUI.refuse(socket, reason)}
+    end
+  end
+
+  def handle_event("cancel_delete", _, socket), do: {:noreply, assign(socket, :delete_id, nil)}
+
+  def handle_event("delete_user", _, %{assigns: %{delete_id: nil}} = socket),
+    do: {:noreply, AdminUI.refuse(socket, :invalid_input)}
+
+  def handle_event("delete_user", _, socket) do
+    case Users.delete(socket.assigns.current_scope, socket.assigns.delete_id) do
+      {:ok, :scheduled} ->
+        {:noreply,
+         socket
+         |> assign(:delete_id, nil)
+         |> reload()
+         |> push_event("close-dialog", %{id: "delete_user"})
+         |> AdminUI.notice(
+           "controllers.settings.users.user_deletion_has_been_initiated_the_account_will_be_fully"
+         )}
+
+      {:error, reason} ->
+        {:noreply, AdminUI.refuse(socket, reason)}
+    end
+  end
 
   def handle_event("update_registration", params, socket) do
     case Users.update_registration(socket.assigns.current_scope, params) do
@@ -71,4 +137,11 @@ defmodule DawarichWeb.SettingsLive.UsersIndex do
   end
 
   def handle_event(_, _, socket), do: {:noreply, AdminUI.refuse(socket, :invalid_input)}
+
+  defp reload(socket) do
+    case page(socket.assigns.query, socket.assigns) do
+      {:ok, page} -> assign(socket, page)
+      {:error, reason} -> AdminUI.refuse(socket, reason)
+    end
+  end
 end

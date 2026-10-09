@@ -3,6 +3,7 @@ defmodule DawarichWeb.AdminUsersTable do
   use DawarichWeb, :html
   import DawarichWeb.HumanDatetime, only: [human_datetime: 1]
   alias DawarichWeb.NumberFormat
+  alias Phoenix.LiveView.JS
 
   attr :locale, :string, required: true
   attr :rows, :list, required: true
@@ -60,8 +61,10 @@ defmodule DawarichWeb.AdminUsersTable do
             <button
               :if={user.id != @actor.id}
               class="btn btn-error btn-sm"
-              phx-click="open_delete"
-              phx-value-id={user.id}
+              phx-click={
+                JS.push("open_delete", value: %{id: user.id})
+                |> JS.dispatch("dawarich:open-dialog", to: "#delete_user")
+              }
             >{t(@locale, "settings.users.index.delete", %{})}</button>
           </td>
         </tr>
