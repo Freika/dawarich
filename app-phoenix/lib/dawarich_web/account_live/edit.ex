@@ -80,6 +80,8 @@ defmodule DawarichWeb.AccountLive.Edit do
       else: {:noreply, socket}
   end
 
+  def handle_event("archive_checksum", _params, socket), do: {:noreply, socket}
+
   def handle_event("cancel_archive", %{"ref" => ref}, socket),
     do: {:noreply, cancel_upload(socket, :archive, ref)}
 

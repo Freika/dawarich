@@ -222,6 +222,7 @@ defmodule DawarichWeb.AccountLiveTest do
     session = RailsFormRequests.rails_session(failed)
     {:ok, view, page} = conn_for(session) |> RailsUser.connecting_as(9893) |> live("/users/edit")
     assert has_element?(view, "#error_explanation li")
+    assert has_element?(view, "input#user_email[value='account-live@dawarich.test']")
     refute page =~ long
   end
 

@@ -25,6 +25,8 @@ defmodule DawarichWeb.RemovedPageWritesTest do
     {:post, "/settings/trek_sources/1", "_method=delete"},
     {:post, "/settings/trek_sources/1/sync", ""},
     {:post, "/settings/trek_sources/1/import_trips", ""},
+    {:post, "/settings/trek_sources/1/sync.html", ""},
+    {:post, "/settings/trek_sources/1/import_trips.html", ""},
     {:delete, "/settings/trek_sources/1", ""},
     {:post, "/settings/generate_api_key", ""},
     {:get, "/settings/users/export", ""},

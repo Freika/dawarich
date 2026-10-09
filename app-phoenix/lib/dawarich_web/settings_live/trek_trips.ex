@@ -11,6 +11,7 @@ defmodule DawarichWeb.SettingsLive.TrekTrips do
         {:ok,
          socket
          |> assign(page)
+         |> assign(:loading, not connected?(socket))
          |> assign(:form, to_form(%{}, as: :selection))
          |> assign(:page_title, text(socket, "select_trips.title"))}
 

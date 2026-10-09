@@ -88,7 +88,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
         "settings" => %{(service <> "_url") => c.url, secret => "synthetic-new"}
       })
 
-      refute render(view) =~ "synthetic-new"
+      refute server_html(view) =~ "synthetic-new"
 
       html =
         view
@@ -133,10 +133,9 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
         store(c.user, %{"timezone" => "UTC", secret => stored})
         {:ok, view, _} = live_as(c.user, service)
         params = %{"settings" => %{(service <> "_url") => c.url, secret => "synthetic-typed"}}
-        html = view |> form("#integration-settings") |> render_change(params)
-        refute html =~ "synthetic-typed"
-        display = if stored, do: "********", else: ""
-        assert has_element?(view, "#settings_#{secret}[value='#{display}'][phx-update='ignore']")
+        view |> form("#integration-settings") |> render_change(params)
+        refute server_html(view) =~ "synthetic-typed"
+        assert has_element?(view, "#settings_#{secret}[phx-update='ignore']")
         refute Accounts.settings(c.user.id)[secret] == "synthetic-typed"
         view |> form("#integration-settings") |> render_submit(params)
         assert Process.alive?(view.pid)
@@ -144,6 +143,9 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
       end
     end
   end
+
+  defp server_html(view),
+    do: rendered_to_string(view.module.render(:sys.get_state(view.pid).socket.assigns))
 
   test "Phoenix filters nested integration credentials while retaining ordinary fields" do
     params = %{

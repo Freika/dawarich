@@ -150,6 +150,18 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
     assert payload["identifiers"] == ["dated"]
   end
 
+  test "the selection page shows a loading state until the live connection lists the trips", c do
+    id = source(c)
+    loading = Translate.t("en", "javascript.common.loading", %{})
+    static = conn_for(c.user) |> get(path(id)) |> html_response(200)
+    assert static =~ loading
+    assert static =~ ~r/<button[^>]*type="submit"[^>]*disabled/
+
+    {:ok, view, _} = live(conn_for(c.user), path(id))
+    refute render(view) =~ loading
+    assert has_element?(view, "#trek-trips button[type=submit]:not([disabled])")
+  end
+
   test "foreign malformed and HTML selection paths answer 404; provider errors disable the source",
        c do
     other = RailsUser.insert!(%{id: 8792, email: "native-trek-foreign@dawarich.test"})

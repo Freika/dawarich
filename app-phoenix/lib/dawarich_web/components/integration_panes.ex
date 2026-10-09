@@ -179,11 +179,6 @@ defmodule DawarichWeb.IntegrationPanes do
   def key_field(assigns) do
     ~H"""
     <div class="form-control w-full max-w-md">
-      <label class="label" for={"settings_#{@service}_api_key"}><span class="label-text font-medium">{t(
-        @locale,
-        "settings.integrations.index.#{@service}_api_key",
-        %{}
-      )}</span></label>
       <DawarichWeb.CoreComponents.input
         field={@form[@service <> "_api_key"]}
         type="password"

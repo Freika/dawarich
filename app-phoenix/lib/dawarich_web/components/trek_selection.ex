@@ -11,6 +11,9 @@ defmodule DawarichWeb.TrekSelection do
       <p class="text-base-content/60 mb-6">{label(@locale, "subtitle")}</p>
       <.form for={@form} id="trek-trips" phx-submit="import" class="space-y-3">
         <input type="hidden" name="selection[trip_ids][]" value="" />
+        <p :if={@loading} role="status" class="text-base-content/60">
+          {Translate.t(@locale, "javascript.common.loading", %{})}
+        </p>
         <label
           :for={trip <- @trips}
           class="flex items-start gap-3 rounded-box border border-base-content/10 bg-base-200 p-4"
@@ -42,6 +45,7 @@ defmodule DawarichWeb.TrekSelection do
           <button
             type="submit"
             class="btn btn-primary"
+            disabled={@loading}
             phx-disable-with={label(@locale, "import_selected")}
           >{label(@locale, "import_selected")}</button>
           <.link navigate="/settings/integrations?service=trek" class="btn btn-ghost">{label(

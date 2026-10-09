@@ -67,7 +67,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
           )
           |> LazyHTML.filter(":not(label *):not([aria-label]):not([aria-labelledby])"),
         id = List.first(LazyHTML.attribute(control, "id")),
-        is_nil(id) or Enum.empty?(LazyHTML.query(doc, ~s(label[for="#{id}"]))),
+        is_nil(id) or Enum.count(LazyHTML.query(doc, ~s(label[for="#{id}"]))) != 1,
         do: LazyHTML.to_html(control)
   end
 
@@ -94,7 +94,8 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
         end
 
         for html <- [static, connected],
-            do: assert(unlabelled(html) == [], "#{path} has unlabelled controls")
+            do:
+              assert(unlabelled(html) == [], "#{path} has unlabelled or doubly labelled controls")
 
         assert static =~ "/native/app"
         assert static =~ ~r/<script[^>]*phx-track-static[^>]*\/native\/app/

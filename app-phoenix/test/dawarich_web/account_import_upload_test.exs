@@ -163,6 +163,8 @@ defmodule DawarichWeb.AccountImportUploadTest do
         do: render_hook(view, "archive_checksum", %{"ref" => "x#{n}", "checksum" => @checksum})
 
     render_hook(view, "archive_checksum", %{"ref" => ref, "checksum" => "not-a-digest"})
+    render_hook(view, "archive_checksum", %{"checksum" => @checksum})
+    assert Process.alive?(view.pid)
     assert :sys.get_state(view.pid).socket.assigns.checksums == %{}
 
     render_hook(view, "archive_checksum", %{"ref" => ref, "checksum" => @checksum})

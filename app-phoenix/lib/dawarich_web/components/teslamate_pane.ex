@@ -64,11 +64,6 @@ defmodule DawarichWeb.TeslamatePane do
               />
             </div>
             <div class="form-control w-full">
-              <label class="label label-text font-medium" for="settings_teslamate_password">{t(
-                @locale,
-                "settings.integrations.index.teslamate_password",
-                %{}
-              )}</label>
               <DawarichWeb.CoreComponents.input
                 field={@form["teslamate_password"]}
                 type="password"
@@ -79,11 +74,6 @@ defmodule DawarichWeb.TeslamatePane do
             </div>
           </div>
           <div class="form-control w-full max-w-md">
-            <label class="label label-text font-medium" for="settings_teslamate_api_token">{t(
-              @locale,
-              "settings.integrations.index.teslamate_api_token",
-              %{}
-            )}</label>
             <DawarichWeb.CoreComponents.input
               field={@form["teslamate_api_token"]}
               type="password"
