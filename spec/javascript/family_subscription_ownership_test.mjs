@@ -2,7 +2,8 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8")
+const read = (path) =>
+  readFile(new URL(`../../${path}`, import.meta.url), "utf8")
 const moduleUrl = (source) =>
   `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
 const cableUrl = moduleUrl(
@@ -31,11 +32,10 @@ const bootUrl = moduleUrl(
 )
 const { createMapChannel } = await import(
   moduleUrl(
-    (await read("app/javascript/maps_maplibre/channels/map_channel.js")).replace(
-      '"../../channels/consumer"',
-      JSON.stringify(consumerUrl),
-    ),
-  ),
+    (
+      await read("app/javascript/maps_maplibre/channels/map_channel.js")
+    ).replace('"../../channels/consumer"', JSON.stringify(consumerUrl)),
+  )
 )
 
 test("the current map owns the family subscription across live mode changes", async (t) => {
@@ -66,7 +66,8 @@ test("the current map owns the family subscription across live mode changes", as
   first.unsubscribeAll()
   assert.ok(
     commands.some(
-      (command) => command.command === "unsubscribe" && command.identifier === id,
+      (command) =>
+        command.command === "unsubscribe" && command.identifier === id,
     ),
   )
   const current = create(true)
