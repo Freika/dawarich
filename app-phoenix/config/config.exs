@@ -29,6 +29,7 @@ config :dawarich, DawarichWeb.Endpoint,
   live_view: [signing_salt: "dawarich live view"]
 
 config :phoenix, :json_library, Jason
+config :phoenix, :filter_parameters, ["password", "api_key", "token", "secret"]
 
 config :esbuild,
   version: "0.25.0",
