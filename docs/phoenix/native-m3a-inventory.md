@@ -163,3 +163,4 @@ Filled in by Tasks 4–11 as tests are removed.
 | Native route ownership, no Hotwire, integrations query budget at most 6 static / 5 connected | `storage_routes_test.exs`, `native_pages_hotwire_free_test.exs`, `settings_integrations_live_test.exs`: "integrations stays…" |
 
 Repository decisions: ADR-0017 and ED-NATIVE-INTEGRATION-SECRETS / ED-NATIVE-TREK-HTML-VARIANTS. Shared knowledge counterparts: AFFiNE “Dawarich — Standalone integration settings and photo imports” and “Dawarich — Standalone TREK source management” (native milestone 3a addenda).
+| `settings_live_test.exs`: "Rails form controls — every control a user edits in a Rails form stays out of LiveView's patches…" (whole case, after the integrations and account entries were removed) | C (hybrid mechanism) | native forms own their state (`@form`/`phx-change`, or plain posts with no server-rendered values); covered per page by the "typed value stays" / "picking a language" cases |
