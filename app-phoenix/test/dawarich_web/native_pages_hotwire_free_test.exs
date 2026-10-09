@@ -80,7 +80,13 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
   end
 
   test "every native page renders without Turbo, Stimulus or the importmap", %{user: user} do
-    paths = native_paths()
+    paths =
+      native_paths() ++
+        for(
+          service <- ~w(photoprism airtrail teslamate trek),
+          do: "/settings/integrations?service=#{service}"
+        )
+
     assert "/tags" in paths
 
     saving =

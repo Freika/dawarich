@@ -9,6 +9,7 @@ defmodule DawarichWeb.CoreComponents do
   attr :options, :list, default: []
   attr :display, :string, default: nil
   attr :hint, :string, default: nil
+  attr :label_class, :string, default: "label"
   attr :rest, :global, include: ~w(placeholder autocomplete min max step rows disabled required)
 
   def input(assigns) do
@@ -94,7 +95,7 @@ defmodule DawarichWeb.CoreComponents do
 
     ~H"""
     <div class="form-control">
-      <label class="label" for={@field.id}>{@label}</label>
+      <label class={@label_class} for={@field.id}>{@label}</label>
       <input
         type={@type}
         name={@field.name}

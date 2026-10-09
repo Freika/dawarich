@@ -184,6 +184,8 @@ defmodule DawarichWeb.IntegrationPanes do
         type="password"
         display={secret_display(@form[@service <> "_api_key"].value)}
         phx-update="ignore"
+        label_class="label font-medium"
+        placeholder={t(@locale, "settings.integrations.index.xxxxxxxxxxxxxx", %{})}
         label={t(@locale, "settings.integrations.index.#{@service}_api_key", %{})}
       />
       <span class="label-text-alt mt-1 text-base-content/60">{render_slot(@inner_block)}</span>

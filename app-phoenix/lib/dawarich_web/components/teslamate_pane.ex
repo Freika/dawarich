@@ -69,6 +69,8 @@ defmodule DawarichWeb.TeslamatePane do
                 type="password"
                 display={secret_display(@form["teslamate_password"].value)}
                 phx-update="ignore"
+                label_class="label label-text font-medium"
+                autocomplete="current-password"
                 label={t(@locale, "settings.integrations.index.teslamate_password", %{})}
               />
             </div>
@@ -79,6 +81,7 @@ defmodule DawarichWeb.TeslamatePane do
               type="password"
               display={secret_display(@form["teslamate_api_token"].value)}
               phx-update="ignore"
+              label_class="label label-text font-medium"
               label={t(@locale, "settings.integrations.index.teslamate_api_token", %{})}
             />
             <span class="label-text-alt mt-1 text-base-content/60">{t(

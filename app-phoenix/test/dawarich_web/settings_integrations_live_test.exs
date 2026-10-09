@@ -144,6 +144,14 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     end
   end
 
+  test "secret fields keep the Rails placeholder and password-manager hints", c do
+    {:ok, view, _} = live_as(c.user, "immich")
+    assert has_element?(view, "#settings_immich_api_key[placeholder]")
+    {:ok, view, _} = live_as(c.user, "teslamate")
+    assert has_element?(view, "#settings_teslamate_password[autocomplete='current-password']")
+    assert has_element?(view, "#settings_teslamate_username[autocomplete='username']")
+  end
+
   defp server_html(view),
     do: rendered_to_string(view.module.render(:sys.get_state(view.pid).socket.assigns))
 
