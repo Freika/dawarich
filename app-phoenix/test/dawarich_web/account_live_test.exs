@@ -74,11 +74,24 @@ defmodule DawarichWeb.AccountLiveTest do
     assert html =~ "account-live-old-key"
     assert has_element?(view, "#rotate-api-key[data-confirm][phx-disable-with]")
 
+    Dawarich.TtlCache.put({DawarichWeb.RateLimit, "account-live-old-key"}, %{plan: 1}, 60_000)
+    assert api_status("account-live-old-key") == 200
+
     html = view |> element("#rotate-api-key") |> render_click()
 
     refute api_key() == "account-live-old-key"
     assert html =~ api_key()
     refute html =~ "account-live-old-key"
+    assert api_status("account-live-old-key") == 401
+    assert api_status(api_key()) == 200
+  end
+
+  defp api_status(key) do
+    build_conn()
+    |> put_req_header("accept", "application/json")
+    |> put_req_header("authorization", "Bearer " <> key)
+    |> get("/api/v1/points")
+    |> Map.fetch!(:status)
   end
 
   test "a session from before a password change cannot rotate the key", %{session: session} do

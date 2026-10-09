@@ -1308,9 +1308,7 @@ defmodule DawarichWeb.EndpointTest do
           {"PUT", "/users", body, 303, "native-account",
            ~w(email updated_at reset_password_token reset_password_sent_at)},
           {"POST", "/users", body <> "&_method=patch", 303, "native-account",
-           ~w(email updated_at reset_password_token reset_password_sent_at)},
-          {"POST", "/settings/generate_api_key", key_body, 302, "native-api-keys",
-           ~w(api_key updated_at)}
+           ~w(email updated_at reset_password_token reset_password_sent_at)}
         ] do
       before = snapshot.()
       client = connect(port)
@@ -1319,9 +1317,7 @@ defmodule DawarichWeb.EndpointTest do
       assert values(headers, "x-dawarich-auth-owner") == [owner]
       assert Map.drop(snapshot.(), fields) == Map.drop(before, fields)
 
-      if owner == "native-account",
-        do: assert(snapshot.()["email"] == "a11rest-endpoint-updated@dawarich.test"),
-        else: assert(snapshot.()["api_key"] != before["api_key"])
+      assert snapshot.()["email"] == "a11rest-endpoint-updated@dawarich.test"
 
       :gen_tcp.close(client)
     end

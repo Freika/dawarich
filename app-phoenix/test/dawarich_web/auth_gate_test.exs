@@ -205,7 +205,7 @@ defmodule DawarichWeb.AuthGateTest do
     end
   end
 
-  test "new auth keys opt in independently and leave OFF requests identical" do
+  test "new auth keys opt in independently, the retired api_keys key owns nothing, and OFF requests stay identical" do
     account = [{:put, "/users"}, {:patch, "/users"}, {:post, "/users"}]
     keys = [{:post, "/settings/generate_api_key"}]
 
@@ -238,17 +238,7 @@ defmodule DawarichWeb.AuthGateTest do
         untouched(account)
       end
 
-      if "api_keys" in flows do
-        conn =
-          authenticated(session, "/settings/generate_api_key", "")
-          |> put_req_header("x-csrf-token", RailsCsrf.masked_token(session))
-          |> AuthGate.call([])
-
-        assert conn.status == 302
-        assert get_resp_header(conn, "x-dawarich-auth-owner") == ["native-api-keys"]
-      else
-        untouched(keys)
-      end
+      untouched(keys)
 
       if "credentials" not in flows, do: untouched(@credentials)
       if "recovery" not in flows, do: untouched(@recovery)
@@ -304,11 +294,6 @@ defmodule DawarichWeb.AuthGateTest do
     conn = %{conn | method: "PATCH"}
     assert AuthGate.call(conn, []).status == 303
 
-    conn =
-      authenticated(session, "/settings/generate_api_key", "")
-      |> put_req_header("x-csrf-token", RailsCsrf.masked_token(session))
-
-    assert AuthGate.call(conn, []).status == 302
     barrier = :erlang.trace_delivered(self())
     assert_receive {:trace_delivered, _, ^barrier}
     send(tracer, {:barrier, barrier})

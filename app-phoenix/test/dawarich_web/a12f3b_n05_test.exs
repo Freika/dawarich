@@ -1,7 +1,8 @@
 defmodule DawarichWeb.A12f3bN05Test do
   use Dawarich.DataCase, async: false
   import Plug.Conn
-  alias Dawarich.{Accounts}
+  alias Dawarich.{Accounts, Settings}
+  alias Dawarich.Accounts.Scope
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{RailsCsrf, SettingsMiscActions}
 
@@ -19,10 +20,11 @@ defmodule DawarichWeb.A12f3bN05Test do
   end
 
   @tag a12f3b_case: "N05a"
-  test "theme changelog and API key routes preserve response and session writes", %{
-    actor: actor,
-    other: other
-  } do
+  test "theme and changelog routes and the API key rotation preserve response and stored state",
+       %{
+         actor: actor,
+         other: other
+       } do
     theme = request(actor.id, :get, "/settings/theme", %{"theme" => "light"})
     assert apply(SettingsMiscActions, :call, [theme, :theme]).status == 302
     assert Accounts.get(actor.id).theme == "light"
@@ -40,8 +42,8 @@ defmodule DawarichWeb.A12f3bN05Test do
       [actor.id]
     )
 
-    conn = request(actor.id, :post, "/settings/generate_api_key", %{"user_id" => "#{other.id}"})
-    assert apply(SettingsMiscActions, :call, [conn, :generate_api_key]).status == 302
+    [_id, salt] = RailsUser.session(actor.id)["warden.user.user.key"]
+    assert {:ok, _} = Settings.rotate_api_key(Scope.for_user(Accounts.get(actor.id), "en"), salt)
     assert Accounts.by_api_key("n05-old") == nil
     assert [[key]] = rows("SELECT api_key FROM users WHERE id=$1", [actor.id])
     assert byte_size(key) == 64
@@ -57,8 +59,7 @@ defmodule DawarichWeb.A12f3bN05Test do
     assert Accounts.get(actor.id).theme == "dark"
 
     for {action, path, params} <- [
-          {:changelog_consent, "/settings/changelog_consent", %{"decision" => "bad"}},
-          {:generate_api_key, "/settings/generate_api_key", %{"authenticity_token" => "bad"}}
+          {:changelog_consent, "/settings/changelog_consent", %{"decision" => "bad"}}
         ] do
       method = if action == :changelog_consent, do: :patch, else: :post
 

@@ -406,7 +406,6 @@ defmodule Dawarich.A12f3bH01Test do
 
     for {method, path, params} <- [
           {"PATCH", "/settings/changelog_consent", %{"decision" => "granted"}},
-          {"POST", "/settings/generate_api_key", %{}},
           {"PUT", "/settings/onboarding", %{}},
           {"POST", "/settings/onboarding/demo_data", %{}},
           {"DELETE", "/settings/onboarding/demo_data", %{}},
@@ -620,7 +619,6 @@ defmodule Dawarich.A12f3bH01Test do
     for {path, methods, plug} <- [
           {"/settings/theme", ["GET"], DawarichWeb.SettingsMiscActions},
           {"/settings/changelog_consent", ~w(PATCH POST), DawarichWeb.SettingsMiscActions},
-          {"/settings/generate_api_key", ["POST"], DawarichWeb.SettingsMiscActions},
           {"/settings/onboarding", ~w(POST PATCH PUT), DawarichWeb.OnboardingActions},
           {"/notifications/mark_as_read", ["POST"], DawarichWeb.NotificationActions},
           {"/notifications/destroy_all", ["POST"], DawarichWeb.NotificationActions},
@@ -648,28 +646,6 @@ defmodule Dawarich.A12f3bH01Test do
       assert Dawarich.Accounts.get(user.id).changelog_consent ==
                if(params["decision"] == "granted", do: 1, else: 0)
     end
-
-    old_key = Dawarich.Accounts.get(user.id).api_key
-    cache_key = {DawarichWeb.RateLimit, old_key}
-    Dawarich.TtlCache.fetch(cache_key, 60_000, fn -> :primed end)
-    assert {:ok, :primed} = Dawarich.TtlCache.lookup(cache_key)
-    other_key = Dawarich.Accounts.get(other.id).api_key
-
-    Repo.query!(
-      "UPDATE users SET provider='openid_connect', uid='h01-provider', otp_required_for_login=true WHERE id=$1",
-      [user.id]
-    )
-
-    assert request(user, "POST", "/settings/generate_api_key", %{"user_id" => "#{other.id}"}).status ==
-             302
-
-    key = Dawarich.Accounts.get(user.id).api_key
-    assert key != old_key
-    assert byte_size(key) == 64
-    assert Dawarich.TtlCache.lookup(cache_key) == :error
-    assert Dawarich.Accounts.by_api_key(old_key) == nil
-    assert Dawarich.Accounts.by_api_key(key).id == user.id
-    assert Dawarich.Accounts.get(other.id).api_key == other_key
 
     for {method, params} <- [
           {"PATCH", %{}},

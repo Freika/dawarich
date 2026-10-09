@@ -7,7 +7,6 @@ defmodule DawarichWeb.AuthGate do
 
   alias DawarichWeb.{
     AuthAccount,
-    AuthApiKeys,
     AuthHandler,
     AuthRecovery,
     AuthTwoFactor,
@@ -20,7 +19,6 @@ defmodule DawarichWeb.AuthGate do
     {"credentials", AuthHandler},
     {"recovery", AuthRecovery.Http},
     {"account", AuthAccount.Http},
-    {"api_keys", AuthApiKeys.Http},
     {"two_factor", AuthTwoFactor.Http},
     {"otp", AuthOtp.Http},
     {"account_link", AuthAccountLink.Http},

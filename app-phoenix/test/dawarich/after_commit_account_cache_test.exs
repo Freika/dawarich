@@ -24,7 +24,8 @@ defmodule Dawarich.AfterCommitAccountCacheTest do
 
     assert {:error, :cancel} =
              Dawarich.Transaction.run(Repo, fn ->
-               assert {:ok, _} = Dawarich.Auth.ApiKeys.rotate_session(RailsUser.session(user.id))
+               [_id, salt] = RailsUser.session(user.id)["warden.user.user.key"]
+               assert {:ok, _} = Dawarich.Auth.ApiKeys.rotate(user.id, salt, %{native: true})
 
                assert Repo.query!(
                         "SELECT count(*) FROM oban.oban_jobs WHERE args->>'operation'='rate_limit' AND args->'payload'->>'user_id'=$1",

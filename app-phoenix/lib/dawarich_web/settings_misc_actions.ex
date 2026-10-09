@@ -12,7 +12,6 @@ defmodule DawarichWeb.SettingsMiscActions do
       case action do
         :theme -> ["GET"]
         :changelog_consent -> ["PATCH"]
-        :generate_api_key -> ["POST"]
       end
 
     check = if action == :theme, do: assign(conn, :api_query, %{}), else: conn
@@ -32,10 +31,9 @@ defmodule DawarichWeb.SettingsMiscActions do
       case action do
         :theme -> Misc.theme(id, conn.assigns.api_params["theme"])
         :changelog_consent -> Misc.consent(id, conn.assigns.api_params["decision"])
-        :generate_api_key -> Misc.rotate(id, conn.assigns.rails_session)
       end
 
-    if result == :ok or match?({:ok, _}, result) do
+    if result == :ok do
       case response_format(conn, action) do
         "text/vnd.turbo-stream.html" ->
           conn

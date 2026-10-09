@@ -1,6 +1,6 @@
 defmodule Dawarich.Settings.Misc do
   @moduledoc false
-  alias Dawarich.{Repo, Auth.ApiKeys}
+  alias Dawarich.Repo
 
   def theme(id, theme) when is_binary(theme) or is_nil(theme) do
     Repo.query!(
@@ -27,9 +27,4 @@ defmodule Dawarich.Settings.Misc do
   end
 
   def consent(_, _), do: {:error, :invalid_decision}
-
-  def rotate(id, session) do
-    [[^id], _salt] = session["warden.user.user.key"]
-    ApiKeys.rotate_session(session)
-  end
 end

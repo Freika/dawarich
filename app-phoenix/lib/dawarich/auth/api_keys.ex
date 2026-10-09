@@ -1,8 +1,7 @@
 defmodule Dawarich.Auth.ApiKeys do
   @moduledoc false
   alias Dawarich.Auth.{Account, AccountChanges, Recovery.Token}
-  import Ecto.Query
-  alias Dawarich.{Accounts, Repo}
+  alias Dawarich.Repo
 
   def rotate(id, session_salt, context) do
     module = if context[:native], do: Dawarich.Auth.AccountClosure, else: AccountChanges
@@ -16,35 +15,6 @@ defmodule Dawarich.Auth.ApiKeys do
       handoff -> handoff
     end
   end
-
-  def rotate_session(%{"warden.user.user.key" => [[id], salt]} = session)
-      when is_integer(id) and is_binary(salt) do
-    {:ok, {result, retired}} =
-      Repo.transaction(fn ->
-        actor =
-          Repo.one(
-            from u in Account,
-              where: u.id == ^id and is_nil(u.deleted_at),
-              lock: "FOR UPDATE"
-          )
-
-        with %Account{} <- actor,
-             %Accounts.User{id: ^id} <- Accounts.from_session(session, DateTime.utc_now()),
-             false <- Token.blank?(actor.email),
-             true <- Account.normalize_email(actor.email) == actor.email do
-          {persist(actor, %{}), actor.api_key}
-        else
-          _ -> {{:handoff, :invalid_resource}, nil}
-        end
-      end)
-
-    if match?({:ok, _}, result) and not Repo.in_transaction?(),
-      do: Dawarich.TtlCache.delete({DawarichWeb.RateLimit, retired})
-
-    result
-  end
-
-  def rotate_session(_), do: {:handoff, :session}
 
   defp persist(actor, context) do
     changes = %{
