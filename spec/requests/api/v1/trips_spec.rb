@@ -30,6 +30,21 @@ RSpec.describe '/api/v1/trips', type: :request do
       expect(json.map { _1['id'] }).to eq([trip.id])
     end
 
+    it 'returns 422 for an unparseable date' do
+      get api_v1_trips_url, headers: headers, params: { start_at: 'not-a-date' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it 'treats a non-positive per_page as 1' do
+      create(:trip, user: user)
+
+      get api_v1_trips_url, headers: headers, params: { page: 1, per_page: 0 }
+
+      expect(JSON.parse(response.body).length).to eq(1)
+      expect(response.headers['X-Total-Pages']).to eq('2')
+    end
+
     it 'paginates when page is given' do
       create(:trip, user: user)
 

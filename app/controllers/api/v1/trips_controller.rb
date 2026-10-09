@@ -5,13 +5,19 @@ class Api::V1::TripsController < ApiController
   before_action :set_trip, only: %i[show update destroy]
 
   def index
+    start_at = parse_time_param(:start_at)
+    end_at = parse_time_param(:end_at)
+    if [start_at, end_at].include?(false)
+      return render json: { error: 'Invalid date format' }, status: :unprocessable_content
+    end
+
     trips = current_api_user.trips.with_rich_text_description.order(started_at: :desc)
-    trips = trips.where('ended_at >= ?', params[:start_at]) if params[:start_at].present?
-    trips = trips.where('started_at <= ?', params[:end_at]) if params[:end_at].present?
+    trips = trips.where('ended_at >= ?', start_at) if start_at
+    trips = trips.where('started_at <= ?', end_at) if end_at
 
     # Optional pagination (returns all trips if no page param, like visits)
     if params[:page].present?
-      per_page = [(params[:per_page].presence || 25).to_i, 100].min
+      per_page = (params[:per_page].presence || 25).to_i.clamp(1, 100)
       trips = trips.page(params[:page]).per(per_page)
 
       response.set_header('X-Current-Page', trips.current_page.to_s)
@@ -59,5 +65,14 @@ class Api::V1::TripsController < ApiController
 
   def trip_params
     params.require(:trip).permit(:name, :started_at, :ended_at, :description)
+  end
+
+  # nil when the param is blank, false when it can't be parsed.
+  def parse_time_param(key)
+    return if params[key].blank?
+
+    Time.zone.parse(params[key].to_s) || false
+  rescue ArgumentError
+    false
   end
 end
