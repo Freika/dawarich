@@ -284,9 +284,9 @@ JavaScript loaded after `networkidle` (`tags/assets-budget.spec.js`, E2E `103375
 
 ## After (Tags pilot, milestones 0–2)
 
-Same measurements on the branch head (`feat/native-frontend` `b3536ead3`, E2E `0ff3bda`).
+Same measurements on the branch head (`feat/native-frontend` `1bc05f892`, E2E `e6161a4`).
 
-Standalone G44 (3 lanes): every lane 523 passed, 0 failed, 51 skipped (quarantine unchanged). The two extra tests are `tags/assets-budget.spec.js` and the native-page case in `achievements/unlock.spec.js`; no reference spec failed. Full ExUnit seeds 404 and 202: 9991 tests, 0 failures each.
+Standalone G44 (3 lanes): every lane 524 passed, 0 failed, 51 skipped (quarantine unchanged). The three extra tests are `tags/assets-budget.spec.js`, the list→form case in `tags/crud.spec.js` and the native-page case in `achievements/unlock.spec.js`; no reference spec failed. Full ExUnit seeds 404 and 202 on `4f04eb812` (code-identical to `1bc05f892` apart from one gate-test assertion): 9989 tests, 0 failures each.
 
 Ecto queries per mount:
 
@@ -298,12 +298,12 @@ Ecto queries per mount:
 
 The first form render used to build its changeset through the Rails validation, which cost one uniqueness query on `/tags/new` and `/tags/:id/edit`; the initial changeset now skips validation (`Tags.change_tag/2`), pinned by `tags_live_form_test.exs` "opening the forms reads the database no more often than the Rails-era pages".
 
-JavaScript loaded after `networkidle` (`tags/assets-budget.spec.js`, the three final standalone lanes on `b3536ead3`, identical each time; same figures on `37d4af083`):
+JavaScript loaded after `networkidle` (`tags/assets-budget.spec.js`, the three final standalone lanes on `1bc05f892`, identical each time):
 
 | Route | Script requests | Bytes | Hotwire modules among them |
 | --- | ---: | ---: | ---: |
-| `/tags` | 1 | 153,750 | 0 |
-| `/tags/new` | 1 | 153,750 | 0 |
+| `/tags` | 1 | 153,931 | 0 |
+| `/tags/new` | 1 | 153,931 | 0 |
 
 emoji-mart is a separate chunk that loads only when the picker opens, so it is not part of the `/tags/new` figure. `/tags/:id/edit` renders the same LiveView, root layout and bundle as `/tags/new` and is not measured separately (neither in the baseline nor after).
 
