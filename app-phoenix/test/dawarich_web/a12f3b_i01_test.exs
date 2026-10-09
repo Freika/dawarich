@@ -7,7 +7,6 @@ end
 
 defmodule DawarichWeb.A12f3bI01Test do
   use Dawarich.DataCase, async: false
-  require Phoenix.LiveViewTest
   import Plug.Conn
   import Dawarich.Test.RawHTTP
   alias Dawarich.{Accounts, Settings.Integrations}
@@ -109,17 +108,6 @@ defmodule DawarichWeb.A12f3bI01Test do
 
     assert saved["teslamate_processing_pending"] == false
     Task.await(task)
-
-    html =
-      Phoenix.LiveViewTest.render_component(&DawarichWeb.IntegrationPanes.pane/1,
-        service: "immich",
-        locale: "en",
-        user: DawarichWeb.SettingsLive.Integrations.form_user(Accounts.get(actor.id)),
-        rails_csrf_token: nil,
-        synced: nil
-      )
-
-    refute String.contains?(html, "synthetic-immich")
 
     assert {:ok, result} =
              apply(Integrations, :save, [

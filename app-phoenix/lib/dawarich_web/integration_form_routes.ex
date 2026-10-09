@@ -37,11 +37,6 @@ defmodule DawarichWeb.IntegrationFormRoutes do
           post "/trek_sources#{suffix}", DawarichWeb.TrekSourceActions, :create,
             metadata: %{rails_gate: {DawarichWeb.TrekSourceActions, :enabled?}}
 
-          get "/trek_sources/:id/select_trips#{suffix}",
-              DawarichWeb.TrekSourceActions,
-              :select_trips,
-              metadata: %{rails_gate: {DawarichWeb.TrekSourceActions, :enabled?}}
-
           for action <- [:import_trips, :sync] do
             post "/trek_sources/:id/#{action}#{suffix}", DawarichWeb.TrekSourceActions, action,
               metadata: %{rails_gate: {DawarichWeb.TrekSourceActions, :enabled?}}

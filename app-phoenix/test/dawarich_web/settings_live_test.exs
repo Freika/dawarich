@@ -3,7 +3,6 @@ defmodule DawarichWeb.SettingsLiveTest do
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
-  import Dawarich.Test.FormIsolation
 
   alias Dawarich.Test.RailsUser
 
@@ -205,7 +204,7 @@ defmodule DawarichWeb.SettingsLiveTest do
 
       refute has_element?(view, "a[data-testid='integration-photoprism'][data-status]")
       assert has_element?(view, "input#settings_immich_url[value='https://immich.a5s3.test']")
-      assert has_element?(view, "input[type='hidden'][name='service'][value='immich']")
+      assert has_element?(view, "#integration-settings[phx-submit='save']")
     end
 
     test "an unknown service shows Immich; a self-hosted admin's old geocoding link goes to Instance settings",
@@ -293,11 +292,13 @@ defmodule DawarichWeb.SettingsLiveTest do
 
       assert has_element?(
                view,
-               "form[action='/settings/trek_sources/53931'] button[data-turbo-confirm]"
+               "#trek-delete-53931[data-confirm]"
              )
     end
 
-    test "integration secrets reach the page but not the LiveView state", %{user: user} do
+    test "integration secrets are masked on the page and in inspected LiveView state", %{
+      user: user
+    } do
       configure(user, %{
         "immich_url" => "https://immich.a5s3.test",
         "immich_api_key" => "a5s3-imk-1",
@@ -306,14 +307,16 @@ defmodule DawarichWeb.SettingsLiveTest do
       })
 
       {:ok, view, html} = live_as(user, "/settings/integrations", on_error: [duplicate_id: :warn])
-      assert html =~ ~s(value="a5s3-imk-1")
+      assert html =~ ~s(value="********")
+      refute html =~ "a5s3-imk-1"
       refute inspect(:sys.get_state(view.pid)) =~ "a5s3-k-secret"
       refute inspect(:sys.get_state(view.pid)) =~ "a5s3-imk-1"
 
       {:ok, tesla, html} =
         live_as(user, "/settings/integrations?service=teslamate", on_error: [duplicate_id: :warn])
 
-      assert html =~ ~s(value="a5s3-k-secret-pw")
+      assert html =~ ~s(value="********")
+      refute html =~ "a5s3-k-secret-pw"
       refute inspect(:sys.get_state(tesla.pid)) =~ "a5s3-k-secret"
     end
   end
@@ -445,36 +448,6 @@ defmodule DawarichWeb.SettingsLiveTest do
                }),
                :manager
              )
-    end
-  end
-
-  describe "Rails form controls" do
-    @rails_control "form:not([phx-submit]) :is(input:not([type=hidden]):not([type=submit]), select, textarea)"
-    @patched ":not([phx-update=ignore]):not([phx-update=ignore] *)"
-
-    setup do
-      previous = System.get_env("SMTP_SERVER")
-      System.put_env("SMTP_SERVER", "smtp.a5s3.test")
-
-      on_exit(fn ->
-        if previous,
-          do: System.put_env("SMTP_SERVER", previous),
-          else: System.delete_env("SMTP_SERVER")
-      end)
-    end
-
-    test "every control a user edits in a Rails form stays out of LiveView's patches, so input made before the join survives it",
-         %{user: user} do
-      for path <-
-            ~w(/settings/integrations /settings/integrations?service=photoprism /settings/integrations?service=airtrail /settings/integrations?service=teslamate /settings/integrations?service=trek) do
-        {:ok, view, _html} = live_as(user, path, on_error: [duplicate_id: :warn])
-        doc = view |> render() |> LazyHTML.from_fragment()
-        assert_form_isolated(render(view))
-
-        assert doc |> LazyHTML.query(@rails_control) |> Enum.count() > 1, path
-        patched = doc |> LazyHTML.query(@rails_control <> @patched) |> LazyHTML.attribute("id")
-        assert {path, patched} == {path, []}
-      end
     end
   end
 end

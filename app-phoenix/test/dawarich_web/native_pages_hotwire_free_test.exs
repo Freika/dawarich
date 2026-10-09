@@ -37,6 +37,23 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       }
     ])
 
+    url = Dawarich.Test.NativeIntegrationStub.start!()
+    {:ok, key} = Dawarich.ActiveRecordEncryption.key()
+
+    Repo.insert_all("trip_sources", [
+      %{
+        id: 84111,
+        user_id: user.id,
+        provider: "trek",
+        base_url: url,
+        api_key: Dawarich.ActiveRecordEncryption.encrypt("synthetic-trek", key),
+        status: 0,
+        importing: false,
+        created_at: ~N[2026-03-01 10:00:00],
+        updated_at: ~N[2026-03-01 10:00:00]
+      }
+    ])
+
     %{user: user}
   end
 

@@ -15,30 +15,29 @@ defmodule DawarichWeb.AirtrailPane do
       sync_row: 1
     ]
 
-  alias Dawarich.UserSettings
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   attr :service, :string, required: true
   attr :locale, :string, required: true
-  attr :user, :map, required: true
-  attr :rails_csrf_token, :string, default: nil
+  attr :form, :any, required: true
+  attr :queued, :any, default: MapSet.new()
   attr :synced, :string, default: nil
 
   def pane(assigns) do
     ~H"""
     <div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl">
-      <.form_head service="airtrail" rails_csrf_token={@rails_csrf_token}>
+      <.form_head service="airtrail" form={@form}>
         <div class="card-body space-y-5">
           <.heading service="airtrail" locale={@locale} />
-          <.url_field service="airtrail" locale={@locale} user={@user} />
-          <.key_field service="airtrail" locale={@locale} user={@user}>
+          <.url_field service="airtrail" locale={@locale} form={@form} />
+          <.key_field service="airtrail" locale={@locale} form={@form}>
             {t(
               @locale,
               "settings.integrations.index.create_an_api_key_in_airtrail_under_settings_rarr_security",
               %{}
             )}
           </.key_field>
-          <.ssl_toggle service="airtrail" locale={@locale} user={@user}>
+          <.ssl_toggle service="airtrail" locale={@locale} form={@form}>
             <.icon name="triangle-alert" class="size-6" />
           </.ssl_toggle>
           <p :if={@synced} class="label-text-alt text-base-content/60">
@@ -48,10 +47,10 @@ defmodule DawarichWeb.AirtrailPane do
         </div>
       </.form_head>
       <.sync_row
-        :if={Ruby.present?(UserSettings.value(@user, "airtrail_url"))}
+        :if={Ruby.present?(@form["airtrail_url"].value)}
         locale={@locale}
-        job="start_airtrail_import"
-        rails_csrf_token={@rails_csrf_token}
+        service="airtrail"
+        queued={@queued}
       >
         <h3 class="font-semibold flex items-center gap-2">
           <.icon name="plane" class="size-5 text-primary" /> {t(
