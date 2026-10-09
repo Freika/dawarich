@@ -9,6 +9,11 @@ defmodule Dawarich.UserData do
   @legacy_trial_bytes 11 * 1024 * 1024
   @legacy_trial_imports 5
 
+  def legacy_trial_too_large?(status, subscription, size),
+    do: legacy_trial?(status, subscription) and size > @legacy_trial_bytes
+
+  defp legacy_trial?(status, subscription), do: status == 2 and subscription in [nil, 0]
+
   def request_export(%Scope{user: user} = scope) do
     repo = repo()
     context = context(scope)
@@ -59,7 +64,7 @@ defmodule Dawarich.UserData do
         with {:ok, blob} <- Uploads.fetch(repo, value),
              true <- Dawarich.Storage.UploadReceipts.owned_archive?(repo, blob.id, user.id),
              true <- zip?(blob) do
-          if status == 2 and subscription == 0 and
+          if legacy_trial?(status, subscription) and
                (blob.byte_size > @legacy_trial_bytes or
                   trial_count(repo, user.id) >= @legacy_trial_imports),
              do: repo.rollback(:validation)

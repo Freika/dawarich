@@ -2,6 +2,7 @@ defmodule DawarichWeb.StandaloneTrekSourcesTest do
   use ExUnit.Case, async: false
   import Phoenix.ConnTest, except: [post: 3]
   import Plug.Conn
+  import Phoenix.LiveViewTest
   import Dawarich.Test.RawHTTP
   alias Dawarich.{ActiveRecordEncryption, Repo}
   alias Dawarich.Test.RailsUser
@@ -59,25 +60,26 @@ defmodule DawarichWeb.StandaloneTrekSourcesTest do
     task = provider(c, remote)
     conn = page(c, id)
     assert conn.status == 200
-    doc = LazyHTML.from_document(conn.resp_body)
+    {:ok, _view, html} = live(conn)
+    doc = LazyHTML.from_document(html)
 
     assert LazyHTML.query(doc, "#trek-trips[phx-submit=import]") |> Enum.count() == 1
 
     assert LazyHTML.query(doc, "input[value=selected][checked]") |> Enum.count() == 1
     assert LazyHTML.query(doc, "input[disabled]") |> Enum.count() == 2
-    assert conn.resp_body =~ "&lt;script&gt;"
+    assert html =~ "&lt;script&gt;"
     Task.await(task)
     task = provider(c, remote)
     localized = page(c, id, "?locale=de")
     assert localized.status == 200
     assert localized.resp_body =~ ~s(lang="de")
+    {:ok, _view, _html} = live(localized)
     assert Dawarich.Accounts.settings(c.actor.id)["locale"] == "de"
     Task.await(task)
     rows("UPDATE users SET settings=$2 WHERE id=$1", [c.actor.id, c.actor.settings])
     task = provider(c, [], 401)
-    conn = page(c, id)
-    assert conn.status == 302
-    assert get_resp_header(conn, "location") == [integrations()]
+    assert {:error, {:redirect, %{to: to}}} = live(page(c, id))
+    assert to == integrations()
     Task.await(task)
 
     assert rows("SELECT status,last_error FROM trip_sources WHERE id=$1", [id]) == [
@@ -91,6 +93,7 @@ defmodule DawarichWeb.StandaloneTrekSourcesTest do
     do:
       build_conn()
       |> put_req_cookie("_dawarich_session", RailsUser.cookie(c.session))
+      |> RailsUser.connecting_as(c.actor.id)
       |> get("/settings/trek_sources/#{id}/select_trips" <> suffix)
 
   defp integrations, do: "/settings/integrations?service=trek"

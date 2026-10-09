@@ -5,8 +5,6 @@ defmodule DawarichWeb.DirectUpload do
   alias Dawarich.Storage.Blobs
   alias DawarichWeb.{ActiveStorageUrls, Translate}
 
-  @legacy_trial_bytes 11 * 1024 * 1024
-
   def presign(entry, socket) do
     %{current_user: user, locale: locale, base_url: base_url, checksums: checksums} =
       socket.assigns
@@ -24,7 +22,7 @@ defmodule DawarichWeb.DirectUpload do
       not UserData.zip?(%{content_type: entry.client_type, filename: entry.client_name}) ->
         refuse(socket, locale, "javascript.messages.please_select_a_valid_zip_file")
 
-      legacy_trial?(user) and entry.client_size > @legacy_trial_bytes ->
+      UserData.legacy_trial_too_large?(user.status, user.subscription_source, entry.client_size) ->
         refuse(socket, locale, "javascript.upload.file_size_limit")
 
       true ->
@@ -57,8 +55,6 @@ defmodule DawarichWeb.DirectUpload do
          }, socket}
     end
   end
-
-  defp legacy_trial?(user), do: user.status == 2 and user.subscription_source in [nil, 0]
 
   defp refuse(socket, locale, key), do: {:error, %{reason: Translate.t(locale, key, %{})}, socket}
 end

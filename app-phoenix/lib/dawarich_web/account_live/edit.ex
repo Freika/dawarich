@@ -40,7 +40,10 @@ defmodule DawarichWeb.AccountLive.Edit do
   def handle_event("rotate_api_key", _params, socket) do
     user = socket.assigns.current_user
 
-    case Settings.rotate_api_key(scope(socket), binary_part(user.encrypted_password, 0, 29)) do
+    case Settings.rotate_api_key(
+           scope(socket),
+           String.slice(user.encrypted_password || "", 0, 29)
+         ) do
       {:ok, updated} ->
         {:noreply, assign(socket, :current_user, %{user | api_key: updated.api_key})}
 
@@ -68,8 +71,14 @@ defmodule DawarichWeb.AccountLive.Edit do
   def handle_event("validate_archive", _params, socket), do: {:noreply, socket}
 
   def handle_event("archive_checksum", %{"ref" => ref, "checksum" => checksum}, socket)
-      when is_binary(ref) and is_binary(checksum),
-      do: {:noreply, update(socket, :checksums, &Map.put(&1, ref, checksum))}
+      when is_binary(ref) and is_binary(checksum) do
+    refs = Enum.map(socket.assigns.uploads.archive.entries, & &1.ref)
+
+    if ref in refs and checksum =~ ~r/\A[A-Za-z0-9+\/]{22}==\z/,
+      do:
+        {:noreply, update(socket, :checksums, &(&1 |> Map.take(refs) |> Map.put(ref, checksum)))},
+      else: {:noreply, socket}
+  end
 
   def handle_event("cancel_archive", %{"ref" => ref}, socket),
     do: {:noreply, cancel_upload(socket, :archive, ref)}

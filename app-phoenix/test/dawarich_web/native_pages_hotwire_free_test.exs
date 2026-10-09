@@ -57,6 +57,20 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     %{user: user}
   end
 
+  defp unlabelled(html) do
+    doc = LazyHTML.from_document(html)
+
+    for control <-
+          doc
+          |> LazyHTML.query(
+            "input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea"
+          )
+          |> LazyHTML.filter(":not(label *):not([aria-label]):not([aria-labelledby])"),
+        id = List.first(LazyHTML.attribute(control, "id")),
+        is_nil(id) or Enum.empty?(LazyHTML.query(doc, ~s(label[for="#{id}"]))),
+        do: LazyHTML.to_html(control)
+  end
+
   defp native_paths do
     DawarichWeb.Router.__routes__()
     |> Enum.filter(
@@ -78,6 +92,9 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
         for {html, phase} <- [{static, :static}, {connected, :connected}], marker <- @markers do
           refute html =~ marker, "#{path} (#{phase}) contains #{marker}"
         end
+
+        for html <- [static, connected],
+            do: assert(unlabelled(html) == [], "#{path} has unlabelled controls")
 
         assert static =~ "/native/app"
         assert static =~ ~r/<script[^>]*phx-track-static[^>]*\/native\/app/

@@ -9,9 +9,9 @@ defmodule Dawarich.Integrations.Trek do
          do: Sources.connect(Repo, user.id, params, options(scope))
   end
 
-  def list_trips(scope, id) do
+  def list_trips(scope, id, remote? \\ true) do
     with {:ok, source} <- available(scope, id),
-         {:ok, trips} <- Sources.remote(source, options(scope)),
+         {:ok, trips} <- if(remote?, do: Sources.remote(source, options(scope)), else: {:ok, []}),
          do: {:ok, %{source: source, trips: trips, selected: Sources.selected(source)}}
   end
 

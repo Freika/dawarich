@@ -79,7 +79,7 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
     assert rows("SELECT count(*) FROM trip_sources WHERE user_id=$1", [c.user.id]) == [[1]]
     assert_receive {:native_provider_request, "/api/v1/trips"}
     assert_receive {:native_provider_request, "/api/v1/trips"}
-    assert_receive {:native_provider_request, "/api/v1/trips"}
+    refute_receive {:native_provider_request, "/api/v1/trips"}
     scope = Scope.for_user(Accounts.get(c.user.id), "en")
 
     socket = %Phoenix.LiveView.Socket{
@@ -165,7 +165,8 @@ defmodule DawarichWeb.TrekSourcesLiveTest do
     assert {:error, {:redirect, %{to: "/settings/integrations?service=trek", flash: flash}}} =
              live(conn_for(c.user), path(id))
 
-    assert flash["alert"] == "TREK request failed with HTTP 401"
+    assert Phoenix.LiveView.Utils.verify_flash(@endpoint, flash)["alert"] ==
+             "TREK request failed with HTTP 401"
 
     assert rows("SELECT status,last_error FROM trip_sources WHERE id=$1", [id]) == [
              [1, "TREK request failed with HTTP 401"]

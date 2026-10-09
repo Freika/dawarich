@@ -108,6 +108,17 @@ defmodule DawarichWeb.AccountLiveTest do
     assert api_key() == "account-live-old-key"
   end
 
+  test "an account without a password hash cannot rotate the key and is sent to sign in" do
+    Repo.query!("UPDATE users SET encrypted_password='' WHERE id=9893")
+    session = RailsUser.session(9893, %{"warden.user.user.key" => [[9893], ""]})
+    {:ok, view, _html} = live_as(session)
+
+    assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
+             view |> element("#rotate-api-key") |> render_click()
+
+    assert api_key() == "account-live-old-key"
+  end
+
   test "an export request queues one export and lands on the exports page with the notice", %{
     session: session
   } do
@@ -189,6 +200,29 @@ defmodule DawarichWeb.AccountLiveTest do
       |> html_response(200)
 
     refute again =~ "error_explanation"
+  end
+
+  test "an over-long submitted email still returns to the page with the errors", %{
+    session: session
+  } do
+    html = conn_for(session) |> get("/users/edit") |> html_response(200)
+    fields = form_fields(html, "form#edit_user")
+    long = String.duplicate("a", 3_500) <> "@dawarich.test"
+
+    failed =
+      post_form(
+        session,
+        Map.merge(fields, %{
+          "user[email]" => long,
+          "user[current_password]" => "wrong-password-123"
+        })
+      )
+
+    assert failed.status == 303
+    session = RailsFormRequests.rails_session(failed)
+    {:ok, view, page} = conn_for(session) |> RailsUser.connecting_as(9893) |> live("/users/edit")
+    assert has_element?(view, "#error_explanation li")
+    refute page =~ long
   end
 
   test "the delete form posts to the deletion handler with a token it accepts", %{

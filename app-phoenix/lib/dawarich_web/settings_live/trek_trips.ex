@@ -6,7 +6,7 @@ defmodule DawarichWeb.SettingsLive.TrekTrips do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    case Trek.list_trips(socket.assigns.current_scope, id) do
+    case Trek.list_trips(socket.assigns.current_scope, id, connected?(socket)) do
       {:ok, page} ->
         {:ok,
          socket

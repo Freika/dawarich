@@ -36,7 +36,7 @@ defmodule DawarichWeb.AuthAccount.Response do
     conn = current(conn, Accounts.get(actor.id))
 
     form = %{
-      "email" => render.email,
+      "email" => if(byte_size(render.email || "") <= 254, do: render.email),
       "errors" =>
         Enum.map(render.errors, fn {field, kind, bindings} ->
           [Atom.to_string(field), Atom.to_string(kind), bindings]

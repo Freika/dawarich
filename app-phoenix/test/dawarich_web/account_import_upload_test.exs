@@ -122,11 +122,15 @@ defmodule DawarichWeb.AccountImportUploadTest do
     )
   end
 
-  defp archive(view),
-    do:
+  defp archive(view) do
+    upload =
       file_input(view, "#import-form", :archive, [
         %{name: "backup.zip", content: String.duplicate("z", 2048), type: "application/zip"}
       ])
+
+    view |> form("#import-form") |> render_change(upload)
+    upload
+  end
 
   defp imports,
     do: Repo.query!("SELECT count(*) FROM job_outbox WHERE command_type='users.import_data'").rows
@@ -148,6 +152,21 @@ defmodule DawarichWeb.AccountImportUploadTest do
              )
 
     assert imports() == [[1]]
+  end
+
+  test "checksums are kept only for the current entry and only in MD5 form" do
+    {:ok, view, _html} = live_as()
+    upload = archive(view)
+    [%{"ref" => ref}] = upload.entries
+
+    for n <- 1..20,
+        do: render_hook(view, "archive_checksum", %{"ref" => "x#{n}", "checksum" => @checksum})
+
+    render_hook(view, "archive_checksum", %{"ref" => ref, "checksum" => "not-a-digest"})
+    assert :sys.get_state(view.pid).socket.assigns.checksums == %{}
+
+    render_hook(view, "archive_checksum", %{"ref" => ref, "checksum" => @checksum})
+    assert :sys.get_state(view.pid).socket.assigns.checksums == %{ref => @checksum}
   end
 
   test "importing without a completed upload starts nothing" do
