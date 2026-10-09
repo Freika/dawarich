@@ -4,10 +4,11 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
   import Plug.Conn
   import Phoenix.LiveViewTest, only: [render_component: 2]
   import Dawarich.Test.RailsFormRequests
-  alias Dawarich.{Repo, ScratchRepo, Entitlements}
+  alias Dawarich.{Repo, ScratchRepo, Entitlements, Settings}
+  alias Dawarich.Accounts.Scope
   alias Dawarich.Test.{FrameSeeds, RailsUser, ParityHTML}
   alias Dawarich.Visits.WebSettings
-  alias DawarichWeb.{RailsAuth, RailsCsrf, A8Request, Locale, RailsHeaders, VisitSettingsActions}
+  alias DawarichWeb.{RailsAuth, RailsCsrf, A8Request, Locale, RailsHeaders}
 
   @dir "test/fixtures/a8vv"
 
@@ -64,15 +65,6 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     end
 
     for extension <- ["json", "html"] do
-      actual =
-        Path.wildcard("#{@dir}/*/*.#{extension}")
-        |> Enum.filter(fn path ->
-          extension == "json" or
-            (File.exists?(Path.rootname(path) <> ".json") and
-               File.exists?(Path.rootname(path) <> ".html"))
-        end)
-        |> Enum.map(&(&1 |> Path.relative_to(@dir) |> Path.rootname()))
-
       closure =
         if extension == "json",
           do:
@@ -568,24 +560,22 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
         System.put_env("SELF_HOSTED", to_string(state["self_hosted"]))
 
       name == "settings/redetect_recent" ->
-        conn = write_conn(state, user)
-        upstream = upstream!()
+        assert :cooldown =
+                 Settings.request_visit_redetection(Scope.for_user(user, "en"), now(state))
 
-        {{line, body}, result} =
-          forwarded(upstream, fn -> VisitSettingsActions.call(conn, :redetect) end)
-
-        assert line == "POST /visits/redetections HTTP/1.1"
-        assert body == Plug.Conn.Query.encode(state["params"])
-        assert result.status == 204
         assert_rows(state["before"], repo)
         assert repo.query!("SELECT kind,payload FROM phoenix.rails_commands").rows == []
 
+      state["path"] == "/settings/visits" ->
+        assert {:ok, _} =
+                 Settings.update_visits(
+                   Scope.for_user(user, "en"),
+                   state["params"]["settings"],
+                   now(state)
+                 )
+
       true ->
-        action = if state["path"] == "/settings/visits", do: :update, else: :redetect
-        conn = VisitSettingsActions.call(write_conn(state, user), action)
-        check_headers(conn, state)
-        assert rails_session(conn)["flash"]["flashes"] == state["flash"]
-        assert conn.resp_body == File.read!("#{@dir}/#{name}.html")
+        assert :ok = Settings.request_visit_redetection(Scope.for_user(user, "en"), now(state))
     end
 
     assert_rows(state["after"], repo)

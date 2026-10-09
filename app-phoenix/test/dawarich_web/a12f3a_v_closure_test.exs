@@ -2,7 +2,6 @@ defmodule DawarichWeb.A12f3aVClosureTest do
   use Dawarich.JobsCase
   import Phoenix.ConnTest
   import Plug.Conn
-  import Dawarich.Test.RailsFormRequests
   alias Dawarich.{Repo, ScratchRepo}
   alias Dawarich.Test.{RailsUser, ParityHTML}
   alias Dawarich.Visits.{WebDelete, WebBulk, WebMerge}
@@ -168,7 +167,7 @@ defmodule DawarichWeb.A12f3aVClosureTest do
   end
 
   @tag a12f3a_v07: true
-  test "V07: visits settings page and writes matches current Rails contract without a native-owner Rails effect" do
+  test "V07: visits settings page and saves match current Rails contract without a native-owner Rails effect" do
     ctx = fixture("a12f3a-v07")
 
     for mode <- ["true", "false", nil] do
@@ -177,15 +176,15 @@ defmodule DawarichWeb.A12f3aVClosureTest do
       assert conn.status == 200
       assert conn.resp_body =~ ~s(id="visit-detection-settings")
 
-      for method <- [:patch, :put] do
-        saved = request(ctx, method, "/settings/visits", ctx.state["params"], "text/html")
-        assert saved.status == ctx.state["status"]
-        assert get_resp_header(saved, "location") == [ctx.state["location"]]
-        assert rails_session(saved)["flash"]["flashes"]["notice"] == ctx.state["flash"]["notice"]
-        assert [[settings]] = rows("SELECT settings FROM users WHERE id=$1", [ctx.user.id])
-        assert settings["visit_radius_meters"] == 75
-        assert settings["unrelated"] == "survives"
-      end
+      assert {:ok, _} =
+               Dawarich.Settings.update_visits(
+                 Dawarich.Accounts.Scope.for_user(ctx.user, "en"),
+                 ctx.state["params"]["settings"]
+               )
+
+      assert [[settings]] = rows("SELECT settings FROM users WHERE id=$1", [ctx.user.id])
+      assert settings["visit_radius_meters"] == 75
+      assert settings["unrelated"] == "survives"
     end
 
     no_rails()
@@ -195,9 +194,8 @@ defmodule DawarichWeb.A12f3aVClosureTest do
   test "V08: full-history and user redetect producer matches current Rails contract without a native-owner Rails effect" do
     env("SELF_HOSTED", "false")
     ctx = fixture("a12f3a-v08")
-    conn = request(ctx, :post, "/visits/redetections", %{}, "text/html")
-    assert conn.status == ctx.state["status"]
-    assert get_resp_header(conn, "location") == [ctx.state["location"]]
+    scope = Dawarich.Accounts.Scope.for_user(ctx.user, "en")
+    assert :ok = Dawarich.Settings.request_visit_redetection(scope)
 
     assert [[event, payload]] =
              rows(
@@ -277,9 +275,7 @@ defmodule DawarichWeb.A12f3aVClosureTest do
     no_rails()
 
     rows("UPDATE users SET visits_redetected_at=now() WHERE id=$1", [ctx.user.id])
-    blocked = request(ctx, :post, "/visits/redetections", %{}, "text/html")
-    assert blocked.status == 429
-    assert get_resp_header(blocked, "location") == [ctx.state["location"]]
+    assert :cooldown = Dawarich.Settings.request_visit_redetection(scope)
 
     assert rows(
              "SELECT count(*) FROM public.job_outbox WHERE command_type='visits.full_history_redetect' AND aggregate_id=$1",

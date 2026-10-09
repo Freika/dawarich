@@ -66,13 +66,6 @@ defmodule DawarichWeb.A8GateEndpointTest do
     |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, method, path, body)
   end
 
-  @tag limiter: :action
-  test "A8 action pipeline runs the limiter before parsing", ctx do
-    conn = request(ctx, :patch, "/settings/visits", "settings%5Bvisit_radius_meters%5D=75")
-    assert conn.status == 302
-    assert conn.private.dawarich_rate_limit == []
-  end
-
   @tag limiter: :public
   test "A8 public pipeline runs the limiter", ctx do
     conn = request(ctx, :get, "/visits", "")
@@ -114,13 +107,12 @@ defmodule DawarichWeb.A8GateEndpointTest do
     end
   end
 
-  test "visits hand-back includes redetections but settings is separate", ctx do
+  test "visits hand-back covers the visit actions and leaves the page to settings", ctx do
     Application.put_env(:dawarich, :rails_routes, ["visits"])
     upstream = upstream!()
 
     for {method, path, body} <- [
           {:get, "/visits?status=suggested", ""},
-          {:post, "/visits/redetections", ""},
           {:patch, "/visits/42", "visit%5Bname%5D=Original+bytes"},
           {:put, "/visits/42", "visit%5Bname%5D=Original%20bytes"},
           {:delete, "/visits/42", ""},
@@ -133,18 +125,6 @@ defmodule DawarichWeb.A8GateEndpointTest do
         ] do
       replay(ctx, upstream, method, path, body)
     end
-
-    conn =
-      request(
-        ctx,
-        :post,
-        "/settings/visits",
-        "_method=patch&settings%5Bvisit_radius_meters%5D=75"
-      )
-
-    assert conn.status == 302
-    assert get_resp_header(conn, "location") == ["http://www.example.com/settings/visits"]
-    assert rows("SELECT settings->>'visit_radius_meters' FROM users WHERE id=894000") == [["75"]]
 
     Application.put_env(:dawarich, :rails_routes, ["settings"])
     conn = request(ctx, :get, "/visits", "")
@@ -240,10 +220,6 @@ defmodule DawarichWeb.A8GateEndpointTest do
           {"POST", "/route_videos", DawarichWeb.RouteVideoActions, :create},
           {"DELETE", "/route_videos/42", DawarichWeb.RouteVideoActions, :destroy},
           {"POST", "/route_videos/42", DawarichWeb.RouteVideoActions, :destroy},
-          {"PATCH", "/settings/visits", DawarichWeb.VisitSettingsActions, :update},
-          {"PUT", "/settings/visits", DawarichWeb.VisitSettingsActions, :update},
-          {"POST", "/settings/visits", DawarichWeb.VisitSettingsActions, :update},
-          {"POST", "/visits/redetections", DawarichWeb.VisitSettingsActions, :redetect},
           {"PATCH", "/visits/bulk_update", DawarichWeb.VisitActions, :bulk_update},
           {"POST", "/visits/bulk_update", DawarichWeb.VisitActions, :bulk_update},
           {"DELETE", "/visits/bulk_destroy", DawarichWeb.VisitActions, :bulk_destroy},

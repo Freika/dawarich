@@ -29,7 +29,7 @@ defmodule DawarichWeb.StorageRoutesTest do
     }
   end
 
-  defp request(c, method, path, body \\ "", headers \\ [], authenticated \\ true) do
+  defp request(c, method, path, body, headers, authenticated \\ true) do
     conn =
       Enum.reduce(headers, build_conn(), fn {name, value}, conn ->
         put_req_header(conn, name, value)

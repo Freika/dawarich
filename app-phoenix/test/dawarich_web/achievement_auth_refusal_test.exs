@@ -60,9 +60,7 @@ defmodule DawarichWeb.AchievementAuthRefusalTest do
               {"POST", "/trips", "trip[name]=synthetic"},
               {"POST", "/places", "place[name]=synthetic"},
               {"POST", "/route_videos", "route_video[file]=synthetic"},
-              {"POST", "/visits/merge", "visit_ids[]=1"},
-              {"POST", "/visits/redetections", ""},
-              {"PATCH", "/settings/visits", "settings[visit_radius_meters]=100"}
+              {"POST", "/visits/merge", "visit_ids[]=1"}
             ] do
           conn =
             request(method, path, session, "application/x-www-form-urlencoded", body)

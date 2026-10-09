@@ -38,8 +38,6 @@ defmodule DawarichWeb.A12f3aOClosureTest do
        :place_create, DawarichWeb.PlaceRequest, DawarichWeb.PlaceRequestGate},
       {:patch, "/visits/42", %{"visit" => %{"name" => "Leipzig"}}, :visit_update,
        DawarichWeb.VisitRequest, DawarichWeb.VisitRequestGate},
-      {:patch, "/settings/visits", %{"settings" => %{"visit_radius_meters" => "75"}},
-       :settings_update, DawarichWeb.VisitRequest, DawarichWeb.VisitRequestGate},
       {:post, "/route_videos",
        %{"route_video" => %{"name" => "Synthetic", "file" => "SYNTHETIC_BLOB"}}, :video_create,
        DawarichWeb.RouteVideoRequest, DawarichWeb.RouteVideoRequestGate}
@@ -382,7 +380,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
            )
 
     routes = i_f_e_t_v_r()
-    assert length(routes) == 43
+    assert length(routes) == 40
     ctx = seed_routes(ctx)
     System.put_env("SELF_HOSTED", "true")
 
@@ -433,12 +431,6 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[count + 1]]
       assert commands() == []
       assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-    end
-
-    for key <- ~w(user_data visits) do
-      Application.put_env(:dawarich, :rails_routes, [key])
-      admitted = Strangler.call(raw(ctx, "PATCH", "/settings/visits", ""), [])
-      refute admitted.halted
     end
 
     Application.put_env(:dawarich, :rails_routes, [])
@@ -533,9 +525,6 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
         {"PATCH", "/visits/bulk_update", "visits", DawarichWeb.VisitActions},
         {"DELETE", "/visits/bulk_destroy", "visits", DawarichWeb.VisitActions},
         {"POST", "/visits/merge", "visits", DawarichWeb.VisitActions},
-        {"POST", "/visits/redetections", "visits", DawarichWeb.VisitSettingsActions},
-        {"PATCH", "/settings/visits", "settings", DawarichWeb.VisitSettingsActions},
-        {"PUT", "/settings/visits", "settings", DawarichWeb.VisitSettingsActions},
         {"POST", "/route_videos", "route_videos", DawarichWeb.RouteVideoActions},
         {"DELETE", "/route_videos/42", "route_videos", DawarichWeb.RouteVideoActions}
       ]
