@@ -71,6 +71,27 @@ function feature(value) {
       : null,
   }
 }
+function hitPosition(map, geometry) {
+  if (
+    geometry?.type !== "Point" ||
+    !geometry.coordinates.every(Number.isFinite)
+  )
+    return null
+  try {
+    const point = map.project?.(geometry.coordinates)
+    const bounds = map.getContainer?.().getBoundingClientRect()
+    if (
+      Number.isFinite(point?.x) &&
+      Number.isFinite(point?.y) &&
+      point.x >= 0 &&
+      point.y >= 0 &&
+      point.x <= bounds?.width &&
+      point.y <= bounds?.height
+    )
+      return { x: point.x, y: point.y }
+  } catch {}
+  return null
+}
 export function installMapDiagnostics({ element, map, getConfig }) {
   let active = true
   const snapshot = ({ sourceId, sourceLayer } = {}) => {
@@ -117,7 +138,10 @@ export function installMapDiagnostics({ element, map, getConfig }) {
       })),
       hasSource: sources.includes(sourceId),
       featureCount: rows.length,
-      features: rows.slice(0, 500).map(feature),
+      features: rows.slice(0, 500).map((row) => {
+        const data = feature(row)
+        return { ...data, screen: hitPosition(map, data.geometry) }
+      }),
     }
   }
   element.dawarichMapSnapshot = snapshot

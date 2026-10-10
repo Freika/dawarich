@@ -206,3 +206,34 @@ test("native paint diagnostics bound expression depth width and total copied val
     destroy()
   }
 })
+
+test("native point diagnostics project only visible finite point hit positions as copied data", () => {
+  const f = setup()
+  const screen = { x: 120, y: 80, map: f.map }
+  f.map.project = () => screen
+  f.map.getContainer = () => ({
+    getBoundingClientRect: () => ({ width: 400, height: 300 }),
+  })
+  const read = () =>
+    f.element.dawarichMapSnapshot({ sourceId: "points-mvt-source" }).features[0]
+  assert.deepEqual(read().screen, { x: 120, y: 80 })
+  read().screen.x = 999
+  assert.equal(read().screen.x, 120)
+  screen.x = 450
+  assert.equal(read().screen, null)
+  screen.x = Number.NaN
+  assert.equal(read().screen, null)
+  f.map.querySourceFeatures = () => [
+    {
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [13, 52],
+          [14, 53],
+        ],
+      },
+    },
+  ]
+  assert.equal(read().screen, null)
+  f.destroy()
+})
