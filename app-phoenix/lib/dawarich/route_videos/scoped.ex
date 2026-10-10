@@ -1,7 +1,8 @@
 defmodule Dawarich.RouteVideos.Scoped do
   @moduledoc false
 
-  alias Dawarich.{Maps, RailsMessages, Repo, Storage}
+  alias Dawarich.{MapGallery, Maps, RailsMessages, Repo, Storage}
+  alias Dawarich.{TimeZoneName, UserSettings, UserTimeZone}
   alias Dawarich.RouteVideos.{AttachmentEffects, Retention, Writes}
   alias Dawarich.Storage.{Blobs, UploadReceipts}
 
@@ -80,6 +81,32 @@ defmodule Dawarich.RouteVideos.Scoped do
         id -> destroyed(Writes.destroy(repo, actor.id, id, now(opts)), id)
       end
     end)
+  end
+
+  def gallery(scope, opts \\ []) do
+    repo = Keyword.get(opts, :repo, Repo)
+
+    admitted(scope, opts, fn actor ->
+      with {:ok, zone} <- zone(repo, UserSettings.get(actor)),
+           do: {:ok, MapGallery.route_videos(actor.id, zone)}
+    end)
+  end
+
+  def zone(repo, %{"timezone" => name} = settings) when is_binary(name),
+    do: known_zone(repo, settings)
+
+  def zone(repo, %{} = settings) when not is_map_key(settings, "timezone"),
+    do: known_zone(repo, settings)
+
+  def zone(_repo, _settings), do: {:error, :invalid_zone}
+
+  defp known_zone(repo, settings) do
+    name = UserTimeZone.zone(settings, System.get_env()) |> TimeZoneName.to_iana()
+
+    case repo.query!("SELECT name FROM pg_timezone_names WHERE name=$1", [name], log: false).rows do
+      [[^name]] -> {:ok, name}
+      [] -> {:error, :invalid_zone}
+    end
   end
 
   defp admitted(scope, opts, effect), do: Maps.with_actor(scope, effect, opts)

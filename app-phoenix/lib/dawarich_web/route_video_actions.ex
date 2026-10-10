@@ -3,7 +3,7 @@ defmodule DawarichWeb.RouteVideoActions do
   @behaviour Plug
   import Plug.Conn
 
-  alias Dawarich.{Jobs, MapGallery, RouteVideos, TimeZoneName, UserTimeZone}
+  alias Dawarich.{Jobs, MapGallery, RouteVideos}
   alias Dawarich.RouteVideos.Retention
   alias DawarichWeb.{Locale, RailsSession, RequestURL, RouteVideoStreams, Translate}
   alias DawarichWeb.Api.Body
@@ -17,7 +17,7 @@ defmodule DawarichWeb.RouteVideoActions do
     user = conn.assigns.current_user
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
 
-    with {:ok, zone} <- zone(repo, Dawarich.UserSettings.get(user)) do
+    with {:ok, zone} <- RouteVideos.zone(repo, Dawarich.UserSettings.get(user)) do
       case RouteVideos.create(
              repo,
              user,
@@ -39,7 +39,7 @@ defmodule DawarichWeb.RouteVideoActions do
           Body.replay(conn, reason)
       end
     else
-      {:replay, reason} -> Body.replay(conn, reason)
+      {:error, :invalid_zone} -> Body.replay(conn, "unknown video time zone")
     end
   end
 
@@ -89,21 +89,4 @@ defmodule DawarichWeb.RouteVideoActions do
       |> put_resp_header("vary", "Accept")
       |> send_resp(status, html)
       |> halt()
-
-  defp zone(repo, %{"timezone" => name} = settings) when is_binary(name),
-    do: known_zone(repo, settings)
-
-  defp zone(repo, %{} = settings) when not is_map_key(settings, "timezone"),
-    do: known_zone(repo, settings)
-
-  defp zone(_repo, _settings), do: {:replay, "video time zone shape"}
-
-  defp known_zone(repo, settings) do
-    name = UserTimeZone.zone(settings, System.get_env()) |> TimeZoneName.to_iana()
-
-    case repo.query!("SELECT name FROM pg_timezone_names WHERE name=$1", [name], log: false).rows do
-      [[^name]] -> {:ok, name}
-      [] -> {:replay, "unknown video time zone"}
-    end
-  end
 end

@@ -638,3 +638,43 @@ test("restoring a recipe synchronizes the datetime controls", async () => {
   assert.equal(h.root.single.start.value, "2026-08-22T06:00")
   assert.equal(h.root.single.end.value, "2026-08-22T20:00")
 })
+
+test("a gallery re-render reopens the current studio owner with the saved recipe", async () => {
+  const runtimes = []
+  const hook = Object.create(VideoStudio)
+  const root = studioRoot()
+  const listeners = {}
+  root.addEventListener = (type, fn) => {
+    listeners[type] = fn
+  }
+  root.removeEventListener = () => {}
+  Object.assign(hook, {
+    el: root,
+    loader: async () => ({
+      mountVideoStudio: (options) => {
+        const owner = {
+          options,
+          recipes: [],
+          open(recipe) {
+            this.recipes.push(recipe)
+          },
+          destroy() {},
+        }
+        runtimes.push(owner)
+        return owner
+      },
+    }),
+    pushEventTo: () => {},
+  })
+  hook.mounted()
+  const open = listeners["dawarich:video-studio-open"]
+  await open({ detail: { recipe: '{"format":"square"}' } })
+  assert.equal(runtimes.length, 0)
+  const source = { snapshot() {} }
+  await open({ detail: { source } })
+  await open({ detail: { recipe: '{"format":"square"}' } })
+  assert.equal(runtimes.length, 1)
+  assert.equal(runtimes[0].options.source, source)
+  assert.deepEqual(runtimes[0].recipes, [undefined, '{"format":"square"}'])
+  hook.destroyed()
+})

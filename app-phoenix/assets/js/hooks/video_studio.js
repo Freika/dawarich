@@ -7,7 +7,7 @@ export const VideoStudio = {
     this.videoOpen = (event) => this.openVideo(event.detail ?? {})
     this.el.addEventListener("dawarich:video-studio-open", this.videoOpen)
   },
-  async openVideo({ source, recipe }) {
+  async openVideo({ source = this.videoSource, recipe }) {
     if (!source) return
     const generation = ++this.videoGeneration
     try {
