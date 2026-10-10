@@ -56,4 +56,14 @@ defmodule DawarichWeb.NativeM6IntegrationRegisterTest do
     assert bugs =~ "app/helpers/trips_helper.rb:11"
     assert changes =~ "FRB-NATIVE-M6-TRIP-PHOTO-LINK"
   end
+
+  test "native trip dependent cleanup fix has its ED FRB and changelog provenance" do
+    diffs = File.read!(Path.expand("../../parity/expected_diffs.md", __DIR__))
+    bugs = File.read!(Path.expand("../../../docs/phoenix/fixed-rails-bugs.md", __DIR__))
+    changes = File.read!(Path.expand("../../../docs/phoenix/CHANGELOG-phoenix-draft.md", __DIR__))
+    assert diffs =~ "ED-NATIVE-M6-TRIP-DEPENDENTS"
+    assert bugs =~ "FRB-NATIVE-M6-TRIP-DEPENDENTS"
+    assert bugs =~ "app/models/concerns/notable.rb:7"
+    assert changes =~ "FRB-NATIVE-M6-TRIP-DEPENDENTS"
+  end
 end

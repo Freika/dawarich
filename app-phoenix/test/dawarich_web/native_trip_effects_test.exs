@@ -109,7 +109,68 @@ defmodule DawarichWeb.NativeTripEffectsTest do
 
     assert Repo.query!(
              "SELECT event_id FROM job_outbox WHERE command_type='trips.calculate' AND aggregate_id=$1",
-             [id * 10], log: false).rows == []
+             [id * 10],
+             log: false
+           ).rows == []
+  end
+
+  test "native trip deletion preserves foreign notes and shares linked to its resource", %{id: id} do
+    other = id + 1_000_000_000
+    RailsUser.insert!(%{id: other, email: "foreign-trip-delete-#{other}@dawarich.test"})
+    own_note = id * 100
+    foreign_note = id * 100 + 1
+
+    for {note, owner, date} <- [
+          {own_note, id, ~N[2026-06-01 12:00:00]},
+          {foreign_note, other, ~N[2026-06-02 12:00:00]}
+        ] do
+      TripsSeeds.note!(%{
+        id: note,
+        trip_id: id * 10,
+        user_id: owner,
+        body: "Stored note",
+        noted_at: date
+      })
+    end
+
+    own_share = Ecto.UUID.generate()
+    foreign_share = Ecto.UUID.generate()
+    stamp = NaiveDateTime.utc_now()
+
+    for {share, owner} <- [{own_share, id}, {foreign_share, other}] do
+      Repo.insert_all("shared_links", [
+        %{
+          id: Ecto.UUID.dump!(share),
+          user_id: owner,
+          resource_type: 0,
+          resource_id: id * 10,
+          name: "Stored share",
+          settings: %{},
+          created_at: stamp,
+          updated_at: stamp
+        }
+      ])
+    end
+
+    {:ok, view, _} = open(id)
+    view |> element("[phx-click='trip:delete']") |> render_click()
+    assert_redirect(view, "/trips")
+
+    assert [[^foreign_note, ^other]] =
+             Repo.query!(
+               "SELECT id,user_id FROM notes WHERE id=ANY($1) ORDER BY id",
+               [[own_note, foreign_note]],
+               log: false
+             ).rows
+
+    assert [[^foreign_share, ^other]] =
+             Repo.query!(
+               "SELECT id::text,user_id FROM shared_links WHERE id=ANY($1::text[]::uuid[]) ORDER BY id",
+               [[own_share, foreign_share]],
+               log: false
+             ).rows
+
+    assert Repo.query!("SELECT id FROM trips WHERE id=$1", [id * 10], log: false).rows == []
   end
 
   defp open(id, resource \\ nil) do

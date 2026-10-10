@@ -109,8 +109,16 @@ defmodule Dawarich.Maps.Dependencies.Trip do
       context = %{now: DateTime.utc_now(), locale: scope.locale}
 
       case action do
-        :delete -> Dawarich.Trips.WebDelete.run(Dawarich.Repo, actor, id, context)
-        :recalculate -> Dawarich.Trips.WebRecalculate.run(Dawarich.Repo, actor, id, context)
+        :delete ->
+          Dawarich.Trips.WebDelete.run(
+            Dawarich.Repo,
+            actor,
+            id,
+            Map.put(context, :owner_scoped, true)
+          )
+
+        :recalculate ->
+          Dawarich.Trips.WebRecalculate.run(Dawarich.Repo, actor, id, context)
       end
     end)
   end
