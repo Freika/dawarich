@@ -124,6 +124,35 @@ defmodule DawarichWeb.NativeTripMapTest do
     end
   end
 
+  test "native trip presentation excludes private itinerary source credentials while keeping ordinary navigation",
+       ctx do
+    assert {:ok, page} = Dawarich.TripPage.load(ctx.user, 884_101, @now)
+
+    for url <- [
+          "https://user:synthetic-private@trek.test",
+          "https://trek.test?token=synthetic-private"
+        ] do
+      source = %{id: 1, provider: "trek", base_url: url, status: 0, last_synced_at: nil}
+
+      safe =
+        Dawarich.Maps.Dependencies.Trip.present(%{page | plan: %{page.plan | source: source}})
+
+      assert safe.plan.source == nil
+      refute String.contains?(inspect(safe), "synthetic-private")
+    end
+
+    source = %{
+      id: 1,
+      provider: "trek",
+      base_url: "https://trek.test",
+      status: 0,
+      last_synced_at: nil
+    }
+
+    safe = Dawarich.Maps.Dependencies.Trip.present(%{page | plan: %{page.plan | source: source}})
+    assert safe.plan.source == source
+  end
+
   test "trip map adapter refuses the original revoked session", ctx do
     scope = Maps.principal(ctx.user, "en")
 

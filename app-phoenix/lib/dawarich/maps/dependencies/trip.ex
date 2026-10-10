@@ -25,6 +25,33 @@ defmodule Dawarich.Maps.Dependencies.Trip do
 
   def read(_, _, _), do: {:error, :invalid}
 
+  def view(scope, id, opts \\ [])
+
+  def view(scope, id, opts) when is_integer(id) and id > 0 do
+    now = Keyword.get(opts, :now, DateTime.utc_now())
+
+    Maps.with_actor(
+      scope,
+      fn actor ->
+        case TripPage.load(actor, id, now) do
+          {:ok, page} ->
+            {:ok,
+             %{
+               config: project(page)["config"],
+               presentation: present(page),
+               studio: Map.take(page.studio, [:themes, :print_order_url])
+             }}
+
+          _ ->
+            {:error, :not_found}
+        end
+      end,
+      now: now
+    )
+  end
+
+  def view(_, _, _), do: {:error, :invalid}
+
   def presentation(scope, id, opts \\ [])
 
   def presentation(scope, id, opts) when is_integer(id) and id > 0 do
@@ -63,20 +90,29 @@ defmodule Dawarich.Maps.Dependencies.Trip do
         }
       end)
 
-    links = Map.filter(page.photos.links, fn {_source, url} -> safe_photo_link?(url) end)
+    links = Map.filter(page.photos.links, fn {_source, url} -> safe_source_link?(url) end)
 
     page
     |> Map.take(
       ~w(id name distance countries flags settings iana started_at ended_at duration recalculating shared has_path map_state days day_notes plan now plan_on_map plan_toggle future_start description)a
     )
     |> Map.put(:days, days)
+    |> Map.put(:plan, %{page.plan | source: safe_plan_source(page.plan.source)})
     |> Map.put(:photos, %{
       sources: Enum.filter(page.photos.sources, &Map.has_key?(links, &1)),
       links: links
     })
   end
 
-  defp safe_photo_link?(url) when is_binary(url) do
+  defp safe_plan_source(%{base_url: url} = source) do
+    if safe_source_link?(url),
+      do: Map.take(source, [:id, :provider, :base_url, :status, :last_synced_at]),
+      else: nil
+  end
+
+  defp safe_plan_source(_), do: nil
+
+  defp safe_source_link?(url) when is_binary(url) do
     uri = URI.parse(url)
     keys = URI.decode_query(uri.query || "") |> Map.keys()
 
@@ -89,7 +125,7 @@ defmodule Dawarich.Maps.Dependencies.Trip do
     _ -> false
   end
 
-  defp safe_photo_link?(_), do: false
+  defp safe_source_link?(_), do: false
 
   defp project(page) do
     config = %{

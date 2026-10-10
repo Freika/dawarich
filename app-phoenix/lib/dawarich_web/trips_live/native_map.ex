@@ -9,19 +9,16 @@ defmodule DawarichWeb.TripsLive.NativeMap do
   def handle_params(%{"id" => id}, _, socket) do
     trip_id = Dawarich.RubyInteger.to_i(id)
 
-    case Dawarich.Maps.Dependencies.Trip.config(socket.assigns.current_scope, trip_id) do
-      {:ok, config} ->
-        studio =
-          Dawarich.Maps.with_actor(socket.assigns.current_scope, fn actor ->
-            Dawarich.TripStudio.load(actor.id, actor.settings["timezone"] || "Europe/Berlin")
-            |> Map.take([:themes, :print_order_url])
-          end)
-
+    case Dawarich.Maps.Dependencies.Trip.view(socket.assigns.current_scope, trip_id) do
+      {:ok, page} ->
+        config = page.config
         label = config["range"]["startAt"] <> " – " <> config["range"]["endAt"]
-        {:noreply, assign(socket, page: %{config: config, studio: studio, range_label: label})}
+
+        {:noreply,
+         assign(socket, page: Map.put(page, :range_label, label), page_title: config["title"])}
 
       {:error, reason} ->
-        {:noreply, DawarichWeb.MapLiveAuth.refuse(socket, reason)}
+        {:noreply, DawarichWeb.MapLiveAuth.refuse(assign(socket, :page_title, nil), reason)}
     end
   end
 
@@ -43,8 +40,8 @@ defmodule DawarichWeb.TripsLive.NativeMap do
 
   def render(assigns) do
     ~H"""
-    <main :if={@page} data-native-map-root class="w-full min-w-0 p-4">
-      <h1 class="text-3xl break-words [overflow-wrap:anywhere]">{@page.config["title"]}</h1>
+    <main :if={@page} id="trip-shell" data-native-map-root class="w-full min-w-0 p-4">
+      <DawarichWeb.NativeTripContent.content page={@page.presentation} locale={@locale} />
       <p>{@page.range_label}</p>
       <DawarichWeb.NativeTripMapPanel.panel config={@page.config} locale={@locale} />
       <DawarichWeb.NativePosterStudio.poster_studio

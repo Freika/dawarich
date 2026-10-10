@@ -1594,9 +1594,9 @@ Mobile and desktop family sharing indicators reused one DOM id in Rails. Updates
 
 ### FRB-NATIVE-M6-TRIP-PHOTO-LINK
 
-Trip photo-source links in Rails interpolate configured base URLs, including URL userinfo or credential query keys. Such credentials appear in the rendered destination and browser navigation. Native trip presentation admits only HTTP(S) links without userinfo or credential query keys, preserving ordinary source links. Thumbnail URLs use the cookie reader. Production trip parent insertion remains the X1 handoff; the adapter behavior is verified independently.
+Trip photo-source and itinerary links in Rails interpolate configured base URLs, including URL userinfo or credential query keys. Such credentials appear in the rendered destination and browser navigation. Native trip presentation admits only HTTP(S) links without userinfo or credential query keys, preserving ordinary source links. It also excludes private itinerary source metadata before assigning LiveView state. Thumbnail URLs use the cookie reader. Production trip parent insertion remains the X1 handoff; the adapter behavior is verified independently.
 
-- Rails: `app/helpers/trips_helper.rb:11,15`; `app/views/trips/show.html.erb:282`.
-- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/trip.ex:58,66,79`.
-- Test: `native trip presentation keeps ordinary photo source navigation and refuses credential-bearing links`; safe-link bypass mutation fails.
+- Rails: `app/helpers/trips_helper.rb:11,15,32`; `app/views/trips/show.html.erb:282`; `app/views/trips/_source_itinerary.html.erb:28`.
+- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/trip.ex:85,93,107,115`.
+- Tests: `native trip presentation keeps ordinary photo source navigation and refuses credential-bearing links`; `native trip presentation excludes private itinerary source credentials while keeping ordinary navigation`. Photo-link and itinerary-source admission mutations fail.
 - ED: ED-NATIVE-M6-TRIP-PHOTO-LINK. No DRB row.

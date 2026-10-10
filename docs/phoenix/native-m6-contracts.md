@@ -167,3 +167,7 @@ X4 reads the minified emitted files and sums each recursive static closure, with
 | video | 88071 / 30408 | 100000 | 36000 |
 
 Named static tests exercise each exact boundary, every one-byte excess, malformed receipts, and an actual emitted oversized banner with dishonest metadata. Browser memory/resource measurements remain outside acceptance under the controller scope cut; functional owner/navigation/cancel behavior remains covered by native behavior successors.
+
+## Trip presentation insertion contract
+
+The Trip dependency adapter `view/3` reads one fresh owner-admitted TripPage and projects safe config, presentation and two studio scalars from that same read. Presentation contains source summary/countries/days/notes/itinerary metadata, no path/device-window/plan JSON, API key or stream token. Photo and itinerary source destinations reject credential-bearing URLs; thumbnails use cookie-authenticated reads. NativeMap renders read-only presentation, refreshes it on params, updates the title and clears both presentation/title on a refused resource. Malformed IDs refuse locally. Native action/day/notes controls and production parent insertion remain X1 work; probe behavior is not a production route claim.

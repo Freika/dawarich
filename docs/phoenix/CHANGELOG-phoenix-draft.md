@@ -178,4 +178,4 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 
 - Give mobile and desktop family sharing indicators distinct identities so navigation updates target the correct copy. (FRB-NATIVE-M6-FAMILY-NAV-ID)
 
-- Omit credential-bearing photo source destinations from native trip presentation and use cookie-authenticated thumbnails. (FRB-NATIVE-M6-TRIP-PHOTO-LINK)
+- Omit credential-bearing photo and itinerary source destinations from native trip presentation and use cookie-authenticated thumbnails. (FRB-NATIVE-M6-TRIP-PHOTO-LINK)
