@@ -84,3 +84,7 @@ Native authenticated documents and HTTP tabs retain setup/verification/error/bac
 ## C1 — recovery templates
 
 HEEx preserves source blank email/credentials, reset capability/PUT override/commit, fields/navigation and seven-locale messages. Labels/errors are explicitly associated with focusable summary. RED `impl-m3c-c1-red.log`: new named failures plus temporary unused alias (exit 3); GREEN four cases. Capability/password/description mutations fail named cases (exit 2). Restored `impl-m3c-c1-restored-green.log`: 27 passed, exit 0, warnings clean. Recovery Form exact HTML → all source fields/navigation/headings/labels/error text; source fixture cases unchanged. C2 document tests were RED against parent HTTP adapter before this commit and GREEN with candidate wiring.
+
+## C2 — recovery lifecycle
+
+Endpoint cases preserve known/unknown/unlocked public notices, post-insert synthetic sealed intent rollback, reset session/remember revocation plus one-use capability, and unauthenticated unlock/replay. RED `impl-m3c-c2-red.log` against parent HTTP adapter before C1 commit: 0/4 exit 2; GREEN included in C1 27-test batch. Notice/enqueue/salt/unlock mutations each 3/4 passed, exit 2, failing the named case. Restored `impl-m3c-c2-restored-green.log`: 83 passed, exit 0, warnings clean, including real mail worker/transaction/expiry/concurrency source corpus. No domain production change.
