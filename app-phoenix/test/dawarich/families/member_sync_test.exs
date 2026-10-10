@@ -21,7 +21,7 @@ defmodule Dawarich.Families.MemberSyncTest do
     :ok
   end
 
-  defp user!(opts \\ []) do
+  defp user!(opts) do
     [[id]] =
       rows(
         "INSERT INTO users (email, plan, status, active_until, subscription_source, settings, created_at, updated_at) " <>

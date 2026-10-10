@@ -6,7 +6,11 @@ defmodule Dawarich.QrCacheTest do
   test "fetch/2 computes a fresh key once, then serves it from the cache" do
     key = "a51b-cache-#{System.unique_integer()}"
     test = self()
-    fun = fn -> send(test, :computed) && "value" end
+
+    fun = fn ->
+      send(test, :computed)
+      "value"
+    end
 
     assert QrCache.fetch(key, fun) == "value"
     assert_received :computed

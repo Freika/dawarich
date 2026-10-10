@@ -2,7 +2,6 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
   use Dawarich.IngestCase, async: false
   import Dawarich.Test.RawHTTP
   import ExUnit.CaptureLog
-  require Logger
 
   @moduletag :capture_log
 

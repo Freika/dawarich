@@ -1,5 +1,3 @@
-Code.require_file("support.exs", __DIR__)
-
 defmodule Dawarich.Tracks.MapMatching.HooksTest do
   use Dawarich.TracksCase, async: false
   alias Dawarich.MapMatching.TestSupport

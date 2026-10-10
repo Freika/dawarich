@@ -166,7 +166,7 @@ defmodule Dawarich.UserData.ArchiveTest do
   end
 
   defp patch_size(bytes, offset, size) do
-    <<head::binary-size(offset), _::32, tail::binary>> = bytes
+    <<head::binary-size(^offset), _::32, tail::binary>> = bytes
     head <> <<size::little-32>> <> tail
   end
 end

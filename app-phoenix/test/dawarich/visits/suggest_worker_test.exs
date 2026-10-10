@@ -171,7 +171,8 @@ defmodule Dawarich.Visits.SuggestWorkerTest do
       "plan_restricted" => false
     }
 
-    assert SuggestWorker.args_from_command(1, valid) == {:ok, Map.put(valid, "cursor", 0)}
+    expected = Map.put(valid, "cursor", 0)
+    assert {:ok, ^expected} = SuggestWorker.args_from_command(1, valid)
 
     for payload <- [
           Map.put(valid, "extra", 1),

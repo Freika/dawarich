@@ -90,9 +90,9 @@ defmodule Dawarich.Visits.ConcurrentSuggestionsTest do
   for {mode, label} <- [{nil, "coexistence"}, {"off", "standalone"}] do
     @tag :settings_race
     @tag settings_mode: label
-    test "a precomputed suggestion cannot erase the newer result after detection settings change in #{label}" do
-      mode = unquote(mode)
-
+    @tag rails_mode: mode
+    test "a precomputed suggestion cannot erase the newer result after detection settings change in #{label}",
+         %{rails_mode: mode} do
       if mode,
         do: System.put_env("DAWARICH_RAILS", mode),
         else: System.delete_env("DAWARICH_RAILS")
@@ -202,9 +202,10 @@ defmodule Dawarich.Visits.ConcurrentSuggestionsTest do
   for {mode, label} <- [{nil, "coexistence"}, {"off", "standalone"}] do
     @tag :settings_stitch
     @tag stitch_mode: label
-    test "a settings change before stitching cannot publish obsolete visits in #{label}" do
-      mode = unquote(mode)
-
+    @tag rails_mode: mode
+    test "a settings change before stitching cannot publish obsolete visits in #{label}", %{
+      rails_mode: mode
+    } do
       if mode,
         do: System.put_env("DAWARICH_RAILS", mode),
         else: System.delete_env("DAWARICH_RAILS")

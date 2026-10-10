@@ -1,5 +1,3 @@
-Code.require_file("support.exs", __DIR__)
-
 defmodule Dawarich.Tracks.MapMatching.DispatchRegressionTest do
   use Dawarich.TracksCase, async: false
   import ExUnit.CaptureLog

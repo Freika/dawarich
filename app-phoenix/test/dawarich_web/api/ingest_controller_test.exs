@@ -6,8 +6,6 @@ defmodule DawarichWeb.Api.IngestControllerTest do
   import Dawarich.Test.RawHTTP
   import ExUnit.CaptureLog
 
-  require Logger
-
   alias DawarichWeb.Api.IngestController
 
   @moduletag :capture_log
