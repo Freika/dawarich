@@ -1,3 +1,5 @@
+import { waitForEncoder } from "./wait.js"
+
 const CODEC_CANDIDATES = [
   { codec: "avc1.640028", muxerCodec: "avc" },
   { codec: "avc1.4d0028", muxerCodec: "avc" },
@@ -20,6 +22,9 @@ export async function pickSupportedCodec({
   fps,
   isConfigSupported,
   probeConfig,
+  signal,
+  timeoutMs,
+  timers,
 }) {
   const bitrate = chooseBitrate(width, height, fps)
   for (const candidate of CODEC_CANDIDATES) {
@@ -32,11 +37,26 @@ export async function pickSupportedCodec({
       ...(candidate.muxerCodec === "avc" ? { avc: { format: "avc" } } : {}),
     }
     try {
-      const result = await isConfigSupported(config)
+      const result = await waitForEncoder(() => isConfigSupported(config), {
+        signal,
+        timeoutMs,
+        timers,
+      })
       if (!result?.supported) continue
-      if (probeConfig && !(await probeConfig(config))) continue
+      if (
+        probeConfig &&
+        !(await waitForEncoder(() => probeConfig(config), {
+          signal,
+          timeoutMs,
+          timers,
+        }))
+      )
+        continue
       return { muxerCodec: candidate.muxerCodec, config }
-    } catch {}
+    } catch (error) {
+      if (error.name === "AbortError" || error.name === "TimeoutError")
+        throw error
+    }
   }
   return null
 }

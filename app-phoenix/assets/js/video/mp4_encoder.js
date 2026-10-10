@@ -1,5 +1,6 @@
 import { ArrayBufferTarget, Muxer } from "mp4-muxer"
 import { pickSupportedCodec } from "./codec.js"
+import { waitForEncoder } from "./wait.js"
 
 const KEYFRAME_INTERVAL_SEC = 2
 const MAX_ENCODE_QUEUE = 8
@@ -23,7 +24,7 @@ export function isVideoExportSupported(runtime = browser()) {
   )
 }
 
-export async function probeVideoEncoderConfig(config, runtime = browser()) {
+export async function probeVideoEncoderConfig(config, runtime = browser(), waits = {}) {
   let encoder = null
   let frame = null
   let encodeError = null
@@ -46,9 +47,10 @@ export async function probeVideoEncoderConfig(config, runtime = browser()) {
     encoder.configure(config)
     frame = new runtime.VideoFrame(canvas, { timestamp: 0 })
     encoder.encode(frame, { keyFrame: true })
-    await encoder.flush()
+    await waitForEncoder(() => encoder.flush(), waits)
     return !encodeError
-  } catch {
+  } catch (error) {
+    if (error.name === "AbortError" || error.name === "TimeoutError") throw error
     return false
   } finally {
     frame?.close()
@@ -63,9 +65,12 @@ export async function createMp4Encoder({
   height,
   fps,
   signal,
+  timeoutMs,
+  timers,
   runtime: given = {},
 }) {
   const runtime = { ...browser(), ...given }
+  const waits = { signal, timeoutMs, timers }
   if (!isVideoExportSupported(runtime)) return null
   if (signal?.aborted) throw renderCancelled()
 
@@ -76,9 +81,9 @@ export async function createMp4Encoder({
         ...options,
         isConfigSupported: (config) =>
           runtime.VideoEncoder.isConfigSupported(config),
-        probeConfig: (config) => probeVideoEncoderConfig(config, runtime),
+        probeConfig: (config) => probeVideoEncoderConfig(config, runtime, waits),
       }))
-  const picked = await pickCodec({ width, height, fps })
+  const picked = await waitForEncoder(() => pickCodec({ width, height, fps, ...waits }), waits)
   if (!picked) return null
   if (signal?.aborted) throw renderCancelled()
 
@@ -152,28 +157,30 @@ export async function createMp4Encoder({
         !encodeError &&
         !aborted
       ) {
-        await park((resume) => {
-          encoder.addEventListener("dequeue", resume, { once: true })
-          return () => encoder.removeEventListener("dequeue", resume)
-        })
+        try {
+          await waitForEncoder(() => park((resume) => {
+            encoder.addEventListener("dequeue", resume, { once: true })
+            return () => encoder.removeEventListener("dequeue", resume)
+          }), waits)
+        } catch (error) {
+          abort()
+          throw error
+        }
       }
       settle()
     },
 
     async finalize() {
       settle()
-      let flushError = null
-      await Promise.race([
-        encoder.flush().catch((error) => {
-          flushError = error
-        }),
-        park(() => null),
-      ])
-      wake()
-      settle()
-      if (flushError) throw flushError
-      signal?.removeEventListener("abort", abort)
-      encoder.close()
+      try {
+        await waitForEncoder(() => Promise.race([
+          encoder.flush(),
+          park(() => null),
+        ]), waits)
+        settle()
+      } finally {
+        abort()
+      }
       muxer.finalize()
       return new Blob([target.buffer], { type: "video/mp4" })
     },
