@@ -312,6 +312,34 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "#native-poster-studio[phx-hook=PosterStudio]")
   end
 
+  test "German studio host localizes expired gallery commands and invalid save replies", %{id: id} do
+    stamp = ~N[2026-10-01 10:00:00]
+
+    Dawarich.Test.SeedIds.insert_all!(Repo, "route_videos", [
+      %{
+        id: id * 10,
+        user_id: id,
+        name: String.duplicate("Donaudampfschifffahrt", 8),
+        status: 1,
+        settings: %{"format" => "square"},
+        expired_at: stamp,
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    {:ok, view, _} = open(id, @second, "de")
+    delete = DawarichWeb.Translate.t("de", "route_videos.route_video.delete", %{})
+    restore = DawarichWeb.Translate.t("de", "route_videos.route_video.re_render", %{})
+    assert has_element?(view, "#native-route-video-#{id * 10} [data-video-delete]", delete)
+    assert has_element?(view, "#native-route-video-#{id * 10} [data-video-restore]", restore)
+    refute has_element?(view, "#native-route-video-#{id * 10} [data-video-download]")
+    view |> element("#native-video-studio") |> render_hook("video:save", %{})
+    error = DawarichWeb.Translate.t("de", "controllers.route_videos.failed_to_save", %{})
+    assert_reply(view, %{ok: false, error: ^error})
+    assert has_element?(view, "#native-map")
+  end
+
   defp config(view) do
     view
     |> render()
@@ -322,9 +350,10 @@ defmodule DawarichWeb.NativeM6HostTest do
     |> Jason.decode!()
   end
 
-  defp open(id, path) do
+  defp open(id, path, locale \\ "en") do
     RailsUser.signed_in(id)
     |> RailsUser.connecting_as(id)
+    |> Plug.Conn.assign(:locale, locale)
     |> Plug.Test.init_test_session(%{})
     |> Plug.Conn.put_private(:phoenix_endpoint, @endpoint)
     |> Map.merge(%{
