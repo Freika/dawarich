@@ -29,7 +29,7 @@ defmodule DawarichWeb.MapNavigationTest do
   end
 
   @tag :sa_g44_map_navigation
-  test "native map date search Turbo envelopes remount maps tracks replay studios and digest controls",
+  test "native map date search preserves range ownership lazy studios and digest controls",
        %{user: user} do
     for route <- ["/map", "/map/v2"],
         range <- [
@@ -46,7 +46,23 @@ defmodule DawarichWeb.MapNavigationTest do
         |> Endpoint.call(Endpoint.init([]))
 
       assert conn.status == 200
-      assert conn.resp_body =~ ~s(id="map-shell")
+      assert String.contains?(conn.resp_body, ~s(id="native-map")) == true
+
+      for retired <- ~w(map-shell MapShell data-controller importmap turbo-cable-stream-source),
+          do: assert(String.contains?(conn.resp_body, retired) == false)
+
+      [json] =
+        conn.resp_body
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#native-map")
+        |> LazyHTML.attribute("data-map-config")
+
+      config = Jason.decode!(json)
+      query = Plug.Conn.Query.decode(range)
+      offset = if String.starts_with?(query["start_at"], "2020"), do: "+01:00", else: "+02:00"
+      assert config["range"]["timezone"] == "Europe/Berlin"
+      assert config["range"]["startAt"] == query["start_at"] <> ":00" <> offset
+      assert config["range"]["endAt"] == query["end_at"] <> ":00" <> offset
       refute conn.resp_body =~ "turbo-visit-control"
     end
 
@@ -54,9 +70,9 @@ defmodule DawarichWeb.MapNavigationTest do
       System.cmd(
         "node",
         [
-          "--experimental-vm-modules",
           "--test",
-          "test/client/turbo_navigation_test.mjs",
+          "../spec/javascript/phoenix_map_lifecycle_test.mjs",
+          "../spec/javascript/phoenix_m6_studio_wiring_test.mjs",
           "test/client/retained_turbo_actions_test.mjs"
         ],
         stderr_to_stdout: true
