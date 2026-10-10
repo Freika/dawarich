@@ -120,10 +120,6 @@ defmodule DawarichWeb.A9Routes do
 
   defmacro family_page_routes do
     quote do
-      live "/family", DawarichWeb.FamiliesLive.Show, :show,
-        container: {:div, class: "contents"},
-        metadata: %{rails_gate: {DawarichWeb.FamilyGate, :show?}}
-
       live "/family/new", DawarichWeb.FamiliesLive.Form, :new,
         container: {:div, class: "contents"},
         metadata: %{rails_gate: {DawarichWeb.FamilyGate, :new?}}

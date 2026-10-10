@@ -81,6 +81,10 @@ defmodule DawarichWeb.NativeM6Routes do
           live "/trips/:id", DawarichWeb.TripsLive.NativeMap, :show,
             container: {:div, class: "contents"},
             metadata: %{retired: true}
+
+          live "/family", DawarichWeb.FamiliesLive.NativeMap, :show,
+            container: {:div, class: "contents"},
+            metadata: %{retired: true}
         end
       end
     end
