@@ -82,7 +82,7 @@ defmodule Dawarich.Maps.Dependencies.Trip do
 
     uri.scheme in ["http", "https"] and is_binary(uri.host) and uri.userinfo == nil and
       not Enum.any?(
-        keys || [],
+        keys,
         &(String.downcase(&1) in ~w(api_key password token access_token authorization))
       )
   rescue
