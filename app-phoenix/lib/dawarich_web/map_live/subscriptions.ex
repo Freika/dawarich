@@ -43,7 +43,7 @@ defmodule DawarichWeb.MapLive.Subscriptions do
     state = socket.assigns[:native_subscriptions]
 
     case state && state.bus.event(message) do
-      {:message, topic, payload} when is_binary(payload) and byte_size(payload) <= 65_536 ->
+      {:message, topic, payload} when is_binary(payload) ->
         admit_message(socket, topic, payload)
 
       {:subscribed, topic} ->

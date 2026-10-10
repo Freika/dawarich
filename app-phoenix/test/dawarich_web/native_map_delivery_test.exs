@@ -60,6 +60,20 @@ defmodule DawarichWeb.NativeMapDeliveryTest do
     Subscriptions.release(socket)
   end
 
+  test "large legacy batches still deliver only a bounded native invalidation", %{
+    scope: scope,
+    socket: socket
+  } do
+    socket = Subscriptions.sync(socket, %{kind: :map, scope: scope}, bus: NativeMapBus)
+    topic = RailsMessages.broadcasting(["map_edits", {:user, 881_401}])
+    payload = :binary.copy("legacy-edit", 7000)
+    assert {:delivered, socket} = Subscriptions.deliver(socket, {:native_message, topic, payload})
+    ["map:invalidate", receipt] = hd(socket.private.live_temp.push_events)
+    assert receipt == %{kind: "map_edits", revision: 1}
+    refute inspect(socket.assigns.native_subscriptions) =~ "legacy-edit"
+    Subscriptions.release(socket)
+  end
+
   test "disconnected mount and unrelated streams never allocate or deliver", %{
     scope: scope,
     socket: socket
