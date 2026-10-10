@@ -185,6 +185,34 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     assert Enum.count(saving, & &1) >= 2
   end
 
+  test "native map selection and dialog commands retain accessible Hotwire-free controls", %{user: user} do
+    place = FrameSeeds.place!(user.id, 84112, "Cafe")
+    visit = FrameSeeds.visit!(user.id, 84112, %{place_id: place, status: 0, started_at: ~N[2026-03-30 09:00:00], ended_at: ~N[2026-03-30 10:00:00]})
+    conn = RailsUser.signed_in(user.id)
+      |> RailsUser.connecting_as(user.id)
+      |> Plug.Test.init_test_session(%{})
+      |> Plug.Conn.put_private(:phoenix_endpoint, @endpoint)
+      |> Map.merge(%{request_path: "/map/v2", path_info: ["map", "v2"], query_string: "start_at=2026-03-30T00:00&end_at=2026-03-30T23:59&panel=timeline"})
+      |> Plug.Conn.fetch_query_params()
+      |> Dawarich.Test.NativeM6IntegrationRouter.call([])
+    {:ok, view, _} = live(conn)
+    render_async(view, 5000)
+    render_hook(view, "timeline:select_day", %{"date" => "2026-03-30"})
+    render_hook(view, "timeline:select", %{"id" => to_string(visit)})
+    assert_native_controls(render(view))
+    render_hook(view, "visits:bulk", %{"action" => "confirm", "ids" => [to_string(visit)]})
+    assert_reply(view, %{ok: true})
+    render_async(view, 5000)
+    render_hook(view, "visit:edit", %{"id" => to_string(visit)})
+    view |> form("#native-visit-note-form", note: %{body: "Gate note"}) |> render_submit()
+    assert render(view) =~ "Gate note"
+    assert_native_controls(render(view))
+    render_hook(view, "visit:close", %{})
+    render_hook(view, "map:panel", %{"panel" => "settings"})
+    assert_native_controls(render(view))
+    GenServer.stop(view.pid)
+  end
+
   test "LiveView event telemetry, which carries raw form params, reaches only LiveView's own logger" do
     for prefix <- [
           [:phoenix, :live_view, :handle_event],

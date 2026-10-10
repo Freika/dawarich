@@ -73,7 +73,7 @@ defmodule DawarichWeb.NativeTimelineSelectionTest do
     end
 
     assert has_element?(view, "#native-timeline-selection", "2")
-    view |> element("#native-timeline-selection button[data-action=merge]") |> render_click()
+    view |> element("#native-timeline-selection button[data-selection-action=merge]") |> render_click()
     assert_push_event(view, "map:invalidate", %{resource: "visits"})
     render_async(view, 5_000)
 

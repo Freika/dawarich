@@ -40,7 +40,7 @@ defmodule DawarichWeb.NativeSelectionActions do
           :for={action <- @actions}
           type="button"
           class={["btn btn-xs", action == "delete" && "btn-error"]}
-          data-action={action}
+          data-selection-action={action}
           disabled={@over or @count < minimum(action)}
           data-confirm={
             action == "delete" && b(@locale, "remove_the_visit_grouping_your_location_points_stay")
