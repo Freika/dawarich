@@ -28,6 +28,7 @@ defmodule Dawarich.Users.DestroyEffects do
           attachments!(repo, id)
           cleanup!(repo, id)
           cache!(repo, id)
+          Dawarich.Notifications.Events.enqueue(repo, id)
           :ok
         else
           blocked -> blocked

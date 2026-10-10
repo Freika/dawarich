@@ -133,3 +133,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 
 - Refuse legacy export cleanup paths that escape public storage. [FRB-NATIVE-M4-LEGACY-EXPORT-PATH](fixed-rails-bugs.md#frb-native-m4-legacy-export-path--legacy-export-removal-traverses-outside-public-storage)
 - Retain a legacy export file while another export still references it. [FRB-NATIVE-M4-LEGACY-EXPORT-REFERENCE](fixed-rails-bugs.md#frb-native-m4-legacy-export-reference--removing-one-legacy-export-deletes-another-exports-file)
+
+- Refresh other native tabs after notification reads/deletion, and clear a removed open detail. [FRB-NATIVE-M4-NOTIFICATION-INVALIDATION](fixed-rails-bugs.md#frb-native-m4-notification-invalidation--reading-or-deleting-leaves-other-tabs-stale)

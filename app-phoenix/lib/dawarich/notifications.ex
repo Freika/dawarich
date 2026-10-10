@@ -17,6 +17,7 @@ defmodule Dawarich.Notifications do
 
   def open(scope, id), do: Dawarich.Notifications.Native.open(scope, id)
   def unread(scope), do: Dawarich.Notifications.Native.unread(scope)
+  def subscribe(scope), do: Dawarich.Notifications.Native.subscribe(scope)
 
   def kind_name(kind), do: Map.get(@kind_names, kind)
 
@@ -46,6 +47,9 @@ defmodule Dawarich.Notifications do
     }
   end
 
+  def get(%Dawarich.Accounts.Scope{} = scope, id),
+    do: Dawarich.Notifications.Native.get(scope, id)
+
   def get(user_id, id) when is_integer(id) and id > 0 and id <= @max_id,
     do:
       from(n in "notifications", where: n.user_id == ^user_id and n.id == ^id)
@@ -54,32 +58,13 @@ defmodule Dawarich.Notifications do
 
   def get(_user_id, _id), do: nil
 
-  def mark_read(user_id, %{read_at: nil} = notification) do
-    if Enum.any?(
-         [notification.title, notification.content, notification.kind],
-         &(is_nil(&1) or (is_binary(&1) and String.trim(&1) == ""))
-       ),
-       do: raise(Invalid)
-
-    now = NaiveDateTime.utc_now()
-
-    from(n in "notifications",
-      where: n.id == ^notification.id and n.user_id == ^user_id and is_nil(n.read_at)
-    )
-    |> Repo.update_all(set: [read_at: now, updated_at: now])
-
-    %{notification | read_at: now}
-  end
-
-  def mark_read(_user_id, notification), do: notification
+  def mark_read(user_id, notification),
+    do: Dawarich.Notifications.Mutations.read(user_id, notification)
 
   def mark_all_read(%Dawarich.Accounts.Scope{} = scope),
     do: Dawarich.Notifications.Native.mark_all_read(scope)
 
-  def mark_all_read(user_id),
-    do:
-      from(n in "notifications", where: n.user_id == ^user_id and is_nil(n.read_at))
-      |> Repo.update_all(set: [read_at: NaiveDateTime.utc_now()])
+  def mark_all_read(user_id), do: Dawarich.Notifications.Mutations.mark_all(user_id)
 
   def localize(notifications, settings, now) do
     cutoff = now |> DateTime.to_naive() |> NaiveDateTime.add(-@year_bucket_days * 86_400)
@@ -111,16 +96,12 @@ defmodule Dawarich.Notifications do
   def delete(%Dawarich.Accounts.Scope{} = scope, id),
     do: Dawarich.Notifications.Native.delete(scope, id)
 
-  def delete(user_id, id),
-    do:
-      from(n in "notifications", where: n.user_id == ^user_id and n.id == ^id)
-      |> Repo.delete_all()
+  def delete(user_id, id), do: Dawarich.Notifications.Mutations.delete(user_id, id)
 
   def delete_all(%Dawarich.Accounts.Scope{} = scope),
     do: Dawarich.Notifications.Native.delete_all(scope)
 
-  def delete_all(user_id),
-    do: from(n in "notifications", where: n.user_id == ^user_id) |> Repo.delete_all()
+  def delete_all(user_id), do: Dawarich.Notifications.Mutations.delete_all(user_id)
 
   defp rows(query) do
     query
@@ -165,6 +146,7 @@ defmodule Dawarich.Notifications do
               log: false
             )
 
+            Dawarich.Notifications.Events.enqueue(repo, user_id)
             :ok
 
           _ ->
@@ -207,6 +189,7 @@ defmodule Dawarich.Notifications do
       log: false
     )
 
+    Dawarich.Notifications.Events.enqueue(repo, user_id)
     id
   end
 end

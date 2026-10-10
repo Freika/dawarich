@@ -135,7 +135,10 @@ defmodule Dawarich.Lite.ArchivalWarningWorkerTest do
            ]
 
     assert [["Dawarich.Mail.ArchivalApproachingWorker", "mailers", %{"user_id" => ^partly}]] =
-             jobs()
+             Enum.reject(jobs(), &(hd(&1) == "Dawarich.Notifications.EventsWorker"))
+
+    assert [["Dawarich.Notifications.EventsWorker", "projections", %{"user_id" => ^all}]] =
+             Enum.filter(jobs(), &(hd(&1) == "Dawarich.Notifications.EventsWorker"))
   end
 
   test "11mo and 12mo create warning notifications in the user's locale, each with an event" do
@@ -163,7 +166,11 @@ defmodule Dawarich.Lite.ArchivalWarningWorkerTest do
              "SELECT n.user_id FROM phoenix.notification_events e JOIN notifications n ON n.id = e.notification_id ORDER BY e.id"
            ) == [[approaching], [archived]]
 
-    assert jobs() == []
+    assert Enum.map(jobs(), fn [worker, queue, args] -> {worker, queue, args["user_id"]} end) ==
+             Enum.map(
+               [approaching, archived],
+               &{"Dawarich.Notifications.EventsWorker", "projections", &1}
+             )
   end
 
   test "11_5mo inserts one ArchivalApproachingWorker job whose epoch equals the mark" do

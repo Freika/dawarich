@@ -13,6 +13,7 @@ defmodule DawarichWeb.NativeJobsAuth do
   def on_mount(:require_user, params, session, socket) do
     socket =
       socket
+      |> assign(:native, true)
       |> attach_hook(:native_jobs_params, :handle_params, fn _params, uri, socket ->
         socket |> track(uri) |> authorize()
       end)

@@ -1376,3 +1376,12 @@ Rails' destroy callback removes a legacy file without checking other export refe
 - Phoenix: `app-phoenix/lib/dawarich/exports/delete.ex:69`; `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:38`.
 - Test: **native legacy export deletion purges only its unshared local artifact after commit**, `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`.
 - Evidence: actual Rails callback on synthetic shared path removes its artifact despite a second model's reference; native reference-check and uncommitted-cleanup mutations fail. Probe models are unpersisted; source has no reference query. This does not claim cross-system concurrent creation/unlink arbitration. Native-only fix; Rails unchanged. ED-NATIVE-M4-EXPORTS-UI; no DRB.
+
+### FRB-NATIVE-M4-NOTIFICATION-INVALIDATION — Reading or deleting leaves other tabs stale
+
+Rails broadcasts creation and explicit broadcast updates, but ordinary opening, read-all, single deletion and delete-all do not invalidate other tabs. Their unread badge and removed detail can remain stale. Phoenix persists an owner-only publication intent in the same transaction as every affected mutation, including restored batches and account removal. Authorized native subscribers reload snapshots; a deleted detail is cleared before redirecting to the notification list.
+
+- Rails: `app/models/notification.rb:4`; `app/controllers/notifications_controller.rb:15,19,25,30`.
+- Phoenix: `app-phoenix/lib/dawarich/notifications/mutations.ex:48`; `app-phoenix/lib/dawarich/notifications/events.ex:13`; `app-phoenix/lib/dawarich_web/notification_session/native.ex:86`.
+- Tests: **delete-all invalidation survives relay restart without its deleted rows**, **rollback emits no native event and duplicate replay converges**, **native subscriptions clear a deleted detail before delivering its owner wake**.
+- Evidence: actual synthetic Rails model/controller mutators instrumented broadcast methods: create emits two calls; open/delete/read-all/delete-all emit zero. No Rails browser reproduction claimed. Owner, replay, rollback and deleted-detail mutations fail. Native-only fix; Rails unchanged. ED-NATIVE-M4-NOTIFICATION-EVENTS; no DRB.

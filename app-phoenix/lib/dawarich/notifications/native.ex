@@ -13,6 +13,20 @@ defmodule Dawarich.Notifications.Native do
          do: {:ok, Dawarich.Navbar.unread(current.user.id)}
   end
 
+  def subscribe(scope) do
+    with {:ok, current} <- NativeAccess.admit(scope),
+         do: Dawarich.Notifications.Events.subscribe(current.user.id)
+  end
+
+  def get(scope, id) do
+    with {:ok, current} <- NativeAccess.admit(scope) do
+      case Notifications.get(current.user.id, id(id)) do
+        nil -> {:error, :not_found}
+        notification -> {:ok, notification}
+      end
+    end
+  end
+
   def open(scope, id) do
     write(scope, fn current ->
       id = id(id)
@@ -54,7 +68,9 @@ defmodule Dawarich.Notifications.Native do
     do:
       Repo.query!(
         "SELECT id FROM notifications WHERE user_id=$1 AND id=$2 FOR UPDATE",
-        [user_id, id], log: false)
+        [user_id, id],
+        log: false
+      )
 
   defp id(id) when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807, do: id
 

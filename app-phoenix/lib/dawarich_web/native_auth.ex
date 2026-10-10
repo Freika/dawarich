@@ -17,7 +17,7 @@ defmodule DawarichWeb.NativeAuth do
   end
 
   def on_mount(:require_user, params, session, socket) do
-    case DawarichWeb.LiveAuth.on_mount(:default, params, session, socket) do
+    case DawarichWeb.LiveAuth.on_mount(:default, params, session, assign(socket, :native, true)) do
       {:cont, %{assigns: %{current_user: nil}} = socket} ->
         {:halt, redirect(socket, to: "/users/sign_in")}
 

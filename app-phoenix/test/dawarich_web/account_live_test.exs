@@ -254,31 +254,44 @@ defmodule DawarichWeb.AccountLiveTest do
            ).rows == [[1]]
   end
 
-  def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
+  def handle_query(_event, _measurements, meta, pid) do
+    table =
+      Enum.find(
+        ~w(users notifications imports family_memberships supporters),
+        &String.contains?(meta.query, &1)
+      ) || "other"
+
+    send(pid, {:query, table})
+  end
 
   defp queries(fun) do
     id = "account-budget-#{System.unique_integer([:positive])}"
     :telemetry.attach(id, [:dawarich, :repo, :query], &__MODULE__.handle_query/4, self())
     result = fun.()
     :telemetry.detach(id)
-    {result, drain(0)}
+    {result, drain(%{})}
   end
 
   defp drain(n) do
     receive do
-      :query -> drain(n + 1)
+      {:query, table} -> drain(Map.update(n, table, 1, &(&1 + 1)))
     after
       0 -> n
     end
   end
 
-  test "the page stays within the Rails-era query budget", %{session: session} do
+  test "account business queries retain their budget with explicit subscription admission", %{
+    session: session
+  } do
     {conn, static} =
       queries(fn -> get(conn_for(session) |> RailsUser.connecting_as(9893), "/users/edit") end)
 
     {_, connected} = queries(fn -> {:ok, _view, _html} = live(conn) end)
 
-    assert static <= 4
-    assert connected <= 4
+    assert Enum.sum(Map.values(static)) <= 4
+    assert static["users"] == 2
+    assert connected["users"] == 3
+    assert Map.delete(static, "users") == Map.delete(connected, "users")
+    assert Enum.sum(Map.values(connected)) - 1 <= 4
   end
 end
