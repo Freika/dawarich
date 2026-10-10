@@ -1,6 +1,6 @@
 defmodule Dawarich.Sharing.PagesTest do
   use Dawarich.DataCase, async: true
-  alias Dawarich.Test.{RailsUser, StatsSeeds, FrameSeeds, NativePublicAdmission}
+  alias Dawarich.Test.{RailsUser, StatsSeeds, FrameSeeds}
   @now ~U[2026-10-10 10:00:00Z]
 
   setup do
@@ -48,6 +48,22 @@ defmodule Dawarich.Sharing.PagesTest do
     resource = %{type: :month, owner_id: 18901, year: 2024, month: 3}
     assert {:ok, current} = apply(Dawarich.Sharing, :report_controls, [scope, resource, opts])
     assert current == controls
+  end
+
+  test "public projections cannot replace M4 grant validation with an admission adapter", %{
+    grant: %{id: id}
+  } do
+    link = Dawarich.SharedLinks.active(id, @now)
+    assert {:ok, grant} = Dawarich.Sharing.Public.grant(link, nil, @now, DateTime.add(@now, 300))
+    assert {:ok, prepared} = Dawarich.Sharing.Public.admit(grant, @now)
+    forged = grant |> Map.put(:version, "tampered") |> Map.put(:prepared, prepared)
+
+    assert {:error, :not_found} =
+             Dawarich.Sharing.Pages.resource(forged, %{},
+               now: @now,
+               clock: fn -> @now end,
+               admission: Dawarich.Test.PublicAdmissionBypass
+             )
   end
 
   test "public cached projection refuses revoked expired and deleted resources", %{grant: grant} do
@@ -329,11 +345,16 @@ defmodule Dawarich.Sharing.PagesTest do
     assert month.totals == %{countries: 51, cities: 357}
   end
 
-  defp resource(grant, params \\ %{}, opts \\ []),
-    do:
-      apply(Dawarich.Sharing.Pages, :resource, [
+  defp resource(%{id: id}, params \\ %{}, opts \\ []) do
+    with link when not is_nil(link) <- Dawarich.SharedLinks.active(id, @now),
+         {:ok, grant} <- Dawarich.Sharing.Public.grant(link, nil, @now, DateTime.add(@now, 300)) do
+      Dawarich.Sharing.Pages.resource(
         grant,
         params,
-        Keyword.merge([now: @now, admission: NativePublicAdmission], opts)
-      ])
+        Keyword.merge([now: @now, clock: fn -> @now end], opts)
+      )
+    else
+      _ -> {:error, :not_found}
+    end
+  end
 end

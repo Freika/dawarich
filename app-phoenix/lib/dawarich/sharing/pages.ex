@@ -1,6 +1,5 @@
 defmodule Dawarich.Sharing.Pages do
   @moduledoc false
-  alias Dawarich.NativeM5.Dependencies
   alias Dawarich.Sharing.{Delivery, Reports, ResourceWindow}
 
   def report(kind, uuid, opts \\ []), do: Reports.load(kind, uuid, opts)
@@ -20,7 +19,7 @@ defmodule Dawarich.Sharing.Pages do
 
     with :ok <- ResourceWindow.params(params),
          {:ok, %{link: link, kind: kind}} = admission <-
-           Dependencies.public_admit(grant, now, opts) do
+           Dawarich.Sharing.Public.admit(grant, now) do
       if kind == :missing_resource do
         admitted = Delivery.resource_snapshot(admission)
 

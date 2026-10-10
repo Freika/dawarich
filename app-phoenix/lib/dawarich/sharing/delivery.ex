@@ -1,7 +1,6 @@
 defmodule Dawarich.Sharing.Delivery do
   @moduledoc false
   alias Dawarich.{Accounts, Repo, SharingExpiry}
-  alias Dawarich.NativeM5.Dependencies
   alias Dawarich.SharedApi.Closure
 
   def admit(target, now, opts \\ []) do
@@ -88,8 +87,8 @@ defmodule Dawarich.Sharing.Delivery do
     end
   end
 
-  defp admission({:resource, grant}, now, opts),
-    do: resource_snapshot(Dependencies.public_admit(grant, now, opts))
+  defp admission({:resource, grant}, now, _opts),
+    do: resource_snapshot(Dawarich.Sharing.Public.admit(grant, now))
 
   defp fingerprint(owner),
     do:

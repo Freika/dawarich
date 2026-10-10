@@ -2,7 +2,6 @@ defmodule Dawarich.Sharing.ResourceWindow do
   @moduledoc false
   alias Dawarich.{Accounts, Repo, UserTimeZone}
   alias Dawarich.SharedApi.Privacy
-  alias Dawarich.NativeM5.Dependencies
 
   def params(params) when is_map(params) do
     if Enum.all?(params, fn {key, value} ->
@@ -169,7 +168,7 @@ defmodule Dawarich.Sharing.ResourceWindow do
   end
 
   defp photos(link, opts) do
-    reader = Keyword.get(opts, :photos, &Dependencies.public_photos/1)
+    reader = Keyword.get(opts, :photos, &Dawarich.SharedApi.Photos.response(&1, :photos))
 
     case reader.(link) do
       {:ok, photos} ->
@@ -183,7 +182,7 @@ defmodule Dawarich.Sharing.ResourceWindow do
   defp description(nil), do: nil
 
   defp description(body) do
-    case Dependencies.public_description(body) do
+    case Dawarich.Trips.Description.render(body) do
       {:ok, html} -> html
       _ -> :unavailable
     end
