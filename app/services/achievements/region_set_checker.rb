@@ -2,7 +2,7 @@
 
 module Achievements
   class RegionSetChecker
-    CALCULATION_VERSION = 3
+    CALCULATION_VERSION = 4
 
     # Above this many newly earned regions in one run (a big import backfill),
     # collapse the per-region announcements into a single digest notification.
@@ -31,12 +31,14 @@ module Achievements
         break if @cursor.nil?
         break if settled?(previous, previous_inserted, state)
 
+        @country_calculator = nil
         replace = recompute?(previous, previous_inserted) || calculation_changed?(state)
         deltas = if threshold_changed?(state) && @cursor <= previous && !replace
                    {}
                  else
                    collect_deltas(replace ? 0 : previous)
                  end
+        @first_seen = collect_first_seen(state, deltas, replace: replace)
         break if commit(deltas, replace: replace, expected: previous, expected_inserted: previous_inserted)
 
         @newly_earned.clear
@@ -129,16 +131,21 @@ module Achievements
     end
 
     def collect_deltas(since)
-      CountryDwellCalculator.new(user, since: since, through: @cursor).call
-                            .merge(GridDwellCalculator.new(user, table: 'regions', since: since,
-                                                                through: @cursor).call)
+      @country_calculator = CountryDwellCalculator.new(user, since: since, through: @cursor)
+      region_dwell = GridDwellCalculator.new(user, table: 'regions', since: since, through: @cursor).call
+      @country_calculator.call.merge(region_dwell)
     end
 
     def merged_state(state, deltas, newly_earned, replace:, cursor:, inserted_through:)
-      dwell = replace ? {} : state.fetch('dwell', {})
-      earned = state.fetch('earned', {})
+      dwell = merged_dwell(state, deltas, replace: replace)
+      earned = state.fetch('earned', {}).dup
 
-      deltas.each { |code, delta| dwell[code] = dwell.fetch(code, 0) + delta }
+      if replace
+        earned.each_key do |code|
+          visited_at = first_seen_at(code)
+          earned[code] = [Time.iso8601(earned[code]), visited_at].min.utc.iso8601 if visited_at
+        end
+      end
 
       dwell.each do |code, seconds|
         next if earned.key?(code) || seconds < threshold_seconds
@@ -157,26 +164,26 @@ module Achievements
       )
     end
 
-    # The dwell threshold can be crossed long after a region was first
-    # visited (e.g. a backfill processing years of history in one pass), so
-    # the unlock timestamp comes from the earliest matching point instead of
-    # wall-clock "now".
+    def merged_dwell(state, deltas, replace:)
+      current = replace ? {} : state.fetch('dwell', {})
+      current.merge(deltas) { |_code, total, delta| total + delta }
+    end
+
+    def collect_first_seen(state, deltas, replace:)
+      earned = state.fetch('earned', {})
+      dwell = merged_dwell(state, deltas, replace: replace)
+      needs_dates = (replace && earned.any?) ||
+                    dwell.any? { |code, seconds| !earned.key?(code) && seconds >= threshold_seconds }
+      return {} unless needs_dates
+
+      country_calculator = @country_calculator || CountryDwellCalculator.new(user, through: @cursor)
+      region_dates = GridDwellCalculator.new(user, table: 'regions', through: @cursor).first_seen
+      country_calculator.first_seen(since: 0).merge(region_dates)
+    end
+
     def first_seen_at(code)
-      table, column = Registry.subdivision_codes.include?(code) ? %w[regions code] : %w[countries iso_a2]
-
-      sql = ActiveRecord::Base.sanitize_sql_array([<<~SQL.squish, { user_id: user.id, through: @cursor, code: code }])
-        SELECT MIN(p.timestamp)
-        FROM points p
-        JOIN #{table} s ON ST_Intersects(s.geom, p.lonlat::geometry)
-        WHERE p.user_id = :user_id
-          AND p.timestamp <= :through
-          AND p.lonlat IS NOT NULL
-          AND (p.anomaly IS DISTINCT FROM TRUE)
-          AND s.#{column} = :code
-      SQL
-
-      ts = ApplicationRecord.connection.select_value(sql)
-      Time.at(ts.to_i).utc if ts
+      timestamp = @first_seen[code]
+      Time.at(timestamp).utc if timestamp
     end
 
     def threshold_changed?(state)
