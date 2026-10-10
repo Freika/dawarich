@@ -96,7 +96,10 @@ function fixture() {
       intervals.delete(fn)
     },
   }
+  const empty = { hidden: false }
   const element = {
+    querySelector: (selector) =>
+      selector === "[data-family-empty]" ? empty : null,
     dataset: {
       mapConfig: JSON.stringify({
         revision: 1,
@@ -153,6 +156,7 @@ function fixture() {
   })
   return {
     owner,
+    empty,
     reader,
     element,
     sources,
@@ -290,4 +294,23 @@ test("family document publishes readiness failure and disposal through its nativ
     f.owner.destroy()
   }
   assert.equal(f.element.dataset.mapState, "cancelled")
+})
+
+test("family empty guidance follows admitted locations and clears on withdrawal", async () => {
+  const f = fixture()
+  try {
+    await f.owner.mount()
+    assert.equal(f.empty.hidden, true)
+    f.reader.read = async (resource) => ({
+      data:
+        resource === "family_locations" ? { locations: [] } : { members: [] },
+    })
+    await f.owner.reconnect()
+    assert.equal(f.empty.hidden, false)
+    f.empty.hidden = true
+    f.owner.clear()
+    assert.equal(f.empty.hidden, false)
+  } finally {
+    f.owner.destroy()
+  }
 })

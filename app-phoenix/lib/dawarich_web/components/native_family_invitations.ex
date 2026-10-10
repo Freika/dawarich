@@ -5,6 +5,7 @@ defmodule DawarichWeb.NativeFamilyInvitations do
   attr :locale, :string, required: true
   attr :base_url, :string, required: true
   attr :now, :any, required: true
+  attr :self_hosted, :boolean, default: true
 
   def invitations(assigns) do
     ~H"""
@@ -64,6 +65,9 @@ defmodule DawarichWeb.NativeFamilyInvitations do
         />
         <button type="submit" class="btn btn-sm h-auto whitespace-normal">{s(@locale, "invite")}</button>
       </form>
+      <p :if={@page.owner? && @page.can_invite? && !assigns[:self_hosted]} class="text-xs min-w-0">
+        {t(@locale, "families.getting_started.members_lose_access_when_your_plan_ends", %{})}
+      </p>
       <p :if={@page.owner? && !@page.can_invite?} class="text-warning min-w-0">
         {s(@locale, "family_at_capacity", %{count: @page.member_count + @page.pending_count, max: 5})}
       </p>

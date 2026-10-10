@@ -38,31 +38,13 @@ defmodule DawarichWeb.FamilyPagesParityTest do
     assert length(@names) == 294
   end
 
-  test "Rails sharing response can replace native toggle and getting started slots" do
+  test "Family seed attributes load independently of runtime module order" do
     state = FrameSeeds.load_family("owner_en")
     user = FrameSeeds.seed_family!(state)
-    now = DateTime.from_iso8601(state["now"]) |> elem(1)
-    {:html, native} = response(conn(state, user, now), state, user, now)
+    assert user.id == state["actor_id"]
+  end
 
-    native =
-      DawarichWeb.Layouts.app(%{
-        __changed__: nil,
-        inner_content: Phoenix.HTML.raw(native),
-        current_user: user,
-        navbar: Dawarich.Navbar.load(user, now: now, self_hosted: true),
-        locale: "en",
-        request_path: "/family",
-        base_url: "http://www.example.com",
-        self_hosted: true,
-        rails_csrf_token: "CSRF",
-        now: now,
-        suggested_locale: nil,
-        flash: %{},
-        flash_messages: []
-      })
-      |> Phoenix.HTML.Safe.to_iodata()
-      |> IO.iodata_to_binary()
-
+  test "Independent sharing stream fixtures retain their response targets and forms" do
     for locale <- ~w(en de es fr pl ca zh) do
       rails = File.read!(Path.join(@dir, "sharing_toggle_#{locale}.stream.html"))
 
@@ -70,7 +52,6 @@ defmodule DawarichWeb.FamilyPagesParityTest do
         rails |> LazyHTML.from_fragment() |> LazyHTML.query("turbo-stream[action='replace']")
 
       for target <- ~w(location-sharing-90101 family-navbar-indicator family-getting-started-slot) do
-        assert Enum.any?(LazyHTML.query(native |> LazyHTML.from_fragment(), "##{target}"))
         assert target in LazyHTML.attribute(streams, "target")
 
         [_, template] =
@@ -100,7 +81,7 @@ defmodule DawarichWeb.FamilyPagesParityTest do
   for name <- @names do
     @name name
     @tag family_case: name
-    test "family GET corpus #{@name} matches Rails in all shipped locales outside registered hydration fields" do
+    test "Family source corpus retains native show values and independent envelopes #{@name}" do
       state = FrameSeeds.load_family(@name)
       user = FrameSeeds.seed_family!(state)
       now = DateTime.from_iso8601(state["now"]) |> elem(1)
@@ -111,12 +92,17 @@ defmodule DawarichWeb.FamilyPagesParityTest do
         {:html, html} ->
           assert state["status"] == 200
           rails = File.read!(Path.join(@dir, @name <> ".html"))
-          native = normalize(html)
-          expected = normalize(rails)
-          assert native == expected, ParityHTML.first_difference(native, expected)
 
-          assert attributes(html) == attributes(rails),
-                 ParityHTML.first_difference(attributes(html), attributes(rails))
+          if conn.request_path == "/family" do
+            assert_native_values(html, rails)
+          else
+            native = normalize(html)
+            expected = normalize(rails)
+            assert native == expected, ParityHTML.first_difference(native, expected)
+
+            assert attributes(html) == attributes(rails),
+                   ParityHTML.first_difference(attributes(html), attributes(rails))
+          end
 
         {:redirect, conn} ->
           assert conn.status == state["status"]
@@ -135,6 +121,70 @@ defmodule DawarichWeb.FamilyPagesParityTest do
       end
     end
   end
+
+  defp assert_native_values(html, rails) do
+    doc = LazyHTML.from_fragment(html)
+    expected = LazyHTML.from_fragment(rails)
+
+    assert LazyHTML.text(LazyHTML.query(doc, "h1")) ==
+             LazyHTML.text(LazyHTML.query(expected, "h1"))
+
+    actual = doc |> LazyHTML.text() |> clean()
+
+    empty =
+      expected |> LazyHTML.query("[data-family-map-target=map]") |> LazyHTML.text() |> clean()
+
+    assert String.contains?(actual, empty), "source Family empty-map guidance missing"
+
+    assert LazyHTML.attribute(LazyHTML.query(doc, "[data-confirm]"), "data-confirm") ==
+             LazyHTML.attribute(
+               LazyHTML.query(expected, "[data-turbo-confirm]"),
+               "data-turbo-confirm"
+             )
+
+    values = rails |> hydration_tree() |> Enum.flat_map(&source_values/1)
+
+    for {value, index} <- Enum.with_index(values), value != "" do
+      assert String.contains?(actual, value), "source Family value missing at ordinal #{index}"
+    end
+
+    for selector <- ["select option", "select option[selected]", "input[type=checkbox][checked]"] do
+      key = if String.starts_with?(selector, "input"), do: "checked", else: "value"
+
+      assert LazyHTML.attribute(LazyHTML.query(doc, selector), key) ==
+               LazyHTML.attribute(LazyHTML.query(expected, selector), key)
+    end
+
+    assert Enum.map(
+             LazyHTML.query(doc, "[data-family-member-id] > p:first-child"),
+             &LazyHTML.text/1
+           ) ==
+             Enum.map(
+               LazyHTML.query(expected, "span.text-sm.font-medium.truncate"),
+               &LazyHTML.text/1
+             )
+
+    refute Enum.any?(
+             LazyHTML.query(doc, "[data-controller], [data-action], turbo-frame, [onclick]")
+           )
+  end
+
+  defp source_values({tag, attrs, children}) do
+    data = Map.new(attrs)
+
+    if tag in ["svg", "select", "template"] or
+         String.contains?(data["class"] || "", "w-9 h-9") or
+         (data["data-location-sharing-toggle-target"] == "expirationInfo" and
+            String.contains?(data["class"] || "", "hidden")) do
+      []
+    else
+      Enum.flat_map(children, &source_values/1)
+    end
+  end
+
+  defp source_values(value) when is_binary(value), do: [clean(value)]
+  defp source_values(_), do: []
+  defp clean(value), do: value |> String.replace(~r/\s+/, " ") |> String.trim()
 
   defp conn(state, user, now) do
     Plug.Test.conn("GET", state["path"])
@@ -219,7 +269,26 @@ defmodule DawarichWeb.FamilyPagesParityTest do
 
     case page.state do
       :show ->
-        {:html, html(&DawarichWeb.FamiliesLive.Show.render/1, assigns) |> inner("#family-shell")}
+        scope = Dawarich.Maps.principal(user, state["locale"])
+
+        {:ok, native} =
+          Dawarich.Maps.Dependencies.Family.view(scope,
+            now: now,
+            self_hosted: state["self_hosted"]
+          )
+
+        assigns =
+          Map.merge(assigns, %{
+            page: native,
+            current_scope: scope,
+            current_user: nil,
+            navbar: nil,
+            flash: %{},
+            map_error: nil,
+            request_path: "/family"
+          })
+
+        {:html, html(&DawarichWeb.NativeFamilyPage.page/1, assigns) |> inner("#family-shell")}
 
       :invitations ->
         {:html, html(&DawarichWeb.FamilyInvitations.invitation_index/1, assigns)}

@@ -17,6 +17,7 @@ export function mountFamily({
   },
   timers = globalThis,
 }) {
+  const empty = element.querySelector?.("[data-family-empty]")
   let overlay, library, overlayLocale
   const reads = createRequestScope(timers)
   const owner = createMapRuntime({
@@ -65,6 +66,7 @@ export function mountFamily({
         overlayLocale = desired
       }
       overlay.clear()
+      if (empty) empty.hidden = false
       reads.reset()
       const read = reads.begin(signal)
       try {
@@ -88,6 +90,7 @@ export function mountFamily({
         operation.check()
         read.check()
         overlay.replace(latest.data.locations, history.data.members)
+        if (empty) empty.hidden = latest.data.locations.length > 0
       } finally {
         read.close()
       }
@@ -101,6 +104,7 @@ export function mountFamily({
     reads.reset()
     reader.reset()
     overlay?.clear()
+    if (empty) empty.hidden = false
   }
   const destroy = owner.destroy
   owner.destroy = () => {

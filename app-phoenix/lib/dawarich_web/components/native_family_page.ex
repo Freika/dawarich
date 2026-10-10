@@ -30,13 +30,29 @@ defmodule DawarichWeb.NativeFamilyPage do
             href="/family/edit"
             class="btn btn-sm btn-outline h-auto whitespace-normal"
           >{t(@locale, "families.show.edit", %{})}</a>
+          <a
+            :if={@page.presentation.owner? && @page.presentation.can_invite?}
+            href="#native-family-invite"
+            class="btn btn-sm h-auto whitespace-normal"
+          >
+            {t(@locale, "families.show.invite", %{})}
+          </a>
           <DawarichWeb.NativeFamilySharing.sharing
             member={@page.presentation.me}
             locale={@locale}
             now={@now}
           />
           <section id="native-family-members" class="min-w-0 border rounded-xl p-3">
-            <h2>{t(@locale, "families.show.members", %{})}</h2>
+            <h2>
+              {t(@locale, "families.show.members", %{})}
+              {if @self_hosted,
+                do: "(#{@page.presentation.member_count})",
+                else:
+                  t(@locale, "families.getting_started.seats", %{
+                    used: @page.presentation.member_count,
+                    total: 5
+                  })}
+            </h2>
             <div
               :for={member <- @page.presentation.members}
               data-family-member-id={member.id}
@@ -101,6 +117,7 @@ defmodule DawarichWeb.NativeFamilyPage do
             </div>
           </section>
           <DawarichWeb.NativeFamilyInvitations.invitations
+            self_hosted={@self_hosted != false}
             page={@page.presentation}
             locale={@locale}
             now={@now}

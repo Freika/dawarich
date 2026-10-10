@@ -195,7 +195,24 @@ defmodule Dawarich.Test.FrameSeeds do
 
   def seed_family!(%{"actors" => actors, "rows" => rows, "actor_id" => actor_id}) do
     for user <- actors do
-      attrs = Map.new(user, fn {key, value} -> {String.to_existing_atom(key), value} end)
+      keys =
+        Map.new(
+          [
+            :active_until,
+            :admin,
+            :changelog_consent,
+            :email,
+            :id,
+            :plan,
+            :settings,
+            :status,
+            :subscription_source,
+            :theme
+          ],
+          &{Atom.to_string(&1), &1}
+        )
+
+      attrs = Map.new(user, fn {key, value} -> {Map.fetch!(keys, key), value} end)
       attrs = Map.put(attrs, :active_until, naive(user["active_until"]))
       RailsUser.insert!(Map.put(attrs, :api_key, "a9fpl-fixture-#{user["id"]}"))
     end

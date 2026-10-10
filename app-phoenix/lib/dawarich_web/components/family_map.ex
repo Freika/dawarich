@@ -41,6 +41,16 @@ defmodule DawarichWeb.FamilyMap do
       data-map-config={@serialized_config}
       data-map-state="loading"
     >
+      <p
+        data-family-empty
+        class="absolute inset-0 flex items-center justify-center p-6 text-center bg-base-200 [overflow-wrap:anywhere]"
+      >
+        {DawarichWeb.Translate.t(
+          @locale,
+          "families.show.no_family_members_are_sharing_their_location",
+          %{}
+        )}
+      </p>
     </div>
     """
   end
