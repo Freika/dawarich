@@ -3,6 +3,7 @@ import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { createTileFreshness } from "../data/tile_freshness.js"
 import { createBaseLayers } from "../layers/tile_layers.js"
+import { createRangeRequests } from "../ui/navigation.js"
 import { createMapRuntime } from "./create_map.js"
 
 export { createMapRuntime }
@@ -16,6 +17,7 @@ export function mountHost({
   attach,
   refresh,
 }) {
+  const requests = createRangeRequests({ pushEvent })
   const freshness = createTileFreshness()
   let layers
   let density
@@ -163,12 +165,19 @@ export function mountHost({
   owner.source = createStudioSource({
     getState: () => owner.config,
     readSnapshot: (state, options) => readRouteSnapshot(reader, state, options),
-    applyDates: (range) =>
-      new Promise((resolve) => pushEvent("map:range", range, resolve)),
+    applyDates: requests.applyDates,
   })
   Object.defineProperty(owner, "entityLayers", { get: () => entities })
+  const update = owner.update
+  owner.update = (config) => {
+    const updating = update.call(owner, config)
+    requests.config(config)
+    return updating
+  }
+  requests.config(config)
   const dispose = owner.destroy
   owner.destroy = () => {
+    requests.destroy()
     owner.source.destroy()
     dispose()
   }
