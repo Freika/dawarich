@@ -148,3 +148,7 @@ The integrated map/poster/video style adapters import native C theme/schema/rend
 ## Integrated studio operation bounds (O8)
 
 Controller integration keeps the reviewed values: first idle: 60 seconds; negotiation: 30 seconds (one overall owned deadline); hook reply: 30 seconds; upload: 1 byte–250 MiB; gallery: 10 rows. Storage PUT is bounded by five minutes. Poster capture is bounded by five minutes and print upload by ten minutes. These bounds refuse visibly and release owned resources; no codec, paper size, DPI step-down, frame duration or media format changes. Browser heap/GPU trends and workload timing remain controller stage acceptance measurements.
+
+## Native map route retirement
+
+Timeline feeds, calendar, track-info, segment drawers/writes and point-address frame URLs now return HTTP410 without dispatching an effect or a Rails hand-back. Native successors are `MapLive.Timeline`, `TimelineFilters`, `SegmentCommands` and `VisitCommands`. External API geometry and write contracts remain unchanged. `/map/residency` remains for Insights, `/places/nearby` for independent Places navigation, Area/point-list/recalculation writes for their surviving pages, poster/video HTTP actions for current Trip consumers and gallery seeds. Those surviving callers prevent deleting their shared domain/transport modules before the corresponding milestone integration.
