@@ -332,3 +332,21 @@ The table below mechanically lists Rails `.attach`, create/upload and purge call
 
 
 This table replaces placeholder test associations from the review snapshot. Each named case was inspected for actual interface calls and row/object/effect assertions. No new Rails runtime result is claimed by a Phoenix counterpart test.
+
+
+## Integrated X1–X4 handoff (2026-10-10)
+
+Final review's three findings are committed independently: derivative identities remain durable across parent fencing/cleanup-first and parent/child storage failures; durable legacy deletion, pending cleanup publication and Rails account purge inventory is complete; lifecycle mappings now name actual exercised tests. Variants/previews and newly shared derivatives have deterministic regressions.
+
+Track C final marker was verified before app/E2E no-ff merges. C1 scoped family subscriptions drive the shared native navbar; safe refusal clears private state and returns to a different permitted URL. Native principals/shared hook registration/redaction retain both tracks. X2 removes ordinary family/sharing writes and orphan handlers/gates/forms/legacy family browser hook while preserving genuine protected HTTP and independent protocol clients. X3 exact successor/method table is in native-m4-contracts.md and ED-NATIVE-M4-ROUTE-RETIREMENT-C, -CORPUS-SUCCESSORS-C and -STRUCTURAL-C. All original fixture files remain unchanged; imported Rails fixes remain registered once, without duplicate FRB entries.
+
+X4 authored specs are merged and collect only; no G44/browser/390px or resource acceptance result is claimed. X5 FULL GATE/browser/resource acceptance remains controller-owned. Existing resource assertion is unchanged, tagged for that acceptance, and explicitly excluded from the implementation target batch because measurements are out of scope. AFFiNE inventory/upload-authority ADR synchronization and final strict manifest/results are recorded in integ-m4.report.md.
+
+
+### Final implementation verification and X4 handoff
+
+Integrated X2 is committed as fc9eef4e9; X3 as d7ca0177c. The final intended 487-file m4/m4c/changed-module/direct-caller/register manifest through tm-m4.sh exits 0: `Result: 5033 passed, 2 skipped, 2 excluded`, seed 404, one case at a time, warnings-as-errors. The two stand-dependent checks are skipped without RELEASE_STAND_PORT; exclusions are the existing optional Rails parity corpus and the explicitly deferred unchanged native gzip-budget assertion. Strict test-env compile/all-warnings and whole format check exit 0. Native Node corpus 77 passed; touched deferred clients six passed; eight touched JS files pass Biome. Every new or retargeted behavior has initial or explicitly controlled RED/GREEN/discriminating mutation/restored evidence in integ-m4.report.md; there is no new Rails defect beyond the 17 registered imported fixes. All 130 production files changed since the supplied head remain below 300 lines (maximum 295). No original fixture, Swagger/schema, lifecycle guard, environment allocation or explanatory code comment was changed.
+
+X4 authoring is already committed by the app/E2E tracks. E2E no-ff integration HEAD is 646f136; all named plan specs plus direct family/realtime/cloud/trip callers collect 106 cases in 27 files including setup via standalone/self-hosted opt-in `npx playwright test --list`. No browser lane executes. This brief completes X4 implementation/collection and explicitly transfers its browser/German 390px/Range/focus/real PUT/resource acceptance to X5. The approved plan reports 25 complete/one remaining; X5 stays unchecked. App/E2E implementation trees are clean after the final handoff commit; no task-owned service remains. AFFiNE canonical inventory, upload-authority ADR and focused SHARES integration handoff receive the final counterparts/readbacks.
+
+An accidental unexcluded diagnostic run reached the original gzip cap and failed it (59,290 bytes against 56,517). The cap and test remain unchanged for controller acceptance; no performance improvement or acceptance is claimed here. The same run exposed a T02 native-owner fixture's global mock-upstream dependency, now explicitly scoped/restored; actual trip/Puma/domain code is unchanged. The final intended manifest is green with the authorized resource exclusion.
