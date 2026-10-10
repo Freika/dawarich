@@ -180,7 +180,7 @@ defmodule Dawarich.FamilyPage do
        members: members,
        me: Enum.find(members, &(&1.id == user.id)),
        trial_ends:
-         if(user.status == 0 and not is_nil(user.active_until),
+         if(user.status == 2 and not is_nil(user.active_until),
            do:
              UserTimeZone.local(
                Dawarich.UserSettings.get(user),

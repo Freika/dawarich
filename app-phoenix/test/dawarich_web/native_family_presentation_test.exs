@@ -105,6 +105,29 @@ defmodule DawarichWeb.NativeFamilyPresentationTest do
     assert has_element?(view, "#family-getting-started", "sharing")
   end
 
+  test "native family trial guidance retains the source expiry date for an admitted trial", %{
+    id: id
+  } do
+    until = DateTime.utc_now() |> DateTime.add(7, :day) |> DateTime.truncate(:second)
+
+    Repo.query!(
+      "UPDATE users SET status=2,active_until=$2 WHERE id=$1",
+      [id, DateTime.to_naive(until)],
+      log: false
+    )
+
+    {:ok, view, _} = open(id)
+    date = DawarichWeb.LocalizedDate.l("en", DateTime.to_date(until), "long")
+
+    expected =
+      DawarichWeb.Translate.t("en", "families.getting_started.trial_ends_on", %{date: date})
+
+    assert has_element?(view, "#family-getting-started", expected)
+    Repo.query!("UPDATE users SET status=1 WHERE id=$1", [id], log: false)
+    render_hook(view, "map:ready", %{})
+    refute has_element?(view, "#family-getting-started", expected)
+  end
+
   defp open(id) do
     RailsUser.signed_in(id)
     |> RailsUser.connecting_as(id)
