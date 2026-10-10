@@ -132,30 +132,21 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
         %{"data" => %{"version" => "0.6.0", "revision" => "abc123"}}
       ])
 
-    env = %{"ATLAS_URL" => "http://127.0.0.1:#{server.port}"}
+    scope = Dawarich.Accounts.Scope.for_user(Accounts.get(16010), "en")
 
-    conn =
-      request(c.session, "/admin/settings/test_map_matching", [])
-      |> DawarichWeb.Router.call(DawarichWeb.Router.init([]))
+    assert Dawarich.Admin.Instance.test_map_matching(scope, env: %{"SELF_HOSTED" => "true"}) ==
+             {:alert, "admin.settings.test_map_matching.not_configured", %{}}
 
-    assert conn.status == 303
-    assert flash(conn, "alert") == "Save an Atlas URL first."
+    env = %{"SELF_HOSTED" => "true", "ATLAS_URL" => "http://127.0.0.1:#{server.port}"}
 
-    conn =
-      request(c.session, "/admin/settings/test_map_matching", [])
-      |> Settings.call(action: :test_map_matching, context: %{c.context | env: env})
-
-    assert conn.status == 303
-    assert flash(conn, "notice") =~ "0.6.0 (abc123)"
-
-    assert get_resp_header(conn, "location") == [
-             "http://www.example.com/admin/settings?section=experimental"
-           ]
+    assert Dawarich.Admin.Instance.test_map_matching(scope, env: env) ==
+             {:notice, "admin.settings.test_map_matching.success",
+              %{"version" => "0.6.0 (abc123)"}}
 
     assert Task.await(task) == ["GET /api/v1/health HTTP/1.1", "GET /api/v1/version HTTP/1.1"]
   end
 
-  test "non-admin gets the existing admin refusal", c do
+  test "non-admin gets the existing admin refusal and Atlas is never called", _c do
     RailsUser.insert!(%{
       id: 16011,
       email: "experimental-member@example.invalid",
@@ -163,13 +154,11 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
     })
 
     session = RailsUser.session(16011)
+    scope = Dawarich.Accounts.Scope.for_user(Accounts.get(16011), "en")
 
-    conn =
-      request(session, "/admin/settings/test_map_matching", [])
-      |> DawarichWeb.Router.call(DawarichWeb.Router.init([]))
-
-    assert conn.status == 303
-    assert flash(conn, "alert") == "You are not authorized to perform this action."
+    assert Dawarich.Admin.Instance.test_map_matching(scope,
+             env: %{"SELF_HOSTED" => "true", "ATLAS_URL" => "http://127.0.0.1:1"}
+           ) == {:error, :unauthorized}
 
     conn =
       Plug.Test.conn("GET", "/admin/settings?section=experimental")
@@ -180,12 +169,6 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
     assert conn.status == 404
     assert get_resp_header(conn, "location") == []
     refute conn.resp_body =~ "map-matching-demo"
-
-    refute DawarichWeb.AdminWritesGate.eligible?(
-             request(session, "/admin/settings/test_map_matching", []),
-             :test_map_matching,
-             context: c.context
-           )
   end
 
   test "failed connection warns without blocking settings save", c do

@@ -50,79 +50,10 @@ defmodule DawarichWeb.A10bOwnershipTest do
     :ok
   end
 
-  test "supported admin writes welcome and guest home are owned with exact rollback keys" do
-    create =
-      URI.encode_query([
-        {"user[email]", "a10b-owned-new@example.invalid"},
-        {"user[password]", "synthetic-a10b-password"}
-      ])
-
-    conn = request("POST", "/settings/users", create, 15801)
-    assert conn.status == 302
-
-    assert Repo.query!(
-             "SELECT admin,status,plan FROM users WHERE email=$1",
-             ["a10b-owned-new@example.invalid"],
-             log: false
-           ).rows == [[false, 1, 1]]
-
-    for value <- [true, false] do
-      markup = File.read!("test/fixtures/admin_users/edit_self.html") |> LazyHTML.from_fragment()
-
-      pairs =
-        for input <- LazyHTML.query(markup, "input[name='user[admin]']") |> LazyHTML.to_tree(),
-            {"input", attrs, _} = input,
-            value or List.keyfind(attrs, "type", 0) == {"type", "hidden"},
-            do: {"user[admin]", Map.new(attrs)["value"]}
-
-      raw = URI.encode_query([{"_method", "patch"}, {"user[status]", "active"} | pairs])
-      conn = request("POST", "/settings/users/15802", raw, 15801)
-      assert conn.status == 302
-
-      assert Repo.query!("SELECT admin FROM users WHERE id=15802", [], log: false).rows == [
-               [value]
-             ]
-    end
-
-    for {fixture, value} <- [{"registration_checked", true}, {"registration_unchecked", false}] do
-      row = fixture("admin_setting_writes", fixture)
-
-      conn =
-        request(
-          "POST",
-          "/settings/users/update_registration_settings",
-          source_body(row, 15801, "PATCH", "/settings/users/update_registration_settings"),
-          15801
-        )
-
-      assert conn.status == 302
-      assert Dawarich.Auth.RegistrationSetting.fetch() == {:ok, value}
-    end
-
-    for {fixture, value} <- [{"checked_store", true}, {"unchecked_store", false}] do
-      row = fixture("admin_setting_writes", fixture)
-
-      conn =
-        request(
-          "POST",
-          "/admin/settings",
-          source_body(row, 15801, "PATCH", "/admin/settings"),
-          15801
-        )
-
-      assert conn.status == 303
-
-      assert Repo.query!(
-               "SELECT value FROM instance_settings WHERE key='store_geodata'",
-               [],
-               log: false
-             ).rows == [[value]]
-    end
-
-    for name <-
-          ~w(background_query_true background_query_false background_override background_body) do
+  test "welcome, guest home and the shared background POST are owned with exact rollback keys" do
+    for name <- ~w(background_override) do
       row = fixture("admin_setting_writes", name)
-      method = if name == "background_override", do: "POST", else: "PATCH"
+      method = "POST"
 
       conn =
         request(method, "/settings/background_jobs?" <> (row["query"] || ""), row["body"], 15802)
@@ -137,20 +68,6 @@ defmodule DawarichWeb.A10bOwnershipTest do
              ).rows == [[expected]]
     end
 
-    for {path, fields, statuses, methods} <- [
-          {"/settings/users/15802", "user%5Bemail%5D=a10b-ownership-15802%40example.invalid",
-           [302], [{"PATCH", nil}, {"PUT", nil}, {"POST", "put"}]},
-          {"/settings/users/update_registration_settings", "registration_enabled=1", [302],
-           [{"PATCH", nil}]},
-          {"/admin/settings", "instance_settings%5Bstore_geodata%5D=false", [303],
-           [{"PATCH", nil}, {"PUT", nil}, {"POST", "put"}]}
-        ],
-        {method, override} <- methods do
-      body = fields <> if(override, do: "&_method=" <> override, else: "")
-      assert request(method, path, body, 15801).status in statuses
-    end
-
-    assert request("POST", "/settings/users/15802/regenerate_api_key", "", 15801).status == 302
     assert dispatch(build_conn(), @endpoint, :get, "/", nil).status == 200
     welcome = welcome_path()
     conn = dispatch(build_conn(), @endpoint, :get, welcome, nil)
@@ -168,9 +85,6 @@ defmodule DawarichWeb.A10bOwnershipTest do
            ).plug == DawarichWeb.TrialUpgrade
 
     for {key, method, path, body, actor} <- [
-          {"settings", "POST", "/settings/users", create, 15801},
-          {"admin", "PATCH", "/admin/settings", "instance_settings%5Bstore_geodata%5D=false",
-           15801},
           {"trial", "GET", welcome, "", nil},
           {"home", "GET", "/", "", nil}
         ] do
@@ -192,8 +106,6 @@ defmodule DawarichWeb.A10bOwnershipTest do
       end)
 
     for {key, method, path, body, actor} <- [
-          {"settings", "PATCH", "/settings/users/update_registration_settings",
-           "registration_enabled=1", 15801},
           {"trial", "GET", welcome_path(), "", nil},
           {"trial", "GET", welcome_path(large), "", nil},
           {"home", "GET", "/", "", nil}
@@ -271,16 +183,6 @@ defmodule DawarichWeb.A10bOwnershipTest do
 
     same = snapshot() == before
     assert same, "retained requests changed users"
-
-    conn = request("POST", "/settings/users/15802/send_password_reset", "", 15801)
-    assert conn.status == 302
-    assert get_resp_header(conn, "location") == ["http://www.example.com/settings/users/15802"]
-
-    assert [[token]] =
-             Repo.query!("SELECT reset_password_token FROM users WHERE id=15802", [], log: false).rows
-
-    assert is_binary(token)
-    refute_received {:upstream, _, _, _}
   end
 
   test "timezone callback hands background update back before rows or jobs change" do
@@ -383,16 +285,6 @@ defmodule DawarichWeb.A10bOwnershipTest do
   end
 
   defp fixture(dir, name), do: File.read!("test/fixtures/#{dir}/#{name}.json") |> Jason.decode!()
-
-  defp source_body(row, actor, method, path) do
-    token = RailsCsrf.masked_form_token(actor_session(actor), path, method)
-
-    String.replace(
-      row["body"],
-      "authenticity_token=CSRF",
-      URI.encode_query(%{"authenticity_token" => token})
-    )
-  end
 
   defp snapshot,
     do:

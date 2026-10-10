@@ -50,83 +50,6 @@ defmodule DawarichWeb.G44AdminBrowserTest do
   end
 
   @tag :g44_instance
-  test "rendered instance submit button persists the rate in standalone", c do
-    assert page(c.session, "/admin/settings?section=rate_limit").status == 200
-
-    saved =
-      submit(c.session, "/admin/settings", %{
-        "_method" => "patch",
-        "section" => "rate_limit",
-        "button" => "",
-        "instance_settings[reverse_geocoding_rps]" => "3"
-      })
-
-    assert saved.status == 303
-    assert get_resp_header(saved, "x-dawarich-admin-owner") == ["native-admin-writes"]
-
-    assert get_resp_header(saved, "location") == [
-             "http://www.example.com/admin/settings?section=rate_limit"
-           ]
-
-    assert rows("SELECT value FROM instance_settings WHERE key='reverse_geocoding_rps'", []) == [
-             [3.0]
-           ]
-  end
-
-  @tag :g44_turbo_csrf
-  test "instance Turbo form validates body and header CSRF together", c do
-    path = "/admin/settings"
-    body_token = RailsCsrf.masked_form_token(c.session, path, "PATCH")
-    header_token = RailsCsrf.masked_token(c.session)
-    headers = [{"accept", "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"}]
-
-    fields = %{
-      "_method" => "patch",
-      "button" => "",
-      "section" => "rate_limit",
-      "instance_settings[reverse_geocoding_rps]" => "3"
-    }
-
-    for {body, header} <- [
-          {body_token, header_token},
-          {body_token, "invalid"},
-          {"invalid", header_token}
-        ] do
-      raw = URI.encode_query(Map.put(fields, "authenticity_token", body))
-
-      saved =
-        RailsFormRequests.post_form(c.session, raw, [{"x-csrf-token", header} | headers], path)
-
-      assert saved.status == 303
-
-      assert rows("SELECT value FROM instance_settings WHERE key='reverse_geocoding_rps'", []) ==
-               [[3.0]]
-    end
-
-    raw = URI.encode_query(Map.put(fields, "authenticity_token", "invalid"))
-
-    assert RailsFormRequests.post_form(
-             c.session,
-             raw,
-             [{"x-csrf-token", "invalid"} | headers],
-             path
-           ).status == 422
-
-    raw = URI.encode_query(Map.put(fields, "authenticity_token", body_token))
-
-    assert RailsFormRequests.post_form(
-             c.session,
-             raw,
-             [{"x-csrf-token", header_token}, {"origin", "http://foreign.invalid"} | headers],
-             path
-           ).status == 422
-
-    assert rows("SELECT value FROM instance_settings WHERE key='reverse_geocoding_rps'", []) == [
-             [3.0]
-           ]
-  end
-
-  @tag :g44_background
   test "native browser visits confirmation persists without dispatching a job", c do
     conn = RailsUser.signed_in(c.actor.id) |> RailsUser.connecting_as(c.actor.id)
     {:ok, view, _} = live(conn, "/settings/background_jobs")
@@ -265,11 +188,6 @@ defmodule DawarichWeb.G44AdminBrowserTest do
   end
 
   defp rows(sql, args), do: Repo.query!(sql, args, log: false).rows
-
-  defp submit(session, path, fields) do
-    fields = Map.put_new(fields, "authenticity_token", RailsCsrf.masked_token(session))
-    RailsFormRequests.post_form(session, URI.encode_query(fields), [{"accept", @browser}], path)
-  end
 
   defp page(session, path, headers \\ []) do
     Enum.reduce(headers, build_conn(), fn {k, v}, conn -> put_req_header(conn, k, v) end)

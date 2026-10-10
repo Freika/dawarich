@@ -20,7 +20,6 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.OnboardingRoutes
   import DawarichWeb.IntegrationFormRoutes
   import DawarichWeb.NotificationFormRoutes
-  import DawarichWeb.AdminFormRoutes
   import DawarichWeb.TrialHomeRoutes
 
   pipeline :browser do
@@ -215,7 +214,6 @@ defmodule DawarichWeb.Router do
   integration_form_routes()
   a10_routes()
   native_admin_routes()
-  admin_form_routes()
   trial_home_routes()
   settings_misc_routes()
   onboarding_routes()

@@ -30,7 +30,27 @@ defmodule DawarichWeb.RemovedPageWritesTest do
     {:delete, "/settings/trek_sources/1", ""},
     {:post, "/settings/generate_api_key", ""},
     {:get, "/settings/users/export", ""},
-    {:post, "/settings/users/import", "archive=signed"}
+    {:post, "/settings/users/import", "archive=signed"},
+    {:post, "/admin/settings", "section=points&instance_settings%5Bstore_geodata%5D=false"},
+    {:patch, "/admin/settings", "section=points&instance_settings%5Bstore_geodata%5D=false"},
+    {:put, "/admin/settings", "section=points&instance_settings%5Bstore_geodata%5D=false"},
+    {:post, "/admin/settings",
+     "_method=patch&section=points&instance_settings%5Bstore_geodata%5D=false"},
+    {:post, "/admin/settings.html", "_method=patch&section=points"},
+    {:post, "/admin/settings/test_geocoding", ""},
+    {:post, "/admin/settings/test_map_matching", ""},
+    {:post, "/settings/users",
+     "user%5Bemail%5D=new%40example.invalid&user%5Bpassword%5D=synthetic-pass-1&user%5Bpassword_confirmation%5D=synthetic-pass-1"},
+    {:post, "/settings/users/9896", "_method=put&user%5Badmin%5D=1"},
+    {:patch, "/settings/users/9896", "user%5Badmin%5D=1"},
+    {:put, "/settings/users/9896", "user%5Badmin%5D=1"},
+    {:post, "/settings/users/9896", "_method=delete"},
+    {:delete, "/settings/users/9896", ""},
+    {:post, "/settings/users/9896/regenerate_api_key", ""},
+    {:post, "/settings/users/9896/send_password_reset", ""},
+    {:post, "/settings/users/update_registration_settings", "enabled=1"},
+    {:patch, "/settings/users/update_registration_settings", "enabled=1"},
+    {:patch, "/settings/background_jobs", "settings%5Bvisits_suggestions_enabled%5D=true"}
   ]
 
   setup do
@@ -49,6 +69,14 @@ defmodule DawarichWeb.RemovedPageWritesTest do
       id: 9895,
       email: "removed-writes@dawarich.test",
       api_key: "removed-writes-key",
+      admin: true,
+      settings: %{"timezone" => "UTC", "locale" => "en"}
+    })
+
+    RailsUser.insert!(%{
+      id: 9896,
+      email: "removed-writes-target@dawarich.test",
+      api_key: "removed-writes-target-key",
       settings: %{"timezone" => "UTC", "locale" => "en"}
     })
 
@@ -69,7 +97,7 @@ defmodule DawarichWeb.RemovedPageWritesTest do
   defp footprint,
     do:
       Repo.query!(
-        "SELECT (SELECT to_jsonb(u) - 'updated_at' FROM users u WHERE id=9895), (SELECT count(*) FROM job_outbox), (SELECT count(*) FROM oban.oban_jobs), (SELECT count(*) FROM phoenix.rails_commands), (SELECT count(*) FROM active_storage_blobs)"
+        "SELECT (SELECT to_jsonb(u) - 'updated_at' FROM users u WHERE id=9895), (SELECT to_jsonb(u) - 'updated_at' FROM users u WHERE id=9896), (SELECT count(*) FROM users), (SELECT count(*) FROM instance_settings), (SELECT count(*) FROM job_outbox), (SELECT count(*) FROM oban.oban_jobs), (SELECT count(*) FROM phoenix.rails_commands), (SELECT count(*) FROM active_storage_blobs)"
       ).rows
 
   test "every removed page-write path answers like an unknown page and changes nothing" do

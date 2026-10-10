@@ -1,7 +1,7 @@
 defmodule Dawarich.A12f3bH01Hot5Test do
   use ExUnit.Case, async: false
   import Plug.Conn
-  alias Dawarich.{Accounts, RailsCookies, RailsSecret, Repo}
+  alias Dawarich.{RailsCookies, RailsSecret, Repo}
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{Endpoint, RailsCsrf, Router}
 
@@ -42,10 +42,6 @@ defmodule Dawarich.A12f3bH01Hot5Test do
   @tag a12f3b_case: "H01d"
   test "mounted admin and trial home routes retain native effects and authorization" do
     for {method, path, plug, pipeline, gate} <- [
-          {"DELETE", "/settings/users/35002", DawarichWeb.AdminUserDestroy, [:admin_writes],
-           {DawarichWeb.AdminWritesGate, :destroy?}},
-          {"POST", "/admin/settings/test_geocoding", DawarichWeb.AdminWrites.Settings,
-           [:admin_writes], {DawarichWeb.AdminWritesGate, :test_geocoding?}},
           {"GET", "/", DawarichWeb.HomeDispatch, [:public_home], {DawarichWeb.HomeGate, :owned?}},
           {"GET", "/trial/welcome", DawarichWeb.TrialWelcome, [:trial_welcome],
            {DawarichWeb.WelcomeGate, :owned?}},
@@ -82,63 +78,6 @@ defmodule Dawarich.A12f3bH01Hot5Test do
     end
 
     assert Repo.query!("SHOW statement_timeout", [], log: false).rows == timeout
-
-    assert request(35001, "PATCH", "/admin/settings", %{
-             "instance_settings[store_geodata]" => "false"
-           }).status == 303
-
-    assert Repo.query!("SELECT value FROM instance_settings WHERE key='store_geodata'").rows == [
-             [false]
-           ]
-
-    probe = request(35001, "POST", "/admin/settings/test_geocoding")
-    assert probe.status == 303
-    assert get_resp_header(probe, "location") == ["http://www.example.com/admin/settings"]
-    assert probe.private.dawarich_rails_session_changes["flash"]["flashes"] != %{}
-
-    for method <- ["DELETE", "POST"] do
-      params = if method == "POST", do: %{"_method" => "delete"}, else: %{}
-      assert request(35001, method, "/settings/users/35002", params).status == 503
-    end
-
-    assert Accounts.get(35002).deleted_at == nil
-
-    Application.put_env(:dawarich, :account_destroy_context, %{
-      enqueue_destroy: fn id ->
-        send(self(), {:destroy, id})
-        :ok
-      end
-    })
-
-    for {method, path} <- [
-          {"DELETE", "/settings/users/35002"},
-          {"POST", "/admin/settings/test_geocoding"}
-        ] do
-      assert request(35002, method, path).status == 303
-      assert request(nil, method, path).status == 302
-      assert request(35001, method, path, %{"authenticity_token" => "invalid"}).status == 422
-      System.put_env("SELF_HOSTED", "false")
-      assert request(35001, method, path).status == 303
-      System.put_env("SELF_HOSTED", "true")
-      assert Accounts.get(35002).deleted_at == nil
-      refute_received {:destroy, _}
-    end
-
-    for {method, id, params} <- [
-          {"DELETE", 35002, %{}},
-          {"POST", 35003, %{"_method" => "delete"}}
-        ] do
-      result = request(35001, method, "/settings/users/#{id}", params)
-      assert result.status == 302
-      assert get_resp_header(result, "location") == ["http://www.example.com/settings/users"]
-
-      assert Repo.query!("SELECT deleted_at IS NOT NULL FROM users WHERE id=$1", [id]).rows == [
-               [true]
-             ]
-
-      assert_received {:destroy, ^id}
-    end
-
     assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands").rows == [[0]]
     assert_home_and_welcome()
   end
