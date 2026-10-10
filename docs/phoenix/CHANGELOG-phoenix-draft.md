@@ -131,3 +131,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 
 - Keep fog on the selected dates when an older cell request finishes late. [FRB-NATIVE-M6-FOG-DATES](fixed-rails-bugs.md#frb-native-m6-fog-dates--a-late-fog-read-restores-an-older-date-window)
 - Cancel fog cell work when leaving its map. [FRB-NATIVE-M6-FOG-DISPOSE](fixed-rails-bugs.md#frb-native-m6-fog-dispose--leaving-the-map-keeps-a-fog-read-alive)
+- Stop hexagon point processing after leaving its map. [FRB-NATIVE-M6-HEX-DISPOSE](fixed-rails-bugs.md#frb-native-m6-hex-dispose--a-removed-hexagon-layer-keeps-aggregating-points)
+- Cancel scratch-map membership requests after leaving its map. [FRB-NATIVE-M6-SCRATCH-DISPOSE](fixed-rails-bugs.md#frb-native-m6-scratch-dispose--a-removed-scratch-layer-leaves-membership-requests-running)

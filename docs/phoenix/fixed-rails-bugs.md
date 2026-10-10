@@ -1360,3 +1360,23 @@ Removing the Rails fog layer detaches canvas/listeners but leaves its cell reque
 - Test: “destroy drains density fetch and resize callbacks” in `spec/javascript/phoenix_map_density_test.mjs`; omit-source-dispose and resize-listener mutations fail, restoration passes.
 - Ledger: ED-NATIVE-M6-FOG-DISPOSE; no DRB row added. Retained Rails remains unchanged.
 - CHANGELOG-ready: Cancel fog cell work when leaving its map.
+
+### FRB-NATIVE-M6-HEX-DISPOSE — A removed hexagon layer keeps aggregating points
+
+A pending Rails hexagon load survives layer removal and fills its retained point buffer after leaving the map or replacing the style. Native removal destroys the owned load, cancels its request and prevents late aggregation/repaint.
+
+- Rails: `app/javascript/maps_maplibre/layers/hexagon_layer.js:411`; removal caller `app/javascript/controllers/maps/maplibre/layer_manager.js:277`.
+- Phoenix: `app-phoenix/assets/js/map/layers/hexagon.js:114`; `app-phoenix/assets/js/map/layers/hexagon_source.js:101`.
+- Test: “hexagon page completing after remove cannot repaint its layer” in `spec/javascript/phoenix_hexagon_scratch_test.mjs`; deterministic Rails-source oracle repopulates rawBuffer after remove, native hex-dispose mutation fails/restoration passes.
+- Ledger: ED-NATIVE-M6-HEX-DISPOSE; no DRB row added. Retained Rails remains unchanged.
+- CHANGELOG-ready: Stop hexagon point processing after leaving its map.
+
+### FRB-NATIVE-M6-SCRATCH-DISPOSE — A removed scratch layer leaves membership requests running
+
+Rails discards a late country result after removal but does not abort its fetch. Native acquisition and membership have owned cancellation; removal/destruction aborts pending work while leaving other maps alone.
+
+- Rails: `app/javascript/maps_maplibre/layers/scratch_layer.js:181`; `app/javascript/maps_maplibre/services/api_client.js:980,984`.
+- Phoenix: `app-phoenix/assets/js/map/layers/scratch.js:176,184`.
+- Test: “scratch protocol or membership reads cannot outlive their owner” in `spec/javascript/phoenix_hexagon_scratch_test.mjs`; scratch-protocol/scratch-request mutations fail, restoration passes; existing date/foreign-tab/retry corpus retained.
+- Ledger: ED-NATIVE-M6-SCRATCH-DISPOSE; no DRB row added. Retained Rails remains unchanged.
+- CHANGELOG-ready: Cancel scratch-map membership requests after leaving its map.
