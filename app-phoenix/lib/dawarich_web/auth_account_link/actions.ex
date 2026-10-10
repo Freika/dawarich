@@ -1,6 +1,7 @@
 defmodule DawarichWeb.AuthAccountLink.Actions do
   @moduledoc false
   import Plug.Conn
+  require Logger
   alias Dawarich.Auth.{ActionCsrf, Admission}
   alias Dawarich.Auth.AccountLink.Closure
   alias Dawarich.Auth.Providers.{Accounts, Failure}
@@ -56,7 +57,9 @@ defmodule DawarichWeb.AuthAccountLink.Actions do
       _ -> conn |> send_resp(400, "Invalid account link request") |> halt()
     end
   rescue
-    _ -> Dawarich.Auth.Providers.Failure.terminal(conn)
+    error ->
+      Logger.error("Account-link authentication failed: #{inspect(error.__struct__)}")
+      Dawarich.Auth.Providers.Failure.terminal(conn)
   end
 
   defp closed_parameters(%{method: "POST"} = conn) do
