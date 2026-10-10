@@ -10,6 +10,8 @@ defmodule DawarichWeb.TripsNative.Access do
   @derive {Inspect, only: [:actor_id, :locale]}
   defstruct [:actor_id, :locale, :identity]
 
+  @timeout 10_000
+
   def on_mount(:require_user, params, session, socket) do
     with {:cont, socket} <-
            DawarichWeb.NativeAuth.on_mount(:require_user, params, session, socket) do
@@ -62,10 +64,89 @@ defmodule DawarichWeb.TripsNative.Access do
   end
 
   def refuse(socket) do
+    socket = cancel_all(socket)
     assigns = Map.take(socket.assigns, [:__changed__, :locale, :flash])
     socket = %{socket | assigns: assigns, private: Map.delete(socket.private, :trips_principal)}
     redirect(socket, to: "/users/sign_in")
   end
+
+  def advance(socket) do
+    socket = cancel_all(socket)
+    put_runs(socket, %{generation: runs(socket).generation + 1, active: %{}})
+  end
+
+  def start(socket, kind, fingerprint, reader) do
+    if Phoenix.LiveView.connected?(socket) do
+      state = runs(socket)
+      socket = cancel(socket, state.active[kind])
+      state = runs(socket)
+      run = {kind, state.generation, make_ref(), fingerprint}
+      timer = Process.send_after(self(), {:data_read_timeout, run}, @timeout)
+      principal = socket.private[:trips_principal]
+
+      socket
+      |> put_runs(%{state | active: Map.put(state.active, kind, {run, timer})})
+      |> Phoenix.LiveView.start_async(run, fn ->
+        with {:ok, scope} <- admit(principal), do: reader.(scope)
+      end)
+    else
+      socket
+    end
+  end
+
+  def finish(socket, {kind, _, _, _} = run, result) do
+    case runs(socket).active[kind] do
+      {^run, timer} ->
+        Process.cancel_timer(timer)
+        state = runs(socket)
+        socket = put_runs(socket, %{state | active: Map.delete(state.active, kind)})
+
+        case {scope(socket), result} do
+          {{:error, reason}, _} -> {:error, reason, socket}
+          {_, {:ok, {:ok, value}}} -> {:ok, value, socket}
+          {_, {:ok, {:error, reason}}} -> {:error, reason, socket}
+          {_, {:error, reason}} -> {:error, reason, socket}
+          _ -> {:error, :unavailable, socket}
+        end
+
+      _ ->
+        {:stale, socket}
+    end
+  end
+
+  def finish(socket, _run, _result), do: {:stale, socket}
+
+  def timeout(socket, {kind, _, _, _} = run) do
+    case runs(socket).active[kind] do
+      {^run, _timer} ->
+        socket = Phoenix.LiveView.cancel_async(socket, run)
+        finish(socket, run, {:error, :timeout})
+
+      _ ->
+        {:stale, socket}
+    end
+  end
+
+  def timeout(socket, _run), do: {:stale, socket}
+
+  def cancel_all(socket),
+    do: Enum.reduce(Map.values(runs(socket).active), socket, &cancel(&2, &1))
+
+  defp cancel(socket, nil), do: socket
+
+  defp cancel(socket, {{kind, _, _, _} = run, timer}) do
+    Process.cancel_timer(timer)
+    state = runs(socket)
+
+    socket
+    |> Phoenix.LiveView.cancel_async(run)
+    |> put_runs(%{state | active: Map.delete(state.active, kind)})
+  end
+
+  defp runs(socket), do: socket.private[:trips_runs] || %{generation: 0, active: %{}}
+
+  defp put_runs(socket, runs),
+    do: %{socket | private: Map.put(socket.private, :trips_runs, runs)}
 
   defp identity(%{encrypted_password: hash}) when is_binary(hash) and byte_size(hash) >= 29,
     do: :crypto.hash(:sha256, binary_part(hash, 0, 29))

@@ -25,6 +25,11 @@ defmodule Dawarich.Trips.DetailProjection do
   WHERE t.id = $1 AND t.user_id = $2
   """
 
+  @notes """
+  SELECT n.id, n.noted_at::date, n.body, n.source_digest FROM notes n
+  WHERE n.attachable_type = 'Trip' AND n.attachable_id = $1 AND n.noted_at IS NOT NULL
+  """
+
   def load(user, id, settings, now) do
     case UserTimeZone.query!(@header, [id, user.id, DateTime.to_naive(now)], user_settings(user)).rows do
       [row] -> {:ok, project(user, id, row, settings, now)}
@@ -74,6 +79,7 @@ defmodule Dawarich.Trips.DetailProjection do
       planned_future: Ruby.present?(source) and future,
       description: description(body),
       plan: plan(user, id, plan_supported),
+      notes: notes(id),
       settings: Map.take(settings, [:unit, :factor, :photos])
     }
   end
@@ -93,6 +99,13 @@ defmodule Dawarich.Trips.DetailProjection do
       _ -> nil
     end
   end
+
+  defp notes(id),
+    do:
+      Repo.query!(@notes, [id]).rows
+      |> Map.new(fn [note_id, date, body, digest] ->
+        {date, %{id: note_id, date: date, body: body, source_digest: digest}}
+      end)
 
   defp user_settings(user), do: Dawarich.UserSettings.get(user)
 end

@@ -16,6 +16,9 @@ defmodule DawarichWeb.TripsNativeRoutes do
 
         live "/trips/:id/edit", DawarichWeb.NativeTripsLive.Form, :edit,
           container: {:div, class: "contents"}
+
+        live "/trips/:id", DawarichWeb.NativeTripsLive.Show, :show,
+          container: {:div, class: "contents"}
       end
     end
   end
