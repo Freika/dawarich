@@ -7,16 +7,15 @@ import { CredentialQr } from "./credential_qr.js"
 import { CredentialValue } from "./credential_value.js"
 import { Dismissible } from "./dismissible.js"
 import { EmojiPicker } from "./emoji_picker.js"
-import { NativeHeatmap } from "./heatmap.js"
 import { FamilyConfirm } from "./family_confirm.js"
 import { FamilyInvitationClipboard } from "./family_invitation_clipboard.js"
-import { FamilyMap } from "./family_map.js"
+import { NativeHeatmap } from "./heatmap.js"
+import { FamilyMap, SharedMap } from "./lazy_maps.js"
 import { MapMatchingDemo } from "./map_matching_demo.js"
 import { OrdinaryDialog } from "./ordinary_dialog.js"
 import { PlaceDraft } from "./place_draft.js"
 import { RichText } from "./rich_text.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
-import { SharedMap } from "./shared_map.js"
 import {
   SharingDialog,
   SharingPhrase,

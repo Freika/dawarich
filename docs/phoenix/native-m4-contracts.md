@@ -294,3 +294,21 @@ Sharing-only stream submit/reconnect/flash-publication machinery is removed from
 The connected navbar assertions account for one C1 Families.subscribe_changes fresh actor read beyond the earlier B5 snapshot. Their existing business bounds and table categories remain; this is a deterministic admission contract, not an acceptance benchmark. Notification HTTP actor freshness is four reads across bootstrap/admission seams. Independent family worker tests additionally assert exact native notification owner invalidation args, replay deduplication and worker receipt, while preserving the original six mail delivery claims.
 
 The existing T02 native-owner trip closure explicitly scopes its absent Rails upstream fixture and restores the previous value. The full manifest exposed a inherited mock-upstream leak (502); isolated native truth is 404. No TripsGate/Puma/domain behavior is changed; deferred trip compatibility remains M6.
+
+## Stage 1 static asset budgets
+
+The track-C metafile diff against 71b0f2cb3 identified eager public map/replay/route/day-clock/gallery helpers and family map code. Stage 1 now imports the map runtimes only when their hooks mount. Immediate event listeners retain the latest snapshot, erase on revocation/disconnect, and refuse initialization after destruction. Gallery/canvas erasure is shared with the real runtimes. SparkMD5 loads only when checksum work starts; cancellation is checked before and after that import.
+
+The shared minified eager gzip cap remains 56,517 bytes. The integrated pre-fix graph was 61,476 bytes; the restored graph is 54,205 bytes (zlib gzip across recursive static imports). This is a static compiled-byte check, with no resource-measurement tag or browser performance claim.
+
+Non-minified per-input allowances use the integrated esbuild metafile, with 1,024 bytes of headroom per feature:
+
+| Eager feature | Measured bytes | Cap |
+| --- | ---: | ---: |
+| Upload checksum/direct transport | 8,416 | 9,440 |
+| Credential value/QR hooks | 4,256 | 5,280 |
+| Family confirm/invitation clipboard | 2,918 | 3,942 |
+| Sharing controls/clipboard | 6,365 | 7,389 |
+| Map bridges/erasure/hook registry | 3,748 | 4,772 |
+
+The unrelated-code allowance remains a separate baseline plus 1,024 bytes. Its old baseline loses the 16,713-byte hashing input now made lazy and transfers the preexisting 1,844 upload, 1,632 clipboard and 232 registry bytes into their feature buckets. Existing HTTP chrome, Places, chart/heatmap and editor allowances remain independent. Static eager-import, feature-growth, revoke-before-load, destroy-before-load and abort-during-hasher-import mutations fail their named checks.

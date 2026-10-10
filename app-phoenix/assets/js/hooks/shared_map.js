@@ -1,4 +1,5 @@
-import { clearGalleries, openGallery, showGallery } from "./shared_gallery.js"
+import { erasePublic } from "./shared_erase.js"
+import { openGallery, showGallery } from "./shared_gallery.js"
 import { loadSharedMap } from "./shared_map_library.js"
 import { photoMarkers } from "./shared_photo_markers.js"
 import { PublicReplay } from "./shared_replay.js"
@@ -167,17 +168,7 @@ export const SharedMap = {
     this.selectedDay = null
     this.routeOptions = null
     this.library = null
-    clearGalleries(this.el)
-    this.latest(null)
-    const canvas = this.el.querySelector("[data-public-canvas]")
-    if (canvas) {
-      canvas.hidden = true
-      canvas.replaceChildren()
-    }
-    const empty = this.el.querySelector("[data-public-empty]")
-    if (empty) empty.hidden = false
-    const content = this.el.querySelector("[data-public-content]")
-    if (content) content.hidden = hidden
+    erasePublic(this.el, hidden)
   },
   disconnected() {
     this.clear(true)

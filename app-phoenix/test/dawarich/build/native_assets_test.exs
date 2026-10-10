@@ -11,7 +11,14 @@ defmodule Dawarich.Build.NativeAssetsTest do
   @chrome_base_bytes 6_707 + 548
   @places_inputs ~w(js/hooks/place_draft.js js/hooks/ordinary_dialog.js)
   @m5_inputs ~w(js/hooks/chart.js js/hooks/heatmap.js js/hooks/rich_text.js)
-  @other_base_bytes 335_463
+  @other_base_bytes 335_463 - 16_713 - 1_844 - 1_632 - 232
+  @m4_inputs [
+    {~w(js/hooks/archive_checksum.js js/uploaders/direct.js), 8416},
+    {~w(js/hooks/credential_qr.js js/hooks/credential_value.js), 4256},
+    {~w(js/hooks/family_confirm.js js/hooks/family_invitation_clipboard.js), 2918},
+    {~w(js/hooks/sharing_controls.js js/hooks/clipboard.js), 6365},
+    {~w(js/hooks/lazy_maps.js js/hooks/shared_erase.js js/hooks/index.js), 3748}
+  ]
 
   @tag trix_pin: true
   test "native editor builds pinned Trix with no ActionText transport", %{tmp_dir: dir} do
@@ -76,7 +83,9 @@ defmodule Dawarich.Build.NativeAssetsTest do
       dir
       |> build!()
       |> app_input_bytes()
-      |> Map.drop(@chrome_inputs ++ @places_inputs ++ @m5_inputs)
+      |> Map.drop(
+        @chrome_inputs ++ @places_inputs ++ @m5_inputs ++ Enum.flat_map(@m4_inputs, &elem(&1, 0))
+      )
 
     assert Enum.sum(Map.values(bytes)) <= @other_base_bytes + @other_slack
   end
@@ -192,6 +201,22 @@ defmodule Dawarich.Build.NativeAssetsTest do
            )
 
     refute Enum.any?(inputs, &String.contains?(&1, "app/javascript"))
+  end
+
+  test "M4 features retain independent eager byte caps", %{tmp_dir: dir} do
+    bytes = dir |> build!() |> app_input_bytes()
+
+    for {inputs, measured} <- @m4_inputs do
+      assert Enum.sum(Map.values(Map.take(bytes, inputs))) <= measured + 1024, inspect(inputs)
+    end
+  end
+
+  test "public and family map runtimes stay outside the first-paint graph", %{tmp_dir: dir} do
+    bytes = dir |> build!() |> app_input_bytes()
+
+    for input <-
+          ~w(js/hooks/shared_map.js js/hooks/shared_replay.js js/hooks/shared_routes.js js/hooks/shared_route_segmenter.js js/hooks/family_map.js node_modules/spark-md5/spark-md5.js),
+        do: refute(Map.has_key?(bytes, input), input)
   end
 
   test "archive preparation and ZIP dependencies stay lazy within the shared gzip budget", %{

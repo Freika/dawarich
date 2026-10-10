@@ -1,3 +1,5 @@
+import { eraseMapCanvas } from "./shared_erase.js"
+
 async function loadMap({ signal }) {
   const [maplibre, styles] = await Promise.all([
     import("/maplibre/6.4.1/maplibre-gl.mjs"),
@@ -99,10 +101,7 @@ export const FamilyMap = {
     this.map = null
     this.locations = []
     this.focusId = null
-    const canvas = this.el.querySelector("[data-family-canvas]")
-    canvas.hidden = true
-    canvas.replaceChildren()
-    this.el.querySelector("[data-family-empty]").hidden = false
+    eraseMapCanvas(this.el, "family")
   },
   visibility(hidden) {
     for (const row of this.el

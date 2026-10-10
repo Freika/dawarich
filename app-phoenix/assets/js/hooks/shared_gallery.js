@@ -1,3 +1,5 @@
+export { clearGalleries } from "./shared_erase.js"
+
 function images(content, photos) {
   content.replaceChildren()
   for (const photo of photos) {
@@ -15,17 +17,6 @@ export function openGallery(details) {
   if (!details.open) return
   const content = details.querySelector("[data-public-gallery-content]")
   if (content) images(content, details.publicPhotos || [])
-}
-
-export function clearGalleries(el) {
-  for (const details of el.querySelectorAll("details[data-public-gallery]"))
-    details.publicPhotos = []
-  for (const image of el.querySelectorAll("[data-public-gallery] img")) {
-    image.removeAttribute?.("src")
-    image.removeAttribute?.("srcset")
-  }
-  for (const content of el.querySelectorAll("[data-public-gallery-content]"))
-    content.replaceChildren()
 }
 
 export function showGallery(el, photos, _zone) {

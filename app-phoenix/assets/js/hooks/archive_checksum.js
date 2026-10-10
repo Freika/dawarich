@@ -1,13 +1,19 @@
-import SparkMD5 from "spark-md5"
-
 const check = (signal) => {
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
 }
 
 export async function base64Md5(
   file,
-  { chunkSize = 2 * 1024 * 1024, onProgress = () => {}, signal } = {},
+  {
+    chunkSize = 2 * 1024 * 1024,
+    onProgress = () => {},
+    signal,
+    loadMd5 = () => import("spark-md5"),
+  } = {},
 ) {
+  check(signal)
+  const { default: SparkMD5 } = await loadMd5()
+  check(signal)
   const md5 = new SparkMD5.ArrayBuffer()
   for (let offset = 0; offset < file.size; offset += chunkSize) {
     check(signal)
