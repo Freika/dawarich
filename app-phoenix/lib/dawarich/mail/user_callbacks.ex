@@ -49,7 +49,10 @@ defmodule Dawarich.Mail.UserCallbacks do
   defp publish!(repo, command, worker, payload, args, opts) do
     event = Keyword.get_lazy(opts, :event_id, &Ecto.UUID.generate/0)
     at = Keyword.get_lazy(opts, :scheduled_at, &DateTime.utc_now/0)
-    dedupe = if function_exported?(worker, :provider_key, 1), do: worker.provider_key(args)
+
+    dedupe =
+      if Code.ensure_loaded?(worker) and function_exported?(worker, :provider_key, 1),
+        do: worker.provider_key(args)
 
     repo.query!(
       "INSERT INTO job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at) VALUES($1,$2,1,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING",
