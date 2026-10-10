@@ -7,12 +7,24 @@ defmodule DawarichWeb.PublicMapLive do
     if socket.assigns.public_config && !connected?(socket),
       do: Dawarich.Maps.Dependencies.Public.record_visit(socket.assigns.public_capability)
 
-    {:ok,
-     assign(socket,
-       public_map_ready: false,
-       public_selected_day: nil,
-       public_unlock_token: session["public_unlock_token"]
-     )}
+    socket =
+      assign(socket,
+        public_map_ready: false,
+        public_selected_day: nil,
+        public_unlock_token: session["public_unlock_token"]
+      )
+
+    socket =
+      if socket.assigns.public_config do
+        DawarichWeb.MapLive.Subscriptions.sync(socket, %{
+          kind: :public,
+          capability: socket.assigns.public_capability
+        })
+      else
+        socket
+      end
+
+    {:ok, socket}
   end
 
   def handle_params(_, _, socket), do: {:noreply, socket}
@@ -61,7 +73,10 @@ defmodule DawarichWeb.PublicMapLive do
   def handle_info({:public_map_expiry, token}, socket),
     do: {:noreply, DawarichWeb.PublicMapDeadline.receive_expiry(socket, token)}
 
-  def handle_info(_, socket), do: {:noreply, socket}
+  def handle_info(message, socket) do
+    {_, socket} = DawarichWeb.MapLive.Subscriptions.deliver(socket, message)
+    {:noreply, socket}
+  end
 
   def render(assigns) do
     link = assigns.public_presentation && assigns.public_presentation.link
