@@ -24,6 +24,14 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     end
   end
 
+  def handle_event("settings:point_edit", %{"enabled" => value}, socket)
+      when value in [true, false, "true", "false"] do
+    enabled = value in [true, "true"]
+    layers = socket.assigns.map_settings.saved["enabled_map_layers"] || []
+    layers = if enabled, do: Enum.uniq(layers ++ ["Points"]), else: layers
+    save(socket, %{"point_dragging_enabled" => enabled, "enabled_map_layers" => layers})
+  end
+
   def handle_event("settings:transport_change", params, socket),
     do: {:noreply, update(socket, &%{&1 | draft_modes: modes(params), error: nil})}
 

@@ -115,6 +115,7 @@ defmodule DawarichWeb.NativeM6HostTest do
 
   test "native production host opens calendar and residency with profile dates", %{id: id} do
     Dawarich.Test.FrameSeeds.stat!(id, 2025, 5)
+
     Dawarich.Test.FrameSeeds.point!(id, id * 10, DateTime.to_unix(~U[2025-05-01 12:00:00Z]), %{
       country_name: "Germany"
     })
@@ -134,14 +135,21 @@ defmodule DawarichWeb.NativeM6HostTest do
     point = id * 10
     Dawarich.Test.FrameSeeds.point!(id, id * 10, DateTime.to_unix(~U[2026-03-30 09:00:00Z]), %{})
     {:ok, view, _} = open(id, @second)
-    payload = %{"point_id" => to_string(point), "point" => %{"latitude" => "52", "longitude" => "13", "revision" => 0}, "history_scope" => %{"start_at" => "2026-03-30T00:00Z", "end_at" => "2026-03-31T00:00Z"}}
+
+    payload = %{
+      "point_id" => to_string(point),
+      "point" => %{"latitude" => "52", "longitude" => "13", "revision" => 0},
+      "history_scope" => %{"start_at" => "2026-03-30T00:00Z", "end_at" => "2026-03-31T00:00Z"}
+    }
+
     render_hook(view, "point:move", payload)
     assert_reply(view, %{ok: true, response: %{"revision" => %{"point" => 1}}})
     render_hook(view, "point:move", payload)
     assert_reply(view, %{error: "stale", response: %{"revision" => %{"point" => 1}}})
   end
 
-  test "native production host settles enrichment scans and discards them on range replacement", %{id: id} do
+  test "native production host settles enrichment scans and discards them on range replacement",
+       %{id: id} do
     {:ok, view, _} = open(id, @second)
     render_hook(view, "enrichment:scan", %{})
     render_async(view, 5000)
@@ -153,9 +161,20 @@ defmodule DawarichWeb.NativeM6HostTest do
 
   test "native production host saves appearance and renders settings refusal", %{id: id} do
     {:ok, view, _} = open(id, @second <> "&panel=settings")
-    view |> form("#native-appearance-form", %{"maps_maplibre_tiles_url" => "javascript:bad"}) |> render_submit()
+
+    view
+    |> form("#native-appearance-form", %{"maps_maplibre_tiles_url" => "javascript:bad"})
+    |> render_submit()
+
     assert has_element?(view, "#native-map-settings [role=alert]")
-    view |> form("#native-appearance-form", %{"maps_maplibre_style" => "dark", "maps_maplibre_tiles_url" => ""}) |> render_submit()
+
+    view
+    |> form("#native-appearance-form", %{
+      "maps_maplibre_style" => "dark",
+      "maps_maplibre_tiles_url" => ""
+    })
+    |> render_submit()
+
     assert_push_event(view, "map:settings", %{settings: %{"maps_maplibre_style" => "dark"}})
     assert Dawarich.Accounts.get(id).settings["maps_maplibre_style"] == "dark"
   end
@@ -180,10 +199,22 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "#native-timeline-filter input[value='']")
   end
 
-  test "native production host edits a visit adds its note and opens an owned point address", %{id: id} do
+  test "native production host edits a visit adds its note and opens an owned point address", %{
+    id: id
+  } do
     place = Dawarich.Test.FrameSeeds.place!(id, id * 10, "Cafe")
-    visit = Dawarich.Test.FrameSeeds.visit!(id, id * 10, %{place_id: place, started_at: ~N[2026-03-30 09:00:00], ended_at: ~N[2026-03-30 10:00:00]})
-    Dawarich.Test.FrameSeeds.point!(id, id * 10, 1774861200, %{reverse_geocoded_at: ~N[2026-03-30 09:00:00]})
+
+    visit =
+      Dawarich.Test.FrameSeeds.visit!(id, id * 10, %{
+        place_id: place,
+        started_at: ~N[2026-03-30 09:00:00],
+        ended_at: ~N[2026-03-30 10:00:00]
+      })
+
+    Dawarich.Test.FrameSeeds.point!(id, id * 10, 1_774_861_200, %{
+      reverse_geocoded_at: ~N[2026-03-30 09:00:00]
+    })
+
     {:ok, view, _} = open(id, @second)
     render_hook(view, "visit:edit", %{"id" => to_string(visit)})
     view |> form("#native-visit-note-form", note: %{body: "Lunch"}) |> render_submit()
@@ -198,7 +229,15 @@ defmodule DawarichWeb.NativeM6HostTest do
 
   test "native production host selects visits confirms bulk and toggles timeline tags", %{id: id} do
     place = Dawarich.Test.FrameSeeds.place!(id, id * 10, "Cafe")
-    visit = Dawarich.Test.FrameSeeds.visit!(id, id * 10, %{place_id: place, status: 0, started_at: ~N[2026-03-30 09:00:00], ended_at: ~N[2026-03-30 10:00:00]})
+
+    visit =
+      Dawarich.Test.FrameSeeds.visit!(id, id * 10, %{
+        place_id: place,
+        status: 0,
+        started_at: ~N[2026-03-30 09:00:00],
+        ended_at: ~N[2026-03-30 10:00:00]
+      })
+
     Dawarich.Test.FrameSeeds.tag!(id, id * 10, "Food", place, ~N[2026-03-30 09:00:00])
     {:ok, view, _} = open(id, @second <> "&panel=timeline")
     render_async(view, 5000)
@@ -213,6 +252,16 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "[data-tag-name=food][aria-pressed=true]")
     render_hook(view, "timeline:tag", %{"tag" => "Food"})
     assert has_element?(view, "[data-tag-name=food][aria-pressed=false]")
+  end
+
+  test "native production host persists edit mode and exposes points before dragging", %{id: id} do
+    {:ok, view, _} = open(id, @second)
+    view |> element("[data-testid=native-edit-points]") |> render_click()
+    assert config(view)["editEnabled"] == true
+    assert config(view)["pointsEnabled"] == true
+    assert Dawarich.Accounts.get(id).settings["point_dragging_enabled"] == true
+    view |> element("[data-testid=native-edit-points]") |> render_click()
+    assert config(view)["editEnabled"] == false
   end
 
   defp config(view) do

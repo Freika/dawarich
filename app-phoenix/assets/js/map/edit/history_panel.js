@@ -163,7 +163,7 @@ export class PointEditHistoryPanel {
   _iconButton(action, label, enabled) {
     const button = this._node("button", "map-edit-history__icon")
     button.type = "button"
-    button.dataset.action = action
+    button.dataset.historyAction = action
     button.disabled = !enabled
     button.title = label
     button.setAttribute("aria-label", label)
@@ -174,9 +174,9 @@ export class PointEditHistoryPanel {
   _onClick(event) {
     const button = event.target.closest("button")
     if (!button || button.disabled) return
-    if (button.dataset.action === "undo") this.onUndo()
-    else if (button.dataset.action === "redo") this.onRedo()
-    else if (button.dataset.action === "close") this.onClose()
+    if (button.dataset.historyAction === "undo") this.onUndo()
+    else if (button.dataset.historyAction === "redo") this.onRedo()
+    else if (button.dataset.historyAction === "close") this.onClose()
     else if (button.dataset.index != null)
       this.onTravel(this.items[Number(button.dataset.index)].entry)
   }

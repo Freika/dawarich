@@ -5,6 +5,7 @@ defmodule DawarichWeb.MapLive.NativeConfig do
     saved = (settings && settings.saved) || %{}
     maps = saved["maps"] || %{}
     layers = saved["enabled_map_layers"] || []
+
     Map.merge(config, %{
       "panel" => panel || "",
       "styleName" => saved["maps_maplibre_style"] || "light",
@@ -22,7 +23,9 @@ defmodule DawarichWeb.MapLive.NativeConfig do
       "placesEnabled" => "Places" in layers,
       "visitsEnabled" => "Visits" in layers,
       "areasEnabled" => "Areas" in layers,
-      "mapOptions" => %{"projection" => %{"type" => if(saved["globe_projection"], do: "globe", else: "mercator")}},
+      "mapOptions" => %{
+        "projection" => %{"type" => if(saved["globe_projection"], do: "globe", else: "mercator")}
+      },
       "placesTagFilters" => saved["places_tag_filters"]
     })
   end

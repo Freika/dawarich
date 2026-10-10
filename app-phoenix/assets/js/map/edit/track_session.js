@@ -30,13 +30,17 @@ export class TrackSession extends EditorGeometry {
   async _fetchTrack(trackId) {
     const operation = this.readScope.begin()
     try {
-      const result = await operation.wait(Promise.all([
-        this.readTrack(trackId, {signal: operation.signal}),
-        this.readPoints(trackId, {signal: operation.signal}),
-      ]))
+      const result = await operation.wait(
+        Promise.all([
+          this.readTrack(trackId, { signal: operation.signal }),
+          this.readPoints(trackId, { signal: operation.signal }),
+        ]),
+      )
       operation.check()
       return result
-    } finally { operation.close() }
+    } finally {
+      operation.close()
+    }
   }
 
   async _loadTrackDuringDrag(trackId, sessionVersion) {
@@ -52,8 +56,12 @@ export class TrackSession extends EditorGeometry {
       if (draggedId == null) return
       this.snapshot = clone(this.data)
       if (this.hasMoved && coordinates) this.preview(draggedId, ...coordinates)
-    } catch (error) {
-      this.onError(this.translate("messages.failed_to_update_point_position_please_try_again"))
+    } catch (_error) {
+      this.onError(
+        this.translate(
+          "messages.failed_to_update_point_position_please_try_again",
+        ),
+      )
     }
   }
 
@@ -84,10 +92,14 @@ export class TrackSession extends EditorGeometry {
       const feature = await this.readTrack(this.trackId)
       if (sessionVersion !== this.sessionVersion) return
       this.setSelectedTrack(feature)
-    } catch (error) {
+    } catch (_error) {
       if (sessionVersion !== this.sessionVersion) return
       this.setSelectedTrack(null)
-      this.onError(this.translate("messages.failed_to_update_point_position_please_try_again"))
+      this.onError(
+        this.translate(
+          "messages.failed_to_update_point_position_please_try_again",
+        ),
+      )
     }
   }
 

@@ -1,15 +1,15 @@
-import { installHostReplay } from "../replay/host.js"
-import { createHostSettings } from "../ui/host_settings.js"
-import { createHostEditing } from "../edit/host.js"
-import { createEnrichmentTool } from "../ui/enrichment.js"
-import { createHostSearch } from "../ui/host_search.js"
-import { createHostSelection } from "../selection/host.js"
-import { applyMapStyle } from "../style/map_style.js"
 import { createReader } from "../data/reader.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { createTileFreshness } from "../data/tile_freshness.js"
+import { createHostEditing } from "../edit/host.js"
 import { createBaseLayers } from "../layers/tile_layers.js"
+import { installHostReplay } from "../replay/host.js"
+import { createHostSelection } from "../selection/host.js"
+import { applyMapStyle } from "../style/map_style.js"
+import { createEnrichmentTool } from "../ui/enrichment.js"
+import { createHostSearch } from "../ui/host_search.js"
+import { createHostSettings } from "../ui/host_settings.js"
 import { createHostTimeline } from "../ui/host_timeline.js"
 import { createHostTools } from "../ui/host_tools.js"
 import { createRangeRequests } from "../ui/navigation.js"
@@ -47,14 +47,55 @@ export function mountHost({
     attach:
       attach ??
       (({ map, config, lifetime }) => {
-        installHostReplay({owner, map, lifetime, root: element.closest?.("[data-native-map-root]")})
-        owner.settings = createHostSettings({ map, loadStyle, lifetime, getConfig: () => owner.config, update: next => owner.update(next), onError: code => pushEvent("map:failed", {code}) })
-        enrichment = createEnrichmentTool({ map, pushEvent, createPopup: () => null })
+        installHostReplay({
+          owner,
+          map,
+          lifetime,
+          root: element.closest?.("[data-native-map-root]"),
+        })
+        owner.settings = createHostSettings({
+          map,
+          loadStyle,
+          lifetime,
+          getConfig: () => owner.config,
+          update: (next) => owner.update(next),
+          onError: (code) => pushEvent("map:failed", { code }),
+        })
+        enrichment = createEnrichmentTool({
+          map,
+          pushEvent,
+          createPopup: () => null,
+        })
         lifetime.own(enrichment.destroy)
-        owner.search = createHostSearch({map, root: element.closest?.("#native-map-page"), reader, lifetime, document: element.ownerDocument, pushEvent, getConfig: () => owner.config})
-        owner.selection = createHostSelection({map, root: element.closest?.("#native-map-page"), reader, pushEvent, lifetime, getConfig: () => owner.config})
-        timeline = createHostTimeline({ map, root: element.closest?.("#native-map-page"), reader, lifetime })
-        createHostTools({ map, root: element.closest?.("#native-map-page"), pushEvent, lifetime })
+        owner.search = createHostSearch({
+          map,
+          root: element.closest?.("[data-native-map-root]"),
+          reader,
+          lifetime,
+          document: element.ownerDocument,
+          pushEvent,
+          getConfig: () => owner.config,
+        })
+        owner.selection = createHostSelection({
+          map,
+          root: element.closest?.("[data-native-map-root]"),
+          reader,
+          pushEvent,
+          lifetime,
+          getConfig: () => owner.config,
+        })
+        timeline = createHostTimeline({
+          map,
+          root: element.closest?.("[data-native-map-root]"),
+          reader,
+          lifetime,
+        })
+        createHostTools({
+          map,
+          root: element.closest?.("[data-native-map-root]"),
+          pushEvent,
+          lifetime,
+        })
         layers = createBaseLayers({
           map,
           config,
@@ -62,7 +103,16 @@ export function mountHost({
           onError: (code) => pushEvent("map:failed", { code }),
         })
         lifetime.own(() => layers.destroy())
-        editing = createHostEditing({ map, reader, pushEvent, lifetime, getConfig: () => owner.config, layers, document: element.ownerDocument })
+        editing = createHostEditing({
+          map,
+          reader,
+          pushEvent,
+          lifetime,
+          getConfig: () => owner.config,
+          layers,
+          document: element.ownerDocument,
+          root: element.closest?.("[data-native-map-root]"),
+        })
         lifetime.own(() => density?.destroy())
         lifetime.own(() => photos?.remove())
         lifetime.own(() => entities?.destroy())
@@ -189,17 +239,26 @@ export function mountHost({
     applyDates: requests.applyDates,
   })
   Object.defineProperty(owner, "enrichment", { get: () => enrichment })
-  Object.defineProperty(owner, "pointEditing", { get: () => editing?.transport })
+  Object.defineProperty(owner, "pointEditing", {
+    get: () => editing?.transport,
+  })
   Object.defineProperty(owner, "editor", { get: () => editing?.editor })
   Object.defineProperty(owner, "entityLayers", { get: () => entities })
-  owner.visitsFilter = filter => owner.update({...owner.config, visitFilter: filter})
-  owner.layer = ({layer, enabled}) => {
+  owner.visitsFilter = (filter) =>
+    owner.update({ ...owner.config, visitFilter: filter })
+  owner.layer = ({ layer, enabled }) => {
     if (!["places", "visits", "areas", "anomalies"].includes(layer)) return
-    return owner.update({...owner.config, [`${layer}Enabled`]: enabled === true})
+    return owner.update({
+      ...owner.config,
+      [`${layer}Enabled`]: enabled === true,
+    })
   }
   const update = owner.update
   owner.update = (config) => {
-    if (config.revision !== owner.config.revision) { enrichment?.clear(); owner.selection?.cancel() }
+    if (config.revision !== owner.config.revision) {
+      enrichment?.clear()
+      owner.selection?.cancel()
+    }
     timeline?.config(config)
     editing?.config(config)
     const updating = update.call(owner, config)

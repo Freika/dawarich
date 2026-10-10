@@ -7,12 +7,18 @@ export const MapHook = {
     this.mapRealtime = null
     this.mapInvalidations = []
     this.mapHandlers = [
-      this.handleEvent("map:layer", payload => this.mapOwner?.layer?.(payload)),
-      this.handleEvent("map:settings", payload => this.mapOwner?.settings?.(payload)),
-      this.handleEvent("enrichment:matches", payload => this.mapOwner?.enrichment?.matches(payload)),
+      this.handleEvent("map:layer", (payload) =>
+        this.mapOwner?.layer?.(payload),
+      ),
+      this.handleEvent("map:settings", (payload) =>
+        this.mapOwner?.settings?.(payload),
+      ),
+      this.handleEvent("enrichment:matches", (payload) =>
+        this.mapOwner?.enrichment?.matches(payload),
+      ),
       this.handleEvent("map:config", (payload) => {
         this.mapConfig = payload
-        return this.mapOwner?.update(payload)
+        return this.mapOwner?.update({ ...this.mapOwner.config, ...payload })
       }),
       this.handleEvent("map:invalidate", (receipt = {}) => {
         if (this.mapDestroyed || this.mapRevoked) return
@@ -44,7 +50,11 @@ export const MapHook = {
         element: this.el,
         pushEvent: this.pushEvent.bind(this),
       })
-      if (this.mapConfig) await this.mapOwner.update(this.mapConfig)
+      if (this.mapConfig)
+        await this.mapOwner.update({
+          ...this.mapOwner.config,
+          ...this.mapConfig,
+        })
       await this.mapOwner.mount()
       if (this.mapDestroyed || this.mapRevoked) return
       this.mapReady = true
