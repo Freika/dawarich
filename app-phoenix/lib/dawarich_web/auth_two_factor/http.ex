@@ -174,7 +174,17 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
   defp dispatch(conn, action, params, id, salt, opts, context) do
     result =
       if context.native do
-        Closure.call(action, id, salt, params, context)
+        scope = Dawarich.Accounts.Scope.for_user(conn.assigns.current_user, conn.assigns.locale)
+
+        pending =
+          Dawarich.Auth.Otp.Pending.valid(
+            conn.assigns.rails_session,
+            DateTime.to_unix(DateTime.utc_now())
+          ) != :expired
+
+        proof = %{session_salt: salt, pending: pending}
+        fields = Map.take(params, ~w(otp_attempt password))
+        Dawarich.Accounts.Security.manage_two_factor(scope, action, fields, proof, context)
       else
         case action do
           :show ->
@@ -203,10 +213,22 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
         Response.redirect(conn, reason, context)
 
       {:ok, render} ->
-        Response.form(conn, render.user, render, 200, context)
+        Response.form(
+          conn,
+          if(context.native, do: conn.assigns.current_user, else: render.user),
+          render,
+          200,
+          context
+        )
 
       {:error, render} ->
-        Response.form(conn, render.user, render, 422, context)
+        Response.form(
+          conn,
+          if(context.native, do: conn.assigns.current_user, else: render.user),
+          render,
+          422,
+          context
+        )
 
       {:handoff, _} ->
         fallback(conn, opts)

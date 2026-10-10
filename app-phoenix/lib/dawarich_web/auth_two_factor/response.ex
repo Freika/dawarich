@@ -41,7 +41,11 @@ defmodule DawarichWeb.AuthTwoFactor.Response do
         rails_csrf_token: RailsCsrf.masked_token(session),
         page_title: Form.title(render.kind, conn.assigns.locale),
         kind: render.kind,
-        enabled: render.user.otp_required_for_login,
+        enabled:
+          if(Map.has_key?(render, :enabled),
+            do: render.enabled,
+            else: render.user.otp_required_for_login
+          ),
         admin: user.admin,
         two_factor: true,
         secret: render[:secret],

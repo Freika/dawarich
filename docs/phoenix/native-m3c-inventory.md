@@ -72,3 +72,7 @@ HTTP signup retains invitation readonly email/token, password/confirmation field
 ## B3 — OTP
 
 Initial and repeated failure responses use the anonymous HTTP renderer, with empty code, unchanged counters/completion/remember/cache and approved session-locale display. RED `impl-m3c-b3-red.log` 0/4 exit 2; GREEN 4/4; locale/echo/counter/pending mutations each fail their named test (exit 2); pending mutation also warns about its intentionally unused attribute. Restored `impl-m3c-b3-restored-green.log`: 42 passed, exit 0, warnings clean. OTP FormTest exact markup → source fields/labels/navigation/input constraints; ResponseTest forced English hero → matching seven-locale source fields/title; header/cookie/status/completion cases retained.
+
+## B4a — scoped 2FA operations
+
+`Accounts.Security.manage_two_factor/5` validates admitted scope/server proof and allowed fields, then preserves the existing locked closure and required presentation scalars. Secrets stay in local rendering results; no Account result enters conn state. RED `impl-m3c-b4a-red.log`; GREEN 3 cases; salt/admin/passwordfirst mutations fail named cases (exit 2); corrected fresh-admin mutation replaces a discarded stale-role probe. Restored `impl-m3c-b4a-restored-green.log`: 16 passed, exit 0, warnings clean. B4 templates and browser validation remain pending.
