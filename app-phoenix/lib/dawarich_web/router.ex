@@ -6,6 +6,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.A8Routes
   import DawarichWeb.PageRoutes
   import DawarichWeb.A10Routes
+  require DawarichWeb.TripsNativeRoutes
   import DawarichWeb.NativeDataRoutes
   import DawarichWeb.NativeAdminRoutes
   import DawarichWeb.CableRoutes
@@ -215,6 +216,7 @@ defmodule DawarichWeb.Router do
   integration_form_routes()
   a10_routes()
   native_data_routes()
+  DawarichWeb.TripsNativeRoutes.trips_routes()
   native_admin_routes()
   trial_home_routes()
   settings_misc_routes()

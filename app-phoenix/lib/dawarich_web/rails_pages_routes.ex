@@ -68,22 +68,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/stats/:year/:month", DawarichWeb.StatsLive.Month, :month,
             container: {:div, class: "contents"}
 
-          live "/trips", DawarichWeb.TripsLive.Index, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :index?}}
-
-          live "/trips/new", DawarichWeb.TripsLive.Form, :new,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
-
-          live "/trips/:id/edit", DawarichWeb.TripsLive.Form, :edit,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
-
-          live "/trips/:id", DawarichWeb.TripsLive.Show, :show,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :show?}}
-
           live "/places", DawarichWeb.PlacesLive.Index, :index,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.PlacesGate, :index?}}
