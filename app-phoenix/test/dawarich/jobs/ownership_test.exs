@@ -1,5 +1,6 @@
 defmodule Dawarich.Jobs.OwnershipTest do
   use Dawarich.JobsCase, async: true, group: :scratch_db
+  import Dawarich.Test.Await
 
   alias Dawarich.Jobs.{Claimer, Dispatch, Ownership, Registry}
 
@@ -55,7 +56,7 @@ defmodule Dawarich.Jobs.OwnershipTest do
         end)
       end)
 
-    assert_receive :holding
+    await_receive(:holding)
 
     error =
       assert_raise Postgrex.Error, fn ->

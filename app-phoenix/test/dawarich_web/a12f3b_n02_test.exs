@@ -1,5 +1,6 @@
 defmodule DawarichWeb.A12f3bN02Test do
   use Dawarich.DataCase, async: false
+  import Dawarich.Test.Await
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   import Plug.Conn
@@ -36,7 +37,7 @@ defmodule DawarichWeb.A12f3bN02Test do
     {:ok, view, _} = live_as(ctx)
     stream = Dawarich.RailsMessages.broadcasting([{:user, ctx.actor.id}, "notifications"])
     {:ok, _} = Bus.subscribe(stream)
-    assert_receive {:redix_pubsub, _, _, :subscribed, _}
+    await_receive({:redix_pubsub, _, _, :subscribed, _})
 
     assert apply(Notifications, :update_with_broadcast!, [
              Repo,
@@ -46,7 +47,7 @@ defmodule DawarichWeb.A12f3bN02Test do
            ]) == :ok
 
     assert TurboEvents.notifications(Repo, Repo) == 2
-    for _ <- 1..4, do: assert_receive({:redix_pubsub, _, _, :message, _})
+    for _ <- 1..4, do: await_receive({:redix_pubsub, _, _, :message, _})
     :sys.get_state(Bus)
     html = render(view)
     assert html =~ "Updated"
@@ -64,7 +65,7 @@ defmodule DawarichWeb.A12f3bN02Test do
     assert Notifications.get(ctx.actor.id, id).kind == "warning"
     assert Notifications.get(ctx.actor.id, id).read_at
     assert TurboEvents.notifications(Repo, Repo) == 1
-    for _ <- 1..2, do: assert_receive({:redix_pubsub, _, _, :message, _})
+    for _ <- 1..2, do: await_receive({:redix_pubsub, _, _, :message, _})
     :sys.get_state(Bus)
     assert render(view) =~ "warning"
     assert Dawarich.Navbar.unread(ctx.actor.id).count == 0

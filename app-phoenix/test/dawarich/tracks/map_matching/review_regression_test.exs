@@ -1,5 +1,6 @@
 defmodule Dawarich.Tracks.MapMatching.ReviewRegressionTest do
   use Dawarich.TracksCase, async: false
+  import Dawarich.Test.Await
   alias Dawarich.MapMatching.{Fingerprint, Input, TestSupport}
   alias Dawarich.MapMatching.Atlas.Client.Error
   alias Dawarich.Tracks.{Builder, Reprocessor, Store}
@@ -68,7 +69,7 @@ defmodule Dawarich.Tracks.MapMatching.ReviewRegressionTest do
         end)
       end)
 
-    assert_receive :locked
+    await_receive(:locked)
 
     builder =
       Task.async(fn -> Builder.create_track!(ScratchRepo, track.user, track.points, 100) end)
@@ -108,7 +109,7 @@ defmodule Dawarich.Tracks.MapMatching.ReviewRegressionTest do
         end)
 
       try do
-        assert_receive :hook_ready
+        await_receive(:hook_ready)
         wait_tasks!()
         assert Task.Supervisor.children(Dawarich.Tracks.MapMatching.Tasks) != []
         assert TestSupport.jobs(ScratchRepo, track.id) == []

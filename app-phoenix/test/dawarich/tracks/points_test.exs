@@ -1,5 +1,6 @@
 defmodule Dawarich.Tracks.PointsTest do
   use Dawarich.TracksCase, async: true, group: :tracks_db
+  import Dawarich.Test.Await
 
   alias Dawarich.Tracks.Points
 
@@ -67,7 +68,7 @@ defmodule Dawarich.Tracks.PointsTest do
         end)
       end)
 
-    assert_receive {:claimed, [%{id: ^id}]}
+    await_receive({:claimed, [%{id: ^id}]})
 
     assert {:error, %Postgrex.Error{postgres: %{code: :lock_not_available}}} =
              ScratchRepo.query("SELECT id FROM points WHERE id = $1 FOR UPDATE NOWAIT", [id])

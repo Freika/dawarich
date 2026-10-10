@@ -1,5 +1,6 @@
 defmodule Dawarich.Users.CloudDestructionTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
   alias Dawarich.Auth.AccountDestroy
   alias Dawarich.Jobs.{Dispatch, Ownership, Processed}
   alias Dawarich.Users.{DestroyWorker, DestructionWebhookWorker}
@@ -301,7 +302,7 @@ defmodule Dawarich.Users.CloudDestructionTest do
         DestructionWebhookWorker.run(ScratchRepo, args, env: @env, transport: crash)
       end)
 
-    assert_receive {:accepted, payload}
+    await_receive({:accepted, payload})
     Process.exit(pid, :kill)
     assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}
     refute Processed.done?(ScratchRepo, args["event_id"])

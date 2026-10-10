@@ -1,5 +1,6 @@
 defmodule Dawarich.Mail.FamilyLapseWorkerTest do
   use Dawarich.JobsCase, async: true, group: :scratch_db
+  import Dawarich.Test.Await
   use Oban.Testing, repo: Dawarich.ScratchRepo
 
   alias Dawarich.Mail.FamilyLapseWorker
@@ -57,7 +58,7 @@ defmodule Dawarich.Mail.FamilyLapseWorkerTest do
         end)
       end)
 
-    assert_receive :holding
+    await_receive(:holding)
 
     error =
       assert_raise Postgrex.Error, fn ->
@@ -133,7 +134,7 @@ defmodule Dawarich.Mail.FamilyLapseWorkerTest do
         perform_job(FamilyLapseWorker, job)
       end)
 
-    assert_receive {:in_transport, %{message_id: message_id}}
+    await_receive({:in_transport, %{message_id: message_id}})
     assert message_id =~ ~r/\A<[0-9a-f]{64}@/
     monitor = Process.monitor(sender)
     Process.exit(sender, :kill)

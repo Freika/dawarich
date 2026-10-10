@@ -1,5 +1,6 @@
 defmodule Dawarich.Tracks.BackfillRangesTest do
   use Dawarich.JobsCase, async: true, group: :scratch_db
+  import Dawarich.Test.Await
 
   import Dawarich.LockRace
   alias Dawarich.Tracks.BackfillRanges
@@ -19,7 +20,7 @@ defmodule Dawarich.Tracks.BackfillRangesTest do
         send(parent, {:first_cycle, first})
       end)
 
-    assert_receive {:first_cycle, first}
+    await_receive({:first_cycle, first})
     assert rows("SELECT aggregate_id FROM public.job_outbox ORDER BY aggregate_id") == [[2]]
 
     later = DateTime.add(@now, 30)

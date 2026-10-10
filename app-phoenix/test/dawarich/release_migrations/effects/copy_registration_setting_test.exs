@@ -1,5 +1,6 @@
 defmodule Dawarich.ReleaseMigrations.Effects.CopyRegistrationSettingTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
 
   alias Dawarich.ReleaseMigrations.Effects.CopyRegistrationSetting, as: Copy
 
@@ -77,7 +78,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.CopyRegistrationSettingTest do
 
     on_exit(fn -> if Process.alive?(stale.pid), do: Task.shutdown(stale, :brutal_kill) end)
     stale_pid = stale.pid
-    assert_receive {:reading, ^stale_pid}
+    await_receive({:reading, ^stale_pid})
     assert {:ok, true} = copy(source, false)
 
     admin =

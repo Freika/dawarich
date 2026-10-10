@@ -1,5 +1,6 @@
 defmodule DawarichWeb.A12f3bS07Test do
   use Dawarich.IngestCase, async: false
+  import Dawarich.Test.Await
   alias Dawarich.Test.A12f3bShareCase, as: S
   alias Dawarich.ShareManagement.Mutations
   alias DawarichWeb.ShareManagementForm
@@ -64,12 +65,12 @@ defmodule DawarichWeb.A12f3bS07Test do
   test "live share revocation publishes one native ended event", %{actor: actor} do
     stream = Dawarich.RailsMessages.broadcasting(["shared_location", {:shared_link, S.id(1)}])
     {:ok, ref} = Bus.subscribe(stream)
-    assert_receive {:redix_pubsub, _, ^ref, :subscribed, _}
+    await_receive({:redix_pubsub, _, ^ref, :subscribed, _})
 
     assert {:ok, %{committed?: true}} =
              Mutations.run(actor, "live", nil, :revoke, %{}, "en", now: S.now())
 
-    assert_receive {:redix_pubsub, _, ^ref, :message, %{payload: payload}}
+    await_receive({:redix_pubsub, _, ^ref, :message, %{payload: payload}})
     assert Jason.decode!(payload) == %{"revoked" => true}
     refute_receive {:redix_pubsub, _, ^ref, :message, _}
     assert commands() == []
@@ -79,7 +80,7 @@ defmodule DawarichWeb.A12f3bS07Test do
         Dawarich.RailsMessages.broadcasting(["shared_location", {:shared_link, share}])
 
       {:ok, other_ref} = Bus.subscribe(other_stream)
-      assert_receive {:redix_pubsub, _, ^other_ref, :subscribed, _}
+      await_receive({:redix_pubsub, _, ^other_ref, :subscribed, _})
       assert {:ok, _} = Mutations.run(actor, type, id, :revoke, %{}, "en", now: S.now())
       refute_receive {:redix_pubsub, _, ^other_ref, :message, _}
       refute_receive {:redix_pubsub, _, ^ref, :message, _}

@@ -1,5 +1,6 @@
 defmodule Dawarich.Mail.DeliveryTest do
   use Dawarich.JobsCase
+  import Dawarich.Test.Await
 
   import ExUnit.CaptureLog
 
@@ -111,7 +112,7 @@ defmodule Dawarich.Mail.DeliveryTest do
         end)
       end)
 
-    assert_receive :holding
+    await_receive(:holding)
     waiting = Ecto.UUID.generate()
 
     error =

@@ -1,5 +1,6 @@
 defmodule Dawarich.Imports.StandaloneZipTest do
   use Dawarich.JobsCase
+  import Dawarich.Test.Await
   import Phoenix.ConnTest
   import Plug.Conn
   alias Dawarich.{Repo, Jobs}
@@ -202,7 +203,7 @@ defmodule Dawarich.Imports.StandaloneZipTest do
                end)
              end)
 
-           assert_receive :child_locked
+           await_receive(:child_locked)
 
            try do
              assert {:snooze, 5} = Dawarich.Imports.ProcessWorker.perform(parent_job)

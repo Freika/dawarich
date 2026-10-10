@@ -1,5 +1,6 @@
 defmodule Dawarich.Families.AutoCreateTest do
   use Dawarich.JobsCase
+  import Dawarich.Test.Await
 
   alias Dawarich.Families.AutoCreate
 
@@ -211,7 +212,7 @@ defmodule Dawarich.Families.AutoCreateTest do
         )
       end)
 
-    assert_receive {:locked, holder}
+    await_receive({:locked, holder})
     second = Task.async(fn -> run(user) end)
     assert Dawarich.LockRace.settle(second, "INSERT INTO phoenix.job_owners%") == :blocked
     send(holder, :continue)
