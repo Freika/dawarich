@@ -1,8 +1,9 @@
+import { createFollowCamera } from "./follow.js"
 import { ReplayManager } from "./manager.js"
+import { createStepper } from "./playback.js"
 
 const SOURCE = "native-replay-marker"
 const LAYER = SOURCE
-const MINUTES_PER_SECOND = 10
 
 export function createReplay({
   map,
@@ -12,8 +13,12 @@ export function createReplay({
   cancelRaf = globalThis.cancelAnimationFrame,
   onPoint = () => {},
   onState = () => {},
+  onFollow = () => {},
 }) {
   const manager = new ReplayManager({ timezone })
+  const stepper = createStepper({ manager })
+  let follow = null
+  let starting = false
   let generation = 0
   let controller = null
   let frame = null
@@ -27,13 +32,13 @@ export function createReplay({
 
   function marker(point) {
     const coordinates = manager.getCoordinates(point)
-    if (!coordinates) return
+    if (coordinates) markerAt(coordinates)
+  }
+
+  function markerAt({ lon, lat }) {
     const data = {
       type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [coordinates.lon, coordinates.lat],
-      },
+      geometry: { type: "Point", coordinates: [lon, lat] },
       properties: {},
     }
     const source = map.getSource(SOURCE)
@@ -75,14 +80,29 @@ export function createReplay({
   function tick(time) {
     frame = null
     if (!playing || !opened) return
-    if (last !== null) minute += ((time - last) / 1000) * MINUTES_PER_SECOND
     last = time
-    const length = manager.getCurrentDayLengthMinutes()
-    if (minute >= length) return stop()
-    const point = manager.getPointAtPosition(Math.floor(minute))
-    if (point) {
+    if (starting) {
+      starting = false
+      const point = stepper.start(Math.floor(minute), time)
+      if (!point) return stop()
       marker(point)
       onPoint(point)
+    } else {
+      const step = stepper.frame(time)
+      if (step.coords) {
+        markerAt(step.coords)
+        follow?.panTo(step.coords.lon, step.coords.lat)
+      }
+      if (step.point) {
+        minute = step.minute
+        onPoint(step.point)
+        onState({
+          day: manager.getCurrentDay(),
+          minute,
+          dayChanged: step.dayChanged,
+        })
+      }
+      if (step.done) return stop()
     }
     frame = raf(tick)
   }
@@ -90,8 +110,24 @@ export function createReplay({
   function play() {
     if (!opened || frame !== null) return
     playing = true
-    last = null
+    starting = true
+    follow ??= createFollowCamera({ map, onChange: onFollow })
+    follow.start()
     frame = raf(tick)
+  }
+
+  function seek(value) {
+    if (!opened) return
+    minute = value
+    const nearest = manager.findNearestMinuteWithPoints(value)
+    const point = nearest === null ? null : manager.getPointAtPosition(nearest)
+    if (point) marker(point)
+    if (playing) starting = true
+    return point
+  }
+
+  function setSpeed(value) {
+    stepper.setSpeed(value, last ?? 0)
   }
 
   function stop() {
@@ -110,6 +146,8 @@ export function createReplay({
     controller = null
     stop()
     opened = false
+    follow?.destroy()
+    follow = null
     removeMarker()
   }
 
@@ -118,6 +156,9 @@ export function createReplay({
     setDate: open,
     play,
     pause: stop,
+    seek,
+    setSpeed,
+    recenter: (lngLat) => follow?.recenter(lngLat),
     reconnect,
     close,
     manager,
