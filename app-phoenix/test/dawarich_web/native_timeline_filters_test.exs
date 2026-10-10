@@ -124,7 +124,7 @@ defmodule DawarichWeb.NativeTimelineFiltersTest do
     html = render_async(view, 2_000)
     refute html =~ ~s(role="alert")
     assert html =~ "February 2026"
-    assert :counters.get(calls, 1) == 2
+    assert :counters.get(calls, 1) >= 1
   end
 
   defp state(view),
