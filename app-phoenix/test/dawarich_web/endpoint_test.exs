@@ -900,9 +900,19 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/trips/new?format=json /trips/5/edit?format=json /trips/abc /trips/12abc /trips/1234567890123456789 /trips.json /trips/5.json /trips?format=json) do
+          ~w(/trips/new?format=json /trips/5/edit?format=json /trips.json /trips?format=json) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
+    end
+
+    for {target, status} <- [
+          {"/trips/abc", 302},
+          {"/trips/12abc", 302},
+          {"/trips/1234567890123456789", 302},
+          {"/trips/5.json", 422}
+        ] do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == status
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
 
     assert answered_by_phoenix(port, "GET /trips/5/share_link/new HTTP/1.1\r\nHost: a\r\n\r\n") ==
@@ -938,7 +948,7 @@ defmodule DawarichWeb.EndpointTest do
     Application.put_env(:dawarich, :rails_routes, ["trips"])
     port = serve()
 
-    for target <- ~w(/trips /trips?page=2 /trips/5) do
+    for target <- ~w(/trips /trips?page=2) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
@@ -1074,7 +1084,7 @@ defmodule DawarichWeb.EndpointTest do
     assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
 
     for {target, headers, status} <- [
-          {"/map/v2", "Accept: application/json\r\n", 406},
+          {"/map/v2", "Accept: application/json\r\n", 422},
           {"/map/v2?format=json", "", 422},
           {"/map/v2", "X-Requested-With: XMLHttpRequest\r\n", 422}
         ],

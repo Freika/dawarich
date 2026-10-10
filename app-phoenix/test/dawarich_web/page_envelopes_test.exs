@@ -181,10 +181,11 @@ defmodule DawarichWeb.PageEnvelopesTest do
     assert request("/tags", [{"accept", "text/vnd.turbo-stream.html"}]).status == 406
 
     for path <-
-          ~w(/digests/2026 /family /family/edit /shared/digest/00000000-0000-4000-8000-000000000042) do
+          ~w(/digests/2026 /family/edit /shared/digest/00000000-0000-4000-8000-000000000042) do
       assert request(path, [{"accept", "text/vnd.turbo-stream.html"}]).status == 302, path
     end
 
+    assert request("/family", [{"accept", "text/vnd.turbo-stream.html"}]).status == 422
     assert request("/tags", [{"accept", "text/vnd.turbo-stream.html"}], false).status == 302
 
     assert request("/places/nearby?latitude=51&longitude=12", [
