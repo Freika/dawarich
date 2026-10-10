@@ -98,4 +98,26 @@ defmodule Dawarich.LogRedactionTest do
 
     assert Dawarich.LogRedaction.scrub("ctl\x01 password=hunter") == "ctl\x01 password=[FILTERED]"
   end
+
+  test "single-quoted values and keyword or tuple pairs are redacted by key" do
+    assert Dawarich.LogRedaction.scrub("password='hunter two' ok") == "password=[FILTERED] ok"
+
+    assert Dawarich.LogRedaction.scrub([{:password, @password}, {:user, "u7"}]) ==
+             [{:password, "[FILTERED]"}, {:user, "u7"}]
+
+    assert Dawarich.LogRedaction.scrub({"api_key", @key}) == {"api_key", "[FILTERED]"}
+  end
+
+  test "a raise inside the filter replaces the message instead of removing the filter" do
+    key = {Dawarich.LogRedaction, :words}
+    previous = :persistent_term.get(key, nil)
+    :persistent_term.put(key, :not_a_list)
+
+    try do
+      event = %{level: :info, meta: %{}, msg: {:report, %{user: "u7"}}}
+      assert Dawarich.LogRedaction.filter(event, []).msg == {:string, "[FILTERED]"}
+    after
+      if previous, do: :persistent_term.put(key, previous), else: :persistent_term.erase(key)
+    end
+  end
 end

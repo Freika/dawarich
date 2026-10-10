@@ -50,6 +50,9 @@ defmodule Dawarich.LogRedaction do
       else: Enum.map(list, &scrub(&1, depth - 1))
   end
 
+  defp scrub({key, value}, depth) when is_atom(key) or is_binary(key),
+    do: {key, scrub_pair(key, value, depth)}
+
   defp scrub(tuple, depth) when is_tuple(tuple),
     do: tuple |> Tuple.to_list() |> Enum.map(&scrub(&1, depth - 1)) |> List.to_tuple()
 
@@ -81,7 +84,7 @@ defmodule Dawarich.LogRedaction do
 
   defp scrub_pairs(binary, depth \\ 2) do
     Regex.replace(
-      ~r/(?<![^\s&?;,"'])([^\s&=?;,"']++)=("(?:[^"\\]|\\.)*+"|[^&\s]*+)/,
+      ~r/(?<![^\s&?;,"'])([^\s&=?;,"']++)=("(?:[^"\\]|\\.)*+"|'(?:[^'\\]|\\.)*+'|[^&\s]*+)/,
       binary,
       fn whole, key, value ->
         cond do
