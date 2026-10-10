@@ -86,6 +86,13 @@ defmodule Dawarich.LogRedactionTest do
     assert scrubbed == adversarial
     assert micros < 200_000
 
+    assert Dawarich.LogRedaction.scrub("next=https://h.example/p?api_key=synthetic&x=1") ==
+             "next=https://h.example/p?api_key=[FILTERED]&x=1"
+
+    nested = String.duplicate("a=?", 6000) <> "token=1"
+    {nested_micros, _} = :timer.tc(fn -> Dawarich.LogRedaction.scrub(nested) end)
+    assert nested_micros < 200_000
+
     assert Dawarich.LogRedaction.scrub(~s(user=7 password="hunter two" done)) ==
              ~s(user=7 password=[FILTERED] done)
 

@@ -79,12 +79,23 @@ defmodule Dawarich.LogRedaction do
 
   defp mentions?(binary, words), do: :binary.match(String.downcase(binary), words) != :nomatch
 
-  defp scrub_pairs(binary) do
+  defp scrub_pairs(binary, depth \\ 2) do
     Regex.replace(
       ~r/(?<![^\s&?;,"'])([^\s&=?;,"']++)=("(?:[^"\\]|\\.)*+"|[^&\s]*+)/,
       binary,
-      fn whole, key, _value -> if sensitive?(key), do: key <> "=" <> @filtered, else: whole end
+      fn whole, key, value ->
+        cond do
+          sensitive?(key) -> key <> "=" <> @filtered
+          depth > 0 and String.contains?(value, "?") -> key <> "=" <> scrub_query(value, depth)
+          true -> whole
+        end
+      end
     )
+  end
+
+  defp scrub_query(value, depth) do
+    [path, query] = String.split(value, "?", parts: 2)
+    path <> "?" <> scrub_pairs(query, depth - 1)
   end
 
   defp scrub_json(binary) do

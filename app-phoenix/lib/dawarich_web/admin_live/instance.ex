@@ -161,6 +161,5 @@ defmodule DawarichWeb.AdminLive.Instance do
   defp run(:geocoding, scope, opts), do: Instance.test_geocoding(scope, opts)
   defp run(:map_matching, scope, opts), do: Instance.test_map_matching(scope, opts)
 
-
   defp opts, do: Application.get_env(:dawarich, :admin_instance_opts, [])
 end
