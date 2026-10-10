@@ -18,19 +18,24 @@ defmodule DawarichWeb.NativeTripState do
         page = %{page | config: config}
         label = config["range"]["startAt"] <> " – " <> config["range"]["endAt"]
 
-        {:ok,
-         assign(socket,
-           page: Map.put(page, :range_label, label),
-           page_title: config["title"],
-           trip_layers: choices
-         )}
+        previous = socket.assigns.page
+
+        socket =
+          assign(socket,
+            page: Map.put(page, :range_label, label),
+            page_title: config["title"],
+            trip_layers: choices
+          )
+
+        socket =
+          if previous && previous.config != config,
+            do: push_event(socket, "map:config", config),
+            else: socket
+
+        {:ok, socket}
 
       {:error, reason} ->
-        {:error,
-         socket
-         |> assign(page_title: nil, selected_day: nil, note_editor: nil)
-         |> DawarichWeb.MapLiveAuth.refuse(reason)
-         |> push_event("map:clear", %{})}
+        {:error, DawarichWeb.NativeTripResource.refuse(socket, reason)}
     end
   end
 

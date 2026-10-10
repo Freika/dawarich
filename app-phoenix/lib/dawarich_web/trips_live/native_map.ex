@@ -3,20 +3,41 @@ defmodule DawarichWeb.TripsLive.NativeMap do
   use DawarichWeb, :live_view
   on_mount {DawarichWeb.MapLiveAuth, :default}
 
+  def mount(_, _, %{assigns: %{current_scope: nil}} = socket),
+    do:
+      {:ok,
+       assign(socket,
+         selected_day: nil,
+         note_editor: nil,
+         expanded_days: false,
+         trip_layers: %{},
+         posters: []
+       ), layout: false}
+
   def mount(_, _, socket),
     do:
       {:ok,
        socket
        |> assign(selected_day: nil, note_editor: nil, expanded_days: false, trip_layers: %{})
-       |> DawarichWeb.NativePosterGallery.mount(), layout: false}
+       |> DawarichWeb.NativePosterGallery.mount()
+       |> DawarichWeb.NativeTripResource.attach(), layout: false}
 
   def handle_params(%{"id" => id}, _, socket) do
     socket =
       assign(socket, selected_day: nil, note_editor: nil, expanded_days: false, trip_layers: %{})
 
     case DawarichWeb.NativeTripState.refresh(socket, Dawarich.RubyInteger.to_i(id)) do
-      {:ok, socket} -> {:noreply, socket}
-      {:error, socket} -> {:noreply, socket}
+      {:ok, socket} ->
+        descriptor = %{
+          kind: :trip,
+          scope: socket.assigns.current_scope,
+          trip_id: socket.assigns.page.presentation.id
+        }
+
+        {:noreply, DawarichWeb.MapLive.Subscriptions.sync(socket, descriptor)}
+
+      {:error, socket} ->
+        {:noreply, socket}
     end
   end
 
@@ -61,8 +82,23 @@ defmodule DawarichWeb.TripsLive.NativeMap do
 
   def handle_info(message, socket) do
     case DawarichWeb.NativePosterGallery.handle_info(message, socket) do
-      :unhandled -> {:noreply, socket}
-      result -> result
+      :unhandled ->
+        case DawarichWeb.MapLive.Subscriptions.deliver(socket, message) do
+          {:delivered, socket} ->
+            case DawarichWeb.NativeTripState.refresh(socket) do
+              {:ok, socket} -> {:noreply, socket}
+              {:error, socket} -> {:noreply, socket}
+            end
+
+          {:refused, socket} ->
+            {:noreply, DawarichWeb.NativeTripResource.refuse(socket, :not_found)}
+
+          {_, socket} ->
+            {:noreply, socket}
+        end
+
+      result ->
+        result
     end
   end
 

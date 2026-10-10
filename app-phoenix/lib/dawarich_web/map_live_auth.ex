@@ -72,6 +72,24 @@ defmodule DawarichWeb.MapLiveAuth do
 
   def refuse(socket, reason) do
     socket = DawarichWeb.MapLive.Subscriptions.release(socket)
+
+    socket =
+      assign(
+        socket,
+        Map.take(
+          %{
+            page_title: nil,
+            note_editor: nil,
+            selected_day: nil,
+            trip_layers: %{},
+            expanded_days: false,
+            posters: [],
+            navbar: nil
+          },
+          Map.keys(socket.assigns)
+        )
+      )
+
     socket = assign(socket, page: nil, current_user: nil, current_scope: nil, map_error: reason)
     if reason == :stale_session, do: redirect(socket, to: "/users/sign_in"), else: socket
   end

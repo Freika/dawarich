@@ -123,6 +123,41 @@ defmodule DawarichWeb.NativeTripPresentationTest do
     assert :sys.get_state(view.pid).socket.assigns.page_title == nil
   end
 
+  test "native trip refresh pushes changed config to its existing owner and keeps unchanged reads quiet" do
+    id = System.unique_integer([:positive])
+
+    RailsUser.insert!(%{
+      id: id,
+      email: "trip-config-refresh-#{id}@dawarich.test",
+      settings: %{"timezone" => "UTC"}
+    })
+
+    TripsSeeds.trip!(%{
+      id: id * 10,
+      user_id: id,
+      started_at: ~N[2026-06-01 12:00:00],
+      ended_at: ~N[2026-06-03 12:00:00]
+    })
+
+    {:ok, view, _} = open(id)
+    render_click(view, "trip:day", %{"day" => "2026-06-02"})
+    refute_push_event(view, "map:config", _, 0)
+
+    Repo.query!("UPDATE trips SET ended_at=$1 WHERE id=$2", [~N[2026-06-04 12:00:00], id * 10],
+      log: false
+    )
+
+    render_patch(view, "/trips/#{id * 10}?refresh=1")
+
+    assert_push_event(view, "map:config", %{
+      "range" => %{"startAt" => "2026-06-01T12:00:00Z", "endAt" => "2026-06-04T12:00:00Z"}
+    })
+
+    render_click(view, "trip:day", %{"day" => "2026-06-04"})
+    refute_push_event(view, "map:config", _, 0)
+    assert has_element?(view, "#native-trip-day-2026-06-04[open]")
+  end
+
   defp open(id, resource \\ nil) do
     path = "/trips/#{resource || id * 10}"
 

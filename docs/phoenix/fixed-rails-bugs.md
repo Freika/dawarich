@@ -1597,7 +1597,7 @@ Mobile and desktop family sharing indicators reused one DOM id in Rails. Updates
 Trip photo-source and itinerary links in Rails interpolate configured base URLs, including URL userinfo or credential query keys. Such credentials appear in the rendered destination and browser navigation. Native trip presentation admits only HTTP(S) links without userinfo or credential query keys, preserving ordinary source links. It also excludes private itinerary source metadata before assigning LiveView state. Thumbnail URLs use the cookie reader. Production trip parent insertion remains the X1 handoff; the adapter behavior is verified independently.
 
 - Rails: `app/helpers/trips_helper.rb:11,15,32`; `app/views/trips/show.html.erb:282`; `app/views/trips/_source_itinerary.html.erb:28`.
-- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/trip.ex:85,93,138,146`.
+- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/trip.ex:96,104,149,157`.
 - Tests: `native trip presentation keeps ordinary photo source navigation and refuses credential-bearing links`; `native trip presentation excludes private itinerary source credentials while keeping ordinary navigation`. Photo-link and itinerary-source admission mutations fail.
 - ED: ED-NATIVE-M6-TRIP-PHOTO-LINK. No DRB row.
 
@@ -1606,6 +1606,6 @@ Trip photo-source and itinerary links in Rails interpolate configured base URLs,
 Deleting a Trip in Rails destroys all attached notes and Trip shares regardless of their owner. In a database-valid inconsistent stored graph, this removes another account's note/share record. Native Trip deletion uses the existing owner-scoped WebDelete option: it deletes the admitted Trip and owned dependents while preserving foreign notes/shares. These fixtures characterize historical stored graphs; they do not claim public creation endpoints admit them.
 
 - Rails: `app/models/concerns/notable.rb:7`; `app/models/trip.rb:19,20`.
-- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/trip.ex:113`; existing owner-scoped domain predicates in `app-phoenix/lib/dawarich/trips/web_delete.ex:68,80`.
+- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/trip.ex:124`; existing owner-scoped domain predicates in `app-phoenix/lib/dawarich/trips/web_delete.ex:68,80`.
 - Test: `native trip deletion preserves foreign notes and shares linked to its resource` in `native_trip_effects_test.exs`; valid source-semantics RED4/5, owner-scoped GREEN5, owner-scoping removal fails.
 - ED: ED-NATIVE-M6-TRIP-DEPENDENTS. No DRB row. Rails unchanged. No Rails oracle was run in this slice; source association inspection and the existing domain's source-compatible default establish the difference.
