@@ -49,6 +49,26 @@ defmodule Dawarich.Settings.Map do
     end)
   end
 
+  def restricted?(scope, opts \\ []),
+    do: Maps.with_actor(scope, &{:ok, Api.restricted?(Repo, &1, ctx(opts))})
+
+  def recalculate(scope, opts \\ []),
+    do: queue(scope, opts, &Dawarich.Users.ApiRecalculation.create(Repo, &1, %{}, &2))
+
+  def reapply_anomalies(scope, opts \\ []),
+    do: queue(scope, opts, &Dawarich.Points.ApiAnomaly.reapply(Repo, &1, %{}, &2))
+
+  defp queue(scope, opts, effect) do
+    Maps.with_actor(scope, fn actor ->
+      case effect.(actor, ctx(opts)) do
+        {:ok, 202, _} -> :ok
+        {:error, 409, _} -> {:error, :in_progress}
+        {:error, status, _} when status in [401, 402, 403] -> {:error, :unauthorized}
+        _ -> {:error, :unavailable}
+      end
+    end)
+  end
+
   defp redact(settings), do: Map.drop(settings, @credentials)
 
   defp ctx(opts) do
