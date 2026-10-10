@@ -55,6 +55,14 @@ defmodule DawarichWeb.TripsNative.ShowParts do
           >
             <.icon name="square-pen" class="w-4 h-4" />
           </.link>
+          <.link
+            class="btn btn-sm btn-ghost"
+            navigate={"/trips/#{@trip.id}/share_link/new"}
+            title={s(@locale, "share_trip")}
+            aria-label={s(@locale, "share_trip")}
+          >
+            <.icon name="share" class="w-4 h-4" />
+          </.link>
           <span
             :if={@trip.shared}
             class="badge badge-success badge-xs"

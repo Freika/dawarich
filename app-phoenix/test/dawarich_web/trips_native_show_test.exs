@@ -2,11 +2,14 @@ defmodule DawarichWeb.TripsNativeShowTest do
   use Dawarich.DataCase, async: false
 
   import Phoenix.LiveViewTest
+  import Phoenix.ConnTest, only: [get: 2]
 
   alias Dawarich.Jobs.Ownership
   alias Dawarich.Test.{NativeAdminUI, TripsNativeUI, TripsSeeds}
   alias DawarichWeb.NativeTripsLive.Show
   alias DawarichWeb.TripsNative.Access
+
+  @endpoint DawarichWeb.Endpoint
 
   @path [[12.5, 51.25], [12.373468123456789, 51.34]]
 
@@ -333,5 +336,48 @@ defmodule DawarichWeb.TripsNativeShowTest do
     render_async(view)
     assert length(day_keys(view)) == 4
     refute has_element?(view, "[data-days-status='failed']")
+  end
+
+  test "trip sharing entry uses M4 creation and refuses a revoked sharing session" do
+    id = trip!(996_551)
+    target = "/trips/#{id}/share_link/new"
+    {:ok, view, _html} = TripsNativeUI.live_as(9_961, "/trips/#{id}")
+    render_async(view)
+
+    assert [^target] =
+             view
+             |> render()
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query("a[aria-label='Share trip']")
+             |> LazyHTML.attribute("href")
+
+    assert rows("SELECT count(*) FROM shared_links WHERE user_id=9961") == [[0]]
+
+    conn =
+      Dawarich.Test.RailsUser.signed_in(9_961)
+      |> Dawarich.Test.RailsUser.connecting_as(9_961)
+
+    {:ok, sharing, _html} = live(conn, target)
+
+    attrs = %{
+      "shared_link" => %{
+        "magic_phrase" => "",
+        "expires_at" => "",
+        "settings" => %{"show_route" => "1"}
+      }
+    }
+
+    render_submit(sharing, "sharing_create", attrs)
+
+    assert rows("SELECT user_id,resource_type,resource_id FROM shared_links WHERE user_id=9961") ==
+             [[9961, 0, id]]
+
+    rows("UPDATE users SET encrypted_password=$1 WHERE id=9961", [
+      "synthetic-revoked-sharing-session"
+    ])
+
+    render_submit(sharing, "sharing_create", attrs)
+    assert_redirect(sharing, "/users/sign_in")
+    assert rows("SELECT count(*) FROM shared_links WHERE user_id=9961") == [[1]]
   end
 end

@@ -53,66 +53,45 @@ upload-file budgets. A synthetic three-PDF corpus was exercised with 1–3 KiB
 blob metadata and safe rendered-size/query measurements. No real storage
 corpus or source rich-upload maximum was supplied: no new file/count/type
 restriction is frozen from those tiny fixtures, and M4's archive limits must
-not be copied into rich attachments. Further corpus-based upload limits remain
-an explicit B3/M4 integration item; stored descriptions must never be truncated.
+not be copied into rich attachments. M4 now supplies the distinct rich-text policy (ten reservations, 1 GiB each,
+10 GiB total, zero-byte support) and orphan sweep; stored descriptions are never truncated.
 
-## Shared ownership and missing integrations
+## Shared ownership and remaining integrations
 
 | Owner | Responsibility | Current state on this branch |
 | --- | --- | --- |
-| M5 C/controller | C1 DataAccess, NativeDataAuth and DataAsync; C2 charts; route/build/register hot files | Proposed modules absent |
-| Assigned A | Points Pages/read UI/actions and Visits timeline/commands | Wait for C1; export events also need M4 |
-| Assigned D | Analytics Pages, durable refresh, data cache, Stats/Insights/Digests UI | Wait for C1; chart UI also needs C2 |
-| Separate B | Trips/editor tasks | Wait for completed C0 handoff and C1/C2 |
-| M4 X | Shared sanitized principal and fresh lifecycle admission | Contract document inspected; implementation not present here |
-| M4 A/B/C | Uploads; Exports/Notifications; Families/Sharing | Planned scoped APIs, not integrated implementations |
-| M6 | Native map hosts, cookie-auth API and timeline browser host | Approved plan inspected; no host readiness delivered here |
+| M5 | Scoped data pages, commands, charts and editor | Implemented; uses the integrated M4 contracts |
+| M4 X | Sanitized principal and fresh lifecycle admission | `Accounts.Principal.scope/project/same_identity?` |
+| M4 A/B/C | Uploads, Exports/Notifications and Families/Sharing | Integrated scoped facades |
+| M6 | Native map hosts, cookie-auth API and timeline browser host | Host-dependent activation remains deferred |
 
-M4's inspected handoff defines `Uploads.reserve/target/claim/cancel`,
+M4 publishes `Uploads.reserve/target/claim/cancel`,
 `Exports.page/request/delete/subscribe`, `Notifications.page/open/mark_all_read/
 delete/unread/subscribe`, and `Sharing.page/change`, all taking account Scope.
 Publication shape is `{:domain_changed, owner_or_resource_id, version_or_kind}`:
 IDs, versions and closed kinds only. Subscribe before snapshot; re-admit on
 every delivery and reconnect. Upload targets are transient authenticated HTTP
 responses; LiveView upload metadata carries only uploader and upload reference.
-These signatures describe the M4 handoff and do not assert those functions
-are callable on this branch.
-
-Existing callable boundaries include `PointExports.parse/1`,
-`PointExports.create/4`, `Storage.UploadReceipts.bind!/3` and `owned?/3`,
-`SharedLinks.FamilyAudience.trips/3`, and separate Stats/Digests sharing
-contexts. They do not substitute for the required shared principal/scoped
-M4 facade. Existing `Accounts.Scope` contains user/locale; NativeAuth assigns
-it once. Admin.Access supplies a feature-specific original-identity check,
-but importing admin-only admission into ordinary data pages is prohibited.
 
 ## Dependency adapters
 
-The controller task transfer assigns C1/C2 to this implementer. M4 owns the
-shared sanitized principal/proof API and scoped facades, frozen in
-`native-m4-contracts.md` at `09a01685a`. That document fixes semantics but
-contains no concrete principal function names. One M5 dependency adapter
-isolates the current callable functions; the controller replaces its
-implementation when M4 merges. No independent session or upload subsystem.
+Stage-1 C removes `NativeM5.Dependencies`. All M4 dependencies delegate to the
+real contracts described in `native-m4-contracts.md`:
 
-- `Dawarich.NativeM5.Dependencies.principal(scope)` captures actor ID, locale
-  and an opaque server-issued identity fingerprint. It delegates identity
-  comparison to the existing Accounts/session identity semantics, retaining
-  neither the password hash nor its salt in the principal. Principals are
-  server-private, have redacted inspection, and never become browser assigns,
-  telemetry labels or event replies.
-- `Dependencies.admit(principal)` reloads through `Accounts.get/1`, verifies
-  the original identity, then rebuilds the existing `Accounts.Scope`. C1's
-  DataAccess applies operation-specific settings/active/entitlement rules.
-  Full users stay local to synchronous context calls, never async arguments.
-- `Dependencies.request_point_export(scope, params, request_id)` consumes
-  existing PointExports parsing/publication with server admission/dedupe at
-  the native command boundary until M4 Exports.request replaces it.
-- Sharing delegates to existing Stats/Digests scoped-owner operations after
-  fresh native admission until M4 Sharing.change replaces it. Upload claims
-  remain B3's consumption of the existing owned receipt functions until M4.
-- Family audience continues through FamilyAudience; M6 native timeline,
-  preview, month and public-map hosts remain X1 activation dependencies.
+- DataAccess, NativeDataAuth, cache and worker admission use the minimal
+  `Accounts.Principal.scope/1` proof and `same_identity?/2`. Credential hashes
+  and salts never enter assigns, async arguments or telemetry.
+- Point and trip exports use `Exports.Native.request/3` with prepared point and trip requests, preserving prepared filters, owner admission and receipts.
+- Stats/Digests sharing uses `Sharing.report_controls/3` and `change_report/4`;
+  trip sharing uses the native M4 sharing page and its scoped changes.
+- Public projections use `Sharing.Public.admit/2`, `SharedApi.Photos` and
+  `Trips.Description`, with real grant fixtures and delivery re-admission.
+- Rich-text reservation, target, verified claim and cancellation use
+  `Uploads`; the M4 sweep covers pending and claimed unattached rich uploads
+  while preserving saved embeds. Legacy/saved attachment admission remains
+  an editor graph policy, not a separate reservation implementation.
+- `NativeM5.MapHosts` remains the single M6 readiness adapter. Native map,
+  timeline, preview and month-host activation remains a controller dependency.
 
 C1 publishes the small async contract `{kind, generation, run_ref,
 normalized_filter_fingerprint}`. Tasks receive only a private principal and
@@ -214,7 +193,7 @@ baseline observations; no Rails defect is fixed by this documentation.
 
 ### Implemented Points and Visits read contracts
 
-`Points.Pages.load/3`, `selection/4` and `address/2` take fresh Scope; `Points.Commands.delete/4` and `request_export/5` re-admit under the owner lock. `NativeM5.Dependencies.request_point_export/4` delegates to current PointExports.create with a receipt in the existing outbox; M4 switches this adapter to its export facade.
+`Points.Pages.load/3`, `selection/4` and `address/2` take fresh Scope; `Points.Commands.delete/4` and `request_export/5` re-admit under the owner lock. `Exports.Native.request/3` delegates to the canonical point export producer with a receipt in the existing outbox and M4 owner admission.
 
 `Visits.Timeline.load/3` returns bounded `rows` (100), full-range `days` summaries/bounds, `calendar`, `window`, `revision`, `next_cursor`, `stream_limit` (200), `reset` and `restricted`/`redetected` state. `calendar/3` supplies the scoped 42-cell month independently. Cursors bind actor, normalized window, zone and entitlement state; source visit ties use descending ID and tracks retain ascending ID. M6 owns stream/client DOM bounds and route activation. Existing Timeline.Api, MapFrames and VisitStreams retain complete legacy responses until their caller migration.
 
@@ -230,11 +209,11 @@ baseline observations; no Rails defect is fixed by this documentation.
 
 ### Native data cache contract
 
-`Cache.Pages.fetch/5` takes Scope/principal, server resource, normalized parameters, an admitted bounded ready reader and internal adapter options. It re-admits before GET, before delivery and before/post SET. Keys bind schema, owner identity, resource/period, input/ready revisions, zone/unit/locale, entitlement and private/public audience. Public consumers must supply a live authorization callback; booleans and missing callbacks refuse, including warm reads. C5 supplies its M4 facade callback at integration. Payloads are data only, at most 1 MiB, no compressed or unsafe external terms, credentials, user/settings/proof, functions or unknown atoms. Summary/count cache lifetime is 24 hours; patterns/day one hour. Oversized entries and adapter/TTL errors bypass; corrupt entries fall back to the bounded domain read. Pending/failed projections bypass to expose completed durable work. Writes inside a DB transaction are bypassed unless an internal after-commit scheduler is supplied; delayed writes compare the current input again. Historical Rails codecs/readers/preheat workers keep their existing consumers.
+`Cache.Pages.fetch/5` takes Scope/principal, server resource, normalized parameters, an admitted bounded ready reader and internal adapter options. It re-admits before GET, before delivery and before/post SET. Keys bind schema, owner identity, resource/period, input/ready revisions, zone/unit/locale, entitlement and private/public audience. Public consumers must supply a live authorization callback; booleans and missing callbacks refuse, including warm reads. C5 supplies the real M4 public admission callback. Payloads are data only, at most 1 MiB, no compressed or unsafe external terms, credentials, user/settings/proof, functions or unknown atoms. Summary/count cache lifetime is 24 hours; patterns/day one hour. Oversized entries and adapter/TTL errors bypass; corrupt entries fall back to the bounded domain read. Pending/failed projections bypass to expose completed durable work. Writes inside a DB transaction are bypassed unless an internal after-commit scheduler is supplied; delayed writes compare the current input again. Historical Rails codecs/readers/preheat workers keep their existing consumers.
 
 ### Native Stats UI and commands
 
-`Stats.Commands.update/4` takes the original Scope/principal, optional period, server receipt and internal clock/hosting options. It re-admits under the actor lock, binds receipts to normalized source periods, and queues the existing full or monthly producer. A failed transaction remains retryable. `share/4` requires current active/full eligibility and the source 1h/12h/24h policy, delegating through `NativeM5.Dependencies.share_stat/5` to the current sharing implementation for M4 to switch. Upgrade URLs are generated on action, outside retained page state.
+`Stats.Commands.update/4` takes the original Scope/principal, optional period, server receipt and internal clock/hosting options. It re-admits under the actor lock, binds receipts to normalized source periods, and queues the existing full or monthly producer. A failed transaction remains retryable. `share/4` requires current active/full eligibility and the source 1h/12h/24h policy, delegating to M4 `Sharing.change_report/4`. Upgrade URLs are generated on action, outside retained page state.
 
 Stats index/year are native data-session routes. Stats month has a native query/render/action slice tested directly; its route stays with the existing map page until M6 activation. Index year cards and place dialogs fetch at most 50 rows, keep full aggregate counts, and use explicit URL pagination. Pending point counts request one durable refresh and owner-scoped completion re-reads current parameters. Numeric chart changes renew the library revision within the same selected year.
 
@@ -248,7 +227,7 @@ Stats index/year are native data-session routes. Stats month has a native query/
 
 `DigestsLive.NativePage` serves `/digests` and `/digests/:year` in the native data session. Reads do not enqueue or calculate. Persisted source values, title/locale, current-year list exclusion and Lite summary-only columns remain. The page projection retains full country/city/first-visit counts while windowing countries and first-country names at 50, first-city names at 10 and time rankings at five; explicit URL pagination preserves full chart values and progress denominators. Source numeric-string all-time distance uses the original integer cast. Full pattern columns are never selected for Lite.
 
-`Digests.Commands.generate/4` re-admits identity/settings, active/tracked-year/cutoff policy under the actor lock, refuses current/future years and publishes the existing `digests.calculate_year` outbox command with its source producer/worker mail policy. The server request receipt and normalized year share one persistent claim in the same transaction; failed publication rolls back the claim and explicit retry is accepted. `delete/3` selects only the owned yearly digest; native confirmation is tied to the displayed year and resets on navigation/cancel. Missing/foreign reads redirect to `/digests` with the original alert; command errors stay in place. `share/4` preserves current active/source eligibility and 1h/12h/24h expiration via the thin M4 dependency adapter. Opening/reopening the dialog is a read; changing its public settings auto-saves. Public capability links are the intended dialog output; identity/settings/credentials stay out of assigns. Upgrade URLs are generated only on action. Historical HTTP/API/manual-generation/mail/public-share adapters keep their consumers until the controller's X1/X2/M4 integration census.
+`Digests.Commands.generate/4` re-admits identity/settings, active/tracked-year/cutoff policy under the actor lock, refuses current/future years and publishes the existing `digests.calculate_year` outbox command with its source producer/worker mail policy. The server request receipt and normalized year share one persistent claim in the same transaction; failed publication rolls back the claim and explicit retry is accepted. `delete/3` selects only the owned yearly digest; native confirmation is tied to the displayed year and resets on navigation/cancel. Missing/foreign reads redirect to `/digests` with the original alert; command errors stay in place. `share/4` preserves current active/source eligibility and 1h/12h/24h expiration through M4 `Sharing.change_report/4`. Opening/reopening the dialog is a read; changing its public settings auto-saves. Public capability links are the intended dialog output; identity/settings/credentials stay out of assigns. Upgrade URLs are generated only on action. Historical HTTP/API/manual-generation/mail/public-share adapters keep their consumers until the controller's X1/X2/M4 integration census.
 
 ### Scoped Achievements
 
@@ -264,9 +243,8 @@ retain their protocol until the controller's caller census.
 
 ### Native Achievements presentation
 
-`NativeAchievementsLive` and `NativeAchievementParts` are ready for X1's data
-session activation; the retained production route still owns its old HTTP
-consumers. Native params replace bounded cards and revalidate selected cards;
+`NativeAchievementsLive` and `NativeAchievementParts` serve the activated native data
+session; unsupported collection writes refuse rather than forward to Rails. Native params replace bounded cards and revalidate selected cards;
 connected visible results invoke the scoped acknowledgment. Native dialog JS
 owns modal open/close/focus only; patch-owned cards remain in place. The shell's
 existing AchievementUnlocks hook remains the sole unlock-deck owner. Clipboard
@@ -276,15 +254,15 @@ integration tasks, with the keyboard/history E2E contract prepared separately.
 
 ## C5 public projections
 
-`Sharing.Pages.resource(grant, params, opts)` accepts the M4 validated grant, never an owner-login Scope. One `NativeM5.Dependencies.public_admit/3` delegation targets `Sharing.Public.admit/2`; unavailable M4 code fails closed. The controller switches/activates it after M4 merges. Tests inject an admission stub over existing unprotected public policy only; they do not certify M4 proof cryptography or browser unlock cookies.
+`Sharing.Pages.resource(grant, params, opts)` accepts the M4 validated grant, never an owner-login Scope. It calls the integrated `Sharing.Public.admit/2` directly. Tests use real versioned grants, including tampering and stale delivery refusal; injectable overrides cannot bypass the admission contract.
 
 Grant/resource/audience/owner admission precedes a ready reader and repeats before returning it. Changed links and privacy zones refuse prepared data. Trip/track SQL always includes owner predicates. Trip days use a 31-local-day cursor, notes follow visibility flags, photos delegate the existing privacy/ACL reader with a 100-result cap, descriptions delegate B's renderer when present (current RichContent sanitizer otherwise). Source track mode/duration/elevation/speed and owner distance unit remain scoped fields. No unlock credentials or owner user object enter the projection.
 
-`Pages.report(:digest | :month, uuid, opts)` uses the existing public-owner/stored-expiry readers with the viewer zone, repeats the reader before delivery, retains full digest totals separately from bounded places and strips internal metadata. Report/window adapters do not replace D owner modules or M6 map hosts. M4 admission retains GET-only view touches outside cached data; this unrouted slice does not increment them independently.
+`Pages.report(:digest | :month, uuid, opts)` uses the existing public-owner/stored-expiry readers with the viewer zone, repeats the reader before delivery, retains full digest totals separately from bounded places and strips internal metadata. Report/window adapters do not replace D owner modules or M6 map hosts. M4 admission retains GET-only view touches outside cached data; the projection does not increment them independently.
 
 ## C6 native public HTTP rendering
 
-`NativePublicPage` is an unrouted GET/HEAD plug slice for admitted digest and achievement documents. It retains source viewer-zone expiry and achievement-owner locale; page data contains no owner object/API key. Achievements reuse source card/OG PNG metadata with native script-free assets, permissive embed frame ancestors and no X-Frame-Options. Digest pages reuse localized source values with the shared C2 public chart initializer; no LiveSocket, owner notification chrome, importmap or Chartkick inline script.
+`NativePublicPage` is the native GET/HEAD plug slice for admitted digest and achievement documents. It retains source viewer-zone expiry and achievement-owner locale; page data contains no owner object/API key. Achievements reuse source card/OG PNG metadata with native script-free assets, permissive embed frame ancestors and no X-Frame-Options. Digest pages reuse localized source values with the shared C2 public chart initializer; no LiveSocket, owner notification chrome, importmap or Chartkick inline script.
 
 `NativePublicContent.resource/month` are pure content components with a caller-owned map slot. The M6 HTTP/authenticated-family shell must mount that slot, select native public/authenticated chrome from M4 admission and retain M4 GET-only touches/unlock/cookies. These components do not activate mixed routes or create an owner Scope. Prompt POST action and CSRF stay with M4 HTTP unlock; submitted phrases never enter output. Public HTML refuses with a source localized root redirect; generic rescue logs no capabilities or connection details.
 
