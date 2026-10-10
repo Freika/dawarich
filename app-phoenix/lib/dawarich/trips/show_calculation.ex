@@ -50,13 +50,20 @@ defmodule Dawarich.Trips.ShowCalculation do
              [id, user.id],
              log: false
            ).rows do
-      future =
-        Ruby.present?(source) and NaiveDateTime.compare(started, DateTime.to_naive(now)) == :gt
-
-      needed = not future and (path_blank or Ruby.blank?(distance) or Ruby.blank?(countries))
-      {:ok, %{needed: needed, unit: gated.settings.unit}}
+      {:ok,
+       %{
+         needed: needed?([path_blank, distance, countries, started, source], now),
+         unit: gated.settings.unit
+       }}
     else
       _ -> {:replay, "trip show calculation state"}
     end
+  end
+
+  def needed?([path_blank, distance, countries, started, source], now) do
+    future =
+      Ruby.present?(source) and NaiveDateTime.compare(started, DateTime.to_naive(now)) == :gt
+
+    not future and (path_blank or Ruby.blank?(distance) or Ruby.blank?(countries))
   end
 end

@@ -68,8 +68,10 @@ defmodule Dawarich.Cable.TurboEvents do
   end
 
   defp trip(repo, [_id, trip_id, "path", _failed], now, jobs_repo) do
-    if recalculating(repo, trip_id, now) != nil,
-      do: :ok = Cable.refresh([{:trip, trip_id}], repo: jobs_repo)
+    if recalculating(repo, trip_id, now) != nil do
+      :ok = Cable.refresh([{:trip, trip_id}], repo: jobs_repo)
+      Dawarich.Trips.Events.broadcast(trip_id)
+    end
   end
 
   defp trip(repo, [_id, trip_id, "finished", failed], now, jobs_repo) do
@@ -78,6 +80,7 @@ defmodule Dawarich.Cable.TurboEvents do
         :ok
 
       busy ->
+        Dawarich.Trips.Events.broadcast(trip_id)
         html = CableTurbo.recalculate_button(trip_id, busy, failed)
 
         :ok =
