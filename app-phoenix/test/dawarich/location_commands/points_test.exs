@@ -68,11 +68,8 @@ defmodule Dawarich.LocationCommands.PointsTest do
            ]) ==
              [[kept], [foreign]]
 
-    assert rows("SELECT points_count FROM users WHERE id IN ($1,$2) ORDER BY id", [
-             c.actor.id,
-             c.other.id
-           ]) ==
-             [[8], [10]]
+    assert rows("SELECT points_count FROM users WHERE id=$1", [c.actor.id]) == [[8]]
+    assert rows("SELECT points_count FROM users WHERE id=$1", [c.other.id]) == [[10]]
 
     assert rows("SELECT points_count FROM imports WHERE id=$1", [import]) == [[8]]
 
