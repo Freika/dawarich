@@ -9,9 +9,10 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
   setup do
     Code.ensure_loaded!(Dawarich.Accounts.User)
     owner = FrameSeeds.seed_family!(FrameSeeds.load_family("consented_map_en"))
-    saved = Map.new(~w(SELF_HOSTED DAWARICH_RAILS), &{&1, System.get_env(&1)})
+    saved = Map.new(~w(SELF_HOSTED DAWARICH_RAILS JWT_SECRET_KEY), &{&1, System.get_env(&1)})
     System.put_env("SELF_HOSTED", "true")
     System.put_env("DAWARICH_RAILS", "off")
+    System.put_env("JWT_SECRET_KEY", "synthetic-family-delivery")
 
     on_exit(fn ->
       for {key, value} <- saved,
@@ -158,5 +159,67 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
     assert {:ok, _} = Families.create(scope, %{"name" => "Other tab family"})
     Dawarich.Families.Events.broadcast(outsider.id, :membership)
     assert_redirect(view, "/family")
+  end
+
+  test "a member's own Cloud subscription schedules silent expiry on show and invitation pages",
+       c do
+    System.put_env("SELF_HOSTED", "false")
+    expiry = DateTime.utc_now() |> DateTime.add(3600) |> DateTime.to_naive()
+
+    Repo.query!(
+      "UPDATE families SET access_until=$1 WHERE id=91001",
+      [NaiveDateTime.add(expiry, -7200)],
+      log: false
+    )
+
+    Repo.query!("UPDATE users SET plan=1 WHERE id=90101", [], log: false)
+    Repo.query!("UPDATE users SET plan=2,active_until=$1 WHERE id=90102", [expiry], log: false)
+
+    Repo.query!(
+      "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing}', $1::jsonb) WHERE id IN (90101,90102)",
+      [%{"enabled" => true, "duration" => "permanent"}],
+      log: false
+    )
+
+    Repo.query!("DELETE FROM family_invitations", [], log: false)
+    Repo.query!("DELETE FROM family_location_requests", [], log: false)
+
+    Repo.query!(
+      "INSERT INTO points(user_id,lonlat,timestamp,created_at,updated_at) VALUES(90101,ST_SetSRID(ST_MakePoint(0,0),4326),$1,now(),now())",
+      [DateTime.to_unix(DateTime.utc_now())],
+      log: false
+    )
+
+    scope = Dawarich.Accounts.Scope.for_user(c.member, "en")
+    assert {:ok, %{deadline: ^expiry, locations: [_ | _]}} = Families.locations(scope)
+    assert {:ok, ^expiry} = Families.deadline(scope)
+    show = open(c.member)
+
+    {:ok, invitations, _} =
+      live(
+        RailsUser.signed_in(c.member.id) |> RailsUser.connecting_as(c.member.id),
+        "/family/invitations"
+      )
+
+    for view <- [show, invitations] do
+      assert state(view).family_expiry.due == expiry
+      assert Process.read_timer(state(view).family_expiry.timer) > 0
+    end
+
+    assert state(show).locations != []
+
+    Repo.query!(
+      "UPDATE users SET active_until=$1 WHERE id=90102",
+      [NaiveDateTime.add(expiry, -7200)],
+      log: false
+    )
+
+    send(show.pid, {:family_expiry, state(show).family_expiry.token})
+    assert_redirect(show, "/family/new")
+    send(invitations.pid, {:family_expiry, state(invitations).family_expiry.token})
+    render(invitations)
+    refute state(invitations).page.live?
+    assert state(invitations).family_expiry == nil
+    assert state(invitations).locations == []
   end
 end

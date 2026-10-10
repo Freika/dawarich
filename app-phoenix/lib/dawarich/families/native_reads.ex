@@ -45,7 +45,7 @@ defmodule Dawarich.Families.NativeReads do
          version <- snapshot_version(user.id, ctx.now),
          {:ok, 200, {:object, fields}} <-
            Keyword.get(opts, :location_reader, &Locations.read/2).(project(user), ctx.now),
-         deadline <- NativeDeadline.due(version.family, ctx),
+         deadline <- NativeDeadline.due(ctx.family, user, ctx),
          :ok <- validate_snapshot(scope, version, opts) do
       fields = object({:object, fields})
 
@@ -95,7 +95,7 @@ defmodule Dawarich.Families.NativeReads do
 
     rows =
       Dawarich.Repo.query!(
-        "SELECT m.id,m.user_id,m.role,u.settings,u.deleted_at,f.id,f.access_until,o.plan,o.active_until,o.deleted_at " <>
+        "SELECT m.id,m.user_id,m.role,u.settings,u.deleted_at,f.id,f.access_until,o.plan,o.active_until,o.deleted_at,u.plan,u.active_until " <>
           "FROM family_memberships m JOIN users u ON u.id=m.user_id JOIN families f ON f.id=m.family_id " <>
           "JOIN users o ON o.id=f.creator_id WHERE m.family_id=$1 ORDER BY m.id",
         [family],
@@ -119,7 +119,7 @@ defmodule Dawarich.Families.NativeReads do
     with {:ok, user, ctx} <- actor(scope, opts),
          family when not is_nil(family) <- WebCreate.family(Dawarich.Repo, user.id),
          true <- FamilyPageAccess.available?(user, family, ctx.self_hosted, ctx.now) do
-      {:ok, user, ctx}
+      {:ok, user, Map.put(ctx, :family, family)}
     else
       {:error, _} = error -> error
       nil -> {:error, :unauthorized}

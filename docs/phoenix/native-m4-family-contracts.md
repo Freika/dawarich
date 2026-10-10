@@ -18,6 +18,8 @@ Cloud invitation capacity is checked while holding the family lock, preventing t
 
 Successful scoped commands also persist ID-only scheduled invalidation at finite consent, request/invitation expiry and effective Cloud family access boundaries. These jobs are committed/rolled back with their command; old scheduled invalidations cannot grant permission and consumers must always refresh admission. API/housekeeping producer integration and connected versioned timers are completed in C4.
 
+Connected snapshots carry the deadline from their own admitted context. In Cloud, inherited owner access and the viewing member's personal Family subscription are alternative grants; access ends after the last active grant expires. Consent, request and invitation deadlines can require an earlier refresh. Show and invitation pages schedule that carried boundary without a separate deadline read.
+
 ## Native family controls
 
 Family page routes share a dedicated native session. Original session identity and
@@ -48,6 +50,6 @@ targeted ExUnit and Node evidence is not a browser acceptance claim.
 
 ## Snapshot publication guard (review round 1)
 
-Location/history reads fingerprint current family membership, all member consent settings and owner access before loading points. Before returning coordinates they reload the original actor's admission and compare the fingerprint with the current consent clock. Any removal, changed consent/history settings, access loss or crossed expiry discards the snapshot. Reader/clock seams allow deterministic sandbox regressions after real SQL completes and before publication.
+Location/history reads fingerprint current family membership, all member consent settings, member subscription facts and owner access before loading points. Before returning coordinates they reload the original actor's admission and compare the fingerprint with the current consent clock. Any removal, changed consent/history settings, access loss or crossed expiry discards the snapshot. Reader/clock seams allow deterministic sandbox regressions after real SQL completes and before publication.
 
 Invitation browser landings return a local typed invalid-input refusal (HTTP 422) for unsupported settings. Their route metadata has no per-feature Rails gate and their response adapter has no upstream fallback. Genuine HTTP token/status/CSRF acceptance and whole-application routing contracts remain independently tested.
