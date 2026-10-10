@@ -68,7 +68,19 @@ defmodule DawarichWeb.StandaloneSharePointsFlowTest do
 
     public = get(build_conn(), "/s/" <> id)
     assert public.status == 200
-    assert public.resp_body =~ ~s(data-controller="shared-trip-map")
+    assert String.contains?(public.resp_body, ~s(id="native-public-map")) == true
+    assert String.contains?(public.resp_body, "data-controller") == false
+
+    config =
+      public.resp_body
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("#native-public-map")
+      |> LazyHTML.attribute("data-map-config")
+      |> hd()
+      |> Jason.decode!()
+
+    assert config["shareId"] == id
+    assert config["publicType"] == "timeline"
     response = points_response(id)
     assert response.status == 200
 
