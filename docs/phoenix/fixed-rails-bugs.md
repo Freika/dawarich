@@ -1386,7 +1386,7 @@ Rails discards a late country result after removal but does not abort its fetch.
 Rails' background photo Promise.race leaves the losing 15-second timeout scheduled after a successful response. Native photo operations close the matching deadline on success, failure, replacement and removal.
 
 - Rails: `app/javascript/controllers/maps/maplibre/data_loader.js:257,263`.
-- Phoenix: `app-phoenix/assets/js/map/data/photo_loader.js:40,64`.
+- Phoenix: `app-phoenix/assets/js/map/data/photo_loader.js:40,71`.
 - Test: “timed-out or replaced photo load cannot add a marker” in `spec/javascript/phoenix_map_photos_test.mjs`; actual Rails timer oracle fails, photo-generation mutation fails/restored GREEN. Thumbnail expiry regression also proves read abort and no later URL allocation.
 - Ledger: ED-NATIVE-M6-PHOTO-TIMER; no DRB. Retained Rails unchanged.
 - CHANGELOG-ready: Release photo-loading deadlines when their requests settle.

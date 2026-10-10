@@ -60,4 +60,24 @@ defmodule DawarichWeb.NativeMapHostTest do
       assert data["hexagonLabel"] == "{count} " <> word
     end
   end
+
+  test "photo popup labels use the host locale and ignore caller overrides" do
+    html =
+      render_component(&DawarichWeb.NativeMapHost.map_host/1,
+        id: "native-map",
+        locale: "de",
+        config: %{"photoLabels" => %{"map_info.photo" => "synthetic-override"}}
+      )
+
+    [encoded] =
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("[data-map-config]")
+      |> LazyHTML.attribute("data-map-config")
+
+    labels = Jason.decode!(encoded)["photoLabels"]
+    assert labels["map_info.photo"] == "Foto"
+    assert labels["map_info.source"] == "Quelle"
+    refute html =~ "synthetic-override"
+  end
 end

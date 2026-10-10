@@ -137,7 +137,11 @@ defmodule Dawarich.Build.NativeAssetsTest do
           input <- Map.keys(outputs[path]["inputs"]),
           do: input
 
-    refute Enum.any?(open_inputs, &Regex.match?(~r{h3-js|pmtiles|layers/density}, &1))
+    refute Enum.any?(
+             open_inputs,
+             &Regex.match?(~r{h3-js|pmtiles|layers/density|layers/photos|ui/photo_marker}, &1)
+           )
+
     assert Enum.any?(inputs(dir), &String.contains?(&1, "h3-js"))
     assert Enum.any?(inputs(dir), &String.contains?(&1, "pmtiles"))
   end

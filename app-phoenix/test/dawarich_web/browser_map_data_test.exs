@@ -76,6 +76,65 @@ defmodule DawarichWeb.BrowserMapDataTest do
     assert Jason.decode!(read(id, "/countries?start_at=1&end_at=2").resp_body)["countries"] == []
   end
 
+  test "cookie photo pages are bounded and isolated without provider credentials", %{
+    id: id,
+    foreign: foreign
+  } do
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+    params = %{"start_date" => "2026-03-29", "end_date" => "2026-03-30"}
+
+    settings = %{
+      "immich_url" => "https://synthetic-provider.invalid",
+      "immich_api_key" => "synthetic-provider-only"
+    }
+
+    for owner <- [id, foreign] do
+      Repo.query!("UPDATE users SET settings = settings || $1::jsonb WHERE id = $2", [
+        settings,
+        owner
+      ])
+
+      empty =
+        Map.new(
+          ~w(id latitude longitude localDateTime capturedAt originalFileName city state country type orientation source),
+          &{&1, nil}
+        )
+
+      photos =
+        for n <- 1..3,
+            do:
+              Map.merge(empty, %{
+                "id" => "photo-#{owner}-#{n}",
+                "latitude" => 52,
+                "longitude" => 13,
+                "source" => "immich",
+                "capturedAt" => "2026-03-29T01:00:00Z"
+              })
+
+      assert {:ok, _} =
+               Dawarich.Photos.ProviderCache.put(
+                 Dawarich.Photos.ProviderCache.key(
+                   owner,
+                   params["start_date"],
+                   params["end_date"]
+                 ),
+                 photos
+               )
+    end
+
+    on_exit(fn ->
+      for owner <- [id, foreign], do: Dawarich.Photos.ProviderCache.invalidate(owner)
+    end)
+
+    conn = read(id, "/photos?start_date=2026-03-29&end_date=2026-03-30&per_page=2&page=2")
+    assert conn.status == 200
+    assert get_resp_header(conn, "x-total-pages") == ["2"]
+    assert Enum.map(Jason.decode!(conn.resp_body), & &1["id"]) == ["photo-#{id}-3"]
+    refute conn.resp_body =~ "photo-#{foreign}"
+    refute conn.resp_body =~ "synthetic-provider-only"
+    assert read(id, "/photos?per_page=1001").status == 422
+  end
+
   defp read(id, path), do: get(RailsUser.signed_in(id), "/native/map/data" <> path)
 
   test "cookie map read retains API entitlement and account isolation", %{id: id} do

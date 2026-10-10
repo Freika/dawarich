@@ -41,17 +41,24 @@ export function createPhotoLoader({
       operations.reset()
       const operation = operations.begin(signal)
       try {
-        const response = await operation.wait(
-          reader.read(
+        let warned = false
+        const photos = await operation.wait(
+          reader.pages(
             "photos",
             { start_date: range.startAt, end_date: range.endAt },
-            { signal: operation.signal },
+            {
+              signal: operation.signal,
+              onPage: (response) => {
+                if (!warned && response.headers?.get("x-photo-source-errors")) {
+                  warned = true
+                  onError?.("photo_sources_partial")
+                }
+              },
+            },
           ),
         )
         operation.check()
-        if (response.headers?.get("x-photo-source-errors"))
-          onError?.("photo_sources_partial")
-        onData?.(photosToGeoJSON(response.data))
+        onData?.(photosToGeoJSON(photos))
         return "ready"
       } catch (error) {
         if (

@@ -52,7 +52,7 @@ test("timed-out or replaced photo load cannot add a marker", async () => {
     errors = []
   const loader = createPhotoLoader({
     reader: {
-      read(_kind, params, options) {
+      pages(_kind, params, options) {
         assert.deepEqual(params, {
           start_date: range.startAt,
           end_date: range.endAt,
@@ -69,9 +69,9 @@ test("timed-out or replaced photo load cannot add a marker", async () => {
   const firstSignal = signal
   const second = loader.load(range)
   assert.equal(firstSignal.aborted, true)
-  latest.resolve({ data: [photo] })
+  latest.resolve([photo])
   assert.equal(await second, "ready")
-  old.resolve({ data: [{ ...photo, id: "stale" }] })
+  old.resolve([{ ...photo, id: "stale" }])
   assert.equal(await first, "cancelled")
   assert.equal(commits.length, 1)
   assert.equal(commits[0].features[0].properties.id, photo.id)
@@ -370,10 +370,12 @@ test("partial photo sources retain visible rows and a bounded warning", async ()
     commits = []
   const loader = createPhotoLoader({
     reader: {
-      read: async () => ({
-        data: [photo],
-        headers: new Headers({ "x-photo-source-errors": "photoprism" }),
-      }),
+      pages: async (_kind, _params, options) => {
+        options.onPage({
+          headers: new Headers({ "x-photo-source-errors": "photoprism" }),
+        })
+        return [photo]
+      },
     },
     onData: (data) => commits.push(data),
     onError: (code) => errors.push(code),
@@ -382,4 +384,117 @@ test("partial photo sources retain visible rows and a bounded warning", async ()
   assert.equal(commits[0].features.length, 1)
   assert.deepEqual(errors, ["photo_sources_partial"])
   loader.destroy()
+})
+
+test("photo load pages the complete bounded cookie window before publishing", async () => {
+  const { createReader } = await import(
+    "../../app-phoenix/assets/js/map/data/reader.js"
+  )
+  const requests = [],
+    warnings = [],
+    commits = []
+  const reader = createReader({
+    origin: "https://map.test",
+    fetch: async (url) => {
+      const query = new URL(url).searchParams
+      assert.equal(query.get("start_date"), range.startAt)
+      assert.equal(query.get("end_date"), range.endAt)
+      assert.equal(query.get("per_page"), "1000")
+      requests.push(query.get("page"))
+      return new Response(
+        JSON.stringify([{ ...photo, id: `page-${query.get("page")}` }]),
+        {
+          headers: {
+            "x-total-pages": "2",
+            "x-photo-source-errors": "photoprism",
+          },
+        },
+      )
+    },
+  })
+  const loader = createPhotoLoader({
+    reader,
+    onData: (data) => commits.push(data),
+    onError: (code) => warnings.push(code),
+  })
+  assert.equal(await loader.load(range), "ready")
+  assert.deepEqual(requests, ["1", "2"])
+  assert.equal(commits.length, 1)
+  assert.equal(commits[0].features.length, 2)
+  assert.deepEqual(warnings, ["photo_sources_partial"])
+  loader.destroy()
+  reader.destroy()
+})
+
+test("native photo host is lazy and disposal releases every loaded thumbnail", async () => {
+  const { mountHost } = await import(
+    "../../app-phoenix/assets/js/map/runtime/host.js"
+  )
+  const f = fixture()
+  let photoReads = 0,
+    closed = 0,
+    removed = 0
+  const config = {
+    range,
+    revision: 1,
+    photosEnabled: false,
+    pointsEnabled: true,
+  }
+  f.map.querySourceFeatures = (id) => f.sources.get(id)?.data?.features ?? []
+  Object.assign(f.map, {
+    loaded: () => true,
+    remove: () => removed++,
+    getStyle: () => ({ layers: [] }),
+    setFilter() {},
+    setPaintProperty() {},
+  })
+  const reader = {
+    reset() {},
+    destroy() {
+      closed++
+    },
+    async pages(kind) {
+      assert.equal(kind, "photos")
+      photoReads++
+      return [photo]
+    },
+    async read(kind) {
+      assert.equal(kind, "thumbnail")
+      return { data: new Blob(["synthetic"], { type: "image/jpeg" }) }
+    },
+  }
+  const element = {
+    dataset: { mapConfig: JSON.stringify(config) },
+    ownerDocument: { createElement: () => ({ style: {}, remove() {} }) },
+    appendChild() {},
+  }
+  class FakeMap {
+    constructor() {
+      Object.assign(this, f.map)
+    }
+  }
+  const owner = mountHost({
+    element,
+    reader,
+    pushEvent() {},
+    loadStyle: async () => ({ version: 8, sources: {}, layers: [] }),
+    loadLibrary: async () => ({ ...f.library, Map: FakeMap }),
+  })
+  assert.equal(await owner.mount(), "ready")
+  assert.equal(photoReads, 0)
+  assert.equal(await owner.update({ ...config, photosEnabled: true }), "ready")
+  for (let i = 0; i < 12; i++) await Promise.resolve()
+  assert.equal(photoReads, 1)
+  assert.equal(f.markers.length, 1)
+  assert.equal(f.markers[0].removed, undefined)
+  assert.equal(await owner.reconnect(), "ready")
+  assert.equal(photoReads, 1)
+  owner.destroy()
+  assert.ok(f.markers.every((marker) => marker.removed))
+  assert.equal(closed, 1)
+  assert.equal(removed, 1)
+  assert.equal(
+    [...f.events.values()].reduce((n, s) => n + s.size, 0),
+    0,
+  )
 })

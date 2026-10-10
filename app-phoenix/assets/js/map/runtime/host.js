@@ -19,6 +19,8 @@ export function mountHost({
   const freshness = createTileFreshness()
   let layers
   let density
+  let photos
+  let photoKey
   const config = JSON.parse(element.dataset.mapConfig ?? "{}")
   const owner = createMapRuntime({
     element,
@@ -38,6 +40,7 @@ export function mountHost({
         })
         lifetime.own(() => layers.destroy())
         lifetime.own(() => density?.destroy())
+        lifetime.own(() => photos?.remove())
         return new Promise((resolve) => {
           const ready = () => {
             layers.mount()
@@ -85,6 +88,41 @@ export function mountHost({
           })
         }
         if (density) await operation.wait(density.update(config, { signal }))
+        if (!config.photosEnabled) {
+          photos?.remove()
+          photos = null
+          photoKey = null
+        } else {
+          const desired = JSON.stringify([
+            config.range,
+            config.epoch,
+            config.locale,
+          ])
+          if (photoKey !== desired || !photos) {
+            const [module, library] = await operation.wait(
+              Promise.all([
+                import("../layers/photos.js"),
+                loadLibrary({ signal }),
+              ]),
+            )
+            operation.check()
+            photos?.remove()
+            photos = new module.PhotosLayer(map, {
+              reader,
+              library,
+              timezone: config.range.timezone,
+              labels: config.photoLabels,
+              onError: (code) => pushEvent("map:failed", { code }),
+            })
+            photos.add()
+            const status = await operation.wait(
+              photos.load(config.range, { signal }),
+            )
+            operation.check()
+            if (status !== "ready") throw new Error("Photos unavailable")
+            photoKey = desired
+          }
+        }
       }),
     events: {
       refreshed(receipt) {
