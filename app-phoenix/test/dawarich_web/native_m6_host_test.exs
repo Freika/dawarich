@@ -112,6 +112,23 @@ defmodule DawarichWeb.NativeM6HostTest do
     refute has_element?(view, "#native-timeline-feed")
   end
 
+  test "native production host opens calendar and residency with profile dates", %{id: id} do
+    Dawarich.Test.FrameSeeds.stat!(id, 2025, 5)
+    Dawarich.Test.FrameSeeds.point!(id, id * 10, DateTime.to_unix(~U[2025-05-01 12:00:00Z]), %{
+      country_name: "Germany"
+    })
+
+    {:ok, view, _} = open(id, @second <> "&panel=timeline")
+    render_async(view, 5000)
+    assert has_element?(view, "#native-timeline-calendar [phx-click='calendar:day']")
+    render_hook(view, "calendar:day", %{"date" => "2026-04-01"})
+    render_async(view, 5000)
+    assert config(view)["range"]["startAt"] =~ "2026-04-01T00:00"
+    render_hook(view, "map:panel", %{"panel" => "insights"})
+    assert has_element?(view, "[data-residency-year='2025']")
+    assert render(view) =~ "Germany"
+  end
+
   defp config(view) do
     view
     |> render()

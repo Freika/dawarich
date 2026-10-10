@@ -49,6 +49,31 @@ defmodule DawarichWeb.MapLive.Native do
              do: DawarichWeb.MapLive.Timeline.refresh(socket, params),
              else: socket
 
+        socket =
+          if connected?(socket) and params["panel"] == "timeline" and
+               (previous != socket.assigns.map_revision or old_panel != "timeline") do
+            {:noreply, next} =
+              DawarichWeb.MapLive.TimelineFilters.handle_event(
+                "calendar:month",
+                %{"month" => page.window.calendar_month},
+                socket
+              )
+
+            next
+          else
+            socket
+          end
+
+        socket =
+          if params["panel"] == "insights" and old_panel != "insights" do
+            {:noreply, next} =
+              DawarichWeb.MapLive.TimelineFilters.handle_event("residency:year", %{}, socket)
+
+            next
+          else
+            socket
+          end
+
         {:noreply, socket}
 
       {:error, reason} ->
@@ -58,6 +83,12 @@ defmodule DawarichWeb.MapLive.Native do
 
   def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)
+
+  def handle_event("calendar:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.TimelineFilters.handle_event(event, payload, socket)
+
+  def handle_event("residency:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.TimelineFilters.handle_event(event, payload, socket)
 
   def handle_event("segment" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.SegmentCommands.handle_event(event, payload, socket)
@@ -73,6 +104,9 @@ defmodule DawarichWeb.MapLive.Native do
 
   def handle_async({:timeline, _} = name, result, socket),
     do: DawarichWeb.MapLive.Timeline.handle_async(name, result, socket)
+
+  def handle_async({:calendar, _} = name, result, socket),
+    do: DawarichWeb.MapLive.TimelineFilters.handle_async(name, result, socket)
 
   def render(assigns) do
     ~H"""
@@ -92,8 +126,14 @@ defmodule DawarichWeb.MapLive.Native do
         id="native-map-panel"
         class="absolute left-0 top-40 bottom-0 z-10 overflow-auto w-96 max-w-full min-w-0 bg-base-100 p-3"
       >
+        <DawarichWeb.NativeTimelineCalendar.calendar calendar={assigns[:calendar]} locale={@locale} />
         <DawarichWeb.NativeTimelineFeed.feed timeline={assigns[:timeline]} locale={@locale} />
       </section>
+      <DawarichWeb.NativeResidency.card
+        :if={@map_url["panel"] == "insights"}
+        residency={assigns[:residency]}
+        locale={@locale}
+      />
       <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
       <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
       <div class="relative flex-1 min-h-0 min-w-0">
