@@ -19,12 +19,16 @@ export function bindPosterControls({
     element.addEventListener(type, handler)
     owned.own(() => element.removeEventListener(type, handler))
   }
+  const sync = (element, key, value) => {
+    if (element && element[key] !== value) element[key] = value
+  }
   const themeName = () =>
     find("theme-label")?.textContent || studio.state.themeKey || ""
   const context = {
     root,
     find,
     on,
+    sync,
     studio,
     maxDimensionPx,
     themeName,

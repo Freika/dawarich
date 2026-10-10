@@ -388,6 +388,57 @@ test("closing during a range reload keeps dates and the video switch usable afte
   studio.close()
 })
 
+test("remounting for a different source shows controls that match the new studio state", async () => {
+  const root = controlsRoot()
+  const first = lifecycle(mapPoster())
+  await first.studio.open({ themeKey: "noir" })
+  const unbindFirst = bindPosterControls({
+    root,
+    studio: first.studio,
+    maxDimensionPx: 8192,
+  })
+  root.nodes.dpi.change("150")
+  root.nodes.layout.change("social-story")
+  root.nodes.font.change("inter")
+  root.nodes.opacity.change("40")
+  root.nodes.width.change("150")
+  root.nodes.coords.change(false)
+  root.layers[0].change(false)
+  root.layers[3].change(true)
+  root.nodes["text-toggle"].change(false)
+  unbindFirst()
+  first.studio.close()
+
+  const second = lifecycle(mapPoster())
+  await second.studio.open({ themeKey: "noir" })
+  const unbind = bindPosterControls({
+    root,
+    studio: second.studio,
+    maxDimensionPx: 8192,
+  })
+  const { state } = second.studio
+  assert.equal(root.nodes.layout.value, state.layoutId)
+  assert.equal(root.nodes.format.value, state.format)
+  assert.equal(root.nodes.dpi.value, String(state.dpi))
+  assert.equal(root.nodes.font.value, state.fontKey)
+  assert.equal(root.nodes.opacity.value, String(state.opacity))
+  assert.equal(root.nodes.width.value, String(state.width))
+  assert.equal(root.nodes.coords.checked, state.coords)
+  assert.equal(root.nodes["text-toggle"].checked, state.textEnabled)
+  assert.equal(root.nodes.title.disabled, false)
+  assert.equal(root.nodes.font.disabled, false)
+  for (const layer of root.layers)
+    assert.equal(
+      layer.checked,
+      !state.hidden.has(layer.dataset.posterLayer),
+      layer.dataset.posterLayer,
+    )
+  assert.match(root.nodes.summary.textContent, /^A3 Portrait — /)
+  assert.equal(root.nodes["opacity-label"].textContent, "100%")
+  unbind()
+  second.studio.close()
+})
+
 test("text, font, layer and colour controls update hook-local studio state", async () => {
   const root = controlsRoot()
   const { studio } = lifecycle(mapPoster())

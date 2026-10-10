@@ -17,6 +17,7 @@ export function layoutSummary(
 export function bindLayoutControls({
   find,
   on,
+  sync,
   studio,
   maxDimensionPx,
   themeName,
@@ -28,15 +29,16 @@ export function bindLayoutControls({
   function refresh() {
     const layout = layoutById(studio.state.layoutId)
     const isPaper = layout.kind === "paper"
+    sync(select, "value", studio.state.layoutId)
+    sync(dpi, "value", String(studio.state.dpi))
     const dims = find("layout-dims")
     if (dims) dims.textContent = layout.dimensionsLabel
     find("dpi-field")?.classList.toggle("invisible", !isPaper)
     const pdf = format?.querySelector('option[value="pdf"]')
     if (pdf) pdf.disabled = !isPaper
-    if (!isPaper && format?.value === "pdf") {
-      format.value = "png"
+    if (!isPaper && studio.state.format === "pdf")
       studio.update({ format: "png" })
-    }
+    sync(format, "value", studio.state.format)
     const summary = find("summary")
     if (summary)
       summary.textContent = layoutSummary(studio.state, {

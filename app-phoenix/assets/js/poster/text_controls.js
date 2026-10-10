@@ -1,6 +1,6 @@
 const TEXT_FIELDS = ["title", "subtitle", "coords", "font"]
 
-export function bindTextControls({ root, find, on, studio, ensureFont }) {
+export function bindTextControls({ root, find, on, sync, studio, ensureFont }) {
   const toggle = find("text-toggle")
   const layers = [...root.querySelectorAll("[data-poster-layer]")]
   const tokens = [...root.querySelectorAll("[data-poster-token]")]
@@ -65,10 +65,17 @@ export function bindTextControls({ root, find, on, studio, ensureFont }) {
 
   function refresh() {
     const { state } = studio
-    for (const name of ["title", "subtitle"]) {
-      const field = find(name)
-      if (field && field.value !== state[name]) field.value = state[name]
-    }
+    for (const name of ["title", "subtitle"])
+      sync(find(name), "value", state[name])
+    sync(toggle, "checked", state.textEnabled)
+    for (const name of TEXT_FIELDS)
+      sync(find(name), "disabled", !state.textEnabled)
+    sync(find("coords"), "checked", state.coords)
+    sync(find("font"), "value", state.fontKey)
+    for (const layer of layers)
+      sync(layer, "checked", !state.hidden.has(layer.dataset.posterLayer))
+    for (const name of ["opacity", "width"])
+      sync(find(name), "value", String(state[name]))
     label("opacity", state.opacity)
     label("width", state.width)
     if (studio.tokens && studio.tokens !== seededTokens) {
