@@ -117,7 +117,7 @@ defmodule Dawarich.Auth.AccountChanges do
       user.status == 3 ->
         {:handoff, :payment}
 
-      Settings.sanitize(user.settings) != {:ok, user.settings} ->
+      not is_map(user.settings) or Settings.sanitize(user.settings) != {:ok, user.settings} ->
         {:handoff, :settings_callback}
 
       true ->
