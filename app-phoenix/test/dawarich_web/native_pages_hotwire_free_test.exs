@@ -3,7 +3,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   alias Dawarich.Repo
-  alias Dawarich.Test.{FrameSeeds, RailsUser}
+  alias Dawarich.Test.{FrameSeeds, RailsUser, ImportsExportsSeeds}
 
   @endpoint DawarichWeb.Endpoint
   @markers [
@@ -21,7 +21,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     "onclick=",
     "onchange="
   ]
-  @sessions [:native_pages, :native_admin, :native_background]
+  @sessions [:native_pages, :native_admin, :native_background, :native_jobs]
   @secret_free_change_forms ["integration-settings"]
 
   setup do
@@ -56,6 +56,27 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
         importing: false,
         created_at: ~N[2026-03-01 10:00:00],
         updated_at: ~N[2026-03-01 10:00:00]
+      }
+    ])
+
+    ImportsExportsSeeds.import!(%{
+      id: 84111,
+      user_id: user.id,
+      raw_data: %{"waypoints_seen" => 1}
+    })
+
+    ImportsExportsSeeds.export!(%{id: 84111, user_id: user.id})
+    stamp = ~N[2026-03-01 10:00:00]
+
+    Repo.insert_all("notifications", [
+      %{
+        id: 84111,
+        user_id: user.id,
+        kind: 0,
+        title: "Native structural gate",
+        content: "Synthetic safe content",
+        created_at: stamp,
+        updated_at: stamp
       }
     ])
 
@@ -140,6 +161,15 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
 
   defp assert_native_controls(html) do
     assert Dawarich.Test.NativeAdminUI.labels(html) == []
+    doc = LazyHTML.from_document(html)
+
+    for dialog <- LazyHTML.query(doc, "dialog[aria-labelledby]"),
+        title <- LazyHTML.attribute(dialog, "aria-labelledby") do
+      headings = LazyHTML.query(doc, "##{title}")
+      assert Enum.count(headings) == 1
+      assert String.trim(LazyHTML.text(headings)) != ""
+    end
+
     ids = html |> LazyHTML.from_document() |> LazyHTML.query("[id]") |> LazyHTML.attribute("id")
     assert Enum.uniq(ids) == ids
     for marker <- @markers, do: refute(html =~ marker)
@@ -183,6 +213,72 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       end
 
     assert Enum.count(saving, & &1) >= 2
+  end
+
+  test "native job pages and open dialogs have one accessible label and no Hotwire runtime", %{
+    user: user
+  } do
+    paths = native_paths()
+
+    for path <-
+          ~w(/imports /imports/new /imports/84111 /imports/84111/edit /exports /notifications /notifications/84111),
+        do: assert(path in paths)
+
+    for locale <- ~w(en de),
+        path <-
+          ~w(/imports /imports/new /imports/84111 /imports/84111/edit /exports /notifications /notifications/84111) do
+      conn =
+        get(
+          RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id),
+          path <> "?locale=" <> locale
+        )
+
+      {:ok, view, connected} = live(conn)
+      for html <- [html_response(conn, 200), connected], do: assert_native_controls(html)
+
+      events =
+        case path do
+          "/exports" ->
+            {"choose_export_delete", %{"id" => "84111"}, "cancel_export_delete",
+             "export-delete-dialog"}
+
+          "/notifications" ->
+            {"choose_notifications_delete_all", %{}, "cancel_notifications_delete_all",
+             "notifications-delete-dialog"}
+
+          "/notifications/84111" ->
+            {"choose_notification_delete", %{}, "cancel_notification_delete",
+             "notification-delete-dialog"}
+
+          _ ->
+            nil
+        end
+
+      if events do
+        {choose, params, cancel, id} = events
+        render_hook(view, choose, params)
+        assert has_element?(view, "##{id}[open][aria-labelledby]")
+        assert_native_controls(Dawarich.Test.NativeAdminUI.html(view))
+        render_hook(view, cancel, %{})
+        refute has_element?(view, "##{id}[open]")
+      end
+
+      if path == "/imports/84111" do
+        assert has_element?(view, "#extraction-dialog-84111[aria-labelledby]")
+
+        assert has_element?(
+                 view,
+                 ~s(#extraction-dialog-84111 form[phx-submit="extract_import"] input[type=submit][phx-disable-with])
+               )
+      end
+
+      GenServer.stop(view.pid)
+    end
+
+    assert [[1]] = Repo.query!("SELECT count(*) FROM exports WHERE id=84111", [], log: false).rows
+
+    assert [[1]] =
+             Repo.query!("SELECT count(*) FROM notifications WHERE id=84111", [], log: false).rows
   end
 
   test "LiveView event telemetry, which carries raw form params, reaches only LiveView's own logger" do

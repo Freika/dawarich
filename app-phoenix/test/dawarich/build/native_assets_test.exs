@@ -31,6 +31,24 @@ defmodule Dawarich.Build.NativeAssetsTest do
     refute Enum.any?(inputs, &Regex.match?(~r/@hotwired|stimulus|turbo|rails_bridge/i, &1))
   end
 
+  test "native jobs eager and lazy module graph excludes Rails transport runtimes", %{
+    tmp_dir: dir
+  } do
+    inputs = dir |> build!() |> inputs()
+    assert Enum.any?(inputs, &String.ends_with?(&1, "uploaders/direct.js"))
+    assert Enum.any?(inputs, &String.ends_with?(&1, "hooks/archive_checksum.js"))
+
+    refute Enum.any?(
+             inputs,
+             &Regex.match?(
+               ~r/@hotwired|stimulus|turbo|rails_bridge|actioncable|activestorage/i,
+               &1
+             )
+           )
+
+    refute Enum.any?(inputs, &String.contains?(&1, "app/javascript"))
+  end
+
   test "emoji-mart is a separate lazily loaded chunk", %{tmp_dir: dir} do
     build!(dir)
     app = File.read!(Path.join(dir, "app.js"))

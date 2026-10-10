@@ -204,3 +204,8 @@ B5 handoff: native notification list/detail use scoped commands and latched conf
 ## X2 A/B implementation handoff (2026-10-10)
 
 Imports/export-delete/notification/shared-background UI writes and their orphan adapters are retired in both modes. Exact removed/retained method+path table is ED-NATIVE-M4-ROUTE-RETIREMENT-AB; executable successor mapping and consumer census are in native-m4-contracts.md. Retained storage/download/API/Points POST/wire and raw receipt business inputs remain. No fixture deletion or regeneration, release/lifecycle change, browser acceptance or Rails defect claim. NativeM4RouteRetirementTest initially RED against the original routes, GREEN after removal; actual route restoration, CSRF omission and 25 additional behavior mutations fail their named tests. Restored targeted 37-file caller/byte/security/native batch: 243 passed, seed 404, warnings-as-errors. Register/format follow-up and report record final evidence; C/integration retirement remains controller-owned.
+
+
+## X3 A/B audit handoff (2026-10-10)
+
+Native job routes join static/connected English/German control and open-dialog structural checks; actual esbuild graph checks eager/lazy sources for Rails runtimes. Duplicate-label, omitted dialog naming and transitive runtime mutations are discriminating. FRB-NATIVE-M4-EXTRACTION-DIALOG-NAME records the demonstrated Rails partial naming gap. Original A/B business/protocol datasets remain; no fixture or environment allocations changed. C integration and browser/stage acceptance remain outstanding.

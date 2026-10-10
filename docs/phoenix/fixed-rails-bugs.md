@@ -1394,3 +1394,13 @@ Rails renders the same `family-navbar-indicator` frame in both mobile and deskto
 - Phoenix: `app-phoenix/lib/dawarich_web/components/navbar.ex:50`; `app-phoenix/lib/dawarich_web/components/navbar_parts.ex:75`.
 - Test: **native family indicator follows current owner permissions without swallowing family delivery**, `notifications_native_events_test.exs`.
 - Evidence: source plus two actual partial renders produce two identical frame IDs; no Rails browser stale-indicator reproduction claimed. Repeating the native ID fails the named LiveView test on duplicate elements. Independent legacy frame protocol unchanged. ED-NATIVE-M4-NOTIFICATIONS-UI; no DRB.
+
+
+### FRB-NATIVE-M4-EXTRACTION-DIALOG-NAME — Extraction dialog has no accessible name
+
+The Rails extraction modal has a visible heading without a dialog accessible-name relationship. Screen reader dialog navigation cannot identify its purpose. Native extraction now references its uniquely identified localized heading and disables its LiveView submit while the command is pending.
+
+- Rails: `app/views/imports/_extraction_dialog.html.erb:1,3`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/imports_extraction_dialog.ex:15,22,98`.
+- Test: **native job pages and open dialogs have one accessible label and no Hotwire runtime**, `native_pages_hotwire_free_test.exs`.
+- Evidence: actual synthetic Rails partial render: one dialog, one heading, zero accessible-name attributes. Native static/connected English/German case initially fails missing relationship, then passes; removing native naming and adding a duplicate control label each fail the exact named case. No browser/screen-reader execution claimed. ED-NATIVE-M4-STRUCTURAL-AB; no DRB.

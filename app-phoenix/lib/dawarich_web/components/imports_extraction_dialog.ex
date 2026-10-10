@@ -12,9 +12,16 @@ defmodule DawarichWeb.ImportsExtractionDialog do
 
   def dialog(assigns) do
     ~H"""
-    <dialog id={"extraction-dialog-#{@id}"} class="modal" phx-update={if(!@native, do: "ignore")}>
+    <dialog
+      id={"extraction-dialog-#{@id}"}
+      class="modal"
+      aria-labelledby={@native && "extraction-title-#{@id}"}
+      phx-update={if(!@native, do: "ignore")}
+    >
       <div class="modal-box max-w-xl min-w-0 [overflow-wrap:anywhere]">
-        <h3 class="font-bold text-lg">{text(@locale, "extract_additional_data_from_this_import")}</h3>
+        <h3 id={@native && "extraction-title-#{@id}"} class="font-bold text-lg">
+          {text(@locale, "extract_additional_data_from_this_import")}
+        </h3>
         <div class="prose prose-sm mt-4 text-base-content/80">
           <p>{text(@locale, "dawarich_originally_imported_your_file_as_raw_gps_points_the")}</p>
           <ul>
@@ -87,7 +94,8 @@ defmodule DawarichWeb.ImportsExtractionDialog do
               name="commit"
               value={text(@locale, "extract")}
               class="btn btn-primary"
-              data-disable-with={text(@locale, "extract")}
+              data-disable-with={!@native && text(@locale, "extract")}
+              phx-disable-with={@native && text(@locale, "extract")}
             />
           </div>
         </form>

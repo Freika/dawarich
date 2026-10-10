@@ -124,3 +124,10 @@ The completed orphan census removes ImportsController/Request/Authorization/Gate
 | O02/O07, Endpoint, StorageRoutes, A8/PageRoutes, A10b/A10c, H01 | Retired route inputs remain exercised as local 404/no effect/no replay; native session metadata and retained reads/source overrides remain. Independent storage bytes/rollback, other domain replay/API/public behaviors remain unchanged. |
 
 No fixtures were deleted, regenerated or written through the E2E fixture link. ED-NATIVE-M4-ROUTE-RETIREMENT-AB records the exact method/path census and intentionally retired transport representation. C route cleanup and final integration remain outside this branch's A/B assignment.
+
+
+## X3 A/B corpus and runtime audit
+
+The X2 table above names each changed envelope/corpus case and its preserved business successor. Import source/locale/raw upload/zone/header/signed bytes, all export producer input datasets, notification ordering/age/enum/timezone/read links/notices, independent Cable wire and retained HTTP storage/download tests remain readers of their original fixtures. No fixture was removed or regenerated. Family/public/sharing source and inventory rows remain C-owned; no complete integrated milestone claim is made here.
+
+`NativePagesHotwireFreeTest` includes `native_jobs` route discovery and explicitly requires the seven list/new/show/edit/export/notification/detail variants. English/German static and connected controls have one label and unique IDs. Open export and notification confirmations are inspected and cancelled with original rows retained. The extraction heading resolves once and native submission is guarded. `NativeAssetsTest` reads the actual esbuild eager and lazy input graph, requires native external upload hooks and refuses Rails transport modules/app sources; a real two-step transitive import mutation fails, rather than a source-string-only assertion. Shared library/chunk gzip limits remain separately enforced. Stage browser network, keyboard, 390px and Range measurements remain unexecuted controller acceptance.
