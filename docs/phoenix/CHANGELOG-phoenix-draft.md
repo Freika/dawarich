@@ -126,3 +126,7 @@ The controller recorded these deferrals on 2026-10-07; they remain follow-up wor
 - Serialize administrator deletion and role changes to retain administration access under competing writes. [FRB-085](fixed-rails-bugs.md#frb-085--concurrent-admin-roledeletion-writes-can-leave-no-administrator)
 
 These are native Phoenix corrections delivered in A2; retained Rails behavior is unchanged.
+
+## Native Places (milestone 3d)
+
+- Keep foreign-owner visit and tag data out of native Place details, even when stored associations are corrupt. [FRB-086](fixed-rails-bugs.md#frb-086--corrupt-place-dependents-disclose-another-owners-data)

@@ -1338,3 +1338,13 @@ Rails counts administrators before an unlocked update and does not share a guard
 - Evidence: A2 commit `c7f44a025`; `m3b-domain.report.md`, `m3b-x3.report.md`. No machine stress or Rails production change.
 - Ledger: ED-NATIVE-ADMIN-USERS-DELETE-GUARD; no DRB added. Distinct from FRB-084's missing deletion guard.
 - CHANGELOG-ready: Serialize native administrator deletion and role changes to retain administration access.
+
+### FRB-086 — Corrupt Place dependents disclose another owner's data
+
+Database-valid cross-owner visit/tag associations can disclose foreign visit names, times, duration and tags in an owned Place drawer. Native Places detail filters each dependent by the Place owner; edit offers only owned tags. Retained map/Rails adapters are unchanged until milestone 6. Public endpoints are not claimed to create this graph.
+
+- Rails: `app/controllers/places_controller.rb:14,17`; `app/models/place.rb:13,17`; `app/models/concerns/taggable.rb:8`.
+- Phoenix: `app-phoenix/lib/dawarich/place_drawer.ex:58`; `app-phoenix/lib/dawarich/places/reads.ex:19`.
+- Test: `native Place detail never exposes foreign dependent data` in `app-phoenix/test/dawarich/places_test.exs`.
+- Ledger: ED-NATIVE-M3D-DEPENDENT-PRIVACY; no DRB added.
+- CHANGELOG-ready: Keep foreign-owner visit and tag data out of native Place details, even when stored associations are corrupt.

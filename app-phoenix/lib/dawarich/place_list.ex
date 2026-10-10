@@ -18,11 +18,11 @@ defmodule Dawarich.PlaceList do
   LIMIT #{@per_page} OFFSET $2
   """
 
-  def load(user, page) do
+  def load(user, page, opts \\ []) do
     number = max(RubyInteger.to_i(page), 1)
 
     if number <= @max_page and settings?(Dawarich.UserSettings.get(user)),
-      do: page(user, number, Dawarich.UserSettings.get(user)),
+      do: page(user, number, Dawarich.UserSettings.get(user), opts),
       else: :rails
   end
 
@@ -30,8 +30,13 @@ defmodule Dawarich.PlaceList do
   def settings?(%{"timezone" => zone}) when not is_nil(zone) and not is_binary(zone), do: false
   def settings?(settings), do: is_map(settings)
 
-  defp page(user, number, settings) do
-    case UserTimeZone.query!(@sql, [user.id, (number - 1) * @per_page], settings).rows do
+  defp page(user, number, settings, opts) do
+    case UserTimeZone.query!(
+           @sql,
+           [user.id, (number - 1) * @per_page],
+           settings,
+           Keyword.get(opts, :repo, Dawarich.Repo)
+         ).rows do
       [] ->
         {:ok, %{entries: [], total_pages: 0}}
 

@@ -26,13 +26,13 @@ defmodule Dawarich.PlaceDrawer do
   WHERE p.id = $1 AND p.user_id = $2
   """
 
-  def load(user, id, repo \\ Dawarich.Repo) do
+  def load(user, id, repo \\ Dawarich.Repo, mode \\ :legacy) do
     settings = Dawarich.UserSettings.get(user)
 
     with true <- PlaceList.settings?(Dawarich.UserSettings.get(user)),
          [[id, name, note, city, country, source, locked, count, minutes, tags, visits, zone]]
          when source in 0..2 or is_nil(source) <-
-           UserTimeZone.query!(@sql, [id, user.id], settings, repo).rows,
+           UserTimeZone.query!(sql(mode), [id, user.id], settings, repo).rows,
          true <- TripSettings.zone?(settings, zone) do
       {:ok,
        %{
@@ -49,9 +49,19 @@ defmodule Dawarich.PlaceDrawer do
          visits: Enum.map(visits, &visit/1)
        }}
     else
+      [] when mode == :native -> {:error, :not_found}
+      _ when mode == :native -> {:error, :unsupported}
       _ -> :rails
     end
   end
+
+  defp sql(:native) do
+    @sql
+    |> String.replace(@active, @active <> " AND v.user_id = p.user_id")
+    |> String.replace("g.taggable_id = p.id", "g.taggable_id = p.id AND t.user_id = p.user_id")
+  end
+
+  defp sql(_), do: @sql
 
   defp visit([name, duration, started, ended]),
     do: %{name: name, duration: duration, started: local(started), ended: local(ended)}
