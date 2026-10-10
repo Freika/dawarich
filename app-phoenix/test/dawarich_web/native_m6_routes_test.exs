@@ -80,4 +80,15 @@ defmodule DawarichWeb.NativeM6RoutesTest do
     refute has_element?(view, "#mobile-navigation-menu")
     refute has_element?(view, "#native-map")
   end
+
+  test "native host media refusals remain local before authentication or producers" do
+    for path <- ~w(/map/v2 /trips/12abc /family /s/missing),
+        accept <- ~w(application/json text/vnd.turbo-stream.html text/javascript) do
+      conn = build_conn() |> Plug.Conn.put_req_header("accept", accept) |> get(path)
+      assert conn.status == 422
+      assert conn.resp_body == ""
+      assert Plug.Conn.get_resp_header(conn, "location") == []
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == ["private, no-store"]
+    end
+  end
 end

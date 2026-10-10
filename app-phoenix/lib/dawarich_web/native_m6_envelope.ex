@@ -57,9 +57,24 @@ defmodule DawarichWeb.NativeM6Envelope do
       ) ->
         refuse(conn, 422)
 
+      not html?(conn) ->
+        refuse(conn, 422)
+
       true ->
         conn
     end
+  end
+
+  defp html?(conn) do
+    values = get_req_header(conn, "accept")
+
+    values == [] or
+      Enum.any?(values, fn value ->
+        Enum.any?(String.split(value, ","), fn item ->
+          type = item |> String.split(";") |> hd() |> String.trim() |> String.downcase()
+          type in ["", "text/html", "application/xhtml+xml", "*/*"]
+        end)
+      end)
   end
 
   defp refuse(conn, status),
