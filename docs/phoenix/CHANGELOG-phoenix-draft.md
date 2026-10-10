@@ -130,3 +130,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 ## Native data pages (milestone 5)
 
 - Keep mobile and desktop family-sharing indicators independently addressable and current. [FRB-NATIVE-M5-FAMILY-INDICATOR](fixed-rails-bugs.md#frb-native-m5-family-indicator--duplicate-family-navbar-ids)
+
+- Recheck public sharing and owner state before returning prepared native report data. [FRB-NATIVE-M5-PUBLIC-DELIVERY](fixed-rails-bugs.md#frb-native-m5-public-delivery--revoked-report-can-finish-an-in-flight-read)

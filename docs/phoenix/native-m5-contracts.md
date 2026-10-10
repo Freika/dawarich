@@ -273,3 +273,11 @@ existing AchievementUnlocks hook remains the sole unlock-deck owner. Clipboard
 and embed controls use the existing native Clipboard hook and localized status.
 Production route switching and browser/390-pixel acceptance remain controller
 integration tasks, with the keyboard/history E2E contract prepared separately.
+
+## C5 public projections
+
+`Sharing.Pages.resource(grant, params, opts)` accepts the M4 validated grant, never an owner-login Scope. One `NativeM5.Dependencies.public_admit/3` delegation targets `Sharing.Public.admit/2`; unavailable M4 code fails closed. The controller switches/activates it after M4 merges. Tests inject an admission stub over existing unprotected public policy only; they do not certify M4 proof cryptography or browser unlock cookies.
+
+Grant/resource/audience/owner admission precedes a ready reader and repeats before returning it. Changed links and privacy zones refuse prepared data. Trip/track SQL always includes owner predicates. Trip days use a 31-local-day cursor, notes follow visibility flags, photos delegate the existing privacy/ACL reader with a 100-result cap, descriptions delegate B's renderer when present (current RichContent sanitizer otherwise). Source track mode/duration/elevation/speed and owner distance unit remain scoped fields. No unlock credentials or owner user object enter the projection.
+
+`Pages.report(:digest | :month, uuid, opts)` uses the existing public-owner/stored-expiry readers with the viewer zone, repeats the reader before delivery, retains full digest totals separately from bounded places and strips internal metadata. Report/window adapters do not replace D owner modules or M6 map hosts. M4 admission retains GET-only view touches outside cached data; this unrouted slice does not increment them independently.

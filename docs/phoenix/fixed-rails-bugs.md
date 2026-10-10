@@ -1349,3 +1349,14 @@ Rails renders the family sharing indicator in both mobile and desktop navigation
 - Ledger: ED-NATIVE-M5-FAMILY-INDICATOR added; no DRB added.
 - Evidence: impl-m5.report.md final audit follow-up; RED unique-node assertion, GREEN, duplicate-ID mutation fails, restored GREEN. Rails remains unchanged.
 - CHANGELOG-ready: Keep mobile and desktop family-sharing indicators independently addressable and current.
+
+### FRB-NATIVE-M5-PUBLIC-DELIVERY — Revoked report can finish an in-flight read
+
+Rails checks public report access once, before loading owner presentation data and rendering. Disabling sharing during that work can still deliver the already admitted report. Native report projections repeat the source reader after preparation and refuse changed sharing settings or owner state. Shared resource projections similarly repeat M4 grant admission and compare current privacy zones before returning ready data. This closes the deterministic preparation-window case; it is not an atomic guarantee against revocation after the final check.
+
+- Rails: `app/controllers/shared/digests_controller.rb:13,15,26`; `app/controllers/shared/stats_controller.rb:11,13,26`.
+- Phoenix: `app-phoenix/lib/dawarich/sharing/reports.ex:27`; `app-phoenix/lib/dawarich/sharing/pages.ex:36`.
+- Test: “public report delivery rechecks sharing settings and current owner”; “public delivery repeats grant and privacy admission after a ready read” in `app-phoenix/test/dawarich/sharing/pages_test.exs`.
+- Ledger: ED-NATIVE-M5-PUBLIC added; no DRB added.
+- Evidence: named deterministic after-read revocation and privacy probes, RED/GREEN, reread-bypass mutations fail, restored GREEN. Rails symptom is source-backed, not a new Rails runtime concurrency oracle. Retained Rails is unchanged.
+- CHANGELOG-ready: Recheck public sharing and owner state before returning prepared native report data.
