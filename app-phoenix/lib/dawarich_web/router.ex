@@ -47,27 +47,6 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
-  pipeline :insights do
-    plug DawarichWeb.HostAuthorization
-    plug :accepts, ["html"]
-    plug DawarichWeb.ForceSSL
-    plug DawarichWeb.RateLimit
-    plug :fetch_query_params
-    plug DawarichWeb.InsightsVisit
-    plug DawarichWeb.RailsAuth
-    plug :phoenix_session
-    plug :fetch_session
-    plug :fetch_live_flash
-    plug DawarichWeb.Locale
-    plug DawarichWeb.LayoutAssigns
-    plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
-    plug DawarichWeb.PageEnvelope, :layout
-    plug :protect_from_forgery
-    plug DawarichWeb.RailsHeaders
-    plug DawarichWeb.InsightsFrame
-    plug DawarichWeb.RequireUser
-  end
-
   metrics_routes()
   api_routes()
   health_routes()

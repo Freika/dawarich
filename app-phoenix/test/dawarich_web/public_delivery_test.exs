@@ -99,7 +99,7 @@ defmodule DawarichWeb.PublicDeliveryTest do
       |> assign(:achievement_public, {:ok, page})
       |> assign(:rails_session, %{})
       |> put_private(:dawarich_before_delivery, fn -> revoke(:soft_deletion) end)
-      |> DawarichWeb.AchievementPublicPage.call([])
+      |> DawarichWeb.NativePublicPage.call(:achievement)
 
     assert conn.status == 302
     assert conn.resp_body == ""

@@ -358,17 +358,32 @@ defmodule DawarichWeb.A12f3aQClosureTest do
 
       if row["status"] == 500 do
         assert_raise ArgumentError, fn ->
-          DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2024"}, page_ctx)
+          digest_source(user, "2024", page_ctx)
         end
       else
-        assert DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2024"}, page_ctx).digest.year ==
+        assert digest_source(user, "2024", page_ctx).digest.year ==
                  2024
       end
     end
 
     context = Dawarich.Stats.context(user, @now, true)
     assert Enum.map(Dawarich.Digests.index(user.id, context).digests, & &1.year) == [2024]
-    assert DawarichWeb.DigestsLive.Show.page(user, %{"year" => "2023"}, page_ctx) == :not_found
+    assert digest_source(user, "2023", page_ctx) == :not_found
+  end
+
+  defp digest_source(user, year, context) do
+    case Dawarich.Digests.get(user.id, Dawarich.RubyInteger.to_i(year)) do
+      nil ->
+        :not_found
+
+      digest ->
+        Dawarich.Digests.validate_summary!(digest)
+
+        if Dawarich.Entitlements.full_access?(user, context.self_hosted, context.now),
+          do: Dawarich.Digests.validate_full!(digest)
+
+        %{digest: digest}
+    end
   end
 
   @tag a12f3a_q11: true
@@ -599,16 +614,45 @@ defmodule DawarichWeb.A12f3aQClosureTest do
           |> LazyHTML.query(selector)
           |> LazyHTML.to_html()
 
-        assert Dawarich.Test.ChartkickHTML.charts(html) ==
-                 Dawarich.Test.ChartkickHTML.charts(row["html"])
+        if kind == "digest" do
+          charts =
+            conn.resp_body
+            |> LazyHTML.from_document()
+            |> LazyHTML.query("[data-chart]")
+            |> LazyHTML.attribute("data-chart")
+            |> Enum.map(&Jason.decode!(&1)["data"])
 
-        assert Dawarich.Test.ParityHTML.stimulus(html) ==
-                 Dawarich.Test.ParityHTML.stimulus(row["html"])
+          assert charts == Enum.map(Dawarich.Test.ChartkickHTML.charts(row["html"]), & &1.data)
+          refute conn.resp_body =~ "data-controller="
+          refute conn.resp_body =~ "Chartkick"
 
-        assert normalize_public(html) == normalize_public(row["html"]),
-               inspect(first_difference(normalize_public(html), normalize_public(row["html"])),
-                 limit: :infinity
-               )
+          for selector <- [".stat-value", ".stat-title", "h1", "h2"] do
+            expected =
+              row["html"]
+              |> LazyHTML.from_document()
+              |> LazyHTML.query(selector)
+              |> Enum.map(&(LazyHTML.text(&1) |> String.replace(~r/\s+/, " ") |> String.trim()))
+
+            actual =
+              conn.resp_body
+              |> LazyHTML.from_document()
+              |> LazyHTML.query(selector)
+              |> Enum.map(&(LazyHTML.text(&1) |> String.replace(~r/\s+/, " ") |> String.trim()))
+
+            assert actual == expected
+          end
+        else
+          assert Dawarich.Test.ChartkickHTML.charts(html) ==
+                   Dawarich.Test.ChartkickHTML.charts(row["html"])
+
+          assert Dawarich.Test.ParityHTML.stimulus(html) ==
+                   Dawarich.Test.ParityHTML.stimulus(row["html"])
+
+          assert normalize_public(html) == normalize_public(row["html"]),
+                 inspect(first_difference(normalize_public(html), normalize_public(row["html"])),
+                   limit: :infinity
+                 )
+        end
 
         refute html =~ "data-api-key"
       else

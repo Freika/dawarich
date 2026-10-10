@@ -10,12 +10,14 @@ defmodule DawarichWeb.NativePublicPage do
     case DawarichWeb.AchievementPublicQuery.decode(conn.query_string, ~w(locale embed)) do
       {:ok, params} ->
         if not Map.has_key?(params, "locale") or params["locale"] in DawarichWeb.Locale.locales() do
-          call_page(%{conn | query_params: params, params: params}, :achievement)
+          conn = DawarichWeb.Locale.call(%{conn | query_params: params, params: params}, [])
+          call_page(conn, :achievement)
         else
           conn |> send_resp(422, "") |> halt()
         end
 
-      _ -> conn |> send_resp(422, "") |> halt()
+      _ ->
+        conn |> send_resp(422, "") |> halt()
     end
   end
 
@@ -66,26 +68,36 @@ defmodule DawarichWeb.NativePublicPage do
 
     case result do
       {:ok, page} ->
-        assigns = %{
-          __changed__: nil,
-          locale: conn.assigns[:locale] || "en",
-          base_url: conn.assigns[:base_url] || DawarichWeb.RequestURL.base(conn),
-          embed: params["embed"] == "1",
-          uuid: conn.path_params["uuid"],
-          page: page
-        }
+        if kind == :digest and
+             (conn.private[:native_page_format] == "turbo_stream" or
+                params["format"] == "turbo_stream" or
+                "text/vnd.turbo-stream.html" in get_req_header(conn, "accept")) do
+          conn |> send_resp(500, "") |> halt()
+        else
+          assigns = %{
+            __changed__: nil,
+            locale: conn.assigns[:locale] || "en",
+            base_url: conn.assigns[:base_url] || DawarichWeb.RequestURL.base(conn),
+            embed: params["embed"] == "1",
+            uuid: conn.path_params["uuid"],
+            page: page
+          }
 
-        html = DawarichWeb.NativePublicDocument.document(assigns) |> Phoenix.HTML.Safe.to_iodata()
+          html =
+            DawarichWeb.NativePublicDocument.document(assigns) |> Phoenix.HTML.Safe.to_iodata()
 
-        body =
-          if conn.method == "HEAD" or conn.private[:dawarich_method] == "HEAD", do: "", else: html
+          body =
+            if conn.method == "HEAD" or conn.private[:dawarich_method] == "HEAD",
+              do: "",
+              else: html
 
-        case Delivery.deliver(target, admitted, body,
-               clock: conn.private[:dawarich_clock],
-               after_read: conn.private[:dawarich_before_delivery] || fn -> :ok end
-             ) do
-          {:ok, body} -> conn |> send_resp(200, body) |> halt()
-          _ -> not_found(conn, kind)
+          case Delivery.deliver(target, admitted, body,
+                 clock: conn.private[:dawarich_clock],
+                 after_read: conn.private[:dawarich_before_delivery] || fn -> :ok end
+               ) do
+            {:ok, body} -> conn |> send_resp(200, body) |> halt()
+            _ -> not_found(conn, kind)
+          end
         end
 
       {:error, :not_found} ->

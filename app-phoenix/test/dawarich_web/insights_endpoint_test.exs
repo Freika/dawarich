@@ -102,28 +102,33 @@ defmodule DawarichWeb.InsightsEndpointTest do
     assert values(headers, "location") == ["http://a/users/sign_in"]
   end
 
-  test "writes, formats, JSON and XHR go to Puma with the Rails cookie", ctx do
+  test "external details writes preserve the cookie while native formats refuse without forwarding",
+       ctx do
     cookie = {"Cookie", ctx.cookie}
 
-    for {method, target, headers} <- [
-          {"POST", "/insights/details", [cookie]},
-          {"GET", "/insights/details?format=csv", [cookie]},
-          {"GET", "/insights/details.csv", [cookie]},
-          {"GET", "/insights/details", [cookie, {"Accept", "application/json"}]},
-          {"GET", "/insights/details", [cookie, {"X-Requested-With", "XMLHttpRequest"}]}
+    assert {line, [forwarded]} =
+             puma(ctx.port, ctx.upstream, request("/insights/details", [cookie], "POST"))
+
+    assert line == "POST /insights/details HTTP/1.1"
+    assert forwarded == ctx.cookie
+
+    for {target, headers, status} <- [
+          {"/insights/details?format=csv", [cookie], 422},
+          {"/insights/details.csv", [cookie], 422},
+          {"/insights/details", [cookie, {"Accept", "application/json"}], 406},
+          {"/insights/details", [cookie, {"X-Requested-With", "XMLHttpRequest"}], 200}
         ] do
-      assert {line, [forwarded]} = puma(ctx.port, ctx.upstream, request(target, headers, method))
-      assert line == "#{method} #{target} HTTP/1.1"
-      assert forwarded == ctx.cookie
+      assert {^status, _, body} = phoenix(ctx.port, request(target, headers))
+      refute body == "puma"
     end
   end
 
-  test "home and insights independently hand their owned paths to Puma", ctx do
+  test "home rollback remains while independent native insights stays owned", ctx do
     Application.put_env(:dawarich, :rails_routes, ["insights"])
     assert {302, headers, ""} = phoenix(ctx.port, request("/", [{"Cookie", ctx.cookie}]))
     assert values(headers, "location") == ["http://a/map/v2"]
 
-    for {key, target} <- [{"home", "/"}, {"insights", "/insights/details?year=all"}] do
+    for {key, target} <- [{"home", "/"}] do
       Application.put_env(:dawarich, :rails_routes, [key])
 
       assert {line, [_cookie]} =
@@ -159,7 +164,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
 
   defp digests, do: Dawarich.Repo.query!("SELECT id, updated_at FROM digests ORDER BY id").rows
 
-  test "warm nil stale cold failed and handed-back details preserve native ownership", ctx do
+  test "warm nil stale cold failed and legacy rollback details preserve native ownership", ctx do
     ctx = digest_user!(ctx)
     frame = [{"Cookie", ctx.cookie}, {"Turbo-Frame", "insights_details"}, {"Accept", "text/html"}]
     target = "/insights/details?year=2024&month=4&user_id=9301"
@@ -186,8 +191,8 @@ defmodule DawarichWeb.InsightsEndpointTest do
 
     assert Dawarich.Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
     Application.put_env(:dawarich, :rails_routes, ["insights"])
-    assert {line, [_cookie]} = puma(ctx.port, ctx.upstream, request(target, frame))
-    assert line == "GET #{target} HTTP/1.1"
+    assert {200, _, body} = phoenix(ctx.port, request(target, frame))
+    assert body =~ ~s(id="insights-period")
     Application.put_env(:dawarich, :rails_routes, [])
     stop_supervised!(Dawarich.Redis.Cache)
     assert {200, _headers, _body} = phoenix(ctx.port, request(target, frame))

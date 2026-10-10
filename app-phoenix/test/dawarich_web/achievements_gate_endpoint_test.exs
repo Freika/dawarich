@@ -15,9 +15,13 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
     upstream = listen()
     previous_mode = System.get_env("DAWARICH_RAILS")
     System.put_env("DAWARICH_RAILS", "off")
+
     on_exit(fn ->
-      if previous_mode, do: System.put_env("DAWARICH_RAILS", previous_mode), else: System.delete_env("DAWARICH_RAILS")
+      if previous_mode,
+        do: System.put_env("DAWARICH_RAILS", previous_mode),
+        else: System.delete_env("DAWARICH_RAILS")
     end)
+
     saved = Map.new(~w(rails_upstream rails_routes)a, &{&1, Application.fetch_env(:dawarich, &1)})
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
@@ -77,7 +81,7 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
     {request_line(head), header(head, "cookie")}
   end
 
-  defp assert_puma(ctx, port, targets, method \\ "GET", extra \\ "") do
+  defp assert_puma(ctx, port, targets, method, extra) do
     for target <- targets do
       assert {line, [cookie]} =
                answered_by_puma(port, ctx.upstream, request(method, target, ctx.cookie, extra))
@@ -115,41 +119,64 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
   end
 
   defp native_response(ctx, port, target, cookie, status, extra \\ "") do
-    before = Dawarich.Repo.query!("SELECT count(*) FROM achievement_progresses WHERE user_id=79301").rows
+    before =
+      Dawarich.Repo.query!("SELECT count(*) FROM achievement_progresses WHERE user_id=79301").rows
+
     client = connect(port)
     send_raw(client, request("GET", target, cookie, extra))
     assert {^status, _, body} = read_response(client)
     refute body == "puma"
-    assert Dawarich.Repo.query!("SELECT count(*) FROM achievement_progresses WHERE user_id=79301").rows == before
+
+    assert Dawarich.Repo.query!("SELECT count(*) FROM achievement_progresses WHERE user_id=79301").rows ==
+             before
+
     assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
   end
 
   test "native achievement guests go to sign-in without forwarding", ctx do
     port = serve()
+
     for target <- ~w(/achievements /achievements/country_de),
-      do: native_response(ctx, port, target, nil, 302)
+        do: native_response(ctx, port, target, nil, 302)
   end
 
-  test "native achievement queries normalize unknown keys and malformed shapes without effects", ctx do
+  test "native achievement queries normalize unknown keys and malformed shapes without effects",
+       ctx do
+    System.delete_env("DAWARICH_RAILS")
     port = serve()
-    for target <- ~w(/achievements?unexpected=1 /achievements/country_de?q=a&utf8=1 /achievements?q%5B%5D=a /achievements/country_de?status%5Ba%5D=b /achievements?page%5B%5D=2 /achievements/continent_europe?page=99999999999999999999 /achievements/country_de?page=1000000000001x),
-      do: native_response(ctx, port, target, ctx.cookie, 200)
+
+    for target <-
+          ~w(/achievements?unexpected=1 /achievements/country_de?q=a&utf8=1 /achievements?q%5B%5D=a /achievements/country_de?status%5Ba%5D=b /achievements?page%5B%5D=2 /achievements/continent_europe?page=99999999999999999999 /achievements/country_de?page=1000000000001x),
+        do: native_response(ctx, port, target, ctx.cookie, 200)
+
     for target <- ~w(/achievements/country_de?q=%FF /achievements?locale=%C3),
-      do: native_response(ctx, port, target, ctx.cookie, 422)
+        do: native_response(ctx, port, target, ctx.cookie, 400)
   end
 
   test "native achievement missing and parent keys have bounded collection destinations", ctx do
     port = serve()
-    for target <- ~w(/achievements/explorer_atlantis /achievements/Country_de /achievements/border_hopper /achievements/country_fr /achievements/country_aq),
-      do: native_response(ctx, port, target, ctx.cookie, 302)
+
+    for target <-
+          ~w(/achievements/explorer_atlantis /achievements/Country_de /achievements/border_hopper /achievements/country_fr /achievements/country_aq),
+        do: native_response(ctx, port, target, ctx.cookie, 302)
   end
 
+  @tag native_representation: true
   test "native achievement unsupported representations refuse without forwarding", ctx do
     port = serve()
+
     for target <- ~w(/achievements.json /achievements/country_de.json /achievements?format=json),
-      do: native_response(ctx, port, target, ctx.cookie, if(target == "/achievements.json", do: 404, else: 422))
+        do:
+          native_response(
+            ctx,
+            port,
+            target,
+            ctx.cookie,
+            422
+          )
+
     for target <- ~w(/achievements /achievements/country_de),
-      do: native_response(ctx, port, target, ctx.cookie, 422, "Accept: application/json\r\n")
+        do: native_response(ctx, port, target, ctx.cookie, 406, "Accept: application/json\r\n")
   end
 
   test "unsupported achievement writes go to Puma", ctx do
@@ -175,13 +202,13 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
     )
   end
 
-  test "DAWARICH_RAILS_ROUTES=achievements hands a page Phoenix answers to Puma unchanged", ctx do
+  test "native achievement ownership ignores obsolete Rails route overrides", ctx do
     System.delete_env("DAWARICH_RAILS")
     port = serve()
     target = "/achievements/country_de?q=Germany&status=all"
     answered_by_phoenix(port, request(target, ctx.cookie))
 
     Application.put_env(:dawarich, :rails_routes, ["achievements"])
-    assert_puma(ctx, port, [target, "/achievements"])
+    for path <- [target, "/achievements"], do: native_response(ctx, port, path, ctx.cookie, 200)
   end
 end

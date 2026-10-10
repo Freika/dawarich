@@ -12,14 +12,6 @@ defmodule DawarichWeb.AchievementRoutes do
         plug DawarichWeb.RailsHeaders
       end
 
-      pipeline :achievement_public do
-        plug DawarichWeb.HostAuthorization
-        plug DawarichWeb.ForceSSL
-        plug DawarichWeb.RateLimit
-        plug DawarichWeb.RailsAuth
-        plug DawarichWeb.AchievementPublic
-      end
-
       scope "/" do
         pipe_through :achievement_action
 
@@ -48,7 +40,6 @@ defmodule DawarichWeb.AchievementRoutes do
              [action: :dismiss],
              metadata: %{rails_gate: {DawarichWeb.AchievementActions.Gate, :dismiss?}}
       end
-
     end
   end
 end

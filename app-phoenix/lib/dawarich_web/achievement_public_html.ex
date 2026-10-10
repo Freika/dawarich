@@ -3,7 +3,7 @@ defmodule DawarichWeb.AchievementPublicHTML do
   use DawarichWeb, :html
   import DawarichWeb.AchievementCard, only: [card: 1]
   import DawarichWeb.Head, only: [favicon: 1, pwa_meta: 1]
-  import DawarichWeb.SharedPages, only: [l: 2, cta: 1, cta: 2, importmap: 0, translations: 1]
+  import DawarichWeb.SharedPages, only: [l: 2, cta: 1, cta: 2]
   alias DawarichWeb.Assets
   alias Dawarich.Achievements.UiText
 
@@ -20,13 +20,6 @@ defmodule DawarichWeb.AchievementPublicHTML do
   def head_assets(assigns) do
     assigns =
       assign(assigns, :url, assigns.base_url <> "/shared/achievements/" <> assigns.view.uuid)
-
-    assigns =
-      assign(
-        assigns,
-        :native_scripts,
-        if(assigns[:native], do: nil, else: legacy_scripts(assigns))
-      )
 
     ~H"""
     <meta charset="utf-8" />
@@ -46,7 +39,6 @@ defmodule DawarichWeb.AchievementPublicHTML do
       href={Assets.stylesheet_path(name <> ".css")}
       data-turbo-track={!@native && "reload"}
     />
-    {@native_scripts}
     <link
       :for={name <- ~w(achievements achievements_spectral achievements_unlocks)}
       rel="stylesheet"
@@ -64,22 +56,6 @@ defmodule DawarichWeb.AchievementPublicHTML do
     <meta property="og:image:alt" content={@view.name <> " — " <> @view.metric} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content={@url <> "/og.png"} />
-    """
-  end
-
-  defp legacy_scripts(assigns) do
-    ~H"""
-    <script
-      :if={!@embed}
-      id="i18n-translations"
-      type="application/json"
-      data-turbo-track="reload"
-      phx-no-format
-    ><%= Phoenix.HTML.raw(translations(@locale)) %></script>
-    <script type="importmap" data-turbo-track="reload" phx-no-format><%= Phoenix.HTML.raw(importmap()) %></script>
-    <script type="module">
-      import "application"
-    </script>
     """
   end
 

@@ -106,7 +106,11 @@ defmodule DawarichWeb.A9RoutesTest do
 
       assert {info.route, info.plug, info.plug_opts, info.pipe_through, info[:slice],
               info[:rails_gate]} ==
-               {path, Phoenix.LiveView.Plug, action, [:browser, :rails_user], nil, gate}
+               {path, Phoenix.LiveView.Plug, action,
+                if(info[:native_page],
+                  do: [:native_data_request, :browser, :rails_user],
+                  else: [:browser, :rails_user]
+                ), nil, gate}
 
       assert {^view, ^action, opts, session} = info.phoenix_live_view
       assert opts == [action: action, router: Router, container: {:div, class: "contents"}]
@@ -123,6 +127,7 @@ defmodule DawarichWeb.A9RoutesTest do
       expected_session =
         cond do
           native_data -> :native_data
+          String.starts_with?(path, "/trips") -> :trips_map_dependency
           family -> :family_pages
           true -> :rails_pages
         end

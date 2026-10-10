@@ -268,33 +268,50 @@ defmodule DawarichWeb.PageEnvelopesTest do
   end
 
   @tag envelope: :review_shared_layout
-  test "F1 accessible shared monthly and digest pages use frame and XHR envelope layouts" do
+  test "F1 retained month envelopes and native digest HTTP documents preserve public access" do
     seed_shared!()
 
     for kind <- ~w(month digest) do
       path = "/shared/#{kind}/00000000-0000-4000-8000-000000000077"
-      document = request(path <> ".html", [], false)
-      assert_contract(document, @review["f1"][kind]["html"])
-      assert document.status == 200
-      assert document.resp_body =~ "<html"
-      assert document.resp_body =~ "/assets/application.css"
 
-      frame = request(path, [{"turbo-frame", "review-frame"}], false)
-      assert_contract(frame, @review["f1"][kind]["frame"])
-      assert frame.status == 200
-      assert String.contains?(frame.resp_body, "<html")
-      refute String.contains?(frame.resp_body, "/assets/application.css")
+      if kind == "digest" do
+        for suffix <- ["", ".html"],
+            headers <- [
+              [],
+              [{"turbo-frame", "review-frame"}],
+              [{"x-requested-with", "XMLHttpRequest"}]
+            ] do
+          conn = request(path <> suffix, headers, false)
+          assert conn.status == 200
+          assert conn.resp_body =~ "<html"
+          assert conn.resp_body =~ "/native/public_charts.js"
+          refute conn.resp_body =~ "importmap"
+          refute conn.resp_body =~ "data-controller="
+        end
+      else
+        document = request(path <> ".html", [], false)
+        assert_contract(document, @review["f1"][kind]["html"])
+        assert document.status == 200
+        assert document.resp_body =~ "<html"
+        assert document.resp_body =~ "/assets/application.css"
 
-      for accept <- ["text/javascript", "text/javascript; charset=utf-8", nil, ""] do
-        fragment =
-          request(path, [{"x-requested-with", "XMLHttpRequest"}, {"accept", accept}], false)
+        frame = request(path, [{"turbo-frame", "review-frame"}], false)
+        assert_contract(frame, @review["f1"][kind]["frame"])
+        assert frame.status == 200
+        assert String.contains?(frame.resp_body, "<html")
+        refute String.contains?(frame.resp_body, "/assets/application.css")
 
-        name = if accept in [nil, ""], do: "absent", else: "js"
-        assert_contract(fragment, @review["f1"][kind][name])
-        assert fragment.status == 200
-        assert byte_size(fragment.resp_body) > 0
-        refute String.contains?(fragment.resp_body, "<html")
-        refute String.contains?(fragment.resp_body, "/assets/application.css")
+        for accept <- ["text/javascript", "text/javascript; charset=utf-8", nil, ""] do
+          fragment =
+            request(path, [{"x-requested-with", "XMLHttpRequest"}, {"accept", accept}], false)
+
+          name = if accept in [nil, ""], do: "absent", else: "js"
+          assert_contract(fragment, @review["f1"][kind][name])
+          assert fragment.status == 200
+          assert byte_size(fragment.resp_body) > 0
+          refute String.contains?(fragment.resp_body, "<html")
+          refute String.contains?(fragment.resp_body, "/assets/application.css")
+        end
       end
     end
   end

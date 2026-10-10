@@ -19,12 +19,18 @@ defmodule DawarichWeb.NativeM5RoutesTest do
       assert {^view, _, _, %{name: :native_data, extra: extra}} = route.phoenix_live_view
       assert extra.root_layout == {DawarichWeb.Layouts, :native_root}
       assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.NativeDataAuth, :require_user}]
+      assert route[:native_page]
       refute route[:rails_gate]
     end
 
-    for {path, kind} <- [{"/shared/digest/synthetic", :digest}, {"/shared/achievements/synthetic", :achievement}] do
+    for {path, kind} <- [
+          {"/shared/digest/synthetic", :digest},
+          {"/shared/achievements/synthetic", :achievement}
+        ] do
       assert %{plug: DawarichWeb.NativePublicPage, plug_opts: ^kind} =
                route = Phoenix.Router.route_info(Router, "GET", path, "example.invalid")
+
+      assert route[:native_page]
       refute route[:rails_gate]
     end
   end

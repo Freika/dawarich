@@ -89,7 +89,7 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     end
   end
 
-  test "tracks and points keys hand GETs and writes back", ctx do
+  test "legacy map writes and track GETs retain rollback while native Points stays owned", ctx do
     for {key, get_path, write_path} <- [
           {"tracks", "/tracks/91830/segments", "/tracks/91830/segments/43"},
           {"points", "/points", "/points/bulk_destroy"}
@@ -101,7 +101,10 @@ defmodule DawarichWeb.MapWriteRoutesTest do
       assert route.rails_gate == {MapWriteGate, :owned?}
       forwarded(ctx, request(ctx.user, method, write_path))
       get_conn = request(ctx.user, "GET", get_path) |> put_req_header("accept", "text/html")
-      forwarded(ctx, get_conn)
+
+      if key == "points",
+        do: refute(Strangler.call(get_conn, []).halted),
+        else: forwarded(ctx, get_conn)
     end
   end
 

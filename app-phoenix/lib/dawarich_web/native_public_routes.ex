@@ -14,8 +14,12 @@ defmodule DawarichWeb.NativePublicRoutes do
 
       scope "/" do
         pipe_through :native_public
-        get "/shared/digest/:uuid", DawarichWeb.NativePublicPage, :digest
-        get "/shared/achievements/:uuid", DawarichWeb.NativePublicPage, :achievement
+
+        get "/shared/digest/:uuid", DawarichWeb.NativePublicPage, :digest,
+          metadata: %{native_page: true}
+
+        get "/shared/achievements/:uuid", DawarichWeb.NativePublicPage, :achievement,
+          metadata: %{native_page: true}
       end
     end
   end

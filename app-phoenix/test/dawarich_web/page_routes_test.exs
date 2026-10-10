@@ -54,7 +54,7 @@ defmodule DawarichWeb.PageRoutesTest do
     end
 
     details = info("/insights/details")
-    assert details.pipe_through == [:browser, :rails_user]
+    assert details.pipe_through == [:native_data_request, :browser, :rails_user]
     assert details.plug == Phoenix.LiveView.Plug
     assert details.plug_opts == :details
     assert details.path_params == %{}

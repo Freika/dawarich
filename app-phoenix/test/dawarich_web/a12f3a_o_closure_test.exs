@@ -285,6 +285,8 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     saved = Application.get_env(:dawarich, :rails_routes, [])
     mode = System.get_env("SELF_HOSTED")
     standalone = System.get_env("DAWARICH_RAILS")
+    jwt = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", "synthetic-m5-route-closure")
     Application.put_env(:dawarich, :rails_routes, [])
     System.delete_env("DAWARICH_RAILS")
 
@@ -292,6 +294,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       Application.put_env(:dawarich, :rails_routes, saved)
       restore_env("SELF_HOSTED", mode)
       restore_env("DAWARICH_RAILS", standalone)
+      restore_env("JWT_SECRET_KEY", jwt)
     end)
 
     session = RailsUser.session(8896)
@@ -299,7 +302,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   end
 
   @tag a12f3a_o06: true
-  test "O06: every Q M W P method is native and each source key restores raw pre-effect Rails routing",
+  test "O06: Q M W P native page ownership and retained source rollback preserve effects",
        ctx do
     routes = q_m_w_p()
     assert length(routes) == 40
@@ -320,8 +323,9 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
         assert route != :error, "#{method} #{path}"
         assert owner(route) == owner, "#{method} #{path}"
         assert Code.ensure_loaded?(owner)
-        replay_only(ctx, method, path <> "?raw=a%2Bb&raw=c", key)
-        if method == "GET", do: replay_only(ctx, "HEAD", path, key)
+        request_ctx = if legacy && route[:native_page], do: %{ctx | session: %{}}, else: ctx
+        replay_only(request_ctx, method, path <> "?raw=a%2Bb&raw=c", key)
+        if method == "GET", do: replay_only(request_ctx, "HEAD", path, key)
       end
     end
 
@@ -329,7 +333,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     Application.put_env(:dawarich, :rails_routes, ["stats", "digests"])
 
     for path <- ["/shared/month/missing", "/shared/digest/missing"], method <- [:get, :head] do
-      assert info("GET", path).rails_key == "shared"
+      assert info("GET", path)[:native_page] || info("GET", path).rails_key == "shared"
       response = dispatch(build_conn(), @endpoint, method, path, nil)
       assert response.status == 302
       assert get_resp_header(response, "location") == ["http://www.example.com/"]
@@ -491,7 +495,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       {"/insights", "insights", DawarichWeb.InsightsLive.NativePage},
       {"/insights/details", "insights", DawarichWeb.InsightsLive.NativePage},
       {"/shared/month/synthetic", "shared", DawarichWeb.SharedStatsPage},
-      {"/shared/digest/synthetic", "shared", DawarichWeb.SharedStatsPage},
+      {"/shared/digest/synthetic", "shared", DawarichWeb.NativePublicPage},
       {"/map", "map", DawarichWeb.MapLive},
       {"/map/v2", "map", DawarichWeb.MapLive},
       {"/map/v1", "map", DawarichWeb.MapRedirects},
@@ -568,18 +572,25 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     before = observations()
     Application.put_env(:dawarich, :rails_routes, [key])
 
-    {{line, bytes}, response} =
-      forwarded(ctx.upstream, fn ->
-        response = @endpoint.call(build.(), @endpoint.init([]))
-        assert response.status == 204, "rollback #{key}: #{method} #{path}"
-        response
-      end)
+    if route[:native_page] do
+      response = native_response(ctx, build.())
+      assert response.status in [200, 301, 302, 303]
+      assert observations() == before
+    else
+      {{line, bytes}, response} =
+        forwarded(ctx.upstream, fn ->
+          response = @endpoint.call(build.(), @endpoint.init([]))
+          assert response.status == 204, "rollback #{key}: #{method} #{path}"
+          response
+        end)
 
-    assert line == "#{method} #{path} HTTP/1.1"
-    assert bytes == body
-    assert response.status == 204
-    refute response.private[:dawarich_method]
-    assert observations() == before
+      assert line == "#{method} #{path} HTTP/1.1"
+      assert bytes == body
+      assert response.status == 204
+      refute response.private[:dawarich_method]
+      assert observations() == before
+    end
+
     Application.put_env(:dawarich, :rails_routes, [])
   end
 
@@ -612,15 +623,24 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     Application.put_env(:dawarich, :rails_routes, [key])
     body = "original=%2B+%26&original=second&nested%5Ba%5D=1"
 
-    {{line, bytes}, response} =
-      forwarded(ctx.upstream, fn ->
-        @endpoint.call(raw(ctx, method, path, body), @endpoint.init([]))
-      end)
+    route = info(if(method == "HEAD", do: "GET", else: method), path |> String.split("?") |> hd())
 
-    assert line == "#{method} #{path} HTTP/1.1"
-    assert bytes == body
-    assert response.status == 204
-    assert observations() == before
+    if route[:native_page] do
+      response = native_response(ctx, raw(ctx, method, path, body))
+      assert response.status in [200, 301, 302, 303]
+      assert observations() == before
+    else
+      {{line, bytes}, response} =
+        forwarded(ctx.upstream, fn ->
+          @endpoint.call(raw(ctx, method, path, body), @endpoint.init([]))
+        end)
+
+      assert line == "#{method} #{path} HTTP/1.1"
+      assert bytes == body
+      assert response.status == 204
+      assert observations() == before
+    end
+
     Application.put_env(:dawarich, :rails_routes, [])
   end
 

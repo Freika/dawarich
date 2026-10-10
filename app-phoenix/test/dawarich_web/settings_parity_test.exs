@@ -5,15 +5,11 @@ defmodule DawarichWeb.SettingsParityTest do
 
   alias Dawarich.Repo
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.InsightsLive
 
   @dir "test/fixtures/settings"
   @corpus "test/fixtures/settings_corpus.json" |> File.read!() |> Jason.decode!()
   @env ~w(TIME_ZONE MANAGER_URL OIDC_PROVIDER_NAME CHIBICHANGE_WIDGET_HOST SMTP_SERVER)
   @retired_stimulus "[data-controller], [data-action], [data-activity-heatmap-target], [data-upload-target], [data-turbo], [data-turbo-method], [data-turbo-confirm], [data-turbo-stream]"
-  @pages %{
-    "/insights" => InsightsLive.Index
-  }
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -43,7 +39,7 @@ defmodule DawarichWeb.SettingsParityTest do
       locale = DawarichWeb.Locale.resolve(nil, user, %{})
       uri = URI.parse(state["path"])
 
-      context = %{
+      _context = %{
         locale: locale,
         now: now,
         self_hosted: state["self_hosted"],
@@ -56,8 +52,13 @@ defmodule DawarichWeb.SettingsParityTest do
         zones: Enum.map(@corpus["time_zone_options"], fn [label, iana] -> {label, iana} end)
       }
 
-      module = Map.fetch!(@pages, uri.path)
-      assigns = module.page(user, URI.decode_query(uri.query || ""), context)
+      assigns =
+        Dawarich.Insights.page(
+          user,
+          URI.decode_query(uri.query || ""),
+          Dawarich.Stats.context(user, now, state["self_hosted"])
+        )
+
       query = URI.decode_query(uri.query || "")
 
       {:ok, data} =
@@ -96,7 +97,11 @@ defmodule DawarichWeb.SettingsParityTest do
       refute phoenix =~ "turbo-frame"
       refute phoenix =~ "Chartkick"
       refute phoenix =~ "translation_missing"
-      assert DawarichWeb.Layouts.page_title(locale, assigns.page_title) == state["title"]
+
+      assert DawarichWeb.Layouts.page_title(
+               locale,
+               DawarichWeb.Translate.t(locale, "insights.index.insights", %{})
+             ) == state["title"]
     end
   end
 

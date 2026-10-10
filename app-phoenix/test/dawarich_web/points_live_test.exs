@@ -235,7 +235,7 @@ defmodule DawarichWeb.PointsLiveTest do
     user: user
   } do
     route = Phoenix.Router.route_info(Router, "GET", "/points", "localhost")
-    assert route.pipe_through == [:browser, :rails_user]
+    assert route.pipe_through == [:native_data_request, :browser, :rails_user]
     refute Map.has_key?(route, :rails_gate)
 
     assert MapDataGate.points?(

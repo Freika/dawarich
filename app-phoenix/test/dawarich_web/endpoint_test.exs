@@ -833,17 +833,24 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "stats and digest paths outside Rails' constraints go to Puma while native writes require sign in",
+  test "native stats and digest refusals preserve the retained month and write owners",
        ctx do
     port = serve()
 
     for target <-
-          ~w(/stats/abcd /stats/202 /stats/20245 /stats/update_all /stats/2024/0 /stats/2024/00 /stats/2024/13 /stats/2024/1a /digests/new /digests/24 /stats/2024.json),
+          ~w(/stats/2024/0 /stats/2024/00 /stats/2024/13 /stats/2024/1a),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
               "GET #{target} HTTP/1.1"
           )
+
+    for target <-
+          ~w(/stats/abcd /stats/202 /stats/20245 /stats/update_all /digests/new /digests/24) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+    end
+
+    assert answered_by_phoenix(port, "GET /stats/2024.json HTTP/1.1\r\nHost: a\r\n\r\n") == 422
 
     for {method, target} <- [
           {"PUT", "/stats/update_all"},
@@ -864,16 +871,20 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "DAWARICH_RAILS_ROUTES hands the stats and digest pages back", ctx do
+  test "independent native stats and digests ignore rollback while the month adapter retains it",
+       ctx do
     Application.put_env(:dawarich, :rails_routes, ["stats", "digests"])
     port = serve()
 
-    for target <- ~w(/stats /stats/2024/3 /digests/2024),
+    for target <- ~w(/stats/2024/3),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
               "GET #{target} HTTP/1.1"
           )
+
+    for target <- ~w(/stats /digests/2024),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
   end
 
   test "Phoenix answers the trips list for a signed-out visitor with Rails' sign-in redirect" do
@@ -884,15 +895,16 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "value-less browser query keys go to Puma unchanged while valued keys stay in Phoenix",
+  test "native stats query admission stays owned while retained trip query rules remain",
        ctx do
     port = serve()
 
-    for target <- ~w(/trips?page /trips?view /stats?year) do
+    for target <- ~w(/trips?page /trips?view) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
 
+    assert answered_by_phoenix(port, "GET /stats?year HTTP/1.1\r\nHost: a\r\n\r\n") == 302
     assert answered_by_phoenix(port, "GET /trips?page=2 HTTP/1.1\r\nHost: a\r\n\r\n") == 302
   end
 
@@ -944,14 +956,17 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "Rails keeps guest achievement requests intact, including malformed page shapes and writes",
+  test "guest achievements use native sign-in and format refusal while external writes remain owned",
        ctx do
     port = serve()
 
     for target <-
-          ~w(/achievements /achievements/country_de /achievements/unknown /achievements.json /achievements/country_de.json /achievements?format=json /achievements?unexpected=value /achievements?q[a]=value) do
-      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
-               "GET #{target} HTTP/1.1"
+          ~w(/achievements /achievements/country_de /achievements/unknown /achievements?unexpected=value /achievements?q[a]=value) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+    end
+
+    for target <- ~w(/achievements.json /achievements/country_de.json /achievements?format=json) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 422
     end
 
     for target <-
@@ -999,18 +1014,21 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "unsupported settings, account and insights requests go to Puma", ctx do
+  test "retained unsupported settings and account requests go to Puma while native insights refuses",
+       ctx do
     port = serve()
 
     assert answered_by_phoenix(port, "GET /settings/users HTTP/1.1\r\nHost: a\r\n\r\n") == 302
 
     for target <-
-          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
+          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /users/sign_in /users/sign_up /users/edit.json /settings/general.json),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
               "GET #{target} HTTP/1.1"
           )
+
+    assert answered_by_phoenix(port, "GET /insights.json HTTP/1.1\r\nHost: a\r\n\r\n") == 422
 
     for {method, target} <- [
           {"PATCH", "/settings/general"},
@@ -1037,17 +1055,20 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "DAWARICH_RAILS_ROUTES hands the settings, account and insights pages back", ctx do
+  test "settings and account rollback remain while independent native insights stays owned",
+       ctx do
     Application.put_env(:dawarich, :rails_routes, ["settings", "users", "insights"])
     port = serve()
 
     for target <-
-          ~w(/settings/general /settings/integrations?service=immich /users/edit /insights?year=2024),
+          ~w(/settings/general /settings/integrations?service=immich /users/edit),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
               "GET #{target} HTTP/1.1"
           )
+
+    assert answered_by_phoenix(port, "GET /insights?year=2024 HTTP/1.1\r\nHost: a\r\n\r\n") == 302
   end
 
   test "Phoenix answers both map paths itself", ctx do

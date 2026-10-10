@@ -1,5 +1,4 @@
 defmodule DawarichWeb.Strangler do
-  @moduledoc false
   @behaviour Plug
 
   import Plug.Conn, only: [get_req_header: 2, halt: 1]
@@ -71,7 +70,7 @@ defmodule DawarichWeb.Strangler do
 
   @impl true
   def call(conn, _opts) do
-    conn = DawarichWeb.PageEnvelope.prepare(conn)
+    conn = DawarichWeb.NativeDataRequest.prepare(conn)
 
     cond do
       conn.halted ->
@@ -166,6 +165,9 @@ defmodule DawarichWeb.Strangler do
     case Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host) do
       :error ->
         false
+
+      %{native_page: true} ->
+        true
 
       %{pipe_through: pipelines} = route ->
         not handed_back?(conn.path_info, route) and slice_owned?(route, conn) and
