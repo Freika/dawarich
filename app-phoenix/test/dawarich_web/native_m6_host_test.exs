@@ -180,6 +180,22 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "#native-timeline-filter input[value='']")
   end
 
+  test "native production host edits a visit adds its note and opens an owned point address", %{id: id} do
+    place = Dawarich.Test.FrameSeeds.place!(id, id * 10, "Cafe")
+    visit = Dawarich.Test.FrameSeeds.visit!(id, id * 10, %{place_id: place, started_at: ~N[2026-03-30 09:00:00], ended_at: ~N[2026-03-30 10:00:00]})
+    Dawarich.Test.FrameSeeds.point!(id, id * 10, 1774861200, %{reverse_geocoded_at: ~N[2026-03-30 09:00:00]})
+    {:ok, view, _} = open(id, @second)
+    render_hook(view, "visit:edit", %{"id" => to_string(visit)})
+    view |> form("#native-visit-note-form", note: %{body: "Lunch"}) |> render_submit()
+    assert render(view) =~ "Lunch"
+    render_hook(view, "visit:close", %{})
+    refute has_element?(view, "#native-visit-dialog")
+    render_hook(view, "address:open", %{"id" => to_string(id * 10)})
+    assert has_element?(view, "#native-point-address")
+    render_hook(view, "address:close", %{})
+    refute has_element?(view, "#native-point-address")
+  end
+
   defp config(view) do
     view
     |> render()

@@ -97,6 +97,15 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("visit:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.EntityCommands.handle_event(event, payload, socket)
 
+  def handle_event("visits:merge" = event, payload, socket),
+    do: DawarichWeb.MapLive.EntityCommands.handle_event(event, payload, socket)
+
+  def handle_event("note:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.EntityCommands.handle_event(event, payload, socket)
+
+  def handle_event("address:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.EntityCommands.handle_event(event, payload, socket)
+
   def handle_event("settings:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.SettingsCommands.handle_event(event, payload, socket)
 
@@ -136,6 +145,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_async({:place_nearby, _} = name, result, socket),
     do: DawarichWeb.MapLive.EntityCommands.handle_async(name, result, socket)
 
+  def handle_async({:visit_places, _} = name, result, socket),
+    do: DawarichWeb.MapLive.EntityCommands.handle_async(name, result, socket)
+
   def render(assigns) do
     ~H"""
     <div :if={@page} id="native-map-page" class="relative w-full min-w-0 h-[100dvh] flex flex-col">
@@ -169,6 +181,9 @@ defmodule DawarichWeb.MapLive.Native do
       />
       <button type="button" data-testid="native-select-area" class="btn btn-sm">{t(@locale, "javascript.selection.select_area", %{})}</button>
       <section id="native-map-selection" data-map-selection phx-update="ignore" class="min-w-0 max-w-full" tabindex="0"></section>
+      <DawarichWeb.NativeMapVisit.dialog dialog={assigns[:visit_dialog]} locale={@locale} />
+      <DawarichWeb.NativePointAddress.drawer address={assigns[:point_address]} locale={@locale} />
+      <button type="button" data-testid="native-create-visit" class="btn btn-sm">{t(@locale, "javascript.visits.create_new", %{})}</button>
       <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
       <button type="button" data-testid="native-create-place" class="btn btn-sm">{t(@locale, "javascript.places.create_new", %{})}</button>
       <DawarichWeb.NativeMapSettings.panel
