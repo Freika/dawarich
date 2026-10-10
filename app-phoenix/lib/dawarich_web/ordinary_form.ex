@@ -20,7 +20,11 @@ defmodule DawarichWeb.OrdinaryForm do
   def finish(form, {:error, %Ecto.Changeset{} = changeset}),
     do: %{form | status: :idle, changeset: changeset}
 
-  def finish(form, {:error, _}), do: %{form | status: :idle}
+  def finish(form, {:error, reason})
+      when reason in [:not_found, :unsupported, :foreign_dependents, :unavailable, :stale_session],
+      do: %{form | status: :idle}
+
+  def finish(form, {:error, _}), do: %{form | status: :uncertain, confirmation: nil}
 
   def confirm(%{confirmation: nil} = form, target), do: %{form | confirmation: target}
   def confirm(form, _), do: form

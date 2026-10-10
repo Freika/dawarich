@@ -38,7 +38,7 @@ defmodule Dawarich.Places.Commands do
       result(WebDelete.run(repo, scope.user, id, %{native_scope: original, owner_scoped: true}))
     end
   rescue
-    _ -> {:error, :unavailable}
+    _ -> {:error, :uncertain_persistence}
   end
 
   defp previous(_, :create, _, _), do: {:ok, Form.new()}
@@ -46,7 +46,12 @@ defmodule Dawarich.Places.Commands do
   defp result({:replay, _}), do: {:error, :unsupported}
 
   defp result({:error, reason})
-       when reason not in [:not_found, :stale_session, :foreign_dependents],
+       when reason not in [
+              :not_found,
+              :stale_session,
+              :foreign_dependents,
+              :uncertain_persistence
+            ],
        do: {:error, :unavailable}
 
   defp result(result), do: result

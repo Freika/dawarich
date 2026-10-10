@@ -36,6 +36,11 @@ defmodule Dawarich.Places.WebWrite do
       {:error, reason} ->
         {:error, reason}
     end
+  rescue
+    error ->
+      if context[:native_scope],
+        do: {:error, :uncertain_persistence},
+        else: reraise(error, __STACKTRACE__)
   end
 
   defp load(_repo, :create, _user, _id), do: {:ok, nil}

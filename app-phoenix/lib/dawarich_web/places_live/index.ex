@@ -129,6 +129,11 @@ defmodule DawarichWeb.PlacesLive.Index do
     end
   end
 
+  def handle_event("check_places", _, socket),
+    do:
+      {:noreply,
+       socket |> Form.clear() |> Detail.clear() |> assign(:confirmation, nil) |> reload()}
+
   def handle_event("cancel_form", _, socket),
     do:
       {:noreply,

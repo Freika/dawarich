@@ -55,6 +55,19 @@ defmodule DawarichWeb.OrdinaryFormTest do
     assert apply(F, :accept, [partial, form.generation]) == :refused
   end
 
+  test "ordinary form consumes uncertain outcomes and only releases proven zero effects" do
+    form = F.new("place", changeset(%{"name" => "Valid"}))
+    {:ok, saving} = F.accept(form, form.generation)
+    uncertain = apply(F, :finish, [saving, {:error, :uncertain_persistence}])
+    assert uncertain.status == :uncertain
+    assert F.accept(uncertain, form.generation) == :refused
+    assert apply(F, :finish, [saving, {:error, :unclassified}]).status == :uncertain
+
+    for reason <- [:not_found, :unsupported, :foreign_dependents, :unavailable, :stale_session] do
+      assert {:ok, _} = F.accept(F.finish(saving, {:error, reason}), form.generation)
+    end
+  end
+
   test "ordinary confirmation cancel performs no command and restores opener" do
     form = apply(F, :new, ["delete", changeset()])
     selected = apply(F, :confirm, [form, 41])

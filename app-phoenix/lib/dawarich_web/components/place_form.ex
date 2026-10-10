@@ -21,6 +21,17 @@ defmodule DawarichWeb.PlaceForm do
       cancel_event="cancel_form"
       close_label={p(@locale, "cancel")}
     >
+      <p
+        :if={@state.status == :uncertain}
+        data-uncertain-save
+        role="alert"
+        class="text-error [overflow-wrap:anywhere]"
+      >
+        {DawarichWeb.PlacesUI.uncertain_message(@locale)}
+      </p>
+      <button :if={@state.status == :uncertain} type="button" class="btn" phx-click="check_places">
+        {t(@locale, "places.index.places", %{})}
+      </button>
       <p :if={@state.status == :partial} role="alert" class="text-error [overflow-wrap:anywhere]">
         {DawarichWeb.PlacesUI.message(@locale)}
       </p>

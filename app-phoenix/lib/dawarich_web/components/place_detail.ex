@@ -18,6 +18,17 @@ defmodule DawarichWeb.PlaceDetail do
       cancel_event="cancel_form"
       close_label={t(@locale, "settings.users.index.cancel", %{})}
     >
+      <p
+        :if={@state.status == :uncertain}
+        data-uncertain-save
+        role="alert"
+        class="text-error [overflow-wrap:anywhere]"
+      >
+        {DawarichWeb.PlacesUI.uncertain_message(@locale)}
+      </p>
+      <button :if={@state.status == :uncertain} type="button" class="btn" phx-click="check_places">
+        {t(@locale, "places.index.places", %{})}
+      </button>
       <p class="[overflow-wrap:anywhere]">
         {Enum.join(Enum.reject([@detail.city, @detail.country], &is_nil/1), ", ")}
       </p>

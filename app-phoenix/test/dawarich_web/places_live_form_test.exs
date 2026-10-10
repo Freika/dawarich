@@ -164,6 +164,50 @@ defmodule DawarichWeb.PlacesLiveFormTest do
     assert :sys.get_state(view.pid).socket.assigns.place_data.id != nil
   end
 
+  test "uncertain create acknowledgement consumes generation and recovers through the list",
+       ctx do
+    previous = Application.get_env(:dawarich, :native_places_write_opts)
+
+    Application.put_env(:dawarich, :native_places_write_opts,
+      repo: Dawarich.Test.PlacesCommitAckFailureRepo
+    )
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, :native_places_write_opts, previous),
+        else: Application.delete_env(:dawarich, :native_places_write_opts)
+    end)
+
+    {:ok, view, _} = live(N.conn(ctx.actor), "/places")
+    render_click(view, "open_create", %{})
+    gen = N.generation(view, :form_state)
+    params = %{"generation" => gen, "place" => @attrs}
+    render_submit(view, "save_place", params)
+    assert :sys.get_state(view.pid).socket.assigns.form_state.status == :uncertain
+
+    assert Repo.query!("SELECT count(*) FROM places WHERE user_id=$1", [ctx.actor.id]).rows == [
+             [1]
+           ]
+
+    assert has_element?(view, "form[data-form-status=uncertain] button[type=submit][disabled]")
+    assert has_element?(view, "[data-uncertain-save][role=alert]")
+    assert has_element?(view, "[phx-click=check_places]")
+    render_submit(view, "save_place", params)
+
+    assert Repo.query!("SELECT count(*) FROM places WHERE user_id=$1", [ctx.actor.id]).rows == [
+             [1]
+           ]
+
+    render_click(view, "check_places", %{})
+    assert :sys.get_state(view.pid).socket.assigns.form_state == nil
+    assert has_element?(view, "#places table", "Outside map")
+    render_submit(view, "save_place", params)
+
+    assert Repo.query!("SELECT count(*) FROM places WHERE user_id=$1", [ctx.actor.id]).rows == [
+             [1]
+           ]
+  end
+
   test "reconnected draft reloads owned identity and validates without replaying submit", ctx do
     S.place!(ctx.actor.id, 118_501, "Owned")
     S.place!(ctx.other.id, 118_502, "Foreign")
