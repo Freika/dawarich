@@ -57,23 +57,15 @@ defmodule DawarichWeb.Locale do
     end
   end
 
-  defp persist(
-         %{
-           private: %{dawarich_native_places: true},
-           assigns: %{current_user: %{settings: settings}}
-         } = conn,
-         _locale
-       )
-       when not is_map(settings) and not is_nil(settings), do: conn
-
   defp persist(%{assigns: %{current_user: %{id: id} = user}} = conn, locale) do
-    if preferred(user) == locale,
-      do: conn,
-      else:
-        assign(conn, :current_user, %{
-          user
-          | settings: Dawarich.Accounts.persist_locale(id, locale)
-        })
+    if preferred(user) == locale do
+      conn
+    else
+      case Dawarich.Accounts.persist_locale(id, locale) do
+        {:ok, settings} -> assign(conn, :current_user, %{user | settings: settings})
+        {:error, :unsupported} -> conn
+      end
+    end
   end
 
   defp persist(conn, _locale), do: conn
