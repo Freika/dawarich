@@ -120,4 +120,56 @@ defmodule DawarichWeb.NotificationSubscriptionTest do
     Dawarich.Notifications.Events.broadcast(c.user.id)
     assert_redirect(view, "/notifications", 1_000)
   end
+
+  test "native family subscriptions refuse a revoked principal through the scoped contract", c do
+    {:ok, view, _} = live(c.conn, "/notifications")
+    socket = :sys.get_state(view.pid).socket
+
+    Repo.query!(
+      "UPDATE users SET encrypted_password='family-subscription-revoked' WHERE id=$1",
+      [c.user.id], log: false)
+
+    assert {:error, :stale_session} =
+             DawarichWeb.NotificationSession.Native.subscribe_family(socket)
+  end
+
+  test "family invalidations refresh job navbars while notification delivery remains independent",
+       c do
+    scope = Dawarich.Accounts.Scope.for_user(c.user, "en")
+
+    assert {:ok, _} =
+             Dawarich.Families.create(scope, %{"name" => "Native seams"}, self_hosted: true)
+
+    views =
+      for path <- ["/imports", "/exports", "/notifications", "/family"],
+          do: elem(live(c.conn, path), 1)
+
+    for view <- views, do: refute(:sys.get_state(view.pid).socket.assigns.navbar.family.sharing)
+
+    assert {:ok, _} =
+             Dawarich.Families.set_sharing(scope, %{"enabled" => "1", "duration" => "permanent"},
+               self_hosted: true
+             )
+
+    Dawarich.Families.Events.broadcast(c.user.id, :consent)
+
+    for view <- views do
+      render(view)
+      assert :sys.get_state(view.pid).socket.assigns.navbar.family.sharing
+    end
+
+    counts =
+      Map.new(views, fn view ->
+        {view.pid, :sys.get_state(view.pid).socket.assigns.navbar.unread.count}
+      end)
+
+    Dawarich.Notifications.create!(Repo, c.user.id, :info, "independent seam notice", "safe body")
+    Dawarich.Notifications.Events.broadcast(c.user.id)
+
+    for view <- views do
+      render(view)
+      assert :sys.get_state(view.pid).socket.assigns.navbar.unread.count == counts[view.pid] + 1
+      assert has_element?(view, "#notifications-badge")
+    end
+  end
 end

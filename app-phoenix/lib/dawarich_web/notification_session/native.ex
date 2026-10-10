@@ -40,7 +40,7 @@ defmodule DawarichWeb.NotificationSession.Native do
   end
 
   def subscribe_family(socket),
-    do: Phoenix.PubSub.subscribe(Dawarich.PubSub, "family:user:#{scope(socket).user.id}")
+    do: Dawarich.Families.subscribe_changes(scope(socket))
 
   def family_info({:domain_changed, owner, _}, socket)
       when owner == socket.assigns.current_user.id do

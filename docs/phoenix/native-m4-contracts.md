@@ -184,3 +184,8 @@ Expanded caller verification retargets historical I02/I03/I04 HTTP write asserti
 ## Integrated derivative purge retries (2026-10-10)
 
 A shared purge job records the complete eligible variant/preview graph before native parent fencing or reservation cleanup removes graph links. Every retry seeds collection with both original roots and the captured blob identities, then rechecks outside references and the exact captured key/service. A disconnected surviving derivative remains authorized cleanup work; a newly shared child is protected and its tombstone cleared. Missing rows retain their captured object deletion identity. The native parent keeps its separate late-PUT reservation debt. This restores Rails dependent-attachment cleanup behavior rather than fixing a Rails defect. Named deterministic variant and preview cases cover cleanup-first ordering, parent DELETE failure, child DELETE failure and newly shared children in native_derivative_purge_test.
+
+
+### Integrated native subscriptions
+
+Native job and family hosts subscribe through `Families.subscribe_changes/1` with the sanitized session scope. A revoked principal cannot install a new family subscription. Consent invalidations rebuild the family navbar from a freshly admitted actor; notification delivery independently refreshes unread counts. Safe family refusals erase the page, locations, history, confirmation and scope before navigating to `/family/new`. Regressions: `notification_subscription_test.exs` (scoped revoked subscription and cross-host consent/unread) and `native_m4_sessions_test.exs` (safe family refusal).

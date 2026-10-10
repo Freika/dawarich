@@ -126,4 +126,25 @@ defmodule DawarichWeb.NativeM4SessionsTest do
     assert log =~ "m4 payload"
     assert Enum.all?(Map.values(values), &(not String.contains?(log, &1)))
   end
+
+  test "family refusal clears its snapshot and redirects to its own safe destination" do
+    scope = Dawarich.Accounts.Scope.for_user(Accounts.get(10841), "en")
+
+    assert {:ok, _} =
+             Dawarich.Families.create(scope, %{"name" => "Refusal seam"}, self_hosted: true)
+
+    {:ok, view, _} = live_as("/family")
+    socket = :sys.get_state(view.pid).socket
+    assert socket.assigns.page.family.name == "Refusal seam"
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=10841", [], log: false)
+    assert {:halt, cleared} = DawarichWeb.NativeFamilyAuth.authorize(socket)
+    assert cleared.redirected == {:redirect, %{to: "/family/new", status: 302}}
+    assert cleared.assigns.page == nil
+    assert cleared.assigns.locations == []
+    assert cleared.assigns.history == nil
+    assert cleared.assigns.confirmation == nil
+    assert cleared.assigns.current_scope == nil
+    send(view.pid, {:domain_changed, 10841, :membership})
+    assert_redirect(view, "/family/new")
+  end
 end
