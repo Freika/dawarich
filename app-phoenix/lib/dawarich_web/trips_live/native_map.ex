@@ -133,7 +133,6 @@ defmodule DawarichWeb.TripsLive.NativeMap do
             expanded_days={@expanded_days}
             plan_enabled={@page.config["planEnabled"]}
           />
-          <p>{@page.range_label}</p>
         </div>
       </div>
       <DawarichWeb.NativePosterStudio.poster_studio

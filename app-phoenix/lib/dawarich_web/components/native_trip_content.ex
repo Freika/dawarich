@@ -17,10 +17,16 @@ defmodule DawarichWeb.NativeTripContent do
     ~H"""
     <section id="native-trip-summary" class="min-w-0 max-w-full">
       <h1 class="text-3xl font-bold [overflow-wrap:anywhere]">{@page.name}</h1>
-      <DawarichWeb.TripParts.countries page={@page} locale={@locale} />
-      <p :if={@page.description} class="prose max-w-full [overflow-wrap:anywhere]">
-        {Phoenix.HTML.raw(Dawarich.TripDescription.html(@page.description))}
+      <p class="text-base-content/60 text-sm">
+        {DawarichWeb.MapParts.human_date(@locale, NaiveDateTime.to_date(@page.started_at.local))} – {DawarichWeb.MapParts.human_date(
+          @locale,
+          NaiveDateTime.to_date(@page.ended_at.local)
+        )}
       </p>
+      <DawarichWeb.TripParts.countries page={@page} locale={@locale} />
+      <div :if={@page.description} class="prose max-w-full [overflow-wrap:anywhere]">
+        {Phoenix.HTML.raw(Dawarich.TripDescription.html(@page.description))}
+      </div>
       <DawarichWeb.NativeTripItinerary.itinerary
         :if={DawarichWeb.TripPlanItems.visible?(@page.plan)}
         plan={@page.plan}

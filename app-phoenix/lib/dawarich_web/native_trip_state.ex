@@ -52,14 +52,26 @@ defmodule DawarichWeb.NativeTripState do
 
         config = Map.merge(page.config, choices)
         page = %{page | config: config}
-        label = config["range"]["startAt"] <> " – " <> config["range"]["endAt"]
+
+        label =
+          Enum.map_join(
+            [page.presentation.started_at, page.presentation.ended_at],
+            " – ",
+            fn at ->
+              DawarichWeb.MapParts.human_date(
+                socket.assigns.locale,
+                NaiveDateTime.to_date(at.local)
+              )
+            end
+          )
 
         previous = socket.assigns.page
 
         socket =
           assign(socket,
             page: Map.put(page, :range_label, label),
-            page_title: config["title"],
+            page_title:
+              config["title"] |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string(),
             trip_layers: choices
           )
 

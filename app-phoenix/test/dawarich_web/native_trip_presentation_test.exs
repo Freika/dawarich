@@ -45,7 +45,7 @@ defmodule DawarichWeb.NativeTripPresentationTest do
     assert has_element?(view, "#native-trip-day-2026-06-03")
     refute String.contains?(html, "synthetic-trip-presentation-key")
     refute has_element?(view, "[data-controller], turbo-frame, turbo-cable-stream-source")
-    assert :sys.get_state(view.pid).socket.assigns.page_title == "Trip <outside>"
+    assert :sys.get_state(view.pid).socket.assigns.page_title == "Trip &lt;outside&gt;"
     Repo.query!("UPDATE notes SET body=$1 WHERE id=$2", ["Later coffee", id * 100], log: false)
     Repo.query!("UPDATE trips SET name=$1 WHERE id=$2", ["Trip updated", id * 10], log: false)
     render_patch(view, "/trips/#{id * 10}?refresh=1")
