@@ -216,3 +216,24 @@ test("abort after storage completes but before save still discards", async () =>
     ["video:upload_target", "video:discard"],
   )
 })
+
+test("abort during reservation discards the late target without starting a PUT", async () => {
+  let release
+  const pending = new Promise((resolve) => { release = resolve })
+  const remote = server({ "video:upload_target": pending })
+  const { FakeXhr, created } = fakeXhr()
+  const controller = new AbortController()
+  const uploading = uploadRenderedVideo({
+    blob, request: remote.request, signal: controller.signal,
+    XMLHttpRequest: FakeXhr, checksum: async () => "checksum",
+  })
+  const rejected = assert.rejects(uploading, { name: "AbortError" })
+  await tick()
+  controller.abort()
+  release({ ok: true, url: "/put", signed_id: "late-ref" })
+  await tick()
+  assert.equal(created.length, 0)
+  await rejected
+  assert.deepEqual(remote.calls.map(([event]) => event), ["video:upload_target", "video:discard"])
+  assert.deepEqual(remote.calls[1][1], { signed_id: "late-ref" })
+})

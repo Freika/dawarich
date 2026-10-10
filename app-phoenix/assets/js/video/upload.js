@@ -9,6 +9,7 @@ function refused(reply, code) {
 }
 
 function put(target, file, { XMLHttpRequest: Xhr, signal, onProgress }) {
+  if (signal?.aborted) return Promise.reject(aborted())
   return new Promise((resolve, reject) => {
     const xhr = new Xhr()
     const listeners = []
@@ -65,6 +66,7 @@ export async function uploadRenderedVideo({
   if (!target?.ok) throw refused(target, "upload_refused")
 
   try {
+    if (signal?.aborted) throw aborted()
     await put(target, file, { XMLHttpRequest, signal, onProgress })
     if (signal?.aborted) throw aborted()
   } catch (error) {
