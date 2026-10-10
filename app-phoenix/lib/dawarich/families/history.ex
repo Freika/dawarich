@@ -29,7 +29,13 @@ defmodule Dawarich.Families.History do
 
   def points_sql, do: @points
 
-  def read(user, params, now) do
+  def read(user, params, now, opts \\ []) do
+    Dawarich.Families.Snapshot.read(user, Keyword.put(opts, :now, now), fn ->
+      load(user, params, now)
+    end)
+  end
+
+  defp load(user, params, now) do
     case Locations.membership(user.id) do
       [_settings, nil] ->
         {:ok, 404, Locations.not_in_family()}

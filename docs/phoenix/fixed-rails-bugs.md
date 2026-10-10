@@ -1409,3 +1409,12 @@ Rails checks family access before invoking the response service, then waits for 
 - Phoenix: `app-phoenix/lib/dawarich/families/native_command_dispatch.ex:91`; shared admission in `families/native_commands.ex:119`.
 - Test: `families_commands_test.exs`, “Cloud access expiring at the locked request decision refuses consent without effects”; a controlled clock crosses access expiry while request expiry stays future. Skipping final admission fails the exact refusal; restored GREEN.
 - Ledger: ED-NATIVE-M4-FAMILY-REQUEST-ACCESS; no DRB added. Rails production code is unchanged.
+
+### FRB-NATIVE-M4-FAMILY-PUBLICATION — Family reads can publish data after in-flight revocation
+
+Rails family pages and location/history API reads capture membership/access and sharing consent before loading private rows. Removal, consent withdrawal or a crossed deadline during those later reads can still publish member email, last seen or coordinates. Phoenix routes native pages, invitation reveal and retained page/API readers through one transactional before/after publication epoch and fresh consent/access clock. Changed grants discard the document; late location refusal erases the private page as well as the map.
+
+- Rails: `app/controllers/families_controller.rb:12-23`; `app/services/families/locations.rb:14-21,43-60` (source-backed observation; no Rails runtime oracle claimed).
+- Phoenix: `app-phoenix/lib/dawarich/families/snapshot.ex:6`; `app-phoenix/lib/dawarich_web/family_delivery.ex:75`.
+- Tests: `families_snapshot_race_test.exs`, sixty-five `'<reader> rejects private publication after in-flight <change> revocation'` cases; one shared bypass mutation fails every reader. `family_native_delivery_test.exs`, 'late location refusal erases the private page confirmation and history before rendering'.
+- Ledger: ED-NATIVE-M4-FAMILY-PUBLICATION; no DRB. This extends the earlier subscription-time FRB-NATIVE-M4-FAMILY-DELIVERY to page/API publication. Rails production source is unchanged.

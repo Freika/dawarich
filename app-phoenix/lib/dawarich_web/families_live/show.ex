@@ -22,7 +22,7 @@ defmodule DawarichWeb.FamiliesLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <section id="family-shell" class="w-full my-5 min-w-0 [overflow-wrap:anywhere]">
+    <section :if={@page} id="family-shell" class="w-full my-5 min-w-0 [overflow-wrap:anywhere]">
       <FamilyNativeControls.errors errors={@errors} />
       <header class="flex flex-wrap gap-3 justify-between items-center mb-4">
         <h1 class="text-3xl font-bold min-w-0">{@page.family.name}</h1>

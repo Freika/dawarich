@@ -41,6 +41,30 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
     )
   end
 
+  test "late location refusal erases the private page confirmation and history before rendering",
+       c do
+    view = open(c.owner)
+    socket = :sys.get_state(view.pid).socket
+    assert socket.assigns.page.members != []
+
+    socket =
+      Phoenix.Component.assign(socket, confirmation: %{id: 90102}, history: %{members: [90102]})
+
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [c.owner.id], log: false)
+    cleared = DawarichWeb.FamilyDelivery.reload(socket)
+    assert cleared.assigns.page == nil
+    assert cleared.assigns.locations == []
+    assert cleared.assigns.history == nil
+    assert cleared.assigns.confirmation == nil
+
+    html =
+      DawarichWeb.FamiliesLive.Show.render(cleared.assigns)
+      |> Phoenix.HTML.Safe.to_iodata()
+      |> IO.iodata_to_binary()
+
+    refute html =~ c.member.email
+  end
+
   test "withdrawn consent or removed membership discards queued coordinates before rendering",
        c do
     view = open(c.owner)

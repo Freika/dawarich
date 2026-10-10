@@ -74,7 +74,10 @@ defmodule DawarichWeb.FamilyDelivery do
 
   def clear(socket) do
     cancel(socket.assigns[:family_expiry])
-    socket |> assign(locations: [], family_expiry: nil) |> push_event("family-clear", %{})
+
+    socket
+    |> assign(page: nil, locations: [], history: nil, confirmation: nil, family_expiry: nil)
+    |> push_event("family-clear", %{})
   end
 
   defp cancel(%{timer: timer}), do: Process.cancel_timer(timer)

@@ -4,7 +4,11 @@ defmodule Dawarich.Families.Mine do
   alias Dawarich.{RailsTime, Repo}
   alias Dawarich.Families.{Clock, Locations, Sharing}
 
-  def read(user, now) do
+  def read(user, now, opts \\ []) do
+    Dawarich.Families.Snapshot.read(user, Keyword.put(opts, :now, now), fn -> load(user, now) end)
+  end
+
+  defp load(user, now) do
     case Locations.membership(user.id) do
       [_settings, nil] ->
         {:ok, 404, Locations.not_in_family()}

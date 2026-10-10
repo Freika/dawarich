@@ -53,3 +53,28 @@ targeted ExUnit and Node evidence is not a browser acceptance claim.
 Location/history reads fingerprint current family membership, all member consent settings, member subscription facts and owner access before loading points. Before returning coordinates they reload the original actor's admission and compare the fingerprint with the current consent clock. Any removal, changed consent/history settings, access loss or crossed expiry discards the snapshot. Reader/clock seams allow deterministic sandbox regressions after real SQL completes and before publication.
 
 Invitation browser landings return a local typed invalid-input refusal (HTTP 422) for unsupported settings. Their route metadata has no per-feature Rails gate and their response adapter has no upstream fallback. Genuine HTTP token/status/CSRF acceptance and whole-application routing contracts remain independently tested.
+
+## Family private-data readers (review round 4)
+
+All private family readers use `Families.Snapshot.read/3`, including retained HTTP/API readers. The same transaction contains the before/after publication epochs and the private read. Epochs cover the fresh actor, viewer/member identities and roles, settings/consent, owner/member subscriptions, family access, invitation/request identity and status, and effective consent/access/expiry at the publication clock. Changes discard the result. Intentional initially lapsed/invitation/create/upgrade branches remain; no cached membership authorizes a later private publication.
+
+| Reader / private output | Shared publication path | Deterministic successor |
+| --- | --- | --- |
+| Native page `:show` (email, sharing settings, last seen) | `NativeReads.page` → `FamilyPage.read` → `Families.Snapshot.read` | `page rejects private publication after in-flight <change> revocation` |
+| Native edit (family/member facts) | Same guarded page reader | `edit rejects private publication after in-flight <change> revocation` |
+| Native invitations (invitee/inviter metadata) | Same guarded page reader | `invitations rejects private publication after in-flight <change> revocation` |
+| Native request (requester email, target/status) | Same guarded page reader | `request rejects private publication after in-flight <change> revocation` |
+| Scoped invitation reveal (bearer token) | `Families.reveal_invitation` → guarded `FamilyPage.read` before token selection | `reveal rejects private publication after in-flight <change> revocation` |
+| Retained page adapters: `FamilyGate`, `FamilyActions`, `FamilySharingActions`; upgrade/scoped native auth | Guarded `FamilyPage.read` (native callers through `NativeReads.page`) | `raw_page rejects private publication after in-flight <change> revocation` |
+| Native location snapshot | `NativeReads.locations` → shared guard around consent-filtered `Locations.read` and carried deadline | Existing five `locations discards coordinates when <change> changes during the point read` |
+| Native history snapshot | `NativeReads.history` → shared guard around `History.read` | Existing five `history discards coordinates when <change> changes during the point read` |
+| Browser JSON locations and independent API locations | `FamilyLocations` / `Api.FamilyController` → guarded `Locations.read` | `raw_locations rejects private publication after in-flight <change> revocation` |
+| Independent API history | `Api.FamilyController` → guarded `History.read` | `raw_history rejects private publication after in-flight <change> revocation` |
+| API family/member/request projection | Guarded `Mine.read` | `mine rejects private publication after in-flight <change> revocation` |
+| Standalone API `:mine` (including lapsed), `:locations`, closure-specific `:history` | `FamilyApi.Closure.run` → shared guard around entitlement/target dispatch and private reads | `closure`, `closure_lapsed`, `closure_locations`, `closure_history rejects private publication after in-flight <change> revocation`; each branch is mutated independently through the same shared bypass |
+
+`<change>` is consent withdrawal, viewer removal, consent expiry, access loss, or changed actor identity. The single shared epoch-bypass mutation fails all sixty-five new reader cases and the ten location/history race cases. Sandbox barriers apply the supplied revocation on the reader's checked-out transaction after the real private SQL completes; these are deterministic publication probes, not a claimed two-connection concurrency run. The clock advances explicitly for expiry.
+
+Late location refusal clears page, locations, history and confirmation before rendering; the show template tolerates the cleared page. Source-backed Rails gap: family/API controllers admit before loading private member rows/points and do not re-admit after those reads (`app/controllers/families_controller.rb:12-23`, `app/services/families/locations.rb:14-21,43-60`). FRB/ED-NATIVE-M4-FAMILY-PUBLICATION records the extension beyond subscription-time safety.
+
+The C1 query numbers above are historical. A safe timezone catalog lookup precedes the transaction so an unknown-zone refusal cannot roll back caller data. Each new publication epoch adds five metadata queries (family/actor/member/invitation/request facts), before and after the private read; layered native location/history and standalone API guards can repeat those epochs. No new mount budget or browser measurement is claimed. German 390-pixel acceptance remains controller-owned.

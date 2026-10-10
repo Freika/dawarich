@@ -14,7 +14,8 @@ defmodule Dawarich.Families do
 
   def reveal_invitation(scope, id, opts \\ []) when is_integer(id) and id > 0 do
     with {:ok, user, ctx} <- Dawarich.Families.NativeReads.actor(scope, opts),
-         {:ok, page} <- Dawarich.FamilyPage.read(user, :invitations, Map.to_list(ctx)),
+         {:ok, page} <-
+           Dawarich.FamilyPage.read(user, :invitations, Keyword.merge(opts, Map.to_list(ctx))),
          %{token: token} <- Enum.find(page.invitations, &(&1.id == id)) do
       {:ok, token}
     else

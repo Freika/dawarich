@@ -3,7 +3,7 @@ defmodule Dawarich.Families.NativeReads do
 
   alias Dawarich.{Accounts, FamilyPage, FamilyPageAccess, UserSettings}
   alias Dawarich.Accounts.Scope
-  alias Dawarich.Families.{History, Locations, NativeDeadline, WebCreate}
+  alias Dawarich.Families.{History, Locations, NativeDeadline, Snapshot, WebCreate}
 
   def actor(%Scope{user: %{id: id} = original}, opts) do
     repo = Keyword.get(opts, :repo, Dawarich.Repo)
@@ -32,88 +32,58 @@ defmodule Dawarich.Families.NativeReads do
   def page(scope, action, opts) do
     with :ok <- action(action),
          {:ok, user, ctx} <- actor(scope, opts) do
-      user
-      |> FamilyPage.read(action, Map.to_list(ctx))
-      |> result()
+      user |> FamilyPage.read(action, Keyword.merge(opts, Map.to_list(ctx))) |> result()
     end
   rescue
     ArgumentError -> {:error, :invalid_input}
   end
 
   def locations(scope, opts) do
-    with {:ok, user, ctx} <- admitted(scope, opts),
-         version <- snapshot_version(user.id, ctx.now),
-         {:ok, 200, {:object, fields}} <-
-           Keyword.get(opts, :location_reader, &Locations.read/2).(project(user), ctx.now),
-         deadline <- NativeDeadline.due(ctx.family, user, ctx),
-         :ok <- validate_snapshot(scope, version, opts) do
-      fields = object({:object, fields})
+    with {:ok, user, ctx} <- admitted(scope, opts) do
+      Snapshot.read(user, Keyword.merge(opts, Map.to_list(ctx)), fn ->
+        with {:ok, 200, {:object, fields}} <-
+               Keyword.get(opts, :location_reader, &Locations.read/2).(project(user), ctx.now),
+             deadline <- NativeDeadline.due(ctx.family, user, ctx) do
+          fields = object({:object, fields})
 
-      {:ok,
-       %{
-         locations: Enum.sort_by(fields["locations"], & &1["email"]),
-         sharing_enabled: fields["sharing_enabled"],
-         updated_at: fields["updated_at"],
-         deadline: deadline
-       }}
-    else
-      {:error, _} = error -> error
-      _ -> {:error, :unavailable}
+          {:ok,
+           %{
+             locations: Enum.sort_by(fields["locations"], & &1["email"]),
+             sharing_enabled: fields["sharing_enabled"],
+             updated_at: fields["updated_at"],
+             deadline: deadline
+           }}
+        else
+          {:error, _} = error -> error
+          _ -> {:error, :unavailable}
+        end
+      end)
     end
   rescue
     ArgumentError -> {:error, :invalid_input}
   end
 
   def history(scope, params, opts) when is_map(params) do
-    with {:ok, user, ctx} <- admitted(scope, opts),
-         version <- snapshot_version(user.id, ctx.now),
-         {:ok, 200, fields} <-
-           Keyword.get(opts, :history_reader, &History.read/3).(project(user), params, ctx.now),
-         :ok <- validate_snapshot(scope, version, opts) do
-      {:ok, object(fields)}
-    else
-      {:error, _} = error -> error
-      _ -> {:error, :invalid_input}
+    with {:ok, user, ctx} <- admitted(scope, opts) do
+      Snapshot.read(user, Keyword.merge(opts, Map.to_list(ctx)), fn ->
+        with {:ok, 200, fields} <-
+               Keyword.get(opts, :history_reader, &History.read/3).(
+                 project(user),
+                 params,
+                 ctx.now
+               ) do
+          {:ok, object(fields)}
+        else
+          {:error, _} = error -> error
+          _ -> {:error, :invalid_input}
+        end
+      end)
     end
   rescue
     ArgumentError -> {:error, :invalid_input}
   end
 
   def history(_, _, _), do: {:error, :invalid_input}
-
-  defp validate_snapshot(scope, version, opts) do
-    with {:ok, user, ctx} <- admitted(scope, opts),
-         true <- version == snapshot_version(user.id, ctx.now) do
-      :ok
-    else
-      _ -> {:error, :grant_changed}
-    end
-  end
-
-  defp snapshot_version(id, now) do
-    [_settings, family] = Locations.membership(id)
-
-    rows =
-      Dawarich.Repo.query!(
-        "SELECT m.id,m.user_id,m.role,u.settings,u.deleted_at,f.id,f.access_until,o.plan,o.active_until,o.deleted_at,u.plan,u.active_until " <>
-          "FROM family_memberships m JOIN users u ON u.id=m.user_id JOIN families f ON f.id=m.family_id " <>
-          "JOIN users o ON o.id=f.creator_id WHERE m.family_id=$1 ORDER BY m.id",
-        [family],
-        log: false
-      ).rows
-
-    sharing =
-      for [_, member, _, settings, nil | _] <- rows,
-          member != id,
-          Dawarich.Families.Sharing.enabled?(settings, now),
-          do: member
-
-    %{
-      digest: :crypto.hash(:sha256, :erlang.term_to_binary(rows)),
-      sharing: sharing,
-      family: family
-    }
-  end
 
   def admitted(scope, opts) do
     with {:ok, user, ctx} <- actor(scope, opts),
@@ -135,6 +105,7 @@ defmodule Dawarich.Families.NativeReads do
   defp result({:redirect, _, :feature_unavailable}), do: {:error, :expired}
   defp result({:redirect, _, _}), do: {:error, :unauthorized}
   defp result({:error, 404}), do: {:error, :not_found}
+  defp result({:error, _} = error), do: error
   defp result(:rails), do: {:error, :invalid_input}
 
   defp action(action) when action in [:show, :new, :edit, :invitations], do: :ok
