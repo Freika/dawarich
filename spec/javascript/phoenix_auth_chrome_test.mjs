@@ -200,7 +200,13 @@ test("HTTP onboarding forwards each existing analytics event once and stops afte
       : selector === "form[data-auth-track-event]"
         ? [demo]
         : query(selector)
-  f.doc.getElementById = () => ({ classList: { toggle() {} } })
+  const qr = new Element()
+  let reveals = 0
+  qr.addEventListener("dawarich:http-reveal-qr", () => {
+    reveals += 1
+  })
+  f.doc.getElementById = (id) =>
+    id === "onboarding-api-qr" ? qr : { classList: { toggle() {} } }
   const observed = []
   f.win.sa_event = (event) => observed.push(event)
   const dispose = initializeAuthChrome(f.doc, f.win)
@@ -218,4 +224,5 @@ test("HTTP onboarding forwards each existing analytics event once and stops afte
     new CustomEvent("dawarich:track", { detail: { event: "after_disposal" } }),
   )
   assert.equal(observed.length, 3)
+  assert.equal(reveals, 1)
 })

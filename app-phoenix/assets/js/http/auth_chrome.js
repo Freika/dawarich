@@ -1,8 +1,11 @@
 import { initializeAnalyticsEvents } from "../analytics_events.js"
+import { initializeHttpCredentialQr } from "./credential_qr.js"
 
 export function initializeAuthChrome(doc = document, win = window) {
   const listeners = [initializeAnalyticsEvents(win)]
   const timers = []
+  for (const qr of doc.querySelectorAll("[data-auth-credential-qr]"))
+    listeners.push(initializeHttpCredentialQr(qr))
   const listen = (element, event, callback) => {
     element.addEventListener(event, callback)
     listeners.push(() => element.removeEventListener(event, callback))
@@ -56,6 +59,10 @@ export function initializeAuthChrome(doc = document, win = window) {
             "hidden",
             id !== button.dataset.authOnboardingScreen,
           )
+      if (button.dataset.authOnboardingScreen === "onboarding-track-screen")
+        doc
+          .getElementById("onboarding-api-qr")
+          ?.dispatchEvent(new Event("dawarich:http-reveal-qr"))
       if (button.dataset.authTrackEvent)
         win.dispatchEvent(
           new CustomEvent("dawarich:track", {

@@ -124,8 +124,9 @@ defmodule DawarichWeb.OnboardingScreens do
                 :if={@native}
                 id="onboarding-api-qr"
                 class="bg-white p-3 rounded-lg shadow-inner"
-                phx-hook="CredentialQr"
-                phx-update="ignore"
+                phx-hook={!@http && "CredentialQr"}
+                phx-update={!@http && "ignore"}
+                data-auth-credential-qr={@http}
               >
               </div>
               <div :if={not @native} class="bg-white p-3 rounded-lg shadow-inner">
