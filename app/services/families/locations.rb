@@ -48,6 +48,7 @@ class Families::Locations
       sharing_members.map { _1.points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first }.compact
 
     latest_points.map do |point|
+      queue_address_lookup(point)
       {
         user_id: point.user_id,
         email: point.user.email,
@@ -58,9 +59,21 @@ class Families::Locations
         timestamp: point.timestamp,
         updated_at: Time.zone.at(point.timestamp),
         battery: point.battery,
-        battery_status: point.battery_status
+        battery_status: point.battery_status,
+        address: Families::LocationAddress.call(point)
       }
     end
+  end
+
+  def queue_address_lookup(point)
+    return unless DawarichSettings.store_geodata?
+    return if point.reverse_geocoded? || point.geodata.present?
+
+    # Uses the member's provider configuration and the existing Redis claim.
+    point.async_reverse_geocode
+  rescue StandardError => e
+    # A worker/Redis outage must not prevent family members seeing locations.
+    Rails.logger.warn("Family address lookup could not be queued for point #{point.id}: #{e.class}")
   end
 
   def build_family_history(sharing_members, start_at:, end_at:)
