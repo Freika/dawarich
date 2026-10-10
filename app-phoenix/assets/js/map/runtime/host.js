@@ -265,6 +265,15 @@ export function mountHost({
       [`${layer}Enabled`]: enabled === true,
     })
   }
+  const reconnect = owner.reconnect
+  owner.reconnect = async () => {
+    const state = await reconnect.call(owner)
+    if (state === "ready") {
+      layers?.points.refresh()
+      layers?.tracks.refresh()
+    }
+    return state
+  }
   const update = owner.update
   owner.update = (config) => {
     if (config.revision !== owner.config.revision) {
