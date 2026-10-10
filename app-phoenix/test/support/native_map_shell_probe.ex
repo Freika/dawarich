@@ -17,6 +17,9 @@ defmodule Dawarich.Test.NativeMapShellProbe do
     {:noreply, socket |> assign(:page, page) |> Commands.apply_params(params, page.window)}
   end
 
+  def handle_event("area:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.AreaCommands.handle_event(event, payload, socket)
+
   def handle_event(event, payload, socket), do: Commands.handle_event(event, payload, socket)
 
   def render(assigns) do
@@ -27,6 +30,7 @@ defmodule Dawarich.Test.NativeMapShellProbe do
       window={@page.window}
       locale="en"
     />
+    <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale="en" />
     """
   end
 end
