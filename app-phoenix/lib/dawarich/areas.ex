@@ -22,6 +22,11 @@ defmodule Dawarich.Areas do
   RETURNING started_at
   """
 
+  defdelegate get_area(scope, id), to: Dawarich.Areas.Commands, as: :get
+  defdelegate create_area(scope, attrs, opts \\ []), to: Dawarich.Areas.Commands, as: :create
+  defdelegate update_area(scope, id, attrs, opts \\ []), to: Dawarich.Areas.Commands, as: :update
+  defdelegate delete_area(scope, id, opts \\ []), to: Dawarich.Areas.Commands, as: :delete
+
   def relabel(repo, area_id, opts \\ []) do
     case area(repo, area_id) do
       nil ->
