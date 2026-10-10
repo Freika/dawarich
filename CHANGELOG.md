@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Partnero signup failure diagnostics and Immich enrichment errors exclude provider-supplied credentials and customer details.
+
+### Fixed
+
 - Prometheus metrics from web and Sidekiq no longer produce duplicate series when label order differs (#3769).
 - KMZ imports no longer repeatedly re-import their own archive and fill the import queue and storage (#3766).
 
