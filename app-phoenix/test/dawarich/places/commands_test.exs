@@ -117,6 +117,75 @@ defmodule Dawarich.Places.CommandsTest do
     assert row(118_303) != []
   end
 
+  test "foreign Place suggestions fence update and delete with an unchanged graph", ctx do
+    S.visit!(ctx.other.id, 118_321, %{
+      started_at: ~N[2026-01-01 08:00:00],
+      ended_at: ~N[2026-01-01 08:30:00]
+    })
+
+    S.suggest!(118_331, 118_321, 118_301)
+    assert_foreign_graph_fenced(ctx)
+  end
+
+  test "foreign Place taggings fence update and delete with an unchanged graph", ctx do
+    S.tag!(ctx.other.id, 118_314, "Foreign attached", 118_301, ~N[2026-01-01 00:00:00])
+    assert_foreign_graph_fenced(ctx)
+  end
+
+  test "foreign Place notes fence update and delete with an unchanged graph", ctx do
+    Repo.insert_all("notes", [
+      %{
+        id: 118_341,
+        user_id: ctx.other.id,
+        attachable_type: "Place",
+        attachable_id: 118_301,
+        title: "Foreign note",
+        body: "Retain foreign body",
+        noted_at: ~N[2026-01-01 00:00:00],
+        created_at: ~N[2026-01-01 00:00:00],
+        updated_at: ~N[2026-01-01 00:00:00]
+      }
+    ])
+
+    assert_foreign_graph_fenced(ctx)
+  end
+
+  defp assert_foreign_graph_fenced(ctx) do
+    before = dependent_graph()
+
+    assert Places.update(ctx.scope, 118_301, %{
+             "name" => "Forbidden",
+             "note" => "Forbidden",
+             "tag_ids" => []
+           }) ==
+             {:error, :foreign_dependents}
+
+    assert dependent_graph() == before
+    assert Places.delete(ctx.scope, 118_301) == {:error, :foreign_dependents}
+    assert dependent_graph() == before
+  end
+
+  defp dependent_graph do
+    Map.new(
+      [
+        {"places", "id,user_id,name,note,latitude,longitude,source,demo,updated_at"},
+        {"visits", "id,user_id,place_id,name,status,updated_at"},
+        {"place_visits", "id,visit_id,place_id,created_at,updated_at"},
+        {"tags", "id,user_id,name,updated_at"},
+        {"taggings", "id,tag_id,taggable_id,taggable_type,created_at,updated_at"},
+        {"notes", "id,user_id,attachable_id,attachable_type,title,body,noted_at,updated_at"}
+      ],
+      fn {table, fields} ->
+        {table,
+         Repo.query!(
+           "SELECT #{fields} FROM #{table} WHERE id BETWEEN 118300 AND 118399 ORDER BY id",
+           [],
+           log: false
+         ).rows}
+      end
+    )
+  end
+
   test "native Place commands refuse stale actors and foreign dependents before effects", ctx do
     S.visit!(ctx.other.id, 118_321, %{
       place_id: 118_301,

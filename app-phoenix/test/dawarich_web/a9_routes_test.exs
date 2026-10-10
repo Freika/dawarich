@@ -74,7 +74,7 @@ defmodule DawarichWeb.A9RoutesTest do
     {"/digests/:year", DawarichWeb.DigestsLive.Show, :show, nil},
     {"/trips", DawarichWeb.TripsLive.Index, :index, {DawarichWeb.TripsGate, :index?}},
     {"/trips/:id", DawarichWeb.TripsLive.Show, :show, {DawarichWeb.TripsGate, :show?}},
-    {"/places", DawarichWeb.PlacesLive.Index, :index, {DawarichWeb.PlacesGate, :index?}},
+    {"/places", DawarichWeb.PlacesLive.Index, :index, nil},
     {"/insights", DawarichWeb.InsightsLive.Index, :index, nil},
     {"/family", DawarichWeb.FamiliesLive.Show, :show, {DawarichWeb.FamilyGate, :show?}},
     {"/family/new", DawarichWeb.FamiliesLive.Form, :new, {DawarichWeb.FamilyGate, :new?}},
@@ -111,7 +111,16 @@ defmodule DawarichWeb.A9RoutesTest do
       assert {^view, ^action, opts, session} = info.phoenix_live_view
       assert opts == [action: action, router: Router, container: {:div, class: "contents"}]
       family = String.starts_with?(path, "/family")
-      assert session.name == if(family, do: :family_pages, else: :rails_pages)
+      native = path == "/places"
+
+      expected_session =
+        cond do
+          native -> :native_pages
+          family -> :family_pages
+          true -> :rails_pages
+        end
+
+      assert session.name == expected_session
 
       hooks = [
         %{
@@ -134,12 +143,25 @@ defmodule DawarichWeb.A9RoutesTest do
               ],
           else: hooks
 
+      hooks =
+        if native do
+          [
+            %{
+              id: {DawarichWeb.NativeAuth, :require_user},
+              stage: :mount,
+              function: &DawarichWeb.NativeAuth.on_mount/4
+            }
+          ]
+        else
+          hooks
+        end
+
       assert session.extra == %{
                session:
                  {if(family, do: DawarichWeb.RailsAuth, else: DawarichWeb.NativeAuth),
                   :live_session, []},
                on_mount: hooks,
-               root_layout: {DawarichWeb.Layouts, :root},
+               root_layout: {DawarichWeb.Layouts, if(native, do: :native_root, else: :root)},
                layout: {DawarichWeb.Layouts, :app}
              }
     end

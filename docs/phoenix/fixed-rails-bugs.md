@@ -1355,7 +1355,7 @@ Rails destruction nullifies/removes database-valid foreign dependents of an owne
 
 - Rails: `app/controllers/places_controller.rb:49,51,94`; `app/models/place.rb:13,18`; `app/models/concerns/taggable.rb:7`; `app/models/concerns/notable.rb:7`.
 - Phoenix: `app-phoenix/lib/dawarich/places/native_fence.ex:5`; `app-phoenix/lib/dawarich/places/web_write.ex:15`; `app-phoenix/lib/dawarich/places/web_delete.ex:21`.
-- Test: `native Place commands refuse stale actors and foreign dependents before effects` in `app-phoenix/test/dawarich/places/commands_test.exs`.
+- Test: `native Place commands refuse stale actors and foreign dependents before effects` in `app-phoenix/test/dawarich/places/commands_test.exs`. Independent suggestion/tagging/note successors: `foreign Place suggestions fence update and delete with an unchanged graph`, `foreign Place taggings fence update and delete with an unchanged graph`, and `foreign Place notes fence update and delete with an unchanged graph`. Each SQL branch has a detected mutation.
 - Ledger: ED-NATIVE-M3D-DEPENDENT-WRITES; no DRB added.
 - Limits: Fresh admission and foreign graph fence precede record effects after Place row lock; no guarantee against arbitrary concurrent direct-database corruption after the check or cross-phase/reconnect durability.
 - CHANGELOG-ready: Refuse native Place edits/removal when corrupt associations would change another owner's data.
