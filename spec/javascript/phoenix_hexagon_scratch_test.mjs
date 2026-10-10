@@ -224,3 +224,36 @@ test("hexagon deadline clears partial counts and reports a visible failure", asy
     pending.resolve([])
   }
 })
+
+test("scratch deadline refuses unknown membership instead of treating it as empty", async () => {
+  const f = mapFixture(),
+    pending = deferred()
+  let expire
+  const layer = new ScratchLayer(f.map, {
+    loadProtocol: async () => {},
+    getRange: () => ({ startAt: "one", endAt: "two" }),
+    reader: { read: () => pending.promise },
+    timers: {
+      setTimeout(fn) {
+        expire = fn
+        return 1
+      },
+      clearTimeout() {},
+    },
+  })
+  let rejected = false
+  const read = layer.update().catch(() => {
+    rejected = true
+  })
+  try {
+    assert.equal(typeof expire, "function")
+    expire()
+    for (let i = 0; i < 16; i++) await Promise.resolve()
+    assert.equal(rejected, true)
+    assert.equal(layer.stale, true)
+  } finally {
+    layer.destroy()
+    pending.resolve({ data: { countries: [] } })
+    await read
+  }
+})

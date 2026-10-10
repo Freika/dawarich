@@ -26,6 +26,7 @@ export class ScratchLayer extends BaseLayer {
       onTileError,
       onMembershipError,
       subscribe,
+      timers = globalThis,
       ...options
     },
   ) {
@@ -35,7 +36,7 @@ export class ScratchLayer extends BaseLayer {
     this.loadProtocol = loadProtocol
     this.onTileError = onTileError
     this.onMembershipError = onMembershipError
-    this.operations = createRequestScope()
+    this.operations = createRequestScope(timers)
     this.visitedIsoA3 = []
     this.stale = false
     this.cacheBuster = 0
@@ -56,8 +57,8 @@ export class ScratchLayer extends BaseLayer {
     this.watching = false
   }
 
-  async add(_data, beforeId) {
-    const operation = this.operations.begin()
+  async add(_data, beforeId, options = {}) {
+    const operation = this.operations.begin(options.signal)
     try {
       await operation.wait(this.loadProtocol())
       operation.check()
@@ -73,12 +74,12 @@ export class ScratchLayer extends BaseLayer {
     } finally {
       operation.close()
     }
-    await this.update()
+    await this.update(options)
   }
 
-  async reload() {
+  async reload({ signal } = {}) {
     this.operations.reset()
-    const operation = this.operations.begin()
+    const operation = this.operations.begin(signal)
     const scope = this.getRange()
     try {
       const result = await operation.wait(
@@ -99,15 +100,20 @@ export class ScratchLayer extends BaseLayer {
       this.stale = false
       return true
     } catch (error) {
-      if (error.name === "AbortError") return false
+      if (
+        error.name === "AbortError" &&
+        (operation.revision !== this.operations.revision || signal?.aborted)
+      )
+        return false
+      if (error.name === "AbortError") error = new Error("Scratch read expired")
       this.stale = true
       throw error
     } finally {
       operation.close()
     }
   }
-  async update() {
-    if (await this.reload()) this.applyFilter()
+  async update(options) {
+    if (await this.reload(options)) this.applyFilter()
   }
   async retryMembership() {
     try {

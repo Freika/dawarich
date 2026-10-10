@@ -1376,7 +1376,7 @@ A pending Rails hexagon load survives layer removal and fills its retained point
 Rails discards a late country result after removal but does not abort its fetch. Native acquisition and membership have owned cancellation; removal/destruction aborts pending work while leaving other maps alone.
 
 - Rails: `app/javascript/maps_maplibre/layers/scratch_layer.js:181`; `app/javascript/maps_maplibre/services/api_client.js:980,984`.
-- Phoenix: `app-phoenix/assets/js/map/layers/scratch.js:176,184`.
+- Phoenix: `app-phoenix/assets/js/map/layers/scratch.js:182,190`.
 - Test: “scratch protocol or membership reads cannot outlive their owner” in `spec/javascript/phoenix_hexagon_scratch_test.mjs`; scratch-protocol/scratch-request mutations fail, restoration passes; existing date/foreign-tab/retry corpus retained.
 - Ledger: ED-NATIVE-M6-SCRATCH-DISPOSE; no DRB row added. Retained Rails remains unchanged.
 - CHANGELOG-ready: Cancel scratch-map membership requests after leaving its map.
