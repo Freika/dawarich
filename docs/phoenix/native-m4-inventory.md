@@ -98,6 +98,8 @@ Census follows reachable templates and transitive imports; source markers alone 
 
 No changes to Rails controllers or E2E fixture symlink targets are authorized in this inventory. E2E owns fixture pruning. Global removal of importmap/legacy map/studio code remains milestone 7 after consumers move.
 
+Native-upload metadata is an additional confidentiality seam: current `W/direct_upload.ex:49-54` returns signed PUT URL/headers/blob capability; LiveView stores the entire returned map in assigns (`app-phoenix/deps/phoenix_live_view/lib/phoenix_live_view/upload.ex:460-463`, `upload_config.ex:546-557`, pinned dependency implementation). The standing no-secrets-in-assigns rule therefore cannot be satisfied just by not adding a separate assign. Recommended plan default: external metadata carries only an owner-checked, non-authorizing upload reference; an authenticated CSRF-protected HTTP endpoint returns the actual target transiently to the browser. Also rework account ZIP consumption to resolve the owned reference in the domain. This is a current Phoenix security gap, not proof of a Rails defect. Controller freezes the transport contract before A1/A2.
+
 ## Mount/request query baseline
 
 Measured at the inspected base with temporary `M4MountMeasurementTest`, exact case **“milestone four mounts have observable query counts”**, removed after measurements. RED (missing counter) → GREEN (telemetry attach/invoke/detach/drain) → mutation (wrong telemetry event) failed → restored GREEN. The counter follows `T/dawarich_web/settings_general_live_test.exs:249-265`. A final repeat included notification detail. Evidence is in the planning report; no test environment allocations are committed here.
