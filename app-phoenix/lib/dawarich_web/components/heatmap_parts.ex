@@ -13,11 +13,19 @@ defmodule DawarichWeb.HeatmapParts do
   attr :today, Date, required: true
   attr :unit, :string, required: true
 
+  attr :native, :boolean, default: false
+  attr :zone, :string, default: "UTC"
+
   def heatmap(assigns) do
     weeks = Heatmap.weeks(assigns.year)
 
     assigns =
       assign(assigns,
+        day_links:
+          if(assigns.native,
+            do: Dawarich.Insights.HeatmapLinks.year(assigns.year, assigns.zone),
+            else: %{}
+          ),
         weeks: weeks,
         labels: margins(Heatmap.month_labels(weeks, assigns.year, assigns.locale))
       )
@@ -26,18 +34,18 @@ defmodule DawarichWeb.HeatmapParts do
     <div class="w-full lg:w-3/4 mb-6">
       <div
         id="activity-heatmap-card"
-        phx-hook="RailsStimulus"
-        phx-update="ignore"
+        phx-hook={if @native, do: "NativeHeatmap", else: "RailsStimulus"}
+        phx-update={unless @native, do: "ignore"}
         class="card bg-base-200"
-        data-controller="activity-heatmap"
+        data-controller={unless @native, do: "activity-heatmap"}
         data-activity-heatmap-unit-value={@unit}
         data-activity-heatmap-target-date-value={Heatmap.most_recent(@heatmap.daily) || ""}
       >
         <div class="card-body p-4">
-          <div class="flex justify-between items-center mb-4">
-            <div class="flex items-center gap-2">
+          <div class="flex flex-wrap min-w-0 justify-between items-center gap-2 mb-4">
+            <div class="flex min-w-0 items-center gap-2">
               <.icon name="calendar" class="w-5 h-5 text-base-content/60" />
-              <h3 class="text-lg font-semibold">
+              <h3 class="text-lg font-semibold break-words">
                 {t(@locale, "insights.activity_heatmap.activity_overview", %{})}
               </h3>
             </div>
@@ -63,8 +71,16 @@ defmodule DawarichWeb.HeatmapParts do
                 <div class="flex gap-0.5">
                   <div :for={week <- @weeks} class="flex flex-col gap-0.5">
                     <%= for cell <- cells(week, @heatmap, @year, @today) do %>
+                      <a
+                        :if={cell.active && @native}
+                        href={day_href(@day_links[cell.key])}
+                        data-date={cell.key}
+                        aria-label={cell_label(cell, @unit)}
+                        title={cell_label(cell, @unit)}
+                        class={"w-3 h-3 rounded-sm cursor-pointer focus:outline focus:outline-2 #{cell.class}"}
+                      ></a>
                       <div
-                        :if={cell.active}
+                        :if={cell.active && not @native}
                         class={"w-3 h-3 rounded-sm cursor-pointer transition-opacity hover:opacity-80 #{cell.class}"}
                         data-date={cell.key}
                         data-distance={cell.distance}
@@ -104,6 +120,14 @@ defmodule DawarichWeb.HeatmapParts do
       </div>
     </div>
     """
+  end
+
+  defp day_href({first, last}),
+    do: "/map?" <> URI.encode_query(%{"start_at" => first, "end_at" => last})
+
+  defp cell_label(cell, unit) do
+    value = Float.round(cell.distance / if(unit == "mi", do: 1609.344, else: 1000), 1)
+    "#{cell.key}: #{value} #{unit}"
   end
 
   defp margins(labels) do

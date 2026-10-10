@@ -71,6 +71,31 @@ defmodule Dawarich.Build.NativeAssetsTest do
     assert demo_bytes in 1..2048
   end
 
+  test "charts and editor stay lazy with a bounded eager stub and an independent public entry", %{
+    tmp_dir: dir
+  } do
+    build!(dir)
+
+    outputs =
+      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
+
+    bytes =
+      for path <- eager(outputs, [app], MapSet.new()),
+          {input, %{"bytesInOutput" => bytes}} <- outputs[path]["inputs"],
+          String.contains?(input, "chart") or String.contains?(input, "rich_text") or
+            String.contains?(input, "editor"),
+          reduce: 0,
+          do: (sum -> sum + bytes)
+
+    assert bytes in 1..2048
+    assert File.regular?(Path.join(dir, "public_charts.js"))
+    refute File.read!(Path.join(dir, "public_charts.js")) =~ "LiveSocket"
+    assert Enum.any?(inputs(dir), &String.contains?(&1, "chartkick"))
+    refute Enum.any?(inputs(dir), &String.contains?(&1, "actiontext"))
+  end
+
   defp eager(_outputs, [], seen), do: seen
 
   defp eager(outputs, [path | rest], seen) do
