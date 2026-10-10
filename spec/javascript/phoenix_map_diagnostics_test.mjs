@@ -102,3 +102,107 @@ test("diagnostic disposal removes only its owned root capability and stale reads
   second.destroy()
   assert.equal(second.element.dawarichMapSnapshot, replacement)
 })
+
+test("native layer diagnostics retain bounded track metadata and paint expressions without credentials", () => {
+  const element = {}
+  const expression = ["coalesce", ["get", "color"], "#6366F1"]
+  const row = {
+    id: 7,
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [13, 52],
+        [14, 53],
+      ],
+    },
+    properties: {
+      id: 7,
+      start_at: "2026-10-01T00:00:00Z",
+      end_at: "2026-10-02T00:00:00Z",
+      avg_speed: 12,
+      distance: 100,
+      duration: 300,
+      color: "#6366F1",
+      api_key: "synthetic-private",
+    },
+  }
+  const destroy = installMapDiagnostics({
+    element,
+    getConfig: () => ({ revision: 1 }),
+    map: {
+      getStyle: () => ({
+        sources: { tracks: {} },
+        layers: [
+          {
+            id: "tracks",
+            paint: {
+              "line-color": expression,
+              "secret-object": { api_key: "synthetic-private" },
+            },
+          },
+        ],
+      }),
+      querySourceFeatures: () => [row],
+    },
+  })
+  try {
+    const snapshot = element.dawarichMapSnapshot({ sourceId: "tracks" })
+    assert.equal(
+      snapshot.features[0].properties.start_at,
+      row.properties.start_at,
+    )
+    assert.equal(snapshot.features[0].properties.end_at, row.properties.end_at)
+    assert.equal(snapshot.features[0].properties.avg_speed, 12)
+    assert.deepEqual(snapshot.layers[0].paint["line-color"], expression)
+    assert.equal(JSON.stringify(snapshot).includes("synthetic-private"), false)
+    snapshot.layers[0].paint["line-color"][1][1] = "other"
+    assert.equal(
+      element.dawarichMapSnapshot().layers[0].paint["line-color"][1][1],
+      "color",
+    )
+  } finally {
+    destroy()
+  }
+})
+
+test("native paint diagnostics bound expression depth width and total copied values", () => {
+  const element = {}
+  let nested = ["get", "color"]
+  for (let n = 0; n < 10; n++) nested = [nested]
+  const bulk = Array.from({ length: 64 }, () => Array(64).fill(1))
+  const layers = Array.from({ length: 64 }, (_, id) => ({
+    id: String(id),
+    paint: {
+      "line-color": ["get", "color"],
+      deep: nested,
+      wide: Array(129).fill(1),
+      bulk,
+    },
+  }))
+  const destroy = installMapDiagnostics({
+    element,
+    getConfig: () => ({}),
+    map: { getStyle: () => ({ layers }) },
+  })
+  try {
+    const snapshot = element.dawarichMapSnapshot()
+    assert.deepEqual(snapshot.layers[0].paint["line-color"], ["get", "color"])
+    assert.equal(snapshot.layers[0].paint.deep, undefined)
+    assert.equal(snapshot.layers[0].paint.wide, undefined)
+    const count = (value) =>
+      1 +
+      (Array.isArray(value)
+        ? value.reduce((sum, part) => sum + count(part), 0)
+        : 0)
+    const total = snapshot.layers.reduce(
+      (sum, layer) =>
+        sum +
+        Object.values(layer.paint).reduce((n, value) => n + count(value), 0),
+      0,
+    )
+    assert.ok(total <= 4096)
+  } finally {
+    destroy()
+  }
+})

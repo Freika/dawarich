@@ -3,6 +3,9 @@ const properties = new Set([
   "name",
   "title",
   "timestamp",
+  "start_at",
+  "end_at",
+  "avg_speed",
   "transportation_mode",
   "color",
   "icon",
@@ -24,6 +27,17 @@ const geometryTypes = new Set([
   "Polygon",
   "MultiPolygon",
 ])
+
+function paintValue(value, budget, depth = 0) {
+  if (depth > 8 || budget.left-- <= 0) return undefined
+  if (typeof value === "string") return value.slice(0, 256)
+  if (typeof value === "boolean" || Number.isFinite(value)) return value
+  if (Array.isArray(value) && value.length <= 128) {
+    const copy = value.map((entry) => paintValue(entry, budget, depth + 1))
+    if (copy.every((entry) => entry !== undefined)) return copy
+  }
+  return undefined
+}
 
 function coordinates(value, depth = 0) {
   if (depth > 6) return []
@@ -72,6 +86,7 @@ export function installMapDiagnostics({ element, map, getConfig }) {
         )
       } catch {}
     }
+    const paintBudget = { left: 4096 }
     const config = getConfig()
     const center = map.getCenter?.()
     return {
@@ -94,9 +109,10 @@ export function installMapDiagnostics({ element, map, getConfig }) {
         source: layer.source,
         visibility: layer.layout?.visibility ?? "visible",
         paint: Object.fromEntries(
-          Object.entries(layer.paint ?? {}).filter(([, value]) =>
-            ["string", "number", "boolean"].includes(typeof value),
-          ),
+          Object.entries(layer.paint ?? {})
+            .slice(0, 32)
+            .map(([key, value]) => [key, paintValue(value, paintBudget)])
+            .filter(([, value]) => value !== undefined),
         ),
       })),
       hasSource: sources.includes(sourceId),
