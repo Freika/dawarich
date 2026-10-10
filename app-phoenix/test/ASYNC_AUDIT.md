@@ -239,7 +239,7 @@
 | dawarich/navbar_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/notes_api/read_test.exs | Dawarich.IngestCase | no | Same-process sandbox queries; group :notes_fixture_ids serializes it with write_test, which inserts the same fixed ids |
 | dawarich/notes_api/write_test.exs | Dawarich.IngestCase | no | IngestCase async path (private sandbox, no shared mode, no per-test DDL); telemetry handler filters by test pid; group :notes_fixture_ids serializes it with read_test, which uses the same fixed ids |
-| dawarich/photos/provider_inventory_test.exs | ExUnit.Case | no | Client talks to listeners it opens on port 0 and owns; no database, env or global state |
+| dawarich/photos/provider_inventory_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/photos/thumbnail_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/place_drawer_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/place_list_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
