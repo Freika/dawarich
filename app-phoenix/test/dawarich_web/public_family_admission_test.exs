@@ -24,7 +24,9 @@ defmodule DawarichWeb.PublicFamilyAdmissionTest do
 
     Repo.query!(
       "UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid",
-      [@id, %{"audience" => "family", "family_id" => to_string(family)}], log: false)
+      [@id, %{"audience" => "family", "family_id" => to_string(family)}],
+      log: false
+    )
 
     %{owner: owner, family: family, now: DateTime.utc_now()}
   end
@@ -34,11 +36,15 @@ defmodule DawarichWeb.PublicFamilyAdmissionTest do
 
     Repo.query!(
       "UPDATE families SET access_until=$2 WHERE id=$1",
-      [c.family, DateTime.to_naive(due)], log: false)
+      [c.family, DateTime.to_naive(due)],
+      log: false
+    )
 
     Repo.query!(
       "UPDATE users SET active_until=$2 WHERE id=$1",
-      [c.owner.id, DateTime.to_naive(DateTime.add(c.now, -60))], log: false)
+      [c.owner.id, DateTime.to_naive(DateTime.add(c.now, -60))],
+      log: false
+    )
 
     {:ok, grant} =
       Public.grant(

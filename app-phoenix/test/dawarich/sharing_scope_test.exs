@@ -245,7 +245,9 @@ defmodule Dawarich.SharingScopeTest do
 
     Repo.query!(
       "UPDATE users SET active_until=$2 WHERE id=$1",
-      [ctx.actor.id, DateTime.to_naive(@now)], log: false)
+      [ctx.actor.id, DateTime.to_naive(@now)],
+      log: false
+    )
 
     for target <- [target, resource(:digest, %{year: 2025})] do
       assert {:error, :expired} = Sharing.page(ctx.scope, target, %{}, opts())

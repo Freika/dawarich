@@ -8,6 +8,7 @@ defmodule Dawarich.Sharing.Public do
     grant = %{
       id: link.id,
       version: Sharing.version(link.id),
+      phrase_version: phrase_version(link),
       viewer: if(viewer, do: Principal.project(viewer), else: nil),
       expires_at: DateTime.to_unix(due)
     }
@@ -15,11 +16,16 @@ defmodule Dawarich.Sharing.Public do
     with {:ok, _} <- admit(grant, now), do: {:ok, grant}
   end
 
-  def admit(%{id: id, version: version, viewer: viewer, expires_at: expires} = grant, now) do
+  def admit(
+        %{id: id, version: version, phrase_version: proof, viewer: viewer, expires_at: expires} =
+          grant,
+        now
+      ) do
     with true <-
            SharedLinks.canonical?(id) and is_integer(expires) and DateTime.to_unix(now) < expires,
          true <- version != nil and Sharing.version(id) == version,
          link when not is_nil(link) <- SharedLinks.active(id, now),
+         true <- proof == phrase_version(link),
          owner when not is_nil(owner) <- Accounts.public_owner(link.user_id),
          {:ok, viewer} <- viewer(viewer),
          true <- FamilyAudience.accessible?(link, viewer, now),
@@ -58,6 +64,11 @@ defmodule Dawarich.Sharing.Public do
   rescue
     _ -> {:error, :unavailable}
   end
+
+  defp phrase_version(link),
+    do:
+      :crypto.hash(:sha256, :erlang.term_to_binary({link.id, link.magic_phrase}))
+      |> Base.url_encode64(padding: false)
 
   defp privacy_version(user),
     do:

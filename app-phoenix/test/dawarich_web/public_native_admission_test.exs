@@ -15,6 +15,42 @@ defmodule DawarichWeb.PublicNativeAdmissionTest do
     %{now: DateTime.utc_now()}
   end
 
+  for protection <- [:rotated, :added] do
+    @protection protection
+    test "bootstrap issuance refuses #{@protection} protection after the HTTP unlock check", c do
+      old_phrase = if @protection == :rotated, do: "synthetic-old-unlock", else: ""
+
+      Repo.query!(
+        "UPDATE shared_links SET magic_phrase=$2 WHERE id=$1::text::uuid",
+        [@id, old_phrase],
+        log: false
+      )
+
+      link = SharedLinks.active(@id, c.now)
+      name = "shared_link_" <> @id
+
+      cookie =
+        Dawarich.RailsCookies.encrypt(
+          DawarichWeb.SharedLinkCookie.unlock_token(@id, old_phrase),
+          name,
+          Dawarich.RailsSecret.fetch(),
+          DateTime.add(c.now, 1800)
+        )
+
+      conn = build_conn() |> put_req_cookie(name, cookie) |> DawarichWeb.PublicShareAuth.prepare()
+      assert DawarichWeb.SharedLinkCookie.unlocked?(conn, link, c.now)
+
+      Repo.query!(
+        "UPDATE shared_links SET magic_phrase=$2 WHERE id=$1::text::uuid",
+        [@id, "synthetic-new-unlock"],
+        log: false
+      )
+
+      assert {:error, _} = DawarichWeb.PublicShareAuth.issue(conn, link, c.now)
+      refute DawarichWeb.SharedLinkCookie.unlocked?(conn, SharedLinks.active(@id, c.now), c.now)
+    end
+  end
+
   defp grant(now) do
     link = SharedLinks.active(@id, now)
     {:ok, grant} = Public.grant(link, nil, now, DateTime.add(now, 1800))
@@ -56,7 +92,9 @@ defmodule DawarichWeb.PublicNativeAdmissionTest do
   test "foreign-family public bootstrap cannot mint a reader for a guest", c do
     Repo.query!(
       "UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid",
-      [@id, %{"audience" => "family", "family_id" => "1"}], log: false)
+      [@id, %{"audience" => "family", "family_id" => "1"}],
+      log: false
+    )
 
     assert {:error, _} =
              Public.grant(SharedLinks.active(@id, c.now), nil, c.now, DateTime.add(c.now, 1800))
