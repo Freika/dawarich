@@ -32,6 +32,10 @@ defmodule DawarichWeb.NativeFamilyAuth do
         native: true
       )
       |> authorize()
+      |> case do
+        {:cont, admitted} -> {:cont, DawarichWeb.FamilyDelivery.attach(admitted)}
+        halted -> halted
+      end
     else
       {:halt, socket} -> {:halt, socket}
       _ -> {:halt, refuse(socket, "/users/sign_in")}
@@ -94,6 +98,7 @@ defmodule DawarichWeb.NativeFamilyAuth do
 
   defp refuse(socket, path) do
     socket
+    |> DawarichWeb.FamilyDelivery.clear()
     |> assign(
       page: nil,
       locations: [],

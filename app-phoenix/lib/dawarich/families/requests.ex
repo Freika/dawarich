@@ -52,9 +52,18 @@ defmodule Dawarich.Families.Requests do
         {:ok, 404, Locations.not_in_family()}
 
       [_settings, family_id] ->
-        RailsTime.with_zone(user.timezone, fn ->
-          create(user, family_id, target_id(params), now)
-        end)
+        Dawarich.Families.ProducerEvents.api(
+          Repo,
+          user.id,
+          :request,
+          now,
+          :request_location,
+          fn ->
+            RailsTime.with_zone(user.timezone, fn ->
+              create(user, family_id, target_id(params), now)
+            end)
+          end
+        )
     end
   end
 
@@ -66,9 +75,23 @@ defmodule Dawarich.Families.Requests do
       [_settings, family_id] ->
         id = String.to_integer(params["id"])
 
-        RailsTime.with_zone(repo, user.timezone, fn ->
-          respond(user.id, family_id, id, decision, params, now, repo)
-        end)
+        effect = fn ->
+          RailsTime.with_zone(repo, user.timezone, fn ->
+            respond(user.id, family_id, id, decision, params, now, repo)
+          end)
+        end
+
+        if params["web"],
+          do: effect.(),
+          else:
+            Dawarich.Families.ProducerEvents.api(
+              repo,
+              user.id,
+              :request,
+              now,
+              :respond_location,
+              effect
+            )
     end
   end
 

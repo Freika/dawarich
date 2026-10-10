@@ -113,6 +113,9 @@ defmodule Dawarich.A12f3bR01Test do
     [%{id: id}] = ingest(user)
     assert [[args]] = jobs("Dawarich.Points.LiveBroadcastWorker")
     assert :ok = Dawarich.Points.LiveBroadcastWorker.run(ScratchRepo, args)
+    assert [[native]] = jobs("Dawarich.Families.EventsWorker")
+    assert native["kind"] == "location" and native["user_id"] == user
+    assert Enum.sort(Map.keys(native)) == ~w(event_id kind user_id)
     send(Bus, :poll)
     :sys.get_state(Bus)
     assert_receive {:cable_pg, _, _, ^stream, _, bytes}
@@ -186,7 +189,7 @@ defmodule Dawarich.A12f3bR01Test do
     ingest(user, now: now)
     ingest(user, now: DateTime.add(now, 10))
 
-    assert [[args, due]] =
+    assert [[args, _due]] =
              rows(
                "SELECT payload,scheduled_at FROM public.job_outbox WHERE command_type='visits.suggest'"
              )

@@ -10,7 +10,8 @@ defmodule Dawarich.Families.EventsWorker do
     "consent" => :consent,
     "request" => :request,
     "invitation" => :invitation,
-    "lapse" => :lapse
+    "lapse" => :lapse,
+    "location" => :location
   }
 
   @impl Oban.Worker

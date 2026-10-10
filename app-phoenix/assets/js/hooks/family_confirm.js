@@ -8,7 +8,8 @@ export const FamilyConfirm = {
       this.el.close()
     }
     this.closed = () => {
-      if (!this.cancelled && this.el.dataset.pending === "true") this.pushEvent("family_cancel_confirm", {})
+      if (!this.cancelled && this.el.dataset.pending === "true")
+        this.pushEvent("family_cancel_confirm", {})
       this.cancelled = false
     }
     this.el.addEventListener("cancel", this.cancel)

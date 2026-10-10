@@ -248,6 +248,9 @@ defmodule Dawarich.Families.WebInvitations do
       log: false
     )
 
+    if Keyword.get(opts, :native_events, true),
+      do: Dawarich.Families.ProducerEvents.family(repo, family, :membership, ctx.now)
+
     Keyword.get(opts, :settled, fn -> :ok end).()
     locale = Dawarich.Mail.ExploreFeatures.locale(Dawarich.UserSettings.get(user), "en")
 

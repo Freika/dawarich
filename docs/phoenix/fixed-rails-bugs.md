@@ -1338,3 +1338,28 @@ Rails counts administrators before an unlocked update and does not share a guard
 - Evidence: A2 commit `c7f44a025`; `m3b-domain.report.md`, `m3b-x3.report.md`. No machine stress or Rails production change.
 - Ledger: ED-NATIVE-ADMIN-USERS-DELETE-GUARD; no DRB added. Distinct from FRB-084's missing deletion guard.
 - CHANGELOG-ready: Serialize native administrator deletion and role changes to retain administration access.
+
+### FRB-NATIVE-M4-FAMILY-CAPACITY — Concurrent invitations can oversubscribe a Cloud family
+
+Rails checks invitation capacity before its transaction without locking the family.
+Two invitations can both take the final available seat. Native scoped commands
+lock family, users and memberships before repeating capacity admission.
+
+- Rails: `app/services/families/invite.rb:19,21`.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_commands.ex:73`.
+- Test: `families_commands_test.exs`, “concurrent invitations serialize the final Cloud seat”; deterministic two-connection lock-removal mutation fails.
+- Ledger: ED-NATIVE-M4-FAMILY-CAPACITY; no DRB added. Rails production code is unchanged.
+
+### FRB-NATIVE-M4-FAMILY-DELIVERY — A removed viewer can keep receiving family locations
+
+Rails checks membership and family access at subscription. Its stream callback
+then transmits subsequent coordinates without repeating either check. A removed
+member or viewer whose family access lapses can keep the old subscription.
+Native family pages re-admit every delivery, read currently authorized snapshots,
+clear refused state, and erase browser maps and member rows on disconnect.
+Versioned timers independently expire silent consent and access grants.
+
+- Rails: `app/channels/family_locations_channel.rb:6,9,10`.
+- Phoenix: `app-phoenix/lib/dawarich_web/native_family_auth.ex:17`; `app-phoenix/lib/dawarich_web/family_delivery.ex:19` and `assets/js/hooks/family_map.js` lifecycle.
+- Tests: “withdrawn consent or removed membership discards queued coordinates before rendering”; “reconnect snapshots recover missed invalidation and family refusal clears private state”; timer-version and info-admission mutations fail.
+- Ledger: ED-NATIVE-M4-FAMILY-DELIVERY; no DRB added. Independent wire adapters remain separately supported; native pages do not subscribe to coordinate streams.

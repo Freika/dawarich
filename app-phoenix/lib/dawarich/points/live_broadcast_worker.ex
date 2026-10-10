@@ -54,6 +54,7 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
                 do: publish_family(repo, family, user, email, first, last, settings, point)
             end
 
+            if family, do: Dawarich.Families.ProducerEvents.family(repo, family, :location, now)
             publish_shares(repo, user, Enum.max_by(points, & &1["timestamp"]), now)
           end
 

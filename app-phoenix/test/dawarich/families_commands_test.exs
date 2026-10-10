@@ -83,6 +83,34 @@ defmodule Dawarich.FamiliesCommandsTest do
     refute_receive {:domain_changed, _, _}
   end
 
+  test "refused invitation acceptance persists refreshed family access and its invalidation",
+       ctx do
+    token = invitation!("invitee@example.invalid")
+    due = ~N[2030-01-15 09:59:59.000000]
+
+    ScratchRepo.query!("UPDATE users SET plan=1,active_until=$1 WHERE id=10901", [due],
+      log: false
+    )
+
+    ScratchRepo.query!(
+      "UPDATE families SET access_until=$1 WHERE id=10901",
+      [~N[2030-02-15 10:00:00]], log: false)
+
+    assert {:error, :family_lapsed} =
+             Families.accept_invitation(
+               ctx.invitee,
+               token,
+               Keyword.put(@opts, :self_hosted, false)
+             )
+
+    assert rows("SELECT access_until FROM families WHERE id=10901") == [[due]]
+    assert rows("SELECT count(*) FROM family_memberships WHERE user_id=10903") == [[0]]
+
+    assert rows(
+             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Families.EventsWorker' AND args->>'kind'='lapse'"
+           ) == [[2]]
+  end
+
   test "concurrent invitation acceptance joins once and cannot exceed family capacity", ctx do
     token = invitation!("invitee@example.invalid")
 

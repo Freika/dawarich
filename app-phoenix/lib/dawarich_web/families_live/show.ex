@@ -57,9 +57,12 @@ defmodule DawarichWeb.FamiliesLive.Show do
       <div class="flex flex-col lg:flex-row gap-4 min-w-0">
         <div
           id="family-map"
+          phx-hook="FamilyMap"
+          phx-update="ignore"
           class="w-full lg:w-3/5 min-w-0 min-h-80 rounded-xl border border-base-300 bg-base-200 flex items-center justify-center"
         >
-          <p class="p-4 text-center text-sm text-base-content/60">
+          <div data-family-canvas hidden class="w-full min-h-80"></div>
+          <p data-family-empty class="p-4 text-center text-sm text-base-content/60">
             {t(@locale, "families.show.no_family_members_are_sharing_their_location", %{})}
           </p>
         </div>

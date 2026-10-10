@@ -33,10 +33,18 @@ defmodule DawarichWeb.FamilyNativeMembers do
                   else: s(@locale, "for_duration", %{duration: member.sharing.duration})
                 )
             })}</span>
-            <span :if={member.latest_timestamp}>{t(@locale, "common.time_ago", %{
-              time:
-                DawarichWeb.TimeAgo.words(@locale, DateTime.from_unix!(member.latest_timestamp), @now)
-            })}</span>
+            <span :if={member.latest_timestamp} data-family-last-seen>{t(
+              @locale,
+              "common.time_ago",
+              %{
+                time:
+                  DawarichWeb.TimeAgo.words(
+                    @locale,
+                    DateTime.from_unix!(member.latest_timestamp),
+                    @now
+                  )
+              }
+            )}</span>
           <% else %>
             <span>{s(@locale, "not_sharing")}</span>
           <% end %>

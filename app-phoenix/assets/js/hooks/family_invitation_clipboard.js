@@ -13,23 +13,37 @@ export const FamilyInvitationClipboard = {
           credentials: "same-origin",
           cache: "no-store",
           signal: controller.signal,
-          headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "" },
+          headers: {
+            "X-CSRF-Token":
+              document.querySelector('meta[name="csrf-token"]')?.content || "",
+          },
         })
-        if (!response.ok || response.redirected || !response.headers.get("content-type")?.startsWith("text/plain")) throw Error("refused")
+        if (
+          !response.ok ||
+          response.redirected ||
+          !response.headers.get("content-type")?.startsWith("text/plain")
+        )
+          throw Error("refused")
         const capability = await response.text()
         if (generation !== this.generation) return
         await navigator.clipboard.writeText(capability)
-        if (generation === this.generation) this.report(this.el.dataset.copiedLabel)
+        if (generation === this.generation)
+          this.report(this.el.dataset.copiedLabel)
       } catch {
-        if (generation === this.generation) this.report(this.el.dataset.failedLabel)
+        if (generation === this.generation)
+          this.report(this.el.dataset.failedLabel)
       } finally {
         if (generation === this.generation) this.el.disabled = false
       }
     }
     this.el.addEventListener("click", this.copy)
   },
-  beforeUpdate() { this.clear() },
-  disconnected() { this.clear() },
+  beforeUpdate() {
+    this.clear()
+  },
+  disconnected() {
+    this.clear()
+  },
   destroyed() {
     this.clear()
     this.el.removeEventListener("click", this.copy)

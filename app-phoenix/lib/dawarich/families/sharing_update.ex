@@ -18,7 +18,10 @@ defmodule Dawarich.Families.SharingUpdate do
       [_settings, _family_id] ->
         if missing?(params["enabled"]),
           do: {:ok, 400, missing()},
-          else: RailsTime.with_zone(user.timezone, fn -> update(user.id, params, now) end)
+          else:
+            Dawarich.Families.ProducerEvents.api(Repo, user.id, :consent, now, :set_sharing, fn ->
+              RailsTime.with_zone(user.timezone, fn -> update(user.id, params, now) end)
+            end)
     end
   end
 

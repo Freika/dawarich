@@ -23,7 +23,8 @@ defmodule Dawarich.Families.NativeCommandDispatch do
     do: WebInvitations.create(repo, user, attrs, ctx, opts)
 
   def invoke(repo, user, :accept_invitation, %{"token" => token}, ctx, opts)
-      when is_binary(token), do: WebInvitations.accept(repo, user, token, ctx, opts)
+      when is_binary(token),
+      do: WebInvitations.accept(repo, user, token, ctx, Keyword.put(opts, :native_events, false))
 
   def invoke(repo, user, :remove_member, %{"id" => id}, ctx, _) when is_integer(id) and id > 0,
     do: WebMemberships.run(repo, user, id, ctx)

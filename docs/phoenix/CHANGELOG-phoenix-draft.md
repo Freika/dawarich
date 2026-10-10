@@ -126,3 +126,8 @@ The controller recorded these deferrals on 2026-10-07; they remain follow-up wor
 - Serialize administrator deletion and role changes to retain administration access under competing writes. [FRB-085](fixed-rails-bugs.md#frb-085--concurrent-admin-roledeletion-writes-can-leave-no-administrator)
 
 These are native Phoenix corrections delivered in A2; retained Rails behavior is unchanged.
+
+## Native family safety (milestone 4)
+
+- Serialize family invitation capacity checks so concurrent invitations cannot oversubscribe the final Cloud seat. [FRB-NATIVE-M4-FAMILY-CAPACITY](fixed-rails-bugs.md#frb-native-m4-family-capacity--concurrent-invitations-can-oversubscribe-a-cloud-family)
+- Stop native family location delivery after membership/access loss and erase silent expired consent, disconnected maps and stale pending map loads. [FRB-NATIVE-M4-FAMILY-DELIVERY](fixed-rails-bugs.md#frb-native-m4-family-delivery--a-removed-viewer-can-keep-receiving-family-locations)

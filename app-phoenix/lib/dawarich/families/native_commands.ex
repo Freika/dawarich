@@ -45,9 +45,25 @@ defmodule Dawarich.Families.NativeCommands do
           Families.Expirations.enqueue(repo, family_id, user.id, recipients, action, value, ctx)
           value
         else
-          {:error, reason} -> repo.rollback(reason)
+          {:error, reason}
+          when action == :accept_invitation and reason in [:family_lapsed, :family_full] ->
+            Dawarich.Families.ProducerEvents.family(
+              repo,
+              family_id,
+              :lapse,
+              Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
+            )
+
+            {:refused, reason}
+
+          {:error, reason} ->
+            repo.rollback(reason)
         end
       end)
+      |> case do
+        {:ok, {:refused, reason}} -> {:error, reason}
+        result -> result
+      end
     end
   rescue
     _ -> {:error, :unavailable}

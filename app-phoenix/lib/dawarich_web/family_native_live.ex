@@ -223,6 +223,7 @@ defmodule DawarichWeb.FamilyNativeLive do
 
   def refresh(socket) do
     case NativeFamilyAuth.authorize(socket) do
+      {:cont, socket} -> DawarichWeb.FamilyDelivery.reload(socket)
       {_, socket} -> socket
     end
   end
