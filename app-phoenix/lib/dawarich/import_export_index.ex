@@ -35,7 +35,7 @@ defmodule Dawarich.ImportExportIndex do
     "byte_size" => "f.byte_size"
   }
 
-  def imports(user, list) do
+  def imports(user, list, repo \\ Dawarich.Repo) do
     """
     SELECT i.id, i.name, i.source, i.status, i.processed, i.doubles, i.demo, i.error_message,
            i.additional_data_extraction_status, i.updated_at, i.created_at, f.byte_size,
@@ -54,10 +54,10 @@ defmodule Dawarich.ImportExportIndex do
     ORDER BY #{Map.fetch!(@import_order, list.column)} #{direction(list)}
     LIMIT #{@per_page} OFFSET $2
     """
-    |> page(user, list, &import_row/1)
+    |> page(user, list, &import_row/1, repo)
   end
 
-  def exports(user, list) do
+  def exports(user, list, repo \\ Dawarich.Repo) do
     """
     SELECT e.id, e.name, e.status, e.file_format, e.file_type, e.url, e.error_message, e.created_at,
            f.blob_id, f.filename, f.byte_size, #{local_offset("e")}, z.name, count(*) OVER ()
@@ -75,15 +75,16 @@ defmodule Dawarich.ImportExportIndex do
     ORDER BY #{Map.fetch!(@export_order, list.column)} #{direction(list)}
     LIMIT #{@per_page} OFFSET $2
     """
-    |> page(user, list, &export_row/1)
+    |> page(user, list, &export_row/1, repo)
   end
 
-  defp page(sql, user, list, row) do
+  defp page(sql, user, list, row, repo) do
     %{rows: rows} =
       UserTimeZone.query!(
         sql,
         [user.id, (list.page - 1) * @per_page],
-        Dawarich.UserSettings.get(user)
+        Dawarich.UserSettings.get(user),
+        repo
       )
 
     total = if rows == [], do: 0, else: rows |> hd() |> List.last()

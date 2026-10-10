@@ -3,7 +3,6 @@ defmodule DawarichWeb.ImportsNativePagesTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   import Dawarich.Test.FormIsolation
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
   alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
   @endpoint DawarichWeb.Endpoint
   @reopen ~s(button[data-action="click->import-extraction#open"])
@@ -63,17 +62,15 @@ defmodule DawarichWeb.ImportsNativePagesTest do
     assert edit =~ "data-phx-main"
   end
 
-  test "a foreign import is shown by Rails while an owned non-GPX import is native", c do
+  test "foreign imports refuse to the safe index while owned non-GPX imports remain native", c do
     other = RailsUser.insert!(%{id: 7592, email: "foreign-pages@example.test"})
     ImportsExportsSeeds.import!(%{id: 759_102, user_id: c.user.id, name: "owned.kml", source: 9})
-    upstream = upstream!()
 
     for {user_id, path} <- [
           {other.id, "/imports/759101"},
           {other.id, "/imports/759101/edit"}
         ] do
-      {request, conn} = forwarded(upstream, fn -> get(RailsUser.signed_in(user_id), path) end)
-      assert {request, conn.status} == {{"GET #{path} HTTP/1.1", ""}, 204}
+      assert {:error, {:redirect, %{to: "/imports"}}} = live_as(%{id: user_id}, path)
     end
 
     for path <- ["/imports/759102", "/imports/759102/edit"] do
