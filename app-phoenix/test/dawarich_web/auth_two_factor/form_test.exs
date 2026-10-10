@@ -85,4 +85,42 @@ defmodule DawarichWeb.AuthTwoFactor.FormTest do
     assert html =~ "&lt;script&gt;"
     refute html =~ "<script>"
   end
+
+  test "setup QR encodes the supplied account and secret capability in EN and DE" do
+    for locale <- ~w(en de), account <- ~w(first second) do
+      secret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+      uri = Totp.provisioning_uri(secret, account <> "@example.test")
+
+      html =
+        Form.page(%{
+          __changed__: nil,
+          locale: locale,
+          kind: :verify,
+          self_hosted: true,
+          admin: false,
+          two_factor: true,
+          rails_csrf_token: "CSRF",
+          secret: secret,
+          uri: uri,
+          codes: []
+        })
+        |> Phoenix.HTML.Safe.to_iodata()
+        |> IO.iodata_to_binary()
+
+      actual =
+        html |> LazyHTML.from_fragment() |> LazyHTML.query("svg[shape-rendering='crispEdges']")
+
+      expected = uri |> Dawarich.QrSvg.otp() |> LazyHTML.from_fragment() |> LazyHTML.query("svg")
+
+      correct_qr =
+        Enum.count(actual) == 1 and
+          LazyHTML.attribute(LazyHTML.query(actual, "path"), "d") ==
+            LazyHTML.attribute(LazyHTML.query(expected, "path"), "d") and
+          LazyHTML.attribute(actual, "viewBox") == LazyHTML.attribute(expected, "viewBox")
+
+      assert correct_qr
+      manual_visible = NativeAuthHTTP.text(html, "details code") == secret
+      assert manual_visible
+    end
+  end
 end
