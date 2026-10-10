@@ -60,19 +60,31 @@ defmodule DawarichWeb.AccountLive.Edit do
   end
 
   def handle_event("export_data", _params, socket) do
-    :ok = UserData.request_export(scope(socket))
+    case UserData.request_native_export(scope(socket)) do
+      :ok ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :notice,
+           t(
+             socket.assigns.locale,
+             "controllers.settings.users.your_data_is_being_exported_you_will_receive_a_notification",
+             %{}
+           )
+         )
+         |> redirect(to: "/exports")}
 
-    {:noreply,
-     socket
-     |> put_flash(
-       :notice,
-       t(
-         socket.assigns.locale,
-         "controllers.settings.users.your_data_is_being_exported_you_will_receive_a_notification",
-         %{}
-       )
-     )
-     |> redirect(to: "/exports")}
+      {:error, :stale_session} ->
+        {:noreply, redirect(socket, to: "/users/sign_in")}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :alert,
+           t(socket.assigns.locale, "controllers.application.admin_action_failed", %{})
+         )}
+    end
   end
 
   def handle_event("validate_archive", _params, socket) do
