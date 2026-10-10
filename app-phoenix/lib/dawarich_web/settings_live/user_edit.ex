@@ -96,7 +96,9 @@ defmodule DawarichWeb.SettingsLive.UserEdit do
           "email" => target.email,
           "admin" => target.admin,
           "status" => Enum.at(@statuses, target.status)
-        }, as: "user")
+        },
+        as: "user"
+      )
 
   defp statuses, do: Enum.map(@statuses, &{&1, &1})
   defp label(locale, key), do: t(locale, "settings.users.edit." <> key, %{})

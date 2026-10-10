@@ -10,9 +10,9 @@
   />
   <div class="flex flex-col w-full my-10">
     <div class="w-10/12 mx-auto space-y-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-2xl font-bold">{@target.email}</h2>
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="min-w-0">
+          <h2 class="text-2xl font-bold break-all">{@target.email}</h2>
           <div class="flex gap-2 mt-2">
             <span class={if(@target.admin, do: "badge badge-primary", else: "badge badge-ghost")}>{label(
               @locale,
@@ -24,7 +24,7 @@
             >{label(@locale, elem(status(@target.status), 0))}</span>
           </div>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <.link class="btn btn-primary btn-sm" navigate={"/settings/users/#{@target.id}/edit"}>{label(
             @locale,
             "edit"
@@ -145,7 +145,7 @@
               <button
                 id="send-password-reset"
                 type="button"
-                class="btn btn-outline btn-sm"
+                class="btn btn-outline btn-sm h-auto min-h-8 py-1 whitespace-normal"
                 phx-click="send_password_reset"
                 phx-disable-with={label(@locale, "send_password_reset_email")}
                 disabled={MapSet.member?(@security_accepted, "send_password_reset")}

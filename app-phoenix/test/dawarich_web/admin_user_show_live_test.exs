@@ -149,7 +149,9 @@ defmodule DawarichWeb.AdminUserShowLiveTest do
         event <- [:rotate_api_key, :send_password_reset, :open_rotate, :params, :info] do
       Repo.query!(
         "UPDATE users SET admin=true,deleted_at=NULL,encrypted_password=$2 WHERE id=$1",
-        [c.actor.id, c.actor.encrypted_password], log: false)
+        [c.actor.id, c.actor.encrypted_password],
+        log: false
+      )
 
       {:ok, view, _} = show(c)
       if event == :rotate_api_key, do: render_hook(view, "open_rotate", %{})
@@ -181,7 +183,9 @@ defmodule DawarichWeb.AdminUserShowLiveTest do
 
     Repo.query!(
       "UPDATE users SET admin=true,deleted_at=NULL,encrypted_password=$2 WHERE id=$1",
-      [c.actor.id, c.actor.encrypted_password], log: false)
+      [c.actor.id, c.actor.encrypted_password],
+      log: false
+    )
 
     for event <- ~w(rotate_api_key send_password_reset) do
       Repo.query!("UPDATE users SET deleted_at=NULL WHERE id=$1", [c.target.id])
