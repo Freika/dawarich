@@ -74,9 +74,7 @@ defmodule Dawarich.Families.NativeCommands do
 
   defp clock(opts) do
     Keyword.get_lazy(opts, :clock, fn ->
-      base = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
-      started = System.monotonic_time(:microsecond)
-      fn -> DateTime.add(base, System.monotonic_time(:microsecond) - started, :microsecond) end
+      Dawarich.Families.Clock.ticking(Keyword.get_lazy(opts, :now, &DateTime.utc_now/0))
     end)
   end
 

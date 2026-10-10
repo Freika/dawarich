@@ -33,8 +33,11 @@ defmodule DawarichWeb.A12f3bF05Test do
              "duration" => "1h"
            }).status == 302
 
-    assert records("SELECT status,responded_at FROM family_location_requests WHERE id=$1", [id]) ==
-             [[1, ~N[2026-10-03 10:00:00.000000]]]
+    assert [[1, responded]] =
+             records("SELECT status,responded_at FROM family_location_requests WHERE id=$1", [id])
+
+    assert NaiveDateTime.compare(responded, ~N[2026-10-03 10:00:00]) != :lt
+    assert NaiveDateTime.diff(responded, ~N[2026-10-03 10:00:00]) < 60
 
     assert Accounts.settings(c.member.id)["family"]["location_sharing"]["duration"] == "1h"
     assert request(c.member, "PATCH", "/family/location_requests/#{id}/decline").status == 302

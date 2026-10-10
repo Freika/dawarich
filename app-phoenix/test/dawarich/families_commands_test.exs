@@ -182,7 +182,7 @@ defmodule Dawarich.FamiliesCommandsTest do
   end
 
   test "only the current request target may respond before expiry", ctx do
-    request!(@now |> DateTime.add(1) |> DateTime.to_naive())
+    request!(@now |> DateTime.add(60) |> DateTime.to_naive())
 
     assert {:error, :unauthorized} =
              Families.respond_location(ctx.owner, 10901, :accept, %{}, @opts)
@@ -207,7 +207,7 @@ defmodule Dawarich.FamiliesCommandsTest do
 
     ScratchRepo.query!(
       "UPDATE family_location_requests SET expires_at=$1 WHERE id=10901",
-      [@now |> DateTime.add(1) |> DateTime.to_naive()],
+      [@now |> DateTime.add(60) |> DateTime.to_naive()],
       log: false
     )
 
@@ -425,6 +425,85 @@ defmodule Dawarich.FamiliesCommandsTest do
         send(pid, :release_family)
         assert {:error, reason} = Task.await(task, 5000)
         assert reason in [:expired, :invitation_expired]
+        assert {footprint(), rows("SELECT status FROM family_location_requests")} == before
+      after
+        Task.shutdown(task, :brutal_kill)
+      end
+    end
+  end
+
+  for {path, probe} <- [
+        http_request: :family_row_probe,
+        registration_invitation: :family_row_probe,
+        registration_access: :family_join_probe
+      ] do
+    @path path
+    @probe probe
+    test "direct #{path} expiry crossed while waiting at #{probe} refuses the effect", _ctx do
+      expiry = @now |> DateTime.add(50, :millisecond) |> DateTime.to_naive()
+      repo = Dawarich.Test.FamilyCommandsProbeRepo
+      invitee = ScratchRepo.get!(User, 10903, log: false)
+
+      command =
+        case @path do
+          :http_request ->
+            request!(expiry)
+            user = %{id: 10902, timezone: "UTC"}
+
+            fn ->
+              Dawarich.Families.Requests.web_respond(
+                user,
+                :accept,
+                %{"id" => "10901"},
+                @now,
+                repo
+              )
+            end
+
+          :registration_invitation ->
+            token = invitation!("invitee@example.invalid")
+
+            ScratchRepo.query!(
+              "UPDATE family_invitations SET expires_at=$1 WHERE token=$2",
+              [expiry, token],
+              log: false
+            )
+
+            context = %{now: @now, locale: "en", self_hosted: true}
+            fn -> Dawarich.Families.WebInvitations.accept(repo, invitee, token, context) end
+
+          :registration_access ->
+            token = invitation!("invitee@example.invalid")
+
+            ScratchRepo.query!("UPDATE users SET active_until=$1 WHERE id=10901", [expiry],
+              log: false
+            )
+
+            context = %{now: @now, locale: "en", self_hosted: false}
+            fn -> Dawarich.Families.WebInvitations.accept(repo, invitee, token, context) end
+        end
+
+      before = {footprint(), rows("SELECT status FROM family_location_requests")}
+      parent = self()
+
+      task =
+        Task.async(fn ->
+          Process.put(@probe, parent)
+          command.()
+        end)
+
+      try do
+        assert_receive {:family_locked, pid}, 3000
+        Process.sleep(100)
+        send(pid, :release_family)
+        result = Task.await(task, 5000)
+
+        case @path do
+          :http_request -> assert {:ok, 422, _} = result
+          :registration_invitation -> assert result == {:error, :invitation_expired}
+          :registration_access -> assert result == {:error, :family_lapsed}
+        end
+
         assert {footprint(), rows("SELECT status FROM family_location_requests")} == before
       after
         Task.shutdown(task, :brutal_kill)

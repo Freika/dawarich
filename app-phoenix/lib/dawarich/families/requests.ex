@@ -77,7 +77,7 @@ defmodule Dawarich.Families.Requests do
 
         effect = fn ->
           RailsTime.with_zone(repo, user.timezone, fn ->
-            respond(user.id, family_id, id, decision, params, now, repo)
+            respond(user.id, family_id, id, decision, params, Clock.ticking(now), repo)
           end)
         end
 
@@ -169,7 +169,7 @@ defmodule Dawarich.Families.Requests do
     _error -> :ok
   end
 
-  defp respond(user_id, family_id, id, decision, params, now, repo) do
+  defp respond(user_id, family_id, id, decision, params, clock, repo) do
     case repo.query!(
            "SELECT target_user_id FROM family_location_requests WHERE family_id = $1 AND id = $2",
            [family_id, id]
@@ -183,17 +183,18 @@ defmodule Dawarich.Families.Requests do
         response_failure(403, "not_authorized")
 
       [[_target]] ->
-        locked(repo, user_id, id, decision, params, now)
+        locked(repo, user_id, id, decision, params, clock)
     end
   end
 
-  defp locked(repo, user_id, id, decision, params, now) do
+  defp locked(repo, user_id, id, decision, params, clock) do
     [[status, expires, suggested]] =
       repo.query!(
         "SELECT status, expires_at, suggested_duration FROM family_location_requests WHERE id = $1 FOR UPDATE",
         [id]
       ).rows
 
+    now = clock.()
     at = Clock.naive(now)
 
     if status == 0 and NaiveDateTime.compare(expires, at) == :gt do

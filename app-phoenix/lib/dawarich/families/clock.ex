@@ -28,6 +28,11 @@ defmodule Dawarich.Families.Clock do
 
   def naive(%DateTime{} = now), do: DateTime.to_naive(now)
 
+  def ticking(%DateTime{} = base) do
+    started = System.monotonic_time(:microsecond)
+    fn -> DateTime.add(base, System.monotonic_time(:microsecond) - started, :microsecond) end
+  end
+
   defp utc({:ok, at, _offset}), do: DateTime.to_naive(at)
   defp utc(_error), do: raise(ArgumentError, "time is not a valid time")
 end

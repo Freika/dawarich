@@ -33,6 +33,8 @@ defmodule Dawarich.Families.WebInvitations do
   end
 
   def accept(repo, user, token, ctx, opts \\ []) do
+    opts = Keyword.put_new_lazy(opts, :clock, fn -> Dawarich.Families.Clock.ticking(ctx.now) end)
+
     result =
       repo.transaction(fn ->
         case repo.query!(
@@ -44,7 +46,7 @@ defmodule Dawarich.Families.WebInvitations do
             repo.rollback(:not_found)
 
           [[id, family, email, status, expires]] ->
-            ctx = %{ctx | now: Keyword.get(opts, :clock, fn -> ctx.now end).()}
+            ctx = %{ctx | now: Keyword.fetch!(opts, :clock).()}
 
             cond do
               NaiveDateTime.compare(expires, DateTime.to_naive(ctx.now)) == :lt ->
@@ -219,6 +221,7 @@ defmodule Dawarich.Families.WebInvitations do
         log: false
       ).rows
 
+    ctx = %{ctx | now: Keyword.fetch!(opts, :clock).()}
     access = WebCreate.refresh_access(repo, family, access, plan, until, ctx.self_hosted)
 
     cond do
