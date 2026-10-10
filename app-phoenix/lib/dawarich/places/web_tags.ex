@@ -68,6 +68,8 @@ defmodule Dawarich.Places.WebTags do
                 [tag, id, stamp],
                 log: false
               )
+
+        Dawarich.Sharing.PublicEvents.enqueue(repo, owner)
       end)
       |> case do
         {:ok, _} -> :ok

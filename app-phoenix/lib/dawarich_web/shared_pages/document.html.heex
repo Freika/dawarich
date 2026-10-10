@@ -28,9 +28,9 @@
     </script>
     <.metadata {assigns} />
   </head>
-  <body class="bg-base-100">
+  <body class="bg-base-100 [overflow-wrap:anywhere]">
     <header class="sticky top-0 z-30 border-b border-base-300 bg-base-100/85 backdrop-blur">
-      <div class="container mx-auto px-4 flex items-center justify-between h-16">
+      <div class="container mx-auto px-4 flex flex-wrap min-w-0 items-center justify-between gap-2 min-h-16 py-2">
         <a class="btn btn-ghost normal-case text-xl px-2 gap-2" href={@base_url <> "/"}>
           <img
             alt={l(@locale, "dawarich_logo")}
@@ -40,7 +40,7 @@
           <span>{l(@locale, "dawarich")}</span>
         </a>
         <a
-          class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-b from-[#3A66E8] to-[#2A56D8] px-4 py-2 text-sm font-bold text-white shadow-[0_6px_16px_rgba(45,91,227,0.30)] transition hover:brightness-105"
+          class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-b from-[#3A66E8] to-[#2A56D8] px-4 py-2 text-sm font-bold text-white whitespace-normal text-center max-w-full shadow-[0_6px_16px_rgba(45,91,227,0.30)] transition hover:brightness-105"
           href={cta("header")}
         >
           {l(@locale, "try_dawarich_cloud")} <span aria-hidden="true">→</span>

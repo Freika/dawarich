@@ -35,11 +35,36 @@ defmodule Dawarich.Sharing.Public do
   def admit(_, _), do: {:error, :not_found}
 
   def read(grant, now) do
-    with {:ok, data} <- admit(grant, now) do
+    with {:ok, data} <- admit(grant, now),
+         privacy <- privacy_version(data.link.user_id),
+         snapshot <- Dawarich.Sharing.PublicSnapshot.load(data, now),
+         {:ok, current} <- admit(grant, DateTime.utc_now()),
+         true <- privacy == privacy_version(data.link.user_id) do
+      deadline =
+        case snapshot.map.latest do
+          [[_, _, at]] -> min(current.deadline, at + 901)
+          _ -> current.deadline
+        end
+
       {:ok,
-       %{link: Sharing.Resources.sanitize(data.link), kind: data.kind, expires_at: data.deadline}}
+       Map.merge(snapshot, %{
+         link: Sharing.Resources.sanitize(current.link),
+         kind: current.kind,
+         expires_at: deadline
+       })}
+    else
+      _ -> {:error, :not_found}
     end
+  rescue
+    _ -> {:error, :unavailable}
   end
+
+  defp privacy_version(user),
+    do:
+      :crypto.hash(
+        :sha256,
+        :erlang.term_to_binary(Enum.sort(Dawarich.SharedApi.Closure.zones(user)))
+      )
 
   def subscribe(grant, now) do
     with {:ok, data} <- admit(grant, now) do

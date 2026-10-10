@@ -1366,9 +1366,19 @@ Versioned timers independently expire silent consent and access grants.
 
 ### FRB-NATIVE-M4-PUBLIC-DELIVERY — Public live maps retain revoked subscriptions
 
-Rails admits a public link once when connecting and subscribes to its coordinate stream. An already connected reader can retain old content after revocation, expiry, phrase rotation or audience loss. Native public readers re-admit before each snapshot and clear silent expiry with a versioned deadline timer. Native browser erasure is completed in C9; independent wire adapters retain their external protocol.
+Rails admits a public link once when connecting and subscribes to its coordinate stream. An already connected reader can retain old content after revocation, expiry, phrase rotation or audience loss. Native public readers re-admit before each snapshot and clear silent expiry with a versioned deadline timer. Native browser hooks abort pending loads and erase maps, markers, images, replay timers and data on refusal/disconnect. Snapshot construction repeats admission and privacy checks after loading, preventing queued revoked data from being published; independent wire adapters retain their external protocol.
 
 - Rails: `app/channels/application_cable/connection.rb:27,29`; `app/channels/shared_location_channel.rb:5,8`.
 - Phoenix: `app-phoenix/lib/dawarich/sharing/public.ex:20`; `app-phoenix/lib/dawarich_web/public_share_live.ex:47`.
 - Tests: “queued public update after revoke or phrase rotation clears old content before delivery”; “public expiry clears a silent connection and reconnect cannot revive it”; admission/cache/timer mutations fail.
 - Ledger: ED-NATIVE-M4-PUBLIC-ADMISSION; no DRB added. Rails production code unchanged.
+
+
+### FRB-NATIVE-M4-TRACK-ROUTE — Shared tracks ignore the disabled route option
+
+Rails renders a shared track map even when its owner disables the route section. Native public track readers omit both the map and route snapshot when `show_route` is false; optional stats/photos retain their independent settings.
+
+- Rails: `app/views/shared/links/_track.html.erb:6`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/shared_resource_page/track.html.heex:4`; `app-phoenix/lib/dawarich/sharing/public_snapshot.ex:12`.
+- Test: “native shared track honors the disabled route section”; track-section mutation fails, restoration passes.
+- Ledger: ED-NATIVE-M4-TRACK-ROUTE; no DRB added. Rails production code unchanged.
