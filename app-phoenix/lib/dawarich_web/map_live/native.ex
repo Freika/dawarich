@@ -88,6 +88,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("map:select", %{"kind" => kind, "id" => id}, socket) when kind in ~w(place visit),
     do: DawarichWeb.MapLive.EntityCommands.handle_event(kind <> ":edit", %{"id" => id}, socket)
 
+  def handle_event("timeline:filter", payload, socket),
+    do: {:noreply, DawarichWeb.MapLive.Timeline.filter(socket, payload)}
+
   def handle_event("place:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.EntityCommands.handle_event(event, payload, socket)
 
@@ -157,7 +160,7 @@ defmodule DawarichWeb.MapLive.Native do
         class="absolute left-0 top-40 bottom-0 z-10 overflow-auto w-96 max-w-full min-w-0 bg-base-100 p-3"
       >
         <DawarichWeb.NativeTimelineCalendar.calendar calendar={assigns[:calendar]} locale={@locale} />
-        <DawarichWeb.NativeTimelineFeed.feed timeline={assigns[:timeline]} locale={@locale} />
+        <DawarichWeb.NativeTimelineFeed.feed timeline={assigns[:timeline]} filter={assigns[:timeline_filter]} locale={@locale} />
       </section>
       <DawarichWeb.NativeResidency.card
         :if={@map_url["panel"] == "insights"}

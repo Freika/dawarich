@@ -171,6 +171,15 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert_push_event(view, "map:invalidate", %{resource: "places", id: _})
   end
 
+  test "native production host filters the timeline and clears the filter", %{id: id} do
+    {:ok, view, _} = open(id, @second <> "&panel=timeline")
+    render_async(view, 5000)
+    view |> form("#native-timeline-filter", %{"q" => "Bakery"}) |> render_change()
+    assert has_element?(view, "#native-timeline-filter input[value='bakery']")
+    view |> element("#native-timeline-filter-clear") |> render_click()
+    assert has_element?(view, "#native-timeline-filter input[value='']")
+  end
+
   defp config(view) do
     view
     |> render()
