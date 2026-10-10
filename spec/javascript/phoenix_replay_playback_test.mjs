@@ -146,7 +146,9 @@ test("playing replay moves the marker along segments, follows it and stops at th
     off: (type, layer, fn) => camera.off(type, fn || layer),
   }
   const followed = []
-  const replay = (await import("../../app-phoenix/assets/js/map/replay/runtime.js")).createReplay({
+  const replay = (
+    await import("../../app-phoenix/assets/js/map/replay/runtime.js")
+  ).createReplay({
     map,
     timezone: "UTC",
     loadDay: async () => [
@@ -162,7 +164,8 @@ test("playing replay moves the marker along segments, follows it and stops at th
   replay.play()
   frames.shift()(1000)
   frames.shift()(1250)
-  const lon = () => sources.get("native-replay-marker").data.geometry.coordinates[0]
+  const lon = () =>
+    sources.get("native-replay-marker").data.geometry.coordinates[0]
   assert.equal(lon(), 0.2)
   assert.ok(camera.getCenter().lng > 0)
   frames.shift()(1500)
