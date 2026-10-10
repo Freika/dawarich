@@ -30,6 +30,8 @@ defmodule DawarichWeb.NativeMapPage do
       />
       <div class="min-w-0 max-w-full">
         <input
+          id="native-map-search"
+          phx-update="ignore"
           data-map-search
           type="search"
           class="input input-bordered max-w-full"

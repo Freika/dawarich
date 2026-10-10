@@ -18,6 +18,7 @@ defmodule DawarichWeb.MapLive.Native do
 
     {:ok,
      socket
+     |> assign(:page_title, t(socket.assigns.locale, "map.maplibre.index.map", %{}))
      |> assign(:navbar, navbar)
      |> DawarichWeb.MapLive.SettingsCommands.load()
      |> DawarichWeb.NativePosterGallery.mount(), layout: false}
@@ -188,6 +189,8 @@ defmodule DawarichWeb.MapLive.Native do
 
   def handle_event(event, _, socket) when event in ~w(map:ready map:failed),
     do: {:noreply, socket}
+
+  def handle_event(_event, _payload, socket), do: {:noreply, socket}
 
   def handle_info({DawarichWeb.VideoStudioLiveComponent, {:saved, _id, _evicted}}, socket),
     do: {:noreply, socket}
