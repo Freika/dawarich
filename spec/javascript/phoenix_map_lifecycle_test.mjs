@@ -55,7 +55,7 @@ function fixture(options = {}) {
     attach: options.attach,
     timers: options.timers,
   })
-  return { runtime, calls, MockMap }
+  return { runtime, calls, MockMap, element }
 }
 
 test("destroy while chunk or style resolves creates no orphan map", async () => {
@@ -215,4 +215,27 @@ test("initialization deadline drains a map waiting for attachment", async () => 
     runtime.destroy()
     attached.resolve()
   }
+})
+
+test("production runtime publishes a current read-only root snapshot and removes it on destroy", async () => {
+  const { runtime, element } = fixture({
+    config: {
+      revision: 1,
+      range: { timezone: "UTC" },
+      api_key: "synthetic-private",
+    },
+  })
+  assert.equal(element.dawarichMapSnapshot, undefined)
+  assert.equal(await runtime.mount(), "ready")
+  assert.equal(element.dawarichMapSnapshot().revision, 1)
+  assert.equal(
+    JSON.stringify(element.dawarichMapSnapshot()).includes("synthetic-private"),
+    false,
+  )
+  await runtime.update({ revision: 2 })
+  assert.equal(element.dawarichMapSnapshot().revision, 2)
+  const stale = element.dawarichMapSnapshot
+  runtime.destroy()
+  assert.equal(element.dawarichMapSnapshot, undefined)
+  assert.equal(stale(), null)
 })
