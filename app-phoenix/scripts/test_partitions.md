@@ -34,8 +34,8 @@ RAILS_ENV=test DATABASE_NAME=dawarich_phoenix_test_part1 \
 
 Repeat for each partition database. `test_helper.exs` creates and migrates their
 scratch repos; it does not create the Rails tables in the main database.
-The default database base requires `dawarich_phoenix_test_part1` through `part4`.
-Start private Redis servers on ports 7271 through 7274, with database 0 for the
+The default database base requires `dawarich_phoenix_test_part1` through `partN` for N partitions (1 to 8).
+Start private Redis servers on ports 7271 through 7270+N, with database 0 for the
 cache and database 1 for jobs. With another Redis URL, its port is the base port.
 Each partition adds its number minus one to that port.
 

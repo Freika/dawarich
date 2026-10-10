@@ -3,11 +3,11 @@ set -eu
 
 partitions=${1:-}
 case "$partitions" in
-  1|2|3|4) shift ;;
-  *) echo "usage: $0 <1..4> --seed <seed> [mix test arguments]" >&2; exit 64 ;;
+  [1-8]) shift ;;
+  *) echo "usage: $0 <1..8> --seed <seed> [mix test arguments]" >&2; exit 64 ;;
 esac
 if [ "${1:-}" != --seed ] || [ -z "${2:-}" ]; then
-  echo "usage: $0 <1..4> --seed <seed> [mix test arguments]" >&2
+  echo "usage: $0 <1..8> --seed <seed> [mix test arguments]" >&2
   exit 64
 fi
 seed=$2
