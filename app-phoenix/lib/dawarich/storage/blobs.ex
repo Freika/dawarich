@@ -10,7 +10,7 @@ defmodule Dawarich.Storage.Blobs do
   VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
   """
 
-  def find(id), do: select(id)
+  def find(id, repo \\ Repo), do: select(id, repo)
 
   def attach!(repo, type, record, blob, now) do
     [[id]] =
@@ -39,6 +39,7 @@ defmodule Dawarich.Storage.Blobs do
   end
 
   def create_before_direct_upload(config, attrs, %NaiveDateTime{} = now, opts \\ []) do
+    repo = Keyword.get(opts, :repo, Repo)
     key = Keyword.get_lazy(opts, :key, fn -> &Storage.generate_key/0 end).()
     zone = Keyword.get_lazy(opts, :zone, fn -> System.get_env("TIME_ZONE", "Europe/Berlin") end)
     metadata = RailsMessages.json(Map.drop(attrs["metadata"] || %{}, @protected))
@@ -55,14 +56,14 @@ defmodule Dawarich.Storage.Blobs do
       now
     ]
 
-    RailsTime.with_zone(zone, fn ->
-      Repo.transaction(fn ->
-        %{rows: [[id]]} = Repo.query!(@insert, row)
+    RailsTime.with_zone(repo, zone, fn ->
+      repo.transaction(fn ->
+        %{rows: [[id]]} = repo.query!(@insert, row)
 
         if Keyword.has_key?(opts, :user_id),
-          do: Dawarich.Storage.UploadReceipts.bind!(Repo, id, opts[:user_id])
+          do: Dawarich.Storage.UploadReceipts.bind!(repo, id, opts[:user_id])
 
-        select(id)
+        select(id, repo)
       end)
     end)
   end
@@ -74,13 +75,13 @@ defmodule Dawarich.Storage.Blobs do
     end
   end
 
-  defp select(id) do
+  defp select(id, repo) do
     sql =
       "SELECT *, " <>
         RailsTime.sql("created_at", 3) <>
         " AS created_at_json FROM active_storage_blobs WHERE id = $1"
 
-    case Repo.query!(sql, [id]) do
+    case repo.query!(sql, [id]) do
       %{columns: columns, rows: [row]} ->
         value = blob(Enum.zip(columns, row))
         unless Dawarich.Storage.NativePurge.pending?(value.metadata), do: value

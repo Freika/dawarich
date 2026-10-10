@@ -126,3 +126,5 @@ The controller recorded these deferrals on 2026-10-07; they remain follow-up wor
 - Serialize administrator deletion and role changes to retain administration access under competing writes. [FRB-085](fixed-rails-bugs.md#frb-085--concurrent-admin-roledeletion-writes-can-leave-no-administrator)
 
 These are native Phoenix corrections delivered in A2; retained Rails behavior is unchanged.
+
+- Remove abandoned native uploads after their lease expires, while preserving accepted attachments. [FRB-NATIVE-M4-ABANDONED-UPLOAD](fixed-rails-bugs.md#frb-native-m4-abandoned-upload--leaving-an-upload-strands-its-unattached-file)

@@ -1338,3 +1338,13 @@ Rails counts administrators before an unlocked update and does not share a guard
 - Evidence: A2 commit `c7f44a025`; `m3b-domain.report.md`, `m3b-x3.report.md`. No machine stress or Rails production change.
 - Ledger: ED-NATIVE-ADMIN-USERS-DELETE-GUARD; no DRB added. Distinct from FRB-084's missing deletion guard.
 - CHANGELOG-ready: Serialize native administrator deletion and role changes to retain administration access.
+
+### FRB-NATIVE-M4-ABANDONED-UPLOAD — Leaving an upload strands its unattached file
+
+Rails creates direct-upload blobs before form submission. Navigating away only removes browser listeners; it does not abort or purge completed unattached uploads. Native reservations expire after the configured lease, with durable bounded sweeping and retryable physical deletion before metadata removal. Cancelled grants remain tombstoned until their target expires.
+
+- Rails: `app/javascript/controllers/upload_controller.js:40,110,153`; Active Storage direct-upload creation precedes the hidden signed-id field at line 160.
+- Phoenix: `app-phoenix/lib/dawarich/uploads/sweep_worker.ex:11`; `app-phoenix/lib/dawarich/uploads/cleanup_worker.ex:9`; `app-phoenix/lib/dawarich/uploads/records.ex:76`.
+- Test: “expired abandoned uploads are purged once after worker restart”; “cleanup refuses an attached export and retains a late PUT tombstone until target expiry” in `app-phoenix/test/dawarich/uploads_test.exs`.
+- Evidence: `impl-m4.report.md`, A1; source-backed Rails lifecycle comparison, not a Rails HTTP cancellation reproduction. Native owned reservations only; arbitrary Rails/rich-text blobs and attached exports are excluded. ED-NATIVE-M4-UPLOAD-LIFECYCLE added; no DRB added.
+- CHANGELOG-ready: Remove abandoned native uploads after their lease expires, while preserving files already accepted by an import or export.

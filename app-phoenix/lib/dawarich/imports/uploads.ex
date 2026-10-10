@@ -12,7 +12,10 @@ defmodule Dawarich.Imports.Uploads do
            ).rows do
         [row] ->
           blob = Map.new(Enum.zip(@columns, row))
-          {:ok, %{blob | metadata: metadata(blob.metadata)}}
+
+          if Dawarich.Storage.NativePurge.pending?(blob.metadata),
+            do: {:error, :not_found},
+            else: {:ok, %{blob | metadata: metadata(blob.metadata)}}
 
         _ ->
           {:error, :not_found}
