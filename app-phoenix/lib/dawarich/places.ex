@@ -10,6 +10,7 @@ defmodule Dawarich.Places do
   def edit(scope, raw_id, opts \\ []),
     do: member(scope, raw_id, opts, &Reads.edit/3)
 
+  def nearby(scope, params, opts \\ []), do: Dawarich.Places.NativeNearby.run(scope, params, opts)
 
   def new, do: Dawarich.Places.Form.new()
 

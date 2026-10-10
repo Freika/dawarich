@@ -1,6 +1,6 @@
 # Native milestone 3d: Places and ordinary forms
 
-Implementation status: C0 complete; A1–C3 pending; C4 controller acceptance pending.
+Implementation status: C0/A1–A3 complete; B1–C3 pending; C4 controller acceptance pending.
 
 ## Frozen contracts
 
