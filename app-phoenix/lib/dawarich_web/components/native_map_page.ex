@@ -119,6 +119,16 @@ defmodule DawarichWeb.NativeMapPage do
       <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
       <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
       <DawarichWeb.NativeMapReplay.panel id="native-map-replay" locale={@locale} />
+      <button
+        type="button"
+        data-testid="map-button-poster"
+        class="btn btn-sm h-auto whitespace-normal"
+      >{t(@locale, "map.maplibre.button_cluster.poster_studio", %{})}</button>
+      <button type="button" data-testid="map-button-video" class="btn btn-sm h-auto whitespace-normal">{t(
+        @locale,
+        "map.maplibre.button_cluster.video_studio",
+        %{}
+      )}</button>
       <DawarichWeb.NativePosterStudio.poster_studio
         themes={@page.themes}
         posters={@posters}

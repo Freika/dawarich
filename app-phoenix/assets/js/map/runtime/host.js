@@ -1,3 +1,4 @@
+import { installStudios } from "../ui/studios.js"
 import { createReader } from "../data/reader.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
@@ -51,6 +52,7 @@ export function mountHost({
     attach:
       attach ??
       (({ map, config, lifetime }) => {
+        installStudios({ element, owner, lifetime })
         installHostReplay({
           onActive: (active) => (active ? photos?.hide() : photos?.show()),
           library,
