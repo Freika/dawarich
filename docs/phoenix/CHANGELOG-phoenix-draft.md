@@ -141,3 +141,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 
 - Keep Trip day-layer cleanup safe before hover initialization. [FRB-NATIVE-M6-TRIP-DAY-DISPOSE](fixed-rails-bugs.md#frb-native-m6-trip-day-dispose--trip-day-layer-removal-crashes-before-hover-setup)
 - Close flight popups when removing their map layer. [FRB-NATIVE-M6-FLIGHT-POPUP](fixed-rails-bugs.md#frb-native-m6-flight-popup--removed-flight-layers-leave-a-popup-open)
+
+- Drop completed native public-map reads after share revocation, expiry, phrase rotation or family withdrawal (FRB-NATIVE-M6-PUBLIC-LATE).

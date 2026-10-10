@@ -7,7 +7,11 @@ defmodule Dawarich.RailsCookies do
   @encrypted_salt "authenticated encrypted cookie"
   @signed_salt "signed cookie"
 
-  def decrypt(value, name, secret, now) do
+  def decrypt(value, name, secret, now), do: decrypt(value, name, secret, now, false)
+
+  def decrypt_metadata(value, name, secret, now), do: decrypt(value, name, secret, now, true)
+
+  defp decrypt(value, name, secret, now, metadata) do
     with [data, iv, tag] <- value |> URI.decode_www_form() |> String.split("--"),
          {:ok, data} <- Base.decode64(data),
          {:ok, <<_::binary-size(12)>> = iv} <- Base.decode64(iv),
@@ -22,7 +26,7 @@ defmodule Dawarich.RailsCookies do
              tag,
              false
            ) do
-      unwrap(plain, name, now)
+      unwrap(plain, name, now, metadata)
     else
       _ -> :error
     end
@@ -63,14 +67,14 @@ defmodule Dawarich.RailsCookies do
     Jason.encode!(%{"_rails" => meta})
   end
 
-  defp unwrap(plain, name, now) do
+  defp unwrap(plain, name, now, metadata \\ false) do
     with {:ok, %{"_rails" => %{"message" => message, "pur" => purpose} = meta}} <-
            Jason.decode(plain),
          true <- purpose == "cookie." <> name,
          false <- expired?(meta["exp"], now),
          {:ok, json} <- Base.decode64(message),
          {:ok, value} <- Jason.decode(json) do
-      {:ok, value}
+      if metadata, do: {:ok, value, meta["exp"]}, else: {:ok, value}
     else
       _ -> :error
     end

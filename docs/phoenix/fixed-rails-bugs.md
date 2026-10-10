@@ -1440,3 +1440,13 @@ Rails FlightsLayer.remove detaches layer handlers and geometry but leaves its po
 - Test: “trip flight popup closes with its owned layer” in `spec/javascript/phoenix_trip_layers_test.mjs`; actual Rails-source oracle RED and flight-popup mutation fail/restored GREEN.
 - Ledger: ED-NATIVE-M6-FLIGHT-POPUP; no DRB. Rails unchanged.
 - CHANGELOG-ready: Close flight popups when removing their map layer.
+
+### FRB-NATIVE-M6-PUBLIC-LATE — Shared reads finish after the owner revokes access
+
+Rails validates a public link before the provider read; a thumbnail provider can finish after revocation and the controller still sends its bytes. Phoenix native public reads re-admit after completion and discard revoked, expired, re-locked, withdrawn or changed grants before returning data.
+
+- Rails: `app/controllers/api/v1/shared/base_controller.rb:27`, `app/controllers/api/v1/shared/photos_controller.rb:21,24`.
+- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/public.ex:44,49`.
+- Test: “public result revoked during provider completion is dropped” in `native_public_capability_test.exs`; actual named RED, late-admission mutation failure/restored GREEN. Rails source oracle loads the actual BaseController/PhotosController with a provider that revokes during completion and reproduces the response.
+- Ledger: ED-NATIVE-M6-PUBLIC-LATE; no DRB. Rails unchanged.
+- CHANGELOG-ready: Drop completed public-map reads after share revocation.

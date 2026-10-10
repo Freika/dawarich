@@ -112,3 +112,9 @@ Native cookie resources `family_locations` and `family_history` freshly admit fa
 ## Preview contracts
 
 `NativeMapPreview.preview` accepts resource ID or a form range, interactivity/numbering/style scalars, and public-stat UUID/bounds. It serializes no path, plan, credentials or owner identity. `MapPreview` observes visibility and admits at most two live previews per document by default; hiding/destroying releases its slot, map, read and listeners. Reconnect refreshes the same visible owner. This safety default awaits measured O8 acceptance. Trip/form data uses the scoped cookie reader; public stats only request the existing UUID-clipped hexagon API with credentials omitted. Public refusal clears geometry before retry; localized hover/popups and style restoration are owned by the preview. m5/controller parent insertion remains X1.
+
+## Public capability boundary
+
+`Maps.Dependencies.Public.config/read` uses a separately validated share capability, never an owner Scope. Current SharedLinks/FamilyAudience and SharedApi privacy queries remain authoritative. Private phrase grants contain only a second-hashed unlock fingerprint and exact signed cookie expiry; SessionStore exposes these as ephemeral connection metadata and drops them before cookie persistence. Family grants validate the original viewer session and fresh membership; their Rails phrase exemption is retained. Revocation, expiry, phrase rotation, deleted owners, missing resources and changed grants are typed refusals. Native reads re-admit after completion before emitting provider bytes or geometry. External APIs remain unchanged.
+
+Dependency ledger additions: Family delegates current family consent/history and awaits m4; Trip delegates current TripPage/read helpers and awaits m5; Public delegates current SharedLinks/SharedApi admission/privacy and awaits m4 public/family admission plus m5 resource projections. All adapters switch after accepted controller integration.
