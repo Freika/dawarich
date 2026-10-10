@@ -1,6 +1,5 @@
 defmodule DawarichWeb.AdminGateTest do
   use ExUnit.Case, async: false
-  import Plug.Conn
   import Plug.Test
 
   alias Dawarich.Repo
@@ -31,57 +30,6 @@ defmodule DawarichWeb.AdminGateTest do
           })
 
     :ok
-  end
-
-  test "instance gate refuses guest nonadmin and Cloud before Phoenix filters" do
-    assert false == AdminGate.instance?(conn(:get, "/admin/settings"), %{})
-    assert false == AdminGate.instance?(signed(10002, "/admin/settings"), %{})
-    assert true == AdminGate.instance?(signed(10001, "/admin/settings?section=photon"), %{})
-    System.put_env("SELF_HOSTED", "false")
-    assert false == AdminGate.instance?(signed(10001, "/admin/settings"), %{})
-    System.put_env("SELF_HOSTED", "true")
-
-    for query <- [
-          "section[]=photon",
-          "client=mobile",
-          "aff=fixture",
-          "via=fixture",
-          "_method=post",
-          "section=photon&section=points"
-        ] do
-      assert false == AdminGate.instance?(signed(10001, "/admin/settings?" <> query), %{})
-    end
-
-    for header <- ["turbo-frame", "x-dawarich-client", "x-http-method-override"] do
-      assert false ==
-               AdminGate.instance?(
-                 put_req_header(signed(10001, "/admin/settings"), header, "synthetic"),
-                 %{}
-               )
-    end
-
-    duplicate = signed(10001, "/admin/settings")
-
-    duplicate = %{
-      duplicate
-      | req_headers: [{"accept", "text/html"}, {"accept", "*/*"} | duplicate.req_headers]
-    }
-
-    assert false == AdminGate.instance?(duplicate, %{})
-
-    assert false ==
-             AdminGate.instance?(
-               signed(10001, "/admin/settings", %{"dawarich_client" => "fixture"}),
-               %{}
-             )
-
-    Repo.query!(
-      "UPDATE users SET settings = '{\"timezone\": \"Mars/Unknown\"}' WHERE id = 10001",
-      [],
-      log: false
-    )
-
-    assert false == AdminGate.instance?(signed(10001, "/admin/settings"), %{})
   end
 
   test "users gate preserves Cloud-before-auth refusal and missing IDs" do

@@ -1,19 +1,11 @@
 defmodule DawarichWeb.AdminGate do
   @moduledoc false
 
-  alias Dawarich.Admin.{InstancePage, UsersPage}
+  alias Dawarich.Admin.UsersPage
   alias Dawarich.Auth.Admission
-  alias Dawarich.Repo
   alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
 
   @markers ~w(client aff via referral dawarich_client invitation_token pending_import_ticket)
-
-  def instance?(conn, _params) do
-    Dawarich.Standalone.enabled?() or
-      (eligible?(conn, :admin) and match?({:ok, _}, InstancePage.load(Repo, System.get_env())))
-  rescue
-    _ -> false
-  end
 
   def users?(conn, params) do
     eligible?(conn, :admin) and users_state?(conn, params)
