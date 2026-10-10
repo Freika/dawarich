@@ -42,8 +42,11 @@ defmodule Dawarich.Visits.WebSettings do
                   [user_id],
                   log: false
                 ).rows do
-             [[settings, last]] when is_map(settings) or is_nil(settings) ->
-               fun.(%{settings: Dawarich.UserSettings.provided(settings), last_redetected: last})
+             [[settings, last]] ->
+               case Dawarich.Accounts.settings_for(%{settings: settings}) do
+                 {:ok, settings} -> fun.(%{settings: settings, last_redetected: last})
+                 {:error, _} -> repo.rollback({:replay, "visit settings user"})
+               end
 
              _ ->
                repo.rollback({:replay, "visit settings user"})
@@ -62,7 +65,10 @@ defmodule Dawarich.Visits.WebSettings do
            log: false
          ).rows do
       [[settings, last]] ->
-        %{settings: Dawarich.UserSettings.provided(settings), last_redetected: last}
+        case Dawarich.Accounts.settings_for(%{settings: settings}) do
+          {:ok, settings} -> %{settings: settings, last_redetected: last}
+          {:error, _} = error -> error
+        end
 
       [] ->
         nil
@@ -82,6 +88,9 @@ defmodule Dawarich.Visits.WebSettings do
       two_factor: DawarichWeb.SettingsParts.two_factor_available?()
     }
   end
+
+  def page(_user, {:error, _} = error, _now, _self_hosted), do: error
+  def page(_user, nil, _now, _self_hosted), do: {:error, :unavailable}
 
   defp available_at(settings, last) do
     DawarichWeb.LocalizedTime.l(

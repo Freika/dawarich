@@ -19,7 +19,8 @@ defmodule Dawarich.Settings do
   def update_visits(%Scope{user: user}, params, now \\ DateTime.utc_now()) do
     case WebSettings.save(Jobs.repo(), user.id, params, now) do
       {:ok, saved} -> {:ok, saved}
-      {:replay, reason} -> raise "visit settings could not be saved: #{reason}"
+      {:replay, "visit settings user"} -> {:error, :unsupported}
+      {:replay, _} -> {:error, :unavailable}
     end
   end
 
@@ -28,7 +29,8 @@ defmodule Dawarich.Settings do
       {:ok, _} -> :ok
       {:cooldown, 429} -> :cooldown
       {:cooldown, 429, :native} -> :cooldown
-      {:replay, reason} -> raise "visit redetection could not be queued: #{reason}"
+      {:replay, "visit settings user"} -> {:error, :unsupported}
+      {:replay, _} -> {:error, :unavailable}
     end
   end
 
