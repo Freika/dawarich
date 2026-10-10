@@ -291,19 +291,6 @@ defmodule DawarichWeb.AdminWritesRequestTest do
       admitted = match?({:ok, _, %{id: 14001}, _, _}, Request.load(conn, action, c.opts))
       assert admitted, "proxied #{action} should be admitted"
 
-      if action == :registration do
-        response =
-          DawarichWeb.AdminWrites.Settings.call(conn,
-            action: :registration,
-            context: c.opts[:context]
-          )
-
-        assert response.status == 302
-
-        assert Repo.query!("SELECT enabled FROM phoenix.registration_setting", [], log: false).rows ==
-                 [[true]]
-      end
-
       assert DawarichWeb.RailsRemoteIp.ip(conn) == "192.0.2.5"
 
       for refused <- [

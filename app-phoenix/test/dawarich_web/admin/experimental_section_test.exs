@@ -4,7 +4,8 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
   import Phoenix.LiveViewTest, only: [render_component: 2]
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{RailsUser, RawHTTP}
-  alias DawarichWeb.{AdminWrites.Settings, RailsCsrf}
+  alias Dawarich.Accounts.Scope
+  alias Dawarich.Admin.Instance
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -40,8 +41,7 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
         health: %{summary: %{}, gauges: %{"tables" => false}},
         two_factor: false,
         command: fn _ -> {:ok, 0} end
-      },
-      session: RailsUser.session(16010)
+      }
     }
   end
 
@@ -81,48 +81,32 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
   end
 
   test "enabling without URL shows atlas_url_required", c do
-    conn =
-      request(c.session, "/admin/settings", [
-        {"_method", "patch"},
-        {"section", "experimental"},
-        {"instance_settings[map_matching_enabled]", "true"}
-      ])
-      |> Settings.call(action: :instance, context: c.context)
-
-    assert conn.status == 303
-    assert flash(conn, "alert") == "Set an Atlas URL before enabling map matching."
-
-    assert get_resp_header(conn, "location") == [
-             "http://www.example.com/admin/settings?section=experimental"
-           ]
+    assert Instance.save(scope(), experimental(%{"map_matching_enabled" => "true"}), opts()) ==
+             {:error, {:invalid, "Set an Atlas URL before enabling map matching."}}
 
     assert page(c.context) =~ "Set an Atlas URL before enabling map matching."
   end
 
   @tag :r1_admin_refresh
-  test "R1 admin UI enable and disable refresh the completion gate without restart", c do
+  test "R1 admin UI enable and disable refresh the completion gate without restart" do
     alias Dawarich.Tracks.MapMatching.Enqueuer
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
     assert :disabled = Enqueuer.defer(Repo, 0)
 
     for {value, result} <- [{"true", :deferred}, {"false", :disabled}] do
-      conn =
-        request(c.session, "/admin/settings", [
-          {"_method", "patch"},
-          {"section", "experimental"},
-          {"instance_settings[atlas_url]", "http://atlas.example.invalid"},
-          {"instance_settings[map_matching_enabled]", value}
-        ])
-        |> Settings.call(action: :instance, context: c.context)
+      params =
+        experimental(%{
+          "atlas_url" => "http://atlas.example.invalid",
+          "map_matching_enabled" => value
+        })
 
-      assert conn.status == 303
-      assert flash(conn, "notice") == "Settings saved."
+      assert Instance.save(scope(), params, opts()) == {:ok, :saved}
       assert Enqueuer.defer(Repo, 0) == result
       Dawarich.MapMatchingTasks.await!()
     end
   end
 
-  test "test connection shows version", c do
+  test "test connection shows version" do
     server = RawHTTP.listen()
     on_exit(fn -> :gen_tcp.close(server.listen) end)
 
@@ -171,7 +155,7 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
     refute conn.resp_body =~ "map-matching-demo"
   end
 
-  test "failed connection warns without blocking settings save", c do
+  test "failed connection warns without blocking settings save" do
     server = RawHTTP.listen()
     on_exit(fn -> :gen_tcp.close(server.listen) end)
 
@@ -182,35 +166,14 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
       ])
 
     url = "http://127.0.0.1:#{server.port}"
+    params = experimental(%{"atlas_url" => url, "map_matching_enabled" => "true"})
+    assert Instance.save(scope(), params, opts()) == {:ok, :saved}
 
-    conn =
-      request(c.session, "/admin/settings", [
-        {"_method", "patch"},
-        {"section", "experimental"},
-        {"instance_settings[atlas_url]", url},
-        {"instance_settings[map_matching_enabled]", "true"}
-      ])
-      |> Settings.call(action: :instance, context: c.context)
+    assert {:alert, "admin.settings.test_map_matching.failure",
+            %{"error" => "routing_unavailable"}} = Instance.test_map_matching(scope(), opts())
 
-    assert conn.status == 303
-    assert flash(conn, "notice") == "Settings saved."
-
-    conn =
-      request(c.session, "/admin/settings/test_map_matching", [])
-      |> Settings.call(action: :test_map_matching, context: c.context)
-
-    assert flash(conn, "alert") =~ "routing_unavailable"
     assert Dawarich.Experimental.map_matching?(Repo, %{})
     Task.await(task)
-  end
-
-  test "connection action rejects invalid CSRF before calling Atlas", c do
-    conn =
-      request(c.session, "/admin/settings/test_map_matching", [], "invalid")
-      |> Settings.call(action: :test_map_matching, context: c.context)
-
-    assert conn.status == 422
-    refute Map.has_key?(conn.private, :dawarich_rails_session_changes)
   end
 
   test "experimental copy and connection results exist in all seven locales", c do
@@ -266,21 +229,11 @@ defmodule DawarichWeb.Admin.ExperimentalSectionTest do
     )
   end
 
-  defp request(session, path, values, token \\ nil) do
-    body =
-      URI.encode_query([
-        {"authenticity_token", token || RailsCsrf.masked_token(session)} | values
-      ])
+  defp scope, do: Scope.for_user(Accounts.get(16010), "en")
+  defp opts, do: [env: %{"SELF_HOSTED" => "true"}, command: fn _ -> {:ok, 0} end]
 
-    Plug.Test.conn("POST", path, body)
-    |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-    |> put_req_header("content-type", "application/x-www-form-urlencoded")
-    |> put_req_header("content-length", Integer.to_string(byte_size(body)))
-    |> put_req_header("accept", "text/html")
-  end
-
-  defp flash(conn, kind),
-    do: conn.private.dawarich_rails_session_changes["flash"]["flashes"][kind]
+  defp experimental(settings),
+    do: %{"section" => "experimental", "instance_settings" => settings}
 
   defp restore(key, nil), do: System.delete_env(key)
   defp restore(key, value), do: System.put_env(key, value)

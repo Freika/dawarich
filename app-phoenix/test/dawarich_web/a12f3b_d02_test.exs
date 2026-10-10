@@ -3,7 +3,9 @@ defmodule DawarichWeb.A12f3bD02Test do
   import Plug.Conn
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{AdminWritesGate, RailsCsrf}
+  alias Dawarich.Accounts.Scope
+  alias Dawarich.Admin.Instance
+  alias DawarichWeb.RailsCsrf
   alias DawarichWeb.AdminWrites.Settings
 
   setup do
@@ -39,22 +41,20 @@ defmodule DawarichWeb.A12f3bD02Test do
   end
 
   @tag a12f3b_case: "D02a"
-  test "admin instance and background forms close native residual branches", c do
-    for method <- ["PATCH", "PUT"] do
-      conn =
-        request(32001, method, "/admin/settings", [{"instance_settings[store_geodata]", "false"}])
-        |> Settings.call(action: :instance, context: c.context)
+  test "admin instance save and geocoding test close native residual branches", c do
+    admin = Scope.for_user(Accounts.get(32001), "de")
+    member = Scope.for_user(Accounts.get(32002), "de")
+    opts = [env: %{"SELF_HOSTED" => "true"}, command: c.context.command]
 
-      assert conn.status == 303
+    assert Instance.save(
+             admin,
+             %{"section" => "points", "instance_settings" => %{"store_geodata" => "false"}},
+             opts
+           ) == {:ok, :saved}
 
-      assert Repo.query!("SELECT value FROM instance_settings WHERE key='store_geodata'", [],
-               log: false
-             ).rows == [[false]]
-    end
-
-    refute AdminWritesGate.eligible?(request(32002, "PATCH", "/admin/settings", []), :instance,
-             context: c.context
-           )
+    assert Repo.query!("SELECT value FROM instance_settings WHERE key='store_geodata'", [],
+             log: false
+           ).rows == [[false]]
 
     assert {:handoff, :actor} =
              Dawarich.Admin.InstanceWrites.call(
@@ -63,20 +63,14 @@ defmodule DawarichWeb.A12f3bD02Test do
                c.context
              )
 
-    conn =
-      request(32001, "POST", "/admin/settings/test_geocoding", [])
-      |> Settings.call(action: :test_geocoding, context: c.context)
-
-    assert conn.status == 303
-    assert get_resp_header(conn, "location") == ["http://www.example.com/admin/settings"]
-    assert conn.private.dawarich_rails_session_changes["flash"]["flashes"]["alert"] != ""
-    refute Map.has_key?(conn.private, :dawarich_proxy_owner)
+    assert {:alert, message} = Instance.test_geocoding(admin, opts)
+    assert message != ""
 
     for {result, kind} <- [
-          {:configured, "notice"},
-          {:empty, "alert"},
-          {:rate_limited, "alert"},
-          {:failed, "alert"}
+          {:configured, :notice},
+          {:empty, :alert},
+          {:rate_limited, :alert},
+          {:failed, :alert}
         ] do
       probe = fn _config, _coordinates, _options ->
         case result do
@@ -99,19 +93,13 @@ defmodule DawarichWeb.A12f3bD02Test do
         |> Map.put(:env, %{"PHOTON_API_HOST" => "photon.example.invalid"})
         |> Map.put(:provider_test, probe)
 
-      conn =
-        request(32001, "POST", "/admin/settings/test_geocoding", [])
-        |> Settings.call(action: :test_geocoding, context: context)
+      assert {:ok, ^kind, message} =
+               Dawarich.Admin.InstanceWrites.test_geocoding(Accounts.get(32001), context)
 
-      assert conn.status == 303
-      assert conn.private.dawarich_rails_session_changes["flash"]["flashes"][kind] != ""
+      assert message != ""
     end
 
-    conn =
-      request(32002, "POST", "/admin/settings/test_geocoding", [])
-      |> Settings.call(action: :test_geocoding, context: c.context)
-
-    assert conn.status == 303
+    assert Instance.test_geocoding(member, opts) == {:error, :unauthorized}
     assert Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows == [[0]]
   end
 

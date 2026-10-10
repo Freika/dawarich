@@ -33,7 +33,10 @@ defmodule Dawarich.Admin.InstanceTest do
       scope: Scope.for_user(Accounts.get(15601), "en"),
       opts: [
         env: %{"SELF_HOSTED" => "true"},
-        command: fn command -> send(test_pid, {:published, command}) && {:ok, 1} end
+        command: fn command ->
+          send(test_pid, {:published, command})
+          {:ok, 1}
+        end
       ]
     }
   end
