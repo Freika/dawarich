@@ -23,7 +23,7 @@ defmodule DawarichWeb.AchievementActions.Gate do
   def current_user(actor) do
     case Dawarich.Accounts.get(actor.id) do
       %{encrypted_password: password} = current when password == actor.encrypted_password ->
-        current
+        if match?({:ok, _}, Dawarich.Accounts.settings_for(current)), do: current
 
       _ ->
         nil

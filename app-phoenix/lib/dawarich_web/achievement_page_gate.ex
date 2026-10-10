@@ -16,6 +16,12 @@ defmodule DawarichWeb.AchievementPageGate do
 
   defp allowed?({key, value}), do: key in @allowed_params and is_binary(value)
 
-  defp authenticated?(conn),
-    do: not is_nil(DawarichWeb.RailsAuth.call(conn, []).assigns.current_user)
+  defp authenticated?(conn) do
+    actor = DawarichWeb.RailsAuth.call(conn, []).assigns.current_user
+
+    case Dawarich.Accounts.settings_for(actor) do
+      {:ok, _} -> true
+      {:error, :unsupported} -> not is_nil(actor) and Dawarich.Standalone.enabled?()
+    end
+  end
 end

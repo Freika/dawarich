@@ -202,4 +202,35 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
     Application.put_env(:dawarich, :rails_routes, ["achievements"])
     assert_puma(ctx, port, [target, "/achievements"])
   end
+
+  test "opaque collection settings retain replay handback before celebration writes", ctx do
+    rails = System.get_env("DAWARICH_RAILS")
+    System.delete_env("DAWARICH_RAILS")
+
+    on_exit(fn ->
+      if rails,
+        do: System.put_env("DAWARICH_RAILS", rails),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    port = serve()
+
+    for value <- [[], 42] do
+      Dawarich.Repo.query!("UPDATE users SET settings=$1 WHERE id=79301", [value], log: false)
+
+      conn =
+        Plug.Test.conn(:get, "/achievements") |> Plug.Conn.put_req_header("cookie", ctx.cookie)
+
+      admitted = DawarichWeb.AchievementPageGate.open?(conn, %{})
+      refute admitted
+      assert_puma(ctx, port, ~w(/achievements /achievements/country_de))
+      assert Dawarich.Accounts.settings(79_301) == value
+
+      assert Dawarich.Repo.query!(
+               "SELECT count(*) FROM achievement_progresses WHERE user_id=79301",
+               [],
+               log: false
+             ).rows == [[0]]
+    end
+  end
 end

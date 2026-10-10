@@ -5,13 +5,24 @@ defmodule DawarichWeb.AchievementInitial do
   def init(opts), do: opts
 
   def call(conn, _) do
-    if DawarichWeb.AchievementPageGate.open?(conn, conn.path_params) do
+    with {:ok, _} <- Dawarich.Accounts.settings_for(conn.assigns.current_user),
+         true <- DawarichWeb.AchievementPageGate.open?(conn, conn.path_params) do
       render_page(conn)
     else
-      conn
-      |> assign(:api_tag, "achievement collection")
-      |> DawarichWeb.Api.Body.replay("query parameter shape")
+      {:error, :unsupported} ->
+        if Dawarich.Standalone.enabled?(),
+          do: DawarichWeb.StandaloneError.respond(conn, "achievement_settings"),
+          else: replay(conn)
+
+      false ->
+        replay(conn)
     end
+  end
+
+  defp replay(conn) do
+    conn
+    |> assign(:api_tag, "achievement collection")
+    |> DawarichWeb.Api.Body.replay("query parameter shape")
   end
 
   defp render_page(conn) do
