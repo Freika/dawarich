@@ -26,7 +26,14 @@ defmodule DawarichWeb.PlacesLive.Form do
 
     socket
     |> Nearby.cancel()
-    |> assign(form_state: form, place_data: data, detail: nil, confirmation: nil, error: nil)
+    |> assign(
+      form_state: form,
+      place_data: data,
+      detail: nil,
+      note_state: nil,
+      confirmation: nil,
+      error: nil
+    )
   end
 
   def clear(socket), do: socket |> Nearby.cancel() |> assign(form_state: nil, place_data: nil)

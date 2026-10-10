@@ -31,6 +31,12 @@
     locale={@locale}
     nearby={@nearby_state}
   />
+  <PlaceDetail.panel
+    :if={@detail && @note_state}
+    detail={@detail}
+    state={@note_state}
+    locale={@locale}
+  />
   <p :if={@error} role="alert" class="text-error [overflow-wrap:anywhere]">{@error}</p>
   <div id="places" class="min-w-0">
     <%= if @entries == [] do %>
@@ -71,7 +77,14 @@
           </thead>
           <tbody>
             <tr :for={place <- @entries}>
-              <td class="[overflow-wrap:anywhere]">{place.name}</td>
+              <td class="[overflow-wrap:anywhere]">
+                <button
+                  type="button"
+                  class="link text-left [overflow-wrap:anywhere]"
+                  phx-click="open_detail"
+                  phx-value-id={place.id}
+                >{place.name}</button>
+              </td>
               <td><.human_datetime locale={@locale} at={place.created} /></td>
               <td>{coordinates(place)}</td>
               <td>

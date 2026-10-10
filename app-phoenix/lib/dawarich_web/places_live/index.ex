@@ -5,8 +5,8 @@ defmodule DawarichWeb.PlacesLive.Index do
   import DawarichWeb.HumanDatetime, only: [human_datetime: 1]
   import DawarichWeb.Paginator, only: [paginator: 1]
   alias Dawarich.{Places, RubyInteger}
-  alias DawarichWeb.PlacesLive.{Form, Nearby}
-  alias DawarichWeb.PlaceForm
+  alias DawarichWeb.PlacesLive.{Detail, Form, Nearby}
+  alias DawarichWeb.{PlaceDetail, PlaceForm}
   alias DawarichWeb.{OrdinaryForm, OrdinaryFormComponents, PlacesUI}
   alias Dawarich.ReleaseMigrations.Effects.Support.RubyFloat
 
@@ -23,6 +23,7 @@ defmodule DawarichWeb.PlacesLive.Index do
        confirmation: nil,
        form_state: nil,
        detail: nil,
+       note_state: nil,
        place_data: nil,
        nearby_state: nil
      )}
@@ -55,6 +56,12 @@ defmodule DawarichWeb.PlacesLive.Index do
   end
 
   @impl true
+  def handle_event("open_detail", %{"id" => id}, socket), do: {:noreply, Detail.open(socket, id)}
+
+  def handle_event("save_place_note", %{"generation" => gen, "place" => attrs}, socket)
+      when is_map(attrs), do: {:noreply, Detail.save(socket, gen, attrs)}
+
+  def handle_event("recover_place_note", _, socket), do: {:noreply, Detail.recover(socket)}
   def handle_event("open_create", _, socket), do: {:noreply, Form.open(socket, :create, nil)}
 
   def handle_event("open_edit", %{"id" => id}, socket),
@@ -82,7 +89,11 @@ defmodule DawarichWeb.PlacesLive.Index do
         )
         |> OrdinaryForm.confirm(place.id)
 
-      {:noreply, socket |> Form.clear() |> assign(confirmation: state, detail: nil, error: nil)}
+      {:noreply,
+       socket
+       |> Form.clear()
+       |> Detail.clear()
+       |> assign(confirmation: state, detail: nil, error: nil)}
     else
       {:error, reason} -> {:noreply, PlacesUI.refuse(socket, reason)}
     end
@@ -112,7 +123,9 @@ defmodule DawarichWeb.PlacesLive.Index do
   end
 
   def handle_event("cancel_form", _, socket),
-    do: {:noreply, socket |> Form.clear() |> assign(confirmation: nil, detail: nil)}
+    do:
+      {:noreply,
+       socket |> Form.clear() |> Detail.clear() |> assign(confirmation: nil, detail: nil)}
 
   def handle_event(_, _, socket), do: {:noreply, socket}
 
