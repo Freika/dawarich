@@ -49,7 +49,9 @@ defmodule Dawarich.Trips.CommandsTest do
 
     Repo.query!(
       "UPDATE users SET encrypted_password='revoked-trip-export' WHERE id=$1",
-      [owner.user.id], log: false)
+      [owner.user.id],
+      log: false
+    )
 
     assert {:error, :unavailable} = Commands.request_export(owner, id, "gpx", repo: Repo)
 

@@ -75,7 +75,9 @@ defmodule Dawarich.FamiliesSnapshotRaceTest do
 
                Repo.query!(
                  "UPDATE users SET encrypted_password=$2 WHERE id=$1",
-                 [c.scope.user.id, "synthetic-revoked-api-identity"], log: false)
+                 [c.scope.user.id, "synthetic-revoked-api-identity"],
+                 log: false
+               )
 
                result
              end
