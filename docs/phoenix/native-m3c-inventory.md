@@ -123,3 +123,24 @@ Historical app `c69c6b529` / E2E `71f7f5b` passed stale-identity and no-socket c
 Named protocol RED failed the legacy root/refusal; root importmap/label/callback mutations each failed their corresponding successor. Callback mutation was rerun alone after an earlier label failure masked it. Graph-growth mutation failed the named budget case; restored isolated batch was 86 passed, exit 0. Final forced failure-log case was RED, GREEN, filter-removal mutation failed, restored integrated batch 93 passed, exit 0 with warnings clean (`x1-final-green`). OTP attempt/backup keys join the existing bounded linear log filter; Rails already filters them (`config/initializers/filter_parameter_logging.rb:9`), so this fixes Phoenix parity only.
 
 Fresh default-build eager graphs: HTTP 6,368 bytes in 2 chunks; native LiveView 345,419 bytes in 4 chunks versus base 344,744 (+675 bytes). The named 20KiB HTTP and 2KiB native-growth tests pass; no transitive legacy/socket/map/studio imports in the HTTP eager graph. Format check passes. Build bytes and historical browser wire bytes are separate measurements; stage acceptance remains pending.
+
+
+## X2 per-assertion successor ledger
+
+All unlisted behavior assertions in these files remain. Fixture and helper readers are retained; no fixture regeneration or orphan cleanup was performed.
+
+| Removed or retargeted assertion | Classification | Named successor / retained behavior |
+| --- | --- | --- |
+| SignInForm exact Rails hero bytes | M | `renders source sign-in field protocol and translations in every served shape`; fields/links/title/labels; `escapes the submitted email` retained; B1 named native submission/password/provider tests |
+| AuthHandler exact GET hero and wrong/unknown toast bytes | M | `the native sign-in document preserves the source submission fields and translated labels`; existing wrong/unknown case keeps exact notice, status, owner, fields, counters; browser field-set/remember/return-to/logout cases retained |
+| OTP Form whole document/Turbo marker | M | `challenge form preserves source navigation fields labels and empty code`; original method/action and all input constraints remain; B3 actual initial/error/completion/counter tests |
+| OTP Response initial English hero | M / approved presentation | `OTP responses persist pending cookies at 422 and complete with source 302` now compares seven-locale fields/title; B3 `initial challenge locale follows the approved display contract`; all header/cookie/expiry/completion checks retained |
+| 2FA Form exact EN/DE markup | M | `management forms preserve source EN DE fields labels capabilities and empty rejected code`; QR/secret/codes checked as source capability booleans; B4 actual secret/code/verify/disable successors |
+| 2FA Response exact feature and inherited-alert HTML | M | `Rails failed verification replaces inherited alert in place` and `management render and redirects preserve Rails identity and flash semantics` retain fields/labels/notice/title/cookies/cache/status; B4 local rendering/fresh chrome successors |
+| Recovery Form exact source HTML | M | `recovery forms preserve every source field navigation and translated error case`; plus named capability, translated-empty-credential and unique-label/summary-focus successors; C2 mail/rollback/reset/unlock Endpoint cases |
+| Link Form exact all-locale HTML/Turbo | M | `account-link challenge preserves all-locale fields and translations and escapes target data`; C4 distinct action-token/password/alert/purpose/UID/MFA cases |
+| Link Response exact feature/flash HTML | M | `owned account-link responses preserve no-store form state and source 302 notices`; `owned challenge preserves escaped incoming alert once in native shell`; original status/location/cache/header/cookie/head metadata retained |
+| Historical opt-in/whole-app fallback and strict envelopes | C / R / B | Valid compatibility/domain/API callers remain unchanged; X1 `native auth refusal never calls Rails and retained API/mobile responses stay unchanged` is the explicit native no-effects/callback successor, without new handback logic |
+| Native live-page root assumption | M / B | X1 actual Endpoint initial/error/POST states use the HTTP contract; existing native LiveView session tests remain unchanged |
+
+Fixture-reader audit found 46 relevant production/test/support readers. AuthMarkup and all behavioral/crypto/mail fixture keys remain used. NativeAuthHTTP is compiled from `test/support` via `mix.exs` test paths, independently of test-file loading. No shared module is defined inside another test file. Final targeted auth/direct-caller reconciliation: 92 files, 458 passed, exit 0, warnings clean. Full partitions remain controller acceptance. `wave2_args_test` uses equivalent dynamic `apply/3` dispatch to avoid a compiler inference warning; its claim-key cases are preserved. Swagger/schema unchanged.
