@@ -12,6 +12,32 @@ defmodule DawarichWeb.OnboardingQrTest do
     %{id: id}
   end
 
+  test "routed onboarding QR accepts the owner cookie and refuses anonymous requests", %{id: id} do
+    owner =
+      Phoenix.ConnTest.dispatch(
+        RailsUser.signed_in(id),
+        DawarichWeb.Endpoint,
+        :get,
+        "/settings/onboarding/qr.svg",
+        nil
+      )
+
+    assert owner.status == 200
+    assert get_resp_header(owner, "cache-control") == ["private, no-store"]
+    assert get_resp_header(owner, "vary") == ["Cookie"]
+
+    anonymous =
+      Phoenix.ConnTest.dispatch(
+        Phoenix.ConnTest.build_conn(),
+        DawarichWeb.Endpoint,
+        :get,
+        "/settings/onboarding/qr.svg",
+        nil
+      )
+
+    assert anonymous.status == 401
+  end
+
   test "onboarding QR is owner-authenticated no-store and never in LiveView state", %{id: id} do
     conn = qr(RailsUser.signed_in(id))
     assert conn.status == 200
