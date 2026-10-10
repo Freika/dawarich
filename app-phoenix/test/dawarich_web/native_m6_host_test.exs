@@ -151,6 +151,15 @@ defmodule DawarichWeb.NativeM6HostTest do
     refute has_element?(view, "[data-enrichment-matched]")
   end
 
+  test "native production host saves appearance and renders settings refusal", %{id: id} do
+    {:ok, view, _} = open(id, @second <> "&panel=settings")
+    view |> form("#native-appearance-form", %{"maps_maplibre_tiles_url" => "javascript:bad"}) |> render_submit()
+    assert has_element?(view, "#native-map-settings [role=alert]")
+    view |> form("#native-appearance-form", %{"maps_maplibre_style" => "dark", "maps_maplibre_tiles_url" => ""}) |> render_submit()
+    assert_push_event(view, "map:settings", %{settings: %{"maps_maplibre_style" => "dark"}})
+    assert Dawarich.Accounts.get(id).settings["maps_maplibre_style"] == "dark"
+  end
+
   defp config(view) do
     view
     |> render()

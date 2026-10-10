@@ -1,3 +1,4 @@
+import { createHostSettings } from "../ui/host_settings.js"
 import { createHostEditing } from "../edit/host.js"
 import { createEnrichmentTool } from "../ui/enrichment.js"
 import { createReader } from "../data/reader.js"
@@ -42,6 +43,7 @@ export function mountHost({
     attach:
       attach ??
       (({ map, config, lifetime }) => {
+        owner.settings = createHostSettings({ map, loadStyle, lifetime, getConfig: () => owner.config, update: next => owner.update(next), onError: code => pushEvent("map:failed", {code}) })
         enrichment = createEnrichmentTool({ map, pushEvent, createPopup: () => null })
         lifetime.own(enrichment.destroy)
         timeline = createHostTimeline({ map, root: element.closest?.("#native-map-page"), reader, lifetime })

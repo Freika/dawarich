@@ -13,7 +13,7 @@ defmodule DawarichWeb.MapLive.Native do
         )
       end)
 
-    {:ok, assign(socket, :navbar, navbar), layout: false}
+    {:ok, socket |> assign(:navbar, navbar) |> DawarichWeb.MapLive.SettingsCommands.load(), layout: false}
   end
 
   def handle_params(params, _uri, socket) do
@@ -85,6 +85,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)
 
+  def handle_event("settings:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.SettingsCommands.handle_event(event, payload, socket)
+
   def handle_event("enrichment:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.EnrichmentCommands.handle_event(event, payload, socket)
 
@@ -142,6 +145,11 @@ defmodule DawarichWeb.MapLive.Native do
       <DawarichWeb.NativeResidency.card
         :if={@map_url["panel"] == "insights"}
         residency={assigns[:residency]}
+        locale={@locale}
+      />
+      <DawarichWeb.NativeMapSettings.panel
+        :if={@map_url["panel"] == "settings"}
+        settings={assigns[:map_settings]}
         locale={@locale}
       />
       <DawarichWeb.NativeMapEnrichment.tool

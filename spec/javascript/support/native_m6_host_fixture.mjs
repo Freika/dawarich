@@ -34,6 +34,6 @@ export function fixture(config = {}) {
     getBounds: () => ({ getSouth: () => 51, getNorth: () => 53, getWest: () => 12, getEast: () => 14 }),
   }
   const reader = { async read(resource, params) { reads.push({ resource, params }); return { data: { type: "Feature", geometry: { type: "LineString", coordinates: [[12, 51], [14, 53]] }, properties: {} } } }, reset() {}, destroy() {}, async pages(resource, params) { reads.push({ resource, params }); return [] } }
-  const owner = mountHost({ element, reader, pushEvent: (event, payload, reply) => pushed.push({ event, payload, reply }), loadStyle: async () => ({}), loadLibrary: async () => ({ Map: class { constructor() { return map } } }) })
+  const owner = mountHost({ element, reader, pushEvent: (event, payload, reply) => pushed.push({ event, payload, reply }), loadStyle: async () => ({version: 8}), loadLibrary: async () => ({ Map: class { constructor() { return map } } }) })
   return { owner, element, root, nodes, map, sources, layers, listeners, pushed, reads }
 }
