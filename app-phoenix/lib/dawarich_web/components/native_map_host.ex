@@ -2,7 +2,7 @@ defmodule DawarichWeb.NativeMapHost do
   @moduledoc false
   use Phoenix.Component
 
-  @fields ~w(namespace revision title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName flightsEnabled fogEnabled fogMode fogRadius hexagonsEnabled scratchEnabled photosEnabled)
+  @fields ~w(namespace revision title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName flightsEnabled fogEnabled fogMode fogRadius hexagonsEnabled scratchEnabled photosEnabled visitsEnabled placesEnabled areasEnabled anomaliesEnabled placesTagFilters)
   @range ~w(startAt endAt importId timezone)
   @options ~w(center zoom minZoom maxZoom bearing pitch projection interactive attributionControl)
 
@@ -26,11 +26,26 @@ defmodule DawarichWeb.NativeMapHost do
         end
       )
 
+    entity_labels =
+      Map.new(
+        ~w(map_info.time map_info.reason anomalies.low_accuracy anomalies.impossible_speed),
+        fn key ->
+          {:ok, value} =
+            Dawarich.I18n.t(locale, "javascript." <> key, %{
+              "accuracy" => "{accuracy}",
+              "threshold" => "{threshold}"
+            })
+
+          {key, value}
+        end
+      )
+
     config =
       assigns.config
       |> Map.take(@fields)
       |> Map.put("locale", locale)
       |> Map.put("photoLabels", photo_labels)
+      |> Map.put("entityLabels", entity_labels)
       |> Map.put("hexagonLabel", label |> LazyHTML.from_fragment() |> LazyHTML.text())
       |> Map.update("range", %{}, &Map.take(&1, @range))
       |> Map.update("mapOptions", %{}, &Map.take(&1, @options))

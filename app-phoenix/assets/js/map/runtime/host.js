@@ -21,6 +21,7 @@ export function mountHost({
   let density
   let photos
   let photoKey
+  let entities
   const config = JSON.parse(element.dataset.mapConfig ?? "{}")
   const owner = createMapRuntime({
     element,
@@ -41,6 +42,7 @@ export function mountHost({
         lifetime.own(() => layers.destroy())
         lifetime.own(() => density?.destroy())
         lifetime.own(() => photos?.remove())
+        lifetime.own(() => entities?.destroy())
         return new Promise((resolve) => {
           const ready = () => {
             layers.mount()
@@ -88,6 +90,29 @@ export function mountHost({
           })
         }
         if (density) await operation.wait(density.update(config, { signal }))
+        if (
+          !entities &&
+          (config.visitsEnabled ||
+            config.placesEnabled ||
+            config.areasEnabled ||
+            config.anomaliesEnabled)
+        ) {
+          const [module, library] = await operation.wait(
+            Promise.all([
+              import("../layers/entities.js"),
+              loadLibrary({ signal }),
+            ]),
+          )
+          operation.check()
+          entities = module.createEntityLayers({
+            map,
+            reader,
+            library,
+            onSelect: (receipt) => pushEvent("map:select", receipt),
+            onError: (code) => pushEvent("map:failed", { code }),
+          })
+        }
+        if (entities) await operation.wait(entities.update(config, { signal }))
         if (!config.photosEnabled) {
           photos?.remove()
           photos = null
@@ -141,6 +166,7 @@ export function mountHost({
     applyDates: (range) =>
       new Promise((resolve) => pushEvent("map:range", range, resolve)),
   })
+  Object.defineProperty(owner, "entityLayers", { get: () => entities })
   const dispose = owner.destroy
   owner.destroy = () => {
     owner.source.destroy()

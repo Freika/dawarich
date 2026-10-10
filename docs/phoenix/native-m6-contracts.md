@@ -84,3 +84,11 @@ At A7 the minified eager graph remains 168,125 raw / 51,666 gzip bytes. The stat
 Thumbnail reads return owned image/jpeg Blobs via same-origin cookies; marker removal aborts its request and revokes its object URL, including when the transport ignores cancellation. No account key or provider URL is serialized into a marker or popup. Clustering, rings, viewport deduplication, zero-coordinate exclusion and escaped metadata remain source-compatible. Locale-normalized server labels are a fixed small dictionary, and only the photo canvas resources are ignored DOM. Added scalar config: photosEnabled; photoLabels is server-produced and ignores caller overrides.
 
 The A8 minified photo static graph is15,365 raw/6,034 gzip bytes and stays outside the ordinary map-open graph (26,122/9,199). Eager graph remains168,125/51,666. Browser/390-px/resource acceptance remains with stage acceptance, as the controller decision requires.
+
+## Entity display ownership
+
+`createEntityLayers` owns viewport Visit reads, tag-filtered Places, circular Areas, Anomalies, selection display, style restoration and one popup. Complete bounded pages replace the current generation atomically. Viewport movement waits for an active range load and then refreshes only Visits. An empty place tag filter performs no Places read. Native Area pages slice the unchanged `Areas.Api.index` projection; the external API is unchanged.
+
+`mountHost.entityLayers` exposes the owned display service: `visitPresentation({selectedId,status,dayRoute})` and `selected(geojson)` retain browser-local geometry across style replacement. Native popup selection sends only `map:select {kind: visit|place|area|point, id}` after matching a current owned feature. Track B commands must independently admit and authorize that resource. No feature properties or geometry enter the receipt. Host destruction cancels reads, clears selection, closes popups and removes every listener.
+
+Additional config: visitsEnabled/placesEnabled/areasEnabled/anomaliesEnabled and placesTagFilters. Entity popup labels come only from normalized server translations with bounded interpolation tokens; replacing locale/range closes the old popup. This service introduces no controller registry.

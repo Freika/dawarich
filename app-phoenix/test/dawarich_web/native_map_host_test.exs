@@ -80,4 +80,25 @@ defmodule DawarichWeb.NativeMapHostTest do
     assert labels["map_info.source"] == "Quelle"
     refute html =~ "synthetic-override"
   end
+
+  test "entity popup labels are localized with bounded interpolation tokens" do
+    html =
+      render_component(&DawarichWeb.NativeMapHost.map_host/1,
+        id: "native-map",
+        locale: "de",
+        config: %{"entityLabels" => %{"map_info.time" => "synthetic-override"}}
+      )
+
+    [encoded] =
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("[data-map-config]")
+      |> LazyHTML.attribute("data-map-config")
+
+    labels = Jason.decode!(encoded)["entityLabels"]
+    assert labels["map_info.time"] == "Zeit"
+    assert labels["anomalies.low_accuracy"] =~ "{accuracy}"
+    assert labels["anomalies.low_accuracy"] =~ "{threshold}"
+    refute html =~ "synthetic-override"
+  end
 end

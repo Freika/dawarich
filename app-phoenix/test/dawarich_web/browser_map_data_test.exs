@@ -135,6 +135,27 @@ defmodule DawarichWeb.BrowserMapDataTest do
     assert read(id, "/photos?per_page=1001").status == 422
   end
 
+  test "cookie Area display pages retain owned circles and bounded headers", %{
+    id: id,
+    foreign: foreign
+  } do
+    for {owner, n} <- [{id, 1}, {id, 2}, {foreign, 3}] do
+      Repo.query!(
+        "INSERT INTO areas (user_id,name,latitude,longitude,radius,created_at,updated_at) VALUES ($1,$2,'52','13',100,now(),now())",
+        [owner, "circle-#{n}"]
+      )
+    end
+
+    conn = read(id, "/areas?per_page=1&page=2")
+    assert conn.status == 200
+    assert get_resp_header(conn, "x-total-pages") == ["2"]
+    [circle] = Jason.decode!(conn.resp_body)
+    assert circle["name"] == "circle-2"
+    assert circle["radius"] == 100
+    refute conn.resp_body =~ "circle-3"
+    assert read(id, "/areas?per_page=1001").status == 422
+  end
+
   defp read(id, path), do: get(RailsUser.signed_in(id), "/native/map/data" <> path)
 
   test "cookie map read retains API entitlement and account isolation", %{id: id} do

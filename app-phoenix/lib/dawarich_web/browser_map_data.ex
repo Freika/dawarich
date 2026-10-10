@@ -4,7 +4,7 @@ defmodule DawarichWeb.BrowserMapData do
   import Plug.Conn
   alias DawarichWeb.Api
 
-  @paged [:points, :tracks, :track_points, :places, :visits, :photos]
+  @paged [:points, :tracks, :track_points, :places, :visits, :photos, :areas]
   @handlers %{
     points: {Api.MapController, :points},
     tracks: {Api.MapController, :tracks},
@@ -22,7 +22,6 @@ defmodule DawarichWeb.BrowserMapData do
     place_search: {Api.PlacesController, :search},
     nearby: {Api.PlacesController, :nearby},
     visits: {Api.VisitsController, :index},
-    areas: {Api.AreasController, :index},
     timeline: {Api.TimelineController, :index},
     point_tiles: {Api.PointTilesController, :show},
     track_tiles: {Api.TrackTilesController, :show}
@@ -35,6 +34,9 @@ defmodule DawarichWeb.BrowserMapData do
       conn = assign(conn, :api_params, params)
 
       case action do
+        :areas ->
+          DawarichWeb.BrowserMapAreas.call(conn)
+
         :photos ->
           DawarichWeb.BrowserMapPhotos.call(conn)
 

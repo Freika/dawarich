@@ -139,7 +139,10 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
     refute Enum.any?(
              open_inputs,
-             &Regex.match?(~r{h3-js|pmtiles|layers/density|layers/photos|ui/photo_marker}, &1)
+             &Regex.match?(
+               ~r{h3-js|pmtiles|layers/density|layers/photos|ui/photo_marker|layers/entities|data/entity_geojson},
+               &1
+             )
            )
 
     assert Enum.any?(inputs(dir), &String.contains?(&1, "h3-js"))
