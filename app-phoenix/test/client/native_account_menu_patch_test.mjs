@@ -67,4 +67,3 @@ test("account disclosure survives server reconciliation without rewriting incomi
     assert.deepEqual(incoming.children, ["updated action"])
   }
 })
-
