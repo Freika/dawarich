@@ -17,7 +17,7 @@ export function mountFamily({
   },
   timers = globalThis,
 }) {
-  let overlay, library
+  let overlay, library, overlayLocale
   const reads = createRequestScope(timers)
   const owner = createMapRuntime({
     element,
@@ -32,10 +32,12 @@ export function mountFamily({
     attach: ({ map, config, lifetime }) =>
       new Promise((resolve) => {
         const ready = () => {
+          overlayLocale = JSON.stringify([config.locale, config.familyTime])
           overlay = createFamilyOverlay({
             map,
             library,
             locale: config.locale,
+            labels: config.familyTime,
             timers,
             colorMode: config.colorMode,
           })
@@ -48,7 +50,20 @@ export function mountFamily({
           lifetime.own(() => map.off("load", ready))
         }
       }),
-    refresh: async ({ config, operation, signal }) => {
+    refresh: async ({ map, config, operation, signal }) => {
+      const desired = JSON.stringify([config.locale, config.familyTime])
+      if (desired !== overlayLocale) {
+        overlay.destroy()
+        overlay = createFamilyOverlay({
+          map,
+          library,
+          locale: config.locale,
+          labels: config.familyTime,
+          timers,
+          colorMode: config.colorMode,
+        })
+        overlayLocale = desired
+      }
       overlay.clear()
       reads.reset()
       const read = reads.begin(signal)

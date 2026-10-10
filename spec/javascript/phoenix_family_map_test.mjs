@@ -262,3 +262,15 @@ test("family clear cancels an outstanding read even when transport ignores abort
   assert.equal(f.sources.get("family-members").data.features.length, 0)
   f.owner.destroy()
 })
+
+test("family locale replacement refreshes popup formatting without another map", async () => {
+  const f = fixture()
+  await f.owner.mount()
+  await f.owner.update({ ...f.owner.config, locale: "en" })
+  for (const fn of f.events.get("click:family-circles"))
+    fn({ features: [{ properties: { id: 7 } }], lngLat: [13, 52] })
+  assert.match(f.popups.at(-1).html, /ago/)
+  assert.equal(f.maps, 1)
+  assert.equal(f.intervals.size, 1)
+  f.owner.destroy()
+})

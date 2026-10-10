@@ -1,3 +1,5 @@
+import { familyLastSeen } from "./time.js"
+
 const escapeHtml = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -23,6 +25,7 @@ export function createFamilyOverlay({
   timers = globalThis,
   now = () => Date.now(),
   colorMode = "index",
+  labels,
 }) {
   let locations = [],
     history = [],
@@ -47,6 +50,7 @@ export function createFamilyOverlay({
     ]
   const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
   const lastSeen = (stamp) => {
+    if (labels) return familyLastSeen({ timestamp: stamp }, labels, now())
     const seconds = Math.round((Number(stamp) * 1000 - now()) / 1000)
     if (!Number.isFinite(seconds)) return ""
     const [size, unit] =
