@@ -1,18 +1,31 @@
 defmodule Dawarich.Exports.Delete do
   @moduledoc false
 
-  def call(repo, user_id, id) do
+  def call(repo, user_id, id, opts \\ []) do
     with {id, ""} when id > 0 and id <= 9_223_372_036_854_775_807 <- Integer.parse(to_string(id)) do
       repo.transaction(fn ->
-        type =
+        {url, type} =
           case repo.query!(
                  "SELECT e.id,e.url,e.file_type FROM public.exports e JOIN public.users u ON u.id=e.user_id WHERE e.id=$1 AND e.user_id=$2 AND u.deleted_at IS NULL FOR UPDATE OF e FOR SHARE OF u",
                  [id, user_id],
                  log: false
                ).rows do
-            [[^id, url, type]] when url in [nil, ""] -> type
-            [[^id, _, _]] -> repo.rollback(:legacy_file)
-            _ -> repo.rollback(:not_found)
+            [[^id, url, type]] ->
+              if is_binary(url) and String.trim(url) != "" do
+                unless opts[:native], do: repo.rollback(:legacy_file)
+
+                case Dawarich.Exports.LegacyPurgeWorker.path(url) do
+                  {:ok, _} -> :ok
+                  {:error, reason} -> repo.rollback(reason)
+                end
+
+                {url, type}
+              else
+                {nil, type}
+              end
+
+            _ ->
+              repo.rollback(:not_found)
           end
 
         attachments =
@@ -52,6 +65,8 @@ defmodule Dawarich.Exports.Delete do
             })
           end
         end
+
+        if url, do: Dawarich.Exports.LegacyPurgeWorker.enqueue!(repo, url)
 
         if Dawarich.Exports.Events.native?(repo, type),
           do: Dawarich.Exports.Events.enqueue(repo, user_id, Ecto.UUID.generate(), :deleted)

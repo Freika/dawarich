@@ -155,12 +155,12 @@ defmodule Dawarich.ExportsContextTest do
 
     assert {:ok, id} = request(c)
     assert {:error, :not_found} = apply(Exports, :delete, [c.other, id, c.opts])
-    rows("UPDATE users SET active_until=now()-interval '1 second' WHERE id=$1", [c.scope.user.id])
-    assert {:error, :inactive} = request(c)
-    assert {:error, :inactive} = apply(Exports, :delete, [c.scope, id, c.opts])
+    rows("UPDATE users SET locked_at=now() WHERE id=$1", [c.scope.user.id])
+    assert {:error, :stale_session} = request(c)
+    assert {:error, :stale_session} = apply(Exports, :delete, [c.scope, id, c.opts])
 
     rows(
-      "UPDATE users SET active_until=now()+interval '1 day',encrypted_password=encrypted_password||'rotated' WHERE id=$1",
+      "UPDATE users SET locked_at=NULL,encrypted_password=encrypted_password||'rotated' WHERE id=$1",
       [c.scope.user.id]
     )
 
@@ -211,5 +211,22 @@ defmodule Dawarich.ExportsContextTest do
     assert :ok = Dawarich.Exports.EventsWorker.run(ScratchRepo, intent)
     assert_receive {:domain_changed, owner, :exports}
     assert owner == c.scope.user.id
+  end
+
+  test "expired Lite and pending-payment actors retain scoped point export and deletion access",
+       c do
+    for {status, until} <- [{0, ~N[2020-01-01 00:00:00]}, {3, nil}] do
+      rows("UPDATE users SET status=$2,plan=0,active_until=$3 WHERE id=$1", [
+        c.scope.user.id,
+        status,
+        until
+      ])
+
+      assert {:ok, id} = request(c)
+      assert {:ok, :deleted} = Exports.delete(c.scope, id, c.opts)
+    end
+
+    assert rows("SELECT count(*) FROM exports") == [[0]]
+    assert rows("SELECT count(*) FROM public.job_outbox") == [[2]]
   end
 end

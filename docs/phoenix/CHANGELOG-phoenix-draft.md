@@ -130,3 +130,6 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Remove abandoned native uploads after their lease expires, while preserving accepted attachments. [FRB-NATIVE-M4-ABANDONED-UPLOAD](fixed-rails-bugs.md#frb-native-m4-abandoned-upload--leaving-an-upload-strands-its-unattached-file)
 
 - Keep signed storage capabilities and private download filenames out of native request logs. [FRB-NATIVE-M4-STORAGE-PATH-LOG](fixed-rails-bugs.md#frb-native-m4-storage-path-log--request-logging-exposes-signed-storage-capabilities)
+
+- Refuse legacy export cleanup paths that escape public storage. [FRB-NATIVE-M4-LEGACY-EXPORT-PATH](fixed-rails-bugs.md#frb-native-m4-legacy-export-path--legacy-export-removal-traverses-outside-public-storage)
+- Retain a legacy export file while another export still references it. [FRB-NATIVE-M4-LEGACY-EXPORT-REFERENCE](fixed-rails-bugs.md#frb-native-m4-legacy-export-reference--removing-one-legacy-export-deletes-another-exports-file)

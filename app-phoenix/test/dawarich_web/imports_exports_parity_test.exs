@@ -3,7 +3,13 @@ defmodule DawarichWeb.ImportsExportsParityTest do
 
   import Phoenix.ConnTest
 
-  alias Dawarich.Test.{ImportsExportsSeeds, ParityHTML, RailsUser, NativeImportCorpus}
+  alias Dawarich.Test.{
+    ImportsExportsSeeds,
+    ParityHTML,
+    RailsUser,
+    NativeImportCorpus,
+    NativeExportCorpus
+  }
 
   @endpoint DawarichWeb.Endpoint
   @dir "test/fixtures/imports_exports"
@@ -29,11 +35,7 @@ defmodule DawarichWeb.ImportsExportsParityTest do
       if String.starts_with?(@page["path"], "/imports") do
         NativeImportCorpus.assert_page(html, rails)
       else
-        native = ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *")
-        expected = ParityHTML.normalize(rails)
-
-        assert native == expected,
-               "#{@page["name"]}: " <> ParityHTML.first_difference(native, expected)
+        NativeExportCorpus.assert_page(html, rails)
       end
 
       assert html =~ ">#{@page["title"]}</title>"

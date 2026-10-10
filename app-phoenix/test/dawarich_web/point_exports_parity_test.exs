@@ -27,7 +27,8 @@ defmodule DawarichWeb.PointExportsParityTest do
       })
     end
 
-    %{upstream: upstream!()}
+    Dawarich.Jobs.Ownership.put!(Repo, "command:exports.points", :oban)
+    :ok
   end
 
   test "the fixture covers the points page in every zone and both Rails-only and Phoenix shapes" do
@@ -38,7 +39,7 @@ defmodule DawarichWeb.PointExportsParityTest do
   for {case_data, index} <- Enum.with_index(@data["cases"]) do
     @case case_data
 
-    test "#{index}: #{case_data["name"]} (#{case_data["expect"]})", %{upstream: upstream} do
+    test "#{index}: #{case_data["name"]} (#{case_data["expect"]})" do
       session = RailsUser.session(@case["user_id"])
       body = URI.encode_query(@case["params"])
       path = @case["path"] || "/exports"
@@ -47,15 +48,14 @@ defmodule DawarichWeb.PointExportsParityTest do
         post_form(session, body, [{"x-csrf-token", RailsCsrf.masked_token(session)}], path)
       end
 
-      case @case["expect"] do
-        "phoenix" ->
-          assert_like_rails(submit.(), @case)
-
-        "rails" ->
-          assert {{request_line, ^body}, %{status: 204}} = forwarded(upstream, submit)
-          assert request_line == "POST #{path} HTTP/1.1"
-          assert Repo.query!("SELECT count(*) FROM exports").rows == [[0]]
-          assert commands() == []
+      if @case["params"]["_method"] not in [nil, "post"] or
+           Map.has_key?(@case["params"], "client") do
+        assert submit.().status == 422
+        assert Repo.query!("SELECT count(*) FROM exports").rows == [[0]]
+        assert commands() == []
+        assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+      else
+        assert_like_rails(submit.(), @case)
       end
     end
   end
@@ -77,22 +77,35 @@ defmodule DawarichWeb.PointExportsParityTest do
 
     assert rails_session(conn)["flash"] == %{"discard" => [], "flashes" => rails["flash"]}
 
-    assert [[id | row]] =
-             Repo.query!(
-               "SELECT id, #{Enum.join(@columns, ", ")} FROM exports WHERE user_id = $1",
-               [data["user_id"]]
-             ).rows
+    rows =
+      Repo.query!(
+        "SELECT id, #{Enum.join(@columns, ", ")} FROM exports WHERE user_id = $1",
+        [data["user_id"]]
+      ).rows
 
-    assert @columns |> Enum.zip(Enum.map(row, &iso/1)) |> Map.new() == rails["export"]
+    assert commands() == []
 
-    assert rails["export_jobs"] == 1 == (commands() != [])
+    if rails["export"] do
+      assert [[id | row]] = rows
+      assert @columns |> Enum.zip(Enum.map(row, &iso/1)) |> Map.new() == rails["export"]
 
-    assert commands() == [
-             [
-               "exports.points_created",
-               %{"export_id" => id, "user_id" => data["user_id"], "locale" => "en"}
-             ]
-           ]
+      if rails["export_jobs"] == 1 do
+        assert [[2, %{"export_id" => ^id, "user_id" => user_id, "time_zone" => zone}, ^id, key]] =
+                 Repo.query!(
+                   "SELECT command_version,payload,aggregate_id,dedupe_key FROM job_outbox"
+                 ).rows
+
+        assert user_id == data["user_id"]
+        assert key == "points-export:#{id}"
+        settings = Enum.find(@data["users"], &(&1["id"] == user_id))["settings"]
+        assert zone == Dawarich.UserTimeZone.name(settings, Repo)
+      else
+        assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+      end
+    else
+      assert rows == []
+      assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+    end
   end
 
   defp resp_header_names(conn),

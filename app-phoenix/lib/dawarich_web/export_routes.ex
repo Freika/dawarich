@@ -20,7 +20,7 @@ defmodule DawarichWeb.ExportRoutes do
         plug DawarichWeb.RateLimit
         plug DawarichWeb.ExportsCreate, :decode
         plug DawarichWeb.RailsAuth
-        plug DawarichWeb.RailsForm
+        plug DawarichWeb.ExportsCreate, :admit
         plug DawarichWeb.RailsHeaders
       end
 

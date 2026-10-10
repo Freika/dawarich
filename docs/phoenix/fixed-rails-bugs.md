@@ -1358,3 +1358,21 @@ Rails' request logger emits `request.filtered_path`, which filters query paramet
 - Test: “storage request path logs never retain a signed upload capability” in `app-phoenix/test/dawarich_web/native_upload_target_test.exs`; disable-path-scrub mutation fails it.
 - Evidence: `impl-m4.report.md`, A2; actual installed Rails request logger invoked with a synthetic disk path and url/token/secret parameter filters confirms the retained capability. No production token used. Native logging is repaired; retained Rails logging remains unchanged. ED-NATIVE-M4-UPLOAD-TRANSPORT added; no DRB added.
 - CHANGELOG-ready: Keep signed storage capabilities and private download filenames out of native request logs.
+
+### FRB-NATIVE-M4-LEGACY-EXPORT-PATH — Legacy export removal traverses outside public storage
+
+An export URL containing `../` lets Rails' destroy callback delete a local file outside `public`; a parent symlink also escapes that directory. Native deletion rejects nonlocal and dot-segment paths before changing metadata; its durable physical cleanup refuses symlink parents.
+
+- Rails: `app/models/export.rb:59,62`.
+- Phoenix: `app-phoenix/lib/dawarich/exports/delete.ex:17`; `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:5,52`.
+- Test: **unsafe legacy export paths and symlink parents cannot remove outside artifacts**, `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`.
+- Evidence: synthetic actual Rails `remove_attached_file` callback removes `public/../outside.gpx`; native path/symlink mutations fail the named case. Native-only fix; Rails unchanged. ED-NATIVE-M4-EXPORTS-UI; no DRB.
+
+### FRB-NATIVE-M4-LEGACY-EXPORT-REFERENCE — Removing one legacy export deletes another export's file
+
+Rails' destroy callback removes a legacy file without checking other export references. Native cleanup persists its path with the deletion and retains the artifact while an export still references that path; replay and missing-file cleanup are idempotent.
+
+- Rails: `app/models/export.rb:59,62`.
+- Phoenix: `app-phoenix/lib/dawarich/exports/delete.ex:69`; `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:38`.
+- Test: **native legacy export deletion purges only its unshared local artifact after commit**, `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`.
+- Evidence: actual Rails callback on synthetic shared path removes its artifact despite a second model's reference; native reference-check and uncommitted-cleanup mutations fail. Probe models are unpersisted; source has no reference query. This does not claim cross-system concurrent creation/unlink arbitration. Native-only fix; Rails unchanged. ED-NATIVE-M4-EXPORTS-UI; no DRB.

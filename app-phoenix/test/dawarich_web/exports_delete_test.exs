@@ -220,6 +220,7 @@ defmodule DawarichWeb.ExportsDeleteTest do
     create =
       "start_at=2024-03-01+00%3A00%3A00+%2B0100&end_at=2024-03-31+00%3A00%3A00+%2B0100&file_format=json"
 
+    Dawarich.Jobs.Ownership.put!(Repo, "command:exports.points", :oban)
     assert request(c, :post, "/exports", create).status == 302
 
     Repo.query!(

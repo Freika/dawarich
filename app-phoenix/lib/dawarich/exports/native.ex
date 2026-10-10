@@ -37,7 +37,7 @@ defmodule Dawarich.Exports.Native do
 
     with {:ok, _} <- NativeAccess.admit(scope, repo) do
       write(repo, scope, fn current ->
-        case Dawarich.Exports.Delete.call(repo, current.user.id, id) do
+        case Dawarich.Exports.Delete.call(repo, current.user.id, id, native: true) do
           {:ok, result} -> result
           {:error, reason} -> repo.rollback(reason)
         end
@@ -51,9 +51,6 @@ defmodule Dawarich.Exports.Native do
 
       case NativeAccess.admit(scope, repo) do
         {:ok, current} ->
-          unless Dawarich.Entitlements.future?(current.user.active_until, DateTime.utc_now()),
-            do: repo.rollback(:inactive)
-
           effect.(current)
 
         {:error, reason} ->

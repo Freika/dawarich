@@ -63,6 +63,7 @@ defmodule DawarichWeb.NativeJobsAuth do
       current_scope: nil,
       navbar: nil,
       entries: [],
+      delete_target: nil,
       notifications: [],
       notification: nil,
       data: nil,

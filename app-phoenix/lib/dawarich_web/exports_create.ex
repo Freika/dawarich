@@ -6,9 +6,9 @@ defmodule DawarichWeb.ExportsCreate do
 
   require Logger
 
-  alias Dawarich.{Exports, PointExports, Repo}
+  alias Dawarich.Exports
+  alias Dawarich.Accounts.Scope
   alias DawarichWeb.{Locale, RailsSession, RequestURL, Translate}
-  alias DawarichWeb.Api.Body
 
   @notice "controllers.exports.export_was_successfully_initiated_please_wait_until_it_s_finished"
 
@@ -23,7 +23,7 @@ defmodule DawarichWeb.ExportsCreate do
         conn |> assign(:api_query, query) |> assign(:api_params, Map.merge(params, query))
 
       {:replay, conn} ->
-        Body.replay(conn, "export request envelope")
+        refuse(conn)
 
       {:error, conn} ->
         halt(conn)
@@ -34,15 +34,8 @@ defmodule DawarichWeb.ExportsCreate do
     started = System.monotonic_time()
     user = conn.assigns.current_user
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
-    native = native?()
 
-    parsed =
-      if native,
-        do: Exports.parse_submission(conn.assigns.api_params),
-        else: PointExports.parse(conn.assigns.api_params)
-
-    with {:ok, export} <- parsed,
-         {:ok, _id} <- PointExports.create(export, user, locale) do
+    with {:ok, _id} <- Exports.request(Scope.for_user(user, locale), conn.assigns.api_params) do
       notice = Translate.t(locale, @notice, %{})
 
       conn
@@ -54,16 +47,24 @@ defmodule DawarichWeb.ExportsCreate do
       |> send_resp(302, "")
       |> halt()
     else
-      :rails -> Body.replay(conn, "export parameters")
-      {:error, reason} -> if native, do: failure(conn, locale), else: Body.replay(conn, reason)
+      {:error, _} -> failure(conn, locale)
     end
   end
 
-  defp native? do
-    Dawarich.Standalone.enabled?() or
-      Repo.query!("SELECT owner FROM phoenix.job_owners WHERE key='command:exports.points'", [],
-        log: false
-      ).rows == [["oban"]]
+  def call(conn, :admit) do
+    case DawarichWeb.RailsForm.admission(conn) do
+      :ok -> conn
+      {:replay, _} -> refuse(conn)
+    end
+  end
+
+  defp refuse(conn) do
+    conn
+    |> put_resp_header("cache-control", "no-cache")
+    |> put_resp_content_type("text/html")
+    |> log(System.monotonic_time(), 422)
+    |> send_resp(422, "")
+    |> halt()
   end
 
   defp failure(conn, locale) do
@@ -79,9 +80,9 @@ defmodule DawarichWeb.ExportsCreate do
     |> halt()
   end
 
-  defp log(conn, started) do
+  defp log(conn, started, status \\ 302) do
     ms = System.convert_time_unit(System.monotonic_time() - started, :native, :millisecond)
-    Logger.info("[form] POST /exports 302 #{ms}ms")
+    Logger.info("[form] POST /exports #{status} #{ms}ms")
     conn
   end
 end
