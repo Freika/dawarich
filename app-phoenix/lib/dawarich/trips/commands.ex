@@ -126,6 +126,8 @@ defmodule Dawarich.Trips.Commands do
 
   defp context(%Scope{locale: locale}, now), do: %{now: now, locale: locale || "en"}
 
-  defp refusal({:error, :not_found}), do: {:error, :not_found}
+  defp refusal({:error, reason}) when reason in [:not_found, :attachment_refused],
+    do: {:error, reason}
+
   defp refusal(_other), do: {:error, :unavailable}
 end
