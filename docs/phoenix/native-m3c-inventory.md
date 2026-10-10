@@ -68,3 +68,7 @@ HEEx preserves Devise field protocol, empty rejected passwords and source redire
 ## B2 — signup
 
 HTTP signup retains invitation readonly email/token, password/confirmation fields, localized errors, no user/outbox intent on validation, policy denial and account update/delete classification. RED `impl-m3c-b2-red.log`: 0/3; GREEN 3/3; corrected confirmation/disabled and classification mutations each exit 2. Initial weak mutations were discarded and assertions strengthened. Restored `impl-m3c-b2-restored-green.log`: 45 passed, exit 0, warnings clean. No domain change or source fixture rewrite.
+
+## B3 — OTP
+
+Initial and repeated failure responses use the anonymous HTTP renderer, with empty code, unchanged counters/completion/remember/cache and approved session-locale display. RED `impl-m3c-b3-red.log` 0/4 exit 2; GREEN 4/4; locale/echo/counter/pending mutations each fail their named test (exit 2); pending mutation also warns about its intentionally unused attribute. Restored `impl-m3c-b3-restored-green.log`: 42 passed, exit 0, warnings clean. OTP FormTest exact markup → source fields/labels/navigation/input constraints; ResponseTest forced English hero → matching seven-locale source fields/title; header/cookie/status/completion cases retained.

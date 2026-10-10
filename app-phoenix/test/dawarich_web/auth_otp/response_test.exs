@@ -3,7 +3,8 @@ defmodule DawarichWeb.AuthOtp.ResponseTest do
   import Plug.Conn
   import ExUnit.CaptureLog
   alias Dawarich.Auth.{Otp.Pending, SessionCookie}
-  alias Dawarich.{RailsCookies, Repo, Test.ParityHTML, Test.RailsUser}
+  alias Dawarich.{RailsCookies, Repo, Test.RailsUser}
+  alias Dawarich.Test.NativeAuthHTTP
   alias DawarichWeb.AuthOtp.Response
   @secret "a11d-response-synthetic-cookie-key"
   @now ~U[2026-10-04 12:00:00.000000Z]
@@ -91,8 +92,13 @@ defmodule DawarichWeb.AuthOtp.ResponseTest do
           row = @source["start_#{locale}"]
           headers(response, row)
 
-          assert ParityHTML.fragment(response.resp_body, ".hero") ==
-                   ParityHTML.normalize(File.read!("test/fixtures/auth/otp/challenge_en.html"))
+          source = File.read!("test/fixtures/auth/otp/challenge_#{locale}.html")
+          assert NativeAuthHTTP.fields(response.resp_body) == NativeAuthHTTP.fields(source)
+
+          assert NativeAuthHTTP.text(response.resp_body, "h1") ==
+                   NativeAuthHTTP.text(source, "h1")
+
+          assert response.resp_body =~ "/native/auth_http.js"
 
           title =
             response.resp_body

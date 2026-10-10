@@ -144,28 +144,22 @@ defmodule DawarichWeb.AuthOtp.Http do
             %{}
           )
 
-        assigns =
-          Map.merge(conn.assigns, %{
+        body =
+          DawarichWeb.AuthOtp.Form.page(%{
             __changed__: nil,
-            flash: %{"alert" => alert},
-            page_title: nil,
+            locale: conn.assigns.locale,
             rails_csrf_token: token
           })
-
-        content = DawarichWeb.AuthOtp.Form.page(assigns)
-        app = DawarichWeb.Layouts.app(Map.put(assigns, :inner_content, content))
-
-        body =
-          DawarichWeb.Layouts.root(Map.put(assigns, :inner_content, app))
-          |> Phoenix.HTML.Safe.to_iodata()
 
         conn
         |> DawarichWeb.AuthCookie.session(encoded)
         |> DawarichWeb.RailsHeaders.call([])
         |> put_resp_header("x-dawarich-auth-owner", "native-otp")
-        |> put_resp_content_type("text/html")
-        |> send_resp(422, body)
-        |> halt()
+        |> DawarichWeb.AuthPageController.document(body, 422,
+          chrome: :anonymous,
+          csrf_token: token,
+          flash: %{"alert" => alert}
+        )
 
       {:redirect, session, reason} ->
         locale = DawarichWeb.Locale.resolve(nil, nil, session)
