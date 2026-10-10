@@ -10,12 +10,28 @@ defmodule Dawarich.A12f3bG02Test do
   @now ~U[2026-10-04 12:00:00Z]
 
   defmodule RollbackRepo do
-    def transaction(fun),
-      do:
+    def transaction(fun) do
+      if Dawarich.ScratchRepo.in_transaction?() do
+        Dawarich.ScratchRepo.transaction(fun)
+      else
         Dawarich.ScratchRepo.transaction(fn ->
           fun.()
+
+          snapshot =
+            Dawarich.ScratchRepo.query!(
+              "SELECT (SELECT count(*) FROM family_invitations WHERE status=0), (SELECT count(*) FROM family_location_requests WHERE status=0), (SELECT count(*) FROM oban.oban_jobs)",
+              [],
+              log: false
+            ).rows
+
+          send(self(), {:before_housekeeping_rollback, snapshot})
           Dawarich.ScratchRepo.rollback(:interrupted)
         end)
+      end
+    end
+
+    defdelegate in_transaction?(), to: Dawarich.ScratchRepo
+    defdelegate insert!(changeset, opts), to: Dawarich.ScratchRepo
 
     def query!(sql, args, opts), do: Dawarich.ScratchRepo.query!(sql, args, opts)
     def update_all(query, opts), do: Dawarich.ScratchRepo.update_all(query, opts)
@@ -31,7 +47,7 @@ defmodule Dawarich.A12f3bG02Test do
   end
 
   @tag a12f3b_case: "G02a"
-  test "housekeeping crons preserve expiry scope and shared storage retries" do
+  test "housekeeping crons preserve expiry scope and atomically roll back native invalidations" do
     for name <-
           ~w(nightly_family_invitations_cleanup_job family_location_requests_expiry_job pending_imports_cleanup route_videos_purge_job stale_jobs_recovery_job) do
       assert %{kind: :cron, catch_up: false} =
@@ -49,6 +65,11 @@ defmodule Dawarich.A12f3bG02Test do
         [user]
       )
 
+    rows(
+      "INSERT INTO family_memberships(family_id,user_id,created_at,updated_at) VALUES($1,$2,now(),now())",
+      [family, user]
+    )
+
     for {expires, expected} <- [
           {NaiveDateTime.add(DateTime.to_naive(@now), -1), 3},
           {DateTime.to_naive(@now), 3},
@@ -65,12 +86,47 @@ defmodule Dawarich.A12f3bG02Test do
       assert rows("SELECT status FROM family_location_requests WHERE id=$1", [id]) == [[expected]]
     end
 
+    assert rows(
+             "SELECT worker,args->>'kind',(args->>'user_id')::bigint,state FROM oban.oban_jobs ORDER BY id"
+           ) ==
+             List.duplicate(["Dawarich.Families.EventsWorker", "request", user, "available"], 2)
+
+    rows(
+      "INSERT INTO family_invitations(family_id,invited_by_id,email,token,status,expires_at,created_at,updated_at) VALUES($1,$2,'cron-invite@example.test',$3,0,$4,$5,$5)",
+      [
+        family,
+        user,
+        Ecto.UUID.generate(),
+        NaiveDateTime.add(DateTime.to_naive(@now), -1),
+        DateTime.to_naive(@now)
+      ]
+    )
+
+    rows(
+      "INSERT INTO family_location_requests(family_id,requester_id,target_user_id,status,expires_at,created_at,updated_at) VALUES($1,$2,$2,0,$3,$3,$3)",
+      [family, user, DateTime.to_naive(@now)]
+    )
+
     for worker <- [InvitationCleanupWorker, LocationRequestExpiryWorker] do
       Ownership.put!(ScratchRepo, worker.key(), :oban)
+      before = footprint()
       assert worker.run(RollbackRepo, DateTime.to_naive(@now)) == {:error, :interrupted}
+      assert footprint() == before
+      expected = if worker == InvitationCleanupWorker, do: [[0, 2, 3]], else: [[1, 1, 3]]
+      assert_received {:before_housekeeping_rollback, ^expected}
       Ownership.put!(ScratchRepo, worker.key(), :sidekiq, pinned: true)
       assert worker.run(ScratchRepo, DateTime.to_naive(@now)) == {:cancel, :not_owner}
+      assert footprint() == before
     end
+  end
+
+  defp footprint do
+    {
+      rows("SELECT id,status,updated_at FROM family_invitations ORDER BY id"),
+      rows("SELECT id,status,updated_at FROM family_location_requests ORDER BY id"),
+      rows("SELECT id,worker,args,state,scheduled_at FROM oban.oban_jobs ORDER BY id"),
+      rows("SELECT event_id,command_type,payload FROM job_outbox ORDER BY event_id")
+    }
   end
 
   @tag a12f3b_case: "G02b"
