@@ -9,6 +9,8 @@ import { MapHook } from "./map.js"
 import { MapMatchingDemo } from "./map_matching_demo.js"
 import { MapPreview } from "./map_preview.js"
 import { OnboardingHook } from "./onboarding.js"
+import { PosterStudio } from "./poster_studio.js"
+import { VideoStudio } from "./video_studio.js"
 import { PublicMap } from "./public_map.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
 import { TripHook } from "./trip.js"
@@ -24,6 +26,8 @@ export const hooks = {
   Onboarding: OnboardingHook,
   MapPreview,
   PublicMap,
+  PosterStudio,
+  VideoStudio,
   Family: FamilyHook,
   Trip: TripHook,
   MapMatchingDemo,

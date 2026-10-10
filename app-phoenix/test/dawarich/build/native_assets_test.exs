@@ -31,6 +31,26 @@ defmodule Dawarich.Build.NativeAssetsTest do
     refute Enum.any?(inputs, &Regex.match?(~r/@hotwired|stimulus|turbo|rails_bridge/i, &1))
   end
 
+  test "both native studio hooks register without eagerly loading their engines", %{tmp_dir: dir} do
+    build!(dir)
+
+    outputs =
+      Path.join(dir, "meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
+
+    eager_inputs =
+      for path <- eager(outputs, [app], MapSet.new()),
+          input <- Map.keys(outputs[path]["inputs"]),
+          do: input
+
+    for studio <- ~w(poster video) do
+      assert Enum.any?(eager_inputs, &String.ends_with?(&1, "hooks/#{studio}_studio.js"))
+    end
+
+    refute Enum.any?(eager_inputs, &Regex.match?(~r{js/(poster|video)/|fflate|mp4-muxer}, &1))
+  end
+
   test "emoji-mart is a separate lazily loaded chunk", %{tmp_dir: dir} do
     build!(dir)
     app = File.read!(Path.join(dir, "app.js"))
