@@ -7,7 +7,6 @@ defmodule DawarichWeb.AuthAccountLink.Response do
   alias DawarichWeb.{
     AuthCookie,
     LayoutAssigns,
-    Layouts,
     Locale,
     RailsCsrf,
     RailsHeaders,
@@ -20,28 +19,28 @@ defmodule DawarichWeb.AuthAccountLink.Response do
     conn = conn |> assign(:rails_session, pending.session) |> prepare()
     {session, _} = encoded = SessionCookie.for_form(conn.assigns.rails_session, secret(context))
 
-    assigns =
-      Map.merge(conn.assigns, %{
-        __changed__: nil,
-        flash: %{},
-        page_title: Form.title(conn.assigns.locale),
-        provider_label: label(pending.pending, conn.assigns.locale),
-        user_email: pending.user.email,
-        confirm_csrf_token:
-          RailsCsrf.masked_form_token(session, "/auth/account_link/challenge", "POST"),
-        email_csrf_token: RailsCsrf.masked_form_token(session, "/auth/account_link/email", "POST")
-      })
+    assigns = %{
+      locale: conn.assigns.locale,
+      __changed__: nil,
+      flash: %{},
+      page_title: Form.title(conn.assigns.locale),
+      provider_label: label(pending.pending, conn.assigns.locale),
+      user_email: pending.user.email,
+      confirm_csrf_token:
+        RailsCsrf.masked_form_token(session, "/auth/account_link/challenge", "POST"),
+      email_csrf_token: RailsCsrf.masked_form_token(session, "/auth/account_link/email", "POST")
+    }
 
-    body = Form.page(Map.put(assigns, :flash, Map.new(conn.assigns.flash_messages)))
-    app = Layouts.app(Map.put(assigns, :inner_content, body))
-    html = Layouts.root(Map.put(assigns, :inner_content, app)) |> Phoenix.HTML.Safe.to_iodata()
+    body = Form.page(assigns)
 
     conn
     |> AuthCookie.session(encoded)
     |> headers()
-    |> put_resp_content_type("text/html")
-    |> send_resp(200, html)
-    |> halt()
+    |> DawarichWeb.AuthPageController.document(body, 200,
+      chrome: :anonymous,
+      csrf_token: RailsCsrf.masked_token(session),
+      title: assigns.page_title
+    )
   end
 
   def completed(conn, result, context \\ %{}) do

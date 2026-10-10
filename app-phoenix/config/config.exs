@@ -29,7 +29,16 @@ config :dawarich, DawarichWeb.Endpoint,
   live_view: [signing_salt: "dawarich live view"]
 
 config :phoenix, :json_library, Jason
-filtered_parameters = ["password", "api_key", "token", "secret"]
+
+filtered_parameters = [
+  "password",
+  "api_key",
+  "token",
+  "secret",
+  "otp_attempt",
+  "otp_backup_codes"
+]
+
 config :phoenix, :filter_parameters, filtered_parameters
 config :dawarich, Dawarich.LogRedaction, words: filtered_parameters
 
@@ -37,7 +46,7 @@ config :esbuild,
   version: "0.25.0",
   native: [
     args:
-      ~w(js/app.js --bundle --format=esm --splitting --target=es2022 --external:/maplibre/* --outdir=../priv/static/native),
+      ~w(js/app.js js/auth_http.js --bundle --format=esm --splitting --target=es2022 --external:/maplibre/* --outdir=../priv/static/native),
     cd: Path.expand("../assets", __DIR__),
     env: %{
       "NODE_PATH" => Path.expand("../deps", __DIR__)

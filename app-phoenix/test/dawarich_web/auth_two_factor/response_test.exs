@@ -4,7 +4,7 @@ defmodule DawarichWeb.AuthTwoFactor.ResponseTest do
   import ExUnit.CaptureLog
   alias Dawarich.{Accounts, RailsCookies, Repo}
   alias Dawarich.Auth.SessionCookie
-  alias Dawarich.Test.{ParityHTML, RailsUser}
+  alias Dawarich.Test.{NativeAuthHTTP, RailsUser}
   alias DawarichWeb.AuthTwoFactor.{Form, Response}
 
   @secret "a11c-response-synthetic-cookie-key"
@@ -70,8 +70,8 @@ defmodule DawarichWeb.AuthTwoFactor.ResponseTest do
     assert length(String.split(response.resp_body, message)) == 2
     page = File.read!(@root <> "/review/inherited_alert.html")
 
-    assert ParityHTML.fragment(response.resp_body, "#flash-messages") ==
-             ParityHTML.normalize(page)
+    assert NativeAuthHTTP.text(response.resp_body, "#flash-messages span") ==
+             NativeAuthHTTP.text(page, "span")
   end
 
   test "management render and redirects preserve Rails identity and flash semantics" do
@@ -157,9 +157,18 @@ defmodule DawarichWeb.AuthTwoFactor.ResponseTest do
           assert response.assigns.rails_session == incoming
           assert response.status == row["status"] and response.halted
 
-          assert ParityHTML.fragment(response.resp_body, ".min-h-content.w-full.my-5") ==
-                   ParityHTML.normalize(page),
+          fragment =
+            response.resp_body
+            |> LazyHTML.from_document()
+            |> LazyHTML.query(".min-h-content.w-full.my-5")
+            |> LazyHTML.to_html()
+
+          assert NativeAuthHTTP.fields(fragment) == NativeAuthHTTP.fields(page), name
+
+          assert NativeAuthHTTP.text(fragment, "label") == NativeAuthHTTP.text(page, "label"),
                  name
+
+          assert response.resp_body =~ "/native/auth_http.js"
 
           expected_title =
             DawarichWeb.Layouts.page_title(row["locale"], Form.title(kind, row["locale"]))

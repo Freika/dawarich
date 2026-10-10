@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-const { AchievementUnlocks } = await import(
+const { AchievementUnlocksLifecycle } = await import(
   "../../app-phoenix/assets/js/hooks/achievement_unlocks.js"
 )
 
@@ -28,7 +28,7 @@ function fixture(t, respond) {
   }
   t.mock.method(console, "error", () => {})
 
-  const hook = Object.assign(Object.create(AchievementUnlocks), {
+  const hook = Object.assign(new AchievementUnlocksLifecycle(), {
     el: { dataset: { seenUrl: "/achievements/unlocks/__ID__/seen" } },
     stopped: false,
     storageKey: "claim",

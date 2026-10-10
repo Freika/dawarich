@@ -19,6 +19,8 @@ defmodule DawarichWeb.Navbar do
   attr :now, :any, required: true
   attr :native, :boolean, default: false
 
+  attr :http, :boolean, default: false
+
   def navbar(assigns) do
     ~H"""
     <div class="navbar bg-base-100 h-16">
@@ -103,6 +105,7 @@ defmodule DawarichWeb.Navbar do
           version={@data.version}
           rails_csrf_token={@rails_csrf_token}
           native={@native}
+          http={@http}
         />
         <div :if={@current_user} class="hidden xl:block">
           <.theme_toggle locale={@locale} theme={@current_user.theme} native={@native} />
@@ -129,6 +132,7 @@ defmodule DawarichWeb.Navbar do
         now={@now}
         rails_csrf_token={@rails_csrf_token}
         native={@native}
+        http={@http}
       />
     </div>
     """

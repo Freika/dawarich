@@ -25,6 +25,7 @@ defmodule DawarichWeb.NativeOnboarding do
   end
 
   def modal(assigns) do
+    assigns = Map.put_new(assigns, :http, false)
     %{current_user: user, navbar: %{family: family}} = assigns
 
     assigns =
@@ -51,7 +52,9 @@ defmodule DawarichWeb.NativeOnboarding do
             <button
               type="button"
               class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-primary/40 hover:border-primary sm:col-span-2"
-              phx-click={show("onboarding-track-screen", "onboarding_track_selected")}
+              phx-click={!@http && show("onboarding-track-screen", "onboarding_track_selected")}
+              data-auth-onboarding-screen={@http && "onboarding-track-screen"}
+              data-auth-track-event={@http && "onboarding_track_selected"}
             >
               <div class="card-body p-5">
                 <div class="flex items-center gap-2 mb-2">
@@ -67,7 +70,9 @@ defmodule DawarichWeb.NativeOnboarding do
             <button
               type="button"
               class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-secondary"
-              phx-click={show("onboarding-import-screen", "onboarding_import_selected")}
+              phx-click={!@http && show("onboarding-import-screen", "onboarding_import_selected")}
+              data-auth-onboarding-screen={@http && "onboarding-import-screen"}
+              data-auth-track-event={@http && "onboarding_import_selected"}
             >
               <div class="card-body p-5">
                 <div class="flex items-center gap-2 mb-2">
@@ -79,13 +84,20 @@ defmodule DawarichWeb.NativeOnboarding do
                 </p>
               </div>
             </button>
-            <form method="post" action="/settings/onboarding/demo_data" class="contents">
+            <form
+              method="post"
+              action="/settings/onboarding/demo_data"
+              class="contents"
+              data-auth-form={@http}
+              data-auth-track-event={@http && "onboarding_demo_selected"}
+            >
               <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
               <button
                 type="submit"
                 disabled={@demo_loaded}
                 phx-click={
-                  JS.dispatch("dawarich:track", detail: %{event: "onboarding_demo_selected"})
+                  !@http &&
+                    JS.dispatch("dawarich:track", detail: %{event: "onboarding_demo_selected"})
                 }
                 class={"card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-accent #{if @demo_loaded, do: "opacity-50 pointer-events-none"}"}
               >
@@ -131,7 +143,8 @@ defmodule DawarichWeb.NativeOnboarding do
             <button
               type="button"
               class="btn btn-ghost btn-sm btn-circle"
-              phx-click={show("onboarding-choice-screen")}
+              phx-click={!@http && show("onboarding-choice-screen")}
+              data-auth-onboarding-screen={@http && "onboarding-choice-screen"}
             >
               <Icon.icon name="arrow-left" class="w-4 h-4" />
             </button>
@@ -154,7 +167,13 @@ defmodule DawarichWeb.NativeOnboarding do
             <a class="btn btn-primary" href="/imports/new">{tm(@locale, "import_files")}</a>
           </div>
         </div>
-        <.track_screen locale={@locale} base_url={@base_url} current_user={@current_user} native />
+        <.track_screen
+          locale={@locale}
+          base_url={@base_url}
+          current_user={@current_user}
+          native
+          http={@http}
+        />
       </div>
       <form method="dialog" class="modal-backdrop">
         <button>{tm(@locale, "close")}</button>

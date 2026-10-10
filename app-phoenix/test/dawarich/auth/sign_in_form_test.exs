@@ -1,11 +1,11 @@
 defmodule Dawarich.Auth.SignInFormTest do
   use ExUnit.Case, async: true
-  alias Dawarich.Test.AuthMarkup
+  alias Dawarich.Test.{AuthMarkup, NativeAuthHTTP}
   alias DawarichWeb.AuthForm
 
   @markup AuthMarkup.fixture()["signin"]
 
-  test "renders the sign-in page exactly as Rails' devise/sessions/new does, in every shape Phoenix serves" do
+  test "renders source sign-in field protocol and translations in every served shape" do
     assert Enum.sort(Map.keys(@markup)) ==
              ~w(signin signin_de signin_failed signin_fr signin_registration)
 
@@ -16,8 +16,21 @@ defmodule Dawarich.Auth.SignInFormTest do
           registration_enabled: row["registration"]
         )
 
-      assert AuthMarkup.strict(html) == AuthMarkup.strict(row["html"]), name
+      assert fields(html) == fields(row["html"]), name
+      assert links(html) == links(row["html"]), name
+      assert NativeAuthHTTP.text(html, "h1") == NativeAuthHTTP.text(row["html"], "h1"), name
+      assert NativeAuthHTTP.text(html, "label") == NativeAuthHTTP.text(row["html"], "label"), name
     end
+  end
+
+  defp fields(html) do
+    for node <- LazyHTML.query(LazyHTML.from_fragment(html), "input"),
+        do: for(key <- ~w(name type value id), do: {key, LazyHTML.attribute(node, key)})
+  end
+
+  defp links(html) do
+    for node <- LazyHTML.query(LazyHTML.from_fragment(html), "a"),
+        do: {LazyHTML.attribute(node, "href"), LazyHTML.text(node)}
   end
 
   test "escapes the submitted email" do

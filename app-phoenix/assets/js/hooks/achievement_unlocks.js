@@ -16,9 +16,13 @@ const post = (url, body) =>
 const canReveal = () =>
   !document.hidden && !document.querySelector("dialog[open]")
 
-export const AchievementUnlocks = {
-  mounted() {
-    this.generation = 1
+export class AchievementUnlocksLifecycle {
+  constructor(el) {
+    this.el = el
+  }
+  start() {
+    this.generation = (this.generation || 0) + 1
+    this.ackPromise = null
     this.stopped = false
     this.current = null
     this.loading = false
@@ -46,23 +50,25 @@ export const AchievementUnlocks = {
     window.addEventListener("pageshow", this.onResume)
     this.el.addEventListener("click", this.onClick)
     this.load()
-  },
+  }
 
-  destroyed() {
+  stop() {
     this.generation += 1
     this.stopped = true
     clearTimeout(this.ackTimer)
     clearTimeout(this.retryTimer)
+    clearTimeout(this.transitionTimer)
+    this.finishTransition?.()
     window.removeEventListener("keydown", this.onKey)
     document.removeEventListener("visibilitychange", this.onResume)
     window.removeEventListener("pageshow", this.onResume)
     this.el.removeEventListener("click", this.onClick)
-  },
+  }
 
   async load() {
     if (this.stopped || this.loading) return
     if (!canReveal()) {
-      this.retryTimer = setTimeout(() => this.load(), 1000)
+      this.retryTimer = this.later(() => this.load(), 1000)
       return
     }
     this.loading = true
@@ -76,7 +82,7 @@ export const AchievementUnlocks = {
       if (response.status === 409) {
         this.saved = null
         this.saveClaim()
-        this.retryTimer = setTimeout(() => this.load(), 2000)
+        this.retryTimer = this.later(() => this.load(), 2000)
         return
       }
       if (
@@ -101,7 +107,7 @@ export const AchievementUnlocks = {
       }
       this.saveClaim()
       if (!canReveal()) {
-        this.retryTimer = setTimeout(() => this.load(), 1000)
+        this.retryTimer = this.later(() => this.load(), 1000)
         return
       }
       this.el.innerHTML = item.html
@@ -111,25 +117,28 @@ export const AchievementUnlocks = {
           ?.focus({ preventScroll: true })
         this.focusAfterLoad = false
       }
-      this.ackTimer = setTimeout(
+      this.ackTimer = this.later(
         () => this.acknowledge(),
         matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1100,
       )
     } catch (error) {
       if (!this.stopped && generation === this.generation) {
         console.error(error)
-        this.retryTimer = setTimeout(() => this.load(), 5000)
+        this.retryTimer = this.later(() => this.load(), 5000)
       }
     } finally {
       if (generation === this.generation) this.loading = false
     }
-  },
+  }
 
   async nextCard() {
-    if (!this.current || this.transitioning) return
+    if (this.stopped || !this.current || this.transitioning) return
+    const generation = this.generation
     this.transitioning = true
     clearTimeout(this.ackTimer)
-    if (!(await this.acknowledge())) {
+    const acknowledged = await this.acknowledge()
+    if (!this.active(generation)) return
+    if (!acknowledged) {
       this.transitioning = false
       return
     }
@@ -138,45 +147,55 @@ export const AchievementUnlocks = {
       this.restoreFocus()
     } else {
       this.el.firstElementChild?.classList.add("ach-unlock-reveal--leaving")
-      await new Promise((resolve) => setTimeout(resolve, 170))
+      await new Promise((resolve) => {
+        this.finishTransition = resolve
+        this.transitionTimer = setTimeout(resolve, 170)
+      })
+      if (!this.active(generation)) return
+      this.finishTransition = null
       this.focusAfterLoad = true
       await this.load()
+      if (!this.active(generation)) return
       if (!this.current) this.restoreFocus()
     }
     this.transitioning = false
-  },
+  }
 
   async dismiss() {
-    if (!this.current || this.transitioning) return
+    if (this.stopped || !this.current || this.transitioning) return
+    const generation = this.generation
     this.transitioning = true
     clearTimeout(this.ackTimer)
     try {
       const response = await post(this.el.dataset.dismissUrl, {
         batch_end_id: this.batchEndId,
       })
+      if (!this.active(generation)) return
       if (!response.ok)
         throw new Error(`Unlock dismiss failed: ${response.status}`)
       this.hide()
       this.restoreFocus()
     } catch (error) {
-      console.error(error)
+      if (this.active(generation)) console.error(error)
     } finally {
-      this.transitioning = false
+      if (this.active(generation)) this.transitioning = false
     }
-  },
+  }
 
   acknowledge() {
     if (this.stopped) return Promise.resolve(false)
     if (!this.current?.token) return Promise.resolve(true)
     if (!canReveal()) {
-      this.ackTimer = setTimeout(() => this.acknowledge(), 1000)
+      this.ackTimer = this.later(() => this.acknowledge(), 1000)
       return Promise.resolve(false)
     }
     if (this.ackPromise) return this.ackPromise
+    const generation = this.generation
     const item = this.current
     const url = this.el.dataset.seenUrl.replace("__ID__", String(item.id))
     this.ackPromise = post(url, { claim_token: item.token })
       .then((response) => {
+        if (!this.active(generation)) return false
         if (!response.ok && response.status !== 409)
           throw new Error(`Unlock acknowledgement failed: ${response.status}`)
         item.token = null
@@ -185,16 +204,28 @@ export const AchievementUnlocks = {
         return true
       })
       .catch((error) => {
+        if (!this.active(generation)) return false
         console.error(error)
         if (!this.stopped)
-          this.retryTimer = setTimeout(() => this.acknowledge(), 5000)
+          this.retryTimer = this.later(() => this.acknowledge(), 5000)
         return false
       })
       .finally(() => {
-        this.ackPromise = null
+        if (this.active(generation)) this.ackPromise = null
       })
     return this.ackPromise
-  },
+  }
+
+  active(generation) {
+    return !this.stopped && generation === this.generation
+  }
+
+  later(action, delay) {
+    const generation = this.generation
+    return setTimeout(() => {
+      if (this.active(generation)) action()
+    }, delay)
+  }
 
   hide() {
     clearTimeout(this.ackTimer)
@@ -205,12 +236,12 @@ export const AchievementUnlocks = {
     this.focusAfterLoad = false
     this.saveClaim()
     this.el.replaceChildren()
-  },
+  }
 
   restoreFocus() {
     if (this.originFocus?.isConnected)
       this.originFocus.focus({ preventScroll: true })
-  },
+  }
 
   readSaved() {
     try {
@@ -218,7 +249,7 @@ export const AchievementUnlocks = {
     } catch {
       return null
     }
-  },
+  }
 
   saveClaim() {
     try {
@@ -226,5 +257,20 @@ export const AchievementUnlocks = {
         sessionStorage.setItem(this.storageKey, JSON.stringify(this.saved))
       else sessionStorage.removeItem(this.storageKey)
     } catch {}
+  }
+}
+
+export function initializeAchievementUnlocks(el) {
+  const runtime = new AchievementUnlocksLifecycle(el)
+  runtime.start()
+  return () => runtime.stop()
+}
+
+export const AchievementUnlocks = {
+  mounted() {
+    this.dispose = initializeAchievementUnlocks(this.el)
+  },
+  destroyed() {
+    this.dispose?.()
   },
 }

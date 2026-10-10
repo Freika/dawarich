@@ -190,26 +190,13 @@ defmodule DawarichWeb.AuthRecovery.Http do
         context.registration_enabled
       )
 
-    assigns =
-      Map.merge(conn.assigns, %{
-        __changed__: nil,
-        flash: %{},
-        page_title: nil,
-        rails_csrf_token: token,
-        inner_content: Phoenix.HTML.raw(body)
-      })
-
-    app = DawarichWeb.Layouts.app(assigns)
-
-    html =
-      DawarichWeb.Layouts.root(%{assigns | inner_content: app}) |> Phoenix.HTML.Safe.to_iodata()
-
     conn
     |> AuthCookie.session(encoded)
     |> headers()
-    |> put_resp_content_type("text/html")
-    |> send_resp(result.status, html)
-    |> halt()
+    |> DawarichWeb.AuthPageController.document(Phoenix.HTML.raw(body), result.status,
+      chrome: :anonymous,
+      csrf_token: token
+    )
   end
 
   defp headers(conn),

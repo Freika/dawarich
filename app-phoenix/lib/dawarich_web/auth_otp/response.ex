@@ -7,7 +7,6 @@ defmodule DawarichWeb.AuthOtp.Response do
   alias DawarichWeb.{
     AuthCookie,
     LayoutAssigns,
-    Layouts,
     Locale,
     RailsCsrf,
     RailsHeaders,
@@ -17,28 +16,16 @@ defmodule DawarichWeb.AuthOtp.Response do
   alias DawarichWeb.AuthOtp.Form
 
   def form(conn, pending, context \\ %{}) do
-    conn = conn |> assign(:rails_session, pending) |> prepare() |> assign(:locale, "en")
+    conn = conn |> assign(:rails_session, pending) |> prepare()
     {session, _} = encoded = SessionCookie.for_form(conn.assigns.rails_session, secret(context))
     token = RailsCsrf.masked_form_token(session, "/users/otp_challenge", "POST")
 
-    assigns =
-      Map.merge(conn.assigns, %{
-        __changed__: nil,
-        flash: %{},
-        page_title: nil,
-        rails_csrf_token: token
-      })
-
-    body = Form.page(assigns)
-    app = Layouts.app(Map.put(assigns, :inner_content, body))
-    html = Layouts.root(Map.put(assigns, :inner_content, app)) |> Phoenix.HTML.Safe.to_iodata()
+    body = Form.page(%{__changed__: nil, locale: conn.assigns.locale, rails_csrf_token: token})
 
     conn
     |> AuthCookie.session(encoded)
     |> headers()
-    |> put_resp_content_type("text/html")
-    |> send_resp(422, html)
-    |> halt()
+    |> DawarichWeb.AuthPageController.document(body, 422, chrome: :anonymous, csrf_token: token)
   end
 
   def signed_in(conn, result, context \\ %{}) do
