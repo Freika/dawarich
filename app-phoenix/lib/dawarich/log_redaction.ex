@@ -6,11 +6,21 @@ defmodule Dawarich.LogRedaction do
 
   def install do
     :persistent_term.put({__MODULE__, :words}, configured_words())
-    :logger.add_primary_filter(__MODULE__, {&__MODULE__.filter/2, []})
+    filter = {&__MODULE__.filter/2, []}
+    :logger.add_primary_filter(__MODULE__, filter)
+
+    :logger.add_handler_filter(:default, __MODULE__, {&__MODULE__.handler_filter/2, []})
+    :ok
   end
 
+  def handler_filter(%{meta: %{dawarich_redacted: true}}, _), do: :ignore
+  def handler_filter(event, config), do: filter(event, config)
+
   def filter(event, _) do
-    event |> redact() |> Map.update(:meta, %{}, &scrub/1)
+    event
+    |> redact()
+    |> Map.update(:meta, %{}, &scrub/1)
+    |> put_in([:meta, :dawarich_redacted], true)
   rescue
     _ -> %{event | msg: {:string, @filtered}} |> Map.put(:meta, %{})
   end
@@ -31,6 +41,9 @@ defmodule Dawarich.LogRedaction do
   def scrub(term), do: scrub(term, @depth)
 
   defp scrub(_term, 0), do: @filtered
+
+  defp scrub(%Plug.Conn{} = conn, _depth),
+    do: %{method: conn.method, request_path: request_path(conn.request_path), status: conn.status}
 
   defp scrub(%FunctionClauseError{} = error, _depth), do: %{error | args: nil}
 
@@ -115,7 +128,17 @@ defmodule Dawarich.LogRedaction do
     _ -> @filtered
   end
 
+  def request_path(path) do
+    Regex.replace(
+      ~r{(/(?:family/)?invitations/|/s/|/api/v1/shared/|/shared/(?:month|digest|achievements)/)[^/\s?"'<>]++},
+      path,
+      "\\1" <> @filtered
+    )
+  end
+
   defp scrub_binary(binary) do
+    binary = binary |> request_path() |> scrub_uuids()
+
     case words() do
       [] ->
         binary
@@ -123,7 +146,7 @@ defmodule Dawarich.LogRedaction do
       words ->
         cond do
           String.contains?(binary, "Postgrex.Error") ->
-            "Postgrex.Error " <> @filtered
+            scrub_postgres(binary)
 
           not mentions?(binary, words) ->
             binary
@@ -137,6 +160,26 @@ defmodule Dawarich.LogRedaction do
     end
   rescue
     _ -> @filtered
+  end
+
+  defp scrub_postgres(binary) do
+    [prefix, _] = String.split(binary, "Postgrex.Error", parts: 2)
+
+    code =
+      case Regex.run(~r/Postgrex\.Error\)?\s+(ERROR|FATAL|PANIC) ([0-9A-Z]{5})/, binary) do
+        [_, severity, code] -> severity <> " " <> code <> " "
+        _ -> ""
+      end
+
+    scrub_binary(prefix) <> "Postgrex.Error " <> code <> @filtered
+  end
+
+  defp scrub_uuids(binary) do
+    Regex.replace(
+      ~r/(?<![[:xdigit:]])[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}(?![[:xdigit:]])/,
+      binary,
+      @filtered
+    )
   end
 
   defp mentions?(binary, words), do: :binary.match(String.downcase(binary), words) != :nomatch

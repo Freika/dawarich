@@ -229,7 +229,8 @@ defmodule DawarichWeb.SharingNativeEventsTest do
       end)
 
     assert log =~ "QUERY ERROR"
-    assert log =~ "not-a-share"
+    assert log =~ "Postgrex.Error"
+    assert log =~ "22P02"
     refute log =~ secret
   end
 

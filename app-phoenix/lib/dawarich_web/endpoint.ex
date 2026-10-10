@@ -15,7 +15,8 @@ defmodule DawarichWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: false
 
-  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
+  plug DawarichWeb.RequestLogger
+  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint], log: false
 
   plug Plug.Static,
     at: "/phoenix/js",
