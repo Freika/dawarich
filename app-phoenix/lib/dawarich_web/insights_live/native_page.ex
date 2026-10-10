@@ -126,12 +126,17 @@ defmodule DawarichWeb.InsightsLive.NativePage do
   def handle_info(_, socket), do: {:noreply, socket}
 
   @impl true
-  def handle_event("period", %{"period" => params}, socket),
-    do:
+  def handle_event("period", %{"period" => params}, socket) do
+    with {:ok, scope} <- NativeDataAuth.scope(socket),
+         {:ok, _, _} <- Dawarich.Analytics.Period.admit(scope, params, :insights, options(socket)) do
       {:noreply,
        push_patch(socket,
          to: path(socket) <> "?" <> URI.encode_query(Map.take(params, ~w(year month)))
        )}
+    else
+      {:error, reason} -> {:noreply, NativeDataAuth.refuse(socket, reason)}
+    end
+  end
 
   def handle_event("retry_read", %{"kind" => kind}, socket) when kind in ~w(details residency),
     do: {:noreply, start(socket, if(kind == "details", do: :details, else: :residency))}

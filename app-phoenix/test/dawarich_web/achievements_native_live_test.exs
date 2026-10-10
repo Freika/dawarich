@@ -11,6 +11,36 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
     %{user: user}
   end
 
+  for field <- ~w(q status) do
+    @tag malformed_native_event: true
+    test "achievement rejects map #{field} filters in place without losing selection or writing",
+         %{user: user} do
+      Process.flag(:trap_exit, true)
+
+      {:ok, view, _} =
+        live(NativeAchievementsUI.conn(user, "/achievements/continent_europe?q=France"))
+
+      render_click(view, "select_card", %{"key" => "country_fr"})
+      before = :sys.get_state(view.pid).socket
+      fields = [:data, :selected, :share_url]
+
+      {html, queries} =
+        NativeAdminUI.queries(fn ->
+          render_hook(view, "filter", %{unquote(field) => %{"nested" => "invalid"}})
+        end)
+
+      assert is_binary(html)
+      assert Process.alive?(view.pid)
+      after_event = :sys.get_state(view.pid).socket
+      assert Map.take(after_event.assigns, fields) == Map.take(before.assigns, fields)
+      assert after_event.assigns.flash["alert"]
+      assert queries != []
+      refute Enum.any?(queries, &String.match?(&1, ~r/\A\s*(INSERT|UPDATE|DELETE)\b/i))
+      render_submit(view, "filter", %{"q" => "Germany", "status" => "locked"})
+      assert :sys.get_state(view.pid).socket.assigns.data.query["q"] == "Germany"
+    end
+  end
+
   test "achievement filter search page history preserves selection and clears revoked cards", %{
     user: user
   } do

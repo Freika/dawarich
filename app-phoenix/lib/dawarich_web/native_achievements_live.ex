@@ -54,10 +54,13 @@ defmodule DawarichWeb.NativeAchievementsLive do
 
   @impl true
   def handle_event("filter", params, socket) do
-    query = Map.take(params, ~w(q status))
-
-    {:noreply,
-     push_patch(socket, to: NativeAchievementParts.path(socket.assigns.data.query, query))}
+    with {:ok, query} <- Pages.normalize(params),
+         data when not is_nil(data) <- socket.assigns.data do
+      query = query |> Map.take(Map.keys(params)) |> Map.take(~w(q status))
+      {:noreply, push_patch(socket, to: NativeAchievementParts.path(data.query, query))}
+    else
+      _ -> {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+    end
   end
 
   def handle_event("select_card", %{"key" => key}, socket) do

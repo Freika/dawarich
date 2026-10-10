@@ -22,6 +22,38 @@ defmodule DawarichWeb.InsightsNativeLifecycleTest do
     %{user: user}
   end
 
+  for {name, params} <- [
+        {"list period", %{"period" => []}},
+        {"map year", %{"period" => %{"year" => %{}}}},
+        {"map month", %{"period" => %{"month" => %{}}}}
+      ] do
+    @tag malformed_native_event: true
+    test "Insights rejects #{name} events in place without losing reads or publishing refresh", %{
+      user: user
+    } do
+      paused_readers()
+      {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025&month=3")
+      before = :sys.get_state(view.pid).socket
+      fields = [:data, :query, :details, :residency, :refresh_state]
+
+      {html, queries} =
+        NativeAdminUI.queries(fn ->
+          render_hook(view, "period", unquote(Macro.escape(params)))
+        end)
+
+      assert is_binary(html)
+      assert Process.alive?(view.pid)
+      after_event = :sys.get_state(view.pid).socket
+      assert Map.take(after_event.assigns, fields) == Map.take(before.assigns, fields)
+      assert after_event.private.data_async == before.private.data_async
+      assert after_event.assigns.flash["alert"]
+      assert queries != []
+      refute Enum.any?(queries, &String.match?(&1, ~r/\A\s*(INSERT|UPDATE|DELETE)\b/i))
+      render_click(view, "period", %{"period" => %{"year" => "2024", "month" => "3"}})
+      assert :sys.get_state(view.pid).socket.assigns.data.year == 2024
+    end
+  end
+
   test "rapid Insights year and month patches drop stale details and residency results", %{
     user: user
   } do
