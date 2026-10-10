@@ -114,6 +114,52 @@ defmodule DawarichWeb.NativeTimelineTest do
     assert render_async(view, 5_000) =~ "No visits tracked this day"
   end
 
+  test "native entry rows keep visit, journey, gap and day navigation states", %{id: id} do
+    [[place]] =
+      rows(
+        "INSERT INTO places(user_id,name,latitude,longitude,lonlat,source,created_at,updated_at) VALUES($1,'Bakery',52.5,13.4,ST_SetSRID(ST_MakePoint(13.4,52.5),4326)::geography,0,now(),now()) RETURNING id",
+        [id]
+      )
+
+    [[visit]] =
+      rows(
+        "INSERT INTO visits(user_id,place_id,name,started_at,ended_at,duration,status,confidence,demo,created_at,updated_at) VALUES($1,$2,'Bakery','2026-03-30 07:00:00','2026-03-30 07:40:00',2400,0,2,false,now(),now()) RETURNING id",
+        [id, place]
+      )
+
+    [[track]] =
+      rows(
+        "INSERT INTO tracks(user_id,start_at,end_at,distance,duration,dominant_mode,original_path,created_at,updated_at) VALUES($1,'2026-03-30 12:00:00','2026-03-30 12:30:00',5000,1800,3,ST_GeomFromText('LINESTRING(13.4 52.5,13.5 52.6)',4326),now(),now()) RETURNING id",
+        [id]
+      )
+
+    view = open(id, nil)
+    render_hook(view, "load", %{"start_at" => "2026-03-30T00:00", "end_at" => "2026-03-30T23:59"})
+    render_async(view, 5_000)
+
+    assert has_element?(view, "#native-visit-#{visit}[data-status='suggested']", "Bakery")
+
+    assert has_element?(
+             view,
+             "#native-visit-#{visit} button[phx-click='visit:status'][phx-value-status='confirmed']"
+           )
+
+    assert has_element?(
+             view,
+             "#native-visit-#{visit} button[phx-click='visit:status'][phx-value-status='declined']"
+           )
+
+    assert has_element?(
+             view,
+             "#native-visit-#{visit} button[phx-click='visit:delete'][data-confirm]"
+           )
+
+    assert has_element?(view, "[data-track-id='#{track}'][data-entry='journey']", "30m")
+    assert has_element?(view, "[data-entry='gap']")
+    assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-03-29']")
+    assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-03-31']")
+  end
+
   defp feed(date) do
     %{
       days: [
@@ -138,7 +184,11 @@ defmodule DawarichWeb.NativeTimelineTest do
               duration: 1800,
               distance: 5.0,
               distance_unit: "km",
-              dominant_mode: "walking"
+              dominant_mode: "walking",
+              start_s: 0,
+              end_s: 1800,
+              start_local: NaiveDateTime.from_iso8601!(date <> "T09:00:00"),
+              end_local: NaiveDateTime.from_iso8601!(date <> "T09:30:00")
             }
           ]
         }
