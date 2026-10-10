@@ -1,5 +1,6 @@
 defmodule DawarichWeb.AdminLive.Instance do
   @moduledoc false
+  require Logger
   use DawarichWeb, :live_view
 
   alias Dawarich.Admin.{Instance, InstancePage}
@@ -39,7 +40,9 @@ defmodule DawarichWeb.AdminLive.Instance do
     |> Instance.save(params, opts())
     |> saved(socket)
   rescue
-    _ -> {:noreply, alert(socket, "controllers.application.admin_action_failed")}
+    error ->
+      Logger.warning("admin instance save failed: " <> inspect(error.__struct__))
+      {:noreply, AdminUI.alert(socket, "controllers.application.admin_action_failed")}
   end
 
   def handle_event(event, _params, socket) when is_map_key(@tests, event) do
@@ -103,7 +106,7 @@ defmodule DawarichWeb.AdminLive.Instance do
   defp load(socket, section) do
     case Instance.page(socket.assigns.current_scope, section, opts()) do
       {:ok, page} -> assign(socket, data: page.data, section: page.section, health: page.health)
-      {:error, reason} -> refuse(socket, reason)
+      {:error, reason} -> AdminUI.refuse(socket, reason)
     end
   end
 
@@ -111,7 +114,7 @@ defmodule DawarichWeb.AdminLive.Instance do
     do: socket |> update(:saves, &(&1 + 1)) |> load(socket.assigns.section)
 
   defp saved({:ok, :saved}, socket),
-    do: {:noreply, socket |> reload() |> notice("admin.settings.update.saved")}
+    do: {:noreply, socket |> reload() |> AdminUI.notice("admin.settings.update.saved")}
 
   defp saved({:ok, {:pinned, variables}}, socket),
     do:
@@ -128,7 +131,7 @@ defmodule DawarichWeb.AdminLive.Instance do
   defp saved({:error, {:invalid, message}}, socket),
     do: {:noreply, put_flash(socket, :alert, message)}
 
-  defp saved({:error, reason}, socket), do: {:noreply, refuse(socket, reason)}
+  defp saved({:error, reason}, socket), do: {:noreply, AdminUI.refuse(socket, reason)}
 
   defp tested(socket, _name, {kind, message})
        when kind in [:notice, :alert] and is_binary(message),
@@ -137,7 +140,7 @@ defmodule DawarichWeb.AdminLive.Instance do
   defp tested(socket, _name, {kind, key, bindings}) when kind in [:notice, :alert],
     do: put_flash(socket, kind, t(socket.assigns.locale, key, bindings))
 
-  defp tested(socket, _name, {:error, reason}), do: refuse(socket, reason)
+  defp tested(socket, _name, {:error, reason}), do: AdminUI.refuse(socket, reason)
 
   defp failed(socket, :geocoding, error),
     do:
@@ -158,10 +161,6 @@ defmodule DawarichWeb.AdminLive.Instance do
   defp run(:geocoding, scope, opts), do: Instance.test_geocoding(scope, opts)
   defp run(:map_matching, scope, opts), do: Instance.test_map_matching(scope, opts)
 
-  defp refuse(socket, reason), do: AdminUI.refuse(socket, reason)
-
-  defp notice(socket, key), do: put_flash(socket, :notice, t(socket.assigns.locale, key, %{}))
-  defp alert(socket, key), do: put_flash(socket, :alert, t(socket.assigns.locale, key, %{}))
 
   defp opts, do: Application.get_env(:dawarich, :admin_instance_opts, [])
 end

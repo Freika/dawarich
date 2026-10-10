@@ -100,4 +100,15 @@ defmodule Dawarich.Admin.UserRolesTest do
       log: false
     ).rows
   end
+
+  test "the admin-row lock bounds only its own wait and restores the lock timeout" do
+    timeout = fn -> Repo.query!("SELECT current_setting('lock_timeout')", [], log: false).rows end
+
+    Repo.transaction(fn ->
+      before = timeout.()
+      assert UserRoles.lock(Repo) == :ok
+      assert timeout.() == before
+      refute timeout.() == [["100ms"]]
+    end)
+  end
 end

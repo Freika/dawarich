@@ -4,18 +4,26 @@ defmodule Dawarich.LogRedaction do
   @filtered "[FILTERED]"
   @depth 12
 
-  def install,
-    do: :logger.add_primary_filter(__MODULE__, {&__MODULE__.filter/2, []})
+  def install do
+    :persistent_term.put({__MODULE__, :words}, configured_words())
+    :logger.add_primary_filter(__MODULE__, {&__MODULE__.filter/2, []})
+  end
 
-  def filter(%{msg: {:report, report}} = event, _), do: %{event | msg: {:report, scrub(report)}}
+  def filter(event, _) do
+    redact(event)
+  rescue
+    _ -> %{event | msg: {:string, @filtered}}
+  end
 
-  def filter(%{msg: {:string, chardata}} = event, _),
+  defp redact(%{msg: {:report, report}} = event), do: %{event | msg: {:report, scrub(report)}}
+
+  defp redact(%{msg: {:string, chardata}} = event),
     do: %{event | msg: {:string, scrub_chardata(chardata)}}
 
-  def filter(%{msg: {format, args}} = event, _) when is_list(args),
+  defp redact(%{msg: {format, args}} = event) when is_list(args),
     do: %{event | msg: {format, scrub(args)}}
 
-  def filter(event, _), do: event
+  defp redact(event), do: event
 
   def scrub(term), do: scrub(term, @depth)
 
@@ -58,19 +66,31 @@ defmodule Dawarich.LogRedaction do
   end
 
   defp scrub_binary(binary) do
-    if String.printable?(binary) and
-         Enum.any?(words(), &String.contains?(String.downcase(binary), &1)) do
-      words = Enum.map_join(words(), "|", &Regex.escape/1)
-      key = "[^\\s&=?\"]*(?:#{words})[^\\s&=\"]*"
+    case words() do
+      [] ->
+        binary
 
-      binary
-      |> then(&Regex.replace(~r/(#{key}=)[^&\s]*/i, &1, "\\1#{@filtered}"))
-      |> then(&Regex.replace(~r/("#{key}"\s*:\s*)"(?:[^"\\]|\\.)*"/i, &1, ~s(\\1"#{@filtered}")))
-    else
-      binary
+      words ->
+        if mentions?(binary, words), do: binary |> scrub_pairs() |> scrub_json(), else: binary
     end
   rescue
     _ -> @filtered
+  end
+
+  defp mentions?(binary, words), do: :binary.match(String.downcase(binary), words) != :nomatch
+
+  defp scrub_pairs(binary) do
+    Regex.replace(
+      ~r/(?<![^\s&?;,"'])([^\s&=?;,"']++)=("(?:[^"\\]|\\.)*+"|[^&\s]*+)/,
+      binary,
+      fn whole, key, _value -> if sensitive?(key), do: key <> "=" <> @filtered, else: whole end
+    )
+  end
+
+  defp scrub_json(binary) do
+    Regex.replace(~r/"([^"\\]*+)"(\s*+:\s*+)"(?:[^"\\]|\\.)*+"/, binary, fn whole, key, colon ->
+      if sensitive?(key), do: ~s("#{key}"#{colon}"#{@filtered}"), else: whole
+    end)
   end
 
   defp sensitive?(key) when is_atom(key), do: sensitive?(Atom.to_string(key))
@@ -82,5 +102,8 @@ defmodule Dawarich.LogRedaction do
 
   defp sensitive?(_key), do: false
 
-  defp words, do: Application.fetch_env!(:dawarich, __MODULE__)[:words]
+  defp words, do: :persistent_term.get({__MODULE__, :words}, nil) || configured_words()
+
+  defp configured_words,
+    do: Application.get_env(:dawarich, __MODULE__, []) |> Keyword.get(:words, []) |> List.wrap()
 end

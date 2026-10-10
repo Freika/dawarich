@@ -117,7 +117,7 @@ defmodule Dawarich.Admin.Users do
     error in Postgrex.Error ->
       if error.postgres[:code] in [:lock_not_available, :deadlock_detected],
         do: {:error, :unauthorized},
-        else: {:error, :unavailable}
+        else: failed(error, :unavailable)
 
     error ->
       failed(error, :unavailable)

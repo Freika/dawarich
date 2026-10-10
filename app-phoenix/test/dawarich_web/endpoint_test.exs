@@ -85,6 +85,7 @@ defmodule DawarichWeb.EndpointTest do
           {"GET", "/trial/welcome?token=synthetic-invalid", ""},
           {"GET", "/settings/users/export/edit", ""},
           {"GET", "/settings/users/10001.json", ""},
+          {"GET", "/settings/users", "Accept: application/json\r\n"},
           {"PATCH", "/settings/background_jobs", ""},
           {"POST", "/settings/background_jobs?job_name=start_immich_import", ""}
         ] do
@@ -1000,6 +1001,8 @@ defmodule DawarichWeb.EndpointTest do
 
   test "unsupported settings, account and insights requests go to Puma", ctx do
     port = serve()
+
+    assert answered_by_phoenix(port, "GET /settings/users HTTP/1.1\r\nHost: a\r\n\r\n") == 302
 
     for target <-
           ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),

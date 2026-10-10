@@ -7,21 +7,19 @@ defmodule DawarichWeb.AdminGate do
   @markers ~w(client aff via referral dawarich_client invitation_token pending_import_ticket)
 
   def background?(conn, _params),
-    do: eligible?(conn, :background) and DawarichWeb.OperatorRedirect.authorized?(conn)
+    do: eligible?(conn) and DawarichWeb.OperatorRedirect.authorized?(conn)
 
-  def background_route?(conn, _params), do: eligible?(conn, :background)
+  def background_route?(conn, _params), do: eligible?(conn)
 
   def supported?(user), do: Dawarich.Admin.Access.supported?(user)
 
-  defp eligible?(conn, mode) do
+  defp eligible?(conn) do
     query = Plug.Conn.Query.decode(conn.query_string)
     conn = RailsAuth.call(conn, [])
     user = conn.assigns.current_user
 
-    (LayoutAssigns.self_hosted?() or
-       (mode == :background and DawarichWeb.OperatorRedirect.operator?(user))) and
-      not is_nil(user) and
-      (mode == :background or user.admin == true) and supported?(user) and
+    (LayoutAssigns.self_hosted?() or DawarichWeb.OperatorRedirect.operator?(user)) and
+      not is_nil(user) and supported?(user) and
       Strangler.page_request?(conn) and Admission.headers(conn.req_headers) == :ok and
       conn.method in ["GET", "HEAD"] and
       Enum.all?(query, fn {_key, value} -> is_binary(value) end) and

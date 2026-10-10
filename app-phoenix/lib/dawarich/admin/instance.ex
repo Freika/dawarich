@@ -6,7 +6,7 @@ defmodule Dawarich.Admin.Instance do
 
   def page(%Scope{} = scope, section, opts \\ []) do
     with {:ok, scope} <- Access.admit(scope, :admin, admit_opts(opts)),
-         {:ok, data} <- load(opts) do
+         {:ok, data} <- InstancePage.load(repo(opts), env(opts)) do
       {:ok,
        %{
          scope: scope,
@@ -76,13 +76,6 @@ defmodule Dawarich.Admin.Instance do
   defp saved({:handoff, :encryption}), do: {:error, :encryption}
   defp saved({:handoff, _}), do: {:error, :unauthorized}
   defp saved({:terminal, _}), do: {:error, :unavailable}
-
-  defp load(opts) do
-    case InstancePage.load(repo(opts), env(opts)) do
-      {:ok, data} -> {:ok, data}
-      _ -> {:error, :unavailable}
-    end
-  end
 
   defp health(opts) do
     health =

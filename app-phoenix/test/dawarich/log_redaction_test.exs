@@ -78,4 +78,17 @@ defmodule Dawarich.LogRedactionTest do
     refute log =~ @password
     refute log =~ @key
   end
+
+  test "string scrubbing stays linear on adversarial input and drops whole quoted secrets" do
+    adversarial = String.duplicate("token", 2000) <> " x=1"
+    {micros, scrubbed} = :timer.tc(fn -> Dawarich.LogRedaction.scrub(adversarial) end)
+
+    assert scrubbed == adversarial
+    assert micros < 200_000
+
+    assert Dawarich.LogRedaction.scrub(~s(user=7 password="hunter two" done)) ==
+             ~s(user=7 password=[FILTERED] done)
+
+    assert Dawarich.LogRedaction.scrub("ctl\x01 password=hunter") == "ctl\x01 password=[FILTERED]"
+  end
 end
