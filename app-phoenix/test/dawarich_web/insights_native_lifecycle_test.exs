@@ -61,6 +61,73 @@ defmodule DawarichWeb.InsightsNativeLifecycleTest do
     refute NativeAdminUI.html(view) =~ "obsolete"
   end
 
+  test "stale Insights delivery after replacement and policy change preserves current state", %{
+    user: user
+  } do
+    paused_readers()
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2024")
+    old = :sys.get_state(view.pid).socket.private.data_async.runs.details.run
+    render_patch(view, "/insights?year=2025")
+    socket = :sys.get_state(view.pid).socket
+
+    Dawarich.Repo.query!(
+      "UPDATE users SET settings=$1 WHERE id=$2",
+      [%{"timezone" => "Europe/Berlin"}, user.id],
+      log: false
+    )
+
+    for result <- [{:ok, {:ok, %{state: :ready, sentinel: "obsolete"}}}, {:exit, :obsolete}] do
+      assert {:noreply, returned} = NativePage.handle_async(old, result, socket)
+      assert returned.private.data_async == socket.private.data_async
+
+      assert Map.take(returned.assigns, [:data, :details, :residency, :flash, :refresh_state]) ==
+               Map.take(socket.assigns, [:data, :details, :residency, :flash, :refresh_state])
+    end
+
+    current = socket.private.data_async.runs.details.run
+
+    assert {:noreply, changed} =
+             NativePage.handle_async(current, {:ok, {:ok, %{state: :ready}}}, socket)
+
+    assert changed.assigns.data.period.zone == "Europe/Berlin"
+    assert changed.private.data_async.generation > socket.private.data_async.generation
+  end
+
+  test "late Insights delivery after overview failure preserves absent ready data", %{user: user} do
+    paused_readers()
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2024")
+    socket = :sys.get_state(view.pid).socket
+    old = socket.private.data_async.runs.details.run
+    assert {:noreply, failed} = NativePage.handle_params(%{"year" => []}, "", socket)
+    assert failed.assigns.data == nil
+    failed = Phoenix.Component.assign(failed, :query, %{"year" => "2025"})
+    {replacement, failed} = DawarichWeb.DataAsync.register(failed, :details, "replacement")
+
+    assert {:noreply, returned} =
+             NativePage.handle_async(old, {:ok, {:ok, %{state: :ready}}}, failed)
+
+    assert returned == failed
+
+    assert {:noreply, absent} =
+             NativePage.handle_async(replacement, {:ok, {:ok, %{state: :ready}}}, failed)
+
+    assert absent.assigns.data == nil
+    assert absent.private.data_async == failed.private.data_async
+    DawarichWeb.DataAsync.cancel_all(failed)
+  end
+
+  defp paused_readers do
+    Process.flag(:trap_exit, true)
+
+    reader = fn _, _ ->
+      receive do
+        :release -> {:error, :unavailable}
+      end
+    end
+
+    Application.put_env(:dawarich, :native_insights_readers, %{details: reader, residency: reader})
+  end
+
   test "old timeout cannot fail retried Insights read", %{user: user} do
     reader = fn _, _ ->
       receive do
@@ -90,7 +157,9 @@ defmodule DawarichWeb.InsightsNativeLifecycleTest do
     [[args]] =
       Dawarich.Repo.query!(
         "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Stats.PageRefreshWorker'",
-        [], log: false).rows
+        [],
+        log: false
+      ).rows
 
     assert Dawarich.Repo.query!("SELECT id FROM digests WHERE user_id=$1", [user.id], log: false).rows ==
              []
@@ -104,7 +173,9 @@ defmodule DawarichWeb.InsightsNativeLifecycleTest do
 
     assert Dawarich.Repo.query!(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Stats.PageRefreshWorker'",
-             [], log: false).rows == [[1]]
+             [],
+             log: false
+           ).rows == [[1]]
   end
 
   test "direct details and all-time preserve access and source values", %{user: user} do
@@ -136,7 +207,9 @@ defmodule DawarichWeb.InsightsNativeLifecycleTest do
 
     Dawarich.Repo.query!(
       "UPDATE users SET encrypted_password='new-original-identity-00000000000000' WHERE id=$1",
-      [user.id], log: false)
+      [user.id],
+      log: false
+    )
 
     send(view.pid, {:analytics_ready, user.id, "safe-revision"})
     assert_redirect(view, "/users/sign_in")

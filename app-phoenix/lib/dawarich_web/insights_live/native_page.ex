@@ -70,8 +70,19 @@ defmodule DawarichWeb.InsightsLive.NativePage do
 
   @impl true
   def handle_async(run, result, socket) do
-    with {:ok, scope} <- NativeDataAuth.scope(socket),
-         {:ok, _, period} <-
+    with {:ok, scope} <- NativeDataAuth.scope(socket) do
+      if DataAsync.active?(socket, run) and is_map(socket.assigns.data) do
+        deliver_async(scope, run, result, socket)
+      else
+        {:noreply, socket}
+      end
+    else
+      {:error, reason} -> {:noreply, NativeDataAuth.refuse(socket, reason)}
+    end
+  end
+
+  defp deliver_async(scope, run, result, socket) do
+    with {:ok, _, period} <-
            Dawarich.Analytics.Period.admit(
              scope,
              socket.assigns.query,
