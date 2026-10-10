@@ -14,4 +14,9 @@ defmodule DawarichWeb.NativeM6IntegrationRegisterTest do
     assert contracts =~ "NotesApi.Read.index/3"
     assert contracts =~ "m5 notes/ActionText"
   end
+  test "studio operation bounds are frozen without changing media formats" do
+    contracts = File.read!(Path.expand("../../../docs/phoenix/native-m6-contracts.md", __DIR__))
+    for bound <- ["first idle: 60 seconds", "negotiation: 30 seconds", "hook reply: 30 seconds", "upload: 1 byte–250 MiB", "gallery: 10 rows"], do: assert(contracts =~ bound)
+  end
+
 end
