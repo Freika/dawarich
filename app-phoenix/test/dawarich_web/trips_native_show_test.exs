@@ -238,6 +238,23 @@ defmodule DawarichWeb.TripsNativeShowTest do
     refute render(view) =~ sgid
   end
 
+  test "day details keep their client open state across patches" do
+    id = trip!(996_421)
+    {:ok, view, _html} = TripsNativeUI.live_as(9_961, "/trips/#{id}")
+    render_async(view)
+
+    ops =
+      view
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("details[data-day-key]")
+      |> LazyHTML.attribute("phx-mounted")
+      |> Enum.map(&Jason.decode!/1)
+
+    assert length(ops) == 4
+    assert Enum.all?(ops, &(["ignore_attrs", %{"attrs" => ["open"]}] in &1))
+  end
+
   test "toolbar events recalculate, export and delete through scoped commands" do
     id = trip!(996_501)
     {:ok, view, _html} = TripsNativeUI.live_as(9_961, "/trips/#{id}")

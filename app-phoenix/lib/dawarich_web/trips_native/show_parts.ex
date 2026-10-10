@@ -5,6 +5,7 @@ defmodule DawarichWeb.TripsNative.ShowParts do
   import DawarichWeb.Icon, only: [icon: 1]
 
   alias DawarichWeb.{HumanDatetime, LocalizedDate, LocalizedTime, MapParts, TripFormat}
+  alias Phoenix.LiveView.JS
 
   attr :trip, :map, required: true
   attr :locale, :string, required: true
@@ -127,6 +128,7 @@ defmodule DawarichWeb.TripsNative.ShowParts do
           :for={day <- @days}
           class="collapse collapse-arrow bg-base-200 rounded-lg"
           data-day-key={Date.to_iso8601(day.date)}
+          phx-mounted={JS.ignore_attributes("open")}
         >
           <summary class="collapse-title flex flex-wrap items-center gap-2 text-sm font-medium min-h-0 cursor-pointer">
             <span class="min-w-0">{LocalizedDate.l(@locale, day.date, "short_month_day_weekday")}</span>
