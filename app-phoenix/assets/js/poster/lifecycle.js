@@ -76,6 +76,7 @@ export function createPosterLifecycle({
     generation++
     const { controller, lifetime } = session
     session = null
+    state = { ...state, rangeLoading: false }
     controller.abort()
     restyle.cancel()
     lifetime.destroy()

@@ -7,6 +7,7 @@ import {
   toLocalDateTimeInput,
 } from "../../app-phoenix/assets/js/poster/dates.js"
 import { createPosterLifecycle } from "../../app-phoenix/assets/js/poster/lifecycle.js"
+import { bindStudioSwitch } from "../../app-phoenix/assets/js/poster/switch.js"
 
 process.env.TZ = "Europe/Berlin"
 
@@ -327,6 +328,62 @@ test("switch to video is disabled during poster reload", async () => {
   assert.equal(root.nodes.status.textContent, "")
   assert.equal(studio.state.rangeLoading, false)
   assert.equal(root.nodes.subtitle.value, "10 Apr 2020 – 10 Apr 2020")
+  unbind()
+  studio.close()
+})
+
+test("closing during a range reload keeps dates and the video switch usable after reopen", async () => {
+  const requested = []
+  const poster = mapPoster((value, { signal }) => {
+    requested.push(value)
+    if (requested.length > 1)
+      return Promise.resolve({
+        geojson: { features: [] },
+        guardCoords: [],
+        defaultTitle: "",
+        range: range("2020-04-10T07:00:00Z", "2020-04-11T06:59:00Z"),
+        timeZone: "America/Los_Angeles",
+      })
+    return new Promise((_resolve, reject) =>
+      signal.addEventListener("abort", () =>
+        reject(new DOMException("aborted", "AbortError")),
+      ),
+    )
+  })
+  const root = controlsRoot()
+  const { studio } = lifecycle(poster)
+  await studio.open({ themeKey: "noir" })
+  const unbind = bindPosterControls({
+    root,
+    studio,
+    poster,
+    maxDimensionPx: 8192,
+  })
+  const videos = []
+  bindStudioSwitch({
+    find: (name) => root.nodes[name],
+    on: (target, type, handler) => target.addEventListener(type, handler),
+    studio,
+    source: poster,
+    openVideo: (source) => videos.push(source),
+    close: () => studio.close(),
+  })
+  root.nodes["date-start"].value = "2020-04-10T00:00"
+  root.nodes["date-end"].value = "2020-04-10T23:59"
+  root.nodes.load.dispatchEvent(new Event("click"))
+  await Promise.resolve()
+  assert.equal(studio.state.rangeLoading, true)
+  studio.close()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  await studio.open({ themeKey: "noir" })
+  assert.equal(studio.state.rangeLoading, false)
+  root.nodes.load.dispatchEvent(new Event("click"))
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(requested.length, 2)
+  assert.equal(root.nodes["switch-video"].disabled, false)
+  root.nodes["switch-video"].dispatchEvent(new Event("click"))
+  assert.deepEqual(videos, [poster])
   unbind()
   studio.close()
 })
