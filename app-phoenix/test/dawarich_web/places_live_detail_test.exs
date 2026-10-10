@@ -115,6 +115,25 @@ defmodule DawarichWeb.PlacesLiveDetailTest do
            ]
   end
 
+  test "URL patches close detail and refuse its queued note generation", ctx do
+    Repo.query!("UPDATE places SET note='Original note' WHERE id=118501", [])
+    {:ok, view, _} = live(N.conn(ctx.actor), "/places")
+    render_click(view, "open_detail", %{"id" => "118501"})
+    gen = N.generation(view, :note_state)
+    assert has_element?(view, "dialog[id^=place-note]")
+    render_patch(view, "/places?page=2&source=manual")
+    refute has_element?(view, "dialog[id^=place-note]")
+    assert :sys.get_state(view.pid).socket.assigns.detail == nil
+    assert :sys.get_state(view.pid).socket.assigns.note_state == nil
+
+    render_submit(view, "save_place_note", %{
+      "generation" => gen,
+      "place" => %{"note" => "Queued old note"}
+    })
+
+    assert Repo.query!("SELECT note FROM places WHERE id=118501", []).rows == [["Original note"]]
+  end
+
   test "detail late save after target deletion or actor revocation exposes no record", ctx do
     {:ok, view, _} = live(N.conn(ctx.actor), "/places")
     render_click(view, "open_detail", %{"id" => "118501"})

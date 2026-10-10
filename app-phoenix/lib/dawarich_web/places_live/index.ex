@@ -36,6 +36,7 @@ defmodule DawarichWeb.PlacesLive.Index do
     socket =
       socket
       |> Form.clear()
+      |> Detail.clear()
       |> assign(
         query: URI.decode_query(query),
         page: max(RubyInteger.to_i(params["page"]), 1),
