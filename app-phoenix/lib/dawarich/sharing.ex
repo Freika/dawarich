@@ -16,6 +16,31 @@ defmodule Dawarich.Sharing do
   def change(scope, resource, action, attrs, opts \\ []),
     do: Commands.run(scope, resource, action, attrs, opts)
 
+  def report_controls(scope, %{type: type} = resource, opts \\ [])
+      when type in [:month, :digest] do
+    with {:ok, %{uuid: uuid, settings: settings}} <- page(scope, resource, %{}, opts) do
+      settings = settings || %{}
+      enabled = settings["enabled"] == true
+
+      {:ok,
+       %{
+         enabled: enabled,
+         expiration: settings["expiration"] || "24h",
+         expires_at: settings["expires_at"],
+         url:
+           if(enabled and is_binary(uuid),
+             do: Keyword.get(opts, :base_url, "") <> "/shared/#{type}/" <> uuid,
+             else: ""
+           )
+       }}
+    end
+  end
+
+  def change_report(scope, resource, attrs, opts \\ []) do
+    with {:ok, _} <- change(scope, resource, :update, attrs, opts),
+         do: report_controls(scope, resource, opts)
+  end
+
   def generate_phrase(scope, opts \\ []) do
     with {:ok, _, _} <- Dawarich.Families.NativeReads.actor(scope, opts),
          do: {:ok, Dawarich.ShareManagement.Read.phrase()}

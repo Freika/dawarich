@@ -91,9 +91,9 @@ defmodule DawarichWeb.DigestsLive.NativePage do
   def handle_event("open_share", _, socket) when socket.assigns.live_action == :show do
     with {:ok, scope} <- NativeDataAuth.scope(socket),
          {:ok, result} <-
-           Dawarich.NativeM5.Dependencies.digest_sharing(
+           Dawarich.Sharing.report_controls(
              scope,
-             socket.assigns.data.year,
+             %{type: :digest, owner_id: scope.user.id, year: socket.assigns.data.year},
              options(socket)
            ) do
       {:noreply, assign(socket, dialog: :share, share: result)}
@@ -120,7 +120,13 @@ defmodule DawarichWeb.DigestsLive.NativePage do
       {:noreply,
        redirect(socket,
          external:
-           Dawarich.NativeM5.Dependencies.digest_upgrade_url(scope, DateTime.utc_now(), false)
+           DawarichWeb.StatsFormat.upgrade_url(
+             scope.user,
+             DateTime.utc_now(),
+             false,
+             "digest",
+             "year_in_review"
+           )
        )}
     else
       _ -> {:noreply, error(socket, :invalid_input)}

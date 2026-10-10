@@ -155,7 +155,13 @@ defmodule DawarichWeb.InsightsLive.NativePage do
       {:noreply,
        redirect(socket,
          external:
-           Dawarich.NativeM5.Dependencies.insights_upgrade_url(scope, DateTime.utc_now(), false)
+           DawarichWeb.StatsFormat.upgrade_url(
+             scope.user,
+             DateTime.utc_now(),
+             false,
+             "data_window",
+             "insights"
+           )
        )}
     else
       _ -> {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}

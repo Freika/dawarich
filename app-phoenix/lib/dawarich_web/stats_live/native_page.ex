@@ -94,7 +94,15 @@ defmodule DawarichWeb.StatsLive.NativePage do
   def handle_event("upgrade", _, socket) do
     with {:ok, scope} <- NativeDataAuth.scope(socket),
          false <- socket.assigns.self_hosted do
-      url = Dawarich.NativeM5.Dependencies.stats_upgrade_url(scope, DateTime.utc_now(), false)
+      url =
+        DawarichWeb.StatsFormat.upgrade_url(
+          scope.user,
+          DateTime.utc_now(),
+          false,
+          "data_window",
+          "stats_index"
+        )
+
       {:noreply, redirect(socket, external: url)}
     else
       _ -> {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}

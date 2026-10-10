@@ -25,6 +25,31 @@ defmodule Dawarich.Sharing.PagesTest do
     %{grant: %{id: uuid}}
   end
 
+  test "M5 sharing mutations publish through M4 and return the same controls" do
+    StatsSeeds.stat!(18901, %{year: 2024, month: 3})
+    scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(18901), "de")
+    opts = [now: @now, self_hosted: true, base_url: "https://native.example.invalid"]
+
+    assert {:ok, controls} =
+             Dawarich.Stats.Commands.share(
+               scope,
+               %{"year" => "2024", "month" => "3"},
+               %{"enabled" => "1", "expiration" => "24h"},
+               opts
+             )
+
+    assert controls.enabled
+    assert controls.url =~ "https://native.example.invalid/shared/month/"
+
+    assert rows(
+             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Sharing.EventsWorker'"
+           ) == [[1]]
+
+    resource = %{type: :month, owner_id: 18901, year: 2024, month: 3}
+    assert {:ok, current} = apply(Dawarich.Sharing, :report_controls, [scope, resource, opts])
+    assert current == controls
+  end
+
   test "public cached projection refuses revoked expired and deleted resources", %{grant: grant} do
     assert {:ok, page} = resource(grant)
     warm = [reader: fn _, _ -> {:ok, page} end]

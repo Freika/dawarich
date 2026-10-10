@@ -77,7 +77,12 @@ defmodule Dawarich.Digests.Commands do
       transact(subject, params, opts, fn scope, period ->
         if not active?(scope.user, period.now), do: Repo.rollback(:inactive)
 
-        case Dawarich.NativeM5.Dependencies.share_digest(scope, period.year, attrs, opts) do
+        case Dawarich.Sharing.change_report(
+               scope,
+               %{type: :digest, owner_id: scope.user.id, year: period.year},
+               attrs,
+               opts
+             ) do
           {:ok, result} -> result
           :not_found -> Repo.rollback(:not_found)
           _ -> Repo.rollback(:unavailable)

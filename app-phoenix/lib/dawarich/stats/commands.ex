@@ -71,7 +71,11 @@ defmodule Dawarich.Stats.Commands do
   def sharing(subject, params, opts \\ []) do
     with {:ok, scope, period} <- Period.admit(subject, params, :month, opts),
          {:ok, scope} <- DataAccess.admit(scope, Keyword.put(opts, :full_access, true)) do
-      Dawarich.NativeM5.Dependencies.stat_sharing(scope, period.year, period.month, opts)
+      Dawarich.Sharing.report_controls(
+        scope,
+        %{type: :month, owner_id: scope.user.id, year: period.year, month: period.month},
+        opts
+      )
     end
   end
 
@@ -81,10 +85,9 @@ defmodule Dawarich.Stats.Commands do
              attrs["expiration"] in ~w(1h 12h 24h),
          {:ok, _, period} <- Period.admit(subject, params, :month, opts) do
       transact(subject, Keyword.put(opts, :full_access, true), fn fresh ->
-        case Dawarich.NativeM5.Dependencies.share_stat(
+        case Dawarich.Sharing.change_report(
                fresh,
-               period.year,
-               period.month,
+               %{type: :month, owner_id: fresh.user.id, year: period.year, month: period.month},
                attrs,
                opts
              ) do
