@@ -9,13 +9,27 @@ defmodule DawarichWeb.TripsNative.DetailPresenter do
       if detail.plan && TripPlanItems.visible?(detail.plan),
         do: TripPlanItems.prepare(detail.plan, Dawarich.UserSettings.get(scope.user))
 
-    detail
-    |> Map.drop([:plan])
-    |> Map.merge(%{
-      plan: plan,
-      flags: CountryNames.table(),
-      description_html: if(is_binary(detail.description), do: detail.description)
-    })
+    html = if is_binary(detail.description), do: detail.description
+
+    trip =
+      detail
+      |> Map.drop([:plan, :description])
+      |> Map.merge(%{
+        plan: plan,
+        flags: flags(detail.countries),
+        description: html && :erlang.phash2(html)
+      })
+
+    {trip, html}
+  end
+
+  defp flags(countries) do
+    names = Enum.map(countries, &String.downcase/1)
+
+    Enum.filter(CountryNames.table(), fn {candidate, _code} ->
+      candidate = String.downcase(candidate)
+      Enum.any?(names, &(String.contains?(&1, candidate) or String.contains?(candidate, &1)))
+    end)
   end
 
   def window(detail, from) do

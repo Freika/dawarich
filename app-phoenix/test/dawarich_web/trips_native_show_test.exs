@@ -194,6 +194,50 @@ defmodule DawarichWeb.TripsNativeShowTest do
     refute render(view) =~ "a8-k-9961"
   end
 
+  test "detail renders the rich description without retaining attachment capabilities" do
+    TripsSeeds.country!("France", "FR", "FRA")
+
+    [[blob]] =
+      rows(
+        "INSERT INTO active_storage_blobs(key,filename,content_type,metadata,service_name,byte_size,checksum,created_at) VALUES($1,'plan.txt','text/plain','{}','local',9,'synthetic',now()) RETURNING id",
+        [Ecto.UUID.generate()]
+      )
+
+    sgid = Dawarich.RailsMessages.attachable_sgid(blob)
+    id = trip!(996_411)
+
+    TripsSeeds.rich_text!(
+      id,
+      ~s(<div>Plan <action-text-attachment sgid="#{sgid}"></action-text-attachment></div>)
+    )
+
+    [[rich]] = rows("SELECT id FROM action_text_rich_texts WHERE record_id=$1", [id])
+
+    rows(
+      "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('embeds','ActionText::RichText',$1,$2,now())",
+      [rich, blob]
+    )
+
+    other = trip!(996_412)
+    TripsSeeds.rich_text!(other, "<div>Second description</div>")
+
+    {:ok, view, html} = TripsNativeUI.live_as(9_961, "/trips/#{id}")
+    assert html =~ sgid
+    assert html =~ ~s(title="Germany")
+    render_async(view)
+    assert render(view) =~ sgid
+
+    state = inspect(:sys.get_state(view.pid).socket, limit: :infinity, printable_limit: :infinity)
+
+    for retained <- [sgid, "plan.txt", "France"],
+        do: refute(state =~ retained, "retained detail value")
+
+    render_patch(view, "/trips/#{other}")
+    render_async(view)
+    assert render(view) =~ "Second description"
+    refute render(view) =~ sgid
+  end
+
   test "toolbar events recalculate, export and delete through scoped commands" do
     id = trip!(996_501)
     {:ok, view, _html} = TripsNativeUI.live_as(9_961, "/trips/#{id}")

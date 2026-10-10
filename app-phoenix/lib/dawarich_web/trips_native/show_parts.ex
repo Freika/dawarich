@@ -175,6 +175,25 @@ defmodule DawarichWeb.TripsNative.ShowParts do
     """
   end
 
+  attr :trip, :map, required: true
+  attr :html, :string, default: nil
+  attr :locale, :string, required: true
+
+  def description(assigns) do
+    ~H"""
+    <div :if={@trip.description} class="mb-6">
+      <h3 class="text-lg font-semibold mb-2">{t(@locale, "trips.show.trip_notes", %{})}</h3>
+      <div
+        id={"trip-description-#{@trip.id}-#{@trip.description}"}
+        phx-update="ignore"
+        class="prose max-w-none [overflow-wrap:anywhere]"
+      >
+        {@html && Phoenix.HTML.raw(@html)}
+      </div>
+    </div>
+    """
+  end
+
   defp date(locale, at), do: MapParts.human_date(locale, NaiveDateTime.to_date(at.local))
   defp s(locale, key), do: t(locale, "trips.show." <> key, %{})
   defp r(locale, key), do: t(locale, "trips.recalculate_button." <> key, %{})

@@ -21,8 +21,9 @@ defmodule DawarichWeb.NativeTripsLive.Show do
        subscribed: nil,
        calculated: nil,
        note_drafts: %{},
-       note_errors: %{}
-     )}
+       note_errors: %{},
+       description_html: nil
+     ), temporary_assigns: [description_html: nil]}
   end
 
   @impl true
@@ -30,7 +31,7 @@ defmodule DawarichWeb.NativeTripsLive.Show do
     with {:ok, id} <- Pages.id(params["id"]),
          {:ok, scope} <- Access.scope(socket),
          {:ok, detail} <- Pages.get(scope, id, DateTime.utc_now()) do
-      trip = DetailPresenter.present(detail, scope)
+      {trip, html} = DetailPresenter.present(detail, scope)
 
       {:noreply,
        socket
@@ -39,6 +40,7 @@ defmodule DawarichWeb.NativeTripsLive.Show do
        |> reset_notes(id)
        |> assign(
          trip: trip,
+         description_html: html,
          from: DetailPresenter.window(detail, params["from"]),
          recalculating: detail.recalculating,
          page_title: title(socket, detail.name)
@@ -79,12 +81,11 @@ defmodule DawarichWeb.NativeTripsLive.Show do
   def handle_info({:domain_changed, id, :trip}, %{assigns: %{trip: %{id: id}}} = socket) do
     with {:ok, scope} <- Access.scope(socket),
          {:ok, detail} <- Pages.get(scope, id, DateTime.utc_now()) do
+      {trip, html} = DetailPresenter.present(detail, scope)
+
       {:noreply,
        socket
-       |> assign(
-         trip: DetailPresenter.present(detail, scope),
-         recalculating: detail.recalculating
-       )
+       |> assign(trip: trip, description_html: html, recalculating: detail.recalculating)
        |> load_days()}
     else
       error -> {:noreply, refuse(socket, error)}
@@ -258,12 +259,7 @@ defmodule DawarichWeb.NativeTripsLive.Show do
               />
             </:note>
           </ShowParts.days>
-          <div :if={@trip.description_html} class="mb-6">
-            <h3 class="text-lg font-semibold mb-2">{t(@locale, "trips.show.trip_notes", %{})}</h3>
-            <div class="prose max-w-none [overflow-wrap:anywhere]">
-              {Phoenix.HTML.raw(@trip.description_html)}
-            </div>
-          </div>
+          <ShowParts.description trip={@trip} html={@description_html} locale={@locale} />
           <div class="mb-6">
             <.link navigate="/trips" class="btn btn-sm btn-ghost gap-1">
               <.icon name="arrow-left" class="w-4 h-4" /> {t(@locale, "trips.show.back_to_trips", %{})}
