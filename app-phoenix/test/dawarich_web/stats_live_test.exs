@@ -162,7 +162,9 @@ defmodule DawarichWeb.StatsLiveTest do
 
       Dawarich.Repo.query!(
         "INSERT INTO phoenix.stats_point_counts (user_id,geocoded,without_data,computed_at) VALUES ($1,77,1,now()) ON CONFLICT (user_id) DO UPDATE SET geocoded=77,without_data=1,computed_at=now()",
-        [user.id], log: false)
+        [user.id],
+        log: false
+      )
 
       geocoding!()
       stamp = ~N[2026-01-01 00:00:00]
@@ -277,6 +279,14 @@ defmodule DawarichWeb.StatsLiveTest do
       assert has_element?(view, "#stats-year-2024[phx-hook=NativeChart]")
       assert has_element?(view, "#stats-year-2024-plot[phx-update=ignore]")
       assert has_element?(view, "#stats-year-2024 details table td", "March")
+
+      [payload] =
+        html
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#stats-year-2024")
+        |> LazyHTML.attribute("data-chart")
+
+      assert Enum.slice(Jason.decode!(payload)["data"], 2, 2) == [["March", 38], ["April", 12]]
       refute html =~ "RailsStimulus"
       refute has_element?(view, "#stats-year-2024[phx-update=ignore]")
     end

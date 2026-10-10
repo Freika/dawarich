@@ -483,8 +483,8 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
 
   defp q_m_w_p do
     reads = [
-      {"/stats", "stats", DawarichWeb.StatsLive.Index},
-      {"/stats/2024", "stats", DawarichWeb.StatsLive.Year},
+      {"/stats", "stats", DawarichWeb.StatsLive.NativePage},
+      {"/stats/2024", "stats", DawarichWeb.StatsLive.NativePage},
       {"/stats/2024/3", "stats", DawarichWeb.StatsLive.Month},
       {"/digests", "digests", DawarichWeb.DigestsLive.Index},
       {"/digests/2024", "digests", DawarichWeb.DigestsLive.Show},

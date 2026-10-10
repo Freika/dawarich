@@ -37,7 +37,10 @@ defmodule DawarichWeb.StatsNativeLiveTest do
   end
 
   test "stats month slice preserves local peak-day link and previous-month average", %{user: user} do
-    Dawarich.Repo.query!("UPDATE users SET settings=$2 WHERE id=$1",[user.id,%{"timezone"=>"Pacific/Kiritimati"}],log: false)
+    Dawarich.Repo.query!(
+      "UPDATE users SET settings=$2 WHERE id=$1",
+      [user.id, %{"timezone" => "Pacific/Kiritimati"}], log: false)
+
     scope = Scope.for_user(user, "de")
 
     assigns = %{
@@ -267,7 +270,9 @@ defmodule DawarichWeb.StatsNativeLiveTest do
              Dawarich.Stats.Commands.update(
                scope,
                %{"year" => "2025tail", "month" => "03"},
-               receipt, self_hosted: true)
+               receipt,
+               self_hosted: true
+             )
 
     assert {:ok, _} =
              Dawarich.Stats.Commands.update(scope, %{"year" => "2025", "month" => "3"}, receipt,
@@ -276,13 +281,17 @@ defmodule DawarichWeb.StatsNativeLiveTest do
 
     assert Dawarich.Repo.query!(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker'",
-             [], log: false).rows == [[1]]
+             [],
+             log: false
+           ).rows == [[1]]
 
     assert {:error, :invalid_input} =
              Dawarich.Stats.Commands.update(
                scope,
                %{"year" => "2025", "month" => "3tail"},
-               Ecto.UUID.generate(), self_hosted: true)
+               Ecto.UUID.generate(),
+               self_hosted: true
+             )
   end
 
   test "native month slice retains source activity comparisons flight and empty states", %{
@@ -290,7 +299,9 @@ defmodule DawarichWeb.StatsNativeLiveTest do
   } do
     Dawarich.Repo.query!(
       "UPDATE stats SET flight_distance=5000,toponyms=$2 WHERE user_id=$1 AND year=2025 AND month=4",
-      [user.id, [%{"country" => "Germany", "cities" => [%{"city" => "Berlin"}]}]], log: false)
+      [user.id, [%{"country" => "Germany", "cities" => [%{"city" => "Berlin"}]}]],
+      log: false
+    )
 
     scope = Scope.for_user(user, "en")
 
@@ -319,5 +330,62 @@ defmodule DawarichWeb.StatsNativeLiveTest do
       )
 
     assert html =~ "No location data available for this month"
+  end
+
+  test "Stats places retain full totals beyond the dialog window", %{user: user} do
+    places = for n <- 1..61, do: %{"city" => "City #{n}"}
+
+    Dawarich.Repo.query!(
+      "UPDATE stats SET toponyms=$2 WHERE user_id=$1",
+      [user.id, [%{"country" => "Germany", "cities" => places}]], log: false)
+
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats")
+    assert has_element?(view, "button[phx-value-kind=cities]", "61")
+    render_click(view, "open_places", %{"kind" => "cities"})
+
+    assert Enum.count(
+             NativeAdminUI.html(view)
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("#stats-dialog li")
+           ) == 50
+
+    render_patch(view, "/stats?places_kind=cities&places_page=2")
+
+    assert Enum.count(
+             NativeAdminUI.html(view)
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("#stats-dialog li")
+           ) == 11
+
+    assert has_element?(view, "button[phx-value-kind=cities]", "61")
+  end
+
+  test "Stats ready notifications renew the chart revision within the selected year", %{
+    user: user
+  } do
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2025")
+
+    before =
+      NativeAdminUI.html(view)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("#stats-native-chart")
+      |> LazyHTML.attribute("data-chart")
+
+    Dawarich.Repo.query!(
+      "UPDATE stats SET distance=distance+1000 WHERE user_id=$1 AND year=2025",
+      [user.id], log: false)
+
+    send(view.pid, {:analytics_ready, user.id, "revision"})
+
+    after_update =
+      NativeAdminUI.html(view)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("#stats-native-chart")
+      |> LazyHTML.attribute("data-chart")
+
+    [old] = before
+    [new] = after_update
+    assert Jason.decode!(new)["revision"] != Jason.decode!(old)["revision"]
+    assert :sys.get_state(view.pid).socket.assigns.data.year == 2025
   end
 end

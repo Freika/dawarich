@@ -70,16 +70,12 @@ defmodule DawarichWeb.StatsLive.NativeParts do
             class="btn btn-outline whitespace-normal"
             phx-click="open_places"
             phx-value-kind="countries"
-          >{t(@locale, "stats.reverse_geocoding_stats.countries_visited", %{})}: {length(
-            @data.countries_visited
-          )}</button>
+          >{t(@locale, "stats.reverse_geocoding_stats.countries_visited", %{})}: {@data.total_countries}</button>
           <button
             class="btn btn-outline whitespace-normal"
             phx-click="open_places"
             phx-value-kind="cities"
-          >{t(@locale, "stats.reverse_geocoding_stats.cities_visited", %{})}: {length(
-            @data.cities_visited
-          )}</button>
+          >{t(@locale, "stats.reverse_geocoding_stats.cities_visited", %{})}: {@data.total_cities}</button>
         </div>
         <article :for={year <- @data.years} class="my-4 min-w-0 rounded-lg border p-4">
           <.link navigate={"/stats/#{year.year}"} class="text-xl underline">{year.year}</.link>
@@ -93,7 +89,7 @@ defmodule DawarichWeb.StatsLive.NativeParts do
           <NativeChart.chart
             id={"stats-year-#{year.year}"}
             data={months(@locale, year.year, year.distances, @data.unit)}
-            revision={to_string(year.updated_on)}
+            revision={revision(year.distances)}
             label={t(@locale, "stats.year.distance", %{})}
             options={%{suffix: " " <> @data.unit}}
           />
@@ -119,7 +115,7 @@ defmodule DawarichWeb.StatsLive.NativeParts do
           <NativeChart.chart
             id="stats-native-chart"
             data={months(@locale, @data.year, @data.distances, @data.unit)}
-            revision={to_string(@data.year)}
+            revision={revision(@data.distances)}
             label={t(@locale, "stats.year.distance", %{})}
             options={%{suffix: " " <> @data.unit}}
           />
@@ -147,7 +143,7 @@ defmodule DawarichWeb.StatsLive.NativeParts do
                   [day, Period.rounded(meters, @data.unit)]
                 end)
               }
-              revision={"#{@data.year}-#{@data.month}"}
+              revision={revision(@data.data.stat.daily)}
               label={t(@locale, "stats.year.distance", %{})}
               options={%{suffix: " " <> @data.unit}}
             />
@@ -247,6 +243,9 @@ defmodule DawarichWeb.StatsLive.NativeParts do
     </section>
     """
   end
+
+  defp revision(data),
+    do: :crypto.hash(:sha256, :erlang.term_to_binary(data)) |> Base.encode16(case: :lower)
 
   defp countries(stats),
     do: stats |> Enum.flat_map(& &1.toponyms) |> Dawarich.Stats.Toponyms.countries()
