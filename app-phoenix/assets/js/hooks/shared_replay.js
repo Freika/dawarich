@@ -1,3 +1,5 @@
+import { PublicDayClock } from "./shared_day_clock.js"
+
 export class PublicReplay {
   constructor(root, map, library, points, zone, locale) {
     this.root = root
@@ -5,6 +7,7 @@ export class PublicReplay {
     this.library = library
     this.zone = zone
     this.locale = locale
+    this.clock = new PublicDayClock(zone, locale)
     this.panel = root.querySelector("[data-public-replay-panel]")
     this.speed = 2
     this.follow = false
@@ -45,15 +48,7 @@ export class PublicReplay {
     this.hidden("replayPauseIcon", true)
   }
   minute(point) {
-    const parts = new Intl.DateTimeFormat("en-GB", {
-      timeZone: this.zone,
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).formatToParts(new Date(point[2] * 1000))
-    const value = (type) =>
-      Number(parts.find((part) => part.type === type).value)
-    return value("hour") * 60 + value("minute")
+    return this.clock.minute(point)
   }
   current() {
     return this.days[this.day]?.points || []
@@ -70,10 +65,7 @@ export class PublicReplay {
     if (this.follow)
       this.map.easeTo({ center: point.slice(0, 2), duration: 100 })
     const minute = this.minute(point)
-    this.text(
-      "replayTimeDisplay",
-      `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`,
-    )
+    this.text("replayTimeDisplay", this.clock.label(point))
     this.text(
       "replayDayDisplay",
       new Intl.DateTimeFormat(this.locale, {
@@ -83,7 +75,10 @@ export class PublicReplay {
     )
     this.text("replayDayCount", `${this.day + 1} / ${this.days.length}`)
     const scrubber = this.target("replayScrubber")
-    if (scrubber) scrubber.value = String(minute)
+    if (scrubber) {
+      scrubber.value = String(minute)
+      scrubber.max = String(this.clock.day(this.days[this.day].date).length - 1)
+    }
     const same = rows.filter((row) => this.minute(row) === minute)
     this.hidden("replayCycleControls", same.length < 2)
     this.text(
@@ -167,6 +162,7 @@ export class PublicReplay {
     this.marker?.remove()
     this.marker = null
     this.days = []
+    this.clock.clear()
     this.map = null
     if (this.panel) {
       this.panel.hidden = true
