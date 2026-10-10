@@ -2,7 +2,8 @@ defmodule DawarichWeb.StandaloneSharePointsFlowTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
   import Plug.Conn
-  alias Dawarich.Test.{RailsFormRequests, RailsUser}
+  import Phoenix.LiveViewTest
+  alias Dawarich.Test.RailsUser
 
   @endpoint DawarichWeb.Endpoint
 
@@ -23,39 +24,34 @@ defmodule DawarichWeb.StandaloneSharePointsFlowTest do
         settings: %{"timezone" => "UTC", "locale" => "en"}
       })
 
-    %{actor: actor, session: RailsUser.session(actor.id)}
+    %{actor: actor}
   end
 
   @tag :sweep_shared_timestamp_ties
-  test "standalone timeline creation returns tied points and Rails stride sampling", c do
-    page =
-      build_conn()
-      |> put_req_cookie("_dawarich_session", RailsUser.cookie(c.session))
-      |> get("/share_links/timeline/new")
+  test "native timeline creation serves tied points and Rails stride sampling over retained HTTP",
+       c do
+    {:ok, view, _html} =
+      RailsUser.signed_in(c.actor.id)
+      |> RailsUser.connecting_as(c.actor.id)
+      |> live("/share_links/timeline/new")
 
-    assert page.status == 200
+    view
+    |> form("#native-sharing form[phx-submit=sharing_create]", %{
+      "shared_link" => %{
+        "expires_at" => "",
+        "start_date" => "2026-05-09",
+        "end_date" => "2026-05-09"
+      }
+    })
+    |> render_submit()
 
-    [token] =
-      page.resp_body
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("form[action='/share_links/timeline'] input[name=authenticity_token]")
-      |> LazyHTML.attribute("value")
-
-    created =
-      RailsFormRequests.post_form(
-        c.session,
-        URI.encode_query(%{
-          "authenticity_token" => token,
-          "shared_link[name]" => "Synthetic timeline",
-          "shared_link[start_date]" => "2026-05-09",
-          "shared_link[end_date]" => "2026-05-09"
-        }),
-        [{"accept", "text/html"}],
-        "/share_links/timeline"
-      )
-
-    assert created.status == 302
     [[id]] = Repo.query!("SELECT id::text FROM shared_links WHERE user_id=$1", [c.actor.id]).rows
+
+    assert Repo.query!(
+             "SELECT resource_type,settings->>'start_date',settings->>'end_date' FROM shared_links WHERE id=$1::text::uuid",
+             [id]
+           ).rows == [[2, "2026-05-09", "2026-05-09"]]
+
     ts = DateTime.to_unix(~U[2026-05-09 12:00:00Z])
     points!(c.actor.id, ts, 2)
     points!(c.actor.id, ts - 86400, 1)
@@ -68,7 +64,8 @@ defmodule DawarichWeb.StandaloneSharePointsFlowTest do
 
     public = get(build_conn(), "/s/" <> id)
     assert public.status == 200
-    assert public.resp_body =~ ~s(data-controller="shared-trip-map")
+    assert public.resp_body =~ ~s(phx-hook="SharedMap")
+    assert has_element?(view, "[data-share-id='#{id}']")
     response = points_response(id)
     assert response.status == 200
 
