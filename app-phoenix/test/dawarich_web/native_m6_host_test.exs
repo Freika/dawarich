@@ -47,6 +47,16 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert config(view)["revision"] == 5
   end
 
+  test "native production host opens validates and closes an Area dialog", %{id: id} do
+    {:ok, view, _} = open(id, @second)
+    render_hook(view, "area:new", %{"latitude" => 52.52, "longitude" => 13.405})
+    assert has_element?(view, "#native-area-dialog input[value='52.52']")
+    view |> form("#native-area-form", area: %{name: "Home", radius: "-5"}) |> render_submit()
+    assert has_element?(view, "#native-area-dialog [role=alert]")
+    render_hook(view, "area:close", %{})
+    refute has_element?(view, "#native-area-dialog")
+  end
+
   defp config(view) do
     view
     |> render()

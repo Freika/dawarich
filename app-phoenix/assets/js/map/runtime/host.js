@@ -3,6 +3,7 @@ import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { createTileFreshness } from "../data/tile_freshness.js"
 import { createBaseLayers } from "../layers/tile_layers.js"
+import { createHostTools } from "../ui/host_tools.js"
 import { createRangeRequests } from "../ui/navigation.js"
 import { createMapRuntime } from "./create_map.js"
 
@@ -35,6 +36,7 @@ export function mountHost({
     attach:
       attach ??
       (({ map, config, lifetime }) => {
+        createHostTools({ map, root: element.closest?.("#native-map-page"), pushEvent, lifetime })
         layers = createBaseLayers({
           map,
           config,

@@ -35,6 +35,12 @@ defmodule DawarichWeb.MapLive.Native do
     end
   end
 
+  def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
+    do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)
+
+  def handle_event("area:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.AreaCommands.handle_event(event, payload, socket)
+
   def handle_event(event, payload, socket) when event in ~w(map:range map:dates map:panel),
     do: Commands.handle_event(event, payload, socket)
 
@@ -49,6 +55,12 @@ defmodule DawarichWeb.MapLive.Native do
         window={@page.window}
         locale={@locale}
       />
+      <button type="button" data-testid="native-create-area" class="btn btn-sm">{t(
+        @locale,
+        "javascript.areas.create_new",
+        %{}
+      )}</button>
+      <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
       <div class="relative flex-1 min-h-0 min-w-0">
         <DawarichWeb.NativeMapHost.map_host id="native-map" config={@map_config} locale={@locale} />
       </div>
