@@ -165,7 +165,15 @@ defmodule DawarichWeb.OnboardingScreens do
             </p>
             <div class="flex justify-center">
               <div class="bg-white p-3 rounded-lg shadow-inner">
-                {Phoenix.HTML.raw(Dawarich.QrSvg.api_key(@base_url <> "/", @current_user.api_key, 3))}
+                <img
+                  :if={@native}
+                  class="w-40 h-40"
+                  src="/settings/onboarding/qr.svg"
+                  alt={tm(@locale, "scan_qr_code_to_connect")}
+                  loading="lazy"
+                />
+                {!@native &&
+                  Phoenix.HTML.raw(Dawarich.QrSvg.api_key(@base_url <> "/", @current_user.api_key, 3))}
               </div>
             </div>
           </div>
