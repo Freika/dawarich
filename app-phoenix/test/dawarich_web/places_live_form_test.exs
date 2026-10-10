@@ -83,6 +83,34 @@ defmodule DawarichWeb.PlacesLiveFormTest do
     refute render(view) =~ "Draft note"
   end
 
+  test "overflowing coordinate validation retains dialog errors and values without effects",
+       ctx do
+    {:ok, view, _} = live(N.conn(ctx.actor), "/places")
+    render_click(view, "open_create", %{})
+    gen = N.generation(view, :form_state)
+    overflow = String.duplicate("9", 400)
+
+    for field <- ["latitude", "longitude"] do
+      attrs = Map.put(@attrs, field, overflow)
+      render_change(view, "validate_place", %{"generation" => gen, "place" => attrs})
+      state = :sys.get_state(view.pid).socket.assigns.form_state
+      assert state.generation == gen
+      assert state.status == :idle
+      assert state.changeset.params[field] == overflow
+      assert Keyword.has_key?(state.changeset.errors, String.to_existing_atom(field))
+      assert has_element?(view, "dialog textarea", "Draft note")
+      assert has_element?(view, "dialog input[name='place[#{field}]'][value='#{overflow}']")
+      assert Repo.query!("SELECT id FROM places WHERE user_id=$1", [ctx.actor.id]).rows == []
+    end
+
+    render_submit(view, "save_place", %{"generation" => gen, "place" => @attrs})
+
+    assert Repo.query!(
+             "SELECT latitude::float8,longitude::float8 FROM places WHERE user_id=$1",
+             [ctx.actor.id]
+           ).rows == [[51.123457, 12.123457]]
+  end
+
   test "queued Place create submits produce one accepted record per generation", ctx do
     {:ok, view, _} = live(N.conn(ctx.actor), "/places")
     render_click(view, "open_create", %{})

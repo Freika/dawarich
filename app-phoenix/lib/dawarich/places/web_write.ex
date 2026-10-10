@@ -108,13 +108,15 @@ defmodule Dawarich.Places.WebWrite do
   def coordinate(:omitted, _limit), do: :omitted
   def coordinate(value, _limit) when value in [nil, ""], do: nil
 
-  def coordinate(value, limit) when is_binary(value) do
+  def coordinate(value, limit) when is_binary(value) and byte_size(value) <= 128 do
     if value =~ ~r/\A-?\d+(?:\.\d+)?\z/ do
-      {number, ""} = Float.parse(value)
+      case Float.parse(value) do
+        {number, ""} when abs(number) <= limit ->
+          value |> Decimal.new() |> Decimal.round(6) |> Decimal.to_float()
 
-      if abs(number) <= limit,
-        do: value |> Decimal.new() |> Decimal.round(6) |> Decimal.to_float(),
-        else: :unsupported
+        _ ->
+          :unsupported
+      end
     else
       :unsupported
     end
