@@ -6,6 +6,30 @@ defmodule Dawarich.Imports.NativeReads do
   def repo(opts),
     do: Keyword.get(opts, :repo, Application.get_env(:dawarich, :imports_repo, Dawarich.Repo))
 
+  def upload_page(scope, opts) do
+    with {:ok, current} <- NativeAccess.admit(scope, repo(opts)),
+         true <- Dawarich.Entitlements.future?(current.user.active_until, DateTime.utc_now()),
+         true <-
+           Dawarich.ReleaseMigration.self_hosted?() or
+             (current.user.points_count || 0) < 10_000_000 do
+      [[count]] =
+        repo(opts).query!(
+          "SELECT count(*) FROM imports WHERE user_id=$1 AND demo=false",
+          [current.user.id],
+          log: false
+        ).rows
+
+      {:ok,
+       %{
+         imports_count: count,
+         trial: current.user.status == 2 and current.user.subscription_source in [nil, 0]
+       }}
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :inactive}
+    end
+  end
+
   def page(scope, list, opts) do
     with {:ok, current} <- NativeAccess.admit(scope, repo(opts)),
          true <- valid_list?(list) do

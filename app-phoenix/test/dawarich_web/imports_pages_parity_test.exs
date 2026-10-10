@@ -104,8 +104,8 @@ defmodule DawarichWeb.ImportsPagesParityTest do
       html = conn |> response(@page["status"]) |> neutral()
       rails = Path.join(@dir, "pages/#{@page["name"]}.html") |> File.read!() |> neutral()
 
-      if @page["path"] != "/imports/new" and not String.contains?(@page["path"], "/download") do
-        NativeImportCorpus.assert_page(html, rails)
+      if not String.contains?(@page["path"], "/download") do
+        NativeImportCorpus.assert_page(html, rails, fields: @page["path"] != "/imports/new")
 
         assert Enum.count(
                  LazyHTML.query(

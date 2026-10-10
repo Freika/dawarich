@@ -2,14 +2,14 @@ defmodule Dawarich.Test.NativeImportCorpus do
   @moduledoc false
   import ExUnit.Assertions
 
-  def assert_page(html, fixture) do
+  def assert_page(html, fixture, opts \\ []) do
     native =
       html |> LazyHTML.from_document() |> LazyHTML.query("[data-testid=native-imports-root]")
 
     expected = LazyHTML.from_fragment(fixture)
     assert Enum.count(native) == 1
     assert words(native) == words(expected)
-    assert fields(native) == fields(expected)
+    if Keyword.get(opts, :fields, true), do: assert(fields(native) == fields(expected))
     assert reads(native) == reads(expected)
   end
 
@@ -17,6 +17,11 @@ defmodule Dawarich.Test.NativeImportCorpus do
     do: doc |> LazyHTML.to_tree() |> texts() |> Enum.join(" ") |> String.split() |> Enum.join(" ")
 
   defp texts(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &texts/1)
+
+  defp texts({"input", attrs, _}) do
+    if {"type", "submit"} in attrs, do: [List.keyfind(attrs, "value", 0) |> elem(1)], else: []
+  end
+
   defp texts({tag, _, children}) when tag not in ["script", "style"], do: texts(children)
   defp texts(text) when is_binary(text), do: [text]
   defp texts(_), do: []

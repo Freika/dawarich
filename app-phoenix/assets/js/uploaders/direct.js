@@ -7,6 +7,7 @@ const request = (action, ref, signal) =>
     method: "POST",
     credentials: "same-origin",
     cache: "no-store",
+    keepalive: action === "cancel",
     signal,
     headers: {
       "Content-Type": "application/json",
@@ -22,8 +23,7 @@ export const Direct = (entries, onViewError) => {
     let xhr,
       timer,
       loaded = 0,
-      stopped = false,
-      finished = false;
+      stopped = false;
     const clear = () => {
       clearTimeout(timer);
       if (xhr) {
@@ -32,7 +32,7 @@ export const Direct = (entries, onViewError) => {
       }
     };
     const cancel = () => {
-      if (stopped || finished) return;
+      if (stopped) return;
       stopped = true;
       controller.abort();
       clear();
@@ -82,7 +82,6 @@ export const Direct = (entries, onViewError) => {
         xhr.onload = () => {
           if (stopped || entry.isCancelled?.()) return;
           if (xhr.status < 200 || xhr.status >= 300) return fail("upload");
-          finished = true;
           clear();
           xhr = null;
           entry.progress(100);

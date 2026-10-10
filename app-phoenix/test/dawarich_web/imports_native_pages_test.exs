@@ -2,7 +2,6 @@ defmodule DawarichWeb.ImportsNativePagesTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
-  import Dawarich.Test.FormIsolation
   alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
   @endpoint DawarichWeb.Endpoint
   @reopen ~s(button[phx-click])
@@ -25,14 +24,19 @@ defmodule DawarichWeb.ImportsNativePagesTest do
   defp live_as(user, path),
     do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
-  test "new native page binds the upload controller to Rails' direct upload endpoint", c do
-    {:ok, _view, html} = live_as(c.user, "/imports/new")
+  test "new native page labels bounded multi-file uploads without a legacy endpoint", c do
+    {:ok, view, html} = live_as(c.user, "/imports/new")
+    assert has_element?(view, "label[for=import_files]")
+    assert has_element?(view, "input#import_files[multiple][data-native-selection]")
 
-    assert html =~
-             ~s(data-upload-url-value="http://www.example.com/rails/active_storage/direct_uploads")
+    assert has_element?(
+             view,
+             "#phx-import-upload[data-upload-kind=imports][phx-submit=start_imports]"
+           )
 
-    refute html =~ "/imports/direct_uploads"
-    assert_form_isolated(html, "#phx-import-upload")
+    assert has_element?(view, "#phx-import-upload button[type=submit][disabled]")
+    refute html =~ "/rails/active_storage/direct_uploads"
+    refute has_element?(view, "#phx-import-upload[phx-update=ignore], [data-controller=upload]")
   end
 
   test "native import rename and source selection remain labelled before and after join",

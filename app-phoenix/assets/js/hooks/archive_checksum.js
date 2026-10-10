@@ -89,8 +89,19 @@ export const ArchiveChecksum = {
     this.controllers.add(controller);
     const options = { signal: controller.signal };
     const prepared = [];
+    let retained = 0;
+    const status = this.el.querySelector("[data-checksum-progress]");
+    const report = (index, fraction) => {
+      if (status && generation === this.generation)
+        status.textContent = `${Math.round(((index + fraction) / files.length) * 100)}%`;
+    };
     try {
-      for (const file of files) {
+      const maxEntries = Number(this.el.dataset.maxEntries) || 20;
+      if (files.length > maxEntries) {
+        this.pushEvent("upload_selection_error", {kind: "too_many_files"});
+        return;
+      }
+      for (const [index, file] of Array.from(files).entries()) {
         let item = {
           file,
           originalFilename: file.name,
@@ -103,10 +114,20 @@ export const ArchiveChecksum = {
             ...options,
             maxOriginal:
               Number(this.el.dataset.preparationOriginalBytes) || undefined,
-            maxWorking: Number(this.el.dataset.preparationBytes) || undefined,
+            maxWorking: (Number(this.el.dataset.preparationBytes) || 64 * 1024 * 1024) - retained * 3,
+            onProgress: percent => report(index, percent / 200),
           });
         }
-        const checksum = await base64Md5(item.file, options);
+        report(index, 0.5);
+        let checksum;
+        try {
+          checksum = await base64Md5(item.file, {
+            ...options, onProgress: percent => report(index, 0.5 + percent / 200),
+          });
+        } catch (error) {
+          if (error.name !== "AbortError") this.pushEvent("upload_preparation_error", {stage: "checksum"});
+          return;
+        }
         check(controller.signal);
         if (generation !== this.generation) return;
         item.file.meta = () => ({
@@ -116,6 +137,7 @@ export const ArchiveChecksum = {
           client_wrapped: item.clientWrapped,
         });
         prepared.push(item.file);
+        if (item.clientWrapped) retained += item.file.size;
         if (item.fallback)
           this.pushEvent("upload_preparation_fallback", {
             kind: item.fallback,

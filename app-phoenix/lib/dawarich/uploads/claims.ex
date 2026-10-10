@@ -26,6 +26,10 @@ defmodule Dawarich.Uploads.Claims do
             |> then(&Records.pending!(repo, &1))
 
           if row.kind != Atom.to_string(operation), do: repo.rollback(:invalid_input)
+
+          if current.user.status == 2 and current.user.subscription_source in [nil, 0] and
+               (item.blob.byte_size > 11 * 1024 * 1024 or row.original_size > 11 * 1024 * 1024),
+             do: repo.rollback(:file_too_large)
         end
 
         if fun = opts[:after_lock], do: fun.()

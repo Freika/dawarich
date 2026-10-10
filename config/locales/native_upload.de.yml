@@ -5,3 +5,5 @@ de:
     target: "Der Speicher konnte diesen Upload nicht autorisieren. Wähle die Datei erneut aus."
     upload: "Der Datei-Upload ist fehlgeschlagen. Wähle die Datei erneut aus."
     timeout: "Der Upload macht keinen Fortschritt. Wähle die Datei erneut aus."
+    raw_fallback: "Die Originaldatei wird hochgeladen, weil die Komprimierung das Vorbereitungslimit überschritten hat."
+    too_many_files: "Zu viele Dateien ausgewählt. Entferne eine Datei vor dem Hochladen."

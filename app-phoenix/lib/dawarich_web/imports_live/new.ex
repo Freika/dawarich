@@ -24,30 +24,28 @@ defmodule DawarichWeb.ImportsLive.New do
 
   @impl true
   def mount(_, _, socket) do
-    user = socket.assigns.current_user
+    case Dawarich.Imports.upload_page(socket.assigns.current_scope) do
+      {:ok, page} ->
+        socket =
+          socket
+          |> assign(page)
+          |> assign(
+            page_title: t(socket.assigns.locale, "imports.new.new_import_2", %{}),
+            formats: @formats,
+            accept: @accept,
+            splitter: @splitter
+          )
 
-    if Dawarich.Entitlements.future?(user.active_until, DateTime.utc_now()) and
-         (socket.assigns.self_hosted or (user.points_count || 0) < 10_000_000) do
-      [[count]] =
-        DawarichWeb.ImportsContext.repo().query!(
-          "SELECT count(*) FROM public.imports WHERE user_id=$1",
-          [user.id],
-          log: false
-        ).rows
+        {:ok, DawarichWeb.ImportsUpload.configure(socket)}
 
-      {:ok,
-       assign(socket,
-         page_title: t(socket.assigns.locale, "imports.new.new_import_2", %{}),
-         imports_count: count,
-         trial: user.status == 2 and user.subscription_source in [nil, 0],
-         formats: @formats,
-         accept: @accept,
-         splitter: @splitter
-       )}
-    else
-      {:ok, redirect(socket, to: "/imports")}
+      _ ->
+        {:ok, redirect(socket, to: "/imports")}
     end
   end
+
+  @impl true
+  def handle_event(event, params, socket),
+    do: DawarichWeb.ImportsUpload.event(event, params, socket)
 
   @impl true
   def render(assigns) do
@@ -75,7 +73,7 @@ defmodule DawarichWeb.ImportsLive.New do
             {t(@locale, "imports.form.supported_import_formats", %{})}
           </h3>
           <ul class="text-xs space-y-1.5">
-            <li :for={{name, files} <- @formats} class="flex items-center gap-1.5">
+            <li :for={{name, files} <- @formats} class="flex flex-wrap min-w-0 items-center gap-1.5">
               <.icon name="circle-check" class="w-3.5 h-3.5 text-success shrink-0" />
               <strong>{t(@locale, "imports.form." <> name, %{})}</strong> {t(
                 @locale,
@@ -101,64 +99,15 @@ defmodule DawarichWeb.ImportsLive.New do
           </div>
         </div>
       </div>
-      <form
-        id="phx-import-upload"
-        class="contents"
-        phx-hook="RailsStimulus"
-        phx-update="ignore"
-        data-controller="upload"
-        data-upload-url-value={@base_url <> "/rails/active_storage/direct_uploads"}
-        data-upload-field-name-value="import[files][]"
-        data-upload-multiple-value="true"
-        data-upload-user-trial-value={to_string(@trial)}
-        data-upload-max-imports-value="5"
-        data-upload-current-imports-count-value={@imports_count}
-        data-upload-preserve-original-filename-value="true"
-        data-upload-target="form"
-        enctype="multipart/form-data"
-        action="/imports"
-        accept-charset="UTF-8"
-        method="post"
-      >
-        <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
-        <label class="form-control w-full max-w-xs my-5">
-          <div class="label">
-            <span class="label-text">{t(@locale, "imports.form.select_one_or_multiple_files", %{})}</span>
-          </div>
-          <input name="import[files][]" type="hidden" value="" /><input
-            multiple="multiple"
-            accept={@accept}
-            class="file-input file-input-bordered w-full max-w-xs"
-            data-upload-target="input"
-            data-direct-upload-url={@base_url <> "/rails/active_storage/direct_uploads"}
-            data-testid="import-file-input"
-            type="file"
-            name="import[files][]"
-            id="import_files"
-          />
-          <div class="text-sm text-gray-500 mt-2">
-            {t(
-              @locale,
-              "imports.form.files_will_be_uploaded_directly_to_storage_please_be_patient",
-              %{}
-            )}
-          </div>
-        </label>
-        <div class="inline">
-          <input
-            type="submit"
-            name="commit"
-            value={submit(@locale)}
-            class="rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer"
-            data-upload-target="submit"
-            data-disable-with={submit(@locale)}
-            data-testid="import-submit"
-          />
-        </div>
-      </form>
+      <DawarichWeb.ImportsUpload.form
+        upload={@uploads.files}
+        locale={@locale}
+        accept={@accept}
+        limits={@upload_limits}
+        error={@upload_error}
+        fallback={@upload_fallback}
+      />
     </div>
     """
   end
-
-  defp submit(locale), do: t(locale, "helpers.submit.create", %{"model" => "Import"})
 end

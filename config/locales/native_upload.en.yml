@@ -5,3 +5,5 @@ en:
     target: "Storage could not authorize this upload. Select the file again."
     upload: "The file upload failed. Select the file again."
     timeout: "Upload progress stopped. Select the file again."
+    raw_fallback: "The original file will be uploaded because compression exceeded the preparation limit."
+    too_many_files: "Too many files selected. Remove a file before uploading."

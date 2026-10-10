@@ -2,6 +2,8 @@ defmodule Dawarich.Imports do
   @moduledoc false
   alias Dawarich.Imports.{NativeCommands, NativeReads}
 
+  def upload_page(scope, opts \\ []), do: NativeReads.upload_page(scope, opts)
+
   def page(scope, list, opts \\ []), do: NativeReads.page(scope, list, opts)
   def get(scope, id, opts \\ []), do: NativeReads.get(scope, id, opts)
   def create(scope, refs, opts \\ []), do: NativeCommands.create(scope, refs, opts)

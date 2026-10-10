@@ -202,3 +202,65 @@ test("duplicate progress does not extend the upload inactivity deadline", async 
   assert.equal(timers.length, afterProgress);
   cancel();
 });
+
+test("multi-file preparation reports monotonic aggregate progress and preserves original descriptors", async (t) => {
+  const previous = globalThis.File;
+  globalThis.File = File;
+  t.after(() => { globalThis.File = previous; });
+  const progress = [], batches = [], events = [];
+  const status = { set textContent(value) { progress.push(Number.parseInt(value)); } };
+  const hook = Object.assign(Object.create(ArchiveChecksum), {
+    el: {
+      dataset: {uploadKind: "imports", uploadName: "files"},
+      querySelector: () => status,
+      addEventListener() {}, removeEventListener() {},
+    },
+    upload: (name, files) => batches.push([name, files]),
+    pushEvent: (...args) => events.push(args),
+  });
+  hook.mounted();
+  const files = [new File(["<gpx/>".repeat(100)], "first.gpx"), new File(["<gpx/>".repeat(100)], "second.gpx")];
+  await hook.select(files);
+  assert.equal(batches.length, 1);
+  assert.equal(batches[0][0], "files");
+  assert.deepEqual(batches[0][1].map(file => file.meta().original_filename), ["first.gpx", "second.gpx"]);
+  assert.equal(events.length, 0);
+  assert.ok(progress.length >= 4);
+  assert.equal(progress.at(-1), 100);
+  assert.ok(progress.every((value, index) => value >= (progress[index-1] || 0)));
+  hook.destroyed();
+});
+
+test("retained prepared files share the bounded preparation budget and fall back to originals", async (t) => {
+  const previous = globalThis.File;
+  globalThis.File = File;
+  t.after(() => { globalThis.File = previous; });
+  const { randomBytes } = await import("node:crypto");
+  const events = [], batches = [];
+  const hook = Object.assign(Object.create(ArchiveChecksum), {
+    el: {dataset: {uploadKind: "imports", uploadName: "files", preparationBytes: String(8*1024*1024)}, querySelector: () => null, addEventListener() {}, removeEventListener() {}},
+    upload: (_name, files) => batches.push(files),
+    pushEvent: (...args) => events.push(args),
+  });
+  hook.mounted();
+  const files = [new File([randomBytes(1024*1024)], "first.gpx"), new File([randomBytes(1024*1024)], "second.gpx")];
+  await hook.select(files);
+  assert.equal(batches.length, 1);
+  assert.deepEqual(batches[0].map(file => file.meta().client_wrapped), [true, false]);
+  assert.equal(batches[0][1], files[1]);
+  assert.deepEqual(events, [["upload_preparation_fallback", {kind: "compression", filename: "second.gpx"}]]);
+  hook.destroyed();
+});
+
+test("selection count refuses before any file is prepared or uploaded", async () => {
+  const events = [], batches = [];
+  const hook = Object.assign(Object.create(ArchiveChecksum), {
+    el: {dataset: {uploadKind: "imports", uploadName: "files", maxEntries: "1"}, querySelector: () => null, addEventListener() {}, removeEventListener() {}},
+    upload: (...args) => batches.push(args), pushEvent: (...args) => events.push(args),
+  });
+  hook.mounted();
+  await hook.select([new File(["<gpx/>"], "first.gpx"), new File(["<gpx/>"], "second.gpx")]);
+  assert.deepEqual(batches, []);
+  assert.deepEqual(events, [["upload_selection_error", {kind: "too_many_files"}]]);
+  hook.destroyed();
+});

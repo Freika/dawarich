@@ -326,11 +326,15 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "unowned import methods and export writes with unsafe admission go to Puma", ctx do
+  test "native import documents refuse signed-out actors while independent methods retain their adapters",
+       ctx do
     port = serve()
 
+    for target <- ~w(/imports/5 /imports/5/edit),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
+
     for target <-
-          ~w(/imports/5 /imports/5/edit /imports/5/download /imports/5/extraction /imports.json /exports.json /imports?format=json /imports/5?format=json /imports/5/download?format=json /exports/5) do
+          ~w(/imports/5/download /imports/5/extraction /imports.json /exports.json /imports?format=json /imports/5?format=json /imports/5/download?format=json /exports/5) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
@@ -416,7 +420,8 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "foreign or unsupported imports stay on Puma while owned normal pages are native", ctx do
+  test "foreign and unsupported import documents refuse natively while downloads retain their contract",
+       ctx do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
@@ -431,7 +436,13 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for id <- [769_101, 769_102],
-        target <- ["/imports/#{id}", "/imports/#{id}/edit", "/imports/#{id}/download"] do
+        target <- ["/imports/#{id}", "/imports/#{id}/edit"] do
+      request = "GET #{target} HTTP/1.1\r\nHost: a\r\nCookie: _dawarich_session=#{cookie}\r\n\r\n"
+      assert answered_by_phoenix(port, request) == 302
+    end
+
+    for id <- [769_101, 769_102] do
+      target = "/imports/#{id}/download"
       request = "GET #{target} HTTP/1.1\r\nHost: a\r\nCookie: _dawarich_session=#{cookie}\r\n\r\n"
       assert answered_by_puma(port, ctx.upstream, request) == "GET #{target} HTTP/1.1"
     end

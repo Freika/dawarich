@@ -104,3 +104,25 @@ test("the direct uploader reports an error when storage refuses the file", async
   assert.equal(upload.calls.errors, 1);
   assert.deepEqual(upload.calls.progress, [50]);
 });
+
+test("disconnect cancels a completed pending PUT through the owned HTTP endpoint", async (t) => {
+  fakeXhr(t, 204);
+  const requests = [];
+  const target = globalThis.fetch;
+  globalThis.fetch = (...args) => {
+    requests.push(args);
+    return target(...args);
+  };
+  const upload = entry();
+  let disconnect;
+  Direct([upload], (callback) => { disconnect = callback; });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(upload.calls.progress, [50, 100]);
+  disconnect();
+  disconnect();
+  const cancelled = requests.filter(([url]) => url === "/native/uploads/cancel");
+  assert.equal(cancelled.length, 1);
+  assert.deepEqual(JSON.parse(cancelled[0][1].body), {upload_ref: upload.meta.upload_ref});
+  assert.equal(cancelled[0][1].cache, "no-store");
+  assert.equal(cancelled[0][1].keepalive, true);
+});
