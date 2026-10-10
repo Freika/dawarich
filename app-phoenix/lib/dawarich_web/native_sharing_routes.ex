@@ -12,6 +12,15 @@ defmodule DawarichWeb.NativeSharingRoutes do
           on_mount: {DawarichWeb.NativeSharingAuth, :require_user},
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
+          live "/stats/:year/:month/sharing", DawarichWeb.SharingLive.Index, :month,
+            metadata: %{native_ui: true}
+
+          live "/digests/:year/sharing", DawarichWeb.SharingLive.Index, :digest,
+            metadata: %{native_ui: true}
+
+          live "/achievements/:key/sharing", DawarichWeb.SharingLive.Index, :achievement,
+            metadata: %{native_ui: true}
+
           live "/share_links/hub", DawarichWeb.SharingLive.Index, :hub,
             metadata: %{native_ui: true}
 

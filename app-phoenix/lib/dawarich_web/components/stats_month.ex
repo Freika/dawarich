@@ -3,7 +3,7 @@ defmodule DawarichWeb.StatsMonth do
   use DawarichWeb, :html
 
   alias Dawarich.Stats.Toponyms
-  alias DawarichWeb.{Chartkick, Icon, LocalizedDate, SharingParts, StatsFormat}
+  alias DawarichWeb.{Chartkick, Icon, LocalizedDate, StatsFormat}
 
   @daily_colors ~w(#570df8 #f000b8 #ffea00 #00d084 #3abff8 #ff5724 #8e24aa #3949ab #00897b #d81b60 #5e35b1 #039be5 #43a047 #f4511e #6d4c41 #757575 #546e7a #d32f2f)
 
@@ -42,12 +42,12 @@ defmodule DawarichWeb.StatsMonth do
             )}
           </h1>
           <p class="py-4">{t(@locale, "stats.month.monthly_digest", %{})}</p>
-          <button
+          <a
             class="btn btn-outline btn-sm text-neutral border-neutral hover:bg-white hover:text-primary"
-            onclick="sharing_modal.showModal()"
+            href={"/stats/#{@year}/#{@month}/sharing"}
           >
             <Icon.icon name="share" class="size-6" /> {t(@locale, "stats.month.share", %{})}
-          </button>
+          </a>
         </div>
       </div>
     </div>
@@ -137,27 +137,20 @@ defmodule DawarichWeb.StatsMonth do
     <.places_card locale={@locale} toponyms={@stat.toponyms} />
     <div class="flex flex-wrap gap-4 mt-8 justify-center">
       <a href={"/stats/#{@year}"} class="btn btn-outline">{t(@locale, "stats.month.back_to", %{})} {@year}</a>
-      <button class="btn btn-outline" onclick="sharing_modal.showModal()"><Icon.icon
+      <a
+        :if={!@sharing_allowed}
+        class="btn btn-primary h-auto whitespace-normal"
+        href={@sharing_upgrade}
+      >{t(@locale, "shared.sharing_modal.upgrade_to_pro", %{})}</a>
+      <a class="btn btn-outline" href={"/stats/#{@year}/#{@month}/sharing"}><Icon.icon
         name="share"
         class="size-6"
       /> {t(
         @locale,
         "stats.month.share",
         %{}
-      )}</button>
+      )}</a>
     </div>
-    <SharingParts.sharing_dialog
-      locale={@locale}
-      scope="shared.sharing_modal"
-      hint="shared.sharing_modal.allow_others_to_view_this_monthly_digest_auto_saves_on"
-      action={"/stats/#{@year}/#{@month}/sharing"}
-      enabled={@stat.sharing.enabled}
-      expiration={@stat.sharing.expiration || "1h"}
-      url={@sharing_url}
-      csrf={@csrf}
-      allowed={@sharing_allowed}
-      upgrade={@sharing_upgrade}
-    />
     """
   end
 

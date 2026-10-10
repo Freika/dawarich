@@ -33,3 +33,9 @@ Hub tabs are query patches. The empty shared-list fallback uses the same live re
 Fresh-session, same-origin, CSRF-checked GET `/native/sharing/phrase` supplies the legacy generated default into transient input DOM. GET `/native/sharing/:id/:field` (`phrase` or `url`) resolves an owned link and returns transient plain text. Both use no-store. Hooks abort and version pending work; failed/successful submit, patch, disconnect and destruction erase the input/reveal status and cannot restore a late phrase. Clipboard denial is visible. Public reader admission remains separate.
 
 Measured domain reads including current identity: hub three queries, live two, trip three. The fixture corpus retains all 505 management and 21 track/timeline vectors, comparing successful native read DTO identity/settings and retaining independent write/status/effect/cookie coverage. Native manager behavior and hook tests replace modal/frame assertions. German 390-pixel and actual keyboard/host navigation E2E specs are prepared for controller stage acceptance; no implementation-time browser result is claimed.
+
+## Native report controls
+
+Month, digest and achievement hosts enter the native manager by ordinary links. Card previews remain deferred but cannot create a share through the old modal; keyed leaf cards have a manager link. Return links are derived solely from the validated resource, ignoring supplied return URLs. Monthly Cloud upgrade copy/link remains on its host; scoped reads/writes still refuse inadequate current entitlement.
+
+Native report submit delegates enabled and expiration casts to the existing scoped domain operation; UUID stability, disable visibility and 1/12/24-hour/week/month presets remain unchanged. Public report/achievement HTTP contracts remain separate. Host map/chart/preview/delete behavior stays in its existing tests. German narrow-screen and keyboard browser acceptance remains controller-owned.

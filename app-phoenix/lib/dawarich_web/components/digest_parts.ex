@@ -21,12 +21,12 @@ defmodule DawarichWeb.DigestParts do
             {t(@locale, "users.digests.show.year_year_in_review", %{year: @digest.year})}
           </h1>
           <p class="py-4">{t(@locale, "users.digests.show.your_journey_by_the_numbers", %{})}</p>
-          <button
+          <a
             class="btn btn-outline btn-sm text-neutral border-neutral hover:bg-white hover:text-primary"
-            onclick="sharing_modal.showModal()"
+            href={"/digests/#{@digest.year}/sharing"}
           >
             <Icon.icon name="share" class="size-6" /> {t(@locale, "users.digests.show.share", %{})}
-          </button>
+          </a>
         </div>
       </div>
     </div>
@@ -127,10 +127,10 @@ defmodule DawarichWeb.DigestParts do
         "users.digests.show.back_to_all_digests",
         %{}
       )}</a>
-      <button class="btn btn-outline" onclick="sharing_modal.showModal()"><Icon.icon
+      <a class="btn btn-outline" href={"/digests/#{@year}/sharing"}><Icon.icon
         name="share"
         class="size-6"
-      /> {t(@locale, "users.digests.show.share", %{})}</button>
+      /> {t(@locale, "users.digests.show.share", %{})}</a>
       <form class="button_to" method="post" action={"/digests/#{@year}"}>
         <input type="hidden" name="_method" value="delete" /><button
           class="btn btn-outline btn-error"

@@ -105,7 +105,7 @@ defmodule DawarichWeb.DigestsLiveTest do
              live_as(user, "/digests/2024")
   end
 
-  test "delete is Rails' button_to DELETE form with the turbo confirmation; sharing posts to Rails",
+  test "delete is Rails' button_to DELETE form with the turbo confirmation; sharing links to native controls",
        %{user: user} do
     full_digest(user.id, 2023)
     {:ok, view, _html} = live_as(user, "/digests/2023")
@@ -122,7 +122,7 @@ defmodule DawarichWeb.DigestsLiveTest do
 
     assert has_element?(
              view,
-             ~s(#sharing_modal[phx-hook="RailsStimulus"] form[action="/digests/2023/sharing"] option[value="24h"][selected="selected"])
+             ~s(a[href="/digests/2023/sharing"])
            )
 
     assert has_element?(view, ~s(a.btn[href="/digests"]), "Back to All Digests")

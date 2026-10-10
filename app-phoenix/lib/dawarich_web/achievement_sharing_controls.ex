@@ -8,49 +8,11 @@ defmodule DawarichWeb.AchievementSharingControls do
 
   def controls(assigns) do
     ~H"""
-    <form
-      hidden={@set["sharing_enabled"] && "hidden"}
-      data-card-modal-target="createForm"
-      data-action="submit->card-modal#createPublicLink"
-      data-turbo="false"
-      class="button_to"
-      method="post"
-      action={"/achievements/"<>@set["key"]<>"/toggle_sharing"}
-    >
-      <input type="hidden" name="_method" value="patch" /><button
-        class="btn btn-sm btn-primary"
-        type="submit"
-      ><.icon name="share" class="w-4 h-4" aria_hidden />{t(
-        @locale,
-        "achievements.ui.enable_sharing",
-        %{}
-      )}</button><input type="hidden" name="authenticity_token" value={@csrf} /><input
-        type="hidden"
-        name="enabled"
-        value="true"
-      />
-    </form>
-    <form
-      hidden={!@set["sharing_enabled"] && "hidden"}
-      data-card-modal-target="disableForm"
-      data-turbo="false"
-      class="button_to"
-      method="post"
-      action={"/achievements/"<>@set["key"]<>"/toggle_sharing"}
-    >
-      <input type="hidden" name="_method" value="patch" /><button
-        class="btn btn-sm btn-ghost"
-        type="submit"
-      ><.icon name="lock" class="w-4 h-4" aria_hidden />{t(
-        @locale,
-        "achievements.ui.disable_sharing",
-        %{}
-      )}</button><input type="hidden" name="authenticity_token" value={@csrf} /><input
-        type="hidden"
-        name="enabled"
-        value="false"
-      />
-    </form>
+    <a href={"/achievements/" <> @set["key"] <> "/sharing"} class="btn btn-sm btn-primary">{t(
+      @locale,
+      "achievements.modal.share",
+      %{}
+    )}</a>
     <a
       class="btn btn-sm btn-outline"
       hidden={!@set["sharing_enabled"] && "hidden"}

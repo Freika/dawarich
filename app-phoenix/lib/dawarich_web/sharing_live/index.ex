@@ -11,6 +11,27 @@ defmodule DawarichWeb.SharingLive.Index do
   @impl true
   def handle_info(_, socket), do: {:noreply, socket}
   @impl true
+  def handle_event("report_sharing_update", attrs, socket) when is_map(attrs) do
+    result =
+      Dawarich.Sharing.change(
+        socket.assigns.current_scope,
+        socket.assigns.resource,
+        :update,
+        Map.take(attrs, ~w(enabled expiration))
+      )
+
+    socket = reload(socket)
+
+    case result do
+      {:ok, _} ->
+        {:noreply, assign(socket, errors: [])}
+
+      _ ->
+        {:noreply,
+         assign(socket, errors: [t(socket.assigns.locale, "errors.messages.invalid", %{})])}
+    end
+  end
+
   def handle_event("sharing_create", %{"shared_link" => attrs}, socket) when is_map(attrs) do
     values =
       Map.take(attrs, ~w(name expires_at start_date end_date audience))
@@ -122,9 +143,13 @@ defmodule DawarichWeb.SharingLive.Index do
   defp selected(page, _, _), do: page[:share]
 
   defp heading(locale, base) do
-    if base.type == :hub,
-      do: t(locale, "share_links.hubs.frame.share", %{}),
-      else: t(locale, "shared_links.modal_#{base.type}_create_form.create_share_link", %{})
+    if base.type in [:month, :digest, :achievement],
+      do: t(locale, "stats.month.share", %{}),
+      else:
+        if(base.type == :hub,
+          do: t(locale, "share_links.hubs.frame.share", %{}),
+          else: t(locale, "shared_links.modal_#{base.type}_create_form.create_share_link", %{})
+        )
   end
 
   defp confirmation_key(:regenerate),
@@ -172,6 +197,12 @@ defmodule DawarichWeb.SharingLive.Index do
         </.link>
       </nav>
       <%= cond do %>
+        <% @base_resource.type in [:month, :digest, :achievement] -> %>
+          <DawarichWeb.SharingNativeReport.form
+            resource={@base_resource}
+            page={@page}
+            locale={@locale}
+          />
         <% @base_resource.type == :hub and @tab == "make" -> %>
           <div class="flex flex-wrap gap-3">
             <a

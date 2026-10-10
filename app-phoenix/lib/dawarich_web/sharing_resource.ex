@@ -3,12 +3,32 @@ defmodule DawarichWeb.SharingResource do
   def from(path, owner, params) do
     resource =
       case String.split(path, "/", trim: true) do
-        ["share_links", "hub"] -> %{type: :hub}
-        ["share_links", "live", "new"] -> %{type: :live}
-        ["share_links", "timeline", "new"] -> %{type: :timeline}
-        ["trips", id, "share_link", "new"] -> %{type: :trip, id: number(id)}
-        ["tracks", id, "share_link", "new"] -> %{type: :track, id: number(id)}
-        _ -> nil
+        ["share_links", "hub"] ->
+          %{type: :hub}
+
+        ["share_links", "live", "new"] ->
+          %{type: :live}
+
+        ["share_links", "timeline", "new"] ->
+          %{type: :timeline}
+
+        ["trips", id, "share_link", "new"] ->
+          %{type: :trip, id: number(id)}
+
+        ["tracks", id, "share_link", "new"] ->
+          %{type: :track, id: number(id)}
+
+        ["stats", year, month, "sharing"] ->
+          %{type: :month, year: number(year), month: number(month)}
+
+        ["digests", year, "sharing"] ->
+          %{type: :digest, year: number(year)}
+
+        ["achievements", key, "sharing"] ->
+          %{type: :achievement, key: key}
+
+        _ ->
+          nil
       end
 
     if resource,
@@ -35,5 +55,8 @@ defmodule DawarichWeb.SharingResource do
 
   def back(%{type: :trip, id: id}), do: "/trips/#{id}"
   def back(%{type: :track, id: id}), do: "/tracks/#{id}"
+  def back(%{type: :month, year: year, month: month}), do: "/stats/#{year}/#{month}"
+  def back(%{type: :digest, year: year}), do: "/digests/#{year}"
+  def back(%{type: :achievement, key: key}), do: "/achievements/#{key}"
   def back(_), do: "/map/v2"
 end
