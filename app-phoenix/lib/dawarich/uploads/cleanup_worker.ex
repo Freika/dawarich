@@ -59,14 +59,7 @@ defmodule Dawarich.Uploads.CleanupWorker do
           log: false
         )
 
-        if next,
-          do:
-            repo.insert!(
-              Dawarich.Uploads.SweepWorker.new(%{},
-                scheduled_at: DateTime.from_naive!(next, "Etc/UTC")
-              ),
-              prefix: "oban"
-            )
+        if next, do: Dawarich.Uploads.SweepSchedule.enqueue!(repo, next)
 
         :ok
       end)

@@ -165,3 +165,8 @@ Connected import index/detail snapshots schedule one versioned nearest future st
 ## A/B review round 2: claimed object deletion debt
 
 `NativePurge.mark!` transfers matching claimed reservation identities into cancelled cleanup debt before attachment purge jobs or independent backend purge handbacks commit. The reservation is independent of the deleted blob/user and retains the target deadline. Shared attachments never authorize debt transfer. The shared purge worker fences/removes native blob rows transactionally, deletes objects outside its DB transactions and retains replayable job object identities on failure; legacy generated blobs retain their existing retry rows until successful deletion. Cleanup's local publication and remote late-arrival rules remain unchanged. Storage lifecycle inventory is in the approved milestone plan.
+
+
+## A/B review round 2: bounded sweep scheduling
+
+Every reservation, recurring remote cleanup and sweep successor schedules through `Uploads.SweepSchedule.enqueue!` within its existing repository transaction. A transaction-scoped advisory lock serializes the outstanding-job read/update/insert. It retains one available/scheduled/retryable successor, moves its deadline earlier when required, and cancels historical duplicate queued chains; an executing sweep may coexist with that one successor. No-debt sweeps cancel outstanding successors. Oban changeset `unique` metadata alone is not the mechanism: raw Ecto insertion is used only behind this explicit single-chain lock. Due row batches remain bounded at 100, and completed jobs are ordinary Oban history.

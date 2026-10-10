@@ -63,9 +63,9 @@ defmodule Dawarich.Uploads.SweepWorker do
             do: next,
             else: NaiveDateTime.add(NaiveDateTime.utc_now(), 1)
 
-        repo.insert!(__MODULE__.new(%{}, scheduled_at: DateTime.from_naive!(at, "Etc/UTC")),
-          prefix: "oban"
-        )
+        Dawarich.Uploads.SweepSchedule.enqueue!(repo, at)
+      else
+        Dawarich.Uploads.SweepSchedule.enqueue!(repo, nil)
       end
 
       length(rows)

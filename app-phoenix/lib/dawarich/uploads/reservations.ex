@@ -50,12 +50,7 @@ defmodule Dawarich.Uploads.Reservations do
           log: false
         )
 
-        repo.insert!(
-          Dawarich.Uploads.SweepWorker.new(%{},
-            scheduled_at: DateTime.add(DateTime.utc_now(), limits.ttl)
-          ),
-          prefix: "oban"
-        )
+        Dawarich.Uploads.SweepSchedule.enqueue!(repo, NaiveDateTime.add(now, limits.ttl))
 
         ref
       end)
