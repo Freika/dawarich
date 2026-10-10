@@ -32,6 +32,7 @@ defmodule DawarichWeb.BrowserMapRoutes do
               {"/timeline", :timeline},
               {"/hexagons", :hexagons},
               {"/fog", :fog},
+              {"/flights", :flights},
               {"/tiles/points/:z/:x/:y", :point_tiles},
               {"/tiles/tracks/:z/:x/:y", :track_tiles}
             ] do

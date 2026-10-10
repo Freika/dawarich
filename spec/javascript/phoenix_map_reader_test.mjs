@@ -137,3 +137,32 @@ test("reader deadlines abort their own request and clear the matching timer", as
   assert.equal(cleared, 1)
   reader.destroy()
 })
+
+test("reader deadline settles even when transport ignores abort", async () => {
+  const pending = deferred()
+  let expire
+  const reader = createReader({
+    origin: "https://map.test",
+    fetch: () => pending.promise,
+    timers: {
+      setTimeout(fn) {
+        expire = fn
+        return 1
+      },
+      clearTimeout() {},
+    },
+  })
+  let settled = false
+  const request = reader.read("points").catch((error) => {
+    settled = error.name === "AbortError"
+  })
+  try {
+    expire()
+    for (let i = 0; i < 12; i++) await Promise.resolve()
+    assert.equal(settled, true)
+  } finally {
+    pending.resolve(response([]))
+    await request
+    reader.destroy()
+  }
+})

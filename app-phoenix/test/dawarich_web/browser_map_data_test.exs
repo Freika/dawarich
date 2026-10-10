@@ -37,6 +37,35 @@ defmodule DawarichWeb.BrowserMapDataTest do
     )
   end
 
+  test "cookie flight snapshot is owned and constrained to the requested range", %{
+    id: id,
+    foreign: foreign
+  } do
+    for {owner, at} <- [
+          {id, "2026-03-29 01:00:00"},
+          {id, "2026-03-28 01:00:00"},
+          {foreign, "2026-03-29 01:00:00"}
+        ] do
+      Repo.query!(
+        "INSERT INTO flights (external_id, user_id, departure_time, arrival_time, from_lon, from_lat, to_lon, to_lat, created_at, updated_at) VALUES (extract(day from $2::text::timestamp)::integer, $1, $2::text::timestamp, $2::text::timestamp + interval '1 hour', 13, 52, 14, 53, now(), now())",
+        [owner, at]
+      )
+    end
+
+    conn = read(id, "/flights?start_at=2026-03-29T00:00:00Z&end_at=2026-03-29T03:00:00Z")
+    assert conn.status == 200
+    features = Jason.decode!(conn.resp_body)["features"]
+    assert length(features) == 1
+
+    [[owned]] =
+      Repo.query!(
+        "SELECT id FROM flights WHERE user_id = $1 AND departure_time::date = '2026-03-29'",
+        [id]
+      ).rows
+
+    assert hd(features)["properties"]["id"] == owned
+  end
+
   defp read(id, path), do: get(RailsUser.signed_in(id), "/native/map/data" <> path)
 
   test "cookie map read retains API entitlement and account isolation", %{id: id} do

@@ -1,5 +1,6 @@
 import { createBaseLayers } from "../layers/tile_layers.js"
 import { createTileFreshness } from "../data/tile_freshness.js"
+import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createReader } from "../data/reader.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { createMapRuntime } from "./create_map.js"
@@ -61,17 +62,7 @@ export function mountHost({
   })
   owner.source = createStudioSource({
     getState: () => owner.config,
-    readSnapshot: async (state, options) => ({
-      points: await reader.pages(
-        "points",
-        {
-          start_at: state.range.startAt,
-          end_at: state.range.endAt,
-          import_id: state.range.importId,
-        },
-        { signal: options.signal },
-      ),
-    }),
+    readSnapshot: (state, options) => readRouteSnapshot(reader, state, options),
     applyDates: (range) =>
       new Promise((resolve) => pushEvent("map:range", range, resolve)),
   })

@@ -2,7 +2,7 @@ defmodule DawarichWeb.NativeMapHost do
   @moduledoc false
   use Phoenix.Component
 
-  @fields ~w(namespace revision title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName)
+  @fields ~w(namespace revision title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName flightsEnabled)
   @range ~w(startAt endAt importId timezone)
   @options ~w(center zoom minZoom maxZoom bearing pitch projection interactive attributionControl)
 

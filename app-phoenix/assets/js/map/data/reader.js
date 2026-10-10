@@ -19,6 +19,7 @@ const paths = {
   timeline: "timeline",
   hexagons: "hexagons",
   fog: "fog",
+  flights: "flights",
 }
 
 export function createReader({
@@ -53,13 +54,16 @@ export function createReader({
   async function read(resource, params = {}, { signal, onData } = {}) {
     const operation = scope.begin(signal, timeoutMs)
     try {
-      const response = await fetch(url(resource, params).href, {
-        signal: operation.signal,
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      })
+      const response = await operation.wait(
+        fetch(url(resource, params).href, {
+          signal: operation.signal,
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        }),
+      )
       operation.check()
-      const data = response.status === 204 ? [] : await response.json()
+      const data =
+        response.status === 204 ? [] : await operation.wait(response.json())
       operation.check()
       const noData =
         resource === "bounds" &&

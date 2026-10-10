@@ -13,6 +13,7 @@ defmodule DawarichWeb.BrowserMapData do
     bounds: {Api.HexagonsController, :bounds},
     hexagons: {Api.HexagonsController, :index},
     fog: {Api.HexagonsController, :fog},
+    flights: {Api.GeoController, :flights},
     photos: {Api.PhotosController, :index},
     thumbnail: {Api.PhotosController, :thumbnail_closure},
     locations: {Api.LocationsController, :index_closure},
