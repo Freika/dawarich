@@ -64,6 +64,12 @@ defmodule DawarichWeb.NativeM6Routes do
           session: {DawarichWeb.MapLiveAuth, :live_session, []},
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: false do
+          for path <- ~w(/map.html /map/v2.html) do
+            live path, DawarichWeb.MapLive.Native, :index,
+              container: {:div, class: "contents"},
+              metadata: %{retired: true}
+          end
+
           live "/map", DawarichWeb.MapLive.Native, :index,
             container: {:div, class: "contents"},
             metadata: %{retired: true}

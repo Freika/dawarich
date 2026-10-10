@@ -62,11 +62,11 @@ defmodule DawarichWeb.PublicMapAuth do
         now: DateTime.utc_now()
       )
 
-    if capability && params["id"] == capability.id do
+    if capability && same_grant?(params["id"], capability.id) do
       socket
       |> attach_hook(:public_admission_event, :handle_event, fn _, _, s -> authorize(s) end)
       |> attach_hook(:public_admission_params, :handle_params, fn next, _, s ->
-        if next["id"] == s.assigns.public_capability.id,
+        if same_grant?(next["id"], s.assigns.public_capability.id),
           do: authorize(s),
           else: {:halt, refuse(s, :not_found)}
       end)
@@ -78,6 +78,8 @@ defmodule DawarichWeb.PublicMapAuth do
       {:cont, refuse(socket, :not_found)}
     end
   end
+
+  defp same_grant?(path_id, grant_id), do: path_id in [grant_id, grant_id <> ".html"]
 
   def authorize(socket) do
     socket = navigation(socket)

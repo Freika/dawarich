@@ -71,11 +71,11 @@ defmodule DawarichWeb.PageRoutes do
         pipe_through :map_redirect
 
         for path <- ["/map/v1", "/map/v1.:format"] do
-          get path, DawarichWeb.MapRedirects, :legacy, metadata: %{rails_key: "map"}
+          get path, DawarichWeb.MapRedirects, :legacy, metadata: %{retired: true}
         end
 
         for path <- ["/maps/v2", "/maps/v2.:format"] do
-          get path, DawarichWeb.MapRedirects, :plural, metadata: %{rails_key: "map"}
+          get path, DawarichWeb.MapRedirects, :plural, metadata: %{retired: true}
         end
       end
 

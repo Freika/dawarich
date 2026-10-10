@@ -71,7 +71,7 @@ defmodule DawarichWeb.Strangler do
 
   @impl true
   def call(conn, _opts) do
-    conn = DawarichWeb.PageEnvelope.prepare(conn)
+    conn = conn |> DawarichWeb.NativeM6Envelope.prepare() |> DawarichWeb.PageEnvelope.prepare()
 
     cond do
       conn.halted ->
