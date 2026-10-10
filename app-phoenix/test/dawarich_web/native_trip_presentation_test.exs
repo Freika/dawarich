@@ -82,6 +82,47 @@ defmodule DawarichWeb.NativeTripPresentationTest do
     end
   end
 
+  test "native trip day controls validate fresh owned days and clear refused maps" do
+    id = System.unique_integer([:positive])
+
+    RailsUser.insert!(%{
+      id: id,
+      email: "trip-days-#{id}@dawarich.test",
+      settings: %{"timezone" => "UTC"}
+    })
+
+    TripsSeeds.trip!(%{
+      id: id * 10,
+      user_id: id,
+      started_at: ~N[2026-06-01 12:00:00],
+      ended_at: ~N[2026-06-03 12:00:00]
+    })
+
+    {:ok, view, _} = open(id)
+    assert has_element?(view, "#native-trip-day-2026-06-02 [phx-click='trip:day']")
+    view |> element("#native-trip-day-2026-06-02 [phx-click='trip:day']") |> render_click()
+    assert_push_event(view, "trip:select_day", %{day: "2026-06-02"})
+    assert has_element?(view, "#native-trip-day-2026-06-02[open]")
+    render_click(view, "trip:day", %{"day" => "2026-06-02"})
+    assert_push_event(view, "trip:select_day", %{day: nil})
+    refute has_element?(view, "#native-trip-day-2026-06-02[open]")
+    render_click(view, "trip:day", %{"day" => "2026-06-30"})
+    assert :sys.get_state(view.pid).socket.assigns.selected_day == nil
+
+    Repo.query!("UPDATE trips SET ended_at=$1 WHERE id=$2", [~N[2026-06-01 18:00:00], id * 10],
+      log: false
+    )
+
+    render_click(view, "trip:day", %{"day" => "2026-06-03"})
+    assert :sys.get_state(view.pid).socket.assigns.selected_day == nil
+    refute has_element?(view, "#native-trip-day-2026-06-03")
+    Repo.query!("DELETE FROM trips WHERE id=$1", [id * 10], log: false)
+    render_click(view, "trip:day", %{"day" => "2026-06-01"})
+    assert_push_event(view, "map:clear", %{})
+    refute has_element?(view, "#trip-shell")
+    assert :sys.get_state(view.pid).socket.assigns.page_title == nil
+  end
+
   defp open(id, resource \\ nil) do
     path = "/trips/#{resource || id * 10}"
 

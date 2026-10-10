@@ -5,6 +5,8 @@ defmodule DawarichWeb.NativeTripContent do
   attr :page, :map, required: true
   attr :locale, :string, required: true
 
+  attr :selected_day, :string, default: nil
+
   def content(assigns) do
     ~H"""
     <section id="native-trip-summary" class="min-w-0 max-w-full">
@@ -17,10 +19,20 @@ defmodule DawarichWeb.NativeTripContent do
         <details
           :for={day <- @page.days}
           id={"native-trip-day-#{day.date}"}
+          open={@selected_day == Date.to_iso8601(day.date)}
           class="collapse collapse-arrow bg-base-200 min-w-0"
         >
           <summary class="collapse-title flex flex-wrap items-center gap-2 text-sm min-w-0">
-            <span>{LocalizedDate.l(@locale, day.date, "short_month_day_weekday")}</span>
+            <button
+              type="button"
+              phx-click="trip:day"
+              phx-value-day={Date.to_iso8601(day.date)}
+              aria-pressed={@selected_day == Date.to_iso8601(day.date)}
+              class="btn btn-sm btn-ghost h-auto whitespace-normal"
+            >
+              {LocalizedDate.l(@locale, day.date, "short_month_day_weekday")}
+            </button>
+            <span class="sr-only">{LocalizedDate.l(@locale, day.date, "short_month_day_weekday")}</span>
             <span :if={day.stats}>
               {LocalizedTime.l(@locale, day.stats.first, "hour_minute")} – {LocalizedTime.l(
                 @locale,
