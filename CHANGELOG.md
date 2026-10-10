@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Mobile achievements API for browsing lifetime collections, searching and filtering cards, sharing public collection links, and acknowledging newly earned achievements. Unlocks use the same claim mechanism across web and mobile, and account responses advertise achievements support. (#3796)
+
 ## [1.15.3] - 2026-09-30, Berlin
 
 ### Added
