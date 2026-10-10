@@ -7,7 +7,6 @@ defmodule DawarichWeb.AuthTwoFactor.Response do
   alias DawarichWeb.{
     AuthCookie,
     LayoutAssigns,
-    Layouts,
     Locale,
     RailsCsrf,
     RailsHeaders,
@@ -34,36 +33,38 @@ defmodule DawarichWeb.AuthTwoFactor.Response do
 
     conn = assign(conn, :flash_messages, flashes)
 
-    assigns =
-      Map.merge(conn.assigns, %{
-        __changed__: nil,
-        flash: %{},
-        rails_csrf_token: RailsCsrf.masked_token(session),
-        page_title: Form.title(render.kind, conn.assigns.locale),
-        kind: render.kind,
-        enabled:
-          if(Map.has_key?(render, :enabled),
-            do: render.enabled,
-            else: render.user.otp_required_for_login
-          ),
-        admin: user.admin,
-        two_factor: true,
-        secret: render[:secret],
-        uri: render[:uri],
-        codes: render[:codes] || [],
-        navbar: Navbar.load(user, now: conn.assigns.now, self_hosted: conn.assigns.self_hosted)
-      })
+    assigns = %{
+      locale: conn.assigns.locale,
+      self_hosted: conn.assigns.self_hosted,
+      __changed__: nil,
+      flash: %{},
+      rails_csrf_token: RailsCsrf.masked_token(session),
+      page_title: Form.title(render.kind, conn.assigns.locale),
+      kind: render.kind,
+      enabled:
+        if(Map.has_key?(render, :enabled),
+          do: render.enabled,
+          else: render.user.otp_required_for_login
+        ),
+      admin: user.admin,
+      two_factor: true,
+      secret: render[:secret],
+      uri: render[:uri],
+      codes: render[:codes] || [],
+      navbar: Navbar.load(user, now: conn.assigns.now, self_hosted: conn.assigns.self_hosted)
+    }
 
     body = Form.page(assigns)
-    app = Layouts.app(Map.put(assigns, :inner_content, body))
-    html = Layouts.root(Map.put(assigns, :inner_content, app)) |> Phoenix.HTML.Safe.to_iodata()
 
     conn
     |> AuthCookie.session(encoded)
     |> headers(flashes != [])
-    |> put_resp_content_type("text/html")
-    |> send_resp(status, html)
-    |> halt()
+    |> DawarichWeb.AuthPageController.document(body, status,
+      chrome: :authenticated,
+      csrf_token: assigns.rails_csrf_token,
+      title: assigns.page_title,
+      navbar: assigns.navbar
+    )
   end
 
   def redirect(conn, reason, context \\ %{}) do

@@ -2,13 +2,13 @@ defmodule DawarichWeb.AuthTwoFactor.FormTest do
   use ExUnit.Case, async: false
 
   alias Dawarich.Auth.TwoFactor.Totp
-  alias Dawarich.Test.ParityHTML
+  alias Dawarich.Test.NativeAuthHTTP
   alias DawarichWeb.AuthTwoFactor.Form
 
   @root "test/fixtures/auth/two_factor"
   @rows (@root <> "/requests.json") |> File.read!() |> Jason.decode!()
 
-  test "management forms match source EN and DE markup and empty rejected code" do
+  test "management forms preserve source EN DE fields labels capabilities and empty rejected code" do
     for path <- Path.wildcard(@root <> "/*.html"),
         Path.basename(path) != "verify_missing_secret.html" do
       name = Path.basename(path, ".html")
@@ -49,19 +49,20 @@ defmodule DawarichWeb.AuthTwoFactor.FormTest do
         |> Phoenix.HTML.Safe.to_iodata()
         |> IO.iodata_to_binary()
 
-      assert ParityHTML.normalize(html) == ParityHTML.normalize(source),
-             name <>
-               ": " <>
-               ParityHTML.first_difference(
-                 ParityHTML.normalize(html),
-                 ParityHTML.normalize(source)
-               )
+      assert NativeAuthHTTP.fields(html) == NativeAuthHTTP.fields(source), name
+      assert NativeAuthHTTP.text(html, "label") == NativeAuthHTTP.text(source, "label"), name
+      assert NativeAuthHTTP.text(html, "h1") == NativeAuthHTTP.text(source, "h1"), name
+      secret_visible = manual == "" or String.contains?(html, manual)
+      assert secret_visible
+      codes_preserved = Enum.all?(codes, &String.contains?(html, &1))
+      assert codes_preserved
+      assert String.contains?(html, "<svg") == String.contains?(source, "<svg")
 
       assert html =~ "tab tab-lg tab-active" == (kind == :show)
 
       for form <- html |> LazyHTML.from_fragment() |> LazyHTML.query("form") |> LazyHTML.to_tree() do
         {"form", attrs, _} = form
-        assert Map.new(attrs)["data-turbo"] == "false"
+        assert Map.has_key?(Map.new(attrs), "data-auth-form")
       end
 
       refute html =~ ~s(value="123456")

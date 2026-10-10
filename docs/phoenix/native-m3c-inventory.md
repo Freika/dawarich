@@ -76,3 +76,7 @@ Initial and repeated failure responses use the anonymous HTTP renderer, with emp
 ## B4a — scoped 2FA operations
 
 `Accounts.Security.manage_two_factor/5` validates admitted scope/server proof and allowed fields, then preserves the existing locked closure and required presentation scalars. Secrets stay in local rendering results; no Account result enters conn state. RED `impl-m3c-b4a-red.log`; GREEN 3 cases; salt/admin/passwordfirst mutations fail named cases (exit 2); corrected fresh-admin mutation replaces a discarded stale-role probe. Restored `impl-m3c-b4a-restored-green.log`: 16 passed, exit 0, warnings clean. B4 templates and browser validation remain pending.
+
+## B4b — native 2FA display
+
+Native authenticated documents and HTTP tabs retain setup/verification/error/backup/disable protocol. Backup values are selectable, wrapped, untruncated and one-column at narrow widths. Secret/URI/codes are function-local rendering arguments. RED `impl-m3c-b4b-red.log` 0/3 exit 2; GREEN 3/3; state/code/chrome/backup mutations each exit 2 with named failures. Restored `impl-m3c-b4b-restored-green.log`: 63 passed, exit 0, warnings clean. FormTest exact HTML → source fields/labels/title/QR and secret/code visibility booleans; ResponseTest exact feature/flash markup → source fields/labels and flash text, retaining all statuses/cookies/cache/title assertions. D2 browser verification pending.

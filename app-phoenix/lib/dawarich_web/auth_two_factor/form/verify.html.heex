@@ -8,11 +8,13 @@
     self_hosted={@self_hosted}
     admin={@admin}
     two_factor={@two_factor}
+    native
+    http
   />
 
   <div class="max-w-lg">
     <div class="card bg-base-200 shadow-xl">
-      <div class="card-body">
+      <div class="card-body min-w-0">
         <h2 class="text-xl font-bold mb-2">
           {t(@locale, "settings.two_factor.verify.scan_qr_code", %{})}
         </h2>
@@ -54,7 +56,7 @@
           action="/settings/two_factor/verify"
           accept-charset="UTF-8"
           method="post"
-          data-turbo="false"
+          data-auth-form
           class="space-y-4"
         >
           <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
@@ -85,7 +87,6 @@
               name="commit"
               value={t(@locale, "settings.two_factor.verify.verify_and_enable", %{})}
               class="btn btn-primary w-full"
-              data-disable-with={t(@locale, "settings.two_factor.verify.verify_and_enable", %{})}
             />
           </div>
         </form>

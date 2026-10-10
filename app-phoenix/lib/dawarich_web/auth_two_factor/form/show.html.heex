@@ -6,13 +6,15 @@
     self_hosted={@self_hosted}
     admin={@admin}
     two_factor={@two_factor}
+    native
+    http
   />
 
   <div class="max-w-lg">
     <div class="card bg-base-200 shadow-xl">
-      <div class="card-body">
+      <div class="card-body min-w-0">
         <%= if @enabled do %>
-          <div class="flex items-center gap-3 mb-4">
+          <div class="flex flex-wrap items-center gap-3 mb-4">
             <.icon name="shield-check" class="text-success w-8 h-8" />
             <div>
               <h2 class="text-xl font-bold">
@@ -42,7 +44,7 @@
             action="/settings/two_factor"
             accept-charset="UTF-8"
             method="post"
-            data-turbo="false"
+            data-auth-form
             class="space-y-4"
           >
             <input type="hidden" name="_method" value="delete" /><input
@@ -91,12 +93,11 @@
                 name="commit"
                 value={t(@locale, "settings.two_factor.show.disable_2fa", %{})}
                 class="btn btn-error w-full"
-                data-disable-with={t(@locale, "settings.two_factor.show.disable_2fa", %{})}
               />
             </div>
           </form>
         <% else %>
-          <div class="flex items-center gap-3 mb-4">
+          <div class="flex flex-wrap items-center gap-3 mb-4">
             <.icon name="shield" class="text-warning w-8 h-8" />
             <div>
               <h2 class="text-xl font-bold">
@@ -126,7 +127,7 @@
             action="/settings/two_factor"
             accept-charset="UTF-8"
             method="post"
-            data-turbo="false"
+            data-auth-form
           >
             <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
             <input
@@ -134,7 +135,6 @@
               name="commit"
               value={t(@locale, "settings.two_factor.show.enable_2fa", %{})}
               class="btn btn-primary w-full"
-              data-disable-with={t(@locale, "settings.two_factor.show.enable_2fa", %{})}
             />
           </form>
         <% end %>
