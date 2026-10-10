@@ -7,7 +7,7 @@ defmodule Dawarich.Sharing.PublicSnapshot do
     {:ok, latest} = if kind == :live, do: Points.live(link, now), else: {:ok, []}
     {:ok, points} = points(link, kind)
     photos = if kind != :missing_resource, do: Photos.gallery(link), else: []
-    photos = Enum.map(photos, fn {:object, fields} -> Map.new(fields) end)
+    photos = photos(photos, if(resource, do: resource.zone, else: "UTC"))
 
     %{
       resource: resource,
@@ -21,6 +21,32 @@ defmodule Dawarich.Sharing.PublicSnapshot do
         zone: if(resource, do: resource.zone, else: "UTC")
       }
     }
+  end
+
+  def photos(photos, zone) do
+    Enum.map(photos, fn {:object, fields} ->
+      photo = Map.new(fields)
+      epoch = photo_epoch(photo["taken_at"], zone)
+
+      if epoch do
+        [[date]] =
+          Dawarich.Repo.query!("SELECT (to_timestamp($1) AT TIME ZONE $2)::date", [epoch, zone],
+            log: false
+          ).rows
+
+        photo
+        |> Map.put("taken_at", DateTime.from_unix!(epoch) |> DateTime.to_iso8601())
+        |> Map.put("day_key", Date.to_iso8601(date))
+      else
+        Map.put(photo, "day_key", nil)
+      end
+    end)
+  end
+
+  defp photo_epoch(raw, zone) do
+    Dawarich.Imports.ImportTime.parse(raw, zone, DateTime.utc_now())
+  rescue
+    _ -> nil
   end
 
   defp points(link, :live), do: Points.route(link)

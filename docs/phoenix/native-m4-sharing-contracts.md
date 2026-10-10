@@ -60,3 +60,7 @@ Every replacement/refusal/disconnect aborts pending requests and images, increme
 ## Unlock snapshot binding (review round 1)
 
 Public bootstrap grants retain an opaque phrase digest derived from the exact link snapshot whose HTTP cookie was accepted. Fresh admission compares this digest with the current active link alongside its revocation version and audience. Adding or rotating protection between the HTTP check and issuance refuses the grant, rather than promoting an old proof to the new credential version. Raw phrases remain outside native state.
+
+## Native photo day assignment (review round 1)
+
+Public native photo DTOs interpret provider local timestamps in the owner's IANA zone using ImportTime, carry an explicit UTC timestamp and authoritative day_key, and preserve offset timestamp instants. Day galleries compare day_key directly; browser timezone cannot change membership. Undated or invalid timestamps retain the photo without assigning it to a day. Independent HTTP photo DTOs remain unchanged.

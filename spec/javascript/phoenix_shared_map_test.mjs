@@ -234,11 +234,13 @@ test("public gallery loads authorized day photos lazily and disconnect aborts im
     const photos = [
       {
         taken_at: "2026-05-10T12:00:00Z",
+        day_key: "2026-05-10",
         thumbnail_url:
           "/api/v1/shared/synthetic/photos/visible/thumbnail?source=immich",
       },
       {
         taken_at: "2026-05-10T12:00:00Z",
+        day_key: "2026-05-10",
         thumbnail_url: "https://foreign.example/photo",
       },
     ]
@@ -459,3 +461,26 @@ test("first replay draw positions its marker before attaching to MapLibre", asyn
   assert.equal(panel.hidden, false)
   replay.clear()
 })
+
+for (const ownerZone of ["UTC", "America/New_York"]) {
+  test(`day galleries use the authoritative ${ownerZone} day for local midnight in a different browser zone`, () => {
+    const previous = process.env.TZ
+    process.env.TZ = "Europe/Berlin"
+    try {
+      const details = {
+        open: false,
+        dataset: { publicGalleryDay: "2026-05-10" },
+      }
+      const el = {
+        querySelector: () => null,
+        querySelectorAll: () => [details],
+      }
+      const photo = { taken_at: "2026-05-10T00:30:00", day_key: "2026-05-10" }
+      showGallery(el, [photo], ownerZone)
+      assert.deepEqual(details.publicPhotos, [photo])
+    } finally {
+      if (previous === undefined) delete process.env.TZ
+      else process.env.TZ = previous
+    }
+  })
+}

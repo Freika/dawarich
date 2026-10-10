@@ -28,22 +28,14 @@ export function clearGalleries(el) {
     content.replaceChildren()
 }
 
-export function showGallery(el, photos, zone) {
+export function showGallery(el, photos, _zone) {
   const content = el.querySelector(
     "div[data-public-gallery][data-public-gallery-content]",
   )
   if (content) images(content, photos)
   for (const details of el.querySelectorAll("details[data-public-gallery]")) {
     details.publicPhotos = photos.filter((photo) => {
-      const at = new Date(photo.taken_at)
-      if (Number.isNaN(at.getTime())) return false
-      const day = new Intl.DateTimeFormat("en-CA", {
-        timeZone: zone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(at)
-      return day === details.dataset.publicGalleryDay
+      return photo.day_key === details.dataset.publicGalleryDay
     })
     openGallery(details)
   }
