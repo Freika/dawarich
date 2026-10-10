@@ -20,6 +20,9 @@ function control() {
     setAttribute(name, value) {
       node.attributes[name] = value
     },
+    removeAttribute(name) {
+      delete node.attributes[name]
+    },
     addEventListener: (type, fn) => listeners.set(type, fn),
     removeEventListener: (type, fn) =>
       listeners.get(type) === fn && listeners.delete(type),
@@ -111,4 +114,53 @@ test("replay panel drives speed, day navigation, scrubber seek and live state", 
   panel.destroy()
   for (const element of Object.values(elements))
     assert.equal(element.listeners.size, 0)
+})
+
+test("native replay exposes numeric day counters and clears them with its panel owner", () => {
+  const manager = new ReplayManager({ timezone: "UTC" })
+  manager.setPoints([
+    point("2026-06-01T08:00:00Z", 5),
+    point("2026-06-02T09:30:00Z", 2),
+  ])
+  const elements = Object.fromEntries(
+    [
+      "play",
+      "speed",
+      "speedLabel",
+      "prev",
+      "next",
+      "day",
+      "dayCount",
+      "time",
+      "velocity",
+      "noData",
+      "scrubber",
+      "follow",
+    ].map((name) => [name, control()]),
+  )
+  const replay = {
+    manager,
+    pause() {},
+    play() {},
+    seek() {},
+    setSpeed() {},
+    recenter() {},
+  }
+  const panel = createReplayPanel({ elements, replay, translate })
+  assert.deepEqual(
+    Object.fromEntries(
+      Object.entries(elements.dayCount.attributes).filter(([key]) =>
+        key.startsWith("data-replay-"),
+      ),
+    ),
+    {
+      "data-replay-day-count": "2",
+      "data-replay-day-index": "0",
+      "data-replay-point-count": "1",
+    },
+  )
+  elements.next.fire("click")
+  assert.equal(elements.dayCount.attributes["data-replay-day-index"], "1")
+  panel.destroy()
+  assert.equal(elements.dayCount.attributes["data-replay-day-count"], undefined)
 })

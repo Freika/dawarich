@@ -47,6 +47,12 @@ export function createReplayPanel({ elements, replay, translate }) {
   }
 
   function refresh() {
+    for (const [key, value] of Object.entries({
+      "day-count": manager.getDayCount(),
+      "day-index": manager.currentDayIndex,
+      "point-count": manager.getCurrentDayPointCount(),
+    }))
+      elements.dayCount.setAttribute?.(`data-replay-${key}`, String(value))
     elements.day.textContent = manager.getCurrentDayDisplay()
     elements.dayCount.textContent = translate("replay.day_count", {
       current: manager.currentDayIndex + 1,
@@ -108,6 +114,8 @@ export function createReplayPanel({ elements, replay, translate }) {
     destroy() {
       for (const unbind of bindings.splice(0)) unbind()
       scrubber.destroy()
+      for (const key of ["day-count", "day-index", "point-count"])
+        elements.dayCount.removeAttribute?.(`data-replay-${key}`)
     },
   }
 }
