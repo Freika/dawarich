@@ -17,6 +17,12 @@ defmodule DawarichWeb.NativeMapPage do
         settings={@map_settings}
         config={@map_config}
       />
+      <DawarichWeb.NativePlaceFilters.filters
+        :if={@map_url["panel"] == "layers" && assigns[:map_settings]}
+        tags={@page.tags}
+        filters={@map_settings.saved["places_tag_filters"]}
+        locale={@locale}
+      />
       <DawarichWeb.NativeMapControls.date_navigation
         url={@map_url}
         window={@page.window}

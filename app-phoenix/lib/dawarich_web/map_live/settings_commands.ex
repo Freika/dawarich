@@ -32,6 +32,26 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     save(socket, %{"point_dragging_enabled" => enabled, "enabled_map_layers" => layers})
   end
 
+  def handle_event("settings:place_tags_all", %{"enabled" => value}, socket)
+      when value in ["true", "false"] do
+    choices = ["untagged" | Enum.map(socket.assigns.page.tags, & &1.id)]
+    save(socket, %{"places_tag_filters" => if(value == "true", do: choices, else: [])})
+  end
+
+  def handle_event("settings:place_tags", params, socket) do
+    allowed =
+      Map.new(socket.assigns.page.tags, &{to_string(&1.id), &1.id})
+      |> Map.put("untagged", "untagged")
+
+    filters =
+      List.wrap(params["place_tag_ids"])
+      |> Enum.filter(&Map.has_key?(allowed, &1))
+      |> Enum.map(&allowed[&1])
+      |> Enum.uniq()
+
+    save(socket, %{"places_tag_filters" => filters})
+  end
+
   def handle_event("settings:map_layers", params, socket) do
     layers =
       List.wrap(params["layers"])

@@ -396,6 +396,91 @@ defmodule DawarichWeb.NativeM6HostTest do
     |> Jason.decode!()
   end
 
+  test "native place tag filters retain name order colors and persist only owned choices", %{
+    id: id
+  } do
+    other = System.unique_integer([:positive])
+    RailsUser.insert!(%{id: other, email: "place-tags-other-#{other}@dawarich.test"})
+    stamp = NaiveDateTime.utc_now(:second)
+
+    for {tag_id, owner, name} <- [
+          {id * 10, id, "Zoo"},
+          {id * 10 + 1, id, "Alpha"},
+          {id * 10 + 2, other, "Foreign"}
+        ] do
+      Dawarich.Repo.insert_all("tags", [
+        %{
+          id: tag_id,
+          user_id: owner,
+          name: name,
+          color: "#123456",
+          created_at: stamp,
+          updated_at: stamp
+        }
+      ])
+    end
+
+    {:ok, view, _} = open(id, "/map/v2?panel=layers")
+
+    names =
+      render(view)
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("#native-place-filter [data-place-tag-name]")
+      |> LazyHTML.attribute("data-place-tag-name")
+
+    assert names == ["Alpha", "Zoo"]
+
+    assert has_element?(
+             view,
+             "#native-place-filter [data-place-tag-name=Alpha][style='border-color: #123456; color: #123456;']"
+           )
+
+    view
+    |> form("#native-place-filter", %{"place_tag_ids" => [to_string(id * 10 + 1), "untagged"]})
+    |> render_change()
+
+    assert Dawarich.Accounts.get(id).settings["places_tag_filters"] == [id * 10 + 1, "untagged"]
+    assert config(view)["placesTagFilters"] == [id * 10 + 1, "untagged"]
+
+    render_hook(view, "settings:place_tags", %{
+      "place_tag_ids" => [
+        to_string(id * 10),
+        to_string(id * 10 + 2),
+        "invalid",
+        to_string(id * 10)
+      ]
+    })
+
+    assert Dawarich.Accounts.get(id).settings["places_tag_filters"] == [id * 10]
+    refute render(view) =~ "Foreign"
+  end
+
+  test "native all-place-tag control preserves all and no-place filter lists", %{id: id} do
+    stamp = NaiveDateTime.utc_now(:second)
+
+    Dawarich.Repo.insert_all("tags", [
+      %{
+        id: id * 10,
+        user_id: id,
+        name: "Alpha",
+        color: "#123456",
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    {:ok, view, _} = open(id, "/map/v2?panel=layers")
+    view |> form("#native-place-filter", %{"place_tag_ids" => ["untagged"]}) |> render_change()
+    assert config(view)["placesTagFilters"] == ["untagged"]
+    view |> element("#native-place-tags-all") |> render_click()
+    assert config(view)["placesTagFilters"] == ["untagged", id * 10]
+    assert has_element?(view, "#native-place-tags-all[aria-pressed=true]")
+    view |> element("#native-place-tags-all") |> render_click()
+    assert config(view)["placesTagFilters"] == []
+    assert has_element?(view, "#native-place-tags-all[aria-pressed=false]")
+    refute has_element?(view, "#native-place-filter input[checked]")
+  end
+
   defp open(id, path, locale \\ "en") do
     RailsUser.signed_in(id)
     |> RailsUser.connecting_as(id)
