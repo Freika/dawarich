@@ -42,7 +42,12 @@ filtered_parameters = [
   "authorization",
   "cookie",
   "checksum",
-  "bootstrap"
+  "bootstrap",
+  "capability",
+  "invitation",
+  "public_id",
+  "share_id",
+  "uuid"
 ]
 
 config :phoenix, :filter_parameters, filtered_parameters

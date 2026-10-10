@@ -155,7 +155,7 @@ defmodule Dawarich.LogRedaction do
             @filtered
 
           true ->
-            binary |> scrub_pairs() |> scrub_json()
+            binary |> scrub_pairs() |> scrub_json() |> scrub_session()
         end
     end
   rescue
@@ -207,6 +207,16 @@ defmodule Dawarich.LogRedaction do
     Regex.replace(~r/"([^"\\]*+)"(\s*+:\s*+)"(?:[^"\\]|\\.)*+"/, binary, fn whole, key, colon ->
       if sensitive?(key), do: ~s("#{key}"#{colon}"#{@filtered}"), else: whole
     end)
+  end
+
+  defp scrub_session(binary) do
+    Regex.replace(
+      ~r/"([^"\\]*+)"(\s*+=>\s*+)"(?:[^"\\]|\\.)*+"/,
+      binary,
+      fn whole, key, arrow ->
+        if sensitive?(key), do: ~s("#{key}"#{arrow}"#{@filtered}"), else: whole
+      end
+    )
   end
 
   defp sensitive?(key) when is_atom(key), do: sensitive?(Atom.to_string(key))

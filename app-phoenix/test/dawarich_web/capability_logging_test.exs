@@ -221,6 +221,40 @@ defmodule DawarichWeb.CapabilityLoggingTest do
     assert {:ok, _} = :logger.get_handler_config(:default)
   end
 
+  test "connected and reconnected public mount diagnostics filter bootstrap capabilities on both logger boundaries",
+       c do
+    {:ok, manager, _} = open(c.user, "/share_links/hub")
+    render_submit(manager, "sharing_create", %{"shared_link" => %{"magic_phrase" => ""}})
+    GenServer.stop(manager.pid)
+
+    [[id]] =
+      Repo.query!("SELECT id::text FROM shared_links WHERE user_id=$1", [c.user.id], log: false).rows
+
+    for boundary <- [:primary, :fallback] do
+      if boundary == :fallback, do: :logger.remove_primary_filter(Dawarich.LogRedaction)
+      on_exit(fn -> Dawarich.LogRedaction.install() end)
+
+      capabilities =
+        for _ <- 1..2 do
+          conn = get(build_conn(), "/s/" <> id)
+          capability = conn.assigns.public_bootstrap
+          conn = put_private(conn, :live_view_connect_info, %{session: get_session(conn)})
+          {:ok, reader, _} = live(conn)
+          assert has_element?(reader, "[data-public-content]")
+          GenServer.stop(reader.pid)
+          capability
+        end
+
+      Logger.flush()
+      :ok = :logger_std_h.filesync(:capability_capture)
+      output = File.read!(c.path)
+      assert output =~ "MOUNT DawarichWeb.PublicShareLive"
+
+      assert Enum.all?(capabilities, &(not String.contains?(output, &1))),
+             "bootstrap capability exposed at #{boundary} logger boundary"
+    end
+  end
+
   defp open(user, path),
     do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
