@@ -23,32 +23,69 @@ defmodule DawarichWeb.NativeMapVisit do
     >
       <div class="modal-box max-w-2xl min-w-0">
         <h3 class="font-bold text-lg mb-4 break-words">
-          {t(@locale, if(@dialog.id, do: "javascript.visits.edit", else: "javascript.visits.create_new"), %{})}
+          {t(
+            @locale,
+            if(@dialog.id, do: "javascript.visits.edit", else: "javascript.visits.create_new"),
+            %{}
+          )}
         </h3>
         <ul :if={@dialog.errors != []} class="alert alert-error mb-4 block" role="alert">
-          <li :for={error <- @dialog.errors} class="[overflow-wrap:anywhere]">{message(@locale, error)}</li>
+          <li :for={error <- @dialog.errors} class="[overflow-wrap:anywhere]">
+            {message(@locale, error)}
+          </li>
         </ul>
         <form id="native-visit-form" phx-submit="visit:save" class="space-y-3">
-          <input :if={!@dialog.id} type="hidden" name="visit[latitude]" value={@dialog.form["latitude"]} />
-          <input :if={!@dialog.id} type="hidden" name="visit[longitude]" value={@dialog.form["longitude"]} />
+          <input
+            :if={!@dialog.id}
+            type="hidden"
+            name="visit[latitude]"
+            value={@dialog.form["latitude"]}
+          />
+          <input
+            :if={!@dialog.id}
+            type="hidden"
+            name="visit[longitude]"
+            value={@dialog.form["longitude"]}
+          />
           <label class="form-control">
             <span class="label-text font-semibold">{v(@locale, "visit_name")}</span>
-            <input class="input input-bordered w-full" type="text" name="visit[name]" value={@dialog.form["name"]} />
+            <input
+              class="input input-bordered w-full"
+              type="text"
+              name="visit[name]"
+              value={@dialog.form["name"]}
+            />
           </label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label class="form-control min-w-0">
               <span class="label-text font-semibold">{v(@locale, "start_time")}</span>
-              <input class="input input-bordered w-full" type="datetime-local" max="9999-12-31T23:59" name="visit[started_at]" value={@dialog.form["started_at"]} />
+              <input
+                class="input input-bordered w-full"
+                type="datetime-local"
+                max="9999-12-31T23:59"
+                name="visit[started_at]"
+                value={@dialog.form["started_at"]}
+              />
             </label>
             <label class="form-control min-w-0">
               <span class="label-text font-semibold">{v(@locale, "end_time")}</span>
-              <input class="input input-bordered w-full" type="datetime-local" max="9999-12-31T23:59" name="visit[ended_at]" value={@dialog.form["ended_at"]} />
+              <input
+                class="input input-bordered w-full"
+                type="datetime-local"
+                max="9999-12-31T23:59"
+                name="visit[ended_at]"
+                value={@dialog.form["ended_at"]}
+              />
             </label>
           </div>
           <div class="modal-action flex-wrap gap-2">
             <button type="button" class="btn btn-ghost" phx-click={close()}>{v(@locale, "cancel")}</button>
             <button type="submit" class="btn btn-primary">
-              {t(@locale, if(@dialog.id, do: "javascript.visits.update", else: "javascript.visits.create"), %{})}
+              {t(
+                @locale,
+                if(@dialog.id, do: "javascript.visits.update", else: "javascript.visits.create"),
+                %{}
+              )}
             </button>
           </div>
         </form>
@@ -58,7 +95,10 @@ defmodule DawarichWeb.NativeMapVisit do
             <button
               :for={place <- @dialog.places}
               type="button"
-              class={["btn btn-xs", if(place.id == @dialog.place_id, do: "btn-primary", else: "btn-outline")]}
+              class={[
+                "btn btn-xs",
+                if(place.id == @dialog.place_id, do: "btn-primary", else: "btn-outline")
+              ]}
               phx-click={JS.push("visit:place", value: %{place_id: to_string(place.id)})}
             >
               <span class="[overflow-wrap:anywhere]">{place.name}</span>
@@ -68,10 +108,19 @@ defmodule DawarichWeb.NativeMapVisit do
         <section :if={@dialog.id} class="mt-4 min-w-0">
           <h4 class="font-semibold text-sm">{t(@locale, "places.drawer.notes", %{})}</h4>
           <ul class="space-y-1 mt-2">
-            <li :for={note <- @dialog.notes} class="text-sm whitespace-pre-line [overflow-wrap:anywhere]">{note["body"]}</li>
+            <li
+              :for={note <- @dialog.notes}
+              class="text-sm whitespace-pre-line [overflow-wrap:anywhere]"
+            >
+              {note["body"]}
+            </li>
           </ul>
           <form id="native-visit-note-form" phx-submit="note:add" class="mt-2 space-y-2">
-            <p :if={@dialog.note_error} class="text-error text-sm [overflow-wrap:anywhere]" role="alert">
+            <p
+              :if={@dialog.note_error}
+              class="text-error text-sm [overflow-wrap:anywhere]"
+              role="alert"
+            >
               {note_error(@locale, @dialog.note_error)}
             </p>
             <textarea class="textarea textarea-bordered w-full" rows="2" name="note[body]"></textarea>

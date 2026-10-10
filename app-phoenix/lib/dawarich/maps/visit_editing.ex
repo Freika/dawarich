@@ -19,7 +19,8 @@ defmodule Dawarich.Maps.VisitEditing do
            id: id,
            place_id: place,
            form: %{"name" => name, "started_at" => from, "ended_at" => to},
-           places: Enum.map(Repo.query!(@candidates, [id]).rows, fn [i, n] -> %{id: i, name: n} end)
+           places:
+             Enum.map(Repo.query!(@candidates, [id]).rows, fn [i, n] -> %{id: i, name: n} end)
          }}
       else
         [] -> {:error, :not_found}

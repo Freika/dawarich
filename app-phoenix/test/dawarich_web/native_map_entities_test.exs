@@ -110,9 +110,9 @@ defmodule DawarichWeb.NativeMapEntitiesTest do
     refute has_element?(view, "#native-place-dialog")
 
     assert rows(
-             "SELECT p.note, array_agg(g.tag_id) FROM places p JOIN taggings g ON g.taggable_id=p.id AND g.taggable_type='Place' WHERE p.user_id=$1 GROUP BY p.note",
+             "SELECT p.note, p.name_locked_at IS NOT NULL, array_agg(g.tag_id) FROM places p JOIN taggings g ON g.taggable_id=p.id AND g.taggable_type='Place' WHERE p.user_id=$1 GROUP BY p.note, p.name_locked_at",
              [c.id]
-           ) == [["Thin crust", [own]]]
+           ) == [["Thin crust", true, [own]]]
   end
 
   test "nearby search changed during reply keeps newest result", c do

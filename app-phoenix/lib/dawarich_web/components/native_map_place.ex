@@ -51,11 +51,17 @@ defmodule DawarichWeb.NativeMapPlace do
             />
           </label>
           <label class="form-control">
-            <span class="label-text font-semibold">{t(@locale, "shared.place_creation_modal.note", %{})}</span>
+            <span class="label-text font-semibold">{t(
+              @locale,
+              "shared.place_creation_modal.note",
+              %{}
+            )}</span>
             <textarea class="textarea textarea-bordered w-full" rows="3" name="place[note]">{@dialog.form["note"]}</textarea>
           </label>
           <fieldset :if={@dialog[:tags] not in [nil, []]} class="min-w-0">
-            <legend class="label-text font-semibold">{t(@locale, "shared.place_creation_modal.tags", %{})}</legend>
+            <legend class="label-text font-semibold">
+              {t(@locale, "shared.place_creation_modal.tags", %{})}
+            </legend>
             <input type="hidden" name="place[tag_ids][]" value="" />
             <div class="flex flex-wrap gap-2">
               <label :for={tag <- @dialog.tags} class="cursor-pointer min-w-0">

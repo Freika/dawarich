@@ -1,5 +1,5 @@
 defmodule DawarichWeb.NativeMapVisitsTest do
-  use Dawarich.DataCase, async: false
+  use Dawarich.DataCase, async: true
   import Phoenix.LiveViewTest
   alias Dawarich.{Accounts, Maps}
   alias Dawarich.Test.RailsUser
@@ -109,6 +109,12 @@ defmodule DawarichWeb.NativeMapVisitsTest do
              c.id,
              noted
            ]) == [[first, "2024-01-01 11:00:00"]]
+
+    Dawarich.Jobs.Ownership.put!(Dawarich.Repo, "command:visits.suggest", :oban)
+    render_hook(view, "visits:merge", %{"ids" => [to_string(first), to_string(noted)]})
+    assert_reply(view, %{ok: true})
+    assert count(c.id) == 1
+    assert rows("SELECT count(*) FROM notes WHERE attachable_id=$1", [noted]) == [[0]]
   end
 
   test "visit notes are listed and added only for the open owned visit", c do
@@ -133,17 +139,27 @@ defmodule DawarichWeb.NativeMapVisitsTest do
 
     render_hook(view, "note:add", %{"note" => %{"body" => " "}})
     assert has_element?(view, "#native-visit-note-form [role=alert]")
+
+    stale = visit!(c.id, place!(c.id, "Gone"), "Gone")
+    render_hook(view, "visit:edit", %{"id" => to_string(stale)})
+    rows("UPDATE visits SET deleted_at=now() WHERE id=$1", [stale])
+    render_hook(view, "note:add", %{"note" => %{"body" => "after delete"}})
+    assert rows("SELECT count(*) FROM notes", []) == [[1]]
   end
 
   test "point address drawer shows only an owned point address", c do
     own = point!(c.id, %{"street" => "Main St", "city" => "Berlin", "country" => "Germany"})
-    foreign = point!(c.other, %{"street" => "Secret Rd", "city" => "Paris", "country" => "France"})
+
+    foreign =
+      point!(c.other, %{"street" => "Secret Rd", "city" => "Paris", "country" => "France"})
+
     view = open(c)
 
     render_hook(view, "address:open", %{"id" => to_string(foreign)})
     refute has_element?(view, "#native-point-address")
     render_hook(view, "address:open", %{"id" => to_string(own)})
     assert has_element?(view, "#native-point-address", "Main St, Berlin, Germany")
+    assert :sys.get_state(view.pid).socket.assigns.point_address |> Map.keys() == [:id, :text]
     render_hook(view, "address:close", %{})
     refute has_element?(view, "#native-point-address")
   end
