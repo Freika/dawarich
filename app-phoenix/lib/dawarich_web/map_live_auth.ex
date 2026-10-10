@@ -46,10 +46,17 @@ defmodule DawarichWeb.MapLiveAuth do
       |> attach_hook(:map_admission_info, :handle_info, fn _, s -> authorize(s) end)
       |> attach_hook(:map_admission_async, :handle_async, fn _, _, s -> authorize(s) end)
       |> authorize()
+      |> then(fn
+        {:halt, %{redirected: nil} = refused} -> {:cont, refused}
+        result -> result
+      end)
     else
       {:halt, refuse(socket, :stale_session)}
     end
   end
+
+  def authorize(%{assigns: %{current_scope: nil, map_error: reason}} = socket) when not is_nil(reason),
+    do: {:halt, socket}
 
   def authorize(socket) do
     case Maps.admit(socket.assigns.current_scope) do

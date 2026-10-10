@@ -107,13 +107,19 @@ defmodule DawarichWeb.MapLive.Subscriptions do
 
     topics =
       Enum.reduce(Map.keys(desired) -- Map.keys(topics), topics, fn topic, acc ->
-        case state.bus.subscribe(topic) do
+        case subscribe(state.bus, topic) do
           {:ok, ref} -> Map.put(acc, topic, ref)
           _ -> acc
         end
       end)
 
     assign(socket, :native_subscriptions, %{state | topics: topics})
+  end
+
+  defp subscribe(bus, topic) do
+    bus.subscribe(topic)
+  catch
+    :exit, _ -> {:error, :unavailable}
   end
 
   defp invalidate(socket, kind) do

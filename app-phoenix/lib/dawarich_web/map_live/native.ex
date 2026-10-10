@@ -4,6 +4,9 @@ defmodule DawarichWeb.MapLive.Native do
   on_mount {DawarichWeb.MapLiveAuth, :default}
   alias DawarichWeb.MapLive.Commands
 
+  def mount(_, _, %{assigns: %{current_scope: nil}} = socket),
+    do: {:ok, assign(socket, navbar: nil, posters: [], map_settings: nil), layout: false}
+
   def mount(_, _, socket) do
     navbar =
       Dawarich.Maps.with_actor(socket.assigns.current_scope, fn actor ->
@@ -53,7 +56,14 @@ defmodule DawarichWeb.MapLive.Native do
             params["panel"]
           )
 
-        socket = socket |> assign(:map_config, config) |> push_event("map:config", config)
+        socket =
+          socket
+          |> assign(:map_config, config)
+          |> push_event("map:config", config)
+          |> DawarichWeb.MapLive.Subscriptions.sync(%{
+            kind: :map,
+            scope: socket.assigns.current_scope
+          })
 
         socket =
           if previous != socket.assigns.map_revision,
