@@ -41,7 +41,7 @@ defmodule DawarichWeb.NotificationSession do
     fresh = actor && Accounts.get(actor.id)
 
     if socket.assigns.notification_signed_out or is_nil(fresh) or
-         fresh.encrypted_password != actor.encrypted_password,
+         not Dawarich.Accounts.Principal.same_identity?(actor, fresh),
        do: {:halt, redirect(socket, to: "/users/sign_in")},
        else: {:cont, socket}
   end

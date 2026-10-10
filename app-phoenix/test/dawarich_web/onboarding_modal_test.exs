@@ -22,10 +22,10 @@ defmodule DawarichWeb.OnboardingModalTest do
     }
   end
 
-  defp dead(user), do: RailsUser.signed_in(user.id) |> get("/notifications") |> html_response(200)
+  defp dead(user), do: RailsUser.signed_in(user.id) |> get("/stats") |> html_response(200)
 
   defp live_as(user),
-    do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/notifications")
+    do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/stats")
 
   defp count(html, selector),
     do:
@@ -35,7 +35,7 @@ defmodule DawarichWeb.OnboardingModalTest do
       |> LazyHTML.to_tree()
       |> length()
 
-  test "a Phoenix page renders the modal and the unlock host as LiveView-ignored Rails Stimulus islands, before and after the socket joins",
+  test "a deferred hybrid page renders the modal and the unlock host as LiveView-ignored Rails Stimulus islands, before and after the socket joins",
        %{user: user} do
     html = dead(user)
     assert_form_isolated(html, "#onboarding-modal form[data-controller='upload']")
@@ -80,7 +80,7 @@ defmodule DawarichWeb.OnboardingModalTest do
     [input] =
       Phoenix.ConnTest.build_conn()
       |> Phoenix.ConnTest.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-      |> get("/notifications")
+      |> get("/stats")
       |> html_response(200)
       |> LazyHTML.from_document()
       |> LazyHTML.query(

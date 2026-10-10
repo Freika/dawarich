@@ -29,7 +29,21 @@ config :dawarich, DawarichWeb.Endpoint,
   live_view: [signing_salt: "dawarich live view"]
 
 config :phoenix, :json_library, Jason
-filtered_parameters = ["password", "api_key", "token", "secret"]
+
+filtered_parameters = [
+  "password",
+  "api_key",
+  "token",
+  "secret",
+  "magic_phrase",
+  "signed_id",
+  "url",
+  "authorization",
+  "cookie",
+  "checksum",
+  "bootstrap"
+]
+
 config :phoenix, :filter_parameters, filtered_parameters
 config :dawarich, Dawarich.LogRedaction, words: filtered_parameters
 

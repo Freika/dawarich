@@ -2,6 +2,7 @@ import { AchievementUnlocks } from "./achievement_unlocks.js"
 import { ArchiveChecksum } from "./archive_checksum.js"
 import { ChangelogWidget } from "./changelog_widget.js"
 import { Clipboard } from "./clipboard.js"
+import { CredentialQr } from "./credential_qr.js"
 import { Dismissible } from "./dismissible.js"
 import { EmojiPicker } from "./emoji_picker.js"
 import { MapMatchingDemo } from "./map_matching_demo.js"
@@ -12,6 +13,7 @@ export const hooks = {
   ArchiveChecksum,
   ChangelogWidget,
   Clipboard,
+  CredentialQr,
   Dismissible,
   EmojiPicker,
   MapMatchingDemo,
