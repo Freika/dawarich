@@ -285,7 +285,7 @@ function harness({
       [12.38, 51.342],
     ],
     loadThemeTokens: async (key) =>
-      theme
+      typeof theme === "function" ? theme(key) : theme
         ? theme.promise
         : { bg: "#ffffff", name: key === "noir" ? "Noir" : "Terracotta" },
     resolveTheme: (tokens) => tokens,
@@ -677,4 +677,50 @@ test("a gallery re-render reopens the current studio owner with the saved recipe
   assert.equal(runtimes[0].options.source, source)
   assert.deepEqual(runtimes[0].recipes, [undefined, '{"format":"square"}'])
   hook.destroyed()
+})
+
+test("reverse theme replies keep controls, preview, render and recipe on the selected theme", async () => {
+  const requests = []
+  const h = harness({ theme: (key) => {
+    const gate = deferred()
+    requests.push({ key, ...gate })
+    return gate.promise
+  } })
+  const opening = h.studio.open()
+  await settle()
+  requests[0].resolve({ name: "Terracotta", bg: "#fff" })
+  await opening
+  const old = h.studio.change({ theme: "terracotta" })
+  const current = h.studio.change({ theme: "noir" })
+  assert.equal(h.root.single.render.disabled, true)
+  await h.studio.render()
+  assert.equal(h.renders.length, 0)
+  requests[2].resolve({ name: "Current Noir", bg: "#123456" })
+  await current
+  requests[1].resolve({ name: "Old Terracotta", bg: "#abcdef" })
+  await old
+  assert.equal(h.studio.settings.theme, "noir")
+  assert.equal(h.maps[0].styles.at(-1).options.theme.name, "Current Noir")
+  assert.match(h.root.single.summary.children[0].textContent, /Current Noir/)
+  const rendering = h.studio.render()
+  await settle()
+  assert.equal(h.renders[0].options.themeBg, "#123456")
+  assert.equal(h.renders[0].options.style.options.theme.name, "Current Noir")
+  h.renders[0].run.resolve({ blob: new Blob(["mp4"]) })
+  await rendering
+  const saving = h.studio.save()
+  await settle()
+  assert.equal(h.uploads[0].options.settings.theme, "noir")
+  h.uploads[0].run.resolve({ ok: true })
+  await saving
+  const obsolete = h.studio.change({ theme: "terracotta" })
+  const latest = h.studio.change({ theme: "noir" })
+  requests[4].resolve({ name: "Latest Noir", bg: "#111111" })
+  await latest
+  const status = h.root.single.status.textContent
+  requests[3].reject(new Error("obsolete theme failed"))
+  await obsolete
+  assert.equal(h.root.single.status.textContent, status)
+  assert.equal(h.maps[0].styles.at(-1).options.theme.name, "Latest Noir")
+  h.studio.destroy()
 })

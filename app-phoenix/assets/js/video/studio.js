@@ -37,6 +37,7 @@ export function mountVideoStudio({ root, source, request, deps = {} }) {
   const video = createVideoSource(source)
   let openController = null
   let opened = false
+  let styleOperation = 0
 
   const ctx = {
     root,
@@ -71,16 +72,26 @@ export function mountVideoStudio({ root, source, request, deps = {} }) {
       ctx.timeline = buildRouteTimeline(loaded.trackGeojson, { smooth: true })
     },
     async refreshStyle(gen) {
-      const tokens = await ctx.kit.loadThemeTokens(ctx.settings.theme, {
-        signal: openController?.signal,
-      })
-      if (!ctx.current(gen)) return
+      const operation = ++styleOperation
+      const settings = { ...ctx.settings }
+      ctx.style = null
+      ctx.syncRender()
+      let tokens
+      try {
+        tokens = await ctx.kit.loadThemeTokens(settings.theme, {
+          signal: openController?.signal,
+        })
+      } catch (error) {
+        if (ctx.current(gen) && operation === styleOperation) throw error
+        return
+      }
+      if (!ctx.current(gen) || operation !== styleOperation) return
       ctx.themeTokens = tokens
       ctx.style = buildVideoStyle(
         {
           tokens,
           trackGeojson: ctx.track.trackGeojson,
-          settings: ctx.settings,
+          settings,
         },
         ctx.kit,
       )
@@ -96,7 +107,7 @@ export function mountVideoStudio({ root, source, request, deps = {} }) {
       })
       ctx.preview.show({
         style: ctx.style,
-        settings: ctx.settings,
+        settings,
         bounds: ctx.kit.trackBounds(ctx.track.trackGeojson),
         stats: ctx.stats,
         clock: ctx.clock,
@@ -217,10 +228,17 @@ export function mountVideoStudio({ root, source, request, deps = {} }) {
     syncVideoControls(root, ctx.settings, ctx.document?.activeElement)
     if (!ctx.track || ctx.rangeLoading) return
     ctx.clearResult()
+    const gen = ctx.generation
+    const operation = styleOperation + 1
     try {
-      await ctx.refreshStyle(ctx.generation)
+      await ctx.refreshStyle(gen)
     } catch (error) {
-      if (error?.name !== "AbortError") ctx.setStatus(error.message)
+      if (
+        ctx.current(gen) &&
+        operation === styleOperation &&
+        error?.name !== "AbortError"
+      )
+        ctx.setStatus(error.message)
     }
   }
 
