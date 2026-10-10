@@ -1,5 +1,7 @@
+import { initializeAnalyticsEvents } from "../analytics_events.js"
+
 export function initializeAuthChrome(doc = document, win = window) {
-  const listeners = []
+  const listeners = [initializeAnalyticsEvents(win)]
   const timers = []
   const listen = (element, event, callback) => {
     element.addEventListener(event, callback)
@@ -16,7 +18,11 @@ export function initializeAuthChrome(doc = document, win = window) {
     "[data-auth-locale-suggestion]",
   )) {
     try {
-      if (win.localStorage.getItem(`dismissed:${suggestion.dataset.dismissibleKeyValue}`) === "1")
+      if (
+        win.localStorage.getItem(
+          `dismissed:${suggestion.dataset.dismissibleKeyValue}`,
+        ) === "1"
+      )
         suggestion.remove()
     } catch {}
   }
@@ -24,7 +30,10 @@ export function initializeAuthChrome(doc = document, win = window) {
     listen(dismiss, "click", () => {
       const suggestion = dismiss.closest("[data-auth-locale-suggestion]")
       try {
-        win.localStorage.setItem(`dismissed:${suggestion.dataset.dismissibleKeyValue}`, "1")
+        win.localStorage.setItem(
+          `dismissed:${suggestion.dataset.dismissibleKeyValue}`,
+          "1",
+        )
       } catch {}
       suggestion.remove()
     })

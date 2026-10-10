@@ -1,6 +1,7 @@
 import "phoenix_html"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
+import { initializeAnalyticsEvents } from "./analytics_events.js"
 import { hooks } from "./hooks/index.js"
 import { Direct } from "./uploaders/direct.js"
 
@@ -27,9 +28,7 @@ window.addEventListener("dawarich:flash-timeout", (event) => {
   window.setTimeout(() => event.target.querySelector("button")?.click(), 5000)
 })
 
-window.addEventListener("dawarich:track", (event) => {
-  if (typeof window.sa_event === "function") window.sa_event(event.detail.event)
-})
+initializeAnalyticsEvents()
 
 window.addEventListener("phx:close-dialog", (event) => {
   document.getElementById(event.detail.id)?.close()

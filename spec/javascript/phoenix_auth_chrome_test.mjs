@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { initializeAuthForms } from "../../app-phoenix/assets/js/http/auth_forms.js"
 import { Dismissible } from "../../app-phoenix/assets/js/hooks/dismissible.js"
+import { initializeAuthForms } from "../../app-phoenix/assets/js/http/auth_forms.js"
+
 const load = () => import("../../app-phoenix/assets/js/http/auth_chrome.js")
 class Element extends EventTarget {
   dataset = {}
@@ -179,4 +180,42 @@ test("HTTP locale dismissal accepts only the native stored value one", async () 
     initializeAuthChrome(f.doc, f.win)
     assert.equal(f.locale.removed, value === "1")
   }
+})
+
+test("HTTP onboarding forwards each existing analytics event once and stops after disposal", async () => {
+  const { initializeAuthChrome } = await load()
+  const f = fixture()
+  const selections = ["track", "import"].map((screen) => {
+    const button = new Element()
+    button.dataset.authOnboardingScreen = `onboarding-${screen}-screen`
+    button.dataset.authTrackEvent = `onboarding_${screen}_selected`
+    return button
+  })
+  const demo = new Element()
+  demo.dataset.authTrackEvent = "onboarding_demo_selected"
+  const query = f.doc.querySelectorAll
+  f.doc.querySelectorAll = (selector) =>
+    selector === "[data-auth-onboarding-screen]"
+      ? selections
+      : selector === "form[data-auth-track-event]"
+        ? [demo]
+        : query(selector)
+  f.doc.getElementById = () => ({ classList: { toggle() {} } })
+  const observed = []
+  f.win.sa_event = (event) => observed.push(event)
+  const dispose = initializeAuthChrome(f.doc, f.win)
+  for (const button of selections) button.dispatchEvent(new Event("click"))
+  demo.dispatchEvent(new Event("submit"))
+  assert.deepEqual(observed, [
+    "onboarding_track_selected",
+    "onboarding_import_selected",
+    "onboarding_demo_selected",
+  ])
+  dispose()
+  for (const button of selections) button.dispatchEvent(new Event("click"))
+  demo.dispatchEvent(new Event("submit"))
+  f.win.dispatchEvent(
+    new CustomEvent("dawarich:track", { detail: { event: "after_disposal" } }),
+  )
+  assert.equal(observed.length, 3)
 })
