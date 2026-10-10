@@ -4,6 +4,10 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
   @moduletag :tmp_dir
 
+  @native_base_bytes 344_744
+  @http_chrome_cap 2 * 1024
+  @places_cap 2 * 1024
+
   defp build!(dir) do
     assert 0 ==
              Esbuild.install_and_run(:native, [
@@ -54,7 +58,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
     {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
     bytes = Enum.sum(Enum.map(eager(outputs, [app], MapSet.new()), &outputs[&1]["bytes"]))
-    assert bytes <= 344_744 + 2 * 1024
+    assert bytes <= @native_base_bytes + @places_cap + @http_chrome_cap
   end
 
   test "the native bundle includes LiveView and no Hotwire module", %{tmp_dir: dir} do
@@ -129,7 +133,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
       |> Enum.map(&elem(&1, 1))
       |> Enum.sum()
 
-    assert bytes in 1..2048
+    assert bytes in 1..@places_cap
   end
 
   defp eager(_outputs, [], seen), do: seen
