@@ -24,11 +24,3 @@ export function pngBlob(bytes) {
 export function pdfBlob(bytes) {
   return new Blob([bytes], { type: "application/pdf" })
 }
-
-export function posterFilename(theme, paperKey, extension) {
-  const slug = (theme?.name ?? "poster")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-  return `dawarich-poster-${slug}-${paperKey}.${extension}`
-}

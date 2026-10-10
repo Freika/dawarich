@@ -54,7 +54,6 @@ export function createPosterSource(
     load,
     applyDates,
     fallbackBounds: () => (fixed ? null : fallbackBounds()),
-    reset: () => operations.reset(),
     destroy: () => operations.destroy(),
   }
 }

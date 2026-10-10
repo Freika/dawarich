@@ -5,7 +5,6 @@ import {
   downloadBlob,
   pdfBlob,
   pngBlob,
-  posterFilename,
 } from "../../app-phoenix/assets/js/poster/export/download.js"
 import { encodePdf } from "../../app-phoenix/assets/js/poster/export/pdf_encoder.js"
 import { encodePng } from "../../app-phoenix/assets/js/poster/export/png_encoder.js"
@@ -108,15 +107,7 @@ test("PDF encoding rejects when the canvas cannot produce a JPEG", async () => {
   )
 })
 
-test("poster filenames slug theme names and keep the paper extension", () => {
-  assert.equal(
-    posterFilename({ name: "Midnight Blue!" }, "A3", "png"),
-    "dawarich-poster-midnight-blue-A3.png",
-  )
-  assert.equal(
-    posterFilename(null, "A4", "pdf"),
-    "dawarich-poster-poster-A4.pdf",
-  )
+test("poster blobs keep the PNG and PDF media types", () => {
   assert.equal(pngBlob(new Uint8Array(1)).type, "image/png")
   assert.equal(pdfBlob(new Uint8Array(1)).type, "application/pdf")
 })

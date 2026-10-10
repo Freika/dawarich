@@ -235,9 +235,6 @@ export function createPosterLifecycle({
     get session() {
       return session
     },
-    replaceData(data) {
-      state = withLoadedData(state, data, label(data))
-    },
     destroy: close,
   }
 }

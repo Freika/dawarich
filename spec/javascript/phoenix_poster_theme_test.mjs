@@ -7,7 +7,7 @@ import {
   POSTER_FONTS,
 } from "../../app-phoenix/assets/js/poster/data/fonts.js"
 import {
-  ORDERABLE_LAYOUT_IDS,
+  PRINT_PRODUCTS,
   printProductFor,
 } from "../../app-phoenix/assets/js/poster/data/print_products.js"
 import {
@@ -19,10 +19,8 @@ import {
 import {
   DEFAULT_ROUTE_COLOR,
   extendTokens,
-  loadTheme,
   loadThemeTokens,
   resolveTheme,
-  THEME_KEYS,
 } from "../../app-phoenix/assets/js/poster/data/theme_loader.js"
 
 const tokens = {
@@ -64,7 +62,6 @@ test("theme resolution keeps the print route and casing colours", () => {
     resolveTheme({ ...tokens, gradient_color: "#fedcba" }).gradientColor,
     "#fedcba",
   )
-  assert.equal(THEME_KEYS.length, 17)
 })
 
 test("theme tokens load once per key from the static theme path", async () => {
@@ -87,9 +84,6 @@ test("theme tokens load once per key from the static theme path", async () => {
     /broken_theme_key.*404/,
   )
   await assert.rejects(loadThemeTokens("broken_theme_key", { fetch }), /404/)
-  assert.equal(requests.length, 3)
-  const resolved = await loadTheme("synthetic_theme_key", { fetch })
-  assert.equal(resolved.casing, "#000000")
   assert.equal(requests.length, 3)
 })
 
@@ -129,7 +123,7 @@ test("poster fonts load both weights once per font set and fall back to the firs
 })
 
 test("only the three large print layouts are orderable with server SKUs", () => {
-  assert.deepEqual(ORDERABLE_LAYOUT_IDS, [
+  assert.deepEqual(Object.keys(PRINT_PRODUCTS), [
     "print-30x40",
     "print-50x70",
     "print-70x100",
