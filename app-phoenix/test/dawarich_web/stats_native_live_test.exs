@@ -39,7 +39,9 @@ defmodule DawarichWeb.StatsNativeLiveTest do
   test "stats month slice preserves local peak-day link and previous-month average", %{user: user} do
     Dawarich.Repo.query!(
       "UPDATE users SET settings=$2 WHERE id=$1",
-      [user.id, %{"timezone" => "Pacific/Kiritimati"}], log: false)
+      [user.id, %{"timezone" => "Pacific/Kiritimati"}],
+      log: false
+    )
 
     scope = Scope.for_user(user, "de")
 
@@ -337,7 +339,9 @@ defmodule DawarichWeb.StatsNativeLiveTest do
 
     Dawarich.Repo.query!(
       "UPDATE stats SET toponyms=$2 WHERE user_id=$1",
-      [user.id, [%{"country" => "Germany", "cities" => places}]], log: false)
+      [user.id, [%{"country" => "Germany", "cities" => places}]],
+      log: false
+    )
 
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats")
     assert has_element?(view, "button[phx-value-kind=cities]", "61")
@@ -360,6 +364,79 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     assert has_element?(view, "button[phx-value-kind=cities]", "61")
   end
 
+  test "Stats sharing dialog retains disabled state expiration and second-tab changes", %{
+    user: user
+  } do
+    scope = Scope.for_user(user, "en")
+    params = %{"year" => "2025", "month" => "3"}
+
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{
+        __changed__: %{},
+        locale: "en",
+        self_hosted: true,
+        live_action: :month,
+        flash: %{},
+        base_url: "https://example.invalid"
+      },
+      private: %{data_principal: Dawarich.NativeM5.Dependencies.principal(scope)}
+    }
+
+    {:ok, socket} = DawarichWeb.StatsLive.NativePage.mount(%{}, %{}, socket)
+    {:noreply, socket} = DawarichWeb.StatsLive.NativePage.handle_params(params, "", socket)
+
+    for expiration <- ["12h", "24h"] do
+      assert {:ok, _} =
+               Dawarich.Stats.Commands.share(
+                 scope,
+                 params,
+                 %{"enabled" => "1", "expiration" => expiration}, self_hosted: true)
+
+      {:noreply, opened} =
+        DawarichWeb.StatsLive.NativePage.handle_event("open_share", %{}, socket)
+
+      assert_share_fields(opened, true, expiration)
+
+      {:noreply, socket} =
+        DawarichWeb.StatsLive.NativePage.handle_event("close_dialog", %{}, opened)
+
+      assert socket.assigns.stats_dialog == nil
+    end
+
+    {:noreply, opened} = DawarichWeb.StatsLive.NativePage.handle_event("open_share", %{}, socket)
+
+    {:noreply, disabled} =
+      DawarichWeb.StatsLive.NativePage.handle_event(
+        "share",
+        %{"enabled" => "0", "expiration" => "24h"},
+        opened
+      )
+
+    assert_share_fields(disabled, false, "24h")
+
+    {:noreply, closed} =
+      DawarichWeb.StatsLive.NativePage.handle_event("close_dialog", %{}, disabled)
+
+    {:noreply, reopened} =
+      DawarichWeb.StatsLive.NativePage.handle_event("open_share", %{}, closed)
+
+    assert_share_fields(reopened, false, "24h")
+  end
+
+  defp assert_share_fields(socket, enabled, expiration) do
+    html =
+      DawarichWeb.StatsLive.NativePage.render(socket.assigns)
+      |> rendered_to_string()
+      |> LazyHTML.from_document()
+
+    assert not Enum.empty?(LazyHTML.query(html, "#stats-sharing-enabled[checked]")) == enabled
+
+    assert LazyHTML.query(html, "#stats-sharing-expiration option[selected]")
+           |> LazyHTML.attribute("value") == [expiration]
+
+    if not enabled, do: assert(Enum.empty?(LazyHTML.query(html, "#stats-sharing-url")))
+  end
+
   test "Stats ready notifications renew the chart revision within the selected year", %{
     user: user
   } do
@@ -373,7 +450,9 @@ defmodule DawarichWeb.StatsNativeLiveTest do
 
     Dawarich.Repo.query!(
       "UPDATE stats SET distance=distance+1000 WHERE user_id=$1 AND year=2025",
-      [user.id], log: false)
+      [user.id],
+      log: false
+    )
 
     send(view.pid, {:analytics_ready, user.id, "revision"})
 

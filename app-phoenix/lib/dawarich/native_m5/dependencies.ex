@@ -66,12 +66,36 @@ defmodule Dawarich.NativeM5.Dependencies do
         {:ok,
          %{
            enabled: result.settings["enabled"],
+           expiration: result.settings["expiration"] || "24h",
            expires_at: result.settings["expires_at"],
            url: result.body["sharing_url"]
          }}
 
       other ->
         other
+    end
+  end
+
+  def stat_sharing(scope, year, month, opts) do
+    with {:ok, fresh} <- Dawarich.Accounts.DataAccess.admit(scope),
+         [[settings, uuid]] <-
+           Dawarich.Repo.query!(
+             "SELECT sharing_settings,sharing_uuid::text FROM stats WHERE user_id=$1 AND year=$2 AND month=$3 LIMIT 1",
+             [fresh.user.id, year, month],
+             log: false
+           ).rows do
+      settings = settings || %{}
+      enabled = settings["enabled"] == true
+
+      url =
+        if enabled and is_binary(uuid),
+          do: Keyword.get(opts, :base_url, "") <> "/shared/month/" <> uuid,
+          else: ""
+
+      {:ok, %{enabled: enabled, expiration: settings["expiration"] || "24h", url: url}}
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :not_found}
     end
   end
 

@@ -223,11 +223,23 @@ defmodule DawarichWeb.StatsLive.NativeParts do
           "shared.sharing_modal.enable_public_access",
           %{}
         )}</label>
-        <input type="checkbox" id="stats-sharing-enabled" name="enabled" value="1" checked={true} />
+        <input
+          type="checkbox"
+          id="stats-sharing-enabled"
+          name="enabled"
+          value="1"
+          checked={is_map(@dialog) && @dialog.enabled}
+        />
         <label for="stats-sharing-expiration">{t(@locale, "shared.sharing_modal.link_expiration", %{})}</label><select
           id="stats-sharing-expiration"
           name="expiration"
-        ><option :for={value <- ~w(1h 12h 24h)} value={value}>{value}</option></select>
+        ><option
+          :for={value <- ~w(1h 12h 24h)}
+          value={value}
+          selected={is_map(@dialog) && @dialog.expiration == value}
+        >
+          {value}
+        </option></select>
         <button class="btn btn-primary whitespace-normal" type="submit">{t(
           @locale,
           "helpers.submit.submit",

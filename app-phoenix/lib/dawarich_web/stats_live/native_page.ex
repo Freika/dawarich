@@ -95,7 +95,15 @@ defmodule DawarichWeb.StatsLive.NativePage do
   def handle_event("open_places", %{"kind" => kind}, socket) when kind in ~w(countries cities),
     do: {:noreply, assign(socket, :stats_dialog, kind)}
 
-  def handle_event("open_share", _, socket), do: {:noreply, assign(socket, :stats_dialog, :share)}
+  def handle_event("open_share", _, socket) do
+    with {:ok, scope} <- NativeDataAuth.scope(socket),
+         {:ok, result} <- Commands.sharing(scope, socket.assigns.query, command_options(socket)) do
+      {:noreply, assign(socket, :stats_dialog, Map.put(result, :kind, :share))}
+    else
+      {:error, reason} -> {:noreply, refuse_in_place(socket, reason)}
+    end
+  end
+
   def handle_event("close_dialog", _, socket), do: {:noreply, assign(socket, :stats_dialog, nil)}
 
   def handle_event("share", attrs, socket) do

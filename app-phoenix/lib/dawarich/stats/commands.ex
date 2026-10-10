@@ -68,6 +68,13 @@ defmodule Dawarich.Stats.Commands do
     _ -> {:error, :unavailable}
   end
 
+  def sharing(subject, params, opts \\ []) do
+    with {:ok, scope, period} <- Period.admit(subject, params, :month, opts),
+         {:ok, scope} <- DataAccess.admit(scope, Keyword.put(opts, :full_access, true)) do
+      Dawarich.NativeM5.Dependencies.stat_sharing(scope, period.year, period.month, opts)
+    end
+  end
+
   def share(subject, params, attrs, opts \\ []) do
     with true <-
            is_map(attrs) and attrs["enabled"] in ["0", "1"] and
