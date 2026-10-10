@@ -47,7 +47,7 @@ export function mountHost({
     attach:
       attach ??
       (({ map, config, lifetime }) => {
-        installHostReplay({owner, map, lifetime})
+        installHostReplay({owner, map, lifetime, root: element.closest?.("[data-native-map-root]")})
         owner.settings = createHostSettings({ map, loadStyle, lifetime, getConfig: () => owner.config, update: next => owner.update(next), onError: code => pushEvent("map:failed", {code}) })
         enrichment = createEnrichmentTool({ map, pushEvent, createPopup: () => null })
         lifetime.own(enrichment.destroy)

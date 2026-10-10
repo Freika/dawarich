@@ -35,7 +35,7 @@ export function mountTrip({
     attach: ({ map, config, lifetime }) =>
       new Promise((resolve) => {
         const ready = () => {
-          installHostReplay({owner, map, lifetime})
+          installHostReplay({owner, map, lifetime, root: element.closest?.("[data-native-map-root]")})
           layers = createLayers({
             map,
             library,
