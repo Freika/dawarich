@@ -120,7 +120,7 @@
 | dawarich/families/job_workers_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/families/member_sync_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/families/sharing_update_test.exs | Dawarich.IngestCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
-| dawarich/family_page_test.exs | ExUnit.Case | no | FrameSeeds row helpers advance sequences forward-only through SeedIds (seed_place_remainder is not used); transaction-local fixtures; no env, Redis or real commits |
+| dawarich/family_page_test.exs | ExUnit.Case | no | FrameSeeds.seed_family! converts fixture keys with String.to_existing_atom; run early in the async phase the atoms may not exist yet (seen with seed 1); retain sync |
 | dawarich/flights_test.exs | Dawarich.IngestCase | no | Reviewed same-process queries and timezone parsing; fixtures are read-only and session settings are transaction-local |
 | dawarich/geocoding/config_test.exs | Dawarich.GeocodingCase | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
 | dawarich/geocoding/countries_test.exs | Dawarich.GeocodingCase | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
@@ -232,6 +232,7 @@
 | dawarich/mail/wave2_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/map_api/reads_test.exs | Dawarich.IngestCase | no | Reviewed same-process queries/DML or timezone parsing; transaction-local fixtures and no shared-state mutation |
 | dawarich/map_gallery_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
+| dawarich/map_matching/atlas/client_test.exs | ExUnit.Case | no | Moved to sync: the drip test needs connect, request and drip to fit a 100 ms request deadline, which concurrent async modules can exceed (failed with seed 1 in the combined async set) |
 | dawarich/map_page_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/map_window_test.exs | ExUnit.Case | no | Reviewed same-process queries/DML or timezone parsing; transaction-local fixtures and no shared-state mutation |
 | dawarich/native_lifecycle_test.exs | Dawarich.DataCase | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
@@ -485,7 +486,7 @@
 | dawarich_web/imports_download_pipeline_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/imports_download_socket_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/imports_download_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
-| dawarich_web/imports_exports_parity_test.exs | ExUnit.Case | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich_web/imports_exports_parity_test.exs | ExUnit.Case | no | LiveView/endpoint requests reach the private sandbox through $callers, so the global shared mode was dropped; seed ids do not overlap other async modules; no env, Redis or real commits |
 | dawarich_web/imports_extraction_navigation_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich_web/imports_live_test.exs | ExUnit.Case | no | LiveView and endpoint processes reach the private sandbox through $callers, so the global shared mode was dropped; transaction-local fixtures; no env, Redis, telemetry or real commits |
 | dawarich_web/imports_native_pages_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |

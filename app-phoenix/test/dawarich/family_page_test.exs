@@ -1,5 +1,5 @@
 defmodule Dawarich.FamilyPageTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Dawarich.{Accounts, FamilyPage, Repo}
   alias Dawarich.Test.FrameSeeds

@@ -1,5 +1,5 @@
 defmodule DawarichWeb.ImportsExportsParityTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.ConnTest
 
@@ -11,7 +11,6 @@ defmodule DawarichWeb.ImportsExportsParityTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     seed = @dir |> Path.join("seed.json") |> File.read!() |> Jason.decode!()
     ImportsExportsSeeds.load!(seed, NaiveDateTime.utc_now())
     :ok
