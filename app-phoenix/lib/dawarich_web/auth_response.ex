@@ -102,25 +102,15 @@ defmodule DawarichWeb.AuthResponse do
 
     token = RailsCsrf.masked_token(session)
 
+    public = DawarichWeb.AuthProviderEntries.for_request(conn)
+
     body =
       AuthForm.render(token, email,
         locale: conn.assigns.locale,
-        registration_enabled: conn.private[:auth_registration_enabled]
+        registration_enabled: conn.private[:auth_registration_enabled],
+        email_password: public.email_password,
+        providers: public.providers
       )
-
-    assigns =
-      Map.merge(conn.assigns, %{
-        __changed__: nil,
-        flash: if(error, do: %{"alert" => error}, else: %{}),
-        page_title: nil,
-        rails_csrf_token: token,
-        inner_content: Phoenix.HTML.raw(body)
-      })
-
-    app = DawarichWeb.Layouts.app(assigns)
-
-    html =
-      DawarichWeb.Layouts.root(%{assigns | inner_content: app}) |> Phoenix.HTML.Safe.to_iodata()
 
     conn = conn |> AuthCookie.session(encoded) |> DawarichWeb.RailsHeaders.call([])
 
@@ -129,10 +119,11 @@ defmodule DawarichWeb.AuthResponse do
         do: put_resp_header(conn, "x-dawarich-auth-owner", "native-credentials"),
         else: conn
 
-    conn
-    |> put_resp_content_type("text/html")
-    |> send_resp(status, html)
-    |> halt()
+    DawarichWeb.AuthPageController.document(conn, Phoenix.HTML.raw(body), status,
+      chrome: :anonymous,
+      csrf_token: token,
+      flash: if(error, do: %{"alert" => error}, else: %{})
+    )
   end
 
   defp redirect(conn, path) do

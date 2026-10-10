@@ -60,3 +60,7 @@ none.
 ## A3 — HTTP chrome
 
 HTTP flash dismissal/expiry, locale dismissal, settings focus, POST/DELETE logout, confirmation cancellation and onboarding controls have explicit listeners and disposal. Changelog and achievement initializers are shared with native hooks, including stale-response cleanup. RED: `impl-m3c-a3-{node,http,widgets}-red.log`; restored GREEN: `impl-m3c-a3-restored-green.log` (25 passed, exit 0, warnings clean), `impl-m3c-a3-node-restored-green.log` (13 passed, exit 0). Mutations `flash`, `locale`, `cleanup`, `cancel`, `widget`, `stale` each exit 1; `signout`, `tabs` each exit 2. Integrated browser sizing remains D2.
+
+## B1 — sign-in/provider/logout
+
+HEEx preserves Devise field protocol, empty rejected passwords and source redirects/statuses. Provider display uses public deployment-policy results and distinct action CSRF; Google/Apple mobile suppression and OIDC-only credential suppression retained. RED `impl-m3c-b1-red.log` plus corrected `b1-fields-red`; GREEN 3 cases; mutations remember/policy/revocation/password each exit 2 with named case failures; restored `impl-m3c-b1-final-green.log`: 80 passed, exit 0, warnings clean. Early retargets: SignInForm exact HTML → source fields/links/translations; AuthHandler exact HTML → source fields/labels/native document; wrong/unknown retains identical status/owner/counters/notice plus source fields. Source fixtures remain unchanged. Remember revocation and password salt revocation remain separate source behaviors.
