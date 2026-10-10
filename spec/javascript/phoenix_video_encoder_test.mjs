@@ -41,8 +41,6 @@ const runtime = (overrides = {}) => ({
   ...overrides,
 })
 
-// A VideoEncoder that never drains on its own, so any frame past the
-// backpressure threshold parks until the test drains, errors, or aborts it.
 function fakeVideoEncoder() {
   const listeners = []
   let raiseError = null
@@ -67,8 +65,6 @@ function fakeVideoEncoder() {
     },
   }
 
-  // A plain factory rather than a class: `new` on a function that returns an
-  // object hands back that object, and a constructor may not return one.
   function FakeVideoEncoder({ error }) {
     raiseError = error
     return codec
@@ -89,7 +85,6 @@ function fakeVideoEncoder() {
   }
 }
 
-// Parks the queue above the backpressure threshold so the next addFrame waits.
 async function backpressuredEncoder() {
   const fake = fakeVideoEncoder()
   const encoder = await createMp4Encoder({

@@ -26,7 +26,6 @@ import {
   formatSpeed,
 } from "../../app-phoenix/assets/js/video/video_stats.js"
 
-// Leipzig, heading east through the day.
 const MORNING = [
   [12.3712, 51.3402],
   [12.376, 51.3402],
@@ -45,8 +44,6 @@ const lineString = (coordinates, properties) => ({
 const collection = (features) => ({ type: "FeatureCollection", features })
 
 test("draws chronologically when the tracks feed arrives newest-first", () => {
-  // Tracks::IndexQuery orders start_at DESC, and Tracks::GeojsonSerializer
-  // maps that order straight into the FeatureCollection.
   const { entries } = buildRouteTimeline(
     collection([
       lineString(EVENING, { start_at: "2026-08-20T18:00:00Z" }),
@@ -71,10 +68,6 @@ test("orders the routes feed by its unix-second startTime", () => {
 })
 
 test("keeps the given order when a feature carries no start time", () => {
-  // The trip page's pathData fallback builds a bare LineString with no
-  // properties. A partially timed feed must not be reshuffled around the
-  // features it cannot place — treating a missing time as 0 would drag them
-  // to the front of the video.
   const { entries } = buildRouteTimeline(
     collection([
       lineString(MORNING, { start_at: "2026-08-20T08:00:00Z" }),

@@ -71,9 +71,6 @@ test("values that arrived as strings become numbers", () => {
   assert.equal(settings.track_width, 250)
 })
 
-// Route width is stored as a percent to match the poster studio's route_width.
-// Recipes saved before that alignment held a 0.5-3.0 multiplier, and reading
-// one of those as a percent would render a hairline instead of the route.
 test("a legacy multiplier route width is read as a multiplier, not a percent", () => {
   assert.equal(normalizeSettings({ track_width: 1.2 }).track_width, 120)
   assert.equal(normalizeSettings({ track_width: 3 }).track_width, 300)
@@ -146,10 +143,6 @@ test("garbage in gives defaults out", () => {
   assert.deepEqual(normalizeSettings("noir"), defaultSettings())
 })
 
-// The preview and the renderer must frame the route identically. The renderer
-// fits at half the export size with a fixed pixel padding, so a preview of a
-// different size has to scale that padding or it shows a framing the video
-// will not reproduce.
 test("the render lays out at half the export size", () => {
   assert.deepEqual(renderCssSize({ format: "portrait" }), {
     width: 540,
@@ -177,8 +170,6 @@ test("padding follows the format, not just the pixel width", () => {
   const portrait = previewFitPadding({ format: "portrait" }, 480)
   const landscape = previewFitPadding({ format: "landscape" }, 480)
 
-  // Landscape lays out at 960 CSS px, so the same preview width is a smaller
-  // fraction of it and needs less padding.
   assert.ok(landscape < portrait)
 })
 
@@ -195,8 +186,6 @@ test("a recipe with no overlay size gets the default", () => {
   assert.equal(normalizeSettings({}).hud_scale, defaultSettings().hud_scale)
 })
 
-// A recipe round-trips through FormData, which stringifies every value, so
-// the booleans come back as "true"/"false" rather than as booleans.
 test("a watermark switched off stays off through a stored recipe", () => {
   assert.equal(normalizeSettings({ watermark: false }).watermark, false)
   assert.equal(normalizeSettings({ watermark: "false" }).watermark, false)
@@ -218,8 +207,6 @@ test("track width is clamped to the range the control offers", () => {
   )
 })
 
-// Legacy recipes held a 0.5-3.0 multiplier; a negative one would otherwise
-// scale to -500 and draw nothing.
 test("a negative legacy track width lands on the floor, not below it", () => {
   assert.equal(
     normalizeSettings({ track_width: -2 }).track_width,
@@ -265,8 +252,6 @@ test("a stored recipe gives its provenance back", () => {
   )
 })
 
-// Videos saved before provenance was recorded have no range at all; the
-// caller has to be able to tell that from a range that merely differs.
 test("a recipe with no provenance reports none", () => {
   assert.equal(readProvenance({ theme: "noir" }), null)
   assert.equal(readProvenance(null), null)
@@ -300,8 +285,6 @@ test("a map recipe from another range navigates back to it", () => {
   assert.equal(plan.end_at, "2026-05-09")
 })
 
-// A trip studio is locked to its own track, so there is nowhere to navigate
-// to — the user has to be told rather than handed the wrong route.
 test("a trip recipe warns instead of navigating", () => {
   const plan = rangeRestorePlan(
     { source: "trip", start_at: "2026-05-01", end_at: "2026-05-09" },
@@ -321,8 +304,6 @@ test("a map recipe opened inside a trip studio warns too", () => {
   assert.equal(plan.action, "warn")
 })
 
-// The navigate plan carries the range too, so a failed navigation can fall
-// back to the same warning without recomputing it.
 test("a navigate plan still describes its range", () => {
   const plan = rangeRestorePlan(
     { source: "map", start_at: "2026-05-01", end_at: "" },

@@ -21,8 +21,6 @@ import {
   MIN_HUD_SCALE,
 } from "../../app-phoenix/assets/js/video/state.js"
 
-// Records everything painted, so a case can assert on what the HUD drew
-// without a real canvas.
 function recordingContext() {
   const drawn = []
   const stops = []
@@ -35,8 +33,6 @@ function recordingContext() {
     fonts,
     canvas: { width: 1080, height: 1920 },
     fillText: (text) => drawn.push(text),
-    // Width proportional to the string and the current font size, so
-    // layout decisions that depend on measurement are exercised.
     measureText: (t) => ({ width: String(t).length * fontPx() * 0.6 }),
     stops,
     createLinearGradient: () => ({
@@ -114,8 +110,6 @@ test("the summary frame draws the supplied labels", () => {
   const drawn = draw({ outroProgress: 1 })
 
   assert.ok(drawn.includes("PRIVATE STANDORTHISTORIE"))
-  // The exact day count depends on the runner's timezone; what matters is
-  // that the label callback rendered rather than a hardcoded English string.
   assert.ok(drawn.some((text) => /^unterwegs an \d+ Tagen$/.test(text)))
 })
 
@@ -165,9 +159,6 @@ test("the font families reach the canvas", () => {
   assert.ok(ctx.fonts.some((font) => font.includes('"Video HUD Mono"')))
 })
 
-// The scrim keeps white HUD text legible over the map. It has to scale with
-// the map's own lightness: applying a pale map's wash to a near-black one is
-// what made the darkest themes render as a black rectangle.
 function scrimAlphas(themeBg, outroProgress = 0) {
   const ctx = recordingContext()
   drawHud(ctx, {
@@ -224,9 +215,6 @@ test("a missing theme background falls back to the full wash", () => {
   assert.equal(missing, white)
 })
 
-// Every HUD string has to survive being watched at phone size. The source
-// design's secondary tier sat under 2% of the frame's short edge, which read
-// as decoration rather than information.
 function fontSizes(width, height, hudScale) {
   const ctx = recordingContext()
   for (const outroProgress of [0, 1]) {
@@ -283,8 +271,6 @@ test("the headline figure still dominates the supporting text", () => {
   assert.ok(Math.max(...sizes) > Math.min(...sizes) * 4)
 })
 
-// The overlay-size control multiplies every dimension, so the composition has
-// to hold at both ends of the range rather than only at 100%.
 test("overlay size scales every string proportionally", () => {
   const normal = fontSizes(1080, 1920, 1)
   const large = fontSizes(1080, 1920, 1.6)
@@ -309,9 +295,6 @@ test("an omitted overlay size behaves as 100%", () => {
   assert.deepEqual(fontSizes(1080, 1920), fontSizes(1080, 1920, 1))
 })
 
-// The footer packs the start date, a centred credit and the end date onto one
-// line. At a large overlay size they collide, and an overlapping credit is
-// worse than no credit — the summary frame carries it either way.
 function footerTexts(hudScale) {
   const ctx = recordingContext()
   drawHud(ctx, {
@@ -343,8 +326,6 @@ test("the credit is drawn at every overlay size the control offers", () => {
 })
 
 test("the credit survives even past the control's ceiling", () => {
-  // The row shrinks to fit rather than dropping the attribution, so a wider
-  // fallback font cannot make the credit disappear.
   assert.ok(footerTexts(2).some((text) => text === "https://dawarich.app"))
 })
 
@@ -359,7 +340,6 @@ test("the footer row shrinks only when it has to", () => {
   assert.equal(atMax.toFixed(3), unscaled)
 })
 
-// Smallest font used on the footer line, which is where the shrink applies.
 function footerFontPx(hudScale) {
   const ctx = recordingContext()
   drawHud(ctx, {
