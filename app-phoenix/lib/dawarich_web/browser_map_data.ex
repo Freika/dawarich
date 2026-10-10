@@ -34,6 +34,9 @@ defmodule DawarichWeb.BrowserMapData do
       conn = assign(conn, :api_params, params)
 
       case action do
+        :trip ->
+          trip(conn)
+
         family when family in [:family_locations, :family_history] ->
           family(conn, family)
 
@@ -74,6 +77,22 @@ defmodule DawarichWeb.BrowserMapData do
   end
 
   defp bounded(params, _), do: {:ok, params}
+
+  defp trip(conn) do
+    user = Dawarich.Accounts.get(conn.assigns.api_user.id)
+    scope = Dawarich.Maps.principal(user, "en")
+
+    with {id, ""} <- Integer.parse(conn.path_params["id"]),
+         {:ok, data} <-
+           Dawarich.Maps.Dependencies.Trip.read(scope, id,
+             now: conn.assigns[:now] || DateTime.utc_now()
+           ) do
+      Api.Respond.json(conn, 200, data)
+    else
+      {:error, :stale_session} -> Api.Respond.json(conn, 401, %{error: "unauthorized"})
+      _ -> Api.Respond.json(conn, 404, %{error: "not_found"})
+    end
+  end
 
   defp family(conn, action) do
     user = Dawarich.Accounts.get(conn.assigns.api_user.id)

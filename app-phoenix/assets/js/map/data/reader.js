@@ -4,6 +4,7 @@ const paths = {
   points: "points",
   tracks: "tracks",
   track: "tracks/:id",
+  trip: "trips/:id",
   track_points: "tracks/:id/points",
   settings: "settings",
   bounds: "bounds",

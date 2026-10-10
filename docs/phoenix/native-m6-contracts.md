@@ -14,6 +14,7 @@ Status: S1 foundation contracts implemented, 2026-10-10. The controller starts t
 
 | Adapter | Current implementation | Accepted dependency awaited | Switch task |
 | --- | --- | --- | --- |
+| `Dawarich.Maps.Dependencies.Trip` | TripPage.load/gate, projected metadata + HTTP geometry/windows/plan | m5 owned Trip read/map insertion facade | Dedicated switch retaining owner/range/privacy cases |
 | `Dawarich.Maps.Dependencies.Family` | FamilyPage admission + Families.Locations/FamilyApi.Closure history | m4 fresh family consent/delivery facade | Dedicated adapter switch retaining withdrawal/session tests |
 | `Dawarich.Maps.Dependencies.Principal` | Accounts.get, Devise salt fingerprint, sanitized Scope | m4 fresh/sanitized principal and callback admission | Controller integrates m4, then dedicated adapter switch with original-session revocation tests |
 
@@ -99,3 +100,7 @@ Additional config: visitsEnabled/placesEnabled/areasEnabled/anomaliesEnabled and
 Native cookie resources `family_locations` and `family_history` freshly admit family membership/entitlement and each member's sharing grant through the current family interfaces. History retains start/end, sharing-start/window and 5,000-point sampling semantics. Geometry is returned only over HTTP, never embedded in the map component. Family runtime clears its owned markers/history/popup before refresh, aborts obsolete requests and rejects late non-cooperative completions. Reconnect refreshes membership on the existing map. Style listeners and relative-time intervals belong to that owner; independent maps are unaffected. A14 uses authorized invalidations rather than trusting raw channel location events. m4 owns the surrounding page/forms; X1 adopts the extracted map insertion point.
 
 `FamilyMap.family_map` is the m4 map insertion point: Family hook, scalar allowlist, server locale and original distance-in-words templates. `FamilyHook` shares only the thin lifecycle binding with Map; its runtime is a dedicated lazy import. Locale replacement disposes the previous popup/interval before repaint on the same map. No controller lookup or ActionCable dependency.
+
+## Trip read boundary
+
+`Maps.Dependencies.Trip.config(scope,id)` returns only scalar metadata/range/display options. `read` returns the same config plus overview path/device windows/plan over the cookie `trip` HTTP resource, never LiveView assigns. Current implementation delegates TripPage's existing ownership/settings/plan gates and data calculations; unsupported/missing reads become a typed refusal without a hybrid redirect. The m5 adapter switch will replace this current page projection with its accepted read facade and measure the deferred resource/query budgets.
