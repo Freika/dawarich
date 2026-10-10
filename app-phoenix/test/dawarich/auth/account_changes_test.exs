@@ -70,7 +70,8 @@ defmodule Dawarich.Auth.AccountChangesTest do
       {"status", 3, :payment},
       {"settings", %{"immich_url" => "https://immich.a11rest.test///"}, :settings_callback},
       {"settings", %{"photoprism_url" => 5}, :settings_callback},
-      {"settings", %{"maps" => %{"url" => " padded "}}, :settings_callback}
+      {"settings", %{"maps" => %{"url" => " padded "}}, :settings_callback},
+      {"settings", [], :settings_callback}
     ]
 
     for {field, value, reason} <- unsupported do
