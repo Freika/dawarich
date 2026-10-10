@@ -32,6 +32,7 @@ defmodule DawarichWeb.AchievementPublic do
          true <- not Map.has_key?(params, "locale") or params["locale"] in Locale.locales(),
          true <- session?(conn),
          [_, uuid] <- Regex.run(@path, conn.request_path),
+         conn = Locale.call(%{conn | params: params, query_params: params}, []),
          target = {:achievement, Keyword.get(opts, :repo, Dawarich.Repo), uuid},
          admitted = Delivery.admit(target, DateTime.utc_now()),
          result when result != :handoff <-
