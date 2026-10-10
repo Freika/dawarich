@@ -45,6 +45,7 @@ defmodule DawarichWeb.NativeMapHost do
       assigns.config
       |> Map.take(@fields)
       |> Map.put("locale", locale)
+      |> Map.put("uiLabels", DawarichWeb.NativeMapLabels.labels(locale))
       |> Map.put("photoLabels", photo_labels)
       |> Map.put("entityLabels", entity_labels)
       |> Map.put("hexagonLabel", label |> LazyHTML.from_fragment() |> LazyHTML.text())

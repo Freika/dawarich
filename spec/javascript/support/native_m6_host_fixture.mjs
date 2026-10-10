@@ -21,6 +21,7 @@ export function fixture(config = {}) {
   element.dataset.mapConfig = JSON.stringify({ range, ...config })
   element.closest = () => root
   element.ownerDocument = { createElement: () => new Element() }
+  root.ownerDocument = element.ownerDocument
   const listeners = new Map(), sources = new Map(), layers = new Map(), pushed = [], reads = []
   const toggle = () => ({enabled: true, enable() {this.enabled=true}, disable() {this.enabled=false}, isEnabled() {return this.enabled}})
   const map = {
