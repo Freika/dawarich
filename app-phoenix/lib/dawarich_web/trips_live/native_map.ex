@@ -7,17 +7,21 @@ defmodule DawarichWeb.TripsLive.NativeMap do
     do:
       {:ok,
        socket
-       |> assign(selected_day: nil, note_editor: nil)
+       |> assign(selected_day: nil, note_editor: nil, expanded_days: false, trip_layers: %{})
        |> DawarichWeb.NativePosterGallery.mount(), layout: false}
 
   def handle_params(%{"id" => id}, _, socket) do
-    socket = assign(socket, selected_day: nil, note_editor: nil)
+    socket =
+      assign(socket, selected_day: nil, note_editor: nil, expanded_days: false, trip_layers: %{})
 
     case DawarichWeb.NativeTripState.refresh(socket, Dawarich.RubyInteger.to_i(id)) do
       {:ok, socket} -> {:noreply, socket}
       {:error, socket} -> {:noreply, socket}
     end
   end
+
+  def handle_event(event, payload, socket) when event in ~w(trip:layer trip:days:all),
+    do: DawarichWeb.NativeTripControls.handle_event(event, payload, socket)
 
   def handle_event("trip:note:" <> _ = event, payload, socket),
     do: DawarichWeb.NativeTripNotes.handle_event(event, payload, socket)
@@ -60,11 +64,13 @@ defmodule DawarichWeb.TripsLive.NativeMap do
   def render(assigns) do
     ~H"""
     <main :if={@page} id="trip-shell" data-native-map-root class="w-full min-w-0 p-4">
+      <DawarichWeb.NativeTripToolbar.toolbar page={@page} expanded={@expanded_days} locale={@locale} />
       <DawarichWeb.NativeTripContent.content
         page={@page.presentation}
         locale={@locale}
         selected_day={@selected_day}
         note_editor={@note_editor}
+        expanded_days={@expanded_days}
       />
       <p>{@page.range_label}</p>
       <DawarichWeb.NativeTripMapPanel.panel config={@page.config} locale={@locale} />

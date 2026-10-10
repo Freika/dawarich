@@ -175,3 +175,5 @@ The Trip dependency adapter `view/3` reads one fresh owner-admitted TripPage and
 Trip day selection uses fresh admitted days and `trip:select_day` receipts. The Trip hook owns this handler, buffers an early receipt until map readiness, calls only its current layer owner, and removes the handler on destruction. Removing the resource refuses the next day command and clears the owner. Canonical production parent insertion remains pending.
 
 Native Trip notes keep only one bounded editor projection. The server selects the date/note from its freshly admitted Trip days; save/update/delete use the existing WebNotes domain service through Dawarich.Maps.Dependencies.Notes. Validation preserves the editor; cancel writes nothing; losing resource admission clears the root/editor and map owner. Browser notes use the principal Repo rather than the configurable job repository.
+
+Trip photo/flight/plan visibility uses local Boolean overrides, pruned against freshly admitted settings/plan capability. Controls emit safe map:config receipts; all-days expansion emits an all-day selection receipt without changing the studios' Trip range. ARIA states are explicit text values.

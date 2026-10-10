@@ -8,11 +8,22 @@ defmodule DawarichWeb.NativeTripState do
 
     case Dawarich.Maps.Dependencies.Trip.view(socket.assigns.current_scope, id) do
       {:ok, page} ->
-        config = page.config
+        choices =
+          Map.filter(socket.assigns[:trip_layers] || %{}, fn {key, value} ->
+            is_boolean(value) and
+              Enum.any?(~w(photos flights plan), &(layer_key(page.presentation, &1) == key))
+          end)
+
+        config = Map.merge(page.config, choices)
+        page = %{page | config: config}
         label = config["range"]["startAt"] <> " – " <> config["range"]["endAt"]
 
         {:ok,
-         assign(socket, page: Map.put(page, :range_label, label), page_title: config["title"])}
+         assign(socket,
+           page: Map.put(page, :range_label, label),
+           page_title: config["title"],
+           trip_layers: choices
+         )}
 
       {:error, reason} ->
         {:error,
@@ -20,6 +31,15 @@ defmodule DawarichWeb.NativeTripState do
          |> assign(page_title: nil, selected_day: nil, note_editor: nil)
          |> DawarichWeb.MapLiveAuth.refuse(reason)
          |> push_event("map:clear", %{})}
+    end
+  end
+
+  def layer_key(page, layer) do
+    case layer do
+      "photos" -> if page.settings.photos, do: "photosEnabled"
+      "flights" -> if page.settings.airtrail, do: "flightsEnabled"
+      "plan" -> if page.plan_toggle, do: "planEnabled"
+      _ -> nil
     end
   end
 
