@@ -3,16 +3,20 @@
 require 'rails_helper'
 
 RSpec.describe 'Shared link rate limiting', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:link) { create(:shared_link, :with_phrase) }
 
   before do
     Rack::Attack.enabled = true
     Rack::Attack.cache.store.clear
+    freeze_time
   end
 
   after do
     Rack::Attack.enabled = false
     Rack::Attack.cache.store.clear
+    travel_back
   end
 
   it 'throttles unlock attempts after 5 in 5 minutes (even on self-hosted)' do
@@ -25,7 +29,7 @@ RSpec.describe 'Shared link rate limiting', type: :request do
   end
 
   describe 'viewer throttle' do
-    let(:original_viewer_limit) { Rack::Attack.shared_links_viewer_limit }
+    let!(:original_viewer_limit) { Rack::Attack.shared_links_viewer_limit }
 
     before { Rack::Attack.shared_links_viewer_limit = 2 }
     after  { Rack::Attack.shared_links_viewer_limit = original_viewer_limit }

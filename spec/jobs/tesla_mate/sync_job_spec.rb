@@ -3,6 +3,23 @@
 require 'rails_helper'
 
 RSpec.describe TeslaMate::SyncJob, type: :job do
+  it 'forwards once to the owner and retains failed rehome commands' do
+    user = create(:user)
+    job_owner!('command:imports.teslamate_sync', :oban)
+    job = described_class.new(user.id)
+    allow(TeslaMate::Sync).to receive(:new) { raise 'provider executed without admitted owner' }
+    2.times { job.perform_now }
+    expect(JobOutbox.pending.pluck(:event_id, :command_type, :payload))
+      .to eq([[job.job_id, 'imports.teslamate_sync', { 'user_id' => user.id }]])
+    allow(described_class.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+    expect(JobCommands.rehome!('imports.teslamate_sync', by: 'spec'))
+      .to eq({ moved: 0, left: 1, error: 'RedisClient::CannotConnectError' })
+    expect(JobOutbox.pending.count).to eq(1)
+    allow(described_class.queue_adapter).to receive(:enqueue_at).and_call_original
+    expect(JobCommands.rehome!('imports.teslamate_sync', by: 'spec')).to eq({ moved: 1, left: 0 })
+    expect(enqueued_jobs.last[:args]).to eq([user.id])
+  end
+
   it 'syncs the requested user' do
     user = create(:user)
     sync = instance_double(TeslaMate::Sync, call: { points: 0 })
@@ -88,8 +105,7 @@ RSpec.describe TeslaMate::SyncJob, type: :job do
 
   it 'does not start a second sync while one already holds the user lock' do
     user = create(:user)
-    allow(ActiveRecord::Base).to receive(:with_advisory_lock)
-      .with("teslamate-sync:#{user.id}", timeout_seconds: 0).and_return(false)
+    allow(PhoenixLease).to receive(:try_hold).with("teslamate-sync:#{user.id}").and_return(false)
 
     expect(TeslaMate::Sync).not_to receive(:new)
 

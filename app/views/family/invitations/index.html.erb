@@ -46,8 +46,7 @@
 
                 <% if policy(@family).manage_invitations? %>
                   <%= link_to family_invitation_path(invitation.token),
-                        method: :delete,
-                        confirm: t('family_invitations.index.cancel_confirm'),
+                        data: { turbo_confirm: t('family_invitations.index.cancel_confirm'), turbo_method: :delete },
                         class: "btn btn-ghost btn-sm text-error" do %>
                     <%= t('family_invitations.index.cancel') %>
                   <% end %>

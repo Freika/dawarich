@@ -91,4 +91,26 @@ RSpec.describe DataMigrations::AddPointDimensionColumnsJob, type: :job do
       expect { described_class.perform_now }.to have_enqueued_job(described_class)
     end
   end
+
+  context 'committed DDL', :non_transactional do
+    it 'child enqueue failure leaves committed source_id and no child' do
+      connection = ActiveRecord::Base.connection
+      connection.execute('ALTER TABLE points DROP COLUMN source_id')
+      Point.reset_column_information
+      allow(DataMigrations::BackfillPointDimensionsJob).to receive(:perform_later)
+        .and_raise(ActiveRecord::StatementInvalid, 'A12h child enqueue failure')
+
+      expect { described_class.perform_now }
+        .to raise_error(ActiveRecord::StatementInvalid, 'A12h child enqueue failure')
+      query = 'SELECT EXISTS (SELECT 1 FROM information_schema.columns ' \
+              "WHERE table_schema='public' AND table_name='points' AND column_name='source_id')"
+      expect(connection.select_value(query))
+        .to be(true)
+      expect(enqueued_jobs).to be_empty
+    ensure
+      connection.execute('ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer')
+      Point.reset_column_information
+      Points::DimensionResolver.reset_column_availability!
+    end
+  end
 end

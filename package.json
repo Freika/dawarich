@@ -8,6 +8,7 @@
     "daisyui": "^4.7.3",
     "maplibre-gl": "6.4.1",
     "postcss": "^8.5.26",
+    "swagger-ui-dist": "5.33.1",
     "trix": "^2.1.19"
   },
   "engines": {
@@ -17,6 +18,11 @@
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
     "@playwright/test": "^1.56.1",
-    "@types/node": "^24.0.13"
+    "@tailwindcss/aspect-ratio": "0.4.2",
+    "@tailwindcss/forms": "0.5.9",
+    "@tailwindcss/typography": "0.5.15",
+    "@types/node": "^24.0.13",
+    "cssnano": "6.1.2",
+    "tailwindcss": "3.4.17"
   }
 }

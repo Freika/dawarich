@@ -37,6 +37,18 @@ RSpec.describe 'Api::V1::DemoData', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    it 'loads demo data without queueing file processing for its marker import' do
+      expect do
+        post '/api/v1/demo_data', headers: headers
+      end.not_to have_enqueued_job(Import::ProcessJob)
+
+      expect(response).to have_http_status(:created)
+      expect(user.imports.find_by!(demo: true)).to be_completed
+
+      get '/api/v1/demo_data', headers: headers
+      expect(response.parsed_body['exists']).to be(true)
+    end
+
     it 'returns 201 created when the importer seeds data' do
       importer = instance_double(DemoData::Importer, call: { status: :created })
       allow(DemoData::Importer).to receive(:new).with(user).and_return(importer)

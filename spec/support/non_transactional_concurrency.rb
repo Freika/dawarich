@@ -3,16 +3,26 @@
 module NonTransactionalConcurrency
   # Only the tables that the duplicate-tracks regression specs mutate. Each
   # spec creates its own user via `let(:user) { create(:user) }`, so leave
-  # `users` and unrelated tables alone — truncating them between examples
+  # `users` and unrelated tables alone — deleting their rows between examples
   # would wipe state shared with other specs running in the same process.
-  TABLES_TO_TRUNCATE = %w[track_segments tracks points].freeze
+  TABLES_TO_DELETE = %w[track_segments tracks points].freeze
 
-  def self.truncate_all
+  def self.delete_all
     conn = ActiveRecord::Base.connection
-    existing = conn.tables & TABLES_TO_TRUNCATE
+    existing = conn.tables & TABLES_TO_DELETE
     return if existing.empty?
 
-    conn.execute("TRUNCATE TABLE #{existing.join(', ')} RESTART IDENTITY CASCADE")
+    FixtureCleanup.delete!(existing)
+  end
+
+  def self.newest_user_id
+    User.unscoped.maximum(:id).to_i
+  end
+
+  def self.delete_users_created_after(user_id)
+    created = User.unscoped.where('id > ?', user_id)
+    [Import, Export, Place].each { |model| model.where(user_id: created.select(:id)).delete_all }
+    created.delete_all
   end
 end
 
@@ -50,10 +60,22 @@ RSpec.configure do |config|
     # The first non_transactional example in a run can inherit data created by
     # earlier transactional specs that wrote outside the wrapping transaction
     # (e.g. via `before(:all)` or jobs). Start clean.
-    NonTransactionalConcurrency.truncate_all
+    NonTransactionalConcurrency.delete_all
   end
 
   config.after(:each, :non_transactional) do
-    NonTransactionalConcurrency.truncate_all
+    NonTransactionalConcurrency.delete_all
+  end
+
+  config.around(:each, :non_transactional) do |example|
+    newest_user_id = NonTransactionalConcurrency.newest_user_id
+    connection = ActiveRecord::Base.connection
+    owner_keys = connection.select_values('SELECT key FROM phoenix.job_owners')
+    example.run
+  ensure
+    NonTransactionalConcurrency.delete_users_created_after(newest_user_id)
+    quoted = owner_keys.map { connection.quote(_1) }
+    predicate = quoted.empty? ? '' : "WHERE key NOT IN (#{quoted.join(',')})"
+    connection.execute("DELETE FROM phoenix.job_owners #{predicate}")
   end
 end

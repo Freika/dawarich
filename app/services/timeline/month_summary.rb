@@ -37,7 +37,9 @@ module Timeline
       d = normalize_month(date)
       tz = user.safe_settings.timezone.presence || 'UTC'
       plan_segment = user.plan_restricted? ? 'lite' : 'pro'
-      ['timeline_month_summary', user.id, d.strftime('%Y-%m'), tz, plan_segment, 'v3']
+      key = ['timeline_month_summary', user.id, d.strftime('%Y-%m'), tz, plan_segment, 'v3']
+      generation = VisitCacheGeneration.token(user.id, d.strftime('%Y-%m'), tz)
+      generation ? key + [generation] : key
     end
 
     def self.normalize_month(date)
@@ -54,8 +56,14 @@ module Timeline
     end
 
     def call
-      Rails.cache.fetch(self.class.cache_key_for(@user, @month_start), expires_in: CACHE_TTL) do
-        build_summary
+      loop do
+        key = self.class.cache_key_for(@user, @month_start)
+        result = Rails.cache.fetch(key, expires_in: CACHE_TTL) do
+          ActiveRecord::Base.uncached do
+            self.class.new(user: @user, month: @month_start).send(:build_summary)
+          end
+        end
+        return result if key == self.class.cache_key_for(@user, @month_start)
       end
     end
 

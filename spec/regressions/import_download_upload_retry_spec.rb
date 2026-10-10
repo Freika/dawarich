@@ -6,6 +6,7 @@ RSpec.describe 'Retrying a prepared import upload', type: :model do
   self.use_transactional_tests = false
 
   it 'retries a failed destination upload without treating missing bytes as a ready file' do
+    newest_blob_id = ActiveStorage::Blob.maximum(:id).to_i
     import = create(:import, name: 'holiday.gpx')
     user = import.user
     content = '<gpx><trk><name>Holiday</name></trk></gpx>'
@@ -30,6 +31,7 @@ RSpec.describe 'Retrying a prepared import upload', type: :model do
     expect(import.reload.prepared_download.download).to eq(content)
   ensure
     import&.destroy!
-    user&.destroy!
+    ActiveStorage::Blob.where('id > ?', newest_blob_id).find_each(&:purge)
+    User.unscoped.where(id: user.id).delete_all if user
   end
 end

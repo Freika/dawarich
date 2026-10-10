@@ -1,6 +1,6 @@
 <% if @activity_heatmap && !@all_time %>
   <div class="w-full lg:w-3/4 mb-6">
-    <div class="card bg-base-200" data-controller="activity-heatmap" data-activity-heatmap-unit-value="<%= current_user.safe_settings.distance_unit %>" data-activity-heatmap-target-date-value="<%= most_recent_active_date(@activity_heatmap.daily_data) %>">
+    <div id="activity-heatmap-card" class="card bg-base-200" data-controller="activity-heatmap" data-activity-heatmap-unit-value="<%= current_user.safe_settings.distance_unit %>" data-activity-heatmap-target-date-value="<%= most_recent_active_date(@activity_heatmap.daily_data) %>">
     <div class="card-body p-4">
       <!-- Header -->
       <div class="flex justify-between items-center mb-4">

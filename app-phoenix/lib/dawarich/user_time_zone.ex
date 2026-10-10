@@ -1,0 +1,71 @@
+defmodule Dawarich.UserTimeZone do
+  @moduledoc false
+
+  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+  alias Dawarich.Repo
+
+  @utc_zones ~w(UTC Etc/UTC UCT Etc/UCT Universal Etc/Universal Zulu Etc/Zulu)
+
+  def local(settings, %NaiveDateTime{} = at) do
+    %{rows: [[offset, zone]]} =
+      query!(
+        "SELECT extract(epoch FROM (($1::timestamp AT TIME ZONE 'UTC') AT TIME ZONE z.name) - $1::timestamp)::int, z.name FROM z",
+        [at],
+        settings
+      )
+
+    zoned(at, offset, zone)
+  end
+
+  def zoned(at, offset, zone),
+    do: %{local: NaiveDateTime.add(at, offset), offset: offset, utc: zone in @utc_zones}
+
+  def name(settings, repo \\ Repo, env \\ System.get_env()) do
+    resolved_name(settings, repo, env)
+  end
+
+  def iana(repo, settings, env \\ System.get_env()) do
+    effective = zone(settings, env)
+    raw = if Ruby.present?(effective), do: effective, else: env["TIME_ZONE"] || "Europe/Berlin"
+
+    name = Dawarich.TimeZoneName.to_iana(raw)
+    if Dawarich.TimeZoneNames.member?(repo, name), do: name, else: "Etc/UTC"
+  end
+
+  def query!(sql, params, settings, repo_or_env \\ Repo)
+
+  def query!(sql, params, settings, env) when is_map(env),
+    do: query!(sql, params, settings, Repo, env)
+
+  def query!(sql, params, settings, repo),
+    do: query!(sql, params, settings, repo, System.get_env())
+
+  def query!(sql, params, settings, repo, env) do
+    n = length(params)
+
+    repo.query!(
+      "WITH z AS MATERIALIZED (SELECT $#{n + 1}::text AS name) " <> sql,
+      params ++ [resolved_name(settings, repo, env)]
+    )
+  end
+
+  defp resolved_name(settings, repo, env) do
+    preferred = Dawarich.TimeZoneName.to_iana(zone(settings, env))
+    fallback = Dawarich.TimeZoneName.to_iana(env["TIME_ZONE"] || "Europe/Berlin")
+
+    cond do
+      Dawarich.TimeZoneNames.member?(repo, preferred) -> preferred
+      Dawarich.TimeZoneNames.member?(repo, fallback) -> fallback
+      true -> "UTC"
+    end
+  end
+
+  def zone(settings, env \\ System.get_env())
+
+  def zone(settings, env) do
+    case Dawarich.UserSettings.safe(settings, env)["timezone"] do
+      zone when is_binary(zone) -> zone
+      _ -> env["TIME_ZONE"] || "UTC"
+    end
+  end
+end

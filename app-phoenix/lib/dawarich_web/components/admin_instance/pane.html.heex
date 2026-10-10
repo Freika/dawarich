@@ -1,0 +1,59 @@
+<div
+  class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl"
+  data-testid={"instance-settings-pane-" <> @section}
+>
+  <form
+    id={"instance-settings-#{@section}-#{@saves}"}
+    data-testid={"instance-settings-form-" <> @section}
+    phx-submit="save"
+  >
+    <input type="hidden" name="section" value={@section} />
+    <div class="card-body">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <.icon name={section_icon(@section)} class="size-6 shrink-0 text-base-content/70" />
+        <h2 class="text-xl font-semibold min-w-0">{section_title(@locale, @section)}</h2>
+        <span
+          :if={@section in providers() and in_use?(@data, @section)}
+          class="badge badge-sm badge-primary badge-outline"
+        >{t(@locale, "admin.settings.show.geocoding.in_use", %{})}</span>
+      </div>
+      <p :if={@section in providers()} class="text-sm text-base-content/70 [text-wrap:pretty]">
+        {t(@locale, "admin.settings.show.providers." <> @section, %{})}
+      </p>
+      <%= if @section == "photon" do %>
+        <p class="text-sm text-base-content/70 [text-wrap:pretty]">
+          {t(@locale, "admin.settings.show.geocoding.chibigeo_message", %{})}
+          <a
+            href={key_url()}
+            target="_blank"
+            rel="noopener"
+            class="link link-hover font-medium text-base-content"
+          >{t(@locale, "admin.settings.show.geocoding.chibigeo_key_link", %{})}</a>
+        </p>
+        <div :if={komoot?(@data)} role="note" class="flex items-start gap-2 text-sm">
+          <.icon name="triangle-alert" class="size-4 shrink-0 mt-0.5 text-warning" />
+          <p class="min-w-0 [text-wrap:pretty]">
+            {t(@locale, "admin.settings.show.geocoding.komoot_warning", %{})}
+          </p>
+        </div>
+      <% end %>
+      <div class="divide-y divide-base-content/10">
+        <AdminSettingField.field
+          :for={key <- InstancePage.field_order(@section)}
+          locale={@locale}
+          field={@data.fields[key]}
+        />
+      </div>
+      <div
+        :if={not Enum.all?(InstancePage.section_keys(@section), &@data.fields[&1].pinned)}
+        class="card-actions border-t border-base-content/10 pt-5"
+      >
+        <button
+          type="submit"
+          class="btn btn-primary"
+          phx-disable-with={t(@locale, "admin.settings.show.saving", %{})}
+        >{t(@locale, "admin.settings.show.save", %{})}</button>
+      </div>
+    </div>
+  </form>
+</div>

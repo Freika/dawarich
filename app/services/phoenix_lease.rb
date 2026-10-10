@@ -1,0 +1,104 @@
+# frozen_string_literal: true
+
+module PhoenixLease
+  TTL = 60
+  MAX_RENEW_ERRORS = 3
+  ACQUIRE = <<~SQL
+    WITH current AS (
+      SELECT name, expires_at FROM phoenix.leases WHERE name = $1 FOR UPDATE SKIP LOCKED
+    ), taken AS (
+      UPDATE phoenix.leases l
+      SET holder = $2, expires_at = statement_timestamp() + make_interval(secs => $3)
+      FROM current c
+      WHERE l.name = c.name AND c.expires_at <= statement_timestamp()
+      RETURNING 1
+    ), inserted AS (
+      INSERT INTO phoenix.leases (name, holder, expires_at)
+      SELECT $1, $2, statement_timestamp() + make_interval(secs => $3)
+      WHERE NOT EXISTS (SELECT 1 FROM phoenix.leases WHERE name = $1)
+      ON CONFLICT (name) DO NOTHING
+      RETURNING 1
+    )
+    SELECT 1 FROM taken UNION ALL SELECT 1 FROM inserted
+  SQL
+  RENEW = <<~SQL
+    UPDATE phoenix.leases SET expires_at = statement_timestamp() + make_interval(secs => $3)
+    WHERE name = $1 AND holder = $2 AND expires_at > statement_timestamp()
+  SQL
+  RELEASE = 'DELETE FROM phoenix.leases WHERE name = $1 AND holder = $2'
+
+  module_function
+
+  def hold(name, busy, ttl: TTL, &)
+    return yield unless table?
+
+    holder = SecureRandom.uuid
+    raise busy unless acquire(name, holder, ttl)
+
+    held(name, holder, ttl, &)
+  end
+
+  def try_hold(name, ttl: TTL, &)
+    return ActiveRecord::Base.with_advisory_lock(name, timeout_seconds: 0, &) unless table?
+
+    holder = SecureRandom.uuid
+    return false unless acquire(name, holder, ttl)
+
+    held(name, holder, ttl, &)
+  end
+
+  def held(name, holder, ttl)
+    stop = Queue.new
+    begin
+      beat = Thread.new { heartbeat(name, holder, ttl, stop) }
+      yield
+    ensure
+      stop << true
+      beat&.join
+      quietly { release(name, holder) }
+    end
+  end
+
+  def acquire(name, holder, ttl)
+    if ActiveRecord::Base.connection.current_transaction.joinable?
+      raise ArgumentError, 'a lease cannot be taken inside a transaction: its heartbeat renews on another connection'
+    end
+
+    changed?(ActiveRecord::Base.connection_pool, ACQUIRE, name, holder, ttl)
+  end
+
+  def renew(name, holder, ttl) = changed?(PhoenixLeaseRecord.connection_pool, RENEW, name, holder, ttl)
+
+  def release(name, holder) = changed?(PhoenixLeaseRecord.connection_pool, RELEASE, name, holder)
+
+  def table? = PhoenixSchema.table?('leases')
+
+  def heartbeat(name, holder, ttl, stop)
+    errors = 0
+    until stop.pop(timeout: ttl / 3.0)
+      case quietly { renew(name, holder, ttl) }
+      when true then errors = 0
+      when false then return lost(name, 'renew_lost')
+      else
+        errors += 1
+        return lost(name, 'consecutive_renew_errors') if errors >= MAX_RENEW_ERRORS
+      end
+    end
+  end
+
+  def lost(name, reason)
+    Rails.logger.warn("event=state.lease_lost name=#{name} reason=#{reason}")
+  end
+
+  def quietly
+    yield
+  rescue ActiveRecord::ActiveRecordError
+    :error
+  end
+
+  def changed?(pool, sql, *binds)
+    pool.with_connection { |connection| connection.exec_update(sql, 'PhoenixLease', binds) == 1 }
+  end
+
+  private_class_method :held, :heartbeat, :lost, :quietly, :changed?
+end

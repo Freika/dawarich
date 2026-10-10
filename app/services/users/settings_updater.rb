@@ -45,9 +45,12 @@ module Users
       raw = @settings_params[MODES_KEY] || @settings_params[MODES_KEY.to_sym]
       return false if raw.nil?
 
-      valid = Track::TRANSPORTATION_MODES.keys.map(&:to_s)
-      intersection = Array(raw).map(&:to_s) & valid
+      intersection = Array(raw).map(&:to_s) & all_transportation_modes
       Array(raw).any? && intersection.empty?
+    end
+
+    def all_transportation_modes
+      @all_transportation_modes ||= Track::TRANSPORTATION_MODES.keys.map(&:to_s)
     end
 
     def invalid_allowlist_result
@@ -96,10 +99,15 @@ module Users
 
     def trigger_mode_reclassification
       return unless modes_param_present?
-      return if @old_enabled_modes == @user.settings[MODES_KEY]
+      return if effective_modes(@old_enabled_modes) == effective_modes(@user.settings[MODES_KEY])
 
       TransportationModes::UserReclassifyJob.perform_later(@user.id)
       @recalculation_triggered = true
+    end
+
+    def effective_modes(modes)
+      normalized = Array(modes).map(&:to_s).uniq
+      normalized.presence&.sort || all_transportation_modes.sort
     end
 
     def trigger_city_stats_recalculation

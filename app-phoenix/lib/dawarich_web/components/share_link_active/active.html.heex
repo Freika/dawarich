@@ -1,0 +1,115 @@
+<div class="flex items-center gap-2 mb-4">
+  <h3 class="font-bold text-lg">{s(@ctx, "sharing")}</h3>
+  <span class="badge badge-success badge-sm gap-1"><span class="w-1.5 h-1.5 rounded-full bg-success-content/80"></span>{audience(
+    @ctx,
+    @share,
+    "label",
+    "public"
+  )}</span>
+</div>
+<p :if={@subtitle} class="text-sm text-base-content/70 mb-5">{@subtitle}</p>
+<div class="space-y-4">
+  <div>
+    <label
+      class="text-xs font-medium text-base-content/60 uppercase tracking-wide"
+      for="share-url"
+    >{audience(@ctx, @share, "link", "public_link")}</label>
+    <div class="join w-full mt-1">
+      <input
+        id="share-url"
+        type="text"
+        readonly
+        value={url(@ctx, @share)}
+        class="input input-bordered join-item flex-1 font-mono text-sm"
+        onclick="this.select();"
+      />
+      <button
+        type="button"
+        class="btn btn-outline join-item"
+        data-controller="clipboard"
+        data-clipboard-text-value={url(@ctx, @share)}
+        data-action="click->clipboard#copy"
+        title={s(@ctx, "copy_link")}
+        aria-label={copy_label(@ctx, @share)}
+      ><.icon name="copy" class="w-4 h-4" /></button>
+      <a
+        target="_blank"
+        rel="noopener"
+        class="btn btn-outline join-item"
+        data-turbo="false"
+        title={s(@ctx, "open_in_new_tab")}
+        aria-label={s(@ctx, "open_in_new_tab")}
+        href={url(@ctx, @share)}
+      ><.icon name="external-link" class="w-4 h-4" /></a>
+    </div>
+  </div>
+  <div :if={
+    !Dawarich.SharedLinks.FamilyAudience.family_only?(@share) && @share.magic_phrase &&
+      String.trim(@share.magic_phrase) != ""
+  }>
+    <label
+      class="text-xs font-medium text-base-content/60 uppercase tracking-wide"
+      for="share-phrase"
+    >{s(@ctx, "magic_phrase")}</label>
+    <div class="join w-full mt-1">
+      <input
+        id="share-phrase"
+        type="text"
+        readonly
+        value={@share.magic_phrase}
+        class="input input-bordered join-item flex-1 font-mono text-sm"
+        onclick="this.select();"
+      />
+      <button
+        type="button"
+        class="btn btn-outline join-item"
+        data-controller="clipboard"
+        data-clipboard-text-value={@share.magic_phrase}
+        data-action="click->clipboard#copy"
+        aria-label={s(@ctx, "copy_magic_phrase")}
+      ><.icon name="copy" class="w-4 h-4" /></button>
+    </div>
+  </div>
+  <div class="flex flex-wrap gap-4 text-sm text-base-content/70">
+    <span>{s(@ctx, "view_count", %{count: @share.view_count})}</span>
+    <span class="flex items-center gap-1.5"><.icon name="clock" class="w-4 h-4" />
+    <%= if @share.last_accessed_at do %>
+      {s(@ctx, "last_viewed")} {t(@ctx.locale, "common.time_ago", %{
+        time: DawarichWeb.TimeAgo.words(@ctx.locale, @share.last_accessed_at, @ctx.now)
+      })}
+    <% else %>
+      {s(@ctx, "not_viewed_yet")}
+    <% end %></span>
+  </div>
+  <div class="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-base-300">
+    <div class="flex flex-wrap gap-2">
+      <.action
+        ctx={@ctx}
+        path={@paths.regenerate}
+        method="post"
+        class="btn btn-outline btn-sm"
+        confirm="generate_a_new_url_the_current_url_will_stop_working"
+        icon="refresh-ccw"
+        label="regenerate_url"
+      />
+      <.action
+        ctx={@ctx}
+        path={@paths.regenerate_phrase}
+        method="post"
+        class="btn btn-outline btn-sm"
+        confirm="generate_a_new_phrase"
+        icon="refresh-ccw"
+        label="regenerate_phrase"
+      />
+    </div>
+    <.action
+      ctx={@ctx}
+      path={@paths.revoke}
+      method="patch"
+      class="btn btn-warning btn-sm"
+      confirm="revoke_this_link_it_will_stop_working_immediately"
+      icon="shield"
+      label="revoke"
+    />
+  </div>
+</div>

@@ -6,12 +6,6 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
   describe '#perform' do
     let(:user) { create(:user, settings: { 'minutes_between_routes' => 30, 'meters_between_routes' => 500 }) }
 
-    before do
-      allow(Tracks::RealtimeDebouncer).to receive(:new).and_return(
-        instance_double(Tracks::RealtimeDebouncer, clear: true)
-      )
-    end
-
     context 'when user exists and is active' do
       it 'clears the debounce key' do
         debouncer = instance_double(Tracks::RealtimeDebouncer, clear: true)
@@ -29,6 +23,32 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
         described_class.perform_now(user.id)
 
         expect(generator).to have_received(:call)
+      end
+
+      it 'Oban-owned: clears the debounce key, forwards, generates nothing' do
+        key = "track_realtime:user:#{user.id}"
+        PhoenixClaims.claim(key, 120)
+        job_owner!(described_class::OWNER_KEY, :oban)
+        allow(Tracks::IncrementalGenerator).to receive(:new)
+        job = described_class.new(user.id)
+
+        job.perform_now
+
+        expect(claim_seconds(key)).to be_nil
+        expect(JobOutbox.sole).to have_attributes(command_type: 'tracks.generate_realtime', aggregate_id: user.id,
+                                                  event_id: job.job_id)
+        expect(Tracks::IncrementalGenerator).not_to have_received(:new)
+      end
+
+      it 'Sidekiq path still enqueues geocoding through the follow-up' do
+        job_owner!(described_class::OWNER_KEY, :sidekiq)
+        allow(Tracks::RealtimeGeocodeFollowUp).to receive(:call)
+        generator = instance_double(Tracks::IncrementalGenerator, call: true)
+        allow(Tracks::IncrementalGenerator).to receive(:new).with(user).and_return(generator)
+
+        described_class.perform_now(user.id)
+
+        expect(Tracks::RealtimeGeocodeFollowUp).to have_received(:call).with(user)
       end
     end
 
@@ -148,7 +168,7 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
 
     describe 'reverse geocoding enqueueing' do
       def reset_dedup_keys
-        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+        clear_geocode_claims!
       end
 
       let(:geocoding_configured) { true }
@@ -201,6 +221,19 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
           expect { described_class.perform_now(user.id) }
             .not_to have_enqueued_job(ReverseGeocodingJob)
         end
+      end
+
+      it 'Oban-owned: RealtimeGeocodeFollowUp writes a batch instead of enqueueing' do
+        job_owner!('command:geocoding.reverse_point', :oban)
+        recent_point = create(:point, user: user, reverse_geocoded_at: nil)
+        reset_dedup_keys
+
+        expect { described_class.perform_now(user.id) }
+          .not_to have_enqueued_job(ReverseGeocodingJob)
+
+        row = JobOutbox.sole
+        expect(row).to have_attributes(command_type: 'geocoding.reverse_point', aggregate_id: user.id)
+        expect(row.payload).to eq('user_id' => user.id, 'point_ids' => [recent_point.id], 'force' => false)
       end
     end
   end

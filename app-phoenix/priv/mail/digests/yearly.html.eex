@@ -1,0 +1,54 @@
+<% _ = @pre_style %><!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+           max-width: 600px; margin: 0 auto; padding: 20px;
+           color: #1a1a1a; background: #fafafa; }
+    pre.ascii { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+                line-height: 1.25; font-size: 13px; white-space: pre;
+                background: #fff; padding: 16px; border-radius: 6px;
+                border: 1px solid #e5e5e5; overflow-x: auto; }
+    h1, h2 { color: #1a1a1a; }
+    .meta { color: #666; font-size: 14px; }
+    .footer { color: #888; font-size: 12px; margin-top: 32px;
+              border-top: 1px solid #e5e5e5; padding-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1><%= @v.(@title) %></h1>
+  <p class="meta"><%= @v.(@subtitle) %></p>
+
+  <h2><%= @t.("the_numbers") %></h2>
+  <pre class="ascii" style="<%= @v.(@pre_style) %>">
+<%= @t.("distance") %>       <%= @v.(@distance) %>
+<%= @t.("countries") %>      <%= @v.(@countries_count) %>
+<%= @t.("cities") %>         <%= @v.(@cities_count) %>
+</pre>
+
+<%= if @heatmap? do %>    <h2><%= @t.("activity_heatmap") %></h2>
+    <pre class="ascii" style="<%= @v.(@pre_style) %>"><%= @v.(@heatmap) %>
+
+<%= @t.("none_light_moderate_high_peak") %></pre>
+<% end %>
+  <h2><%= @t.("monthly_distance") %></h2>
+  <pre class="ascii" style="<%= @v.(@pre_style) %>"><%= @v.(@monthly) %></pre>
+
+<%= if @top_countries? do %>    <h2><%= @t.("top_countries") %></h2>
+    <pre class="ascii" style="<%= @v.(@pre_style) %>"><%= @v.(@countries_chart) %></pre>
+<% end %>
+<%= if @trend? do %>    <h2><%= @t.("vs_previous_year") %></h2>
+    <pre class="ascii" style="<%= @v.(@pre_style) %>"><%= @t.("distance") %>  <%= @v.(@trend) %>
+</pre>
+<% end %>
+  <p><a href="<%= @v.(@insights_url) %>"><%= @t.("view_full_insights_rarr") %></a></p>
+
+<%= if @shared? do %>    <p><a href="<%= @v.(@shared_url) %>"><%= @t.("share_your_year_rarr") %></a></p>
+<% end %>
+  <div class="footer">
+    <%= @t.("you_re_receiving_this_because_yearly_digest_emails_are_on") %>
+    <a href="<%= @v.(@preferences_url) %>"><%= @t.("manage_email_preferences") %></a>.
+  </div>
+</body>
+</html>

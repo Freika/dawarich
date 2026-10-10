@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang={@locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title(assigns)}</title>
+    <meta name="csrf-param" content="authenticity_token" /><meta
+      name="csrf-token"
+      content={@rails_csrf_token}
+    />
+    <.favicon />
+    <.pwa_meta locale={@locale} />
+    <link
+      rel="stylesheet"
+      href={Assets.stylesheet_path("tailwind.css")}
+      data-turbo-track="reload"
+    />
+    <link
+      rel="stylesheet"
+      href={Assets.stylesheet_path("inter-font.css")}
+      data-turbo-track="reload"
+    />
+    <link
+      rel="stylesheet"
+      href={Assets.stylesheet_path("application.css")}
+      data-turbo-track="reload"
+    />
+    <script
+      id="i18n-translations"
+      type="application/json"
+      data-turbo-track="reload"
+      phx-no-format
+    ><%= Phoenix.HTML.raw(translations(@locale)) %></script>
+    <script type="importmap" data-turbo-track="reload" phx-no-format><%= Phoenix.HTML.raw(importmap()) %></script>
+    <script type="module">
+      import "application"
+    </script>
+    <.metadata {assigns} />
+  </head>
+  <body class="bg-base-100">
+    <header class="sticky top-0 z-30 border-b border-base-300 bg-base-100/85 backdrop-blur">
+      <div class="container mx-auto px-4 flex items-center justify-between h-16">
+        <a class="btn btn-ghost normal-case text-xl px-2 gap-2" href={@base_url <> "/"}>
+          <img
+            alt={l(@locale, "dawarich_logo")}
+            class="h-8 w-8 rounded-[20%]"
+            src={Assets.stylesheet_path("logo.svg")}
+          />
+          <span>{l(@locale, "dawarich")}</span>
+        </a>
+        <a
+          class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-b from-[#3A66E8] to-[#2A56D8] px-4 py-2 text-sm font-bold text-white shadow-[0_6px_16px_rgba(45,91,227,0.30)] transition hover:brightness-105"
+          href={cta("header")}
+        >
+          {l(@locale, "try_dawarich_cloud")} <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    </header>
+    <.content {assigns} />
+    <footer class="relative mt-11 overflow-hidden bg-[#0E1320] text-white">
+      <div
+        class="pointer-events-none absolute -right-[8%] -top-[40%] h-[540px] w-[540px]"
+        style="background: radial-gradient(circle, rgba(58,102,232,0.40) 0%, rgba(58,102,232,0) 68%);"
+      >
+      </div>
+      <div
+        class="pointer-events-none absolute -bottom-[50%] -left-[6%] h-[460px] w-[460px]"
+        style="background: radial-gradient(circle, rgba(43,182,196,0.16) 0%, rgba(43,182,196,0) 70%);"
+      >
+      </div>
+      <div class="relative container mx-auto px-4 py-14 sm:py-16 flex flex-wrap items-center justify-between gap-x-12 gap-y-8">
+        <div class="max-w-xl">
+          <div class="mb-3 text-xs font-bold uppercase tracking-[0.1em] text-[#7f87a3]">
+            {l(@locale, "shared_with_dawarich")}
+          </div>
+          <h2 class="mb-3 text-3xl sm:text-[40px] font-extrabold leading-[1.05] tracking-tight">
+            {l(@locale, "map_your_own_journeys")}
+          </h2>
+          <p class="mb-6 max-w-lg text-lg leading-relaxed text-[#aab2c5]">
+            {l(@locale, "dawarich_turns_your_own_location_history_into_maps_worth_sharing")}
+          </p>
+          <div class="flex flex-wrap gap-2.5">
+            <span
+              :for={chip <- ~w(open_source self_hostable managed_cloud_no_setup)}
+              class="rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-sm font-semibold text-[#c6cdda]"
+            >
+              {l(@locale, chip)}
+            </span>
+          </div>
+        </div>
+        <div class="flex flex-col items-start gap-4">
+          <a
+            class="inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-b from-[#3A66E8] to-[#2A56D8] px-7 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(45,91,227,0.48)] transition hover:-translate-y-0.5 hover:brightness-110"
+            href={cta("footer_cta")}
+          >
+            {l(@locale, "try_dawarich_cloud")} <span aria-hidden="true">→</span>
+          </a>
+          <a
+            class="border-b border-white/25 pb-0.5 text-[15px] text-[#cbd2e0] transition hover:text-white"
+            href={cta("footer_docs", "/docs/")}
+          >
+            {l(@locale, "see_how_it_works")}
+          </a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

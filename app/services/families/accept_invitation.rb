@@ -88,7 +88,9 @@ module Families
     end
 
     def validate_family_capacity
-      return true unless invitation.family.full?
+      family = invitation.family
+      return true if DawarichSettings.self_hosted?
+      return true if family.member_count + family.pending_invitations_count <= Family::MAX_MEMBERS
 
       @error_message = I18n.t(
         'services.families.accept_invitation.this_family_has_reached_the_maximum_number_of_members'

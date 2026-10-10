@@ -1,6 +1,12 @@
 en:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Phoenix jobs"
+        ok: "Phoenix is processing its jobs."
+        alarm: "Phoenix is not processing its jobs; they wait until a Phoenix process runs."
+        not_installed: "Phoenix has not set up its tables in this database; every job runs in Sidekiq."
+        unknown: "The Phoenix job status could not be read from the database; reload the page to try again."
       show:
         title: "Instance settings"
         intro: "These settings apply to this whole instance. A setting supplied by an environment variable is shown read-only: remove the variable to edit it here."
@@ -37,7 +43,26 @@ en:
           locationiq: "Hosted service. Needs an API key."
         points:
           title: "Points"
+        experimental:
+          badge: "Experimental"
+          title: "Experimental features"
+        map_matching:
+          title: "Map matching"
+          description: "Align noisy recorded paths to nearby roads and paths. This changes only how eligible tracks are drawn; recorded points and the original path stay unchanged."
+          example_alt: "A noisy original path beside the same path aligned to streets"
+          original_label: "Original path"
+          matched_label: "Matched path"
+          example_caption: "Original keeps the recorded shape. Matched follows the nearby routable network and can always fall back to Original."
+          privacy: "Dawarich sends coordinates, timestamps, and GPS accuracy to the configured Atlas service. Keep that service inside a network you trust."
+          test: "Test connection"
+          testing: "Testing…"
         fields:
+          atlas_url: "Atlas URL"
+          map_matching_enabled: "Enable map matching"
+          atlas_url_hint: "Full HTTP or HTTPS base URL of your private Dawarich Atlas service."
+          map_matching_enabled_hint: "Applies to the whole instance. Existing tracks are not processed automatically."
+          map_matching_shadow_mode: "Shadow mode"
+          map_matching_shadow_mode_hint: "Processes eligible tracks without displaying matched paths."
           photon_api_host: "Host"
           photon_api_key: "API key"
           photon_api_use_https: "Use HTTPS"
@@ -53,10 +78,17 @@ en:
           api_key_keep_hint: "Leave blank to keep the saved key."
           store_geodata_hint: "Looks up city and country names when new points are added. Nightly lookups still run when a provider is configured, even with this option off."
       update:
+        atlas_url_invalid: "Atlas URL must be a full HTTP or HTTPS URL without credentials, a query, or a fragment."
+        atlas_url_required: "Set an Atlas URL before enabling map matching."
         saved: "Settings saved."
         pinned: "Refused: pinned by %{variables}."
         host_invalid: "The host must be a bare hostname with an optional port or path, with no spaces."
         chibigeo_key_required: "ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com."
+      test_map_matching:
+        not_configured: "Save an Atlas URL first."
+        success: "Atlas %{version} is ready for map matching."
+        routing_unavailable: "Atlas %{version} responded, but its routing capability is not ready."
+        failure: "Atlas connection failed (%{error})."
       test_geocoding:
         not_configured: "No geocoding provider is configured. Save a provider first."
         success: "Your provider resolved the test coordinates to %{place}."
@@ -1323,7 +1355,7 @@ en:
       rarr: "→"
       'on': 'on'
       no_visits_yet: No visits yet
-      rename: Rename
+      edit: Edit
       merge: Merge
       notes: Notes
       save: Save
@@ -3060,6 +3092,9 @@ en:
       this_feature_requires_a_pro_plan: This feature requires a Pro plan.
       your_account_has_been_deleted: Your account has been deleted.
       you_are_not_authorized_to_perform_this_action: You are not authorized to perform this action.
+      admin_writes_unavailable_with_oidc: "Admin changes are not available on instances that sign in through OIDC or Google. Set these values with environment variables instead."
+      admin_encryption_unavailable: "Secrets can't be saved because encryption is not configured on this instance."
+      admin_action_failed: "Something went wrong. Please try again."
       family_plan_required: This feature requires a Family plan.
     areas:
       created: Area created successfully!
@@ -3464,7 +3499,7 @@ en:
         export_name_successfully_finished: Export "%{name}" successfully finished.
         export_failed: Export failed
         export_name_failed_message_stacktrace_n: 'Export "%{name}" failed: %{message}, stacktrace: %{backtrace}'
-        unsupported_file_format: 'Unsupported file format: %{format}'
+        unsupported_file_format: 'Unsupported file format: %{file_format}'
     families:
       auto_create:
         default_name: My Family
@@ -3704,6 +3739,8 @@ en:
         enable_at_least_one_transportation_mode: Enable at least one transportation mode
         recalculation_in_progress: Transportation mode recalculation is in progress. Please wait until it completes.
     visits:
+      create:
+        duplicate_at_place_and_time: A visit already exists at this place and time
       suggest:
         error_suggesting_visits_message: 'Error suggesting visits: %{message}'
         error_suggesting_visits: 'Error suggesting visits'
@@ -3807,9 +3844,6 @@ en:
           one: "%{count} year"
           other: "%{count} years"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Stats, tracks, and digests have been recalculated for %{year_label}.
-        year_count:
-          one: "%{count} year"
-          other: "%{count} years"
         data_recalculation_failed: Data recalculation failed
         message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     visits:

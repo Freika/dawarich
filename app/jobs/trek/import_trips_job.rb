@@ -11,6 +11,30 @@ module Trek
     end
 
     def perform(source_id, identifiers, selection_token, offset = 0)
+      result = PhoenixLease.try_hold("trek-sync:#{source_id}") do
+        Imports::IntegrationCommands.legacy('imports.trek_import') do
+          perform_legacy(source_id, identifiers, selection_token, offset)
+        end
+      end
+      if result == false
+        result = Imports::IntegrationCommands.legacy('imports.trek_import') do
+          source = TripSource.active.find_by(id: source_id, provider: 'trek')
+          if source&.selection_token == selection_token && source.importing? && source.sync_allowed?
+            self.class.set(wait: 1.minute).perform_later(source_id, identifiers, selection_token, offset)
+          end
+        end
+      end
+      return result unless result == :not_owner
+
+      Imports::TrekCommands.forward(
+        'imports.trek_import',
+        { 'source_id' => source_id, 'identifiers' => identifiers, 'selection_token' => selection_token,
+'offset' => offset },
+        event_id: job_id
+      )
+    end
+
+    def perform_legacy(source_id, identifiers, selection_token, offset)
       source = TripSource.active.find_by(id: source_id, provider: 'trek')
       return unless source&.selection_token == selection_token
 
@@ -19,9 +43,9 @@ module Trek
         return
       end
 
-      completed = ActiveRecord::Base.with_advisory_lock("trek-sync:#{source.id}", timeout_seconds: 0) do
+      completed = begin
         source.reload
-        next unless source.selection_token == selection_token && source.importing?
+        return unless source.selection_token == selection_token && source.importing?
 
         synchronizer = Trek::Sync.new(source)
         identifiers.slice(offset, BATCH_SIZE).each do |identifier|

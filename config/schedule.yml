@@ -9,6 +9,7 @@ visit_suggesting_job:
   cron: "5 0 * * *" # every day at 00:05
   class: "BulkVisitsSuggestingJob"
   queue: visit_suggesting
+  args: ["a12d3_cron"]
 
 watcher_job:
   cron: "0 */1 * * *" # every 1 hour
@@ -19,16 +20,19 @@ airtrail_flight_import_job:
   cron: "0 2 * * *" # every day at 02:00
   class: "AirTrail::SyncSchedulingJob"
   queue: imports
+  args: ["a12d2_cron"]
 
 teslamate_sync_job:
   cron: "30 2 * * *" # every day at 02:30
   class: "TeslaMate::SyncSchedulingJob"
   queue: imports
+  args: ["a12d2_cron"]
 
 trek_sync_job:
   cron: "0 */6 * * *" # every 6 hours
   class: "Trek::SyncSchedulingJob"
   queue: imports
+  args: ["a12d2_cron"]
 
 app_version_checking_job:
   cron: "0 */6 * * *" # every 6 hours
@@ -39,6 +43,7 @@ cache_preheating_job:
   cron: "0 0 * * *" # every day at 0:00
   class: "Cache::PreheatingJob"
   queue: cache
+  args: ["cron"]
 
 daily_track_generation_job:
   cron: "0 */12 * * *" # every 12 hours (real-time generation handles most cases)
@@ -113,6 +118,7 @@ achievements_bulk_check_job:
   cron: "30 1 * * *" # every day at 01:30
   class: "Achievements::BulkCheckJob"
   queue: achievements
+  args: ["a12d2_cron"]
 
 route_videos_purge_job:
   cron: "45 3 * * *" # every day at 03:45 UTC

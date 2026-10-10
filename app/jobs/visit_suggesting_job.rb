@@ -18,6 +18,8 @@ class VisitSuggestingJob < ApplicationJob
       start_time = parse_date(start_at)
       end_time = parse_date(end_at)
 
+      return if Visits::Commands.forward_suggest(user, start_time, end_time, event_id: job_id)
+
       # Create one-day chunks
       current_time = start_time
       while current_time < end_time

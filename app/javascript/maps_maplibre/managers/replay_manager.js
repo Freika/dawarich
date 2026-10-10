@@ -1,4 +1,6 @@
 import { translate } from "i18n"
+import { ReplayDayClock } from "maps_maplibre/managers/replay_day_clock"
+import * as pointUtils from "maps_maplibre/managers/replay_point_utils"
 
 /**
  * ReplayManager - Core business logic for replay feature
@@ -16,6 +18,7 @@ export class ReplayManager {
     this.pinnedPoint = null
     this.cycleIndex = 0 // For multi-point minutes
     this.onStateChange = options.onStateChange || (() => {})
+    this.dayClock = new ReplayDayClock(this.timezone)
   }
 
   /**
@@ -24,6 +27,7 @@ export class ReplayManager {
    */
   setPoints(points) {
     this.points = points || []
+    this.dayClock.clear()
     this.groupPointsByDay()
     this.currentDayIndex = 0
     this.pinnedPoint = null
@@ -36,24 +40,7 @@ export class ReplayManager {
    * @private
    */
   _parseTimestamp(timestamp) {
-    if (!timestamp) return null
-
-    // Handle ISO 8601 string
-    if (typeof timestamp === "string") {
-      return new Date(timestamp)
-    }
-
-    // Handle Unix timestamp
-    if (typeof timestamp === "number") {
-      // Unix timestamp in seconds (< year 2286 in seconds)
-      if (timestamp < 10000000000) {
-        return new Date(timestamp * 1000)
-      }
-      // Unix timestamp in milliseconds
-      return new Date(timestamp)
-    }
-
-    return null
+    return pointUtils.parseTimestamp(timestamp)
   }
 
   /**
@@ -112,10 +99,8 @@ export class ReplayManager {
       const date = this._parseTimestamp(timestamp)
       if (!date || Number.isNaN(date.getTime())) return
 
-      const parts = this._getDateParts(date)
-      if (!parts) return
-
-      const minuteOfDay = parts.hour * 60 + parts.minute
+      const minuteOfDay = this.minuteOfDay(date)
+      if (minuteOfDay === null) return
 
       if (!this.pointsByMinute[minuteOfDay]) {
         this.pointsByMinute[minuteOfDay] = []
@@ -123,6 +108,21 @@ export class ReplayManager {
       this.pointsByMinute[minuteOfDay].push(point)
       this.minutesWithData.add(minuteOfDay)
     })
+  }
+
+  minuteOfDay(date) {
+    return this.dayClock.minuteOfDay(date)
+  }
+
+  getCurrentDayLengthMinutes() {
+    const day = this.getCurrentDay()
+    return day ? this.dayClock._getDayBounds(day).length : 1440
+  }
+
+  formatCurrentMinute(minute) {
+    const day = this.getCurrentDay()
+    if (!day) return ReplayManager.formatMinuteToTime(minute)
+    return this.dayClock.formatMinute(day, minute)
   }
 
   /**
@@ -160,19 +160,11 @@ export class ReplayManager {
    * @returns {Array} Array of density values (0-1)
    */
   getDataDensity(segments = 48) {
-    const density = new Array(segments).fill(0)
-    const minutesPerSegment = 1440 / segments
-
-    this.minutesWithData.forEach((minute) => {
-      const segmentIndex = Math.floor(minute / minutesPerSegment)
-      if (segmentIndex < segments) {
-        density[segmentIndex]++
-      }
-    })
-
-    // Normalize to 0-1
-    const maxDensity = Math.max(...density, 1)
-    return density.map((d) => d / maxDensity)
+    return this.dayClock.dataDensity(
+      this.minutesWithData,
+      this.getCurrentDayLengthMinutes(),
+      segments,
+    )
   }
 
   /**
@@ -226,28 +218,11 @@ export class ReplayManager {
    * @returns {number|null} Nearest minute with points, or null if none
    */
   findNearestMinuteWithPoints(minute) {
-    if (this.minutesWithData.size === 0) return null
-
-    // Check current minute first
-    if (this.minutesWithData.has(minute)) return minute
-
-    // Search outward from target minute
-    const maxMinute = 1439
-    for (let offset = 1; offset <= maxMinute; offset++) {
-      // Check forward
-      if (
-        minute + offset <= maxMinute &&
-        this.minutesWithData.has(minute + offset)
-      ) {
-        return minute + offset
-      }
-      // Check backward
-      if (minute - offset >= 0 && this.minutesWithData.has(minute - offset)) {
-        return minute - offset
-      }
-    }
-
-    return null
+    return this.dayClock.nearestMinuteWithPoints(
+      this.minutesWithData,
+      minute,
+      this.getCurrentDayLengthMinutes(),
+    )
   }
 
   /**
@@ -447,54 +422,7 @@ export class ReplayManager {
    * @returns {string|null} Emoji for transportation mode, or null if not found
    */
   static findTransportationEmoji(point, tracksGeoJSON) {
-    if (!tracksGeoJSON?.features?.length) return null
-
-    const timestamp = ReplayManager._getTimestampStatic(point)
-    if (!timestamp) return null
-
-    const pointTime = ReplayManager._parseTimestampStatic(timestamp)
-    if (!pointTime) return null
-
-    // Convert pointTime to seconds for segment matching
-    const pointTimeSec = Math.floor(pointTime / 1000)
-
-    for (const track of tracksGeoJSON.features) {
-      const startAt = track.properties?.start_at
-      const endAt = track.properties?.end_at
-
-      if (startAt && endAt) {
-        const trackStart = new Date(startAt).getTime()
-        const trackEnd = new Date(endAt).getTime()
-
-        if (pointTime >= trackStart && pointTime <= trackEnd) {
-          // Try per-segment matching first (mode_timeline has start_time/end_time in unix seconds)
-          const modeTimeline = track.properties?.mode_timeline
-          if (modeTimeline?.length) {
-            for (const seg of modeTimeline) {
-              if (
-                pointTimeSec >= seg.start_time &&
-                pointTimeSec <= seg.end_time
-              ) {
-                return seg.emoji || null
-              }
-            }
-
-            // Nearest-segment fallback: find last segment whose start_time <= pointTime
-            let nearest = null
-            for (const seg of modeTimeline) {
-              if (seg.start_time <= pointTimeSec) {
-                nearest = seg
-              }
-            }
-            if (nearest?.emoji) return nearest.emoji
-          }
-
-          // Fall back to track-level dominant mode
-          return track.properties.dominant_mode_emoji || null
-        }
-      }
-    }
-    return null
+    return pointUtils.findTransportationEmoji(point, tracksGeoJSON)
   }
 
   /**
@@ -502,15 +430,7 @@ export class ReplayManager {
    * @private
    */
   static _getTimestampStatic(point) {
-    // Handle GeoJSON feature format
-    if (point.properties?.timestamp) {
-      return point.properties.timestamp
-    }
-    // Handle raw point format
-    if (point.timestamp) {
-      return point.timestamp
-    }
-    return null
+    return pointUtils.getTimestamp(point)
   }
 
   /**
@@ -519,25 +439,8 @@ export class ReplayManager {
    * @private
    */
   static _parseTimestampStatic(timestamp) {
-    if (!timestamp) return null
-
-    // Handle ISO 8601 string
-    if (typeof timestamp === "string") {
-      const date = new Date(timestamp)
-      return Number.isNaN(date.getTime()) ? null : date.getTime()
-    }
-
-    // Handle Unix timestamp
-    if (typeof timestamp === "number") {
-      // Unix timestamp in seconds (< year 2286 in seconds)
-      if (timestamp < 10000000000) {
-        return timestamp * 1000
-      }
-      // Unix timestamp in milliseconds
-      return timestamp
-    }
-
-    return null
+    const date = pointUtils.parseTimestamp(timestamp)
+    return date && !Number.isNaN(date.getTime()) ? date.getTime() : null
   }
 
   // Private helpers
@@ -547,66 +450,31 @@ export class ReplayManager {
    * @private
    */
   _getTimestamp(point) {
-    // Handle GeoJSON feature format
-    if (point.properties?.timestamp) {
-      return point.properties.timestamp
-    }
-    // Handle raw point format
-    if (point.timestamp) {
-      return point.timestamp
-    }
-    return null
+    return pointUtils.getTimestamp(point)
   }
 
-  /**
-   * Break a Date into year/month/day/hour/minute in the configured timezone.
-   * Falls back to browser local time if the timezone string is invalid.
-   * @private
-   */
   _getDateParts(date) {
-    if (!date || Number.isNaN(date.getTime())) return null
-
-    try {
-      const formatter = new Intl.DateTimeFormat("en-US", {
-        timeZone: this.timezone || "UTC",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-      })
-      const parts = formatter.formatToParts(date).reduce((acc, p) => {
-        if (p.type !== "literal") acc[p.type] = p.value
-        return acc
-      }, {})
-
-      return {
-        year: parseInt(parts.year, 10),
-        month: parseInt(parts.month, 10),
-        day: parseInt(parts.day, 10),
-        hour: parseInt(parts.hour, 10),
-        minute: parseInt(parts.minute, 10),
-      }
-    } catch (_err) {
-      return {
-        year: date.getFullYear(),
-        month: date.getMonth() + 1,
-        day: date.getDate(),
-        hour: date.getHours(),
-        minute: date.getMinutes(),
-      }
-    }
+    return this.dayClock._getDateParts(date)
   }
 
-  /**
-   * Format date parts to day key
-   * @private
-   */
-  _formatDayKey({ year, month, day }) {
-    const mm = month.toString().padStart(2, "0")
-    const dd = day.toString().padStart(2, "0")
-    return `${year}-${mm}-${dd}`
+  _formatDayKey(parts) {
+    return this.dayClock._formatDayKey(parts)
+  }
+
+  _getDayBounds(dayKey) {
+    return this.dayClock._getDayBounds(dayKey)
+  }
+
+  _localMidnightInstant(year, month, day) {
+    return this.dayClock._localMidnightInstant(year, month, day)
+  }
+
+  _sameClockTime(first, second) {
+    return this.dayClock._sameClockTime(first, second)
+  }
+
+  _timeZoneName(date) {
+    return this.dayClock._timeZoneName(date)
   }
 
   /**
@@ -615,32 +483,6 @@ export class ReplayManager {
    * @returns {Object|null} { lon, lat } or null
    */
   getCoordinates(point) {
-    if (!point) return null
-
-    let lon, lat
-
-    // Handle GeoJSON feature format
-    if (point.geometry?.coordinates) {
-      lon = point.geometry.coordinates[0]
-      lat = point.geometry.coordinates[1]
-    }
-    // Handle raw point format with longitude/latitude
-    else if (point.longitude !== undefined && point.latitude !== undefined) {
-      lon = point.longitude
-      lat = point.latitude
-    }
-    // Handle raw point format with lon/lat
-    else if (point.lon !== undefined && point.lat !== undefined) {
-      lon = point.lon
-      lat = point.lat
-    } else {
-      return null
-    }
-
-    // Ensure coordinates are numbers (not strings) for arithmetic operations
-    return {
-      lon: Number(lon),
-      lat: Number(lat),
-    }
+    return pointUtils.getCoordinates(point)
   }
 }

@@ -2,12 +2,22 @@
 
 module TransportationModes
   # Reclassifies one track with the current detection pipeline. Idempotent:
-  # auto segments are replaced, manually corrected segments preserved.
+  # inferred segments are replaced, corrections and source segments preserved.
   class ReclassifyTrackJob < ApplicationJob
     queue_as :tracks
     sidekiq_options retry: 1
+    OWNER_KEY = 'command:transportation.reclassify_track'
 
     def perform(track_id, report_progress: false, user_id: nil)
+      owner = JobOwnership.with_owner(OWNER_KEY) { :sidekiq }
+      return forward(track_id, report_progress, user_id) if owner == :not_owner
+
+      classify(track_id, report_progress, user_id)
+    end
+
+    private
+
+    def classify(track_id, report_progress, user_id)
       track = Track.find_by(id: track_id)
       @report_user_id = user_id || track&.user_id
       reclassify(track) if track
@@ -19,12 +29,15 @@ module TransportationModes
       report if report_progress
     end
 
-    private
+    def forward(track_id, report_progress, user_id)
+      JobCommands.forward('transportation.reclassify_track',
+                          { 'track_id' => track_id, 'report_progress' => report_progress, 'user_id' => user_id },
+                          event_id: job_id, aggregate_id: track_id, producer: self.class.name)
+    end
 
     def reclassify(track)
       Track.transaction do
-        preserved = track.track_segments.manually_corrected.to_a
-        track.track_segments.auto_classified.delete_all
+        preserved = track.track_segments.clear_inference
 
         detector = Detector.new(
           track,

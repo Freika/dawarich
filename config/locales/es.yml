@@ -1,6 +1,12 @@
 es:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Tareas de Phoenix"
+        ok: "Phoenix está procesando sus tareas."
+        alarm: "Phoenix no está procesando sus tareas; esperan hasta que se ejecute un proceso de Phoenix."
+        not_installed: "Phoenix aún no ha creado sus tablas en esta base de datos; todas las tareas se ejecutan en Sidekiq."
+        unknown: "No se pudo leer el estado de las tareas de Phoenix en la base de datos; recarga la página para volver a intentarlo."
       show:
         title: "Ajustes de la instancia"
         intro: "Estos ajustes se aplican a toda la instancia. Un ajuste definido por una variable de entorno se muestra en modo de solo lectura: elimina la variable para editarlo aquí."
@@ -37,7 +43,26 @@ es:
           locationiq: "Servicio alojado. Necesita una clave de API."
         points:
           title: "Puntos"
+        experimental:
+          badge: "Experimental"
+          title: "Funciones experimentales"
+        map_matching:
+          title: "Ajuste de rutas"
+          description: "Alinea los trayectos registrados con ruido a carreteras y caminos cercanos. Solo cambia cómo se dibujan los trayectos compatibles; los puntos registrados y la ruta original permanecen intactos."
+          example_alt: "Una ruta original imprecisa junto a la misma ruta ajustada a las calles"
+          original_label: "Ruta original"
+          matched_label: "Ruta ajustada"
+          example_caption: "La original conserva la forma registrada. La ajustada sigue la red transitable cercana y siempre puede volver a la original."
+          privacy: "Dawarich envía coordenadas, marcas de tiempo y precisión GPS al servicio Atlas configurado. Mantén ese servicio dentro de una red de confianza."
+          test: "Probar conexión"
+          testing: "Probando…"
         fields:
+          atlas_url: "URL de Atlas"
+          map_matching_enabled: "Activar el ajuste de rutas"
+          atlas_url_hint: "URL base HTTP o HTTPS completa de tu servicio privado Dawarich Atlas."
+          map_matching_enabled_hint: "Se aplica a toda la instancia. Los trayectos existentes no se procesan automáticamente."
+          map_matching_shadow_mode: "Modo sombra"
+          map_matching_shadow_mode_hint: "Procesa las rutas aptas sin mostrar los trazados ajustados."
           photon_api_host: "Host"
           photon_api_key: "Clave de API"
           photon_api_use_https: "Usar HTTPS"
@@ -53,10 +78,17 @@ es:
           api_key_keep_hint: "Déjalo vacío para conservar la clave guardada."
           store_geodata_hint: "Busca la ciudad y el país al añadir puntos nuevos. Las consultas nocturnas continúan si hay un proveedor configurado, aunque esta opción esté desactivada."
       update:
+        atlas_url_invalid: "La URL de Atlas debe ser una URL HTTP o HTTPS completa, sin credenciales, consulta ni fragmento."
+        atlas_url_required: "Configura una URL de Atlas antes de activar el ajuste de rutas."
         saved: "Ajustes guardados."
         pinned: "Rechazado: fijado por %{variables}."
         host_invalid: "El host debe ser un nombre de host sin más, con un puerto o una ruta opcionales y sin espacios."
         chibigeo_key_required: "ChibiGeo necesita una clave de API. El plan gratuito Hobby incluye 2.500 consultas al día; obtén tu clave en chibigeo.com."
+      test_map_matching:
+        not_configured: "Guarda primero una URL de Atlas."
+        success: "Atlas %{version} está listo para el ajuste de rutas."
+        routing_unavailable: "Atlas %{version} respondió, pero su capacidad de enrutamiento todavía no está lista."
+        failure: "La conexión con Atlas falló (%{error})."
       test_geocoding:
         not_configured: "No hay ningún proveedor de geocodificación configurado. Guarda primero un proveedor."
         success: "Tu proveedor resolvió las coordenadas de prueba como: %{place}."
@@ -1373,7 +1405,7 @@ es:
       rarr: "→"
       'on': encendido
       no_visits_yet: No hay visitas aún
-      rename: Renombrar
+      edit: Editar
       merge: Unir
       notes: Notas
       save: Guardar
@@ -3083,6 +3115,9 @@ es:
       this_feature_requires_a_pro_plan: Esta función requiere un plan Pro.
       your_account_has_been_deleted: Tu cuenta ha sido eliminada.
       you_are_not_authorized_to_perform_this_action: No estás autorizado a realizar esta acción.
+      admin_writes_unavailable_with_oidc: "Los cambios de administración no están disponibles en instancias que inician sesión con OIDC o Google. Define estos valores con variables de entorno."
+      admin_encryption_unavailable: "Los secretos no se pueden guardar porque el cifrado no está configurado en esta instancia."
+      admin_action_failed: "Algo salió mal. Inténtalo de nuevo."
       family_plan_required: Esta función requiere un plan familiar.
     areas:
       created: Área creada con éxito!
@@ -3483,7 +3518,7 @@ es:
         export_name_successfully_finished: La exportación "%{name}" ha finalizado con éxito.
         export_failed: No se pudo exportar
         export_name_failed_message_stacktrace_n: 'La exportación "%{name}" ha fallado: %{message}, stacktrace: %{backtrace}'
-        unsupported_file_format: 'Formato de archivo no soportado: %{format}'
+        unsupported_file_format: 'Formato de archivo no soportado: %{file_format}'
     families:
       auto_create:
         default_name: Mi familia
@@ -3723,6 +3758,8 @@ es:
         v2_handler:
           manifest_missing: 'No se encontró el archivo de manifest en la carpeta: manifest.json'
     visits:
+      create:
+        duplicate_at_place_and_time: Ya existe una visita en este lugar y a esta hora
       suggest:
         error_suggesting_visits_message: 'Error al sugerir visitas: %{message}'
         error_suggesting_visits: 'Error al sugerir visitas'

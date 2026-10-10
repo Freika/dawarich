@@ -37,6 +37,27 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
         have_enqueued_job(Tracks::ParallelGeneratorJob).twice
     end
 
+    it 'Oban-owned cron does nothing in Rails' do
+      job_owner!(described_class::OWNER_KEY, :oban)
+
+      described_class.perform_now
+
+      expect(Tracks::ParallelGeneratorJob).not_to have_been_enqueued
+      expect(Tracks::ThrottledBackfillJob).not_to have_been_enqueued
+    end
+
+    it 'one user’s database error does not stop the batch' do
+      allow_any_instance_of(described_class).to receive(:start_timestamp).and_wrap_original do |original, user|
+        ActiveRecord::Base.connection.execute('SELECT 1/0') if user == active_user
+
+        original.call(user)
+      end
+
+      described_class.perform_now
+
+      expect(Tracks::ParallelGeneratorJob).to have_been_enqueued.with(trial_user.id, hash_including(mode: 'daily'))
+    end
+
     it 'does not process inactive users' do
       # Clear points and tracks to make destruction possible
       Point.destroy_all
@@ -57,11 +78,15 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
     end
 
     it 'enqueues parallel generation job for active user with correct parameters' do
+      active_user.update!(settings: active_user.settings.merge('timezone' => 'Tokyo'))
+
       expect { described_class.perform_now }.to \
         have_enqueued_job(Tracks::ParallelGeneratorJob).with(
           active_user.id,
-          hash_including(mode: 'daily')
+          hash_including(mode: 'daily', start_at: Time.zone.at(active_user_old_track.end_at.to_i + 1))
         )
+      job = ActiveJob::Base.queue_adapter.enqueued_jobs.find { _1[:args].first == active_user.id }
+      expect(job[:args].last.fetch('end_at').fetch('value')).to end_with('+09:00')
     end
 
     it 'enqueues parallel generation job for trial user' do
@@ -108,6 +133,17 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
     end
 
     context 'when a large-history user has no tracks' do
+      around do |example|
+        ActiveRecord::Base.transaction do
+          ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.track_backfill_walks')
+          PhoenixSchema.reset!
+          example.run
+          raise ActiveRecord::Rollback
+        end
+      ensure
+        PhoenixSchema.reset!
+      end
+
       let!(:wiped_user) { create(:user) }
       let!(:wiped_user_points) do
         [

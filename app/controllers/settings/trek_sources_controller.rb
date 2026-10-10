@@ -75,16 +75,9 @@ class Settings::TrekSourcesController < ApplicationController
       return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.select_at_least_one_dated_trip')
     end
 
-    token = nil
-    @source.with_lock do
-      next if !@source.active? || @source.importing?
-
-      token = SecureRandom.uuid
-      @source.update!(selection_token: token, importing: true)
-    end
+    token = Imports::TrekCommands.select(@source, identifiers)
     return source_importing_redirect unless token
 
-    Trek::ImportTripsJob.perform_later(@source.id, identifiers, token)
     redirect_to settings_integrations_path(service: 'trek'), notice: t('.trips_are_now_syncing')
   rescue Trek::Client::Error => e
     Trek::Sync.new(@source).record_error!(e)
@@ -97,7 +90,8 @@ class Settings::TrekSourcesController < ApplicationController
     return redirect_to settings_integrations_path(service: 'trek'), alert: t('.source_disabled') unless @source.active?
     return redirect_to settings_integrations_path(service: 'trek'), alert: t('.source_importing') if @source.importing?
 
-    Trek::SyncJob.perform_later(@source.id)
+    JobCommands.produce('imports.trek_sync', { 'source_id' => @source.id, 'after_id' => nil },
+                        aggregate_id: @source.id, producer: 'Trek source sync')
     redirect_to settings_integrations_path(service: 'trek'), notice: t('.sync_queued')
   end
 

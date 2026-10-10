@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #f59e0b; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .notice { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><%= @t.("your_data_history_is_filling_up") %></h1>
+    </div>
+    <div class="content">
+      <p><%= @t.("hi") %> <%= h(@email) %><%= @t.("this_is_evgenii_from_dawarich") %></p>
+
+      <div class="notice">
+        <p><strong><%= @t.("heads_up") %></strong> <%= @t.("your_oldest_location_data_will_be_archived_in_about") %> <strong><%= @t.("weeks") %></strong>.</p>
+      </div>
+
+      <p><%= @t.("on_the_lite_plan_your_most_recent_12_months_of") %></p>
+
+      <h3><%= @t.("upgrade_to_pro_to_keep_your_full_history") %></h3>
+      <ul>
+        <li><%= @t.("unlimited_searchable_history_every_month_every_year") %></li>
+        <li><%= @t.("heatmap_fog_of_war_and_globe_view") %></li>
+        <li><%= @t.("full_write_api_access") %></li>
+        <li><%= @t.("immich_and_photoprism_integrations") %></li>
+      </ul>
+
+      <a href="<%= h(@upgrade_url) %>" class="cta"><%= @t.("upgrade_to_pro") %></a>
+
+      <p><%= @t.("your_data_is_always_yours_pro_simply_makes_all_of") %></p>
+
+      <p><%= @t.("questions_drop_me_a_message_at_hi_dawarich_app_or") %></p>
+
+      <p><%= @t.("best_regards") %><br>
+      <%= @t.("evgenii_from_dawarich") %></p>
+    </div>
+  </div>
+</body>
+</html>

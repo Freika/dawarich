@@ -3,7 +3,159 @@
 require 'rails_helper'
 
 RSpec.describe Cache::PreheatingJob do
+  include ActiveSupport::Testing::TimeHelpers
   before { Rails.cache.clear }
+
+  it 'accepted source origins retain locale zone identity and due time and stop fanout on a global write failure' do
+    phoenix_tables!
+    job_owner!('cron:cache_preheating_job', :oban)
+    User.insert_all!([{ id: 180_125, email: 'cache-forms@example.invalid', encrypted_password: '', status: 1,
+                       plan: 1, settings: {}, created_at: Time.current, updated_at: Time.current }])
+    due = Time.utc(2026, 10, 3, 12)
+
+    [[], [nil], ['cron'], ['manual']].each do |arguments|
+      job = described_class.new(*arguments)
+      job.locale = 'de'
+      job.timezone = 'Asia/Tokyo'
+      job.scheduled_at = due
+      request = job.serialize
+      clear_enqueued_jobs
+      ActiveJob::Base.deserialize(request).perform_now
+      expect(request).to include('arguments' => arguments, 'locale' => 'de', 'timezone' => 'Asia/Tokyo',
+                                 'job_id' => job.job_id)
+      expect(Time.iso8601(request.fetch('scheduled_at'))).to eq(due)
+      expect(enqueued_jobs.sole).to include('arguments' => [180_125], 'locale' => 'de', 'timezone' => 'Asia/Tokyo')
+      expect(JobOutbox.count).to eq(0)
+    end
+
+    clear_enqueued_jobs
+    allow(Rails.cache).to receive(:write).with('dawarich/countries_codes', anything, expires_in: 86_400)
+                                         .and_raise(IOError, 'synthetic global cache failure')
+    expect { described_class.new.perform('cron') }.to raise_error(IOError, 'synthetic global cache failure')
+    expect(enqueued_jobs).to be_empty
+    expect(JobOutbox.count).to eq(0)
+  end
+
+  it 'nightly enqueue follows ownership while manual and accepted sweeps still warm after a transfer' do
+    phoenix_tables!
+    User.insert_all!([{ id: 180_119, email: 'cache-cron@example.invalid', encrypted_password: '', status: 1,
+                       plan: 1, settings: {}, created_at: Time.current, updated_at: Time.current }])
+    config = YAML.load_file(Rails.root.join('config/schedule.yml')).fetch('cache_preheating_job')
+    cron = Sidekiq::Cron::Job.new(config.merge('name' => 'cache_preheating_job', 'status' => 'enabled',
+                                               'last_enqueue_time' => '2026-10-03 00:00:00 +0000'))
+    writes = []
+    listener = ->(*, payload) { writes << payload.slice(:key, :expires_in) }
+
+    %i[oban sidekiq].each do |owner|
+      job_owner!('cron:cache_preheating_job', owner)
+      clear_enqueued_jobs
+      cron.enqueue_active_job(described_class)
+      expect(enqueued_jobs.length).to eq(owner == :sidekiq ? 1 : 0)
+      next if owner == :oban
+
+      request = enqueued_jobs.sole.deep_dup
+      expect(request.fetch('arguments')).to eq(['cron'])
+      job_owner!('cron:cache_preheating_job', :oban)
+      clear_enqueued_jobs
+      writes.clear
+      ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') do
+        ActiveJob::Base.deserialize(request).perform_now
+      end
+      expect(writes).to eq([{ key: 'dawarich/countries_codes', expires_in: 86_400 }])
+      expect(enqueued_jobs.sole.fetch('arguments')).to eq([180_119])
+    end
+
+    job_owner!('cron:cache_preheating_job', :oban)
+    clear_enqueued_jobs
+    described_class.perform_later
+    request = enqueued_jobs.sole.deep_dup
+    expect(request.fetch('arguments')).to eq([])
+    clear_enqueued_jobs
+    writes.clear
+    ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') do
+      ActiveJob::Base.deserialize(request).perform_now
+    end
+    expect(writes).to eq([{ key: 'dawarich/countries_codes', expires_in: 86_400 }])
+    expect(enqueued_jobs.sole.fetch('arguments')).to eq([180_119])
+  end
+
+  it 'both cron owners retain the one-day global write and original warming fanout' do
+    phoenix_tables!
+    connection = ActiveRecord::Base.connection
+    sequence = connection.select_one('SELECT last_value, is_called FROM phoenix.rails_commands_id_seq')
+    travel_to(Time.utc(2026, 10, 3, 12)) do
+      User.insert_all!([{ id: 180_121, email: 'cache-sweep@example.invalid', encrypted_password: '', status: 1,
+                         plan: 1, settings: {}, created_at: Time.current, updated_at: Time.current }])
+      writes = []
+      listener = ->(*, payload) { writes << payload.slice(:key, :expires_in) }
+      %i[sidekiq oban].each do |owner|
+        job_owner!('cron:cache_preheating_job', owner)
+        clear_enqueued_jobs
+        writes.clear
+        ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') { described_class.new.perform }
+        expect(writes).to eq([{ key: 'dawarich/countries_codes', expires_in: 86_400 }])
+        expect(enqueued_jobs.sole.fetch('arguments')).to eq([180_121])
+      end
+
+      source = SecureRandom.uuid
+      due = Time.current + 3600
+      payload = { 'time_zone' => 'Asia/Tokyo', 'source_job_id' => source, 'run_at' => due.to_i }
+      insert = ['INSERT INTO phoenix.rails_commands(kind,payload) VALUES (?,?::jsonb)',
+                'cache.preheat_sweep', payload.to_json]
+      sql = ActiveRecord::Base.sanitize_sql_array(insert)
+      connection.execute(sql)
+      JobOwnership.release!('cron:cache_preheating_job', by: 'spec')
+      clear_enqueued_jobs
+      expect(RailsCommands::Poller.drain_once).to eq(1)
+      request = enqueued_jobs.sole.deep_dup
+      expect(request.fetch('job_id')).to eq(source)
+      expect(request.fetch('timezone')).to eq('Asia/Tokyo')
+      expect(Time.iso8601(request.fetch('scheduled_at'))).to eq(due)
+      clear_enqueued_jobs
+      writes.clear
+      ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') do
+        ActiveJob::Base.deserialize(request).perform_now
+      end
+      expect(writes).to eq([{ key: 'dawarich/countries_codes', expires_in: 86_400 }])
+      expect(enqueued_jobs.sole.fetch('arguments')).to eq([180_121])
+    end
+  ensure
+    if sequence
+      connection.execute("SELECT setval('phoenix.rails_commands_id_seq', #{sequence.fetch('last_value')}, " \
+                         "#{connection.quote(sequence.fetch('is_called'))})")
+    end
+  end
+
+  it 'delegated source sweep keeps 500-user batches exact eligibility and one global warm' do
+    phoenix_tables!
+    users = (0..503).map do |index|
+      { id: 180_201 + index * 2, email: "sweep-#{index}@example.invalid", encrypted_password: '',
+        status: index % 4, settings: {}, plan: 1, deleted_at: index == 503 ? Time.current : nil,
+        created_at: Time.current, updated_at: Time.current }
+    end
+    User.unscoped.insert_all!(users)
+    batches = []
+    allow(ActiveJob).to receive(:perform_all_later).and_wrap_original do |original, jobs|
+      batches << jobs.map { |job| job.arguments.first }
+      original.call(jobs)
+    end
+    writes = []
+    listener = ->(*, payload) { writes << payload.slice(:key, :expires_in) }
+
+    [false, true].product(%i[sidekiq oban]).each do |self_hosted, owner|
+      job_owner!('cron:cache_preheating_job', owner)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+      batches.clear
+      writes.clear
+      clear_enqueued_jobs
+      ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') { described_class.new.perform }
+      expected = users.reject { |user| user[:deleted_at] || (!self_hosted && ![1, 2].include?(user[:status])) }
+                      .map { |user| user[:id] }
+      expect(batches.flatten).to eq(expected)
+      expect(batches.map(&:length)).to eq(self_hosted ? [500, 3] : [252])
+      expect(writes).to eq([{ key: 'dawarich/countries_codes', expires_in: 86_400 }])
+    end
+  end
 
   describe '#perform' do
     # skip_auto_trial pins the factory status: the after_commit :activate /

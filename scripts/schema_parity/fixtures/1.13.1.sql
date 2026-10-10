@@ -1,0 +1,1 @@
+DROP INDEX idx_points_user_visit_null_timestamp;

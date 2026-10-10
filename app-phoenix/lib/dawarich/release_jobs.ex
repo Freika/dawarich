@@ -1,0 +1,291 @@
+defmodule Dawarich.ReleaseJobs do
+  @moduledoc false
+
+  alias Dawarich.ReleaseOperations, as: Ops
+
+  @families ~w(DataMigrations::BackfillFamiliesForFamilyPlanJob DataMigrations::BackfillFamilyMemberEntitlementsJob)
+  @classes @families ++
+             ~w(DataMigrations::AddPointDimensionColumnsJob DataMigrations::DropLegacyLatLonJob
+                DataMigrations::BackfillPointDimensionsJob DataMigrations::BackfillPointCountryIdJob
+                DataMigrations::FixRouteOpacityJob DataMigrations::BackfillOnboardingCompletedJob
+                DataMigrations::DestroyOrphanedTracksJob Tracks::DeduplicationJob
+                DataMigrations::BackfillPlacesUserIdJob DataMigrations::BackfillPlaceNameLocksJob
+                TrackSegments::TimeAnchorBackfillJob DataMigrations::BackfillTransportationModesJob
+                Visits::FleetRedetectJob DataMigrations::CleanupNullIslandJob
+                DataMigrations::BackfillMotionDataJob DataMigrations::BackfillAltitudeJob
+                TransportationModes::ImportBackfillJob DataMigrations::BackfillAchievementsJob
+                DataMigrations::RecalculateAnomaliesJob DataMigrations::RecalculatePerTrackerTracksJob)
+
+  def classes, do: @classes
+
+  def decode("DataMigrations::AddPointDimensionColumnsJob", []), do: once(Ops.AddPointDimensions)
+  def decode("DataMigrations::DropLegacyLatLonJob", []), do: once(Ops.DropLegacyCoordinates)
+
+  def decode("DataMigrations::BackfillAchievementsJob", []),
+    do: {:ok, Ops.Achievements, %{"version" => 1, "event_id" => Ecto.UUID.generate()}}
+
+  def decode("DataMigrations::RecalculateAnomaliesJob", []),
+    do: recalculation(Ops.Anomalies, %{"limit" => 2})
+
+  def decode("DataMigrations::RecalculatePerTrackerTracksJob", []),
+    do: recalculation(Ops.PerTracker, %{"user_id" => nil})
+
+  def decode("DataMigrations::BackfillPointDimensionsJob", []),
+    do: points("dimensions", 50_000, false)
+
+  def decode("DataMigrations::BackfillPointCountryIdJob", []),
+    do: points("country", 50_000, false)
+
+  def decode("DataMigrations::BackfillPointCountryIdJob", [
+        nil,
+        size,
+        %{"repair_collisions" => true, "_aj_ruby2_keywords" => ["repair_collisions"]} = keywords
+      ])
+      when is_integer(size) and size > 0 and map_size(keywords) == 2,
+      do: points("country", size, true)
+
+  def decode("DataMigrations::FixRouteOpacityJob", []), do: once(Ops.RouteOpacity)
+
+  def decode("DataMigrations::BackfillOnboardingCompletedJob", []),
+    do: once(Ops.OnboardingCompleted)
+
+  def decode("DataMigrations::DestroyOrphanedTracksJob", []), do: once(Ops.OrphanedTracks)
+  def decode("DataMigrations::BackfillPlacesUserIdJob", []), do: once(Ops.PlacesUserId)
+  def decode("DataMigrations::BackfillPlaceNameLocksJob", []), do: once(Ops.PlaceNameLocks)
+
+  def decode("Tracks::DeduplicationJob", [user_id]) when is_integer(user_id) and user_id > 0,
+    do: {:ok, Ops.TracksDedup, %{"version" => 1, "user_id" => user_id}}
+
+  def decode("TrackSegments::TimeAnchorBackfillJob", []),
+    do: chain(Ops.TimeAnchor, %{"from_id" => 0})
+
+  def decode("DataMigrations::BackfillTransportationModesJob", []),
+    do: chain(Ops.Transportation, %{"scope" => "missing", "from_track_id" => 0})
+
+  def decode("Visits::FleetRedetectJob", []),
+    do: chain(Ops.VisitsFleetRedetect, %{"after_id" => 0, "started_at" => nil, "offset" => 0})
+
+  def decode("DataMigrations::CleanupNullIslandJob", []),
+    do: chain(Ops.NullIsland, %{"after_id" => 0})
+
+  def decode("DataMigrations::BackfillMotionDataJob", []),
+    do: chain(Ops.MotionData, %{"after_id" => 0, "batch_size" => 1_000})
+
+  def decode("DataMigrations::BackfillAltitudeJob", []),
+    do: chain(Ops.Altitude, %{"phase" => "users", "after_id" => 0})
+
+  def decode(class, []) when class in @families do
+    if Dawarich.ReleaseMigration.self_hosted?() do
+      :skip
+    else
+      phase = if class == hd(@families), do: "families", else: "entitlements"
+      zone = Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+      cursor = %{"phase" => phase, "after_id" => 0, "time_zone" => zone}
+
+      case __MODULE__.FamilyBackfill.args_from_command(1, cursor) do
+        {:ok, _} -> chain(__MODULE__.FamilyBackfill, cursor)
+        {:error, _} -> {:error, :invalid_arguments}
+      end
+    end
+  end
+
+  def decode("TransportationModes::ImportBackfillJob", [import_id])
+      when is_integer(import_id) and import_id > 0 do
+    zone = Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+
+    {:ok, args} =
+      Ops.ImportBackfill.args_from_command(1, %{"import_id" => import_id, "ambient_zone" => zone})
+
+    {:ok, Ops.ImportBackfill, Map.put(args, "event_id", Ecto.UUID.generate())}
+  end
+
+  def decode(class, _arguments) when class in @classes, do: {:error, :invalid_arguments}
+  def decode(_class, _arguments), do: {:error, :unknown_class}
+
+  defp points(phase, size, repair) do
+    chain(Ops.PointBackfill, %{
+      "phase" => phase,
+      "start_id" => nil,
+      "batch_size" => size,
+      "repair_collisions" => repair
+    })
+  end
+
+  defp once(worker), do: {:ok, worker, %{"version" => 1}}
+
+  defp recalculation(worker, payload) do
+    zone = Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+
+    request =
+      Map.merge(payload, %{"source_job_id" => Ecto.UUID.generate(), "ambient_zone" => zone})
+
+    {:ok, args} = worker.args_from_command(1, request)
+    {:ok, worker, Map.put(args, "operation_id", Ecto.UUID.generate())}
+  end
+
+  defp chain(worker, cursor),
+    do:
+      {:ok, worker, %{"version" => 1, "operation_id" => Ecto.UUID.generate(), "cursor" => cursor}}
+end
+
+defmodule Dawarich.ReleaseJobs.FamilyBackfill do
+  @moduledoc false
+  use Oban.Worker, queue: :maintenance, priority: 3, max_attempts: 26
+
+  alias Dawarich.Families.{AutoCreateWorker, MemberSync}
+  alias Dawarich.ReleaseOperations
+
+  @families """
+  SELECT u.id FROM users u
+  WHERE u.deleted_at IS NULL AND u.plan=2 AND u.id>$1
+    AND NOT EXISTS(SELECT 1 FROM family_memberships m WHERE m.user_id=u.id)
+    AND NOT EXISTS(SELECT 1 FROM families f WHERE f.creator_id=u.id)
+  ORDER BY u.id LIMIT 500
+  """
+  @entitlements "SELECT id FROM families WHERE id>$1 ORDER BY id LIMIT 200"
+  @max_id 9_223_372_036_854_775_807
+  @keys ~w(version cursor operation_id event_id)
+
+  def command_type, do: "release.family_backfill"
+
+  def args_from_command(1, %{"phase" => phase, "after_id" => id, "time_zone" => zone} = payload)
+      when map_size(payload) == 3 and phase in ["families", "entitlements"] and
+             is_integer(id) and id >= 0 and id <= @max_id and is_binary(zone) do
+    Dawarich.Imports.ZonePeriod.load!(zone)
+    {:ok, %{"version" => 1, "cursor" => payload}}
+  rescue
+    _ -> {:error, "invalid_payload"}
+  end
+
+  def args_from_command(1, _), do: {:error, "invalid_payload"}
+  def args_from_command(_, _), do: {:error, "unsupported_version"}
+
+  @impl Oban.Worker
+  def perform(%Oban.Job{args: %{"version" => version, "cursor" => cursor} = args} = job) do
+    with true <- Enum.all?(Map.keys(args), &(&1 in @keys)),
+         {:ok, _} <- args_from_command(version, cursor),
+         {:ok, args} <- identities(args),
+         true <- bound?(Dawarich.Jobs.repo(), %{job | args: args}) do
+      oban = if job.conf, do: job.conf.name, else: Oban
+
+      ReleaseOperations.run(Dawarich.Jobs.repo(), oban, __MODULE__, %{job | args: args},
+        fail_on_error: true
+      )
+    else
+      {:error, "unsupported_version"} -> {:cancel, :unsupported_version}
+      _ -> {:cancel, :invalid_payload}
+    end
+  end
+
+  def perform(%Oban.Job{}), do: {:cancel, :invalid_payload}
+
+  defp identities(args) do
+    case Map.take(args, ~w(operation_id event_id)) do
+      ids when map_size(ids) > 0 ->
+        Enum.reduce_while(ids, {:ok, args}, fn {key, id}, {:ok, normalized} ->
+          with true <- is_binary(id) and byte_size(id) == 36,
+               {:ok, uuid} <- Ecto.UUID.cast(id) do
+            {:cont, {:ok, Map.put(normalized, key, uuid)}}
+          else
+            _ -> {:halt, :error}
+          end
+        end)
+
+      _ ->
+        :error
+    end
+  end
+
+  defp bound?(repo, %{args: args, id: id} = job) do
+    binding = job_binding(repo, job)
+
+    binding != false and event_binding?(repo, args, id, binding) and
+      operation_binding?(repo, args)
+  end
+
+  defp job_binding(_repo, %{id: nil}), do: :unrecorded
+
+  defp job_binding(repo, %{id: id, args: args}) do
+    case repo.query!("SELECT worker,args,state FROM oban.oban_jobs WHERE id=$1", [id], log: false).rows do
+      [["Dawarich.ReleaseJobs.FamilyBackfill", stored, state]]
+      when state in ~w(available scheduled executing retryable suspended completed) ->
+        identities(stored) == {:ok, args}
+
+      _ ->
+        false
+    end
+  end
+
+  defp event_binding?(repo, %{"event_id" => event, "cursor" => cursor}, id, binding) do
+    case repo.query!(
+           "SELECT command_type,command_version,payload,state,oban_job_id FROM job_outbox WHERE event_id=$1",
+           [Ecto.UUID.dump!(event)],
+           log: false
+         ).rows do
+      [["release.family_backfill", 1, ^cursor, "dispatched", job_id]] ->
+        is_nil(id) or id == job_id
+
+      [] ->
+        binding == true
+
+      _ ->
+        false
+    end
+  end
+
+  defp event_binding?(_repo, _args, _id, _binding), do: true
+
+  defp operation_binding?(repo, args) do
+    id = args["operation_id"] || args["event_id"]
+    cursor = args["cursor"]
+
+    case repo.query!(
+           "SELECT command_type,cursor,status FROM phoenix.release_operations WHERE id=$1",
+           [Ecto.UUID.dump!(id)],
+           log: false
+         ).rows do
+      [] ->
+        true
+
+      [["release.family_backfill", stored, state]] when state in ~w(running failed completed) ->
+        match?({:ok, _}, args_from_command(1, stored)) and
+          Map.drop(stored, ["after_id"]) == Map.drop(cursor, ["after_id"]) and
+          cursor["after_id"] <= stored["after_id"]
+
+      _ ->
+        false
+    end
+  end
+
+  def step(repo, %{cursor: %{"phase" => "families", "after_id" => after_id} = cursor} = op) do
+    ReleaseOperations.commit(repo, op, fn ->
+      ids = ReleaseOperations.ids(repo, @families, [after_id])
+
+      for id <- ids do
+        Oban.insert!(
+          op.oban,
+          AutoCreateWorker.new(%{
+            "event_id" => Ecto.UUID.generate(),
+            "user_id" => id,
+            "time_zone" => cursor["time_zone"]
+          })
+        )
+      end
+
+      advance(cursor, ids, 500)
+    end)
+  end
+
+  def step(repo, %{cursor: %{"phase" => "entitlements", "after_id" => after_id} = cursor} = op) do
+    ids = ReleaseOperations.ids(repo, @entitlements, [after_id])
+
+    for id <- ids,
+        do: MemberSync.run(repo, id, notify: false, time_zone: cursor["time_zone"])
+
+    ReleaseOperations.commit(repo, op, fn -> advance(cursor, ids, 200) end)
+  end
+
+  defp advance(cursor, ids, size) do
+    if length(ids) < size, do: :done, else: {%{cursor | "after_id" => List.last(ids)}, 0}
+  end
+end

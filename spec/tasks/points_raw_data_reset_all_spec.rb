@@ -7,6 +7,8 @@ RSpec.describe 'points:raw_data:reset_all' do
     Rake::Task['points:raw_data:reset_all'].reenable
   end
 
+  after { Rake::Task['points:raw_data:reset_all'].reenable }
+
   context 'when there is nothing to reset' do
     it 'prints nothing to reset and exits' do
       expect { Rake::Task['points:raw_data:reset_all'].invoke }.to output(/Nothing to reset/).to_stdout

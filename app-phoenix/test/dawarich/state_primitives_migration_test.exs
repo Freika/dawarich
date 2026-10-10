@@ -1,0 +1,175 @@
+defmodule Dawarich.StatePrimitivesMigrationTest do
+  use Dawarich.ScratchCase
+
+  @version 20_261_002_120_000
+  @forward_version 20_261_004_170_000
+  @forward_source Path.expand(
+                    "../../priv/repo/migrations/20261004170000_allow_nil_registration_setting.exs",
+                    __DIR__
+                  )
+  @source Path.expand(
+            "../../priv/repo/migrations/20261002120000_create_state_primitives.exs",
+            __DIR__
+          )
+  @tables ~w(counters epochs leases once_claims registration_setting)
+  @columns [
+    ["counters", "expires_at", "timestamp with time zone", "NO"],
+    ["counters", "key", "text", "NO"],
+    ["counters", "value", "bigint", "NO"],
+    ["epochs", "key", "text", "NO"],
+    ["epochs", "token", "text", "NO"],
+    ["epochs", "updated_at", "timestamp with time zone", "NO"],
+    ["leases", "expires_at", "timestamp with time zone", "NO"],
+    ["leases", "holder", "text", "NO"],
+    ["leases", "name", "text", "NO"],
+    ["once_claims", "expires_at", "timestamp with time zone", "NO"],
+    ["once_claims", "key", "text", "NO"],
+    ["registration_setting", "enabled", "boolean", "NO"],
+    ["registration_setting", "id", "boolean", "NO"],
+    ["registration_setting", "updated_at", "timestamp with time zone", "NO"]
+  ]
+  @indexes ~w(counters_expires_at_index counters_pkey epochs_pkey leases_expires_at_index leases_pkey once_claims_expires_at_index once_claims_pkey registration_setting_pkey)
+
+  setup do
+    on_exit(&Dawarich.MigrationModules.purge/0)
+  end
+
+  test "the state-primitive migration builds its tables only in phoenix and reverses cleanly" do
+    module = compile()
+
+    healing(module, fn ->
+      assert_built()
+      assert down(module) == :ok
+      assert placed() == []
+      refute @version in ledger()
+      assert up(module) == :ok
+      assert_built()
+      assert @version in ledger()
+    end)
+  end
+
+  test "a build left by an earlier edit of the migration is rebuilt before the round trip" do
+    scratch_sql!("DROP INDEX IF EXISTS phoenix.counters_expires_at_index")
+
+    healing(compile(), &assert_built/0)
+  end
+
+  test "a round trip that fails midway leaves the tables built from the file" do
+    module = compile()
+
+    assert_raise RuntimeError, "midway", fn ->
+      healing(module, fn ->
+        :ok = down(module)
+        raise "midway"
+      end)
+    end
+
+    assert_current()
+    assert @version in ledger()
+    assert @forward_version in ledger()
+  end
+
+  test "historical primitive proof cleanup restores current nullable registration schema" do
+    healing(compile(), &assert_built/0)
+    assert_current()
+    assert @version in ledger()
+    assert @forward_version in ledger()
+  end
+
+  defp compile do
+    [{module, _}] = Code.compile_file(@source)
+    module
+  end
+
+  defp healing(module, fun) do
+    heal!(module)
+
+    try do
+      fun.()
+    after
+      heal!(module)
+      restore_forward!()
+    end
+  end
+
+  defp restore_forward! do
+    [{module, _}] = Code.compile_file(@forward_source)
+    rows("DELETE FROM phoenix.phoenix_schema_migrations WHERE version = $1", [@forward_version])
+    :ok = Ecto.Migrator.up(ScratchRepo, @forward_version, module, prefix: "phoenix", log: false)
+  end
+
+  defp heal!(module) do
+    scratch_sql!("DROP TABLE IF EXISTS #{Enum.map_join(@tables, ", ", &("phoenix." <> &1))}")
+
+    ScratchRepo.query!(
+      "DELETE FROM phoenix.phoenix_schema_migrations WHERE version = $1",
+      [@version],
+      log: false
+    )
+
+    :ok = up(module)
+  end
+
+  defp up(module),
+    do: Ecto.Migrator.up(ScratchRepo, @version, module, prefix: "phoenix", log: false)
+
+  defp down(module),
+    do: Ecto.Migrator.down(ScratchRepo, @version, module, prefix: "phoenix", log: false)
+
+  defp assert_built do
+    assert placed() == Enum.map(@tables, &["phoenix", &1])
+    assert columns() == @columns
+    assert indexes() == @indexes
+    assert singleton() == [["CHECK (id)"]]
+  end
+
+  defp assert_current do
+    assert placed() == Enum.map(@tables, &["phoenix", &1])
+
+    expected =
+      Enum.map(@columns, fn
+        ["registration_setting", "enabled", type, _] ->
+          ["registration_setting", "enabled", type, "YES"]
+
+        column ->
+          column
+      end)
+
+    assert columns() == expected
+    assert indexes() == @indexes
+    assert singleton() == [["CHECK (id)"]]
+  end
+
+  defp placed,
+    do:
+      rows(
+        "SELECT table_schema::text, table_name::text FROM information_schema.tables WHERE table_name = ANY($1) ORDER BY 2, 1",
+        [@tables]
+      )
+
+  defp columns,
+    do:
+      rows(
+        "SELECT table_name::text, column_name::text, data_type::text, is_nullable::text FROM information_schema.columns WHERE table_schema = 'phoenix' AND table_name = ANY($1) ORDER BY 1, 2",
+        [@tables]
+      )
+
+  defp indexes,
+    do:
+      List.flatten(
+        rows(
+          "SELECT indexname::text FROM pg_indexes WHERE schemaname = 'phoenix' AND tablename = ANY($1) ORDER BY 1",
+          [@tables]
+        )
+      )
+
+  defp singleton,
+    do:
+      rows(
+        "SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE n.nspname = 'phoenix' AND c.conname = 'registration_setting_singleton'"
+      )
+
+  defp ledger, do: List.flatten(rows("SELECT version FROM phoenix.phoenix_schema_migrations"))
+
+  defp rows(sql, params \\ []), do: ScratchRepo.query!(sql, params, log: false).rows
+end

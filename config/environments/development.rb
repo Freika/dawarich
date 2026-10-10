@@ -52,6 +52,11 @@ Rails.application.configure do
 
   config.action_mailer.perform_caching = false
 
+  if ENV['E2E_SMTP_PORT'].present?
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.smtp_settings = { address: '127.0.0.1', port: ENV['E2E_SMTP_PORT'].to_i }
+  end
+
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
 

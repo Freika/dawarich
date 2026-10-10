@@ -4,6 +4,8 @@ module EnhancedImport
   class ExtractJob < ApplicationJob
     queue_as :extractions
 
+    MAX_ATTEMPTS = 3
+
     # Each requeue rewrites started_at, which is what extraction_stalled? reads,
     # so an unbounded wait would keep the import on "Queued…" forever with
     # nothing in the UI to act on. Give up loudly instead: the card then offers
@@ -11,36 +13,51 @@ module EnhancedImport
     MAX_LOCK_ATTEMPTS = 60
     LOCK_RETRY_WAIT = 1.minute
 
+    retry_on StandardError, wait: :polynomially_longer, attempts: MAX_ATTEMPTS do |job, error|
+      job.fail_after_retries(error)
+    end
+
     # A deadlock here is transient — the extractor and track generation contend
     # for the same rows. Retry silently rather than red-carding an import the
     # user cannot act on; only surface it once the retries are spent.
-    retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: 3 do |job, error|
-      job.fail_after_deadlock_retries(error)
+    retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: MAX_ATTEMPTS do |job, error|
+      job.fail_after_retries(error)
     end
 
-    def fail_after_deadlock_retries(error)
+    def fail_after_retries(error)
       import = Import.find_by(id: arguments.first)
       return if import.nil?
 
-      mark_failed!(import, error)
-      ExceptionReporter.call(error)
+      expected = @native_expected || (arguments.last[:expected] if arguments.last.is_a?(Hash))
+      return if expected && !Imports::ExtractionCommands.matches?(import, expected)
+
+      @native_expected = expected
+      Imports::ExtractionCommands.with_session(import, expected) do
+        ExceptionReporter.call(error)
+        fail_finally!(import, error)
+      end
+    rescue Imports::ExtractionCommands::Lost
+      nil
     end
 
-    def perform(import_id, attempt: 1)
+    def perform(import_id, attempt: 1, expected: nil)
       import = Import.find_by(id: import_id)
       return if import.nil?
 
-      return unless EnhancedImport::Translator.supported?(import.source)
+      return if expected && !Imports::ExtractionCommands.matches?(import, expected)
 
-      run(import, attempt)
-    rescue ActiveRecord::RecordNotFound => e
-      ExceptionReporter.call(e)
+      @native_expected = expected
+
+      return unless EnhancedImport::Translator.supported?(import.source)
+      return if EnhancedImport::Commands.forward_extract(import, attempt:, event_id: job_id)
+
+      Imports::ExtractionCommands.with_session(import, expected) { run(import, attempt) }
+    rescue Imports::ExtractionCommands::Lost
+      nil
     end
 
     private
 
-    # Import completion schedules track generation too, and both claim the same
-    # untracked points. The generator already serialises on this lock.
     def run(import, attempt)
       mark_running!(import)
 
@@ -56,8 +73,7 @@ module EnhancedImport
     rescue ActiveRecord::Deadlocked
       raise
     rescue StandardError => e
-      mark_failed!(import, e)
-      ExceptionReporter.call(e)
+      mark_retrying!(import, e)
       raise
     end
 
@@ -67,14 +83,20 @@ module EnhancedImport
           "[EnhancedImport::ExtractJob] import #{import.id} could not get the user lock after " \
           "#{attempt} attempts; giving up."
         )
-        return mark_failed!(import, error)
+        return fail_finally!(import, error)
       end
 
-      import.update_columns(
-        additional_data_extraction_status: Import.additional_data_extraction_statuses[:pending],
-        additional_data_extraction: import.additional_data_extraction.merge('started_at' => Time.current.iso8601)
-      )
-      self.class.set(wait: LOCK_RETRY_WAIT).perform_later(import.id, attempt: attempt + 1)
+      effect!(import) do
+        import.update_columns(
+          additional_data_extraction_status: Import.additional_data_extraction_statuses[:pending],
+          additional_data_extraction: import.additional_data_extraction.merge('started_at' => Time.current.iso8601)
+        )
+      end
+      advance_expected!(import.additional_data_extraction['started_at'])
+      effect!(import) do
+        options = @native_expected ? { expected: @native_expected } : {}
+        self.class.set(wait: LOCK_RETRY_WAIT).perform_later(import.id, attempt: attempt + 1, **options)
+      end
     end
 
     def process_stream(import)
@@ -84,30 +106,33 @@ module EnhancedImport
       visit_writer = Writers::VisitWriter.new(user, import)
       track_writer = Writers::TrackWriter.new(user, import)
       segment_writer = Writers::SegmentWriter.new
+      effect!(import) { SourceSegmentsReset.new(import).call unless trust_source?(import) }
 
       EnhancedImport::Translator.new(import).translate do |item|
-        case item
-        when Extracted::Place
-          place, = place_writer.upsert(item)
-          counts[:places] += 1 if place
-        when Extracted::Visit
-          place, = place_writer.upsert(item.place)
-          counts[:places] += 1 if place
-          visit, = visit_writer.upsert(item, place)
-          counts[:visits] += 1 if visit
-        when Extracted::Track
-          source_segments_take_over = trust_source?(import) && item.segments.any?
-          track, = track_writer.upsert(
-            item,
-            skip_segment_detection: source_segments_take_over
-          )
-          counts[:tracks] += 1 if track
-          if track && source_segments_take_over
-            item.segments.each do |segment|
-              written_segment, = segment_writer.upsert(track, segment)
-              counts[:segments] += 1 if written_segment
+        effect!(import) do
+          case item
+          when Extracted::Place
+            place, = place_writer.upsert(item)
+            counts[:places] += 1 if place
+          when Extracted::Visit
+            place, = place_writer.upsert(item.place)
+            counts[:places] += 1 if place
+            visit, = visit_writer.upsert(item, place)
+            counts[:visits] += 1 if visit
+          when Extracted::Track
+            source_segments_take_over = trust_source?(import) && item.segments.any?
+            track, = track_writer.upsert(
+              item,
+              skip_segment_detection: source_segments_take_over
+            )
+            counts[:tracks] += 1 if track
+            if track && source_segments_take_over
+              item.segments.each do |segment|
+                written_segment, = segment_writer.upsert(track, segment, window: item.start_at.to_i..item.end_at.to_i)
+                counts[:segments] += 1 if written_segment
+              end
+              track.update_dominant_mode!
             end
-            track.update_dominant_mode!
           end
         end
       end
@@ -123,53 +148,85 @@ module EnhancedImport
       import.additional_data_extraction.fetch('options', {}).fetch('trust_source', true)
     end
 
-    def broadcast_card(import)
-      Turbo::StreamsChannel.broadcast_replace_to(
-        "import_#{import.id}_extraction",
-        target: "import-#{import.id}-extraction",
-        partial: 'imports/extraction_card',
-        locals: { import: import.reload }
-      )
-    rescue StandardError => e
-      Rails.logger.warn("[EnhancedImport::ExtractJob] card broadcast failed import_id=#{import.id}: #{e.message}")
-    end
-
     def mark_running!(import)
-      payload = import.additional_data_extraction.merge(
-        'started_at' => Time.current.iso8601,
-        'completed_at' => nil,
-        'error_message' => nil
-      )
-      import.update_columns(
-        additional_data_extraction_status: Import.additional_data_extraction_statuses[:running],
-        additional_data_extraction: payload
-      )
-      broadcast_card(import)
+      effect!(import) do
+        payload = import.additional_data_extraction.merge(
+          'started_at' => Time.current.iso8601,
+          'completed_at' => nil,
+          'error_message' => nil
+        )
+        import.update_columns(
+          additional_data_extraction_status: Import.additional_data_extraction_statuses[:running],
+          additional_data_extraction: payload
+        )
+      end
+      advance_expected!(import.additional_data_extraction['started_at'])
+      EnhancedImport::CardBroadcaster.call(import)
     end
 
     def mark_completed!(import, counts)
-      payload = import.additional_data_extraction.merge(
-        'completed_at' => Time.current.iso8601,
-        'counts' => counts.transform_keys(&:to_s),
-        'error_message' => nil
-      )
-      import.update_columns(
-        additional_data_extraction_status: Import.additional_data_extraction_statuses[:completed],
-        additional_data_extraction: payload
-      )
-      broadcast_card(import)
+      effect!(import) do
+        payload = import.additional_data_extraction.merge(
+          'completed_at' => Time.current.iso8601,
+          'counts' => counts.transform_keys(&:to_s),
+          'error_message' => nil
+        )
+        import.update_columns(
+          additional_data_extraction_status: Import.additional_data_extraction_statuses[:completed],
+          additional_data_extraction: payload
+        )
+        schedule_track_generation(import)
+      end
+      EnhancedImport::CardBroadcaster.call(import)
+    end
+
+    def mark_retrying!(import, error)
+      effect!(import) do
+        import.update_columns(
+          additional_data_extraction_status: Import.additional_data_extraction_statuses[:pending],
+          additional_data_extraction: import.additional_data_extraction.merge(
+            'started_at' => Time.current.iso8601, 'error_message' => error.message
+          )
+        )
+      end
+      advance_expected!(import.additional_data_extraction['started_at'])
+      EnhancedImport::CardBroadcaster.call(import)
     end
 
     def mark_failed!(import, error)
-      payload = import.additional_data_extraction.merge(
-        'completed_at' => Time.current.iso8601,
-        'error_message' => error.message
-      )
-      import.update_columns(
-        additional_data_extraction_status: Import.additional_data_extraction_statuses[:failed],
-        additional_data_extraction: payload
-      )
-      broadcast_card(import)
+      effect!(import) do
+        payload = import.additional_data_extraction.merge(
+          'completed_at' => Time.current.iso8601,
+          'error_message' => error.message
+        )
+        import.update_columns(
+          additional_data_extraction_status: Import.additional_data_extraction_statuses[:failed],
+          additional_data_extraction: payload
+        )
+        schedule_track_generation(import)
+      end
+      EnhancedImport::CardBroadcaster.call(import)
+    end
+
+    def fail_finally!(import, error)
+      mark_failed!(import, error)
+    end
+
+    def effect!(import, &block)
+      Imports::ExtractionCommands.effect!(import, @native_expected, &block)
+    end
+
+    def advance_expected!(stamp)
+      return unless @native_expected
+
+      @native_expected = @native_expected.merge('started_at' => stamp)
+      arguments.last[:expected] = @native_expected if arguments.last.is_a?(Hash)
+    end
+
+    def schedule_track_generation(import)
+      import.schedule_untracked_track_generation
+    rescue StandardError => e
+      ExceptionReporter.call(e, 'Failed to schedule track generation after extraction')
     end
   end
 end

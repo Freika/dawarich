@@ -8,6 +8,11 @@ RSpec.describe 'dawarich places rake tasks' do
     Rails.application.load_tasks if Rake::Task.tasks.none? { |t| t.name == 'dawarich:cleanup_suggested_places' }
   end
 
+  before do
+    Rake::Task['dawarich:cleanup_suggested_places'].reenable
+    Rake::Task['dawarich:backfill_place_names'].reenable
+  end
+
   after do
     Rake::Task['dawarich:cleanup_suggested_places'].reenable
     Rake::Task['dawarich:backfill_place_names'].reenable

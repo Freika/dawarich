@@ -2,15 +2,16 @@ import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
 import { createMapChannel } from "maps_maplibre/channels/map_channel"
 import { Toast } from "maps_maplibre/components/toast"
-import { pointMatchesActiveDateRange } from "maps_maplibre/utils/realtime_date_filter"
+import {
+  handleNewPoint,
+  refreshLiveLayers,
+  updateRecentPoint,
+  zoomToPoint,
+} from "maps_maplibre/utils/realtime_points"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 const LIVE_REFRESH_DELAY_MS = 1000
 
-/**
- * Real-time controller
- * Manages ActionCable connection and real-time updates
- */
 export default class extends Controller {
   static targets = ["liveModeToggle"]
 
@@ -28,7 +29,8 @@ export default class extends Controller {
       this.connectedChannels = new Set()
       this.liveModeEnabled = this.liveModeValue
 
-      setTimeout(() => {
+      this.setupTimer = setTimeout(() => {
+        this.setupTimer = null
         try {
           this.setupChannels()
         } catch (error) {
@@ -49,8 +51,12 @@ export default class extends Controller {
   }
 
   disconnect() {
+    clearTimeout(this.setupTimer)
+    this.setupTimer = null
     clearTimeout(this.liveRefreshTimer)
     this.liveRefreshTimer = null
+    clearTimeout(this.trackRefreshTimer)
+    this.trackRefreshTimer = null
     this.channels?.unsubscribeAll()
   }
 
@@ -82,6 +88,8 @@ export default class extends Controller {
 
     this.updateRecentPointLayerVisibility()
 
+    clearTimeout(this.setupTimer)
+    this.setupTimer = null
     if (this.channels) {
       this.channels.unsubscribeAll()
     }
@@ -184,6 +192,15 @@ export default class extends Controller {
   }
 
   handleTrackUpdate() {
+    if (this.trackRefreshTimer) return
+
+    this.trackRefreshTimer = setTimeout(() => {
+      this.trackRefreshTimer = null
+      this.refreshTrackLayers()
+    }, LIVE_REFRESH_DELAY_MS)
+  }
+
+  refreshTrackLayers() {
     const mapsController = this.mapsV2Controller
     if (!mapsController) return
 
@@ -200,44 +217,8 @@ export default class extends Controller {
     return app.getControllerForElementAndIdentifier(element, "maps--maplibre")
   }
 
-  /**
-   * Handle new point
-   * Point data is broadcast as: [lat, lon, battery, altitude, timestamp, velocity, id, country_name]
-   */
   handleNewPoint(pointData) {
-    const mapsController = this.mapsV2Controller
-    if (!mapsController) {
-      console.warn("[Realtime Controller] Maps controller not found")
-      return
-    }
-
-    const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] =
-      pointData
-
-    if (
-      !pointMatchesActiveDateRange(
-        timestamp,
-        mapsController.realtimeDateRange(),
-      )
-    ) {
-      return
-    }
-
-    mapsController.mapDataManager?.invalidatePoints({ appendOnly: true })
-    this.scheduleLiveRefresh()
-
-    this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
-      id: parseInt(id, 10),
-      battery: parseFloat(battery) || null,
-      altitude: parseFloat(altitude) || null,
-      timestamp: timestamp,
-      velocity: parseFloat(velocity) || null,
-      country_name: countryName || null,
-    })
-
-    this.zoomToPoint(parseFloat(lon), parseFloat(lat))
-
-    Toast.info(translate("messages.new_location_recorded"))
+    return handleNewPoint(this, pointData)
   }
 
   scheduleLiveRefresh() {
@@ -250,25 +231,7 @@ export default class extends Controller {
   }
 
   refreshLiveLayers() {
-    const mapsController = this.mapsV2Controller
-    if (!mapsController) return
-
-    mapsController.layerManager?.getLayer("points-mvt")?.refresh()
-    mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
-    mapsController.layerManager
-      ?.getLayer("scratch")
-      ?.update()
-      .catch((error) => {
-        console.warn(
-          "[Realtime Controller] Failed to refresh visited countries:",
-          error,
-        )
-        Toast.retry(
-          translate("messages.failed_to_load_visited_countries"),
-          translate("messages.retry"),
-          () => mapsController.layerManager?.getLayer("scratch")?.update(),
-        )
-      })
+    return refreshLiveLayers(this)
   }
 
   /**
@@ -286,48 +249,12 @@ export default class extends Controller {
 
   // Note: Notifications are handled by notifications_controller.js in the navbar
 
-  /**
-   * Update the recent point marker
-   * This marker is always visible in live mode, independent of points layer visibility
-   */
   updateRecentPoint(longitude, latitude, properties = {}) {
-    const mapsController = this.mapsV2Controller
-    if (!mapsController) {
-      console.warn("[Realtime Controller] Maps controller not found")
-      return
-    }
-
-    const recentPointLayer =
-      mapsController.layerManager?.getLayer("recentPoint")
-    if (!recentPointLayer) {
-      console.warn("[Realtime Controller] Recent point layer not found")
-      return
-    }
-
-    if (this.liveModeEnabled) {
-      recentPointLayer.show()
-      recentPointLayer.updateRecentPoint(longitude, latitude, properties)
-    }
+    return updateRecentPoint(this, longitude, latitude, properties)
   }
 
-  /**
-   * Zoom map to a specific point
-   */
   zoomToPoint(longitude, latitude) {
-    const mapsController = this.mapsV2Controller
-    if (!mapsController || !mapsController.map) {
-      console.warn("[Realtime Controller] Map not available for zooming")
-      return
-    }
-
-    const map = mapsController.map
-
-    map.flyTo({
-      center: [longitude, latitude],
-      zoom: Math.max(map.getZoom(), 14),
-      duration: 2000,
-      essential: true,
-    })
+    return zoomToPoint(this, longitude, latitude)
   }
 
   /**

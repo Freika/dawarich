@@ -55,7 +55,7 @@ class Exports::Create
     case file_format.to_sym
     when :json then Exports::PointGeojsonSerializer.new(time_framed_points).call
     when :gpx  then Exports::PointGpxSerializer.new(time_framed_points, export.name).call
-    else raise ArgumentError, I18n.t('services.exports.create.unsupported_file_format', format: file_format)
+    else raise ArgumentError, I18n.t('services.exports.create.unsupported_file_format', file_format: file_format)
     end
   end
 

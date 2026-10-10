@@ -1,0 +1,194 @@
+<div :if={@target} class="min-h-content w-full my-5">
+  <h1 class="text-3xl font-bold mb-6">{label(@locale, "user_details")}</h1>
+  <SettingsParts.navigation
+    locale={@locale}
+    active="users"
+    self_hosted={@self_hosted}
+    admin={@current_user.admin == true}
+    two_factor={@two_factor}
+    native
+  />
+  <div class="flex flex-col w-full my-10">
+    <div class="w-10/12 mx-auto space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="min-w-0">
+          <h2 class="text-2xl font-bold break-all">{@target.email}</h2>
+          <div class="flex gap-2 mt-2">
+            <span class={if(@target.admin, do: "badge badge-primary", else: "badge badge-ghost")}>{label(
+              @locale,
+              if(@target.admin, do: "admin", else: "user")
+            )}</span>
+            <span
+              :if={@target.status in 0..2}
+              class={"badge badge-" <> elem(status(@target.status), 1)}
+            >{label(@locale, elem(status(@target.status), 0))}</span>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <.link class="btn btn-primary btn-sm" navigate={"/settings/users/#{@target.id}/edit"}>{label(
+            @locale,
+            "edit"
+          )}</.link>
+          <.link class="btn btn-ghost btn-sm" navigate="/settings/users">{label(
+            @locale,
+            "back_to_users"
+          )}</.link>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="card bg-base-200">
+          <div class="card-body">
+            <h3 class="card-title">{label(@locale, "data_overview")}</h3>
+            <div class="overflow-x-auto">
+              <table class="table">
+                <tbody>
+                  <tr :for={key <- ~w(points tracks imports exports areas)}>
+                    <td class="font-semibold">{label(@locale, key)}</td>
+                    <td>
+                      {NumberFormat.delimited(
+                        @locale,
+                        if(key == "points",
+                          do: @target.points_count || 0,
+                          else: @counts[key]
+                        )
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="card bg-base-200">
+          <div class="card-body">
+            <h3 class="card-title">{label(@locale, "sign_in_history")}</h3>
+            <div class="overflow-x-auto">
+              <table class="table">
+                <tbody>
+                  <tr>
+                    <td class="font-semibold">{label(@locale, "total_sign_ins")}</td><td>
+                      {@target.sign_in_count}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">{label(@locale, "last_sign_in")}</td><td>
+                      <%= if @target.last_sign_in_at do %>
+                        <.human_datetime locale={@locale} at={@target.last_sign_in_at} />
+                      <% else %>
+                        <span class="text-base-content/50">{label(@locale, "never")}</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">{label(@locale, "last_sign_in_ip")}</td><td>
+                      {@target.last_sign_in_ip || "—"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">{label(@locale, "current_sign_in_ip")}</td><td>
+                      {@target.current_sign_in_ip || "—"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="font-semibold">{label(@locale, "account_created")}</td><td>
+                      <.human_datetime locale={@locale} at={@target.created_at} />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="card bg-base-200">
+          <div class="card-body">
+            <h3 class="card-title">{label(@locale, "api_key")}</h3>
+            <div id="admin-user-clipboard" class="flex flex-wrap items-center gap-2">
+              <code class="bg-base-300 px-3 py-2 rounded-lg text-sm flex-1 break-all">{String.slice(
+                @target_user.api_key,
+                0,
+                8
+              )}{String.duplicate("•", 24)}</code>
+              <button
+                id="admin-user-copy"
+                type="button"
+                class="btn btn-ghost btn-sm"
+                phx-hook="Clipboard"
+                data-clipboard-text={@target_user.api_key}
+                data-copied-label={t(@locale, "javascript.messages.copied_to_clipboard", %{})}
+                data-failed-label={
+                  t(@locale, "javascript.messages.failed_to_copy_please_copy_manually", %{})
+                }
+                data-status-id="admin-user-copy-status"
+              >
+                <.icon name="copy" class="inline-block w-4" /> {label(@locale, "copy")}
+              </button>
+              <span id="admin-user-copy-status" role="status" aria-live="polite" class="text-sm"></span>
+            </div>
+            <div class="card-actions mt-4">
+              <button
+                id="open-rotate"
+                type="button"
+                class="btn btn-warning btn-sm"
+                phx-click={
+                  JS.push("open_rotate")
+                  |> JS.dispatch("dawarich:open-dialog", to: "#rotate_api_key")
+                }
+                disabled={MapSet.member?(@security_accepted, "rotate_api_key")}
+              >{label(@locale, "regenerate_api_key")}</button>
+            </div>
+          </div>
+        </div>
+        <div class="card bg-base-200">
+          <div class="card-body">
+            <h3 class="card-title">{label(@locale, "actions")}</h3>
+            <div class="flex flex-col gap-3">
+              <button
+                id="send-password-reset"
+                type="button"
+                class="btn btn-outline btn-sm h-auto min-h-8 py-1 whitespace-normal"
+                phx-click="send_password_reset"
+                phx-disable-with={label(@locale, "send_password_reset_email")}
+                disabled={MapSet.member?(@security_accepted, "send_password_reset")}
+              >{label(@locale, "send_password_reset_email")}</button>
+              <.link
+                class="btn btn-primary btn-sm"
+                navigate={"/settings/users/#{@target.id}/edit"}
+              >{label(
+                @locale,
+                "edit_user"
+              )}</.link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <dialog
+    id="rotate_api_key"
+    class="modal"
+    open={@dialog_open}
+    phx-mounted={JS.ignore_attributes("open")}
+  >
+    <div class="modal-box">
+      <p>{label(@locale, "are_you_sure_this_will_invalidate_the_current_api_key")}</p>
+      <div class="modal-action flex-wrap">
+        <button
+          type="button"
+          class="btn"
+          phx-click={
+            JS.push("cancel_rotate")
+            |> JS.dispatch("dawarich:close-dialog", to: "#rotate_api_key")
+          }
+        >{t(@locale, "settings.users.index.cancel", %{})}</button>
+        <button
+          id="confirm-rotate"
+          type="button"
+          class="btn btn-warning"
+          phx-click="rotate_api_key"
+          phx-disable-with={label(@locale, "regenerate_api_key")}
+          disabled={MapSet.member?(@security_accepted, "rotate_api_key")}
+        >{label(@locale, "regenerate_api_key")}</button>
+      </div>
+    </div>
+  </dialog>
+</div>

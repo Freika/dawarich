@@ -1,0 +1,6 @@
+INSERT INTO users (email, created_at, updated_at, visits_redetected_at) VALUES ('unreadable-a@example.test', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
+INSERT INTO users (email, created_at, updated_at, visits_redetected_at) VALUES ('unreadable-b@example.test', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
+INSERT INTO service_settings (user_id, service, provider, config, credentials, active, created_at, updated_at)
+  SELECT id, 0, 'photon', '{"host": "photon.example.test", "use_https": true, "rps": 3}', '{"p":"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=","h":{"iv":"fBYqkmdEcRGCOd0n","at":"RUYewMt067RANXlsIB0J3g=="}}', true, '2026-01-01 00:00:00', '2026-01-01 00:00:00' FROM users WHERE email = 'unreadable-a@example.test';
+INSERT INTO service_settings (user_id, service, provider, config, credentials, active, created_at, updated_at)
+  SELECT id, 0, 'photon', '{"host": "photon.example.test", "use_https": true, "rps": 3}', '{"p":"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=","h":{"iv":"fBYqkmdEcRGCOd0n","at":"RUYewMt067RANXlsIB0J3g=="}}', true, '2026-01-01 00:00:00', '2026-01-01 00:00:00' FROM users WHERE email = 'unreadable-b@example.test';

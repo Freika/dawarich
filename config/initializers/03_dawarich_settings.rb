@@ -134,11 +134,11 @@ class DawarichSettings
     end
 
     def registration_enabled?
-      Rails.cache.fetch('dawarich/registration_enabled') { ALLOW_EMAIL_PASSWORD_REGISTRATION }
+      ::PhoenixRegistrationSetting.fetch
     end
 
     def set_registration_enabled(enabled)
-      Rails.cache.write('dawarich/registration_enabled', enabled)
+      ::PhoenixRegistrationSetting.put(enabled)
     end
   end
 end

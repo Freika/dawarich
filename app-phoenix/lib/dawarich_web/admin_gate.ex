@@ -1,0 +1,44 @@
+defmodule DawarichWeb.AdminGate do
+  @moduledoc false
+
+  alias Dawarich.Auth.Admission
+  alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
+
+  @markers ~w(client aff via referral dawarich_client invitation_token pending_import_ticket)
+
+  def background?(conn, _params),
+    do: eligible?(conn) and DawarichWeb.OperatorRedirect.authorized?(conn)
+
+  def background_route?(conn, _params), do: eligible?(conn)
+
+  def supported?(user), do: Dawarich.Admin.Access.supported?(user)
+
+  defp eligible?(conn) do
+    query = Plug.Conn.Query.decode(conn.query_string)
+    conn = RailsAuth.call(conn, [])
+    user = conn.assigns.current_user
+
+    (LayoutAssigns.self_hosted?() or DawarichWeb.OperatorRedirect.operator?(user)) and
+      not is_nil(user) and supported?(user) and
+      Strangler.page_request?(conn) and Admission.headers(conn.req_headers) == :ok and
+      conn.method in ["GET", "HEAD"] and
+      Enum.all?(query, fn {_key, value} -> is_binary(value) end) and
+      not Enum.any?(["_method" | @markers], &Map.has_key?(query, &1)) and
+      not Enum.any?(@markers, &Map.has_key?(conn.assigns.rails_session, &1)) and
+      Enum.all?(
+        ~w(turbo-frame x-dawarich-client x-http-method-override),
+        &(Plug.Conn.get_req_header(conn, &1) == [])
+      ) and
+      unique_query?(conn.query_string)
+  rescue
+    _ -> false
+  end
+
+  defp unique_query?(query) do
+    keys =
+      for segment <- String.split(query, "&", trim: true),
+          do: segment |> String.split("=", parts: 2) |> hd() |> URI.decode_www_form()
+
+    length(keys) == length(Enum.uniq(keys))
+  end
+end

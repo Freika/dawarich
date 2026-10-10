@@ -32,7 +32,7 @@ class TripsController < ApplicationController
     return if @trip.source_imported? && @trip.started_at > Time.current
     return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
 
-    Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)
+    @trip.enqueue_calculation_jobs(@distance_unit)
   end
 
   def new
@@ -67,10 +67,14 @@ class TripsController < ApplicationController
   end
 
   def recalculate
-    affected = current_user.trips
-                           .where(id: @trip.id)
-                           .where('last_recalculated_at IS NULL OR last_recalculated_at < ?', Trip::RECALCULATE_COOLDOWN.ago)
-                           .update_all(last_recalculated_at: Time.current)
+    affected = Trip.transaction do
+      count = current_user.trips
+                          .where(id: @trip.id)
+                          .where('last_recalculated_at IS NULL OR last_recalculated_at < ?', Trip::RECALCULATE_COOLDOWN.ago)
+                          .update_all(last_recalculated_at: Time.current)
+      @trip.enqueue_calculation_jobs(current_user.safe_settings.distance_unit) if count.positive?
+      count
+    end
 
     if affected.zero?
       notice = I18n.t('controllers.trips.already_recalculating_this_page_will_update_when_it_s_done')
@@ -87,7 +91,6 @@ class TripsController < ApplicationController
     end
 
     @trip.reload
-    Trips::CalculateAllJob.perform_later(@trip.id, current_user.safe_settings.distance_unit)
     Rails.logger.info("trip_recalculate trip_id=#{@trip.id} user_id=#{current_user.id}")
 
     respond_to do |format|

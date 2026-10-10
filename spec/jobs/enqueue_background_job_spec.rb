@@ -32,6 +32,14 @@ RSpec.describe EnqueueBackgroundJob, type: :job do
       expect { described_class.perform_now('start_airtrail_import', user_id) }
         .to have_enqueued_job(AirTrail::ImportFlightsJob).with(user_id)
     end
+
+    it 'produces the airtrail command to the outbox while Oban owns it' do
+      job_owner!(ImportCommands::AIRTRAIL_FLIGHTS_KEY, :oban)
+
+      described_class.perform_now('start_airtrail_import', user_id)
+
+      expect(JobOutbox.pending.sole.payload).to eq({ 'user_id' => user_id })
+    end
   end
 
   context 'when job_name is start_teslamate_sync' do

@@ -87,33 +87,33 @@ RSpec.describe 'Geocoded statistics commit recovery', :non_transactional, thread
   it 'retries cache invalidation after the result has already committed' do
     stat.id
     ReverseGeocoding::Points::FetchData.new(point.id).call
-    allow(Rails.cache).to receive(:delete).and_raise(IOError, 'cache unavailable')
+    cache = Cache::InvalidateUserCaches.new(user.id).send(:cache)
+    allow(ActiveSupport::Cache::RedisCacheStore).to receive(:new).and_return(cache)
+    allow(cache).to receive(:delete).and_raise(IOError, 'cache unavailable')
     expect { Stats::RefreshToponyms.new(user, 2014, 6, invalidate_cache: true).call }.to raise_error(IOError)
     expect(stat.reload.toponyms.first['country']).to eq('Germany')
-    allow(Rails.cache).to receive(:delete).and_call_original
+    allow(cache).to receive(:delete).and_call_original
     travel 61.minutes do
       Stats::ToponymsRefreshJob.perform_now
       expect(Stats::GeocodedDays.due(limit: 10)).to be_empty
     end
-    expect(Rails.cache).to have_received(:delete).with("dawarich/user_#{user.id}_countries_visited").twice
+    expect(cache).to have_received(:delete).with("dawarich/user_#{user.id}_countries_visited").twice
   end
 
-  it 'excludes a second worker while another connection holds the global refresh lock' do
+  it 'excludes a second worker while another holder keeps the global refresh lease' do
     stat.id
     ReverseGeocoding::Points::FetchData.new(point.id).call
-    lock = Stats::ToponymsRefresh::LOCK_ID
-    connection = ActiveRecord::Base.connection
-    connection.execute("SELECT pg_advisory_lock(#{lock})")
+    ActiveRecord::Base.connection.execute(
+      'INSERT INTO phoenix.leases (name, holder, expires_at) ' \
+      "VALUES ('stats:toponyms_refresh', 'other-worker', statement_timestamp() + interval '60 seconds')"
+    )
+
     travel 61.minutes do
-      other = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { Stats::ToponymsRefreshJob.perform_now }
-      end
-      expect(other.join(5)).not_to be_nil
-      other.value
+      Stats::ToponymsRefreshJob.perform_now
       expect(stat.reload.toponyms).to be_empty
       expect(Stats::GeocodedDays.due(limit: 10)).not_to be_empty
     end
   ensure
-    connection&.execute("SELECT pg_advisory_unlock(#{lock})")
+    ActiveRecord::Base.connection.execute('DELETE FROM phoenix.leases')
   end
 end

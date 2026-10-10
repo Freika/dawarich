@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -281,6 +281,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.datetime "updated_at", null: false
     t.jsonb "value"
     t.index ["key"], name: "index_instance_settings_on_key", unique: true
+  end
+
+  create_table "job_outbox", primary_key: "event_id", id: :uuid, default: nil, force: :cascade do |t|
+    t.bigint "aggregate_id"
+    t.string "command_type", null: false
+    t.integer "command_version", null: false
+    t.timestamptz "created_at", default: -> { "now()" }, null: false
+    t.string "dedupe_key"
+    t.timestamptz "dispatched_at"
+    t.string "error_code"
+    t.jsonb "metadata", default: {}, null: false
+    t.bigint "oban_job_id"
+    t.jsonb "payload", null: false
+    t.timestamptz "scheduled_at", null: false
+    t.string "state", default: "pending", null: false
+    t.index ["command_type", "dedupe_key"], name: "index_job_outbox_on_pending_dedupe", unique: true, where: "(((state)::text = 'pending'::text) AND (dedupe_key IS NOT NULL))"
+    t.index ["scheduled_at", "event_id"], name: "index_job_outbox_on_due", where: "((state)::text = 'pending'::text)"
+    t.check_constraint "command_version > 0", name: "job_outbox_command_version_positive"
+    t.check_constraint "jsonb_typeof(payload) = 'object'::text AND octet_length(payload::text) <= 8192", name: "job_outbox_payload_object"
+    t.check_constraint "state::text = ANY (ARRAY['pending'::character varying, 'dispatched'::character varying, 'quarantined'::character varying]::text[])", name: "job_outbox_state_known"
   end
 
   create_table "notes", force: :cascade do |t|
@@ -704,6 +724,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.datetime "end_at", null: false
     t.bigint "import_id"
     t.integer "lock_version", default: 0, null: false
+    t.datetime "map_matched_at"
+    t.jsonb "map_matching_data", default: {}, null: false
+    t.string "map_matching_input_digest"
+    t.integer "map_matching_status"
+    t.geometry "matched_path", limit: {srid: 4326, type: "multi_line_string"}
     t.geometry "original_path", limit: {srid: 4326, type: "line_string"}, null: false
     t.datetime "start_at", null: false
     t.string "tracker_id"
@@ -713,6 +738,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.index ["demo"], name: "index_tracks_on_demo_true", where: "(demo = true)"
     t.index ["dominant_mode"], name: "index_tracks_on_dominant_mode"
     t.index ["import_id"], name: "idx_tracks_import_id_extracted", where: "(import_id IS NOT NULL)"
+    t.index ["matched_path"], name: "index_tracks_on_matched_path", where: "(matched_path IS NOT NULL)", using: :gist
     t.index ["original_path"], name: "index_tracks_on_original_path", using: :gist
     t.index ["user_id", "start_at"], name: "idx_tracks_user_id_start_at"
     t.index ["user_id", "tracker_id", "end_at"], name: "idx_tracks_user_tracker_end_at"
@@ -798,7 +824,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
-    t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
+    t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "500", "minutes_between_routes" => "30"}
     t.integer "sign_in_count", default: 0, null: false
     t.string "signup_variant"
     t.datetime "stats_swept_at"

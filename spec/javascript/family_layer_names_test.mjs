@@ -10,6 +10,7 @@ const source = await readFile(
   "utf8",
 )
 const dependencies = `
+  const familyMemberColor = () => "#3b82f6";
   const translate = (key) => key;
   const maplibregl = { Popup: class {} };
   class BaseLayer {

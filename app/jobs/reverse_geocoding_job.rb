@@ -10,11 +10,15 @@ class ReverseGeocodingJob < ApplicationJob
   end
 
   def perform(klass, id, force: false)
+    forwarded = false
     record = klass.to_s.classify.constantize.find_by(id: id)
     return if record.nil?
 
     config = Geocoding::Config.for(record.user_id)
     return unless config.enabled?
+
+    forwarded = Geocoding::ReverseCommands.forward(record, force:, event_id: job_id)
+    return if forwarded
 
     # Pacing lives in Geocoding::RateLimiter, one layer down: sleeping here
     # only spaced out a single thread while the rest of the pool kept firing.
@@ -23,14 +27,14 @@ class ReverseGeocodingJob < ApplicationJob
     retrying = true
     raise
   ensure
-    self.class.release_geocode_claim(klass, id, force: force) unless retrying
+    self.class.release_geocode_claim(klass, id, force: force) unless forwarded || retrying
   end
 
   def self.release_geocode_claim(klass, id, force: false)
     return unless klass == 'Point'
     return if force
 
-    Sidekiq.redis { |r| r.del(Point.geocode_dedup_key(id)) }
+    PhoenixClaims.unclaim(Point.geocode_dedup_key(id))
   rescue StandardError => e
     Rails.logger.warn("Failed to release geocode dedup key for point #{id}: #{e.message}")
   end

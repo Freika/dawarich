@@ -49,6 +49,11 @@ class Point < ApplicationRecord
   # Ingest, cleanup and the anomaly filter must all agree on what counts as a
   # broken coordinate; Points::NullIsland owns that definition.
   scope :null_island, -> { where(Points::NullIsland.sql_predicate) }
+  scope :not_held_by_extraction, -> { where(Import.awaiting_extraction_for(arel_table[:import_id]).not) }
+  scope :recorded_by, lambda { |tracker_id|
+    joins('LEFT JOIN point_sources ON point_sources.id = points.source_id')
+      .where("#{Trip::DEVICE_SQL} = COALESCE(?, '')", tracker_id)
+  }
 
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country
@@ -88,31 +93,23 @@ class Point < ApplicationRecord
     @recorded_at ||= Time.zone.at(timestamp)
   end
 
-  GEOCODE_CLAIM_SCRIPT = <<~LUA
-    if redis.call('SET', KEYS[1], '1', 'NX') then return 1 end
-    redis.call('PERSIST', KEYS[1])
-    return 0
-  LUA
-
   def self.geocode_dedup_key(id)
     "geocode:enq:Point:#{id}"
   end
 
   def self.claim_geocode_ids(ids)
-    results = Sidekiq.redis do |redis|
-      redis.pipelined do |pipe|
-        ids.each { |id| pipe.call('EVAL', GEOCODE_CLAIM_SCRIPT, 1, geocode_dedup_key(id)) }
-      end
-    end
-    ids.zip(results).filter_map { |id, claimed| id if claimed == 1 }
+    keys = ids.map { geocode_dedup_key(_1) }
+    claimed = PhoenixClaims.claim_persistent_all(keys).to_set
+    ids.select { claimed.include?(geocode_dedup_key(_1)) }
   end
 
   def async_reverse_geocode(force: false, config: nil)
     config ||= Geocoding::Config.for(user_id)
     return unless config.enabled?
 
+    key = self.class.geocode_dedup_key(id)
     if force
-      Sidekiq.redis { |r| r.del(self.class.geocode_dedup_key(id)) }
+      PhoenixClaims.unclaim(key)
     elsif self.class.claim_geocode_ids([id]).empty?
       return
     end
@@ -120,7 +117,7 @@ class Point < ApplicationRecord
     begin
       ReverseGeocodingJob.perform_later(self.class.to_s, id, force: force)
     rescue StandardError
-      Sidekiq.redis { |r| r.del(self.class.geocode_dedup_key(id)) } unless force
+      PhoenixClaims.unclaim(key) unless force
       raise
     end
   end

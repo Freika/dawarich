@@ -10,6 +10,7 @@ module Map
     layout 'map'
 
     def index
+      @drawer_place = current_user.places.find(params[:place_id]) if params[:place_id].present?
       @start_at = parsed_start_at
       @end_at = parsed_end_at
       @import_id = import_record&.id

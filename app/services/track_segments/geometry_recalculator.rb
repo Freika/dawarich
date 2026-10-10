@@ -5,6 +5,10 @@ class TrackSegments::GeometryRecalculator
     new(track, points).call
   end
 
+  def self.apply(segment, points)
+    new(segment.track, points).apply(segment)
+  end
+
   def self.distance(points)
     points.each_cons(2).sum { |first, second| distance_between(first, second) }
   end
@@ -21,10 +25,12 @@ class TrackSegments::GeometryRecalculator
   end
 
   def call
-    track.track_segments.order(:id).each do |segment|
-      segment_points = points_for(segment)
-      update(segment, segment_points)
-    end
+    track.track_segments.order(:id).each { |segment| apply(segment) }
+  end
+
+  def apply(segment)
+    update(segment, points_for(segment))
+    segment
   end
 
   private

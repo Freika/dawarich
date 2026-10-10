@@ -2,6 +2,12 @@
 fr:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Tâches Phoenix"
+        ok: "Phoenix traite ses tâches."
+        alarm: "Phoenix ne traite pas ses tâches ; elles attendent qu'un processus Phoenix s'exécute."
+        not_installed: "Phoenix n'a pas encore créé ses tables dans cette base de données ; toutes les tâches s'exécutent dans Sidekiq."
+        unknown: "L'état des tâches Phoenix n'a pas pu être lu dans la base de données ; rechargez la page pour réessayer."
       show:
         title: "Paramètres de l'instance"
         intro: "Ces paramètres s'appliquent à toute l'instance. Un paramètre fourni par une variable d'environnement est affiché en lecture seule : supprimez la variable pour le modifier ici."
@@ -38,7 +44,26 @@ fr:
           locationiq: "Service hébergé. Nécessite une clé d'API."
         points:
           title: "Points"
+        experimental:
+          badge: "Expérimental"
+          title: "Fonctionnalités expérimentales"
+        map_matching:
+          title: "Recalage sur le réseau"
+          description: "Aligne les tracés enregistrés imprécis sur les routes et chemins proches. Seul l'affichage des trajets éligibles change ; les points enregistrés et le tracé d'origine restent intacts."
+          example_alt: "Un tracé original imprécis à côté du même tracé aligné sur les rues"
+          original_label: "Tracé original"
+          matched_label: "Tracé recalé"
+          example_caption: "L'original conserve la forme enregistrée. Le tracé recalé suit le réseau praticable proche et peut toujours revenir à l'original."
+          privacy: "Dawarich envoie les coordonnées, horodatages et précisions GPS au service Atlas configuré. Gardez ce service dans un réseau de confiance."
+          test: "Tester la connexion"
+          testing: "Test en cours…"
         fields:
+          atlas_url: "URL d'Atlas"
+          map_matching_enabled: "Activer le recalage sur le réseau"
+          atlas_url_hint: "URL de base HTTP ou HTTPS complète de votre service privé Dawarich Atlas."
+          map_matching_enabled_hint: "S'applique à toute l'instance. Les trajets existants ne sont pas traités automatiquement."
+          map_matching_shadow_mode: "Mode fantôme"
+          map_matching_shadow_mode_hint: "Traite les traces éligibles sans afficher les chemins recalés."
           photon_api_host: "Hôte"
           photon_api_key: "Clé d'API"
           photon_api_use_https: "Utiliser HTTPS"
@@ -54,10 +79,17 @@ fr:
           api_key_keep_hint: "Laissez vide pour conserver la clé enregistrée."
           store_geodata_hint: "Recherche la ville et le pays à l’ajout de nouveaux points. Les recherches nocturnes continuent si un fournisseur est configuré, même lorsque cette option est désactivée."
       update:
+        atlas_url_invalid: "L'URL d'Atlas doit être une URL HTTP ou HTTPS complète, sans identifiants, requête ni fragment."
+        atlas_url_required: "Définissez une URL d'Atlas avant d'activer le recalage sur le réseau."
         saved: "Paramètres enregistrés."
         pinned: "Refusé : fixé par %{variables}."
         host_invalid: "L'hôte doit être un simple nom d'hôte, avec un port ou un chemin facultatif, sans espaces."
         chibigeo_key_required: "ChibiGeo nécessite une clé d'API. Le forfait gratuit Hobby inclut 2 500 requêtes par jour : obtenez votre clé sur chibigeo.com."
+      test_map_matching:
+        not_configured: "Enregistrez d'abord une URL d'Atlas."
+        success: "Atlas %{version} est prêt pour le recalage sur le réseau."
+        routing_unavailable: "Atlas %{version} a répondu, mais sa fonction de routage n'est pas encore prête."
+        failure: "Échec de la connexion à Atlas (%{error})."
       test_geocoding:
         not_configured: "Aucun fournisseur de géocodage n'est configuré. Enregistrez d'abord un fournisseur."
         success: "Votre fournisseur a résolu les coordonnées de test en : %{place}."
@@ -2082,7 +2114,7 @@ fr:
       rarr: "→"
       'on': sur
       no_visits_yet: Aucune visite pour le moment
-      rename: Renommer
+      edit: Modifier
       merge: Fusionner
       notes: Notes
       save: Enregistrer
@@ -4024,6 +4056,9 @@ fr:
       your_account_has_been_deleted: Votre compte a été supprimé.
       you_are_not_authorized_to_perform_this_action: Vous n'êtes pas autorisé à effectuer
         cette action.
+      admin_writes_unavailable_with_oidc: "Les modifications d'administration ne sont pas disponibles sur les instances qui se connectent via OIDC ou Google. Définissez plutôt ces valeurs avec des variables d'environnement."
+      admin_encryption_unavailable: "Les secrets ne peuvent pas être enregistrés, car le chiffrement n'est pas configuré sur cette instance."
+      admin_action_failed: "Une erreur s'est produite. Veuillez réessayer."
       family_plan_required: Cette fonctionnalité nécessite un plan Familial.
     areas:
       created: Zone créée avec succès !
@@ -4545,7 +4580,7 @@ fr:
         export_failed: Export échoué
         export_name_failed_message_stacktrace_n: 'L''export "%{name}" a échoué : %{message},
           trace d''exécution : %{backtrace}'
-        unsupported_file_format: 'Format de fichier non pris en charge : %{format}'
+        unsupported_file_format: 'Format de fichier non pris en charge : %{file_format}'
     families:
       auto_create:
         default_name: Ma famille
@@ -4893,6 +4928,8 @@ fr:
           manifest_missing: 'Le fichier de manifeste n''a pas été trouvé dans l''archive :
             manifest.json'
     visits:
+      create:
+        duplicate_at_place_and_time: Une visite existe déjà à cet endroit et à cette heure
       suggest:
         error_suggesting_visits_message: 'Erreur lors de la suggestion de visites :
           %{message}'

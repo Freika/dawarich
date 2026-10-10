@@ -28,7 +28,7 @@ RSpec.describe Points::AnomalyFilter do
       expect do
         described_class.new(user.id, start_time, end_time).call
       end.not_to have_enqueued_job(Achievements::CheckJob)
-      expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([point.timestamp])
+      expect(Achievements::PendingChecks.read(user.id).first).to eq(point.timestamp)
     end
 
     # A reported accuracy radius is a confidence estimate, not evidence that the
@@ -582,9 +582,9 @@ RSpec.describe Points::AnomalyFilter do
       let!(:before_b) do
         create(:point, user: user, accuracy: 5, timestamp: base_time + 480, lonlat: 'POINT(10.4417 52.9117)')
       end
-      # 214km away in 27min (~476 km/h), then 257km on in 15min (~1028 km/h).
+      # 219km away in 27min (~487 km/h), then 214km on in 15min (~858 km/h).
       let!(:spliced_home) do
-        create(:point, user: user, accuracy: 5, timestamp: base_time + 2100, lonlat: 'POINT(13.5162 52.4546)')
+        create(:point, user: user, accuracy: 5, timestamp: base_time + 2100, lonlat: 'POINT(12.3731 51.3397)')
       end
       let!(:after_a) do
         create(:point, user: user, accuracy: 5, timestamp: base_time + 3000, lonlat: 'POINT(9.7419 52.3775)')
@@ -613,7 +613,7 @@ RSpec.describe Points::AnomalyFilter do
     context 'Pass 2: a fix that contradicts a stay' do
       let(:evening) { Time.zone.parse('2022-12-03 20:16').to_i }
       let(:hannover) { 'POINT(9.806 52.310)' }
-      let(:home) { 'POINT(13.516 52.455)' }
+      let(:home) { 'POINT(13.738 51.050)' }
 
       let!(:stay_before) do
         create(:point, user: user, accuracy: 5, timestamp: evening, lonlat: hannover)

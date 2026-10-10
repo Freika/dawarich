@@ -1,6 +1,12 @@
 ca:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Tasques de Phoenix"
+        ok: "Phoenix està processant les seves tasques."
+        alarm: "Phoenix no està processant les seves tasques; esperen fins que s'executi un procés de Phoenix."
+        not_installed: "Phoenix encara no ha creat les seves taules en aquesta base de dades; totes les tasques s'executen a Sidekiq."
+        unknown: "No s'ha pogut llegir l'estat de les tasques de Phoenix a la base de dades; torna a carregar la pàgina per tornar-ho a provar."
       show:
         title: "Configuració de la instància"
         intro: "Aquesta configuració s'aplica a tota la instància. Un paràmetre definit per una variable d'entorn es mostra només de lectura: elimina la variable per editar-lo aquí."
@@ -37,7 +43,26 @@ ca:
           locationiq: "Servei allotjat. Necessita una clau d'API."
         points:
           title: "Punts"
+        experimental:
+          badge: "Experimental"
+          title: "Funcions experimentals"
+        map_matching:
+          title: "Ajust de rutes"
+          description: "Alinea els trajectes enregistrats amb soroll a carreteres i camins propers. Només canvia com es dibuixen els trajectes compatibles; els punts enregistrats i el traçat original no es modifiquen."
+          example_alt: "Un traçat original imprecís al costat del mateix traçat ajustat als carrers"
+          original_label: "Traçat original"
+          matched_label: "Traçat ajustat"
+          example_caption: "L'original conserva la forma enregistrada. L'ajustat segueix la xarxa propera i sempre pot tornar a l'original."
+          privacy: "Dawarich envia coordenades, marques de temps i precisió GPS al servei Atlas configurat. Mantén aquest servei dins d'una xarxa de confiança."
+          test: "Prova la connexió"
+          testing: "S'està provant…"
         fields:
+          atlas_url: "URL d'Atlas"
+          map_matching_enabled: "Activa l'ajust de rutes"
+          atlas_url_hint: "URL base HTTP o HTTPS completa del teu servei privat Dawarich Atlas."
+          map_matching_enabled_hint: "S'aplica a tota la instància. Els trajectes existents no es processen automàticament."
+          map_matching_shadow_mode: "Mode ombra"
+          map_matching_shadow_mode_hint: "Processa els trajectes aptes sense mostrar els camins ajustats."
           photon_api_host: "Amfitrió"
           photon_api_key: "Clau d'API"
           photon_api_use_https: "Utilitza HTTPS"
@@ -53,10 +78,17 @@ ca:
           api_key_keep_hint: "Deixa-ho en blanc per mantenir la clau desada."
           store_geodata_hint: "Cerca la ciutat i el país quan s’afegeixen punts nous. Les cerques nocturnes continuen si hi ha un proveïdor configurat, encara que aquesta opció estigui desactivada."
       update:
+        atlas_url_invalid: "La URL d'Atlas ha de ser una URL HTTP o HTTPS completa, sense credencials, consulta ni fragment."
+        atlas_url_required: "Defineix una URL d'Atlas abans d'activar l'ajust de rutes."
         saved: "Configuració desada."
         pinned: "Rebutjat: fixat per %{variables}."
         host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."
         chibigeo_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
+      test_map_matching:
+        not_configured: "Desa primer una URL d'Atlas."
+        success: "Atlas %{version} està preparat per a l'ajust de rutes."
+        routing_unavailable: "Atlas %{version} ha respost, però la seva capacitat d'encaminament encara no està preparada."
+        failure: "La connexió amb Atlas ha fallat (%{error})."
       test_geocoding:
         not_configured: "No hi ha cap proveïdor de geocodificació configurat. Desa primer un proveïdor."
         success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."
@@ -1323,7 +1355,7 @@ ca:
       rarr: "→"
       'on': el
       no_visits_yet: Encara no hi ha visites
-      rename: Canvia el nom
+      edit: Edita
       merge: Fusiona
       notes: Notes
       save: Desa
@@ -3072,6 +3104,9 @@ ca:
       this_feature_requires_a_pro_plan: Aquesta funció requereix el pla Pro.
       your_account_has_been_deleted: El teu compte s'ha suprimit.
       you_are_not_authorized_to_perform_this_action: No tens autorització per fer aquesta acció.
+      admin_writes_unavailable_with_oidc: "Els canvis d'administració no estan disponibles en instàncies que inicien sessió amb OIDC o Google. Defineix aquests valors amb variables d'entorn."
+      admin_encryption_unavailable: "Els secrets no es poden desar perquè el xifratge no està configurat en aquesta instància."
+      admin_action_failed: "Alguna cosa ha anat malament. Torna-ho a provar."
       family_plan_required: Aquesta funció requereix el pla Family.
     areas:
       created: L'àrea s'ha creat correctament!
@@ -3476,7 +3511,7 @@ ca:
         export_name_successfully_finished: "L'exportació \"%{name}\" ha finalitzat correctament."
         export_failed: Exportació fallida
         export_name_failed_message_stacktrace_n: 'L''exportació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
-        unsupported_file_format: 'Format d''arxiu no compatible: %{format}'
+        unsupported_file_format: 'Format d''arxiu no compatible: %{file_format}'
     families:
       auto_create:
         default_name: La meva família
@@ -3716,6 +3751,8 @@ ca:
         enable_at_least_one_transportation_mode: Activa almenys un mitjà de transport
         recalculation_in_progress: El recàlcul de mitjans de transport està en curs. Espera fins que finalitzi.
     visits:
+      create:
+        duplicate_at_place_and_time: Ja existeix una visita en aquest lloc i a aquesta hora
       suggest:
         error_suggesting_visits_message: 'Error en suggerir visites: %{message}'
         error_suggesting_visits: 'Error en suggerir visites'

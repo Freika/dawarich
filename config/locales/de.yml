@@ -1,6 +1,12 @@
 de:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Phoenix-Jobs"
+        ok: "Phoenix verarbeitet seine Jobs."
+        alarm: "Phoenix verarbeitet seine Jobs nicht; sie warten, bis ein Phoenix-Prozess läuft."
+        not_installed: "Phoenix hat seine Tabellen in dieser Datenbank noch nicht angelegt; alle Jobs laufen in Sidekiq."
+        unknown: "Der Status der Phoenix-Jobs konnte nicht aus der Datenbank gelesen werden; lade die Seite neu, um es erneut zu versuchen."
       show:
         title: "Instanz-Einstellungen"
         intro: "Diese Einstellungen gelten für die gesamte Instanz. Eine Einstellung, die über eine Umgebungsvariable gesetzt ist, wird schreibgeschützt angezeigt: Entferne die Variable, um sie hier zu bearbeiten."
@@ -37,7 +43,26 @@ de:
           locationiq: "Gehosteter Dienst. Benötigt einen API-Schlüssel."
         points:
           title: "Punkte"
+        experimental:
+          badge: "Experimentell"
+          title: "Experimentelle Funktionen"
+        map_matching:
+          title: "Map-Matching"
+          description: "Richtet ungenaue aufgezeichnete Wege an nahe gelegenen Straßen und Wegen aus. Es ändert sich nur die Darstellung geeigneter Tracks; aufgezeichnete Punkte und der ursprüngliche Pfad bleiben unverändert."
+          example_alt: "Ein ungenauer Originalpfad neben demselben, an Straßen ausgerichteten Pfad"
+          original_label: "Originalpfad"
+          matched_label: "Angepasster Pfad"
+          example_caption: "Das Original behält die aufgezeichnete Form. Der angepasste Pfad folgt dem nahe gelegenen Wegenetz und kann jederzeit auf das Original zurückfallen."
+          privacy: "Dawarich sendet Koordinaten, Zeitstempel und GPS-Genauigkeit an den konfigurierten Atlas-Dienst. Betreibe diesen Dienst in einem vertrauenswürdigen Netzwerk."
+          test: "Verbindung testen"
+          testing: "Wird getestet…"
         fields:
+          atlas_url: "Atlas-URL"
+          map_matching_enabled: "Map-Matching aktivieren"
+          atlas_url_hint: "Vollständige HTTP- oder HTTPS-Basis-URL deines privaten Dawarich-Atlas-Dienstes."
+          map_matching_enabled_hint: "Gilt für die gesamte Instanz. Vorhandene Tracks werden nicht automatisch verarbeitet."
+          map_matching_shadow_mode: "Schattenmodus"
+          map_matching_shadow_mode_hint: "Verarbeitet geeignete Tracks, ohne angepasste Pfade anzuzeigen."
           photon_api_host: "Host"
           photon_api_key: "API-Schlüssel"
           photon_api_use_https: "HTTPS verwenden"
@@ -53,10 +78,17 @@ de:
           api_key_keep_hint: "Leer lassen, um den gespeicherten Schlüssel zu behalten."
           store_geodata_hint: "Ermittelt Stadt und Land beim Hinzufügen neuer Punkte. Nächtliche Abfragen laufen bei konfiguriertem Anbieter auch dann weiter, wenn diese Option ausgeschaltet ist."
       update:
+        atlas_url_invalid: "Die Atlas-URL muss eine vollständige HTTP- oder HTTPS-URL ohne Zugangsdaten, Abfrage oder Fragment sein."
+        atlas_url_required: "Lege eine Atlas-URL fest, bevor du Map-Matching aktivierst."
         saved: "Einstellungen gespeichert."
         pinned: "Abgelehnt: festgelegt durch %{variables}."
         host_invalid: "Der Host muss ein reiner Hostname mit optionalem Port oder Pfad sein, ohne Leerzeichen."
         chibigeo_key_required: "ChibiGeo benötigt einen API-Schlüssel. Der kostenlose Hobby-Tarif umfasst 2.500 Abfragen pro Tag – deinen Schlüssel bekommst du auf chibigeo.com."
+      test_map_matching:
+        not_configured: "Speichere zuerst eine Atlas-URL."
+        success: "Atlas %{version} ist für Map-Matching bereit."
+        routing_unavailable: "Atlas %{version} hat geantwortet, aber die Routing-Funktion ist noch nicht bereit."
+        failure: "Atlas-Verbindung fehlgeschlagen (%{error})."
       test_geocoding:
         not_configured: "Es ist kein Geokodierungsanbieter konfiguriert. Speichere zuerst einen Anbieter."
         success: "Dein Anbieter hat die Testkoordinaten aufgelöst zu: %{place}."
@@ -1373,7 +1405,7 @@ de:
       rarr: "→"
       'on': auf
       no_visits_yet: Noch keine Aufenthalte
-      rename: Umbenennen
+      edit: Bearbeiten
       merge: Verbinden
       notes: Notizen
       save: Speichern
@@ -3138,6 +3170,9 @@ de:
       this_feature_requires_a_pro_plan: Diese Funktion benötigt einen Pro-Plan.
       your_account_has_been_deleted: Dein Konto wurde gelöscht.
       you_are_not_authorized_to_perform_this_action: Du bist nicht berechtigt, diese Aktion auszuführen.
+      admin_writes_unavailable_with_oidc: "Admin-Änderungen sind auf Instanzen mit Anmeldung über OIDC oder Google nicht verfügbar. Setze diese Werte stattdessen über Umgebungsvariablen."
+      admin_encryption_unavailable: "Geheime Werte können nicht gespeichert werden, weil auf dieser Instanz keine Verschlüsselung eingerichtet ist."
+      admin_action_failed: "Etwas ist schiefgelaufen. Bitte versuche es erneut."
       family_plan_required: Für diese Funktion ist der Family-Tarif erforderlich.
     areas:
       created: Bereich erfolgreich erstellt!
@@ -3538,7 +3573,7 @@ de:
         export_name_successfully_finished: Export „%{name}“ wurde erfolgreich beendet.
         export_failed: Export fehlgeschlagen
         export_name_failed_message_stacktrace_n: 'Export „%{name}“ fehlgeschlagen: %{message}, Stapelverfolgung: %{backtrace}'
-        unsupported_file_format: 'Nicht unterstütztes Dateiformat: %{format}'
+        unsupported_file_format: 'Nicht unterstütztes Dateiformat: %{file_format}'
     families:
       auto_create:
         default_name: Meine Familie
@@ -3778,6 +3813,8 @@ de:
         v2_handler:
           manifest_missing: 'Manifest-Datei nicht im Archiv gefunden: manifest.json'
     visits:
+      create:
+        duplicate_at_place_and_time: An diesem Ort und zu dieser Zeit existiert bereits ein Aufenthalt
       suggest:
         error_suggesting_visits_message: 'Fehler beim Vorschlagen von Aufenthalten: %{message}'
         error_suggesting_visits: 'Fehler beim Vorschlagen von Aufenthalten'

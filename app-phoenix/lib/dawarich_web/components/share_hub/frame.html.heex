@@ -1,0 +1,22 @@
+<turbo-frame id="share-link-modal" phx-hook="RailsStimulus" phx-update="ignore">
+  <div class="modal modal-open" data-controller="share-link-modal" style="z-index: 10000;">
+    <div class="modal-box max-w-xl">
+      <a
+        class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3"
+        data-turbo-frame="_top"
+        data-action="share-link-modal#close"
+        aria-label={s(@ctx, "modal", "close")}
+        href="/map/v2"
+      >✕</a>
+      <h3 class="font-bold text-lg mb-4">{s(@ctx, "modal", "share")}</h3>
+      <div id="share-hub-body"><.body hub={@hub} ctx={@ctx} errors={@errors} /></div>
+    </div>
+    <a
+      class="modal-backdrop"
+      data-turbo-frame="_top"
+      data-action="share-link-modal#close"
+      aria-label={s(@ctx, "modal", "close")}
+      href="/map/v2"
+    ></a>
+  </div>
+</turbo-frame>

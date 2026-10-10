@@ -1,6 +1,12 @@
 pl:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Zadania Phoenix"
+        ok: "Phoenix przetwarza swoje zadania."
+        alarm: "Phoenix nie przetwarza swoich zadań; czekają, aż uruchomi się proces Phoenix."
+        not_installed: "Phoenix nie utworzył jeszcze swoich tabel w tej bazie danych; wszystkie zadania działają w Sidekiq."
+        unknown: "Nie udało się odczytać stanu zadań Phoenix z bazy danych; odśwież stronę, aby spróbować ponownie."
       show:
         title: "Ustawienia instancji"
         intro: "Te ustawienia dotyczą całej instancji. Ustawienie pochodzące ze zmiennej środowiskowej jest wyświetlane tylko do odczytu: usuń zmienną, aby edytować je tutaj."
@@ -37,7 +43,26 @@ pl:
           locationiq: "Usługa hostowana. Wymaga klucza API."
         points:
           title: "Punkty"
+        experimental:
+          badge: "Eksperymentalne"
+          title: "Funkcje eksperymentalne"
+        map_matching:
+          title: "Dopasowanie do mapy"
+          description: "Dopasowuje niedokładne zapisane trasy do pobliskich dróg i ścieżek. Zmienia tylko sposób rysowania kwalifikujących się tras; zapisane punkty i oryginalna ścieżka pozostają bez zmian."
+          example_alt: "Niedokładna oryginalna ścieżka obok tej samej ścieżki dopasowanej do ulic"
+          original_label: "Oryginalna ścieżka"
+          matched_label: "Dopasowana ścieżka"
+          example_caption: "Oryginał zachowuje zapisany kształt. Dopasowana ścieżka podąża pobliską siecią i zawsze może wrócić do oryginału."
+          privacy: "Dawarich wysyła współrzędne, znaczniki czasu i dokładność GPS do skonfigurowanej usługi Atlas. Utrzymuj ją w zaufanej sieci."
+          test: "Testuj połączenie"
+          testing: "Testowanie…"
         fields:
+          atlas_url: "Adres URL Atlas"
+          map_matching_enabled: "Włącz dopasowanie do mapy"
+          atlas_url_hint: "Pełny bazowy adres HTTP lub HTTPS prywatnej usługi Dawarich Atlas."
+          map_matching_enabled_hint: "Dotyczy całej instancji. Istniejące trasy nie są przetwarzane automatycznie."
+          map_matching_shadow_mode: "Tryb cienia"
+          map_matching_shadow_mode_hint: "Przetwarza kwalifikujące się ślady bez wyświetlania dopasowanych tras."
           photon_api_host: "Host"
           photon_api_key: "Klucz API"
           photon_api_use_https: "Używaj HTTPS"
@@ -53,10 +78,17 @@ pl:
           api_key_keep_hint: "Pozostaw puste, aby zachować zapisany klucz."
           store_geodata_hint: "Ustala miasto i kraj przy dodawaniu nowych punktów. Nocne wyszukiwania nadal działają, gdy dostawca jest skonfigurowany, nawet po wyłączeniu tej opcji."
       update:
+        atlas_url_invalid: "Adres URL Atlas musi być pełnym adresem HTTP lub HTTPS bez danych logowania, zapytania ani fragmentu."
+        atlas_url_required: "Ustaw adres URL Atlas przed włączeniem dopasowania do mapy."
         saved: "Ustawienia zapisane."
         pinned: "Odrzucono: ustalone przez %{variables}."
         host_invalid: "Host musi być samą nazwą hosta z opcjonalnym portem lub ścieżką, bez spacji."
         chibigeo_key_required: "ChibiGeo wymaga klucza API. Darmowy plan Hobby obejmuje 2500 zapytań dziennie — odbierz swój klucz na chibigeo.com."
+      test_map_matching:
+        not_configured: "Najpierw zapisz adres URL Atlas."
+        success: "Atlas %{version} jest gotowy do dopasowania do mapy."
+        routing_unavailable: "Atlas %{version} odpowiedział, ale jego funkcja routingu nie jest jeszcze gotowa."
+        failure: "Połączenie z Atlas nie powiodło się (%{error})."
       test_geocoding:
         not_configured: "Nie skonfigurowano dostawcy geokodowania. Najpierw zapisz dostawcę."
         success: "Udało się! Twój dostawca rozpoznał testowe współrzędne jako: %{place}."
@@ -1323,7 +1355,7 @@ pl:
       rarr: "→"
       'on': dnia
       no_visits_yet: Brak wizyt
-      rename: Zmień nazwę
+      edit: Edytuj
       merge: Scal
       notes: Notatki
       save: Zapisz
@@ -3127,6 +3159,9 @@ pl:
       this_feature_requires_a_pro_plan: Ta funkcja wymaga planu Pro.
       your_account_has_been_deleted: Twoje konto zostało usunięte.
       you_are_not_authorized_to_perform_this_action: Nie masz uprawnień do wykonania tej akcji.
+      admin_writes_unavailable_with_oidc: "Zmiany administracyjne nie są dostępne w instancjach z logowaniem przez OIDC lub Google. Ustaw te wartości za pomocą zmiennych środowiskowych."
+      admin_encryption_unavailable: "Nie można zapisać sekretów, ponieważ szyfrowanie nie jest skonfigurowane w tej instancji."
+      admin_action_failed: "Coś poszło nie tak. Spróbuj ponownie."
       family_plan_required: Ta funkcja wymaga planu Rodzinnego.
     areas:
       created: Obszar utworzono pomyślnie!
@@ -3531,7 +3566,7 @@ pl:
         export_name_successfully_finished: Eksport "%{name}" zakończył się pomyślnie.
         export_failed: Eksport nie powiódł się
         export_name_failed_message_stacktrace_n: 'Eksport "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
-        unsupported_file_format: 'Nieobsługiwany format pliku: %{format}'
+        unsupported_file_format: 'Nieobsługiwany format pliku: %{file_format}'
     families:
       auto_create:
         default_name: Moja rodzina
@@ -3773,6 +3808,8 @@ pl:
         enable_at_least_one_transportation_mode: Włącz co najmniej jeden tryb transportu
         recalculation_in_progress: Trwa przeliczanie trybów transportu. Poczekaj na zakończenie.
     visits:
+      create:
+        duplicate_at_place_and_time: W tym miejscu i o tej godzinie istnieje już wizyta
       suggest:
         error_suggesting_visits_message: 'Błąd podczas sugerowania wizyt: %{message}'
         error_suggesting_visits: Błąd podczas sugerowania wizyt

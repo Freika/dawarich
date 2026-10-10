@@ -85,7 +85,10 @@ module Families
     end
 
     def send_invitation_email(invitation)
-      Family::Invitations::SendingJob.perform_later(invitation.id)
+      payload = { 'invitation_id' => invitation.id, 'locale' => I18n.locale.to_s }
+      ::JobCommands.produce('mail.family_invitation', payload,
+                            aggregate_id: invitation.id, producer: 'Families::Invite',
+                            dedupe_key: "family-invitation:#{invitation.id}")
     end
 
     def send_notification

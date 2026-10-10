@@ -4,6 +4,8 @@ class AddUniqueIndexToPlaceVisits < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   def up
+    return unless table_exists?(:place_visits)
+
     # Remove duplicate (visit_id, place_id) rows, keeping the oldest.
     # Uses ROW_NUMBER() window function instead of NOT IN subquery —
     # NOT IN materializes all keeper IDs and does O(N*M) comparison,
@@ -43,6 +45,8 @@ class AddUniqueIndexToPlaceVisits < ActiveRecord::Migration[8.0]
   end
 
   def down
+    return unless table_exists?(:place_visits)
+
     add_index :place_visits, :visit_id,
               name: :index_place_visits_on_visit_id,
               algorithm: :concurrently,

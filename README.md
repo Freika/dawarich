@@ -98,6 +98,11 @@ You can use default values or create a `.env` file based on `.env.example` to cu
 - **[Docker Setup](https://dawarich.app/docs/intro#setup-your-dawarich-instance)**
 - **[Synology](https://dawarich.app/docs/tutorials/platforms/synology)**
 
+The Phoenix release supports Docker deployment. Heroku and Ruby buildpacks are
+retired; the old `app.json` deployment manifest has been removed. See the
+[Phoenix deployment and operator runbook](docs/phoenix/a12f-ruby-free-release.md)
+for the release boundary, persistent volumes and entrypoint contracts.
+
 **Default Credentials**
 - **Username**: `demo@dawarich.app`
 - **Password**: `safepassword`

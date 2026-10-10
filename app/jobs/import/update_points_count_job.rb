@@ -4,10 +4,11 @@ class Import::UpdatePointsCountJob < ApplicationJob
   queue_as :imports
 
   def perform(import_id)
-    import = Import.find(import_id)
+    import = Import.find_by(id: import_id)
+    return unless import
 
-    import.update(processed: import.points.count)
-  rescue ActiveRecord::RecordNotFound
-    nil
+    count = import.points.count
+    result = JobOwnership.with_owner(ImportCommands::UPDATE_POINTS_COUNT_KEY) { import.update(processed: count) }
+    ImportCommands.forward_update_points_count(import_id, event_id: job_id) if result == :not_owner
   end
 end

@@ -29,6 +29,19 @@ RSpec.describe Imports::PrepareDownloadJob do
 
     expect(import.reload.prepared_download.blob_id).to eq(prepared_id)
     expect(import.file.download).to eq(original)
+    expect(import.file.blob_id).to eq(source.id)
+    expect(import.prepared_download.filename.to_s).to eq('original.gpx')
+    expect(import.prepared_download.blob.metadata['dawarich_download_source_blob_id']).to eq(source.id)
+  end
+
+  it 'skips a legacy preparation while another preparation holds the import lease, and prepares once it is free' do
+    hold_import_lock("import-download:#{import.id}") do
+      described_class.perform_now(import.id, import.file.blob_id)
+      expect(import.reload.prepared_download).not_to be_attached
+    end
+
+    described_class.perform_now(import.id, import.file.blob_id)
+    expect(import.reload.prepared_download).to be_attached
   end
 
   it 'ignores a job for a replaced source file' do
@@ -55,6 +68,8 @@ RSpec.describe Imports::PrepareDownloadJob do
     allow(downloader).to receive(:download_to_temp_file).and_raise(IOError)
     expect { described_class.perform_now(import.id, source_id) }.to raise_error(IOError)
     expect(import.reload.prepared_download).not_to be_attached
+    expect(import.file.blob_id).to eq(source_id)
+    expect(import.file.download).to be_present
 
     allow(Imports::SecureFileDownloader).to receive(:new).and_call_original
     described_class.perform_now(import.id, source_id)

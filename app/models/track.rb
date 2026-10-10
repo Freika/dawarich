@@ -110,7 +110,6 @@ class Track < ApplicationRecord
       TracksChannel.broadcast_to(user, { action: 'destroyed', track_id: track_id })
     end
   end
-  private_class_method :broadcast_destroyed
 
   def recalculate_extra_metrics
     bounds = points.pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
@@ -339,6 +338,8 @@ class Track < ApplicationRecord
     report_post_commit_failure('broadcast_destroyed', e)
   end
 
+  public
+
   def broadcast_track_update(action)
     TracksChannel.broadcast_to(
       user, {
@@ -349,6 +350,8 @@ class Track < ApplicationRecord
   rescue StandardError => e
     report_post_commit_failure("broadcast_#{action}", e)
   end
+
+  private
 
   def report_post_commit_failure(event, error)
     Rails.logger.error(

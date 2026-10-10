@@ -1,8 +1,58 @@
 # frozen_string_literal: true
 
+module CloudDrain
+  class EnqueueRefused < StandardError; end
+
+  def self.enabled? = ENV.fetch('DAWARICH_CLOUD_DRAIN_ONLY', 'false') == 'true'
+
+  def self.reject!
+    raise EnqueueRefused, 'Cloud drain refuses new source work' if enabled?
+  end
+
+  module Client
+    def push(...)
+      CloudDrain.reject! unless @cloud_drain_bookkeeping
+      super
+    end
+
+    def push_bulk(...)
+      CloudDrain.reject!
+      super
+    end
+  end
+
+  module Scheduled
+    def initialize(...)
+      super
+      @client.instance_variable_set(:@cloud_drain_bookkeeping, true)
+    end
+  end
+end
+
+unless %w[true false].include?(ENV.fetch('DAWARICH_CLOUD_DRAIN_ONLY', 'false'))
+  raise ArgumentError, 'DAWARICH_CLOUD_DRAIN_ONLY must be true or false'
+end
+if CloudDrain.enabled? && (ENV['SELF_HOSTED'] != 'false' ||
+    ENV.fetch('DAWARICH_PHOENIX_LIFECYCLE', 'false') != 'false' || ENV['DAWARICH_PROCESS_ROLE'].present?)
+  raise ArgumentError, 'Cloud drain requires Cloud source mode'
+end
+
+Sidekiq::Client.prepend(CloudDrain::Client)
+require 'sidekiq/scheduled'
+Sidekiq::Scheduled::Enq.prepend(CloudDrain::Scheduled)
+ActiveJob::Base.before_enqueue { CloudDrain.reject! }
+
+if CloudDrain.enabled?
+  Sidekiq::Cron.configure do |config|
+    config.enabled = false
+    config.cron_poll_interval = 0
+  end
+end
+
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
   config.logger = Sidekiq::Logger.new($stdout)
+  config.logger.level = Logger::WARN if B12E2EEgress.enabled?
 
   # The worker process caches instance settings independently of the web
   # process, so it needs its own subscriber to notice a change made in the UI.
@@ -11,6 +61,14 @@ Sidekiq.configure_server do |config|
   rescue StandardError => e
     Rails.logger.warn("[InstanceSettings] subscriber failed to start: #{e.class}: #{e.message}")
   end
+
+  config.on(:startup) do
+    RailsCommands::Poller.start unless CloudDrain.enabled?
+  rescue StandardError => e
+    Rails.logger.warn("[RailsCommands] poller failed to start: #{e.class}: #{e.message}")
+  end
+
+  config.on(:shutdown) { RailsCommands::Poller.stop }
 
   next unless DawarichSettings.prometheus_exporter_enabled?
 

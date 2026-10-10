@@ -28,18 +28,25 @@ class Tracks::DailyGenerationJob < ApplicationJob
   # Such users are handed to Tracks::ThrottledBackfillJob, which walks the
   # history newest-first at a bounded rate.
   BOOTSTRAP_POINTS_LIMIT = 100_000
+  OWNER_KEY = 'cron:daily_track_generation_job'
+  BATCH_SIZE = 1000
 
   def perform
-    User.active_or_trial.find_each do |user|
-      next if user.points_count&.zero?
-
-      process_user_daily_tracks(user)
-    rescue StandardError => e
-      ExceptionReporter.call(e, "Failed to process daily tracks for user #{user.id}")
+    User.active_or_trial.in_batches(of: BATCH_SIZE) do |batch|
+      owned = JobOwnership.with_owner(OWNER_KEY) { batch.each { |user| process_safely(user) } }
+      break if owned == :not_owner
     end
   end
 
   private
+
+  def process_safely(user)
+    return if user.points_count&.zero?
+
+    ActiveRecord::Base.transaction(requires_new: true) { process_user_daily_tracks(user) }
+  rescue StandardError => e
+    ExceptionReporter.call(e, "Failed to process daily tracks for user #{user.id}")
+  end
 
   def process_user_daily_tracks(user)
     with_user_timezone(user) do

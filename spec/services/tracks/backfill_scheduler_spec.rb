@@ -3,7 +3,14 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::BackfillScheduler do
-  let(:user) { create(:user) }
+  include ActiveSupport::Testing::TimeHelpers
+
+  around { |example| freeze_time { example.run } }
+
+  self.use_transactional_tests = false
+  after(:context) { self.class.use_transactional_tests = true }
+
+  let(:user) { instance_double(User, id: 48_303) }
   let(:window_start) { Tracks::IncrementalGenerator::LOOKBACK_HOURS.hours.ago.to_i }
 
   after do
@@ -28,7 +35,10 @@ RSpec.describe Tracks::BackfillScheduler do
 
     it 'schedules a backfill job when the earliest timestamp predates the window' do
       expect { described_class.new(user.id, [window_start - 1, window_start + 60]).call }
-        .to have_enqueued_job(Tracks::BackfillGenerationJob).with(user.id)
+        .to have_enqueued_job(Tracks::BackfillGenerationJob).with do |id, options|
+          expect(id).to eq(user.id)
+          expect(options).to include(cycle_id: be_present, time_zone: Time.zone.name)
+        end
     end
   end
 

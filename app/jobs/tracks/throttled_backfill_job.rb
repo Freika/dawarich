@@ -29,6 +29,8 @@ class Tracks::ThrottledBackfillJob < ApplicationJob
   end
 
   def self.schedule(user)
+    return Tracks::ThrottledBackfillState.schedule(user) if Tracks::ThrottledBackfillState.table?
+
     newly_scheduled = Sidekiq.redis do |redis|
       redis.set(redis_key(user.id), 1, nx: true, ex: DEDUP_KEY_TTL.to_i)
     end
@@ -38,7 +40,13 @@ class Tracks::ThrottledBackfillJob < ApplicationJob
     newly_scheduled
   end
 
-  def perform(user_id, cursor_timestamp = nil)
+  def perform(user_id, cursor_timestamp = nil, walk_id: nil, time_zone: nil)
+    if Tracks::ThrottledBackfillState.table?
+      return if Tracks::BackfillCommands.forward_walk(user_id, cursor_timestamp, job_id, walk_id:, time_zone:)
+
+      return Tracks::ThrottledBackfillState.new(user_id, cursor_timestamp, walk_id:, time_zone:, event_id: job_id).run
+    end
+
     user = User.find_by(id: user_id)
     return release_key(user_id) unless user
 
@@ -54,7 +62,8 @@ class Tracks::ThrottledBackfillJob < ApplicationJob
       end_at: Time.zone.at(slice_end),
       mode: :bulk,
       untracked_only: true,
-      job_queue: :low_priority
+      job_queue: :low_priority,
+      event_id: job_id
     ).call
 
     refresh_key(user_id)
