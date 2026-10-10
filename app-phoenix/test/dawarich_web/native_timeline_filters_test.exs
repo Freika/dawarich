@@ -87,14 +87,12 @@ defmodule DawarichWeb.NativeTimelineFiltersTest do
     html = render(view)
     assert html =~ ~s(data-residency-year="2025")
 
-    names =
-      Regex.scan(~r/data-residency-country="([^"]+)"/, html, capture: :all_but_first)
-      |> List.flatten()
-
     {:ok, data} = DawarichWeb.ResidencyFrame.data(Accounts.get(id), nil, DateTime.utc_now())
+    [_, list] = String.split(html, ~s(data-testid="residency-country-list"), parts: 2)
+    names = Enum.sort_by(~w(Germany Atlantis Narnia), &(:binary.match(list, &1) |> elem(0)))
     assert names == Enum.map(data.countries, & &1.name)
     assert hd(names) == "Germany"
-    assert Enum.sort(tl(names)) == ["Atlantis", "Narnia"]
+    assert html =~ "residency-country-card"
 
     rows("UPDATE users SET encrypted_password=$1 WHERE id=$2", [
       String.duplicate("rotated", 10),
