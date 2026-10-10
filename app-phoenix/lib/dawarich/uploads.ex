@@ -25,7 +25,7 @@ defmodule Dawarich.Uploads do
           row.state in ["cancelled", "expired", "purged"] ->
             :cancelled
 
-          row.state == "claimed" ->
+          row.state == "claimed" and row.kind != "rich_text" ->
             repo.rollback(:claimed)
 
           Records.attached?(repo, row.blob_id) ->

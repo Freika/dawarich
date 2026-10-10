@@ -10,7 +10,7 @@ defmodule DawarichWeb.TripRichTextTest do
   alias Dawarich.Test.TripsSeeds
   alias DawarichWeb.TripsNative.{Access, RichUpload}
 
-  @checksum "AELTPXGTbs81Ygn6v0o2PQ=="
+  @checksum "Xwa4XhYZsri1b3t1igoxCg=="
 
   defp socket(id) do
     TripsSeeds.user!(id)
@@ -71,6 +71,8 @@ defmodule DawarichWeb.TripRichTextTest do
     id = blob_id("photo.png")
     assert UploadReceipts.owned?(Repo, id, 9_801)
 
+    Dawarich.Test.NativeRichUploadFixture.put!(Repo, ref, "synthetic")
+
     assert {:reply, claimed, owner} =
              RichUpload.handle("rich_upload_claim", %{"upload_ref" => ref}, owner)
 
@@ -82,10 +84,15 @@ defmodule DawarichWeb.TripRichTextTest do
              RichUpload.handle("rich_upload_claim", %{"upload_ref" => ref}, owner)
 
     stranger = socket(9_802)
-    forged = %{stranger | private: Map.put(stranger.private, :rich_uploads, %{"forged" => id})}
+    {%{upload_ref: foreign_ref}, _} = reserve(owner, "foreign-proof.png")
+
+    forged = %{
+      stranger
+      | private: Map.put(stranger.private, :rich_uploads, %{foreign_ref => true})
+    }
 
     assert {:reply, %{error: "refused"}, _} =
-             RichUpload.handle("rich_upload_claim", %{"upload_ref" => "forged"}, forged)
+             RichUpload.handle("rich_upload_claim", %{"upload_ref" => foreign_ref}, forged)
 
     assert {:reply, %{error: "refused"}, _} =
              RichUpload.handle(
@@ -95,7 +102,7 @@ defmodule DawarichWeb.TripRichTextTest do
              )
   end
 
-  test "a cancelled upload queues purge of its reserved blob" do
+  test "a cancelled upload queues M4 cleanup after the target deadline" do
     owner = socket(9_803)
     {%{upload_ref: ref}, owner} = reserve(owner, "cancelled.png")
 
@@ -104,7 +111,9 @@ defmodule DawarichWeb.TripRichTextTest do
 
     assert owner.private.rich_uploads == %{}
 
-    assert rows("SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Exports.PurgeWorker'") ==
+    assert rows(
+             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Uploads.CleanupWorker'"
+           ) ==
              [[1]]
   end
 

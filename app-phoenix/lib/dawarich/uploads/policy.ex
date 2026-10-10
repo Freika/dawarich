@@ -1,7 +1,18 @@
 defmodule Dawarich.Uploads.Policy do
   @moduledoc false
   @gib 1024 * 1024 * 1024
-  def limits(policy \\ %{}) do
+  def limits(policy \\ %{})
+
+  def limits(%{kind: :rich_text} = policy) do
+    limits(
+      Map.merge(
+        %{max_entries: 10, max_bytes: @gib, aggregate_bytes: 10 * @gib},
+        Map.delete(policy, :kind)
+      )
+    )
+  end
+
+  def limits(policy) do
     %{
       max_entries: Map.get(policy, :max_entries, env("NATIVE_UPLOAD_MAX_ENTRIES", 20)),
       max_bytes: Map.get(policy, :max_bytes, env("NATIVE_UPLOAD_MAX_BYTES", 50 * @gib)),
@@ -20,6 +31,20 @@ defmodule Dawarich.Uploads.Policy do
       {value, ""} when value > 0 -> value
       _ -> default
     end
+  end
+
+  def valid?(entry, :rich_text, limits) do
+    with %{filename: name, byte_size: size, checksum: checksum, content_type: type} <- entry,
+         true <- is_binary(name) and byte_size(name) in 1..1024,
+         true <- is_binary(type) and type != "",
+         true <- is_integer(size) and size >= 0 and size <= limits.max_bytes,
+         {:ok, <<_::binary-size(16)>>} <- Base.decode64(checksum) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
   end
 
   def valid?(entry, kind, limits) do

@@ -181,10 +181,11 @@ defmodule DawarichWeb.TripsNativeFormTest do
       "name" => "photo.png",
       "size" => 9,
       "type" => "image/png",
-      "checksum" => "AELTPXGTbs81Ygn6v0o2PQ=="
+      "checksum" => "Xwa4XhYZsri1b3t1igoxCg=="
     })
 
     assert_reply(view, %{upload_ref: ref, url: _})
+    Dawarich.Test.NativeRichUploadFixture.put!(Repo, ref, "synthetic")
     render_hook(view, "rich_upload_claim", %{"upload_ref" => ref})
     assert_reply(view, %{sgid: sgid})
     assert is_binary(sgid)

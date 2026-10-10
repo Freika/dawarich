@@ -11,10 +11,12 @@ defmodule Dawarich.Uploads.Target do
       repo.transaction(fn ->
         current = Records.actor!(repo, scope)
 
-        unless Dawarich.Entitlements.future?(current.user.active_until, DateTime.utc_now()),
-          do: repo.rollback(:inactive)
-
         row = Records.read(repo, ref, current.user.id, true) |> then(&Records.pending!(repo, &1))
+
+        unless row.kind == "rich_text" or
+                 Dawarich.Entitlements.future?(current.user.active_until, DateTime.utc_now()),
+               do: repo.rollback(:inactive)
+
         blob = Storage.Blobs.find(row.blob_id, repo)
 
         {:ok, storage} =

@@ -14,7 +14,7 @@ defmodule Dawarich.Uploads.SweepWorker do
     repo.transaction(fn ->
       rows =
         repo.query!(
-          "SELECT reference,user_id FROM phoenix.native_uploads WHERE state='pending' AND expires_at<=timezone('UTC',now()) ORDER BY expires_at LIMIT 100 FOR UPDATE SKIP LOCKED",
+          "SELECT reference,user_id FROM phoenix.native_uploads WHERE (state='pending' OR (kind='rich_text' AND state='claimed' AND NOT EXISTS(SELECT 1 FROM active_storage_attachments a WHERE a.blob_id=native_uploads.blob_id))) AND expires_at<=timezone('UTC',now()) ORDER BY expires_at LIMIT 100 FOR UPDATE SKIP LOCKED",
           [],
           log: false
         ).rows
@@ -52,7 +52,7 @@ defmodule Dawarich.Uploads.SweepWorker do
 
       [[next]] =
         repo.query!(
-          "SELECT min(deadline) FROM (SELECT expires_at AS deadline FROM phoenix.native_uploads WHERE state='pending' UNION ALL SELECT cleanup_at AS deadline FROM phoenix.native_uploads WHERE state IN ('cancelled','expired','purged') AND cleanup_at IS NOT NULL) deadlines",
+          "SELECT min(deadline) FROM (SELECT expires_at AS deadline FROM phoenix.native_uploads WHERE state='pending' OR (kind='rich_text' AND state='claimed' AND NOT EXISTS(SELECT 1 FROM active_storage_attachments a WHERE a.blob_id=native_uploads.blob_id)) UNION ALL SELECT cleanup_at AS deadline FROM phoenix.native_uploads WHERE state IN ('cancelled','expired','purged') AND cleanup_at IS NOT NULL) deadlines",
           [],
           log: false
         ).rows

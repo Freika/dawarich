@@ -8,17 +8,18 @@ defmodule Dawarich.Uploads.Claims do
 
     with {:ok, current} <- Dawarich.Accounts.NativeAccess.admit(scope, repo),
          true <-
-           operation in [:imports, :account] and is_list(refs) and
+           operation in [:imports, :account, :rich_text] and is_list(refs) and
              length(refs) in 1..Dawarich.Uploads.Policy.limits().max_entries and
-             (operation != :account or length(refs) == 1) and
+             (operation == :imports or length(refs) == 1) and
              length(Enum.uniq(refs)) == length(refs),
          {:ok, verified} <- verify(repo, current.user.id, refs, opts) do
       repo.transaction(fn ->
         if fun = opts[:before_lock], do: fun.(repo)
         current = Records.actor!(repo, scope)
 
-        unless Dawarich.Entitlements.future?(current.user.active_until, DateTime.utc_now()),
-          do: repo.rollback(:inactive)
+        unless operation == :rich_text or
+                 Dawarich.Entitlements.future?(current.user.active_until, DateTime.utc_now()),
+               do: repo.rollback(:inactive)
 
         for item <- Enum.sort_by(verified, & &1.reference) do
           row =
@@ -27,7 +28,8 @@ defmodule Dawarich.Uploads.Claims do
 
           if row.kind != Atom.to_string(operation), do: repo.rollback(:invalid_input)
 
-          if current.user.status == 2 and current.user.subscription_source in [nil, 0] and
+          if operation != :rich_text and current.user.status == 2 and
+               current.user.subscription_source in [nil, 0] and
                (item.blob.byte_size > 11 * 1024 * 1024 or row.original_size > 11 * 1024 * 1024),
              do: repo.rollback(:file_too_large)
         end

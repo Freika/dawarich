@@ -24,7 +24,7 @@ O06 retains all forty route/method owner checks and raw rollback/effect observat
 ## Dependency adapters and retained callers
 
 - Milestone 6: Trips list/new/edit/show map hosts; Stats month and public month hexagons; shared trip/track maps; Visits timeline/map event hosts. Existing map/HTTP transports stay owned until that integration.
-- Milestone 4 stage 1: principal/proof and sharing facades, exports/uploads. B3-FU-RICH-UPLOAD-SWEEP adds the rich reservation kind to the durable uploads sweep. Tab close/reload/crash and removal after claim remain uncovered by the current live cancellation policy.
+- Milestone 4 stage 1: principal/proof, export and sharing/public dependencies use the real M4 contracts. Rich uploads reserve/target/claim/cancel through M4 Uploads. B3-FU-RICH-UPLOAD-SWEEP is complete: abandoned pending reservations and claimed uploads without saved embeds expire and clean up durably; attached embeds are retained. The signed target deadline fences cleanup.
 - External StatsActions/StatSharing, DigestActions/DigestSharing, achievement unlock/sharing and PNG, VisitActions, MapFrames, API, download and storage callers remain routed. No native UI calls the retired page transports.
 - Source country/city data is read into the domain projection; rendering year cards performs no database lookup.
 

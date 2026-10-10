@@ -41,6 +41,89 @@ defmodule Dawarich.UploadsTest do
     {ref, blob, path}
   end
 
+  test "rich text sweeps pending and claimed orphans while retaining saved embeds", c do
+    c = %{c | policy: %{c.policy | kind: :rich_text}}
+    {pending, pending_blob, pending_path} = reserve(c)
+    {claimed, claimed_blob, claimed_path} = reserve(c)
+    {saved, saved_blob, saved_path} = reserve(c)
+    opts = [repo: ScratchRepo, services: %{"local" => c.policy.storage}]
+    assert {:ok, [_]} = Uploads.claim(c.scope, [claimed], :rich_text, opts)
+    assert {:ok, [_]} = Uploads.claim(c.scope, [saved], :rich_text, opts)
+
+    rows(
+      "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('embeds','ActionText::RichText',10842,$1,now())",
+      [saved_blob]
+    )
+
+    rows(
+      "UPDATE phoenix.native_uploads SET expires_at=timezone('UTC',now())-interval '1 second' WHERE reference=ANY($1)",
+      [[pending, claimed, saved]]
+    )
+
+    assert {:ok, 2} = Uploads.sweep(repo: ScratchRepo)
+
+    for ref <- [pending, claimed] do
+      [[args]] =
+        rows(
+          "SELECT DISTINCT args FROM oban.oban_jobs WHERE worker='Dawarich.Uploads.CleanupWorker' AND args->>'reference'=$1",
+          [ref]
+        )
+
+      assert :ok = Dawarich.Uploads.CleanupWorker.run(args, opts)
+    end
+
+    refute File.exists?(pending_path)
+    refute File.exists?(claimed_path)
+    assert File.exists?(saved_path)
+
+    assert rows("SELECT id FROM active_storage_blobs WHERE id=ANY($1)", [
+             [pending_blob, claimed_blob]
+           ]) == []
+
+    assert rows("SELECT state FROM phoenix.native_uploads WHERE reference=$1", [saved]) == [
+             ["claimed"]
+           ]
+  end
+
+  test "rich text cancellation admits claimed orphans and refuses saved embeds", c do
+    c = %{c | policy: %{c.policy | kind: :rich_text}}
+    {ref, blob, _path} = reserve(c)
+    opts = [repo: ScratchRepo, services: %{"local" => c.policy.storage}]
+    assert {:ok, [_]} = Uploads.claim(c.scope, [ref], :rich_text, opts)
+
+    rows(
+      "INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,created_at) VALUES('embeds','ActionText::RichText',10842,$1,now())",
+      [blob]
+    )
+
+    assert {:error, :attached} = Uploads.cancel(c.scope, ref, opts)
+    rows("DELETE FROM active_storage_attachments WHERE blob_id=$1", [blob])
+    assert {:ok, :cancelled} = Uploads.cancel(c.scope, ref, opts)
+    assert {:ok, :cancelled} = Uploads.cancel(c.scope, ref, opts)
+  end
+
+  test "rich text keeps zero byte long filenames and its own trial policy", c do
+    rows(
+      "UPDATE users SET status=2,subscription_source=0,active_until=now()-interval '1 day' WHERE id=$1",
+      [c.scope.user.id]
+    )
+
+    entry = %{
+      filename: String.duplicate("a", 300),
+      byte_size: 0,
+      checksum: Base.encode64(:crypto.hash(:md5, "")),
+      content_type: "text/plain"
+    }
+
+    assert {:ok, ref} = Uploads.reserve(c.scope, entry, %{c.policy | kind: :rich_text})
+
+    assert {:ok, %{blob: %{byte_size: 0}}} =
+             Uploads.target(c.scope, ref, %{},
+               repo: ScratchRepo,
+               services: %{"local" => c.policy.storage}
+             )
+  end
+
   test "cancel and claim serialize so exactly one owns a pending upload", c do
     {ref, _, _} = reserve(c)
     parent = self()
