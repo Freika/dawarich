@@ -1,6 +1,6 @@
 export function photoMarkers(map, library, photos) {
   const markers = []
-  for (const photo of photos) {
+  for (const photo of photos.slice(0, 100)) {
     if (
       photo.latitude == null ||
       photo.longitude == null ||

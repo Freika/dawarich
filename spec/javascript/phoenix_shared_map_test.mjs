@@ -484,3 +484,74 @@ for (const ownerZone of ["UTC", "America/New_York"]) {
     }
   })
 }
+
+test("trip maps cap photo markers at 100 while day galleries retain later photos and teardown clears every image", async () => {
+  const previous = globalThis.document
+  globalThis.document = {
+    createElement() {
+      return {
+        style: {},
+        removeAttribute(name) {
+          delete this[name]
+        },
+      }
+    },
+  }
+  try {
+    const lib = library()
+    const { instance, events } = setup(async () => lib)
+    const gallery = {
+      images: [],
+      append(image) {
+        this.images.push(image)
+      },
+      replaceChildren() {
+        this.images = []
+      },
+    }
+    const details = {
+      open: false,
+      dataset: { publicGalleryDay: "2026-05-10" },
+      querySelector: () => gallery,
+    }
+    instance.el.querySelectorAll = (selector) =>
+      selector.includes("details")
+        ? [details]
+        : selector.includes("img")
+          ? gallery.images
+          : [gallery]
+    const photos = Array.from({ length: 101 }, (_, id) => ({
+      id: `photo-${id}`,
+      latitude: 51,
+      longitude: 12,
+      day_key: "2026-05-10",
+      thumbnail_url: `/api/v1/shared/synthetic/photos/${id}/thumbnail`,
+    }))
+    await events.get("public-share-snapshot")({ ...snapshot, photos })
+    assert.equal(details.publicPhotos.length, 101)
+    assert.equal(details.publicPhotos[100].id, "photo-100")
+    const markers = lib.markers.filter((marker) => marker.element)
+    assert.equal(markers.length, 100)
+    assert.deepEqual(
+      markers.map((marker) => marker.element.src),
+      photos.slice(0, 100).map((photo) => photo.thumbnail_url),
+    )
+    details.open = true
+    openGallery(details)
+    const galleryImages = [...gallery.images]
+    assert.equal(galleryImages.length, 101)
+    assert.equal(galleryImages[100].src, photos[100].thumbnail_url)
+    instance.disconnected()
+    assert.equal(lib.maps[0].removed, 1)
+    assert.ok(lib.markers.every((marker) => marker.removed))
+    assert.ok(markers.every((marker) => marker.element.src === undefined))
+    assert.ok(galleryImages.every((image) => image.src === undefined))
+    assert.deepEqual(details.publicPhotos, [])
+    assert.deepEqual(gallery.images, [])
+    instance.destroyed()
+    assert.equal(events.size, 0)
+  } finally {
+    if (previous) globalThis.document = previous
+    else delete globalThis.document
+  }
+})
