@@ -140,7 +140,10 @@ defmodule Dawarich.SharingScopeTest do
     assert SharedLinks.active(@old, @now) == nil
     assert NaiveDateTime.compare(rotated.share.expires_at, ~N[2026-10-25 00:00:00]) == :eq
     assert Sharing.version(@old) == nil
-    assert Enum.any?(intents(), fn [args] -> @old in args["public_ids"] end)
+
+    assert Enum.any?(intents(), fn [args] ->
+             Dawarich.Sharing.Events.reference(@old) in args["public_refs"]
+           end)
   end
 
   test "failed active replacement preserves recorded rollback and event effects", ctx do
@@ -220,7 +223,7 @@ defmodule Dawarich.SharingScopeTest do
     assert length(intents()) == 6
 
     for [args] <- intents() do
-      assert Enum.sort(Map.keys(args)) == ~w(event_id public_ids user_id)
+      assert Enum.sort(Map.keys(args)) == ~w(event_id public_refs user_id)
       assert args["user_id"] == ctx.actor.id
     end
 
@@ -261,13 +264,15 @@ defmodule Dawarich.SharingScopeTest do
 
   test "native sharing invalidation is ID-only idempotent and absent after rollback", ctx do
     Phoenix.PubSub.subscribe(Dawarich.PubSub, "sharing:user:#{ctx.actor.id}")
-    Phoenix.PubSub.subscribe(Dawarich.PubSub, "sharing:public:#{@old}")
+    Phoenix.PubSub.subscribe(Dawarich.PubSub, Dawarich.Sharing.Events.topic(@old))
     assert {:ok, _} = Sharing.change(ctx.scope, resource(:live), :revoke, %{}, opts())
     [[args]] = intents()
     assert :ok = Dawarich.Sharing.EventsWorker.run(Repo, args)
     assert_receive {:domain_changed, 98101, :sharing}
-    assert_receive {:share_changed, @old, version}
-    assert version == Sharing.version(@old)
+    reference = Dawarich.Sharing.Events.reference(@old)
+    assert_receive {:share_invalidated, ^reference}
+    assert byte_size(reference) == 64
+    refute Jason.encode!(args) =~ @old
     assert :ok = Dawarich.Sharing.EventsWorker.run(Repo, args)
     refute_receive {:domain_changed, _, _}
     count = length(intents())

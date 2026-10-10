@@ -111,7 +111,10 @@ defmodule Dawarich.Mail.OauthAccountLinkWorkerTest do
       end)
 
     assert_received {:mail, %{to: @email}}
-    assert log =~ event_id
+    assert args["event_id"] == event_id
+    assert log =~ "Dawarich.Mail.OauthAccountLinkWorker"
+    assert log =~ "[FILTERED]"
+    refute log =~ event_id
     refute log =~ "dawarich.example.test"
     refute log =~ @token
     refute log =~ @email

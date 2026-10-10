@@ -36,7 +36,11 @@ defmodule DawarichWeb.CapabilityLoggingTest do
         level: :debug,
         formatter: default.formatter,
         filters: default.filters,
-        config: %{type: {:file, String.to_charlist(path)}, sync_mode_qlen: 0}
+        config: %{
+          type: {:file, String.to_charlist(path)},
+          sync_mode_qlen: 0,
+          burst_limit_enable: false
+        }
       })
 
     Logger.configure(level: :debug)
@@ -171,12 +175,7 @@ defmodule DawarichWeb.CapabilityLoggingTest do
       ["Postgrex disconnected: ", Exception.format_banner(:error, error, [])]
     end)
 
-    assert {:error, _} =
-             Oban.Testing.perform_job(
-               Dawarich.Test.CapabilityJob,
-               %{"token" => token, "magic_phrase" => phrase},
-               repo: Repo
-             )
+    assert_persisted_failure(token, phrase)
 
     _ =
       :sys.replace_state(view.pid, fn state ->
@@ -210,6 +209,18 @@ defmodule DawarichWeb.CapabilityLoggingTest do
           String.contains?(output, secret),
           do: {surface, index}
 
+    persisted =
+      Repo.query!("SELECT args,errors FROM oban.oban_jobs", [], log: false).rows
+      |> Jason.encode!()
+
+    persisted_leaks =
+      for {secret, index} <- Enum.with_index(secrets),
+          String.contains?(persisted, secret),
+          do: index
+
+    assert persisted_leaks == [],
+           "capabilities persisted in job rows at indexes #{inspect(persisted_leaks)}"
+
     assert Enum.uniq(leaks) == [], "capability leaked on #{inspect(Enum.uniq(leaks))}"
     refute log =~ "FORMATTER CRASH"
     assert log =~ "Postgrex.Error"
@@ -218,6 +229,7 @@ defmodule DawarichWeb.CapabilityLoggingTest do
     assert log =~ "GET /invitations/"
     assert payloads =~ "envelope"
     assert payloads =~ "redacted_telemetry"
+    assert payloads =~ "oban_jobs"
     assert {:ok, _} = :logger.get_handler_config(:default)
   end
 
@@ -252,6 +264,71 @@ defmodule DawarichWeb.CapabilityLoggingTest do
 
       assert Enum.all?(capabilities, &(not String.contains?(output, &1))),
              "bootstrap capability exposed at #{boundary} logger boundary"
+    end
+  end
+
+  defp assert_persisted_failure(token, phrase) do
+    saved =
+      Map.new(
+        [:mail_transport, :jobs_repo, :capability_failure_mode],
+        &{&1, Application.get_env(:dawarich, &1)}
+      )
+
+    domain = System.get_env("DOMAIN")
+    Application.put_env(:dawarich, :mail_transport, Dawarich.Test.CapabilityFailureTransport)
+    Application.put_env(:dawarich, :jobs_repo, Repo)
+    System.put_env("DOMAIN", "capability.example.invalid")
+
+    on_exit(fn ->
+      for {key, value} <- saved do
+        if value,
+          do: Application.put_env(:dawarich, key, value),
+          else: Application.delete_env(:dawarich, key)
+      end
+
+      if domain, do: System.put_env("DOMAIN", domain), else: System.delete_env("DOMAIN")
+    end)
+
+    [[invitation_id]] =
+      Repo.query!("SELECT id FROM family_invitations WHERE token=$1", [token], log: false).rows
+
+    conf = Oban.Config.new(repo: Repo, prefix: "oban", log: :debug, testing: :manual)
+
+    event_id = Ecto.UUID.generate()
+
+    for mode <- [:return, :raise] do
+      Application.put_env(:dawarich, :capability_failure_mode, mode)
+
+      job =
+        Dawarich.Mail.FamilyInvitationWorker.new(%{
+          "invitation_id" => invitation_id,
+          "locale" => "en",
+          "event_id" => event_id
+        })
+        |> Repo.insert!(prefix: "oban", log: false)
+
+      job = Repo.get!(Oban.Job, job.id, prefix: "oban", log: false)
+
+      job =
+        job
+        |> Ecto.Changeset.change(state: "executing", attempt: 1, attempted_at: DateTime.utc_now())
+        |> Repo.update!(prefix: "oban", log: false)
+
+      exec = conf |> Oban.Queues.Executor.new(job, ack: true) |> Oban.Queues.Executor.call()
+      assert exec.state == :failure
+
+      [[args, errors]] =
+        Repo.query!("SELECT args,errors FROM oban.oban_jobs WHERE id=$1", [job.id], log: false).rows
+
+      assert length(errors) == 1
+      output = Jason.encode!(%{args: args, errors: errors})
+
+      assert not String.contains?(output, token),
+             "invitation capability persisted in #{mode} failure"
+
+      assert not String.contains?(output, phrase), "unlock phrase persisted in #{mode} failure"
+      assert args["invitation_id"] == invitation_id
+      assert errors != []
     end
   end
 

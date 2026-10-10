@@ -21,11 +21,11 @@ defmodule Dawarich.Sharing.EventsWorker do
         {:domain_changed, user, :sharing}
       )
 
-      for id <- args["public_ids"] do
+      for reference <- args["public_refs"] do
         Phoenix.PubSub.broadcast(
           Dawarich.PubSub,
-          "sharing:public:#{id}",
-          {:share_changed, id, Dawarich.Sharing.version(id)}
+          "sharing:public:#{reference}",
+          {:share_invalidated, reference}
         )
       end
 

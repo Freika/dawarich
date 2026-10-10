@@ -48,15 +48,16 @@ defmodule DawarichWeb.PublicNativeProducersTest do
 
     assert :ok = Dawarich.Points.LiveBroadcastWorker.run(ScratchRepo, args)
     assert [[event]] = intent()
-    assert Map.keys(event) |> Enum.sort() == ~w(event_id public_ids user_id)
-    assert event["public_ids"] == [@id]
+    assert Map.keys(event) |> Enum.sort() == ~w(event_id public_refs user_id)
+    reference = Dawarich.Sharing.Events.reference(@id)
+    assert event["public_refs"] == [reference]
     assert :ok = Dawarich.Points.LiveBroadcastWorker.run(ScratchRepo, args)
     assert length(intent()) == 1
-    Phoenix.PubSub.subscribe(Dawarich.PubSub, "sharing:public:" <> @id)
+    Phoenix.PubSub.subscribe(Dawarich.PubSub, Dawarich.Sharing.Events.topic(@id))
     assert :ok = Dawarich.Sharing.EventsWorker.run(ScratchRepo, event)
-    assert_receive {:share_changed, @id, _}
+    assert_receive {:share_invalidated, ^reference}
     assert :ok = Dawarich.Sharing.EventsWorker.run(ScratchRepo, event)
-    refute_receive {:share_changed, @id, _}
+    refute_receive {:share_invalidated, ^reference}
   end
 
   test "privacy radius and place tag producers enqueue committed invalidation and roll back with writes",

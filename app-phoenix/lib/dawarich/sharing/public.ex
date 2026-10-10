@@ -79,7 +79,7 @@ defmodule Dawarich.Sharing.Public do
 
   def subscribe(grant, now) do
     with {:ok, data} <- admit(grant, now) do
-      Phoenix.PubSub.subscribe(Dawarich.PubSub, "sharing:public:#{grant.id}")
+      Phoenix.PubSub.subscribe(Dawarich.PubSub, Dawarich.Sharing.Events.topic(grant.id))
 
       if FamilyAudience.family_only?(data.link) do
         for id <- Enum.uniq([data.link.user_id, grant.viewer.id]),
