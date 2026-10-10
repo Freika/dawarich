@@ -6,6 +6,7 @@ defmodule DawarichWeb.TripsNativeShowTest do
   alias Dawarich.Jobs.Ownership
   alias Dawarich.Test.{NativeAdminUI, TripsNativeUI, TripsSeeds}
   alias DawarichWeb.NativeTripsLive.Show
+  alias DawarichWeb.TripsNative.Access
 
   @path [[12.5, 51.25], [12.373468123456789, 51.34]]
 
@@ -69,20 +70,47 @@ defmodule DawarichWeb.TripsNativeShowTest do
     render_async(view)
     assert hd(day_keys(view)) == "2026-05-09"
 
+    session = :trace.session_create(:trips_native_show_runs, self(), [])
+    :trace.process(session, view.pid, true, [:call])
+    :trace.function(session, {Show, :handle_async, 3}, true, [])
+    render_click(view, "retry_days")
+    render_async(view)
+
+    assert_receive {:trace, _, :call,
+                    {Show, :handle_async, [{:days, _, _, {^first, nil}} = old, _, _]}}
+
+    :trace.session_destroy(session)
+
     render_patch(view, "/trips/#{second}")
     render_async(view)
     assert day_keys(view) == ~w(2026-07-01 2026-07-02)
 
-    send(view.pid, {:data_read_timeout, {:days, 1, make_ref(), {first, nil}}})
-    refute has_element?(view, "[data-days-status='failed']")
-
     socket = :sys.get_state(view.pid).socket
+    {current, pending} = Access.register(socket, :days, {second, nil})
+    {:days, generation, ref, fingerprint} = current
     late = %{days: [%{date: ~D[2026-05-09], stats: nil, note: nil}], next: nil}
 
-    assert {:noreply, kept} =
-             Show.handle_async({:days, 1, make_ref(), {first, nil}}, {:ok, {:ok, late}}, socket)
+    for run <- [
+          old,
+          {:days, generation, make_ref(), fingerprint},
+          {:days, generation, ref, {first, nil}},
+          {:days, generation - 1, ref, fingerprint}
+        ] do
+      assert {:noreply, kept} = Show.handle_info({:data_read_timeout, run}, pending)
+      assert kept.assigns.days_status == :ready
+      assert Access.active?(kept, current)
 
-    assert Enum.map(kept.assigns.days, & &1.date) == [~D[2026-07-01], ~D[2026-07-02]]
+      assert {:noreply, kept} = Show.handle_async(run, {:ok, {:ok, late}}, pending)
+      assert Enum.map(kept.assigns.days, & &1.date) == [~D[2026-07-01], ~D[2026-07-02]]
+      assert Access.active?(kept, current)
+    end
+
+    assert {:noreply, applied} = Show.handle_async(current, {:ok, {:ok, late}}, pending)
+    assert Enum.map(applied.assigns.days, & &1.date) == [~D[2026-05-09]]
+    refute Access.active?(applied, current)
+
+    assert {:noreply, timed_out} = Show.handle_info({:data_read_timeout, current}, pending)
+    assert timed_out.assigns.days_status == :failed
     assert day_keys(view) == ~w(2026-07-01 2026-07-02)
   end
 
@@ -183,7 +211,7 @@ defmodule DawarichWeb.TripsNativeShowTest do
     render_async(view)
     socket = :sys.get_state(view.pid).socket
 
-    {run, pending} = DawarichWeb.TripsNative.Access.register(socket, :days, {id, nil})
+    {run, pending} = Access.register(socket, :days, {id, nil})
     assert {:noreply, failed} = Show.handle_async(run, {:exit, :boom}, pending)
     assert failed.assigns.days_status == :failed
 
