@@ -183,4 +183,53 @@ defmodule DawarichWeb.SharingNativeEventsTest do
     assert Repo.query!("SELECT id,revoked_at FROM shared_links ORDER BY id", [], log: false).rows ==
              before
   end
+
+  test "debug SQL logs from native share creation and phrase rotation never carry the phrase",
+       c do
+    level = Logger.level()
+    Logger.configure(level: :debug)
+    on_exit(fn -> Logger.configure(level: level) end)
+    {:ok, view, _} = open(c.user)
+    secret = "opaque-debug-sql-phrase"
+
+    log =
+      ExUnit.CaptureLog.capture_log([level: :debug], fn ->
+        render_submit(view, "sharing_create", attrs(secret))
+        render_click(view, "sharing_prepare", %{"action" => "regenerate_phrase"})
+        render_click(view, "sharing_confirm", %{})
+        Logger.flush()
+      end)
+
+    [[rotated]] =
+      Repo.query!("SELECT magic_phrase FROM shared_links WHERE user_id=$1", [c.user.id],
+        log: false
+      ).rows
+
+    refute rotated == secret
+    assert log =~ "INSERT INTO shared_links"
+    assert log =~ "UPDATE shared_links SET magic_phrase"
+    refute log =~ secret
+    refute log =~ rotated
+  end
+
+  test "debug SQL error logs and crash reports from phrase-bearing writes never carry the phrase" do
+    level = Logger.level()
+    Logger.configure(level: :debug)
+    on_exit(fn -> Logger.configure(level: level) end)
+    secret = "opaque-debug-error-phrase"
+    sql = "UPDATE shared_links SET magic_phrase = $1 WHERE id = $2::text::uuid"
+
+    log =
+      ExUnit.CaptureLog.capture_log([level: :debug], fn ->
+        assert {:error, _} = Repo.query(sql, [secret, "not-a-share"])
+        {:ok, pid} = Task.start(fn -> Repo.query!(sql, [secret, "not-a-share"]) end)
+        ref = Process.monitor(pid)
+        assert_receive {:DOWN, ^ref, :process, ^pid, _}, 1000
+        Logger.flush()
+      end)
+
+    assert log =~ "QUERY ERROR"
+    assert log =~ "not-a-share"
+    refute log =~ secret
+  end
 end

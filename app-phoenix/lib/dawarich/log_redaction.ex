@@ -17,6 +17,9 @@ defmodule Dawarich.LogRedaction do
 
   defp redact(%{msg: {:report, report}} = event), do: %{event | msg: {:report, scrub(report)}}
 
+  defp redact(%{meta: %{mfa: {Ecto.Adapters.SQL, _, _}}, msg: {:string, chardata}} = event),
+    do: %{event | msg: {:string, scrub_sql(chardata)}}
+
   defp redact(%{msg: {:string, chardata}} = event),
     do: %{event | msg: {:string, scrub_chardata(chardata)}}
 
@@ -61,6 +64,25 @@ defmodule Dawarich.LogRedaction do
 
   defp scrub_pair(key, value, depth),
     do: if(sensitive?(key), do: @filtered, else: scrub(value, depth - 1))
+
+  defp scrub_sql([_, _, _, _, _, _, _, _, ?\n, query, ?\s, _params, _] = data) do
+    if sensitive_sql?(query),
+      do: data |> List.replace_at(11, @filtered) |> scrub_chardata(),
+      else: scrub_chardata(data)
+  end
+
+  defp scrub_sql(chardata) do
+    text = IO.chardata_to_string(chardata)
+
+    if sensitive_sql?(text),
+      do: hd(String.split(text, "\n", parts: 2)) <> "\n" <> @filtered,
+      else: scrub_binary(text)
+  end
+
+  defp sensitive_sql?(sql) do
+    words = words()
+    words != [] and mentions?(IO.iodata_to_binary(sql), words)
+  end
 
   defp scrub_chardata(chardata) do
     chardata |> IO.chardata_to_string() |> scrub_binary()

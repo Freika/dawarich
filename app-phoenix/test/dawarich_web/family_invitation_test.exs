@@ -260,4 +260,24 @@ defmodule DawarichWeb.FamilyInvitationTest do
 
     refute element?(member_index, "[data-invitation-id] button[phx-click]")
   end
+
+  test "debug SQL logs from the invitation landing never carry the invitation token" do
+    level = Logger.level()
+    Logger.configure(level: :debug)
+    on_exit(fn -> Logger.configure(level: level) end)
+
+    log =
+      ExUnit.CaptureLog.capture_log([level: :debug], fn ->
+        assert build_conn()
+               |> freeze_clock()
+               |> get("/invitations/a9fpl-pending")
+               |> Map.get(:status) ==
+                 200
+
+        Logger.flush()
+      end)
+
+    assert log =~ "WHERE i.token = $1"
+    refute log =~ ~s("a9fpl-pending")
+  end
 end
