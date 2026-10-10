@@ -183,7 +183,10 @@ defmodule DawarichWeb.TripPlanHostsTest do
         assert view.presentation.map_state ==
                  if(
                    NativeTripCorpus.attrs(golden, "[data-testid=trip-plan-map]", "data-testid") ==
-                     [], do: :path, else: :plan)
+                     [],
+                   do: :path,
+                   else: :plan
+                 )
 
         plan =
           NativeTripCorpus.attrs(
