@@ -47,6 +47,7 @@ defmodule DawarichWeb.ReportSharingNativeTest do
       submit(view, "1")
       assert is_binary(values(view).uuid)
       assert has_element?(view, "a[data-public-share]")
+      assert has_element?(view, "#report-share-copy[data-clipboard-url=true]")
 
       foreign =
         RailsUser.insert!(%{id: 154_072, email: "foreign-report@example.invalid", plan: 2})

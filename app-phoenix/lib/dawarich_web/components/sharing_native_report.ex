@@ -78,6 +78,7 @@ defmodule DawarichWeb.SharingNativeReport do
         type="button"
         phx-hook="Clipboard"
         data-clipboard-text={@url}
+        data-clipboard-url="true"
         data-copied-label={t(@locale, "javascript.messages.copied_to_clipboard", %{})}
         data-failed-label={t(@locale, "javascript.messages.failed_to_copy_please_copy_manually", %{})}
         data-status-id="report-copy-status"

@@ -27,7 +27,12 @@ export const Clipboard = {
   mounted() {
     this.copy = (event) => {
       event.preventDefault()
-      this.write(this.el.dataset.clipboardText || "")
+      const text = this.el.dataset.clipboardText || ""
+      this.write(
+        this.el.dataset.clipboardUrl === "true"
+          ? new URL(text, window.location.origin).href
+          : text,
+      )
     }
     this.el.addEventListener("click", this.copy)
   },

@@ -107,3 +107,17 @@ test("removes its click listener when destroyed", (t) => {
   hook.destroyed()
   assert.equal(el.listeners.click, undefined)
 })
+
+for (const type of ["month", "digest", "achievements"]) {
+  test(`report ${type} copy resolves its complete public URL against the browser origin`, async (t) => {
+    const { el, writes } = fixture(t, { writeText: () => Promise.resolve() })
+    window.location = { origin: "https://dawarich.example" }
+    el.dataset.clipboardText = `/shared/${type}/synthetic-uuid`
+    el.dataset.clipboardUrl = "true"
+    el.click()
+    await settle()
+    assert.deepEqual(writes, [
+      `https://dawarich.example/shared/${type}/synthetic-uuid`,
+    ])
+  })
+}
