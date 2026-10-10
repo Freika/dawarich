@@ -176,4 +176,49 @@ defmodule Dawarich.Cache.PagesTest do
     assert {:ok, %{total: 7}} =
              Pages.fetch(scope, :counts, %{}, fn _ -> {:ok, %{total: 7}} end, opts)
   end
+
+  for change <- [:deletion, :identity, :revision] do
+    @tag cache_return: true
+    test "private cache miss refuses #{change} during SET", %{
+      scope: scope,
+      cache: cache,
+      opts: opts
+    } do
+      command = fn args ->
+        result = NativePageCache.command(cache, args)
+
+        if hd(args) == "SET" do
+          case unquote(change) do
+            :deletion ->
+              rows("UPDATE users SET deleted_at=now() WHERE id=$1", [scope.user.id])
+
+            :identity ->
+              rows(
+                "UPDATE users SET encrypted_password='changed-synthetic-cache-identity' WHERE id=$1",
+                [scope.user.id]
+              )
+
+            :revision ->
+              Dawarich.State.bump_epochs(Repo, ["cache:user:#{scope.user.id}"])
+          end
+        end
+
+        result
+      end
+
+      expected = if unquote(change) == :revision, do: :stale, else: :stale_session
+
+      assert {:error, ^expected} =
+               Pages.fetch(
+                 scope,
+                 :summary,
+                 %{},
+                 fn _ -> {:ok, %{distance: 42}} end,
+                 Keyword.put(opts, :command, command)
+               )
+
+      assert Enum.any?(NativePageCache.commands(cache), &match?(["SET" | _], &1))
+      assert NativePageCache.entries(cache) == %{}
+    end
+  end
 end

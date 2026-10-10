@@ -49,8 +49,8 @@ defmodule Dawarich.Cache.Pages do
                    }) do
               command(opts, ["SET", key, bytes, "EX", to_string(ttl(resource))])
 
-              case admission(subject, resource, params, opts) do
-                {:ok, _, ^signature} -> :ok
+              case deliver(subject, resource, params, signature, result, opts) do
+                {:ok, _} -> :ok
                 _ -> command(opts, ["UNLINK", key])
               end
             end
@@ -61,7 +61,7 @@ defmodule Dawarich.Cache.Pages do
       end
 
       after_commit(opts, write)
-      result
+      deliver(subject, resource, params, signature, result, opts)
     end
   end
 
@@ -144,7 +144,14 @@ defmodule Dawarich.Cache.Pages do
   defp cacheable?(%{points: %{state: state}}) when state in [:pending, :failed], do: false
   defp cacheable?(_), do: true
 
-  defp command(opts, args), do: Keyword.get(opts, :command, &Redis.cache_command/1).(args)
+  defp command(opts, args),
+    do:
+      Keyword.get(
+        opts,
+        :command,
+        Application.get_env(:dawarich, :native_page_cache_command, &Redis.cache_command/1)
+      ).(args)
+
   defp now(opts), do: Keyword.get(opts, :clock, fn -> System.system_time(:second) end).()
   defp ttl(resource) when resource in [:summary, :counts, :index], do: 86400
   defp ttl(_), do: 3600

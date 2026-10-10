@@ -110,4 +110,79 @@ defmodule Dawarich.Cache.PageIsolationTest do
     assert {:error, :unauthorized} =
              Pages.fetch(scope, :summary, %{}, reader, Keyword.delete(opts, :authorize))
   end
+
+  for {boundary, operation} <- [{:miss, "SET"}, {:hit, "GET"}],
+      change <- [:revocation, :expiry] do
+    @tag review_delivery: true
+    @tag cache_return: true
+    if boundary == :hit do
+      @tag cache_hit: true
+    end
+
+    test "public cache #{boundary} refuses #{change} during #{operation}" do
+      {:ok, cache} = NativePageCache.start()
+      scope = Scope.for_user(FrameSeeds.user!(8832, %{"timezone" => "UTC"}), "en")
+      uuid = Ecto.UUID.generate()
+      now = NativePageCache.now(cache)
+
+      settings = %{
+        "enabled" => true,
+        "expiration" => "1h",
+        "expires_at" => DateTime.from_unix!(now + 3600) |> DateTime.to_iso8601()
+      }
+
+      Dawarich.Test.StatsSeeds.stat!(scope.user.id, %{
+        year: 2025,
+        month: 3,
+        sharing_uuid: Ecto.UUID.dump!(uuid),
+        sharing_settings: settings
+      })
+
+      authorize = fn fresh, clock ->
+        [[settings]] =
+          rows("SELECT sharing_settings FROM stats WHERE user_id=$1 AND sharing_uuid=$2", [
+            fresh.user.id,
+            Ecto.UUID.dump!(uuid)
+          ])
+
+        if Dawarich.SharingExpiry.public?(settings, DateTime.from_unix!(clock), "UTC"),
+          do: :ok,
+          else: {:error, :unauthorized}
+      end
+
+      command = fn args ->
+        result = NativePageCache.command(cache, args)
+
+        if hd(args) == unquote(operation) do
+          case unquote(change) do
+            :revocation ->
+              rows("UPDATE stats SET sharing_settings='{}' WHERE user_id=$1", [scope.user.id])
+
+            :expiry ->
+              NativePageCache.advance(cache, 3601)
+          end
+        end
+
+        result
+      end
+
+      opts = NativePageCache.options(cache) ++ [audience: {:public, uuid}, authorize: authorize]
+
+      if unquote(boundary) == :hit do
+        assert {:ok, %{distance: 42}} =
+                 Pages.fetch(scope, :summary, %{}, fn _ -> {:ok, %{distance: 42}} end, opts)
+      end
+
+      reader = fn _ ->
+        if unquote(boundary) == :hit, do: flunk("a warmed hit recomputed its value")
+        {:ok, %{distance: 42}}
+      end
+
+      assert {:error, :unauthorized} =
+               Pages.fetch(scope, :summary, %{}, reader, Keyword.put(opts, :command, command))
+
+      assert Enum.any?(NativePageCache.commands(cache), &match?(["SET" | _], &1))
+      if unquote(boundary) == :miss, do: assert(NativePageCache.entries(cache) == %{})
+    end
+  end
 end

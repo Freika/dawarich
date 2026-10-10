@@ -484,4 +484,37 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     render_patch(view, "/stats/2025")
     assert :sys.get_state(view.pid).socket.assigns.data.distances |> Enum.sum() == 9000
   end
+
+  @tag cache_return: true
+  test "Stats cache delivery refuses a changed actor during SET before assigning its projection",
+       %{user: user} do
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2025")
+    assert :sys.get_state(view.pid).socket.assigns.data.year == 2025
+    {:ok, cache} = Dawarich.Test.NativePageCache.start()
+
+    command = fn args ->
+      result = Dawarich.Test.NativePageCache.command(cache, args)
+
+      if hd(args) == "SET",
+        do:
+          Dawarich.Repo.query!(
+            "UPDATE users SET encrypted_password='changed-synthetic-stats-identity' WHERE id=$1",
+            [user.id], log: false)
+
+      result
+    end
+
+    previous = Application.get_env(:dawarich, :native_page_cache_command)
+    Application.put_env(:dawarich, :native_page_cache_command, command)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, :native_page_cache_command, previous),
+        else: Application.delete_env(:dawarich, :native_page_cache_command)
+    end)
+
+    assert {:error, {:redirect, %{to: "/users/sign_in"}}} = render_patch(view, "/stats/2024")
+    assert Dawarich.Test.NativePageCache.entries(cache) == %{}
+    assert Enum.any?(Dawarich.Test.NativePageCache.commands(cache), &match?(["SET" | _], &1))
+  end
 end
