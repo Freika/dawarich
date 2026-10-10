@@ -28,6 +28,15 @@ defmodule Dawarich.Exports.Delete do
               repo.rollback(:not_found)
           end
 
+        key = if type == 0, do: "command:exports.points", else: "command:users.export_data"
+
+        native_owner =
+          if opts[:native] do
+            owner = Dawarich.Imports.NativeOwnership.lock(repo, key)
+            unless owner == :oban, do: repo.rollback(:not_owned)
+            owner
+          end
+
         attachments =
           repo.query!(
             "SELECT id,blob_id FROM active_storage_attachments WHERE record_type='Export' AND record_id=$1 ORDER BY id FOR UPDATE",
@@ -52,8 +61,7 @@ defmodule Dawarich.Exports.Delete do
         repo.query!("DELETE FROM exports WHERE id=$1 AND user_id=$2", [id, user_id], log: false)
 
         if blobs != [] do
-          key = if type == 0, do: "command:exports.points", else: "command:users.export_data"
-          owner = Dawarich.Jobs.Ownership.lock(repo, key)
+          owner = native_owner || Dawarich.Jobs.Ownership.lock(repo, key)
 
           if Dawarich.Standalone.enabled?() or owner == :oban do
             Dawarich.Exports.PurgeWorker.enqueue_export!(repo, blobs)

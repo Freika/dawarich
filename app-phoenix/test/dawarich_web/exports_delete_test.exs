@@ -192,6 +192,7 @@ defmodule DawarichWeb.ExportsDeleteTest do
     assert [[981_101], [981_102], [981_103]] ==
              Repo.query!("SELECT id FROM exports ORDER BY id").rows
 
+    Dawarich.Jobs.Ownership.put!(Repo, "command:users.export_data", :oban)
     scope = Scope.for_user(Dawarich.Accounts.get(9811), "en")
 
     for id <- [981_101, 981_103],

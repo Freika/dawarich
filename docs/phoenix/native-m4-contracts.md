@@ -170,3 +170,8 @@ Connected import index/detail snapshots schedule one versioned nearest future st
 ## A/B review round 2: bounded sweep scheduling
 
 Every reservation, recurring remote cleanup and sweep successor schedules through `Uploads.SweepSchedule.enqueue!` within its existing repository transaction. A transaction-scoped advisory lock serializes the outstanding-job read/update/insert. It retains one available/scheduled/retryable successor, moves its deadline earlier when required, and cancels historical duplicate queued chains; an executing sweep may coexist with that one successor. No-debt sweeps cancel outstanding successors. Oban changeset `unique` metadata alone is not the mechanism: raw Ecto insertion is used only behind this explicit single-chain lock. Due row batches remain bounded at 100, and completed jobs are ordinary Oban history.
+
+
+## A/B review round 2: export deletion admission
+
+Native deletion resolves the owned export's actual file type, then admits and holds the effective parent producer (`exports.points` for point files, `users.export_data` for account files) before attachment/blob/delete/purge/invalidation effects. Unavailable ownership returns `{:error, :not_owned}` with the export, file and every publication footprint unchanged, including exports with no attached blob. Standalone retains the existing effective-native override. Independent raw `Exports.Delete.call` clients preserve their byte-identical Sidekiq purge handback contract; native callers never publish it.
