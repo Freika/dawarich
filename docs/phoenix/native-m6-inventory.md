@@ -370,3 +370,11 @@ Generated from the inventoried files at the head above. Counts are lines; citati
 | `app-phoenix/priv/static/js/hooks/video_studio_save.js:1` | 45 |
 
 6 files, 834 lines.
+
+## A0 disposition after controller O10 revision (2026-10-10)
+
+The controller authorized implementation against the current domain interfaces at `bdaa9aa36`, using one thin adapter per dependency until accepted m4/m5 integration. Baseline commit `bcde4e614` supplies the measurable query, native asset and G44 evidence above. A0 is complete under this revised disposition; it establishes no unmeasured resource or performance budget.
+
+Deferred to the dependency-adapter switch task: accepted m4/m5 identities; populated unlocked public/family and DST data variants; decoded/transferred per-route and studio graphs; host-owned map/listener/worker/rAF/object URL counts; repeated-navigation post-GC memory; controller-approved eager wrapper and preview concurrency limits. Final production/resource acceptance remains X4/controller X5. Existing hybrid browser journeys are baseline evidence only.
+
+The dependency-adapter ledger will live in `docs/phoenix/native-m6-contracts.md`; the assigned plan records its corresponding dependency tasks in a Deviations section. No hybrid UI fallback or duplicate domain implementation is authorized.
