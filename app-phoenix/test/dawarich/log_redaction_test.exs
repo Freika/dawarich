@@ -60,4 +60,19 @@ defmodule Dawarich.LogRedactionTest do
     refute log =~ @password
     refute log =~ @key
   end
+
+  test "a lazily built string message keeps its text and only drops secret query values" do
+    require Logger
+
+    log =
+      capture_log(fn ->
+        Logger.error(fn -> JSON.encode_to_iodata!(%{event: "job:stop", id: "synthetic-id-7"}) end)
+        Logger.error(fn -> ["visit ", ["user=7&password=", @password]] end)
+        Logger.flush()
+      end)
+
+    assert log =~ ~s("id":"synthetic-id-7")
+    assert log =~ "user=7"
+    refute log =~ @password
+  end
 end

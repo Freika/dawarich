@@ -10,6 +10,9 @@ defmodule Dawarich.LogRedaction do
 
   def filter(%{msg: {:report, report}} = event, _), do: %{event | msg: {:report, scrub(report)}}
 
+  def filter(%{msg: {:string, chardata}} = event, _),
+    do: %{event | msg: {:string, scrub_chardata(chardata)}}
+
   def filter(%{msg: {format, args}} = event, _) when is_list(args),
     do: %{event | msg: {format, scrub(args)}}
 
@@ -48,6 +51,12 @@ defmodule Dawarich.LogRedaction do
 
   defp scrub_pair(key, value, depth),
     do: if(sensitive?(key), do: @filtered, else: scrub(value, depth - 1))
+
+  defp scrub_chardata(chardata) do
+    chardata |> IO.chardata_to_string() |> scrub_binary()
+  rescue
+    _ -> @filtered
+  end
 
   defp scrub_binary(binary) do
     if String.contains?(binary, "=") and String.printable?(binary) and
