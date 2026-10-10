@@ -4,13 +4,16 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
   @moduletag :tmp_dir
 
-  defp build!(dir) do
+  defp build!(dir, extra \\ []) do
     assert 0 ==
-             Esbuild.install_and_run(:native, [
-               "--outdir=#{dir}",
-               "--metafile=#{Path.join(dir, "meta.json")}",
-               "--log-level=warning"
-             ])
+             Esbuild.install_and_run(
+               :native,
+               [
+                 "--outdir=#{dir}",
+                 "--metafile=#{Path.join(dir, "meta.json")}",
+                 "--log-level=warning"
+               ] ++ extra
+             )
 
     dir
   end
@@ -71,6 +74,74 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
       assert bytes > 0
     end
+  end
+
+  test "production closures measure actual emitted bytes and keep export codecs lazy", %{
+    tmp_dir: dir
+  } do
+    build!(dir, ["--minify"])
+
+    outputs =
+      Path.join(dir, "meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    chunks =
+      Map.new(outputs, fn {path, output} ->
+        data = File.read!(Path.join(dir, Path.basename(path)))
+        assert byte_size(data) == output["bytes"]
+        refute data =~ "// js/"
+        {path, %{raw: byte_size(data), gzip: byte_size(:zlib.gzip(data))}}
+      end)
+
+    entry = fn input ->
+      {path, _} = Enum.find(outputs, fn {_, output} -> Map.has_key?(output["inputs"], input) end)
+      path
+    end
+
+    roots = %{
+      app:
+        Enum.find_value(outputs, fn {path, _} -> if Path.basename(path) == "app.js", do: path end),
+      map: entry.("js/map/runtime/host.js"),
+      poster: entry.("js/poster/runtime.js"),
+      video: entry.("js/video/studio.js")
+    }
+
+    assert length(Enum.uniq(Map.values(roots))) == 4
+
+    closure_inputs = fn root ->
+      for path <- eager(outputs, [root], MapSet.new()),
+          input <- Map.keys(outputs[path]["inputs"]),
+          do: input
+    end
+
+    refute Enum.any?(
+             closure_inputs.(roots.app),
+             &Regex.match?(~r{js/(map|poster|video)/|h3-js|fflate|mp4-muxer}, &1)
+           )
+
+    refute Enum.any?(
+             closure_inputs.(roots.map),
+             &Regex.match?(~r{js/poster/(runtime|export)|js/video/|h3-js|fflate|mp4-muxer}, &1)
+           )
+
+    refute Enum.any?(closure_inputs.(roots.poster), &String.contains?(&1, "mp4-muxer"))
+    refute Enum.any?(closure_inputs.(roots.video), &String.contains?(&1, "fflate"))
+    graph = inputs(dir)
+    assert Enum.any?(graph, &String.contains?(&1, "fflate"))
+    assert Enum.any?(graph, &String.contains?(&1, "mp4-muxer"))
+
+    sizes =
+      Map.new(roots, fn {name, root} ->
+        files = eager(outputs, [root], MapSet.new())
+
+        {name,
+         %{
+           raw: Enum.sum(for path <- files, do: chunks[path].raw),
+           gzip: Enum.sum(for path <- files, do: chunks[path].gzip),
+           chunks: MapSet.size(files)
+         }}
+      end)
+
+    IO.puts("NATIVE_BUILD_BYTES " <> Jason.encode!(sizes))
   end
 
   test "emoji-mart is a separate lazily loaded chunk", %{tmp_dir: dir} do
@@ -225,6 +296,69 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
     assert conn.status == 200
     assert hd(Plug.Conn.get_resp_header(conn, "content-type")) =~ "javascript"
+  end
+
+  test "production static map workers styles poster fonts and RTL assets resolve with their MIME types",
+       %{tmp_dir: dir} do
+    source_root = Dawarich.RailsRoot.root()
+    root = Path.join(dir, "packaged")
+    public = Path.join(root, "public")
+    File.mkdir_p!(public)
+
+    for directory <- ~w(maplibre maps_maplibre poster_themes) do
+      File.cp_r!(Path.join(source_root, "public/" <> directory), Path.join(public, directory))
+    end
+
+    font_paths =
+      for family <- DawarichWeb.PosterFonts.families(),
+          weight <- ~w(400 700),
+          do: "poster/#{family}-#{weight}.woff2"
+
+    Dawarich.Build.Sprockets.Writer.write!(
+      root,
+      Dawarich.Build.Sprockets.Compiler.compile(
+        source_root,
+        font_paths ++ ["mapbox-gl-rtl-text.js"]
+      ),
+      Dawarich.Build.Sprockets.Writer.now()
+    )
+
+    paths =
+      for name <- ~w(maplibre-gl.mjs maplibre-gl-shared.mjs maplibre-gl-worker.mjs),
+          do: {"/maplibre/6.4.1/" <> name, "text/javascript"}
+
+    paths =
+      paths ++
+        [
+          {"/maps_maplibre/styles/light.json", "application/json"},
+          {"/maps_maplibre/styles/dark.json", "application/json"}
+        ] ++
+        Enum.map(font_paths, &{DawarichWeb.Assets.stylesheet_path(root, &1), "font/woff2"}) ++
+        [{DawarichWeb.Assets.stylesheet_path(root, "mapbox-gl-rtl-text.js"), "text/javascript"}]
+
+    for {path, type} <- paths do
+      response =
+        conn(:get, path)
+        |> then(&%{&1 | req_headers: [{"host", "www.example.com"}]})
+        |> DawarichWeb.PublicFiles.call(
+          root: public,
+          env: %{"RAILS_ENV" => "production", "APPLICATION_HOSTS" => "www.example.com"}
+        )
+
+      assert response.status == 200, path
+      assert Plug.Conn.get_resp_header(response, "content-type") == [type]
+      assert response.halted
+      assert File.stat!(Path.join(public, path)).size > 0
+    end
+
+    for file <- ~w(maplibre-gl.mjs maplibre-gl-worker.mjs) do
+      source = File.read!(Path.join(public, "maplibre/6.4.1/" <> file))
+      assert source =~ "./maplibre-gl-shared.mjs"
+    end
+
+    style = File.read!(Path.join(public, "maps_maplibre/styles/light.json")) |> Jason.decode!()
+    assert URI.parse(style["glyphs"]).scheme == "https"
+    assert URI.parse(style["sprite"]).scheme == "https"
   end
 
   test "native_path points at the native output through the endpoint's static paths" do
