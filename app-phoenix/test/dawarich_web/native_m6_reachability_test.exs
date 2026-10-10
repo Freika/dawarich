@@ -19,4 +19,25 @@ defmodule DawarichWeb.NativeM6ReachabilityTest do
       refute Code.ensure_loaded?(legacy)
     end
   end
+
+  test "consumed Trip children cannot restore retired presentation controls" do
+    for legacy <- [
+          DawarichWeb.TripMapPanel,
+          DawarichWeb.TripItinerary,
+          DawarichWeb.TripItineraryDay
+        ],
+        do: refute(Code.ensure_loaded?(legacy))
+
+    Code.ensure_loaded!(DawarichWeb.TripParts)
+    Code.ensure_loaded!(DawarichWeb.TripDaysList)
+
+    for name <- [:trip_header, :trip_toolbar],
+        do: refute(function_exported?(DawarichWeb.TripParts, name, 1))
+
+    refute function_exported?(DawarichWeb.TripDaysList, :trip_days, 1)
+    assert function_exported?(DawarichWeb.TripParts, :countries, 1)
+    assert function_exported?(DawarichWeb.TripParts, :recalculate_button, 1)
+    assert function_exported?(DawarichWeb.TripDaysList, :note, 1)
+    assert function_exported?(DawarichWeb.TripDaysList, :empty_note, 1)
+  end
 end
