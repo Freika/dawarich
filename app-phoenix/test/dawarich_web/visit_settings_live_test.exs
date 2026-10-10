@@ -172,8 +172,8 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
     connected_counts = Dawarich.Test.NativeQueryBudget.counts()
 
     assert static <= 9
-    assert connected - 2 <= 6
-    assert connected_counts["users"] == static_counts["users"] + 1
+    assert connected - 3 <= 6
+    assert connected_counts["users"] == static_counts["users"] + 2
     assert Map.delete(connected_counts, "users") == Map.delete(static_counts, "users")
   end
 

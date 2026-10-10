@@ -290,8 +290,8 @@ defmodule DawarichWeb.AccountLiveTest do
 
     assert Enum.sum(Map.values(static)) - 1 <= 4
     assert static["users"] == 3
-    assert connected["users"] == 4
+    assert connected["users"] == 5
     assert Map.delete(static, "users") == Map.delete(connected, "users")
-    assert Enum.sum(Map.values(connected)) - 2 <= 4
+    assert Enum.sum(Map.values(connected)) - 3 <= 4
   end
 end

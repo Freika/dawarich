@@ -53,6 +53,26 @@ defmodule Dawarich.Build.NativeAssetsTest do
     refute Enum.any?(inputs, &String.contains?(&1, "app/javascript"))
   end
 
+  test "native family sharing and public eager and lazy modules exclude Rails transports", %{
+    tmp_dir: dir
+  } do
+    inputs = dir |> build!() |> inputs()
+
+    for hook <-
+          ~w(family_map.js family_confirm.js sharing_controls.js shared_map.js shared_replay.js clipboard.js),
+        do: assert(Enum.any?(inputs, &String.ends_with?(&1, "hooks/" <> hook)))
+
+    refute Enum.any?(
+             inputs,
+             &Regex.match?(
+               ~r/@hotwired|stimulus|turbo|rails_bridge|actioncable|activestorage/i,
+               &1
+             )
+           )
+
+    refute Enum.any?(inputs, &String.contains?(&1, "app/javascript"))
+  end
+
   test "emoji-mart is a separate lazily loaded chunk", %{tmp_dir: dir} do
     build!(dir)
     app = File.read!(Path.join(dir, "app.js"))
@@ -93,6 +113,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
     assert demo_bytes in 1..2048
   end
 
+  @tag :native_resource_measurement
   test "archive preparation and ZIP dependencies stay lazy within the shared gzip budget", %{
     tmp_dir: dir
   } do

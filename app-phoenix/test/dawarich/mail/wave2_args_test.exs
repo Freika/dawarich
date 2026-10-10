@@ -98,7 +98,7 @@ defmodule Dawarich.Mail.Wave2ArgsTest do
     for {type, key} <- @rails_dedupe_keys do
       worker = Map.fetch!(@workers, type)
       {:ok, args} = worker.args_from_command(1, Map.fetch!(payloads, type))
-      assert worker.provider_key(args) == key, type
+      assert apply(worker, :provider_key, [args]) == key, type
     end
   end
 end

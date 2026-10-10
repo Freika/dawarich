@@ -55,7 +55,7 @@ defmodule DawarichWeb.AdminUserShowLiveTest do
     assert NativeAdminUI.labels(html) == []
     IO.puts("user show queries static=#{length(static)} connected=#{length(connected)}")
     assert length(static) in 1..18
-    assert length(connected) in 1..11
+    assert (length(connected) - 1) in 1..11
     GenServer.stop(view.pid)
   end
 

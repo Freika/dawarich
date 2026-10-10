@@ -166,14 +166,26 @@ defmodule DawarichWeb.TripPlanHostsTest do
         end
 
       golden = File.read!("test/fixtures/trips/remaining/pages/#{entry["name"]}.html")
-      actual = ParityHTML.normalize(fragment(html, selector))
-      expected = ParityHTML.normalize(fragment(golden, selector))
+
+      actual =
+        ParityHTML.normalize(fragment(Dawarich.Test.NativeM4Corpus.prepare(html), selector))
+
+      expected =
+        ParityHTML.normalize(fragment(Dawarich.Test.NativeM4Corpus.prepare(golden), selector))
 
       assert actual == expected,
              entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
 
-      actual_attrs = MapStimulus.attributes(MapStimulus.prepare(html), [selector])
-      expected_attrs = MapStimulus.attributes(MapStimulus.prepare(golden), [selector])
+      actual_attrs =
+        MapStimulus.attributes(Dawarich.Test.NativeM4Corpus.prepare(MapStimulus.prepare(html)), [
+          selector
+        ])
+
+      expected_attrs =
+        MapStimulus.attributes(
+          Dawarich.Test.NativeM4Corpus.prepare(MapStimulus.prepare(golden)),
+          [selector]
+        )
 
       expected_attrs =
         if selector == ".mx-auto.my-5",

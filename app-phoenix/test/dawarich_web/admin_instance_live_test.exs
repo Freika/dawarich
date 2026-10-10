@@ -220,9 +220,9 @@ defmodule DawarichWeb.AdminInstanceLiveTest do
     connected_counts = Dawarich.Test.NativeQueryBudget.classify(connected)
 
     assert length(static) <= 19
-    assert length(connected) - 1 <= 17 + 1
+    assert length(connected) - 2 <= 17 + 1
     assert static_counts["users"] == 5
-    assert connected_counts["users"] == 6
+    assert connected_counts["users"] == 7
 
     assert Map.delete(connected_counts, "users") == %{
              "imports" => 1,

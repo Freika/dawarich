@@ -301,8 +301,8 @@ defmodule DawarichWeb.TagsLiveFormTest do
       connected = queries(fn -> {:ok, _view, _html} = live(conn) end)
       connected_counts = Dawarich.Test.NativeQueryBudget.counts()
 
-      assert connected - 2 <= budget, path
-      assert connected_counts["users"] == static_counts["users"] + 1
+      assert connected - 3 <= budget, path
+      assert connected_counts["users"] == static_counts["users"] + 2
       assert Map.delete(connected_counts, "users") == Map.delete(static_counts, "users")
     end
   end

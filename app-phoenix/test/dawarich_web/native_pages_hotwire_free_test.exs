@@ -281,6 +281,126 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
              Repo.query!("SELECT count(*) FROM notifications WHERE id=84111", [], log: false).rows
   end
 
+  test "native family and sharing pages and open confirmations have accessible names without Hotwire" do
+    saved = Map.new(~w(SELF_HOSTED DAWARICH_RAILS), &{&1, System.get_env(&1)})
+    System.put_env("SELF_HOSTED", "true")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      for {key, value} <- saved,
+          do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+    end)
+
+    owner = FrameSeeds.seed_family!(FrameSeeds.load_family("owner_en"))
+    manager = FrameSeeds.seed_management!("hub_active_shared_en")
+
+    Repo.query!("UPDATE users SET active_until='3026-01-01' WHERE id=$1", [manager.id],
+      log: false
+    )
+
+    Repo.query!("UPDATE family_location_requests SET expires_at='3026-01-01' WHERE status=0", [],
+      log: false
+    )
+
+    FrameSeeds.track!(manager.id, 99701, %{
+      start_at: ~N[2026-10-03 08:00:00],
+      end_at: ~N[2026-10-03 09:00:00],
+      dominant_mode: 1
+    })
+
+    FrameSeeds.stat!(manager.id, 2026, 10)
+
+    Repo.query!(
+      "INSERT INTO digests(user_id,year,period_type,created_at,updated_at) VALUES($1,2026,1,NOW(),NOW())",
+      [manager.id],
+      log: false
+    )
+
+    paths = [
+      {owner.id, "/family"},
+      {owner.id, "/family/edit"},
+      {owner.id, "/family/invitations"},
+      {90103, "/family/new"},
+      {90102, "/family/location_requests/94001"},
+      {manager.id, "/share_links/hub"},
+      {manager.id, "/share_links/hub?tab=shared"},
+      {manager.id, "/share_links/live/new"},
+      {manager.id, "/share_links/timeline/new"},
+      {manager.id, "/trips/99101/share_link/new"},
+      {manager.id, "/tracks/99701/share_link/new"},
+      {manager.id, "/stats/2026/10/sharing"},
+      {manager.id, "/digests/2026/sharing"},
+      {manager.id, "/achievements/country_fr/sharing"}
+    ]
+
+    routes =
+      DawarichWeb.Router.__routes__()
+      |> Enum.filter(fn
+        %{metadata: %{phoenix_live_view: {_, _, _, %{name: name}}}} ->
+          name in [:family_pages, :native_sharing]
+
+        _ ->
+          false
+      end)
+
+    assert length(routes) == 13
+
+    for locale <- ~w(en de), {id, path} <- paths do
+      uri = path <> if(String.contains?(path, "?"), do: "&", else: "?") <> "locale=" <> locale
+      conn = get(RailsUser.signed_in(id) |> RailsUser.connecting_as(id), uri)
+      {:ok, view, connected} = live(conn)
+      for html <- [html_response(conn, 200), connected], do: assert_native_controls(html)
+
+      events =
+        case path do
+          "/family" ->
+            {"family_prepare_confirm", %{"action" => "remove_member", "id" => "92002"},
+             "family_cancel_confirm", "family-confirm"}
+
+          "/share_links/live/new" ->
+            {"sharing_prepare", %{"action" => "revoke"}, "sharing_cancel", "sharing-confirm"}
+
+          _ ->
+            nil
+        end
+
+      if events do
+        {prepare, attrs, cancel, dialog} = events
+        render_hook(view, prepare, attrs)
+        assert has_element?(view, "##{dialog}[data-pending=true]")
+        html = Dawarich.Test.NativeAdminUI.html(view)
+        assert_native_controls(html)
+
+        named =
+          html
+          |> LazyHTML.from_document()
+          |> LazyHTML.query("##{dialog}")
+          |> LazyHTML.attribute("aria-labelledby")
+
+        assert [title] = named
+
+        assert html
+               |> LazyHTML.from_document()
+               |> LazyHTML.query("##{title}")
+               |> LazyHTML.text()
+               |> String.trim() != ""
+
+        render_hook(view, cancel, %{})
+        refute has_element?(view, "##{dialog}[data-pending=true]")
+      end
+
+      GenServer.stop(view.pid)
+    end
+
+    assert [[1]] =
+             Repo.query!("SELECT count(*) FROM family_memberships WHERE id=92002", [], log: false).rows
+
+    assert [[7]] =
+             Repo.query!("SELECT count(*) FROM shared_links WHERE user_id=$1", [manager.id],
+               log: false
+             ).rows
+  end
+
   test "LiveView event telemetry, which carries raw form params, reaches only LiveView's own logger" do
     for prefix <- [
           [:phoenix, :live_view, :handle_event],

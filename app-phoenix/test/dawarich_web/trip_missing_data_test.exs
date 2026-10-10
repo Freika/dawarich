@@ -222,16 +222,23 @@ defmodule DawarichWeb.TripMissingDataTest do
         })
 
       golden = File.read!("test/fixtures/trips/remaining/pages/#{entry["name"]}.html")
-      actual = ParityHTML.normalize(shell(html))
-      expected = ParityHTML.normalize(shell(golden))
+      actual = ParityHTML.normalize(shell(Dawarich.Test.NativeM4Corpus.prepare(html)))
+      expected = ParityHTML.normalize(shell(Dawarich.Test.NativeM4Corpus.prepare(golden)))
 
       assert actual == expected,
              entry["name"] <> ": " <> ParityHTML.first_difference(actual, expected)
 
-      attributes = html |> MapStimulus.prepare() |> MapStimulus.attributes(["#trip-shell"])
+      attributes =
+        html
+        |> MapStimulus.prepare()
+        |> Dawarich.Test.NativeM4Corpus.prepare()
+        |> MapStimulus.attributes(["#trip-shell"])
 
       expected_attributes =
-        golden |> MapStimulus.prepare() |> MapStimulus.attributes(["#trip-shell"])
+        golden
+        |> MapStimulus.prepare()
+        |> Dawarich.Test.NativeM4Corpus.prepare()
+        |> MapStimulus.attributes(["#trip-shell"])
 
       assert attributes == expected_attributes,
              inspect(

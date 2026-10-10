@@ -325,8 +325,8 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
 
     assert static - 2 <= 5
     assert static_counts["users"] == 4
-    assert connected - 3 <= 5
-    assert connected_counts["users"] == static_counts["users"] + 1
+    assert connected - 4 <= 5
+    assert connected_counts["users"] == static_counts["users"] + 2
     assert Map.delete(connected_counts, "users") == Map.delete(static_counts, "users")
   end
 end

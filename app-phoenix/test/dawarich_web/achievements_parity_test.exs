@@ -62,7 +62,12 @@ defmodule DawarichWeb.AchievementsParityTest do
           )
 
       html = RailsUser.signed_in(user_id) |> get(fixture["path"]) |> html_response(200)
-      rails = File.read!(Path.join(@root, fixture["name"] <> ".html"))
+
+      rails =
+        File.read!(Path.join(@root, fixture["name"] <> ".html"))
+        |> Dawarich.Test.NativeM4Corpus.prepare()
+
+      html = Dawarich.Test.NativeM4Corpus.prepare(html)
       phoenix = ParityHTML.fragment(html, ".ach-page")
       expected = ParityHTML.normalize(rails)
 

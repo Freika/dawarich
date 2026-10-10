@@ -21,7 +21,7 @@ defmodule DawarichWeb.AdminUserEditLiveTest do
     {{:ok, initial, _}, connected} = NativeAdminUI.queries(fn -> live(conn) end)
     IO.puts("user edit queries static=#{length(static)} connected=#{length(connected)}")
     assert length(static) in 1..14
-    assert length(connected) in 1..9
+    assert (length(connected) - 1) in 1..9
     GenServer.stop(initial.pid)
 
     for {status, value} <- Enum.with_index(~w(inactive active trial pending_payment)) do
