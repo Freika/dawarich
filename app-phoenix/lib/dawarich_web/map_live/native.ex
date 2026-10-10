@@ -25,6 +25,9 @@ defmodule DawarichWeb.MapLive.Native do
 
     case Dawarich.Maps.page(socket.assigns.current_scope, params, opts) do
       {:ok, page} ->
+        previous = socket.assigns[:map_revision]
+        old_panel = (socket.assigns[:map_url] || %{})["panel"]
+
         socket =
           socket
           |> assign(page: page, params: params)
@@ -38,7 +41,15 @@ defmodule DawarichWeb.MapLive.Native do
             |> Map.new(fn {key, value} -> {Atom.to_string(key), value} end)
         }
 
-        {:noreply, assign(socket, :map_config, config)}
+        socket = assign(socket, :map_config, config)
+
+        socket =
+          if connected?(socket) and params["panel"] == "timeline" and
+               (previous != socket.assigns.map_revision or old_panel != "timeline"),
+             do: DawarichWeb.MapLive.Timeline.refresh(socket, params),
+             else: socket
+
+        {:noreply, socket}
 
       {:error, reason} ->
         {:noreply, DawarichWeb.MapLiveAuth.refuse(socket, reason)}
@@ -60,6 +71,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event(event, _, socket) when event in ~w(map:ready map:failed),
     do: {:noreply, socket}
 
+  def handle_async({:timeline, _} = name, result, socket),
+    do: DawarichWeb.MapLive.Timeline.handle_async(name, result, socket)
+
   def render(assigns) do
     ~H"""
     <div :if={@page} id="native-map-page" class="relative w-full min-w-0 h-[100dvh] flex flex-col">
@@ -73,6 +87,13 @@ defmodule DawarichWeb.MapLive.Native do
         "javascript.areas.create_new",
         %{}
       )}</button>
+      <section
+        :if={@map_url["panel"] == "timeline"}
+        id="native-map-panel"
+        class="absolute left-0 top-40 bottom-0 z-10 overflow-auto w-96 max-w-full min-w-0 bg-base-100 p-3"
+      >
+        <DawarichWeb.NativeTimelineFeed.feed timeline={assigns[:timeline]} locale={@locale} />
+      </section>
       <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
       <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
       <div class="relative flex-1 min-h-0 min-w-0">

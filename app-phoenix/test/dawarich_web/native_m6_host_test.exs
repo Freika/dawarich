@@ -93,6 +93,25 @@ defmodule DawarichWeb.NativeM6HostTest do
     refute has_element?(view, "#native-segment-drawer")
   end
 
+  test "native production host loads and refreshes only the open timeline", %{id: id} do
+    track = id * 10
+
+    Dawarich.Test.FrameSeeds.track!(id, track, %{
+      start_at: ~N[2026-03-30 09:00:00],
+      end_at: ~N[2026-03-30 09:10:00],
+      dominant_mode: 4
+    })
+
+    {:ok, view, _} = open(id, @second <> "&panel=timeline")
+    render_async(view, 5000)
+    assert has_element?(view, "#native-timeline-feed [data-track-id='#{track}']")
+    render_patch(view, "/map/v2?start_at=2026-03-31T00:00&end_at=2026-03-31T23:59&panel=timeline")
+    render_async(view, 5000)
+    refute has_element?(view, "#native-timeline-feed [data-track-id='#{track}']")
+    render_hook(view, "map:panel", %{"panel" => ""})
+    refute has_element?(view, "#native-timeline-feed")
+  end
+
   defp config(view) do
     view
     |> render()

@@ -3,6 +3,7 @@ import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { createTileFreshness } from "../data/tile_freshness.js"
 import { createBaseLayers } from "../layers/tile_layers.js"
+import { createHostTimeline } from "../ui/host_timeline.js"
 import { createHostTools } from "../ui/host_tools.js"
 import { createRangeRequests } from "../ui/navigation.js"
 import { createMapRuntime } from "./create_map.js"
@@ -21,6 +22,7 @@ export function mountHost({
   const requests = createRangeRequests({ pushEvent })
   const freshness = createTileFreshness()
   let layers
+  let timeline
   let density
   let photos
   let photoKey
@@ -36,6 +38,7 @@ export function mountHost({
     attach:
       attach ??
       (({ map, config, lifetime }) => {
+        timeline = createHostTimeline({ map, root: element.closest?.("#native-map-page"), reader, lifetime })
         createHostTools({ map, root: element.closest?.("#native-map-page"), pushEvent, lifetime })
         layers = createBaseLayers({
           map,
@@ -172,6 +175,7 @@ export function mountHost({
   Object.defineProperty(owner, "entityLayers", { get: () => entities })
   const update = owner.update
   owner.update = (config) => {
+    timeline?.config(config)
     const updating = update.call(owner, config)
     requests.config(config)
     return updating

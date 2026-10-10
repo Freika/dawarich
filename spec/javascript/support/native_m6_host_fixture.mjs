@@ -11,7 +11,8 @@ export class Element {
 
 export function fixture(config = {}) {
   const nodes = new Map()
-  const root = { querySelector: (selector) => nodes.get(selector), addEventListener() {}, removeEventListener() {} }
+  const root = new Element()
+  root.querySelector = (selector) => nodes.get(selector)
   const element = new Element()
   const range = { startAt: "2026-03-29T00:00", endAt: "2026-03-29T23:59", timezone: "Europe/Berlin" }
   element.dataset.mapConfig = JSON.stringify({ range, ...config })
@@ -32,7 +33,7 @@ export function fixture(config = {}) {
     loaded: () => true, getCanvas: () => ({ style: {} }), remove() {},
     getBounds: () => ({ getSouth: () => 51, getNorth: () => 53, getWest: () => 12, getEast: () => 14 }),
   }
-  const reader = { reset() {}, destroy() {}, async pages(resource, params) { reads.push({ resource, params }); return [] } }
+  const reader = { async read(resource, params) { reads.push({ resource, params }); return { data: { type: "Feature", geometry: { type: "LineString", coordinates: [[12, 51], [14, 53]] }, properties: {} } } }, reset() {}, destroy() {}, async pages(resource, params) { reads.push({ resource, params }); return [] } }
   const owner = mountHost({ element, reader, pushEvent: (event, payload, reply) => pushed.push({ event, payload, reply }), loadStyle: async () => ({}), loadLibrary: async () => ({ Map: class { constructor() { return map } } }) })
   return { owner, element, root, nodes, map, sources, layers, listeners, pushed, reads }
 }
