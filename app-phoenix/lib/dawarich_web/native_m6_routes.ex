@@ -18,26 +18,59 @@ defmodule DawarichWeb.NativeM6Routes do
         end
       end
 
+      pipeline :native_m6_browser do
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug :fetch_query_params
+        plug DawarichWeb.NativeM6Envelope
+        plug :accepts, ["html"]
+        plug DawarichWeb.RailsAuth
+        plug :phoenix_session
+        plug :fetch_session
+        plug :fetch_live_flash
+        plug DawarichWeb.Locale
+        plug DawarichWeb.LayoutAssigns
+        plug :put_root_layout, html: {DawarichWeb.Layouts, :native_root}
+        plug :protect_from_forgery
+        plug DawarichWeb.RailsHeaders
+      end
+
       scope "/" do
-        pipe_through :browser
+        pipe_through :native_m6_browser
+
+        for path <- ~w(/map /map/v2), method <- [:post, :put, :patch, :delete] do
+          match method, path, DawarichWeb.NativeM6Envelope, [], metadata: %{retired: true}
+        end
+      end
+
+      scope "/" do
+        pipe_through :native_m6_browser
 
         live_session :native_m6_public,
           session: {DawarichWeb.PublicMapAuth, :live_session, []},
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: false do
-          live "/s/:id", DawarichWeb.PublicMapLive, :show, container: {:div, class: "contents"}
+          live "/s/:id", DawarichWeb.PublicMapLive, :show,
+            container: {:div, class: "contents"},
+            metadata: %{retired: true}
         end
       end
 
       scope "/" do
-        pipe_through [:browser, :rails_user]
+        pipe_through [:native_m6_browser, :rails_user]
 
         live_session :native_m6,
           session: {DawarichWeb.MapLiveAuth, :live_session, []},
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: false do
-          live "/map", DawarichWeb.MapLive.Native, :index, container: {:div, class: "contents"}
-          live "/map/v2", DawarichWeb.MapLive.Native, :index, container: {:div, class: "contents"}
+          live "/map", DawarichWeb.MapLive.Native, :index,
+            container: {:div, class: "contents"},
+            metadata: %{retired: true}
+
+          live "/map/v2", DawarichWeb.MapLive.Native, :index,
+            container: {:div, class: "contents"},
+            metadata: %{retired: true}
         end
       end
     end
