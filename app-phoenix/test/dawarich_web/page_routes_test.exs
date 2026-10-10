@@ -11,8 +11,7 @@ defmodule DawarichWeb.PageRoutesTest do
            :rails_pages},
           {"/imports/17", DawarichWeb.ImportsLive.Show, :show, %{"id" => "17"},
            {DawarichWeb.ImportsGate, :native?}, :rails_pages},
-          {"/places", DawarichWeb.PlacesLive.Index, :index, %{},
-           {DawarichWeb.PlacesGate, :index?}, :rails_pages},
+          {"/places", DawarichWeb.PlacesLive.Index, :index, %{}, nil, :native_pages},
           {"/map/v2", DawarichWeb.MapLive, :index, %{}, nil, :rails_map}
         ] do
       route = info(path)
@@ -25,12 +24,27 @@ defmodule DawarichWeb.PageRoutesTest do
       assert opts[:container] == {:div, class: "contents"}
 
       session_module =
-        if session == :rails_pages, do: DawarichWeb.NativeAuth, else: DawarichWeb.RailsAuth
+        if session in [:rails_pages, :native_pages],
+          do: DawarichWeb.NativeAuth,
+          else: DawarichWeb.RailsAuth
 
       assert extra.session == {session_module, :live_session, []}
-      assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.LiveAuth, :default}]
+
+      assert Enum.map(extra.on_mount, & &1.id) ==
+               if(session == :native_pages,
+                 do: [{DawarichWeb.NativeAuth, :require_user}],
+                 else: [{DawarichWeb.LiveAuth, :default}]
+               )
+
       layout = if session == :rails_map, do: :map, else: :app
-      root = if session == :rails_map, do: :map_root, else: :root
+
+      root =
+        case session do
+          :rails_map -> :map_root
+          :native_pages -> :native_root
+          _ -> :root
+        end
+
       assert extra.layout == {DawarichWeb.Layouts, layout}
       assert extra.root_layout == {DawarichWeb.Layouts, root}
     end

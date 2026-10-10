@@ -1,6 +1,7 @@
 defmodule DawarichWeb.SettingsLive.Visits do
   @moduledoc false
   use DawarichWeb, :live_view
+  on_mount {DawarichWeb.AccountSettings, :default}
   import DawarichWeb.CoreComponents, only: [input: 1]
   import DawarichWeb.ListParts, only: [page_header: 1]
   import DawarichWeb.SettingsParts, only: [navigation: 1]
@@ -34,12 +35,16 @@ defmodule DawarichWeb.SettingsLive.Visits do
     do: {:noreply, assign(socket, :form, to_form(params, as: :settings))}
 
   def handle_event("save", %{"settings" => params}, socket) do
-    {:ok, _} = Settings.update_visits(socket.assigns.current_scope, params)
+    case Settings.update_visits(socket.assigns.current_scope, params) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> load_page(nil)
+         |> put_flash(:notice, flash(socket, "settings.visits.visit_detection_settings_updated"))}
 
-    {:noreply,
-     socket
-     |> load_page(nil)
-     |> put_flash(:notice, flash(socket, "settings.visits.visit_detection_settings_updated"))}
+      {:error, _} ->
+        {:noreply, DawarichWeb.AccountSettings.refuse(socket)}
+    end
   end
 
   def handle_event("redetect", _params, socket) do
@@ -66,6 +71,9 @@ defmodule DawarichWeb.SettingsLive.Visits do
            :alert,
            flash(socket, "visits.redetections.re_detect_ran_recently_try_again_in_an_hour")
          )}
+
+      {:error, _} ->
+        {:noreply, DawarichWeb.AccountSettings.refuse(socket)}
     end
   end
 
@@ -80,9 +88,15 @@ defmodule DawarichWeb.SettingsLive.Visits do
         socket.assigns.self_hosted
       )
 
-    socket
-    |> assign(page)
-    |> assign(:form, form || to_form(values(page.policy), as: :settings))
+    case page do
+      {:error, _} ->
+        DawarichWeb.AccountSettings.refuse(socket)
+
+      %{} ->
+        socket
+        |> assign(page)
+        |> assign(:form, form || to_form(values(page.policy), as: :settings))
+    end
   end
 
   defp values(policy),

@@ -14,6 +14,15 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
     on_exit(fn -> Application.put_env(:dawarich, :rails_upstream, nil) end)
@@ -43,15 +52,13 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
       "GET #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\n" <>
         Enum.map_join(headers, &"#{elem(&1, 0)}: #{elem(&1, 1)}\r\n") <> "\r\n"
 
-  defp answered_by_puma(port, upstream, request) do
+  defp native(port, request) do
     client = connect(port)
     send_raw(client, request)
-    puma = accept(upstream)
-    {head, _rest} = read_head(puma)
-    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-    assert {200, _headers, "puma"} = read_response(client)
-    {request_line(head), header(head, "cookie")}
+    read_response(client)
   end
+
+  defp no_upstream(ctx), do: assert(:gen_tcp.accept(ctx.upstream.listen, 0) == {:error, :timeout})
 
   test "Phoenix answers the list for a signed-in user", ctx do
     client = connect(serve())
@@ -60,52 +67,50 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
     assert body =~ "data-phx-main"
   end
 
-  test "a non-string page goes to Puma with the Rails cookie", ctx do
-    assert {line, [cookie]} =
-             answered_by_puma(serve(), ctx.upstream, request("/places?page%5B%5D=2", ctx.cookie))
-
-    assert line == "GET /places?page%5B%5D=2 HTTP/1.1"
-    assert "_dawarich_session=" <> _ = cookie
+  test "native nested page is refused in place without upstream", ctx do
+    assert {200, _, body} = native(serve(), request("/places?page%5B%5D=2", ctx.cookie))
+    assert body =~ "role=\"alert\""
+    no_upstream(ctx)
   end
 
-  test "a query part without = goes to Puma, whose parser reads it as nil", ctx do
+  test "native valueless scalar queries remain local", ctx do
     port = serve()
 
-    for target <- ~w(/places?page /places?view /places?page=2&view) do
-      assert {line, [_cookie]} = answered_by_puma(port, ctx.upstream, request(target, ctx.cookie))
-      assert line == "GET #{target} HTTP/1.1"
-    end
+    for target <- ~w(/places?page /places?view /places?page=2&view),
+        do: assert(match?({200, _, _}, native(port, request(target, ctx.cookie))))
+
+    no_upstream(ctx)
   end
 
-  test "an account whose zone PostgreSQL lacks goes to Puma", ctx do
+  test "native unsupported timezone renders a local alert", ctx do
     user!(8422, %{"timezone" => "Mars/Phobos"})
     S.place!(8422, 842_201, "Mars")
-
-    assert {"GET /places HTTP/1.1", [_cookie]} =
-             answered_by_puma(serve(), ctx.upstream, request("/places", cookie(8422)))
+    assert {200, _, body} = native(serve(), request("/places", cookie(8422)))
+    assert body =~ "role=\"alert\""
+    no_upstream(ctx)
   end
 
-  test "a gate that cannot read the database hands the request to Puma", ctx do
-    port = serve()
-    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :manual)
+  test "unavailable original actor admission stays typed and local", ctx do
+    actor = %Dawarich.Accounts.User{id: Integer.pow(10, 100), encrypted_password: "synthetic"}
 
-    assert {"GET /places HTTP/1.1", [_cookie]} =
-             answered_by_puma(port, ctx.upstream, request("/places", ctx.cookie))
+    assert Dawarich.Places.Access.admit(Dawarich.Accounts.Scope.for_user(actor, "en")) ==
+             {:error, :unavailable}
+
+    no_upstream(ctx)
   end
 
-  test "the list's formats go to Puma", ctx do
+  test "native list formats and XHR remain locally owned", ctx do
     port = serve()
 
-    for {target, headers} <- [
-          {"/places.json", []},
-          {"/places?format=json", []},
-          {"/places", [{"X-Requested-With", "XMLHttpRequest"}]}
+    for {target, headers, status} <- [
+          {"/places.json", [], 404},
+          {"/places?format=json", [], 406},
+          {"/places", [{"X-Requested-With", "XMLHttpRequest"}], 200}
         ] do
-      assert {line, [_cookie]} =
-               answered_by_puma(port, ctx.upstream, request(target, ctx.cookie, headers))
-
-      assert line == "GET #{target} HTTP/1.1"
+      assert {^status, _, _} = native(port, request(target, ctx.cookie, headers))
     end
+
+    no_upstream(ctx)
   end
 
   @frame [{"Accept", "text/html, application/xhtml+xml"}, {"Turbo-Frame", "place-drawer"}]
@@ -119,130 +124,83 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
     assert body =~ ~r{\A<turbo-frame id="place-drawer">}
   end
 
-  test "an unframed request goes to Puma", ctx do
-    assert {"GET /places/842101 HTTP/1.1", [_cookie]} =
-             answered_by_puma(
+  test "retained member client header refusal stays local", ctx do
+    assert {500, _, _} =
+             native(
                serve(),
-               ctx.upstream,
                request("/places/842101", ctx.cookie, [hd(@frame), {"X-Dawarich-Client", "ios"}])
              )
+
+    no_upstream(ctx)
   end
 
-  test "a second frame name or a repeated header goes to Puma", ctx do
+  test "unknown or repeated member frame headers never open a native dialog", ctx do
     port = serve()
-    accept = hd(@frame)
 
-    for headers <- [
-          [accept, {"Turbo-Frame", "other"}],
-          [accept, {"Turbo-Frame", "place-drawer"}, {"Turbo-Frame", "other"}]
+    for {headers, expected} <- [
+          {[hd(@frame), {"Turbo-Frame", "other"}], 302},
+          {[hd(@frame), {"Turbo-Frame", "place-drawer"}, {"Turbo-Frame", "other"}], 500}
         ] do
-      assert {"GET /places/842101 HTTP/1.1", [_cookie]} =
-               answered_by_puma(
-                 port,
-                 ctx.upstream,
-                 request("/places/842101", ctx.cookie, headers)
-               )
+      assert {status, _, body} = native(port, request("/places/842101", ctx.cookie, headers))
+      assert status == expected
+      refute body =~ "data-native-places"
     end
+
+    no_upstream(ctx)
   end
 
-  test "a query string or X-Dawarich-Client goes to Puma", ctx do
+  test "member extra scalar query remains standalone map-compatible", ctx do
     port = serve()
 
     for {target, headers} <- [
           {"/places/842101?locale=de", @frame},
-          {"/places/842101?x=1", @frame},
-          {"/places/842101", @frame ++ [{"X-Dawarich-Client", "ios"}]}
+          {"/places/842101?x=1", @frame}
         ] do
-      assert {line, [_cookie]} =
-               answered_by_puma(port, ctx.upstream, request(target, ctx.cookie, headers))
-
-      assert line == "GET #{target} HTTP/1.1"
+      assert {200, _, body} = native(port, request(target, ctx.cookie, headers))
+      assert body =~ "place-drawer"
     end
+
+    no_upstream(ctx)
   end
 
-  test "a foreign or missing place goes to Puma before routing", ctx do
+  test "foreign and missing member frames are locally unavailable", ctx do
     user!(8423)
     S.place!(8423, 842_301, "Fremd")
-    Logger.put_module_level(DawarichWeb.Api.Body, :info)
-    on_exit(fn -> Logger.delete_module_level(DawarichWeb.Api.Body) end)
     port = serve()
 
     for target <- ~w(/places/842301 /places/842199) do
-      log =
-        capture_log(fn ->
-          assert {line, [_cookie]} =
-                   answered_by_puma(port, ctx.upstream, request(target, ctx.cookie, @frame))
-
-          assert line == "GET #{target} HTTP/1.1"
-        end)
-
-      refute log =~ "place drawer changed after the gate"
+      assert {404, _, body} = native(port, request(target, ctx.cookie, @frame))
+      refute body =~ "Fremd"
     end
+
+    no_upstream(ctx)
   end
 
-  test "a drawer that leaves after the gate is replayed under the places log tag", ctx do
-    Logger.put_module_level(DawarichWeb.Api.Body, :info)
-    on_exit(fn -> Logger.delete_module_level(DawarichWeb.Api.Body) end)
-
+  test "drawer disappearance after admission is local and is never replayed", ctx do
     conn =
       build_conn(:get, "/places/842199")
-      |> Plug.Conn.put_req_header("accept", "text/html, application/xhtml+xml")
+      |> Plug.Conn.put_req_header("accept", "text/html")
       |> Map.put(:path_params, %{"id" => "842199"})
       |> Plug.Conn.assign(:rails_session, RailsUser.session(8421))
       |> Plug.Conn.assign(:current_user, Dawarich.Accounts.get(8421))
       |> Plug.Conn.assign(:locale, "en")
 
-    puma =
-      Task.async(fn ->
-        socket = accept(ctx.upstream)
-        {head, _rest} = read_head(socket)
-        reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-        request_line(head)
-      end)
-
-    log = capture_log(fn -> assert DawarichWeb.MapFrames.call(conn, :place).status == 200 end)
-
-    assert Task.await(puma) == "GET /places/842199 HTTP/1.1"
-    assert log =~ "[places] /places/842199 handed to Rails: place drawer changed after the gate"
+    log = capture_log(fn -> assert DawarichWeb.MapFrames.call(conn, :place).status == 422 end)
+    refute log =~ "handed to Rails"
+    no_upstream(ctx)
   end
 
-  test "unsupported ids and writes go to Puma while nearby is native", ctx do
-    saved = System.get_env("PHOTON_API_HOST")
-    System.put_env("PHOTON_API_HOST", "photon.example.invalid")
-
-    on_exit(fn ->
-      if saved,
-        do: System.put_env("PHOTON_API_HOST", saved),
-        else: System.delete_env("PHOTON_API_HOST")
-    end)
-
+  test "retained ids writes and nearby are refused or answered locally", ctx do
     S.place!(8421, 1_000_000_000_000_000_001, "Lang")
     port = serve()
 
-    for target <- [
-          "/places/12abc",
-          "/places/1000000000000000001",
-          "/places/842101/edit"
-        ] do
-      assert {line, [_cookie]} =
-               answered_by_puma(port, ctx.upstream, request(target, ctx.cookie, @frame))
+    for target <- ~w(/places/12abc /places/1000000000000000001 /places/842101/edit),
+        do: assert(match?({404, _, _}, native(port, request(target, ctx.cookie, @frame))))
 
-      assert line == "GET #{target} HTTP/1.1"
-    end
+    assert {400, _, _} = native(port, request("/places/nearby?radius=0.5", ctx.cookie, @frame))
 
-    start_supervised!(Dawarich.Geocoding.FakeHttp)
-    start_supervised!(hd(Dawarich.Redis.child_specs()))
-
-    Dawarich.Geocoding.FakeHttp.stub(
-      "http://photon.example.invalid/reverse?distance_sort=true&lang=en&lat=51.34&limit=5&lon=12.37&radius=0.5",
-      200,
-      Jason.encode!(%{"type" => "FeatureCollection", "features" => []})
-    )
-
-    client = connect(port)
-    send_raw(client, request("/places/nearby?latitude=51.34&longitude=12.37", ctx.cookie, @frame))
-    assert {200, _headers, body} = read_response(client)
-    assert body =~ "No nearby places found"
+    before =
+      Dawarich.Repo.query!("SELECT id,note FROM places WHERE user_id=8421 ORDER BY id", []).rows
 
     body = "_method=patch&place%5Bnote%5D=x"
 
@@ -253,19 +211,17 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
           {"DELETE", "/places/842101"}
         ] do
       raw =
-        "#{method} #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{ctx.cookie}\r\n" <>
-          "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n" <>
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{ctx.cookie}\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n" <>
           body
 
-      client = connect(port)
-      send_raw(client, raw)
-      puma = accept(ctx.upstream)
-      {head, rest} = read_head(puma)
-      assert request_line(head) == "#{method} #{target} HTTP/1.1"
-      assert read_at_least(puma, rest, byte_size(body)) == body
-      reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-      assert {200, _headers, "puma"} = read_response(client)
+      assert {status, _, _} = native(port, raw)
+      assert status in [403, 422]
     end
+
+    assert Dawarich.Repo.query!("SELECT id,note FROM places WHERE user_id=8421 ORDER BY id", []).rows ==
+             before
+
+    no_upstream(ctx)
   end
 
   test "a signed-out frame request is redirected by Phoenix" do

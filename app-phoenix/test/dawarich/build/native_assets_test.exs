@@ -104,6 +104,34 @@ defmodule Dawarich.Build.NativeAssetsTest do
     assert demo_bytes in 1..2048
   end
 
+  test "native Places imports add bounded eager JS and no map or legacy graph", %{tmp_dir: dir} do
+    build!(dir)
+
+    outputs =
+      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
+
+    inputs =
+      for path <- eager(outputs, [app], MapSet.new()),
+          {input, meta} <- outputs[path]["inputs"],
+          do: {input, meta["bytesInOutput"]}
+
+    refute Enum.any?(inputs, fn {input, _} ->
+             Regex.match?(~r/maplibre|app\/javascript|@hotwired|rails_bridge/i, input)
+           end)
+
+    bytes =
+      inputs
+      |> Enum.filter(fn {input, _} ->
+        String.contains?(input, "place_draft") or String.contains?(input, "ordinary_dialog")
+      end)
+      |> Enum.map(&elem(&1, 1))
+      |> Enum.sum()
+
+    assert bytes in 1..2048
+  end
+
   defp eager(_outputs, [], seen), do: seen
 
   defp eager(outputs, [path | rest], seen) do

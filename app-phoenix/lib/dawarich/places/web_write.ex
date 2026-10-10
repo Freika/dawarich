@@ -1,7 +1,7 @@
 defmodule Dawarich.Places.WebWrite do
   @moduledoc false
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias Dawarich.Places.WebTags
+  alias Dawarich.Places.{WebTags, NativeFence}
   @fields ~w(id name latitude longitude source note name_locked_at demo)a
   @sources %{"manual" => 0, "photon" => 1, "gpx_waypoint" => 2, "" => nil, nil => nil}
   @point "ST_SetSRID(ST_MakePoint($4::float8,$3::float8),4326)::geography"
@@ -12,6 +12,7 @@ defmodule Dawarich.Places.WebWrite do
     repo.transaction(fn ->
       with {:ok, previous} <- load(repo, action, user.id, id),
            {:ok, values} <- values(action, previous, attrs),
+           :ok <- NativeFence.check(repo, id, context),
            [] <- errors(values, context[:locale] || DawarichWeb.Locale.resolve(nil, user, %{})) do
         {:ok, save(repo, user.id, previous, values, stamp)}
       else
@@ -21,9 +22,13 @@ defmodule Dawarich.Places.WebWrite do
     end)
     |> case do
       {:ok, {:ok, saved}} ->
-        if action == :update, do: adopt(repo, saved, stamp)
-        WebTags.save(repo, action, user.id, saved, attrs, stamp)
-        {:ok, %{id: saved}}
+        if context[:native_scope] do
+          finish_native(repo, action, user, saved, attrs, stamp)
+        else
+          if action == :update, do: adopt(repo, saved, stamp)
+          WebTags.save(repo, action, user.id, saved, attrs, stamp)
+          {:ok, %{id: saved}}
+        end
 
       {:ok, result} ->
         result
@@ -31,6 +36,11 @@ defmodule Dawarich.Places.WebWrite do
       {:error, reason} ->
         {:error, reason}
     end
+  rescue
+    error ->
+      if context[:native_scope],
+        do: {:error, :uncertain_persistence},
+        else: reraise(error, __STACKTRACE__)
   end
 
   defp load(_repo, :create, _user, _id), do: {:ok, nil}
@@ -51,7 +61,7 @@ defmodule Dawarich.Places.WebWrite do
     end
   end
 
-  defp values(action, previous, attrs) when is_map(attrs) do
+  def values(action, previous, attrs) when is_map(attrs) do
     coordinates =
       for {key, limit} <- [{"latitude", 90}, {"longitude", 180}],
           do: coordinate(Map.get(attrs, key, :omitted), limit)
@@ -98,27 +108,29 @@ defmodule Dawarich.Places.WebWrite do
     end
   end
 
-  defp values(_action, _previous, _attrs), do: {:replay, "place parameters"}
+  def values(_action, _previous, _attrs), do: {:replay, "place parameters"}
 
-  defp coordinate(:omitted, _limit), do: :omitted
-  defp coordinate(value, _limit) when value in [nil, ""], do: nil
+  def coordinate(:omitted, _limit), do: :omitted
+  def coordinate(value, _limit) when value in [nil, ""], do: nil
 
-  defp coordinate(value, limit) when is_binary(value) do
+  def coordinate(value, limit) when is_binary(value) and byte_size(value) <= 128 do
     if value =~ ~r/\A-?\d+(?:\.\d+)?\z/ do
-      {number, ""} = Float.parse(value)
+      case Float.parse(value) do
+        {number, ""} when abs(number) <= limit ->
+          value |> Decimal.new() |> Decimal.round(6) |> Decimal.to_float()
 
-      if abs(number) <= limit,
-        do: value |> Decimal.new() |> Decimal.round(6) |> Decimal.to_float(),
-        else: :unsupported
+        _ ->
+          :unsupported
+      end
     else
       :unsupported
     end
   end
 
-  defp coordinate(value, limit) when is_number(value), do: coordinate(to_string(value), limit)
-  defp coordinate(_value, _limit), do: :unsupported
+  def coordinate(value, limit) when is_number(value), do: coordinate(to_string(value), limit)
+  def coordinate(_value, _limit), do: :unsupported
 
-  defp errors(values, locale) do
+  def validation_errors(values, locale) do
     for {true, field, key, bindings} <- [
           {Ruby.blank?(values.name), "name", "errors.messages.blank", %{}},
           {is_binary(values.name) and length(String.codepoints(values.name)) > 255, "name",
@@ -126,7 +138,17 @@ defmodule Dawarich.Places.WebWrite do
           {values.latitude == nil or values.longitude == nil, "lonlat", "errors.messages.blank",
            %{}}
         ],
-        do: Dawarich.WebValidation.message(locale, "place", field, key, bindings)
+        do: {field, Dawarich.WebValidation.message(locale, "place", field, key, bindings)}
+  end
+
+  defp errors(values, locale), do: Enum.map(validation_errors(values, locale), &elem(&1, 1))
+
+  defp finish_native(repo, action, user, saved, attrs, stamp) do
+    if action == :update, do: adopt(repo, saved, stamp)
+    WebTags.save(repo, action, user.id, saved, attrs, stamp)
+    {:ok, %{id: saved}}
+  rescue
+    _ -> {:partial, %{id: saved}, :tags_failed}
   end
 
   defp save(repo, owner, previous, values, stamp) do

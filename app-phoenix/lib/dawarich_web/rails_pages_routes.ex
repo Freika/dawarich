@@ -14,6 +14,10 @@ defmodule DawarichWeb.RailsPagesRoutes do
           on_mount: {DawarichWeb.NativeAuth, :require_user},
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
+          live "/places", DawarichWeb.PlacesLive.Index, :index,
+            container: {:div, class: "contents"},
+            metadata: %{retired: true}
+
           live "/tags", DawarichWeb.TagsLive.Index, :index, container: {:div, class: "contents"}
           live "/tags/new", DawarichWeb.TagsLive.Form, :new, container: {:div, class: "contents"}
 
@@ -94,10 +98,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/trips/:id", DawarichWeb.TripsLive.Show, :show,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.TripsGate, :show?}}
-
-          live "/places", DawarichWeb.PlacesLive.Index, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.PlacesGate, :index?}}
 
           live "/points", DawarichWeb.PointsLive.Index, :index,
             container: {:div, class: "contents"},

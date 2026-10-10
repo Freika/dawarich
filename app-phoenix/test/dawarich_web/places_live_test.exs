@@ -67,19 +67,36 @@ defmodule DawarichWeb.PlacesLiveTest do
     refute has_element?(far, "[aria-label='pager']")
   end
 
-  test "the delete link carries the raw page value", %{user: user} do
-    fill!(user, 23)
+  test "native Place deletion cancels safely and preserves requested raw page", %{user: user} do
+    fill!(user, 21)
 
-    for {path, query} <- [
-          {"/places", ""},
-          {"/places?page=2abc", "?page=2abc"},
-          {"/places?page=2+x", "?page=2+x"},
-          {"/places?page=", "?page="}
-        ] do
-      {:ok, _view, html} = live_as(user, path)
-      [first | _] = hrefs(html, "#places a[data-turbo-method='delete']")
-      assert first =~ ~r{\A/places/\d+#{Regex.escape(query)}\z}
-    end
+    S.visit!(user.id, 843_501, %{
+      place_id: 843_121,
+      started_at: ~N[2026-01-01 08:00:00],
+      ended_at: ~N[2026-01-01 08:30:00]
+    })
+
+    {:ok, view, _} = live_as(user, "/places?page=2x&view=table")
+    render_click(view, "request_delete", %{"id" => "843121"})
+    assert has_element?(view, "dialog")
+    render_click(view, "cancel_form", %{})
+    assert Dawarich.Repo.query!("SELECT id FROM places WHERE id=843121", []).rows == [[843_121]]
+    render_click(view, "request_delete", %{"id" => "843121"})
+    gen = :sys.get_state(view.pid).socket.assigns.confirmation.generation
+    render_click(view, "confirm_delete", %{"generation" => gen, "id" => "843101"})
+    assert Dawarich.Repo.query!("SELECT id FROM places WHERE id=843121", []).rows == []
+    assert Dawarich.Repo.query!("SELECT id FROM places WHERE id=843101", []).rows == [[843_101]]
+    assert Dawarich.Repo.query!("SELECT place_id FROM visits WHERE id=843501", []).rows == [[nil]]
+    assert :sys.get_state(view.pid).socket.assigns.query == %{"page" => "2x", "view" => "table"}
+
+    assert :sys.get_state(view.pid).socket.assigns.flash["notice"] ==
+             "Place was successfully destroyed."
+
+    assert has_element?(view, "#places", "Hello there!")
+    render_click(view, "confirm_delete", %{"generation" => gen})
+
+    assert Dawarich.Repo.query!("SELECT count(*) FROM places WHERE user_id=$1", [user.id]).rows ==
+             [[20]]
   end
 
   test "the paginator patches and keeps other query keys", %{user: user} do
@@ -94,18 +111,56 @@ defmodule DawarichWeb.PlacesLiveTest do
     refute html =~ "Ort 1<"
   end
 
-  test "a state the gate would refuse redirects to the same URL" do
+  test "native Places unavailable first read shows alert without redirect loop" do
     mars = user!(8432, %{"timezone" => "Mars/Phobos"})
-    {:ok, view, html} = live_as(mars, "/places")
-    assert html =~ "Hello there!"
-
     S.place!(mars.id, 843_201, "Neu")
-
-    assert {:error, {:redirect, %{to: "/places?view=x"}}} = render_patch(view, "/places?view=x")
+    {:ok, view, _} = live_as(mars, "/places")
+    assert has_element?(view, "[role=alert]")
+    html = render_patch(view, "/places?view=x")
+    assert html =~ "role=\"alert\""
+    refute html =~ "Neu"
+    assert :sys.get_state(view.pid).socket.redirected == nil
   end
 
   test "signed-out visitors get Rails' sign-in redirect" do
     assert redirected_to(get(build_conn(), "/places"), 302) ==
              "http://www.example.com/users/sign_in"
+  end
+
+  test "unsupported persisted Place settings render alert before and after join", %{user: user} do
+    conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id)
+
+    Dawarich.Repo.query!("UPDATE users SET settings='[]'::jsonb WHERE id=$1", [user.id],
+      log: false
+    )
+
+    assert Dawarich.Accounts.SettingsValue.cast([]) == :error
+    assert Dawarich.Accounts.get(user.id).settings == []
+    conn = get(conn, "/places")
+    assert conn.status == 200
+    {:ok, view, _} = live(conn)
+    assert has_element?(view, "[role=alert]")
+    refute has_element?(view, "#places tbody tr")
+    render_click(view, "open_create", %{})
+    assert :sys.get_state(view.pid).socket.assigns.form_state == nil
+
+    render_submit(view, "save_place", %{
+      "generation" => 999,
+      "place" => %{"name" => "Refused", "latitude" => "51", "longitude" => "12"}
+    })
+
+    scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(user.id), "en")
+
+    assert Dawarich.Places.create(scope, %{
+             "name" => "Refused",
+             "latitude" => "51",
+             "longitude" => "12"
+           }) == {:error, :unsupported}
+
+    assert Dawarich.Repo.query!("SELECT id FROM places WHERE user_id=$1", [user.id]).rows == []
+    assert :sys.get_state(view.pid).socket.redirected == nil
+    localized = get(RailsUser.signed_in(user.id), "/places?locale=de")
+    assert localized.status == 200
+    assert Dawarich.Accounts.get(user.id).settings == []
   end
 end

@@ -14,7 +14,7 @@ defmodule Dawarich.Accounts.User do
     field :locked_at, :utc_datetime_usec
     field :deleted_at, :utc_datetime_usec
     field :theme, :string
-    field :settings, :map, redact: true
+    field :settings, Dawarich.Accounts.SettingsValue, redact: true
     field :admin, :boolean
     field :status, :integer
     field :plan, :integer

@@ -299,8 +299,11 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   end
 
   @tag a12f3a_o06: true
-  test "O06: every Q M W P method is native and each source key restores raw pre-effect Rails routing",
+  test "O06: Q M W P methods retain boundaries while native Places ignores its retired list key",
        ctx do
+    jwt = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", String.duplicate("s", 64))
+    on_exit(fn -> restore_env("JWT_SECRET_KEY", jwt) end)
     routes = q_m_w_p()
     assert length(routes) == 40
     ctx = seed_routes(ctx)
@@ -568,17 +571,25 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     before = observations()
     Application.put_env(:dawarich, :rails_routes, [key])
 
-    {{line, bytes}, response} =
-      forwarded(ctx.upstream, fn ->
-        response = @endpoint.call(build.(), @endpoint.init([]))
-        assert response.status == 204, "rollback #{key}: #{method} #{path}"
-        response
-      end)
+    if method in ["GET", "HEAD"] and URI.parse(path).path == "/places" do
+      response = @endpoint.call(build.(), @endpoint.init([]))
+      assert response.status == 200
+      assert response.private[:dawarich_native_places]
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    else
+      {{line, bytes}, response} =
+        forwarded(ctx.upstream, fn ->
+          response = @endpoint.call(build.(), @endpoint.init([]))
+          assert response.status == 204, "rollback #{key}: #{method} #{path}"
+          response
+        end)
 
-    assert line == "#{method} #{path} HTTP/1.1"
-    assert bytes == body
-    assert response.status == 204
-    refute response.private[:dawarich_method]
+      assert line == "#{method} #{path} HTTP/1.1"
+      assert bytes == body
+      assert response.status == 204
+      refute response.private[:dawarich_method]
+    end
+
     assert observations() == before
     Application.put_env(:dawarich, :rails_routes, [])
   end
@@ -612,14 +623,22 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     Application.put_env(:dawarich, :rails_routes, [key])
     body = "original=%2B+%26&original=second&nested%5Ba%5D=1"
 
-    {{line, bytes}, response} =
-      forwarded(ctx.upstream, fn ->
-        @endpoint.call(raw(ctx, method, path, body), @endpoint.init([]))
-      end)
+    if method in ["GET", "HEAD"] and URI.parse(path).path == "/places" do
+      response = @endpoint.call(raw(ctx, method, path, body), @endpoint.init([]))
+      assert response.status == 200
+      assert response.private[:dawarich_native_places]
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    else
+      {{line, bytes}, response} =
+        forwarded(ctx.upstream, fn ->
+          @endpoint.call(raw(ctx, method, path, body), @endpoint.init([]))
+        end)
 
-    assert line == "#{method} #{path} HTTP/1.1"
-    assert bytes == body
-    assert response.status == 204
+      assert line == "#{method} #{path} HTTP/1.1"
+      assert bytes == body
+      assert response.status == 204
+    end
+
     assert observations() == before
     Application.put_env(:dawarich, :rails_routes, [])
   end

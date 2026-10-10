@@ -35,7 +35,7 @@ defmodule DawarichWeb.PlacesParityTest do
   for name <- @names do
     @name name
 
-    test "#{@name} is answered as Rails answered it" do
+    test "#{@name} preserves source values and retained transport" do
       unless @name == "list_foreign", do: FrameSeeds.seed!(load("list_foreign"))
       state = load(@name)
       user = FrameSeeds.seed!(state)
@@ -47,10 +47,13 @@ defmodule DawarichWeb.PlacesParityTest do
     html = RailsUser.signed_in(user.id) |> get(state["path"]) |> html_response(200)
     title = state["title"] |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
-    assert ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *") ==
-             ParityHTML.normalize(rails)
+    assert cells(html) == cells(rails)
+    assert page_links(html) == page_links(rails)
+    assert html =~ "data-native-places"
+    refute html =~ "data-turbo-method"
 
-    assert stimulus(html, "#places") == stimulus("<html><body>#{rails}</body></html>", "#places")
+    assert LazyHTML.query(LazyHTML.from_document(html), "#places script, #places b")
+           |> Enum.empty?()
 
     assert html =~ ">#{title}</title>"
   end
@@ -100,6 +103,26 @@ defmodule DawarichWeb.PlacesParityTest do
              "user_return_to" => staged["user_return_to"],
              "alert" => get_in(staged, ["flash", "flashes", "alert"])
            } == state["session"]
+  end
+
+  defp cells(html) do
+    html
+    |> LazyHTML.from_document()
+    |> LazyHTML.query("tbody tr")
+    |> Enum.map(fn row ->
+      row
+      |> LazyHTML.query("td")
+      |> Enum.take(3)
+      |> Enum.map(&(LazyHTML.text(&1) |> String.trim()))
+    end)
+  end
+
+  defp page_links(html) do
+    html
+    |> LazyHTML.from_document()
+    |> LazyHTML.query("a[href]")
+    |> LazyHTML.attribute("href")
+    |> Enum.filter(&String.starts_with?(&1, "/places?page="))
   end
 
   defp stimulus(html, region),

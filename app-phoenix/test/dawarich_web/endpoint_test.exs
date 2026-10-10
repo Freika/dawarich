@@ -1109,22 +1109,15 @@ defmodule DawarichWeb.EndpointTest do
     assert answered_by_phoenix(port, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n") == 302
   end
 
-  test "DAWARICH_RAILS_ROUTES=places hands the list and the drawer back with their query", ctx do
+  test "retired Places list ignores legacy ownership while map adapter remains deferred", ctx do
     Application.put_env(:dawarich, :rails_routes, ["places"])
     on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
-    frame = "Accept: text/html, application/xhtml+xml\r\nTurbo-Frame: place-drawer\r\n"
 
-    for {target, headers} <- [{"/places", ""}, {"/places?page=2", ""}, {"/places/5", frame}],
-        do:
-          assert(
-            answered_by_puma(
-              port,
-              ctx.upstream,
-              "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n"
-            ) ==
-              "GET #{target} HTTP/1.1"
-          )
+    for target <- ~w(/places /places?page=2),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
+
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
   end
 
   test "Phoenix answers the map frames itself", ctx do

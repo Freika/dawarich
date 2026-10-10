@@ -257,4 +257,98 @@ defmodule DawarichWeb.AchievementsLiveTest do
     refute html =~ "<script>"
     assert has_element?(view, "a[href='/achievements/continent_europe#collection']")
   end
+
+  test "opaque achievement settings refuse before celebration writes on static join and fresh params",
+       %{user: user} do
+    rails = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if rails,
+        do: System.put_env("DAWARICH_RAILS", rails),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    state =
+      File.read!(Path.join(@root, "en-complete-first.json"))
+      |> Jason.decode!()
+      |> Map.fetch!("seed_state")
+
+    progress(state)
+
+    for value <- [[], 42] do
+      Dawarich.Repo.query!(
+        "UPDATE achievement_progresses SET state=$2 WHERE user_id=$1",
+        [user.id, state],
+        log: false
+      )
+
+      Dawarich.Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, value],
+        log: false
+      )
+
+      before = achievement_snapshot(user)
+      conn = RailsUser.signed_in(user.id) |> get("/achievements/country_de")
+      assert conn.status == 422
+      assert conn.resp_body != ""
+      assert achievement_snapshot(user) == before
+
+      Dawarich.Repo.query!("UPDATE users SET settings='{}'::jsonb WHERE id=$1", [user.id],
+        log: false
+      )
+
+      conn =
+        RailsUser.signed_in(user.id)
+        |> RailsUser.connecting_as(user.id)
+        |> get("/achievements/country_de")
+
+      Dawarich.Repo.query!(
+        "UPDATE achievement_progresses SET state=$2 WHERE user_id=$1",
+        [user.id, state],
+        log: false
+      )
+
+      Dawarich.Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, value],
+        log: false
+      )
+
+      before = achievement_snapshot(user)
+      assert {:error, {:redirect, %{to: "/", flash: flash}}} = live(conn)
+      assert Phoenix.LiveView.Utils.verify_flash(@endpoint, flash)["alert"] != nil
+      assert achievement_snapshot(user) == before
+
+      Dawarich.Repo.query!("UPDATE users SET settings='{}'::jsonb WHERE id=$1", [user.id],
+        log: false
+      )
+
+      {:ok, view, _} = live_as(user, "/achievements/country_de")
+
+      Dawarich.Repo.query!(
+        "UPDATE achievement_progresses SET state=$2 WHERE user_id=$1",
+        [user.id, state],
+        log: false
+      )
+
+      Dawarich.Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, value],
+        log: false
+      )
+
+      before = achievement_snapshot(user)
+      render_patch(view, "/achievements/country_de?q=fresh")
+      assert_redirect(view, "/")
+      assert achievement_snapshot(user) == before
+    end
+  end
+
+  defp achievement_snapshot(user),
+    do: {
+      Dawarich.Repo.query!("SELECT settings,updated_at FROM users WHERE id=$1", [user.id],
+        log: false
+      ).rows,
+      Dawarich.Repo.query!(
+        "SELECT state,updated_at FROM achievement_progresses WHERE user_id=$1",
+        [user.id],
+        log: false
+      ).rows
+    }
 end

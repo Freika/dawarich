@@ -90,4 +90,60 @@ defmodule DawarichWeb.NativeOnboardingTest do
     assert query(html, "form[action='/settings/onboarding/demo_data'] button[disabled]")
            |> Enum.count() == 1
   end
+
+  test "opaque demo settings refuse existing create and delete branches without data or job effects" do
+    rails = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if rails,
+        do: System.put_env("DAWARICH_RAILS", rails),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    user = onboarding_user!()
+    session = RailsUser.session(user.id)
+
+    for branch <- [:existing, :create, :delete], value <- [[], 42] do
+      Repo.query!("DELETE FROM imports WHERE user_id=$1", [user.id], log: false)
+
+      if branch != :create do
+        Repo.query!(
+          "INSERT INTO imports(user_id,name,demo,created_at,updated_at) VALUES($1,'Owned demo',true,now(),now())",
+          [user.id],
+          log: false
+        )
+      end
+
+      Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, value], log: false)
+      before = demo_snapshot(user)
+      params = %{"authenticity_token" => RailsCsrf.masked_token(session)}
+      params = if branch == :delete, do: Map.put(params, "_method", "delete"), else: params
+      body = URI.encode_query(params)
+
+      response =
+        build_conn()
+        |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(session))
+        |> put_req_header("content-type", "application/x-www-form-urlencoded")
+        |> put_req_header("content-length", to_string(byte_size(body)))
+        |> dispatch(@endpoint, :post, "/settings/onboarding/demo_data", body)
+
+      assert response.status == 302
+      assert URI.parse(hd(get_resp_header(response, "location"))).path == "/"
+      flash = Dawarich.Test.RailsFormRequests.rails_session(response)["flash"]["flashes"]
+      assert flash["alert"] != nil
+      refute Map.has_key?(flash, "notice")
+      assert demo_snapshot(user) == before
+    end
+  end
+
+  defp demo_snapshot(user) do
+    {Repo.query!("SELECT settings,updated_at FROM users WHERE id=$1", [user.id], log: false).rows,
+     Map.new(
+       ~w(imports points tracks visits places trips tags stats job_outbox oban.oban_jobs phoenix.rails_commands),
+       fn table ->
+         {table, Repo.query!("SELECT count(*) FROM #{table}", [], log: false).rows}
+       end
+     )}
+  end
 end

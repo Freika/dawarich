@@ -1338,3 +1338,34 @@ Rails counts administrators before an unlocked update and does not share a guard
 - Evidence: A2 commit `c7f44a025`; `m3b-domain.report.md`, `m3b-x3.report.md`. No machine stress or Rails production change.
 - Ledger: ED-NATIVE-ADMIN-USERS-DELETE-GUARD; no DRB added. Distinct from FRB-084's missing deletion guard.
 - CHANGELOG-ready: Serialize native administrator deletion and role changes to retain administration access.
+
+### FRB-086 — Corrupt Place dependents disclose another owner's data
+
+Database-valid cross-owner visit/tag associations can disclose foreign visit names, times, duration and tags in an owned Place drawer. Native Places detail filters each dependent by the Place owner; edit offers only owned tags. Retained map/Rails adapters are unchanged until milestone 6. Public endpoints are not claimed to create this graph.
+
+- Rails: `app/controllers/places_controller.rb:14,17`; `app/models/place.rb:13,17`; `app/models/concerns/taggable.rb:8`.
+- Phoenix: `app-phoenix/lib/dawarich/place_drawer.ex:58`; `app-phoenix/lib/dawarich/places/reads.ex:19`.
+- Test: `native Place detail never exposes foreign dependent data` in `app-phoenix/test/dawarich/places_test.exs`.
+- Ledger: ED-NATIVE-M3D-DEPENDENT-PRIVACY; no DRB added.
+- CHANGELOG-ready: Keep foreign-owner visit and tag data out of native Place details, even when stored associations are corrupt.
+
+### FRB-087 — Corrupt Place removal changes another owner's graph
+
+Rails destruction nullifies/removes database-valid foreign dependents of an owned Place, and tag replacement may remove foreign associations. Native update/delete refuses corrupt foreign visit/suggestion/note/tag graphs before effects. Normal owned graphs retain phased persistence; visits survive deletion.
+
+- Rails: `app/controllers/places_controller.rb:49,51,94`; `app/models/place.rb:13,18`; `app/models/concerns/taggable.rb:7`; `app/models/concerns/notable.rb:7`.
+- Phoenix: `app-phoenix/lib/dawarich/places/native_fence.ex:5`; `app-phoenix/lib/dawarich/places/web_write.ex:15`; `app-phoenix/lib/dawarich/places/web_delete.ex:21`.
+- Test: `native Place commands refuse stale actors and foreign dependents before effects` in `app-phoenix/test/dawarich/places/commands_test.exs`. Independent suggestion/tagging/note successors: `foreign Place suggestions fence update and delete with an unchanged graph`, `foreign Place taggings fence update and delete with an unchanged graph`, and `foreign Place notes fence update and delete with an unchanged graph`. Each SQL branch has a detected mutation.
+- Ledger: ED-NATIVE-M3D-DEPENDENT-WRITES; no DRB added.
+- Limits: Fresh admission and foreign graph fence precede record effects after Place row lock; no guarantee against arbitrary concurrent direct-database corruption after the check or cross-phase/reconnect durability.
+- CHANGELOG-ready: Refuse native Place edits/removal when corrupt associations would change another owner's data.
+
+### FRB-088 — Non-object account settings crash the Places page before refusal
+
+An account with an array-valued settings container cannot open the Rails Places page: its navbar indexes the raw settings with a string. Native account decoding retains the opaque container for explicit domain refusal instead of raising during authentication; the native Places page renders a generic alert, and commands remain unsupported with zero effects.
+
+- Rails: `app/helpers/application_helper.rb:78`, `app/views/shared/_navbar.html.erb:127`; local Rails helper oracle raises `TypeError` for an array-valued synthetic user.
+- Phoenix: `app-phoenix/lib/dawarich/accounts/settings_value.ex:8`, `app-phoenix/lib/dawarich/accounts/user.ex:17`, `app-phoenix/lib/dawarich/place_list.ex:30`, `app-phoenix/lib/dawarich_web/locale.ex:60`. Object/nil casts and dumps retain their original write boundary; opaque reads do not grant write support.
+- Test: `unsupported persisted Place settings render alert before and after join`, including zero-effect command refusal and unchanged malformed settings after an explicit native locale query.
+- Ledger: ED-NATIVE-M3D-OPAQUE-SETTINGS; no DRB added. Distinct from FRB-051 NULL/default handling: this preserves a malformed non-object container as unsupported for Places.
+- Evidence: milestone 3d implementation report; RED, restored GREEN and decoder mutation. No all-page support claim for corrupt settings.

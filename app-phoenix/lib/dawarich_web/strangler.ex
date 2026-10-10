@@ -71,7 +71,7 @@ defmodule DawarichWeb.Strangler do
 
   @impl true
   def call(conn, _opts) do
-    conn = DawarichWeb.PageEnvelope.prepare(conn)
+    conn = DawarichWeb.NativePlacesEnvelope.prepare(conn)
 
     cond do
       conn.halted ->
@@ -257,6 +257,8 @@ defmodule DawarichWeb.Strangler do
 
     Enum.any?(keys, &(&1 in Application.get_env(:dawarich, :rails_routes, [])))
   end
+
+  def page_request?(%{private: %{dawarich_native_places: true}}), do: true
 
   def page_request?(conn),
     do: page_envelope?(DawarichWeb.AchievementPublicQuery.page_conn(conn))

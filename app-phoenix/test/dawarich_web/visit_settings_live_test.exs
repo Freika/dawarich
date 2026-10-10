@@ -166,8 +166,8 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
     {conn, static} = queries(fn -> get(conn_for(user), "/settings/visits") end)
     {_, connected} = queries(fn -> {:ok, _view, _html} = live(conn) end)
 
-    assert static <= 9
-    assert connected <= 6
+    assert static <= 10
+    assert connected <= 7
   end
 
   test "signed-out settings uses the established Devise redirect" do
@@ -196,4 +196,62 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
     assert session["flash"]["flashes"]["alert"] ==
              "You need to sign in or sign up before continuing."
   end
+
+  test "opaque visit settings refuse static join save and redetection without settings or job effects",
+       %{user: user} do
+    rails = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if rails,
+        do: System.put_env("DAWARICH_RAILS", rails),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    for value <- [[], 42] do
+      Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, value], log: false)
+      before = rows_snapshot(user)
+      conn = get(conn_for(user), "/settings/visits")
+      assert conn.status == 302
+      assert get_resp_header(conn, "location") == ["/"]
+      assert conn.assigns.flash["alert"] != nil
+      assert rows_snapshot(user) == before
+      assert Dawarich.Visits.WebSettings.load(Repo, user.id) == {:error, :unsupported}
+      scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(user.id), "en")
+
+      assert Dawarich.Settings.update_visits(scope, %{"visit_min_points" => "4"}) ==
+               {:error, :unsupported}
+
+      assert Dawarich.Settings.request_visit_redetection(scope) == {:error, :unsupported}
+      assert rows_snapshot(user) == before
+
+      Repo.query!("UPDATE users SET settings='{}'::jsonb WHERE id=$1", [user.id], log: false)
+      conn = get(conn_for(user), "/settings/visits")
+      Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, value], log: false)
+      assert {:error, {:redirect, %{to: "/", flash: flash}}} = live(conn)
+      assert Phoenix.LiveView.Utils.verify_flash(@endpoint, flash)["alert"] != nil
+
+      for event <- ["save", "redetect"] do
+        Repo.query!("UPDATE users SET settings='{}'::jsonb WHERE id=$1", [user.id], log: false)
+        {:ok, view, _} = live_as(user)
+        Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, value], log: false)
+        before = rows_snapshot(user)
+        render_hook(view, event, %{"settings" => %{"visit_min_points" => "4"}})
+        assert_redirect(view, "/")
+        assert rows_snapshot(user) == before
+      end
+    end
+  end
+
+  defp rows_snapshot(user),
+    do: {
+      Repo.query!(
+        "SELECT settings,updated_at,visits_redetected_at FROM users WHERE id=$1",
+        [user.id],
+        log: false
+      ).rows,
+      Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows,
+      Repo.query!("SELECT count(*) FROM oban.oban_jobs", [], log: false).rows,
+      redetections()
+    }
 end

@@ -1,6 +1,7 @@
 defmodule DawarichWeb.AchievementsLive do
   @moduledoc false
   use DawarichWeb, :live_view
+  on_mount {DawarichWeb.AccountSettings, :default}
   alias Dawarich.Achievements.Collection
   alias DawarichWeb.{AchievementContext, AchievementIndex, AchievementDetail, AchievementModal}
 

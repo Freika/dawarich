@@ -109,9 +109,22 @@ defmodule DawarichWeb.A8RemainingParityTest do
     assert snapshot() == before
   end
 
-  test "out of range place tag IDs replay before create or demo adoption" do
-    upstream = upstream!()
+  defp refuse_place(run) do
+    previous = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+    before = snapshot()
 
+    try do
+      assert run.().status == 422
+      assert snapshot() == before
+    after
+      if previous,
+        do: System.put_env("DAWARICH_RAILS", previous),
+        else: System.delete_env("DAWARICH_RAILS")
+    end
+  end
+
+  test "out of range place tag IDs refuse locally before create or demo adoption" do
     for name <- ~w(create_ordinary_turbo_false update_demo_html_false) do
       entry = Enum.find(@places, &(&1["name"] == name))
       user = FrameSeeds.seed_place_remainder!(entry)
@@ -122,11 +135,11 @@ defmodule DawarichWeb.A8RemainingParityTest do
         attrs =
           request["params"]["place"]
           |> Map.put("tag_ids", [value])
-          |> Map.put("name", "Must stay on Rails")
+          |> Map.put("name", "Must remain unchanged")
 
         entry = put_in(entry, ["request", "params", "place"], attrs)
-        {run, raw} = submit(entry, user)
-        replay(upstream, run, raw)
+        {run, _raw} = submit(entry, user)
+        refuse_place(run)
       end
     end
 
@@ -167,8 +180,8 @@ defmodule DawarichWeb.A8RemainingParityTest do
       %{"timezone" => "Mars/Phobos"}
     ])
 
-    {run, raw} = submit(entry, user)
-    replay(upstream, run, raw)
+    {run, _raw} = submit(entry, user)
+    refuse_place(run)
     Repo.query!("UPDATE users SET settings=$2 WHERE id=$1", [user.id, user.settings])
 
     for name <-
