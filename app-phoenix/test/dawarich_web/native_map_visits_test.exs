@@ -62,6 +62,30 @@ defmodule DawarichWeb.NativeMapVisitsTest do
            ) == [["Cafe", "2024-03-31 01:30:00", "2024-03-31 02:30:00", 1]]
   end
 
+  test "search result opens a visit dialog prefilled in the profile zone", c do
+    view = open(c)
+
+    render_hook(view, "visit:new", %{
+      "latitude" => 52.51,
+      "longitude" => 13.41,
+      "name" => "Cafe <b>",
+      "started_at" => "2024-03-31T00:30:00Z",
+      "ended_at" => "not a time"
+    })
+
+    assert has_element?(view, "#native-visit-form input[name='visit[name]'][value='Cafe <b>']")
+
+    assert has_element?(
+             view,
+             "#native-visit-form input[name='visit[started_at]'][value='2024-03-31T01:30']"
+           )
+
+    assert has_element?(
+             view,
+             "#native-visit-form input[name='visit[ended_at]'][value='2024-03-31T03:30']"
+           )
+  end
+
   test "visit edit renames and attaches only owned or candidate places", c do
     home = place!(c.id, "Home")
     office = place!(c.id, "Office")

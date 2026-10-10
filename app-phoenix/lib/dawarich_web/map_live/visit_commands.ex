@@ -8,11 +8,14 @@ defmodule DawarichWeb.MapLive.VisitCommands do
   @form ~w(name started_at ended_at)
 
   def handle_event("visit:new", params, socket) do
-    case VisitEditing.defaults(socket.assigns.current_scope) do
+    times = [from: params["started_at"], to: params["ended_at"]]
+
+    case VisitEditing.defaults(socket.assigns.current_scope, times) do
       {:ok, times} ->
         form =
           Map.merge(times, %{
-            "name" => "",
+            "name" =>
+              if(is_binary(params["name"]), do: String.slice(params["name"], 0, 255), else: ""),
             "latitude" => to_string(params["latitude"]),
             "longitude" => to_string(params["longitude"])
           })

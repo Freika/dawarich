@@ -32,10 +32,13 @@ defmodule Dawarich.Maps.VisitEditing do
   def defaults(scope, opts \\ []) do
     Maps.with_actor(scope, fn actor ->
       with {:ok, zone} <- zone(actor, opts) do
+        start = instant(opts[:from]) || now(opts)
+        finish = instant(opts[:to]) || DateTime.add(start, 3600)
+
         [[from, to]] =
           Repo.query!(
-            "SELECT to_char($1::timestamp AT TIME ZONE 'UTC' AT TIME ZONE $2, 'YYYY-MM-DD\"T\"HH24:MI'), to_char(($1::timestamp + interval '1 hour') AT TIME ZONE 'UTC' AT TIME ZONE $2, 'YYYY-MM-DD\"T\"HH24:MI')",
-            [DateTime.to_naive(now(opts)), zone]
+            "SELECT to_char($1::timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3, 'YYYY-MM-DD\"T\"HH24:MI'), to_char($2::timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3, 'YYYY-MM-DD\"T\"HH24:MI')",
+            [DateTime.to_naive(start), DateTime.to_naive(finish), zone]
           ).rows
 
         {:ok, %{"started_at" => from, "ended_at" => to}}
@@ -155,6 +158,15 @@ defmodule Dawarich.Maps.VisitEditing do
       self_hosted:
         Keyword.get_lazy(opts, :self_hosted?, &Dawarich.ReleaseMigration.self_hosted?/0)
     }
+
+  defp instant(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, time, _offset} -> time
+      _ -> nil
+    end
+  end
+
+  defp instant(_value), do: nil
 
   defp now(opts), do: Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
 end
