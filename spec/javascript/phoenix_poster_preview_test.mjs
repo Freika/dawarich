@@ -544,3 +544,88 @@ test("closing the studio during a download cancels the render and saves no file"
   owner.destroy()
   delete globalThis.fetch
 })
+
+test("reopening the studio keeps layout, title and colours in sync with its controls", async () => {
+  const runtime = await import("../../app-phoenix/assets/js/poster/runtime.js")
+  const { PosterStudio } = await import(
+    "../../app-phoenix/assets/js/hooks/poster_studio.js"
+  )
+  const library = fakeLibrary()
+  const dom = elements()
+  const swatches = [swatch("noir", "Noir"), swatch("ocean", "Ocean")]
+  const base = fakeRoot(dom, swatches)
+  const layout = Object.assign(new EventTarget(), {
+    value: "print-a3",
+    selectedOptions: [{ textContent: "A3" }],
+  })
+  const title = Object.assign(new EventTarget(), { value: "" })
+  base.lookup.layout = layout
+  base.lookup.title = title
+  const root = Object.assign(new EventTarget(), base)
+  const themes = []
+  globalThis.fetch = async (url) => {
+    themes.push(url)
+    return { ok: true, json: async () => tokens }
+  }
+  let mounts = 0
+  const hook = {
+    ...PosterStudio,
+    el: root,
+    pushEvent: () => {},
+    loader: async () => ({
+      mountPosterStudio: (options) => {
+        mounts++
+        return runtime.mountPosterStudio({
+          ...options,
+          loadLibrary: async () => library.library,
+          window: environment(),
+        })
+      },
+    }),
+  }
+  hook.mounted()
+  const source = {
+    snapshot: async () => ({
+      revision: 1,
+      range: {},
+      points: [],
+      geojson: { type: "FeatureCollection", features: [route] },
+    }),
+  }
+  const open = async (detail) => {
+    root.dispatchEvent(
+      new CustomEvent("dawarich:poster-studio-open", { detail }),
+    )
+    for (let round = 0; round < 5; round++) await tick()
+  }
+  await open({ source })
+  assert.equal(library.live.size, 1)
+  layout.value = "social-story"
+  layout.dispatchEvent(new Event("change"))
+  title.value = "Berlin"
+  title.dispatchEvent(new Event("input"))
+  swatches[1].dispatchEvent(new Event("click"))
+  await tick()
+  dom.dialog.close()
+  dom.dialog.dispatchEvent(new Event("close"))
+  assert.equal(library.live.size, 0)
+
+  await open({ source })
+  assert.equal(mounts, 1)
+  assert.equal(library.live.size, 1)
+  const { state } = hook.posterOwner.studio
+  assert.equal(state.layoutId, "social-story")
+  assert.equal(state.title, "Berlin")
+  assert.equal(title.value, "Berlin")
+  assert.equal(state.themeKey, "ocean")
+  assert.equal(swatches[1]["aria-pressed"], "true")
+
+  dom.dialog.close()
+  dom.dialog.dispatchEvent(new Event("close"))
+  await open({ source: { ...source } })
+  assert.equal(mounts, 2)
+  assert.equal(library.live.size, 1)
+  hook.destroyed()
+  assert.equal(library.live.size, 0)
+  delete globalThis.fetch
+})

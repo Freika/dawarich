@@ -9,6 +9,8 @@ export const PosterStudio = {
     if (!source) return
     const generation = ++this.posterGeneration
     try {
+      if (this.posterOwner && source === this.posterSource)
+        return await this.posterOwner.open()
       const runtime = await (
         this.loader ?? (() => import("../poster/runtime.js"))
       )()
@@ -21,6 +23,7 @@ export const PosterStudio = {
         openVideo,
         pushEvent: this.pushEvent.bind(this),
       })
+      this.posterSource = source
       await this.posterOwner.open()
     } catch {
       if (!this.posterDestroyed) this.el.dataset.posterState = "failed"
@@ -32,5 +35,6 @@ export const PosterStudio = {
     this.el.removeEventListener("dawarich:poster-studio-open", this.posterOpen)
     this.posterOwner?.destroy()
     this.posterOwner = null
+    this.posterSource = null
   },
 }
