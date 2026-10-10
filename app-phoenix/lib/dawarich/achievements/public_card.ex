@@ -4,31 +4,50 @@ defmodule Dawarich.Achievements.PublicCard do
   alias DawarichWeb.Locale
 
   def load(repo, uuid, context) do
-    case query(
-           repo,
-           "SELECT p.user_id,p.achievement_key,u.settings FROM achievement_progresses p JOIN users u ON u.id=p.user_id AND u.deleted_at IS NULL WHERE p.sharing_uuid=$1 AND p.sharing_enabled=true",
-           [uuid]
-         ) do
-      [[owner_id, key, settings]] ->
-        settings = Dawarich.UserSettings.safe(settings)
+    carrier = admission(repo, uuid)
 
-        cond do
-          definition = Registry.find(key) ->
-            settings =
-              if context[:viewer_id] == owner_id and is_binary(context[:requested_locale]) and
-                   is_map(settings),
-                 do: Map.put(settings, "locale", context[:requested_locale]),
-                 else: settings
+    result =
+      case carrier do
+        [[owner_id, key, settings]] ->
+          settings = Dawarich.UserSettings.safe(settings)
 
-            read(repo, owner_id, definition, settings, uuid, context)
+          cond do
+            definition = Registry.find(key) ->
+              settings =
+                if context[:viewer_id] == owner_id and is_binary(context[:requested_locale]) and
+                     is_map(settings),
+                   do: Map.put(settings, "locale", context[:requested_locale]),
+                   else: settings
 
-          true ->
-            :not_found
-        end
+              case context[:reader] do
+                reader when is_function(reader, 0) -> reader.()
+                _ -> read(repo, owner_id, definition, settings, uuid, context)
+              end
 
-      [] ->
-        :not_found
+            true ->
+              :not_found
+          end
+
+        [] ->
+          :not_found
+      end
+
+    case result do
+      {:ok, page} ->
+        Map.get(context, :after_read, fn -> :ok end).()
+        if admission(repo, uuid) == carrier, do: {:ok, page}, else: :not_found
+
+      other ->
+        other
     end
+  end
+
+  defp admission(repo, uuid) do
+    query(
+      repo,
+      "SELECT p.user_id,p.achievement_key,u.settings FROM achievement_progresses p JOIN users u ON u.id=p.user_id AND u.deleted_at IS NULL WHERE p.sharing_uuid=$1 AND p.sharing_enabled=true",
+      [uuid]
+    )
   end
 
   defp read(repo, owner_id, definition, settings, uuid, _context) do

@@ -96,7 +96,9 @@ defmodule Dawarich.Achievements.PagesTest do
 
     Repo.query!(
       "UPDATE users SET encrypted_password=$2 WHERE id=$1",
-      [scope.user.id, "$2a$04$" <> String.duplicate("changed", 9)], log: false)
+      [scope.user.id, "$2a$04$" <> String.duplicate("changed", 9)],
+      log: false
+    )
 
     assert {:error, :stale_session} = share(scope, true)
 

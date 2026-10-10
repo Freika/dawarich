@@ -61,14 +61,18 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
 
     Repo.query!(
       "INSERT INTO achievement_progresses(user_id,achievement_key,state,created_at,updated_at) VALUES($1,'exploration',$2,now(),now())",
-      [user.id, %{"earned" => earned}], log: false)
+      [user.id, %{"earned" => earned}],
+      log: false
+    )
 
     conn = NativeAchievementsUI.conn(user, "/achievements/country_de")
 
     assert [[nil]] =
              Repo.query!(
                "SELECT state->'celebrated' FROM achievement_progresses WHERE user_id=$1",
-               [user.id], log: false).rows
+               [user.id],
+               log: false
+             ).rows
 
     {:ok, first, _} = live(conn)
     assert has_element?(first, "[data-celebrate=true]")
@@ -88,14 +92,18 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
 
     Repo.query!(
       "UPDATE achievement_progresses SET sharing_enabled=false WHERE user_id=$1 AND achievement_key='country_de'",
-      [user.id], log: false)
+      [user.id],
+      log: false
+    )
 
     render_patch(view, "/achievements/country_de")
     refute has_element?(view, "#achievement-share-output")
 
     Repo.query!(
       "UPDATE users SET encrypted_password='changed-00000000000000000000000' WHERE id=$1",
-      [user.id], log: false)
+      [user.id],
+      log: false
+    )
 
     assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
              render_click(view, "share_card", %{"enabled" => "true"})

@@ -9,7 +9,9 @@ defmodule Dawarich.Achievements.Pages do
          [[state]] <-
            Dawarich.Repo.query!(
              "SELECT COALESCE((SELECT state FROM achievement_progresses WHERE user_id=$1 AND achievement_key='exploration'), '{}'::jsonb)",
-             [scope.user.id], log: false).rows,
+             [scope.user.id],
+             log: false
+           ).rows,
          true <- PublicCard.supported_state?(state),
          {:ok, view} <-
            Collection.load(Dawarich.Repo, scope.user.id, params, context(scope, opts)) do

@@ -49,6 +49,62 @@ defmodule DawarichWeb.NativePublicMetadataTest do
     assert request(uuid, "GET", false).status == 302
   end
 
+  test "public achievement revocation during preparation refuses fresh and cached cards", %{
+    uuid: uuid
+  } do
+    assert {:ok, cached} = Dawarich.Sharing.Pages.achievement(uuid)
+
+    hook = fn ->
+      rows("UPDATE achievement_progresses SET sharing_enabled=false WHERE user_id=19001")
+    end
+
+    assert {:error, :not_found} = Dawarich.Sharing.Pages.achievement(uuid, after_read: hook)
+
+    assert {:error, :not_found} =
+             Dawarich.Sharing.Pages.achievement(uuid, reader: fn -> {:ok, cached} end)
+
+    rows("UPDATE achievement_progresses SET sharing_enabled=true WHERE user_id=19001")
+
+    assert {:error, :not_found} =
+             Dawarich.Sharing.Pages.achievement(uuid,
+               reader: fn -> {:ok, cached} end,
+               after_read: hook
+             )
+
+    assert request(uuid, "GET", false).status == 302
+  end
+
+  test "public achievement owner deletion during preparation refuses fresh and cached cards", %{
+    uuid: uuid
+  } do
+    assert {:ok, cached} = Dawarich.Sharing.Pages.achievement(uuid)
+    hook = fn -> rows("UPDATE users SET deleted_at=now() WHERE id=19001") end
+    assert {:error, :not_found} = Dawarich.Sharing.Pages.achievement(uuid, after_read: hook)
+
+    assert {:error, :not_found} =
+             Dawarich.Sharing.Pages.achievement(uuid, reader: fn -> {:ok, cached} end)
+
+    rows("UPDATE users SET deleted_at=NULL WHERE id=19001")
+
+    assert {:error, :not_found} =
+             Dawarich.Sharing.Pages.achievement(uuid,
+               reader: fn -> {:ok, cached} end,
+               after_read: hook
+             )
+
+    assert request(uuid, "GET", false).status == 302
+    rows("UPDATE users SET deleted_at=NULL WHERE id=19001")
+
+    assert {:error, :not_found} =
+             Dawarich.Sharing.Pages.achievement(uuid,
+               reader: fn -> {:ok, cached} end,
+               after_read: fn ->
+                 rows("DELETE FROM achievement_progresses WHERE user_id=19001")
+                 rows("DELETE FROM users WHERE id=19001")
+               end
+             )
+  end
+
   defp request(uuid, method, embed) do
     conn = build_conn(method, "/shared/achievements/" <> uuid)
 

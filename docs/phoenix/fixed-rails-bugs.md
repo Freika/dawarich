@@ -1360,3 +1360,15 @@ Rails checks public report access once, before loading owner presentation data a
 - Ledger: ED-NATIVE-M5-PUBLIC added; no DRB added.
 - Evidence: named deterministic after-read revocation and privacy probes, RED/GREEN, reread-bypass mutations fail, restored GREEN. Rails symptom is source-backed, not a new Rails runtime concurrency oracle. Retained Rails is unchanged.
 - CHANGELOG-ready: Recheck public sharing and owner state before returning prepared native report data.
+
+
+### FRB-NATIVE-M5-ACHIEVEMENT-DELIVERY — Revoked achievement can finish an in-flight read
+
+Rails memoizes the enabled carrier and its owner before preparing the public badge; revoking the share or deleting the owner during preparation can still deliver that badge. Phoenix repeats current carrier/key/owner/settings admission after fresh or cached preparation, refusing changed admission. Login-locked owners remain admitted. This protects the preparation window; revocation after the final check is not an atomic delivery guarantee.
+
+- Rails: `app/controllers/shared/achievements_controller.rb:9,39,45` (memoized admission, presenter); cached image branch at `:22,26,30` uses the same admission.
+- Phoenix: `app-phoenix/lib/dawarich/achievements/public_card.ex:6`; `app-phoenix/lib/dawarich/sharing/pages.ex:9`.
+- Tests: “public achievement revocation during preparation refuses fresh and cached cards”; “public achievement owner deletion during preparation refuses fresh and cached cards” in `app-phoenix/test/dawarich_web/native_public_metadata_test.exs`.
+- Ledger: ED-NATIVE-M5-ACHIEVEMENT-DELIVERY added; no DRB added.
+- Evidence: deterministic after-read revocation, soft/hard deletion and cached-reader probes RED/GREEN; delivery-check-bypass mutation fails both; restored targeted callers. Rails race is source-backed; Rails production remains unchanged.
+- CHANGELOG-ready: Recheck achievement sharing and owner existence before delivering prepared public badges.
