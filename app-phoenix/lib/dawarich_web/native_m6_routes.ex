@@ -12,9 +12,9 @@ defmodule DawarichWeb.NativeM6Routes do
         pipe_through :native_map_retired
 
         for path <-
-              ~w(/map/timeline_feeds /map/timeline_feeds/calendar /map/timeline_feeds/:id/track_info /tracks/:track_id/segments /tracks/:track_id/segments/:id /points/:id/address),
+              ~w(/map/timeline_feeds /map/timeline_feeds/calendar /map/timeline_feeds/:retired_id/track_info /tracks/:retired_track_id/segments /tracks/:retired_track_id/segments/:retired_id /points/:retired_id/address),
             method <- [:get, :post, :put, :patch, :delete] do
-          match method, path, DawarichWeb.NativeMapRetired, :gone
+          match method, path, DawarichWeb.NativeMapRetired, :gone, metadata: %{retired: true}
         end
       end
 

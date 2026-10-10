@@ -26,9 +26,6 @@ defmodule DawarichWeb.MapWriteRoutesTest do
 
   defp writes do
     [
-      {"PATCH", "/tracks/91830/segments/43", DawarichWeb.SegmentActions},
-      {"PUT", "/tracks/91830/segments/43", DawarichWeb.SegmentActions},
-      {"POST", "/tracks/91830/segments/43", DawarichWeb.SegmentActions},
       {"DELETE", "/points/bulk_destroy", DawarichWeb.PointListActions},
       {"POST", "/points/bulk_destroy", DawarichWeb.PointListActions}
     ]
@@ -69,7 +66,7 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
   end
 
-  test "only declared segment and point methods become native", ctx do
+  test "retained point-list methods keep their declared HTTP admission", ctx do
     for {method, path, plug} <- writes() do
       route = info(method, path)
       assert route.plug == plug
@@ -89,9 +86,8 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     end
   end
 
-  test "tracks and points keys hand GETs and writes back", ctx do
+  test "point-list coexistence switches retain the independent HTTP contract", ctx do
     for {key, get_path, write_path} <- [
-          {"tracks", "/tracks/91830/segments", "/tracks/91830/segments/43"},
           {"points", "/points", "/points/bulk_destroy"}
         ] do
       Application.put_env(:dawarich, :rails_routes, [key])
@@ -105,7 +101,7 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     end
   end
 
-  test "map alone leaves writes native while APIs retain ownership", ctx do
+  test "retained point writes and external APIs keep ownership under a map switch", ctx do
     Application.put_env(:dawarich, :rails_routes, ["map"])
 
     for {method, path, _} <- writes() do
@@ -131,17 +127,34 @@ defmodule DawarichWeb.MapWriteRoutesTest do
     assert info("PATCH", "/api/v1/tracks/42") == :error
   end
 
-  test "malformed IDs and missing session hand back before pipeline", ctx do
-    for path <- [
-          "/tracks/91830/segments/zero",
-          "/tracks/91830/segments/0"
-        ] do
-      assert info("PATCH", path) != :error
-      refute Strangler.rails_constraints?(info("PATCH", path))
-      forwarded(ctx, request(ctx.user, "PATCH", path))
+  test "retired segment writes ignore coexistence switches and never reach Rails", ctx do
+    for key <- ["map", "tracks"] do
+      Application.put_env(:dawarich, :rails_routes, [key])
+
+      for path <- [
+            "/tracks/91830/segments/43",
+            "/tracks/91830/segments/zero",
+            "/tracks/0/segments/0"
+          ],
+          method <- ~w(PATCH PUT POST) do
+        route = info(method, path)
+        assert route.plug == DawarichWeb.NativeMapRetired
+        assert route[:retired] == true
+        refute Map.has_key?(route, :rails_gate)
+        conn = request(ctx.user, method, path) |> Strangler.call([])
+        refute conn.halted
+        response = DawarichWeb.Router.call(conn, DawarichWeb.Router.init([]))
+        assert response.status == 410
+        assert commands() == []
+      end
     end
 
-    conn = request(ctx.user, "PATCH", "/tracks/91830/segments/43") |> delete_req_header("cookie")
-    forwarded(ctx, conn)
+    conn =
+      request(ctx.user, "PATCH", "/tracks/91830/segments/43")
+      |> delete_req_header("cookie")
+      |> Strangler.call([])
+
+    refute conn.halted
+    assert DawarichWeb.Router.call(conn, DawarichWeb.Router.init([])).status == 410
   end
 end

@@ -34,6 +34,22 @@ defmodule DawarichWeb.NativeM6RetiredRoutesTest do
     end
   end
 
+  test "malformed and unauthenticated retired map requests stay effect free" do
+    for path <- [
+          "/tracks/zero/segments/zero",
+          "/tracks/0/segments/0",
+          "/points/nope/address",
+          "/map/timeline_feeds/nope/track_info"
+        ] do
+      route = Phoenix.Router.route_info(DawarichWeb.Router, "PATCH", path, "www.example.com")
+      assert route[:retired] == true
+      assert DawarichWeb.Strangler.rails_constraints?(route)
+      conn = dispatch(build_conn(), @endpoint, :patch, path, %{"reset" => "true"})
+      assert conn.status == 410
+      assert conn.resp_body == "This map command is available through the native map."
+    end
+  end
+
   test "independent residency places API storage and gallery seed contracts remain routed" do
     for {method, path, plug} <- [
           {"GET", "/map/residency", DawarichWeb.MapFrames},
