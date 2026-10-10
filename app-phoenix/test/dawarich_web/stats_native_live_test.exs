@@ -390,7 +390,9 @@ defmodule DawarichWeb.StatsNativeLiveTest do
                Dawarich.Stats.Commands.share(
                  scope,
                  params,
-                 %{"enabled" => "1", "expiration" => expiration}, self_hosted: true)
+                 %{"enabled" => "1", "expiration" => expiration},
+                 self_hosted: true
+               )
 
       {:noreply, opened} =
         DawarichWeb.StatsLive.NativePage.handle_event("open_share", %{}, socket)
@@ -437,34 +439,49 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     if not enabled, do: assert(Enum.empty?(LazyHTML.query(html, "#stats-sharing-url")))
   end
 
-  test "Stats ready notifications renew the chart revision within the selected year", %{
-    user: user
-  } do
+  test "Stats recalculation preserves source reload behavior without a dead completion subscription",
+       %{user: user} do
+    previous = Application.get_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, Dawarich.Repo)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, :jobs_repo, previous),
+        else: Application.delete_env(:dawarich, :jobs_repo)
+    end)
+
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2025")
+    refute Dawarich.Stats.PageRefresh.topic(user.id) in Registry.keys(Dawarich.PubSub, view.pid)
+    before = :sys.get_state(view.pid).socket
+    assert before.assigns.data.distances |> Enum.sum() == 12000
+    render_click(view, "update", %{})
 
-    before =
-      NativeAdminUI.html(view)
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("#stats-native-chart")
-      |> LazyHTML.attribute("data-chart")
+    [[id, args]] =
+      Dawarich.Repo.query!(
+        "SELECT id,args FROM oban.oban_jobs WHERE worker='Dawarich.Stats.CalculateMonthWorker' AND args->>'month'='3'",
+        [],
+        log: false
+      ).rows
 
-    Dawarich.Repo.query!(
-      "UPDATE stats SET distance=distance+1000 WHERE user_id=$1 AND year=2025",
-      [user.id],
-      log: false
-    )
+    assert :ok = Dawarich.Stats.CalculateMonthWorker.perform(%Oban.Job{id: id, args: args})
 
-    send(view.pid, {:analytics_ready, user.id, "revision"})
+    assert Dawarich.Repo.query!(
+             "SELECT distance FROM stats WHERE user_id=$1 AND year=2025 AND month=3",
+             [user.id],
+             log: false
+           ).rows == [[0]]
 
-    after_update =
-      NativeAdminUI.html(view)
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("#stats-native-chart")
-      |> LazyHTML.attribute("data-chart")
+    socket = :sys.get_state(view.pid).socket
+    assert socket.assigns.data.distances |> Enum.sum() == 12000
 
-    [old] = before
-    [new] = after_update
-    assert Jason.decode!(new)["revision"] != Jason.decode!(old)["revision"]
-    assert :sys.get_state(view.pid).socket.assigns.data.year == 2025
+    assert {:noreply, unchanged} =
+             DawarichWeb.StatsLive.NativePage.handle_info(
+               {:analytics_ready, user.id, "absent-protocol"},
+               socket
+             )
+
+    assert unchanged == socket
+    render_patch(view, "/stats/2025")
+    assert :sys.get_state(view.pid).socket.assigns.data.distances |> Enum.sum() == 9000
   end
 end

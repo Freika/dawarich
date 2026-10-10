@@ -9,7 +9,7 @@ defmodule DawarichWeb.StatsLive.NativePage do
   def mount(_params, _session, socket) do
     socket = %{socket | private: Map.put(socket.private, :stats_receipt, Ecto.UUID.generate())}
 
-    if connected?(socket),
+    if connected?(socket) and socket.assigns.live_action == :index,
       do:
         Phoenix.PubSub.subscribe(
           Dawarich.PubSub,
@@ -119,7 +119,7 @@ defmodule DawarichWeb.StatsLive.NativePage do
   def handle_event(_, _, socket), do: {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
 
   @impl true
-  def handle_info({:analytics_ready, _, _}, socket),
+  def handle_info({:analytics_ready, _, _}, %{assigns: %{live_action: :index}} = socket),
     do: handle_params(socket.assigns.query, "", socket)
 
   def handle_info(_, socket), do: {:noreply, socket}
