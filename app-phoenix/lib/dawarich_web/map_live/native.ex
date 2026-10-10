@@ -4,7 +4,17 @@ defmodule DawarichWeb.MapLive.Native do
   on_mount {DawarichWeb.MapLiveAuth, :default}
   alias DawarichWeb.MapLive.Commands
 
-  def mount(_, _, socket), do: {:ok, socket, layout: false}
+  def mount(_, _, socket) do
+    navbar =
+      Dawarich.Maps.with_actor(socket.assigns.current_scope, fn actor ->
+        Dawarich.Navbar.load(actor,
+          now: socket.assigns.now,
+          self_hosted: socket.assigns.self_hosted != false
+        )
+      end)
+
+    {:ok, assign(socket, :navbar, navbar), layout: false}
+  end
 
   def handle_params(params, _uri, socket) do
     opts = [
@@ -65,6 +75,17 @@ defmodule DawarichWeb.MapLive.Native do
         <DawarichWeb.NativeMapHost.map_host id="native-map" config={@map_config} locale={@locale} />
       </div>
     </div>
+    <.live_component
+      :if={@current_scope && @page}
+      module={DawarichWeb.OnboardingLiveComponent}
+      id="onboarding"
+      scope={@current_scope}
+      navbar={@navbar}
+      locale={@locale}
+      base_url={assigns[:base_url] || ""}
+      rails_csrf_token=""
+      auto_open={true}
+    />
     <div :if={@map_error} role="alert">{to_string(@map_error)}</div>
     """
   end

@@ -8,6 +8,7 @@ import { FamilyHook } from "./family.js"
 import { MapHook } from "./map.js"
 import { MapMatchingDemo } from "./map_matching_demo.js"
 import { MapPreview } from "./map_preview.js"
+import { OnboardingHook } from "./onboarding.js"
 import { PublicMap } from "./public_map.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
 import { TripHook } from "./trip.js"
@@ -20,6 +21,7 @@ export const hooks = {
   Dismissible,
   EmojiPicker,
   Map: MapHook,
+  Onboarding: OnboardingHook,
   MapPreview,
   PublicMap,
   Family: FamilyHook,
