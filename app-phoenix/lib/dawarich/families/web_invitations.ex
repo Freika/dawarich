@@ -44,6 +44,8 @@ defmodule Dawarich.Families.WebInvitations do
             repo.rollback(:not_found)
 
           [[id, family, email, status, expires]] ->
+            ctx = %{ctx | now: Keyword.get(opts, :clock, fn -> ctx.now end).()}
+
             cond do
               NaiveDateTime.compare(expires, DateTime.to_naive(ctx.now)) == :lt ->
                 repo.rollback(:invitation_expired)
@@ -252,31 +254,7 @@ defmodule Dawarich.Families.WebInvitations do
       do: Dawarich.Families.ProducerEvents.family(repo, family, :membership, ctx.now)
 
     Keyword.get(opts, :settled, fn -> :ok end).()
-    locale = Dawarich.Mail.ExploreFeatures.locale(Dawarich.UserSettings.get(user), "en")
-
-    Notifications.create!(
-      repo,
-      user.id,
-      :info,
-      t(locale, "accept_invitation", "welcome_to_family"),
-      t(locale, "accept_invitation", "you_ve_joined_the_family_name", %{"name" => name}),
-      at
-    )
-
-    [[settings]] =
-      repo.query!("SELECT settings FROM users WHERE id=$1", [creator], log: false).rows
-
-    locale = Dawarich.Mail.ExploreFeatures.locale(settings, "en")
-
-    Notifications.create!(
-      repo,
-      creator,
-      :info,
-      t(locale, "accept_invitation", "new_family_member"),
-      t(locale, "accept_invitation", "email_has_joined_your_family", %{"email" => user.email}),
-      at
-    )
-
+    Dawarich.Families.JoinNotices.create!(repo, user, creator, name, at)
     family
   end
 

@@ -71,7 +71,7 @@ defmodule Dawarich.Families.NativeCommandDispatch do
         :respond_location,
         %{"id" => id, "decision" => decision} = attrs,
         ctx,
-        _
+        opts
       )
       when is_integer(id) and id > 0 and decision in [:accept, :decline] do
     family = WebCreate.family(repo, user.id)
@@ -88,12 +88,14 @@ defmodule Dawarich.Families.NativeCommandDispatch do
         {:error, :unauthorized}
 
       [[_, status, expires]] ->
-        if status == 0 and NaiveDateTime.compare(expires, DateTime.to_naive(ctx.now)) == :gt do
+        now = Keyword.get(opts, :clock, fn -> ctx.now end).()
+
+        if status == 0 and NaiveDateTime.compare(expires, DateTime.to_naive(now)) == :gt do
           Requests.web_respond(
             project(user),
             decision,
             Map.put(attrs, "id", Integer.to_string(id)),
-            ctx.now,
+            now,
             repo
           )
         else

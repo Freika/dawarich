@@ -20,6 +20,7 @@ defmodule Dawarich.Families.NativeCommands do
 
   def run(scope, action, attrs, opts) when action in @actions and is_map(attrs) do
     repo = Keyword.get(opts, :repo, Repo)
+    opts = Keyword.put(opts, :clock, clock(opts))
 
     with {:ok, _, _} <- NativeReads.actor(scope, opts) do
       repo.transaction(fn ->
@@ -36,7 +37,7 @@ defmodule Dawarich.Families.NativeCommands do
                  action,
                  attrs,
                  Map.put(ctx, :locale, scope.locale),
-                 opts
+                 Keyword.put(opts, :now, ctx.now)
                )
                |> NativeCommandDispatch.result() do
           family_id = if action in [:create, :accept_invitation], do: value, else: family_id
@@ -51,7 +52,7 @@ defmodule Dawarich.Families.NativeCommands do
               repo,
               family_id,
               :lapse,
-              Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
+              Keyword.fetch!(opts, :clock).()
             )
 
             {:refused, reason}
@@ -70,6 +71,14 @@ defmodule Dawarich.Families.NativeCommands do
   end
 
   def run(_, _, _, _), do: {:error, :invalid_input}
+
+  defp clock(opts) do
+    Keyword.get_lazy(opts, :clock, fn ->
+      base = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
+      started = System.monotonic_time(:microsecond)
+      fn -> DateTime.add(base, System.monotonic_time(:microsecond) - started, :microsecond) end
+    end)
+  end
 
   defp family_id(repo, _actor, :accept_invitation, %{"token" => token}) when is_binary(token) do
     case repo.query!("SELECT family_id FROM family_invitations WHERE token=$1", [token],

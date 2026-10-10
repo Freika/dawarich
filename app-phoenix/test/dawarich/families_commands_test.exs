@@ -349,6 +349,89 @@ defmodule Dawarich.FamiliesCommandsTest do
     end
   end
 
+  test "invitation acceptance admits an invitation expiring exactly at the decision instant",
+       ctx do
+    token = invitation!("invitee@example.invalid")
+    expired = invitation!("invitee@example.invalid")
+    at = DateTime.to_naive(@now)
+
+    ScratchRepo.query!("UPDATE family_invitations SET expires_at=$1 WHERE token=$2", [at, token],
+      log: false
+    )
+
+    ScratchRepo.query!(
+      "UPDATE family_invitations SET expires_at=$1 WHERE token=$2",
+      [NaiveDateTime.add(at, -1, :microsecond), expired],
+      log: false
+    )
+
+    opts = Keyword.put(@opts, :clock, fn -> @now end)
+    assert {:error, :invitation_expired} = Families.accept_invitation(ctx.invitee, expired, opts)
+    assert {:ok, 10901} = Families.accept_invitation(ctx.invitee, token, opts)
+  end
+
+  for {crossing, probe} <- [
+        request: :family_recheck_probe,
+        invitation: :family_recheck_probe,
+        access: :family_recheck_probe,
+        request: :family_row_probe,
+        invitation: :family_row_probe
+      ] do
+    @crossing crossing
+    @probe probe
+    test "family #{crossing} expiry crossed while waiting at #{probe} refuses the command",
+         ctx do
+      expiry = @now |> DateTime.add(50, :millisecond) |> DateTime.to_naive()
+      opts = Keyword.put(@opts, :repo, Dawarich.Test.FamilyCommandsProbeRepo)
+
+      command =
+        case @crossing do
+          :request ->
+            request!(expiry)
+            fn -> Families.respond_location(ctx.member, 10901, :accept, %{}, opts) end
+
+          :invitation ->
+            token = invitation!("invitee@example.invalid")
+
+            ScratchRepo.query!(
+              "UPDATE family_invitations SET expires_at=$1 WHERE token=$2",
+              [expiry, token],
+              log: false
+            )
+
+            fn -> Families.accept_invitation(ctx.invitee, token, opts) end
+
+          :access ->
+            ScratchRepo.query!("UPDATE users SET active_until=$1 WHERE id=10901", [expiry],
+              log: false
+            )
+
+            cloud = Keyword.put(opts, :self_hosted, false)
+            fn -> Families.update(ctx.owner, %{"name" => "Late family"}, cloud) end
+        end
+
+      before = {footprint(), rows("SELECT status FROM family_location_requests")}
+      parent = self()
+
+      task =
+        Task.async(fn ->
+          Process.put(@probe, parent)
+          command.()
+        end)
+
+      try do
+        assert_receive {:family_locked, pid}, 3000
+        Process.sleep(100)
+        send(pid, :release_family)
+        assert {:error, reason} = Task.await(task, 5000)
+        assert reason in [:expired, :invitation_expired]
+        assert {footprint(), rows("SELECT status FROM family_location_requests")} == before
+      after
+        Task.shutdown(task, :brutal_kill)
+      end
+    end
+  end
+
   test "family creation invitation cancellation and location requests use scoped validation",
        ctx do
     assert {:error, %{errors: [_ | _]}} = Families.create(ctx.invitee, %{"name" => ""}, @opts)

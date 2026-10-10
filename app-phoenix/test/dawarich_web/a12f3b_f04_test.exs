@@ -104,7 +104,7 @@ defmodule DawarichWeb.A12f3bF04Test do
     assert records("SELECT count(*) FROM family_memberships WHERE user_id=90103") == [[0]]
 
     Repo.query!("UPDATE family_invitations SET expires_at=$1 WHERE token='a9fpl-pending'", [
-      DateTime.to_naive(ctx.now)
+      ctx.now |> DateTime.add(60) |> DateTime.to_naive()
     ])
 
     assert request(c.outsider, "POST", "/family/memberships", %{"token" => "a9fpl-pending"}).status ==

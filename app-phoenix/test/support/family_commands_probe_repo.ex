@@ -30,6 +30,21 @@ defmodule Dawarich.Test.FamilyCommandsProbeRepo do
       end
     end
 
+    if String.starts_with?(sql, [
+         "SELECT target_user_id,status,expires_at FROM family_location_requests",
+         "SELECT id,family_id,email,status,expires_at FROM family_invitations"
+       ]) do
+      if parent = Process.delete(:family_row_probe) do
+        send(parent, {:family_locked, self()})
+
+        receive do
+          :release_family -> :ok
+        after
+          5000 -> raise "row probe release timeout"
+        end
+      end
+    end
+
     if String.starts_with?(sql, "SELECT (SELECT count(*) FROM family_memberships") do
       if parent = Process.delete(:family_command_probe) do
         send(parent, {:capacity_checked, self()})
