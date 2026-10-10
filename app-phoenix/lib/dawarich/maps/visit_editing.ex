@@ -79,6 +79,28 @@ defmodule Dawarich.Maps.VisitEditing do
     end)
   end
 
+  @statuses %{"confirm" => "confirmed", "decline" => "declined"}
+
+  def bulk(scope, action, ids, opts \\ [])
+
+  def bulk(_scope, _action, ids, _opts) when not is_list(ids) or length(ids) > 500,
+    do: {:error, :too_many}
+
+  def bulk(scope, "merge", ids, opts), do: ok(merge(scope, ids, opts))
+
+  def bulk(scope, action, ids, opts) when action in ~w(delete confirm decline) do
+    Maps.with_actor(scope, fn actor ->
+      {kind, params} =
+        if action == "delete",
+          do: {:destroy, %{"visit_ids" => ids}},
+          else: {:update, %{"visit_ids" => ids, "status" => @statuses[action]}}
+
+      ok(Dawarich.Visits.WebBulk.run(Repo, kind, actor, params, ctx(scope, opts)))
+    end)
+  end
+
+  def bulk(_scope, _action, _ids, _opts), do: {:error, :unsupported}
+
   def notes(scope, visit_id, opts \\ []) do
     owned(scope, visit_id, opts, fn actor, id, zone ->
       case Notes.list(actor.id, "Visit", id, zone) do

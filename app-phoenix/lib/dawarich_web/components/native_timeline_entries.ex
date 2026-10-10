@@ -9,6 +9,7 @@ defmodule DawarichWeb.NativeTimelineEntries do
   attr :entry, :map, required: true
   attr :locale, :string, required: true
   attr :redetected, :boolean, default: false
+  attr :selection, :any, default: nil
 
   def visit(assigns) do
     entry = assigns.entry
@@ -38,6 +39,15 @@ defmodule DawarichWeb.NativeTimelineEntries do
       data-started-at={@entry.started_at}
       data-ended-at={@entry.ended_at}
     >
+      <input
+        :if={@selection}
+        type="checkbox"
+        class="checkbox checkbox-xs"
+        checked={to_string(@entry.visit_id) in @selection}
+        phx-click="timeline:select"
+        phx-value-id={@entry.visit_id}
+        aria-label={@parts.primary}
+      />
       <div class="visit-row__time">
         {if @all_day, do: v(@locale, "all_day"), else: @start_label}
       </div>
@@ -75,6 +85,15 @@ defmodule DawarichWeb.NativeTimelineEntries do
           aria-label={t(@locale, "javascript.common.decline", %{})}
         >
           <Icon.icon name="circle-x" class="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs"
+          phx-click="visit:edit"
+          phx-value-id={@entry.visit_id}
+          aria-label={t(@locale, "javascript.visits.edit", %{})}
+        >
+          <Icon.icon name="square-pen" class="w-3.5 h-3.5" />
         </button>
         <button
           type="button"

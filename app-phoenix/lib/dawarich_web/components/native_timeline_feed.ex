@@ -3,10 +3,20 @@ defmodule DawarichWeb.NativeTimelineFeed do
   use Phoenix.Component
 
   import DawarichWeb.Translate, only: [t: 3]
-  alias DawarichWeb.{Icon, LocalizedDate, NativeTimelineEntries, TimelineFormat}
+
+  alias DawarichWeb.{
+    Icon,
+    LocalizedDate,
+    NativeSelectionActions,
+    NativeTimelineEntries,
+    TimelineFormat
+  }
+
+  alias Phoenix.LiveView.JS
 
   attr :timeline, :map, default: nil
   attr :filter, :map, default: nil
+  attr :selection, :map, default: nil
   attr :locale, :string, required: true
 
   def feed(%{timeline: nil} = assigns), do: ~H""
@@ -62,7 +72,13 @@ defmodule DawarichWeb.NativeTimelineFeed do
           {t(@locale, "map.timeline_feeds.day.clear_search_filters", %{})}
         </button>
       </div>
-      <.day :for={day <- @days} day={day} locale={@locale} redetected={@timeline.feed.redetected} />
+      <.day
+        :for={day <- @days}
+        day={day}
+        locale={@locale}
+        redetected={@timeline.feed.redetected}
+        selection={@selection && @selection.day == day.date && @selection}
+      />
     </section>
     """
   end
@@ -79,20 +95,25 @@ defmodule DawarichWeb.NativeTimelineFeed do
   attr :day, :map, required: true
   attr :locale, :string, required: true
   attr :redetected, :boolean, default: false
+  attr :selection, :any, default: nil
 
   defp day(assigns) do
     date = Date.from_iso8601!(assigns.day.date)
+    visits = Enum.filter(assigns.day.entries, &(&1.type == "visit"))
 
     assigns =
       assign(assigns,
         date: date,
         rows: TimelineFormat.with_gaps(assigns.day.entries, assigns.redetected),
         prev: Date.to_iso8601(Date.add(date, -1)),
-        next: Date.to_iso8601(Date.add(date, 1))
+        next: Date.to_iso8601(Date.add(date, 1)),
+        visits: length(visits),
+        low: Enum.count(visits, &TimelineFormat.low_confidence?(&1, assigns.redetected)),
+        dom_id: "native-day-#{assigns.day.date}"
       )
 
     ~H"""
-    <article class="timeline-day min-w-0" data-day={@day.date}>
+    <article id={@dom_id} class="timeline-day min-w-0" data-day={@day.date}>
       <header class="timeline-day-header flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -115,7 +136,23 @@ defmodule DawarichWeb.NativeTimelineFeed do
         >
           <Icon.icon name="chevron-right" class="w-4 h-4" />
         </button>
+        <button
+          :if={@visits >= 2 and !@selection}
+          type="button"
+          class="day-select-toggle btn btn-ghost btn-xs"
+          phx-click="timeline:select_day"
+          phx-value-date={@day.date}
+        >
+          {t(@locale, "map.timeline_feeds.day.select", %{})}
+        </button>
       </header>
+      <NativeSelectionActions.bar
+        :if={@selection}
+        id="native-timeline-selection"
+        ids={@selection.ids}
+        cancel="timeline:select_cancel"
+        locale={@locale}
+      />
       <div :if={@day.summary.mode_distances != %{}} class="flex flex-wrap gap-1 text-xs">
         <span
           :for={{mode, distance} <- Enum.sort(@day.summary.mode_distances)}
@@ -130,7 +167,12 @@ defmodule DawarichWeb.NativeTimelineFeed do
         <%= for entry <- @rows do %>
           <%= case entry.type do %>
             <% "visit" -> %>
-              <NativeTimelineEntries.visit entry={entry} locale={@locale} redetected={@redetected} />
+              <NativeTimelineEntries.visit
+                entry={entry}
+                locale={@locale}
+                redetected={@redetected}
+                selection={@selection && @selection.ids}
+              />
             <% "gap" -> %>
               <NativeTimelineEntries.gap entry={entry} locale={@locale} />
             <% _ -> %>
@@ -138,6 +180,18 @@ defmodule DawarichWeb.NativeTimelineFeed do
           <% end %>
         <% end %>
       </ol>
+      <button
+        :if={@low > 0}
+        type="button"
+        class="timeline-lowconf-toggle btn btn-ghost btn-xs"
+        aria-expanded="false"
+        phx-click={
+          JS.toggle_class("timeline-day--show-lowconf", to: "##{@dom_id}")
+          |> JS.toggle_attribute({"aria-expanded", "true", "false"})
+        }
+      >
+        {t(@locale, "map.timeline_feeds.day.low_confidence_stops", %{count: @low})}
+      </button>
     </article>
     """
   end
