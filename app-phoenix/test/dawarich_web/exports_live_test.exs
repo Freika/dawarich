@@ -1,5 +1,5 @@
 defmodule DawarichWeb.ExportsLiveTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
@@ -12,7 +12,6 @@ defmodule DawarichWeb.ExportsLiveTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
 
     user =
       RailsUser.insert!(%{

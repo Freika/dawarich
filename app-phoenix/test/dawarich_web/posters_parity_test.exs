@@ -1,5 +1,5 @@
 defmodule DawarichWeb.PostersParityTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
   import Plug.Conn
   alias Dawarich.Test.{ApiGolden, FrameSeeds, ParityHTML, RailsUser}
   alias DawarichWeb.{MapGalleryCards, PostersController, PostersGate, RailsCsrf}

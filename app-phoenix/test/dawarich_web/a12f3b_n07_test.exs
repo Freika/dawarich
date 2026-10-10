@@ -1,5 +1,5 @@
 defmodule DawarichWeb.A12f3bN07Test do
-  use Dawarich.DataCase, async: false
+  use Dawarich.DataCase, async: true
   alias Dawarich.{Accounts, DemoData.Importer}
   alias Dawarich.Test.{DemoData, RailsUser}
 
