@@ -175,6 +175,39 @@ defmodule DawarichWeb.NativeVideoGalleryTest do
     assert click =~ ~s(\\"format\\":\\"square\\")
   end
 
+  test "another account's video never enters the gallery and cannot be deleted", %{
+    id: id,
+    scope: scope
+  } do
+    other = System.unique_integer([:positive])
+
+    RailsUser.insert!(%{
+      id: other,
+      email: "video-gallery-#{other}@dawarich.test",
+      settings: %{"timezone" => "Europe/Berlin"}
+    })
+
+    foreign = save!(Maps.principal(Accounts.get(other), "en"), "Foreign")
+    mine = save!(scope, "Mine")
+    {view, html} = live!(id)
+    assert count(html, card(mine)) == 1
+    assert count(html, card(foreign)) == 0
+
+    view
+    |> element("#native-video-studio")
+    |> render_hook("video:delete", %{"id" => to_string(foreign)})
+
+    html = render(view)
+    assert count(html, card(mine)) == 1
+    refute html =~ "Foreign"
+    assert rows("SELECT user_id FROM route_videos WHERE id=$1", [foreign]) == [[other]]
+
+    assert rows(
+             "SELECT count(*) FROM active_storage_attachments WHERE record_type='RouteVideo' AND record_id=$1",
+             [foreign]
+           ) == [[1]]
+  end
+
   test "an unknown or nonstring zone refuses the gallery with a typed error", %{
     id: id,
     scope: scope
