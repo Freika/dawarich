@@ -10,6 +10,7 @@ defmodule DawarichWeb.NativeAccountLinkDocumentTest do
   @path "/auth/account_link/challenge"
 
   setup do
+    Dawarich.Test.NativeAuthHTTP.isolate_counters()
     start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
 
     env = %{
@@ -37,6 +38,8 @@ defmodule DawarichWeb.NativeAccountLinkDocumentTest do
         settings: %{}
       })
 
+    Dawarich.Test.NativeAuthHTTP.isolate_counters(actor.id)
+
     pending = %{
       "user_id" => actor.id,
       "provider" => "github",
@@ -63,7 +66,7 @@ defmodule DawarichWeb.NativeAccountLinkDocumentTest do
   end
 
   defp submit(session, path, fields),
-    do: RailsFormRequests.post_form(session, URI.encode_query(fields), [], path)
+    do: Dawarich.Test.NativeAuthHTTP.post_form(session, URI.encode_query(fields), [], path)
 
   defp token(html, action),
     do:
@@ -171,5 +174,39 @@ defmodule DawarichWeb.NativeAccountLinkDocumentTest do
     assert get_resp_header(linked, "location") == ["http://www.example.com/users/sign_in"]
     refute Map.has_key?(RailsFormRequests.rails_session(linked), "warden.user.user.key")
     assert Repo.get!(Dawarich.Auth.Account, c.actor.id).uid == "synthetic-mfa-uid"
+  end
+
+  test "native account-link email publishes durable intent without authenticating", c do
+    html = page(c).resp_body
+    Dawarich.Jobs.Ownership.put!(Repo, "command:mail.user.oauth_account_link", :oban)
+
+    before =
+      Repo.query!(
+        "SELECT count(*) FROM job_outbox WHERE aggregate_id=$1 AND command_type='mail.user.oauth_account_link'",
+        [c.actor.id], log: false).rows
+
+    response =
+      submit(c.session, "/auth/account_link/email", %{
+        "authenticity_token" => token(html, "/auth/account_link/email")
+      })
+
+    assert response.status == 302
+
+    after_count =
+      Repo.query!(
+        "SELECT count(*) FROM job_outbox WHERE aggregate_id=$1 AND command_type='mail.user.oauth_account_link'",
+        [c.actor.id], log: false).rows
+
+    assert after_count == [[hd(hd(before)) + 1]]
+
+    [[payload]] =
+      Repo.query!(
+        "SELECT payload FROM job_outbox WHERE aggregate_id=$1 AND command_type='mail.user.oauth_account_link'",
+        [c.actor.id], log: false).rows
+
+    assert {:ok, args} = Dawarich.Mail.OauthAccountLinkWorker.args_from_command(1, payload)
+    refute Map.has_key?(args, "link_url")
+    refute Map.has_key?(RailsFormRequests.rails_session(response), "warden.user.user.key")
+    assert is_nil(Repo.get!(Dawarich.Auth.Account, c.actor.id).provider)
   end
 end

@@ -29,6 +29,14 @@ defmodule DawarichWeb.AuthAccountLink.Actions do
       |> Map.put_new(:ip, DawarichWeb.RailsRemoteIp.ip(conn))
       |> Map.put_new(:base_url, RequestURL.base(conn))
 
+    context =
+      if Keyword.get(opts, :native, false) do
+        repo = Map.get(context, :repo, Dawarich.Repo)
+        Map.put_new(context, :enqueue_link, &Dawarich.Auth.AccountLink.Mailer.enqueue(&1, repo))
+      else
+        context
+      end
+
     conn = RailsAuth.call(conn, [])
 
     context =

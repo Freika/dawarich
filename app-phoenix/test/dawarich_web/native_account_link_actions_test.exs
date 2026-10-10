@@ -5,6 +5,7 @@ defmodule DawarichWeb.NativeAccountLinkActionsTest do
   alias DawarichWeb.RailsCsrf
 
   setup do
+    Dawarich.Test.NativeAuthHTTP.isolate_counters()
     start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
 
     env = %{
@@ -32,6 +33,8 @@ defmodule DawarichWeb.NativeAccountLinkActionsTest do
         settings: %{}
       })
 
+    Dawarich.Test.NativeAuthHTTP.isolate_counters(actor.id)
+
     pending = %{
       "user_id" => actor.id,
       "provider" => "github",
@@ -58,6 +61,7 @@ defmodule DawarichWeb.NativeAccountLinkActionsTest do
 
     conn =
       Phoenix.ConnTest.build_conn(:post, path, body)
+      |> Map.put(:remote_ip, {192, 0, 2, 33})
       |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(c.session))
       |> put_req_header("content-type", "application/x-www-form-urlencoded")
       |> put_req_header("content-length", Integer.to_string(byte_size(body)))
