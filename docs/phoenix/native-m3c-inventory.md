@@ -100,3 +100,10 @@ Both link challenge forms use the anonymous native document and distinct action 
 ## C4 integration follow-up — native link mail
 
 Active D1 delivery exposed missing runtime enqueue wiring (native POST email returned 503). Native Actions now supplies the existing durable UserCallbacks.link publisher only in native mode, preserving supplied callbacks and legacy opt-in behavior. Worker args exclude the retained URL; existing token/mail/ownership contracts are reused. Named case “native account-link email publishes durable intent without authenticating”: c4-mail-red 4/5 (503), exit 2; GREEN 5/5 exit 0; fake-publication mutation c4-mail-mutation-intent 4/5 (intent count 0 vs 1), exit 2; restored direct-mail batch c4-mail-strict-green 38 passed, exit 0, warnings clean. This repairs Phoenix integration, not a Rails defect. New in-process link tests use a reserved synthetic client IP and clean only their own counter keys, preserving legacy counter characterization. A preexisting compiler inference warning in the dynamic mail claim-key test is handled separately in X2 with equivalent apply/3 dispatch.
+
+
+## D1 implementation and stage verification
+
+All eleven existing auth specs retain their behavior cases. New active unlock and account-link password/email/MFA cases use owned synthetic fixtures, actual mail delivery and capability redemption. Trace/video/screenshots, ARIA failure snapshots and retries are disabled. Failure wrappers avoid credential/capability equality dumps. Source fixture data remains intact.
+
+E2E commits: `75624c0`, `ecd7a13`, `a488114`, `0c06bad`, `80c9c08`, `71f7f5b`. Historical candidate app `c69c6b529` / E2E `71f7f5b`: all six new D1 cases passed. The combined targeted run was 14 passed, 3 D2 failed, zero skipped/flaky, exit 1; this is not browser acceptance. Baseline RED failed the native-entry requirement before those flows. Browser mutations, final eleven-spec regressions and runtime identity are deferred under the controller's stage-level E2E decision. No milestone browser acceptance is claimed.
