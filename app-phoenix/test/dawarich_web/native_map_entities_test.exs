@@ -99,7 +99,6 @@ defmodule DawarichWeb.NativeMapEntitiesTest do
     assert_receive {:nearby, "2.0", fast}
     finished(fast)
     assert render(view) =~ "Spot 2.0"
-    send(slow, :release)
     finished(slow)
     html = render(view)
     assert html =~ "Spot 2.0"

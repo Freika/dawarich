@@ -1,20 +1,22 @@
 defmodule DawarichWeb.MapLive.Timeline do
   @moduledoc false
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [start_async: 3]
+  alias DawarichWeb.MapLive.Runs
 
   @params ~w(start_at end_at)
+  @timeout 30_000
 
   def refresh(socket, params) do
     params = Map.take(params, @params)
-    run = make_ref()
     scope = socket.assigns.current_scope
     loader = socket.assigns[:timeline_loader] || (&Dawarich.Maps.Timeline.feed/3)
-    previous = socket.assigns[:timeline] || %{feed: nil}
+    timeout = socket.assigns[:timeline_timeout] || @timeout
+    previous = socket.assigns[:timeline] || %{feed: nil, run: nil}
 
-    socket
-    |> assign(:timeline, %{status: :loading, run: run, params: params, feed: previous.feed})
-    |> start_async({:timeline, run}, fn -> loader.(scope, params, []) end)
+    {run, socket} =
+      Runs.start(socket, :timeline, previous[:run], fn -> loader.(scope, params, []) end, timeout)
+
+    assign(socket, :timeline, %{status: :loading, run: run, params: params, feed: previous.feed})
   end
 
   def reload(socket) do

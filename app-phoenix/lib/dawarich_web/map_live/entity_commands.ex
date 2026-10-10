@@ -1,7 +1,7 @@
 defmodule DawarichWeb.MapLive.EntityCommands do
   @moduledoc false
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, start_async: 3]
+  import Phoenix.LiveView, only: [push_event: 3]
   alias Dawarich.Maps.Entities
 
   def handle_event("place:new", params, socket) do
@@ -76,15 +76,20 @@ defmodule DawarichWeb.MapLive.EntityCommands do
         {:noreply, socket}
 
       current ->
-        run = make_ref()
         scope = socket.assigns.current_scope
         loader = socket.assigns[:nearby_loader] || (&Entities.nearby(&1, &2))
         params = Map.take(params, ~w(latitude longitude))
 
-        {:noreply,
-         socket
-         |> assign(:place_dialog, %{current | nearby_run: run})
-         |> start_async({:place_nearby, run}, fn -> loader.(scope, params) end)}
+        {run, socket} =
+          DawarichWeb.MapLive.Runs.start(
+            socket,
+            :place_nearby,
+            current.nearby_run,
+            fn -> loader.(scope, params) end,
+            socket.assigns[:nearby_timeout] || 10_000
+          )
+
+        {:noreply, assign(socket, :place_dialog, %{current | nearby_run: run})}
     end
   end
 

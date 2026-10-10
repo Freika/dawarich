@@ -97,7 +97,6 @@ defmodule DawarichWeb.NativeMapEnrichmentTest do
       matches: [%{"immich_asset_id" => "2026-02-01"}]
     })
 
-    send(slow, :release)
     finished(slow)
     render(view)
     refute_push_event(view, "enrichment:matches", %{})

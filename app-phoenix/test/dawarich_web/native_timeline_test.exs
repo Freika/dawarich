@@ -61,7 +61,6 @@ defmodule DawarichWeb.NativeTimelineTest do
     finished(fast)
     assert render(view) =~ ~s(data-day="2026-03-30")
 
-    send(slow, :release)
     finished(slow)
     html = render(view)
     assert html =~ ~s(data-day="2026-03-30")

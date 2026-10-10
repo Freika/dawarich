@@ -1,25 +1,31 @@
 defmodule DawarichWeb.MapLive.TimelineFilters do
   @moduledoc false
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_patch: 2, start_async: 3]
-  alias Dawarich.{BoundedTask, Entitlements, Maps, RubyInteger}
+  import Phoenix.LiveView, only: [push_patch: 2]
+  alias Dawarich.{Entitlements, Maps, RubyInteger}
   alias DawarichWeb.MapLive.Commands
 
   @timeout 15_000
 
   def handle_event("calendar:month", %{"month" => month}, socket) when is_binary(month) do
-    run = make_ref()
     scope = socket.assigns.current_scope
     loader = socket.assigns[:calendar_loader] || (&Maps.Timeline.calendar(&1, &2))
     timeout = socket.assigns[:calendar_timeout] || @timeout
-    previous = socket.assigns[:calendar] || %{summary: nil}
+    previous = socket.assigns[:calendar] || %{summary: nil, run: nil}
+
+    {run, socket} =
+      DawarichWeb.MapLive.Runs.start(
+        socket,
+        :calendar,
+        previous[:run],
+        fn ->
+          loader.(scope, month)
+        end,
+        timeout
+      )
 
     {:noreply,
-     socket
-     |> assign(:calendar, %{status: :loading, run: run, summary: previous.summary})
-     |> start_async({:calendar, run}, fn ->
-       BoundedTask.run(fn -> loader.(scope, month) end, timeout)
-     end)}
+     assign(socket, :calendar, %{status: :loading, run: run, summary: previous.summary})}
   end
 
   def handle_event("calendar:day", %{"date" => date}, socket) when is_binary(date) do
