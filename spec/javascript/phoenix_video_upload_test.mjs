@@ -219,13 +219,18 @@ test("abort after storage completes but before save still discards", async () =>
 
 test("abort during reservation discards the late target without starting a PUT", async () => {
   let release
-  const pending = new Promise((resolve) => { release = resolve })
+  const pending = new Promise((resolve) => {
+    release = resolve
+  })
   const remote = server({ "video:upload_target": pending })
   const { FakeXhr, created } = fakeXhr()
   const controller = new AbortController()
   const uploading = uploadRenderedVideo({
-    blob, request: remote.request, signal: controller.signal,
-    XMLHttpRequest: FakeXhr, checksum: async () => "checksum",
+    blob,
+    request: remote.request,
+    signal: controller.signal,
+    XMLHttpRequest: FakeXhr,
+    checksum: async () => "checksum",
   })
   const rejected = assert.rejects(uploading, { name: "AbortError" })
   await tick()
@@ -234,6 +239,28 @@ test("abort during reservation discards the late target without starting a PUT",
   await tick()
   assert.equal(created.length, 0)
   await rejected
-  assert.deepEqual(remote.calls.map(([event]) => event), ["video:upload_target", "video:discard"])
+  assert.deepEqual(
+    remote.calls.map(([event]) => event),
+    ["video:upload_target", "video:discard"],
+  )
   assert.deepEqual(remote.calls[1][1], { signed_id: "late-ref" })
+})
+
+test("storage timeout discards the reservation, cleans listeners and permits retry", async () => {
+  const { uploading, created, remote } = await started()
+  assert.equal(created[0].timeout, 300_000)
+  created[0].listeners.timeout()
+  await assert.rejects(uploading, {
+    code: "upload_timeout",
+    message: "Video upload timed out; please retry",
+  })
+  assert.deepEqual(
+    remote.calls.map(([event]) => event),
+    ["video:upload_target", "video:discard"],
+  )
+  assert.deepEqual(created[0].listeners, {})
+  assert.deepEqual(created[0].upload.listeners, {})
+  const retry = await started()
+  retry.created[0].finish(200)
+  assert.deepEqual(await retry.uploading, { ok: true, id: 41 })
 })

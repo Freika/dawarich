@@ -1,5 +1,7 @@
 import { base64Md5 } from "../hooks/archive_checksum.js"
 
+export const UPLOAD_TIMEOUT_MS = 300_000
+
 const aborted = () => new DOMException("Upload cancelled", "AbortError")
 
 function refused(reply, code) {
@@ -30,12 +32,22 @@ function put(target, file, { XMLHttpRequest: Xhr, signal, onProgress }) {
         : settle(reject, refused(null, "upload_failed")),
     )
     listen(xhr, "error", () => settle(reject, refused(null, "upload_failed")))
+    listen(xhr, "timeout", () =>
+      settle(
+        reject,
+        refused(
+          { error: "Video upload timed out; please retry" },
+          "upload_timeout",
+        ),
+      ),
+    )
     listen(xhr, "abort", () => settle(reject, aborted()))
     listen(xhr.upload, "progress", (event) => {
       if (event.lengthComputable) onProgress?.(event.loaded / event.total)
     })
     signal?.addEventListener("abort", cancel, { once: true })
     xhr.open("PUT", target.url, true)
+    xhr.timeout = UPLOAD_TIMEOUT_MS
     for (const [key, value] of Object.entries(target.headers ?? {}))
       xhr.setRequestHeader(key, value)
     xhr.send(file)
