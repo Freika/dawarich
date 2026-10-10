@@ -15,7 +15,13 @@ defmodule Dawarich.Notifications do
   @max_id 9_223_372_036_854_775_807
   @year_bucket_days 364
 
+  def open(scope, id), do: Dawarich.Notifications.Native.open(scope, id)
+  def unread(scope), do: Dawarich.Notifications.Native.unread(scope)
+
   def kind_name(kind), do: Map.get(@kind_names, kind)
+
+  def page(%Dawarich.Accounts.Scope{} = scope, page),
+    do: Dawarich.Notifications.Native.page(scope, page)
 
   def page(user_id, page) do
     offset = (page - 1) * @per_page
@@ -67,6 +73,9 @@ defmodule Dawarich.Notifications do
 
   def mark_read(_user_id, notification), do: notification
 
+  def mark_all_read(%Dawarich.Accounts.Scope{} = scope),
+    do: Dawarich.Notifications.Native.mark_all_read(scope)
+
   def mark_all_read(user_id),
     do:
       from(n in "notifications", where: n.user_id == ^user_id and is_nil(n.read_at))
@@ -99,10 +108,16 @@ defmodule Dawarich.Notifications do
     end)
   end
 
+  def delete(%Dawarich.Accounts.Scope{} = scope, id),
+    do: Dawarich.Notifications.Native.delete(scope, id)
+
   def delete(user_id, id),
     do:
       from(n in "notifications", where: n.user_id == ^user_id and n.id == ^id)
       |> Repo.delete_all()
+
+  def delete_all(%Dawarich.Accounts.Scope{} = scope),
+    do: Dawarich.Notifications.Native.delete_all(scope)
 
   def delete_all(user_id),
     do: from(n in "notifications", where: n.user_id == ^user_id) |> Repo.delete_all()

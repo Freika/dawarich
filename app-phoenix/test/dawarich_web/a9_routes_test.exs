@@ -64,7 +64,7 @@ defmodule DawarichWeb.A9RoutesTest do
     {"/notifications", DawarichWeb.NotificationsLive.Index, :index, nil},
     {"/notifications/:id", DawarichWeb.NotificationsLive.Show, :show, nil},
     {"/imports/new", DawarichWeb.ImportsLive.New, :new, nil},
-    {"/imports/:id", DawarichWeb.ImportsLive.Show, :show, {DawarichWeb.ImportsGate, :native?}},
+    {"/imports/:id", DawarichWeb.ImportsLive.Show, :show, nil},
     {"/imports", DawarichWeb.ImportsLive.Index, :index, nil},
     {"/exports", DawarichWeb.ExportsLive.Index, :index, nil},
     {"/stats", DawarichWeb.StatsLive.Index, :index, nil},
@@ -111,7 +111,19 @@ defmodule DawarichWeb.A9RoutesTest do
       assert {^view, ^action, opts, session} = info.phoenix_live_view
       assert opts == [action: action, router: Router, container: {:div, class: "contents"}]
       family = String.starts_with?(path, "/family")
-      assert session.name == if(family, do: :family_pages, else: :rails_pages)
+
+      native =
+        String.starts_with?(path, "/imports") or String.starts_with?(path, "/notifications") or
+          path == "/exports"
+
+      expected_session =
+        cond do
+          family -> :family_pages
+          native -> :native_jobs
+          true -> :rails_pages
+        end
+
+      assert session.name == expected_session
 
       hooks = [
         %{
@@ -134,12 +146,28 @@ defmodule DawarichWeb.A9RoutesTest do
               ],
           else: hooks
 
+      hooks =
+        if native,
+          do: [
+            %{
+              id: {DawarichWeb.NativeJobsAuth, :require_user},
+              stage: :mount,
+              function: &DawarichWeb.NativeJobsAuth.on_mount/4
+            }
+          ],
+          else: hooks
+
+      auth =
+        cond do
+          family -> DawarichWeb.RailsAuth
+          native -> DawarichWeb.NativeJobsAuth
+          true -> DawarichWeb.NativeAuth
+        end
+
       assert session.extra == %{
-               session:
-                 {if(family, do: DawarichWeb.RailsAuth, else: DawarichWeb.NativeAuth),
-                  :live_session, []},
+               session: {auth, :live_session, []},
                on_mount: hooks,
-               root_layout: {DawarichWeb.Layouts, :root},
+               root_layout: {DawarichWeb.Layouts, if(native, do: :native_root, else: :root)},
                layout: {DawarichWeb.Layouts, :app}
              }
     end
