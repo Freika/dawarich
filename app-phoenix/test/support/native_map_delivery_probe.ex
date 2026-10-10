@@ -10,7 +10,11 @@ defmodule Dawarich.Test.NativeMapDeliveryProbe do
          bus: Dawarich.Test.NativeMapBus
        )}
 
-  def render(assigns), do: ~H"<output id=\"native-delivery\">ready</output>"
+  def render(assigns) do
+    ~H"""
+    <output id="native-delivery">ready</output>
+    """
+  end
 
   def handle_info(message, socket) do
     {_, socket} = Subscriptions.deliver(socket, message)
