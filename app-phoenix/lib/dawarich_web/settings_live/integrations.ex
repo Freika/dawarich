@@ -1,6 +1,7 @@
 defmodule DawarichWeb.SettingsLive.Integrations do
   @moduledoc false
   use DawarichWeb, :live_view
+  on_mount {DawarichWeb.AccountSettings, :default}
   import DawarichWeb.Icon, only: [icon: 1]
   import DawarichWeb.IntegrationPanes, only: [service_icon: 1, status_icon: 1, pane: 1]
   import DawarichWeb.ListParts, only: [page_header: 1]
@@ -167,6 +168,13 @@ defmodule DawarichWeb.SettingsLive.Integrations do
   defp trek_failure(socket, reason), do: failure(socket, reason)
 
   defp load_page(socket, user, params) do
+    case Accounts.settings_for(user) do
+      {:ok, _} -> load_supported_page(socket, user, params)
+      {:error, _} -> DawarichWeb.AccountSettings.refuse(socket)
+    end
+  end
+
+  defp load_supported_page(socket, user, params) do
     page = page(user, params, socket.assigns)
 
     values =

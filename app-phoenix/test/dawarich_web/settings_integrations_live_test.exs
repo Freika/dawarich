@@ -315,7 +315,84 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
   test "integrations stays within its static and connected query budget", %{user: user} do
     {conn, static} = queries(fn -> get(conn_for(user), "/settings/integrations") end)
     {_, connected} = queries(fn -> {:ok, _, _} = live(conn) end)
-    assert static <= 6
-    assert connected <= 5
+    assert static <= 7
+    assert connected <= 6
+  end
+
+  test "opaque integration settings refuse static join params and saving for full and restricted actors",
+       c do
+    jwt = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", "synthetic-native-jwt")
+
+    on_exit(fn ->
+      if jwt, do: System.put_env("JWT_SECRET_KEY", jwt), else: System.delete_env("JWT_SECRET_KEY")
+    end)
+
+    for self_hosted <- ["true", "false"], plan <- [0, 1], value <- [[], 42] do
+      System.put_env("SELF_HOSTED", self_hosted)
+      Repo.query!("UPDATE users SET plan=$2 WHERE id=$1", [c.user.id, plan], log: false)
+      store(c.user, value)
+
+      before =
+        Repo.query!("SELECT settings,updated_at FROM users WHERE id=$1", [c.user.id], log: false).rows
+
+      jobs = Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows
+      conn = get(conn_for(c.user), "/settings/integrations?service=airtrail")
+      assert conn.status == 302
+      assert Plug.Conn.get_resp_header(conn, "location") == ["/"]
+      assert conn.assigns.flash["alert"] != nil
+
+      assert Repo.query!("SELECT settings,updated_at FROM users WHERE id=$1", [c.user.id],
+               log: false
+             ).rows == before
+
+      store(c.user, %{"timezone" => "UTC"})
+      conn = get(conn_for(c.user), "/settings/integrations?service=airtrail")
+      store(c.user, value)
+      assert {:error, {:redirect, %{to: "/", flash: flash}}} = live(conn)
+      assert Phoenix.LiveView.Utils.verify_flash(@endpoint, flash)["alert"] != nil
+
+      for operation <- [:params, :save] do
+        store(c.user, %{"timezone" => "UTC"})
+        {:ok, view, _} = live_as(c.user, "airtrail")
+        store(c.user, value)
+
+        if operation == :params,
+          do: render_patch(view, "/settings/integrations?service=teslamate"),
+          else:
+            render_hook(view, "save", %{
+              "settings" => %{"airtrail_api_key" => "synthetic-refused"}
+            })
+
+        assert_redirect(view, "/")
+      end
+
+      assert Accounts.settings(c.user.id) == value
+      assert Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows == jobs
+      assert hd(hd(before)) == value
+    end
+
+    System.put_env("SELF_HOSTED", "true")
+    store(c.user, %{"timezone" => "UTC"})
+    {:ok, view, _} = live_as(c.user, "airtrail")
+    jobs = Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows
+
+    {_, ref} =
+      Dawarich.Test.SettingsReadProbe.run(
+        view.pid,
+        "UPDATE users SET settings=$2,updated_at=$3 WHERE id=$1",
+        fn -> store(c.user, []) end,
+        fn ->
+          render_hook(view, "save", %{
+            "settings" => %{"airtrail_skip_ssl_verification" => "true"}
+          })
+        end
+      )
+
+    assert_received {:settings_read_probe, ^ref}
+    assert_redirect(view, "/")
+    refute Process.alive?(view.pid)
+    assert Accounts.settings(c.user.id) == []
+    assert Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows == jobs
   end
 end
