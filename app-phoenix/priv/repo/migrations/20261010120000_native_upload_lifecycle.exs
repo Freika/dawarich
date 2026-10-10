@@ -6,12 +6,7 @@ defmodule Dawarich.Repo.Migrations.NativeUploadLifecycle do
       add :reference, :text, primary_key: true
       add :user_id, :bigint, null: false
 
-      add :blob_id,
-          references(:active_storage_blobs,
-            type: :bigint,
-            prefix: "public",
-            on_delete: :nilify_all
-          )
+      add :blob_id, :bigint
 
       add :kind, :text, null: false
       add :state, :text, null: false, default: "pending"
