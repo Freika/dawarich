@@ -19,6 +19,9 @@ defmodule DawarichWeb.NativeTripComponentTest do
 
     assert html =~ "id=\"native-trip-map-884101\""
     assert html =~ "phx-hook=\"Trip\""
+    assert html =~ "data-map-replay-open"
+    assert html =~ "data-replay-density"
+    assert html =~ "data-replay-photos"
     assert html =~ "distanceThresholdMeters"
     refute html =~ "synthetic-secret"
     refute html =~ "deviceWindows"

@@ -1,8 +1,8 @@
-import { installHostReplay } from "../replay/host.js"
 import { createReader } from "../data/reader.js"
 import { cancelled } from "../data/request_scope.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
+import { installHostReplay } from "../replay/host.js"
 import { createMapRuntime } from "../runtime/create_map.js"
 import { createTripLayers } from "./layers.js"
 export function mountTrip({
@@ -35,7 +35,15 @@ export function mountTrip({
     attach: ({ map, config, lifetime }) =>
       new Promise((resolve) => {
         const ready = () => {
-          installHostReplay({owner, map, lifetime, root: element.closest?.("[data-native-map-root]")})
+          installHostReplay({
+            onActive: (active) => (active ? photos?.hide() : photos?.show()),
+            library,
+            reader,
+            owner,
+            map,
+            lifetime,
+            root: element.closest?.("[data-native-map-root]"),
+          })
           layers = createLayers({
             map,
             library,
@@ -97,6 +105,7 @@ export function mountTrip({
           )) !== "ready"
         )
           throw new Error("Photos unavailable")
+        if (owner.replay?.active) photos.hide()
       }
     },
     events: {

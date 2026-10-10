@@ -3,7 +3,7 @@ import { mountHost } from "../../../app-phoenix/assets/js/map/runtime/host.js"
 export class Element {
   constructor() {
     this.listeners = new Map()
-    this.style = {}
+    this.style = { setProperty() {} }
     this.dataset = {}
     this.children = []
   }
@@ -32,7 +32,7 @@ export class Element {
   remove() {}
 }
 
-export function fixture(config = {}) {
+export function fixture(config = {}, options = {}) {
   const nodes = new Map()
   const root = new Element()
   root.querySelector = (selector) => nodes.get(selector)
@@ -117,6 +117,7 @@ export function fixture(config = {}) {
     refreshTiles() {},
     getZoom: () => 12,
     loaded: () => true,
+    getContainer: () => element,
     getCanvas: () => ({ style: {} }),
     remove() {},
     getBounds: () => ({
@@ -157,6 +158,7 @@ export function fixture(config = {}) {
       pushed.push({ event, payload, reply }),
     loadStyle: async () => ({ version: 8 }),
     loadLibrary: async () => ({
+      ...options.library,
       Map: function NativeMap() {
         return map
       },

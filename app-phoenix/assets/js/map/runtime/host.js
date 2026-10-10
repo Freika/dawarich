@@ -6,7 +6,7 @@ import { createHostEditing } from "../edit/host.js"
 import { createBaseLayers } from "../layers/tile_layers.js"
 import { installHostReplay } from "../replay/host.js"
 import { createHostSelection } from "../selection/host.js"
-import { applyMapStyle } from "../style/map_style.js"
+import { fetchStyle } from "../style/load_style.js"
 import { createEnrichmentTool } from "../ui/enrichment.js"
 import { createHostSearch } from "../ui/host_search.js"
 import { createHostSettings } from "../ui/host_settings.js"
@@ -28,6 +28,7 @@ export function mountHost({
 }) {
   const requests = createRangeRequests({ pushEvent })
   const freshness = createTileFreshness()
+  let library
   let layers
   let editing
   let enrichment
@@ -41,13 +42,19 @@ export function mountHost({
     element,
     config,
     reader,
-    loadLibrary,
+    loadLibrary: async (options) => {
+      library = await loadLibrary(options)
+      return library
+    },
     loadStyle,
     transformRequest: freshness.transformRequest,
     attach:
       attach ??
       (({ map, config, lifetime }) => {
         installHostReplay({
+          onActive: (active) => (active ? photos?.hide() : photos?.show()),
+          library,
+          reader,
           owner,
           map,
           lifetime,
@@ -218,6 +225,7 @@ export function mountHost({
             )
             operation.check()
             if (status !== "ready") throw new Error("Photos unavailable")
+            if (owner.replay?.active) photos.hide()
             photoKey = desired
           }
         }
@@ -244,6 +252,7 @@ export function mountHost({
   })
   Object.defineProperty(owner, "editor", { get: () => editing?.editor })
   Object.defineProperty(owner, "entityLayers", { get: () => entities })
+  Object.defineProperty(owner, "photoLayer", { get: () => photos })
   owner.visitsFilter = (filter) =>
     owner.update({ ...owner.config, visitFilter: filter })
   owner.layer = ({ layer, enabled }) => {
@@ -273,13 +282,4 @@ export function mountHost({
     dispose()
   }
   return owner
-}
-
-async function fetchStyle(config, { signal }) {
-  const response = await fetch(
-    config.styleUrl ?? "/maps_maplibre/styles/light.json",
-    { signal, credentials: "same-origin" },
-  )
-  if (!response.ok) throw new Error("Map style unavailable")
-  return applyMapStyle(await response.json(), config)
 }

@@ -75,6 +75,7 @@ defmodule DawarichWeb.NativePublicMapTest do
     {view, html, cookie} = open()
     assert html =~ "phx-hook=\"PublicMap\""
     assert html =~ "Public map"
+    assert has_element?(view, "#native-public-replay [data-replay=scrubber]")
     state = inspect(:sys.get_state(view.pid), limit: :infinity)
     refute state =~ "synthetic-public-phrase"
     refute state =~ cookie
@@ -97,6 +98,7 @@ defmodule DawarichWeb.NativePublicMapTest do
     Repo.query!("UPDATE shared_links SET magic_phrase='rotated' WHERE id=$1::text::uuid", [@id])
     render_hook(view, "map:ready", %{})
     refute has_element?(view, "#native-public-map")
+    refute has_element?(view, "#native-public-replay")
     assert has_element?(view, "form[action='/s/#{@id}/unlock'][method=post]")
     refute has_element?(view, "form[phx-submit]")
     assert_push_event(view, "map:clear", %{code: "locked"})
@@ -114,11 +116,13 @@ defmodule DawarichWeb.NativePublicMapTest do
     {view, html, _} = open(false)
     assert html =~ "/s/#{@id}/unlock"
     refute has_element?(view, "#native-public-map")
+    refute has_element?(view, "#native-public-replay")
   end
 
   test "connected public mount cannot reuse an HTTP proof after its cookie disappears" do
     {view, _, _} = open(true, false)
     refute has_element?(view, "#native-public-map")
+    refute has_element?(view, "#native-public-replay")
     assert has_element?(view, "form[action='/s/#{@id}/unlock']")
   end
 
@@ -134,11 +138,13 @@ defmodule DawarichWeb.NativePublicMapTest do
     render(view)
     assert :sys.get_state(view.pid).socket.assigns.public_deadline == nil
     refute has_element?(view, "#native-public-map")
+    refute has_element?(view, "#native-public-replay")
   end
 
   test "public URL change cannot reuse another share capability" do
     {view, _, _} = open()
     render_patch(view, "/probe-public/a1320000-0000-4000-8000-000000000099")
     refute has_element?(view, "#native-public-map")
+    refute has_element?(view, "#native-public-replay")
   end
 end

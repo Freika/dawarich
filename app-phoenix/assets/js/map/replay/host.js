@@ -1,60 +1,183 @@
-import { createReplay } from "./runtime.js"
-import { createReplayPanel } from "./panel.js"
 import { mapTranslate } from "../ui/translate.js"
+import { createReplayDensity } from "./density.js"
+import { createReplayPanel } from "./panel.js"
+import { createReplayPhotos } from "./photos.js"
+import { createReplay } from "./runtime.js"
 
-export function installHostReplay({ owner, map, lifetime, root }) {
-  let runtime = null, panel = null, range = null, active = false, latest = {}
+export function installHostReplay({
+  owner,
+  map,
+  lifetime,
+  root,
+  library,
+  reader,
+  onActive = () => {},
+}) {
+  let runtime = null,
+    panel = null,
+    density = null,
+    photos = null,
+    photoRows = [],
+    range = null,
+    active = false,
+    latest = {}
   const translate = mapTranslate(() => owner.config)
-  const keys = ["play", "speed", "speedLabel", "prev", "next", "day", "dayCount", "time", "velocity", "noData", "follow", "scrubber"]
-  const elements = Object.fromEntries(keys.map(key => [key, root?.querySelector(`[data-replay="${key}"]`)]))
+  const keys = [
+    "play",
+    "speed",
+    "speedLabel",
+    "prev",
+    "next",
+    "day",
+    "dayCount",
+    "time",
+    "velocity",
+    "noData",
+    "follow",
+    "scrubber",
+  ]
+  const elements = Object.fromEntries(
+    [...keys, "cycle", "cyclePrev", "cycleNext", "cycleCount"].map((key) => [
+      key,
+      root?.querySelector(`[data-replay="${key}"]`),
+    ]),
+  )
   const container = root?.querySelector("[data-map-replay-panel]")
   const opener = root?.querySelector("[data-map-replay-open]")
   function ensure() {
-    runtime ??= createReplay({map, timezone: owner.config.range.timezone,
-      loadDay: async (_range, {signal}) => (await owner.source.snapshot({purpose: "replay", signal})).points,
-      onState: state => { latest = state; panel?.onState(state) },
-      onPoint: point => panel?.onState({point}), onStop: () => panel?.stopped(),
-      onFollow: enabled => elements.follow?.setAttribute("aria-pressed", String(enabled)),
+    runtime ??= createReplay({
+      map,
+      timezone: owner.config.range.timezone,
+      loadDay: async (_range, { signal }) => {
+        const snapshot = await owner.source.snapshot({
+          purpose: "replay",
+          signal,
+        })
+        photoRows = snapshot.photos ?? []
+        return snapshot.points
+      },
+      onState: (state) => {
+        const changed = latest.day !== state.day
+        latest = state
+        if (changed) density?.render()
+        panel?.onState(state)
+      },
+      onPoint: (point) => {
+        panel?.onState({ point })
+        photos?.sync(point)
+      },
+      onStop: () => panel?.stopped(),
+      onFollow: (enabled) =>
+        elements.follow?.setAttribute("aria-pressed", String(enabled)),
     })
-    runtime.manager.translate = translate
+    runtime.manager.noDataLabel = translate("replay.no_data_loaded")
     runtime.manager.locale = owner.config.locale ?? "en"
     return runtime
   }
   owner.replay = {
     async open(next = owner.config.range) {
+      owner.replay.close()
+      if (lifetime.destroyed) return "cancelled"
       active = true
+      onActive(true)
       range = JSON.stringify(next)
       try {
         const result = await ensure().open(next)
         if (result !== "ready" || !active) return result
         if (container) container.hidden = false
         panel?.destroy()
-        if (keys.every(key => elements[key])) panel = createReplayPanel({elements, replay: runtime, translate})
+        if (keys.every((key) => elements[key]))
+          panel = createReplayPanel({ elements, replay: runtime, translate })
         panel?.onState(latest)
+        density?.destroy()
+        photos?.destroy()
+        const densityRoot = root?.querySelector("[data-replay-density]")
+        if (densityRoot)
+          density = createReplayDensity({
+            container: densityRoot,
+            document: root.ownerDocument,
+            manager: runtime.manager,
+            seek: (minute) => runtime.seek(minute),
+          })
+        if (library?.Marker)
+          photos = createReplayPhotos({
+            photos: photoRows,
+            map,
+            library,
+            reader,
+            document: root?.ownerDocument ?? map.getContainer().ownerDocument,
+            container: root?.querySelector("[data-replay-photos]"),
+            manager: runtime.manager,
+            labels: owner.config.photoLabels,
+          })
+        runtime.seek(latest.minute ?? 0)
         return result
-      } catch (error) { if (error.name !== "AbortError") throw error; return "cancelled" }
+      } catch (error) {
+        if (error.name !== "AbortError") throw error
+        return "cancelled"
+      }
     },
-    close() { active = false; panel?.destroy(); panel = null; runtime?.close(); if (container) container.hidden = true },
-    play: () => ensure().play(), pause: () => runtime?.pause(),
-    seek: minute => runtime?.seek(minute), setSpeed: speed => runtime?.setSpeed(speed),
-    recenter: position => runtime?.recenter(position),
-    get manager() { return runtime?.manager }, get playing() { return runtime?.playing ?? false },
+    close() {
+      active = false
+      if (!lifetime.destroyed) onActive(false)
+      panel?.destroy()
+      panel = null
+      density?.destroy()
+      density = null
+      photos?.destroy()
+      photos = null
+      runtime?.close()
+      if (container) container.hidden = true
+    },
+    play: () => ensure().play(),
+    pause: () => runtime?.pause(),
+    seek: (minute) => runtime?.seek(minute),
+    setSpeed: (speed) => runtime?.setSpeed(speed),
+    recenter: (position) => runtime?.recenter(position),
+    get active() {
+      return active
+    },
+    get manager() {
+      return runtime?.manager
+    },
+    get playing() {
+      return runtime?.playing ?? false
+    },
   }
-  const open = () => { owner.replay.open().catch(() => owner.replay.close()) }
-  const close = () => { owner.replay.close(); opener?.focus() }
+  const open = () => {
+    owner.replay.open().catch(() => owner.replay.close())
+  }
+  const close = () => {
+    owner.replay.close()
+    opener?.focus()
+  }
   const closer = root?.querySelector("[data-map-replay-close]")
   opener?.addEventListener("click", open)
   closer?.addEventListener("click", close)
-  const update = owner.update, reconnect = owner.reconnect
-  owner.update = async next => {
+  const update = owner.update,
+    reconnect = owner.reconnect
+  owner.update = async (next) => {
     const changed = active && range !== JSON.stringify(next.range)
-    if (changed) runtime?.close()
+    if (changed) owner.replay.close()
     if (next.panel && next.panel !== "replay") owner.replay.close()
     const result = await update.call(owner, next)
-    if (changed && active) await owner.replay.open(next.range)
+    if (
+      changed &&
+      result === "ready" &&
+      (!next.panel || next.panel === "replay")
+    )
+      await owner.replay.open(next.range)
     return result
   }
-  owner.reconnect = async () => { const result = await reconnect.call(owner); runtime?.reconnect(); return result }
-  lifetime.own(() => { opener?.removeEventListener("click", open); closer?.removeEventListener("click", close); owner.replay.close() })
+  owner.reconnect = async () => {
+    const result = await reconnect.call(owner)
+    runtime?.reconnect()
+    return result
+  }
+  lifetime.own(() => {
+    opener?.removeEventListener("click", open)
+    closer?.removeEventListener("click", close)
+    owner.replay.close()
+  })
   return owner.replay
 }

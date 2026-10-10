@@ -48,6 +48,16 @@ defmodule DawarichWeb.NativeM6HostTest do
     render_async(view, 5000)
   end
 
+  test "native map replay remains mounted through a day patch", %{id: id} do
+    {:ok, view, _} = open(id, @second)
+    assert has_element?(view, "[data-map-replay-open]")
+    assert has_element?(view, "[data-replay-density]")
+    assert has_element?(view, "[data-replay-photos]")
+    render_patch(view, @first)
+    assert has_element?(view, "#native-map-replay [data-replay=scrubber]")
+    render_async(view, 5000)
+  end
+
   test "native production host opens validates and closes an Area dialog", %{id: id} do
     {:ok, view, _} = open(id, @second)
     render_hook(view, "area:new", %{"latitude" => 52.52, "longitude" => 13.405})

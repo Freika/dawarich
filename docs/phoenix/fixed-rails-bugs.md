@@ -1450,3 +1450,13 @@ Rails validates a public link before the provider read; a thumbnail provider can
 - Test: “public result revoked during provider completion is dropped” in `native_public_capability_test.exs`; actual named RED, late-admission mutation failure/restored GREEN. Rails source oracle loads the actual BaseController/PhotosController with a provider that revokes during completion and reproduces the response.
 - Ledger: ED-NATIVE-M6-PUBLIC-LATE; no DRB. Rails unchanged.
 - CHANGELOG-ready: Drop completed public-map reads after share revocation.
+
+### FRB-NATIVE-M6-REPLAY-PHOTO-POPUP — Replay photos leave popups open after close or day change
+
+Rails replay stack and marker layer create popups without retaining them; destroying the stack or hiding markers leaves an orphaned popup on the map. Native replay cards and markers own their popup, thumbnail request/blob and listeners, releasing all on day replacement, close or host destruction.
+
+- Rails: `app/javascript/maps_maplibre/components/replay_photo_stack.js:96`, `app/javascript/maps_maplibre/layers/replay_photo_layer.js:92`.
+- Phoenix: `app-phoenix/assets/js/map/replay/photo_card.js`, `app-phoenix/assets/js/map/replay/photos.js`, existing `app-phoenix/assets/js/map/ui/photo_marker.js`.
+- Tests: “closing replay photo stack releases its popup thumbnails and card listeners”; “closing replay releases photo popups density listeners and day-owned thumbnails”. Actual Rails-source oracle fails with both owned popups still open; popup-close and host-unwire mutations fail, restored GREEN.
+- Ledger: ED-NATIVE-M6-REPLAY-PHOTO-POPUP; no DRB. Rails unchanged.
+- CHANGELOG-ready: Close replay photo popups when changing day, closing replay or leaving the map.

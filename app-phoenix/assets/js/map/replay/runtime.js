@@ -123,6 +123,8 @@ export function createReplay({
     const nearest = manager.findNearestMinuteWithPoints(value)
     const point = nearest === null ? null : manager.getPointAtPosition(nearest)
     if (point) marker(point)
+    onPoint(point)
+    onState({ day: manager.getCurrentDay(), minute, dayChanged: true })
     if (playing) starting = true
     return point
   }
@@ -161,7 +163,17 @@ export function createReplay({
     pause: stop,
     seek,
     setSpeed,
-    recenter: (lngLat) => follow?.recenter(lngLat),
+    recenter: (lngLat) => {
+      if (!opened) return
+      follow ??= createFollowCamera({ map, onChange: onFollow })
+      follow.start()
+      const coordinates = manager.getCoordinates(
+        manager.getPointAtPosition(manager.findNearestMinuteWithPoints(minute)),
+      )
+      follow.recenter(
+        lngLat ?? (coordinates && [coordinates.lon, coordinates.lat]),
+      )
+    },
     reconnect,
     close,
     manager,

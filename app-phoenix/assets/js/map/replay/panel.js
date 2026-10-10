@@ -4,6 +4,7 @@ import { createScrubber } from "./scrubber.js"
 export function createReplayPanel({ elements, replay, translate }) {
   const { manager } = replay
   const bindings = []
+  let currentMinute = 0
   const scrubber = createScrubber({
     input: elements.scrubber,
     onMinute: (minute) => {
@@ -22,7 +23,13 @@ export function createReplayPanel({ elements, replay, translate }) {
   }
 
   function showMinute(minute) {
+    currentMinute = minute
     scrubber.set(minute)
+    if (elements.cycle) {
+      const count = manager.getPointCountAtMinute(minute)
+      elements.cycle.hidden = count < 2
+      elements.cycleCount.textContent = `${manager.cycleIndex + 1} / ${count}`
+    }
     elements.time.textContent = manager.formatCurrentMinute(minute)
     elements.noData.hidden = manager.hasDataAtMinute(minute)
     if (!elements.noData.hidden)
@@ -75,6 +82,19 @@ export function createReplayPanel({ elements, replay, translate }) {
   bind(elements.next, "click", () => changeDay(1))
   bind(elements.follow, "click", () => replay.recenter())
 
+  if (elements.cycle) {
+    for (const [element, advance] of [
+      [elements.cyclePrev, () => manager.cyclePrev()],
+      [elements.cycleNext, () => manager.cycleNext(currentMinute)],
+    ])
+      bind(element, "click", () => {
+        replay.pause()
+        setPlaying(false)
+        advance()
+        replay.seek(currentMinute)
+        showMinute(currentMinute)
+      })
+  }
   refresh()
 
   return {

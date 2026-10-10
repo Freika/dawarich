@@ -143,3 +143,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Close flight popups when removing their map layer. [FRB-NATIVE-M6-FLIGHT-POPUP](fixed-rails-bugs.md#frb-native-m6-flight-popup--removed-flight-layers-leave-a-popup-open)
 
 - Drop completed native public-map reads after share revocation, expiry, phrase rotation or family withdrawal (FRB-NATIVE-M6-PUBLIC-LATE).
+
+- Close replay photo popups when changing day, closing replay or leaving the map. [FRB-NATIVE-M6-REPLAY-PHOTO-POPUP](fixed-rails-bugs.md#frb-native-m6-replay-photo-popup--replay-photos-leave-popups-open-after-close-or-day-change)

@@ -1,6 +1,6 @@
-import { installHostReplay } from "../replay/host.js"
 import { cancelled } from "../data/request_scope.js"
 import { createStudioSource } from "../data/studio_source.js"
+import { installHostReplay } from "../replay/host.js"
 import { createMapRuntime } from "../runtime/create_map.js"
 import { createPublicLayers } from "./layers.js"
 import { createPublicReader } from "./reader.js"
@@ -61,7 +61,15 @@ export function mountPublic({
     },
     loadStyle,
     attach: ({ map, lifetime, operation }) => {
-      installHostReplay({owner, map, lifetime, root: element.closest?.("[data-native-map-root]")})
+      installHostReplay({
+        onActive: (active) => (active ? photos?.hide() : photos?.show()),
+        library,
+        reader,
+        owner,
+        map,
+        lifetime,
+        root: element.closest?.("[data-native-map-root]"),
+      })
       layers = createLayers({
         map,
         library,
@@ -114,6 +122,7 @@ export function mountPublic({
           "ready"
         )
           throw new Error("Public photos unavailable")
+        if (owner.replay?.active) photos.hide()
       }
     },
     events: {

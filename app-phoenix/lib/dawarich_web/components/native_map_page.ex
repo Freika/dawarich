@@ -118,6 +118,7 @@ defmodule DawarichWeb.NativeMapPage do
       />
       <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
       <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
+      <DawarichWeb.NativeMapReplay.panel id="native-map-replay" locale={@locale} />
       <div class="relative flex-1 min-h-0 min-w-0">
         <DawarichWeb.NativeMapHost.map_host id="native-map" config={@map_config} locale={@locale} />
       </div>
