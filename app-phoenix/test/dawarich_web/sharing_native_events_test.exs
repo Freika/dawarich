@@ -160,7 +160,13 @@ defmodule DawarichWeb.SharingNativeEventsTest do
     before =
       Repo.query!("SELECT id,revoked_at FROM shared_links ORDER BY id", [], log: false).rows
 
-    render_click(view, "sharing_revoke", %{"id" => Ecto.UUID.generate()})
+    render_click(view, "sharing_prepare", %{
+      "action" => "revoke",
+      "id" => Ecto.UUID.generate()
+    })
+
+    assert snapshot(view).confirmation == nil
+    render_click(view, "sharing_confirm", %{})
 
     assert Repo.query!("SELECT id,revoked_at FROM shared_links ORDER BY id", [], log: false).rows ==
              before
