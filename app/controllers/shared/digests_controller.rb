@@ -12,7 +12,7 @@ class Shared::DigestsController < ApplicationController
   def show
     @digest = Users::Digest.find_by(sharing_uuid: params[:uuid])
 
-    unless @digest&.public_accessible?
+    unless @digest&.public_accessible? && @digest.user
       return redirect_to root_path,
                          alert: I18n.t('controllers.shared.digests.shared_digest_not_found_or_no_longer_available')
     end
