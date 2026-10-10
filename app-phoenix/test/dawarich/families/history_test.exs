@@ -1,5 +1,5 @@
 defmodule Dawarich.Families.HistoryTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
 
   alias Dawarich.Families.History
 

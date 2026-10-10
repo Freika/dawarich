@@ -1,5 +1,5 @@
 defmodule Dawarich.MapMatching.Atlas.ClientTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import ExUnit.CaptureLog
   import Dawarich.Test.RawHTTP
   alias Dawarich.MapMatching.Atlas.{Client, ConnectionTest, Endpoint}

@@ -1,5 +1,5 @@
 defmodule Dawarich.Photos.ProviderInventoryTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Dawarich.Test.RawHTTP
   @cap 32 * 1024 * 1024
 

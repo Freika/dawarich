@@ -33,6 +33,8 @@ defmodule Dawarich.Mail.Wave2ArgsTest do
     "mail.user.account_destroy_confirmation" => "destroy-confirmation:42:" <> @digest
   }
 
+  @dedupe_workers Map.take(@workers, Map.keys(@rails_dedupe_keys))
+
   defp payloads, do: @payloads |> File.read!() |> Jason.decode!()
 
   defp mistyped(value, worker)
@@ -96,7 +98,7 @@ defmodule Dawarich.Mail.Wave2ArgsTest do
     payloads = payloads()
 
     for {type, key} <- @rails_dedupe_keys do
-      worker = Map.fetch!(@workers, type)
+      worker = Map.fetch!(@dedupe_workers, type)
       {:ok, args} = worker.args_from_command(1, Map.fetch!(payloads, type))
       assert worker.provider_key(args) == key, type
     end

@@ -1,5 +1,5 @@
 defmodule Dawarich.TagPagesTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Dawarich.{Repo, TagPages}
   alias Dawarich.Test.FrameSeeds

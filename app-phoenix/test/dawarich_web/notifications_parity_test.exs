@@ -1,5 +1,5 @@
 defmodule DawarichWeb.NotificationsParityTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.ConnTest
 
@@ -10,7 +10,6 @@ defmodule DawarichWeb.NotificationsParityTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
-    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
   end
 
   for file <- Path.wildcard("test/fixtures/notifications/*.json") do

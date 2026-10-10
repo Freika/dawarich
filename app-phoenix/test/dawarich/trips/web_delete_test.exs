@@ -1,5 +1,5 @@
 defmodule Dawarich.Trips.WebDeleteTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
   alias Dawarich.Test.{RailsUser, TripsSeeds}
   alias Dawarich.Trips.WebDelete
 

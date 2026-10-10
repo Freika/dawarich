@@ -1,5 +1,5 @@
 defmodule Dawarich.TripPageTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Dawarich.TripPage
   alias Dawarich.Test.TripsSeeds

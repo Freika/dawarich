@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.Recovery.FlowTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.Recovery.{Flow, Lifecycle, Token}
   alias Dawarich.Repo
   @secret "phoenix-a2-cookie-fixture-secret-not-for-production"

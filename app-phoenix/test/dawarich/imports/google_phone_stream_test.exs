@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.GooglePhoneStreamTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Imports.JsonStream
   @root Path.expand("../../fixtures/imports/google_phone", __DIR__)
   @oracle Jason.decode!(File.read!(Path.join(@root, "stream-oracle.json")))

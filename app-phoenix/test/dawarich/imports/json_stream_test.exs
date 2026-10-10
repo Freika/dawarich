@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.JsonStreamTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Bitwise
   alias Dawarich.Imports.JsonStream
   alias Dawarich.Imports.JsonStream.Spool

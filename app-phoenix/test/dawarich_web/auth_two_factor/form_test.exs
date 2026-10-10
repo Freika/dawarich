@@ -1,5 +1,5 @@
 defmodule DawarichWeb.AuthTwoFactor.FormTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Dawarich.Auth.TwoFactor.Totp
   alias Dawarich.Test.ParityHTML

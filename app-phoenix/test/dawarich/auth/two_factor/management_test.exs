@@ -12,7 +12,7 @@ defmodule Dawarich.Auth.TwoFactor.ManagementTest.SecondSaveFailure do
 end
 
 defmodule Dawarich.Auth.TwoFactor.ManagementTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.Account
   alias Dawarich.Auth.TwoFactor.{BackupCodes, Management, Secret, Totp}
   alias Dawarich.Repo

@@ -15,7 +15,7 @@ defmodule DawarichWeb.LiveErrorReportingTest do
     end
 
     def handle_event("crash", params, _socket), do: raise(inspect(params))
-    def render(assigns), do: ~H"<button phx-click=\"crash\">Crash</button>"
+    def render(assigns), do: ~H'<button phx-click="crash">Crash</button>'
   end
 
   defmodule DirectLive do

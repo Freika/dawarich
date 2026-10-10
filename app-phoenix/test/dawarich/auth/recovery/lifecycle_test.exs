@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.Recovery.LifecycleTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.Account
   alias Dawarich.Auth.Recovery.{Lifecycle, Token}
   alias Dawarich.Repo

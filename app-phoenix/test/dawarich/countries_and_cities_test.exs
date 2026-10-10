@@ -1,5 +1,5 @@
 defmodule Dawarich.CountriesAndCitiesTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
 
   alias Dawarich.{CountriesAndCities, RailsTime}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby

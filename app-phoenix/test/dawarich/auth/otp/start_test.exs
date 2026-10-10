@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.Otp.StartTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.{Account, Otp.Start}
   alias Dawarich.{Repo, Test.RailsUser}
 

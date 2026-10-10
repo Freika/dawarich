@@ -128,7 +128,7 @@ defmodule Dawarich.Visits.RedetectWorkerTest do
     stop_supervised!(@oban)
 
     assert {:cancel, message} = RedetectWorker.perform(the_job)
-    assert is_binary(message) and message != ""
+    assert <<_, _::binary>> = message
 
     assert [%{"kind" => 2, "title" => "Visit re-detection failed", "content" => content}] =
              notifications(uid)

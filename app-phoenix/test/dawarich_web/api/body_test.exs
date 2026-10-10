@@ -6,8 +6,6 @@ defmodule DawarichWeb.Api.BodyTest do
   import Dawarich.Test.RawHTTP
   import ExUnit.CaptureLog
 
-  require Logger
-
   alias DawarichWeb.Api.Body
 
   defp with_info_log(fun) do

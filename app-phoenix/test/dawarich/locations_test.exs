@@ -1,5 +1,5 @@
 defmodule Dawarich.LocationsTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
 
   alias Dawarich.{Jsonb, Locations, RailsTime}
 

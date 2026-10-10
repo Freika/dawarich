@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.ArchiveDispatchTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Imports.{ArchiveDispatch, ArchivePaths}
   alias Dawarich.Imports.GpxArchive.Error
   alias Dawarich.GpxZipFixture, as: Zip

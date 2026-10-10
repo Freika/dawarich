@@ -84,7 +84,7 @@ defmodule Dawarich.Front.CommandTest do
           ~w(bundle exec bin/rails server -p http)
         ] do
       assert {:direct, reason} = parse(argv)
-      assert is_binary(reason) and reason != ""
+      assert <<_, _::binary>> = reason
     end
   end
 end

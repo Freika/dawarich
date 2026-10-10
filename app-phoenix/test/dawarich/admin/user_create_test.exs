@@ -1,5 +1,5 @@
 defmodule Dawarich.Admin.UserCreateTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Admin.UserCreate
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.RailsUser
