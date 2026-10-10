@@ -27,7 +27,7 @@ defmodule DawarichWeb.Api.MapController do
     now = conn.assigns[:api_now] || DateTime.utc_now()
 
     result =
-      if Dawarich.Standalone.enabled?(),
+      if conn.private[:dawarich_browser_map] == true or Dawarich.Standalone.enabled?(),
         do: Closure.read(action, conn.assigns.api_user, params, now),
         else: Dawarich.MapApi.read(action, conn.assigns.api_user, params, now)
 

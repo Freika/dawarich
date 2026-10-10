@@ -16,7 +16,7 @@ defmodule DawarichWeb.Api.VisitsController do
 
     result =
       if conn.assigns.api_format in [:json, :html, :all],
-        do: scoped_run(action, user, params, zone, now),
+        do: scoped_run(action, user, params, zone, now, conn.private[:dawarich_browser_map]),
         else: {:replay, "visit format"}
 
     case result do
@@ -55,8 +55,8 @@ defmodule DawarichWeb.Api.VisitsController do
         else: Body.replay(conn, inspect(error.__struct__))
   end
 
-  defp scoped_run(action, user, params, zone, now) do
-    if Dawarich.Standalone.enabled?() do
+  defp scoped_run(action, user, params, zone, now, browser) do
+    if browser == true or Dawarich.Standalone.enabled?() do
       with :ok <- Dawarich.AccountApi.Closure.pending(user, now),
            {:ok, params} <- Closure.scope(action, user, params, now),
            do: run(action, user.id, params, zone, now)

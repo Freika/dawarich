@@ -1,0 +1,89 @@
+defmodule DawarichWeb.BrowserMapData do
+  @moduledoc false
+  @behaviour Plug
+  import Plug.Conn
+  alias DawarichWeb.Api
+
+  @paged [:points, :tracks, :track_points, :places, :visits]
+  @handlers %{
+    points: {Api.MapController, :points},
+    tracks: {Api.MapController, :tracks},
+    track: {Api.MapController, :track},
+    track_points: {Api.MapController, :track_points},
+    bounds: {Api.HexagonsController, :bounds},
+    hexagons: {Api.HexagonsController, :index},
+    fog: {Api.HexagonsController, :fog},
+    photos: {Api.PhotosController, :index},
+    thumbnail: {Api.PhotosController, :thumbnail_closure},
+    locations: {Api.LocationsController, :index_closure},
+    suggestions: {Api.LocationsController, :suggestions},
+    places: {Api.PlacesController, {:closure, :index}},
+    place_search: {Api.PlacesController, :search},
+    nearby: {Api.PlacesController, :nearby},
+    visits: {Api.VisitsController, :index},
+    areas: {Api.AreasController, :index},
+    timeline: {Api.TimelineController, :index},
+    point_tiles: {Api.PointTilesController, :show},
+    track_tiles: {Api.TrackTilesController, :show}
+  }
+
+  def init(action), do: action
+
+  def call(conn, action) do
+    with :ok <- readonly(conn), {:ok, params} <- bounded(conn.assigns.api_params, action) do
+      conn = assign(conn, :api_params, params)
+
+      case action do
+        :settings ->
+          settings(conn)
+
+        _ ->
+          {module, operation} = Map.fetch!(@handlers, action)
+          module.call(conn, operation)
+      end
+    else
+      {:error, status} -> Api.Respond.json(conn, status, %{error: "invalid_read"})
+    end
+  rescue
+    _ -> Api.Respond.json(conn, 500, %{error: "read_unavailable"})
+  end
+
+  defp readonly(%{method: method}) when method in ["GET", "HEAD"], do: :ok
+  defp readonly(_), do: {:error, 405}
+
+  defp bounded(params, action) when action in @paged do
+    per = params["per_page"] || "1000"
+    page = params["page"] || "1"
+
+    with true <- is_binary(per) and is_binary(page),
+         {per_n, ""} when per_n in 1..1000 <- Integer.parse(per),
+         {page_n, ""} when page_n in 1..100_000 <- Integer.parse(page) do
+      {:ok, params |> Map.put("per_page", per) |> Map.put("page", page)}
+    else
+      _ -> {:error, 422}
+    end
+  end
+
+  defp bounded(params, _), do: {:ok, params}
+
+  defp settings(conn) do
+    {_, status, body} =
+      Dawarich.Settings.Api.index(
+        Dawarich.Repo,
+        conn.assigns.api_user,
+        Dawarich.Settings.Api.context(conn)
+      )
+
+    body =
+      if status == 200,
+        do:
+          Map.update!(
+            body,
+            "settings",
+            &Map.drop(&1, ~w(immich_api_key photoprism_api_key airtrail_api_key))
+          ),
+        else: body
+
+    Api.Respond.json(conn, status, Dawarich.Settings.Api.term(body))
+  end
+end
