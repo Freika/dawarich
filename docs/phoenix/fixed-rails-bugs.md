@@ -1379,6 +1379,6 @@ Rails admits a public link once when connecting and subscribes to its coordinate
 Rails renders a shared track map even when its owner disables the route section. Native public track readers omit both the map and route snapshot when `show_route` is false; optional stats/photos retain their independent settings.
 
 - Rails: `app/views/shared/links/_track.html.erb:6`.
-- Phoenix: `app-phoenix/lib/dawarich_web/components/shared_resource_page/track.html.heex:4`; `app-phoenix/lib/dawarich/sharing/public_snapshot.ex:12`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/shared_resource_page/track.html.heex:4`; `app-phoenix/lib/dawarich/sharing/public_snapshot.ex:28`.
 - Test: “native shared track honors the disabled route section”; track-section mutation fails, restoration passes.
 - Ledger: ED-NATIVE-M4-TRACK-ROUTE; no DRB added. Rails production code unchanged.
