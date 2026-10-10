@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Prometheus metrics from web and Sidekiq no longer produce duplicate series when label order differs (#3769).
+
 ## [1.15.3] - 2026-09-30, Berlin
 
 ### Added
