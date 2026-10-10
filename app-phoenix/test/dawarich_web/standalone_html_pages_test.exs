@@ -4,6 +4,7 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
   import Plug.Conn
   alias Dawarich.Test.{ApiGolden, RailsUser}
   @endpoint DawarichWeb.Endpoint
+  @retired_paths ~w(/tracks/94801/segments /points/94801/address /map/timeline_feeds/94801/track_info /map/timeline_feeds/calendar /map/timeline_feeds)
   @fixture_now ~U[2026-10-07 12:00:00Z]
 
   setup do
@@ -51,7 +52,11 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
         if route["rails_status"] == 200 and route["html"] do
           {route["target"], result,
            route["native_status"] ||
-             if(URI.parse(route["target"]).path == "/sidekiq", do: 302, else: 200)}
+             case URI.parse(route["target"]).path do
+               path when path in @retired_paths -> 410
+               "/sidekiq" -> 302
+               _ -> 200
+             end}
         end
       end
 
@@ -77,10 +82,11 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     for {id, type} <- [{trip_link, "trip"}, {track_link, "track"}] do
       conn = page(owner, "/s/" <> id)
       assert conn.status == 200
-      assert String.contains?(conn.resp_body, ~s(data-controller="shared-trip-map")) == true
+      assert String.contains?(conn.resp_body, ~s(id="native-public-map")) == true
 
-      assert String.contains?(conn.resp_body, ~s(data-shared-trip-map-link-id-value="#{id}")) ==
-               true
+      assert String.contains?(conn.resp_body, ~s(data-map-config=)) == true
+      assert String.contains?(conn.resp_body, "&quot;shareId&quot;:&quot;#{id}&quot;") == true
+      assert String.contains?(conn.resp_body, "data-controller") == false
 
       assert String.contains?(conn.resp_body, "synthetic-html-pages-key") == false
       if type == "trip", do: assert(conn.resp_body =~ "Owner-only description")
@@ -101,8 +107,8 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     hidden = page(owner, "/s/" <> trip_link)
     assert hidden.status == 200
     assert String.contains?(hidden.resp_body, "Owner-only description") == false
-    assert String.contains?(hidden.resp_body, ~s(data-controller="shared-trip-map")) == false
-    assert String.contains?(hidden.resp_body, "data-day-dot") == false
+    assert String.contains?(hidden.resp_body, ~s(id="native-public-map")) == false
+    assert String.contains?(hidden.resp_body, "data-public-day") == false
 
     Repo.query!("UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid", [
       trip_link,
@@ -124,11 +130,14 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     assert String.contains?(private.resp_body, "No data") == true
     assert String.contains?(private.resp_body, "10:00") == false
     Repo.query!("UPDATE shared_links SET revoked_at=now() WHERE id=$1::text::uuid", [trip_link])
-    assert page(owner, "/s/" <> trip_link).status == 404
+    revoked = page(owner, "/s/" <> trip_link)
+    assert revoked.status == 200
+    assert String.contains?(revoked.resp_body, "native-public-map") == false
+    assert String.contains?(revoked.resp_body, "Owner-only description") == false
     Repo.query!("UPDATE tracks SET user_id=94802 WHERE id=94801")
     missing = page(owner, "/s/" <> track_link)
     assert missing.status == 200
-    assert String.contains?(missing.resp_body, ~s(data-controller="shared-trip-map")) == false
+    assert String.contains?(missing.resp_body, ~s(id="native-public-map")) == false
   end
 
   @tag :review_family_cache
@@ -153,7 +162,8 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     )
 
     prompt = page(94802, "/s/" <> hd(links))
-    assert prompt.status == 401
+    assert prompt.status == 200
+    assert String.contains?(prompt.resp_body, "native-public-map") == false
     assert get_resp_header(prompt, "cache-control") == ["private, no-store"]
     assert String.contains?(prompt.resp_body, "mobile-navigation-menu") == true
 
@@ -173,9 +183,13 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     end
 
     Repo.query!("DELETE FROM family_memberships WHERE user_id=94802")
-    assert page(94802, "/s/" <> hd(links)).status == 404
+    denied = page(94802, "/s/" <> hd(links))
+    assert denied.status == 200
+    assert String.contains?(denied.resp_body, "native-public-map") == false
+    assert String.contains?(denied.resp_body, "mobile-navigation-menu") == false
     anonymous = build_conn() |> put_req_header("accept", "text/html") |> get("/s/" <> hd(links))
-    assert anonymous.status == 404
+    assert anonymous.status == 200
+    assert String.contains?(anonymous.resp_body, "native-public-map") == false
   end
 
   @tag :review_family_layout
@@ -209,7 +223,7 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
       assert public.status == 200
       assert String.contains?(public.resp_body, "utm_medium=public_share") == true
       assert String.contains?(public.resp_body, "mobile-navigation-menu") == false
-      assert get_resp_header(public, "cache-control") == ["max-age=0, private, must-revalidate"]
+      assert get_resp_header(public, "cache-control") == ["private, no-store"]
     end
   end
 
