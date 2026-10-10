@@ -1,4 +1,10 @@
-<div class="w-full my-5 min-w-0" data-native-places="1">
+<div
+  id="native-places"
+  phx-hook="PlaceDraft"
+  data-user-id={@current_user.id}
+  class="w-full my-5 min-w-0"
+  data-native-places="1"
+>
   <div class="overflow-x-auto pb-1">
     <div role="tablist" class="tabs tabs-lifted tabs-lg inline-flex min-w-max flex-nowrap">
       <a
@@ -13,6 +19,18 @@
       )}</a>
     </div>
   </div>
+  <button type="button" class="btn btn-primary my-3" phx-click="open_create">{t(
+    @locale,
+    "shared.place_creation_modal.create_new_place",
+    %{}
+  )}</button>
+  <PlaceForm.form
+    :if={@form_state}
+    state={@form_state}
+    data={@place_data}
+    locale={@locale}
+    nearby={@nearby_state}
+  />
   <p :if={@error} role="alert" class="text-error [overflow-wrap:anywhere]">{@error}</p>
   <div id="places" class="min-w-0">
     <%= if @entries == [] do %>
@@ -57,6 +75,11 @@
               <td><.human_datetime locale={@locale} at={place.created} /></td>
               <td>{coordinates(place)}</td>
               <td>
+                <button type="button" class="btn" phx-click="open_edit" phx-value-id={place.id}>{t(
+                  @locale,
+                  "places.drawer.edit",
+                  %{}
+                )}</button>
                 <button
                   type="button"
                   class="btn btn-error"

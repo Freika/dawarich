@@ -7,7 +7,10 @@ import { EmojiPicker } from "./emoji_picker.js"
 import { MapMatchingDemo } from "./map_matching_demo.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
 
+import { PlaceDraft } from "./place_draft.js"
+
 export const hooks = {
+  PlaceDraft,
   AchievementUnlocks,
   ArchiveChecksum,
   ChangelogWidget,

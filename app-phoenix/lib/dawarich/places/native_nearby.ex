@@ -1,7 +1,7 @@
 defmodule Dawarich.Places.NativeNearby do
   @moduledoc false
   alias Dawarich.Places.{Access, Nearby, NearbyInput}
-  @fields ~w(name latitude longitude street city country)
+  @fields ~w(name latitude longitude street city country)a
 
   def run(original, params, opts) do
     with {:ok, _} <- Access.admit(original),
@@ -33,7 +33,7 @@ defmodule Dawarich.Places.NativeNearby do
     |> Enum.map(fn {result, index} ->
       for field <- @fields,
           into: %{index: index},
-          do: {String.to_existing_atom(field), safe(result[field])}
+          do: {field, safe(result[Atom.to_string(field)])}
     end)
   end
 

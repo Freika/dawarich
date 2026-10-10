@@ -5,6 +5,8 @@ defmodule DawarichWeb.PlacesLive.Index do
   import DawarichWeb.HumanDatetime, only: [human_datetime: 1]
   import DawarichWeb.Paginator, only: [paginator: 1]
   alias Dawarich.{Places, RubyInteger}
+  alias DawarichWeb.PlacesLive.{Form, Nearby}
+  alias DawarichWeb.PlaceForm
   alias DawarichWeb.{OrdinaryForm, OrdinaryFormComponents, PlacesUI}
   alias Dawarich.ReleaseMigrations.Effects.Support.RubyFloat
 
@@ -20,7 +22,9 @@ defmodule DawarichWeb.PlacesLive.Index do
        error: nil,
        confirmation: nil,
        form_state: nil,
-       detail: nil
+       detail: nil,
+       place_data: nil,
+       nearby_state: nil
      )}
   end
 
@@ -29,7 +33,9 @@ defmodule DawarichWeb.PlacesLive.Index do
     query = URI.parse(uri).query || ""
 
     socket =
-      assign(socket,
+      socket
+      |> Form.clear()
+      |> assign(
         query: URI.decode_query(query),
         page: max(RubyInteger.to_i(params["page"]), 1),
         confirmation: nil
@@ -49,6 +55,24 @@ defmodule DawarichWeb.PlacesLive.Index do
   end
 
   @impl true
+  def handle_event("open_create", _, socket), do: {:noreply, Form.open(socket, :create, nil)}
+
+  def handle_event("open_edit", %{"id" => id}, socket),
+    do: {:noreply, Form.open(socket, :edit, id)}
+
+  def handle_event("validate_place", %{"generation" => gen, "place" => attrs}, socket),
+    do: {:noreply, Form.validate(socket, gen, attrs)}
+
+  def handle_event("save_place", %{"generation" => gen, "place" => attrs}, socket),
+    do: {:noreply, Form.save(socket, gen, attrs)}
+
+  def handle_event("recover_place_draft", params, socket),
+    do: {:noreply, Form.recover_draft(socket, params)}
+
+  def handle_event("recover_place", _, socket), do: {:noreply, Form.recover(socket)}
+  def handle_event("nearby", params, socket), do: {:noreply, Nearby.request(socket, params)}
+  def handle_event("select_nearby", params, socket), do: {:noreply, Nearby.select(socket, params)}
+
   def handle_event("request_delete", %{"id" => id}, socket) do
     with {:ok, place} <- Places.detail(socket.assigns.places_origin, id) do
       state =
@@ -58,7 +82,7 @@ defmodule DawarichWeb.PlacesLive.Index do
         )
         |> OrdinaryForm.confirm(place.id)
 
-      {:noreply, assign(socket, confirmation: state, form_state: nil, detail: nil, error: nil)}
+      {:noreply, socket |> Form.clear() |> assign(confirmation: state, detail: nil, error: nil)}
     else
       {:error, reason} -> {:noreply, PlacesUI.refuse(socket, reason)}
     end
@@ -88,13 +112,19 @@ defmodule DawarichWeb.PlacesLive.Index do
   end
 
   def handle_event("cancel_form", _, socket),
-    do: {:noreply, assign(socket, confirmation: nil, form_state: nil, detail: nil)}
+    do: {:noreply, socket |> Form.clear() |> assign(confirmation: nil, detail: nil)}
 
   def handle_event(_, _, socket), do: {:noreply, socket}
 
   @impl true
+  def handle_info({:nearby_timeout, gen, token}, socket),
+    do: {:noreply, Nearby.timeout(socket, gen, token)}
+
   def handle_info(_, socket), do: {:noreply, socket}
   @impl true
+  def handle_async({:nearby, _, _} = name, result, socket),
+    do: {:noreply, Nearby.finish(socket, name, result)}
+
   def handle_async(_, _, socket), do: {:noreply, socket}
 
   defp coordinates(place), do: RubyFloat.to_s(place.lat) <> ", " <> RubyFloat.to_s(place.lon)

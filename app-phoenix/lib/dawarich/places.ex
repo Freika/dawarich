@@ -10,6 +10,9 @@ defmodule Dawarich.Places do
   def edit(scope, raw_id, opts \\ []),
     do: member(scope, raw_id, opts, &Reads.edit/3)
 
+  def tags(scope, opts \\ []),
+    do: read(scope, opts, fn admitted, repo -> {:ok, Reads.tags(admitted, repo)} end)
+
   def nearby(scope, params, opts \\ []), do: Dawarich.Places.NativeNearby.run(scope, params, opts)
 
   def new, do: Dawarich.Places.Form.new()
