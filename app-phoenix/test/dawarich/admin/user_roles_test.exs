@@ -1,14 +1,24 @@
 defmodule Dawarich.Admin.UserRolesTest do
   use ExUnit.Case, async: false
-  import Plug.Conn
+  alias Dawarich.Accounts.Scope
+  alias Dawarich.Admin.Users
   alias Dawarich.Admin.UserRoles
   alias Dawarich.{Accounts, I18n, Repo}
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{RailsAuth, RailsCsrf}
-  alias DawarichWeb.AdminWrites.Request
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    previous = Application.get_env(:dawarich, Users)
+
+    Application.put_env(:dawarich, Users, %{
+      env: %{"SELF_HOSTED" => "true"}
+    })
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, Users, previous),
+        else: Application.delete_env(:dawarich, Users)
+    end)
 
     RailsUser.insert!(%{
       id: 15101,
@@ -75,22 +85,11 @@ defmodule Dawarich.Admin.UserRolesTest do
 
     assert {:blocked, _} = UserRoles.guard(c.target, %{"status" => 1}, Repo, "en")
 
-    session = RailsUser.session(c.target.id)
-    raw = URI.encode_query(%{"authenticity_token" => RailsCsrf.masked_token(session)})
-
-    conn =
-      Plug.Test.conn("PATCH", "/settings/users/15102", raw)
-      |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-      |> put_req_header("content-type", "application/x-www-form-urlencoded")
-      |> put_req_header("content-length", Integer.to_string(byte_size(raw)))
-      |> put_req_header("accept", "text/html")
-      |> RailsAuth.call([])
-
-    assert conn.assigns.current_user.admin
-    assert {:ok, _} = Request.refresh_actor(conn, :update, c.context)
+    scope = Scope.for_user(c.target, "en")
+    assert {:ok, 15101} = Users.update(scope, c.target.id, %{})
     Repo.query!("UPDATE users SET admin=false WHERE id=15101", [], log: false)
     before = snapshot()
-    assert {:handoff, :actor} = Request.refresh_actor(conn, :update, c.context)
+    assert Users.update(scope, c.target.id, %{}) == {:error, :unauthorized}
     assert snapshot() == before
   end
 

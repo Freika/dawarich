@@ -96,6 +96,55 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     end)
   end
 
+  test "native admin and background pages retain exactly one accessible label per control", %{
+    user: user
+  } do
+    previous = Map.new(~w(SELF_HOSTED DAWARICH_RAILS), &{&1, System.get_env(&1)})
+    System.put_env("SELF_HOSTED", "true")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      for {key, value} <- previous,
+          do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+    end)
+
+    RailsUser.insert!(%{
+      id: 8412,
+      email: "native-label-target@example.invalid",
+      api_key: "synthetic-label-target-key",
+      settings: %{"timezone" => "UTC"}
+    })
+
+    for {actor, path} <- [
+          {user.id, "/settings/users"},
+          {user.id, "/settings/users/8412"},
+          {user.id, "/settings/users/8412/edit"},
+          {user.id, "/settings/background_jobs"},
+          {8412, "/settings/background_jobs"}
+        ] do
+      conn = get(RailsUser.signed_in(actor) |> RailsUser.connecting_as(actor), path)
+      {:ok, view, connected} = live(conn)
+      assert_native_controls(html_response(conn, 200))
+      assert_native_controls(connected)
+
+      if path == "/settings/users" do
+        render_hook(view, "open_create", %{})
+        assert_native_controls(Dawarich.Test.NativeAdminUI.html(view))
+        render_hook(view, "open_delete", %{"id" => "8412"})
+        assert_native_controls(Dawarich.Test.NativeAdminUI.html(view))
+      end
+
+      GenServer.stop(view.pid)
+    end
+  end
+
+  defp assert_native_controls(html) do
+    assert Dawarich.Test.NativeAdminUI.labels(html) == []
+    ids = html |> LazyHTML.from_document() |> LazyHTML.query("[id]") |> LazyHTML.attribute("id")
+    assert Enum.uniq(ids) == ids
+    for marker <- @markers, do: refute(html =~ marker)
+  end
+
   test "every native page renders without Turbo, Stimulus or the importmap", %{user: user} do
     paths =
       native_paths() ++

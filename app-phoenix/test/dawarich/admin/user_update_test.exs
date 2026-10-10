@@ -1,5 +1,7 @@
 defmodule Dawarich.Admin.UserUpdateTest do
   use ExUnit.Case, async: false
+  alias Dawarich.Accounts.Scope
+  alias Dawarich.Admin.Users
   alias Dawarich.Admin.UserUpdate
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.RailsUser
@@ -8,6 +10,19 @@ defmodule Dawarich.Admin.UserUpdateTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    previous = Application.get_env(:dawarich, Users)
+
+    Application.put_env(:dawarich, Users, %{
+      env: %{"SELF_HOSTED" => "true"},
+      clock: fn -> @now end
+    })
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, Users, previous),
+        else: Application.delete_env(:dawarich, Users)
+    end)
+
     hash = Bcrypt.hash_pwd_salt(@password, log_rounds: 4)
 
     for {id, admin} <- [{15201, true}, {15202, false}] do
@@ -137,49 +152,20 @@ defmodule Dawarich.Admin.UserUpdateTest do
     accepted = not is_nil(Accounts.from_session(session, @now))
     refute accepted
 
-    conn =
-      c.actor.id
-      |> RailsUser.session()
-      |> Map.put("warden.user.user.key", session["warden.user.user.key"])
+    fresh = Accounts.get(c.actor.id)
+    scope = Scope.for_user(fresh, "en")
 
-    raw =
-      URI.encode_query(%{
-        "authenticity_token" => DawarichWeb.RailsCsrf.masked_token(conn),
-        "user[password]" => "a10b-http-self-password"
-      })
+    identity = %{
+      "warden.user.user.key" => [[fresh.id], binary_part(fresh.encrypted_password, 0, 29)]
+    }
 
-    new_session =
-      Map.put(conn, "warden.user.user.key", [
-        [c.actor.id],
-        binary_part(snapshot(15201)["encrypted_password"], 0, 29)
-      ])
+    assert Accounts.from_session(identity, @now).id == fresh.id
 
-    request =
-      Plug.Test.conn("PATCH", "/settings/users/15201", raw)
-      |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(new_session))
-      |> Plug.Conn.put_req_header("content-type", "application/x-www-form-urlencoded")
-      |> Plug.Conn.put_req_header("content-length", Integer.to_string(byte_size(raw)))
-      |> Plug.Conn.put_req_header("accept", "text/html")
-      |> DawarichWeb.AdminWrites.Users.call(action: :update, context: c.context)
+    assert {:ok, 15201} =
+             Users.update(scope, fresh.id, %{"password" => "a10b-http-self-password"})
 
-    assert request.status == 302 and request.halted
-    refute Map.has_key?(request.private.dawarich_rails_session_changes, "warden.user.user.key")
-
-    {:ok, emitted_session} =
-      Dawarich.RailsCookies.decrypt(
-        request.resp_cookies["_dawarich_session"].value,
-        "_dawarich_session",
-        Dawarich.RailsSecret.fetch(),
-        @now
-      )
-
-    same_identity = emitted_session["warden.user.user.key"] == new_session["warden.user.user.key"]
-    assert same_identity
-    accepted_emitted = not is_nil(Accounts.from_session(emitted_session, @now))
-    refute accepted_emitted
-
-    assert request.private.dawarich_rails_session_changes["flash"]["flashes"]["notice"] ==
-             "User was successfully updated."
+    refute Accounts.from_session(identity, @now)
+    assert Users.update(scope, fresh.id, %{}) == {:error, :stale_session}
 
     Repo.query!("UPDATE users SET admin=false WHERE id=15201", [], log: false)
     before = snapshot(15202)

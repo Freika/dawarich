@@ -1,5 +1,7 @@
 defmodule Dawarich.Admin.UserSecurityTest do
   use ExUnit.Case, async: false
+  alias Dawarich.Accounts.Scope
+  alias Dawarich.Admin.Users
   alias Dawarich.Admin.UserSecurity
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.RailsUser
@@ -7,6 +9,18 @@ defmodule Dawarich.Admin.UserSecurityTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    previous = Application.get_env(:dawarich, Users)
+
+    Application.put_env(:dawarich, Users, %{
+      env: %{"SELF_HOSTED" => "true"},
+      clock: fn -> @now end
+    })
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, Users, previous),
+        else: Application.delete_env(:dawarich, Users)
+    end)
 
     RailsUser.insert!(%{
       id: 15301,
@@ -45,25 +59,11 @@ defmodule Dawarich.Admin.UserSecurityTest do
     assert target["updated_at"] == "2026-10-04T10:00:00"
     actor_unchanged = snapshot(15301) == before
     assert actor_unchanged
-    session = RailsUser.session(c.actor.id)
-    raw = URI.encode_query(%{"authenticity_token" => DawarichWeb.RailsCsrf.masked_token(session)})
-
-    conn =
-      Plug.Test.conn("POST", "/settings/users/15302/regenerate_api_key", raw)
-      |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-      |> Plug.Conn.put_req_header("content-type", "application/x-www-form-urlencoded")
-      |> Plug.Conn.put_req_header("content-length", Integer.to_string(byte_size(raw)))
-      |> Plug.Conn.put_req_header("accept", "text/html")
-      |> DawarichWeb.AdminWrites.Users.call(action: :rotate, context: c.context)
-
-    assert conn.status == 302 and conn.halted
-
-    assert Plug.Conn.get_resp_header(conn, "location") == [
-             "http://www.example.com/settings/users/15302"
-           ]
-
-    assert conn.private.dawarich_rails_session_changes["flash"]["flashes"]["notice"] ==
-             "API key has been regenerated."
+    before = snapshot(15301)
+    key_before = snapshot(15302)["api_key"]
+    assert {:ok, 15302} = Users.rotate_api_key(Scope.for_user(c.actor, "en"), 15302)
+    assert snapshot(15302)["api_key"] != key_before
+    assert snapshot(15301) == before
 
     for field <-
           ~w(encrypted_password email admin status reset_password_token reset_password_sent_at) do
