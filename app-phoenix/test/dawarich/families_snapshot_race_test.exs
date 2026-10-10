@@ -108,4 +108,21 @@ defmodule Dawarich.FamiliesSnapshotRaceTest do
       assert {:error, _} = Task.await(task, 5000)
     end
   end
+
+  test "a locations snapshot carries the consent boundary its validated read admitted", c do
+    {:ok, clock} = Agent.start_link(fn -> [@now, @now, DateTime.add(@now, 1)] end)
+
+    read = fn ->
+      Agent.get_and_update(clock, fn
+        [at] -> {at, [at]}
+        [at | rest] -> {at, rest}
+      end)
+    end
+
+    assert {:ok, snapshot} = Families.locations(c.scope, clock: read, self_hosted: true)
+    assert [%{"user_id" => 90102}] = snapshot.locations
+    assert snapshot.deadline == DateTime.to_naive(DateTime.add(@now, 1))
+    assert {:ok, later} = Families.deadline(c.scope, clock: read, self_hosted: true)
+    assert NaiveDateTime.compare(later, snapshot.deadline) == :gt
+  end
 end

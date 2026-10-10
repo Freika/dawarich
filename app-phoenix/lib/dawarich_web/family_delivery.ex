@@ -21,7 +21,7 @@ defmodule DawarichWeb.FamilyDelivery do
       case Families.locations(socket.assigns.current_scope) do
         {:ok, snapshot} ->
           socket
-          |> assign(locations: snapshot.locations, family_expiry: deadline(socket))
+          |> assign(locations: snapshot.locations, family_expiry: schedule(snapshot.deadline))
           |> push_event("family-locations", %{locations: snapshot.locations})
 
         _ ->
@@ -35,17 +35,20 @@ defmodule DawarichWeb.FamilyDelivery do
   defp deadline(socket) do
     if connected?(socket) do
       case Families.deadline(socket.assigns.current_scope) do
-        {:ok, %NaiveDateTime{} = due} ->
-          token = make_ref()
-          delay = max(1, NaiveDateTime.diff(due, NaiveDateTime.utc_now(), :millisecond))
-          timer = Process.send_after(self(), {:family_expiry, token}, min(delay, 4_294_967_295))
-          %{token: token, timer: timer, due: due}
-
-        _ ->
-          nil
+        {:ok, due} -> schedule(due)
+        _ -> nil
       end
     end
   end
+
+  defp schedule(%NaiveDateTime{} = due) do
+    token = make_ref()
+    delay = max(1, NaiveDateTime.diff(due, NaiveDateTime.utc_now(), :millisecond))
+    timer = Process.send_after(self(), {:family_expiry, token}, min(delay, 4_294_967_295))
+    %{token: token, timer: timer, due: due}
+  end
+
+  defp schedule(_), do: nil
 
   defp event("family_reload", _, socket), do: {:halt, reload(socket)}
 

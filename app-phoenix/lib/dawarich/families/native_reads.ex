@@ -3,7 +3,7 @@ defmodule Dawarich.Families.NativeReads do
 
   alias Dawarich.{Accounts, FamilyPage, FamilyPageAccess, UserSettings}
   alias Dawarich.Accounts.Scope
-  alias Dawarich.Families.{History, Locations, WebCreate}
+  alias Dawarich.Families.{History, Locations, NativeDeadline, WebCreate}
 
   def actor(%Scope{user: %{id: id} = original}, opts) do
     repo = Keyword.get(opts, :repo, Dawarich.Repo)
@@ -45,6 +45,7 @@ defmodule Dawarich.Families.NativeReads do
          version <- snapshot_version(user.id, ctx.now),
          {:ok, 200, {:object, fields}} <-
            Keyword.get(opts, :location_reader, &Locations.read/2).(project(user), ctx.now),
+         deadline <- NativeDeadline.due(version.family, ctx),
          :ok <- validate_snapshot(scope, version, opts) do
       fields = object({:object, fields})
 
@@ -52,7 +53,8 @@ defmodule Dawarich.Families.NativeReads do
        %{
          locations: Enum.sort_by(fields["locations"], & &1["email"]),
          sharing_enabled: fields["sharing_enabled"],
-         updated_at: fields["updated_at"]
+         updated_at: fields["updated_at"],
+         deadline: deadline
        }}
     else
       {:error, _} = error -> error
@@ -106,7 +108,11 @@ defmodule Dawarich.Families.NativeReads do
           Dawarich.Families.Sharing.enabled?(settings, now),
           do: member
 
-    %{digest: :crypto.hash(:sha256, :erlang.term_to_binary(rows)), sharing: sharing}
+    %{
+      digest: :crypto.hash(:sha256, :erlang.term_to_binary(rows)),
+      sharing: sharing,
+      family: family
+    }
   end
 
   def admitted(scope, opts) do
