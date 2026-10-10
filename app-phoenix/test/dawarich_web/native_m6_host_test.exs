@@ -288,6 +288,30 @@ defmodule DawarichWeb.NativeM6HostTest do
     render_async(view, 5000)
   end
 
+  test "native studios refuse invalid saves without any Hotwire transport", %{id: id} do
+    {:ok, view, _} = open(id, @second)
+    render_hook(view, "poster:save", %{})
+    assert_reply(view, %{status: "failed"})
+
+    view
+    |> element("#native-video-studio")
+    |> render_hook("video:upload_target", %{
+      "byte_size" => 0,
+      "checksum" => "invalid",
+      "filename" => "bad.mp4"
+    })
+
+    assert_reply(view, %{ok: false})
+    html = render(view)
+
+    for marker <-
+          ~w(data-controller data-action turbo stimulus route-video-gallery-list video-studio#),
+        do: refute(html =~ marker)
+
+    assert has_element?(view, "#native-video-studio[phx-hook=VideoStudio]")
+    assert has_element?(view, "#native-poster-studio[phx-hook=PosterStudio]")
+  end
+
   defp config(view) do
     view
     |> render()

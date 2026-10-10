@@ -51,6 +51,28 @@ defmodule Dawarich.Build.NativeAssetsTest do
     refute Enum.any?(eager_inputs, &Regex.match?(~r{js/(poster|video)/|fflate|mp4-muxer}, &1))
   end
 
+  test "both studio engines ship as recursive lazy chunks outside the eager graph", %{
+    tmp_dir: dir
+  } do
+    build!(dir)
+
+    outputs =
+      Path.join(dir, "meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
+    app_graph = eager(outputs, [app], MapSet.new())
+
+    for input <- ~w(js/poster/runtime.js js/video/studio.js) do
+      {chunk, _} = Enum.find(outputs, fn {_, output} -> Map.has_key?(output["inputs"], input) end)
+      refute MapSet.member?(app_graph, chunk)
+
+      bytes =
+        Enum.sum(for path <- eager(outputs, [chunk], MapSet.new()), do: outputs[path]["bytes"])
+
+      assert bytes > 0
+    end
+  end
+
   test "emoji-mart is a separate lazily loaded chunk", %{tmp_dir: dir} do
     build!(dir)
     app = File.read!(Path.join(dir, "app.js"))
