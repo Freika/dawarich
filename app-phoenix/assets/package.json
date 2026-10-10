@@ -3,6 +3,9 @@
   "dependencies": {
     "@emoji-mart/data": "1.2.1",
     "emoji-mart": "5.6.0",
-    "spark-md5": "3.0.2"
-  }
+    "spark-md5": "3.0.2",
+    "fflate": "0.8.2",
+    "mp4-muxer": "5.2.2"
+  },
+  "type": "module"
 }

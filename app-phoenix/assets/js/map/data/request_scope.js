@@ -1,4 +1,5 @@
-export const cancelled = () => new DOMException("Map operation cancelled", "AbortError")
+export const cancelled = () =>
+  new DOMException("Map operation cancelled", "AbortError")
 
 export function createRequestScope(timers = globalThis) {
   const operations = new Set()
@@ -17,15 +18,23 @@ export function createRequestScope(timers = globalThis) {
         signal: controller.signal,
         revision,
         check() {
-          if (destroyed || revision !== generation || controller.signal.aborted) throw cancelled()
+          if (destroyed || revision !== generation || controller.signal.aborted)
+            throw cancelled()
         },
         async wait(promise) {
           this.check()
           let rejectOnAbort
-          const aborted = new Promise((_, reject) => { rejectOnAbort = () => reject(cancelled()) })
-          controller.signal.addEventListener("abort", rejectOnAbort, { once: true })
-          try { return await Promise.race([promise, aborted]) }
-          finally { controller.signal.removeEventListener("abort", rejectOnAbort) }
+          const aborted = new Promise((_, reject) => {
+            rejectOnAbort = () => reject(cancelled())
+          })
+          controller.signal.addEventListener("abort", rejectOnAbort, {
+            once: true,
+          })
+          try {
+            return await Promise.race([promise, aborted])
+          } finally {
+            controller.signal.removeEventListener("abort", rejectOnAbort)
+          }
         },
         close() {
           timers.clearTimeout(timer)
@@ -45,6 +54,8 @@ export function createRequestScope(timers = globalThis) {
       destroyed = true
       this.reset()
     },
-    get revision() { return generation },
+    get revision() {
+      return generation
+    },
   }
 }

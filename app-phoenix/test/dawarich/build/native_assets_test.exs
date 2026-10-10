@@ -86,6 +86,41 @@ defmodule Dawarich.Build.NativeAssetsTest do
     end
   end
 
+  test "ordinary page never loads map or studio engines", %{tmp_dir: dir} do
+    build!(dir)
+
+    outputs =
+      Path.join(dir, "meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
+
+    eager_inputs =
+      for path <- eager(outputs, [app], MapSet.new()),
+          {input, _} <- outputs[path]["inputs"],
+          do: input
+
+    refute Enum.any?(eager_inputs, &Regex.match?(~r{js/(map/|poster/|video/)}, &1))
+    assert Enum.any?(inputs(dir), &String.contains?(&1, "map/runtime/host.js"))
+  end
+
+  test "native map chunks contain no Rails controller or Hotwire input", %{tmp_dir: dir} do
+    build!(dir)
+    graph = inputs(dir)
+    assert Enum.any?(graph, &String.contains?(&1, "hooks/map.js"))
+    assert Enum.any?(graph, &String.contains?(&1, "map/data/studio_source.js"))
+
+    refute Enum.any?(
+             graph,
+             &Regex.match?(
+               ~r{app/javascript|controllers/|@hotwired|rails_bridge|activestorage},
+               &1
+             )
+           )
+
+    chunks = for path <- Path.wildcard(Path.join(dir, "*.js")), do: File.read!(path)
+    assert Enum.any?(chunks, &String.contains?(&1, "/maplibre/6.4.1/maplibre-gl.mjs"))
+  end
+
   test "the vendored MapLibre module and the basemap styles the demo loads ship in the public root" do
     for path <-
           ~w(maplibre/6.4.1/maplibre-gl.mjs maps_maplibre/styles/light.json maps_maplibre/styles/dark.json) do

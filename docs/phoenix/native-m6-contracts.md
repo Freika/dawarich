@@ -1,6 +1,6 @@
 # Milestone 6 native map contracts
 
-Status: foundation in progress, 2026-10-10. The controller starts tracks B/C/D only after the separate S1 SHA artifact exists. Source baseline is `bdaa9aa36`; the A0 measured baseline is recorded in `native-m6-inventory.md`.
+Status: S1 foundation contracts implemented, 2026-10-10. The controller starts tracks B/C/D only after the separate S1 SHA artifact exists. Source baseline is `bdaa9aa36`; the A0 measured baseline is recorded in `native-m6-inventory.md`.
 
 ## Session and domain admission
 
@@ -50,3 +50,9 @@ Browser `createReader({origin, fetch, maxPages, maxRows, timers, timeoutMs})` pr
 | Studio source to server | `map:range` | `{startAt,endAt,importId,timezone}`; B9 validates and returns `{revision}` after host config acknowledgement |
 
 Canvas roots are the only ignored DOM. Proposed stable IDs are `native-map`, `native-trip-map`, `native-family-map`, `native-public-map`, `native-poster-studio`, `native-video-studio`; repeated previews append resource identity. Hooks register as Map, Trip, Family, PublicMap, MapPreview, PosterStudio, VideoStudio and Onboarding as their owners land. A owns hooks/index, app.js, router/route manifests, layouts, MapLive and shared host/gallery delegation. B supplies map_live commands/timeline and components; C/D supply studio modules/components. Integrating those modules requires explicit injected source objects, with no global controller registry or application-shaped facade. The S1 SHA artifact is the controller handoff; route removal and complete page adoption remain X1 after parity.
+
+## Native host packaging
+
+`DawarichWeb.NativeMapHost.map_host` renders a keyed ignored canvas root with the Map hook. Config accepts only namespace/revision/title/styleUrl, range startAt/endAt/importId/timezone, and mapOptions center/zoom/minZoom/maxZoom/bearing/pitch/projection/interactive/attributionControl. No resource arrays or account/provider credentials are serialized. Hosts remain responsible for fresh admission and monotonic configuration revisions.
+
+The minified S1 eager graph measures 168,125 raw / 51,666 gzip bytes; the Map hook contributes 878 raw bytes and the existing demo contributes 1,368 (its 2 KB budget remains enforced). No map engine is in the eager graph and no Rails JavaScript is in any native chunk. MapLibre stays the vendored external module with its worker siblings; fflate 0.8.2 and mp4-muxer 5.2.2 match the existing Rails importmap. Studio engine/hook imports will be registered as C/D deliver them. These are measured foundation sizes; export and route budgets await O8 measurements.

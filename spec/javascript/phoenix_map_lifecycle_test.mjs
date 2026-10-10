@@ -53,6 +53,7 @@ function fixture(options = {}) {
       calls.refreshes++
     },
     attach: options.attach,
+    timers: options.timers,
   })
   return { runtime, calls, MockMap }
 }
@@ -188,4 +189,30 @@ test("config changes invalidate old style initialization and refresh receipts", 
     runtime.destroy()
   }
   assert.equal(calls.maps, 1)
+})
+
+test("initialization deadline drains a map waiting for attachment", async () => {
+  let expire
+  const timers = {
+    setTimeout(fn) {
+      expire = fn
+      return 1
+    },
+    clearTimeout() {},
+  }
+  const attached = deferred()
+  const { runtime, calls } = fixture({ timers, attach: () => attached.promise })
+  const mounting = runtime.mount()
+  for (let i = 0; i < 12; i++) await Promise.resolve()
+  try {
+    assert.equal(calls.maps, 1)
+    expire()
+    assert.equal(await mounting, "cancelled")
+    assert.equal(calls.removed, 1)
+    assert.equal(calls.roots, 0)
+    assert.equal(calls.readers, 1)
+  } finally {
+    runtime.destroy()
+    attached.resolve()
+  }
 })

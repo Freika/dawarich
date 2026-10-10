@@ -10,9 +10,10 @@ export function createMapRuntime({
   attach,
   refresh = async () => {},
   events = {},
+  timers = globalThis,
 }) {
   const lifetime = createLifecycle()
-  const operations = createOperations()
+  const operations = createOperations(timers)
   let current = config
   let map = null
   let mounting = null
@@ -105,7 +106,10 @@ export function createMapRuntime({
       state = "ready"
       return await runRefresh()
     } catch (error) {
-      if (error.name === "AbortError") return "cancelled"
+      if (error.name === "AbortError") {
+        if (operation.revision === operations.revision) destroy()
+        return "cancelled"
+      }
       state = "failed"
       destroy()
       events.error?.({ code: "map_initialization_failed" })
