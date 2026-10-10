@@ -123,7 +123,11 @@ defmodule DawarichWeb.ShareManagementParityTest do
         if state["verb"] != "GET" and state["flash"] == %{}, do: assert(conn.resp_cookies == %{})
       end
 
-      if state["verb"] != "HEAD" do
+      if state["verb"] == "GET" and conn.status == 200 and user do
+        assert_native_read(conn, state, user, now)
+      end
+
+      if state["verb"] not in ["HEAD", "GET"] do
         if conn.status in [200, 422] do
           native = fragment(conn.resp_body)
           actual = normalize(native, state)
@@ -134,6 +138,43 @@ defmodule DawarichWeb.ShareManagementParityTest do
           assert normalize(conn.resp_body, state) == normalize(rails, state)
         end
       end
+    end
+  end
+
+  defp assert_native_read(conn, state, user, now) do
+    {:ok, resource, _} =
+      DawarichWeb.SharingResource.from(conn.request_path, user.id, conn.query_params)
+
+    scope = Dawarich.Accounts.Scope.for_user(user, conn.assigns.locale)
+
+    assert {:ok, page} =
+             Dawarich.Sharing.page(scope, resource, conn.query_params,
+               now: now,
+               self_hosted: true
+             )
+
+    refute inspect(page) =~ "magic_phrase"
+    links = if resource.type == :hub, do: page.shares, else: List.wrap(page[:share])
+
+    expected =
+      state["before"]
+      |> Enum.filter(fn row ->
+        row["user_id"] == user.id and row["revoked_at"] == nil and
+          (row["expires_at"] == nil or
+             String.replace(row["expires_at"], " ", "T") >
+               NaiveDateTime.to_iso8601(DateTime.to_naive(now)))
+      end)
+
+    if resource.type == :hub,
+      do: assert(Enum.sort(Enum.map(links, & &1.id)) == Enum.sort(Enum.map(expected, & &1["id"])))
+
+    for link <- links do
+      source = Enum.find(state["before"], &(&1["id"] == link.id))
+      assert source
+
+      assert Map.take(link, [:name, :resource_type, :resource_id, :settings, :view_count])
+             |> Map.new(fn {k, v} -> {Atom.to_string(k), v} end) ==
+               Map.take(source, ~w(name resource_type resource_id settings view_count))
     end
   end
 
@@ -240,7 +281,11 @@ defmodule DawarichWeb.ShareManagementParityTest do
       conn
     else
       action =
-        Phoenix.Router.route_info(DawarichWeb.Router, "GET", conn.request_path, conn.host).plug_opts
+        cond do
+          conn.request_path == "/share_links/hub" -> :hub
+          String.starts_with?(conn.request_path, "/trips/") -> :trip
+          true -> :live
+        end
 
       ShareManagementPage.render(conn, action)
     end

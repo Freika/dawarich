@@ -182,7 +182,7 @@ defmodule DawarichWeb.MapLiveTest do
 
       assert has_element?(
                view,
-               "a[data-turbo-frame='share-link-modal'][href='/share_links/hub?end_date=2026-05-28&start_date=2026-05-28']"
+               "a[data-turbo='false'][href='/share_links/hub?end_date=2026-05-28&start_date=2026-05-28']"
              )
 
       {:ok, plain, _html} = live_as(user, "/map/v2")

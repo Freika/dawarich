@@ -1346,7 +1346,7 @@ Two invitations can both take the final available seat. Native scoped commands
 lock family, users and memberships before repeating capacity admission.
 
 - Rails: `app/services/families/invite.rb:19,21`.
-- Phoenix: `app-phoenix/lib/dawarich/families/native_commands.ex:73`.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_commands.ex:90`.
 - Test: `families_commands_test.exs`, “concurrent invitations serialize the final Cloud seat”; deterministic two-connection lock-removal mutation fails.
 - Ledger: ED-NATIVE-M4-FAMILY-CAPACITY; no DRB added. Rails production code is unchanged.
 
@@ -1360,6 +1360,6 @@ clear refused state, and erase browser maps and member rows on disconnect.
 Versioned timers independently expire silent consent and access grants.
 
 - Rails: `app/channels/family_locations_channel.rb:6,9,10`.
-- Phoenix: `app-phoenix/lib/dawarich_web/native_family_auth.ex:17`; `app-phoenix/lib/dawarich_web/family_delivery.ex:19` and `assets/js/hooks/family_map.js` lifecycle.
+- Phoenix: `app-phoenix/lib/dawarich_web/native_family_auth.ex:17`; `app-phoenix/lib/dawarich_web/family_delivery.ex:17` and `assets/js/hooks/family_map.js` lifecycle.
 - Tests: “withdrawn consent or removed membership discards queued coordinates before rendering”; “reconnect snapshots recover missed invalidation and family refusal clears private state”; timer-version and info-admission mutations fail.
 - Ledger: ED-NATIVE-M4-FAMILY-DELIVERY; no DRB added. Independent wire adapters remain separately supported; native pages do not subscribe to coordinate streams.

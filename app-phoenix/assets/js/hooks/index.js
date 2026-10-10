@@ -10,8 +10,16 @@ import { FamilyInvitationClipboard } from "./family_invitation_clipboard.js"
 import { FamilyMap } from "./family_map.js"
 import { MapMatchingDemo } from "./map_matching_demo.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
+import {
+  SharingDialog,
+  SharingPhrase,
+  SharingReveal,
+} from "./sharing_controls.js"
 
 export const hooks = {
+  SharingDialog,
+  SharingPhrase,
+  SharingReveal,
   FamilyMap,
   FamilyConfirm,
   FamilyInvitationClipboard,

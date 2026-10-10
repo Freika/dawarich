@@ -114,6 +114,16 @@ defmodule Dawarich.Sharing.Resources do
   def sanitize(%_{} = value), do: value
 
   def sanitize(value) when is_map(value) do
+    value =
+      if Map.has_key?(value, :magic_phrase),
+        do:
+          Map.put(
+            value,
+            :protected?,
+            is_binary(value.magic_phrase) and String.trim(value.magic_phrase) != ""
+          ),
+        else: value
+
     value
     |> Map.drop([
       :magic_phrase,

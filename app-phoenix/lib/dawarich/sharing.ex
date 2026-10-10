@@ -16,6 +16,11 @@ defmodule Dawarich.Sharing do
   def change(scope, resource, action, attrs, opts \\ []),
     do: Commands.run(scope, resource, action, attrs, opts)
 
+  def generate_phrase(scope, opts \\ []) do
+    with {:ok, _, _} <- Dawarich.Families.NativeReads.actor(scope, opts),
+         do: {:ok, Dawarich.ShareManagement.Read.phrase()}
+  end
+
   def reveal(scope, resource, field, opts \\ []) do
     with {:ok, user, ctx} <- Dawarich.Families.NativeReads.actor(scope, opts),
          :ok <- Resources.admit(resource, user.id),

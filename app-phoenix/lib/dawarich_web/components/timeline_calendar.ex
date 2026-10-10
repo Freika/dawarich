@@ -70,7 +70,7 @@ defmodule DawarichWeb.TimelineCalendar do
           </button>
           <a
             class="btn btn-xs btn-ghost gap-1 px-2"
-            data-turbo-frame="share-link-modal"
+            data-turbo="false"
             href={"/tracks/#{@track.id}/share_link/new"}
           >
             <Icon.icon name="share" class="w-3 h-3" />
