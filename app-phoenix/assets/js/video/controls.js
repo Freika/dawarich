@@ -33,14 +33,14 @@ function markChoice(buttons, attribute, value) {
 
 export function formatLabel(root, settings) {
   const option = findAll(root, "format").find(
-    (button) => button.dataset.format === settings.format,
+    (button) => button.dataset.videoFormat === settings.format,
   )
   return option?.dataset.label ?? settings.format
 }
 
 export function themeName(root, settings) {
   const swatch = findAll(root, "theme").find(
-    (button) => button.dataset.key === settings.theme,
+    (button) => button.dataset.videoTheme === settings.theme,
   )
   return swatch?.dataset.name ?? settings.theme
 }
@@ -59,15 +59,15 @@ export function syncVideoControls(root, settings, activeElement = null) {
       if (["fog_opacity", "fog_color"].includes(input.dataset.videoSetting))
         input.disabled = !selected
   }
-  markChoice(findAll(root, "mode"), "mode", settings.visualization_mode)
-  markChoice(findAll(root, "format"), "format", settings.format)
+  markChoice(findAll(root, "mode"), "videoMode", settings.visualization_mode)
+  markChoice(findAll(root, "format"), "videoFormat", settings.format)
   for (const input of findAll(root, "setting")) {
     const value = settings[input.dataset.videoSetting]
     if (input.type === "checkbox") input.checked = Boolean(value)
     else if (activeElement !== input) input.value = value
   }
   for (const swatch of findAll(root, "theme")) {
-    const active = swatch.dataset.key === settings.theme
+    const active = swatch.dataset.videoTheme === settings.theme
     swatch.setAttribute("aria-pressed", String(active))
     swatch.classList.toggle("ring-2", active)
     swatch.classList.toggle("ring-offset-1", active)
@@ -98,12 +98,16 @@ export function bindVideoControls({ root, studio, window: win }) {
   action("load", () => studio.applyDates())
   on(find(root, "dialog"), "close", () => studio.close())
   for (const swatch of findAll(root, "theme"))
-    on(swatch, "click", () => studio.change({ theme: swatch.dataset.key }))
+    on(swatch, "click", () =>
+      studio.change({ theme: swatch.dataset.videoTheme }),
+    )
   for (const button of findAll(root, "format"))
-    on(button, "click", () => studio.change({ format: button.dataset.format }))
+    on(button, "click", () =>
+      studio.change({ format: button.dataset.videoFormat }),
+    )
   for (const button of findAll(root, "mode"))
     on(button, "click", () =>
-      studio.change({ visualization_mode: button.dataset.mode }),
+      studio.change({ visualization_mode: button.dataset.videoMode }),
     )
   for (const button of findAll(root, "reset"))
     on(button, "click", () => {

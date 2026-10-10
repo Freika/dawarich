@@ -136,15 +136,18 @@ function studioRoot() {
     single[name] = element()
   const lists = {
     theme: ["terracotta", "noir"].map((key) =>
-      element({ key, name: key === "noir" ? "Noir" : "Terracotta" }),
+      element({
+        videoTheme: key,
+        name: key === "noir" ? "Noir" : "Terracotta",
+      }),
     ),
     format: ["portrait", "square"].map((format) =>
       element({
-        format,
+        videoFormat: format,
         label: format === "square" ? "Quadrat" : "Hochformat",
       }),
     ),
-    mode: ["route", "fog"].map((mode) => element({ mode })),
+    mode: ["route", "fog"].map((mode) => element({ videoMode: mode })),
     setting: [
       element({ videoSetting: "duration_sec" }, { type: "range", value: "15" }),
       element({ videoSetting: "show_marker" }, { type: "checkbox" }),
