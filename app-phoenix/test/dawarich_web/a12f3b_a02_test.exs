@@ -3,8 +3,8 @@ defmodule DawarichWeb.A12f3bA02Test do
   import Plug.Conn
   import Phoenix.ConnTest
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{Endpoint, RailsCsrf}
-  alias DawarichWeb.AchievementActions.Sharing
+  alias DawarichWeb.Endpoint
+  alias Dawarich.Sharing
 
   setup do
     previous = System.get_env("DAWARICH_RAILS")
@@ -29,12 +29,9 @@ defmodule DawarichWeb.A12f3bA02Test do
   end
 
   @tag a12f3b_case: "A02a"
-  test "achievement sharing and public embeds close remaining gates" do
+  test "native A02a achievement sharing preserves independently public embeds" do
     session = RailsUser.session(81302)
-    path = "/achievements/country_fr/toggle_sharing"
-    result = Sharing.call(sharing("PATCH", path, session, %{"enabled" => true}), [])
-    assert result.status == 200
-    uuid = Jason.decode!(result.resp_body)["uuid"]
+    assert {:ok, %{uuid: uuid}} = change(%{"enabled" => true})
     url = "/shared/achievements/" <> uuid
 
     owner =
@@ -47,37 +44,25 @@ defmodule DawarichWeb.A12f3bA02Test do
     assert page.resp_body =~ ~s(lang="de")
     assert get_resp_header(page, "content-security-policy") == ["frame-ancestors *"]
     assert get_resp_header(page, "x-frame-options") == []
-    assert rows("SELECT settings->>'locale' FROM users WHERE id=81302") == [["de"]]
+    assert query_rows("SELECT settings->>'locale' FROM users WHERE id=81302") == [["de"]]
     assert Endpoint.call(build_conn("HEAD", url <> "?embed=1"), []).resp_body == ""
 
-    assert Sharing.call(
-             sharing("POST", path, session, %{"_method" => "patch", "enabled" => "false"}),
-             []
-           ).status == 302
+    assert {:ok, %{enabled: false}} = change(%{"enabled" => "false"})
 
     assert Endpoint.call(build_conn("GET", url <> "?embed=1"), []).status == 302
-    again = Sharing.call(sharing("PATCH", path, session, %{"enabled" => true}), [])
-    assert Jason.decode!(again.resp_body)["uuid"] == uuid
+    assert {:ok, %{uuid: ^uuid}} = change(%{"enabled" => true})
     assert Endpoint.call(build_conn("GET", url <> "?embed=1"), []).status == 200
 
     assert Endpoint.call(build_conn("GET", "/shared/achievements/unknown"), []).status ==
              302
 
-    assert Sharing.call(sharing("PATCH", path, session, %{"enabled" => nil}), []).status == 422
-    assert rows("SELECT count(*) FROM achievement_progresses WHERE user_id=81302") == [[1]]
+    assert {:error, :invalid_input} = change(%{"enabled" => nil})
+    assert query_rows("SELECT count(*) FROM achievement_progresses WHERE user_id=81302") == [[1]]
   end
 
   @tag :fix_ach_image_params
   test "public achievement cards ignore crawler query keys and preserve locale and embeds" do
-    result =
-      Sharing.call(
-        sharing("PATCH", "/achievements/country_fr/toggle_sharing", RailsUser.session(81302), %{
-          "enabled" => true
-        }),
-        []
-      )
-
-    uuid = Jason.decode!(result.resp_body)["uuid"]
+    assert {:ok, %{uuid: uuid}} = change(%{"enabled" => true})
     path = "/shared/achievements/" <> uuid
 
     for query <- [
@@ -110,32 +95,23 @@ defmodule DawarichWeb.A12f3bA02Test do
 
     page = Endpoint.call(owner, [])
     assert page.status == 200 and page.resp_body =~ ~s(lang="de")
-    assert rows("SELECT settings->>'locale' FROM users WHERE id=81302") == [["de"]]
+    assert query_rows("SELECT settings->>'locale' FROM users WHERE id=81302") == [["de"]]
 
     for query <- ["utm_source=%GG", "utm_source=%FF", "locale=no&utm_source=x"] do
       assert Endpoint.call(build_conn("GET", path <> "?" <> query), []).status == 422
     end
   end
 
-  defp sharing(method, path, session, params) do
-    form = method == "POST"
-    token = RailsCsrf.masked_form_token(session, path, "PATCH")
+  defp change(attrs) do
+    scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(81302), "en")
 
-    body =
-      if form,
-        do: URI.encode_query(Map.put(params, "authenticity_token", token)),
-        else: Jason.encode!(params)
-
-    conn =
-      build_conn(method, path, body)
-      |> put_req_header("accept", if(form, do: "text/html", else: "application/json"))
-      |> put_req_header(
-        "content-type",
-        if(form, do: "application/x-www-form-urlencoded", else: "application/json")
-      )
-      |> put_req_header("content-length", to_string(byte_size(body)))
-      |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-
-    if form, do: conn, else: put_req_header(conn, "x-csrf-token", token)
+    Sharing.change(
+      scope,
+      %{type: :achievement, owner_id: 81302, key: "country_fr"},
+      :update,
+      attrs
+    )
   end
+
+  defp query_rows(sql), do: Dawarich.Repo.query!(sql, [], log: false).rows
 end

@@ -148,7 +148,7 @@ defmodule DawarichWeb.ActiveStorage do
       Dawarich.Repo.transaction(fn ->
         current =
           Dawarich.Repo.query!(
-            "SELECT b.byte_size,b.checksum,b.content_type FROM active_storage_blobs b JOIN phoenix.upload_receipts r ON r.blob_id=b.id WHERE b.key=$1 AND b.service_name=$2 AND NOT EXISTS(SELECT 1 FROM active_storage_attachments WHERE blob_id=b.id) FOR UPDATE OF b",
+            "SELECT b.byte_size,b.checksum,b.content_type FROM active_storage_blobs b JOIN phoenix.upload_receipts r ON r.blob_id=b.id WHERE b.key=$1 AND b.service_name=$2 AND coalesce((b.metadata::jsonb->>'phoenix_purge_pending')::boolean,false)=false AND NOT EXISTS(SELECT 1 FROM phoenix.native_uploads u WHERE u.blob_id=b.id AND u.state<>'pending') AND NOT EXISTS(SELECT 1 FROM active_storage_attachments WHERE blob_id=b.id) FOR UPDATE OF b",
             [data["key"], service.stored_service],
             log: false
           ).rows

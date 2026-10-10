@@ -1,5 +1,6 @@
 defmodule DawarichWeb.ImportsBrowserTest do
   use Dawarich.IngestCase, async: false
+  import Phoenix.LiveViewTest
   import Phoenix.ConnTest
   import Plug.Conn
   import Dawarich.Test.RailsFormRequests
@@ -30,6 +31,7 @@ defmodule DawarichWeb.ImportsBrowserTest do
         additional_data_extraction_status: 0
       })
 
+    Dawarich.Jobs.Ownership.put!(Repo, "command:enhanced_import.extract_gpx", :oban)
     session = RailsUser.session(owner.id)
 
     %{
@@ -42,7 +44,7 @@ defmodule DawarichWeb.ImportsBrowserTest do
   end
 
   @tag :g44_imports_extraction
-  test "rendered extraction POST negotiates Turbo replacement and queues distrusted classification",
+  test "native extraction queues distrusted classification while retired POST envelopes refuse",
        c do
     headers = [
       {"accept", "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"},
@@ -56,34 +58,15 @@ defmodule DawarichWeb.ImportsBrowserTest do
             URI.encode_www_form(c.token) <> "&trust_source[unexpected]=false"
         ] do
       denied = post_form(c.session, body, headers, "/imports/759950/extraction")
-      assert denied.status == 422
+      assert denied.status == 404
     end
 
     assert [] == Repo.query!("SELECT id FROM oban.oban_jobs").rows
 
-    body =
-      Plug.Conn.Query.encode(%{
-        "authenticity_token" => c.token,
-        "trust_source" => "false",
-        "commit" => "Extract"
-      })
-
-    conn =
-      post_form(
-        c.session,
-        body,
-        [
-          {"accept", "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"},
-          {"turbo-frame", "import-759950-extraction"}
-        ],
-        "/imports/759950/extraction"
-      )
-
-    assert conn.status == 200
-    assert get_resp_header(conn, "content-type") == ["text/vnd.turbo-stream.html; charset=utf-8"]
-    assert get_resp_header(conn, "x-dawarich-handler") == ["phoenix-imports"]
-    assert conn.resp_body =~ ~s(<turbo-stream action="replace" target="import-759950-extraction">)
-    assert conn.resp_body =~ "Queued"
+    conn = RailsUser.signed_in(c.owner.id) |> RailsUser.connecting_as(c.owner.id)
+    {:ok, view, _} = live(conn, "/imports/759950")
+    render_hook(view, "extract_import", %{"trust_source" => "false"})
+    assert render(view) =~ "Queued"
 
     assert [[1, %{"trust_source" => false}]] =
              Repo.query!(
@@ -96,27 +79,20 @@ defmodule DawarichWeb.ImportsBrowserTest do
                "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.EnhancedImport.NormalWorker' AND args->>'import_id'=$1",
                [to_string(c.record.id)]
              ).rows
-
-    refute Map.has_key?(conn.resp_cookies, "_dawarich_session")
   end
 
   @tag :g44_imports_foreign
-  test "standalone foreign-owner browser reads and writes return the Rails denial without effects",
+  test "native foreign import reads refuse safely and retired writes have no effects",
        c do
     session = RailsUser.session(c.foreign.id)
     token = RailsCsrf.masked_token(session)
 
-    for suffix <- ["", "/edit", "/download"] do
-      conn = RailsUser.signed_in(c.foreign.id) |> get("/imports/759950" <> suffix)
-      assert conn.status == 303
-      assert get_resp_header(conn, "location") == ["http://www.example.com/"]
-      assert get_resp_header(conn, "x-dawarich-handler") == []
-
-      assert rails_session(conn)["flash"]["flashes"]["alert"] ==
-               "You are not authorized to perform this action."
-
-      refute conn.resp_body =~ c.record.name
+    for suffix <- ["", "/edit"] do
+      conn = RailsUser.signed_in(c.foreign.id) |> RailsUser.connecting_as(c.foreign.id)
+      assert {:error, {:redirect, %{to: "/imports"}}} = live(conn, "/imports/759950" <> suffix)
     end
+
+    assert get(RailsUser.signed_in(c.foreign.id), "/imports/759950/download").status == 404
 
     for {method, path, body} <- [
           {:patch, "/imports/759950", "import[name]=forbidden"},
@@ -131,7 +107,7 @@ defmodule DawarichWeb.ImportsBrowserTest do
         |> put_req_header("x-csrf-token", token)
         |> dispatch(@endpoint, method, path, body)
 
-      assert conn.status == 303
+      assert conn.status == 404
       assert get_resp_header(conn, "x-dawarich-handler") == []
     end
 

@@ -2,9 +2,7 @@ defmodule DawarichWeb.FamilyPagesTest do
   use Dawarich.JobsCase, async: false
 
   import Phoenix.ConnTest
-  import Dawarich.Test.FormIsolation
   import Plug.Conn, only: [put_req_header: 3]
-  import Dawarich.Test.RawHTTP
 
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{FrameSeeds, RailsUser}
@@ -19,6 +17,11 @@ defmodule DawarichWeb.FamilyPagesTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
     owner = FrameSeeds.seed_family!(FrameSeeds.load_family("owner_en"))
+
+    Repo.query!("UPDATE family_invitations SET expires_at='3026-01-01' WHERE status=0", [],
+      log: false
+    )
+
     %{owner: owner, member: Accounts.get(90102), outsider: Accounts.get(90103)}
   end
 
@@ -30,89 +33,52 @@ defmodule DawarichWeb.FamilyPagesTest do
     assert found == expected, selector
   end
 
-  @tag :safe_back3
-  test "F2 family refusal uses shared syntax checks and host-only Rails redirects", ctx do
-    for {referer, location} <- [
-          {"http://user@www.example.com/return?x=1", "http://www.example.com/"},
-          {"http://evil.example\\@www.example.com/offer", "http://www.example.com/"},
-          {"//www.example.com/family", "http://www.example.com/"},
-          {"/family?tab=members#owner", "http://www.example.com/family?tab=members#owner"},
-          {"https://www.example.com:8443/return?x=1#family",
-           "https://www.example.com:8443/return?x=1#family"}
-        ] do
-      response =
-        RailsUser.signed_in(ctx.member.id)
-        |> freeze_clock()
-        |> put_req_header("referer", referer)
-        |> get("/family/edit")
-
-      assert response.status == 303
-      assert redirected_to(response, 303) == location
-
-      assert response.private.dawarich_rails_session_changes["flash"]["flashes"]["alert"] =~
-               "not authorized"
-    end
-  end
-
-  test "show renders owner and member Rails controls", ctx do
-    html = document(ctx.owner, "/family")
-    assert_form_isolated(html)
-    assert_form_isolated(document(ctx.owner, "/family/invitations"))
-    assert_form_isolated(document(ctx.member, "/family/location_requests/94001"))
-    owner = html
-    assert true == (html =~ "Leipzig Fixture Family")
+  test "native owner and member controls preserve roles and exclude embedded locations", ctx do
+    owner = document(ctx.owner, "/family")
+    assert owner =~ "Leipzig Fixture Family"
     expect_element(owner, "a[href='/family/edit']")
-
-    expect_element(
-      owner,
-      "a[href='/family/members/92002'][data-turbo-method='delete'][data-turbo-confirm]"
-    )
-
-    expect_element(
-      owner,
-      "form[action='/family/invitations.91001'] input[name='family_invitation[email]']"
-    )
-
-    expect_element(
-      owner,
-      "form[action='/family/location_sharing'] input[name='_method'][value='patch']"
-    )
-
-    expect_element(
-      owner,
-      "form[action='/family/invitations/a9fpl-pending'] input[name='_method'][value='delete']"
-    )
-
+    expect_element(owner, "#native-invite-form input[name='family_invitation[email]']")
+    expect_element(owner, "#native-family-sharing[phx-change='family_set_sharing']")
+    expect_element(owner, "[data-invitation-id]")
     member = document(ctx.member, "/family?locale=de")
     expect_element(member, "a[href='/family/edit']", false)
-    expect_element(member, "form[action='/family/invitations.91001']", false)
-    expect_element(member, "a[href='/family/members/92002'][data-turbo-method='delete']")
-    expect_element(member, "form[action='/family/location_requests?target_user_id=90101']")
-    assert false == (html =~ "data-lat=")
-    assert false == (html =~ "a9fpl-fixture-")
+    expect_element(member, "#native-invite-form", false)
+    expect_element(member, "button[phx-value-target_user_id='90101']")
+    refute owner =~ "data-lat="
+    refute owner =~ "a9fpl-fixture-"
+    refute owner =~ "a9fpl-pending"
     Repo.query!("UPDATE users SET status = 0 WHERE id = $1", [ctx.owner.id])
-    trial = document(ctx.owner, "/family")
-    expect_element(trial, "#family-getting-started .text-xs.text-base-content\\/60.mt-3")
+    assert document(ctx.owner, "/family") =~ "/native/app"
   end
 
-  test "new renders create upgrade and lapsed branches", ctx do
+  test "native create upgrade and lapsed branches preserve actions and HTTP upgrade payload",
+       ctx do
     create = document(ctx.outsider, "/family/new")
-    assert_form_isolated(create)
-    expect_element(create, "form[action='/family'] input[name='family[name]']")
+
+    expect_element(
+      create,
+      "#native-family-form[phx-submit='family_save'] input[name='family[name]']"
+    )
+
+    saved = Map.new(~w(SELF_HOSTED JWT_SECRET_KEY), &{&1, System.get_env(&1)})
     System.put_env("SELF_HOSTED", "false")
     System.put_env("JWT_SECRET_KEY", "test")
-    on_exit(fn -> for key <- ~w(SELF_HOSTED JWT_SECRET_KEY), do: System.delete_env(key) end)
+
+    on_exit(fn ->
+      for {key, value} <- saved,
+          do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+    end)
+
     upgrade = document(ctx.outsider, "/family/new?locale=de")
-    expect_element(upgrade, "a.btn.btn-primary[target='_blank'][rel='noopener noreferrer']")
-    expect_element(upgrade, "form[action='/family']", false)
 
-    [href] =
-      upgrade
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("a.btn.btn-primary[target='_blank']")
-      |> LazyHTML.attribute("href")
+    expect_element(
+      upgrade,
+      "a[href='/native/family/upgrade'][target='_blank'][rel='noopener noreferrer']"
+    )
 
-    params = href |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+    expect_element(upgrade, "#native-family-form", false)
+    conn = RailsUser.signed_in(ctx.outsider.id) |> get("/native/family/upgrade")
+    params = redirected_to(conn) |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
     [_head, body, _signature] = String.split(params["token"], ".")
     payload = body |> Base.url_decode64!(padding: false) |> Jason.decode!()
     assert payload["plan"] == "family"
@@ -125,70 +91,54 @@ defmodule DawarichWeb.FamilyPagesTest do
 
     Repo.query!("UPDATE users SET plan = 1 WHERE id = $1", [ctx.owner.id])
     lapsed = document(ctx.owner, "/family/new")
-    expect_element(lapsed, "a[href='/family/members/92002'][data-turbo-method='delete']")
-    expect_element(lapsed, "form[action='/family/location_sharing']")
+    expect_element(lapsed, "#native-family-sharing")
+    expect_element(lapsed, "button[phx-click]")
     member = document(ctx.member, "/family/new")
-    expect_element(member, "a[href='/family/members/92002'][data-turbo-method='delete']")
-    expect_element(member, "a.btn.btn-primary[target='_blank']", false)
+    expect_element(member, "#native-family-sharing")
+    expect_element(member, "a[href='/native/family/upgrade']", false)
   end
 
-  test "edit preserves owner policy and Rails form verb", ctx do
+  test "native edit retains the name and refuses members to its own safe destination", ctx do
     edit = document(ctx.owner, "/family/edit")
-    assert_form_isolated(edit)
-    expect_element(edit, "form[action='/family.91001'] input[name='_method'][value='patch']")
+    expect_element(edit, "#native-family-form[phx-submit='family_save']")
     expect_element(edit, "input[name='family[name]'][value='Leipzig Fixture Family']")
-    expect_element(edit, "a[href='/family'][data-turbo-method='delete'][data-turbo-confirm]")
-    conn = RailsUser.signed_in(ctx.member.id) |> freeze_clock() |> get("/family/edit")
-    assert conn.status == 303
-    assert redirected_to(conn, 303) == "http://www.example.com/"
+    expect_element(edit, "button[phx-click]")
 
-    assert conn.private.dawarich_rails_session_changes["flash"]["flashes"]["alert"] ==
-             DawarichWeb.Translate.t(
-               "en",
-               "controllers.application.you_are_not_authorized_to_perform_this_action",
-               %{}
-             )
+    for referer <- [
+          "http://user@www.example.com/return?x=1",
+          "//www.example.com/family",
+          "/family?tab=members",
+          "https://www.example.com/family"
+        ] do
+      conn =
+        RailsUser.signed_in(ctx.member.id)
+        |> put_req_header("referer", referer)
+        |> get("/family/edit")
 
-    returned =
-      RailsUser.signed_in(ctx.member.id)
-      |> freeze_clock()
-      |> put_req_header("referer", "http://www.example.com/family")
-      |> get("/family/edit")
-
-    assert redirected_to(returned, 303) == "http://www.example.com/family"
-  end
-
-  test "family key hands back documents before pipeline", ctx do
-    saved_routes = Application.get_env(:dawarich, :rails_routes, [])
-    saved_upstream = Application.get_env(:dawarich, :rails_upstream)
-    upstream = listen()
-
-    on_exit(fn ->
-      Application.put_env(:dawarich, :rails_routes, saved_routes)
-      Application.put_env(:dawarich, :rails_upstream, saved_upstream)
-      :gen_tcp.close(upstream.listen)
-    end)
-
-    Application.put_env(:dawarich, :rails_routes, ["family"])
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
-
-    for path <- ~w(/family /family/new /family/edit) do
-      response =
-        Task.async(fn -> RailsUser.signed_in(ctx.owner.id) |> freeze_clock() |> get(path) end)
-
-      socket = accept(upstream)
-      {head, _rest} = read_head(socket)
-      assert request_line(head) == "GET #{path} HTTP/1.1"
-      reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-      conn = Task.await(response)
-      assert conn.resp_body == "rails"
-      refute Map.has_key?(conn.private, :phoenix_router)
-      refute Map.has_key?(conn.assigns, :current_user)
-      :gen_tcp.close(socket)
+      assert conn.status == 302
+      assert redirected_to(conn) == "/"
     end
   end
 
-  test "family writes have native routes and retain explicit handback" do
+  test "native family documents ignore compatibility keys without Rails replay", ctx do
+    saved = Application.get_env(:dawarich, :rails_routes, [])
+    upstream = Dawarich.Test.RailsFormRequests.upstream!()
+    Application.put_env(:dawarich, :rails_routes, ["family"])
+    on_exit(fn -> Application.put_env(:dawarich, :rails_routes, saved) end)
+
+    for {user, path} <- [
+          {ctx.owner, "/family"},
+          {ctx.outsider, "/family/new"},
+          {ctx.owner, "/family/edit"}
+        ] do
+      conn = RailsUser.signed_in(user.id) |> freeze_clock() |> get(path)
+      assert conn.status == 200
+      assert conn.resp_body =~ "/native/app"
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+    end
+  end
+
+  test "retired family UI writes have no routes even with compatibility keys" do
     saved = Application.get_env(:dawarich, :rails_routes, [])
     Application.put_env(:dawarich, :rails_routes, ["family"])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, saved) end)
@@ -207,10 +157,13 @@ defmodule DawarichWeb.FamilyPagesTest do
           {"PATCH", "/family/location_requests/94001/decline"},
           {"PATCH", "/family/location_sharing"}
         ] do
-      assert %{plug: DawarichWeb.FamilyFormRoutes} =
+      assert :error =
                Phoenix.Router.route_info(DawarichWeb.Router, method, path, "www.example.com")
 
-      assert DawarichWeb.Strangler.handed_back?(["family"])
+      refute Map.has_key?(
+               Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/family", "www.example.com"),
+               :rails_gate
+             )
     end
 
     assert Phoenix.Router.route_info(

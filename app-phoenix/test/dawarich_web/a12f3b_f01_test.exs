@@ -1,9 +1,8 @@
 defmodule DawarichWeb.A12f3bF01Test do
   use Dawarich.JobsCase, async: false
-  import Plug.Conn
   alias Dawarich.{Accounts, FamilyPage, Repo}
-  alias Dawarich.Test.{FrameSeeds, RailsUser}
-  alias DawarichWeb.FamilyGate
+  alias Dawarich.Test.FrameSeeds
+  alias DawarichWeb.NativeFamilyAuth
 
   @now ~U[2026-10-03 10:00:00Z]
 
@@ -15,7 +14,7 @@ defmodule DawarichWeb.A12f3bF01Test do
   end
 
   @tag a12f3b_case: "F01a"
-  test "family pages resolve lapsed and malformed actor states before effects", ctx do
+  test "native F01a family pages resolve lapsed and malformed actor states before effects", ctx do
     assert {:redirect, "/family/new", :not_in_family} =
              FamilyPage.read(ctx.outsider, :show, now: @now, self_hosted: true)
 
@@ -36,17 +35,15 @@ defmodule DawarichWeb.A12f3bF01Test do
 
     Repo.query!("UPDATE users SET settings='[]'::jsonb WHERE id=$1", [ctx.owner.id])
 
-    conn =
-      RailsUser.signed_in(ctx.owner.id)
-      |> Map.put(:request_path, "/family")
-      |> assign(:current_user, ctx.owner)
-      |> assign(:now, @now)
-      |> assign(:self_hosted, true)
-      |> assign(:locale, "en")
-      |> FamilyGate.call([])
+    assert {:error, :invalid_input} =
+             Dawarich.Families.page(Dawarich.Accounts.Scope.for_user(ctx.owner, "en"), :show,
+               now: @now,
+               self_hosted: true
+             )
 
-    assert conn.status == 500
-    refute Map.has_key?(conn.private, :dawarich_proxy)
+    assert {:halt, cleared} = NativeFamilyAuth.authorize(socket(ctx.owner, nil))
+    assert cleared.assigns.page == nil
+    assert cleared.redirected == {:redirect, %{to: "/family/new", status: 302}}
 
     assert Repo.query!("SELECT count(*) FROM family_memberships WHERE family_id=91001").rows == [
              [2]
@@ -54,23 +51,29 @@ defmodule DawarichWeb.A12f3bF01Test do
   end
 
   @tag a12f3b_case: "F01b"
-  test "family reconnect cannot retain a removed membership", ctx do
+  test "native F01b family reconnect cannot retain a removed membership", ctx do
     {:ok, page} = FamilyPage.read(ctx.member, :show, now: @now, self_hosted: true)
 
-    socket = %Phoenix.LiveView.Socket{
+    socket = socket(ctx.member, page)
+
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [ctx.member.id])
+    assert {:halt, refreshed} = NativeFamilyAuth.authorize(socket)
+    assert refreshed.redirected == {:redirect, %{to: "/family/new", status: 302}}
+    assert refreshed.assigns.page == nil
+  end
+
+  defp socket(user, page) do
+    %Phoenix.LiveView.Socket{
       assigns: %{
         __changed__: %{},
-        current_user: ctx.member,
+        current_user: user,
+        current_scope: Dawarich.Accounts.Scope.for_user(user, "en"),
+        locale: "en",
         page: page,
         now: @now,
         self_hosted: true,
         request_path: "/family"
       }
     }
-
-    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [ctx.member.id])
-    assert {:halt, refreshed} = FamilyGate.refresh("rails_flash", %{}, socket)
-    assert refreshed.redirected == {:redirect, %{to: "/family/new", status: 302}}
-    assert refreshed.assigns.page == nil
   end
 end

@@ -6,7 +6,7 @@ defmodule DawarichWeb.A12f3aOClosureTest do
   import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
 
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{A8Gate, A8Request, ImportsRequest, MapWriteRequest, RailsAuth, RailsCsrf}
+  alias DawarichWeb.{A8Gate, A8Request, MapWriteRequest, RailsAuth, RailsCsrf}
 
   setup do
     actor = RailsUser.insert!(%{id: 8891, email: "o02-dispatch@example.test"})
@@ -122,30 +122,14 @@ defmodule DawarichWeb.A12f3aOClosureTest do
       MapWriteRequest
     )
 
-    for {method, path, attrs, form} <- [
-          {:post, "/imports", %{"import" => %{"files" => ["SYNTHETIC_BLOB"]}},
-           DawarichWeb.Imports.UploadForm},
-          {:patch, "/imports/42", %{"import" => %{"name" => "Synthetic"}},
-           DawarichWeb.Imports.UpdateForm}
-        ] do
-      body = encode(attrs, ctx.token)
-      conn = request(ctx, method, path, body, "text/html")
-      assert apply(ImportsRequest, :request_module, [conn]) == form
-      admitted = ImportsRequest.call(conn, [])
-      refute admitted.halted
-      assert admitted.private.dawarich_raw_body == body
-      assert admitted.assigns.api_params == Map.put(attrs, "authenticity_token", ctx.token)
-      replay(ctx, method, path, encode(attrs, "invalid"), ImportsRequest, "text/html")
-
-      replay(
-        ctx,
-        method,
-        path,
-        encode(Map.put(attrs, "foreign_domain", "x"), ctx.token),
-        ImportsRequest,
-        "text/html"
-      )
-
+    for {method, path, attrs} <- [
+          {:post, "/imports", %{"import" => %{"files" => ["SYNTHETIC_BLOB"]}}},
+          {:patch, "/imports/42", %{"import" => %{"name" => "Synthetic"}}}
+        ],
+        token <- [ctx.token, "invalid"],
+        values <- [attrs, Map.put(attrs, "foreign_domain", "x")] do
+      conn = request(ctx, method, path, encode(values, token), "text/html")
+      Dawarich.Test.RetiredM4Requests.assert_retired(conn)
       assert effects() == before
     end
 
@@ -308,7 +292,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     System.put_env("JWT_SECRET_KEY", String.duplicate("s", 64))
     on_exit(fn -> restore_env("JWT_SECRET_KEY", jwt) end)
     routes = q_m_w_p()
-    assert length(routes) == 40
+    assert length(routes) == 38
     ctx = seed_routes(ctx)
     System.put_env("SELF_HOSTED", "true")
 
@@ -382,7 +366,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   test "O07: import export trip visit video methods consume native owner outcomes exactly once",
        ctx do
     routes = i_f_e_t_v_r()
-    assert length(routes) == 38
+    assert length(routes) == 31
     ctx = seed_routes(ctx)
     System.put_env("SELF_HOSTED", "true")
 
@@ -411,8 +395,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     for {method, path, headers, bytes} <- [
           {"POST", "/route_videos", [], "foreign_domain=x"},
           {"POST", "/trips", [{"x-http-method-override", "DELETE"}], "trip%5Bname%5D=Synthetic"},
-          {"POST", "/settings/users/import", [], "archive=bad&authenticity_token=bad"},
-          {"POST", "/exports", [], "authenticity_token=bad"}
+          {"POST", "/settings/users/import", [], "archive=bad&authenticity_token=bad"}
         ] do
       System.put_env("SELF_HOSTED", "true")
       previous = observations()
@@ -428,6 +411,21 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       assert response.status == 204
       assert line == "#{method} #{path} HTTP/1.1"
       assert original == bytes
+      assert observations() == previous
+    end
+
+    for mode <- [nil, "off"] do
+      if mode,
+        do: System.put_env("DAWARICH_RAILS", mode),
+        else: System.delete_env("DAWARICH_RAILS")
+
+      previous = observations()
+
+      response =
+        @endpoint.call(raw(ctx, "POST", "/exports", "authenticity_token=bad"), @endpoint.init([]))
+
+      assert response.status == 422
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
       assert observations() == previous
     end
 
@@ -459,14 +457,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
 
     Enum.map(reads, fn {path, key, handler} -> {"GET", path, key, handler} end) ++
       [
-        {"POST", "/imports", "imports", DawarichWeb.ImportsController},
-        {"PATCH", "/imports/42", "imports", DawarichWeb.ImportsController},
-        {"PUT", "/imports/42", "imports", DawarichWeb.ImportsController},
-        {"DELETE", "/imports/42", "imports", DawarichWeb.ImportsController},
-        {"POST", "/imports/42/extraction", "imports", DawarichWeb.ImportsController},
-        {"DELETE", "/imports/42/extraction", "imports", DawarichWeb.ImportsController},
         {"POST", "/exports", "exports", DawarichWeb.ExportsCreate},
-        {"DELETE", "/exports/42", "exports", DawarichWeb.ExportsDelete},
         {"POST", "/trips", "trips", DawarichWeb.TripActions},
         {"PATCH", "/trips/42", "trips", DawarichWeb.TripActions},
         {"PUT", "/trips/42", "trips", DawarichWeb.TripActions},
@@ -519,10 +510,8 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       [
         {"PUT", "/stats/2024/3/update", "stats", DawarichWeb.StatsActions},
         {"PUT", "/stats/update_all", "stats", DawarichWeb.StatsActions},
-        {"PATCH", "/stats/2024/3/sharing", "stats", DawarichWeb.StatSharing},
         {"POST", "/digests", "digests", DawarichWeb.DigestActions},
         {"DELETE", "/digests/2024", "digests", DawarichWeb.DigestActions},
-        {"PATCH", "/digests/2024/sharing", "digests", DawarichWeb.DigestSharing},
         {"POST", "/areas", "areas", DawarichWeb.AreaActions},
         {"PATCH", "/areas/42", "areas", DawarichWeb.AreaActions},
         {"PUT", "/areas/42", "areas", DawarichWeb.AreaActions},

@@ -40,7 +40,18 @@ filtered_parameters = [
   "phrase",
   "sgid",
   "upload_ref",
-  "capability"
+  "capability",
+  "magic_phrase",
+  "signed_id",
+  "url",
+  "authorization",
+  "cookie",
+  "checksum",
+  "bootstrap",
+  "invitation",
+  "public_id",
+  "share_id",
+  "uuid"
 ]
 
 config :phoenix, :filter_parameters, filtered_parameters

@@ -81,7 +81,7 @@ defmodule DawarichWeb.AchievementCard do
       }
       data-share-key={@share && @share["key"]}
       data-share-shared={@share && to_string(@share["shared"])}
-      data-share-toggle={@share && "/achievements/" <> @share["key"] <> "/toggle_sharing"}
+      data-share-manager={@share && "/achievements/" <> @share["key"] <> "/sharing"}
       data-share-url={
         @share && @share["shared"] && @share["uuid"] && "/shared/achievements/" <> @share["uuid"]
       }

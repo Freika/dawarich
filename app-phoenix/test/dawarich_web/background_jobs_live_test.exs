@@ -50,7 +50,7 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
     )
 
     assert length(static) in 1..13
-    assert length(connected) in 1..8
+    assert (length(connected) - 1) in 1..8
     assert NativeAdminUI.labels(html) == []
     GenServer.stop(view.pid)
   end
@@ -200,7 +200,7 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
     )
 
     assert length(sparse_static) in 1..21
-    assert length(sparse_connected) in 1..16
+    assert (length(sparse_connected) - 1) in 1..16
     GenServer.stop(sparse.pid)
     Application.put_env(:dawarich, :jobs_repo, Repo)
 

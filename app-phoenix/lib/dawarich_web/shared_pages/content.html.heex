@@ -1,4 +1,5 @@
 <main>
+  {assigns[:public_native_html]}
   <.not_found :if={@page == :not_found} locale={@locale} />
   <.missing_resource :if={@page == :missing_resource} locale={@locale} />
   <.phrase_prompt

@@ -39,7 +39,9 @@ defmodule DawarichWeb.SharedPages do
           head_content: metadata(assigns)
         })
 
-      Layouts.root(Map.put(assigns, :inner_content, Layouts.app(assigns)))
+      Layouts.native_root(
+        Map.put(assigns, :inner_content, Layouts.app(Map.put(assigns, :native, true)))
+      )
     else
       document(assigns)
     end

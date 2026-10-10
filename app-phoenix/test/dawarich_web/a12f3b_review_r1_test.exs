@@ -1,56 +1,57 @@
 defmodule DawarichWeb.A12f3bReviewR1Test do
   use Dawarich.JobsCase, async: false
-  import Dawarich.Test.FamilyForms
+  import Dawarich.Test.FamilyCorpus
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.RailsCsrf
   setup do: seed()
 
   @tag a12f3b_review: "R1"
-  test "R1 accepts per-form CSRF only for the submitted path and effective method", c do
-    session = RailsUser.session(c.owner.id)
+  test "native R1 retained acceptance binds per-form CSRF to its exact POST path", c do
+    session = RailsUser.session(c.outsider.id)
 
-    for path <- ["/family", "/family.91001"], method <- ["PATCH", "PUT"] do
-      token = RailsCsrf.masked_form_token(session, path, method)
-      name = path <> method
+    for path <- ["/family/memberships", "/family/memberships.html"] do
+      token = RailsCsrf.masked_form_token(session, path, "POST")
 
-      conn =
+      response =
         request(
-          c.owner,
+          c.outsider,
           "POST",
           path,
-          %{
-            "_method" => String.downcase(method),
-            "authenticity_token" => token,
-            "family" => %{"name" => name}
-          },
+          %{"token" => "a9fpl-pending", "authenticity_token" => token},
           [{"cookie", "_dawarich_session=" <> RailsUser.cookie(session)}]
         )
 
-      assert conn.status == 302
-      assert records("SELECT name FROM families WHERE id=91001") == [[name]]
+      assert response.status == 302
+      assert records("SELECT count(*) FROM family_memberships WHERE user_id=90103") == [[1]]
+      Dawarich.Repo.query!("DELETE FROM family_memberships WHERE user_id=90103")
+      Dawarich.Repo.query!("UPDATE family_invitations SET status=0 WHERE token='a9fpl-pending'")
     end
 
-    for {path, method} <- [{"/other", "PATCH"}, {"/family", "POST"}, {"/family.91001", "PATCH"}] do
-      conn =
+    for {path, method} <- [
+          {"/other", "POST"},
+          {"/family/memberships", "PATCH"},
+          {"/family/memberships", "PUT"},
+          {"/family/memberships.html", "POST"}
+        ] do
+      response =
         request(
-          c.owner,
+          c.outsider,
           "POST",
-          "/family",
+          "/family/memberships",
           %{
-            "_method" => "patch",
-            "authenticity_token" => RailsCsrf.masked_form_token(session, path, method),
-            "family" => %{"name" => "Refused"}
+            "token" => "a9fpl-pending",
+            "authenticity_token" => RailsCsrf.masked_form_token(session, path, method)
           },
           [{"cookie", "_dawarich_session=" <> RailsUser.cookie(session)}]
         )
 
-      assert conn.status == 422
-      refute records("SELECT name FROM families WHERE id=91001") == [["Refused"]]
+      assert response.status == 422
+      assert records("SELECT count(*) FROM family_memberships WHERE user_id=90103") == [[0]]
     end
 
-    assert request(c.owner, "PATCH", "/family", %{"family" => %{"name" => "Global"}}).status ==
+    assert request(c.outsider, "POST", "/family/memberships", %{"token" => "a9fpl-pending"}).status ==
              302
 
-    assert records("SELECT name FROM families WHERE id=91001") == [["Global"]]
+    assert records("SELECT count(*) FROM family_memberships WHERE user_id=90103") == [[1]]
   end
 end

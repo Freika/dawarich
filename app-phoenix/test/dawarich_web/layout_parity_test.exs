@@ -136,9 +136,19 @@ defmodule DawarichWeb.LayoutParityTest do
   for name <- LayoutFixtures.names() do
     @name name
 
-    test "the layout shell matches Rails for #{name}" do
+    test "the layout shell preserves Rails meaning with native upload sharing entries for #{name}" do
       {rails, meta} = LayoutFixtures.load(@name)
-      phoenix = LayoutFixtures.render(meta["state"])
+      raw = LayoutFixtures.render(meta["state"])
+
+      indicators =
+        raw
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("[id^='family-navbar-indicator']")
+        |> LazyHTML.attribute("id")
+
+      assert length(indicators) == length(Enum.uniq(indicators))
+      phoenix = Dawarich.Test.NativeM4Corpus.prepare(raw)
+      rails = Dawarich.Test.NativeM4Corpus.prepare(rails)
 
       actual = ParityHTML.without(phoenix, @chrome)
       expected = ParityHTML.without(rails, @chrome)
@@ -165,9 +175,10 @@ defmodule DawarichWeb.LayoutParityTest do
   for name <- @signed_in do
     @name name
 
-    test "the onboarding modal and unlock host carry Rails' Stimulus attributes for #{name}" do
+    test "the deferred onboarding and unlock host retain independent handlers with native upload entry for #{name}" do
       {rails, meta} = LayoutFixtures.load(@name)
-      phoenix = LayoutFixtures.render(meta["state"])
+      phoenix = LayoutFixtures.render(meta["state"]) |> Dawarich.Test.NativeM4Corpus.prepare()
+      rails = Dawarich.Test.NativeM4Corpus.prepare(rails)
       expected = rails |> body() |> ParityHTML.stimulus(@islands)
 
       assert length(expected) > 10
@@ -203,7 +214,8 @@ defmodule DawarichWeb.LayoutParityTest do
 
     test "the signed-out navbar matches Rails in #{lang} (#{name})" do
       {rails, meta} = LayoutFixtures.load(@name)
-      phoenix = LayoutFixtures.render(meta["state"])
+      phoenix = LayoutFixtures.render(meta["state"]) |> Dawarich.Test.NativeM4Corpus.prepare()
+      rails = Dawarich.Test.NativeM4Corpus.prepare(rails)
 
       assert meta["html"]["lang"] == @lang
 

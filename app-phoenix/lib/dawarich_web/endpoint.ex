@@ -15,7 +15,8 @@ defmodule DawarichWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: false
 
-  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
+  plug DawarichWeb.RequestLogger
+  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint], log: false
 
   plug Plug.Static,
     at: "/phoenix/js",
@@ -35,7 +36,7 @@ defmodule DawarichWeb.Endpoint do
   plug Plug.Static,
     at: "/phoenix/js",
     from: {:dawarich, "priv/static/js"},
-    only: ~w(app.js map_shell.js rails_bridge.js family_page.js hooks)
+    only: ~w(app.js map_shell.js rails_bridge.js native_card_modal.js hooks)
 
   plug DawarichWeb.PublicFiles
   plug DawarichWeb.Cors

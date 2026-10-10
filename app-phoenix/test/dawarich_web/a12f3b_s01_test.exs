@@ -39,7 +39,11 @@ defmodule DawarichWeb.A12f3bS01Test do
     end
 
     for action <- [:show, :unlock] do
-      response = request(action) |> SharedLinkPage.call(action)
+      response =
+        request(action)
+        |> Map.put(:secret_key_base, DawarichWeb.Endpoint.config(:secret_key_base))
+        |> SharedLinkPage.call(action)
+
       assert response.status == 404
       assert get_resp_header(response, "x-robots-tag") == ["noindex, nofollow"]
       refute Map.has_key?(response.resp_cookies, "shared_link_#{@id}")

@@ -1,50 +1,57 @@
 defmodule DawarichWeb.A12f3bF06Test do
   use Dawarich.JobsCase, async: false
-  import Dawarich.Test.FamilyForms
-  alias Dawarich.{Accounts, Repo}
+  import Dawarich.Test.FamilyCorpus
+  alias Dawarich.{Accounts, Repo, Families}
   alias DawarichWeb.FamilyLocations
   setup do: seed()
   @now ~U[2026-10-03 10:00:00Z]
 
   @tag a12f3b_case: "F06a"
-  test "family location sharing preserves duration and member audience", c do
-    conn =
-      json_request(c.member, "PATCH", "/family/location_sharing", %{
-        "enabled" => "on",
-        "duration" => "2"
-      })
+  test "native F06a duration and audience persist while independent JSON values survive", c do
+    assert {:ok, config} =
+             Families.set_sharing(
+               scope(c.member),
+               %{"enabled" => "on", "duration" => "2"},
+               opts()
+             )
 
-    assert conn.status == 200
-    assert Jason.decode!(conn.resp_body)["duration"] == "2"
-    config = Accounts.settings(c.member.id)["family"]["location_sharing"]
     assert config["enabled"]
-    assert config["expires_at"] == "2026-10-03T14:00:00+02:00"
+    assert config["duration"] == "2"
+    assert DateTime.from_iso8601(config["expires_at"]) |> elem(1) == ~U[2026-10-03 12:00:00Z]
 
-    assert json_request(c.member, "PATCH", "/family/location_sharing", %{
-             "enabled" => %{"nested" => false},
-             "duration" => "1h",
-             "share_history" => "true"
-           }).status == 200
+    assert {:error, :invalid_input} =
+             Families.set_sharing(
+               scope(c.member),
+               %{
+                 "enabled" => %{"nested" => false},
+                 "duration" => "1h",
+                 "share_history" => "true"
+               },
+               opts()
+             )
+
+    assert {:ok, 200, _} =
+             legacy_sharing(c.member, %{
+               "enabled" => %{"nested" => false},
+               "duration" => "1h",
+               "share_history" => "true"
+             })
 
     assert Accounts.settings(c.member.id)["family"]["location_sharing"]["share_history"]
 
-    localized =
-      json_request(c.member, "PATCH", "/family/location_sharing", %{
-        "enabled" => true,
-        "duration" => "1h",
-        "locale" => "de"
-      })
+    assert {:ok, 200, {:object, pairs}} =
+             legacy_sharing(c.member, %{"enabled" => true, "duration" => "1h", "locale" => "de"})
 
-    localized_fields = Jason.decode!(localized.resp_body)
+    fields = Map.new(pairs)
 
-    assert localized_fields["message"] ==
+    assert fields["message"] ==
              DawarichWeb.Translate.t(
                "de",
                "services.families.update_location_sharing.enabled_for_hours",
                %{"count" => 1}
              )
 
-    assert localized_fields["expires_at_formatted"] ==
+    assert fields["expires_at_formatted"] ==
              DawarichWeb.LocalizedDate.time("de", ~N[2026-10-03 13:00:00], "short_with_time")
 
     Repo.query!(
@@ -63,15 +70,12 @@ defmodule DawarichWeb.A12f3bF06Test do
 
     assert Jason.decode!(locations(c.owner).resp_body) == []
 
-    refused =
-      request(c.outsider, "PATCH", "/family/location_sharing", %{"enabled" => true}, [
-        {"accept", "text/vnd.turbo-stream.html"}
-      ])
+    assert {:error, :unauthorized} =
+             Families.set_sharing(scope(c.outsider), %{"enabled" => true}, opts())
 
-    assert refused.status == 404
-    assert refused.resp_body =~ ~s(target="flash-messages")
+    assert {:ok, 404, {:object, refusal}} = legacy_sharing(c.outsider, %{"enabled" => true})
 
-    assert refused.resp_body =~
+    assert Map.new(refusal)["error"] ==
              DawarichWeb.Translate.t(
                "en",
                "controllers.family.location_sharing.user_is_not_part_of_a_family",
@@ -83,55 +87,50 @@ defmodule DawarichWeb.A12f3bF06Test do
     Repo.query!("UPDATE families SET access_until=$1 WHERE id=91001", [DateTime.to_naive(@now)])
     Repo.query!("UPDATE users SET plan=1 WHERE id=90101")
 
-    assert json_request(c.member, "PATCH", "/family/location_sharing", %{"enabled" => false}).status ==
-             200
+    assert {:error, :expired} =
+             Families.set_sharing(scope(c.member), %{"enabled" => false}, opts())
 
+    assert {:ok, 200, _} = legacy_sharing(c.member, %{"enabled" => false})
     assert Accounts.settings(c.member.id)["family"]["location_sharing"] == %{"enabled" => false}
   end
 
   @tag a12f3b_case: "F06b"
-  test "family sharing error stays native before and after commit", c do
-    previous = Application.get_env(:dawarich, :rails_upstream)
-    Application.put_env(:dawarich, :rails_upstream, nil)
-    on_exit(fn -> Application.put_env(:dawarich, :rails_upstream, previous) end)
-
-    direct =
-      Plug.Test.conn("PATCH", "/family/location_sharing")
-      |> Plug.Conn.put_req_header("accept", "application/json")
-
-    terminal =
-      DawarichWeb.FamilySharingActions.respond(
-        direct,
-        {:ok, 500, {:object, [{"success", false}]}}
-      )
-
-    assert terminal.status == 500
+  test "native F06b malformed consent refuses before effects and independent JSON remains terminal",
+       c do
     Repo.query!("UPDATE users SET settings=jsonb_set(settings,'{family}', '[]') WHERE id=90102")
 
-    malformed =
-      json_request(c.member, "PATCH", "/family/location_sharing", %{
-        "enabled" => true,
-        "duration" => "1h"
-      })
+    assert {:error, :unavailable} =
+             Families.set_sharing(
+               scope(c.member),
+               %{"enabled" => true, "duration" => "1h"},
+               opts()
+             )
 
-    assert malformed.status == 500
     assert Accounts.settings(c.member.id)["family"] == []
     Repo.query!("UPDATE users SET settings=settings-'family' WHERE id=90102")
+    before = Accounts.settings(c.member.id)
 
-    after_write =
-      json_request(c.member, "PATCH", "/family/location_sharing", %{
-        "enabled" => true,
-        "duration" => []
-      })
+    assert {:error, :invalid_input} =
+             Families.set_sharing(scope(c.member), %{"enabled" => true, "duration" => []}, opts())
 
-    assert after_write.status == 500
-    refute Jason.decode!(after_write.resp_body)["success"]
-    assert Accounts.settings(c.member.id)["family"]["location_sharing"]["enabled"] == true
-    refute Map.has_key?(after_write.private, :dawarich_proxy)
+    assert Accounts.settings(c.member.id) == before
+
+    assert {:ok, 500, {:object, fields}} =
+             legacy_sharing(c.member, %{"enabled" => true, "duration" => []})
+
+    refute Map.new(fields)["success"]
+    assert Accounts.settings(c.member.id)["family"]["location_sharing"]["enabled"]
     Repo.query!("UPDATE users SET settings=jsonb_set(settings,'{family}', '[]') WHERE id=90102")
-    failed_read = locations(c.owner)
-    assert failed_read.status == 500
-    refute Map.has_key?(failed_read.private, :dawarich_proxy)
+    assert locations(c.owner).status == 500
+  end
+
+  defp legacy_sharing(user, attrs) do
+    user =
+      Accounts.get(user.id)
+      |> Map.put(:timezone, "Europe/Berlin")
+      |> Map.put(:locale, attrs["locale"] || "en")
+
+    Families.SharingUpdate.web_call(user, attrs, @now)
   end
 
   defp locations(user) do

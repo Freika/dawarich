@@ -49,6 +49,7 @@ defmodule DawarichWeb.Navbar do
             class="menu menu-sm dropdown-content mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52"
           >
             <.main_links
+              indicator_id="family-navbar-indicator-mobile"
               mobile
               locale={@locale}
               request_path={@request_path}
@@ -146,6 +147,8 @@ defmodule DawarichWeb.Navbar do
   attr :family, :any, required: true
   attr :native, :boolean, default: false
 
+  attr :indicator_id, :string, default: "family-navbar-indicator"
+
   def main_links(assigns) do
     assigns =
       assign(assigns,
@@ -200,11 +203,8 @@ defmodule DawarichWeb.Navbar do
             locale={@locale}
             sharing={@family.sharing}
             native={@native}
-            id={
-              if @native and @mobile,
-                do: "family-navbar-indicator-mobile",
-                else: "family-navbar-indicator"
-            }
+            id={@indicator_id}
+            mobile={@mobile}
           />
         </a>
       <% else %>

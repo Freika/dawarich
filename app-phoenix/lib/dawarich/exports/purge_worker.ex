@@ -32,32 +32,61 @@ defmodule Dawarich.Exports.PurgeWorker do
 
     repo = Keyword.get_lazy(opts, :repo, &Dawarich.Jobs.repo/0)
 
-    case repo.transaction(fn ->
-           objects = current_objects(repo, args)
+    with {:ok, objects} <-
+           repo.transaction(fn ->
+             objects = current_objects(repo, args)
 
-           for object <- objects do
-             case resolve_service.(object) do
-               {:ok, config} ->
-                 case Storage.delete(config, object["key"]) do
-                   :ok -> :ok
-                   {:error, reason} -> repo.rollback({:storage_delete, reason})
-                 end
+             present =
+               Enum.filter(objects, fn object ->
+                 repo.query!(
+                   "SELECT id FROM active_storage_blobs WHERE id=$1",
+                   [object["blob_id"]],
+                   log: false
+                 ).rows != []
+               end)
 
-               {:error, reason} ->
-                 repo.rollback(reason)
-             end
-           end
-
-           NativePurge.remove!(repo, Enum.filter(objects, &Map.has_key?(&1, "blob_id")))
-           :ok
-         end) do
-      {:ok, :ok} -> :ok
-      {:error, reason} -> {:error, reason}
+             NativePurge.mark!(repo, present)
+             native = Enum.filter(present, &Dawarich.Uploads.DeletionDebt.retained?(repo, &1))
+             NativePurge.remove!(repo, native)
+             objects
+           end),
+         :ok <- delete_objects(objects, resolve_service),
+         {:ok, :ok} <-
+           repo.transaction(fn ->
+             NativePurge.remove!(repo, Enum.filter(objects, &Map.has_key?(&1, "blob_id")))
+             :ok
+           end) do
+      :ok
     end
   end
 
+  defp delete_objects(objects, resolve_service) do
+    Enum.reduce_while(objects, :ok, fn object, :ok ->
+      case resolve_service.(object) do
+        {:ok, config} ->
+          case Storage.delete(config, object["key"]) do
+            :ok -> {:cont, :ok}
+            {:error, reason} -> {:halt, {:error, {:storage_delete, reason}}}
+          end
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
+    end)
+  end
+
   defp current_objects(repo, %{"blob_ids" => ids, "objects" => accepted}) do
-    current = NativePurge.collect(repo, ids)
+    identities = Map.new(accepted, &{&1["blob_id"], &1})
+
+    current =
+      NativePurge.collect(repo, Enum.uniq(ids ++ Map.keys(identities)))
+      |> Enum.filter(fn object ->
+        case identities[object["blob_id"]] do
+          nil -> true
+          identity -> identity == object
+        end
+      end)
+
     protected = Enum.map(accepted, & &1["blob_id"]) -- Enum.map(current, & &1["blob_id"])
 
     repo.query!(

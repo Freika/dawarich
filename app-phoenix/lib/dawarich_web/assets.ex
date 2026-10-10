@@ -1,13 +1,6 @@
 defmodule DawarichWeb.Assets do
   @moduledoc false
 
-  @family_page_js Path.expand("../../priv/static/js/family_page.js", __DIR__)
-  @external_resource @family_page_js
-  @family_page_hash @family_page_js
-                    |> File.read!()
-                    |> then(&:crypto.hash(:md5, &1))
-                    |> Base.url_encode64(padding: false)
-
   @app_js Path.expand("../../priv/static/js/app.js", __DIR__)
   @external_resource @app_js
   @app_hash @app_js
@@ -28,6 +21,13 @@ defmodule DawarichWeb.Assets do
                      |> File.read!()
                      |> then(&:crypto.hash(:md5, &1))
                      |> Base.url_encode64(padding: false)
+
+  @native_card_modal_js Path.expand("../../priv/static/js/native_card_modal.js", __DIR__)
+  @external_resource @native_card_modal_js
+  @native_card_modal_hash @native_card_modal_js
+                          |> File.read!()
+                          |> then(&:crypto.hash(:md5, &1))
+                          |> Base.url_encode64(padding: false)
 
   def native_path(logical), do: DawarichWeb.Endpoint.static_path("/native/" <> logical)
 
@@ -51,7 +51,7 @@ defmodule DawarichWeb.Assets do
       app: @app_hash,
       map_shell: @map_shell_hash,
       rails_bridge: @rails_bridge_hash,
-      family_page: @family_page_hash
+      native_card_modal: @native_card_modal_hash
     }
   end
 

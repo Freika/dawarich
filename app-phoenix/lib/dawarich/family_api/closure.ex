@@ -5,7 +5,20 @@ defmodule Dawarich.FamilyApi.Closure do
   alias Dawarich.Families.{Clock, History, Locations, Mine, Requests, Sharing, SharingUpdate}
   alias DawarichWeb.Api.Params
 
-  def run(action, user, params, now) do
+  def run(action, user, params, now, opts \\ []) do
+    if action in [:mine, :locations, :history] do
+      case Dawarich.Families.Snapshot.read(user, Keyword.put(opts, :now, now), fn ->
+             load(action, user, params, now)
+           end) do
+        {:error, _} -> {:ok, 403, error("family_permission_changed")}
+        result -> result
+      end
+    else
+      load(action, user, params, now)
+    end
+  end
+
+  defp load(action, user, params, now) do
     case Account.pending(user, now) do
       :ok -> gate(action, user, params, now)
       pending -> pending

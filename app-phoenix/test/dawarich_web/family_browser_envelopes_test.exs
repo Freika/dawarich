@@ -2,14 +2,14 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   use Dawarich.JobsCase, async: false
   import Phoenix.ConnTest
   import Plug.Conn
+  import Phoenix.LiveViewTest
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.RailsCsrf
   @endpoint DawarichWeb.Endpoint
-  @accept "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"
 
   setup do
-    context = Dawarich.Test.FamilyForms.seed()
+    context = Dawarich.Test.FamilyCorpus.seed()
     saved = System.get_env("DAWARICH_RAILS")
     System.put_env("DAWARICH_RAILS", "off")
 
@@ -23,18 +23,18 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   end
 
   @tag :sa_g44_families_leave
-  test "confirmed browser leave removes one membership and redirects", c do
-    response = browser(c.member, "/family/members/92002?_method=delete", %{"_method" => "delete"})
-    assert response.status == 302
-    assert get_resp_header(response, "location") == ["http://www.example.com/family/new"]
+  test "native confirmed browser leave removes one membership and redirects", c do
+    view = open(c.member)
+    confirm(view, "remove_member", "92002")
+    assert_redirect(view, "/family/new")
     assert records("SELECT count(*) FROM family_memberships WHERE id=92002") == [[0]]
   end
 
   @tag :sa_g44_families_remove
-  test "confirmed browser remove preserves the owner and removes the member", c do
-    response = browser(c.owner, "/family/members/92002?_method=delete", %{"_method" => "delete"})
-    assert response.status == 302
-    assert get_resp_header(response, "location") == ["http://www.example.com/family"]
+  test "native confirmed browser remove preserves the owner and removes the member", c do
+    view = open(c.owner)
+    confirm(view, "remove_member", "92002")
+    assert has_element?(view, "#family-shell")
     assert records("SELECT id FROM family_memberships WHERE family_id=91001") == [[92001]]
   end
 
@@ -47,34 +47,29 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
     assert get_resp_header(response, "location") == ["http://www.example.com/family"]
     assert [[id]] = records("SELECT id FROM family_memberships WHERE user_id=90103")
 
-    response =
-      browser(Accounts.get(c.outsider.id), "/family/members/#{id}?_method=delete", %{
-        "_method" => "delete"
-      })
-
-    assert response.status == 302
+    view = open(Accounts.get(c.outsider.id))
+    confirm(view, "remove_member", Integer.to_string(id))
+    assert_redirect(view, "/family/new")
     assert records("SELECT count(*) FROM family_memberships WHERE user_id=90103") == [[0]]
   end
 
   @tag :sa_g44_families_delete
-  test "browser family deletion refuses members until the owner removes them", c do
-    response = browser(c.owner, "/family?_method=delete", %{"_method" => "delete"})
-    assert response.status == 302
-    assert get_resp_header(response, "location") == ["http://www.example.com/family"]
+  test "native browser family deletion refuses members until the owner removes them", c do
+    view = open(c.owner)
+    confirm(view, "delete", nil)
+    assert has_element?(view, "#family-errors")
     assert records("SELECT count(*) FROM families WHERE id=91001") == [[1]]
-
-    assert browser(c.owner, "/family/members/92002?_method=delete", %{"_method" => "delete"}).status ==
-             302
-
-    assert browser(c.owner, "/family?_method=delete", %{"_method" => "delete"}).status == 302
+    confirm(view, "remove_member", "92002")
+    confirm(view, "delete", nil)
+    assert_redirect(view, "/family/new")
     assert records("SELECT count(*) FROM families WHERE id=91001") == [[0]]
   end
 
   @tag :sa_g44_families_history
-  test "browser Turbo sharing form persists live location and history consent", c do
-    assert sharing(c.owner, true).status == 200
-    assert sharing(c.owner, true, %{"duration" => "1h"}).status == 200
-    assert sharing(c.owner, true, %{"duration" => "1h", "share_history" => "true"}).status == 200
+  test "native family form persists live location and history consent", c do
+    assert sharing(c.owner, true) == :ok
+    assert sharing(c.owner, true, %{"duration" => "1h"}) == :ok
+    assert sharing(c.owner, true, %{"duration" => "1h", "share_history" => "true"}) == :ok
 
     response =
       sharing(c.owner, true, %{
@@ -83,13 +78,8 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
         "history_window" => "30d"
       })
 
-    assert response.status == 200
+    assert response == :ok
 
-    assert get_resp_header(response, "content-type") == [
-             "text/vnd.turbo-stream.html; charset=utf-8"
-           ]
-
-    assert response.resp_body =~ ~s(target="location-sharing-90101")
     settings = Accounts.settings(c.owner.id)["family"]["location_sharing"]
     assert settings["enabled"]
     assert settings["share_history"]
@@ -97,7 +87,8 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   end
 
   @tag :sa_g44_families_map
-  test "browser family map includes only consenting members and removes revoked consent", c do
+  test "native browser family map includes only consenting members and removes revoked consent",
+       c do
     Repo.query!("UPDATE users SET settings=settings-'family' WHERE id IN (90101,90102)")
 
     Repo.query!(
@@ -106,17 +97,20 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
     )
 
     assert locations(c.owner) == []
-    assert sharing(c.member, true).status == 200
+    assert sharing(c.member, true) == :ok
     assert [%{"user_id" => 90102}] = locations(c.owner)
-    assert sharing(c.member, false).status == 200
+    assert sharing(c.member, false) == :ok
     assert locations(c.owner) == []
   end
 
   defp sharing(user, enabled, attrs \\ %{}) do
-    params =
+    view = open(user)
+
+    render_change(
+      view,
+      "family_set_sharing",
       Map.merge(
         %{
-          "_method" => "patch",
           "enabled" => to_string(enabled),
           "duration" => "permanent",
           "share_history" => "false",
@@ -124,52 +118,33 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
         },
         attrs
       )
+    )
 
-    browser(user, "/family/location_sharing", params, [
-      {"turbo-frame", "location-sharing-#{user.id}"}
-    ])
+    :ok
   end
 
-  defp browser(user, path, params, headers \\ []) do
+  defp open(user),
+    do: elem(live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/family"), 1)
+
+  defp confirm(view, action, id) do
+    render_hook(view, "family_prepare_confirm", %{"action" => action, "id" => id})
+    render_hook(view, "family_confirm", %{})
+  end
+
+  defp browser(user, path, params) do
     session = RailsUser.session(user.id)
-    token = RailsCsrf.masked_token(session)
-    delete? = params["_method"] == "delete"
-    navigation? = params["_method"] == "post"
 
     body =
-      params
-      |> then(fn params ->
-        if delete?, do: params, else: Map.put(params, "authenticity_token", token)
-      end)
+      Map.put(params, "authenticity_token", RailsCsrf.masked_token(session))
       |> Plug.Conn.Query.encode()
 
-    conn =
-      build_conn()
-      |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-      |> put_req_header(
-        "content-type",
-        if(navigation?,
-          do: "application/x-www-form-urlencoded",
-          else: "application/x-www-form-urlencoded;charset=UTF-8"
-        )
-      )
-      |> put_req_header("content-length", to_string(byte_size(body)))
-      |> put_req_header(
-        "accept",
-        if(params["_method"] == "post",
-          do:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-          else: @accept
-        )
-      )
-      |> then(fn conn ->
-        if navigation?, do: conn, else: put_req_header(conn, "x-csrf-token", token)
-      end)
-      |> put_req_header("origin", "http://www.example.com")
-      |> assign(:now, ~U[2026-10-03 10:00:00Z])
-
-    conn = Enum.reduce(headers, conn, fn {k, v}, conn -> put_req_header(conn, k, v) end)
-    post(conn, path, body)
+    build_conn()
+    |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+    |> put_req_header("content-type", "application/x-www-form-urlencoded")
+    |> put_req_header("content-length", to_string(byte_size(body)))
+    |> put_req_header("origin", "http://www.example.com")
+    |> assign(:now, ~U[2026-10-03 10:00:00Z])
+    |> post(path, body)
   end
 
   defp locations(user) do

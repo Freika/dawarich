@@ -168,8 +168,11 @@ defmodule DawarichWeb.StorageRoutesTest do
 
       native = path in ~w(/stats /stats/2024 /digests /digests/2024 /points /insights)
 
+      jobs = String.starts_with?(path, ["/imports", "/exports", "/notifications"])
+
       expected =
         cond do
+          jobs -> :native_jobs
           native -> :native_data
           String.starts_with?(path, "/trips") -> :trips_map_dependency
           true -> :rails_pages
@@ -177,15 +180,22 @@ defmodule DawarichWeb.StorageRoutesTest do
 
       assert {_, _, opts, %{name: ^expected, extra: extra}} = route.phoenix_live_view
       assert opts[:container] == {:div, class: "contents"}
-      assert extra.session == {DawarichWeb.NativeAuth, :live_session, []}
+
+      assert extra.session ==
+               {if(jobs, do: DawarichWeb.NativeJobsAuth, else: DawarichWeb.NativeAuth),
+                :live_session, []}
+
       assert extra.layout == {DawarichWeb.Layouts, :app}
-      assert extra.root_layout == {DawarichWeb.Layouts, if(native, do: :native_root, else: :root)}
+
+      assert extra.root_layout ==
+               {DawarichWeb.Layouts, if(native or jobs, do: :native_root, else: :root)}
 
       assert Enum.map(extra.on_mount, & &1.id) == [
-               if(native,
-                 do: {DawarichWeb.NativeDataAuth, :require_user},
-                 else: {DawarichWeb.LiveAuth, :default}
-               )
+               cond do
+                 native -> {DawarichWeb.NativeDataAuth, :require_user}
+                 jobs -> {DawarichWeb.NativeJobsAuth, :require_user}
+                 true -> {DawarichWeb.LiveAuth, :default}
+               end
              ]
     end
   end
@@ -209,7 +219,8 @@ defmodule DawarichWeb.StorageRoutesTest do
     end
   end
 
-  test "exports and active_storage rollback happen before deletion or blob effects", c do
+  test "retired export overrides have no effects while active_storage rollback preserves bytes",
+       c do
     mounted!()
 
     Repo.query!(
@@ -221,14 +232,13 @@ defmodule DawarichWeb.StorageRoutesTest do
     Application.put_env(:dawarich, :rails_routes, ["exports"])
     form = "_method=DELETE"
 
-    {{line, bytes}, conn} =
-      forwarded(c.upstream, fn ->
-        request(c, :post, "/exports/982101", form, [
-          {"content-type", "application/x-www-form-urlencoded"}
-        ])
-      end)
+    conn =
+      request(c, :post, "/exports/982101", form, [
+        {"content-type", "application/x-www-form-urlencoded"}
+      ])
 
-    assert {line, bytes, conn.status} == {"POST /exports/982101 HTTP/1.1", form, 204}
+    assert conn.status == 404
+    assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
     assert [[982_101]] == Repo.query!("SELECT id FROM exports WHERE id=982101").rows
     assert [] == Repo.query!("SELECT id FROM phoenix.rails_commands").rows
 
@@ -268,13 +278,9 @@ defmodule DawarichWeb.StorageRoutesTest do
 
     Application.put_env(:dawarich, :rails_routes, ["active_storage"])
 
-    delete =
-      request(c, :post, "/exports/982101", form, [
-        {"content-type", "application/x-www-form-urlencoded"}
-      ])
-
-    assert {delete.status, get_resp_header(delete, "x-dawarich-handler")} ==
-             {303, ["phoenix-exports"]}
+    Dawarich.Jobs.Ownership.put!(Repo, "command:users.export_data", :oban)
+    scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(9821), "en")
+    assert {:ok, :deleted} = Dawarich.Exports.delete(scope, 982_101)
 
     [[before]] = Repo.query!("SELECT count(*) FROM active_storage_blobs").rows
 

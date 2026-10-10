@@ -1,12 +1,9 @@
 defmodule DawarichWeb.A12f3bD02Test do
   use ExUnit.Case, async: false
-  import Plug.Conn
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.RailsUser
   alias Dawarich.Accounts.Scope
   alias Dawarich.Admin.Instance
-  alias DawarichWeb.RailsCsrf
-  alias DawarichWeb.AdminWrites.Settings
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -104,7 +101,7 @@ defmodule DawarichWeb.A12f3bD02Test do
   end
 
   @tag a12f3b_case: "D02b"
-  test "background settings dispatch every permitted source action natively", c do
+  test "background settings dispatch every permitted source action natively", _c do
     jobs = [
       {"start_immich_import", "imports.immich_geodata", "/imports"},
       {"start_photoprism_import", "imports.photoprism_geodata", "/imports"},
@@ -116,12 +113,17 @@ defmodule DawarichWeb.A12f3bD02Test do
     for {job, type, path} <- jobs do
       Dawarich.Jobs.Ownership.put!(Repo, "command:" <> type, :oban)
 
-      conn =
-        request(32002, "POST", "/settings/background_jobs?job_name=" <> job, [])
-        |> Settings.call(action: :background, context: c.context)
+      assert {:ok, :queued} =
+               Dawarich.Imports.IntegrationCommands.enqueue(Repo, 32002, job,
+                 locale: "de",
+                 self_hosted: true
+               )
 
-      assert conn.status == 302
-      assert get_resp_header(conn, "location") == ["http://www.example.com" <> path]
+      assert path in [
+               "/imports",
+               "/settings/integrations",
+               "/settings/integrations?service=teslamate"
+             ]
 
       assert [[payload, metadata]] =
                Repo.query!(
@@ -131,18 +133,15 @@ defmodule DawarichWeb.A12f3bD02Test do
                ).rows
 
       assert payload["user_id"] == 32002
-      assert metadata["locale"] == "de"
-      assert metadata["time_zone"] == "Etc/UTC"
+      assert metadata == %{"producer" => "Phoenix integration trigger"}
 
       if type in ["imports.immich_geodata", "imports.photoprism_geodata"],
         do: assert(payload["time_zone"] == "Etc/UTC")
     end
 
-    conn =
-      request(32002, "POST", "/settings/background_jobs", [{"job_name", "unknown"}])
-      |> Settings.call(action: :background, context: c.context)
+    assert {:error, :unknown_job} =
+             Dawarich.Imports.IntegrationCommands.enqueue(Repo, 32002, "unknown")
 
-    assert conn.status == 422
     assert Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows == [[4]]
 
     assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands", [], log: false).rows == [
@@ -150,38 +149,25 @@ defmodule DawarichWeb.A12f3bD02Test do
            ]
 
     for {job, _, _} <- jobs do
-      conn =
-        request(32002, "POST", "/settings/background_jobs", [{"job_name", job}])
-        |> Settings.call(action: :background, context: %{c.context | self_hosted: false})
-
-      assert conn.status == 302
+      assert {:ok, :queued} =
+               Dawarich.Imports.IntegrationCommands.enqueue(Repo, 32002, job,
+                 locale: "de",
+                 self_hosted: false
+               )
     end
 
-    conn =
-      request(32002, "PATCH", "/settings/background_jobs", [
-        {"settings[visits_suggestions_enabled]", "false"}
-      ])
-      |> Settings.call(action: :background, context: c.context)
+    assert {:ok, _} =
+             Dawarich.Admin.Background.update_visits(Scope.for_user(Accounts.get(32002), "de"), %{
+               "visits_suggestions_enabled" => "false"
+             })
 
-    assert conn.status == 302
     assert Accounts.settings(32002)["visits_suggestions_enabled"] == "false"
-  end
-
-  defp request(id, method, path, values) do
-    session = RailsUser.session(id)
-    raw = URI.encode_query([{"authenticity_token", RailsCsrf.masked_token(session)} | values])
-
-    Plug.Test.conn(method, path, raw)
-    |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-    |> put_req_header("content-type", "application/x-www-form-urlencoded")
-    |> put_req_header("content-length", Integer.to_string(byte_size(raw)))
-    |> put_req_header("accept", "text/html")
   end
 end
 
 defmodule DawarichWeb.A12f3bD02GeocodingTest do
   use Dawarich.JobsCase
-  alias Dawarich.Admin.{BackgroundCommands, BackgroundGeocodingWorker}
+  alias Dawarich.Admin.BackgroundGeocodingWorker
   alias Dawarich.Test.RailsUser
 
   setup do
@@ -233,8 +219,13 @@ defmodule DawarichWeb.A12f3bD02GeocodingTest do
 
   @tag a12f3b_case: "D02c"
   test "background geocoding accepted retry publishes user batches once", c do
-    assert {:ok, "/settings/background_jobs"} =
-             BackgroundCommands.call(%{id: 32101}, "start_reverse_geocoding", c.context)
+    assert {:ok, :queued} =
+             Dawarich.Imports.IntegrationCommands.enqueue(
+               ScratchRepo,
+               32101,
+               "start_reverse_geocoding",
+               Map.to_list(c.context)
+             )
 
     assert [[id, args]] = rows("SELECT id,args FROM oban.oban_jobs")
     job = %Oban.Job{id: id, args: args, conf: %{name: AdminGeocodingOban}}
@@ -245,8 +236,13 @@ defmodule DawarichWeb.A12f3bD02GeocodingTest do
              [%{"user_id" => 32101, "point_ids" => [32101, 32102], "force" => true}]
            ]
 
-    assert {:ok, "/settings/background_jobs"} =
-             BackgroundCommands.call(%{id: 32101}, "continue_reverse_geocoding", c.context)
+    assert {:ok, :queued} =
+             Dawarich.Imports.IntegrationCommands.enqueue(
+               ScratchRepo,
+               32101,
+               "continue_reverse_geocoding",
+               Map.to_list(c.context)
+             )
 
     assert [[id, args]] = rows("SELECT id,args FROM oban.oban_jobs ORDER BY id DESC LIMIT 1")
     job = %Oban.Job{id: id, args: args, conf: %{name: AdminGeocodingOban}}

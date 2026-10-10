@@ -9,6 +9,7 @@ defmodule Dawarich.Achievements.CheckerTest do
 
     def transaction(fun), do: ScratchRepo.transaction(fun)
     defdelegate in_transaction?(), to: ScratchRepo
+    defdelegate insert!(changeset, opts), to: ScratchRepo
 
     def query!(sql, params, opts) do
       result = ScratchRepo.query!(sql, params, opts)

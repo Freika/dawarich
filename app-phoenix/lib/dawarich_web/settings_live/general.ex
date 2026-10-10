@@ -58,7 +58,10 @@ defmodule DawarichWeb.SettingsLive.General do
 
         {:noreply,
          socket
-         |> assign(current_user: user, form: settings_form(user, locale))
+         |> assign(
+           current_user: Dawarich.Accounts.Principal.project(user),
+           form: settings_form(user, locale)
+         )
          |> put_flash(:notice, settings_text(locale, "settings_updated"))}
 
       {:error, :invalid} ->
@@ -83,7 +86,7 @@ defmodule DawarichWeb.SettingsLive.General do
         {:noreply,
          socket
          |> assign(
-           current_user: Accounts.get(scope.user.id),
+           current_user: Dawarich.Accounts.Principal.project(Accounts.get(scope.user.id)),
            supporter: true,
            platform: info["platform"]
          )
@@ -97,7 +100,11 @@ defmodule DawarichWeb.SettingsLive.General do
       {:ok, _} ->
         {:noreply,
          socket
-         |> assign(current_user: Accounts.get(scope.user.id), supporter: false, platform: nil)
+         |> assign(
+           current_user: Dawarich.Accounts.Principal.project(Accounts.get(scope.user.id)),
+           supporter: false,
+           platform: nil
+         )
          |> put_flash(
            :alert,
            settings_text(locale, "not_found_in_supporter_list_make_sure_you_re_using")

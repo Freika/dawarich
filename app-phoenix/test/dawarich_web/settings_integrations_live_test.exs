@@ -156,7 +156,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
   defp server_html(view),
     do: rendered_to_string(view.module.render(:sys.get_state(view.pid).socket.assigns))
 
-  test "Phoenix filters nested integration credentials while retaining ordinary fields" do
+  test "Phoenix filters nested integration credentials and provider URLs while retaining ordinary fields" do
     params = %{
       "settings" =>
         Map.new(
@@ -166,13 +166,17 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     }
 
     params = put_in(params, ["settings", "immich_url"], "https://example.test")
+    params = put_in(params, ["settings", "timezone"], "Europe/Berlin")
+    params = put_in(params, ["settings", "immich_skip_ssl_verification"], true)
     filtered = Phoenix.Logger.filter_values(params)
 
     for key <-
           ~w(password immich_api_key airtrail_api_key teslamate_password teslamate_api_token token secret),
         do: assert(filtered["settings"][key] == "[FILTERED]")
 
-    assert filtered["settings"]["immich_url"] == "https://example.test"
+    assert filtered["settings"]["immich_url"] == "[FILTERED]"
+    assert filtered["settings"]["timezone"] == "Europe/Berlin"
+    assert filtered["settings"]["immich_skip_ssl_verification"] == true
   end
 
   test "pane patches survive reload and SSL changes are local until save without photo import buttons",
@@ -294,7 +298,8 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     end
   end
 
-  def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
+  def handle_query(_event, _measurements, meta, pid),
+    do: Dawarich.Test.NativeQueryBudget.record(meta, pid)
 
   defp queries(fun) do
     id = "integrations-budget-#{System.unique_integer([:positive])}"
@@ -312,11 +317,16 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     end
   end
 
-  test "integrations stays within its static and connected query budget", %{user: user} do
+  test "integration presentation and subscription reads have explicit budgets", %{user: user} do
     {conn, static} = queries(fn -> get(conn_for(user), "/settings/integrations") end)
+    static_counts = Dawarich.Test.NativeQueryBudget.counts()
     {_, connected} = queries(fn -> {:ok, _, _} = live(conn) end)
-    assert static <= 7
-    assert connected <= 6
+    connected_counts = Dawarich.Test.NativeQueryBudget.counts()
+    assert static - 2 <= 5
+    assert static_counts["users"] == 4
+    assert connected - 4 <= 5
+    assert connected_counts["users"] == static_counts["users"] + 2
+    assert Map.delete(connected_counts, "users") == Map.delete(static_counts, "users")
   end
 
   test "opaque integration settings refuse static join params and saving for full and restricted actors",

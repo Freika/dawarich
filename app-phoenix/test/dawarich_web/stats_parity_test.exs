@@ -23,7 +23,8 @@ defmodule DawarichWeb.StatsParityTest do
     @title_ed @name in ~w(year_ca digests_ca digest_full_fr)
     @test_name if(@title_ed,
                  do: "#{@name} matches Rails except title double-escaping (ED-551)",
-                 else: "#{@name} matches the page Rails renders"
+                 else:
+                   "#{@name} preserves Rails data charts and titles with native sharing entries"
                )
 
     @test_name if(String.starts_with?(@name, "digest"),
@@ -65,8 +66,33 @@ defmodule DawarichWeb.StatsParityTest do
           phoenix =
             render_component(&DawarichWeb.StatsLive.Month.render/1, Map.merge(context, assigns))
 
+          if rails =~ ~s(id="sharing_modal") do
+            path = URI.parse(state["path"]).path <> "/sharing"
+
+            entries =
+              phoenix
+              |> LazyHTML.from_fragment()
+              |> LazyHTML.query("a[href='#{path}']")
+              |> LazyHTML.attribute("href")
+
+            assert entries == [path, path]
+            refute phoenix =~ ~s(id="sharing_modal")
+
+            assert_share_values(
+              user,
+              params,
+              DawarichWeb.StatsLive.Month,
+              now,
+              state["self_hosted"],
+              locale
+            )
+          end
+
           assert normalized(phoenix) == normalized(rails)
-          assert ParityHTML.stimulus(phoenix) == ParityHTML.stimulus(rails)
+
+          assert ParityHTML.stimulus(Dawarich.Test.NativeM4Corpus.reports(phoenix)) ==
+                   ParityHTML.stimulus(Dawarich.Test.NativeM4Corpus.reports(rails))
+
           assert charts(phoenix) == charts(rails)
       end
 
@@ -93,6 +119,51 @@ defmodule DawarichWeb.StatsParityTest do
         assert title == state["title"]
       end
     end
+  end
+
+  defp assert_share_values(user, params, module, now, self_hosted, locale) do
+    {resource, table, args, condition} =
+      if module == DawarichWeb.StatsLive.Month,
+        do:
+          {%{
+             type: :month,
+             owner_id: user.id,
+             year: String.to_integer(params["year"]),
+             month: String.to_integer(params["month"])
+           }, "stats", [String.to_integer(params["year"]), String.to_integer(params["month"])],
+           "year=$2 AND month=$3"},
+        else:
+          {%{type: :digest, owner_id: user.id, year: String.to_integer(params["year"])},
+           "digests", [String.to_integer(params["year"])], "year=$2 AND period_type=1"}
+
+    [[uuid, settings]] =
+      Repo.query!(
+        "SELECT sharing_uuid::text,sharing_settings FROM #{table} WHERE user_id=$1 AND #{condition}",
+        [user.id | args],
+        log: false
+      ).rows
+
+    result =
+      Dawarich.Sharing.page(Dawarich.Accounts.Scope.for_user(user, locale), resource, %{},
+        now: now,
+        self_hosted: self_hosted
+      )
+
+    case result do
+      {:ok, page} ->
+        assert {page.uuid, page.settings} == {uuid, settings}
+
+      {:error, :expired} ->
+        assert is_nil(user.active_until) or
+                 NaiveDateTime.compare(user.active_until, DateTime.to_naive(now)) != :gt or
+                 (resource.type == :month and user.plan == 0 and not self_hosted)
+    end
+
+    assert Repo.query!(
+             "SELECT sharing_uuid::text,sharing_settings FROM #{table} WHERE user_id=$1 AND #{condition}",
+             [user.id | args],
+             log: false
+           ).rows == [[uuid, settings]]
   end
 
   defp source(user, params, context, :month),
@@ -263,6 +334,7 @@ defmodule DawarichWeb.StatsParityTest do
   defp normalized(html),
     do:
       html
+      |> Dawarich.Test.NativeM4Corpus.reports()
       |> ChartkickHTML.without_charts()
       |> then(&Regex.replace(@sampled, &1, "\\1 text-SAMPLED\""))
       |> ParityHTML.normalize()

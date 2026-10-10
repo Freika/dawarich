@@ -21,6 +21,11 @@ defmodule DawarichWeb.NativeOnboarding do
       JS.hide(to: Enum.map_join(@screens -- [screen], ", ", &"##{&1}"))
       |> JS.show(to: "##{screen}")
 
+    js =
+      if screen == "onboarding-track-screen",
+        do: JS.dispatch(js, "dawarich:reveal-qr", to: "#onboarding-api-qr"),
+        else: js
+
     if event, do: JS.dispatch(js, "dawarich:track", detail: %{event: event}), else: js
   end
 

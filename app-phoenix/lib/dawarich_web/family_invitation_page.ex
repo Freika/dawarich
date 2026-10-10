@@ -7,17 +7,11 @@ defmodule DawarichWeb.FamilyInvitationPage do
   alias DawarichWeb.{
     FamilyInvitationDocument,
     LayoutAssigns,
-    RailsAuth,
     RailsSession,
     RequestURL
   }
 
   def init(action), do: action
-
-  def native?(conn, params),
-    do:
-      DawarichWeb.FamilyGate.session_supported?(conn) and
-        read(params["token"], RailsAuth.call(conn, []).assigns.current_user) != :rails
 
   def read(token, user, opts \\ []) do
     if user, do: FamilyPageAccess.validate_settings!(Dawarich.UserSettings.get(user))
@@ -63,10 +57,11 @@ defmodule DawarichWeb.FamilyInvitationPage do
         end
     end
   rescue
-    ArgumentError -> :rails
+    ArgumentError -> {:error, :invalid_input}
   end
 
-  def call(conn, :new), do: conn |> send_resp(404, "") |> halt()
+  def call(%{path_params: %{"token" => "new"}} = conn, :show),
+    do: conn |> send_resp(404, "") |> halt()
 
   def call(conn, :show) do
     respond(
@@ -98,10 +93,8 @@ defmodule DawarichWeb.FamilyInvitationPage do
       {:error, 404} ->
         raise DawarichWeb.NotFoundError
 
-      :rails ->
-        conn
-        |> DawarichWeb.RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
-        |> halt()
+      {:error, :invalid_input} ->
+        conn |> put_resp_content_type("text/html") |> send_resp(422, "") |> halt()
     end
   end
 
@@ -118,7 +111,8 @@ defmodule DawarichWeb.FamilyInvitationPage do
       Map.merge(conn.assigns, %{
         invitation: invitation,
         page_title: nil,
-        rails_js: true,
+        rails_js: false,
+        native: true,
         rails_charts: false,
         flash: %{},
         navbar: navbar
@@ -127,7 +121,13 @@ defmodule DawarichWeb.FamilyInvitationPage do
     content = FamilyInvitationDocument.document(assigns)
 
     html =
-      DawarichWeb.PageEnvelope.document(conn, assigns, content) |> Phoenix.HTML.Safe.to_iodata()
+      assigns
+      |> Map.put(
+        :inner_content,
+        DawarichWeb.Layouts.app(Map.put(assigns, :inner_content, content))
+      )
+      |> DawarichWeb.Layouts.native_root()
+      |> Phoenix.HTML.Safe.to_iodata()
 
     conn |> put_resp_content_type("text/html") |> send_resp(200, html) |> halt()
   end

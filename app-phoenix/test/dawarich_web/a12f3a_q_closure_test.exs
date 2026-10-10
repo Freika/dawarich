@@ -402,15 +402,15 @@ defmodule DawarichWeb.A12f3aQClosureTest do
       assert result.uuid == row["uuid"]
     end
 
-    conn =
-      write(user, :patch, "/digests/2024/sharing", %{
-        "enabled" => "1",
-        "expiration" => "1h",
-        "format" => "json"
-      })
+    assert {:ok, %{settings: settings}} =
+             Dawarich.Sharing.change(
+               Dawarich.Accounts.Scope.for_user(user, "en"),
+               %{type: :digest, year: 2024, owner_id: user.id},
+               :update,
+               %{"enabled" => "1", "expiration" => "1h"}
+             )
 
-    assert conn.status == 200
-    assert Jason.decode!(conn.resp_body)["success"]
+    assert settings["enabled"]
 
     assert {:ok, shifted} =
              Dawarich.Digests.Sharing.update(
@@ -445,9 +445,15 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     assert :not_found =
              Dawarich.Stats.Sharing.update(Repo, user, "2023", "7", %{"enabled" => "1"}, ctx)
 
-    conn = write(user, :patch, "/stats/2024/3/sharing", %{"enabled" => "1", "format" => "json"})
-    assert conn.status == 200
-    assert Jason.decode!(conn.resp_body)["success"]
+    assert {:ok, %{settings: settings}} =
+             Dawarich.Sharing.change(
+               Dawarich.Accounts.Scope.for_user(user, "en"),
+               %{type: :month, year: 2024, month: 3, owner_id: user.id},
+               :update,
+               %{"enabled" => "1"}
+             )
+
+    assert settings["enabled"]
   end
 
   @tag a12f3a_q10: true

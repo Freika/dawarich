@@ -18,12 +18,15 @@ defmodule Dawarich.Families.SharingUpdate do
       [_settings, _family_id] ->
         if missing?(params["enabled"]),
           do: {:ok, 400, missing()},
-          else: RailsTime.with_zone(user.timezone, fn -> update(user.id, params, now) end)
+          else:
+            Dawarich.Families.ProducerEvents.api(Repo, user.id, :consent, now, :set_sharing, fn ->
+              RailsTime.with_zone(user.timezone, fn -> update(user.id, params, now) end)
+            end)
     end
   end
 
   def web_call(user, params, now), do: __MODULE__.Web.call(user, params, now)
-  def web_write!(user_id, params, now), do: write!(user_id, params, now, true)
+  def web_write!(user_id, params, now, repo \\ Repo), do: write!(user_id, params, now, true, repo)
 
   def enable!(user_id, duration, now) when is_binary(duration),
     do: write!(user_id, %{"enabled" => true, "duration" => duration}, now)
@@ -48,9 +51,9 @@ defmodule Dawarich.Families.SharingUpdate do
         )}}
   end
 
-  defp write!(user_id, params, now, normalize? \\ false) do
+  defp write!(user_id, params, now, normalize? \\ false, repo \\ Repo) do
     [[settings, email]] =
-      Repo.query!("SELECT settings, email FROM users WHERE id = $1 FOR UPDATE", [user_id]).rows
+      repo.query!("SELECT settings, email FROM users WHERE id = $1 FOR UPDATE", [user_id]).rows
 
     if Ruby.blank?(email), do: raise(ArgumentError, "a blank email fails Rails' validation")
     settings = Dawarich.UserSettings.provided(settings)
@@ -66,11 +69,14 @@ defmodule Dawarich.Families.SharingUpdate do
 
     family = settings["family"]
     unless is_nil(family) or is_map(family), do: raise(ArgumentError, "family settings")
-    config = if params["enabled"], do: enabled(family, params, now), else: %{"enabled" => false}
+
+    config =
+      if params["enabled"], do: enabled(family, params, now, repo), else: %{"enabled" => false}
+
     updated = Map.put(settings, "family", Map.put(family || %{}, "location_sharing", config))
 
     if updated != stored do
-      Repo.query!("UPDATE users SET settings = $1, updated_at = $2 WHERE id = $3", [
+      repo.query!("UPDATE users SET settings = $1, updated_at = $2 WHERE id = $3", [
         updated,
         Clock.naive(now),
         user_id
@@ -80,7 +86,7 @@ defmodule Dawarich.Families.SharingUpdate do
     config
   end
 
-  defp enabled(family, params, now) do
+  defp enabled(family, params, now, repo) do
     old =
       case family && family["location_sharing"] do
         nil -> %{}
@@ -104,7 +110,7 @@ defmodule Dawarich.Families.SharingUpdate do
 
     base = %{
       "enabled" => true,
-      "started_at" => old["started_at"] || Clock.iso(Clock.naive(now)),
+      "started_at" => old["started_at"] || Clock.iso(Clock.naive(now), repo),
       "share_history" => history,
       "history_window" => if(window in @windows, do: window, else: "7d"),
       "history_before_sharing" => if(history in [nil, false], do: history, else: consent)
@@ -114,7 +120,7 @@ defmodule Dawarich.Families.SharingUpdate do
 
     cond do
       Ruby.present?(duration) ->
-        expiring(base, duration, expiry(duration, now))
+        expiring(base, duration, expiry(duration, now), repo)
 
       Ruby.present?(old["duration"]) ->
         existing =
@@ -122,17 +128,17 @@ defmodule Dawarich.Families.SharingUpdate do
             do: __MODULE__.Web.duration(old["duration"]),
             else: duration(old["duration"])
 
-        expiring(base, existing, carried(existing, old["expires_at"], now))
+        expiring(base, existing, carried(existing, old["expires_at"], now), repo)
 
       true ->
         base
     end
   end
 
-  defp expiring(base, duration, nil), do: Map.put(base, "duration", duration)
+  defp expiring(base, duration, nil, _repo), do: Map.put(base, "duration", duration)
 
-  defp expiring(base, duration, at),
-    do: base |> Map.put("duration", duration) |> Map.put("expires_at", Clock.iso(at))
+  defp expiring(base, duration, at, repo),
+    do: base |> Map.put("duration", duration) |> Map.put("expires_at", Clock.iso(at, repo))
 
   defp carried(duration, expires_at, now) do
     cond do

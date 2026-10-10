@@ -2,157 +2,101 @@ defmodule DawarichWeb.FamiliesLive.Show do
   @moduledoc false
   use DawarichWeb, :live_view
 
-  import DawarichWeb.FamilyMembers, only: [family_members: 1, family_invitations: 1]
+  alias DawarichWeb.{
+    FamilyNativeControls,
+    FamilyNativeInvitations,
+    FamilyNativeMembers,
+    FamilyNativeLive
+  }
 
-  import DawarichWeb.FamilyControls,
-    only: [sharing_toggle: 1, family_danger: 1]
-
-  import DawarichWeb.FamilyGettingStarted, only: [getting_started: 1]
-
-  @impl true
-  def mount(_params, _session, socket) do
-    case Dawarich.FamilyPage.read(socket.assigns.current_user, :show,
-           now: socket.assigns.now,
-           self_hosted: socket.assigns.self_hosted
-         ) do
-      {:ok, page} ->
-        {:ok, assign(socket, page: page, page_title: page.family.name, rails_js: true)}
-
-      {:redirect, path, _reason} ->
-        {:ok, redirect(socket, to: path)}
-
-      _other ->
-        {:ok, redirect(socket, to: "/family")}
-    end
-  end
+  alias Phoenix.LiveView.JS
 
   @impl true
-  def handle_event("rails_flash", params, socket),
-    do: {:noreply, DawarichWeb.RailsWidgets.rails_flash(socket, params)}
-
+  def mount(_, _, socket), do: {:ok, FamilyNativeLive.mount(socket)}
+  @impl true
+  def handle_event(event, params, socket), do: FamilyNativeLive.event(event, params, socket)
+  @impl true
+  def handle_info(_, socket), do: {:noreply, socket}
+  @impl true
+  def handle_params(_, _, socket), do: {:noreply, socket}
   @impl true
   def render(assigns) do
     ~H"""
-    <div
-      id="family-shell"
-      class="contents"
-      phx-hook="RailsStimulus"
-      phx-update="ignore"
-      data-turbo="true"
-    >
-      <div class="w-full my-5">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
-          <h1 class="text-3xl font-bold">{@page.family.name}</h1>
-          <div class="flex flex-wrap gap-2">
-            <div class="flex items-center gap-2">
-              <a :if={@page.owner?} href="/family/edit" class="btn btn-outline btn-sm"><DawarichWeb.Icon.icon
-                name="square-pen"
-                class="w-4 h-4"
-              /> {t(@locale, "families.show.edit", %{})}</a>
-              <button
-                :if={@page.owner? and @page.can_invite?}
-                class="btn btn-primary btn-sm"
-                onclick="document.getElementById('invite-section').scrollIntoView({behavior:'smooth'})"
-              ><DawarichWeb.Icon.icon name="circle-plus" class="w-4 h-4" /> {t(
-                @locale,
-                "families.show.invite",
-                %{}
-              )}</button>
-            </div>
-          </div>
+    <section :if={@page} id="family-shell" class="w-full my-5 min-w-0 [overflow-wrap:anywhere]">
+      <FamilyNativeControls.errors errors={@errors} />
+      <header class="flex flex-wrap gap-3 justify-between items-center mb-4">
+        <h1 class="text-3xl font-bold min-w-0">{@page.family.name}</h1>
+        <div :if={@page.owner?} class="flex flex-wrap gap-2">
+          <a href="/family/edit" class="btn btn-outline btn-sm h-auto whitespace-normal">{t(
+            @locale,
+            "families.show.edit",
+            %{}
+          )}</a>
+          <button
+            :if={@page.can_invite?}
+            type="button"
+            phx-click={JS.focus(to: "#native-invite-email")}
+            class="btn btn-primary btn-sm h-auto whitespace-normal"
+          >{t(@locale, "families.show.invite", %{})}</button>
         </div>
-        <div class="text-sm text-base-content/50 -mt-4 mb-6">
-          {t(@locale, "families.show.members_created", %{
-            count: @page.member_count,
-            date: DawarichWeb.LocalizedDate.l(@locale, @page.family.created_date, "month_year")
-          })}
-        </div>
-        <.getting_started
-          page={@page}
-          locale={@locale}
-          rails_csrf_token={@rails_csrf_token}
-          self_hosted={@self_hosted}
-        />
+      </header>
+      <p class="text-sm text-base-content/60 mb-6">
+        {t(@locale, "families.show.members_created", %{
+          count: @page.member_count,
+          date: DawarichWeb.LocalizedDate.l(@locale, @page.family.created_date, "month_year")
+        })}
+      </p>
+      <DawarichWeb.FamilyGettingStarted.getting_started
+        page={@page}
+        locale={@locale}
+        rails_csrf_token={@rails_csrf_token}
+        self_hosted={@self_hosted}
+        native={true}
+        invitation_email={@invitation_email}
+      />
+      <div class="flex flex-col lg:flex-row gap-4 min-w-0">
         <div
           id="family-map"
-          phx-hook="FamilyPage"
-          class="flex flex-col lg:flex-row gap-4"
-          style="min-height: 500px;"
-          data-controller="family-map"
-          data-family-map-locations-value="[]"
-          data-family-time-ago={time_ago(@locale)}
+          phx-hook="FamilyMap"
+          phx-update="ignore"
+          class="w-full lg:w-3/5 min-w-0 min-h-80 rounded-xl border border-base-300 bg-base-200 flex items-center justify-center"
         >
-          <div class="w-full lg:w-3/5 min-h-full">
-            <div
-              class="border border-base-300 rounded-xl overflow-hidden h-full relative"
-              data-family-map-target="map"
-            >
-              <div
-                data-family-empty
-                class="absolute inset-0 flex items-center justify-center bg-base-200 z-10"
-              >
-                <div class="text-center">
-                  <div class="text-base-content/30 mb-2">
-                    <DawarichWeb.Icon.icon name="map" class="w-12 h-12 mx-auto" />
-                  </div>
-                  <p class="text-base-content/50 text-sm">
-                    {t(@locale, "families.show.no_family_members_are_sharing_their_location", %{})}
-                  </p>
-                </div>
-              </div>
+          <div data-family-canvas hidden class="w-full min-h-80"></div>
+          <p data-family-empty class="p-4 text-center text-sm text-base-content/60">
+            {t(@locale, "families.show.no_family_members_are_sharing_their_location", %{})}
+          </p>
+        </div>
+        <div class="w-full lg:w-2/5 min-w-0 space-y-4">
+          <section class="border border-base-300 rounded-xl min-w-0 overflow-hidden">
+            <h2 class="bg-base-200 px-4 py-3 font-medium">
+              {t(@locale, "families.show.your_sharing", %{})}
+            </h2>
+            <div class="p-4">
+              <FamilyNativeControls.sharing
+                member={@page.me}
+                locale={@locale}
+                now={@now}
+                current_scope={@current_scope}
+              />
             </div>
-          </div>
-          <div class="w-full lg:w-2/5 flex flex-col gap-4">
-            <div class="border border-base-300 rounded-xl overflow-hidden">
-              <div class="bg-base-200 px-4 py-2.5">
-                <h3 class="text-xs font-medium uppercase tracking-wider text-base-content/50">
-                  {t(@locale, "families.show.your_sharing", %{})}
-                </h3>
-              </div>
-              <div class="p-4">
-                <.sharing_toggle
-                  member={@page.me}
-                  locale={@locale}
-                  now={@now}
-                  rails_csrf_token={@rails_csrf_token}
-                />
-              </div>
-            </div>
-            <.family_members
-              page={@page}
-              locale={@locale}
-              now={@now}
-              self_hosted={@self_hosted}
-              rails_csrf_token={@rails_csrf_token}
-            />
-            <.family_invitations
-              page={@page}
-              locale={@locale}
-              now={@now}
-              base_url={@base_url}
-              self_hosted={@self_hosted}
-              rails_csrf_token={@rails_csrf_token}
-            />
-            <.family_danger page={@page} locale={@locale} scope="families.show" />
-          </div>
+          </section>
+          <FamilyNativeMembers.members
+            page={@page}
+            locale={@locale}
+            now={@now}
+            self_hosted={@self_hosted}
+          />
+          <FamilyNativeInvitations.invitations
+            page={@page}
+            locale={@locale}
+            now={@now}
+            email={@invitation_email}
+          />
+          <FamilyNativeControls.danger page={@page} locale={@locale} />
         </div>
       </div>
-    </div>
+      <FamilyNativeControls.confirmation confirmation={@confirmation} page={@page} locale={@locale} />
+    </section>
     """
-  end
-
-  defp time_ago(locale) do
-    scope =
-      if locale == "de",
-        do: "datetime.distance_in_words.dative",
-        else: "datetime.distance_in_words"
-
-    {:ok, words} = Dawarich.I18n.t(locale, scope)
-
-    Jason.encode!(%{
-      words: words,
-      ago: t(locale, "common.time_ago", %{time: "%{time}"}),
-      middot: t(locale, "families.show.middot", %{})
-    })
   end
 end

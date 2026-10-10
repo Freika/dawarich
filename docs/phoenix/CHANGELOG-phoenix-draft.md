@@ -158,3 +158,35 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Bind shared-link HTML/API admission to the exact link and privacy flags used for preparation, refusing flag changes before the initial snapshot. FRB-NATIVE-M5-PUBLIC-DELIVERY.
 
 - Revalidate the original signed family viewer at HTML delivery after password changes, login locks or deletion, retaining remember-cookie policy. FRB-NATIVE-M5-PUBLIC-DELIVERY.
+- Remove abandoned native uploads after their lease expires, while preserving accepted attachments. [FRB-NATIVE-M4-ABANDONED-UPLOAD](fixed-rails-bugs.md#frb-native-m4-abandoned-upload--leaving-an-upload-strands-its-unattached-file)
+
+- Keep signed storage capabilities and private download filenames out of native request logs. [FRB-NATIVE-M4-STORAGE-PATH-LOG](fixed-rails-bugs.md#frb-native-m4-storage-path-log--request-logging-exposes-signed-storage-capabilities)
+
+- Refuse legacy export cleanup paths that escape public storage. [FRB-NATIVE-M4-LEGACY-EXPORT-PATH](fixed-rails-bugs.md#frb-native-m4-legacy-export-path--legacy-export-removal-traverses-outside-public-storage)
+- Retain a legacy export file while another export still references it. [FRB-NATIVE-M4-LEGACY-EXPORT-REFERENCE](fixed-rails-bugs.md#frb-native-m4-legacy-export-reference--removing-one-legacy-export-deletes-another-exports-file)
+
+- Refresh other native tabs after notification reads/deletion, and clear a removed open detail. [FRB-NATIVE-M4-NOTIFICATION-INVALIDATION](fixed-rails-bugs.md#frb-native-m4-notification-invalidation--reading-or-deleting-leaves-other-tabs-stale)
+
+- Give native mobile and desktop family indicators separate update targets. [FRB-NATIVE-M4-FAMILY-INDICATOR-ID](fixed-rails-bugs.md#frb-native-m4-family-indicator-id--mobile-and-desktop-indicators-repeat-the-same-element-identity)
+
+- Name the native extraction dialog from its localized heading for accessible dialog navigation. [FRB-NATIVE-M4-EXTRACTION-DIALOG-NAME](fixed-rails-bugs.md#frb-native-m4-extraction-dialog-name--extraction-dialog-has-no-accessible-name)
+
+- Prevent restored export URLs from deleting unrelated public files. [FRB-NATIVE-M4-RESTORED-EXPORT-PURGE](fixed-rails-bugs.md#frb-native-m4-restored-export-purge--restored-urls-authorize-unrelated-file-deletion)
+
+- Remove remote direct uploads that arrive after their import or account was deleted, using retained durable cleanup identities. [FRB-NATIVE-M4-DELETED-UPLOAD-RESURRECTION](fixed-rails-bugs.md#frb-native-m4-deleted-upload-resurrection--deleted-importsaccounts-can-leave-replayed-remote-uploads)
+## Native family safety (milestone 4)
+
+- Serialize family invitation capacity checks so concurrent invitations cannot oversubscribe the final Cloud seat. [FRB-NATIVE-M4-FAMILY-CAPACITY](fixed-rails-bugs.md#frb-native-m4-family-capacity--concurrent-invitations-can-oversubscribe-a-cloud-family)
+- Stop native family location delivery after membership/access loss and erase silent expired consent, disconnected maps and stale pending map loads. [FRB-NATIVE-M4-FAMILY-DELIVERY](fixed-rails-bugs.md#frb-native-m4-family-delivery--a-removed-viewer-can-keep-receiving-family-locations)
+
+- Clear native public live readers after link revocation, phrase/audience changes and silent expiry; bind reconnect admission to the original browser session. [FRB-NATIVE-M4-PUBLIC-DELIVERY](fixed-rails-bugs.md#frb-native-m4-public-delivery--public-live-maps-retain-revoked-subscriptions)
+
+- Honor the disabled route option on native public track pages. [FRB-NATIVE-M4-TRACK-ROUTE](fixed-rails-bugs.md#frb-native-m4-track-route--shared-tracks-ignore-the-disabled-route-option)
+
+- Discard family location/history snapshots when consent, membership or access changes while points load (FRB-NATIVE-M4-FAMILY-SNAPSHOT).
+
+- Filter public unlock phrase values from request and crash logs, including lazy messages (FRB-NATIVE-M4-UNLOCK-LOGS).
+
+- Refuse family location consent when Cloud family access expires while a response waits for its request lock (FRB-NATIVE-M4-FAMILY-REQUEST-ACCESS).
+
+- Discard family page, invitation and API snapshots when membership, consent or access changes during their private reads, and erase private rows on a late refusal. [FRB-NATIVE-M4-FAMILY-PUBLICATION](fixed-rails-bugs.md#frb-native-m4-family-publication--family-reads-can-publish-data-after-in-flight-revocation)

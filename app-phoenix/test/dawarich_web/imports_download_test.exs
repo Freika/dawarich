@@ -1,7 +1,6 @@
 defmodule DawarichWeb.ImportsDownloadTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
   alias Dawarich.Test.RailsUser
   alias Dawarich.Imports.UploadCreate
   alias Dawarich.Jobs.Ownership
@@ -87,8 +86,10 @@ defmodule DawarichWeb.ImportsDownloadTest do
     other = RailsUser.insert!(%{id: 7598, email: "foreign-download@example.test"})
     path = "/imports/#{id}/download"
 
-    assert {{"GET " <> ^path <> " HTTP/1.1", ""}, %{status: 204}} =
-             forwarded(upstream!(), fn -> get(RailsUser.signed_in(other.id), path) end)
+    upstream = Dawarich.Test.RailsFormRequests.upstream!()
+    foreign = get(RailsUser.signed_in(other.id), path)
+    assert foreign.status == 404
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
   end
 
   test "a missing import blob returns a native unavailable response", c do

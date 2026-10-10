@@ -55,6 +55,24 @@ defmodule Dawarich.Settings do
     end
   end
 
+  def rotate_api_key(%Scope{} = scope) do
+    case Repo.transaction(fn ->
+           Repo.query!("SELECT id FROM users WHERE id=$1 FOR UPDATE", [scope.user.id], log: false)
+
+           with {:ok, current} <- Dawarich.Accounts.NativeAccess.admit(scope),
+                user <- Accounts.get(current.user.id),
+                {:ok, updated} <-
+                  rotate_api_key(current, String.slice(user.encrypted_password || "", 0, 29)) do
+             Dawarich.Accounts.Principal.project(Accounts.get(updated.id))
+           else
+             _ -> Repo.rollback(:stale_session)
+           end
+         end) do
+      {:ok, current} -> {:ok, current}
+      _ -> {:error, :stale_session}
+    end
+  end
+
   def rotate_api_key(%Scope{user: user}, session_salt) do
     case ApiKeys.rotate(user.id, session_salt, %{native: true}) do
       {:ok, updated} -> {:ok, updated}

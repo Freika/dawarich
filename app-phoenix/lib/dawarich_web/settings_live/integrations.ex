@@ -26,7 +26,7 @@ defmodule DawarichWeb.SettingsLive.Integrations do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    user = socket.assigns.current_user
+    user = Accounts.get(socket.assigns.current_user.id)
 
     if params["service"] == "geocoding" and user.admin == true and socket.assigns.self_hosted do
       {:noreply, redirect(socket, to: "/admin/settings")}
@@ -186,7 +186,7 @@ defmodule DawarichWeb.SettingsLive.Integrations do
 
     socket
     |> assign(page)
-    |> assign(:current_user, user)
+    |> assign(:current_user, Dawarich.Accounts.Principal.project(user))
     |> assign(:form, to_form(values, as: :settings))
     |> assign(
       :upgrade,

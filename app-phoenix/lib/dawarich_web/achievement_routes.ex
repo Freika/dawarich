@@ -15,16 +15,6 @@ defmodule DawarichWeb.AchievementRoutes do
       scope "/" do
         pipe_through :achievement_action
 
-        patch "/achievements/:key/toggle_sharing",
-              DawarichWeb.AchievementActions.Sharing,
-              [action: :sharing],
-              metadata: %{rails_gate: {DawarichWeb.AchievementActions.Gate, :sharing?}}
-
-        post "/achievements/:key/toggle_sharing",
-             DawarichWeb.AchievementActions.Sharing,
-             [action: :sharing],
-             metadata: %{rails_gate: {DawarichWeb.AchievementActions.Gate, :sharing?}}
-
         post "/achievements/unlocks/next",
              DawarichWeb.AchievementActions.Unlocks,
              [action: :next],

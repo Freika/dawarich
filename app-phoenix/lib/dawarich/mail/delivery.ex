@@ -51,8 +51,10 @@ defmodule Dawarich.Mail.Delivery do
   end
 
   def deliver(repo, handler, key, record, event_id, build) when is_function(build, 0) do
-    with_lease(repo, handler, key, fn holder ->
-      send_claimed(repo, handler, key, record, event_id, build, holder)
+    Dawarich.Mail.JobResult.protect(fn ->
+      with_lease(repo, handler, key, fn holder ->
+        send_claimed(repo, handler, key, record, event_id, build, holder)
+      end)
     end)
   end
 

@@ -43,9 +43,14 @@ defmodule DawarichWeb.TripsShowParityTest do
         |> get(@page["path"])
         |> html_response(200)
         |> MapStimulus.prepare()
+        |> Dawarich.Test.NativeM4Corpus.prepare()
 
       rails =
-        @dir |> Path.join("pages/#{@page["name"]}.html") |> File.read!() |> MapStimulus.prepare()
+        @dir
+        |> Path.join("pages/#{@page["name"]}.html")
+        |> File.read!()
+        |> MapStimulus.prepare()
+        |> Dawarich.Test.NativeM4Corpus.prepare()
 
       assert_form_isolated(html)
 

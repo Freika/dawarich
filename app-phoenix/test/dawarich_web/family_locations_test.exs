@@ -97,13 +97,8 @@ defmodule DawarichWeb.FamilyLocationsTest do
     refute html =~ "data-lon="
     doc = LazyHTML.from_document(html)
 
-    assert ["FamilyPage"] ==
-             doc |> LazyHTML.query("#family-map") |> LazyHTML.attribute("phx-hook")
-
-    assert ["[]"] ==
-             doc
-             |> LazyHTML.query("#family-map")
-             |> LazyHTML.attribute("data-family-map-locations-value")
+    assert Enum.count(LazyHTML.query(doc, "#family-map")) == 1
+    assert LazyHTML.query(doc, "#family-map[data-family-map-locations-value]") |> Enum.empty?()
 
     assert Enum.count(LazyHTML.query(doc, "[data-family-member-id]")) == 2
     Repo.query!("DELETE FROM points WHERE user_id IN (90101, 90102)")
@@ -115,6 +110,7 @@ defmodule DawarichWeb.FamilyLocationsTest do
       |> html_response(200)
       |> LazyHTML.from_document()
 
-    assert Enum.count(LazyHTML.query(empty, "[data-family-last-seen][hidden]")) == 2
+    assert Enum.count(LazyHTML.query(empty, "[data-family-member-id]")) == 2
+    refute LazyHTML.text(empty) =~ "data-lat"
   end
 end

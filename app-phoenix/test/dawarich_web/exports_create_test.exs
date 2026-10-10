@@ -34,6 +34,7 @@ defmodule DawarichWeb.ExportsCreateTest do
       settings: %{"timezone" => "Europe/Berlin"}
     })
 
+    Dawarich.Jobs.Ownership.put!(Repo, "command:exports.points", :oban)
     session = RailsUser.session(7331)
     %{upstream: upstream!(), session: session, token: RailsCsrf.masked_token(session)}
   end
@@ -44,12 +45,12 @@ defmodule DawarichWeb.ExportsCreateTest do
         "SELECT id, name, status, file_format, file_type, start_at, end_at, user_id FROM exports ORDER BY id"
       ).rows
 
-  test "Phoenix routes export creation and the dedicated export deletion methods" do
+  test "Phoenix retains export creation and retires ordinary export deletion methods" do
     assert %{plug: DawarichWeb.ExportsCreate, plug_opts: :create} =
              Phoenix.Router.route_info(DawarichWeb.Router, "POST", ["exports"], "www.example.com")
 
     for method <- ["POST", "DELETE"] do
-      assert %{plug: DawarichWeb.ExportsDelete, plug_opts: :delete} =
+      assert :error ==
                Phoenix.Router.route_info(
                  DawarichWeb.Router,
                  method,
@@ -84,9 +85,10 @@ defmodule DawarichWeb.ExportsCreateTest do
 
     assert {start_at, end_at} == {~N[2024-02-29 23:00:00.000000], ~N[2024-03-30 23:00:00.000000]}
 
-    assert commands() == [
-             ["exports.points_created", %{"export_id" => id, "user_id" => 7331, "locale" => "en"}]
-           ]
+    assert commands() == []
+
+    assert [[2, %{"export_id" => ^id, "user_id" => 7331, "time_zone" => "Europe/Berlin"}]] =
+             Repo.query!("SELECT command_version,payload FROM job_outbox").rows
   end
 
   test "A5's link fallback (query in the action, _method=post and authenticity_token in the body) is handled the same",
@@ -113,33 +115,23 @@ defmodule DawarichWeb.ExportsCreateTest do
     assert length(exports()) == 2
   end
 
-  test "a tampered token, an archive export and a signed-out post reach Puma with their body, and nothing is written",
+  test "tampered and signed-out posts refuse without forwarding; archive keeps its accepted row",
        ctx do
-    archive = String.replace(@body, "file_format=json", "file_format=archive")
-
-    for {session, body, token} <- [
-          {ctx.session, @body, String.reverse(ctx.token)},
-          {ctx.session, archive, ctx.token},
-          {%{}, @body, ctx.token}
-        ] do
-      assert {{"POST /exports HTTP/1.1", ^body}, %{status: 204}} =
-               forwarded(ctx.upstream, fn ->
-                 post_form(session, body, [{"x-csrf-token", token}])
-               end)
+    for {session, token} <- [{ctx.session, String.reverse(ctx.token)}, {%{}, ctx.token}] do
+      assert post_form(session, @body, [{"x-csrf-token", token}]).status == 422
     end
 
     assert exports() == []
+    archive = String.replace(@body, "file_format=json", "file_format=archive")
+    assert post_form(ctx.session, archive, [{"x-csrf-token", ctx.token}]).status == 302
+    assert [[_, _, 0, 2 | _]] = exports()
     assert commands() == []
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
   end
 
-  test "a write that fails reaches Puma and leaves no export", ctx do
-    Repo.query!("DROP TABLE phoenix.rails_commands")
-
-    assert {{"POST /exports HTTP/1.1", @body}, %{status: 204}} =
-             forwarded(ctx.upstream, fn ->
-               post_form(ctx.session, @body, [{"x-csrf-token", ctx.token}])
-             end)
-
+  test "a native producer write failure rolls back the export", ctx do
+    Repo.query!("DROP TABLE job_outbox")
+    assert post_form(ctx.session, @body, [{"x-csrf-token", ctx.token}]).status == 422
     assert exports() == []
   end
 
@@ -152,16 +144,17 @@ defmodule DawarichWeb.ExportsCreateTest do
     refute log =~ "2024-03-01"
   end
 
-  test "a replayed post logs the reason with no secret", ctx do
+  test "a refused post logs its status without secrets or replay", ctx do
     log =
       with_info_log(fn ->
-        forwarded(ctx.upstream, fn ->
-          post_form(ctx.session, @body, [{"x-csrf-token", String.reverse(ctx.token)}])
-        end)
+        assert post_form(ctx.session, @body, [{"x-csrf-token", String.reverse(ctx.token)}]).status ==
+                 422
       end)
 
-    assert log =~ "[form] /exports handed to Rails: authenticity token"
+    assert log =~ "[form] POST /exports 422"
     refute log =~ ctx.token
     refute log =~ RailsUser.cookie(ctx.session)
+    refute log =~ "2024-03-01"
+    assert commands() == []
   end
 end

@@ -54,13 +54,13 @@ defmodule DawarichWeb.ImportRow do
       class="hover:bg-base-200/50 transition-colors"
     >
       <td class="px-4 py-3">
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap min-w-0 items-center gap-3">
           <div class={"w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 " <> @css}>
             <.brand :if={@source_icon == :google} name="google" class="w-4 h-4" />
             <.icon :if={@source_icon != :google} name={@source_icon} class="w-4 h-4" />
           </div>
           <div>
-            <div class="font-medium">
+            <div class="font-medium min-w-0 [overflow-wrap:anywhere]">
               <a href={"/imports/#{@import.id}"} class="link link-hover">{@import.name}</a>
               <span :if={@import.demo} class="badge badge-accent badge-sm ml-1">{t(
                 @locale,
@@ -110,7 +110,7 @@ defmodule DawarichWeb.ImportRow do
         <.human_datetime locale={@locale} at={@import.created} />
       </td>
       <td class="px-4 py-3 text-right">
-        <div class="flex items-center gap-1 justify-end">
+        <div class="flex flex-wrap items-center gap-1 justify-end">
           <%= case @state do %>
             <% :deleting -> %>
               <span class="loading loading-spinner loading-sm"></span>
@@ -132,7 +132,7 @@ defmodule DawarichWeb.ImportRow do
                 <.delete_link
                   id={@import.id}
                   locale={@locale}
-                  native={@import.source == "gpx"}
+                  native={true}
                   rails_csrf_token={@rails_csrf_token}
                 />
               </div>
@@ -157,7 +157,6 @@ defmodule DawarichWeb.ImportRow do
                 <a
                   href={"/imports/#{@import.id}/download"}
                   class="btn btn-ghost btn-xs"
-                  data-turbo="false"
                 ><.icon
                   name="arrow-big-down"
                   class="w-4 h-4"
@@ -170,7 +169,7 @@ defmodule DawarichWeb.ImportRow do
                 <.delete_link
                   id={@import.id}
                   locale={@locale}
-                  native={@import.source == "gpx"}
+                  native={true}
                   rails_csrf_token={@rails_csrf_token}
                 />
               </div>
@@ -199,9 +198,8 @@ defmodule DawarichWeb.ImportRow do
 
   defp delete_link(assigns) do
     ~H"""
-    <form action={"/imports/#{@id}"} method="post" data-turbo="false" phx-submit="delete_import">
-      <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
-      <input type="hidden" name="_method" value="delete" /><input
+    <form phx-submit="delete_import">
+      <input
         type="hidden"
         name="import_id"
         value={@id}
@@ -209,6 +207,7 @@ defmodule DawarichWeb.ImportRow do
       <button
         type="submit"
         data-testid="import-delete"
+        aria-label={t(@locale, "imports.table_row.delete_import", %{})}
         class="btn btn-ghost btn-xs text-error hover:bg-error/10"
         data-confirm={t(@locale, "imports.table_row.are_you_sure", %{})}
       ><.icon name="trash-2" class="w-4 h-4" /></button>

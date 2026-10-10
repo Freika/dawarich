@@ -4,7 +4,6 @@ defmodule Dawarich.Navbar do
   import Ecto.Query
 
   alias Dawarich.{AppVersion, Entitlements, Repo, Supporters, UserTimeZone}
-  alias Dawarich.Accounts.User
 
   @kinds %{0 => "info", 1 => "warning", 2 => "error"}
   @trial 2
@@ -14,7 +13,7 @@ defmodule Dawarich.Navbar do
 
   def load(nil, opts), do: %{version: version(nil, opts[:self_hosted], opts[:now])}
 
-  def load(%User{} = user, opts) do
+  def load(%{id: _} = user, opts) do
     now = Keyword.fetch!(opts, :now)
     self_hosted = Keyword.fetch!(opts, :self_hosted)
     running_version = AppVersion.current()
@@ -57,7 +56,7 @@ defmodule Dawarich.Navbar do
     %{count: count, demo: demo}
   end
 
-  def put_changelog_consent(%User{} = user, decision) do
+  def put_changelog_consent(%{id: _} = user, decision) do
     value = Map.fetch!(@consents, decision)
 
     from(u in "users", where: u.id == ^user.id)
@@ -171,9 +170,9 @@ defmodule Dawarich.Navbar do
 
   defp changelog_state(nil, _self_hosted), do: :badge
 
-  defp changelog_state(%User{changelog_consent: 0}, _self_hosted), do: :badge
+  defp changelog_state(%{changelog_consent: 0}, _self_hosted), do: :badge
 
-  defp changelog_state(%User{changelog_consent: 1}, _self_hosted), do: :widget
+  defp changelog_state(%{changelog_consent: 1}, _self_hosted), do: :widget
   defp changelog_state(_user, false), do: :widget
   defp changelog_state(_user, true), do: :prompt
 

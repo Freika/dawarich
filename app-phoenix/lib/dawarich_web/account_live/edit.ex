@@ -16,6 +16,13 @@ defmodule DawarichWeb.AccountLive.Edit do
 
   @impl true
   def mount(params, session, socket) do
+    safe_user = Dawarich.Accounts.Principal.project(socket.assigns.current_user)
+
+    socket =
+      socket
+      |> assign(:current_user, safe_user)
+      |> assign(:current_scope, Scope.for_user(safe_user, socket.assigns.locale))
+
     form = session["account_form"] || %{}
 
     context =
@@ -27,10 +34,11 @@ defmodule DawarichWeb.AccountLive.Edit do
     {:ok,
      socket
      |> assign(page(socket.assigns.current_user, params, context))
-     |> assign(profile_user: socket.assigns.current_user, checksums: %{})
+     |> assign(profile_user: socket.assigns.current_user, checksums: %{}, upload_refs: %{})
      |> allow_upload(:archive,
        accept: ~w(.zip application/zip),
        max_entries: 1,
+       auto_upload: true,
        max_file_size: @max_archive_bytes,
        external: &DirectUpload.presign/2
      )}
@@ -38,14 +46,13 @@ defmodule DawarichWeb.AccountLive.Edit do
 
   @impl true
   def handle_event("rotate_api_key", _params, socket) do
-    user = socket.assigns.current_user
-
-    case Settings.rotate_api_key(
-           scope(socket),
-           String.slice(user.encrypted_password || "", 0, 29)
-         ) do
+    case Settings.rotate_api_key(scope(socket)) do
       {:ok, updated} ->
-        {:noreply, assign(socket, :current_user, %{user | api_key: updated.api_key})}
+        {:noreply,
+         socket
+         |> assign(:current_user, updated)
+         |> assign(:current_scope, Scope.for_user(updated, socket.assigns.locale))
+         |> push_event("refresh-account-credentials", %{})}
 
       {:error, :stale_session} ->
         {:noreply, redirect(socket, to: "/users/sign_in")}
@@ -53,22 +60,51 @@ defmodule DawarichWeb.AccountLive.Edit do
   end
 
   def handle_event("export_data", _params, socket) do
-    :ok = UserData.request_export(scope(socket))
+    case UserData.request_native_export(scope(socket)) do
+      :ok ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :notice,
+           t(
+             socket.assigns.locale,
+             "controllers.settings.users.your_data_is_being_exported_you_will_receive_a_notification",
+             %{}
+           )
+         )
+         |> redirect(to: "/exports")}
 
-    {:noreply,
-     socket
-     |> put_flash(
-       :notice,
-       t(
-         socket.assigns.locale,
-         "controllers.settings.users.your_data_is_being_exported_you_will_receive_a_notification",
-         %{}
-       )
-     )
-     |> redirect(to: "/exports")}
+      {:error, :stale_session} ->
+        {:noreply, redirect(socket, to: "/users/sign_in")}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :alert,
+           t(socket.assigns.locale, "controllers.application.admin_action_failed", %{})
+         )}
+    end
   end
 
-  def handle_event("validate_archive", _params, socket), do: {:noreply, socket}
+  def handle_event("validate_archive", _params, socket) do
+    checksums =
+      for entry <- socket.assigns.uploads.archive.entries,
+          checksum = (entry.client_meta || %{})["checksum"],
+          is_binary(checksum),
+          into: socket.assigns.checksums,
+          do: {entry.ref, checksum}
+
+    {:noreply, assign(socket, :checksums, checksums)}
+  end
+
+  def handle_event("upload_preparation_error", %{"stage" => stage}, socket)
+      when stage in ~w(checksum preparation target upload timeout),
+      do:
+        {:noreply,
+         put_flash(socket, :alert, t(socket.assigns.locale, "native_upload." <> stage, %{}))}
+
+  def handle_event("upload_preparation_error", _params, socket), do: {:noreply, socket}
 
   def handle_event("archive_checksum", %{"ref" => ref, "checksum" => checksum}, socket)
       when is_binary(ref) and is_binary(checksum) do
@@ -82,20 +118,29 @@ defmodule DawarichWeb.AccountLive.Edit do
 
   def handle_event("archive_checksum", _params, socket), do: {:noreply, socket}
 
-  def handle_event("cancel_archive", %{"ref" => ref}, socket),
-    do: {:noreply, cancel_upload(socket, :archive, ref)}
+  def handle_event("cancel_archive", %{"ref" => ref}, socket) do
+    if owned = socket.assigns.upload_refs[ref], do: Dawarich.Uploads.cancel(scope(socket), owned)
+
+    {:noreply,
+     socket
+     |> cancel_upload(:archive, ref)
+     |> update(:checksums, &Map.delete(&1, ref))
+     |> update(:upload_refs, &Map.delete(&1, ref))}
+  end
 
   def handle_event("import_archive", _params, socket) do
     case uploaded_entries(socket, :archive) do
       {[_ | _], []} ->
-        [signed_id] =
-          consume_uploaded_entries(socket, :archive, fn %{signed_id: id}, _entry -> {:ok, id} end)
+        [upload_ref] =
+          consume_uploaded_entries(socket, :archive, fn %{upload_ref: ref}, _entry ->
+            {:ok, ref}
+          end)
 
-        {kind, key} = import_outcome(UserData.start_import(scope(socket), signed_id))
+        {kind, key} = import_outcome(UserData.start_upload(scope(socket), upload_ref))
 
         {:noreply,
          socket
-         |> assign(:checksums, %{})
+         |> assign(checksums: %{}, upload_refs: %{})
          |> put_flash(kind, t(socket.assigns.locale, "controllers.settings.users." <> key, %{}))
          |> push_event("close-dialog", %{id: "import_modal"})}
 
@@ -224,7 +269,7 @@ defmodule DawarichWeb.AccountLive.Edit do
                     )}
                   </p>
                 </div>
-                <.api_key locale={@locale} user={@current_user} base_url={@base_url} />
+                <.api_key locale={@locale} user={@current_user} base_url={@base_url} native={true} />
               </div>
             </div>
 

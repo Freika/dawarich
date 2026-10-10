@@ -55,11 +55,13 @@ defmodule DawarichWeb.MapLiveTest do
     assert conn.resp_body == ""
   end
 
-  test "the Rails regions are LiveView-ignored MapShell hooks that Turbo may drive", %{user: user} do
+  test "deferred main map keeps its MapShell while sharing opens the native manager", %{
+    user: user
+  } do
     {:ok, view, _html} = live_as(user, "/map/v2")
     assert_form_isolated(render(view))
 
-    for selector <- ["div#map-shell", "turbo-frame#share-link-modal"],
+    for selector <- ["div#map-shell"],
         do:
           assert(
             has_element?(
@@ -68,6 +70,26 @@ defmodule DawarichWeb.MapLiveTest do
             ),
             selector
           )
+  end
+
+  test "deferred achievement manager adapter replaces only the card modal import" do
+    prior = :persistent_term.get({DawarichWeb.Assets, :rails_imports}, :missing)
+
+    :persistent_term.put({DawarichWeb.Assets, :rails_imports}, %{
+      "controllers/card_modal_controller" => "/assets/card_modal.js",
+      "controllers/stat_page_controller" => "/assets/stat_page.js"
+    })
+
+    on_exit(fn ->
+      if prior == :missing,
+        do: :persistent_term.erase({DawarichWeb.Assets, :rails_imports}),
+        else: :persistent_term.put({DawarichWeb.Assets, :rails_imports}, prior)
+    end)
+
+    imports = DawarichWeb.Layouts.importmap() |> Jason.decode!() |> Map.fetch!("imports")
+    assert imports["controllers/card_modal_controller"] =~ "/phoenix/js/native_card_modal.js?vsn="
+    assert imports["rails_card_modal"] == "/assets/card_modal.js"
+    assert imports["controllers/stat_page_controller"] == "/assets/stat_page.js"
   end
 
   test "the head carries Rails' translations and imports, and Phoenix's own entries win", %{
@@ -182,7 +204,7 @@ defmodule DawarichWeb.MapLiveTest do
 
       assert has_element?(
                view,
-               "a[data-turbo-frame='share-link-modal'][href='/share_links/hub?end_date=2026-05-28&start_date=2026-05-28']"
+               "a[data-turbo='false'][href='/share_links/hub?end_date=2026-05-28&start_date=2026-05-28']"
              )
 
       {:ok, plain, _html} = live_as(user, "/map/v2")

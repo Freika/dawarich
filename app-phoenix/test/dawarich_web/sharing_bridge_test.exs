@@ -1,75 +1,60 @@
 defmodule DawarichWeb.SharingBridgeTest do
   use ExUnit.Case, async: true
 
-  test "family Turbo flash streams enter the initiating LiveView bridge" do
+  test "deferred Stimulus registration has no retired sharing stream write listener" do
     run("""
     import assert from "node:assert/strict";
     import fs from "node:fs";
     import vm from "node:vm";
-    const listeners = new Map();
+    const listeners = [], registrations = [];
     const context = vm.createContext({window: {}, document: {
-      addEventListener: (name, callback) => listeners.set(name, callback),
-      removeEventListener: name => listeners.delete(name)
+      addEventListener: name => listeners.push(name), removeEventListener() {}
     }});
-    const dependency = new vm.SyntheticModule(["Application", "lazyLoadControllersFrom"], function() {
-      this.setExport("Application", class {async start() {} register() {} stop() {}});
+    const dependency = new vm.SyntheticModule(["Application", "lazyLoadControllersFrom", "default"], function() {
+      this.setExport("Application", class {async start() {} register(name) {registrations.push(name);} stop() {}});
       this.setExport("lazyLoadControllersFrom", () => {});
+      this.setExport("default", class {});
     }, {context});
-    await dependency.link(() => {});
-    await dependency.evaluate();
+    await dependency.link(() => {}); await dependency.evaluate();
     const module = new vm.SourceTextModule(fs.readFileSync("priv/static/js/rails_bridge.js", "utf8"), {
       context, importModuleDynamically: () => dependency
     });
-    await module.link(() => {});
-    await module.evaluate();
-    const element = {
-      addEventListener: (name, callback, capture) => assert.equal(capture, true), removeAttribute() {},
-      getAttribute: () => "", querySelectorAll: () => []
-    };
+    await module.link(() => {}); await module.evaluate();
+    const element = {addEventListener: name => listeners.push(name), removeAttribute() {},
+      getAttribute: () => "stat-page", querySelectorAll: () => []};
     const bridge = module.namespace.railsBridge(element);
     await bridge.ready;
-    const content = {};
-    let flashed = null;
-    let prevented = false;
-    bridge.flash = value => flashed = value;
-    bridge.onSubmit({target: {closest: () => null}});
-    const event = {target: {
-      getAttribute: name => name === "action" ? "append" : "flash-messages",
-      querySelector: () => ({content})
-    }, preventDefault: () => prevented = true};
-    listeners.get("turbo:before-stream-render")?.(event);
-    assert.equal(flashed, content);
-    assert.equal(prevented, true);
+    assert.deepEqual(registrations, ["stat-page"]);
+    assert.equal(bridge.onSubmit, undefined);
+    assert.equal(bridge.onStream, undefined);
+    assert.equal(listeners.includes("submit"), false);
+    assert.equal(listeners.includes("turbo:before-stream-render"), false);
     """)
   end
 
-  test "a consenting member hides the flex map placeholder and revocation reveals it" do
+  test "native family consent hides the placeholder and revocation erases the map" do
     run("""
     import assert from "node:assert/strict";
-    import fs from "node:fs";
-    import vm from "node:vm";
-    const context = vm.createContext({AbortController});
-    const dependency = new vm.SyntheticModule(["railsBridge"], function() {
-      this.setExport("railsBridge", () => {});
-    }, {context});
-    await dependency.link(() => {});
-    const module = new vm.SourceTextModule(fs.readFileSync("priv/static/js/family_page.js", "utf8"), {context});
-    await module.link(() => dependency);
-    await module.evaluate();
-    const classes = new Set(["flex"]);
-    const empty = {classList: {toggle: (name, on) => on ? classes.add(name) : classes.delete(name)}};
-    const controller = {disconnect() {}, async initMap() {}};
-    const locations = [{user_id: 1}];
-    const hook = module.namespace.familyPage({
-      fetch: async () => ({ok: true, json: async () => locations}),
-      controller: async () => controller
-    });
-    hook.el = {addEventListener() {}, querySelectorAll: () => [], querySelector: () => empty};
-    await hook.mounted();
-    assert.equal(classes.has("hidden"), true);
-    assert.equal(controller.locationsValue, locations);
-    hook.clear();
-    assert.equal(classes.has("hidden"), false);
+    import { FamilyMap } from "./assets/js/hooks/family_map.js";
+    const events = new Map(), empty = {hidden: false}, canvas = {hidden: true, replaceChildren() {}};
+    let removed = 0;
+    class MapView {addControl() {} fitBounds() {} remove() {removed++;}}
+    class Marker {setLngLat() {return this;} addTo() {return this;} remove() {}}
+    const hook = {...FamilyMap, el: {closest: () => ({querySelectorAll: () => []}),
+      querySelector: selector => selector.includes("empty") ? empty : canvas},
+      loader: async () => ({maplibre: {Map: MapView, Marker, NavigationControl: class {}}, style: {}}),
+      handleEvent(name, fn) {events.set(name, fn); return name;},
+      removeHandleEvent(name) {events.delete(name);}, pushEvent() {}};
+    hook.mounted();
+    await events.get("family-locations")({locations: [{user_id: 1, latitude: 51, longitude: 12}]});
+    assert.equal(empty.hidden, true);
+    events.get("family-clear")({});
+    assert.equal(empty.hidden, false);
+    assert.equal(canvas.hidden, true);
+    assert.equal(hook.locations.length, 0);
+    assert.equal(removed, 1);
+    hook.destroyed();
+    assert.equal(events.size, 0);
     """)
   end
 
@@ -82,7 +67,7 @@ defmodule DawarichWeb.SharingBridgeTest do
     assert status == 0, output
   end
 
-  test "sharing controls wait for Stimulus handlers and retain initially disabled fields" do
+  test "deferred controls wait for Stimulus handlers and retain initially disabled fields" do
     run("""
     import assert from "node:assert/strict";
     import fs from "node:fs";
@@ -113,39 +98,18 @@ defmodule DawarichWeb.SharingBridgeTest do
     """)
   end
 
-  test "a Rails sharing flash received before LiveView joins survives the connection" do
+  test "deferred map flash rendering preserves each visible notice without a write bridge" do
     run("""
     import assert from "node:assert/strict";
     import fs from "node:fs";
     import vm from "node:vm";
-    const context = vm.createContext({window: {}, document: {
-      addEventListener() {}, getElementById: () => ({appendChild() {}})
-    }});
-    const dependency = new vm.SyntheticModule(["Application", "lazyLoadControllersFrom"], function() {
-      this.setExport("Application", class {async start() {} register() {} stop() {}});
-      this.setExport("lazyLoadControllersFrom", () => {});
-    }, {context});
-    await dependency.link(() => {});
-    await dependency.evaluate();
-    const module = new vm.SourceTextModule(fs.readFileSync("priv/static/js/rails_bridge.js", "utf8"), {
-      context, importModuleDynamically: () => dependency
-    });
-    await module.link(() => {});
-    await module.evaluate();
-    const element = {addEventListener() {}, removeAttribute() {}, getAttribute: () => "", querySelectorAll: () => []};
-    const alert = {classList: {contains: () => false},
-      querySelector: () => ({textContent: "Location sharing enabled"})};
-    const content = {querySelector: () => alert, querySelectorAll: () => [alert], cloneNode: () => content};
-    const bridge = module.namespace.railsBridge(element);
-    await bridge.ready;
-    bridge.flash(content);
-    const messages = [];
-    const hook = {el: element, pushEvent: (event, params) => messages.push([event, params.message])};
-    hook.reconnected = () => module.namespace.RailsStimulus.reconnected.call(hook);
-    module.namespace.RailsStimulus.mounted.call(hook);
-    assert.deepEqual(messages, [["rails_flash", "Location sharing enabled"]]);
-    hook.reconnected();
-    assert.equal(messages.length, 1);
+    const appended = [];
+    const context = vm.createContext({window: {}, document: {getElementById: () => ({appendChild: node => appended.push(node)})}});
+    const module = new vm.SourceTextModule(fs.readFileSync("priv/static/js/rails_bridge.js", "utf8"), {context});
+    await module.link(() => {}); await module.evaluate();
+    const notices = [{textContent: "Saved"}, {textContent: "Try again"}];
+    module.namespace.appendRailsFlash({querySelectorAll: () => notices});
+    assert.deepEqual(appended, notices);
     """)
   end
 end

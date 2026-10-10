@@ -24,6 +24,7 @@ defmodule Dawarich.Places.WebDelete do
               {:replay, "place dependent content graph"}
             else
               PlaceCascade.delete!(repo, [id], if(context[:owner_scoped], do: user.id))
+              Dawarich.Sharing.PublicEvents.enqueue(repo, user.id)
               {:ok, id}
             end
           end

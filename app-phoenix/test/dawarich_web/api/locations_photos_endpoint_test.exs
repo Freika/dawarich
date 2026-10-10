@@ -377,9 +377,13 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
       end)
 
     Task.await(immich)
-    assert log =~ ~r/\[api\] GET \/api\/v1\/locations 200 \d+ms request_id=[0-9a-f-]{36}/
+    assert log =~ ~r/\[api\] GET \/api\/v1\/locations 200 \d+ms request_id=\[FILTERED\]/
     assert log =~ "[api] /api/v1/locations handed to Rails: coordinate parameter shape"
-    assert log =~ "[api] #{@thumb} handed to Rails: photo source answered 302"
+
+    assert log =~
+             "[api] /api/v1/photos/[FILTERED]/thumbnail handed to Rails: photo source answered 302"
+
+    refute log =~ @id
     messages = logged_messages(log)
     refute messages =~ "52.52"
     refute messages =~ "13.405"
@@ -412,7 +416,11 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
           assert Task.await(proxied) == "GET #{path} HTTP/1.1"
         end)
 
-      assert log =~ "[api] #{path} handed to Rails: DBConnection.OwnershipError", path
+      safe_path =
+        if controller == PhotosController, do: "/api/v1/photos/[FILTERED]/thumbnail", else: path
+
+      assert log =~ "[api] #{safe_path} handed to Rails: DBConnection.OwnershipError", path
+      if controller == PhotosController, do: refute(log =~ @id)
     end
   end
 end

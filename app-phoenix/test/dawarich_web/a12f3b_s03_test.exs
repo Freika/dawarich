@@ -2,32 +2,29 @@ defmodule DawarichWeb.A12f3bS03Test do
   use Dawarich.IngestCase, async: false
   alias Dawarich.Test.A12f3bShareCase, as: S
   alias Dawarich.ShareManagement.TrackMutations
-  alias DawarichWeb.TrackShareActions
+  alias Dawarich.Sharing
 
   setup do
     %{actor: S.seed!()}
   end
 
   @tag a12f3b_case: "S03a"
-  test "track share new and create match Rails ownership and rollback", %{actor: actor} do
+  test "native S03a track reads and create preserve Rails ownership and rollback", %{actor: actor} do
     assert {:ok, page} = S.read(actor, "track")
     assert page.trip.name =~ "2 km"
-    form = S.request(actor, "track", :new) |> TrackShareActions.call(:new)
-    assert form.status == 200
-    head = S.request(actor, "track", :new) |> Map.put(:method, "HEAD")
-    assert TrackShareActions.native?(head, head.path_params)
-    assert (head |> Plug.Head.call([]) |> TrackShareActions.call(:new)).status == 200
-    assert form.resp_body =~ "/tracks/99103/share_link"
+    scope = Dawarich.Accounts.Scope.for_user(actor, "en")
 
-    missing =
-      S.request(actor, "track", :new, %{}, track_id: "99104") |> TrackShareActions.call(:new)
+    assert {:ok, %{trip: %{name: name}}} =
+             Sharing.page(scope, %{type: :track, owner_id: actor.id, id: 99103}, %{},
+               now: S.now()
+             )
 
-    assert missing.status == 404
+    assert name =~ "2 km"
 
-    absent =
-      S.request(actor, "track", :new, %{}, track_id: "99999999") |> TrackShareActions.call(:new)
-
-    assert absent.status == 404
+    for id <- [99104, 99_999_999] do
+      assert {:error, :not_found} =
+               Sharing.page(scope, %{type: :track, owner_id: actor.id, id: id}, %{}, now: S.now())
+    end
 
     assert {:ok, %{share: share, committed?: true}} =
              TrackMutations.run(actor, 99103, :create, S.params("track", %{"name" => ""}), "en",
@@ -65,7 +62,7 @@ defmodule DawarichWeb.A12f3bS03Test do
   end
 
   @tag a12f3b_case: "S03b"
-  test "track share validation cannot mutate an active grant", %{actor: actor} do
+  test "native S03b track validation cannot mutate an active grant", %{actor: actor} do
     before = S.rows()
 
     assert {:invalid, %{errors: [{:magic_phrase, _}]}} =

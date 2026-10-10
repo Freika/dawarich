@@ -48,9 +48,9 @@ defmodule Dawarich.Imports.UiRecords do
           log: false
         )
 
+        Events.enqueue(repo, user_id, Ecto.UUID.generate(), :updated)
         :updated
       end)
-      |> notify(user_id)
     end
   end
 
@@ -102,13 +102,4 @@ defmodule Dawarich.Imports.UiRecords do
   end
 
   defp id(_), do: {:error, :not_found}
-
-  defp notify({:ok, _} = result, user_id),
-    do:
-      (
-        Events.broadcast(user_id)
-        result
-      )
-
-  defp notify(result, _), do: result
 end

@@ -17,9 +17,9 @@ defmodule DawarichWeb.A8RoutesTest do
     end
 
     route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/imports/42", "www.example.com")
-    assert route.rails_gate == {DawarichWeb.ImportsGate, :native?}
+    assert Map.get(route, :rails_gate) == nil
 
-    assert {DawarichWeb.ImportsLive.Show, :show, _, %{name: :rails_pages}} =
+    assert {DawarichWeb.ImportsLive.Show, :show, _, %{name: :native_jobs}} =
              route.phoenix_live_view
   end
 end

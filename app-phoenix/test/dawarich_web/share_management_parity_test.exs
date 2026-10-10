@@ -1,19 +1,8 @@
 defmodule DawarichWeb.ShareManagementParityTest do
   use Dawarich.IngestCase, async: false
-  import Plug.Conn
-  import Dawarich.Test.RawHTTP
-  alias Dawarich.Test.{FrameSeeds, ParityHTML, RailsFormRequests, RailsUser}
+  alias Dawarich.{Sharing, Repo}
+  alias Dawarich.Test.FrameSeeds
 
-  alias DawarichWeb.{
-    LayoutAssigns,
-    Locale,
-    RailsCsrf,
-    RequireUser,
-    ShareManagementForm,
-    ShareManagementPage
-  }
-
-  alias DawarichWeb.Api.Body
   @dir "test/fixtures/share_management"
   @cases ~w(ambiguous_override hub_active_live hub_active_shared hub_active_timeline hub_active_unknown
     hub_bad_range hub_empty_live hub_empty_make hub_empty_shared hub_empty_timeline hub_empty_unknown
@@ -46,7 +35,6 @@ defmodule DawarichWeb.ShareManagementParityTest do
     :ok
   end
 
-  @tag mutation: "corpus"
   test "management corpus is complete" do
     actual =
       @dir |> Path.join("*.json") |> Path.wildcard() |> Enum.map(&Path.basename(&1, ".json"))
@@ -58,8 +46,8 @@ defmodule DawarichWeb.ShareManagementParityTest do
   for name <- @names ++ @domain_cases do
     @name name
     @tag management_case: name
-    test "management #{@name} matches Rails" do
-      state = load(@name)
+    test "native management #{@name} preserves scoped inputs persisted rows and wire effects" do
+      state = Path.join(@dir, @name <> ".json") |> File.read!() |> Jason.decode!()
       user = FrameSeeds.seed_management!(@name)
 
       if @name in @domain_cases do
@@ -74,157 +62,99 @@ defmodule DawarichWeb.ShareManagementParityTest do
       end
 
       now = state["now"] |> DateTime.from_iso8601() |> elem(1)
-      rails = File.read!(Path.join(@dir, @name <> ".html"))
-      session = if user, do: RailsUser.session(user.id), else: %{}
-      {conn, body} = request(state, user, session, now)
 
-      conn =
-        if replay?(state) do
-          upstream = RailsFormRequests.upstream!()
-          task = Task.async(fn -> respond(conn, state) end)
-          socket = accept(upstream)
-          {head, rest} = read_head(socket)
-          length = header(head, "content-length") |> List.first("0") |> String.to_integer()
-          assert read_at_least(socket, rest, length) == body
-          assert request_line(head) == state["verb"] <> " " <> state["path"] <> " HTTP/1.1"
+      locale =
+        DawarichWeb.Locale.resolve(
+          Plug.Conn.Query.decode(URI.parse(state["path"]).query || "")["locale"],
+          user,
+          %{}
+        )
+
+      scope = Dawarich.Accounts.Scope.for_user(user, locale)
+      resource = resource(state["path"], user && user.id)
+      params = state["params"] || %{}
+      query = Plug.Conn.Query.decode(URI.parse(state["path"]).query || "")
+
+      if state["verb"] in ~w(GET HEAD) do
+        result = Sharing.page(scope, resource, query, now: now, self_hosted: true)
+
+        cond do
+          user == nil ->
+            assert {:error, :stale_session} = result
+
+          state["status"] == 404 ->
+            assert {:error, :not_found} = result
+
+          state["status"] == 200 ->
+            assert {:ok, page} = result
+            refute inspect(page) =~ "magic_phrase"
+            assert_read(page, state, user, resource, now)
+
+          true ->
+            assert {:error, _} = result
+        end
+
+        assert rows() == state["before"]
+      else
+        action = action(state)
+
+        if Map.has_key?(state["headers"], "X-HTTP-Method-Override") do
+          assert Phoenix.Router.route_info(
+                   DawarichWeb.Router,
+                   state["verb"],
+                   URI.parse(state["path"]).path,
+                   "www.example.com"
+                 ) == :error
+
           assert rows() == state["before"]
-          assert commands() == []
-
-          response_headers =
-            if state["location"], do: "Location: #{state["location"]}\r\n", else: ""
-
-          reply(
-            socket,
-            "HTTP/1.1 #{state["status"]} Fixture\r\nContent-Type: #{state["content_type"]}\r\n#{response_headers}Content-Length: #{byte_size(rails)}\r\n\r\n" <>
-              rails
-          )
-
-          result = Task.await(task)
-          :gen_tcp.close(socket)
-          assert rows() == state["before"]
-          result
+          assert events() == []
         else
-          result = respond(conn, state)
+          result = Sharing.change(scope, resource, action, params, now: now, self_hosted: true)
+
+          if state["after"] == state["before"] do
+            assert {:error, _} = result
+          else
+            assert {:ok, value} = result
+            refute inspect(value) =~ "magic_phrase"
+          end
+
           assert normalize_rows(rows(), state) == normalize_rows(state["after"], state)
           assert events() == state["events"]
-          result
-        end
-
-      assert conn.status == state["status"]
-      assert get_resp_header(conn, "location") == List.wrap(state["location"])
-
-      assert conn |> get_resp_header("content-type") |> hd() |> String.split(";") |> hd() ==
-               state["content_type"]
-
-      if not replay?(state) do
-        changes = conn.private[:dawarich_rails_session_changes] || %{}
-        assert (get_in(changes, ["flash", "flashes"]) || %{}) == state["flash"]
-        if state["flash"] != %{}, do: assert_cookie(conn)
-        if state["verb"] != "GET" and state["flash"] == %{}, do: assert(conn.resp_cookies == %{})
-      end
-
-      if state["verb"] != "HEAD" do
-        if conn.status in [200, 422] do
-          native = fragment(conn.resp_body)
-          actual = normalize(native, state)
-          expected = normalize(rails, state)
-          assert actual == expected, ParityHTML.first_difference(actual, expected)
-          assert attributes(native, state) == attributes(rails, state)
-        else
-          assert normalize(conn.resp_body, state) == normalize(rails, state)
+          assert_error_text(result, @name, locale)
         end
       end
     end
   end
 
-  defp load(name), do: Path.join(@dir, name <> ".json") |> File.read!() |> Jason.decode!()
-
-  defp request(state, user, session, now) do
-    body =
-      if state["json_request"], do: Jason.encode!(state["params"]), else: encode(state["params"])
-
+  defp resource(path, owner) do
     type =
-      if state["json_request"], do: "application/json", else: "application/x-www-form-urlencoded"
+      cond do
+        String.starts_with?(path, "/share_links/hub") -> :hub
+        String.starts_with?(path, "/share_links/live") -> :live
+        String.starts_with?(path, "/share_links/timeline") -> :timeline
+        String.starts_with?(path, "/share_links/shares/") -> :shared
+        String.starts_with?(path, "/tracks/") -> :track
+        true -> :trip
+      end
 
-    conn =
-      Plug.Test.conn(state["verb"], state["path"], body)
-      |> Map.put(:host, "www.example.com")
-      |> put_req_header("content-type", type)
-      |> put_req_header("content-length", to_string(byte_size(body)))
-      |> put_req_header("x-csrf-token", RailsCsrf.masked_token(session) || "")
-      |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-      |> assign(:api_tag, "form")
-      |> assign(:current_user, user)
-      |> assign(:rails_session, session)
-      |> assign(:now, now)
+    resource = %{type: type, owner_id: owner}
 
-    conn =
-      Enum.reduce(state["headers"], conn, fn {key, value}, conn ->
-        put_req_header(conn, String.downcase(key), value)
-      end)
+    if type in [:trip, :track, :shared] do
+      raw =
+        URI.parse(path).path
+        |> String.split("/", trim: true)
+        |> Enum.at(if(type == :shared, do: 2, else: 1))
 
-    info =
-      route_info(conn, state)
-
-    conn = %{conn | path_params: info.path_params}
-
-    if state["verb"] in ~w(GET HEAD) do
-      conn =
-        conn
-        |> fetch_query_params()
-        |> Locale.call([])
-        |> LayoutAssigns.call([])
-        |> assign(:now, now)
-
-      {conn, body}
+      Map.put(resource, :id, if(type == :shared, do: raw, else: String.to_integer(raw)))
     else
-      {conn, body}
+      resource
     end
   end
 
-  defp respond(conn, state) when is_map(state) do
-    info = route_info(conn, state)
-
-    if info[:domain] do
-      conn =
-        if state["verb"] in ~w(GET HEAD),
-          do: conn,
-          else: Body.call(conn, nested_form: "shared_link")
-
-      if conn.halted, do: conn, else: info.domain.call(conn, info.plug_opts)
-    else
-      respond_existing(conn, state)
-    end
-  end
-
-  defp route_info(conn, state) do
-    cond do
-      conn.request_path =~ ~r/\A\/tracks\/\d+\/share_link/ ->
-        id = conn.request_path |> String.split("/") |> Enum.at(2)
-
-        %{
-          path_params: %{"track_id" => id},
-          domain: DawarichWeb.TrackShareActions,
-          plug_opts: domain_action(state)
-        }
-
-      String.starts_with?(conn.request_path, "/share_links/timeline") ->
-        %{
-          path_params: %{},
-          domain: DawarichWeb.TimelineShareActions,
-          plug_opts: domain_action(state)
-        }
-
-      true ->
-        Phoenix.Router.route_info(DawarichWeb.Router, state["verb"], conn.request_path, conn.host)
-    end
-  end
-
-  defp domain_action(state) do
-    suffix = state["path"] |> String.split("?") |> hd() |> String.split("/") |> List.last()
+  defp action(state) do
+    suffix = URI.parse(state["path"]).path |> String.split("/") |> List.last()
 
     cond do
-      state["verb"] in ~w(GET HEAD) -> :new
       state["verb"] == "DELETE" -> :destroy
       suffix == "revoke" -> :revoke
       suffix == "regenerate" -> :regenerate
@@ -233,49 +163,57 @@ defmodule DawarichWeb.ShareManagementParityTest do
     end
   end
 
-  defp respond_existing(conn, %{"verb" => "GET"}) do
-    conn = RequireUser.call(conn, [])
+  defp assert_read(page, state, user, resource, now) do
+    links = if resource.type == :hub, do: page.shares, else: List.wrap(page[:share])
 
-    if conn.halted do
-      conn
-    else
-      action =
-        Phoenix.Router.route_info(DawarichWeb.Router, "GET", conn.request_path, conn.host).plug_opts
+    expected =
+      Enum.filter(state["before"], fn row ->
+        row["user_id"] == user.id and row["revoked_at"] == nil and
+          (row["expires_at"] == nil or
+             String.replace(row["expires_at"], " ", "T") >
+               NaiveDateTime.to_iso8601(DateTime.to_naive(now)))
+      end)
 
-      ShareManagementPage.render(conn, action)
+    if resource.type == :hub,
+      do: assert(Enum.sort(Enum.map(links, & &1.id)) == Enum.sort(Enum.map(expected, & &1["id"])))
+
+    for link <- links do
+      source = Enum.find(state["before"], &(&1["id"] == link.id))
+      assert source
+
+      assert Map.take(link, [:name, :resource_type, :resource_id, :settings, :view_count])
+             |> Map.new(fn {k, v} -> {Atom.to_string(k), v} end) ==
+               Map.take(source, ~w(name resource_type resource_id settings view_count))
+    end
+
+    if resource.type == :hub do
+      assert page.tab in ~w(live timeline make shared unknown)
+
+      assert Enum.map(page.shares, & &1.created_at) ==
+               Enum.sort(Enum.map(page.shares, & &1.created_at), {:desc, NaiveDateTime})
     end
   end
 
-  defp respond_existing(conn, state) do
-    conn = Body.call(conn, nested_form: "shared_link")
-    conn = if conn.halted, do: conn, else: ShareManagementForm.admit(conn, [])
+  defp assert_error_text({:error, %{errors: errors}}, name, _locale) do
+    field =
+      cond do
+        String.contains?(name, "expiry_past") or String.contains?(name, "invalid_frame") ->
+          :expires_at
 
-    if conn.halted do
-      conn
-    else
-      action =
-        Phoenix.Router.route_info(DawarichWeb.Router, state["verb"], conn.request_path, conn.host).plug_opts
+        String.contains?(name, "invalid_magic_phrase") or String.contains?(name, "invalid_hub") or
+          String.contains?(name, "/track_invalid") or String.contains?(name, "/timeline_invalid") or
+            name == "failed_live_replacement" ->
+          :magic_phrase
 
-      ShareManagementForm.call(conn, action)
-    end
+        true ->
+          :name
+      end
+
+    assert [{^field, message}] = errors
+    assert is_binary(message) and String.trim(message) != ""
   end
 
-  defp replay?(state), do: Map.has_key?(state["headers"], "X-HTTP-Method-Override")
-
-  defp encode(params) do
-    params
-    |> pairs()
-    |> Enum.map_join("&", fn {key, value} ->
-      URI.encode_www_form(key) <> "=" <> URI.encode_www_form(to_string(value))
-    end)
-  end
-
-  defp pairs(map, prefix \\ nil) do
-    Enum.flat_map(map, fn {key, value} ->
-      key = if prefix, do: prefix <> "[" <> key <> "]", else: key
-      if is_map(value), do: pairs(value, key), else: [{key, value}]
-    end)
-  end
+  defp assert_error_text(_, _, _), do: :ok
 
   defp rows,
     do:
@@ -300,45 +238,5 @@ defmodule DawarichWeb.ShareManagementParityTest do
          else: row
     end)
     |> Enum.sort_by(& &1["id"])
-  end
-
-  defp fragment(html) do
-    doc = LazyHTML.from_document(html)
-    frame = LazyHTML.query(doc, "turbo-frame#share-link-modal")
-    if Enum.any?(frame), do: LazyHTML.to_html(frame), else: html
-  end
-
-  defp canonical(html, state) do
-    html = Regex.replace(~r/\b(required|checked|readonly)="\1"/, html, "\\1")
-
-    html =
-      Regex.replace(
-        ~r/(name="shared_link\[magic_phrase\]"[^>]*value=")[^"]*"/,
-        html,
-        "\\1PHRASE\""
-      )
-
-    html =
-      Regex.replace(
-        ~r/(value=")[^"]*("[^>]*name="shared_link\[magic_phrase\]")/,
-        html,
-        "\\1PHRASE\\2"
-      )
-
-    before = Enum.map(state["before"], & &1["id"])
-
-    Regex.replace(
-      ~r/a9f10000-0000-4000-8000-\d{12}|[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/,
-      html,
-      fn id -> if id in before, do: id, else: "NEW-ID" end
-    )
-  end
-
-  defp normalize(html, state), do: html |> canonical(state) |> ParityHTML.normalize()
-  defp attributes(html, state), do: html |> canonical(state) |> ParityHTML.stimulus("*")
-
-  defp assert_cookie(conn) do
-    assert %{http_only: true, same_site: "Lax", path: "/"} =
-             conn.resp_cookies["_dawarich_session"]
   end
 end

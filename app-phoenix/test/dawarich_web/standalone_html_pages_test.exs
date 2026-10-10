@@ -1,6 +1,7 @@
 defmodule DawarichWeb.StandaloneHtmlPagesTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
   import Plug.Conn
   alias Dawarich.Test.{ApiGolden, RailsUser}
   @endpoint DawarichWeb.Endpoint
@@ -64,7 +65,8 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
   end
 
   @tag :standalone_resources
-  test "standalone public trip and track pages honor sharing flags privacy zones and revoked grants",
+  @tag :track_c_r2
+  test "native public trip and track snapshots honor sharing flags privacy and revoked grants",
        %{fixture: fixture} do
     owner = fixture["user_id"]
     trip_link = "a9480100-0000-4000-8000-000000000001"
@@ -74,13 +76,18 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
       "INSERT INTO action_text_rich_texts(name,body,record_type,record_id,created_at,updated_at) VALUES('description','<div>Owner-only description</div>','Trip',94801,now(),now())"
     )
 
+    Repo.query!("UPDATE points SET track_id=94801 WHERE id=94801")
+
     for {id, type} <- [{trip_link, "trip"}, {track_link, "track"}] do
       conn = page(owner, "/s/" <> id)
       assert conn.status == 200
-      assert String.contains?(conn.resp_body, ~s(data-controller="shared-trip-map")) == true
-
-      assert String.contains?(conn.resp_body, ~s(data-shared-trip-map-link-id-value="#{id}")) ==
-               true
+      {:ok, view, _} = connected_public(conn, owner)
+      snapshot = :sys.get_state(view.pid).socket.assigns.page
+      assert snapshot.link.id == id
+      assert snapshot.kind == String.to_existing_atom(type)
+      assert has_element?(view, "[data-public-canvas]")
+      assert snapshot.map.points != []
+      refute has_element?(view, "[data-controller]")
 
       assert String.contains?(conn.resp_body, "synthetic-html-pages-key") == false
       if type == "trip", do: assert(conn.resp_body =~ "Owner-only description")
@@ -101,8 +108,16 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     hidden = page(owner, "/s/" <> trip_link)
     assert hidden.status == 200
     assert String.contains?(hidden.resp_body, "Owner-only description") == false
-    assert String.contains?(hidden.resp_body, ~s(data-controller="shared-trip-map")) == false
-    assert String.contains?(hidden.resp_body, "data-day-dot") == false
+    {:ok, hidden_view, _} = connected_public(hidden, owner)
+    hidden_page = :sys.get_state(hidden_view.pid).socket.assigns.page
+    assert hidden_page.map.points == []
+    assert hidden_page.resource.days == []
+    assert hidden_page.resource.description == nil
+
+    refute has_element?(
+             hidden_view,
+             "[data-public-canvas], [data-public-stats], [data-public-days], [data-public-description]"
+           )
 
     Repo.query!("UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid", [
       trip_link,
@@ -123,12 +138,20 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     assert private.status == 200
     assert String.contains?(private.resp_body, "No data") == true
     assert String.contains?(private.resp_body, "10:00") == false
+    {:ok, private_view, _} = connected_public(private, owner)
+    assert :sys.get_state(private_view.pid).socket.assigns.page.map.points == []
     Repo.query!("UPDATE shared_links SET revoked_at=now() WHERE id=$1::text::uuid", [trip_link])
     assert page(owner, "/s/" <> trip_link).status == 404
+    send(private_view.pid, {:share_changed, trip_link, :revoked})
+    render(private_view)
+    assert :sys.get_state(private_view.pid).socket.assigns.page == nil
+    refute has_element?(private_view, "[data-public-content]")
     Repo.query!("UPDATE tracks SET user_id=94802 WHERE id=94801")
     missing = page(owner, "/s/" <> track_link)
     assert missing.status == 200
-    assert String.contains?(missing.resp_body, ~s(data-controller="shared-trip-map")) == false
+    {:ok, missing_view, _} = connected_public(missing, owner)
+    assert :sys.get_state(missing_view.pid).socket.assigns.page.kind == :missing_resource
+    refute has_element?(missing_view, "[data-public-canvas]")
   end
 
   @tag :review_family_cache
@@ -180,7 +203,8 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
   end
 
   @tag :review_family_layout
-  test "review family trip retains the application navigation", %{fixture: fixture} do
+  @tag :track_c_r2
+  test "native family trip retains navigation and Open Graph metadata", %{fixture: fixture} do
     Repo.query!("UPDATE users SET theme='light' WHERE id=94802")
 
     for id <- shared_page_links(fixture) do
@@ -215,7 +239,10 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
   end
 
   @tag :review_trip_gallery
-  test "review trip gallery retains the 101st allowed photo", %{fixture: fixture} do
+  @tag :track_c_r2
+  test "native trip gallery retains the 101st allowed photo in the day snapshot", %{
+    fixture: fixture
+  } do
     id = "a9480100-0000-4000-8000-000000000001"
 
     Repo.query!("UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid", [
@@ -275,8 +302,16 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     conn = page(fixture["user_id"], "/s/" <> id)
     assert conn.status == 200
 
-    assert String.contains?(conn.resp_body, "/photos/synthetic-photo-101/thumbnail?source=immich") ==
-             true
+    {:ok, view, _} = connected_public(conn, fixture["user_id"])
+    snapshot = :sys.get_state(view.pid).socket.assigns.page
+    assert length(snapshot.map.photos) == 101
+    later_photos = Enum.filter(snapshot.map.photos, &(&1["day_key"] == "2026-03-02"))
+    assert Enum.map(later_photos, & &1["id"]) == ["synthetic-photo-101"]
+
+    assert has_element?(
+             view,
+             "details[data-public-gallery-day='2026-03-02'] [data-public-gallery-content]"
+           )
 
     assert {:ok, api_photos} = Dawarich.SharedApi.Photos.response(link, :photos)
     assert length(api_photos) == 100
@@ -297,6 +332,92 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
       Dawarich.SharedLinks.ResourcePage.load(Dawarich.SharedLinks.active(id, DateTime.utc_now()))
 
     assert Enum.all?(hidden.days, &(&1.photos == []))
+  end
+
+  @tag :standalone_html_sweep
+  @tag :track_c_r3
+  test "native track and timeline snapshots show only photos whose thumbnails are admitted", %{
+    fixture: fixture
+  } do
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+    timeline = "a9480100-0000-4000-8000-000000000005"
+
+    Repo.insert_all("shared_links", [
+      %{
+        id: Ecto.UUID.dump!(timeline),
+        name: "Synthetic timeline share",
+        user_id: fixture["user_id"],
+        resource_type: 2,
+        settings: %{"start_date" => "2026-03-01", "end_date" => "2026-03-02"},
+        created_at: NaiveDateTime.utc_now(),
+        updated_at: NaiveDateTime.utc_now()
+      }
+    ])
+
+    photos =
+      for i <- 1..101 do
+        Map.new(
+          ~w(id latitude longitude localDateTime capturedAt originalFileName city state country type orientation source),
+          &{&1, nil}
+        )
+        |> Map.merge(%{
+          "id" => "synthetic-photo-#{i}",
+          "latitude" => 51.3,
+          "longitude" => 12.3,
+          "source" => "immich",
+          "capturedAt" => "2026-03-01T12:00:00Z"
+        })
+      end
+
+    for {id, kind} <- [
+          {"a9480100-0000-4000-8000-000000000002", :track},
+          {timeline, {:timeline, ~D[2026-03-01], ~D[2026-03-02]}}
+        ] do
+      Repo.query!("UPDATE shared_links SET settings=settings || $2 WHERE id=$1::text::uuid", [
+        id,
+        %{"show_photos" => true}
+      ])
+
+      link = Dawarich.SharedLinks.active(id, DateTime.utc_now())
+      context = %{range: {from, to}} = Dawarich.SharedApi.Photos.grant_context(link)
+      key = "photos_search/#{fixture["user_id"]}/v2/#{from}/#{to}"
+      Dawarich.Photos.ProviderCache.put(key, photos)
+
+      on_exit(fn ->
+        {:ok, redis} = Redix.start_link(System.fetch_env!("PHOENIX_TEST_REDIS_URL"), database: 0)
+
+        Redix.command!(redis, [
+          "DEL",
+          key,
+          Dawarich.SharedApi.Closure.photo_ids_key(link, context)
+        ])
+
+        Redix.stop(redis)
+      end)
+
+      snapshot =
+        Dawarich.Sharing.PublicSnapshot.load(%{link: link, kind: kind}, DateTime.utc_now())
+
+      shown = Enum.map(snapshot.map.photos, & &1["id"])
+      assert length(shown) == 100
+      refute "synthetic-photo-101" in shown
+
+      assert Enum.all?(shown, &Dawarich.SharedApi.Closure.allowed_photo?(link, "immich", &1))
+
+      assert Dawarich.SharedApi.Photos.response(link, :thumbnail, %{
+               "source" => "immich",
+               "photo_id" => "synthetic-photo-101"
+             }) == {:head, 404}
+    end
+  end
+
+  defp connected_public(conn, user) do
+    conn
+    |> RailsUser.connecting_as(user)
+    |> put_private(:live_view_connect_info, %{
+      session: Map.put(get_session(conn), "rails_user_id", user)
+    })
+    |> live()
   end
 
   defp shared_page_links(fixture) do

@@ -7,13 +7,9 @@ defmodule DawarichWeb.ImportsLive.Index do
   import DawarichWeb.ListParts, only: [page_header: 1, sort_link: 1]
   import DawarichWeb.Paginator, only: [paginator: 1]
 
-  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+  alias DawarichWeb.ImportsStallTimer
 
   @sortable ~w(name status created_at processed byte_size)
-  @integrations [
-    {"immich", "start_immich_import", "imports.index.import_from_immich"},
-    {"photoprism", "start_photoprism_import", "imports.index.import_from_photoprism"}
-  ]
   @columns [
     {"name", "imports.index.name", "w-auto"},
     {"byte_size", "imports.index.file_size", "w-[10%]"},
@@ -24,40 +20,58 @@ defmodule DawarichWeb.ImportsLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket), do: Dawarich.Imports.Events.subscribe(socket.assigns.current_user.id)
+    if connected?(socket), do: Dawarich.Imports.subscribe(socket.assigns.current_scope)
 
     {:ok,
      assign(socket,
        page_title: t(socket.assigns.locale, "imports.index.imports", %{}),
        morph_page_refreshes: true,
-       polling: false
+       polling: false,
+       provider_requests: MapSet.new()
      )}
   end
 
   @impl true
-  def handle_info(:imports_refresh, socket), do: refresh(assign(socket, polling: false))
+  def handle_info(:imports_refresh, socket), do: {:noreply, socket}
+
+  def handle_info({:import_stall_deadline, token}, socket) do
+    if ImportsStallTimer.current?(socket, token), do: refresh(socket), else: {:noreply, socket}
+  end
+
+  def handle_info({:domain_changed, owner, :imports}, socket)
+      when owner == socket.assigns.current_user.id do
+    DawarichWeb.ImportsInvalidations.coalesce(owner)
+    refresh(socket)
+  end
 
   def handle_info(:imports_changed, socket), do: refresh(socket)
 
   defp refresh(socket) do
-    if Dawarich.Accounts.get(socket.assigns.current_user.id) do
-      {:noreply,
-       socket
-       |> assign(:now, DateTime.utc_now())
-       |> assign(
-         Dawarich.ImportExportIndex.imports(socket.assigns.current_user, socket.assigns.list)
-       )
-       |> poll()}
-    else
-      {:noreply, redirect(socket, to: "/users/sign_in")}
+    case Dawarich.Imports.page(socket.assigns.current_scope, socket.assigns.list) do
+      {:ok, page} ->
+        integrations =
+          for name <- page.providers,
+              do: {"start_#{name}_import", "imports.index.import_from_#{name}"}
+
+        {:noreply,
+         socket
+         |> assign(:now, ImportsStallTimer.now(socket))
+         |> assign(page)
+         |> assign(:integrations, integrations)
+         |> ImportsStallTimer.schedule(page.entries)}
+
+      {:error, _} ->
+        {:noreply,
+         socket
+         |> ImportsStallTimer.cancel()
+         |> assign(entries: [])
+         |> redirect(to: "/users/sign_in")}
     end
   end
 
   @impl true
   def handle_event("delete_import", %{"import_id" => id}, socket) do
-    user = socket.assigns.current_user
-
-    case DawarichWeb.ImportsActions.delete(user, id) do
+    case Dawarich.Imports.delete(socket.assigns.current_scope, id) do
       {:ok, _} ->
         refresh(socket)
 
@@ -71,32 +85,55 @@ defmodule DawarichWeb.ImportsLive.Index do
     end
   end
 
+  def handle_event("request_provider", %{"job" => job}, socket) do
+    if MapSet.member?(socket.assigns.provider_requests, job) do
+      {:noreply, socket}
+    else
+      case Dawarich.Imports.request_provider(socket.assigns.current_scope, job) do
+        {:ok, :queued} ->
+          {:noreply,
+           socket
+           |> update(:provider_requests, &MapSet.put(&1, job))
+           |> put_flash(
+             :notice,
+             t(
+               socket.assigns.locale,
+               "controllers.settings.background_jobs.job_was_successfully_created",
+               %{}
+             )
+           )}
+
+        {:error, _} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :alert,
+             t(socket.assigns.locale, "controllers.application.admin_action_failed", %{})
+           )}
+      end
+    end
+  end
+
   @impl true
   def handle_params(params, uri, socket) do
     query = URI.parse(uri).query || ""
     list = DawarichWeb.ListParams.parse(params, query, @sortable)
-    user = socket.assigns.current_user
 
-    {:noreply,
-     socket
-     |> assign(
-       list: list,
-       query: URI.decode_query(query),
-       columns: @columns,
-       integrations: integrations(Dawarich.UserSettings.get(user))
-     )
-     |> assign(Dawarich.ImportExportIndex.imports(user, list))
-     |> poll()}
+    socket =
+      assign(socket,
+        list: list,
+        query: URI.decode_query(query),
+        columns: @columns,
+        integrations: []
+      )
+
+    refresh(socket)
   end
 
-  defp poll(socket), do: DawarichWeb.ImportsPolling.schedule(socket, socket.assigns.entries)
-
-  defp integrations(settings) do
-    settings = Dawarich.UserSettings.safe(settings)
-
-    for {name, job, key} <- @integrations,
-        Ruby.present?(settings[name <> "_url"]) and Ruby.present?(settings[name <> "_api_key"]),
-        do: {job, key}
+  @impl true
+  def terminate(_reason, socket) do
+    ImportsStallTimer.cancel(socket)
+    :ok
   end
 
   @impl true
@@ -119,11 +156,16 @@ defmodule DawarichWeb.ImportsLive.Index do
               class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-lg w-52 mt-1 border border-base-300"
             >
               <li :for={{job, key} <- @integrations}>
-                <a
-                  href={"/settings/background_jobs?job_name=" <> job}
-                  data-turbo-confirm={t(@locale, "imports.index.are_you_sure", %{})}
-                  data-turbo-method="post"
-                ><.icon name="camera" class="w-4 h-4" /> {t(@locale, key, %{})}</a>
+                <button
+                  type="button"
+                  phx-click="request_provider"
+                  phx-value-job={job}
+                  disabled={MapSet.member?(@provider_requests, job)}
+                  data-confirm={t(@locale, "imports.index.are_you_sure", %{})}
+                  class="min-w-0 whitespace-normal [overflow-wrap:anywhere]"
+                >
+                  <.icon name="camera" class="w-4 h-4" /> {t(@locale, key, %{})}
+                </button>
               </li>
             </ul>
           </div>
@@ -163,7 +205,7 @@ defmodule DawarichWeb.ImportsLive.Index do
             />
           </div>
           <div class="border border-base-300 rounded-xl overflow-x-auto">
-            <table class="table w-full">
+            <table class="table w-full table-fixed max-sm:[&_th]:p-1 max-sm:[&_td]:p-1 max-sm:text-xs max-sm:[&_.whitespace-nowrap]:whitespace-normal [overflow-wrap:anywhere]">
               <thead class="bg-base-200">
                 <tr>
                   <th
@@ -186,11 +228,7 @@ defmodule DawarichWeb.ImportsLive.Index do
                   </th>
                 </tr>
               </thead>
-              <tbody
-                data-controller="imports"
-                data-imports-target="index"
-                data-user-id={@current_user.id}
-              >
+              <tbody>
                 <.row
                   :for={import <- @entries}
                   import={import}

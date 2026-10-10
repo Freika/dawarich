@@ -69,6 +69,8 @@ defmodule DawarichWeb.AdminLiveAuth do
       end
 
     if is_nil(refusal) do
+      user = if socket.assigns[:native], do: Dawarich.Accounts.Principal.project(user), else: user
+
       socket =
         socket
         |> assign(:current_user, user)
@@ -77,9 +79,13 @@ defmodule DawarichWeb.AdminLiveAuth do
       socket = if user.admin == true, do: socket, else: assign(socket, :health, nil)
       {:cont, socket}
     else
+      socket =
+        if socket.assigns[:native],
+          do: DawarichWeb.NotificationSession.Native.clear(socket),
+          else: assign(socket, :current_user, user)
+
       {:halt,
        socket
-       |> assign(:current_user, user)
        |> assign(:health, nil)
        |> refuse(refusal)}
     end

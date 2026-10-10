@@ -1,37 +1,38 @@
 defmodule DawarichWeb.FamiliesLive.Invitations do
   @moduledoc false
   use DawarichWeb, :live_view
-  import DawarichWeb.FamilyInvitations, only: [invitation_index: 1]
-
+  alias DawarichWeb.{FamilyNativeLive, FamilyNativeControls, FamilyNativeInvitations}
   @impl true
-  def mount(_params, _session, socket) do
-    case Dawarich.FamilyPage.read(socket.assigns.current_user, :invitations,
-           now: socket.assigns.now,
-           self_hosted: socket.assigns.self_hosted
-         ) do
-      {:ok, page} -> {:ok, assign(socket, page: page, page_title: nil, rails_js: true)}
-      {:redirect, path, _reason} -> {:ok, redirect(socket, to: path)}
-      _other -> {:ok, redirect(socket, to: "/family/invitations")}
-    end
-  end
-
+  def mount(_, _, socket), do: {:ok, FamilyNativeLive.mount(socket)}
+  @impl true
+  def handle_event(event, params, socket), do: FamilyNativeLive.event(event, params, socket)
+  @impl true
+  def handle_info(_, socket), do: {:noreply, socket}
+  @impl true
+  def handle_params(_, _, socket), do: {:noreply, socket}
   @impl true
   def render(assigns) do
     ~H"""
-    <div
+    <section
       id="family-invitations-shell"
-      class="contents"
-      phx-hook="RailsStimulus"
-      phx-update="ignore"
-      data-turbo="true"
+      class="container mx-auto max-w-4xl py-8 min-w-0 [overflow-wrap:anywhere]"
     >
-      <.invitation_index
+      <FamilyNativeControls.errors errors={@errors} />
+      <header class="flex flex-wrap justify-between gap-3 mb-6">
+        <h1 class="text-2xl font-semibold">{t(@locale, "family_invitations.index.title", %{})}</h1>
+        <a
+          href={if @page.live?, do: "/family", else: "/family/new"}
+          class="btn btn-neutral h-auto whitespace-normal"
+        >{t(@locale, "family_invitations.index.back_to_family", %{})}</a>
+      </header>
+      <FamilyNativeInvitations.invitations
         page={@page}
         locale={@locale}
-        base_url={@base_url}
-        self_hosted={@self_hosted}
+        now={@now}
+        email={@invitation_email}
       />
-    </div>
+      <FamilyNativeControls.confirmation confirmation={@confirmation} page={@page} locale={@locale} />
+    </section>
     """
   end
 end

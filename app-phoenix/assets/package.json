@@ -7,6 +7,7 @@
     "chartkick": "5.0.1",
     "date-fns": "4.1.0",
     "emoji-mart": "5.6.0",
+    "fflate": "0.8.2",
     "spark-md5": "3.0.2",
     "trix": "2.1.19"
   }

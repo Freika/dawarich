@@ -17,8 +17,6 @@ defmodule DawarichWeb.OnboardingScreens do
   attr :locale, :string, required: true
   attr :imports, :integer, required: true
   attr :legacy_trial, :boolean, required: true
-  attr :upload_url, :string, required: true
-  attr :rails_csrf_token, :string, default: nil
 
   def import_screen(assigns) do
     assigns = assign(assigns, :formats, @formats)
@@ -47,56 +45,9 @@ defmodule DawarichWeb.OnboardingScreens do
           </div>
         </div>
       </div>
-      <form
-        class="contents"
-        data-controller="upload"
-        data-upload-url-value={@upload_url}
-        data-upload-field-name-value="import[files][]"
-        data-upload-multiple-value="true"
-        data-upload-user-trial-value={to_string(@legacy_trial)}
-        data-upload-max-imports-value="5"
-        data-upload-current-imports-count-value={@imports}
-        data-upload-preserve-original-filename-value="true"
-        data-upload-target="form"
-        enctype="multipart/form-data"
-        action="/imports"
-        accept-charset="UTF-8"
-        method="post"
-      >
-        <input
-          :if={@rails_csrf_token}
-          type="hidden"
-          name="authenticity_token"
-          value={@rails_csrf_token}
-        />
-        <label class="form-control w-full mb-4">
-          <div class="label">
-            <span class="label-text">{tm(@locale, "select_one_or_multiple_files")}</span>
-          </div>
-          <input name="import[files][]" type="hidden" value="" /><input
-            multiple="multiple"
-            name="import[files][]"
-            class="file-input file-input-bordered w-full"
-            data-upload-target="input"
-            data-direct-upload-url={@upload_url}
-            type="file"
-            id="files"
-          />
-          <div class="text-xs text-base-content/60 mt-2">
-            {tm(@locale, "files_will_be_uploaded_directly_to_storage_please_be_patient")}
-          </div>
-        </label>
-        <div class="flex justify-end">
-          <input
-            type="submit"
-            name="commit"
-            value={tm(@locale, "import_files")}
-            class="btn btn-primary"
-            data-upload-target="submit"
-            data-disable-with={tm(@locale, "import_files")}
-          />
-        </div>
-      </form>
+      <div class="flex justify-end">
+        <a class="btn btn-primary" href="/imports/new">{tm(@locale, "import_files")}</a>
+      </div>
     </div>
     """
   end
@@ -169,12 +120,16 @@ defmodule DawarichWeb.OnboardingScreens do
               {tm(@locale, "scan_this_qr_code_with_the_dawarich_app_to_automatically")}
             </p>
             <div class="flex justify-center">
-              <div class="bg-white p-3 rounded-lg shadow-inner">
-                {Phoenix.HTML.raw(
-                  if @native and is_nil(@current_user.api_key),
-                    do: DawarichWeb.PlacesActor.tracking_qr(@current_user, @base_url <> "/"),
-                    else: Dawarich.QrSvg.api_key(@base_url <> "/", @current_user.api_key, 3)
-                )}
+              <div
+                :if={@native}
+                id="onboarding-api-qr"
+                class="bg-white p-3 rounded-lg shadow-inner"
+                phx-hook="CredentialQr"
+                phx-update="ignore"
+              >
+              </div>
+              <div :if={not @native} class="bg-white p-3 rounded-lg shadow-inner">
+                {Phoenix.HTML.raw(Dawarich.QrSvg.api_key(@base_url <> "/", @current_user.api_key, 3))}
               </div>
             </div>
           </div>

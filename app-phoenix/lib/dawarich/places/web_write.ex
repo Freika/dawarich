@@ -14,7 +14,9 @@ defmodule Dawarich.Places.WebWrite do
            {:ok, values} <- values(action, previous, attrs),
            :ok <- NativeFence.check(repo, id, context),
            [] <- errors(values, context[:locale] || DawarichWeb.Locale.resolve(nil, user, %{})) do
-        {:ok, save(repo, user.id, previous, values, stamp)}
+        saved = save(repo, user.id, previous, values, stamp)
+        Dawarich.Sharing.PublicEvents.enqueue(repo, user.id)
+        {:ok, saved}
       else
         errors when is_list(errors) -> {:invalid, errors}
         result -> result

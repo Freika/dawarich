@@ -2,7 +2,7 @@ defmodule Dawarich.Build.ClassSourceTest do
   use ExUnit.Case, async: false
 
   @moduletag :tmp_dir
-  @css "7fe726391c762506343841c6025a6ba5bc32dc1e0341b38d1150ed67873ff227"
+  @css "bf5df0db1fa90b9ace4656667f558ccf6f4e99cf3a9072a72f82dc89a183c444"
 
   @tag :fix_image_tailwind
   test "Docker asset stage closes over Tailwind class sources and preserves CSS bytes", %{

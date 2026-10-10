@@ -189,7 +189,7 @@ defmodule DawarichWeb.PageEnvelopesTest do
   end
 
   @tag envelope: :frame
-  test "Turbo frame pages use the Rails minimal frame layout while document visits stay native" do
+  test "native family and sharing documents ignore frame hints while deferred pages retain envelopes" do
     for path <- ~w(/tags /map /stats /imports /exports /settings/general /family/new) do
       conn =
         request(path, [
@@ -212,7 +212,9 @@ defmodule DawarichWeb.PageEnvelopesTest do
     refute hub.resp_body =~ "/assets/application.css"
     form = request("/share_links/live/new", [{"turbo-frame", "envelope-frame"}])
     assert form.status == 200
-    refute form.resp_body =~ "<html"
+    assert form.resp_body =~ "<html"
+    assert form.resp_body =~ "id=\"native-sharing\""
+    refute form.resp_body =~ "<turbo-frame"
     conn = request("/tags", [{"x-turbo-request-id", "synthetic-visit"}])
     assert conn.status == 200
     refute conn.resp_body =~ "turbo-visit-control"

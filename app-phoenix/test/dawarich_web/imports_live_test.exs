@@ -74,7 +74,7 @@ defmodule DawarichWeb.ImportsLiveTest do
       assert row_ids(content(html)) == ["import_710102", "import_710101"]
     end
 
-    test "row actions retain native read links and delete uses a LiveView form with a native HTTP fallback",
+    test "row actions retain read links and an owned native delete form",
          %{user: user} do
       Seeds.import!(%{id: 710_111, user_id: user.id, created_at: at(1)})
       Seeds.file!("Import", 710_111, "file", 971_111, 2048, "a.gpx")
@@ -86,8 +86,8 @@ defmodule DawarichWeb.ImportsLiveTest do
             ~s(a.link.link-hover[href="/imports/710111"]),
             ~s(a.btn.btn-ghost.btn-xs[href="/map/v2?import_id=710111"]),
             ~s(a.btn.btn-ghost.btn-xs[href="/points?import_id=710111"]),
-            ~s(a.btn.btn-ghost.btn-xs[href="/imports/710111/download"][data-turbo="false"]),
-            ~s(form[action="/imports/710111"][phx-submit="delete_import"] button[data-testid="import-delete"][data-confirm="Are you sure?"])
+            ~s(a.btn.btn-ghost.btn-xs[href="/imports/710111/download"]),
+            ~s(form[phx-submit="delete_import"] button[data-testid="import-delete"][data-confirm="Are you sure?"])
           ],
           do: assert(count(page, selector) == 1, selector)
 
@@ -161,14 +161,14 @@ defmodule DawarichWeb.ImportsLiveTest do
         {:ok, _view, html} = live_as(owner)
         page = content(html)
 
-        hrefs =
+        offered =
           page
           |> LazyHTML.query(
-            ~s(.dropdown-content a[data-turbo-method="post"][data-turbo-confirm="Are you sure?"])
+            ~s(.dropdown-content button[phx-click="request_provider"][data-confirm="Are you sure?"])
           )
-          |> LazyHTML.attribute("href")
+          |> LazyHTML.attribute("phx-value-job")
 
-        assert hrefs == Enum.map(jobs, &("/settings/background_jobs?job_name=" <> &1)),
+        assert offered == jobs,
                inspect(jobs)
 
         assert count(page, ".join") == if(jobs == [], do: 0, else: 1)
@@ -204,14 +204,12 @@ defmodule DawarichWeb.ImportsLiveTest do
              ]
     end
 
-    test "the table body keeps Rails' Stimulus attributes", %{user: user} do
+    test "native table rows need no Stimulus consumer", %{user: user} do
       Seeds.import!(%{id: 710_141, user_id: user.id})
       {:ok, _view, html} = live_as(user)
 
-      assert count(
-               content(html),
-               ~s(tbody[data-controller="imports"][data-imports-target="index"][data-user-id="7101"])
-             ) == 1
+      assert row_ids(content(html)) == ["import_710141"]
+      assert count(content(html), "[data-controller], [data-imports-target]") == 0
     end
 
     test "a failed import shows its error in a tooltip; a blank error shows none", %{user: user} do
@@ -244,7 +242,7 @@ defmodule DawarichWeb.ImportsLiveTest do
   end
 
   describe "without a socket" do
-    test "the dead render carries the delete link and the Rails CSRF meta A5's app.js posts with",
+    test "the dead native render preserves its delete event and authenticated HTTP CSRF meta",
          %{user: user} do
       Seeds.import!(%{id: 710_161, user_id: user.id})
       session = RailsUser.session(user.id)
@@ -258,7 +256,7 @@ defmodule DawarichWeb.ImportsLiveTest do
 
       assert count(
                doc,
-               ~s(form[action="/imports/710161"][method="post"] button[data-testid="import-delete"])
+               ~s(form[phx-submit="delete_import"] button[data-testid="import-delete"])
              ) == 1
 
       assert count(doc, ~s(meta[name="csrf-param"][content="authenticity_token"])) == 1

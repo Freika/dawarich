@@ -69,7 +69,7 @@ defmodule DawarichWeb.G44AdminBrowserTest do
   end
 
   @tag :g44_consumed_body
-  test "retained HTTP visits toggle retains body consumed by native integration rate limiting",
+  test "retired visits toggle refuses consumed valid and invalid bodies without effects",
        c do
     path =
       "http://www.example.com/settings/background_jobs?settings%5Bvisits_suggestions_enabled%5D=false"
@@ -81,8 +81,8 @@ defmodule DawarichWeb.G44AdminBrowserTest do
       })
 
     saved = consumed_form(c.session, path, raw)
-    assert saved.status == 302
-    assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == "false"
+    assert saved.status == 404
+    assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == nil
 
     assert rows("SELECT count(*) FROM public.job_outbox WHERE aggregate_id=$1", [c.actor.id]) == [
              [0]
@@ -91,9 +91,9 @@ defmodule DawarichWeb.G44AdminBrowserTest do
     invalid = URI.encode_query(%{"_method" => "patch", "authenticity_token" => "invalid"})
 
     assert consumed_form(c.session, String.replace(path, "=false", "=true"), invalid).status ==
-             422
+             404
 
-    assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == "false"
+    assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == nil
   end
 
   @tag :g44_email

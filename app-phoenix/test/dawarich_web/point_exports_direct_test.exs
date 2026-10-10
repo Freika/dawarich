@@ -108,23 +108,50 @@ defmodule DawarichWeb.PointExportsDirectTest do
   end
 
   for owner <- [:sidekiq, :missing] do
-    test "#{owner} owner keeps the exact Rails producer path", ctx do
+    test "#{owner} native producer ownership refuses without a Rails handback", ctx do
       case unquote(owner) do
         :sidekiq -> Ownership.put!(Repo, @key, :sidekiq)
         :missing -> Repo.query!("DELETE FROM phoenix.job_owners WHERE key = $1", [@key])
       end
 
-      assert post(ctx).status == 302
-      assert [[id]] = Repo.query!("SELECT id FROM exports").rows
-
-      assert commands() == [
-               [
-                 "exports.points_created",
-                 %{"export_id" => id, "user_id" => 7441, "locale" => "en"}
-               ]
-             ]
-
+      assert post(ctx).status == 422
+      assert Repo.query!("SELECT id FROM exports").rows == []
+      assert commands() == []
       assert outbox() == []
     end
+  end
+
+  test "native export POST fails closed when producer ownership is unavailable", ctx do
+    Ownership.put!(Repo, @key, :sidekiq)
+    assert post(ctx).status == 422
+    assert commands() == []
+    assert outbox() == []
+    assert Repo.query!("SELECT count(*) FROM exports", [], log: false).rows == [[0]]
+  end
+
+  test "native export POST refuses its stale actor after form admission", ctx do
+    actor = Dawarich.Accounts.get(7441)
+
+    conn =
+      Phoenix.ConnTest.build_conn(:post, "/exports")
+      |> Plug.Conn.assign(:current_user, actor)
+      |> Plug.Conn.assign(:rails_session, ctx.session)
+      |> Plug.Conn.assign(:api_params, %{
+        "start_at" => "2024-03-01",
+        "end_at" => "2024-03-31",
+        "file_format" => "gpx"
+      })
+
+    Repo.query!("UPDATE users SET locked_at=now() WHERE id=7441", [], log: false)
+    assert DawarichWeb.ExportsCreate.call(conn, :create).status == 422
+    assert Repo.query!("SELECT count(*) FROM exports", [], log: false).rows == [[0]]
+  end
+
+  test "retained export POST refuses invalid CSRF without a Rails replay", ctx do
+    conn = post_form(ctx.session, @body, [{"x-csrf-token", String.reverse(ctx.token)}])
+    assert conn.status == 422
+    assert Repo.query!("SELECT count(*) FROM exports", [], log: false).rows == [[0]]
+    assert commands() == []
+    assert outbox() == []
   end
 end

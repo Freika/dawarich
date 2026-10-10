@@ -41,6 +41,49 @@ defmodule Dawarich.Imports.UploadAdmission do
     end)
   end
 
+  def prepare_owned(repo, owner, refs, context) do
+    Enum.reduce_while(refs, {:ok, []}, fn ref, {:ok, items} ->
+      row = Dawarich.Uploads.Records.read(repo, ref, owner)
+
+      with %{state: "pending"} <- row,
+           blob when not is_nil(blob) <- Dawarich.Storage.Blobs.find(row.blob_id, repo),
+           {:ok, source} <- classify(blob, row.original_filename, context) do
+        descriptor = %{"client_wrapped" => row.client_wrapped}
+
+        item = %{
+          blob: blob,
+          name: row.original_filename,
+          source: source,
+          metadata:
+            metadata(
+              descriptor,
+              decode_metadata(blob.metadata),
+              row.original_filename,
+              blob.filename
+            ),
+          upload_user_id: owner
+        }
+
+        {:cont, {:ok, items ++ [item]}}
+      else
+        %{state: "claimed"} -> {:halt, {:error, :claimed}}
+        {:error, _} = error -> {:halt, error}
+        _ -> {:halt, {:error, :not_found}}
+      end
+    end)
+  end
+
+  defp decode_metadata(value) when is_map(value), do: value
+
+  defp decode_metadata(value) when is_binary(value) do
+    case Jason.decode(value) do
+      {:ok, %{} = value} -> value
+      _ -> %{}
+    end
+  end
+
+  defp decode_metadata(_), do: %{}
+
   defp metadata(descriptor, metadata, name, filename) do
     metadata =
       if Map.has_key?(descriptor, "client_wrapped"),

@@ -1417,3 +1417,166 @@ Round-2 extension (2026-10-10), FRB-NATIVE-M5-PUBLIC-DELIVERY: initial and final
 Round-3 link-binding extension (2026-10-10), FRB-NATIVE-M5-PUBLIC-DELIVERY: bind initial and final admission to the exact link/settings/resource/audience read for preparation, rather than independently admitting a newer link while projecting old flags. Restricting stats or description between the first link read and initial admission now refuses HTML/API delivery. Rails request-start link source: `app/controllers/shared/links_controller.rb:35`; API uses `app/controllers/api/v1/shared/trips_controller.rb`. Phoenix: `lib/dawarich/sharing/delivery.ex` prepared-link admission clause, `lib/dawarich_web/shared_link_page.ex`, `lib/dawarich_web/api/shared_controller.ex`. Named tests: “public trip API binds preparation flags to the initial admission”, “public trip HTML binds description flags to the initial admission”. Both RED (200 instead of 404), GREEN and link-binding bypass failures; restored caller coverage recorded in the round-3 report. ED-NATIVE-M5-LINK-BINDING-R3 appended; no DRB. Same final-check atomicity limit.
 
 Round-3 family-viewer extension (2026-10-10), FRB-NATIVE-M5-PUBLIC-DELIVERY: family HTML repeats login eligibility and the original signed session/remember-cookie identity at final Delivery admission, then checks current family consent. It never switches an admitted session to a different remember identity. Password changes, login locks and soft deletion during rendering refuse with 404 and withhold protected content while membership remains. Rails: `app/controllers/shared/links_controller.rb:35` request-start current_user consent. Phoenix: `lib/dawarich_web/rails_auth.ex` delivery_user/2 and `lib/dawarich_web/shared_link_page.ex` allowed callback. Six actual signed/remember HTTP cases named “family shared HTML revalidates {session,remember} viewer after {password,lock,deletion} during preparation”: RED 0/6 (200 instead of 404), GREEN 6/6, request-start-viewer mutation fails all six. ED-NATIVE-M5-FAMILY-VIEWER-DELIVERY-R3 appended; no DRB. Same final-check atomicity limitation.
+### FRB-NATIVE-M4-ABANDONED-UPLOAD — Leaving an upload strands its unattached file
+
+Rails creates direct-upload blobs before form submission. Navigating away only removes browser listeners; it does not abort or purge completed unattached uploads. Native reservations expire after the configured lease, with durable bounded sweeping and retryable physical deletion before metadata removal. Cancelled grants remain tombstoned until their target expires.
+
+- Rails: `app/javascript/controllers/upload_controller.js:40,110,153`; Active Storage direct-upload creation precedes the hidden signed-id field at line 160.
+- Phoenix: `app-phoenix/lib/dawarich/uploads/sweep_worker.ex:11`; `app-phoenix/lib/dawarich/uploads/cleanup_worker.ex:9`; `app-phoenix/lib/dawarich/uploads/records.ex:76`.
+- Test: “expired abandoned uploads are purged once after worker restart”; “cleanup refuses an attached export and retains a late PUT tombstone until target expiry” in `app-phoenix/test/dawarich/uploads_test.exs`.
+- Evidence: `impl-m4.report.md`, A1; Rails direct-upload creation/local upload probe confirms the unattached metadata/file are retained, then purges its own fixture; controller disconnect source proves it submits no cancellation. No Rails browser cancellation reproduction claimed. Native owned reservations only; arbitrary Rails/rich-text blobs and attached exports are excluded. ED-NATIVE-M4-UPLOAD-LIFECYCLE added; no DRB added.
+- CHANGELOG-ready: Remove abandoned native uploads after their lease expires, while preserving files already accepted by an import or export.
+
+### FRB-NATIVE-M4-STORAGE-PATH-LOG — Request logging exposes signed storage capabilities
+
+Rails' request logger emits `request.filtered_path`, which filters query parameters but retains a signed Active Storage path token. Native logging redacts the storage capability and private filename in bare request messages, structured reports and lazy iodata.
+
+- Rails: railties 8.1.3.1 `lib/rails/rack/logger.rb:40,57-59`; Active Storage disk/blob capability routes.
+- Phoenix: `app-phoenix/lib/dawarich/log_redaction.ex:71,86`.
+- Test: “storage request path logs never retain a signed upload capability” in `app-phoenix/test/dawarich_web/native_upload_target_test.exs`; disable-path-scrub mutation fails it.
+- Evidence: `impl-m4.report.md`, A2; actual installed Rails request logger invoked with a synthetic disk path and url/token/secret parameter filters confirms the retained capability. No production token used. Native logging is repaired; retained Rails logging remains unchanged. ED-NATIVE-M4-UPLOAD-TRANSPORT added; no DRB added.
+- CHANGELOG-ready: Keep signed storage capabilities and private download filenames out of native request logs.
+
+### FRB-NATIVE-M4-LEGACY-EXPORT-PATH — Legacy export removal traverses outside public storage
+
+An export URL containing `../` lets Rails' destroy callback delete a local file outside `public`; a parent symlink also escapes that directory. Native deletion rejects nonlocal and dot-segment paths before changing metadata; its durable physical cleanup refuses symlink parents.
+
+- Rails: `app/models/export.rb:59,62`.
+- Phoenix: `app-phoenix/lib/dawarich/exports/delete.ex:17`; `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:5,52`.
+- Test: **unsafe legacy export paths and symlink parents cannot remove outside artifacts**, `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`.
+- Evidence: synthetic actual Rails `remove_attached_file` callback removes `public/../outside.gpx`; native path/symlink mutations fail the named case. Native-only fix; Rails unchanged. ED-NATIVE-M4-EXPORTS-UI; no DRB.
+
+### FRB-NATIVE-M4-LEGACY-EXPORT-REFERENCE — Removing one legacy export deletes another export's file
+
+Rails' destroy callback removes a legacy file without checking other export references. Native cleanup persists its path with the deletion and retains the artifact while an export still references that path; replay and missing-file cleanup are idempotent.
+
+- Rails: `app/models/export.rb:59,62`.
+- Phoenix: `app-phoenix/lib/dawarich/exports/delete.ex:69`; `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:38`.
+- Test: **native legacy export deletion purges only its unshared local artifact after commit**, `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`.
+- Evidence: actual Rails callback on synthetic shared path removes its artifact despite a second model's reference; native reference-check and uncommitted-cleanup mutations fail. Probe models are unpersisted; source has no reference query. This does not claim cross-system concurrent creation/unlink arbitration. Native-only fix; Rails unchanged. ED-NATIVE-M4-EXPORTS-UI; no DRB.
+
+### FRB-NATIVE-M4-NOTIFICATION-INVALIDATION — Reading or deleting leaves other tabs stale
+
+Rails broadcasts creation and explicit broadcast updates, but ordinary opening, read-all, single deletion and delete-all do not invalidate other tabs. Their unread badge and removed detail can remain stale. Phoenix persists an owner-only publication intent in the same transaction as every affected mutation, including restored batches and account removal. Authorized native subscribers reload snapshots; a deleted detail is cleared before redirecting to the notification list.
+
+- Rails: `app/models/notification.rb:4`; `app/controllers/notifications_controller.rb:15,19,25,30`.
+- Phoenix: `app-phoenix/lib/dawarich/notifications/mutations.ex:48`; `app-phoenix/lib/dawarich/notifications/events.ex:13`; `app-phoenix/lib/dawarich_web/notification_session/native.ex:86`.
+- Tests: **delete-all invalidation survives relay restart without its deleted rows**, **rollback emits no native event and duplicate replay converges**, **native subscriptions clear a deleted detail before delivering its owner wake**.
+- Evidence: actual synthetic Rails model/controller mutators instrumented broadcast methods: create emits two calls; open/delete/read-all/delete-all emit zero. No Rails browser reproduction claimed. Owner, replay, rollback and deleted-detail mutations fail. Native-only fix; Rails unchanged. ED-NATIVE-M4-NOTIFICATION-EVENTS; no DRB.
+
+### FRB-NATIVE-M4-FAMILY-INDICATOR-ID — Mobile and desktop indicators repeat the same element identity
+
+Rails renders the same `family-navbar-indicator` frame in both mobile and desktop navigation, so updates cannot address those two indicators independently. Native indicators now have distinct element IDs and refresh from an admitted owner permission snapshot.
+
+- Rails: `app/views/shared/_navbar.html.erb:21,83`; `app/views/families/_navbar_indicator.html.erb:1`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar.ex:50`; `app-phoenix/lib/dawarich_web/components/navbar_parts.ex:75`.
+- Test: **native family indicator follows current owner permissions without swallowing family delivery**, `notifications_native_events_test.exs`.
+- Evidence: source plus two actual partial renders produce two identical frame IDs; no Rails browser stale-indicator reproduction claimed. Repeating the native ID fails the named LiveView test on duplicate elements. Independent legacy frame protocol unchanged. ED-NATIVE-M4-NOTIFICATIONS-UI; no DRB.
+
+
+### FRB-NATIVE-M4-EXTRACTION-DIALOG-NAME — Extraction dialog has no accessible name
+
+The Rails extraction modal has a visible heading without a dialog accessible-name relationship. Screen reader dialog navigation cannot identify its purpose. Native extraction now references its uniquely identified localized heading and disables its LiveView submit while the command is pending.
+
+- Rails: `app/views/imports/_extraction_dialog.html.erb:1,3`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/imports_extraction_dialog.ex:15,22,98`.
+- Test: **native job pages and open dialogs have one accessible label and no Hotwire runtime**, `native_pages_hotwire_free_test.exs`.
+- Evidence: actual synthetic Rails partial render: one dialog, one heading, zero accessible-name attributes. Native static/connected English/German case initially fails missing relationship, then passes; removing native naming and adding a duplicate control label each fail the exact named case. No browser/screen-reader execution claimed. ED-NATIVE-M4-STRUCTURAL-AB; no DRB.
+
+### FRB-NATIVE-M4-RESTORED-EXPORT-PURGE — Restored URLs authorize unrelated file deletion
+
+An account archive can restore a completed export whose URL names an unrelated public file. Deleting that export in Rails removes the file. Native cleanup requires a private creation-time artifact identity with the exact export, owner and path; restore cannot populate that ledger. Unproven legacy URLs remain readable references and their files are retained. Current native producers use blobs; there is no URL-derived provenance backfill.
+
+- Rails: `app/services/users/import_data/exports.rb:70-84`; `app/models/export.rb:59-62`.
+- Phoenix: `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:18`; `app-phoenix/lib/dawarich/exports/delete.ex:69`; private `export_legacy_artifacts` migration.
+- Test: “restored export URLs never authorize deletion of unrelated public files” in `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`; restored error page and another owner's export-like path, mismatched provenance, old path-only job. Existing trusted artifact/reference/symlink cases remain.
+- Ledger: ED-NATIVE-M4-RESTORED-EXPORT-PURGE; no DRB. Rails production remains unchanged.
+
+
+### FRB-NATIVE-M4-DELETED-UPLOAD-RESURRECTION — Deleted imports/accounts can leave replayed remote uploads
+
+Deleting an imported direct upload or its account purges the current remote object, but a still-valid or already in-flight PUT can recreate it after deletion. Rails has no retained native-upload identity or recurring deletion debt for this path. Phoenix transfers a claimed reservation's trusted creation-time key/service and target deadline into durable cleanup debt before removing the blob or owner. Cleanup waits past signing expiry, retains remote identity for bounded recurring late-arrival removal, and excludes shared attachments. Shared purge I/O runs outside its database transactions.
+
+- Rails: `app/models/import.rb:197`; `app/services/users/destroy.rb:17-19,139-142`. Source-backed deletion/lack-of-debt observation; no Rails/S3 server reproduction was executed.
+- Phoenix: `app-phoenix/lib/dawarich/storage/native_purge.ex:63`; `app-phoenix/lib/dawarich/uploads/deletion_debt.ex:4`; `app-phoenix/lib/dawarich/exports/purge_worker.ex:35`.
+- Tests: “claimed remote import deletion retains debt for replay and in-flight arrivals” and “claimed remote account destruction retains debt after owner removal”, `claimed_upload_cleanup_test.exs`, through actual Imports.delete/DestroyLease/DestroyService and Users.DestroyWorker. Deterministic simulated remote object arrivals; local verified-read adapter uses the same stored service identity.
+- ED-NATIVE-M4-DELETED-UPLOAD-DEBT; no DRB. Rails source remains unchanged.
+### FRB-NATIVE-M4-FAMILY-CAPACITY — Concurrent invitations can oversubscribe a Cloud family
+
+Rails checks invitation capacity before its transaction without locking the family.
+Two invitations can both take the final available seat. Native scoped commands
+lock family, users and memberships before repeating capacity admission.
+
+- Rails: `app/services/families/invite.rb:19,21`.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_commands.ex:90`.
+- Test: `families_commands_test.exs`, “concurrent invitations serialize the final Cloud seat”; deterministic two-connection lock-removal mutation fails.
+- Ledger: ED-NATIVE-M4-FAMILY-CAPACITY; no DRB added. Rails production code is unchanged.
+
+### FRB-NATIVE-M4-FAMILY-DELIVERY — A removed viewer can keep receiving family locations
+
+Rails checks membership and family access at subscription. Its stream callback
+then transmits subsequent coordinates without repeating either check. A removed
+member or viewer whose family access lapses can keep the old subscription.
+Native family pages re-admit every delivery, read currently authorized snapshots,
+clear refused state, and erase browser maps and member rows on disconnect.
+Versioned timers independently expire silent consent and access grants.
+
+- Rails: `app/channels/family_locations_channel.rb:6,9,10`.
+- Phoenix: `app-phoenix/lib/dawarich_web/native_family_auth.ex:17`; `app-phoenix/lib/dawarich_web/family_delivery.ex:17` and `assets/js/hooks/family_map.js` lifecycle.
+- Tests: “withdrawn consent or removed membership discards queued coordinates before rendering”; “reconnect snapshots recover missed invalidation and family refusal clears private state”; timer-version and info-admission mutations fail.
+- Ledger: ED-NATIVE-M4-FAMILY-DELIVERY; no DRB added. Independent wire adapters remain separately supported; native pages do not subscribe to coordinate streams.
+
+### FRB-NATIVE-M4-PUBLIC-DELIVERY — Public live maps retain revoked subscriptions
+
+Rails admits a public link once when connecting and subscribes to its coordinate stream. An already connected reader can retain old content after revocation, expiry, phrase rotation or audience loss. Native public readers re-admit before each snapshot and clear silent expiry with a versioned deadline timer. Native browser hooks abort pending loads and erase maps, markers, images, replay timers and data on refusal/disconnect. Snapshot construction repeats admission and privacy checks after loading, preventing queued revoked data from being published; independent wire adapters retain their external protocol.
+
+- Rails: `app/channels/application_cable/connection.rb:27,29`; `app/channels/shared_location_channel.rb:5,8`.
+- Phoenix: `app-phoenix/lib/dawarich/sharing/public.ex:20`; `app-phoenix/lib/dawarich_web/public_share_live.ex:47`.
+- Tests: “queued public update after revoke or phrase rotation clears old content before delivery”; “public expiry clears a silent connection and reconnect cannot revive it”; admission/cache/timer mutations fail.
+- Ledger: ED-NATIVE-M4-PUBLIC-ADMISSION; no DRB added. Rails production code unchanged.
+
+
+### FRB-NATIVE-M4-TRACK-ROUTE — Shared tracks ignore the disabled route option
+
+Rails renders a shared track map even when its owner disables the route section. Native public track readers omit both the map and route snapshot when `show_route` is false; optional stats/photos retain their independent settings.
+
+- Rails: `app/views/shared/links/_track.html.erb:6`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/shared_resource_page/track.html.heex:4`; `app-phoenix/lib/dawarich/sharing/public_snapshot.ex:28`.
+- Test: “native shared track honors the disabled route section”; track-section mutation fails, restoration passes.
+- Ledger: ED-NATIVE-M4-TRACK-ROUTE; no DRB added. Rails production code unchanged.
+
+### FRB-NATIVE-M4-FAMILY-SNAPSHOT — Consent can change while family coordinates load
+
+Rails captures sharing members before fetching their points and does not recheck before returning locations/history. Consent withdrawal, expiry or membership removal during that read can still disclose coordinates. Native scoped snapshots repeat actor/access admission and compare membership/consent/access fingerprints at the current clock before returning.
+
+- Rails: `app/services/families/locations.rb:17,19,28,31,43,50`.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_reads.ex` snapshot validation.
+- Tests: `FamiliesSnapshotRaceTest`, ten named locations/history in-flight consent/member/viewer/expiry/access cases; bypass-final-validation mutation fails all ten.
+- Ledger: ED-NATIVE-M4-FAMILY-SNAPSHOT; no DRB added. Distinct from the existing subscription-only FAMILY-DELIVERY fix.
+
+### FRB-NATIVE-M4-UNLOCK-LOGS — Public unlock phrases reach unfiltered logs
+
+Rails accepts the public unlock secret under phrase, but its configured partial parameter filters contain neither phrase nor magic_phrase. Request parameter logging can expose that secret. Phoenix adds phrase to the common Phoenix/LogRedaction vocabulary, covering structured reports, lazy iodata, query strings and JSON without changing unlock semantics.
+
+- Rails: `app/controllers/shared/links_controller.rb:18`; `config/initializers/filter_parameter_logging.rb:8`.
+- Phoenix: `app-phoenix/config/config.exs:39`; shared `Dawarich.LogRedaction` filter.
+- Test: “public unlock phrase is filtered in structured reports lazy iodata and query strings”; exclude-phrase-from-sensitivity mutation fails.
+- Ledger: ED-NATIVE-M4-UNLOCK-LOGS; no DRB added. Rails production code unchanged.
+
+### FRB-NATIVE-M4-FAMILY-REQUEST-ACCESS — A waiting consent response can outlive Cloud family access
+
+Rails checks family access before invoking the response service, then waits for the request row lock. The locked decision checks only request status/expiry. If family access expires during that wait, accepting the still-pending request enables location sharing after admission has lapsed. Phoenix refreshes the clock and repeats the same effective family admission rule after the request lock, before consent, request, notification or durable-event writes.
+
+- Rails: `app/controllers/family/location_requests_controller.rb:5,30`; `app/services/families/respond_to_location_request.rb:17,36,41`. A private transactional Rails oracle moved the clock at the real `with_lock` boundary and reproduced accepted consent after access expired; all rows rolled back.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_command_dispatch.ex:91`; shared admission in `families/native_commands.ex:119`.
+- Test: `families_commands_test.exs`, “Cloud access expiring at the locked request decision refuses consent without effects”; a controlled clock crosses access expiry while request expiry stays future. Skipping final admission fails the exact refusal; restored GREEN.
+- Ledger: ED-NATIVE-M4-FAMILY-REQUEST-ACCESS; no DRB added. Rails production code is unchanged.
+
+### FRB-NATIVE-M4-FAMILY-PUBLICATION — Family reads can publish data after in-flight revocation
+
+Rails family pages and location/history API reads capture membership/access and sharing consent before loading private rows. Removal, consent withdrawal or a crossed deadline during those later reads can still publish member email, last seen or coordinates. Phoenix routes native pages, invitation reveal and retained page/API readers through one transactional before/after publication epoch and fresh consent/access clock. Changed grants discard the document; late location refusal erases the private page as well as the map.
+
+- Rails: `app/controllers/families_controller.rb:12-23`; `app/services/families/locations.rb:14-21,43-60` (source-backed observation; no Rails runtime oracle claimed).
+- Phoenix: `app-phoenix/lib/dawarich/families/snapshot.ex:6`; `app-phoenix/lib/dawarich_web/family_delivery.ex:75`.
+- Tests: `families_snapshot_race_test.exs`, sixty-five `'<reader> rejects private publication after in-flight <change> revocation'` cases; one shared bypass mutation fails every reader. `family_native_delivery_test.exs`, 'late location refusal erases the private page confirmation and history before rendering'.
+- Ledger: ED-NATIVE-M4-FAMILY-PUBLICATION; no DRB. This extends the earlier subscription-time FRB-NATIVE-M4-FAMILY-DELIVERY to page/API publication. Rails production source is unchanged.

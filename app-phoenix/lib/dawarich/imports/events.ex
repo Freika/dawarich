@@ -2,8 +2,18 @@ defmodule Dawarich.Imports.Events do
   @moduledoc false
   def subscribe(user_id), do: Phoenix.PubSub.subscribe(Dawarich.PubSub, topic(user_id))
 
-  def broadcast(user_id),
-    do: Phoenix.PubSub.broadcast(Dawarich.PubSub, topic(user_id), :imports_changed)
+  def subscribe_native(user_id),
+    do: Phoenix.PubSub.subscribe(Dawarich.PubSub, topic(user_id) <> ":native")
+
+  def broadcast(user_id) do
+    Phoenix.PubSub.broadcast(Dawarich.PubSub, topic(user_id), :imports_changed)
+
+    Phoenix.PubSub.broadcast(
+      Dawarich.PubSub,
+      topic(user_id) <> ":native",
+      {:domain_changed, user_id, :imports}
+    )
+  end
 
   def enqueue(repo, user_id, event_id, stage) do
     intent =

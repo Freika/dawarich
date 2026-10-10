@@ -3,9 +3,8 @@ defmodule DawarichWeb.A12f3bS07Test do
   import Dawarich.Test.Await
   alias Dawarich.Test.A12f3bShareCase, as: S
   alias Dawarich.ShareManagement.Mutations
-  alias DawarichWeb.ShareManagementForm
+  alias Dawarich.Sharing
   alias Dawarich.Cable.Bus
-  import Plug.Conn
 
   setup do
     actor = S.seed!()
@@ -27,36 +26,38 @@ defmodule DawarichWeb.A12f3bS07Test do
   end
 
   @tag a12f3b_case: "S07a"
-  test "live trip and hub residual transports preserve all five writes", %{actor: actor} do
-    for type <- ["live", "trip"],
-        action <- [:create, :regenerate, :regenerate_phrase, :revoke, :create, :destroy] do
-      params = if action == :create, do: S.params("track"), else: %{}
-      params = Map.put(params, "hub", "false")
+  test "native S07a live trip and hub commands preserve all five writes", %{actor: actor} do
+    scope = Dawarich.Accounts.Scope.for_user(actor, "en")
 
-      request =
-        S.request(actor, type, action, params)
-        |> Map.put(:path_params, if(type == "trip", do: %{"trip_id" => "99101"}, else: %{}))
+    for type <- [:live, :trip] do
+      resource =
+        if type == :trip,
+          do: %{type: type, owner_id: actor.id, id: 99101},
+          else: %{type: type, owner_id: actor.id}
 
-      response = ShareManagementForm.call(request, {type, action})
-      assert response.status == 200
-
-      assert get_resp_header(response, "content-type") == [
-               "text/vnd.turbo-stream.html; charset=utf-8"
-             ]
-
-      assert response.resp_body =~ ~s(action="update" target="share-hub-body")
+      for action <- [:create, :regenerate, :regenerate_phrase, :revoke, :create, :destroy] do
+        params = if action == :create, do: S.params("track"), else: %{}
+        assert {:ok, result} = Sharing.change(scope, resource, action, params, now: S.now())
+        refute inspect(result) =~ "magic_phrase"
+      end
     end
 
-    json =
-      S.request(actor, "live", :create, Map.put(S.params("track"), "format", "json"))
-      |> put_req_header("accept", "application/json")
-      |> put_req_header("content-type", "application/json")
+    assert {:ok, _} =
+             Sharing.change(scope, %{type: :live, owner_id: actor.id}, :create, S.params("track"),
+               now: S.now()
+             )
 
-    assert ShareManagementForm.admission(json) == :ok
-    assert ShareManagementForm.call(json, {"live", :create}).status == 302
     before = S.rows()
-    csrf = json |> delete_req_header("x-csrf-token")
-    assert {:replay, "authenticity token"} = ShareManagementForm.admission(csrf)
+
+    assert {:error, :stale_session} =
+             Sharing.change(
+               Dawarich.Accounts.Scope.for_user(nil, "en"),
+               %{type: :live, owner_id: actor.id},
+               :create,
+               S.params("track"),
+               now: S.now()
+             )
+
     assert S.rows() == before
   end
 

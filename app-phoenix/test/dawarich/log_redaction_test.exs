@@ -41,6 +41,26 @@ defmodule Dawarich.LogRedactionTest do
     end)
   end
 
+  test "public unlock phrase is filtered in structured reports lazy iodata and query strings" do
+    require Logger
+    phrase = "synthetic-public-unlock-privacy-probe"
+
+    log =
+      capture_log(fn ->
+        Logger.error(%{event: "public_unlock", phrase: phrase})
+        Logger.error(fn -> ["public_unlock ", ["phrase=", phrase, "&attempt=1"]] end)
+        Logger.error(fn -> JSON.encode_to_iodata!(%{event: "public_unlock", phrase: phrase}) end)
+        Logger.flush()
+      end)
+
+    assert log =~ "public_unlock"
+    assert log =~ "[FILTERED]"
+    refute log =~ phrase
+
+    assert Phoenix.Logger.filter_values(%{"phrase" => phrase, "attempt" => 1}) ==
+             %{"phrase" => "[FILTERED]", "attempt" => 1}
+  end
+
   test "crash report never contains submitted secrets" do
     log =
       crash_with(
@@ -132,5 +152,100 @@ defmodule Dawarich.LogRedactionTest do
     after
       if previous, do: :persistent_term.put(key, previous), else: :persistent_term.erase(key)
     end
+  end
+
+  test "database error reports redact secret query details and crash metadata" do
+    secret = "synthetic-query-error-capability"
+
+    error = %Postgrex.Error{
+      query: "SELECT id FROM family_invitations WHERE token=$1",
+      message: "database error containing #{secret}",
+      postgres: %{
+        code: :invalid_text_representation,
+        pg_code: "22P02",
+        severity: "ERROR",
+        message: "invalid input: #{secret}"
+      }
+    }
+
+    event = %{
+      level: :error,
+      msg: {:report, %{reason: error}},
+      meta: %{crash_reason: {error, []}, mfa: {DBConnection.Connection, :handle_event, 4}}
+    }
+
+    filtered = Dawarich.LogRedaction.filter(event, [])
+    assert inspect(filtered) =~ "22P02"
+    assert inspect(filtered) =~ "[FILTERED]"
+    assert not String.contains?(inspect(filtered), secret)
+  end
+
+  test "DBConnection formatted Postgrex errors never carry secret query details" do
+    require Logger
+    secret = "synthetic-disconnect-capability"
+
+    error = %Postgrex.Error{
+      query: "SELECT id FROM family_invitations WHERE token=$1",
+      postgres: %{
+        code: :invalid_text_representation,
+        pg_code: "22P02",
+        severity: "ERROR",
+        message: "invalid input: #{secret}"
+      }
+    }
+
+    log =
+      capture_log(fn ->
+        Logger.error(fn ->
+          ["Postgrex disconnected: " | Exception.format_banner(:error, error, [])]
+        end)
+
+        Logger.flush()
+      end)
+
+    assert log =~ "Postgrex.Error"
+    assert not String.contains?(log, secret)
+  end
+
+  test "nil-query execution diagnostics preserve codes without capabilities in messages or crash metadata" do
+    secret = "opaque-nil-query-invitation"
+
+    error = %Postgrex.Error{
+      query: nil,
+      postgres: %{
+        code: :unique_violation,
+        pg_code: "23505",
+        severity: "ERROR",
+        message: "duplicate key value violates unique constraint",
+        detail: "Key (token)=(#{secret}) already exists.",
+        hint: secret
+      }
+    }
+
+    event = %{
+      level: :error,
+      msg: {:report, %{execution_error: error}},
+      meta: %{crash_reason: {error, []}}
+    }
+
+    filtered = Dawarich.LogRedaction.filter(event, [])
+    assert not String.contains?(inspect(filtered), secret)
+    assert inspect(filtered) =~ "23505"
+    assert inspect(filtered) =~ "unique_violation"
+
+    log =
+      capture_log(fn ->
+        require Logger
+        Logger.error(%{execution_error: error}, crash_reason: {error, []})
+
+        Logger.error(fn ->
+          ["Postgrex disconnected: ", Exception.format_banner(:error, error, [])]
+        end)
+
+        Logger.flush()
+      end)
+
+    assert not String.contains?(log, secret)
+    assert log =~ "Postgrex.Error"
   end
 end

@@ -3,7 +3,6 @@ defmodule DawarichWeb.OnboardingModalTest do
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
-  import Dawarich.Test.FormIsolation
 
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.RailsCsrf
@@ -21,10 +20,10 @@ defmodule DawarichWeb.OnboardingModalTest do
     }
   end
 
-  defp dead(user), do: RailsUser.signed_in(user.id) |> get("/notifications") |> html_response(200)
+  defp dead(user), do: RailsUser.signed_in(user.id) |> get("/stats") |> html_response(200)
 
   defp live_as(user),
-    do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/notifications")
+    do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/stats")
 
   defp count(html, selector),
     do:
@@ -34,17 +33,19 @@ defmodule DawarichWeb.OnboardingModalTest do
       |> LazyHTML.to_tree()
       |> length()
 
-  test "a Phoenix page renders the modal and the unlock host as LiveView-ignored Rails Stimulus islands, before and after the socket joins",
+  test "a deferred hybrid page renders the modal and the unlock host as LiveView-ignored Rails Stimulus islands, before and after the socket joins",
        %{user: user} do
     html = dead(user)
-    assert_form_isolated(html, "#onboarding-modal form[data-controller='upload']")
+    assert count(html, "#onboarding-modal a[href='/imports/new']") == 1
+    assert count(html, "#onboarding-modal form[data-controller='upload']") == 0
     assert count(html, @modal) == 1
     assert count(html, @host) == 1
 
     {:ok, view, _html} = live_as(user)
     assert has_element?(view, @modal)
     assert has_element?(view, @host)
-    assert_form_isolated(render(view), "#onboarding-modal form[data-controller='upload']")
+    assert has_element?(view, "#onboarding-modal a[href='/imports/new']")
+    refute has_element?(view, "#onboarding-modal form[data-controller='upload']")
   end
 
   test "the track screen's QR code is api_key_qr_code(current_user, size: 3) for Rails' root URL",
@@ -72,25 +73,23 @@ defmodule DawarichWeb.OnboardingModalTest do
     refute state =~ "scale(3)"
   end
 
-  test "the import form carries the session's masked Rails CSRF token without autocomplete",
+  test "deferred onboarding import entry links to complete native uploads without changing dismiss policy",
        %{user: user} do
     session = RailsUser.session(user.id)
+    conn = build_conn() |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+    html = conn |> get("/stats") |> html_response(200)
+    assert count(html, "#getting_started a[href='/imports/new']") == 1
+    assert count(html, "#getting_started form[action='/imports']") == 0
 
-    [input] =
-      Phoenix.ConnTest.build_conn()
-      |> Phoenix.ConnTest.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-      |> get("/notifications")
-      |> html_response(200)
+    [token] =
+      html
       |> LazyHTML.from_document()
-      |> LazyHTML.query(
-        ~s(#getting_started form[action="/imports"] > input[type="hidden"][name="authenticity_token"])
-      )
-      |> LazyHTML.to_tree()
+      |> LazyHTML.query("meta[name=csrf-token]")
+      |> LazyHTML.attribute("content")
 
-    {"input", attrs, []} = input
-    attrs = Map.new(attrs)
-
-    assert RailsCsrf.valid?(session, attrs["value"])
-    refute Map.has_key?(attrs, "autocomplete")
+    assert RailsCsrf.valid?(session, token)
+    before = Dawarich.Accounts.get(user.id).settings
+    assert conn |> get("/imports/new") |> html_response(200) =~ "phx-import-upload"
+    assert Dawarich.Accounts.get(user.id).settings == before
   end
 end

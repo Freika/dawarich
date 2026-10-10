@@ -51,11 +51,14 @@ defmodule DawarichWeb.A10cOwnershipTest do
     %{upstream: upstream, port: port}
   end
 
-  test "owns supported achievement actions and rolls them back before any effect", ctx do
-    {200, _, body} =
-      exchange(ctx, "PATCH", "/achievements/country_de/toggle_sharing", ~s({"enabled":true}))
+  test "native achievement sharing persists while retained unlock HTTP owns and rolls back effects",
+       ctx do
+    user = Dawarich.Accounts.get(44001)
+    scope = Dawarich.Accounts.Scope.for_user(user, "en")
+    resource = %{type: :achievement, key: "country_de", owner_id: user.id}
 
-    assert Jason.decode!(body)["enabled"] == true
+    assert {:ok, %{enabled: true}} =
+             Dawarich.Sharing.change(scope, resource, :update, %{"enabled" => true})
 
     assert [[true]] ==
              rows(
@@ -79,8 +82,8 @@ defmodule DawarichWeb.A10cOwnershipTest do
 
     form = URI.encode_query(%{"_method" => "patch", "enabled" => "false"})
 
-    assert {302, _, ""} =
-             exchange(ctx, "POST", "/achievements/country_de/toggle_sharing", form, form: true)
+    assert {:ok, %{enabled: false}} =
+             Dawarich.Sharing.change(scope, resource, :update, %{"enabled" => false})
 
     assert [[false]] ==
              rows(
@@ -92,8 +95,6 @@ defmodule DawarichWeb.A10cOwnershipTest do
     )
 
     for {method, path, raw, opts} <- [
-          {"PATCH", "/achievements/country_de/toggle_sharing", ~s({"enabled":true}), []},
-          {"POST", "/achievements/country_de/toggle_sharing", form, [form: true]},
           {"POST", "/achievements/unlocks/next", "{}", []},
           {"POST", "/achievements/unlocks/42001/seen", ~s({"claim_token":"synthetic"}), []},
           {"POST", "/achievements/unlocks/dismiss", ~s({"batch_end_id":42001}), []}
@@ -113,14 +114,11 @@ defmodule DawarichWeb.A10cOwnershipTest do
         ] do
       before = snapshot()
 
-      assert {203, _, "Rails"} =
-               exchange(
-                 ctx,
-                 "PATCH",
-                 "/achievements/country_de/toggle_sharing",
-                 raw,
-                 opts ++ [proxy: true]
-               )
+      assert {404, _, _} =
+               exchange(ctx, "PATCH", "/achievements/country_de/toggle_sharing", raw, opts)
+
+      assert {404, _, _} =
+               exchange(ctx, "POST", "/achievements/country_de/toggle_sharing", form, form: true)
 
       assert snapshot() == before
     end
@@ -179,19 +177,18 @@ defmodule DawarichWeb.A10cOwnershipTest do
     assert rows("SELECT to_jsonb(u) FROM users u WHERE id=44002") == other
     assert Enum.drop(snapshot(), 1) == Enum.drop(before, 1)
 
+    user = Dawarich.Accounts.get(44001)
     rows("UPDATE users SET settings='[]' WHERE id=44001")
     before = snapshot()
 
-    assert {203, headers, "Rails"} =
-             exchange(
-               ctx,
-               "PATCH",
-               "/achievements/country_de/toggle_sharing?locale=de",
-               ~s({"enabled":true}),
-               proxy: true
+    assert {:error, :unavailable} =
+             Dawarich.Sharing.change(
+               Dawarich.Accounts.Scope.for_user(user, "en"),
+               %{type: :achievement, key: "country_de", owner_id: user.id},
+               :update,
+               %{"enabled" => true}
              )
 
-    assert values(headers, "set-cookie") == []
     assert snapshot() == before
   end
 
@@ -244,7 +241,13 @@ defmodule DawarichWeb.A10cOwnershipTest do
           {"POST", "/admin/settings/test_geocoding", ""}
         ] do
       before = snapshot()
-      assert {203, _, _} = exchange(ctx, method, path, raw, proxy: true, form: method == "POST")
+
+      if path == "/settings/background_jobs" do
+        assert {404, _, _} = exchange(ctx, method, path, raw, form: method == "POST")
+      else
+        assert {203, _, _} = exchange(ctx, method, path, raw, proxy: true, form: method == "POST")
+      end
+
       assert snapshot() == before
     end
 

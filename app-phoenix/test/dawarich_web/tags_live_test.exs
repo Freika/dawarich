@@ -137,7 +137,9 @@ defmodule DawarichWeb.TagsLiveTest do
     refute render(view) =~ "Saved by Rails"
   end
 
-  test "signing out in another tab ends the native session on the next event", %{user: user} do
+  test "signing out in another tab immediately ends the native session without deleting a tag", %{
+    user: user
+  } do
     tag!(user, 83918)
     session = RailsUser.session(user.id)
 
@@ -149,8 +151,8 @@ defmodule DawarichWeb.TagsLiveTest do
 
     DawarichWeb.NotificationSession.signed_out(session)
 
-    assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
-             view |> element("#tags-83918 button[phx-click='delete']") |> render_click()
+    assert_redirect(view, "/users/sign_in", 1_000)
+    assert Repo.query!("SELECT id FROM tags WHERE id=83918", [], log: false).rows == [[83918]]
   end
 
   test "a reconnect carrying another user's session is refused", %{user: user} do

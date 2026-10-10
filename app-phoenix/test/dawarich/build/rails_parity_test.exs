@@ -7,12 +7,12 @@ defmodule Dawarich.Build.RailsParityTest do
   @moduletag :tmp_dir
   @moduletag timeout: 300_000
 
-  @i18n "96491df05ef8ffc0044689e3f3b801085ca852ca43d07285fdee77b569c8ee46"
+  @i18n "ff72bd2fbe780a84b37cfd0c5ef6e9fa28c01e3023326295224541f1b1e4bd39"
   @achievements "6709610e637f512e76f7e5e1531f3be92c51e70fbf17564f6c3d609458a78198"
   @importmap "285e1582c34cd0077430983506cd849ed9c8a704b9e2a0316a54d240aee46aa6"
   @assets "f5eac41c61aea9ec2d70f4d9c33c45eaeb7a48694d658e1a6de8ddae71fa172a"
   @manifest "3a7b4171d9c9173a2c4b48e28efde792e1b4259fb7d04c5b53915e1627d6f07f"
-  @css "7fe726391c762506343841c6025a6ba5bc32dc1e0341b38d1150ed67873ff227"
+  @css "bf5df0db1fa90b9ace4656667f558ccf6f4e99cf3a9072a72f82dc89a183c444"
 
   setup_all do
     root = Build.root()

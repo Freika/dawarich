@@ -71,7 +71,8 @@ defmodule DawarichWeb.AccountLiveTest do
 
   test "a new API key replaces the old one on the page after a confirmation", %{session: session} do
     {:ok, view, html} = live_as(session)
-    assert html =~ "account-live-old-key"
+    refute html =~ "account-live-old-key"
+    assert revealed_key(session) == "account-live-old-key"
     assert has_element?(view, "#rotate-api-key[data-confirm][phx-disable-with]")
 
     Dawarich.TtlCache.put({DawarichWeb.RateLimit, "account-live-old-key"}, %{plan: 1}, 60_000)
@@ -80,10 +81,20 @@ defmodule DawarichWeb.AccountLiveTest do
     html = view |> element("#rotate-api-key") |> render_click()
 
     refute api_key() == "account-live-old-key"
-    assert html =~ api_key()
+    refute html =~ api_key()
+    assert revealed_key(session) == api_key()
     refute html =~ "account-live-old-key"
     assert api_status("account-live-old-key") == 401
     assert api_status(api_key()) == 200
+  end
+
+  defp revealed_key(session) do
+    conn_for(session)
+    |> put_req_header("x-csrf-token", DawarichWeb.RailsCsrf.masked_token(session))
+    |> get("/native/account/key")
+    |> Map.fetch!(:resp_body)
+    |> Jason.decode!()
+    |> Map.fetch!("api_key")
   end
 
   defp api_status(key) do
@@ -243,31 +254,44 @@ defmodule DawarichWeb.AccountLiveTest do
            ).rows == [[1]]
   end
 
-  def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
+  def handle_query(_event, _measurements, meta, pid) do
+    table =
+      Enum.find(
+        ~w(users notifications imports family_memberships supporters),
+        &String.contains?(meta.query, &1)
+      ) || "other"
+
+    send(pid, {:query, table})
+  end
 
   defp queries(fun) do
     id = "account-budget-#{System.unique_integer([:positive])}"
     :telemetry.attach(id, [:dawarich, :repo, :query], &__MODULE__.handle_query/4, self())
     result = fun.()
     :telemetry.detach(id)
-    {result, drain(0)}
+    {result, drain(%{})}
   end
 
   defp drain(n) do
     receive do
-      :query -> drain(n + 1)
+      {:query, table} -> drain(Map.update(n, table, 1, &(&1 + 1)))
     after
       0 -> n
     end
   end
 
-  test "the page stays within the Rails-era query budget", %{session: session} do
+  test "account business queries retain their budget with explicit subscription admission", %{
+    session: session
+  } do
     {conn, static} =
       queries(fn -> get(conn_for(session) |> RailsUser.connecting_as(9893), "/users/edit") end)
 
     {_, connected} = queries(fn -> {:ok, _view, _html} = live(conn) end)
 
-    assert static <= 4
-    assert connected <= 4
+    assert Enum.sum(Map.values(static)) - 1 <= 4
+    assert static["users"] == 3
+    assert connected["users"] == 5
+    assert Map.delete(static, "users") == Map.delete(connected, "users")
+    assert Enum.sum(Map.values(connected)) - 3 <= 4
   end
 end

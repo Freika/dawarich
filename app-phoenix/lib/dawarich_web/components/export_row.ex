@@ -1,5 +1,6 @@
 defmodule DawarichWeb.ExportRow do
   @moduledoc false
+  alias Phoenix.LiveView.JS
   use DawarichWeb, :html
 
   import DawarichWeb.HumanDatetime, only: [human_datetime: 1]
@@ -28,11 +29,11 @@ defmodule DawarichWeb.ExportRow do
     ~H"""
     <tr id={"export_#{@export.id}"} class="hover:bg-base-200/50 transition-colors">
       <td class="px-4 py-3">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 min-w-0">
           <div class={"w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 " <> @css}>
             <.icon name={@format_icon} class="w-4 h-4" />
           </div>
-          <div>
+          <div class="min-w-0 [overflow-wrap:anywhere]">
             <div class="font-medium">{@export.name}</div>
             <div class="text-xs text-base-content/50">
               {@export.file_format && String.upcase(@export.file_format)} {t(
@@ -52,7 +53,7 @@ defmodule DawarichWeb.ExportRow do
         <.human_datetime locale={@locale} at={@export.created} />
       </td>
       <td class="px-4 py-3 text-right">
-        <div class="flex items-center gap-1 justify-end">
+        <div class="flex flex-wrap items-center gap-1 justify-end">
           <div
             :if={@download}
             class="tooltip"
@@ -64,12 +65,15 @@ defmodule DawarichWeb.ExportRow do
             /></a>
           </div>
           <div class="tooltip" data-tip={t(@locale, "exports.table_row.delete_export", %{})}>
-            <a
-              href={"/exports/#{@export.id}"}
+            <button
+              type="button"
               class="btn btn-ghost btn-xs text-error hover:bg-error/10"
-              data-turbo-confirm={t(@locale, "exports.table_row.are_you_sure", %{})}
-              data-turbo-method="delete"
-            ><.icon name="trash-2" class="w-4 h-4" /></a>
+              phx-click={
+                JS.push("choose_export_delete", value: %{id: to_string(@export.id)})
+                |> JS.dispatch("dawarich:open-dialog", to: "#export-delete-dialog")
+              }
+              aria-label={t(@locale, "exports.table_row.delete_export", %{})}
+            ><.icon name="trash-2" class="w-4 h-4" /></button>
           </div>
         </div>
       </td>

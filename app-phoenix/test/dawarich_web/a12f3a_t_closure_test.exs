@@ -12,6 +12,8 @@ defmodule DawarichWeb.A12f3aTClosureTest do
   end
 
   setup do
+    upstream = Application.get_env(:dawarich, :rails_upstream)
+    Application.delete_env(:dawarich, :rails_upstream)
     previous = Application.get_env(:dawarich, :jobs_repo)
     hosted = System.get_env("SELF_HOSTED")
     jwt = System.get_env("JWT_SECRET_KEY")
@@ -19,6 +21,10 @@ defmodule DawarichWeb.A12f3aTClosureTest do
     Application.put_env(:dawarich, :jobs_repo, Repo)
 
     on_exit(fn ->
+      if upstream,
+        do: Application.put_env(:dawarich, :rails_upstream, upstream),
+        else: Application.delete_env(:dawarich, :rails_upstream)
+
       if jwt, do: System.put_env("JWT_SECRET_KEY", jwt), else: System.delete_env("JWT_SECRET_KEY")
       Application.put_env(:dawarich, :jobs_repo, previous)
       if hosted, do: System.put_env("SELF_HOSTED", hosted), else: System.delete_env("SELF_HOSTED")

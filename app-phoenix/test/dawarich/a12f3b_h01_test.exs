@@ -32,7 +32,8 @@ defmodule Dawarich.A12f3bH01Test do
   end
 
   @tag a12f3b_case: "H01a"
-  test "every retained part B source route has an executable native owner", c do
+  @tag :track_c_r2
+  test "retained part B routes execute current native sessions and independent HTTP writes", c do
     for key <- [:rails_routes, :phoenix_auth, :rails_upstream] do
       current = Application.fetch_env(:dawarich, key)
       Application.delete_env(:dawarich, key)
@@ -63,17 +64,25 @@ defmodule Dawarich.A12f3bH01Test do
       Phoenix.Router.route_info(Router, "GET", "/family", "www.example.com")
 
     assert Enum.map(family_session.extra.on_mount, & &1.id) ==
-             [{DawarichWeb.LiveAuth, :default}, {DawarichWeb.FamilyGate, :default}]
+             [{DawarichWeb.NativeFamilyAuth, :require_user}]
 
-    assert request(c.outsider, "POST", "/family", %{"family" => %{"name" => "Mounted family"}}).status ==
-             302
+    scope = Dawarich.Accounts.Scope.for_user(c.outsider, "en")
+
+    assert {:ok, _} =
+             Dawarich.Families.create(scope, %{"name" => "Mounted family"},
+               now: ~U[2026-10-03 10:00:00Z],
+               self_hosted: true
+             )
 
     assert Repo.query!("SELECT name FROM families WHERE creator_id=$1", [c.outsider.id]).rows == [
              ["Mounted family"]
            ]
 
-    assert request(c.outsider, "PATCH", "/family", %{"family" => %{"name" => "Mounted update"}}).status ==
-             302
+    assert {:ok, _} =
+             Dawarich.Families.update(scope, %{"name" => "Mounted update"},
+               now: ~U[2026-10-03 10:00:00Z],
+               self_hosted: true
+             )
 
     assert Repo.query!("SELECT name FROM families WHERE creator_id=$1", [c.outsider.id]).rows == [
              ["Mounted update"]
@@ -91,11 +100,24 @@ defmodule Dawarich.A12f3bH01Test do
       assert head.status == get.status
       assert get_resp_header(head, "content-type") == get_resp_header(get, "content-type")
       assert head.resp_body == ""
-      assert request(actor, "POST", base, Shares.params(type)).status == 302
-      assert request(actor, "POST", base <> "/revoke", %{"_method" => "patch"}).status == 302
-      assert request(actor, "POST", base <> "/regenerate").status == 302
-      assert request(actor, "POST", base <> "/regenerate_phrase").status == 302
-      assert request(actor, "POST", base, %{"_method" => "delete"}).status == 302
+
+      resource =
+        if type == "track",
+          do: %{type: :track, owner_id: actor.id, id: 99103},
+          else: %{type: :timeline, owner_id: actor.id}
+
+      scope = Dawarich.Accounts.Scope.for_user(actor, "en")
+
+      for action <- [:create, :regenerate, :regenerate_phrase, :revoke, :create, :destroy] do
+        assert {:ok, _} =
+                 Dawarich.Sharing.change(
+                   scope,
+                   resource,
+                   action,
+                   if(action == :create, do: Shares.params(type), else: %{}),
+                   now: Shares.now()
+                 )
+      end
     end
 
     assert request(c.owner, "POST", "/posters", %{"poster" => %{"name" => "Mounted poster"}}).status ==
@@ -211,10 +233,14 @@ defmodule Dawarich.A12f3bH01Test do
 
     assert request(c.owner, "POST", "/achievements/unlocks/next").status == 204
 
-    assert request(c.owner, "PATCH", "/achievements/country_de/toggle_sharing", %{
-             "enabled" => "0"
-           }).status ==
-             302
+    assert {:ok, _} =
+             Dawarich.Sharing.change(
+               Dawarich.Accounts.Scope.for_user(c.owner, "en"),
+               %{type: :achievement, key: "country_de", owner_id: c.owner.id},
+               :update,
+               %{"enabled" => "0"},
+               now: Shares.now()
+             )
 
     denied = image_request.("GET")
     assert denied.status == 404 and denied.resp_body == ""
@@ -247,12 +273,12 @@ defmodule Dawarich.A12f3bH01Test do
   end
 
   @tag a12f3b_case: "H01d"
-  test "mounted background jobs publish native photo imports", c do
+  test "retired mounted background requests have no effects and native photo commands publish",
+       c do
     route =
       Phoenix.Router.route_info(Router, "POST", "/settings/background_jobs", "www.example.com")
 
-    assert route.plug == DawarichWeb.IntegrationJobActions
-    assert Enum.count(Router.__routes__(), &(&1.path == route.route and &1.verb == :post)) == 1
+    assert route == :error
     session = RailsUser.session(c.owner.id)
 
     for hosted <- ~w(true false) do
@@ -274,8 +300,16 @@ defmodule Dawarich.A12f3bH01Test do
             %{}
           )
 
-        assert response.status == 302
-        assert get_resp_header(response, "location") == ["http://www.example.com/imports"]
+        assert response.status == 404
+
+        assert {:ok, :queued} =
+                 Dawarich.Imports.IntegrationCommands.enqueue(
+                   Repo,
+                   c.owner.id,
+                   "start_#{provider}_import",
+                   locale: "en",
+                   self_hosted: hosted == "true"
+                 )
       end
 
       if hosted == "true" do
@@ -287,13 +321,8 @@ defmodule Dawarich.A12f3bH01Test do
             %{"_method" => "patch"}
           )
 
-        assert legacy.status == 302
-
-        assert get_resp_header(legacy, "location") == [
-                 "http://www.example.com/settings/background_jobs"
-               ]
-
-        assert Dawarich.Accounts.settings(c.owner.id)["visits_suggestions_enabled"] == "true"
+        assert legacy.status == 404
+        refute Dawarich.Accounts.settings(c.owner.id)["visits_suggestions_enabled"] == "true"
       end
     end
 
@@ -309,7 +338,7 @@ defmodule Dawarich.A12f3bH01Test do
     assert commands() == []
 
     assert browser_request(session, :post, "/settings/background_jobs?job_name=unknown", %{}).status ==
-             422
+             404
 
     Dawarich.Jobs.Ownership.put!(Repo, "command:imports.photoprism_geodata", :sidekiq)
 
@@ -318,13 +347,13 @@ defmodule Dawarich.A12f3bH01Test do
              :post,
              "/settings/background_jobs?job_name=start_photoprism_import",
              %{}
-           ).status == 503
+           ).status == 404
 
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[4]]
   end
 
   @tag a12f3b_case: "H01b"
-  test "part B handback occurs before native effects and final native transport errors are source compatible",
+  test "native retired part B writes refuse before effects while independent handbacks remain",
        c do
     actor = Shares.seed!()
     System.delete_env("DAWARICH_RAILS")
@@ -372,30 +401,49 @@ defmodule Dawarich.A12f3bH01Test do
               Map.put(params, "authenticity_token", RailsCsrf.masked_token(session))
             )
 
+      retired =
+        String.starts_with?(path, [
+          "/notifications/",
+          "/settings/background_jobs",
+          "/family",
+          "/tracks/99103/share_link",
+          "/trips/99101/share_link",
+          "/share_links/"
+        ])
+
       receiver =
-        Task.async(fn ->
-          socket = RawHTTP.accept(server)
-          {head, rest} = RawHTTP.read_head(socket)
-          [length] = RawHTTP.header(head, "content-length")
-          received = RawHTTP.read_at_least(socket, rest, String.to_integer(length))
+        if not retired,
+          do:
+            Task.async(fn ->
+              socket = RawHTTP.accept(server)
+              {head, rest} = RawHTTP.read_head(socket)
+              [length] = RawHTTP.header(head, "content-length")
+              received = RawHTTP.read_at_least(socket, rest, String.to_integer(length))
 
-          RawHTTP.reply(
-            socket,
-            "HTTP/1.1 209 Rails\r\nContent-Length: 6\r\nConnection: close\r\n\r\nsource"
-          )
+              RawHTTP.reply(
+                socket,
+                "HTTP/1.1 209 Rails\r\nContent-Length: 6\r\nConnection: close\r\n\r\nsource"
+              )
 
-          :gen_tcp.close(socket)
-          {head, received}
-        end)
+              :gen_tcp.close(socket)
+              {head, received}
+            end)
 
       response = raw_request("POST", path, body, cookie)
-      assert response.status == 209
-      {head, received} = Task.await(receiver)
+
+      if retired do
+        assert response.status == 404
+        assert {:error, :timeout} = :gen_tcp.accept(server.listen, 0)
+      else
+        assert response.status == 209
+        {head, received} = Task.await(receiver)
+        assert response.resp_body == "source"
+        assert RawHTTP.request_line(head) == "POST #{path} HTTP/1.1"
+        assert RawHTTP.header(head, "cookie") == ["_dawarich_session=" <> cookie]
+        assert received == body
+      end
+
       :gen_tcp.close(server.listen)
-      assert response.resp_body == "source"
-      assert RawHTTP.request_line(head) == "POST #{path} HTTP/1.1"
-      assert RawHTTP.header(head, "cookie") == ["_dawarich_session=" <> cookie]
-      assert received == body
       assert footprint() == before
     end
 
@@ -414,17 +462,22 @@ defmodule Dawarich.A12f3bH01Test do
           {"POST", "/notifications/destroy_all", %{}},
           {"DELETE", "/notifications/1", %{}}
         ] do
+      expected =
+        if String.starts_with?(path, ["/notifications/", "/settings/background_jobs"]),
+          do: 404,
+          else: 422
+
       assert request(c.owner, method, path, Map.put(params, "authenticity_token", "invalid")).status ==
-               422
+               expected
     end
 
     assert raw_request("GET", "/settings/theme?theme=light", "", "").status == 302
-    assert request(c.outsider, "POST", "/family", %{"family" => %{"name" => ""}}).status == 422
+    assert request(c.outsider, "POST", "/family", %{"family" => %{"name" => ""}}).status == 404
 
     assert request(c.outsider, "POST", "/family", %{
              "family" => %{"name" => "Bad CSRF"},
              "authenticity_token" => "invalid"
-           }).status == 422
+           }).status == 404
 
     assert footprint() == before
     System.put_env("SELF_HOSTED", "false")
@@ -440,7 +493,20 @@ defmodule Dawarich.A12f3bH01Test do
           {"timeline", "/share_links/timeline"}
         ] do
       assert request(actor, "GET", base <> "/new").status == 200
-      assert request(actor, "POST", base, Shares.params(type)).status == 302
+
+      resource =
+        if type == "track",
+          do: %{type: :track, id: 99103, owner_id: actor.id},
+          else: %{type: :timeline, owner_id: actor.id}
+
+      assert {:ok, _} =
+               Dawarich.Sharing.change(
+                 Dawarich.Accounts.Scope.for_user(actor, "en"),
+                 resource,
+                 :create,
+                 Shares.params(type),
+                 now: Shares.now()
+               )
     end
 
     assert request(actor, "GET", "/share_links/hub").status == 200
@@ -565,64 +631,27 @@ defmodule Dawarich.A12f3bH01Test do
   end
 
   defp declarations do
-    family = DawarichWeb.FamilyFormRoutes
-    track = DawarichWeb.TrackShareActions
-    timeline = DawarichWeb.TimelineShareActions
-
     [
-      {"GET", "/family/invitations/new", family},
-      {"POST", "/family", family},
-      {"PATCH", "/family", family},
-      {"PUT", "/family", family},
-      {"DELETE", "/family", family},
-      {"POST", "/family/invitations", family},
-      {"DELETE", "/family/invitations/synthetic-token", family},
-      {"POST", "/family/memberships", family},
-      {"DELETE", "/family/members/1", family},
-      {"POST", "/family/location_requests", family},
-      {"PATCH", "/family/location_requests/1/accept", family},
-      {"PATCH", "/family/location_requests/1/decline", family},
-      {"PATCH", "/family/location_sharing", family}
-    ] ++
-      for(
-        {base, owner} <- [
-          {"/tracks/99103/share_link", track},
-          {"/share_links/timeline", timeline}
-        ],
-        {method, suffix} <- [
-          {"GET", "/new"},
-          {"POST", ""},
-          {"DELETE", ""},
-          {"PATCH", "/revoke"},
-          {"POST", "/regenerate"},
-          {"POST", "/regenerate_phrase"}
-        ],
-        do: {method, base <> suffix, owner}
-      ) ++
-      [
-        {"POST", "/share_links/live/revoke", DawarichWeb.ShareManagementForm},
-        {"POST", "/trips/1/share_link/revoke", DawarichWeb.ShareManagementForm},
-        {"POST", "/share_links/shares/synthetic/revoke", DawarichWeb.ShareManagementForm},
-        {"POST", "/posters", DawarichWeb.PostersController},
-        {"DELETE", "/posters/1", DawarichWeb.PostersController},
-        {"GET", "/achievements", Phoenix.LiveView.Plug},
-        {"GET", "/settings/general", Phoenix.LiveView.Plug},
-        {"GET", "/settings/integrations", Phoenix.LiveView.Plug},
-        {"GET", "/admin/settings", Phoenix.LiveView.Plug},
-        {"GET", "/trial/welcome", DawarichWeb.TrialWelcome},
-        {"GET", "/", DawarichWeb.HomeDispatch},
-        {"GET", "/notifications", Phoenix.LiveView.Plug}
-      ] ++ settings_declarations()
+      {"POST", "/family/memberships", DawarichWeb.FamilyInvitationAcceptance},
+      {"GET", "/tracks/99103/share_link/new", Phoenix.LiveView.Plug},
+      {"GET", "/share_links/timeline/new", Phoenix.LiveView.Plug},
+      {"POST", "/posters", DawarichWeb.PostersController},
+      {"DELETE", "/posters/1", DawarichWeb.PostersController},
+      {"GET", "/achievements", Phoenix.LiveView.Plug},
+      {"GET", "/settings/general", Phoenix.LiveView.Plug},
+      {"GET", "/settings/integrations", Phoenix.LiveView.Plug},
+      {"GET", "/admin/settings", Phoenix.LiveView.Plug},
+      {"GET", "/trial/welcome", DawarichWeb.TrialWelcome},
+      {"GET", "/", DawarichWeb.HomeDispatch},
+      {"GET", "/notifications", Phoenix.LiveView.Plug}
+    ] ++ settings_declarations()
   end
 
   defp settings_declarations do
     for {path, methods, plug} <- [
           {"/settings/theme", ["GET"], DawarichWeb.SettingsMiscActions},
           {"/settings/changelog_consent", ~w(PATCH POST), DawarichWeb.SettingsMiscActions},
-          {"/settings/onboarding", ~w(POST PATCH PUT), DawarichWeb.OnboardingActions},
-          {"/notifications/mark_as_read", ["POST"], DawarichWeb.NotificationActions},
-          {"/notifications/destroy_all", ["POST"], DawarichWeb.NotificationActions},
-          {"/notifications/1", ~w(DELETE POST), DawarichWeb.NotificationActions}
+          {"/settings/onboarding", ~w(POST PATCH PUT), DawarichWeb.OnboardingActions}
         ],
         method <- methods,
         do: {method, path, plug}
@@ -663,16 +692,22 @@ defmodule Dawarich.A12f3bH01Test do
     foreign =
       Dawarich.Notifications.create!(Repo, other.id, :info, "Foreign notification", "Body")
 
-    assert request(user, "POST", "/notifications/mark_as_read").status == 303
+    scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(user.id), "en")
+    assert request(user, "POST", "/notifications/mark_as_read").status == 404
+    assert {:ok, _} = Dawarich.Notifications.mark_all_read(scope)
     assert Dawarich.Notifications.get(user.id, own).read_at
     refute Dawarich.Notifications.get(other.id, foreign).read_at
     assert request(user, "DELETE", "/notifications/#{foreign}", %{"id" => "#{own}"}).status == 404
+    assert {:error, :not_found} = Dawarich.Notifications.delete(scope, foreign)
     assert Dawarich.Notifications.get(user.id, own)
-    assert request(user, "DELETE", "/notifications/#{own}").status == 303
+    assert request(user, "DELETE", "/notifications/#{own}").status == 404
+    assert {:ok, :deleted} = Dawarich.Notifications.delete(scope, own)
     own = Dawarich.Notifications.create!(Repo, user.id, :info, "Override notification", "Body")
-    assert request(user, "POST", "/notifications/#{own}", %{"_method" => "delete"}).status == 303
+    assert request(user, "POST", "/notifications/#{own}", %{"_method" => "delete"}).status == 404
+    assert {:ok, :deleted} = Dawarich.Notifications.delete(scope, own)
     Dawarich.Notifications.create!(Repo, user.id, :info, "Delete all notification", "Body")
-    assert request(user, "POST", "/notifications/destroy_all").status == 303
+    assert request(user, "POST", "/notifications/destroy_all").status == 404
+    assert {:ok, _} = Dawarich.Notifications.delete_all(scope)
     assert Repo.query!("SELECT id FROM notifications WHERE user_id=$1", [user.id]).rows == []
     assert Dawarich.Notifications.get(other.id, foreign)
   end

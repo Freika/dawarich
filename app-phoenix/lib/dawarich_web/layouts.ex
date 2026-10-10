@@ -27,11 +27,22 @@ defmodule DawarichWeb.Layouts do
       "map_shell" => "/phoenix/js/map_shell.js?vsn=#{versions.map_shell}",
       "phoenix" => "/phoenix/js/phoenix.mjs?vsn=#{versions.phoenix}",
       "rails_bridge" => "/phoenix/js/rails_bridge.js?vsn=#{versions.rails_bridge}",
-      "family_page" => "/phoenix/js/family_page.js?vsn=#{versions.family_page}",
       "phoenix_live_view" => "/phoenix/js/phoenix_live_view.esm.js?vsn=#{versions.live_view}"
     }
 
-    imports = Map.merge(DawarichWeb.Assets.rails_imports(), phoenix)
+    rails = DawarichWeb.Assets.rails_imports()
+
+    phoenix =
+      if rails["controllers/card_modal_controller"],
+        do:
+          Map.merge(phoenix, %{
+            "rails_card_modal" => rails["controllers/card_modal_controller"],
+            "controllers/card_modal_controller" =>
+              "/phoenix/js/native_card_modal.js?vsn=#{versions.native_card_modal}"
+          }),
+        else: phoenix
+
+    imports = Map.merge(rails, phoenix)
 
     Jason.encode!(%{"imports" => imports})
   end

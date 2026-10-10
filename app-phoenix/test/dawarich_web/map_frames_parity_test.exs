@@ -120,6 +120,8 @@ defmodule DawarichWeb.MapFramesParityTest do
   end
 
   defp parts(html) do
+    html = Dawarich.Test.NativeM4Corpus.prepare(html)
+
     case Regex.run(@stream, html) do
       [_, inner] -> {:stream, ParityHTML.normalize(inner), ParityHTML.stimulus(inner, "*")}
       nil -> {:html, ParityHTML.normalize(html), ParityHTML.stimulus(html, "*")}

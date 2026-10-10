@@ -200,15 +200,25 @@ defmodule Dawarich.Admin.UsersTest do
       end
     })
 
+    baseline = Repo.query!("SELECT id FROM oban.oban_jobs ORDER BY id", [], log: false).rows
     assert Users.send_password_reset(scope, 10712) == {:error, :unavailable}
 
     assert Repo.query!("SELECT reset_password_token FROM users WHERE id=10712", [], log: false).rows ==
              [[nil]]
 
-    assert Repo.query!("SELECT count(*) FROM oban.oban_jobs", [], log: false).rows == [[0]]
+    assert Repo.query!("SELECT id FROM oban.oban_jobs ORDER BY id", [], log: false).rows ==
+             baseline
+
     Application.put_env(:dawarich, Users, %{oban: UsersDomainOban})
     assert {:ok, 10712} = Users.send_password_reset(%{scope | locale: "de"}, 10712)
-    assert [[args]] = Repo.query!("SELECT args FROM oban.oban_jobs", [], log: false).rows
+
+    assert [[args]] =
+             Repo.query!(
+               "SELECT args FROM oban.oban_jobs WHERE worker=$1",
+               ["Dawarich.Auth.Recovery.MailWorker"],
+               log: false
+             ).rows
+
     assert args["user_id"] == 10712 and args["locale"] == "de"
     assert is_binary(args["sealed"])
 

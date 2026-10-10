@@ -268,7 +268,7 @@ defmodule DawarichWeb.TripsLiveTest do
       assert has_element?(view, "#trip-shell > #video-studio")
     end
 
-    test "the header of Rails' request spec: named studio buttons, edit, delete, exports, the share frame",
+    test "the header of Rails' request spec: named studio buttons edit delete exports and native sharing entry",
          %{user: user} do
       {:ok, view, _html} = live_as(user, "/trips/883901")
       actions = "[data-testid='trip-header-actions']"
@@ -297,7 +297,7 @@ defmodule DawarichWeb.TripsLiveTest do
 
       assert has_element?(
                view,
-               "#{actions} a[data-turbo-frame='share-link-modal'][href='/trips/883901/share_link/new'][title='Share trip']"
+               "#{actions} a[data-turbo='false'][href='/trips/883901/share_link/new'][title='Share trip']"
              )
 
       refute has_element?(view, "#{actions} .badge-success")
@@ -308,7 +308,7 @@ defmodule DawarichWeb.TripsLiveTest do
       assert has_element?(view, "#{delete} input[type='hidden'][name='_method'][value='delete']")
       assert has_element?(view, "#{delete} input[type='hidden'][name='authenticity_token']")
       assert has_element?(view, "#{delete} button.text-error[type='submit'][title='Delete trip']")
-      assert has_element?(view, "turbo-frame#share-link-modal")
+      refute has_element?(view, "turbo-frame#share-link-modal")
     end
 
     test "the badge shows only for an active share of this trip", %{user: user} do

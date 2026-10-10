@@ -1,58 +1,39 @@
 defmodule DawarichWeb.A12f3bF02Test do
   use Dawarich.JobsCase, async: false
-  import Dawarich.Test.FamilyForms
+  import Dawarich.Test.FamilyCorpus
+  alias Dawarich.{Families, Repo}
   setup do: seed()
 
   @tag a12f3b_case: "F02a"
-  test "family create and update preserve validation and ownership", c do
-    invalid = request(c.outsider, "POST", "/family", %{"family" => %{"name" => ""}})
-    assert invalid.status == 422
+  test "native F02a family create update validation and ownership preserve effects", c do
+    assert {:error, %{errors: [_ | _]}} =
+             Families.create(scope(c.outsider), %{"name" => ""}, opts())
 
-    assert invalid.resp_body =~
-             DawarichWeb.Translate.t("en", "controllers.families.failed_to_create_family", %{})
+    assert {:ok, family} =
+             Families.create(scope(c.outsider), %{"name" => "  Native family  "}, opts())
 
-    conn = request(c.outsider, "POST", "/family", %{"family" => %{"name" => "  Native family  "}})
-    assert conn.status == 302
-    assert Plug.Conn.get_resp_header(conn, "location") == ["http://www.example.com/family"]
+    assert records(
+             "SELECT f.id,f.name,m.role FROM families f JOIN family_memberships m ON m.family_id=f.id WHERE m.user_id=$1",
+             [c.outsider.id]
+           ) == [[family, "Native family", 0]]
 
-    assert [[family, "Native family", 0]] =
-             records(
-               "SELECT f.id,f.name,m.role FROM families f JOIN family_memberships m ON m.family_id=f.id WHERE m.user_id=$1",
-               [c.outsider.id]
-             )
-
-    for method <- ["PATCH", "PUT", "POST"] do
-      params = %{"family" => %{"name" => method}, "_method" => "patch"}
-      updated = request(c.outsider, method, "/family", params)
-      assert updated.status == 302
-      assert records("SELECT name FROM families WHERE id=$1", [family]) == [[method]]
+    for name <- ~w(PATCH PUT POST) do
+      assert {:ok, ^family} = Families.update(scope(c.outsider), %{"name" => name}, opts())
+      assert records("SELECT name FROM families WHERE id=$1", [family]) == [[name]]
     end
 
-    assert request(c.outsider, "PATCH", "/family", %{
-             "family" => %{"name" => "bad"},
-             "authenticity_token" => "invalid"
-           }).status == 422
+    assert {:error, :stale_session} = Families.create(scope(nil), %{"name" => "guest"}, opts())
 
-    assert request(nil, "POST", "/family", %{"family" => %{"name" => "guest"}}).status == 302
+    assert {:error, :unauthorized} =
+             Families.update(scope(c.member), %{"name" => "foreign"}, opts())
 
-    assert request(c.member, "PATCH", "/family", %{"family" => %{"name" => "foreign"}}).status ==
-             303
-
-    refused =
-      request(c.member, "PATCH", "/family", %{"family" => %{"name" => "foreign"}}, [
-        {"referer", "http://www.example.com/family?locale=de"}
-      ])
-
-    assert Plug.Conn.get_resp_header(refused, "location") == [
-             "http://www.example.com/family?locale=de"
-           ]
-
-    Dawarich.Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [c.outsider.id])
-    Dawarich.Repo.query!("DELETE FROM families WHERE id=$1", [family])
+    assert records("SELECT name FROM families WHERE id=91001") == [["Leipzig Fixture Family"]]
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [c.outsider.id])
+    Repo.query!("DELETE FROM families WHERE id=$1", [family])
 
     assert {:ok, _} =
-             Dawarich.Families.WebCreate.run(
-               Dawarich.Repo,
+             Families.WebCreate.run(
+               Repo,
                c.outsider,
                %{"name" => "Notification refused"},
                %{now: ~U[2026-10-03 10:00:00Z], locale: "en", self_hosted: true},
@@ -61,22 +42,19 @@ defmodule DawarichWeb.A12f3bF02Test do
   end
 
   @tag a12f3b_case: "F02b"
-  test "invalid family update preserves original name and flash contract", c do
+  test "native F02b invalid update preserves original name and entered values", c do
     for value <- ["", String.duplicate("x", 51), String.duplicate("e\u0301", 26)] do
-      conn = request(c.owner, "PATCH", "/family", %{"family" => %{"name" => value}})
-      assert conn.status == 422
-      assert conn.resp_body =~ "family[name]"
+      assert {:error, %{errors: [_ | _], values: %{"name" => ^value}}} =
+               Families.update(scope(c.owner), %{"name" => value}, opts())
+
       assert records("SELECT name FROM families WHERE id=91001") == [["Leipzig Fixture Family"]]
-      refute get_in(conn.private, [:dawarich_rails_session_changes, "flash"])
     end
 
-    assert request(c.owner, "PATCH", "/family", %{"family" => %{"name" => %{"nested" => "bad"}}}).status ==
-             302
+    assert {:ok, 91001} =
+             Families.update(scope(c.owner), %{"name" => %{"nested" => "bad"}}, opts())
 
-    assert records("SELECT name FROM families WHERE id=91001") == [["Leipzig Fixture Family"]]
-
-    assert request(c.outsider, "PATCH", "/family", %{"family" => %{"name" => "foreign"}}).status ==
-             302
+    assert {:error, :unauthorized} =
+             Families.update(scope(c.outsider), %{"name" => "foreign"}, opts())
 
     assert records("SELECT name FROM families WHERE id=91001") == [["Leipzig Fixture Family"]]
   end
