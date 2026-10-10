@@ -263,6 +263,7 @@ defmodule DawarichWeb.StorageRoutesTest do
 
     Application.put_env(:dawarich, :rails_routes, ["active_storage"])
 
+    Dawarich.Jobs.Ownership.put!(Repo, "command:users.export_data", :oban)
     scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(9821), "en")
     assert {:ok, :deleted} = Dawarich.Exports.delete(scope, 982_101)
 

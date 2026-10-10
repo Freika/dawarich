@@ -92,6 +92,26 @@ defmodule Dawarich.UploadSweepScheduleTest do
     end
   end
 
+  test "stale sweep completion cannot cancel a newly required reservation deadline", c do
+    snapshot_deadline = nil
+    ref = reserve(c, 600)
+
+    assert {:ok, :ok} =
+             Repo.transaction(fn ->
+               Dawarich.Uploads.SweepSchedule.enqueue!(Repo, snapshot_deadline)
+             end)
+
+    assert [[1]] == outstanding_count()
+
+    [[scheduled]] =
+      rows(
+        "SELECT scheduled_at FROM oban.oban_jobs WHERE worker='Dawarich.Uploads.SweepWorker' AND state IN ('available','scheduled','retryable')"
+      )
+
+    [[required]] = rows("SELECT expires_at FROM phoenix.native_uploads WHERE reference=$1", [ref])
+    assert scheduled == required
+  end
+
   defp outstanding_count,
     do:
       rows(

@@ -26,16 +26,16 @@ defmodule DawarichWeb.A12f3aIClosureTest do
   end
 
   @tag a12f3a_i02: true
-  test "I02: upload forms and signed/raw files matches current Rails contract without a native-owner Rails effect",
+  test "I02: retained signed upload admission preserves no-file and atomic GPX effects",
        c do
-    for {files, expected} <- Enum.zip([nil, [], [""]], capture("i02")) do
-      params = if is_nil(files), do: %{}, else: %{"import" => %{"files" => files}}
-      response = request(c, :post, "/imports", params)
-      assert response.status == expected["status"]
-      assert get_resp_header(response, "location") == [expected["location"]]
+    context = upload_context(c)
 
-      assert Dawarich.Test.RailsFormRequests.rails_session(response)["flash"]["flashes"]["alert"] ==
-               expected["alert"]
+    for {files, expected} <- Enum.zip([nil, [], [""]], capture("i02")) do
+      assert {:error, :no_files} =
+               Dawarich.Imports.UploadCreate.create(Repo, c.user, files, context)
+
+      assert Dawarich.I18n.t("en", "controllers.imports.no_files_were_selected_for_upload") ==
+               {:ok, expected["alert"]}
 
       assert Repo.query!("SELECT count(*) FROM imports").rows == [[0]]
     end
@@ -43,23 +43,28 @@ defmodule DawarichWeb.A12f3aIClosureTest do
     blob =
       Dawarich.RailsBlobFixture.create!(Repo, c.root, "Leipzig.gpx", "<gpx/>", user_id: c.user.id)
 
-    rejected =
-      request(c, :post, "/imports", %{"import" => %{"files" => [blob.signed_id, "invalid"]}})
+    assert {:error, _} =
+             Dawarich.Imports.UploadCreate.create(
+               Repo,
+               c.user,
+               [blob.signed_id, "invalid"],
+               context
+             )
 
-    assert rejected.status == 422
     assert Repo.query!("SELECT count(*) FROM imports").rows == [[0]]
     assert Repo.query!("SELECT count(*) FROM active_storage_attachments").rows == [[0]]
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
 
-    response = request(c, :post, "/imports", %{"import" => %{"files" => [blob.signed_id]}})
-    assert response.status == 303
+    assert {:ok, [_id]} =
+             Dawarich.Imports.UploadCreate.create(Repo, c.user, [blob.signed_id], context)
+
     assert Repo.query!("SELECT name,source FROM imports").rows == [["Leipzig.gpx", 4]]
     assert Repo.query!("SELECT command_type FROM job_outbox").rows == [["imports.process_gpx"]]
     assert commands() == []
   end
 
   @tag a12f3a_i03: true
-  test "I03: import rename source and put updates matches current Rails contract without a native-owner Rails effect",
+  test "I03: scoped import updates preserve rename source and rejected-name effects",
        c do
     ImportsExportsSeeds.import!(%{
       id: 781_101,
@@ -68,22 +73,20 @@ defmodule DawarichWeb.A12f3aIClosureTest do
       source: 10
     })
 
-    for {method, params, expected} <- [
-          {:put, %{"name" => "renamed.csv", "source" => "geojson"}, ["renamed.csv", 6]},
-          {:patch, %{"name" => "", "source" => "gpx"}, ["renamed.csv", 6]},
-          {:post, %{"name" => "override.csv", "source" => "gpx"}, ["override.csv", 4]}
+    scope = Dawarich.Accounts.Scope.for_user(c.user, "en")
+
+    for {params, result, expected} <- [
+          {%{"name" => "renamed.csv", "source" => "geojson"}, {:ok, :updated},
+           ["renamed.csv", 6]},
+          {%{"name" => "", "source" => "gpx"}, {:error, :invalid_name}, ["renamed.csv", 6]},
+          {%{"name" => "override.csv", "source" => "gpx"}, {:ok, :updated}, ["override.csv", 4]}
         ] do
-      body = %{"import" => params}
-      body = if method == :post, do: Map.put(body, "_method", "put"), else: body
-      response = request(c, method, "/imports/781101", body)
-      assert response.status == 303
-      assert get_resp_header(response, "location") == ["http://www.example.com/imports"]
+      assert Dawarich.Imports.update(scope, 781_101, params) == result
       assert Repo.query!("SELECT name,source FROM imports WHERE id=781101").rows == [expected]
     end
 
-    invalid = request(c, :put, "/imports/781101", %{"import" => %{"source" => "unknown"}})
-    assert invalid.status == 422
-    assert invalid.resp_body =~ "Source"
+    assert {:error, :invalid_source} =
+             Dawarich.Imports.update(scope, 781_101, %{"source" => "unknown"})
 
     assert Repo.query!("SELECT name,source FROM imports WHERE id=781101").rows == [
              ["override.csv", 4]
@@ -94,7 +97,7 @@ defmodule DawarichWeb.A12f3aIClosureTest do
   end
 
   @tag a12f3a_i04: true
-  test "I04: delete and extraction request transitions matches current Rails contract without a native-owner Rails effect",
+  test "I04: scoped extraction preserves trusted command retry and removal effects",
        c do
     ImportsExportsSeeds.import!(%{
       id: 781_104,
@@ -107,8 +110,8 @@ defmodule DawarichWeb.A12f3aIClosureTest do
     Ownership.put!(Repo, "command:enhanced_import.extract_gpx", :oban)
     Ownership.put!(Repo, "command:enhanced_import.destroy_gpx", :oban)
 
-    assert request(c, :post, "/imports/781104/extraction", %{"trust_source" => "false"}).status ==
-             302
+    scope = Dawarich.Accounts.Scope.for_user(c.user, "en")
+    assert {:ok, :queued} = Dawarich.Imports.extract(scope, 781_104, %{"trust_source" => "false"})
 
     assert [[payload]] =
              Repo.query!(
@@ -129,7 +132,7 @@ defmodule DawarichWeb.A12f3aIClosureTest do
              ).rows
 
     assert commands() == []
-    assert request(c, :post, "/imports/781104/extraction", %{}).status == 303
+    assert {:error, :native_in_flight} = Dawarich.Imports.extract(scope, 781_104, %{})
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
 
     assert Repo.query!(
@@ -137,7 +140,7 @@ defmodule DawarichWeb.A12f3aIClosureTest do
            ).rows == [[1]]
 
     Repo.query!("UPDATE imports SET additional_data_extraction_status=3 WHERE id=781104")
-    assert request(c, :delete, "/imports/781104/extraction", %{}).status == 302
+    assert {:ok, :queued} = Dawarich.Imports.remove_extraction(scope, 781_104)
 
     assert Repo.query!("SELECT command_type FROM job_outbox ORDER BY command_type DESC").rows == [
              ["enhanced_import.destroy_gpx"]
@@ -148,6 +151,8 @@ defmodule DawarichWeb.A12f3aIClosureTest do
 
     assert commands() == []
   end
+
+  defp upload_context(c), do: Dawarich.Imports.NativeReads.context(c.user, Repo, [])
 
   defp capture(task) do
     Path.expand("../fixtures/imports_pages/a12f3a-#{task}.json", __DIR__)

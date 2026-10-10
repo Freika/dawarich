@@ -40,7 +40,9 @@ defmodule Dawarich.Exports.PurgeWorker do
                Enum.filter(objects, fn object ->
                  repo.query!(
                    "SELECT id FROM active_storage_blobs WHERE id=$1",
-                   [object["blob_id"]], log: false).rows != []
+                   [object["blob_id"]],
+                   log: false
+                 ).rows != []
                end)
 
              NativePurge.mark!(repo, present)

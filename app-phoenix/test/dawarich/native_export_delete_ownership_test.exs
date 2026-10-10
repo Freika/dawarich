@@ -116,7 +116,8 @@ defmodule Dawarich.NativeExportDeleteOwnershipTest do
   def barrier(_event, _measurements, %{query: sql, params: params}, parent) do
     if Process.get(:native_delete_barrier) do
       if String.contains?(sql, "DELETE FROM active_storage_attachments") or
-           String.contains?(sql, "DELETE FROM exports"), do: send(parent, :deletion_effect)
+           String.contains?(sql, "DELETE FROM exports"),
+         do: send(parent, :deletion_effect)
 
       if String.contains?(sql, "SELECT key, owner FROM phoenix.job_owners") and
            params == [["command:users.export_data"]] do

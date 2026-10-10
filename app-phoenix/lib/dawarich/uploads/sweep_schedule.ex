@@ -2,7 +2,7 @@ defmodule Dawarich.Uploads.SweepSchedule do
   @moduledoc false
   alias Dawarich.Uploads.SweepWorker
 
-  def enqueue!(repo, deadline) do
+  def enqueue!(repo, _snapshot_deadline) do
     unless repo.in_transaction?(),
       do: raise(ArgumentError, "Sweep scheduling requires a transaction")
 
@@ -11,6 +11,20 @@ defmodule Dawarich.Uploads.SweepSchedule do
       [],
       log: false
     )
+
+    [[required]] =
+      repo.query!(
+        "SELECT min(deadline) FROM (SELECT expires_at AS deadline FROM phoenix.native_uploads WHERE state='pending' UNION ALL SELECT cleanup_at AS deadline FROM phoenix.native_uploads WHERE state IN ('cancelled','expired','purged') AND cleanup_at IS NOT NULL) deadlines",
+        [],
+        log: false
+      ).rows
+
+    now = NaiveDateTime.utc_now()
+
+    deadline =
+      if required && NaiveDateTime.compare(required, now) != :gt,
+        do: NaiveDateTime.add(now, 1),
+        else: required
 
     outstanding =
       repo.query!(
@@ -44,7 +58,9 @@ defmodule Dawarich.Uploads.SweepSchedule do
     do:
       repo.query!(
         "UPDATE oban.oban_jobs SET state='cancelled',cancelled_at=now() WHERE id=ANY($1)",
-        [ids], log: false)
+        [ids],
+        log: false
+      )
 
   defp datetime(%DateTime{} = at), do: at
   defp datetime(%NaiveDateTime{} = at), do: DateTime.from_naive!(at, "Etc/UTC")
