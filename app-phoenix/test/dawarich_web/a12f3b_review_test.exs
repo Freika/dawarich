@@ -233,7 +233,8 @@ defmodule DawarichWeb.A12f3bReviewTest do
   end
 
   @tag review_case: "F4-request"
-  test "F4 prefetched track form preserves the locale already resolved by the request", %{
+  @tag :track_c_r2
+  test "F4 native prefetched track manager preserves the resolved request locale", %{
     actor: actor
   } do
     settings = Map.put(actor.settings, "locale", "en")
@@ -247,11 +248,11 @@ defmodule DawarichWeb.A12f3bReviewTest do
       |> put_req_header("purpose", "prefetch")
       |> put_req_header("turbo-frame", "share-link-modal")
       |> assign(:now, S.now())
-      |> ShareReviewRouter.call(ShareReviewRouter.init([]))
+      |> DawarichWeb.Endpoint.call(DawarichWeb.Endpoint.init([]))
 
     assert response.status == 200
     assert response.assigns.locale == "de"
-    assert response.resp_body =~ "Stationär · 3. Okt 2026 · 2 km"
+    assert String.contains?(response.resp_body, "Stationär · 3. Okt 2026 · 2 km")
 
     assert Repo.query!("SELECT settings->>'locale' FROM users WHERE id=$1", [actor.id]).rows == [
              ["en"]

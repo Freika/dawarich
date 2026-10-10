@@ -196,6 +196,9 @@ defmodule DawarichWeb.SharingLive.Index do
           {t(@locale, "share_links.hubs.body." <> key, %{})}
         </.link>
       </nav>
+      <p :if={@base_resource.type in [:trip, :track]} class="mb-4 min-w-0 [overflow-wrap:anywhere]">
+        {@page.trip.name}
+      </p>
       <%= cond do %>
         <% @base_resource.type in [:month, :digest, :achievement] -> %>
           <DawarichWeb.SharingNativeReport.form
