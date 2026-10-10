@@ -71,7 +71,10 @@ defmodule DawarichWeb.MapLiveAuth do
   end
 
   def refuse(socket, reason) do
-    socket = DawarichWeb.MapLive.Subscriptions.release(socket)
+    socket =
+      socket
+      |> DawarichWeb.MapLive.Subscriptions.release()
+      |> DawarichWeb.NativePosterGallery.release()
 
     socket =
       assign(

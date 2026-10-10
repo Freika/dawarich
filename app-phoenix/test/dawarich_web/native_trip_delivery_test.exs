@@ -106,6 +106,58 @@ defmodule DawarichWeb.NativeTripDeliveryTest do
     assert has_element?(view, "p[role=alert]", "unauthorized")
   end
 
+  test "native trip refusal releases its gallery listener without disturbing another owner", %{
+    id: id
+  } do
+    {:ok, view, _} = open(id)
+    settle_subscriptions(view)
+    other = id + 1_000_000_000
+
+    RailsUser.insert!(%{
+      id: other,
+      email: "independent-trip-#{other}@dawarich.test",
+      settings: %{"timezone" => "UTC"}
+    })
+
+    TripsSeeds.trip!(%{
+      id: other * 10,
+      user_id: other,
+      name: "Independent trip",
+      started_at: ~N[2026-06-01 12:00:00],
+      ended_at: ~N[2026-06-03 12:00:00]
+    })
+
+    {:ok, independent, _} = open(other)
+    settle_subscriptions(independent)
+    topic = Dawarich.Posters.Dependencies.Progress.stream(id) |> Bus.channel()
+    other_topic = Dawarich.Posters.Dependencies.Progress.stream(other) |> Bus.channel()
+    assert gallery_subscribed?(view.pid, topic)
+    assert gallery_subscribed?(independent.pid, other_topic)
+    Repo.query!("DELETE FROM trips WHERE id=$1", [id * 10], log: false)
+    render_click(view, "trip:day", %{"day" => "2026-06-02"})
+    refute gallery_subscribed?(view.pid, topic)
+    assert gallery_subscribed?(independent.pid, other_topic)
+    assert has_element?(independent, "#trip-shell h1", "Independent trip")
+  end
+
+  defp gallery_subscribed?(pid, topic) do
+    subscriptions = :sys.get_state(Bus) |> elem(1) |> Map.get(:subscriptions, %{})
+
+    case Map.get(subscriptions, {:channel, topic}) do
+      {:subscribed, subscribers} ->
+        MapSet.member?(subscribers, pid)
+
+      {:subscribing, subscribers, excluded} ->
+        MapSet.member?(subscribers, pid) and not MapSet.member?(excluded, pid)
+
+      {:unsubscribing, subscribers} ->
+        MapSet.member?(subscribers, pid)
+
+      _ ->
+        false
+    end
+  end
+
   defp settle_subscriptions(view) do
     topics = :sys.get_state(view.pid).socket.assigns.native_subscriptions.topics
 

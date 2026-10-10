@@ -17,7 +17,20 @@ defmodule DawarichWeb.NativePosterGallery do
         {:error, _} -> []
       end
 
-    assign(socket, :posters, posters)
+    socket
+    |> assign(:poster_subscription, if(connected?(socket), do: scope.user.id))
+    |> assign(:posters, posters)
+  end
+
+  def release(socket) do
+    case socket.assigns[:poster_subscription] do
+      nil ->
+        socket
+
+      user_id ->
+        Progress.unsubscribe(user_id)
+        assign(socket, :poster_subscription, nil)
+    end
   end
 
   def handle_event("poster:save", recipe, socket) do

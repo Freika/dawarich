@@ -10,6 +10,11 @@ defmodule Dawarich.Posters.Dependencies.Progress do
     :ok
   end
 
+  def unsubscribe(user_id) do
+    if Process.whereis(Bus), do: Bus.unsubscribe(stream(user_id))
+    :ok
+  end
+
   def changed(message, user_id) do
     with {:message, channel, payload} <- Bus.event(message),
          true <- channel == stream(user_id),
