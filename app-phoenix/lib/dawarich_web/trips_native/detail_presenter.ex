@@ -24,7 +24,7 @@ defmodule DawarichWeb.TripsNative.DetailPresenter do
   defp description(_html), do: nil
 
   def window(detail, from) do
-    case from && Date.from_iso8601(from) do
+    case is_binary(from) && Date.from_iso8601(from) do
       {:ok, date} ->
         if Date.compare(date, detail.first_day) != :lt and
              Date.compare(date, detail.last_day) != :gt,

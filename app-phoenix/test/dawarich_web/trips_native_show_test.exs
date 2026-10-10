@@ -114,6 +114,17 @@ defmodule DawarichWeb.TripsNativeShowTest do
     assert day_keys(view) == ~w(2026-07-01 2026-07-02)
   end
 
+  test "malformed day window params render the first window" do
+    id = trip!(996_211)
+
+    for query <- ["from[]=2026-05-11", "from[a]=1"] do
+      {:ok, view, html} = TripsNativeUI.live_as(9_961, "/trips/#{id}?#{query}")
+      assert html =~ "trip 996211"
+      render_async(view)
+      assert day_keys(view) == ~w(2026-05-09 2026-05-10 2026-05-11 2026-05-12)
+    end
+  end
+
   test "revoked or deleted trip clears data before update delivery" do
     id = trip!(996_301)
     {:ok, view, _html} = TripsNativeUI.live_as(9_961, "/trips/#{id}")
