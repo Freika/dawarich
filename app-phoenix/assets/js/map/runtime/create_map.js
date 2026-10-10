@@ -7,6 +7,7 @@ export function createMapRuntime({
   reader,
   loadLibrary,
   loadStyle,
+  transformRequest,
   attach,
   refresh = async () => {},
   events = {},
@@ -68,7 +69,12 @@ export function createMapRuntime({
       Object.assign(root.style, { width: "100%", height: "100%" })
       element.appendChild(root)
       lifetime.own(() => root.remove())
-      map = new library.Map({ ...current.mapOptions, container: root, style })
+      map = new library.Map({
+        ...current.mapOptions,
+        container: root,
+        style,
+        transformRequest,
+      })
       const owned = map
       lifetime.own(() => owned.remove())
       const pending = Promise.resolve(

@@ -1,3 +1,5 @@
+import { createBaseLayers } from "../layers/tile_layers.js"
+import { createTileFreshness } from "../data/tile_freshness.js"
 import { createReader } from "../data/reader.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { createMapRuntime } from "./create_map.js"
@@ -13,6 +15,8 @@ export function mountHost({
   attach,
   refresh,
 }) {
+  const freshness = createTileFreshness()
+  let layers
   const config = JSON.parse(element.dataset.mapConfig ?? "{}")
   const owner = createMapRuntime({
     element,
@@ -20,8 +24,30 @@ export function mountHost({
     reader,
     loadLibrary,
     loadStyle,
-    attach,
-    refresh,
+    transformRequest: freshness.transformRequest,
+    attach:
+      attach ??
+      (({ map, config, lifetime }) => {
+        layers = createBaseLayers({
+          map,
+          config,
+          freshness,
+          onError: (code) => pushEvent("map:failed", { code }),
+        })
+        lifetime.own(() => layers.destroy())
+        return new Promise((resolve) => {
+          const ready = () => {
+            layers.mount()
+            resolve(() => map.off("load", ready))
+          }
+          if (map.loaded()) ready()
+          else {
+            map.once("load", ready)
+            lifetime.own(() => map.off("load", ready))
+          }
+        })
+      }),
+    refresh: refresh ?? (({ config }) => layers?.update(config)),
     events: {
       refreshed(receipt) {
         element.dataset.mapState = "ready"
