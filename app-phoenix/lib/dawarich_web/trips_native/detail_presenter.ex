@@ -1,7 +1,7 @@
 defmodule DawarichWeb.TripsNative.DetailPresenter do
   @moduledoc false
 
-  alias Dawarich.{CountryNames, TripDescription}
+  alias Dawarich.CountryNames
   alias DawarichWeb.TripPlanItems
 
   def present(detail, scope) do
@@ -14,14 +14,9 @@ defmodule DawarichWeb.TripsNative.DetailPresenter do
     |> Map.merge(%{
       plan: plan,
       flags: CountryNames.table(),
-      description_html: description(detail.description)
+      description_html: if(is_binary(detail.description), do: detail.description)
     })
   end
-
-  defp description(html) when is_binary(html),
-    do: html |> TripDescription.html() |> IO.iodata_to_binary()
-
-  defp description(_html), do: nil
 
   def window(detail, from) do
     case is_binary(from) && Date.from_iso8601(from) do

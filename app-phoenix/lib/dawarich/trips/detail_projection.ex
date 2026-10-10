@@ -2,7 +2,7 @@ defmodule Dawarich.Trips.DetailProjection do
   @moduledoc false
 
   alias Dawarich.{Repo, TripDays, UserTimeZone}
-  alias Dawarich.Trips.{PlanRead, RichContent}
+  alias Dawarich.Trips.{Description, PlanRead}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   @header """
@@ -85,7 +85,7 @@ defmodule Dawarich.Trips.DetailProjection do
   end
 
   defp description(body) do
-    case RichContent.read(body) do
+    case Description.render(body) do
       {:ok, html} -> html
       _ -> :unavailable
     end

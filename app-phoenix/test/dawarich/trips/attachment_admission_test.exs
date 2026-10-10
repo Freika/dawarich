@@ -6,7 +6,7 @@ defmodule Dawarich.Trips.AttachmentAdmissionTest do
   alias Dawarich.RailsMessages
   alias Dawarich.Storage.UploadReceipts
   alias Dawarich.Test.TripsSeeds
-  alias Dawarich.Trips.{AttachmentAdmission, Commands, Description}
+  alias Dawarich.Trips.{AttachmentAdmission, Commands, Description, Pages}
 
   @now ~U[2026-10-03 10:00:00.000000Z]
   @stamp ~N[2026-10-03 10:00:00]
@@ -64,11 +64,10 @@ defmodule Dawarich.Trips.AttachmentAdmissionTest do
     rich = described!(owner, 970_101, stored)
     attach!(rich, legacy)
 
-    assert {:ok, editor} = Description.editor(stored, Repo)
+    assert {:ok, %{description: editor}} = Pages.form(owner, 970_101, @now)
     assert editor =~ "data-trix-attachment"
-    assert {:ok, canonical} = Description.canonical(editor, Repo)
 
-    assert {:ok, _} = save(owner, 970_101, String.replace(canonical, "Old", "Edited"))
+    assert {:ok, _} = save(owner, 970_101, String.replace(editor, "Old", "Edited"))
     assert graph(rich) == [[legacy]]
     assert [[saved]] = body(970_101)
     assert saved =~ "Edited"

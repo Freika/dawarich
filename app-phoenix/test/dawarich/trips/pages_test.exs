@@ -136,7 +136,8 @@ defmodule Dawarich.Trips.PagesTest do
     for key <- [:path_json, :api_key, :windows_json, :studio, :plan_json, :photos],
         do: refute(Map.has_key?(detail, key))
 
-    assert detail.description == "<div>Plain notes</div>"
+    assert detail.description =~ ~s(<div class="trix-content">)
+    assert detail.description =~ "<div>Plain notes</div>"
     assert detail.settings == %{unit: "km", factor: 1000, photos: true}
   end
 
