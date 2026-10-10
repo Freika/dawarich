@@ -14,6 +14,7 @@ defmodule Dawarich.Test.NativeM6IntegrationRouter do
       session: {DawarichWeb.MapLiveAuth, :live_session, []} do
       live "/map/v2", DawarichWeb.MapLive.Native
       live "/trips/:id", DawarichWeb.TripsLive.NativeMap
+      live "/family", DawarichWeb.FamiliesLive.NativeMap
     end
   end
 end
