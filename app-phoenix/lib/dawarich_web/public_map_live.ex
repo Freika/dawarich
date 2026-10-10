@@ -3,13 +3,16 @@ defmodule DawarichWeb.PublicMapLive do
   use DawarichWeb, :live_view
   on_mount({DawarichWeb.PublicMapAuth, :default})
 
-  def mount(_, session, socket),
-    do:
-      {:ok,
-       assign(socket,
-         public_map_ready: false,
-         public_unlock_token: session["public_unlock_token"]
-       )}
+  def mount(_, session, socket) do
+    if socket.assigns.public_config && !connected?(socket),
+      do: Dawarich.Maps.Dependencies.Public.record_visit(socket.assigns.public_capability)
+
+    {:ok,
+     assign(socket,
+       public_map_ready: false,
+       public_unlock_token: session["public_unlock_token"]
+     )}
+  end
 
   def handle_params(_, _, socket), do: {:noreply, socket}
 

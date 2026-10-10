@@ -19,6 +19,17 @@ defmodule DawarichWeb.NativeM6Routes do
       end
 
       scope "/" do
+        pipe_through :browser
+
+        live_session :native_m6_public,
+          session: {DawarichWeb.PublicMapAuth, :live_session, []},
+          root_layout: {DawarichWeb.Layouts, :native_root},
+          layout: false do
+          live "/s/:id", DawarichWeb.PublicMapLive, :show, container: {:div, class: "contents"}
+        end
+      end
+
+      scope "/" do
         pipe_through [:browser, :rails_user]
 
         live_session :native_m6,

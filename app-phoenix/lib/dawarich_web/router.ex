@@ -111,13 +111,6 @@ defmodule DawarichWeb.Router do
   end
 
   scope "/" do
-    pipe_through :sharing
-
-    get "/s/:id", DawarichWeb.SharedLinkPage, :show,
-      metadata: %{rails_gate: {DawarichWeb.SharingGate, :show?}}
-  end
-
-  scope "/" do
     pipe_through :sharing_unlock
 
     post "/s/:id/unlock", DawarichWeb.SharedLinkPage, :unlock,

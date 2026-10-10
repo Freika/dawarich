@@ -8,6 +8,13 @@ defmodule Dawarich.Maps.Dependencies.Public do
 
   def config(capability, opts \\ []), do: with_link(capability, opts, &project(&1, capability))
 
+  def record_visit(capability, opts \\ []) do
+    with_link(capability, opts, fn link ->
+      SharedLinks.touch!(link.id, Keyword.get(opts, :now, DateTime.utc_now()))
+      :ok
+    end)
+  end
+
   def read(capability, action, params, opts \\ []) do
     with_link(capability, opts, fn link ->
       result =
