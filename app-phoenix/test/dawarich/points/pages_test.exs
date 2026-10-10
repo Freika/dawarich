@@ -112,7 +112,9 @@ defmodule Dawarich.Points.PagesTest do
           }
         },
         120_001
-      ], log: false)
+      ],
+      log: false
+    )
 
     assert {:ok, _} = Pages.load(scope, @params, now: @now, self_hosted: true)
 
@@ -128,6 +130,39 @@ defmodule Dawarich.Points.PagesTest do
     assert length(full) == length(first)
     assert hd(one.rows).geodata["properties"]["street"] == "Synthetic Street"
     refute :erlang.term_to_binary(page) =~ "synthetic-provider-capability"
+  end
+
+  test "positive and negative import overflow refuse before queries or effects", %{scope: scope} do
+    before_counts =
+      Repo.query!(
+        "SELECT (SELECT count(*) FROM points), (SELECT count(*) FROM imports), (SELECT count(*) FROM oban.oban_jobs)",
+        [],
+        log: false
+      ).rows
+
+    for value <- ["9223372036854775808", "-9223372036854775809"] do
+      params = Map.put(@params, "import_id", value)
+      assert {:error, :invalid_input} = Pages.normalize(params)
+
+      {result, queries} =
+        NativeAdminUI.queries(fn -> Pages.load(scope, params, now: @now, self_hosted: true) end)
+
+      assert result == {:error, :invalid_input}
+      refute Enum.any?(queries, &String.contains?(&1, "FROM public.imports"))
+
+      assert {:error, :invalid_input} =
+               Pages.selection(scope, params, [], now: @now, self_hosted: true)
+    end
+
+    assert Repo.query!(
+             "SELECT (SELECT count(*) FROM points), (SELECT count(*) FROM imports), (SELECT count(*) FROM oban.oban_jobs)",
+             [],
+             log: false
+           ).rows == before_counts
+
+    for value <- ["9223372036854775807", "-9223372036854775808", "", "1tail"] do
+      assert {:ok, _, ""} = Pages.normalize(Map.put(@params, "import_id", value))
+    end
   end
 
   test "malformed point filters and changed identity refuse before a projection", %{scope: scope} do
@@ -150,7 +185,9 @@ defmodule Dawarich.Points.PagesTest do
 
     Repo.query!(
       "UPDATE users SET encrypted_password='new-identity-00000000000000000000' WHERE id=$1",
-      [scope.user.id], log: false)
+      [scope.user.id],
+      log: false
+    )
 
     assert {:error, :stale_session} = Pages.load(scope, @params, now: @now, self_hosted: true)
     refute is_nil(Accounts.get(scope.user.id))

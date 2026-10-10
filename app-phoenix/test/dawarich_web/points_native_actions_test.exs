@@ -64,11 +64,15 @@ defmodule DawarichWeb.PointsNativeActionsTest do
 
     assert Repo.query!(
              "SELECT count(*) FROM public.job_outbox WHERE command_type='exports.points' AND payload->>'user_id'=$1",
-             [to_string(user.id)], log: false).rows == [[1]]
+             [to_string(user.id)],
+             log: false
+           ).rows == [[1]]
 
     Repo.query!(
       "UPDATE users SET encrypted_password='changed-identity-000000000000000000' WHERE id=$1",
-      [user.id], log: false)
+      [user.id],
+      log: false
+    )
 
     assert {:error, :stale_session} = Commands.request_export(scope, @params, "json", receipt)
   end

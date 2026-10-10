@@ -171,7 +171,10 @@ defmodule DawarichWeb.MapDataParityTest do
     outcome =
       Dawarich.Points.Pages.load(
         Dawarich.Accounts.Scope.for_user(ctx.user, ctx.locale),
-        ctx.query, now: ctx.now, self_hosted: ctx.self_hosted)
+        ctx.query,
+        now: ctx.now,
+        self_hosted: ctx.self_hosted
+      )
 
     assert match?({:ok, _}, outcome), ctx.name
     {:ok, result} = outcome

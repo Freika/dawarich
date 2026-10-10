@@ -41,7 +41,12 @@ defmodule Dawarich.Points.Commands do
 
           case Dependencies.request_point_export(fresh, export, request_id, Repo) do
             {:ok, id} ->
-              {:ok, %{id: id, notice: "controllers.exports.export_was_successfully_initiated_please_wait_until_it_s_finished"}}
+              {:ok,
+               %{
+                 id: id,
+                 notice:
+                   "controllers.exports.export_was_successfully_initiated_please_wait_until_it_s_finished"
+               }}
 
             _ ->
               {:error, :unavailable}

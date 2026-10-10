@@ -49,7 +49,8 @@ defmodule Dawarich.PointList do
     page = max(Dawarich.RubyInteger.to_i(params["page"]), 1)
 
     if (valid_params?(params) or (opts[:native] == true and valid_native_params?(params, opts))) and
-         page <= @max_page do
+         page <= @max_page and
+         Dawarich.RubyInteger.to_i(params["import_id"]) in -9_223_372_036_854_775_808..9_223_372_036_854_775_807 do
       params =
         params
         |> Map.put("page", to_string(page))
