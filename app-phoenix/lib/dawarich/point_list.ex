@@ -3,7 +3,6 @@ defmodule Dawarich.PointList do
 
   alias Dawarich.{Entitlements, PointListWindow, Repo, TripSettings, UserTimeZone}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.TripsGate
 
   @per_page 50
   @max_page div(9_223_372_036_854_775_807, @per_page) + 1
@@ -38,12 +37,34 @@ defmodule Dawarich.PointList do
   end
 
   def load(user, params, now, opts) do
-    page = TripsGate.page_number(params["page"])
+    case normalize(params) do
+      {:ok, query} -> load_query(user, query, now, opts)
+      _ -> :rails
+    end
+  end
 
+  def normalize(params) when is_map(params) do
+    page = max(Dawarich.RubyInteger.to_i(params["page"]), 1)
+
+    if valid_params?(params) and page <= @max_page do
+      params =
+        params
+        |> Map.put("page", to_string(page))
+        |> Map.put("order_by", String.downcase(params["order_by"] || "desc"))
+
+      {:ok, %{params: params, page: page}}
+    else
+      {:error, :invalid_input}
+    end
+  end
+
+  def normalize(_), do: {:error, :invalid_input}
+
+  def load_query(user, %{params: params, page: page}, now, opts) do
     with true <-
            valid_params?(params) and page <= @max_page and
              settings?(Dawarich.UserSettings.get(user)),
-         {:ok, imports} <- imports(user.id),
+         {:ok, imports} <- imports(user.id, params["import_id"], opts),
          {:ok, import_id} <- selected_import(params["import_id"], imports),
          %{} = window <-
            PointListWindow.build(
@@ -130,7 +151,27 @@ defmodule Dawarich.PointList do
 
   defp settings?(_), do: false
 
-  defp imports(user_id) do
+  defp imports(user_id, selected, opts) do
+    if opts[:native] do
+      search = Keyword.get(opts, :import_search, "")
+
+      rows =
+        Repo.query!(
+          """
+          SELECT id, name, created_at FROM public.imports
+          WHERE user_id=$1 AND (name ILIKE $2 OR id=$3)
+          ORDER BY (id=$3) DESC NULLS LAST, created_at DESC
+          LIMIT 50
+          """,
+          [user_id, "%" <> search <> "%", Dawarich.RubyInteger.to_i(selected)], log: false).rows
+
+      {:ok, Enum.map(rows, fn [id, name, at] -> %{id: id, name: name, created_at: at} end)}
+    else
+      all_imports(user_id)
+    end
+  end
+
+  defp all_imports(user_id) do
     rows =
       Repo.query!(
         "SELECT id, name, created_at FROM public.imports WHERE user_id = $1 ORDER BY created_at DESC",
