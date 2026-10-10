@@ -1,29 +1,8 @@
 defmodule DawarichWeb.A12f3bN01Test do
   use Dawarich.DataCase, async: false
-  import Plug.Conn
   alias Dawarich.{Accounts, Notifications}
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{NotificationActions, RailsCsrf}
-
-  defmodule Router do
-    use Phoenix.Router
-
-    pipeline :standalone_settings do
-      plug DawarichWeb.HostAuthorization
-      plug DawarichWeb.ForceSSL
-      plug DawarichWeb.RateLimit
-      plug DawarichWeb.RailsAuth
-      plug DawarichWeb.Api.Body
-      plug DawarichWeb.RailsHeaders
-    end
-
-    import DawarichWeb.NotificationFormRoutes
-    import DawarichWeb.SettingsMiscRoutes
-    import DawarichWeb.OnboardingRoutes
-    notification_form_routes()
-    settings_misc_routes()
-    onboarding_routes()
-  end
+  alias Dawarich.Accounts.Scope
 
   setup do
     actor = RailsUser.insert!(%{id: 73101, email: "n01@test"})
@@ -34,46 +13,18 @@ defmodule DawarichWeb.A12f3bN01Test do
   end
 
   @tag a12f3b_case: "N01a"
-  test "notifications legacy actions preserve owner scope and invalid row failure", ctx do
-    conn = request(ctx.actor.id, :post, "/notifications/mark_as_read")
-    assert apply(NotificationActions, :call, [conn, :mark_as_read]).status == 303
+  test "scoped notification actions preserve owner and forged target refusal", ctx do
+    scope = Scope.for_user(Accounts.get(ctx.actor.id), "en")
+    assert {:ok, _} = Notifications.mark_all_read(scope)
     assert Notifications.get(ctx.actor.id, ctx.own).read_at
     refute Notifications.get(ctx.other.id, ctx.foreign).read_at
-
-    conn =
-      request(ctx.actor.id, :delete, "/notifications/#{ctx.foreign}", %{"id" => "#{ctx.own}"})
-
-    conn = %{conn | path_params: %{"id" => "#{ctx.foreign}"}}
-    assert apply(NotificationActions, :call, [conn, :destroy]).status == 404
-    session = RailsUser.session(ctx.actor.id)
-
-    body =
-      URI.encode_query(%{
-        "authenticity_token" => RailsCsrf.masked_token(session),
-        "id" => "#{ctx.own}"
-      })
-
-    routed =
-      Plug.Test.conn(:delete, "/notifications/#{ctx.foreign}", body)
-      |> put_req_header("content-type", "application/x-www-form-urlencoded")
-      |> put_req_header("content-length", "#{byte_size(body)}")
-      |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(session))
-      |> Router.call([])
-
-    assert routed.status == 404
+    assert {:error, :not_found} = Notifications.delete(scope, ctx.foreign)
     assert Notifications.get(ctx.actor.id, ctx.own)
-
-    conn = request(ctx.actor.id, :post, "/notifications/destroy_all")
-    assert apply(NotificationActions, :call, [conn, :destroy_all]).status == 303
+    assert {:ok, _} = Notifications.delete_all(scope)
     assert Notifications.get(ctx.actor.id, ctx.own) == nil
     assert Notifications.get(ctx.other.id, ctx.foreign)
-
-    conn =
-      request(ctx.actor.id, :post, "/notifications/destroy_all", %{
-        "authenticity_token" => "invalid"
-      })
-
-    assert apply(NotificationActions, :call, [conn, :destroy_all]).status == 422
+    Repo.query!("UPDATE users SET encrypted_password='rotated' WHERE id=$1", [ctx.actor.id])
+    assert {:error, :stale_session} = Notifications.delete_all(scope)
   end
 
   @tag a12f3b_case: "N01b"
@@ -86,19 +37,5 @@ defmodule DawarichWeb.A12f3bN01Test do
     end
 
     refute Notifications.get(ctx.actor.id, ctx.own).read_at
-  end
-
-  defp request(id, method, path, params \\ %{}) do
-    session = RailsUser.session(id)
-
-    Plug.Test.conn(method, path)
-    |> put_req_header("content-type", "application/x-www-form-urlencoded")
-    |> assign(
-      :api_params,
-      Map.merge(%{"authenticity_token" => RailsCsrf.masked_token(session)}, params)
-    )
-    |> assign(:api_query, %{})
-    |> assign(:rails_session, session)
-    |> assign(:current_user, Accounts.get(id))
   end
 end

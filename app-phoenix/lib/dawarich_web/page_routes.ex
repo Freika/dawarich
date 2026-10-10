@@ -2,10 +2,8 @@ defmodule DawarichWeb.PageRoutes do
   @moduledoc false
   defmacro page_routes do
     quote do
-      import DawarichWeb.ImportRoutes
       import DawarichWeb.ExportRoutes
       import DawarichWeb.RailsPagesRoutes
-      import_routes()
       export_routes()
 
       scope "/" do

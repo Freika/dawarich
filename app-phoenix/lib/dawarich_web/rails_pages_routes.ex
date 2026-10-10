@@ -10,7 +10,7 @@ defmodule DawarichWeb.RailsPagesRoutes do
         get "/native/account/qr", DawarichWeb.NativeCredentialReveal, []
         get "/native/account/key", DawarichWeb.NativeCredentialReveal, :key
 
-        get "/imports/:id/download", DawarichWeb.ImportsDownload, :show, metadata: @native_import
+        get "/imports/:id/download", DawarichWeb.ImportsDownload, :show
 
         live_session :native_pages,
           session: {DawarichWeb.NativeAuth, :live_session, []},

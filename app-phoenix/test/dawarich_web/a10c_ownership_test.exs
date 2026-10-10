@@ -232,7 +232,13 @@ defmodule DawarichWeb.A10cOwnershipTest do
           {"POST", "/admin/settings/test_geocoding", ""}
         ] do
       before = snapshot()
-      assert {203, _, _} = exchange(ctx, method, path, raw, proxy: true, form: method == "POST")
+
+      if path == "/settings/background_jobs" do
+        assert {404, _, _} = exchange(ctx, method, path, raw, form: method == "POST")
+      else
+        assert {203, _, _} = exchange(ctx, method, path, raw, proxy: true, form: method == "POST")
+      end
+
       assert snapshot() == before
     end
 

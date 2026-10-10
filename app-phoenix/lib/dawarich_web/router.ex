@@ -19,8 +19,6 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.DomainRoutes
   import DawarichWeb.SettingsMiscRoutes
   import DawarichWeb.OnboardingRoutes
-  import DawarichWeb.IntegrationFormRoutes
-  import DawarichWeb.NotificationFormRoutes
   import DawarichWeb.TrialHomeRoutes
 
   pipeline :browser do
@@ -152,18 +150,6 @@ defmodule DawarichWeb.Router do
   achievement_routes()
   achievement_image_routes()
 
-  pipeline :imports_request do
-    plug :put_api_tag, "imports"
-    plug DawarichWeb.HostAuthorization
-    plug DawarichWeb.ForceSSL
-    plug DawarichWeb.RateLimit
-    plug DawarichWeb.RailsAuth
-    plug DawarichWeb.ImportsRequest
-    plug DawarichWeb.RailsHeaders
-  end
-
-  @native_import %{rails_gate: {DawarichWeb.ImportsGate, :native?}}
-
   pipeline :map_write do
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
@@ -213,13 +199,11 @@ defmodule DawarichWeb.Router do
     post "/digests/:year", DawarichWeb.DigestActions, :destroy
   end
 
-  integration_form_routes()
   a10_routes()
   native_admin_routes()
   trial_home_routes()
   settings_misc_routes()
   onboarding_routes()
-  notification_form_routes()
 
   pipeline :stats_sharing do
     plug DawarichWeb.HostAuthorization

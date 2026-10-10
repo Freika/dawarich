@@ -247,12 +247,12 @@ defmodule Dawarich.A12f3bH01Test do
   end
 
   @tag a12f3b_case: "H01d"
-  test "mounted background jobs publish native photo imports", c do
+  test "retired mounted background requests have no effects and native photo commands publish",
+       c do
     route =
       Phoenix.Router.route_info(Router, "POST", "/settings/background_jobs", "www.example.com")
 
-    assert route.plug == DawarichWeb.IntegrationJobActions
-    assert Enum.count(Router.__routes__(), &(&1.path == route.route and &1.verb == :post)) == 1
+    assert route == :error
     session = RailsUser.session(c.owner.id)
 
     for hosted <- ~w(true false) do
@@ -274,8 +274,16 @@ defmodule Dawarich.A12f3bH01Test do
             %{}
           )
 
-        assert response.status == 302
-        assert get_resp_header(response, "location") == ["http://www.example.com/imports"]
+        assert response.status == 404
+
+        assert {:ok, :queued} =
+                 Dawarich.Imports.IntegrationCommands.enqueue(
+                   Repo,
+                   c.owner.id,
+                   "start_#{provider}_import",
+                   locale: "en",
+                   self_hosted: hosted == "true"
+                 )
       end
 
       if hosted == "true" do
@@ -287,13 +295,8 @@ defmodule Dawarich.A12f3bH01Test do
             %{"_method" => "patch"}
           )
 
-        assert legacy.status == 302
-
-        assert get_resp_header(legacy, "location") == [
-                 "http://www.example.com/settings/background_jobs"
-               ]
-
-        assert Dawarich.Accounts.settings(c.owner.id)["visits_suggestions_enabled"] == "true"
+        assert legacy.status == 404
+        refute Dawarich.Accounts.settings(c.owner.id)["visits_suggestions_enabled"] == "true"
       end
     end
 
@@ -309,7 +312,7 @@ defmodule Dawarich.A12f3bH01Test do
     assert commands() == []
 
     assert browser_request(session, :post, "/settings/background_jobs?job_name=unknown", %{}).status ==
-             422
+             404
 
     Dawarich.Jobs.Ownership.put!(Repo, "command:imports.photoprism_geodata", :sidekiq)
 
@@ -318,7 +321,7 @@ defmodule Dawarich.A12f3bH01Test do
              :post,
              "/settings/background_jobs?job_name=start_photoprism_import",
              %{}
-           ).status == 503
+           ).status == 404
 
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[4]]
   end
@@ -372,30 +375,41 @@ defmodule Dawarich.A12f3bH01Test do
               Map.put(params, "authenticity_token", RailsCsrf.masked_token(session))
             )
 
+      retired = String.starts_with?(path, ["/notifications/", "/settings/background_jobs"])
+
       receiver =
-        Task.async(fn ->
-          socket = RawHTTP.accept(server)
-          {head, rest} = RawHTTP.read_head(socket)
-          [length] = RawHTTP.header(head, "content-length")
-          received = RawHTTP.read_at_least(socket, rest, String.to_integer(length))
+        if not retired,
+          do:
+            Task.async(fn ->
+              socket = RawHTTP.accept(server)
+              {head, rest} = RawHTTP.read_head(socket)
+              [length] = RawHTTP.header(head, "content-length")
+              received = RawHTTP.read_at_least(socket, rest, String.to_integer(length))
 
-          RawHTTP.reply(
-            socket,
-            "HTTP/1.1 209 Rails\r\nContent-Length: 6\r\nConnection: close\r\n\r\nsource"
-          )
+              RawHTTP.reply(
+                socket,
+                "HTTP/1.1 209 Rails\r\nContent-Length: 6\r\nConnection: close\r\n\r\nsource"
+              )
 
-          :gen_tcp.close(socket)
-          {head, received}
-        end)
+              :gen_tcp.close(socket)
+              {head, received}
+            end)
 
       response = raw_request("POST", path, body, cookie)
-      assert response.status == 209
-      {head, received} = Task.await(receiver)
+
+      if retired do
+        assert response.status == 404
+        assert {:error, :timeout} = :gen_tcp.accept(server.listen, 0)
+      else
+        assert response.status == 209
+        {head, received} = Task.await(receiver)
+        assert response.resp_body == "source"
+        assert RawHTTP.request_line(head) == "POST #{path} HTTP/1.1"
+        assert RawHTTP.header(head, "cookie") == ["_dawarich_session=" <> cookie]
+        assert received == body
+      end
+
       :gen_tcp.close(server.listen)
-      assert response.resp_body == "source"
-      assert RawHTTP.request_line(head) == "POST #{path} HTTP/1.1"
-      assert RawHTTP.header(head, "cookie") == ["_dawarich_session=" <> cookie]
-      assert received == body
       assert footprint() == before
     end
 
@@ -414,8 +428,13 @@ defmodule Dawarich.A12f3bH01Test do
           {"POST", "/notifications/destroy_all", %{}},
           {"DELETE", "/notifications/1", %{}}
         ] do
+      expected =
+        if String.starts_with?(path, ["/notifications/", "/settings/background_jobs"]),
+          do: 404,
+          else: 422
+
       assert request(c.owner, method, path, Map.put(params, "authenticity_token", "invalid")).status ==
-               422
+               expected
     end
 
     assert raw_request("GET", "/settings/theme?theme=light", "", "").status == 302
@@ -619,10 +638,7 @@ defmodule Dawarich.A12f3bH01Test do
     for {path, methods, plug} <- [
           {"/settings/theme", ["GET"], DawarichWeb.SettingsMiscActions},
           {"/settings/changelog_consent", ~w(PATCH POST), DawarichWeb.SettingsMiscActions},
-          {"/settings/onboarding", ~w(POST PATCH PUT), DawarichWeb.OnboardingActions},
-          {"/notifications/mark_as_read", ["POST"], DawarichWeb.NotificationActions},
-          {"/notifications/destroy_all", ["POST"], DawarichWeb.NotificationActions},
-          {"/notifications/1", ~w(DELETE POST), DawarichWeb.NotificationActions}
+          {"/settings/onboarding", ~w(POST PATCH PUT), DawarichWeb.OnboardingActions}
         ],
         method <- methods,
         do: {method, path, plug}
@@ -663,16 +679,22 @@ defmodule Dawarich.A12f3bH01Test do
     foreign =
       Dawarich.Notifications.create!(Repo, other.id, :info, "Foreign notification", "Body")
 
-    assert request(user, "POST", "/notifications/mark_as_read").status == 303
+    scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(user.id), "en")
+    assert request(user, "POST", "/notifications/mark_as_read").status == 404
+    assert {:ok, _} = Dawarich.Notifications.mark_all_read(scope)
     assert Dawarich.Notifications.get(user.id, own).read_at
     refute Dawarich.Notifications.get(other.id, foreign).read_at
     assert request(user, "DELETE", "/notifications/#{foreign}", %{"id" => "#{own}"}).status == 404
+    assert {:error, :not_found} = Dawarich.Notifications.delete(scope, foreign)
     assert Dawarich.Notifications.get(user.id, own)
-    assert request(user, "DELETE", "/notifications/#{own}").status == 303
+    assert request(user, "DELETE", "/notifications/#{own}").status == 404
+    assert {:ok, :deleted} = Dawarich.Notifications.delete(scope, own)
     own = Dawarich.Notifications.create!(Repo, user.id, :info, "Override notification", "Body")
-    assert request(user, "POST", "/notifications/#{own}", %{"_method" => "delete"}).status == 303
+    assert request(user, "POST", "/notifications/#{own}", %{"_method" => "delete"}).status == 404
+    assert {:ok, :deleted} = Dawarich.Notifications.delete(scope, own)
     Dawarich.Notifications.create!(Repo, user.id, :info, "Delete all notification", "Body")
-    assert request(user, "POST", "/notifications/destroy_all").status == 303
+    assert request(user, "POST", "/notifications/destroy_all").status == 404
+    assert {:ok, _} = Dawarich.Notifications.delete_all(scope)
     assert Repo.query!("SELECT id FROM notifications WHERE user_id=$1", [user.id]).rows == []
     assert Dawarich.Notifications.get(other.id, foreign)
   end

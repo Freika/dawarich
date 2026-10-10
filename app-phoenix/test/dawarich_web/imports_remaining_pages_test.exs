@@ -3,9 +3,10 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   import Plug.Conn
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2, rails_session: 1]
+  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0]
   alias Dawarich.Test.{RailsUser, NativeImportCorpus}
-  alias DawarichWeb.{ImportsGate, RailsCsrf}
+  alias DawarichWeb.RailsCsrf
+  alias Dawarich.Accounts.Scope
   alias Dawarich.Imports.Download
 
   @endpoint DawarichWeb.Endpoint
@@ -83,7 +84,8 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
   end
 
   test "native normal owner pages and invalid source retain seven locale business vectors", c do
-    assert ImportsGate.native?(RailsUser.signed_in(c.user), %{"id" => "980111"})
+    assert {:ok, _} =
+             Dawarich.Imports.get(Scope.for_user(Dawarich.Accounts.get(c.user), "en"), "980111")
 
     for locale <- ~w(en de es fr pl ca zh) do
       Repo.query!("UPDATE users SET settings=settings||$2 WHERE id=$1", [
@@ -116,14 +118,14 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
       %{"locale" => "de"}
     ])
 
-    conn =
-      request(c, :post, "/imports/980111", form("google_phone_takeout") <> "&_method=patch")
-      |> native!(303)
+    {:ok, view, _} =
+      live(RailsUser.signed_in(c.user) |> RailsUser.connecting_as(c.user), "/imports/980111/edit")
 
-    assert get_resp_header(conn, "location") == ["http://www.example.com/imports"]
+    render_hook(view, "save_import", %{
+      "import" => %{"source" => "google_phone_takeout", "name" => "changed.csv"}
+    })
 
-    assert rails_session(conn)["flash"]["flashes"]["notice"] ==
-             "Import wurde erfolgreich aktualisiert."
+    assert_redirect(view, "/imports")
 
     assert [["changed.csv", 3, 0]] ==
              Repo.query!(
@@ -131,9 +133,11 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
              ).rows
   end
 
-  test "foreign native reads refuse safely while legacy write adapters still have zero foreign effects",
+  test "foreign native reads and retired writes refuse safely with zero foreign effects",
        c do
-    refute ImportsGate.native?(RailsUser.signed_in(c.other), %{"id" => "980111"})
+    assert {:error, :not_found} =
+             Dawarich.Imports.get(Scope.for_user(Dawarich.Accounts.get(c.other), "en"), "980111")
+
     foreign = %{c | session: RailsUser.session(c.other)}
 
     denied = request(foreign, :get, "/imports/980111/edit")
@@ -144,10 +148,8 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
           {foreign, :patch, "/imports/980111", form("csv")},
           {foreign, :delete, "/imports/980111", ""}
         ] do
-      {{line, bytes}, conn} = forwarded(c.upstream, fn -> request(actor, method, path, body) end)
-
-      assert {line, bytes, conn.status} ==
-               {String.upcase(to_string(method)) <> " #{path} HTTP/1.1", body, 204}
+      assert request(actor, method, path, body).status == 404
+      assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
     end
 
     previous = Application.get_env(:dawarich, :rails_routes, [])
@@ -155,10 +157,8 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, previous) end)
     body = form("gpx") <> "&_method=patch"
 
-    {{line, bytes}, conn} =
-      forwarded(c.upstream, fn -> request(c, :post, "/imports/980111", body) end)
-
-    assert {line, bytes, conn.status} == {"POST /imports/980111 HTTP/1.1", body, 204}
+    assert request(c, :post, "/imports/980111", body).status == 404
+    assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
 
     assert [["normal.csv", 10, 2]] ==
              Repo.query!("SELECT name,source,status FROM imports WHERE id=980111").rows
@@ -167,7 +167,9 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
   end
 
   test "non-GPX download and deletion preserve source bytes and cleanup", c do
-    assert ImportsGate.native?(RailsUser.signed_in(c.user), %{"id" => "980111"})
+    assert {:ok, _} =
+             Dawarich.Imports.get(Scope.for_user(Dawarich.Accounts.get(c.user), "en"), "980111")
+
     csv = "latitude,longitude,timestamp\n52,13,1700000000\n"
     {:ok, {_, zip}} = :zip.create(~c"points.csv.zip", [{~c"points.csv", csv}], [:memory])
 
@@ -206,8 +208,12 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
              Dawarich.Storage.content_disposition("attachment", "points.csv.zip")
            ]
 
-    deleted = request(c, :delete, "/imports/980111") |> native!(303)
-    assert rails_session(deleted)["flash"]["flashes"]["notice"] == "Import is being deleted."
+    assert {:ok, _} =
+             Dawarich.Imports.delete(
+               Scope.for_user(Dawarich.Accounts.get(c.user), "en"),
+               "980111"
+             )
+
     assert [[4]] == Repo.query!("SELECT status FROM imports WHERE id=980111").rows
 
     assert [[%{"import_id" => 980_111, "user_id" => 9801}]] =

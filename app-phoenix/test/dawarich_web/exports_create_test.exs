@@ -45,12 +45,12 @@ defmodule DawarichWeb.ExportsCreateTest do
         "SELECT id, name, status, file_format, file_type, start_at, end_at, user_id FROM exports ORDER BY id"
       ).rows
 
-  test "Phoenix routes export creation and the dedicated export deletion methods" do
+  test "Phoenix retains export creation and retires ordinary export deletion methods" do
     assert %{plug: DawarichWeb.ExportsCreate, plug_opts: :create} =
              Phoenix.Router.route_info(DawarichWeb.Router, "POST", ["exports"], "www.example.com")
 
     for method <- ["POST", "DELETE"] do
-      assert %{plug: DawarichWeb.ExportsDelete, plug_opts: :delete} =
+      assert :error ==
                Phoenix.Router.route_info(
                  DawarichWeb.Router,
                  method,

@@ -96,13 +96,18 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\n#{cookie}#{headers}Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}"
       )
 
-      puma = accept(ctx.upstream)
-      {head, rest} = read_head(puma)
-      assert request_line(head) == "#{method} #{target} HTTP/1.1"
-      assert header(head, "content-length") == [to_string(byte_size(body))]
-      assert read_at_least(puma, rest, byte_size(body)) == body
-      reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-      assert {200, _, "puma"} = read_response(client)
+      if String.starts_with?(target, "/settings/background_jobs") do
+        assert {404, _, _} = read_response(client)
+        assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+      else
+        puma = accept(ctx.upstream)
+        {head, rest} = read_head(puma)
+        assert request_line(head) == "#{method} #{target} HTTP/1.1"
+        assert header(head, "content-length") == [to_string(byte_size(body))]
+        assert read_at_least(puma, rest, byte_size(body)) == body
+        reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+        assert {200, _, "puma"} = read_response(client)
+      end
     end
 
     assert [[0]] == Dawarich.Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows
@@ -223,6 +228,24 @@ defmodule DawarichWeb.EndpointTest do
     assert values(headers, "x-frame-options") == ["SAMEORIGIN"]
   end
 
+  defp assert_write_transport(port, upstream, request, method, target) do
+    path = URI.parse(target).path
+    conn = %{method: method, path_info: String.split(path, "/", trim: true)}
+
+    cond do
+      DawarichWeb.NativeM4RetiredWrites.retired?(conn) ->
+        assert answered_by_phoenix(port, request) == 404
+        assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+
+      method == "POST" and path == "/exports" ->
+        assert answered_by_phoenix(port, request) == 422
+        assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+
+      true ->
+        assert answered_by_puma(port, upstream, request) == "#{method} #{target} HTTP/1.1"
+    end
+  end
+
   defp answered_by_puma(port, upstream, request) do
     client = connect(port)
     send_raw(client, request)
@@ -291,7 +314,7 @@ defmodule DawarichWeb.EndpointTest do
         do: assert(answered_by_phoenix(port, get.(target, headers)) == 302, target <> headers)
   end
 
-  test "the no-socket fallbacks of the notification pages post to Puma", ctx do
+  test "retired no-socket notification writes refuse without Puma", ctx do
     port = serve()
 
     for target <- ~w(/notifications/mark_as_read /notifications/destroy_all /notifications/5) do
@@ -301,7 +324,8 @@ defmodule DawarichWeb.EndpointTest do
         "POST #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "POST #{target} HTTP/1.1"
+      assert answered_by_phoenix(port, request) == 404
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
   end
 
@@ -334,10 +358,13 @@ defmodule DawarichWeb.EndpointTest do
         do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
 
     for target <-
-          ~w(/imports/5/download /imports/5/extraction /imports.json /exports.json /imports?format=json /imports/5?format=json /imports/5/download?format=json /exports/5) do
+          ~w(/imports/5/extraction /imports.json /exports.json /imports?format=json /imports/5?format=json /imports/5/download?format=json /exports/5) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
+
+    assert answered_by_phoenix(port, "GET /imports/5/download HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
 
     for {method, target} <- [
           {"PUT", "/imports/5"},
@@ -358,7 +385,7 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert_write_transport(port, ctx.upstream, request, method, target)
     end
   end
 
@@ -375,23 +402,14 @@ defmodule DawarichWeb.EndpointTest do
       {"GET", "/imports/:id"},
       {"GET", "/imports/:id/edit"},
       {"GET", "/imports/:id/download"},
-      {"POST", "/imports"},
-      {"POST", "/imports/:id"},
-      {"PATCH", "/imports/:id"},
-      {"PUT", "/imports/:id"},
-      {"DELETE", "/imports/:id"},
-      {"POST", "/imports/:id/extraction"},
-      {"DELETE", "/imports/:id/extraction"},
       {"GET", "/exports"},
-      {"POST", "/exports"},
-      {"POST", "/exports/:id"},
-      {"DELETE", "/exports/:id"}
+      {"POST", "/exports"}
     ]
 
     assert actual == Enum.sort(expected)
   end
 
-  test "signed-out import writes reach Puma with their body", ctx do
+  test "signed-out retired import writes refuse without Puma", ctx do
     port = serve()
     body = "import%5Bname%5D=x"
 
@@ -411,12 +429,8 @@ defmodule DawarichWeb.EndpointTest do
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
       )
 
-      puma = accept(ctx.upstream)
-      {head, rest} = read_head(puma)
-      assert request_line(head) == "#{method} #{target} HTTP/1.1"
-      assert read_at_least(puma, rest, byte_size(body)) == body
-      reply(puma, "HTTP/1.1 302 Found\r\nLocation: /users/sign_in\r\nContent-Length: 0\r\n\r\n")
-      assert {302, _headers, ""} = read_response(client)
+      assert {404, _, _} = read_response(client)
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
   end
 
@@ -444,7 +458,8 @@ defmodule DawarichWeb.EndpointTest do
     for id <- [769_101, 769_102] do
       target = "/imports/#{id}/download"
       request = "GET #{target} HTTP/1.1\r\nHost: a\r\nCookie: _dawarich_session=#{cookie}\r\n\r\n"
-      assert answered_by_puma(port, ctx.upstream, request) == "GET #{target} HTTP/1.1"
+      assert answered_by_phoenix(port, request) == 404
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
 
     body = "import%5Bname%5D=stolen"
@@ -462,7 +477,8 @@ defmodule DawarichWeb.EndpointTest do
           "X-CSRF-Token: #{token}\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert answered_by_phoenix(port, request) == 404
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
 
     for target <- ["/imports/769103", "/imports/769103/edit"] do
@@ -474,7 +490,7 @@ defmodule DawarichWeb.EndpointTest do
              Dawarich.Repo.query!("SELECT name,status FROM imports ORDER BY id", [], log: false).rows
   end
 
-  test "DAWARICH_RAILS_ROUTES=imports hands every import route and method back", ctx do
+  test "imports source override preserves reads but cannot revive retired writes", ctx do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
@@ -509,7 +525,7 @@ defmodule DawarichWeb.EndpointTest do
           "Content-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert_write_transport(port, ctx.upstream, request, method, target)
     end
 
     assert [["handback.gpx", 2]] ==
@@ -941,7 +957,7 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert_write_transport(port, ctx.upstream, request, method, target)
     end
   end
 
@@ -1044,7 +1060,7 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert_write_transport(port, ctx.upstream, request, method, target)
     end
   end
 

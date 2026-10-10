@@ -6,11 +6,11 @@ defmodule DawarichWeb.PageRoutesTest do
     assert macro_exported?(DawarichWeb.PageRoutes, :page_routes, 0)
 
     for {path, view, action, params, gate, session} <- [
-          {"/notifications", DawarichWeb.NotificationsLive.Index, :index, %{}, nil, :rails_pages},
+          {"/notifications", DawarichWeb.NotificationsLive.Index, :index, %{}, nil, :native_jobs},
           {"/notifications/17", DawarichWeb.NotificationsLive.Show, :show, %{"id" => "17"}, nil,
-           :rails_pages},
-          {"/imports/17", DawarichWeb.ImportsLive.Show, :show, %{"id" => "17"},
-           {DawarichWeb.ImportsGate, :native?}, :rails_pages},
+           :native_jobs},
+          {"/imports/17", DawarichWeb.ImportsLive.Show, :show, %{"id" => "17"}, nil,
+           :native_jobs},
           {"/places", DawarichWeb.PlacesLive.Index, :index, %{},
            {DawarichWeb.PlacesGate, :index?}, :rails_pages},
           {"/map/v2", DawarichWeb.MapLive, :index, %{}, nil, :rails_map}
@@ -25,19 +25,36 @@ defmodule DawarichWeb.PageRoutesTest do
       assert opts[:container] == {:div, class: "contents"}
 
       session_module =
-        if session == :rails_pages, do: DawarichWeb.NativeAuth, else: DawarichWeb.RailsAuth
+        case session do
+          :native_jobs -> DawarichWeb.NativeJobsAuth
+          :rails_pages -> DawarichWeb.NativeAuth
+          :rails_map -> DawarichWeb.RailsAuth
+        end
 
       assert extra.session == {session_module, :live_session, []}
-      assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.LiveAuth, :default}]
+
+      expected =
+        if session == :native_jobs,
+          do: {DawarichWeb.NativeJobsAuth, :require_user},
+          else: {DawarichWeb.LiveAuth, :default}
+
+      assert Enum.map(extra.on_mount, & &1.id) == [expected]
       layout = if session == :rails_map, do: :map, else: :app
-      root = if session == :rails_map, do: :map_root, else: :root
+
+      root =
+        case session do
+          :native_jobs -> :native_root
+          :rails_map -> :map_root
+          _ -> :root
+        end
+
       assert extra.layout == {DawarichWeb.Layouts, layout}
       assert extra.root_layout == {DawarichWeb.Layouts, root}
     end
 
     for {path, plug, action, pipelines, params, gate} <- [
           {"/imports/17/download", DawarichWeb.ImportsDownload, :show, [:browser, :rails_user],
-           %{"id" => "17"}, {DawarichWeb.ImportsGate, :native?}},
+           %{"id" => "17"}, nil},
           {"/places/17", DawarichWeb.PlaceNavigation, :show, [:rails_frame], %{"id" => "17"},
            {DawarichWeb.PlacesGate, :navigation?}},
           {"/map/residency", DawarichWeb.MapFrames, :residency, [:rails_frame], %{},
@@ -50,7 +67,7 @@ defmodule DawarichWeb.PageRoutesTest do
       assert route.plug_opts == action
       assert route.pipe_through == pipelines
       assert route.path_params == params
-      assert route.rails_gate == gate
+      assert Map.get(route, :rails_gate) == gate
     end
 
     details = info("/insights/details")

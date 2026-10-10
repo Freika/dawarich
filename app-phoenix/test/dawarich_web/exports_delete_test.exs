@@ -2,8 +2,9 @@ defmodule DawarichWeb.ExportsDeleteTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
   import Plug.Conn
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2, rails_session: 1]
+  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0]
   alias Dawarich.Test.RailsUser
+  alias Dawarich.Accounts.Scope
 
   setup do
     RailsUser.insert!(%{id: 9811, email: "exports-delete@example.test"})
@@ -26,7 +27,7 @@ defmodule DawarichWeb.ExportsDeleteTest do
     }
   end
 
-  defp request(c, method, path, body \\ "", headers \\ []) do
+  defp request(c, method, path, body, headers) do
     Enum.reduce(headers, build_conn(), fn {key, value}, conn ->
       put_req_header(conn, key, value)
     end)
@@ -37,29 +38,9 @@ defmodule DawarichWeb.ExportsDeleteTest do
     |> dispatch(DawarichWeb.Endpoint, method, path, body)
   end
 
-  defp route!(method) do
-    route =
-      Phoenix.Router.route_info(
-        DawarichWeb.Router,
-        method,
-        ["exports", "981101"],
-        "www.example.com"
-      )
-
-    assert %{plug: DawarichWeb.ExportsDelete, plug_opts: :delete} = route
-  end
-
-  test "export delete is owner scoped and stages the Rails 303 flash", c do
-    route!("DELETE")
+  test "legacy export purge domain stays owner scoped and preserves its command and bytes", c do
     assert {:error, :not_found} == Dawarich.Exports.Delete.call(Repo, 9811, "981102")
-    body = "_method=DELETE"
-
-    {{line, bytes}, foreign} =
-      forwarded(c.upstream, fn -> request(c, :post, "/exports/981102", body) end)
-
-    assert {line, bytes, foreign.status} == {"POST /exports/981102 HTTP/1.1", body, 204}
-    {{_, ""}, missing} = forwarded(c.upstream, fn -> request(c, :delete, "/exports/999999") end)
-    assert missing.status == 204
+    assert {:error, :not_found} == Dawarich.Exports.Delete.call(Repo, 9811, "999999")
     blob = Dawarich.RailsBlobFixture.create!(Repo, c.root, "backup.zip", "synthetic export")
 
     Repo.query!(
@@ -67,16 +48,7 @@ defmodule DawarichWeb.ExportsDeleteTest do
       [blob.id]
     )
 
-    conn = request(c, :delete, "/exports/981101")
-
-    assert {conn.status, get_resp_header(conn, "x-dawarich-handler")} ==
-             {303, ["phoenix-exports"]}
-
-    assert get_resp_header(conn, "location") == ["http://www.example.com/exports"]
-
-    assert rails_session(conn)["flash"]["flashes"] == %{
-             "notice" => "Export was successfully destroyed."
-           }
+    assert {:ok, :deleted} = Dawarich.Exports.Delete.call(Repo, 9811, "981101")
 
     assert [[981_102], [981_103]] == Repo.query!("SELECT id FROM exports ORDER BY id").rows
 
@@ -150,7 +122,10 @@ defmodule DawarichWeb.ExportsDeleteTest do
     end
 
     assert download.().status == 200
-    assert request(c, :delete, "/exports/981101").status == 303
+
+    assert {:ok, :deleted} =
+             Dawarich.Exports.delete(Scope.for_user(Dawarich.Accounts.get(9811), "en"), "981101")
+
     assert redirect.(blob.signed_id).status == 404
     assert download.().status == 404
     assert redirect.(shared.signed_id).status == 302
@@ -191,9 +166,8 @@ defmodule DawarichWeb.ExportsDeleteTest do
     assert redirect.(shared.signed_id).status == 302
   end
 
-  test "DELETE and POST export deletion run natively with Rails session and CSRF", c do
-    route!("POST")
-
+  test "retired export verbs preserve owner records across every session CSRF and override vector",
+       c do
     admission =
       Plug.Test.conn(:post, "/exports/981103", "_method=DELETE")
       |> put_req_cookie("_dawarich_session", RailsUser.cookie(c.session))
@@ -209,11 +183,19 @@ defmodule DawarichWeb.ExportsDeleteTest do
           {:delete, "/exports/981101", ""},
           {:post, "/exports/981103", "_method=DELETE"}
         ] do
-      conn = request(c, method, path, body)
+      conn = request(c, method, path, body, [])
 
-      assert {conn.status, get_resp_header(conn, "x-dawarich-handler")} ==
-               {303, ["phoenix-exports"]}
+      assert conn.status == 404
+      assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
     end
+
+    assert [[981_101], [981_102], [981_103]] ==
+             Repo.query!("SELECT id FROM exports ORDER BY id").rows
+
+    scope = Scope.for_user(Dawarich.Accounts.get(9811), "en")
+
+    for id <- [981_101, 981_103],
+        do: assert({:ok, :deleted} == Dawarich.Exports.delete(scope, id))
 
     assert [[981_102]] == Repo.query!("SELECT id FROM exports").rows
 
@@ -221,7 +203,7 @@ defmodule DawarichWeb.ExportsDeleteTest do
       "start_at=2024-03-01+00%3A00%3A00+%2B0100&end_at=2024-03-31+00%3A00%3A00+%2B0100&file_format=json"
 
     Dawarich.Jobs.Ownership.put!(Repo, "command:exports.points", :oban)
-    assert request(c, :post, "/exports", create).status == 302
+    assert request(c, :post, "/exports", create, []).status == 302
 
     Repo.query!(
       "INSERT INTO exports(id,user_id,name,status,file_format,file_type,created_at,updated_at) VALUES(981104,9811,'invalid-admission.zip',2,2,1,now(),now())"
@@ -234,10 +216,8 @@ defmodule DawarichWeb.ExportsDeleteTest do
           {c, "/exports/981104", "_method=POST&_method=DELETE", []},
           {c, "/exports/981104", "_method=DELETE", [{"x-http-method-override", "DELETE"}]}
         ] do
-      {{line, bytes}, conn} =
-        forwarded(c.upstream, fn -> request(actor, :post, path, body, headers) end)
-
-      assert {line, bytes, conn.status} == {"POST #{path} HTTP/1.1", body, 204}
+      assert request(actor, :post, path, body, headers).status == 404
+      assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
     end
 
     assert [[981_104]] == Repo.query!("SELECT id FROM exports WHERE id=981104").rows

@@ -6,7 +6,7 @@ defmodule DawarichWeb.A12f3aOClosureTest do
   import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
 
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{A8Gate, A8Request, ImportsRequest, MapWriteRequest, RailsAuth, RailsCsrf}
+  alias DawarichWeb.{A8Gate, A8Request, MapWriteRequest, RailsAuth, RailsCsrf}
 
   setup do
     actor = RailsUser.insert!(%{id: 8891, email: "o02-dispatch@example.test"})
@@ -122,30 +122,14 @@ defmodule DawarichWeb.A12f3aOClosureTest do
       MapWriteRequest
     )
 
-    for {method, path, attrs, form} <- [
-          {:post, "/imports", %{"import" => %{"files" => ["SYNTHETIC_BLOB"]}},
-           DawarichWeb.Imports.UploadForm},
-          {:patch, "/imports/42", %{"import" => %{"name" => "Synthetic"}},
-           DawarichWeb.Imports.UpdateForm}
-        ] do
-      body = encode(attrs, ctx.token)
-      conn = request(ctx, method, path, body, "text/html")
-      assert apply(ImportsRequest, :request_module, [conn]) == form
-      admitted = ImportsRequest.call(conn, [])
-      refute admitted.halted
-      assert admitted.private.dawarich_raw_body == body
-      assert admitted.assigns.api_params == Map.put(attrs, "authenticity_token", ctx.token)
-      replay(ctx, method, path, encode(attrs, "invalid"), ImportsRequest, "text/html")
-
-      replay(
-        ctx,
-        method,
-        path,
-        encode(Map.put(attrs, "foreign_domain", "x"), ctx.token),
-        ImportsRequest,
-        "text/html"
-      )
-
+    for {method, path, attrs} <- [
+          {:post, "/imports", %{"import" => %{"files" => ["SYNTHETIC_BLOB"]}}},
+          {:patch, "/imports/42", %{"import" => %{"name" => "Synthetic"}}}
+        ],
+        token <- [ctx.token, "invalid"],
+        values <- [attrs, Map.put(attrs, "foreign_domain", "x")] do
+      conn = request(ctx, method, path, encode(values, token), "text/html")
+      Dawarich.Test.RetiredM4Requests.assert_retired(conn)
       assert effects() == before
     end
 
@@ -375,7 +359,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   test "O07: import export trip visit video methods consume native owner outcomes exactly once",
        ctx do
     routes = i_f_e_t_v_r()
-    assert length(routes) == 38
+    assert length(routes) == 31
     ctx = seed_routes(ctx)
     System.put_env("SELF_HOSTED", "true")
 
@@ -466,14 +450,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
 
     Enum.map(reads, fn {path, key, handler} -> {"GET", path, key, handler} end) ++
       [
-        {"POST", "/imports", "imports", DawarichWeb.ImportsController},
-        {"PATCH", "/imports/42", "imports", DawarichWeb.ImportsController},
-        {"PUT", "/imports/42", "imports", DawarichWeb.ImportsController},
-        {"DELETE", "/imports/42", "imports", DawarichWeb.ImportsController},
-        {"POST", "/imports/42/extraction", "imports", DawarichWeb.ImportsController},
-        {"DELETE", "/imports/42/extraction", "imports", DawarichWeb.ImportsController},
         {"POST", "/exports", "exports", DawarichWeb.ExportsCreate},
-        {"DELETE", "/exports/42", "exports", DawarichWeb.ExportsDelete},
         {"POST", "/trips", "trips", DawarichWeb.TripActions},
         {"PATCH", "/trips/42", "trips", DawarichWeb.TripActions},
         {"PUT", "/trips/42", "trips", DawarichWeb.TripActions},
