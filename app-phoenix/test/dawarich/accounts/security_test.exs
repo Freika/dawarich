@@ -1,7 +1,12 @@
 defmodule Dawarich.Accounts.SecurityTest do
-  use Dawarich.DataCase, async: false
+  use Dawarich.DataCase, async: true
   alias Dawarich.{Accounts, Accounts.Scope}
   alias Dawarich.Test.RailsUser
+
+  test "self security uses concurrent sandbox ownership" do
+    assert __MODULE__.__ex_unit__(:config).async?
+    assert Repo.query!("SELECT 1", [], log: false).rows == [[1]]
+  end
 
   setup do
     env = %{
