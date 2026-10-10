@@ -1,3 +1,6 @@
+import { attachViewportStore } from "../data/view_store.js"
+import { installStyleFallback } from "../style/load_style.js"
+import { registerRTLTextPlugin } from "../style/rtl.js"
 import { createLifecycle } from "./lifecycle.js"
 import { createOperations } from "./operation.js"
 
@@ -17,6 +20,7 @@ export function createMapRuntime({
   const operations = createOperations(timers)
   let current = config
   let map = null
+  let viewport = null
   let mounting = null
   let state = "idle"
   lifetime.own(() => reader.destroy())
@@ -76,6 +80,29 @@ export function createMapRuntime({
         transformRequest,
       })
       const owned = map
+      if (typeof library.getRTLTextPluginStatus === "function")
+        void registerRTLTextPlugin(
+          library,
+          current.rtlUrl ?? "/assets/mapbox-gl-rtl-text.js",
+          { onError: (code) => events.error?.({ code }) },
+        )
+      if (typeof map.on === "function") {
+        const fallback = installStyleFallback({
+          map,
+          getConfig: () => current,
+          load: loadStyle,
+        })
+        lifetime.own(fallback.destroy)
+      }
+      if (current.namespace && typeof map.jumpTo === "function") {
+        viewport = attachViewportStore({
+          map,
+          namespace: current.namespace,
+          fallback: current.mapOptions,
+        })
+        lifetime.own(viewport.destroy)
+        viewport.restore()
+      }
       lifetime.own(() => owned.remove())
       const pending = Promise.resolve(
         attach?.({
@@ -134,6 +161,7 @@ export function createMapRuntime({
     async update(next) {
       if (lifetime.destroyed) return "cancelled"
       current = next
+      viewport?.updateNamespace(next.namespace)
       operations.reset()
       reader.reset()
       if (!map) mounting = null

@@ -10,6 +10,9 @@ defmodule DawarichWeb.MapLive.NativeConfig do
       "panel" => panel || "",
       "styleName" => saved["maps_maplibre_style"] || "light",
       "customTheme" => saved["maps_maplibre_custom_theme"],
+      "tilesFallback" => saved["maps_maplibre_tiles_fallback"] == true,
+      "styleUrl" =>
+        "/maps_maplibre/styles/#{if saved["maps_maplibre_style"] in ~w(light dark white black grayscale), do: saved["maps_maplibre_style"], else: "light"}.json",
       "tilesUrl" => saved["maps_maplibre_tiles_url"],
       "trackColor" => saved["track_color"],
       "editEnabled" => saved["point_dragging_enabled"] == true,

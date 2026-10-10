@@ -1,25 +1,18 @@
-import { installStudios } from "../ui/studios.js"
 import { createReader } from "../data/reader.js"
 import { cancelled } from "../data/request_scope.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { installHostReplay } from "../replay/host.js"
 import { createMapRuntime } from "../runtime/create_map.js"
+import { fetchStyle } from "../style/load_style.js"
+import { installStudios } from "../ui/studios.js"
 import { createTripLayers } from "./layers.js"
 export function mountTrip({
   element,
   pushEvent,
   reader = createReader(),
   loadLibrary = () => import("/maplibre/6.4.1/maplibre-gl.mjs"),
-  loadStyle = async (config, { signal }) => {
-    const response = await fetch(
-      config.styleUrl ??
-        `/maps_maplibre/styles/${config.styleName === "dark" ? "dark" : "light"}.json`,
-      { signal, credentials: "same-origin" },
-    )
-    if (!response.ok) throw new Error("Style unavailable")
-    return response.json()
-  },
+  loadStyle = fetchStyle,
   createLayers = createTripLayers,
 }) {
   let library, layers, photos, loadedConfig

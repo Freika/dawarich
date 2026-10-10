@@ -2,7 +2,7 @@ defmodule DawarichWeb.NativeMapHost do
   @moduledoc false
   use Phoenix.Component
 
-  @fields ~w(namespace revision editEnabled panel customTheme tilesUrl hiddenTileCategories disabledPoiGroups distanceUnit title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName flightsEnabled fogEnabled fogMode fogRadius hexagonsEnabled scratchEnabled photosEnabled visitsEnabled placesEnabled areasEnabled anomaliesEnabled placesTagFilters tripId planEnabled routeOptions shareId publicType routeEnabled validUntil byDay)
+  @fields ~w(namespace revision editEnabled panel customTheme tilesFallback tilesUrl hiddenTileCategories disabledPoiGroups distanceUnit title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName flightsEnabled fogEnabled fogMode fogRadius hexagonsEnabled scratchEnabled photosEnabled visitsEnabled placesEnabled areasEnabled anomaliesEnabled placesTagFilters tripId planEnabled routeOptions shareId publicType routeEnabled validUntil byDay)
   @range ~w(startAt endAt importId timezone)
   @options ~w(center zoom minZoom maxZoom bearing pitch projection interactive attributionControl)
 
@@ -44,6 +44,7 @@ defmodule DawarichWeb.NativeMapHost do
     config =
       assigns.config
       |> Map.take(@fields)
+      |> Map.put("rtlUrl", DawarichWeb.Assets.stylesheet_path("mapbox-gl-rtl-text.js"))
       |> Map.put("locale", locale)
       |> Map.put("uiLabels", DawarichWeb.NativeMapLabels.labels(locale))
       |> Map.put("photoLabels", photo_labels)

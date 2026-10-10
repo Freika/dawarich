@@ -8,6 +8,8 @@ export function mapSettings(settings, config) {
     ...config,
     distanceUnit: maps.distance_unit ?? config.distanceUnit,
     customTheme: settings.maps_maplibre_custom_theme ?? config.customTheme,
+    tilesFallback:
+      settings.maps_maplibre_tiles_fallback ?? config.tilesFallback,
     tilesUrl: settings.maps_maplibre_tiles_url ?? config.tilesUrl,
     hiddenTileCategories:
       maps.hidden_tile_categories ?? config.hiddenTileCategories,

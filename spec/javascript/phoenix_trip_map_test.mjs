@@ -279,10 +279,22 @@ test("trip replay acquires one photo window through its scoped snapshot", async 
 test("trip launcher dispatches its fixed stable source and releases the click owner", async () => {
   const f = fixture()
   const { Element } = await import("./support/native_m6_host_fixture.mjs")
-  const root = new Element(), button = new Element(), studio = new Element()
+  const root = new Element(),
+    button = new Element(),
+    studio = new Element()
   const events = []
-  globalThis.CustomEvent ??= class { constructor(type, options) { this.type = type; Object.assign(this, options) } }
-  root.querySelector = (selector) => selector === '[data-testid="map-button-video"]' ? button : selector === '#native-video-studio' ? studio : null
+  globalThis.CustomEvent ??= class {
+    constructor(type, options) {
+      this.type = type
+      Object.assign(this, options)
+    }
+  }
+  root.querySelector = (selector) =>
+    selector === '[data-testid="map-button-video"]'
+      ? button
+      : selector === "#native-video-studio"
+        ? studio
+        : null
   studio.dispatchEvent = (event) => events.push(event)
   f.element.closest = () => root
   await f.owner.mount()
