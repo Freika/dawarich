@@ -1,5 +1,5 @@
 defmodule Dawarich.Sharing.PublicPhotoTimeTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   alias Dawarich.{Repo, Sharing.PublicSnapshot}
 
   setup do
@@ -36,5 +36,36 @@ defmodule Dawarich.Sharing.PublicPhotoTimeTest do
       assert photo["day_key"] == nil
       assert photo["taken_at"] == value
     end
+  end
+
+  test "native photo DTO computes owner days for all dated photos in one query" do
+    raw =
+      for(day <- 1..5, do: {:object, [{"taken_at", "2026-05-0#{day}T00:30:00"}]}) ++
+        [{:object, [{"taken_at", nil}]}]
+
+    handler = "public-photo-days-#{System.unique_integer([:positive])}"
+    parent = self()
+
+    :telemetry.attach(
+      handler,
+      [:dawarich, :repo, :query],
+      fn _, _, metadata, _ ->
+        if self() == parent, do: send(parent, {:photo_day_query, metadata.query})
+      end,
+      nil
+    )
+
+    photos =
+      try do
+        PublicSnapshot.photos(raw, "Europe/Berlin")
+      after
+        :telemetry.detach(handler)
+      end
+
+    assert Enum.map(photos, & &1["day_key"]) ==
+             ["2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05", nil]
+
+    assert_received {:photo_day_query, _}
+    refute_received {:photo_day_query, _}
   end
 end

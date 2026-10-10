@@ -24,23 +24,32 @@ defmodule Dawarich.Sharing.PublicSnapshot do
   end
 
   def photos(photos, zone) do
-    Enum.map(photos, fn {:object, fields} ->
-      photo = Map.new(fields)
-      epoch = photo_epoch(photo["taken_at"], zone)
+    photos = Enum.map(photos, fn {:object, fields} -> Map.new(fields) end)
+    epochs = Enum.map(photos, &photo_epoch(&1["taken_at"], zone))
 
-      if epoch do
-        [[date]] =
-          Dawarich.Repo.query!("SELECT (to_timestamp($1) AT TIME ZONE $2)::date", [epoch, zone],
-            log: false
-          ).rows
+    photos
+    |> Enum.zip(epochs)
+    |> Enum.map_reduce(days(Enum.reject(epochs, &is_nil/1), zone), fn
+      {photo, nil}, days ->
+        {Map.put(photo, "day_key", nil), days}
 
-        photo
-        |> Map.put("taken_at", DateTime.from_unix!(epoch) |> DateTime.to_iso8601())
-        |> Map.put("day_key", Date.to_iso8601(date))
-      else
-        Map.put(photo, "day_key", nil)
-      end
+      {photo, epoch}, [day | days] ->
+        {photo
+         |> Map.put("taken_at", DateTime.from_unix!(epoch) |> DateTime.to_iso8601())
+         |> Map.put("day_key", Date.to_iso8601(day)), days}
     end)
+    |> elem(0)
+  end
+
+  defp days([], _zone), do: []
+
+  defp days(epochs, zone) do
+    Dawarich.Repo.query!(
+      "SELECT (to_timestamp(e) AT TIME ZONE $2)::date FROM unnest($1::bigint[]) WITH ORDINALITY AS t(e, i) ORDER BY i",
+      [epochs, zone],
+      log: false
+    ).rows
+    |> List.flatten()
   end
 
   defp photo_epoch(raw, zone) do
