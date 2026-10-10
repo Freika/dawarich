@@ -95,14 +95,18 @@ defmodule Dawarich.Insights.Pages do
     do:
       Repo.query!(
         "SELECT DISTINCT year FROM stats WHERE user_id=$1 AND month BETWEEN 1 AND 12 ORDER BY year DESC",
-        [id], log: false).rows
+        [id],
+        log: false
+      ).rows
       |> Enum.map(&hd/1)
 
   defp rows(id, period) do
     rows =
       Repo.query!(
         "SELECT year,month,distance,toponyms,daily_distance,updated_at FROM stats WHERE user_id=$1 AND month BETWEEN 1 AND 12 ORDER BY year,month",
-        [id], log: false).rows
+        [id],
+        log: false
+      ).rows
 
     rows =
       for [year, month, distance, toponyms, daily, updated] <- rows,

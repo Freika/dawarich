@@ -59,7 +59,9 @@ defmodule Dawarich.Insights.ResidencyPageTest do
 
     Dawarich.Repo.query!(
       "UPDATE users SET encrypted_password='replaced-identity-000000000000000000' WHERE id=$1",
-      [user.id], log: false)
+      [user.id],
+      log: false
+    )
 
     assert {:error, :stale_session} =
              ResidencyPage.load(scope, %{"year" => "2025"}, now: @now, self_hosted: true)

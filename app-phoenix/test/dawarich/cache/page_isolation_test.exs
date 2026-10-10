@@ -28,7 +28,9 @@ defmodule Dawarich.Cache.PageIsolationTest do
 
     Repo.query!(
       "UPDATE users SET settings=$2 WHERE id=$1",
-      [first.user.id, %{"timezone" => "Europe/Berlin"}], log: false)
+      [first.user.id, %{"timezone" => "Europe/Berlin"}],
+      log: false
+    )
 
     assert {:ok, %{zone: "Europe/Berlin", unit: "km"}} =
              Pages.fetch(first, :summary, %{}, reader, opts)

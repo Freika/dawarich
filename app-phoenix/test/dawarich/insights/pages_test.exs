@@ -66,7 +66,9 @@ defmodule Dawarich.Insights.PagesTest do
 
     Dawarich.Repo.query!(
       "UPDATE stats SET daily_distance=$1 WHERE user_id=$2 AND month=3",
-      [[[1, 1000], "malformed"], scope.user.id], log: false)
+      [[[1, 1000], "malformed"], scope.user.id],
+      log: false
+    )
 
     assert {:error, :invalid_input} =
              Pages.overview(scope, %{"year" => "2025"}, now: @now, self_hosted: true)

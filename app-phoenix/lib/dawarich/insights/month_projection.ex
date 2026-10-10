@@ -5,7 +5,9 @@ defmodule Dawarich.Insights.MonthProjection do
   def load(id, year, month) do
     case Repo.query!(
            "SELECT distance,monthly_distances,toponyms,first_time_visits,year_over_year FROM digests WHERE user_id=$1 AND year=$2 AND month=$3 AND period_type=0 LIMIT 1",
-           [id, year, month], log: false).rows do
+           [id, year, month],
+           log: false
+         ).rows do
       [[distance, daily, places, first, comparison]] ->
         places = Dawarich.Stats.Toponyms.sanitize(places)
         cities = for place <- places, city <- place["cities"], do: {place["country"], city}

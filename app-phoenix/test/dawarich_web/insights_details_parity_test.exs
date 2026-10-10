@@ -28,7 +28,7 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
 
   @parts ~w(year_comparison activity_breakdown location_clusters monthly_digest travel_patterns movement_wellness)
 
-  test "warm nil stale and cold details preserve the source corpus values and order" do
+  test "fresh and persisted activity preserve source corpus order" do
     for {state, order} <- [
           {"fresh", ~w(walking stationary flying)},
           {"persisted", ~w(flying walking stationary)}
@@ -60,20 +60,22 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
       expected = File.read!(Path.join(@dir, "activity-#{state}.html"))
       assert ParityHTML.normalize(actual) == ParityHTML.normalize(expected)
     end
+  end
 
-    before = Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows
+  for state <- [:warm, :stale, nil, :cold] do
+    @cache_state state
+    test "native Insights #{inspect(state)} cache state preserves corpus values without inline calculation" do
+      before =
+        Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", [], log: false).rows
 
-    for request <- @corpus["requests"], state <- [:warm, :stale, nil, :cold] do
-      for fragment <- request["fragment_keys"],
-          do: Dawarich.Redis.cache_command(["DEL", fragment])
+      for request <- @corpus["requests"], do: native_values(request, @cache_state)
 
-      native_values(request, state)
-
-      assert Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows ==
+      assert Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", [], log: false).rows ==
                before
-    end
 
-    assert Dawarich.Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
+      assert Dawarich.Repo.query!("SELECT count(*) FROM phoenix.rails_commands", [], log: false).rows ==
+               [[0]]
+    end
   end
 
   for request <- @corpus["requests"] do
@@ -99,32 +101,68 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
     user = Dawarich.Accounts.get(request["user_id"])
     scope = Dawarich.Accounts.Scope.for_user(user, query["locale"] || "en")
 
-    [[updated]] =
-      Dawarich.Repo.query!(
-        "SELECT updated_at FROM digests WHERE user_id=$1 AND year=2024 AND period_type=1",
-        [user.id]
-      ).rows
+    {:ok, cache} = Dawarich.Test.NativePageCache.start()
 
-    key = Details.yearly_key(user.id, 2024, updated)
-    Dawarich.Redis.cache_command(["DEL", key])
+    opts =
+      Dawarich.Test.NativePageCache.options(cache)
+      |> Keyword.merge(
+        self_hosted: false,
+        now: DateTime.from_unix!(Dawarich.Test.NativePageCache.now(cache))
+      )
+
     source = Details.load(user, query, self_hosted: false, fill: false)
-    entry = Enum.find(@corpus["cache"], &String.contains?(&1["key"], "/#{user.id}/"))
+    assert {:ok, seed} = DawarichWeb.InsightsLive.NativePage.details(scope, {query, opts})
+    assert seed.state == :ready
+    [key] = Map.keys(Dawarich.Test.NativePageCache.entries(cache))
+    assert String.starts_with?(key, "dawarich:native:data:v1:")
+
+    assert Enum.any?(
+             Dawarich.Test.NativePageCache.commands(cache),
+             &match?(["SET", ^key, _, "EX", "3600"], &1)
+           )
 
     case state do
       :warm ->
-        InsightsSeeds.cache!(key, Base.decode64!(entry["wire"]))
+        :ok
 
       :stale ->
-        Dawarich.Redis.cache_command(["SET", key, "corrupt source cache"])
+        {:ok, bytes} =
+          Dawarich.Cache.PagesCodec.encode(%{
+            schema: 1,
+            expires_at: Dawarich.Test.NativePageCache.now(cache) - 1,
+            value: %{seed | weekly: [999_999]}
+          })
+
+        Dawarich.Test.NativePageCache.corrupt(cache, key, bytes)
 
       nil ->
-        InsightsSeeds.cache!(key, Dawarich.RailsCache.Wire.encode_boolean(nil, expires_at: nil))
+        {:ok, bytes} = Dawarich.Cache.PagesCodec.encode(nil)
+        Dawarich.Test.NativePageCache.corrupt(cache, key, bytes)
 
       :cold ->
-        Dawarich.Redis.cache_command(["DEL", key])
+        Dawarich.Test.NativePageCache.command(cache, ["UNLINK", key])
     end
 
-    {:ok, data} = Dawarich.Insights.Pages.details(scope, query, self_hosted: false)
+    before_gets =
+      Enum.count(Dawarich.Test.NativePageCache.commands(cache), &match?(["GET", _], &1))
+
+    {{:ok, data}, queries} =
+      Dawarich.Test.NativeAdminUI.queries(fn ->
+        DawarichWeb.InsightsLive.NativePage.details(scope, {query, opts})
+      end)
+
+    assert Enum.count(Dawarich.Test.NativePageCache.commands(cache), &match?(["GET", ^key], &1)) ==
+             before_gets + 1
+
+    reads =
+      Enum.count(
+        queries,
+        &String.contains?(&1, "SELECT year,month,distance,toponyms,daily_distance")
+      )
+
+    assert reads == if(state == :warm, do: 0, else: 1)
+    refute Enum.any?(queries, &Regex.match?(~r/\b(INSERT|UPDATE|DELETE)\b/i, &1))
+    assert data == seed
     assert data.restricted == source.restricted
     assert data.year == source.year
     assert data.unit == source.unit
@@ -176,5 +214,7 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
 
       assert {:ok, _} = Dawarich.Cache.PagesCodec.encode(data)
     end
+
+    assert :ok = ExUnit.Callbacks.stop_supervised(Agent)
   end
 end
