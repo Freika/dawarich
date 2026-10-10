@@ -1,4 +1,10 @@
-import { clone, pointFeature, segmentFeature, uncoveredTrackFeature, updateSegmentGeometry } from "./editable_track_data.js"
+import {
+  clone,
+  pointFeature,
+  segmentFeature,
+  uncoveredTrackFeature,
+  updateSegmentGeometry,
+} from "./editable_track_data.js"
 
 export class EditorGeometry {
   _showTrack(trackId, track, points) {

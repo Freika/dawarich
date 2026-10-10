@@ -1,10 +1,10 @@
-import { filterVisits } from "../ui/filters.js"
 import {
   areasToGeoJSON,
   placesToGeoJSON,
   visitsToGeoJSON,
 } from "../data/entity_geojson.js"
 import { createRequestScope } from "../data/request_scope.js"
+import { filterVisits } from "../ui/filters.js"
 import { AnomaliesLayer } from "./anomalies.js"
 import { AreasLayer } from "./areas.js"
 import { PlacesLayer } from "./places.js"
@@ -169,7 +169,9 @@ export function createEntityLayers({
                     reader.pages(kind, params, { signal: operation.signal }),
                   )
             operation.check()
-            data = definition.convert(kind === "visits" ? filterVisits(rows, config.visitFilter) : rows)
+            data = definition.convert(
+              kind === "visits" ? filterVisits(rows, config.visitFilter) : rows,
+            )
           }
           operation.check()
           return [layer, data]

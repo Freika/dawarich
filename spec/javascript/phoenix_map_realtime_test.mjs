@@ -168,7 +168,15 @@ test("map hook owns coalesced delivery handlers and releases them on teardown", 
   assert.equal(jobs.size, 0)
   assert.equal(reads, 1)
   assert.equal(destroyed, 1)
-  assert.equal(removed.length, 3)
+  assert.deepEqual([...handlers.keys()].sort(), [
+    "enrichment:matches",
+    "map:clear",
+    "map:config",
+    "map:invalidate",
+    "map:layer",
+    "map:settings",
+  ])
+  assert.deepEqual([...removed].sort(), [...handlers.keys()].sort())
 })
 
 test("reconnect while the map chunk loads keeps a bounded invalidation queue", async () => {

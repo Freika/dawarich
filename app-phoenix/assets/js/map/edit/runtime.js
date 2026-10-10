@@ -89,7 +89,13 @@ export function createPointEditing({
 
   return {
     commit,
-    move: (pointId, step) => destroyed || !isEditMode() ? Promise.reject(abortError()) : send(pointId, step, { ...step, scope: step.historyScope ?? historyScope() }),
+    move: (pointId, step) =>
+      destroyed || !isEditMode()
+        ? Promise.reject(abortError())
+        : send(pointId, step, {
+            ...step,
+            scope: step.historyScope ?? historyScope(),
+          }),
     undo: () => (destroyed ? Promise.reject(abortError()) : history.undo()),
     redo: () => (destroyed ? Promise.reject(abortError()) : history.redo()),
     destroy,

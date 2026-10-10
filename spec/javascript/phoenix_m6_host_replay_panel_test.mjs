@@ -1,13 +1,34 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { fixture, Element } from "./support/native_m6_host_fixture.mjs"
+import { Element, fixture } from "./support/native_m6_host_fixture.mjs"
 
 test("native map host replay binds day scrubber and speed then unbinds panel on close", async () => {
   const f = fixture()
-  const controls = Object.fromEntries(["play", "speed", "speedLabel", "prev", "next", "day", "dayCount", "time", "velocity", "noData", "follow", "scrubber"].map(key => [key, new Element()]))
-  for (const [key, control] of Object.entries(controls)) f.nodes.set(`[data-replay="${key}"]`, control)
+  const controls = Object.fromEntries(
+    [
+      "play",
+      "speed",
+      "speedLabel",
+      "prev",
+      "next",
+      "day",
+      "dayCount",
+      "time",
+      "velocity",
+      "noData",
+      "follow",
+      "scrubber",
+    ].map((key) => [key, new Element()]),
+  )
+  for (const [key, control] of Object.entries(controls))
+    f.nodes.set(`[data-replay="${key}"]`, control)
   await f.owner.mount()
-  f.owner.source.snapshot = async () => ({points: [{timestamp: 1774861200, longitude: 13, latitude: 52}, {timestamp: 1774947600, longitude: 14, latitude: 53}]})
+  f.owner.source.snapshot = async () => ({
+    points: [
+      { timestamp: 1774861200, longitude: 13, latitude: 52 },
+      { timestamp: 1774947600, longitude: 14, latitude: 53 },
+    ],
+  })
   await f.owner.replay.open()
   assert.ok(controls.day.textContent)
   controls.next.emit("click")

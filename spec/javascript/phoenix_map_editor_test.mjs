@@ -7,7 +7,7 @@ globalThis.__mapEditorToasts = []
 const states = new WeakMap()
 function makeEditor(map, options) {
   const manager = options.layerManager
-  if (!states.has(manager)) states.set(manager, {busy: false})
+  if (!states.has(manager)) states.set(manager, { busy: false })
   const editor = new MapEditor(map, {
     readTrack: options.apiClient.fetchTrackWithSegments,
     readPoints: options.apiClient.fetchTrackPoints,
@@ -17,15 +17,40 @@ function makeEditor(map, options) {
     editable: options.editable,
     mutationState: states.get(manager),
     getSelectedTrack: () => manager.getLayer("tracks")?.selectedFeature,
-    setSelectedTrack: (feature) => manager.getLayer("tracks")?.setSelectedTrack?.(feature),
-    clearSelection: () => manager.controller?.eventHandlers?.clearTrackSelection?.({preserveEditor: true}),
-    invalidatePoints: () => manager.controller?.mapDataManager?.invalidatePoints(),
-    refreshTiles: () => { manager.getLayer("points-mvt")?.refresh(); manager.getLayer("tracks-mvt")?.refresh() },
+    setSelectedTrack: (feature) =>
+      manager.getLayer("tracks")?.setSelectedTrack?.(feature),
+    clearSelection: () =>
+      manager.controller?.eventHandlers?.clearTrackSelection?.({
+        preserveEditor: true,
+      }),
+    invalidatePoints: () =>
+      manager.controller?.mapDataManager?.invalidatePoints(),
+    refreshTiles: () => {
+      manager.getLayer("points-mvt")?.refresh()
+      manager.getLayer("tracks-mvt")?.refresh()
+    },
     translate: (key) => key,
     onMoved: options.onMoved,
     onError: (message) => globalThis.__mapEditorToastErrors.push(message),
-    createLayer: () => ({successLayerId: "edit-success-indicator", add(data) {this.data=data}, setData(data) {this.data=data}, remove() {this.data=null}}),
-    createIndicator: () => ({shown: [], show(id) { this.shown.push(id) }, cancel() {}}),
+    createLayer: () => ({
+      successLayerId: "edit-success-indicator",
+      add(data) {
+        this.data = data
+      },
+      setData(data) {
+        this.data = data
+      },
+      remove() {
+        this.data = null
+      },
+    }),
+    createIndicator: () => ({
+      shown: [],
+      show(id) {
+        this.shown.push(id)
+      },
+      cancel() {},
+    }),
   })
   return editor
 }
@@ -1301,7 +1326,6 @@ test("closed editor ignores incoming point moves", async () => {
   )
   assert.equal(editor.data, null)
 })
-
 
 function mutationHarness() {
   const map = fakeMap()

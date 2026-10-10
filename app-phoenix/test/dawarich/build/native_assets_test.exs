@@ -50,7 +50,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
     assert Enum.any?(chunks, &(&1 =~ "mttdcBceuqX"))
     assert app =~ ~s|import("/maplibre/6.4.1/maplibre-gl.mjs")|
     refute Enum.any?(inputs, &String.contains?(&1, "maplibre"))
-    refute Enum.any?(inputs, &String.contains?(&1, "app/javascript"))
+    refute_unapproved_rails_inputs(inputs)
   end
 
   test "the demo adds at most 2 KB to the eagerly loaded native bundle", %{tmp_dir: dir} do
@@ -112,13 +112,31 @@ defmodule Dawarich.Build.NativeAssetsTest do
     refute Enum.any?(
              graph,
              &Regex.match?(
-               ~r{app/javascript|controllers/|@hotwired|rails_bridge|activestorage},
+               ~r{controllers/|@hotwired|rails_bridge|activestorage},
                &1
              )
            )
 
+    refute_unapproved_rails_inputs(graph)
     chunks = for path <- Path.wildcard(Path.join(dir, "*.js")), do: File.read!(path)
     assert Enum.any?(chunks, &String.contains?(&1, "/maplibre/6.4.1/maplibre-gl.mjs"))
+  end
+
+  test "native style dependency adapter imports only the three approved pure interfaces", %{
+    tmp_dir: dir
+  } do
+    graph = dir |> build!() |> inputs()
+    shared = Enum.filter(graph, &String.contains?(&1, "app/javascript"))
+    assert MapSet.new(shared) == MapSet.new(approved_style_inputs())
+  end
+
+  defp approved_style_inputs,
+    do:
+      ~w(../../app/javascript/poster_studio/data/theme_loader.js ../../app/javascript/poster_studio/data/protomaps_schema.js ../../app/javascript/poster_studio/render/style_builder.js)
+
+  defp refute_unapproved_rails_inputs(graph) do
+    assert Enum.filter(graph, &String.contains?(&1, "app/javascript")) -- approved_style_inputs() ==
+             []
   end
 
   test "density libraries stay outside the ordinary map-open graph", %{tmp_dir: dir} do

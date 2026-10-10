@@ -27,9 +27,8 @@ test("map replay snapshot reads photos only when enabled using its scoped range 
   assert.deepEqual(calls[1], {
     resource: "photos",
     params: {
-      start_at: state.range.startAt,
-      end_at: state.range.endAt,
-      import_id: 7,
+      start_date: state.range.startAt,
+      end_date: state.range.endAt,
     },
     options: { signal },
   })

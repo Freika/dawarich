@@ -137,12 +137,6 @@ export function mountTrip({
           routeOptions: data.config.routeOptions,
         },
       )
-      if (purpose === "replay" && state.photosEnabled)
-        snapshot.photos = await reader.pages(
-          "photos",
-          { start_date: state.range.startAt, end_date: state.range.endAt },
-          { signal },
-        )
       return snapshot
     },
   })

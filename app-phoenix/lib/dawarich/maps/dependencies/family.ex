@@ -30,6 +30,8 @@ defmodule Dawarich.Maps.Dependencies.Family do
           _ ->
             {:error, :unavailable}
         end
-      end, now: now)
+      end,
+      now: now
+    )
   end
 end

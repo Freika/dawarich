@@ -185,16 +185,32 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     assert Enum.count(saving, & &1) >= 2
   end
 
-  test "native map selection and dialog commands retain accessible Hotwire-free controls", %{user: user} do
+  test "native map selection and dialog commands retain accessible Hotwire-free controls", %{
+    user: user
+  } do
     place = FrameSeeds.place!(user.id, 84112, "Cafe")
-    visit = FrameSeeds.visit!(user.id, 84112, %{place_id: place, status: 0, started_at: ~N[2026-03-30 09:00:00], ended_at: ~N[2026-03-30 10:00:00]})
-    conn = RailsUser.signed_in(user.id)
+
+    visit =
+      FrameSeeds.visit!(user.id, 84112, %{
+        place_id: place,
+        status: 0,
+        started_at: ~N[2026-03-30 09:00:00],
+        ended_at: ~N[2026-03-30 10:00:00]
+      })
+
+    conn =
+      RailsUser.signed_in(user.id)
       |> RailsUser.connecting_as(user.id)
       |> Plug.Test.init_test_session(%{})
       |> Plug.Conn.put_private(:phoenix_endpoint, @endpoint)
-      |> Map.merge(%{request_path: "/map/v2", path_info: ["map", "v2"], query_string: "start_at=2026-03-30T00:00&end_at=2026-03-30T23:59&panel=timeline"})
+      |> Map.merge(%{
+        request_path: "/map/v2",
+        path_info: ["map", "v2"],
+        query_string: "start_at=2026-03-30T00:00&end_at=2026-03-30T23:59&panel=timeline"
+      })
       |> Plug.Conn.fetch_query_params()
       |> Dawarich.Test.NativeM6IntegrationRouter.call([])
+
     {:ok, view, _} = live(conn)
     render_async(view, 5000)
     render_hook(view, "timeline:select_day", %{"date" => "2026-03-30"})

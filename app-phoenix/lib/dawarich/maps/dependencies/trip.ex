@@ -18,7 +18,9 @@ defmodule Dawarich.Maps.Dependencies.Trip do
           {:ok, page} -> {:ok, project(page)}
           _ -> {:error, :not_found}
         end
-      end, now: now)
+      end,
+      now: now
+    )
   end
 
   def read(_, _, _), do: {:error, :invalid}

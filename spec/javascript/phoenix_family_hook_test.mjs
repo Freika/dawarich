@@ -33,5 +33,13 @@ test("family hook clear before lazy import prevents allocation and releases hand
   await pending
   hook.destroyed()
   assert.equal(allocations, 0)
-  assert.equal(removed.length, 3)
+  assert.deepEqual([...handlers.keys()].sort(), [
+    "enrichment:matches",
+    "map:clear",
+    "map:config",
+    "map:invalidate",
+    "map:layer",
+    "map:settings",
+  ])
+  assert.deepEqual([...removed].sort(), [...handlers.keys()].sort())
 })

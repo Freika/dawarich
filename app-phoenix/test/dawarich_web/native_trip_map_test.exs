@@ -32,7 +32,9 @@ defmodule DawarichWeb.NativeTripMapTest do
     assert {:error, :not_found} =
              Dawarich.Maps.Dependencies.Trip.config(
                Maps.principal(Accounts.get(8899), "en"),
-               884_101, now: @now)
+               884_101,
+               now: @now
+             )
 
     conn =
       RailsUser.signed_in(ctx.user.id)

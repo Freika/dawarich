@@ -29,6 +29,9 @@ export class Element {
   append(...children) {
     this.children.push(...children)
   }
+  getBoundingClientRect() {
+    return { left: 0, right: 800, top: 0, bottom: 600, width: 800, height: 600 }
+  }
   remove() {}
 }
 

@@ -71,7 +71,6 @@ export const TILE_LAYER_CATEGORIES = {
   boundaries: ["boundaries_country", "boundaries"],
 }
 
-
 export const POI_GROUPS = {
   food_drink: {
     kinds: [
@@ -198,7 +197,6 @@ export const POI_GROUPS = {
   },
 }
 
-
 export function enabledPoiKinds(disabledGroups) {
   const disabled = new Set(disabledGroups || [])
   const kinds = []
@@ -209,5 +207,3 @@ export function enabledPoiKinds(disabledGroups) {
   }
   return kinds
 }
-
-

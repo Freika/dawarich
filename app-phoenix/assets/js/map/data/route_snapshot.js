@@ -18,7 +18,11 @@ export async function readRouteSnapshot(
   const routes = RouteSegmenter.pointsToRoutes(points, routeOptions)
   if (purpose === "replay") {
     const photos = state.photosEnabled
-      ? await reader.pages("photos", params, { signal })
+      ? await reader.pages(
+          "photos",
+          { start_date: state.range.startAt, end_date: state.range.endAt },
+          { signal },
+        )
       : []
     return { points, photos, geojson: routes }
   }

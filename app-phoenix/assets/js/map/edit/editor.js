@@ -1,32 +1,64 @@
-import { clone, snapshotCoordinates } from "./editable_track_data.js"
-import { TrackSession } from "./track_session.js"
-import { EditableTrackLayer } from "./editable_track_layer.js"
-import { EditSuccessIndicator } from "./success_indicator.js"
-import { EditorHistory } from "./editor_history.js"
-import { TileExclusions } from "./tile_exclusions.js"
 import { createRequestScope } from "../data/request_scope.js"
+import { clone, snapshotCoordinates } from "./editable_track_data.js"
+import { EditableTrackLayer } from "./editable_track_layer.js"
+import { EditorHistory } from "./editor_history.js"
+import { EditSuccessIndicator } from "./success_indicator.js"
+import { TileExclusions } from "./tile_exclusions.js"
+import { TrackSession } from "./track_session.js"
 
 export class MapEditor extends TrackSession {
-  constructor(map, {
-    readTrack, readPoints, move, importScoped = false, historyScope = () => ({}),
-    editable = true, distanceUnit = "km", history = null, mutationState = {busy: false},
-    getSelectedTrack = () => null, setSelectedTrack = () => {},
-    invalidatePoints = () => {}, refreshTiles = () => {}, clearSelection = () => {},
-    onError = () => {}, onMoved = () => {}, translate = (key) => key,
-    document = globalThis.document, createLayer = (map) => new EditableTrackLayer(map),
-    createIndicator = (map, id) => new EditSuccessIndicator(map, id),
-  } = {}) {
+  constructor(
+    map,
+    {
+      readTrack,
+      readPoints,
+      move,
+      importScoped = false,
+      historyScope = () => ({}),
+      editable = true,
+      distanceUnit = "km",
+      history = null,
+      mutationState = { busy: false },
+      getSelectedTrack = () => null,
+      setSelectedTrack = () => {},
+      invalidatePoints = () => {},
+      refreshTiles = () => {},
+      clearSelection = () => {},
+      onError = () => {},
+      onMoved = () => {},
+      translate = (key) => key,
+      document = globalThis.document,
+      createLayer = (map) => new EditableTrackLayer(map),
+      createIndicator = (map, id) => new EditSuccessIndicator(map, id),
+    } = {},
+  ) {
     super()
-    Object.assign(this, {map, readTrack, readPoints, move, importScoped, historyScope, editable,
-      mutationState, getSelectedTrack, setSelectedTrack, invalidatePoints, refreshTiles,
-      clearSelection, onError, onMoved, translate, document})
+    Object.assign(this, {
+      map,
+      readTrack,
+      readPoints,
+      move,
+      importScoped,
+      historyScope,
+      editable,
+      mutationState,
+      getSelectedTrack,
+      setSelectedTrack,
+      invalidatePoints,
+      refreshTiles,
+      clearSelection,
+      onError,
+      onMoved,
+      translate,
+      document,
+    })
     this.disposed = false
     this.layer = createLayer(map)
     this.indicator = createIndicator(map, this.layer.successLayerId)
     this.exclusions = new TileExclusions(map)
     this.readScope = createRequestScope()
     this.trackLoad = null
-    this.edits = new EditorHistory(this, {distanceUnit, history})
+    this.edits = new EditorHistory(this, { distanceUnit, history })
     this.inFlight = false
     this.inFlightKeys = new Set()
     this.sessionVersion = 0

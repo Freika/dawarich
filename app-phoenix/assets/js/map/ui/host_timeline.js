@@ -17,10 +17,15 @@ export function createHostTimeline({ map, root, reader, lifetime }) {
     selected = id
     const operation = requests.begin()
     try {
-      const result = await operation.wait(reader.read("track", { id }, { signal: operation.signal }))
+      const result = await operation.wait(
+        reader.read("track", { id }, { signal: operation.signal }),
+      )
       operation.check()
       hover.hover(result.data)
-    } catch {} finally { operation.close() }
+    } catch {
+    } finally {
+      operation.close()
+    }
   }
   root?.addEventListener("pointerover", enter)
   root?.addEventListener("pointerout", clear)

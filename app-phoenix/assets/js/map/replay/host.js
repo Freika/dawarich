@@ -1,7 +1,6 @@
 import { mapTranslate } from "../ui/translate.js"
 import { createReplayDensity } from "./density.js"
 import { createReplayPanel } from "./panel.js"
-import { createReplayPhotos } from "./photos.js"
 import { createReplay } from "./runtime.js"
 
 export function installHostReplay({
@@ -20,7 +19,8 @@ export function installHostReplay({
     photoRows = [],
     range = null,
     active = false,
-    latest = {}
+    latest = {},
+    generation = 0
   const translate = mapTranslate(() => owner.config)
   const keys = [
     "play",
@@ -45,6 +45,10 @@ export function installHostReplay({
   const container = root?.querySelector("[data-map-replay-panel]")
   const opener = root?.querySelector("[data-map-replay-open]")
   function ensure() {
+    if (runtime && runtime.manager.timezone !== owner.config.range.timezone) {
+      runtime.close()
+      runtime = null
+    }
     runtime ??= createReplay({
       map,
       timezone: owner.config.range.timezone,
@@ -78,12 +82,16 @@ export function installHostReplay({
     async open(next = owner.config.range) {
       owner.replay.close()
       if (lifetime.destroyed) return "cancelled"
+      const current = generation
       active = true
       onActive(true)
       range = JSON.stringify(next)
       try {
         const result = await ensure().open(next)
         if (result !== "ready" || !active) return result
+        const photoModule = library?.Marker ? await import("./photos.js") : null
+        if (!active || current !== generation || lifetime.destroyed)
+          return "cancelled"
         if (container) container.hidden = false
         panel?.destroy()
         if (keys.every((key) => elements[key]))
@@ -100,7 +108,7 @@ export function installHostReplay({
             seek: (minute) => runtime.seek(minute),
           })
         if (library?.Marker)
-          photos = createReplayPhotos({
+          photos = photoModule.createReplayPhotos({
             photos: photoRows,
             map,
             library,
@@ -118,6 +126,7 @@ export function installHostReplay({
       }
     },
     close() {
+      generation++
       active = false
       if (!lifetime.destroyed) onActive(false)
       panel?.destroy()

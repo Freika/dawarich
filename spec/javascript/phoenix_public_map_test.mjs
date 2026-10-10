@@ -321,13 +321,25 @@ test("public metadata updates retain localized photo labels", async () => {
   f.owner.destroy()
 })
 
- test("native public replay uses its scoped source and closes marker ownership", async () => {
+test("native public replay uses its scoped source and closes marker ownership", async () => {
   const f = fixture()
   await f.owner.mount()
-  const sources = new Map(), layers = new Map()
+  const sources = new Map(),
+    layers = new Map()
   Object.assign(f.owner.map, {
-    getSource: id => sources.get(id), addSource: (id, value) => sources.set(id, {...value, setData(data) {this.data=data}}), removeSource: id => sources.delete(id),
-    getLayer: id => layers.get(id), addLayer: layer => layers.set(layer.id, layer), removeLayer: id => layers.delete(id), on() {},
+    getSource: (id) => sources.get(id),
+    addSource: (id, value) =>
+      sources.set(id, {
+        ...value,
+        setData(data) {
+          this.data = data
+        },
+      }),
+    removeSource: (id) => sources.delete(id),
+    getLayer: (id) => layers.get(id),
+    addLayer: (layer) => layers.set(layer.id, layer),
+    removeLayer: (id) => layers.delete(id),
+    on() {},
   })
   await f.owner.replay.open()
   assert.equal(sources.has("native-replay-marker"), true)

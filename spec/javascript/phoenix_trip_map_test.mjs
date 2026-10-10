@@ -61,7 +61,7 @@ const flights = {
     },
   ],
 }
-function fixture() {
+function fixture(config = {}) {
   let maps = 0,
     removed = 0,
     updates = 0,
@@ -75,6 +75,7 @@ function fixture() {
         range: metadata.config.range,
         flightsEnabled: true,
         mapOptions: {},
+        ...config,
       }),
     },
     ownerDocument: { createElement: () => ({ style: {}, remove() {} }) },
@@ -238,17 +239,39 @@ test("trip configuration revision invalidates a pending studio snapshot", async 
   }
 })
 
- test("native trip replay uses its scoped source and closes marker ownership", async () => {
+test("native trip replay uses its scoped source and closes marker ownership", async () => {
   const f = fixture()
   await f.owner.mount()
-  const sources = new Map(), layers = new Map()
+  const sources = new Map(),
+    layers = new Map()
   Object.assign(f.owner.map, {
-    getSource: id => sources.get(id), addSource: (id, value) => sources.set(id, {...value, setData(data) {this.data=data}}), removeSource: id => sources.delete(id),
-    getLayer: id => layers.get(id), addLayer: layer => layers.set(layer.id, layer), removeLayer: id => layers.delete(id), on() {},
+    getSource: (id) => sources.get(id),
+    addSource: (id, value) =>
+      sources.set(id, {
+        ...value,
+        setData(data) {
+          this.data = data
+        },
+      }),
+    removeSource: (id) => sources.delete(id),
+    getLayer: (id) => layers.get(id),
+    addLayer: (layer) => layers.set(layer.id, layer),
+    removeLayer: (id) => layers.delete(id),
+    on() {},
   })
   await f.owner.replay.open()
   assert.equal(sources.has("native-replay-marker"), true)
   f.owner.replay.close()
   assert.equal(sources.has("native-replay-marker"), false)
+  f.owner.destroy()
+})
+
+test("trip replay acquires one photo window through its scoped snapshot", async () => {
+  const f = fixture({ photosEnabled: true })
+  const snapshot = await f.owner.source.snapshot({ purpose: "replay" })
+  assert.equal(snapshot.photos.length, 2)
+  const calls = f.reads.filter((read) => read.resource === "photos")
+  assert.equal(calls.length, 1)
+  assert.deepEqual(calls[0].params, { start_date: start, end_date: end })
   f.owner.destroy()
 })

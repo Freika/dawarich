@@ -10,11 +10,18 @@ test("map host create-area tool owns its click and releases it on destroy", asyn
     assert.equal(await f.owner.mount(), "ready")
     button.emit("click")
     f.map.emit("click", { lngLat: { lat: 52.52, lng: 13.405 } })
-    assert.ok(f.pushed.some(({event, payload}) => event === "area:new" && payload.latitude === 52.52))
+    assert.ok(
+      f.pushed.some(
+        ({ event, payload }) =>
+          event === "area:new" && payload.latitude === 52.52,
+      ),
+    )
     button.emit("click")
     f.owner.destroy()
     f.map.emit("click", { lngLat: { lat: 52, lng: 13 } })
-    assert.equal(f.pushed.filter(({event}) => event === "area:new").length, 1)
+    assert.equal(f.pushed.filter(({ event }) => event === "area:new").length, 1)
     assert.equal(button.listeners.get("click")?.size ?? 0, 0)
-  } finally { f.owner.destroy() }
+  } finally {
+    f.owner.destroy()
+  }
 })

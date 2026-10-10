@@ -37,7 +37,15 @@ defmodule DawarichWeb.NativeMapPreview do
     assigns = assign(assigns, :serialized_config, Jason.encode!(config))
 
     ~H"""
-    <div id={@id} class={@class} phx-hook="MapPreview" phx-update="ignore" data-map-config={@serialized_config} data-map-state="loading"></div>
+    <div
+      id={@id}
+      class={@class}
+      phx-hook="MapPreview"
+      phx-update="ignore"
+      data-map-config={@serialized_config}
+      data-map-state="loading"
+    >
+    </div>
     """
   end
 end

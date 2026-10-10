@@ -5,10 +5,12 @@ export class EditorHistory {
   constructor(editor, { distanceUnit, history }) {
     this.editor = editor
     this.closed = false
-    this.history = history ?? new PointEditHistory({
-      move: (pointId, position) => this._move(pointId, position),
-      onChange: () => this.sync(),
-    })
+    this.history =
+      history ??
+      new PointEditHistory({
+        move: (pointId, position) => this._move(pointId, position),
+        onChange: () => this.sync(),
+      })
     this.history.move = (pointId, position) => this._move(pointId, position)
     this.history.onChange = () => this.sync()
     this.panel = new PointEditHistoryPanel({
