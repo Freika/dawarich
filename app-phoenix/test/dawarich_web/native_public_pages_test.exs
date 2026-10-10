@@ -132,6 +132,7 @@ defmodule DawarichWeb.NativePublicPagesTest do
       |> assign(:base_url, "http://www.example.com")
       |> assign(:self_hosted, true)
       |> assign(:now, ~U[2026-10-07 12:00:00Z])
+      |> put_private(:dawarich_clock, fn -> ~U[2026-10-07 12:00:00Z] end)
 
     assert (conn
             |> assign(:current_user, user)
@@ -140,6 +141,42 @@ defmodule DawarichWeb.NativePublicPagesTest do
     assert (conn
             |> assign(:current_user, nil)
             |> DawarichWeb.NativePublicPage.call(:digest)).status == 302
+  end
+
+  test "native public digest HTTP refuses a share that expires before delivery" do
+    RailsUser.insert!(%{
+      id: 19004,
+      email: "native-public-delivery@example.invalid",
+      settings: %{"timezone" => "Europe/Berlin"}
+    })
+
+    uuid = Ecto.UUID.generate()
+    start = ~U[2026-10-07 12:00:00Z]
+
+    StatsSeeds.digest!(19004, %{
+      year: 2024,
+      sharing_uuid: Ecto.UUID.dump!(uuid),
+      sharing_settings: %{
+        "enabled" => true,
+        "expiration" => "1h",
+        "expires_at" => "2026-10-07T13:00:00+00:00"
+      }
+    })
+
+    request = fn delivery ->
+      build_conn("GET", "/shared/digest/" <> uuid)
+      |> Map.merge(%{params: %{}, path_params: %{"uuid" => uuid}})
+      |> assign(:locale, "en")
+      |> assign(:base_url, "http://www.example.com")
+      |> assign(:self_hosted, true)
+      |> assign(:current_user, nil)
+      |> assign(:now, start)
+      |> put_private(:dawarich_clock, fn -> delivery end)
+      |> DawarichWeb.NativePublicPage.call(:digest)
+    end
+
+    assert request.(start).status == 200
+    assert request.(DateTime.add(start, 2, :hour)).status == 302
   end
 
   test "native mixed public content preserves a caller-owned map slot and bounded day navigation" do

@@ -185,6 +185,45 @@ defmodule Dawarich.Sharing.PagesTest do
              apply(Dawarich.Sharing.Pages, :report, [:digest, uuid, [now: @now, after_read: hook]])
   end
 
+  test "public report delivery refuses digest and month shares that expire during preparation" do
+    uuid = Ecto.UUID.generate()
+
+    settings = %{
+      "enabled" => true,
+      "expiration" => "1h",
+      "expires_at" => "2026-10-10T11:00:00+00:00"
+    }
+
+    share = %{sharing_uuid: Ecto.UUID.dump!(uuid), sharing_settings: settings}
+    StatsSeeds.digest!(18901, Map.put(share, :year, 2024))
+    StatsSeeds.stat!(18901, Map.merge(share, %{year: 2024, month: 3}))
+
+    for kind <- [:digest, :month] do
+      assert {:ok, _} =
+               Dawarich.Sharing.Pages.report(kind, uuid, now: @now, clock: fn -> @now end)
+
+      assert {:error, :not_found} =
+               Dawarich.Sharing.Pages.report(kind, uuid,
+                 now: @now,
+                 clock: fn -> DateTime.add(@now, 2, :hour) end
+               )
+    end
+  end
+
+  test "public resource delivery refuses a share link that expires during preparation", %{
+    grant: grant
+  } do
+    rows("UPDATE shared_links SET expires_at=$2 WHERE id=$1::text::uuid", [
+      grant.id,
+      DateTime.to_naive(DateTime.add(@now, 1, :hour))
+    ])
+
+    assert {:ok, _} = resource(grant, %{}, clock: fn -> @now end)
+
+    assert {:error, :not_found} =
+             resource(grant, %{}, clock: fn -> DateTime.add(@now, 2, :hour) end)
+  end
+
   test "public track projection retains source duration elevation and mode behind stats visibility",
        %{grant: grant} do
     FrameSeeds.track!(18901, 18901, %{

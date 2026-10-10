@@ -573,9 +573,21 @@ defmodule DawarichWeb.A12f3aQClosureTest do
       end
 
       set_mode(if(row["state"] == "partial", do: "false", else: "true"))
-      conn = build_conn() |> assign(:now, ctx.now) |> get("/shared/#{kind}/#{uuid}")
+
+      conn =
+        build_conn()
+        |> assign(:now, ctx.now)
+        |> put_private(:dawarich_clock, fn -> ctx.now end)
+        |> get("/shared/#{kind}/#{uuid}")
+
       assert conn.status == row["status"]
-      head = build_conn() |> assign(:now, ctx.now) |> head("/shared/#{kind}/#{uuid}")
+
+      head =
+        build_conn()
+        |> assign(:now, ctx.now)
+        |> put_private(:dawarich_clock, fn -> ctx.now end)
+        |> head("/shared/#{kind}/#{uuid}")
+
       assert head.status == conn.status
       assert head.resp_body == ""
       assert get_resp_header(conn, "cache-control") == [row["cache_control"]]

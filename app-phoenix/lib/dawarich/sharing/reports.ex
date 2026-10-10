@@ -2,6 +2,7 @@ defmodule Dawarich.Sharing.Reports do
   @moduledoc false
   alias Dawarich.{Digests, Entitlements, Stats, UserSettings}
   alias Dawarich.Analytics.Period
+  alias Dawarich.Sharing.Delivery
 
   def load(kind, uuid, opts) when kind in [:digest, :month] do
     now = Keyword.get(opts, :now, DateTime.utc_now())
@@ -11,8 +12,10 @@ defmodule Dawarich.Sharing.Reports do
       Keyword.get(opts, :self_hosted, Dawarich.ReleaseMigration.self_hosted?(System.get_env()))
 
     reader = if kind == :digest, do: &Digests.Sharing.get/3, else: &Stats.Sharing.get/3
+    target = {kind, uuid, zone}
+    admitted = Delivery.admit(target, now)
 
-    case reader.(uuid, now, zone) do
+    case admitted && reader.(uuid, now, zone) do
       nil ->
         {:error, :not_found}
 
@@ -22,11 +25,7 @@ defmodule Dawarich.Sharing.Reports do
 
         with true <- Dawarich.Distance.unit?(unit),
              {:ok, page} <- project(kind, data, full, unit, opts) do
-          Keyword.get(opts, :after_read, fn -> :ok end).()
-
-          if reader.(uuid, Keyword.get(opts, :now, DateTime.utc_now()), zone) == data,
-            do: {:ok, page},
-            else: {:error, :not_found}
+          Delivery.deliver(target, admitted, page, opts)
         else
           false -> {:error, :unsupported}
         end

@@ -1,8 +1,7 @@
 defmodule Dawarich.Sharing.Pages do
   @moduledoc false
   alias Dawarich.NativeM5.Dependencies
-  alias Dawarich.SharedApi.Closure
-  alias Dawarich.Sharing.{Reports, ResourceWindow}
+  alias Dawarich.Sharing.{Delivery, Reports, ResourceWindow}
 
   def report(kind, uuid, opts \\ []), do: Reports.load(kind, uuid, opts)
 
@@ -20,11 +19,12 @@ defmodule Dawarich.Sharing.Pages do
     now = Keyword.get(opts, :now, DateTime.utc_now())
 
     with :ok <- ResourceWindow.params(params),
-         {:ok, %{link: link, kind: kind}} <- Dependencies.public_admit(grant, now, opts) do
+         {:ok, %{link: link, kind: kind}} = admission <-
+           Dependencies.public_admit(grant, now, opts) do
       if kind == :missing_resource do
         {:ok, %{kind: kind, link: public_link(link), resource: nil}}
       else
-        privacy = fingerprint(link.user_id)
+        admitted = Delivery.resource_snapshot(admission)
 
         reader =
           Keyword.get(opts, :reader, fn link, params ->
@@ -32,10 +32,8 @@ defmodule Dawarich.Sharing.Pages do
           end)
 
         with {:ok, resource} <- reader.(link, params),
-             {:ok, %{link: current, kind: ^kind}} <-
-               Dependencies.public_admit(grant, Keyword.get(opts, :now, DateTime.utc_now()), opts),
-             true <- current == link and privacy == fingerprint(link.user_id) do
-          {:ok, %{kind: kind, link: public_link(current), resource: resource}}
+             {:ok, resource} <- Delivery.deliver({:resource, grant}, admitted, resource, opts) do
+          {:ok, %{kind: kind, link: public_link(link), resource: resource}}
         else
           {:error, reason} -> {:error, reason}
           _ -> {:error, :not_found}
@@ -45,13 +43,6 @@ defmodule Dawarich.Sharing.Pages do
   rescue
     _ -> {:error, :unavailable}
   end
-
-  defp fingerprint(owner),
-    do:
-      Closure.zones(owner)
-      |> Enum.sort()
-      |> :erlang.term_to_binary()
-      |> then(&:crypto.hash(:sha256, &1))
 
   defp public_link(link),
     do:

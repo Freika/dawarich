@@ -17,6 +17,7 @@ defmodule DawarichWeb.NativePublicPage do
     opts = [
       viewer_zone: viewer_zone,
       now: conn.assigns[:now] || DateTime.utc_now(),
+      clock: conn.private[:dawarich_clock],
       self_hosted: conn.assigns[:self_hosted] == true,
       page: params["page"] || "1",
       viewer_id: conn.assigns[:current_user] && conn.assigns.current_user.id,
