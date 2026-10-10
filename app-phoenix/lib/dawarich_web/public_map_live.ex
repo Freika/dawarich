@@ -10,11 +10,27 @@ defmodule DawarichWeb.PublicMapLive do
     {:ok,
      assign(socket,
        public_map_ready: false,
+       public_selected_day: nil,
        public_unlock_token: session["public_unlock_token"]
      )}
   end
 
   def handle_params(_, _, socket), do: {:noreply, socket}
+
+  def handle_event("public:day", %{"day" => day}, socket) when is_binary(day) do
+    resource = socket.assigns.public_presentation && socket.assigns.public_presentation.resource
+
+    if resource && Enum.any?(resource.days, &(to_string(&1.date) == day)) do
+      selected = if socket.assigns.public_selected_day == day, do: nil, else: day
+
+      {:noreply,
+       socket
+       |> assign(:public_selected_day, selected)
+       |> push_event("public:day", %{day: selected})}
+    else
+      {:noreply, socket}
+    end
+  end
 
   def handle_event("map:ready", params, socket) do
     current = socket.assigns.public_config
@@ -33,6 +49,10 @@ defmodule DawarichWeb.PublicMapLive do
   def handle_info(_, socket), do: {:noreply, socket}
 
   def render(assigns) do
+    link = assigns.public_presentation && assigns.public_presentation.link
+    visible = link && (link.type not in ["trip", "track"] || link.settings["show_route"] != false)
+    assigns = assign(assigns, :map_visible, visible)
+
     ~H"""
     <main
       data-native-map-root
@@ -43,8 +63,18 @@ defmodule DawarichWeb.PublicMapLive do
         <h1 class="mb-4 break-words text-3xl font-bold [overflow-wrap:anywhere]">
           {@public_config["title"]}
         </h1>
-        <DawarichWeb.NativeMapReplay.panel id="native-public-replay" locale={@locale || "en"} />
+        <DawarichWeb.NativePublicResource.resource
+          presentation={@public_presentation}
+          selected_day={@public_selected_day}
+          locale={@locale || "en"}
+        />
+        <DawarichWeb.NativeMapReplay.panel
+          :if={@map_visible}
+          id="native-public-replay"
+          locale={@locale || "en"}
+        />
         <DawarichWeb.NativeMapHost.map_host
+          :if={@map_visible}
           id="native-public-map"
           hook="PublicMap"
           config={@public_config}

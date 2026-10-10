@@ -51,6 +51,7 @@ defmodule DawarichWeb.PublicMapAuth do
       |> assign(
         public_capability: capability,
         public_config: nil,
+        public_presentation: nil,
         public_error: nil,
         native: true,
         current_user: nil,
@@ -79,29 +80,33 @@ defmodule DawarichWeb.PublicMapAuth do
   end
 
   def authorize(socket) do
-    case Public.config(socket.assigns.public_capability) do
-      {:ok, config} ->
-        old = socket.assigns.public_config
+    with {:ok, config} <- Public.config(socket.assigns.public_capability),
+         {:ok, presentation} <- Public.presentation(socket.assigns.public_capability) do
+      old = socket.assigns.public_config
 
-        revision =
-          if old && Map.drop(old, ["revision"]) == config,
-            do: old["revision"],
-            else: ((old && old["revision"]) || 0) + 1
+      revision =
+        if old && Map.drop(old, ["revision"]) == config,
+          do: old["revision"],
+          else: ((old && old["revision"]) || 0) + 1
 
-        config = Map.put(config, "revision", revision)
+      config = Map.put(config, "revision", revision)
 
-        socket =
-          assign(socket, public_config: config, public_error: nil, page_title: config["title"])
-          |> DawarichWeb.PublicMapDeadline.schedule()
+      socket =
+        assign(socket,
+          public_config: config,
+          public_presentation: presentation,
+          public_error: nil,
+          page_title: config["title"]
+        )
+        |> DawarichWeb.PublicMapDeadline.schedule()
 
-        {:cont,
-         if(connected?(socket) && old && old != config,
-           do: push_event(socket, "map:config", config),
-           else: socket
-         )}
-
-      {:error, reason} ->
-        {:halt, refuse(socket, reason)}
+      {:cont,
+       if(connected?(socket) && old && old != config,
+         do: push_event(socket, "map:config", config),
+         else: socket
+       )}
+    else
+      {:error, reason} -> {:halt, refuse(socket, reason)}
     end
   end
 
@@ -109,7 +114,13 @@ defmodule DawarichWeb.PublicMapAuth do
     socket
     |> DawarichWeb.MapLive.Subscriptions.release()
     |> DawarichWeb.PublicMapDeadline.cancel()
-    |> assign(public_config: nil, public_error: reason, page_title: nil, public_map_ready: false)
+    |> assign(
+      public_config: nil,
+      public_presentation: nil,
+      public_error: reason,
+      page_title: nil,
+      public_map_ready: false
+    )
     |> push_event("map:clear", %{code: Atom.to_string(reason)})
   end
 end

@@ -8,6 +8,34 @@ defmodule Dawarich.Maps.Dependencies.Public do
 
   def config(capability, opts \\ []), do: with_link(capability, opts, &project(&1, capability))
 
+  def presentation(capability, opts \\ []), do: with_link(capability, opts, &present/1)
+
+  defp present(link) do
+    resource =
+      if link.type in ["trip", "track"] do
+        data = Dawarich.SharedLinks.ResourcePage.load(link)
+
+        days =
+          Enum.map(data.days, fn day ->
+            %{day | photos: Enum.map(day.photos, &Map.take(&1, ~w(id source thumbnail_url)))}
+          end)
+
+        %{data | days: days}
+      end
+
+    safe_link =
+      Map.take(link, [:id, :type, :name])
+      |> Map.put(
+        :settings,
+        Map.take(
+          link.settings,
+          ~w(show_route show_stats show_description show_days show_day_notes show_photos)
+        )
+      )
+
+    {:ok, %{link: safe_link, resource: resource}}
+  end
+
   def record_visit(capability, opts \\ []) do
     with_link(capability, opts, fn link ->
       SharedLinks.touch!(link.id, Keyword.get(opts, :now, DateTime.utc_now()))

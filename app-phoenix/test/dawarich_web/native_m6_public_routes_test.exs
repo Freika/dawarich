@@ -35,7 +35,52 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
       }
     ])
 
-    %{uuid: uuid}
+    %{uuid: uuid, id: id}
+  end
+
+  test "native public resource preserves descriptions day selection and flag refusals", %{
+    uuid: uuid,
+    id: id
+  } do
+    rows(
+      "INSERT INTO action_text_rich_texts(name,body,record_type,record_id,created_at,updated_at) VALUES('description',$1,'Trip',$2,now(),now())",
+      ["<div>Native shared description</div>", id * 10]
+    )
+
+    conn =
+      build_conn()
+      |> Plug.Conn.put_private(:live_view_connect_info, %{session: %{}})
+      |> get("/s/#{uuid}")
+
+    {:ok, view, _} = live(conn)
+    assert has_element?(view, "#native-public-resource", "Native shared description")
+
+    days =
+      render(view)
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("[data-public-day]")
+      |> LazyHTML.attribute("data-public-day")
+
+    assert days != []
+    first = hd(days)
+
+    view
+    |> element("[data-public-day='#{first}'] button[phx-click='public:day']")
+    |> render_click()
+
+    assert_push_event(view, "public:day", %{day: first})
+    assert has_element?(view, "[data-public-day='#{first}'][data-public-day-selected=true]")
+
+    rows("UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid", [
+      uuid,
+      %{"show_description" => false, "show_route" => false, "show_days" => false}
+    ])
+
+    send(view.pid, :refresh)
+    refute has_element?(view, "#native-public-resource", "Native shared description")
+    refute has_element?(view, "[data-public-day]")
+    refute has_element?(view, "#native-public-map")
+    refute render(view) =~ "data-controller"
   end
 
   test "production public route owns readiness and revocation without Hotwire or owner credentials",
