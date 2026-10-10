@@ -48,7 +48,7 @@ defmodule DawarichWeb.NativeTimelineTest do
     test_pid = self()
 
     loader = fn _scope, params, _opts ->
-      send(test_pid, {:loading, params["start_at"], self()})
+      send(test_pid, {:loading, params["start_at"], hd(Process.get(:"$callers"))})
       if params["start_at"] =~ "03-29", do: receive(do: (:release -> :ok))
       {:ok, feed(params["start_at"] |> binary_part(0, 10))}
     end

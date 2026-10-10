@@ -85,7 +85,7 @@ defmodule DawarichWeb.NativeMapEntitiesTest do
     test_pid = self()
 
     nearby = fn _scope, %{"latitude" => lat} ->
-      send(test_pid, {:nearby, lat, self()})
+      send(test_pid, {:nearby, lat, hd(Process.get(:"$callers"))})
       if lat == "1.0", do: receive(do: (:release -> :ok))
       {:ok, [%{"name" => "Spot #{lat}"}]}
     end

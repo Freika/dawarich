@@ -83,14 +83,14 @@ defmodule DawarichWeb.NativeDemoLiveTest do
     calls = :counters.new(1, [])
     test_pid = self()
 
-    loader = fn scope ->
+    loader = fn _scope ->
       :counters.add(calls, 1, 1)
 
       if :counters.get(calls, 1) == 1 do
         send(test_pid, :first_started)
         receive do: (:never -> :ok)
       else
-        Onboarding.load_demo(scope, Keyword.put(DemoData.fixtures(), :now, @now))
+        {:ok, %{result: :created, landing: "/map/v2?panel=timeline&date=2026-05-27"}}
       end
     end
 

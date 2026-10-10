@@ -68,7 +68,7 @@ defmodule DawarichWeb.NativeMapEnrichmentTest do
     test_pid = self()
 
     scanner = fn _scope, params ->
-      send(test_pid, {:scanning, params["start_date"], self()})
+      send(test_pid, {:scanning, params["start_date"], hd(Process.get(:"$callers"))})
       if params["start_date"] == "2026-01-01", do: receive(do: (:release -> :ok))
 
       {:ok,
