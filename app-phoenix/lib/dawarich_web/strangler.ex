@@ -80,6 +80,12 @@ defmodule DawarichWeb.Strangler do
       conn.private[:dawarich_api_pre_effect_pin] ->
         hand_back(conn)
 
+      DawarichWeb.PublicShareRequest.owned?(conn) ->
+        conn
+        |> Plug.Conn.put_private(:dawarich_native_api, true)
+        |> Plug.Conn.put_private(:dawarich_method, conn.method)
+        |> Plug.Head.call([])
+
       owned?(conn) ->
         conn
         |> Plug.Conn.put_private(

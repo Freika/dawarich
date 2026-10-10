@@ -1,5 +1,5 @@
 defmodule DawarichWeb.ReportSharingNativeTest do
-  use Dawarich.IngestCase, async: true
+  use ExUnit.Case, async: true
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   import Dawarich.Test.StatsSeeds
@@ -7,6 +7,8 @@ defmodule DawarichWeb.ReportSharingNativeTest do
   alias Dawarich.Test.RailsUser
   @endpoint DawarichWeb.Endpoint
   setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+
     user =
       RailsUser.insert!(%{
         id: 154_071,

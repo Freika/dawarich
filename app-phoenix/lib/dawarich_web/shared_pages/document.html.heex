@@ -14,27 +14,17 @@
     <link
       rel="stylesheet"
       href={Assets.stylesheet_path("tailwind.css")}
-      data-turbo-track="reload"
     />
     <link
       rel="stylesheet"
       href={Assets.stylesheet_path("inter-font.css")}
-      data-turbo-track="reload"
     />
     <link
       rel="stylesheet"
       href={Assets.stylesheet_path("application.css")}
-      data-turbo-track="reload"
     />
-    <script
-      id="i18n-translations"
-      type="application/json"
-      data-turbo-track="reload"
-      phx-no-format
-    ><%= Phoenix.HTML.raw(translations(@locale)) %></script>
-    <script type="importmap" data-turbo-track="reload" phx-no-format><%= Phoenix.HTML.raw(importmap()) %></script>
-    <script type="module">
-      import "application"
+    <meta name="phoenix-csrf-token" content={Phoenix.Controller.get_csrf_token()} />
+    <script defer phx-track-static type="module" src={Assets.native_path("app.js")}>
     </script>
     <.metadata {assigns} />
   </head>

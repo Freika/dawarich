@@ -1363,3 +1363,12 @@ Versioned timers independently expire silent consent and access grants.
 - Phoenix: `app-phoenix/lib/dawarich_web/native_family_auth.ex:17`; `app-phoenix/lib/dawarich_web/family_delivery.ex:17` and `assets/js/hooks/family_map.js` lifecycle.
 - Tests: “withdrawn consent or removed membership discards queued coordinates before rendering”; “reconnect snapshots recover missed invalidation and family refusal clears private state”; timer-version and info-admission mutations fail.
 - Ledger: ED-NATIVE-M4-FAMILY-DELIVERY; no DRB added. Independent wire adapters remain separately supported; native pages do not subscribe to coordinate streams.
+
+### FRB-NATIVE-M4-PUBLIC-DELIVERY — Public live maps retain revoked subscriptions
+
+Rails admits a public link once when connecting and subscribes to its coordinate stream. An already connected reader can retain old content after revocation, expiry, phrase rotation or audience loss. Native public readers re-admit before each snapshot and clear silent expiry with a versioned deadline timer. Native browser erasure is completed in C9; independent wire adapters retain their external protocol.
+
+- Rails: `app/channels/application_cable/connection.rb:27,29`; `app/channels/shared_location_channel.rb:5,8`.
+- Phoenix: `app-phoenix/lib/dawarich/sharing/public.ex:20`; `app-phoenix/lib/dawarich_web/public_share_live.ex:47`.
+- Tests: “queued public update after revoke or phrase rotation clears old content before delivery”; “public expiry clears a silent connection and reconnect cannot revive it”; admission/cache/timer mutations fail.
+- Ledger: ED-NATIVE-M4-PUBLIC-ADMISSION; no DRB added. Rails production code unchanged.

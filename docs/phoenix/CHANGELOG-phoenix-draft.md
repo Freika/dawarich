@@ -131,3 +131,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 
 - Serialize family invitation capacity checks so concurrent invitations cannot oversubscribe the final Cloud seat. [FRB-NATIVE-M4-FAMILY-CAPACITY](fixed-rails-bugs.md#frb-native-m4-family-capacity--concurrent-invitations-can-oversubscribe-a-cloud-family)
 - Stop native family location delivery after membership/access loss and erase silent expired consent, disconnected maps and stale pending map loads. [FRB-NATIVE-M4-FAMILY-DELIVERY](fixed-rails-bugs.md#frb-native-m4-family-delivery--a-removed-viewer-can-keep-receiving-family-locations)
+
+- Clear native public live readers after link revocation, phrase/audience changes and silent expiry; bind reconnect admission to the original browser session. [FRB-NATIVE-M4-PUBLIC-DELIVERY](fixed-rails-bugs.md#frb-native-m4-public-delivery--public-live-maps-retain-revoked-subscriptions)
