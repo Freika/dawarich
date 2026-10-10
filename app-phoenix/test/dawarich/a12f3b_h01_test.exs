@@ -66,15 +66,23 @@ defmodule Dawarich.A12f3bH01Test do
     assert Enum.map(family_session.extra.on_mount, & &1.id) ==
              [{DawarichWeb.NativeFamilyAuth, :require_user}]
 
-    assert request(c.outsider, "POST", "/family", %{"family" => %{"name" => "Mounted family"}}).status ==
-             302
+    scope = Dawarich.Accounts.Scope.for_user(c.outsider, "en")
+
+    assert {:ok, _} =
+             Dawarich.Families.create(scope, %{"name" => "Mounted family"},
+               now: ~U[2026-10-03 10:00:00Z],
+               self_hosted: true
+             )
 
     assert Repo.query!("SELECT name FROM families WHERE creator_id=$1", [c.outsider.id]).rows == [
              ["Mounted family"]
            ]
 
-    assert request(c.outsider, "PATCH", "/family", %{"family" => %{"name" => "Mounted update"}}).status ==
-             302
+    assert {:ok, _} =
+             Dawarich.Families.update(scope, %{"name" => "Mounted update"},
+               now: ~U[2026-10-03 10:00:00Z],
+               self_hosted: true
+             )
 
     assert Repo.query!("SELECT name FROM families WHERE creator_id=$1", [c.outsider.id]).rows == [
              ["Mounted update"]
@@ -92,11 +100,24 @@ defmodule Dawarich.A12f3bH01Test do
       assert head.status == get.status
       assert get_resp_header(head, "content-type") == get_resp_header(get, "content-type")
       assert head.resp_body == ""
-      assert request(actor, "POST", base, Shares.params(type)).status == 302
-      assert request(actor, "POST", base <> "/revoke", %{"_method" => "patch"}).status == 302
-      assert request(actor, "POST", base <> "/regenerate").status == 302
-      assert request(actor, "POST", base <> "/regenerate_phrase").status == 302
-      assert request(actor, "POST", base, %{"_method" => "delete"}).status == 302
+
+      resource =
+        if type == "track",
+          do: %{type: :track, owner_id: actor.id, id: 99103},
+          else: %{type: :timeline, owner_id: actor.id}
+
+      scope = Dawarich.Accounts.Scope.for_user(actor, "en")
+
+      for action <- [:create, :regenerate, :regenerate_phrase, :revoke, :create, :destroy] do
+        assert {:ok, _} =
+                 Dawarich.Sharing.change(
+                   scope,
+                   resource,
+                   action,
+                   if(action == :create, do: Shares.params(type), else: %{}),
+                   now: Shares.now()
+                 )
+      end
     end
 
     assert request(c.owner, "POST", "/posters", %{"poster" => %{"name" => "Mounted poster"}}).status ==
@@ -212,10 +233,14 @@ defmodule Dawarich.A12f3bH01Test do
 
     assert request(c.owner, "POST", "/achievements/unlocks/next").status == 204
 
-    assert request(c.owner, "PATCH", "/achievements/country_de/toggle_sharing", %{
-             "enabled" => "0"
-           }).status ==
-             302
+    assert {:ok, _} =
+             Dawarich.Sharing.change(
+               Dawarich.Accounts.Scope.for_user(c.owner, "en"),
+               %{type: :achievement, key: "country_de", owner_id: c.owner.id},
+               :update,
+               %{"enabled" => "0"},
+               now: Shares.now()
+             )
 
     denied = image_request.("GET")
     assert denied.status == 404 and denied.resp_body == ""
@@ -328,7 +353,7 @@ defmodule Dawarich.A12f3bH01Test do
   end
 
   @tag a12f3b_case: "H01b"
-  test "part B handback occurs before native effects and final native transport errors are source compatible",
+  test "native retired part B writes refuse before effects while independent handbacks remain",
        c do
     actor = Shares.seed!()
     System.delete_env("DAWARICH_RAILS")
@@ -376,7 +401,15 @@ defmodule Dawarich.A12f3bH01Test do
               Map.put(params, "authenticity_token", RailsCsrf.masked_token(session))
             )
 
-      retired = String.starts_with?(path, ["/notifications/", "/settings/background_jobs"])
+      retired =
+        String.starts_with?(path, [
+          "/notifications/",
+          "/settings/background_jobs",
+          "/family",
+          "/tracks/99103/share_link",
+          "/trips/99101/share_link",
+          "/share_links/"
+        ])
 
       receiver =
         if not retired,
@@ -439,12 +472,12 @@ defmodule Dawarich.A12f3bH01Test do
     end
 
     assert raw_request("GET", "/settings/theme?theme=light", "", "").status == 302
-    assert request(c.outsider, "POST", "/family", %{"family" => %{"name" => ""}}).status == 422
+    assert request(c.outsider, "POST", "/family", %{"family" => %{"name" => ""}}).status == 404
 
     assert request(c.outsider, "POST", "/family", %{
              "family" => %{"name" => "Bad CSRF"},
              "authenticity_token" => "invalid"
-           }).status == 422
+           }).status == 404
 
     assert footprint() == before
     System.put_env("SELF_HOSTED", "false")
@@ -460,7 +493,20 @@ defmodule Dawarich.A12f3bH01Test do
           {"timeline", "/share_links/timeline"}
         ] do
       assert request(actor, "GET", base <> "/new").status == 200
-      assert request(actor, "POST", base, Shares.params(type)).status == 302
+
+      resource =
+        if type == "track",
+          do: %{type: :track, id: 99103, owner_id: actor.id},
+          else: %{type: :timeline, owner_id: actor.id}
+
+      assert {:ok, _} =
+               Dawarich.Sharing.change(
+                 Dawarich.Accounts.Scope.for_user(actor, "en"),
+                 resource,
+                 :create,
+                 Shares.params(type),
+                 now: Shares.now()
+               )
     end
 
     assert request(actor, "GET", "/share_links/hub").status == 200
@@ -585,54 +631,20 @@ defmodule Dawarich.A12f3bH01Test do
   end
 
   defp declarations do
-    family = DawarichWeb.FamilyFormRoutes
-    track = DawarichWeb.TrackShareActions
-    timeline = DawarichWeb.TimelineShareActions
-
     [
-      {"GET", "/family/invitations/new", family},
-      {"POST", "/family", family},
-      {"PATCH", "/family", family},
-      {"PUT", "/family", family},
-      {"DELETE", "/family", family},
-      {"POST", "/family/invitations", family},
-      {"DELETE", "/family/invitations/synthetic-token", family},
-      {"POST", "/family/memberships", family},
-      {"DELETE", "/family/members/1", family},
-      {"POST", "/family/location_requests", family},
-      {"PATCH", "/family/location_requests/1/accept", family},
-      {"PATCH", "/family/location_requests/1/decline", family},
-      {"PATCH", "/family/location_sharing", family}
-    ] ++
-      for(
-        {base, owner} <- [
-          {"/tracks/99103/share_link", track},
-          {"/share_links/timeline", timeline}
-        ],
-        {method, suffix} <- [
-          {"GET", "/new"},
-          {"POST", ""},
-          {"DELETE", ""},
-          {"PATCH", "/revoke"},
-          {"POST", "/regenerate"},
-          {"POST", "/regenerate_phrase"}
-        ],
-        do: {method, base <> suffix, if(method == "GET", do: Phoenix.LiveView.Plug, else: owner)}
-      ) ++
-      [
-        {"POST", "/share_links/live/revoke", DawarichWeb.ShareManagementForm},
-        {"POST", "/trips/1/share_link/revoke", DawarichWeb.ShareManagementForm},
-        {"POST", "/share_links/shares/synthetic/revoke", DawarichWeb.ShareManagementForm},
-        {"POST", "/posters", DawarichWeb.PostersController},
-        {"DELETE", "/posters/1", DawarichWeb.PostersController},
-        {"GET", "/achievements", Phoenix.LiveView.Plug},
-        {"GET", "/settings/general", Phoenix.LiveView.Plug},
-        {"GET", "/settings/integrations", Phoenix.LiveView.Plug},
-        {"GET", "/admin/settings", Phoenix.LiveView.Plug},
-        {"GET", "/trial/welcome", DawarichWeb.TrialWelcome},
-        {"GET", "/", DawarichWeb.HomeDispatch},
-        {"GET", "/notifications", Phoenix.LiveView.Plug}
-      ] ++ settings_declarations()
+      {"POST", "/family/memberships", DawarichWeb.FamilyInvitationAcceptance},
+      {"GET", "/tracks/99103/share_link/new", Phoenix.LiveView.Plug},
+      {"GET", "/share_links/timeline/new", Phoenix.LiveView.Plug},
+      {"POST", "/posters", DawarichWeb.PostersController},
+      {"DELETE", "/posters/1", DawarichWeb.PostersController},
+      {"GET", "/achievements", Phoenix.LiveView.Plug},
+      {"GET", "/settings/general", Phoenix.LiveView.Plug},
+      {"GET", "/settings/integrations", Phoenix.LiveView.Plug},
+      {"GET", "/admin/settings", Phoenix.LiveView.Plug},
+      {"GET", "/trial/welcome", DawarichWeb.TrialWelcome},
+      {"GET", "/", DawarichWeb.HomeDispatch},
+      {"GET", "/notifications", Phoenix.LiveView.Plug}
+    ] ++ settings_declarations()
   end
 
   defp settings_declarations do

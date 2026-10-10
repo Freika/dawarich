@@ -12,7 +12,7 @@ defmodule DawarichWeb.AchievementActions.Request do
 
   def call(conn, opts) do
     action =
-      Enum.find([:sharing, :next, :seen, :dismiss], &match?({:ok, _}, Gate.route(conn, &1)))
+      Enum.find([:next, :seen, :dismiss], &match?({:ok, _}, Gate.route(conn, &1)))
 
     case load(conn, action, opts) do
       {:ok, conn, actor, params, context} ->
@@ -105,7 +105,6 @@ defmodule DawarichWeb.AchievementActions.Request do
     end
   end
 
-  defp fields(:sharing), do: ["enabled"]
   defp fields(:next), do: ~w(claim_token batch_end_id)
   defp fields(:seen), do: ["claim_token"]
   defp fields(:dismiss), do: ["batch_end_id"]
@@ -132,11 +131,6 @@ defmodule DawarichWeb.AchievementActions.Request do
 
   defp locale?(params),
     do: not Map.has_key?(params, "locale") or params["locale"] in Locale.locales()
-
-  defp method("POST", :sharing, :form, %{"_method" => "patch"}), do: {:ok, "PATCH"}
-
-  defp method("PATCH", :sharing, _, params),
-    do: if(Map.has_key?(params, "_method"), do: :handoff, else: {:ok, "PATCH"})
 
   defp method("POST", action, _, params) when action in [:next, :seen, :dismiss],
     do: if(Map.has_key?(params, "_method"), do: :handoff, else: {:ok, "POST"})

@@ -887,7 +887,8 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_phoenix(port, request) == 302
+      assert answered_by_phoenix(port, request) ==
+               if(String.contains?(target, "/sharing"), do: 404, else: 302)
     end
   end
 
@@ -982,7 +983,7 @@ defmodule DawarichWeb.EndpointTest do
     end
 
     for target <-
-          ~w(/achievements/country_de/toggle_sharing /achievements/unlocks/next /achievements/unlocks/123/seen /achievements/unlocks/dismiss) do
+          ~w(/achievements/unlocks/next /achievements/unlocks/123/seen /achievements/unlocks/dismiss) do
       body = "authenticity_token=x"
 
       request =

@@ -13,6 +13,8 @@ defmodule Dawarich.Accounts.NativeAccess do
     else
       _ -> {:error, :stale_session}
     end
+  rescue
+    ArgumentError -> {:error, :invalid_input}
   end
 
   def admit(_, _), do: {:error, :stale_session}

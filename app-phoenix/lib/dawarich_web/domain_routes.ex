@@ -3,22 +3,24 @@ defmodule DawarichWeb.DomainRoutes do
 
   defmacro family_native_routes do
     quote do
-      require DawarichWeb.FamilyFormRoutes
       require DawarichWeb.FamilyNativeRoutes
 
-      pipeline :family_form do
+      pipeline :family_acceptance do
         plug :put_api_tag, "family"
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
-        plug DawarichWeb.FamilyDeliveryAdmission
-        plug DawarichWeb.FamilyRequestAdmission
         plug DawarichWeb.RailsHeaders
       end
 
       scope "/" do
-        pipe_through :family_form
-        DawarichWeb.FamilyFormRoutes.routes()
+        pipe_through :family_acceptance
+
+        post "/family/memberships", DawarichWeb.FamilyInvitationAcceptance, [],
+          metadata: %{native_ui: true}
+
+        post "/family/memberships.:format", DawarichWeb.FamilyInvitationAcceptance, [],
+          metadata: %{native_ui: true}
       end
 
       pipeline :native_family_user do
@@ -38,17 +40,6 @@ defmodule DawarichWeb.DomainRoutes do
           DawarichWeb.FamilyNativeRoutes.pages()
         end
       end
-    end
-  end
-
-  defmacro native_share_routes do
-    quote do
-      require DawarichWeb.TrackShareRoutes
-      require DawarichWeb.TimelineShareRoutes
-      require DawarichWeb.ShareManagementOverrideRoutes
-      DawarichWeb.TrackShareRoutes.routes()
-      DawarichWeb.TimelineShareRoutes.routes()
-      DawarichWeb.ShareManagementOverrideRoutes.routes()
     end
   end
 end

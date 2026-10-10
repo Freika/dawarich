@@ -132,7 +132,7 @@ defmodule DawarichWeb.NormalUploadReplayTest do
   import Plug.Conn
   alias Dawarich.Test.RailsUser
 
-  test "unsupported upload replay has no committed import effect" do
+  test "retired ordinary upload cannot replay or commit an import" do
     user = RailsUser.insert!(%{id: 7591, email: "normal-replay@example.test"})
     session = RailsUser.session(user.id)
     root = Path.join(System.tmp_dir!(), "normal-replay-" <> Ecto.UUID.generate())
@@ -164,8 +164,8 @@ defmodule DawarichWeb.NormalUploadReplayTest do
       |> put_req_header("content-length", Integer.to_string(byte_size(body)))
       |> dispatch(DawarichWeb.Endpoint, :post, "/imports", body)
 
-    assert conn.status == 422
-    assert get_resp_header(conn, "location") == ["http://www.example.com/imports/new"]
+    assert conn.status == 404
+    assert get_resp_header(conn, "location") == []
     assert [] == Repo.query!("SELECT id FROM imports").rows
     assert [] == Repo.query!("SELECT id FROM active_storage_attachments").rows
     assert [] == Repo.query!("SELECT event_id FROM job_outbox").rows

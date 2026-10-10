@@ -143,7 +143,7 @@ defmodule DawarichWeb.FamilyInvitationTest do
     assert element?(html, ".alert-warning")
     refute element?(html, "form[action='/family/memberships']")
 
-    assert %{plug: DawarichWeb.FamilyFormRoutes} =
+    assert %{plug: DawarichWeb.FamilyInvitationAcceptance} =
              Phoenix.Router.route_info(
                DawarichWeb.Router,
                "POST",
@@ -154,7 +154,7 @@ defmodule DawarichWeb.FamilyInvitationTest do
     System.put_env("SELF_HOSTED", "true")
 
     conn =
-      Dawarich.Test.FamilyForms.request(ctx.invitee, "POST", "/family/memberships", %{
+      Dawarich.Test.FamilyCorpus.request(ctx.invitee, "POST", "/family/memberships", %{
         "token" => "a9fpl-pending"
       })
 
@@ -173,30 +173,17 @@ defmodule DawarichWeb.FamilyInvitationTest do
            ).rows == [[1]]
   end
 
-  test "invitation key hands back public and nested token landings" do
-    saved_routes = Application.get_env(:dawarich, :rails_routes, [])
-    saved_upstream = Application.get_env(:dawarich, :rails_upstream)
-    upstream = listen()
-
-    on_exit(fn ->
-      Application.put_env(:dawarich, :rails_routes, saved_routes)
-      Application.put_env(:dawarich, :rails_upstream, saved_upstream)
-      :gen_tcp.close(upstream.listen)
-    end)
-
+  test "native invitation landings ignore compatibility keys without Rails replay" do
+    saved = Application.get_env(:dawarich, :rails_routes, [])
+    upstream = Dawarich.Test.RailsFormRequests.upstream!()
     Application.put_env(:dawarich, :rails_routes, ["family"])
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
+    on_exit(fn -> Application.put_env(:dawarich, :rails_routes, saved) end)
 
     for path <- ~w(/invitations/a9fpl-pending /family/invitations/a9fpl-pending) do
-      response = Task.async(fn -> build_conn() |> freeze_clock() |> get(path) end)
-      socket = accept(upstream)
-      {head, _rest} = read_head(socket)
-      assert request_line(head) == "GET #{path} HTTP/1.1"
-      reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-      conn = Task.await(response)
-      assert conn.resp_body == "rails"
-      refute Map.has_key?(conn.private, :phoenix_router)
-      :gen_tcp.close(socket)
+      response = build_conn() |> freeze_clock() |> get(path)
+      assert response.status == 200
+      assert response.resp_body =~ "/native/app"
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     end
   end
 

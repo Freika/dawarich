@@ -49,14 +49,16 @@ defmodule DawarichWeb.NativeSharingAuth do
              socket.assigns.query_params || %{}
            ),
          {:ok, page} <- Dawarich.Sharing.page(scope, base, socket.assigns.query_params || %{}) do
+      tab = if base.type == :hub, do: SharingResource.tab(%{"tab" => page.tab}), else: tab
+
       {:cont,
        assign(socket,
          current_scope: scope,
          current_user: scope.user,
-         resource: SharingResource.selected(base, if(base.type == :hub, do: page.tab, else: tab)),
+         resource: SharingResource.selected(base, tab),
          base_resource: base,
          page: page,
-         tab: if(base.type == :hub, do: page.tab, else: tab),
+         tab: tab,
          native: true,
          rails_js: false
        )}

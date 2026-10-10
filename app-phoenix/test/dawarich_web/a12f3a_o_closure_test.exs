@@ -283,10 +283,10 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   end
 
   @tag a12f3a_o06: true
-  test "O06: every Q M W P method is native and each source key restores raw pre-effect Rails routing",
+  test "O06: retained Q M W P methods keep native admission and independent source routing",
        ctx do
     routes = q_m_w_p()
-    assert length(routes) == 40
+    assert length(routes) == 38
     ctx = seed_routes(ctx)
     System.put_env("SELF_HOSTED", "true")
 
@@ -503,10 +503,8 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       [
         {"PUT", "/stats/2024/3/update", "stats", DawarichWeb.StatsActions},
         {"PUT", "/stats/update_all", "stats", DawarichWeb.StatsActions},
-        {"PATCH", "/stats/2024/3/sharing", "stats", DawarichWeb.StatSharing},
         {"POST", "/digests", "digests", DawarichWeb.DigestActions},
         {"DELETE", "/digests/2024", "digests", DawarichWeb.DigestActions},
-        {"PATCH", "/digests/2024/sharing", "digests", DawarichWeb.DigestSharing},
         {"POST", "/areas", "areas", DawarichWeb.AreaActions},
         {"PATCH", "/areas/42", "areas", DawarichWeb.AreaActions},
         {"PUT", "/areas/42", "areas", DawarichWeb.AreaActions},

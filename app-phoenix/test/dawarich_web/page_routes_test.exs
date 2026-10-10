@@ -1,7 +1,7 @@
 defmodule DawarichWeb.PageRoutesTest do
   use ExUnit.Case, async: true
 
-  test "existing page route metadata survives extraction" do
+  test "native notifications page metadata uses the native jobs session while independent page routes survive extraction" do
     assert Code.ensure_loaded?(DawarichWeb.PageRoutes)
     assert macro_exported?(DawarichWeb.PageRoutes, :page_routes, 0)
 

@@ -60,7 +60,8 @@ defmodule DawarichWeb.FamilyInvitationPage do
     ArgumentError -> {:error, :invalid_input}
   end
 
-  def call(conn, :new), do: conn |> send_resp(404, "") |> halt()
+  def call(%{path_params: %{"token" => "new"}} = conn, :show),
+    do: conn |> send_resp(404, "") |> halt()
 
   def call(conn, :show) do
     respond(

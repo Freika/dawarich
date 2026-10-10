@@ -126,12 +126,15 @@ defmodule Dawarich.A12f3bE07Test do
     refute_received {:mail, _}
     finish(mail_job)
 
-    settle_native_jobs([
-      [owner, "lapse", "available"],
-      [owner, "lapse", "scheduled"],
-      [owner, "lapse", "available"],
-      [member, "lapse", "available"]
-    ])
+    settle_native_jobs(
+      [
+        [owner, "lapse", "available"],
+        [owner, "lapse", "scheduled"],
+        [owner, "lapse", "available"],
+        [member, "lapse", "available"]
+      ],
+      [owner]
+    )
 
     invitation = invitation!(family, owner, 0, DateTime.add(@now, 86_400), @now)
 
@@ -287,15 +290,18 @@ defmodule Dawarich.A12f3bE07Test do
     Process.delete(:transport_result)
     assert :ok = FamilyLapseWorker.perform(%Oban.Job{args: child})
     finish(job)
-    assert Drain.status(ScratchRepo).counts.incomplete_oban == 4
+    assert Drain.status(ScratchRepo).counts.incomplete_oban == 5
     assert "incomplete_oban" in Drain.status(ScratchRepo).shutdown_reasons
 
-    settle_native_jobs([
-      [owner, "lapse", "available"],
-      [owner, "lapse", "scheduled"],
-      [owner, "lapse", "available"],
-      [member, "lapse", "available"]
-    ])
+    settle_native_jobs(
+      [
+        [owner, "lapse", "available"],
+        [owner, "lapse", "scheduled"],
+        [owner, "lapse", "available"],
+        [member, "lapse", "available"]
+      ],
+      [owner]
+    )
 
     assert Drain.status(ScratchRepo).counts.pending_outbox == 0
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 0
@@ -381,14 +387,17 @@ defmodule Dawarich.A12f3bE07Test do
       end
     end
 
-    assert Drain.status(ScratchRepo).counts.incomplete_oban == 6
+    assert Drain.status(ScratchRepo).counts.incomplete_oban == 9
 
     expected =
       for [owner] <- rows("SELECT creator_id FROM families ORDER BY id"),
           state <- ["available", "scheduled"],
           do: [owner, "lapse", state]
 
-    settle_native_jobs(expected)
+    settle_native_jobs(
+      expected,
+      List.flatten(rows("SELECT creator_id FROM families ORDER BY id"))
+    )
 
     assert rows("SELECT count(*) FROM phoenix.delivery_claims WHERE delivered_at IS NOT NULL") ==
              [[6]]
@@ -399,22 +408,48 @@ defmodule Dawarich.A12f3bE07Test do
     assert Drain.status(ScratchRepo).counts.incomplete_oban == 0
   end
 
-  defp settle_native_jobs(expected) do
+  defp settle_native_jobs(expected, notification_users \\ []) do
     jobs =
       rows(
         "SELECT id,args,state,scheduled_at FROM oban.oban_jobs WHERE state <> 'completed' ORDER BY id"
       )
 
+    {notifications, jobs} =
+      Enum.split_with(jobs, fn [_, args, _, _] -> not Map.has_key?(args, "kind") end)
+
+    assert Enum.sort(for [_, args, state, _] <- notifications, do: [args["user_id"], state]) ==
+             Enum.sort(for user <- notification_users, do: [user, "available"])
+
+    for [id, args, _, _] <- notifications do
+      assert rows("SELECT worker FROM oban.oban_jobs WHERE id=$1", [id]) == [
+               ["Dawarich.Notifications.EventsWorker"]
+             ]
+
+      assert Enum.sort(Map.keys(args)) == ~w(event_id user_id)
+      user = args["user_id"]
+      Dawarich.Notifications.Events.subscribe(user)
+      assert :ok = Dawarich.Notifications.EventsWorker.run(ScratchRepo, args)
+      assert_received {:domain_changed, ^user, :notifications}
+      assert :ok = Dawarich.Notifications.EventsWorker.run(ScratchRepo, args)
+      refute_received {:domain_changed, ^user, :notifications}
+      finish(id)
+      Phoenix.PubSub.unsubscribe(Dawarich.PubSub, "notifications:user:#{user}")
+    end
+
     assert Enum.sort(
              for [_id, args, state, _at] <- jobs, do: [args["user_id"], args["kind"], state]
            ) == Enum.sort(expected)
 
-    assert rows("SELECT DISTINCT worker FROM oban.oban_jobs WHERE state <> 'completed'") == [
-             ["Dawarich.Families.EventsWorker"]
-           ]
-
     assert length(Enum.uniq(for [_, args, _, _] <- jobs, do: args["event_id"])) ==
              length(expected)
+
+    for [id, _, _, _] <- jobs,
+        do:
+          assert(
+            rows("SELECT worker FROM oban.oban_jobs WHERE id=$1", [id]) == [
+              ["Dawarich.Families.EventsWorker"]
+            ]
+          )
 
     for [id, args, state, at] <- jobs do
       assert Enum.sort(Map.keys(args)) == ~w(event_id kind user_id)

@@ -1,7 +1,7 @@
 defmodule DawarichWeb.A12f3bF04Test do
   use Dawarich.JobsCase, async: false
-  import Dawarich.Test.FamilyForms
-  alias Dawarich.{Repo, Accounts}
+  import Dawarich.Test.FamilyCorpus
+  alias Dawarich.{Repo, Accounts, Families}
   alias Dawarich.Jobs.Ownership
   alias Dawarich.Families.WebInvitations
 
@@ -12,8 +12,8 @@ defmodule DawarichWeb.A12f3bF04Test do
   end
 
   @tag a12f3b_case: "F04a"
-  test "family invitations create cancel and distinguish new from token", c do
-    assert request(c.owner, "POST", "/family/invitations").status == 400
+  test "native F04a invitations preserve creation cancellation and token distinction", c do
+    assert {:error, _} = Families.invite(scope(c.owner), %{}, opts())
 
     assert {:ok, _} =
              WebInvitations.create(
@@ -26,38 +26,25 @@ defmodule DawarichWeb.A12f3bF04Test do
 
     Repo.query!("DELETE FROM family_invitations WHERE email='notification@example.test'")
     Repo.query!("DELETE FROM job_outbox")
+    assert {:ok, id} = Families.invite(scope(c.owner), %{"email" => " NEW@EXAMPLE.TEST "}, opts())
 
-    conn =
-      request(c.owner, "POST", "/family/invitations", %{
-        "family_invitation" => %{"email" => " NEW@EXAMPLE.TEST "}
-      })
-
-    assert conn.status == 302
-
-    assert [[id, token, expires]] =
+    assert [[^id, _token, ~N[2026-10-10 10:00:00.000000]]] =
              records(
                "SELECT id,token,expires_at FROM family_invitations WHERE email='new@example.test'"
              )
 
-    assert expires == ~N[2026-10-10 10:00:00.000000]
-
     assert [[%{"invitation_id" => ^id, "locale" => "en"}]] =
              records("SELECT payload FROM job_outbox WHERE command_type='mail.family_invitation'")
 
-    assert request(c.owner, "POST", "/family/invitations", %{
-             "family_invitation" => %{"email" => "new@example.test"}
-           }).status == 302
+    assert {:error, _} = Families.invite(scope(c.owner), %{"email" => "new@example.test"}, opts())
 
     assert records("SELECT count(*) FROM family_invitations WHERE email='new@example.test'") == [
              [1]
            ]
 
-    assert request(c.owner, "POST", "/family/invitations", %{
-             "family_invitation" => %{"email" => "bad"}
-           }).status == 302
-
-    assert request(c.member, "DELETE", "/family/invitations/#{token}").status == 303
-    assert request(c.outsider, "DELETE", "/family/invitations/#{token}").status == 302
+    assert {:error, _} = Families.invite(scope(c.owner), %{"email" => "bad"}, opts())
+    assert {:error, :unauthorized} = Families.cancel_invitation(scope(c.member), id, opts())
+    assert {:error, :unauthorized} = Families.cancel_invitation(scope(c.outsider), id, opts())
     assert records("SELECT status FROM family_invitations WHERE id=$1", [id]) == [[0]]
 
     Repo.query!(
@@ -70,16 +57,21 @@ defmodule DawarichWeb.A12f3bF04Test do
       [c.outsider.id]
     )
 
-    assert request(c.outsider, "DELETE", "/family/invitations/#{token}").status == 404
+    assert {:error, :not_found} = Families.cancel_invitation(scope(c.outsider), id, opts())
     assert records("SELECT status FROM family_invitations WHERE id=$1", [id]) == [[0]]
-    assert request(c.owner, "DELETE", "/family/invitations/#{token}").status == 302
+    assert {:ok, _} = Families.cancel_invitation(scope(c.owner), id, opts())
     assert records("SELECT status FROM family_invitations WHERE id=$1", [id]) == [[3]]
     Repo.query!("UPDATE family_invitations SET token='new' WHERE id=93001")
-    assert request(c.owner, "GET", "/family/invitations/new").status == 404
 
-    assert request(c.owner, "POST", "/family/invitations", %{
-             "family_invitation" => %{"email" => "local@localhost"}
-           }).status == 302
+    assert DawarichWeb.FamilyInvitationPage.call(
+             %{
+               Plug.Test.conn("GET", "/family/invitations/new")
+               | path_params: %{"token" => "new"}
+             },
+             :show
+           ).status == 404
+
+    assert {:ok, _} = Families.invite(scope(c.owner), %{"email" => "local@localhost"}, opts())
 
     assert records("SELECT count(*) FROM family_invitations WHERE email='local@localhost'") == [
              [1]

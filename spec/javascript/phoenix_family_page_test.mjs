@@ -1,157 +1,103 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { FamilyMap } from "../../app-phoenix/assets/js/hooks/family_map.js"
 
-const source = await readFile(
-  new URL("../../app-phoenix/priv/static/js/family_page.js", import.meta.url),
-  "utf8",
-)
-const { familyPage, familyLastSeen } = await import(
-  `data:text/javascript;base64,${Buffer.from(source.replace(/^import .*\n/gm, "")).toString("base64")}`
-)
-
-const location = {
-  user_id: 90102,
-  email: "a-member@a9fpl.dawarich.test",
-  latitude: 51.3397,
-  longitude: 12.3731,
-  timestamp: 1791021300,
+function fixture(loader) {
+  const events = new Map(),
+    empty = { hidden: false },
+    canvas = { hidden: true, replaceChildren() {} }
+  const maps = [],
+    markers = []
+  class MapView {
+    constructor() {
+      maps.push(this)
+    }
+    addControl() {}
+    fitBounds() {}
+    flyTo(options) {
+      this.center = options.center
+    }
+    remove() {
+      this.removed = true
+    }
+  }
+  class Marker {
+    constructor() {
+      markers.push(this)
+    }
+    setLngLat(value) {
+      this.coordinate = value
+      return this
+    }
+    addTo() {
+      return this
+    }
+    remove() {
+      this.removed = true
+    }
+  }
+  const library = {
+    maplibre: { Map: MapView, Marker, NavigationControl: class {} },
+    style: {},
+  }
+  const hook = {
+    ...FamilyMap,
+    el: {
+      closest: () => ({ querySelectorAll: () => [] }),
+      querySelector: (selector) =>
+        selector.includes("empty") ? empty : canvas,
+    },
+    loader: loader ?? (async () => library),
+    handleEvent(name, fn) {
+      events.set(name, fn)
+      return name
+    },
+    removeHandleEvent(name) {
+      events.delete(name)
+    },
+    pushEvent(name) {
+      this.pushed = name
+    },
+  }
+  hook.mounted()
+  return { hook, events, empty, canvas, maps, markers, library }
 }
+const location = { user_id: 90102, latitude: 51.3397, longitude: 12.3731 }
 
-const deferred = () => {
-  let resolve
-  const promise = new Promise((done) => {
-    resolve = done
-  })
-  return { promise, resolve }
-}
-
-const fixture = (fetch) => {
-  const handlers = new Map()
-  const classes = new Set()
-  const slot = { textContent: "", hidden: true }
-  const row = {
-    dataset: { familyMemberId: "90102" },
-    classList: {
-      add: (name) => classes.add(name),
-      remove: (name) => classes.delete(name),
-    },
-    querySelector: () => slot,
-  }
-  const emptyClasses = new Set()
-  const empty = {
-    classList: {
-      toggle(name, force) {
-        const present = force ?? !emptyClasses.has(name)
-        if (present) emptyClasses.add(name)
-        else emptyClasses.delete(name)
-        return present
-      },
-      contains: (name) => emptyClasses.has(name),
-    },
-  }
-  const el = {
-    querySelectorAll: () => [row],
-    querySelector: () => empty,
-    addEventListener: (event, handler) => handlers.set(event, handler),
-    removeEventListener: (event, handler) => {
-      if (handlers.get(event) === handler) handlers.delete(event)
-    },
-  }
-  const controller = {
-    locationsValue: [],
-    maps: [],
-    async initMap() {
-      this.map = {
-        removed: false,
-        loaded: () => true,
-        flyTo: (options) => {
-          this.flight = options
-        },
-        remove() {
-          this.removed = true
-        },
-      }
-      this.maps.push(this.map)
-    },
-    disconnect() {
-      this.map?.remove()
-      this.map = null
-    },
-    connect() {},
-  }
-  const hook = familyPage({
-    fetch,
-    controller: async () => controller,
-    lastSeen: () => "· 5 minutes ago",
-  })
-  hook.el = el
-  return { hook, controller, row, slot, empty, classes, handlers }
-}
-
-test("family hook hydrates consented member map and clears refused data", async () => {
-  const el = {
-    dataset: {
-      familyTimeAgo: JSON.stringify({
-        middot: "·",
-        ago: "%{time} ago",
-        words: { x_minutes: { one: "1 minute", other: "%{count} minutes" } },
-      }),
-    },
-  }
-  assert.equal(
-    familyLastSeen(location, el, (location.timestamp + 300) * 1000),
-    "· 5 minutes ago",
-  )
-  const calls = []
-  let status = 200
-  const f = fixture(async (url, options) => {
-    calls.push([url, options])
-    return { ok: status === 200, status, json: async () => [location] }
-  })
-  await f.hook.mounted()
-  assert.equal(calls[0][0], "/family/locations.json")
-  assert.equal(calls[0][1].credentials, "same-origin")
-  assert.equal(calls[0][1].cache, "no-store")
-  assert.equal(calls[0][1].headers.Accept, "application/json")
-  assert.deepEqual(f.controller.locationsValue, [location])
-  assert.equal(f.empty.classList.contains("hidden"), true)
-  assert.equal(f.slot.textContent, "· 5 minutes ago")
-  assert.equal(f.classes.has("cursor-pointer"), true)
-  f.handlers.get("click")({ target: { closest: () => f.row } })
-  assert.deepEqual(f.controller.flight.center, [12.3731, 51.3397])
-  const map = f.controller.map
-  status = 403
-  await f.hook.reconnected()
-  assert.equal(map.removed, true)
-  assert.deepEqual(f.controller.locationsValue, [])
-  assert.equal(f.empty.classList.contains("hidden"), false)
-  assert.equal(f.slot.textContent, "")
-  assert.equal(f.classes.has("cursor-pointer"), false)
+test("native family snapshot hydrates the consented map and clears refused data", async () => {
+  const f = fixture()
+  await f.events.get("family-locations")({ locations: [location] })
+  assert.equal(f.empty.hidden, true)
+  assert.deepEqual(f.markers[0].coordinate, [12.3731, 51.3397])
+  f.events.get("family-focus")({ id: location.user_id })
+  assert.deepEqual(f.maps[0].center, [12.3731, 51.3397])
+  f.events.get("family-clear")({})
+  assert.equal(f.maps[0].removed, true)
+  assert.equal(f.markers[0].removed, true)
+  assert.equal(f.hook.locations.length, 0)
+  assert.equal(f.empty.hidden, false)
+  f.hook.destroyed()
 })
 
-test("family hook destroys map and cancels work on disconnect", async () => {
-  const pending = deferred()
-  let signal
-  let wait = false
-  const f = fixture(async (_url, options) => {
-    signal = options.signal
-    if (wait) await pending.promise
-    return { ok: true, json: async () => [location] }
-  })
-  await f.hook.mounted()
-  const map = f.controller.map
-  wait = true
-  const refresh = f.hook.reconnected()
-  await Promise.resolve()
+test("native family disconnect cancels pending lazy work and destroys map state", async () => {
+  let release
+  const f = fixture(
+    () =>
+      new Promise((resolve) => {
+        release = resolve
+      }),
+  )
+  const pending = f.events.get("family-locations")({ locations: [location] })
   f.hook.disconnected()
-  assert.equal(signal.aborted, true)
-  assert.equal(map.removed, true)
-  assert.deepEqual(f.controller.locationsValue, [])
-  pending.resolve()
-  await refresh
-  assert.equal(f.controller.map, null)
-  assert.equal(f.controller.maps.length, 1)
+  release(f.library)
+  await pending
+  assert.equal(f.maps.length, 0)
+  assert.equal(f.hook.locations.length, 0)
+  f.hook.reconnected()
+  assert.equal(f.hook.pushed, "family_reload")
+  f.hook.loader = async () => f.library
+  await f.events.get("family-locations")({ locations: [location] })
   f.hook.destroyed()
-  assert.equal(f.handlers.size, 0)
+  assert.equal(f.maps[0].removed, true)
+  assert.equal(f.events.size, 0)
 })

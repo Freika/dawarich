@@ -27,7 +27,7 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
   end
 
   @tag mutation: "family-session-writers"
-  test "independent JSON clients forward unsupported session writers before effects",
+  test "native independent family JSON ignores client hints without session or upstream effects",
        c do
     for path <-
           ~w(/family/locations.json),
@@ -142,31 +142,33 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
   end
 
   @tag mutation: "family-json-locale"
-  test "family JSON hands locale persistence to Rails before effects", c do
+  test "native independent family JSON locale hints remain read only before delivery", c do
     forwarded(c, RailsUser.signed_in(c.owner.id), "/family/locations.json?locale=de")
   end
 
   defp forwarded(c, conn, path) do
     before = snapshot()
-    response = Task.async(fn -> get(conn, path) end)
-    socket = accept(c.upstream)
-    {head, _rest} = read_head(socket)
-    assert request_line(head) == "GET #{path} HTTP/1.1"
 
-    for {key, value} <- conn.req_headers,
-        key in ~w(cookie x-dawarich-client),
-        do: assert(header(head, key) == [value])
+    probe =
+      Task.async(fn ->
+        case :gen_tcp.accept(c.upstream.listen, 100) do
+          {:ok, socket} ->
+            read_head(socket)
+            reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
+            :gen_tcp.close(socket)
+            :upstream
 
-    reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-    returned = Task.await(response)
-    :gen_tcp.close(socket)
-    assert returned.status == 200
-    assert returned.resp_body == "rails"
-    assert returned.resp_cookies == %{}
-    assert get_resp_header(returned, "set-cookie") == []
-    refute Map.has_key?(returned.private, :phoenix_router)
-    refute Map.has_key?(returned.private, :dawarich_rails_session_changes)
-    refute Map.has_key?(returned.assigns, :current_user)
+          {:error, :timeout} ->
+            :native
+        end
+      end)
+
+    response = get(conn, path)
+    assert response.status == 200
+    assert Jason.decode!(response.resp_body) == []
+    assert Task.await(probe) == :native
+    assert response.resp_cookies == %{}
+    assert get_resp_header(response, "set-cookie") == []
     assert snapshot() == before
   end
 

@@ -70,7 +70,6 @@ defmodule DawarichWeb.TripsLive.Show do
           </div>
           <div class="w-full lg:w-2/5 lg:h-full lg:overflow-y-auto">
             <.trip_header page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
-            <turbo-frame id="share-link-modal"></turbo-frame>
             <button
               :if={@page.settings.photos}
               type="button"

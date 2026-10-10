@@ -76,9 +76,9 @@ defmodule DawarichWeb.A9RoutesTest do
     {"/trips/:id", DawarichWeb.TripsLive.Show, :show, {DawarichWeb.TripsGate, :show?}},
     {"/places", DawarichWeb.PlacesLive.Index, :index, {DawarichWeb.PlacesGate, :index?}},
     {"/insights", DawarichWeb.InsightsLive.Index, :index, nil},
-    {"/family", DawarichWeb.FamiliesLive.Show, :show, {DawarichWeb.FamilyGate, :show?}},
-    {"/family/new", DawarichWeb.FamiliesLive.Form, :new, {DawarichWeb.FamilyGate, :new?}},
-    {"/family/edit", DawarichWeb.FamiliesLive.Form, :edit, {DawarichWeb.FamilyGate, :edit?}}
+    {"/family", DawarichWeb.FamiliesLive.Show, :show, nil},
+    {"/family/new", DawarichWeb.FamiliesLive.Form, :new, nil},
+    {"/family/edit", DawarichWeb.FamiliesLive.Form, :edit, nil}
   ]
 
   @frames [

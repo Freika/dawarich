@@ -124,7 +124,7 @@ defmodule DawarichWeb.MapDataRoutesTest do
            ]
   end
 
-  test "existing page frame and sharing routes retain their pipelines" do
+  test "native public sharing routes retain admission pipelines without a Rails gate" do
     for {verb, path, pipelines, gate} <- [
           {:get, "/map", [:browser, :rails_user], nil},
           {:get, "/map/v2", [:browser, :rails_user], nil},
@@ -136,8 +136,8 @@ defmodule DawarichWeb.MapDataRoutesTest do
           {:get, "/map/residency", [:rails_frame], {DawarichWeb.MapFramesGate, :residency?}},
           {:get, "/map/timeline_feeds/:id/track_info", [:rails_frame],
            {DawarichWeb.MapFramesGate, :track?}},
-          {:get, "/s/:id", [:sharing], {DawarichWeb.SharingGate, :show?}},
-          {:post, "/s/:id/unlock", [:sharing_unlock], {DawarichWeb.SharingGate, :unlock?}}
+          {:get, "/s/:id", [:sharing], nil},
+          {:post, "/s/:id/unlock", [:sharing_unlock], nil}
         ] do
       route = Enum.find(Router.__routes__(), &(&1.verb == verb and &1.path == path))
       assert pipelines(route) == pipelines

@@ -55,6 +55,7 @@ defmodule DawarichWeb.AchievementsLiveTest do
     progress(%{"earned" => %{"DE-BY" => "2026-07-19T10:00:00Z"}})
     {:ok, view, _html} = live_as(user, "/achievements/country_de")
     assert has_element?(view, "a[href='/achievements/country_de/sharing']")
+    assert has_element?(view, "[data-share-manager='/achievements/country_de/sharing']")
     refute has_element?(view, "[data-share-toggle], form[action$='/toggle_sharing']")
     island = "#phx-achievements[phx-update='ignore']"
     assert has_element?(view, island <> " dialog.ach-modal")

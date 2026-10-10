@@ -1,14 +1,14 @@
 defmodule DawarichWeb.G44BackgroundTimezoneTest do
   use ExUnit.Case, async: false
   import Phoenix.ConnTest
-  import Plug.Conn
+  import Phoenix.LiveViewTest
   alias Dawarich.{Accounts, Repo, UserSettings}
-  alias Dawarich.Test.{RailsFormRequests, RailsUser}
+  alias Dawarich.Test.RailsUser
   @endpoint DawarichWeb.Endpoint
-  @browser "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo, sandbox: false)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
     names = ~w(DAWARICH_RAILS SELF_HOSTED FORCE_SSL TIME_ZONE)
     prior = Map.new(names, &{&1, System.get_env(&1)})
 
@@ -52,14 +52,11 @@ defmodule DawarichWeb.G44BackgroundTimezoneTest do
   end
 
   @tag :g44_default_timezone
-  test "browser visits toggle fills missing default timezone and rebuilds existing months", c do
+  test "native confirmed visits toggle fills missing default timezone and rebuilds existing months",
+       c do
     before = Accounts.settings(c.actor.id)
-    saved = toggle(c.session, "false")
-    assert saved.status == 302
-
-    assert get_resp_header(saved, "location") == [
-             "http://www.example.com/settings/background_jobs"
-           ]
+    saved = toggle(c.actor)
+    assert has_element?(saved, "#visits-toggle", "Enable")
 
     assert Accounts.settings(c.actor.id) ==
              UserSettings.safe(before, %{"TIME_ZONE" => "UTC"})
@@ -71,14 +68,15 @@ defmodule DawarichWeb.G44BackgroundTimezoneTest do
            ) == [[0, true], [0, true]]
 
     assert [[8, false], [9, false]] == jobs(c.actor.id)
-    again = toggle(RailsFormRequests.rails_session(saved), "true")
-    assert again.status == 302
+    saved |> element("#visits-toggle") |> render_click()
+    saved |> element("#confirm-visits") |> render_click()
+    assert has_element?(saved, "#visits-toggle", "Disable")
     assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == "true"
     assert [[8, false], [9, false]] == jobs(c.actor.id)
   end
 
   @tag :g44_timezone_rollback
-  test "failed background timezone scheduling rolls back preferences and stats on an idle connection",
+  test "failed native visits scheduling rolls back preferences and stats on an idle connection",
        c do
     before = Accounts.settings(c.actor.id)
     constraint = "g44_background_enqueue_#{c.actor.id}"
@@ -90,8 +88,8 @@ defmodule DawarichWeb.G44BackgroundTimezoneTest do
     )
 
     try do
-      rejected = toggle(c.session, "false")
-      assert rejected.status == 500
+      rejected = toggle(c.actor)
+      assert has_element?(rejected, ".alert-error")
       assert Accounts.settings(c.actor.id) == before
 
       assert rows(
@@ -105,25 +103,12 @@ defmodule DawarichWeb.G44BackgroundTimezoneTest do
     end
   end
 
-  defp toggle(session, value) do
-    page =
-      build_conn()
-      |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-      |> get("/settings/background_jobs")
-
-    token =
-      page.resp_body
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("meta[name='csrf-token']")
-      |> LazyHTML.attribute("content")
-      |> hd()
-
-    RailsFormRequests.post_form(
-      session,
-      URI.encode_query(%{"_method" => "patch", "authenticity_token" => token}),
-      [{"accept", @browser}, {"origin", "http://www.example.com"}],
-      "/settings/background_jobs?settings%5Bvisits_suggestions_enabled%5D=#{value}"
-    )
+  defp toggle(actor) do
+    conn = RailsUser.signed_in(actor.id) |> RailsUser.connecting_as(actor.id)
+    {:ok, view, _} = live(conn, "/settings/background_jobs")
+    view |> element("#visits-toggle") |> render_click()
+    view |> element("#confirm-visits") |> render_click()
+    view
   end
 
   defp jobs(id),

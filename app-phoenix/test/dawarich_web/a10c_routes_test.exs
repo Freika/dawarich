@@ -38,12 +38,20 @@ defmodule DawarichWeb.A10cRoutesTest do
     :ok
   end
 
-  test "routes sharing and JSON deck actions outside page request filters" do
+  test "retained JSON deck routes keep admission while achievement UI sharing writes are retired" do
+    for method <- ~w(POST PATCH),
+        do:
+          assert(
+            :error ==
+              Phoenix.Router.route_info(
+                Router,
+                method,
+                "/achievements/country_de/toggle_sharing",
+                "www.example.com"
+              )
+          )
+
     for {method, path, plug, action} <- [
-          {"PATCH", "/achievements/country_de/toggle_sharing",
-           DawarichWeb.AchievementActions.Sharing, :sharing},
-          {"POST", "/achievements/country_de/toggle_sharing",
-           DawarichWeb.AchievementActions.Sharing, :sharing},
           {"POST", "/achievements/unlocks/next", DawarichWeb.AchievementActions.Unlocks, :next},
           {"POST", "/achievements/unlocks/42001/seen", DawarichWeb.AchievementActions.Unlocks,
            :seen},

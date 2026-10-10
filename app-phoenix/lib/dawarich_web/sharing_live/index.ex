@@ -238,18 +238,19 @@ defmodule DawarichWeb.SharingLive.Index do
       <dialog
         :if={@confirmation}
         id="sharing-confirm"
+        aria-labelledby="sharing-confirm-title"
         phx-hook="SharingDialog"
         data-pending="true"
         class="modal"
       >
         <div class="modal-box min-w-0 [overflow-wrap:anywhere]">
-          <p>
+          <h2 id="sharing-confirm-title" class="text-xl font-semibold">
             {t(
               @locale,
               confirmation_key(@confirmation.action),
               %{}
             )}
-          </p>
+          </h2>
           <div class="modal-action flex flex-wrap">
             <button
               type="button"

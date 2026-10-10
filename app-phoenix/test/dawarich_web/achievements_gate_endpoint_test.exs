@@ -172,14 +172,14 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
     )
   end
 
-  test "unsupported achievement writes go to Puma", ctx do
+  test "deferred achievement writes retain Puma while sharing writes stay retired", ctx do
     port = serve()
 
     for method <- ~w(POST PATCH PUT DELETE) do
       assert_puma(
         ctx,
         port,
-        ~w(/achievements /achievements/country_de /achievements/country_de/toggle_sharing),
+        ~w(/achievements /achievements/country_de),
         method,
         "Content-Type: application/x-www-form-urlencoded\r\n"
       )

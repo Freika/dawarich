@@ -4,7 +4,7 @@ defmodule DawarichWeb.FamilyPagesParityTest do
   import Plug.Conn
   alias Dawarich.{FamilyPage, Repo}
   alias Dawarich.Test.FrameSeeds
-  alias DawarichWeb.{FamilyGate, FamilyInvitationPage, RequireUser}
+  alias DawarichWeb.{FamilyInvitationPage, RequireUser}
 
   @dir "test/fixtures/family_pages"
   @cases ~w(guest no_family new_self_hosted owner member owner_new_redirect edit_owner edit_member
@@ -89,6 +89,17 @@ defmodule DawarichWeb.FamilyPagesParityTest do
           changes = conn.private[:dawarich_rails_session_changes] || %{}
           assert (get_in(changes, ["flash", "flashes"]) || %{}) == state["flash"]
           assert changes["user_return_to"] == state["session"]["user_return_to"]
+
+        {:family_refused, reason} ->
+          assert reason in [
+                   nil,
+                   :feature_unavailable,
+                   :not_in_family,
+                   :not_authorized,
+                   :not_request_target
+                 ]
+
+          assert state["status"] in [302, 303]
 
         {:error, status} ->
           assert state["status"] == status
@@ -196,12 +207,35 @@ defmodule DawarichWeb.FamilyPagesParityTest do
       if conn.halted do
         {:redirect, conn}
       else
-        conn = FamilyGate.call(conn, [])
+        action =
+          case conn.request_path do
+            "/family" -> :show
+            "/family/new" -> :new
+            "/family/edit" -> :edit
+            "/family/invitations" -> :invitations
+            "/family/location_requests/" <> id -> {:request, String.to_integer(id)}
+          end
 
-        if conn.halted do
-          {:redirect, conn}
-        else
-          render_family(conn, state, user, now)
+        case FamilyPage.read(user, action, now: now, self_hosted: state["self_hosted"]) do
+          {:redirect, path, reason} ->
+            expected = if reason == :feature_unavailable, do: :expired, else: :unauthorized
+
+            assert {:error, ^expected} =
+                     Dawarich.Families.page(
+                       Dawarich.Accounts.Scope.for_user(user, state["locale"]),
+                       action,
+                       now: now,
+                       self_hosted: state["self_hosted"]
+                     )
+
+            assert state["location"] == "http://www.example.com" <> path
+            {:family_refused, reason}
+
+          {:error, status} ->
+            {:error, status}
+
+          {:ok, _} ->
+            render_family(conn, state, user, now)
         end
       end
     end

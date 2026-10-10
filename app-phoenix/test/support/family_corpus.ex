@@ -1,15 +1,8 @@
-defmodule Dawarich.Test.FamilyForms.Router do
-  use Phoenix.Router
-  require DawarichWeb.FamilyFormRoutes
-  DawarichWeb.FamilyFormRoutes.routes()
-end
-
-defmodule Dawarich.Test.FamilyForms do
+defmodule Dawarich.Test.FamilyCorpus do
   import Plug.Conn
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{FrameSeeds, RailsUser}
   alias DawarichWeb.RailsCsrf
-  alias Dawarich.Test.FamilyForms.Router
 
   def seed do
     Code.ensure_loaded!(Dawarich.Accounts.User)
@@ -26,24 +19,25 @@ defmodule Dawarich.Test.FamilyForms do
     conn =
       Plug.Test.conn(method, path, Plug.Conn.Query.encode(params))
       |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> put_req_header(
+        "content-length",
+        Integer.to_string(byte_size(Plug.Conn.Query.encode(params)))
+      )
       |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(session))
       |> assign(:now, ~U[2026-10-03 10:00:00Z])
 
     conn = Enum.reduce(headers, conn, fn {k, v}, c -> put_req_header(c, k, v) end)
-    Router.call(conn, Router.init([]))
+    DawarichWeb.FamilyInvitationAcceptance.call(conn, [])
   end
 
-  def json_request(user, method, path, params) do
-    session = RailsUser.session(user.id)
+  def scope(user, locale \\ "en"), do: Dawarich.Accounts.Scope.for_user(user, locale)
 
-    Plug.Test.conn(method, path, Jason.encode!(params))
-    |> put_req_header("content-type", "application/json")
-    |> put_req_header("accept", "application/json")
-    |> put_req_header("x-csrf-token", RailsCsrf.masked_token(session))
-    |> put_req_header("cookie", "_dawarich_session=" <> RailsUser.cookie(session))
-    |> assign(:now, ~U[2026-10-03 10:00:00Z])
-    |> Router.call(Router.init([]))
-  end
+  def opts,
+    do: [
+      now: ~U[2026-10-03 10:00:00Z],
+      clock: fn -> ~U[2026-10-03 10:00:00Z] end,
+      self_hosted: Dawarich.ReleaseMigration.self_hosted?()
+    ]
 
   def records(sql, args \\ []), do: Repo.query!(sql, args).rows
 end

@@ -3,7 +3,6 @@ defmodule DawarichWeb.FamilyPagesTest do
 
   import Phoenix.ConnTest
   import Plug.Conn, only: [put_req_header: 3]
-  import Dawarich.Test.RawHTTP
 
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{FrameSeeds, RailsUser}
@@ -121,37 +120,25 @@ defmodule DawarichWeb.FamilyPagesTest do
     end
   end
 
-  test "family key hands back documents before pipeline", ctx do
-    saved_routes = Application.get_env(:dawarich, :rails_routes, [])
-    saved_upstream = Application.get_env(:dawarich, :rails_upstream)
-    upstream = listen()
-
-    on_exit(fn ->
-      Application.put_env(:dawarich, :rails_routes, saved_routes)
-      Application.put_env(:dawarich, :rails_upstream, saved_upstream)
-      :gen_tcp.close(upstream.listen)
-    end)
-
+  test "native family documents ignore compatibility keys without Rails replay", ctx do
+    saved = Application.get_env(:dawarich, :rails_routes, [])
+    upstream = Dawarich.Test.RailsFormRequests.upstream!()
     Application.put_env(:dawarich, :rails_routes, ["family"])
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
+    on_exit(fn -> Application.put_env(:dawarich, :rails_routes, saved) end)
 
-    for path <- ~w(/family /family/new /family/edit) do
-      response =
-        Task.async(fn -> RailsUser.signed_in(ctx.owner.id) |> freeze_clock() |> get(path) end)
-
-      socket = accept(upstream)
-      {head, _rest} = read_head(socket)
-      assert request_line(head) == "GET #{path} HTTP/1.1"
-      reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-      conn = Task.await(response)
-      assert conn.resp_body == "rails"
-      refute Map.has_key?(conn.private, :phoenix_router)
-      refute Map.has_key?(conn.assigns, :current_user)
-      :gen_tcp.close(socket)
+    for {user, path} <- [
+          {ctx.owner, "/family"},
+          {ctx.outsider, "/family/new"},
+          {ctx.owner, "/family/edit"}
+        ] do
+      conn = RailsUser.signed_in(user.id) |> freeze_clock() |> get(path)
+      assert conn.status == 200
+      assert conn.resp_body =~ "/native/app"
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     end
   end
 
-  test "family writes have native routes and retain explicit handback" do
+  test "retired family UI writes have no routes even with compatibility keys" do
     saved = Application.get_env(:dawarich, :rails_routes, [])
     Application.put_env(:dawarich, :rails_routes, ["family"])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, saved) end)
@@ -170,10 +157,13 @@ defmodule DawarichWeb.FamilyPagesTest do
           {"PATCH", "/family/location_requests/94001/decline"},
           {"PATCH", "/family/location_sharing"}
         ] do
-      assert %{plug: DawarichWeb.FamilyFormRoutes} =
+      assert :error =
                Phoenix.Router.route_info(DawarichWeb.Router, method, path, "www.example.com")
 
-      assert DawarichWeb.Strangler.handed_back?(["family"])
+      refute Map.has_key?(
+               Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/family", "www.example.com"),
+               :rails_gate
+             )
     end
 
     assert Phoenix.Router.route_info(

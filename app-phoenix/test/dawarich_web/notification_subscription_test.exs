@@ -127,7 +127,9 @@ defmodule DawarichWeb.NotificationSubscriptionTest do
 
     Repo.query!(
       "UPDATE users SET encrypted_password='family-subscription-revoked' WHERE id=$1",
-      [c.user.id], log: false)
+      [c.user.id],
+      log: false
+    )
 
     assert {:error, :stale_session} =
              DawarichWeb.NotificationSession.Native.subscribe_family(socket)

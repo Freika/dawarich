@@ -43,6 +43,18 @@ defmodule DawarichWeb.ShareManagementPageTest do
     end
   end
 
+  test "native hub normalizes an unknown tab to a usable live form", c do
+    Repo.query!("DELETE FROM shared_links WHERE user_id=$1", [c.actor.id], log: false)
+    {:ok, view, _} = live(connection(c.actor.id), "/share_links/hub?tab=unknown")
+    assert :sys.get_state(view.pid).socket.assigns.tab == "live"
+    assert has_element?(view, "form[phx-submit=sharing_create]")
+    render_submit(view, "sharing_create", create_attrs())
+
+    assert Repo.query!("SELECT resource_type FROM shared_links WHERE user_id=$1", [c.actor.id],
+             log: false
+           ).rows == [[3]]
+  end
+
   test "native hub retains ordered sharing settings tabs and ordinary studio entrypoints", c do
     {:ok, view, _} = live(connection(c.actor.id), "/share_links/hub?tab=shared")
 

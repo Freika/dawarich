@@ -3,27 +3,37 @@ defmodule DawarichWeb.FamilyNativeRoutes do
 
   defmacro http do
     quote do
-      get "/native/family/invitations/:id/copy", DawarichWeb.FamilyInvitationReveal, :copy
-      get "/native/family/invitations/:id/view", DawarichWeb.FamilyInvitationReveal, :view
-      get "/native/family/upgrade", DawarichWeb.FamilyUpgrade, []
+      get "/native/family/invitations/:id/copy", DawarichWeb.FamilyInvitationReveal, :copy,
+        metadata: %{native_ui: true}
+
+      get "/native/family/invitations/:id/view", DawarichWeb.FamilyInvitationReveal, :view,
+        metadata: %{native_ui: true}
+
+      get "/native/family/upgrade", DawarichWeb.FamilyUpgrade, [], metadata: %{native_ui: true}
     end
   end
 
   defmacro pages do
     quote do
-      live "/family", DawarichWeb.FamiliesLive.Show, :show, container: {:div, class: "contents"}
+      live "/family", DawarichWeb.FamiliesLive.Show, :show,
+        container: {:div, class: "contents"},
+        metadata: %{native_ui: true}
 
       live "/family/new", DawarichWeb.FamiliesLive.Form, :new,
-        container: {:div, class: "contents"}
+        container: {:div, class: "contents"},
+        metadata: %{native_ui: true}
 
       live "/family/edit", DawarichWeb.FamiliesLive.Form, :edit,
-        container: {:div, class: "contents"}
+        container: {:div, class: "contents"},
+        metadata: %{native_ui: true}
 
       live "/family/invitations", DawarichWeb.FamiliesLive.Invitations, :index,
-        container: {:div, class: "contents"}
+        container: {:div, class: "contents"},
+        metadata: %{native_ui: true}
 
       live "/family/location_requests/:id", DawarichWeb.FamiliesLive.LocationRequest, :show,
-        container: {:div, class: "contents"}
+        container: {:div, class: "contents"},
+        metadata: %{native_ui: true}
     end
   end
 end

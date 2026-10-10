@@ -2,7 +2,7 @@ defmodule DawarichWeb.PageEnvelope do
   @moduledoc false
   import Plug.Conn
 
-  @pipelines ~w(browser insights rails_frame sharing achievement_public trial_resume trial_welcome public_home standalone_settings achievement_image native_navigation family_form user_data_export native_share)a
+  @pipelines ~w(browser insights rails_frame sharing achievement_public trial_resume trial_welcome public_home standalone_settings achievement_image native_navigation family_acceptance user_data_export native_share)a
   @turbo "text/vnd.turbo-stream.html"
   @calendar "/map/timeline_feeds/calendar"
   @redirects ~w(/ /settings/theme /trial/upgrade /trial/welcome)
@@ -275,10 +275,7 @@ defmodule DawarichWeb.PageEnvelope do
         DawarichWeb.AchievementPublicPage,
         DawarichWeb.TrialWelcome,
         DawarichWeb.TrialUpgrade,
-        DawarichWeb.HomeDispatch,
-        DawarichWeb.ShareManagementPage,
-        DawarichWeb.TimelineShareActions,
-        DawarichWeb.TrackShareActions
+        DawarichWeb.HomeDispatch
       ] or
         conn.request_path == "/trial/resume"
 

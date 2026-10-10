@@ -23,6 +23,33 @@ defmodule DawarichWeb.NativeM4RouteRetirementTest do
     {"PUT", "/settings/background_jobs"}
   ]
 
+  @family_sharing_writes for {verbs, base, suffixes} <- [
+                               {~w(POST PATCH PUT DELETE), "/family", [""]},
+                               {~w(POST DELETE), "/family/members/998811", [""]},
+                               {["POST"], "/family/invitations", [""]},
+                               {~w(POST DELETE), "/family/invitations/998811", [""]},
+                               {["POST"], "/family/location_requests", [""]},
+                               {~w(POST PATCH), "/family/location_requests/998811",
+                                ["/accept", "/decline"]},
+                               {~w(POST PATCH), "/family/location_sharing", [""]},
+                               {~w(POST DELETE PATCH), "/share_links/live",
+                                ["", "/revoke", "/regenerate", "/regenerate_phrase"]},
+                               {~w(POST DELETE PATCH), "/trips/998811/share_link",
+                                ["", "/revoke", "/regenerate", "/regenerate_phrase"]},
+                               {~w(POST DELETE PATCH), "/tracks/998811/share_link",
+                                ["", "/revoke", "/regenerate", "/regenerate_phrase"]},
+                               {~w(POST DELETE PATCH), "/share_links/timeline",
+                                ["", "/revoke", "/regenerate", "/regenerate_phrase"]},
+                               {~w(POST PATCH), "/share_links/shares/998811/revoke", [""]},
+                               {~w(POST PATCH), "/stats/2026/1/sharing", [""]},
+                               {~w(POST PATCH), "/digests/2026/sharing", [""]},
+                               {~w(POST PATCH), "/achievements/distance_100km/toggle_sharing",
+                                [""]}
+                             ],
+                             verb <- verbs,
+                             suffix <- suffixes,
+                             do: {verb, base <> suffix}
+
   setup do
     user = RailsUser.insert!(%{id: 99881, email: "retired-m4@example.test", admin: true})
     session = RailsUser.session(user.id)
@@ -84,6 +111,90 @@ defmodule DawarichWeb.NativeM4RouteRetirementTest do
     end
   end
 
+  test "retired family and sharing UI writes refuse before effects and Rails replay", c do
+    for {method, path} <- @family_sharing_writes do
+      assert :error ==
+               Phoenix.Router.route_info(DawarichWeb.Router, method, path, "www.example.com"),
+             "#{method} #{path}"
+    end
+
+    for mode <- [nil, "off"], {method, path} <- @family_sharing_writes, suffix <- ["", ".html"] do
+      if mode,
+        do: System.put_env("DAWARICH_RAILS", mode),
+        else: System.delete_env("DAWARICH_RAILS")
+
+      before = footprint()
+
+      response =
+        request(
+          c,
+          method,
+          path <> suffix,
+          "_method=delete&shared_link%5Bname%5D=forged&token=bad"
+        )
+
+      assert response.status == 404, "#{method} #{path}#{suffix}"
+      assert footprint() == before
+      assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
+    end
+  end
+
+  test "retained invitation acceptance preserves guest return and alert without membership effects" do
+    before = Dawarich.Repo.query!("SELECT count(*) FROM family_memberships", [], log: false).rows
+    body = "_method=post&token=synthetic-guest-invitation"
+
+    conn =
+      build_conn()
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> put_req_header("content-length", to_string(byte_size(body)))
+      |> post("/family/memberships?locale=de", body)
+
+    assert redirected_to(conn) == "http://www.example.com/users/sign_in"
+    changes = conn.private[:dawarich_rails_session_changes] || %{}
+    assert changes["user_return_to"] == "/family/memberships?locale=de"
+
+    assert get_in(changes, ["flash", "flashes", "alert"]) ==
+             DawarichWeb.Translate.t("de", "devise.failure.unauthenticated", %{})
+
+    assert Dawarich.Repo.query!("SELECT count(*) FROM family_memberships", [], log: false).rows ==
+             before
+  end
+
+  test "retained invitation acceptance refuses unsupported envelopes without effects or Rails replay",
+       c do
+    for mode <- [nil, "off"],
+        {headers, body} <- [
+          {[{"content-type", "text/plain"}], "token=synthetic"},
+          {[{"x-http-method-override", "DELETE"}], "token=synthetic"},
+          {[], "token=%QQ"},
+          {[], "_method=delete&token=synthetic"}
+        ] do
+      if mode,
+        do: System.put_env("DAWARICH_RAILS", mode),
+        else: System.delete_env("DAWARICH_RAILS")
+
+      before = footprint()
+
+      conn =
+        build_conn()
+        |> put_req_cookie("_dawarich_session", RailsUser.cookie(c.session))
+        |> put_req_header("content-type", "application/x-www-form-urlencoded")
+        |> put_req_header("x-csrf-token", c.token)
+        |> put_req_header("content-length", Integer.to_string(byte_size(body)))
+
+      conn =
+        Enum.reduce(headers, conn, fn {key, value}, conn -> put_req_header(conn, key, value) end)
+
+      response = dispatch(conn, @endpoint, "POST", "/family/memberships", body)
+
+      assert response.status in [400, 415, 422],
+             "mode=#{inspect(mode)} type=#{inspect(headers)} body=#{body} status=#{response.status}"
+
+      assert footprint() == before
+      assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
+    end
+  end
+
   defp request(c, method, path, body) do
     build_conn()
     |> put_req_cookie("_dawarich_session", RailsUser.cookie(c.session))
@@ -96,7 +207,7 @@ defmodule DawarichWeb.NativeM4RouteRetirementTest do
 
   defp footprint do
     Repo.query!(
-      "SELECT (SELECT count(*) FROM imports), (SELECT count(*) FROM exports), (SELECT count(*) FROM notifications), (SELECT count(*) FROM job_outbox), (SELECT count(*) FROM oban.oban_jobs), (SELECT count(*) FROM phoenix.rails_commands), (SELECT count(*) FROM active_storage_blobs), (SELECT settings FROM users WHERE id=99881)"
+      "SELECT (SELECT count(*) FROM imports), (SELECT count(*) FROM exports), (SELECT count(*) FROM notifications), (SELECT count(*) FROM job_outbox), (SELECT count(*) FROM oban.oban_jobs), (SELECT count(*) FROM phoenix.rails_commands), (SELECT count(*) FROM active_storage_blobs), (SELECT settings FROM users WHERE id=99881), (SELECT count(*) FROM families), (SELECT count(*) FROM family_memberships), (SELECT count(*) FROM family_invitations), (SELECT count(*) FROM family_location_requests), (SELECT count(*) FROM shared_links)"
     ).rows
   end
 end

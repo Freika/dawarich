@@ -9,6 +9,18 @@ defmodule DawarichWeb.NativeM4RetiredWrites do
       ["exports", _] -> true
       ["notifications", _] -> true
       ["settings", "background_jobs"] -> true
+      ["family"] -> true
+      ["family", "members", _] -> true
+      ["family", "invitations"] -> true
+      ["family", "invitations", _] -> true
+      ["family", "location_requests"] -> true
+      ["family", "location_requests", _, action] when action in ~w(accept decline) -> true
+      ["family", "location_sharing"] -> true
+      ["share_links", type | _] when type in ~w(live timeline shares) -> true
+      [type, _, "share_link" | _] when type in ~w(trips tracks) -> true
+      ["stats", _, _, "sharing"] -> true
+      ["digests", _, "sharing"] -> true
+      ["achievements", _, "toggle_sharing"] -> true
       _ -> false
     end
   end
@@ -16,5 +28,5 @@ defmodule DawarichWeb.NativeM4RetiredWrites do
   def retired?(_), do: false
 
   def refuse(%{halted: true} = conn), do: conn
-  def refuse(conn), do: DawarichWeb.StandaloneError.respond(conn, "not_found", 404)
+  def refuse(conn), do: DawarichWeb.RailsErrors.respond(conn, 404)
 end
