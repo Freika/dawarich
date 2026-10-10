@@ -79,7 +79,11 @@ defmodule DawarichWeb.DigestsLiveTest do
              log: false
            ).rows == [[1]]
 
-    Dawarich.Repo.query!("UPDATE users SET status = 0 WHERE id = $1", [user.id])
+    Dawarich.Repo.query!(
+      "UPDATE users SET status = 0, active_until = now() - interval '1 day' WHERE id = $1",
+      [user.id]
+    )
+
     {:ok, inactive, _html} = live_as(user, "/digests")
     refute has_element?(inactive, "button[phx-click=generate]")
     refute render(inactive) =~ "Or you can manually generate"

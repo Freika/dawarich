@@ -103,11 +103,11 @@ defmodule Dawarich.Digests.Commands do
     end
   end
 
-  defp active?(%{status: 1, active_until: %DateTime{} = until}, now),
+  def active?(%{active_until: %DateTime{} = until}, now),
     do: DateTime.compare(until, now) == :gt
 
-  defp active?(%{status: 1, active_until: %NaiveDateTime{} = until}, now),
+  def active?(%{active_until: %NaiveDateTime{} = until}, now),
     do: NaiveDateTime.compare(until, DateTime.to_naive(now)) == :gt
 
-  defp active?(_, _), do: false
+  def active?(_, _), do: false
 end

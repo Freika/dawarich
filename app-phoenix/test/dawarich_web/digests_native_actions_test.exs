@@ -61,10 +61,61 @@ defmodule DawarichWeb.DigestsNativeActionsTest do
              log: false
            ).rows == [[2]]
 
-    Repo.query!("UPDATE users SET status=0 WHERE id=$1", [user.id], log: false)
+    Repo.query!(
+      "UPDATE users SET status=0,active_until=now()-interval '1 day' WHERE id=$1",
+      [user.id],
+      log: false
+    )
 
     assert {:error, :inactive} =
              Commands.generate(scope, %{"year" => "2024"}, Ecto.UUID.generate())
+  end
+
+  test "digest commands and generation controls preserve Rails active-until admission for every status",
+       %{scope: scope, user: user} do
+    digest!(user.id, %{year: 2023})
+    now = ~U[2026-10-10 10:00:00Z]
+    opts = [now: now, self_hosted: true]
+    params = %{"year" => "2024"}
+
+    for status <- [2, 0, 1] do
+      Repo.query!(
+        "UPDATE users SET status=$1,active_until=$2 WHERE id=$3",
+        [status, ~N[2026-10-11 10:00:00], user.id],
+        log: false
+      )
+
+      assert {:ok, index} = Dawarich.Digests.Pages.index(scope, %{}, opts)
+      assert index.active
+      assert {:ok, %{year: 2024}} = Commands.generate(scope, params, Ecto.UUID.generate(), opts)
+
+      assert {:ok, %{enabled: true}} =
+               Commands.share(
+                 scope,
+                 %{"year" => "2023"},
+                 %{"enabled" => "1", "expiration" => "12h"},
+                 opts
+               )
+
+      for until <- [~N[2026-10-10 10:00:00], ~N[2026-10-09 10:00:00], nil] do
+        Repo.query!("UPDATE users SET active_until=$1 WHERE id=$2", [until, user.id], log: false)
+        assert {:ok, expired} = Dawarich.Digests.Pages.index(scope, %{}, opts)
+        refute expired.active
+        before_jobs = Repo.query!("SELECT count(*) FROM public.job_outbox", [], log: false).rows
+        assert {:error, :inactive} = Commands.generate(scope, params, Ecto.UUID.generate(), opts)
+
+        assert {:error, :inactive} =
+                 Commands.share(
+                   scope,
+                   %{"year" => "2023"},
+                   %{"enabled" => "0", "expiration" => "12h"},
+                   opts
+                 )
+
+        assert Repo.query!("SELECT count(*) FROM public.job_outbox", [], log: false).rows ==
+                 before_jobs
+      end
+    end
   end
 
   test "digest deletion preserves other years and errors in place", %{user: user} do
