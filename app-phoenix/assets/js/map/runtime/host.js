@@ -4,6 +4,7 @@ import { createHostEditing } from "../edit/host.js"
 import { createEnrichmentTool } from "../ui/enrichment.js"
 import { createHostSearch } from "../ui/host_search.js"
 import { createHostSelection } from "../selection/host.js"
+import { applyMapStyle } from "../style/map_style.js"
 import { createReader } from "../data/reader.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
@@ -219,5 +220,5 @@ async function fetchStyle(config, { signal }) {
     { signal, credentials: "same-origin" },
   )
   if (!response.ok) throw new Error("Map style unavailable")
-  return response.json()
+  return applyMapStyle(await response.json(), config)
 }

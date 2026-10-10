@@ -41,7 +41,8 @@ defmodule DawarichWeb.MapLive.Native do
             |> Map.new(fn {key, value} -> {Atom.to_string(key), value} end)
         }
 
-        socket = assign(socket, :map_config, config)
+        config = DawarichWeb.MapLive.NativeConfig.build(socket.assigns[:map_settings], page, config, params["panel"])
+        socket = socket |> assign(:map_config, config) |> push_event("map:config", config)
         socket = if previous != socket.assigns.map_revision, do: DawarichWeb.MapLive.EnrichmentCommands.cancel(socket), else: socket
 
         socket =
