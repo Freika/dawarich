@@ -26,6 +26,9 @@ defmodule DawarichWeb.NativeTimelineTest do
     def handle_event("timeline:filter", params, socket),
       do: {:noreply, Timeline.filter(socket, params)}
 
+    def handle_event("timeline:tag", params, socket),
+      do: {:noreply, Timeline.toggle_tag(socket, params)}
+
     def handle_async(name, result, socket), do: Timeline.handle_async(name, result, socket)
 
     def render(assigns) do
@@ -33,6 +36,7 @@ defmodule DawarichWeb.NativeTimelineTest do
       <DawarichWeb.NativeTimelineFeed.feed
         timeline={assigns[:timeline]}
         filter={assigns[:timeline_filter]}
+        tags={[%{name: "Food", color: "#ff0000", icon: "🍕"}, %{name: "Sport", color: nil, icon: nil}]}
         locale="en"
       />
       """
@@ -72,6 +76,73 @@ defmodule DawarichWeb.NativeTimelineTest do
     html = render(view)
     assert html =~ ~s(data-day="2026-03-30")
     refute html =~ ~s(data-day="2026-03-29")
+  end
+
+  test "tag chips keep visits carrying any active tag", %{id: id} do
+    for {name, tag, hour} <- [{"Bakery", "Food", 7}, {"Gym", "Sport", 9}, {"Office", nil, 11}] do
+      [[place]] =
+        rows(
+          "INSERT INTO places(user_id,name,latitude,longitude,lonlat,source,created_at,updated_at) VALUES($1,$2,52.5,13.4,ST_SetSRID(ST_MakePoint(13.4,52.5),4326)::geography,0,now(),now()) RETURNING id",
+          [id, name]
+        )
+
+      rows(
+        "INSERT INTO visits(user_id,place_id,name,started_at,ended_at,duration,status,confidence,demo,created_at,updated_at) VALUES($1,$2,$3,$4,$5,1800,1,2,false,now(),now())",
+        [
+          id,
+          place,
+          name,
+          ~N[2026-03-30 00:00:00] |> NaiveDateTime.add(hour * 3600),
+          ~N[2026-03-30 00:30:00] |> NaiveDateTime.add(hour * 3600)
+        ]
+      )
+
+      if tag do
+        [[tag_id]] =
+          rows(
+            "INSERT INTO tags(user_id,name,created_at,updated_at) VALUES($1,$2,now(),now()) RETURNING id",
+            [id, tag]
+          )
+
+        rows(
+          "INSERT INTO taggings(tag_id,taggable_type,taggable_id,created_at,updated_at) VALUES($1,'Place',$2,now(),now())",
+          [tag_id, place]
+        )
+      end
+    end
+
+    view = open(id, nil)
+    render_hook(view, "load", %{"start_at" => "2026-03-30T00:00", "end_at" => "2026-03-30T23:59"})
+    render_async(view, 5_000)
+
+    view |> element("#native-timeline-tags button[data-tag-name=food]") |> render_click()
+
+    assert has_element?(
+             view,
+             "#native-timeline-tags button[data-tag-name=food][aria-pressed=true]"
+           )
+
+    assert has_element?(view, "[data-entry='visit']", "Bakery")
+    refute has_element?(view, "[data-entry='visit']", "Gym")
+    refute has_element?(view, "[data-entry='visit']", "Office")
+
+    view |> element("#native-timeline-tags button[data-tag-name=sport]") |> render_click()
+    assert has_element?(view, "[data-entry='visit']", "Gym")
+    assert has_element?(view, "[data-entry='visit']", "Bakery")
+
+    view |> element("#native-timeline-tags button[data-tag-name=food]") |> render_click()
+    refute has_element?(view, "[data-entry='visit']", "Bakery")
+    assert has_element?(view, "[data-entry='visit']", "Gym")
+
+    view |> form("#native-timeline-filter", %{"q" => "bakery"}) |> render_change()
+    assert has_element?(view, "#native-timeline-filter-clear")
+    view |> element("#native-timeline-filter-clear") |> render_click()
+    assert has_element?(view, "[data-entry='visit']", "Office")
+
+    assert has_element?(
+             view,
+             "#native-timeline-tags button[data-tag-name=sport][aria-pressed=false]"
+           )
   end
 
   defp finished(pid) do

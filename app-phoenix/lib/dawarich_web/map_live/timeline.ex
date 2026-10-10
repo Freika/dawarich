@@ -21,8 +21,25 @@ defmodule DawarichWeb.MapLive.Timeline do
 
   def filter(socket, params) do
     query = if is_binary(params["q"]), do: String.trim(params["q"]), else: ""
-    assign(socket, :timeline_filter, %{"q" => String.slice(query, 0, 100)})
+    current = if params["clear"], do: %{}, else: socket.assigns[:timeline_filter] || %{}
+
+    socket
+    |> assign(:timeline_filter, Map.put(current, "q", String.slice(query, 0, 100)))
+    |> assign(:timeline_selection, nil)
   end
+
+  def toggle_tag(socket, %{"tag" => tag}) when is_binary(tag) do
+    tag = tag |> String.downcase() |> String.slice(0, 100)
+    current = socket.assigns[:timeline_filter] || %{"q" => ""}
+    tags = current["tags"] || []
+    tags = if tag in tags, do: List.delete(tags, tag), else: Enum.take(tags ++ [tag], 20)
+
+    socket
+    |> assign(:timeline_filter, Map.put(current, "tags", tags))
+    |> assign(:timeline_selection, nil)
+  end
+
+  def toggle_tag(socket, _params), do: socket
 
   def reload(socket) do
     case socket.assigns[:timeline] do

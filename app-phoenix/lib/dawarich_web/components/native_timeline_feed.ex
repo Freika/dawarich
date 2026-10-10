@@ -17,16 +17,30 @@ defmodule DawarichWeb.NativeTimelineFeed do
   attr :timeline, :map, default: nil
   attr :filter, :map, default: nil
   attr :selection, :map, default: nil
+  attr :tags, :list, default: []
   attr :locale, :string, required: true
 
   def feed(%{timeline: nil} = assigns), do: ~H""
 
   def feed(assigns) do
     query = String.downcase((assigns.filter || %{})["q"] || "")
+    active = (assigns.filter || %{})["tags"] || []
     days = (assigns.timeline.feed && assigns.timeline.feed.days) || []
-    days = if query == "", do: days, else: Enum.map(days, &keep(&1, query))
+
+    days =
+      if query == "" and active == [],
+        do: days,
+        else: Enum.map(days, &keep(&1, query, active))
+
     visits? = Enum.any?(days, fn day -> Enum.any?(day.entries, &(&1.type == "visit")) end)
-    assigns = assign(assigns, query: query, days: days, unmatched: query != "" and not visits?)
+
+    assigns =
+      assign(assigns,
+        query: query,
+        active: active,
+        days: days,
+        unmatched: (query != "" or active != []) and not visits?
+      )
 
     ~H"""
     <form
@@ -43,6 +57,23 @@ defmodule DawarichWeb.NativeTimelineFeed do
         aria-label={t(@locale, "javascript.places.search_placeholder", %{})}
       />
     </form>
+    <div :if={@tags != []} id="native-timeline-tags" class="flex flex-wrap gap-1 min-w-0">
+      <button
+        :for={tag <- @tags}
+        type="button"
+        class={[
+          "tag-chip tag-chip--toggle",
+          String.downcase(tag.name) in @active && "tag-chip--active"
+        ]}
+        data-tag-name={String.downcase(tag.name)}
+        aria-pressed={to_string(String.downcase(tag.name) in @active)}
+        style={tag_style(tag.color)}
+        phx-click="timeline:tag"
+        phx-value-tag={tag.name}
+      >
+        <span class="[overflow-wrap:anywhere]">{if tag.icon not in [nil, ""], do: "#{tag.icon} "}{tag.name}</span>
+      </button>
+    </div>
     <section
       id="native-timeline-feed"
       class="min-w-0"
@@ -68,6 +99,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
           class="btn btn-ghost btn-xs"
           phx-click="timeline:filter"
           phx-value-q=""
+          phx-value-clear="true"
         >
           {t(@locale, "map.timeline_feeds.day.clear_search_filters", %{})}
         </button>
@@ -83,14 +115,24 @@ defmodule DawarichWeb.NativeTimelineFeed do
     """
   end
 
-  defp keep(day, query) do
+  defp keep(day, query, active) do
     entries =
       Enum.filter(day.entries, fn entry ->
-        entry.type != "visit" or String.contains?(TimelineFormat.search_tokens(entry), query)
+        tokens = entry.type == "visit" && TimelineFormat.search_tokens(entry)
+
+        entry.type != "visit" or
+          (String.contains?(tokens, query) and
+             (active == [] or Enum.any?(active, &String.contains?(tokens, &1))))
       end)
 
     %{day | entries: entries}
   end
+
+  defp tag_style(color) when is_binary(color) do
+    if color =~ ~r/\A#[0-9a-fA-F]{3,8}\z/, do: "background-color: #{color};"
+  end
+
+  defp tag_style(_color), do: nil
 
   attr :day, :map, required: true
   attr :locale, :string, required: true
