@@ -22,11 +22,44 @@ defmodule Dawarich.Build.FrontendInventory do
     Enum.sort_by(sources ++ tests, &{&1.file, &1.kind, &1.value})
   end
 
-  def hotwire?(%{kind: kind}) when kind in [:stimulus, :turbo, :action_cable, :direct_upload],
+  def graph(%{"inputs" => inputs}, entries) do
+    roots = for entry <- entries, do: edge("<entry>", entry, "entry-point")
+
+    Enum.sort_by(
+      roots ++ walk(inputs, entries, MapSet.new()),
+      &{&1.file, &1.value, &1.import_kind}
+    )
+  end
+
+  def hotwire?(%{kind: kind}) when kind in [:stimulus, :turbo, :action_cable],
     do: true
 
   def hotwire?(%{kind: :hook, value: "RailsStimulus"}), do: true
+
+  def hotwire?(%{kind: :module, value: path}),
+    do:
+      Regex.match?(
+        ~r/(?:^|\/)@hotwired\/|(?:^|\/)@rails\/actiontext(?:\/|$)|(?:^|\/)(?:rails_bridge|map_shell|family_page)\.js$/,
+        path
+      )
+
   def hotwire?(_finding), do: false
+
+  defp walk(_inputs, [], _seen), do: []
+
+  defp walk(inputs, [path | rest], seen) do
+    if MapSet.member?(seen, path) do
+      walk(inputs, rest, seen)
+    else
+      imports = get_in(inputs, [path, "imports"]) || []
+      edges = for import <- imports, do: edge(path, import["path"], import["kind"])
+      children = for import <- imports, import["external"] != true, do: import["path"]
+      edges ++ walk(inputs, children ++ rest, MapSet.put(seen, path))
+    end
+  end
+
+  defp edge(parent, path, kind),
+    do: %{file: parent, kind: :module, value: path, import_kind: kind}
 
   defp files(root, globs),
     do: globs |> Enum.flat_map(&Path.wildcard(Path.join(root, &1))) |> Enum.uniq()

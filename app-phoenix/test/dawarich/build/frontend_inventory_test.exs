@@ -69,11 +69,67 @@ defmodule Dawarich.Build.FrontendInventoryTest do
            ]
   end
 
-  test "hotwire?/1 is true only for Turbo, Stimulus, ActionCable and direct-upload findings" do
+  test "hotwire?/1 is true for Turbo, Stimulus and ActionCable findings" do
     assert FrontendInventory.hotwire?(%{kind: :stimulus, value: "a"})
     assert FrontendInventory.hotwire?(%{kind: :hook, value: "RailsStimulus"})
     assert FrontendInventory.hotwire?(%{kind: :turbo, value: "turbo-frame"})
     refute FrontendInventory.hotwire?(%{kind: :hook, value: "EmojiPicker"})
     refute FrontendInventory.hotwire?(%{kind: :live_session, value: "native_pages"})
+  end
+
+  test "native graph distinguishes direct-upload adapters from Hotwire runtime", %{tmp_dir: root} do
+    write!(root, "lib/dawarich_web/upload.ex", ~s|post "/direct_uploads", Upload, :create|)
+    [adapter] = FrontendInventory.scan(root)
+    refute FrontendInventory.hotwire?(adapter)
+
+    metadata = %{
+      "inputs" => %{
+        "js/app.js" => %{
+          "imports" => [
+            %{"path" => "js/uploaders/direct.js", "kind" => "import-statement"},
+            %{"path" => "@hotwired/turbo", "kind" => "import-statement", "external" => true}
+          ]
+        },
+        "js/uploaders/direct.js" => %{"imports" => []}
+      }
+    }
+
+    graph = apply(FrontendInventory, :graph, [metadata, ["js/app.js"]])
+    assert Enum.any?(graph, &(&1.value == "js/uploaders/direct.js"))
+    forbidden = Enum.filter(graph, &FrontendInventory.hotwire?/1)
+    assert Enum.map(forbidden, & &1.value) == ["@hotwired/turbo"]
+  end
+
+  test "dynamic legacy import edge cannot evade the graph audit" do
+    metadata = %{
+      "inputs" => %{
+        "js/app.js" => %{"imports" => [%{"path" => "js/lazy.js", "kind" => "dynamic-import"}]},
+        "js/lazy.js" => %{
+          "imports" => [
+            %{"path" => "js/app.js", "kind" => "import-statement"},
+            %{"path" => "@hotwired/stimulus", "kind" => "dynamic-import", "external" => true}
+          ]
+        },
+        "test/negative.js" => %{
+          "imports" => [
+            %{"path" => "@rails/actiontext", "kind" => "import-statement", "external" => true}
+          ]
+        }
+      }
+    }
+
+    graph = apply(FrontendInventory, :graph, [metadata, ["js/app.js"]])
+
+    assert %{
+             file: "js/lazy.js",
+             kind: :module,
+             value: "@hotwired/stimulus",
+             import_kind: "dynamic-import"
+           } in graph
+
+    assert graph |> Enum.filter(&FrontendInventory.hotwire?/1) |> Enum.map(& &1.value) ==
+             ["@hotwired/stimulus"]
+
+    refute Enum.any?(graph, &(&1.file == "test/negative.js"))
   end
 end

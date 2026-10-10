@@ -74,7 +74,7 @@ defmodule DawarichWeb.NativeShellEventsTest do
     refute html =~ ~s(data-controller="notifications")
   end
 
-  test "the native family indicator shows the sharing state", %{user: user} do
+  test "the native family indicator shows the sharing state", %{user: _user} do
     for {sharing, text} <- [{true, "location_shared"}, {false, "location_not_shared"}] do
       html =
         render_component(&DawarichWeb.NavbarParts.family_indicator/1,
