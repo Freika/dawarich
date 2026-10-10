@@ -55,7 +55,8 @@ defmodule Dawarich.Accounts.SecurityTest do
         ] do
       user = Repo.get!(Dawarich.Auth.Account, c.id)
       Repo.update!(Ecto.Changeset.change(user, changes), log: false)
-      assert match?({:handoff, _}, manage(c, :setup))
+      refused? = match?({:handoff, _}, manage(c, :setup))
+      assert refused?
       assert is_nil(Repo.get!(Dawarich.Auth.Account, c.id).otp_secret)
       user = Repo.get!(Dawarich.Auth.Account, c.id)
 
@@ -65,15 +66,21 @@ defmodule Dawarich.Accounts.SecurityTest do
       )
     end
 
-    assert match?({:handoff, _}, manage(c, :setup, %{}, %{c.proof | pending: true}))
-    assert match?({:handoff, _}, manage(c, :setup, %{"actor_id" => Integer.to_string(c.id)}))
-    assert match?({:handoff, _}, manage(c, :setup, %{}, %{c.proof | session_salt: "wrong"}))
+    refused? = match?({:handoff, _}, manage(c, :setup, %{}, %{c.proof | pending: true}))
+    assert refused?
+    refused? = match?({:handoff, _}, manage(c, :setup, %{"actor_id" => Integer.to_string(c.id)}))
+    assert refused?
+    refused? = match?({:handoff, _}, manage(c, :setup, %{}, %{c.proof | session_salt: "wrong"}))
+    assert refused?
     assert is_nil(Repo.get!(Dawarich.Auth.Account, c.id).otp_secret)
   end
 
   test "self 2FA remains available after admin demotion with ordinary chrome", c do
     Repo.query!("UPDATE users SET admin=false,status=0 WHERE id=$1", [c.id], log: false)
-    assert {:ok, result} = manage(c, :setup)
+    outcome = manage(c, :setup)
+    successful? = match?({:ok, %{}}, outcome)
+    assert successful?
+    {:ok, result} = outcome
     assert result.kind == :verify
     assert Accounts.get(c.id).admin == false
     assert result.status == 0
@@ -97,8 +104,9 @@ defmodule Dawarich.Accounts.SecurityTest do
       log: false
     )
 
-    assert {:error, %{kind: :redirect, reason: :incorrect_password}} =
-             manage(c, :disable, %{"password" => "wrong", "otp_attempt" => hd(codes)})
+    outcome = manage(c, :disable, %{"password" => "wrong", "otp_attempt" => hd(codes)})
+    refused? = match?({:error, %{kind: :redirect, reason: :incorrect_password}}, outcome)
+    assert refused?
 
     unchanged = Repo.get!(Dawarich.Auth.Account, c.id).otp_backup_codes == hashes
     assert unchanged

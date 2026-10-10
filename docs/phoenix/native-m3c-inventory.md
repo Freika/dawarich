@@ -181,3 +181,8 @@ Same synthetic A0 fixture/protocol probe, with isolated synthetic counter keys; 
 | OTP failure | 422 | 6 | 0 | 7,945 |
 | link challenge | 200 | 1 | 0 | 7,827 |
 | link password rejected | 422 | 2 | 0 | 8,426 |
+
+
+### X3 artifact-audit follow-up
+
+Two historical mutation assertion diagnostics had rendered generated synthetic OTP URI/result maps. Those owned logs were redacted while retaining named failure/summary evidence. Scope and secret-display assertions now bind booleans before asserting, preserving the original cases and preventing private diagnostic values. Fresh mutation rerun (stale-salt bypass plus conn secret assignment): 3/6 passed, 3 named failures, exit 2, with no URI/HTML/private-result markers; restored affected 2FA/log batch: 22 passed, exit 0, warnings clean. Production mutations restored exactly; this is test-only privacy cleanup and not a Rails defect. No stage browser verification is inferred.

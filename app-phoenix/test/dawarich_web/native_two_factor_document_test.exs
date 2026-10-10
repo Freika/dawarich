@@ -55,15 +55,18 @@ defmodule DawarichWeb.NativeTwoFactorDocumentTest do
       capture_log(fn ->
         setup = submit(c.session, @path)
         assert setup.status == 200
-        assert setup.resp_body =~ "/native/auth_http.js"
-        refute private?(setup)
+        native? = String.contains?(setup.resp_body, "/native/auth_http.js")
+        assert native?
+        private? = private?(setup)
+        refute private?
 
         {:ok, secret} =
           Dawarich.Auth.TwoFactor.Secret.decrypt(
             Repo.get!(Dawarich.Auth.Account, c.actor.id).otp_secret
           )
 
-        assert String.contains?(setup.resp_body, secret)
+        shown? = String.contains?(setup.resp_body, secret)
+        assert shown?
 
         verified =
           submit(c.session, @path <> "/verify", %{
@@ -72,7 +75,8 @@ defmodule DawarichWeb.NativeTwoFactorDocumentTest do
           })
 
         assert verified.status == 200
-        refute private?(verified)
+        private? = private?(verified)
+        refute private?
         nodes = LazyHTML.query(LazyHTML.from_document(verified.resp_body), "code")
         assert Enum.count(nodes) == 10
 
@@ -99,10 +103,14 @@ defmodule DawarichWeb.NativeTwoFactorDocumentTest do
 
     failed = submit(inherited, @path <> "/verify", %{"otp_attempt" => "synthetic-attempt"})
     assert failed.status == 422
-    assert failed.resp_body =~ "/native/auth_http.js"
-    refute failed.resp_body =~ "synthetic-attempt"
-    refute failed.resp_body =~ "synthetic-old-alert"
-    refute private?(failed)
+    native? = String.contains?(failed.resp_body, "/native/auth_http.js")
+    assert native?
+    echoed? = String.contains?(failed.resp_body, "synthetic-attempt")
+    refute echoed?
+    echoed? = String.contains?(failed.resp_body, "synthetic-old-alert")
+    refute echoed?
+    private? = private?(failed)
+    refute private?
 
     assert Enum.count(
              LazyHTML.query(LazyHTML.from_document(failed.resp_body), "[data-auth-error-summary]")
@@ -118,7 +126,8 @@ defmodule DawarichWeb.NativeTwoFactorDocumentTest do
       |> get(@path)
 
     assert page.status == 200
-    assert page.resp_body =~ "/native/auth_http.js"
+    native? = String.contains?(page.resp_body, "/native/auth_http.js")
+    assert native?
     dom = LazyHTML.from_document(page.resp_body)
 
     assert Enum.count(LazyHTML.query(dom, "a[aria-current=page][href='/settings/two_factor']")) ==
