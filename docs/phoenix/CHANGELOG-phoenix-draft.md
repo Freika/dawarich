@@ -119,3 +119,10 @@ The controller recorded these deferrals on 2026-10-07; they remain follow-up wor
 - Broader outer Rails digest rollback retry signalling and the synthetic calculator-return limitation (17:49 ruling; `rereview5-fix-rxstats.report.md`, D1/D2). See [rollback limits](deferred-rails-bugs.md#digest-publication-and-rollback-limits).
 - After-commit cache eviction can repeat after a crash between eviction and completion, invalidating a newer value and causing extra recomputation; it does not serve stale data (19:19 ruling; `app-phoenix/lib/dawarich/after_commit/worker.ex:22`).
 - `/sidekiq` retains `Cache-Control: private,must-revalidate` rather than Rails' `private,no-store`; it is already private (22:32 ruling; `rereview-fix-sa-points-page.report.md`).
+
+## Native administrative users (milestone 3b)
+
+- Prevent deletion of the acting administrator or the last administrator. [FRB-084](fixed-rails-bugs.md#frb-084--forged-admin-deletion-can-remove-self-or-the-sole-admin)
+- Serialize administrator deletion and role changes to retain administration access under competing writes. [FRB-085](fixed-rails-bugs.md#frb-085--concurrent-admin-roledeletion-writes-can-leave-no-administrator)
+
+These are native Phoenix corrections delivered in A2; retained Rails behavior is unchanged.

@@ -1316,3 +1316,25 @@ Rails silently skips an attributed Partnero signup when credentials are missing.
 - Evidence: `impl-fix-l1-hardening.report.md`; integrated `fcf994223`.
 - Ledger: ED-FIX-L1-PARTNERO; no DRB added. Distinct from FRB-069 diagnostic privacy; retained Rails remains unchanged.
 - CHANGELOG-ready: Retain attributed Partnero signup work for retry when integration credentials are missing.
+
+### FRB-084 — Forged admin deletion can remove self or the sole admin
+
+Rails hides the actor's delete control but the destroy endpoint checks only family ownership. An administrator can submit a direct request deleting themself or the last nondeleted administrator. Native admin deletion refuses both before soft deletion or enqueue.
+
+- Rails: `app/controllers/settings/users_controller.rb:54,57,64`; UI-only exclusion `app/views/settings/users/index.html.erb`.
+- Phoenix: `app-phoenix/lib/dawarich/admin/users.ex:61,69,125,140`.
+- Tests: “delete enqueues once and rolls back soft deletion on enqueue failure” in `app-phoenix/test/dawarich/admin/users_test.exs:155`; “deleting yourself or the last active admin is refused without effects” in `app-phoenix/test/dawarich_web/admin_users_dialogs_test.exs:118`.
+- Evidence: A2 commit `c7f44a025`; `m3b-domain.report.md`, `m3b-ui.report.md`, `m3b-x3.report.md`. Native behavior only; retained Rails remains unchanged.
+- Ledger: ED-NATIVE-ADMIN-USERS-DELETE-GUARD; no DRB added. This records the previously delivered A2 fix, not a new production change in X3.
+- CHANGELOG-ready: Prevent native admin deletion of the acting administrator or the last administrator.
+
+### FRB-085 — Concurrent admin role/deletion writes can leave no administrator
+
+Rails counts administrators before an unlocked update and does not share a guard lock with deletion. Competing role/status/deletion writes can each pass their check and remove the remaining administration access. Native writes lock nondeleted administrator rows in ID order inside the transaction through counting and persistence; contention/deadlocks refuse without effects.
+
+- Rails: `app/controllers/settings/users_controller.rb:20,23,54,156,157`.
+- Phoenix: `app-phoenix/lib/dawarich/admin/user_roles.ex:5,9`; `app-phoenix/lib/dawarich/admin/user_update.ex:12,14`; `app-phoenix/lib/dawarich/admin/users.ex:100,101,148`.
+- Test: “delete guard holds under concurrent delete and demote” in `app-phoenix/test/dawarich/admin/users_test.exs:253` uses a deterministic two-transaction lock probe; source role cases remain in `user_roles_test.exs`.
+- Evidence: A2 commit `c7f44a025`; `m3b-domain.report.md`, `m3b-x3.report.md`. No machine stress or Rails production change.
+- Ledger: ED-NATIVE-ADMIN-USERS-DELETE-GUARD; no DRB added. Distinct from FRB-084's missing deletion guard.
+- CHANGELOG-ready: Serialize native administrator deletion and role changes to retain administration access.
