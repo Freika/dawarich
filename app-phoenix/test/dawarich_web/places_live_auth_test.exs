@@ -46,8 +46,107 @@ defmodule DawarichWeb.PlacesLiveAuthTest do
              []
   end
 
+  test "Places assigns exclude account credentials across mount event info and async", ctx do
+    secrets = Enum.map(1..4, &"synthetic-places-credential-#{&1}")
+    [api_key, integration_key, password, token] = secrets
+
+    settings = %{
+      "timezone" => "Europe/Berlin",
+      "onboarding_completed" => true,
+      "immich_api_key" => integration_key,
+      "teslamate_password" => password,
+      "teslamate_api_token" => token
+    }
+
+    Dawarich.Repo.query!(
+      "UPDATE users SET api_key=$1,settings=$2 WHERE id=$3",
+      [api_key, settings, ctx.actor.id],
+      log: false
+    )
+
+    previous = Application.get_env(:dawarich, :native_places_nearby_opts)
+
+    Application.put_env(:dawarich, :native_places_nearby_opts,
+      fetch: fn _, _, _, _, _, _ ->
+        [%{"name" => "Safe", "latitude" => 51.2, "longitude" => 12.2}]
+      end
+    )
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, :native_places_nearby_opts, previous),
+        else: Application.delete_env(:dawarich, :native_places_nearby_opts)
+    end)
+
+    {:ok, view, _} = live(N.conn(ctx.actor), "/places")
+    assert_credentials_absent(view, secrets)
+    assert current_tracking_qr?(view, api_key) == true
+    render_click(view, "open_create", %{})
+    assert_credentials_absent(view, secrets)
+    gen = N.generation(view, :form_state)
+
+    render_change(view, "validate_place", %{
+      "generation" => gen,
+      "place" => %{"name" => "Draft", "latitude" => "51", "longitude" => "12"}
+    })
+
+    send(view.pid, :navbar_refresh)
+    render(view)
+    assert_credentials_absent(view, secrets)
+    render_click(view, "nearby", %{"generation" => gen})
+    render_async(view)
+    assert has_element?(view, "[data-nearby-state=results]", "Safe")
+    assert_credentials_absent(view, secrets)
+    render_click(view, "changelog_consent", %{"decision" => "declined"})
+    assert_credentials_absent(view, secrets)
+    assert :sys.get_state(view.pid).socket.assigns.current_user.changelog_consent == 0
+  end
+
+  defp current_tracking_qr?(view, api_key) do
+    url = :sys.get_state(view.pid).socket.assigns.base_url <> "/"
+
+    expected =
+      Dawarich.QrSvg.api_key(url, api_key, 3)
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("svg path")
+      |> LazyHTML.attribute("d")
+
+    actual =
+      get(N.conn(:sys.get_state(view.pid).socket.assigns.current_user), "/places")
+      |> html_response(200)
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("#onboarding-track-screen .bg-white > svg > path")
+      |> LazyHTML.attribute("d")
+
+    actual == expected
+  end
+
+  defp assert_credentials_absent(view, secrets) do
+    assigns = :sys.get_state(view.pid).socket.assigns
+    assert contains_credentials?(assigns, secrets) == false
+  end
+
+  defp contains_credentials?(value, secrets) when is_binary(value),
+    do: Enum.any?(secrets, &String.contains?(value, &1))
+
+  defp contains_credentials?(value, secrets) when is_map(value),
+    do: value |> Map.to_list() |> contains_credentials?(secrets)
+
+  defp contains_credentials?(value, secrets) when is_tuple(value),
+    do: value |> Tuple.to_list() |> contains_credentials?(secrets)
+
+  defp contains_credentials?(value, secrets) when is_list(value),
+    do: Enum.any?(value, &contains_credentials?(&1, secrets))
+
+  defp contains_credentials?(_, _), do: false
+
   test "native Places unavailable initial admission mounts a safe local alert", _ctx do
-    actor = %Dawarich.Accounts.User{id: Integer.pow(10, 100), encrypted_password: "synthetic"}
+    actor = %Dawarich.Accounts.User{
+      id: Integer.pow(10, 100),
+      encrypted_password: "synthetic",
+      api_key: "synthetic-unavailable-credential",
+      settings: %{"immich_api_key" => "synthetic-unavailable-credential"}
+    }
 
     socket = %Phoenix.LiveView.Socket{
       router: DawarichWeb.Router,
@@ -62,5 +161,6 @@ defmodule DawarichWeb.PlacesLiveAuthTest do
     assert {:cont, refused} = DawarichWeb.PlacesLiveAuth.on_mount(:default, %{}, %{}, socket)
     assert refused.redirected == nil
     assert refused.assigns.error == DawarichWeb.PlacesUI.message("en")
+    assert contains_credentials?(refused.assigns, ["synthetic-unavailable-credential"]) == false
   end
 end

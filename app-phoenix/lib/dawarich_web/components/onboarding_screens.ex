@@ -165,7 +165,11 @@ defmodule DawarichWeb.OnboardingScreens do
             </p>
             <div class="flex justify-center">
               <div class="bg-white p-3 rounded-lg shadow-inner">
-                {Phoenix.HTML.raw(Dawarich.QrSvg.api_key(@base_url <> "/", @current_user.api_key, 3))}
+                {Phoenix.HTML.raw(
+                  if @native and is_nil(@current_user.api_key),
+                    do: DawarichWeb.PlacesActor.tracking_qr(@current_user, @base_url <> "/"),
+                    else: Dawarich.QrSvg.api_key(@base_url <> "/", @current_user.api_key, 3)
+                )}
               </div>
             </div>
           </div>
