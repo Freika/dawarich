@@ -85,7 +85,7 @@ defmodule DawarichWeb.PageEnvelopesTest do
 
   @tag envelope: :query
   test "explicit HTML query format overrides Accept without polluting page gates" do
-    for path <- ~w(/tags /tags/new /trips/new /settings/visits /map/timeline_feeds/calendar) do
+    for path <- ~w(/tags /tags/new /trips/new /settings/visits) do
       conn = request(path <> "?format=html", [{"accept", "application/json"}])
       assert conn.status == 200, path
       assert get_resp_header(conn, "content-type") == ["text/html; charset=utf-8"]
@@ -103,18 +103,21 @@ defmodule DawarichWeb.PageEnvelopesTest do
 
     assert stored["user_return_to"] == "/tags.html?format=html"
     conn = request("/map/timeline_feeds/calendar.html?format=turbo_stream")
-    assert conn.status == 200
-    refute conn.resp_body =~ "<turbo-stream"
+    assert_gone(conn)
   end
 
   @tag envelope: :xhr
-  test "XHR HTML requests render the same native page instead of a terminal refusal" do
-    for path <- ~w(/tags /map /stats /imports /exports /insights /settings/general /family/new) do
+  test "XHR HTML retains surviving fragments while native map documents refuse locally" do
+    for path <- ~w(/tags /stats /imports /exports /insights /settings/general /family/new) do
       conn = request(path, [{"x-requested-with", "XMLHttpRequest"}, {"accept", "text/html"}])
       assert conn.status == @source[path]["xhr"]["status"], path
       assert conn.resp_body =~ "<html"
       refute conn.resp_body =~ "Unprocessable Entity"
     end
+
+    native = request("/map", [{"x-requested-with", "XMLHttpRequest"}, {"accept", "text/html"}])
+    assert native.status == 422
+    assert native.resp_body == ""
 
     assert request("/tags", [{"x-requested-with", "XMLHttpRequest"}, {"accept", ""}]).status ==
              200
@@ -131,7 +134,7 @@ defmodule DawarichWeb.PageEnvelopesTest do
     assert request("/map/timeline_feeds/calendar", [
              {"x-requested-with", "XMLHttpRequest"},
              {"accept", nil}
-           ]).status == 406
+           ]).status == 410
 
     guest = request("/tags", [{"x-requested-with", "XMLHttpRequest"}], false)
     assert guest.status == 401
@@ -153,20 +156,21 @@ defmodule DawarichWeb.PageEnvelopesTest do
   end
 
   @tag envelope: :stream
-  test "Turbo-only calendar streams and redirect actions preserve Rails successes" do
+  test "retired calendar streams refuse while unrelated redirect actions preserve Rails successes" do
     conn =
       request("/map/timeline_feeds/calendar?month=2026-10", [
         {"accept", "text/vnd.turbo-stream.html"}
       ])
 
-    assert conn.status == 200
-    assert get_resp_header(conn, "content-type") == ["text/vnd.turbo-stream.html; charset=utf-8"]
-    assert conn.resp_body =~ ~s(<turbo-stream action="replace" target="timeline-calendar-frame")
+    assert_gone(conn)
 
-    assert request("/map/timeline_feeds/calendar?format=turbo_stream").resp_body =~
-             "<turbo-stream"
-
-    assert request("/map/timeline_feeds/calendar.turbo_stream").resp_body =~ "<turbo-stream"
+    for target <- [
+          "/map/timeline_feeds/calendar?format=turbo_stream",
+          "/map/timeline_feeds/calendar.turbo_stream",
+          "/map/timeline_feeds/calendar?format=html"
+        ] do
+      assert_gone(request(target))
+    end
 
     for path <- ["/", "/trial/upgrade", "/settings/theme?theme=dark"] do
       conn = request(path, [{"accept", "text/vnd.turbo-stream.html"}])
@@ -311,12 +315,12 @@ defmodule DawarichWeb.PageEnvelopesTest do
       refute String.contains?(conn.resp_body, "<html")
       assert request("/tags.html", headers).resp_body =~ "<html"
       assert request("/tags?format=html", headers).resp_body =~ "<html"
-      assert request("/map/timeline_feeds/calendar", headers).status == 406
+      assert_gone(request("/map/timeline_feeds/calendar", headers))
     end
   end
 
   @tag envelope: :review_quality
-  test "F3 calendar honours Rails Accept qualities parameters and stable ties" do
+  test "F3 source negotiation qualities parameters and stable ties survive calendar retirement" do
     for probe <- @review["f3"]["negotiation"] do
       assert DawarichWeb.PageAccept.formats(probe["accept"], probe["xhr"]) == probe["formats"],
              probe["accept"]
@@ -335,12 +339,10 @@ defmodule DawarichWeb.PageEnvelopesTest do
 
     for {accept, stream?} <- cases do
       conn = request("/map/timeline_feeds/calendar?month=2026-10", [{"accept", accept}])
-      assert_contract(conn, @review["f3"]["responses"][accept])
+      assert_gone(conn)
       type = if stream?, do: "text/vnd.turbo-stream.html", else: "text/html"
-      assert conn.status == 200
-      assert get_resp_header(conn, "content-type") == [type <> "; charset=utf-8"], accept
-      assert String.contains?(conn.resp_body, "<turbo-stream") == stream?, accept
-      assert conn.resp_body =~ ~s(id="timeline-calendar-frame")
+      assert_negotiation(accept, false, @review["f3"]["responses"][accept])
+      assert @review["f3"]["responses"][accept]["type"] == type
       tags = request("/tags", [{"accept", accept}])
       assert tags.status == 200
       assert String.contains?(tags.resp_body, "<html")
@@ -370,7 +372,7 @@ defmodule DawarichWeb.PageEnvelopesTest do
   end
 
   @tag envelope: :review_leading_decimal
-  test "F5 leading decimal qualities select Rails calendar templates in both directions" do
+  test "F5 leading decimal source negotiation survives calendar retirement in both directions" do
     for {accept, source} <- @review["f5"] do
       conn =
         request("/map/timeline_feeds/calendar?month=2026-10", [
@@ -378,7 +380,8 @@ defmodule DawarichWeb.PageEnvelopesTest do
           {"x-requested-with", "XMLHttpRequest"}
         ])
 
-      assert_contract(conn, source)
+      assert_gone(conn)
+      assert_negotiation(accept, true, source)
     end
   end
 
@@ -393,24 +396,23 @@ defmodule DawarichWeb.PageEnvelopesTest do
   end
 
   @tag envelope: :review_mixed_js
-  test "F7 mixed JavaScript HTML keeps full tags layout and negotiates HTML calendar" do
+  test "F7 mixed JavaScript HTML keeps full tags layout and source negotiation after calendar retirement" do
     for {accept, source} <- @review["f7"] do
       headers = [{"accept", accept}, {"x-requested-with", "XMLHttpRequest"}]
       assert_contract(request("/tags", headers), source["tags"])
 
-      assert_contract(
-        request("/map/timeline_feeds/calendar?month=2026-10", headers),
-        source["calendar"]
-      )
+      assert_gone(request("/map/timeline_feeds/calendar?month=2026-10", headers))
+      assert_negotiation(accept, true, source["calendar"])
     end
   end
 
   @tag envelope: :review_dotted_exponent
-  test "F8 dotted exponent numeric prefixes preserve Rails calendar responses in both XHR modes" do
+  test "F8 dotted exponent numeric prefixes preserve source negotiation after calendar retirement in both XHR modes" do
     for %{"accept" => accept, "xhr" => xhr, "response" => source} <- @review["f8"] do
       headers = [{"accept", accept}]
       headers = if xhr, do: [{"x-requested-with", "XMLHttpRequest"} | headers], else: headers
-      assert_contract(request("/map/timeline_feeds/calendar?month=2026-10", headers), source)
+      assert_gone(request("/map/timeline_feeds/calendar?month=2026-10", headers))
+      assert_negotiation(accept, xhr, source)
     end
   end
 
@@ -432,6 +434,20 @@ defmodule DawarichWeb.PageEnvelopesTest do
       assert_received {:plug_conn, :sent}
       refute_received {:plug_conn, :sent}
     end
+  end
+
+  defp assert_gone(conn) do
+    assert conn.status == 410
+    assert conn.resp_body == "This map command is available through the native map."
+    assert get_resp_header(conn, "content-type") == ["text/plain; charset=utf-8"]
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
+  end
+
+  defp assert_negotiation(accept, xhr, source) do
+    formats = DawarichWeb.PageAccept.formats(accept, xhr)
+
+    assert DawarichWeb.PageAccept.negotiate(formats, ["text/html", "text/vnd.turbo-stream.html"]) ==
+             source["type"]
   end
 
   defp assert_contract(conn, source) do
