@@ -92,3 +92,7 @@ Endpoint cases preserve known/unknown/unlocked public notices, post-insert synth
 ## C3 — account-link web boundary
 
 Closed HTTP admission/params/dispatch moved to Actions, reducing domain closure and compatibility HTTP module below 300 lines. Operation order and issuer callers unchanged. RED `impl-m3c-c3-red.log` 0/3 exit 2; GREEN 3/3; attempt/MFA/dispatch mutations each exit 2 with named failures. Restored `impl-m3c-c3-restored-green.log`: 43 passed, exit 0, warnings clean. Direct-caller search has no Closure.route references.
+
+## C4 — account-link documents
+
+Both link challenge forms use the anonymous native document and distinct action tokens; one shell alert is consumed on the next request. Token purpose/target/provider UID/replay and MFA sign-in refusal remain unchanged. Four named cases RED at impl-m3c-c4-red (0/4, exit 2), GREEN 4/4; tokens/password/purpose/MFA mutations each fail their named case (3/4, exit 2). Restored impl-m3c-c4-restored-green: 37 passed, exit 0, warnings clean. Exact markup successors preserve source fields, translated card text, head meta values, status/redirect/cookie/cache/flash and blank-password behavior. Source fixtures unchanged. Browser verification remains D1/D2; no Rails defect fixed.

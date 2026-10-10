@@ -1,8 +1,8 @@
 <div class="min-h-content w-full my-5">
   <div class="max-w-lg mx-auto">
     <div class="card bg-base-200 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title">
+      <div class="card-body min-w-0 [overflow-wrap:anywhere]">
+        <h2 class="card-title flex-wrap">
           {text(@locale, "link_provider_to_your_dawarich_account", %{
             "provider" => @provider_label
           })}
@@ -10,15 +10,9 @@
         <p class="text-sm text-base-content/70 mt-2">
           {instructions(@locale, @user_email, @provider_label)}
         </p>
-        <div
-          :if={not Dawarich.Auth.Recovery.Token.blank?(@flash["alert"])}
-          class="alert alert-error mt-4"
-        >
-          {@flash["alert"]}
-        </div>
         <form
           class="space-y-4 mt-4"
-          data-turbo="false"
+          data-auth-form
           action="/auth/account_link/challenge"
           accept-charset="UTF-8"
           method="post"
@@ -30,7 +24,7 @@
               "current_password"
             )}</span></label>
             <input
-              class="input input-bordered w-full"
+              class="input input-bordered w-full min-w-0"
               required="required"
               autocomplete="current-password"
               autofocus="autofocus"
@@ -44,16 +38,13 @@
               type="submit"
               name="commit"
               value={text(@locale, "link_provider_and_sign_in", %{"provider" => @provider_label})}
-              class="btn btn-primary w-full"
-              data-disable-with={
-                text(@locale, "link_provider_and_sign_in", %{"provider" => @provider_label})
-              }
+              class="btn btn-primary w-full h-auto min-h-12 whitespace-normal"
             />
           </div>
         </form>
         <div class="divider">{text(@locale, "or")}</div>
         <form
-          data-turbo="false"
+          data-auth-form
           action="/auth/account_link/email"
           accept-charset="UTF-8"
           method="post"
@@ -63,8 +54,7 @@
             type="submit"
             name="commit"
             value={text(@locale, "email_me_a_confirmation_link_instead")}
-            class="btn btn-ghost w-full"
-            data-disable-with={text(@locale, "email_me_a_confirmation_link_instead")}
+            class="btn btn-ghost w-full h-auto min-h-12 whitespace-normal"
           />
         </form>
         <p class="text-xs text-base-content/50 mt-4">

@@ -1,9 +1,9 @@
 defmodule DawarichWeb.AuthAccountLink.FormTest do
   use ExUnit.Case, async: true
-  alias Dawarich.Test.ParityHTML
+  alias Dawarich.Test.NativeAuthHTTP
   alias DawarichWeb.AuthAccountLink.Form
 
-  test "account-link challenge matches Rails all-locale forms and escapes labels and target email" do
+  test "account-link challenge preserves all-locale fields and translations and escapes target data" do
     assert Code.ensure_loaded?(Form)
     source = File.read!("test/fixtures/auth/account_link/requests.json") |> Jason.decode!()
 
@@ -21,9 +21,15 @@ defmodule DawarichWeb.AuthAccountLink.FormTest do
 
       html = Form.page(assigns) |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary()
       expected = File.read!("test/fixtures/auth/account_link/challenge_#{locale}.html")
-      actual = ParityHTML.normalize(html)
-      oracle = ParityHTML.fragment(expected, ".min-h-content.w-full.my-5")
-      assert actual == oracle, ParityHTML.first_difference(actual, oracle)
+      assert NativeAuthHTTP.fields(html) == NativeAuthHTTP.fields(expected)
+
+      for selector <- ["h2", "label", "p", "a"],
+          do:
+            assert(
+              NativeAuthHTTP.text(html, selector) ==
+                NativeAuthHTTP.text(expected, ".card-body " <> selector)
+            )
+
       title = expected |> LazyHTML.from_document() |> LazyHTML.query("title") |> LazyHTML.text()
       assert title =~ Form.title(locale)
       forms = html |> LazyHTML.from_fragment() |> LazyHTML.query("form") |> LazyHTML.to_tree()
@@ -33,7 +39,7 @@ defmodule DawarichWeb.AuthAccountLink.FormTest do
             Enum.zip(forms, ["/auth/account_link/challenge", "/auth/account_link/email"]) do
         attrs = Map.new(attrs)
         assert attrs["method"] == "post" and attrs["action"] == path
-        assert attrs["data-turbo"] == "false"
+        assert Map.has_key?(attrs, "data-auth-form")
 
         [token] =
           children

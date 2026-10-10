@@ -2,7 +2,8 @@ defmodule DawarichWeb.AuthAccountLink.ResponseTest do
   use ExUnit.Case, async: false
   import Plug.Conn
   alias Dawarich.Auth.{ActionCsrf, SessionCookie}
-  alias Dawarich.{RailsCookies, Repo, Test.ParityHTML}
+  alias Dawarich.{RailsCookies, Repo}
+  alias Dawarich.Test.NativeAuthHTTP
   alias DawarichWeb.AuthAccountLink.Response
   @secret "a11e-response-synthetic-cookie-secret"
   @source "test/fixtures/auth/account_link/requests.json" |> File.read!() |> Jason.decode!()
@@ -46,13 +47,25 @@ defmodule DawarichWeb.AuthAccountLink.ResponseTest do
       headers(result, row)
       assert decoded(result) == session
       expected = File.read!("test/fixtures/auth/account_link/challenge_#{locale}.html")
-      actual_body = ParityHTML.fragment(result.resp_body, "body")
-      expected_body = ParityHTML.fragment(expected, "body")
-      assert actual_body == expected_body, ParityHTML.first_difference(actual_body, expected_body)
-      runtime = ["script", "link[rel=modulepreload]", "meta[name=phoenix-csrf-token]"]
-      actual_head = ParityHTML.without(result.resp_body, runtime, "head")
-      expected_head = ParityHTML.without(expected, runtime, "head")
-      assert actual_head == expected_head, ParityHTML.first_difference(actual_head, expected_head)
+      assert NativeAuthHTTP.fields(result.resp_body) == NativeAuthHTTP.fields(expected)
+
+      for selector <- ["h2", "label", "p", "a"],
+          do:
+            assert(
+              NativeAuthHTTP.text(result.resp_body, ".card-body " <> selector) ==
+                NativeAuthHTTP.text(expected, ".card-body " <> selector)
+            )
+
+      assert NativeAuthHTTP.text(result.resp_body, "title") ==
+               NativeAuthHTTP.text(expected, "title")
+
+      for name <- ~w(description viewport referrer theme-color) do
+        dom = LazyHTML.query(LazyHTML.from_document(result.resp_body), "meta[name='#{name}']")
+        source = LazyHTML.query(LazyHTML.from_document(expected), "meta[name='#{name}']")
+        assert LazyHTML.attribute(dom, "content") == LazyHTML.attribute(source, "content"), name
+      end
+
+      assert result.resp_body =~ "/native/auth_http.js"
 
       for {path, node} <- [{"/auth/account_link/challenge", 0}, {"/auth/account_link/email", 1}] do
         tokens =
@@ -114,7 +127,7 @@ defmodule DawarichWeb.AuthAccountLink.ResponseTest do
     end
   end
 
-  test "owned challenge matches Rails incoming alert escaping presence and one-request lifetime" do
+  test "owned challenge preserves escaped incoming alert once in native shell" do
     for locale <- ~w(en de es fr pl ca zh) do
       row = @source["challenge_alert_#{locale}"]
 
@@ -133,15 +146,15 @@ defmodule DawarichWeb.AuthAccountLink.ResponseTest do
       }
 
       conn = Response.form(request(session), pending, %{secret: @secret})
-      expected = File.read!("test/fixtures/auth/account_link/challenge_alert_#{locale}.html")
-      actual = ParityHTML.fragment(conn.resp_body, "body")
-      expected_body = ParityHTML.fragment(expected, "body")
-      assert actual == expected_body, ParityHTML.first_difference(actual, expected_body)
 
       card =
-        conn.resp_body |> LazyHTML.from_document() |> LazyHTML.query(".card-body .alert-error")
+        conn.resp_body
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#flash-messages .alert-error")
 
-      assert card |> LazyHTML.text() |> String.trim() == "A11e <script>synthetic</script> & retry"
+      assert card |> LazyHTML.query("span") |> LazyHTML.text() |> String.trim() ==
+               "A11e <script>synthetic</script> & retry"
+
       assert LazyHTML.query(card, "script") |> LazyHTML.to_tree() == []
       refute Map.has_key?(decoded(conn), "flash")
 
@@ -152,7 +165,7 @@ defmodule DawarichWeb.AuthAccountLink.ResponseTest do
 
       assert next.resp_body
              |> LazyHTML.from_document()
-             |> LazyHTML.query(".card-body .alert-error")
+             |> LazyHTML.query("#flash-messages .alert-error")
              |> LazyHTML.to_tree() == []
 
       for alert <- ["", "  ", nil, false] do
@@ -163,6 +176,8 @@ defmodule DawarichWeb.AuthAccountLink.ResponseTest do
                |> LazyHTML.from_document()
                |> LazyHTML.query(".card-body .alert-error")
                |> LazyHTML.to_tree() == []
+
+        refute Map.has_key?(decoded(conn), "flash")
       end
     end
   end
