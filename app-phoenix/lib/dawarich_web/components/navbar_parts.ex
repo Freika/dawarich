@@ -66,11 +66,12 @@ defmodule DawarichWeb.NavbarParts do
   attr :locale, :string, required: true
   attr :sharing, :boolean, required: true
   attr :native, :boolean, default: false
+  attr :mobile, :boolean, default: false
 
   def family_indicator(%{native: true} = assigns) do
     ~H"""
     <span
-      id="family-navbar-indicator"
+      id={if @mobile, do: "family-navbar-indicator-mobile", else: "family-navbar-indicator"}
       class={"tooltip tooltip-bottom inline-block w-2 h-2 #{if @sharing, do: "bg-green-500 animate-pulse", else: "bg-gray-400"} rounded-full"}
       data-tip={
         t(
@@ -85,7 +86,9 @@ defmodule DawarichWeb.NavbarParts do
 
   def family_indicator(assigns) do
     ~H"""
-    <turbo-frame id="family-navbar-indicator">
+    <turbo-frame id={
+      if @mobile, do: "family-navbar-indicator-mobile", else: "family-navbar-indicator"
+    }>
       <div
         data-controller="family-navbar-indicator"
         data-family-navbar-indicator-enabled-value={to_string(@sharing)}
