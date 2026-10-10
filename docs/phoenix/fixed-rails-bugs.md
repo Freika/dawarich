@@ -1410,3 +1410,13 @@ Rails creates a photo popup without retaining it for removal. Removing its photo
 - Test: “destroy releases popup listeners and thumbnails” in `spec/javascript/phoenix_map_photos_test.mjs`; actual Rails popup oracle fails, popup-disposal/object-url mutations fail/restored GREEN. Existing hostile metadata cases have named native successors.
 - Ledger: ED-NATIVE-M6-PHOTO-POPUP; no DRB. Retained Rails unchanged.
 - CHANGELOG-ready: Close photo popups and release their thumbnails when leaving the map.
+
+### FRB-NATIVE-M6-ANOMALY-DISPOSE — Removed anomaly layers keep paging history
+
+Rails anomaly requests carry no cancellation signal and inherited layer removal leaves the in-flight history read alive. Native anomaly removal destroys its owned paging operation and rejects late rows before geometry publication.
+
+- Rails: `app/javascript/maps_maplibre/layers/anomalies_layer.js:64,89`; inherited removal `app/javascript/maps_maplibre/layers/base_layer.js:75`.
+- Phoenix: `app-phoenix/assets/js/map/layers/anomalies.js:40,51,64`.
+- Test: “removed anomalies stop owned pages and preserve exact request filters” in `spec/javascript/phoenix_map_entity_layers_test.mjs`; actual Rails cancellation oracle fails, anomaly-disposal/filter mutations fail/restored GREEN.
+- Ledger: ED-NATIVE-M6-ANOMALY-DISPOSE; no DRB. Retained Rails unchanged.
+- CHANGELOG-ready: Cancel anomaly history reads when removing their map layer.

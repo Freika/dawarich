@@ -137,3 +137,4 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Release photo-loading deadlines when their requests settle. [FRB-NATIVE-M6-PHOTO-TIMER](fixed-rails-bugs.md#frb-native-m6-photo-timer--successful-photo-loads-leave-their-timeout-running)
 - Prevent photo clusters from reopening after leaving their map. [FRB-NATIVE-M6-PHOTO-CLUSTER](fixed-rails-bugs.md#frb-native-m6-photo-cluster--late-cluster-leaves-recreate-markers-after-removal)
 - Close photo popups and release their thumbnails when leaving the map. [FRB-NATIVE-M6-PHOTO-POPUP](fixed-rails-bugs.md#frb-native-m6-photo-popup--removing-photos-leaves-their-popup-open)
+- Cancel anomaly history reads when removing their map layer. [FRB-NATIVE-M6-ANOMALY-DISPOSE](fixed-rails-bugs.md#frb-native-m6-anomaly-dispose--removed-anomaly-layers-keep-paging-history)
