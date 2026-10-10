@@ -1460,3 +1460,125 @@ Rails replay stack and marker layer create popups without retaining them; destro
 - Tests: “closing replay photo stack releases its popup thumbnails and card listeners”; “closing replay releases photo popups density listeners and day-owned thumbnails”. Actual Rails-source oracle fails with both owned popups still open; popup-close and host-unwire mutations fail, restored GREEN.
 - Ledger: ED-NATIVE-M6-REPLAY-PHOTO-POPUP; no DRB. Rails unchanged.
 - CHANGELOG-ready: Close replay photo popups when changing day, closing replay or leaving the map.
+
+### FRB-NATIVE-M6-POSTER-EXPORT-CLOSE
+
+Rails: closing the poster studio while a Download renders still downloads the file later and keeps the offscreen map alive. Phoenix: dialog close/destroy aborts the run; a late result is `cancelled`, no download. Rails `app/javascript/controllers/poster_studio_editor_controller.js:178` (`close()` never aborts) and `:612` (export started without a signal); Phoenix `app-phoenix/assets/js/poster/runtime.js:129-139`, `app-phoenix/assets/js/poster/export/operation.js:20`. Tests: "close before encoding completes cannot download", "closing the studio during a download cancels the render and saves no file", oracle "Rails oracle: closing the poster studio during a download still saves the file".
+
+- Ledger: ED-NATIVE-M6-POSTER-EXPORT-CLOSE; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-POSTER-EXPORT-HANG
+
+Rails: a capture whose map never reaches `idle` never settles (an already-aborted signal is ignored too); Download stays disabled until reload. Phoenix: refuses pre-aborted signals and has a per-run deadline, always cleans up. Rails `app/javascript/poster_studio/render/offscreen_map.js:40-50`; Phoenix `app-phoenix/assets/js/poster/export/capture.js:18,47,67`. Tests: "an already aborted or never idle capture settles and cleans up", oracle "Rails oracle: an offscreen capture that never reaches idle never settles".
+
+- Ledger: ED-NATIVE-M6-POSTER-EXPORT-HANG; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-POSTER-EXPORT-CONTAINER
+
+Rails: when `new maplibregl.Map` throws (no WebGL) the hidden offscreen container stays in the page (no visible symptom; DOM leak per failed export). Phoenix creates the container inside the cleanup scope. Rails `offscreen_map.js:26-28`; Phoenix `capture.js:26-67`. Tests: "Map constructor failure removes its container", oracle "Rails oracle: offscreen capture leaks its container when the Map constructor throws".
+
+- Ledger: ED-NATIVE-M6-POSTER-EXPORT-CONTAINER; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-POSTER-ORDER-HANG
+
+Rails: a stalled print upload never settles and cannot be cancelled; the order steps spin and Download stays disabled until reload. Phoenix: abort on studio close/signal, deadline, listener cleanup. Rails `app/javascript/poster_studio/ui/order_client.js:41-55`; Phoenix `app-phoenix/assets/js/poster/order.js:35,61-62`. Tests: "cancelled print upload closes XHR listeners and never enables checkout", oracle "Rails oracle: a stalled print upload never settles and cannot be cancelled".
+
+- Ledger: ED-NATIVE-M6-POSTER-ORDER-HANG; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-POSTER-CHECKOUT-URL
+
+- Rails: the "Continue to checkout" link takes whatever `checkout_url` the print service returns, including `javascript:` or a foreign host. A compromised or misbehaving endpoint could make a user click a script or phishing URL from the Dawarich origin.
+  - Phoenix: only https on the print-service host or Stripe Checkout; otherwise the generic order error.
+  - Rails source: `app/javascript/controllers/poster_studio_editor_controller.js:749,795-797`.
+  - Phoenix source: `app-phoenix/assets/js/poster/order_controls.js:15-26,183-186`.
+  - Test: "checkout link only opens an https URL on the print service or Stripe Checkout host".
+
+- Ledger: ED-NATIVE-M6-POSTER-CHECKOUT-URL; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-POSTER-RANGE-ERROR
+
+- Rails: a failed range reload left an unhandled rejection. The status line cleared, the new dates stayed in the inputs and the preview kept the old range, with no message.
+  - Phoenix: shows the localized failure and restores the loaded dates. Aborts stay silent.
+  - Rails source: `app/javascript/controllers/poster_studio_editor_controller.js:514-537`.
+  - Phoenix source: `app-phoenix/assets/js/poster/controls.js:66-91`.
+  - Test: "a failed range reload shows an error and restores the loaded dates".
+
+- Ledger: ED-NATIVE-M6-POSTER-RANGE-ERROR; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-CONSTRUCTION
+
+**Video render: map/2D-context construction failure leaks the encoder and a hidden container.** Rails symptom: if MapLibre or the 2D context fails after the MP4 encoder was created (WebGL unavailable, context lost), the WebCodecs encoder stays open and the off-screen render container stays attached to `<body>` until reload; repeated attempts accumulate them. Phoenix: map, container and both canvases are acquired inside the guarded scope, released in `finally`, the encoder is aborted on every failure. Rails `app/javascript/video_studio/video_renderer.js:138,163,167` (encoder + container created before the `try` at :194). Phoenix `app-phoenix/assets/js/video/render/engine.js:128-130`, `app-phoenix/assets/js/video/render/map_capture.js:76,84-85`. Test `spec/javascript/phoenix_video_render_test.mjs` "map or 2d context failure after encoder setup releases encoder". Oracle: Rails module under Node fakes (scratch `oracle/rails_renderer_oracle.mjs`) prints encoder not aborted / container not removed.
+
+- Ledger: ED-NATIVE-M6-VIDEO-CONSTRUCTION; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-FIRST-IDLE
+
+**Video render: cancel before the map's first idle hangs.** Rails symptom: pressing Cancel (or closing the studio) while the render map is still loading leaves the render promise pending forever with the encoder open; the studio stays in "rendering" until the map happens to go idle (never, on a stalled tile/style load). Phoenix: the first idle wait is abortable and bounded (`FIRST_IDLE_TIMEOUT_MS` 60 s, value awaits O8 freeze); cancel rejects with `AbortError` and releases map/encoder/canvas. Rails `app/javascript/video_studio/video_renderer.js:194-196` (`map.once("idle", resolve)` with no abort/timeout). Phoenix `app-phoenix/assets/js/video/render/engine.js:12,100`. Tests "cancel before first idle releases map encoder and canvas", "a first idle that never arrives fails within its bound and releases".
+
+- Ledger: ED-NATIVE-M6-VIDEO-FIRST-IDLE; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-ABANDONED-UPLOAD
+
+**Video save: abandoned uploads leave orphan blobs.** Rails symptom: cancelling/closing the studio during "Save to gallery" (or a storage PUT failure) after the direct-upload blob was created leaves an unattached `active_storage_blobs` row (and possibly stored bytes) that nothing references or purges promptly. Phoenix: the browser discards a reservation it abandons (before or right after storage completes, never after the save was sent) via the scoped `discard_upload`, which reuses `AttachmentEffects.cleanup_failed_save!` (idempotent purge marker). Rails `app/javascript/video_studio/save_video.js:25-31` (abort only aborts XHRs; the created blob is never discarded). Phoenix `app-phoenix/assets/js/video/upload.js:71`, `app-phoenix/lib/dawarich/route_videos/scoped.ex` (`discard_upload/3`). Tests `phoenix_video_upload_test.mjs` "upload abort before commit discards the reservation and never saves", "abort after storage completes but before save still discards", "storage failure discards the reservation and reports the failure"; ExUnit `native_video_studio_test.exs` "a discarded or revoked upload never becomes a gallery row".
+
+- Ledger: ED-NATIVE-M6-VIDEO-ABANDONED-UPLOAD; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-CODEC-WAIT
+
+Codec support/probe, probe flush, dequeue or final flush can remain pending after cancellation or a silent encoder stall, retaining encoder/frame/map resources. Native waits accept the run signal and have owned 30-second operation deadlines; probe cleanup closes frame/encoder and production timeout closes the encoder.
+
+- Rails: `app/javascript/video_studio/codec_negotiation.js:38`, `app/javascript/video_studio/mp4_encoder.js:38`, `:99`, `:122`.
+- Phoenix: `app-phoenix/assets/js/video/` `codec.js:40`, `mp4_encoder.js:54`, `:177`, `:196`, `wait.js:1`.
+- Test: `phoenix_video_encoder_test.mjs`: "codec support and probe waits settle on cancellation and deadline", "a stalled probe flush releases its frame and encoder on abort or timeout", "stalled dequeue and finalize deadlines close the encoder and remove owned listeners".
+
+- Ledger: ED-NATIVE-M6-VIDEO-CODEC-WAIT; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-UPLOAD-WAIT
+
+A connected storage upload with no response can keep Save pending indefinitely. Native PUT has a five-minute transport deadline, removes owned handlers, discards its reservation and shows a retryable failure through the existing studio save notice.
+
+- Rails: `app/javascript/video_studio/save_video.js:31` (DirectUpload has no configured deadline).
+- Phoenix: `app-phoenix/assets/js/video/` `upload.js:3`, `:50`.
+- Test: `phoenix_video_upload_test.mjs`: "storage timeout discards the reservation, cleans listeners and permits retry".
+
+- Ledger: ED-NATIVE-M6-VIDEO-UPLOAD-WAIT; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-THEME-ORDER
+
+Rapid theme selections resolving in reverse order leave selected settings and saved recipe on one theme while preview/render tokens come from an older selection. Native style requests capture settings and a separate operation identity, discard obsolete success/error and disable Render until the current style is ready.
+
+- Rails: `app/javascript/controllers/video_studio_controller.js:452`.
+- Phoenix: `app-phoenix/assets/js/video/` `studio.js:74`.
+- Test: `phoenix_video_studio_test.mjs`: "reverse theme replies keep controls, preview, render and recipe on the selected theme".
+
+- Ledger: ED-NATIVE-M6-VIDEO-THEME-ORDER; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-RECIPE-SNAPSHOT
+
+Editing format or duration while rendering can save current settings describing different dimensions/duration from the rendered MP4 bytes. Native results retain an immutable settings/provenance snapshot captured at render start; Save uses that snapshot.
+
+- Rails: `app/javascript/controllers/video_studio_controller.js:643`, `:693`.
+- Phoenix: `app-phoenix/assets/js/video/` `studio_export.js:58`, `:97`.
+- Test: `phoenix_video_studio_test.mjs`: "settings changes during rendering save the recipe for the produced bytes".
+
+- Ledger: ED-NATIVE-M6-VIDEO-RECIPE-SNAPSHOT; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-CONFIGURE-CLOSE
+
+The encoder constructed after successful probing remains open if its production configure call throws; subsequent retries can accumulate encoder resources. Native configuration is guarded and closes the encoder before propagating failure, before map/container allocation.
+
+- Rails: `app/javascript/video_studio/mp4_encoder.js:79`, `:86`.
+- Phoenix: `app-phoenix/assets/js/video/` `mp4_encoder.js:131`.
+- Test: `phoenix_video_encoder_test.mjs`: "configure failure after a successful probe closes the production encoder before map allocation".
+
+- Ledger: ED-NATIVE-M6-VIDEO-CONFIGURE-CLOSE; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-VIDEO-FORMAT-OWN-KEY
+
+Stored recipe formats such as `__proto__`, `constructor` or `toString` select inherited Object members, producing undefined/NaN preview/render dimensions. Native normalization and direct format lookup require a string own key and use portrait dimensions otherwise.
+
+- Rails: `app/javascript/video_studio/studio_state.js:76`, `:182`.
+- Phoenix: `app-phoenix/assets/js/video/` `state.js:57`, `:147`.
+- Test: `phoenix_video_state_test.mjs`: "stored recipes with inherited format names fall back to finite portrait dimensions".
+
+- Ledger: ED-NATIVE-M6-VIDEO-FORMAT-OWN-KEY; no DRB. Rails remains unchanged; integrated native fix.

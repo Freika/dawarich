@@ -145,3 +145,33 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Drop completed native public-map reads after share revocation, expiry, phrase rotation or family withdrawal (FRB-NATIVE-M6-PUBLIC-LATE).
 
 - Close replay photo popups when changing day, closing replay or leaving the map. [FRB-NATIVE-M6-REPLAY-PHOTO-POPUP](fixed-rails-bugs.md#frb-native-m6-replay-photo-popup--replay-photos-leave-popups-open-after-close-or-day-change)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-EXPORT-CLOSE)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-EXPORT-HANG)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-EXPORT-CONTAINER)
+
+- Fix poster export and print lifecycle cleanup. (FRB-NATIVE-M6-POSTER-ORDER-HANG)
+
+- Validate poster checkout URLs. (FRB-NATIVE-M6-POSTER-CHECKOUT-URL)
+
+- Show failed poster range reloads and restore the loaded dates. (FRB-NATIVE-M6-POSTER-RANGE-ERROR)
+
+- Release video map, encoder and canvas resources on construction failure. (FRB-NATIVE-M6-VIDEO-CONSTRUCTION)
+
+- Cancel and bound the first video map idle wait. (FRB-NATIVE-M6-VIDEO-FIRST-IDLE)
+
+- Purge abandoned video upload reservations. (FRB-NATIVE-M6-VIDEO-ABANDONED-UPLOAD)
+
+- Fix video export stalls during codec negotiation, backpressure and finalization; cancellation and operation deadlines release encoder resources. (FRB-NATIVE-M6-VIDEO-CODEC-WAIT)
+
+- Fix stalled video uploads keeping Save pending; timed-out uploads discard their reservation and allow retry. (FRB-NATIVE-M6-VIDEO-UPLOAD-WAIT)
+
+- Fix out-of-order video theme loads replacing the selected preview and render style. (FRB-NATIVE-M6-VIDEO-THEME-ORDER)
+
+- Keep saved video recipes consistent with the rendered file when settings change during rendering. (FRB-NATIVE-M6-VIDEO-RECIPE-SNAPSHOT)
+
+- Release the production video encoder when configuration fails. (FRB-NATIVE-M6-VIDEO-CONFIGURE-CLOSE)
+
+- Handle inherited-property names in saved video recipes with the existing portrait fallback. (FRB-NATIVE-M6-VIDEO-FORMAT-OWN-KEY)

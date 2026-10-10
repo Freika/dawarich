@@ -14,9 +14,36 @@ defmodule DawarichWeb.NativeM6IntegrationRegisterTest do
     assert contracts =~ "NotesApi.Read.index/3"
     assert contracts =~ "m5 notes/ActionText"
   end
+
   test "studio operation bounds are frozen without changing media formats" do
     contracts = File.read!(Path.expand("../../../docs/phoenix/native-m6-contracts.md", __DIR__))
-    for bound <- ["first idle: 60 seconds", "negotiation: 30 seconds", "hook reply: 30 seconds", "upload: 1 byte–250 MiB", "gallery: 10 rows"], do: assert(contracts =~ bound)
+
+    for bound <- [
+          "first idle: 60 seconds",
+          "negotiation: 30 seconds",
+          "hook reply: 30 seconds",
+          "upload: 1 byte–250 MiB",
+          "gallery: 10 rows"
+        ],
+        do: assert(contracts =~ bound)
   end
 
+  test "integrated poster and video handoffs have complete ED FRB and changelog rows" do
+    diffs = File.read!(Path.expand("../../parity/expected_diffs.md", __DIR__))
+    bugs = File.read!(Path.expand("../../../docs/phoenix/fixed-rails-bugs.md", __DIR__))
+    changes = File.read!(Path.expand("../../../docs/phoenix/CHANGELOG-phoenix-draft.md", __DIR__))
+
+    for suffix <-
+          ~w(POSTER-EXPORT-CLOSE POSTER-EXPORT-HANG POSTER-EXPORT-CONTAINER POSTER-ORDER-HANG POSTER-CHECKOUT-URL POSTER-RANGE-ERROR VIDEO-CONSTRUCTION VIDEO-FIRST-IDLE VIDEO-ABANDONED-UPLOAD VIDEO-CODEC-WAIT VIDEO-UPLOAD-WAIT VIDEO-THEME-ORDER VIDEO-RECIPE-SNAPSHOT VIDEO-CONFIGURE-CLOSE VIDEO-FORMAT-OWN-KEY) do
+      assert diffs =~ "ED-NATIVE-M6-#{suffix}"
+      assert bugs =~ "FRB-NATIVE-M6-#{suffix}"
+      assert changes =~ "FRB-NATIVE-M6-#{suffix}"
+    end
+
+    for suffix <-
+          ~w(POSTER-STUDIO POSTER-GALLERY POSTER-LIMITS POSTER-CHECKOUT VIDEO-a VIDEO-b VIDEO-c VIDEO-d VIDEO-e),
+        do: assert(diffs =~ "ED-NATIVE-M6-#{suffix}")
+
+    assert diffs =~ "empty recipe"
+  end
 end
