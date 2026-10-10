@@ -14,6 +14,7 @@ export function createReplay({
   onPoint = () => {},
   onState = () => {},
   onFollow = () => {},
+  onStop = () => {},
 }) {
   const manager = new ReplayManager({ timezone })
   const stepper = createStepper({ manager })
@@ -131,9 +132,11 @@ export function createReplay({
   }
 
   function stop() {
+    const was = playing
     playing = false
     if (frame !== null) cancelRaf(frame)
     frame = null
+    if (was) onStop()
   }
 
   function reconnect() {

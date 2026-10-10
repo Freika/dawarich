@@ -156,6 +156,7 @@ test("playing replay moves the marker along segments, follows it and stops at th
     raf: (fn) => frames.push(fn),
     cancelRaf() {},
     onFollow: (on) => followed.push(on),
+    onStop: () => followed.push("stopped"),
   })
   await replay.open({ startAt: "2026-06-01T00:00", endAt: "2026-06-01T23:59" })
   replay.play()
@@ -169,7 +170,7 @@ test("playing replay moves the marker along segments, follows it and stops at th
   frames.shift()(1750)
   assert.equal(replay.playing, false)
   assert.equal(frames.length, 0)
-  assert.deepEqual(followed, [true])
+  assert.deepEqual(followed, [true, "stopped"])
   replay.close()
   assert.equal(camera.handlers.size, 0)
 })
