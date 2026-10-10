@@ -52,6 +52,19 @@ defmodule Dawarich.LogRedactionTest do
     refute log =~ @key
   end
 
+  test "data event crashes redact phrases and attachment capabilities" do
+    values = %{
+      "phrase" => "synthetic-phrase-c1",
+      "sgid" => "synthetic-sgid-c1",
+      "upload_ref" => "synthetic-upload-c1",
+      "capability" => "synthetic-capability-c1"
+    }
+
+    log = crash_with(Map.put(values, "mode", "clause"))
+    assert log =~ "FunctionClauseError"
+    for value <- Map.values(values), do: refute(log =~ value)
+  end
+
   test "function clause arguments in a crash report are redacted" do
     log =
       crash_with(%{"mode" => "clause", "user" => %{"password" => @password}, "api_key" => @key})
