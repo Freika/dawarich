@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { initializeAuthForms } from "../../app-phoenix/assets/js/http/auth_forms.js"
+import { Dismissible } from "../../app-phoenix/assets/js/hooks/dismissible.js"
 const load = () => import("../../app-phoenix/assets/js/http/auth_chrome.js")
 class Element extends EventTarget {
   dataset = {}
@@ -135,4 +136,47 @@ test("HTTP confirmation cancel remains retryable", async () => {
   f.confirm.dispatchEvent(accepted)
   assert.equal(accepted.defaultPrevented, false)
   assert.equal(f.confirm.getAttribute("aria-busy"), "true")
+})
+
+test("native locale dismissal remains dismissed on HTTP documents", async () => {
+  const { initializeAuthChrome } = await load()
+  const f = fixture()
+  globalThis.localStorage = f.win.localStorage
+  const hook = { ...Dismissible, el: f.locale }
+  hook.mounted()
+  const click = new Event("click")
+  Object.defineProperty(click, "target", { value: { closest: () => ({}) } })
+  f.locale.dispatchEvent(click)
+  hook.destroyed()
+  const next = fixture()
+  next.win.localStorage = f.win.localStorage
+  initializeAuthChrome(next.doc, next.win)
+  assert.equal(next.locale.removed, true)
+  delete globalThis.localStorage
+})
+
+test("HTTP locale dismissal remains dismissed in the native hook", async () => {
+  const { initializeAuthChrome } = await load()
+  const f = fixture()
+  const dispose = initializeAuthChrome(f.doc, f.win)
+  f.dismiss.dispatchEvent(new Event("click"))
+  const next = fixture()
+  globalThis.localStorage = f.win.localStorage
+  const hook = { ...Dismissible, el: next.locale }
+  hook.mounted()
+  assert.equal(next.locale.hidden, true)
+  hook.destroyed()
+  dispose()
+  delete globalThis.localStorage
+})
+
+test("HTTP locale dismissal accepts only the native stored value one", async () => {
+  const { initializeAuthChrome } = await load()
+  for (const value of ["0", "false", "", "1"]) {
+    const f = fixture()
+    f.storage.set("dismissed:locale_suggestion_de", value)
+    f.storage.set("locale_suggestion_de", value)
+    initializeAuthChrome(f.doc, f.win)
+    assert.equal(f.locale.removed, value === "1")
+  }
 })

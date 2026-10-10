@@ -16,7 +16,7 @@ export function initializeAuthChrome(doc = document, win = window) {
     "[data-auth-locale-suggestion]",
   )) {
     try {
-      if (win.localStorage.getItem(suggestion.dataset.dismissibleKeyValue))
+      if (win.localStorage.getItem(`dismissed:${suggestion.dataset.dismissibleKeyValue}`) === "1")
         suggestion.remove()
     } catch {}
   }
@@ -24,7 +24,7 @@ export function initializeAuthChrome(doc = document, win = window) {
     listen(dismiss, "click", () => {
       const suggestion = dismiss.closest("[data-auth-locale-suggestion]")
       try {
-        win.localStorage.setItem(suggestion.dataset.dismissibleKeyValue, "1")
+        win.localStorage.setItem(`dismissed:${suggestion.dataset.dismissibleKeyValue}`, "1")
       } catch {}
       suggestion.remove()
     })
