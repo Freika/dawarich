@@ -6,7 +6,22 @@ defmodule DawarichWeb.NativePublicPage do
 
   def init(kind), do: kind
 
-  def call(conn, kind) when kind in [:achievement, :digest] do
+  def call(conn, :achievement) do
+    case DawarichWeb.AchievementPublicQuery.decode(conn.query_string, ~w(locale embed)) do
+      {:ok, params} ->
+        if not Map.has_key?(params, "locale") or params["locale"] in DawarichWeb.Locale.locales() do
+          call_page(%{conn | query_params: params, params: params}, :achievement)
+        else
+          conn |> send_resp(422, "") |> halt()
+        end
+
+      _ -> conn |> send_resp(422, "") |> halt()
+    end
+  end
+
+  def call(conn, :digest), do: call_page(conn, :digest)
+
+  defp call_page(conn, kind) do
     conn = fetch_query_params(conn)
     params = Map.merge(conn.query_params, if(is_map(conn.params), do: conn.params, else: %{}))
     viewer = conn.assigns[:current_user]

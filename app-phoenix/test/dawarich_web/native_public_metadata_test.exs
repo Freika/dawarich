@@ -106,7 +106,7 @@ defmodule DawarichWeb.NativePublicMetadataTest do
   end
 
   defp request(uuid, method, embed) do
-    conn = build_conn(method, "/shared/achievements/" <> uuid)
+    conn = build_conn(method, "/shared/achievements/" <> uuid <> if(embed, do: "?embed=1", else: ""))
 
     conn = %{
       conn

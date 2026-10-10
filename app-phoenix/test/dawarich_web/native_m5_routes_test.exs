@@ -2,6 +2,33 @@ defmodule DawarichWeb.NativeM5RoutesTest do
   use ExUnit.Case, async: true
   alias DawarichWeb.Router
 
+  @tag independent_routes: true
+  test "independent data and public routes use native admission without handback" do
+    for {path, view} <- [
+          {"/points", DawarichWeb.PointsLive.Index},
+          {"/stats", DawarichWeb.StatsLive.NativePage},
+          {"/stats/2024", DawarichWeb.StatsLive.NativePage},
+          {"/insights", DawarichWeb.InsightsLive.NativePage},
+          {"/insights/details", DawarichWeb.InsightsLive.NativePage},
+          {"/digests", DawarichWeb.DigestsLive.NativePage},
+          {"/digests/2024", DawarichWeb.DigestsLive.NativePage},
+          {"/achievements", DawarichWeb.NativeAchievementsLive},
+          {"/achievements/countries", DawarichWeb.NativeAchievementsLive}
+        ] do
+      route = Phoenix.Router.route_info(Router, "GET", path, "example.invalid")
+      assert {^view, _, _, %{name: :native_data, extra: extra}} = route.phoenix_live_view
+      assert extra.root_layout == {DawarichWeb.Layouts, :native_root}
+      assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.NativeDataAuth, :require_user}]
+      refute route[:rails_gate]
+    end
+
+    for {path, kind} <- [{"/shared/digest/synthetic", :digest}, {"/shared/achievements/synthetic", :achievement}] do
+      assert %{plug: DawarichWeb.NativePublicPage, plug_opts: ^kind} =
+               route = Phoenix.Router.route_info(Router, "GET", path, "example.invalid")
+      refute route[:rails_gate]
+    end
+  end
+
   test "mixed Trip routes use one host adapter while map and storage callers stay owned" do
     for {path, view, action} <- [
           {"/trips", DawarichWeb.TripsLive.Index, :index},
