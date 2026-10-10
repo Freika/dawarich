@@ -1,0 +1,161 @@
+---
+AchievementCard:
+  type: object
+  required:
+  - key
+  - name
+  - kind
+  - code
+  - parent_key
+  - browse_key
+  - share_key
+  - description
+  - rarity
+  - percent
+  - earned_count
+  - target
+  - completed
+  - locked
+  - earned_at
+  - geography_key
+  - silhouette
+  - sharing
+  properties:
+    key:
+      type: string
+    name:
+      type: string
+    kind:
+      type: string
+      enum:
+      - continent
+      - country
+      - subdivision
+    code:
+      type: string
+      nullable: true
+    parent_key:
+      type: string
+      nullable: true
+    browse_key:
+      type: string
+      nullable: true
+      description: Null for leaves; otherwise the collection key to browse
+    share_key:
+      type: string
+      nullable: true
+      description: Null for subdivisions
+    description:
+      type: string
+      nullable: true
+    rarity:
+      type: string
+    percent:
+      type: integer
+    earned_count:
+      type: integer
+    target:
+      type: integer
+    completed:
+      type: boolean
+    locked:
+      type: boolean
+    earned_at:
+      type: string
+      format: date-time
+      nullable: true
+    geography_key:
+      type: string
+    silhouette:
+      type: object
+      nullable: true
+      properties:
+        path:
+          type: string
+        viewbox:
+          type: string
+    sharing:
+      "$ref": "#/components/schemas/AchievementSharing"
+AchievementSharing:
+  type: object
+  required:
+  - enabled
+  - url
+  properties:
+    enabled:
+      type: boolean
+    url:
+      type: string
+      nullable: true
+AchievementSharingResult:
+  allOf:
+  - "$ref": "#/components/schemas/AchievementSharing"
+  - type: object
+    properties:
+      uuid:
+        type: string
+        nullable: true
+AchievementOverview:
+  type: object
+  properties:
+    summary:
+      type: object
+      properties:
+        earned_countries:
+          type: integer
+        total_countries:
+          type: integer
+        earned_subdivisions:
+          type: integer
+        total_subdivisions:
+          type: integer
+        percent:
+          type: integer
+    collections:
+      type: array
+      items:
+        "$ref": "#/components/schemas/AchievementCard"
+    threshold_minutes:
+      type: number
+AchievementCollection:
+  type: object
+  properties:
+    collection:
+      "$ref": "#/components/schemas/AchievementCard"
+    cards:
+      type: array
+      items:
+        "$ref": "#/components/schemas/AchievementCard"
+    pagination:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        total_pages:
+          type: integer
+        total_count:
+          type: integer
+        per_page:
+          type: integer
+          example: 12
+    threshold_minutes:
+      type: number
+AchievementUnlock:
+  type: object
+  required:
+  - id
+  - token
+  - batch_end_id
+  - remaining
+  - card
+  properties:
+    id:
+      type: integer
+    token:
+      type: string
+    batch_end_id:
+      type: integer
+    remaining:
+      type: integer
+    card:
+      "$ref": "#/components/schemas/AchievementCard"
