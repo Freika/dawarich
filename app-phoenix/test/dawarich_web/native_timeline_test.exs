@@ -23,11 +23,18 @@ defmodule DawarichWeb.NativeTimelineTest do
     def handle_event("load", params, socket), do: {:noreply, Timeline.refresh(socket, params)}
     def handle_event("visit:changed", _params, socket), do: {:noreply, Timeline.reload(socket)}
 
+    def handle_event("timeline:filter", params, socket),
+      do: {:noreply, Timeline.filter(socket, params)}
+
     def handle_async(name, result, socket), do: Timeline.handle_async(name, result, socket)
 
     def render(assigns) do
       ~H"""
-      <DawarichWeb.NativeTimelineFeed.feed timeline={assigns[:timeline]} locale="en" />
+      <DawarichWeb.NativeTimelineFeed.feed
+        timeline={assigns[:timeline]}
+        filter={assigns[:timeline_filter]}
+        locale="en"
+      />
       """
     end
   end
@@ -158,6 +165,42 @@ defmodule DawarichWeb.NativeTimelineTest do
     assert has_element?(view, "[data-entry='gap']")
     assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-03-29']")
     assert has_element?(view, "button[phx-click='calendar:day'][phx-value-date='2026-03-31']")
+  end
+
+  test "timeline filters keep only matching visits and offer a reset", %{id: id} do
+    for {name, hour} <- [{"Bakery", 7}, {"Gym", 9}] do
+      rows(
+        "INSERT INTO visits(user_id,name,started_at,ended_at,duration,status,confidence,demo,created_at,updated_at) VALUES($1,$2,$3,$4,1800,1,2,false,now(),now())",
+        [
+          id,
+          name,
+          NaiveDateTime.new!(~D[2026-03-30], Time.new!(hour, 0, 0)),
+          NaiveDateTime.new!(~D[2026-03-30], Time.new!(hour, 30, 0))
+        ]
+      )
+    end
+
+    view = open(id, nil)
+    render_hook(view, "load", %{"start_at" => "2026-03-30T00:00", "end_at" => "2026-03-30T23:59"})
+    render_async(view, 5_000)
+    assert has_element?(view, "[data-entry='visit']", "Bakery")
+    assert has_element?(view, "[data-entry='visit']", "Gym")
+
+    view |> form("#native-timeline-filter", %{"q" => "bak"}) |> render_change()
+    assert has_element?(view, "[data-entry='visit']", "Bakery")
+    refute has_element?(view, "[data-entry='visit']", "Gym")
+
+    view |> form("#native-timeline-filter", %{"q" => "zzz"}) |> render_change()
+    refute has_element?(view, "[data-entry='visit']")
+
+    assert has_element?(
+             view,
+             "#native-timeline-feed",
+             "No visits match the current search or filter."
+           )
+
+    view |> element("#native-timeline-filter-clear") |> render_click()
+    assert has_element?(view, "[data-entry='visit']", "Gym")
   end
 
   defp feed(date) do

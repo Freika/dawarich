@@ -19,6 +19,11 @@ defmodule DawarichWeb.MapLive.Timeline do
     assign(socket, :timeline, %{status: :loading, run: run, params: params, feed: previous.feed})
   end
 
+  def filter(socket, params) do
+    query = if is_binary(params["q"]), do: String.trim(params["q"]), else: ""
+    assign(socket, :timeline_filter, %{"q" => String.slice(query, 0, 100)})
+  end
+
   def reload(socket) do
     case socket.assigns[:timeline] do
       %{params: params} -> refresh(socket, params)
