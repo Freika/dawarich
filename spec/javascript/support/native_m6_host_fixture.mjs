@@ -6,6 +6,9 @@ export class Element {
   removeEventListener(name, fn) { this.listeners.get(name)?.delete(fn) }
   emit(name, value = {}) { for (const fn of this.listeners.get(name) ?? []) fn(value) }
   appendChild(child) { this.children.push(child) }
+  replaceChildren(...children) { this.children = children }
+  setAttribute(key, value) { this[key] = value }
+  append(...children) { this.children.push(...children) }
   remove() {}
 }
 
@@ -35,5 +38,5 @@ export function fixture(config = {}) {
   }
   const reader = { async read(resource, params) { reads.push({ resource, params }); return { data: { type: "Feature", geometry: { type: "LineString", coordinates: [[12, 51], [14, 53]] }, properties: {} } } }, reset() {}, destroy() {}, async pages(resource, params) { reads.push({ resource, params }); return [] } }
   const owner = mountHost({ element, reader, pushEvent: (event, payload, reply) => pushed.push({ event, payload, reply }), loadStyle: async () => ({version: 8}), loadLibrary: async () => ({ Map: class { constructor() { return map } } }) })
-  return { owner, element, root, nodes, map, sources, layers, listeners, pushed, reads }
+  return { owner, element, root, nodes, map, sources, layers, listeners, pushed, reads, reader }
 }

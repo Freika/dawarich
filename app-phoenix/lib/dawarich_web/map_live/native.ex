@@ -129,6 +129,11 @@ defmodule DawarichWeb.MapLive.Native do
         window={@page.window}
         locale={@locale}
       />
+      <div class="min-w-0 max-w-full">
+        <input data-map-search type="search" class="input input-bordered max-w-full" aria-label={t(@locale, "javascript.search.search_placeholder", %{})} />
+        <ul data-map-suggestions role="listbox" class="min-w-0 [overflow-wrap:anywhere]" phx-update="ignore" id="native-map-suggestions"></ul>
+        <section data-map-search-visits id="native-map-search-visits" phx-update="ignore" class="min-w-0 max-w-full"></section>
+      </div>
       <button type="button" data-testid="native-create-area" class="btn btn-sm">{t(
         @locale,
         "javascript.areas.create_new",

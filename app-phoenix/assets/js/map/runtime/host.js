@@ -1,6 +1,7 @@
 import { createHostSettings } from "../ui/host_settings.js"
 import { createHostEditing } from "../edit/host.js"
 import { createEnrichmentTool } from "../ui/enrichment.js"
+import { createHostSearch } from "../ui/host_search.js"
 import { createReader } from "../data/reader.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
@@ -46,6 +47,7 @@ export function mountHost({
         owner.settings = createHostSettings({ map, loadStyle, lifetime, getConfig: () => owner.config, update: next => owner.update(next), onError: code => pushEvent("map:failed", {code}) })
         enrichment = createEnrichmentTool({ map, pushEvent, createPopup: () => null })
         lifetime.own(enrichment.destroy)
+        createHostSearch({map, root: element.closest?.("#native-map-page"), reader, lifetime, document: element.ownerDocument})
         timeline = createHostTimeline({ map, root: element.closest?.("#native-map-page"), reader, lifetime })
         createHostTools({ map, root: element.closest?.("#native-map-page"), pushEvent, lifetime })
         layers = createBaseLayers({
