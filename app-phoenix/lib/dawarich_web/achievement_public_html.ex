@@ -9,12 +9,24 @@ defmodule DawarichWeb.AchievementPublicHTML do
 
   embed_templates "achievement_public/*"
 
-  def html(%{embed: true} = assigns), do: assigns |> embed() |> Phoenix.HTML.Safe.to_iodata()
-  def html(assigns), do: assigns |> document() |> Phoenix.HTML.Safe.to_iodata()
+  def html(%{embed: true} = assigns),
+    do: assigns |> Map.put_new(:native, false) |> embed() |> Phoenix.HTML.Safe.to_iodata()
+
+  def html(assigns),
+    do: assigns |> Map.put_new(:native, false) |> document() |> Phoenix.HTML.Safe.to_iodata()
+
+  attr :native, :boolean, default: false
 
   def head_assets(assigns) do
     assigns =
       assign(assigns, :url, assigns.base_url <> "/shared/achievements/" <> assigns.view.uuid)
+
+    assigns =
+      assign(
+        assigns,
+        :native_scripts,
+        if(assigns[:native], do: nil, else: legacy_scripts(assigns))
+      )
 
     ~H"""
     <meta charset="utf-8" />
@@ -32,24 +44,14 @@ defmodule DawarichWeb.AchievementPublicHTML do
       :for={name <- ~w(tailwind inter-font application)}
       rel="stylesheet"
       href={Assets.stylesheet_path(name <> ".css")}
-      data-turbo-track="reload"
+      data-turbo-track={!@native && "reload"}
     />
-    <script
-      :if={!@embed}
-      id="i18n-translations"
-      type="application/json"
-      data-turbo-track="reload"
-      phx-no-format
-    ><%= Phoenix.HTML.raw(translations(@locale)) %></script>
-    <script type="importmap" data-turbo-track="reload" phx-no-format><%= Phoenix.HTML.raw(importmap()) %></script>
-    <script type="module">
-      import "application"
-    </script>
+    {@native_scripts}
     <link
       :for={name <- ~w(achievements achievements_spectral achievements_unlocks)}
       rel="stylesheet"
       href={Assets.stylesheet_path(name <> ".css")}
-      data-turbo-track="reload"
+      data-turbo-track={!@native && "reload"}
     />
     <meta property="og:title" content={@view.name <> " — Dawarich"} />
     <meta property="og:description" content={@view.description} />
@@ -62,6 +64,22 @@ defmodule DawarichWeb.AchievementPublicHTML do
     <meta property="og:image:alt" content={@view.name <> " — " <> @view.metric} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content={@url <> "/og.png"} />
+    """
+  end
+
+  defp legacy_scripts(assigns) do
+    ~H"""
+    <script
+      :if={!@embed}
+      id="i18n-translations"
+      type="application/json"
+      data-turbo-track="reload"
+      phx-no-format
+    ><%= Phoenix.HTML.raw(translations(@locale)) %></script>
+    <script type="importmap" data-turbo-track="reload" phx-no-format><%= Phoenix.HTML.raw(importmap()) %></script>
+    <script type="module">
+      import "application"
+    </script>
     """
   end
 
