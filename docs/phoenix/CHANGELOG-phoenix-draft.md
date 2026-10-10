@@ -134,3 +134,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Recheck public sharing and owner state before returning prepared native report data. [FRB-NATIVE-M5-PUBLIC-DELIVERY](fixed-rails-bugs.md#frb-native-m5-public-delivery--revoked-report-can-finish-an-in-flight-read)
 
 - Recheck achievement sharing and owner existence before delivering prepared public badges. [FRB-NATIVE-M5-ACHIEVEMENT-DELIVERY](fixed-rails-bugs.md#frb-native-m5-achievement-delivery--revoked-achievement-can-finish-an-in-flight-read)
+
+- Extend public achievement delivery admission to PNG rendering, warmed OG images, and the final native/retained HTML response. FRB-NATIVE-M5-ACHIEVEMENT-DELIVERY.

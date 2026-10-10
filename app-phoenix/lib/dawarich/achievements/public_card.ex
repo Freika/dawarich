@@ -2,9 +2,11 @@ defmodule Dawarich.Achievements.PublicCard do
   @moduledoc false
   alias Dawarich.Achievements.{Registry, UiPresenter, UiSilhouettes, UiText}
   alias DawarichWeb.Locale
+  alias Dawarich.Sharing.Delivery
 
   def load(repo, uuid, context) do
-    carrier = admission(repo, uuid)
+    target = {:achievement, repo, uuid}
+    carrier = Delivery.admit(target, DateTime.utc_now())
 
     result =
       case carrier do
@@ -28,26 +30,20 @@ defmodule Dawarich.Achievements.PublicCard do
               :not_found
           end
 
-        [] ->
+        nil ->
           :not_found
       end
 
     case result do
       {:ok, page} ->
-        Map.get(context, :after_read, fn -> :ok end).()
-        if admission(repo, uuid) == carrier, do: {:ok, page}, else: :not_found
+        case Delivery.deliver(target, carrier, page, context) do
+          {:ok, page} -> {:ok, page}
+          _ -> :not_found
+        end
 
       other ->
         other
     end
-  end
-
-  defp admission(repo, uuid) do
-    query(
-      repo,
-      "SELECT p.user_id,p.achievement_key,u.settings FROM achievement_progresses p JOIN users u ON u.id=p.user_id AND u.deleted_at IS NULL WHERE p.sharing_uuid=$1 AND p.sharing_enabled=true",
-      [uuid]
-    )
   end
 
   defp read(repo, owner_id, definition, settings, uuid, _context) do

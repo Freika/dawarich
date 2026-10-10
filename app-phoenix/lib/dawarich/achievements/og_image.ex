@@ -2,6 +2,7 @@ defmodule Dawarich.Achievements.OgImage do
   @moduledoc false
   alias Dawarich.Achievements.{PublicCard, UiText}
   alias Dawarich.{Storage, TtlCache}
+  alias Dawarich.Sharing.Delivery
   require EEx
   EEx.function_from_file(:defp, :template, Path.join(__DIR__, "og_image.svg.eex"), [:assigns])
 
@@ -13,6 +14,9 @@ defmodule Dawarich.Achievements.OgImage do
   }
 
   def call(repo, uuid, opts \\ []) do
+    target = {:achievement, repo, uuid}
+    admitted = Delivery.admit(target, DateTime.utc_now())
+
     case repo.query!(
            "SELECT p.id,p.user_id,p.achievement_key,u.settings,COALESCE(e.state,'{}'::jsonb) FROM achievement_progresses p JOIN users u ON u.id=p.user_id AND u.deleted_at IS NULL LEFT JOIN achievement_progresses e ON e.user_id=p.user_id AND e.achievement_key='exploration' WHERE p.sharing_uuid=$1 AND p.sharing_enabled=true",
            [uuid],
@@ -30,7 +34,10 @@ defmodule Dawarich.Achievements.OgImage do
                 Keyword.get(opts, :render, &render/1).(view)
               end)
 
-            {:ok, png}
+            case Delivery.deliver(target, admitted, png, opts) do
+              {:ok, png} -> {:ok, png}
+              _ -> :not_found
+            end
 
           :not_found ->
             :not_found

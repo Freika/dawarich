@@ -3,6 +3,7 @@ defmodule DawarichWeb.AchievementPublicPage do
   @behaviour Plug
   import Plug.Conn
   alias Dawarich.Achievements.UiText
+  alias Dawarich.Sharing.Delivery
 
   alias DawarichWeb.{
     AchievementPublic,
@@ -46,6 +47,11 @@ defmodule DawarichWeb.AchievementPublicPage do
         |> halt()
 
       {:ok, view} ->
+        target = {:achievement, Dawarich.Repo, view.uuid}
+
+        {target, admitted} =
+          conn.private[:public_delivery] || {target, Delivery.admit(target, DateTime.utc_now())}
+
         conn = assign(conn, :locale, view.locale)
         embed = conn.params["embed"] == "1"
 
@@ -64,10 +70,18 @@ defmodule DawarichWeb.AchievementPublicPage do
         body =
           if conn.method == "HEAD" or conn.private[:dawarich_method] == "HEAD", do: "", else: html
 
-        conn
-        |> put_resp_header("cache-control", "max-age=0, private, must-revalidate")
-        |> send_resp(200, body)
-        |> halt()
+        case Delivery.deliver(target, admitted, body,
+               after_read: conn.private[:dawarich_before_delivery] || fn -> :ok end
+             ) do
+          {:ok, body} ->
+            conn
+            |> put_resp_header("cache-control", "max-age=0, private, must-revalidate")
+            |> send_resp(200, body)
+            |> halt()
+
+          _ ->
+            execute(conn, :not_found)
+        end
     end
   rescue
     _ -> DawarichWeb.AchievementActions.Response.terminal(conn)

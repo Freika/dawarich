@@ -21,6 +21,18 @@ defmodule Dawarich.Sharing.Delivery do
 
   def resource_snapshot(_), do: nil
 
+  defp admission({:achievement, repo, uuid}, _now, _opts) do
+    case repo.query!(
+           "SELECT p.user_id,p.achievement_key,u.settings FROM achievement_progresses p JOIN users u ON u.id=p.user_id AND u.deleted_at IS NULL WHERE p.sharing_uuid=$1 AND p.sharing_enabled=true",
+           [uuid],
+           log: false,
+           prepare: :unnamed
+         ).rows do
+      [] -> nil
+      carrier -> carrier
+    end
+  end
+
   defp admission({kind, uuid, zone}, now, _opts) when kind in [:digest, :month] do
     table = if kind == :digest, do: "digests", else: "stats"
 
