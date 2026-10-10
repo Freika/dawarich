@@ -1,7 +1,9 @@
 defmodule DawarichWeb.PointsLive.Index do
   @moduledoc false
   use DawarichWeb, :live_view
+  alias Phoenix.LiveView.JS
   alias Dawarich.Points.Pages
+  alias DawarichWeb.PointsLive.Actions
 
   alias DawarichWeb.{
     DataAsync,
@@ -25,13 +27,14 @@ defmodule DawarichWeb.PointsLive.Index do
        total_pages: 0,
        geocoding: false,
        unit: "km",
-       selected: MapSet.new()
+       selected: MapSet.new(),
+       point_dialog: nil
      )}
   end
 
   @impl true
   def handle_params(params, _uri, socket) do
-    socket = socket |> DataAsync.advance() |> assign(:selected, MapSet.new())
+    socket = socket |> DataAsync.advance() |> Actions.reset()
 
     with {:ok, scope} <- NativeDataAuth.scope(socket),
          {:ok, result} <-
@@ -72,8 +75,8 @@ defmodule DawarichWeb.PointsLive.Index do
     end
   end
 
-  def handle_event(_event, _params, socket),
-    do: {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+  def handle_event(event, params, socket),
+    do: {:noreply, Actions.event(event, params, socket)}
 
   @impl true
   def handle_async(name, result, socket) do
@@ -89,6 +92,48 @@ defmodule DawarichWeb.PointsLive.Index do
     ~H"""
     <div class="w-full min-w-0 my-5">
       <h1 class="text-3xl font-bold mb-6 break-words">{t(@locale, "points.index.points", %{})}</h1>
+      <div
+        :if={@point_dialog}
+        id="points_dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="points_dialog_title"
+        class="fixed inset-0 z-50 bg-base-100/95 p-6 flex flex-col items-center justify-center gap-4 min-w-0"
+        phx-window-keydown="cancel_action"
+        phx-key="escape"
+        phx-mounted={JS.focus(to: "#points_cancel")}
+      >
+        <h2 id="points_dialog_title" class="text-xl break-words">
+          {t(
+            @locale,
+            if(@point_dialog == :delete,
+              do: "points.index.delete_selected",
+              else: "points.index.export"
+            ),
+            %{}
+          )}
+        </h2>
+        <div class="flex flex-wrap gap-3">
+          <button id="points_cancel" phx-click="cancel_action" class="btn whitespace-normal h-auto">{t(
+            @locale,
+            "cancel",
+            %{}
+          )}</button>
+          <button
+            id="points_confirm"
+            phx-click="confirm_action"
+            phx-disable-with="…"
+            class="btn btn-primary whitespace-normal h-auto"
+          >{t(
+            @locale,
+            if(@point_dialog == :delete,
+              do: "points.index.delete_selected",
+              else: "points.index.export"
+            ),
+            %{}
+          )}</button>
+        </div>
+      </div>
       <%= if @window do %>
         <PointListControls.controls
           locale={@locale}

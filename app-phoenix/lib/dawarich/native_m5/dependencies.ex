@@ -23,6 +23,26 @@ defmodule Dawarich.NativeM5.Dependencies do
 
   def admit(_), do: {:error, :stale_session}
 
+  def request_point_export(scope, export, request_id, repo) do
+    key = "native-points-export:#{scope.user.id}:#{request_id}"
+
+    case repo.query!(
+           "SELECT aggregate_id FROM public.job_outbox WHERE command_type='exports.points' AND dedupe_key=$1",
+           [key], log: false).rows do
+      [[id]] ->
+        {:ok, id}
+
+      [] ->
+        with {:ok, id} <- Dawarich.PointExports.create(export, scope.user, scope.locale, repo) do
+          repo.query!(
+            "UPDATE public.job_outbox SET dedupe_key=$1 WHERE command_type='exports.points' AND aggregate_id=$2",
+            [key, id], log: false)
+
+          {:ok, id}
+        end
+    end
+  end
+
   defp identity(%{encrypted_password: hash}) when is_binary(hash) and byte_size(hash) >= 29,
     do: :crypto.hash(:sha256, String.slice(hash, 0, 29))
 
