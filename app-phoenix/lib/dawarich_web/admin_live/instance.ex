@@ -3,10 +3,11 @@ defmodule DawarichWeb.AdminLive.Instance do
   use DawarichWeb, :live_view
 
   alias Dawarich.Admin.{Instance, InstancePage}
-  alias DawarichWeb.{AdminInstance, SettingsParts}
+  alias DawarichWeb.{AdminInstance, AdminUI, SettingsParts}
 
   @timeout 10_000
   @tests %{"test_geocoding" => :geocoding, "test_map_matching" => :map_matching}
+  @crash_errors %{geocoding: "Geocoding::Error", map_matching: "connection_failed"}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -16,7 +17,10 @@ defmodule DawarichWeb.AdminLive.Instance do
        two_factor: SettingsParts.two_factor_available?(),
        saves: 0,
        testing: MapSet.new(),
-       data: nil
+       timers: %{},
+       data: nil,
+       section: nil,
+       health: nil
      )}
   end
 
@@ -46,25 +50,28 @@ defmodule DawarichWeb.AdminLive.Instance do
     else
       scope = socket.assigns.current_scope
       opts = opts()
-      Process.send_after(self(), {:admin_async_timeout, name}, @timeout)
+      token = make_ref()
+      timer = Process.send_after(self(), {:admin_async_timeout, name, token}, @timeout)
 
       {:noreply,
        socket
        |> update(:testing, &MapSet.put(&1, name))
+       |> update(:timers, &Map.put(&1, name, {token, timer}))
        |> start_async(name, fn -> run(name, scope, opts) end)}
     end
   end
 
-  def handle_event(_event, _params, socket), do: {:noreply, socket}
+  def handle_event(_event, _params, socket),
+    do: {:noreply, AdminUI.refuse(socket, :invalid_input)}
 
   @impl true
   def handle_async(name, result, socket) do
     if MapSet.member?(socket.assigns.testing, name) do
-      socket = update(socket, :testing, &MapSet.delete(&1, name))
+      socket = finish(socket, name)
 
       case result do
         {:ok, outcome} -> {:noreply, tested(socket, name, outcome)}
-        {:exit, _} -> {:noreply, failed(socket, name, "Geocoding::Error")}
+        {:exit, _} -> {:noreply, failed(socket, name, Map.fetch!(@crash_errors, name))}
       end
     else
       {:noreply, socket}
@@ -72,15 +79,13 @@ defmodule DawarichWeb.AdminLive.Instance do
   end
 
   @impl true
-  def handle_info({:admin_async_timeout, name}, socket) do
-    if MapSet.member?(socket.assigns.testing, name) do
-      {:noreply,
-       socket
-       |> cancel_async(name)
-       |> update(:testing, &MapSet.delete(&1, name))
-       |> failed(name, "timeout")}
-    else
-      {:noreply, socket}
+  def handle_info({:admin_async_timeout, name, token}, socket) do
+    case socket.assigns.timers do
+      %{^name => {^token, _timer}} ->
+        {:noreply, socket |> cancel_async(name) |> finish(name) |> failed(name, "timeout")}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -88,6 +93,12 @@ defmodule DawarichWeb.AdminLive.Instance do
 
   @impl true
   def render(assigns), do: AdminInstance.show(assigns)
+
+  defp finish(socket, name) do
+    {{_token, timer}, timers} = Map.pop(socket.assigns.timers, name)
+    Process.cancel_timer(timer)
+    assign(socket, testing: MapSet.delete(socket.assigns.testing, name), timers: timers)
+  end
 
   defp load(socket, section) do
     case Instance.page(socket.assigns.current_scope, section, opts()) do
@@ -147,21 +158,7 @@ defmodule DawarichWeb.AdminLive.Instance do
   defp run(:geocoding, scope, opts), do: Instance.test_geocoding(scope, opts)
   defp run(:map_matching, scope, opts), do: Instance.test_map_matching(scope, opts)
 
-  defp refuse(socket, :stale_session), do: redirect(socket, to: "/users/sign_in")
-
-  defp refuse(socket, :oidc),
-    do: alert(socket, "controllers.application.admin_writes_unavailable_with_oidc")
-
-  defp refuse(socket, :encryption),
-    do: alert(socket, "controllers.application.admin_encryption_unavailable")
-
-  defp refuse(socket, :unauthorized),
-    do:
-      socket
-      |> alert("controllers.application.you_are_not_authorized_to_perform_this_action")
-      |> redirect(to: "/")
-
-  defp refuse(socket, _reason), do: alert(socket, "controllers.application.admin_action_failed")
+  defp refuse(socket, reason), do: AdminUI.refuse(socket, reason)
 
   defp notice(socket, key), do: put_flash(socket, :notice, t(socket.assigns.locale, key, %{}))
   defp alert(socket, key), do: put_flash(socket, :alert, t(socket.assigns.locale, key, %{}))

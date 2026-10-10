@@ -259,7 +259,7 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
     end
   end
 
-  test "OIDC background visits and geocoding events refuse clearly", c do
+  test "OIDC refuses the visits toggle clearly and still dispatches background jobs", c do
     previous = Application.get_env(:dawarich, Background)
 
     Application.put_env(:dawarich, Background, %{
@@ -273,12 +273,12 @@ defmodule DawarichWeb.BackgroundJobsLiveTest do
 
     {:ok, view, _} = live(NativeAdminUI.conn(c.target), "/settings/background_jobs")
     alert = NativeAdminUI.escaped("controllers.application.admin_writes_unavailable_with_oidc")
+    render_hook(view, "open_job", %{"name" => "start_reverse_geocoding"})
+    refute render_hook(view, "request_job", %{}) =~ alert
+    assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
     render_hook(view, "open_visits", %{})
     assert render_hook(view, "update_visits", %{}) =~ alert
-    render_hook(view, "open_job", %{"name" => "start_reverse_geocoding"})
-    assert render_hook(view, "request_job", %{}) =~ alert
     assert Accounts.settings(c.target.id)["visits_suggestions_enabled"] == nil
-    assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[0]]
     Application.put_env(:dawarich, Background, previous)
   end
 

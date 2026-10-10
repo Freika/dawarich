@@ -44,10 +44,6 @@ defmodule DawarichWeb.AdminWrites.Request do
         context
         |> Map.put(:method, method)
         |> Map.put(:action, action)
-        |> Map.put(
-          :form_order,
-          raw |> URI.query_decoder() |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
-        )
         |> Map.put(:locale, Locale.resolve(nil, actor, conn.assigns.rails_session))
 
       {:ok, conn, actor, Map.delete(params, "_method"), context}

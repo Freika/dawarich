@@ -14,16 +14,13 @@ defmodule DawarichWeb.NativeAdminRoutes do
             container: {:div, class: "contents"}
 
           live "/settings/users/:id/edit", DawarichWeb.SettingsLive.UserEdit, :edit,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.AdminGate, :users?}}
+            container: {:div, class: "contents"}
 
           live "/settings/users/:id", DawarichWeb.SettingsLive.UserShow, :show,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.AdminGate, :users?}}
+            container: {:div, class: "contents"}
 
           live "/settings/users", DawarichWeb.SettingsLive.UsersIndex, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.AdminGate, :users?}}
+            container: {:div, class: "contents"}
         end
       end
 

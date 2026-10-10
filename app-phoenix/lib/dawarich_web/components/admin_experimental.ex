@@ -58,7 +58,7 @@ defmodule DawarichWeb.AdminExperimental do
             <input type="hidden" name="section" value="experimental" />
             <div class="divide-y divide-base-content/10">
               <AdminSettingField.field
-                :for={key <- Enum.map(entry.config ++ entry.toggles, &to_string/1)}
+                :for={key <- Dawarich.Admin.InstancePage.entry_fields(entry)}
                 locale={@locale}
                 field={@data.fields[key]}
               />

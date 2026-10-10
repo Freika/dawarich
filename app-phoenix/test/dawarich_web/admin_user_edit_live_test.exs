@@ -181,30 +181,27 @@ defmodule DawarichWeb.AdminUserEditLiveTest do
     assert Dawarich.Auth.RegistrationSetting.fetch() == {:ok, true}
   end
 
-  test "edit handler crashes produce a generic alert without logging submitted values" do
-    socket = %Phoenix.LiveView.Socket{
-      endpoint: @endpoint,
-      assigns: %{__changed__: %{}, locale: "en", flash: %{}, form_version: 0}
-    }
+  test "edit handler crashes produce a generic alert without logging submitted values", c do
+    {:ok, view, _} = edit(c, c.target.id)
+
+    Application.put_env(:dawarich, Dawarich.Admin.Users, %{
+      repo: Dawarich.Test.CredentialCrashRepo
+    })
+
+    on_exit(fn -> Application.put_env(:dawarich, Dawarich.Admin.Users, %{}) end)
 
     logs =
       capture_log(fn ->
-        assert {:noreply, result} =
-                 DawarichWeb.SettingsLive.UserEdit.handle_event(
-                   "update_user",
-                   %{
-                     "user" => %{
-                       "email" => "synthetic-edit-crash-email",
-                       "password" => "synthetic-edit-crash-password"
-                     }
-                   },
-                   socket
-                 )
-
-        assert result.assigns.flash["alert"] ==
-                 DawarichWeb.Translate.t("en", "controllers.application.admin_action_failed", %{})
+        assert render_hook(view, "update_user", %{
+                 "user" => %{
+                   "email" => "synthetic-edit-crash@example.invalid",
+                   "password" => "synthetic-edit-crash-password"
+                 }
+               }) =~ NativeAdminUI.escaped("controllers.application.admin_action_failed")
       end)
 
+    assert logs =~ "admin users call failed: ArgumentError"
     refute logs =~ "synthetic-edit-crash"
+    refute inspect(:sys.get_state(view.pid), limit: :infinity) =~ "synthetic-edit-crash-password"
   end
 end

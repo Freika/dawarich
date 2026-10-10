@@ -8,7 +8,7 @@
     two_factor={@two_factor}
     native
   />
-  <div class="max-w-5xl">
+  <div :if={@data} class="max-w-5xl">
     <p class="max-w-3xl mb-6 text-base-content/70 [text-wrap:pretty]">
       {t(@locale, "admin.settings.show.intro", %{})}
     </p>

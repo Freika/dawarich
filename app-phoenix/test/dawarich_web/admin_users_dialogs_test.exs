@@ -1,3 +1,8 @@
+defmodule Dawarich.Test.CredentialCrashRepo do
+  def transaction(_fun), do: raise(ArgumentError, "synthetic credential write crash")
+  def query!(_sql, _params, _opts), do: raise(ArgumentError, "synthetic credential write crash")
+end
+
 defmodule Dawarich.Test.LastAdminUIProbe do
   alias Dawarich.Repo
   defdelegate transaction(fun), to: Repo
@@ -176,31 +181,25 @@ defmodule DawarichWeb.AdminUsersDialogsTest do
     assert Accounts.get(c.target.id) == nil
   end
 
-  test "credential handler crashes produce a generic alert without logging submitted values" do
-    socket = %Phoenix.LiveView.Socket{
-      endpoint: @endpoint,
-      assigns: %{__changed__: %{}, locale: "en", flash: %{}, form_version: 0}
-    }
+  test "credential handler crashes produce a generic alert without logging submitted values",
+       c do
+    {:ok, view, _} = live(NativeAdminUI.conn(c.actor), "/settings/users")
+    Application.put_env(:dawarich, Users, %{repo: Dawarich.Test.CredentialCrashRepo})
+    render_hook(view, "open_create", %{})
 
     logs =
       capture_log(fn ->
-        assert {:noreply, result} =
-                 DawarichWeb.SettingsLive.UsersIndex.handle_event(
-                   "create_user",
-                   %{
-                     "user" => %{
-                       "email" => "synthetic-crash-email",
-                       "password" => "synthetic-crash-password"
-                     }
-                   },
-                   socket
-                 )
-
-        assert result.assigns.flash["alert"] ==
-                 DawarichWeb.Translate.t("en", "controllers.application.admin_action_failed", %{})
+        assert render_hook(view, "create_user", %{
+                 "user" => %{
+                   "email" => "synthetic-crash@example.invalid",
+                   "password" => "synthetic-crash-password"
+                 }
+               }) =~ NativeAdminUI.escaped("controllers.application.admin_action_failed")
       end)
 
+    assert logs =~ "admin users call failed: ArgumentError"
     refute logs =~ "synthetic-crash"
+    refute inspect(:sys.get_state(view.pid), limit: :infinity) =~ "synthetic-crash-password"
   end
 
   test "open create and delete dialogs have exactly one label per control" do

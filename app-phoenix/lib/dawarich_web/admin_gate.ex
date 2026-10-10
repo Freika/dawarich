@@ -1,17 +1,10 @@
 defmodule DawarichWeb.AdminGate do
   @moduledoc false
 
-  alias Dawarich.Admin.UsersPage
   alias Dawarich.Auth.Admission
   alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
 
   @markers ~w(client aff via referral dawarich_client invitation_token pending_import_ticket)
-
-  def users?(conn, params) do
-    eligible?(conn, :admin) and users_state?(conn, params)
-  rescue
-    _ -> false
-  end
 
   def background?(conn, _params),
     do: eligible?(conn, :background) and DawarichWeb.OperatorRedirect.authorized?(conn)
@@ -49,24 +42,5 @@ defmodule DawarichWeb.AdminGate do
           do: segment |> String.split("=", parts: 2) |> hd() |> URI.decode_www_form()
 
     length(keys) == length(Enum.uniq(keys))
-  end
-
-  defp users_state?(conn, %{"id" => id}) when is_binary(id) do
-    if String.length(id) <= 18 and id =~ ~r/\A[1-9][0-9]*\z/ do
-      user = RailsAuth.call(conn, []).assigns.current_user
-      kind = if String.ends_with?(conn.request_path, "/edit"), do: :edit, else: :show
-      match?({:ok, _}, UsersPage.find(user, String.to_integer(id), kind))
-    else
-      false
-    end
-  end
-
-  defp users_state?(conn, params) do
-    if Map.has_key?(params, "id") do
-      false
-    else
-      user = RailsAuth.call(conn, []).assigns.current_user
-      match?({:ok, _}, UsersPage.list(user, Plug.Conn.Query.decode(conn.query_string)))
-    end
   end
 end

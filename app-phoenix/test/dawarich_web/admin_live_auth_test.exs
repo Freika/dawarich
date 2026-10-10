@@ -94,6 +94,9 @@ defmodule DawarichWeb.AdminLiveAuthTest do
     current = Accounts.get(10001)
     assert {:halt, unsupported} = AdminLiveAuth.on_mount(:admin, %{}, session, socket(current))
     assert unsupported.redirected == {:redirect, %{to: "/settings/general", status: 302}}
+
+    assert unsupported.assigns.flash["alert"] ==
+             DawarichWeb.Translate.t("en", "controllers.application.admin_action_failed", %{})
   end
 
   test "native admin mode assigns a scope and drops an async result after demotion" do

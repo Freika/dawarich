@@ -32,31 +32,6 @@ defmodule DawarichWeb.AdminGateTest do
     :ok
   end
 
-  test "users gate preserves Cloud-before-auth refusal and missing IDs" do
-    assert true == AdminGate.users?(signed(10001, "/settings/users"), %{})
-    assert true == AdminGate.users?(signed(10001, "/settings/users/10002"), %{"id" => "10002"})
-
-    for id <- ~w(export 99999 0 -1 010002 1x 9999999999999999999999999) do
-      assert false == AdminGate.users?(signed(10001, "/settings/users/" <> id), %{"id" => id})
-    end
-
-    assert false == AdminGate.users?(signed(10002, "/settings/users"), %{})
-    assert false == AdminGate.users?(conn(:get, "/settings/users"), %{})
-    assert false == AdminGate.users?(signed(10001, "/settings/users?search[]=a"), %{})
-    assert false == AdminGate.users?(signed(10001, "/settings/users?page[]=2"), %{})
-    Repo.query!("UPDATE users SET api_key = '' WHERE id = 10002", [], log: false)
-    assert false == AdminGate.users?(signed(10001, "/settings/users/10002"), %{"id" => "10002"})
-
-    assert true ==
-             AdminGate.users?(signed(10001, "/settings/users/10002/edit"), %{"id" => "10002"})
-
-    Repo.query!("UPDATE users SET deleted_at = now() WHERE id = 10002", [], log: false)
-    assert false == AdminGate.users?(signed(10001, "/settings/users/10002"), %{"id" => "10002"})
-    System.put_env("SELF_HOSTED", "false")
-    assert false == AdminGate.users?(signed(10001, "/settings/users"), %{})
-    assert false == AdminGate.users?(conn(:get, "/settings/users"), %{})
-  end
-
   test "background gate allows a self-hosted nonadmin" do
     assert true == AdminGate.background?(signed(10002, "/settings/background_jobs"), %{})
     assert false == AdminGate.background?(conn(:get, "/settings/background_jobs"), %{})

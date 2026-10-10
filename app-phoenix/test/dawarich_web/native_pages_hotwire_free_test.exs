@@ -184,4 +184,15 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
 
     assert Enum.count(saving, & &1) >= 2
   end
+
+  test "LiveView event telemetry, which carries raw form params, reaches only LiveView's own logger" do
+    for prefix <- [
+          [:phoenix, :live_view, :handle_event],
+          [:phoenix, :live_component, :handle_event]
+        ],
+        handler <- :telemetry.list_handlers(prefix) do
+      assert match?({Phoenix.LiveView.Logger, _}, handler.id),
+             "unexpected #{inspect(handler.id)} on #{inspect(handler.event_name)}"
+    end
+  end
 end

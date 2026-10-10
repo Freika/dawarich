@@ -182,8 +182,8 @@ defmodule Dawarich.Admin.UsersPageTest do
     assert {:error, :not_found} = find(actor, "oops", :edit)
   end
 
-  defp list(actor, query), do: UsersPage.list(actor, query, :native)
-  defp find(actor, id, kind), do: UsersPage.find(actor, id, kind, :native)
+  defp list(actor, query), do: UsersPage.list(actor, query)
+  defp find(actor, id, kind), do: UsersPage.find(actor, id, kind)
 
   defp fixture(name), do: Jason.decode!(File.read!("test/fixtures/admin_users/#{name}.json"))
 

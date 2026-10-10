@@ -1,5 +1,6 @@
 defmodule Dawarich.Admin.Background do
   @moduledoc false
+  require Logger
 
   alias Dawarich.Admin.{Access, BackgroundPage, JobHealth, SettingWrites}
   alias Dawarich.Imports.IntegrationCommands
@@ -18,7 +19,7 @@ defmodule Dawarich.Admin.Background do
       {:ok, Map.put(BackgroundPage.read(scope.user), :health, health)}
     end
   rescue
-    _ -> {:error, :unavailable}
+    error -> failed(error, :unavailable)
   end
 
   def update_visits(scope, params) do
@@ -30,12 +31,12 @@ defmodule Dawarich.Admin.Background do
       end
     end
   rescue
-    _ -> {:error, :unavailable}
+    error -> failed(error, :unavailable)
   end
 
   def request_job(scope, name, operator \\ nil) do
     with {:ok, scope} <-
-           Access.admit(scope, :background, write: true, env: env(), operator: operator),
+           Access.admit(scope, :background, env: env(), operator: operator),
          :ok <- hosted_job(name) do
       opts = [locale: scope.locale, self_hosted: Dawarich.ReleaseMigration.self_hosted?(env())]
       opts = Keyword.put(opts, :oban, Map.get(config(), :oban, Oban))
@@ -47,7 +48,7 @@ defmodule Dawarich.Admin.Background do
       end
     end
   rescue
-    _ -> {:error, :enqueue_failed}
+    error -> failed(error, :enqueue_failed)
   end
 
   defp hosted_job(name) do
@@ -74,4 +75,9 @@ defmodule Dawarich.Admin.Background do
   defp config, do: Application.get_env(:dawarich, __MODULE__, %{})
   defp repo, do: Map.get(config(), :repo, Repo)
   defp env, do: Map.get(config(), :env, System.get_env())
+
+  defp failed(error, reason) do
+    Logger.warning("admin background call failed: " <> inspect(error.__struct__))
+    {:error, reason}
+  end
 end

@@ -2,7 +2,6 @@ defmodule Dawarich.LogRedaction do
   @moduledoc false
 
   @filtered "[FILTERED]"
-  @words ~w(password api_key token secret)
   @depth 12
 
   def install,
@@ -59,12 +58,14 @@ defmodule Dawarich.LogRedaction do
   end
 
   defp scrub_binary(binary) do
-    if String.contains?(binary, "=") and String.printable?(binary) and
+    if String.printable?(binary) and
          Enum.any?(words(), &String.contains?(String.downcase(binary), &1)) do
+      words = Enum.map_join(words(), "|", &Regex.escape/1)
+      key = "[^\\s&=?\"]*(?:#{words})[^\\s&=\"]*"
+
       binary
-      |> URI.query_decoder()
-      |> Enum.map(fn {key, value} -> {key, if(sensitive?(key), do: @filtered, else: value)} end)
-      |> URI.encode_query()
+      |> then(&Regex.replace(~r/(#{key}=)[^&\s]*/i, &1, "\\1#{@filtered}"))
+      |> then(&Regex.replace(~r/("#{key}"\s*:\s*)"(?:[^"\\]|\\.)*"/i, &1, ~s(\\1"#{@filtered}")))
     else
       binary
     end
@@ -81,5 +82,5 @@ defmodule Dawarich.LogRedaction do
 
   defp sensitive?(_key), do: false
 
-  defp words, do: @words
+  defp words, do: Application.fetch_env!(:dawarich, __MODULE__)[:words]
 end

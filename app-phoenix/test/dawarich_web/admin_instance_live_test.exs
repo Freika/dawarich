@@ -3,7 +3,7 @@ defmodule DawarichWeb.AdminInstanceLiveTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   alias Dawarich.Repo
-  alias Dawarich.Test.RailsUser
+  alias Dawarich.Test.{NativeAdminUI, RailsUser}
 
   @endpoint DawarichWeb.Endpoint
   @env ~w(DAWARICH_RAILS SELF_HOSTED STORE_GEODATA OIDC_CLIENT_ID OIDC_CLIENT_SECRET)
@@ -16,6 +16,10 @@ defmodule DawarichWeb.AdminInstanceLiveTest do
         do: raise(ArgumentError, "synthetic save crash"),
         else: Dawarich.Repo.query!(sql, params, opts)
     end
+  end
+
+  defmodule AtlasCrashRepo do
+    def query!(_sql, _params, _opts), do: raise(ArgumentError, "synthetic Atlas test crash")
   end
 
   setup do
@@ -107,7 +111,7 @@ defmodule DawarichWeb.AdminInstanceLiveTest do
     refute view |> element("[data-testid=instance-settings-form-geoapify]") |> render() == before
   end
 
-  test "the Atlas test runs once in the background and a timeout shows the failure alert" do
+  test "the Atlas test runs once in the background and only its own timeout shows the failure alert" do
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true])
     {:ok, port} = :inet.port(listener)
     owner = self()
@@ -133,8 +137,28 @@ defmodule DawarichWeb.AdminInstanceLiveTest do
     assert_receive {:atlas_connection, _}, 2000
     refute_receive {:atlas_connection, _}, 300
 
-    send(view.pid, {:admin_async_timeout, :map_matching})
+    {token, timer} = :sys.get_state(view.pid).socket.assigns.timers.map_matching
+    assert Process.read_timer(timer) > 8_000
+
+    send(view.pid, {:admin_async_timeout, :map_matching, make_ref()})
+    assert has_element?(view, "#test-map-matching[disabled]")
+    refute render(view) =~ "Atlas connection failed (timeout)."
+
+    send(view.pid, {:admin_async_timeout, :map_matching, token})
     assert render(view) =~ "Atlas connection failed (timeout)."
+    assert Process.read_timer(timer) == false
+    refute has_element?(view, "#test-map-matching[disabled]")
+  end
+
+  test "a crashing Atlas test shows its own failure alert and frees the button" do
+    {:ok, view, _} = live_admin("/admin/settings?section=experimental")
+    Application.put_env(:dawarich, :admin_instance_opts, repo: AtlasCrashRepo)
+
+    view |> element("#test-map-matching") |> render_click()
+    html = render_async(view)
+
+    assert html =~ "Atlas connection failed (connection_failed)."
+    refute html =~ "Geocoding::Error"
     refute has_element?(view, "#test-map-matching[disabled]")
   end
 
@@ -175,32 +199,24 @@ defmodule DawarichWeb.AdminInstanceLiveTest do
     assert Process.alive?(view.pid)
   end
 
+  test "a failing first load shows the generic alert instead of crashing" do
+    Application.put_env(:dawarich, :admin_instance_opts, repo: AtlasCrashRepo)
+    {:ok, view, html} = live_admin("/admin/settings?section=points")
+
+    assert html =~ "Something went wrong. Please try again."
+    assert render(view) =~ "Something went wrong. Please try again."
+    refute has_element?(view, "#instance-settings-sections")
+    assert Process.alive?(view.pid)
+  end
+
   test "the page stays within the inventory query budget plus the admission read" do
     {conn, static} =
-      queries(fn ->
+      NativeAdminUI.queries(fn ->
         get(RailsUser.signed_in(16101) |> RailsUser.connecting_as(16101), "/admin/settings")
       end)
 
-    {_, connected} = queries(fn -> {:ok, _view, _} = live(conn) end)
-    assert static <= 19
-    assert connected <= 17 + 1
-  end
-
-  def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
-
-  defp queries(fun) do
-    id = "admin-instance-budget-#{System.unique_integer([:positive])}"
-    :telemetry.attach(id, [:dawarich, :repo, :query], &__MODULE__.handle_query/4, self())
-    result = fun.()
-    :telemetry.detach(id)
-    {result, drain(0)}
-  end
-
-  defp drain(n) do
-    receive do
-      :query -> drain(n + 1)
-    after
-      0 -> n
-    end
+    {_, connected} = NativeAdminUI.queries(fn -> {:ok, _view, _} = live(conn) end)
+    assert length(static) <= 19
+    assert length(connected) <= 17 + 1
   end
 end

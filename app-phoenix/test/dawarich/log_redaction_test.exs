@@ -68,11 +68,14 @@ defmodule Dawarich.LogRedactionTest do
       capture_log(fn ->
         Logger.error(fn -> JSON.encode_to_iodata!(%{event: "job:stop", id: "synthetic-id-7"}) end)
         Logger.error(fn -> ["visit ", ["user=7&password=", @password]] end)
+        Logger.error(fn -> JSON.encode_to_iodata!(%{source: "probe", api_key: @key}) end)
         Logger.flush()
       end)
 
     assert log =~ ~s("id":"synthetic-id-7")
-    assert log =~ "user=7"
+    assert log =~ "visit user=7&password=[FILTERED]"
+    assert log =~ ~s("source":"probe")
     refute log =~ @password
+    refute log =~ @key
   end
 end

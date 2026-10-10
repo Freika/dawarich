@@ -53,6 +53,39 @@ defmodule Dawarich.Build.NativeAssetsTest do
     refute Enum.any?(inputs, &String.contains?(&1, "app/javascript"))
   end
 
+  test "the demo adds at most 2 KB to the eagerly loaded native bundle", %{tmp_dir: dir} do
+    build!(dir)
+
+    outputs =
+      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
+
+    demo_bytes =
+      for path <- eager(outputs, [app], MapSet.new()),
+          {input, %{"bytesInOutput" => bytes}} <- outputs[path]["inputs"],
+          String.contains?(input, "demo"),
+          reduce: 0,
+          do: (sum -> sum + bytes)
+
+    assert demo_bytes in 1..2048
+  end
+
+  defp eager(_outputs, [], seen), do: seen
+
+  defp eager(outputs, [path | rest], seen) do
+    if MapSet.member?(seen, path) do
+      eager(outputs, rest, seen)
+    else
+      static =
+        for %{"kind" => "import-statement", "path" => import} <- outputs[path]["imports"],
+            Map.has_key?(outputs, import),
+            do: import
+
+      eager(outputs, static ++ rest, MapSet.put(seen, path))
+    end
+  end
+
   test "the vendored MapLibre module and the basemap styles the demo loads ship in the public root" do
     for path <-
           ~w(maplibre/6.4.1/maplibre-gl.mjs maps_maplibre/styles/light.json maps_maplibre/styles/dark.json) do

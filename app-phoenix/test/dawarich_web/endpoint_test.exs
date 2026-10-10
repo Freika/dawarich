@@ -57,7 +57,11 @@ defmodule DawarichWeb.EndpointTest do
              target
     end
 
-    for {path, status} <- [{"/sidekiq", 302}, {"/admin/flipper", 404}] do
+    for {path, status} <- [
+          {"/sidekiq", 302},
+          {"/admin/flipper", 404},
+          {"/settings/users/99999", 302}
+        ] do
       assert answered_by_phoenix(port, "GET #{path} HTTP/1.1\r\nHost: a\r\n#{cookie}\r\n") ==
                status
     end
@@ -80,9 +84,7 @@ defmodule DawarichWeb.EndpointTest do
           {"GET", "/settings/users/export?kind=all", ""},
           {"GET", "/trial/welcome?token=synthetic-invalid", ""},
           {"GET", "/settings/users/export/edit", ""},
-          {"GET", "/settings/users/99999", ""},
           {"GET", "/settings/users/10001.json", ""},
-          {"GET", "/settings/users", "Accept: application/json\r\n"},
           {"PATCH", "/settings/background_jobs", ""},
           {"POST", "/settings/background_jobs?job_name=start_immich_import", ""}
         ] do
@@ -139,7 +141,7 @@ defmodule DawarichWeb.EndpointTest do
           "a"
         )
 
-      assert match?(%{rails_gate: {DawarichWeb.AdminGate, :users?}}, route)
+      refute Map.has_key?(route, :rails_gate)
 
       assert true ==
                DawarichWeb.Strangler.gate_open?(route, Dawarich.Test.RailsUser.signed_in(10001))
@@ -1000,7 +1002,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /settings/users /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
+          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==

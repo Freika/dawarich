@@ -76,6 +76,32 @@ function lineFeature(coordinates) {
   }
 }
 
+export function mountDemoMap(container, maplibre, style, onReady) {
+  const map = new maplibre.Map({
+    container,
+    style,
+    center: [13.3954, 52.5185],
+    zoom: 14,
+    attributionControl: false,
+    scrollZoom: false,
+    dragRotate: false,
+    pitchWithRotate: false,
+  })
+  map.addControl(
+    new maplibre.NavigationControl({ showCompass: false }),
+    "top-right",
+  )
+  map.addControl(
+    new maplibre.AttributionControl({ compact: true }),
+    "bottom-right",
+  )
+  map.on("load", () => {
+    addDemoLayers(map, maplibre)
+    onReady()
+  })
+  return map
+}
+
 export function addDemoLayers(map, maplibre) {
   map.addSource("map-matching-demo-original", {
     type: "geojson",

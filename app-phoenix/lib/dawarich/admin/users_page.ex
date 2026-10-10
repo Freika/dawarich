@@ -11,12 +11,7 @@ defmodule Dawarich.Admin.UsersPage do
   @show_fields @list_fields <>
                  ", settings, api_key, sign_in_count, last_sign_in_ip, current_sign_in_ip"
 
-  def list(actor, query, mode \\ :legacy) do
-    result = read_list(actor, query)
-    if mode == :native or match?({:ok, _}, result), do: result, else: :rails
-  end
-
-  defp read_list(actor, query) do
+  def list(actor, query) do
     with true <- supported?(actor),
          {:ok, query} <- query(query),
          page = max(Dawarich.RubyInteger.to_i(query["page"]), 1),
@@ -53,12 +48,7 @@ defmodule Dawarich.Admin.UsersPage do
     _ -> {:error, :unavailable}
   end
 
-  def find(actor, id, kind, mode \\ :legacy) do
-    result = read_target(actor, id, kind)
-    if mode == :native or match?({:ok, _}, result), do: result, else: :rails
-  end
-
-  defp read_target(actor, id, kind) when is_integer(id) and id > 0 and kind in [:show, :edit] do
+  def find(actor, id, kind) when is_integer(id) and id > 0 and kind in [:show, :edit] do
     if supported?(actor) do
       columns = if kind == :show, do: @show_fields, else: "id, email, admin, status"
 
@@ -73,7 +63,7 @@ defmodule Dawarich.Admin.UsersPage do
     _ -> {:error, :unavailable}
   end
 
-  defp read_target(_actor, _id, _kind), do: {:error, :not_found}
+  def find(_actor, _id, _kind), do: {:error, :not_found}
 
   defp detail(_actor, %{status: status} = target, :edit) when status in 0..3, do: {:ok, target}
 

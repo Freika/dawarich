@@ -1,12 +1,4 @@
-const MODES = new Set(["original", "matched"])
-
-function theme() {
-  const root = document.documentElement
-  return root.getAttribute("data-theme")?.includes("dark") ||
-    root.classList.contains("dark")
-    ? "dark"
-    : "light"
-}
+const ACTIVE = { original: "btn-warning", matched: "btn-success" }
 
 async function defaultLoader() {
   const [maplibre, demo, styles] = await Promise.all([
@@ -14,7 +6,7 @@ async function defaultLoader() {
     import("../demo/map_matching_demo.js"),
     import("../demo/map_style.js"),
   ])
-  return { maplibre, demo, style: await styles.demoStyle(theme()) }
+  return { maplibre, demo, style: await styles.demoStyle() }
 }
 
 export const MapMatchingDemo = {
@@ -30,30 +22,16 @@ export const MapMatchingDemo = {
       const { maplibre, demo, style } = await (this.loader || defaultLoader)()
       if (this.destroyedAt) return
       this.demo = demo
-      this.map = new maplibre.Map({
-        container: this.el.querySelector("[data-demo-map]"),
+      this.map = demo.mountDemoMap(
+        this.el.querySelector("[data-demo-map]"),
+        maplibre,
         style,
-        center: [13.3954, 52.5185],
-        zoom: 14,
-        attributionControl: false,
-        scrollZoom: false,
-        dragRotate: false,
-        pitchWithRotate: false,
-      })
-      this.map.addControl(
-        new maplibre.NavigationControl({ showCompass: false }),
-        "top-right",
+        () => {
+          this.routeReady = true
+          this.showMode(this.mode)
+          this.el.querySelector("[data-demo-loading]")?.remove()
+        },
       )
-      this.map.addControl(
-        new maplibre.AttributionControl({ compact: true }),
-        "bottom-right",
-      )
-      this.map.on("load", () => {
-        demo.addDemoLayers(this.map, maplibre)
-        this.routeReady = true
-        this.showMode(this.mode)
-        this.el.querySelector("[data-demo-loading]")?.remove()
-      })
     } catch (error) {
       console.error("Map matching demo failed to initialize:", error)
     }
@@ -66,7 +44,7 @@ export const MapMatchingDemo = {
     this.map = null
   },
   showMode(mode) {
-    if (!MODES.has(mode)) return
+    if (!(mode in ACTIVE)) return
     this.mode = mode
     this.updateButtons()
     if (this.map && this.routeReady) this.demo.showMode(this.map, mode)
@@ -77,14 +55,7 @@ export const MapMatchingDemo = {
       button.setAttribute("aria-pressed", String(active))
       button.classList.toggle("btn-ghost", !active)
       button.classList.toggle("btn-outline", !active)
-      button.classList.toggle(
-        "btn-warning",
-        active && button.dataset.mode === "original",
-      )
-      button.classList.toggle(
-        "btn-success",
-        active && button.dataset.mode === "matched",
-      )
+      button.classList.toggle(ACTIVE[button.dataset.mode], active)
     }
   },
 }

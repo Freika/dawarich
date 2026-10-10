@@ -62,7 +62,7 @@ defmodule Dawarich.Admin.InstancePage do
        legacy: legacy
      }}
   rescue
-    _ -> :rails
+    _ -> {:error, :unavailable}
   end
 
   def section(data, param) do
@@ -74,11 +74,11 @@ defmodule Dawarich.Admin.InstancePage do
   def sections, do: Map.keys(@sections)
 
   def field_order("experimental"),
-    do:
-      Enum.flat_map(Dawarich.Experimental.entries(), &(&1.config ++ &1.toggles))
-      |> Enum.map(&to_string/1)
+    do: Enum.flat_map(Dawarich.Experimental.entries(), &entry_fields/1)
 
   def field_order(section), do: section_keys(section)
+
+  def entry_fields(entry), do: Enum.map(entry.config ++ entry.toggles, &to_string/1)
 
   def section_status(data, section) do
     fields = Enum.map(section_keys(section), &Map.fetch!(data.fields, &1))

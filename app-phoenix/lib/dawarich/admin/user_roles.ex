@@ -11,6 +11,7 @@ defmodule Dawarich.Admin.UserRoles do
       log: false
     )
 
+    repo.query!("SET LOCAL lock_timeout = DEFAULT", [], log: false)
     :ok
   end
 

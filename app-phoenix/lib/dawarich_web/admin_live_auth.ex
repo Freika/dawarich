@@ -4,18 +4,18 @@ defmodule DawarichWeb.AdminLiveAuth do
   import Phoenix.Component, only: [assign: 3]
 
   import Phoenix.LiveView,
-    only: [attach_hook: 4, redirect: 2, connected?: 1, get_connect_info: 2, put_flash: 3]
+    only: [attach_hook: 4, redirect: 2, connected?: 1, get_connect_info: 2]
 
   alias Dawarich.Accounts
   alias Dawarich.Accounts.Scope
 
   alias DawarichWeb.{
     AdminGate,
+    AdminUI,
     LayoutAssigns,
     LiveAuth,
     OperatorGrant,
-    OperatorRedirect,
-    Translate
+    OperatorRedirect
   }
 
   def on_mount(:native_admin, params, session, socket),
@@ -85,22 +85,8 @@ defmodule DawarichWeb.AdminLiveAuth do
     end
   end
 
-  defp refuse(socket, :stale_session), do: redirect(socket, to: "/users/sign_in")
-  defp refuse(socket, :unsupported), do: redirect(socket, to: "/settings/general")
   defp refuse(socket, :operator), do: redirect(socket, to: request_url(socket))
-
-  defp refuse(socket, :unauthorized),
-    do:
-      socket
-      |> put_flash(
-        :alert,
-        Translate.t(
-          socket.assigns[:locale] || "en",
-          "controllers.application.you_are_not_authorized_to_perform_this_action",
-          %{}
-        )
-      )
-      |> redirect(to: "/")
+  defp refuse(socket, reason), do: AdminUI.refuse(socket, reason)
 
   defp track_uri(socket, uri) do
     %URI{path: path, query: query} = URI.parse(uri)

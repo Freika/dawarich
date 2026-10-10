@@ -2,7 +2,15 @@ const TILE_SOURCE_URL = "https://tyles.dwri.xyz/planet/{z}/{x}/{y}.mvt"
 const ATTRIBUTION =
   '<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'
 
-export async function demoStyle(theme, fetchImpl = fetch) {
+function currentTheme() {
+  const root = document.documentElement
+  return root.getAttribute("data-theme")?.includes("dark") ||
+    root.classList.contains("dark")
+    ? "dark"
+    : "light"
+}
+
+export async function demoStyle(theme = currentTheme(), fetchImpl = fetch) {
   const response = await fetchImpl(`/maps_maplibre/styles/${theme}.json`)
   const style = await response.json()
   if (style.sources?.protomaps) {

@@ -1,5 +1,6 @@
 defmodule Dawarich.Admin.Users do
   @moduledoc false
+  require Logger
 
   alias Dawarich.Accounts.User
 
@@ -18,15 +19,15 @@ defmodule Dawarich.Admin.Users do
 
   def list(scope, query) do
     with {:ok, scope} <- Access.admit(scope, :admin, env: env()) do
-      UsersPage.list(scope.user, query, :native)
+      UsersPage.list(scope.user, query)
     end
   rescue
-    _ -> {:error, :unavailable}
+    error -> failed(error, :unavailable)
   end
 
   def get(scope, id, kind) do
     with {:ok, scope} <- Access.admit(scope, :admin, env: env()),
-         {:ok, target} <- UsersPage.find(scope.user, target_id(id), kind, :native) do
+         {:ok, target} <- UsersPage.find(scope.user, target_id(id), kind) do
       if kind == :show do
         {:ok,
          %{
@@ -39,7 +40,7 @@ defmodule Dawarich.Admin.Users do
       end
     end
   rescue
-    _ -> {:error, :unavailable}
+    error -> failed(error, :unavailable)
   end
 
   def create(scope, params),
@@ -118,8 +119,8 @@ defmodule Dawarich.Admin.Users do
         do: {:error, :unauthorized},
         else: {:error, :unavailable}
 
-    _ ->
-      {:error, :unavailable}
+    error ->
+      failed(error, :unavailable)
   end
 
   defp delete_target(actor, id, context) do
@@ -219,4 +220,9 @@ defmodule Dawarich.Admin.Users do
   end
 
   defp target_id(_), do: nil
+
+  defp failed(error, reason) do
+    Logger.warning("admin users call failed: " <> inspect(error.__struct__))
+    {:error, reason}
+  end
 end
