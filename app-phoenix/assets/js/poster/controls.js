@@ -69,6 +69,7 @@ export function bindPosterControls({
     const end = find("date-end")?.value
     if (!start || !end) return
     const current = studio.state.data?.range ?? {}
+    let failed = false
     setBusy(true)
     try {
       await studio.applyRange({
@@ -77,9 +78,15 @@ export function bindPosterControls({
         importId: current.importId ?? null,
         timezone: current.timezone,
       })
-    } catch {
+    } catch (error) {
+      failed = error?.name !== "AbortError"
     } finally {
       setBusy(false)
+      if (failed) {
+        seededData = null
+        const status = find("status")
+        if (status) status.textContent = strings.range_failed ?? ""
+      }
       refresh()
     }
   }

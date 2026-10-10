@@ -39,7 +39,8 @@ defmodule DawarichWeb.NativePosterStudio do
   }
 
   @shared_strings %{
-    "save_failed" => "controllers.posters.failed_to_start_poster_generation"
+    "save_failed" => "controllers.posters.failed_to_start_poster_generation",
+    "range_failed" => "javascript.messages.failed_to_load_location_data_please_try_again"
   }
 
   attr :themes, :list, required: true

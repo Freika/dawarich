@@ -90,6 +90,9 @@ defmodule DawarichWeb.NativePosterStudioTest do
     assert config["strings"]["untitled"] == "Unbenannter Poster"
     assert config["strings"]["save_failed"] == "Fehler beim Start der Poster-Generierung."
 
+    assert config["strings"]["range_failed"] ==
+             "Daten zum Standort konnten nicht geladen werden. Bitte versuche es erneut."
+
     for key <-
           ~w(queued no_location_data no_tracks_in_frame frame_too_wide gallery_without_flights),
         do: assert(config["strings"][key] not in [nil, ""], key)

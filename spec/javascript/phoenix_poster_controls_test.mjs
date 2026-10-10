@@ -439,6 +439,43 @@ test("remounting for a different source shows controls that match the new studio
   second.studio.close()
 })
 
+test("a failed range reload shows an error and restores the loaded dates", async () => {
+  const poster = mapPoster(async () => {
+    throw new Error("source acknowledgement timed out")
+  })
+  const root = controlsRoot()
+  const { studio } = lifecycle(poster)
+  await studio.open({ themeKey: "noir" })
+  const unbind = bindPosterControls({
+    root,
+    studio,
+    poster,
+    maxDimensionPx: 8192,
+    strings: {
+      load: "Load",
+      loading: "Loading…",
+      loading_tracks: "Loading tracks",
+      range_failed: "Failed to load location data. Please try again.",
+    },
+  })
+  assert.equal(root.nodes["date-start"].value, "2020-04-17T00:00")
+  root.nodes["date-start"].value = "2020-04-10T00:00"
+  root.nodes["date-end"].value = "2020-04-10T23:59"
+  root.nodes.load.dispatchEvent(new Event("click"))
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(
+    root.nodes.status.textContent,
+    "Failed to load location data. Please try again.",
+  )
+  assert.equal(root.nodes["date-start"].value, "2020-04-17T00:00")
+  assert.equal(root.nodes["date-end"].value, "2020-04-17T23:59")
+  assert.equal(root.nodes.load.disabled, false)
+  assert.equal(root.nodes["switch-video"].disabled, false)
+  assert.equal(studio.state.rangeLoading, false)
+  unbind()
+  studio.close()
+})
+
 test("text, font, layer and colour controls update hook-local studio state", async () => {
   const root = controlsRoot()
   const { studio } = lifecycle(mapPoster())
