@@ -133,7 +133,7 @@ defmodule Dawarich.Mail.DeliveryTest do
     event_id = Ecto.UUID.generate()
     Process.put(:crash_after_send, true)
 
-    assert_raise RuntimeError, fn -> deliver(event_id) end
+    assert deliver(event_id) == {:error, :delivery_failed}
     assert_received {:mail, _}
     assert delivered_at() == nil
 

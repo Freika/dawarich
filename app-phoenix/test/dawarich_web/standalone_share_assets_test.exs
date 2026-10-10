@@ -98,7 +98,7 @@ defmodule DawarichWeb.StandaloneShareAssetsTest do
     end
   end
 
-  test "standalone phrase unlock serves every public importmap module and extensionless import",
+  test "native phrase unlock omits importmap while deferred extensionless assets remain available",
        ctx do
     id = user!()
     stamp = NaiveDateTime.utc_now()
@@ -135,15 +135,11 @@ defmodule DawarichWeb.StandaloneShareAssetsTest do
     assert unlocked.status == 302
     page = unlocked |> recycle() |> get("/s/" <> @id)
     assert page.status == 200
-    assert page.resp_body =~ ~s(data-controller="shared-trip-map")
-
-    json =
-      page.resp_body
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("script[type=importmap]")
-      |> LazyHTML.text()
-
-    imports = Jason.decode!(json)["imports"]
+    assert page.resp_body =~ "native-public-share"
+    assert page.resp_body =~ "/native/app"
+    refute page.resp_body =~ "data-controller"
+    refute page.resp_body =~ "importmap"
+    imports = Assets.rails_imports()
     assert map_size(imports) > 100
 
     for {name, path} <- imports do

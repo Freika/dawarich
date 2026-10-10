@@ -200,6 +200,7 @@ defmodule DawarichWeb.Navbar do
             sharing={@family.sharing}
             native={@native}
             id={@indicator_id}
+            mobile={@mobile}
           />
         </a>
       <% else %>

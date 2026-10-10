@@ -75,9 +75,9 @@ defmodule DawarichWeb.StatsLiveTest do
       assert html =~ ~r/import "chartkick"\s+import "Chart.bundle"/
     end
 
-    test "a signed-in page without rails_js loads Rails' imports and translations, not Chartkick",
+    test "a deferred trip page retains Rails imports and translations without Chartkick",
          %{user: user} do
-      html = RailsUser.signed_in(user.id) |> get("/notifications") |> html_response(200)
+      html = RailsUser.signed_in(user.id) |> get("/trips") |> html_response(200)
       head = html |> LazyHTML.from_document() |> LazyHTML.query("head")
 
       imports =
@@ -340,7 +340,7 @@ defmodule DawarichWeb.StatsLiveTest do
       refute Map.has_key?(assigns, :api_key)
     end
 
-    test "the map card and the sharing dialog are hooked islands with Rails' Stimulus attributes",
+    test "the map remains deferred and monthly sharing links to scoped native controls",
          %{user: user} do
       {:ok, view, _html} = live_as(user, "/stats/2024/3")
 
@@ -354,14 +354,8 @@ defmodule DawarichWeb.StatsLiveTest do
                ~s(#stat-page-card #monthly-stats-map[data-stat-page-target="map"])
              )
 
-      assert has_element?(
-               view,
-               ~s(#sharing_modal[phx-hook="RailsStimulus"][phx-update="ignore"] form[data-sharing-modal-target="form"][action="/stats/2024/3/sharing"][method="post"] input[name="_method"][value="patch"])
-             )
-
-      assert has_element?(view, ~s(#sharing_modal input[name="authenticity_token"]))
-      assert has_element?(view, ~s(#sharing_modal option[value="1h"][selected="selected"]))
-      assert has_element?(view, ~s(#sharing_modal #sharing-link-display input[value=""]))
+      assert has_element?(view, "a[href='/stats/2024/3/sharing']")
+      refute has_element?(view, "#sharing_modal")
     end
 
     test "a Lite user on Cloud sees the data window alert, a locked year and the sharing upgrade prompt",
@@ -389,8 +383,9 @@ defmodule DawarichWeb.StatsLiveTest do
       assert has_element?(view, "#chart-year-locked-2023[phx-update='ignore']")
       assert has_element?(view, "a.tooltip.tooltip-bottom[data-tip] span.badge")
       {:ok, month, _html} = live_as(user, "/stats/#{today.year}/#{today.month}")
-      assert has_element?(month, ~s(#sharing_modal a.btn-primary[href*="utm_content=sharing"]))
-      refute has_element?(month, ~s(#sharing_modal [data-controller="sharing-modal"]))
+      assert has_element?(month, "a[href='/stats/#{today.year}/#{today.month}/sharing']")
+      assert has_element?(month, "a.btn-primary[href*='utm_content=sharing']")
+      refute has_element?(month, "#sharing_modal")
     end
   end
 end

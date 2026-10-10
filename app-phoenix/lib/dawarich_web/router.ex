@@ -84,9 +84,9 @@ defmodule DawarichWeb.Router do
   pipeline :sharing do
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.PublicShareRequest
     plug DawarichWeb.RateLimit
     plug :fetch_query_params
-    plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.Locale
     plug DawarichWeb.LayoutAssigns
@@ -97,6 +97,7 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "sharing"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.PublicShareRequest
     plug DawarichWeb.RateLimit
     plug DawarichWeb.Api.Body
     plug DawarichWeb.UnlockAdmission
@@ -109,15 +110,13 @@ defmodule DawarichWeb.Router do
   scope "/" do
     pipe_through :sharing
 
-    get "/s/:id", DawarichWeb.SharedLinkPage, :show,
-      metadata: %{rails_gate: {DawarichWeb.SharingGate, :show?}}
+    get "/s/:id", DawarichWeb.SharedLinkPage, :show, metadata: %{native_ui: true}
   end
 
   scope "/" do
     pipe_through :sharing_unlock
 
-    post "/s/:id/unlock", DawarichWeb.SharedLinkPage, :unlock,
-      metadata: %{rails_gate: {DawarichWeb.SharingGate, :unlock?}}
+    post "/s/:id/unlock", DawarichWeb.SharedLinkPage, :unlock, metadata: %{native_ui: true}
   end
 
   pipeline :rails_user do

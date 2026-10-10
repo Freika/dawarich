@@ -45,6 +45,10 @@ defmodule Dawarich.Tags.Writes do
         %{valid: true} = valid ->
           tag = update_fields(repo, current, valid.tag, ctx)
           tag = adopt(repo, tag, ctx)
+
+          if current.privacy_radius_meters != tag.privacy_radius_meters,
+            do: Dawarich.Sharing.PublicEvents.enqueue(repo, user.id)
+
           {:ok, %{tag: tag}}
       end
     end)
@@ -55,6 +59,7 @@ defmodule Dawarich.Tags.Writes do
       tag = owned!(repo, user.id, id)
       repo.query!("DELETE FROM public.taggings WHERE tag_id=$1", [tag.id])
       repo.query!("DELETE FROM public.tags WHERE id=$1 AND user_id=$2", [tag.id, user.id])
+      if tag.privacy_radius_meters, do: Dawarich.Sharing.PublicEvents.enqueue(repo, user.id)
       {:ok, %{tag: tag}}
     end)
   end

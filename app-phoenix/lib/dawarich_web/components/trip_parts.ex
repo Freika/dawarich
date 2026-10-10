@@ -76,7 +76,7 @@ defmodule DawarichWeb.TripParts do
           <a
             class="btn btn-sm btn-ghost relative"
             title={s(@locale, "share_trip")}
-            data-turbo-frame="share-link-modal"
+            data-turbo="false"
             href={"/trips/#{@page.id}/share_link/new"}
           >
             <.icon name="share" class="w-4 h-4" />

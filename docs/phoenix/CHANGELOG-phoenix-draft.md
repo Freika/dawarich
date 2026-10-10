@@ -143,3 +143,19 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Prevent restored export URLs from deleting unrelated public files. [FRB-NATIVE-M4-RESTORED-EXPORT-PURGE](fixed-rails-bugs.md#frb-native-m4-restored-export-purge--restored-urls-authorize-unrelated-file-deletion)
 
 - Remove remote direct uploads that arrive after their import or account was deleted, using retained durable cleanup identities. [FRB-NATIVE-M4-DELETED-UPLOAD-RESURRECTION](fixed-rails-bugs.md#frb-native-m4-deleted-upload-resurrection--deleted-importsaccounts-can-leave-replayed-remote-uploads)
+## Native family safety (milestone 4)
+
+- Serialize family invitation capacity checks so concurrent invitations cannot oversubscribe the final Cloud seat. [FRB-NATIVE-M4-FAMILY-CAPACITY](fixed-rails-bugs.md#frb-native-m4-family-capacity--concurrent-invitations-can-oversubscribe-a-cloud-family)
+- Stop native family location delivery after membership/access loss and erase silent expired consent, disconnected maps and stale pending map loads. [FRB-NATIVE-M4-FAMILY-DELIVERY](fixed-rails-bugs.md#frb-native-m4-family-delivery--a-removed-viewer-can-keep-receiving-family-locations)
+
+- Clear native public live readers after link revocation, phrase/audience changes and silent expiry; bind reconnect admission to the original browser session. [FRB-NATIVE-M4-PUBLIC-DELIVERY](fixed-rails-bugs.md#frb-native-m4-public-delivery--public-live-maps-retain-revoked-subscriptions)
+
+- Honor the disabled route option on native public track pages. [FRB-NATIVE-M4-TRACK-ROUTE](fixed-rails-bugs.md#frb-native-m4-track-route--shared-tracks-ignore-the-disabled-route-option)
+
+- Discard family location/history snapshots when consent, membership or access changes while points load (FRB-NATIVE-M4-FAMILY-SNAPSHOT).
+
+- Filter public unlock phrase values from request and crash logs, including lazy messages (FRB-NATIVE-M4-UNLOCK-LOGS).
+
+- Refuse family location consent when Cloud family access expires while a response waits for its request lock (FRB-NATIVE-M4-FAMILY-REQUEST-ACCESS).
+
+- Discard family page, invitation and API snapshots when membership, consent or access changes during their private reads, and erase private rows on a late refusal. [FRB-NATIVE-M4-FAMILY-PUBLICATION](fixed-rails-bugs.md#frb-native-m4-family-publication--family-reads-can-publish-data-after-in-flight-revocation)

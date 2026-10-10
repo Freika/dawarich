@@ -11,14 +11,30 @@ defmodule DawarichWeb.SharedResourcePage do
   attr :link, :map, required: true
   attr :resource, :map, required: true
 
+  attr :native, :boolean, default: false
+
   def resource(assigns) do
     ~H"""
-    <.trip :if={@link.type == "trip"} locale={@locale} link={@link} resource={@resource} />
-    <.track :if={@link.type == "track"} locale={@locale} link={@link} resource={@resource} />
+    <.trip
+      :if={@link.type == "trip"}
+      locale={@locale}
+      link={@link}
+      resource={@resource}
+      native={@native}
+    />
+    <.track
+      :if={@link.type == "track"}
+      locale={@locale}
+      link={@link}
+      resource={@resource}
+      native={@native}
+    />
     """
   end
 
-  defp wrapper(link, resource) do
+  defp wrapper(_link, _resource, true), do: %{}
+
+  defp wrapper(link, resource, false) do
     if link.settings["show_route"] != false do
       %{
         "data-controller" => "shared-trip-map",
@@ -35,7 +51,22 @@ defmodule DawarichWeb.SharedResourcePage do
     end
   end
 
-  defp row_data(link, day, gallery) do
+  defp row_data(link, day, gallery, true) do
+    data =
+      if link.settings["show_route"] != false,
+        do: %{"data-public-day" => to_string(day.date)},
+        else: %{}
+
+    if gallery,
+      do:
+        Map.merge(data, %{
+          "data-public-gallery" => true,
+          "data-public-gallery-day" => to_string(day.date)
+        }),
+      else: data
+  end
+
+  defp row_data(link, day, gallery, false) do
     data =
       if link.settings["show_route"] != false do
         %{

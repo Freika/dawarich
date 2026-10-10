@@ -3,6 +3,9 @@ defmodule DawarichWeb.FamilyGettingStarted do
   use DawarichWeb, :html
 
   def getting_started(assigns) do
+    assigns = assign_new(assigns, :native, fn -> false end)
+    assigns = assign_new(assigns, :invitation_email, fn -> "" end)
+
     assigns =
       assign(assigns,
         invite?:
@@ -22,7 +25,14 @@ defmodule DawarichWeb.FamilyGettingStarted do
             <%= if @invite? do %>
               <h2 class="text-lg font-semibold mb-1">{g(@locale, "invite_title")}</h2>
               <p class="text-sm text-base-content/70 mb-3">{g(@locale, "invite_body")}</p>
+              <DawarichWeb.FamilyNativeInvitations.native_form
+                :if={@native}
+                locale={@locale}
+                email={@invitation_email}
+                onboarding={true}
+              />
               <DawarichWeb.FamilyMembers.invite_form
+                :if={!@native}
                 page={@page}
                 locale={@locale}
                 rails_csrf_token={@rails_csrf_token}

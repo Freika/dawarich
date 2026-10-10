@@ -59,6 +59,10 @@ defmodule Dawarich.Families.MemberSync do
           Keyword.get(opts, :hook, fn _ -> :ok end).(hd(member))
         end
 
+        if period != access_until do
+          Dawarich.Families.ProducerEvents.family(repo, family_id, :lapse, now)
+        end
+
         true
 
       [] ->

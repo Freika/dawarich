@@ -8,6 +8,13 @@ defmodule Dawarich.RailsCookies do
   @signed_salt "signed cookie"
 
   def decrypt(value, name, secret, now) do
+    case decrypt_with_expiry(value, name, secret, now) do
+      {:ok, value, _} -> {:ok, value}
+      _ -> :error
+    end
+  end
+
+  def decrypt_with_expiry(value, name, secret, now) do
     with [data, iv, tag] <- value |> URI.decode_www_form() |> String.split("--"),
          {:ok, data} <- Base.decode64(data),
          {:ok, <<_::binary-size(12)>> = iv} <- Base.decode64(iv),
@@ -22,7 +29,7 @@ defmodule Dawarich.RailsCookies do
              tag,
              false
            ) do
-      unwrap(plain, name, now)
+      unwrap_with_expiry(plain, name, now)
     else
       _ -> :error
     end
@@ -64,13 +71,21 @@ defmodule Dawarich.RailsCookies do
   end
 
   defp unwrap(plain, name, now) do
+    case unwrap_with_expiry(plain, name, now) do
+      {:ok, value, _} -> {:ok, value}
+      _ -> :error
+    end
+  end
+
+  defp unwrap_with_expiry(plain, name, now) do
     with {:ok, %{"_rails" => %{"message" => message, "pur" => purpose} = meta}} <-
            Jason.decode(plain),
          true <- purpose == "cookie." <> name,
          false <- expired?(meta["exp"], now),
          {:ok, json} <- Base.decode64(message),
          {:ok, value} <- Jason.decode(json) do
-      {:ok, value}
+      due = if meta["exp"], do: elem(DateTime.from_iso8601(meta["exp"]), 1), else: nil
+      {:ok, value, due}
     else
       _ -> :error
     end

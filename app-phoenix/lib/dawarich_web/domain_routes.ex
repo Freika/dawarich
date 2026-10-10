@@ -4,6 +4,7 @@ defmodule DawarichWeb.DomainRoutes do
   defmacro family_native_routes do
     quote do
       require DawarichWeb.FamilyFormRoutes
+      require DawarichWeb.FamilyNativeRoutes
 
       pipeline :family_form do
         plug :put_api_tag, "family"
@@ -20,15 +21,21 @@ defmodule DawarichWeb.DomainRoutes do
         DawarichWeb.FamilyFormRoutes.routes()
       end
 
+      pipeline :native_family_user do
+        plug DawarichWeb.RequireUser
+      end
+
       scope "/" do
-        pipe_through [:browser, :rails_user]
+        pipe_through [:browser, :native_family_user]
+
+        DawarichWeb.FamilyNativeRoutes.http()
 
         live_session :family_pages,
-          session: {DawarichWeb.RailsAuth, :live_session, []},
-          on_mount: [DawarichWeb.LiveAuth, {DawarichWeb.FamilyGate, :default}],
-          root_layout: {DawarichWeb.Layouts, :root},
+          session: {DawarichWeb.NativeFamilyAuth, :live_session, []},
+          on_mount: {DawarichWeb.NativeFamilyAuth, :require_user},
+          root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
-          family_page_routes()
+          DawarichWeb.FamilyNativeRoutes.pages()
         end
       end
     end

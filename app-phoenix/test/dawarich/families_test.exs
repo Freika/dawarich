@@ -12,10 +12,10 @@ defmodule Dawarich.FamiliesTest do
   setup_all do
     scratch_sql!("""
     CREATE TABLE family_invitations (
-      id bigserial PRIMARY KEY, status integer NOT NULL DEFAULT 0,
+      id bigserial PRIMARY KEY, family_id bigint, status integer NOT NULL DEFAULT 0,
       expires_at timestamp(6) NOT NULL, updated_at timestamp(6) NOT NULL);
     CREATE TABLE family_location_requests (
-      id bigserial PRIMARY KEY, status integer NOT NULL DEFAULT 0,
+      id bigserial PRIMARY KEY, family_id bigint, status integer NOT NULL DEFAULT 0,
       expires_at timestamp(6) NOT NULL, updated_at timestamp(6) NOT NULL);
     """)
 

@@ -47,7 +47,12 @@ defmodule DawarichWeb.FamilyInvitationActions do
               WebInvitations.cancel(Repo, user, conn.path_params["id"], ctx)
 
             :accept ->
-              WebInvitations.accept(Repo, user, conn.params["token"], ctx)
+              Dawarich.Families.accept_invitation(
+                Dawarich.Accounts.Scope.for_user(user, ctx.locale),
+                conn.params["token"],
+                now: ctx.now,
+                self_hosted: ctx.self_hosted
+              )
           end
 
         respond(conn, action, result)

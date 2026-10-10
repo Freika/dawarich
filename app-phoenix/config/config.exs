@@ -36,12 +36,18 @@ filtered_parameters = [
   "token",
   "secret",
   "magic_phrase",
+  "phrase",
   "signed_id",
   "url",
   "authorization",
   "cookie",
   "checksum",
-  "bootstrap"
+  "bootstrap",
+  "capability",
+  "invitation",
+  "public_id",
+  "share_id",
+  "uuid"
 ]
 
 config :phoenix, :filter_parameters, filtered_parameters

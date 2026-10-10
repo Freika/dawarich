@@ -50,6 +50,27 @@ defmodule Dawarich.FamilyPageAccess do
       (user.plan == 2 and Entitlements.future?(user.active_until, now))
   end
 
+  def deadline(_user, _family, true, _now), do: nil
+
+  def deadline(user, family, false, now) do
+    inherited =
+      if family &&
+           Entitlements.inherited?(
+             family.access_until,
+             family.owner_plan,
+             family.owner_until,
+             now
+           ),
+         do: family.access_until || family.owner_until
+
+    personal =
+      if user.plan == 2 and Entitlements.future?(user.active_until, now), do: user.active_until
+
+    [inherited, personal]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.max(NaiveDateTime, fn -> nil end)
+  end
+
   def state(user, nil, :new, self_hosted, _now),
     do: {:page, if(self_hosted or user.plan == 2, do: :create, else: :upgrade)}
 

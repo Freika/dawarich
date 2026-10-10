@@ -94,13 +94,6 @@ defmodule DawarichWeb.AchievementDetail do
                 locale={@locale}
                 celebrate={@view.set["celebrate"]}
                 modal
-                share={
-                  %{
-                    "key" => @view.set["key"],
-                    "shared" => @view.set["sharing_enabled"],
-                    "uuid" => @view.set["sharing_uuid"]
-                  }
-                }
               /><figcaption class="ach-preview-hint">
                 {t(@locale, "achievements.ui.preview_hint", %{})}
               </figcaption>

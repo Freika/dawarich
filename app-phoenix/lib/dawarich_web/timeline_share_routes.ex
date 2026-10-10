@@ -3,13 +3,6 @@ defmodule DawarichWeb.TimelineShareRoutes do
   defmacro routes do
     quote do
       scope "/share_links/timeline" do
-        pipe_through :rails_frame
-
-        get "/new", DawarichWeb.TimelineShareActions, :new,
-          metadata: %{rails_gate: {DawarichWeb.TimelineShareActions, :native?}}
-      end
-
-      scope "/share_links/timeline" do
         pipe_through :share_form
 
         for {verb, suffix, action} <- [

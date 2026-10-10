@@ -297,7 +297,7 @@ defmodule DawarichWeb.TripsLiveTest do
 
       assert has_element?(
                view,
-               "#{actions} a[data-turbo-frame='share-link-modal'][href='/trips/883901/share_link/new'][title='Share trip']"
+               "#{actions} a[data-turbo='false'][href='/trips/883901/share_link/new'][title='Share trip']"
              )
 
       refute has_element?(view, "#{actions} .badge-success")

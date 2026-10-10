@@ -54,6 +54,7 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
                 do: publish_family(repo, family, user, email, first, last, settings, point)
             end
 
+            if family, do: Dawarich.Families.ProducerEvents.family(repo, family, :location, now)
             publish_shares(repo, user, Enum.max_by(points, & &1["timestamp"]), now)
           end
 
@@ -134,6 +135,7 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
       ).rows
 
     if links != [] do
+      Dawarich.Sharing.Events.enqueue(repo, user, List.flatten(links))
       geom = "ST_SetSRID(ST_MakePoint($2,$3),4326)::geography"
 
       [[public]] =

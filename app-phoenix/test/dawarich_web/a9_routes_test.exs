@@ -64,7 +64,7 @@ defmodule DawarichWeb.A9RoutesTest do
     {"/notifications", DawarichWeb.NotificationsLive.Index, :index, nil},
     {"/notifications/:id", DawarichWeb.NotificationsLive.Show, :show, nil},
     {"/imports/new", DawarichWeb.ImportsLive.New, :new, nil},
-    {"/imports/:id", DawarichWeb.ImportsLive.Show, :show, nil},
+    {"/imports/:id", DawarichWeb.ImportsLive.Show, :show, {DawarichWeb.ImportsGate, :native?}},
     {"/imports", DawarichWeb.ImportsLive.Index, :index, nil},
     {"/exports", DawarichWeb.ExportsLive.Index, :index, nil},
     {"/stats", DawarichWeb.StatsLive.Index, :index, nil},
@@ -104,70 +104,48 @@ defmodule DawarichWeb.A9RoutesTest do
     for {path, view, action, gate} <- @pages do
       info = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
 
+      family = String.starts_with?(path, "/family")
+      jobs = String.starts_with?(path, ["/imports", "/exports", "/notifications"])
+
       assert {info.route, info.plug, info.plug_opts, info.pipe_through, info[:slice],
               info[:rails_gate]} ==
-               {path, Phoenix.LiveView.Plug, action, [:browser, :rails_user], nil, gate}
+               {path, Phoenix.LiveView.Plug, action,
+                [:browser, if(family, do: :native_family_user, else: :rails_user)], nil,
+                if(family or jobs, do: nil, else: gate)}
 
       assert {^view, ^action, opts, session} = info.phoenix_live_view
       assert opts == [action: action, router: Router, container: {:div, class: "contents"}]
-      family = String.starts_with?(path, "/family")
-
-      native =
-        String.starts_with?(path, "/imports") or String.starts_with?(path, "/notifications") or
-          path == "/exports"
-
-      expected_session =
-        cond do
-          family -> :family_pages
-          native -> :native_jobs
-          true -> :rails_pages
-        end
-
-      assert session.name == expected_session
-
-      hooks = [
-        %{
-          id: {DawarichWeb.LiveAuth, :default},
-          stage: :mount,
-          function: &DawarichWeb.LiveAuth.on_mount/4
-        }
-      ]
-
-      hooks =
-        if family,
-          do:
-            hooks ++
-              [
-                %{
-                  id: {DawarichWeb.FamilyGate, :default},
-                  stage: :mount,
-                  function: &DawarichWeb.FamilyGate.on_mount/4
-                }
-              ],
-          else: hooks
-
-      hooks =
-        if native,
-          do: [
-            %{
-              id: {DawarichWeb.NativeJobsAuth, :require_user},
-              stage: :mount,
-              function: &DawarichWeb.NativeJobsAuth.on_mount/4
-            }
-          ],
-          else: hooks
 
       auth =
         cond do
-          family -> DawarichWeb.RailsAuth
-          native -> DawarichWeb.NativeJobsAuth
-          true -> DawarichWeb.NativeAuth
+          family -> DawarichWeb.NativeFamilyAuth
+          jobs -> DawarichWeb.NativeJobsAuth
+          true -> DawarichWeb.LiveAuth
         end
 
+      hook = if family or jobs, do: :require_user, else: :default
+      session_module = if family or jobs, do: auth, else: DawarichWeb.NativeAuth
+
+      session_name =
+        cond do
+          family -> :family_pages
+          jobs -> :native_jobs
+          true -> :rails_pages
+        end
+
+      assert session.name == session_name
+
       assert session.extra == %{
-               session: {auth, :live_session, []},
-               on_mount: hooks,
-               root_layout: {DawarichWeb.Layouts, if(native, do: :native_root, else: :root)},
+               session: {session_module, :live_session, []},
+               on_mount: [
+                 %{
+                   id: {auth, hook},
+                   stage: :mount,
+                   function: Function.capture(auth, :on_mount, 4)
+                 }
+               ],
+               root_layout:
+                 {DawarichWeb.Layouts, if(family or jobs, do: :native_root, else: :root)},
                layout: {DawarichWeb.Layouts, :app}
              }
     end
@@ -180,17 +158,19 @@ defmodule DawarichWeb.A9RoutesTest do
                {path, plug, action, [:rails_frame], nil, gate, nil}
     end
 
-    for {path, action, key} <- [
-          {"/share_links/hub", :hub, nil},
-          {"/share_links/live/new", :live, nil},
-          {"/trips/:trip_id/share_link/new", :trip, "trip_shares"}
+    for {path, action} <- [
+          {"/share_links/hub", :hub},
+          {"/share_links/live/new", :live},
+          {"/trips/:trip_id/share_link/new", :trip},
+          {"/tracks/:track_id/share_link/new", :track},
+          {"/share_links/timeline/new", :timeline}
         ] do
       info = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
-
-      assert {info.route, info.plug, info.plug_opts, info.pipe_through, info[:rails_key],
-              info[:rails_gate], info[:phoenix_live_view]} ==
-               {path, DawarichWeb.ShareManagementPage, action, [:rails_frame], key,
-                {DawarichWeb.ShareManagementGate, :native?}, nil}
+      assert info.route == path
+      assert info.pipe_through == [:browser, :native_family_user]
+      assert info[:rails_gate] == nil
+      assert info[:native_ui] == true
+      assert {DawarichWeb.SharingLive.Index, ^action, _, _} = info.phoenix_live_view
     end
   end
 end

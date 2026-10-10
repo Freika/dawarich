@@ -1423,3 +1423,82 @@ Deleting an imported direct upload or its account purges the current remote obje
 - Phoenix: `app-phoenix/lib/dawarich/storage/native_purge.ex:63`; `app-phoenix/lib/dawarich/uploads/deletion_debt.ex:4`; `app-phoenix/lib/dawarich/exports/purge_worker.ex:35`.
 - Tests: “claimed remote import deletion retains debt for replay and in-flight arrivals” and “claimed remote account destruction retains debt after owner removal”, `claimed_upload_cleanup_test.exs`, through actual Imports.delete/DestroyLease/DestroyService and Users.DestroyWorker. Deterministic simulated remote object arrivals; local verified-read adapter uses the same stored service identity.
 - ED-NATIVE-M4-DELETED-UPLOAD-DEBT; no DRB. Rails source remains unchanged.
+### FRB-NATIVE-M4-FAMILY-CAPACITY — Concurrent invitations can oversubscribe a Cloud family
+
+Rails checks invitation capacity before its transaction without locking the family.
+Two invitations can both take the final available seat. Native scoped commands
+lock family, users and memberships before repeating capacity admission.
+
+- Rails: `app/services/families/invite.rb:19,21`.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_commands.ex:90`.
+- Test: `families_commands_test.exs`, “concurrent invitations serialize the final Cloud seat”; deterministic two-connection lock-removal mutation fails.
+- Ledger: ED-NATIVE-M4-FAMILY-CAPACITY; no DRB added. Rails production code is unchanged.
+
+### FRB-NATIVE-M4-FAMILY-DELIVERY — A removed viewer can keep receiving family locations
+
+Rails checks membership and family access at subscription. Its stream callback
+then transmits subsequent coordinates without repeating either check. A removed
+member or viewer whose family access lapses can keep the old subscription.
+Native family pages re-admit every delivery, read currently authorized snapshots,
+clear refused state, and erase browser maps and member rows on disconnect.
+Versioned timers independently expire silent consent and access grants.
+
+- Rails: `app/channels/family_locations_channel.rb:6,9,10`.
+- Phoenix: `app-phoenix/lib/dawarich_web/native_family_auth.ex:17`; `app-phoenix/lib/dawarich_web/family_delivery.ex:17` and `assets/js/hooks/family_map.js` lifecycle.
+- Tests: “withdrawn consent or removed membership discards queued coordinates before rendering”; “reconnect snapshots recover missed invalidation and family refusal clears private state”; timer-version and info-admission mutations fail.
+- Ledger: ED-NATIVE-M4-FAMILY-DELIVERY; no DRB added. Independent wire adapters remain separately supported; native pages do not subscribe to coordinate streams.
+
+### FRB-NATIVE-M4-PUBLIC-DELIVERY — Public live maps retain revoked subscriptions
+
+Rails admits a public link once when connecting and subscribes to its coordinate stream. An already connected reader can retain old content after revocation, expiry, phrase rotation or audience loss. Native public readers re-admit before each snapshot and clear silent expiry with a versioned deadline timer. Native browser hooks abort pending loads and erase maps, markers, images, replay timers and data on refusal/disconnect. Snapshot construction repeats admission and privacy checks after loading, preventing queued revoked data from being published; independent wire adapters retain their external protocol.
+
+- Rails: `app/channels/application_cable/connection.rb:27,29`; `app/channels/shared_location_channel.rb:5,8`.
+- Phoenix: `app-phoenix/lib/dawarich/sharing/public.ex:20`; `app-phoenix/lib/dawarich_web/public_share_live.ex:47`.
+- Tests: “queued public update after revoke or phrase rotation clears old content before delivery”; “public expiry clears a silent connection and reconnect cannot revive it”; admission/cache/timer mutations fail.
+- Ledger: ED-NATIVE-M4-PUBLIC-ADMISSION; no DRB added. Rails production code unchanged.
+
+
+### FRB-NATIVE-M4-TRACK-ROUTE — Shared tracks ignore the disabled route option
+
+Rails renders a shared track map even when its owner disables the route section. Native public track readers omit both the map and route snapshot when `show_route` is false; optional stats/photos retain their independent settings.
+
+- Rails: `app/views/shared/links/_track.html.erb:6`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/shared_resource_page/track.html.heex:4`; `app-phoenix/lib/dawarich/sharing/public_snapshot.ex:28`.
+- Test: “native shared track honors the disabled route section”; track-section mutation fails, restoration passes.
+- Ledger: ED-NATIVE-M4-TRACK-ROUTE; no DRB added. Rails production code unchanged.
+
+### FRB-NATIVE-M4-FAMILY-SNAPSHOT — Consent can change while family coordinates load
+
+Rails captures sharing members before fetching their points and does not recheck before returning locations/history. Consent withdrawal, expiry or membership removal during that read can still disclose coordinates. Native scoped snapshots repeat actor/access admission and compare membership/consent/access fingerprints at the current clock before returning.
+
+- Rails: `app/services/families/locations.rb:17,19,28,31,43,50`.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_reads.ex` snapshot validation.
+- Tests: `FamiliesSnapshotRaceTest`, ten named locations/history in-flight consent/member/viewer/expiry/access cases; bypass-final-validation mutation fails all ten.
+- Ledger: ED-NATIVE-M4-FAMILY-SNAPSHOT; no DRB added. Distinct from the existing subscription-only FAMILY-DELIVERY fix.
+
+### FRB-NATIVE-M4-UNLOCK-LOGS — Public unlock phrases reach unfiltered logs
+
+Rails accepts the public unlock secret under phrase, but its configured partial parameter filters contain neither phrase nor magic_phrase. Request parameter logging can expose that secret. Phoenix adds phrase to the common Phoenix/LogRedaction vocabulary, covering structured reports, lazy iodata, query strings and JSON without changing unlock semantics.
+
+- Rails: `app/controllers/shared/links_controller.rb:18`; `config/initializers/filter_parameter_logging.rb:8`.
+- Phoenix: `app-phoenix/config/config.exs:39`; shared `Dawarich.LogRedaction` filter.
+- Test: “public unlock phrase is filtered in structured reports lazy iodata and query strings”; exclude-phrase-from-sensitivity mutation fails.
+- Ledger: ED-NATIVE-M4-UNLOCK-LOGS; no DRB added. Rails production code unchanged.
+
+### FRB-NATIVE-M4-FAMILY-REQUEST-ACCESS — A waiting consent response can outlive Cloud family access
+
+Rails checks family access before invoking the response service, then waits for the request row lock. The locked decision checks only request status/expiry. If family access expires during that wait, accepting the still-pending request enables location sharing after admission has lapsed. Phoenix refreshes the clock and repeats the same effective family admission rule after the request lock, before consent, request, notification or durable-event writes.
+
+- Rails: `app/controllers/family/location_requests_controller.rb:5,30`; `app/services/families/respond_to_location_request.rb:17,36,41`. A private transactional Rails oracle moved the clock at the real `with_lock` boundary and reproduced accepted consent after access expired; all rows rolled back.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_command_dispatch.ex:91`; shared admission in `families/native_commands.ex:119`.
+- Test: `families_commands_test.exs`, “Cloud access expiring at the locked request decision refuses consent without effects”; a controlled clock crosses access expiry while request expiry stays future. Skipping final admission fails the exact refusal; restored GREEN.
+- Ledger: ED-NATIVE-M4-FAMILY-REQUEST-ACCESS; no DRB added. Rails production code is unchanged.
+
+### FRB-NATIVE-M4-FAMILY-PUBLICATION — Family reads can publish data after in-flight revocation
+
+Rails family pages and location/history API reads capture membership/access and sharing consent before loading private rows. Removal, consent withdrawal or a crossed deadline during those later reads can still publish member email, last seen or coordinates. Phoenix routes native pages, invitation reveal and retained page/API readers through one transactional before/after publication epoch and fresh consent/access clock. Changed grants discard the document; late location refusal erases the private page as well as the map.
+
+- Rails: `app/controllers/families_controller.rb:12-23`; `app/services/families/locations.rb:14-21,43-60` (source-backed observation; no Rails runtime oracle claimed).
+- Phoenix: `app-phoenix/lib/dawarich/families/snapshot.ex:6`; `app-phoenix/lib/dawarich_web/family_delivery.ex:75`.
+- Tests: `families_snapshot_race_test.exs`, sixty-five `'<reader> rejects private publication after in-flight <change> revocation'` cases; one shared bypass mutation fails every reader. `family_native_delivery_test.exs`, 'late location refusal erases the private page confirmation and history before rendering'.
+- Ledger: ED-NATIVE-M4-FAMILY-PUBLICATION; no DRB. This extends the earlier subscription-time FRB-NATIVE-M4-FAMILY-DELIVERY to page/API publication. Rails production source is unchanged.

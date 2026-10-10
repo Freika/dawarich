@@ -118,7 +118,14 @@ defmodule DawarichWeb.AchievementChildren do
                   small
                 /></a>
               <% else %>
-                <.card card={child} locale={@locale} small modal share={child["share"]} />
+                <div>
+                  <.card card={child} locale={@locale} small modal />
+                  <a
+                    :if={child["share"]}
+                    href={"/achievements/" <> child["share"]["key"] <> "/sharing"}
+                    class="btn btn-sm btn-outline mt-2"
+                  >{t(@locale, "achievements.modal.share", %{})}</a>
+                </div>
               <% end %>
             <% end %>
           </div>

@@ -7,7 +7,6 @@ defmodule DawarichWeb.DigestsLive.Show do
     DigestParts,
     Params,
     RailsWidgets,
-    SharingParts,
     StatsFormat
   }
 
@@ -71,16 +70,6 @@ defmodule DawarichWeb.DigestsLive.Show do
       <% end %>
       <DigestParts.actions locale={@locale} year={@digest.year} csrf={@rails_csrf_token} />
     </div>
-    <SharingParts.sharing_dialog
-      locale={@locale}
-      scope="users.digests.show"
-      hint="users.digests.show.allow_others_to_view_this_year_end_digest_auto_saves"
-      action={"/digests/#{@digest.year}/sharing"}
-      enabled={@digest.sharing_enabled}
-      expiration={@digest.sharing_expiration || "24h"}
-      url={@sharing_url}
-      csrf={@rails_csrf_token}
-    />
     """
   end
 end

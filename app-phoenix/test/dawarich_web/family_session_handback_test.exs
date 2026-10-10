@@ -12,6 +12,7 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    Code.ensure_loaded!(Dawarich.Accounts.User)
     owner = FrameSeeds.seed_family!(FrameSeeds.load_family("owner_en"))
     upstream = listen()
     saved = Application.get_env(:dawarich, :rails_upstream)
@@ -26,10 +27,10 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
   end
 
   @tag mutation: "family-session-writers"
-  test "family documents invitations and JSON forward unsupported session writers before effects",
+  test "independent JSON clients forward unsupported session writers before effects",
        c do
     for path <-
-          ~w(/family /family/new /family/edit /family/invitations /family/location_requests/94001 /invitations/a9fpl-pending /family/invitations/a9fpl-pending /family/locations.json),
+          ~w(/family/locations.json),
         {query, headers} <- [
           {"client=ios&locale=de", []},
           {"locale=de", [{"x-dawarich-client", "android"}]},
@@ -43,6 +44,100 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
         Enum.reduce(headers, conn, fn {key, value}, acc -> put_req_header(acc, key, value) end)
 
       forwarded(c, conn, path <> "?" <> query)
+    end
+  end
+
+  test "native invitation landings handle legacy client hints locally without upstream replay",
+       c do
+    for path <- ~w(/invitations/a9fpl-pending /family/invitations/a9fpl-pending),
+        {query, headers} <- [
+          {"client=ios&locale=de", []},
+          {"locale=de", [{"x-dawarich-client", "android"}]},
+          {"client%5B%5D=ios", []},
+          {"aff=synthetic-referral&locale=de", []},
+          {"via=synthetic-referral", []}
+        ] do
+      before = snapshot()
+
+      probe =
+        Task.async(fn ->
+          case :gen_tcp.accept(c.upstream.listen, 100) do
+            {:ok, socket} ->
+              read_head(socket)
+              reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
+              :gen_tcp.close(socket)
+              :upstream
+
+            {:error, :timeout} ->
+              :native
+          end
+        end)
+
+      conn =
+        Enum.reduce(headers, RailsUser.signed_in(c.owner.id), fn {key, value}, acc ->
+          put_req_header(acc, key, value)
+        end)
+
+      response = get(conn, path <> "?" <> query)
+      result = Task.await(probe)
+      assert response.status in [200, 302, 422]
+      if response.status == 200, do: assert(response.resp_body =~ "/native/app")
+      if response.status == 422, do: assert(response.resp_body =~ "422")
+
+      if response.status == 302,
+        do: assert(get_resp_header(response, "location") == ["http://www.example.com/"])
+
+      assert result == :native
+      after_read = snapshot()
+
+      expected =
+        if String.contains?(query, "locale=de") and response.status != 422 do
+          users =
+            Enum.map(before["users"], fn [row] ->
+              if row["id"] == c.owner.id do
+                [current] = Enum.find(after_read["users"], fn [u] -> u["id"] == c.owner.id end)
+
+                [
+                  row
+                  |> Map.update!("settings", &Map.put(&1, "locale", "de"))
+                  |> Map.put("updated_at", current["updated_at"])
+                ]
+              else
+                [row]
+              end
+            end)
+
+          Map.put(before, "users", users)
+        else
+          before
+        end
+
+      same = after_read == expected
+
+      changed =
+        for {table, rows} <- expected, rows != after_read[table], into: %{} do
+          fields =
+            Enum.zip(rows, after_read[table])
+            |> Enum.flat_map(fn {[a], [b]} ->
+              for {key, value} <- a, value != b[key], do: key
+            end)
+
+          {table, Enum.uniq(fields)}
+        end
+
+      assert same, "Changed fields: #{inspect(changed)}"
+    end
+  end
+
+  test "native family documents ignore legacy client hints without writes", c do
+    for path <-
+          ~w(/family /family/new /family/edit /family/invitations /family/location_requests/94001),
+        query <- ~w(client=ios client%5B%5D=ios aff=synthetic-referral via=synthetic-referral) do
+      before = snapshot()
+      conn = get(RailsUser.signed_in(c.owner.id), path <> "?" <> query)
+      assert conn.status in [200, 302]
+      if conn.status == 200, do: assert(String.contains?(conn.resp_body, "/native/app"))
+      assert snapshot() == before
     end
   end
 

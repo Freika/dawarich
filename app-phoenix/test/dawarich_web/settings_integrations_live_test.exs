@@ -167,6 +167,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
 
     params = put_in(params, ["settings", "immich_url"], "https://example.test")
     params = put_in(params, ["settings", "timezone"], "Europe/Berlin")
+    params = put_in(params, ["settings", "immich_skip_ssl_verification"], true)
     filtered = Phoenix.Logger.filter_values(params)
 
     for key <-
@@ -175,6 +176,7 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
 
     assert filtered["settings"]["immich_url"] == "[FILTERED]"
     assert filtered["settings"]["timezone"] == "Europe/Berlin"
+    assert filtered["settings"]["immich_skip_ssl_verification"] == true
   end
 
   test "pane patches survive reload and SSL changes are local until save without photo import buttons",

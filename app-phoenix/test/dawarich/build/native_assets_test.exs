@@ -28,7 +28,11 @@ defmodule Dawarich.Build.NativeAssetsTest do
     inputs = dir |> build!() |> inputs()
 
     assert Enum.any?(inputs, &String.contains?(&1, "phoenix_live_view"))
-    refute Enum.any?(inputs, &Regex.match?(~r/@hotwired|stimulus|turbo|rails_bridge/i, &1))
+
+    refute Enum.any?(
+             inputs,
+             &Regex.match?(~r/@hotwired|actioncable|stimulus|turbo|rails_bridge/i, &1)
+           )
   end
 
   test "native jobs eager and lazy module graph excludes Rails transport runtimes", %{

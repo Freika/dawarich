@@ -68,6 +68,7 @@ defmodule DawarichWeb.NavbarParts do
   attr :native, :boolean, default: false
 
   attr :id, :string, default: "family-navbar-indicator"
+  attr :mobile, :boolean, default: false
 
   def family_indicator(%{native: true} = assigns) do
     ~H"""
@@ -87,7 +88,9 @@ defmodule DawarichWeb.NavbarParts do
 
   def family_indicator(assigns) do
     ~H"""
-    <turbo-frame id="family-navbar-indicator">
+    <turbo-frame id={
+      if @mobile, do: "family-navbar-indicator-mobile", else: "family-navbar-indicator"
+    }>
       <div
         data-controller="family-navbar-indicator"
         data-family-navbar-indicator-enabled-value={to_string(@sharing)}

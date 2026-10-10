@@ -75,21 +75,8 @@ defmodule DawarichWeb.A9Routes do
 
   defmacro share_page_routes do
     quote do
-      scope "/" do
-        pipe_through :rails_frame
-
-        get "/share_links/hub", DawarichWeb.ShareManagementPage, :hub,
-          metadata: %{rails_gate: {DawarichWeb.ShareManagementGate, :native?}}
-
-        get "/share_links/live/new", DawarichWeb.ShareManagementPage, :live,
-          metadata: %{rails_gate: {DawarichWeb.ShareManagementGate, :native?}}
-
-        get "/trips/:trip_id/share_link/new", DawarichWeb.ShareManagementPage, :trip,
-          metadata: %{
-            rails_key: "trip_shares",
-            rails_gate: {DawarichWeb.ShareManagementGate, :native?}
-          }
-      end
+      require DawarichWeb.NativeSharingRoutes
+      DawarichWeb.NativeSharingRoutes.pages()
     end
   end
 
@@ -98,11 +85,9 @@ defmodule DawarichWeb.A9Routes do
       scope "/" do
         pipe_through :sharing
 
-        get "/invitations/:token", DawarichWeb.FamilyInvitationPage, :show,
-          metadata: %{rails_gate: {DawarichWeb.FamilyInvitationPage, :native?}}
+        get "/invitations/:token", DawarichWeb.FamilyInvitationPage, :show
 
-        get "/family/invitations/:token", DawarichWeb.FamilyInvitationPage, :show,
-          metadata: %{rails_gate: {DawarichWeb.FamilyInvitationPage, :native?}}
+        get "/family/invitations/:token", DawarichWeb.FamilyInvitationPage, :show
       end
     end
   end

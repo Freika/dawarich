@@ -1,33 +1,78 @@
+const maxCopyLength = 16384
+
 function fallbackCopy(text) {
+  if (text.length > maxCopyLength) return false
+  let area
+  const previous = document.activeElement
+  try {
+    area = document.createElement("textarea")
+    area.value = text
+    area.setAttribute("readonly", "")
+    Object.assign(area.style, {
+      position: "fixed",
+      top: "0",
+      left: "0",
+      opacity: "0",
+      pointerEvents: "none",
+    })
+    document.body.appendChild(area)
+    area.focus()
+    area.select()
+    area.setSelectionRange(0, text.length)
+    return document.execCommand("copy") === true
+  } catch {
+    return false
+  } finally {
+    if (area) {
+      area.value = ""
+      document.body.removeChild(area)
+    }
+    if (previous?.isConnected) previous.focus()
+  }
+}
+
+export async function copyText(text, current = () => true) {
+  if (!current() || text.length > maxCopyLength) return false
+  let copied = false
+  if (navigator.clipboard && globalThis.window?.isSecureContext) {
+    copied = await navigator.clipboard.writeText(text).then(
+      () => true,
+      () => false,
+    )
+  }
+  return current() && (copied || fallbackCopy(text))
+}
+
+export function manualCopy(status, text) {
+  if (!status?.insertAdjacentElement || text.length > maxCopyLength)
+    return () => {}
   const area = document.createElement("textarea")
   area.value = text
   area.setAttribute("readonly", "")
-  Object.assign(area.style, {
-    position: "fixed",
-    top: "0",
-    left: "0",
-    opacity: "0",
-    pointerEvents: "none",
-  })
-  document.body.appendChild(area)
+  area.setAttribute("aria-label", status.textContent)
+  area.className = "textarea textarea-bordered block w-full min-w-0 mt-2"
+  status.insertAdjacentElement("afterend", area)
   area.focus()
   area.select()
-  area.setSelectionRange(0, text.length)
-  let copied = false
-  try {
-    copied = document.execCommand("copy")
-  } catch {
-    copied = false
+  const clear = () => {
+    clearTimeout(timer)
+    area.value = ""
+    area.remove()
   }
-  document.body.removeChild(area)
-  return copied
+  const timer = setTimeout(clear, 15000)
+  return clear
 }
 
 export const Clipboard = {
   mounted() {
     this.copy = (event) => {
       event.preventDefault()
-      this.write(this.el.dataset.clipboardText || "")
+      const text = this.el.dataset.clipboardText || ""
+      this.write(
+        this.el.dataset.clipboardUrl === "true"
+          ? new URL(text, window.location.origin).href
+          : text,
+      )
     }
     this.el.addEventListener("click", this.copy)
   },
@@ -35,14 +80,7 @@ export const Clipboard = {
     this.el.removeEventListener("click", this.copy)
   },
   async write(text) {
-    let copied = false
-    if (navigator.clipboard && window.isSecureContext) {
-      copied = await navigator.clipboard.writeText(text).then(
-        () => true,
-        () => false,
-      )
-    }
-    this.report(copied || fallbackCopy(text))
+    this.report(await copyText(text))
   },
   report(copied) {
     const status = this.status()

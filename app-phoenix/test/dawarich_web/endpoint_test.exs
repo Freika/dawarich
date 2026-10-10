@@ -993,8 +993,7 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "DAWARICH_RAILS_ROUTES=sharing hands the shared-link page and its unlock back with their query",
-       ctx do
+  test "DAWARICH_RAILS_ROUTES=sharing cannot hand native public pages and unlock back" do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     Dawarich.Test.SharingSeeds.load!()
@@ -1013,8 +1012,9 @@ defmodule DawarichWeb.EndpointTest do
     Application.put_env(:dawarich, :rails_routes, ["sharing"])
     on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
 
-    assert answered_by_puma(port, ctx.upstream, page) == "GET /s/#{id}?locale=de HTTP/1.1"
-    assert answered_by_puma(port, ctx.upstream, unlock) == "POST /s/#{id}/unlock HTTP/1.1"
+    assert answered_by_phoenix(port, page) == 200
+    assert answered_by_phoenix(port, unlock) == 401
+    assert Dawarich.Test.SharingSeeds.view_count(id) == 2
   end
 
   test "Phoenix answers the settings, account and insights pages itself" do
