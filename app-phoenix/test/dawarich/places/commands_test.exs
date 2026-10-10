@@ -10,6 +10,7 @@ defmodule Dawarich.Places.CommandsTest do
     actor = S.user!(11831)
     other = S.user!(11832)
     S.place!(actor.id, 118_301, "Before")
+    S.place!(other.id, 118_302, "Foreign tagged")
     S.tag!(actor.id, 118_311, "Own", 118_301, ~N[2026-01-01 00:00:00])
     S.tag!(other.id, 118_312, "Foreign", 118_302, ~N[2026-01-01 00:00:00])
     S.tag!(actor.id, 118_313, "Second own", 118_302, ~N[2026-01-01 00:00:00])
