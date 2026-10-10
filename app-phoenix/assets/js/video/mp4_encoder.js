@@ -24,7 +24,11 @@ export function isVideoExportSupported(runtime = browser()) {
   )
 }
 
-export async function probeVideoEncoderConfig(config, runtime = browser(), waits = {}) {
+export async function probeVideoEncoderConfig(
+  config,
+  runtime = browser(),
+  waits = {},
+) {
   let encoder = null
   let frame = null
   let encodeError = null
@@ -50,7 +54,8 @@ export async function probeVideoEncoderConfig(config, runtime = browser(), waits
     await waitForEncoder(() => encoder.flush(), waits)
     return !encodeError
   } catch (error) {
-    if (error.name === "AbortError" || error.name === "TimeoutError") throw error
+    if (error.name === "AbortError" || error.name === "TimeoutError")
+      throw error
     return false
   } finally {
     frame?.close()
@@ -81,9 +86,13 @@ export async function createMp4Encoder({
         ...options,
         isConfigSupported: (config) =>
           runtime.VideoEncoder.isConfigSupported(config),
-        probeConfig: (config) => probeVideoEncoderConfig(config, runtime, waits),
+        probeConfig: (config) =>
+          probeVideoEncoderConfig(config, runtime, waits),
       }))
-  const picked = await waitForEncoder(() => pickCodec({ width, height, fps, ...waits }), waits)
+  const picked = await waitForEncoder(
+    () => pickCodec({ width, height, fps, ...waits }),
+    waits,
+  )
   if (!picked) return null
   if (signal?.aborted) throw renderCancelled()
 
@@ -119,7 +128,14 @@ export async function createMp4Encoder({
       wake()
     },
   })
-  encoder.configure(picked.config)
+  try {
+    encoder.configure(picked.config)
+  } catch (error) {
+    try {
+      encoder.close()
+    } catch {}
+    throw error
+  }
 
   const keyframeEvery = Math.max(1, Math.round(fps * KEYFRAME_INTERVAL_SEC))
   const frameMicros = Math.round(1e6 / fps)
@@ -158,10 +174,14 @@ export async function createMp4Encoder({
         !aborted
       ) {
         try {
-          await waitForEncoder(() => park((resume) => {
-            encoder.addEventListener("dequeue", resume, { once: true })
-            return () => encoder.removeEventListener("dequeue", resume)
-          }), waits)
+          await waitForEncoder(
+            () =>
+              park((resume) => {
+                encoder.addEventListener("dequeue", resume, { once: true })
+                return () => encoder.removeEventListener("dequeue", resume)
+              }),
+            waits,
+          )
         } catch (error) {
           abort()
           throw error
@@ -173,10 +193,10 @@ export async function createMp4Encoder({
     async finalize() {
       settle()
       try {
-        await waitForEncoder(() => Promise.race([
-          encoder.flush(),
-          park(() => null),
-        ]), waits)
+        await waitForEncoder(
+          () => Promise.race([encoder.flush(), park(() => null)]),
+          waits,
+        )
         settle()
       } finally {
         abort()
