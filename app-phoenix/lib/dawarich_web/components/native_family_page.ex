@@ -76,7 +76,10 @@ defmodule DawarichWeb.NativeFamilyPage do
                     )
                 })}
               </p>
-              <p :if={member.sharing.enabled? && member.latest_timestamp}>
+              <p
+                :if={member.sharing.enabled? && member.latest_timestamp}
+                data-testid="family-last-seen"
+              >
                 {t(@locale, "common.time_ago", %{
                   time:
                     DawarichWeb.TimeAgo.words(
