@@ -7,6 +7,7 @@ import { EmojiPicker } from "./emoji_picker.js"
 import { FamilyHook } from "./family.js"
 import { MapHook } from "./map.js"
 import { MapMatchingDemo } from "./map_matching_demo.js"
+import { MapPreview } from "./map_preview.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
 import { TripHook } from "./trip.js"
 
@@ -18,6 +19,7 @@ export const hooks = {
   Dismissible,
   EmojiPicker,
   Map: MapHook,
+  MapPreview,
   Family: FamilyHook,
   Trip: TripHook,
   MapMatchingDemo,
