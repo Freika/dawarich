@@ -209,3 +209,8 @@ Imports/export-delete/notification/shared-background UI writes and their orphan 
 ## X3 A/B audit handoff (2026-10-10)
 
 Native job routes join static/connected English/German control and open-dialog structural checks; actual esbuild graph checks eager/lazy sources for Rails runtimes. Duplicate-label, omitted dialog naming and transitive runtime mutations are discriminating. FRB-NATIVE-M4-EXTRACTION-DIALOG-NAME records the demonstrated Rails partial naming gap. Original A/B business/protocol datasets remain; no fixture or environment allocations changed. C integration and browser/stage acceptance remain outstanding.
+
+
+## X4 A/B authored handoff (2026-10-10)
+
+E2E `5cec967` + `4e70993`: native upload boundaries, reconnect/worker transitions, two-tab notification privacy and English/German width/focus/runtime contracts prepared. Existing lifecycle/download/backup/extraction/achievement assertions are retargeted without fixture pruning. Exact stage fixture environment contract lives in native-m4-contracts.md. Syntax/diff and Playwright collection (46 including setup across 16 files) pass; browser outcomes and mutations remain unexecuted controller stage acceptance under the latest Controller decision. C browser ownership and X5 remain unchanged.
