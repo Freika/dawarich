@@ -2,6 +2,18 @@ defmodule Dawarich.Admin.UserRoles do
   @moduledoc false
   alias Dawarich.I18n
 
+  def lock(repo) do
+    repo.query!("SET LOCAL lock_timeout = '100ms'", [], log: false)
+
+    repo.query!(
+      "SELECT id FROM users WHERE admin AND deleted_at IS NULL ORDER BY id FOR UPDATE",
+      [],
+      log: false
+    )
+
+    :ok
+  end
+
   def guard(target, params, repo, locale) do
     [[count]] =
       repo.query!("SELECT count(*) FROM users WHERE admin=true AND deleted_at IS NULL", [],

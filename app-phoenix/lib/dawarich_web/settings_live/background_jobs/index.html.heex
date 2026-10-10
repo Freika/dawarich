@@ -6,8 +6,9 @@
     self_hosted={@self_hosted}
     admin={@current_user.admin == true}
     two_factor={@two_factor}
+    native
   />
-  <div role="alert" class="alert m-5">
+  <div role="alert" class="alert w-auto m-5">
     <svg
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
@@ -25,7 +26,7 @@
   <div
     :if={@data.notice}
     role="alert"
-    class="alert alert-info m-5"
+    class="alert alert-info w-auto m-5"
     data-testid="gps-noise-recheck-pending"
   >
     <svg
@@ -51,21 +52,25 @@
            "this_job_will_process_reverse_geocoding_for_all_points_that"}
         ]
       }
-      class="card bg-base-300 w-96 shadow-xl m-5"
+      class="card bg-base-300 w-full sm:w-96 shadow-xl m-5"
     >
       <div class="card-body">
         <h2 class="card-title">{label(@locale, job)}</h2><p>{label(@locale, hint)}</p>
         <div class="card-actions justify-end">
-          <a
-            data-turbo-confirm={label(@locale, "are_you_sure")}
-            data-turbo-method="post"
+          <button
+            id={"open-#{job}"}
+            type="button"
             class="btn btn-primary"
-            href={"/settings/background_jobs?job_name=#{job}"}
-          >{label(@locale, "start_job")}</a>
+            phx-click={
+              JS.push("open_job", value: %{name: job})
+              |> JS.dispatch("dawarich:open-dialog", to: "#background-job-confirm")
+            }
+            disabled={MapSet.member?(@accepted_jobs, job)}
+          >{label(@locale, "start_job")}</button>
         </div>
       </div>
     </div>
-    <div :if={@current_user.admin == true} class="card bg-base-300 w-96 shadow-xl m-5">
+    <div :if={@current_user.admin == true} class="card bg-base-300 w-full sm:w-96 shadow-xl m-5">
       <div class="card-body">
         <h2 class="card-title">{label(@locale, "background_jobs_dashboard")}</h2>
         <p>{label(@locale, "this_will_open_the_background_jobs_dashboard_in_a_new")}</p>
@@ -77,21 +82,84 @@
         </div>
       </div>
     </div>
-    <div class="card bg-base-300 w-96 shadow-xl m-5">
+    <div class="card bg-base-300 w-full sm:w-96 shadow-xl m-5">
       <div class="card-body">
         <h2 class="card-title">{label(@locale, "visits_suggestions")}</h2>
         <p>{label(@locale, "enable_or_disable_visits_suggestions_it_s_a_background_task")}</p>
         <div class="card-actions justify-end">
-          <a
-            data-turbo-confirm={label(@locale, "are_you_sure")}
-            data-turbo-method="patch"
+          <button
+            id="visits-toggle"
+            type="button"
+            phx-click={
+              JS.push("open_visits")
+              |> JS.dispatch("dawarich:open-dialog", to: "#background-visits-confirm")
+            }
+            phx-disable-with={label(@locale, if(@data.visits, do: "disable", else: "enable"))}
             class={if(@data.visits, do: "btn btn-error", else: "btn btn-success")}
-            href={"/settings/background_jobs?settings%5Bvisits_suggestions_enabled%5D=#{if(@data.visits, do: "false", else: "true")}"}
-          >{label(@locale, if(@data.visits, do: "disable", else: "enable"))}</a>
+          >{label(@locale, if(@data.visits, do: "disable", else: "enable"))}</button>
         </div>
       </div>
     </div>
   </div>
+  <dialog
+    id="background-job-confirm"
+    class="modal"
+    open={@dialog_open}
+    phx-mounted={JS.ignore_attributes("open")}
+  >
+    <div class="modal-box">
+      <h3 :if={@pending_job} class="text-lg font-bold">{label(@locale, @pending_job)}</h3>
+      <p>{label(@locale, "are_you_sure")}</p>
+      <div class="modal-action flex-wrap">
+        <button
+          id="cancel-background-job"
+          type="button"
+          class="btn"
+          phx-click={
+            JS.push("cancel_job")
+            |> JS.dispatch("dawarich:close-dialog", to: "#background-job-confirm")
+          }
+        >{t(@locale, "settings.users.index.cancel", %{})}</button>
+        <button
+          id="confirm-background-job"
+          type="button"
+          class="btn btn-primary"
+          phx-click="request_job"
+          phx-disable-with={label(@locale, "start_job")}
+          disabled={is_nil(@pending_job)}
+        >{label(@locale, "start_job")}</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog
+    id="background-visits-confirm"
+    class="modal"
+    open={@dialog_open}
+    phx-mounted={JS.ignore_attributes("open")}
+  >
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">{label(@locale, "visits_suggestions")}</h3>
+      <p>{label(@locale, "are_you_sure")}</p>
+      <div class="modal-action flex-wrap">
+        <button
+          id="cancel-visits"
+          type="button"
+          class="btn"
+          phx-click={
+            JS.push("cancel_visits")
+            |> JS.dispatch("dawarich:close-dialog", to: "#background-visits-confirm")
+          }
+        >{t(@locale, "settings.users.index.cancel", %{})}</button>
+        <button
+          id="confirm-visits"
+          type="button"
+          class="btn btn-primary"
+          phx-click="update_visits"
+          phx-disable-with={label(@locale, if(@data.visits, do: "disable", else: "enable"))}
+        >{label(@locale, if(@data.visits, do: "disable", else: "enable"))}</button>
+      </div>
+    </div>
+  </dialog>
   <DawarichWeb.AdminJobHealth.card
     :if={@current_user.admin == true && @health}
     locale={@locale}

@@ -3,7 +3,7 @@ defmodule DawarichWeb.AdminUsersParityTest do
   import Phoenix.LiveViewTest, only: [render_component: 2]
   import Dawarich.Test.FormIsolation
   alias Dawarich.{Accounts, Repo}
-  alias Dawarich.Test.{ParityHTML, RailsUser}
+  alias Dawarich.Test.RailsUser
   alias DawarichWeb.SettingsLive.{UsersIndex, UserShow, UserEdit}
 
   @dir "test/fixtures/admin_users"
@@ -14,34 +14,20 @@ defmodule DawarichWeb.AdminUsersParityTest do
     :ok
   end
 
-  test "client-owned admin and extraction dialogs ignore LiveView child patches" do
-    admin =
-      render_component(&DawarichWeb.AdminUserDialogs.dialogs/1,
-        locale: "en",
-        rows: [%{id: 2, email: "dialog@dawarich.test"}],
-        actor: %{id: 1},
-        rails_csrf_token: "synthetic-csrf"
-      )
-
-    extraction =
+  test "unmigrated extraction dialog keeps its isolated HTTP behavior" do
+    html =
       render_component(&DawarichWeb.ImportsExtractionDialog.dialog/1,
         id: 3,
         locale: "en",
         csrf: "synthetic-csrf"
       )
 
-    dialogs = LazyHTML.from_fragment(admin <> extraction) |> LazyHTML.query("dialog")
+    assert LazyHTML.attribute(
+             LazyHTML.query(LazyHTML.from_fragment(html), "dialog"),
+             "phx-update"
+           ) == ["ignore"]
 
-    assert LazyHTML.attribute(dialogs, "id") == [
-             "create_user",
-             "delete_user_2",
-             "extraction-dialog-3"
-           ]
-
-    assert LazyHTML.attribute(dialogs, "phx-update") == ["ignore", "ignore", "ignore"]
-    assert LazyHTML.attribute(dialogs, "open") == []
-    assert_form_isolated(admin)
-    assert_form_isolated(extraction)
+    assert_form_isolated(html)
   end
 
   for name <- @cases do
@@ -52,20 +38,30 @@ defmodule DawarichWeb.AdminUsersParityTest do
       context = seed!(state)
       params = URI.decode_query(URI.parse(state["path"]).query || "")
       assert {:ok, page} = UsersIndex.page(params, context)
-      html = render_component(&UsersIndex.render/1, Map.merge(context, page))
-      assert_form_isolated(html, "form[action='/settings/users/update_registration_settings']")
-      rails = File.read!(Path.join(@dir, @name <> ".html"))
 
-      assert ParityHTML.normalize(html) == ParityHTML.normalize(rails),
-             ParityHTML.first_difference(ParityHTML.normalize(html), ParityHTML.normalize(rails))
+      html =
+        render_component(
+          &UsersIndex.render/1,
+          Map.merge(
+            context,
+            Map.merge(page, %{create_email: "", form_version: 0, delete_id: nil, flash: %{}})
+          )
+        )
 
-      assert attributes(html) == attributes(rails)
+      ids =
+        LazyHTML.from_fragment(html)
+        |> LazyHTML.query("tbody tr")
+        |> LazyHTML.attribute("data-user-id")
+
+      assert ids == Enum.map(state["visible_ids"], &to_string/1)
+      assert page.data.search == params["search"]
+      assert page.data.registration == state["registration"]
       assert DawarichWeb.Layouts.page_title("en", page.page_title) == state["title"]
-      refute html =~ "phx-submit"
-      refute html =~ "delete_user_10001"
 
-      assert Enum.count(LazyHTML.query(LazyHTML.from_fragment(html), "tbody tr")) ==
-               length(state["visible_ids"])
+      for row <- page.data.rows do
+        assert html =~ row.email
+        refute row.status == 3 and html =~ "Pending payment"
+      end
     end
   end
 
@@ -75,22 +71,42 @@ defmodule DawarichWeb.AdminUsersParityTest do
       state = fixture(name)
       context = seed_detail!(state)
       assert {:ok, page} = UserShow.page(%{"id" => to_string(state["target"]["id"])}, context)
-      html = render_component(&UserShow.render/1, Map.merge(context, page))
-      assert_markup!(html, name)
-      button = LazyHTML.from_fragment(html) |> LazyHTML.query("[data-controller='clipboard']")
 
-      assert LazyHTML.attribute(button, "data-clipboard-text-value") == [
-               state["target"]["api_key"]
-             ]
+      html =
+        render_component(
+          &UserShow.render/1,
+          Map.merge(
+            context,
+            Map.merge(page, %{
+              security_accepted: MapSet.new(),
+              rotate_pending: false,
+              dialog_open: false
+            })
+          )
+        )
 
-      assert LazyHTML.attribute(button, "data-action") == ["click->clipboard#copy"]
+      assert page.target.id == state["target"]["id"]
+      assert page.target.email == state["target"]["email"]
+      assert page.counts == state["target"]["counts"]
+      assert page.target.points_count == state["target"]["points_count"]
+      assert page.target.sign_in_count == state["target"]["sign_in_count"]
+      assert page.target.last_sign_in_ip == state["target"]["last_sign_in_ip"]
+      assert page.target.current_sign_in_ip == state["target"]["current_sign_in_ip"]
 
-      assert html
-             |> LazyHTML.from_fragment()
-             |> LazyHTML.query(
-               "#admin-user-clipboard[phx-hook='RailsStimulus'] [data-controller='clipboard']"
-             )
-             |> Enum.count() == 1
+      button =
+        LazyHTML.from_fragment(html) |> LazyHTML.query("#admin-user-copy[phx-hook=Clipboard]")
+
+      assert LazyHTML.attribute(button, "data-clipboard-text") == [state["target"]["api_key"]]
+      assert html =~ String.slice(state["target"]["api_key"], 0, 8) <> String.duplicate("•", 24)
+
+      assert page.target.created_at ==
+               Dawarich.UserTimeZone.local(
+                 state["user"]["settings"],
+                 naive(state["target"]["created_at"])
+               )
+
+      refute Map.has_key?(page.target, :api_key)
+      assert page.target_user.encrypted_password == nil
 
       conn = %{Plug.Test.conn(:get, state["path"]) | assigns: Map.merge(context, page)}
       session = DawarichWeb.RailsAuth.live_session(conn)
@@ -100,18 +116,21 @@ defmodule DawarichWeb.AdminUsersParityTest do
   end
 
   @tag a10_users: :edit
-  test "user edit posts blank-password and status controls to Rails" do
+  test "user edit exposes redacted values and blank credential fields" do
     for name <- ~w(edit_self edit_target) do
       state = fixture(name)
       context = seed_detail!(state)
       assert {:ok, page} = UserEdit.page(%{"id" => to_string(state["target"]["id"])}, context)
       html = render_component(&UserEdit.render/1, Map.merge(context, page))
-      assert_form_isolated(html, "form.edit_user")
-      assert_markup!(html, name)
+      assert page.target.email == state["target"]["email"]
+      assert page.target.admin == state["target"]["admin"]
+      assert page.target.status == state["target"]["status"]
+      refute Map.has_key?(page.target, :api_key)
+      refute Map.has_key?(page.target, :encrypted_password)
+      assert html =~ "phx-submit=\"update_user\""
       password = LazyHTML.from_fragment(html) |> LazyHTML.query("input[type='password']")
       assert LazyHTML.attribute(password, "value") in [[], [""]]
       assert LazyHTML.attribute(password, "autocomplete") == ["new-password"]
-      refute html =~ "phx-submit"
     end
   end
 
@@ -141,17 +160,7 @@ defmodule DawarichWeb.AdminUsersParityTest do
              |> LazyHTML.attribute("value") == [
                Enum.at(~w(inactive active trial pending_payment), status)
              ]
-
-      assert_markup!(html, fixture_name)
     end
-  end
-
-  defp assert_markup!(html, name) do
-    rails = File.read!(Path.join(@dir, name <> ".html"))
-    actual = ParityHTML.normalize(String.replace(html, ~s( id="admin-user-clipboard"), ""))
-    expected = ParityHTML.normalize(rails)
-    assert actual == expected, ParityHTML.first_difference(actual, expected)
-    assert attributes(html) == attributes(rails)
   end
 
   defp seed_detail!(state) do
@@ -238,7 +247,9 @@ defmodule DawarichWeb.AdminUsersParityTest do
 
     %{
       locale: "en",
+      form_version: 0,
       current_user: Accounts.get(state["user"]["id"]),
+      current_scope: Dawarich.Accounts.Scope.for_user(Accounts.get(state["user"]["id"]), "en"),
       rails_csrf_token: "CSRF",
       self_hosted: true,
       two_factor: false
@@ -247,24 +258,4 @@ defmodule DawarichWeb.AdminUsersParityTest do
 
   defp naive(nil), do: nil
   defp naive(value), do: value |> DateTime.from_iso8601() |> elem(1) |> DateTime.to_naive()
-
-  defp attributes(html) do
-    html
-    |> LazyHTML.from_fragment()
-    |> LazyHTML.query("form, input, button, dialog, select, option, [onclick]")
-    |> LazyHTML.to_tree()
-    |> Enum.map(fn {tag, attrs, _} ->
-      {tag,
-       attrs
-       |> Enum.reject(fn
-         {"id", "phx-" <> _} -> true
-         {name, _} -> String.starts_with?(name, "phx-")
-       end)
-       |> Enum.map(fn
-         {"class", value} -> {"class", value |> String.split() |> Enum.join(" ")}
-         attr -> attr
-       end)
-       |> Enum.sort()}
-    end)
-  end
 end
