@@ -285,9 +285,11 @@ function harness({
       [12.38, 51.342],
     ],
     loadThemeTokens: async (key) =>
-      typeof theme === "function" ? theme(key) : theme
-        ? theme.promise
-        : { bg: "#ffffff", name: key === "noir" ? "Noir" : "Terracotta" },
+      typeof theme === "function"
+        ? theme(key)
+        : theme
+          ? theme.promise
+          : { bg: "#ffffff", name: key === "noir" ? "Noir" : "Terracotta" },
     resolveTheme: (tokens) => tokens,
     buildPosterStyle: (options) => ({ version: 8, options }),
   }
@@ -376,17 +378,33 @@ test("close during font style or track load creates no preview map", async () =>
 })
 
 test("an invalidated theme load cannot mutate a reopened studio", async () => {
-  const gate = deferred()
-  const h = harness({ theme: gate })
+  const old = deferred()
+  const current = deferred()
+  let calls = 0
+  const h = harness({
+    theme: () => (++calls === 1 ? old.promise : current.promise),
+  })
   const first = h.studio.open()
   await settle()
   h.studio.close()
   const second = h.studio.open()
   await settle()
-  gate.resolve({ bg: "#000", name: "Noir" })
-  await Promise.all([first, second])
-  await settle()
+  current.resolve({ bg: "#123456", name: "Current owner" })
+  await second
+  const summary = h.root.single.summary.children[0].textContent
+  assert.equal(h.maps[0].options.style.options.theme.name, "Current owner")
+  old.resolve({ bg: "#abcdef", name: "Obsolete owner" })
+  await first
   assert.equal(h.maps.length, 1)
+  assert.equal(h.maps[0].styles.length, 0)
+  assert.equal(h.root.single.summary.children[0].textContent, summary)
+  const rendering = h.studio.render()
+  await settle()
+  assert.equal(h.renders[0].options.style.options.theme.name, "Current owner")
+  assert.equal(h.renders[0].options.themeBg, "#123456")
+  h.renders[0].run.resolve({ blob: new Blob(["current"]) })
+  await rendering
+  h.studio.destroy()
 })
 
 test("destroy aborts render/upload and revokes result URL", async () => {
@@ -681,11 +699,13 @@ test("a gallery re-render reopens the current studio owner with the saved recipe
 
 test("reverse theme replies keep controls, preview, render and recipe on the selected theme", async () => {
   const requests = []
-  const h = harness({ theme: (key) => {
-    const gate = deferred()
-    requests.push({ key, ...gate })
-    return gate.promise
-  } })
+  const h = harness({
+    theme: (key) => {
+      const gate = deferred()
+      requests.push({ key, ...gate })
+      return gate.promise
+    },
+  })
   const opening = h.studio.open()
   await settle()
   requests[0].resolve({ name: "Terracotta", bg: "#fff" })
@@ -740,7 +760,10 @@ test("settings changes during rendering save the recipe for the produced bytes",
   await settle()
   assert.equal(h.uploads[0].options.settings.format, "portrait")
   assert.equal(h.uploads[0].options.settings.duration_sec, 15)
-  assert.equal(h.uploads[0].options.settings.start_at, "2026-08-20T00:00:00+02:00")
+  assert.equal(
+    h.uploads[0].options.settings.start_at,
+    "2026-08-20T00:00:00+02:00",
+  )
   assert.equal(await h.uploads[0].options.blob.text(), "portrait-15s")
   h.uploads[0].run.resolve({ ok: true })
   await saving
