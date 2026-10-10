@@ -1,5 +1,7 @@
 # Native map navigation
 
+> Historical hybrid navigation record. For migrated native pages, use [the native development workflow](native-frontend-development.md) and [ADR-0017 cleanup context](native-frontend-cleanup-adr.md). Shared Turbo/bridge retirement is milestone 7 work; its final production/browser evidence is still DRAFT. The original account below remains historical evidence, not current native setup instructions.
+
 > Hybrid navigation (Turbo ↔ LiveView) is the transitional mechanism for pages not yet migrated. Pages in the `:native_pages` live_session (currently Tags, ADR-0017) load only the `/native` esbuild bundle; navigating between them and hybrid pages is a full page load.
 
 Native pages keep Rails Turbo HTML responses in standalone mode. The Phoenix client tears down LiveView roots and retained Stimulus bridges before Turbo replaces or caches a body, then mounts bridges and reconnects LiveView on `turbo:load`. This covers map date searches, tracks, replay, studios, and controls on stats/digest pages. Map applications unload controllers and remove their portaled studios through the existing map shell lifecycle. Repeated bridge boot is idempotent; flash observers attach once per container.

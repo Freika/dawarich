@@ -3452,3 +3452,13 @@ Two existing dialog/account patch cases now read the native client in `T/client/
 Post-ledger register batch: 16 passed, seed 404, warnings-as-errors. Static validation resolves all 2,578 case definitions, existing successors/callers and 127 register rows; original inventory and Swagger/schema bytes are unchanged.
 
 C1 is not ticked: remaining assertion splits, feature integration, A/B named cleanup tests, deletion-time fixture/register audits and partition acceptance remain. Rails bugs fixed: none.
+
+## Appendix H — C3 development/architecture documentation draft (2026-10-10)
+
+Added `app-phoenix/README.md`, [native development instructions](native-frontend-development.md), [architecture context](native-frontend-context.md) and [ADR-0017 cleanup implementation record](native-frontend-cleanup-adr.md). Root AGENTS gains a Phoenix-specific draft section; map-navigation and form-patch-isolation history stays intact under superseding links. The accepted ADR source and historical source plan are not rewritten.
+
+The guide source-aligns current esbuild setup/build/deploy/digest commands and test runner behavior, separates current Rails CSS/font/image/mixed Docker discovery from A3/A4 targets, and documents Scope/session/protocol/async/teardown boundaries. Startup/production/fallback commands await X4 admission/packaging evidence; no untested generic endpoint start is presented as an accepted runtime. E2E discovery is distinguished from controller-only stage G44/390px acceptance. Scope cut removes D1–D4 measurements, preserving existing functional/byte-boundary tests.
+
+C3 remains unchecked: integrated runtime/build/fallback evidence, final app/E2E/image identities, partition/lane counts and 390px evidence await A/B/C1/X4/X5. This brief supplies draft instructions and the canonical AFFiNE index; it does not change milestone acceptance status. No production/runtime defaults, protected Cloud files or public contracts changed. Rails bugs fixed: none. No services were started by this brief; the targeted runner reused its already-running private Redis.
+
+Documentation checks: 27 repository links resolve; four shell blocks parse; Mix assets aliases/esbuild profile and approved runner toolchain align with source; private allocations are absent from the draft docs. Historical navigation/form-isolation content is preserved. AFFiNE canonical document `92Fb_pgYq2Yo2ySdCCoEZ` was updated and read back: scope cut, 4 completed/14 remaining tasks, exact mapping/test counts, C1 commit, C3 draft/pending status and A0/B0 history all verified. AFFiNE normalizes Markdown list formatting; verification checks content and status, not raw formatting equality.
