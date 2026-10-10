@@ -274,6 +274,20 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert config(view)["editEnabled"] == false
   end
 
+  test "map studio owners save through scoped callbacks and keep the host alive", %{id: id} do
+    {:ok, view, html} = open(id, @second)
+    assert has_element?(view, "#native-poster-studio[phx-hook=PosterStudio]")
+    assert has_element?(view, "#native-video-studio[phx-hook=VideoStudio]")
+    refute html =~ "synthetic-m6-host-key"
+    render_hook(view, "poster:save", %{})
+    assert_reply(view, %{status: "failed"})
+    send(view.pid, {DawarichWeb.VideoStudioLiveComponent, {:saved, 1, []}})
+    assert has_element?(view, "#native-video-gallery-list")
+    render_patch(view, @first)
+    assert has_element?(view, "#native-poster-studio")
+    render_async(view, 5000)
+  end
+
   defp config(view) do
     view
     |> render()

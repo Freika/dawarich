@@ -13,8 +13,11 @@ defmodule DawarichWeb.MapLive.Native do
         )
       end)
 
-    {:ok, socket |> assign(:navbar, navbar) |> DawarichWeb.MapLive.SettingsCommands.load(),
-     layout: false}
+    {:ok,
+     socket
+     |> assign(:navbar, navbar)
+     |> DawarichWeb.MapLive.SettingsCommands.load()
+     |> DawarichWeb.NativePosterGallery.mount(), layout: false}
   end
 
   def handle_params(params, _uri, socket) do
@@ -95,6 +98,9 @@ defmodule DawarichWeb.MapLive.Native do
     end
   end
 
+  def handle_event("poster:" <> _ = event, payload, socket),
+    do: DawarichWeb.NativePosterGallery.handle_event(event, payload, socket)
+
   def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)
 
@@ -166,6 +172,20 @@ defmodule DawarichWeb.MapLive.Native do
 
   def handle_event(event, _, socket) when event in ~w(map:ready map:failed),
     do: {:noreply, socket}
+
+  def handle_info({DawarichWeb.VideoStudioLiveComponent, {:saved, _id, _evicted}}, socket),
+    do: {:noreply, socket}
+
+  def handle_info(message, socket) do
+    case DawarichWeb.NativePosterGallery.handle_info(message, socket) do
+      :unhandled ->
+        {_, socket} = DawarichWeb.MapLive.Subscriptions.deliver(socket, message)
+        {:noreply, socket}
+
+      result ->
+        result
+    end
+  end
 
   def handle_async({:timeline, _} = name, result, socket),
     do: DawarichWeb.MapLive.Timeline.handle_async(name, result, socket)
