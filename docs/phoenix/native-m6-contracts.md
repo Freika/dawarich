@@ -147,10 +147,23 @@ The integrated map/poster/video style adapters import native C theme/schema/rend
 
 ## Integrated studio operation bounds (O8)
 
-Controller integration keeps the reviewed values: first idle: 60 seconds; negotiation: 30 seconds (one overall owned deadline); hook reply: 30 seconds; upload: 1 byte–250 MiB; gallery: 10 rows. Storage PUT is bounded by five minutes. Poster capture is bounded by five minutes and print upload by ten minutes. These bounds refuse visibly and release owned resources; no codec, paper size, DPI step-down, frame duration or media format changes. Browser heap/GPU trends and workload timing remain controller stage acceptance measurements.
+Controller integration keeps the reviewed values: first idle: 60 seconds; negotiation: 30 seconds (one overall owned deadline); hook reply: 30 seconds; upload: 1 byte–250 MiB; gallery: 10 rows. Storage PUT is bounded by five minutes. Poster capture is bounded by five minutes and print upload by ten minutes. These bounds refuse visibly and release owned resources; no codec, paper size, DPI step-down, frame duration or media format changes. Controller 20:50 scope cut removes browser resource, heap/GPU and workload timing measurements from X4/X5.
 
 ## Native map route retirement
 
 Timeline feeds, calendar, track-info, segment drawers/writes and point-address frame URLs now return HTTP410 without dispatching an effect or a Rails hand-back. Native successors are `MapLive.Timeline`, `TimelineFilters`, `SegmentCommands` and `VisitCommands`. External API geometry and write contracts remain unchanged. `/map/residency` remains for Insights, `/places/nearby` for independent Places navigation, Area/point-list/recalculation writes for their surviving pages, poster/video HTTP actions for current Trip consumers and gallery seeds. Those surviving callers prevent deleting their shared domain/transport modules before the corresponding milestone integration.
 
 Public `/s/:id` now uses the production PublicMapLive session and native root. Successful, locked and revoked page states remain native; their LiveView shell responds200, while phrase-unlock stays the existing HTTP POST with its exact cookie/redirect/status contracts. The thin Public dependency adapter records each admitted HTTP visit once with the existing SharedLinks view counter; connected mount and locked/refused visits do not increment it.
+
+## Static production closure budgets
+
+X4 reads the minified emitted files and sums each recursive static closure, with dynamic imports and external URLs excluded. The metafile supplies only graph edges; its reported byte fields are not trusted. `Dawarich.Build.NativeAssetBudget` rejects missing/unknown closures, malformed receipts, and either raw or gzip excess. Caps are decimal bytes, frozen with roughly15–22% headroom over the integrated measurement.
+
+| Entry | Measured raw / gzip | Raw cap | Gzip cap |
+| --- | --- | --- | --- |
+| app | 173727 / 53312 | 200000 | 65000 |
+| map | 112158 / 39266 | 130000 | 45000 |
+| poster | 50623 / 21873 | 60000 | 26000 |
+| video | 88071 / 30408 | 100000 | 36000 |
+
+Named static tests exercise each exact boundary, every one-byte excess, malformed receipts, and an actual emitted oversized banner with dishonest metadata. Browser memory/resource measurements remain outside acceptance under the controller scope cut; functional owner/navigation/cancel behavior remains covered by native behavior successors.

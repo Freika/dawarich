@@ -84,7 +84,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
     outputs =
       Path.join(dir, "meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
 
-    chunks =
+    _chunks =
       Map.new(outputs, fn {path, output} ->
         data = File.read!(Path.join(dir, Path.basename(path)))
         assert byte_size(data) == output["bytes"]
@@ -131,17 +131,36 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
     sizes =
       Map.new(roots, fn {name, root} ->
-        files = eager(outputs, [root], MapSet.new())
-
-        {name,
-         %{
-           raw: Enum.sum(for path <- files, do: chunks[path].raw),
-           gzip: Enum.sum(for path <- files, do: chunks[path].gzip),
-           chunks: MapSet.size(files)
-         }}
+        {name, Dawarich.Build.NativeAssetBudget.measure(outputs, root, dir)}
       end)
 
+    assert Dawarich.Build.NativeAssetBudget.within?(sizes)
+
     IO.puts("NATIVE_BUILD_BYTES " <> Jason.encode!(sizes))
+  end
+
+  test "production byte gate rejects an oversized emitted banner using actual files", %{
+    tmp_dir: dir
+  } do
+    banner = Jason.encode!(String.duplicate("x", 200_001)) <> ";"
+    build!(dir, ["--minify", "--banner:js=" <> banner])
+
+    outputs =
+      Path.join(dir, "meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    root =
+      Enum.find_value(outputs, fn {path, _} -> if Path.basename(path) == "app.js", do: path end)
+
+    dishonest = Map.new(outputs, fn {path, info} -> {path, Map.put(info, "bytes", 1)} end)
+    measured = Dawarich.Build.NativeAssetBudget.measure(dishonest, root, dir)
+    assert measured.raw > 200_000
+
+    sizes =
+      Map.new(Dawarich.Build.NativeAssetBudget.caps(), fn {name, cap} ->
+        {name, Map.put(cap, :chunks, 1)}
+      end)
+
+    refute Dawarich.Build.NativeAssetBudget.within?(Map.put(sizes, :app, measured))
   end
 
   test "emoji-mart is a separate lazily loaded chunk", %{tmp_dir: dir} do
