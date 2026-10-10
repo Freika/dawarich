@@ -66,11 +66,19 @@ defmodule DawarichWeb.AuthProviderEntries do
       end
 
     %{
-      email_password:
-        not Dawarich.Auth.Admission.oidc?(env) or
-          Map.get(env, "ALLOW_EMAIL_PASSWORD_LOGIN", "true") == "true",
+      email_password: email_password_enabled?(env),
       providers: providers
     }
+  end
+
+  def email_password_enabled?(env \\ System.get_env()) do
+    oidc =
+      present?(env, "OIDC_CLIENT_ID") and
+        (present?(env, "OIDC_CLIENT_SECRET") or
+           String.downcase(String.trim(env["OIDC_PKCE_ENABLED"] || "")) == "true")
+
+    not (Dawarich.ReleaseMigration.self_hosted?(env) and oidc) or
+      Map.get(env, "ALLOW_EMAIL_PASSWORD_LOGIN", "true") == "true"
   end
 
   defp present?(env, key), do: String.trim(env[key] || "") != ""

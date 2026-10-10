@@ -92,6 +92,89 @@ defmodule DawarichWeb.NativeCredentialsDocumentTest do
     assert cloud.providers == []
   end
 
+  test "Cloud Google keeps credentials on desktop and mobile when the OIDC allow flag is false" do
+    env = %{
+      "SELF_HOSTED" => "false",
+      "GOOGLE_OAUTH_CLIENT_ID" => "synthetic",
+      "GOOGLE_OAUTH_CLIENT_SECRET" => "synthetic",
+      "ALLOW_EMAIL_PASSWORD_LOGIN" => "false"
+    }
+
+    for agent <- ["Desktop", "Android"] do
+      conn = build_conn() |> put_req_header("user-agent", agent)
+      conn = assign(conn, :rails_session, %{"_csrf_token" => RailsCsrf.new_token()})
+      public = DawarichWeb.AuthProviderEntries.for_request(conn, env)
+      assert public.email_password
+      html = AuthForm.render("synthetic-csrf", "", Map.to_list(public))
+
+      assert Enum.count(
+               LazyHTML.query(LazyHTML.from_fragment(html), "input[name='user[password]']")
+             ) == 1
+
+      assert Enum.count(public.providers) == if(agent == "Desktop", do: 1, else: 0)
+    end
+  end
+
+  test "native credential POST matches the self-hosted OIDC and Cloud presentation matrix" do
+    keys =
+      ~w(SELF_HOSTED OIDC_CLIENT_ID OIDC_PKCE_ENABLED GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET ALLOW_EMAIL_PASSWORD_LOGIN)
+
+    old = Map.new(keys, &{&1, System.get_env(&1)})
+
+    on_exit(fn ->
+      for {k, v} <- old, do: if(v, do: System.put_env(k, v), else: System.delete_env(k))
+    end)
+
+    actor =
+      RailsUser.insert!(%{
+        id: System.unique_integer([:positive]),
+        email: "provider-matrix@example.test",
+        api_key: "synthetic",
+        settings: %{},
+        encrypted_password: Bcrypt.hash_pwd_salt("synthetic-password12", log_rounds: 4)
+      })
+
+    for {hosted, oidc, allow, enabled} <- [
+          {false, false, false, true},
+          {true, true, false, false},
+          {true, true, true, true},
+          {true, false, false, true}
+        ] do
+      env = %{
+        "SELF_HOSTED" => to_string(hosted),
+        "OIDC_CLIENT_ID" => if(oidc, do: "synthetic", else: ""),
+        "OIDC_PKCE_ENABLED" => to_string(oidc),
+        "GOOGLE_OAUTH_CLIENT_ID" => "synthetic",
+        "GOOGLE_OAUTH_CLIENT_SECRET" => "synthetic",
+        "ALLOW_EMAIL_PASSWORD_LOGIN" => to_string(allow)
+      }
+
+      System.put_env(env)
+      conn = assign(build_conn(), :rails_session, %{"_csrf_token" => RailsCsrf.new_token()})
+      assert DawarichWeb.AuthProviderEntries.for_request(conn, env).email_password == enabled
+      session = %{"_csrf_token" => RailsCsrf.new_token(), "user_return_to" => "/map"}
+
+      response =
+        RailsFormRequests.post_form(
+          session,
+          URI.encode_query(%{
+            "authenticity_token" =>
+              RailsCsrf.masked_form_token(session, "/users/sign_in", "POST"),
+            "user[email]" => actor.email,
+            "user[password]" => "synthetic-password12"
+          }),
+          [],
+          "/users/sign_in"
+        )
+
+      assert response.status == if(enabled, do: 303, else: 302)
+
+      assert get_resp_header(response, "location") == [
+               "http://www.example.com" <> if(enabled, do: "/map", else: "/")
+             ]
+    end
+  end
+
   test "logout retires both devices and stale salt cannot restore" do
     actor =
       RailsUser.insert!(%{
