@@ -152,6 +152,39 @@ test("a refused reservation or claim removes the pending attachment", async () =
   assert.equal(b.attributes, null)
 })
 
+test("a failed upload releases its server reservation", async () => {
+  const cancels = (h) =>
+    h.pushed.filter(([name]) => name === "rich_upload_cancel")
+
+  const putFailed = hook({ rich_upload_reserve: reserve })
+  await new RichAttachments(putFailed, {
+    digest,
+    transport: transport(Promise.reject(new Error("network"))),
+  }).add(attachment(file()))
+  assert.deepEqual(cancels(putFailed), [
+    ["rich_upload_cancel", { upload_ref: "ref-1" }],
+  ])
+
+  const claimRefused = hook({
+    rich_upload_reserve: reserve,
+    rich_upload_claim: { error: "refused" },
+  })
+  await new RichAttachments(claimRefused, {
+    digest,
+    transport: transport(),
+  }).add(attachment(file()))
+  assert.deepEqual(cancels(claimRefused), [
+    ["rich_upload_cancel", { upload_ref: "ref-1" }],
+  ])
+
+  const reserveRefused = hook({ rich_upload_reserve: { error: "refused" } })
+  await new RichAttachments(reserveRefused, {
+    digest,
+    transport: transport(),
+  }).add(attachment(file()))
+  assert.deepEqual(cancels(reserveRefused), [])
+})
+
 test("existing attachments without a file are left alone", async () => {
   const h = hook()
   await new RichAttachments(h, { digest }).add({ file: null })

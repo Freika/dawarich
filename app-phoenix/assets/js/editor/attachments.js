@@ -92,7 +92,7 @@ export class RichAttachments {
   }
 
   fail(token) {
-    this.pending.delete(token)
+    this.cancel(token, true)
     token.attachment.remove()
     this.status(this.hook.el.dataset.uploadFailed || "")
   }

@@ -108,6 +108,26 @@ defmodule DawarichWeb.TripRichTextTest do
              [[1]]
   end
 
+  test "cancelled failed uploads release their pending slots for a retry" do
+    owner = socket(9_805)
+
+    {refs, owner} =
+      Enum.map_reduce(1..10, owner, fn n, owner ->
+        {%{upload_ref: ref}, owner} = reserve(owner, "failed-#{n}.png")
+        {ref, owner}
+      end)
+
+    assert {%{error: "refused"}, owner} = reserve(owner, "blocked.png")
+
+    owner =
+      Enum.reduce(refs, owner, fn ref, owner ->
+        {:noreply, owner} = RichUpload.handle("rich_upload_cancel", %{"upload_ref" => ref}, owner)
+        owner
+      end)
+
+    assert {%{upload_ref: _}, _} = reserve(owner, "retry.png")
+  end
+
   test "a stale actor cannot reserve or claim" do
     owner = socket(9_804)
 
