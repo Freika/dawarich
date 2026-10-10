@@ -18,6 +18,13 @@ defmodule DawarichWeb.NativePointAddress do
         </p>
         <button
           type="button"
+          class="btn btn-error btn-xs"
+          phx-click="point:delete"
+          phx-value-point_id={@address.id}
+          data-confirm={t(@locale, "javascript.map.confirm_delete_point_permanently", %{})}
+        >{t(@locale, "javascript.common.delete", %{})}</button>
+        <button
+          type="button"
           class="btn btn-ghost btn-xs"
           phx-click="address:close"
           aria-label={t(@locale, "map.maplibre.area_creation_modal.cancel", %{})}
