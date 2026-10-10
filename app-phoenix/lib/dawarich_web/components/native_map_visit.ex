@@ -105,6 +105,11 @@ defmodule DawarichWeb.NativeMapVisit do
             </button>
           </div>
         </section>
+        <DawarichWeb.NativeVisitPlaceSearch.search
+          :if={@dialog.id}
+          search={@dialog[:search]}
+          locale={@locale}
+        />
         <section :if={@dialog.id} class="mt-4 min-w-0">
           <h4 class="font-semibold text-sm">{t(@locale, "places.drawer.notes", %{})}</h4>
           <ul class="space-y-1 mt-2">

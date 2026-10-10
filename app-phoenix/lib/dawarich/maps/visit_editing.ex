@@ -65,7 +65,7 @@ defmodule Dawarich.Maps.VisitEditing do
 
   def update(scope, id, attrs, opts \\ []) do
     Maps.with_actor(scope, fn actor ->
-      attrs = Map.take(attrs, ~w(name place_id started_at ended_at))
+      attrs = Map.take(attrs, ~w(name place_id area_id status started_at ended_at))
       ok(WebUpdate.run(Repo, actor, id, attrs, ctx(scope, opts)))
     end)
   end
@@ -165,6 +165,8 @@ defmodule Dawarich.Maps.VisitEditing do
   defp typed({:replay, _}), do: {:error, :unsupported}
   defp typed(:not_found), do: {:error, :not_found}
   defp typed(_), do: {:error, :unavailable}
+
+  def zone_for(actor), do: zone(actor, [])
 
   defp zone(actor, opts) do
     case WebEffects.zone(Repo, actor, %{now: now(opts)}) do

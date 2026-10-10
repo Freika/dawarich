@@ -118,6 +118,9 @@ defmodule DawarichWeb.MapLive.VisitCommands do
   def handle_event("address:close", _params, socket),
     do: {:noreply, assign(socket, :point_address, nil)}
 
+  def handle_event("visit:place_" <> _ = event, params, socket),
+    do: DawarichWeb.MapLive.VisitPlaceCommands.handle_event(event, params, socket)
+
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
   defp notes(scope, id) do
@@ -134,7 +137,7 @@ defmodule DawarichWeb.MapLive.VisitCommands do
     end
   end
 
-  defp settle(socket, current, result) when result == :ok or elem(result, 0) == :ok do
+  def settle(socket, current, result) when result == :ok or elem(result, 0) == :ok do
     socket =
       socket
       |> assign(:visit_dialog, nil)
@@ -146,10 +149,10 @@ defmodule DawarichWeb.MapLive.VisitCommands do
       else: {:noreply, push_event(socket, "map:layer", %{layer: "visits", enabled: true})}
   end
 
-  defp settle(socket, current, {:error, {:invalid, errors}}),
+  def settle(socket, current, {:error, {:invalid, errors}}),
     do: {:noreply, assign(socket, :visit_dialog, %{current | errors: errors})}
 
-  defp settle(socket, current, {:error, reason}),
+  def settle(socket, current, {:error, reason}),
     do: {:noreply, assign(socket, :visit_dialog, %{current | errors: [reason]})}
 
   defp reply(socket, result) when result == :ok or elem(result, 0) == :ok,
@@ -167,6 +170,7 @@ defmodule DawarichWeb.MapLive.VisitCommands do
       places: [],
       place_id: nil,
       notes: [],
-      note_error: nil
+      note_error: nil,
+      search: nil
     }
 end

@@ -110,6 +110,9 @@ defmodule DawarichWeb.MapLive.EntityCommands do
     end
   end
 
+  def handle_async({:visit_places, _} = name, result, socket),
+    do: DawarichWeb.MapLive.VisitPlaceCommands.handle_async(name, result, socket)
+
   def handle_async(_name, _result, socket), do: {:noreply, socket}
 
   defp tags(socket) do
