@@ -75,6 +75,54 @@ defmodule Dawarich.NativeM5.Dependencies do
     end
   end
 
+  def digest_upgrade_url(scope, now, hosted),
+    do: DawarichWeb.StatsFormat.upgrade_url(scope.user, now, hosted, "digest", "year_in_review")
+
+  def share_digest(scope, year, attrs, opts) do
+    context = %{
+      now: Keyword.get(opts, :now, DateTime.utc_now()),
+      locale: scope.locale,
+      base_url: Keyword.get(opts, :base_url, ""),
+      self_hosted: Keyword.get(opts, :self_hosted, true)
+    }
+
+    case Dawarich.Digests.Sharing.update(Dawarich.Repo, scope.user, year, attrs, context) do
+      {:ok, result} ->
+        {:ok,
+         %{
+           enabled: result.settings["enabled"],
+           expires_at: result.settings["expires_at"],
+           url: result.body["sharing_url"]
+         }}
+
+      other ->
+        other
+    end
+  end
+
+  def digest_sharing(scope, year, opts) do
+    with {:ok, fresh} <- Dawarich.Accounts.DataAccess.admit(scope),
+         [[settings, uuid]] <-
+           Dawarich.Repo.query!(
+             "SELECT sharing_settings,sharing_uuid::text FROM digests WHERE user_id=$1 AND year=$2 AND period_type=1 LIMIT 1",
+             [fresh.user.id, year],
+             log: false
+           ).rows do
+      settings = settings || %{}
+      enabled = settings["enabled"] == true
+
+      url =
+        if enabled and is_binary(uuid),
+          do: Keyword.get(opts, :base_url, "") <> "/shared/digest/" <> uuid,
+          else: ""
+
+      {:ok, %{enabled: enabled, expiration: settings["expiration"] || "24h", url: url}}
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :not_found}
+    end
+  end
+
   defp identity(%{encrypted_password: hash}) when is_binary(hash) and byte_size(hash) >= 29,
     do: :crypto.hash(:sha256, String.slice(hash, 0, 29))
 

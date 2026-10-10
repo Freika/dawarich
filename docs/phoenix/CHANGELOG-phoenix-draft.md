@@ -126,3 +126,7 @@ The controller recorded these deferrals on 2026-10-07; they remain follow-up wor
 - Serialize administrator deletion and role changes to retain administration access under competing writes. [FRB-085](fixed-rails-bugs.md#frb-085--concurrent-admin-roledeletion-writes-can-leave-no-administrator)
 
 These are native Phoenix corrections delivered in A2; retained Rails behavior is unchanged.
+
+## Native data pages (milestone 5)
+
+- Keep mobile and desktop family-sharing indicators independently addressable and current. [FRB-NATIVE-M5-FAMILY-INDICATOR](fixed-rails-bugs.md#frb-native-m5-family-indicator--duplicate-family-navbar-ids)

@@ -70,8 +70,8 @@ defmodule DawarichWeb.A9RoutesTest do
     {"/stats", DawarichWeb.StatsLive.NativePage, :index, nil},
     {"/stats/:year", DawarichWeb.StatsLive.NativePage, :year, nil},
     {"/stats/:year/:month", DawarichWeb.StatsLive.Month, :month, nil},
-    {"/digests", DawarichWeb.DigestsLive.Index, :index, nil},
-    {"/digests/:year", DawarichWeb.DigestsLive.Show, :show, nil},
+    {"/digests", DawarichWeb.DigestsLive.NativePage, :index, nil},
+    {"/digests/:year", DawarichWeb.DigestsLive.NativePage, :show, nil},
     {"/trips", DawarichWeb.TripsLive.Index, :index, {DawarichWeb.TripsGate, :index?}},
     {"/trips/:id", DawarichWeb.TripsLive.Show, :show, {DawarichWeb.TripsGate, :show?}},
     {"/places", DawarichWeb.PlacesLive.Index, :index, {DawarichWeb.PlacesGate, :index?}},
@@ -112,7 +112,11 @@ defmodule DawarichWeb.A9RoutesTest do
       assert opts == [action: action, router: Router, container: {:div, class: "contents"}]
 
       native_data =
-        view in [DawarichWeb.StatsLive.NativePage, DawarichWeb.InsightsLive.NativePage]
+        view in [
+          DawarichWeb.StatsLive.NativePage,
+          DawarichWeb.InsightsLive.NativePage,
+          DawarichWeb.DigestsLive.NativePage
+        ]
 
       family = String.starts_with?(path, "/family")
 

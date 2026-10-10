@@ -192,7 +192,16 @@ defmodule DawarichWeb.Navbar do
           href={@home}
         >
           <span>{t(@locale, "shared.navbar.family", %{})}<sup :if={not @mobile}>α</sup></span>
-          <.family_indicator locale={@locale} sharing={@family.sharing} native={@native} />
+          <.family_indicator
+            locale={@locale}
+            sharing={@family.sharing}
+            native={@native}
+            id={
+              if @native and @mobile,
+                do: "family-navbar-indicator-mobile",
+                else: "family-navbar-indicator"
+            }
+          />
         </a>
       <% else %>
         <a class={link_class(@mobile, @request_path, "/family/new")} href="/family/new">{t(

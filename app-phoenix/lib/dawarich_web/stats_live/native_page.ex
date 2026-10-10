@@ -162,7 +162,7 @@ defmodule DawarichWeb.StatsLive.NativePage do
 
   defp options(socket),
     do: [
-      now: socket.assigns.now,
+      now: DateTime.utc_now(),
       self_hosted: socket.assigns.self_hosted,
       base_url: socket.assigns[:base_url] || ""
     ]

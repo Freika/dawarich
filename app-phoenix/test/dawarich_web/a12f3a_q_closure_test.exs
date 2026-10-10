@@ -16,10 +16,13 @@ defmodule DawarichWeb.A12f3aQClosureTest do
     saved = Application.get_env(:dawarich, :jobs_repo)
     Application.put_env(:dawarich, :jobs_repo, Repo)
     env = System.get_env("SELF_HOSTED")
+    jwt = System.get_env("JWT_SECRET_KEY")
+    System.put_env("JWT_SECRET_KEY", "synthetic-q-native-upgrade")
 
     on_exit(fn ->
       Application.put_env(:dawarich, :jobs_repo, saved)
       if env, do: System.put_env("SELF_HOSTED", env), else: System.delete_env("SELF_HOSTED")
+      if jwt, do: System.put_env("JWT_SECRET_KEY", jwt), else: System.delete_env("JWT_SECRET_KEY")
     end)
 
     user =
@@ -195,7 +198,7 @@ defmodule DawarichWeb.A12f3aQClosureTest do
   end
 
   @tag a12f3a_q05: true
-  test "Q05: insights details frame and transport tails matches current Rails contract without a native-owner Rails effect",
+  test "Q05: native Insights document preserves source all-time values auth and cache contract",
        %{user: user} do
     for row <- fixture("05") do
       set_mode(to_string(row["self_hosted"]))
@@ -206,8 +209,9 @@ defmodule DawarichWeb.A12f3aQClosureTest do
         |> get("/insights/details?year=all")
 
       assert conn.status == row["status"]
-      assert conn.resp_body =~ ~s(<turbo-frame id="insights_details">)
-      refute conn.resp_body =~ "<!DOCTYPE"
+      assert String.contains?(conn.resp_body, ~s(id="insights-period"))
+      refute String.contains?(conn.resp_body, "turbo-frame")
+      assert String.contains?(conn.resp_body, "<!DOCTYPE")
       assert get_resp_header(conn, "cache-control") == [row["cache_control"]]
     end
 

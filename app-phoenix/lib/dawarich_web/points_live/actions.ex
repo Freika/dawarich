@@ -99,7 +99,7 @@ defmodule DawarichWeb.PointsLive.Actions do
     end
   end
 
-  defp opts(socket), do: [now: socket.assigns.now, self_hosted: socket.assigns.self_hosted]
+  defp opts(socket), do: [now: DateTime.utc_now(), self_hosted: socket.assigns.self_hosted]
 
   defp intent(socket, value),
     do: %{socket | private: Map.put(socket.private, :point_intent, value)}

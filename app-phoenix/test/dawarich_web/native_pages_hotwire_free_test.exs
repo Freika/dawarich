@@ -59,6 +59,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       }
     ])
 
+    Dawarich.Test.StatsSeeds.digest!(user.id, %{year: 2024})
     %{user: user}
   end
 

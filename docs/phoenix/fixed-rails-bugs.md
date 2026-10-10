@@ -1338,3 +1338,14 @@ Rails counts administrators before an unlocked update and does not share a guard
 - Evidence: A2 commit `c7f44a025`; `m3b-domain.report.md`, `m3b-x3.report.md`. No machine stress or Rails production change.
 - Ledger: ED-NATIVE-ADMIN-USERS-DELETE-GUARD; no DRB added. Distinct from FRB-084's missing deletion guard.
 - CHANGELOG-ready: Serialize native administrator deletion and role changes to retain administration access.
+
+### FRB-NATIVE-M5-FAMILY-INDICATOR — Duplicate family navbar IDs
+
+Rails renders the family sharing indicator in both mobile and desktop navigation with the same DOM ID. DOM replacement can address only one copy, leaving the other sharing indicator stale; the same copied structure also fails native LiveView duplicate-ID validation. Native navigation uses a distinct mobile ID and retains the desktop indicator ID; both display the current sharing state. Hybrid Turbo replacement targets are unchanged.
+
+- Rails: `app/views/shared/_navbar.html.erb:21,83`; `app/views/families/_navbar_indicator.html.erb:1`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar.ex:195`; `app-phoenix/lib/dawarich_web/components/navbar_parts.ex:70`.
+- Test: “native family indicators keep separate mobile and desktop sharing states” in `app-phoenix/test/dawarich_web/native_data_clock_test.exs`; current Points/Stats family-expiry lifecycle cases mount/patch without duplicate-ID exceptions.
+- Ledger: ED-NATIVE-M5-FAMILY-INDICATOR added; no DRB added.
+- Evidence: impl-m5.report.md final audit follow-up; RED unique-node assertion, GREEN, duplicate-ID mutation fails, restored GREEN. Rails remains unchanged.
+- CHANGELOG-ready: Keep mobile and desktop family-sharing indicators independently addressable and current.

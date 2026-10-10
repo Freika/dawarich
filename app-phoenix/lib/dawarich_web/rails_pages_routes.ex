@@ -68,12 +68,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/stats/:year/:month", DawarichWeb.StatsLive.Month, :month,
             container: {:div, class: "contents"}
 
-          live "/digests", DawarichWeb.DigestsLive.Index, :index,
-            container: {:div, class: "contents"}
-
-          live "/digests/:year", DawarichWeb.DigestsLive.Show, :show,
-            container: {:div, class: "contents"}
-
           live "/trips", DawarichWeb.TripsLive.Index, :index,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.TripsGate, :index?}}

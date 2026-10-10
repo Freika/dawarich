@@ -8,7 +8,9 @@ defmodule Dawarich.Digests.Pages do
       rows =
         Repo.query!(
           "SELECT year,distance,toponyms,first_time_visits,sharing_settings->>'enabled' FROM digests WHERE user_id=$1 AND period_type=1 AND year<$2 ORDER BY year DESC LIMIT 51 OFFSET $3",
-          [scope.user.id, period.today.year, (period.page - 1) * 50], log: false).rows
+          [scope.user.id, period.today.year, (period.page - 1) * 50],
+          log: false
+        ).rows
 
       digests =
         Enum.take(rows, 50)
@@ -44,7 +46,9 @@ defmodule Dawarich.Digests.Pages do
 
       case Repo.query!(
              "SELECT #{columns} FROM digests WHERE user_id=$1 AND period_type=1 AND year=$2 LIMIT 1",
-             [scope.user.id, period.year], log: false).rows do
+             [scope.user.id, period.year],
+             log: false
+           ).rows do
         [] ->
           {:error, :not_found}
 
@@ -97,7 +101,7 @@ defmodule Dawarich.Digests.Pages do
          previous_year: scalar(yoy, "previous_year", nil),
          total_countries_all_time: scalar(all_time, "total_countries", 0),
          total_cities_all_time: scalar(all_time, "total_cities", 0),
-         total_distance_all_time: scalar(all_time, "total_distance", 0),
+         total_distance_all_time: integer(all_time, "total_distance"),
          monthly_distances: Enum.sort_by(monthly, fn {month, _} -> Digests.to_i(month) end),
          sharing_expiration: expiry
        })}
@@ -119,6 +123,9 @@ defmodule Dawarich.Digests.Pages do
       )
 
   defp values(_, _), do: []
+
+  defp integer(map, key) when is_map(map), do: Digests.to_i(map[key] || 0)
+  defp integer(_, _), do: 0
 
   defp scalar(map, key, default) when is_map(map),
     do: if(is_number(map[key]), do: map[key], else: default)

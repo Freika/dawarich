@@ -22,6 +22,12 @@ defmodule DawarichWeb.NativeDataRoutes do
           live "/insights/details", DawarichWeb.InsightsLive.NativePage, :details,
             container: {:div, class: "contents"}
 
+          live "/digests", DawarichWeb.DigestsLive.NativePage, :index,
+            container: {:div, class: "contents"}
+
+          live "/digests/:year", DawarichWeb.DigestsLive.NativePage, :show,
+            container: {:div, class: "contents"}
+
           live "/points", DawarichWeb.PointsLive.Index, :index,
             container: {:div, class: "contents"}
         end

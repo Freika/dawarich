@@ -26,6 +26,12 @@ defmodule DawarichWeb.StatsParityTest do
                  else: "#{@name} matches the page Rails renders"
                )
 
+    @test_name if(String.starts_with?(@name, "digest"),
+                 do:
+                   "#{@name} native persisted values access and localized charts match the source",
+                 else: @test_name
+               )
+
     if @name in ~w(index_en index_nongeo_en index_lite_en year_lite_en),
       do: @tag(a12f3a_q01: true)
 
@@ -49,9 +55,13 @@ defmodule DawarichWeb.StatsParityTest do
       phoenix = render_component(&module.render/1, Map.merge(context, assigns))
       rails = File.read!(Path.join(@dir, @name <> ".html"))
 
-      assert normalized(phoenix) == normalized(rails)
-      assert ParityHTML.stimulus(phoenix) == ParityHTML.stimulus(rails)
-      assert charts(phoenix) == charts(rails)
+      if String.starts_with?(state["path"], "/digests") do
+        native_digest(user, params, context, assigns, rails)
+      else
+        assert normalized(phoenix) == normalized(rails)
+        assert ParityHTML.stimulus(phoenix) == ParityHTML.stimulus(rails)
+        assert charts(phoenix) == charts(rails)
+      end
 
       title =
         render_component(
@@ -76,6 +86,64 @@ defmodule DawarichWeb.StatsParityTest do
         assert title == state["title"]
       end
     end
+  end
+
+  defp native_digest(user, params, context, source, rails) do
+    scope = Dawarich.Accounts.Scope.for_user(user, context.locale)
+    opts = [now: context.now, self_hosted: context.self_hosted]
+
+    html =
+      if params == %{} do
+        {:ok, data} = Dawarich.Digests.Pages.index(scope, params, opts)
+        assert data.available_years == source.available_years
+        assert Enum.map(data.digests, & &1.year) == Enum.map(source.digests, & &1.year)
+
+        for {native, old} <- Enum.zip(data.digests, source.digests),
+            key <- [:year, :distance, :first_time_countries, :first_time_cities],
+            do: assert(native[key] == old[key])
+
+        render_component(&DawarichWeb.DigestsLive.NativeIndexParts.render/1,
+          data: data,
+          locale: context.locale
+        )
+      else
+        {:ok, data} = Dawarich.Digests.Pages.get(scope, params, opts)
+
+        for key <- Map.keys(data) -- [:period, :restricted, :unit],
+            do: assert(data[key] == source.digest[key])
+
+        summary =
+          render_component(&DawarichWeb.DigestsLive.NativeParts.summary/1,
+            digest: data,
+            locale: context.locale,
+            unit: data.unit
+          )
+
+        if data.restricted do
+          summary
+        else
+          full =
+            render_component(&DawarichWeb.DigestsLive.NativeFullParts.full/1,
+              digest: data,
+              locale: context.locale,
+              unit: data.unit,
+              table: source.table
+            )
+
+          native_charts =
+            LazyHTML.from_document(full)
+            |> LazyHTML.query("[data-chart]")
+            |> LazyHTML.attribute("data-chart")
+            |> Enum.map(&Jason.decode!(&1)["data"])
+
+          assert native_charts == Enum.map(charts(rails), & &1.data)
+          summary <> full
+        end
+      end
+
+    refute html =~ "data-turbo"
+    refute html =~ "onclick="
+    refute html =~ "Chartkick"
   end
 
   defp normalized(html),
