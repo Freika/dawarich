@@ -164,7 +164,15 @@ defmodule DawarichWeb.OnboardingScreens do
               {tm(@locale, "scan_this_qr_code_with_the_dawarich_app_to_automatically")}
             </p>
             <div class="flex justify-center">
-              <div class="bg-white p-3 rounded-lg shadow-inner">
+              <div
+                :if={@native}
+                id="onboarding-api-qr"
+                class="bg-white p-3 rounded-lg shadow-inner"
+                phx-hook="CredentialQr"
+                phx-update="ignore"
+              >
+              </div>
+              <div :if={not @native} class="bg-white p-3 rounded-lg shadow-inner">
                 {Phoenix.HTML.raw(Dawarich.QrSvg.api_key(@base_url <> "/", @current_user.api_key, 3))}
               </div>
             </div>

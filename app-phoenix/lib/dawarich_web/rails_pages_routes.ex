@@ -7,6 +7,8 @@ defmodule DawarichWeb.RailsPagesRoutes do
       scope "/" do
         pipe_through [:browser, :rails_user]
 
+        get "/native/account/qr", DawarichWeb.NativeCredentialReveal, []
+
         get "/imports/:id/download", DawarichWeb.ImportsDownload, :show, metadata: @native_import
 
         live_session :native_pages,
@@ -37,10 +39,10 @@ defmodule DawarichWeb.RailsPagesRoutes do
             container: {:div, class: "contents"}
         end
 
-        live_session :rails_pages,
-          session: {DawarichWeb.NativeAuth, :live_session, []},
-          on_mount: DawarichWeb.LiveAuth,
-          root_layout: {DawarichWeb.Layouts, :root},
+        live_session :native_jobs,
+          session: {DawarichWeb.NativeJobsAuth, :live_session, []},
+          on_mount: {DawarichWeb.NativeJobsAuth, :require_user},
+          root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
           live "/notifications", DawarichWeb.NotificationsLive.Index, :index,
             container: {:div, class: "contents"}
@@ -52,19 +54,23 @@ defmodule DawarichWeb.RailsPagesRoutes do
             container: {:div, class: "contents"}
 
           live "/imports/:id", DawarichWeb.ImportsLive.Show, :show,
-            container: {:div, class: "contents"},
-            metadata: @native_import
+            container: {:div, class: "contents"}
 
           live "/imports/:id/edit", DawarichWeb.ImportsLive.Edit, :edit,
-            container: {:div, class: "contents"},
-            metadata: @native_import
+            container: {:div, class: "contents"}
 
           live "/imports", DawarichWeb.ImportsLive.Index, :index,
             container: {:div, class: "contents"}
 
           live "/exports", DawarichWeb.ExportsLive.Index, :index,
             container: {:div, class: "contents"}
+        end
 
+        live_session :rails_pages,
+          session: {DawarichWeb.NativeAuth, :live_session, []},
+          on_mount: DawarichWeb.LiveAuth,
+          root_layout: {DawarichWeb.Layouts, :root},
+          layout: {DawarichWeb.Layouts, :app} do
           live "/stats", DawarichWeb.StatsLive.Index, :index, container: {:div, class: "contents"}
 
           live "/stats/:year", DawarichWeb.StatsLive.Year, :show,

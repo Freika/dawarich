@@ -337,10 +337,10 @@ defmodule DawarichWeb.NotificationsLiveTest do
       {:ok, show, _html} = live_as(user, "/notifications/41022")
       lock(user)
 
-      assert {:error, {:redirect, %{to: "/notifications"}}} =
+      assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
                index |> element("a", "Delete all") |> render_click()
 
-      assert {:error, {:redirect, %{to: "/notifications/41022"}}} =
+      assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
                show |> form(~s(form.button_to[action="/notifications/41022"])) |> render_submit()
 
       assert Notifications.page(user.id, 1).notifications |> length() == 20
@@ -510,7 +510,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
       {:ok, view, _html} = live_as(user)
       lock(user)
 
-      assert {:error, {:redirect, %{to: "/notifications"}}} =
+      assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
                render_submit(view, "changelog_consent", %{"decision" => "granted"})
 
       assert consent(user) == nil
