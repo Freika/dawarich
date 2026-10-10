@@ -167,18 +167,51 @@ defmodule DawarichWeb.AuthAccountLink.ResponseTest do
              |> LazyHTML.from_document()
              |> LazyHTML.query("#flash-messages .alert-error")
              |> LazyHTML.to_tree() == []
+    end
+  end
 
-      for alert <- ["", "  ", nil, false] do
-        blank = put_in(session, ["flash", "flashes", "alert"], alert)
-        conn = Response.form(request(blank), %{pending | session: blank}, %{secret: @secret})
+  test "source blank incoming link alerts retain exact shell content and expire once" do
+    for locale <- ~w(en de es fr pl ca zh), alert <- ["", "  ", nil, false] do
+      row = @source["challenge_alert_#{locale}"]
 
-        assert conn.resp_body
-               |> LazyHTML.from_document()
-               |> LazyHTML.query(".card-body .alert-error")
-               |> LazyHTML.to_tree() == []
+      {session, _} =
+        SessionCookie.for_form(
+          row["session"]
+          |> Map.drop(~w(session_id _csrf_token))
+          |> Map.put("flash", row["incoming_flash"]),
+          @secret
+        )
 
-        refute Map.has_key?(decoded(conn), "flash")
-      end
+      session = put_in(session, ["flash", "flashes", "alert"], alert)
+
+      pending = %{
+        session: session,
+        user: %{email: row["before"]["email"]},
+        pending: session["pending_oauth_link"]
+      }
+
+      conn = Response.form(request(session), pending, %{secret: @secret})
+      dom = LazyHTML.from_document(conn.resp_body)
+      alerts = LazyHTML.query(dom, "#flash-messages .alert-error")
+      assert Enum.count(alerts) == 1
+
+      assert alerts |> LazyHTML.query("span") |> LazyHTML.text() ==
+               if(is_nil(alert), do: "", else: to_string(alert))
+
+      assert Enum.empty?(LazyHTML.query(dom, ".card-body .alert-error"))
+      refute Map.has_key?(decoded(conn), "flash")
+
+      next =
+        Response.form(request(decoded(conn)), %{pending | session: decoded(conn)}, %{
+          secret: @secret
+        })
+
+      assert Enum.empty?(
+               LazyHTML.query(
+                 LazyHTML.from_document(next.resp_body),
+                 "#flash-messages .alert-error"
+               )
+             )
     end
   end
 
