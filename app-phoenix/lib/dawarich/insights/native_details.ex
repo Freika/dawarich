@@ -89,6 +89,7 @@ defmodule Dawarich.Insights.NativeDetails do
            if(monthly,
              do: %{
                distance: monthly.distance,
+               source: Dawarich.Insights.MonthProjection.load(id, data.year, data.selected_month),
                distances: monthly.distances,
                updated_at: monthly.updated_at
              }

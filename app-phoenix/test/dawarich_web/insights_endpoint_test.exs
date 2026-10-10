@@ -5,7 +5,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
 
   import Dawarich.Test.RawHTTP
   import Phoenix.ConnTest, only: [get: 2, html_response: 2]
-  import Phoenix.LiveViewTest, only: [live: 1, render: 1]
+  import Phoenix.LiveViewTest, only: [live: 1, render_async: 2]
 
   @endpoint DawarichWeb.Endpoint
 
@@ -65,17 +65,17 @@ defmodule DawarichWeb.InsightsEndpointTest do
     {request_line(head), header(head, "cookie")}
   end
 
-  test "a signed-in Turbo frame request gets the details frame in Turbo's minimal layout", ctx do
+  test "old framed native details requests receive the full authorized native document", ctx do
     frame = [{"Cookie", ctx.cookie}, {"Turbo-Frame", "insights_details"}]
 
     assert {200, _headers, body} =
              phoenix(ctx.port, request("/insights/details?year=all", frame))
 
-    assert String.starts_with?(body, "<html>")
-    assert body =~ ~s(<turbo-frame id="insights_details">)
-
-    for absent <- ["<!DOCTYPE", "<title", "<script", "class=\"navbar"],
-        do: refute(body =~ absent, "frame response contains #{absent}")
+    assert body =~ "<!DOCTYPE html>"
+    assert body =~ ~s(id="insights-period")
+    assert body =~ "navbar"
+    refute body =~ "turbo-frame"
+    refute body =~ "type=\"importmap\""
   end
 
   test "a direct signed-in request gets the app layout with the navbar", ctx do
@@ -84,7 +84,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
 
     assert body =~ "<!DOCTYPE html>"
     assert body =~ ~s(<div class="navbar bg-base-100 h-16">)
-    assert body =~ ~s(<turbo-frame id="insights_details">)
+    assert body =~ ~s(id="insights-period")
   end
 
   test "a signed-in visit to / is redirected to the map by Phoenix", ctx do
@@ -137,7 +137,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
     assert {200, _headers, body} =
              phoenix(ctx.port, request("/insights/details?year=all", [{"Cookie", ctx.cookie}]))
 
-    assert body =~ ~s(<turbo-frame id="insights_details">)
+    assert body =~ ~s(id="insights-period")
   end
 
   test "a non-string year or month fails natively", ctx do
@@ -145,7 +145,8 @@ defmodule DawarichWeb.InsightsEndpointTest do
           "/insights/details?year%5B%5D=2024",
           "/insights/details?year=2024&month%5Bx%5D=4"
         ] do
-      assert {500, _headers, _body} = phoenix(ctx.port, request(target, [{"Cookie", ctx.cookie}]))
+      assert {200, _headers, body} = phoenix(ctx.port, request(target, [{"Cookie", ctx.cookie}]))
+      assert body =~ "alert"
     end
   end
 
@@ -179,8 +180,8 @@ defmodule DawarichWeb.InsightsEndpointTest do
       if state == "corrupt", do: Dawarich.Redis.cache_command(["SET", key, "corrupt fixture"])
       assert {200, headers, body} = phoenix(ctx.port, request(target, frame))
       assert values(headers, "content-type") == ["text/html; charset=utf-8"]
-      assert body =~ ~s(<turbo-frame id="insights_details">)
-      refute body =~ "<!DOCTYPE"
+      assert body =~ ~s(id="insights-period")
+      assert body =~ "<!DOCTYPE"
     end
 
     assert Dawarich.Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
@@ -192,10 +193,10 @@ defmodule DawarichWeb.InsightsEndpointTest do
     assert {200, _headers, _body} = phoenix(ctx.port, request(target, frame))
   end
 
-  test "disconnected and connected mounts read source fragments and write no Rails fragments" do
+  test "native disconnected and connected details ignore source HTML cache without writes" do
     before = digests()
     conn = get(RailsUser.signed_in(9301), "/insights/details?year=all")
-    assert html_response(conn, 200) =~ ~s(<turbo-frame id="insights_details">)
+    assert html_response(conn, 200) =~ ~s(id="insights-period")
     assert {:ok, []} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
     user = Dawarich.Accounts.get(9301)
     data = Dawarich.Insights.Details.load(user, %{"year" => "all"})
@@ -209,13 +210,13 @@ defmodule DawarichWeb.InsightsEndpointTest do
         do: Dawarich.RailsCache.put(key, "<b>source mount fragment</b>", expires_in: 86400)
 
     {:ok, view, html} = live(RailsUser.connecting_as(conn, 9301))
-    assert length(String.split(html, "source mount fragment")) == 7
-    assert render(view) =~ "source mount fragment"
+    refute html =~ "source mount fragment"
+    refute render_async(view, 5000) =~ "source mount fragment"
     for key <- keys, do: Dawarich.Redis.cache_command(["DEL", key])
     GenServer.stop(view.pid)
     {:ok, view, html} = live(RailsUser.connecting_as(conn, 9301))
-    assert html =~ ~s(<turbo-frame id="insights_details">)
-    refute render(view) =~ "source mount fragment"
+    assert html =~ ~s(id="insights-period")
+    refute render_async(view, 5000) =~ "source mount fragment"
     assert {:ok, []} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
     assert digests() == before
   end
@@ -229,30 +230,37 @@ defmodule DawarichWeb.InsightsEndpointTest do
     assert {200, _headers, body} =
              phoenix(ctx.port, request("/insights/details?year=2024&month=4", frame))
 
-    assert body =~ ~s(<turbo-frame id="insights_details">)
+    assert body =~ ~s(id="insights-period")
     assert digests() == before
   end
 
-  test "a cold yearly or monthly digest is calculated by Phoenix", ctx do
+  test "cold native details publish durable refresh without calculating on either GET", ctx do
     Dawarich.Repo.query!("SELECT setval('digests_id_seq', 71, false)")
     ctx = digest_user!(ctx)
     cookie = [{"Cookie", ctx.cookie}]
+    before = digests()
 
     for target <- ["/insights/details?year=2024&month=4", "/insights/details?year=2024&month=3"] do
       if target =~ "month=3", do: InsightsSeeds.warm!()
       assert {200, _headers, body} = phoenix(ctx.port, request(target, cookie))
-      assert body =~ ~s(<turbo-frame id="insights_details">)
+      assert body =~ ~s(id="insights-period")
     end
 
-    assert length(digests()) == 3
+    assert digests() == before
+
+    assert Dawarich.Repo.query!(
+             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Stats.PageRefreshWorker'",
+             []
+           ).rows == [[2]]
   end
 
-  test "a cached value that is not a digest fails natively", ctx do
+  test "a corrupt legacy cache cannot replace native persisted details", ctx do
     ctx = digest_user!(ctx)
     InsightsSeeds.warm!(<<0, 17, 1, -1.0::little-float-64, -1::little-signed-32, 4, 8, ?i, 86>>)
     target = "/insights/details?year=2024&month=4"
 
-    assert {500, _headers, _body} = phoenix(ctx.port, request(target, [{"Cookie", ctx.cookie}]))
+    assert {200, _headers, body} = phoenix(ctx.port, request(target, [{"Cookie", ctx.cookie}]))
+    assert body =~ ~s(id="insights-period")
   end
 
   test "a native read that cannot access the database fails natively", ctx do
@@ -262,13 +270,13 @@ defmodule DawarichWeb.InsightsEndpointTest do
     assert {500, _headers, _body} = phoenix(ctx.port, request(target, [{"Cookie", ctx.cookie}]))
   end
 
-  test "a connected details LiveView renders the frame and writes no fragments" do
+  test "connected native details render persisted values without HTML fragments" do
     conn = get(RailsUser.signed_in(9301), "/insights/details?year=all")
-    assert html_response(conn, 200) =~ ~s(<turbo-frame id="insights_details">)
+    assert html_response(conn, 200) =~ ~s(id="insights-period")
     assert {:ok, []} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
     {:ok, "OK"} = Dawarich.Redis.cache_command(["FLUSHDB"])
     {:ok, view, _html} = live(RailsUser.connecting_as(conn, 9301))
-    assert render(view) =~ ~s(<turbo-frame id="insights_details">)
+    assert render_async(view, 5000) =~ ~s(id="insights-details-ready")
     assert {:ok, []} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
   end
 end

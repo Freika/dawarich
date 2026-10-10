@@ -3,11 +3,10 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
 
   @moduletag :capture_log
 
-  import Dawarich.Test.RawHTTP
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
   alias Dawarich.Insights.{Details, Fragments}
-  alias Dawarich.Test.{InsightsSeeds, ParityHTML, RailsUser}
+  alias Dawarich.Test.{InsightsSeeds, ParityHTML}
 
   @dir Path.expand("../fixtures/insights", __DIR__)
   @corpus @dir |> Path.join("details-corpus.json") |> File.read!() |> Jason.decode!()
@@ -15,19 +14,10 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
-    upstream = listen()
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
-    on_exit(fn -> Application.put_env(:dawarich, :rails_upstream, nil) end)
     InsightsSeeds.start_cache!()
     InsightsSeeds.corpus!(@corpus)
 
-    bandit =
-      start_supervised!(
-        {Bandit, [plug: DawarichWeb.Endpoint] ++ Dawarich.Front.http_options({127, 0, 0, 1}, 0)}
-      )
-
-    {:ok, {_ip, port}} = ThousandIsland.listener_info(bandit)
-    %{port: port, upstream: upstream}
+    :ok
   end
 
   test "fragments are keyed with the template digest Rails renders insights/details with" do
@@ -38,7 +28,7 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
 
   @parts ~w(year_comparison activity_breakdown location_clusters monthly_digest travel_patterns movement_wellness)
 
-  test "warm nil stale and cold details preserve the source corpus values and order", ctx do
+  test "warm nil stale and cold details preserve the source corpus values and order" do
     for {state, order} <- [
           {"fresh", ~w(walking stationary flying)},
           {"persisted", ~w(flying walking stationary)}
@@ -73,85 +63,15 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
 
     before = Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows
 
-    for request <- @corpus["requests"] do
-      key = Enum.find(@corpus["cache"], &String.contains?(&1["key"], "/#{request["user_id"]}/"))
-      cookie = "_dawarich_session=" <> RailsUser.cookie(RailsUser.session(request["user_id"]))
-      expected_bytes = File.read!(Path.join(@dir, request["fixture"]))
-      expected = ParityHTML.normalize(expected_bytes)
+    for request <- @corpus["requests"], state <- [:warm, :stale, nil, :cold] do
+      for fragment <- request["fragment_keys"],
+          do: Dawarich.Redis.cache_command(["DEL", fragment])
 
-      for state <- [:warm, :stale, nil, :cold] do
-        for fragment <- request["fragment_keys"],
-            do: Dawarich.Redis.cache_command(["DEL", fragment])
+      native_values(request, state)
 
-        [[updated]] =
-          Dawarich.Repo.query!(
-            "SELECT updated_at FROM digests WHERE user_id=$1 AND year=2024 AND period_type=1",
-            [request["user_id"]]
-          ).rows
-
-        current_key = Details.yearly_key(request["user_id"], 2024, updated)
-
-        case_before =
-          Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows
-
-        InsightsSeeds.cache!(current_key, Base.decode64!(key["wire"]))
-
-        if state == :stale,
-          do:
-            Dawarich.Repo.query!(
-              "UPDATE digests SET distance=888 WHERE user_id=$1 AND period_type=1",
-              [request["user_id"]]
-            )
-
-        if state == nil,
-          do:
-            InsightsSeeds.cache!(
-              current_key,
-              Dawarich.RailsCache.Wire.encode_boolean(nil, expires_at: nil)
-            )
-
-        if state == :cold, do: Dawarich.Redis.cache_command(["DEL", current_key])
-        client = connect(ctx.port)
-
-        send_raw(
-          client,
-          "GET #{request["path"]} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\nTurbo-Frame: insights_details\r\n\r\n"
-        )
-
-        assert {200, _, body} = read_response(client)
-
-        if state != :cold,
-          do:
-            assert(
-              Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows ==
-                case_before
-            )
-
-        if state == nil do
-          locale =
-            URI.parse(request["path"]).query
-            |> to_string()
-            |> URI.decode_query()
-            |> Map.get("locale", "en")
-
-          {:ok, message} =
-            Dawarich.I18n.t(
-              locale,
-              "insights.activity_breakdown.no_activity_data_available_for_this_period"
-            )
-
-          assert body |> LazyHTML.from_document() |> LazyHTML.text() =~ message
-          assert body =~ ~s(<turbo-frame id="insights_details">)
-        else
-          assert ParityHTML.fragment(body, "turbo-frame#insights_details") == expected
-        end
-      end
+      assert Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows ==
+               before
     end
-
-    assert Enum.map(
-             Dawarich.Repo.query!("SELECT id,updated_at FROM digests ORDER BY id", []).rows,
-             &hd/1
-           ) == Enum.map(before, &hd/1)
 
     assert Dawarich.Repo.query!("SELECT count(*) FROM phoenix.rails_commands", []).rows == [[0]]
   end
@@ -169,34 +89,92 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
       assert Enum.sort(keys) == Enum.sort(@request["fragment_keys"])
     end
 
-    test "Phoenix answers #{request["path"]} as Rails renders #{request["fixture"]}", ctx do
-      expected = @dir |> Path.join(@request["fixture"]) |> File.read!() |> ParityHTML.normalize()
-      cookie = "_dawarich_session=" <> RailsUser.cookie(RailsUser.session(@request["user_id"]))
-
-      for pass <- [:cold_fragments, :warm_fragments] do
-        client = connect(ctx.port)
-
-        send_raw(
-          client,
-          "GET #{@request["path"]} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\nTurbo-Frame: insights_details\r\n\r\n"
-        )
-
-        assert {200, _headers, body} = read_response(client)
-        actual = ParityHTML.fragment(body, "turbo-frame#insights_details")
-
-        assert actual == expected,
-               "#{pass}: #{inspect(first_difference(actual, expected), limit: 12)}"
-      end
+    test "native #{@request["path"]} preserves scoped source totals localized patterns and chart values" do
+      native_values(@request)
     end
   end
 
-  defp first_difference(a, a), do: nil
+  defp native_values(request, state \\ :cold) do
+    query = request["path"] |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+    user = Dawarich.Accounts.get(request["user_id"])
+    scope = Dawarich.Accounts.Scope.for_user(user, query["locale"] || "en")
 
-  defp first_difference(a, b) when is_list(a) and is_list(b) and length(a) == length(b),
-    do: Enum.zip(a, b) |> Enum.find_value(fn {a, b} -> first_difference(a, b) end)
+    [[updated]] =
+      Dawarich.Repo.query!(
+        "SELECT updated_at FROM digests WHERE user_id=$1 AND year=2024 AND period_type=1",
+        [user.id]
+      ).rows
 
-  defp first_difference(a, b) when is_tuple(a) and is_tuple(b) and tuple_size(a) == tuple_size(b),
-    do: first_difference(Tuple.to_list(a), Tuple.to_list(b))
+    key = Details.yearly_key(user.id, 2024, updated)
+    Dawarich.Redis.cache_command(["DEL", key])
+    source = Details.load(user, query, self_hosted: false, fill: false)
+    entry = Enum.find(@corpus["cache"], &String.contains?(&1["key"], "/#{user.id}/"))
 
-  defp first_difference(a, b), do: {a, b}
+    case state do
+      :warm ->
+        InsightsSeeds.cache!(key, Base.decode64!(entry["wire"]))
+
+      :stale ->
+        Dawarich.Redis.cache_command(["SET", key, "corrupt source cache"])
+
+      nil ->
+        InsightsSeeds.cache!(key, Dawarich.RailsCache.Wire.encode_boolean(nil, expires_at: nil))
+
+      :cold ->
+        Dawarich.Redis.cache_command(["DEL", key])
+    end
+
+    {:ok, data} = Dawarich.Insights.Pages.details(scope, query, self_hosted: false)
+    assert data.restricted == source.restricted
+    assert data.year == source.year
+    assert data.unit == source.unit
+
+    if !data.restricted do
+      assert Map.take(data.totals, [:distance, :countries, :cities, :days, :biggest_month]) ==
+               Map.take(source.totals, [:distance, :countries, :cities, :days, :biggest_month])
+
+      assert data.weekly == source.weekly
+      assert data.time_of_day == source.time_of_day
+      assert data.seasonality == source.seasonality
+      assert data.activity == source.activity
+
+      html =
+        render_component(&DawarichWeb.InsightsLive.NativeParts.details/1, %{
+          data: data,
+          locale: scope.locale,
+          query: query,
+          path: "/insights/details"
+        })
+
+      refute html =~ "turbo-frame"
+      refute html =~ "Chartkick"
+
+      assert html |> LazyHTML.from_document() |> LazyHTML.text() =~
+               DawarichWeb.Translate.t(
+                 scope.locale,
+                 "insights.activity_breakdown.activity_breakdown",
+                 %{}
+               )
+
+      if data.monthly do
+        assert data.monthly.distance == source.monthly["distance"]
+        assert data.monthly.distances == source.monthly["monthly_distances"]
+
+        [raw] =
+          html
+          |> LazyHTML.from_document()
+          |> LazyHTML.query("#insights-monthly-chart")
+          |> LazyHTML.attribute("data-chart")
+
+        assert Jason.decode!(raw)["data"] ==
+                 DawarichWeb.InsightsDetails.MonthFormat.chart(
+                   scope.locale,
+                   source.monthly,
+                   source.unit
+                 )
+      end
+
+      assert {:ok, _} = Dawarich.Cache.PagesCodec.encode(data)
+    end
+  end
 end

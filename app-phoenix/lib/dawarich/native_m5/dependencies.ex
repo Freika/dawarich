@@ -50,6 +50,9 @@ defmodule Dawarich.NativeM5.Dependencies do
   def stats_upgrade_url(scope, now, hosted),
     do: DawarichWeb.StatsFormat.upgrade_url(scope.user, now, hosted, "data_window", "stats_index")
 
+  def insights_upgrade_url(scope, now, hosted),
+    do: DawarichWeb.StatsFormat.upgrade_url(scope.user, now, hosted, "data_window", "insights")
+
   def share_stat(scope, year, month, attrs, opts) do
     context = %{
       now: Keyword.get(opts, :now, DateTime.utc_now()),

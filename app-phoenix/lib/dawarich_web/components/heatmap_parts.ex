@@ -110,6 +110,7 @@ defmodule DawarichWeb.HeatmapParts do
             </div>
           </div>
           <div
+            :if={!@native}
             data-activity-heatmap-target="tooltip"
             class="hidden absolute z-50 flex-col items-center px-3 py-2 bg-base-100 border border-base-300 rounded-lg shadow-lg text-sm pointer-events-none"
           >
