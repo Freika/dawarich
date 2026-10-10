@@ -64,3 +64,7 @@ Public bootstrap grants retain an opaque phrase digest derived from the exact li
 ## Native photo day assignment (review round 1)
 
 Public native photo DTOs interpret provider local timestamps in the owner's IANA zone using ImportTime, carry an explicit UTC timestamp and authoritative day_key, and preserve offset timestamp instants. Day galleries compare day_key directly; browser timezone cannot change membership. Undated or invalid timestamps retain the photo without assigning it to a day. Independent HTTP photo DTOs remain unchanged.
+
+## Transient copy recovery (review round 1)
+
+Invitation and sharing reveals reuse the shared clipboard helper. It attempts the browser API, then a bounded textarea/execCommand fallback, checking the current generation before fallback. Temporary fallback text is erased in finally. A denied copy exposes a readonly selectable textarea for at most 15 seconds, erased on timeout, patch, disconnect, destruction or sharing-clear. Secret values remain in transient DOM rather than socket or hook data.

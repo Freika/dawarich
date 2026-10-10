@@ -1,3 +1,5 @@
+import { copyText, manualCopy } from "./clipboard.js"
+
 export const SharingDialog = {
   mounted() {
     this.trigger = document.activeElement
@@ -45,9 +47,15 @@ export const SharingReveal = {
           throw Error("refused")
         const value = await response.text()
         if (generation !== this.generation) return
-        await navigator.clipboard.writeText(value)
-        if (generation === this.generation)
-          this.status.textContent = this.el.dataset.copiedLabel
+        const copied = await copyText(
+          value,
+          () => generation === this.generation,
+        )
+        if (generation !== this.generation) return
+        this.status.textContent = copied
+          ? this.el.dataset.copiedLabel
+          : this.el.dataset.failedLabel
+        if (!copied) this.clearRecovery = manualCopy(this.status, value)
       } catch {
         if (generation === this.generation)
           this.status.textContent = this.el.dataset.failedLabel
@@ -62,6 +70,8 @@ export const SharingReveal = {
     this.generation++
     this.controller?.abort()
     this.controller = null
+    this.clearRecovery?.()
+    this.clearRecovery = null
     this.button.disabled = false
     this.status.textContent = ""
   },

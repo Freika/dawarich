@@ -1,3 +1,5 @@
+import { copyText, manualCopy } from "./clipboard.js"
+
 export const FamilyInvitationClipboard = {
   mounted() {
     this.generation = 0
@@ -26,9 +28,19 @@ export const FamilyInvitationClipboard = {
           throw Error("refused")
         const capability = await response.text()
         if (generation !== this.generation) return
-        await navigator.clipboard.writeText(capability)
-        if (generation === this.generation)
-          this.report(this.el.dataset.copiedLabel)
+        const copied = await copyText(
+          capability,
+          () => generation === this.generation,
+        )
+        if (generation !== this.generation) return
+        this.report(
+          copied ? this.el.dataset.copiedLabel : this.el.dataset.failedLabel,
+        )
+        if (!copied)
+          this.clearRecovery = manualCopy(
+            document.getElementById(this.el.dataset.statusId),
+            capability,
+          )
       } catch {
         if (generation === this.generation)
           this.report(this.el.dataset.failedLabel)
@@ -52,6 +64,8 @@ export const FamilyInvitationClipboard = {
     this.generation++
     this.controller?.abort()
     this.controller = null
+    this.clearRecovery?.()
+    this.clearRecovery = null
     this.el.disabled = false
     this.report("")
   },
