@@ -8,7 +8,7 @@ defmodule DawarichWeb.PublicMapAuth do
   alias Dawarich.Maps.Dependencies.Public
   alias DawarichWeb.{RailsAuth, SharedLinkCookie}
 
-  @layout ~w(locale suggested_locale self_hosted request_path query_params base_url notification_session)a
+  @layout ~w(locale suggested_locale self_hosted request_path query_params base_url notification_session rails_csrf_token)a
   def live_session(conn) do
     user = conn.assigns[:current_user]
 
@@ -80,6 +80,8 @@ defmodule DawarichWeb.PublicMapAuth do
   end
 
   def authorize(socket) do
+    socket = navigation(socket)
+
     with {:ok, config} <- Public.config(socket.assigns.public_capability),
          {:ok, presentation} <- Public.presentation(socket.assigns.public_capability) do
       old = socket.assigns.public_config
@@ -96,7 +98,18 @@ defmodule DawarichWeb.PublicMapAuth do
           public_config: config,
           public_presentation: presentation,
           public_error: nil,
-          page_title: config["title"]
+          page_title:
+            DawarichWeb.SharedPages.title(%{
+              locale: socket.assigns.locale,
+              link: presentation.link
+            }),
+          head_content:
+            DawarichWeb.SharedPages.metadata(%{
+              page: String.to_existing_atom(presentation.link.type),
+              link: presentation.link,
+              locale: socket.assigns.locale,
+              base_url: socket.assigns.base_url
+            })
         )
         |> DawarichWeb.PublicMapDeadline.schedule()
 
@@ -110,6 +123,16 @@ defmodule DawarichWeb.PublicMapAuth do
     end
   end
 
+  defp navigation(socket) do
+    case Public.navigation(socket.assigns.public_capability) do
+      {:ok, %{scope: scope, navbar: navbar}} ->
+        assign(socket, current_scope: scope, current_user: scope.user, navbar: navbar)
+
+      _ ->
+        assign(socket, current_scope: nil, current_user: nil, navbar: nil)
+    end
+  end
+
   def refuse(socket, reason) do
     socket
     |> DawarichWeb.MapLive.Subscriptions.release()
@@ -119,6 +142,7 @@ defmodule DawarichWeb.PublicMapAuth do
       public_presentation: nil,
       public_error: reason,
       page_title: nil,
+      head_content: nil,
       public_map_ready: false
     )
     |> push_event("map:clear", %{code: Atom.to_string(reason)})

@@ -1582,3 +1582,12 @@ Stored recipe formats such as `__proto__`, `constructor` or `toString` select in
 - Test: `phoenix_video_state_test.mjs`: "stored recipes with inherited format names fall back to finite portrait dimensions".
 
 - Ledger: ED-NATIVE-M6-VIDEO-FORMAT-OWN-KEY; no DRB. Rails remains unchanged; integrated native fix.
+
+### FRB-NATIVE-M6-FAMILY-NAV-ID
+
+Mobile and desktop family sharing indicators reused one DOM id in Rails. Updates or DOM lookups can target one copy ambiguously. Native navigation gives the two copies distinct ids and can mount/reconnect without duplicate-id rejection.
+
+- Rails: `app/views/shared/_navbar.html.erb:21,83`; `app/views/families/_navbar_indicator.html.erb:1`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar.ex:199`; `app-phoenix/lib/dawarich_web/components/navbar_parts.ex:72`.
+- Test: `native family public navigation rechecks audience without disclosing missing or revoked resources`; valid connected-view RED rejects the duplicate id, restored GREEN7; duplicate-indicator mutation fails. Source inspection establishes both Rails partial insertions.
+- ED: ED-NATIVE-M6-FAMILY-NAV-ID. No DRB row.

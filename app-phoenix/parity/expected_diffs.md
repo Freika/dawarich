@@ -831,3 +831,5 @@ source debt or weaken Cloud lifecycle refusal.
 | ED-NATIVE-M6-VIDEO-e | Native studio | Rails source transport/behavior | First video map idle wait is abortable with a 60-second bound and owned resource cleanup. | m6 integration | closed |
 
 | ED-NATIVE-M6-NATIVE-PAGE-CACHE | Native map and public documents | UI transport/cache | Native admitted pages, local refusals and authentication redirects use private, no-store and noindex, nofollow. Public documents previously used private revalidation; family no-store remains preserved. External APIs and phrase unlock are unchanged. | native public documents and refusals are nonindexable and never stored; cache/robots mutations fail | intentional native page policy |
+
+| ED-NATIVE-M6-FAMILY-NAV-ID | Family application navigation | Rails DOM identity defect | Native mobile and desktop sharing indicators have distinct ids; Rails inserts the same family-navbar-indicator twice. | native family public navigation rechecks audience without disclosing missing or revoked resources; duplicate-indicator mutation rejects connected mount | FRB-NATIVE-M6-FAMILY-NAV-ID; no DRB |

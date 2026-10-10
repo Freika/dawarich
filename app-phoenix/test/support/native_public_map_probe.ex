@@ -3,7 +3,10 @@ defmodule Dawarich.Test.NativePublicMapProbeRouter do
   import Phoenix.LiveView.Router
 
   pipeline :public_probe do
+    plug(:fetch_query_params)
     plug(DawarichWeb.RailsAuth)
+    plug(DawarichWeb.Locale)
+    plug(DawarichWeb.LayoutAssigns)
     plug(:fetch_live_flash)
   end
 

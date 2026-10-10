@@ -38,6 +38,94 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
     %{uuid: uuid, id: id}
   end
 
+  test "native family public navigation rechecks audience without disclosing missing or revoked resources",
+       %{uuid: uuid, id: id} do
+    viewer = id + 1
+
+    RailsUser.insert!(%{
+      id: viewer,
+      email: "native-family-#{viewer}@dawarich.test",
+      theme: "light"
+    })
+
+    stamp = NaiveDateTime.utc_now()
+
+    Repo.insert_all("families", [
+      %{id: id, creator_id: id, name: "Native family", created_at: stamp, updated_at: stamp}
+    ])
+
+    Repo.insert_all(
+      "family_memberships",
+      for(
+        {member, role} <- [{id, 0}, {viewer, 1}],
+        do: %{
+          id: member,
+          family_id: id,
+          user_id: member,
+          role: role,
+          created_at: stamp,
+          updated_at: stamp
+        }
+      )
+    )
+
+    rows("UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid", [
+      uuid,
+      %{"audience" => "family", "family_id" => to_string(id)}
+    ])
+
+    scope = Dawarich.Maps.principal(Dawarich.Accounts.get(viewer), "en")
+    assert {:ok, _} = Dawarich.Maps.Dependencies.Public.config(%{id: uuid, viewer_scope: scope})
+
+    assert {:ok, _} =
+             Dawarich.Maps.Dependencies.Public.presentation(%{id: uuid, viewer_scope: scope})
+
+    conn = RailsUser.signed_in(viewer) |> RailsUser.connecting_as(viewer) |> get("/s/#{uuid}")
+    assert conn.status == 200
+    assert String.contains?(conn.resp_body, "mobile-navigation-menu") == true
+    assert String.contains?(conn.resp_body, ~s(data-theme="dawarich")) == true
+    assert String.contains?(conn.resp_body, "utm_medium=public_share") == false
+    assert String.contains?(conn.resp_body, "data-controller") == false
+
+    assert LazyHTML.from_document(conn.resp_body)
+           |> LazyHTML.query(~s(meta[property="og:title"]))
+           |> LazyHTML.attribute("content") == ["Native public trip"]
+
+    {:ok, view, _} = live(conn)
+    render_hook(view, "changelog_consent", %{"decision" => "granted"})
+    assert rows("SELECT changelog_consent FROM users WHERE id=$1", [viewer]) == [[1]]
+    rows("DELETE FROM trips WHERE id=$1", [id * 10])
+    missing = RailsUser.signed_in(viewer) |> get("/s/#{uuid}")
+    assert String.contains?(missing.resp_body, "mobile-navigation-menu") == true
+    assert String.contains?(missing.resp_body, "native-public-map") == false
+    assert String.contains?(missing.resp_body, "Native public trip") == false
+    rows("DELETE FROM family_memberships WHERE user_id=$1", [viewer])
+    render_hook(view, "changelog_consent", %{"decision" => "declined"})
+    assert rows("SELECT changelog_consent FROM users WHERE id=$1", [viewer]) == [[1]]
+    revoked = RailsUser.signed_in(viewer) |> get("/s/#{uuid}")
+    assert String.contains?(revoked.resp_body, "mobile-navigation-menu") == false
+    assert String.contains?(revoked.resp_body, "native-public-map") == false
+    assert String.contains?(revoked.resp_body, "Native public trip") == false
+  end
+
+  test "native public presentation keeps localized metadata and marketing navigation", %{
+    uuid: uuid
+  } do
+    conn = get(build_conn(), "/s/#{uuid}")
+    document = LazyHTML.from_document(conn.resp_body)
+    title = DawarichWeb.SharedPages.title(%{locale: "en", link: %{name: "Native public trip"}})
+
+    assert LazyHTML.query(document, "title") |> LazyHTML.text() ==
+             DawarichWeb.Layouts.page_title("en", title)
+
+    assert LazyHTML.query(document, ~s(meta[property="og:title"]))
+           |> LazyHTML.attribute("content") == ["Native public trip"]
+
+    assert String.contains?(conn.resp_body, "utm_content=header") == true
+    assert String.contains?(conn.resp_body, "utm_content=footer_cta") == true
+    assert String.contains?(conn.resp_body, "mobile-navigation-menu") == false
+  end
+
   test "native public documents and refusals are nonindexable and never stored", %{uuid: uuid} do
     for path <- ["/s/#{uuid}", "/s/missing-native-grant", "/map/v2"] do
       conn = get(build_conn(), path)

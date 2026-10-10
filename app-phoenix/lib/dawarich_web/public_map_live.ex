@@ -17,6 +17,21 @@ defmodule DawarichWeb.PublicMapLive do
 
   def handle_params(_, _, socket), do: {:noreply, socket}
 
+  def handle_event(
+        "changelog_consent",
+        %{"decision" => decision},
+        %{assigns: %{current_scope: scope}} = socket
+      )
+      when not is_nil(scope) and decision in ~w(declined granted) do
+    Dawarich.Maps.with_actor(scope, fn user ->
+      Dawarich.Navbar.put_changelog_consent(user, decision)
+      :ok
+    end)
+
+    {_, socket} = DawarichWeb.PublicMapAuth.authorize(socket)
+    {:noreply, socket}
+  end
+
   def handle_event("public:day", %{"day" => day}, socket) when is_binary(day) do
     resource = socket.assigns.public_presentation && socket.assigns.public_presentation.resource
 
@@ -54,6 +69,7 @@ defmodule DawarichWeb.PublicMapLive do
     assigns = assign(assigns, :map_visible, visible)
 
     ~H"""
+    <DawarichWeb.NativePublicChrome.header {assigns} />
     <main
       data-native-map-root
       class="mx-auto w-full min-w-0 max-w-7xl p-4"
@@ -127,6 +143,18 @@ defmodule DawarichWeb.PublicMapLive do
         <% end %>
       <% end %>
     </main>
+    <DawarichWeb.NativePublicChrome.footer :if={!@current_scope} locale={@locale} />
+    <.live_component
+      :if={@current_scope && @navbar}
+      module={DawarichWeb.OnboardingLiveComponent}
+      id="onboarding"
+      scope={@current_scope}
+      navbar={@navbar}
+      locale={@locale}
+      base_url={@base_url}
+      rails_csrf_token={@rails_csrf_token}
+      auto_open={false}
+    />
     """
   end
 end

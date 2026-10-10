@@ -36,6 +36,38 @@ defmodule Dawarich.Maps.Dependencies.Public do
     {:ok, %{link: safe_link, resource: resource}}
   end
 
+  def navigation(capability, opts \\ []) do
+    with_link(
+      capability,
+      opts,
+      fn link ->
+        if FamilyAudience.family_only?(link) do
+          with {:ok, scope} <- Maps.admit(capability.viewer_scope, opts) do
+            navbar =
+              Maps.with_actor(
+                scope,
+                fn user ->
+                  Dawarich.Navbar.load(user,
+                    now: Keyword.get(opts, :now, DateTime.utc_now()),
+                    self_hosted:
+                      Keyword.get(opts, :self_hosted, DawarichWeb.LayoutAssigns.self_hosted?())
+                  )
+                end,
+                opts
+              )
+
+            if is_map(navbar),
+              do: {:ok, %{scope: scope, navbar: navbar}},
+              else: {:error, :unavailable}
+          end
+        else
+          {:ok, nil}
+        end
+      end,
+      false
+    )
+  end
+
   def record_visit(capability, opts \\ []) do
     with_link(capability, opts, fn link ->
       SharedLinks.touch!(link.id, Keyword.get(opts, :now, DateTime.utc_now()))
@@ -76,12 +108,14 @@ defmodule Dawarich.Maps.Dependencies.Public do
     end)
   end
 
-  defp with_link(capability, opts, fun) when is_map(capability) do
-    with {:ok, link} <- admitted(capability, opts) do
+  defp with_link(capability, opts, fun, resource? \\ true)
+
+  defp with_link(capability, opts, fun, resource?) when is_map(capability) do
+    with {:ok, link} <- admitted(capability, opts, resource?) do
       result = fun.(link)
       if callback = opts[:after_read], do: callback.()
 
-      with {:ok, fresh} <- admitted(capability, opts),
+      with {:ok, fresh} <- admitted(capability, opts, resource?),
            true <-
              Map.take(link, [:id, :user_id, :type, :resource_id, :settings, :magic_phrase]) ==
                Map.take(fresh, [:id, :user_id, :type, :resource_id, :settings, :magic_phrase]) do
@@ -95,9 +129,9 @@ defmodule Dawarich.Maps.Dependencies.Public do
     _ -> {:error, :unavailable}
   end
 
-  defp with_link(_, _, _), do: {:error, :not_found}
+  defp with_link(_, _, _, _), do: {:error, :not_found}
 
-  defp admitted(%{id: id} = capability, opts) do
+  defp admitted(%{id: id} = capability, opts, resource?) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
 
     with true <- SharedLinks.canonical?(id),
@@ -114,14 +148,14 @@ defmodule Dawarich.Maps.Dependencies.Public do
              link,
              viewer,
              now,
-             Keyword.get(opts, :self_hosted, System.get_env("SELF_HOSTED") == "true")
+             Keyword.get(opts, :self_hosted, DawarichWeb.LayoutAssigns.self_hosted?())
            ),
          :ok <-
            if(FamilyAudience.family_only?(link),
              do: :ok,
              else: phrase(link, capability[:proof], now)
            ),
-         :ok <- resource(link) do
+         :ok <- if(resource?, do: resource(link), else: :ok) do
       {:ok, link}
     else
       {:error, _} = error -> error

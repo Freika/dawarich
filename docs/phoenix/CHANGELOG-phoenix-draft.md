@@ -175,3 +175,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Release the production video encoder when configuration fails. (FRB-NATIVE-M6-VIDEO-CONFIGURE-CLOSE)
 
 - Handle inherited-property names in saved video recipes with the existing portrait fallback. (FRB-NATIVE-M6-VIDEO-FORMAT-OWN-KEY)
+
+- Give mobile and desktop family sharing indicators distinct identities so navigation updates target the correct copy. (FRB-NATIVE-M6-FAMILY-NAV-ID)
