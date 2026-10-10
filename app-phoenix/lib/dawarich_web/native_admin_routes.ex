@@ -32,6 +32,9 @@ defmodule DawarichWeb.NativeAdminRoutes do
           on_mount: {DawarichWeb.AdminLiveAuth, :native_background},
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
+          live "/settings/background_jobs", DawarichWeb.SettingsLive.BackgroundJobs, :index,
+            container: {:div, class: "contents"},
+            metadata: %{rails_gate: {DawarichWeb.AdminGate, :background_route?}}
         end
       end
     end

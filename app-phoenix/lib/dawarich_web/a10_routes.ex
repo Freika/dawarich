@@ -145,9 +145,6 @@ defmodule DawarichWeb.A10Routes do
           on_mount: {DawarichWeb.AdminLiveAuth, :background},
           root_layout: {DawarichWeb.Layouts, :root},
           layout: {DawarichWeb.Layouts, :app} do
-          live "/settings/background_jobs", DawarichWeb.SettingsLive.BackgroundJobs, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.AdminGate, :background_route?}}
         end
       end
     end

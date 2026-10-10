@@ -1,6 +1,7 @@
 defmodule DawarichWeb.G44AdminBrowserTest do
   use ExUnit.Case, async: false
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
   import Plug.Conn
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{RailsFormRequests, RailsUser}
@@ -9,6 +10,7 @@ defmodule DawarichWeb.G44AdminBrowserTest do
   @browser "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
 
     prior =
       Map.new(
@@ -125,25 +127,27 @@ defmodule DawarichWeb.G44AdminBrowserTest do
   end
 
   @tag :g44_background
-  test "browser visits toggle override persists without dispatching a job", c do
-    path = "/settings/background_jobs?settings%5Bvisits_suggestions_enabled%5D=false"
-    saved = submit(c.session, path, %{"_method" => "patch"})
-    assert saved.status == 302
+  test "native browser visits confirmation persists without dispatching a job", c do
+    conn = RailsUser.signed_in(c.actor.id) |> RailsUser.connecting_as(c.actor.id)
+    {:ok, view, _} = live(conn, "/settings/background_jobs")
+    view |> element("#visits-toggle") |> render_click()
+    assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == nil
+    view |> element("#confirm-visits") |> render_click()
     assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == "false"
 
     assert rows("SELECT count(*) FROM public.job_outbox WHERE aggregate_id=$1", [c.actor.id]) == [
              [0]
            ]
 
-    assert page(RailsFormRequests.rails_session(saved), "/settings/background_jobs").resp_body =~
-             "Enable"
-
-    assert submit(c.session, path, %{"_method" => "patch", "authenticity_token" => "invalid"}).status ==
-             422
+    assert has_element?(view, "#visits-toggle", "Enable")
+    view |> element("#visits-toggle") |> render_click()
+    view |> element("#confirm-visits") |> render_click()
+    assert Accounts.settings(c.actor.id)["visits_suggestions_enabled"] == "true"
   end
 
   @tag :g44_consumed_body
-  test "visits toggle retains body consumed by native integration rate limiting", c do
+  test "retained HTTP visits toggle retains body consumed by native integration rate limiting",
+       c do
     path =
       "http://www.example.com/settings/background_jobs?settings%5Bvisits_suggestions_enabled%5D=false"
 
