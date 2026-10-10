@@ -32,8 +32,9 @@ module Imports
         FileUtils.mkdir_p(temp_dir)
         FileUtils.cp(@file_path, @stable_zip_path)
 
-        extract_files(temp_dir)
-        entries = collect_supported_files(temp_dir)
+        extracted_dir = File.join(temp_dir, 'extracted')
+        extract_files(extracted_dir)
+        entries = collect_supported_files(extracted_dir)
         known_entries = detect_google_takeout(entries) + detect_google_photos(entries)
 
         if known_entries.any?
