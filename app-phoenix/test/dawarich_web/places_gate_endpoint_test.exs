@@ -191,7 +191,7 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
   end
 
   test "retained ids writes and nearby are refused or answered locally", ctx do
-    S.place!(8421, 1_000_000_000_000_000_001, "Lang")
+    S.place!(8421, 1_000_000_000_000_000_001, "Lang", advance: false)
     port = serve()
 
     for target <- ~w(/places/12abc /places/1000000000000000001 /places/842101/edit),

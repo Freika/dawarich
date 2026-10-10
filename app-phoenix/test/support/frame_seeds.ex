@@ -38,7 +38,7 @@ defmodule Dawarich.Test.FrameSeeds do
       [id, user_id, name, "Leipzig", "Germany", @lat + dy, @lon + dx]
     )
 
-    Dawarich.Test.SeedIds.advance!(Repo, "places", [id])
+    if Keyword.get(opts, :advance, true), do: Dawarich.Test.SeedIds.advance!(Repo, "places", [id])
     id
   end
 
