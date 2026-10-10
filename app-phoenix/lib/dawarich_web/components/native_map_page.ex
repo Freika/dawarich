@@ -18,7 +18,7 @@ defmodule DawarichWeb.NativeMapPage do
         config={@map_config}
       />
       <DawarichWeb.NativePlaceFilters.filters
-        :if={@map_url["panel"] == "layers" && assigns[:map_settings]}
+        :if={@map_url["panel"] == "layers" && assigns[:map_settings] && @map_config["placesEnabled"]}
         tags={@page.tags}
         filters={@map_settings.saved["places_tag_filters"]}
         locale={@locale}

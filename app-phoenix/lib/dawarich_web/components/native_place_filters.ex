@@ -37,7 +37,10 @@ defmodule DawarichWeb.NativePlaceFilters do
               checked={is_nil(@filters) or "untagged" in @filters}
               class="checkbox checkbox-xs"
             />
-            <span>{s(@locale, "untagged")}</span>
+            <span class={"badge #{if !is_nil(@filters) && "untagged" not in @filters, do: "badge-outline"}"}>{s(
+              @locale,
+              "untagged"
+            )}</span>
           </label>
           <label :for={tag <- @tags} class="flex min-w-0 flex-wrap items-center gap-1">
             <input
@@ -50,7 +53,7 @@ defmodule DawarichWeb.NativePlaceFilters do
             <span
               data-place-tag-name={tag.name}
               style={"border-color: #{tag.color}; color: #{tag.color};"}
-              class="min-w-0 border rounded px-1 [overflow-wrap:anywhere]"
+              class={"badge min-w-0 border rounded px-1 [overflow-wrap:anywhere] #{if !is_nil(@filters) && tag.id not in @filters, do: "badge-outline"}"}
             >{tag.icon} {tag.name}</span>
           </label>
         </fieldset>

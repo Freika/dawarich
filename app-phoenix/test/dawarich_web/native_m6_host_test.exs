@@ -421,6 +421,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     end
 
     {:ok, view, _} = open(id, "/map/v2?panel=layers")
+    view |> form("#native-map-layers", %{"layers" => ["Places"]}) |> render_change()
 
     names =
       render(view)
@@ -470,6 +471,7 @@ defmodule DawarichWeb.NativeM6HostTest do
     ])
 
     {:ok, view, _} = open(id, "/map/v2?panel=layers")
+    view |> form("#native-map-layers", %{"layers" => ["Places"]}) |> render_change()
     view |> form("#native-place-filter", %{"place_tag_ids" => ["untagged"]}) |> render_change()
     assert config(view)["placesTagFilters"] == ["untagged"]
     view |> element("#native-place-tags-all") |> render_click()
@@ -479,6 +481,37 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert config(view)["placesTagFilters"] == []
     assert has_element?(view, "#native-place-tags-all[aria-pressed=false]")
     refute has_element?(view, "#native-place-filter input[checked]")
+  end
+
+  test "native place filters follow layer visibility and show deselected badge state", %{id: id} do
+    stamp = NaiveDateTime.utc_now(:second)
+
+    Repo.insert_all("tags", [
+      %{
+        id: id * 10,
+        user_id: id,
+        name: "Cafe",
+        color: "#123456",
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    {:ok, view, _} = open(id, "/map/v2?panel=layers")
+    refute has_element?(view, "#native-place-filter")
+    view |> form("#native-map-layers", %{"layers" => ["Places"]}) |> render_change()
+
+    assert has_element?(
+             view,
+             "#native-place-filter [data-place-tag-name=Cafe].badge:not(.badge-outline)"
+           )
+
+    view |> form("#native-place-filter", %{"place_tag_ids" => ["untagged"]}) |> render_change()
+    assert has_element?(view, "#native-place-filter [data-place-tag-name=Cafe].badge-outline")
+    assert config(view)["placesTagFilters"] == ["untagged"]
+    view |> form("#native-map-layers", %{"layers" => ["Tracks"]}) |> render_change()
+    refute has_element?(view, "#native-place-filter")
+    assert Dawarich.Accounts.get(id).settings["places_tag_filters"] == ["untagged"]
   end
 
   test "native settings wire route thresholds into the map and studio source", %{id: id} do
