@@ -9,6 +9,22 @@ defmodule DawarichWeb.FamiliesLive.NativeMap do
     do:
       {:ok, socket |> DawarichWeb.NativeFamilyResource.attach() |> maybe_chrome(), layout: false}
 
+  def handle_params(_, _, %{assigns: %{current_scope: nil}} = socket), do: {:noreply, socket}
+
+  def handle_params(_, _, socket) do
+    {_, socket} = DawarichWeb.NativeFamilyResource.admit(socket)
+
+    if socket.assigns.current_scope do
+      {:noreply,
+       DawarichWeb.MapLive.Subscriptions.sync(socket, %{
+         kind: :family,
+         scope: socket.assigns.current_scope
+       })}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("family:" <> _ = event, params, socket),
     do: DawarichWeb.NativeFamilyCommands.handle_event(event, params, socket)
 
