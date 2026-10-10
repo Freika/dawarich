@@ -24,6 +24,20 @@ defmodule DawarichWeb.NativeTripNotesTest do
     %{id: id}
   end
 
+  test "native trip note editor retains an accessible name through validation and cancel", %{
+    id: id
+  } do
+    {:ok, view, _} = open(id)
+    render_click(view, "trip:note:edit", %{"day" => "2026-06-01"})
+    assert has_element?(view, "#native-trip-note-form textarea[aria-label]")
+    assert Dawarich.Test.NativeAdminUI.labels(render(view)) == []
+    view |> form("#native-trip-note-form", %{"note" => %{"body" => ""}}) |> render_submit()
+    assert has_element?(view, "#native-trip-note-form textarea[aria-label]")
+    assert Dawarich.Test.NativeAdminUI.labels(render(view)) == []
+    render_click(view, "trip:note:cancel", %{})
+    refute has_element?(view, "#native-trip-note-form")
+  end
+
   test "native trip notes create edit cancel and delete through admitted day controls", %{id: id} do
     {:ok, view, _} = open(id)
     assert has_element?(view, "#native-trip-day-2026-06-02 [phx-click='trip:note:edit']")

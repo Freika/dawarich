@@ -19,6 +19,7 @@ defmodule DawarichWeb.NativeTripNote do
             name="note[body]"
             class="textarea textarea-bordered w-full min-w-0"
             maxlength="10000"
+            aria-label={t(@locale, "trips.notes.form.write_your_notes_for_this_day", %{})}
             placeholder={t(@locale, "trips.notes.form.write_your_notes_for_this_day", %{})}
             phx-no-format
           >{@editor.body}</textarea>
