@@ -6,6 +6,14 @@ defmodule Dawarich.IngestCase do
 
   @sql Path.expand("../../priv/repo/sql/20260928130000_rails_commands.sql", __DIR__)
   @owners Path.expand("../../priv/repo/sql/20260927120100_job_control.sql", __DIR__)
+  @external_resource @sql
+  @external_resource @owners
+  @control_relations Regex.scan(
+                       ~r/IF NOT EXISTS (?:phoenix\.)?(\w+)/,
+                       File.read!(@sql) <> File.read!(@owners),
+                       capture: :all_but_first
+                     )
+                     |> List.flatten()
 
   using do
     quote do
@@ -15,6 +23,9 @@ defmodule Dawarich.IngestCase do
   end
 
   setup context do
+    if context[:async] && (context[:account_link_committed] || context[:map_matching_tasks]),
+      do: raise(ArgumentError, "committed or shared-owner IngestCase tests cannot be async")
+
     unless context[:account_link_committed] do
       if context[:map_matching_tasks] do
         owner = Ecto.Adapters.SQL.Sandbox.start_owner!(Repo, shared: true)
@@ -28,11 +39,11 @@ defmodule Dawarich.IngestCase do
         end)
       else
         :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-        Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+        unless context[:async], do: Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
       end
     end
 
-    unless context[:api_public_only] do
+    unless context[:api_public_only] || control_tables_present?() do
       Repo.query!("CREATE SCHEMA IF NOT EXISTS phoenix")
       Repo.query!(File.read!(@sql), [], query_type: :text)
       Repo.query!(File.read!(@owners), [], query_type: :text)
@@ -40,6 +51,17 @@ defmodule Dawarich.IngestCase do
 
     Dawarich.Ingest.Sources.forget()
     :ok
+  end
+
+  defp control_tables_present? do
+    [[count]] =
+      Repo.query!(
+        "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'phoenix' AND c.relname = ANY($1)",
+        [@control_relations],
+        log: false
+      ).rows
+
+    count == length(@control_relations)
   end
 
   def user!(attrs \\ %{}) do
