@@ -137,3 +137,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Honor the disabled route option on native public track pages. [FRB-NATIVE-M4-TRACK-ROUTE](fixed-rails-bugs.md#frb-native-m4-track-route--shared-tracks-ignore-the-disabled-route-option)
 
 - Discard family location/history snapshots when consent, membership or access changes while points load (FRB-NATIVE-M4-FAMILY-SNAPSHOT).
+
+- Filter public unlock phrase values from request and crash logs, including lazy messages (FRB-NATIVE-M4-UNLOCK-LOGS).

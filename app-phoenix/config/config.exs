@@ -36,6 +36,7 @@ filtered_parameters = [
   "token",
   "secret",
   "magic_phrase",
+  "phrase",
   "signed_id",
   "url",
   "authorization",

@@ -166,13 +166,15 @@ defmodule DawarichWeb.SettingsIntegrationsLiveTest do
     }
 
     params = put_in(params, ["settings", "immich_url"], "https://example.test")
+    params = put_in(params, ["settings", "immich_skip_ssl_verification"], true)
     filtered = Phoenix.Logger.filter_values(params)
 
     for key <-
           ~w(password immich_api_key airtrail_api_key teslamate_password teslamate_api_token token secret),
         do: assert(filtered["settings"][key] == "[FILTERED]")
 
-    assert filtered["settings"]["immich_url"] == "https://example.test"
+    assert filtered["settings"]["immich_url"] == "[FILTERED]"
+    assert filtered["settings"]["immich_skip_ssl_verification"] == true
   end
 
   test "pane patches survive reload and SSL changes are local until save without photo import buttons",

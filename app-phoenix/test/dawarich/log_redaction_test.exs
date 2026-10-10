@@ -41,6 +41,26 @@ defmodule Dawarich.LogRedactionTest do
     end)
   end
 
+  test "public unlock phrase is filtered in structured reports lazy iodata and query strings" do
+    require Logger
+    phrase = "synthetic-public-unlock-privacy-probe"
+
+    log =
+      capture_log(fn ->
+        Logger.error(%{event: "public_unlock", phrase: phrase})
+        Logger.error(fn -> ["public_unlock ", ["phrase=", phrase, "&attempt=1"]] end)
+        Logger.error(fn -> JSON.encode_to_iodata!(%{event: "public_unlock", phrase: phrase}) end)
+        Logger.flush()
+      end)
+
+    assert log =~ "public_unlock"
+    assert log =~ "[FILTERED]"
+    refute log =~ phrase
+
+    assert Phoenix.Logger.filter_values(%{"phrase" => phrase, "attempt" => 1}) ==
+             %{"phrase" => "[FILTERED]", "attempt" => 1}
+  end
+
   test "crash report never contains submitted secrets" do
     log =
       crash_with(

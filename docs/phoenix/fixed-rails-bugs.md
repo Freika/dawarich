@@ -1391,3 +1391,12 @@ Rails captures sharing members before fetching their points and does not recheck
 - Phoenix: `app-phoenix/lib/dawarich/families/native_reads.ex` snapshot validation.
 - Tests: `FamiliesSnapshotRaceTest`, ten named locations/history in-flight consent/member/viewer/expiry/access cases; bypass-final-validation mutation fails all ten.
 - Ledger: ED-NATIVE-M4-FAMILY-SNAPSHOT; no DRB added. Distinct from the existing subscription-only FAMILY-DELIVERY fix.
+
+### FRB-NATIVE-M4-UNLOCK-LOGS — Public unlock phrases reach unfiltered logs
+
+Rails accepts the public unlock secret under phrase, but its configured partial parameter filters contain neither phrase nor magic_phrase. Request parameter logging can expose that secret. Phoenix adds phrase to the common Phoenix/LogRedaction vocabulary, covering structured reports, lazy iodata, query strings and JSON without changing unlock semantics.
+
+- Rails: `app/controllers/shared/links_controller.rb:18`; `config/initializers/filter_parameter_logging.rb:8`.
+- Phoenix: `app-phoenix/config/config.exs:39`; shared `Dawarich.LogRedaction` filter.
+- Test: “public unlock phrase is filtered in structured reports lazy iodata and query strings”; exclude-phrase-from-sensitivity mutation fails.
+- Ledger: ED-NATIVE-M4-UNLOCK-LOGS; no DRB added. Rails production code unchanged.
