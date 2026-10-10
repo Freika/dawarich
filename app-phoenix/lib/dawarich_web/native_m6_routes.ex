@@ -25,7 +25,7 @@ defmodule DawarichWeb.NativeM6Routes do
         plug :fetch_query_params
         plug DawarichWeb.NativeM6Envelope
         plug :accepts, ["html"]
-        plug DawarichWeb.RailsAuth
+        plug DawarichWeb.NativeM6Auth
         plug :phoenix_session
         plug :fetch_session
         plug :fetch_live_flash
