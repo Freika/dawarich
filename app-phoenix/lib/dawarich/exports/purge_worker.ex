@@ -76,7 +76,17 @@ defmodule Dawarich.Exports.PurgeWorker do
   end
 
   defp current_objects(repo, %{"blob_ids" => ids, "objects" => accepted}) do
-    current = NativePurge.collect(repo, ids)
+    identities = Map.new(accepted, &{&1["blob_id"], &1})
+
+    current =
+      NativePurge.collect(repo, Enum.uniq(ids ++ Map.keys(identities)))
+      |> Enum.filter(fn object ->
+        case identities[object["blob_id"]] do
+          nil -> true
+          identity -> identity == object
+        end
+      end)
+
     protected = Enum.map(accepted, & &1["blob_id"]) -- Enum.map(current, & &1["blob_id"])
 
     repo.query!(
