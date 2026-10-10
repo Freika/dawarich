@@ -101,6 +101,7 @@ function library() {
       return this
     }
     addTo() {
+      assert.ok(this.coordinate, "MapLibre requires a position before addTo")
       return this
     }
     remove() {
@@ -434,4 +435,27 @@ test("native public replay preserves day time speed follow and point controls an
     globalThis.setInterval = realSet
     globalThis.clearInterval = realClear
   }
+})
+
+test("first replay draw positions its marker before attaching to MapLibre", async () => {
+  const { PublicReplay } = await import(
+    "../../app-phoenix/assets/js/hooks/shared_replay.js"
+  )
+  const lib = library()
+  const panel = { hidden: true, classList: { toggle() {} } }
+  const root = {
+    querySelector: (s) => (s === "[data-public-replay-panel]" ? panel : null),
+  }
+  const replay = new PublicReplay(
+    root,
+    new lib.maplibre.Map(),
+    lib.maplibre,
+    [[12, 51, 100]],
+    "UTC",
+    "en",
+  )
+  replay.action("toggleReplay")
+  assert.deepEqual(lib.markers[0].coordinate, [12, 51])
+  assert.equal(panel.hidden, false)
+  replay.clear()
 })

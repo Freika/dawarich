@@ -62,7 +62,10 @@ export class PublicReplay {
     const rows = this.current()
     const point = rows[this.index]
     if (!point) return
-    if (!this.marker) this.marker = new this.library.Marker().addTo(this.map)
+    if (!this.marker)
+      this.marker = new this.library.Marker()
+        .setLngLat(point.slice(0, 2))
+        .addTo(this.map)
     this.marker.setLngLat(point.slice(0, 2))
     if (this.follow)
       this.map.easeTo({ center: point.slice(0, 2), duration: 100 })
