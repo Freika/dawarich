@@ -131,6 +131,30 @@ Shared seams: disposable runtime + generation, typed browser read service with r
 
 Open decisions with defaults: cookie browser reads (preserve external Bearer APIs); PublicMap LiveView bootstrap (retain unlock HTTP); onboarding auto-open-path completion, native imports link; preserve server-gallery engine separately from local export; preserve unsupported WebCodecs refusal and current codecs; no new encoder worker until measured need; approved measured export/bundle limits (no arbitrary quality reduction); keep print ordering with stubbed acceptance; m4/m5 must supply or explicitly transfer ownership of shared public/family/upload/timeline/trip contexts. Security/privacy/cancellation improvements require specific ED/FRB classification if Rails differs.
 
+## Track A prerequisite and baseline check (2026-10-10)
+
+App source: `e42a6ef0f9ed8a9f1ec7f006259fdd85b56ee9cc`; E2E source: `ff256e6fd6a8a50f3f05a9e5a1e9656ef5a47b2d`. The approved milestone 6 plan's A0/O10 prerequisite is unresolved. Milestone 4's local reference advanced from inventory `96837848a` to contract documentation `09a01685a`; its implementation report still says IN PROGRESS. Milestone 5's local reference is inventory `5d3f135f5`. Neither supplies an accepted implementation interface SHA to this branch. The current app retains hybrid upload, family/public and Trip hosts. No missing ownership was transferred and no S1 handoff is claimed.
+
+The prescribed map page/window/live/standalone API/native asset/frontend inventory batch passed 59 tests, warnings-as-errors, exit 0. Production preparation of the same source passed, exit 0. A separate minified native esbuild graph measured 167,238 eager raw bytes / 51,397 gzip bytes, four lazy chunks and 1,368 eager demo bytes. Its recursive inputs contain neither Rails JavaScript nor Hotwire. This measures the native entry graph, not the current hybrid map/studio browser transfer graph.
+
+Temporary query probes used only synthetic recorded fixtures and counted `[:dawarich, :repo, :query]` events. Static means one HTTP GET; connected means connecting that already rendered response; range means one date patch to the DST transition day 2026-03-29. Counts exclude Redis, workers, assets and external provider work. Warm caches can reduce the first static count by one.
+
+| Recorded variant | Static | Connected | Range patch |
+| --- | ---: | ---: | ---: |
+| Empty self-hosted Pro | 16–17 | 16 | 15 |
+| Owned place/import, two points, profile timezone | 18 | 18 | 17 |
+| Timeline and nine tags | 16 | 16 | 15 |
+| Cloud Lite | 17 | 17 | 16 |
+| Cloud Pro, three posters/two videos | 20 | 20 | 19 |
+| Trip with synthetic path | 35–36 | 22 | unmeasured |
+| Family owner | 19 | unmeasured | unmeasured |
+| Family member | 19 | unmeasured | unmeasured |
+| Absent public share | 2 | HTTP only | HTTP only |
+
+Probe tests: “map baseline query instrumentation observes static connected and range reads” and “Trip family and public baseline instrumentation observes owned page reads”. Both were RED with disconnected telemetry, GREEN with the real query attachment, failed the named disconnect-telemetry mutation, and restored GREEN. The restored prescribed batch plus both probes passed 61 tests, warnings-as-errors, exit 0. Temporary tests were removed after archiving evidence; no implementation or retained regression tests changed.
+
+A0 remains incomplete. Accepted m4/m5 interfaces or an explicit controller transfer are required before freezing S1. Active unlocked public/populated family/DST data capacity, browser per-page transferred bytes, maps/listeners/workers/rAF/object URLs, post-GC memory, eager wrapper allowance and preview concurrency remain unmeasured/unapproved. The date patch above checks query instrumentation, not DST data correctness. Standalone G44 baseline core/poster/video specs passed 23 tests, zero failures/skips/flaky, exit 0, on the source identities above. The first sandbox attempt refused Chromium MachPortRendezvous; the same command passed outside the sandbox. These existing hybrid journeys cannot substitute for native lifecycle or unmeasured resource budgets. All started services were stopped and their ports checked closed. No new runtime cap is asserted, no Rails defect was fixed, and no production code was changed.
+
 ## Results after planning
 
 Production and tests unchanged. This document records source evidence and uncovered verification gaps; runtime map/query/leak/chunk baselines remain an implementation Task A0 obligation. No services or test suites started. No Rails defect was fixed during planning.
