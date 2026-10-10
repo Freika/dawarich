@@ -63,6 +63,33 @@ defmodule DawarichWeb.NativePublicCapabilityTest do
     refute text =~ SharedLinkCookie.unlock_token(@id, "synthetic-phrase")
   end
 
+  test "native public trip day routing retains display thresholds" do
+    assert {:ok, config} = Public.config(grant(), now: @now)
+    assert config["byDay"] == true
+
+    assert config["routeOptions"] == %{
+             "distanceThresholdMeters" => 500,
+             "timeThresholdMinutes" => 30
+           }
+  end
+
+  test "live public location remains visible when route history is disabled" do
+    Repo.query!(
+      "UPDATE shared_links SET resource_type=3, resource_id=NULL, settings=$1::jsonb WHERE id=$2::text::uuid",
+      [%{"show_route" => false}, @id]
+    )
+
+    TripsSeeds.point!(%{
+      id: 8_813_015,
+      user_id: 881_301,
+      timestamp: DateTime.to_unix(@now),
+      at: [13, 52]
+    })
+
+    assert {:ok, [[13.0, 52.0, _]]} = Public.read(grant(), :points, %{}, now: @now)
+    assert {:ok, []} = Public.read(grant(), :route, %{}, now: @now)
+  end
+
   test "expired revoked re-locked and deleted-owner public grants refuse every read" do
     capability = grant()
     assert {:error, :locked} = Public.config(capability, now: DateTime.add(@now, 61))

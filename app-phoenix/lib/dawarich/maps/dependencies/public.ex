@@ -13,7 +13,7 @@ defmodule Dawarich.Maps.Dependencies.Public do
       result =
         case action do
           :points ->
-            if route?(link) do
+            if link.type == "live" or route?(link) do
               if link.type == "live",
                 do: Points.live(link, Keyword.get(opts, :now, DateTime.utc_now())),
                 else: Points.index(link)
@@ -188,6 +188,11 @@ defmodule Dawarich.Maps.Dependencies.Public do
          "styleName" => display.style,
          "photosEnabled" => link.settings["show_photos"] == true,
          "routeEnabled" => route?(link),
+         "byDay" => link.type == "trip" and link.settings["show_days"] != false,
+         "routeOptions" => %{
+           "distanceThresholdMeters" => display.meters,
+           "timeThresholdMinutes" => display.minutes
+         },
          "range" => %{
            "startAt" => first,
            "endAt" => last,
