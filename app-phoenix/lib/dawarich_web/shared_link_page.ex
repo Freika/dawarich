@@ -75,7 +75,11 @@ defmodule DawarichWeb.SharedLinkPage do
 
         page ->
           allowed = fn current, clock ->
-            FamilyAudience.accessible?(current, conn.assigns[:current_user], clock) and
+            FamilyAudience.accessible?(
+              current,
+              DawarichWeb.RailsAuth.delivery_user(conn, clock),
+              clock
+            ) and
               SharedLinkCookie.unlocked?(conn, current, clock)
           end
 

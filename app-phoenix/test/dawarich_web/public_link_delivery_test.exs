@@ -231,5 +231,81 @@ defmodule DawarichWeb.PublicLinkDeliveryTest do
     refute fresh.resp_body =~ "Protected description"
   end
 
+  for source <- [:session, :remember], change <- [:password, :lock, :deletion] do
+    @tag review_delivery: true
+    @tag family_delivery: true
+    test "family shared HTML revalidates #{source} viewer after #{change} during preparation", %{
+      uuid: uuid
+    } do
+      viewer = family_viewer()
+      request = fn -> family_conn(viewer, unquote(source)) end
+      path = "/s/#{uuid}"
+      positive = get(request.(), path)
+      assert positive.status == 200
+      assert positive.resp_body =~ "Public trip"
+      hook = fn -> revoke_viewer(unquote(change)) end
+      conn = request.() |> put_private(:dawarich_before_delivery, hook) |> get(path)
+      assert conn.status == 404
+      refute conn.resp_body =~ "Public trip"
+      assert rows("SELECT count(*) FROM family_memberships WHERE user_id=19023") == [[1]]
+    end
+  end
+
+  defp family_viewer do
+    now = DateTime.utc_now()
+
+    viewer =
+      RailsUser.insert!(%{
+        id: 19023,
+        email: "family-viewer@example.invalid",
+        remember_created_at: now |> DateTime.add(-10) |> DateTime.to_naive()
+      })
+
+    rows(
+      "INSERT INTO families(id,creator_id,name,access_until,created_at,updated_at) VALUES(19022,19022,'Synthetic family','3026-01-01',now(),now())"
+    )
+
+    rows(
+      "INSERT INTO family_memberships(family_id,user_id,created_at,updated_at) VALUES(19022,19022,now(),now()),(19022,19023,now(),now())"
+    )
+
+    rows("UPDATE shared_links SET settings=settings || $1 WHERE user_id=19022", [
+      %{"audience" => "family", "family_id" => "19022"}
+    ])
+
+    viewer
+  end
+
+  defp family_conn(viewer, :session), do: RailsUser.signed_in(viewer.id)
+
+  defp family_conn(viewer, :remember) do
+    now = DateTime.utc_now()
+
+    payload = [
+      [viewer.id],
+      String.slice(viewer.encrypted_password, 0, 29),
+      Dawarich.Accounts.remember_generated_at(now)
+    ]
+
+    cookie =
+      Dawarich.RailsCookies.sign(
+        payload,
+        "remember_user_token",
+        Dawarich.RailsSecret.fetch(),
+        DateTime.add(now, 3600)
+      )
+
+    build_conn() |> put_req_cookie("remember_user_token", cookie)
+  end
+
+  defp revoke_viewer(:password),
+    do:
+      rows(
+        "UPDATE users SET encrypted_password='changed-synthetic-identity-000000000000' WHERE id=19023"
+      )
+
+  defp revoke_viewer(:lock), do: rows("UPDATE users SET locked_at=now() WHERE id=19023")
+  defp revoke_viewer(:deletion), do: rows("UPDATE users SET deleted_at=now() WHERE id=19023")
+
   defp revoke, do: rows("UPDATE shared_links SET revoked_at=now() WHERE user_id=19022")
 end
