@@ -120,7 +120,7 @@ defmodule DawarichWeb.TripsNative.ShowParts do
       <div :if={@status == :failed} role="alert" class="alert alert-error flex flex-wrap gap-2">
         <span class="min-w-0">{t(@locale, "controllers.application.admin_action_failed", %{})}</span>
         <button type="button" class="btn btn-sm" phx-click="retry_days">
-          {t(@locale, "trips.recalculate_button.recalculate", %{})}
+          {t(@locale, "javascript.messages.retry", %{})}
         </button>
       </div>
       <div class="space-y-1">

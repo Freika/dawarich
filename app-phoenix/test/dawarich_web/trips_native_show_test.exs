@@ -299,6 +299,22 @@ defmodule DawarichWeb.TripsNativeShowTest do
     assert rows("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]) == [[0]]
   end
 
+  test "a failed day read offers a retry rather than a recalculation" do
+    for {locale, label} <- [{"en", "Retry"}, {"de", "Erneut versuchen"}] do
+      button =
+        render_component(&DawarichWeb.TripsNative.ShowParts.days/1,
+          trip: %{id: 1, settings: %{factor: 1, unit: "km"}},
+          days: [],
+          status: :failed,
+          locale: locale
+        )
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("[role='alert'] button[phx-click='retry_days']")
+
+      assert LazyHTML.text(button) |> String.trim() == label
+    end
+  end
+
   test "foreign trips are not found and a failed day read can retry" do
     foreign = trip!(996_601, %{user_id: 9_962})
     assert TripsNativeUI.not_found?(9_961, "/trips/#{foreign}")
