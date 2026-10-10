@@ -112,7 +112,11 @@ defmodule DawarichWeb.NativeCredentialsDocumentTest do
       log: false
     )
 
-    assert Dawarich.Accounts.remembered?(Dawarich.Accounts.get(actor.id), remember, DateTime.utc_now())
+    assert Dawarich.Accounts.remembered?(
+             Dawarich.Accounts.get(actor.id),
+             remember,
+             DateTime.utc_now()
+           )
 
     page =
       build_conn()

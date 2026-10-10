@@ -1,6 +1,6 @@
 # Native HTTP authentication — milestone 3c
 
-Approved source plan: `2026-10-10-phoenix-native-milestone-3c-plan.md`; ADR-0017. Implementation is in progress; FULL GATE remains controller-owned. No acceptance claim is made here.
+Approved source plan: `2026-10-10-phoenix-native-milestone-3c-plan.md`; ADR-0017. Implementation tasks are complete (17/18); FULL GATE remains controller-owned. No acceptance claim is made here.
 
 ## A0 baseline
 
@@ -37,7 +37,7 @@ The five anonymous GETs and authenticated 2FA GET were measured directly in Chro
 
 All rendered states issue a session cookie; setup and backups are authorized one-response secret displays. The baseline probe emitted counts, statuses, byte lengths, cookie-presence booleans and script hashes only. Existing protocol tests preserve action/global CSRF, cookie flags, status/Location, owner headers, pending state, counters and flash. No credential or response-body artifact was captured.
 
-Evidence identifiers: `impl-m3c-a0-baseline` (21 passed, exit 0), `impl-m3c-a0-measure` (35 passed, exit 0), `impl-m3c-a0-measure-corrected` (36 passed, exit 0), `impl-m3c-a0-probe-final` (1 passed, seed 404, warnings-as-errors, exit 0). Temporary probes were removed. Targeted G44 reference: 22 passed / 0 failed / 0 skipped / 0 flaky, exit 0. A preliminary sandbox launch failed at Chromium MachPortRendezvous; the explicitly authorized unsandboxed retry succeeded. Conditional account-link fixture cases were not loaded by this reference environment; D1 must provide active native cases.
+Evidence identifiers: `impl-m3c-a0-baseline` (21 passed, exit 0), `impl-m3c-a0-measure` (35 passed, exit 0), `impl-m3c-a0-measure-corrected` (36 passed, exit 0), `impl-m3c-a0-probe-final` (1 passed, seed 404, warnings-as-errors, exit 0). Temporary probes were removed. Targeted G44 reference: 22 passed / 0 failed / 0 skipped / 0 flaky, exit 0. A preliminary sandbox launch failed at Chromium MachPortRendezvous; the explicitly authorized unsandboxed retry succeeded. Conditional account-link fixture cases were not loaded by this reference environment; D1 now provides active native cases (see its evidence below).
 
 ## Controller decisions
 
@@ -45,7 +45,7 @@ O1 retains pre-router admission and adds presentation-only controller/HEEx rende
 
 ## Results and test successors
 
-A1 adds `AuthPageController.document/4` and dedicated HEEx root/app templates. Its contract takes an admitted/prepared connection, safe pre-rendered content, status and explicit chrome/token/title options. It does not prepare layout/session again or assign content to the connection. Authenticated callers provide preloaded navbar data. Feature wiring and working HTTP controls remain subsequent tasks.
+A1 adds `AuthPageController.document/4` and dedicated HEEx root/app templates. Its contract takes an admitted/prepared connection, safe pre-rendered content, status and explicit chrome/token/title options. It does not prepare layout/session again or assign content to the connection. Authenticated callers provide preloaded navbar data. Feature wiring and working HTTP controls are implemented in A2/A3/B/C.
 
 Named tests: “HTTP auth document preserves response status headers cookie and one-request flash” and “HTTP auth document has no LiveView root or legacy runtime”; anonymous and authenticated shell coverage. RED: `impl-m3c-a1-red`, 0/2 passed, exit 2 (missing renderer). GREEN: 2 passed, exit 0. Double-layout mutation loses inherited flash: 1/2 passed, exit 2. LiveView entry mutation: 1/2 passed, exit 2. Restored direct-caller batch: 39 passed, seed 404, warnings-as-errors, exit 0; expanded/format-final renderer batch: 2 passed, exit 0. Explicit-file formatting exited 0. A2 provides the explicit `auth_http.js` entry and `initializeAuthForms` lifecycle. It reads no credentials, keeps controls enabled for browser serialization, latches one valid submit, restores on pageshow, cleans listeners, and focuses server-declared error summaries. Feature forms acquire its explicit selector during B/C; browser keyboard/navigation acceptance remains D2.
 
@@ -75,7 +75,7 @@ Initial and repeated failure responses use the anonymous HTTP renderer, with emp
 
 ## B4a — scoped 2FA operations
 
-`Accounts.Security.manage_two_factor/5` validates admitted scope/server proof and allowed fields, then preserves the existing locked closure and required presentation scalars. Secrets stay in local rendering results; no Account result enters conn state. RED `impl-m3c-b4a-red.log`; GREEN 3 cases; salt/admin/passwordfirst mutations fail named cases (exit 2); corrected fresh-admin mutation replaces a discarded stale-role probe. Restored `impl-m3c-b4a-restored-green.log`: 16 passed, exit 0, warnings clean. B4 templates and browser validation remain pending.
+`Accounts.Security.manage_two_factor/5` validates admitted scope/server proof and allowed fields, then preserves the existing locked closure and required presentation scalars. Secrets stay in local rendering results; no Account result enters conn state. RED `impl-m3c-b4a-red.log`; GREEN 3 cases; salt/admin/passwordfirst mutations fail named cases (exit 2); corrected fresh-admin mutation replaces a discarded stale-role probe. Restored `impl-m3c-b4a-restored-green.log`: 16 passed, exit 0, warnings clean. B4 templates are implemented; integrated browser validation remains stage acceptance.
 
 ## B4b — native 2FA display
 
@@ -144,3 +144,40 @@ All unlisted behavior assertions in these files remain. Fixture and helper reade
 | Native live-page root assumption | M / B | X1 actual Endpoint initial/error/POST states use the HTTP contract; existing native LiveView session tests remain unchanged |
 
 Fixture-reader audit found 46 relevant production/test/support readers. AuthMarkup and all behavioral/crypto/mail fixture keys remain used. NativeAuthHTTP is compiled from `test/support` via `mix.exs` test paths, independently of test-file loading. No shared module is defined inside another test file. Final targeted auth/direct-caller reconciliation: 92 files, 458 passed, exit 0, warnings clean. Full partitions remain controller acceptance. `wave2_args_test` uses equivalent dynamic `apply/3` dispatch to avoid a compiler inference warning; its claim-key cases are preserved. Swagger/schema unchanged.
+
+
+## X3 targeted integration and implementation checkpoint
+
+Implementation tasks A0–A3, B1–B4, C1–C4, D1–D2 and X1–X3 are complete: 17/18. This records implementation, not FULL GATE or stage browser verification. App task commits are listed in the controller report; E2E head is `a322b75`. X5 and integrated stage G44/390px/runtime identity remain pending under the controller decision. No full ExUnit suite was run.
+
+X3 register-reading/direct-caller batch: 15 files, 153 passed, exit 0. Final formatting-focused callers: 44 passed, exit 0. Changed Elixir/HEEx format: 61 files, exit 0. Forced test compile with warnings-as-errors/all-warnings: 1,790 files, exit 0. Native assets.deploy and Biome CI assets exit 0; affected JS/direct-widget cases: 17 passed, exit 0. Initial format failures in multiline calls were repaired without behavioral changes and followed by the focused batch. Existing source status/cookie/cache/field semantics stay covered; no Swagger/schema drift or lifecycle-guard change.
+
+Appended ED-NATIVE-M3C-DOCUMENTS, SUBMIT-UX, OWNERSHIP, OTP-LOCALE, PROVIDER-ENTRY and OTP-LOG-FILTER. No FRB/DRB was added: Rails bugs fixed (changelog): none. The native changelog distinguishes Phoenix parity repairs from Rails defects.
+
+AFFiNE counterpart: `[dawarich] Plan: Phoenix-native frontend, milestone 3c (HTTP authentication pages)`, docId `jHpm4cRVJ12SRxzesfWnS`. Updated implementation/acceptance split and read back successfully, including 17/18, 458-test checkpoint and stage deferral. Code-coupled evidence remains here and in the approved plan/report.
+
+No owned service or suite remains running; historical lane cleanup completed. Clean intended branches and explicit path commits only; no push/merge/GitHub or full suite. Full browser mutation/restoration, corrected D2 probes, EN/DE shell/OTP/Cloud measurements and final runtime SHA verification are explicitly controller-stage work.
+
+## Final count-only comparison against A0
+
+Same synthetic A0 fixture/protocol probe, with isolated synthetic counter keys; one measurement test passed, strict exit 0. It emitted only counts/statuses/lengths/booleans and was removed. All 17 statuses and Repo query counts match A0: zero query delta. These are targeted measurements, not final stage stand acceptance.
+
+| Response state | Status | Repo queries | Query delta | HTML bytes |
+| --- | ---: | ---: | ---: | ---: |
+| /users/sign_in | 200 | 4 | 0 | 8,121 |
+| /users/sign_up | 200 | 4 | 0 | 8,196 |
+| /users/password/new | 200 | 4 | 0 | 7,445 |
+| /users/unlock/new | 200 | 4 | 0 | 7,423 |
+| reset GET | 200 | 4 | 0 | 7,961 |
+| sign-in failure | 422 | 10 | 0 | 8,752 |
+| signup failure | 422 | 7 | 0 | 8,511 |
+| reset failure | 422 | 7 | 0 | 8,650 |
+| unlock replay | 200 | 7 | 0 | 8,104 |
+| 2FA show | 200 | 10 | 0 | 32,457 |
+| 2FA setup | 200 | 11 | 0 | 40,099 |
+| 2FA verify failure | 422 | 10 | 0 | 40,723 |
+| 2FA backups | 200 | 12 | 0 | 33,727 |
+| OTP initial | 422 | 7 | 0 | 7,341 |
+| OTP failure | 422 | 6 | 0 | 7,945 |
+| link challenge | 200 | 1 | 0 | 7,827 |
+| link password rejected | 422 | 2 | 0 | 8,426 |

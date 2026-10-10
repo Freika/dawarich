@@ -193,7 +193,10 @@ defmodule DawarichWeb.AuthRecovery.Http do
     conn
     |> AuthCookie.session(encoded)
     |> headers()
-    |> DawarichWeb.AuthPageController.document(Phoenix.HTML.raw(body), result.status, chrome: :anonymous, csrf_token: token)
+    |> DawarichWeb.AuthPageController.document(Phoenix.HTML.raw(body), result.status,
+      chrome: :anonymous,
+      csrf_token: token
+    )
   end
 
   defp headers(conn),

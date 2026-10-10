@@ -183,7 +183,9 @@ defmodule DawarichWeb.NativeAccountLinkDocumentTest do
     before =
       Repo.query!(
         "SELECT count(*) FROM job_outbox WHERE aggregate_id=$1 AND command_type='mail.user.oauth_account_link'",
-        [c.actor.id], log: false).rows
+        [c.actor.id],
+        log: false
+      ).rows
 
     response =
       submit(c.session, "/auth/account_link/email", %{
@@ -195,14 +197,18 @@ defmodule DawarichWeb.NativeAccountLinkDocumentTest do
     after_count =
       Repo.query!(
         "SELECT count(*) FROM job_outbox WHERE aggregate_id=$1 AND command_type='mail.user.oauth_account_link'",
-        [c.actor.id], log: false).rows
+        [c.actor.id],
+        log: false
+      ).rows
 
     assert after_count == [[hd(hd(before)) + 1]]
 
     [[payload]] =
       Repo.query!(
         "SELECT payload FROM job_outbox WHERE aggregate_id=$1 AND command_type='mail.user.oauth_account_link'",
-        [c.actor.id], log: false).rows
+        [c.actor.id],
+        log: false
+      ).rows
 
     assert {:ok, args} = Dawarich.Mail.OauthAccountLinkWorker.args_from_command(1, payload)
     refute Map.has_key?(args, "link_url")

@@ -87,7 +87,9 @@ defmodule DawarichWeb.NativeRecoveryDocumentTest do
 
         Repo.query!(
           "INSERT INTO job_outbox(event_id,command_type,command_version,payload,aggregate_id,scheduled_at,metadata) VALUES(gen_random_uuid(),'mail.recovery',1,$1,$2,now(),'{}')",
-          [%{"sealed" => sealed}, c.actor.id], log: false)
+          [%{"sealed" => sealed}, c.actor.id],
+          log: false
+        )
 
         {:error, :synthetic_enqueue_failure}
       end
@@ -105,7 +107,9 @@ defmodule DawarichWeb.NativeRecoveryDocumentTest do
 
     Repo.query!(
       "UPDATE users SET reset_password_token=$2,reset_password_sent_at=now(),remember_created_at=now()-interval '1 minute' WHERE id=$1",
-      [c.actor.id, digest], log: false)
+      [c.actor.id, digest],
+      log: false
+    )
 
     old_session = %{
       "warden.user.user.key" => [[c.actor.id], String.slice(c.actor.encrypted_password, 0, 29)]
@@ -155,7 +159,9 @@ defmodule DawarichWeb.NativeRecoveryDocumentTest do
 
     Repo.query!(
       "UPDATE users SET unlock_token=$2,locked_at=now() WHERE id=$1",
-      [c.actor.id, Token.digest(:unlock_token, raw, Dawarich.RailsSecret.fetch())], log: false)
+      [c.actor.id, Token.digest(:unlock_token, raw, Dawarich.RailsSecret.fetch())],
+      log: false
+    )
 
     assert page(c, "/users/unlock/new").status == 200
     target = "/users/unlock?unlock_token=" <> raw

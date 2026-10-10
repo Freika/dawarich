@@ -126,3 +126,12 @@ The controller recorded these deferrals on 2026-10-07; they remain follow-up wor
 - Serialize administrator deletion and role changes to retain administration access under competing writes. [FRB-085](fixed-rails-bugs.md#frb-085--concurrent-admin-roledeletion-writes-can-leave-no-administrator)
 
 These are native Phoenix corrections delivered in A2; retained Rails behavior is unchanged.
+
+
+## Native HTTP authentication (milestone 3c)
+
+- Render sign-in, registration, OTP, 2FA, recovery/unlock and provider-link documents with native HEEx and ordinary HTTP forms; preserve cookie, capability, status, mail and transaction contracts.
+- Preserve authenticated shell controls with explicit document lifecycles, accessible errors, pending-submit/back behavior and readable one-response 2FA secrets/backup codes.
+- Restore configured provider-entry and initial OTP locale parity, and filter OTP attempts/backup keys from Phoenix failure logs. These are Phoenix parity repairs; no Rails bug fix is claimed for this milestone.
+
+Implementation targeted tests and budgets are recorded in [native-m3c-inventory.md](native-m3c-inventory.md). Full seeds and integrated stage browser/390px acceptance remain controller-owned and pending.

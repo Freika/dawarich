@@ -93,7 +93,9 @@ defmodule Dawarich.Accounts.SecurityTest do
         otp_secret: ciphertext,
         otp_required_for_login: true,
         otp_backup_codes: hashes
-      }), log: false)
+      }),
+      log: false
+    )
 
     assert {:error, %{kind: :redirect, reason: :incorrect_password}} =
              manage(c, :disable, %{"password" => "wrong", "otp_attempt" => hd(codes)})
