@@ -244,6 +244,24 @@ defmodule Dawarich.UserData.RestoreFilesTest do
     assert [[1]] == rows("SELECT count(*) FROM imports WHERE name='storage failure'")
   end
 
+  test "restored export attachments publish their own durable owner snapshot", c do
+    Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:users.export_data", :oban)
+    Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:exports.points", :oban)
+    assert [2, 1] = Exports.call(ScratchRepo, c.c.user_id, c.data["exports"], c.dir, c.c.context)
+
+    assert [[3]] =
+             rows(
+               "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Exports.EventsWorker'"
+             )
+
+    assert [0, 0] = Exports.call(ScratchRepo, c.c.user_id, c.data["exports"], c.dir, c.c.context)
+
+    assert [[3]] =
+             rows(
+               "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Exports.EventsWorker'"
+             )
+  end
+
   defp utc_timestamps(row) do
     Map.new(row, fn {name, value} ->
       if String.ends_with?(name, "_at") and is_binary(value) do

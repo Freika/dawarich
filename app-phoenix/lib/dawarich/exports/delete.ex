@@ -53,6 +53,9 @@ defmodule Dawarich.Exports.Delete do
           end
         end
 
+        if Dawarich.Exports.Events.native?(repo, type),
+          do: Dawarich.Exports.Events.enqueue(repo, user_id, Ecto.UUID.generate(), :deleted)
+
         :deleted
       end)
     else

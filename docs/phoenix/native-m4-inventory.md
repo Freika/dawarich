@@ -188,3 +188,7 @@ Native multi-file selection uses ref-only metadata, original descriptors, labell
 ## A6 provider handoff (2026-10-10)
 
 Imports configured provider controls use scoped native events with current identity/entitlement/configuration, durable producer ownership, one accepted intent per job/page and no credential assigns. Shared POST caller and consumed legacy visits-query removal packet is in native-m4-contracts.md; route retained until X2. Two named RED/GREEN/mutation/restored cases, 91 targeted callers plus direct integration command cases; registers in report. No Rails defect fixed by A6; backend/admin six-command/Cloud/paid-rerun semantics retained.
+
+## B1 exports implementation handoff (2026-10-10)
+
+Scoped export reads/request/deletion/subscription and ID-only durable owner invalidations cover point workers, account backups and restored row/attachment creation. Existing enum/date/sort/zone/bytes, claim fencing, replay, lost owner, unknown-COMMIT and purge ownership corpus remains. Nine new named behaviors have RED/GREEN/mutation/restored evidence; strict 22-file direct-caller batch 222 passed. Legacy HTTP producer remains for hybrid Points; legacy URL deletion and native list controls follow in B2. No Rails defect fixed by B1.
