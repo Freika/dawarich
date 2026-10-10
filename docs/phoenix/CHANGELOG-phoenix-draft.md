@@ -177,3 +177,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Handle inherited-property names in saved video recipes with the existing portrait fallback. (FRB-NATIVE-M6-VIDEO-FORMAT-OWN-KEY)
 
 - Give mobile and desktop family sharing indicators distinct identities so navigation updates target the correct copy. (FRB-NATIVE-M6-FAMILY-NAV-ID)
+
+- Omit credential-bearing photo source destinations from native trip presentation and use cookie-authenticated thumbnails. (FRB-NATIVE-M6-TRIP-PHOTO-LINK)

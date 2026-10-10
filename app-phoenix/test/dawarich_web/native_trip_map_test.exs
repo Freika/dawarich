@@ -49,6 +49,81 @@ defmodule DawarichWeb.NativeTripMapTest do
     assert (RailsUser.signed_in(8899) |> get("/native/map/data/trips/884101")).status == 404
   end
 
+  test "native trip presentation retains source countries days and notes without bulk or credential state",
+       ctx do
+    TripsSeeds.note!(%{
+      id: 884_110,
+      trip_id: 884_101,
+      user_id: 8841,
+      body: "Coffee <b>outside</b>",
+      noted_at: ~N[2026-06-02 12:00:00]
+    })
+
+    scope = Maps.principal(ctx.user, "en")
+    assert {:ok, page} = Dawarich.Maps.Dependencies.Trip.presentation(scope, 884_101, now: @now)
+    assert page.id == 884_101
+    assert Enum.map(page.days, & &1.date) == [~D[2026-06-01], ~D[2026-06-02], ~D[2026-06-03]]
+    assert page.day_notes[~D[2026-06-02]].body == "Coffee <b>outside</b>"
+    assert page.settings.unit == "km"
+
+    refute Enum.any?(
+             [:api_key, :path_json, :windows_json, :plan_json, :trip_stream, :studio],
+             &Map.has_key?(page, &1)
+           )
+
+    assert {:error, :not_found} =
+             Dawarich.Maps.Dependencies.Trip.presentation(
+               Maps.principal(Accounts.get(8899), "en"),
+               884_101,
+               now: @now
+             )
+  end
+
+  test "native trip presentation replaces key-bearing photo URLs with cookie thumbnail reads",
+       ctx do
+    assert {:ok, page} = Dawarich.TripPage.load(ctx.user, 884_101, @now)
+
+    photo = %{
+      id: "synthetic/photo",
+      source: "immich",
+      url: "/api/v1/photos/id?api_key=synthetic-private",
+      taken_at: "2026-06-02T12:00:00Z",
+      orientation: "portrait"
+    }
+
+    [first | rest] = page.days
+    page = %{page | days: [%{first | photos: [photo]} | rest]}
+    safe = Dawarich.Maps.Dependencies.Trip.present(page)
+
+    assert hd(hd(safe.days).photos).url ==
+             "/native/map/data/photos/synthetic%2Fphoto/thumbnail?source=immich"
+
+    refute String.contains?(inspect(safe), "synthetic-private")
+    refute Map.has_key?(safe.photos, :photos)
+    refute Map.has_key?(safe.photos, :previews)
+  end
+
+  test "native trip presentation keeps ordinary photo source navigation and refuses credential-bearing links",
+       ctx do
+    assert {:ok, page} = Dawarich.TripPage.load(ctx.user, 884_101, @now)
+
+    for bad <- [
+          "https://user:synthetic-private@photos.test/library",
+          "https://photos.test/library?api_key=synthetic-private"
+        ] do
+      photos = %{
+        page.photos
+        | sources: ["immich", "photoprism"],
+          links: %{"immich" => "https://photos.test/search", "photoprism" => bad}
+      }
+
+      safe = Dawarich.Maps.Dependencies.Trip.present(%{page | photos: photos})
+      assert safe.photos.links == %{"immich" => "https://photos.test/search"}
+      assert safe.photos.sources == ["immich"]
+      refute String.contains?(inspect(safe), "synthetic-private")
+    end
+  end
+
   test "trip map adapter refuses the original revoked session", ctx do
     scope = Maps.principal(ctx.user, "en")
 

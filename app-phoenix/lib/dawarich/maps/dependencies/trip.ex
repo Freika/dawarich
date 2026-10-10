@@ -25,6 +25,72 @@ defmodule Dawarich.Maps.Dependencies.Trip do
 
   def read(_, _, _), do: {:error, :invalid}
 
+  def presentation(scope, id, opts \\ [])
+
+  def presentation(scope, id, opts) when is_integer(id) and id > 0 do
+    now = Keyword.get(opts, :now, DateTime.utc_now())
+
+    Maps.with_actor(
+      scope,
+      fn actor ->
+        case TripPage.load(actor, id, now) do
+          {:ok, page} -> {:ok, present(page)}
+          _ -> {:error, :not_found}
+        end
+      end,
+      now: now
+    )
+  end
+
+  def presentation(_, _, _), do: {:error, :invalid}
+
+  def present(page) do
+    days =
+      Enum.map(page.days, fn day ->
+        %{
+          day
+          | photos:
+              Enum.map(day.photos, fn photo ->
+                %{
+                  id: photo.id,
+                  source: photo.source,
+                  url:
+                    "/native/map/data/photos/" <>
+                      URI.encode_www_form(to_string(photo.id)) <>
+                      "/thumbnail?source=" <> URI.encode_www_form(photo.source)
+                }
+              end)
+        }
+      end)
+
+    links = Map.filter(page.photos.links, fn {_source, url} -> safe_photo_link?(url) end)
+
+    page
+    |> Map.take(
+      ~w(id name distance countries flags settings iana started_at ended_at duration recalculating shared has_path map_state days day_notes plan now plan_on_map plan_toggle future_start description)a
+    )
+    |> Map.put(:days, days)
+    |> Map.put(:photos, %{
+      sources: Enum.filter(page.photos.sources, &Map.has_key?(links, &1)),
+      links: links
+    })
+  end
+
+  defp safe_photo_link?(url) when is_binary(url) do
+    uri = URI.parse(url)
+    keys = URI.decode_query(uri.query || "") |> Map.keys()
+
+    uri.scheme in ["http", "https"] and is_binary(uri.host) and uri.userinfo == nil and
+      not Enum.any?(
+        keys || [],
+        &(String.downcase(&1) in ~w(api_key password token access_token authorization))
+      )
+  rescue
+    _ -> false
+  end
+
+  defp safe_photo_link?(_), do: false
+
   defp project(page) do
     config = %{
       "tripId" => page.id,

@@ -1591,3 +1591,12 @@ Mobile and desktop family sharing indicators reused one DOM id in Rails. Updates
 - Phoenix: `app-phoenix/lib/dawarich_web/components/navbar.ex:199`; `app-phoenix/lib/dawarich_web/components/navbar_parts.ex:72`.
 - Test: `native family public navigation rechecks audience without disclosing missing or revoked resources`; valid connected-view RED rejects the duplicate id, restored GREEN7; duplicate-indicator mutation fails. Source inspection establishes both Rails partial insertions.
 - ED: ED-NATIVE-M6-FAMILY-NAV-ID. No DRB row.
+
+### FRB-NATIVE-M6-TRIP-PHOTO-LINK
+
+Trip photo-source links in Rails interpolate configured base URLs, including URL userinfo or credential query keys. Such credentials appear in the rendered destination and browser navigation. Native trip presentation admits only HTTP(S) links without userinfo or credential query keys, preserving ordinary source links. Thumbnail URLs use the cookie reader. Production trip parent insertion remains the X1 handoff; the adapter behavior is verified independently.
+
+- Rails: `app/helpers/trips_helper.rb:11,15`; `app/views/trips/show.html.erb:282`.
+- Phoenix: `app-phoenix/lib/dawarich/maps/dependencies/trip.ex:58,66,79`.
+- Test: `native trip presentation keeps ordinary photo source navigation and refuses credential-bearing links`; safe-link bypass mutation fails.
+- ED: ED-NATIVE-M6-TRIP-PHOTO-LINK. No DRB row.

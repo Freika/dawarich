@@ -46,4 +46,14 @@ defmodule DawarichWeb.NativeM6IntegrationRegisterTest do
 
     assert diffs =~ "empty recipe"
   end
+
+  test "native trip photo credential refusal has its ED FRB and changelog provenance" do
+    diffs = File.read!(Path.expand("../../parity/expected_diffs.md", __DIR__))
+    bugs = File.read!(Path.expand("../../../docs/phoenix/fixed-rails-bugs.md", __DIR__))
+    changes = File.read!(Path.expand("../../../docs/phoenix/CHANGELOG-phoenix-draft.md", __DIR__))
+    assert diffs =~ "ED-NATIVE-M6-TRIP-PHOTO-LINK"
+    assert bugs =~ "FRB-NATIVE-M6-TRIP-PHOTO-LINK"
+    assert bugs =~ "app/helpers/trips_helper.rb:11"
+    assert changes =~ "FRB-NATIVE-M6-TRIP-PHOTO-LINK"
+  end
 end
