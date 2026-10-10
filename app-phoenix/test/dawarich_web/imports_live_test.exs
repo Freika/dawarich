@@ -162,14 +162,14 @@ defmodule DawarichWeb.ImportsLiveTest do
         {:ok, _view, html} = live_as(owner)
         page = content(html)
 
-        hrefs =
+        offered =
           page
           |> LazyHTML.query(
-            ~s(.dropdown-content a[data-turbo-method="post"][data-turbo-confirm="Are you sure?"])
+            ~s(.dropdown-content button[phx-click="request_provider"][data-confirm="Are you sure?"])
           )
-          |> LazyHTML.attribute("href")
+          |> LazyHTML.attribute("phx-value-job")
 
-        assert hrefs == Enum.map(jobs, &("/settings/background_jobs?job_name=" <> &1)),
+        assert offered == jobs,
                inspect(jobs)
 
         assert count(page, ".join") == if(jobs == [], do: 0, else: 1)

@@ -24,7 +24,8 @@ defmodule DawarichWeb.ImportsLive.Index do
      assign(socket,
        page_title: t(socket.assigns.locale, "imports.index.imports", %{}),
        morph_page_refreshes: true,
-       polling: false
+       polling: false,
+       provider_requests: MapSet.new()
      )}
   end
 
@@ -73,6 +74,35 @@ defmodule DawarichWeb.ImportsLive.Index do
     end
   end
 
+  def handle_event("request_provider", %{"job" => job}, socket) do
+    if MapSet.member?(socket.assigns.provider_requests, job) do
+      {:noreply, socket}
+    else
+      case Dawarich.Imports.request_provider(socket.assigns.current_scope, job) do
+        {:ok, :queued} ->
+          {:noreply,
+           socket
+           |> update(:provider_requests, &MapSet.put(&1, job))
+           |> put_flash(
+             :notice,
+             t(
+               socket.assigns.locale,
+               "controllers.settings.background_jobs.job_was_successfully_created",
+               %{}
+             )
+           )}
+
+        {:error, _} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :alert,
+             t(socket.assigns.locale, "controllers.application.admin_action_failed", %{})
+           )}
+      end
+    end
+  end
+
   @impl true
   def handle_params(params, uri, socket) do
     query = URI.parse(uri).query || ""
@@ -109,11 +139,16 @@ defmodule DawarichWeb.ImportsLive.Index do
               class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-lg w-52 mt-1 border border-base-300"
             >
               <li :for={{job, key} <- @integrations}>
-                <a
-                  href={"/settings/background_jobs?job_name=" <> job}
-                  data-turbo-confirm={t(@locale, "imports.index.are_you_sure", %{})}
-                  data-turbo-method="post"
-                ><.icon name="camera" class="w-4 h-4" /> {t(@locale, key, %{})}</a>
+                <button
+                  type="button"
+                  phx-click="request_provider"
+                  phx-value-job={job}
+                  disabled={MapSet.member?(@provider_requests, job)}
+                  data-confirm={t(@locale, "imports.index.are_you_sure", %{})}
+                  class="min-w-0 whitespace-normal [overflow-wrap:anywhere]"
+                >
+                  <.icon name="camera" class="w-4 h-4" /> {t(@locale, key, %{})}
+                </button>
               </li>
             </ul>
           </div>

@@ -19,5 +19,8 @@ defmodule Dawarich.Imports do
   def remove_extraction(scope, id, opts \\ []),
     do: NativeCommands.change(scope, id, :remove, %{}, opts)
 
+  def request_provider(scope, name, opts \\ []),
+    do: Dawarich.Imports.Providers.request(scope, name, opts)
+
   def subscribe(scope, opts \\ []), do: NativeReads.subscribe(scope, opts)
 end
