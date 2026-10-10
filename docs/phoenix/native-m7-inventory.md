@@ -3440,3 +3440,15 @@ Coverage: 285 Appendix A source rows, 114 D3 boundary rows, 347 R routes, 50 E4 
 AFFiNE canonical inventory/policy were searched and read. Synchronization is pending because this brief prohibits remote writes; C3 must publish the scope cut and refreshed ledger when controller authorization permits it. No remote document was changed.
 
 Rails bugs fixed (changelog): none (documentation-only; no Rails or Phoenix behavior changes).
+
+## Appendix G — C1 incremental named-case and reader successors (2026-10-10)
+
+The [C1 reader/retarget handoff](native-m7-test-retargets.md) and its [exact case ledger](native-m7-test-retargets.json) cover all 254 Appendix B/F9 entries, all 392 F10 readers (549 distinct files), 2,578 named definitions and 127 relevant register rows. Existing named witnesses, renamed feature successors and planned shared-cleanup successors are distinguished; no source presence is described as acceptance or retirement clearance. Dynamic corpus definitions retain their generators and externally owned bytes.
+
+Pins: m7 `32cd5323027de839da05019a11fd7a253a782330`, stage1 `b3cc38d2e1d37e3fccad230d516ee56c5c8b7702`, m4 `70443b32f5cec3e359e475797216f5633e36a231`, m5 `f43b8e9f77a880394a81fab474b2728e9e978553`, m6 `03043fbb3168385173b5621692634dfd25dbe135`. The earlier F tables remain historical at their pins. The new m4 pin includes its later retirement/local-refusal reader changes.
+
+Two existing dialog/account patch cases now read the native client in `T/client/native_account_menu_patch_test.mjs`; both legacy disclosure-policy cases remain. Hook removal RED (2 failures), original source GREEN (4 patch cases), inverted-open mutation (2 failures), restored GREEN (4 patch cases). Initial ExUnit register/native-shell/root batch: 27 passed, seed 404, warnings-as-errors. Production mutation bytes were restored before the ExUnit run. No full suite, browser lane, allocation, fixture rewrite or deletion was introduced.
+
+Post-ledger register batch: 16 passed, seed 404, warnings-as-errors. Static validation resolves all 2,578 case definitions, existing successors/callers and 127 register rows; original inventory and Swagger/schema bytes are unchanged.
+
+C1 is not ticked: remaining assertion splits, feature integration, A/B named cleanup tests, deletion-time fixture/register audits and partition acceptance remain. Rails bugs fixed: none.
