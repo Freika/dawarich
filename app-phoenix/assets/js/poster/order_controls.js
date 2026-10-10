@@ -12,6 +12,19 @@ const ERROR_CODES = [
   "generic",
   "connection",
 ]
+const CHECKOUT_HOSTS = ["checkout.stripe.com"]
+
+export function approvedCheckoutUrl(value, printOrderUrl) {
+  try {
+    const url = new URL(value)
+    const hosts = [new URL(printOrderUrl).host, ...CHECKOUT_HOSTS]
+    return url.protocol === "https:" && hosts.includes(url.host)
+      ? url.href
+      : null
+  } catch {
+    return null
+  }
+}
 
 export function bindOrderControls({
   root,
@@ -167,8 +180,10 @@ export function bindOrderControls({
         errors,
       })
       if (current !== operation) return
+      const approved = approvedCheckoutUrl(checkoutUrl, printOrderUrl)
+      if (!approved) throw new Error(errors.generic || "")
       setStep("upload", "done")
-      enableCheckout(checkoutUrl, token)
+      enableCheckout(approved, token)
     } catch (error) {
       if (current !== operation || error?.name === "AbortError") return
       resetSteps()

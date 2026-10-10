@@ -430,7 +430,7 @@ test("checkout only becomes enabled for current successful order", async () => {
   await tick()
   uploads[0].pending.resolve({
     token: "stale",
-    checkoutUrl: "https://pay.example/stale",
+    checkoutUrl: "https://checkout.stripe.com/c/stale",
   })
   await tick()
   assert.equal(root.nodes.checkout.href, undefined)
@@ -438,10 +438,13 @@ test("checkout only becomes enabled for current successful order", async () => {
 
   uploads[1].pending.resolve({
     token: "tok",
-    checkoutUrl: "https://pay.example/current",
+    checkoutUrl: "https://checkout.stripe.com/c/current",
   })
   await tick()
-  assert.equal(root.nodes.checkout.href, "https://pay.example/current")
+  assert.equal(
+    root.nodes.checkout.href,
+    "https://checkout.stripe.com/c/current",
+  )
   assert.equal(root.nodes.checkout.classList.contains("btn-disabled"), false)
   assert.equal(root.nodes.checkout.getAttribute("aria-disabled"), null)
   assert.equal(
@@ -463,6 +466,51 @@ test("checkout only becomes enabled for current successful order", async () => {
   assert.equal(root.nodes["order-error"].classList.contains("hidden"), false)
   assert.equal(root.nodes["order-steps"].classList.contains("hidden"), true)
   assert.equal(root.nodes["order-actions"].classList.contains("hidden"), false)
+  unbind()
+})
+
+test("checkout link only opens an https URL on the print service or Stripe Checkout host", async () => {
+  const root = orderRoot()
+  const studio = orderStudio("print-30x40")
+  const replies = [
+    "javascript:alert(document.cookie)",
+    "http://prints.example.com/checkout/1",
+    "https://evil.example/checkout/1",
+    "https://checkout.stripe.com.evil.example/c/1",
+    "not a url",
+    undefined,
+    "https://checkout.stripe.com/c/cs_1",
+    "https://prints.example.com/checkout/2",
+  ]
+  const { unbind } = bindOrder({
+    root,
+    studio,
+    submit: async () => ({ token: "tok", checkoutUrl: replies.shift() }),
+    exports: doneExports(),
+  })
+  root.nodes["order-open"].dispatchEvent(new Event("click"))
+  for (let refused = 0; refused < 6; refused++) {
+    root.nodes["order-confirm"].dispatchEvent(new Event("click"))
+    await tick()
+    assert.equal(root.nodes.checkout.href, undefined)
+    assert.equal(root.nodes.checkout.classList.contains("btn-disabled"), true)
+    assert.equal(root.nodes["order-page"].classList.contains("hidden"), true)
+    assert.equal(
+      root.nodes["order-error"].textContent,
+      "Order upload failed — try again.",
+    )
+    assert.equal(root.nodes["order-error"].classList.contains("hidden"), false)
+    assert.equal(root.nodes["order-steps"].classList.contains("hidden"), true)
+  }
+  for (const approved of [
+    "https://checkout.stripe.com/c/cs_1",
+    "https://prints.example.com/checkout/2",
+  ]) {
+    root.nodes["order-confirm"].dispatchEvent(new Event("click"))
+    await tick()
+    assert.equal(root.nodes.checkout.href, approved)
+    assert.equal(root.nodes.checkout.classList.contains("btn-disabled"), false)
+  }
   unbind()
 })
 
