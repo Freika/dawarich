@@ -58,7 +58,7 @@ defmodule DawarichWeb.NativeMapHost do
       |> Map.update("range", %{}, &Map.take(&1, @range))
       |> Map.update("mapOptions", %{}, &Map.take(&1, @options))
 
-    assigns = assign(assigns, :serialized_config, Jason.encode!(config))
+    assigns = assign(assigns, locale: locale, serialized_config: Jason.encode!(config))
 
     ~H"""
     <div
@@ -69,6 +69,9 @@ defmodule DawarichWeb.NativeMapHost do
       data-map-config={@serialized_config}
       data-map-state="loading"
     >
+      <p data-map-loading role="status" class="absolute top-2 left-2 z-10 rounded bg-base-100 p-2">
+        {DawarichWeb.Translate.t(@locale, "javascript.common.loading", %{})}
+      </p>
     </div>
     """
   end

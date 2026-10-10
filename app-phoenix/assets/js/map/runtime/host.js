@@ -1,4 +1,3 @@
-import { installStudios } from "../ui/studios.js"
 import { createReader } from "../data/reader.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
@@ -14,7 +13,9 @@ import { createHostSettings } from "../ui/host_settings.js"
 import { createHostTimeline } from "../ui/host_timeline.js"
 import { createHostTools } from "../ui/host_tools.js"
 import { createRangeRequests } from "../ui/navigation.js"
+import { installStudios } from "../ui/studios.js"
 import { createMapRuntime } from "./create_map.js"
+import { createViewportFit } from "./viewport_fit.js"
 
 export { createMapRuntime }
 
@@ -29,6 +30,8 @@ export function mountHost({
 }) {
   const requests = createRangeRequests({ pushEvent })
   const freshness = createTileFreshness()
+  const fit = createViewportFit(reader, element)
+  const loading = element.querySelector?.("[data-map-loading]")
   let library
   let layers
   let editing
@@ -140,6 +143,7 @@ export function mountHost({
     refresh:
       refresh ??
       (async ({ map, config, operation, signal }) => {
+        await fit({ map, config, operation, signal })
         layers?.update(config)
         if (
           !density &&
@@ -233,12 +237,18 @@ export function mountHost({
         }
       }),
     events: {
+      loading() {
+        element.dataset.mapState = "loading"
+        if (loading) loading.hidden = false
+      },
       refreshed(receipt) {
         element.dataset.mapState = "ready"
+        if (loading) loading.hidden = true
         pushEvent("map:ready", receipt)
       },
       error(receipt) {
         element.dataset.mapState = "failed"
+        if (loading) loading.hidden = true
         pushEvent("map:failed", receipt)
       },
     },

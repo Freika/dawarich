@@ -36,6 +36,7 @@ export function createMapRuntime({
   async function runRefresh() {
     if (lifetime.destroyed) return "cancelled"
     const operation = operations.begin()
+    events.loading?.({ revision: current.revision ?? operation.revision })
     try {
       await operation.wait(
         refresh({
@@ -75,12 +76,17 @@ export function createMapRuntime({
       element.appendChild(root)
       lifetime.own(() => root.remove())
       map = new library.Map({
+        center: [0, 0],
+        zoom: 2,
         ...current.mapOptions,
         container: root,
         style,
         transformRequest,
       })
       const owned = map
+      lifetime.own(() => owned.remove())
+      if (typeof library.NavigationControl === "function")
+        map.addControl(new library.NavigationControl(), "top-right")
       if (typeof library.getRTLTextPluginStatus === "function")
         void registerRTLTextPlugin(
           library,
@@ -104,7 +110,6 @@ export function createMapRuntime({
         lifetime.own(viewport.destroy)
         viewport.restore()
       }
-      lifetime.own(() => owned.remove())
       const pending = Promise.resolve(
         attach?.({
           map,

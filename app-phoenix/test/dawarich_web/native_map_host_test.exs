@@ -58,6 +58,13 @@ defmodule DawarichWeb.NativeMapHostTest do
       data = Jason.decode!(encoded)
       assert data["locale"] == expected
       assert data["hexagonLabel"] == "{count} " <> word
+
+      assert html
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query("[data-map-loading][role=status]")
+             |> LazyHTML.text()
+             |> String.trim() ==
+               DawarichWeb.Translate.t(expected, "javascript.common.loading", %{})
     end
   end
 
