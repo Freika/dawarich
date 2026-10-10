@@ -104,6 +104,29 @@ defmodule Dawarich.Maps.Dependencies.Trip do
     })
   end
 
+  def command(scope, id, action) when action in [:delete, :recalculate] do
+    Maps.with_actor(scope, fn actor ->
+      context = %{now: DateTime.utc_now(), locale: scope.locale}
+
+      case action do
+        :delete -> Dawarich.Trips.WebDelete.run(Dawarich.Repo, actor, id, context)
+        :recalculate -> Dawarich.Trips.WebRecalculate.run(Dawarich.Repo, actor, id, context)
+      end
+    end)
+  end
+
+  def export(scope, id, format) do
+    Maps.with_actor(scope, fn actor ->
+      with {:ok, export} <-
+             Dawarich.Trips.WebExport.prepare(Dawarich.Repo, actor, id, format, %{}) do
+        case Dawarich.PointExports.create(export, actor, scope.locale, Dawarich.Repo) do
+          {:ok, id} -> {:ok, id}
+          _ -> {:error, :unavailable}
+        end
+      end
+    end)
+  end
+
   defp safe_plan_source(%{base_url: url} = source) do
     if safe_source_link?(url),
       do: Map.take(source, [:id, :provider, :base_url, :status, :last_synced_at]),

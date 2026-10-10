@@ -21,6 +21,10 @@ defmodule DawarichWeb.TripsLive.NativeMap do
   end
 
   def handle_event(event, payload, socket)
+      when event in ~w(trip:delete trip:recalculate trip:export),
+      do: DawarichWeb.NativeTripEffects.handle_event(event, payload, socket)
+
+  def handle_event(event, payload, socket)
       when event in ~w(trip:layer trip:days:all trip:plan:focus),
       do: DawarichWeb.NativeTripControls.handle_event(event, payload, socket)
 
@@ -64,7 +68,9 @@ defmodule DawarichWeb.TripsLive.NativeMap do
 
   def render(assigns) do
     ~H"""
+    <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native={true} />
     <main :if={@page} id="trip-shell" data-native-map-root class="w-full min-w-0 p-4">
+      <DawarichWeb.NativeTripActions.actions page={@page.presentation} locale={@locale} />
       <DawarichWeb.NativeTripToolbar.toolbar page={@page} expanded={@expanded_days} locale={@locale} />
       <DawarichWeb.NativeTripContent.content
         page={@page.presentation}
