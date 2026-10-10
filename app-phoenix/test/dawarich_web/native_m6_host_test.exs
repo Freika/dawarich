@@ -129,6 +129,17 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert render(view) =~ "Germany"
   end
 
+  test "native production host replies with accepted and conflicting point revisions", %{id: id} do
+    point = id * 10
+    Dawarich.Test.FrameSeeds.point!(id, id * 10, DateTime.to_unix(~U[2026-03-30 09:00:00Z]), %{})
+    {:ok, view, _} = open(id, @second)
+    payload = %{"point_id" => to_string(point), "point" => %{"latitude" => "52", "longitude" => "13", "revision" => 0}, "history_scope" => %{"start_at" => "2026-03-30T00:00Z", "end_at" => "2026-03-31T00:00Z"}}
+    render_hook(view, "point:move", payload)
+    assert_reply(view, %{ok: true, response: %{"revision" => %{"point" => 1}}})
+    render_hook(view, "point:move", payload)
+    assert_reply(view, %{error: "stale", response: %{"revision" => %{"point" => 1}}})
+  end
+
   defp config(view) do
     view
     |> render()

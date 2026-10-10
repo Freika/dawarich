@@ -84,6 +84,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)
 
+  def handle_event("point" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.PointCommands.handle_event(event, payload, socket)
+
   def handle_event("calendar:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.TimelineFilters.handle_event(event, payload, socket)
 

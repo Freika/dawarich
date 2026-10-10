@@ -1,3 +1,4 @@
+import { createHostEditing } from "../edit/host.js"
 import { createReader } from "../data/reader.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
@@ -22,6 +23,7 @@ export function mountHost({
   const requests = createRangeRequests({ pushEvent })
   const freshness = createTileFreshness()
   let layers
+  let editing
   let timeline
   let density
   let photos
@@ -47,6 +49,7 @@ export function mountHost({
           onError: (code) => pushEvent("map:failed", { code }),
         })
         lifetime.own(() => layers.destroy())
+        editing = createHostEditing({ map, reader, pushEvent, lifetime, getConfig: () => owner.config, layers, document: element.ownerDocument })
         lifetime.own(() => density?.destroy())
         lifetime.own(() => photos?.remove())
         lifetime.own(() => entities?.destroy())
@@ -172,10 +175,12 @@ export function mountHost({
     readSnapshot: (state, options) => readRouteSnapshot(reader, state, options),
     applyDates: requests.applyDates,
   })
+  Object.defineProperty(owner, "editor", { get: () => editing?.editor })
   Object.defineProperty(owner, "entityLayers", { get: () => entities })
   const update = owner.update
   owner.update = (config) => {
     timeline?.config(config)
+    editing?.config(config)
     const updating = update.call(owner, config)
     requests.config(config)
     return updating
