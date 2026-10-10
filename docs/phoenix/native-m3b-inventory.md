@@ -2,6 +2,21 @@
 
 Read-mostly inventory on app head `8a5a2555d` (finished 3a), 2026-10-09. Covers the remainder of source milestone 3, including the items the approved 3a roadmap moved to milestones 5/6. Production code is unchanged. E2E source inspected at `bc2fcea`; no browser lane or full suite was run for this inventory.
 
+## Results after X5 (app `d7dd5ca23`, E2E `ff256e6`)
+
+- Full ExUnit, seeds 404 and 202: 10,089 tests, 0 failures, exit 0, all three partitions exit 0 (logs `.scratch/orch/partlogs-m3b2-{404,202}`).
+- The first full run (seed 404 on `fc59a809f`) had 6 failures, all fixed before the run above:
+  - **Defect in C2's `Dawarich.LogRedaction`.** Lazy `Logger` calls (Oban's default logger) reach `:logger` as `{:string, iodata}`. The filter walked the iodata as format arguments and blanked the whole line, failing three "job logs contain …" tests, while a secret split across iodata parts leaked. Fixed in `ef402a61c` with a RED-first test.
+  - **Tailwind output hashes** moved with the new admin classes; re-pinned in `d7dd5ca23`.
+  - **Poster renderer test:** the worktree had no `vendor/poster_renderer/node_modules` (environment, not code).
+- Standalone G44, three full lanes one after another: _pending (Codex `m3b-g44`, app `fc59a809f`; the two later commits change only server logging and a test pin)._
+- JavaScript, measured on the stand:
+  - `/admin/settings`, `/settings/users`, `/settings/users/:id`, `/settings/users/:id/edit`, `/settings/background_jobs`: 2 script requests each, 163.3–163.8 KB decoded (50.5 KB on the wire), 0 Hotwire modules.
+  - `/admin/settings?section=experimental` adds the lazy `map_matching_demo` and `map_style` chunks plus vendored MapLibre (`maplibre-gl.mjs`, shared, worker): 8 requests, 1.68 MB decoded. The demo renders its canvas.
+- `mix format --check-formatted` and `mix compile --warnings-as-errors --all-warnings` (test env, forced): exit 0. `biome ci app-phoenix/assets`: exit 0. `node --test spec/javascript/*_test.mjs`: 605 passed, exit 0.
+- German and English at 390 px, measured on the stand: no horizontal page scroll and no text box past its control on all six admin views, including the open create-user and delete-user dialogs. Method: `scrollWidth` vs `clientWidth`, plus per-element `Range` boxes; visually hidden `sr-only` labels are skipped.
+- Code identity on the stand: `tmp/final-gates/prepared-sha` = `d7dd5ca23912…`, and the stand's runtime tree contains `scrub_chardata`, which exists only in the final commits. In the browser the page is German (`lang=de`, "Benutzer verwalten"), has no `data-turbo`/`data-controller`, and mounts the `MapMatchingDemo` hook.
+
 ## Contract and scope
 
 **Facts:** source scope is `docs/phoenix/native-frontend-contexts-plan-20261008.md:89`; ADR-0017 is the project-wide `docs/adr/0017-phoenix-native-frontend-without-hotwire.md`. The project-wide `superpowers/plans/2026-10-09-phoenix-native-milestone-3-plan.md:26` assigns admin to 3b, HTTP auth to 3c, Places outside the map to 3d, onboarding/Areas to 6, and ActionText to 5. Its implementation deviations start at line 171: 3a retained shared job endpoints and retargeted recorded corpora onto contexts. This document inventories those shared dependencies; it does not change the approved roadmap.
@@ -366,7 +381,7 @@ Browser seed/upload inputs additionally include `E/fixtures/demo_data.json`, `sa
 
 ## Rails bugs fixed (changelog)
 
-none — inventory/measurement only; no application defect was changed and no ED/DRB row was added.
+The inventory itself changed no code. Milestone 3b fixed FRB-084 (deleting yourself or the last active admin) and FRB-085 (concurrent admin-row changes are serialised by one ordered lock); see `docs/phoenix/fixed-rails-bugs.md` and the Phoenix changelog draft. ED rows for the native admin pages are in `app-phoenix/parity/expected_diffs.md`.
 
 ## Removed or retargeted tests (users/background)
 
