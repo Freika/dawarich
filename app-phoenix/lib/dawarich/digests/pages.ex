@@ -15,7 +15,7 @@ defmodule Dawarich.Digests.Pages do
       digests =
         Enum.take(rows, 50)
         |> Enum.map(fn [year, distance, toponyms, first, enabled] ->
-          summary(year, distance, toponyms, first, enabled)
+          card(year, distance, toponyms, first, enabled)
         end)
 
       available = Digests.available_years(scope.user.id, period)
@@ -62,6 +62,20 @@ defmodule Dawarich.Digests.Pages do
     end
   rescue
     _ -> {:error, :invalid_input}
+  end
+
+  defp card(year, distance, toponyms, first, enabled) do
+    data = summary(year, distance, toponyms, first, enabled)
+
+    %{
+      year: year,
+      distance: distance,
+      sharing_enabled: data.sharing_enabled,
+      countries_count: Digests.countries_count(data.toponyms),
+      cities_count: Digests.cities_count(data.toponyms),
+      first_time_countries_count: length(data.first_time_countries),
+      first_time_cities_count: length(data.first_time_cities)
+    }
   end
 
   defp summary(year, distance, toponyms, first, enabled) do

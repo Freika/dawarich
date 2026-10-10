@@ -99,8 +99,16 @@ defmodule DawarichWeb.StatsParityTest do
         assert Enum.map(data.digests, & &1.year) == Enum.map(source.digests, & &1.year)
 
         for {native, old} <- Enum.zip(data.digests, source.digests),
-            key <- [:year, :distance, :first_time_countries, :first_time_cities],
+            key <- [:year, :distance],
             do: assert(native[key] == old[key])
+
+        for {native, old} <- Enum.zip(data.digests, source.digests) do
+          assert native.countries_count == Dawarich.Digests.countries_count(old.toponyms)
+          assert native.cities_count == Dawarich.Digests.cities_count(old.toponyms)
+          assert native.first_time_countries_count == length(old.first_time_countries)
+          assert native.first_time_cities_count == length(old.first_time_cities)
+          refute Map.has_key?(native, :toponyms)
+        end
 
         render_component(&DawarichWeb.DigestsLive.NativeIndexParts.render/1,
           data: data,

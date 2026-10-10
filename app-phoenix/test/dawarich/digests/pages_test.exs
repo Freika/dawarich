@@ -1,5 +1,6 @@
 defmodule Dawarich.Digests.PagesTest do
   use Dawarich.DataCase, async: false
+  require Phoenix.LiveViewTest
   import Dawarich.Test.StatsSeeds
   alias Dawarich.Accounts.Scope
   alias Dawarich.Digests.Pages
@@ -40,6 +41,38 @@ defmodule Dawarich.Digests.PagesTest do
              Pages.get(scope, %{"year" => []}, now: @now, self_hosted: true)
   end
 
+  test "digest index retains count-only cards with exact large location totals", %{scope: scope} do
+    places =
+      for country <- 1..61,
+          do: toponym("Country #{country}", for(city <- 1..101, do: "City #{country}-#{city}"))
+
+    first = %{
+      "countries" => Enum.map(1..61, &"Country #{&1}"),
+      "cities" => Enum.map(1..6161, &"City #{&1}")
+    }
+
+    digest!(scope.user.id, %{year: 2025, toponyms: places, first_time_visits: first})
+    assert {:ok, index} = Pages.index(scope, %{}, now: @now, self_hosted: true)
+    [card] = index.digests
+    assert card.countries_count == 61
+    assert card.cities_count == 6161
+    assert card.first_time_countries_count == 61
+    assert card.first_time_cities_count == 6161
+    refute Map.has_key?(card, :toponyms)
+    refute Map.has_key?(card, :first_time_countries)
+    refute Map.has_key?(card, :first_time_cities)
+    assert byte_size(:erlang.term_to_binary(card)) < 512
+
+    html =
+      Phoenix.LiveViewTest.render_component(&DawarichWeb.DigestsLive.NativeIndexParts.render/1,
+        data: index,
+        locale: "de"
+      )
+
+    assert html =~ "6161"
+    refute html =~ "City 61-101"
+  end
+
   test "Lite digest reads only summary columns and reflects current admission", %{scope: scope} do
     digest!(scope.user.id, %{
       year: 2025,
@@ -61,7 +94,9 @@ defmodule Dawarich.Digests.PagesTest do
 
     Dawarich.Repo.query!(
       "UPDATE users SET encrypted_password='changed-session-00000000000000000' WHERE id=$1",
-      [scope.user.id], log: false)
+      [scope.user.id],
+      log: false
+    )
 
     assert {:error, :stale_session} =
              Pages.get(scope, %{"year" => "2025"}, now: @now, self_hosted: false)

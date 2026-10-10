@@ -1,7 +1,6 @@
 defmodule DawarichWeb.DigestsLive.NativeIndexParts do
   @moduledoc false
   use DawarichWeb, :html
-  alias Dawarich.Digests
   alias DawarichWeb.{DigestFormat, Icon}
   attr :data, :map, required: true
   attr :locale, :string, required: true
@@ -83,14 +82,14 @@ defmodule DawarichWeb.DigestsLive.NativeIndexParts do
                 </div>
                 <div class="stat">
                   <div class="stat-value text-secondary text-lg">
-                    {Digests.countries_count(digest.toponyms)}
+                    {digest.countries_count}
                   </div>
                   <div class="stat-title">{t(@locale, "users.digests.index.countries", %{})}</div>
                   <div
-                    :if={digest.first_time_countries != []}
+                    :if={digest.first_time_countries_count > 0}
                     class="stat-desc text-success flex items-center gap-1 justify-center"
                   >
-                    <Icon.icon name="star" class="size-6" /> {length(digest.first_time_countries)} {t(
+                    <Icon.icon name="star" class="size-6" /> {digest.first_time_countries_count} {t(
                       @locale,
                       "users.digests.index.new",
                       %{}
@@ -99,14 +98,14 @@ defmodule DawarichWeb.DigestsLive.NativeIndexParts do
                 </div>
                 <div class="stat">
                   <div class="stat-value text-accent text-lg">
-                    {Digests.cities_count(digest.toponyms)}
+                    {digest.cities_count}
                   </div>
                   <div class="stat-title">{t(@locale, "users.digests.index.cities", %{})}</div>
                   <div
-                    :if={digest.first_time_cities != []}
+                    :if={digest.first_time_cities_count > 0}
                     class="stat-desc text-success flex items-center gap-1 justify-center"
                   >
-                    <Icon.icon name="star" class="size-6" /> {length(digest.first_time_cities)} {t(
+                    <Icon.icon name="star" class="size-6" /> {digest.first_time_cities_count} {t(
                       @locale,
                       "users.digests.index.new",
                       %{}
