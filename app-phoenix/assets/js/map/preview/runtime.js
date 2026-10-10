@@ -64,6 +64,9 @@ export function mountPreview({
       config = next
       return owner?.update(next)
     },
+    reconnect() {
+      return owner?.reconnect()
+    },
     destroy() {
       if (destroyed) return
       destroyed = true

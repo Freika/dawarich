@@ -1,5 +1,6 @@
 import { RouteSegmenter } from "../algorithms/route_segmenter.js"
 import { createReader } from "../data/reader.js"
+import { createStatsLayer } from "../public/stats.js"
 import { createPublicStatsReader } from "../public/stats_reader.js"
 import { createMapRuntime } from "../runtime/create_map.js"
 import { TripPlanLayer } from "../trip/plan.js"
@@ -17,8 +18,11 @@ export function createPreviewOwner({
     return response.json()
   },
 }) {
-  let library, plan, current, map
+  let library, plan, current, map, stats
   function clear() {
+    if (!map) return
+    stats?.destroy()
+    stats = null
     plan?.remove()
     plan = null
     for (const id of ["preview-route", "hexagons-line", "hexagons-fill"])
@@ -31,23 +35,14 @@ export function createPreviewOwner({
     clear()
     const { data, state } = current
     if (state.kind === "stats") {
-      map.addSource("hexagons", { type: "geojson", data })
-      map.addLayer({
-        id: "hexagons-fill",
-        type: "fill",
-        source: "hexagons",
-        paint: { "fill-color": "#3388ff", "fill-opacity": 0.3 },
+      stats = createStatsLayer({
+        map,
+        library,
+        locale: state.locale,
+        timezone: state.range?.timezone,
+        labels: state.labels,
       })
-      map.addLayer({
-        id: "hexagons-line",
-        type: "line",
-        source: "hexagons",
-        paint: {
-          "line-color": "#3388ff",
-          "line-width": 1,
-          "line-opacity": 0.3,
-        },
-      })
+      stats.show(data)
     } else if (data.path?.length) {
       const lines = RouteSegmenter.unwrapCoordinates(
         data.path.map(([longitude, latitude]) => ({ longitude, latitude })),
@@ -132,7 +127,7 @@ export function createPreviewOwner({
             reader.read("trip", { id: state.tripId }, { signal }),
           )
         ).data
-      else {
+      else if (state.range?.startAt && state.range?.endAt) {
         const points = await operation.wait(
           reader.pages(
             "points",
@@ -151,6 +146,7 @@ export function createPreviewOwner({
             .map((p) => [Number(p.longitude), Number(p.latitude)]),
         }
       }
+      if (!data) data = { path: [] }
       operation.check()
       current = { data, state }
       render()
@@ -170,6 +166,8 @@ export function createPreviewOwner({
         element.dataset.mapState = "ready"
       },
       error: () => {
+        current = null
+        clear()
         element.dataset.mapState = "failed"
       },
     },

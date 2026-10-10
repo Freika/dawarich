@@ -108,3 +108,7 @@ Native cookie resources `family_locations` and `family_history` freshly admit fa
 ## Trip runtime and insertion
 
 `NativeTripMapPanel.panel` keys the Trip canvas by `tripId`. `TripHook` lazily imports `mountTrip`; one runtime owns its day routes, plan, flights and photos. Reads refresh current owned Trip metadata/device windows before exact geometry is loaded. Destruction cancels style/point reads and releases every owned layer. Reconnect reuses its map. Its stable `source` has `fixedRange: true`, verifies both current revision and fresh Trip range, and separates visible poster flight arcs from video/replay timed GPS. `trip:day` carries only a day identity; parent page integration belongs to X1 and the m5 adapter switch.
+
+## Preview contracts
+
+`NativeMapPreview.preview` accepts resource ID or a form range, interactivity/numbering/style scalars, and public-stat UUID/bounds. It serializes no path, plan, credentials or owner identity. `MapPreview` observes visibility and admits at most two live previews per document by default; hiding/destroying releases its slot, map, read and listeners. Reconnect refreshes the same visible owner. This safety default awaits measured O8 acceptance. Trip/form data uses the scoped cookie reader; public stats only request the existing UUID-clipped hexagon API with credentials omitted. Public refusal clears geometry before retry; localized hover/popups and style restoration are owned by the preview. m5/controller parent insertion remains X1.

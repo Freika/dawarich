@@ -247,3 +247,139 @@ test("preview route uses owned HTTP geometry across dateline and clears stale em
   assert.equal(listeners.size, 0)
   assert.equal(removed, 1)
 })
+
+test("public preview refusal clears previously displayed geometry before retry", async () => {
+  const { createPreviewOwner } = await import(
+    "../../app-phoenix/assets/js/map/preview/owner.js"
+  )
+  const sources = new Map(),
+    layers = new Map(),
+    listeners = new Map()
+  let refused = false
+  const element = {
+    dataset: {},
+    ownerDocument: { createElement: () => ({ style: {}, remove() {} }) },
+    appendChild() {},
+  }
+  const map = {
+    loaded: () => true,
+    on: (name, f) => listeners.set(name, f),
+    once() {},
+    off: (name) => listeners.delete(name),
+    addSource: (id, s) => sources.set(id, s),
+    addLayer: (l) => layers.set(l.id, l),
+    getSource: (id) => sources.get(id),
+    getLayer: (id) => layers.get(id),
+    removeSource: (id) => sources.delete(id),
+    removeLayer: (id) => layers.delete(id),
+    fitBounds() {},
+    remove() {},
+    getCanvas: () => ({ style: {} }),
+    setFeatureState() {},
+  }
+  const reader = {
+    read: async () => {
+      if (refused) throw new Error("revoked")
+      return { data: { features: [{ id: 7 }] } }
+    },
+    reset() {},
+    destroy() {},
+  }
+  const owner = createPreviewOwner({
+    element,
+    config: { kind: "stats", uuid: "share" },
+    reader,
+    loadLibrary: async () => ({
+      Map: class {
+        constructor() {
+          Object.assign(this, map)
+        }
+      },
+    }),
+    loadStyle: async () => ({}),
+  })
+  assert.equal(await owner.mount(), "ready")
+  assert.equal(sources.has("hexagons"), true)
+  refused = true
+  assert.equal(await owner.reconnect(), "failed")
+  assert.equal(sources.has("hexagons"), false)
+  assert.equal(element.dataset.mapState, "failed")
+  refused = false
+  assert.equal(await owner.reconnect(), "ready")
+  owner.destroy()
+})
+
+test("preview reconnect refreshes admission on its existing visible owner", async () => {
+  let change,
+    refreshed = 0,
+    constructed = 0
+  const element = { dataset: { mapConfig: "{}" }, ownerDocument: {} }
+  const owner = mountPreview({
+    element,
+    gate: createPreviewGate(),
+    observe: (_, f) => {
+      change = f
+      return () => {}
+    },
+    createOwner: () => {
+      constructed++
+      return {
+        mount: async () => {},
+        reconnect: async () => {
+          refreshed++
+        },
+        destroy() {},
+      }
+    },
+  })
+  owner.mount()
+  change(true)
+  await turn()
+  await owner.reconnect()
+  assert.equal(refreshed, 1)
+  assert.equal(constructed, 1)
+  owner.destroy()
+})
+
+test("new Trip empty preview settles without history or invalid range request", async () => {
+  const { createPreviewOwner } = await import(
+    "../../app-phoenix/assets/js/map/preview/owner.js"
+  )
+  const element = {
+    dataset: {},
+    ownerDocument: { createElement: () => ({ style: {}, remove() {} }) },
+    appendChild() {},
+  }
+  const map = {
+    loaded: () => true,
+    on() {},
+    off() {},
+    getSource() {},
+    getLayer() {},
+    remove() {},
+  }
+  const owner = createPreviewOwner({
+    element,
+    config: { interactive: true },
+    reader: {
+      read() {
+        throw new Error("unexpected read")
+      },
+      pages() {
+        throw new Error("unexpected history")
+      },
+      destroy() {},
+      reset() {},
+    },
+    loadLibrary: async () => ({
+      Map: class {
+        constructor() {
+          Object.assign(this, map)
+        }
+      },
+    }),
+    loadStyle: async () => ({}),
+  })
+  assert.equal(await owner.mount(), "ready")
+  owner.destroy()
+})

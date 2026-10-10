@@ -17,6 +17,9 @@ export const MapPreview = {
       JSON.parse(this.el.dataset.mapConfig ?? "{}"),
     )
   },
+  reconnected() {
+    return this.previewOwner?.reconnect()
+  },
   destroyed() {
     this.previewDestroyed = true
     this.previewOwner?.destroy()
