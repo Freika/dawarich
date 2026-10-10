@@ -54,45 +54,50 @@ defmodule DawarichWeb.FamilyPagesTest do
     end
   end
 
-  test "show renders owner and member Rails controls", ctx do
-    html = document(ctx.owner, "/family")
-    assert_form_isolated(html)
+  test "native Family owner and member controls retain policy and inactive refusal", ctx do
+    Repo.query!(
+      "UPDATE family_invitations SET expires_at=$1 WHERE token=$2",
+      [
+        DateTime.utc_now() |> DateTime.add(1, :day) |> DateTime.to_naive(),
+        "a9fpl-pending"
+      ],
+      log: false
+    )
+
+    owner = document(ctx.owner, "/family")
     assert_form_isolated(document(ctx.owner, "/family/invitations"))
     assert_form_isolated(document(ctx.member, "/family/location_requests/94001"))
-    owner = html
-    assert true == (html =~ "Leipzig Fixture Family")
+    assert String.contains?(owner, "Leipzig Fixture Family")
     expect_element(owner, "a[href='/family/edit']")
+    expect_element(owner, "[phx-click='family:member'][phx-value-id='92002'][data-confirm]")
 
     expect_element(
       owner,
-      "a[href='/family/members/92002'][data-turbo-method='delete'][data-turbo-confirm]"
+      "#native-family-invite[phx-submit='family:invite'] input[name='family_invitation[email]']"
     )
 
-    expect_element(
-      owner,
-      "form[action='/family/invitations.91001'] input[name='family_invitation[email]']"
-    )
+    expect_element(owner, "#native-family-sharing[phx-change='family:sharing']")
 
     expect_element(
       owner,
-      "form[action='/family/location_sharing'] input[name='_method'][value='patch']"
-    )
-
-    expect_element(
-      owner,
-      "form[action='/family/invitations/a9fpl-pending'] input[name='_method'][value='delete']"
+      "[phx-click='family:cancel'][phx-value-token='a9fpl-pending'][data-confirm]"
     )
 
     member = document(ctx.member, "/family?locale=de")
     expect_element(member, "a[href='/family/edit']", false)
-    expect_element(member, "form[action='/family/invitations.91001']", false)
-    expect_element(member, "a[href='/family/members/92002'][data-turbo-method='delete']")
-    expect_element(member, "form[action='/family/location_requests?target_user_id=90101']")
-    assert false == (html =~ "data-lat=")
-    assert false == (html =~ "a9fpl-fixture-")
+    expect_element(member, "#native-family-invite", false)
+    expect_element(member, "[phx-click='family:member'][phx-value-id='92002'][data-confirm]")
+    expect_element(member, "[phx-click='family:request'][phx-value-id='90101']")
+
+    for html <- [owner, member],
+        marker <- ~w(data-lat= a9fpl-fixture- data-controller data-action turbo-frame),
+        do: refute(String.contains?(html, marker))
+
     Repo.query!("UPDATE users SET status = 0 WHERE id = $1", [ctx.owner.id])
-    trial = document(ctx.owner, "/family")
-    expect_element(trial, "#family-getting-started .text-xs.text-base-content\\/60.mt-3")
+    refused = document(ctx.owner, "/family")
+    expect_element(refused, "#family-shell", false)
+    expect_element(refused, "[role=alert]")
+    assert Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows == [[0]]
   end
 
   test "new renders create upgrade and lapsed branches", ctx do
@@ -158,7 +163,7 @@ defmodule DawarichWeb.FamilyPagesTest do
     assert redirected_to(returned, 303) == "http://www.example.com/family"
   end
 
-  test "family key hands back documents before pipeline", ctx do
+  test "family key preserves independent document handback and native Show ownership", ctx do
     saved_routes = Application.get_env(:dawarich, :rails_routes, [])
     saved_upstream = Application.get_env(:dawarich, :rails_upstream)
     upstream = listen()
@@ -172,7 +177,14 @@ defmodule DawarichWeb.FamilyPagesTest do
     Application.put_env(:dawarich, :rails_routes, ["family"])
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
-    for path <- ~w(/family /family/new /family/edit) do
+    route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/family", "www.example.com")
+    assert route.retired
+    native = document(ctx.owner, "/family")
+    expect_element(native, "#native-family-map[phx-hook=Family]")
+    expect_element(native, "[data-controller], turbo-frame", false)
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+
+    for path <- ~w(/family/new /family/edit) do
       response =
         Task.async(fn -> RailsUser.signed_in(ctx.owner.id) |> freeze_clock() |> get(path) end)
 
