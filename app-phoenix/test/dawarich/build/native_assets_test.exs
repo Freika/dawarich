@@ -4,9 +4,13 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
   @moduletag :tmp_dir
 
-  @native_base_bytes 344_744
   @http_chrome_cap 2 * 1024
   @places_cap 2 * 1024
+  @other_slack 1024
+  @chrome_inputs ~w(js/analytics_events.js js/hooks/achievement_unlocks.js js/hooks/changelog_widget.js)
+  @chrome_base_bytes 6_707 + 548
+  @places_inputs ~w(js/hooks/place_draft.js js/hooks/ordinary_dialog.js)
+  @other_base_bytes 335_463
 
   defp build!(dir) do
     assert 0 ==
@@ -51,14 +55,15 @@ defmodule Dawarich.Build.NativeAssetsTest do
   end
 
   test "HTTP chrome adds at most 2 KiB to the native eager graph", %{tmp_dir: dir} do
-    build!(dir)
+    bytes = dir |> build!() |> app_input_bytes() |> Map.take(@chrome_inputs) |> Map.values()
+    assert Enum.sum(bytes) - @chrome_base_bytes <= @http_chrome_cap
+  end
 
-    outputs =
-      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
-
-    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
-    bytes = Enum.sum(Enum.map(eager(outputs, [app], MapSet.new()), &outputs[&1]["bytes"]))
-    assert bytes <= @native_base_bytes + @places_cap + @http_chrome_cap
+  test "native eager graph outside the chrome and Places inputs stays within 1 KiB of base", %{
+    tmp_dir: dir
+  } do
+    bytes = dir |> build!() |> app_input_bytes() |> Map.drop(@chrome_inputs ++ @places_inputs)
+    assert Enum.sum(Map.values(bytes)) <= @other_base_bytes + @other_slack
   end
 
   test "the native bundle includes LiveView and no Hotwire module", %{tmp_dir: dir} do
@@ -128,12 +133,24 @@ defmodule Dawarich.Build.NativeAssetsTest do
     bytes =
       inputs
       |> Enum.filter(fn {input, _} ->
-        String.contains?(input, "place_draft") or String.contains?(input, "ordinary_dialog")
+        input in @places_inputs
       end)
       |> Enum.map(&elem(&1, 1))
       |> Enum.sum()
 
     assert bytes in 1..@places_cap
+  end
+
+  defp app_input_bytes(dir) do
+    outputs =
+      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
+
+    for path <- eager(outputs, [app], MapSet.new()),
+        {input, meta} <- outputs[path]["inputs"],
+        reduce: %{},
+        do: (acc -> Map.update(acc, input, meta["bytesInOutput"], &(&1 + meta["bytesInOutput"])))
   end
 
   defp eager(_outputs, [], seen), do: seen
