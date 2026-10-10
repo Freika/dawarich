@@ -6,6 +6,9 @@ export const VIDEO_FORMATS = {
   square: { width: 1080, height: 1080 },
 }
 
+const validFormat = (format) =>
+  typeof format === "string" && Object.hasOwn(VIDEO_FORMATS, format)
+
 export const DAWARICH_URL = "https://dawarich.app"
 
 export const DEFAULT_VIDEO_THEME_KEY = "terracotta"
@@ -51,7 +54,7 @@ export function normalizeSettings(raw) {
 
   return {
     theme: typeof raw.theme === "string" ? raw.theme : base.theme,
-    format: VIDEO_FORMATS[raw.format] ? raw.format : base.format,
+    format: validFormat(raw.format) ? raw.format : base.format,
     duration_sec: Number.isFinite(duration)
       ? Math.min(MAX_DURATION_SEC, Math.max(MIN_DURATION_SEC, duration))
       : base.duration_sec,
@@ -142,7 +145,9 @@ export function previewFitPadding(settings, previewWidth) {
 }
 
 export function formatFor(settings) {
-  return VIDEO_FORMATS[settings.format] ?? VIDEO_FORMATS.portrait
+  return VIDEO_FORMATS[
+    validFormat(settings.format) ? settings.format : "portrait"
+  ]
 }
 
 export function buildVideoStyle(

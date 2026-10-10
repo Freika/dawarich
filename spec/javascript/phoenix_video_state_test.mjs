@@ -588,3 +588,20 @@ test("video style is built from injected poster style services", () => {
     },
   ])
 })
+
+test("stored recipes with inherited format names fall back to finite portrait dimensions", () => {
+  for (const format of [
+    "__proto__",
+    "constructor",
+    "toString",
+    "hasOwnProperty",
+  ]) {
+    const stored = JSON.parse(JSON.stringify({ format }))
+    const settings = normalizeSettings(stored)
+    assert.equal(settings.format, "portrait", format)
+    assert.deepEqual(formatFor(settings), VIDEO_FORMATS.portrait)
+    assert.deepEqual(formatFor(stored), VIDEO_FORMATS.portrait)
+    const { width, height } = renderCssSize(stored)
+    assert.ok(Number.isFinite(width) && Number.isFinite(height))
+  }
+})
