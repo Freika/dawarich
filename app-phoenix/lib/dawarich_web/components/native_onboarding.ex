@@ -33,11 +33,19 @@ defmodule DawarichWeb.NativeOnboarding do
         family_href: if(family.available, do: "/family", else: "/family/new"),
         demo_loaded: assigns.navbar.imports.demo,
         formats: @formats,
-        legacy_trial: user.status == 2 and user.subscription_source in [nil, 0]
+        legacy_trial: user.status == 2 and user.subscription_source in [nil, 0],
+        auto: Map.get(assigns, :auto_open, false) == true and assigns.navbar.onboarding == true
       )
 
     ~H"""
-    <dialog id="getting_started" class="modal">
+    <dialog
+      id="getting_started"
+      class="modal"
+      phx-hook="Onboarding"
+      data-auto={to_string(@auto)}
+      data-user-id={@current_user.id}
+      phx-target={assigns[:target]}
+    >
       <form id="onboarding-dismiss" method="dialog"></form>
       <div class="modal-box max-w-2xl bg-base-200">
         <div id="onboarding-choice-screen">
