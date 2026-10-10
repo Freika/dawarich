@@ -7,6 +7,7 @@ import { dateRangeLabel } from "./dates.js"
 import { trimOutlierCoords } from "./dependencies.js"
 import { createPosterExports } from "./export/operation.js"
 import { bindExportControls } from "./export_controls.js"
+import { bindGalleryControls } from "./gallery_controls.js"
 import { createPosterLifecycle } from "./lifecycle.js"
 import { createPosterSource } from "./source.js"
 import { interpolate } from "./strings.js"
@@ -15,6 +16,7 @@ export function mountPosterStudio({
   root,
   source,
   fallbackBounds,
+  pushEvent = () => {},
   loadLibrary = () => import("/maplibre/6.4.1/maplibre-gl.mjs"),
   window: win = globalThis.window,
   exports = createPosterExports(),
@@ -37,6 +39,7 @@ export function mountPosterStudio({
   const poster = createPosterSource(source, { fallbackBounds })
   const ensureFont = (key) => ensurePosterFont(key, config.fonts ?? {})
   let controls = null
+  let gallery = null
   const studio = createPosterLifecycle({
     elements: {
       dialog,
@@ -57,6 +60,7 @@ export function mountPosterStudio({
     onChange: (state) => {
       markTheme(state.themeKey)
       controls?.refresh()
+      gallery?.refresh()
     },
     onError: (code, error) =>
       setStatus(interpolate(strings[code], { error: error?.message ?? "" })),
@@ -93,6 +97,15 @@ export function mountPosterStudio({
     strings,
     loadLibrary,
     maxDimensionPx,
+    setStatus,
+  })
+  gallery = bindGalleryControls({
+    find,
+    on,
+    studio,
+    poster,
+    pushEvent,
+    strings,
     setStatus,
   })
   owned.own(() => exports.cancel())

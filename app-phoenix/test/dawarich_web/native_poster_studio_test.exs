@@ -59,6 +59,11 @@ defmodule DawarichWeb.NativePosterStudioTest do
     refute Enum.any?(Map.values(config["strings"]), &String.contains?(&1, "translation missing"))
     assert config["strings"]["rendering"] =~ "%{width} × %{height}"
     assert config["strings"]["saved_at_dpi"] =~ "%{dpi}"
+    assert config["strings"]["untitled"] == "Unbenannter Poster"
+
+    for key <-
+          ~w(queued no_location_data no_tracks_in_frame frame_too_wide gallery_without_flights),
+        do: assert(config["strings"][key] not in [nil, ""], key)
   end
 
   test "theme swatches name the first theme as the initial theme" do
@@ -82,7 +87,10 @@ defmodule DawarichWeb.NativePosterStudioTest do
 
     assert attribute(doc, "[data-poster-layout] option[selected]", "value") == ["print-a3"]
 
-    assert doc |> LazyHTML.query("[data-poster-layout] option[value=print-a3]") |> LazyHTML.text() |> String.trim() ==
+    assert doc
+           |> LazyHTML.query("[data-poster-layout] option[value=print-a3]")
+           |> LazyHTML.text()
+           |> String.trim() ==
              "A3 Hochformat"
   end
 
@@ -105,5 +113,28 @@ defmodule DawarichWeb.NativePosterStudioTest do
     assert attribute(doc, "[data-poster-format] option", "value") == ~w(png pdf)
     assert attribute(doc, "[data-poster-range]", "data-poster-range") == ~w(today week month)
     assert doc |> LazyHTML.query("[data-poster-token]") |> Enum.count() == 12
+  end
+
+  test "the gallery stays patchable outside the ignored islands with native cards" do
+    poster = %{
+      id: 42,
+      name: "Gallery",
+      status: 0,
+      settings: %{},
+      files: %{"image" => nil, "print_pdf" => nil}
+    }
+
+    {_html, doc} = render(%{posters: [poster]})
+
+    assert doc
+           |> LazyHTML.query("#native-poster-gallery #poster_42[data-poster-card]")
+           |> Enum.count() == 1
+
+    assert doc |> LazyHTML.query("[phx-update=ignore] [data-poster-card]") |> Enum.count() == 0
+    assert doc |> LazyHTML.query("#native-poster-actions [data-poster-save]") |> Enum.count() == 1
+
+    assert doc
+           |> LazyHTML.query("#native-poster-actions [data-poster-save-notice]")
+           |> Enum.count() == 1
   end
 end

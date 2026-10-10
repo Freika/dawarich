@@ -6,6 +6,7 @@ defmodule DawarichWeb.NativePosterStudio do
 
   import DawarichWeb.NativePosterSections, only: [poster_sections: 1]
   import DawarichWeb.NativePosterActions, only: [poster_actions: 1]
+  import DawarichWeb.NativePosterCard, only: [poster_gallery: 1]
 
   alias DawarichWeb.{Icon, PosterFonts}
   alias Phoenix.LiveView.JS
@@ -19,12 +20,19 @@ defmodule DawarichWeb.NativePosterStudio do
     "rendering" => %{"width" => "%{width}", "height" => "%{height}"},
     "saved" => %{},
     "saved_at_dpi" => %{"dpi" => "%{dpi}"},
-    "export_failed" => %{"error" => "%{error}"}
+    "export_failed" => %{"error" => "%{error}"},
+    "queued" => %{},
+    "untitled" => %{},
+    "no_location_data" => %{},
+    "no_tracks_in_frame" => %{},
+    "frame_too_wide" => %{},
+    "gallery_without_flights" => %{}
   }
 
   attr :themes, :list, required: true
   attr :locale, :string, required: true
   attr :fixed_range_label, :string, default: nil
+  attr :posters, :list, default: []
 
   def poster_studio(assigns) do
     assigns = assign(assigns, :config, config(assigns.locale))
@@ -145,6 +153,24 @@ defmodule DawarichWeb.NativePosterStudio do
                 <div id="native-poster-controls" phx-update="ignore" class="space-y-3 p-3">
                   <.poster_sections themes={@themes} locale={@locale} />
                 </div>
+                <details
+                  id="native-poster-gallery"
+                  class="collapse collapse-arrow mx-3 mb-3 rounded-lg bg-base-100"
+                  phx-mounted={JS.ignore_attributes("open")}
+                >
+                  <summary class="collapse-title min-h-0 cursor-pointer font-medium">
+                    <span class="flex min-w-0 items-center gap-2">
+                      <Icon.icon name="camera" class="h-4 w-4 shrink-0 opacity-70" />
+                      {p(@locale, "recent_posters")}
+                    </span>
+                  </summary>
+                  <div class="collapse-content space-y-3">
+                    <p class="text-xs opacity-60">
+                      {p(@locale, "server_rendered_posters_from_save_to_gallery_they_stay_here")}
+                    </p>
+                    <.poster_gallery posters={@posters} locale={@locale} />
+                  </div>
+                </details>
               </div>
               <div
                 id="native-poster-actions"

@@ -32,6 +32,16 @@ defmodule DawarichWeb.NativePosterActions do
       <Icon.icon name="download" class="h-4 w-4 shrink-0" />
       {p(@locale, "download")}
     </button>
+    <button
+      type="button"
+      class="btn btn-ghost btn-xs h-auto w-full gap-1 py-1 opacity-70"
+      title={p(@locale, "render_this_area_server_side_as_the_classic_3_4")}
+      data-poster-save
+    >
+      <Icon.icon name="camera" class="h-3.5 w-3.5 shrink-0" />
+      {p(@locale, "save_to_gallery")}
+    </button>
+    <p class="hidden text-xs text-warning" data-poster-save-notice></p>
     <p class="text-xs opacity-70" role="status" data-poster-status></p>
     """
   end
