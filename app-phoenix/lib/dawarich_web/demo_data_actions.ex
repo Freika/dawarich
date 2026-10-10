@@ -9,9 +9,25 @@ defmodule DawarichWeb.DemoDataActions do
 
   def call(conn, :demo_data, opts \\ []) do
     case SettingsActions.admit(conn, ~w(POST DELETE)) do
-      :ok -> perform(conn, opts)
-      {:error, status} -> SettingsActions.reject(conn, status)
+      :ok ->
+        case Dawarich.Accounts.settings_for(conn.assigns.current_user) do
+          {:ok, _} -> perform(conn, opts)
+          {:error, :unsupported} -> unsupported(conn)
+        end
+
+      {:error, status} ->
+        SettingsActions.reject(conn, status)
     end
+  end
+
+  defp unsupported(conn) do
+    key =
+      if conn.method == "DELETE" or
+           String.upcase(conn.assigns.api_params["_method"] || "") == "DELETE",
+         do: "something_went_wrong_removing_demo_data",
+         else: "something_went_wrong_loading_demo_data"
+
+    redirect(conn, "/", key, "alert")
   end
 
   defp perform(conn, opts) do
