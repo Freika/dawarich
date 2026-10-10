@@ -6,6 +6,16 @@ defmodule Dawarich.Stats.Pages do
   def index(scope, params \\ %{}, opts \\ []) do
     with {:ok, scope, period} <- Period.admit(scope, params, :index, opts) do
       data = Dawarich.Stats.IndexReads.load(scope.user.id, period, params)
+      table = Dawarich.CountryNames.table()
+
+      data =
+        Map.update!(data, :years, fn years ->
+          Enum.map(
+            years,
+            &Map.put(&1, :places, Stats.Toponyms.year_places(&1.stats, &1.year, table))
+          )
+        end)
+
       counts = ready_counts(scope.user, period, opts)
 
       {:ok,

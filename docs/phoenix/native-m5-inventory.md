@@ -232,3 +232,7 @@ none — this planning phase changed no production behaviour. The reported query
 ## Unlock gateway coverage (integration review fix)
 
 POST `/s/:id/unlock` is a phrase capability gateway: `SharedLinks.active`, `FamilyAudience.accessible?` and secure phrase comparison precede cookie issuance. Its successful response is an empty redirect; shared-payload `Delivery` bypass coverage is inapplicable. Named successor: `a12f3b_s01_test` “POST unlock refuses shared audience admission before issuing a phrase cookie”. The shared-admission gateway bypass mutation skips the POST audience predicate and fails this case (302 instead of 404). Positive cookie/redirect, wrong phrase and no-cookie/no-view-touch controls remain.
+
+## Integration handoff (2026-10-10)
+
+The baseline above remains a historical pre-change census. Current native ownership, retained callers, named transport-test successors and adapter limitations are recorded in [native-m5-integration.md](native-m5-integration.md). Public digest and achievement HTML now route to NativePublicPage using the native public HTTP pipeline; month/shared map documents retain their milestone 6 owners. The public route manifest and revocation/expiry/deletion/HEAD tests remain the delivery gate. Full and browser acceptance are pending the controller's X5 stage; no acceptance measurements are claimed.

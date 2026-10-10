@@ -253,8 +253,8 @@ defmodule DawarichWeb.StatsLiveTest do
       assert has_element?(view, "#stats-without-data", "1 points without data")
       assert has_element?(view, "#stats-update", "Update stats")
       assert texts(html, "article > a:first-child") == ["2024", "2023"]
-      assert has_element?(view, "#stats-year-places-2024", "2 / 2")
-      assert has_element?(view, "#stats-year-places-2023", "1 / 1")
+      assert has_element?(view, "#stats-year-2024-places", "2 countries, 2 cities")
+      assert has_element?(view, "#stats-year-2023-places", "1 countries, 1 cities")
       refute html =~ "data-turbo-method"
     end
 

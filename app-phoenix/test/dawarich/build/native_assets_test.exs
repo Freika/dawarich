@@ -100,6 +100,7 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
       assert bytes in 1..2048
     end
+
     assert File.regular?(Path.join(dir, "public_charts.js"))
     refute File.read!(Path.join(dir, "public_charts.js")) =~ "LiveSocket"
     assert Enum.any?(inputs(dir), &String.contains?(&1, "chartkick"))

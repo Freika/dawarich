@@ -15,12 +15,17 @@ test("registered RichText mounts and cleans up the native editor", async () => {
     ...hooks.RichText,
     el: {
       dataset: { revision: "1" },
-      querySelector: (selector) => selector === "trix-editor" ? editor : input,
+      querySelector: (selector) =>
+        selector === "trix-editor" ? editor : input,
     },
     handleEvent() {},
-    loadEditor: async () => ({ RichAttachments: class {
-      cancelAll() { cancelled = true }
-    } }),
+    loadEditor: async () => ({
+      RichAttachments: class {
+        cancelAll() {
+          cancelled = true
+        }
+      },
+    }),
   }
   hook.mounted()
   await hook.loading

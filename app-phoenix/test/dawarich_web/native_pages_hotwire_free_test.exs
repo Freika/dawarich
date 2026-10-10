@@ -93,7 +93,11 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     end)
     |> Enum.map(fn %{path: path} ->
       id = if String.starts_with?(path, "/settings/users"), do: "8411", else: "84111"
-      path |> String.replace(":id", id) |> String.replace(":year", "2024") |> String.replace(":key", "country_de")
+
+      path
+      |> String.replace(":id", id)
+      |> String.replace(":year", "2024")
+      |> String.replace(":key", "country_de")
     end)
   end
 

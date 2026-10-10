@@ -61,6 +61,12 @@ defmodule DawarichWeb.AchievementsParityTest do
             [user_id, fixture["seed_state"]]
           )
 
+      states =
+        Repo.query!(
+          "SELECT achievement_key,state FROM achievement_progresses WHERE user_id=$1 ORDER BY achievement_key",
+          [user_id]
+        ).rows
+
       html = RailsUser.signed_in(user_id) |> get(fixture["path"]) |> html_response(200)
       rails = File.read!(Path.join(@root, fixture["name"] <> ".html"))
 
@@ -87,14 +93,10 @@ defmodule DawarichWeb.AchievementsParityTest do
       refute html =~ "data-controller="
       refute html =~ "data-action="
 
-      if fixture["seed_state"],
-        do:
-          assert(
-            Repo.query!(
-              "SELECT state FROM achievement_progresses WHERE user_id=$1 AND achievement_key='exploration'",
-              [user_id]
-            ).rows == [[fixture["seed_state"]]]
-          )
+      assert Repo.query!(
+               "SELECT achievement_key,state FROM achievement_progresses WHERE user_id=$1 ORDER BY achievement_key",
+               [user_id]
+             ).rows == states
     end
   end
 

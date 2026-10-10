@@ -105,6 +105,22 @@ defmodule DawarichWeb.StatsLive.NativePage do
       when kind in ~w(countries cities),
       do: {:noreply, assign(socket, :stats_dialog, kind)}
 
+  def handle_event(
+        "open_year_places",
+        %{"year" => year},
+        %{assigns: %{live_action: :index, data: data}} = socket
+      )
+      when is_binary(year) and is_map(data) do
+    with {:ok, scope} <- NativeDataAuth.scope(socket),
+         {:ok, data} <- Pages.index(scope, socket.assigns.query, options(socket)),
+         {year, ""} <- Integer.parse(year),
+         true <- Enum.any?(data.years, &(&1.year == year)) do
+      {:noreply, assign(socket, data: data, stats_dialog: {:year_places, year})}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
   def handle_event("open_share", _, socket) do
     with {:ok, scope} <- NativeDataAuth.scope(socket),
          {:ok, result} <- Commands.sharing(scope, socket.assigns.query, command_options(socket)) do

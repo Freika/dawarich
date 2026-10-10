@@ -77,23 +77,18 @@ defmodule DawarichWeb.StatsLive.NativeParts do
             phx-value-kind="cities"
           >{t(@locale, "stats.reverse_geocoding_stats.cities_visited", %{})}: {@data.total_cities}</button>
         </div>
-        <article :for={year <- @data.years} class="my-4 min-w-0 rounded-lg border p-4">
-          <.link navigate={"/stats/#{year.year}"} class="text-xl underline">{year.year}</.link>
-          <p>{year.updated_on}</p>
-          <p id={"stats-year-total-#{year.year}"}>
-            {NumberFormat.delimited(@locale, Period.rounded(Enum.sum(year.distances), @data.unit))} {@data.unit}
-          </p>
-          <p id={"stats-year-places-#{year.year}"}>
-            {length(countries(year.stats))} / {length(cities(year.stats))}
-          </p>
-          <NativeChart.chart
-            id={"stats-year-#{year.year}"}
-            data={months(@locale, year.year, year.distances, @data.unit)}
-            revision={revision(year.distances)}
-            label={t(@locale, "stats.year.distance", %{})}
-            options={%{suffix: " " <> @data.unit}}
-          />
-        </article>
+        <p id="stats-refresh-policy">
+          {t(@locale, "stats.index.all_stats_data_above_except_for_total_distance_and_number", %{})}
+        </p>
+        <a href="/digests">{t(@locale, "stats.index.year_end_digests", %{})}</a>
+        <DawarichWeb.StatsLive.NativeYearCard.render
+          :for={year <- @data.years}
+          year={year}
+          locale={@locale}
+          unit={@data.unit}
+          chart={months(@locale, year.year, year.distances, @data.unit)}
+          revision={revision(year.distances)}
+        />
         <p :for={year <- @data.locked_years} id={"stats-locked-#{year}"} class="my-4">
           {year} — {t(@locale, "stats.locked_year_card.available_on_pro", %{})}
         </p>
@@ -185,6 +180,12 @@ defmodule DawarichWeb.StatsLive.NativeParts do
         "stats.reverse_geocoding_stats.close",
         %{}
       )}</button>
+      <DawarichWeb.StatsLive.NativeYearCard.places
+        :if={match?({:year_places, _}, @dialog)}
+        data={@data}
+        year={elem(@dialog, 1)}
+        locale={@locale}
+      />
       <ul :if={@dialog in ~w(countries cities)}>
         <li
           :for={
@@ -258,9 +259,6 @@ defmodule DawarichWeb.StatsLive.NativeParts do
 
   defp revision(data),
     do: :crypto.hash(:sha256, :erlang.term_to_binary(data)) |> Base.encode16(case: :lower)
-
-  defp countries(stats),
-    do: stats |> Enum.flat_map(& &1.toponyms) |> Dawarich.Stats.Toponyms.countries()
 
   defp cities(stats),
     do: stats |> Enum.flat_map(& &1.toponyms) |> Dawarich.Stats.Toponyms.cities()

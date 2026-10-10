@@ -17,6 +17,33 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     %{user: user}
   end
 
+  @tag retained_year_controls: true
+  test "native year cards retain map links per-year places and digest navigation", %{user: user} do
+    Dawarich.Repo.query!(
+      "UPDATE stats SET toponyms=$2 WHERE user_id=$1 AND year=2025",
+      [user.id, [%{"country" => "Germany", "cities" => [%{"city" => "Berlin"}]}]],
+      log: false
+    )
+
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats")
+    assert has_element?(view, "a[href='/digests']")
+    assert has_element?(view, "#stats-refresh-policy", "updated daily")
+
+    assert has_element?(
+             view,
+             "#stats-year-2025-map[href='#{DawarichWeb.StatsFormat.year_map_path(2025)}']"
+           )
+
+    view |> element("#stats-year-2025-places") |> render_click()
+    assert has_element?(view, "#stats-dialog [data-year-places='2025']", "Germany")
+    assert has_element?(view, "#stats-dialog", "Berlin")
+    refute has_element?(view, "#stats-dialog [data-year-places='2024']")
+    view |> element("#stats-dialog-close") |> render_click()
+    refute has_element?(view, "#stats-dialog")
+    render_click(view, "open_year_places", %{"year" => "1900"})
+    refute has_element?(view, "#stats-dialog")
+  end
+
   test "stats year patches change data and survive browser history", %{user: user} do
     {:ok, view, _html} = live(NativeAdminUI.conn(user), "/stats/2025")
     assert has_element?(view, "#stats-native-chart")
@@ -162,7 +189,7 @@ defmodule DawarichWeb.StatsNativeLiveTest do
 
     {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats?locale=de")
     assert has_element?(view, "#stats-year-total-2025", "12 km")
-    assert has_element?(view, "#stats-year-places-2025", "1")
+    assert has_element?(view, "#stats-year-2025-places", "1")
     view |> element("button[phx-value-kind=countries]") |> render_click()
     assert has_element?(view, "#stats-dialog li", "Germany")
     render_click(view, "close_dialog", %{})
