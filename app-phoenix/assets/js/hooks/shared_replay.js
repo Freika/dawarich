@@ -15,21 +15,23 @@ export class PublicReplay {
     this.day = 0
     this.index = 0
     const groups = new Map()
-    const format = new Intl.DateTimeFormat("en-CA", {
-      timeZone: zone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })
     for (const point of points) {
-      const date = format.format(new Date(point[2] * 1000))
+      const date = this.clock.key(this.clock.parts(point[2] * 1000))
       if (!groups.has(date)) groups.set(date, [])
       groups.get(date).push(point)
     }
-    this.days = [...groups].sort().map(([date, rows]) => ({
-      date,
-      points: rows.sort((a, b) => a[2] - b[2]),
-    }))
+    this.days = [...groups].sort().map(([date, rows]) => {
+      const points = rows.sort((a, b) => a[2] - b[2])
+      const minutes = points.map((point) => this.clock.minute(point))
+      const buckets = new Map()
+      const positions = []
+      minutes.forEach((minute, index) => {
+        if (!buckets.has(minute)) buckets.set(minute, [])
+        positions.push(buckets.get(minute).length)
+        buckets.get(minute).push(index)
+      })
+      return { date, points, minutes, buckets, positions }
+    })
   }
   target(name) {
     return this.root.querySelector(`[data-public-replay-target="${name}"]`)
@@ -47,8 +49,8 @@ export class PublicReplay {
     this.hidden("replayPlayIcon", false)
     this.hidden("replayPauseIcon", true)
   }
-  minute(point) {
-    return this.clock.minute(point)
+  minute() {
+    return this.days[this.day].minutes[this.index]
   }
   current() {
     return this.days[this.day]?.points || []
@@ -64,14 +66,11 @@ export class PublicReplay {
     this.marker.setLngLat(point.slice(0, 2))
     if (this.follow)
       this.map.easeTo({ center: point.slice(0, 2), duration: 100 })
-    const minute = this.minute(point)
+    const minute = this.minute()
     this.text("replayTimeDisplay", this.clock.label(point))
     this.text(
       "replayDayDisplay",
-      new Intl.DateTimeFormat(this.locale, {
-        timeZone: this.zone,
-        dateStyle: "medium",
-      }).format(new Date(point[2] * 1000)),
+      this.clock.formats.day.format(new Date(point[2] * 1000)),
     )
     this.text("replayDayCount", `${this.day + 1} / ${this.days.length}`)
     const scrubber = this.target("replayScrubber")
@@ -79,11 +78,12 @@ export class PublicReplay {
       scrubber.value = String(minute)
       scrubber.max = String(this.clock.day(this.days[this.day].date).length - 1)
     }
-    const same = rows.filter((row) => this.minute(row) === minute)
+    const day = this.days[this.day]
+    const same = day.buckets.get(minute)
     this.hidden("replayCycleControls", same.length < 2)
     this.text(
       "replayPointCounter",
-      `${same.indexOf(point) + 1} / ${same.length}`,
+      `${day.positions[this.index] + 1} / ${same.length}`,
     )
     const previous = this.target("replayPrevDayButton"),
       next = this.target("replayNextDayButton")
@@ -121,15 +121,22 @@ export class PublicReplay {
       if (running) this.action("replayTogglePlayback")
     } else if (name === "replayScrubberHover") {
       this.pause()
-      const rows = this.current()
-      let nearest = 0
-      for (let i = 1; i < rows.length; i++)
-        if (
-          Math.abs(this.minute(rows[i]) - Number(value)) <
-          Math.abs(this.minute(rows[nearest]) - Number(value))
-        )
-          nearest = i
-      this.index = nearest
+      const minutes = this.days[this.day].minutes
+      const wanted = Number(value)
+      let lo = 0,
+        hi = minutes.length
+      while (lo < hi) {
+        const middle = Math.floor((lo + hi) / 2)
+        if (minutes[middle] < wanted) lo = middle + 1
+        else hi = middle
+      }
+      const next = Math.min(lo, minutes.length - 1)
+      const previous = Math.max(0, lo - 1)
+      const minute =
+        Math.abs(minutes[next] - wanted) < Math.abs(minutes[previous] - wanted)
+          ? minutes[next]
+          : minutes[previous]
+      this.index = this.days[this.day].buckets.get(minute)[0]
       this.draw()
     } else if (name === "replayRecenterFollow") {
       this.follow = !this.follow
@@ -147,13 +154,11 @@ export class PublicReplay {
       this.draw()
     } else if (name === "replayCyclePrev" || name === "replayCycleNext") {
       this.pause()
-      const rows = this.current(),
-        next = this.index + (name === "replayCycleNext" ? 1 : -1)
-      if (
-        rows[next] &&
-        this.minute(rows[next]) === this.minute(rows[this.index])
-      )
-        this.index = next
+      const day = this.days[this.day]
+      const bucket = day.buckets.get(day.minutes[this.index])
+      const position =
+        day.positions[this.index] + (name === "replayCycleNext" ? 1 : -1)
+      if (bucket[position] !== undefined) this.index = bucket[position]
       this.draw()
     }
   }

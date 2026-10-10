@@ -3,19 +3,30 @@ export class PublicDayClock {
     this.zone = zone
     this.locale = locale
     this.bounds = new Map()
+    this.labels = new Map()
+    this.formats = {
+      parts: new Intl.DateTimeFormat("en-CA", {
+        timeZone: zone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }),
+      zone: new Intl.DateTimeFormat(locale, {
+        timeZone: zone,
+        timeZoneName: "short",
+      }),
+      day: new Intl.DateTimeFormat(locale, {
+        timeZone: zone,
+        dateStyle: "medium",
+      }),
+    }
   }
   parts(instant) {
-    const format = new Intl.DateTimeFormat("en-CA", {
-      timeZone: this.zone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    })
     return Object.fromEntries(
-      format
+      this.formats.parts
         .formatToParts(new Date(instant))
         .map(({ type, value }) => [type, value]),
     )
@@ -63,6 +74,8 @@ export class PublicDayClock {
   }
   label(point) {
     const instant = point[2] * 1000
+    const minute = Math.floor(instant / 60000)
+    if (this.labels.has(minute)) return this.labels.get(minute)
     const parts = this.parts(instant)
     const time = `${parts.hour}:${parts.minute}`
     const repeated = [-3600000, 3600000].some((offset) => {
@@ -73,16 +86,20 @@ export class PublicDayClock {
         parts.minute === adjacent.minute
       )
     })
-    if (!repeated) return time
-    const zone = new Intl.DateTimeFormat(this.locale, {
-      timeZone: this.zone,
-      timeZoneName: "short",
-    })
+    if (!repeated) {
+      this.labels.set(minute, time)
+      return time
+    }
+    const zone = this.formats.zone
       .formatToParts(new Date(instant))
       .find(({ type }) => type === "timeZoneName").value
-    return `${time} ${zone}`
+    const label = `${time} ${zone}`
+    this.labels.set(minute, label)
+    return label
   }
   clear() {
     this.bounds.clear()
+    this.labels.clear()
+    this.formats = null
   }
 }

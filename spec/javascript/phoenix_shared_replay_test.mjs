@@ -84,3 +84,64 @@ test("autumn replay independently selects both repeated hours with intervening s
   assert.equal(view.marker.coordinate[0], 4)
   view.clear()
 })
+
+test("maximum snapshots build bounded formatter and minute indexes with constant frame visits and replace cleared zone caches", () => {
+  const original = Intl.DateTimeFormat
+  const formats = new Map()
+  let constructions = 0
+  Intl.DateTimeFormat = class {
+    constructor(...args) {
+      constructions++
+      const key = JSON.stringify(args)
+      if (!formats.has(key)) formats.set(key, new original(...args))
+      this.formatter = formats.get(key)
+    }
+    format(...args) {
+      return this.formatter.format(...args)
+    }
+    formatToParts(...args) {
+      return this.formatter.formatToParts(...args)
+    }
+  }
+
+  let visits = 0
+  const at = Date.parse("2026-05-10T10:00:00Z") / 1000
+  const points = Array.from(
+    { length: 10000 },
+    (_, id) =>
+      new Proxy([id, 51, at + id * 2], {
+        get(target, key) {
+          if (key === "2") visits++
+          return Reflect.get(target, key)
+        },
+      }),
+  )
+  try {
+    const { view, target } = replay(points)
+    assert.ok(constructions <= 4, `constructed ${constructions} formatters`)
+    const built = constructions
+    visits = 0
+    view.draw()
+    view.action("replayScrubberHover", "900")
+    view.action("replayCycleNext")
+    view.action("replayCyclePrev")
+    assert.ok(visits <= 16, `visited ${visits} samples after indexing`)
+    assert.equal(constructions, built)
+    assert.equal(target("replayPointCounter").textContent, "1 / 30")
+    const clock = view.clock
+    view.clear()
+    assert.equal(clock.bounds.size, 0)
+    assert.equal(clock.labels.size, 0)
+    assert.equal(clock.formats, null)
+    assert.deepEqual(view.days, [])
+    const replacement = replay(
+      [point(1, "2026-05-10T10:00:00Z")],
+      "America/New_York",
+    )
+    assert.equal(replacement.target("replayTimeDisplay").textContent, "06:00")
+    assert.notEqual(replacement.view.clock, clock)
+    replacement.view.clear()
+  } finally {
+    Intl.DateTimeFormat = original
+  }
+})
