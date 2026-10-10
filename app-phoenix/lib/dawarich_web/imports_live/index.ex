@@ -7,6 +7,8 @@ defmodule DawarichWeb.ImportsLive.Index do
   import DawarichWeb.ListParts, only: [page_header: 1, sort_link: 1]
   import DawarichWeb.Paginator, only: [paginator: 1]
 
+  alias DawarichWeb.ImportsStallTimer
+
   @sortable ~w(name status created_at processed byte_size)
   @columns [
     {"name", "imports.index.name", "w-auto"},
@@ -32,6 +34,10 @@ defmodule DawarichWeb.ImportsLive.Index do
   @impl true
   def handle_info(:imports_refresh, socket), do: {:noreply, socket}
 
+  def handle_info({:import_stall_deadline, token}, socket) do
+    if ImportsStallTimer.current?(socket, token), do: refresh(socket), else: {:noreply, socket}
+  end
+
   def handle_info({:domain_changed, owner, :imports}, socket)
       when owner == socket.assigns.current_user.id do
     DawarichWeb.ImportsInvalidations.coalesce(owner)
@@ -49,12 +55,17 @@ defmodule DawarichWeb.ImportsLive.Index do
 
         {:noreply,
          socket
-         |> assign(:now, DateTime.utc_now())
+         |> assign(:now, ImportsStallTimer.now(socket))
          |> assign(page)
-         |> assign(:integrations, integrations)}
+         |> assign(:integrations, integrations)
+         |> ImportsStallTimer.schedule(page.entries)}
 
       {:error, _} ->
-        {:noreply, socket |> assign(entries: []) |> redirect(to: "/users/sign_in")}
+        {:noreply,
+         socket
+         |> ImportsStallTimer.cancel()
+         |> assign(entries: [])
+         |> redirect(to: "/users/sign_in")}
     end
   end
 
@@ -117,6 +128,12 @@ defmodule DawarichWeb.ImportsLive.Index do
       )
 
     refresh(socket)
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    ImportsStallTimer.cancel(socket)
+    :ok
   end
 
   @impl true

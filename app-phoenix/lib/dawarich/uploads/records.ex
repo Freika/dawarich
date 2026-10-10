@@ -80,7 +80,9 @@ defmodule Dawarich.Uploads.Records do
 
     repo.query!(
       "UPDATE phoenix.native_uploads SET cleanup_at=greatest(target_until+interval '1 second',timezone('UTC',now())) WHERE reference=$1",
-      [row.reference], log: false)
+      [row.reference],
+      log: false
+    )
 
     repo.insert!(Dawarich.Uploads.CleanupWorker.new(%{"reference" => row.reference}),
       prefix: "oban"

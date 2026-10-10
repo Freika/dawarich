@@ -161,7 +161,9 @@ defmodule DawarichWeb.ImportsNativeEventsTest do
     assert [] =
              Repo.query!(
                "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.Imports.EventsWorker'",
-               [], log: false).rows
+               [],
+               log: false
+             ).rows
 
     {:ok, view, _} = live_as(c.user, "/imports/109510/edit")
     render_hook(view, "save_import", %{"import" => %{"name" => "renamed.csv", "source" => "csv"}})
@@ -170,12 +172,16 @@ defmodule DawarichWeb.ImportsNativeEventsTest do
     assert [["renamed.csv", 10, 5]] =
              Repo.query!(
                "SELECT name,source,additional_data_extraction_status FROM imports WHERE id=109510",
-               [], log: false).rows
+               [],
+               log: false
+             ).rows
 
     assert [[1]] =
              Repo.query!(
                "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Imports.EventsWorker'",
-               [], log: false).rows
+               [],
+               log: false
+             ).rows
   end
 
   test "deleted import clears an open editor before any later update", c do
@@ -193,6 +199,8 @@ defmodule DawarichWeb.ImportsNativeEventsTest do
     assert [] =
              Repo.query!(
                "SELECT id FROM oban.oban_jobs WHERE worker='Dawarich.Imports.EventsWorker'",
-               [], log: false).rows
+               [],
+               log: false
+             ).rows
   end
 end

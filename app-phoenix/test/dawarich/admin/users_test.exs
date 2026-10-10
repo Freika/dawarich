@@ -214,7 +214,9 @@ defmodule Dawarich.Admin.UsersTest do
     assert [[args]] =
              Repo.query!(
                "SELECT args FROM oban.oban_jobs WHERE worker=$1",
-               ["Dawarich.Auth.Recovery.MailWorker"], log: false).rows
+               ["Dawarich.Auth.Recovery.MailWorker"],
+               log: false
+             ).rows
 
     assert args["user_id"] == 10712 and args["locale"] == "de"
     assert is_binary(args["sealed"])

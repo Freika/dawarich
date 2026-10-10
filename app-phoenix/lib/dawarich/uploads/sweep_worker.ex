@@ -37,7 +37,9 @@ defmodule Dawarich.Uploads.SweepWorker do
       for [ref] <- cleanups do
         if repo.query!(
              "SELECT 1 FROM oban.oban_jobs WHERE worker='Dawarich.Uploads.CleanupWorker' AND args->>'reference'=$1 AND state IN ('available','scheduled','retryable','executing') LIMIT 1",
-             [ref], log: false).rows == [] do
+             [ref],
+             log: false
+           ).rows == [] do
           repo.insert!(Dawarich.Uploads.CleanupWorker.new(%{"reference" => ref}), prefix: "oban")
         end
 

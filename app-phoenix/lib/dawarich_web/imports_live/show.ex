@@ -5,7 +5,7 @@ defmodule DawarichWeb.ImportsLive.Show do
   import DawarichWeb.HumanDatetime, only: [human_datetime: 1]
 
   alias Dawarich.Imports.UiRecords
-  alias DawarichWeb.NumberFormat
+  alias DawarichWeb.{NumberFormat, ImportsStallTimer}
 
   @impl true
   def mount(_, _, socket) do
@@ -20,21 +20,34 @@ defmodule DawarichWeb.ImportsLive.Show do
     case Dawarich.Imports.get(socket.assigns.current_scope, id, details: true, previous: previous) do
       {:ok, record} ->
         {:noreply,
-         assign(socket,
+         socket
+         |> assign(
+           now: ImportsStallTimer.now(socket),
            record: record,
            points: record.points,
            created: record.created,
            notice: Phoenix.Flash.get(socket.assigns.flash, "notice"),
            page_title: t(socket.assigns.locale, "imports.show.import", %{})
-         )}
+         )
+         |> ImportsStallTimer.schedule([record])}
 
-      _ ->
-        {:noreply, socket |> assign(record: nil, points: nil) |> redirect(to: "/imports")}
+      {:error, reason} ->
+        to = if reason == :stale_session, do: "/users/sign_in", else: "/imports"
+
+        {:noreply,
+         socket
+         |> ImportsStallTimer.cancel()
+         |> assign(record: nil, points: nil)
+         |> redirect(to: to)}
     end
   end
 
   @impl true
   def handle_info(:imports_refresh, socket), do: {:noreply, socket}
+
+  def handle_info({:import_stall_deadline, token}, socket) do
+    if ImportsStallTimer.current?(socket, token), do: refresh(socket), else: {:noreply, socket}
+  end
 
   def handle_info({:domain_changed, owner, :imports}, socket)
       when owner == socket.assigns.current_user.id do
@@ -48,7 +61,7 @@ defmodule DawarichWeb.ImportsLive.Show do
     handle_params(
       %{"id" => socket.assigns.record.id},
       "",
-      assign(socket, :now, DateTime.utc_now())
+      assign(socket, :now, ImportsStallTimer.now(socket))
     )
   end
 
@@ -89,6 +102,12 @@ defmodule DawarichWeb.ImportsLive.Show do
          socket
          |> put_flash(:error, t(socket.assigns.locale, "imports.table_row.deletion_stalled", %{}))}
     end
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    ImportsStallTimer.cancel(socket)
+    :ok
   end
 
   @impl true

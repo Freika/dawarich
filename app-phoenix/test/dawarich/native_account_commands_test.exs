@@ -104,7 +104,9 @@ defmodule Dawarich.NativeAccountCommandsTest do
 
             repo.query!(
               "UPDATE users SET encrypted_password='revoked-at-producer-lock' WHERE id=$1",
-              [c.scope.user.id], log: false)
+              [c.scope.user.id],
+              log: false
+            )
           end
         ]
       ])

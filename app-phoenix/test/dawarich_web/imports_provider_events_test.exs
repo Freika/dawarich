@@ -48,7 +48,9 @@ defmodule DawarichWeb.ImportsProviderEventsTest do
 
     Repo.query!(
       "UPDATE users SET settings=settings||$2::jsonb WHERE id=$1",
-      [c.user.id, %{"immich_api_key" => "synthetic-provider-key"}], log: false)
+      [c.user.id, %{"immich_api_key" => "synthetic-provider-key"}],
+      log: false
+    )
 
     render_hook(view, "request_provider", %{"job" => "start_immich_import"})
     render_hook(view, "request_provider", %{"job" => "start_immich_import"})
@@ -92,7 +94,9 @@ defmodule DawarichWeb.ImportsProviderEventsTest do
 
     Repo.query!(
       "UPDATE users SET active_until=now()-interval '1 second' WHERE id=$1",
-      [c.user.id], log: false)
+      [c.user.id],
+      log: false
+    )
 
     assert {:error, :inactive} =
              apply(Dawarich.Imports, :request_provider, [scope, "start_immich_import"])

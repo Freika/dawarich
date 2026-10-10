@@ -124,7 +124,9 @@ defmodule Dawarich.Uploads.CleanupWorker do
          Storage.UploadReceipts.owned?(repo, row.blob_id, row.user_id) do
       repo.query!(
         "UPDATE phoenix.native_uploads SET object_key=$2,service_name=$3 WHERE reference=$1",
-        [row.reference, key, service], log: false)
+        [row.reference, key, service],
+        log: false
+      )
 
       %{row | object_key: key, service_name: service}
     else
