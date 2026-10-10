@@ -3,7 +3,7 @@ defmodule DawarichWeb.FamilyPagesParityTest do
 
   import Plug.Conn
   alias Dawarich.{FamilyPage, Repo}
-  alias Dawarich.Test.{FrameSeeds, MapStimulus, ParityHTML}
+  alias Dawarich.Test.FrameSeeds
   alias DawarichWeb.{FamilyGate, FamilyInvitationPage, RequireUser}
 
   @dir "test/fixtures/family_pages"
@@ -39,69 +39,10 @@ defmodule DawarichWeb.FamilyPagesParityTest do
     assert length(@names) == 294
   end
 
-  test "Rails sharing response can replace native toggle and getting started slots" do
-    state = FrameSeeds.load_family("owner_en")
-    user = FrameSeeds.seed_family!(state)
-    now = DateTime.from_iso8601(state["now"]) |> elem(1)
-    {:html, native} = response(conn(state, user, now), state, user, now)
-
-    native =
-      DawarichWeb.Layouts.app(%{
-        __changed__: nil,
-        inner_content: Phoenix.HTML.raw(native),
-        current_user: user,
-        navbar: Dawarich.Navbar.load(user, now: now, self_hosted: true),
-        locale: "en",
-        request_path: "/family",
-        base_url: "http://www.example.com",
-        self_hosted: true,
-        rails_csrf_token: "CSRF",
-        now: now,
-        suggested_locale: nil,
-        flash: %{},
-        flash_messages: []
-      })
-      |> Phoenix.HTML.Safe.to_iodata()
-      |> IO.iodata_to_binary()
-
-    for locale <- ~w(en de es fr pl ca zh) do
-      rails = File.read!(Path.join(@dir, "sharing_toggle_#{locale}.stream.html"))
-
-      streams =
-        rails |> LazyHTML.from_fragment() |> LazyHTML.query("turbo-stream[action='replace']")
-
-      for target <- ~w(location-sharing-90101 family-navbar-indicator family-getting-started-slot) do
-        assert Enum.any?(LazyHTML.query(native |> LazyHTML.from_fragment(), "##{target}"))
-        assert target in LazyHTML.attribute(streams, "target")
-
-        [_, template] =
-          Regex.run(
-            ~r{<turbo-stream[^>]*target="#{target}"[^>]*>\s*<template>(.*?)</template>}s,
-            rails
-          )
-
-        assert Enum.any?(LazyHTML.query(LazyHTML.from_fragment(template), "##{target}"))
-      end
-
-      [_, template] =
-        Regex.run(
-          ~r{<turbo-stream[^>]*target="location-sharing-90101"[^>]*>\s*<template>(.*?)</template>}s,
-          rails
-        )
-
-      assert Enum.any?(
-               LazyHTML.query(
-                 LazyHTML.from_fragment(template),
-                 "form[action='/family/location_sharing'] input[name='_method'][value='patch']"
-               )
-             )
-    end
-  end
-
   for name <- @names do
     @name name
     @tag family_case: name
-    test "family GET corpus #{@name} matches Rails in all shipped locales outside registered hydration fields" do
+    test "family GET corpus #{@name} preserves scoped state and visible inputs in all shipped locales" do
       state = FrameSeeds.load_family(@name)
       user = FrameSeeds.seed_family!(state)
       now = DateTime.from_iso8601(state["now"]) |> elem(1)
@@ -116,12 +57,25 @@ defmodule DawarichWeb.FamilyPagesParityTest do
           if invitation_path?(state["path"]) do
             assert invitation_projection(html) == invitation_projection(rails)
           else
-            native = normalize(html)
-            expected = normalize(rails)
-            assert native == expected, ParityHTML.first_difference(native, expected)
+            doc = LazyHTML.from_fragment(html)
+            expected = LazyHTML.from_fragment(rails)
 
-            assert attributes(html) == attributes(rails),
-                   ParityHTML.first_difference(attributes(html), attributes(rails))
+            assert visible_text(LazyHTML.query(doc, "h1") |> LazyHTML.to_tree()) ==
+                     visible_text(
+                       LazyHTML.query(
+                         expected,
+                         if(String.starts_with?(state["path"], "/family/location_requests/"),
+                           do: "h2",
+                           else: "h1"
+                         )
+                       )
+                       |> LazyHTML.to_tree()
+                     )
+
+            assert input_projection(doc) == input_projection(expected)
+            refute html =~ "data-controller="
+            refute html =~ "data-turbo-method"
+            refute html =~ "a9fpl-pending"
           end
 
         {:redirect, conn} ->
@@ -267,42 +221,65 @@ defmodule DawarichWeb.FamilyPagesParityTest do
 
     {:ok, page} = FamilyPage.read(user, action, now: now, self_hosted: state["self_hosted"])
 
+    scope = Dawarich.Accounts.Scope.for_user(user, state["locale"])
+
+    {:ok, safe} =
+      Dawarich.Families.page(scope, action, now: now, self_hosted: state["self_hosted"])
+
+    assert safe ==
+             Map.put(
+               page,
+               :invitations,
+               Enum.map(page[:invitations] || [], &Map.delete(&1, :token))
+             )
+
     assigns = %{
-      page: page,
+      page: safe,
       locale: state["locale"],
       now: now,
+      current_scope: scope,
       rails_csrf_token: "CSRF",
       base_url: "http://www.example.com",
-      self_hosted: state["self_hosted"]
+      self_hosted: state["self_hosted"],
+      errors: [],
+      confirmation: nil,
+      family_name: get_in(page, [:family, :name]) || "",
+      invitation_email: ""
     }
 
-    case page.state do
-      :show ->
-        {:html, html(&DawarichWeb.FamiliesLive.Show.render/1, assigns) |> inner("#family-shell")}
+    fun =
+      case page.state do
+        :show -> &DawarichWeb.FamiliesLive.Show.render/1
+        :invitations -> &DawarichWeb.FamiliesLive.Invitations.render/1
+        :request -> &DawarichWeb.FamiliesLive.LocationRequest.render/1
+        _ -> &DawarichWeb.FamiliesLive.Form.render/1
+      end
 
-      :invitations ->
-        {:html, html(&DawarichWeb.FamilyInvitations.invitation_index/1, assigns)}
+    {:html, html(fun, assigns)}
+  end
 
-      :request ->
-        {:html, html(&DawarichWeb.FamilyRequestForms.location_request/1, assigns)}
+  defp input_projection(doc) do
+    values =
+      for {"input", attrs, _} <- doc |> LazyHTML.query("input") |> LazyHTML.to_tree(),
+          data = Map.new(attrs),
+          data["type"] not in ~w(hidden submit),
+          do:
+            {data["type"], if(data["type"] == "checkbox", do: "", else: data["value"] || ""),
+             Map.has_key?(data, "checked")}
 
-      _ ->
-        content = if page.state == :lapsed, do: "renew_family", else: "create_family"
+    selects =
+      for {"select", attrs, children} <- doc |> LazyHTML.query("select") |> LazyHTML.to_tree(),
+          _data = Map.new(attrs),
+          do:
+            {"select",
+             for(
+               {"option", attrs, _} <-
+                 LazyHTML.from_tree(children) |> LazyHTML.query("option") |> LazyHTML.to_tree(),
+               data = Map.new(attrs),
+               do: {data["value"], Map.has_key?(data, "selected")}
+             )}
 
-        href =
-          Dawarich.SubscriptionToken.url(user, now, plan: "family", interval: "annual") <>
-            "&" <>
-            DawarichWeb.Params.to_query(%{
-              "utm_source" => "app",
-              "utm_medium" => "family",
-              "utm_campaign" => "family_upgrade",
-              "utm_content" => content
-            })
-
-        {:html,
-         html(&DawarichWeb.FamiliesLive.Form.render/1, Map.put(assigns, :upgrade_href, href))
-         |> inner("#family-form-shell")}
-    end
+    Enum.sort(values ++ selects)
   end
 
   defp html(fun, assigns),
@@ -310,67 +287,4 @@ defmodule DawarichWeb.FamilyPagesParityTest do
       fun.(Map.put(assigns, :__changed__, nil))
       |> Phoenix.HTML.Safe.to_iodata()
       |> IO.iodata_to_binary()
-
-  defp inner(html, selector),
-    do:
-      html |> LazyHTML.from_fragment() |> LazyHTML.query(selector <> " > *") |> LazyHTML.to_html()
-
-  defp normalize(html), do: html |> hydration_tree() |> ParityHTML.normalize()
-
-  defp attributes(html),
-    do:
-      html
-      |> hydration_tree()
-      |> LazyHTML.from_tree()
-      |> LazyHTML.to_html()
-      |> then(
-        &MapStimulus.attributes("<div id=family-parity>" <> &1 <> "</div>", ["#family-parity"])
-      )
-
-  defp hydration_tree(html),
-    do: html |> LazyHTML.from_fragment() |> LazyHTML.to_tree() |> Enum.flat_map(&hydration/1)
-
-  defp hydration({tag, attrs, children}) do
-    data = Map.new(attrs)
-
-    cond do
-      Map.has_key?(data, "data-family-last-seen") or
-          (tag == "span" and data["class"] == "text-xs text-base-content/40" and
-             Enum.any?(children, &(is_binary(&1) and String.starts_with?(String.trim(&1), "·")))) ->
-        []
-
-      data["data-family-map-target"] == "map" ->
-        [{tag, attrs, []}]
-
-      true ->
-        attrs =
-          Enum.reject(attrs, fn {key, _} ->
-            key in ~w(data-family-member-id data-family-time-ago data-lat data-lon) or
-              (key == "id" and data["data-controller"] == "family-map") or
-              (key == "data-action" and data[key] == "click->family-map#flyToMember")
-          end)
-
-        attrs =
-          Enum.map(attrs, fn {key, value} ->
-            cond do
-              key == "data-family-map-locations-value" ->
-                {key, "[]"}
-
-              key == "class" and (data["data-lat"] != nil or data["data-family-member-id"] != nil) ->
-                {key,
-                 value
-                 |> String.split()
-                 |> Enum.reject(&(&1 == "cursor-pointer"))
-                 |> Enum.join(" ")}
-
-              true ->
-                {key, value}
-            end
-          end)
-
-        [{tag, attrs, Enum.flat_map(children, &hydration/1)}]
-    end
-  end
-
-  defp hydration(other), do: [other]
 end

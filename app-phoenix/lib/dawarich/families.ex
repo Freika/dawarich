@@ -19,6 +19,17 @@ defmodule Dawarich.Families do
   def history(scope, params, opts \\ []),
     do: Dawarich.Families.NativeReads.history(scope, params, opts)
 
+  def reveal_invitation(scope, id, opts \\ []) when is_integer(id) and id > 0 do
+    with {:ok, user, ctx} <- Dawarich.Families.NativeReads.actor(scope, opts),
+         {:ok, page} <- Dawarich.FamilyPage.read(user, :invitations, Map.to_list(ctx)),
+         %{token: token} <- Enum.find(page.invitations, &(&1.id == id)) do
+      {:ok, token}
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :not_found}
+    end
+  end
+
   def subscribe(scope, opts \\ []) do
     with {:ok, user, _ctx} <- Dawarich.Families.NativeReads.admitted(scope, opts),
          do: Dawarich.Families.Events.subscribe(user.id)

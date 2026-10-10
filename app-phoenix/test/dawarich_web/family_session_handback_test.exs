@@ -26,10 +26,10 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
   end
 
   @tag mutation: "family-session-writers"
-  test "family documents invitations and JSON forward unsupported session writers before effects",
+  test "independent invitation and JSON clients forward unsupported session writers before effects",
        c do
     for path <-
-          ~w(/family /family/new /family/edit /family/invitations /family/location_requests/94001 /invitations/a9fpl-pending /family/invitations/a9fpl-pending /family/locations.json),
+          ~w(/invitations/a9fpl-pending /family/invitations/a9fpl-pending /family/locations.json),
         {query, headers} <- [
           {"client=ios&locale=de", []},
           {"locale=de", [{"x-dawarich-client", "android"}]},
@@ -43,6 +43,18 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
         Enum.reduce(headers, conn, fn {key, value}, acc -> put_req_header(acc, key, value) end)
 
       forwarded(c, conn, path <> "?" <> query)
+    end
+  end
+
+  test "native family documents ignore legacy client hints without writes", c do
+    for path <-
+          ~w(/family /family/new /family/edit /family/invitations /family/location_requests/94001),
+        query <- ~w(client=ios client%5B%5D=ios aff=synthetic-referral via=synthetic-referral) do
+      before = snapshot()
+      conn = get(RailsUser.signed_in(c.owner.id), path <> "?" <> query)
+      assert conn.status in [200, 302]
+      if conn.status == 200, do: assert(String.contains?(conn.resp_body, "/native/app"))
+      assert snapshot() == before
     end
   end
 

@@ -15,3 +15,31 @@ The command interface covers create/update/delete, invitation create/cancel/HTTP
 Cloud invitation capacity is checked while holding the family lock, preventing two pending invitations from consuming one remaining slot. Rails checks capacity before its transaction (`app/services/families/invite.rb:19,53`); this race fix requires the controller’s FRB/ED/changelog registration. No Rails production source is modified.
 
 Successful scoped commands also persist ID-only scheduled invalidation at finite consent, request/invitation expiry and effective Cloud family access boundaries. These jobs are committed/rolled back with their command; old scheduled invalidations cannot grant permission and consumers must always refresh admission. API/housekeeping producer integration and connected versioned timers are completed in C4.
+
+## Native family controls
+
+Family page routes share a dedicated native session. Original session identity and
+current membership, owner entitlement and request target are admitted before
+params, commands, messages and async results. Refusal erases the snapshot and uses
+an independent safe destination. Upgrade links and invitation capability reveal
+remain fresh, scoped HTTP adapters; capabilities are absent from LiveView state.
+
+Forms dispatch scoped commands and render validation in place. Confirmation is a
+server-held action/id pair, consumed before dispatch; cancellation consumes no
+command. Clipboard responses are no-store, CSRF checked and transient; hook patch,
+disconnect and destruction abort requests and discard late responses. Consent
+fields preserve duration, history window and prior-history independence and the
+existing disabling reset. Successful consent refreshes the native indicator and
+localized notice.
+
+The family GET corpus retains all 294 role, locale, access and expiry fixtures.
+Native cases compare scoped snapshots, titles and visible input values instead of
+Rails DOM/controller attributes. HTTP invitation status, token, CSRF and action
+vectors remain. Native action successors live in `family_native_events_test.exs`;
+legacy client hints have no family write effect. Independent invitation and JSON
+client forwarding remains characterized separately. Native family HTTP write
+route retirement belongs to controller integration.
+
+Keyboard confirmation and German 390-pixel checks are prepared in the E2E native
+controls spec. They are deferred to stage acceptance under the controller decision;
+targeted ExUnit and Node evidence is not a browser acceptance claim.

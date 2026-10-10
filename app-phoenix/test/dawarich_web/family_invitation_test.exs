@@ -119,11 +119,15 @@ defmodule DawarichWeb.FamilyInvitationTest do
 
     assert Repo.query!(
              "SELECT count(*) FROM family_memberships WHERE user_id=$1",
-             [ctx.invitee.id], log: false).rows == [[1]]
+             [ctx.invitee.id],
+             log: false
+           ).rows == [[1]]
 
     assert Repo.query!(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Families.EventsWorker' AND args->>'user_id'=$1",
-             [Integer.to_string(ctx.invitee.id)], log: false).rows == [[1]]
+             [Integer.to_string(ctx.invitee.id)],
+             log: false
+           ).rows == [[1]]
   end
 
   test "invitation key hands back public and nested token landings" do
@@ -153,9 +157,9 @@ defmodule DawarichWeb.FamilyInvitationTest do
     end
   end
 
-  test "request document belongs only to its target and submits Rails accept decline", ctx do
+  test "native request document belongs only to its target and submits accept decline", ctx do
     Repo.query!("UPDATE family_location_requests SET expires_at = $1 WHERE id = 94001", [
-      DateTime.add(@now, 3600) |> DateTime.to_naive()
+      DateTime.add(DateTime.utc_now(), 3600) |> DateTime.to_naive()
     ])
 
     html =
@@ -164,12 +168,12 @@ defmodule DawarichWeb.FamilyInvitationTest do
       |> get("/family/location_requests/94001")
       |> html_response(200)
 
-    for action <- ~w(accept decline) do
-      assert element?(
-               html,
-               "form[action='/family/location_requests/94001/#{action}'] input[name='_method'][value='patch']"
-             )
-    end
+    assert element?(
+             html,
+             "#native-family-request[phx-submit='family_respond'] input[name='decision'][value='accept']"
+           )
+
+    assert element?(html, "button[phx-click='family_respond'][phx-value-decision='decline']")
 
     assert element?(html, "select[name='duration'] option[value='24h'][selected]")
 
@@ -179,7 +183,7 @@ defmodule DawarichWeb.FamilyInvitationTest do
       |> get("/family/location_requests/94001")
 
     assert foreign.status == 302
-    assert redirected_to(foreign) == "http://www.example.com/family"
+    assert redirected_to(foreign) == "/family"
 
     expired =
       RailsUser.signed_in(ctx.member.id)
@@ -187,8 +191,12 @@ defmodule DawarichWeb.FamilyInvitationTest do
       |> get("/family/location_requests/94002")
       |> html_response(200)
 
-    assert element?(expired, ".badge-error")
+    assert element?(expired, "[data-request-status=expired]")
     refute element?(expired, "form[action^='/family/location_requests/']")
+
+    Repo.query!("UPDATE family_invitations SET expires_at='3026-01-01' WHERE status=0", [],
+      log: false
+    )
 
     index =
       RailsUser.signed_in(ctx.owner.id)
@@ -198,7 +206,7 @@ defmodule DawarichWeb.FamilyInvitationTest do
 
     assert element?(
              index,
-             "a[href='/family/invitations/a9fpl-pending'][data-turbo-method='delete']"
+             "[data-invitation-id] button[phx-click]"
            )
 
     member_index =
@@ -207,6 +215,6 @@ defmodule DawarichWeb.FamilyInvitationTest do
       |> get("/family/invitations")
       |> html_response(200)
 
-    refute element?(member_index, "a[data-turbo-method='delete'][href^='/family/invitations/']")
+    refute element?(member_index, "[data-invitation-id] button[phx-click]")
   end
 end

@@ -1,3 +1,5 @@
+import { FamilyConfirm } from "./family_confirm.js"
+import { FamilyInvitationClipboard } from "./family_invitation_clipboard.js"
 import { AchievementUnlocks } from "./achievement_unlocks.js"
 import { ArchiveChecksum } from "./archive_checksum.js"
 import { ChangelogWidget } from "./changelog_widget.js"
@@ -9,6 +11,8 @@ import { MapMatchingDemo } from "./map_matching_demo.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
 
 export const hooks = {
+  FamilyConfirm,
+  FamilyInvitationClipboard,
   AchievementUnlocks,
   ArchiveChecksum,
   ChangelogWidget,
