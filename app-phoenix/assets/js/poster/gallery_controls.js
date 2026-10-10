@@ -94,22 +94,25 @@ export function bindGalleryControls({
     if (!map || pending || button.disabled) return
     pending = true
     button.disabled = true
-    pushEvent(
-      "poster:save",
-      saveRecipe({
-        state: studio.state,
-        center: map.getCenter(),
-        bounds: map.getBounds(),
-        trackSource: poster.trackSource,
-        strings,
-      }),
-      (reply) => {
-        pending = false
-        if (reply?.status !== "queued") setStatus("")
-        refresh()
-      },
-    )
+    const recipe = saveRecipe({
+      state: studio.state,
+      center: map.getCenter(),
+      bounds: map.getBounds(),
+      trackSource: poster.trackSource,
+      strings,
+    })
     setStatus(strings.queued ?? "")
+    Promise.resolve(pushEvent("poster:save", recipe))
+      .then(
+        (reply) => {
+          if (reply?.status !== "queued") setStatus("")
+        },
+        () => setStatus(strings.save_failed ?? ""),
+      )
+      .finally(() => {
+        pending = false
+        refresh()
+      })
   })
 
   return { refresh }

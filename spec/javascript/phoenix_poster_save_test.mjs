@@ -109,7 +109,18 @@ function element(props = {}) {
   })
 }
 
-test("save to gallery pushes one recipe per click and waits for the server reply", () => {
+const deferred = () => {
+  let resolve
+  let reject
+  const promise = new Promise((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+function bindSave() {
   const save = element()
   const notice = element({ classes: ["hidden"] })
   const nodes = { save, "save-notice": notice }
@@ -137,12 +148,30 @@ test("save to gallery pushes one recipe per click and waits for the server reply
     },
     studio,
     poster: { trackSource: "tracks" },
-    pushEvent: (event, payload, reply) =>
-      pushes.push({ event, payload, reply }),
-    strings,
+    pushEvent: (event, payload) => {
+      const reply = deferred()
+      pushes.push({ event, payload, reply })
+      return reply.promise
+    },
+    strings: { ...strings, save_failed: "Failed to start poster generation." },
     setStatus: (text) => statuses.push(text),
   })
   gallery.refresh()
+  return {
+    save,
+    notice,
+    pushes,
+    statuses,
+    studio,
+    gallery,
+    unbind: () => {
+      for (const remove of unbind) remove()
+    },
+  }
+}
+
+test("save to gallery pushes one recipe per click and waits for the server reply", async () => {
+  const { save, notice, pushes, statuses, studio, gallery, unbind } = bindSave()
   assert.equal(save.disabled, false)
   assert.equal(notice.classList.contains("hidden"), true)
   save.dispatchEvent(new Event("click"))
@@ -154,7 +183,8 @@ test("save to gallery pushes one recipe per click and waits for the server reply
   assert.equal(pushes[0].payload.source, "tracks")
   assert.equal(save.disabled, true)
   assert.deepEqual(statuses, ["Queued"])
-  pushes[0].reply({ status: "failed" })
+  pushes[0].reply.resolve({ status: "failed" })
+  await tick()
   assert.equal(save.disabled, false)
   assert.deepEqual(statuses, ["Queued", ""])
   studio.state = { ...studio.state, data: { guardCoords: [] } }
@@ -162,5 +192,28 @@ test("save to gallery pushes one recipe per click and waits for the server reply
   assert.equal(save.disabled, true)
   assert.equal(notice.textContent, "No location data.")
   assert.equal(notice.classList.contains("hidden"), false)
-  for (const remove of unbind) remove()
+  unbind()
+})
+
+test("a save push that gets no reply re-enables Save and shows the failure", async () => {
+  const { save, pushes, statuses, unbind } = bindSave()
+  save.dispatchEvent(new Event("click"))
+  assert.equal(save.disabled, true)
+  pushes[0].reply.reject(
+    new Error("unable to push hook event. LiveView not connected"),
+  )
+  await tick()
+  assert.equal(save.disabled, false)
+  assert.deepEqual(statuses, ["Queued", "Failed to start poster generation."])
+  save.dispatchEvent(new Event("click"))
+  assert.equal(pushes.length, 2)
+  pushes[1].reply.resolve({ status: "queued" })
+  await tick()
+  assert.equal(save.disabled, false)
+  assert.deepEqual(statuses, [
+    "Queued",
+    "Failed to start poster generation.",
+    "Queued",
+  ])
+  unbind()
 })

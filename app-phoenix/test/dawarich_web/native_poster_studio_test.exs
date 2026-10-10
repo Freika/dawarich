@@ -72,6 +72,7 @@ defmodule DawarichWeb.NativePosterStudioTest do
     assert config["strings"]["rendering"] =~ "%{width} × %{height}"
     assert config["strings"]["saved_at_dpi"] =~ "%{dpi}"
     assert config["strings"]["untitled"] == "Unbenannter Poster"
+    assert config["strings"]["save_failed"] == "Fehler beim Start der Poster-Generierung."
 
     for key <-
           ~w(queued no_location_data no_tracks_in_frame frame_too_wide gallery_without_flights),

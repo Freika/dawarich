@@ -38,6 +38,10 @@ defmodule DawarichWeb.NativePosterStudio do
     "order_errors.connection" => %{}
   }
 
+  @shared_strings %{
+    "save_failed" => "controllers.posters.failed_to_start_poster_generation"
+  }
+
   attr :themes, :list, required: true
   attr :locale, :string, required: true
   attr :fixed_range_label, :string, default: nil
@@ -227,9 +231,11 @@ defmodule DawarichWeb.NativePosterStudio do
       fonts: PosterFonts.urls(),
       printOrderUrl: print_order_url || "",
       strings:
-        Map.new(@strings, fn {key, bindings} ->
+        @strings
+        |> Map.new(fn {key, bindings} ->
           {key, t(locale, "javascript.poster." <> key, bindings)}
         end)
+        |> Map.merge(Map.new(@shared_strings, fn {key, path} -> {key, t(locale, path, %{})} end))
     })
   end
 
