@@ -106,6 +106,15 @@ defmodule DawarichWeb.TripsNativeShowTest do
     assert_redirect(view, "/users/sign_in")
   end
 
+  test "a notification sign-out refuses the trip page immediately" do
+    id = trip!(996_303)
+    {:ok, view, _html} = TripsNativeUI.live_as(9_961, "/trips/#{id}")
+    render_async(view)
+
+    send(view.pid, :notification_signed_out)
+    assert_redirect(view, "/users/sign_in")
+  end
+
   test "detail shows source values without paths keys or provider settings" do
     rows("UPDATE users SET settings=$1 WHERE id=9961", [
       %{
@@ -174,10 +183,7 @@ defmodule DawarichWeb.TripsNativeShowTest do
     render_async(view)
     socket = :sys.get_state(view.pid).socket
 
-    pending =
-      DawarichWeb.TripsNative.Access.start(socket, :days, {id, nil}, fn _ -> {:ok, :never} end)
-
-    {{:days, _, _, _} = run, _timer} = pending.private.trips_runs.active.days
+    {run, pending} = DawarichWeb.TripsNative.Access.register(socket, :days, {id, nil})
     assert {:noreply, failed} = Show.handle_async(run, {:exit, :boom}, pending)
     assert failed.assigns.days_status == :failed
 

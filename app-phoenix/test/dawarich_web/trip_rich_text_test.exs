@@ -16,10 +16,10 @@ defmodule DawarichWeb.TripRichTextTest do
     TripsSeeds.user!(id)
     scope = Scope.for_user(Accounts.get(id), "en")
 
-    %Phoenix.LiveView.Socket{
-      assigns: %{__changed__: %{}, base_url: "http://www.example.com"},
-      private: %{trips_principal: Access.principal(scope)}
-    }
+    Access.put_principal(
+      %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, base_url: "http://www.example.com"}},
+      Access.principal(scope)
+    )
   end
 
   defp reserve(socket, name \\ "photo.png") do

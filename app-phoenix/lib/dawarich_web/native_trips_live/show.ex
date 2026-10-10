@@ -177,7 +177,9 @@ defmodule DawarichWeb.NativeTripsLive.Show do
   defp load_days(%{assigns: %{trip: %{id: id}, from: from}} = socket) do
     socket
     |> assign(days_status: :loading)
-    |> Access.start(:days, {id, from}, fn scope -> Pages.days(scope, id, from) end)
+    |> Access.start(:days, {id, from}, {id, from}, fn scope, {id, from} ->
+      Pages.days(scope, id, from)
+    end)
   end
 
   defp reset_notes(%{assigns: %{trip: %{id: id}}} = socket, id), do: socket

@@ -13,19 +13,25 @@ defmodule DawarichWeb.TripsNative.Access do
   @timeout 10_000
 
   def on_mount(:require_user, params, session, socket) do
+    socket =
+      socket
+      |> attach_hook(:trips_params, :handle_params, fn _, _, socket -> authorize(socket) end)
+      |> attach_hook(:trips_event, :handle_event, fn _, _, socket -> authorize(socket) end)
+      |> attach_hook(:trips_info, :handle_info, &info/2)
+      |> attach_hook(:trips_async, :handle_async, fn _, _, socket -> authorize(socket) end)
+
     with {:cont, socket} <-
            DawarichWeb.NativeAuth.on_mount(:require_user, params, session, socket) do
       socket
       |> put_principal(principal(socket.assigns.current_scope))
       |> detach_hook(:rails_user, :handle_event)
       |> detach_hook(:notification_session, :handle_event)
-      |> attach_hook(:trips_params, :handle_params, fn _, _, socket -> authorize(socket) end)
-      |> attach_hook(:trips_event, :handle_event, fn _, _, socket -> authorize(socket) end)
-      |> attach_hook(:trips_info, :handle_info, fn _, socket -> authorize(socket) end)
-      |> attach_hook(:trips_async, :handle_async, fn _, _, socket -> authorize(socket) end)
       |> authorize()
     end
   end
+
+  defp info(:notification_signed_out, socket), do: {:halt, refuse(socket)}
+  defp info(_message, socket), do: authorize(socket)
 
   def principal(%Scope{user: %{id: id} = user, locale: locale}),
     do: %__MODULE__{actor_id: id, locale: locale, identity: identity(user)}
@@ -49,14 +55,16 @@ defmodule DawarichWeb.TripsNative.Access do
 
   def scope(socket), do: admit(socket.private[:trips_principal])
 
-  def authorize(%{assigns: %{notification_signed_out: true}} = socket),
-    do: {:halt, refuse(socket)}
-
   def authorize(socket) do
     case scope(socket) do
       {:ok, scope} ->
         socket = assign(socket, :current_user, redact(scope.user))
-        {:cont, %{socket | assigns: Map.delete(socket.assigns, :current_scope)}}
+
+        changed =
+          socket.assigns.__changed__ |> Map.delete(:current_scope) |> Map.put(:current_user, true)
+
+        assigns = socket.assigns |> Map.delete(:current_scope) |> Map.put(:__changed__, changed)
+        {:cont, %{socket | assigns: assigns}}
 
       {:error, _} ->
         {:halt, refuse(socket)}
@@ -75,24 +83,29 @@ defmodule DawarichWeb.TripsNative.Access do
     put_runs(socket, %{generation: runs(socket).generation + 1, active: %{}})
   end
 
-  def start(socket, kind, fingerprint, reader) do
+  def register(socket, kind, fingerprint) do
+    socket = cancel(socket, runs(socket).active[kind])
+    state = runs(socket)
+    run = {kind, state.generation, make_ref(), fingerprint}
+    timer = Process.send_after(self(), {:data_read_timeout, run}, @timeout)
+    {run, put_runs(socket, %{state | active: Map.put(state.active, kind, {run, timer})})}
+  end
+
+  def start(socket, kind, fingerprint, inputs, reader) do
     if Phoenix.LiveView.connected?(socket) do
-      state = runs(socket)
-      socket = cancel(socket, state.active[kind])
-      state = runs(socket)
-      run = {kind, state.generation, make_ref(), fingerprint}
-      timer = Process.send_after(self(), {:data_read_timeout, run}, @timeout)
+      {run, socket} = register(socket, kind, fingerprint)
       principal = socket.private[:trips_principal]
 
-      socket
-      |> put_runs(%{state | active: Map.put(state.active, kind, {run, timer})})
-      |> Phoenix.LiveView.start_async(run, fn ->
-        with {:ok, scope} <- admit(principal), do: reader.(scope)
+      Phoenix.LiveView.start_async(socket, run, fn ->
+        with {:ok, scope} <- admit(principal), do: reader.(scope, inputs)
       end)
     else
       socket
     end
   end
+
+  def active?(socket, {kind, _, _, _} = run), do: match?({^run, _}, runs(socket).active[kind])
+  def active?(_socket, _run), do: false
 
   def finish(socket, {kind, _, _, _} = run, result) do
     case runs(socket).active[kind] do
