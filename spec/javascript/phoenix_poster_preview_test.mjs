@@ -391,7 +391,8 @@ function fakeRoot(dom, swatches) {
     lookup,
     querySelector: (selector) =>
       lookup[/data-poster-([a-z-]+)/.exec(selector)[1]],
-    querySelectorAll: () => swatches,
+    querySelectorAll: (selector) =>
+      selector === "[data-poster-swatch]" ? swatches : [],
   }
 }
 

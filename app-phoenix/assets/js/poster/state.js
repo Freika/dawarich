@@ -18,6 +18,7 @@ export function initialPosterState() {
     subtitle: "",
     autoSubtitle: null,
     coords: true,
+    rangeLoading: false,
     themeKey: null,
     data: null,
   }

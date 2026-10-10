@@ -4,12 +4,18 @@ defmodule DawarichWeb.NativePosterStudio do
 
   import DawarichWeb.Translate, only: [t: 3]
 
-  alias DawarichWeb.{Assets, Icon, PosterFonts}
+  import DawarichWeb.NativePosterSections, only: [poster_sections: 1]
+  import DawarichWeb.NativePosterActions, only: [poster_actions: 1]
+
+  alias DawarichWeb.{Icon, PosterFonts}
   alias Phoenix.LiveView.JS
 
   @strings %{
     "open_failed" => %{"error" => "%{error}"},
-    "theme_load_failed" => %{"error" => "%{error}"}
+    "theme_load_failed" => %{"error" => "%{error}"},
+    "load" => %{},
+    "loading" => %{},
+    "loading_tracks" => %{}
   }
 
   attr :themes, :list, required: true
@@ -37,6 +43,49 @@ defmodule DawarichWeb.NativePosterStudio do
               <Icon.icon name="map" class="h-4 w-4 shrink-0 opacity-70" />
               {p(@locale, "poster_studio")}
             </h2>
+            <div
+              :if={is_nil(@fixed_range_label)}
+              id="native-poster-dates"
+              phx-update="ignore"
+              class="flex min-w-0 flex-wrap items-center gap-2"
+            >
+              <input
+                type="datetime-local"
+                class="input input-bordered input-sm"
+                aria-label={t(@locale, "shared.map.date_navigation_v2.start_date_and_time", %{})}
+                data-poster-date-start
+              />
+              <span class="text-xs opacity-60">–</span>
+              <input
+                type="datetime-local"
+                class="input input-bordered input-sm"
+                aria-label={t(@locale, "shared.map.date_navigation_v2.end_date_and_time", %{})}
+                data-poster-date-end
+              />
+              <button type="button" class="btn btn-sm btn-primary h-auto py-1" data-poster-load>
+                <span
+                  class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
+                  data-poster-load-spinner
+                ></span>
+                <span data-poster-load-label>{p(@locale, "load")}</span>
+              </button>
+              <div class="hidden items-center gap-1 lg:flex">
+                <button
+                  :for={
+                    {range, label} <- [
+                      {"today", "today"},
+                      {"week", "last_7_days"},
+                      {"month", "last_month"}
+                    ]
+                  }
+                  type="button"
+                  class="btn btn-sm btn-ghost"
+                  data-poster-range={range}
+                >
+                  {p(@locale, label)}
+                </button>
+              </div>
+            </div>
             <div
               :if={@fixed_range_label}
               class="flex min-w-0 items-center gap-2 text-sm opacity-70"
@@ -88,28 +137,17 @@ defmodule DawarichWeb.NativePosterStudio do
             </div>
 
             <aside class="flex w-full shrink-0 flex-col border-t border-base-content/10 bg-base-200 lg:w-96 lg:border-l lg:border-t-0">
-              <div
-                id="native-poster-controls"
-                phx-update="ignore"
-                class="min-h-0 flex-1 space-y-3 overflow-y-auto p-3"
-              >
-                <div class="grid grid-cols-6 gap-1.5">
-                  <button
-                    :for={theme <- @themes}
-                    type="button"
-                    class="w-full overflow-hidden rounded-md border border-base-300 ring-primary ring-offset-base-100 transition hover:scale-105 focus:outline-none focus-visible:ring-2"
-                    style={"height: 32px; background-image: url('#{Assets.stylesheet_path("poster_themes/#{theme.key}.webp")}'); background-size: cover; background-position: center;"}
-                    title={to_string(theme.name)}
-                    aria-label={p(@locale, "theme_aria_label", %{theme: theme.name})}
-                    aria-pressed="false"
-                    data-poster-swatch
-                    data-key={theme.key}
-                    data-name={to_string(theme.name)}
-                  >
-                  </button>
+              <div class="min-h-0 flex-1 overflow-y-auto">
+                <div id="native-poster-controls" phx-update="ignore" class="space-y-3 p-3">
+                  <.poster_sections themes={@themes} locale={@locale} />
                 </div>
-                <p class="text-xs opacity-70" data-poster-theme-label></p>
-                <p class="text-xs opacity-70" role="status" data-poster-status></p>
+              </div>
+              <div
+                id="native-poster-actions"
+                phx-update="ignore"
+                class="space-y-2 border-t border-base-content/10 p-3"
+              >
+                <.poster_actions locale={@locale} />
               </div>
             </aside>
           </div>

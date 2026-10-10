@@ -87,6 +87,27 @@ export function createPosterLifecycle({
     if (elements.dialog.open) elements.dialog.close()
   }
 
+  async function applyRange(range) {
+    if (!session || state.rangeLoading) return
+    const current = generation
+    state = { ...state, rangeLoading: true }
+    onChange(state)
+    try {
+      const data = await poster.applyDates(range, {
+        signal: session.controller.signal,
+      })
+      check(current)
+      state = withLoadedData(state, data, label(data))
+      applyStyle()
+      recenter()
+    } finally {
+      if (current === generation) {
+        state = { ...state, rangeLoading: false }
+        onChange(state)
+      }
+    }
+  }
+
   function recenter() {
     const bounds =
       trackBounds(state.data?.geojson, trim) ?? poster.fallbackBounds()
@@ -169,6 +190,7 @@ export function createPosterLifecycle({
     open,
     close,
     recenter,
+    applyRange,
     update,
     setTheme: (key) => setTheme(key),
     setToken,

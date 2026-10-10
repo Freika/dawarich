@@ -1,6 +1,9 @@
 import { createLifecycle } from "../map/runtime/lifecycle.js"
+import { bindPosterControls } from "./controls.js"
 import { ensurePosterFont, POSTER_FONTS } from "./data/fonts.js"
+import { detectMaxRenderDimension } from "./data/paper_sizes.js"
 import { loadThemeTokens } from "./data/theme_loader.js"
+import { dateRangeLabel } from "./dates.js"
 import { trimOutlierCoords } from "./dependencies.js"
 import { createPosterLifecycle } from "./lifecycle.js"
 import { createPosterSource } from "./source.js"
@@ -31,6 +34,8 @@ export function mountPosterStudio({
     owned.own(() => element.removeEventListener(type, handler))
   }
   const poster = createPosterSource(source, { fallbackBounds })
+  const ensureFont = (key) => ensurePosterFont(key, config.fonts ?? {})
+  let controls = null
   const studio = createPosterLifecycle({
     elements: {
       dialog,
@@ -69,6 +74,15 @@ export function mountPosterStudio({
     if (label && key) label.textContent = selected?.dataset.name || key
   }
 
+  controls = bindPosterControls({
+    root,
+    studio,
+    poster,
+    strings,
+    maxDimensionPx: detectMaxRenderDimension(),
+    ensureFont,
+  })
+  owned.own(controls)
   on(dialog, "close", () => studio.close())
   on(find("recenter"), "click", () => studio.recenter())
   for (const swatch of swatches) {
