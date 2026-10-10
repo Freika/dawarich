@@ -309,6 +309,13 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      post 'achievements/unlocks/next', to: 'achievements/unlocks#next'
+      post 'achievements/unlocks/:id/seen', to: 'achievements/unlocks#seen'
+      post 'achievements/unlocks/dismiss', to: 'achievements/unlocks#dismiss'
+      resources :achievements, only: %i[index show], param: :key do
+        patch :sharing, on: :member
+      end
+
       match 'mcp', to: 'mcp#handle', via: %i[get post delete]
       get   'photos', to: 'photos#index'
       get   'health', to: 'health#index'

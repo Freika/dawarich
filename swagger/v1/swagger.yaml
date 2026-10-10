@@ -6,6 +6,233 @@ info:
   description: API for Dawarich, your favorite alternative to Google Timeline. Provides
     endpoints for managing location data, tracks, visits, statistics, and more.
 paths:
+  "/api/v1/achievements":
+    get:
+      summary: Read lifetime achievement collections
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Lifetime overview; does not claim or celebrate unlocks
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AchievementOverview"
+        '401':
+          description: Invalid API key
+  "/api/v1/achievements/{key}":
+    parameters:
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Browse a continent or country collection
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - all
+          - unlocked
+          - in_progress
+          - locked
+          default: all
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      responses:
+        '200':
+          description: Filtered page with visible SVG silhouettes
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AchievementCollection"
+        '404':
+          description: Unknown or hidden collection
+        '422':
+          description: Invalid page or filter
+  "/api/v1/achievements/{key}/sharing":
+    parameters:
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Set sharing explicitly and idempotently
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Updated public sharing state
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AchievementSharingResult"
+        '422':
+          description: Enabled must be a JSON boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - enabled
+              properties:
+                enabled:
+                  type: boolean
+  "/api/v1/achievements/unlocks/next":
+    post:
+      summary: Claim or resume the next unlock with a shared web and mobile lease
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Structured collectible card and batch boundary
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AchievementUnlock"
+        '204':
+          description: No pending unlocks
+        '409':
+          description: Another client holds the lease; retry after 2 seconds
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  retry_after:
+                    type: integer
+                    example: 2
+        '422':
+          description: Invalid token or batch ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                claim_token:
+                  type: string
+                  pattern: "^[0-9a-f]{32}$"
+                batch_end_id:
+                  type: integer
+                  minimum: 1
+  "/api/v1/achievements/unlocks/{id}/seen":
+    parameters:
+    - name: id
+      in: path
+      schema:
+        type: integer
+        minimum: 1
+      required: true
+    post:
+      summary: Acknowledge an unlock for the authenticated account
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Acknowledged (including repeated acknowledgement)
+        '409':
+          description: Wrong token or account
+        '422':
+          description: Invalid ID or missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - claim_token
+              properties:
+                claim_token:
+                  type: string
+                  pattern: "^[0-9a-f]{32}$"
+  "/api/v1/achievements/unlocks/dismiss":
+    post:
+      summary: Dismiss pending unlocks through the batch boundary
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Batch dismissed; later unlocks remain pending
+        '422':
+          description: Invalid batch ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - batch_end_id
+              properties:
+                batch_end_id:
+                  type: integer
+                  minimum: 1
   "/api/v1/areas":
     post:
       summary: Creates an area
@@ -5959,6 +6186,8 @@ paths:
                         type: boolean
                       reverse_geocoding:
                         type: boolean
+                      achievements:
+                        type: boolean
         '401':
           description: unauthorized
     delete:
@@ -6549,6 +6778,167 @@ servers:
     defaultHost:
       default: localhost:3000
 components:
+  schemas:
+    AchievementCard:
+      type: object
+      required:
+      - key
+      - name
+      - kind
+      - code
+      - parent_key
+      - browse_key
+      - share_key
+      - description
+      - rarity
+      - percent
+      - earned_count
+      - target
+      - completed
+      - locked
+      - earned_at
+      - geography_key
+      - silhouette
+      - sharing
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - continent
+          - country
+          - subdivision
+        code:
+          type: string
+          nullable: true
+        parent_key:
+          type: string
+          nullable: true
+        browse_key:
+          type: string
+          nullable: true
+          description: Null for leaves; otherwise the collection key to browse
+        share_key:
+          type: string
+          nullable: true
+          description: Null for subdivisions
+        description:
+          type: string
+          nullable: true
+        rarity:
+          type: string
+        percent:
+          type: integer
+        earned_count:
+          type: integer
+        target:
+          type: integer
+        completed:
+          type: boolean
+        locked:
+          type: boolean
+        earned_at:
+          type: string
+          format: date-time
+          nullable: true
+        geography_key:
+          type: string
+        silhouette:
+          type: object
+          nullable: true
+          properties:
+            path:
+              type: string
+            viewbox:
+              type: string
+        sharing:
+          "$ref": "#/components/schemas/AchievementSharing"
+    AchievementSharing:
+      type: object
+      required:
+      - enabled
+      - url
+      properties:
+        enabled:
+          type: boolean
+        url:
+          type: string
+          nullable: true
+    AchievementSharingResult:
+      allOf:
+      - "$ref": "#/components/schemas/AchievementSharing"
+      - type: object
+        properties:
+          uuid:
+            type: string
+            nullable: true
+    AchievementOverview:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            earned_countries:
+              type: integer
+            total_countries:
+              type: integer
+            earned_subdivisions:
+              type: integer
+            total_subdivisions:
+              type: integer
+            percent:
+              type: integer
+        collections:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AchievementCard"
+        threshold_minutes:
+          type: number
+    AchievementCollection:
+      type: object
+      properties:
+        collection:
+          "$ref": "#/components/schemas/AchievementCard"
+        cards:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AchievementCard"
+        pagination:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            total_pages:
+              type: integer
+            total_count:
+              type: integer
+            per_page:
+              type: integer
+              example: 12
+        threshold_minutes:
+          type: number
+    AchievementUnlock:
+      type: object
+      required:
+      - id
+      - token
+      - batch_end_id
+      - remaining
+      - card
+      properties:
+        id:
+          type: integer
+        token:
+          type: string
+        batch_end_id:
+          type: integer
+        remaining:
+          type: integer
+        card:
+          "$ref": "#/components/schemas/AchievementCard"
   securitySchemes:
     api_key:
       type: apiKey
