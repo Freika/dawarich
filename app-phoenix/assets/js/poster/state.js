@@ -1,5 +1,6 @@
-import { DEFAULT_FONT_KEY } from "./data/fonts.js"
+import { DEFAULT_FONT_KEY, fontByKey } from "./data/fonts.js"
 import { DEFAULT_LAYOUT_ID } from "./data/layouts.js"
+import { formatCoords } from "./render/text_layout.js"
 
 export const DEFAULT_HIDDEN = ["buildings", "rail", "boundaries"]
 
@@ -17,6 +18,7 @@ export function initialPosterState() {
     subtitle: "",
     autoSubtitle: null,
     coords: true,
+    themeKey: null,
     data: null,
   }
 }
@@ -31,4 +33,17 @@ export function withLoadedData(state, data, label) {
     subtitle: subtitleWasAuto ? label : state.subtitle,
     autoSubtitle: label,
   }
+}
+
+export function posterText(state, center) {
+  if (!state.textEnabled) return { title: "", subtitle: "", coords: "" }
+  return {
+    title: state.title.trim(),
+    subtitle: state.subtitle.trim(),
+    coords: state.coords ? formatCoords(center) : "",
+  }
+}
+
+export function fontFamily(state) {
+  return `"${fontByKey(state.fontKey).family}", sans-serif`
 }

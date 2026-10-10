@@ -144,17 +144,7 @@ defmodule DawarichWeb.PosterStudio do
     """
   end
 
-  def fonts_json(families) do
-    families
-    |> Enum.flat_map(fn family ->
-      for weight <- ~w(400 700),
-          do:
-            {"#{family}-#{weight}",
-             DawarichWeb.Assets.stylesheet_path("poster/#{family}-#{weight}.woff2")}
-    end)
-    |> Jason.OrderedObject.new()
-    |> Jason.encode!()
-  end
+  defdelegate fonts_json(families), to: DawarichWeb.PosterFonts, as: :json
 
   defp p(locale, key), do: t(locale, "posters.studio." <> key, %{})
 end
