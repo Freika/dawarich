@@ -167,13 +167,24 @@ defmodule Dawarich.LogRedaction do
   defp scrub_postgres(binary) do
     [prefix, _] = String.split(binary, "Postgrex.Error", parts: 2)
 
-    code =
-      case Regex.run(~r/Postgrex\.Error\)?\s+(ERROR|FATAL|PANIC) ([0-9A-Z]{5})/, binary) do
-        [_, severity, code] -> severity <> " " <> code <> " "
-        _ -> ""
-      end
+    [_, message] = String.split(binary, "Postgrex.Error", parts: 2)
 
-    scrub_binary(prefix) <> "Postgrex.Error " <> code <> @filtered
+    case Regex.run(~r/\A: Database error(?: \(SQLSTATE ([0-9A-Z]{5})\))?\z/, message) do
+      [_, code] ->
+        scrub_binary(prefix) <> "Postgrex.Error: Database error (SQLSTATE #{code})"
+
+      [_] ->
+        scrub_binary(prefix) <> "Postgrex.Error: Database error"
+
+      _ ->
+        code =
+          case Regex.run(~r/Postgrex\.Error\)?\s+(ERROR|FATAL|PANIC) ([0-9A-Z]{5})/, binary) do
+            [_, severity, code] -> severity <> " " <> code <> " "
+            _ -> ""
+          end
+
+        scrub_binary(prefix) <> "Postgrex.Error " <> code <> @filtered
+    end
   end
 
   defp scrub_uuids(binary) do
