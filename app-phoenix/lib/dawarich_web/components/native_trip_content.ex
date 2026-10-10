@@ -11,6 +11,8 @@ defmodule DawarichWeb.NativeTripContent do
 
   attr :expanded_days, :boolean, default: false
 
+  attr :plan_enabled, :boolean, default: false
+
   def content(assigns) do
     ~H"""
     <section id="native-trip-summary" class="min-w-0 max-w-full">
@@ -19,6 +21,14 @@ defmodule DawarichWeb.NativeTripContent do
       <p :if={@page.description} class="prose max-w-full [overflow-wrap:anywhere]">
         {Phoenix.HTML.raw(Dawarich.TripDescription.html(@page.description))}
       </p>
+      <DawarichWeb.NativeTripItinerary.itinerary
+        :if={DawarichWeb.TripPlanItems.visible?(@page.plan)}
+        plan={@page.plan}
+        notes={@page.day_notes}
+        plan_on_map={@plan_enabled}
+        locale={@locale}
+        now={@page.now}
+      />
       <div class="space-y-1">
         <details
           :for={day <- @page.days}

@@ -19,6 +19,27 @@ export const TripHook = {
       this.tripDayPending = !this.mapReady
       if (this.mapReady) this.mapOwner?.layers?.selectDay?.(day)
     })
+    this.tripFocus = undefined
+    this.tripFocusPending = false
+    this.tripFocusHandler = this.handleEvent(
+      "trip:focus",
+      ({ longitude, latitude }) => {
+        if (this.mapDestroyed || this.mapRevoked) return
+        if (
+          !Number.isFinite(longitude) ||
+          !Number.isFinite(latitude) ||
+          longitude < -180 ||
+          longitude > 180 ||
+          latitude < -90 ||
+          latitude > 90
+        )
+          return
+        this.tripFocus = { longitude, latitude }
+        this.tripFocusPending = !this.mapReady
+        if (this.mapReady)
+          this.mapOwner?.layers?.focusPlan?.(longitude, latitude)
+      },
+    )
     await MapHook.mounted.call(this)
     if (
       this.mapReady &&
@@ -29,6 +50,18 @@ export const TripHook = {
       this.tripDayPending = false
       this.mapOwner?.layers?.selectDay?.(this.tripDay)
     }
+    if (
+      this.mapReady &&
+      !this.mapDestroyed &&
+      !this.mapRevoked &&
+      this.tripFocusPending
+    ) {
+      this.tripFocusPending = false
+      this.mapOwner?.layers?.focusPlan?.(
+        this.tripFocus.longitude,
+        this.tripFocus.latitude,
+      )
+    }
   },
   destroyed() {
     if (this.tripDayHandler !== null && this.tripDayHandler !== undefined)
@@ -36,6 +69,11 @@ export const TripHook = {
     this.tripDayHandler = null
     this.tripDay = undefined
     this.tripDayPending = false
+    if (this.tripFocusHandler !== null && this.tripFocusHandler !== undefined)
+      this.removeHandleEvent(this.tripFocusHandler)
+    this.tripFocusHandler = null
+    this.tripFocus = undefined
+    this.tripFocusPending = false
     MapHook.destroyed.call(this)
   },
 }

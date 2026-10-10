@@ -20,8 +20,9 @@ defmodule DawarichWeb.TripsLive.NativeMap do
     end
   end
 
-  def handle_event(event, payload, socket) when event in ~w(trip:layer trip:days:all),
-    do: DawarichWeb.NativeTripControls.handle_event(event, payload, socket)
+  def handle_event(event, payload, socket)
+      when event in ~w(trip:layer trip:days:all trip:plan:focus),
+      do: DawarichWeb.NativeTripControls.handle_event(event, payload, socket)
 
   def handle_event("trip:note:" <> _ = event, payload, socket),
     do: DawarichWeb.NativeTripNotes.handle_event(event, payload, socket)
@@ -71,6 +72,7 @@ defmodule DawarichWeb.TripsLive.NativeMap do
         selected_day={@selected_day}
         note_editor={@note_editor}
         expanded_days={@expanded_days}
+        plan_enabled={@page.config["planEnabled"]}
       />
       <p>{@page.range_label}</p>
       <DawarichWeb.NativeTripMapPanel.panel config={@page.config} locale={@locale} />

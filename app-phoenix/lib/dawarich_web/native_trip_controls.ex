@@ -33,5 +33,30 @@ defmodule DawarichWeb.NativeTripControls do
     push_event(socket, "map:config", socket.assigns.page.config)
   end
 
+  defp command("trip:plan:focus", %{"id" => id}, socket) when is_binary(id) or is_integer(id) do
+    stop =
+      socket.assigns.page.presentation.plan.days
+      |> Enum.flat_map(& &1.stops)
+      |> Enum.find(&(to_string(&1.id) == to_string(id)))
+
+    if socket.assigns.page.config["planEnabled"] && stop do
+      longitude = coordinate(stop.longitude)
+      latitude = coordinate(stop.latitude)
+
+      if is_number(longitude) and longitude >= -180 and longitude <= 180 and
+           is_number(latitude) and latitude >= -90 and latitude <= 90 do
+        push_event(socket, "trip:focus", %{longitude: longitude, latitude: latitude})
+      else
+        socket
+      end
+    else
+      socket
+    end
+  end
+
   defp command(_, _, socket), do: socket
+
+  defp coordinate(%Decimal{} = value), do: Decimal.to_float(value)
+  defp coordinate(value) when is_number(value), do: value
+  defp coordinate(_), do: nil
 end
