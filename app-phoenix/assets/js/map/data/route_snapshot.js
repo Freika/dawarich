@@ -6,7 +6,12 @@ import { RouteSegmenter } from "../algorithms/route_segmenter.js"
 export async function readRouteSnapshot(
   reader,
   state,
-  { purpose, signal, deviceWindows = [], routeOptions = {} } = {},
+  {
+    purpose,
+    signal,
+    deviceWindows = [],
+    routeOptions = state.routeOptions ?? {},
+  } = {},
 ) {
   const params = {
     start_at: state.range.startAt,

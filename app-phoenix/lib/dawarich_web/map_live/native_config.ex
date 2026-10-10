@@ -35,6 +35,10 @@ defmodule DawarichWeb.MapLive.NativeConfig do
       "mapOptions" => %{
         "projection" => %{"type" => if(saved["globe_projection"], do: "globe", else: "mercator")}
       },
+      "routeOptions" => %{
+        "distanceThresholdMeters" => saved["meters_between_routes"],
+        "timeThresholdMinutes" => saved["minutes_between_routes"]
+      },
       "placesTagFilters" => saved["places_tag_filters"]
     })
   end

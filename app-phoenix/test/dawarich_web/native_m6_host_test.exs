@@ -481,6 +481,29 @@ defmodule DawarichWeb.NativeM6HostTest do
     refute has_element?(view, "#native-place-filter input[checked]")
   end
 
+  test "native settings wire route thresholds into the map and studio source", %{id: id} do
+    {:ok, view, _} = open(id, @second <> "&panel=settings")
+
+    view
+    |> form("#native-advanced-form", %{
+      "meters_between_routes" => "901",
+      "minutes_between_routes" => "37"
+    })
+    |> render_submit()
+
+    assert config(view)["routeOptions"] == %{
+             "distanceThresholdMeters" => 901,
+             "timeThresholdMinutes" => 37
+           }
+
+    render_patch(view, @second)
+
+    assert config(view)["routeOptions"] == %{
+             "distanceThresholdMeters" => 901,
+             "timeThresholdMinutes" => 37
+           }
+  end
+
   defp open(id, path, locale \\ "en") do
     RailsUser.signed_in(id)
     |> RailsUser.connecting_as(id)
