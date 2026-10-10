@@ -190,3 +190,5 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Refuse family location consent when Cloud family access expires while a response waits for its request lock (FRB-NATIVE-M4-FAMILY-REQUEST-ACCESS).
 
 - Discard family page, invitation and API snapshots when membership, consent or access changes during their private reads, and erase private rows on a late refusal. [FRB-NATIVE-M4-FAMILY-PUBLICATION](fixed-rails-bugs.md#frb-native-m4-family-publication--family-reads-can-publish-data-after-in-flight-revocation)
+
+- Extend family publication re-admission to OwnTracks friends, family trip metadata/share references and retained family Cable coordinates. [FRB-NATIVE-M4-FAMILY-PUBLICATION](fixed-rails-bugs.md#frb-native-m4-family-publication--family-reads-can-publish-data-after-in-flight-revocation)

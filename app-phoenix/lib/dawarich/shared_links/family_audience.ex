@@ -39,7 +39,16 @@ defmodule Dawarich.SharedLinks.FamilyAudience do
     end
   end
 
-  def trips(user, page, now) do
+  def trips(user, page, now, opts \\ []) do
+    case Dawarich.Families.Snapshot.read(user, Keyword.put(opts, :now, now), fn ->
+           {:ok, read_trips(user, page, now)}
+         end) do
+      {:ok, result} -> result
+      _ -> %{entries: [], total_pages: 0}
+    end
+  end
+
+  defp read_trips(user, page, now) do
     case family_id(user.id, now) do
       nil ->
         %{entries: [], total_pages: 0}

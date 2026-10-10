@@ -1580,3 +1580,10 @@ Rails family pages and location/history API reads capture membership/access and 
 - Phoenix: `app-phoenix/lib/dawarich/families/snapshot.ex:6`; `app-phoenix/lib/dawarich_web/family_delivery.ex:75`.
 - Tests: `families_snapshot_race_test.exs`, sixty-five `'<reader> rejects private publication after in-flight <change> revocation'` cases; one shared bypass mutation fails every reader. `family_native_delivery_test.exs`, 'late location refusal erases the private page confirmation and history before rendering'.
 - Ledger: ED-NATIVE-M4-FAMILY-PUBLICATION; no DRB. This extends the earlier subscription-time FRB-NATIVE-M4-FAMILY-DELIVERY to page/API publication. Rails production source is unchanged.
+
+Stage 1 C extends FRB-NATIVE-M4-FAMILY-PUBLICATION to the retained readers omitted from the original census:
+
+- OwnTracks friend email/coordinates: `app/services/own_tracks/friends_formatter.rb:19`; source consent reads `app/services/families/locations.rb:16`. Phoenix `app-phoenix/lib/dawarich/ingest/friends.ex:19`; five `friends rejects private publication after in-flight <change> revocation` cases.
+- Family trip names/dates/share references: `app/models/shared_link.rb:41` and `app/controllers/trips_controller.rb:15`. Phoenix `app-phoenix/lib/dawarich/shared_links/family_audience.ex:42`; five `trips rejects private publication after in-flight <change> revocation` cases.
+- Family Cable coordinates: `app/services/points/live_broadcaster.rb:19,28,73`. Phoenix `app-phoenix/lib/dawarich/points/live_broadcast_worker.ex:98`; five `family Cable coordinates refuse <change> after preparation` cases.
+- The same shared snapshot bypass fails all fifteen extensions and the existing seventy-five publication cases. ED-NATIVE-M4-FAMILY-PUBLICATION is expanded; no new numeric ID or DRB is needed. This is source-backed; no Rails runtime oracle is claimed.

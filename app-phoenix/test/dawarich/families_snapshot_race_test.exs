@@ -33,6 +33,18 @@ defmodule Dawarich.FamiliesSnapshotRaceTest do
         log: false
       ).rows
 
+    Repo.query!(
+      "INSERT INTO trips(id,user_id,name,started_at,ended_at,created_at,updated_at) VALUES(998881,90102,'Synthetic family trip','2026-10-01','2026-10-03',now(),now())",
+      [],
+      log: false
+    )
+
+    Repo.query!(
+      "INSERT INTO shared_links(id,user_id,resource_type,resource_id,name,settings,created_at,updated_at) VALUES($1::text::uuid,90102,0,998881,'Synthetic family share',$2,now(),now())",
+      [Ecto.UUID.generate(), %{"audience" => "family", "family_id" => "91001"}],
+      log: false
+    )
+
     %{
       scope: Scope.for_user(Accounts.Principal.project(owner), "en"),
       invitation_id: invitation_id
@@ -141,7 +153,9 @@ defmodule Dawarich.FamiliesSnapshotRaceTest do
         :closure,
         :closure_locations,
         :closure_history,
-        :closure_lapsed
+        :closure_lapsed,
+        :friends,
+        :trips
       ],
       change <- [:consent, :viewer, :expiry, :access, :identity] do
     @reader reader
@@ -168,6 +182,8 @@ defmodule Dawarich.FamiliesSnapshotRaceTest do
             clock: fn -> Process.get(:family_publication_now, @now) end,
             after_read: fn result ->
               assert match?({:ok, _}, result) or match?({:ok, 200, _}, result)
+              if @reader == :friends, do: assert(match?({:ok, [_, _ | _]}, result))
+              if @reader == :trips, do: assert(match?({:ok, %{entries: [_ | _]}}, result))
               send(parent, {:private_read, self()})
 
               receive do
@@ -186,6 +202,12 @@ defmodule Dawarich.FamiliesSnapshotRaceTest do
           user = Accounts.get(scope.user.id) |> Map.put(:timezone, "UTC")
 
           case @reader do
+            :friends ->
+              apply(Dawarich.Ingest.Friends, :for_user, [user.id, @now, opts])
+
+            :trips ->
+              apply(Dawarich.SharedLinks.FamilyAudience, :trips, [user, 1, @now, opts])
+
             :page ->
               Families.page(scope, :show, opts)
 
@@ -265,7 +287,9 @@ defmodule Dawarich.FamiliesSnapshotRaceTest do
       send(pid, {:publish, if(@change == :expiry, do: DateTime.add(@now, 1), else: @now), revoke})
       result = Task.await(task, 5000)
 
-      assert match?({:error, _}, result) or match?({:ok, 403, _}, result),
+      assert match?({:error, _}, result) or match?({:ok, 403, _}, result) or
+               (@reader == :friends and result == []) or
+               (@reader == :trips and result == %{entries: [], total_pages: 0}),
              "#{@reader} published a stale private document"
     end
   end

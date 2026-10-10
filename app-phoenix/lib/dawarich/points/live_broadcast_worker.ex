@@ -31,30 +31,26 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}), do: run(Dawarich.Jobs.repo(), args)
 
-  def run(repo, %{"user_id" => user, "upserted" => points} = args) do
+  def run(repo, %{"user_id" => user, "upserted" => points} = args, opts \\ []) do
     case repo.query!(
-           "SELECT email,first_name,last_name,settings FROM users WHERE id=$1 AND deleted_at IS NULL",
+           "SELECT settings FROM users WHERE id=$1 AND deleted_at IS NULL",
            [user],
            log: false
          ).rows do
-      [[email, first, last, settings]] when points != [] ->
+      [[settings]] when points != [] ->
         settings = Dawarich.UserSettings.safe(settings)
 
         Dawarich.AfterCommit.once(repo, args["broadcast_id"], fn ->
           if State.claim(repo, "live_broadcast:done:#{args["broadcast_id"]}", 86_400) do
-            now = DateTime.utc_now()
+            now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
             payloads = Map.new(args["payloads"], &{&1["timestamp"], &1})
-            family = family(repo, user, settings, now)
 
             for point <- points do
               if Map.get(settings, "live_map_enabled", true) not in [nil, false],
                 do: publish_point(repo, user, point, Map.get(payloads, point["timestamp"], %{}))
-
-              if family,
-                do: publish_family(repo, family, user, email, first, last, settings, point)
             end
 
-            if family, do: Dawarich.Families.ProducerEvents.family(repo, family, :location, now)
+            publish_family(repo, user, points, now, opts)
             publish_shares(repo, user, Enum.max_by(points, & &1["timestamp"]), now)
           end
 
@@ -99,7 +95,35 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
     end
   end
 
-  defp publish_family(repo, family, user, email, first, last, settings, p) do
+  defp publish_family(repo, user, points, now, opts) do
+    actor = Dawarich.Families.Snapshot.actor(repo, user)
+
+    result =
+      if actor do
+        Dawarich.Families.Snapshot.read(actor, Keyword.merge(opts, repo: repo, now: now), fn ->
+          fresh = Dawarich.Families.Snapshot.actor(repo, user)
+          settings = if fresh, do: Dawarich.UserSettings.get(fresh), else: %{}
+          family = if fresh, do: family(repo, user, settings, now)
+
+          {:ok,
+           if(family, do: {family, Enum.map(points, &family_message(repo, fresh, settings, &1))})}
+        end)
+      end
+
+    case result do
+      {:ok, {family, messages}} ->
+        for message <- messages,
+            do:
+              :ok = Cable.broadcast_to("family_locations", {:family, family}, message, repo: repo)
+
+        Dawarich.Families.ProducerEvents.family(repo, family, :location, now)
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp family_message(repo, actor, settings, p) do
     at = DateTime.from_unix!(p["timestamp"])
     zone = Dawarich.UserTimeZone.iana(repo, settings)
 
@@ -112,18 +136,16 @@ defmodule Dawarich.Points.LiveBroadcastWorker do
         ).rows
       end)
 
-    message = %{
-      "user_id" => user,
-      "email" => email,
-      "name" => Locations.display_name(first, last, email),
-      "email_initial" => Locations.initial(email),
+    %{
+      "user_id" => actor.id,
+      "email" => actor.email,
+      "name" => Locations.display_name(actor.first_name, actor.last_name, actor.email),
+      "email_initial" => Locations.initial(actor.email),
       "latitude" => p["latitude"] * 1.0,
       "longitude" => p["longitude"] * 1.0,
       "timestamp" => p["timestamp"],
       "updated_at" => iso
     }
-
-    :ok = Cable.broadcast_to("family_locations", {:family, family}, message, repo: repo)
   end
 
   defp publish_shares(repo, user, point, now) do
