@@ -7,17 +7,11 @@ defmodule DawarichWeb.FamilyInvitationPage do
   alias DawarichWeb.{
     FamilyInvitationDocument,
     LayoutAssigns,
-    RailsAuth,
     RailsSession,
     RequestURL
   }
 
   def init(action), do: action
-
-  def native?(conn, params),
-    do:
-      DawarichWeb.FamilyGate.session_supported?(conn) and
-        read(params["token"], RailsAuth.call(conn, []).assigns.current_user) != :rails
 
   def read(token, user, opts \\ []) do
     if user, do: FamilyPageAccess.validate_settings!(Dawarich.UserSettings.get(user))
@@ -63,7 +57,7 @@ defmodule DawarichWeb.FamilyInvitationPage do
         end
     end
   rescue
-    ArgumentError -> :rails
+    ArgumentError -> {:error, :invalid_input}
   end
 
   def call(conn, :new), do: conn |> send_resp(404, "") |> halt()
@@ -98,10 +92,8 @@ defmodule DawarichWeb.FamilyInvitationPage do
       {:error, 404} ->
         raise DawarichWeb.NotFoundError
 
-      :rails ->
-        conn
-        |> DawarichWeb.RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
-        |> halt()
+      {:error, :invalid_input} ->
+        conn |> put_resp_content_type("text/html") |> send_resp(422, "") |> halt()
     end
   end
 

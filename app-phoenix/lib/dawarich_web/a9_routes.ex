@@ -85,11 +85,9 @@ defmodule DawarichWeb.A9Routes do
       scope "/" do
         pipe_through :sharing
 
-        get "/invitations/:token", DawarichWeb.FamilyInvitationPage, :show,
-          metadata: %{rails_gate: {DawarichWeb.FamilyInvitationPage, :native?}}
+        get "/invitations/:token", DawarichWeb.FamilyInvitationPage, :show
 
-        get "/family/invitations/:token", DawarichWeb.FamilyInvitationPage, :show,
-          metadata: %{rails_gate: {DawarichWeb.FamilyInvitationPage, :native?}}
+        get "/family/invitations/:token", DawarichWeb.FamilyInvitationPage, :show
       end
     end
   end

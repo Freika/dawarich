@@ -46,6 +46,49 @@ defmodule DawarichWeb.FamilyInvitationTest do
     end
   end
 
+  test "unsupported invitation settings refuse locally without an upstream request", ctx do
+    upstream = listen()
+    previous = Application.get_env(:dawarich, :rails_upstream)
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
+
+    on_exit(fn ->
+      Application.put_env(:dawarich, :rails_upstream, previous)
+      :gen_tcp.close(upstream.listen)
+    end)
+
+    Repo.query!("UPDATE users SET settings=$1 WHERE id=$2", [%{"timezone" => []}, ctx.invitee.id],
+      log: false
+    )
+
+    for path <- ["/invitations/a9fpl-pending", "/family/invitations/a9fpl-pending"] do
+      server =
+        Task.async(fn ->
+          case :gen_tcp.accept(upstream.listen, 500) do
+            {:ok, socket} ->
+              read_head(socket)
+              reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
+              :gen_tcp.close(socket)
+              :upstream_request
+
+            {:error, :timeout} ->
+              :no_upstream_request
+          end
+        end)
+
+      conn = RailsUser.signed_in(ctx.invitee.id) |> freeze_clock() |> get(path)
+      upstream_result = Task.await(server)
+      assert conn.status == 422
+      assert upstream_result == :no_upstream_request
+      route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com")
+      refute Map.has_key?(route[:metadata] || %{}, :rails_gate)
+    end
+
+    assert {:error, :invalid_input} =
+             DawarichWeb.FamilyInvitationPage.read("a9fpl-pending", Accounts.get(ctx.invitee.id),
+               now: @now
+             )
+  end
+
   test "signed out invitation offers existing registration and sign in paths" do
     html =
       build_conn()

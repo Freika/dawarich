@@ -47,3 +47,5 @@ targeted ExUnit and Node evidence is not a browser acceptance claim.
 ## Snapshot publication guard (review round 1)
 
 Location/history reads fingerprint current family membership, all member consent settings and owner access before loading points. Before returning coordinates they reload the original actor's admission and compare the fingerprint with the current consent clock. Any removal, changed consent/history settings, access loss or crossed expiry discards the snapshot. Reader/clock seams allow deterministic sandbox regressions after real SQL completes and before publication.
+
+Invitation browser landings return a local typed invalid-input refusal (HTTP 422) for unsupported settings. Their route metadata has no per-feature Rails gate and their response adapter has no upstream fallback. Genuine HTTP token/status/CSRF acceptance and whole-application routing contracts remain independently tested.
