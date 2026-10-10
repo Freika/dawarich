@@ -39,7 +39,7 @@ defmodule DawarichWeb.Api.MultipartReplay do
   defp keep(_kept, _bytes), do: :dropped
 
   defp drain(conn) do
-    case Plug.Conn.read_body(conn, DawarichWeb.RailsProxy.read_options()) do
+    case Plug.Conn.read_body(conn, DawarichWeb.Api.RequestBody.read_options()) do
       {:more, _bytes, conn} -> drain(conn)
       {:ok, _bytes, conn} -> conn
       {:error, reason} -> raise Plug.BadRequestError, message: inspect(reason)

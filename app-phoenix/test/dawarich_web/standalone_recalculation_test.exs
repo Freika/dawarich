@@ -116,10 +116,9 @@ defmodule DawarichWeb.StandaloneRecalculationTest do
     assert api(%{}).status == 403
     System.delete_env("DAWARICH_RAILS")
     conn = Plug.Test.conn(:post, "/api/v1/recalculations")
-    assert DawarichWeb.ApiClosureRoutes.deferred?(conn)
-
-    assert Phoenix.Router.route_info(DawarichWeb.Router, "POST", conn.path_info, conn.host) ==
-             :error
+    route = Phoenix.Router.route_info(DawarichWeb.Router, "POST", conn.path_info, conn.host)
+    assert route.plug == DawarichWeb.Api.RecalculationsController
+    refute DawarichWeb.Strangler.gate_open?(route, conn)
   end
 
   @tag :sweep6_transport
