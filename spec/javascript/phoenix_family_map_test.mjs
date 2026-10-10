@@ -154,6 +154,7 @@ function fixture() {
   return {
     owner,
     reader,
+    element,
     sources,
     layers,
     events,
@@ -273,4 +274,20 @@ test("family locale replacement refreshes popup formatting without another map",
   assert.equal(f.maps, 1)
   assert.equal(f.intervals.size, 1)
   f.owner.destroy()
+})
+
+test("family document publishes readiness failure and disposal through its native owner", async () => {
+  const f = fixture()
+  try {
+    assert.equal(await f.owner.mount(), "ready")
+    assert.equal(f.element.dataset.mapState, "ready")
+    f.reader.read = async () => {
+      throw new Error("Synthetic read failure")
+    }
+    assert.equal(await f.owner.reconnect(), "failed")
+    assert.equal(f.element.dataset.mapState, "failed")
+  } finally {
+    f.owner.destroy()
+  }
+  assert.equal(f.element.dataset.mapState, "cancelled")
 })

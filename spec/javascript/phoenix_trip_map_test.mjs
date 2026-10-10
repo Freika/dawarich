@@ -305,3 +305,19 @@ test("trip launcher dispatches its fixed stable source and releases the click ow
   button.emit("click")
   assert.equal(events.length, 1)
 })
+
+test("trip document publishes readiness failure and disposal through its native owner", async () => {
+  const f = fixture()
+  try {
+    assert.equal(await f.owner.mount(), "ready")
+    assert.equal(f.element.dataset.mapState, "ready")
+    f.reader.read = async () => {
+      throw new Error("Synthetic read failure")
+    }
+    assert.equal(await f.owner.reconnect(), "failed")
+    assert.equal(f.element.dataset.mapState, "failed")
+  } finally {
+    f.owner.destroy()
+  }
+  assert.equal(f.element.dataset.mapState, "cancelled")
+})

@@ -31,7 +31,6 @@ export function mountHost({
   const requests = createRangeRequests({ pushEvent })
   const freshness = createTileFreshness()
   const fit = createViewportFit(reader, element)
-  const loading = element.querySelector?.("[data-map-loading]")
   let library
   let layers
   let editing
@@ -237,18 +236,10 @@ export function mountHost({
         }
       }),
     events: {
-      loading() {
-        element.dataset.mapState = "loading"
-        if (loading) loading.hidden = false
-      },
       refreshed(receipt) {
-        element.dataset.mapState = "ready"
-        if (loading) loading.hidden = true
         pushEvent("map:ready", receipt)
       },
       error(receipt) {
-        element.dataset.mapState = "failed"
-        if (loading) loading.hidden = true
         pushEvent("map:failed", receipt)
       },
     },

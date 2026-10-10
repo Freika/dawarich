@@ -26,16 +26,24 @@ export function createMapRuntime({
   let state = "idle"
   lifetime.own(() => reader.destroy())
 
+  function publish(value) {
+    if (element.dataset) element.dataset.mapState = value
+    const loading = element.querySelector?.("[data-map-loading]")
+    if (loading) loading.hidden = value !== "loading"
+  }
+
   function destroy() {
     operations.destroy()
     lifetime.destroy()
     map = null
     if (state !== "failed") state = "cancelled"
+    publish(state)
   }
 
   async function runRefresh() {
     if (lifetime.destroyed) return "cancelled"
     const operation = operations.begin()
+    publish("loading")
     events.loading?.({ revision: current.revision ?? operation.revision })
     try {
       await operation.wait(
@@ -48,10 +56,12 @@ export function createMapRuntime({
         }),
       )
       operation.check()
+      publish("ready")
       events.refreshed?.({ revision: current.revision ?? operation.revision })
       return "ready"
     } catch (error) {
       if (error.name === "AbortError") return "cancelled"
+      publish("failed")
       events.error?.({ code: "map_refresh_failed" })
       return "failed"
     } finally {
@@ -62,6 +72,7 @@ export function createMapRuntime({
   async function initialize() {
     const operation = operations.begin()
     state = "loading"
+    publish("loading")
     try {
       const library = await operation.wait(
         loadLibrary({ signal: operation.signal }),

@@ -83,6 +83,7 @@ function fixture(overrides = {}) {
   return {
     owner,
     reader,
+    element,
     calls,
     events,
     get maps() {
@@ -346,4 +347,20 @@ test("native public replay uses its scoped source and closes marker ownership", 
   f.owner.replay.close()
   assert.equal(sources.has("native-replay-marker"), false)
   f.owner.destroy()
+})
+
+test("public document publishes readiness failure and disposal through its native owner", async () => {
+  const f = fixture()
+  try {
+    assert.equal(await f.owner.mount(), "ready")
+    assert.equal(f.element.dataset.mapState, "ready")
+    f.reader.read = async () => {
+      throw new Error("Synthetic read failure")
+    }
+    assert.equal(await f.owner.reconnect(), "failed")
+    assert.equal(f.element.dataset.mapState, "failed")
+  } finally {
+    f.owner.destroy()
+  }
+  assert.equal(f.element.dataset.mapState, "cancelled")
 })
