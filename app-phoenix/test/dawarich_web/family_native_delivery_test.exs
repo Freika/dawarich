@@ -95,6 +95,35 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
     assert state(view).family_expiry == nil
   end
 
+  test "a family reload schedules expiry from the location snapshot without a second deadline read",
+       c do
+    view = open(c.owner)
+    handler = "family-delivery-deadline-#{System.unique_integer([:positive])}"
+    parent = self()
+    pid = view.pid
+
+    :telemetry.attach(
+      handler,
+      [:dawarich, :repo, :query],
+      fn _, _, metadata, _ ->
+        if self() == pid and metadata.query =~ "UNION ALL SELECT to_char(expires_at",
+          do: send(parent, :family_deadline_query)
+      end,
+      nil
+    )
+
+    try do
+      send(view.pid, {:domain_changed, c.owner.id, :consent})
+      render(view)
+    after
+      :telemetry.detach(handler)
+    end
+
+    assert %{due: %NaiveDateTime{}} = state(view).family_expiry
+    assert_received :family_deadline_query
+    refute_received :family_deadline_query
+  end
+
   test "reconnect snapshots recover missed invalidation and family refusal clears private state",
        c do
     view = open(c.owner)
