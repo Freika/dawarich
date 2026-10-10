@@ -71,7 +71,9 @@ defmodule Dawarich.Visits.CommandsTest do
 
     Repo.query!(
       "UPDATE users SET encrypted_password='changed-identity-000000000000000000' WHERE id=$1",
-      [scope.user.id], log: false)
+      [scope.user.id],
+      log: false
+    )
 
     assert {:error, :stale_session} = Commands.delete(scope, "85002", @opts)
     assert length(jobs()) == 1
@@ -80,7 +82,9 @@ defmodule Dawarich.Visits.CommandsTest do
   test "visit merge refuses different local days with no effects", %{scope: scope} do
     Repo.query!(
       "UPDATE visits SET started_at='2026-10-01 09:00:00',ended_at='2026-10-01 10:00:00' WHERE id=85002",
-      [], log: false)
+      [],
+      log: false
+    )
 
     assert {:error, :visits_must_share_day} = Commands.merge(scope, ["85001", "85002"], @opts)
     assert statuses() == [[85001, 0], [85002, 0], [85003, 0]]
@@ -91,11 +95,15 @@ defmodule Dawarich.Visits.CommandsTest do
   test "bulk failure rolls back changes and refresh intent", %{scope: scope} do
     Repo.query!(
       "CREATE FUNCTION pg_temp.refuse_visit_epoch() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'synthetic refusal'; END$$",
-      [], log: false)
+      [],
+      log: false
+    )
 
     Repo.query!(
       "CREATE TRIGGER native_visit_epoch_failure BEFORE INSERT OR UPDATE ON phoenix.epochs FOR EACH ROW EXECUTE FUNCTION pg_temp.refuse_visit_epoch()",
-      [], log: false)
+      [],
+      log: false
+    )
 
     assert {:error, :unavailable} =
              Commands.bulk_update(
@@ -109,7 +117,9 @@ defmodule Dawarich.Visits.CommandsTest do
 
     assert Repo.query!(
              "SELECT count(*) FROM phoenix.epochs WHERE key LIKE 'timeline_visit_month/8511/%'",
-             [], log: false).rows == [[0]]
+             [],
+             log: false
+           ).rows == [[0]]
 
     Repo.query!("DROP TRIGGER native_visit_epoch_failure ON phoenix.epochs", [], log: false)
 
@@ -157,7 +167,9 @@ defmodule Dawarich.Visits.CommandsTest do
     do:
       Repo.query!(
         "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Points.VisitMonthsWorker' ORDER BY id",
-        [], log: false).rows
+        [],
+        log: false
+      ).rows
       |> Enum.map(&hd/1)
 
   defp statuses,

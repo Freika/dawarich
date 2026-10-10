@@ -46,6 +46,44 @@ defmodule Dawarich.Visits.TimelineTest do
              Timeline.load(scope, Map.put(@params, "cursor", "bad"), now: @now, self_hosted: true)
   end
 
+  test "timeline final-second visit precedes a continuation across cursor boundaries", %{
+    scope: scope
+  } do
+    for i <- 1..99 do
+      S.visit!(scope.user.id, 86000 + i, %{
+        started_at: ~N[2026-09-27 07:00:00],
+        ended_at: ~N[2026-09-27 08:00:00]
+      })
+    end
+
+    S.visit!(scope.user.id, 86200, %{
+      started_at: ~N[2026-09-27 21:59:59],
+      ended_at: ~N[2026-09-27 22:00:00]
+    })
+
+    S.track!(scope.user.id, 86300, %{
+      start_at: ~N[2026-09-26 20:00:00],
+      end_at: ~N[2026-09-28 03:00:00],
+      duration: 111_600
+    })
+
+    assert {:ok, first} = Timeline.load(scope, @params, now: @now, self_hosted: true)
+    [source] = Dawarich.Timeline.Days.load(scope.user, first.window, nil).days
+    assert length(source.entries) == 101
+    assert List.last(first.rows).visit_id == 86200
+
+    assert {:ok, second} =
+             Timeline.load(scope, Map.put(@params, "cursor", first.next_cursor),
+               now: @now,
+               self_hosted: true
+             )
+
+    assert [%{track_id: 86300, continuation_of_date: "2026-09-26"}] = second.rows
+    key = fn entry -> {entry.type, entry[:visit_id], entry[:track_id]} end
+    assert Enum.map(first.rows ++ second.rows, key) == Enum.map(source.entries, key)
+    assert second.next_cursor == nil
+  end
+
   test "calendar totals include rows beyond the visible timeline window", %{scope: scope} do
     for i <- 1..105,
         do:
@@ -101,7 +139,9 @@ defmodule Dawarich.Visits.TimelineTest do
 
     Dawarich.Repo.query!(
       "UPDATE users SET encrypted_password='changed-session-00000000000000000' WHERE id=$1",
-      [scope.user.id], log: false)
+      [scope.user.id],
+      log: false
+    )
 
     assert {:error, :stale_session} =
              Timeline.calendar(scope, "2026-09", now: @now, self_hosted: true)

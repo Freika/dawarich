@@ -27,7 +27,7 @@ defmodule Dawarich.Timeline.Query do
           fingerprint =
             :crypto.hash(
               :sha256,
-              :erlang.term_to_binary({user.id, start, stop, window.zone, restricted})
+              :erlang.term_to_binary({2, user.id, start, stop, window.zone, restricted})
             )
             |> Base.encode16(case: :lower)
 
@@ -61,17 +61,17 @@ defmodule Dawarich.Timeline.Query do
 
     sql = """
     SELECT day,anchor,started,kind,sort_id FROM (
-      SELECT #{day("v.started_at")} AS day, #{epoch("v.started_at")} AS anchor,
-             #{epoch("v.started_at")} AS started, 0 AS kind, -v.id AS sort_id
+      SELECT #{day("v.started_at")} AS day, (#{epoch("v.started_at")}*1000000) AS anchor,
+             (#{epoch("v.started_at")}*1000000) AS started, 0 AS kind, -v.id AS sort_id
       FROM visits v CROSS JOIN z
       WHERE v.user_id=$1 AND v.deleted_at IS NULL AND v.status<>2
         AND v.started_at BETWEEN #{utc("$2")} AND #{utc("$3")} AND #{windowed("v.started_at", "$4")}
       UNION ALL
       SELECT coalesce(s.day,#{day("t.start_at")}) AS day,
         CASE WHEN s.day IS NOT NULL AND s.day<>#{day("t.start_at")} THEN
-          greatest(least(#{epoch("t.end_at")},floor(extract(epoch FROM ((s.day+1)::timestamp AT TIME ZONE z.name)))::bigint-1),floor(extract(epoch FROM (s.day::timestamp AT TIME ZONE z.name)))::bigint)
-        ELSE #{epoch("t.start_at")} END AS anchor,
-        #{epoch("t.start_at")} AS started, 1 AS kind, t.id AS sort_id
+          greatest(least((#{epoch("t.end_at")}*1000000),floor(extract(epoch FROM ((s.day+1)::timestamp AT TIME ZONE z.name)))::bigint*1000000-1),floor(extract(epoch FROM (s.day::timestamp AT TIME ZONE z.name)))::bigint*1000000)
+        ELSE (#{epoch("t.start_at")}*1000000) END AS anchor,
+        (#{epoch("t.start_at")}*1000000) AS started, 1 AS kind, t.id AS sort_id
       FROM tracks t CROSS JOIN z #{shares("t", "$10::date", "$11::date")}
       WHERE t.user_id=$1 AND t.start_at<=#{utc("$3")} AND t.end_at>=#{utc("$2")}
         AND NOT(t.dominant_mode=1 AND t.distance<100) AND #{windowed("t.start_at", "$4")}
