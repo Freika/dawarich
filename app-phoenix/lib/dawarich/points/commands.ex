@@ -1,7 +1,6 @@
 defmodule Dawarich.Points.Commands do
   @moduledoc false
   alias Dawarich.Accounts.DataAccess
-  alias Dawarich.NativeM5.Dependencies
   alias Dawarich.Points.{Pages, WebDestroy}
   alias Dawarich.Repo
 
@@ -39,7 +38,7 @@ defmodule Dawarich.Points.Commands do
             end_at: naive(page.window.end)
           }
 
-          case Dependencies.request_point_export(fresh, export, request_id, Repo) do
+          case Dawarich.Exports.request(fresh, {:points, export, request_id}, repo: Repo) do
             {:ok, id} ->
               {:ok,
                %{

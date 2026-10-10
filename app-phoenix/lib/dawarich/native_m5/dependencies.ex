@@ -1,29 +1,5 @@
 defmodule Dawarich.NativeM5.Dependencies do
   @moduledoc false
-  def request_point_export(scope, export, request_id, repo) do
-    key = "native-points-export:#{scope.user.id}:#{request_id}"
-
-    case repo.query!(
-           "SELECT aggregate_id FROM public.job_outbox WHERE command_type='exports.points' AND dedupe_key=$1",
-           [key],
-           log: false
-         ).rows do
-      [[id]] ->
-        {:ok, id}
-
-      [] ->
-        with {:ok, id} <- Dawarich.PointExports.create(export, scope.user, scope.locale, repo) do
-          repo.query!(
-            "UPDATE public.job_outbox SET dedupe_key=$1 WHERE command_type='exports.points' AND aggregate_id=$2",
-            [key, id],
-            log: false
-          )
-
-          {:ok, id}
-        end
-    end
-  end
-
   def stats_upgrade_url(scope, now, hosted),
     do: DawarichWeb.StatsFormat.upgrade_url(scope.user, now, hosted, "data_window", "stats_index")
 

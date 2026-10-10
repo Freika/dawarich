@@ -11,6 +11,7 @@ defmodule Dawarich.Trips.CommandsTest do
 
   setup do
     Ownership.put!(Repo, "command:trips.calculate", :oban)
+    Ownership.put!(Repo, "command:exports.points", :oban)
     :ok
   end
 
@@ -39,6 +40,23 @@ defmodule Dawarich.Trips.CommandsTest do
         "SELECT body FROM action_text_rich_texts WHERE record_type='Trip' AND record_id=$1",
         [id]
       ).rows
+
+  test "trip exports re-admit M4 identity before writing" do
+    owner = scope(9_619)
+    id = trip!(owner, 961_901)
+    proof = Dawarich.Accounts.Principal.scope(owner)
+    assert {:ok, _} = Commands.request_export(proof, id, "gpx", repo: Repo)
+
+    Repo.query!(
+      "UPDATE users SET encrypted_password='revoked-trip-export' WHERE id=$1",
+      [owner.user.id], log: false)
+
+    assert {:error, :unavailable} = Commands.request_export(owner, id, "gpx", repo: Repo)
+
+    assert Repo.query!("SELECT count(*) FROM exports WHERE user_id=$1", [owner.user.id],
+             log: false
+           ).rows == [[1]]
+  end
 
   test "trip duplicate recalculation publishes once within the source cooldown" do
     owner = scope(9_601)

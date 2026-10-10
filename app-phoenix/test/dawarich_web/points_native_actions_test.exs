@@ -53,6 +53,34 @@ defmodule DawarichWeb.PointsNativeActionsTest do
     assert :sys.get_state(reconnected.pid).socket.assigns.selected == MapSet.new()
   end
 
+  test "M4 point export facade shares the native receipt and prepared time window", %{
+    scope: scope
+  } do
+    receipt = Ecto.UUID.generate()
+    assert {:ok, result} = Commands.request_export(scope, @params, "json", receipt)
+
+    [[name, format, first, last]] =
+      Repo.query!(
+        "SELECT name,file_format,start_at,end_at FROM exports WHERE id=$1",
+        [result.id],
+        log: false
+      ).rows
+
+    prepared = %{name: name, file_format: format, start_at: first, end_at: last}
+    assert {:ok, id} = Dawarich.Exports.request(scope, {:points, prepared, receipt})
+    assert id == result.id
+    proof = Dawarich.Accounts.Principal.scope(scope)
+
+    Repo.query!(
+      "UPDATE users SET encrypted_password='revoked-export-proof' WHERE id=$1",
+      [scope.user.id],
+      log: false
+    )
+
+    assert {:error, :stale_session} =
+             Dawarich.Exports.request(proof, {:points, prepared, receipt})
+  end
+
   test "repeated export acknowledgement publishes one request", %{scope: scope, user: user} do
     receipt = Ecto.UUID.generate()
     assert {:ok, first} = Commands.request_export(scope, @params, "json", receipt)

@@ -1,9 +1,9 @@
 defmodule Dawarich.Trips.Commands do
   @moduledoc false
 
-  alias Dawarich.{Jobs, PointExports, TripSettings}
+  alias Dawarich.{Jobs, TripSettings}
   alias Dawarich.Accounts.Scope
-  alias Dawarich.Trips.{Pages, ShowCalculation, WebCommands, WebDelete, WebExport, WebForm}
+  alias Dawarich.Trips.{Pages, ShowCalculation, WebCommands, WebDelete, WebForm}
   alias Dawarich.Trips.{WebRecalculate, WebWrite}
 
   @notices %{
@@ -56,20 +56,12 @@ defmodule Dawarich.Trips.Commands do
     end
   end
 
-  def request_export(%Scope{user: user, locale: locale}, id, format, opts \\ []) do
+  def request_export(%Scope{} = scope, id, format, opts \\ []) do
     with {:ok, id} <- Pages.id(id) do
-      case WebExport.prepare(repo(opts), user, id, format, %{}) do
-        {:ok, export} ->
-          case PointExports.create(export, user, locale, repo(opts)) do
-            {:ok, _} -> {:ok, %{notice: notice(:export)}}
-            _ -> {:error, :unavailable}
-          end
-
-        {:invalid, :format} ->
-          {:error, :invalid_format}
-
-        other ->
-          refusal(other)
+      case Dawarich.Exports.request(scope, {:trip, id, format}, repo: repo(opts)) do
+        {:ok, _} -> {:ok, %{notice: notice(:export)}}
+        {:error, :invalid_format} -> {:error, :invalid_format}
+        other -> refusal(other)
       end
     end
   end
