@@ -10,8 +10,7 @@ defmodule DawarichWeb.NativePublicPage do
     case DawarichWeb.AchievementPublicQuery.decode(conn.query_string, ~w(locale embed)) do
       {:ok, params} ->
         if not Map.has_key?(params, "locale") or params["locale"] in DawarichWeb.Locale.locales() do
-          conn = DawarichWeb.Locale.call(%{conn | query_params: params, params: params}, [])
-          call_page(conn, :achievement)
+          call_page(%{conn | query_params: params, params: params}, :achievement)
         else
           conn |> send_resp(422, "") |> halt()
         end
@@ -46,12 +45,17 @@ defmodule DawarichWeb.NativePublicPage do
         do: {:achievement, Dawarich.Repo, conn.path_params["uuid"]},
         else: {:digest, conn.path_params["uuid"], viewer_zone}
 
-    admitted = Delivery.admit(target, opts[:now])
-
     result =
       if kind == :achievement,
         do: Pages.achievement(conn.path_params["uuid"], opts),
         else: Pages.report(:digest, conn.path_params["uuid"], opts)
+
+    conn =
+      if kind == :achievement and localized?(result),
+        do: DawarichWeb.Locale.call(conn, []),
+        else: conn
+
+    admitted = Delivery.admit(target, opts[:now])
 
     conn =
       conn
@@ -109,6 +113,10 @@ defmodule DawarichWeb.NativePublicPage do
   rescue
     _ -> conn |> put_resp_content_type("text/plain") |> send_resp(503, "") |> halt()
   end
+
+  defp localized?({:ok, _}), do: true
+  defp localized?({:error, :not_found}), do: true
+  defp localized?(_), do: false
 
   defp not_found(conn, kind) do
     scope =
