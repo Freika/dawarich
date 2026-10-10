@@ -20,10 +20,10 @@ defmodule DawarichWeb.OnboardingModalTest do
     }
   end
 
-  defp dead(user), do: RailsUser.signed_in(user.id) |> get("/stats") |> html_response(200)
+  defp dead(user), do: RailsUser.signed_in(user.id) |> get("/stats/2026/10") |> html_response(200)
 
   defp live_as(user),
-    do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/stats")
+    do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/stats/2026/10")
 
   defp count(html, selector),
     do:
@@ -77,7 +77,7 @@ defmodule DawarichWeb.OnboardingModalTest do
        %{user: user} do
     session = RailsUser.session(user.id)
     conn = build_conn() |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-    html = conn |> get("/stats") |> html_response(200)
+    html = conn |> get("/stats/2026/10") |> html_response(200)
     assert count(html, "#getting_started a[href='/imports/new']") == 1
     assert count(html, "#getting_started form[action='/imports']") == 0
 

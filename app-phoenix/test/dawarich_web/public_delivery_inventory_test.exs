@@ -17,6 +17,7 @@ defmodule DawarichWeb.PublicDeliveryInventoryTest do
         &Enum.any?(&1.pipe_through, fn pipeline ->
           pipeline in [
             :rails_user,
+            :native_family_user,
             :rails_frame,
             :insights,
             :api_account,

@@ -15,6 +15,7 @@ defmodule DawarichWeb.TripsNativeShowTest do
     Application.put_env(:dawarich, :jobs_repo, Dawarich.Repo)
     on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous) end)
     Ownership.put!(Repo, "command:trips.calculate", :oban)
+    Ownership.put!(Repo, "command:exports.points", :oban)
     TripsSeeds.country!("Germany", "DE", "DEU")
     TripsSeeds.user!(9_961)
     TripsSeeds.user!(9_962)

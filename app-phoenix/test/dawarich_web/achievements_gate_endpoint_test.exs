@@ -180,8 +180,24 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
         do: native_response(ctx, port, target, ctx.cookie, 406, "Accept: application/json\r\n")
   end
 
-  test "deferred achievement writes retain Puma while sharing writes stay retired", ctx do
+  test "native unsupported collection writes refuse and source rollback retains Puma while unlocks reject invalid CSRF",
+       ctx do
     port = serve()
+
+    for method <- ~w(POST PATCH PUT DELETE), path <- ~w(/achievements /achievements/country_de) do
+      client = connect(port)
+
+      send_raw(
+        client,
+        request(method, path, ctx.cookie, "Content-Type: application/x-www-form-urlencoded\r\n")
+      )
+
+      {status, _, _} = read_response(client)
+      assert status == 404
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    end
+
+    System.put_env("DAWARICH_RAILS", "on")
 
     for method <- ~w(POST PATCH PUT DELETE) do
       assert_puma(
@@ -193,13 +209,20 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
       )
     end
 
-    assert_puma(
-      ctx,
-      port,
-      ~w(/achievements/unlocks/next /achievements/unlocks/7/seen /achievements/unlocks/dismiss),
-      "POST",
-      "Content-Type: application/x-www-form-urlencoded\r\n"
-    )
+    System.put_env("DAWARICH_RAILS", "off")
+
+    for path <-
+          ~w(/achievements/unlocks/next /achievements/unlocks/7/seen /achievements/unlocks/dismiss) do
+      client = connect(port)
+
+      send_raw(
+        client,
+        request("POST", path, ctx.cookie, "Content-Type: application/x-www-form-urlencoded\r\n")
+      )
+
+      assert {422, _, _} = read_response(client)
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 30)
+    end
   end
 
   test "native achievement ownership ignores obsolete Rails route overrides", ctx do
