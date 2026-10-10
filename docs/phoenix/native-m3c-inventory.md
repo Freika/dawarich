@@ -64,3 +64,7 @@ HTTP flash dismissal/expiry, locale dismissal, settings focus, POST/DELETE logou
 ## B1 — sign-in/provider/logout
 
 HEEx preserves Devise field protocol, empty rejected passwords and source redirects/statuses. Provider display uses public deployment-policy results and distinct action CSRF; Google/Apple mobile suppression and OIDC-only credential suppression retained. RED `impl-m3c-b1-red.log` plus corrected `b1-fields-red`; GREEN 3 cases; mutations remember/policy/revocation/password each exit 2 with named case failures; restored `impl-m3c-b1-final-green.log`: 80 passed, exit 0, warnings clean. Early retargets: SignInForm exact HTML → source fields/links/translations; AuthHandler exact HTML → source fields/labels/native document; wrong/unknown retains identical status/owner/counters/notice plus source fields. Source fixtures remain unchanged. Remember revocation and password salt revocation remain separate source behaviors.
+
+## B2 — signup
+
+HTTP signup retains invitation readonly email/token, password/confirmation fields, localized errors, no user/outbox intent on validation, policy denial and account update/delete classification. RED `impl-m3c-b2-red.log`: 0/3; GREEN 3/3; corrected confirmation/disabled and classification mutations each exit 2. Initial weak mutations were discarded and assertions strengthened. Restored `impl-m3c-b2-restored-green.log`: 45 passed, exit 0, warnings clean. No domain change or source fixture rewrite.

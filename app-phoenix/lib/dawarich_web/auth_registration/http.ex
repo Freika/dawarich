@@ -160,27 +160,14 @@ defmodule DawarichWeb.AuthRegistration.Http do
         context.locale
       )
 
-    assigns =
-      Map.merge(conn.assigns, %{
-        __changed__: nil,
-        flash: %{},
-        page_title: nil,
-        rails_csrf_token: token,
-        inner_content: Phoenix.HTML.raw(body)
-      })
-
-    app = DawarichWeb.Layouts.app(assigns)
-
-    html =
-      DawarichWeb.Layouts.root(%{assigns | inner_content: app}) |> Phoenix.HTML.Safe.to_iodata()
-
     conn
     |> AuthCookie.session(encoded)
     |> DawarichWeb.RailsHeaders.call([])
     |> put_resp_header("x-dawarich-auth-owner", "native-registration")
-    |> put_resp_content_type("text/html")
-    |> send_resp(status, html)
-    |> halt()
+    |> DawarichWeb.AuthPageController.document(Phoenix.HTML.raw(body), status,
+      chrome: :anonymous,
+      csrf_token: token
+    )
   end
 
   defp redirect(conn, path, alert, status) do
