@@ -158,7 +158,7 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Bind shared-link HTML/API admission to the exact link and privacy flags used for preparation, refusing flag changes before the initial snapshot. FRB-NATIVE-M5-PUBLIC-DELIVERY.
 
 - Revalidate the original signed family viewer at HTML delivery after password changes, login locks or deletion, retaining remember-cookie policy. FRB-NATIVE-M5-PUBLIC-DELIVERY.
-- Remove abandoned native uploads after their lease expires, while preserving accepted attachments. [FRB-NATIVE-M4-ABANDONED-UPLOAD](fixed-rails-bugs.md#frb-native-m4-abandoned-upload--leaving-an-upload-strands-its-unattached-file)
+- Remove abandoned native uploads, including unsaved rich-text attachments, after their lease expires while preserving accepted attachments. [FRB-NATIVE-M4-ABANDONED-UPLOAD](fixed-rails-bugs.md#frb-native-m4-abandoned-upload--leaving-an-upload-strands-its-unattached-file)
 
 - Keep signed storage capabilities and private download filenames out of native request logs. [FRB-NATIVE-M4-STORAGE-PATH-LOG](fixed-rails-bugs.md#frb-native-m4-storage-path-log--request-logging-exposes-signed-storage-capabilities)
 
