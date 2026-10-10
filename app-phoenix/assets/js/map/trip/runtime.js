@@ -1,3 +1,4 @@
+import { installHostReplay } from "../replay/host.js"
 import { createReader } from "../data/reader.js"
 import { cancelled } from "../data/request_scope.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
@@ -34,6 +35,7 @@ export function mountTrip({
     attach: ({ map, config, lifetime }) =>
       new Promise((resolve) => {
         const ready = () => {
+          installHostReplay({owner, map, lifetime})
           layers = createLayers({
             map,
             library,

@@ -1,3 +1,4 @@
+import { installHostReplay } from "../replay/host.js"
 import { cancelled } from "../data/request_scope.js"
 import { createStudioSource } from "../data/studio_source.js"
 import { createMapRuntime } from "../runtime/create_map.js"
@@ -60,6 +61,7 @@ export function mountPublic({
     },
     loadStyle,
     attach: ({ map, lifetime, operation }) => {
+      installHostReplay({owner, map, lifetime})
       layers = createLayers({
         map,
         library,
