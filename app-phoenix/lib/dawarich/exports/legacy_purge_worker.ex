@@ -15,16 +15,25 @@ defmodule Dawarich.Exports.LegacyPurgeWorker do
 
   def path(_), do: {:error, :unsafe_legacy_path}
 
-  def enqueue!(repo, url) do
+  def enqueue!(repo, export_id, user_id, url) do
     {:ok, path} = path(url)
-    repo.insert!(new(%{"path" => path}), prefix: "oban", log: false)
+
+    case repo.query!(
+           "SELECT identity FROM phoenix.export_legacy_artifacts WHERE export_id=$1 AND user_id=$2 AND path=$3",
+           [export_id, user_id, path],
+           log: false
+         ).rows do
+      [[identity]] -> repo.insert!(new(%{"artifact" => identity}), prefix: "oban", log: false)
+      [] -> :ok
+    end
+
     :ok
   end
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}), do: run(Dawarich.Jobs.repo(), args)
 
-  def run(repo, %{"path" => path}, opts \\ []) do
+  def run(repo, args, opts \\ []) do
     if repo.in_transaction?(),
       do: raise(ArgumentError, "legacy purge requires a committed deletion")
 
@@ -33,7 +42,14 @@ defmodule Dawarich.Exports.LegacyPurgeWorker do
         Application.get_env(:dawarich, :public_root) || Dawarich.RailsRoot.join("public")
       end)
 
-    with {:ok, safe} <- path(path),
+    with [[path]] <-
+           repo.query!(
+             "SELECT a.path FROM phoenix.export_legacy_artifacts a WHERE a.identity=$1 AND NOT EXISTS(SELECT 1 FROM exports e WHERE e.id=a.export_id)",
+             [args["artifact"]],
+             log: false
+           ).rows,
+         {:ok, safe} <- path(path),
+         true <- String.starts_with?(safe, "exports/"),
          :ok <- parents(root, safe) do
       if repo.query!("SELECT 1 FROM exports WHERE ltrim(btrim(url),'/')=$1 LIMIT 1", [safe],
            log: false
@@ -46,6 +62,10 @@ defmodule Dawarich.Exports.LegacyPurgeWorker do
       else
         :ok
       end
+    else
+      [] -> :ok
+      false -> {:error, :unsafe_legacy_path}
+      error -> error
     end
   end
 

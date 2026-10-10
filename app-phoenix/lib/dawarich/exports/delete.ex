@@ -66,7 +66,7 @@ defmodule Dawarich.Exports.Delete do
           end
         end
 
-        if url, do: Dawarich.Exports.LegacyPurgeWorker.enqueue!(repo, url)
+        if url, do: Dawarich.Exports.LegacyPurgeWorker.enqueue!(repo, id, user_id, url)
 
         if Dawarich.Exports.Events.native?(repo, type),
           do: Dawarich.Exports.Events.enqueue(repo, user_id, Ecto.UUID.generate(), :deleted)

@@ -1404,3 +1404,12 @@ The Rails extraction modal has a visible heading without a dialog accessible-nam
 - Phoenix: `app-phoenix/lib/dawarich_web/components/imports_extraction_dialog.ex:15,22,98`.
 - Test: **native job pages and open dialogs have one accessible label and no Hotwire runtime**, `native_pages_hotwire_free_test.exs`.
 - Evidence: actual synthetic Rails partial render: one dialog, one heading, zero accessible-name attributes. Native static/connected English/German case initially fails missing relationship, then passes; removing native naming and adding a duplicate control label each fail the exact named case. No browser/screen-reader execution claimed. ED-NATIVE-M4-STRUCTURAL-AB; no DRB.
+
+### FRB-NATIVE-M4-RESTORED-EXPORT-PURGE — Restored URLs authorize unrelated file deletion
+
+An account archive can restore a completed export whose URL names an unrelated public file. Deleting that export in Rails removes the file. Native cleanup requires a private creation-time artifact identity with the exact export, owner and path; restore cannot populate that ledger. Unproven legacy URLs remain readable references and their files are retained. Current native producers use blobs; there is no URL-derived provenance backfill.
+
+- Rails: `app/services/users/import_data/exports.rb:70-84`; `app/models/export.rb:59-62`.
+- Phoenix: `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:18`; `app-phoenix/lib/dawarich/exports/delete.ex:69`; private `export_legacy_artifacts` migration.
+- Test: “restored export URLs never authorize deletion of unrelated public files” in `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`; restored error page and another owner's export-like path, mismatched provenance, old path-only job. Existing trusted artifact/reference/symlink cases remain.
+- Ledger: ED-NATIVE-M4-RESTORED-EXPORT-PURGE; no DRB. Rails production remains unchanged.
