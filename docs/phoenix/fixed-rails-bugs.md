@@ -1380,3 +1380,33 @@ Rails discards a late country result after removal but does not abort its fetch.
 - Test: “scratch protocol or membership reads cannot outlive their owner” in `spec/javascript/phoenix_hexagon_scratch_test.mjs`; scratch-protocol/scratch-request mutations fail, restoration passes; existing date/foreign-tab/retry corpus retained.
 - Ledger: ED-NATIVE-M6-SCRATCH-DISPOSE; no DRB row added. Retained Rails remains unchanged.
 - CHANGELOG-ready: Cancel scratch-map membership requests after leaving its map.
+
+### FRB-NATIVE-M6-PHOTO-TIMER — Successful photo loads leave their timeout running
+
+Rails' background photo Promise.race leaves the losing 15-second timeout scheduled after a successful response. Native photo operations close the matching deadline on success, failure, replacement and removal.
+
+- Rails: `app/javascript/controllers/maps/maplibre/data_loader.js:257,263`.
+- Phoenix: `app-phoenix/assets/js/map/data/photo_loader.js:40,64`.
+- Test: “timed-out or replaced photo load cannot add a marker” in `spec/javascript/phoenix_map_photos_test.mjs`; actual Rails timer oracle fails, photo-generation mutation fails/restored GREEN. Thumbnail expiry regression also proves read abort and no later URL allocation.
+- Ledger: ED-NATIVE-M6-PHOTO-TIMER; no DRB. Retained Rails unchanged.
+- CHANGELOG-ready: Release photo-loading deadlines when their requests settle.
+
+### FRB-NATIVE-M6-PHOTO-CLUSTER — Late cluster leaves recreate markers after removal
+
+Rails cluster expansion/leaves callbacks lack an owner-generation check. A response arriving after removal can create new photo markers and spider legs on the departed map. Native cluster operations are cancelled on move, replacement and removal before any allocation.
+
+- Rails: `app/javascript/maps_maplibre/layers/photos_layer.js:139,164,646`.
+- Phoenix: `app-phoenix/assets/js/map/layers/photos.js:85,94,226`.
+- Test: “late thumbnail and cluster callbacks cannot allocate after photo owner removal” in `spec/javascript/phoenix_map_photos_test.mjs`; actual Rails cluster oracle fails, cluster-generation/late-thumbnail mutations fail/restored GREEN.
+- Ledger: ED-NATIVE-M6-PHOTO-CLUSTER; no DRB. Retained Rails unchanged.
+- CHANGELOG-ready: Prevent photo clusters from reopening after leaving their map.
+
+### FRB-NATIVE-M6-PHOTO-POPUP — Removing photos leaves their popup open
+
+Rails creates a photo popup without retaining it for removal. Removing its photo layer or marker leaves the popup attached. Native markers own their popup, close listener, thumbnail read and object URL; removal releases all of them once.
+
+- Rails: `app/javascript/maps_maplibre/layers/photos_layer.js:584,646`.
+- Phoenix: `app-phoenix/assets/js/map/ui/photo_marker.js:82,87,94`.
+- Test: “destroy releases popup listeners and thumbnails” in `spec/javascript/phoenix_map_photos_test.mjs`; actual Rails popup oracle fails, popup-disposal/object-url mutations fail/restored GREEN. Existing hostile metadata cases have named native successors.
+- Ledger: ED-NATIVE-M6-PHOTO-POPUP; no DRB. Retained Rails unchanged.
+- CHANGELOG-ready: Close photo popups and release their thumbnails when leaving the map.

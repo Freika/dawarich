@@ -59,12 +59,21 @@ export function createReader({
         fetch(url(resource, params).href, {
           signal: operation.signal,
           credentials: "same-origin",
-          headers: { Accept: "application/json" },
+          headers: {
+            Accept:
+              resource === "thumbnail" ? "image/jpeg" : "application/json",
+          },
         }),
       )
       operation.check()
       const data =
-        response.status === 204 ? [] : await operation.wait(response.json())
+        response.status === 204
+          ? []
+          : await operation.wait(
+              resource === "thumbnail" && response.ok
+                ? response.blob()
+                : response.json(),
+            )
       operation.check()
       const noData =
         resource === "bounds" &&

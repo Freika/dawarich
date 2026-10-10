@@ -166,3 +166,30 @@ test("reader deadline settles even when transport ignores abort", async () => {
     reader.destroy()
   }
 })
+
+test("thumbnail reader uses owned cookie bytes and never decodes an image as JSON", async () => {
+  const reader = createReader({
+    origin: "https://map.test",
+    fetch: async (url, opts) => {
+      assert.equal(
+        new URL(url).pathname,
+        "/native/map/data/photos/synthetic-photo/thumbnail",
+      )
+      assert.equal(opts.headers.Accept, "image/jpeg")
+      assert.equal(opts.credentials, "same-origin")
+      return new Response(new Uint8Array([255, 216, 255, 217]), {
+        headers: { "content-type": "image/jpeg" },
+      })
+    },
+  })
+  const result = await reader.read("thumbnail", {
+    id: "synthetic-photo",
+    source: "immich",
+  })
+  assert.equal(result.data.type, "image/jpeg")
+  assert.deepEqual(
+    [...new Uint8Array(await result.data.arrayBuffer())],
+    [255, 216, 255, 217],
+  )
+  reader.destroy()
+})

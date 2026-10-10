@@ -133,3 +133,7 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Cancel fog cell work when leaving its map. [FRB-NATIVE-M6-FOG-DISPOSE](fixed-rails-bugs.md#frb-native-m6-fog-dispose--leaving-the-map-keeps-a-fog-read-alive)
 - Stop hexagon point processing after leaving its map. [FRB-NATIVE-M6-HEX-DISPOSE](fixed-rails-bugs.md#frb-native-m6-hex-dispose--a-removed-hexagon-layer-keeps-aggregating-points)
 - Cancel scratch-map membership requests after leaving its map. [FRB-NATIVE-M6-SCRATCH-DISPOSE](fixed-rails-bugs.md#frb-native-m6-scratch-dispose--a-removed-scratch-layer-leaves-membership-requests-running)
+
+- Release photo-loading deadlines when their requests settle. [FRB-NATIVE-M6-PHOTO-TIMER](fixed-rails-bugs.md#frb-native-m6-photo-timer--successful-photo-loads-leave-their-timeout-running)
+- Prevent photo clusters from reopening after leaving their map. [FRB-NATIVE-M6-PHOTO-CLUSTER](fixed-rails-bugs.md#frb-native-m6-photo-cluster--late-cluster-leaves-recreate-markers-after-removal)
+- Close photo popups and release their thumbnails when leaving the map. [FRB-NATIVE-M6-PHOTO-POPUP](fixed-rails-bugs.md#frb-native-m6-photo-popup--removing-photos-leaves-their-popup-open)
