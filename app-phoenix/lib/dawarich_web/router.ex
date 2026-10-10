@@ -4,6 +4,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.AchievementRoutes
   import DawarichWeb.AchievementImageRoutes
   import DawarichWeb.A8Routes
+  import DawarichWeb.PublicMapRoutes
   import DawarichWeb.BrowserMapRoutes
   import DawarichWeb.PageRoutes
   import DawarichWeb.A10Routes
@@ -66,6 +67,7 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RequireUser
   end
 
+  public_map_routes()
   browser_map_routes()
   metrics_routes()
   api_routes()
