@@ -16,6 +16,7 @@ defmodule DawarichWeb.TripsNative.Access do
       socket
       |> put_principal(principal(socket.assigns.current_scope))
       |> detach_hook(:rails_user, :handle_event)
+      |> detach_hook(:notification_session, :handle_event)
       |> attach_hook(:trips_params, :handle_params, fn _, _, socket -> authorize(socket) end)
       |> attach_hook(:trips_event, :handle_event, fn _, _, socket -> authorize(socket) end)
       |> attach_hook(:trips_info, :handle_info, fn _, socket -> authorize(socket) end)
@@ -45,6 +46,9 @@ defmodule DawarichWeb.TripsNative.Access do
   def admit(_principal), do: {:error, :stale_session}
 
   def scope(socket), do: admit(socket.private[:trips_principal])
+
+  def authorize(%{assigns: %{notification_signed_out: true}} = socket),
+    do: {:halt, refuse(socket)}
 
   def authorize(socket) do
     case scope(socket) do

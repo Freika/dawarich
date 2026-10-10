@@ -10,6 +10,12 @@ defmodule DawarichWeb.TripsNativeRoutes do
         layout: {DawarichWeb.Layouts, :app} do
         live "/trips", DawarichWeb.NativeTripsLive.Index, :index,
           container: {:div, class: "contents"}
+
+        live "/trips/new", DawarichWeb.NativeTripsLive.Form, :new,
+          container: {:div, class: "contents"}
+
+        live "/trips/:id/edit", DawarichWeb.NativeTripsLive.Form, :edit,
+          container: {:div, class: "contents"}
       end
     end
   end

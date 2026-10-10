@@ -1,10 +1,10 @@
 defmodule Dawarich.Trips.Pages do
   @moduledoc false
 
-  alias Dawarich.{RubyInteger, TripSettings}
+  alias Dawarich.{Repo, RubyInteger, TripSettings}
   alias Dawarich.Accounts.Scope
   alias Dawarich.SharedLinks.FamilyAudience
-  alias Dawarich.Trips.{DayWindow, DetailProjection, ListProjection}
+  alias Dawarich.Trips.{DayWindow, DetailProjection, ListProjection, WebForm}
 
   @max_page 1_000_000_000_000
 
@@ -44,6 +44,14 @@ defmodule Dawarich.Trips.Pages do
          do: DayWindow.load(user, id, from, settings)
   end
 
+  def form(%Scope{user: user}, nil, now) do
+    if WebForm.active?(user, now), do: form_projection(user, nil, now), else: {:error, :inactive}
+  end
+
+  def form(%Scope{user: user}, id, now) do
+    with {:ok, id} <- id(id), do: form_projection(user, id, now)
+  end
+
   def id(id) when is_integer(id) and id > 0 and id < 9_223_372_036_854_775_807, do: {:ok, id}
 
   def id(id) when is_binary(id) do
@@ -59,6 +67,19 @@ defmodule Dawarich.Trips.Pages do
     do: value |> RubyInteger.to_i() |> max(1) |> min(@max_page)
 
   defp page(_value), do: 1
+
+  defp form_projection(user, id, now) do
+    case WebForm.load(Repo, user, id, %{now: now}) do
+      {:ok, form} ->
+        {:ok, Map.take(form, [:id, :name, :values, :description, :managed, :trek_url])}
+
+      {:error, :not_found} ->
+        {:error, :not_found}
+
+      _ ->
+        {:error, :unavailable}
+    end
+  end
 
   defp settings(user) do
     case TripSettings.read(Dawarich.UserSettings.get(user)) do

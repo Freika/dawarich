@@ -36,11 +36,18 @@ defmodule Dawarich.Test.TripsNativeUI do
           ),
         else: conn
 
-    conn
+    %{conn | secret_key_base: DawarichWeb.Endpoint.config(:secret_key_base)}
     |> Plug.Conn.put_private(:phoenix_endpoint, DawarichWeb.Endpoint)
     |> Plug.Conn.put_private(:live_view_connect_info, %{session: %{"rails_user_id" => user_id}})
     |> TripsNativeRouter.call(TripsNativeRouter.init([]))
   end
 
   def live_as(user_id, path), do: live(get(user_id, path))
+
+  def not_found?(user_id, path) do
+    get(user_id, path)
+    false
+  rescue
+    error in Plug.Conn.WrapperError -> Plug.Exception.status(error.reason) == 404
+  end
 end
