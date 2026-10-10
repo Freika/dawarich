@@ -29,12 +29,16 @@ defmodule DawarichWeb.MapLive.SegmentCommands do
         scope = socket.assigns.current_scope
 
         case command.(scope, track_id) do
-          {:ok, %{page: page}} ->
-            {:ok, fresh} = Segments.list(scope, page.track_id)
+          {:ok, _result} ->
+            drawer =
+              case Segments.list(scope, track_id) do
+                {:ok, fresh} -> drawer(fresh, nil)
+                {:error, reason} -> %{current | error: reason}
+              end
 
             {:noreply,
              socket
-             |> assign(:segment_drawer, drawer(fresh, nil))
+             |> assign(:segment_drawer, drawer)
              |> push_event("map:invalidate", %{resource: "tracks", id: track_id})}
 
           {:error, reason} ->

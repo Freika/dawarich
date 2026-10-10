@@ -93,8 +93,25 @@ defmodule DawarichWeb.NativeTimelineTest do
   end
 
   test "real scoped feed renders owned journeys and a typed empty state", %{id: id} do
+    [[track]] =
+      rows(
+        "INSERT INTO tracks(user_id,start_at,end_at,distance,duration,dominant_mode,original_path,created_at,updated_at) VALUES($1,'2026-03-30 08:00:00','2026-03-30 08:30:00',5000,1800,3,ST_GeomFromText('LINESTRING(13.4 52.5,13.5 52.6)',4326),now(),now()) RETURNING id",
+        [id]
+      )
+
+    [[unmoded]] =
+      rows(
+        "INSERT INTO tracks(user_id,start_at,end_at,distance,duration,dominant_mode,original_path,created_at,updated_at) VALUES($1,'2026-03-30 10:00:00','2026-03-30 10:30:00',5000,1800,NULL,ST_GeomFromText('LINESTRING(13.4 52.5,13.5 52.6)',4326),now(),now()) RETURNING id",
+        [id]
+      )
+
     view = open(id, nil)
     render_hook(view, "load", %{"start_at" => "2026-03-30T00:00", "end_at" => "2026-03-30T23:59"})
+    html = render_async(view, 5_000)
+    assert html =~ ~s(data-track-id="#{track}")
+    assert html =~ ~s(data-track-id="#{unmoded}")
+
+    render_hook(view, "load", %{"start_at" => "2026-03-31T00:00", "end_at" => "2026-03-31T23:59"})
     assert render_async(view, 5_000) =~ "No visits tracked this day"
   end
 

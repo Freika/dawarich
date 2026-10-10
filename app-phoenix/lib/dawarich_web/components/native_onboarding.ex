@@ -43,9 +43,9 @@ defmodule DawarichWeb.NativeOnboarding do
     <dialog
       id="getting_started"
       class="modal"
-      phx-hook="Onboarding"
-      data-auto={to_string(@auto)}
-      data-user-id={@current_user.id}
+      phx-hook={@target && "Onboarding"}
+      data-auto={@target && to_string(@auto)}
+      data-user-id={@target && @current_user.id}
       phx-target={@target}
     >
       <form id="onboarding-dismiss" method="dialog"></form>

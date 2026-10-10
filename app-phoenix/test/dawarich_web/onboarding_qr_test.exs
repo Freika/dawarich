@@ -50,6 +50,7 @@ defmodule DawarichWeb.OnboardingQrTest do
     refute html =~ @key
     refute html =~ key_qr
     assert html =~ ~s(src="/settings/onboarding/qr.svg")
+    refute html =~ ~s(phx-hook="Onboarding")
   end
 
   defp qr(conn) do
