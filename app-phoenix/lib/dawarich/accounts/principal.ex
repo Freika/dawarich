@@ -1,6 +1,7 @@
 defmodule Dawarich.Accounts.Principal do
   @moduledoc false
   @fields ~w(id first_name last_name email provider theme admin status plan active_until subscription_source changelog_consent points_count)a
+  defstruct @fields ++ [:settings, :session_version]
   @private ~w(password api_key token secret authorization credential url)
 
   def project(user) do
@@ -8,6 +9,7 @@ defmodule Dawarich.Accounts.Principal do
     |> Map.take(@fields)
     |> Map.put(:settings, settings(Dawarich.UserSettings.get(user)))
     |> Map.put(:session_version, version(user))
+    |> then(&struct(__MODULE__, &1))
   end
 
   def version(%{session_version: version}) when is_binary(version), do: version
@@ -36,4 +38,20 @@ defmodule Dawarich.Accounts.Principal do
   defp clean(value) when is_map(value), do: settings(value)
   defp clean(value) when is_list(value), do: Enum.map(value, &clean/1)
   defp clean(value), do: value
+end
+
+defimpl Inspect, for: Dawarich.Accounts.Principal do
+  import Inspect.Algebra
+
+  def inspect(principal, opts) do
+    fields =
+      principal
+      |> Map.from_struct()
+      |> Map.update!(
+        :settings,
+        &(Dawarich.LogRedaction.scrub(&1) |> Map.delete("supporter_email"))
+      )
+
+    concat(["#Dawarich.Accounts.Principal<", to_doc(fields, opts), ">"])
+  end
 end

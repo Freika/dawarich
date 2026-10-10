@@ -404,8 +404,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     for {method, path, headers, bytes} <- [
           {"POST", "/route_videos", [], "foreign_domain=x"},
           {"POST", "/trips", [{"x-http-method-override", "DELETE"}], "trip%5Bname%5D=Synthetic"},
-          {"POST", "/settings/users/import", [], "archive=bad&authenticity_token=bad"},
-          {"POST", "/exports", [], "authenticity_token=bad"}
+          {"POST", "/settings/users/import", [], "archive=bad&authenticity_token=bad"}
         ] do
       System.put_env("SELF_HOSTED", "true")
       previous = observations()
@@ -421,6 +420,21 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       assert response.status == 204
       assert line == "#{method} #{path} HTTP/1.1"
       assert original == bytes
+      assert observations() == previous
+    end
+
+    for mode <- [nil, "off"] do
+      if mode,
+        do: System.put_env("DAWARICH_RAILS", mode),
+        else: System.delete_env("DAWARICH_RAILS")
+
+      previous = observations()
+
+      response =
+        @endpoint.call(raw(ctx, "POST", "/exports", "authenticity_token=bad"), @endpoint.init([]))
+
+      assert response.status == 422
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
       assert observations() == previous
     end
 

@@ -29,7 +29,8 @@ defmodule DawarichWeb.NotificationSession do
         do: Phoenix.PubSub.subscribe(Dawarich.PubSub, topic)
 
       if socket.assigns[:native] do
-        Notifications.subscribe(Native.scope(socket))
+        with :ok <- Notifications.subscribe(Native.scope(socket)),
+             do: Native.subscribe_family(socket)
       else
         if Process.whereis(Bus), do: Bus.subscribe(stream(socket))
       end
@@ -67,6 +68,10 @@ defmodule DawarichWeb.NotificationSession do
       do: {:halt, Native.refuse(socket)},
       else: Native.handle_info(message, socket)
   end
+
+  def handle_info({:domain_changed, _, kind} = message, %{assigns: %{native: true}} = socket)
+      when kind in [:membership, :consent, :request, :invitation, :lapse],
+      do: Native.family_info(message, socket)
 
   def handle_info(message, socket) do
     if socket.assigns[:native], do: {:cont, socket}, else: legacy_info(message, socket)

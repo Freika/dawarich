@@ -10,7 +10,7 @@ defmodule DawarichWeb.NotificationSession.Native do
         Scope.for_user(socket.assigns.current_user, socket.assigns.locale)
 
   def admit(socket) do
-    if socket.assigns[:notification_signed_out] or socket.redirected do
+    if socket.assigns[:notification_signed_out] == true or not is_nil(socket.redirected) do
       {:error, :stale_session}
     else
       NativeAccess.admit(scope(socket))
@@ -18,25 +18,51 @@ defmodule DawarichWeb.NotificationSession.Native do
   end
 
   def refuse(socket) do
-    socket =
-      socket
-      |> assign(
-        notification_signed_out: true,
-        current_user: nil,
-        current_scope: nil,
-        navbar: nil,
-        notifications: [],
-        notification: nil,
-        entries: [],
-        delete_target: nil,
-        import: nil,
-        record: nil,
-        data: nil,
-        points: nil
-      )
-
+    socket = clear(socket)
     if socket.redirected, do: socket, else: redirect(socket, to: "/users/sign_in")
   end
+
+  def clear(socket) do
+    assign(socket,
+      notification_signed_out: true,
+      current_user: nil,
+      current_scope: nil,
+      navbar: nil,
+      notifications: [],
+      notification: nil,
+      entries: [],
+      delete_target: nil,
+      import: nil,
+      record: nil,
+      data: nil,
+      points: nil
+    )
+  end
+
+  def subscribe_family(socket),
+    do: Phoenix.PubSub.subscribe(Dawarich.PubSub, "family:user:#{scope(socket).user.id}")
+
+  def family_info({:domain_changed, owner, _}, socket)
+      when owner == socket.assigns.current_user.id do
+    case admit(socket) do
+      {:ok, current} ->
+        navbar =
+          Dawarich.Navbar.load(current.user,
+            now: DateTime.utc_now(),
+            self_hosted: socket.assigns.self_hosted
+          )
+
+        socket =
+          assign(socket, current_user: current.user, current_scope: current, navbar: navbar)
+
+        if socket.assigns[:family_action], do: {:cont, socket}, else: {:halt, socket}
+
+      _ ->
+        {:halt, refuse(socket)}
+    end
+  end
+
+  def family_info(_, socket), do: {:cont, socket}
 
   def handle_info({:domain_changed, owner, :notifications}, socket)
       when owner == socket.assigns.current_user.id do

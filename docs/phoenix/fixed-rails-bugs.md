@@ -1385,3 +1385,12 @@ Rails broadcasts creation and explicit broadcast updates, but ordinary opening, 
 - Phoenix: `app-phoenix/lib/dawarich/notifications/mutations.ex:48`; `app-phoenix/lib/dawarich/notifications/events.ex:13`; `app-phoenix/lib/dawarich_web/notification_session/native.ex:86`.
 - Tests: **delete-all invalidation survives relay restart without its deleted rows**, **rollback emits no native event and duplicate replay converges**, **native subscriptions clear a deleted detail before delivering its owner wake**.
 - Evidence: actual synthetic Rails model/controller mutators instrumented broadcast methods: create emits two calls; open/delete/read-all/delete-all emit zero. No Rails browser reproduction claimed. Owner, replay, rollback and deleted-detail mutations fail. Native-only fix; Rails unchanged. ED-NATIVE-M4-NOTIFICATION-EVENTS; no DRB.
+
+### FRB-NATIVE-M4-FAMILY-INDICATOR-ID — Mobile and desktop indicators repeat the same element identity
+
+Rails renders the same `family-navbar-indicator` frame in both mobile and desktop navigation, so updates cannot address those two indicators independently. Native indicators now have distinct element IDs and refresh from an admitted owner permission snapshot.
+
+- Rails: `app/views/shared/_navbar.html.erb:21,83`; `app/views/families/_navbar_indicator.html.erb:1`.
+- Phoenix: `app-phoenix/lib/dawarich_web/components/navbar.ex:50`; `app-phoenix/lib/dawarich_web/components/navbar_parts.ex:75`.
+- Test: **native family indicator follows current owner permissions without swallowing family delivery**, `notifications_native_events_test.exs`.
+- Evidence: source plus two actual partial renders produce two identical frame IDs; no Rails browser stale-indicator reproduction claimed. Repeating the native ID fails the named LiveView test on duplicate elements. Independent legacy frame protocol unchanged. ED-NATIVE-M4-NOTIFICATIONS-UI; no DRB.

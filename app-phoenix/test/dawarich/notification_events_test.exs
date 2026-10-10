@@ -42,8 +42,8 @@ defmodule Dawarich.NotificationEventsTest do
           )
 
           Repo.query!(
-            "DELETE FROM oban.oban_jobs WHERE worker='Dawarich.AfterCommit.Worker' AND args->'payload'->>'user_id'=$1",
-            [to_string(user.id)],
+            "DELETE FROM oban.oban_jobs WHERE worker='Dawarich.AfterCommit.Worker' AND (args->'payload'->>'user_id'=$1 OR args->'payload'->'keys' @> $2::jsonb)",
+            [to_string(user.id), ["dawarich/user_#{user.id}_countries_visited"]],
             log: false
           )
 

@@ -144,7 +144,8 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
              Translate.t("en", "settings.visits.redetect_panel.available_again_at", %{})
   end
 
-  def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
+  def handle_query(_event, _measurements, meta, pid),
+    do: Dawarich.Test.NativeQueryBudget.record(meta, pid)
 
   defp queries(fun) do
     id = "visits-budget-#{System.unique_integer([:positive])}"
@@ -162,12 +163,18 @@ defmodule DawarichWeb.VisitSettingsLiveTest do
     end
   end
 
-  test "the page stays within the Rails-era query budget", %{user: user} do
+  test "visit settings business queries retain their budget with explicit subscription admission",
+       %{user: user} do
     {conn, static} = queries(fn -> get(conn_for(user), "/settings/visits") end)
+    static_counts = Dawarich.Test.NativeQueryBudget.counts()
     {_, connected} = queries(fn -> {:ok, _view, _html} = live(conn) end)
 
+    connected_counts = Dawarich.Test.NativeQueryBudget.counts()
+
     assert static <= 9
-    assert connected <= 6
+    assert connected - 2 <= 6
+    assert connected_counts["users"] == static_counts["users"] + 1
+    assert Map.delete(connected_counts, "users") == Map.delete(static_counts, "users")
   end
 
   test "signed-out settings uses the established Devise redirect" do

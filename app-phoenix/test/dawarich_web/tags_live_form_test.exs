@@ -269,7 +269,8 @@ defmodule DawarichWeb.TagsLiveFormTest do
     refute has_element?(view, "a[href^='//']")
   end
 
-  def handle_query(_event, _measurements, _meta, pid), do: send(pid, :query)
+  def handle_query(_event, _measurements, meta, pid),
+    do: Dawarich.Test.NativeQueryBudget.record(meta, pid)
 
   defp queries(fun) do
     id = "tag-form-queries-#{System.unique_integer([:positive])}"
@@ -287,16 +288,22 @@ defmodule DawarichWeb.TagsLiveFormTest do
     end
   end
 
-  test "opening the forms reads the database no more often than the Rails-era pages", %{
+  test "tag form business queries retain their budget with explicit subscription admission", %{
     user: user
   } do
     tag!(user, 84014)
 
     for {path, budget} <- [{"/tags/new", 4}, {"/tags/84014/edit", 5}] do
       conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id)
-      assert queries(fn -> send(self(), {:conn, get(conn, path)}) end) <= budget, path
+      assert queries(fn -> send(self(), {:conn, get(conn, path)}) end) - 1 <= budget, path
+      static_counts = Dawarich.Test.NativeQueryBudget.counts()
       assert_received {:conn, conn}
-      assert queries(fn -> {:ok, _view, _html} = live(conn) end) <= budget, path
+      connected = queries(fn -> {:ok, _view, _html} = live(conn) end)
+      connected_counts = Dawarich.Test.NativeQueryBudget.counts()
+
+      assert connected - 2 <= budget, path
+      assert connected_counts["users"] == static_counts["users"] + 1
+      assert Map.delete(connected_counts, "users") == Map.delete(static_counts, "users")
     end
   end
 end

@@ -8,7 +8,6 @@ defmodule DawarichWeb.NotificationsLiveTest do
 
   alias Dawarich.Notifications
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.RailsCsrf
 
   @endpoint DawarichWeb.Endpoint
   @layout_headers "test/fixtures/layout/self_hosted_dark_en.json"
@@ -251,63 +250,54 @@ defmodule DawarichWeb.NotificationsLiveTest do
       assert rows(view) == 2
     end
 
-    test "mark all and delete all show Rails' notices and patch to /notifications", %{user: user} do
+    test "native mark-all and confirmed delete-all preserve notices and paging", %{user: user} do
       {:ok, view, _html} = live_as(user)
-      assert has_element?(view, "a", "Mark all as read")
+      assert has_element?(view, "button", "Mark all as read")
       render_patch(view, "/notifications?page=2")
 
       render_click(view, "mark_all_as_read", %{})
       assert_patch(view, "/notifications")
       assert render(view) =~ "All notifications marked as read."
-      refute has_element?(view, "a", "Mark all as read")
+      refute has_element?(view, "button", "Mark all as read")
 
       render_patch(view, "/notifications?page=2")
-      view |> element("a", "Delete all") |> render_click()
+      render_click(view, "choose_notifications_delete_all", %{})
+      render_click(view, "confirm_notifications_delete_all", %{})
       assert_patch(view, "/notifications")
       assert render(view) =~ "All notifications where successfully destroyed."
       assert rows(view) == 0
-      refute has_element?(view, "a", "Delete all")
+      refute has_element?(view, "button", "Delete all")
     end
 
-    test "without a socket every action posts to the Rails endpoint with a token Rails accepts",
-         %{user: user} do
-      session = RailsUser.session(user.id)
-
-      conn =
-        Phoenix.ConnTest.build_conn()
-        |> Phoenix.ConnTest.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
-
+    test "native controls require a socket confirmation and preserve ordinary detail reads", %{
+      user: user
+    } do
+      conn = RailsUser.signed_in(user.id)
       index = conn |> get("/notifications") |> html_response(200) |> LazyHTML.from_document()
 
-      for path <- ~w(/notifications/mark_as_read /notifications/destroy_all) do
-        assert index
-               |> LazyHTML.query(~s(a[href="#{path}"][data-turbo-method="post"]))
-               |> Enum.count() == 1
-      end
-
       assert index
-             |> LazyHTML.query(~s(meta[name="csrf-param"][content="authenticity_token"]))
+             |> LazyHTML.query(
+               "[data-testid=native-notifications-root] a[href='/notifications/41004']"
+             )
              |> Enum.count() == 1
 
-      [token] =
-        index |> LazyHTML.query(~s(meta[name="csrf-token"])) |> LazyHTML.attribute("content")
+      assert index
+             |> LazyHTML.query(
+               "[data-testid=native-notifications-root] button[phx-click=mark_all_as_read]"
+             )
+             |> Enum.count() == 1
 
-      assert RailsCsrf.valid?(session, token)
+      assert index
+             |> LazyHTML.query("[data-testid=native-notifications-root] [data-turbo-method]")
+             |> Enum.count() == 0
 
-      show = conn |> get("/notifications/41022") |> html_response(200) |> LazyHTML.from_document()
-
-      form =
-        LazyHTML.query(show, ~s(form.button_to[method="post"][action="/notifications/41022"]))
-
-      assert form |> LazyHTML.query(~s(input[name="_method"][value="delete"])) |> Enum.count() ==
-               1
-
-      [token] =
-        form
-        |> LazyHTML.query(~s(input[name="authenticity_token"]))
-        |> LazyHTML.attribute("value")
-
-      assert RailsCsrf.valid?(session, token)
+      {:ok, view, _} = live_as(user, "/notifications/41022")
+      render_click(view, "confirm_notification_delete", %{"id" => "41022"})
+      assert Notifications.get(user.id, 41022)
+      render_click(view, "choose_notification_delete", %{})
+      render_click(view, "cancel_notification_delete", %{})
+      assert Notifications.get(user.id, 41022)
+      assert has_element?(view, "a[href='/notifications']", "Back to notifications")
     end
 
     test "time ago is read against the clock of the latest page view, not the first mount", %{
@@ -338,15 +328,15 @@ defmodule DawarichWeb.NotificationsLiveTest do
       lock(user)
 
       assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
-               index |> element("a", "Delete all") |> render_click()
+               render_click(index, "choose_notifications_delete_all", %{})
 
       assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
-               show |> form(~s(form.button_to[action="/notifications/41022"])) |> render_submit()
+               render_click(show, "choose_notification_delete", %{})
 
       assert Notifications.page(user.id, 1).notifications |> length() == 20
     end
 
-    test "a notification deleted before the socket connects reloads into the 404 without a crash",
+    test "a notification deleted before connect refuses to the safe native list",
          %{user: user} do
       conn =
         get(
@@ -356,29 +346,28 @@ defmodule DawarichWeb.NotificationsLiveTest do
 
       Notifications.delete(user.id, 41_022)
 
-      assert {:error, {:redirect, %{to: "/notifications/41022"}}} = live(conn)
+      assert {:error, {:redirect, %{to: "/notifications"}}} = live(conn)
     end
 
-    test "a not-found redirect URI-encodes an id needing escaping", %{user: user} do
-      conn =
-        get(
-          RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id),
-          "/notifications/41022%20"
-        )
+    test "a malformed notification id returns 404 before any native read effect", %{user: user} do
+      before = Notifications.get(user.id, 41022).read_at
 
-      Notifications.delete(user.id, 41_022)
+      assert_error_sent(404, fn ->
+        get(RailsUser.signed_in(user.id), "/notifications/41022%20")
+      end)
 
-      assert {:error, {:redirect, %{to: "/notifications/41022%20"}}} = live(conn)
+      assert Notifications.get(user.id, 41022).read_at == before
     end
 
-    test "destroying a notification removed meanwhile answers the 404, not the notice", %{
+    test "confirming a removed notification clears its detail and refuses to the safe list", %{
       user: user
     } do
       {:ok, view, _html} = live_as(user, "/notifications/41022")
+      render_click(view, "choose_notification_delete", %{})
       Notifications.delete(user.id, 41_022)
 
-      assert {:error, {:redirect, %{to: "/notifications/41022"} = redirect}} =
-               view |> form(~s(form.button_to[action="/notifications/41022"])) |> render_submit()
+      assert {:error, {:redirect, %{to: "/notifications"} = redirect}} =
+               render_click(view, "confirm_notification_delete", %{})
 
       assert redirect_flash(redirect) == %{}
     end
@@ -395,11 +384,15 @@ defmodule DawarichWeb.NotificationsLiveTest do
       assert Dawarich.Notifications.get(user.id, 41_022).read_at
     end
 
-    test "destroying redirects to the list with Rails' notice", %{user: user} do
+    test "confirmed native deletion redirects to the list with the preserved notice", %{
+      user: user
+    } do
       {:ok, view, _html} = live_as(user, "/notifications/41022")
 
+      render_click(view, "choose_notification_delete", %{})
+
       assert {:error, {:redirect, %{to: "/notifications"} = redirect}} =
-               view |> form(~s(form.button_to[action="/notifications/41022"])) |> render_submit()
+               render_click(view, "confirm_notification_delete", %{})
 
       assert redirect_flash(redirect) == %{"notice" => "Notification was successfully destroyed."}
       assert Dawarich.Notifications.get(user.id, 41_022) == nil
@@ -468,7 +461,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
       :ok
     end
 
-    test "shows the unread badge, refreshes it on each tick and after mark all", %{user: user} do
+    test "the unread badge follows owner invalidation and mark-all without ticks", %{user: user} do
       {:ok, view, _html} = live_as(user)
       assert has_element?(view, "#notifications-badge", "2")
       now = NaiveDateTime.utc_now()
@@ -484,10 +477,10 @@ defmodule DawarichWeb.NotificationsLiveTest do
         }
       ])
 
-      send(view.pid, :navbar_refresh)
+      Dawarich.Notifications.Events.broadcast(user.id)
       assert has_element?(view, "#notifications-badge", "3")
       assert has_element?(view, "#notifications-list a", "Nav 3")
-      view |> element("a", "Mark all as read") |> render_click()
+      view |> element("button", "Mark all as read") |> render_click()
       assert has_element?(view, "#notifications-badge.hidden")
     end
 

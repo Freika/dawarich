@@ -288,10 +288,10 @@ defmodule DawarichWeb.AccountLiveTest do
 
     {_, connected} = queries(fn -> {:ok, _view, _html} = live(conn) end)
 
-    assert Enum.sum(Map.values(static)) <= 4
-    assert static["users"] == 2
-    assert connected["users"] == 3
+    assert Enum.sum(Map.values(static)) - 1 <= 4
+    assert static["users"] == 3
+    assert connected["users"] == 4
     assert Map.delete(static, "users") == Map.delete(connected, "users")
-    assert Enum.sum(Map.values(connected)) - 1 <= 4
+    assert Enum.sum(Map.values(connected)) - 2 <= 4
   end
 end
