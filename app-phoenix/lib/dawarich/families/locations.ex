@@ -24,7 +24,7 @@ defmodule Dawarich.Families.Locations do
 
         own = Sharing.enabled?(settings, now)
 
-        RailsTime.with_zone(user.timezone, fn ->
+        Dawarich.Families.Snapshot.with_zone(user.timezone, fn ->
           {:ok, 200,
            {:object,
             [

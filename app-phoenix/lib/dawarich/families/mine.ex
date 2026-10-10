@@ -1,7 +1,7 @@
 defmodule Dawarich.Families.Mine do
   @moduledoc false
 
-  alias Dawarich.{RailsTime, Repo}
+  alias Dawarich.Repo
   alias Dawarich.Families.{Clock, Locations, Sharing}
 
   def read(user, now, opts \\ []) do
@@ -14,7 +14,7 @@ defmodule Dawarich.Families.Mine do
         {:ok, 404, Locations.not_in_family()}
 
       [settings, family_id] ->
-        RailsTime.with_zone(user.timezone, fn ->
+        Dawarich.Families.Snapshot.with_zone(user.timezone, fn ->
           {:ok, 200, payload(user.id, settings, family_id, now)}
         end)
     end

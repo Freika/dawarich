@@ -63,6 +63,33 @@ defmodule Dawarich.FamiliesSnapshotRaceTest do
     end)
   end
 
+  test "guarded family SQL refusal preserves the error and surrounding ingestion transaction",
+       c do
+    Repo.transaction(fn ->
+      assert_raise Postgrex.Error, fn ->
+        Families.Snapshot.read(c.scope.user, [now: @now], fn ->
+          Repo.query!("SELECT synthetic_missing_family_column FROM users", [], log: false)
+        end)
+      end
+
+      assert Repo.query!("SELECT 1", [], log: false).rows == [[1]]
+    end)
+  end
+
+  test "guarded family zone refusal keeps the enclosing transaction usable", c do
+    Repo.transaction(fn ->
+      assert_raise ArgumentError, "synthetic unsupported family zone input", fn ->
+        Families.Snapshot.read(c.scope.user, [now: @now], fn ->
+          Families.Snapshot.with_zone("Europe/Berlin", fn ->
+            raise ArgumentError, "synthetic unsupported family zone input"
+          end)
+        end)
+      end
+
+      assert Repo.query!("SELECT 1", [], log: false).rows == [[1]]
+    end)
+  end
+
   test "OwnTracks friends preserve API admission for a password-locked actor and recheck its identity",
        c do
     Repo.query!("UPDATE users SET locked_at=now() WHERE id=$1", [c.scope.user.id], log: false)

@@ -7,6 +7,19 @@ defmodule Dawarich.Families.Snapshot do
     with :ok <- zone_ready(user, Keyword.get(opts, :repo, Repo)), do: snapshot(user, opts, reader)
   end
 
+  def with_zone(setting, reader) do
+    case Dawarich.RailsTime.with_zone(setting, fn ->
+           try do
+             reader.()
+           rescue
+             error -> {:snapshot_exception, error, __STACKTRACE__}
+           end
+         end) do
+      {:snapshot_exception, error, stack} -> reraise error, stack
+      result -> result
+    end
+  end
+
   defp zone_ready(user, repo) do
     setting = Map.get(user, :timezone) || System.get_env("TIME_ZONE", "UTC")
     zone = if is_binary(setting), do: Dawarich.TimeZoneName.to_iana(setting), else: ""
@@ -36,6 +49,8 @@ defmodule Dawarich.Families.Snapshot do
     repo = Keyword.get(opts, :repo, Repo)
 
     case repo.transaction(fn ->
+           repo.query!("SAVEPOINT family_snapshot_read", [], log: false)
+
            try do
              version = epoch(repo, user.id, clock.(), hosted)
              result = reader.()
@@ -46,7 +61,10 @@ defmodule Dawarich.Families.Snapshot do
                else: {:error, :grant_changed}
            rescue
              error ->
+               repo.query!("ROLLBACK TO SAVEPOINT family_snapshot_read", [], log: false)
                {:snapshot_exception, error, __STACKTRACE__}
+           after
+             repo.query!("RELEASE SAVEPOINT family_snapshot_read", [], log: false)
            end
          end) do
       {:ok, {:snapshot_exception, error, stack}} -> reraise error, stack
