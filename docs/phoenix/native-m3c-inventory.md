@@ -45,7 +45,9 @@ O1 retains pre-router admission and adds presentation-only controller/HEEx rende
 
 ## Results and test successors
 
-Pending A1–X3. FULL GATE X5 is reserved for the controller. A1 renderer and A2 document-enhancement tests have initial RED evidence; they are not implemented yet.
+A1 adds `AuthPageController.document/4` and dedicated HEEx root/app templates. Its contract takes an admitted/prepared connection, safe pre-rendered content, status and explicit chrome/token/title options. It does not prepare layout/session again or assign content to the connection. Authenticated callers provide preloaded navbar data. Feature wiring and working HTTP controls remain subsequent tasks.
+
+Named tests: “HTTP auth document preserves response status headers cookie and one-request flash” and “HTTP auth document has no LiveView root or legacy runtime”; anonymous and authenticated shell coverage. RED: `impl-m3c-a1-red`, 0/2 passed, exit 2 (missing renderer). GREEN: 2 passed, exit 0. Double-layout mutation loses inherited flash: 1/2 passed, exit 2. LiveView entry mutation: 1/2 passed, exit 2. Restored direct-caller batch: 39 passed, seed 404, warnings-as-errors, exit 0; expanded/format-final renderer batch: 2 passed, exit 0. Explicit-file formatting exited 0. A2 tests are RED; A2–X3 and controller FULL GATE X5 remain pending.
 
 ## Rails bugs fixed (changelog)
 

@@ -1,0 +1,22 @@
+<div class="container mx-auto flex flex-col flex-1">
+  <.navbar
+    current_user={@current_user}
+    data={navbar_data(assigns)}
+    locale={@locale}
+    request_path={@request_path}
+    base_url={@base_url}
+    self_hosted={@self_hosted}
+    rails_csrf_token={@rails_csrf_token}
+    now={@now}
+    native
+  />
+  <.flash locale={@locale} flash={@flash} flash_messages={@flash_messages} native />
+  <main class="w-full min-w-0 px-4 sm:px-5 flex-1">
+    <div class="flex w-full min-w-0 gap-5">{@inner_content}</div>
+  </main>
+  <div class="px-4 sm:px-5 mt-auto">
+    {if @self_hosted,
+      do: footer(%{locale: @locale, now: @now}),
+      else: legal_footer(%{locale: @locale, now: @now})}
+  </div>
+</div>
