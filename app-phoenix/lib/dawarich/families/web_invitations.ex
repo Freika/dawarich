@@ -62,7 +62,7 @@ defmodule Dawarich.Families.WebInvitations do
                 repo.rollback(:already_in_family)
 
               true ->
-                join(repo, user, id, family, ctx, opts)
+                join(repo, user, id, family, expires, ctx, opts)
             end
         end
       end)
@@ -208,7 +208,7 @@ defmodule Dawarich.Families.WebInvitations do
     )
   end
 
-  defp join(repo, user, invitation, family, ctx, opts) do
+  defp join(repo, user, invitation, family, expires, ctx, opts) do
     [[creator, name, access]] =
       repo.query!(
         "SELECT creator_id,name,access_until FROM families WHERE id=$1 FOR UPDATE",
@@ -225,6 +225,9 @@ defmodule Dawarich.Families.WebInvitations do
     access = WebCreate.refresh_access(repo, family, access, plan, until, ctx.self_hosted)
 
     cond do
+      NaiveDateTime.compare(expires, DateTime.to_naive(ctx.now)) == :lt ->
+        repo.rollback(:invitation_expired)
+
       not ctx.self_hosted and not Entitlements.inherited?(access, plan, until, ctx.now) ->
         {:error, :family_lapsed}
 

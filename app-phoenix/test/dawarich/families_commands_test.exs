@@ -435,6 +435,7 @@ defmodule Dawarich.FamiliesCommandsTest do
   for {path, probe} <- [
         http_request: :family_row_probe,
         registration_invitation: :family_row_probe,
+        registration_invitation_join: :family_join_probe,
         registration_access: :family_join_probe
       ] do
     @path path
@@ -460,7 +461,7 @@ defmodule Dawarich.FamiliesCommandsTest do
               )
             end
 
-          :registration_invitation ->
+          path when path in [:registration_invitation, :registration_invitation_join] ->
             token = invitation!("invitee@example.invalid")
 
             ScratchRepo.query!(
@@ -501,6 +502,7 @@ defmodule Dawarich.FamiliesCommandsTest do
         case @path do
           :http_request -> assert {:ok, 422, _} = result
           :registration_invitation -> assert result == {:error, :invitation_expired}
+          :registration_invitation_join -> assert result == {:error, :invitation_expired}
           :registration_access -> assert result == {:error, :family_lapsed}
         end
 
