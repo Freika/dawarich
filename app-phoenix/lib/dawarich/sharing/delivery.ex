@@ -6,6 +6,13 @@ defmodule Dawarich.Sharing.Delivery do
 
   def admit(target, now, opts \\ []), do: admission(target, now, opts)
 
+  def now(opts) do
+    case option(opts, :clock, nil) do
+      clock when is_function(clock, 0) -> clock.()
+      _ -> option(opts, :now, nil) || DateTime.utc_now()
+    end
+  end
+
   def deliver(target, admitted, value, opts) do
     option(opts, :after_read, fn -> :ok end).()
 
@@ -17,9 +24,25 @@ defmodule Dawarich.Sharing.Delivery do
   end
 
   def resource_snapshot({:ok, %{link: link, kind: kind}}),
-    do: {link, kind, fingerprint(link.user_id)}
+    do: signature({link, kind, fingerprint(link.user_id)})
 
   def resource_snapshot(_), do: nil
+
+  defp admission({:link, id, allowed}, now, _opts) do
+    with link when not is_nil(link) <- Dawarich.SharedLinks.active(id, now),
+         %Accounts.User{} = owner <- Accounts.public_owner(link.user_id),
+         true <- allowed.(link, now) do
+      signature(
+        {link, Map.take(owner, [:id, :settings, :plan, :active_until]), fingerprint(link.user_id)}
+      )
+    else
+      _ -> nil
+    end
+  end
+
+  defp admission({:policy, allowed}, now, _opts) do
+    if allowed.(now) == :ok, do: :ok
+  end
 
   defp admission({:achievement, repo, uuid}, _now, _opts) do
     case repo.query!(
@@ -37,15 +60,18 @@ defmodule Dawarich.Sharing.Delivery do
     table = if kind == :digest, do: "digests", else: "stats"
 
     with {:ok, value} <- Ecto.UUID.dump(uuid),
-         [[owner_id, settings]] <-
+         [[id, owner_id, year, month, settings, revision]] <-
            Repo.query!(
-             "SELECT user_id, sharing_settings FROM #{table} WHERE sharing_uuid=$1 LIMIT 1",
+             "SELECT id, user_id, year, month, sharing_settings, updated_at FROM #{table} WHERE sharing_uuid=$1 LIMIT 1",
              [value],
              log: false
            ).rows,
          true <- SharingExpiry.public?(settings, now, zone),
          %Accounts.User{} = owner <- Accounts.public_owner(owner_id) do
-      {owner_id, settings, owner}
+      signature(
+        {id, owner_id, year, month, settings, revision,
+         Map.take(owner, [:id, :settings, :plan, :active_until])}
+      )
     else
       _ -> nil
     end
@@ -60,6 +86,8 @@ defmodule Dawarich.Sharing.Delivery do
       |> Enum.sort()
       |> :erlang.term_to_binary()
       |> then(&:crypto.hash(:sha256, &1))
+
+  defp signature(value), do: value |> :erlang.term_to_binary() |> then(&:crypto.hash(:sha256, &1))
 
   defp option(opts, key, default) when is_map(opts), do: Map.get(opts, key, default)
   defp option(opts, key, default), do: Keyword.get(opts, key, default)

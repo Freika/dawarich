@@ -5,7 +5,7 @@ defmodule Dawarich.Sharing.Reports do
   alias Dawarich.Sharing.Delivery
 
   def load(kind, uuid, opts) when kind in [:digest, :month] do
-    now = Keyword.get(opts, :now, DateTime.utc_now())
+    now = Delivery.now(opts)
     zone = Keyword.get(opts, :viewer_zone, Dawarich.UserTimeZone.name(%{"timezone" => ""}))
 
     hosted =

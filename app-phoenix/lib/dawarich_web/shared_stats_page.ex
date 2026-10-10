@@ -17,7 +17,7 @@ defmodule DawarichWeb.SharedStatsPage do
   def init(kind), do: kind
 
   def call(conn, kind) do
-    now = conn.assigns.now
+    now = Delivery.now(clock: conn.private[:dawarich_clock])
     viewer = conn.assigns.current_user
     zone = Dawarich.RailsTimeZone.name(if(viewer, do: viewer.settings, else: %{"timezone" => ""}))
 
@@ -115,7 +115,10 @@ defmodule DawarichWeb.SharedStatsPage do
     html =
       DawarichWeb.PageEnvelope.document(conn, assigns, content) |> Phoenix.HTML.Safe.to_iodata()
 
-    case Delivery.deliver(target, admitted, html, clock: conn.private[:dawarich_clock]) do
+    case Delivery.deliver(target, admitted, html,
+           clock: conn.private[:dawarich_clock],
+           after_read: conn.private[:dawarich_before_delivery] || fn -> :ok end
+         ) do
       {:ok, html} ->
         conn
         |> put_resp_content_type("text/html")

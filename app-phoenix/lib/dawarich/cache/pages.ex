@@ -4,6 +4,7 @@ defmodule Dawarich.Cache.Pages do
   alias Dawarich.Accounts.DataAccess
   alias Dawarich.Analytics.Period
   alias Dawarich.Cache.PagesCodec
+  alias Dawarich.Sharing.Delivery
 
   def fetch(subject, resource, params, read, opts \\ []) do
     with {:ok, scope, signature} <- admission(subject, resource, params, opts),
@@ -115,8 +116,10 @@ defmodule Dawarich.Cache.Pages do
       {:public, capability} when is_binary(capability) ->
         case opts[:authorize] do
           fun when is_function(fun, 2) ->
-            case fun.(scope, now(opts)) do
-              :ok -> :ok
+            case Delivery.deliver({:policy, &fun.(scope, &1)}, :ok, :ok,
+                   clock: fn -> now(opts) end
+                 ) do
+              {:ok, :ok} -> :ok
               _ -> {:error, :unauthorized}
             end
 

@@ -8,6 +8,7 @@ defmodule DawarichWeb.Api.SharedController do
   alias DawarichWeb.Api.{Body, Respond}
   alias DawarichWeb.SharedLinkCookie
   alias Dawarich.SharedLinks.FamilyAudience
+  alias Dawarich.Sharing.Delivery
 
   def photos_owned?(conn, %{"id" => id}) do
     if Dawarich.Standalone.enabled?() or not SharedLinks.api_uuid?(id) do
@@ -50,6 +51,19 @@ defmodule DawarichWeb.Api.SharedController do
             error(conn, 401, "unauthorized")
 
           true ->
+            allowed = fn current, clock ->
+              FamilyAudience.accessible?(
+                current,
+                DawarichWeb.RailsAuth.session_user(conn, now: clock),
+                clock
+              ) and
+                (FamilyAudience.family_only?(current) or
+                   SharedLinkCookie.unlocked?(conn, current, clock))
+            end
+
+            target = {:link, link.id, allowed}
+            admitted = Delivery.admit(target, now)
+            conn = put_private(conn, :public_delivery, {target, admitted})
             dispatch(assign(conn, :family_share, FamilyAudience.family_only?(link)), action, link)
         end
       end
@@ -136,15 +150,25 @@ defmodule DawarichWeb.Api.SharedController do
 
   defp dispatch(conn, _action, _link), do: Body.replay(conn, "shared API action pending")
 
-  defp result(conn, {:image, body}, opts),
+  defp result(conn, result, opts) when elem(result, 0) in [:ok, :image, :head] do
+    {target, admitted} = conn.private.public_delivery
+    conn = DawarichWeb.PublicDelivery.api(conn, target, admitted, "not_found")
+    send_result(conn, result, opts)
+  end
+
+  defp result(conn, result, opts), do: send_result(conn, result, opts)
+
+  defp send_result(conn, {:image, body}, opts),
     do: Respond.data(conn, body, "image/jpeg", private_opts(conn, opts))
 
-  defp result(conn, {:ok, term}, opts),
+  defp send_result(conn, {:ok, term}, opts),
     do: Respond.json(conn, 200, term, private_opts(conn, opts))
 
-  defp result(conn, {:error, status, message}, _opts), do: error(conn, status, message)
-  defp result(conn, {:replay, reason}, _opts), do: Body.replay(conn, reason)
-  defp result(conn, {:head, status}, _opts), do: Respond.head(conn, status, "application/json")
+  defp send_result(conn, {:error, status, message}, _opts), do: error(conn, status, message)
+  defp send_result(conn, {:replay, reason}, _opts), do: Body.replay(conn, reason)
+
+  defp send_result(conn, {:head, status}, _opts),
+    do: Respond.head(conn, status, "application/json")
 
   defp private_opts(%{assigns: %{family_share: true}}, opts),
     do: Keyword.put(opts, :cache_control, "private, no-store")

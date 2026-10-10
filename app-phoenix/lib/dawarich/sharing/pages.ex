@@ -16,13 +16,20 @@ defmodule Dawarich.Sharing.Pages do
   end
 
   def resource(grant, params \\ %{}, opts \\ []) do
-    now = Keyword.get(opts, :now, DateTime.utc_now())
+    now = Delivery.now(opts)
 
     with :ok <- ResourceWindow.params(params),
          {:ok, %{link: link, kind: kind}} = admission <-
            Dependencies.public_admit(grant, now, opts) do
       if kind == :missing_resource do
-        {:ok, %{kind: kind, link: public_link(link), resource: nil}}
+        admitted = Delivery.resource_snapshot(admission)
+
+        Delivery.deliver(
+          {:resource, grant},
+          admitted,
+          %{kind: kind, link: public_link(link), resource: nil},
+          opts
+        )
       else
         admitted = Delivery.resource_snapshot(admission)
 
