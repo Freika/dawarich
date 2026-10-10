@@ -1,6 +1,6 @@
 import { ArrayBufferTarget, Muxer } from "mp4-muxer"
 import { pickSupportedCodec } from "./codec.js"
-import { waitForEncoder } from "./wait.js"
+import { ENCODER_TIMEOUT_MS, encoderTimedOut, waitForEncoder } from "./wait.js"
 
 const KEYFRAME_INTERVAL_SEC = 2
 const MAX_ENCODE_QUEUE = 8
@@ -87,9 +87,29 @@ export async function createMp4Encoder({
         isConfigSupported: (config) =>
           runtime.VideoEncoder.isConfigSupported(config),
         probeConfig: (config) =>
-          probeVideoEncoderConfig(config, runtime, waits),
+          probeVideoEncoderConfig(config, runtime, options),
       }))
-  const picked = await pickCodec({ width, height, fps, ...waits })
+  const negotiation = new AbortController()
+  const forward = () => negotiation.abort(renderCancelled())
+  signal?.addEventListener("abort", forward, { once: true })
+  const deadline = (timers ?? globalThis).setTimeout(
+    () => negotiation.abort(encoderTimedOut()),
+    timeoutMs ?? ENCODER_TIMEOUT_MS,
+  )
+  let picked
+  try {
+    picked = await pickCodec({
+      width,
+      height,
+      fps,
+      signal: negotiation.signal,
+      timeoutMs,
+      timers,
+    })
+  } finally {
+    ;(timers ?? globalThis).clearTimeout(deadline)
+    signal?.removeEventListener("abort", forward)
+  }
   if (!picked) return null
   if (signal?.aborted) throw renderCancelled()
 

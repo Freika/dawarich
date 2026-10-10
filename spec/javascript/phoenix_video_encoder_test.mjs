@@ -532,6 +532,9 @@ function orderedClock() {
   let id = 0
   return {
     pending,
+    get now() {
+      return now
+    },
     setTimeout(fn, ms) {
       pending.set(++id, { at: now + ms, fn })
       return id
@@ -622,6 +625,7 @@ test(
         () => ({ settled: "resolved" }),
         (error) => ({
           settled: error.name,
+          at: timers.now,
           closed: [...closed],
           pending: timers.pending.size,
           listeners: listening.size,
@@ -631,11 +635,13 @@ test(
       if (ending === "abort") {
         await timers.advanceTo(25_000)
         controller.abort()
+        await turn()
       }
       await timers.advanceTo(30_000)
       await timers.advanceTo(60_000)
       assert.deepEqual(await outcome, {
         settled: ending === "abort" ? "AbortError" : "TimeoutError",
+        at: ending === "abort" ? 25_000 : 30_000,
         closed: ["frame", "encoder"],
         pending: 0,
         listeners: 0,
