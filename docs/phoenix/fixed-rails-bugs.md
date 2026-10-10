@@ -1413,3 +1413,13 @@ An account archive can restore a completed export whose URL names an unrelated p
 - Phoenix: `app-phoenix/lib/dawarich/exports/legacy_purge_worker.ex:18`; `app-phoenix/lib/dawarich/exports/delete.ex:69`; private `export_legacy_artifacts` migration.
 - Test: “restored export URLs never authorize deletion of unrelated public files” in `app-phoenix/test/dawarich/exports/legacy_purge_test.exs`; restored error page and another owner's export-like path, mismatched provenance, old path-only job. Existing trusted artifact/reference/symlink cases remain.
 - Ledger: ED-NATIVE-M4-RESTORED-EXPORT-PURGE; no DRB. Rails production remains unchanged.
+
+
+### FRB-NATIVE-M4-DELETED-UPLOAD-RESURRECTION — Deleted imports/accounts can leave replayed remote uploads
+
+Deleting an imported direct upload or its account purges the current remote object, but a still-valid or already in-flight PUT can recreate it after deletion. Rails has no retained native-upload identity or recurring deletion debt for this path. Phoenix transfers a claimed reservation's trusted creation-time key/service and target deadline into durable cleanup debt before removing the blob or owner. Cleanup waits past signing expiry, retains remote identity for bounded recurring late-arrival removal, and excludes shared attachments. Shared purge I/O runs outside its database transactions.
+
+- Rails: `app/models/import.rb:197`; `app/services/users/destroy.rb:17-19,139-142`. Source-backed deletion/lack-of-debt observation; no Rails/S3 server reproduction was executed.
+- Phoenix: `app-phoenix/lib/dawarich/storage/native_purge.ex:63`; `app-phoenix/lib/dawarich/uploads/deletion_debt.ex:4`; `app-phoenix/lib/dawarich/exports/purge_worker.ex:35`.
+- Tests: “claimed remote import deletion retains debt for replay and in-flight arrivals” and “claimed remote account destruction retains debt after owner removal”, `claimed_upload_cleanup_test.exs`, through actual Imports.delete/DestroyLease/DestroyService and Users.DestroyWorker. Deterministic simulated remote object arrivals; local verified-read adapter uses the same stored service identity.
+- ED-NATIVE-M4-DELETED-UPLOAD-DEBT; no DRB. Rails source remains unchanged.

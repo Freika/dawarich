@@ -141,3 +141,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Name the native extraction dialog from its localized heading for accessible dialog navigation. [FRB-NATIVE-M4-EXTRACTION-DIALOG-NAME](fixed-rails-bugs.md#frb-native-m4-extraction-dialog-name--extraction-dialog-has-no-accessible-name)
 
 - Prevent restored export URLs from deleting unrelated public files. [FRB-NATIVE-M4-RESTORED-EXPORT-PURGE](fixed-rails-bugs.md#frb-native-m4-restored-export-purge--restored-urls-authorize-unrelated-file-deletion)
+
+- Remove remote direct uploads that arrive after their import or account was deleted, using retained durable cleanup identities. [FRB-NATIVE-M4-DELETED-UPLOAD-RESURRECTION](fixed-rails-bugs.md#frb-native-m4-deleted-upload-resurrection--deleted-importsaccounts-can-leave-replayed-remote-uploads)

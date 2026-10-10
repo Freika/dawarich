@@ -160,3 +160,8 @@ Account ZIP `UserData.start_upload` holds effective native import producer owner
 ## A/B review: stalled import deadlines (2026-10-10)
 
 Connected import index/detail snapshots schedule one versioned nearest future stall boundary: one hour after deletion updated_at or six hours after supported pending/running extraction started_at. Matching delivery reloads through the scoped domain API with current original-identity admission and current time; obsolete tokens are inert. Navigation, invalidation and terminal transitions cancel/recompute the timer; refusal clears private data and cancels it. Disconnected rendering schedules nothing. Existing navbar and imports_refresh polling remain disabled. Extraction controls live only on detail, so index deadlines cover displayed deletion states. Deterministic per-view injected clocks cross both cutoffs without database/domain wakes and prove cancellation, stale-token isolation and revoked-session clearing.
+
+
+## A/B review round 2: claimed object deletion debt
+
+`NativePurge.mark!` transfers matching claimed reservation identities into cancelled cleanup debt before attachment purge jobs or independent backend purge handbacks commit. The reservation is independent of the deleted blob/user and retains the target deadline. Shared attachments never authorize debt transfer. The shared purge worker fences/removes native blob rows transactionally, deletes objects outside its DB transactions and retains replayable job object identities on failure; legacy generated blobs retain their existing retry rows until successful deletion. Cleanup's local publication and remote late-arrival rules remain unchanged. Storage lifecycle inventory is in the approved milestone plan.

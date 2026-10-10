@@ -58,6 +58,8 @@ defmodule Dawarich.Storage.NativePurge do
 
   def mark!(repo, objects) do
     for object <- objects do
+      Dawarich.Uploads.DeletionDebt.transfer!(repo, object)
+
       [[metadata]] =
         repo.query!("SELECT metadata FROM active_storage_blobs WHERE id=$1", [object["blob_id"]],
           log: false
