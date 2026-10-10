@@ -8,7 +8,8 @@ RSpec.describe 'Notification recipient locale' do
   it 'localizes a failure notification raised inside a per-user job' do
     allow(Stats::CalculateMonth).to receive(:new).and_raise(StandardError, 'boom')
 
-    Stats::CalculatingJob.perform_now(german_user.id, 2026, 3)
+    expect { Stats::CalculatingJob.perform_now(german_user.id, 2026, 3) }
+      .to raise_error(StandardError, 'boom')
 
     expect(german_user.notifications.last.title).to eq('Statistikupdate fehlgeschlagen')
   end
@@ -46,7 +47,8 @@ RSpec.describe 'Notification recipient locale' do
   it 'leaves the ambient locale untouched after notifying' do
     allow(Stats::CalculateMonth).to receive(:new).and_raise(StandardError, 'boom')
 
-    Stats::CalculatingJob.perform_now(german_user.id, 2026, 3)
+    expect { Stats::CalculatingJob.perform_now(german_user.id, 2026, 3) }
+      .to raise_error(StandardError, 'boom')
 
     expect(I18n.locale).to eq(:en)
   end
