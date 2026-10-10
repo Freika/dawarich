@@ -16,8 +16,11 @@ const post = (url, body) =>
 const canReveal = () =>
   !document.hidden && !document.querySelector("dialog[open]")
 
-export const AchievementUnlocks = {
-  mounted() {
+export class AchievementUnlocksLifecycle {
+  constructor(el) {
+    this.el = el
+  }
+  start() {
     this.generation = 1
     this.stopped = false
     this.current = null
@@ -46,9 +49,9 @@ export const AchievementUnlocks = {
     window.addEventListener("pageshow", this.onResume)
     this.el.addEventListener("click", this.onClick)
     this.load()
-  },
+  }
 
-  destroyed() {
+  stop() {
     this.generation += 1
     this.stopped = true
     clearTimeout(this.ackTimer)
@@ -57,7 +60,7 @@ export const AchievementUnlocks = {
     document.removeEventListener("visibilitychange", this.onResume)
     window.removeEventListener("pageshow", this.onResume)
     this.el.removeEventListener("click", this.onClick)
-  },
+  }
 
   async load() {
     if (this.stopped || this.loading) return
@@ -123,7 +126,7 @@ export const AchievementUnlocks = {
     } finally {
       if (generation === this.generation) this.loading = false
     }
-  },
+  }
 
   async nextCard() {
     if (!this.current || this.transitioning) return
@@ -144,7 +147,7 @@ export const AchievementUnlocks = {
       if (!this.current) this.restoreFocus()
     }
     this.transitioning = false
-  },
+  }
 
   async dismiss() {
     if (!this.current || this.transitioning) return
@@ -163,7 +166,7 @@ export const AchievementUnlocks = {
     } finally {
       this.transitioning = false
     }
-  },
+  }
 
   acknowledge() {
     if (this.stopped) return Promise.resolve(false)
@@ -194,7 +197,7 @@ export const AchievementUnlocks = {
         this.ackPromise = null
       })
     return this.ackPromise
-  },
+  }
 
   hide() {
     clearTimeout(this.ackTimer)
@@ -205,12 +208,12 @@ export const AchievementUnlocks = {
     this.focusAfterLoad = false
     this.saveClaim()
     this.el.replaceChildren()
-  },
+  }
 
   restoreFocus() {
     if (this.originFocus?.isConnected)
       this.originFocus.focus({ preventScroll: true })
-  },
+  }
 
   readSaved() {
     try {
@@ -218,7 +221,7 @@ export const AchievementUnlocks = {
     } catch {
       return null
     }
-  },
+  }
 
   saveClaim() {
     try {
@@ -226,5 +229,20 @@ export const AchievementUnlocks = {
         sessionStorage.setItem(this.storageKey, JSON.stringify(this.saved))
       else sessionStorage.removeItem(this.storageKey)
     } catch {}
+  }
+}
+
+export function initializeAchievementUnlocks(el) {
+  const runtime = new AchievementUnlocksLifecycle(el)
+  runtime.start()
+  return () => runtime.stop()
+}
+
+export const AchievementUnlocks = {
+  mounted() {
+    this.dispose = initializeAchievementUnlocks(this.el)
+  },
+  destroyed() {
+    this.dispose?.()
   },
 }

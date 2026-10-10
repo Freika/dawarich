@@ -15,6 +15,7 @@ defmodule DawarichWeb.NavbarEnd do
   attr :now, :any, required: true
   attr :rails_csrf_token, :string, default: nil
   attr :native, :boolean, default: false
+  attr :http, :boolean, default: false
 
   def navbar_end(assigns) do
     ~H"""
@@ -50,6 +51,7 @@ defmodule DawarichWeb.NavbarEnd do
                 now={@now}
                 rails_csrf_token={@rails_csrf_token}
                 native={@native}
+                http={@http}
               />
             </ul>
           </div>
@@ -122,6 +124,7 @@ defmodule DawarichWeb.NavbarEnd do
                     now={@now}
                     rails_csrf_token={@rails_csrf_token}
                     native={@native}
+                    http={@http}
                   />
                 </ul>
               </details>
@@ -144,6 +147,7 @@ defmodule DawarichWeb.NavbarEnd do
   attr :now, :any, required: true
   attr :rails_csrf_token, :string, default: nil
   attr :native, :boolean, default: false
+  attr :http, :boolean, default: false
 
   def account_items(assigns) do
     ~H"""
@@ -157,7 +161,20 @@ defmodule DawarichWeb.NavbarEnd do
       )}</a>
     </li>
     <li>
+      <button
+        :if={@http}
+        type="button"
+        class="relative whitespace-nowrap"
+        data-auth-open-dialog="getting_started"
+      >
+        {t(@locale, "shared.navbar.get_started", %{})}
+        <span
+          :if={@onboarding}
+          class="badge badge-secondary badge-xs absolute right-2 top-1/2 -translate-y-1/2"
+        ></span>
+      </button>
       <a
+        :if={!@http}
         onclick={!@native && "getting_started.showModal()"}
         phx-click={@native && JS.dispatch("dawarich:open-dialog", to: "#getting_started")}
         class="relative whitespace-nowrap"
@@ -169,7 +186,10 @@ defmodule DawarichWeb.NavbarEnd do
         ></span>
       </a>
     </li>
-    <li :if={@native}>
+    <li :if={@http}>
+      <DawarichWeb.AuthHttpChrome.sign_out locale={@locale} rails_csrf_token={@rails_csrf_token} />
+    </li>
+    <li :if={@native && !@http}>
       <form method="post" action="/users/sign_out" class="contents">
         <input type="hidden" name="_method" value="delete" />
         <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />

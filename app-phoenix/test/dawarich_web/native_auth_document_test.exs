@@ -21,7 +21,15 @@ defmodule DawarichWeb.NativeAuthDocumentTest do
   defp authenticated do
     conn = admitted()
     version = Dawarich.Navbar.load(nil, now: conn.assigns.now, self_hosted: true).version
-    user = %Dawarich.Accounts.User{id: 123, admin: true, status: 0, theme: "dark", plan: 0}
+
+    user = %Dawarich.Accounts.User{
+      id: 123,
+      api_key: "synthetic-chrome-key",
+      admin: true,
+      status: 0,
+      theme: "dark",
+      plan: 0
+    }
 
     navbar = %{
       version: version,

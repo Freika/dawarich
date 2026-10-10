@@ -106,6 +106,8 @@ defmodule DawarichWeb.OnboardingScreens do
   attr :current_user, :map, required: true
   attr :native, :boolean, default: false
 
+  attr :http, :boolean, default: false
+
   def track_screen(assigns) do
     ~H"""
     <div
@@ -117,7 +119,10 @@ defmodule DawarichWeb.OnboardingScreens do
         <button
           class="btn btn-ghost btn-sm btn-circle"
           data-action={!@native && "onboarding-modal#showChoice"}
-          phx-click={@native && DawarichWeb.NativeOnboarding.show("onboarding-choice-screen")}
+          phx-click={
+            @native && !@http && DawarichWeb.NativeOnboarding.show("onboarding-choice-screen")
+          }
+          data-auth-onboarding-screen={@http && "onboarding-choice-screen"}
         >
           <Icon.icon name="arrow-left" class="w-4 h-4" />
         </button>
@@ -187,8 +192,10 @@ defmodule DawarichWeb.OnboardingScreens do
               type="button"
               class="link link-primary"
               data-action={!@native && "onboarding-modal#showImport"}
+              data-auth-onboarding-screen={@http && "onboarding-import-screen"}
+              data-auth-track-event={@http && "onboarding_import_selected"}
               phx-click={
-                @native &&
+                @native && !@http &&
                   DawarichWeb.NativeOnboarding.show(
                     "onboarding-import-screen",
                     "onboarding_import_selected"

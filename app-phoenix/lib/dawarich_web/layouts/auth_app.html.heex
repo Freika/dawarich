@@ -9,8 +9,39 @@
     rails_csrf_token={@rails_csrf_token}
     now={@now}
     native
+    http
   />
-  <.flash locale={@locale} flash={@flash} flash_messages={@flash_messages} native />
+  <%= if @suggested_locale do %>
+    <div
+      class="alert alert-info rounded-none py-2 px-4 text-sm flex flex-wrap items-start gap-2 min-w-0"
+      data-auth-locale-suggestion
+      data-testid="locale-suggestion"
+      data-dismissible-key-value={"locale_suggestion_#{@suggested_locale}"}
+      lang={@suggested_locale}
+    >
+      <span class="flex-1 min-w-0">
+        {t(@suggested_locale, "shared.locale_suggestion.message", %{locale: @suggested_locale})}
+        <a
+          href={locale_path(@request_path, @query_params, @suggested_locale)}
+          lang={@suggested_locale}
+          class="link link-primary font-medium"
+        >{t(@suggested_locale, "shared.locale_suggestion.switch", %{locale: @suggested_locale})}</a>
+      </span>
+      <button
+        type="button"
+        class="btn btn-ghost btn-xs btn-circle"
+        data-auth-locale-dismiss
+        aria-label={
+          t(@suggested_locale, "shared.locale_suggestion.dismiss", %{locale: @suggested_locale})
+        }
+      >✕</button>
+    </div>
+  <% end %>
+  <DawarichWeb.AuthHttpChrome.flash
+    locale={@locale}
+    flash={@flash}
+    flash_messages={@flash_messages}
+  />
   <main class="w-full min-w-0 px-4 sm:px-5 flex-1">
     <div class="flex w-full min-w-0 gap-5">{@inner_content}</div>
   </main>
@@ -20,3 +51,26 @@
       else: legal_footer(%{locale: @locale, now: @now})}
   </div>
 </div>
+
+<%= if @current_user do %>
+  <.onboarding_modal
+    current_user={@current_user}
+    navbar={navbar_data(assigns)}
+    locale={@locale}
+    base_url={@base_url}
+    rails_csrf_token={@rails_csrf_token}
+    native
+    http
+  />
+  <div
+    id="achievement-unlocks"
+    class="ach-unlock-host"
+    aria-live="polite"
+    data-auth-achievements
+    data-user-id={@current_user.id}
+    data-next-url="/achievements/unlocks/next"
+    data-seen-url="/achievements/unlocks/__ID__/seen"
+    data-dismiss-url="/achievements/unlocks/dismiss"
+  >
+  </div>
+<% end %>

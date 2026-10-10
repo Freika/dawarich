@@ -56,3 +56,7 @@ A3–X3 and controller FULL GATE X5 remain pending.
 ## Rails bugs fixed (changelog)
 
 none.
+
+## A3 — HTTP chrome
+
+HTTP flash dismissal/expiry, locale dismissal, settings focus, POST/DELETE logout, confirmation cancellation and onboarding controls have explicit listeners and disposal. Changelog and achievement initializers are shared with native hooks, including stale-response cleanup. RED: `impl-m3c-a3-{node,http,widgets}-red.log`; restored GREEN: `impl-m3c-a3-restored-green.log` (25 passed, exit 0, warnings clean), `impl-m3c-a3-node-restored-green.log` (13 passed, exit 0). Mutations `flash`, `locale`, `cleanup`, `cancel`, `widget`, `stale` each exit 1; `signout`, `tabs` each exit 2. Integrated browser sizing remains D2.

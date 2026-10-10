@@ -112,6 +112,8 @@ defmodule DawarichWeb.NavbarParts do
   attr :rails_csrf_token, :string, default: nil
   attr :native, :boolean, default: false
 
+  attr :http, :boolean, default: false
+
   def version_indicator(assigns) do
     ~H"""
     <div id="version-indicator" class="relative inline-flex items-center">
@@ -151,8 +153,9 @@ defmodule DawarichWeb.NavbarParts do
         data-changelog-widget-src-value={@version.widget_src}
         data-changelog-widget-slug-value={@version.slug}
         data-changelog-widget-version-value={@version.number}
-        phx-hook="ChangelogWidget"
-        phx-update="ignore"
+        phx-hook={!@http && "ChangelogWidget"}
+        data-auth-changelog={@http}
+        phx-update={!@http && "ignore"}
       >
       </div>
       <div :if={@version.state == :prompt} class="dropdown dropdown-end dropdown-open">
@@ -185,6 +188,7 @@ defmodule DawarichWeb.NavbarParts do
                 label={t(@locale, "shared.navbar.changelog_prompt.#{label}", %{})}
                 rails_csrf_token={@rails_csrf_token}
                 native={@native}
+                http={@http}
               />
             </div>
           </div>
@@ -200,6 +204,8 @@ defmodule DawarichWeb.NavbarParts do
   attr :rails_csrf_token, :string, default: nil
   attr :native, :boolean, default: false
 
+  attr :http, :boolean, default: false
+
   def consent_form(assigns) do
     ~H"""
     <form
@@ -207,7 +213,8 @@ defmodule DawarichWeb.NavbarParts do
       class="button_to"
       method="post"
       action="/settings/changelog_consent"
-      phx-submit="changelog_consent"
+      phx-submit={!@http && "changelog_consent"}
+      data-auth-form={@http}
     >
       <input type="hidden" name="_method" value="patch" /><button class={@class} type="submit">{@label}</button><input
         :if={@rails_csrf_token}

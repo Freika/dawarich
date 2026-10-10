@@ -12,6 +12,7 @@ export function initializeAuthForms(doc = document, win = window) {
     }
   }
   const submit = (event) => {
+    if (event.defaultPrevented) return
     const form = event.currentTarget
     if (accepted.has(form)) {
       event.preventDefault()
