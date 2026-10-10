@@ -69,6 +69,7 @@ export function bindPosterControls({
     const end = find("date-end")?.value
     if (!start || !end) return
     const current = studio.state.data?.range ?? {}
+    const session = studio.session
     let failed = false
     setBusy(true)
     try {
@@ -78,8 +79,8 @@ export function bindPosterControls({
         importId: current.importId ?? null,
         timezone: current.timezone,
       })
-    } catch (error) {
-      failed = error?.name !== "AbortError"
+    } catch {
+      failed = studio.session === session
     } finally {
       setBusy(false)
       if (failed) {

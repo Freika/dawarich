@@ -7,6 +7,7 @@ import {
   toLocalDateTimeInput,
 } from "../../app-phoenix/assets/js/poster/dates.js"
 import { createPosterLifecycle } from "../../app-phoenix/assets/js/poster/lifecycle.js"
+import { createPosterSource } from "../../app-phoenix/assets/js/poster/source.js"
 import { bindStudioSwitch } from "../../app-phoenix/assets/js/poster/switch.js"
 
 process.env.TZ = "Europe/Berlin"
@@ -358,6 +359,7 @@ test("closing during a range reload keeps dates and the video switch usable afte
     studio,
     poster,
     maxDimensionPx: 8192,
+    strings: { range_failed: "Failed to load location data." },
   })
   const videos = []
   bindStudioSwitch({
@@ -375,6 +377,7 @@ test("closing during a range reload keeps dates and the video switch usable afte
   assert.equal(studio.state.rangeLoading, true)
   studio.close()
   await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(root.nodes.status.textContent, "")
 
   await studio.open({ themeKey: "noir" })
   assert.equal(studio.state.rangeLoading, false)
@@ -474,6 +477,45 @@ test("a failed range reload shows an error and restores the loaded dates", async
   assert.equal(studio.state.rangeLoading, false)
   unbind()
   studio.close()
+})
+
+test("a range reload whose source acknowledgement times out shows the error while the studio stays open", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] })
+  const flush = async () => {
+    for (let round = 0; round < 20; round++) await Promise.resolve()
+  }
+  const poster = createPosterSource({
+    snapshot: async () => ({
+      revision: 1,
+      range: range("2020-04-17T07:00:00Z", "2020-04-18T06:59:00Z"),
+      points: [],
+      geojson: { type: "FeatureCollection", features: [] },
+    }),
+    applyDates: () => new Promise(() => {}),
+  })
+  const root = controlsRoot()
+  const { studio } = lifecycle(poster)
+  await studio.open({ themeKey: "noir" })
+  const unbind = bindPosterControls({
+    root,
+    studio,
+    poster,
+    maxDimensionPx: 8192,
+    strings: { range_failed: "Failed to load location data." },
+  })
+  root.nodes["date-start"].value = "2020-04-10T00:00"
+  root.nodes["date-end"].value = "2020-04-10T23:59"
+  root.nodes.load.dispatchEvent(new Event("click"))
+  await flush()
+  assert.equal(studio.state.rangeLoading, true)
+  t.mock.timers.tick(15000)
+  await flush()
+  assert.equal(root.nodes.status.textContent, "Failed to load location data.")
+  assert.equal(root.nodes["date-start"].value, "2020-04-17T00:00")
+  assert.equal(studio.state.rangeLoading, false)
+  unbind()
+  studio.close()
+  poster.destroy()
 })
 
 test("text, font, layer and colour controls update hook-local studio state", async () => {
