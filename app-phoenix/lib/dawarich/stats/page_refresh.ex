@@ -103,7 +103,10 @@ defmodule Dawarich.Stats.PageRefresh do
       :erlang.term_to_binary(
         {1, scope.user.id, resource, period.year, period.month, period.zone, period.unit,
          scope.user.settings, rows, epoch,
-         div(DateTime.to_unix(period.now), if(resource == :counts, do: 86400, else: 3600))}
+         div(
+           DateTime.to_unix(period.now),
+           if(resource in [:counts, :summary, :index], do: 86400, else: 3600)
+         )}
       )
     )
     |> Base.encode16(case: :lower)
