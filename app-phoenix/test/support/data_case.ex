@@ -13,8 +13,14 @@ defmodule Dawarich.DataCase do
     end
   end
 
-  setup do
+  setup context do
+    setup_sandbox(context)
+  end
+
+  def setup_sandbox(context) do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    unless context[:async], do: Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    :ok
   end
 
   def rows(sql, params \\ []), do: Repo.query!(sql, params, log: false).rows
