@@ -111,6 +111,12 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("poster:" <> _ = event, payload, socket),
     do: DawarichWeb.NativePosterGallery.handle_event(event, payload, socket)
 
+  def handle_event("map:anomalies", %{"enabled" => value}, socket)
+      when value in ["true", "false"] do
+    config = Map.put(socket.assigns.map_config, "anomaliesEnabled", value == "true")
+    {:noreply, socket |> assign(:map_config, config) |> push_event("map:config", config)}
+  end
+
   def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)
 

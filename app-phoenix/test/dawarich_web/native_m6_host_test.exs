@@ -340,6 +340,52 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "#native-map")
   end
 
+  test "native panel buttons open settings and timeline without replacing the map", %{id: id} do
+    {:ok, view, _} = open(id, @second)
+    initial = config(view)["revision"]
+    view |> element("[data-testid=map-button-settings]") |> render_click()
+    assert has_element?(view, "#native-map-settings")
+    assert config(view)["revision"] == initial
+    view |> element("[data-testid=map-button-timeline]") |> render_click()
+    render_async(view, 5000)
+    assert has_element?(view, "#native-timeline-feed")
+    view |> element("#native-map-panel-close") |> render_click()
+    refute has_element?(view, "#native-timeline-feed")
+    assert has_element?(view, "#native-map")
+    assert config(view)["revision"] == initial
+  end
+
+  test "native layer form persists the exact selected layers and updates browser config", %{
+    id: id
+  } do
+    {:ok, view, _} = open(id, @second)
+    view |> element("[data-testid=map-button-layers]") |> render_click()
+
+    view
+    |> form("#native-map-layers", %{
+      "layers" => ["Tracks", "Fog of War", "Hexagons", "Scratch map"]
+    })
+    |> render_change()
+
+    assert config(view)["tracksEnabled"] == true
+    assert config(view)["pointsEnabled"] == false
+    view |> element("[data-map-layer=anomalies]") |> render_click()
+    assert config(view)["anomaliesEnabled"] == true
+    assert config(view)["fogEnabled"] == true
+    assert config(view)["hexagonsEnabled"] == true
+    assert config(view)["scratchEnabled"] == true
+    saved = Dawarich.Accounts.get(id).settings["enabled_map_layers"]
+    assert Enum.sort(saved) == Enum.sort(["Tracks", "Fog of War", "Hexagons", "Scratch map"])
+
+    render_hook(view, "settings:map_layers", %{
+      "layers" => ["Tracks", "Unknown", "Tracks"],
+      "immich_api_key" => "synthetic-forged-key"
+    })
+
+    assert Dawarich.Accounts.get(id).settings["enabled_map_layers"] == ["Tracks"]
+    refute render(view) =~ "synthetic-forged-key"
+  end
+
   defp config(view) do
     view
     |> render()

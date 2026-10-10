@@ -32,6 +32,15 @@ defmodule DawarichWeb.MapLive.SettingsCommands do
     save(socket, %{"point_dragging_enabled" => enabled, "enabled_map_layers" => layers})
   end
 
+  def handle_event("settings:map_layers", params, socket) do
+    layers =
+      List.wrap(params["layers"])
+      |> Enum.filter(&(&1 in DawarichWeb.NativeMapPanels.layers()))
+      |> Enum.uniq()
+
+    save(socket, %{"enabled_map_layers" => layers})
+  end
+
   def handle_event("settings:transport_change", params, socket),
     do: {:noreply, update(socket, &%{&1 | draft_modes: modes(params), error: nil})}
 

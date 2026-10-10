@@ -10,6 +10,13 @@ defmodule DawarichWeb.NativeMapPage do
       data-native-map-root
       class="relative w-full min-w-0 h-[100dvh] flex flex-col"
     >
+      <DawarichWeb.NativeMapPanels.navigation locale={@locale} panel={@map_url["panel"] || ""} />
+      <DawarichWeb.NativeMapPanels.layer_panel
+        :if={@map_url["panel"] == "layers" && assigns[:map_settings]}
+        locale={@locale}
+        settings={@map_settings}
+        config={@map_config}
+      />
       <DawarichWeb.NativeMapControls.date_navigation
         url={@map_url}
         window={@page.window}
