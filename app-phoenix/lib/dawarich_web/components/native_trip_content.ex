@@ -7,6 +7,8 @@ defmodule DawarichWeb.NativeTripContent do
 
   attr :selected_day, :string, default: nil
 
+  attr :note_editor, :map, default: nil
+
   def content(assigns) do
     ~H"""
     <section id="native-trip-summary" class="min-w-0 max-w-full">
@@ -44,7 +46,7 @@ defmodule DawarichWeb.NativeTripContent do
             <span :if={!day.stats}>{t(@locale, "trips.show.no_data", %{})}</span>
           </summary>
           <div class="collapse-content min-w-0">
-            <p :if={day.note} class="whitespace-pre-wrap [overflow-wrap:anywhere]">{day.note.body}</p>
+            <DawarichWeb.NativeTripNote.note day={day} editor={@note_editor} locale={@locale} />
             <div :if={day.photos != []} class="grid grid-cols-3 gap-2">
               <img
                 :for={photo <- day.photos}

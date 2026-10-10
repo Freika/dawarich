@@ -5,42 +5,27 @@ defmodule DawarichWeb.TripsLive.NativeMap do
 
   def mount(_, _, socket),
     do:
-      {:ok, socket |> assign(selected_day: nil) |> DawarichWeb.NativePosterGallery.mount(),
-       layout: false}
+      {:ok,
+       socket
+       |> assign(selected_day: nil, note_editor: nil)
+       |> DawarichWeb.NativePosterGallery.mount(), layout: false}
 
   def handle_params(%{"id" => id}, _, socket) do
-    trip_id = Dawarich.RubyInteger.to_i(id)
+    socket = assign(socket, selected_day: nil, note_editor: nil)
 
-    case Dawarich.Maps.Dependencies.Trip.view(socket.assigns.current_scope, trip_id) do
-      {:ok, page} ->
-        config = page.config
-        label = config["range"]["startAt"] <> " – " <> config["range"]["endAt"]
-
-        {:noreply,
-         assign(socket,
-           page: Map.put(page, :range_label, label),
-           page_title: config["title"],
-           selected_day: nil
-         )}
-
-      {:error, reason} ->
-        {:noreply, DawarichWeb.MapLiveAuth.refuse(assign(socket, :page_title, nil), reason)}
+    case DawarichWeb.NativeTripState.refresh(socket, Dawarich.RubyInteger.to_i(id)) do
+      {:ok, socket} -> {:noreply, socket}
+      {:error, socket} -> {:noreply, socket}
     end
   end
 
+  def handle_event("trip:note:" <> _ = event, payload, socket),
+    do: DawarichWeb.NativeTripNotes.handle_event(event, payload, socket)
+
   def handle_event("trip:day", %{"day" => day}, socket) do
-    case Dawarich.Maps.Dependencies.Trip.view(
-           socket.assigns.current_scope,
-           socket.assigns.page.presentation.id
-         ) do
-      {:ok, page} ->
-        config = page.config
-        label = config["range"]["startAt"] <> " – " <> config["range"]["endAt"]
-
-        socket =
-          assign(socket, page: Map.put(page, :range_label, label), page_title: config["title"])
-
-        if Enum.any?(page.presentation.days, &(Date.to_iso8601(&1.date) == day)) do
+    case DawarichWeb.NativeTripState.refresh(socket) do
+      {:ok, socket} ->
+        if DawarichWeb.NativeTripState.day(socket, day) do
           selected = if socket.assigns.selected_day == day, do: nil, else: day
 
           {:noreply,
@@ -51,12 +36,8 @@ defmodule DawarichWeb.TripsLive.NativeMap do
           {:noreply, assign(socket, :selected_day, nil)}
         end
 
-      {:error, reason} ->
-        {:noreply,
-         socket
-         |> assign(page_title: nil, selected_day: nil)
-         |> DawarichWeb.MapLiveAuth.refuse(reason)
-         |> push_event("map:clear", %{})}
+      {:error, socket} ->
+        {:noreply, socket}
     end
   end
 
@@ -83,6 +64,7 @@ defmodule DawarichWeb.TripsLive.NativeMap do
         page={@page.presentation}
         locale={@locale}
         selected_day={@selected_day}
+        note_editor={@note_editor}
       />
       <p>{@page.range_label}</p>
       <DawarichWeb.NativeTripMapPanel.panel config={@page.config} locale={@locale} />
