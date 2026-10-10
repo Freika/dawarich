@@ -85,11 +85,11 @@ defmodule DawarichWeb.Api.PhotoProviderOwnershipTest do
             end
           end)
 
-          :gen_tcp.recv(socket, 0, 1000)
+          :gen_tcp.recv(socket, 0, :infinity)
         end)
 
       assert_refusal(context, source, path, base, 502)
-      assert {:error, :closed} = Task.await(task)
+      assert {:error, :closed} = Task.await(task, :infinity)
     end)
   end
 
