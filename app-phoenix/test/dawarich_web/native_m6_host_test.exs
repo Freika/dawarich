@@ -196,6 +196,25 @@ defmodule DawarichWeb.NativeM6HostTest do
     refute has_element?(view, "#native-point-address")
   end
 
+  test "native production host selects visits confirms bulk and toggles timeline tags", %{id: id} do
+    place = Dawarich.Test.FrameSeeds.place!(id, id * 10, "Cafe")
+    visit = Dawarich.Test.FrameSeeds.visit!(id, id * 10, %{place_id: place, status: 0, started_at: ~N[2026-03-30 09:00:00], ended_at: ~N[2026-03-30 10:00:00]})
+    Dawarich.Test.FrameSeeds.tag!(id, id * 10, "Food", place, ~N[2026-03-30 09:00:00])
+    {:ok, view, _} = open(id, @second <> "&panel=timeline")
+    render_async(view, 5000)
+    render_hook(view, "timeline:select_day", %{"date" => "2026-03-30"})
+    render_hook(view, "timeline:select", %{"id" => to_string(visit)})
+    assert has_element?(view, "#native-timeline-selection")
+    render_hook(view, "visits:bulk", %{"action" => "confirm", "ids" => [to_string(visit)]})
+    assert_reply(view, %{ok: true})
+    render_async(view, 5000)
+    refute has_element?(view, "#native-timeline-selection")
+    render_hook(view, "timeline:tag", %{"tag" => "Food"})
+    assert has_element?(view, "[data-tag-name=food][aria-pressed=true]")
+    render_hook(view, "timeline:tag", %{"tag" => "Food"})
+    assert has_element?(view, "[data-tag-name=food][aria-pressed=false]")
+  end
+
   defp config(view) do
     view
     |> render()

@@ -88,6 +88,15 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("map:select", %{"kind" => kind, "id" => id}, socket) when kind in ~w(place visit),
     do: DawarichWeb.MapLive.EntityCommands.handle_event(kind <> ":edit", %{"id" => id}, socket)
 
+  def handle_event("visits:bulk" = event, payload, socket),
+    do: DawarichWeb.MapLive.VisitBulkCommands.handle_event(event, payload, socket)
+
+  def handle_event("timeline:select" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.VisitBulkCommands.handle_event(event, payload, socket)
+
+  def handle_event("timeline:tag", payload, socket),
+    do: {:noreply, DawarichWeb.MapLive.Timeline.toggle_tag(socket, payload)}
+
   def handle_event("timeline:filter", payload, socket),
     do: {:noreply, DawarichWeb.MapLive.Timeline.filter(socket, payload)}
 
@@ -172,7 +181,7 @@ defmodule DawarichWeb.MapLive.Native do
         class="absolute left-0 top-40 bottom-0 z-10 overflow-auto w-96 max-w-full min-w-0 bg-base-100 p-3"
       >
         <DawarichWeb.NativeTimelineCalendar.calendar calendar={assigns[:calendar]} locale={@locale} />
-        <DawarichWeb.NativeTimelineFeed.feed timeline={assigns[:timeline]} filter={assigns[:timeline_filter]} locale={@locale} />
+        <DawarichWeb.NativeTimelineFeed.feed timeline={assigns[:timeline]} filter={assigns[:timeline_filter]} selection={assigns[:timeline_selection]} tags={@page.timeline_tags} locale={@locale} />
       </section>
       <DawarichWeb.NativeResidency.card
         :if={@map_url["panel"] == "insights"}
