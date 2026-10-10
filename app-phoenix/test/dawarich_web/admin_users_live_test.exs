@@ -161,4 +161,25 @@ defmodule DawarichWeb.AdminUsersLiveTest do
     assert length(event) in 1..12
     GenServer.stop(view.pid)
   end
+
+  test "inputs the removed HTTP users gate refused are handled by the native pages", c do
+    conn = NativeAdminUI.conn(c.actor)
+    alert = NativeAdminUI.escaped("controllers.application.admin_action_failed")
+
+    for query <- ["search[]=a", "page[]=2"] do
+      {:ok, _view, html} = live(conn, "/settings/users?" <> query)
+      assert html =~ alert
+      refute html =~ c.target.email
+    end
+
+    assert {:error, {:redirect, %{to: "/settings/users"}}} = live(conn, "/settings/users/0")
+
+    for id <- ~w(-1 1x 9999999999999999999999999),
+        do: assert(get(conn, "/settings/users/" <> id).status == 404)
+
+    Repo.query!("UPDATE users SET api_key = '' WHERE id = $1", [c.target.id])
+    {:ok, view, html} = live(conn, "/settings/users/#{c.target.id}")
+    assert html =~ alert
+    refute has_element?(view, "#admin-user-clipboard")
+  end
 end
