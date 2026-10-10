@@ -8,6 +8,7 @@ import { FamilyHook } from "./family.js"
 import { MapHook } from "./map.js"
 import { MapMatchingDemo } from "./map_matching_demo.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
+import { TripHook } from "./trip.js"
 
 export const hooks = {
   AchievementUnlocks,
@@ -18,6 +19,7 @@ export const hooks = {
   EmojiPicker,
   Map: MapHook,
   Family: FamilyHook,
+  Trip: TripHook,
   MapMatchingDemo,
   ScrollIntoView,
 }

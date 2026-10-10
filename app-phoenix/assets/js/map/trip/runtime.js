@@ -1,0 +1,145 @@
+import { createReader } from "../data/reader.js"
+import { cancelled } from "../data/request_scope.js"
+import { readRouteSnapshot } from "../data/route_snapshot.js"
+import { createStudioSource } from "../data/studio_source.js"
+import { createMapRuntime } from "../runtime/create_map.js"
+import { createTripLayers } from "./layers.js"
+export function mountTrip({
+  element,
+  pushEvent,
+  reader = createReader(),
+  loadLibrary = () => import("/maplibre/6.4.1/maplibre-gl.mjs"),
+  loadStyle = async (config, { signal }) => {
+    const response = await fetch(
+      config.styleUrl ??
+        `/maps_maplibre/styles/${config.styleName === "dark" ? "dark" : "light"}.json`,
+      { signal, credentials: "same-origin" },
+    )
+    if (!response.ok) throw new Error("Style unavailable")
+    return response.json()
+  },
+  createLayers = createTripLayers,
+}) {
+  let library, layers, photos, loadedConfig
+  const initial = JSON.parse(element.dataset.mapConfig ?? "{}")
+  const owner = createMapRuntime({
+    element,
+    config: initial,
+    reader,
+    loadLibrary: async (options) => {
+      library = await loadLibrary(options)
+      return library
+    },
+    loadStyle,
+    attach: ({ map, config, lifetime }) =>
+      new Promise((resolve) => {
+        const ready = () => {
+          layers = createLayers({
+            map,
+            library,
+            labels: config.entityLabels,
+            onDay: (receipt) => pushEvent("trip:day", receipt),
+          })
+          lifetime.own(() => layers.destroy())
+          lifetime.own(() => photos?.remove())
+          resolve(() => map.off("load", ready))
+        }
+        if (map.loaded()) ready()
+        else {
+          map.once("load", ready)
+          lifetime.own(() => map.off("load", ready))
+        }
+      }),
+    refresh: async ({ map, config, operation, signal }) => {
+      const { data } = await operation.wait(
+        reader.read("trip", { id: config.tripId }, { signal }),
+      )
+      operation.check()
+      loadedConfig = {
+        ...config,
+        ...data.config,
+        revision: config.revision,
+        flightsEnabled: config.flightsEnabled ?? data.config.flightsEnabled,
+        photosEnabled: config.photosEnabled ?? data.config.photosEnabled,
+        planEnabled: config.planEnabled ?? data.config.planEnabled,
+      }
+      layers.update(data, { points: [] }, loadedConfig)
+      const snapshot = await operation.wait(
+        readRouteSnapshot(reader, loadedConfig, {
+          purpose: "poster",
+          signal,
+          deviceWindows: data.deviceWindows,
+          routeOptions: data.config.routeOptions,
+        }),
+      )
+      operation.check()
+      layers.update(data, snapshot, loadedConfig)
+      photos?.remove()
+      photos = null
+      if (loadedConfig.photosEnabled) {
+        const { PhotosLayer } = await operation.wait(
+          import("../layers/photos.js"),
+        )
+        operation.check()
+        photos = new PhotosLayer(map, {
+          reader,
+          library,
+          timezone: loadedConfig.range.timezone,
+          labels: config.photoLabels,
+          onError: (code) => pushEvent("map:failed", { code }),
+        })
+        photos.add()
+        if (
+          (await operation.wait(
+            photos.load(loadedConfig.range, { signal }),
+          )) !== "ready"
+        )
+          throw new Error("Photos unavailable")
+      }
+    },
+    events: {
+      refreshed: (receipt) => pushEvent("map:ready", receipt),
+      error: (receipt) => pushEvent("map:failed", receipt),
+    },
+  })
+  owner.source = createStudioSource({
+    fixedRange: true,
+    getState: () => ({
+      ...(loadedConfig ?? owner.config),
+      revision: owner.config.revision,
+    }),
+    readSnapshot: async (state, { purpose, signal }) => {
+      const { data } = await reader.read(
+        "trip",
+        { id: state.tripId },
+        { signal },
+      )
+      if (JSON.stringify(data.config.range) !== JSON.stringify(state.range))
+        throw cancelled()
+      const snapshot = await readRouteSnapshot(
+        reader,
+        { ...state, range: data.config.range },
+        {
+          purpose,
+          signal,
+          deviceWindows: data.deviceWindows,
+          routeOptions: data.config.routeOptions,
+        },
+      )
+      if (purpose === "replay" && state.photosEnabled)
+        snapshot.photos = await reader.pages(
+          "photos",
+          { start_date: state.range.startAt, end_date: state.range.endAt },
+          { signal },
+        )
+      return snapshot
+    },
+  })
+  Object.defineProperty(owner, "layers", { get: () => layers })
+  const destroy = owner.destroy
+  owner.destroy = () => {
+    owner.source.destroy()
+    destroy()
+  }
+  return owner
+}

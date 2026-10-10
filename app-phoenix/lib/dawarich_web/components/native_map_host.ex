@@ -2,12 +2,13 @@ defmodule DawarichWeb.NativeMapHost do
   @moduledoc false
   use Phoenix.Component
 
-  @fields ~w(namespace revision title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName flightsEnabled fogEnabled fogMode fogRadius hexagonsEnabled scratchEnabled photosEnabled visitsEnabled placesEnabled areasEnabled anomaliesEnabled placesTagFilters)
+  @fields ~w(namespace revision title styleUrl range mapOptions epoch pointsEnabled tracksEnabled heatmapEnabled trackColor styleName flightsEnabled fogEnabled fogMode fogRadius hexagonsEnabled scratchEnabled photosEnabled visitsEnabled placesEnabled areasEnabled anomaliesEnabled placesTagFilters tripId planEnabled routeOptions)
   @range ~w(startAt endAt importId timezone)
   @options ~w(center zoom minZoom maxZoom bearing pitch projection interactive attributionControl)
 
   attr :id, :string, required: true
   attr :config, :map, required: true
+  attr :hook, :string, default: "Map"
   attr :locale, :string, default: "en"
   attr :class, :string, default: "relative min-w-0 h-full w-full"
 
@@ -28,7 +29,7 @@ defmodule DawarichWeb.NativeMapHost do
 
     entity_labels =
       Map.new(
-        ~w(map_info.time map_info.reason anomalies.low_accuracy anomalies.impossible_speed),
+        ~w(map_info.time map_info.reason map_info.start map_info.end anomalies.low_accuracy anomalies.impossible_speed),
         fn key ->
           {:ok, value} =
             Dawarich.I18n.t(locale, "javascript." <> key, %{
@@ -47,6 +48,11 @@ defmodule DawarichWeb.NativeMapHost do
       |> Map.put("photoLabels", photo_labels)
       |> Map.put("entityLabels", entity_labels)
       |> Map.put("hexagonLabel", label |> LazyHTML.from_fragment() |> LazyHTML.text())
+      |> Map.update(
+        "routeOptions",
+        %{},
+        &Map.take(&1, ~w(distanceThresholdMeters timeThresholdMinutes))
+      )
       |> Map.update("range", %{}, &Map.take(&1, @range))
       |> Map.update("mapOptions", %{}, &Map.take(&1, @options))
 
@@ -56,7 +62,7 @@ defmodule DawarichWeb.NativeMapHost do
     <div
       id={@id}
       class={@class}
-      phx-hook="Map"
+      phx-hook={@hook}
       phx-update="ignore"
       data-map-config={@serialized_config}
       data-map-state="loading"
