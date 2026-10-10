@@ -48,6 +48,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)
 
+  def handle_event("segment" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.SegmentCommands.handle_event(event, payload, socket)
+
   def handle_event("area:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event(event, payload, socket)
 
@@ -70,6 +73,7 @@ defmodule DawarichWeb.MapLive.Native do
         "javascript.areas.create_new",
         %{}
       )}</button>
+      <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
       <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale={@locale} />
       <div class="relative flex-1 min-h-0 min-w-0">
         <DawarichWeb.NativeMapHost.map_host id="native-map" config={@map_config} locale={@locale} />

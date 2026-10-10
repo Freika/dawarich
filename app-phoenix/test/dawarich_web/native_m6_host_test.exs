@@ -65,6 +65,34 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert Dawarich.Accounts.get(id).settings["onboarding_completed"] == true
   end
 
+  test "native production host opens owned segments and applies a mode override", %{id: id} do
+    track = id * 10
+
+    Dawarich.Test.FrameSeeds.track!(id, track, %{
+      start_at: ~N[2026-03-30 09:00:00],
+      end_at: ~N[2026-03-30 09:10:00],
+      dominant_mode: 4
+    })
+
+    Dawarich.Test.FrameSeeds.segment!(track, track * 10, %{
+      start_at: ~U[2026-03-30 09:00:00Z],
+      end_at: ~U[2026-03-30 09:10:00Z],
+      distance: 1000,
+      duration: 600,
+      transportation_mode: 4,
+      source: "inferred"
+    })
+
+    {:ok, view, _} = open(id, @second)
+    render_hook(view, "segments:open", %{"track_id" => to_string(track)})
+    assert has_element?(view, "#native-segment-#{track * 10}")
+    view |> form("#native-segment-form-#{track * 10}", mode: "walking") |> render_change()
+    assert_push_event(view, "map:invalidate", %{resource: "tracks", id: ^track})
+    assert has_element?(view, "#native-segment-#{track * 10} [data-corrected]")
+    render_hook(view, "segments:close", %{})
+    refute has_element?(view, "#native-segment-drawer")
+  end
+
   defp config(view) do
     view
     |> render()
