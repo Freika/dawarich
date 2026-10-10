@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- KMZ imports no longer repeatedly re-import their own archive and fill the import queue and storage (#3766).
+
 ## [1.15.3] - 2026-09-30, Berlin
 
 ### Added
