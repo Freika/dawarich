@@ -157,6 +157,23 @@ defmodule DawarichWeb.TripsNativeFormTest do
     assert has_element?(view, "input#trip_started_at[readonly]")
   end
 
+  test "form events on an unavailable trip form are ignored" do
+    TripsSeeds.trip!(%{id: 995_301, user_id: 9_951})
+
+    rows("UPDATE users SET settings=$1 WHERE id=9951", [
+      %{"maps" => %{"distance_unit" => "parsecs"}}
+    ])
+
+    {:ok, view, _html} = TripsNativeUI.live_as(9_951, "/trips/995301/edit")
+    assert has_element?(view, "[role='alert']")
+
+    render_click(view, "validate", %{"trip" => %{"name" => "Changed"}})
+    render_click(view, "save", %{"trip" => %{"name" => "Changed"}})
+
+    assert Process.alive?(view.pid)
+    assert rows("SELECT name FROM trips WHERE id=995301") == [["trip 995301"]]
+  end
+
   test "the form wires receipt-bound uploads through event replies" do
     {:ok, view, _html} = TripsNativeUI.live_as(9_951, "/trips/new")
 

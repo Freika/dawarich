@@ -40,6 +40,10 @@ defmodule DawarichWeb.NativeTripsLive.Form do
   end
 
   @impl true
+  def handle_event(event, _params, %{assigns: %{trip: nil}} = socket)
+      when event in ~w(validate save),
+      do: {:noreply, socket}
+
   def handle_event("validate", %{"trip" => params}, socket) when is_map(params),
     do: {:noreply, assign(socket, values: scalar(params, socket.assigns.values))}
 

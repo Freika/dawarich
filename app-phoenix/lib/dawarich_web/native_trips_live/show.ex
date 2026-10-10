@@ -95,6 +95,8 @@ defmodule DawarichWeb.NativeTripsLive.Show do
   def handle_info(_message, socket), do: {:noreply, socket}
 
   @impl true
+  def handle_event(_event, _params, %{assigns: %{trip: nil}} = socket), do: {:noreply, socket}
+
   def handle_event("recalculate", _params, socket) do
     command(socket, &Commands.recalculate(&1, socket.assigns.trip.id, DateTime.utc_now()), fn
       socket, %{status: :queued} -> assign(socket, recalculating: true)

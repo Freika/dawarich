@@ -274,6 +274,31 @@ defmodule DawarichWeb.TripsNativeShowTest do
     assert rows("SELECT count(*) FROM trips WHERE id=$1", [id]) == [[0]]
   end
 
+  test "trip events on an unavailable detail are ignored" do
+    id = trip!(996_611)
+
+    rows("UPDATE users SET settings=$1 WHERE id=9961", [
+      %{"maps" => %{"distance_unit" => "parsecs"}}
+    ])
+
+    {:ok, view, _html} = TripsNativeUI.live_as(9_961, "/trips/#{id}")
+    assert has_element?(view, "[role='alert']")
+
+    for {event, params} <- [
+          {"recalculate", %{}},
+          {"export", %{"format" => "gpx"}},
+          {"delete", %{}},
+          {"retry_days", %{}},
+          {"note_edit", %{"date" => "2026-05-10"}},
+          {"note_save", %{"note" => %{"date" => "2026-05-10", "body" => "x"}}}
+        ],
+        do: render_click(view, event, params)
+
+    assert Process.alive?(view.pid)
+    assert rows("SELECT count(*) FROM trips WHERE id=$1", [id]) == [[1]]
+    assert rows("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]) == [[0]]
+  end
+
   test "foreign trips are not found and a failed day read can retry" do
     foreign = trip!(996_601, %{user_id: 9_962})
     assert TripsNativeUI.not_found?(9_961, "/trips/#{foreign}")
