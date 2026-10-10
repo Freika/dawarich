@@ -32,6 +32,7 @@ defmodule DawarichWeb.OrdinaryFormComponents do
     ~H"""
     <dialog
       id={@id}
+      phx-hook="OrdinaryDialog"
       aria-labelledby={@id <> "-title"}
       class="modal"
       phx-mounted={JS.dispatch("dawarich:open-dialog")}

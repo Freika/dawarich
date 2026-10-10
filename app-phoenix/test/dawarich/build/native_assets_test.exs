@@ -90,7 +90,9 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
     bytes =
       inputs
-      |> Enum.filter(fn {input, _} -> String.contains?(input, "place_draft") end)
+      |> Enum.filter(fn {input, _} ->
+        String.contains?(input, "place_draft") or String.contains?(input, "ordinary_dialog")
+      end)
       |> Enum.map(&elem(&1, 1))
       |> Enum.sum()
 

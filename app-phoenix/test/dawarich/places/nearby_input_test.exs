@@ -1,5 +1,5 @@
 defmodule Dawarich.Places.NearbyInputTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import ExUnit.CaptureLog
   alias Dawarich.{Places, Repo}
   alias Dawarich.Accounts.Scope

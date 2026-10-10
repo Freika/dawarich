@@ -1,6 +1,6 @@
 # Native milestone 3d: Places and ordinary forms
 
-Implementation status: C0/A1–A3/B1–B4/C1/C2 complete; C3 pending; C4 controller acceptance pending.
+Implementation status: C0/A1–A3/B1–B4/C1–C3 complete; controller FULL GATE and stage acceptance pending.
 
 ## Frozen contracts
 
@@ -413,3 +413,28 @@ Esbuild metafile: PlaceDraft contributes **745 eager bytes**, within the approve
 FRB-086 filters foreign dependent reads; FRB-087 fences foreign dependent effects; FRB-088 renders malformed settings refusal without the Rails navbar crash. Each has an appended ED row and draft changelog entry. Source confirmation copy, phased persistence, lack of a durable cross-socket receipt and retained map projections/transports remain explicit limitations. M6 must retire drawer/nearby frame routes, PlaceActions/PlaceRequest/streams, map modal/controllers and their deferred markup corpus together; direct member URL compatibility must be decided before retirement.
 
 C2 restored strict batch: 124 passed, seed 404, exit 0. The malformed-settings case first failed decoding, then exposed a forged native write; operation/effect shape fences now refuse it. Decoder, object-only cast and write-fence mutations failed the named case; restored GREEN. Identity admission still does not eagerly reject a zone needed only by a later read.
+
+
+## C3 targeted browser results
+
+All assigned native Places and retained map/direct-caller specs pass on standalone: **33 passed, 1 skipped, 0 failed, 0 flaky, exit 0**, repeated after the mutation probe was restored. The existing emoji-label fixme is unchanged; no migration-side skips were added. This is targeted implementation evidence, not controller FULL GATE or stage acceptance. The task brief explicitly requested these C3 lane runs; the current plan moves full browser/stand acceptance to the integrated stage.
+
+Seven new named cases first fail on the pre-milestone baseline. The mutation probe fails eight intended assertions: six-decimal persistence, reconnect draft retention, five latest visits, nearby default radius, canceled task liveness, server-bound delete target, original password identity, and visits surviving deletion. Three unchanged cases pass the probe. After restore, every assigned spec passes again. Native effects are checked through owner data/API; provider tasks use deterministic loading/delivery/cancellation, not a live service. Native clients send no HTTP Place form writes and do not use the map/Stimulus helper.
+
+Browser proof covers invalid name/coordinates and retained fields, one accepted duplicate submit, tag clear/replacement, source/note/name locks, persisted partial create plus scoped edit recovery, two explicit note saves, foreign ids and forged targets, two-tab deletion, password revocation, real LiveSocket disconnect/reconnect without automatic submit, patch/back-forward/raw query, cancel/Escape/backdrop/focus return and keyboard wrap. Map direct link, drawer notes/stats, marker edit/tag change, drawer delete/marker removal, visit search and map creation remain retained transports.
+
+OrdinaryDialog was added after a real Shift+Tab failure: it wraps only the owned dialog controls and removes its listener on destruction. Client RED/GREEN/wrap mutation/restored GREEN; affected native server/asset batch 22 passed. The complete restored Places/locale/primitive/asset batch is 40 passed. Five isolated scoped context modules are async; LiveView/global environment/shared-sandbox modules remain serialized. Restored context/direct-caller batch: 57 passed.
+
+The malformed-settings successor also tests an explicit locale query. Locale selection on native Places no longer replaces a non-object container before refusal; this leaves the existing preference behavior elsewhere intact. Named RED, disabled-guard mutation and restored GREEN are recorded with FRB-088 evidence. This is a Phoenix-only widening prevented by the opaque decoder change, not an additional Rails fix.
+
+## Final native asset and mobile measurements
+
+Esbuild eager graph remains two outputs. Incremental hooks: **PlaceDraft 745 bytes + OrdinaryDialog 854 bytes = 1599 bytes**, within the approved 2 KB cap. Graph tests reject eager map/Hotwire/legacy imports; a valid static MapLibre mutation fails. Changed Elixir/HEEx files are formatted; Biome checks 16 asset files; three affected native client tests pass. Controller full compile/suites remain deferred.
+
+Measured **23 English/German states at 390 px**: empty, create, validation error, edit, detail/note with long data, delete/raw-page delete, partial saved state, nearby loading/empty/failure/timeout/results. Every page has `scrollWidth == clientWidth == 390`; text Range boxes do not escape the dialog/control bounds horizontally. The table may scroll in its designated container. Popup measurements wait for a mounted open dialog; fields and accessible action labels are used in the browser assertions.
+
+Each native measurement records two JS resources and no Turbo/Stimulus/map script. Fresh decoded total is **168279 bytes** (167735 entry + 544 chunk); fresh browser transfer total is **52511 bytes** (51874 + 637, including transfer overhead). Cached navigations report zero transfer for the entry and sometimes zero decoded size for the shared chunk; these are cache observations, not smaller bundles. Opening dialogs and nearby state changes add no JS request. Exact resource fingerprints, state measurements and runtime identities are in the external implementation report.
+
+## Completion boundary
+
+All eleven implementation tasks are complete. Query budgets still require controller acceptance; no new caps were invented. C4 full ExUnit seeds and integrated acceptance were not run. The current controller note schedules full G44/mobile/stand acceptance at the stage boundary. AFFiNE mirrors this implementation summary and the approved decisions; code-coupled registers stay canonical here. No retained map dependency was retired; the M6 checklist above remains binding.

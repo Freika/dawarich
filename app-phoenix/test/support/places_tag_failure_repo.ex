@@ -16,7 +16,9 @@ defmodule Dawarich.Test.PlacesRevokingRepo do
     if String.contains?(sql, "FROM places WHERE") and String.contains?(sql, "FOR UPDATE") do
       Dawarich.Repo.query!(
         "UPDATE users SET encrypted_password=$1 WHERE id=$2",
-        [String.duplicate("x", 60), List.last(params)], log: false)
+        [String.duplicate("x", 60), List.last(params)],
+        log: false
+      )
     end
 
     result

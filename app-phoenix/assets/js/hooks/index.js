@@ -5,10 +5,12 @@ import { Clipboard } from "./clipboard.js"
 import { Dismissible } from "./dismissible.js"
 import { EmojiPicker } from "./emoji_picker.js"
 import { MapMatchingDemo } from "./map_matching_demo.js"
+import { OrdinaryDialog } from "./ordinary_dialog.js"
 import { PlaceDraft } from "./place_draft.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
 
 export const hooks = {
+  OrdinaryDialog,
   PlaceDraft,
   AchievementUnlocks,
   ArchiveChecksum,

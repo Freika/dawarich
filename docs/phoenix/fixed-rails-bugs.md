@@ -1365,7 +1365,7 @@ Rails destruction nullifies/removes database-valid foreign dependents of an owne
 An account with an array-valued settings container cannot open the Rails Places page: its navbar indexes the raw settings with a string. Native account decoding retains the opaque container for explicit domain refusal instead of raising during authentication; the native Places page renders a generic alert, and commands remain unsupported with zero effects.
 
 - Rails: `app/helpers/application_helper.rb:78`, `app/views/shared/_navbar.html.erb:127`; local Rails helper oracle raises `TypeError` for an array-valued synthetic user.
-- Phoenix: `app-phoenix/lib/dawarich/accounts/settings_value.ex:8`, `app-phoenix/lib/dawarich/accounts/user.ex:17`, `app-phoenix/lib/dawarich/place_list.ex:30`. Object/nil casts and dumps retain their original write boundary; opaque reads do not grant write support.
-- Test: `unsupported persisted Place settings render alert before and after join`, including zero-effect command refusal and unchanged malformed settings.
+- Phoenix: `app-phoenix/lib/dawarich/accounts/settings_value.ex:8`, `app-phoenix/lib/dawarich/accounts/user.ex:17`, `app-phoenix/lib/dawarich/place_list.ex:30`, `app-phoenix/lib/dawarich_web/locale.ex:60`. Object/nil casts and dumps retain their original write boundary; opaque reads do not grant write support.
+- Test: `unsupported persisted Place settings render alert before and after join`, including zero-effect command refusal and unchanged malformed settings after an explicit native locale query.
 - Ledger: ED-NATIVE-M3D-OPAQUE-SETTINGS; no DRB added. Distinct from FRB-051 NULL/default handling: this preserves a malformed non-object container as unsupported for Places.
 - Evidence: milestone 3d implementation report; RED, restored GREEN and decoder mutation. No all-page support claim for corrupt settings.

@@ -1,5 +1,5 @@
 defmodule Dawarich.Places.AccessTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.{Places.Access, Repo}
   alias Dawarich.Accounts.Scope
   alias Dawarich.Test.FrameSeeds, as: S

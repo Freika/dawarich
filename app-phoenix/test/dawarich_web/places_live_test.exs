@@ -159,5 +159,8 @@ defmodule DawarichWeb.PlacesLiveTest do
 
     assert Dawarich.Repo.query!("SELECT id FROM places WHERE user_id=$1", [user.id]).rows == []
     assert :sys.get_state(view.pid).socket.redirected == nil
+    localized = get(RailsUser.signed_in(user.id), "/places?locale=de")
+    assert localized.status == 200
+    assert Dawarich.Accounts.get(user.id).settings == []
   end
 end
