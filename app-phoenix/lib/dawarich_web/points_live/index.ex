@@ -1,83 +1,126 @@
 defmodule DawarichWeb.PointsLive.Index do
   @moduledoc false
   use DawarichWeb, :live_view
+  alias Dawarich.Points.Pages
 
-  alias Dawarich.PointList
-  alias DawarichWeb.{PointListControls, PointListFormat, PointListTable}
+  alias DawarichWeb.{
+    DataAsync,
+    NativeDataAuth,
+    PointListControls,
+    PointListFormat,
+    PointListTable
+  }
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, page_title: t(socket.assigns.locale, "points.index.points", %{})),
-     temporary_assigns: [rows: []]}
+    {:ok,
+     assign(socket,
+       page_title: t(socket.assigns.locale, "points.index.points", %{}),
+       rows: [],
+       imports: [],
+       window: nil,
+       query: %{},
+       summary: "",
+       page: 1,
+       total_pages: 0,
+       geocoding: false,
+       unit: "km",
+       selected: MapSet.new()
+     )}
   end
 
   @impl true
-  def handle_params(params, uri, socket) do
-    case PointList.load(socket.assigns.current_user, params, socket.assigns.now,
-           self_hosted: socket.assigns.self_hosted
-         ) do
-      {:ok, result} ->
-        summary =
-          PointListFormat.entries(
-            socket.assigns.locale,
-            result.count,
-            result.page,
-            length(result.rows),
-            result.total_pages
-          )
+  def handle_params(params, _uri, socket) do
+    socket = socket |> DataAsync.advance() |> assign(:selected, MapSet.new())
 
-        unit =
-          get_in(Dawarich.UserSettings.get(socket.assigns.current_user), ["maps", "distance_unit"]) ||
-            "km"
+    with {:ok, scope} <- NativeDataAuth.scope(socket),
+         {:ok, result} <-
+           Pages.load(scope, params,
+             now: socket.assigns.now,
+             self_hosted: socket.assigns.self_hosted
+           ) do
+      summary =
+        PointListFormat.entries(
+          socket.assigns.locale,
+          result.count,
+          result.page,
+          length(result.rows),
+          result.total_pages
+        )
 
+      {:noreply,
+       socket |> assign(result) |> assign(summary: summary, filter_form: to_form(result.query))}
+    else
+      {:error, reason} ->
+        {:noreply, socket |> assign(:rows, []) |> NativeDataAuth.refuse(reason, "/points")}
+    end
+  end
+
+  @impl true
+  def handle_event("filter", params, socket) do
+    query = Map.merge(socket.assigns.query, params) |> Map.put("page", "1")
+
+    case Pages.normalize(query) do
+      {:ok, normalized, search} ->
         {:noreply,
-         socket |> assign(result) |> assign(query: params, summary: summary, unit: unit)}
+         push_patch(socket,
+           to: PointListFormat.url("/points", Map.put(normalized.params, "import_search", search))
+         )}
 
-      :not_found ->
-        raise DawarichWeb.NotFoundError
+      _ ->
+        {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+    end
+  end
 
-      :rails ->
-        %URI{path: path, query: query} = URI.parse(uri)
-        {:noreply, redirect(socket, to: if(query, do: path <> "?" <> query, else: path))}
+  def handle_event(_event, _params, socket),
+    do: {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+
+  @impl true
+  def handle_async(name, result, socket) do
+    case DataAsync.finish(socket, name, result) do
+      {:stale, socket} -> {:noreply, socket}
+      {:ok, _projection, socket} -> {:noreply, socket}
+      {:error, reason, socket} -> {:noreply, NativeDataAuth.refuse(socket, reason)}
     end
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="w-full my-5">
-      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
-        <h1 class="text-3xl font-bold">{t(@locale, "points.index.points", %{})}</h1>
-      </div>
-      <PointListControls.controls
-        locale={@locale}
-        window={@window}
-        imports={@imports}
-        query={@query}
-        summary={@summary}
-      />
-      <PointListControls.pagination
-        locale={@locale}
-        query={@query}
-        page={@page}
-        total_pages={@total_pages}
-        class="flex justify-center mb-4"
-      />
-      <PointListTable.table
-        locale={@locale}
-        rows={@rows}
-        query={@query}
-        geocoding={@geocoding}
-        unit={@unit}
-        csrf={@rails_csrf_token}
-      />
-      <PointListControls.pagination
-        locale={@locale}
-        query={@query}
-        page={@page}
-        total_pages={@total_pages}
-        class="flex justify-center mt-4"
-      />
+    <div class="w-full min-w-0 my-5">
+      <h1 class="text-3xl font-bold mb-6 break-words">{t(@locale, "points.index.points", %{})}</h1>
+      <%= if @window do %>
+        <PointListControls.controls
+          locale={@locale}
+          window={@window}
+          imports={@imports}
+          query={@query}
+          summary={@summary}
+          form={@filter_form}
+        />
+        <PointListControls.pagination
+          locale={@locale}
+          query={@query}
+          page={@page}
+          total_pages={@total_pages}
+          class="flex flex-wrap justify-center mb-4"
+        />
+        <PointListTable.table
+          locale={@locale}
+          rows={@rows}
+          query={@query}
+          geocoding={@geocoding}
+          unit={@unit}
+          selected={@selected}
+        />
+        <PointListControls.pagination
+          locale={@locale}
+          query={@query}
+          page={@page}
+          total_pages={@total_pages}
+          class="flex flex-wrap justify-center mt-4"
+        />
+      <% end %>
     </div>
     """
   end

@@ -21,7 +21,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     "onclick=",
     "onchange="
   ]
-  @sessions [:native_pages, :native_admin, :native_background]
+  @sessions [:native_pages, :native_admin, :native_background, :native_data]
   @secret_free_change_forms ["integration-settings"]
 
   setup do

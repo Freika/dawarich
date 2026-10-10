@@ -43,10 +43,13 @@ defmodule Dawarich.PointList do
     end
   end
 
-  def normalize(params) when is_map(params) do
+  def normalize(params, opts \\ [])
+
+  def normalize(params, opts) when is_map(params) do
     page = max(Dawarich.RubyInteger.to_i(params["page"]), 1)
 
-    if valid_params?(params) and page <= @max_page do
+    if (valid_params?(params) or (opts[:native] == true and valid_native_params?(params, opts))) and
+         page <= @max_page do
       params =
         params
         |> Map.put("page", to_string(page))
@@ -58,11 +61,11 @@ defmodule Dawarich.PointList do
     end
   end
 
-  def normalize(_), do: {:error, :invalid_input}
+  def normalize(_, _), do: {:error, :invalid_input}
 
   def load_query(user, %{params: params, page: page}, now, opts) do
     with true <-
-           valid_params?(params) and page <= @max_page and
+           page <= @max_page and
              settings?(Dawarich.UserSettings.get(user)),
          {:ok, imports} <- imports(user.id, params["import_id"], opts),
          {:ok, import_id} <- selected_import(params["import_id"], imports),
@@ -71,7 +74,8 @@ defmodule Dawarich.PointList do
              params,
              Dawarich.UserSettings.get(user),
              now,
-             import_range(user.id, import_id)
+             import_range(user.id, import_id),
+             opts
            ),
          true <- TripSettings.zone?(Dawarich.UserSettings.get(user), window.zone) do
       cutoff = cutoff(user, now, opts)
@@ -111,6 +115,25 @@ defmodule Dawarich.PointList do
     end) and
       params["order_by"] in [nil, "asc", "desc", "ASC", "DESC"] and
       Enum.all?(~w(start_at end_at), &supported_timestamp?(params[&1]))
+  end
+
+  defp valid_native_params?(params, opts) do
+    Enum.all?(params, fn {key, value} ->
+      key in @filters and (is_nil(value) or is_binary(value))
+    end) and
+      params["order_by"] in [nil, "asc", "desc", "ASC", "DESC"] and
+      Enum.all?(~w(start_at end_at), fn key ->
+        value = params[key]
+
+        supported_timestamp?(value) or
+          match?(
+            {:ok, _},
+            Dawarich.MapApi.RailsDate.parse(
+              value,
+              DateTime.to_date(Keyword.get(opts, :now, DateTime.utc_now()))
+            )
+          )
+      end)
   end
 
   defp supported_timestamp?(value) do
@@ -163,7 +186,9 @@ defmodule Dawarich.PointList do
           ORDER BY (id=$3) DESC NULLS LAST, created_at DESC
           LIMIT 50
           """,
-          [user_id, "%" <> search <> "%", Dawarich.RubyInteger.to_i(selected)], log: false).rows
+          [user_id, "%" <> search <> "%", Dawarich.RubyInteger.to_i(selected)],
+          log: false
+        ).rows
 
       {:ok, Enum.map(rows, fn [id, name, at] -> %{id: id, name: name, created_at: at} end)}
     else

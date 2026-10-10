@@ -5,7 +5,7 @@ defmodule Dawarich.Points.Pages do
 
   def load(scope, params, opts \\ []) do
     with {:ok, scope} <- DataAccess.admit(scope, settings: true),
-         {:ok, query, search} <- normalize(params) do
+         {:ok, query, search} <- normalize(params, opts) do
       now = Keyword.get(opts, :now, DateTime.utc_now())
 
       options =
@@ -23,7 +23,11 @@ defmodule Dawarich.Points.Pages do
 
           {:ok,
            Map.merge(%{page | rows: project_rows(page.rows)}, %{
-             query: Map.put(query.params, "import_search", search),
+             query:
+               if(search == "",
+                 do: query.params,
+                 else: Map.put(query.params, "import_search", search)
+               ),
              revision: revision,
              unit: unit
            })}
@@ -37,21 +41,23 @@ defmodule Dawarich.Points.Pages do
     end
   end
 
-  def normalize(params) when is_map(params) do
+  def normalize(params, opts \\ [])
+
+  def normalize(params, opts) when is_map(params) do
     search = params["import_search"] || ""
     values = Map.delete(params, "import_search")
 
     with true <- is_binary(search) and byte_size(search) <= 256,
          true <-
            Enum.all?(values, fn {_k, v} -> is_nil(v) or (is_binary(v) and byte_size(v) <= 128) end),
-         {:ok, query} <- PointList.normalize(values) do
+         {:ok, query} <- PointList.normalize(values, Keyword.put(opts, :native, true)) do
       {:ok, query, search}
     else
       _ -> {:error, :invalid_input}
     end
   end
 
-  def normalize(_), do: {:error, :invalid_input}
+  def normalize(_, _), do: {:error, :invalid_input}
 
   def selection(scope, params, ids, opts \\ []) do
     with :ok <- selection_shape(ids),
