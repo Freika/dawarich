@@ -10,9 +10,9 @@ defmodule Dawarich.LogRedaction do
   end
 
   def filter(event, _) do
-    redact(event)
+    event |> redact() |> Map.update(:meta, %{}, &scrub/1)
   rescue
-    _ -> %{event | msg: {:string, @filtered}}
+    _ -> %{event | msg: {:string, @filtered}} |> Map.put(:meta, %{})
   end
 
   defp redact(%{msg: {:report, report}} = event), do: %{event | msg: {:report, scrub(report)}}
@@ -34,6 +34,23 @@ defmodule Dawarich.LogRedaction do
 
   defp scrub(%FunctionClauseError{} = error, _depth), do: %{error | args: nil}
 
+  defp scrub(%Postgrex.Error{query: query} = error, depth) when is_binary(query) do
+    if sensitive_sql?(query) do
+      postgres =
+        if error.postgres,
+          do:
+            error.postgres
+            |> Map.take([:code, :pg_code, :severity])
+            |> Map.put(:message, @filtered)
+
+      %{error | message: @filtered, postgres: postgres}
+    else
+      Enum.reduce(Map.from_struct(error), error, fn {key, value}, acc ->
+        Map.put(acc, key, scrub_pair(key, value, depth))
+      end)
+    end
+  end
+
   defp scrub(%{__struct__: _} = struct, depth) do
     struct
     |> Map.from_struct()
@@ -44,13 +61,29 @@ defmodule Dawarich.LogRedaction do
     _ -> @filtered
   end
 
-  defp scrub(map, depth) when is_map(map),
-    do: Map.new(map, fn {key, value} -> {key, scrub_pair(key, value, depth)} end)
+  defp scrub(map, depth) when is_map(map) do
+    map =
+      if is_binary(map[:query]) and sensitive_sql?(map.query),
+        do:
+          Map.new(map, fn {key, value} ->
+            {key, if(key in [:params, :cast_params, :result], do: @filtered, else: value)}
+          end),
+        else: map
+
+    Map.new(map, fn {key, value} -> {key, scrub_pair(key, value, depth)} end)
+  end
 
   defp scrub(list, depth) when is_list(list) do
-    if List.improper?(list),
-      do: @filtered,
-      else: Enum.map(list, &scrub(&1, depth - 1))
+    cond do
+      List.improper?(list) ->
+        @filtered
+
+      Keyword.keyword?(list) and is_binary(Keyword.get(list, :query)) ->
+        list |> Map.new() |> scrub(depth) |> Map.to_list()
+
+      true ->
+        Enum.map(list, &scrub(&1, depth - 1))
+    end
   end
 
   defp scrub({key, value}, depth) when is_atom(key) or is_binary(key),
@@ -96,7 +129,19 @@ defmodule Dawarich.LogRedaction do
         binary
 
       words ->
-        if mentions?(binary, words), do: binary |> scrub_pairs() |> scrub_json(), else: binary
+        cond do
+          not mentions?(binary, words) ->
+            binary
+
+          String.contains?(binary, "Postgrex.Error") ->
+            "Postgrex.Error " <> @filtered
+
+          Regex.match?(~r/(?<![[:alnum:]_])"?(?:cast_)?params"?\s*+(?::|=>|=)/, binary) ->
+            @filtered
+
+          true ->
+            binary |> scrub_pairs() |> scrub_json()
+        end
     end
   rescue
     _ -> @filtered

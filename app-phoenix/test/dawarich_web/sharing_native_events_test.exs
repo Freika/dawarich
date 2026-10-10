@@ -232,4 +232,44 @@ defmodule DawarichWeb.SharingNativeEventsTest do
     assert log =~ "not-a-share"
     refute log =~ secret
   end
+
+  test "debug telemetry query reports and formatted metadata never carry positional secrets" do
+    require Logger
+    level = Logger.level()
+    Logger.configure(level: :debug)
+    on_exit(fn -> Logger.configure(level: level) end)
+    handler = "sharing-sql-log-#{System.unique_integer([:positive])}"
+    parent = self()
+    secret = "opaque-telemetry-phrase"
+
+    :telemetry.attach(
+      handler,
+      [:dawarich, :repo, :query],
+      fn _, _, metadata, _ ->
+        if self() == parent and metadata.query =~ "magic_phrase" do
+          Logger.debug(metadata)
+          Logger.debug(fn -> ["query telemetry ", inspect(metadata)] end)
+          send(parent, :query_logged)
+        end
+      end,
+      nil
+    )
+
+    try do
+      log =
+        ExUnit.CaptureLog.capture_log([level: :debug], fn ->
+          assert %{rows: [[^secret]]} =
+                   Repo.query!("SELECT $1::text AS magic_phrase", [secret])
+
+          Logger.flush()
+        end)
+
+      assert_received :query_logged
+      assert log =~ "SELECT $1::text AS magic_phrase"
+      assert log =~ "[FILTERED]"
+      refute log =~ secret
+    after
+      :telemetry.detach(handler)
+    end
+  end
 end

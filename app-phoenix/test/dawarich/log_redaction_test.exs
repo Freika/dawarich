@@ -140,4 +140,57 @@ defmodule Dawarich.LogRedactionTest do
       if previous, do: :persistent_term.put(key, previous), else: :persistent_term.erase(key)
     end
   end
+
+  test "database error reports redact secret query details and crash metadata" do
+    secret = "synthetic-query-error-capability"
+
+    error = %Postgrex.Error{
+      query: "SELECT id FROM family_invitations WHERE token=$1",
+      message: "database error containing #{secret}",
+      postgres: %{
+        code: :invalid_text_representation,
+        pg_code: "22P02",
+        severity: "ERROR",
+        message: "invalid input: #{secret}"
+      }
+    }
+
+    event = %{
+      level: :error,
+      msg: {:report, %{reason: error}},
+      meta: %{crash_reason: {error, []}, mfa: {DBConnection.Connection, :handle_event, 4}}
+    }
+
+    filtered = Dawarich.LogRedaction.filter(event, [])
+    assert inspect(filtered) =~ "22P02"
+    assert inspect(filtered) =~ "[FILTERED]"
+    assert not String.contains?(inspect(filtered), secret)
+  end
+
+  test "DBConnection formatted Postgrex errors never carry secret query details" do
+    require Logger
+    secret = "synthetic-disconnect-capability"
+
+    error = %Postgrex.Error{
+      query: "SELECT id FROM family_invitations WHERE token=$1",
+      postgres: %{
+        code: :invalid_text_representation,
+        pg_code: "22P02",
+        severity: "ERROR",
+        message: "invalid input: #{secret}"
+      }
+    }
+
+    log =
+      capture_log(fn ->
+        Logger.error(fn ->
+          ["Postgrex disconnected: " | Exception.format_banner(:error, error, [])]
+        end)
+
+        Logger.flush()
+      end)
+
+    assert log =~ "Postgrex.Error"
+    assert not String.contains?(log, secret)
+  end
 end
