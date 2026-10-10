@@ -238,4 +238,76 @@ defmodule DawarichWeb.NativeCredentialsDocumentTest do
 
     assert is_nil(Dawarich.Accounts.from_session(session, DateTime.utc_now()))
   end
+
+  test "OIDC-only password policy still admits the native shell logout" do
+    keys = ~w(OIDC_CLIENT_ID OIDC_PKCE_ENABLED ALLOW_EMAIL_PASSWORD_LOGIN)
+    old = Map.new(keys, &{&1, System.get_env(&1)})
+
+    on_exit(fn ->
+      for {k, v} <- old, do: if(v, do: System.put_env(k, v), else: System.delete_env(k))
+    end)
+
+    System.put_env(%{
+      "OIDC_CLIENT_ID" => "synthetic",
+      "OIDC_PKCE_ENABLED" => "true",
+      "ALLOW_EMAIL_PASSWORD_LOGIN" => "false"
+    })
+
+    refute DawarichWeb.AuthProviderEntries.email_password_enabled?()
+
+    actor =
+      RailsUser.insert!(%{
+        id: System.unique_integer([:positive]),
+        email: "oidc-only-logout@example.test",
+        api_key: "synthetic",
+        settings: %{}
+      })
+
+    session = RailsUser.session(actor.id)
+    salt = String.slice(Dawarich.Accounts.get(actor.id).encrypted_password, 0, 29)
+    now = DateTime.utc_now()
+
+    devices =
+      for seconds <- [-30, -10] do
+        stamp = Dawarich.Accounts.remember_generated_at(DateTime.add(now, seconds))
+        [[actor.id], salt, stamp]
+      end
+
+    Repo.query!(
+      "UPDATE users SET remember_created_at=$2 WHERE id=$1",
+      [actor.id, DateTime.add(now, -60)],
+      log: false
+    )
+
+    for device <- devices,
+        do: assert(Dawarich.Accounts.remembered?(Dawarich.Accounts.get(actor.id), device, now))
+
+    html =
+      %{
+        locale: "en",
+        rails_csrf_token: RailsCsrf.masked_form_token(session, "/users/sign_out", "DELETE"),
+        __changed__: nil
+      }
+      |> DawarichWeb.AuthHttpChrome.sign_out()
+      |> Phoenix.HTML.Safe.to_iodata()
+      |> IO.iodata_to_binary()
+
+    fields =
+      for node <- LazyHTML.query(LazyHTML.from_fragment(html), "input[name]"), into: %{} do
+        {[name], [value]} = {LazyHTML.attribute(node, "name"), LazyHTML.attribute(node, "value")}
+        {name, value}
+      end
+
+    response =
+      RailsFormRequests.post_form(session, URI.encode_query(fields), [], "/users/sign_out")
+
+    assert response.status == 303
+    assert get_resp_header(response, "location") == ["http://www.example.com/"]
+    refute Map.has_key?(RailsFormRequests.rails_session(response), "warden.user.user.key")
+    assert response.resp_cookies["remember_user_token"].max_age == 0
+    current = Dawarich.Accounts.get(actor.id)
+
+    for device <- devices,
+        do: refute(Dawarich.Accounts.remembered?(current, device, DateTime.utc_now()))
+  end
 end

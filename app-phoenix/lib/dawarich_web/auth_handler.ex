@@ -49,6 +49,7 @@ defmodule DawarichWeb.AuthHandler do
       conn = put_private(conn, :auth_registration_enabled, registration)
 
       if Keyword.get(opts, :native, false) and conn.method == "POST" and
+           conn.request_path == "/users/sign_in" and
            not DawarichWeb.AuthProviderEntries.email_password_enabled?() do
         AuthResponse.denied(
           conn,
