@@ -724,3 +724,25 @@ test("reverse theme replies keep controls, preview, render and recipe on the sel
   assert.equal(h.maps[0].styles.at(-1).options.theme.name, "Latest Noir")
   h.studio.destroy()
 })
+
+test("settings changes during rendering save the recipe for the produced bytes", async () => {
+  const h = harness()
+  await h.studio.open()
+  const rendering = h.studio.render()
+  await settle()
+  assert.equal(h.renders[0].options.width, 1080)
+  assert.equal(h.renders[0].options.height, 1920)
+  assert.equal(h.renders[0].options.durationSec, 15)
+  await h.studio.change({ format: "square", duration_sec: 8 })
+  h.renders[0].run.resolve({ blob: new Blob(["portrait-15s"]) })
+  await rendering
+  const saving = h.studio.save()
+  await settle()
+  assert.equal(h.uploads[0].options.settings.format, "portrait")
+  assert.equal(h.uploads[0].options.settings.duration_sec, 15)
+  assert.equal(h.uploads[0].options.settings.start_at, "2026-08-20T00:00:00+02:00")
+  assert.equal(await h.uploads[0].options.blob.text(), "portrait-15s")
+  h.uploads[0].run.resolve({ ok: true })
+  await saving
+  h.studio.destroy()
+})

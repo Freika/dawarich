@@ -5,8 +5,8 @@ export function createExportControls(ctx, deps) {
   const { runs, renderVideo, upload, urls, request, el, fonts } = deps
   let saveController = null
 
-  function showResult(blob) {
-    ctx.result = { blob, url: urls.createObjectURL(blob) }
+  function showResult(blob, settings) {
+    ctx.result = { blob, settings, url: urls.createObjectURL(blob) }
     const player = el("result")
     if (player) {
       player.src = ctx.result.url
@@ -55,6 +55,10 @@ export function createExportControls(ctx, deps) {
       return
     }
     const gen = ctx.generation
+    const settings = Object.freeze({
+      ...ctx.settings,
+      ...provenanceOf({ fixed: video.fixed, range: ctx.track.range }),
+    })
     ctx.clearResult()
     ctx.setRendering(true)
     try {
@@ -64,7 +68,7 @@ export function createExportControls(ctx, deps) {
             kit: ctx.kit,
             loadLibrary: async () => ctx.library,
           }),
-        ({ blob }) => ctx.current(gen) && showResult(blob),
+        ({ blob }) => ctx.current(gen) && showResult(blob, settings),
       )
     } catch (error) {
       if (ctx.current(gen) && error?.name !== "AbortError")
@@ -89,10 +93,7 @@ export function createExportControls(ctx, deps) {
       await upload({
         blob: ctx.result.blob,
         name: el("name")?.value ?? "",
-        settings: {
-          ...ctx.settings,
-          ...provenanceOf({ fixed: video.fixed, range: ctx.track.range }),
-        },
+        settings: ctx.result.settings,
         request,
         signal: controller.signal,
         onProgress: (ratio) =>
