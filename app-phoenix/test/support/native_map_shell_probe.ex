@@ -20,6 +20,9 @@ defmodule Dawarich.Test.NativeMapShellProbe do
   def handle_event("area:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event(event, payload, socket)
 
+  def handle_event("segment" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.SegmentCommands.handle_event(event, payload, socket)
+
   def handle_event(event, payload, socket), do: Commands.handle_event(event, payload, socket)
 
   def render(assigns) do
@@ -31,6 +34,7 @@ defmodule Dawarich.Test.NativeMapShellProbe do
       locale="en"
     />
     <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale="en" />
+    <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale="en" />
     """
   end
 end
