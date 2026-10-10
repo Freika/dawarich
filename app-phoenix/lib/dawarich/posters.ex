@@ -16,7 +16,7 @@ defmodule Dawarich.Posters do
          do: Maps.with_actor(scope, fn user -> fetch(user, id) end)
   end
 
-  def create(scope, recipe) when is_map(recipe) do
+  def create(scope, recipe) when is_map(recipe) and map_size(recipe) > 0 do
     Maps.with_actor(scope, fn user ->
       case Persistence.create(Map.take(recipe, @recipe), user, scope.locale) do
         {:ok, id} -> fetch(user, id)

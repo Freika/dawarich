@@ -85,6 +85,15 @@ defmodule Dawarich.Posters.ScopedTest do
     assert [[1]] = rows("SELECT count(*) FROM phoenix.rails_commands")
   end
 
+  test "an empty poster recipe is refused like the Rails required poster params" do
+    scope = scope!(96_305)
+    before = effects()
+
+    assert {:error, :invalid} = Posters.create(scope, %{})
+    assert effects() == before
+    assert {:ok, []} = Posters.gallery(scope)
+  end
+
   test "revoked or invalid poster commands are refused without effects" do
     scope = scope!(96_304)
     {:ok, id} = Persistence.create(@recipe, %{id: scope.user.id}, "en")
