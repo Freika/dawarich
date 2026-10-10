@@ -32,7 +32,8 @@ defmodule Dawarich.A12f3bH01Test do
   end
 
   @tag a12f3b_case: "H01a"
-  test "every retained part B source route has an executable native owner", c do
+  @tag :track_c_r2
+  test "retained part B routes execute current native sessions and independent HTTP writes", c do
     for key <- [:rails_routes, :phoenix_auth, :rails_upstream] do
       current = Application.fetch_env(:dawarich, key)
       Application.delete_env(:dawarich, key)
@@ -63,7 +64,7 @@ defmodule Dawarich.A12f3bH01Test do
       Phoenix.Router.route_info(Router, "GET", "/family", "www.example.com")
 
     assert Enum.map(family_session.extra.on_mount, & &1.id) ==
-             [{DawarichWeb.LiveAuth, :default}, {DawarichWeb.FamilyGate, :default}]
+             [{DawarichWeb.NativeFamilyAuth, :require_user}]
 
     assert request(c.outsider, "POST", "/family", %{"family" => %{"name" => "Mounted family"}}).status ==
              302
@@ -597,7 +598,7 @@ defmodule Dawarich.A12f3bH01Test do
           {"POST", "/regenerate"},
           {"POST", "/regenerate_phrase"}
         ],
-        do: {method, base <> suffix, owner}
+        do: {method, base <> suffix, if(method == "GET", do: Phoenix.LiveView.Plug, else: owner)}
       ) ++
       [
         {"POST", "/share_links/live/revoke", DawarichWeb.ShareManagementForm},
