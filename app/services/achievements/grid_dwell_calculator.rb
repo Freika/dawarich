@@ -10,7 +10,7 @@ module Achievements
       'countries' => 'iso_a2'
     }.freeze
 
-    SQL = <<~SQL
+    POINTS_SQL = <<~SQL
       WITH cells AS (
         SELECT DISTINCT FLOOR(ST_X(lonlat::geometry) / %<grid>f)::int AS gx,
                         FLOOR(ST_Y(lonlat::geometry) / %<grid>f)::int AS gy
@@ -37,6 +37,7 @@ module Achievements
       ),
       pts AS (
         SELECT p."timestamp" AS ts,
+               p.country_id,
                cc.code,
                LEAD(p."timestamp") OVER (ORDER BY p."timestamp", p.id) AS next_ts,
                LEAD(cc.code) OVER (ORDER BY p."timestamp", p.id) AS next_code
@@ -50,9 +51,19 @@ module Achievements
           AND p.lonlat IS NOT NULL
           AND (p.anomaly IS DISTINCT FROM TRUE)
       )
+    SQL
+
+    SQL = POINTS_SQL + <<~SQL
       SELECT code, SUM(LEAST(next_ts - ts, %<cap>d))::bigint
       FROM pts
       WHERE code IS NOT NULL AND code = next_code AND next_ts > ts
+      GROUP BY code
+    SQL
+
+    FIRST_SEEN_SQL = POINTS_SQL + <<~SQL
+      SELECT code, MIN(ts)::bigint
+      FROM pts
+      WHERE code IS NOT NULL %<country_filter>s
       GROUP BY code
     SQL
 
@@ -69,11 +80,17 @@ module Achievements
       ApplicationRecord.connection.select_rows(sql).to_h { |code, dwell| [code, dwell.to_i] }
     end
 
+    def first_seen(without_country_ids: false)
+      query = sql(FIRST_SEEN_SQL, without_country_ids: without_country_ids)
+      ApplicationRecord.connection.select_rows(query).to_h { |code, timestamp| [code, timestamp.to_i] }
+    end
+
     private
 
-    def sql
-      format(SQL, user_id: @user.id, since: @since, through: @through, cap: PAIR_CAP_SECONDS, grid: GRID_DEGREES,
-                  table: @table, code_column: SOURCES.fetch(@table))
+    def sql(template = SQL, without_country_ids: false)
+      format(template, user_id: @user.id, since: @since, through: @through, cap: PAIR_CAP_SECONDS, grid: GRID_DEGREES,
+                  table: @table, code_column: SOURCES.fetch(@table),
+                  country_filter: without_country_ids ? 'AND country_id IS NULL' : '')
     end
   end
 end

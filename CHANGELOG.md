@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Achievement backfills now restore historical visit dates, including previously earned regions and countries (#3728).
+
 - Geocoding jobs keep their duplicate-work guard through long queues and retries, and nightly scheduling no longer queues the same pending points again. (#3754)
 - GPX exports work when an older database lacks the decimal-altitude column, while retaining decimal precision when it is available. (#3752)
 - Test email is queued through the same worker as system mail, and the notice reports enqueueing rather than confirmed delivery. (#3746)
