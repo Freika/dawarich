@@ -2,21 +2,36 @@ defmodule DawarichWeb.Icon do
   @moduledoc false
   use Phoenix.Component
 
+  @source Path.expand("../../../../app/assets/svg/icons", __DIR__)
+  @root if File.dir?(@source), do: @source, else: Path.expand("../../../priv/svg_icons", __DIR__)
+
+  for set <- ~w(lucide/outline brands),
+      path <- [Path.join(@root, set) | Path.wildcard(Path.join([@root, set, "*.svg"]))],
+      do: @external_resource(path)
+
+  @outline Map.new(
+             Path.wildcard(Path.join(@root, "lucide/outline/*.svg")),
+             &{Path.basename(&1, ".svg"), File.read!(&1)}
+           )
+  @brands Map.new(
+            Path.wildcard(Path.join(@root, "brands/*.svg")),
+            &{Path.basename(&1, ".svg"), File.read!(&1)}
+          )
+
+  if @outline == %{} or @brands == %{}, do: raise("no SVG icons under #{@root}")
+
   attr :name, :string, required: true
   attr :class, :string, default: nil
   attr :id, :string, default: nil
   attr :aria_hidden, :boolean, default: false
 
   def icon(assigns) do
-    name = Path.basename(assigns.name)
-    path = Dawarich.RailsRoot.join("app/assets/svg/icons/lucide/outline/#{name}.svg")
-
     assigns =
       assign(
         assigns,
         :svg,
-        path
-        |> File.read!()
+        @outline
+        |> Map.fetch!(Path.basename(assigns.name))
         |> String.replace(
           ~r/<svg[^>]*>/,
           svg_tag(assigns.class, assigns.aria_hidden, assigns[:id])
@@ -41,9 +56,8 @@ defmodule DawarichWeb.Icon do
 
   def brand(assigns) do
     svg =
-      "app/assets/svg/icons/brands/#{Path.basename(assigns.name)}.svg"
-      |> Dawarich.RailsRoot.join()
-      |> File.read!()
+      @brands
+      |> Map.fetch!(Path.basename(assigns.name))
       |> then(
         &Regex.replace(
           ~r/<svg([^>]*)>/,
