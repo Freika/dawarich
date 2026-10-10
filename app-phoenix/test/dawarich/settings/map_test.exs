@@ -88,6 +88,32 @@ defmodule Dawarich.Settings.MapTest do
     assert stored(scope) == before
   end
 
+  test "map settings never return provider credentials" do
+    user = account!(1)
+
+    Repo.query!("UPDATE users SET settings = settings || $2 WHERE id=$1", [
+      user.id,
+      %{
+        "immich_url" => "https://immich.example.test",
+        "immich_api_key" => "synthetic-immich-secret",
+        "photoprism_url" => "https://photoprism.example.test",
+        "photoprism_api_key" => "synthetic-photoprism-secret",
+        "airtrail_url" => "https://airtrail.example.test",
+        "airtrail_api_key" => "synthetic-airtrail-secret"
+      }
+    ])
+
+    scope = Maps.principal(Accounts.get(user.id), "en")
+    {:ok, read} = MapSettings.get(scope, now: @now, self_hosted?: true)
+
+    {:ok, saved} =
+      MapSettings.update(scope, %{"route_opacity" => "0.5"}, now: @now, self_hosted?: true)
+
+    serialized = inspect({read, saved}, limit: :infinity)
+    refute serialized =~ "synthetic-"
+    assert read["immich_url"] == "https://immich.example.test"
+  end
+
   defp stored(scope),
     do: rows("SELECT settings FROM users WHERE id=$1", [scope.user.id]) |> hd() |> hd()
 

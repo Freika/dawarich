@@ -3,9 +3,11 @@ defmodule Dawarich.Settings.Map do
   alias Dawarich.{Maps, Repo}
   alias Dawarich.Settings.{Api, Progress}
 
+  @credentials ~w(immich_api_key photoprism_api_key airtrail_api_key)
+
   def get(scope, opts \\ []) do
     Maps.with_actor(scope, fn actor ->
-      {:ok, Api.config(Api.read(Repo, actor.id), Api.restricted?(Repo, actor, ctx(opts)))}
+      {:ok, redact(Api.config(Api.read(Repo, actor.id), Api.restricted?(Repo, actor, ctx(opts))))}
     end)
   end
 
@@ -14,7 +16,10 @@ defmodule Dawarich.Settings.Map do
       case Api.update(Repo, actor, %{"settings" => attrs}, ctx(opts)) do
         {:ok, 200, body} ->
           {:ok,
-           %{settings: body["settings"], recalculation_triggered: body["recalculation_triggered"]}}
+           %{
+             settings: redact(body["settings"]),
+             recalculation_triggered: body["recalculation_triggered"]
+           }}
 
         {:error, 423, _} ->
           {:error, :locked}
@@ -43,6 +48,8 @@ defmodule Dawarich.Settings.Map do
       end
     end)
   end
+
+  defp redact(settings), do: Map.drop(settings, @credentials)
 
   defp ctx(opts) do
     %{

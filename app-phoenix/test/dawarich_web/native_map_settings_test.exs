@@ -38,6 +38,11 @@ defmodule DawarichWeb.NativeMapSettingsTest do
       settings: %{"timezone" => "UTC"}
     })
 
+    Repo.query!("UPDATE users SET settings = settings || $2 WHERE id=$1", [
+      id,
+      %{"immich_url" => "https://immich.example.test", "immich_api_key" => "synthetic-ui-secret"}
+    ])
+
     {:ok, view, _} =
       live_isolated(Phoenix.ConnTest.build_conn(), Host, session: %{"user_id" => id})
 
@@ -89,9 +94,12 @@ defmodule DawarichWeb.NativeMapSettingsTest do
 
     assert stored(id)["maps_maplibre_tiles_url"] == "https://tiles.example.test/{z}/{x}/{y}.png"
 
-    assert_push_event(view, "map:settings", %{
-      settings: %{"maps_maplibre_tiles_url" => "https://tiles.example.test/{z}/{x}/{y}.png"}
-    })
+    assert_push_event(view, "map:settings", %{settings: pushed})
+    assert pushed["maps_maplibre_tiles_url"] == "https://tiles.example.test/{z}/{x}/{y}.png"
+    assert pushed["immich_url"] == "https://immich.example.test"
+    refute inspect(pushed) =~ "synthetic-ui-secret"
+    refute render(view) =~ "synthetic-ui-secret"
+    refute inspect(:sys.get_state(view.pid), limit: :infinity) =~ "synthetic-ui-secret"
   end
 
   defp stored(id), do: rows("SELECT settings FROM users WHERE id=$1", [id]) |> hd() |> hd()
