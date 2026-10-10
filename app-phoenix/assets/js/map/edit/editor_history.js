@@ -2,13 +2,15 @@ import { PointEditHistory } from "./history.js"
 import { PointEditHistoryPanel } from "./history_panel.js"
 
 export class EditorHistory {
-  constructor(editor, { distanceUnit }) {
+  constructor(editor, { distanceUnit, history }) {
     this.editor = editor
     this.closed = false
-    this.history = new PointEditHistory({
+    this.history = history ?? new PointEditHistory({
       move: (pointId, position) => this._move(pointId, position),
       onChange: () => this.sync(),
     })
+    this.history.move = (pointId, position) => this._move(pointId, position)
+    this.history.onChange = () => this.sync()
     this.panel = new PointEditHistoryPanel({
       document: editor.document,
       translate: editor.translate,

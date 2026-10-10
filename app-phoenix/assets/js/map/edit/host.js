@@ -1,3 +1,4 @@
+import { mapTranslate } from "../ui/translate.js"
 import { PointDragGesture } from "./drag.js"
 import { MapEditor } from "./editor.js"
 import { createPointEditing } from "./runtime.js"
@@ -9,6 +10,9 @@ export function createHostEditing({ map, reader, pushEvent, lifetime, getConfig,
   const transport = createPointEditing({ isEditMode: enabled, pushEvent, setPosition: () => {}, historyScope: scope })
   const editor = new MapEditor(map, {
     document,
+    history: transport.history,
+    translate: mapTranslate(getConfig),
+    distanceUnit: getConfig().distanceUnit ?? "km",
     readTrack: (id, options) => reads("track", id, options),
     readPoints: (id, options) => reads("track_points", id, options),
     move: transport.move,
@@ -26,5 +30,5 @@ export function createHostEditing({ map, reader, pushEvent, lifetime, getConfig,
   })
   gesture.attach()
   lifetime.own(() => { gesture.detach(); transport.destroy(); editor.dispose() })
-  return { editor, config(next) { editor.importScoped = Boolean(next.range?.importId); editor.setEditable(next.editEnabled === true); editor.reapplyTileFilters() } }
+  return { editor, transport, config(next) { editor.edits.panel.distanceUnit = next.distanceUnit ?? "km"; editor.importScoped = Boolean(next.range?.importId); editor.setEditable(next.editEnabled === true); editor.reapplyTileFilters() } }
 }

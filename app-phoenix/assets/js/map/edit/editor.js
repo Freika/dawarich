@@ -9,7 +9,7 @@ import { createRequestScope } from "../data/request_scope.js"
 export class MapEditor extends TrackSession {
   constructor(map, {
     readTrack, readPoints, move, importScoped = false, historyScope = () => ({}),
-    editable = true, distanceUnit = "km", mutationState = {busy: false},
+    editable = true, distanceUnit = "km", history = null, mutationState = {busy: false},
     getSelectedTrack = () => null, setSelectedTrack = () => {},
     invalidatePoints = () => {}, refreshTiles = () => {}, clearSelection = () => {},
     onError = () => {}, onMoved = () => {}, translate = (key) => key,
@@ -26,7 +26,7 @@ export class MapEditor extends TrackSession {
     this.exclusions = new TileExclusions(map)
     this.readScope = createRequestScope()
     this.trackLoad = null
-    this.edits = new EditorHistory(this, {distanceUnit})
+    this.edits = new EditorHistory(this, {distanceUnit, history})
     this.inFlight = false
     this.inFlightKeys = new Set()
     this.sessionVersion = 0

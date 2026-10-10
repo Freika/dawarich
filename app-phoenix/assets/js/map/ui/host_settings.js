@@ -6,6 +6,7 @@ export function mapSettings(settings, config) {
   const maps = settings.maps ?? {}
   return {
     ...config,
+    distanceUnit: maps.distance_unit ?? config.distanceUnit,
     customTheme: settings.maps_maplibre_custom_theme ?? config.customTheme,
     tilesUrl: settings.maps_maplibre_tiles_url ?? config.tilesUrl,
     hiddenTileCategories: maps.hidden_tile_categories ?? config.hiddenTileCategories,

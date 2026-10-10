@@ -189,6 +189,7 @@ export function mountHost({
     applyDates: requests.applyDates,
   })
   Object.defineProperty(owner, "enrichment", { get: () => enrichment })
+  Object.defineProperty(owner, "pointEditing", { get: () => editing?.transport })
   Object.defineProperty(owner, "editor", { get: () => editing?.editor })
   Object.defineProperty(owner, "entityLayers", { get: () => entities })
   owner.visitsFilter = filter => owner.update({...owner.config, visitFilter: filter})
