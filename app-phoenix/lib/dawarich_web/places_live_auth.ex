@@ -24,7 +24,10 @@ defmodule DawarichWeb.PlacesLiveAuth do
       |> before_hook(:places_info, :handle_info, fn _, socket -> authorize(socket) end)
       |> before_hook(:places_async, :handle_async, fn _, _, socket -> authorize(socket) end)
 
-    authorize(socket)
+    case authorize(socket) do
+      {:halt, %{redirected: nil} = refused} -> {:cont, refused}
+      result -> result
+    end
   end
 
   defp before_hook(socket, id, stage, callback) do

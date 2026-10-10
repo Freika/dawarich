@@ -15,7 +15,8 @@ defmodule DawarichWeb.RailsPagesRoutes do
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
           live "/places", DawarichWeb.PlacesLive.Index, :index,
-            container: {:div, class: "contents"}
+            container: {:div, class: "contents"},
+            metadata: %{retired: true}
 
           live "/tags", DawarichWeb.TagsLive.Index, :index, container: {:div, class: "contents"}
           live "/tags/new", DawarichWeb.TagsLive.Form, :new, container: {:div, class: "contents"}

@@ -21,7 +21,9 @@ defmodule DawarichWeb.PlacesLiveAuthTest do
 
       Dawarich.Repo.query!(
         "UPDATE users SET encrypted_password=$1 WHERE id=$2",
-        [ctx.actor.encrypted_password, ctx.actor.id], log: false)
+        [ctx.actor.encrypted_password, ctx.actor.id],
+        log: false
+      )
     end
 
     {:ok, view, _} = live(N.conn(ctx.actor), "/places")
@@ -42,5 +44,23 @@ defmodule DawarichWeb.PlacesLiveAuthTest do
 
     assert Dawarich.Repo.query!("SELECT id FROM places WHERE user_id=$1", [ctx.actor.id]).rows ==
              []
+  end
+
+  test "native Places unavailable initial admission mounts a safe local alert", _ctx do
+    actor = %Dawarich.Accounts.User{id: Integer.pow(10, 100), encrypted_password: "synthetic"}
+
+    socket = %Phoenix.LiveView.Socket{
+      router: DawarichWeb.Router,
+      assigns: %{
+        __changed__: %{},
+        current_scope: Dawarich.Accounts.Scope.for_user(actor, "en"),
+        locale: "en"
+      },
+      private: %{lifecycle: %Phoenix.LiveView.Lifecycle{}}
+    }
+
+    assert {:cont, refused} = DawarichWeb.PlacesLiveAuth.on_mount(:default, %{}, %{}, socket)
+    assert refused.redirected == nil
+    assert refused.assigns.error == DawarichWeb.PlacesUI.message("en")
   end
 end

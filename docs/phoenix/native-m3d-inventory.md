@@ -1,6 +1,6 @@
 # Native milestone 3d: Places and ordinary forms
 
-Implementation status: C0/A1–A3 complete; B1–C3 pending; C4 controller acceptance pending.
+Implementation status: C0/A1–A3/B1–B4/C1 complete; C2/C3 pending; C4 controller acceptance pending.
 
 ## Frozen contracts
 
@@ -14,7 +14,7 @@ Native events: validate_place, save_place, save_place_note, request_delete, conf
 
 Nearby is connected-only with a 10 second watchdog, generation and per-run token, cancellation on coordinates/close/patch/replacement. Provider failures remain empty; watchdog/crash becomes a generic retryable alert. Suggestions contain only name, coordinates, street/city/country/index.
 
-## Route and format matrix to verify in C1
+## Route and format matrix verified in C1
 
 | Request | Native outcome |
 | --- | --- |
@@ -28,7 +28,8 @@ Nearby is connected-only with a 10 second watchdog, generation and per-run token
 | Owned direct member HTML | 302 `/map/v2?place_id=:id` |
 | Owned member with exactly one place-drawer header | 200 retained map frame |
 | Missing/foreign/malformed/overflow member | Local 404 |
-| Repeated/unknown member frame header | Local refusal; never native dialog |
+| Unknown member frame header / repeated raw member frame header | Local 302 map redirect / 500 refusal; never native dialog |
+| Retained member X-Dawarich-Client / drawer disappearance after read admission | Local 500 / 422 refusal; no replay |
 | Nearby missing coords | 400 retained map adapter |
 | Nearby valid coords/legacy casts/extra scalar query | 200 retained map fragment |
 | Retained writes | Existing CSRF/origin/method/body/format protection and effects; native list uses zero HTTP writes |
