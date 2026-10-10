@@ -20,7 +20,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
 
       expect(json.keys).to match_array(%i[user features])
       expect(json[:user].keys).to match_array(
-        %i[email theme created_at updated_at settings]
+        %i[id email theme created_at updated_at settings]
       )
       expect(json[:user][:settings].keys).to match_array(
         %i[

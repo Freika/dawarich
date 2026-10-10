@@ -71,10 +71,8 @@ class Settings::GeneralController < ApplicationController
   def run_email_test
     return [:alert, t('controllers.settings.general.smtp_not_configured')] unless DawarichSettings.email_configured?
 
-    message = UsersMailer.with(user: current_user).test_email.message
-    message.raise_delivery_errors = true
-    message.deliver
-    [:notice, t('controllers.settings.general.test_email_sent', email: current_user.email)]
+    UsersMailer.with(user: current_user).test_email.deliver_later
+    [:notice, t('controllers.settings.general.test_email_queued', email: current_user.email)]
   rescue StandardError => e
     Rails.logger.error("Test email delivery failed: #{e.class}: #{e.message}")
     [:alert, t('controllers.settings.general.test_email_failed', error: test_email_error_description(e))]

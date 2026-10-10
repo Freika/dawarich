@@ -8,6 +8,8 @@ module Api
         LIVE_FRESHNESS_SECONDS = 15 * 60
 
         def index
+          return render(json: []) if link.family_only? && !ctx.show_route?
+
           if link.resource_type.to_sym == :live
             render json: live_points
           else

@@ -9,6 +9,7 @@ RSpec.describe Api::UserSerializer do
     let(:user) { create(:user) }
 
     it 'returns JSON with correct user attributes' do
+      expect(serializer[:user][:id]).to eq(user.id)
       expect(serializer[:user][:email]).to eq(user.email)
       expect(serializer[:user][:theme]).to eq(user.theme)
       expect(serializer[:user][:created_at]).to eq(user.created_at)

@@ -73,6 +73,21 @@ RSpec.describe Exports::Create do
     context 'when file format is gpx' do
       let(:file_format) { :gpx }
 
+      it 'exports legacy schemas without altitude_decimal' do
+        connection = Point.connection
+        connection.remove_column(:points, :altitude_decimal)
+        Point.reset_column_information
+
+        expect { create_export }.not_to raise_error
+        expect(export.reload).to be_completed
+        _name, inner = read_inner_bytes(export.file.blob)
+        expect(inner.scan('<trkpt').length).to eq(10)
+        expect(inner).to include('<ele>1.0</ele>')
+      ensure
+        connection.add_column(:points, :altitude_decimal, :decimal, precision: 10, scale: 2)
+        Point.reset_column_information
+      end
+
       it 'writes valid GPX as the inner entry' do
         create_export
         blob = export.reload.file.blob

@@ -87,6 +87,10 @@ class User < ApplicationRecord
   OTP_LOCK_DURATION = 30.minutes
   OTP_LOCK_EMAIL_THROTTLE = 1.hour
 
+  def display_name
+    [first_name, last_name].filter_map { |part| part.to_s.strip.presence }.join(' ').presence || email
+  end
+
   def otp_locked?
     otp_locked_at.present? && otp_locked_at > OTP_LOCK_DURATION.ago
   end

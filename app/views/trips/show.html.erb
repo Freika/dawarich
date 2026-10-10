@@ -74,6 +74,11 @@
         <div class="flex items-start justify-between gap-3 mb-1">
           <h1 class="text-3xl font-bold leading-tight"><%= @trip.name %></h1>
           <div class="flex items-center gap-1 shrink-0" data-testid="trip-header-actions">
+            <%= link_to preferred_map_path(start_at: @trip.started_at.iso8601, end_at: @trip.ended_at.iso8601),
+                        class: 'btn btn-sm btn-ghost', data: { testid: 'trip-open-map' },
+                        title: t('trips.show.open_in_map'), aria: { label: t('trips.show.open_in_map') } do %>
+              <%= icon 'map', class: 'w-4 h-4' %>
+            <% end %>
             <div class="dropdown dropdown-end">
               <label tabindex="0" class="btn btn-sm btn-ghost" title="<%= t('.download_trip') %>">
                 <%= icon 'download', class: 'w-4 h-4' %>

@@ -312,6 +312,7 @@ Rails.application.routes.draw do
       match 'mcp', to: 'mcp#handle', via: %i[get post delete]
       get   'photos', to: 'photos#index'
       get   'health', to: 'health#index'
+      get   'ready', to: 'health#ready'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'

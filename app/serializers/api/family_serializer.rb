@@ -51,6 +51,7 @@ class Api::FamilySerializer
       {
         user_id: member.id,
         email: member.email,
+        name: member.display_name,
         email_initial: member.email.first.upcase,
         owner: member.family_owner?,
         sharing_enabled: member.family_sharing_enabled?,

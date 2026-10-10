@@ -32,17 +32,21 @@ test("family member labels render before the map fits their bounds", async () =>
   const controller = new FamilyMapController()
   const layers = []
   const fitCalls = []
+  const sources = []
   controller.locationsValue = [
     {
       user_id: 1,
       email: "member@example.test",
+      name: "Ada Lovelace",
       longitude: 13.405,
       latitude: 52.52,
       timestamp: 1_700_000_000,
     },
   ]
   controller.map = {
-    addSource() {},
+    addSource(id, source) {
+      sources.push(source)
+    },
     addLayer(layer) {
       layers.push(layer)
     },
@@ -54,6 +58,7 @@ test("family member labels render before the map fits their bounds", async () =>
 
   controller.addMembers()
 
+  assert.equal(sources[0].data.features[0].properties.name, "Ada Lovelace")
   const labels = layers.find((layer) => layer.id === "family-labels")
   assert.equal(labels.paint["text-color"], "#e5e7eb")
   assert.deepEqual(fitCalls[0].bounds.coordinates, [[13.405, 52.52]])
