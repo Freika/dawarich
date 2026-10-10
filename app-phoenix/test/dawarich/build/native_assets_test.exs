@@ -46,6 +46,17 @@ defmodule Dawarich.Build.NativeAssetsTest do
            )
   end
 
+  test "HTTP chrome adds at most 2 KiB to the native eager graph", %{tmp_dir: dir} do
+    build!(dir)
+
+    outputs =
+      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
+    bytes = Enum.sum(Enum.map(eager(outputs, [app], MapSet.new()), &outputs[&1]["bytes"]))
+    assert bytes <= 344_744 + 2 * 1024
+  end
+
   test "the native bundle includes LiveView and no Hotwire module", %{tmp_dir: dir} do
     inputs = dir |> build!() |> inputs()
 
