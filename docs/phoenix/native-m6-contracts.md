@@ -19,6 +19,8 @@ Status: S1 foundation contracts implemented, 2026-10-10. The controller starts t
 | `Dawarich.Maps.Dependencies.Principal` | Accounts.get, Devise salt fingerprint, sanitized Scope | m4 fresh/sanitized principal and callback admission | Controller integrates m4, then dedicated adapter switch with original-session revocation tests |
 
 The other O10 dependencies (m4 upload claims/finalization, owner invalidations, family consent/public admission; m5 Trip/Visit/timeline projections and map insertion points) receive one thin adapter each when the owning A/B/D task first consumes them. The ledger will name actual modules and methods at that point. No duplicated domain queries or placeholder native fallback is part of this contract.
+| `Dawarich.Maps.Dependencies.Notes` | `NotesApi.Read.index/3` and `NotesApi.Write.create/4`; scoped plain-text visit notes | m5 notes/ActionText | Dedicated switch task; retain visit-note owner/day semantics |
+| `map/style/dependencies.js` | Pure existing poster basemap/token interfaces | A15/C0–C2 native poster style | Switch the two exports after controller integration |
 
 ## Verification
 
