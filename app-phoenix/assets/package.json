@@ -3,6 +3,7 @@
   "dependencies": {
     "@emoji-mart/data": "1.2.1",
     "emoji-mart": "5.6.0",
+    "fflate": "0.8.2",
     "spark-md5": "3.0.2"
   }
 }

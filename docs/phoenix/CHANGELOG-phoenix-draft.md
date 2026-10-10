@@ -128,3 +128,5 @@ The controller recorded these deferrals on 2026-10-07; they remain follow-up wor
 These are native Phoenix corrections delivered in A2; retained Rails behavior is unchanged.
 
 - Remove abandoned native uploads after their lease expires, while preserving accepted attachments. [FRB-NATIVE-M4-ABANDONED-UPLOAD](fixed-rails-bugs.md#frb-native-m4-abandoned-upload--leaving-an-upload-strands-its-unattached-file)
+
+- Keep signed storage capabilities and private download filenames out of native request logs. [FRB-NATIVE-M4-STORAGE-PATH-LOG](fixed-rails-bugs.md#frb-native-m4-storage-path-log--request-logging-exposes-signed-storage-capabilities)

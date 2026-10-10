@@ -2,6 +2,10 @@ defmodule Dawarich.Uploads do
   @moduledoc false
   alias Dawarich.Uploads.{Claims, Records, Reservations, SweepWorker}
   alias Dawarich.Repo
+
+  def target(scope, ref, attrs, opts \\ []),
+    do: Dawarich.Uploads.Target.grant(scope, ref, attrs, opts)
+
   def reserve(scope, entry, policy), do: Reservations.reserve(scope, entry, policy)
   def claim(scope, refs, operation, opts \\ []), do: Claims.claim(scope, refs, operation, opts)
   def sweep(opts \\ []), do: SweepWorker.run(opts)

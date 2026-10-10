@@ -13,6 +13,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.A9Routes
   import DawarichWeb.StorageRoutes
   import DawarichWeb.MetricsRoutes
+  import DawarichWeb.NativeUploadRoutes
   import DawarichWeb.HealthRoutes
   import DawarichWeb.OperatorRoutes
   import DawarichWeb.DomainRoutes
@@ -65,6 +66,7 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RequireUser
   end
 
+  native_upload_routes()
   metrics_routes()
   api_routes()
   health_routes()

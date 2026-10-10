@@ -1346,5 +1346,15 @@ Rails creates direct-upload blobs before form submission. Navigating away only r
 - Rails: `app/javascript/controllers/upload_controller.js:40,110,153`; Active Storage direct-upload creation precedes the hidden signed-id field at line 160.
 - Phoenix: `app-phoenix/lib/dawarich/uploads/sweep_worker.ex:11`; `app-phoenix/lib/dawarich/uploads/cleanup_worker.ex:9`; `app-phoenix/lib/dawarich/uploads/records.ex:76`.
 - Test: “expired abandoned uploads are purged once after worker restart”; “cleanup refuses an attached export and retains a late PUT tombstone until target expiry” in `app-phoenix/test/dawarich/uploads_test.exs`.
-- Evidence: `impl-m4.report.md`, A1; source-backed Rails lifecycle comparison, not a Rails HTTP cancellation reproduction. Native owned reservations only; arbitrary Rails/rich-text blobs and attached exports are excluded. ED-NATIVE-M4-UPLOAD-LIFECYCLE added; no DRB added.
+- Evidence: `impl-m4.report.md`, A1; Rails direct-upload creation/local upload probe confirms the unattached metadata/file are retained, then purges its own fixture; controller disconnect source proves it submits no cancellation. No Rails browser cancellation reproduction claimed. Native owned reservations only; arbitrary Rails/rich-text blobs and attached exports are excluded. ED-NATIVE-M4-UPLOAD-LIFECYCLE added; no DRB added.
 - CHANGELOG-ready: Remove abandoned native uploads after their lease expires, while preserving files already accepted by an import or export.
+
+### FRB-NATIVE-M4-STORAGE-PATH-LOG — Request logging exposes signed storage capabilities
+
+Rails' request logger emits `request.filtered_path`, which filters query parameters but retains a signed Active Storage path token. Native logging redacts the storage capability and private filename in bare request messages, structured reports and lazy iodata.
+
+- Rails: railties 8.1.3.1 `lib/rails/rack/logger.rb:40,57-59`; Active Storage disk/blob capability routes.
+- Phoenix: `app-phoenix/lib/dawarich/log_redaction.ex:71,86`.
+- Test: “storage request path logs never retain a signed upload capability” in `app-phoenix/test/dawarich_web/native_upload_target_test.exs`; disable-path-scrub mutation fails it.
+- Evidence: `impl-m4.report.md`, A2; actual installed Rails request logger invoked with a synthetic disk path and url/token/secret parameter filters confirms the retained capability. No production token used. Native logging is repaired; retained Rails logging remains unchanged. ED-NATIVE-M4-UPLOAD-TRANSPORT added; no DRB added.
+- CHANGELOG-ready: Keep signed storage capabilities and private download filenames out of native request logs.

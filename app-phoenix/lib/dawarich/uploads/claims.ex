@@ -14,7 +14,11 @@ defmodule Dawarich.Uploads.Claims do
              length(Enum.uniq(refs)) == length(refs),
          {:ok, verified} <- verify(repo, current.user.id, refs, opts) do
       repo.transaction(fn ->
-        Records.actor!(repo, scope)
+        if fun = opts[:before_lock], do: fun.(repo)
+        current = Records.actor!(repo, scope)
+
+        unless Dawarich.Entitlements.future?(current.user.active_until, DateTime.utc_now()),
+          do: repo.rollback(:inactive)
 
         for item <- Enum.sort_by(verified, & &1.reference) do
           row =

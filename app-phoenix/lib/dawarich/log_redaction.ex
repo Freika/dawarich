@@ -69,15 +69,27 @@ defmodule Dawarich.LogRedaction do
   end
 
   defp scrub_binary(binary) do
+    binary = scrub_storage_paths(binary)
+
     case words() do
       [] ->
         binary
 
       words ->
-        if mentions?(binary, words), do: binary |> scrub_pairs() |> scrub_json(), else: binary
+        if mentions?(binary, words),
+          do: binary |> scrub_pairs() |> scrub_json() |> scrub_inspect(),
+          else: binary
     end
   rescue
     _ -> @filtered
+  end
+
+  defp scrub_storage_paths(binary) do
+    Regex.replace(
+      ~r{(/rails/active_storage/(?:disk|blobs/(?:redirect|proxy)|representations/(?:redirect|proxy))/)[^\s"'?#]++},
+      binary,
+      "\\1" <> @filtered
+    )
   end
 
   defp mentions?(binary, words), do: :binary.match(String.downcase(binary), words) != :nomatch
@@ -105,6 +117,16 @@ defmodule Dawarich.LogRedaction do
     Regex.replace(~r/"([^"\\]*+)"(\s*+:\s*+)"(?:[^"\\]|\\.)*+"/, binary, fn whole, key, colon ->
       if sensitive?(key), do: ~s("#{key}"#{colon}"#{@filtered}"), else: whole
     end)
+  end
+
+  defp scrub_inspect(binary) do
+    Regex.replace(
+      ~r/(?<![\w"])([a-z_][a-z0-9_]*+)(\s*+:\s*+)"(?:[^"\\]|\\.)*+"/,
+      binary,
+      fn whole, key, colon ->
+        if sensitive?(key), do: key <> colon <> ~s("#{@filtered}"), else: whole
+      end
+    )
   end
 
   defp sensitive?(key) when is_atom(key), do: sensitive?(Atom.to_string(key))

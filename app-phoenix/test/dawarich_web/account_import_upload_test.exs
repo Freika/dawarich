@@ -8,7 +8,7 @@ defmodule DawarichWeb.AccountImportUploadTest do
   alias DawarichWeb.{DirectUpload, Translate}
 
   @endpoint DawarichWeb.Endpoint
-  @checksum "AELTPXGTbs81Ygn6v0o2PQ=="
+  @checksum Base.encode64(:crypto.hash(:md5, String.duplicate("z", 2048)))
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -71,13 +71,12 @@ defmodule DawarichWeb.AccountImportUploadTest do
 
   defp text(key), do: Translate.t("en", key, %{})
 
-  test "the presigner creates the blob with the client checksum and returns a direct PUT target" do
+  test "the presigner creates an owned blob with the client checksum and returns only its reference" do
     assert {:ok, meta, _socket} = DirectUpload.presign(entry(%{}), socket())
 
     assert meta.uploader == "Direct"
-    assert meta.url =~ "http://www.example.com/rails/active_storage/disk/"
-    assert meta.headers == %{"Content-Type" => "application/zip"}
-    assert is_binary(meta.signed_id)
+    assert Enum.sort(Map.keys(meta)) == [:upload_ref, :uploader]
+    assert is_binary(Map.fetch!(meta, :upload_ref))
     assert blobs() == [["backup.zip", 2048, @checksum, "application/zip"]]
 
     [[blob_id]] = Repo.query!("SELECT id FROM active_storage_blobs").rows
@@ -142,6 +141,12 @@ defmodule DawarichWeb.AccountImportUploadTest do
 
     render_hook(view, "archive_checksum", %{"ref" => ref, "checksum" => @checksum})
     assert render_upload(upload, "backup.zip") =~ "100%"
+    [[key]] = Repo.query!("SELECT key FROM active_storage_blobs", [], log: false).rows
+    storage = Dawarich.Imports.StorageContext.storage()
+    path = Dawarich.Storage.disk_path(storage.root, key)
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, String.duplicate("z", 2048))
+    on_exit(fn -> File.rm(path) end)
     assert has_element?(view, "#import-form button[type=submit]:not([disabled])")
 
     html = view |> form("#import-form") |> render_submit()
@@ -200,5 +205,103 @@ defmodule DawarichWeb.AccountImportUploadTest do
     |> LazyHTML.from_fragment()
     |> LazyHTML.query("#import-form [data-entry-ref]")
     |> LazyHTML.attribute("data-entry-ref")
+  end
+
+  test "account cancellation cleans its pending object while a completed owned archive imports once" do
+    user = Dawarich.Accounts.get(9894)
+    scope = Dawarich.Accounts.Scope.for_user(user, "en")
+    bytes = "owned-account-archive"
+    checksum = Base.encode64(:crypto.hash(:md5, bytes))
+
+    {:ok, cancelled, _} =
+      DirectUpload.presign(
+        entry(%{client_size: byte_size(bytes)}),
+        socket(%{checksums: %{"0" => checksum}})
+      )
+
+    ref = Map.fetch!(cancelled, :upload_ref)
+
+    [[blob, key]] =
+      Repo.query!(
+        "SELECT b.id,b.key FROM active_storage_blobs b JOIN phoenix.native_uploads u ON u.blob_id=b.id WHERE u.reference=$1",
+        [ref],
+        log: false
+      ).rows
+
+    storage = Dawarich.Imports.StorageContext.storage()
+    path = Dawarich.Storage.disk_path(storage.root, key)
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, bytes)
+    on_exit(fn -> File.rm(path) end)
+    assert {:ok, :cancelled} = Dawarich.Uploads.cancel(scope, ref)
+    assert :ok = Dawarich.Uploads.CleanupWorker.run(%{"reference" => ref}, repo: Repo)
+    refute File.exists?(path)
+
+    assert [] =
+             Repo.query!("SELECT id FROM active_storage_blobs WHERE id=$1", [blob], log: false).rows
+
+    assert {:error, _} = apply(Dawarich.UserData, :start_upload, [scope, ref])
+
+    {:ok, accepted, _} =
+      DirectUpload.presign(
+        entry(%{client_size: byte_size(bytes)}),
+        socket(%{checksums: %{"0" => checksum}})
+      )
+
+    accepted_ref = Map.fetch!(accepted, :upload_ref)
+
+    [[key]] =
+      Repo.query!(
+        "SELECT b.key FROM active_storage_blobs b JOIN phoenix.native_uploads u ON u.blob_id=b.id WHERE u.reference=$1",
+        [accepted_ref],
+        log: false
+      ).rows
+
+    path = Dawarich.Storage.disk_path(storage.root, key)
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, bytes)
+    on_exit(fn -> File.rm(path) end)
+    assert :ok = apply(Dawarich.UserData, :start_upload, [scope, accepted_ref])
+    assert {:error, :claimed} = apply(Dawarich.UserData, :start_upload, [scope, accepted_ref])
+    assert imports() == [[1]]
+    assert File.exists?(path)
+  end
+
+  test "upload failures distinguish checksum preparation authorization storage and timeout without echoing inputs" do
+    {:ok, view, _} = live_as()
+
+    for stage <- ~w(checksum preparation target upload timeout) do
+      html =
+        render_hook(view, "upload_preparation_error", %{
+          "stage" => stage,
+          "error" => "untrusted-private-error"
+        })
+
+      assert html =~ text("native_upload." <> stage)
+      refute html =~ "untrusted-private-error"
+    end
+
+    before = render(view)
+    render_hook(view, "upload_preparation_error", %{"stage" => "forged-stage"})
+    assert render(view) == before
+  end
+
+  test "account upload principals contain no key or password hash before and after rotation" do
+    {:ok, view, _} = live_as()
+
+    for principal <- [
+          :sys.get_state(view.pid).socket.assigns.current_user,
+          :sys.get_state(view.pid).socket.assigns.profile_user,
+          :sys.get_state(view.pid).socket.assigns.current_scope.user
+        ] do
+      refute Map.has_key?(principal, :api_key)
+      refute Map.has_key?(principal, :encrypted_password)
+    end
+
+    render_hook(view, "rotate_api_key", %{})
+    current = :sys.get_state(view.pid).socket.assigns.current_user
+    refute Map.has_key?(current, :api_key)
+    refute Map.has_key?(current, :encrypted_password)
+    assert is_binary(current.session_version)
   end
 end

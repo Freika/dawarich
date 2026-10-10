@@ -71,6 +71,38 @@ defmodule Dawarich.Build.NativeAssetsTest do
     assert demo_bytes in 1..2048
   end
 
+  test "archive preparation and ZIP dependencies stay lazy within the shared gzip budget", %{
+    tmp_dir: dir
+  } do
+    assert 0 ==
+             Esbuild.install_and_run(:native, [
+               "--outdir=#{dir}",
+               "--metafile=#{Path.join(dir, "meta.json")}",
+               "--log-level=warning",
+               "--minify"
+             ])
+
+    outputs =
+      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
+    paths = eager(outputs, [app], MapSet.new())
+    eager_inputs = for path <- paths, {input, _} <- outputs[path]["inputs"], do: input
+    refute Enum.any?(eager_inputs, &String.contains?(&1, "prepare_file.js"))
+    refute Enum.any?(eager_inputs, &String.contains?(&1, "fflate"))
+
+    assert Enum.any?(Map.keys(outputs), fn path ->
+             Enum.any?(Map.keys(outputs[path]["inputs"]), &String.contains?(&1, "fflate"))
+           end)
+
+    gzip =
+      Enum.reduce(paths, 0, fn path, size ->
+        size + byte_size(:zlib.gzip(File.read!(Path.expand(path, "assets"))))
+      end)
+
+    assert gzip <= 51_397 + 5 * 1024
+  end
+
   defp eager(_outputs, [], seen), do: seen
 
   defp eager(outputs, [path | rest], seen) do

@@ -8,7 +8,7 @@ defmodule DawarichWeb.AccountImport do
       assign(
         assigns,
         :can_import,
-        Enum.any?(assigns.upload.entries, &Map.has_key?(assigns.checksums, &1.ref))
+        assigns.upload.entries != [] and Enum.all?(assigns.upload.entries, & &1.done?)
       )
 
     ~H"""
@@ -28,16 +28,29 @@ defmodule DawarichWeb.AccountImport do
           id="import-form"
           class="space-y-4"
           phx-hook="ArchiveChecksum"
+          data-upload-kind="account"
+          data-upload-name="archive"
           phx-change="validate_archive"
           phx-submit="import_archive"
         >
           <div class="form-control">
-            <label class="label" for={@upload.ref}>
+            <label class="label" for="account-archive-selection">
               <span class="label-text">
                 {t(@locale, "devise.registrations.edit.select_zip_archive", %{})}
               </span>
             </label>
-            <.live_file_input upload={@upload} class="file-input file-input-bordered w-full" />
+            <input
+              type="file"
+              id="account-archive-selection"
+              data-native-selection
+              accept=".zip,application/zip"
+              class="file-input file-input-bordered w-full"
+            />
+            <.live_file_input
+              upload={@upload}
+              class="hidden"
+              aria-label={t(@locale, "devise.registrations.edit.select_zip_archive", %{})}
+            />
             <div class="mt-2 text-sm text-base-content/60">
               {t(
                 @locale,
@@ -48,8 +61,8 @@ defmodule DawarichWeb.AccountImport do
             </div>
           </div>
           <div :for={entry <- @upload.entries} class="space-y-1" data-entry-ref={entry.ref}>
-            <div class="flex items-center gap-2 text-sm">
-              <span class="min-w-0 flex-1 truncate [overflow-wrap:anywhere]">{entry.client_name}</span>
+            <div class="flex flex-wrap min-w-0 items-center gap-2 text-sm">
+              <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">{entry.client_name}</span>
               <span>{entry.progress}%</span>
               <button
                 type="button"

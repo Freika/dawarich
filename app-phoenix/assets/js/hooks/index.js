@@ -1,12 +1,13 @@
-import { AchievementUnlocks } from "./achievement_unlocks.js"
-import { ArchiveChecksum } from "./archive_checksum.js"
-import { ChangelogWidget } from "./changelog_widget.js"
-import { Clipboard } from "./clipboard.js"
-import { CredentialQr } from "./credential_qr.js"
-import { Dismissible } from "./dismissible.js"
-import { EmojiPicker } from "./emoji_picker.js"
-import { MapMatchingDemo } from "./map_matching_demo.js"
-import { ScrollIntoView } from "./scroll_into_view.js"
+import { AchievementUnlocks } from "./achievement_unlocks.js";
+import { ArchiveChecksum } from "./archive_checksum.js";
+import { ChangelogWidget } from "./changelog_widget.js";
+import { Clipboard } from "./clipboard.js";
+import { CredentialValue } from "./credential_value.js";
+import { CredentialQr } from "./credential_qr.js";
+import { Dismissible } from "./dismissible.js";
+import { EmojiPicker } from "./emoji_picker.js";
+import { MapMatchingDemo } from "./map_matching_demo.js";
+import { ScrollIntoView } from "./scroll_into_view.js";
 
 export const hooks = {
   AchievementUnlocks,
@@ -14,8 +15,9 @@ export const hooks = {
   ChangelogWidget,
   Clipboard,
   CredentialQr,
+  CredentialValue,
   Dismissible,
   EmojiPicker,
   MapMatchingDemo,
   ScrollIntoView,
-}
+};

@@ -1,0 +1,7 @@
+en:
+  native_upload:
+    checksum: "Could not calculate the file checksum. Select the file again."
+    preparation: "Could not prepare the file. Select the file again."
+    target: "Storage could not authorize this upload. Select the file again."
+    upload: "The file upload failed. Select the file again."
+    timeout: "Upload progress stopped. Select the file again."

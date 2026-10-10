@@ -38,6 +38,22 @@ defmodule Dawarich.UserData do
     :ok
   end
 
+  def start_upload(%Scope{} = scope, ref) do
+    case Dawarich.Uploads.claim(scope, [ref], :account,
+           repo: repo(),
+           before_lock: fn repo -> Ownership.lock(repo, "command:users.import_data") end,
+           consume: fn repo, [item] ->
+             case start_import(scope, Dawarich.RailsMessages.blob_id(item.blob.id)) do
+               :ok -> :ok
+               {:error, reason} -> repo.rollback(reason)
+             end
+           end
+         ) do
+      {:ok, :ok} -> :ok
+      error -> error
+    end
+  end
+
   def start_import(%Scope{} = scope, value) do
     cond do
       Dawarich.Ingest.Ruby.blank?(value) -> {:error, :blank}

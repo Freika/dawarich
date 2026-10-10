@@ -322,33 +322,44 @@ defmodule DawarichWeb.SettingsLiveTest do
   end
 
   describe "/users/edit" do
-    test "the API card shows the bare key, the app QR code and the key-bearing URLs", %{
-      user: user
-    } do
+    test "the API card reveals the bare key QR and URL fields through fresh HTTP without socket credentials",
+         %{user: user} do
       {:ok, view, html} = live_as(user, "/users/edit")
+      refute html =~ "a5s3-k-5390"
       doc = LazyHTML.from_document(html)
+      assert doc |> LazyHTML.query("[phx-hook=CredentialValue]") |> Enum.count() == 4
 
-      assert doc
-             |> LazyHTML.query("code.block.break-all.text-sm")
-             |> Enum.map(&LazyHTML.text/1)
-             |> Enum.take(1) == ["a5s3-k-5390"]
-
-      codes = doc |> LazyHTML.query("section code") |> Enum.map(&LazyHTML.text/1)
-
-      assert codes == [
-               "http://www.example.com/",
-               "a5s3-k-5390",
-               "http://www.example.com/api/v1/owntracks/points?api_key=a5s3-k-5390",
-               "http://www.example.com/api/v1/overland/batches?api_key=a5s3-k-5390"
+      assert doc |> LazyHTML.query("[data-path]") |> LazyHTML.attribute("data-path") == [
+               "http://www.example.com/api/v1/owntracks/points",
+               "http://www.example.com/api/v1/overland/batches"
              ]
 
+      session = RailsUser.session(user.id)
+
+      conn = fn ->
+        build_conn()
+        |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+        |> Plug.Conn.put_req_header("x-csrf-token", DawarichWeb.RailsCsrf.masked_token(session))
+      end
+
+      key = get(conn.(), "/native/account/key")
+      assert key.status == 200
+      assert Jason.decode!(key.resp_body) == %{"api_key" => "a5s3-k-5390"}
+      assert Plug.Conn.get_resp_header(key, "cache-control") == ["no-store"]
+      qr = get(conn.(), "/native/account/qr")
       payload = ~s({"server_url":"http://www.example.com/","api_key":"a5s3-k-5390"})
 
-      assert doc |> LazyHTML.query("div.max-w-xs svg path") |> LazyHTML.attribute("d") ==
-               [Dawarich.QrSvg.path(Dawarich.QrCode.modules(payload))]
+      assert qr.resp_body
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query("svg path")
+             |> LazyHTML.attribute("d") == [Dawarich.QrSvg.path(Dawarich.QrCode.modules(payload))]
 
-      refute inspect(:sys.get_state(view.pid)) =~ "a5s3-k-5390"
-      refute inspect(:sys.get_state(view.pid)) =~ "<svg"
+      refute Map.has_key?(:sys.get_state(view.pid).socket.assigns.current_user, :api_key)
+
+      refute Map.has_key?(
+               :sys.get_state(view.pid).socket.assigns.current_user,
+               :encrypted_password
+             )
     end
 
     test "a password user confirms with the current password; an OAuth user with the email", %{

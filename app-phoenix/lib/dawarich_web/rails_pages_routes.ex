@@ -8,6 +8,7 @@ defmodule DawarichWeb.RailsPagesRoutes do
         pipe_through [:browser, :rails_user]
 
         get "/native/account/qr", DawarichWeb.NativeCredentialReveal, []
+        get "/native/account/key", DawarichWeb.NativeCredentialReveal, :key
 
         get "/imports/:id/download", DawarichWeb.ImportsDownload, :show, metadata: @native_import
 

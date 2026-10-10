@@ -71,7 +71,8 @@ defmodule DawarichWeb.AccountLiveTest do
 
   test "a new API key replaces the old one on the page after a confirmation", %{session: session} do
     {:ok, view, html} = live_as(session)
-    assert html =~ "account-live-old-key"
+    refute html =~ "account-live-old-key"
+    assert revealed_key(session) == "account-live-old-key"
     assert has_element?(view, "#rotate-api-key[data-confirm][phx-disable-with]")
 
     Dawarich.TtlCache.put({DawarichWeb.RateLimit, "account-live-old-key"}, %{plan: 1}, 60_000)
@@ -80,10 +81,20 @@ defmodule DawarichWeb.AccountLiveTest do
     html = view |> element("#rotate-api-key") |> render_click()
 
     refute api_key() == "account-live-old-key"
-    assert html =~ api_key()
+    refute html =~ api_key()
+    assert revealed_key(session) == api_key()
     refute html =~ "account-live-old-key"
     assert api_status("account-live-old-key") == 401
     assert api_status(api_key()) == 200
+  end
+
+  defp revealed_key(session) do
+    conn_for(session)
+    |> put_req_header("x-csrf-token", DawarichWeb.RailsCsrf.masked_token(session))
+    |> get("/native/account/key")
+    |> Map.fetch!(:resp_body)
+    |> Jason.decode!()
+    |> Map.fetch!("api_key")
   end
 
   defp api_status(key) do
