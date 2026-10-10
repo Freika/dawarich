@@ -36,14 +36,20 @@ defmodule Dawarich.Families.Snapshot do
     repo = Keyword.get(opts, :repo, Repo)
 
     case repo.transaction(fn ->
-           version = epoch(repo, user.id, clock.(), hosted)
-           result = reader.()
-           result = Keyword.get(opts, :after_read, &Function.identity/1).(result)
+           try do
+             version = epoch(repo, user.id, clock.(), hosted)
+             result = reader.()
+             result = Keyword.get(opts, :after_read, &Function.identity/1).(result)
 
-           if valid?(repo, user.id, version, clock.(), hosted),
-             do: result,
-             else: {:error, :grant_changed}
+             if valid?(repo, user.id, version, clock.(), hosted),
+               do: result,
+               else: {:error, :grant_changed}
+           rescue
+             error ->
+               {:snapshot_exception, error, __STACKTRACE__}
+           end
          end) do
+      {:ok, {:snapshot_exception, error, stack}} -> reraise error, stack
       {:ok, result} -> result
       {:error, _} -> {:error, :unavailable}
     end
@@ -59,8 +65,7 @@ defmodule Dawarich.Families.Snapshot do
 
     case result.rows do
       [row] ->
-        user = Repo.load(Dawarich.Accounts.User, {result.columns, row})
-        if Dawarich.Accounts.unlocked?(user, DateTime.utc_now()), do: user
+        Repo.load(Dawarich.Accounts.User, {result.columns, row})
 
       [] ->
         nil

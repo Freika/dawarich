@@ -51,6 +51,37 @@ defmodule Dawarich.FamiliesSnapshotRaceTest do
     }
   end
 
+  test "guarded family refusal leaves the surrounding ingestion transaction usable", c do
+    Repo.transaction(fn ->
+      assert_raise ArgumentError, "synthetic unsupported family input", fn ->
+        Families.Snapshot.read(c.scope.user, [now: @now], fn ->
+          raise ArgumentError, "synthetic unsupported family input"
+        end)
+      end
+
+      assert Repo.query!("SELECT 1", [], log: false).rows == [[1]]
+    end)
+  end
+
+  test "OwnTracks friends preserve API admission for a password-locked actor and recheck its identity",
+       c do
+    Repo.query!("UPDATE users SET locked_at=now() WHERE id=$1", [c.scope.user.id], log: false)
+    assert [_ | _] = Dawarich.Ingest.Friends.for_user(c.scope.user.id, @now)
+
+    assert Dawarich.Ingest.Friends.for_user(c.scope.user.id, @now,
+             clock: fn -> @now end,
+             after_read: fn result ->
+               assert {:ok, [_ | _]} = result
+
+               Repo.query!(
+                 "UPDATE users SET encrypted_password=$2 WHERE id=$1",
+                 [c.scope.user.id, "synthetic-revoked-api-identity"], log: false)
+
+               result
+             end
+           ) == []
+  end
+
   for kind <- [:locations, :history], change <- [:consent, :member, :viewer, :expiry, :access] do
     @kind kind
     @change change

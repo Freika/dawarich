@@ -17,7 +17,7 @@ defmodule Dawarich.Ingest.Friends do
   """
 
   def for_user(user_id, now \\ DateTime.utc_now(), opts \\ []) do
-    with user when not is_nil(user) <- Dawarich.Accounts.get(user_id),
+    with user when not is_nil(user) <- Dawarich.Accounts.public_owner(user_id),
          {:ok, friends} <-
            Dawarich.Families.Snapshot.read(user, Keyword.put(opts, :now, now), fn ->
              {:ok, read(user_id, now)}
