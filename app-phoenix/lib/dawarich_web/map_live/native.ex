@@ -164,6 +164,8 @@ defmodule DawarichWeb.MapLive.Native do
         residency={assigns[:residency]}
         locale={@locale}
       />
+      <button type="button" data-testid="native-select-area" class="btn btn-sm">{t(@locale, "javascript.selection.select_area", %{})}</button>
+      <section id="native-map-selection" data-map-selection phx-update="ignore" class="min-w-0 max-w-full" tabindex="0"></section>
       <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
       <button type="button" data-testid="native-create-place" class="btn btn-sm">{t(@locale, "javascript.places.create_new", %{})}</button>
       <DawarichWeb.NativeMapSettings.panel

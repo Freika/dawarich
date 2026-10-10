@@ -22,7 +22,9 @@ export function fixture(config = {}) {
   element.closest = () => root
   element.ownerDocument = { createElement: () => new Element() }
   const listeners = new Map(), sources = new Map(), layers = new Map(), pushed = [], reads = []
+  const toggle = () => ({enabled: true, enable() {this.enabled=true}, disable() {this.enabled=false}, isEnabled() {return this.enabled}})
   const map = {
+    dragPan: toggle(), boxZoom: toggle(),
     on(name, id, fn) { const key = fn ? `${name}:${id}` : name; if (!listeners.has(key)) listeners.set(key, new Set()); listeners.get(key).add(fn ?? id) },
     once(name, fn) { this.on(name, fn) },
     off(name, id, fn) { listeners.get(fn ? `${name}:${id}` : name)?.delete(fn ?? id) },
@@ -33,6 +35,7 @@ export function fixture(config = {}) {
     getStyle() { return { layers: [...layers.values()] } },
     setFilter(id, filter) { if (layers.has(id)) layers.get(id).filter = filter }, getFilter(id) { return layers.get(id)?.filter },
     setLayoutProperty() {}, setPaintProperty() {}, refreshTiles() {},
+    getZoom: () => 12,
     loaded: () => true, getCanvas: () => ({ style: {} }), remove() {},
     getBounds: () => ({ getSouth: () => 51, getNorth: () => 53, getWest: () => 12, getEast: () => 14 }),
   }
