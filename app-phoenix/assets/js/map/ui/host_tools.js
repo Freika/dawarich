@@ -25,7 +25,13 @@ export function createHostTools({ map, root, pushEvent, lifetime }) {
   )
   const address = (event) => {
     const point = event.features?.[0]?.properties
-    if (point && !point.cluster && !point.point_count) entity.address(point)
+    if (
+      point &&
+      !point.cluster &&
+      Number(point.count ?? 1) <= 1 &&
+      Number(point.point_count ?? 1) <= 1
+    )
+      entity.address(point)
   }
   map.on("click", "points-mvt", address)
   lifetime.own(() => map.off("click", "points-mvt", address))

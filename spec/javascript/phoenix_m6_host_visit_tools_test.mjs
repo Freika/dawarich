@@ -21,3 +21,22 @@ test("native map host creates visits and routes tile point addresses", async () 
   f.owner.destroy()
   assert.equal(f.listeners.get("click:points-mvt").size, 0)
 })
+
+test("native tile click opens only an individual point and ignores aggregate counts", async () => {
+  const f = fixture()
+  await f.owner.mount()
+  for (const properties of [
+    { id: 8, count: 4 },
+    { id: 9, point_count: 3 },
+    { id: 10, cluster: true },
+    { id: 11, count: 1, point_count: 1 },
+  ])
+    f.map.emit("click:points-mvt", { features: [{ properties }] })
+  assert.deepEqual(
+    f.pushed
+      .filter((item) => item.event === "address:open")
+      .map((item) => item.payload),
+    [{ id: 11 }],
+  )
+  f.owner.destroy()
+})
