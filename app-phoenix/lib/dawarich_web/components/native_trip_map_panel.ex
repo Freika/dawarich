@@ -46,7 +46,11 @@ defmodule DawarichWeb.NativeTripMapPanel do
         role="status"
         class="min-w-0 [overflow-wrap:anywhere] p-3"
       >
+        <span :if={@state == :plan}>{t(@locale, "trips.show.planned_route", %{})} · </span>
         {t(@locale, "trips.show." <> state_key(@state, @future), %{})}
+      </p>
+      <p :if={@state == :empty} class="min-w-0 text-base-content/60 text-sm [overflow-wrap:anywhere]">
+        {t(@locale, "trips.show.no_locations_recorded_hint", %{})}
       </p>
     </div>
     """

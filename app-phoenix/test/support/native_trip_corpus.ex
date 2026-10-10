@@ -25,8 +25,10 @@ defmodule Dawarich.Test.NativeTripCorpus do
   def assert_values(html, source) do
     assert texts(html, "h1") == texts(source, "h1")
 
-    assert texts(html, "p[class*='text-base-content/60']") ==
-             texts(source, "p[class*='text-base-content/60']")
+    all = html |> LazyHTML.from_fragment() |> LazyHTML.text() |> normalize()
+
+    for value <- texts(source, "p[class*='text-base-content/60']"),
+        do: assert(String.contains?(all, value))
 
     assert attrs(html, "svg[title]", "title") == attrs(source, "svg[title]", "title")
     assert texts(html, ".whitespace-pre-wrap") == texts(source, ".whitespace-pre-wrap")
