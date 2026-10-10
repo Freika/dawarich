@@ -112,11 +112,11 @@ defmodule Dawarich.Families.NativeCommands do
     )
   end
 
-  defp admit(_user, action, _ctx, _repo)
-       when action in [:create, :accept_invitation, :remove_member, :delete, :cancel_invitation],
-       do: :ok
+  def admit(_user, action, _ctx, _repo)
+      when action in [:create, :accept_invitation, :remove_member, :delete, :cancel_invitation],
+      do: :ok
 
-  defp admit(user, _action, ctx, repo) do
+  def admit(user, _action, ctx, repo) do
     case WebCreate.family(repo, user.id) do
       nil ->
         {:error, :unauthorized}

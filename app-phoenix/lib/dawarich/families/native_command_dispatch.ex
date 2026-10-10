@@ -90,16 +90,24 @@ defmodule Dawarich.Families.NativeCommandDispatch do
       [[_, status, expires]] ->
         now = Keyword.get(opts, :clock, fn -> ctx.now end).()
 
-        if status == 0 and NaiveDateTime.compare(expires, DateTime.to_naive(now)) == :gt do
-          Requests.web_respond(
-            project(user),
-            decision,
-            Map.put(attrs, "id", Integer.to_string(id)),
-            now,
-            repo
-          )
-        else
-          {:error, :expired}
+        with :ok <-
+               Dawarich.Families.NativeCommands.admit(
+                 user,
+                 :respond_location,
+                 %{ctx | now: now},
+                 repo
+               ) do
+          if status == 0 and NaiveDateTime.compare(expires, DateTime.to_naive(now)) == :gt do
+            Requests.web_respond(
+              project(user),
+              decision,
+              Map.put(attrs, "id", Integer.to_string(id)),
+              now,
+              repo
+            )
+          else
+            {:error, :expired}
+          end
         end
     end
   end

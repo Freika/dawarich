@@ -1400,3 +1400,12 @@ Rails accepts the public unlock secret under phrase, but its configured partial 
 - Phoenix: `app-phoenix/config/config.exs:39`; shared `Dawarich.LogRedaction` filter.
 - Test: “public unlock phrase is filtered in structured reports lazy iodata and query strings”; exclude-phrase-from-sensitivity mutation fails.
 - Ledger: ED-NATIVE-M4-UNLOCK-LOGS; no DRB added. Rails production code unchanged.
+
+### FRB-NATIVE-M4-FAMILY-REQUEST-ACCESS — A waiting consent response can outlive Cloud family access
+
+Rails checks family access before invoking the response service, then waits for the request row lock. The locked decision checks only request status/expiry. If family access expires during that wait, accepting the still-pending request enables location sharing after admission has lapsed. Phoenix refreshes the clock and repeats the same effective family admission rule after the request lock, before consent, request, notification or durable-event writes.
+
+- Rails: `app/controllers/family/location_requests_controller.rb:5,30`; `app/services/families/respond_to_location_request.rb:17,36,41`. A private transactional Rails oracle moved the clock at the real `with_lock` boundary and reproduced accepted consent after access expired; all rows rolled back.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_command_dispatch.ex:91`; shared admission in `families/native_commands.ex:119`.
+- Test: `families_commands_test.exs`, “Cloud access expiring at the locked request decision refuses consent without effects”; a controlled clock crosses access expiry while request expiry stays future. Skipping final admission fails the exact refusal; restored GREEN.
+- Ledger: ED-NATIVE-M4-FAMILY-REQUEST-ACCESS; no DRB added. Rails production code is unchanged.

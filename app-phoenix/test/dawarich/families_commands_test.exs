@@ -370,6 +370,54 @@ defmodule Dawarich.FamiliesCommandsTest do
     assert {:ok, 10901} = Families.accept_invitation(ctx.invitee, token, opts)
   end
 
+  test "Cloud access expiring at the locked request decision refuses consent without effects",
+       ctx do
+    expiry = DateTime.add(@now, 60)
+    request!(expiry |> DateTime.add(3600) |> DateTime.to_naive())
+
+    ScratchRepo.query!(
+      "UPDATE users SET active_until=$1 WHERE id=10901",
+      [DateTime.to_naive(expiry)],
+      log: false
+    )
+
+    ScratchRepo.query!("UPDATE users SET plan=1 WHERE id=10902", [], log: false)
+
+    before =
+      {footprint(), rows("SELECT status,responded_at FROM family_location_requests"),
+       rows("SELECT settings FROM users WHERE id=10902")}
+
+    {:ok, clock} = Agent.start_link(fn -> @now end)
+    parent = self()
+
+    opts =
+      Keyword.merge(@opts,
+        repo: Dawarich.Test.FamilyCommandsProbeRepo,
+        self_hosted: false,
+        clock: fn -> Agent.get(clock, & &1) end
+      )
+
+    task =
+      Task.async(fn ->
+        Process.put(:family_row_probe, parent)
+        Families.respond_location(ctx.member, 10901, :accept, %{}, opts)
+      end)
+
+    try do
+      assert_receive {:family_locked, pid}, 3000
+      Agent.update(clock, fn _ -> expiry end)
+      send(pid, :release_family)
+      assert {:error, :expired} = Task.await(task, 5000)
+
+      assert {footprint(), rows("SELECT status,responded_at FROM family_location_requests"),
+              rows("SELECT settings FROM users WHERE id=10902")} == before
+    after
+      send(task.pid, :release_family)
+      Task.shutdown(task, :brutal_kill)
+      Agent.stop(clock)
+    end
+  end
+
   for {crossing, probe} <- [
         request: :family_recheck_probe,
         invitation: :family_recheck_probe,

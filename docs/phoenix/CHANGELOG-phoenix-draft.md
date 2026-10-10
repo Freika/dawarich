@@ -139,3 +139,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Discard family location/history snapshots when consent, membership or access changes while points load (FRB-NATIVE-M4-FAMILY-SNAPSHOT).
 
 - Filter public unlock phrase values from request and crash logs, including lazy messages (FRB-NATIVE-M4-UNLOCK-LOGS).
+
+- Refuse family location consent when Cloud family access expires while a response waits for its request lock (FRB-NATIVE-M4-FAMILY-REQUEST-ACCESS).
