@@ -29,7 +29,22 @@ export function initializeCharts(root = document, factory = createAdapter) {
     })
 }
 
+export function initializePublicCharts(
+  root = document,
+  target = window,
+  factory = createAdapter,
+) {
+  const cleanup = initializeCharts(root, factory)
+  const hide = (event) => {
+    if (!event.persisted) cleanup()
+  }
+  target.addEventListener("pagehide", hide)
+  return () => {
+    target.removeEventListener("pagehide", hide)
+    cleanup()
+  }
+}
+
 if (typeof document !== "undefined") {
-  const cleanup = initializeCharts()
-  window.addEventListener("pagehide", cleanup, { once: true })
+  initializePublicCharts()
 }

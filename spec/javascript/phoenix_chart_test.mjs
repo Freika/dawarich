@@ -143,3 +143,34 @@ test("a failed lazy chart load can retry the same revision", async () => {
   assert.equal(calls.length, 1)
   adapter.destroy()
 })
+
+test("public charts survive persisted history hide and show and clean up on final leave", async () => {
+  const { initializePublicCharts } = await import(
+    "../../app-phoenix/assets/js/public_charts.js"
+  )
+  const target = new EventTarget()
+  const element = {
+    dataset: { chart: JSON.stringify(payload(1, "history")) },
+    querySelector: () => "plot",
+  }
+  const root = { querySelectorAll: () => [element] }
+  let created = 0
+  let destroyed = 0
+  const factory = () => {
+    created++
+    return { update: () => Promise.resolve(), destroy: () => destroyed++ }
+  }
+  const stop = initializePublicCharts(root, target, factory)
+  const lifecycle = (type, persisted) =>
+    target.dispatchEvent(Object.assign(new Event(type), { persisted }))
+  for (let i = 0; i < 2; i++) {
+    lifecycle("pagehide", true)
+    lifecycle("pageshow", true)
+    assert.equal(created, 1)
+    assert.equal(destroyed, 0)
+  }
+  lifecycle("pagehide", false)
+  assert.equal(destroyed, 1)
+  stop()
+  assert.equal(destroyed, 1)
+})
