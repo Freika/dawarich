@@ -1,5 +1,5 @@
 defmodule DawarichWeb.NativeMapVisitsTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: false
   import Phoenix.LiveViewTest
   alias Dawarich.{Accounts, Maps}
   alias Dawarich.Test.RailsUser
