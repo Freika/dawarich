@@ -1,5 +1,5 @@
 defmodule DawarichWeb.AdminWritesRequestTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Plug.Conn
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Auth.Admission

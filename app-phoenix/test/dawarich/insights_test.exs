@@ -1,5 +1,5 @@
 defmodule Dawarich.InsightsTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Dawarich.{Insights, Repo, Stats}
   alias Dawarich.Insights.Heatmap

@@ -1,5 +1,5 @@
 defmodule DawarichWeb.AdminUsersParityTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Phoenix.LiveViewTest, only: [render_component: 2]
   import Dawarich.Test.FormIsolation
   alias Dawarich.{Accounts, Repo}

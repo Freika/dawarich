@@ -1,5 +1,5 @@
 defmodule Dawarich.A12f3bE061CloudGuardTest do
-  use Dawarich.DataCase, async: false
+  use Dawarich.DataCase, async: true
 
   alias Dawarich.Release
   alias Dawarich.Release.Lifecycle

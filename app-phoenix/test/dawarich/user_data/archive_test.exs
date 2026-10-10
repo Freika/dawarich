@@ -1,5 +1,5 @@
 defmodule Dawarich.UserData.ArchiveTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Imports.GpxArchive.{Directory, Error}
   alias Dawarich.Imports.JsonStream
   alias Dawarich.UserData.{Archive, Jsonl, Paths, Versions}

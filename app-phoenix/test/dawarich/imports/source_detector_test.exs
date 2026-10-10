@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.SourceDetectorTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Imports.SourceDetector
   @dir Path.expand("../../fixtures/imports/formats", __DIR__)
 

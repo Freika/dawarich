@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.TwoFactor.SecretTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import ExUnit.CaptureLog
   alias Dawarich.Auth.{Account, AccountChanges}
   alias Dawarich.Auth.TwoFactor.Secret

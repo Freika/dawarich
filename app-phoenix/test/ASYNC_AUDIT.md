@@ -1,5 +1,6 @@
 | file | current case (before conversion) | needs_real_commits | reason |
 | --- | --- | --- | --- |
+| dawarich/a12f3b_e061_cloud_guard_test.exs | Dawarich.DataCase | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/account_api/exist_test.exs | Dawarich.IngestCase | no | Reviewed same-process queries/DML or timezone parsing; transaction-local fixtures and no shared-state mutation |
 | dawarich/account_api/payload_test.exs | Dawarich.IngestCase | no | Reviewed same-process queries/DML or timezone parsing; transaction-local fixtures and no shared-state mutation |
 | dawarich/achievement_checks_migration_test.exs | Dawarich.ScratchCase | yes | Changes schemas, sequences, or database configuration |
@@ -17,11 +18,12 @@
 | dawarich/admin/instance_writes_test.exs | ExUnit.Case | yes | Redis/cache helpers may use shared keys; namespacing not proven |
 | dawarich/admin/job_health_test.exs | Dawarich.JobsCase | yes | Exercises ownership flags; retain conservatively for other-process readers |
 | dawarich/admin/setting_writes_test.exs | ExUnit.Case | yes | Redis/cache helpers may use shared keys; namespacing not proven |
-| dawarich/admin/user_create_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich/admin/user_create_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/admin/user_roles_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
 | dawarich/admin/user_security_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
 | dawarich/admin/user_update_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
 | dawarich/admin/users_page_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
+| dawarich/air_trail/client_test.exs | ExUnit.Case | no | Client talks to listeners it opens on port 0 and owns; no database, env or global state |
 | dawarich/air_trail/import_flights_worker_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/air_trail/sync_scheduling_worker_test.exs | Dawarich.JobsCase | yes | Exercises ownership flags; retain conservatively for other-process readers |
 | dawarich/app_version/check_worker_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
@@ -29,33 +31,33 @@
 | dawarich/application_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/auth/account_changes_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
 | dawarich/auth/account_link/concurrency_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
-| dawarich/auth/account_link/confirmation_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/auth/account_link/pending_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich/auth/account_link/confirmation_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/auth/account_link/pending_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/auth/account_link/sign_in_test.exs | ExUnit.Case | yes | Starts another process; DB visibility or helper ownership is uncertain, retain conservatively |
 | dawarich/auth/api/challenge_cache_test.exs | ExUnit.Case | yes | Redis/cache helpers may use shared keys; namespacing not proven |
 | dawarich/auth/api/challenge_concurrency_test.exs | ExUnit.Case | yes | Starts another process; DB visibility or helper ownership is uncertain, retain conservatively |
 | dawarich/auth/api/challenge_test.exs | ExUnit.Case | yes | Redis/cache helpers may use shared keys; namespacing not proven |
 | dawarich/auth/api/challenge_verify_test.exs | ExUnit.Case | yes | Redis/cache helpers may use shared keys; namespacing not proven |
 | dawarich/auth/api/challenge_write_test.exs | ExUnit.Case | yes | Redis/cache helpers may use shared keys; namespacing not proven |
-| dawarich/auth/api/login_test.exs | ExUnit.Case | yes | Writes files or shared build/output state; isolation not proven |
-| dawarich/auth/api/payload_test.exs | ExUnit.Case | yes | Changes schemas, sequences, or database configuration |
+| dawarich/auth/api/login_test.exs | ExUnit.Case | no | Own sandbox checkout; password-work file uses a unique System.tmp_dir path; persistent_term holds only deterministic derived keys; no env, Redis or real commits |
+| dawarich/auth/api/payload_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/auth/api_keys_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
 | dawarich/auth/auth_handler_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/auth/credentials_test.exs | ExUnit.Case | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich/auth/http_boundary_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
-| dawarich/auth/otp/completion_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/auth/otp/start_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich/auth/otp/completion_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/auth/otp/start_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/auth/recovery/concurrency_test.exs | ExUnit.Case | yes | Starts another process; DB visibility or helper ownership is uncertain, retain conservatively |
-| dawarich/auth/recovery/flow_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/auth/recovery/http_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/auth/recovery/lifecycle_test.exs | ExUnit.Case | yes | Starts or uses service processes; naming and ownership isolation not proven |
+| dawarich/auth/recovery/flow_test.exs | ExUnit.Case | no | Own sandbox checkout; row locks only on rows the test inserted; persistent_term holds deterministic token keys; no env, Redis or real commits |
+| dawarich/auth/recovery/http_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/auth/recovery/lifecycle_test.exs | ExUnit.Case | no | Own sandbox checkout; row locks only on rows the test inserted; persistent_term holds deterministic token keys; no env, Redis or real commits |
 | dawarich/auth/recovery/mail_worker_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/auth/registration_setting_redis_test.exs | Dawarich.JobsCase | yes | Redis/cache helpers may use shared keys; namespacing not proven |
 | dawarich/auth/registration_setting_test.exs | Dawarich.JobsCase | yes | Redis/cache helpers may use shared keys; namespacing not proven |
-| dawarich/auth/two_factor/api_actor_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/auth/two_factor/api_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/auth/two_factor/management_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/auth/two_factor/secret_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich/auth/two_factor/api_actor_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/auth/two_factor/api_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/auth/two_factor/management_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/auth/two_factor/secret_test.exs | ExUnit.Case | no | Own sandbox checkout; capture_log without changing the Logger level; persistent_term holds deterministic encryption keys; no env or real commits |
 | dawarich/build/rails_parity_test.exs | ExUnit.Case | yes | Uses Rails parity or an external process/peer |
 | dawarich/cable/bus_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/cable/channels_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
@@ -79,9 +81,10 @@
 | dawarich/cli/raw_data_storage_test.exs | ExUnit.Case | yes | Writes files or shared build/output state; isolation not proven |
 | dawarich/cli/users_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
 | dawarich/cli_parity_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
-| dawarich/countries_and_cities_test.exs | Dawarich.IngestCase | yes | Changes schemas, sequences, or database configuration |
+| dawarich/cloud/endpoint_url_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/countries_and_cities_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/digests/activity_test.exs | Dawarich.JobsCase | yes | Digest corpus/helper can alter indexes or table constraints; retain conservatively |
-| dawarich/digests/api_test.exs | Dawarich.IngestCase | yes | Changes schemas, sequences, or database configuration |
+| dawarich/digests/api_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/digests/calculate_month_test.exs | Dawarich.JobsCase | yes | Digest corpus/helper can alter indexes or table constraints; retain conservatively |
 | dawarich/digests/calculate_year_test.exs | Dawarich.JobsCase | yes | Digest corpus/helper can alter indexes or table constraints; retain conservatively |
 | dawarich/digests/calculation_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
@@ -113,7 +116,7 @@
 | dawarich/exports/points_time_zone_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/exports/points_worker_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/families/auto_create_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
-| dawarich/families/history_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich/families/history_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/families/job_workers_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/families/member_sync_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/families/sharing_update_test.exs | Dawarich.IngestCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
@@ -135,7 +138,7 @@
 | dawarich/imports/archive_dispatch_test.exs | ExUnit.Case | yes | Writes files or shared build/output state; isolation not proven |
 | dawarich/imports/bulk_writer_failure_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
 | dawarich/imports/bulk_writer_test.exs | Dawarich.IngestCase | yes | Changes schemas, sequences, or database configuration |
-| dawarich/imports/csv_records_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich/imports/csv_records_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/imports/csv_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
 | dawarich/imports/destroy_legacy_schema_test.exs | Dawarich.IngestCase | yes | Exercises ownership flags; retain conservatively for other-process readers |
 | dawarich/imports/destroy_recovery_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
@@ -149,7 +152,7 @@
 | dawarich/imports/fit_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
 | dawarich/imports/geojson_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
 | dawarich/imports/google_phone_points_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
-| dawarich/imports/google_phone_stream_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich/imports/google_phone_stream_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/imports/google_phone_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
 | dawarich/imports/google_records_point_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
 | dawarich/imports/google_records_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
@@ -163,7 +166,7 @@
 | dawarich/imports/immich_test.exs | Dawarich.JobsCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich/imports/import_state_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
 | dawarich/imports/import_time_test.exs | Dawarich.IngestCase | no | Reviewed same-process queries and timezone parsing; fixtures are read-only and session settings are transaction-local |
-| dawarich/imports/json_stream_test.exs | ExUnit.Case | yes | Starts another process; DB visibility or helper ownership is uncertain, retain conservatively |
+| dawarich/imports/json_stream_test.exs | ExUnit.Case | no | Pure parser over ExUnit tmp_dir files; no database, env or global state |
 | dawarich/imports/kml_test.exs | Dawarich.JobsCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich/imports/kmz_test.exs | Dawarich.JobsCase | yes | Writes files or shared build/output state; isolation not proven |
 | dawarich/imports/lease_test.exs | Dawarich.JobsCase | yes | Starts another process; DB visibility or helper ownership is uncertain, retain conservatively |
@@ -171,7 +174,7 @@
 | dawarich/imports/normal_batch_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
 | dawarich/imports/normal_lifecycle_test.exs | Dawarich.JobsCase | yes | Starts another process; DB visibility or helper ownership is uncertain, retain conservatively |
 | dawarich/imports/normal_upload_test.exs | Dawarich.JobsCase, Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
-| dawarich/imports/normal_writer_oracle_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich/imports/normal_writer_oracle_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/imports/owntracks_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
 | dawarich/imports/photoprism_test.exs | Dawarich.JobsCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich/imports/photos_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
@@ -180,11 +183,11 @@
 | dawarich/imports/prepare_download_worker_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/imports/process_gpx_worker_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/imports/process_worker_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
-| dawarich/imports/rails_blob_reference_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/imports/source_detector_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich/imports/rails_blob_reference_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/imports/source_detector_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/imports/stale_recovery_test.exs | Dawarich.JobsCase | yes | Starts another process; DB visibility or helper ownership is uncertain, retain conservatively |
 | dawarich/imports/tcx_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
-| dawarich/imports/teslamate_client_test.exs | ExUnit.Case | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
+| dawarich/imports/teslamate_client_test.exs | ExUnit.Case | no | Client talks to listeners it opens on port 0 and owns; no database, env or global state |
 | dawarich/imports/teslamate_sync_test.exs | Dawarich.JobsCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich/imports/trek_sync_test.exs | Dawarich.JobsCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich/imports/trek_worker_test.exs | Dawarich.JobsCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
@@ -193,12 +196,13 @@
 | dawarich/imports/uploads_test.exs | Dawarich.JobsCase | yes | Writes files or shared build/output state; isolation not proven |
 | dawarich/imports/watcher_test.exs | Dawarich.JobsCase | yes | Exercises ownership flags; retain conservatively for other-process readers |
 | dawarich/imports/zip_fanout_test.exs | Dawarich.JobsCase | yes | Exercises ownership flags; retain conservatively for other-process readers |
-| dawarich/ingest/friends_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich/ingest/friends_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/ingest/intake_test.exs | Dawarich.IngestCase | yes | Starts another process; DB visibility or helper ownership is uncertain, retain conservatively |
 | dawarich/ingest/sources_repo_test.exs | Dawarich.IngestCase | yes | Changes schemas, sequences, or database configuration |
+| dawarich/ingest_case_isolation_test.exs | Dawarich.IngestCase | no | Proves IngestCase async isolation: no shared sandbox owner and no table locks from setup |
 | dawarich/insights/country_codes_test.exs | ExUnit.Case | yes | Redis/cache helpers may use shared keys; namespacing not proven |
 | dawarich/insights_details_db_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
-| dawarich/insights_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich/insights_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/integrations/sync_scheduling_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/integrations_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
 | dawarich/jobs/a12d2_corpus_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
@@ -211,7 +215,7 @@
 | dawarich/jsonb_test.exs | Dawarich.IngestCase | no | Reviewed same-process queries/DML or timezone parsing; transaction-local fixtures and no shared-state mutation |
 | dawarich/lite/archival_warning_worker_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/local_time_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
-| dawarich/locations_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich/locations_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/mail/account_destroy_confirmation_worker_test.exs | Dawarich.JobsCase | yes | Exercises real queue services or scheduling |
 | dawarich/mail/archival_approaching_worker_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/mail/delivery_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
@@ -230,9 +234,11 @@
 | dawarich/map_gallery_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
 | dawarich/map_page_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/map_window_test.exs | ExUnit.Case | no | Reviewed same-process queries/DML or timezone parsing; transaction-local fixtures and no shared-state mutation |
+| dawarich/native_lifecycle_test.exs | Dawarich.DataCase | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/navbar_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
-| dawarich/notes_api/read_test.exs | Dawarich.IngestCase | no | Reviewed same-process queries/DML or timezone parsing; transaction-local fixtures and no shared-state mutation |
-| dawarich/notes_api/write_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich/notes_api/read_test.exs | Dawarich.IngestCase | no | Same-process sandbox queries; group :notes_fixture_ids serializes it with write_test, which inserts the same fixed ids |
+| dawarich/notes_api/write_test.exs | Dawarich.IngestCase | no | IngestCase async path (private sandbox, no shared mode, no per-test DDL); telemetry handler filters by test pid; group :notes_fixture_ids serializes it with read_test, which uses the same fixed ids |
+| dawarich/photos/provider_inventory_test.exs | ExUnit.Case | no | Client talks to listeners it opens on port 0 and owns; no database, env or global state |
 | dawarich/photos/thumbnail_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/place_drawer_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/place_list_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
@@ -285,7 +291,7 @@
 | dawarich/release_operations/recalculation_zone_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/release_registration_copy_test.exs | ExUnit.Case | yes | Changes schemas, sequences, or database configuration |
 | dawarich/release_test.exs | ExUnit.Case | yes | Changes schemas, sequences, or database configuration |
-| dawarich/residency_test.exs | Dawarich.IngestCase | yes | Changes schemas, sequences, or database configuration |
+| dawarich/residency_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/route_videos/purge_worker_test.exs | Dawarich.JobsCase | yes | Exercises ownership flags; retain conservatively for other-process readers |
 | dawarich/route_videos/retention_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
 | dawarich/route_videos/writes_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
@@ -295,7 +301,7 @@
 | dawarich/share_management/read_test.exs | ExUnit.Case | no | Same-process sandbox queries; bounded fixture keys are converted to atoms without depending on another test loading them |
 | dawarich/shared_api/live_test.exs | Dawarich.ApiEndpointCase | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
 | dawarich/shared_api/photos_test.exs | Dawarich.ApiEndpointCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
-| dawarich/shared_api/points_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich/shared_api/points_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/shared_api/trip_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich/state_cursor_test.exs | Dawarich.JobsCase | yes | Redis/cache helpers may use shared keys; namespacing not proven |
 | dawarich/state_primitives_migration_test.exs | Dawarich.ScratchCase | yes | Changes schemas, sequences, or database configuration |
@@ -304,7 +310,7 @@
 | dawarich/stats/full_recalculation_test.exs | Dawarich.JobsCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich/stats/geocoded_days_test.exs | Dawarich.JobsCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich/stats/hexagons_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
-| dawarich/stats/insights_test.exs | Dawarich.IngestCase | yes | Changes schemas, sequences, or database configuration |
+| dawarich/stats/insights_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/stats/refresh_toponyms_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
 | dawarich/stats/stats_jobs_test.exs | Dawarich.JobsCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich/stats/summary_test.exs | Dawarich.IngestCase | yes | Changes schemas, sequences, or database configuration |
@@ -314,9 +320,11 @@
 | dawarich/stats_work_state_migration_test.exs | Dawarich.ScratchCase | yes | Changes schemas, sequences, or database configuration |
 | dawarich/storage/blobs_test.exs | Dawarich.IngestCase | yes | Changes schemas, sequences, or database configuration |
 | dawarich/subscription_token_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
+| dawarich/sync1153_sharing_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/tag_pages_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
 | dawarich/tags/validation_test.exs | Dawarich.IngestCase | no | Reviewed same-process queries/DML or timezone parsing; transaction-local fixtures and no shared-state mutation |
 | dawarich/tags/writes_test.exs | Dawarich.IngestCase | no | Reviewed same-process queries/DML or timezone parsing; transaction-local fixtures and no shared-state mutation |
+| dawarich/test_seed_ids_test.exs | Dawarich.DataCase | no | Uses a connection-local temporary table and sequence |
 | dawarich/time_zone_options_test.exs | ExUnit.Case | yes | Mutates shared persistent terms or ETS caches |
 | dawarich/timeline/day_rows_test.exs | Dawarich.JobsCase | no | Reviewed fixture DML and test-process queries; telemetry handler is unique and filters by caller PID |
 | dawarich/timeline/days_test.exs | Dawarich.JobsCase | no | Fixtures and queries use sandbox Repo in the test process; scratch reset is unnecessary |
@@ -330,17 +338,17 @@
 | dawarich/tracks/segment_editor_test.exs | Dawarich.IngestCase | yes | Changes schemas, sequences, or database configuration |
 | dawarich/trial/welcome_claim_test.exs | Dawarich.JobsCase | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich/trial/welcome_test.exs | Dawarich.JobsCase | yes | Scratch repo/helper behavior not fully proven safe for sandbox; conservatively retain |
-| dawarich/trip_corpus_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/trip_days_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/trip_gate_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/trip_list_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich/trip_corpus_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/trip_days_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/trip_gate_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich/trip_list_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich/trip_page_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich/trips/plan_read_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
-| dawarich/trips/web_delete_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
-| dawarich/trips/web_params_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich/trips/plan_read_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
+| dawarich/trips/web_delete_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
+| dawarich/trips/web_params_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich/trips/web_write_test.exs | Dawarich.IngestCase | yes | Exercises ownership flags; retain conservatively for other-process readers |
 | dawarich/ttl_cache_test.exs | ExUnit.Case | yes | Mutates shared persistent terms or ETS caches |
-| dawarich/user_data/archive_test.exs | ExUnit.Case | yes | Writes files or shared build/output state; isolation not proven |
+| dawarich/user_data/archive_test.exs | ExUnit.Case | no | Pure parsing over ExUnit tmp_dir files; no database, env or global state |
 | dawarich/user_data/export_entities_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
 | dawarich/user_data/export_files_test.exs | Dawarich.JobsCase | yes | Uses Rails parity or an external process/peer |
 | dawarich/user_data/export_monthly_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
@@ -386,16 +394,19 @@
 | dawarich_web/a10b_ownership_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/a10c_ownership_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/a10c_routes_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
+| dawarich_web/a12f3b_i04_test.exs | Dawarich.DataCase | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich_web/a12f3b_s01_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
+| dawarich_web/a12f3b_s05_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich_web/a8_gate_endpoint_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/a8_remaining_parity_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/a8_remaining_request_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/a8_request_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
-| dawarich_web/a8_routes_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich_web/a8_routes_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich_web/a8_videos_visits_parity_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/achievement_actions_request_test.exs | ExUnit.Case | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich_web/achievement_public_test.exs | ExUnit.Case | yes | Mutates shared persistent terms or ETS caches |
 | dawarich_web/achievement_sharing_test.exs | ExUnit.Case | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
-| dawarich_web/achievement_unlock_reveal_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich_web/achievement_unlock_reveal_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich_web/achievement_unlocks_test.exs | ExUnit.Case | yes | Exercises PostgreSQL locking, notification, or cross-connection behavior |
 | dawarich_web/achievements_gate_endpoint_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/achievements_live_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
@@ -405,9 +416,9 @@
 | dawarich_web/admin_live_auth_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/admin_mutations_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
 | dawarich_web/admin_pages_parity_test.exs | Dawarich.JobsCase | yes | Changes schemas, sequences, or database configuration |
-| dawarich_web/admin_setting_writes_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
-| dawarich_web/admin_users_parity_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich_web/admin_writes_request_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich_web/admin_setting_writes_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich_web/admin_users_parity_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
+| dawarich_web/admin_writes_request_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich_web/api/account_endpoint_test.exs | Dawarich.ApiEndpointCase, Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/api/account_golden_test.exs | Dawarich.ApiEndpointCase, Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/api/auth_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
@@ -427,7 +438,7 @@
 | dawarich_web/api/plan_endpoint_test.exs | Dawarich.ApiEndpointCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/api/plan_golden_test.exs | Dawarich.ApiEndpointCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/api/remaining_routes_test.exs | Dawarich.ApiEndpointCase | yes | Changes application configuration or system environment shared by other processes |
-| dawarich_web/api/respond_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich_web/api/respond_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich_web/api/shared_endpoint_test.exs | Dawarich.ApiEndpointCase, Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/api/shared_golden_test.exs | Dawarich.ApiEndpointCase, Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/api/stats_endpoint_test.exs | Dawarich.ApiEndpointCase | yes | Changes application configuration or system environment shared by other processes |
@@ -440,7 +451,7 @@
 | dawarich_web/auth_account_link/http_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/auth_account_link/response_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/auth_api/http_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
-| dawarich_web/auth_api/response_test.exs | ExUnit.Case | yes | Changes schemas, sequences, or database configuration |
+| dawarich_web/auth_api/response_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich_web/auth_api_keys/http_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/auth_common_pipeline_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/auth_gate_endpoint_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
@@ -448,7 +459,7 @@
 | dawarich_web/auth_otp/http_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/auth_otp/response_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/auth_recovery_activation_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
-| dawarich_web/auth_two_factor/form_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich_web/auth_two_factor/form_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich_web/auth_two_factor/http_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/auth_two_factor/response_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/background_jobs_live_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
@@ -473,6 +484,7 @@
 | dawarich_web/imports_download_socket_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/imports_download_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/imports_exports_parity_test.exs | ExUnit.Case | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich_web/imports_extraction_navigation_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich_web/imports_live_test.exs | ExUnit.Case | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
 | dawarich_web/imports_native_pages_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/imports_pages_parity_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
@@ -513,9 +525,9 @@
 | dawarich_web/public_files_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/public_home_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/rails_auth_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
-| dawarich_web/rails_form_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich_web/rails_form_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich_web/rails_page_test.exs | ExUnit.Case | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
-| dawarich_web/rails_session_identity_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |
+| dawarich_web/rails_session_identity_test.exs | ExUnit.Case | no | Own sandbox checkout (or no database); same-process queries and transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes, DDL or real commits |
 | dawarich_web/rails_session_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/rate_limit_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/residual_mail_ownership_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
@@ -541,8 +553,9 @@
 | dawarich_web/trial_upgrade_test.exs | ExUnit.Case | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/trial_welcome_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/trip_export_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
+| dawarich_web/trip_form_navigation_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich_web/trip_forms_actions_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
-| dawarich_web/trip_itinerary_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich_web/trip_itinerary_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich_web/trip_missing_data_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/trip_note_actions_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/trip_plan_hosts_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
@@ -554,6 +567,6 @@
 | dawarich_web/visit_actions_test.exs | Dawarich.JobsCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/visit_settings_actions_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | dawarich_web/visit_settings_live_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
-| dawarich_web/visits_navigation_test.exs | Dawarich.IngestCase | yes | Shared sandbox or ingestion helpers may reach other processes/global sources; conservatively retain |
+| dawarich_web/visits_navigation_test.exs | Dawarich.IngestCase | no | IngestCase async path: private sandbox owner without shared mode and no per-test DDL; transaction-local fixtures; no env, Redis, telemetry, ETS/persistent_term writes or real commits |
 | dawarich_web/web_form_params_test.exs | Dawarich.IngestCase | yes | Changes application configuration or system environment shared by other processes |
 | mix/tasks/dawarich.build_inputs_test.exs | ExUnit.Case | yes | Case and transitive helpers have not been proven free of global state; conservatively retain |

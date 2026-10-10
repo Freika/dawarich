@@ -1,5 +1,5 @@
 defmodule DawarichWeb.A12f3bS01Test do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
   import Plug.Conn
   import Plug.Test
   alias DawarichWeb.{SharedLinkCookie, SharedLinkPage}

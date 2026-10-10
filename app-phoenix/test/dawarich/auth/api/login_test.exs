@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.Api.LoginTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.{Account, Api.Login}
   alias Dawarich.Auth.TwoFactor.Secret
   alias Dawarich.{Repo, Test.RailsUser}

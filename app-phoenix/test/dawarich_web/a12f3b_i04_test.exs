@@ -6,7 +6,7 @@ defmodule DawarichWeb.A12f3bI04Router do
 end
 
 defmodule DawarichWeb.A12f3bI04Test do
-  use Dawarich.DataCase, async: false
+  use Dawarich.DataCase, async: true
   import Plug.Conn
   alias Dawarich.{Accounts, Jobs.Ownership}
   alias Dawarich.Test.RailsUser

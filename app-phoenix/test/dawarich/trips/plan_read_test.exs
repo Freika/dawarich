@@ -1,5 +1,5 @@
 defmodule Dawarich.Trips.PlanReadTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
   alias Dawarich.Test.{RailsUser, TripsSeeds}
   alias Dawarich.Trips.{PlanRead, PlanGeojson}
 

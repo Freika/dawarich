@@ -1,5 +1,5 @@
 defmodule DawarichWeb.A8RoutesTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   test "existing page routes survive declaration extraction" do
     for {path, module, action, pipelines} <- [

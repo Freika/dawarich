@@ -1,5 +1,5 @@
 defmodule Dawarich.Cloud.EndpointURLTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Cloud.{EndpointURL, SessionConnection}
   alias Dawarich.Release.Lifecycle
 

@@ -1,5 +1,5 @@
 defmodule DawarichWeb.AuthApi.ResponseTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Plug.Conn
   alias DawarichWeb.Api.{Auth, Body}
   alias DawarichWeb.AuthApi.Response

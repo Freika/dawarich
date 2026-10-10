@@ -12,7 +12,7 @@ defmodule Dawarich.Auth.TwoFactor.ApiTest.SecondSaveFailure do
 end
 
 defmodule Dawarich.Auth.TwoFactor.ApiTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.Account
   alias Dawarich.Auth.TwoFactor.{Api, BackupCodes, Management, Secret, Totp}
   alias Dawarich.Repo

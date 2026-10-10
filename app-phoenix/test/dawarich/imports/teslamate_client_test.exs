@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.TeslamateClientTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Dawarich.Test.RawHTTP
   alias Dawarich.Imports.Teslamate.{Client, Point}
 

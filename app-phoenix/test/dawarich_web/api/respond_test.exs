@@ -1,5 +1,5 @@
 defmodule DawarichWeb.Api.RespondTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
   import Plug.Test
   import Plug.Conn
 

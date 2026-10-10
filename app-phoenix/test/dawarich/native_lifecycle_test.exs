@@ -1,5 +1,5 @@
 defmodule Dawarich.NativeLifecycleTest do
-  use Dawarich.DataCase, async: false
+  use Dawarich.DataCase, async: true
 
   alias Dawarich.Release
   alias Dawarich.Release.Lifecycle

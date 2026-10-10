@@ -1,5 +1,5 @@
 defmodule DawarichWeb.A12f3bS05Test do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
   alias Dawarich.Test.A12f3bShareCase, as: S
   alias Dawarich.ShareManagement.TrackMutations
   alias DawarichWeb.SharedLinkCookie

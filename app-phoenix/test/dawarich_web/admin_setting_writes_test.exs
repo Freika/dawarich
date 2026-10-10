@@ -1,5 +1,5 @@
 defmodule DawarichWeb.AdminSettingWritesTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Admin.SettingWrites
   alias Dawarich.Repo
   alias Dawarich.Test.RailsUser

@@ -1,5 +1,5 @@
 defmodule Dawarich.TripListTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Dawarich.TripList
   alias Dawarich.Test.TripsSeeds

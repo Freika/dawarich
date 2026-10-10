@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.Api.PayloadTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.{Account, Api.Actor, Api.Payload}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias Dawarich.{Repo, Test.RailsUser}
