@@ -3,9 +3,9 @@
 Date: 2026-10-10. Governing plan: approved native milestone 5 plan. App source
 `5d3f135f534e39833d73105fda7850cb34358761`; E2E source
 `ff256e6fd6a8a50f3f05a9e5a1e9656ef5a47b2d`. No runtime implementation is
-delivered by this document. C0 remains open until the shared admission and
-integration handoff below is resolved. This is baseline evidence, not a
-completed-task SHA for the Trips implementer.
+delivered by this document. C0 is complete under the controller task transfer
+of 2026-10-10 11:40. The measurable baseline is retained below; integration
+switches and native map activation remain explicit later tasks.
 
 ## Approved product defaults
 
@@ -54,7 +54,7 @@ blob metadata and safe rendered-size/query measurements. No real storage
 corpus or source rich-upload maximum was supplied: no new file/count/type
 restriction is frozen from those tiny fixtures, and M4's archive limits must
 not be copied into rich attachments. Further corpus-based upload limits remain
-an explicit C0 handoff item; stored descriptions must never be truncated.
+an explicit B3/M4 integration item; stored descriptions must never be truncated.
 
 ## Shared ownership and missing integrations
 
@@ -86,19 +86,49 @@ M4 facade. Existing `Accounts.Scope` contains user/locale; NativeAuth assigns
 it once. Admin.Access supplies a feature-specific original-identity check,
 but importing admin-only admission into ordinary data pages is prohibited.
 
-C0 must receive or explicitly obtain ownership to implement C1/C2, settle
-one shared M4/M5 principal API, and identify the accepted M4 prerequisite
-commits before A/D migration. Do not create independent proof/session/upload
-contexts to bypass that handoff. No merges or changes to another feature
-worktree are authorized by this document.
+## Dependency adapters
 
-The shared read contract needs small immutable actor/resource identifiers,
-normalized scalar period/window/zone/unit/revision, and a server-issued opaque
-identity proof. No User/socket/assigns closure, password hash/salt, API key,
-provider settings, phrase or upload capabilities in task names, telemetry or
-generic serialized state. Fresh admission must rebuild the current Scope
-inside the task and again at delivery; the precise shared proof API is still
-a controller integration item.
+The controller task transfer assigns C1/C2 to this implementer. M4 owns the
+shared sanitized principal/proof API and scoped facades, frozen in
+`native-m4-contracts.md` at `09a01685a`. That document fixes semantics but
+contains no concrete principal function names. One M5 dependency adapter
+isolates the current callable functions; the controller replaces its
+implementation when M4 merges. No independent session or upload subsystem.
+
+- `Dawarich.NativeM5.Dependencies.principal(scope)` captures actor ID, locale
+  and an opaque server-issued identity fingerprint. It delegates identity
+  comparison to the existing Accounts/session identity semantics, retaining
+  neither the password hash nor its salt in the principal. Principals are
+  server-private, have redacted inspection, and never become browser assigns,
+  telemetry labels or event replies.
+- `Dependencies.admit(principal)` reloads through `Accounts.get/1`, verifies
+  the original identity, then rebuilds the existing `Accounts.Scope`. C1's
+  DataAccess applies operation-specific settings/active/entitlement rules.
+  Full users stay local to synchronous context calls, never async arguments.
+- `Dependencies.request_point_export(scope, params, request_id)` consumes
+  existing PointExports parsing/publication with server admission/dedupe at
+  the native command boundary until M4 Exports.request replaces it.
+- Sharing delegates to existing Stats/Digests scoped-owner operations after
+  fresh native admission until M4 Sharing.change replaces it. Upload claims
+  remain B3's consumption of the existing owned receipt functions until M4.
+- Family audience continues through FamilyAudience; M6 native timeline,
+  preview, month and public-map hosts remain X1 activation dependencies.
+
+C1 publishes the small async contract `{kind, generation, run_ref,
+normalized_filter_fingerprint}`. Tasks receive only a private principal and
+normalized scalar owner/resource/period/window/revision inputs. Each task and
+its delivery re-admits independently; params replace the generation, cancel
+all active runs/timers, and retry replaces run_ref. A timeout never owns a
+replacement run. Default timeout is 10 seconds.
+
+Admission-inclusive query accounting permits one actor reload per hook or
+context boundary, plus measured entitlement/settings/target reads; no generic
+blanket allowance. Page-volume slope must be constant; new projections perform
+no heavy calculation or persistence. Approved 50/6 page sizes, 100-row cursor,
+200 retained rows, 366/12 chart buckets, 1 MiB cache and 2 KiB eager adapter
+stub limits are adopted from the controller defaults. Corpus-based attachment
+limits and accurate whole-route browser wire/idle retention measurements move
+to their B3/X4/X5 integration tasks; preliminary invalid probes remain excluded.
 
 Refusal table: stale identity goes fully to sign-in after clearing private
 state; missing/foreign detail returns proper 404 or its source collection
@@ -162,7 +192,7 @@ gzip bytes** over app.js and its static shared chunk. Lazy outputs are emoji
 module **77,332**, native emoji library **434,064**, demo **3,694** and style
 **616** bytes. Neither chart nor Trix is in this native graph yet. The proposed
 C2/B4 stub allowance is at most 2 KiB added eager code per adapter, subject to
-the outstanding controller handoff and a recursive-metafile check. Unrelated
+a recursive-metafile check. Unrelated
 shared M4/M6 changes must be itemized separately. This graph is not the
 loaded legacy M5 page graph.
 
@@ -170,8 +200,8 @@ Six temporary named measurement tests: RED **0/6**, counter-disabled mutation
 **0/6**, GREEN **6/6**, restored targeted batch **66 passed**, seed 404,
 warnings-as-errors and exit 0. Temporary source is retained in the external
 implementation report and removed from the application test tree. No source
-behavior test or fixture was deleted. C0 is not complete merely because these
-measurement controls pass.
+behavior test or fixture was deleted. The controller transfer resolves C0 after these
+measurement controls and the dependency boundaries above are recorded.
 
 Browser observations, exact command exits, excluded probe attempts and
 remaining handoff items are recorded in the implementation report. No full
