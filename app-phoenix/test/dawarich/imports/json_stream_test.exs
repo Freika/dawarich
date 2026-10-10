@@ -151,7 +151,7 @@ defmodule Dawarich.Imports.JsonStreamTest do
     {:monitors, [process: guard]} = Process.info(pid, :monitors)
     guard_ref = Process.monitor(guard)
     Process.exit(pid, :kill)
-    assert_receive {:DOWN, ^guard_ref, :process, ^guard, :normal}
+    assert :normal == receive(do: ({:DOWN, ^guard_ref, :process, ^guard, reason} -> reason))
     refute File.exists?(directory)
 
     assert_raise RuntimeError, fn ->
