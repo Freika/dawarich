@@ -94,7 +94,9 @@ defmodule Dawarich.FamiliesCommandsTest do
 
     ScratchRepo.query!(
       "UPDATE families SET access_until=$1 WHERE id=10901",
-      [~N[2030-02-15 10:00:00]], log: false)
+      [~N[2030-02-15 10:00:00]],
+      log: false
+    )
 
     assert {:error, :family_lapsed} =
              Families.accept_invitation(

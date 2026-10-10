@@ -15,7 +15,9 @@ defmodule Dawarich.Families.NativeDeadline do
           UNION ALL SELECT to_char(expires_at,'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') FROM family_invitations WHERE family_id=$1 AND status=0
           UNION ALL SELECT to_char(expires_at,'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') FROM family_location_requests WHERE family_id=$1 AND status=0
           """,
-          [family.id], log: false).rows
+          [family.id],
+          log: false
+        ).rows
 
       access = if ctx.self_hosted, do: [], else: access(family.id)
 
@@ -38,7 +40,9 @@ defmodule Dawarich.Families.NativeDeadline do
   defp access(family) do
     case Dawarich.Repo.query!(
            "SELECT f.access_until,u.plan,u.active_until FROM families f LEFT JOIN users u ON u.id=f.creator_id AND u.deleted_at IS NULL WHERE f.id=$1",
-           [family], log: false).rows do
+           [family],
+           log: false
+         ).rows do
       [[nil, 2, due]] -> [due]
       [[due, _, _]] -> [due]
       _ -> []

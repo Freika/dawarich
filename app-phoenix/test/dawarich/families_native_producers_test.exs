@@ -12,7 +12,9 @@ defmodule Dawarich.FamiliesNativeProducersTest do
   defp jobs do
     Repo.query!(
       "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Families.EventsWorker'",
-      [], log: false).rows
+      [],
+      log: false
+    ).rows
     |> List.flatten()
   end
 
@@ -94,7 +96,9 @@ defmodule Dawarich.FamiliesNativeProducersTest do
 
     Repo.query!(
       "UPDATE users SET plan=2,active_until=$1 WHERE id=90101",
-      [DateTime.add(@now, 3600)], log: false)
+      [DateTime.add(@now, 3600)],
+      log: false
+    )
 
     assert Dawarich.Families.MemberSync.run(Repo, 91001, now: @now)
 

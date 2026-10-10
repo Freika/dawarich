@@ -23,7 +23,8 @@ defmodule Dawarich.Families.NativeReads do
 
   def context(opts) do
     %{
-      now: Keyword.get_lazy(opts, :now, &DateTime.utc_now/0),
+      now:
+        Keyword.get(opts, :clock, fn -> Keyword.get_lazy(opts, :now, &DateTime.utc_now/0) end).(),
       self_hosted: Keyword.get_lazy(opts, :self_hosted, &Dawarich.ReleaseMigration.self_hosted?/0)
     }
   end
@@ -41,7 +42,10 @@ defmodule Dawarich.Families.NativeReads do
 
   def locations(scope, opts) do
     with {:ok, user, ctx} <- admitted(scope, opts),
-         {:ok, 200, {:object, fields}} <- Locations.read(project(user), ctx.now) do
+         version <- snapshot_version(user.id, ctx.now),
+         {:ok, 200, {:object, fields}} <-
+           Keyword.get(opts, :location_reader, &Locations.read/2).(project(user), ctx.now),
+         :ok <- validate_snapshot(scope, version, opts) do
       fields = object({:object, fields})
 
       {:ok,
@@ -60,7 +64,10 @@ defmodule Dawarich.Families.NativeReads do
 
   def history(scope, params, opts) when is_map(params) do
     with {:ok, user, ctx} <- admitted(scope, opts),
-         {:ok, 200, fields} <- History.read(project(user), params, ctx.now) do
+         version <- snapshot_version(user.id, ctx.now),
+         {:ok, 200, fields} <-
+           Keyword.get(opts, :history_reader, &History.read/3).(project(user), params, ctx.now),
+         :ok <- validate_snapshot(scope, version, opts) do
       {:ok, object(fields)}
     else
       {:error, _} = error -> error
@@ -71,6 +78,36 @@ defmodule Dawarich.Families.NativeReads do
   end
 
   def history(_, _, _), do: {:error, :invalid_input}
+
+  defp validate_snapshot(scope, version, opts) do
+    with {:ok, user, ctx} <- admitted(scope, opts),
+         true <- version == snapshot_version(user.id, ctx.now) do
+      :ok
+    else
+      _ -> {:error, :grant_changed}
+    end
+  end
+
+  defp snapshot_version(id, now) do
+    [_settings, family] = Locations.membership(id)
+
+    rows =
+      Dawarich.Repo.query!(
+        "SELECT m.id,m.user_id,m.role,u.settings,u.deleted_at,f.id,f.access_until,o.plan,o.active_until,o.deleted_at " <>
+          "FROM family_memberships m JOIN users u ON u.id=m.user_id JOIN families f ON f.id=m.family_id " <>
+          "JOIN users o ON o.id=f.creator_id WHERE m.family_id=$1 ORDER BY m.id",
+        [family],
+        log: false
+      ).rows
+
+    sharing =
+      for [_, member, _, settings, nil | _] <- rows,
+          member != id,
+          Dawarich.Families.Sharing.enabled?(settings, now),
+          do: member
+
+    %{digest: :crypto.hash(:sha256, :erlang.term_to_binary(rows)), sharing: sharing}
+  end
 
   def admitted(scope, opts) do
     with {:ok, user, ctx} <- actor(scope, opts),

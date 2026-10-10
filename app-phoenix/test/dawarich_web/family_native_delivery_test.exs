@@ -35,7 +35,9 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
   defp grant(at) do
     Repo.query!(
       "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing,expires_at}',to_jsonb($1::text)) WHERE id=90102",
-      [DateTime.to_iso8601(at)], log: false)
+      [DateTime.to_iso8601(at)],
+      log: false
+    )
   end
 
   test "withdrawn consent or removed membership discards queued coordinates before rendering",
@@ -45,7 +47,9 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
 
     Repo.query!(
       "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing,enabled}','false') WHERE id=90102",
-      [], log: false)
+      [],
+      log: false
+    )
 
     render_hook(view, "family_focus", %{"id" => "90102"})
     assert state(view).locations == []
@@ -56,7 +60,9 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
 
     Repo.query!(
       "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing,enabled}','true') WHERE id=90102",
-      [], log: false)
+      [],
+      log: false
+    )
 
     send(view.pid, {:domain_changed, c.owner.id, :consent})
     render(view)
@@ -96,7 +102,9 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
 
     Repo.query!(
       "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing,enabled}','false') WHERE id=90102",
-      [], log: false)
+      [],
+      log: false
+    )
 
     GenServer.stop(view.pid)
     connected = open(c.owner)

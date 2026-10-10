@@ -43,3 +43,7 @@ route retirement belongs to controller integration.
 Keyboard confirmation and German 390-pixel checks are prepared in the E2E native
 controls spec. They are deferred to stage acceptance under the controller decision;
 targeted ExUnit and Node evidence is not a browser acceptance claim.
+
+## Snapshot publication guard (review round 1)
+
+Location/history reads fingerprint current family membership, all member consent settings and owner access before loading points. Before returning coordinates they reload the original actor's admission and compare the fingerprint with the current consent clock. Any removal, changed consent/history settings, access loss or crossed expiry discards the snapshot. Reader/clock seams allow deterministic sandbox regressions after real SQL completes and before publication.

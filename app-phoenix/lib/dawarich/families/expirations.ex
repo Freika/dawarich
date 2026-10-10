@@ -56,7 +56,9 @@ defmodule Dawarich.Families.Expirations do
   defp access_boundary(repo, family, _ctx) do
     case repo.query!(
            "SELECT f.access_until,u.plan,u.active_until FROM families f LEFT JOIN users u ON u.id=f.creator_id AND u.deleted_at IS NULL WHERE f.id=$1",
-           [family], log: false).rows do
+           [family],
+           log: false
+         ).rows do
       [[nil, 2, due]] -> [{:lapse, due}]
       [[due, _, _]] -> [{:lapse, due}]
       [] -> []

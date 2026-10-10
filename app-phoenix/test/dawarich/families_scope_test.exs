@@ -99,7 +99,9 @@ defmodule Dawarich.FamiliesScopeTest do
 
     Repo.query!(
       "UPDATE users SET encrypted_password=$1 WHERE id=90101",
-      [String.duplicate("x", 60)], log: false)
+      [String.duplicate("x", 60)],
+      log: false
+    )
 
     assert {:error, :stale_session} = Families.locations(scope, @opts)
   end

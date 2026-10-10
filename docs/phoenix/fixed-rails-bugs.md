@@ -1382,3 +1382,12 @@ Rails renders a shared track map even when its owner disables the route section.
 - Phoenix: `app-phoenix/lib/dawarich_web/components/shared_resource_page/track.html.heex:4`; `app-phoenix/lib/dawarich/sharing/public_snapshot.ex:28`.
 - Test: “native shared track honors the disabled route section”; track-section mutation fails, restoration passes.
 - Ledger: ED-NATIVE-M4-TRACK-ROUTE; no DRB added. Rails production code unchanged.
+
+### FRB-NATIVE-M4-FAMILY-SNAPSHOT — Consent can change while family coordinates load
+
+Rails captures sharing members before fetching their points and does not recheck before returning locations/history. Consent withdrawal, expiry or membership removal during that read can still disclose coordinates. Native scoped snapshots repeat actor/access admission and compare membership/consent/access fingerprints at the current clock before returning.
+
+- Rails: `app/services/families/locations.rb:17,19,28,31,43,50`.
+- Phoenix: `app-phoenix/lib/dawarich/families/native_reads.ex` snapshot validation.
+- Tests: `FamiliesSnapshotRaceTest`, ten named locations/history in-flight consent/member/viewer/expiry/access cases; bypass-final-validation mutation fails all ten.
+- Ledger: ED-NATIVE-M4-FAMILY-SNAPSHOT; no DRB added. Distinct from the existing subscription-only FAMILY-DELIVERY fix.
