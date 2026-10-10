@@ -67,7 +67,8 @@ defmodule Dawarich.Insights.NativeDetails do
 
     pending =
       selected != [] and
-        (stale?(yearly, selected) or
+        (Dawarich.Stats.PageRefresh.stale?(id, %{data.period | month: data.selected_month}) or
+           stale?(yearly, selected) or
            stale?(monthly, Enum.filter(selected, &(&1.month == data.selected_month))))
 
     patterns = if yearly, do: yearly.patterns || %{}, else: %{}
@@ -107,7 +108,9 @@ defmodule Dawarich.Insights.NativeDetails do
   defp find(id, year, month) do
     case Repo.query!(
            "SELECT distance,travel_patterns,monthly_distances,updated_at FROM digests WHERE user_id=$1 AND year=$2 AND period_type=$3 AND ($4::int IS NULL OR month=$4) LIMIT 1",
-           [id, year, if(is_nil(month), do: 1, else: 0), month], log: false).rows do
+           [id, year, if(is_nil(month), do: 1, else: 0), month],
+           log: false
+         ).rows do
       [] ->
         nil
 
@@ -142,7 +145,9 @@ defmodule Dawarich.Insights.NativeDetails do
   defp weekly(id, year) do
     Repo.query!(
       "SELECT month,monthly_distances FROM digests WHERE user_id=$1 AND year=$2 AND period_type=0 AND month BETWEEN 1 AND 12 ORDER BY month",
-      [id, year], log: false).rows
+      [id, year],
+      log: false
+    ).rows
     |> Enum.reduce(List.duplicate(0, 7), fn [month, daily], acc ->
       Enum.zip_with(
         acc,
@@ -156,7 +161,9 @@ defmodule Dawarich.Insights.NativeDetails do
     for [name, count, duration] <-
           Repo.query!(
             "SELECT name,count(*),sum(duration) FROM visits WHERE user_id=$1 AND status=1 AND deleted_at IS NULL AND started_at BETWEEN make_timestamptz($2,1,1,0,0,0,$3) AND (make_date($2,12,1)::timestamp+interval '1 month'-interval '1 microsecond') AT TIME ZONE $3 GROUP BY name ORDER BY count(*) DESC,sum(duration) DESC,name COLLATE \"C\" LIMIT 5",
-            [id, if(year <= 0, do: year - 1, else: year), zone], log: false).rows,
+            [id, if(year <= 0, do: year - 1, else: year), zone],
+            log: false
+          ).rows,
         do: %{name: name, visit_count: count, total_duration: duration}
   end
 
