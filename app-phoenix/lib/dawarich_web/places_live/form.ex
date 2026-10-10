@@ -10,7 +10,7 @@ defmodule DawarichWeb.PlacesLive.Form do
     with {:ok, tags} <- Places.tags(socket.assigns.places_origin) do
       build(socket, Map.merge(Places.new(), %{id: nil, tags: tags}))
     else
-      {:error, reason} -> PlacesUI.refuse(socket, reason)
+      {:error, reason} -> socket |> clear() |> PlacesUI.refuse(reason)
     end
   end
 
@@ -22,21 +22,32 @@ defmodule DawarichWeb.PlacesLive.Form do
   end
 
   defp build(socket, data) do
-    form = OrdinaryForm.new("place-form", Places.change(socket.assigns.places_origin, data))
-
-    socket
-    |> Nearby.cancel()
-    |> assign(
-      form_state: form,
-      place_data: data,
-      detail: nil,
-      note_state: nil,
-      confirmation: nil,
-      error: nil
-    )
+    with {:ok, form} <- state(socket, "place-form", data) do
+      socket
+      |> clear()
+      |> assign(form_state: form, place_data: data, error: nil)
+    else
+      {:error, reason} -> socket |> clear() |> PlacesUI.refuse(reason)
+    end
   end
 
-  def clear(socket), do: socket |> Nearby.cancel() |> assign(form_state: nil, place_data: nil)
+  def changeset(socket, data) do
+    case Places.change(socket.assigns.places_origin, data) do
+      %Ecto.Changeset{} = changeset -> {:ok, changeset}
+      {:error, _} = error -> error
+    end
+  end
+
+  def state(socket, host, data) do
+    with {:ok, changeset} <- changeset(socket, data),
+         do: {:ok, OrdinaryForm.new(host, changeset)}
+  end
+
+  def clear(socket),
+    do:
+      socket
+      |> Nearby.cancel()
+      |> assign(form_state: nil, place_data: nil, detail: nil, note_state: nil, confirmation: nil)
 
   def validate(socket, gen, attrs) do
     case socket.assigns.form_state do
@@ -96,16 +107,18 @@ defmodule DawarichWeb.PlacesLive.Form do
           {:partial, %{id: id}, _} ->
             case Places.edit(socket.assigns.places_origin, id) do
               {:ok, saved} ->
-                state =
-                  OrdinaryForm.validate(
-                    socket.assigns.form_state,
-                    Places.change(socket.assigns.places_origin, saved)
-                  )
+                case changeset(socket, saved) do
+                  {:ok, changeset} ->
+                    state = OrdinaryForm.validate(socket.assigns.form_state, changeset)
 
-                socket
-                |> assign(place_data: saved, form_state: state)
-                |> Index.reload()
-                |> PlacesUI.refuse(:unavailable)
+                    socket
+                    |> assign(place_data: saved, form_state: state)
+                    |> Index.reload()
+                    |> PlacesUI.refuse(:unavailable)
+
+                  {:error, reason} ->
+                    socket |> clear() |> PlacesUI.refuse(reason)
+                end
 
               {:error, reason} ->
                 socket |> clear() |> PlacesUI.refuse(reason)

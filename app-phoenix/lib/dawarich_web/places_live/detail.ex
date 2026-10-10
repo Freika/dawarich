@@ -10,8 +10,8 @@ defmodule DawarichWeb.PlacesLive.Detail do
     socket = socket |> Form.clear() |> clear() |> assign(:confirmation, nil)
 
     with {:ok, detail} <- Places.detail(socket.assigns.places_origin, id),
-         {:ok, data} <- Places.edit(socket.assigns.places_origin, id) do
-      state = OrdinaryForm.new("place-note", Places.change(socket.assigns.places_origin, data))
+         {:ok, data} <- Places.edit(socket.assigns.places_origin, id),
+         {:ok, state} <- Form.state(socket, "place-note", data) do
       assign(socket, detail: detail, note_state: state, error: nil)
     else
       {:error, reason} -> PlacesUI.refuse(socket, reason)

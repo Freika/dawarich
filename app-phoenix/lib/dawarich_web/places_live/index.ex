@@ -82,13 +82,10 @@ defmodule DawarichWeb.PlacesLive.Index do
   def handle_event("select_nearby", params, socket), do: {:noreply, Nearby.select(socket, params)}
 
   def handle_event("request_delete", %{"id" => id}, socket) do
-    with {:ok, place} <- Places.detail(socket.assigns.places_origin, id) do
+    with {:ok, place} <- Places.detail(socket.assigns.places_origin, id),
+         {:ok, state} <- Form.state(socket, "place-delete", Places.new()) do
       state =
-        OrdinaryForm.new(
-          "place-delete",
-          Places.change(socket.assigns.places_origin, Places.new())
-        )
-        |> OrdinaryForm.confirm(place.id)
+        OrdinaryForm.confirm(state, place.id)
 
       {:noreply,
        socket
@@ -96,7 +93,7 @@ defmodule DawarichWeb.PlacesLive.Index do
        |> Detail.clear()
        |> assign(confirmation: state, detail: nil, error: nil)}
     else
-      {:error, reason} -> {:noreply, PlacesUI.refuse(socket, reason)}
+      {:error, reason} -> {:noreply, socket |> Form.clear() |> PlacesUI.refuse(reason)}
     end
   end
 
