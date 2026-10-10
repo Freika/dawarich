@@ -15,7 +15,11 @@ defmodule DawarichWeb.NativePosterStudio do
     "theme_load_failed" => %{"error" => "%{error}"},
     "load" => %{},
     "loading" => %{},
-    "loading_tracks" => %{}
+    "loading_tracks" => %{},
+    "rendering" => %{"width" => "%{width}", "height" => "%{height}"},
+    "saved" => %{},
+    "saved_at_dpi" => %{"dpi" => "%{dpi}"},
+    "export_failed" => %{"error" => "%{error}"}
   }
 
   attr :themes, :list, required: true

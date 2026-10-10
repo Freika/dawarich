@@ -5,11 +5,11 @@ import { detectMaxRenderDimension } from "./data/paper_sizes.js"
 import { loadThemeTokens } from "./data/theme_loader.js"
 import { dateRangeLabel } from "./dates.js"
 import { trimOutlierCoords } from "./dependencies.js"
+import { createPosterExports } from "./export/operation.js"
+import { bindExportControls } from "./export_controls.js"
 import { createPosterLifecycle } from "./lifecycle.js"
 import { createPosterSource } from "./source.js"
-
-export const interpolate = (text, values = {}) =>
-  (text ?? "").replace(/%\{(\w+)\}/g, (match, name) => values[name] ?? match)
+import { interpolate } from "./strings.js"
 
 export function mountPosterStudio({
   root,
@@ -17,6 +17,7 @@ export function mountPosterStudio({
   fallbackBounds,
   loadLibrary = () => import("/maplibre/6.4.1/maplibre-gl.mjs"),
   window: win = globalThis.window,
+  exports = createPosterExports(),
 }) {
   const find = (name) => root.querySelector(`[data-poster-${name}]`)
   const config = JSON.parse(root.dataset.posterConfig ?? "{}")
@@ -49,14 +50,14 @@ export function mountPosterStudio({
     loadLibrary,
     loadThemeTokens,
     loadFonts: () =>
-      Promise.allSettled(
-        POSTER_FONTS.map((font) =>
-          ensurePosterFont(font.key, config.fonts ?? {}),
-        ),
-      ),
+      Promise.allSettled(POSTER_FONTS.map((font) => ensureFont(font.key))),
+    label: (data) => dateRangeLabel(data.range, data.timeZone),
     trim: trimOutlierCoords,
     window: win,
-    onChange: (state) => markTheme(state.themeKey),
+    onChange: (state) => {
+      markTheme(state.themeKey)
+      controls?.refresh()
+    },
     onError: (code, error) =>
       setStatus(interpolate(strings[code], { error: error?.message ?? "" })),
   })
@@ -74,16 +75,31 @@ export function mountPosterStudio({
     if (label && key) label.textContent = selected?.dataset.name || key
   }
 
+  const maxDimensionPx = detectMaxRenderDimension()
   controls = bindPosterControls({
     root,
     studio,
     poster,
     strings,
-    maxDimensionPx: detectMaxRenderDimension(),
+    maxDimensionPx,
     ensureFont,
   })
   owned.own(controls)
-  on(dialog, "close", () => studio.close())
+  bindExportControls({
+    find,
+    on,
+    studio,
+    exports,
+    strings,
+    loadLibrary,
+    maxDimensionPx,
+    setStatus,
+  })
+  owned.own(() => exports.cancel())
+  on(dialog, "close", () => {
+    exports.cancel()
+    studio.close()
+  })
   on(find("recenter"), "click", () => studio.recenter())
   for (const swatch of swatches) {
     on(swatch, "click", () =>

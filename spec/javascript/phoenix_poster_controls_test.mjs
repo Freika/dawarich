@@ -89,7 +89,9 @@ function controlsRoot() {
     "print-a0": "A0 Portrait",
   }
   Object.defineProperty(nodes.layout, "selectedOptions", {
-    get: () => [{ textContent: `\n        ${labels[nodes.layout.value]}\n      ` }],
+    get: () => [
+      { textContent: `\n        ${labels[nodes.layout.value]}\n      ` },
+    ],
   })
   const layers = [
     "roads",

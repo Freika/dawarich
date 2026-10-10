@@ -57,6 +57,8 @@ defmodule DawarichWeb.NativePosterStudioTest do
              "Poster-Studio konnte nicht geöffnet werden: %{error}"
 
     refute Enum.any?(Map.values(config["strings"]), &String.contains?(&1, "translation missing"))
+    assert config["strings"]["rendering"] =~ "%{width} × %{height}"
+    assert config["strings"]["saved_at_dpi"] =~ "%{dpi}"
   end
 
   test "theme swatches name the first theme as the initial theme" do

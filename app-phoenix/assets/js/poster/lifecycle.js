@@ -108,6 +108,30 @@ export function createPosterLifecycle({
     }
   }
 
+  function exportRequest() {
+    const map = session?.map
+    if (!map || !tokens) return null
+    const bounds = map.getBounds()
+    return {
+      style: posterStyle(state, tokens),
+      bounds: [
+        [bounds.getWest(), bounds.getSouth()],
+        [bounds.getEast(), bounds.getNorth()],
+      ],
+      layout: layoutById(state.layoutId),
+      dpi: state.dpi,
+      format: state.format,
+      theme: resolveTheme(tokens),
+      text: posterText(state, map.getCenter()),
+      font: fontFamily(state),
+      cssSize: {
+        width: elements.frame.clientWidth,
+        height: elements.frame.clientHeight,
+      },
+      title: state.title,
+    }
+  }
+
   function recenter() {
     const bounds =
       trackBounds(state.data?.geojson, trim) ?? poster.fallbackBounds()
@@ -191,6 +215,7 @@ export function createPosterLifecycle({
     close,
     recenter,
     applyRange,
+    exportRequest,
     update,
     setTheme: (key) => setTheme(key),
     setToken,

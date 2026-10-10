@@ -91,6 +91,14 @@ function fakeLibrary() {
     getCenter() {
       return { lat: 52.52, lng: 13.405 }
     }
+    getBounds() {
+      return {
+        getWest: () => 13.4,
+        getSouth: () => 52.5,
+        getEast: () => 13.5,
+        getNorth: () => 52.6,
+      }
+    }
     resize() {}
     setStyle(style) {
       this.style = style
@@ -130,6 +138,10 @@ function elements() {
         createLinearGradient: () => ({ addColorStop() {} }),
         fillRect() {},
         fillText() {},
+        beginPath() {},
+        moveTo() {},
+        lineTo() {},
+        stroke() {},
         save() {},
         restore() {},
       }),
@@ -380,6 +392,7 @@ function fakeRoot(dom, swatches) {
     status: { textContent: "" },
     "theme-label": { textContent: "" },
     recenter: new EventTarget(),
+    download: Object.assign(new EventTarget(), { disabled: false }),
   }
   return {
     dataset: {
@@ -428,7 +441,11 @@ test("closing the native dialog disposes the preview and open failures stay visi
     source: {
       snapshot: async () => ({
         revision: 1,
-        range: {},
+        range: {
+          startAt: "2026-10-01T10:00:00Z",
+          endAt: "2026-10-02T10:00:00Z",
+          timezone: "Asia/Tokyo",
+        },
         points: [],
         geojson: { type: "FeatureCollection", features: [route] },
       }),
@@ -441,6 +458,10 @@ test("closing the native dialog disposes the preview and open failures stay visi
   assert.equal(library.live.size, 1)
   assert.equal(swatches[0]["aria-pressed"], "true")
   assert.equal(root.lookup["theme-label"].textContent, "Noir")
+  assert.equal(owner.studio.state.subtitle, "1 Oct 2026 – 2 Oct 2026")
+  root.lookup.subtitle = Object.assign(new EventTarget(), { value: "" })
+  owner.studio.update({ title: "Berlin" })
+  assert.equal(root.lookup.subtitle.value, "1 Oct 2026 – 2 Oct 2026")
   dom.dialog.close()
   dom.dialog.dispatchEvent(new Event("close"))
   assert.equal(library.live.size, 0)
@@ -464,5 +485,62 @@ test("closing the native dialog disposes the preview and open failures stay visi
   assert.equal(library.live.size, 0)
   owner.destroy()
   failing.destroy()
+  delete globalThis.fetch
+})
+
+test("closing the studio during a download cancels the render and saves no file", async () => {
+  const { mountPosterStudio } = await import(
+    "../../app-phoenix/assets/js/poster/runtime.js"
+  )
+  const { createPosterExports } = await import(
+    "../../app-phoenix/assets/js/poster/export/operation.js"
+  )
+  const library = fakeLibrary()
+  const dom = elements()
+  const root = fakeRoot(dom, [swatch("noir", "Noir")])
+  const pending = deferred()
+  const requests = []
+  const downloads = []
+  globalThis.fetch = async () => ({ ok: true, json: async () => tokens })
+  const owner = mountPosterStudio({
+    root,
+    source: {
+      snapshot: async () => ({
+        revision: 1,
+        range: {},
+        points: [],
+        geojson: { type: "FeatureCollection", features: [route] },
+      }),
+    },
+    loadLibrary: async () => library.library,
+    window: environment(),
+    exports: createPosterExports({
+      exportPoster: (request) => {
+        requests.push(request)
+        return pending.promise
+      },
+      download: (...args) => downloads.push(args),
+    }),
+  })
+  await owner.open()
+  root.lookup.download.dispatchEvent(new Event("click"))
+  await tick()
+  assert.equal(root.lookup.download.disabled, true)
+  assert.equal(requests.length, 1)
+  assert.deepEqual(requests[0].bounds, [
+    [13.4, 52.5],
+    [13.5, 52.6],
+  ])
+  assert.equal(requests[0].layout.id, "print-a3")
+  assert.equal(requests[0].cssSize.width, 300)
+  assert.equal(requests[0].signal.aborted, false)
+  dom.dialog.close()
+  dom.dialog.dispatchEvent(new Event("close"))
+  assert.equal(requests[0].signal.aborted, true)
+  pending.resolve({ blob: new Blob(["png"]), extension: "png", geometry: {} })
+  await tick()
+  assert.deepEqual(downloads, [])
+  assert.equal(root.lookup.download.disabled, false)
+  owner.destroy()
   delete globalThis.fetch
 })
