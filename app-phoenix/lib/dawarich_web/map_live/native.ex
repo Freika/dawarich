@@ -42,6 +42,7 @@ defmodule DawarichWeb.MapLive.Native do
         }
 
         socket = assign(socket, :map_config, config)
+        socket = if previous != socket.assigns.map_revision, do: DawarichWeb.MapLive.EnrichmentCommands.cancel(socket), else: socket
 
         socket =
           if connected?(socket) and params["panel"] == "timeline" and
@@ -84,6 +85,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)
 
+  def handle_event("enrichment:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.EnrichmentCommands.handle_event(event, payload, socket)
+
   def handle_event("point" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.PointCommands.handle_event(event, payload, socket)
 
@@ -111,6 +115,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_async({:calendar, _} = name, result, socket),
     do: DawarichWeb.MapLive.TimelineFilters.handle_async(name, result, socket)
 
+  def handle_async({:enrichment_scan, _} = name, result, socket),
+    do: DawarichWeb.MapLive.EnrichmentCommands.handle_async(name, result, socket)
+
   def render(assigns) do
     ~H"""
     <div :if={@page} id="native-map-page" class="relative w-full min-w-0 h-[100dvh] flex flex-col">
@@ -135,6 +142,13 @@ defmodule DawarichWeb.MapLive.Native do
       <DawarichWeb.NativeResidency.card
         :if={@map_url["panel"] == "insights"}
         residency={assigns[:residency]}
+        locale={@locale}
+      />
+      <DawarichWeb.NativeMapEnrichment.tool
+        :if={@map_url["panel"] == "tools" && @page.full_access && @page.immich}
+        enrichment={assigns[:enrichment]}
+        start_date={String.slice(@page.window.start, 0, 10)}
+        end_date={String.slice(@page.window.end, 0, 10)}
         locale={@locale}
       />
       <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />

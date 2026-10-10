@@ -83,5 +83,5 @@ export function createEnrichmentTool({
     clear()
   }
 
-  return { rangeChanged, matches, destroy }
+  return { rangeChanged, matches, clear, destroy }
 }

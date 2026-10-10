@@ -45,6 +45,7 @@ defmodule DawarichWeb.NativeM6HostTest do
 
     assert_reply(view, %{revision: 5})
     assert config(view)["revision"] == 5
+    render_async(view, 5000)
   end
 
   test "native production host opens validates and closes an Area dialog", %{id: id} do
@@ -138,6 +139,16 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert_reply(view, %{ok: true, response: %{"revision" => %{"point" => 1}}})
     render_hook(view, "point:move", payload)
     assert_reply(view, %{error: "stale", response: %{"revision" => %{"point" => 1}}})
+  end
+
+  test "native production host settles enrichment scans and discards them on range replacement", %{id: id} do
+    {:ok, view, _} = open(id, @second)
+    render_hook(view, "enrichment:scan", %{})
+    render_async(view, 5000)
+    assert_push_event(view, "enrichment:matches", %{matches: []})
+    render_patch(view, @first)
+    render_async(view, 5000)
+    refute has_element?(view, "[data-enrichment-matched]")
   end
 
   defp config(view) do

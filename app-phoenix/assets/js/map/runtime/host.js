@@ -1,4 +1,5 @@
 import { createHostEditing } from "../edit/host.js"
+import { createEnrichmentTool } from "../ui/enrichment.js"
 import { createReader } from "../data/reader.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
@@ -24,6 +25,7 @@ export function mountHost({
   const freshness = createTileFreshness()
   let layers
   let editing
+  let enrichment
   let timeline
   let density
   let photos
@@ -40,6 +42,8 @@ export function mountHost({
     attach:
       attach ??
       (({ map, config, lifetime }) => {
+        enrichment = createEnrichmentTool({ map, pushEvent, createPopup: () => null })
+        lifetime.own(enrichment.destroy)
         timeline = createHostTimeline({ map, root: element.closest?.("#native-map-page"), reader, lifetime })
         createHostTools({ map, root: element.closest?.("#native-map-page"), pushEvent, lifetime })
         layers = createBaseLayers({
@@ -175,10 +179,12 @@ export function mountHost({
     readSnapshot: (state, options) => readRouteSnapshot(reader, state, options),
     applyDates: requests.applyDates,
   })
+  Object.defineProperty(owner, "enrichment", { get: () => enrichment })
   Object.defineProperty(owner, "editor", { get: () => editing?.editor })
   Object.defineProperty(owner, "entityLayers", { get: () => entities })
   const update = owner.update
   owner.update = (config) => {
+    if (config.revision !== owner.config.revision) enrichment?.clear()
     timeline?.config(config)
     editing?.config(config)
     const updating = update.call(owner, config)
