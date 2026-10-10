@@ -76,10 +76,12 @@ defmodule Dawarich.Achievements.Collection do
 
     clock = Map.get(c, :clock, fn -> c.now end)
 
-    :ok =
-      Celebrations.record_seen!(repo, user_id, celebrate, fn ->
-        UiText.timestamp(c.settings, clock.())
-      end)
+    if Map.get(c, :acknowledge, true) do
+      :ok =
+        Celebrations.record_seen!(repo, user_id, celebrate, fn ->
+          UiText.timestamp(c.settings, clock.())
+        end)
+    end
 
     {:ok, view}
   end
@@ -227,7 +229,7 @@ defmodule Dawarich.Achievements.Collection do
   defp matches?(card, "in_progress"), do: not card["locked"] and not card["completed"]
   defp matches?(card, "locked"), do: card["locked"]
 
-  defp page(value), do: DawarichWeb.Params.ruby_to_i(value || "1")
+  defp page(value), do: min(Dawarich.RubyInteger.to_i(value || "1"), 1_000_000_000_000)
 
   defp query(repo, sql, args), do: repo.query!(sql, args, log: false).rows
 end

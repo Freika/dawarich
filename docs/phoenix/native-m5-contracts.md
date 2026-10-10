@@ -249,3 +249,15 @@ Stats index/year are native data-session routes. Stats month has a native query/
 `DigestsLive.NativePage` serves `/digests` and `/digests/:year` in the native data session. Reads do not enqueue or calculate. Persisted source values, title/locale, current-year list exclusion and Lite summary-only columns remain. The page projection retains full country/city/first-visit counts while windowing countries and first-country names at 50, first-city names at 10 and time rankings at five; explicit URL pagination preserves full chart values and progress denominators. Source numeric-string all-time distance uses the original integer cast. Full pattern columns are never selected for Lite.
 
 `Digests.Commands.generate/4` re-admits identity/settings, active/tracked-year/cutoff policy under the actor lock, refuses current/future years and publishes the existing `digests.calculate_year` outbox command with its source producer/worker mail policy. The server request receipt and normalized year share one persistent claim in the same transaction; failed publication rolls back the claim and explicit retry is accepted. `delete/3` selects only the owned yearly digest; native confirmation is tied to the displayed year and resets on navigation/cancel. Missing/foreign reads redirect to `/digests` with the original alert; command errors stay in place. `share/4` preserves current active/source eligibility and 1h/12h/24h expiration via the thin M4 dependency adapter. Opening/reopening the dialog is a read; changing its public settings auto-saves. Public capability links are the intended dialog output; identity/settings/credentials stay out of assigns. Upgrade URLs are generated only on action. Historical HTTP/API/manual-generation/mail/public-share adapters keep their consumers until the controller's X1/X2/M4 integration census.
+
+### Scoped Achievements
+
+`Achievements.Pages.load/3` fresh-admits the original identity and settings,
+normalizes scalar filters, returns the registry-bounded collection or twelve
+children and never marks a celebration seen. `Commands.acknowledge/3` locks the
+actor, rebuilds the visible projection and records only currently unseen keys.
+Reconnects and tabs cannot overwrite the first local timestamp. `share/4`,
+`claim/3`, `seen/5` and `dismiss/3` fresh-admit under the actor lock and reuse the
+existing sharing/token/lease rules. Claim responses remain server-private or
+transient HTTP replies, never generic LiveView assigns. Legacy HTTP consumers
+retain their protocol until the controller's caller census.
