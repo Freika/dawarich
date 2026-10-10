@@ -172,3 +172,7 @@ Pending. Record final app/E2E identity, ExUnit seeds and partition exits, three 
 ## Rails bugs fixed (changelog)
 
 none — planning and temporary measurement only. Potential per-delivery/privacy changes above are hypotheses until demonstrated; implementation must add FRB and ED entries for every Rails defect actually fixed, with source/new lines and named regression.
+
+## X0 implementation handoff (2026-10-10)
+
+Approved decisions O1–O10 and domain/session/event interfaces are frozen in [native-m4-contracts.md](native-m4-contracts.md). It records actual populated/active/public/Cloud query baselines, dataset/exclusions, production eager graph, memory lower-bound, exact configurable budgets and retained protocol census. Temporary telemetry probe was removed after RED/GREEN/mutation/restored GREEN; prescribed targeted contracts plus probe: 11 passed, warnings-as-errors. Production eager graph: 167238 raw / 51397 gzip bytes. Baseline standalone G44 lane 4 against inventory SHA and E2E ff256e6: 5 passed, 0 failed/skipped/flaky, including account backup/native disk PUT/restore. Browser peak streaming memory and final per-page transfer graphs remain A2/X4 acceptance evidence. No Rails bug fixed by the handoff.
