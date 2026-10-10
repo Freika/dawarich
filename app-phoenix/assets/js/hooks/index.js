@@ -7,6 +7,7 @@ import { Dismissible } from "./dismissible.js"
 import { EmojiPicker } from "./emoji_picker.js"
 import { NativeHeatmap } from "./heatmap.js"
 import { MapMatchingDemo } from "./map_matching_demo.js"
+import { RichText } from "./rich_text.js"
 import { ScrollIntoView } from "./scroll_into_view.js"
 
 export const hooks = {
@@ -19,5 +20,6 @@ export const hooks = {
   MapMatchingDemo,
   NativeChart,
   NativeHeatmap,
+  RichText,
   ScrollIntoView,
 }
