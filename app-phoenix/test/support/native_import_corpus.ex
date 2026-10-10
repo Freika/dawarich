@@ -1,0 +1,50 @@
+defmodule Dawarich.Test.NativeImportCorpus do
+  @moduledoc false
+  import ExUnit.Assertions
+
+  def assert_page(html, fixture) do
+    native =
+      html |> LazyHTML.from_document() |> LazyHTML.query("[data-testid=native-imports-root]")
+
+    expected = LazyHTML.from_fragment(fixture)
+    assert Enum.count(native) == 1
+    assert words(native) == words(expected)
+    assert fields(native) == fields(expected)
+    assert reads(native) == reads(expected)
+  end
+
+  defp words(doc),
+    do: doc |> LazyHTML.to_tree() |> texts() |> Enum.join(" ") |> String.split() |> Enum.join(" ")
+
+  defp texts(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &texts/1)
+  defp texts({tag, _, children}) when tag not in ["script", "style"], do: texts(children)
+  defp texts(text) when is_binary(text), do: [text]
+  defp texts(_), do: []
+
+  defp fields(doc) do
+    doc
+    |> LazyHTML.query("input, select, option")
+    |> Enum.map(fn node ->
+      attrs =
+        for key <- ~w(type name value checked selected disabled),
+            do: {key, LazyHTML.attribute(node, key)}
+
+      {attrs, if(LazyHTML.attribute(node, "value") == [], do: words(node), else: "")}
+    end)
+    |> Enum.reject(fn {attrs, _} ->
+      Enum.any?(attrs, fn {key, values} ->
+        key == "name" and
+          Enum.any?(values, &(&1 in ~w(authenticity_token _method import_id)))
+      end)
+    end)
+  end
+
+  defp reads(doc) do
+    doc
+    |> LazyHTML.query("a[href]")
+    |> Enum.reject(fn node ->
+      LazyHTML.attribute(node, "data-turbo-method") != []
+    end)
+    |> Enum.map(fn node -> {LazyHTML.attribute(node, "href"), words(node)} end)
+  end
+end

@@ -7,7 +7,7 @@ defmodule DawarichWeb.ImportsExtractionNavigationTest do
   alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
   @endpoint DawarichWeb.Endpoint
 
-  test "extraction removal reconnects the document and polling delivers the reset button" do
+  test "native extraction removal reconnects and invalidation delivers the reset button" do
     user = RailsUser.insert!(%{id: 7599, email: "extraction-navigation@example.test"})
 
     ImportsExportsSeeds.import!(%{
@@ -22,23 +22,23 @@ defmodule DawarichWeb.ImportsExtractionNavigationTest do
 
     assert has_element?(
              view,
-             ~s(turbo-frame#import-759901-extraction[data-turbo="false"] form[action="/imports/759901/extraction"] button),
+             ~s(#import-759901-extraction button[phx-click=remove_extraction]),
              "Remove extracted data"
            )
 
     Repo.query!("UPDATE imports SET additional_data_extraction_status=2 WHERE id=759901")
     {:ok, pending, _} = live(conn, "/imports/759901")
-    assert :sys.get_state(pending.pid).socket.assigns.polling
+    refute :sys.get_state(pending.pid).socket.assigns.polling
 
     Repo.query!(
       "UPDATE imports SET additional_data_extraction_status=0,additional_data_extraction='{}' WHERE id=759901"
     )
 
-    send(pending.pid, :imports_refresh)
+    send(pending.pid, {:domain_changed, user.id, :imports})
 
     assert has_element?(
              pending,
-             "button[data-action='click->import-extraction#open']",
+             "button[phx-click]",
              "Extract additional data"
            )
 

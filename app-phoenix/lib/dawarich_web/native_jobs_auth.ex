@@ -66,7 +66,9 @@ defmodule DawarichWeb.NativeJobsAuth do
       notifications: [],
       notification: nil,
       data: nil,
-      import: nil
+      import: nil,
+      record: nil,
+      points: nil
     )
     |> redirect(to: "/users/sign_in")
   end

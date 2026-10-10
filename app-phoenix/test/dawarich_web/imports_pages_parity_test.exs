@@ -3,7 +3,7 @@ defmodule DawarichWeb.ImportsPagesParityTest do
 
   import Phoenix.ConnTest
 
-  alias Dawarich.Test.{ParityHTML, RailsUser}
+  alias Dawarich.Test.{ParityHTML, RailsUser, NativeImportCorpus}
 
   @endpoint DawarichWeb.Endpoint
   @dir "test/fixtures/imports_pages"
@@ -99,18 +99,30 @@ defmodule DawarichWeb.ImportsPagesParityTest do
   for page <- "test/fixtures/imports_pages/pages.json" |> File.read!() |> Jason.decode!() do
     @page page
 
-    test "#{page["name"]} matches the page Rails renders" do
+    test "#{page["name"]} retains import business text fields links and title" do
       conn = get(RailsUser.signed_in(@page["user_id"]), @page["path"])
       html = conn |> response(@page["status"]) |> neutral()
       rails = Path.join(@dir, "pages/#{@page["name"]}.html") |> File.read!() |> neutral()
 
-      native = ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *")
-      expected = ParityHTML.normalize(rails)
+      if @page["path"] != "/imports/new" and not String.contains?(@page["path"], "/download") do
+        NativeImportCorpus.assert_page(html, rails)
 
-      assert native == expected,
-             "#{@page["name"]}: " <> ParityHTML.first_difference(native, expected)
+        assert Enum.count(
+                 LazyHTML.query(
+                   LazyHTML.from_document(html),
+                   "[data-testid=native-imports-root] turbo-frame, [data-testid=native-imports-root] [data-controller]"
+                 )
+               ) == 0
+      else
+        native = ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *")
+        expected = ParityHTML.normalize(rails)
 
-      assert wiring(inner(html)) == wiring(rails)
+        assert native == expected,
+               "#{@page["name"]}: " <> ParityHTML.first_difference(native, expected)
+
+        assert wiring(inner(html)) == wiring(rails)
+      end
+
       assert html =~ ">#{@page["title"]}</title>"
     end
   end

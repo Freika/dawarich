@@ -1,11 +1,14 @@
 defmodule DawarichWeb.ImportsRemainingPagesTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
   import Plug.Conn
   import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2, rails_session: 1]
-  alias Dawarich.Test.{RailsUser, ParityHTML}
+  alias Dawarich.Test.{RailsUser, NativeImportCorpus}
   alias DawarichWeb.{ImportsGate, RailsCsrf}
   alias Dawarich.Imports.Download
+
+  @endpoint DawarichWeb.Endpoint
 
   setup do
     seed = File.read!("test/fixtures/imports_pages/seed.json") |> Jason.decode!()
@@ -75,15 +78,11 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
   end
 
   defp corpus!(html, name) do
-    native = ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *")
-
-    expected =
-      File.read!("test/fixtures/imports_pages/pages/#{name}.html") |> ParityHTML.normalize()
-
-    assert native == expected, ParityHTML.first_difference(native, expected)
+    fixture = File.read!("test/fixtures/imports_pages/pages/#{name}.html")
+    NativeImportCorpus.assert_page(html, fixture)
   end
 
-  test "normal owner show edit and invalid source render the Rails corpus", c do
+  test "native normal owner pages and invalid source retain seven locale business vectors", c do
     assert ImportsGate.native?(RailsUser.signed_in(c.user), %{"id" => "980111"})
 
     for locale <- ~w(en de es fr pl ca zh) do
@@ -92,12 +91,21 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
         %{"locale" => locale}
       ])
 
-      show = request(c, :get, "/imports/980111") |> native!(200)
+      show = request(c, :get, "/imports/980111")
+      assert show.status == 200
       corpus!(show.resp_body, "show_csv_#{locale}")
-      edit = request(c, :get, "/imports/980111/edit") |> native!(200)
+      edit = request(c, :get, "/imports/980111/edit")
+      assert edit.status == 200
       corpus!(edit.resp_body, "edit_csv_#{locale}")
-      invalid = request(c, :patch, "/imports/980111", form("unknown")) |> native!(422)
-      corpus!(invalid.resp_body, "invalid_source_#{locale}")
+      conn = RailsUser.signed_in(c.user) |> RailsUser.connecting_as(c.user)
+      {:ok, view, _} = live(conn, "/imports/980111/edit")
+
+      invalid =
+        render_hook(view, "save_import", %{
+          "import" => %{"source" => "unknown", "name" => "changed.csv"}
+        })
+
+      corpus!(invalid, "invalid_source_#{locale}")
 
       assert [["normal.csv", 10]] ==
                Repo.query!("SELECT name,source FROM imports WHERE id=980111").rows
@@ -123,12 +131,16 @@ defmodule DawarichWeb.ImportsRemainingPagesTest do
              ).rows
   end
 
-  test "foreign import and route key hand back before any pipeline effect", c do
+  test "foreign native reads refuse safely while legacy write adapters still have zero foreign effects",
+       c do
     refute ImportsGate.native?(RailsUser.signed_in(c.other), %{"id" => "980111"})
     foreign = %{c | session: RailsUser.session(c.other)}
 
+    denied = request(foreign, :get, "/imports/980111/edit")
+    assert redirected_to(denied) == "/imports"
+    refute denied.resp_body =~ "normal.csv"
+
     for {actor, method, path, body} <- [
-          {foreign, :get, "/imports/980111/edit", ""},
           {foreign, :patch, "/imports/980111", form("csv")},
           {foreign, :delete, "/imports/980111", ""}
         ] do

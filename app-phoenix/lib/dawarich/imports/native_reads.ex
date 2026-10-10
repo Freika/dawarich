@@ -9,7 +9,14 @@ defmodule Dawarich.Imports.NativeReads do
   def page(scope, list, opts) do
     with {:ok, current} <- NativeAccess.admit(scope, repo(opts)),
          true <- valid_list?(list) do
-      {:ok, Dawarich.ImportExportIndex.imports(current.user, list, repo(opts))}
+      page = Dawarich.ImportExportIndex.imports(current.user, list, repo(opts))
+
+      {:ok,
+       Map.put(
+         page,
+         :providers,
+         Dawarich.Imports.Providers.available(repo(opts), current.user.id)
+       )}
     else
       {:error, _} = error -> error
       _ -> {:error, :invalid_list}
@@ -35,15 +42,44 @@ defmodule Dawarich.Imports.NativeReads do
 
       data = record.additional_data_extraction || %{}
 
+      record =
+        record
+        |> Map.delete(:raw_data)
+        |> Map.put(:no_waypoints?, no_waypoints)
+        |> Map.put(
+          :additional_data_extraction,
+          Map.take(data, ~w(started_at counts error_message))
+        )
+
       {:ok,
-       record
-       |> Map.delete(:raw_data)
-       |> Map.put(:no_waypoints?, no_waypoints)
-       |> Map.put(
-         :additional_data_extraction,
-         Map.take(data, ~w(started_at counts error_message))
+       if(opts[:details],
+         do: details(repo(opts), current.user, record, opts[:previous]),
+         else: record
        )}
     end
+  end
+
+  defp details(repo, user, record, previous) do
+    points =
+      if previous && Map.drop(previous, [:points, :created]) == record do
+        previous.points
+      else
+        [[count]] =
+          repo.query!(
+            "SELECT count(*) FROM points WHERE import_id=$1",
+            [record.id],
+            log: false
+          ).rows
+
+        count
+      end
+
+    record
+    |> Map.put(:points, points)
+    |> Map.put(
+      :created,
+      Dawarich.UserTimeZone.local(Dawarich.UserSettings.get(user), record.created_at, repo)
+    )
   end
 
   def subscribe(scope, opts) do

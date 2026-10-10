@@ -15,6 +15,8 @@ defmodule DawarichWeb.ImportsExtractionCard do
     "failed" => {"badge-error", false},
     "unsupported" => {"badge-ghost", false}
   }
+  alias Phoenix.LiveView.JS
+
   @element_keys ~w(waypoints_seen trackpoints_seen route_points_seen)
   @stale_after_seconds 6 * 3600
 
@@ -22,6 +24,7 @@ defmodule DawarichWeb.ImportsExtractionCard do
   attr :locale, :string, required: true
   attr :csrf, :string, required: true
   attr :now, :any, required: true
+  attr :native, :boolean, default: false
 
   def card(assigns) do
     record = assigns.record
@@ -49,22 +52,25 @@ defmodule DawarichWeb.ImportsExtractionCard do
         spinner: spinner,
         label: resolved,
         unavailable: unavailable,
-        no_waypoints: record.source == 4 and no_waypoints?(record.raw_data),
+        no_waypoints:
+          record.source == 4 and
+            Map.get(record, :no_waypoints?, no_waypoints?(Map.get(record, :raw_data))),
         stalled: status in ["pending", "running"] and stalled?(data["started_at"], assigns.now),
         counts: if(is_map(data["counts"]), do: data["counts"], else: %{}),
         error: data["error_message"]
       )
 
     ~H"""
-    <turbo-frame
-      data-turbo="false"
-      data-controller="import-extraction"
+    <.dynamic_tag
+      tag_name={if(@native, do: "div", else: "turbo-frame")}
+      data-turbo={!@native && "false"}
+      data-controller={!@native && "import-extraction"}
       id={"import-#{@id}-extraction"}
-      phx-hook="RailsStimulus"
+      phx-hook={!@native && "RailsStimulus"}
     >
       <div class="card bg-base-200 mt-6 max-w-2xl">
-        <div class="card-body">
-          <div class="flex items-center gap-2 mb-2">
+        <div class="card-body min-w-0 [overflow-wrap:anywhere]">
+          <div class="flex flex-wrap min-w-0 items-center gap-2 mb-2">
             <.icon name="layer" class="w-5 h-5 text-base-content/60" />
             <h3 class="text-lg font-semibold">{text(@locale, "additional_data")}</h3>
             <span class={"badge badge-sm " <> @badge}><span
@@ -95,10 +101,11 @@ defmodule DawarichWeb.ImportsExtractionCard do
               <div class="flex flex-wrap gap-2">
                 <.open_button
                   id={@id}
+                  native={@native}
                   class="btn btn-sm btn-outline"
                   label={text(@locale, "re_extract")}
                 />
-                <.remove_button id={@id} locale={@locale} csrf={@csrf} />
+                <.remove_button id={@id} locale={@locale} csrf={@csrf} native={@native} />
               </div>
             <% @status in ["pending", "running"] and @stalled -> %>
               <p class="text-sm text-warning mb-2">
@@ -107,10 +114,11 @@ defmodule DawarichWeb.ImportsExtractionCard do
               <div class="flex flex-wrap gap-2">
                 <.open_button
                   id={@id}
+                  native={@native}
                   class="btn btn-sm btn-outline"
                   label={text(@locale, "start_over")}
                 />
-                <.remove_button id={@id} locale={@locale} csrf={@csrf} />
+                <.remove_button id={@id} locale={@locale} csrf={@csrf} native={@native} />
               </div>
             <% @status in ["pending", "running"] -> %>
               <p class="text-sm text-base-content/70 flex items-center gap-2">
@@ -124,10 +132,11 @@ defmodule DawarichWeb.ImportsExtractionCard do
               <div class="flex flex-wrap gap-2">
                 <.open_button
                   id={@id}
+                  native={@native}
                   class="btn btn-sm btn-outline"
                   label={text(@locale, "retry_extraction")}
                 />
-                <.remove_button id={@id} locale={@locale} csrf={@csrf} />
+                <.remove_button id={@id} locale={@locale} csrf={@csrf} native={@native} />
               </div>
             <% true -> %>
               <p class="text-sm text-base-content/70 mb-4">
@@ -135,6 +144,7 @@ defmodule DawarichWeb.ImportsExtractionCard do
               </p>
               <.open_button
                 id={@id}
+                native={@native}
                 class="btn btn-sm btn-primary"
                 label={text(@locale, "extract_additional_data")}
               />
@@ -146,21 +156,24 @@ defmodule DawarichWeb.ImportsExtractionCard do
         id={@id}
         locale={@locale}
         csrf={@csrf}
+        native={@native}
       />
-    </turbo-frame>
+    </.dynamic_tag>
     """
   end
 
   attr :id, :integer, required: true
   attr :class, :string, required: true
   attr :label, :string, required: true
+  attr :native, :boolean, default: false
 
   defp open_button(assigns) do
     ~H"""
     <button
       class={@class}
-      data-action="click->import-extraction#open"
-      data-import-extraction-dialog-id-param={"extraction-dialog-#{@id}"}
+      data-action={!@native && "click->import-extraction#open"}
+      phx-click={@native && JS.dispatch("dawarich:open-dialog", to: "#extraction-dialog-#{@id}")}
+      data-import-extraction-dialog-id-param={!@native && "extraction-dialog-#{@id}"}
     >
       {@label}
     </button>
@@ -170,6 +183,27 @@ defmodule DawarichWeb.ImportsExtractionCard do
   attr :id, :integer, required: true
   attr :locale, :string, required: true
   attr :csrf, :string, required: true
+
+  attr :native, :boolean, default: false
+
+  defp remove_button(%{native: true} = assigns) do
+    ~H"""
+    <button
+      type="button"
+      phx-click="remove_extraction"
+      class="btn btn-sm btn-ghost text-error"
+      data-confirm={
+        Translate.t(
+          @locale,
+          "imports.extraction_remove_button.remove_the_visits_places_and_tracks_this_extraction_created_your",
+          %{}
+        )
+      }
+    >
+      {Translate.t(@locale, "imports.extraction_remove_button.remove_extracted_data", %{})}
+    </button>
+    """
+  end
 
   defp remove_button(assigns) do
     ~H"""

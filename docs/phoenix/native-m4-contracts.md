@@ -56,3 +56,15 @@ New page caps are baseline plus itemized actor/session (one actor read per hook/
 Production esbuild minified eager graph: `app.js` 166,694 raw / 51,060 gzip bytes; static shared chunk 544 / 337; total 167,238 / 51,397. Lazy emoji/module/demo/style chunks excluded and itemized by the manifest. Common added eager overhead cap: 5 KiB gzip over this baseline, maps/ZIP/gallery always lazy. Root-dependent legacy page graph remains pre-migration and is replaced page by page; X4 records actual transferred graphs from the production stand.
 
 Synthetic 8 MiB original `File.arrayBuffer()` observation: 8 MiB returned original buffer, 16 MiB array-buffer allocation growth in Node; excludes ZIP worker/output/browser/GPU. Rails preparation reads the entire original (`app/javascript/services/zip_file.js:3-13`), so this is a lower-bound memory observation, not a browser peak. The chosen bounded streaming preparation budget must be measured and enforced in A2/X4 before acceptance. Account cleanup baseline: completed/cancelled entry tests pass but no owned pending cleanup occurs before A1/A2; the existing metadata capability gap is a Phoenix defect, not a proven Rails changelog fix.
+
+## A4 scoped import observation (2026-10-10)
+
+One synthetic owner, one GPX import, UTC, no attachment/worker/background delivery. Totals include fresh admission and the existing navbar, exclude later B5 reductions. Telemetry query categorization records only counts, never SQL arguments.
+
+| Page | Static | Connected | Patch | Owner invalidation | Actor reads in those phases |
+| --- | ---: | ---: | ---: | ---: | --- |
+| imports index | 10 | 10 | 7 | 4 | 6 / 7 / 4 / 3 |
+| import show | 10 | 11 | 7 | 4 | 5 / 6 / 3 / 2 |
+| import edit | 8 | 9 | 6 | 3 | 5 / 6 / 3 / 2 |
+
+Show counts points only when its record changes; each queued owner wake still checks actor/target. Duplicate queued wakes perform one snapshot. Provider availability reads only return names while secrets remain request-local. Temporary measurement test RED/GREEN/no-counter mutation/restored GREEN removed; final observations will be repeated after B5. Legacy invalid/duplicate rename keeps the Rails success notice without persisting a rejected name; this task preserves that behavior. German browser range/overflow and actual transferred graphs remain controller stage acceptance.

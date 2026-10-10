@@ -3,7 +3,7 @@ defmodule DawarichWeb.ImportsExportsParityTest do
 
   import Phoenix.ConnTest
 
-  alias Dawarich.Test.{ImportsExportsSeeds, ParityHTML, RailsUser}
+  alias Dawarich.Test.{ImportsExportsSeeds, ParityHTML, RailsUser, NativeImportCorpus}
 
   @endpoint DawarichWeb.Endpoint
   @dir "test/fixtures/imports_exports"
@@ -22,15 +22,19 @@ defmodule DawarichWeb.ImportsExportsParityTest do
       not Enum.any?(String.split(query, "&", trim: true), &(not String.contains?(&1, "="))) do
     @page page
 
-    test "#{page["name"]} matches the page Rails renders" do
+    test "#{page["name"]} retains index business text fields links and title" do
       html = get(RailsUser.signed_in(@page["user_id"]), @page["path"]) |> html_response(200)
       rails = File.read!(Path.join(@dir, "pages/#{@page["name"]}.html"))
 
-      native = ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *")
-      expected = ParityHTML.normalize(rails)
+      if String.starts_with?(@page["path"], "/imports") do
+        NativeImportCorpus.assert_page(html, rails)
+      else
+        native = ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *")
+        expected = ParityHTML.normalize(rails)
 
-      assert native == expected,
-             "#{@page["name"]}: " <> ParityHTML.first_difference(native, expected)
+        assert native == expected,
+               "#{@page["name"]}: " <> ParityHTML.first_difference(native, expected)
+      end
 
       assert html =~ ">#{@page["title"]}</title>"
     end

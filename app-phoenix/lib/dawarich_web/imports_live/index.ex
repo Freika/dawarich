@@ -7,13 +7,7 @@ defmodule DawarichWeb.ImportsLive.Index do
   import DawarichWeb.ListParts, only: [page_header: 1, sort_link: 1]
   import DawarichWeb.Paginator, only: [paginator: 1]
 
-  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-
   @sortable ~w(name status created_at processed byte_size)
-  @integrations [
-    {"immich", "start_immich_import", "imports.index.import_from_immich"},
-    {"photoprism", "start_photoprism_import", "imports.index.import_from_photoprism"}
-  ]
   @columns [
     {"name", "imports.index.name", "w-auto"},
     {"byte_size", "imports.index.file_size", "w-[10%]"},
@@ -24,7 +18,7 @@ defmodule DawarichWeb.ImportsLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket), do: Dawarich.Imports.Events.subscribe(socket.assigns.current_user.id)
+    if connected?(socket), do: Dawarich.Imports.subscribe(socket.assigns.current_scope)
 
     {:ok,
      assign(socket,
@@ -35,29 +29,37 @@ defmodule DawarichWeb.ImportsLive.Index do
   end
 
   @impl true
-  def handle_info(:imports_refresh, socket), do: refresh(assign(socket, polling: false))
+  def handle_info(:imports_refresh, socket), do: {:noreply, socket}
+
+  def handle_info({:domain_changed, owner, :imports}, socket)
+      when owner == socket.assigns.current_user.id do
+    DawarichWeb.ImportsInvalidations.coalesce(owner)
+    refresh(socket)
+  end
 
   def handle_info(:imports_changed, socket), do: refresh(socket)
 
   defp refresh(socket) do
-    if Dawarich.Accounts.get(socket.assigns.current_user.id) do
-      {:noreply,
-       socket
-       |> assign(:now, DateTime.utc_now())
-       |> assign(
-         Dawarich.ImportExportIndex.imports(socket.assigns.current_user, socket.assigns.list)
-       )
-       |> poll()}
-    else
-      {:noreply, redirect(socket, to: "/users/sign_in")}
+    case Dawarich.Imports.page(socket.assigns.current_scope, socket.assigns.list) do
+      {:ok, page} ->
+        integrations =
+          for name <- page.providers,
+              do: {"start_#{name}_import", "imports.index.import_from_#{name}"}
+
+        {:noreply,
+         socket
+         |> assign(:now, DateTime.utc_now())
+         |> assign(page)
+         |> assign(:integrations, integrations)}
+
+      {:error, _} ->
+        {:noreply, socket |> assign(entries: []) |> redirect(to: "/users/sign_in")}
     end
   end
 
   @impl true
   def handle_event("delete_import", %{"import_id" => id}, socket) do
-    user = socket.assigns.current_user
-
-    case DawarichWeb.ImportsActions.delete(user, id) do
+    case Dawarich.Imports.delete(socket.assigns.current_scope, id) do
       {:ok, _} ->
         refresh(socket)
 
@@ -75,28 +77,16 @@ defmodule DawarichWeb.ImportsLive.Index do
   def handle_params(params, uri, socket) do
     query = URI.parse(uri).query || ""
     list = DawarichWeb.ListParams.parse(params, query, @sortable)
-    user = socket.assigns.current_user
 
-    {:noreply,
-     socket
-     |> assign(
-       list: list,
-       query: URI.decode_query(query),
-       columns: @columns,
-       integrations: integrations(Dawarich.UserSettings.get(user))
-     )
-     |> assign(Dawarich.ImportExportIndex.imports(user, list))
-     |> poll()}
-  end
+    socket =
+      assign(socket,
+        list: list,
+        query: URI.decode_query(query),
+        columns: @columns,
+        integrations: []
+      )
 
-  defp poll(socket), do: DawarichWeb.ImportsPolling.schedule(socket, socket.assigns.entries)
-
-  defp integrations(settings) do
-    settings = Dawarich.UserSettings.safe(settings)
-
-    for {name, job, key} <- @integrations,
-        Ruby.present?(settings[name <> "_url"]) and Ruby.present?(settings[name <> "_api_key"]),
-        do: {job, key}
+    refresh(socket)
   end
 
   @impl true
@@ -163,7 +153,7 @@ defmodule DawarichWeb.ImportsLive.Index do
             />
           </div>
           <div class="border border-base-300 rounded-xl overflow-x-auto">
-            <table class="table w-full">
+            <table class="table w-full table-fixed max-sm:[&_th]:p-1 max-sm:[&_td]:p-1 max-sm:text-xs max-sm:[&_.whitespace-nowrap]:whitespace-normal [overflow-wrap:anywhere]">
               <thead class="bg-base-200">
                 <tr>
                   <th
@@ -186,11 +176,7 @@ defmodule DawarichWeb.ImportsLive.Index do
                   </th>
                 </tr>
               </thead>
-              <tbody
-                data-controller="imports"
-                data-imports-target="index"
-                data-user-id={@current_user.id}
-              >
+              <tbody>
                 <.row
                   :for={import <- @entries}
                   import={import}
