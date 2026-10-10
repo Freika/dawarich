@@ -104,3 +104,7 @@ Native cookie resources `family_locations` and `family_history` freshly admit fa
 ## Trip read boundary
 
 `Maps.Dependencies.Trip.config(scope,id)` returns only scalar metadata/range/display options. `read` returns the same config plus overview path/device windows/plan over the cookie `trip` HTTP resource, never LiveView assigns. Current implementation delegates TripPage's existing ownership/settings/plan gates and data calculations; unsupported/missing reads become a typed refusal without a hybrid redirect. The m5 adapter switch will replace this current page projection with its accepted read facade and measure the deferred resource/query budgets.
+
+## Trip runtime and insertion
+
+`NativeTripMapPanel.panel` keys the Trip canvas by `tripId`. `TripHook` lazily imports `mountTrip`; one runtime owns its day routes, plan, flights and photos. Reads refresh current owned Trip metadata/device windows before exact geometry is loaded. Destruction cancels style/point reads and releases every owned layer. Reconnect reuses its map. Its stable `source` has `fixedRange: true`, verifies both current revision and fresh Trip range, and separates visible poster flight arcs from video/replay timed GPS. `trip:day` carries only a day identity; parent page integration belongs to X1 and the m5 adapter switch.

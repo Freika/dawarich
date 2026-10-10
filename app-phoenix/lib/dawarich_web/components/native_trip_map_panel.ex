@@ -1,11 +1,13 @@
 defmodule DawarichWeb.NativeTripMapPanel do
   @moduledoc false
   use Phoenix.Component
-  attr :id, :string, default: "native-trip-map"
+  attr :id, :string, default: nil
   attr :config, :map, required: true
   attr :locale, :string, default: "en"
 
   def panel(assigns) do
+    assigns = assign(assigns, :id, assigns.id || "native-trip-map-#{assigns.config["tripId"]}")
+
     ~H"""
     <DawarichWeb.NativeMapHost.map_host
       id={@id}
