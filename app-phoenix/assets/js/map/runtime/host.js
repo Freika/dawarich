@@ -186,6 +186,10 @@ export function mountHost({
   Object.defineProperty(owner, "enrichment", { get: () => enrichment })
   Object.defineProperty(owner, "editor", { get: () => editing?.editor })
   Object.defineProperty(owner, "entityLayers", { get: () => entities })
+  owner.layer = ({layer, enabled}) => {
+    if (!["places", "visits", "areas", "anomalies"].includes(layer)) return
+    return owner.update({...owner.config, [`${layer}Enabled`]: enabled === true})
+  }
   const update = owner.update
   owner.update = (config) => {
     if (config.revision !== owner.config.revision) enrichment?.clear()

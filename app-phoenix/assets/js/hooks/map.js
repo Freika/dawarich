@@ -7,6 +7,7 @@ export const MapHook = {
     this.mapRealtime = null
     this.mapInvalidations = []
     this.mapHandlers = [
+      this.handleEvent("map:layer", payload => this.mapOwner?.layer?.(payload)),
       this.handleEvent("map:settings", payload => this.mapOwner?.settings?.(payload)),
       this.handleEvent("enrichment:matches", payload => this.mapOwner?.enrichment?.matches(payload)),
       this.handleEvent("map:config", (payload) => {

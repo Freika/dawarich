@@ -85,6 +85,15 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_event("map:select", %{"kind" => "area", "id" => id}, socket),
     do: DawarichWeb.MapLive.AreaCommands.handle_event("area:edit", %{"id" => id}, socket)
 
+  def handle_event("map:select", %{"kind" => kind, "id" => id}, socket) when kind in ~w(place visit),
+    do: DawarichWeb.MapLive.EntityCommands.handle_event(kind <> ":edit", %{"id" => id}, socket)
+
+  def handle_event("place:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.EntityCommands.handle_event(event, payload, socket)
+
+  def handle_event("visit:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.EntityCommands.handle_event(event, payload, socket)
+
   def handle_event("settings:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.SettingsCommands.handle_event(event, payload, socket)
 
@@ -121,6 +130,9 @@ defmodule DawarichWeb.MapLive.Native do
   def handle_async({:enrichment_scan, _} = name, result, socket),
     do: DawarichWeb.MapLive.EnrichmentCommands.handle_async(name, result, socket)
 
+  def handle_async({:place_nearby, _} = name, result, socket),
+    do: DawarichWeb.MapLive.EntityCommands.handle_async(name, result, socket)
+
   def render(assigns) do
     ~H"""
     <div :if={@page} id="native-map-page" class="relative w-full min-w-0 h-[100dvh] flex flex-col">
@@ -152,6 +164,8 @@ defmodule DawarichWeb.MapLive.Native do
         residency={assigns[:residency]}
         locale={@locale}
       />
+      <DawarichWeb.NativeMapPlace.dialog dialog={assigns[:place_dialog]} locale={@locale} />
+      <button type="button" data-testid="native-create-place" class="btn btn-sm">{t(@locale, "javascript.places.create_new", %{})}</button>
       <DawarichWeb.NativeMapSettings.panel
         :if={@map_url["panel"] == "settings"}
         settings={assigns[:map_settings]}

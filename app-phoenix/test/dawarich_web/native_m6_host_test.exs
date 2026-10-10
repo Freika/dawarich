@@ -160,6 +160,17 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert Dawarich.Accounts.get(id).settings["maps_maplibre_style"] == "dark"
   end
 
+  test "native production host creates places and enables their map layer", %{id: id} do
+    {:ok, view, _} = open(id, @second)
+    render_hook(view, "place:new", %{"latitude" => 52.52, "longitude" => 13.405})
+    view |> form("#native-place-form", place: %{name: ""}) |> render_submit()
+    assert has_element?(view, "#native-place-dialog [role=alert]")
+    view |> form("#native-place-form", place: %{name: "Bakery"}) |> render_submit()
+    refute has_element?(view, "#native-place-dialog")
+    assert_push_event(view, "map:layer", %{layer: "places", enabled: true})
+    assert_push_event(view, "map:invalidate", %{resource: "places", id: _})
+  end
+
   defp config(view) do
     view
     |> render()
