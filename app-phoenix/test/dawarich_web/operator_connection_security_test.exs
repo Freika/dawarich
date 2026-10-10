@@ -1,5 +1,6 @@
 defmodule DawarichWeb.OperatorConnectionSecurityTest do
   use ExUnit.Case, async: false
+  import Dawarich.Test.Await
 
   import Plug.Conn
   import Plug.Test
@@ -111,14 +112,14 @@ defmodule DawarichWeb.OperatorConnectionSecurityTest do
     context = connect_session(page, login)
     pid = channel(page, context)
     clear_flash(pid, "authorized")
-    assert_receive %Phoenix.Socket.Reply{ref: "authorized", status: :ok}
+    await_receive(%Phoenix.Socket.Reply{ref: "authorized", status: :ok})
     assert :sys.get_state(pid).socket.assigns.health
     assert :sys.get_state(pid).socket.assigns.current_user.admin
 
     Repo.query!("UPDATE users SET admin = false WHERE id = 10001", [], log: false)
     monitor = Process.monitor(pid)
     clear_flash(pid, "demoted")
-    assert_receive %Phoenix.Socket.Message{event: "redirect", payload: %{to: @path}}
+    await_receive(%Phoenix.Socket.Message{event: "redirect", payload: %{to: @path}})
     assert_receive {:DOWN, ^monitor, :process, ^pid, _reason}
 
     System.put_env("SELF_HOSTED", "true")
@@ -128,7 +129,7 @@ defmodule DawarichWeb.OperatorConnectionSecurityTest do
     assert :sys.get_state(pid).socket.assigns.health
     Repo.query!("UPDATE users SET admin = false WHERE id = 10001", [], log: false)
     clear_flash(pid, "self-hosted-demoted")
-    assert_receive %Phoenix.Socket.Reply{ref: "self-hosted-demoted", status: :ok}
+    await_receive(%Phoenix.Socket.Reply{ref: "self-hosted-demoted", status: :ok})
     socket = :sys.get_state(pid).socket
     refute socket.assigns.current_user.admin
     assert socket.assigns.health == nil

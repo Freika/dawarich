@@ -1,5 +1,6 @@
 defmodule Dawarich.Tracks.MapMatching.EnqueuerTest do
   use Dawarich.TracksCase, async: false
+  import Dawarich.Test.Await
   alias Dawarich.Tracks.MapMatching.{Enqueuer, State, Worker}
   alias Dawarich.MapMatching.{Fingerprint, Input, TestSupport}
 
@@ -60,7 +61,7 @@ defmodule Dawarich.Tracks.MapMatching.EnqueuerTest do
         end)
       end)
 
-    assert_receive :locked
+    await_receive(:locked)
     claimer = Task.async(fn -> Enqueuer.call(ScratchRepo, track.id) end)
     wait_for_lock!()
     send(locker.pid, :change)

@@ -1,5 +1,6 @@
 defmodule Dawarich.Trips.CalculationTest do
   use Dawarich.JobsCase, async: true, group: :scratch_db
+  import Dawarich.Test.Await
   use Oban.Testing, repo: Dawarich.ScratchRepo
 
   alias Dawarich.Trips.Calculation
@@ -133,7 +134,7 @@ defmodule Dawarich.Trips.CalculationTest do
       if Process.alive?(holder.pid), do: send(holder.pid, :update_and_release)
     end)
 
-    assert_receive {:holding_trip_lock, holder_backend}
+    await_receive({:holding_trip_lock, holder_backend})
 
     calculating =
       Task.async(fn ->

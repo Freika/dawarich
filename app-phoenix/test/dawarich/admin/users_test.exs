@@ -24,6 +24,7 @@ end
 
 defmodule Dawarich.Admin.UsersTest do
   use Dawarich.JobsCase
+  import Dawarich.Test.Await
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Accounts.Scope
   alias Dawarich.Admin.Users
@@ -268,7 +269,7 @@ defmodule Dawarich.Admin.UsersTest do
         Users.update(scope, 10711, %{"admin" => "0"})
       end)
 
-    assert_receive :admins_locked
+    await_receive(:admins_locked)
     assert {:ok, %{id: 10712}} = Users.get(scope, 10712, :edit)
     contender = Task.async(fn -> Users.delete(scope, 10712) end)
     assert Task.await(contender, 5000) == {:error, :unauthorized}

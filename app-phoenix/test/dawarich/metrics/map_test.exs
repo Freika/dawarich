@@ -1,5 +1,6 @@
 defmodule Dawarich.Metrics.MapTest do
   use Dawarich.DataCase, async: false
+  import Dawarich.Test.Await
   import Plug.Conn
   alias Dawarich.Points.ApiPosition
   @moduletag :capture_log
@@ -368,7 +369,7 @@ defmodule Dawarich.Metrics.MapTest do
         end)
       end)
 
-    assert_receive :point_locked
+    await_receive(:point_locked)
 
     mover =
       Task.async(fn -> ApiPosition.update(repo, %{user | id: actor}, point, params(0), ctx) end)

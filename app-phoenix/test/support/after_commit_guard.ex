@@ -2,22 +2,16 @@ defmodule Dawarich.Test.AfterCommitGuard do
   @committed_consumers [{"Elixir.Dawarich.AfterCommit.Worker", :run, 2}]
 
   def violations(paths) do
-    modules = Enum.flat_map(paths, &functions/1)
+    analysed = Enum.flat_map(paths, &analysed/1)
+    modules = Enum.map(analysed, &elem(&1, 0))
 
     graph =
-      Enum.reduce(modules, %{}, fn {key, body, aliases, module, _file, _params}, graph ->
-        Map.update(graph, key, calls(body, aliases, module), fn previous ->
-          Enum.uniq(previous ++ calls(body, aliases, module))
-        end)
+      Enum.reduce(analysed, %{}, fn {{key, _, _, _, _, _}, calls, _sink}, graph ->
+        Map.update(graph, key, calls, fn previous -> Enum.uniq(previous ++ calls) end)
       end)
 
     definitions = Enum.group_by(modules, &elem(&1, 0))
-
-    sinks =
-      for {key, body, aliases, _, _, _} <- modules,
-          sink?(body, aliases),
-          into: MapSet.new(),
-          do: key
+    sinks = for {{key, _, _, _, _, _}, _calls, true} <- analysed, into: MapSet.new(), do: key
 
     reachable = reachable_sinks(graph, sinks)
 
@@ -29,8 +23,25 @@ defmodule Dawarich.Test.AfterCommitGuard do
         do: {file, key, target}
   end
 
-  defp functions(path) do
-    ast = path |> File.read!() |> Code.string_to_quoted!() |> normalize()
+  defp analysed(path) do
+    source = File.read!(path)
+
+    case :persistent_term.get({__MODULE__, path}, nil) do
+      {^source, rows} ->
+        rows
+
+      _ ->
+        rows =
+          for {_key, body, aliases, module, _file, _params} = row <- functions(path, source),
+              do: {row, calls(body, aliases, module), sink?(body, aliases)}
+
+        :persistent_term.put({__MODULE__, path}, {source, rows})
+        rows
+    end
+  end
+
+  defp functions(path, source) do
+    ast = source |> Code.string_to_quoted!() |> normalize()
 
     {_ast, modules} =
       Macro.prewalk(ast, [], fn

@@ -1,5 +1,6 @@
 defmodule Dawarich.Admin.InstanceWritesTest do
   use ExUnit.Case, async: false
+  import Dawarich.Test.Await
   alias Dawarich.Admin.{InstancePage, InstanceWrites}
   alias Dawarich.{Accounts, ActiveRecordEncryption, Redis, Repo}
   alias Dawarich.Test.{LaterFailureRepo, RailsUser}
@@ -36,8 +37,9 @@ defmodule Dawarich.Admin.InstanceWritesTest do
 
     {:ok, ref} = Redix.PubSub.subscribe(subscriber, "dawarich:instance_settings", self())
 
-    assert_receive {:redix_pubsub, ^subscriber, ^ref, :subscribed,
-                    %{channel: "dawarich:instance_settings"}}
+    await_receive(
+      {:redix_pubsub, ^subscriber, ^ref, :subscribed, %{channel: "dawarich:instance_settings"}}
+    )
 
     input = [
       {"photon_api_host", "HTTPS://PHOTON.EXAMPLE.INVALID/"},
@@ -69,8 +71,10 @@ defmodule Dawarich.Admin.InstanceWritesTest do
            ).rows == [[false]]
 
     for name <- ~w(geoapify_api_key store_geodata reverse_geocoding_rps) do
-      assert_receive {:redix_pubsub, ^subscriber, ^ref, :message,
-                      %{channel: "dawarich:instance_settings", payload: payload}}
+      await_receive(
+        {:redix_pubsub, ^subscriber, ^ref, :message,
+         %{channel: "dawarich:instance_settings", payload: payload}}
+      )
 
       assert Jason.decode!(payload) == %{"key" => name}
     end

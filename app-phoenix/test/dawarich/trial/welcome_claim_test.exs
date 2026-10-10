@@ -1,5 +1,6 @@
 defmodule Dawarich.Trial.WelcomeClaimTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
 
   alias Dawarich.Trial.WelcomeClaim
   alias Dawarich.LockRace
@@ -81,7 +82,7 @@ defmodule Dawarich.Trial.WelcomeClaimTest do
         )
       end)
 
-    assert_receive {:winning_expiry, expiry}
+    await_receive({:winning_expiry, expiry})
 
     loser =
       LockRace.attempt(fn -> WelcomeClaim.claim("contended", @now + 3600, @now, ScratchRepo) end)

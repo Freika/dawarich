@@ -1,5 +1,6 @@
 defmodule Dawarich.Imports.SecureFileDownloaderTest do
   use ExUnit.Case, async: true
+  import Dawarich.Test.Await
   import ExUnit.CaptureLog
   alias Dawarich.Imports.SecureFileDownloader, as: Downloader
 
@@ -259,7 +260,7 @@ defmodule Dawarich.Imports.SecureFileDownloaderTest do
     writer_ref = Process.monitor(writer)
     Process.exit(caller, :kill)
     assert_receive {:DOWN, ^caller_ref, :process, ^caller, :killed}
-    assert_receive {:DOWN, ^writer_ref, :process, ^writer, _}, 500
+    await_receive({:DOWN, ^writer_ref, :process, ^writer, _})
     wait_for_cleanup(dir, System.monotonic_time(:millisecond) + 500)
     assert File.ls!(dir) == []
   end

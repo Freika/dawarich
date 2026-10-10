@@ -44,6 +44,8 @@ COPY app-phoenix/priv priv
 COPY config/shared_link_wordlist.txt priv/shared_link_wordlist.txt
 COPY lib/assets/admin1_world.geojson priv/admin1_world.geojson
 COPY lib/assets/countries.geojson.gz priv/countries.geojson.gz
+COPY app/assets/svg/icons/lucide/outline priv/svg_icons/lucide/outline
+COPY app/assets/svg/icons/brands priv/svg_icons/brands
 COPY app-phoenix/rel rel
 COPY app-phoenix/config/runtime.exs config/
 COPY app-phoenix/assets/package.json app-phoenix/assets/package-lock.json assets/

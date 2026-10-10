@@ -13,6 +13,7 @@ end
 
 defmodule Dawarich.Jobs.ClaimerTest do
   use Dawarich.JobsCase, async: true, group: :scratch_db
+  import Dawarich.Test.Await
 
   import ExUnit.CaptureLog
 
@@ -59,7 +60,7 @@ defmodule Dawarich.Jobs.ClaimerTest do
         end)
       end)
 
-    assert_receive :holding
+    await_receive(:holding)
     holder
   end
 
@@ -162,7 +163,7 @@ defmodule Dawarich.Jobs.ClaimerTest do
         end)
       end)
 
-    assert_receive :holding
+    await_receive(:holding)
 
     assert contended_claim(@command) ==
              {:ok, [{"command:test.echo", {:error, :lock_not_available}}]}

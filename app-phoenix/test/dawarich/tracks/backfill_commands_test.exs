@@ -1,5 +1,6 @@
 defmodule Dawarich.Tracks.BackfillCommandsTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
 
   import Dawarich.LockRace
   alias Dawarich.Ingest.Intake
@@ -186,7 +187,7 @@ defmodule Dawarich.Tracks.BackfillCommandsTest do
         send(parent, {:cycle, range.cycle_id})
       end)
 
-    assert_receive {:cycle, cycle}
+    await_receive({:cycle, cycle})
     assert rows("SELECT count(*) FROM public.job_outbox") == [[0]]
 
     release =

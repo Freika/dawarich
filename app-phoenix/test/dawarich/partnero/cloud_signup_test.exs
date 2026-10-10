@@ -1,5 +1,6 @@
 defmodule Dawarich.Partnero.CloudSignupTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
   import ExUnit.CaptureLog
   import Dawarich.AnomalyCase
   alias Dawarich.AfterCommit
@@ -294,7 +295,7 @@ defmodule Dawarich.Partnero.CloudSignupTest do
         CustomerSignupWorker.run(ScratchRepo, args, env: @env, transport: transport)
       end)
 
-    assert_receive {:accepted_customer, ^pid}
+    await_receive({:accepted_customer, ^pid})
     Process.exit(pid, :kill)
     assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}
     refute Processed.done?(ScratchRepo, event)

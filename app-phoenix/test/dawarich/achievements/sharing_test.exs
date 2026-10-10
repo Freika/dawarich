@@ -1,5 +1,6 @@
 defmodule Dawarich.Achievements.SharingTest do
   use Dawarich.JobsCase, async: false
+  import Dawarich.Test.Await
   alias Dawarich.Achievements.Sharing
   alias Dawarich.Test.RailsUser
 
@@ -119,8 +120,8 @@ defmodule Dawarich.Achievements.SharingTest do
         end)
       end
 
-    assert_receive {:ready, first, first_pid}
-    assert_receive {:ready, second, second_pid}
+    await_receive({:ready, first, first_pid})
+    await_receive({:ready, second, second_pid})
     send(first, :release)
     send(second, :release)
     {Enum.map(tasks, &Task.await/1), [first_pid, second_pid]}
