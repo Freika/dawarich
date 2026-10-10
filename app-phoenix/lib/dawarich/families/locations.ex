@@ -37,9 +37,9 @@ defmodule Dawarich.Families.Locations do
       {:object,
        [{"error", I18n.en!("controllers.api.v1.families.locations.user_is_not_part_of_a_family")}]}
 
-  def membership(user_id) do
+  def membership(user_id, repo \\ Repo) do
     [row] =
-      Repo.query!(
+      repo.query!(
         "SELECT u.settings, m.family_id FROM users u " <>
           "LEFT JOIN family_memberships m ON m.user_id = u.id WHERE u.id = $1",
         [user_id]

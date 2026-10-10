@@ -6,9 +6,13 @@ defmodule Dawarich.Families.NativeReads do
   alias Dawarich.Families.{History, Locations, WebCreate}
 
   def actor(%Scope{user: %{id: id} = original}, opts) do
-    user = Accounts.get(id)
+    repo = Keyword.get(opts, :repo, Dawarich.Repo)
+    user = repo.get(Dawarich.Accounts.User, id, log: false)
 
-    if user && Dawarich.Admin.Access.same_identity?(original, user) do
+    user =
+      if user && is_nil(user.deleted_at) && Accounts.unlocked?(user, DateTime.utc_now()), do: user
+
+    if user && Dawarich.Accounts.Principal.same_identity?(original, user) do
       {:ok, user, context(opts)}
     else
       {:error, :stale_session}

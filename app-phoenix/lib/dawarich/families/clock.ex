@@ -18,10 +18,11 @@ defmodule Dawarich.Families.Clock do
 
   def parse(_other), do: raise(ArgumentError, "time is not a string")
 
-  def iso(nil), do: nil
+  def iso(at, repo \\ Repo)
+  def iso(nil, _repo), do: nil
 
-  def iso(%NaiveDateTime{} = utc) do
-    [[text]] = Repo.query!("SELECT " <> RailsTime.sql("$1::timestamp", 0), [utc]).rows
+  def iso(%NaiveDateTime{} = utc, repo) do
+    [[text]] = repo.query!("SELECT " <> RailsTime.sql("$1::timestamp", 0), [utc]).rows
     text
   end
 

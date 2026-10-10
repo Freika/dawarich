@@ -18,6 +18,7 @@ defmodule DawarichWeb.FamilyPagesParityTest do
   @names for name <- @cases, locale <- ~w(en de es fr pl ca zh), do: name <> "_" <> locale
 
   setup do
+    Code.ensure_loaded!(Dawarich.Accounts.User)
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
     saved = Map.new(~w(SELF_HOSTED JWT_SECRET_KEY MANAGER_URL), &{&1, System.get_env(&1)})
@@ -111,12 +112,17 @@ defmodule DawarichWeb.FamilyPagesParityTest do
         {:html, html} ->
           assert state["status"] == 200
           rails = File.read!(Path.join(@dir, @name <> ".html"))
-          native = normalize(html)
-          expected = normalize(rails)
-          assert native == expected, ParityHTML.first_difference(native, expected)
 
-          assert attributes(html) == attributes(rails),
-                 ParityHTML.first_difference(attributes(html), attributes(rails))
+          if invitation_path?(state["path"]) do
+            assert invitation_projection(html) == invitation_projection(rails)
+          else
+            native = normalize(html)
+            expected = normalize(rails)
+            assert native == expected, ParityHTML.first_difference(native, expected)
+
+            assert attributes(html) == attributes(rails),
+                   ParityHTML.first_difference(attributes(html), attributes(rails))
+          end
 
         {:redirect, conn} ->
           assert conn.status == state["status"]
@@ -135,6 +141,59 @@ defmodule DawarichWeb.FamilyPagesParityTest do
       end
     end
   end
+
+  defp invitation_path?(path),
+    do:
+      String.starts_with?(path, "/invitations/") or
+        String.starts_with?(path, "/family/invitations/")
+
+  defp invitation_projection(html) do
+    doc = LazyHTML.from_fragment(html)
+    text = doc |> LazyHTML.text() |> String.replace(~r/\s+/, " ") |> String.trim()
+
+    links =
+      for {"a", attrs, children} <- doc |> LazyHTML.query("a") |> LazyHTML.to_tree() do
+        data = Map.new(attrs)
+        {data["data-method"] || "get", data["href"], visible_text(children)}
+      end
+
+    forms =
+      for {"form", attrs, children} <- doc |> LazyHTML.query("form") |> LazyHTML.to_tree() do
+        data = Map.new(attrs)
+        form = LazyHTML.from_tree(children)
+
+        inputs =
+          for {"input", attrs, _} <- form |> LazyHTML.query("input") |> LazyHTML.to_tree(),
+              data = Map.new(attrs),
+              into: %{},
+              do: {data["name"], data["value"]}
+
+        assert is_binary(inputs["authenticity_token"])
+        assert inputs["authenticity_token"] != ""
+        assert data["method"] == "post"
+        method = inputs["_method"] || "post"
+        path = data["action"]
+
+        path =
+          if inputs["token"],
+            do: path <> "?token=" <> URI.encode_www_form(inputs["token"]),
+            else: path
+
+        button = form |> LazyHTML.query("button[type=submit]") |> LazyHTML.to_tree()
+        assert length(button) == 1
+        {method, path, visible_text(button)}
+      end
+
+    {text, Enum.sort(links ++ forms)}
+  end
+
+  defp visible_text(nodes),
+    do:
+      nodes
+      |> LazyHTML.from_tree()
+      |> LazyHTML.text()
+      |> String.replace(~r/\s+/, " ")
+      |> String.trim()
 
   defp conn(state, user, now) do
     Plug.Test.conn("GET", state["path"])

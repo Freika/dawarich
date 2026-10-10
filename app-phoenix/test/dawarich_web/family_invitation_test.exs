@@ -55,12 +55,12 @@ defmodule DawarichWeb.FamilyInvitationTest do
 
     assert element?(html, "a[href='/users/sign_up?invitation_token=a9fpl-pending']")
     assert element?(html, "a[href='/users/sign_in?invitation_token=a9fpl-pending']")
-    refute element?(html, "a[data-method='post']")
+    refute element?(html, "form[action='/family/memberships']")
     refute html =~ "a9fpl-fixture-"
     refute html =~ "a-member@a9fpl.dawarich.test"
   end
 
-  test "accept control preserves Rails signed in behavior and keeps Rails endpoint", ctx do
+  test "public invitation offers ordinary CSRF acceptance and scoped durable command", ctx do
     for user <- [ctx.invitee, ctx.owner] do
       html =
         RailsUser.signed_in(user.id)
@@ -70,10 +70,17 @@ defmodule DawarichWeb.FamilyInvitationTest do
 
       assert element?(
                html,
-               "a[href='/family/memberships?token=a9fpl-pending'][data-method='post']"
+               "form[action='/family/memberships'][method='post'] input[name='token'][value='a9fpl-pending']"
              )
 
-      assert element?(html, "a[href='/users/sign_out'][data-method='delete']")
+      assert element?(
+               html,
+               "form[action='/users/sign_out'] input[name='_method'][value='delete']"
+             )
+
+      assert element?(html, "form[action='/family/memberships'] input[name='authenticity_token']")
+      refute html =~ "data-method="
+      assert html =~ "/native/app.js"
     end
 
     System.put_env("SELF_HOSTED", "false")
@@ -91,7 +98,7 @@ defmodule DawarichWeb.FamilyInvitationTest do
       |> html_response(200)
 
     assert element?(html, ".alert-warning")
-    refute element?(html, "a[data-method='post']")
+    refute element?(html, "form[action='/family/memberships']")
 
     assert %{plug: DawarichWeb.FamilyFormRoutes} =
              Phoenix.Router.route_info(
@@ -100,6 +107,23 @@ defmodule DawarichWeb.FamilyInvitationTest do
                "/family/memberships",
                "www.example.com"
              )
+
+    System.put_env("SELF_HOSTED", "true")
+
+    conn =
+      Dawarich.Test.FamilyForms.request(ctx.invitee, "POST", "/family/memberships", %{
+        "token" => "a9fpl-pending"
+      })
+
+    assert conn.status == 302
+
+    assert Repo.query!(
+             "SELECT count(*) FROM family_memberships WHERE user_id=$1",
+             [ctx.invitee.id], log: false).rows == [[1]]
+
+    assert Repo.query!(
+             "SELECT count(*) FROM oban.oban_jobs WHERE worker='Dawarich.Families.EventsWorker' AND args->>'user_id'=$1",
+             [Integer.to_string(ctx.invitee.id)], log: false).rows == [[1]]
   end
 
   test "invitation key hands back public and nested token landings" do

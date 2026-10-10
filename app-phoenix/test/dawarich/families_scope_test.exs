@@ -89,6 +89,21 @@ defmodule Dawarich.FamiliesScopeTest do
     assert {:error, :invalid_input} = Families.page(ctx.owner, :show, @opts)
   end
 
+  test "sanitized family principals admit fresh scopes and refuse changed session versions",
+       ctx do
+    principal = Dawarich.Accounts.Principal.project(ctx.owner.user)
+    scope = Scope.for_user(principal, "en")
+    refute Map.has_key?(principal, :encrypted_password)
+    refute Map.has_key?(principal, :api_key)
+    assert {:ok, %{family: %{id: 91001}}} = Families.page(scope, :show, @opts)
+
+    Repo.query!(
+      "UPDATE users SET encrypted_password=$1 WHERE id=90101",
+      [String.duplicate("x", 60)], log: false)
+
+    assert {:error, :stale_session} = Families.locations(scope, @opts)
+  end
+
   test "family subscriptions authorize membership and carry only invalidation identity", ctx do
     assert :ok = Families.subscribe(ctx.owner, @opts)
     assert {:error, :unauthorized} = Families.subscribe(ctx.outsider, @opts)

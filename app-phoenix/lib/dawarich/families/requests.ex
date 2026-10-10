@@ -12,7 +12,7 @@ defmodule Dawarich.Families.Requests do
   @lifetime_seconds 86_400
 
   def web_create(user, params, now, opts \\ []) do
-    case Locations.membership(user.id) do
+    case Locations.membership(user.id, Keyword.get(opts, :repo, Repo)) do
       [_settings, nil] ->
         {:ok, 404, Locations.not_in_family()}
 
@@ -37,8 +37,8 @@ defmodule Dawarich.Families.Requests do
     _error -> failure(500, "an_error_occurred")
   end
 
-  def web_respond(user, decision, params, now) do
-    respond(user, decision, Map.put(params, "web", true), now)
+  def web_respond(user, decision, params, now, repo \\ Repo) do
+    respond(user, decision, Map.put(params, "web", true), now, repo)
   rescue
     _error ->
       {:ok, 500,
@@ -58,16 +58,16 @@ defmodule Dawarich.Families.Requests do
     end
   end
 
-  def respond(user, decision, params, now) do
-    case Locations.membership(user.id) do
+  def respond(user, decision, params, now, repo \\ Repo) do
+    case Locations.membership(user.id, repo) do
       [_settings, nil] ->
         {:ok, 404, Locations.not_in_family()}
 
       [_settings, family_id] ->
         id = String.to_integer(params["id"])
 
-        RailsTime.with_zone(user.timezone, fn ->
-          respond(user.id, family_id, id, decision, params, now)
+        RailsTime.with_zone(repo, user.timezone, fn ->
+          respond(user.id, family_id, id, decision, params, now, repo)
         end)
     end
   end
@@ -76,9 +76,10 @@ defmodule Dawarich.Families.Requests do
   defp create(_user, _family_id, nil, _now, _opts), do: not_found()
 
   defp create(user, family_id, target_id, now, opts) do
+    repo = Keyword.get(opts, :repo, Repo)
     if target_id == user.id, do: raise(ArgumentError, "a request for one's own location")
 
-    case Repo.query!(
+    case repo.query!(
            "SELECT u.id, u.email, u.settings FROM users u " <>
              "INNER JOIN family_memberships m ON u.id = m.user_id " <>
              "WHERE u.deleted_at IS NULL AND m.family_id = $1 AND u.id = $2 LIMIT 1",
@@ -92,7 +93,7 @@ defmodule Dawarich.Families.Requests do
           Sharing.enabled?(settings, now) ->
             failure(422, "target_user_is_already_sharing_their_location")
 
-          cooldown?(user.id, id, now) ->
+          cooldown?(user.id, id, now, repo) ->
             failure(429, "request_cooldown_active_please_wait_before_requesting_again")
 
           true ->
@@ -102,21 +103,22 @@ defmodule Dawarich.Families.Requests do
   end
 
   defp insert(user, family_id, target, now, opts) do
+    repo = Keyword.get(opts, :repo, Repo)
     at = Clock.naive(now)
     expires = NaiveDateTime.add(at, @lifetime_seconds)
 
     [[id]] =
-      Repo.query!(
+      repo.query!(
         "INSERT INTO family_location_requests (requester_id, target_user_id, family_id, status, " <>
           "suggested_duration, expires_at, created_at, updated_at) " <>
           "VALUES ($1, $2, $3, 0, '24h', $4, $5, $5) RETURNING id",
         [user.id, target.id, family_id, expires, at]
       ).rows
 
-    [[email]] = Repo.query!("SELECT email FROM users WHERE id = $1", [user.id]).rows
-    notify(email, target, id, at)
+    [[email]] = repo.query!("SELECT email FROM users WHERE id = $1", [user.id]).rows
+    notify(repo, email, target, id, at)
 
-    Keyword.get(opts, :enqueue, &ResidualCommands.location/2).(Repo, %{
+    Keyword.get(opts, :enqueue, &ResidualCommands.location/2).(repo, %{
       "user_id" => user.id,
       "request_id" => id
     })
@@ -126,11 +128,11 @@ defmodule Dawarich.Families.Requests do
       [
         {"request",
          {:object,
-          [{"id", id}, {"target_user_id", target.id}, {"expires_at", Clock.iso(expires)}]}}
+          [{"id", id}, {"target_user_id", target.id}, {"expires_at", Clock.iso(expires, repo)}]}}
       ]}}
   end
 
-  defp notify(requester_email, target, id, at) do
+  defp notify(repo, requester_email, target, id, at) do
     locale = ExploreFeatures.locale(Dawarich.UserSettings.get(target), "en")
     href = "/family/location_requests/#{id}"
 
@@ -139,13 +141,13 @@ defmodule Dawarich.Families.Requests do
 
     bindings = %{"email" => ExploreFeatures.h(requester_email), "link" => link}
     content = t(locale, "safe_email_is_requesting_your_location_link", bindings)
-    Notifications.create!(Repo, target.id, :info, t(locale, "location_request"), content, at)
+    Notifications.create!(repo, target.id, :info, t(locale, "location_request"), content, at)
   rescue
     _error -> :ok
   end
 
-  defp respond(user_id, family_id, id, decision, params, now) do
-    case Repo.query!(
+  defp respond(user_id, family_id, id, decision, params, now, repo) do
+    case repo.query!(
            "SELECT target_user_id FROM family_location_requests WHERE family_id = $1 AND id = $2",
            [family_id, id]
          ).rows do
@@ -158,13 +160,13 @@ defmodule Dawarich.Families.Requests do
         response_failure(403, "not_authorized")
 
       [[_target]] ->
-        locked(user_id, id, decision, params, now)
+        locked(repo, user_id, id, decision, params, now)
     end
   end
 
-  defp locked(user_id, id, decision, params, now) do
+  defp locked(repo, user_id, id, decision, params, now) do
     [[status, expires, suggested]] =
-      Repo.query!(
+      repo.query!(
         "SELECT status, expires_at, suggested_duration FROM family_location_requests WHERE id = $1 FOR UPDATE",
         [id]
       ).rows
@@ -178,14 +180,15 @@ defmodule Dawarich.Families.Requests do
             SharingUpdate.web_write!(
               user_id,
               %{"enabled" => true, "duration" => duration(params, suggested), "web" => true},
-              now
+              now,
+              repo
             ),
           else: SharingUpdate.enable!(user_id, duration(params, suggested), now)
       end
 
       code = if decision == :accept, do: 1, else: 2
 
-      Repo.query!(
+      repo.query!(
         "UPDATE family_location_requests SET status = $1, responded_at = $2, updated_at = $2 WHERE id = $3",
         [code, at, id]
       )
@@ -228,10 +231,10 @@ defmodule Dawarich.Families.Requests do
     end
   end
 
-  defp cooldown?(requester, target, now) do
+  defp cooldown?(requester, target, now, repo) do
     since = NaiveDateTime.add(Clock.naive(now), -@cooldown_seconds)
 
-    Repo.query!(
+    repo.query!(
       "SELECT EXISTS (SELECT 1 FROM family_location_requests WHERE requester_id = $1 " <>
         "AND target_user_id = $2 AND status = 0 AND created_at > $3)",
       [requester, target, since]

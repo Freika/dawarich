@@ -118,7 +118,8 @@ defmodule DawarichWeb.FamilyInvitationPage do
       Map.merge(conn.assigns, %{
         invitation: invitation,
         page_title: nil,
-        rails_js: true,
+        rails_js: false,
+        native: true,
         rails_charts: false,
         flash: %{},
         navbar: navbar
@@ -127,7 +128,13 @@ defmodule DawarichWeb.FamilyInvitationPage do
     content = FamilyInvitationDocument.document(assigns)
 
     html =
-      DawarichWeb.PageEnvelope.document(conn, assigns, content) |> Phoenix.HTML.Safe.to_iodata()
+      assigns
+      |> Map.put(
+        :inner_content,
+        DawarichWeb.Layouts.app(Map.put(assigns, :inner_content, content))
+      )
+      |> DawarichWeb.Layouts.native_root()
+      |> Phoenix.HTML.Safe.to_iodata()
 
     conn |> put_resp_content_type("text/html") |> send_resp(200, html) |> halt()
   end

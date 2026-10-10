@@ -6,12 +6,12 @@ defmodule DawarichWeb.FamilyInvitationDocument do
   def document(assigns) do
     ~H"""
     <div class="min-h-screen bg-gradient-to-br from-base-100 to-base-200 py-12 px-4 mx-auto">
-      <div class="max-w-4xl mx-auto">
+      <div class="max-w-4xl mx-auto min-w-0 [overflow-wrap:anywhere]">
         <div class="text-center mb-12">
           <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-primary mb-6 shadow-xl">
             <.icon name="users" class="h-12 w-12 text-primary-content" />
           </div>
-          <h1 class="text-5xl font-bold text-base-content mb-4">
+          <h1 class="text-3xl sm:text-5xl font-bold text-base-content mb-4">
             {s(@locale, "join")} {@invitation.family_name}!
           </h1>
           <p class="text-xl text-base-content opacity-80 mb-2">
@@ -21,7 +21,7 @@ defmodule DawarichWeb.FamilyInvitationDocument do
               "to_join_their_family_create_your_account_to_accept_the"
             )}
           </p>
-          <div class="alert alert-info inline-flex items-center rounded-lg px-4 py-3 mt-4 gap-3">
+          <div class="alert alert-info inline-flex flex-wrap min-w-0 items-center rounded-lg px-4 py-3 mt-4 gap-3">
             <.icon name="info" class="h-5 w-5 shrink-0" />
             <span class="text-sm font-medium">{s(@locale, "your_email")}{@invitation.email}{s(
               @locale,
@@ -33,7 +33,7 @@ defmodule DawarichWeb.FamilyInvitationDocument do
           <h2 class="text-2xl font-bold text-base-content mb-6 text-center">
             {s(@locale, "what_benefits_does_joining_a_family_bring")}
           </h2>
-          <div class="grid md:grid-cols-2 gap-6 mb-8">
+          <div class="grid md:grid-cols-2 min-w-0 gap-6 mb-8">
             <div
               :for={{color, icon, title, body} <- benefits()}
               class={"flex items-start space-x-4 p-4 bg-#{color}/10 rounded-lg border border-#{color}/20"}
@@ -71,23 +71,26 @@ defmodule DawarichWeb.FamilyInvitationDocument do
                   )}</span>
                 </div>
               <% @current_user != nil -> %>
-                <a
-                  href={"/family/memberships?token=" <> URI.encode_www_form(@invitation.token)}
-                  data-method="post"
-                  rel="nofollow"
-                  class="btn btn-success btn-lg w-full text-lg shadow-lg"
-                >{s(@locale, "accept_invitation_join_family")}</a>
+                <form action="/family/memberships" method="post">
+                  <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+                  <input type="hidden" name="token" value={@invitation.token} />
+                  <button
+                    class="btn btn-success btn-lg w-full h-auto min-h-12 whitespace-normal py-3 text-lg shadow-lg"
+                    type="submit"
+                  >{s(@locale, "accept_invitation_join_family")}</button>
+                </form>
                 <p class="text-sm text-base-content opacity-60 text-center">
                   {s(@locale, "logged_in_as")} {@current_user.email} ·
-                  <a href="/users/sign_out" data-method="delete" rel="nofollow" class="link link-info">{s(
-                    @locale,
-                    "logout"
-                  )}</a>
                 </p>
+                <form action="/users/sign_out" method="post" class="text-center">
+                  <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+                  <input type="hidden" name="_method" value="delete" />
+                  <button type="submit" class="link link-info">{s(@locale, "logout")}</button>
+                </form>
               <% true -> %>
                 <a
                   href={"/users/sign_up?invitation_token=" <> URI.encode_www_form(@invitation.token)}
-                  class="btn btn-primary btn-lg w-full text-lg shadow-lg"
+                  class="btn btn-primary btn-lg w-full h-auto min-h-12 whitespace-normal py-3 text-lg shadow-lg"
                 >{s(@locale, "create_account_join_family")}</a>
                 <div class="text-center">
                   <p class="text-sm text-gray-300 mb-2">{s(@locale, "already_have_an_account")}</p>
