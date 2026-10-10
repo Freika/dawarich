@@ -88,3 +88,7 @@ HEEx preserves source blank email/credentials, reset capability/PUT override/com
 ## C2 — recovery lifecycle
 
 Endpoint cases preserve known/unknown/unlocked public notices, post-insert synthetic sealed intent rollback, reset session/remember revocation plus one-use capability, and unauthenticated unlock/replay. RED `impl-m3c-c2-red.log` against parent HTTP adapter before C1 commit: 0/4 exit 2; GREEN included in C1 27-test batch. Notice/enqueue/salt/unlock mutations each 3/4 passed, exit 2, failing the named case. Restored `impl-m3c-c2-restored-green.log`: 83 passed, exit 0, warnings clean, including real mail worker/transaction/expiry/concurrency source corpus. No domain production change.
+
+## C3 — account-link web boundary
+
+Closed HTTP admission/params/dispatch moved to Actions, reducing domain closure and compatibility HTTP module below 300 lines. Operation order and issuer callers unchanged. RED `impl-m3c-c3-red.log` 0/3 exit 2; GREEN 3/3; attempt/MFA/dispatch mutations each exit 2 with named failures. Restored `impl-m3c-c3-restored-green.log`: 43 passed, exit 0, warnings clean. Direct-caller search has no Closure.route references.
