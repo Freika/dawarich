@@ -55,8 +55,9 @@ defmodule DawarichWeb.MapLiveAuth do
     end
   end
 
-  def authorize(%{assigns: %{current_scope: nil, map_error: reason}} = socket) when not is_nil(reason),
-    do: {:halt, socket}
+  def authorize(%{assigns: %{current_scope: nil, map_error: reason}} = socket)
+      when not is_nil(reason),
+      do: {:halt, socket}
 
   def authorize(socket) do
     case Maps.admit(socket.assigns.current_scope) do
