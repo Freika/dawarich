@@ -1,3 +1,4 @@
+import { filterVisits } from "../ui/filters.js"
 import {
   areasToGeoJSON,
   placesToGeoJSON,
@@ -168,7 +169,7 @@ export function createEntityLayers({
                     reader.pages(kind, params, { signal: operation.signal }),
                   )
             operation.check()
-            data = definition.convert(rows)
+            data = definition.convert(kind === "visits" ? filterVisits(rows, config.visitFilter) : rows)
           }
           operation.check()
           return [layer, data]

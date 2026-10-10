@@ -51,7 +51,7 @@ export function mountHost({
         owner.settings = createHostSettings({ map, loadStyle, lifetime, getConfig: () => owner.config, update: next => owner.update(next), onError: code => pushEvent("map:failed", {code}) })
         enrichment = createEnrichmentTool({ map, pushEvent, createPopup: () => null })
         lifetime.own(enrichment.destroy)
-        createHostSearch({map, root: element.closest?.("#native-map-page"), reader, lifetime, document: element.ownerDocument})
+        owner.search = createHostSearch({map, root: element.closest?.("#native-map-page"), reader, lifetime, document: element.ownerDocument, pushEvent, getConfig: () => owner.config})
         owner.selection = createHostSelection({map, root: element.closest?.("#native-map-page"), reader, pushEvent, lifetime, getConfig: () => owner.config})
         timeline = createHostTimeline({ map, root: element.closest?.("#native-map-page"), reader, lifetime })
         createHostTools({ map, root: element.closest?.("#native-map-page"), pushEvent, lifetime })
@@ -191,6 +191,7 @@ export function mountHost({
   Object.defineProperty(owner, "enrichment", { get: () => enrichment })
   Object.defineProperty(owner, "editor", { get: () => editing?.editor })
   Object.defineProperty(owner, "entityLayers", { get: () => entities })
+  owner.visitsFilter = filter => owner.update({...owner.config, visitFilter: filter})
   owner.layer = ({layer, enabled}) => {
     if (!["places", "visits", "areas", "anomalies"].includes(layer)) return
     return owner.update({...owner.config, [`${layer}Enabled`]: enabled === true})

@@ -1,16 +1,22 @@
+import { createVisitResults } from "./search_visits.js"
+import { mapTranslate } from "./translate.js"
 import { createLocationSearch } from "../data/location_search.js"
 import { createRequestScope } from "../data/request_scope.js"
 import { createSearchUi } from "./search.js"
 import { fitRoute } from "./search_results.js"
 import { panelPadding } from "./padding.js"
 
-export function createHostSearch({ map, root, reader, lifetime, document }) {
+export function createHostSearch({ map, root, reader, lifetime, document, pushEvent, getConfig }) {
   const search = createLocationSearch({ reader })
+  const container = root?.querySelector("[data-map-search-visits]")
+  const visits = container ? createVisitResults({container, document, search, translate: mapTranslate(getConfig), timezone: () => getConfig().range.timezone, flyTo: ({lat, lon, zoom}) => map.flyTo({center: [lon, lat], zoom}), pushEvent}) : null
+  if (visits) lifetime.own(visits.destroy)
   const input = root?.querySelector("[data-map-search]")
   const results = root?.querySelector("[data-map-suggestions]")
   if (input && results) {
     const ui = createSearchUi({ input, results, document, search,
-      onSelect: ({lat, lon}) => map.flyTo({center: [lon, lat]}),
+      onSelect: item => visits ? visits.open(item) : map.flyTo({center: [item.lon, item.lat]}),
+      onCancel: () => visits?.clear(),
     })
     lifetime.own(ui.destroy)
   }
@@ -28,5 +34,5 @@ export function createHostSearch({ map, root, reader, lifetime, document }) {
   }
   root?.addEventListener("click", click)
   lifetime.own(() => { root?.removeEventListener("click", click); scope.destroy(); search.cancel() })
-  return { search }
+  return { search, results: visits }
 }

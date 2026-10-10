@@ -1,7 +1,7 @@
 defmodule DawarichWeb.MapLive.NativeConfig do
   @moduledoc false
 
-  def build(settings, page, config, panel) do
+  def build(settings, _page, config, panel) do
     saved = (settings && settings.saved) || %{}
     maps = saved["maps"] || %{}
     layers = saved["enabled_map_layers"] || []
@@ -23,7 +23,7 @@ defmodule DawarichWeb.MapLive.NativeConfig do
       "visitsEnabled" => "Visits" in layers,
       "areasEnabled" => "Areas" in layers,
       "mapOptions" => %{"projection" => %{"type" => if(saved["globe_projection"], do: "globe", else: "mercator")}},
-      "placesTagFilters" => page.tags
+      "placesTagFilters" => saved["places_tag_filters"]
     })
   end
 end
