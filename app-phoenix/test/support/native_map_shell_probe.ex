@@ -29,6 +29,9 @@ defmodule Dawarich.Test.NativeMapShellProbe do
   def handle_event("residency:" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.TimelineFilters.handle_event(event, payload, socket)
 
+  def handle_event("point" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.PointCommands.handle_event(event, payload, socket)
+
   def handle_event(event, payload, socket), do: Commands.handle_event(event, payload, socket)
 
   def handle_async(name, result, socket),
