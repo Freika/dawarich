@@ -3,7 +3,8 @@ defmodule Dawarich.Places.NativeFence do
   alias Dawarich.Places.Access
 
   def check(repo, id, %{native_scope: original}) do
-    with {:ok, scope} <- Access.admit(original) do
+    with {:ok, scope} <- Access.admit(original),
+         :ok <- Access.settings(scope) do
       if id && foreign?(repo, id, scope.user.id),
         do: {:error, :foreign_dependents},
         else: :ok

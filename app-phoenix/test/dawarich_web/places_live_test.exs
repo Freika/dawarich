@@ -88,6 +88,10 @@ defmodule DawarichWeb.PlacesLiveTest do
     assert Dawarich.Repo.query!("SELECT id FROM places WHERE id=843101", []).rows == [[843_101]]
     assert Dawarich.Repo.query!("SELECT place_id FROM visits WHERE id=843501", []).rows == [[nil]]
     assert :sys.get_state(view.pid).socket.assigns.query == %{"page" => "2x", "view" => "table"}
+
+    assert :sys.get_state(view.pid).socket.assigns.flash["notice"] ==
+             "Place was successfully destroyed."
+
     assert has_element?(view, "#places", "Hello there!")
     render_click(view, "confirm_delete", %{"generation" => gen})
 
@@ -121,5 +125,39 @@ defmodule DawarichWeb.PlacesLiveTest do
   test "signed-out visitors get Rails' sign-in redirect" do
     assert redirected_to(get(build_conn(), "/places"), 302) ==
              "http://www.example.com/users/sign_in"
+  end
+
+  test "unsupported persisted Place settings render alert before and after join", %{user: user} do
+    conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id)
+
+    Dawarich.Repo.query!("UPDATE users SET settings='[]'::jsonb WHERE id=$1", [user.id],
+      log: false
+    )
+
+    assert Dawarich.Accounts.SettingsValue.cast([]) == :error
+    assert Dawarich.Accounts.get(user.id).settings == []
+    conn = get(conn, "/places")
+    assert conn.status == 200
+    {:ok, view, _} = live(conn)
+    assert has_element?(view, "[role=alert]")
+    refute has_element?(view, "#places tbody tr")
+    render_click(view, "open_create", %{})
+    assert :sys.get_state(view.pid).socket.assigns.form_state == nil
+
+    render_submit(view, "save_place", %{
+      "generation" => 999,
+      "place" => %{"name" => "Refused", "latitude" => "51", "longitude" => "12"}
+    })
+
+    scope = Dawarich.Accounts.Scope.for_user(Dawarich.Accounts.get(user.id), "en")
+
+    assert Dawarich.Places.create(scope, %{
+             "name" => "Refused",
+             "latitude" => "51",
+             "longitude" => "12"
+           }) == {:error, :unsupported}
+
+    assert Dawarich.Repo.query!("SELECT id FROM places WHERE user_id=$1", [user.id]).rows == []
+    assert :sys.get_state(view.pid).socket.redirected == nil
   end
 end

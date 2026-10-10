@@ -19,6 +19,12 @@ defmodule Dawarich.Places.Access do
 
   def admit(_), do: {:error, :stale_session}
 
+  def settings(scope) do
+    if Dawarich.PlaceList.settings?(Dawarich.UserSettings.get(scope.user)),
+      do: :ok,
+      else: {:error, :unsupported}
+  end
+
   defp same_identity?(%{encrypted_password: original}, %{encrypted_password: current})
        when is_binary(original) and is_binary(current),
        do: Plug.Crypto.secure_compare(String.slice(original, 0, 29), String.slice(current, 0, 29))

@@ -111,7 +111,14 @@ defmodule DawarichWeb.PlacesLive.Index do
              socket
              |> assign(:confirmation, nil)
              |> reload()
-             |> put_flash(:notice, t(socket.assigns.locale, "controllers.places.destroyed", %{}))}
+             |> put_flash(
+               :notice,
+               t(
+                 socket.assigns.locale,
+                 "controllers.places.place_was_successfully_destroyed",
+                 %{}
+               )
+             )}
 
           {:error, reason} ->
             {:noreply, PlacesUI.refuse(socket, reason)}

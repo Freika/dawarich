@@ -1,6 +1,6 @@
 # Native milestone 3d: Places and ordinary forms
 
-Implementation status: C0/A1–A3/B1–B4/C1 complete; C2/C3 pending; C4 controller acceptance pending.
+Implementation status: C0/A1–A3/B1–B4/C1/C2 complete; C3 pending; C4 controller acceptance pending.
 
 ## Frozen contracts
 
@@ -363,3 +363,53 @@ Source fixture remains unchanged. Top-level effect cases are retained by existin
 - `update_pl_long_turbo_false`
 - `update_ca_long_turbo_false`
 - `update_zh_long_turbo_false`
+
+
+## C2 corpus reconciliation
+
+All 18 top-level JSON/HTML fixtures and the enumerated remaining-effect cases above remain unchanged. No fixtures were pruned through the E2E symlink. Each list case now checks the independent source fixture's name, local date and coordinate values and raw pagination links, rather than matching shell/control markup.
+
+| Prior PlacesParity test | Named successor |
+| --- | --- |
+| `list_blank_zone is answered as Rails answered it` | `list_blank_zone preserves source values and retained transport` |
+| `list_empty is answered as Rails answered it` | `list_empty preserves source values and retained transport` |
+| `list_extra is answered as Rails answered it` | `list_extra preserves source values and retained transport` |
+| `list_foreign is answered as Rails answered it` | `list_foreign preserves source values and retained transport` |
+| `list_no_zone is answered as Rails answered it` | `list_no_zone preserves source values and retained transport` |
+| `list_page0 is answered as Rails answered it` | `list_page0 preserves source values and retained transport` |
+| `list_page1 is answered as Rails answered it` | `list_page1 preserves source values and retained transport` |
+| `list_page2 is answered as Rails answered it` | `list_page2 preserves source values and retained transport` |
+| `list_page_2abc is answered as Rails answered it` | `list_page_2abc preserves source values and retained transport` |
+| `list_page_blank is answered as Rails answered it` | `list_page_blank preserves source values and retained transport` |
+| `list_page_out is answered as Rails answered it` | `list_page_out preserves source values and retained transport` |
+| `list_page_space is answered as Rails answered it` | `list_page_space preserves source values and retained transport` |
+| `list_utc is answered as Rails answered it` | `list_utc preserves source values and retained transport` |
+
+The five drawer cases retain their normalized source body/stream/control oracle, with the same named-successor suffix, until M6. PlaceActions keeps every response/effect/stream/flash corpus entry; its refused shape/HTML-create/error cases now assert local 422 and unchanged Place snapshots. A8Remaining retains every trip branch unchanged; only Place tag overflow and unsupported zone branches now assert local refusal and unchanged snapshots. Standalone navigation retains all 15 GET effect cases, default/radius progression and no job effects; the source missing-template case keeps the existing local native 406. All non-Places closure source-key tests remain unchanged; the native list source key now verifies local ownership and unchanged observations.
+
+The old gate cases have these successors in PlacesGateEndpointTest: nested page → `native nested page is refused in place without upstream`; valueless queries → `native valueless scalar queries remain local`; unsupported timezone → `native unsupported timezone renders a local alert`; failed read → `unavailable original actor admission stays typed and local`; formats/XHR → `native list formats and XHR remain locally owned`; unframed/client → `retained member client header refusal stays local`; repeated/unknown frame → `unknown or repeated member frame headers never open a native dialog`; extra query → `member extra scalar query remains standalone map-compatible`; foreign/missing → `foreign and missing member frames are locally unavailable`; post-admission disappearance → `drawer disappearance after admission is local and is never replayed`; unsupported ids/writes/nearby → `retained ids writes and nearby are refused or answered locally`. Signed-out session-return and owned frame cases remain. Real read failure is additionally covered by initial PlacesLiveAuth safe-admission refusal; unsupported persisted containers have a connected zero-effect successor and FRB-088.
+
+## Targeted implementation measurements
+
+Fresh main-Repo telemetry measurement, synthetic sparse and 21+ Place datasets, seed 404, static request then real connected join. Includes authentication/admission; excludes seeding, Redis, assets, provider work and other repos. The temporary counter probe detected a zero-counter mutation, restored identical values, and was removed. These are measurements, not newly approved query caps.
+
+| State | Query count |
+| --- | ---: |
+| Sparse static / connected | 9 / 8 |
+| Populated static / connected | 8 / 8 |
+| Page 2 static / connected | 8 / 8 |
+| Out-of-range empty static / connected | 8 / 8 |
+| Create open / validate / save | 5 / 3 / 9 |
+| Edit open / save | 7 / 15 |
+| Detail open / note save | 9 / 22 |
+| Delete confirmation open / accept | 5 / 17 |
+
+The increased connected count versus the historical 3b observation includes immutable-origin hook admission before params plus independent facade admission. Note/save counts include effect fencing, authoritative detail/form reload and list reload. Nearby does no provider work on mount; deterministic barrier tests prove one current request, cancellation and ignored stale timeout/delivery.
+
+Esbuild metafile: PlaceDraft contributes **745 eager bytes**, within the approved 2 KB incremental cap; two eager native JS outputs. Native graph tests reject Hotwire, map and legacy imports; the valid static MapLibre mutation fails the eager graph assertion. Runtime request/decoded/wire bytes and German/English 390px Range/focus evidence remain C3/C4 measurements. Browser acceptance and controller FULL GATE are not implied by these local checks.
+
+## Rails fixes and remaining map handoff
+
+FRB-086 filters foreign dependent reads; FRB-087 fences foreign dependent effects; FRB-088 renders malformed settings refusal without the Rails navbar crash. Each has an appended ED row and draft changelog entry. Source confirmation copy, phased persistence, lack of a durable cross-socket receipt and retained map projections/transports remain explicit limitations. M6 must retire drawer/nearby frame routes, PlaceActions/PlaceRequest/streams, map modal/controllers and their deferred markup corpus together; direct member URL compatibility must be decided before retirement.
+
+C2 restored strict batch: 124 passed, seed 404, exit 0. The malformed-settings case first failed decoding, then exposed a forged native write; operation/effect shape fences now refuse it. Decoder, object-only cast and write-fence mutations failed the named case; restored GREEN. Identity admission still does not eagerly reject a zone needed only by a later read.

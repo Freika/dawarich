@@ -195,4 +195,57 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
              "unexpected #{inspect(handler.id)} on #{inspect(handler.event_name)}"
     end
   end
+
+  test "native Places and open form dialogs have unique accessible controls and no Hotwire", %{
+    user: user
+  } do
+    mode = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if mode,
+        do: System.put_env("DAWARICH_RAILS", mode),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id) |> get("/places")
+    assert_native_controls(html_response(conn, 200))
+    {:ok, view, connected} = live(conn)
+    assert_native_controls(connected)
+    FrameSeeds.place!(user.id, 84_112, "Native <literal>")
+    render_patch(view, "/places?page=1")
+    assert_native_controls(render(view))
+
+    for {event, params} <- [
+          {"open_create", %{}},
+          {"open_edit", %{"id" => "84112"}},
+          {"open_detail", %{"id" => "84112"}},
+          {"request_delete", %{"id" => "84112"}}
+        ] do
+      render_click(view, event, params)
+      assert_native_controls(render(view))
+      render_click(view, "cancel_form", %{})
+    end
+
+    render_click(view, "open_create", %{})
+    gen = Dawarich.Test.NativePlaces.generation(view, :form_state)
+
+    render_submit(view, "save_place", %{
+      "generation" => gen,
+      "place" => %{"name" => "", "latitude" => "invalid", "longitude" => ""}
+    })
+
+    assert has_element?(view, "dialog[id^=place-form] [role=alert]")
+    assert_native_controls(render(view))
+
+    render_click(view, "validate_place", %{
+      "generation" => gen,
+      "place" => %{"name" => "Nearby", "latitude" => "0", "longitude" => "0"}
+    })
+
+    render_click(view, "nearby", %{"generation" => gen})
+    assert_native_controls(render(view))
+    render_async(view)
+    assert_native_controls(render(view))
+  end
 end

@@ -3,13 +3,16 @@ defmodule Dawarich.Places.Commands do
   alias Dawarich.Places.{Access, Form, Reads, WebWrite, WebDelete}
 
   def change(scope, data, attrs) do
-    with {:ok, _} <- Access.admit(scope), do: Form.change(data, attrs, scope.locale)
+    with {:ok, admitted} <- Access.admit(scope),
+         :ok <- Access.settings(admitted),
+         do: Form.change(data, attrs, scope.locale)
   end
 
   def save(original, action, id, attrs, opts) do
     repo = Keyword.get(opts, :repo, Dawarich.Repo)
 
     with {:ok, scope} <- Access.admit(original),
+         :ok <- Access.settings(scope),
          {:ok, data} <- previous(scope, action, id, repo),
          changeset <- Form.change(data, attrs, scope.locale),
          true <- changeset.valid? do
@@ -29,7 +32,8 @@ defmodule Dawarich.Places.Commands do
   end
 
   def delete(original, id, opts) do
-    with {:ok, scope} <- Access.admit(original) do
+    with {:ok, scope} <- Access.admit(original),
+         :ok <- Access.settings(scope) do
       repo = Keyword.get(opts, :repo, Dawarich.Repo)
       result(WebDelete.run(repo, scope.user, id, %{native_scope: original, owner_scoped: true}))
     end

@@ -4,7 +4,8 @@ defmodule Dawarich.Places.NativeNearby do
   @fields ~w(name latitude longitude street city country)a
 
   def run(original, params, opts) do
-    with {:ok, _} <- Access.admit(original),
+    with {:ok, admitted} <- Access.admit(original),
+         :ok <- Access.settings(admitted),
          {:ok, request} <- NearbyInput.parse(params),
          {:ok, scope} <- Access.admit(original) do
       fetch = opts[:fetch] || (&Nearby.fetch/6)

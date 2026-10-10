@@ -18,7 +18,9 @@ defmodule Dawarich.Places do
   def new, do: Dawarich.Places.Form.new()
 
   def change(scope, data) do
-    with {:ok, _} <- Access.admit(scope), do: Dawarich.Places.Form.initial(data)
+    with {:ok, admitted} <- Access.admit(scope),
+         :ok <- Access.settings(admitted),
+         do: Dawarich.Places.Form.initial(data)
   end
 
   def change(scope, data, attrs), do: Commands.change(scope, data, attrs)
@@ -49,6 +51,7 @@ defmodule Dawarich.Places do
 
   defp read(scope, opts, fun) do
     with {:ok, scope} <- Access.admit(scope),
+         :ok <- Access.settings(scope),
          do: fun.(scope, Keyword.get(opts, :repo, Dawarich.Repo))
   rescue
     _ -> {:error, :unavailable}
