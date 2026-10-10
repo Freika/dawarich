@@ -127,7 +127,7 @@
               <span class="mr-1"><Icon.country_flag name={country["country"]} table={@table} /></span>
               {country["country"]}
             </span>
-            <span class="text-sm">{length(country["cities"] || [])} {t(
+            <span class="text-sm">{country["cities_count"] || length(country["cities"] || [])} {t(
               @locale,
               "users.digests.public_year.cities",
               %{}
@@ -152,9 +152,9 @@
         <%= for city <- Enum.take(country["cities"] || [], 5) do %>
           <div class="badge badge-outline">{city["city"]}</div>
         <% end %>
-        <%= if length(country["cities"] || []) > 5 do %>
+        <%= if (country["cities_count"] || length(country["cities"] || [])) > 5 do %>
           <div class="badge badge-ghost">
-            +{length(country["cities"]) - 5} {t(
+            +{(country["cities_count"] || length(country["cities"] || [])) - 5} {t(
               @locale,
               "users.digests.public_year.more",
               %{}

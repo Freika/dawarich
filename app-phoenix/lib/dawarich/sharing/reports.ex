@@ -73,6 +73,7 @@ defmodule Dawarich.Sharing.Reports do
               |> Enum.map(fn item ->
                 %{
                   "country" => item["country"],
+                  "cities_count" => length(item["cities"] || []),
                   "cities" =>
                     Enum.take(item["cities"] || [], 5) |> Enum.map(&Map.take(&1, ["city"]))
                 }

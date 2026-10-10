@@ -63,6 +63,46 @@ defmodule DawarichWeb.NativePublicPagesTest do
     end
   end
 
+  test "bounded public digest names preserve full per-country totals and more indicators" do
+    RailsUser.insert!(%{
+      id: 19004,
+      email: "native-public-counts@example.invalid",
+      settings: %{"timezone" => "UTC"}
+    })
+
+    uuid = Ecto.UUID.generate()
+
+    StatsSeeds.digest!(19004, %{
+      year: 2024,
+      toponyms: [StatsSeeds.toponym("Germany", Enum.map(1..61, &"City #{&1}"))],
+      sharing_uuid: Ecto.UUID.dump!(uuid),
+      sharing_settings: %{"enabled" => true, "expiration" => nil}
+    })
+
+    assert {:ok, page} = Dawarich.Sharing.Pages.report(:digest, uuid, self_hosted: true)
+    [country] = page.digest.toponyms
+    assert country["cities_count"] == 61
+    assert length(country["cities"]) == 5
+    conn = build_conn("GET", "/shared/digest/" <> uuid)
+    conn = %{conn | params: %{}, path_params: %{"uuid" => uuid}}
+
+    conn =
+      conn
+      |> assign(:locale, "en")
+      |> assign(:base_url, "http://www.example.com")
+      |> assign(:current_user, nil)
+      |> assign(:self_hosted, true)
+      |> assign(:now, DateTime.utc_now())
+      |> DawarichWeb.NativePublicPage.call(:digest)
+
+    assert conn.status == 200
+    text = LazyHTML.from_document(conn.resp_body) |> LazyHTML.text()
+    assert text =~ ~r/61\s+cities/
+    assert text =~ ~r/\+56\s+more/
+    assert text =~ "City 5"
+    refute text =~ "City 6"
+  end
+
   test "public HTTP expiry uses the signed viewer timezone instead of the owner or anonymous zone" do
     user =
       RailsUser.insert!(%{
