@@ -4,11 +4,12 @@ defmodule DawarichWeb.NativeMapPage do
 
   def page(assigns) do
     ~H"""
+    <DawarichWeb.NativeMapChrome.header {assigns} />
     <div
       :if={@page}
       id="native-map-page"
       data-native-map-root
-      class="relative w-full min-w-0 h-[100dvh] flex flex-col"
+      class="relative w-full min-w-0 h-[calc(100dvh-4rem)] flex flex-col"
     >
       <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native />
       <DawarichWeb.NativeMapPanels.navigation locale={@locale} panel={@map_url["panel"] || ""} />

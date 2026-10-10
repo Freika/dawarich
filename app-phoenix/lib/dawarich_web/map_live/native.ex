@@ -8,18 +8,10 @@ defmodule DawarichWeb.MapLive.Native do
     do: {:ok, assign(socket, navbar: nil, posters: [], map_settings: nil), layout: false}
 
   def mount(_, _, socket) do
-    navbar =
-      Dawarich.Maps.with_actor(socket.assigns.current_scope, fn actor ->
-        Dawarich.Navbar.load(actor,
-          now: socket.assigns.now,
-          self_hosted: socket.assigns.self_hosted != false
-        )
-      end)
-
     {:ok,
      socket
      |> assign(:page_title, t(socket.assigns.locale, "map.maplibre.index.map", %{}))
-     |> assign(:navbar, navbar)
+     |> DawarichWeb.NativeMapChrome.load()
      |> DawarichWeb.MapLive.SettingsCommands.load()
      |> DawarichWeb.NativePosterGallery.mount(), layout: false}
   end

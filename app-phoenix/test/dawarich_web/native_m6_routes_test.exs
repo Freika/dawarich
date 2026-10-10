@@ -60,4 +60,24 @@ defmodule DawarichWeb.NativeM6RoutesTest do
     refute has_element?(view, "#native-map")
     refute html =~ "data-controller"
   end
+
+  test "native map navigation preserves consent commands and clears on actor refusal" do
+    id = System.unique_integer([:positive])
+    RailsUser.insert!(%{id: id, email: "native-map-chrome-#{id}@dawarich.test"})
+    {:ok, view, _} = live(RailsUser.signed_in(id) |> RailsUser.connecting_as(id), "/map/v2")
+    assert has_element?(view, "#mobile-navigation-menu a[href$='/trips']")
+    render_hook(view, "changelog_consent", %{"decision" => "granted"})
+
+    assert Repo.query!("SELECT changelog_consent FROM users WHERE id=$1", [id], log: false).rows ==
+             [[1]]
+
+    Repo.query!("UPDATE users SET status=0 WHERE id=$1", [id], log: false)
+    render_hook(view, "changelog_consent", %{"decision" => "declined"})
+
+    assert Repo.query!("SELECT changelog_consent FROM users WHERE id=$1", [id], log: false).rows ==
+             [[1]]
+
+    refute has_element?(view, "#mobile-navigation-menu")
+    refute has_element?(view, "#native-map")
+  end
 end
