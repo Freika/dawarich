@@ -4,7 +4,10 @@ defmodule Dawarich.Sharing.Delivery do
   alias Dawarich.NativeM5.Dependencies
   alias Dawarich.SharedApi.Closure
 
-  def admit(target, now, opts \\ []), do: admission(target, now, opts)
+  def admit(target, now, opts \\ []) do
+    option(opts, :before_admission, fn -> :ok end).()
+    admission(target, now, opts)
+  end
 
   def now(opts) do
     case option(opts, :clock, nil) do
@@ -27,6 +30,14 @@ defmodule Dawarich.Sharing.Delivery do
     do: signature({link, kind, fingerprint(link.user_id)})
 
   def resource_snapshot(_), do: nil
+
+  defp admission({:link, %{id: id} = prepared, allowed}, now, opts) do
+    admission(
+      {:link, id, fn current, clock -> current == prepared and allowed.(current, clock) end},
+      now,
+      opts
+    )
+  end
 
   defp admission({:link, id, allowed}, now, _opts) do
     with link when not is_nil(link) <- Dawarich.SharedLinks.active(id, now),

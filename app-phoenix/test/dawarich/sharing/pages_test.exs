@@ -185,6 +185,7 @@ defmodule Dawarich.Sharing.PagesTest do
              apply(Dawarich.Sharing.Pages, :report, [:digest, uuid, [now: @now, after_read: hook]])
   end
 
+  @tag inventory_expiry: true
   test "public report delivery refuses digest and month shares that expire during preparation" do
     uuid = Ecto.UUID.generate()
 
@@ -199,17 +200,26 @@ defmodule Dawarich.Sharing.PagesTest do
     StatsSeeds.stat!(18901, Map.merge(share, %{year: 2024, month: 3}))
 
     for kind <- [:digest, :month] do
+      Process.delete(:inventory_delivery_clock)
+
       assert {:ok, _} =
                Dawarich.Sharing.Pages.report(kind, uuid, now: @now, clock: fn -> @now end)
 
       assert {:error, :not_found} =
                Dawarich.Sharing.Pages.report(kind, uuid,
                  now: @now,
-                 clock: fn -> DateTime.add(@now, 2, :hour) end
+                 clock: fn -> Process.get(:inventory_delivery_clock, @now) end,
+                 after_read: fn ->
+                   Process.put(:inventory_delivery_clock, DateTime.add(@now, 2, :hour))
+                   send(self(), :report_prepared)
+                 end
                )
+
+      assert_receive :report_prepared
     end
   end
 
+  @tag inventory_expiry: true
   test "public resource delivery refuses a share link that expires during preparation", %{
     grant: grant
   } do
@@ -221,7 +231,15 @@ defmodule Dawarich.Sharing.PagesTest do
     assert {:ok, _} = resource(grant, %{}, clock: fn -> @now end)
 
     assert {:error, :not_found} =
-             resource(grant, %{}, clock: fn -> DateTime.add(@now, 2, :hour) end)
+             resource(grant, %{},
+               clock: fn -> Process.get(:inventory_delivery_clock, @now) end,
+               after_read: fn ->
+                 Process.put(:inventory_delivery_clock, DateTime.add(@now, 2, :hour))
+                 send(self(), :resource_prepared)
+               end
+             )
+
+    assert_receive :resource_prepared
   end
 
   test "public track projection retains source duration elevation and mode behind stats visibility",

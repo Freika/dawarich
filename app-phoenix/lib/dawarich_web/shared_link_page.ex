@@ -79,8 +79,13 @@ defmodule DawarichWeb.SharedLinkPage do
               SharedLinkCookie.unlocked?(conn, current, clock)
           end
 
-          target = {:link, link.id, allowed}
-          admitted = Delivery.admit(target, now)
+          target = {:link, link, allowed}
+
+          admitted =
+            Delivery.admit(target, now,
+              before_admission: conn.private[:dawarich_before_admission] || fn -> :ok end
+            )
+
           conn = put_private(conn, :public_delivery, {target, admitted})
           SharedLinks.touch!(link.id, now)
           render(conn, 200, page_assigns(page, link))

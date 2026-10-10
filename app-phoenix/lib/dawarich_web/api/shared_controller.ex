@@ -61,8 +61,13 @@ defmodule DawarichWeb.Api.SharedController do
                    SharedLinkCookie.unlocked?(conn, current, clock))
             end
 
-            target = {:link, link.id, allowed}
-            admitted = Delivery.admit(target, now)
+            target = {:link, link, allowed}
+
+            admitted =
+              Delivery.admit(target, now,
+                before_admission: conn.private[:dawarich_before_admission] || fn -> :ok end
+              )
+
             conn = put_private(conn, :public_delivery, {target, admitted})
             dispatch(assign(conn, :family_share, FamilyAudience.family_only?(link)), action, link)
         end

@@ -163,6 +163,7 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
       unlock =
         RailsUser.signed_in(94802)
         |> assign(:now, @fixture_now)
+        |> put_private(:dawarich_clock, fn -> @fixture_now end)
         |> put_req_header("accept", "text/html")
         |> put_req_header("content-type", "application/x-www-form-urlencoded")
         |> put_req_header("content-length", to_string(byte_size(body)))
@@ -336,6 +337,7 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
   defp page(user_id, target) do
     RailsUser.signed_in(user_id)
     |> assign(:now, @fixture_now)
+    |> put_private(:dawarich_clock, fn -> @fixture_now end)
     |> put_req_header("accept", "text/html")
     |> get(target)
   end
@@ -343,6 +345,7 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
   defp request(user_id, target) do
     RailsUser.signed_in(user_id)
     |> assign(:now, @fixture_now)
+    |> put_private(:dawarich_clock, fn -> @fixture_now end)
     |> put_req_header("accept", "text/html")
     |> get(target)
     |> Map.fetch!(:status)

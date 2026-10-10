@@ -138,3 +138,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Extend public achievement delivery admission to PNG rendering, warmed OG images, and the final native/retained HTML response. FRB-NATIVE-M5-ACHIEVEMENT-DELIVERY.
 
 - Evaluate public report expiry at delivery, and re-admit final shared-link HTML, map responses, cached photo payloads and shared APIs through one check. FRB-NATIVE-M5-PUBLIC-DELIVERY.
+
+- Bind shared-link HTML/API admission to the exact link and privacy flags used for preparation, refusing flag changes before the initial snapshot. FRB-NATIVE-M5-PUBLIC-DELIVERY.

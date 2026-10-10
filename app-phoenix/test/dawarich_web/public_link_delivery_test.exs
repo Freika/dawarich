@@ -182,5 +182,54 @@ defmodule DawarichWeb.PublicLinkDeliveryTest do
     end
   end
 
+  @tag review_delivery: true
+  @tag link_binding: true
+  test "public trip API binds preparation flags to the initial admission", %{uuid: uuid} do
+    rows("UPDATE trips SET distance=42000 WHERE id=19022")
+
+    rows(
+      "UPDATE shared_links SET settings=jsonb_set(settings,'{show_stats}','true') WHERE user_id=19022"
+    )
+
+    path = "/api/v1/shared/#{uuid}/trip"
+    assert Jason.decode!(get(build_conn(), path).resp_body)["distance"] == 42.0
+
+    restrict = fn ->
+      rows(
+        "UPDATE shared_links SET settings=jsonb_set(settings,'{show_stats}','false') WHERE user_id=19022"
+      )
+    end
+
+    conn = build_conn() |> put_private(:dawarich_before_admission, restrict) |> get(path)
+    assert conn.status == 404
+    refute Map.has_key?(Jason.decode!(conn.resp_body), "distance")
+    assert get(build_conn(), path).status == 200
+    refute Map.has_key?(Jason.decode!(get(build_conn(), path).resp_body), "distance")
+  end
+
+  @tag review_delivery: true
+  @tag link_binding: true
+  test "public trip HTML binds description flags to the initial admission", %{uuid: uuid} do
+    rows(
+      "INSERT INTO action_text_rich_texts(record_type,record_id,name,body,created_at,updated_at) VALUES('Trip',19022,'description','<p>Protected description</p>',now(),now())"
+    )
+
+    path = "/s/#{uuid}"
+    assert get(build_conn(), path).resp_body =~ "Protected description"
+
+    restrict = fn ->
+      rows(
+        "UPDATE shared_links SET settings=jsonb_set(settings,'{show_description}','false') WHERE user_id=19022"
+      )
+    end
+
+    conn = build_conn() |> put_private(:dawarich_before_admission, restrict) |> get(path)
+    assert conn.status == 404
+    refute conn.resp_body =~ "Protected description"
+    fresh = get(build_conn(), path)
+    assert fresh.status == 200
+    refute fresh.resp_body =~ "Protected description"
+  end
+
   defp revoke, do: rows("UPDATE shared_links SET revoked_at=now() WHERE user_id=19022")
 end
