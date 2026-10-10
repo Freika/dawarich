@@ -9,14 +9,17 @@ import { createPosterExports } from "./export/operation.js"
 import { bindExportControls } from "./export_controls.js"
 import { bindGalleryControls } from "./gallery_controls.js"
 import { createPosterLifecycle } from "./lifecycle.js"
+import { bindOrderControls } from "./order_controls.js"
 import { createPosterSource } from "./source.js"
 import { interpolate } from "./strings.js"
+import { bindStudioSwitch } from "./switch.js"
 
 export function mountPosterStudio({
   root,
   source,
   fallbackBounds,
   pushEvent = () => {},
+  openVideo,
   loadLibrary = () => import("/maplibre/6.4.1/maplibre-gl.mjs"),
   window: win = globalThis.window,
   exports = createPosterExports(),
@@ -108,11 +111,32 @@ export function mountPosterStudio({
     strings,
     setStatus,
   })
-  owned.own(() => exports.cancel())
-  on(dialog, "close", () => {
-    exports.cancel()
-    studio.close()
+  const order = bindOrderControls({
+    root,
+    find,
+    on,
+    studio,
+    exports,
+    strings,
+    printOrderUrl: config.printOrderUrl ?? "",
+    loadLibrary,
+    maxDimensionPx,
+    layoutLabel: (id) =>
+      root
+        .querySelector(`[data-poster-layout] option[value="${id}"]`)
+        ?.textContent?.trim() ?? id,
   })
+  const closeStudio = () => {
+    exports.cancel()
+    order.cancel()
+    studio.close()
+  }
+  bindStudioSwitch({ find, on, studio, source, openVideo, close: closeStudio })
+  owned.own(() => {
+    exports.cancel()
+    order.cancel()
+  })
+  on(dialog, "close", closeStudio)
   on(find("recenter"), "click", () => studio.recenter())
   for (const swatch of swatches) {
     on(swatch, "click", () =>

@@ -5,7 +5,7 @@ export const PosterStudio = {
     this.posterOpen = (event) => this.openPoster(event.detail ?? {})
     this.el.addEventListener("dawarich:poster-studio-open", this.posterOpen)
   },
-  async openPoster({ source, fallbackBounds }) {
+  async openPoster({ source, fallbackBounds, openVideo }) {
     if (!source) return
     const generation = ++this.posterGeneration
     try {
@@ -18,6 +18,7 @@ export const PosterStudio = {
         root: this.el,
         source,
         fallbackBounds,
+        openVideo,
         pushEvent: this.pushEvent.bind(this),
       })
       await this.posterOwner.open()

@@ -3,6 +3,7 @@ defmodule DawarichWeb.NativePosterActions do
   use Phoenix.Component
 
   import DawarichWeb.Translate, only: [t: 3]
+  import DawarichWeb.NativePosterOrder, only: [poster_order: 1]
 
   alias DawarichWeb.Icon
 
@@ -42,6 +43,7 @@ defmodule DawarichWeb.NativePosterActions do
       {p(@locale, "save_to_gallery")}
     </button>
     <p class="hidden text-xs text-warning" data-poster-save-notice></p>
+    <.poster_order locale={@locale} />
     <p class="text-xs opacity-70" role="status" data-poster-status></p>
     """
   end

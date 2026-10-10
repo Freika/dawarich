@@ -11,7 +11,15 @@ defmodule DawarichWeb.NativePosterStudioTest do
     html =
       render_component(
         &NativePosterStudio.poster_studio/1,
-        Map.merge(%{themes: @themes, locale: "de", fixed_range_label: nil}, attrs)
+        Map.merge(
+          %{
+            themes: @themes,
+            locale: "de",
+            fixed_range_label: nil,
+            print_order_url: "https://prints.example.test/api/orders"
+          },
+          attrs
+        )
       )
 
     {html, LazyHTML.from_fragment(html)}
@@ -50,7 +58,11 @@ defmodule DawarichWeb.NativePosterStudioTest do
     [json] = attribute(doc, "#native-poster-studio", "data-poster-config")
     config = Jason.decode!(json)
 
-    assert Map.keys(config) |> Enum.sort() == ["fonts", "strings"]
+    assert Map.keys(config) |> Enum.sort() == ["fonts", "printOrderUrl", "strings"]
+    assert config["printOrderUrl"] == "https://prints.example.test/api/orders"
+    assert config["strings"]["order_summary"] =~ "%{layout}"
+    assert config["strings"]["order_summary"] =~ "%{price}"
+    assert config["strings"]["order_errors.too_large"] =~ "50 MB"
     assert config["fonts"]["oswald-700"] =~ ~r{^/assets/poster/oswald-700}
 
     assert config["strings"]["open_failed"] ==
@@ -136,5 +148,27 @@ defmodule DawarichWeb.NativePosterStudioTest do
     assert doc
            |> LazyHTML.query("#native-poster-actions [data-poster-save-notice]")
            |> Enum.count() == 1
+  end
+
+  test "print ordering offers the three orderable sizes, a disabled checkout link and the studio switch" do
+    {html, doc} = render()
+
+    assert attribute(
+             doc,
+             "#native-poster-actions [data-poster-print-size]",
+             "data-poster-print-size"
+           ) ==
+             ~w(print-30x40 print-50x70 print-70x100)
+
+    assert attribute(doc, "[data-poster-order-step]", "data-poster-order-step") ==
+             ~w(prepare upload checkout)
+
+    assert attribute(doc, "a[data-poster-checkout]", "aria-disabled") == ["true"]
+    assert attribute(doc, "a[data-poster-checkout]", "href") == []
+    assert attribute(doc, "a[data-poster-checkout]", "rel") == ["noopener"]
+    assert attribute(doc, "[data-poster-order-section]", "class") |> hd() =~ "hidden"
+    assert doc |> LazyHTML.query("header [data-poster-switch-video]") |> Enum.count() == 1
+    assert doc |> LazyHTML.query("header [aria-current=true]") |> LazyHTML.text() =~ "Poster"
+    refute html =~ "prints.example.test/orders"
   end
 end

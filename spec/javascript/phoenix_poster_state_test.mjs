@@ -270,15 +270,17 @@ test("the studio opens only through a source injected on its own root", async ()
   assert.equal(loads, 0)
   const studio = { snapshot: async () => ({}) }
   const fallbackBounds = () => null
+  const openVideo = () => {}
   hook.el.dispatchEvent(
     new CustomEvent("dawarich:poster-studio-open", {
-      detail: { source: studio, fallbackBounds },
+      detail: { source: studio, fallbackBounds, openVideo },
     }),
   )
   await new Promise((resolve) => setTimeout(resolve, 0))
   assert.equal(mounts.length, 1)
   assert.equal(mounts[0].source, studio)
   assert.equal(mounts[0].fallbackBounds, fallbackBounds)
+  assert.equal(mounts[0].openVideo, openVideo)
   assert.equal(mounts[0].root, hook.el)
   hook.destroyed()
   assert.deepEqual(mounts.slice(1), ["destroyed"])

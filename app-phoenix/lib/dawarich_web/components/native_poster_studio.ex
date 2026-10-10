@@ -26,16 +26,26 @@ defmodule DawarichWeb.NativePosterStudio do
     "no_location_data" => %{},
     "no_tracks_in_frame" => %{},
     "frame_too_wide" => %{},
-    "gallery_without_flights" => %{}
+    "gallery_without_flights" => %{},
+    "order_summary" => %{"layout" => "%{layout}", "price" => "%{price}"},
+    "order_errors.wrong_size" => %{},
+    "order_errors.too_large" => %{},
+    "order_errors.unknown_sku" => %{},
+    "order_errors.payment_unavailable" => %{},
+    "order_errors.not_pdf" => %{},
+    "order_errors.unreadable" => %{},
+    "order_errors.generic" => %{},
+    "order_errors.connection" => %{}
   }
 
   attr :themes, :list, required: true
   attr :locale, :string, required: true
   attr :fixed_range_label, :string, default: nil
   attr :posters, :list, default: []
+  attr :print_order_url, :string, default: ""
 
   def poster_studio(assigns) do
-    assigns = assign(assigns, :config, config(assigns.locale))
+    assigns = assign(assigns, :config, config(assigns.locale, assigns.print_order_url))
 
     ~H"""
     <div id="native-poster-studio" phx-hook="PosterStudio" data-poster-config={@config}>
@@ -55,6 +65,31 @@ defmodule DawarichWeb.NativePosterStudio do
               <Icon.icon name="map" class="h-4 w-4 shrink-0 opacity-70" />
               {p(@locale, "poster_studio")}
             </h2>
+            <div
+              class="join shrink-0"
+              role="group"
+              aria-label={t(@locale, "shared.studio_switcher.studios", %{})}
+            >
+              <button
+                type="button"
+                class="btn btn-xs join-item btn-active gap-1"
+                aria-current="true"
+                data-testid="studio-switch-poster"
+              >
+                <Icon.icon name="image" class="h-3.5 w-3.5" />
+                <span class="hidden sm:inline">{t(@locale, "shared.studio_switcher.poster", %{})}</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-xs join-item btn-ghost gap-1"
+                aria-label={t(@locale, "shared.studio_switcher.video", %{})}
+                data-testid="studio-switch-video"
+                data-poster-switch-video
+              >
+                <Icon.icon name="video" class="h-3.5 w-3.5" />
+                <span class="hidden sm:inline">{t(@locale, "shared.studio_switcher.video", %{})}</span>
+              </button>
+            </div>
             <div
               :if={is_nil(@fixed_range_label)}
               id="native-poster-dates"
@@ -187,9 +222,10 @@ defmodule DawarichWeb.NativePosterStudio do
     """
   end
 
-  def config(locale) do
+  def config(locale, print_order_url \\ "") do
     Jason.encode!(%{
       fonts: PosterFonts.urls(),
+      printOrderUrl: print_order_url || "",
       strings:
         Map.new(@strings, fn {key, bindings} ->
           {key, t(locale, "javascript.poster." <> key, bindings)}
