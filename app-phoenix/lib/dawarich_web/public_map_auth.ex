@@ -107,6 +107,7 @@ defmodule DawarichWeb.PublicMapAuth do
 
   def refuse(socket, reason) do
     socket
+    |> DawarichWeb.MapLive.Subscriptions.release()
     |> DawarichWeb.PublicMapDeadline.cancel()
     |> assign(public_config: nil, public_error: reason, page_title: nil, public_map_ready: false)
     |> push_event("map:clear", %{code: Atom.to_string(reason)})
