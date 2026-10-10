@@ -46,9 +46,13 @@ defmodule Dawarich.Cable.TurboEventsTest do
       %{"events" => events, "published" => [{b, rails}]} = A12a.relay!(name)
       A12a.insert_events!(events)
       {:ok, _} = A12a.listen(b)
+      [%{"trip_id" => trip_id}] = events
+      Dawarich.Trips.Events.subscribe(trip_id)
       assert TurboEvents.trips(Dawarich.Jobs.repo(), Dawarich.Repo, A12a.naive_now()) == 1
       assert {^b, phoenix} = A12a.heard()
       assert same_stream?(rails, phoenix), name
+      assert_receive {:domain_changed, ^trip_id, :trip}
+      Dawarich.Trips.Events.unsubscribe(trip_id)
     end
 
     gone = %{"trip_id" => -1, "kind" => "finished", "distance_unit" => "km", "failed" => false}
@@ -60,8 +64,12 @@ defmodule Dawarich.Cable.TurboEventsTest do
         ] do
       A12a.insert_events!(events)
       {:ok, _} = A12a.listen_all()
+      [%{"trip_id" => trip_id}] = events
+      Dawarich.Trips.Events.subscribe(trip_id)
       assert TurboEvents.trips(Dawarich.Jobs.repo(), Dawarich.Repo, A12a.naive_now()) == 1
       refute_receive {:redix_pubsub, _, _, :pmessage, _}, 300
+      refute_received {:domain_changed, _, _}
+      Dawarich.Trips.Events.unsubscribe(trip_id)
     end
 
     assert A12a.corpus()["relay"]["trip_show_targets"] ==

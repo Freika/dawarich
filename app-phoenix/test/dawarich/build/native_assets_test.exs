@@ -10,7 +10,17 @@ defmodule Dawarich.Build.NativeAssetsTest do
   @chrome_inputs ~w(js/analytics_events.js js/hooks/achievement_unlocks.js js/hooks/changelog_widget.js)
   @chrome_base_bytes 6_707 + 548
   @places_inputs ~w(js/hooks/place_draft.js js/hooks/ordinary_dialog.js)
+  @m5_inputs ~w(js/hooks/chart.js js/hooks/heatmap.js js/hooks/rich_text.js)
   @other_base_bytes 335_463
+
+  @tag trix_pin: true
+  test "native editor builds pinned Trix with no ActionText transport", %{tmp_dir: dir} do
+    manifest = File.read!("assets/package.json") |> Jason.decode!()
+    assert manifest["dependencies"]["trix"] == "2.1.19"
+    graph = dir |> build!() |> inputs()
+    assert Enum.any?(graph, &String.contains?(&1, "node_modules/trix/"))
+    refute Enum.any?(graph, &Regex.match?(~r/@rails|actiontext|activestorage/i, &1))
+  end
 
   defp build!(dir) do
     assert 0 ==
@@ -59,10 +69,15 @@ defmodule Dawarich.Build.NativeAssetsTest do
     assert Enum.sum(bytes) - @chrome_base_bytes <= @http_chrome_cap
   end
 
-  test "native eager graph outside the chrome and Places inputs stays within 1 KiB of base", %{
+  test "native eager graph outside the milestone inputs stays within 1 KiB of base", %{
     tmp_dir: dir
   } do
-    bytes = dir |> build!() |> app_input_bytes() |> Map.drop(@chrome_inputs ++ @places_inputs)
+    bytes =
+      dir
+      |> build!()
+      |> app_input_bytes()
+      |> Map.drop(@chrome_inputs ++ @places_inputs ++ @m5_inputs)
+
     assert Enum.sum(Map.values(bytes)) <= @other_base_bytes + @other_slack
   end
 
@@ -151,6 +166,33 @@ defmodule Dawarich.Build.NativeAssetsTest do
         {input, meta} <- outputs[path]["inputs"],
         reduce: %{},
         do: (acc -> Map.update(acc, input, meta["bytesInOutput"], &(&1 + meta["bytesInOutput"])))
+  end
+
+  test "charts and editor stay lazy with a bounded eager stub and an independent public entry", %{
+    tmp_dir: dir
+  } do
+    build!(dir)
+
+    outputs =
+      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
+
+    for sources <- [["chart", "heatmap"], ["rich_text", "editor"]] do
+      bytes =
+        for path <- eager(outputs, [app], MapSet.new()),
+            {input, %{"bytesInOutput" => bytes}} <- outputs[path]["inputs"],
+            Enum.any?(sources, &String.contains?(input, &1)),
+            reduce: 0,
+            do: (sum -> sum + bytes)
+
+      assert bytes in 1..2048
+    end
+
+    assert File.regular?(Path.join(dir, "public_charts.js"))
+    refute File.read!(Path.join(dir, "public_charts.js")) =~ "LiveSocket"
+    assert Enum.any?(inputs(dir), &String.contains?(&1, "chartkick"))
+    refute Enum.any?(inputs(dir), &String.contains?(&1, "actiontext"))
   end
 
   defp eager(_outputs, [], seen), do: seen

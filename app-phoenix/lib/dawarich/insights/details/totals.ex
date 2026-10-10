@@ -2,7 +2,7 @@ defmodule Dawarich.Insights.Details.Totals do
   @moduledoc false
   alias Dawarich.Digests
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.StatsFormat
+  alias Dawarich.Analytics.Period
 
   def calculate(stats, unit) do
     toponyms = for s <- stats, is_list(s["toponyms"]), %{} = t <- s["toponyms"], do: t
@@ -27,7 +27,7 @@ defmodule Dawarich.Insights.Details.Totals do
     biggest = Enum.max_by(valid, & &1["distance"], &>=/2, fn -> nil end)
 
     %{
-      distance: StatsFormat.rounded(Enum.sum(Enum.map(stats, &(&1["distance"] || 0))), unit),
+      distance: Period.rounded(Enum.sum(Enum.map(stats, &(&1["distance"] || 0))), unit),
       countries: length(countries),
       cities: length(cities),
       countries_list: Enum.sort(countries),
@@ -37,7 +37,7 @@ defmodule Dawarich.Insights.Details.Totals do
           do: %{
             year: biggest["year"],
             month: biggest["month"],
-            distance: StatsFormat.rounded(biggest["distance"], unit)
+            distance: Period.rounded(biggest["distance"], unit)
           }
         )
     }

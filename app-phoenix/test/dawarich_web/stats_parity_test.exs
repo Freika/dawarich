@@ -26,6 +26,12 @@ defmodule DawarichWeb.StatsParityTest do
                  else: "#{@name} matches the page Rails renders"
                )
 
+    @test_name if(String.starts_with?(@name, "digest"),
+                 do:
+                   "#{@name} native persisted values access and localized charts match the source",
+                 else: @test_name
+               )
+
     if @name in ~w(index_en index_nongeo_en index_lite_en year_lite_en),
       do: @tag(a12f3a_q01: true)
 
@@ -44,14 +50,25 @@ defmodule DawarichWeb.StatsParityTest do
         current_user: user
       }
 
-      {module, params} = route(state["path"])
-      assigns = module.page(user, params, context)
-      phoenix = render_component(&module.render/1, Map.merge(context, assigns))
+      {kind, params} = route(state["path"])
       rails = File.read!(Path.join(@dir, @name <> ".html"))
+      assigns = source(user, params, context, kind)
 
-      assert normalized(phoenix) == normalized(rails)
-      assert ParityHTML.stimulus(phoenix) == ParityHTML.stimulus(rails)
-      assert charts(phoenix) == charts(rails)
+      case kind do
+        :digest ->
+          native_digest(user, params, context, assigns, rails)
+
+        :stats ->
+          native_stats(user, params, context, assigns, rails)
+
+        :month ->
+          phoenix =
+            render_component(&DawarichWeb.StatsLive.Month.render/1, Map.merge(context, assigns))
+
+          assert normalized(phoenix) == normalized(rails)
+          assert ParityHTML.stimulus(phoenix) == ParityHTML.stimulus(rails)
+          assert charts(phoenix) == charts(rails)
+      end
 
       title =
         render_component(
@@ -78,6 +95,171 @@ defmodule DawarichWeb.StatsParityTest do
     end
   end
 
+  defp source(user, params, context, :month),
+    do: DawarichWeb.StatsLive.Month.page(user, params, context)
+
+  defp source(user, params, context, :digest) do
+    values =
+      if params == %{},
+        do:
+          Dawarich.Digests.index(
+            user.id,
+            Dawarich.Stats.context(user, context.now, context.self_hosted)
+          ),
+        else: %{digest: Dawarich.Digests.get(user.id, Dawarich.RubyInteger.to_i(params["year"]))}
+
+    key =
+      if params == %{},
+        do: "users.digests.index.year_end_digests",
+        else: "users.digests.show.year_year_in_review"
+
+    Map.merge(values, %{
+      page_title: DawarichWeb.Translate.t(context.locale, key, %{year: params["year"]}),
+      table: Dawarich.CountryNames.table()
+    })
+  end
+
+  defp source(user, params, context, :stats) do
+    period = Dawarich.Stats.context(user, context.now, context.self_hosted)
+
+    values =
+      if params == %{},
+        do:
+          Dawarich.Stats.index(
+            user,
+            period,
+            Dawarich.Geocoding.Config.resolve(Dawarich.Repo).store_geodata,
+            context.now
+          ),
+        else: Dawarich.Stats.year(user, Dawarich.RubyInteger.to_i(params["year"]), period)
+
+    key =
+      if params == %{}, do: "stats.index.statistics", else: "stats.show.statistics_for_year_year"
+
+    Map.put(
+      values,
+      :page_title,
+      DawarichWeb.Translate.t(context.locale, key, %{year: params["year"]})
+    )
+  end
+
+  defp native_stats(user, params, context, source, rails) do
+    scope = Dawarich.Accounts.Scope.for_user(user, context.locale)
+    opts = [now: context.now, self_hosted: context.self_hosted]
+    mode = if params == %{}, do: :index, else: :year
+
+    {:ok, data} =
+      if mode == :index,
+        do: Dawarich.Stats.Pages.index(scope, params, opts),
+        else: Dawarich.Stats.Pages.year(scope, params, opts)
+
+    if mode == :index do
+      for key <- [:total_distance, :locked_years], do: assert(data[key] == source[key])
+      assert data.total_countries == length(source.countries_visited)
+      assert data.total_cities == length(source.cities_visited)
+      assert data.countries_visited == Enum.sort(source.countries_visited)
+      assert data.cities_visited == Enum.sort(source.cities_visited)
+      assert Enum.map(data.years, & &1.year) == Enum.map(source.years, & &1.year)
+    else
+      assert data.distances == source.distances
+
+      assert Enum.map(data.stats, &{&1.month, &1.distance}) ==
+               Enum.map(source.stats, &{&1.month, &1.distance})
+    end
+
+    html =
+      render_component(&DawarichWeb.StatsLive.NativeParts.page/1,
+        data: data,
+        locale: context.locale,
+        mode: mode
+      )
+
+    actual =
+      LazyHTML.from_document(html)
+      |> LazyHTML.query("[data-chart]")
+      |> LazyHTML.attribute("data-chart")
+      |> Enum.map(&Jason.decode!(&1)["data"])
+
+    expected =
+      for chart <- charts(rails),
+          not String.starts_with?(chart.id, "chart-year-locked-"),
+          do: chart.data
+
+    assert actual ==
+             Enum.map(expected, fn points ->
+               Enum.map(points, fn [label, value] -> [label, value || 0] end)
+             end)
+
+    refute html =~ "data-controller="
+    refute html =~ "data-turbo"
+  end
+
+  defp native_digest(user, params, context, source, rails) do
+    scope = Dawarich.Accounts.Scope.for_user(user, context.locale)
+    opts = [now: context.now, self_hosted: context.self_hosted]
+
+    html =
+      if params == %{} do
+        {:ok, data} = Dawarich.Digests.Pages.index(scope, params, opts)
+        assert data.available_years == source.available_years
+        assert Enum.map(data.digests, & &1.year) == Enum.map(source.digests, & &1.year)
+
+        for {native, old} <- Enum.zip(data.digests, source.digests),
+            key <- [:year, :distance],
+            do: assert(native[key] == old[key])
+
+        for {native, old} <- Enum.zip(data.digests, source.digests) do
+          assert native.countries_count == Dawarich.Digests.countries_count(old.toponyms)
+          assert native.cities_count == Dawarich.Digests.cities_count(old.toponyms)
+          assert native.first_time_countries_count == length(old.first_time_countries)
+          assert native.first_time_cities_count == length(old.first_time_cities)
+          refute Map.has_key?(native, :toponyms)
+        end
+
+        render_component(&DawarichWeb.DigestsLive.NativeIndexParts.render/1,
+          data: data,
+          locale: context.locale
+        )
+      else
+        {:ok, data} = Dawarich.Digests.Pages.get(scope, params, opts)
+
+        for key <- Map.keys(data) -- [:period, :restricted, :unit],
+            do: assert(data[key] == source.digest[key])
+
+        summary =
+          render_component(&DawarichWeb.DigestsLive.NativeParts.summary/1,
+            digest: data,
+            locale: context.locale,
+            unit: data.unit
+          )
+
+        if data.restricted do
+          summary
+        else
+          full =
+            render_component(&DawarichWeb.DigestsLive.NativeFullParts.full/1,
+              digest: data,
+              locale: context.locale,
+              unit: data.unit,
+              table: source.table
+            )
+
+          native_charts =
+            LazyHTML.from_document(full)
+            |> LazyHTML.query("[data-chart]")
+            |> LazyHTML.attribute("data-chart")
+            |> Enum.map(&Jason.decode!(&1)["data"])
+
+          assert native_charts == Enum.map(charts(rails), & &1.data)
+          summary <> full
+        end
+      end
+
+    refute html =~ "data-turbo"
+    refute html =~ "onclick="
+    refute html =~ "Chartkick"
+  end
+
   defp normalized(html),
     do:
       html
@@ -96,14 +278,14 @@ defmodule DawarichWeb.StatsParityTest do
     end
   end
 
-  defp route("/stats"), do: {DawarichWeb.StatsLive.Index, %{}}
-  defp route("/digests"), do: {DawarichWeb.DigestsLive.Index, %{}}
+  defp route("/stats"), do: {:stats, %{}}
+  defp route("/digests"), do: {:digest, %{}}
 
   defp route(path) do
     case String.split(path, "/", trim: true) do
-      ["stats", year] -> {DawarichWeb.StatsLive.Year, %{"year" => year}}
-      ["stats", year, month] -> {DawarichWeb.StatsLive.Month, %{"year" => year, "month" => month}}
-      ["digests", year] -> {DawarichWeb.DigestsLive.Show, %{"year" => year}}
+      ["stats", year] -> {:stats, %{"year" => year}}
+      ["stats", year, month] -> {:month, %{"year" => year, "month" => month}}
+      ["digests", year] -> {:digest, %{"year" => year}}
     end
   end
 

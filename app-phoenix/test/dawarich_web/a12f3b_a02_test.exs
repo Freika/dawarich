@@ -3,7 +3,7 @@ defmodule DawarichWeb.A12f3bA02Test do
   import Plug.Conn
   import Phoenix.ConnTest
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{AchievementPublicPage, RailsCsrf}
+  alias DawarichWeb.{Endpoint, RailsCsrf}
   alias DawarichWeb.AchievementActions.Sharing
 
   setup do
@@ -42,25 +42,25 @@ defmodule DawarichWeb.A12f3bA02Test do
       |> put_req_header("accept", "text/html")
       |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
 
-    page = AchievementPublicPage.call(owner, [])
+    page = Endpoint.call(owner, [])
     assert page.status == 200
     assert page.resp_body =~ ~s(lang="de")
     assert get_resp_header(page, "content-security-policy") == ["frame-ancestors *"]
     assert get_resp_header(page, "x-frame-options") == []
     assert rows("SELECT settings->>'locale' FROM users WHERE id=81302") == [["de"]]
-    assert AchievementPublicPage.call(build_conn("HEAD", url <> "?embed=1"), []).resp_body == ""
+    assert Endpoint.call(build_conn("HEAD", url <> "?embed=1"), []).resp_body == ""
 
     assert Sharing.call(
              sharing("POST", path, session, %{"_method" => "patch", "enabled" => "false"}),
              []
            ).status == 302
 
-    assert AchievementPublicPage.call(build_conn("GET", url <> "?embed=1"), []).status == 302
+    assert Endpoint.call(build_conn("GET", url <> "?embed=1"), []).status == 302
     again = Sharing.call(sharing("PATCH", path, session, %{"enabled" => true}), [])
     assert Jason.decode!(again.resp_body)["uuid"] == uuid
-    assert AchievementPublicPage.call(build_conn("GET", url <> "?embed=1"), []).status == 200
+    assert Endpoint.call(build_conn("GET", url <> "?embed=1"), []).status == 200
 
-    assert AchievementPublicPage.call(build_conn("GET", "/shared/achievements/unknown"), []).status ==
+    assert Endpoint.call(build_conn("GET", "/shared/achievements/unknown"), []).status ==
              302
 
     assert Sharing.call(sharing("PATCH", path, session, %{"enabled" => nil}), []).status == 422
@@ -86,17 +86,17 @@ defmodule DawarichWeb.A12f3bA02Test do
           "utm_source=x&utm_source=y",
           "utm_source[a]=x"
         ] do
-      page = AchievementPublicPage.call(build_conn("GET", path <> "?embed=1&" <> query), [])
+      page = Endpoint.call(build_conn("GET", path <> "?embed=1&" <> query), [])
       assert page.status == 200, query
       assert page.resp_body =~ "ach-embed-page"
       assert page.resp_body =~ ~s(lang="en")
       assert get_resp_header(page, "content-security-policy") == ["frame-ancestors *"]
       assert get_resp_header(page, "x-frame-options") == []
-      head = AchievementPublicPage.call(build_conn("HEAD", path <> "?embed=1&" <> query), [])
+      head = Endpoint.call(build_conn("HEAD", path <> "?embed=1&" <> query), [])
       assert head.status == 200 and head.resp_body == ""
 
       missing =
-        AchievementPublicPage.call(
+        Endpoint.call(
           build_conn("GET", "/shared/achievements/unknown?" <> query),
           []
         )
@@ -108,12 +108,12 @@ defmodule DawarichWeb.A12f3bA02Test do
       build_conn("GET", path <> "?locale=de&embed=1&utm_source=x")
       |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(RailsUser.session(81302)))
 
-    page = AchievementPublicPage.call(owner, [])
+    page = Endpoint.call(owner, [])
     assert page.status == 200 and page.resp_body =~ ~s(lang="de")
     assert rows("SELECT settings->>'locale' FROM users WHERE id=81302") == [["de"]]
 
     for query <- ["utm_source=%GG", "utm_source=%FF", "locale=no&utm_source=x"] do
-      assert AchievementPublicPage.call(build_conn("GET", path <> "?" <> query), []).status == 422
+      assert Endpoint.call(build_conn("GET", path <> "?" <> query), []).status == 422
     end
   end
 

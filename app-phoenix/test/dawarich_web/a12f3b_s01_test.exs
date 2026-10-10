@@ -49,6 +49,33 @@ defmodule DawarichWeb.A12f3bS01Test do
              [[0]]
   end
 
+  @tag unlock_gateway: true
+  test "POST unlock refuses shared audience admission before issuing a phrase cookie" do
+    Repo.query!("UPDATE shared_links SET settings='{}' WHERE id=$1::text::uuid", [@id])
+    positive = request(:unlock) |> SharedLinkPage.call(:unlock)
+    assert positive.status == 302
+    assert Map.has_key?(positive.resp_cookies, "shared_link_#{@id}")
+    assert positive.resp_body == ""
+
+    wrong = request(:unlock) |> assign(:api_params, %{"phrase" => "wrong"})
+    refused_phrase = SharedLinkPage.call(wrong, :unlock)
+    assert refused_phrase.status == 401
+    refute Map.has_key?(refused_phrase.resp_cookies, "shared_link_#{@id}")
+
+    Repo.query!("UPDATE shared_links SET settings=$2 WHERE id=$1::text::uuid", [
+      @id,
+      %{"audience" => "family", "family_id" => -1}
+    ])
+
+    refused = request(:unlock) |> SharedLinkPage.call(:unlock)
+    assert refused.status == 404
+    refute Map.has_key?(refused.resp_cookies, "shared_link_#{@id}")
+    assert get_resp_header(refused, "location") == []
+
+    assert Repo.query!("SELECT view_count FROM shared_links WHERE id=$1::text::uuid", [@id]).rows ==
+             [[0]]
+  end
+
   @tag a12f3b_case: "S01b"
   test "public link owner retirement removes access immediately" do
     now = DateTime.utc_now()

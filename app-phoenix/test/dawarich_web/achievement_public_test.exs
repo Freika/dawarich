@@ -5,23 +5,9 @@ defmodule DawarichWeb.AchievementPublicTest do
   alias Dawarich.Achievements.Registry
   alias Dawarich.Repo
   alias Dawarich.Test.{ParityHTML, RailsUser}
-  alias DawarichWeb.AchievementPublicPage
+  alias DawarichWeb.Endpoint
 
   @root "test/fixtures/achievement_public"
-  @scripts "script[type='importmap'],script#i18n-translations,link[rel='modulepreload']"
-
-  setup_all do
-    key = {DawarichWeb.Assets, :rails_imports}
-    previous = :persistent_term.get(key, nil)
-    imports = File.read!("#{@root}/en_direct.html") |> importmap() |> Map.fetch!("imports")
-    :persistent_term.put(key, imports)
-
-    on_exit(fn ->
-      if previous == nil,
-        do: :persistent_term.erase(key),
-        else: :persistent_term.put(key, previous)
-    end)
-  end
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -39,7 +25,7 @@ defmodule DawarichWeb.AchievementPublicTest do
     :ok
   end
 
-  test "serves Rails public and embed documents with owner metadata and no private chrome" do
+  test "native public and embed documents preserve source cards SVG metadata and privacy" do
     corpus =
       File.read!("#{@root}/public.json")
       |> Jason.decode!()
@@ -53,19 +39,21 @@ defmodule DawarichWeb.AchievementPublicTest do
       html = result.resp_body
       expected = File.read!("#{@root}/#{row["html_file"]}")
 
-      assert ParityHTML.fragment(html, "body") == ParityHTML.fragment(expected, "body"),
-             ParityHTML.first_difference(
-               ParityHTML.fragment(html, "body"),
-               ParityHTML.fragment(expected, "body")
-             )
+      for selector <- [".ach-card", ".ach-public-attribution"] do
+        assert ParityHTML.fragment(html, selector) == ParityHTML.fragment(expected, selector)
+      end
 
-      assert ParityHTML.without(html, [@scripts], "head") ==
-               ParityHTML.without(expected, [@scripts], "head"),
-             ParityHTML.first_difference(
-               ParityHTML.without(html, [@scripts], "head"),
-               ParityHTML.without(expected, [@scripts], "head")
-             )
+      for selector <- [
+            "title",
+            "meta[property]",
+            "meta[name='twitter:card']",
+            "meta[name='twitter:image']"
+          ] do
+        assert ParityHTML.fragment(html, selector) == ParityHTML.fragment(expected, selector)
+      end
 
+      refute html =~ "importmap"
+      refute html =~ "data-controller="
       doc = LazyHTML.from_document(html)
       assert LazyHTML.query(doc, "html") |> LazyHTML.attribute("lang") == [row["lang"]]
       assert LazyHTML.query(doc, "header") |> Enum.count() == if(row["chrome"], do: 1, else: 0)
@@ -74,8 +62,6 @@ defmodule DawarichWeb.AchievementPublicTest do
 
       assert LazyHTML.query(doc, ".ach-child-grid, [data-controller='achievement-unlocks']")
              |> Enum.count() == 0
-
-      assert importmap(html) == importmap(expected), row["name"]
 
       for {key, value} <- row["metadata"],
           do:
@@ -142,21 +128,13 @@ defmodule DawarichWeb.AchievementPublicTest do
     end
   end
 
-  defp importmap(html),
-    do:
-      html
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("script[type='importmap']")
-      |> LazyHTML.text()
-      |> Jason.decode!()
-
   defp request(method, path, params) do
     query = URI.encode_query(params)
     target = path <> if(query == "", do: "", else: "?" <> query)
 
     build_conn(method, target)
     |> put_req_header("accept", "text/html")
-    |> AchievementPublicPage.call([])
+    |> Endpoint.call([])
   end
 
   defp seed(row) do

@@ -3,14 +3,19 @@ defmodule DawarichWeb.AchievementPublicHTML do
   use DawarichWeb, :html
   import DawarichWeb.AchievementCard, only: [card: 1]
   import DawarichWeb.Head, only: [favicon: 1, pwa_meta: 1]
-  import DawarichWeb.SharedPages, only: [l: 2, cta: 1, cta: 2, importmap: 0, translations: 1]
+  import DawarichWeb.SharedPages, only: [l: 2, cta: 1, cta: 2]
   alias DawarichWeb.Assets
   alias Dawarich.Achievements.UiText
 
   embed_templates "achievement_public/*"
 
-  def html(%{embed: true} = assigns), do: assigns |> embed() |> Phoenix.HTML.Safe.to_iodata()
-  def html(assigns), do: assigns |> document() |> Phoenix.HTML.Safe.to_iodata()
+  def html(%{embed: true} = assigns),
+    do: assigns |> Map.put_new(:native, false) |> embed() |> Phoenix.HTML.Safe.to_iodata()
+
+  def html(assigns),
+    do: assigns |> Map.put_new(:native, false) |> document() |> Phoenix.HTML.Safe.to_iodata()
+
+  attr :native, :boolean, default: false
 
   def head_assets(assigns) do
     assigns =
@@ -32,24 +37,13 @@ defmodule DawarichWeb.AchievementPublicHTML do
       :for={name <- ~w(tailwind inter-font application)}
       rel="stylesheet"
       href={Assets.stylesheet_path(name <> ".css")}
-      data-turbo-track="reload"
+      data-turbo-track={!@native && "reload"}
     />
-    <script
-      :if={!@embed}
-      id="i18n-translations"
-      type="application/json"
-      data-turbo-track="reload"
-      phx-no-format
-    ><%= Phoenix.HTML.raw(translations(@locale)) %></script>
-    <script type="importmap" data-turbo-track="reload" phx-no-format><%= Phoenix.HTML.raw(importmap()) %></script>
-    <script type="module">
-      import "application"
-    </script>
     <link
       :for={name <- ~w(achievements achievements_spectral achievements_unlocks)}
       rel="stylesheet"
       href={Assets.stylesheet_path(name <> ".css")}
-      data-turbo-track="reload"
+      data-turbo-track={!@native && "reload"}
     />
     <meta property="og:title" content={@view.name <> " — Dawarich"} />
     <meta property="og:description" content={@view.description} />

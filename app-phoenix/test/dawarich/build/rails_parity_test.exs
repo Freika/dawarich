@@ -12,7 +12,7 @@ defmodule Dawarich.Build.RailsParityTest do
   @importmap "285e1582c34cd0077430983506cd849ed9c8a704b9e2a0316a54d240aee46aa6"
   @assets "f5eac41c61aea9ec2d70f4d9c33c45eaeb7a48694d658e1a6de8ddae71fa172a"
   @manifest "3a7b4171d9c9173a2c4b48e28efde792e1b4259fb7d04c5b53915e1627d6f07f"
-  @css "cf5be8cbb42ea4962ebf17485c52c3de08c39905bb887e5cbe4b7c9850fb36bf"
+  @css "7fe726391c762506343841c6025a6ba5bc32dc1e0341b38d1150ed67873ff227"
 
   setup_all do
     root = Build.root()

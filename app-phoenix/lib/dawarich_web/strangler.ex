@@ -1,5 +1,4 @@
 defmodule DawarichWeb.Strangler do
-  @moduledoc false
   @behaviour Plug
 
   import Plug.Conn, only: [get_req_header: 2, halt: 1]
@@ -8,18 +7,7 @@ defmodule DawarichWeb.Strangler do
 
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
-  @page_pipelines [
-    :browser,
-    :insights,
-    :rails_frame,
-    :sharing,
-    :sharing_unlock,
-    :achievement_public,
-    :trial_resume,
-    :admin_writes,
-    :trial_welcome,
-    :public_home
-  ]
+  @page_pipelines ~w(browser insights rails_frame sharing sharing_unlock achievement_public trial_resume admin_writes trial_welcome public_home)a
   @keys %{"s" => "sharing", "invitations" => "family"}
 
   @constraints %{
@@ -166,6 +154,9 @@ defmodule DawarichWeb.Strangler do
     case Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host) do
       :error ->
         false
+
+      %{native_page: true} ->
+        true
 
       %{pipe_through: pipelines} = route ->
         not handed_back?(conn.path_info, route) and slice_owned?(route, conn) and

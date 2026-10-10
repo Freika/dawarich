@@ -21,7 +21,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     "onclick=",
     "onchange="
   ]
-  @sessions [:native_pages, :native_admin, :native_background]
+  @sessions [:native_pages, :native_admin, :native_background, :native_data]
   @secret_free_change_forms ["integration-settings"]
 
   setup do
@@ -59,6 +59,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       }
     ])
 
+    Dawarich.Test.StatsSeeds.digest!(user.id, %{year: 2024})
     %{user: user}
   end
 
@@ -92,7 +93,11 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     end)
     |> Enum.map(fn %{path: path} ->
       id = if String.starts_with?(path, "/settings/users"), do: "8411", else: "84111"
-      String.replace(path, ":id", id)
+
+      path
+      |> String.replace(":id", id)
+      |> String.replace(":year", "2024")
+      |> String.replace(":key", "country_de")
     end)
   end
 

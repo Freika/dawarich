@@ -4,6 +4,7 @@ defmodule DawarichWeb.SharedLinkPage do
 
   import Plug.Conn
 
+  alias Dawarich.Sharing.Delivery
   alias Dawarich.SharedLinks
   alias Dawarich.SharedLinks.FamilyAudience
   alias DawarichWeb.{LayoutAssigns, RailsSession, RequestURL, SharedLinkCookie, SharedPages}
@@ -73,6 +74,23 @@ defmodule DawarichWeb.SharedLinkPage do
           |> Body.replay("shared link page")
 
         page ->
+          allowed = fn current, clock ->
+            FamilyAudience.accessible?(
+              current,
+              DawarichWeb.RailsAuth.delivery_user(conn, clock),
+              clock
+            ) and
+              SharedLinkCookie.unlocked?(conn, current, clock)
+          end
+
+          target = {:link, link, allowed}
+
+          admitted =
+            Delivery.admit(target, now,
+              before_admission: conn.private[:dawarich_before_admission] || fn -> :ok end
+            )
+
+          conn = put_private(conn, :public_delivery, {target, admitted})
           SharedLinks.touch!(link.id, now)
           render(conn, 200, page_assigns(page, link))
       end
@@ -120,7 +138,19 @@ defmodule DawarichWeb.SharedLinkPage do
         do: RailsSession.put(conn, conn.private[:dawarich_rails_session_changes] || %{}),
         else: conn
 
-    respond(conn, status, html)
+    if status == 200 do
+      {target, admitted} = conn.private.public_delivery
+
+      case Delivery.deliver(target, admitted, html,
+             clock: conn.private[:dawarich_clock],
+             after_read: conn.private[:dawarich_before_delivery] || fn -> :ok end
+           ) do
+        {:ok, html} -> respond(conn, status, html)
+        _ -> render(conn, 404, %{page: :not_found})
+      end
+    else
+      respond(conn, status, html)
+    end
   end
 
   defp respond(conn, 200, html) do

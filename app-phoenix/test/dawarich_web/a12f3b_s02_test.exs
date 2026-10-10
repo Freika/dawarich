@@ -398,7 +398,8 @@ defmodule DawarichWeb.A12f3bS02Test do
   end
 
   @tag a12f3b_case: "S02F1"
-  test "zone expansion between filtering and fingerprinting cannot poison thumbnail grants", c do
+  test "zone expansion during shared public delivery refuses payloads and cannot poison thumbnail grants",
+       c do
     for entry <- [:list, :cold_thumbnail] do
       Repo.query!("UPDATE tags SET privacy_radius_meters=100 WHERE user_id=$1", [c.owner])
       configure(c, [asset("public-0", "52.5", "13.4")])
@@ -422,7 +423,7 @@ defmodule DawarichWeb.A12f3bS02Test do
 
       on_exit(fn -> :telemetry.detach(handler) end)
       action = if entry == :list, do: "photos", else: "photos/public-0/thumbnail?source=immich"
-      assert {200, _, _} = response(c, link, action)
+      assert {404, _, _} = response(c, link, action)
       assert_receive {:zone_expanded, owner}
       assert owner == c.owner
       :telemetry.detach(handler)

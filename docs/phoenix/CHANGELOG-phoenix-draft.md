@@ -142,3 +142,19 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 
 - Refuse native Place edits/removal when corrupt associations would change another owner's data. [FRB-087](fixed-rails-bugs.md#frb-087--corrupt-place-removal-changes-another-owners-graph)
 - FRB-088: Opening Places with array-valued account settings now shows a safe native refusal instead of crashing authentication/navigation; unsupported commands have no effects.
+
+## Native data pages (milestone 5)
+
+- Keep mobile and desktop family-sharing indicators independently addressable and current. [FRB-NATIVE-M5-FAMILY-INDICATOR](fixed-rails-bugs.md#frb-native-m5-family-indicator--duplicate-family-navbar-ids)
+
+- Recheck public sharing and owner state before returning prepared native report data. [FRB-NATIVE-M5-PUBLIC-DELIVERY](fixed-rails-bugs.md#frb-native-m5-public-delivery--revoked-report-can-finish-an-in-flight-read)
+
+- Recheck achievement sharing and owner existence before delivering prepared public badges. [FRB-NATIVE-M5-ACHIEVEMENT-DELIVERY](fixed-rails-bugs.md#frb-native-m5-achievement-delivery--revoked-achievement-can-finish-an-in-flight-read)
+
+- Extend public achievement delivery admission to PNG rendering, warmed OG images, and the final native/retained HTML response. FRB-NATIVE-M5-ACHIEVEMENT-DELIVERY.
+
+- Evaluate public report expiry at delivery, and re-admit final shared-link HTML, map responses, cached photo payloads and shared APIs through one check. FRB-NATIVE-M5-PUBLIC-DELIVERY.
+
+- Bind shared-link HTML/API admission to the exact link and privacy flags used for preparation, refusing flag changes before the initial snapshot. FRB-NATIVE-M5-PUBLIC-DELIVERY.
+
+- Revalidate the original signed family viewer at HTML delivery after password changes, login locks or deletion, retaining remember-cookie policy. FRB-NATIVE-M5-PUBLIC-DELIVERY.

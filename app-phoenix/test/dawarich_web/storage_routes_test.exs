@@ -160,13 +160,33 @@ defmodule DawarichWeb.StorageRoutesTest do
           "www.example.com"
         )
 
-      assert route.pipe_through == [:browser, :rails_user]
-      assert {_, _, opts, %{name: :rails_pages, extra: extra}} = route.phoenix_live_view
+      assert route.pipe_through ==
+               if(route[:native_page],
+                 do: [:native_data_request, :browser, :rails_user],
+                 else: [:browser, :rails_user]
+               )
+
+      native = path in ~w(/stats /stats/2024 /digests /digests/2024 /points /insights)
+
+      expected =
+        cond do
+          native -> :native_data
+          String.starts_with?(path, "/trips") -> :trips_map_dependency
+          true -> :rails_pages
+        end
+
+      assert {_, _, opts, %{name: ^expected, extra: extra}} = route.phoenix_live_view
       assert opts[:container] == {:div, class: "contents"}
       assert extra.session == {DawarichWeb.NativeAuth, :live_session, []}
       assert extra.layout == {DawarichWeb.Layouts, :app}
-      assert extra.root_layout == {DawarichWeb.Layouts, :root}
-      assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.LiveAuth, :default}]
+      assert extra.root_layout == {DawarichWeb.Layouts, if(native, do: :native_root, else: :root)}
+
+      assert Enum.map(extra.on_mount, & &1.id) == [
+               if(native,
+                 do: {DawarichWeb.NativeDataAuth, :require_user},
+                 else: {DawarichWeb.LiveAuth, :default}
+               )
+             ]
     end
   end
 

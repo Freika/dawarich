@@ -28,19 +28,6 @@ defmodule DawarichWeb.PageRoutes do
         end
       end
 
-      scope "/" do
-        pipe_through :insights
-
-        live_session :insights_details,
-          session: {DawarichWeb.InsightsFrame, :live_session, []},
-          on_mount: DawarichWeb.InsightsFrameAuth,
-          layout: {DawarichWeb.Layouts, :app} do
-          live "/insights/details", DawarichWeb.InsightsLive.Details, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.InsightsGate, :owned?}}
-        end
-      end
-
       pipeline :native_navigation do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL

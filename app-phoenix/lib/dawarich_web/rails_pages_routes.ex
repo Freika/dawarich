@@ -69,41 +69,7 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/exports", DawarichWeb.ExportsLive.Index, :index,
             container: {:div, class: "contents"}
 
-          live "/stats", DawarichWeb.StatsLive.Index, :index, container: {:div, class: "contents"}
-
-          live "/stats/:year", DawarichWeb.StatsLive.Year, :show,
-            container: {:div, class: "contents"}
-
           live "/stats/:year/:month", DawarichWeb.StatsLive.Month, :month,
-            container: {:div, class: "contents"}
-
-          live "/digests", DawarichWeb.DigestsLive.Index, :index,
-            container: {:div, class: "contents"}
-
-          live "/digests/:year", DawarichWeb.DigestsLive.Show, :show,
-            container: {:div, class: "contents"}
-
-          live "/trips", DawarichWeb.TripsLive.Index, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :index?}}
-
-          live "/trips/new", DawarichWeb.TripsLive.Form, :new,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
-
-          live "/trips/:id/edit", DawarichWeb.TripsLive.Form, :edit,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
-
-          live "/trips/:id", DawarichWeb.TripsLive.Show, :show,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :show?}}
-
-          live "/points", DawarichWeb.PointsLive.Index, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.MapDataGate, :points?}}
-
-          live "/insights", DawarichWeb.InsightsLive.Index, :index,
             container: {:div, class: "contents"}
         end
       end

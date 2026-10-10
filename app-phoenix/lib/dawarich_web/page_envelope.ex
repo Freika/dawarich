@@ -272,7 +272,7 @@ defmodule DawarichWeb.PageEnvelope do
   defp frame_header(conn, route) do
     neutral =
       route.plug in [
-        DawarichWeb.AchievementPublicPage,
+        DawarichWeb.NativePublicPage,
         DawarichWeb.TrialWelcome,
         DawarichWeb.TrialUpgrade,
         DawarichWeb.HomeDispatch,

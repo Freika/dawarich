@@ -3,7 +3,7 @@ defmodule DawarichWeb.AchievementPublicQueryTest do
   import Phoenix.ConnTest
   import Plug.Conn
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{AchievementPublicImage, AchievementPublicPage, Endpoint}
+  alias DawarichWeb.{AchievementPublicImage, Endpoint}
 
   @uuid "a12f0000-0000-4000-8000-000000081474"
   @path "/shared/achievements/" <> @uuid
@@ -127,7 +127,7 @@ defmodule DawarichWeb.AchievementPublicQueryTest do
 
     case {endpoint, dispatch} do
       {_, :endpoint} -> Endpoint.call(conn, [])
-      {:card, :direct} -> AchievementPublicPage.call(conn, [])
+      {:card, :direct} -> Endpoint.call(conn, [])
       {:image, :direct} -> AchievementPublicImage.call(conn, render: fn _ -> "probe-png" end)
     end
   end

@@ -68,17 +68,17 @@ defmodule DawarichWeb.PageRoutesTest do
     end
 
     details = info("/insights/details")
-    assert details.pipe_through == [:insights]
+    assert details.pipe_through == [:native_data_request, :browser, :rails_user]
     assert details.plug == Phoenix.LiveView.Plug
-    assert details.plug_opts == :index
+    assert details.plug_opts == :details
     assert details.path_params == %{}
-    assert details.rails_gate == {DawarichWeb.InsightsGate, :owned?}
+    refute Map.has_key?(details, :rails_gate)
 
-    assert {DawarichWeb.InsightsLive.Details, :index, _, %{name: :insights_details, extra: extra}} =
+    assert {DawarichWeb.InsightsLive.NativePage, :details, _, %{name: :native_data, extra: extra}} =
              details.phoenix_live_view
 
-    assert extra.session == {DawarichWeb.InsightsFrame, :live_session, []}
-    assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.InsightsFrameAuth, :default}]
+    assert extra.session == {DawarichWeb.NativeAuth, :live_session, []}
+    assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.NativeDataAuth, :require_user}]
     assert extra.layout == {DawarichWeb.Layouts, :app}
   end
 

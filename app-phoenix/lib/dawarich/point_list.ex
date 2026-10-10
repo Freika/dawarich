@@ -3,7 +3,6 @@ defmodule Dawarich.PointList do
 
   alias Dawarich.{Entitlements, PointListWindow, Repo, TripSettings, UserTimeZone}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.TripsGate
 
   @per_page 50
   @max_page div(9_223_372_036_854_775_807, @per_page) + 1
@@ -38,19 +37,46 @@ defmodule Dawarich.PointList do
   end
 
   def load(user, params, now, opts) do
-    page = TripsGate.page_number(params["page"])
+    case normalize(params) do
+      {:ok, query} -> load_query(user, query, now, opts)
+      _ -> :rails
+    end
+  end
 
+  def normalize(params, opts \\ [])
+
+  def normalize(params, opts) when is_map(params) do
+    page = max(Dawarich.RubyInteger.to_i(params["page"]), 1)
+
+    if (valid_params?(params) or (opts[:native] == true and valid_native_params?(params, opts))) and
+         page <= @max_page and
+         Dawarich.RubyInteger.to_i(params["import_id"]) in -9_223_372_036_854_775_808..9_223_372_036_854_775_807 do
+      params =
+        params
+        |> Map.put("page", to_string(page))
+        |> Map.put("order_by", String.downcase(params["order_by"] || "desc"))
+
+      {:ok, %{params: params, page: page}}
+    else
+      {:error, :invalid_input}
+    end
+  end
+
+  def normalize(_, _), do: {:error, :invalid_input}
+
+  def load_query(user, %{params: params, page: page}, now, opts) do
     with true <-
-           valid_params?(params) and page <= @max_page and
+           page <= @max_page and
              settings?(Dawarich.UserSettings.get(user)),
-         {:ok, imports} <- imports(user.id),
+         {:ok, imports} <- imports(user.id, params["import_id"], opts),
          {:ok, import_id} <- selected_import(params["import_id"], imports),
          %{} = window <-
            PointListWindow.build(
              params,
              Dawarich.UserSettings.get(user),
              now,
-             import_range(user.id, import_id)
+             import_range(user.id, import_id),
+             opts
            ),
          true <- TripSettings.zone?(Dawarich.UserSettings.get(user), window.zone) do
       cutoff = cutoff(user, now, opts)
@@ -92,6 +118,25 @@ defmodule Dawarich.PointList do
       Enum.all?(~w(start_at end_at), &supported_timestamp?(params[&1]))
   end
 
+  defp valid_native_params?(params, opts) do
+    Enum.all?(params, fn {key, value} ->
+      key in @filters and (is_nil(value) or is_binary(value))
+    end) and
+      params["order_by"] in [nil, "asc", "desc", "ASC", "DESC"] and
+      Enum.all?(~w(start_at end_at), fn key ->
+        value = params[key]
+
+        supported_timestamp?(value) or
+          match?(
+            {:ok, _},
+            Dawarich.MapApi.RailsDate.parse(
+              value,
+              DateTime.to_date(Keyword.get(opts, :now, DateTime.utc_now()))
+            )
+          )
+      end)
+  end
+
   defp supported_timestamp?(value) do
     cond do
       Ruby.blank?(value) -> true
@@ -130,7 +175,29 @@ defmodule Dawarich.PointList do
 
   defp settings?(_), do: false
 
-  defp imports(user_id) do
+  defp imports(user_id, selected, opts) do
+    if opts[:native] do
+      search = Keyword.get(opts, :import_search, "")
+
+      rows =
+        Repo.query!(
+          """
+          SELECT id, name, created_at FROM public.imports
+          WHERE user_id=$1 AND (name ILIKE $2 OR id=$3)
+          ORDER BY (id=$3) DESC NULLS LAST, created_at DESC
+          LIMIT 50
+          """,
+          [user_id, "%" <> search <> "%", Dawarich.RubyInteger.to_i(selected)],
+          log: false
+        ).rows
+
+      {:ok, Enum.map(rows, fn [id, name, at] -> %{id: id, name: name, created_at: at} end)}
+    else
+      all_imports(user_id)
+    end
+  end
+
+  defp all_imports(user_id) do
     rows =
       Repo.query!(
         "SELECT id, name, created_at FROM public.imports WHERE user_id = $1 ORDER BY created_at DESC",

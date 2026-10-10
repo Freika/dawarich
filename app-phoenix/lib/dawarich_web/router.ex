@@ -6,6 +6,9 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.A8Routes
   import DawarichWeb.PageRoutes
   import DawarichWeb.A10Routes
+  require DawarichWeb.TripsNativeRoutes
+  import DawarichWeb.NativePublicRoutes
+  import DawarichWeb.NativeDataRoutes
   import DawarichWeb.NativeAdminRoutes
   import DawarichWeb.CableRoutes
   import DawarichWeb.ApiRoutes
@@ -42,27 +45,6 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.PageEnvelope, :layout
     plug :protect_from_forgery
     plug DawarichWeb.RailsHeaders
-  end
-
-  pipeline :insights do
-    plug DawarichWeb.HostAuthorization
-    plug :accepts, ["html"]
-    plug DawarichWeb.ForceSSL
-    plug DawarichWeb.RateLimit
-    plug :fetch_query_params
-    plug DawarichWeb.InsightsVisit
-    plug DawarichWeb.RailsAuth
-    plug :phoenix_session
-    plug :fetch_session
-    plug :fetch_live_flash
-    plug DawarichWeb.Locale
-    plug DawarichWeb.LayoutAssigns
-    plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
-    plug DawarichWeb.PageEnvelope, :layout
-    plug :protect_from_forgery
-    plug DawarichWeb.RailsHeaders
-    plug DawarichWeb.InsightsFrame
-    plug DawarichWeb.RequireUser
   end
 
   metrics_routes()
@@ -213,6 +195,9 @@ defmodule DawarichWeb.Router do
 
   integration_form_routes()
   a10_routes()
+  native_public_routes()
+  native_data_routes()
+  DawarichWeb.TripsNativeRoutes.trips_routes()
   native_admin_routes()
   trial_home_routes()
   settings_misc_routes()
@@ -239,9 +224,6 @@ defmodule DawarichWeb.Router do
 
   scope "/" do
     pipe_through :sharing
-
-    get "/shared/digest/:uuid", DawarichWeb.SharedStatsPage, :digest,
-      metadata: %{rails_key: "shared"}
 
     get "/shared/month/:uuid", DawarichWeb.SharedStatsPage, :month,
       metadata: %{rails_key: "shared"}

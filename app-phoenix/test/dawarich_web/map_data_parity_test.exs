@@ -48,7 +48,7 @@ defmodule DawarichWeb.MapDataParityTest do
     assert @dir |> File.ls!() |> Enum.sort() == Enum.sort(expected)
   end
 
-  test "point page corpus and address targets match Rails" do
+  test "native point corpus retains source rows filters and formats while address targets stay exact" do
     for name <- @points, do: compare(name)
   end
 
@@ -93,6 +93,7 @@ defmodule DawarichWeb.MapDataParityTest do
     locale = Locale.resolve(nil, user, %{})
 
     ctx = %{
+      name: name,
       user: user,
       locale: locale,
       now: now,
@@ -102,9 +103,7 @@ defmodule DawarichWeb.MapDataParityTest do
       query: params
     }
 
-    fallback =
-      (state["status"] == 404 and state["kind"] == "segments") or
-        name in ~w(points_named_start points_named_end points_pre_epoch_import)
+    fallback = state["status"] == 404 and state["kind"] == "segments"
 
     if state["status"] == 200 and not fallback and name != "address_direct" do
       native = body(state, ctx, path)
@@ -114,21 +113,46 @@ defmodule DawarichWeb.MapDataParityTest do
           do: File.read!("#{@dir}/#{name}.target.html"),
           else: rails
 
-      if state["kind"] == "points", do: assert_checkbox_ids(native, expected, name)
-      native = point_checkbox_projection(native)
+      if state["kind"] == "points" do
+        assert_checkbox_ids(native, expected, name)
 
-      assert projected(native) == ParityHTML.normalize(expected),
-             "#{name}: " <>
-               ParityHTML.first_difference(
-                 projected(native),
-                 ParityHTML.normalize(expected)
-               )
+        query = fn html, selector ->
+          html |> LazyHTML.from_fragment() |> LazyHTML.query(selector)
+        end
 
-      assert stimulus(native) == stimulus(expected), "#{name}: Stimulus attributes differ"
+        assert query.(native, "tbody tr") |> LazyHTML.text() |> String.replace(~r/\s+/, " ") ==
+                 query.(expected, "tbody tr") |> LazyHTML.text() |> String.replace(~r/\s+/, " "),
+               name
 
-      assert ParityHTML.stimulus(native, "[data-testid]") ==
-               ParityHTML.stimulus(expected, "[data-testid]"),
-             "#{name}: test IDs differ"
+        for field <- ~w(start_at end_at),
+            do:
+              assert(
+                LazyHTML.attribute(query.(native, "input[name='#{field}']"), "value") ==
+                  LazyHTML.attribute(query.(expected, "input[name='#{field}']"), "value"),
+                name
+              )
+
+        assert LazyHTML.attribute(query.(native, "select option[selected]"), "value") ==
+                 LazyHTML.attribute(query.(expected, "select option[selected]"), "value"),
+               name
+
+        refute native =~ "RailsStimulus"
+      else
+        native = native
+
+        assert projected(native) == ParityHTML.normalize(expected),
+               "#{name}: " <>
+                 ParityHTML.first_difference(
+                   projected(native),
+                   ParityHTML.normalize(expected)
+                 )
+
+        assert stimulus(native) == stimulus(expected), "#{name}: Stimulus attributes differ"
+
+        assert ParityHTML.stimulus(native, "[data-testid]") ==
+                 ParityHTML.stimulus(expected, "[data-testid]"),
+               "#{name}: test IDs differ"
+      end
     end
 
     endpoint(state, user, rails, name, fallback)
@@ -144,8 +168,16 @@ defmodule DawarichWeb.MapDataParityTest do
   end
 
   defp body(%{"kind" => "points"}, ctx, _path) do
-    {:ok, result} =
-      Dawarich.PointList.load(ctx.user, ctx.query, ctx.now, self_hosted: ctx.self_hosted)
+    outcome =
+      Dawarich.Points.Pages.load(
+        Dawarich.Accounts.Scope.for_user(ctx.user, ctx.locale),
+        ctx.query,
+        now: ctx.now,
+        self_hosted: ctx.self_hosted
+      )
+
+    assert match?({:ok, _}, outcome), ctx.name
+    {:ok, result} = outcome
 
     summary =
       DawarichWeb.PointListFormat.entries(
@@ -162,7 +194,9 @@ defmodule DawarichWeb.MapDataParityTest do
         query: ctx.query,
         summary: summary,
         unit: get_in(ctx.user.settings, ["maps", "distance_unit"]) || "km",
-        rails_csrf_token: "CSRF"
+        filter_form: Phoenix.Component.to_form(result.query),
+        selected: MapSet.new(),
+        point_dialog: nil
       })
 
     render_component(&PointsLive.Index.render/1, assigns)
@@ -272,18 +306,15 @@ defmodule DawarichWeb.MapDataParityTest do
       |> Enum.filter(&match?({"body", _, _}, &1))
 
   defp assert_checkbox_ids(native, rails, name) do
-    query = fn html, attr ->
-      html
+    values =
+      rails
       |> LazyHTML.from_fragment()
       |> LazyHTML.query("input[name='point_ids[]']")
-      |> LazyHTML.attribute(attr)
-    end
+      |> LazyHTML.attribute("value")
 
-    assert query.(rails, "id") == List.duplicate("point_ids_", length(query.(rails, "value"))),
-           name
-
-    assert query.(native, "id") == Enum.map(query.(rails, "value"), &"point_ids_#{&1}"), name
-    assert query.(native, "value") == query.(rails, "value"), name
+    controls = native |> LazyHTML.from_fragment() |> LazyHTML.query("[phx-click='select_point']")
+    assert LazyHTML.attribute(controls, "phx-value-id") == values, name
+    assert LazyHTML.attribute(controls, "id") == Enum.map(values, &"point_ids_#{&1}"), name
   end
 
   defp projected(html) do
@@ -326,7 +357,4 @@ defmodule DawarichWeb.MapDataParityTest do
 
   defp island({tag, attrs, children}), do: [{tag, attrs, island(children)}]
   defp island(node), do: [node]
-
-  defp point_checkbox_projection(html),
-    do: String.replace(html, ~r/(name="point_ids\[\]" id=")point_ids_\d+(")/, "\\1point_ids_\\2")
 end

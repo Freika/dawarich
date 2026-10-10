@@ -4,6 +4,7 @@ defmodule DawarichWeb.AchievementPublic do
   import Plug.Conn
   alias Dawarich.Achievements.{PublicCard, UiText}
   alias Dawarich.Auth.Admission
+  alias Dawarich.Sharing.Delivery
   alias DawarichWeb.{Locale, RailsAuth, RailsCsrf, RailsProxy, RailsSession}
 
   @markers ~w(client aff via referral invitation_token pending_import_ticket dawarich_client)
@@ -31,12 +32,16 @@ defmodule DawarichWeb.AchievementPublic do
          true <- not Map.has_key?(params, "locale") or params["locale"] in Locale.locales(),
          true <- session?(conn),
          [_, uuid] <- Regex.run(@path, conn.request_path),
+         conn = Locale.call(%{conn | params: params, query_params: params}, []),
+         target = {:achievement, Keyword.get(opts, :repo, Dawarich.Repo), uuid},
+         admitted = Delivery.admit(target, DateTime.utc_now()),
          result when result != :handoff <-
            PublicCard.load(Keyword.get(opts, :repo, Dawarich.Repo), uuid, %{
              viewer_id: conn.assigns.current_user && conn.assigns.current_user.id,
              requested_locale: params["locale"]
            }),
          true <- representable?(conn, params, result) do
+      conn = put_private(conn, :public_delivery, {target, admitted})
       {:ok, %{conn | params: params, query_params: params}, result}
     else
       _ -> {:handoff, conn}

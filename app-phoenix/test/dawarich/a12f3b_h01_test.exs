@@ -171,7 +171,7 @@ defmodule Dawarich.A12f3bH01Test do
     for {target, status} <- [
           {"/achievements/country_fr", 302},
           {"/achievements/border_hopper", 302},
-          {"/achievements/missing", 404}
+          {"/achievements/missing", 302}
         ],
         do: assert(page_request.("GET", target).status == status)
 

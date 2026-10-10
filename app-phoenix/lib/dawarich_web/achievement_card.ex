@@ -3,6 +3,7 @@ defmodule DawarichWeb.AchievementCard do
   use DawarichWeb, :html
   import DawarichWeb.Icon, only: [icon: 1]
 
+  attr :native, :boolean, default: false
   attr :card, :map, required: true
   attr :locale, :string, required: true
   attr :small, :boolean, default: false
@@ -66,13 +67,13 @@ defmodule DawarichWeb.AchievementCard do
         @small && "ach-spectral-wrap--sm",
         @modal && "ach-card-wrap--expandable"
       ]}
-      data-controller="achievement-card"
+      data-controller={!@native && "achievement-card"}
       data-achievement-card-locked-value={to_string(@card["locked"])}
       data-achievement-card-key-value={@card["geography_key"] || @card["place"] || @card["name"]}
       data-achievement-card-rarity-value={@card["rarity"]}
       data-achievement-card-paper-value={asset("achievements/paper-pressed-fiber-v2.webp")}
       data-achievement-card-foil-value={asset("achievements/foil-stamped-grain-v4.webp")}
-      data-action={@actions}
+      data-action={!@native && @actions}
       role={@modal && "button"}
       tabindex={@modal && "0"}
       aria-label={
@@ -90,7 +91,11 @@ defmodule DawarichWeb.AchievementCard do
         aria-label={Enum.join([@card["name"], @rarity, @metric, @status], ", ")}
       >
         <div class="card-light" aria-hidden="true"></div>
-        <div class="spectral-material" data-achievement-card-target="material" aria-hidden="true">
+        <div
+          class="spectral-material"
+          data-achievement-card-target={!@native && "material"}
+          aria-hidden="true"
+        >
           <%= if @card["silhouette"] do %>
             <div class="geo-stage spectral-fallback">
               <svg

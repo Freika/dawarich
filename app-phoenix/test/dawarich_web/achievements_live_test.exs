@@ -49,22 +49,22 @@ defmodule DawarichWeb.AchievementsLiveTest do
   defp live_as(user, path),
     do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
-  test "sharing controls and the open card modal stay in one browser owned island", %{user: user} do
+  test "native sharing dialog selects and revokes the owned card", %{user: user} do
     progress(%{"earned" => %{"DE-BY" => "2026-07-19T10:00:00Z"}})
     {:ok, view, _html} = live_as(user, "/achievements/country_de")
-    island = "#phx-achievements[phx-update='ignore']"
-    assert has_element?(view, island <> " dialog.ach-modal")
-
-    for target <- ~w(featured createForm disableForm publicLink) do
-      assert has_element?(view, island <> " [data-card-modal-target='#{target}']")
-    end
+    render_click(view, "select_card", %{"key" => "country_de"})
+    assert has_element?(view, "#achievement-dialog [data-selected-key=country_de]")
+    render_click(view, "share_card", %{"enabled" => "true"})
+    assert has_element?(view, "#achievement-share-output[value*='/shared/achievements/']")
+    render_click(view, "share_card", %{"enabled" => "false"})
+    refute has_element?(view, "#achievement-share-output")
   end
 
   test "native collection renders and connects with missing exploration untouched", %{user: user} do
     {:ok, view, html} = live_as(user, "/achievements")
     assert html =~ "data-phx-main" and html =~ "achievement-collection"
     assert has_element?(view, ".ach-getting-started a[href='/imports/new']")
-    assert has_element?(view, ".ach-side--desktop .ach-side-link--active[href='/achievements']")
+    assert has_element?(view, "a[data-phx-link=patch][href='/achievements']")
 
     assert [[0]] =
              Dawarich.Repo.query!(
@@ -72,7 +72,8 @@ defmodule DawarichWeb.AchievementsLiveTest do
                [user.id]
              ).rows
 
-    assert html =~ ~s(data-controller="achievement-unlocks")
+    refute html =~ "data-controller="
+    assert html =~ ~s(phx-hook="AchievementUnlocks")
   end
 
   for locale <- ["en", "de"] do
@@ -114,44 +115,40 @@ defmodule DawarichWeb.AchievementsLiveTest do
                  )
       end
 
-      assert Enum.count(LazyHTML.query(actual, ".ach-child-grid .ach-card-wrap")) == 12
+      assert Enum.count(LazyHTML.query(actual, "#native-achievements .ach-grid button")) == 13
 
       assert LazyHTML.query(actual, ".ach-page .ach-silhouette-svg path")
              |> LazyHTML.attribute("d") ==
                LazyHTML.query(expected, ".ach-silhouette-svg path") |> LazyHTML.attribute("d")
 
-      assert has_element?(
-               view,
-               "form.ach-collection-toolbar[method='get'] input[maxlength='100']"
-             )
-
-      assert has_element?(
-               view,
-               "form[action='/achievements/country_de/toggle_sharing'] input[name='_method'][value='patch']"
-             )
-
-      assert has_element?(view, "dialog.ach-modal [data-card-modal-target='stage']")
-      assert has_element?(view, ".ach-collection-pager a[rel='next']")
-      assert has_element?(view, ".ach-pagination a[rel='next'][href*='#collection']")
-      assert has_element?(view, ".ach-side-link--active[href='/achievements/continent_europe']")
+      assert has_element?(view, "#achievement-filter[phx-submit=filter] input[maxlength='100']")
+      render_click(view, "select_card", %{"key" => "country_de"})
+      assert has_element?(view, "#achievement-dialog [data-selected-key=country_de]")
+      assert has_element?(view, "a[rel=next][data-phx-link=patch]")
+      assert has_element?(view, "a[href='/achievements/continent_europe']")
       assert Enum.count(LazyHTML.query(actual, "meta[name='csrf-token']")) == 1
     end
   end
 
-  test "first GET celebration survives connected mount and second GET clears it", %{user: user} do
+  test "static achievement read stays unseen and connected acknowledgement is once only", %{
+    user: user
+  } do
     fixture = File.read!(Path.join(@root, "en-complete-first.json")) |> Jason.decode!()
     progress(fixture["seed_state"])
     {:ok, first, _} = live_as(user, "/achievements/country_de")
-    assert has_element?(first, ".ach-set-preview .ach-card-wrap--celebrate")
+    assert has_element?(first, "[data-celebrate=true]")
 
-    assert [["2026-07-19T12:00:00+02:00"]] =
+    assert [[stamp]] =
              Dawarich.Repo.query!(
                "SELECT state->'celebrated'->>'country_de' FROM achievement_progresses WHERE user_id=$1",
                [user.id]
              ).rows
 
+    assert {:ok, _, offset} = DateTime.from_iso8601(stamp)
+    assert offset == 7200
+
     {:ok, second, _} = live_as(user, "/achievements/country_de")
-    refute has_element?(second, ".ach-card-wrap--celebrate")
+    refute has_element?(second, "[data-celebrate=true]")
   end
 
   test "the connected mount reuses the silhouettes the first render built", %{user: user} do
@@ -181,81 +178,35 @@ defmodule DawarichWeb.AchievementsLiveTest do
       |> LazyHTML.query(".ach-silhouette-svg path")
       |> LazyHTML.attribute("d")
 
-  test "GET form serialization keeps unlocked region filters through connection", %{
-    user: user
-  } do
-    progress(%{
-      "earned" => %{"DE" => "2026-07-01T10:00:00Z", "DE-BY" => "2026-07-01T10:00:00Z"}
-    })
+  test "native filter submission keeps unlocked region values through connection", %{user: user} do
+    progress(%{"earned" => %{"DE" => "2026-07-01T10:00:00Z", "DE-BY" => "2026-07-01T10:00:00Z"}})
+    {:ok, view, _} = live_as(user, "/achievements/country_de")
+    render_submit(view, "filter", %{"q" => "", "status" => "unlocked"})
+    assert has_element?(view, "#achievement-status option[value=unlocked][selected]")
+
+    assert :sys.get_state(view.pid).socket.assigns.data.view.children |> Enum.map(& &1["name"]) ==
+             ["Bavaria"]
 
     conn =
       RailsUser.signed_in(user.id)
       |> RailsUser.connecting_as(user.id)
-      |> get("/achievements/country_de")
+      |> get("/achievements/country_de?status=unlocked")
 
-    html = html_response(conn, 200)
-    form = LazyHTML.from_document(html) |> LazyHTML.query("form.ach-collection-toolbar")
-    assert LazyHTML.attribute(form, "method") == ["get"]
-
-    assert LazyHTML.query(form, "select[name='status'] option[selected]")
-           |> LazyHTML.attribute("value") == ["all"]
-
-    {:ok, initial, _} = live(conn)
-    assert has_element?(initial, "select[name='status'] option[value='all'][selected]")
-
-    params =
-      form
-      |> LazyHTML.query("input[name], select[name]")
-      |> Enum.map(fn control ->
-        [name] = LazyHTML.attribute(control, "name")
-
-        value =
-          if name == "status",
-            do: "unlocked",
-            else: control |> LazyHTML.attribute("value") |> List.first("")
-
-        {name, value}
-      end)
-      |> Map.new()
-
-    assert params == %{"q" => "", "status" => "unlocked", "commit" => "Apply"}
-    [action] = LazyHTML.attribute(form, "action")
-    target = URI.parse(action).path <> "?" <> URI.encode_query(params)
-
-    filtered =
-      RailsUser.signed_in(user.id)
-      |> RailsUser.connecting_as(user.id)
-      |> get(target)
-
-    filtered_html = html_response(filtered, 200) |> LazyHTML.from_document()
-
-    assert LazyHTML.query(filtered_html, ".ach-child-grid .card-title") |> LazyHTML.text() ==
-             "Bavaria"
-
-    assert LazyHTML.query(filtered_html, "select[name='status'] option[selected]")
-           |> LazyHTML.attribute("value") == ["unlocked"]
-
-    {:ok, view, _} = live(filtered)
-    assert has_element?(view, ".ach-child-grid .card-title", "Bavaria")
-
-    assert render(view)
-           |> LazyHTML.from_document()
-           |> LazyHTML.query(".ach-child-grid .card-title")
-           |> Enum.count() == 1
-
-    assert has_element?(view, "select[name='status'] option[value='unlocked'][selected]")
+    {:ok, connected, _} = live(conn)
+    assert has_element?(connected, ".card-title", "Bavaria")
+    assert length(:sys.get_state(connected.pid).socket.assigns.data.view.children) == 1
   end
 
-  test "GET paging escaping and no-results reflect original filters", %{user: user} do
+  test "native URL paging escaping and no-results retain the source filters", %{user: user} do
     progress(%{"earned" => %{"DE" => "2026-07-19T10:00:00Z"}})
 
     {:ok, view, html} =
       live_as(user, "/achievements/continent_europe?q=%3Cscript%3E&status=locked")
 
-    assert has_element?(view, ".ach-empty[role='status']")
+    assert has_element?(view, "#native-achievements p[role=status]")
     assert has_element?(view, "input[name='q'][value='<script>']")
     refute html =~ "<script>"
-    assert has_element?(view, "a[href='/achievements/continent_europe#collection']")
+    assert has_element?(view, "#achievement-filter a[data-phx-link=patch]")
   end
 
   test "opaque achievement settings refuse before celebration writes on static join and fresh params",
@@ -289,8 +240,9 @@ defmodule DawarichWeb.AchievementsLiveTest do
 
       before = achievement_snapshot(user)
       conn = RailsUser.signed_in(user.id) |> get("/achievements/country_de")
-      assert conn.status == 422
-      assert conn.resp_body != ""
+      assert conn.status == 200
+      assert conn.resp_body =~ "role=\"alert\""
+      refute conn.resp_body =~ "data-testid=\"achievement-collection\""
       assert achievement_snapshot(user) == before
 
       Dawarich.Repo.query!("UPDATE users SET settings='{}'::jsonb WHERE id=$1", [user.id],
@@ -313,8 +265,9 @@ defmodule DawarichWeb.AchievementsLiveTest do
       )
 
       before = achievement_snapshot(user)
-      assert {:error, {:redirect, %{to: "/", flash: flash}}} = live(conn)
-      assert Phoenix.LiveView.Utils.verify_flash(@endpoint, flash)["alert"] != nil
+      assert {:ok, refused, html} = live(conn)
+      assert html =~ "role=\"alert\""
+      assert :sys.get_state(refused.pid).socket.assigns.data == nil
       assert achievement_snapshot(user) == before
 
       Dawarich.Repo.query!("UPDATE users SET settings='{}'::jsonb WHERE id=$1", [user.id],
@@ -334,8 +287,10 @@ defmodule DawarichWeb.AchievementsLiveTest do
       )
 
       before = achievement_snapshot(user)
-      render_patch(view, "/achievements/country_de?q=fresh")
-      assert_redirect(view, "/")
+      html = render_patch(view, "/achievements/country_de?q=fresh")
+      assert html =~ "role=\"alert\""
+      assert :sys.get_state(view.pid).socket.assigns.data == nil
+      refute has_element?(view, "[data-testid=achievement-collection]")
       assert achievement_snapshot(user) == before
     end
   end

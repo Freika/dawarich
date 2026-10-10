@@ -67,15 +67,15 @@ defmodule DawarichWeb.A9RoutesTest do
     {"/imports/:id", DawarichWeb.ImportsLive.Show, :show, {DawarichWeb.ImportsGate, :native?}},
     {"/imports", DawarichWeb.ImportsLive.Index, :index, nil},
     {"/exports", DawarichWeb.ExportsLive.Index, :index, nil},
-    {"/stats", DawarichWeb.StatsLive.Index, :index, nil},
-    {"/stats/:year", DawarichWeb.StatsLive.Year, :show, nil},
+    {"/stats", DawarichWeb.StatsLive.NativePage, :index, nil},
+    {"/stats/:year", DawarichWeb.StatsLive.NativePage, :year, nil},
     {"/stats/:year/:month", DawarichWeb.StatsLive.Month, :month, nil},
-    {"/digests", DawarichWeb.DigestsLive.Index, :index, nil},
-    {"/digests/:year", DawarichWeb.DigestsLive.Show, :show, nil},
+    {"/digests", DawarichWeb.DigestsLive.NativePage, :index, nil},
+    {"/digests/:year", DawarichWeb.DigestsLive.NativePage, :show, nil},
     {"/trips", DawarichWeb.TripsLive.Index, :index, {DawarichWeb.TripsGate, :index?}},
     {"/trips/:id", DawarichWeb.TripsLive.Show, :show, {DawarichWeb.TripsGate, :show?}},
     {"/places", DawarichWeb.PlacesLive.Index, :index, nil},
-    {"/insights", DawarichWeb.InsightsLive.Index, :index, nil},
+    {"/insights", DawarichWeb.InsightsLive.NativePage, :index, nil},
     {"/family", DawarichWeb.FamiliesLive.Show, :show, {DawarichWeb.FamilyGate, :show?}},
     {"/family/new", DawarichWeb.FamiliesLive.Form, :new, {DawarichWeb.FamilyGate, :new?}},
     {"/family/edit", DawarichWeb.FamiliesLive.Form, :edit, {DawarichWeb.FamilyGate, :edit?}}
@@ -106,16 +106,30 @@ defmodule DawarichWeb.A9RoutesTest do
 
       assert {info.route, info.plug, info.plug_opts, info.pipe_through, info[:slice],
               info[:rails_gate]} ==
-               {path, Phoenix.LiveView.Plug, action, [:browser, :rails_user], nil, gate}
+               {path, Phoenix.LiveView.Plug, action,
+                if(info[:native_page],
+                  do: [:native_data_request, :browser, :rails_user],
+                  else: [:browser, :rails_user]
+                ), nil, gate}
 
       assert {^view, ^action, opts, session} = info.phoenix_live_view
       assert opts == [action: action, router: Router, container: {:div, class: "contents"}]
+
+      native_data =
+        view in [
+          DawarichWeb.StatsLive.NativePage,
+          DawarichWeb.InsightsLive.NativePage,
+          DawarichWeb.DigestsLive.NativePage
+        ]
+
       family = String.starts_with?(path, "/family")
       native = path == "/places"
 
       expected_session =
         cond do
           native -> :native_pages
+          native_data -> :native_data
+          String.starts_with?(path, "/trips") -> :trips_map_dependency
           family -> :family_pages
           true -> :rails_pages
         end
@@ -124,9 +138,17 @@ defmodule DawarichWeb.A9RoutesTest do
 
       hooks = [
         %{
-          id: {DawarichWeb.LiveAuth, :default},
+          id:
+            if(native_data,
+              do: {DawarichWeb.NativeDataAuth, :require_user},
+              else: {DawarichWeb.LiveAuth, :default}
+            ),
           stage: :mount,
-          function: &DawarichWeb.LiveAuth.on_mount/4
+          function:
+            if(native_data,
+              do: &DawarichWeb.NativeDataAuth.on_mount/4,
+              else: &DawarichWeb.LiveAuth.on_mount/4
+            )
         }
       ]
 
@@ -161,7 +183,8 @@ defmodule DawarichWeb.A9RoutesTest do
                  {if(family, do: DawarichWeb.RailsAuth, else: DawarichWeb.NativeAuth),
                   :live_session, []},
                on_mount: hooks,
-               root_layout: {DawarichWeb.Layouts, if(native, do: :native_root, else: :root)},
+               root_layout:
+                 {DawarichWeb.Layouts, if(native_data or native, do: :native_root, else: :root)},
                layout: {DawarichWeb.Layouts, :app}
              }
     end

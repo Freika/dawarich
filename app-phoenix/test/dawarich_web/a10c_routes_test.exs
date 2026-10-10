@@ -21,16 +21,7 @@ defmodule DawarichWeb.A10cRoutesTest do
     upstream = Application.get_env(:dawarich, :rails_upstream)
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, server.port})
 
-    pid =
-      spawn(fn ->
-        socket = RawHTTP.accept(server)
-        RawHTTP.read_head(socket)
-        RawHTTP.reply(socket, "HTTP/1.1 218 Rails\r\ncontent-length: 0\r\n\r\n")
-        :gen_tcp.close(socket)
-      end)
-
     on_exit(fn ->
-      Process.exit(pid, :kill)
       :gen_tcp.close(server.listen)
       Application.put_env(:dawarich, :rails_upstream, upstream)
     end)
@@ -72,9 +63,9 @@ defmodule DawarichWeb.A10cRoutesTest do
   test "routes public HTML and PNG with shared and achievements rollback keys" do
     path = "/shared/achievements/a10c0000-0000-4000-8000-000000043001"
     route = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
-    assert route.plug == DawarichWeb.AchievementPublicPage
-    assert route.rails_key == "achievements"
-    assert route.pipe_through == [:achievement_public]
+    assert route.plug == DawarichWeb.NativePublicPage
+    refute route[:rails_gate]
+    assert route.pipe_through == [:native_public]
 
     for method <- ~w(GET HEAD),
         do:
@@ -94,7 +85,7 @@ defmodule DawarichWeb.A10cRoutesTest do
 
     for key <- ~w(shared achievements) do
       Application.put_env(:dawarich, :rails_routes, [key])
-      assert_proxy(build_conn("GET", path))
+      refute Strangler.call(build_conn("GET", path), []).halted
       assert_proxy(build_conn("HEAD", path <> "/og.png"))
     end
 
@@ -103,7 +94,7 @@ defmodule DawarichWeb.A10cRoutesTest do
     for path <-
           ~w(/settings/users/44001 /settings/users/export /settings/users/import /settings/background_jobs /admin/settings/test_geocoding /sidekiq /admin/flipper) do
       route = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
-      assert route == :error or route.plug != DawarichWeb.AchievementPublicPage
+      assert route == :error or route.plug != DawarichWeb.NativePublicPage
     end
   end
 

@@ -3,7 +3,7 @@ defmodule DawarichWeb.A12f3bA01Test do
   import Plug.Conn
   import Phoenix.ConnTest
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{AchievementPageGate, RailsAuth, RailsCsrf}
+  alias DawarichWeb.{NativeDataAuth, RailsAuth, RailsCsrf}
   alias DawarichWeb.AchievementActions.{Request, Unlocks, Sharing}
 
   setup do
@@ -65,7 +65,7 @@ defmodule DawarichWeb.A12f3bA01Test do
 
     for {path, status} <- [
           {"/achievements/country_fr", 302},
-          {"/achievements/missing", 404},
+          {"/achievements/missing", 302},
           {"/achievements/border_hopper", 302}
         ] do
       page =
@@ -81,9 +81,11 @@ defmodule DawarichWeb.A12f3bA01Test do
       |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
       |> RailsAuth.call([])
 
-    assert AchievementPageGate.open?(conn, %{})
+    scope = Dawarich.Accounts.Scope.for_user(conn.assigns.current_user, "en")
+    principal = Dawarich.NativeM5.Dependencies.principal(scope)
+    assert {:ok, _} = Dawarich.Accounts.DataAccess.admit(principal)
     rows("UPDATE users SET encrypted_password='revoked' WHERE id=81301")
-    refute AchievementPageGate.open?(conn, %{})
+    assert {:error, :stale_session} = Dawarich.Accounts.DataAccess.admit(principal)
   end
 
   @tag a12f3b_case: "A01b"
@@ -106,12 +108,18 @@ defmodule DawarichWeb.A12f3bA01Test do
             __changed__: %{},
             current_user: actor,
             locale: "en",
-            achievement_initial: false
+            flash: %{}
+          },
+          private: %{
+            data_principal:
+              Dawarich.NativeM5.Dependencies.principal(
+                Dawarich.Accounts.Scope.for_user(actor, "en")
+              )
           }
         }
 
-        assert {:noreply, %{redirected: {:redirect, %{to: "/users/sign_in"}}}} =
-                 DawarichWeb.AchievementsLive.handle_params(%{}, "", socket)
+        assert {:halt, %{redirected: {:redirect, %{to: "/users/sign_in"}}}} =
+                 NativeDataAuth.authorize(socket, :params)
 
         assert plug.call(admitted, []).status == 401
 

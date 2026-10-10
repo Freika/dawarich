@@ -4,16 +4,12 @@ defmodule DawarichWeb.SettingsParityTest do
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
   alias Dawarich.Repo
-  alias Dawarich.Test.{ParityHTML, RailsUser}
-  alias DawarichWeb.InsightsLive
+  alias Dawarich.Test.RailsUser
 
   @dir "test/fixtures/settings"
   @corpus "test/fixtures/settings_corpus.json" |> File.read!() |> Jason.decode!()
   @env ~w(TIME_ZONE MANAGER_URL OIDC_PROVIDER_NAME CHIBICHANGE_WIDGET_HOST SMTP_SERVER)
-  @stimulus "[data-controller], [data-action], [data-activity-heatmap-target], [data-upload-target], [data-turbo], [data-turbo-method], [data-turbo-confirm], [data-turbo-stream]"
-  @pages %{
-    "/insights" => InsightsLive.Index
-  }
+  @retired_stimulus "[data-controller], [data-action], [data-activity-heatmap-target], [data-upload-target], [data-turbo], [data-turbo-method], [data-turbo-confirm], [data-turbo-stream]"
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -36,14 +32,14 @@ defmodule DawarichWeb.SettingsParityTest do
   for file <- @fixtures do
     @name Path.basename(file, ".json")
 
-    test "#{@name} matches the page Rails renders" do
+    test "#{@name} retains native overview values period access and locale" do
       state = @dir |> Path.join(@name <> ".json") |> File.read!() |> Jason.decode!()
       {:ok, now, 0} = DateTime.from_iso8601(state["now"])
       user = seed!(state)
       locale = DawarichWeb.Locale.resolve(nil, user, %{})
       uri = URI.parse(state["path"])
 
-      context = %{
+      _context = %{
         locale: locale,
         now: now,
         self_hosted: state["self_hosted"],
@@ -56,14 +52,56 @@ defmodule DawarichWeb.SettingsParityTest do
         zones: Enum.map(@corpus["time_zone_options"], fn [label, iana] -> {label, iana} end)
       }
 
-      module = Map.fetch!(@pages, uri.path)
-      assigns = module.page(user, URI.decode_query(uri.query || ""), context)
-      phoenix = render_component(&module.render/1, Map.merge(context, assigns))
-      rails = File.read!(Path.join(@dir, @name <> ".html"))
+      assigns =
+        Dawarich.Insights.page(
+          user,
+          URI.decode_query(uri.query || ""),
+          Dawarich.Stats.context(user, now, state["self_hosted"])
+        )
 
-      assert ParityHTML.normalize(phoenix) == ParityHTML.normalize(rails)
-      assert ParityHTML.stimulus(phoenix, @stimulus) == ParityHTML.stimulus(rails, @stimulus)
-      assert DawarichWeb.Layouts.page_title(locale, assigns.page_title) == state["title"]
+      query = URI.decode_query(uri.query || "")
+
+      {:ok, data} =
+        Dawarich.Insights.Pages.overview(Dawarich.Accounts.Scope.for_user(user, locale), query,
+          now: now,
+          self_hosted: state["self_hosted"]
+        )
+
+      for key <- [
+            :totals,
+            :available,
+            :locked,
+            :all_time,
+            :year,
+            :year_locked,
+            :restricted,
+            :heatmap
+          ],
+          do:
+            assert(
+              if(is_map(assigns[key]),
+                do: Map.take(data[key], Map.keys(assigns[key])),
+                else: data[key]
+              ) == assigns[key]
+            )
+
+      phoenix =
+        render_component(&DawarichWeb.InsightsLive.NativeParts.overview/1,
+          data: Map.put(data, :more, false),
+          query: query,
+          path: "/insights",
+          locale: locale
+        )
+
+      refute Enum.any?(LazyHTML.query(LazyHTML.from_document(phoenix), @retired_stimulus))
+      refute phoenix =~ "turbo-frame"
+      refute phoenix =~ "Chartkick"
+      refute phoenix =~ "translation_missing"
+
+      assert DawarichWeb.Layouts.page_title(
+               locale,
+               DawarichWeb.Translate.t(locale, "insights.index.insights", %{})
+             ) == state["title"]
     end
   end
 

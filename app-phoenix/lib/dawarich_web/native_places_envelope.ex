@@ -34,5 +34,5 @@ defmodule DawarichWeb.NativePlacesEnvelope do
     Plug.Conn.InvalidQueryError -> conn |> send_resp(400, "") |> halt()
   end
 
-  def prepare(conn), do: DawarichWeb.PageEnvelope.prepare(conn)
+  def prepare(conn), do: DawarichWeb.NativeDataRequest.prepare(conn)
 end
