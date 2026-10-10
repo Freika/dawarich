@@ -829,3 +829,5 @@ source debt or weaken Cloud lifecycle refusal.
 | ED-NATIVE-M6-VIDEO-d | Native studio | Rails source transport/behavior | Unknown/nonstring time zones yield typed invalid_zone and an empty gallery. Native save does not check the zone; legacy save handed back. | m6 integration | closed |
 
 | ED-NATIVE-M6-VIDEO-e | Native studio | Rails source transport/behavior | First video map idle wait is abortable with a 60-second bound and owned resource cleanup. | m6 integration | closed |
+
+| ED-NATIVE-M6-NATIVE-PAGE-CACHE | Native map and public documents | UI transport/cache | Native admitted pages, local refusals and authentication redirects use private, no-store and noindex, nofollow. Public documents previously used private revalidation; family no-store remains preserved. External APIs and phrase unlock are unchanged. | native public documents and refusals are nonindexable and never stored; cache/robots mutations fail | intentional native page policy |

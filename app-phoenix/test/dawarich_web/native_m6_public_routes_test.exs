@@ -38,6 +38,14 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
     %{uuid: uuid, id: id}
   end
 
+  test "native public documents and refusals are nonindexable and never stored", %{uuid: uuid} do
+    for path <- ["/s/#{uuid}", "/s/missing-native-grant", "/map/v2"] do
+      conn = get(build_conn(), path)
+      assert Plug.Conn.get_resp_header(conn, "cache-control") == ["private, no-store"]
+      assert Plug.Conn.get_resp_header(conn, "x-robots-tag") == ["noindex, nofollow"]
+    end
+  end
+
   test "native public resource preserves descriptions day selection and flag refusals", %{
     uuid: uuid,
     id: id
