@@ -10,6 +10,12 @@ defmodule DawarichWeb.NativeDataRoutes do
           on_mount: {DawarichWeb.NativeDataAuth, :require_user},
           root_layout: {DawarichWeb.Layouts, :native_root},
           layout: {DawarichWeb.Layouts, :app} do
+          live "/stats", DawarichWeb.StatsLive.NativePage, :index,
+            container: {:div, class: "contents"}
+
+          live "/stats/:year", DawarichWeb.StatsLive.NativePage, :year,
+            container: {:div, class: "contents"}
+
           live "/points", DawarichWeb.PointsLive.Index, :index,
             container: {:div, class: "contents"}
         end

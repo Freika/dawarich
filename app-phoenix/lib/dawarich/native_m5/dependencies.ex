@@ -28,7 +28,9 @@ defmodule Dawarich.NativeM5.Dependencies do
 
     case repo.query!(
            "SELECT aggregate_id FROM public.job_outbox WHERE command_type='exports.points' AND dedupe_key=$1",
-           [key], log: false).rows do
+           [key],
+           log: false
+         ).rows do
       [[id]] ->
         {:ok, id}
 
@@ -36,10 +38,37 @@ defmodule Dawarich.NativeM5.Dependencies do
         with {:ok, id} <- Dawarich.PointExports.create(export, scope.user, scope.locale, repo) do
           repo.query!(
             "UPDATE public.job_outbox SET dedupe_key=$1 WHERE command_type='exports.points' AND aggregate_id=$2",
-            [key, id], log: false)
+            [key, id],
+            log: false
+          )
 
           {:ok, id}
         end
+    end
+  end
+
+  def stats_upgrade_url(scope, now, hosted),
+    do: DawarichWeb.StatsFormat.upgrade_url(scope.user, now, hosted, "data_window", "stats_index")
+
+  def share_stat(scope, year, month, attrs, opts) do
+    context = %{
+      now: Keyword.get(opts, :now, DateTime.utc_now()),
+      locale: scope.locale,
+      base_url: Keyword.get(opts, :base_url, ""),
+      self_hosted: Keyword.get(opts, :self_hosted, true)
+    }
+
+    case Dawarich.Stats.Sharing.update(Dawarich.Repo, scope.user, year, month, attrs, context) do
+      {:ok, result} ->
+        {:ok,
+         %{
+           enabled: result.settings["enabled"],
+           expires_at: result.settings["expires_at"],
+           url: result.body["sharing_url"]
+         }}
+
+      other ->
+        other
     end
   end
 

@@ -2,64 +2,20 @@ defmodule Dawarich.Stats.Pages do
   @moduledoc false
   alias Dawarich.Analytics.Period
   alias Dawarich.{Stats, Repo, LocalTime, RubyInteger, RubyFloat}
-  alias Dawarich.Stats.Toponyms
 
   def index(scope, params \\ %{}, opts \\ []) do
     with {:ok, scope, period} <- Period.admit(scope, params, :index, opts) do
-      rows =
-        Repo.query!(
-          "SELECT year,month,distance,toponyms,(updated_at AT TIME ZONE 'UTC' AT TIME ZONE $2)::date FROM stats WHERE user_id=$1 ORDER BY year DESC,updated_at DESC",
-          [scope.user.id, period.zone], log: false).rows
-        |> Enum.map(fn [year, month, distance, toponyms, updated] ->
-          %{
-            year: year,
-            month: month,
-            distance: distance,
-            toponyms: Period.narrow(toponyms),
-            updated_on: updated
-          }
-        end)
-
-      admitted = Enum.filter(rows, &Stats.in_window?(&1, period.cutoff))
-
-      years =
-        admitted
-        |> Enum.chunk_by(& &1.year)
-        |> Enum.map(fn [first | _] = stats ->
-          %{
-            year: first.year,
-            updated_on: first.updated_on,
-            stats: stats,
-            distances: distances(stats)
-          }
-        end)
-
-      all_years = rows |> Enum.map(& &1.year) |> Enum.uniq()
-      visible = Enum.slice(all_years, (period.page - 1) * 50, 50)
-      total_pages = ceil(length(all_years) / 50)
-      all = Enum.flat_map(rows, & &1.toponyms)
+      data = Dawarich.Stats.IndexReads.load(scope.user.id, period, params)
       counts = ready_counts(scope.user, period, opts)
 
       {:ok,
-       %{
-         years: Enum.filter(years, &(&1.year in visible)),
-         total_pages: total_pages,
-         page: period.page,
-         more: period.page < total_pages,
-         locked_years:
-           if(period.restricted,
-             do: Enum.filter(all_years -- Enum.map(years, & &1.year), &(&1 in visible)),
-             else: []
-           ),
-         total_distance: Enum.sum(Enum.map(rows, & &1.distance)),
-         countries_visited: Toponyms.countries(all),
-         cities_visited: Toponyms.cities(all),
+       Map.merge(data, %{
          points: counts,
          unit: period.unit,
          restricted: period.restricted,
          period: period,
          active: scope.user.status == 1
-       }}
+       })}
     end
   rescue
     _ -> {:error, :unavailable}
@@ -159,7 +115,9 @@ defmodule Dawarich.Stats.Pages do
              DateTime.add(period.now, -86400),
              "stats_point_counts:#{user.id}",
              generation
-           ], log: false).rows do
+           ],
+           log: false
+         ).rows do
       [[geocoded, without_data]] ->
         %{
           state: :ready,
@@ -183,7 +141,4 @@ defmodule Dawarich.Stats.Pages do
         }
     end
   end
-
-  defp distances(stats),
-    do: for(month <- 1..12, do: Enum.find_value(stats, 0, &(&1.month == month and &1.distance)))
 end

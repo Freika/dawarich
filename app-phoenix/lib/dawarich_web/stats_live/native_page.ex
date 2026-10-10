@@ -1,0 +1,169 @@
+defmodule DawarichWeb.StatsLive.NativePage do
+  @moduledoc false
+  use DawarichWeb, :live_view
+  alias Dawarich.Stats.{Pages, Commands, PageRefresh}
+  alias DawarichWeb.{DataAsync, NativeDataAuth}
+  alias DawarichWeb.StatsLive.NativeParts
+
+  @impl true
+  def mount(_params, _session, socket) do
+    socket = %{socket | private: Map.put(socket.private, :stats_receipt, Ecto.UUID.generate())}
+
+    if connected?(socket),
+      do:
+        Phoenix.PubSub.subscribe(
+          Dawarich.PubSub,
+          PageRefresh.topic(socket.private.data_principal.actor_id)
+        )
+
+    {:ok,
+     assign(socket,
+       data: nil,
+       query: %{},
+       stats_dialog: nil,
+       page_title: t(socket.assigns.locale, "stats.index.statistics", %{})
+     )}
+  end
+
+  @impl true
+  def handle_params(params, _uri, socket) do
+    socket =
+      socket
+      |> DataAsync.advance()
+      |> assign(
+        stats_dialog:
+          if(params["places_kind"] in ~w(countries cities), do: params["places_kind"], else: nil),
+        query: Map.take(params, ~w(year month page places_page places_kind))
+      )
+
+    opts = options(socket)
+
+    with {:ok, scope} <- NativeDataAuth.scope(socket),
+         {:ok, data} <-
+           Dawarich.Cache.Pages.fetch(
+             scope,
+             resource(socket),
+             socket.assigns.query,
+             fn fresh -> read(fresh, socket.assigns.live_action, socket.assigns.query, opts) end,
+             Keyword.put(
+               opts,
+               :period_kind,
+               if(socket.assigns.live_action == :month, do: :month, else: :year)
+             )
+           ) do
+      if socket.assigns.live_action == :index and data.points.state == :pending,
+        do: PageRefresh.request(scope, :counts, socket.assigns.query, opts)
+
+      {:noreply, socket |> assign(:data, data) |> assign(:page_title, title(socket, data))}
+    else
+      {:error, reason} ->
+        {:noreply, socket |> assign(:data, nil) |> NativeDataAuth.refuse(reason)}
+    end
+  end
+
+  @impl true
+  def handle_event("update", _params, socket) do
+    params =
+      if socket.assigns.live_action == :index,
+        do: nil,
+        else: Map.put(socket.assigns.query, "month", socket.assigns.query["month"] || "all")
+
+    with {:ok, scope} <- NativeDataAuth.scope(socket),
+         {:ok, _} <-
+           Commands.update(scope, params, socket.private.stats_receipt, command_options(socket)) do
+      {:noreply,
+       put_flash(
+         socket,
+         :notice,
+         t(socket.assigns.locale, "controllers.stats.stats_are_being_updated", %{})
+       )}
+    else
+      {:error, reason} -> {:noreply, refuse_in_place(socket, reason)}
+    end
+  end
+
+  def handle_event("upgrade", _, socket) do
+    with {:ok, scope} <- NativeDataAuth.scope(socket),
+         false <- socket.assigns.self_hosted do
+      url = Dawarich.NativeM5.Dependencies.stats_upgrade_url(scope, DateTime.utc_now(), false)
+      {:noreply, redirect(socket, external: url)}
+    else
+      _ -> {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+    end
+  end
+
+  def handle_event("open_places", %{"kind" => kind}, socket) when kind in ~w(countries cities),
+    do: {:noreply, assign(socket, :stats_dialog, kind)}
+
+  def handle_event("open_share", _, socket), do: {:noreply, assign(socket, :stats_dialog, :share)}
+  def handle_event("close_dialog", _, socket), do: {:noreply, assign(socket, :stats_dialog, nil)}
+
+  def handle_event("share", attrs, socket) do
+    with {:ok, scope} <- NativeDataAuth.scope(socket),
+         {:ok, result} <-
+           Commands.share(scope, socket.assigns.query, attrs, command_options(socket)) do
+      {:noreply, assign(socket, :stats_dialog, Map.put(result, :kind, :share))}
+    else
+      {:error, reason} -> {:noreply, refuse_in_place(socket, reason)}
+    end
+  end
+
+  def handle_event(_, _, socket), do: {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+
+  @impl true
+  def handle_info({:analytics_ready, _, _}, socket),
+    do: handle_params(socket.assigns.query, "", socket)
+
+  def handle_info(_, socket), do: {:noreply, socket}
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <main class="min-w-0 w-full my-5">
+      <h1 class="text-3xl font-bold break-words">{@page_title}</h1>
+      <NativeParts.page :if={@data} data={@data} locale={@locale} mode={@live_action} />
+      <button
+        :if={@data && @data[:active] != false}
+        id="stats-update"
+        class="btn btn-primary my-4 max-w-full whitespace-normal"
+        phx-click="update"
+      >{t(@locale, "stats.index.update_stats", %{})}</button>
+      <button
+        :if={@live_action == :month && @data && !@data.restricted && @data.data.stat}
+        class="btn whitespace-normal"
+        phx-click="open_share"
+      >{t(@locale, "stats.month.share", %{})}</button>
+      <NativeParts.dialog :if={@stats_dialog} dialog={@stats_dialog} data={@data} locale={@locale} />
+    </main>
+    """
+  end
+
+  defp title(%{assigns: %{live_action: :year, locale: locale}}, data),
+    do: t(locale, "stats.show.statistics_for_year_year", %{year: data.year})
+
+  defp title(%{assigns: %{live_action: :month, locale: locale}}, data),
+    do:
+      t(locale, "stats.month.month_year_monthly_digest", %{
+        year: data.year,
+        month: DawarichWeb.LocalizedDate.month_name(locale, data.year, data.month)
+      })
+
+  defp title(socket, _), do: t(socket.assigns.locale, "stats.index.statistics", %{})
+
+  defp refuse_in_place(socket, :stale_session), do: NativeDataAuth.refuse(socket, :stale_session)
+  defp refuse_in_place(socket, _), do: NativeDataAuth.refuse(socket, :invalid_input)
+  defp command_options(socket), do: Keyword.put(options(socket), :now, DateTime.utc_now())
+
+  defp resource(%{assigns: %{live_action: :index}}), do: :index
+  defp resource(%{assigns: %{live_action: mode}}), do: mode
+  defp read(scope, :index, params, opts), do: Pages.index(scope, params, opts)
+  defp read(scope, :year, params, opts), do: Pages.year(scope, params, opts)
+  defp read(scope, :month, params, opts), do: Pages.month(scope, params, opts)
+
+  defp options(socket),
+    do: [
+      now: socket.assigns.now,
+      self_hosted: socket.assigns.self_hosted,
+      base_url: socket.assigns[:base_url] || ""
+    ]
+end

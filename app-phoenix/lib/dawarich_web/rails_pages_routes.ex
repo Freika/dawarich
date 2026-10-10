@@ -65,11 +65,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/exports", DawarichWeb.ExportsLive.Index, :index,
             container: {:div, class: "contents"}
 
-          live "/stats", DawarichWeb.StatsLive.Index, :index, container: {:div, class: "contents"}
-
-          live "/stats/:year", DawarichWeb.StatsLive.Year, :show,
-            container: {:div, class: "contents"}
-
           live "/stats/:year/:month", DawarichWeb.StatsLive.Month, :month,
             container: {:div, class: "contents"}
 

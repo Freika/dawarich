@@ -89,14 +89,16 @@ defmodule Dawarich.Cache.Pages do
       ready =
         Repo.query!(
           "SELECT (SELECT max(updated_at) FROM digests WHERE user_id=$1),(SELECT computed_at FROM phoenix.stats_point_counts WHERE user_id=$1)",
-          [scope.user.id], log: false).rows
+          [scope.user.id],
+          log: false
+        ).rows
 
       identity = Dawarich.NativeM5.Dependencies.principal(scope).identity
 
       fields =
         {1, scope.user.id, scope.locale, scope.user.plan, scope.user.status, identity, resource,
          Map.take(period, [:year, :month, :page, :zone, :unit, :cutoff, :restricted]),
-         Keyword.get(opts, :audience, :private), revision, ready}
+         Keyword.get(opts, :audience, :private), revision, ready, Enum.sort(params)}
 
       signature =
         :crypto.hash(:sha256, :erlang.term_to_binary(fields)) |> Base.encode16(case: :lower)

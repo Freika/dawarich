@@ -79,7 +79,9 @@ defmodule Dawarich.Stats.PagesTest do
 
     Dawarich.Repo.query!(
       "UPDATE users SET encrypted_password='changed-session-00000000000000000' WHERE id=$1",
-      [scope.user.id], log: false)
+      [scope.user.id],
+      log: false
+    )
 
     assert {:error, :stale_session} =
              Pages.year(scope, %{"year" => "2025"}, now: @now, self_hosted: true)
@@ -98,5 +100,32 @@ defmodule Dawarich.Stats.PagesTest do
     assert length(second.years) + length(second.locked_years) == 11
     assert second.more == false
     assert MapSet.disjoint?(MapSet.new(first.locked_years), MapSet.new(second.locked_years))
+  end
+
+  test "analytics index bounds fetched years and places while retaining full totals", %{
+    scope: scope
+  } do
+    for year <- 1900..2000 do
+      names = for i <- 1..2, do: "City #{year}-#{i}"
+
+      stat!(scope.user.id, %{
+        year: year,
+        month: 1,
+        distance: 1000,
+        toponyms: [toponym("Germany", names)]
+      })
+    end
+
+    assert {:ok, first} = Pages.index(scope, %{}, now: @now, self_hosted: true)
+    assert length(first.years) == 50
+    assert first.total_distance == 101_000
+    assert length(first.cities_visited) == 50
+    assert first.total_cities == 202
+    assert first.total_countries == 1
+    assert first.places_more == true
+    assert {:ok, next} = Pages.index(scope, %{"places_page" => "2"}, now: @now, self_hosted: true)
+    assert length(next.cities_visited) == 50
+    assert MapSet.disjoint?(MapSet.new(first.cities_visited), MapSet.new(next.cities_visited))
+    assert next.total_cities == 202
   end
 end
