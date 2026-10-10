@@ -438,3 +438,13 @@ Each native measurement records two JS resources and no Turbo/Stimulus/map scrip
 ## Completion boundary
 
 All eleven implementation tasks are complete. Query budgets still require controller acceptance; no new caps were invented. C4 full ExUnit seeds and integrated acceptance were not run. The current controller note schedules full G44/mobile/stand acceptance at the stage boundary. AFFiNE mirrors this implementation summary and the approved decisions; code-coupled registers stay canonical here. No retained map dependency was retired; the M6 checklist above remains binding.
+
+## Review round 1 (2026-10-10)
+
+Fresh Places layout actors use an explicit projection without API or integration credentials; the immutable identity and independent facade re-admission remain. The complete-assigns credential regression covers mount, event, info and async delivery. Coordinate validation bounds decimal input at 128 bytes and handles failed conversion as unsupported while preserving submitted field values and six-decimal writes.
+
+Native transaction exceptions now return uncertain_persistence. OrdinaryForm consumes uncertain generations, permits only classified no-effect retries, and renders localized guidance to check the authoritative Places list. Known saved-id partial recovery remains unchanged; no cross-socket receipt is claimed. check_places clears dialogs and reloads the list without replaying a submit.
+
+URL patches clear detail/note state as well as full forms and confirmation. select_nearby now requires generation, run and index; each rendered suggestion set carries a client-safe run identifier. A stale selection from a previous completed run cannot select the replacement run’s index-zero result. Future map hosts must send the rendered run identifier too.
+
+Named successors: Places assigns exclude account credentials across mount event info and async; overflowing coordinate validation retains dialog errors and values without effects; uncertain create acknowledgement consumes generation and recovers through the list; ordinary form consumes uncertain outcomes and only releases proven zero effects; URL patches close detail and refuse its queued note generation; nearby selection refuses a previous completed provider run. RED/GREEN/mutation/restoration evidence is in the controller’s external fix report. C4 and stage browser/mobile acceptance remain controller-owned.

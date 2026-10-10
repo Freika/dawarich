@@ -49,6 +49,7 @@ defmodule DawarichWeb.PlacesLive.Nearby do
 
     state = %{
       generation: generation,
+      run_id: Integer.to_string(System.unique_integer([:positive, :monotonic])),
       token: token,
       name: name,
       timer: timer,
@@ -108,10 +109,11 @@ defmodule DawarichWeb.PlacesLive.Nearby do
     end
   end
 
-  def select(socket, %{"generation" => gen, "index" => index})
+  def select(socket, %{"generation" => gen, "run" => run, "index" => index})
       when is_binary(index) and byte_size(index) <= 10 do
     with %{generation: ^gen, status: :idle} = form <- socket.assigns.form_state,
-         %{generation: ^gen, status: :results, results: results} <- socket.assigns.nearby_state,
+         %{generation: ^gen, run_id: ^run, status: :results, results: results} <-
+           socket.assigns.nearby_state,
          {index, ""} when index >= 0 <- Integer.parse(index),
          result when is_map(result) <- Enum.at(results, index) do
       attrs = form.changeset.params || %{}

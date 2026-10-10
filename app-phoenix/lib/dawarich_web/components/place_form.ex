@@ -125,6 +125,7 @@ defmodule DawarichWeb.PlaceForm do
             class="btn h-auto min-w-0 flex-wrap [overflow-wrap:anywhere]"
             phx-click="select_nearby"
             phx-value-generation={@state.generation}
+            phx-value-run={@nearby.run_id}
             phx-value-index={result.index}
           >{result.name}</button>
         </div>

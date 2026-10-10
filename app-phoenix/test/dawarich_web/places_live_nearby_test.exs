@@ -101,7 +101,14 @@ defmodule DawarichWeb.PlacesLiveNearbyTest do
     send(task, {:respond, [suggestion()]})
     render_async(view)
 
-    render_click(view, "select_nearby", %{"generation" => gen, "index" => "0", "note" => "Forged"})
+    run = :sys.get_state(view.pid).socket.assigns.nearby_state.run_id
+
+    render_click(view, "select_nearby", %{
+      "generation" => gen,
+      "run" => run,
+      "index" => "0",
+      "note" => "Forged"
+    })
 
     html = render(view)
     assert html =~ "Retained note"
@@ -112,8 +119,39 @@ defmodule DawarichWeb.PlacesLiveNearbyTest do
     assert :sys.get_state(view.pid).socket.assigns.form_state.changeset.params["latitude"] ==
              "51.2"
 
-    render_click(view, "select_nearby", %{"generation" => gen, "index" => "99"})
+    render_click(view, "select_nearby", %{"generation" => gen, "run" => run, "index" => "99"})
     assert render(view) =~ "Retained note"
+  end
+
+  test "nearby selection refuses a previous completed provider run", ctx do
+    {view, gen} = open(ctx)
+    render_click(view, "nearby", %{"generation" => gen})
+    assert_receive {:provider_started, first, _, _}
+    send(first, {:respond, [Map.put(suggestion(), "name", "First run")]})
+    render_async(view)
+    old = :sys.get_state(view.pid).socket.assigns.nearby_state[:run_id]
+    render_click(view, "nearby", %{"generation" => gen, "radius" => "1.0"})
+    assert_receive {:provider_started, second, _, 1.0}
+    send(second, {:respond, [Map.put(suggestion(), "name", "Second run")]})
+    render_async(view)
+    before = :sys.get_state(view.pid).socket.assigns.form_state.changeset
+    current = :sys.get_state(view.pid).socket.assigns.nearby_state[:run_id]
+
+    render_click(view, "select_nearby", %{"generation" => gen, "run" => old, "index" => "0"})
+    assert :sys.get_state(view.pid).socket.assigns.form_state.changeset == before
+    render_click(view, "select_nearby", %{"generation" => gen, "index" => "0"})
+    assert :sys.get_state(view.pid).socket.assigns.form_state.changeset == before
+    assert is_binary(old) and is_binary(current) and old != current
+
+    assert has_element?(
+             view,
+             "[phx-click=select_nearby][phx-value-run='#{current}']",
+             "Second run"
+           )
+
+    render_click(view, "select_nearby", %{"generation" => gen, "run" => current, "index" => "0"})
+    assert has_element?(view, "input[name='place[name]'][value='Second run']")
+    assert has_element?(view, "textarea", "Retained note")
   end
 
   test "nearby crash timeout and revoked delivery expose no config or private state", ctx do
