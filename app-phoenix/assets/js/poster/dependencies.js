@@ -1,1 +1,1 @@
-export const trimOutlierCoords = (coords) => coords
+export { trimOutlierCoords } from "../map/algorithms/geometry.js"

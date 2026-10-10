@@ -142,17 +142,15 @@ defmodule Dawarich.Build.NativeAssetsTest do
     assert Enum.any?(chunks, &String.contains?(&1, "/maplibre/6.4.1/maplibre-gl.mjs"))
   end
 
-  test "native style dependency adapter imports only the three approved pure interfaces", %{
+  test "native style and studio dependencies contain no Rails JavaScript inputs", %{
     tmp_dir: dir
   } do
     graph = dir |> build!() |> inputs()
     shared = Enum.filter(graph, &String.contains?(&1, "app/javascript"))
-    assert MapSet.new(shared) == MapSet.new(approved_style_inputs())
+    assert shared == []
   end
 
-  defp approved_style_inputs,
-    do:
-      ~w(../../app/javascript/poster_studio/data/theme_loader.js ../../app/javascript/poster_studio/data/protomaps_schema.js ../../app/javascript/poster_studio/render/style_builder.js)
+  defp approved_style_inputs, do: []
 
   defp refute_unapproved_rails_inputs(graph) do
     assert Enum.filter(graph, &String.contains?(&1, "app/javascript")) -- approved_style_inputs() ==
