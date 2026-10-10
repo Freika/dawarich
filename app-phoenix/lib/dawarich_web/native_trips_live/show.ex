@@ -5,7 +5,8 @@ defmodule DawarichWeb.NativeTripsLive.Show do
   import DawarichWeb.Icon, only: [icon: 1]
 
   alias Dawarich.Trips.{Commands, Events, Pages}
-  alias DawarichWeb.TripsNative.{Access, DetailPresenter, ShowParts}
+  alias DawarichWeb.NativeTripsLive.Notes
+  alias DawarichWeb.TripsNative.{Access, DetailPresenter, NoteParts, ShowParts}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -18,7 +19,9 @@ defmodule DawarichWeb.NativeTripsLive.Show do
        from: nil,
        recalculating: false,
        subscribed: nil,
-       calculated: nil
+       calculated: nil,
+       note_drafts: %{},
+       note_errors: %{}
      )}
   end
 
@@ -33,6 +36,7 @@ defmodule DawarichWeb.NativeTripsLive.Show do
        socket
        |> Access.advance()
        |> subscribe(id)
+       |> reset_notes(id)
        |> assign(
          trip: trip,
          from: DetailPresenter.window(detail, params["from"]),
@@ -134,6 +138,15 @@ defmodule DawarichWeb.NativeTripsLive.Show do
   end
 
   def handle_event("retry_days", _params, socket), do: {:noreply, load_days(socket)}
+
+  def handle_event(event, params, socket)
+      when event in ~w(note_edit note_draft note_cancel note_save note_delete) do
+    case Notes.handle(event, params, socket) do
+      {:refuse, reason} -> {:noreply, refuse(socket, {:error, reason})}
+      socket -> {:noreply, socket}
+    end
+  end
+
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
   defp command(socket, fun, after_ok) do
@@ -166,6 +179,9 @@ defmodule DawarichWeb.NativeTripsLive.Show do
     |> assign(days_status: :loading)
     |> Access.start(:days, {id, from}, fn scope -> Pages.days(scope, id, from) end)
   end
+
+  defp reset_notes(%{assigns: %{trip: %{id: id}}} = socket, id), do: socket
+  defp reset_notes(socket, _id), do: assign(socket, note_drafts: %{}, note_errors: %{})
 
   defp subscribe(%{assigns: %{subscribed: id}} = socket, id), do: socket
 
@@ -232,9 +248,12 @@ defmodule DawarichWeb.NativeTripsLive.Show do
             locale={@locale}
           >
             <:note :let={day}>
-              <p :if={day.note} class="text-sm whitespace-pre-line [overflow-wrap:anywhere]">
-                {day.note.body}
-              </p>
+              <NoteParts.note
+                day={day}
+                draft={@note_drafts[Date.to_iso8601(day.date)]}
+                errors={@note_errors[Date.to_iso8601(day.date)] || []}
+                locale={@locale}
+              />
             </:note>
           </ShowParts.days>
           <div :if={@trip.description_html} class="mb-6">
