@@ -29,7 +29,7 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
   test "family documents invitations and JSON forward unsupported session writers before effects",
        c do
     for path <-
-          ~w(/family /family/new /family/edit /family/invitations /family/location_requests/94001 /invitations/a9fpl-pending /family/invitations/a9fpl-pending /family/locations.json),
+          ~w(/family/new /family/edit /family/invitations /family/location_requests/94001 /invitations/a9fpl-pending /family/invitations/a9fpl-pending /family/locations.json),
         {query, headers} <- [
           {"client=ios&locale=de", []},
           {"locale=de", [{"x-dawarich-client", "android"}]},
@@ -43,6 +43,40 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
         Enum.reduce(headers, conn, fn {key, value}, acc -> put_req_header(acc, key, value) end)
 
       forwarded(c, conn, path <> "?" <> query)
+    end
+  end
+
+  test "native family document keeps locale persistence local across retired handback markers",
+       c do
+    for {query, headers} <- [
+          {"client=ios&locale=de", []},
+          {"locale=de", [{"x-dawarich-client", "android"}]},
+          {"client%5B%5D=ios", []},
+          {"aff=synthetic-referral&locale=de", []},
+          {"via=synthetic-referral", []}
+        ] do
+      before = snapshot(c.owner.id)
+      prior_locale = Dawarich.Accounts.get(c.owner.id).settings["locale"]
+      conn = RailsUser.signed_in(c.owner.id, %{"locale" => "en"})
+
+      conn =
+        Enum.reduce(headers, conn, fn {key, value}, acc -> put_req_header(acc, key, value) end)
+
+      returned = get(conn, "/family?" <> query)
+      assert returned.status == 200
+      assert returned.private.phoenix_live_view |> elem(0) == DawarichWeb.FamiliesLive.NativeMap
+
+      assert LazyHTML.from_document(returned.resp_body)
+             |> LazyHTML.query("#native-family-map[phx-hook=Family]")
+             |> Enum.count() == 1
+
+      for marker <- ~w(RailsStimulus data-controller data-action turbo-frame),
+          do: refute(String.contains?(returned.resp_body, marker))
+
+      assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
+      assert snapshot(c.owner.id) == before
+      expected = if String.contains?(query, "locale=de"), do: "de", else: prior_locale
+      assert Dawarich.Accounts.get(c.owner.id).settings["locale"] == expected
     end
   end
 
@@ -75,12 +109,18 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
     assert snapshot() == before
   end
 
-  defp snapshot do
+  defp snapshot(actor_id \\ nil) do
     for table <-
           ~w(users families family_memberships family_invitations family_location_requests job_outbox),
-        into: %{},
-        do:
-          {table,
-           Repo.query!("SELECT row_to_json(t) FROM #{table} t ORDER BY row_to_json(t)::text").rows}
+        into: %{} do
+      row =
+        if table == "users" and actor_id,
+          do:
+            "CASE WHEN t.id = #{actor_id} THEN (to_jsonb(t) - 'updated_at') #- '{settings,locale}' ELSE to_jsonb(t) END",
+          else: "to_jsonb(t)"
+
+      {table,
+       Repo.query!("SELECT md5((#{row})::text) FROM #{table} t ORDER BY 1", [], log: false).rows}
+    end
   end
 end
