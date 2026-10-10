@@ -23,8 +23,8 @@ defmodule DawarichWeb.AccountSettings do
     original = socket.assigns.current_user
     user = Accounts.get(original.id)
 
-    with %{encrypted_password: password} <- user,
-         true <- password == original.encrypted_password,
+    with %{id: _} <- user,
+         true <- Dawarich.Accounts.Principal.same_identity?(original, user),
          {:ok, _} <- Accounts.settings_for(user) do
       {:cont, socket}
     else

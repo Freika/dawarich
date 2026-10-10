@@ -3,7 +3,7 @@ defmodule DawarichWeb.NativeDataAuth do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [attach_hook: 4, detach_hook: 3, put_flash: 3, redirect: 2]
   alias Dawarich.Accounts.DataAccess
-  alias Dawarich.NativeM5.Dependencies
+  alias Dawarich.Accounts.Principal
   alias DawarichWeb.{DataAsync, NativeAuth, Translate}
 
   def on_mount(:require_user, params, session, socket) do
@@ -17,10 +17,14 @@ defmodule DawarichWeb.NativeDataAuth do
       |> attach_hook(:data_async, :handle_async, fn _, _, socket -> authorize(socket, :async) end)
 
     with {:cont, socket} <- NativeAuth.on_mount(:require_user, params, session, socket) do
-      principal = Dependencies.principal(socket.assigns.current_scope)
+      principal = Principal.scope(socket.assigns.current_scope)
       socket = %{socket | private: Map.put(socket.private, :data_principal, principal)}
 
       socket
+      |> detach_hook(:native_principal_params, :handle_params)
+      |> detach_hook(:native_principal_event, :handle_event)
+      |> detach_hook(:native_principal_info, :handle_info)
+      |> detach_hook(:native_principal_async, :handle_async)
       |> detach_hook(:rails_user, :handle_event)
       |> detach_hook(:notification_session, :handle_event)
       |> authorize(:mount)
@@ -76,5 +80,5 @@ defmodule DawarichWeb.NativeDataAuth do
         )
       )
 
-  defp redact(user), do: %{user | encrypted_password: nil, api_key: nil, settings: %{}}
+  defp redact(user), do: %{Principal.project(user) | settings: %{}}
 end

@@ -94,7 +94,7 @@ defmodule Dawarich.Cache.Pages do
           log: false
         ).rows
 
-      identity = Dawarich.NativeM5.Dependencies.principal(scope).identity
+      identity = Dawarich.Accounts.Principal.version(scope.user)
 
       fields =
         {1, scope.user.id, scope.locale, scope.user.plan, scope.user.status, identity, resource,

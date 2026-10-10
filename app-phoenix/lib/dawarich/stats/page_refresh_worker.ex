@@ -3,7 +3,7 @@ defmodule Dawarich.Stats.PageRefreshWorker do
   use Oban.Worker, queue: :projections, max_attempts: 3
   alias Dawarich.{Repo, State}
   alias Dawarich.Accounts.DataAccess
-  alias Dawarich.NativeM5.Dependencies
+  alias Dawarich.Accounts.{Principal, Scope}
   alias Dawarich.Stats.PageRefresh
   alias Dawarich.Digests.{Context, CalculateMonth, CalculateYear, Store}
   alias Dawarich.Jobs.Processed
@@ -41,7 +41,11 @@ defmodule Dawarich.Stats.PageRefreshWorker do
        when raw in ["insights", "counts"] and is_integer(id) do
     with {:ok, proof} <- Base.decode16(identity),
          {:ok, scope} <-
-           DataAccess.admit(%Dependencies{actor_id: id, locale: "en", identity: proof},
+           DataAccess.admit(
+             Scope.for_user(
+               %Principal{id: id, session_version: Base.encode16(proof, case: :lower)},
+               "en"
+             ),
              settings: true,
              full_access: raw == "insights",
              self_hosted:

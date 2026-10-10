@@ -13,7 +13,7 @@ defmodule DawarichWeb.StatsLive.NativePage do
       do:
         Phoenix.PubSub.subscribe(
           Dawarich.PubSub,
-          PageRefresh.topic(socket.private.data_principal.actor_id)
+          PageRefresh.topic(socket.private.data_principal.user.id)
         )
 
     {:ok,

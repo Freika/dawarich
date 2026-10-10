@@ -194,6 +194,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     saving =
       for path <- paths do
         conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
+        assert conn.status == 200, "#{path} returned #{conn.status}"
         static = html_response(conn, 200)
         {:ok, _view, connected} = live(conn)
 

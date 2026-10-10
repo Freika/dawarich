@@ -2,7 +2,7 @@ defmodule Dawarich.Stats.PageRefresh do
   @moduledoc false
   alias Dawarich.{Repo, State}
   alias Dawarich.Accounts.DataAccess
-  alias Dawarich.NativeM5.Dependencies
+  alias Dawarich.Accounts.Principal
   alias Dawarich.Stats.{EffectIdentity, PageRefreshWorker}
 
   def request(subject, resource, params, opts \\ []) do
@@ -66,7 +66,6 @@ defmodule Dawarich.Stats.PageRefresh do
   def specification(scope, resource, period, repo \\ Repo) do
     with true <- resource in [:insights, :counts],
          {:ok, scope} <- DataAccess.admit(scope, settings: true) do
-      principal = Dependencies.principal(scope)
       revision = revision(repo, scope, resource, period)
 
       args = %{
@@ -77,7 +76,7 @@ defmodule Dawarich.Stats.PageRefresh do
         "zone" => period.zone,
         "unit" => period.unit,
         "revision" => revision,
-        "identity" => Base.encode16(principal.identity),
+        "identity" => String.upcase(Principal.version(scope.user)),
         "version" => 1
       }
 

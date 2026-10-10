@@ -80,7 +80,7 @@ defmodule DawarichWeb.PlacesLiveAuthTest do
 
     {:ok, view, _} = live(N.conn(ctx.actor), "/places")
     assert_credentials_absent(view, secrets)
-    assert current_tracking_qr?(view, api_key) == true
+    assert current_tracking_qr?(view) == true
     render_click(view, "open_create", %{})
     assert_credentials_absent(view, secrets)
     gen = N.generation(view, :form_state)
@@ -102,23 +102,12 @@ defmodule DawarichWeb.PlacesLiveAuthTest do
     assert :sys.get_state(view.pid).socket.assigns.current_user.changelog_consent == 0
   end
 
-  defp current_tracking_qr?(view, api_key) do
-    url = :sys.get_state(view.pid).socket.assigns.base_url <> "/"
+  defp current_tracking_qr?(view) do
+    html = render(view)
+    doc = LazyHTML.from_fragment(html)
 
-    expected =
-      Dawarich.QrSvg.api_key(url, api_key, 3)
-      |> LazyHTML.from_fragment()
-      |> LazyHTML.query("svg path")
-      |> LazyHTML.attribute("d")
-
-    actual =
-      get(N.conn(:sys.get_state(view.pid).socket.assigns.current_user), "/places")
-      |> html_response(200)
-      |> LazyHTML.from_fragment()
-      |> LazyHTML.query("#onboarding-track-screen .bg-white > svg > path")
-      |> LazyHTML.attribute("d")
-
-    actual == expected
+    LazyHTML.query(doc, "#onboarding-api-qr[phx-hook=CredentialQr]") |> Enum.count() == 1 and
+      LazyHTML.query(doc, "#onboarding-api-qr svg") |> Enum.empty?()
   end
 
   defp assert_credentials_absent(view, secrets) do

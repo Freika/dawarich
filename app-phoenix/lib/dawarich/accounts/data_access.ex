@@ -1,19 +1,25 @@
 defmodule Dawarich.Accounts.DataAccess do
   @moduledoc false
-  alias Dawarich.Accounts.Scope
-  alias Dawarich.NativeM5.Dependencies
+  alias Dawarich.Accounts
+  alias Dawarich.Accounts.{Principal, Scope}
 
   def admit(subject, opts \\ [])
-  def admit(%Scope{} = scope, opts), do: admit(Dependencies.principal(scope), opts)
 
-  def admit(subject, opts) do
-    with {:ok, scope} <- Dependencies.admit(subject),
+  def admit(%Scope{user: %{id: id} = original} = subject, opts) do
+    with user when not is_nil(user) <- Accounts.get(id),
+         true <- Principal.same_identity?(original, user),
+         scope = %{subject | user: user},
          :ok <- settings(scope, opts),
          :ok <- active(scope, opts),
          :ok <- entitlement(scope, opts) do
       {:ok, scope}
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :stale_session}
     end
   end
+
+  def admit(_, _), do: {:error, :stale_session}
 
   defp settings(scope, opts) do
     if opts[:settings] == true and not Dawarich.Admin.Access.supported?(scope.user),

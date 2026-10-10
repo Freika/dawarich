@@ -1,11 +1,11 @@
 defmodule DawarichWeb.PlacesActor do
   @moduledoc false
-  alias Dawarich.Accounts.User
+  alias Dawarich.Accounts.Principal
 
   alias Dawarich.Accounts.Scope
   alias Dawarich.Places.Access
 
-  @fields ~w(id email theme admin status plan active_until subscription_source changelog_consent encrypted_password)a
+  @fields ~w(id email theme admin status plan active_until subscription_source changelog_consent session_version)a
   @settings ~w(timezone onboarding_completed supporter_email supporter_github_username show_supporter_badge)
 
   def project(actor) do
@@ -23,7 +23,8 @@ defmodule DawarichWeb.PlacesActor do
           safe
       end
 
-    struct(User, Map.put(Map.take(actor, @fields), :settings, safe))
+    struct(Principal, Map.put(Map.take(actor, @fields), :settings, safe))
+    |> Map.put(:session_version, Principal.version(actor))
   end
 
   def tracking_qr(actor, root_url) do

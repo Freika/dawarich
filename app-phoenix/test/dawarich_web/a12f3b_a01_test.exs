@@ -82,7 +82,7 @@ defmodule DawarichWeb.A12f3bA01Test do
       |> RailsAuth.call([])
 
     scope = Dawarich.Accounts.Scope.for_user(conn.assigns.current_user, "en")
-    principal = Dawarich.NativeM5.Dependencies.principal(scope)
+    principal = Dawarich.Accounts.Principal.scope(scope)
     assert {:ok, _} = Dawarich.Accounts.DataAccess.admit(principal)
     rows("UPDATE users SET encrypted_password='revoked' WHERE id=81301")
     assert {:error, :stale_session} = Dawarich.Accounts.DataAccess.admit(principal)
@@ -111,9 +111,7 @@ defmodule DawarichWeb.A12f3bA01Test do
           },
           private: %{
             data_principal:
-              Dawarich.NativeM5.Dependencies.principal(
-                Dawarich.Accounts.Scope.for_user(actor, "en")
-              )
+              Dawarich.Accounts.Principal.scope(Dawarich.Accounts.Scope.for_user(actor, "en"))
           }
         }
 

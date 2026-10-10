@@ -4,6 +4,15 @@ defmodule Dawarich.Accounts.Principal do
   defstruct @fields ++ [:settings, :session_version]
   @private ~w(password api_key token secret authorization credential url)
 
+  def scope(%Dawarich.Accounts.Scope{user: %{id: id} = user, locale: locale}) do
+    Dawarich.Accounts.Scope.for_user(
+      %__MODULE__{id: id, session_version: version(user), settings: %{}},
+      locale
+    )
+  end
+
+  def scope(_), do: nil
+
   def project(user) do
     user
     |> Map.take(@fields)

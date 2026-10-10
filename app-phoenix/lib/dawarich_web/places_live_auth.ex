@@ -3,17 +3,13 @@ defmodule DawarichWeb.PlacesLiveAuth do
   import Phoenix.Component
   import Phoenix.LiveView, only: [attach_hook: 4, detach_hook: 3]
   alias Dawarich.Places.Access
-  alias Dawarich.Accounts.{Scope, User}
+  alias Dawarich.Accounts.Principal
   alias DawarichWeb.{PlacesUI, PlacesActor}
 
   def on_mount(:default, _, _, socket) do
     actor = socket.assigns.current_scope.user
 
-    origin =
-      Scope.for_user(
-        struct(User, Map.take(actor, [:id, :encrypted_password])),
-        socket.assigns.locale
-      )
+    origin = Principal.scope(socket.assigns.current_scope)
 
     layout_actor = PlacesActor.project(actor)
 

@@ -1,12 +1,12 @@
 defmodule DawarichWeb.TripsNative.Access do
   @moduledoc false
   alias Dawarich.Accounts.DataAccess
-  alias Dawarich.NativeM5.Dependencies
+  alias Dawarich.Accounts.Principal
   alias DawarichWeb.{DataAsync, NativeDataAuth}
 
   defdelegate on_mount(mode, params, session, socket), to: NativeDataAuth
   defdelegate scope(socket), to: NativeDataAuth
-  defdelegate principal(scope), to: Dependencies
+  defdelegate principal(scope), to: Principal, as: :scope
   defdelegate admit(principal), to: DataAccess
   defdelegate advance(socket), to: DataAsync
   defdelegate register(socket, kind, fingerprint), to: DataAsync

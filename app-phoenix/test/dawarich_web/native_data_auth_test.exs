@@ -1,7 +1,7 @@
 defmodule DawarichWeb.NativeDataAuthTest do
   use ExUnit.Case, async: false
   alias Dawarich.Accounts.Scope
-  alias Dawarich.NativeM5.Dependencies
+  alias Dawarich.Accounts.Principal
   alias Dawarich.Test.NativeAdminUI
   alias DawarichWeb.NativeDataAuth
 
@@ -18,7 +18,7 @@ defmodule DawarichWeb.NativeDataAuthTest do
         flash: %{}
       },
       private: %{
-        data_principal: Dependencies.principal(Scope.for_user(user, "en")),
+        data_principal: Principal.scope(Scope.for_user(user, "en")),
         live_temp: %{}
       }
     }

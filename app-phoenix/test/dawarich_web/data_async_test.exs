@@ -1,7 +1,7 @@
 defmodule DawarichWeb.DataAsyncTest do
   use ExUnit.Case, async: false
   alias Dawarich.Accounts.Scope
-  alias Dawarich.NativeM5.Dependencies
+  alias Dawarich.Accounts.Principal
   alias Dawarich.Test.NativeAdminUI
   alias DawarichWeb.DataAsync
 
@@ -10,7 +10,7 @@ defmodule DawarichWeb.DataAsyncTest do
 
     socket = %Phoenix.LiveView.Socket{
       assigns: %{__changed__: %{}},
-      private: %{data_principal: Dependencies.principal(Scope.for_user(user, "en"))}
+      private: %{data_principal: Principal.scope(Scope.for_user(user, "en"))}
     }
 
     %{socket: socket}
@@ -43,7 +43,7 @@ defmodule DawarichWeb.DataAsyncTest do
 
     Dawarich.Repo.query!(
       "UPDATE users SET encrypted_password = 'changed-00000000000000000000000' WHERE id = $1",
-      [socket.private.data_principal.actor_id],
+      [socket.private.data_principal.user.id],
       log: false
     )
 

@@ -25,9 +25,5 @@ defmodule Dawarich.Places.Access do
       else: {:error, :unsupported}
   end
 
-  defp same_identity?(%{encrypted_password: original}, %{encrypted_password: current})
-       when is_binary(original) and is_binary(current),
-       do: Plug.Crypto.secure_compare(String.slice(original, 0, 29), String.slice(current, 0, 29))
-
-  defp same_identity?(_, _), do: false
+  defdelegate same_identity?(original, current), to: Dawarich.Accounts.Principal
 end

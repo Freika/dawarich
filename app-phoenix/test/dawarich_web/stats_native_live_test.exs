@@ -84,7 +84,7 @@ defmodule DawarichWeb.StatsNativeLiveTest do
 
     socket = %Phoenix.LiveView.Socket{
       assigns: assigns,
-      private: %{data_principal: Dawarich.NativeM5.Dependencies.principal(scope)}
+      private: %{data_principal: Dawarich.Accounts.Principal.scope(scope)}
     }
 
     {:ok, socket} = apply(DawarichWeb.StatsLive.NativePage, :mount, [%{}, %{}, socket])
@@ -406,7 +406,7 @@ defmodule DawarichWeb.StatsNativeLiveTest do
         flash: %{},
         base_url: "https://example.invalid"
       },
-      private: %{data_principal: Dawarich.NativeM5.Dependencies.principal(scope)}
+      private: %{data_principal: Dawarich.Accounts.Principal.scope(scope)}
     }
 
     {:ok, socket} = DawarichWeb.StatsLive.NativePage.mount(%{}, %{}, socket)
