@@ -126,3 +126,8 @@ The controller recorded these deferrals on 2026-10-07; they remain follow-up wor
 - Serialize administrator deletion and role changes to retain administration access under competing writes. [FRB-085](fixed-rails-bugs.md#frb-085--concurrent-admin-roledeletion-writes-can-leave-no-administrator)
 
 These are native Phoenix corrections delivered in A2; retained Rails behavior is unchanged.
+
+## Native map follow-up
+
+- Keep fog on the selected dates when an older cell request finishes late. [FRB-NATIVE-M6-FOG-DATES](fixed-rails-bugs.md#frb-native-m6-fog-dates--a-late-fog-read-restores-an-older-date-window)
+- Cancel fog cell work when leaving its map. [FRB-NATIVE-M6-FOG-DISPOSE](fixed-rails-bugs.md#frb-native-m6-fog-dispose--leaving-the-map-keeps-a-fog-read-alive)

@@ -1338,3 +1338,25 @@ Rails counts administrators before an unlocked update and does not share a guard
 - Evidence: A2 commit `c7f44a025`; `m3b-domain.report.md`, `m3b-x3.report.md`. No machine stress or Rails production change.
 - Ledger: ED-NATIVE-ADMIN-USERS-DELETE-GUARD; no DRB added. Distinct from FRB-084's missing deletion guard.
 - CHANGELOG-ready: Serialize native administrator deletion and role changes to retain administration access.
+
+## Native milestone 6 additions
+
+### FRB-NATIVE-M6-FOG-DATES — A late fog read restores an older date window
+
+Changing dates while fog cell reads overlap can leave the previous range in the cache; the next zoom then displays that older range. Native fog checks its owned generation before committing H3/cell/cache state and cancels the replaced read.
+
+- Rails: `app/javascript/maps_maplibre/layers/fog_hexagon_source.js:20,26`; `app/javascript/maps_maplibre/layers/fog_layer.js:316`.
+- Phoenix: `app-phoenix/assets/js/map/layers/fog_hexagon_source.js:26,40`.
+- Test: “older fog date response cannot replace current cells” in `spec/javascript/phoenix_map_density_test.mjs`; deterministic source oracle fails on the Rails implementation; stale-date mutation fails and restoration passes.
+- Ledger: ED-NATIVE-M6-FOG-DATES; no DRB row added. Retained Rails remains unchanged.
+- CHANGELOG-ready: Keep fog on the selected dates when an older cell request finishes late.
+
+### FRB-NATIVE-M6-FOG-DISPOSE — Leaving the map keeps a fog read alive
+
+Removing the Rails fog layer detaches canvas/listeners but leaves its cell request and cache mutation running. Native removal cancels the owned request, clears cell state, and prevents late work from changing the removed layer.
+
+- Rails: `app/javascript/maps_maplibre/layers/fog_layer.js:378`; `app/javascript/maps_maplibre/layers/fog_hexagon_source.js:20`.
+- Phoenix: `app-phoenix/assets/js/map/layers/fog.js:272`; `app-phoenix/assets/js/map/layers/fog_hexagon_source.js:54`.
+- Test: “destroy drains density fetch and resize callbacks” in `spec/javascript/phoenix_map_density_test.mjs`; omit-source-dispose and resize-listener mutations fail, restoration passes.
+- Ledger: ED-NATIVE-M6-FOG-DISPOSE; no DRB row added. Retained Rails remains unchanged.
+- CHANGELOG-ready: Cancel fog cell work when leaving its map.
