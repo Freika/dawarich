@@ -192,7 +192,8 @@ defmodule DawarichWeb.MapDataParityTest do
         summary: summary,
         unit: get_in(ctx.user.settings, ["maps", "distance_unit"]) || "km",
         filter_form: Phoenix.Component.to_form(result.query),
-        selected: MapSet.new()
+        selected: MapSet.new(),
+        point_dialog: nil
       })
 
     render_component(&PointsLive.Index.render/1, assigns)

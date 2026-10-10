@@ -211,3 +211,9 @@ suite, RSpec, remote service or lifecycle-guard change belongs to this work.
 
 none. Query slopes, inline calculation and pre-existing page overflow remain
 baseline observations; no Rails defect is fixed by this documentation.
+
+### Implemented Points and Visits read contracts
+
+`Points.Pages.load/3`, `selection/4` and `address/2` take fresh Scope; `Points.Commands.delete/4` and `request_export/5` re-admit under the owner lock. `NativeM5.Dependencies.request_point_export/4` delegates to current PointExports.create with a receipt in the existing outbox; M4 switches this adapter to its export facade.
+
+`Visits.Timeline.load/3` returns bounded `rows` (100), full-range `days` summaries/bounds, `calendar`, `window`, `revision`, `next_cursor`, `stream_limit` (200), `reset` and `restricted`/`redetected` state. `calendar/3` supplies the scoped 42-cell month independently. Cursors bind actor, normalized window, zone and entitlement state; source visit ties use descending ID and tracks retain ascending ID. M6 owns stream/client DOM bounds and route activation. Existing Timeline.Api, MapFrames and VisitStreams retain complete legacy responses until their caller migration.

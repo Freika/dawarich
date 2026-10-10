@@ -25,7 +25,13 @@ defmodule Dawarich.Timeline.Sql do
 
   def total(track), do: "extract(epoch FROM #{track}.end_at - #{track}.start_at)::float8"
 
-  def shares(track) do
+  def shares(track), do: shares(track, nil, nil)
+
+  def shares(track, first, last) do
+    start = "date_trunc('day', #{track}.start_at AT TIME ZONE 'UTC' AT TIME ZONE z.name)"
+    stop = "#{track}.end_at AT TIME ZONE 'UTC' AT TIME ZONE z.name"
+    start = if first, do: "greatest(#{start},#{first})", else: start
+    stop = if last, do: "least(#{stop},#{last})", else: stop
     next_midnight = "((d + interval '1 day') AT TIME ZONE z.name) AT TIME ZONE 'UTC'"
     midnight = "(d AT TIME ZONE z.name) AT TIME ZONE 'UTC'"
     upper = "least(#{track}.end_at, #{next_midnight})"
@@ -34,8 +40,7 @@ defmodule Dawarich.Timeline.Sql do
     """
     LEFT JOIN LATERAL (
       SELECT d::date AS day, extract(epoch FROM #{upper} - #{lower})::float8 AS seconds
-      FROM generate_series(date_trunc('day', #{track}.start_at AT TIME ZONE 'UTC' AT TIME ZONE z.name),
-                           #{track}.end_at AT TIME ZONE 'UTC' AT TIME ZONE z.name, interval '1 day') AS d
+      FROM generate_series(#{start}, #{stop}, interval '1 day') AS d
       WHERE #{upper} > #{lower}
     ) s ON true
     """
