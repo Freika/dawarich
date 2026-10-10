@@ -52,7 +52,12 @@ defmodule DawarichWeb.NativePosterStudio do
     assigns = assign(assigns, :config, config(assigns.locale, assigns.print_order_url))
 
     ~H"""
-    <div id="native-poster-studio" phx-hook="PosterStudio" data-poster-config={@config}>
+    <div
+      id="native-poster-studio"
+      phx-hook="PosterStudio"
+      phx-mounted={JS.ignore_attributes("data-poster-state")}
+      data-poster-config={@config}
+    >
       <dialog
         id="native-poster-dialog"
         data-poster-dialog
@@ -89,6 +94,7 @@ defmodule DawarichWeb.NativePosterStudio do
                 aria-label={t(@locale, "shared.studio_switcher.video", %{})}
                 data-testid="studio-switch-video"
                 data-poster-switch-video
+                phx-mounted={JS.ignore_attributes(["hidden", "disabled"])}
               >
                 <Icon.icon name="video" class="h-3.5 w-3.5" />
                 <span class="hidden sm:inline">{t(@locale, "shared.studio_switcher.video", %{})}</span>

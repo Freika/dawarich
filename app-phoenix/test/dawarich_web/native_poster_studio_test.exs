@@ -53,6 +53,22 @@ defmodule DawarichWeb.NativePosterStudioTest do
     refute html =~ ~r/data-controller|data-action|turbo|stimulus|signed-stream-name|api_key/i
   end
 
+  test "client-toggled switch and failure attributes survive server patches of the studio" do
+    {_html, doc} = render(%{posters: []})
+
+    ignored = fn selector ->
+      [command] = attribute(doc, selector, "phx-mounted")
+
+      for ["ignore_attrs", %{"attrs" => attrs}] <- Jason.decode!(command),
+          attr <- attrs,
+          do: attr
+    end
+
+    assert ignored.("[data-poster-switch-video]") |> Enum.sort() == ["disabled", "hidden"]
+    assert ignored.("#native-poster-studio") == ["data-poster-state"]
+    assert ignored.("dialog[data-poster-dialog]") == ["open"]
+  end
+
   test "studio config carries localized strings and digested font URLs only" do
     {_html, doc} = render()
     [json] = attribute(doc, "#native-poster-studio", "data-poster-config")
