@@ -89,10 +89,7 @@ export async function createMp4Encoder({
         probeConfig: (config) =>
           probeVideoEncoderConfig(config, runtime, waits),
       }))
-  const picked = await waitForEncoder(
-    () => pickCodec({ width, height, fps, ...waits }),
-    waits,
-  )
+  const picked = await pickCodec({ width, height, fps, ...waits })
   if (!picked) return null
   if (signal?.aborted) throw renderCancelled()
 

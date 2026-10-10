@@ -417,7 +417,27 @@ test(
             stage === "support"
               ? new Promise(() => {})
               : Promise.resolve({ supported: true }),
-          probeConfig: () => new Promise(() => {}),
+          probeConfig: (config) =>
+            probeVideoEncoderConfig(
+              config,
+              {
+                OffscreenCanvas: class {
+                  getContext() {}
+                },
+                VideoFrame: class {
+                  close() {}
+                },
+                VideoEncoder: class {
+                  configure() {}
+                  encode() {}
+                  flush() {
+                    return new Promise(() => {})
+                  }
+                  close() {}
+                },
+              },
+              { signal: controller.signal, timers },
+            ),
         })
         const rejected = assert.rejects(picking, {
           name: ending === "abort" ? "AbortError" : "TimeoutError",
@@ -507,6 +527,124 @@ test(
       assert.equal(fake.codec.state, "closed")
       assert.equal(listeners.size, 0)
       assert.equal(timers.pending.size, 0)
+    }
+  },
+)
+
+function orderedClock() {
+  const pending = new Map()
+  let now = 0
+  let id = 0
+  return {
+    pending,
+    setTimeout(fn, ms) {
+      pending.set(++id, { at: now + ms, fn })
+      return id
+    },
+    clearTimeout(key) {
+      pending.delete(key)
+    },
+    async advanceTo(target) {
+      for (;;) {
+        const due = [...pending].filter(([, timer]) => timer.at <= target)
+        if (due.length === 0) break
+        const [key, timer] = due.reduce((first, next) =>
+          next[1].at < first[1].at ? next : first,
+        )
+        pending.delete(key)
+        now = timer.at
+        timer.fn()
+        await turn()
+      }
+      now = target
+      await turn()
+    },
+  }
+}
+
+function countedSignal() {
+  const controller = new AbortController()
+  const listening = new Set()
+  const { signal } = controller
+  const add = signal.addEventListener.bind(signal)
+  const remove = signal.removeEventListener.bind(signal)
+  signal.addEventListener = (name, fn, options) => {
+    listening.add(fn)
+    add(name, fn, options)
+  }
+  signal.removeEventListener = (name, fn, options) => {
+    listening.delete(fn)
+    remove(name, fn, options)
+  }
+  return { controller, signal, listening }
+}
+
+test(
+  "default negotiation releases a stalled probe before encoder creation rejects",
+  { timeout: 1000 },
+  async () => {
+    for (const ending of ["timeout", "abort"]) {
+      const timers = orderedClock()
+      const { controller, signal, listening } = countedSignal()
+      const closed = []
+      class StalledEncoder {
+        static isConfigSupported() {
+          return new Promise((resolve) =>
+            timers.setTimeout(() => resolve({ supported: true }), 20_000),
+          )
+        }
+        state = "configured"
+        configure() {}
+        encode() {}
+        flush() {
+          return new Promise(() => {})
+        }
+        close() {
+          this.state = "closed"
+          closed.push("encoder")
+        }
+      }
+      const creating = createMp4Encoder({
+        width: 8,
+        height: 8,
+        fps: 30,
+        signal,
+        timers,
+        runtime: runtime({
+          pickCodec: undefined,
+          VideoEncoder: StalledEncoder,
+          VideoFrame: class {
+            close() {
+              closed.push("frame")
+            }
+          },
+          OffscreenCanvas: class {
+            getContext() {}
+          },
+        }),
+      })
+      const outcome = creating.then(
+        () => ({ settled: "resolved" }),
+        (error) => ({
+          settled: error.name,
+          closed: [...closed],
+          pending: timers.pending.size,
+          listeners: listening.size,
+        }),
+      )
+      await timers.advanceTo(20_000)
+      if (ending === "abort") {
+        await timers.advanceTo(25_000)
+        controller.abort()
+      }
+      await timers.advanceTo(30_000)
+      await timers.advanceTo(60_000)
+      assert.deepEqual(await outcome, {
+        settled: ending === "abort" ? "AbortError" : "TimeoutError",
+        closed: ["frame", "encoder"],
+        pending: 0,
+        listeners: 0,
+      })
     }
   },
 )

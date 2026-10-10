@@ -43,15 +43,7 @@ export async function pickSupportedCodec({
         timers,
       })
       if (!result?.supported) continue
-      if (
-        probeConfig &&
-        !(await waitForEncoder(() => probeConfig(config), {
-          signal,
-          timeoutMs,
-          timers,
-        }))
-      )
-        continue
+      if (probeConfig && !(await probeConfig(config))) continue
       return { muxerCodec: candidate.muxerCodec, config }
     } catch (error) {
       if (error.name === "AbortError" || error.name === "TimeoutError")
