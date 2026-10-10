@@ -501,3 +501,42 @@ test("switch to video carries the explicit trip-locked source and is refused dur
   })
   assert.equal(hidden.hidden, true)
 })
+
+test("Rails oracle: a stalled print upload never settles and cannot be cancelled", async (t) => {
+  const { readFile } = await import("node:fs/promises")
+  const source = (
+    await readFile(
+      new URL(
+        "../../app/javascript/poster_studio/ui/order_client.js",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+  ).replace(
+    'import { translate } from "i18n"',
+    "const translate = (key) => key",
+  )
+  const { submitPrintOrder: railsSubmit } = await import(
+    `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+  )
+  FakeXhr.instances = []
+  globalThis.XMLHttpRequest = FakeXhr
+  t.after(() => {
+    delete globalThis.XMLHttpRequest
+  })
+  const controller = new AbortController()
+  let settled = "pending"
+  railsSubmit({ ...orderParams(), signal: controller.signal }).then(
+    () => {
+      settled = "resolved"
+    },
+    () => {
+      settled = "rejected"
+    },
+  )
+  controller.abort()
+  for (let round = 0; round < 5; round++) await tick()
+  assert.equal(settled, "pending")
+  assert.equal(FakeXhr.instances[0].aborted, false)
+  assert.ok(FakeXhr.instances[0].listeners.load)
+})
