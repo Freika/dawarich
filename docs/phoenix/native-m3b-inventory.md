@@ -2,20 +2,22 @@
 
 Read-mostly inventory on app head `8a5a2555d` (finished 3a), 2026-10-09. Covers the remainder of source milestone 3, including the items the approved 3a roadmap moved to milestones 5/6. Production code is unchanged. E2E source inspected at `bc2fcea`; no browser lane or full suite was run for this inventory.
 
-## Results after X5 (app `d7dd5ca23`, E2E `ff256e6`)
+## Results after spec-verify (app `86465c975`, E2E `ff256e6`)
 
-- Full ExUnit, seeds 404 and 202: 10,089 tests, 0 failures, exit 0, all three partitions exit 0 (logs `.scratch/orch/partlogs-m3b2-{404,202}`).
-- The first full run (seed 404 on `fc59a809f`) had 6 failures, all fixed before the run above:
-  - **Defect in C2's `Dawarich.LogRedaction`.** Lazy `Logger` calls (Oban's default logger) reach `:logger` as `{:string, iodata}`. The filter walked the iodata as format arguments and blanked the whole line, failing three "job logs contain …" tests, while a secret split across iodata parts leaked. Fixed in `ef402a61c` with a RED-first test.
-  - **Tailwind output hashes** moved with the new admin classes; re-pinned in `d7dd5ca23`.
-  - **Poster renderer test:** the worktree had no `vendor/poster_renderer/node_modules` (environment, not code).
-- Standalone G44, three full lanes one after another: _pending (Codex `m3b-g44`, app `fc59a809f`; the two later commits change only server logging and a test pin)._
-- JavaScript, measured on the stand:
-  - `/admin/settings`, `/settings/users`, `/settings/users/:id`, `/settings/users/:id/edit`, `/settings/background_jobs`: 2 script requests each, 163.3–163.8 KB decoded (50.5 KB on the wire), 0 Hotwire modules.
-  - `/admin/settings?section=experimental` adds the lazy `map_matching_demo` and `map_style` chunks plus vendored MapLibre (`maplibre-gl.mjs`, shared, worker): 8 requests, 1.68 MB decoded. The demo renders its canvas.
-- `mix format --check-formatted` and `mix compile --warnings-as-errors --all-warnings` (test env, forced): exit 0. `biome ci app-phoenix/assets`: exit 0. `node --test spec/javascript/*_test.mjs`: 605 passed, exit 0.
-- German and English at 390 px, measured on the stand: no horizontal page scroll and no text box past its control on all six admin views, including the open create-user and delete-user dialogs. Method: `scrollWidth` vs `clientWidth`, plus per-element `Range` boxes; visually hidden `sr-only` labels are skipped.
-- Code identity on the stand: `tmp/final-gates/prepared-sha` = `d7dd5ca23912…`, and the stand's runtime tree contains `scrub_chardata`, which exists only in the final commits. In the browser the page is German (`lang=de`, "Benutzer verwalten"), has no `data-turbo`/`data-controller`, and mounts the `MapMatchingDemo` hook.
+- **Full ExUnit**, seeds 404 and 202, on fresh partition databases: 10,097 tests, 0 failures, exit 0, all three partitions exit 0 (logs `.scratch/orch/partlogs-m3b5-{404,202}`).
+- **Standalone G44**, three full lanes one after another (`_f1`, `_f2`, `_f3`): 533 passed / 0 failed / 51 skipped / 0 flaky, exit 0 each, including all 14 admin cases (report `.scratch/orch/out/m3b-g44f.report.md`). Earlier lanes 1 and 2 on `fc59a809f` gave the same 533/0/51.
+- **JavaScript, measured on the stand:**
+  - `/admin/settings`, `/settings/users`, `/settings/users/:id`, `/settings/users/:id/edit`, `/settings/background_jobs`: 2 script requests each, 162.8–163.3 KB decoded (50.3 KB on the wire), 0 Hotwire modules.
+  - `?section=experimental` adds the lazy `map_matching_demo` and `map_style` chunks plus vendored MapLibre: 8 requests, 1.68 MB decoded.
+  - `native_assets_test` bounds what the demo adds to the eagerly loaded bundle (≤ 2 KB).
+- **Mechanical checks:** `mix format --check-formatted`, `mix compile --warnings-as-errors --all-warnings` (test env, forced) and `biome ci app-phoenix/assets`: exit 0. `node --test spec/javascript/*_test.mjs`: 605 passed.
+- **German and English at 390 px**, measured on the stand: no horizontal page scroll and no text box past its control on all six admin views and the open create-user and delete-user dialogs. Method: `scrollWidth` vs `clientWidth`, plus per-element `Range` boxes, skipping `sr-only` labels.
+- **Code identity on the stand:** `prepared-sha` = `86465c975e9f…`, and the runtime tree contains `scrub_query`, which exists only in the final commits. In the browser the page is German (`lang=de`) and has no `data-turbo`/`data-controller`; the `MapMatchingDemo` hook mounts.
+- **Defects found during acceptance and review:**
+  - C2's `LogRedaction` blanked lazy `{:string, iodata}` lines and leaked split secrets (`ef402a61c`).
+  - The first regex rewrite was open to catastrophic backtracking (`485bd07b6`).
+  - A secret in a nested query leaked again (`c71cc993d`).
+  - Each fix has a RED-first test. The other review fixes are listed in the plan's spec-verify deviation blocks.
 
 ## Contract and scope
 
