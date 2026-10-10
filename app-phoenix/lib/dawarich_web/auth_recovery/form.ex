@@ -1,34 +1,12 @@
 defmodule DawarichWeb.AuthRecovery.Form do
   @moduledoc false
+  use DawarichWeb, :html
   alias Dawarich.Auth.Recovery.{Messages, Token}
+  embed_templates "form/*"
 
-  @circle_x ~s(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>)
-
-  def render(view, token, assigns, locale, registration_enabled) do
+  def render(view, csrf, values, locale, registration_enabled) do
     {scope, title, description, submit, path} = config(view)
-    t = fn key -> DawarichWeb.Translate.t(locale, scope <> key, %{}) |> h() end
-    error = assigns[:error]
-    invalid = Messages.attributes(error)
-    persisted = view == :password_edit and error not in [nil, :invalid, :blank_token]
-    form_id = if persisted, do: "edit_user", else: "new_user"
-
-    fields =
-      if view == :password_edit do
-        token_field(assigns[:token]) <>
-          ~s(<div class="form-control">) <>
-          label("password", t.("new_password"), invalid) <>
-          ~s(<em class="text-base-content opacity-60 text-sm">\(12 #{t.("characters_minimum")}</em>) <>
-          input("password", "password", "new-password", true, invalid) <>
-          "</div>" <>
-          ~s(<div class="form-control">) <>
-          label("password_confirmation", t.("confirm_new_password"), invalid) <>
-          input("password_confirmation", "password", "new-password", false, invalid) <>
-          "</div>"
-      else
-        ~s(<div class="form-control">) <>
-          label("email", t.("email"), invalid) <>
-          input("email", "email", "email", true, invalid) <> "</div>"
-      end
+    error = values[:error]
 
     links =
       [{"/users/sign_in", "log_in"}] ++
@@ -38,32 +16,38 @@ defmodule DawarichWeb.AuthRecovery.Form do
           else: [{"/users/unlock/new", "didn_t_receive_unlock_instructions"}]
         )
 
-    links =
-      Enum.map_join(links, "", fn {path, key} ->
-        ~s(<div><a class="link link-hover text-base-content/70" href="#{path}">#{h(DawarichWeb.Translate.t(locale, "devise.shared.links." <> key, %{}))}</a></div>)
-      end)
+    assigns = %{
+      __changed__: nil,
+      view: view,
+      csrf: csrf,
+      token: if(Token.blank?(values[:token]), do: nil, else: values[:token]),
+      locale: locale,
+      scope: scope,
+      title: title,
+      description: description,
+      submit: submit,
+      path: path,
+      links: links,
+      invalid: Messages.attributes(error),
+      errors: if(error, do: Messages.error(view, error, locale)),
+      form_id:
+        if(view == :password_edit and error not in [nil, :invalid, :blank_token],
+          do: "edit_user",
+          else: "new_user"
+        )
+    }
 
-    method = if view == :password_edit, do: hidden("_method", "put"), else: ""
-
-    """
-    <div class="hero min-h-content bg-base-200"><div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
-    <div class="text-center lg:text-left"><h1 class="text-5xl font-bold text-base-content">#{t.(title)}</h1><p class="py-6 text-base-content opacity-70">#{t.(description)}</p></div>
-    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
-    <form class="#{form_id}" id="#{form_id}" action="#{path}" accept-charset="UTF-8" method="post">#{method}#{hidden("authenticity_token", token)}#{errors(view, error, locale)}#{fields}
-    <div class="form-control mt-6"><input type="submit" name="commit" value="#{t.(submit)}" class="btn btn-primary w-full" data-disable-with="#{t.(submit)}" /></div></form>
-    <div class="mt-5 space-y-2 text-sm">#{links}</div>
-    </div></div></div>
-    """
+    request(assigns) |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary()
   end
 
-  defp errors(_view, nil, _locale), do: ""
+  defp text(assigns, key), do: t(assigns.locale, assigns.scope <> key, %{})
 
-  defp errors(view, error, locale) do
-    messages = Messages.error(view, error, locale)
-    items = Enum.map_join(messages.messages, "", &("<li>" <> h(&1) <> "</li>"))
-
-    ~s(<div id="error_explanation" class="alert alert-error mb-4" data-turbo-cache="false">#{@circle_x}<div class="font-bold mb-4 flex items-center gap-2"><div><h3 class="font-bold">#{h(messages.heading)}</h3><ul class="text-sm mt-1">#{items}</ul></div></div></div>)
-  end
+  defp described(invalid, field, hint \\ nil),
+    do:
+      Enum.join(
+        Enum.reject([hint, if(field in invalid, do: "error_explanation")], &is_nil/1),
+        " "
+      )
 
   defp config(:password_new),
     do:
@@ -81,35 +65,4 @@ defmodule DawarichWeb.AuthRecovery.Form do
       {"devise.unlocks.new.", "resend_unlock_instructions",
        "enter_your_email_address_and_we_ll_send_you_instructions", "resend_unlock_instructions",
        "/users/unlock"}
-
-  defp token_field(token) do
-    value = if Token.blank?(token), do: "", else: ~s( value="#{h(token)}")
-
-    ~s(<input type="hidden"#{value} name="user[reset_password_token]" id="user_reset_password_token" />)
-  end
-
-  defp label(field, text, invalid),
-    do:
-      wrap(
-        ~s(<label class="label" for="user_#{field}"><span class="label-text">#{text}</span></label>),
-        field,
-        invalid
-      )
-
-  defp input(field, type, autocomplete, autofocus, invalid) do
-    focus = if autofocus, do: ~s( autofocus="autofocus"), else: ""
-    value = if type == "email", do: ~s( value=""), else: ""
-
-    wrap(
-      ~s(<input#{focus} autocomplete="#{autocomplete}" class="input input-bordered w-full" type="#{type}"#{value} name="user[#{field}]" id="user_#{field}" />),
-      field,
-      invalid
-    )
-  end
-
-  defp wrap(html, field, invalid),
-    do: if(field in invalid, do: ~s(<div class="field_with_errors">#{html}</div>), else: html)
-
-  defp hidden(name, value), do: ~s(<input type="hidden" name="#{name}" value="#{h(value)}" />)
-  defp h(value), do: value |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 end

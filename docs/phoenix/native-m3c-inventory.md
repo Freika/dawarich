@@ -80,3 +80,7 @@ Initial and repeated failure responses use the anonymous HTTP renderer, with emp
 ## B4b — native 2FA display
 
 Native authenticated documents and HTTP tabs retain setup/verification/error/backup/disable protocol. Backup values are selectable, wrapped, untruncated and one-column at narrow widths. Secret/URI/codes are function-local rendering arguments. RED `impl-m3c-b4b-red.log` 0/3 exit 2; GREEN 3/3; state/code/chrome/backup mutations each exit 2 with named failures. Restored `impl-m3c-b4b-restored-green.log`: 63 passed, exit 0, warnings clean. FormTest exact HTML → source fields/labels/title/QR and secret/code visibility booleans; ResponseTest exact feature/flash markup → source fields/labels and flash text, retaining all statuses/cookies/cache/title assertions. D2 browser verification pending.
+
+## C1 — recovery templates
+
+HEEx preserves source blank email/credentials, reset capability/PUT override/commit, fields/navigation and seven-locale messages. Labels/errors are explicitly associated with focusable summary. RED `impl-m3c-c1-red.log`: new named failures plus temporary unused alias (exit 3); GREEN four cases. Capability/password/description mutations fail named cases (exit 2). Restored `impl-m3c-c1-restored-green.log`: 27 passed, exit 0, warnings clean. Recovery Form exact HTML → all source fields/navigation/headings/labels/error text; source fixture cases unchanged. C2 document tests were RED against parent HTTP adapter before this commit and GREEN with candidate wiring.
