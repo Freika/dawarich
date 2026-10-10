@@ -1,5 +1,5 @@
 defmodule Dawarich.AirTrail.ClientTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Dawarich.AirTrail.Client
   alias Dawarich.AirTrailStub

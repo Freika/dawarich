@@ -1,5 +1,5 @@
 defmodule DawarichWeb.VisitsNavigationTest do
-  use Dawarich.IngestCase
+  use Dawarich.IngestCase, async: true
   import Phoenix.ConnTest
   import Plug.Conn
   @endpoint DawarichWeb.Endpoint

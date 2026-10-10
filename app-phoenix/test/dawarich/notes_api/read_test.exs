@@ -1,5 +1,5 @@
 defmodule Dawarich.NotesApi.ReadTest do
-  use Dawarich.DataCase, async: true
+  use Dawarich.DataCase, async: true, group: :notes_fixture_ids
   alias Dawarich.NotesApi.Read
 
   setup do

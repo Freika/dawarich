@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.AccountLink.PendingTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.AccountLink.Pending
   alias Dawarich.{Auth.Account, Repo}
   alias Dawarich.Test.RailsUser

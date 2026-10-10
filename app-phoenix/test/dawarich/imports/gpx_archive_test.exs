@@ -254,7 +254,7 @@ defmodule Dawarich.Imports.GpxArchiveTest do
     bytes = File.read!(f.input)
     body_size = byte_size(bytes) - 22
 
-    <<body::binary-size(body_size), 0x06054B50::little-32, 0::32, 1::little-16, 1::little-16,
+    <<body::binary-size(^body_size), 0x06054B50::little-32, 0::32, 1::little-16, 1::little-16,
       cd_size::little-32, cd_offset::little-32, 0::16>> = bytes
 
     trailer =

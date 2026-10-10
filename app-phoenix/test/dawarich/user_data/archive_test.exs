@@ -1,5 +1,5 @@
 defmodule Dawarich.UserData.ArchiveTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Imports.GpxArchive.{Directory, Error}
   alias Dawarich.Imports.JsonStream
   alias Dawarich.UserData.{Archive, Jsonl, Paths, Versions}
@@ -166,7 +166,7 @@ defmodule Dawarich.UserData.ArchiveTest do
   end
 
   defp patch_size(bytes, offset, size) do
-    <<head::binary-size(offset), _::32, tail::binary>> = bytes
+    <<head::binary-size(^offset), _::32, tail::binary>> = bytes
     head <> <<size::little-32>> <> tail
   end
 end

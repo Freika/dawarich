@@ -1,5 +1,5 @@
 defmodule Dawarich.TrackSegmentPageTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.{Repo, TrackSegmentPage}
   alias Dawarich.Test.FrameSeeds
 

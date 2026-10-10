@@ -983,7 +983,6 @@ defmodule DawarichWeb.A12f2HClosureTest do
           context
         )
 
-      refute result == :rails
       assert result == {:error, 503, %{"error" => "subscription_response_unavailable"}}
       assert Repo.get!(Account, c.id).status == 0
 

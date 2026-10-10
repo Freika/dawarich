@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.NormalWriterOracleTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
   alias Dawarich.Imports.BulkWriter
   @stamp ~N[2026-01-01 00:00:00]
   @inputs Path.expand("../../fixtures/imports/normal_writer_inputs.json", __DIR__)

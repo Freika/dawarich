@@ -1,5 +1,5 @@
 defmodule Dawarich.Sync1153SharingTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
 
   alias Dawarich.SharedLinks.FamilyAudience
 

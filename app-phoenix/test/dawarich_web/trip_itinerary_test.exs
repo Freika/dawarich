@@ -1,5 +1,5 @@
 defmodule DawarichWeb.TripItineraryTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
   require Phoenix.LiveViewTest
   alias Dawarich.Test.{RailsUser, TripsSeeds, ParityHTML, MapStimulus}
   alias Dawarich.Trips.PlanRead

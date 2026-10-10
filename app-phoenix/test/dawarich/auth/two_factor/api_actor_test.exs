@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.TwoFactor.ApiActorTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.Account
   alias Dawarich.Auth.TwoFactor.{ApiActor, Secret, Totp}
   alias Dawarich.Repo

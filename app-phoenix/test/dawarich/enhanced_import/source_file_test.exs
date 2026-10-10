@@ -10,7 +10,7 @@ defmodule Dawarich.EnhancedImport.SourceFileTest do
     bytes = Base.decode64!(file["base64"])
     {:ok, entries} = :zip.list_dir(bytes)
     {:zip_file, ^name, _info, _comment, offset, size} = List.keyfind(entries, name, 1)
-    <<_::binary-size(offset + 26), n::little-16, e::little-16, _::binary>> = bytes
+    <<_::binary-size(^offset + 26), n::little-16, e::little-16, _::binary>> = bytes
     :zlib.unzip(binary_part(bytes, offset + 30 + n + e, size))
   end
 

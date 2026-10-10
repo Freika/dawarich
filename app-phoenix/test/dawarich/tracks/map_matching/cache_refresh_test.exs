@@ -1,5 +1,3 @@
-Code.require_file("support.exs", __DIR__)
-
 defmodule Dawarich.Tracks.MapMatching.CacheRefreshTest do
   use Dawarich.TracksCase, async: false
   alias Dawarich.Experimental
@@ -56,9 +54,10 @@ defmodule Dawarich.Tracks.MapMatching.CacheRefreshTest do
 
   for {from, to, tag} <- [{false, true, :r3_sweep_on}, {true, false, :r3_sweep_off}] do
     @tag tag
-    test "R3 sweeper refreshes a stale #{from} cache to #{to} and preserves recovery" do
-      from = unquote(from)
-      to = unquote(to)
+    @tag cache_flip: {from, to}
+    test "R3 sweeper refreshes a stale #{from} cache to #{to} and preserves recovery", %{
+      cache_flip: {from, to}
+    } do
       track = TestSupport.input!(ScratchRepo)
       setting!("map_matching_enabled", from)
       assert Experimental.refresh_map_matching(ScratchRepo) == from

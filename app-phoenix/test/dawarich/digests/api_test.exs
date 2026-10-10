@@ -1,5 +1,5 @@
 defmodule Dawarich.Digests.ApiTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
   import Dawarich.Test.StatsSeeds
 
   alias Dawarich.Digests.Api

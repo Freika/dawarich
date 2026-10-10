@@ -1,5 +1,5 @@
 defmodule DawarichWeb.RailsFormTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.IngestCase, async: true
 
   import Bitwise
   import Plug.Conn
