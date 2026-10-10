@@ -33,7 +33,7 @@ defmodule Dawarich.Uploads.Reservations do
         ref = Ecto.UUID.generate()
 
         repo.query!(
-          "INSERT INTO phoenix.native_uploads(reference,user_id,blob_id,kind,original_filename,original_size,client_wrapped,expires_at,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+          "INSERT INTO phoenix.native_uploads(reference,user_id,blob_id,kind,original_filename,original_size,client_wrapped,expires_at,created_at,object_key,service_name) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
           [
             ref,
             current.user.id,
@@ -43,13 +43,19 @@ defmodule Dawarich.Uploads.Reservations do
             Map.get(entry, :original_size, entry.byte_size),
             Map.get(entry, :client_wrapped, false),
             NaiveDateTime.add(now, limits.ttl),
-            now
-          ], log: false)
+            now,
+            blob.key,
+            blob.service_name
+          ],
+          log: false
+        )
 
         repo.insert!(
           Dawarich.Uploads.SweepWorker.new(%{},
             scheduled_at: DateTime.add(DateTime.utc_now(), limits.ttl)
-          ), prefix: "oban")
+          ),
+          prefix: "oban"
+        )
 
         ref
       end)
@@ -63,7 +69,9 @@ defmodule Dawarich.Uploads.Reservations do
     [[count, bytes]] =
       repo.query!(
         "SELECT count(*),coalesce(sum(b.byte_size),0)::bigint FROM phoenix.native_uploads u JOIN active_storage_blobs b ON b.id=u.blob_id WHERE u.user_id=$1 AND u.kind=$2 AND u.state='pending' AND u.expires_at>timezone('UTC',now())",
-        [user.id, Atom.to_string(kind)], log: false).rows
+        [user.id, Atom.to_string(kind)],
+        log: false
+      ).rows
 
     max_entries = if kind == :account, do: 1, else: limits.max_entries
 
@@ -74,7 +82,8 @@ defmodule Dawarich.Uploads.Reservations do
       do: repo.rollback(:inactive)
 
     if kind == :imports and not Dawarich.ReleaseMigration.self_hosted?() and
-         (user.points_count || 0) >= 10_000_000, do: repo.rollback(:points_limit)
+         (user.points_count || 0) >= 10_000_000,
+       do: repo.rollback(:points_limit)
 
     if user.status == 2 and user.subscription_source in [nil, 0] do
       if entry.byte_size > 11 * 1024 * 1024 or

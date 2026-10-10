@@ -3,8 +3,8 @@ defmodule Dawarich.Uploads.Records do
   alias Dawarich.Accounts.NativeAccess
   alias Dawarich.Storage.NativePurge
 
-  @select "reference,user_id,blob_id,kind,state,original_filename,original_size,client_wrapped,expires_at,target_until"
-  @columns ~w(reference user_id blob_id kind state original_filename original_size client_wrapped expires_at target_until)a
+  @select "reference,user_id,blob_id,kind,state,original_filename,original_size,client_wrapped,expires_at,target_until,object_key,service_name,cleanup_at"
+  @columns ~w(reference user_id blob_id kind state original_filename original_size client_wrapped expires_at target_until object_key service_name cleanup_at)a
 
   def actor!(repo, scope) do
     id = scope && scope.user && scope.user.id
@@ -23,7 +23,9 @@ defmodule Dawarich.Uploads.Records do
       case repo.query!(
              "SELECT #{@select} FROM phoenix.native_uploads WHERE reference=$1 AND user_id=$2" <>
                suffix,
-             [ref, owner], log: false).rows do
+             [ref, owner],
+             log: false
+           ).rows do
         [row] -> Map.new(Enum.zip(@columns, row))
         _ -> nil
       end
@@ -64,7 +66,9 @@ defmodule Dawarich.Uploads.Records do
   def finish!(repo, row, state) do
     repo.query!(
       "UPDATE phoenix.native_uploads SET state=$2 WHERE reference=$1",
-      [row.reference, state], log: false)
+      [row.reference, state],
+      log: false
+    )
 
     :ok
   end
@@ -73,6 +77,10 @@ defmodule Dawarich.Uploads.Records do
     objects = NativePurge.collect(repo, [row.blob_id])
     NativePurge.mark!(repo, objects)
     finish!(repo, row, state)
+
+    repo.query!(
+      "UPDATE phoenix.native_uploads SET cleanup_at=greatest(target_until+interval '1 second',timezone('UTC',now())) WHERE reference=$1",
+      [row.reference], log: false)
 
     repo.insert!(Dawarich.Uploads.CleanupWorker.new(%{"reference" => row.reference}),
       prefix: "oban"

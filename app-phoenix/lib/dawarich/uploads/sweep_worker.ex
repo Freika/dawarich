@@ -15,7 +15,9 @@ defmodule Dawarich.Uploads.SweepWorker do
       rows =
         repo.query!(
           "SELECT reference,user_id FROM phoenix.native_uploads WHERE state='pending' AND expires_at<=timezone('UTC',now()) ORDER BY expires_at LIMIT 100 FOR UPDATE SKIP LOCKED",
-          [], log: false).rows
+          [],
+          log: false
+        ).rows
 
       for [ref, owner] <- rows do
         row = Dawarich.Uploads.Records.read(repo, ref, owner)
@@ -25,10 +27,33 @@ defmodule Dawarich.Uploads.SweepWorker do
           else: Dawarich.Uploads.Records.cancel!(repo, row, "expired")
       end
 
+      cleanups =
+        repo.query!(
+          "SELECT reference FROM phoenix.native_uploads WHERE state IN ('cancelled','expired','purged') AND cleanup_at<=timezone('UTC',now()) ORDER BY cleanup_at LIMIT 100 FOR UPDATE SKIP LOCKED",
+          [],
+          log: false
+        ).rows
+
+      for [ref] <- cleanups do
+        if repo.query!(
+             "SELECT 1 FROM oban.oban_jobs WHERE worker='Dawarich.Uploads.CleanupWorker' AND args->>'reference'=$1 AND state IN ('available','scheduled','retryable','executing') LIMIT 1",
+             [ref], log: false).rows == [] do
+          repo.insert!(Dawarich.Uploads.CleanupWorker.new(%{"reference" => ref}), prefix: "oban")
+        end
+
+        repo.query!(
+          "UPDATE phoenix.native_uploads SET cleanup_at=timezone('UTC',now())+interval '5 minutes' WHERE reference=$1",
+          [ref],
+          log: false
+        )
+      end
+
       [[next]] =
         repo.query!(
-          "SELECT min(expires_at) FROM phoenix.native_uploads WHERE state='pending'",
-          [], log: false).rows
+          "SELECT min(deadline) FROM (SELECT expires_at AS deadline FROM phoenix.native_uploads WHERE state='pending' UNION ALL SELECT cleanup_at AS deadline FROM phoenix.native_uploads WHERE state IN ('cancelled','expired','purged') AND cleanup_at IS NOT NULL) deadlines",
+          [],
+          log: false
+        ).rows
 
       if next do
         at =
