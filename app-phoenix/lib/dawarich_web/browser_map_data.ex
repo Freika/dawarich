@@ -14,6 +14,7 @@ defmodule DawarichWeb.BrowserMapData do
     hexagons: {Api.HexagonsController, :index},
     fog: {Api.HexagonsController, :fog},
     flights: {Api.GeoController, :flights},
+    countries: {Api.SpatialController, :visited},
     photos: {Api.PhotosController, :index},
     thumbnail: {Api.PhotosController, :thumbnail_closure},
     locations: {Api.LocationsController, :index_closure},

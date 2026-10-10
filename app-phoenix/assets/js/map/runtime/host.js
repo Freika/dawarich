@@ -1,8 +1,8 @@
-import { createBaseLayers } from "../layers/tile_layers.js"
-import { createTileFreshness } from "../data/tile_freshness.js"
-import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createReader } from "../data/reader.js"
+import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
+import { createTileFreshness } from "../data/tile_freshness.js"
+import { createBaseLayers } from "../layers/tile_layers.js"
 import { createMapRuntime } from "./create_map.js"
 
 export { createMapRuntime }
@@ -18,6 +18,7 @@ export function mountHost({
 }) {
   const freshness = createTileFreshness()
   let layers
+  let density
   const config = JSON.parse(element.dataset.mapConfig ?? "{}")
   const owner = createMapRuntime({
     element,
@@ -36,6 +37,7 @@ export function mountHost({
           onError: (code) => pushEvent("map:failed", { code }),
         })
         lifetime.own(() => layers.destroy())
+        lifetime.own(() => density?.destroy())
         return new Promise((resolve) => {
           const ready = () => {
             layers.mount()
@@ -48,7 +50,42 @@ export function mountHost({
           }
         })
       }),
-    refresh: refresh ?? (({ config }) => layers?.update(config)),
+    refresh:
+      refresh ??
+      (async ({ map, config, operation, signal }) => {
+        layers?.update(config)
+        if (
+          !density &&
+          (config.fogEnabled || config.hexagonsEnabled || config.scratchEnabled)
+        ) {
+          const [module, library] = await operation.wait(
+            Promise.all([
+              import("../layers/density.js"),
+              loadLibrary({ signal }),
+            ]),
+          )
+          operation.check()
+          density = module.createDensityLayers({
+            map,
+            reader,
+            library,
+            pointsLayer: layers?.points,
+            onError: (code) => pushEvent("map:failed", { code }),
+            onProgress: (receipt) =>
+              element.dispatchEvent(
+                new CustomEvent("map:progress", { detail: receipt }),
+              ),
+            formatCount: (count) =>
+              (owner.config.hexagonLabel ?? "{count} points").replace(
+                "{count}",
+                new Intl.NumberFormat(owner.config.locale ?? "en").format(
+                  count,
+                ),
+              ),
+          })
+        }
+        if (density) await operation.wait(density.update(config, { signal }))
+      }),
     events: {
       refreshed(receipt) {
         element.dataset.mapState = "ready"

@@ -121,6 +121,27 @@ defmodule Dawarich.Build.NativeAssetsTest do
     assert Enum.any?(chunks, &String.contains?(&1, "/maplibre/6.4.1/maplibre-gl.mjs"))
   end
 
+  test "density libraries stay outside the ordinary map-open graph", %{tmp_dir: dir} do
+    build!(dir)
+
+    outputs =
+      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    {host, _} =
+      Enum.find(outputs, fn {_path, output} ->
+        Map.has_key?(output["inputs"], "js/map/runtime/host.js")
+      end)
+
+    open_inputs =
+      for path <- eager(outputs, [host], MapSet.new()),
+          input <- Map.keys(outputs[path]["inputs"]),
+          do: input
+
+    refute Enum.any?(open_inputs, &Regex.match?(~r{h3-js|pmtiles|layers/density}, &1))
+    assert Enum.any?(inputs(dir), &String.contains?(&1, "h3-js"))
+    assert Enum.any?(inputs(dir), &String.contains?(&1, "pmtiles"))
+  end
+
   test "the vendored MapLibre module and the basemap styles the demo loads ship in the public root" do
     for path <-
           ~w(maplibre/6.4.1/maplibre-gl.mjs maps_maplibre/styles/light.json maps_maplibre/styles/dark.json) do

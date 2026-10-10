@@ -66,6 +66,16 @@ defmodule DawarichWeb.BrowserMapDataTest do
     assert hd(features)["properties"]["id"] == owned
   end
 
+  test "cookie country membership reads its owned current range", %{id: id, foreign: foreign} do
+    Repo.query!("UPDATE points SET country_name = 'Germany' WHERE user_id = $1", [id])
+    Repo.query!("UPDATE points SET country_name = 'France' WHERE user_id = $1", [foreign])
+    conn = read(id, "/countries?start_at=1780000000&end_at=1800000000")
+    assert conn.status == 200
+    assert Enum.map(Jason.decode!(conn.resp_body)["countries"], & &1["iso_a3"]) == ["DEU"]
+    assert read(id, "/countries?start_at=1&end_at=2").status == 200
+    assert Jason.decode!(read(id, "/countries?start_at=1&end_at=2").resp_body)["countries"] == []
+  end
+
   defp read(id, path), do: get(RailsUser.signed_in(id), "/native/map/data" <> path)
 
   test "cookie map read retains API entitlement and account isolation", %{id: id} do

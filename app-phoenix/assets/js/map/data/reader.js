@@ -20,6 +20,7 @@ const paths = {
   hexagons: "hexagons",
   fog: "fog",
   flights: "flights",
+  countries: "countries",
 }
 
 export function createReader({

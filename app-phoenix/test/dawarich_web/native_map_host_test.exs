@@ -39,4 +39,25 @@ defmodule DawarichWeb.NativeMapHostTest do
     assert data["mapOptions"]["center"] == [13, 52]
     assert data["revision"] == 1
   end
+
+  test "native density label is localized without markup or unvalidated locale" do
+    for {locale, expected, word} <- [{"de", "de", "Punkte"}, {"unknown-locale", "en", "points"}] do
+      html =
+        render_component(&DawarichWeb.NativeMapHost.map_host/1,
+          id: "native-map",
+          config: %{},
+          locale: locale
+        )
+
+      [encoded] =
+        html
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("[data-map-config]")
+        |> LazyHTML.attribute("data-map-config")
+
+      data = Jason.decode!(encoded)
+      assert data["locale"] == expected
+      assert data["hexagonLabel"] == "{count} " <> word
+    end
+  end
 end
