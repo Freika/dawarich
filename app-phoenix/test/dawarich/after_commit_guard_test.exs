@@ -114,6 +114,38 @@ defmodule Dawarich.AfterCommitGuardTest do
     """)
   end
 
+  test "unchanged sources are analysed once per run" do
+    paths = Path.wildcard("lib/**/*.ex")
+    assert violations(paths) == []
+    {:reductions, before} = Process.info(self(), :reductions)
+    assert violations(paths) == []
+    {:reductions, after_count} = Process.info(self(), :reductions)
+    assert after_count - before < 50_000_000
+  end
+
+  test "an edited source is analysed again" do
+    path =
+      Path.join(System.tmp_dir!(), "after-commit-guard-#{System.unique_integer([:positive])}.ex")
+
+    File.write!(
+      path,
+      "defmodule GuardProbe do\ndef write(repo), do: repo.transaction(fn -> :ok end)\nend"
+    )
+
+    try do
+      assert violations([path]) == []
+
+      File.write!(
+        path,
+        "defmodule GuardProbe do\ndef write(repo), do: repo.transaction(fn -> Dawarich.TtlCache.delete(:k) end)\nend"
+      )
+
+      assert length(violations([path])) == 1
+    after
+      File.rm!(path)
+    end
+  end
+
   defp assert_source(source) do
     path =
       Path.join(System.tmp_dir!(), "after-commit-guard-#{System.unique_integer([:positive])}.ex")
