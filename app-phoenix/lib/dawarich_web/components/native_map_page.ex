@@ -10,6 +10,7 @@ defmodule DawarichWeb.NativeMapPage do
       data-native-map-root
       class="relative w-full min-w-0 h-[100dvh] flex flex-col"
     >
+      <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native />
       <DawarichWeb.NativeMapPanels.navigation locale={@locale} panel={@map_url["panel"] || ""} />
       <DawarichWeb.NativeMapPanels.layer_panel
         :if={@map_url["panel"] == "layers" && assigns[:map_settings]}

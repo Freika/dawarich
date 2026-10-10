@@ -581,6 +581,21 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert rows("SELECT count(*) FROM points WHERE id IN ($1,$2)", [point, foreign]) == [[2]]
   end
 
+  test "native point deletion reports success and refusal through dismissible local feedback", %{
+    id: id
+  } do
+    point = id * 10
+    Dawarich.Test.FrameSeeds.point!(id, point, DateTime.to_unix(~U[2026-03-30 09:00:00Z]), %{})
+    {:ok, view, _} = open(id, @second)
+    render_hook(view, "point:delete", %{"point_id" => to_string(point)})
+    assert has_element?(view, "#flash-messages [role=alert]", "Point deleted successfully")
+    render_hook(view, "lv:clear-flash", %{})
+    refute has_element?(view, "#flash-messages [role=alert]")
+    render_hook(view, "point:delete", %{"point_id" => to_string(point)})
+    assert_reply(view, %{error: "not_found"})
+    assert has_element?(view, "#flash-messages [role=alert]", "Failed to delete point")
+  end
+
   defp open(id, path, locale \\ "en") do
     RailsUser.signed_in(id)
     |> RailsUser.connecting_as(id)

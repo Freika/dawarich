@@ -1,7 +1,7 @@
 defmodule DawarichWeb.MapLive.PointCommands do
   @moduledoc false
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3]
+  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   alias Dawarich.LocationCommands.Points
 
   def handle_event("point:move", %{"point_id" => id} = params, socket) do
@@ -28,10 +28,11 @@ defmodule DawarichWeb.MapLive.PointCommands do
              do: assign(socket, :point_address, nil),
              else: socket
 
+        socket = feedback(socket, :notice, "point_deleted_successfully")
         {:reply, %{ok: true}, push_event(socket, "map:invalidate", %{resource: "points"})}
 
       {:error, reason} ->
-        {:reply, %{error: code(reason)}, socket}
+        {:reply, %{error: code(reason)}, feedback(socket, :alert, "failed_to_delete_point")}
     end
   end
 
@@ -47,6 +48,14 @@ defmodule DawarichWeb.MapLive.PointCommands do
   end
 
   def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  defp feedback(socket, kind, key),
+    do:
+      put_flash(
+        socket,
+        kind,
+        DawarichWeb.Translate.t(socket.assigns.locale, "javascript.messages." <> key, %{})
+      )
 
   defp plain(term), do: term |> DawarichWeb.Api.Respond.encode() |> Jason.decode!()
 
