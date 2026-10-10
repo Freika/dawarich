@@ -34,6 +34,8 @@ defmodule DawarichWeb.BrowserMapRoutes do
               {"/fog", :fog},
               {"/flights", :flights},
               {"/countries", :countries},
+              {"/family/locations", :family_locations},
+              {"/family/history", :family_history},
               {"/tiles/points/:z/:x/:y", :point_tiles},
               {"/tiles/tracks/:z/:x/:y", :track_tiles}
             ] do

@@ -21,6 +21,8 @@ const paths = {
   fog: "fog",
   flights: "flights",
   countries: "countries",
+  family_locations: "family/locations",
+  family_history: "family/history",
 }
 
 export function createReader({

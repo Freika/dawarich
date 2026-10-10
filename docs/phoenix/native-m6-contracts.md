@@ -14,6 +14,7 @@ Status: S1 foundation contracts implemented, 2026-10-10. The controller starts t
 
 | Adapter | Current implementation | Accepted dependency awaited | Switch task |
 | --- | --- | --- | --- |
+| `Dawarich.Maps.Dependencies.Family` | FamilyPage admission + Families.Locations/FamilyApi.Closure history | m4 fresh family consent/delivery facade | Dedicated adapter switch retaining withdrawal/session tests |
 | `Dawarich.Maps.Dependencies.Principal` | Accounts.get, Devise salt fingerprint, sanitized Scope | m4 fresh/sanitized principal and callback admission | Controller integrates m4, then dedicated adapter switch with original-session revocation tests |
 
 The other O10 dependencies (m4 upload claims/finalization, owner invalidations, family consent/public admission; m5 Trip/Visit/timeline projections and map insertion points) receive one thin adapter each when the owning A/B/D task first consumes them. The ledger will name actual modules and methods at that point. No duplicated domain queries or placeholder native fallback is part of this contract.
@@ -92,3 +93,7 @@ The A8 minified photo static graph is15,365 raw/6,034 gzip bytes and stays outsi
 `mountHost.entityLayers` exposes the owned display service: `visitPresentation({selectedId,status,dayRoute})` and `selected(geojson)` retain browser-local geometry across style replacement. Native popup selection sends only `map:select {kind: visit|place|area|point, id}` after matching a current owned feature. Track B commands must independently admit and authorize that resource. No feature properties or geometry enter the receipt. Host destruction cancels reads, clears selection, closes popups and removes every listener.
 
 Additional config: visitsEnabled/placesEnabled/areasEnabled/anomaliesEnabled and placesTagFilters. Entity popup labels come only from normalized server translations with bounded interpolation tokens; replacing locale/range closes the old popup. This service introduces no controller registry.
+
+## Family reads and overlay
+
+Native cookie resources `family_locations` and `family_history` freshly admit family membership/entitlement and each member's sharing grant through the current family interfaces. History retains start/end, sharing-start/window and 5,000-point sampling semantics. Geometry is returned only over HTTP, never embedded in the map component. Family runtime clears its owned markers/history/popup before refresh, aborts obsolete requests and rejects late non-cooperative completions. Reconnect refreshes membership on the existing map. Style listeners and relative-time intervals belong to that owner; independent maps are unaffected. A14 uses authorized invalidations rather than trusting raw channel location events. m4 owns the surrounding page/forms; X1 adopts the extracted map insertion point.

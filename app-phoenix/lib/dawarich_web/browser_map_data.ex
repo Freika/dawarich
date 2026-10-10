@@ -34,6 +34,9 @@ defmodule DawarichWeb.BrowserMapData do
       conn = assign(conn, :api_params, params)
 
       case action do
+        family when family in [:family_locations, :family_history] ->
+          family(conn, family)
+
         :areas ->
           DawarichWeb.BrowserMapAreas.call(conn)
 
@@ -71,6 +74,19 @@ defmodule DawarichWeb.BrowserMapData do
   end
 
   defp bounded(params, _), do: {:ok, params}
+
+  defp family(conn, action) do
+    user = Dawarich.Accounts.get(conn.assigns.api_user.id)
+    scope = Dawarich.Maps.principal(user, "en")
+    operation = if action == :family_locations, do: :locations, else: :history
+
+    case Dawarich.Maps.Dependencies.Family.read(scope, operation, conn.assigns.api_params,
+           now: conn.assigns[:now] || DateTime.utc_now()
+         ) do
+      {:ok, status, body} -> Api.Respond.json(conn, status, body)
+      {:error, _} -> Api.Respond.json(conn, 403, %{error: "family_unavailable"})
+    end
+  end
 
   defp settings(conn) do
     {_, status, body} =
