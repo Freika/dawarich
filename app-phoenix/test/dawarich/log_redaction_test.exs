@@ -193,4 +193,46 @@ defmodule Dawarich.LogRedactionTest do
     assert log =~ "Postgrex.Error"
     assert not String.contains?(log, secret)
   end
+
+  test "nil-query execution diagnostics preserve codes without capabilities in messages or crash metadata" do
+    secret = "opaque-nil-query-invitation"
+
+    error = %Postgrex.Error{
+      query: nil,
+      postgres: %{
+        code: :unique_violation,
+        pg_code: "23505",
+        severity: "ERROR",
+        message: "duplicate key value violates unique constraint",
+        detail: "Key (token)=(#{secret}) already exists.",
+        hint: secret
+      }
+    }
+
+    event = %{
+      level: :error,
+      msg: {:report, %{execution_error: error}},
+      meta: %{crash_reason: {error, []}}
+    }
+
+    filtered = Dawarich.LogRedaction.filter(event, [])
+    assert not String.contains?(inspect(filtered), secret)
+    assert inspect(filtered) =~ "23505"
+    assert inspect(filtered) =~ "unique_violation"
+
+    log =
+      capture_log(fn ->
+        require Logger
+        Logger.error(%{execution_error: error}, crash_reason: {error, []})
+
+        Logger.error(fn ->
+          ["Postgrex disconnected: ", Exception.format_banner(:error, error, [])]
+        end)
+
+        Logger.flush()
+      end)
+
+    assert not String.contains?(log, secret)
+    assert log =~ "Postgrex.Error"
+  end
 end

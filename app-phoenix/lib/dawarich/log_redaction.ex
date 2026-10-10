@@ -34,21 +34,13 @@ defmodule Dawarich.LogRedaction do
 
   defp scrub(%FunctionClauseError{} = error, _depth), do: %{error | args: nil}
 
-  defp scrub(%Postgrex.Error{query: query} = error, depth) when is_binary(query) do
-    if sensitive_sql?(query) do
-      postgres =
-        if error.postgres,
-          do:
-            error.postgres
-            |> Map.take([:code, :pg_code, :severity])
-            |> Map.put(:message, @filtered)
+  defp scrub(%Postgrex.Error{} = error, _depth) do
+    postgres =
+      if error.postgres,
+        do:
+          error.postgres |> Map.take([:code, :pg_code, :severity]) |> Map.put(:message, @filtered)
 
-      %{error | message: @filtered, postgres: postgres}
-    else
-      Enum.reduce(Map.from_struct(error), error, fn {key, value}, acc ->
-        Map.put(acc, key, scrub_pair(key, value, depth))
-      end)
-    end
+    %{error | message: @filtered, postgres: postgres, query: if(error.query, do: @filtered)}
   end
 
   defp scrub(%{__struct__: _} = struct, depth) do
@@ -130,11 +122,11 @@ defmodule Dawarich.LogRedaction do
 
       words ->
         cond do
-          not mentions?(binary, words) ->
-            binary
-
           String.contains?(binary, "Postgrex.Error") ->
             "Postgrex.Error " <> @filtered
+
+          not mentions?(binary, words) ->
+            binary
 
           Regex.match?(~r/(?<![[:alnum:]_])"?(?:cast_)?params"?\s*+(?::|=>|=)/, binary) ->
             @filtered
