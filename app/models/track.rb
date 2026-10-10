@@ -262,7 +262,7 @@ class Track < ApplicationRecord
   def self.pick_dominant_mode(segments)
     distance_by_mode = Hash.new(0)
     duration_by_mode = Hash.new(0)
-    segments.each do |s|
+    segments.sort_by { |segment| segment.id || Float::INFINITY }.each do |s|
       distance_by_mode[s.transportation_mode] += s.distance.to_i
       duration_by_mode[s.transportation_mode] += s.duration.to_i
     end

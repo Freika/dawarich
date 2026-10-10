@@ -114,7 +114,7 @@ module Users
 
       def format_top_countries(country_minutes)
         country_minutes
-          .sort_by { |_, minutes| -minutes }
+          .sort_by { |name, minutes| [-minutes, name] }
           .first(10)
           .map { |name, minutes| { 'name' => name, 'minutes' => minutes } }
       end
@@ -161,7 +161,7 @@ module Users
             AND country_name IS NOT NULL
             AND country_name != ''
           GROUP BY point_date, country_name
-          ORDER BY point_date, min_timestamp
+          ORDER BY point_date, min_timestamp, country_name COLLATE "C"
         SQL
 
         ActiveRecord::Base.connection.execute(sql).to_a
