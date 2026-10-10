@@ -1,0 +1,60 @@
+defmodule DawarichWeb.PublicMapLive do
+  @moduledoc false
+  use DawarichWeb, :live_view
+  on_mount({DawarichWeb.PublicMapAuth, :default})
+
+  def mount(_, session, socket),
+    do:
+      {:ok,
+       assign(socket,
+         public_map_ready: false,
+         public_unlock_token: session["public_unlock_token"]
+       )}
+
+  def handle_params(_, _, socket), do: {:noreply, socket}
+
+  def handle_event("map:ready", params, socket) do
+    current = socket.assigns.public_config
+    ready = current && params["revision"] == current["revision"]
+    {:noreply, assign(socket, :public_map_ready, ready == true)}
+  end
+
+  def handle_event("map:failed", _, socket),
+    do: {:noreply, assign(socket, :public_map_ready, false)}
+
+  def handle_event(_, _, socket), do: {:noreply, socket}
+
+  def handle_info({:public_map_expiry, token}, socket),
+    do: {:noreply, DawarichWeb.PublicMapDeadline.receive_expiry(socket, token)}
+
+  def handle_info(_, socket), do: {:noreply, socket}
+
+  def render(assigns) do
+    ~H"""
+    <main class="mx-auto w-full min-w-0 max-w-7xl p-4" data-map-ready={to_string(@public_map_ready)}>
+      <%= if @public_config do %>
+        <h1 class="mb-4 break-words text-3xl font-bold [overflow-wrap:anywhere]">{@public_config["title"]}</h1>
+        <DawarichWeb.NativeMapHost.map_host id="native-public-map" hook="PublicMap" config={@public_config} locale={@locale || "en"} class="h-[70vh] min-h-80 w-full min-w-0 rounded-lg" />
+      <% else %>
+        <%= if @public_error == :locked do %>
+          <section class="mx-auto max-w-md py-8 text-center">
+            <h1 class="text-3xl font-bold">{t(@locale, "shared.links.phrase_prompt.enter_the_magic_phrase", %{})}</h1>
+            <p class="py-4">{t(@locale, "shared.links.phrase_prompt.this_shared_link_is_protected_ask_the_owner_for_the", %{})}</p>
+            <form action={"/s/#{@public_capability.id}/unlock"} method="post" class="form-control">
+              <input type="hidden" name="authenticity_token" value={@public_unlock_token} />
+              <label for="public-phrase" class="label">{t(@locale, "shared.links.phrase_prompt.magic_phrase", %{})}</label>
+              <input id="public-phrase" name="phrase" type="text" required class="input input-bordered w-full min-w-0" />
+              <button class="btn btn-primary mt-4 h-auto min-h-12 whitespace-normal">{t(@locale, "shared.links.phrase_prompt.unlock", %{})}</button>
+            </form>
+          </section>
+        <% else %>
+          <section role="status" class="mx-auto max-w-md py-8 text-center">
+            <h1 class="text-3xl font-bold">{t(@locale, "shared.links.not_found.this_shared_link_is_no_longer_available", %{})}</h1>
+            <p class="py-4">{t(@locale, "shared.links.not_found.the_owner_may_have_revoked_the_link_or_it_may", %{})}</p>
+          </section>
+        <% end %>
+      <% end %>
+    </main>
+    """
+  end
+end

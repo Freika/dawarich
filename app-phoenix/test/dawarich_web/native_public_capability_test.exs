@@ -133,6 +133,21 @@ defmodule DawarichWeb.NativePublicCapabilityTest do
              )
   end
 
+  test "public metadata exposes the exact earliest validated grant expiry" do
+    assert {:ok, config} = Public.config(grant(DateTime.add(@now, 7)), now: @now)
+    assert {:ok, expiry, _} = DateTime.from_iso8601(config["validUntil"])
+    assert DateTime.compare(expiry, DateTime.add(@now, 7)) == :eq
+
+    Repo.query!("UPDATE shared_links SET expires_at=$2 WHERE id=$1::text::uuid", [
+      @id,
+      DateTime.to_naive(DateTime.add(@now, 3))
+    ])
+
+    assert {:ok, config} = Public.config(grant(DateTime.add(@now, 7)), now: @now)
+    assert {:ok, expiry, _} = DateTime.from_iso8601(config["validUntil"])
+    assert DateTime.compare(expiry, DateTime.add(@now, 3)) == :eq
+  end
+
   test "public disabled photos return empty data without provider or private read" do
     assert {:ok, []} = Public.read(grant(), :photos, %{}, now: @now)
   end

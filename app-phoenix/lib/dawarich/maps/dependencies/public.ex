@@ -6,7 +6,7 @@ defmodule Dawarich.Maps.Dependencies.Public do
   alias DawarichWeb.SharedLinkCookie
   @false_flags [nil, false, "", "0", "false", "FALSE", "f", "F", "off", "OFF"]
 
-  def config(capability, opts \\ []), do: with_link(capability, opts, &project/1)
+  def config(capability, opts \\ []), do: with_link(capability, opts, &project(&1, capability))
 
   def read(capability, action, params, opts \\ []) do
     with_link(capability, opts, fn link ->
@@ -140,7 +140,39 @@ defmodule Dawarich.Maps.Dependencies.Public do
         else: true
       )
 
-  defp project(link) do
+  defp valid_until(link, capability) do
+    cookie =
+      if not FamilyAudience.family_only?(link) and
+           SharedLinkCookie.unlock_token(link.id, link.magic_phrase),
+         do: (capability[:proof] || %{})["expires_at"]
+
+    [link.expires_at, cookie]
+    |> Enum.map(fn
+      %NaiveDateTime{} = value ->
+        DateTime.from_naive!(value, "Etc/UTC")
+
+      %DateTime{} = value ->
+        value
+
+      value when is_binary(value) ->
+        case DateTime.from_iso8601(value) do
+          {:ok, at, _} -> at
+          _ -> nil
+        end
+
+      _ ->
+        nil
+    end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.sort(&(DateTime.compare(&1, &2) != :gt))
+    |> List.first()
+    |> then(fn
+      nil -> nil
+      at -> DateTime.to_iso8601(at)
+    end)
+  end
+
+  defp project(link, capability) do
     settings = Accounts.settings(link.user_id)
 
     with {:ok, display} <- TripSettings.read(settings) do
@@ -150,6 +182,7 @@ defmodule Dawarich.Maps.Dependencies.Public do
       {:ok,
        %{
          "shareId" => link.id,
+         "validUntil" => valid_until(link, capability),
          "publicType" => link.type,
          "title" => link.name,
          "styleName" => display.style,
