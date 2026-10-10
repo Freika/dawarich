@@ -15,6 +15,11 @@ defmodule DawarichWeb.NativeFamilyPage do
             DawarichWeb.LocalizedDate.l(@locale, @page.presentation.family.created_date, "month_year")
         })}
       </p>
+      <DawarichWeb.NativeFamilyGettingStarted.getting_started
+        page={@page.presentation}
+        locale={@locale}
+        self_hosted={@self_hosted != false}
+      />
       <div class="flex flex-col lg:flex-row min-w-0 gap-4">
         <div class="w-full min-w-0 lg:w-3/5 min-h-80">
           <DawarichWeb.FamilyMap.family_map config={@page.config} locale={@locale} />

@@ -73,6 +73,38 @@ defmodule DawarichWeb.NativeFamilyPresentationTest do
     assert :sys.get_state(view.pid).socket.assigns.page_title == nil
   end
 
+  test "native family setup guidance follows fresh invitations and sharing with one editor", %{
+    id: id
+  } do
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [id + 1], log: false)
+    Dawarich.Jobs.Ownership.put!(Repo, "command:mail.family_invitation", :oban)
+    {:ok, view, _} = open(id)
+    assert has_element?(view, "#family-getting-started", "Invite")
+
+    assert render(view)
+           |> LazyHTML.from_fragment()
+           |> LazyHTML.query("#native-family-invite")
+           |> Enum.count() == 1
+
+    view
+    |> form("#native-family-invite", family_invitation: %{email: "family-setup@example.test"})
+    |> render_submit()
+
+    assert has_element?(view, "#family-getting-started", "sharing")
+
+    view
+    |> form("#native-family-sharing", sharing: %{enabled: "true", duration: "permanent"})
+    |> render_change()
+
+    refute has_element?(view, "#family-getting-started")
+
+    view
+    |> form("#native-family-sharing", sharing: %{enabled: "false", duration: "permanent"})
+    |> render_change()
+
+    assert has_element?(view, "#family-getting-started", "sharing")
+  end
+
   defp open(id) do
     RailsUser.signed_in(id)
     |> RailsUser.connecting_as(id)
