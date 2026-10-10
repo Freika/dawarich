@@ -229,11 +229,12 @@ defmodule DawarichWeb.Strangler do
     false
   end
 
-  def rails_constraints?(%{route: route, path_params: params}),
+  def rails_constraints?(%{route: route, path_params: params} = info),
     do:
-      Enum.all?(Map.get(constraints(), route, %{}), fn {name, pattern} ->
-        Regex.match?(pattern, params[name])
-      end)
+      :native_m6_browser in Map.get(info, :pipe_through, []) or
+        Enum.all?(Map.get(constraints(), route, %{}), fn {name, pattern} ->
+          Regex.match?(pattern, params[name])
+        end)
 
   defp constraints,
     do:

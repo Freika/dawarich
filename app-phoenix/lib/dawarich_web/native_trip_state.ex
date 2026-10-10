@@ -1,7 +1,43 @@
 defmodule DawarichWeb.NativeTripState do
   @moduledoc false
   import Phoenix.Component, only: [assign: 2]
-  import Phoenix.LiveView, only: [push_event: 3]
+  import Phoenix.LiveView, only: [push_event: 3, connected?: 1, put_flash: 3]
+
+  def load(socket, id) do
+    with {:ok, socket} <- refresh(socket, id) do
+      if connected?(socket) do
+        {:ok, socket}
+      else
+        result = Dawarich.Maps.Dependencies.Trip.prepare(socket.assigns.current_scope, id)
+
+        with {:ok, socket} <- refresh(socket, id) do
+          {:ok,
+           if(result == :ok,
+             do: socket,
+             else:
+               put_flash(
+                 socket,
+                 :error,
+                 DawarichWeb.Translate.t(
+                   socket.assigns.locale,
+                   "trips.recalculate_button.recalculation_failed_try_again",
+                   %{}
+                 )
+               )
+           )}
+        end
+      end
+    end
+  end
+
+  def identity(value) when is_binary(value) and byte_size(value) <= 19 do
+    case Integer.parse(value) do
+      {id, ""} when id > 0 and id <= 9_223_372_036_854_775_807 -> id
+      _ -> 0
+    end
+  end
+
+  def identity(_), do: 0
 
   def refresh(socket, id \\ nil) do
     id = id || socket.assigns.page.presentation.id

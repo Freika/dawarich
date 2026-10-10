@@ -13,6 +13,20 @@ defmodule Dawarich.Maps.Dependencies.Trip do
 
   def admit(_, _), do: {:error, :invalid}
 
+  def prepare(scope, id) when is_integer(id) and id > 0 do
+    Maps.with_actor(scope, fn actor ->
+      case Dawarich.Trips.ShowCalculation.run(Dawarich.Repo, actor, id, %{
+             now: DateTime.utc_now(),
+             connected: false
+           }) do
+        {:ok, _} -> :ok
+        _ -> {:error, :unavailable}
+      end
+    end)
+  end
+
+  def prepare(_, _), do: {:error, :invalid}
+
   def config(scope, id, opts \\ []) do
     with {:ok, data} <- read(scope, id, opts), do: {:ok, data["config"]}
   end

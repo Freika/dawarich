@@ -27,7 +27,7 @@ defmodule DawarichWeb.TripsLive.NativeMap do
     socket =
       assign(socket, selected_day: nil, note_editor: nil, expanded_days: false, trip_layers: %{})
 
-    case DawarichWeb.NativeTripState.refresh(socket, Dawarich.RubyInteger.to_i(id)) do
+    case DawarichWeb.NativeTripState.load(socket, DawarichWeb.NativeTripState.identity(id)) do
       {:ok, socket} ->
         descriptor = %{
           kind: :trip,
