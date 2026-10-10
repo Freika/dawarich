@@ -2,6 +2,7 @@ defmodule Dawarich.Test.SeedIds do
   @moduledoc false
 
   @consume_limit 100_000
+  @gap "SELECT $1::text::regclass AS seq, $2::bigint - COALESCE(pg_sequence_last_value($1::text::regclass), 0) AS gap"
 
   def insert_all!(repo, table, rows, opts \\ []) do
     result = repo.insert_all(table, rows, opts)
@@ -24,28 +25,15 @@ defmodule Dawarich.Test.SeedIds do
   end
 
   defp forward!(repo, sequence, id) do
-    %{rows: [[gap]]} =
-      repo.query!(
-        "SELECT $2::bigint - COALESCE(pg_sequence_last_value($1::text::regclass), 0)",
-        [sequence, id],
-        log: false
-      )
-
-    cond do
-      gap <= 0 ->
-        :ok
-
-      gap <= @consume_limit ->
-        repo.query!(
-          "SELECT max(nextval($1::text::regclass)) FROM generate_series(1, $2::bigint)",
-          [sequence, gap],
-          log: false
-        )
-
-      true ->
-        repo.query!("SELECT setval($1::text::regclass, $2::bigint, true)", [sequence, id],
-          log: false
-        )
-    end
+    repo.query!(
+      """
+      SELECT setval(s.seq, $2::bigint, true) FROM (#{@gap}) s WHERE s.gap > #{@consume_limit}
+      UNION ALL
+      SELECT max(nextval(s.seq)) FROM (#{@gap}) s, generate_series(1, s.gap)
+      WHERE s.gap BETWEEN 1 AND #{@consume_limit}
+      """,
+      [sequence, id],
+      log: false
+    )
   end
 end
