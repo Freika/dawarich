@@ -132,7 +132,9 @@ defmodule Dawarich.Trips.CommandsTest do
                  "started_at" => "2026-05-03T08:00",
                  "ended_at" => "2026-05-01T08:00"
                },
-               @now, repo: Repo)
+               @now,
+               repo: Repo
+             )
 
     assert {"name", "Name can't be blank"} in errors
     assert Enum.any?(errors, fn {field, _} -> field == "ended_at" end)
@@ -151,7 +153,9 @@ defmodule Dawarich.Trips.CommandsTest do
                  "ended_at" => "2026-05-02T08:00",
                  "description" => "<div>Hi</div>"
                },
-               @now, repo: Repo)
+               @now,
+               repo: Repo
+             )
 
     assert notice =~ "trip_was_successfully_created"
     assert body(id) == [["<div>Hi</div>"]]
