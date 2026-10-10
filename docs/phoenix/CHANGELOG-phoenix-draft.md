@@ -130,3 +130,5 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 ## Native Places (milestone 3d)
 
 - Keep foreign-owner visit and tag data out of native Place details, even when stored associations are corrupt. [FRB-086](fixed-rails-bugs.md#frb-086--corrupt-place-dependents-disclose-another-owners-data)
+
+- Refuse native Place edits/removal when corrupt associations would change another owner's data. [FRB-087](fixed-rails-bugs.md#frb-087--corrupt-place-removal-changes-another-owners-graph)

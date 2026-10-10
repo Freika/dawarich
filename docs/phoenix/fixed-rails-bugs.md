@@ -1348,3 +1348,14 @@ Database-valid cross-owner visit/tag associations can disclose foreign visit nam
 - Test: `native Place detail never exposes foreign dependent data` in `app-phoenix/test/dawarich/places_test.exs`.
 - Ledger: ED-NATIVE-M3D-DEPENDENT-PRIVACY; no DRB added.
 - CHANGELOG-ready: Keep foreign-owner visit and tag data out of native Place details, even when stored associations are corrupt.
+
+### FRB-087 — Corrupt Place removal changes another owner's graph
+
+Rails destruction nullifies/removes database-valid foreign dependents of an owned Place, and tag replacement may remove foreign associations. Native update/delete refuses corrupt foreign visit/suggestion/note/tag graphs before effects. Normal owned graphs retain phased persistence; visits survive deletion.
+
+- Rails: `app/controllers/places_controller.rb:49,51,94`; `app/models/place.rb:13,18`; `app/models/concerns/taggable.rb:7`; `app/models/concerns/notable.rb:7`.
+- Phoenix: `app-phoenix/lib/dawarich/places/native_fence.ex:5`; `app-phoenix/lib/dawarich/places/web_write.ex:15`; `app-phoenix/lib/dawarich/places/web_delete.ex:21`.
+- Test: `native Place commands refuse stale actors and foreign dependents before effects` in `app-phoenix/test/dawarich/places/commands_test.exs`.
+- Ledger: ED-NATIVE-M3D-DEPENDENT-WRITES; no DRB added.
+- Limits: Fresh admission and foreign graph fence precede record effects after Place row lock; no guarantee against arbitrary concurrent direct-database corruption after the check or cross-phase/reconnect durability.
+- CHANGELOG-ready: Refuse native Place edits/removal when corrupt associations would change another owner's data.

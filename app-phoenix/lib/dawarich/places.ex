@@ -1,6 +1,6 @@
 defmodule Dawarich.Places do
   @moduledoc false
-  alias Dawarich.Places.{Access, Reads}
+  alias Dawarich.Places.{Access, Reads, Commands}
 
   def list(scope, page, opts \\ []), do: read(scope, opts, &Reads.list(&1, page, &2))
 
@@ -9,6 +9,24 @@ defmodule Dawarich.Places do
 
   def edit(scope, raw_id, opts \\ []),
     do: member(scope, raw_id, opts, &Reads.edit/3)
+
+
+  def new, do: Dawarich.Places.Form.new()
+
+  def change(scope, data) do
+    with {:ok, _} <- Access.admit(scope), do: Dawarich.Places.Form.initial(data)
+  end
+
+  def change(scope, data, attrs), do: Commands.change(scope, data, attrs)
+  def create(scope, attrs, opts \\ []), do: Commands.save(scope, :create, nil, attrs, opts)
+
+  def update(scope, raw_id, attrs, opts \\ []) do
+    with {:ok, id} <- parse_id(raw_id), do: Commands.save(scope, :update, id, attrs, opts)
+  end
+
+  def delete(scope, raw_id, opts \\ []) do
+    with {:ok, id} <- parse_id(raw_id), do: Commands.delete(scope, id, opts)
+  end
 
   def parse_id(id) when is_integer(id) and id > 0 and id < 1_000_000_000_000_000_000,
     do: {:ok, id}
