@@ -126,6 +126,10 @@ defmodule DawarichWeb.InsightsLive.NativePage do
   def handle_info(_, socket), do: {:noreply, socket}
 
   @impl true
+  def handle_event(event, _, %{assigns: %{data: nil}} = socket)
+      when event in ~w(retry_read retry_refresh),
+      do: {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+
   def handle_event("period", %{"period" => params}, socket) do
     with {:ok, scope} <- NativeDataAuth.scope(socket),
          {:ok, _, _} <- Dawarich.Analytics.Period.admit(scope, params, :insights, options(socket)) do

@@ -32,7 +32,11 @@ defmodule DawarichWeb.StatsLive.NativePage do
       |> DataAsync.advance()
       |> assign(
         stats_dialog:
-          if(params["places_kind"] in ~w(countries cities), do: params["places_kind"], else: nil),
+          if(
+            socket.assigns.live_action == :index and params["places_kind"] in ~w(countries cities),
+            do: params["places_kind"],
+            else: nil
+          ),
         query: Map.take(params, ~w(year month page places_page places_kind))
       )
 
@@ -57,11 +61,16 @@ defmodule DawarichWeb.StatsLive.NativePage do
       {:noreply, socket |> assign(:data, data) |> assign(:page_title, title(socket, data))}
     else
       {:error, reason} ->
-        {:noreply, socket |> assign(:data, nil) |> NativeDataAuth.refuse(reason)}
+        {:noreply,
+         socket |> assign(data: nil, stats_dialog: nil) |> NativeDataAuth.refuse(reason)}
     end
   end
 
   @impl true
+  def handle_event(event, _, %{assigns: %{data: nil}} = socket)
+      when event in ~w(update open_places open_share share),
+      do: {:noreply, NativeDataAuth.refuse(socket, :invalid_input)}
+
   def handle_event("update", _params, socket) do
     params =
       if socket.assigns.live_action == :index,
@@ -92,8 +101,9 @@ defmodule DawarichWeb.StatsLive.NativePage do
     end
   end
 
-  def handle_event("open_places", %{"kind" => kind}, socket) when kind in ~w(countries cities),
-    do: {:noreply, assign(socket, :stats_dialog, kind)}
+  def handle_event("open_places", %{"kind" => kind}, %{assigns: %{live_action: :index}} = socket)
+      when kind in ~w(countries cities),
+      do: {:noreply, assign(socket, :stats_dialog, kind)}
 
   def handle_event("open_share", _, socket) do
     with {:ok, scope} <- NativeDataAuth.scope(socket),
@@ -141,7 +151,12 @@ defmodule DawarichWeb.StatsLive.NativePage do
         class="btn whitespace-normal"
         phx-click="open_share"
       >{t(@locale, "stats.month.share", %{})}</button>
-      <NativeParts.dialog :if={@stats_dialog} dialog={@stats_dialog} data={@data} locale={@locale} />
+      <NativeParts.dialog
+        :if={@data && @stats_dialog}
+        dialog={@stats_dialog}
+        data={@data}
+        locale={@locale}
+      />
     </main>
     """
   end

@@ -499,7 +499,9 @@ defmodule DawarichWeb.StatsNativeLiveTest do
         do:
           Dawarich.Repo.query!(
             "UPDATE users SET encrypted_password='changed-synthetic-stats-identity' WHERE id=$1",
-            [user.id], log: false)
+            [user.id],
+            log: false
+          )
 
       result
     end
@@ -516,5 +518,51 @@ defmodule DawarichWeb.StatsNativeLiveTest do
     assert {:error, {:redirect, %{to: "/users/sign_in"}}} = render_patch(view, "/stats/2024")
     assert Dawarich.Test.NativePageCache.entries(cache) == %{}
     assert Enum.any?(Dawarich.Test.NativePageCache.commands(cache), &match?(["SET" | _], &1))
+  end
+
+  @tag projection_refusal: true
+  test "malformed Stats URL clears its places dialog and refuses data events without effects", %{
+    user: user
+  } do
+    Process.flag(:trap_exit, true)
+    {:ok, view, html} = live(NativeAdminUI.conn(user), "/stats?year[bad]=1&places_kind=countries")
+    assert is_binary(html)
+    assert Process.alive?(view.pid)
+    assert :sys.get_state(view.pid).socket.assigns.data == nil
+    assert :sys.get_state(view.pid).socket.assigns.stats_dialog == nil
+    refute has_element?(view, "#stats-dialog")
+
+    for {event, params} <- [
+          {"open_places", %{"kind" => "countries"}},
+          {"update", %{}},
+          {"open_share", %{}},
+          {"share", %{"enabled" => "1"}}
+        ] do
+      render_click(view, "lv:clear-flash", %{"key" => "alert"})
+      {_, queries} = NativeAdminUI.queries(fn -> render_hook(view, event, params) end)
+      socket = :sys.get_state(view.pid).socket
+      assert socket.assigns.data == nil
+      assert socket.assigns.stats_dialog == nil
+      assert socket.assigns.flash["alert"]
+      refute Enum.any?(queries, &String.match?(&1, ~r/\A\s*(INSERT|UPDATE|DELETE)\b/i))
+    end
+
+    render_patch(view, "/stats")
+    assert :sys.get_state(view.pid).socket.assigns.data.total_distance == 13000
+  end
+
+  @tag projection_refusal: true
+  test "Stats year URL and forged places event retain the year projection without an index dialog",
+       %{user: user} do
+    Process.flag(:trap_exit, true)
+    {:ok, view, _} = live(NativeAdminUI.conn(user), "/stats/2025?places_kind=countries")
+    before = :sys.get_state(view.pid).socket.assigns.data
+    assert before.year == 2025
+    refute has_element?(view, "#stats-dialog")
+    render_hook(view, "open_places", %{"kind" => "countries"})
+    socket = :sys.get_state(view.pid).socket
+    assert socket.assigns.data == before
+    assert socket.assigns.stats_dialog == nil
+    assert socket.assigns.flash["alert"]
   end
 end

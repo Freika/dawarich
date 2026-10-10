@@ -331,4 +331,40 @@ defmodule DawarichWeb.InsightsNativeLifecycleTest do
     refute :erlang.term_to_binary(result.assigns) =~ "obsolete"
     assert result.private.data_async.runs == %{}
   end
+
+  for {event, params} <- [
+        {"retry_read", %{"kind" => "residency"}},
+        {"retry_read", %{"kind" => "details"}},
+        {"retry_refresh", %{}}
+      ] do
+    @tag projection_refusal: true
+    test "Insights #{event} #{params["kind"]} after query refusal alerts without reads or effects",
+         %{user: user} do
+      Process.flag(:trap_exit, true)
+      paused_readers()
+      {:ok, view, _} = live(NativeAdminUI.conn(user), "/insights?year=2025&month=3")
+      render_patch(view, "/insights?year[bad]=1")
+      before = :sys.get_state(view.pid).socket
+      assert before.assigns.data == nil
+      render_click(view, "lv:clear-flash", %{"key" => "alert"})
+      assert :sys.get_state(view.pid).socket.assigns.flash["alert"] == nil
+
+      {_, queries} =
+        NativeAdminUI.queries(fn ->
+          render_hook(view, unquote(event), unquote(Macro.escape(params)))
+        end)
+
+      after_event = :sys.get_state(view.pid).socket
+      assert Process.alive?(view.pid)
+
+      assert Map.take(after_event.assigns, [:data, :details, :residency, :query, :refresh_state]) ==
+               Map.take(before.assigns, [:data, :details, :residency, :query, :refresh_state])
+
+      assert after_event.private.data_async == before.private.data_async
+      assert after_event.assigns.flash["alert"]
+      refute Enum.any?(queries, &String.match?(&1, ~r/\A\s*(INSERT|UPDATE|DELETE)\b/i))
+      render_patch(view, "/insights?year=2024&month=3")
+      assert :sys.get_state(view.pid).socket.assigns.data.year == 2024
+    end
+  end
 end

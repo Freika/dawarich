@@ -138,4 +138,32 @@ defmodule DawarichWeb.AchievementsNativeLiveTest do
     assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
              render_click(view, "share_card", %{"enabled" => "true"})
   end
+
+  @tag projection_refusal: true
+  test "achievement selection after malformed URL refuses without a projection or effects", %{
+    user: user
+  } do
+    Process.flag(:trap_exit, true)
+
+    {:ok, view, _} =
+      live(NativeAchievementsUI.conn(user, "/achievements/continent_europe?q=France"))
+
+    render_patch(view, "/achievements/continent_europe?q[bad]=1")
+    assert :sys.get_state(view.pid).socket.assigns.data == nil
+    render_click(view, "lv:clear-flash", %{"key" => "alert"})
+
+    {_, queries} =
+      NativeAdminUI.queries(fn -> render_hook(view, "select_card", %{"key" => "country_fr"}) end)
+
+    socket = :sys.get_state(view.pid).socket
+    assert Process.alive?(view.pid)
+    assert socket.assigns.data == nil
+    assert socket.assigns.selected == nil
+    assert socket.assigns.share_url == nil
+    assert socket.assigns.flash["alert"]
+    refute Enum.any?(queries, &String.match?(&1, ~r/\A\s*(INSERT|UPDATE|DELETE)\b/i))
+    render_patch(view, "/achievements/continent_europe?q=France")
+    render_click(view, "select_card", %{"key" => "country_fr"})
+    assert :sys.get_state(view.pid).socket.assigns.selected.key == "country_fr"
+  end
 end

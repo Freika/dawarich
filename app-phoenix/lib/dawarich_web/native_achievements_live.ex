@@ -64,8 +64,9 @@ defmodule DawarichWeb.NativeAchievementsLive do
   end
 
   def handle_event("select_card", %{"key" => key}, socket) do
-    with {:ok, scope} <- NativeDataAuth.scope(socket),
-         {:ok, fresh} <- Pages.load(scope, socket.assigns.data.query),
+    with %{query: query} <- socket.assigns.data,
+         {:ok, scope} <- NativeDataAuth.scope(socket),
+         {:ok, fresh} <- Pages.load(scope, query),
          selected when not is_nil(selected) <- find(fresh, key) do
       {:noreply, assign(socket, selected: selected, share_url: url(selected))}
     else
