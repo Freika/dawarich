@@ -24,6 +24,28 @@ defmodule Dawarich.Build.NativeAssetsTest do
     |> Map.keys()
   end
 
+  test "HTTP auth eager graph fits 20 KiB without a socket or legacy runtime", %{tmp_dir: dir} do
+    build!(dir)
+
+    outputs =
+      dir |> Path.join("meta.json") |> File.read!() |> Jason.decode!() |> Map.fetch!("outputs")
+
+    entry = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "auth_http.js" end)
+    assert entry != nil
+    {path, _} = entry
+    graph = eager(outputs, [path], MapSet.new())
+    assert Enum.sum(Enum.map(graph, &outputs[&1]["bytes"])) <= 20 * 1024
+    inputs = Enum.flat_map(graph, &Map.keys(outputs[&1]["inputs"]))
+
+    refute Enum.any?(
+             inputs,
+             &Regex.match?(
+               ~r/phoenix_live_view|phoenix\/|@hotwired|stimulus|turbo|maplibre|chartkick|trix|rails_bridge/i,
+               &1
+             )
+           )
+  end
+
   test "the native bundle includes LiveView and no Hotwire module", %{tmp_dir: dir} do
     inputs = dir |> build!() |> inputs()
 

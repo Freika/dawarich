@@ -37,7 +37,7 @@ config :esbuild,
   version: "0.25.0",
   native: [
     args:
-      ~w(js/app.js --bundle --format=esm --splitting --target=es2022 --external:/maplibre/* --outdir=../priv/static/native),
+      ~w(js/app.js js/auth_http.js --bundle --format=esm --splitting --target=es2022 --external:/maplibre/* --outdir=../priv/static/native),
     cd: Path.expand("../assets", __DIR__),
     env: %{
       "NODE_PATH" => Path.expand("../deps", __DIR__)
