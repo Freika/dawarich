@@ -4,6 +4,15 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
   @moduletag :tmp_dir
 
+  @tag trix_pin: true
+  test "native editor builds pinned Trix with no ActionText transport", %{tmp_dir: dir} do
+    manifest = File.read!("assets/package.json") |> Jason.decode!()
+    assert manifest["dependencies"]["trix"] == "2.1.19"
+    graph = dir |> build!() |> inputs()
+    assert Enum.any?(graph, &String.contains?(&1, "node_modules/trix/"))
+    refute Enum.any?(graph, &Regex.match?(~r/@rails|actiontext|activestorage/i, &1))
+  end
+
   defp build!(dir) do
     assert 0 ==
              Esbuild.install_and_run(:native, [
@@ -81,15 +90,16 @@ defmodule Dawarich.Build.NativeAssetsTest do
 
     {app, _} = Enum.find(outputs, fn {path, _} -> Path.basename(path) == "app.js" end)
 
-    bytes =
-      for path <- eager(outputs, [app], MapSet.new()),
-          {input, %{"bytesInOutput" => bytes}} <- outputs[path]["inputs"],
-          String.contains?(input, "chart") or String.contains?(input, "rich_text") or
-            String.contains?(input, "editor"),
-          reduce: 0,
-          do: (sum -> sum + bytes)
+    for sources <- [["chart", "heatmap"], ["rich_text", "editor"]] do
+      bytes =
+        for path <- eager(outputs, [app], MapSet.new()),
+            {input, %{"bytesInOutput" => bytes}} <- outputs[path]["inputs"],
+            Enum.any?(sources, &String.contains?(input, &1)),
+            reduce: 0,
+            do: (sum -> sum + bytes)
 
-    assert bytes in 1..2048
+      assert bytes in 1..2048
+    end
     assert File.regular?(Path.join(dir, "public_charts.js"))
     refute File.read!(Path.join(dir, "public_charts.js")) =~ "LiveSocket"
     assert Enum.any?(inputs(dir), &String.contains?(&1, "chartkick"))
