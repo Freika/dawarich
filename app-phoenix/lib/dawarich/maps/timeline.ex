@@ -36,6 +36,16 @@ defmodule Dawarich.Maps.Timeline do
     end)
   end
 
+  def calendar(scope, month, opts \\ []) do
+    Maps.with_actor(scope, fn actor ->
+      try do
+        {:ok, Source.month(actor, month, cutoff(actor, opts), now(opts))}
+      rescue
+        _ in [ArgumentError, FunctionClauseError] -> {:error, :invalid}
+      end
+    end)
+  end
+
   defp bounds(params, now) do
     Map.new(@bounds, fn key ->
       value = params[key]

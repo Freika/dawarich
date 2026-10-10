@@ -23,7 +23,16 @@ defmodule Dawarich.Test.NativeMapShellProbe do
   def handle_event("segment" <> _ = event, payload, socket),
     do: DawarichWeb.MapLive.SegmentCommands.handle_event(event, payload, socket)
 
+  def handle_event("calendar:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.TimelineFilters.handle_event(event, payload, socket)
+
+  def handle_event("residency:" <> _ = event, payload, socket),
+    do: DawarichWeb.MapLive.TimelineFilters.handle_event(event, payload, socket)
+
   def handle_event(event, payload, socket), do: Commands.handle_event(event, payload, socket)
+
+  def handle_async(name, result, socket),
+    do: DawarichWeb.MapLive.TimelineFilters.handle_async(name, result, socket)
 
   def render(assigns) do
     ~H"""
@@ -35,6 +44,8 @@ defmodule Dawarich.Test.NativeMapShellProbe do
     />
     <DawarichWeb.NativeAreaDialog.dialog dialog={assigns[:area_dialog]} locale="en" />
     <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale="en" />
+    <DawarichWeb.NativeTimelineCalendar.calendar calendar={assigns[:calendar]} locale="en" />
+    <DawarichWeb.NativeResidency.card residency={assigns[:residency]} locale="en" />
     """
   end
 end

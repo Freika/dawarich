@@ -36,7 +36,9 @@ defmodule DawarichWeb.OnboardingLiveComponent do
     {:noreply,
      socket
      |> assign(demo_status: :loading, demo_run: run)
-     |> start_async(:demo_load, fn -> {run, bounded(fn -> loader.(scope) end, timeout)} end)}
+     |> start_async(:demo_load, fn ->
+       {run, Dawarich.BoundedTask.run(fn -> loader.(scope) end, timeout)}
+     end)}
   end
 
   def handle_event("demo:remove", _params, socket) do
@@ -57,15 +59,6 @@ defmodule DawarichWeb.OnboardingLiveComponent do
 
   def handle_async(:demo_load, {:exit, _reason}, socket),
     do: {:noreply, assign(socket, demo_status: :failed, demo_run: nil)}
-
-  defp bounded(fun, timeout) do
-    task = Task.async(fun)
-
-    case Task.yield(task, timeout) || Task.shutdown(task, :brutal_kill) do
-      {:ok, result} -> result
-      _ -> {:error, :timeout}
-    end
-  end
 
   def render(assigns) do
     assigns =
