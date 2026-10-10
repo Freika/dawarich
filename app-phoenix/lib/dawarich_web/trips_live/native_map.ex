@@ -20,7 +20,8 @@ defmodule DawarichWeb.TripsLive.NativeMap do
        socket
        |> assign(selected_day: nil, note_editor: nil, expanded_days: false, trip_layers: %{})
        |> DawarichWeb.NativePosterGallery.mount()
-       |> DawarichWeb.NativeTripResource.attach(), layout: false}
+       |> DawarichWeb.NativeTripResource.attach()
+       |> DawarichWeb.NativeMapChrome.load(), layout: false}
 
   def handle_params(%{"id" => id}, _, socket) do
     socket =
@@ -104,20 +105,37 @@ defmodule DawarichWeb.TripsLive.NativeMap do
 
   def render(assigns) do
     ~H"""
+    <DawarichWeb.NativeMapChrome.header {assigns} />
     <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native={true} />
     <main :if={@page} id="trip-shell" data-native-map-root class="w-full min-w-0 p-4">
-      <DawarichWeb.NativeTripActions.actions page={@page.presentation} locale={@locale} />
-      <DawarichWeb.NativeTripToolbar.toolbar page={@page} expanded={@expanded_days} locale={@locale} />
-      <DawarichWeb.NativeTripContent.content
-        page={@page.presentation}
-        locale={@locale}
-        selected_day={@selected_day}
-        note_editor={@note_editor}
-        expanded_days={@expanded_days}
-        plan_enabled={@page.config["planEnabled"]}
-      />
-      <p>{@page.range_label}</p>
-      <DawarichWeb.NativeTripMapPanel.panel config={@page.config} locale={@locale} />
+      <div class="flex min-w-0 flex-col gap-6 lg:flex-row lg:h-[calc(100dvh-9.75rem)]">
+        <div class="w-full min-w-0 lg:w-3/5 h-[50vh] lg:h-full shrink-0">
+          <DawarichWeb.NativeTripMapPanel.panel
+            config={@page.config}
+            locale={@locale}
+            state={@page.presentation.map_state}
+            has_path={@page.presentation.has_path}
+            future={@page.presentation.future_start}
+          />
+        </div>
+        <div class="w-full min-w-0 lg:w-2/5 lg:h-full lg:overflow-y-auto">
+          <DawarichWeb.NativeTripActions.actions page={@page.presentation} locale={@locale} />
+          <DawarichWeb.NativeTripToolbar.toolbar
+            page={@page}
+            expanded={@expanded_days}
+            locale={@locale}
+          />
+          <DawarichWeb.NativeTripContent.content
+            page={@page.presentation}
+            locale={@locale}
+            selected_day={@selected_day}
+            note_editor={@note_editor}
+            expanded_days={@expanded_days}
+            plan_enabled={@page.config["planEnabled"]}
+          />
+          <p>{@page.range_label}</p>
+        </div>
+      </div>
       <DawarichWeb.NativePosterStudio.poster_studio
         themes={@page.studio.themes}
         posters={@posters}

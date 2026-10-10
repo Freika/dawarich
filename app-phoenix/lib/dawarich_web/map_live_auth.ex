@@ -5,7 +5,7 @@ defmodule DawarichWeb.MapLiveAuth do
   alias Dawarich.Accounts.Scope
   alias Dawarich.Maps
 
-  @layout ~w(locale suggested_locale self_hosted request_path query_params base_url notification_session)a
+  @layout ~w(locale suggested_locale self_hosted request_path query_params base_url notification_session rails_csrf_token)a
 
   def live_session(conn) do
     session = DawarichWeb.RailsAuth.live_session(conn)

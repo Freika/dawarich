@@ -66,7 +66,11 @@ defmodule DawarichWeb.NativeTripNotesTest do
 
     assert Repo.query!("SELECT id FROM notes WHERE id=$1", [note_id], log: false).rows == []
     refute has_element?(view, "#native-trip-day-2026-06-02", "Later coffee")
-    refute has_element?(view, "[data-controller], turbo-frame, [name=authenticity_token]")
+
+    refute has_element?(
+             view,
+             "[data-controller], turbo-frame, #trip-shell [name=authenticity_token]"
+           )
   end
 
   test "native trip note validation preserves its editor and resource refusal writes nothing", %{
