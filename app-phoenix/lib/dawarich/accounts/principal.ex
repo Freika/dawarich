@@ -35,7 +35,7 @@ defmodule Dawarich.Accounts.Principal do
          else: (_ -> false)
   end
 
-  defp settings(settings) do
+  defp settings(settings) when is_map(settings) do
     settings
     |> Map.reject(fn {key, _} ->
       key = String.downcase(to_string(key))
@@ -43,6 +43,8 @@ defmodule Dawarich.Accounts.Principal do
     end)
     |> Map.new(fn {key, value} -> {key, clean(value)} end)
   end
+
+  defp settings(_), do: :unsupported
 
   defp clean(value) when is_map(value), do: settings(value)
   defp clean(value) when is_list(value), do: Enum.map(value, &clean/1)
@@ -58,7 +60,12 @@ defimpl Inspect, for: Dawarich.Accounts.Principal do
       |> Map.from_struct()
       |> Map.update!(
         :settings,
-        &(Dawarich.LogRedaction.scrub(&1) |> Map.delete("supporter_email"))
+        fn settings ->
+          case Dawarich.LogRedaction.scrub(settings) do
+            settings when is_map(settings) -> Map.delete(settings, "supporter_email")
+            settings -> settings
+          end
+        end
       )
 
     concat(["#Dawarich.Accounts.Principal<", to_doc(fields, opts), ">"])
