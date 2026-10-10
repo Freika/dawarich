@@ -138,3 +138,6 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 - Prevent photo clusters from reopening after leaving their map. [FRB-NATIVE-M6-PHOTO-CLUSTER](fixed-rails-bugs.md#frb-native-m6-photo-cluster--late-cluster-leaves-recreate-markers-after-removal)
 - Close photo popups and release their thumbnails when leaving the map. [FRB-NATIVE-M6-PHOTO-POPUP](fixed-rails-bugs.md#frb-native-m6-photo-popup--removing-photos-leaves-their-popup-open)
 - Cancel anomaly history reads when removing their map layer. [FRB-NATIVE-M6-ANOMALY-DISPOSE](fixed-rails-bugs.md#frb-native-m6-anomaly-dispose--removed-anomaly-layers-keep-paging-history)
+
+- Keep Trip day-layer cleanup safe before hover initialization. [FRB-NATIVE-M6-TRIP-DAY-DISPOSE](fixed-rails-bugs.md#frb-native-m6-trip-day-dispose--trip-day-layer-removal-crashes-before-hover-setup)
+- Close flight popups when removing their map layer. [FRB-NATIVE-M6-FLIGHT-POPUP](fixed-rails-bugs.md#frb-native-m6-flight-popup--removed-flight-layers-leave-a-popup-open)

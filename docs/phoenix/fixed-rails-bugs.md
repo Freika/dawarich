@@ -1420,3 +1420,23 @@ Rails anomaly requests carry no cancellation signal and inherited layer removal 
 - Test: “removed anomalies stop owned pages and preserve exact request filters” in `spec/javascript/phoenix_map_entity_layers_test.mjs`; actual Rails cancellation oracle fails, anomaly-disposal/filter mutations fail/restored GREEN.
 - Ledger: ED-NATIVE-M6-ANOMALY-DISPOSE; no DRB. Retained Rails unchanged.
 - CHANGELOG-ready: Cancel anomaly history reads when removing their map layer.
+
+### FRB-NATIVE-M6-TRIP-DAY-DISPOSE — Trip day-layer removal crashes before hover setup
+
+Removing a Rails Trip day-route layer before setupInteractions raises because hoverMarkers is unset. Phoenix initializes owned interaction collections with the layer, making early removal safe.
+
+- Rails: `app/javascript/maps_maplibre/layers/day_routes_layer.js:12,341,351,365`.
+- Phoenix: `app-phoenix/assets/js/map/trip/interactions.js:3,4`; `trip/days.js:147`.
+- Test: “trip day routes preserve profile day colors and saved gap settings” in `spec/javascript/phoenix_trip_layers_test.mjs` removes before setup; actual Rails-source oracle RED and hover-before-setup mutation fail/restored GREEN.
+- Ledger: ED-NATIVE-M6-TRIP-DAY-DISPOSE; no DRB. Rails unchanged.
+- CHANGELOG-ready: Keep Trip day-layer cleanup safe before hover initialization.
+
+### FRB-NATIVE-M6-FLIGHT-POPUP — Removed flight layers leave a popup open
+
+Rails FlightsLayer.remove detaches layer handlers and geometry but leaves its popup visible. Phoenix removal closes the popup before releasing the layer.
+
+- Rails: `app/javascript/maps_maplibre/layers/flights_layer.js:68,104`.
+- Phoenix: `app-phoenix/assets/js/map/layers/flights.js:51,52`.
+- Test: “trip flight popup closes with its owned layer” in `spec/javascript/phoenix_trip_layers_test.mjs`; actual Rails-source oracle RED and flight-popup mutation fail/restored GREEN.
+- Ledger: ED-NATIVE-M6-FLIGHT-POPUP; no DRB. Rails unchanged.
+- CHANGELOG-ready: Close flight popups when removing their map layer.
