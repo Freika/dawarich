@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Timeline calendar activity and status counts refresh after confirming or declining visits in bulk.
+
+### Fixed
+
 - Prometheus metrics from web and Sidekiq no longer produce duplicate series when label order differs (#3769).
 - KMZ imports no longer repeatedly re-import their own archive and fill the import queue and storage (#3766).
 
