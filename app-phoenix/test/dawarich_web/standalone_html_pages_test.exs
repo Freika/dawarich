@@ -333,6 +333,83 @@ defmodule DawarichWeb.StandaloneHtmlPagesTest do
     assert Enum.all?(hidden.days, &(&1.photos == []))
   end
 
+  @tag :standalone_html_sweep
+  @tag :track_c_r3
+  test "native track and timeline snapshots show only photos whose thumbnails are admitted", %{
+    fixture: fixture
+  } do
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+    timeline = "a9480100-0000-4000-8000-000000000005"
+
+    Repo.insert_all("shared_links", [
+      %{
+        id: Ecto.UUID.dump!(timeline),
+        name: "Synthetic timeline share",
+        user_id: fixture["user_id"],
+        resource_type: 2,
+        settings: %{"start_date" => "2026-03-01", "end_date" => "2026-03-02"},
+        created_at: NaiveDateTime.utc_now(),
+        updated_at: NaiveDateTime.utc_now()
+      }
+    ])
+
+    photos =
+      for i <- 1..101 do
+        Map.new(
+          ~w(id latitude longitude localDateTime capturedAt originalFileName city state country type orientation source),
+          &{&1, nil}
+        )
+        |> Map.merge(%{
+          "id" => "synthetic-photo-#{i}",
+          "latitude" => 51.3,
+          "longitude" => 12.3,
+          "source" => "immich",
+          "capturedAt" => "2026-03-01T12:00:00Z"
+        })
+      end
+
+    for {id, kind} <- [
+          {"a9480100-0000-4000-8000-000000000002", :track},
+          {timeline, {:timeline, ~D[2026-03-01], ~D[2026-03-02]}}
+        ] do
+      Repo.query!("UPDATE shared_links SET settings=settings || $2 WHERE id=$1::text::uuid", [
+        id,
+        %{"show_photos" => true}
+      ])
+
+      link = Dawarich.SharedLinks.active(id, DateTime.utc_now())
+      context = %{range: {from, to}} = Dawarich.SharedApi.Photos.grant_context(link)
+      key = "photos_search/#{fixture["user_id"]}/v2/#{from}/#{to}"
+      Dawarich.Photos.ProviderCache.put(key, photos)
+
+      on_exit(fn ->
+        {:ok, redis} = Redix.start_link(System.fetch_env!("PHOENIX_TEST_REDIS_URL"), database: 0)
+
+        Redix.command!(redis, [
+          "DEL",
+          key,
+          Dawarich.SharedApi.Closure.photo_ids_key(link, context)
+        ])
+
+        Redix.stop(redis)
+      end)
+
+      snapshot =
+        Dawarich.Sharing.PublicSnapshot.load(%{link: link, kind: kind}, DateTime.utc_now())
+
+      shown = Enum.map(snapshot.map.photos, & &1["id"])
+      assert length(shown) == 100
+      refute "synthetic-photo-101" in shown
+
+      assert Enum.all?(shown, &Dawarich.SharedApi.Closure.allowed_photo?(link, "immich", &1))
+
+      assert Dawarich.SharedApi.Photos.response(link, :thumbnail, %{
+               "source" => "immich",
+               "photo_id" => "synthetic-photo-101"
+             }) == {:head, 404}
+    end
+  end
+
   defp connected_public(conn, user) do
     conn
     |> RailsUser.connecting_as(user)
