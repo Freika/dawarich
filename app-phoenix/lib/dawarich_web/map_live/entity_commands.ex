@@ -11,14 +11,14 @@ defmodule DawarichWeb.MapLive.EntityCommands do
       "longitude" => to_string(params["longitude"])
     }
 
-    {:noreply, assign(socket, :place_dialog, dialog(nil, form))}
+    {:noreply, assign(socket, :place_dialog, dialog(nil, form, tags(socket)))}
   end
 
   def handle_event("place:edit", %{"id" => id}, socket) do
     case Entities.place(socket.assigns.current_scope, id) do
       {:ok, place} ->
-        form = Map.new(place, fn {key, value} -> {key, to_string(value)} end)
-        {:noreply, assign(socket, :place_dialog, dialog(place["id"], form))}
+        form = Map.new(place, fn {key, value} -> {key, text(value)} end)
+        {:noreply, assign(socket, :place_dialog, dialog(place["id"], form, tags(socket)))}
 
       _ ->
         {:noreply, assign(socket, :place_dialog, nil)}
@@ -28,7 +28,7 @@ defmodule DawarichWeb.MapLive.EntityCommands do
   def handle_event("place:save", %{"place" => attrs}, socket) when is_map(attrs) do
     case socket.assigns[:place_dialog] do
       %{id: id, form: form} = current ->
-        form = Map.merge(form, Map.take(attrs, ~w(name latitude longitude note)))
+        form = Map.merge(form, Map.take(attrs, ~w(name latitude longitude note tag_ids)))
 
         case Entities.save_place(socket.assigns.current_scope, id, form) do
           {:ok, saved} ->
@@ -63,12 +63,14 @@ defmodule DawarichWeb.MapLive.EntityCommands do
     end
   end
 
-  def handle_event("visit:status", %{"id" => id, "status" => status}, socket)
-      when status in ~w(confirmed declined suggested),
-      do: visit_reply(socket, Entities.visit_status(socket.assigns.current_scope, id, status))
+  def handle_event("visit" <> _ = event, params, socket),
+    do: DawarichWeb.MapLive.VisitCommands.handle_event(event, params, socket)
 
-  def handle_event("visit:delete", %{"id" => id}, socket),
-    do: visit_reply(socket, Entities.delete_visit(socket.assigns.current_scope, id))
+  def handle_event("note:" <> _ = event, params, socket),
+    do: DawarichWeb.MapLive.VisitCommands.handle_event(event, params, socket)
+
+  def handle_event("address:" <> _ = event, params, socket),
+    do: DawarichWeb.MapLive.VisitCommands.handle_event(event, params, socket)
 
   def handle_event("place:nearby", params, socket) do
     case socket.assigns[:place_dialog] do
@@ -110,10 +112,16 @@ defmodule DawarichWeb.MapLive.EntityCommands do
 
   def handle_async(_name, _result, socket), do: {:noreply, socket}
 
-  defp visit_reply(socket, :ok),
-    do: {:reply, %{ok: true}, push_event(socket, "map:invalidate", %{resource: "visits"})}
+  defp tags(socket) do
+    case Entities.tags(socket.assigns.current_scope) do
+      {:ok, tags} -> tags
+      _ -> []
+    end
+  end
 
-  defp visit_reply(socket, {:error, reason}), do: {:reply, %{error: to_string(reason)}, socket}
+  defp text(values) when is_list(values), do: Enum.map(values, &to_string/1)
+  defp text(value), do: to_string(value)
 
-  defp dialog(id, form), do: %{id: id, form: form, errors: [], nearby: [], nearby_run: nil}
+  defp dialog(id, form, tags),
+    do: %{id: id, form: form, errors: [], nearby: [], nearby_run: nil, tags: tags}
 end

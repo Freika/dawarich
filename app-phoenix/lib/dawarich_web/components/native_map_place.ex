@@ -50,6 +50,29 @@ defmodule DawarichWeb.NativeMapPlace do
               value={@dialog.form["name"]}
             />
           </label>
+          <label class="form-control">
+            <span class="label-text font-semibold">{t(@locale, "shared.place_creation_modal.note", %{})}</span>
+            <textarea class="textarea textarea-bordered w-full" rows="3" name="place[note]">{@dialog.form["note"]}</textarea>
+          </label>
+          <fieldset :if={@dialog[:tags] not in [nil, []]} class="min-w-0">
+            <legend class="label-text font-semibold">{t(@locale, "shared.place_creation_modal.tags", %{})}</legend>
+            <input type="hidden" name="place[tag_ids][]" value="" />
+            <div class="flex flex-wrap gap-2">
+              <label :for={tag <- @dialog.tags} class="cursor-pointer min-w-0">
+                <input
+                  type="checkbox"
+                  name="place[tag_ids][]"
+                  value={tag.id}
+                  class="checkbox checkbox-sm hidden peer"
+                  checked={to_string(tag.id) in List.wrap(@dialog.form["tag_ids"])}
+                />
+                <span
+                  class="badge badge-lg badge-outline peer-checked:badge-primary [overflow-wrap:anywhere]"
+                  style={color(tag.color)}
+                >{tag.icon} #{tag.name}</span>
+              </label>
+            </div>
+          </fieldset>
           <ul :if={@dialog.nearby != []} class="menu bg-base-200 rounded-box">
             <li :for={place <- @dialog.nearby}>
               <span class="[overflow-wrap:anywhere]">{place["name"]}</span>
@@ -73,6 +96,12 @@ defmodule DawarichWeb.NativeMapPlace do
   end
 
   defp close, do: JS.push("place:close") |> JS.pop_focus()
+
+  defp color(value) when is_binary(value) do
+    if value =~ ~r/\A#[0-9a-fA-F]{3,8}\z/, do: "border-color: #{value}; color: #{value};"
+  end
+
+  defp color(_value), do: nil
   defp message(_locale, error) when is_binary(error), do: error
 
   defp message(locale, _error),

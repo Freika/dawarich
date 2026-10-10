@@ -81,6 +81,40 @@ defmodule DawarichWeb.NativeMapEntitiesTest do
     assert rows("SELECT name, user_id FROM places WHERE id=$1", [id]) == [["Bakery", c.id]]
   end
 
+  test "place dialog saves note and owned tags only", c do
+    [own, foreign] =
+      for {user, name} <- [{c.id, "Food"}, {c.other, "Secret"}] do
+        hd(
+          hd(
+            rows(
+              "INSERT INTO tags(user_id,name,icon,color,created_at,updated_at) VALUES($1,$2,'🍕','#ff0000',now(),now()) RETURNING id",
+              [user, name]
+            )
+          )
+        )
+      end
+
+    view = open(c)
+    render_hook(view, "place:new", %{"latitude" => 52.52, "longitude" => 13.405})
+    assert has_element?(view, "#native-place-form input[name='place[tag_ids][]'][value='#{own}']")
+    refute has_element?(view, "#native-place-form input[value='#{foreign}']")
+
+    render_hook(view, "place:save", %{
+      "place" => %{
+        "name" => "Pizzeria",
+        "note" => "Thin crust",
+        "tag_ids" => [to_string(own), to_string(foreign)]
+      }
+    })
+
+    refute has_element?(view, "#native-place-dialog")
+
+    assert rows(
+             "SELECT p.note, array_agg(g.tag_id) FROM places p JOIN taggings g ON g.taggable_id=p.id AND g.taggable_type='Place' WHERE p.user_id=$1 GROUP BY p.note",
+             [c.id]
+           ) == [["Thin crust", [own]]]
+  end
+
   test "nearby search changed during reply keeps newest result", c do
     test_pid = self()
 

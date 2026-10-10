@@ -3,16 +3,27 @@ defmodule Dawarich.Maps.Entities do
   alias Dawarich.{Maps, Repo, RubyInteger}
   alias Dawarich.Places.{Nearby, WebDelete, WebWrite}
 
-  @place ~w(name latitude longitude note)
+  @place ~w(name latitude longitude note tag_ids)
+
+  def tags(scope),
+    do: Maps.with_actor(scope, &{:ok, Dawarich.TagPages.index(&1)})
 
   def place(scope, id) do
     Maps.with_actor(scope, fn actor ->
       case Repo.query!(
-             "SELECT id,name,latitude::float8,longitude::float8 FROM places WHERE id=$1 AND user_id=$2",
+             "SELECT id,name,latitude::float8,longitude::float8,note,ARRAY(SELECT tag_id FROM taggings WHERE taggable_type='Place' AND taggable_id=places.id ORDER BY tag_id) FROM places WHERE id=$1 AND user_id=$2",
              [RubyInteger.to_i(id), actor.id]
            ).rows do
-        [[id, name, lat, lon]] ->
-          {:ok, %{"id" => id, "name" => name, "latitude" => lat, "longitude" => lon}}
+        [[id, name, lat, lon, note, tags]] ->
+          {:ok,
+           %{
+             "id" => id,
+             "name" => name,
+             "latitude" => lat,
+             "longitude" => lon,
+             "note" => note,
+             "tag_ids" => tags
+           }}
 
         [] ->
           {:error, :not_found}
