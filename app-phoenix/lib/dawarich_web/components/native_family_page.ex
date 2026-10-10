@@ -25,6 +25,11 @@ defmodule DawarichWeb.NativeFamilyPage do
             href="/family/edit"
             class="btn btn-sm btn-outline h-auto whitespace-normal"
           >{t(@locale, "families.show.edit", %{})}</a>
+          <DawarichWeb.NativeFamilySharing.sharing
+            member={@page.presentation.me}
+            locale={@locale}
+            now={@now}
+          />
           <section id="native-family-members" class="min-w-0 border rounded-xl p-3">
             <h2>{t(@locale, "families.show.members", %{})}</h2>
             <div
@@ -60,8 +65,57 @@ defmodule DawarichWeb.NativeFamilyPage do
                     )
                 })}
               </p>
+              <button
+                :if={
+                  @page.presentation.owner? && member.id != @page.presentation.actor_id &&
+                    member.role != 0
+                }
+                type="button"
+                phx-click="family:member"
+                phx-value-id={member.membership_id}
+                data-confirm={
+                  t(@locale, "families.show.remove_email_from_the_family", %{email: member.email})
+                }
+                class="btn btn-sm text-error h-auto whitespace-normal"
+              >{t(@locale, "families.show.remove", %{})}</button>
+              <button
+                :if={
+                  member.id != @page.presentation.actor_id && !member.sharing.enabled? &&
+                    !@page.presentation.pending_requests[member.id]
+                }
+                type="button"
+                phx-click="family:request"
+                phx-value-id={member.id}
+                class="btn btn-sm h-auto whitespace-normal"
+              >{t(@locale, "families.show.request", %{})}</button>
+              <span :if={@page.presentation.pending_requests[member.id]}>{t(
+                @locale,
+                "families.show.requested",
+                %{}
+              )}</span>
             </div>
           </section>
+          <DawarichWeb.NativeFamilyInvitations.invitations
+            page={@page.presentation}
+            locale={@locale}
+            now={@now}
+            base_url={@base_url || ""}
+          />
+          <button
+            :if={@page.presentation.owner?}
+            type="button"
+            phx-click="family:destroy"
+            data-confirm={t(@locale, "families.show.delete_this_family_this_cannot_be_undone", %{})}
+            class="btn btn-sm text-error h-auto whitespace-normal"
+          >{t(@locale, "families.show.delete_family", %{})}</button>
+          <button
+            :if={!@page.presentation.owner?}
+            type="button"
+            phx-click="family:member"
+            phx-value-id={@page.presentation.me.membership_id}
+            data-confirm={t(@locale, "families.show.are_you_sure_you_want_to_leave_this_family", %{})}
+            class="btn btn-sm text-warning h-auto whitespace-normal"
+          >{t(@locale, "families.show.leave_family", %{})}</button>
         </div>
       </div>
     </main>

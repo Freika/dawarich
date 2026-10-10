@@ -9,6 +9,9 @@ defmodule DawarichWeb.FamiliesLive.NativeMap do
     do:
       {:ok, socket |> DawarichWeb.NativeFamilyResource.attach() |> maybe_chrome(), layout: false}
 
+  def handle_event("family:" <> _ = event, params, socket),
+    do: DawarichWeb.NativeFamilyCommands.handle_event(event, params, socket)
+
   def handle_event(_, _, socket), do: {:noreply, socket}
 
   def handle_info(message, socket) do
