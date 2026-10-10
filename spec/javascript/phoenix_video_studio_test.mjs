@@ -571,3 +571,70 @@ test("the hook mounts one owner per element across reconnects", async () => {
   assert.equal(runtimes[0].destroyed, true)
   assert.equal(listeners["dawarich:video-studio-open"], undefined)
 })
+
+test("initial studio load locks range actions until it finishes", async () => {
+  const gate = deferred()
+  const h = harness({ track: gate })
+  const opening = h.studio.open()
+  await settle()
+  assert.equal(h.root.single.load.disabled, true)
+  assert.equal(h.root.single.switch.disabled, true)
+  assert.equal(h.root.single.render.disabled, true)
+  gate.resolve({ points: POINTS, geojson: TRACK })
+  await opening
+  assert.equal(h.root.single.load.disabled, false)
+  assert.equal(h.root.single.switch.disabled, false)
+})
+
+test("studio ignores another range change while one is loading", async () => {
+  const gate = deferred()
+  const seen = []
+  const h = harness({
+    rangeChange: (range) => {
+      seen.push(range)
+      return gate.promise
+    },
+  })
+  await h.studio.open()
+  h.root.single.start.value = "2026-08-21T08:00"
+  h.root.single.end.value = "2026-08-21T18:00"
+  const first = h.studio.applyDates()
+  await settle()
+  await h.studio.applyDates()
+  assert.equal(seen.length, 1)
+  h.studio.close()
+  gate.resolve({ revision: 1 })
+  await first.catch(() => null)
+})
+
+test("studio preserves automatic naming across a failed range reload", async () => {
+  const h = harness({
+    rangeChange: async () => {
+      throw new Error("offline")
+    },
+  })
+  await h.studio.open()
+  const automatic = h.root.single.name.value
+  h.root.single.start.value = "2026-08-21T08:00"
+  h.root.single.end.value = "2026-08-21T18:00"
+  await h.studio.applyDates()
+  assert.equal(h.root.single.name.value, automatic)
+  assert.equal(
+    h.root.single.status.textContent,
+    "Öffnen fehlgeschlagen: offline",
+  )
+  assert.equal(h.root.single.load.disabled, false)
+})
+
+test("restoring a recipe synchronizes the datetime controls", async () => {
+  const h = harness()
+  await h.studio.open({
+    format: "landscape",
+    source: "map",
+    start_at: "2026-08-22T06:00:00+02:00",
+    end_at: "2026-08-22T20:00:00+02:00",
+  })
+  assert.equal(h.studio.settings.format, "landscape")
+  assert.equal(h.root.single.start.value, "2026-08-22T06:00")
+  assert.equal(h.root.single.end.value, "2026-08-22T20:00")
+})
