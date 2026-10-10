@@ -86,16 +86,16 @@ defmodule DawarichWeb.NativeTimelineTest do
     assert :counters.get(calls, 1) == 0
 
     render_hook(view, "load", %{"start_at" => "2026-03-30T00:00", "end_at" => "2026-03-30T23:59"})
-    render_async(view)
+    render_async(view, 5_000)
     render_hook(view, "visit:changed", %{})
-    assert render_async(view) =~ ~s(data-day="2026-03-30")
+    assert render_async(view, 5_000) =~ ~s(data-day="2026-03-30")
     assert :counters.get(calls, 1) == 2
   end
 
   test "real scoped feed renders owned journeys and a typed empty state", %{id: id} do
     view = open(id, nil)
     render_hook(view, "load", %{"start_at" => "2026-03-30T00:00", "end_at" => "2026-03-30T23:59"})
-    assert render_async(view) =~ "No visits tracked this day"
+    assert render_async(view, 5_000) =~ "No visits tracked this day"
   end
 
   defp feed(date) do

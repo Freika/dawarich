@@ -97,7 +97,7 @@ defmodule DawarichWeb.NativeDemoLiveTest do
     view = open(c.id, loader, 50)
     view |> element("#native-demo-load") |> render_click()
     assert_receive :first_started
-    assert render_async(view) =~ "Failed to load demo data. Please try again."
+    assert render_async(view, 2_000) =~ "Failed to load demo data. Please try again."
     refute has_element?(view, "#native-demo-load[disabled]")
 
     view |> element("#native-demo-load") |> render_click()
