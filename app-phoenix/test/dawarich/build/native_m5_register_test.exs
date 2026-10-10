@@ -21,4 +21,23 @@ defmodule Dawarich.Build.NativeM5RegisterTest do
     assert register =~ "B3-FU-RICH-UPLOAD-SWEEP"
     assert register =~ "FRB-NATIVE-M5-FAMILY-INDICATOR"
   end
+
+  test "broken public achievement state records the locale and session decision" do
+    register = File.read!("parity/expected_diffs.md")
+
+    row =
+      register
+      |> String.split("\n")
+      |> Enum.find(&String.starts_with?(&1, "| ED-NATIVE-M5-PUBLIC-CARD-BROKEN-STATE |"))
+
+    assert is_binary(row)
+
+    for text <- [
+          "503",
+          "no locale/session effects",
+          "application_controller.rb:184-190",
+          "a10c_ownership_test"
+        ],
+        do: assert(String.contains?(row, text))
+  end
 end

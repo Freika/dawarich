@@ -47,6 +47,13 @@ defmodule Dawarich.Sharing.Resources do
        else: {:error, :expired}
   end
 
+  def access(user, %{type: :achievement}, _) do
+    if Dawarich.Achievements.PublicCard.supported_settings?(
+         Dawarich.UserSettings.get(user),
+         Repo
+       ), do: :ok, else: {:error, :unavailable}
+  end
+
   def access(_, _, _), do: :ok
 
   def read(user, resource, params, ctx, locale) when is_map(params) do
