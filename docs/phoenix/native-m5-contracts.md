@@ -261,3 +261,15 @@ Reconnects and tabs cannot overwrite the first local timestamp. `share/4`,
 existing sharing/token/lease rules. Claim responses remain server-private or
 transient HTTP replies, never generic LiveView assigns. Legacy HTTP consumers
 retain their protocol until the controller's caller census.
+
+### Native Achievements presentation
+
+`NativeAchievementsLive` and `NativeAchievementParts` are ready for X1's data
+session activation; the retained production route still owns its old HTTP
+consumers. Native params replace bounded cards and revalidate selected cards;
+connected visible results invoke the scoped acknowledgment. Native dialog JS
+owns modal open/close/focus only; patch-owned cards remain in place. The shell's
+existing AchievementUnlocks hook remains the sole unlock-deck owner. Clipboard
+and embed controls use the existing native Clipboard hook and localized status.
+Production route switching and browser/390-pixel acceptance remain controller
+integration tasks, with the keyboard/history E2E contract prepared separately.
