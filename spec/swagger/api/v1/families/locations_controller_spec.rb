@@ -20,7 +20,13 @@ RSpec.describe 'Families Locations API', type: :request do
                  locations: {
                    type: :array,
                    description: 'Array of family member location data',
-                   items: { type: :object }
+                   items: {
+                     type: :object,
+                     properties: {
+                       address: { type: :string, nullable: true,
+                                  description: 'Address of this location; null when unavailable or pending geocoding' }
+                     }
+                   }
                  },
                  updated_at: { type: :string, format: 'date-time', description: 'When the data was last updated' },
                  sharing_enabled: { type: :boolean, description: 'Whether the current user has sharing enabled' }

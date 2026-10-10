@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Family location API responses include available street addresses, with missing geocoding queued in the background using the configured provider.
+
 ## [1.15.3] - 2026-09-30, Berlin
 
 ### Added

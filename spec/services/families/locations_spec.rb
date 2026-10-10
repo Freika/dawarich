@@ -55,6 +55,63 @@ RSpec.describe Families::Locations do
       expect(result.first[:name]).to eq(other_user.email)
     end
 
+    context 'address enrichment' do
+      let!(:point) { create(:point, user: other_user, timestamp: now.to_i) }
+
+      before do
+        other_user.update_family_location_sharing!(true, duration: 'permanent')
+        allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+      end
+
+      it 'returns the address for the latest point only' do
+        point.update_columns(geodata: { properties: { street: 'Example Street', housenumber: '12' } })
+        expect(described_class.new(user).call.first[:address]).to eq('Example Street 12')
+
+        create(:point, user: other_user, timestamp: (now + 1.minute).to_i, geodata: {}, city: nil)
+        expect(described_class.new(user).call.first[:address]).not_to eq('Example Street 12')
+      end
+
+      it 'queues only one job across repeated polls without calling a provider' do
+        configure_instance_geocoding
+        point.update_columns(geodata: {}, reverse_geocoded_at: nil)
+        expect(Geocoding::Search).not_to receive(:call)
+        expect(ReverseGeocodingJob).to receive(:perform_later).with('Point', point.id, force: false).once
+        2.times { described_class.new(user).call }
+      ensure
+        Sidekiq.redis { |redis| redis.del(Point.geocode_dedup_key(point.id)) }
+      end
+
+      it 'does not requeue completed lookups with no address' do
+        point.update_columns(geodata: {}, reverse_geocoded_at: now)
+        expect(ReverseGeocodingJob).not_to receive(:perform_later)
+        described_class.new(user).call
+      end
+
+      it 'respects disabled geodata storage' do
+        configure_instance_geocoding
+        allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
+        expect(ReverseGeocodingJob).not_to receive(:perform_later)
+        described_class.new(user).call
+      end
+
+      it 'respects disabled geocoding' do
+        expect(ReverseGeocodingJob).not_to receive(:perform_later)
+        described_class.new(user).call
+      end
+
+      it 'keeps locations available when enqueueing fails' do
+        allow_any_instance_of(Point).to receive(:async_reverse_geocode).and_raise(StandardError)
+        expect(described_class.new(user).call.first[:user_id]).to eq(other_user.id)
+      end
+
+      it 'does not return addresses or queue lookups after sharing expires' do
+        other_user.update_family_location_sharing!(true, duration: '1h')
+        travel 2.hours
+        expect(ReverseGeocodingJob).not_to receive(:perform_later)
+        expect(described_class.new(user).call).to eq([])
+      end
+    end
+
     it 'uses profile names for the location and history payloads' do
       other_user.update!(first_name: 'Ada', last_name: 'Lovelace')
       other_user.update_family_location_sharing!(true, duration: 'permanent', share_history: true)
