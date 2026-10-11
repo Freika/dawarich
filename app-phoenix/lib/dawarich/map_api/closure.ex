@@ -9,6 +9,7 @@ defmodule Dawarich.MapApi.Closure do
     user = %{user | timezone: Account.zone(user.timezone)}
 
     RailsTime.with_zone(user.timezone, fn ->
+      params = native_params(action, params, user.timezone, now)
       cutoff = window(user, now)
 
       case action do
@@ -227,6 +228,37 @@ defmodule Dawarich.MapApi.Closure do
     end
   end
 
-  defp terminal({:replay, _}), do: {:error, 422}
+  defp native_params(action, params, zone, now) when action in [:points, :track] do
+    Enum.reduce(~w(start_at end_at), params, fn key, params ->
+      if Dawarich.ReleaseMigrations.Effects.Support.Ruby.present?(params[key]),
+        do: Map.put(params, key, Dawarich.MapApi.NativeTime.safe(params[key], zone, now)),
+        else: params
+    end)
+  end
+
+  defp native_params(:tracks, params, zone, now) do
+    from = Dawarich.MapApi.NativeTime.parse(params["start_at"], zone, now)
+    to = Dawarich.MapApi.NativeTime.parse(params["end_at"], zone, now)
+
+    if from && to,
+      do:
+        Map.merge(params, %{
+          "start_at" => track_time(params["start_at"], from),
+          "end_at" => track_time(params["end_at"], to)
+        }),
+      else: Map.drop(params, ~w(start_at end_at))
+  end
+
+  defp native_params(_, params, _zone, _now), do: params
+
+  defp track_time(value, epoch) do
+    case Dawarich.Input.Params.timestamp(value) do
+      {:ok, {:text, text}} -> text
+      _ -> iso(epoch)
+    end
+  end
+
+  defp iso(epoch), do: Dawarich.MapApi.NativeTime.iso(epoch)
+  defp terminal({:replay, _}), do: {:error, 500}
   defp terminal(result), do: result
 end

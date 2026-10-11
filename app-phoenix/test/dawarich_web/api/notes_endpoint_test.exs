@@ -35,7 +35,7 @@ defmodule DawarichWeb.Api.NotesEndpointTest do
   end
 
   @tag :notes_replay
-  test "notes rollback and unsupported body reach Rails without writes", ctx do
+  test "notes invalid bodies terminate natively without writes", ctx do
     Repo.query!(
       "INSERT INTO notes (id,user_id,body,noted_at,created_at,updated_at) VALUES (952201,$1,'Untouched',NOW(),NOW(),NOW())",
       [ctx.owner]
@@ -62,11 +62,14 @@ defmodule DawarichWeb.Api.NotesEndpointTest do
           headers != [] ->
             {404, ~s({"status":404,"error":"Not Found"})}
 
-          body == %{"note" => %{"body" => "No write"}} ->
-            {422, ~s({"errors":["Noted at can't be blank"]})}
+          body == %{"note" => %{}} ->
+            {400, ~s({"status":400,"error":"Bad Request"})}
+
+          body == %{"note" => %{"body" => %{"nested" => "shape"}}} ->
+            {422, ~s({"errors":["Body can't be blank","Noted at can't be blank"]})}
 
           true ->
-            {500, ~s({"status":500,"error":"Internal Server Error"})}
+            {422, ~s({"errors":["Noted at can't be blank"]})}
         end
 
       {status, raw} = expected

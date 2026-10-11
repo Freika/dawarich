@@ -36,9 +36,8 @@ defmodule Dawarich.Digests.ReadClosure do
     RailsTime.with_zone(user.timezone, fn ->
       with {:ok, digest} <- Api.show(user.id, Digests.to_i(year)) do
         stamp = Params.http_date(digest.modified)
-        conn = %{req_headers: headers}
 
-        with {:ok, since} <- Params.if_modified_since(conn) do
+        with {:ok, since} <- Dawarich.MapApi.NativeTime.http(headers) do
           if not Enum.any?(headers, &(elem(&1, 0) == "if-none-match")) and since != nil and
                NaiveDateTime.compare(since, NaiveDateTime.truncate(digest.modified, :second)) !=
                  :lt do
@@ -57,9 +56,14 @@ defmodule Dawarich.Digests.ReadClosure do
     _ -> {:error, 500}
   end
 
+  defp source_toponyms(list) when is_list(list),
+    do: Enum.map(list, &if(is_binary(&1), do: %{}, else: &1))
+
+  defp source_toponyms(value), do: value
+
   defp detail(user, digest, params, stamp) do
     with {:ok, unit} <- Params.unit(params["distance_unit"], Accounts.settings(user.id)),
-         {:ok, term} <- Api.detail(digest, unit) do
+         {:ok, term} <- Api.detail(%{digest | toponyms: source_toponyms(digest.toponyms)}, unit) do
       {:ok, term, cache_control: "max-age=3600, private", validators: [{"last-modified", stamp}]}
     else
       _ -> {:error, 500}

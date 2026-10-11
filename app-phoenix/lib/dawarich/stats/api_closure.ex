@@ -40,9 +40,14 @@ defmodule Dawarich.Stats.ApiClosure do
     if Account.full?(user, now) do
       with {:ok, window} <-
              RailsTime.with_zone(user.timezone, fn ->
-               Residency.window(user.id, year(params["year"]), now)
+               Residency.local_window(
+                 user.id,
+                 year(params["year"]),
+                 %{"timezone" => user.timezone},
+                 DateTime.to_date(now)
+               )
              end),
-           {:ok, term} <- Residency.term(user.id, window),
+           {:ok, term} <- Residency.term(user.id, window, :source),
            do: {:ok, term, []}
     else
       {:error, 403,
@@ -234,22 +239,37 @@ defmodule Dawarich.Stats.ApiClosure do
     do: Enum.map(fields, fn {key, value} -> {key, Map.get(changes, key, value)} end)
 
   defp geo(:visited_cities, user, params, now) do
-    with {:ok, from} <- Params.timestamp(params["start_at"]),
-         {:ok, to} <- Params.timestamp(params["end_at"]),
-         {:ok, minutes} <- Params.min_minutes(Accounts.settings(user.id)),
-         {:ok, range} <-
-           RailsTime.with_zone(user.timezone, fn ->
-             {:ok, CountriesAndCities.range(from, to, now)}
-           end),
-         do: {:ok, CountriesAndCities.term(user.id, range, minutes), []}
+    from = {:text, Dawarich.MapApi.NativeTime.safe(params["start_at"], user.timezone, now)}
+    to = {:text, Dawarich.MapApi.NativeTime.safe(params["end_at"], user.timezone, now)}
+
+    with {:ok, minutes} <- Params.min_minutes(Accounts.settings(user.id)) do
+      RailsTime.with_zone(user.timezone, fn ->
+        range = CountriesAndCities.range(from, to, now)
+        {:ok, CountriesAndCities.term(user.id, range, minutes), []}
+      end)
+    end
   end
 
   defp geo(:flights, user, params, now) do
-    with {:ok, filter} <- Params.flight_filter(params["start_at"], params["end_at"]),
+    with {:ok, filter} <- flight_filter(params, user.timezone, now),
          do:
            RailsTime.with_zone(user.timezone, fn ->
              {:ok, Flights.term(user.id, filter, now), []}
            end)
+  end
+
+  defp flight_filter(params, zone, now) do
+    if params["start_at"] in [nil, ""] and params["end_at"] in [nil, ""] do
+      {:ok, :none}
+    else
+      {:ok,
+       {flight_time(params["start_at"], zone, now), flight_time(params["end_at"], zone, now)}}
+    end
+  end
+
+  defp flight_time(value, zone, now) do
+    if epoch = Dawarich.MapApi.NativeTime.parse(value, zone, now),
+      do: Dawarich.MapApi.NativeTime.iso(epoch)
   end
 
   defp year(nil), do: nil

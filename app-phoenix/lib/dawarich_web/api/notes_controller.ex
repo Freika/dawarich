@@ -15,7 +15,7 @@ defmodule DawarichWeb.Api.NotesController do
     now = conn.assigns[:api_now] || DateTime.utc_now()
 
     result =
-      if Dawarich.Standalone.enabled?() do
+      if conn.private[:dawarich_native_api] == true or Dawarich.Standalone.enabled?() do
         Closure.run(action, user, params, now)
       else
         if conn.assigns.api_format in [:json, :html, :all],
@@ -36,6 +36,9 @@ defmodule DawarichWeb.Api.NotesController do
           404,
           {:object, [{"error", I18n.en!("controllers.api.record_not_found")}]}
         )
+
+      {:error, 400} ->
+        DawarichWeb.Api.ExceptionResponse.respond(conn, 400)
 
       {:error, status} ->
         Respond.json(

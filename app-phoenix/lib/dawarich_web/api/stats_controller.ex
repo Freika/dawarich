@@ -13,7 +13,7 @@ defmodule DawarichWeb.Api.StatsController do
   @impl true
   def call(conn, action) do
     result =
-      if Dawarich.Standalone.enabled?(),
+      if conn.private[:dawarich_native_api] == true or Dawarich.Standalone.enabled?(),
         do:
           Dawarich.Stats.ApiClosure.read(
             action,

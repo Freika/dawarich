@@ -102,7 +102,7 @@ defmodule Dawarich.VisitsApi.SelectPlaceTest do
     assert Read.possible_places(953_001, 959_999, "UTC") == :not_found
   end
 
-  test "possible_places prepends current and hands enabled provider path back" do
+  test "possible_places retains current when the enabled provider is unavailable" do
     assert {:ok, [{:object, fields}]} = Read.possible_places(953_001, 953_301, "UTC")
     assert Map.new(fields)["id"] == 953_201
     assert Map.new(fields)["osm_id"] == 42
@@ -116,7 +116,9 @@ defmodule Dawarich.VisitsApi.SelectPlaceTest do
       }
     ])
 
-    assert {:replay, _} = Read.possible_places(953_001, 953_301, "UTC")
+    assert {:ok, [{:object, fields}]} = Read.possible_places(953_001, 953_301, "UTC")
+    assert Map.new(fields)["id"] == 953_201
+    assert Map.new(fields)["osm_id"] == 42
     assert Dawarich.Geocoding.FakeHttp.requests() == []
     rows("UPDATE visits SET place_id=NULL WHERE id=953301")
     assert {:ok, []} = Read.possible_places(953_001, 953_301, "UTC")

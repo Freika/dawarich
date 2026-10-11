@@ -78,8 +78,8 @@ defmodule Dawarich.Locations.Suggestions do
     _ -> {:ok, 200, %{"suggestions" => []}}
   end
 
-  def configuration(fallback \\ false) do
-    case Config.resolve(Repo) do
+  def configuration(fallback \\ false, repo \\ Repo) do
+    case Config.resolve(repo) do
       %{enabled: false} = config when not fallback ->
         config
 
@@ -100,7 +100,7 @@ defmodule Dawarich.Locations.Suggestions do
   end
 
   def lookup(user, query, opts \\ []) do
-    config = configuration(opts[:fallback] || false)
+    config = configuration(opts[:fallback] || false, opts[:repo] || Repo)
 
     if config.enabled and not Ruby.blank?(query),
       do: throttle(config, fn -> search(config, user, query, opts) end),
@@ -136,8 +136,19 @@ defmodule Dawarich.Locations.Suggestions do
 
   defp search(config, _user, {lat, lon}, opts) do
     case Search.reverse(%{config | rps: nil}, {lat, lon}, opts) do
-      {:ok, results} -> results
-      _ -> []
+      {:ok, results} ->
+        version = Dawarich.AppVersion.current()
+        {_, key, _} = Query.build(config, {lat, lon}, opts, version)
+
+        case ResponseCache.get(key) do
+          {:ok, body} -> Dawarich.Photos.ProviderCache.decode_json(body)
+          _ -> :ok
+        end
+
+        results
+
+      _ ->
+        []
     end
   end
 

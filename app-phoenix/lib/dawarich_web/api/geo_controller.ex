@@ -28,15 +28,16 @@ defmodule DawarichWeb.Api.GeoController do
 
   defp answer(conn, action) do
     result =
-      if conn.assigns[:browser_map_read] == true or Dawarich.Standalone.enabled?(),
-        do:
-          Dawarich.Stats.ApiClosure.read(
-            action,
-            conn.assigns.api_user,
-            conn.assigns.api_params,
-            conn.assigns[:api_now] || DateTime.utc_now()
-          ),
-        else: read(action, conn.assigns.api_user, conn.assigns.api_params)
+      if conn.assigns[:browser_map_read] == true or
+           (conn.private[:dawarich_native_api] == true or Dawarich.Standalone.enabled?()),
+         do:
+           Dawarich.Stats.ApiClosure.read(
+             action,
+             conn.assigns.api_user,
+             conn.assigns.api_params,
+             conn.assigns[:api_now] || DateTime.utc_now()
+           ),
+         else: read(action, conn.assigns.api_user, conn.assigns.api_params)
 
     case result do
       {:ok, term, opts} -> Respond.json(conn, 200, term, opts)

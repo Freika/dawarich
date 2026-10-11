@@ -44,13 +44,36 @@ defmodule Dawarich.Photos.ThumbnailClosure do
       {"/api/assets/#{id}/thumbnail?size=preview",
        [{"accept", "application/octet-stream"}, {"x-api-key", settings["immich_api_key"]}]}
 
-  defp get(base, path, headers, skip, attempts) do
+  defp get(base, path, headers, skip, attempts, redirects \\ 5) do
     case Index.request(:get, base, path, headers, nil, skip) do
-      {:ok, status, _, body} when status in 200..299 -> {:ok, body}
-      {:ok, 403, _, body} -> {:error, 403, body}
-      {:ok, status, _, _} -> {:error, status}
-      {:error, :timeout} when attempts > 1 -> get(base, path, headers, skip, attempts - 1)
-      {:error, _} -> :timeout
+      {:ok, status, _, body} when status in 200..299 ->
+        {:ok, body}
+
+      {:ok, status, response_headers, _}
+      when status in [301, 302, 303, 307, 308] and redirects > 0 ->
+        location = List.keyfind(response_headers, "location", 0) |> elem(1)
+        uri = URI.merge(base <> path, location)
+        origin = URI.parse(base)
+
+        if {uri.scheme, uri.host, uri.port} == {origin.scheme, origin.host, origin.port} do
+          next_base = URI.to_string(%{uri | path: nil, query: nil, fragment: nil})
+          next_path = (uri.path || "/") <> if(uri.query, do: "?" <> uri.query, else: "")
+          get(next_base, next_path, headers, skip, attempts, redirects - 1)
+        else
+          {:error, status}
+        end
+
+      {:ok, 403, _, body} ->
+        {:error, 403, body}
+
+      {:ok, status, _, _} ->
+        {:error, status}
+
+      {:error, :timeout} when attempts > 1 ->
+        get(base, path, headers, skip, attempts - 1)
+
+      {:error, _} ->
+        :timeout
     end
   end
 end
