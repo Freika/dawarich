@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Protect the acting and last active administrator from deletion, and serialize administrator deletion and role changes to retain administration access.
+
 - Prometheus metrics from web and Sidekiq no longer produce duplicate series when label order differs (#3769).
 - KMZ imports no longer repeatedly re-import their own archive and fill the import queue and storage (#3766).
 
