@@ -96,3 +96,34 @@ test("Family hook relays the latest server lease after lazy mount and clears an 
   assert.ok(removed.includes("family:lease"))
   assert.ok(removed.includes("family:clear"))
 })
+
+
+test("native Family disconnected erases immediately and reconnects fresh", async () => {
+  const window = new EventTarget()
+  let cleared = 0, refreshed = 0
+  const hook = {
+    ...FamilyHook,
+    el: { dataset: {}, ownerDocument: { defaultView: window } },
+    handleEvent: (name) => name,
+    removeHandleEvent() {},
+    pushEvent() {},
+    loader: async () => ({ mountHost: () => ({
+      mount: async () => "ready", destroy() {},
+      clear: () => cleared++, reconnect: () => refreshed++,
+    }) }),
+  }
+  try {
+    await hook.mounted()
+    hook.disconnected()
+    assert.equal(cleared, 1)
+    hook.reconnected()
+    await new Promise(resolve => setTimeout(resolve, 30))
+    assert.equal(refreshed, 1)
+  } finally {
+    hook.destroyed()
+  }
+  window.dispatchEvent(new Event("offline"))
+  window.dispatchEvent(new Event("online"))
+  assert.equal(cleared, 1)
+  assert.equal(refreshed, 1)
+})

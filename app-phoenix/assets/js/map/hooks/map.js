@@ -71,7 +71,7 @@ export const MapHook = {
     ]
     try {
       const [runtime, { createRealtime }] = await Promise.all([
-        (this.loader ?? (() => import("../runtime/host.js")))(),
+        (this.loader ?? (() => import("../runtime/host.js"))).call(this),
         import("../data/realtime.js"),
       ])
       if (this.mapDestroyed || this.mapRevoked) return
