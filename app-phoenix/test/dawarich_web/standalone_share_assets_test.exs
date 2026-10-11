@@ -28,7 +28,7 @@ defmodule DawarichWeb.StandaloneShareAssetsTest do
     ])
 
     gate = get(host_conn(), "/s/" <> @id)
-    assert gate.status == 200
+    assert gate.status == 401
     assert String.contains?(gate.resp_body, "native-public-map") == false
     session = Dawarich.Test.RailsFormRequests.rails_session(gate)
     form = LazyHTML.from_document(gate.resp_body)

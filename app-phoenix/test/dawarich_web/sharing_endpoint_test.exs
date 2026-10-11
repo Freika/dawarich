@@ -280,7 +280,7 @@ defmodule DawarichWeb.SharingEndpointTest do
       %{"start_date" => "9 May 2026", "end_date" => "2026-05-12"}
     ])
 
-    assert {200, _, body} = phoenix(serve(), get("/s/#{@timeline}"))
+    assert {404, _, body} = phoenix(serve(), get("/s/#{@timeline}"))
     assert String.contains?(body, "role=\"status\"")
     assert SharingSeeds.view_count(@timeline) == 0
   end

@@ -65,7 +65,9 @@ defmodule DawarichWeb.PublicNativeGalleryTest do
     result = live(put_private(conn, :live_view_connect_info, %{session: get_session(conn)}))
     assert elem(result, 0) == :ok
     {:ok, view, html} = result
-    page = :sys.get_state(view.pid).socket.assigns.public_presentation
+    assigns = :sys.get_state(view.pid).socket.assigns
+    assert assigns.public_error == nil
+    page = assigns.public_presentation
     assert Enum.map(page.resource.photos, & &1["id"]) == ["visible-photo"]
 
     assert has_element?(
