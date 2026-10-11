@@ -1595,6 +1595,6 @@ Stage 1 C extends FRB-NATIVE-M4-FAMILY-PUBLICATION to the retained readers omitt
 Rails upload-controller disconnect removes form listeners without aborting the active transfer or releasing its upload. Phoenix now cancels an in-flight native PUT on pagehide with a keepalive request carrying only the owner-bound reservation reference. Cancellation suppresses late completion; success and cancellation remove the departure listener. This extends the previously recorded abandoned-upload lifecycle fix to hard page departure.
 
 - Rails: `app/javascript/controllers/upload_controller.js:40`.
-- Phoenix: `app-phoenix/assets/js/uploaders/direct.js:97`.
+- Phoenix: `app-phoenix/assets/js/uploaders/direct.js:73`.
 - Tests: `phoenix_upload_pagehide_test.mjs`, “pagehide cancels an in-flight disk PUT once with a keepalive owner reference” and “completed disk PUT removes its departure listener before reporting completion”; registration and cleanup omission mutations fail. Browser consumer: `native-upload-boundaries.spec.js`, “disconnect during PUT cleans the pending target and late transport cannot revive it”.
 - Ledger: ED-NATIVE-S1-UPLOAD-DEPARTURE; no DRB. Rails source-backed observation; Rails production code unchanged.
