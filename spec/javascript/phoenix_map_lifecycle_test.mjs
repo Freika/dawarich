@@ -388,3 +388,43 @@ test("current ordinary map refresh deadline ends loading emits failure and rejec
   }
   assert.equal(jobs.size, 0)
 })
+
+test("place focus waits for the native map and cannot center after refusal or destruction", async () => {
+  const pending = deferred(),
+    handlers = new Map(),
+    centers = []
+  const owner = {
+    config: {},
+    mount: async () => "ready",
+    destroy() {},
+    map: { jumpTo: (value) => centers.push(value) },
+  }
+  const hook = {
+    ...MapHook,
+    el: {},
+    pushEvent() {},
+    loader: () => pending.promise,
+    handleEvent(name, fn) {
+      handlers.set(name, fn)
+      return name
+    },
+    removeHandleEvent() {},
+  }
+  const mounting = hook.mounted()
+  handlers.get("place:focus")({
+    latitude: 52,
+    longitude: 13,
+    secret: "discard",
+  })
+  assert.equal(centers.length, 0)
+  pending.resolve({ mountHost: () => owner })
+  await mounting
+  assert.deepEqual(centers, [{ center: [13, 52], zoom: 16 }])
+  handlers.get("place:focus")({ latitude: 90.1, longitude: 13 })
+  assert.equal(centers.length, 1)
+  handlers.get("map:clear")()
+  handlers.get("place:focus")({ latitude: 53, longitude: 12 })
+  hook.destroyed()
+  handlers.get("place:focus")({ latitude: 53, longitude: 12 })
+  assert.equal(centers.length, 1)
+})

@@ -178,6 +178,7 @@ test("map hook owns coalesced delivery handlers and releases them on teardown", 
     "map:invalidate",
     "map:layer",
     "map:settings",
+    "place:focus",
     "track:selection",
     "visit:selection",
   ])

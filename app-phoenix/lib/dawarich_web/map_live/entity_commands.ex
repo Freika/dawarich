@@ -36,6 +36,7 @@ defmodule DawarichWeb.MapLive.EntityCommands do
             {:noreply,
              socket
              |> assign(:place_dialog, nil)
+             |> DawarichWeb.MapLive.PlaceDetail.refresh()
              |> push_event("map:layer", %{layer: "places", enabled: true})
              |> push_event("map:invalidate", %{resource: "places", id: saved})}
 
