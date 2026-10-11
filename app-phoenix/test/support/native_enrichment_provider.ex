@@ -6,7 +6,10 @@ defmodule Dawarich.Test.NativeEnrichmentProvider do
   def start(owner, scan_status \\ 200) do
     pid =
       ExUnit.Callbacks.start_supervised!(
-        {Bandit, plug: {__MODULE__, {owner, scan_status}}, ip: {127, 0, 0, 1}, port: 0}
+        Supervisor.child_spec(
+          {Bandit, plug: {__MODULE__, {owner, scan_status}}, ip: {127, 0, 0, 1}, port: 0},
+          id: make_ref()
+        )
       )
 
     {:ok, {_, port}} = ThousandIsland.listener_info(pid)

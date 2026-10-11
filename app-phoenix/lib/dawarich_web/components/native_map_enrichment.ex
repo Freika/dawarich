@@ -84,7 +84,7 @@ defmodule DawarichWeb.NativeMapEnrichment do
           else:
             t(@locale, "javascript.immich.matched_summary", %{
               matched: @enrichment.matched,
-              total: @enrichment.matched
+              total: @enrichment.total
             })}
       </p>
       <p

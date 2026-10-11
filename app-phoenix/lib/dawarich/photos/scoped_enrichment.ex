@@ -18,9 +18,17 @@ defmodule Dawarich.Photos.ScopedEnrichment do
 
       if Entitlements.full_access?(actor, hosted, now) do
         case Enrichment.run(action, actor, params, Keyword.take(opts, [:enqueue, :now])) do
-          {:ok, 200, result} -> {:ok, result}
-          {:error, reason} when is_atom(reason) -> {:error, reason}
-          _ -> {:error, :unavailable}
+          {:ok, 200, %{"error" => error}} when error not in [nil, ""] ->
+            {:error, :provider_failed}
+
+          {:ok, 200, result} ->
+            {:ok, result}
+
+          {:error, reason} when is_atom(reason) ->
+            {:error, reason}
+
+          _ ->
+            {:error, :unavailable}
         end
       else
         {:error, :pro_required}

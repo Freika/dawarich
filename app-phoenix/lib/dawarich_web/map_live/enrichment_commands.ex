@@ -18,7 +18,10 @@ defmodule DawarichWeb.MapLive.EnrichmentCommands do
         socket.assigns[:enrichment_timeout] || 60_000
       )
 
-    {:noreply, assign(socket, :enrichment, %{status: :scanning, run: run, matched: nil})}
+    {:noreply,
+     socket
+     |> assign(:enrichment, %{status: :scanning, run: run, matched: nil, total: nil})
+     |> push_event("enrichment:matches", %{matches: []})}
   end
 
   def handle_event("enrichment:enrich", %{"assets" => assets}, socket) when is_list(assets) do
@@ -37,7 +40,7 @@ defmodule DawarichWeb.MapLive.EnrichmentCommands do
         _ -> socket
       end
 
-    assign(socket, :enrichment, nil)
+    socket |> assign(:enrichment, nil) |> push_event("enrichment:matches", %{matches: []})
   end
 
   def handle_async({:enrichment_scan, run}, result, socket) do
@@ -49,9 +52,17 @@ defmodule DawarichWeb.MapLive.EnrichmentCommands do
 
   def handle_async(_name, _result, socket), do: {:noreply, socket}
 
+  defp settle(socket, scan, {:ok, {:ok, %{"error" => error}}}) when error not in [nil, ""],
+    do: failed(socket, scan, :provider_failed)
+
   defp settle(socket, scan, {:ok, {:ok, result}}) do
     socket
-    |> assign(:enrichment, %{scan | status: :ready, matched: result["total_matched"]})
+    |> assign(:enrichment, %{
+      scan
+      | status: :ready,
+        matched: result["total_matched"],
+        total: result["total_without_geodata"]
+    })
     |> push_event("enrichment:matches", %{
       run: inspect(scan.run),
       matches: result["matches"] || []
@@ -59,8 +70,14 @@ defmodule DawarichWeb.MapLive.EnrichmentCommands do
   end
 
   defp settle(socket, scan, {:ok, {:error, reason}}),
-    do: assign(socket, :enrichment, %{scan | status: {:error, reason}})
+    do: failed(socket, scan, reason)
 
   defp settle(socket, scan, _),
-    do: assign(socket, :enrichment, %{scan | status: {:error, :unavailable}})
+    do: failed(socket, scan, :unavailable)
+
+  defp failed(socket, scan, reason) do
+    socket
+    |> assign(:enrichment, %{scan | status: {:error, reason}, matched: nil, total: nil})
+    |> push_event("enrichment:matches", %{matches: []})
+  end
 end
