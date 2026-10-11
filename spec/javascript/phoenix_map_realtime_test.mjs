@@ -176,6 +176,7 @@ test("map hook owns coalesced delivery handlers and releases them on teardown", 
     "map:layer",
     "map:settings",
     "track:selection",
+    "visit:selection",
   ])
   assert.deepEqual([...removed].sort(), [...handlers.keys()].sort())
 })

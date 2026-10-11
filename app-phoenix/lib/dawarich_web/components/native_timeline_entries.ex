@@ -29,7 +29,7 @@ defmodule DawarichWeb.NativeTimelineEntries do
       id={"native-visit-#{@entry.visit_id}"}
       class={[
         "visit-row min-w-0",
-        @selected && "visit-row--selected",
+        @selected && "visit-row--selected bg-base-200",
         @all_day && "visit-row--all-day",
         @subdued && "visit-row--subdued",
         @low && "visit-row--lowconf"

@@ -286,3 +286,50 @@ test("map hook retains only latest scalar track selection across lazy mount and 
   await handlers.get("track:selection")({ id: 9, points: true })
   assert.equal(selections.length, 2)
 })
+
+test("map hook retains only latest scalar visit selection across lazy mount and ignores after destroy", async () => {
+  const pending = deferred()
+  const handlers = new Map(),
+    selections = []
+  const attached = deferred()
+  const entered = deferred()
+  const owner = {
+    config: {},
+    mount: async () => {
+      entered.resolve()
+      return attached.promise
+    },
+    destroy() {},
+    visits: { select: async (receipt) => selections.push(receipt) },
+  }
+  const hook = {
+    ...MapHook,
+    el: {},
+    pushEvent() {},
+    loader: () => pending.promise,
+    handleEvent(name, callback) {
+      handlers.set(name, callback)
+      return name
+    },
+    removeHandleEvent() {},
+  }
+  const mounting = hook.mounted()
+  handlers.get("visit:selection")({
+    id: 7,
+    geometry: "forbidden",
+  })
+  handlers.get("visit:selection")({ id: 8, rows: "forbidden" })
+  pending.resolve({ mountHost: () => owner })
+  await entered.promise
+  handlers.get("visit:selection")({ id: 10 })
+  assert.equal(selections.length, 0)
+  attached.resolve("ready")
+  await mounting
+  assert.deepEqual(selections, [{ id: 10 }])
+  await handlers.get("visit:selection")({ id: null })
+  assert.deepEqual(selections.at(-1), { id: null })
+  hook.destroyed()
+  assert.deepEqual(hook.mapHandlers, [])
+  await handlers.get("visit:selection")({ id: 9 })
+  assert.equal(selections.length, 2)
+})

@@ -281,7 +281,7 @@ defmodule DawarichWeb.NativeM6HostTest do
            }
 
     render_async(view, 5000)
-    assert has_element?(view, "#native-visit-#{visit}.visit-row--selected")
+    assert has_element?(view, "#native-visit-#{visit}.visit-row--selected.bg-base-200")
 
     assert has_element?(
              view,

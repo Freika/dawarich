@@ -12,6 +12,7 @@ import { createHostSearch } from "../ui/host_search.js"
 import { createHostSettings } from "../ui/host_settings.js"
 import { createHostTimeline } from "../ui/host_timeline.js"
 import { createHostTools } from "../ui/host_tools.js"
+import { createHostVisits } from "../ui/host_visits.js"
 import { createRangeRequests } from "../ui/navigation.js"
 import { installStudios } from "../ui/studios.js"
 import { createHostAuxLayers } from "./aux_layers.js"
@@ -111,6 +112,14 @@ export function mountHost({
           root: element.closest?.("[data-native-map-root]"),
           reader,
           lifetime,
+        })
+        owner.visits = createHostVisits({
+          map,
+          reader,
+          lifetime,
+          root: element.closest?.("[data-native-map-root]"),
+          getConfig: () => owner.config,
+          entities: () => entities,
         })
         createHostTools({
           map,
@@ -266,6 +275,7 @@ export function mountHost({
     }
     aux?.clear(config)
     timeline?.config(config)
+    owner.visits?.config(config)
     editing?.config(config)
     const updating = update.call(owner, config)
     requests.config(config)

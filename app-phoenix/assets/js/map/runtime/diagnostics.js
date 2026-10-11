@@ -1,3 +1,19 @@
+function visitHaloFilter(layer) {
+  const filter = layer.filter
+  if (
+    layer.id !== "visits-halo" ||
+    !Array.isArray(filter) ||
+    filter.length !== 3 ||
+    filter[0] !== "==" ||
+    !Array.isArray(filter[1]) ||
+    filter[1].length !== 2 ||
+    filter[1][0] !== "get" ||
+    filter[1][1] !== "id" ||
+    !Number.isSafeInteger(filter[2])
+  )
+    return
+  return ["==", ["get", "id"], filter[2]]
+}
 const properties = new Set([
   "id",
   "name",
@@ -159,6 +175,7 @@ export function installMapDiagnostics({ element, map, getConfig }) {
         type: layer.type,
         source: layer.source,
         visibility: layer.layout?.visibility ?? "visible",
+        filter: visitHaloFilter(layer),
         paint: Object.fromEntries(
           Object.entries(layer.paint ?? {})
             .slice(0, 32)

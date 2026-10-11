@@ -5,9 +5,16 @@ export const MapHook = {
     this.mapReady = false
     this.mapConfig = null
     this.mapTrackSelection = null
+    this.mapVisitSelection = null
     this.mapRealtime = null
     this.mapInvalidations = []
     this.mapHandlers = [
+      this.handleEvent("visit:selection", (payload) => {
+        if (this.mapDestroyed || this.mapRevoked) return
+        this.mapVisitSelection = { id: payload.id }
+        if (this.mapReady)
+          return this.mapOwner?.visits?.select(this.mapVisitSelection)
+      }),
       this.handleEvent("track:selection", (payload) => {
         if (this.mapDestroyed || this.mapRevoked) return
         this.mapTrackSelection = {
@@ -69,6 +76,9 @@ export const MapHook = {
       if (this.mapDestroyed || this.mapRevoked) return
       if (this.mapTrackSelection)
         await this.mapOwner.timeline?.select(this.mapTrackSelection)
+      if (this.mapDestroyed || this.mapRevoked) return
+      if (this.mapVisitSelection)
+        await this.mapOwner.visits?.select(this.mapVisitSelection)
       if (this.mapDestroyed || this.mapRevoked) return
       this.mapReady = true
       for (const receipt of this.mapInvalidations)

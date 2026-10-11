@@ -313,3 +313,34 @@ test("diagnostic geometry hits refuse malformed offscreen and unsupported coordi
     f.destroy()
   }
 })
+
+test("owned visit halo diagnostics copy only bounded integer identity filters", () => {
+  const f = setup()
+  let filter = ["==", ["get", "id"], 7]
+  f.map.getStyle = () => ({
+    sources: {},
+    layers: [{ id: "visits-halo", type: "circle", filter }],
+  })
+  try {
+    const copied = f.element.dawarichMapSnapshot().layers[0].filter
+    assert.deepEqual(copied, filter)
+    copied[1][1] = "mutated"
+    assert.equal(filter[1][1], "id")
+    for (const invalid of [
+      ["==", ["get", "api_key"], "synthetic-private"],
+      ["==", ["get", "id"], Infinity],
+      ["==", ["get", "id"], "7"],
+    ]) {
+      filter = invalid
+      assert.equal(f.element.dawarichMapSnapshot().layers[0].filter, undefined)
+      assert.equal(
+        JSON.stringify(f.element.dawarichMapSnapshot()).includes(
+          "synthetic-private",
+        ),
+        false,
+      )
+    }
+  } finally {
+    f.destroy()
+  }
+})
