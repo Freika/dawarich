@@ -45,6 +45,30 @@ defmodule DawarichWeb.NativeM6HostTest do
     end
   end
 
+  for event <- ~w(place:new visit:new) do
+    test "canonical #{event} refuses non-object socket envelopes without effects", %{id: id} do
+      {:ok, view, _} = open(id, @second)
+      socket = :sys.get_state(view.pid).socket
+
+      for value <- [[], [1], "bad", true, false, nil] do
+        assert {:noreply, unchanged} =
+                 DawarichWeb.MapLive.Native.handle_event(unquote(event), value, socket)
+
+        assert unchanged == socket
+        assert rows("SELECT count(*) FROM places WHERE user_id=$1", [id]) == [[0]]
+        assert rows("SELECT count(*) FROM visits WHERE user_id=$1", [id]) == [[0]]
+      end
+
+      assert Process.alive?(view.pid)
+      render_hook(view, unquote(event), %{"latitude" => 52.5, "longitude" => 13.4})
+
+      assert has_element?(
+               view,
+               "#native-#{if unquote(event) == "place:new", do: "place", else: "visit"}-dialog"
+             )
+    end
+  end
+
   test "native production host restores range import panel and day on back and forward", %{id: id} do
     {:ok, view, html} = open(id, @first)
     assert has_element?(view, "#native-map[phx-hook=Map]")

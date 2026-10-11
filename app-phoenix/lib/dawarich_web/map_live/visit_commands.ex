@@ -7,7 +7,7 @@ defmodule DawarichWeb.MapLive.VisitCommands do
 
   @form ~w(name started_at ended_at)
 
-  def handle_event("visit:new", params, socket) do
+  def handle_event("visit:new", params, socket) when is_map(params) do
     times = [from: params["started_at"], to: params["ended_at"]]
 
     with {:ok, coordinates} <- DawarichWeb.MapLive.Coordinates.normalize(params),
