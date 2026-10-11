@@ -123,9 +123,12 @@ test("native track clicks send only owned scalar commands and replay seeks the s
     }
     f.root.emit("click", {
       target: {
-        closest: () => ({
-          dataset: { trackStart: "2026-03-30T11:00:00+02:00" },
-        }),
+        closest: (selector) =>
+          selector === "[data-track-replay]"
+            ? {
+                dataset: { trackStart: "2026-03-30T11:00:00+02:00" },
+              }
+            : null,
       },
     })
     await new Promise((resolve) => setImmediate(resolve))
@@ -133,9 +136,12 @@ test("native track clicks send only owned scalar commands and replay seeks the s
     f.owner.replay.active = true
     f.root.emit("click", {
       target: {
-        closest: () => ({
-          dataset: { trackStart: "2026-03-30T11:00:00+02:00" },
-        }),
+        closest: (selector) =>
+          selector === "[data-track-replay]"
+            ? {
+                dataset: { trackStart: "2026-03-30T11:00:00+02:00" },
+              }
+            : null,
       },
     })
     await new Promise((resolve) => setImmediate(resolve))
@@ -482,6 +488,82 @@ test("native timeline keyboard steps profile calendar dates ignores text inputs 
     assert.equal(
       f.pushed.filter(({ event }) => event === "calendar:day").length,
       2,
+    )
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("empty native tool status whitespace permits track clicks and hover while armed tools block them", async () => {
+  const f = fixture({ tracksEnabled: true })
+  const status = new Element()
+  const canvas = { style: {} }
+  f.map.getCanvas = () => canvas
+  status.textContent = "\n        "
+  f.nodes.set("[data-map-tool-status]", status)
+  f.map.queryRenderedFeatures = () => [
+    { properties: { id: 7 }, layer: { id: "tracks-mvt" } },
+  ]
+  try {
+    await f.owner.mount()
+    f.map.emit("click", { point: { x: 20, y: 20 } })
+    assert.ok(
+      f.pushed.some(
+        ({ event, payload }) =>
+          event === "map:select" &&
+          payload.kind === "track" &&
+          payload.id === 7,
+      ),
+    )
+    f.map.emit("mousemove", { point: { x: 20, y: 20 } })
+    assert.equal(f.map.getCanvas().style.cursor, "pointer")
+    const count = f.pushed.filter(({ event }) => event === "map:select").length
+    status.textContent = "Click to place a visit"
+    f.map.emit("click", { point: { x: 20, y: 20 } })
+    assert.equal(
+      f.pushed.filter(({ event }) => event === "map:select").length,
+      count,
+    )
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("selected index-based segments render the canonical track slice for map hover", async () => {
+  const f = fixture()
+  const coordinates = [
+    [12, 51],
+    [13, 52],
+    [14, 53],
+  ]
+  f.reader.read = async () => ({
+    data: {
+      type: "Feature",
+      geometry: { type: "LineString", coordinates },
+      properties: {
+        id: 7,
+        segments: [{ id: 19, start_index: 1, end_index: 2, color: "#3B82F6" }],
+      },
+    },
+  })
+  try {
+    await f.owner.mount()
+    await f.owner.timeline.select({ id: 7 })
+    const rendered = f.sources.get("native-selected-track").data.features[1]
+    assert.deepEqual(rendered.geometry, {
+      type: "LineString",
+      coordinates: coordinates.slice(1, 3),
+    })
+    assert.equal(rendered.properties.track_id, 7)
+    assert.equal(rendered.properties.color, "#3B82F6")
+    f.root.emit("pointerover", {
+      target: {
+        closest: () => ({ dataset: { trackId: "7", segmentId: "19" } }),
+      },
+    })
+    assert.deepEqual(
+      f.sources.get("native-timeline-hover").data.geometry,
+      rendered.geometry,
     )
   } finally {
     f.owner.destroy()

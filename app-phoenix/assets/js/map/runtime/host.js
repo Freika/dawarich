@@ -32,6 +32,7 @@ export function mountHost({
   attach,
   refresh,
 }) {
+  const fail = (code) => pushEvent("map:failed", { code })
   const requests = createRangeRequests({ pushEvent })
   const freshness = createTileFreshness()
   const fit = createViewportFit(reader, element)
@@ -39,7 +40,7 @@ export function mountHost({
   const blocked = () =>
     owner.config.editEnabled ||
     owner.selection.state.active ||
-    Boolean(root?.querySelector("[data-map-tool-status]")?.textContent)
+    !!root?.querySelector("[data-map-tool-status]")?.textContent?.trim()
   let library
   let layers
   let editing
@@ -72,7 +73,7 @@ export function mountHost({
           owner,
           map,
           lifetime,
-          root: root,
+          root,
         })
         owner.settings = createHostSettings({
           map,
@@ -80,19 +81,19 @@ export function mountHost({
           lifetime,
           getConfig: () => owner.config,
           update: (next) => owner.update(next),
-          onError: (code) => pushEvent("map:failed", { code }),
+          onError: fail,
         })
         enrichment = createEnrichmentTool({
           map,
           pushEvent,
           reader,
           library,
-          root: root,
+          root,
         })
         lifetime.own(enrichment.destroy)
         owner.search = createHostSearch({
           map,
-          root: root,
+          root,
           reader,
           lifetime,
           document: element.ownerDocument,
@@ -101,7 +102,7 @@ export function mountHost({
         })
         owner.selection = createHostSelection({
           map,
-          root: root,
+          root,
           reader,
           pushEvent,
           lifetime,
@@ -114,7 +115,7 @@ export function mountHost({
           replay: () => owner.replay,
           blocked,
           map,
-          root: root,
+          root,
           reader,
           lifetime,
         })
@@ -122,14 +123,14 @@ export function mountHost({
           map,
           reader,
           lifetime,
-          root: root,
+          root,
           getConfig: () => owner.config,
           entities: () => entities,
           blocked,
         })
         createHostTools({
           map,
-          root: root,
+          root,
           pushEvent,
           lifetime,
         })
@@ -137,7 +138,7 @@ export function mountHost({
           map,
           config,
           freshness,
-          onError: (code) => pushEvent("map:failed", { code }),
+          onError: fail,
         })
         lifetime.own(() => layers.destroy())
         editing = createHostEditing({
@@ -148,15 +149,15 @@ export function mountHost({
           getConfig: () => owner.config,
           layers,
           document: element.ownerDocument,
-          root: root,
+          root,
         })
         lifetime.own(() => density?.destroy())
         aux = createHostAuxLayers({
           map,
           reader,
           library,
-          root: root,
-          onError: (code) => pushEvent("map:failed", { code }),
+          root,
+          onError: fail,
           replayActive: () => owner.replay?.active,
         })
         lifetime.own(() => aux.destroy())
@@ -194,7 +195,7 @@ export function mountHost({
             reader,
             library,
             pointsLayer: layers?.points,
-            onError: (code) => pushEvent("map:failed", { code }),
+            onError: fail,
             onProgress: (receipt) =>
               element.dispatchEvent(
                 new CustomEvent("map:progress", { detail: receipt }),
@@ -230,7 +231,7 @@ export function mountHost({
             onSelect: (receipt) => {
               if (!blocked()) pushEvent("map:select", receipt)
             },
-            onError: (code) => pushEvent("map:failed", { code }),
+            onError: fail,
           })
         }
         if (entities) await operation.wait(entities.update(config, { signal }))
@@ -238,12 +239,8 @@ export function mountHost({
         if (recent) await operation.wait(recent.baseline({ signal }))
       }),
     events: {
-      refreshed(receipt) {
-        pushEvent("map:ready", receipt)
-      },
-      error(receipt) {
-        pushEvent("map:failed", receipt)
-      },
+      refreshed: (receipt) => pushEvent("map:ready", receipt),
+      error: (receipt) => pushEvent("map:failed", receipt),
     },
   })
   owner.source = createStudioSource({
@@ -251,13 +248,13 @@ export function mountHost({
     readSnapshot: (state, options) => readRouteSnapshot(reader, state, options),
     applyDates: requests.applyDates,
   })
-  Object.defineProperty(owner, "enrichment", { get: () => enrichment })
-  Object.defineProperty(owner, "pointEditing", {
-    get: () => editing?.transport,
+  Object.defineProperties(owner, {
+    enrichment: { get: () => enrichment },
+    pointEditing: { get: () => editing?.transport },
+    editor: { get: () => editing?.editor },
+    entityLayers: { get: () => entities },
+    photoLayer: { get: () => aux?.photos },
   })
-  Object.defineProperty(owner, "editor", { get: () => editing?.editor })
-  Object.defineProperty(owner, "entityLayers", { get: () => entities })
-  Object.defineProperty(owner, "photoLayer", { get: () => aux?.photos })
   owner.visitsFilter = (filter) =>
     owner.update({ ...owner.config, visitFilter: filter })
   owner.layer = ({ layer, enabled }) => {

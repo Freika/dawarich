@@ -85,6 +85,8 @@ export function createReader({
       if (!response.ok && !noData) {
         const error = new Error("Map read failed")
         error.status = response.status
+        if (resource === "photos" && data?.code === "photos_unconfigured")
+          error.code = data.code
         throw error
       }
       if (resource === "track") {

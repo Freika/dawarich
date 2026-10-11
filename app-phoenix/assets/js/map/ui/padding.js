@@ -1,20 +1,22 @@
-const BASE_MAP_PADDING = 50
-const OVERLAY_GAP = 12
-
 export function overlayAwarePadding(mapRect, overlayRect) {
   const padding = {
-    top: BASE_MAP_PADDING,
-    right: BASE_MAP_PADDING,
-    bottom: BASE_MAP_PADDING,
-    left: BASE_MAP_PADDING,
+    top: 50,
+    right: 50,
+    bottom: 50,
+    left: 50,
   }
-  if (!mapRect || !overlayRect) return padding
-  const overlapsLeftEdge =
-    overlayRect.left < mapRect.right && overlayRect.right > mapRect.left
-  if (!overlapsLeftEdge) return padding
+  if (
+    !mapRect ||
+    !overlayRect ||
+    overlayRect.bottom <= mapRect.top ||
+    overlayRect.top >= mapRect.bottom ||
+    overlayRect.left >= mapRect.right ||
+    overlayRect.right <= mapRect.left
+  )
+    return padding
   padding.left = Math.max(
     padding.left,
-    Math.ceil(overlayRect.right - mapRect.left + OVERLAY_GAP),
+    Math.ceil(overlayRect.right - mapRect.left + 12),
   )
   return padding
 }

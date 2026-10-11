@@ -305,6 +305,8 @@ test("trip launcher dispatches its fixed stable source and releases the click ow
         ? studio
         : null
   studio.dispatchEvent = (event) => events.push(event)
+  button.parent = root
+  button.selector = '[data-testid="map-button-video"]'
   f.element.closest = () => root
   await f.owner.mount()
   button.emit("click")

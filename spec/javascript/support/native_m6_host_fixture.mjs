@@ -15,7 +15,12 @@ export class Element {
     this.listeners.get(name)?.delete(fn)
   }
   emit(name, value = {}) {
+    value.target ??= this
     for (const fn of this.listeners.get(name) ?? []) fn(value)
+    if (name === "click") this.parent?.emit(name, value)
+  }
+  closest(selector) {
+    return selector === this.selector ? this : this.parent?.closest(selector)
   }
   appendChild(child) {
     this.children.push(child)
@@ -39,6 +44,12 @@ export function fixture(config = {}, options = {}) {
   const nodes = new Map()
   const root = new Element()
   root.querySelector = (selector) => nodes.get(selector)
+  const setNode = nodes.set.bind(nodes)
+  nodes.set = (selector, node) => {
+    node.parent = root
+    node.selector = selector
+    return setNode(selector, node)
+  }
   const element = new Element()
   const range = {
     startAt: "2026-03-29T00:00",

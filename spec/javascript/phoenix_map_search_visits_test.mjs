@@ -209,3 +209,21 @@ test("panel padding clears the overlay measured at fit time", () => {
     50,
   )
 })
+
+test("native panels above or below the resized map do not offset route fits", () => {
+  const map = { left: 0, right: 390, top: 400, bottom: 800 }
+  const baseline = { top: 50, right: 50, bottom: 50, left: 50 }
+  assert.deepEqual(
+    overlayAwarePadding(map, { left: 0, right: 390, top: 0, bottom: 400 }),
+    baseline,
+  )
+  assert.deepEqual(
+    overlayAwarePadding(map, { left: 0, right: 390, top: 800, bottom: 900 }),
+    baseline,
+  )
+  assert.equal(
+    overlayAwarePadding(map, { left: 0, right: 100, top: 400, bottom: 800 })
+      .left,
+    112,
+  )
+})

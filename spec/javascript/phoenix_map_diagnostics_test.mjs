@@ -405,3 +405,146 @@ test("native diagnostics copy owned GeoJSON input geometry and total count while
   assert.equal(JSON.stringify(remote).includes("synthetic-private"), false)
   f.destroy()
 })
+
+test("diagnostic hit positions require rendered source geometry instead of hidden tile geometry", () => {
+  const f = setup()
+  f.map.project = ([x, y]) => ({ x, y })
+  f.map.getContainer = () => ({
+    getBoundingClientRect: () => ({ width: 100, height: 100 }),
+  })
+  f.map.querySourceFeatures = () => [
+    {
+      type: "Feature",
+      properties: { id: 7 },
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [10, 10],
+          [20, 20],
+          [30, 30],
+        ],
+      },
+    },
+  ]
+  let rendered = []
+  f.map.queryRenderedFeatures = (options) => {
+    assert.deepEqual(options.layers, ["points"])
+    return rendered
+  }
+  const read = () =>
+    f.element.dawarichMapSnapshot({ sourceId: "points-mvt-source" }).features[0]
+  assert.equal(read().screen, null)
+  rendered = [
+    {
+      properties: { id: 7 },
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [40, 40],
+          [50, 50],
+          [60, 60],
+        ],
+      },
+    },
+  ]
+  assert.deepEqual(read().screen, { x: 50, y: 50 })
+  assert.deepEqual(read().geometry.coordinates, [
+    [10, 10],
+    [20, 20],
+    [30, 30],
+  ])
+  f.destroy()
+})
+
+test("rendered multipart tracks and areas use an in-viewport component for browser hits", () => {
+  const f = setup()
+  f.map.project = ([x, y]) => ({ x, y })
+  f.map.getContainer = () => ({
+    getBoundingClientRect: () => ({ width: 100, height: 100 }),
+  })
+  f.map.querySourceFeatures = () => [
+    { properties: { id: 7 }, geometry: { type: "Point", coordinates: [5, 5] } },
+  ]
+  let geometry
+  f.map.queryRenderedFeatures = () => [{ properties: { id: 7 }, geometry }]
+  const read = () =>
+    f.element.dawarichMapSnapshot({ sourceId: "points-mvt-source" }).features[0]
+      .screen
+  try {
+    geometry = {
+      type: "MultiLineString",
+      coordinates: [
+        [
+          [-20, -20],
+          [-10, -10],
+        ],
+        [
+          [30, 30],
+          [40, 40],
+        ],
+      ],
+    }
+    assert.deepEqual(read(), { x: 40, y: 40 })
+    geometry = {
+      type: "MultiPolygon",
+      coordinates: [
+        [
+          [
+            [-20, -20],
+            [-10, -20],
+            [-10, -10],
+            [-20, -20],
+          ],
+        ],
+        [
+          [
+            [30, 30],
+            [40, 30],
+            [40, 40],
+            [30, 30],
+          ],
+        ],
+      ],
+    }
+    assert.deepEqual(read(), { x: 35, y: 35 })
+    geometry = {
+      type: "MultiPoint",
+      coordinates: [
+        [-20, -20],
+        [30, 30],
+      ],
+    }
+    assert.deepEqual(read(), { x: 30, y: 30 })
+  } finally {
+    f.destroy()
+  }
+})
+
+test("native single-Feature diagnostics preserve canonical hover geometry without tile quantization", () => {
+  const f = setup()
+  const input = {
+    type: "Feature",
+    properties: { id: 7 },
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [13.405677, 52.462147],
+        [13.408596, 52.461514],
+      ],
+    },
+  }
+  f.map.getSource = () => ({
+    serialize: () => ({ type: "geojson", data: input }),
+  })
+  try {
+    const data = f.element.dawarichMapSnapshot({
+      sourceId: "points-mvt-source",
+    })
+    assert.equal(data.featureCount, 1)
+    assert.deepEqual(data.features[0].geometry, input.geometry)
+    data.features[0].geometry.coordinates[0][0] = 1
+    assert.equal(input.geometry.coordinates[0][0], 13.405677)
+  } finally {
+    f.destroy()
+  }
+})

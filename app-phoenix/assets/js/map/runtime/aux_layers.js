@@ -36,14 +36,14 @@ export function createHostAuxLayers({
             library,
             timezone: config.range.timezone,
             labels: config.photoLabels,
-            onError: (code) => onError(code),
+            onError,
           })
           photos.add()
           const status = await operation.wait(
             photos.load(config.range, { signal }),
           )
           operation.check()
-          if (status !== "ready") throw new Error("Photos unavailable")
+          if (status !== "ready" && status !== "unconfigured") throw new Error()
           if (replayActive()) photos.hide()
           photoKey = desired
         }

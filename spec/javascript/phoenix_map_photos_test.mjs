@@ -498,3 +498,22 @@ test("native photo host is lazy and disposal releases every loaded thumbnail", a
     0,
   )
 })
+
+test("unconfigured photo integration is distinct from an unauthorized read", async () => {
+  for (const code of ["photos_unconfigured", undefined]) {
+    const errors = []
+    const loader = createPhotoLoader({
+      reader: {
+        pages: async () => {
+          throw Object.assign(new Error("read failed"), { status: 401, code })
+        },
+      },
+      onError: (error) => errors.push(error),
+    })
+    assert.equal(await loader.load(range), code ? "unconfigured" : "failed")
+    assert.deepEqual(errors, [
+      code ? "photos_unconfigured" : "photos_load_failed",
+    ])
+    loader.destroy()
+  }
+})

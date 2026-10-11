@@ -23,7 +23,7 @@ test("native host rectangle tool reads selection and Escape restores map gesture
   assert.equal(f.map.dragPan.isEnabled(), true)
   assert.deepEqual(f.owner.selection.state.points, [])
   f.owner.destroy()
-  assert.equal(button.listeners.get("click").size, 0)
+  assert.equal(f.root.listeners.get("click").size, 0)
 })
 
 test("native selection root draws rectangle highlights admitted points and clears on cancel", async () => {
