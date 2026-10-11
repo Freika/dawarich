@@ -122,6 +122,11 @@ defmodule DawarichWeb.NativeMapPage do
           tags={@page.timeline_tags}
           locale={@locale}
         />
+        <DawarichWeb.NativeTrackInfo.card
+          track={assigns[:track_info]}
+          unit={@map_config["distanceUnit"] || "km"}
+          locale={@locale}
+        />
       </section>
       <DawarichWeb.NativeResidency.card
         :if={@map_url["panel"] == "insights"}
@@ -176,11 +181,6 @@ defmodule DawarichWeb.NativeMapPage do
         enrichment={assigns[:enrichment]}
         start_date={String.slice(@page.window.start, 0, 10)}
         end_date={String.slice(@page.window.end, 0, 10)}
-        locale={@locale}
-      />
-      <DawarichWeb.NativeTrackInfo.card
-        track={assigns[:track_info]}
-        unit={@map_config["distanceUnit"] || "km"}
         locale={@locale}
       />
       <DawarichWeb.NativeSegmentEditor.drawer drawer={assigns[:segment_drawer]} locale={@locale} />
