@@ -1,5 +1,6 @@
 defmodule DawarichWeb.NativeMapChromeTest do
   use Dawarich.DataCase, async: true
+  import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   alias Dawarich.Test.RailsUser
   @endpoint DawarichWeb.Endpoint
@@ -51,4 +52,13 @@ defmodule DawarichWeb.NativeMapChromeTest do
 
     refute reconnected =~ "Stay up to date?"
   end
+  test "Rails error flash survives the root redirect and connected native map mount" do
+    id = System.unique_integer([:positive])
+    RailsUser.insert!(%{id: id, email: "chrome-error-#{id}@example.invalid", settings: %{"timezone" => "UTC"}})
+    extra = %{"flash" => %{"discard" => [], "flashes" => %{"error" => "You are not authorized to perform this action."}}}
+    conn = RailsUser.signed_in(id, extra) |> RailsUser.connecting_as(id) |> get("/map/v2")
+    {:ok, view, _} = live(conn)
+    assert has_element?(view, "#flash-messages [role=alert]", "You are not authorized to perform this action.")
+  end
+
 end
