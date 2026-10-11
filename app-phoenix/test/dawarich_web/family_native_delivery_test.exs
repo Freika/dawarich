@@ -41,34 +41,28 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
     )
   end
 
-  test "late location refusal erases the private page confirmation and history before rendering",
-       c do
+  test "late location refusal erases the native presentation before rendering", c do
     view = open(c.owner)
     socket = :sys.get_state(view.pid).socket
-    assert socket.assigns.page.members != []
-
-    socket =
-      Phoenix.Component.assign(socket, confirmation: %{id: 90102}, history: %{members: [90102]})
-
+    assert socket.assigns.page.presentation.members != []
+    refute Map.has_key?(socket.assigns, :locations)
     Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [c.owner.id], log: false)
-    cleared = DawarichWeb.FamilyDelivery.reload(socket)
+    assert {:halt, cleared} = DawarichWeb.NativeFamilyResource.admit(socket)
     assert cleared.assigns.page == nil
-    assert cleared.assigns.locations == []
-    assert cleared.assigns.history == nil
-    assert cleared.assigns.confirmation == nil
+    assert cleared.assigns.map_error == :not_found
 
     html =
-      DawarichWeb.FamiliesLive.Show.render(cleared.assigns)
+      DawarichWeb.FamiliesLive.NativeMap.render(cleared.assigns)
       |> Phoenix.HTML.Safe.to_iodata()
       |> IO.iodata_to_binary()
 
-    refute html =~ c.member.email
+    refute String.contains?(html, c.member.email)
   end
 
   test "withdrawn consent or removed membership discards queued coordinates before rendering",
        c do
     view = open(c.owner)
-    assert [%{"user_id" => 90102}] = state(view).locations
+    assert [%{"user_id" => 90102}] = locations(view)
 
     Repo.query!(
       "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing,enabled}','false') WHERE id=90102",
@@ -76,12 +70,12 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
       log: false
     )
 
-    render_hook(view, "family_focus", %{"id" => "90102"})
-    assert state(view).locations == []
+    render_hook(view, "family:focus", %{"id" => "90102"})
+    assert locations(view) == []
     send(view.pid, {:domain_changed, c.owner.id, :location})
     render(view)
-    assert state(view).locations == []
-    assert_push_event(view, "family-locations", %{locations: []})
+    assert locations(view) == []
+    refute Map.has_key?(state(view), :locations)
 
     Repo.query!(
       "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing,enabled}','true') WHERE id=90102",
@@ -91,37 +85,36 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
 
     send(view.pid, {:domain_changed, c.owner.id, :consent})
     render(view)
-    assert length(state(view).locations) == 1
+    assert length(locations(view)) == 1
     Repo.query!("DELETE FROM family_memberships WHERE user_id=90102", [], log: false)
     send(view.pid, {:domain_changed, c.owner.id, :location})
     render(view)
-    assert state(view).locations == []
+    assert locations(view) == []
   end
 
   test "expiry clears family data without another point event and stale timers cannot clear a new grant",
        c do
     view = open(c.owner)
-    first = state(view).family_expiry
+    first = state(view).native_family_consent
     assert is_reference(first.token) and is_reference(first.timer)
     grant(DateTime.add(DateTime.utc_now(), 7200))
-    send(view.pid, {:domain_changed, c.owner.id, :consent})
+    send(view.pid, {:native_family_consent, first.token})
     render(view)
-    second = state(view).family_expiry
+    second = state(view).native_family_consent
     refute first.token == second.token
     assert Process.read_timer(first.timer) == false
-    send(view.pid, {:family_expiry, first.token})
+    send(view.pid, {:native_family_consent, first.token})
     render(view)
-    assert state(view).family_expiry.token == second.token
-    assert length(state(view).locations) == 1
+    assert state(view).native_family_consent.token == second.token
+    assert length(locations(view)) == 1
     grant(DateTime.add(DateTime.utc_now(), -1))
-    send(view.pid, {:family_expiry, second.token})
+    send(view.pid, {:native_family_consent, second.token})
     render(view)
-    assert state(view).locations == []
-    assert state(view).family_expiry == nil
+    assert locations(view) == []
+    assert_push_event(view, "family:clear", %{code: "consent_expired"})
   end
 
-  test "a family reload schedules expiry from the location snapshot without a second deadline read",
-       c do
+  test "native family consent uses a bounded lease without selecting coordinates", c do
     view = open(c.owner)
     handler = "family-delivery-deadline-#{System.unique_integer([:positive])}"
     parent = self()
@@ -131,8 +124,8 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
       handler,
       [:dawarich, :repo, :query],
       fn _, _, metadata, _ ->
-        if self() == pid and metadata.query =~ "UNION ALL SELECT to_char(expires_at",
-          do: send(parent, :family_deadline_query)
+        if self() == pid and String.contains?(metadata.query, "ST_X"),
+          do: send(parent, :family_coordinate_query)
       end,
       nil
     )
@@ -144,15 +137,14 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
       :telemetry.detach(handler)
     end
 
-    assert %{due: %NaiveDateTime{}} = state(view).family_expiry
-    assert_received :family_deadline_query
-    refute_received :family_deadline_query
+    assert state(view).native_family_consent.milliseconds <= 30_000
+    refute_received :family_coordinate_query
   end
 
   test "reconnect snapshots recover missed invalidation and family refusal clears private state",
        c do
     view = open(c.owner)
-    assert length(state(view).locations) == 1
+    assert length(locations(view)) == 1
 
     Repo.query!(
       "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing,enabled}','false') WHERE id=90102",
@@ -162,10 +154,12 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
 
     GenServer.stop(view.pid)
     connected = open(c.owner)
-    assert state(connected).locations == []
+    assert locations(connected) == []
     Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [c.owner.id], log: false)
     send(connected.pid, {:domain_changed, c.owner.id, :membership})
-    assert_redirect(connected, "/family/new")
+    render(connected)
+    assert state(connected).page == nil
+    refute has_element?(connected, "#family-shell")
   end
 
   test "a native family creation tab subscribes before membership without granting location access",
@@ -225,12 +219,10 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
         "/family/invitations"
       )
 
-    for view <- [show, invitations] do
-      assert state(view).family_expiry.due == expiry
-      assert Process.read_timer(state(view).family_expiry.timer) > 0
-    end
-
-    assert state(show).locations != []
+    assert state(show).native_family_consent.milliseconds <= 30_000
+    assert Process.read_timer(state(show).native_family_consent.timer) > 0
+    assert state(invitations).family_expiry.due == expiry
+    assert locations(show) != []
 
     Repo.query!(
       "UPDATE users SET active_until=$1 WHERE id=90102",
@@ -238,12 +230,25 @@ defmodule DawarichWeb.FamilyNativeDeliveryTest do
       log: false
     )
 
-    send(show.pid, {:family_expiry, state(show).family_expiry.token})
-    assert_redirect(show, "/family/new")
+    send(show.pid, {:native_family_consent, state(show).native_family_consent.token})
+    render(show)
+    assert state(show).page == nil
+    assert locations(show) == []
     send(invitations.pid, {:family_expiry, state(invitations).family_expiry.token})
     render(invitations)
     refute state(invitations).page.live?
     assert state(invitations).family_expiry == nil
     assert state(invitations).locations == []
+  end
+
+  defp locations(view) do
+    scope = state(view).current_scope
+
+    case Dawarich.Maps.Family.read(scope, :locations, %{},
+           self_hosted: System.get_env("SELF_HOSTED") != "false"
+         ) do
+      {:ok, 200, body} -> body.locations
+      _ -> []
+    end
   end
 end

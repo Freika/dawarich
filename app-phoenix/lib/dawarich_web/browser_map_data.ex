@@ -84,9 +84,7 @@ defmodule DawarichWeb.BrowserMapData do
 
     with {id, ""} <- Integer.parse(conn.path_params["id"]),
          {:ok, data} <-
-           Dawarich.Maps.Trip.read(scope, id,
-             now: conn.assigns[:now] || DateTime.utc_now()
-           ) do
+           Dawarich.Maps.Trip.read(scope, id, now: conn.assigns[:now] || DateTime.utc_now()) do
       Api.Respond.json(conn, 200, data)
     else
       {:error, :stale_session} -> Api.Respond.json(conn, 401, %{error: "unauthorized"})

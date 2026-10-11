@@ -17,10 +17,19 @@ defmodule Dawarich.MapsTest do
     %{scope: Maps.principal(Accounts.get(row.id), "en"), id: row.id}
   end
 
-  test "native map principal interoperates with M4 and retains its revoked identity", %{scope: scope, id: id} do
+  test "native map principal interoperates with M4 and retains its revoked identity", %{
+    scope: scope,
+    id: id
+  } do
     assert {:ok, admitted} = Dawarich.Accounts.NativeAccess.admit(scope)
     assert %Dawarich.Accounts.Principal{} = admitted.user
-    Repo.query!("UPDATE users SET encrypted_password=$1 WHERE id=$2", [String.duplicate("revoked", 10), id], log: false)
+
+    Repo.query!(
+      "UPDATE users SET encrypted_password=$1 WHERE id=$2",
+      [String.duplicate("revoked", 10), id],
+      log: false
+    )
+
     assert {:error, :stale_session} = Dawarich.Accounts.NativeAccess.admit(scope)
     assert {:error, :stale_session} = Maps.admit(admitted)
   end

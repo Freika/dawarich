@@ -28,7 +28,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     :native_places,
     :native_jobs,
     :native_notifications,
-    :native_sharing
+    :native_data
   ]
   @secret_free_change_forms ["integration-settings"]
 
@@ -68,6 +68,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     ])
 
     Dawarich.Test.StatsSeeds.digest!(user.id, %{year: 2024})
+    FrameSeeds.stat!(user.id, 2024, 3)
 
     ImportsExportsSeeds.import!(%{
       id: 84111,
@@ -123,7 +124,12 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     end)
     |> Enum.map(fn %{path: path} ->
       id = if String.starts_with?(path, "/settings/users"), do: "8411", else: "84111"
-      String.replace(path, ":id", id)
+
+      path
+      |> String.replace(":id", id)
+      |> String.replace(":year", "2024")
+      |> String.replace(":month", "3")
+      |> String.replace(":key", "country_de")
     end)
   end
 
@@ -189,6 +195,7 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     saving =
       for path <- paths do
         conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
+        assert conn.status == 200, path
         static = html_response(conn, 200)
         {:ok, _view, connected} = live(conn)
 
@@ -477,7 +484,10 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
           false
       end)
 
-    assert length(routes) == 13
+    assert length(routes) == 12
+
+    assert %{phoenix_live_view: {DawarichWeb.FamiliesLive.NativeMap, _, _, _}} =
+             Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/family", "a")
 
     for locale <- ~w(en de), {id, path} <- paths do
       uri = path <> if(String.contains?(path, "?"), do: "&", else: "?") <> "locale=" <> locale
@@ -488,8 +498,8 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       events =
         case path do
           "/family" ->
-            {"family_prepare_confirm", %{"action" => "remove_member", "id" => "92002"},
-             "family_cancel_confirm", "family-confirm"}
+            assert has_element?(view, ~s(button[phx-click="family:member"][data-confirm]))
+            nil
 
           "/share_links/live/new" ->
             {"sharing_prepare", %{"action" => "revoke"}, "sharing_cancel", "sharing-confirm"}
@@ -544,5 +554,58 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
       assert match?({Phoenix.LiveView.Logger, _}, handler.id),
              "unexpected #{inspect(handler.id)} on #{inspect(handler.event_name)}"
     end
+  end
+
+  test "native Places and open form dialogs have unique accessible controls and no Hotwire", %{
+    user: user
+  } do
+    mode = System.get_env("DAWARICH_RAILS")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      if mode,
+        do: System.put_env("DAWARICH_RAILS", mode),
+        else: System.delete_env("DAWARICH_RAILS")
+    end)
+
+    conn = RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id) |> get("/places")
+    assert_native_controls(html_response(conn, 200))
+    {:ok, view, connected} = live(conn)
+    assert_native_controls(connected)
+    FrameSeeds.place!(user.id, 84_112, "Native <literal>")
+    render_patch(view, "/places?page=1")
+    assert_native_controls(render(view))
+
+    for {event, params} <- [
+          {"open_create", %{}},
+          {"open_edit", %{"id" => "84112"}},
+          {"open_detail", %{"id" => "84112"}},
+          {"request_delete", %{"id" => "84112"}}
+        ] do
+      render_click(view, event, params)
+      assert_native_controls(render(view))
+      render_click(view, "cancel_form", %{})
+    end
+
+    render_click(view, "open_create", %{})
+    gen = Dawarich.Test.NativePlaces.generation(view, :form_state)
+
+    render_submit(view, "save_place", %{
+      "generation" => gen,
+      "place" => %{"name" => "", "latitude" => "invalid", "longitude" => ""}
+    })
+
+    assert has_element?(view, "dialog[id^=place-form] [role=alert]")
+    assert_native_controls(render(view))
+
+    render_click(view, "validate_place", %{
+      "generation" => gen,
+      "place" => %{"name" => "Nearby", "latitude" => "0", "longitude" => "0"}
+    })
+
+    render_click(view, "nearby", %{"generation" => gen})
+    assert_native_controls(render(view))
+    render_async(view)
+    assert_native_controls(render(view))
   end
 end

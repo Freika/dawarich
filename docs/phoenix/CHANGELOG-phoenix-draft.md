@@ -179,7 +179,7 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Serialize family invitation capacity checks so concurrent invitations cannot oversubscribe the final Cloud seat. [FRB-NATIVE-M4-FAMILY-CAPACITY](fixed-rails-bugs.md#frb-native-m4-family-capacity--concurrent-invitations-can-oversubscribe-a-cloud-family)
 - Stop native family location delivery after membership/access loss and erase silent expired consent, disconnected maps and stale pending map loads. [FRB-NATIVE-M4-FAMILY-DELIVERY](fixed-rails-bugs.md#frb-native-m4-family-delivery--a-removed-viewer-can-keep-receiving-family-locations)
 
-- Clear native public live readers after link revocation, phrase/audience changes and silent expiry; bind reconnect admission to the original browser session. [FRB-NATIVE-M4-PUBLIC-DELIVERY](fixed-rails-bugs.md#frb-native-m4-public-delivery--public-live-maps-retain-revoked-subscriptions)
+- Clear native public live readers after link revocation, phrase/audience changes and silent expiry; bind reconnect admission to the original browser session, cookie deadlines and session signout. [FRB-NATIVE-M4-PUBLIC-DELIVERY](fixed-rails-bugs.md#frb-native-m4-public-delivery--public-live-maps-retain-revoked-subscriptions)
 
 - Honor the disabled route option on native public track pages. [FRB-NATIVE-M4-TRACK-ROUTE](fixed-rails-bugs.md#frb-native-m4-track-route--shared-tracks-ignore-the-disabled-route-option)
 

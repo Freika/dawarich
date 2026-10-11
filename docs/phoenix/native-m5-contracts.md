@@ -215,7 +215,7 @@ baseline observations; no Rails defect is fixed by this documentation.
 
 `Stats.Commands.update/4` takes the original Scope/principal, optional period, server receipt and internal clock/hosting options. It re-admits under the actor lock, binds receipts to normalized source periods, and queues the existing full or monthly producer. A failed transaction remains retryable. `share/4` requires current active/full eligibility and the source 1h/12h/24h policy, delegating to M4 `Sharing.change_report/4`. Upgrade URLs are generated on action, outside retained page state.
 
-Stats index/year are native data-session routes. Stats month has a native query/render/action slice tested directly; its route stays with the existing map page until M6 activation. Index year cards and place dialogs fetch at most 50 rows, keep full aggregate counts, and use explicit URL pagination. Pending point counts request one durable refresh and owner-scoped completion re-reads current parameters. Numeric chart changes renew the library revision within the same selected year.
+Stats index/year are native data-session routes. Stats month is activated in the native M6 host with owner-local heatmap/point preview reads. Index year cards and place dialogs fetch at most 50 rows, keep full aggregate counts, and use explicit URL pagination. Pending point counts request one durable refresh and owner-scoped completion re-reads current parameters. Numeric chart changes renew the library revision within the same selected year.
 
 ### Native Insights lifecycle and residency
 
@@ -262,8 +262,12 @@ Grant/resource/audience/owner admission precedes a ready reader and repeats befo
 
 ## C6 native public HTTP rendering
 
-`NativePublicPage` is the native GET/HEAD plug slice for admitted digest and achievement documents. It retains source viewer-zone expiry and achievement-owner locale; page data contains no owner object/API key. Achievements reuse source card/OG PNG metadata with native script-free assets, permissive embed frame ancestors and no X-Frame-Options. Digest pages reuse localized source values with the shared C2 public chart initializer; no LiveSocket, owner notification chrome, importmap or Chartkick inline script.
+`NativePublicPage` is the native GET/HEAD plug slice for admitted digest, monthly-report and achievement documents. It retains source viewer-zone expiry and achievement-owner locale; page data contains no owner object/API key. Achievements reuse source card/OG PNG metadata with native script-free assets, permissive embed frame ancestors and no X-Frame-Options. Digest pages reuse localized source values with the shared C2 public chart initializer; no LiveSocket, owner notification chrome, importmap or Chartkick inline script.
 
 `NativePublicContent.resource/month` are pure content components with a caller-owned map slot. The M6 HTTP/authenticated-family shell must mount that slot, select native public/authenticated chrome from M4 admission and retain M4 GET-only touches/unlock/cookies. These components do not activate mixed routes or create an owner Scope. Prompt POST action and CSRF stay with M4 HTTP unlock; submitted phrases never enter output. Public HTML refuses with a source localized root redirect; generic rescue logs no capabilities or connection details.
 
 Legacy `PublicDigest` defaults to its old Chartkick path for surviving callers; only the native document selects NativeChart. Existing public month/shared templates and their map tests remain until M6 activation. C2 initializer tests certify idempotent independent cleanup; actual browser canvas/focus/clipboard and German 390px measurements are controller stage acceptance. Prepared E2E specs are listed only.
+
+## Stage-2 activation
+
+Trip new/edit forms use the native M5 data session before the M6 trip show route. The show host mounts the rich-text editor. Private Stats month, public month and Visits navigation are active native routes. Thin MapHosts is deleted. NativeMapPreview owns private cookie and public UUID readers without exposing keys or geometry in assigns. Public initializer is lazy, idempotent and cancelled on document departure. No mixed map activation remains deferred to M6.

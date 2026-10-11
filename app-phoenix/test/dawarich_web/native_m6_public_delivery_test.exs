@@ -50,7 +50,8 @@ defmodule DawarichWeb.NativeM6PublicDeliveryTest do
     topic = RailsMessages.broadcasting(["shared_location", {:shared_link, uuid}])
     state = :sys.get_state(view.pid).socket.assigns[:native_subscriptions]
     assert is_map(state) == true
-    assert Map.keys(state.topics) == [topic]
+    assert Map.has_key?(state.topics, topic)
+    assert Map.has_key?(state.topics, Dawarich.Sharing.Events.topic(uuid))
 
     message =
       {:redix_pubsub, self(), make_ref(), :message,

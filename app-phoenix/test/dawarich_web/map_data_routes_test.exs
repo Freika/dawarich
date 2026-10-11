@@ -128,14 +128,14 @@ defmodule DawarichWeb.MapDataRoutesTest do
     for {verb, path, pipelines, gate} <- [
           {:get, "/map", [:native_m6_browser, :rails_user], nil},
           {:get, "/map/v2", [:native_m6_browser, :rails_user], nil},
-          {:get, "/places", [:browser, :rails_user], {DawarichWeb.PlacesGate, :index?}},
+          {:get, "/places", [:browser, :rails_user], nil},
           {:get, "/places/:id", [:rails_frame], {DawarichWeb.PlacesGate, :navigation?}},
           {:get, "/map/timeline_feeds", [:native_map_retired], nil},
           {:get, "/map/timeline_feeds/calendar", [:native_map_retired], nil},
           {:get, "/map/residency", [:rails_frame], {DawarichWeb.MapFramesGate, :residency?}},
           {:get, "/map/timeline_feeds/:id/track_info", [:native_map_retired], nil},
           {:get, "/s/:id", [:native_m6_browser], nil},
-          {:post, "/s/:id/unlock", [:sharing_unlock], {DawarichWeb.SharingGate, :unlock?}}
+          {:post, "/s/:id/unlock", [:sharing_unlock], nil}
         ] do
       route =
         Phoenix.Router.route_info(

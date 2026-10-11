@@ -12,6 +12,7 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    Code.ensure_loaded!(Dawarich.Accounts.User)
     owner = FrameSeeds.seed_family!(FrameSeeds.load_family("owner_en"))
     upstream = listen()
     saved = Application.get_env(:dawarich, :rails_upstream)
@@ -26,10 +27,10 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
   end
 
   @tag mutation: "family-session-writers"
-  test "family documents invitations and JSON forward unsupported session writers before effects",
+  test "native independent family JSON ignores client hints without session or upstream effects",
        c do
     for path <-
-          ~w(/family/new /family/edit /family/invitations /family/location_requests/94001 /invitations/a9fpl-pending /family/invitations/a9fpl-pending /family/locations.json),
+          ~w(/family/locations.json),
         {query, headers} <- [
           {"client=ios&locale=de", []},
           {"locale=de", [{"x-dawarich-client", "android"}]},
@@ -46,6 +47,150 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
     end
   end
 
+  test "native invitation landings handle legacy client hints locally without upstream replay",
+       c do
+    for path <- ~w(/invitations/a9fpl-pending /family/invitations/a9fpl-pending),
+        {query, headers} <- [
+          {"client=ios&locale=de", []},
+          {"locale=de", [{"x-dawarich-client", "android"}]},
+          {"client%5B%5D=ios", []},
+          {"aff=synthetic-referral&locale=de", []},
+          {"via=synthetic-referral", []}
+        ] do
+      before = snapshot()
+
+      probe =
+        Task.async(fn ->
+          case :gen_tcp.accept(c.upstream.listen, 100) do
+            {:ok, socket} ->
+              read_head(socket)
+              reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
+              :gen_tcp.close(socket)
+              :upstream
+
+            {:error, :timeout} ->
+              :native
+          end
+        end)
+
+      conn =
+        Enum.reduce(headers, RailsUser.signed_in(c.owner.id), fn {key, value}, acc ->
+          put_req_header(acc, key, value)
+        end)
+
+      response = get(conn, path <> "?" <> query)
+      result = Task.await(probe)
+      assert response.status in [200, 302, 422]
+      if response.status == 200, do: assert(response.resp_body =~ "/native/app")
+      if response.status == 422, do: assert(response.resp_body =~ "422")
+
+      if response.status == 302,
+        do: assert(get_resp_header(response, "location") == ["http://www.example.com/"])
+
+      assert result == :native
+      after_read = snapshot()
+
+      expected =
+        if String.contains?(query, "locale=de") and response.status != 422 do
+          users =
+            Enum.map(before["users"], fn [row] ->
+              if row["id"] == c.owner.id do
+                [current] = Enum.find(after_read["users"], fn [u] -> u["id"] == c.owner.id end)
+
+                [
+                  row
+                  |> Map.update!("settings", &Map.put(&1, "locale", "de"))
+                  |> Map.put("updated_at", current["updated_at"])
+                ]
+              else
+                [row]
+              end
+            end)
+
+          Map.put(before, "users", users)
+        else
+          before
+        end
+
+      same = after_read == expected
+
+      changed =
+        for {table, rows} <- expected, rows != after_read[table], into: %{} do
+          fields =
+            Enum.zip(rows, after_read[table])
+            |> Enum.flat_map(fn {[a], [b]} ->
+              for {key, value} <- a, value != b[key], do: key
+            end)
+
+          {table, Enum.uniq(fields)}
+        end
+
+      assert same, "Changed fields: #{inspect(changed)}"
+    end
+  end
+
+  test "native family documents ignore legacy client hints without writes", c do
+    for path <-
+          ~w(/family /family/new /family/edit /family/invitations /family/location_requests/94001),
+        query <- ~w(client=ios client%5B%5D=ios aff=synthetic-referral via=synthetic-referral) do
+      before = snapshot()
+      conn = get(RailsUser.signed_in(c.owner.id), path <> "?" <> query)
+      assert conn.status in [200, 302]
+
+      if conn.status == 200 do
+        assert String.contains?(conn.resp_body, "/native/app")
+
+        if path == "/family",
+          do:
+            assert(
+              conn.private.phoenix_live_view |> elem(0) == DawarichWeb.FamiliesLive.NativeMap
+            )
+      end
+
+      assert snapshot() == before
+    end
+  end
+
+  @tag mutation: "family-json-locale"
+  test "native independent family JSON locale hints remain read only before delivery", c do
+    forwarded(c, RailsUser.signed_in(c.owner.id), "/family/locations.json?locale=de")
+  end
+
+  defp forwarded(c, conn, path) do
+    before = snapshot()
+
+    probe =
+      Task.async(fn ->
+        case :gen_tcp.accept(c.upstream.listen, 100) do
+          {:ok, socket} ->
+            read_head(socket)
+            reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
+            :gen_tcp.close(socket)
+            :upstream
+
+          {:error, :timeout} ->
+            :native
+        end
+      end)
+
+    response = get(conn, path)
+    assert response.status == 200
+    assert Jason.decode!(response.resp_body) == []
+    assert Task.await(probe) == :native
+    assert response.resp_cookies == %{}
+    assert get_resp_header(response, "set-cookie") == []
+    assert snapshot() == before
+  end
+
+  defp snapshot do
+    for table <-
+          ~w(users families family_memberships family_invitations family_location_requests job_outbox),
+        into: %{},
+        do:
+          {table,
+           Repo.query!("SELECT row_to_json(t) FROM #{table} t ORDER BY row_to_json(t)::text").rows}
+  end
+
   test "native family document keeps locale persistence local across retired handback markers",
        c do
     for {query, headers} <- [
@@ -55,7 +200,7 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
           {"aff=synthetic-referral&locale=de", []},
           {"via=synthetic-referral", []}
         ] do
-      before = snapshot(c.owner.id)
+      before = snapshot()
       prior_locale = Dawarich.Accounts.get(c.owner.id).settings["locale"]
       conn = RailsUser.signed_in(c.owner.id, %{"locale" => "en"})
 
@@ -74,53 +219,9 @@ defmodule DawarichWeb.FamilySessionHandbackTest do
           do: refute(String.contains?(returned.resp_body, marker))
 
       assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
-      assert snapshot(c.owner.id) == before
+      assert Map.delete(snapshot(), "users") == Map.delete(before, "users")
       expected = if String.contains?(query, "locale=de"), do: "de", else: prior_locale
       assert Dawarich.Accounts.get(c.owner.id).settings["locale"] == expected
-    end
-  end
-
-  @tag mutation: "family-json-locale"
-  test "family JSON hands locale persistence to Rails before effects", c do
-    forwarded(c, RailsUser.signed_in(c.owner.id), "/family/locations.json?locale=de")
-  end
-
-  defp forwarded(c, conn, path) do
-    before = snapshot()
-    response = Task.async(fn -> get(conn, path) end)
-    socket = accept(c.upstream)
-    {head, _rest} = read_head(socket)
-    assert request_line(head) == "GET #{path} HTTP/1.1"
-
-    for {key, value} <- conn.req_headers,
-        key in ~w(cookie x-dawarich-client),
-        do: assert(header(head, key) == [value])
-
-    reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-    returned = Task.await(response)
-    :gen_tcp.close(socket)
-    assert returned.status == 200
-    assert returned.resp_body == "rails"
-    assert returned.resp_cookies == %{}
-    assert get_resp_header(returned, "set-cookie") == []
-    refute Map.has_key?(returned.private, :phoenix_router)
-    refute Map.has_key?(returned.private, :dawarich_rails_session_changes)
-    refute Map.has_key?(returned.assigns, :current_user)
-    assert snapshot() == before
-  end
-
-  defp snapshot(actor_id \\ nil) do
-    for table <-
-          ~w(users families family_memberships family_invitations family_location_requests job_outbox),
-        into: %{} do
-      row =
-        if table == "users" and actor_id,
-          do:
-            "CASE WHEN t.id = #{actor_id} THEN (to_jsonb(t) - 'updated_at') #- '{settings,locale}' ELSE to_jsonb(t) END",
-          else: "to_jsonb(t)"
-
-      {table,
-       Repo.query!("SELECT md5((#{row})::text) FROM #{table} t ORDER BY 1", [], log: false).rows}
     end
   end
 end

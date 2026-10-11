@@ -129,8 +129,8 @@ defmodule DawarichWeb.NativeTripDeliveryTest do
 
     {:ok, independent, _} = open(other)
     settle_subscriptions(independent)
-    topic = Dawarich.Posters.Dependencies.Progress.stream(id) |> Bus.channel()
-    other_topic = Dawarich.Posters.Dependencies.Progress.stream(other) |> Bus.channel()
+    topic = Dawarich.Posters.Events.stream(id)
+    other_topic = Dawarich.Posters.Events.stream(other)
     assert gallery_subscribed?(view.pid, topic)
     assert gallery_subscribed?(independent.pid, other_topic)
     Repo.query!("DELETE FROM trips WHERE id=$1", [id * 10], log: false)
@@ -140,23 +140,11 @@ defmodule DawarichWeb.NativeTripDeliveryTest do
     assert has_element?(independent, "#trip-shell h1", "Independent trip")
   end
 
-  defp gallery_subscribed?(pid, topic) do
-    subscriptions = :sys.get_state(Bus) |> elem(1) |> Map.get(:subscriptions, %{})
-
-    case Map.get(subscriptions, {:channel, topic}) do
-      {:subscribed, subscribers} ->
-        MapSet.member?(subscribers, pid)
-
-      {:subscribing, subscribers, excluded} ->
-        MapSet.member?(subscribers, pid) and not MapSet.member?(excluded, pid)
-
-      {:unsubscribing, subscribers} ->
-        MapSet.member?(subscribers, pid)
-
-      _ ->
-        false
-    end
-  end
+  defp gallery_subscribed?(pid, topic),
+    do:
+      Enum.any?(Registry.lookup(Dawarich.PubSub, topic), fn {subscriber, _} ->
+        subscriber == pid
+      end)
 
   defp settle_subscriptions(view) do
     topics = :sys.get_state(view.pid).socket.assigns.native_subscriptions.topics

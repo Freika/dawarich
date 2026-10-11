@@ -53,7 +53,7 @@ defmodule Dawarich.Build.ClassSourceTest do
     end
 
     assert styles == compile_styles(root, reference)
-    assert (:crypto.hash(:sha256, styles) |> Base.encode16(case: :lower)) == @css
+    assert :crypto.hash(:sha256, styles) |> Base.encode16(case: :lower) == @css
   end
 
   @tag :a12f4_a22_1

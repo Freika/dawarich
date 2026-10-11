@@ -142,10 +142,11 @@ defmodule DawarichWeb.MapDataHandbackTest do
     end
   end
 
-  test "points and tags retain handback while retired address and segment GETs refuse", %{
-    user: user,
-    upstream: upstream
-  } do
+  test "native Points ignores rollback while retained tags hand back and retired map GETs refuse",
+       %{
+         user: user,
+         upstream: upstream
+       } do
     for {key, paths} <- [
           {"points", [@points, "/points/838001/address"]},
           {"tags", ["/tags", "/tags/new", "/tags/83801/edit"]},
@@ -162,17 +163,21 @@ defmodule DawarichWeb.MapDataHandbackTest do
           assert get_resp_header(conn, "set-cookie") == []
           assert changes() == before
         else
-          {{line, raw}, conn} =
-            RailsFormRequests.forwarded(upstream, fn ->
-              RailsUser.signed_in(user.id)
-              |> put_req_header("turbo-frame", "point-address-838001")
-              |> get(path)
-            end)
+          if String.starts_with?(path, "/points?") do
+            assert RailsUser.signed_in(user.id) |> get(path) |> Map.fetch!(:status) == 200
+          else
+            {{line, raw}, conn} =
+              RailsFormRequests.forwarded(upstream, fn ->
+                RailsUser.signed_in(user.id)
+                |> put_req_header("turbo-frame", "point-address-838001")
+                |> get(path)
+              end)
 
-          assert line == "GET #{path} HTTP/1.1"
-          assert raw == ""
-          assert conn.status == 204
-          assert get_resp_header(conn, "set-cookie") == []
+            assert line == "GET #{path} HTTP/1.1"
+            assert raw == ""
+            assert conn.status == 204
+            assert get_resp_header(conn, "set-cookie") == []
+          end
         end
       end
     end
@@ -207,49 +212,29 @@ defmodule DawarichWeb.MapDataHandbackTest do
     assert Phoenix.Router.route_info(Router, "GET", "/tracks/8380", "localhost") == :error
   end
 
-  test "unsupported retained page formats hand back while retired segments refuse without session effects",
-       %{
-         user: user,
-         upstream: upstream
-       } do
-    refute DawarichWeb.Strangler.page_request?(
-             build_conn(:get, "/points")
-             |> put_req_header("accept", "application/json")
-           )
+  test "native Points refuses formats without effects while retired segment queries refuse", %{
+    user: user
+  } do
+    before = changes()
 
-    flash = %{"discard" => [], "flashes" => %{"notice" => "Saved"}}
-
-    for {path, headers} <- [
-          {"/points", [{"accept", "application/json"}]},
-          {"/points", [{"x-requested-with", "XMLHttpRequest"}]},
-          {"/points.json", []},
-          {"/points?format=json", []},
-          {"/points?start_at[]=1", []},
-          {"/tracks/8380/segments?via=x", []}
+    for {path, headers, status} <- [
+          {"/points", [{"accept", "application/json"}], 406},
+          {"/points.json", [], 422},
+          {"/points?format=json", [], 422},
+          {"/tracks/8380/segments?via=x", [], 410}
         ] do
-      if retired?(path) do
-        before = changes()
-        conn = RailsUser.signed_in(user.id, %{"flash" => flash}) |> get(path)
-        assert conn.status == 410
-        assert conn.resp_body =~ "available through the native map"
-        assert get_resp_header(conn, "set-cookie") == []
-        assert changes() == before
-      else
-        {{line, _}, conn} =
-          RailsFormRequests.forwarded(upstream, fn ->
-            Enum.reduce(headers, RailsUser.signed_in(user.id, %{"flash" => flash}), fn {key,
-                                                                                        value},
-                                                                                       conn ->
-              put_req_header(conn, key, value)
-            end)
-            |> get(path)
-          end)
+      conn =
+        Enum.reduce(headers, RailsUser.signed_in(user.id), fn {key, value}, acc ->
+          put_req_header(acc, key, value)
+        end)
 
-        assert line == "GET #{path} HTTP/1.1"
-        assert conn.status == 204
-        assert get_resp_header(conn, "set-cookie") == []
-        refute Map.has_key?(conn.private, :dawarich_rails_session_changes)
+      if status == 406 do
+        assert_error_sent(406, fn -> get(conn, path) end)
+      else
+        assert get(conn, path).status == status
       end
+
+      assert changes() == before
     end
   end
 end

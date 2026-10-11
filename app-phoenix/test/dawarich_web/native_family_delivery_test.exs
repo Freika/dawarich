@@ -2,7 +2,7 @@ defmodule DawarichWeb.NativeFamilyDeliveryTest do
   use Dawarich.DataCase, async: false
   import Phoenix.ConnTest, only: [get: 2]
   import Phoenix.LiveViewTest
-  alias Dawarich.{Cable.Bus, RailsMessages}
+  alias Dawarich.Cable.Bus
   alias Dawarich.Test.RailsUser
   @endpoint DawarichWeb.Endpoint
 
@@ -49,15 +49,14 @@ defmodule DawarichWeb.NativeFamilyDeliveryTest do
        %{id: id} do
     {:ok, first, _} = open(id)
     {:ok, second, _} = open(id + 1)
-    topic = RailsMessages.broadcasting(["family_locations", {:family, id}])
+    topic = "family:user:#{id}"
+    other_topic = "family:user:#{id + 1}"
     assert Map.has_key?(topics(first), topic)
-    assert Map.has_key?(topics(second), topic)
+    assert Map.has_key?(topics(second), other_topic)
     settle(first)
     settle(second)
 
-    message =
-      {:redix_pubsub, self(), make_ref(), :message,
-       %{channel: Bus.channel(topic), payload: "synthetic-family-update"}}
+    message = {:domain_changed, id, :location}
 
     Repo.query!("UPDATE families SET name=$1 WHERE id=$2", ["Family delivered", id], log: false)
     send(first.pid, message)
@@ -68,10 +67,10 @@ defmodule DawarichWeb.NativeFamilyDeliveryTest do
     assert_push_event(first, "map:clear", %{code: "not_found"})
     assert topics(first) == %{}
     refute has_element?(first, "#family-shell")
-    send(second.pid, message)
+    send(second.pid, {:domain_changed, id + 1, :location})
     assert_push_event(second, "map:invalidate", %{kind: "family"})
     assert has_element?(second, "#family-shell")
-    assert Map.has_key?(topics(second), topic)
+    assert Map.has_key?(topics(second), other_topic)
   end
 
   test "native family queued callbacks refuse lost membership before receiving another stream", %{
@@ -96,12 +95,7 @@ defmodule DawarichWeb.NativeFamilyDeliveryTest do
   defp topics(view),
     do: (:sys.get_state(view.pid).socket.assigns[:native_subscriptions] || %{topics: %{}}).topics
 
-  defp settle(view) do
-    for _ <- Map.keys(topics(view)),
-        do: assert_push_event(view, "map:invalidate", %{kind: "reconnect"}, 1000)
-
-    render(view)
-  end
+  defp settle(view), do: render(view)
 
   defp open(id) do
     RailsUser.signed_in(id)

@@ -69,16 +69,16 @@ defmodule DawarichWeb.A9RoutesTest do
     {"/exports", DawarichWeb.ExportsLive.Index, :index, nil},
     {"/stats", DawarichWeb.StatsLive.NativePage, :index, nil},
     {"/stats/:year", DawarichWeb.StatsLive.NativePage, :year, nil},
-    {"/stats/:year/:month", DawarichWeb.StatsLive.Month, :month, nil},
-    {"/digests", DawarichWeb.DigestsLive.Index, :index, nil},
-    {"/digests/:year", DawarichWeb.DigestsLive.Show, :show, nil},
+    {"/stats/:year/:month", DawarichWeb.StatsLive.NativePage, :month, nil},
+    {"/digests", DawarichWeb.DigestsLive.NativePage, :index, nil},
+    {"/digests/:year", DawarichWeb.DigestsLive.NativePage, :show, nil},
     {"/trips", DawarichWeb.TripsLive.NativeIndex, :index, nil},
     {"/trips/:id", DawarichWeb.TripsLive.NativeMap, :show, nil},
-    {"/places", DawarichWeb.PlacesLive.Index, :index, {DawarichWeb.PlacesGate, :index?}},
-    {"/insights", DawarichWeb.InsightsLive.Index, :index, nil},
+    {"/places", DawarichWeb.PlacesLive.Index, :index, nil},
+    {"/insights", DawarichWeb.InsightsLive.NativePage, :index, nil},
     {"/family", DawarichWeb.FamiliesLive.NativeMap, :show, nil},
-    {"/family/new", DawarichWeb.FamiliesLive.Form, :new, {DawarichWeb.FamilyGate, :new?}},
-    {"/family/edit", DawarichWeb.FamiliesLive.Form, :edit, {DawarichWeb.FamilyGate, :edit?}}
+    {"/family/new", DawarichWeb.FamiliesLive.Form, :new, nil},
+    {"/family/edit", DawarichWeb.FamiliesLive.Form, :edit, nil}
   ]
 
   @frames [
@@ -99,66 +99,82 @@ defmodule DawarichWeb.A9RoutesTest do
     for {path, view, action, gate} <- @pages do
       info = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
 
-      native = path in ["/trips", "/trips/:id", "/family"]
-      pipeline = if native, do: :native_m6_browser, else: :browser
+      map_native = path in ["/trips", "/trips/:id", "/family"]
+      family = String.starts_with?(path, "/family")
+      jobs = String.starts_with?(path, ["/imports", "/exports", "/notifications"])
+
+      native_data =
+        view in [
+          DawarichWeb.StatsLive.NativePage,
+          DawarichWeb.InsightsLive.NativePage,
+          DawarichWeb.DigestsLive.NativePage
+        ]
+
+      native = path == "/places"
+
+      pipelines =
+        cond do
+          map_native -> [:native_m6_browser, :rails_user]
+          native_data -> [:native_data_request, :browser, :rails_user]
+          family -> [:browser, :native_family_user]
+          true -> [:browser, :rails_user]
+        end
 
       assert {info.route, info.plug, info.plug_opts, info.pipe_through, info[:slice],
               info[:rails_gate]} ==
-               {path, Phoenix.LiveView.Plug, action, [pipeline, :rails_user], nil, gate}
+               {path, Phoenix.LiveView.Plug, action, pipelines, nil, gate}
 
       assert {^view, ^action, opts, session} = info.phoenix_live_view
       assert opts == [action: action, router: Router, container: {:div, class: "contents"}]
-      family = String.starts_with?(path, "/family")
 
-      assert session.name ==
-               if(native, do: :native_m6, else: if(family, do: :family_pages, else: :rails_pages))
+      if map_native do
+        assert session.name == :native_m6
 
-      if native do
         assert session.extra == %{
                  session: {DawarichWeb.MapLiveAuth, :live_session, []},
                  root_layout: {DawarichWeb.Layouts, :native_root},
                  layout: false
                }
       else
-        hooks = [
-          %{
-            id: {DawarichWeb.LiveAuth, :default},
-            stage: :mount,
-            function: &DawarichWeb.LiveAuth.on_mount/4
-          }
-        ]
+        expected_session =
+          cond do
+            native -> :native_pages
+            native_data -> :native_data
+            jobs -> :native_jobs
+            family -> :family_pages
+            String.starts_with?(path, "/trips") -> :trips_map_dependency
+            true -> :rails_pages
+          end
 
-        hooks =
-          if family,
-            do:
-              hooks ++
-                [
-                  %{
-                    id: {DawarichWeb.FamilyGate, :default},
-                    stage: :mount,
-                    function: &DawarichWeb.FamilyGate.on_mount/4
-                  }
-                ],
-            else: hooks
+        assert session.name == expected_session
+
+        auth =
+          cond do
+            native -> DawarichWeb.NativeAuth
+            native_data -> DawarichWeb.NativeDataAuth
+            family -> DawarichWeb.NativeFamilyAuth
+            jobs -> DawarichWeb.NativeJobsAuth
+            true -> DawarichWeb.LiveAuth
+          end
+
+        session_module = if family or jobs, do: auth, else: DawarichWeb.NativeAuth
+        hook = if native or native_data or family or jobs, do: :require_user, else: :default
 
         assert session.extra == %{
-                 session:
-                   {if(family, do: DawarichWeb.RailsAuth, else: DawarichWeb.NativeAuth),
-                    :live_session, []},
-                 on_mount: hooks,
-                 root_layout: {DawarichWeb.Layouts, :root},
+                 session: {session_module, :live_session, []},
+                 on_mount: [
+                   %{
+                     id: {auth, hook},
+                     stage: :mount,
+                     function: Function.capture(auth, :on_mount, 4)
+                   }
+                 ],
+                 root_layout:
+                   {DawarichWeb.Layouts,
+                    if(native or native_data or family or jobs, do: :native_root, else: :root)},
                  layout: {DawarichWeb.Layouts, :app}
                }
       end
-    end
-
-    for path <-
-          ~w(/map/timeline_feeds /map/timeline_feeds/calendar /map/timeline_feeds/42/track_info) do
-      info = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
-      assert info.plug == DawarichWeb.NativeMapRetired
-      assert info.plug_opts == :gone
-      assert info.pipe_through == [:native_map_retired]
-      assert info[:rails_gate] == nil
     end
 
     for {path, plug, action, gate} <- @frames do

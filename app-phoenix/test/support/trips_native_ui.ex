@@ -14,6 +14,7 @@ defmodule Dawarich.Test.TripsNativeRouter do
 
   scope "/" do
     pipe_through :native_trips
+
     live_session :native_trips,
       session: {DawarichWeb.NativeAuth, :live_session, []},
       on_mount: {DawarichWeb.TripsNative.Access, :require_user},

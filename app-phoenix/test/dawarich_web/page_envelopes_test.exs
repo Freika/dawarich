@@ -296,28 +296,18 @@ defmodule DawarichWeb.PageEnvelopesTest do
           refute conn.resp_body =~ "data-controller="
         end
       else
-        document = request(path <> ".html", [], false)
-        assert_contract(document, @review["f1"][kind]["html"])
-        assert document.status == 200
-        assert document.resp_body =~ "<html"
-        assert document.resp_body =~ "/assets/application.css"
-
-        frame = request(path, [{"turbo-frame", "review-frame"}], false)
-        assert_contract(frame, @review["f1"][kind]["frame"])
-        assert frame.status == 200
-        assert String.contains?(frame.resp_body, "<html")
-        refute String.contains?(frame.resp_body, "/assets/application.css")
-
-        for accept <- ["text/javascript", "text/javascript; charset=utf-8", nil, ""] do
-          fragment =
-            request(path, [{"x-requested-with", "XMLHttpRequest"}, {"accept", accept}], false)
-
-          name = if accept in [nil, ""], do: "absent", else: "js"
-          assert_contract(fragment, @review["f1"][kind][name])
-          assert fragment.status == 200
-          assert byte_size(fragment.resp_body) > 0
-          refute String.contains?(fragment.resp_body, "<html")
-          refute String.contains?(fragment.resp_body, "/assets/application.css")
+        for suffix <- ["", ".html"],
+            headers <- [
+              [],
+              [{"turbo-frame", "review-frame"}],
+              [{"x-requested-with", "XMLHttpRequest"}]
+            ] do
+          document = request(path <> suffix, headers, false)
+          assert document.status == 200
+          assert String.contains?(document.resp_body, "<html")
+          assert String.contains?(document.resp_body, "/native/public_charts.js")
+          refute String.contains?(document.resp_body, "importmap")
+          refute String.contains?(document.resp_body, "data-controller=")
         end
       end
     end
@@ -377,9 +367,15 @@ defmodule DawarichWeb.PageEnvelopesTest do
         suffix <- ["", ".turbo_stream", "?format=turbo_stream"] do
       path = "/shared/#{kind}/00000000-0000-4000-8000-000000000077"
       conn = request(path <> suffix, [{"accept", "text/vnd.turbo-stream.html"}], false)
-      assert conn.status == @review["f4"][kind]["status"]
-      assert conn.status == 500
-      assert conn.resp_body == ""
+
+      if kind == "digest" do
+        assert conn.status == @review["f4"][kind]["status"]
+        assert conn.status == 500
+        assert conn.resp_body == ""
+      else
+        assert conn.status == 200
+        assert String.contains?(conn.resp_body, "public-month-map")
+      end
     end
 
     assert request(

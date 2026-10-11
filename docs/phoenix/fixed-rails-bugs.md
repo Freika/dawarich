@@ -1533,7 +1533,7 @@ Versioned timers independently expire silent consent and access grants.
 Rails admits a public link once when connecting and subscribes to its coordinate stream. An already connected reader can retain old content after revocation, expiry, phrase rotation or audience loss. Native public readers re-admit before each snapshot and clear silent expiry with a versioned deadline timer. Native browser hooks abort pending loads and erase maps, markers, images, replay timers and data on refusal/disconnect. Snapshot construction repeats admission and privacy checks after loading, preventing queued revoked data from being published; independent wire adapters retain their external protocol.
 
 - Rails: `app/channels/application_cable/connection.rb:27,29`; `app/channels/shared_location_channel.rb:5,8`.
-- Phoenix: `app-phoenix/lib/dawarich/sharing/public.ex:20`; `app-phoenix/lib/dawarich_web/public_share_live.ex:47`.
+- Phoenix: `app-phoenix/lib/dawarich/sharing/public.ex:20`; integrated host `app-phoenix/lib/dawarich_web/public_map_auth.ex:20`, `:88`, and `app-phoenix/lib/dawarich_web/public_map_deadline.ex:12`. The immutable M4 grant is bounded by unlock and browser-session cookie deadlines; the native host consumes hashed session signout before publishing another snapshot.
 - Tests: “queued public update after revoke or phrase rotation clears old content before delivery”; “public expiry clears a silent connection and reconnect cannot revive it”; admission/cache/timer mutations fail.
 - Ledger: ED-NATIVE-M4-PUBLIC-ADMISSION; no DRB added. Rails production code unchanged.
 

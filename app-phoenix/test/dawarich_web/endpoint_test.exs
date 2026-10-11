@@ -96,13 +96,18 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\n#{cookie}#{headers}Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}"
       )
 
-      puma = accept(ctx.upstream)
-      {head, rest} = read_head(puma)
-      assert request_line(head) == "#{method} #{target} HTTP/1.1"
-      assert header(head, "content-length") == [to_string(byte_size(body))]
-      assert read_at_least(puma, rest, byte_size(body)) == body
-      reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-      assert {200, _, "puma"} = read_response(client)
+      if String.starts_with?(target, "/settings/background_jobs") do
+        assert {404, _, _} = read_response(client)
+        assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+      else
+        puma = accept(ctx.upstream)
+        {head, rest} = read_head(puma)
+        assert request_line(head) == "#{method} #{target} HTTP/1.1"
+        assert header(head, "content-length") == [to_string(byte_size(body))]
+        assert read_at_least(puma, rest, byte_size(body)) == body
+        reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+        assert {200, _, "puma"} = read_response(client)
+      end
     end
 
     assert [[0]] == Dawarich.Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows
@@ -223,6 +228,24 @@ defmodule DawarichWeb.EndpointTest do
     assert values(headers, "x-frame-options") == ["SAMEORIGIN"]
   end
 
+  defp assert_write_transport(port, upstream, request, method, target) do
+    path = URI.parse(target).path
+    conn = %{method: method, path_info: String.split(path, "/", trim: true)}
+
+    cond do
+      DawarichWeb.NativeM4RetiredWrites.retired?(conn) ->
+        assert answered_by_phoenix(port, request) == 404
+        assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+
+      method == "POST" and path == "/exports" ->
+        assert answered_by_phoenix(port, request) == 422
+        assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+
+      true ->
+        assert answered_by_puma(port, upstream, request) == "#{method} #{target} HTTP/1.1"
+    end
+  end
+
   defp answered_by_puma(port, upstream, request) do
     client = connect(port)
     send_raw(client, request)
@@ -291,7 +314,7 @@ defmodule DawarichWeb.EndpointTest do
         do: assert(answered_by_phoenix(port, get.(target, headers)) == 302, target <> headers)
   end
 
-  test "the no-socket fallbacks of the notification pages post to Puma", ctx do
+  test "retired no-socket notification writes refuse without Puma", ctx do
     port = serve()
 
     for target <- ~w(/notifications/mark_as_read /notifications/destroy_all /notifications/5) do
@@ -301,7 +324,8 @@ defmodule DawarichWeb.EndpointTest do
         "POST #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "POST #{target} HTTP/1.1"
+      assert answered_by_phoenix(port, request) == 404
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
   end
 
@@ -326,14 +350,21 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "unowned import methods and export writes with unsafe admission go to Puma", ctx do
+  test "native import documents refuse signed-out actors while independent methods retain their adapters",
+       ctx do
     port = serve()
 
+    for target <- ~w(/imports/5 /imports/5/edit),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
+
     for target <-
-          ~w(/imports/5 /imports/5/edit /imports/5/download /imports/5/extraction /imports.json /exports.json /imports?format=json /imports/5?format=json /imports/5/download?format=json /exports/5) do
+          ~w(/imports/5/extraction /imports.json /exports.json /imports?format=json /imports/5?format=json /imports/5/download?format=json /exports/5) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
+
+    assert answered_by_phoenix(port, "GET /imports/5/download HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
 
     for {method, target} <- [
           {"PUT", "/imports/5"},
@@ -354,7 +385,7 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert_write_transport(port, ctx.upstream, request, method, target)
     end
   end
 
@@ -371,23 +402,14 @@ defmodule DawarichWeb.EndpointTest do
       {"GET", "/imports/:id"},
       {"GET", "/imports/:id/edit"},
       {"GET", "/imports/:id/download"},
-      {"POST", "/imports"},
-      {"POST", "/imports/:id"},
-      {"PATCH", "/imports/:id"},
-      {"PUT", "/imports/:id"},
-      {"DELETE", "/imports/:id"},
-      {"POST", "/imports/:id/extraction"},
-      {"DELETE", "/imports/:id/extraction"},
       {"GET", "/exports"},
-      {"POST", "/exports"},
-      {"POST", "/exports/:id"},
-      {"DELETE", "/exports/:id"}
+      {"POST", "/exports"}
     ]
 
     assert actual == Enum.sort(expected)
   end
 
-  test "signed-out import writes reach Puma with their body", ctx do
+  test "signed-out retired import writes refuse without Puma", ctx do
     port = serve()
     body = "import%5Bname%5D=x"
 
@@ -407,16 +429,13 @@ defmodule DawarichWeb.EndpointTest do
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
       )
 
-      puma = accept(ctx.upstream)
-      {head, rest} = read_head(puma)
-      assert request_line(head) == "#{method} #{target} HTTP/1.1"
-      assert read_at_least(puma, rest, byte_size(body)) == body
-      reply(puma, "HTTP/1.1 302 Found\r\nLocation: /users/sign_in\r\nContent-Length: 0\r\n\r\n")
-      assert {302, _headers, ""} = read_response(client)
+      assert {404, _, _} = read_response(client)
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
   end
 
-  test "foreign or unsupported imports stay on Puma while owned normal pages are native", ctx do
+  test "foreign and unsupported import documents refuse natively while downloads retain their contract",
+       ctx do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
@@ -431,9 +450,16 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for id <- [769_101, 769_102],
-        target <- ["/imports/#{id}", "/imports/#{id}/edit", "/imports/#{id}/download"] do
+        target <- ["/imports/#{id}", "/imports/#{id}/edit"] do
       request = "GET #{target} HTTP/1.1\r\nHost: a\r\nCookie: _dawarich_session=#{cookie}\r\n\r\n"
-      assert answered_by_puma(port, ctx.upstream, request) == "GET #{target} HTTP/1.1"
+      assert answered_by_phoenix(port, request) == 302
+    end
+
+    for id <- [769_101, 769_102] do
+      target = "/imports/#{id}/download"
+      request = "GET #{target} HTTP/1.1\r\nHost: a\r\nCookie: _dawarich_session=#{cookie}\r\n\r\n"
+      assert answered_by_phoenix(port, request) == 404
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
 
     body = "import%5Bname%5D=stolen"
@@ -451,7 +477,8 @@ defmodule DawarichWeb.EndpointTest do
           "X-CSRF-Token: #{token}\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert answered_by_phoenix(port, request) == 404
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
 
     for target <- ["/imports/769103", "/imports/769103/edit"] do
@@ -463,7 +490,7 @@ defmodule DawarichWeb.EndpointTest do
              Dawarich.Repo.query!("SELECT name,status FROM imports ORDER BY id", [], log: false).rows
   end
 
-  test "DAWARICH_RAILS_ROUTES=imports hands every import route and method back", ctx do
+  test "imports source override preserves reads but cannot revive retired writes", ctx do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
@@ -498,7 +525,7 @@ defmodule DawarichWeb.EndpointTest do
           "Content-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert_write_transport(port, ctx.upstream, request, method, target)
     end
 
     assert [["handback.gpx", 2]] ==
@@ -833,17 +860,20 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "stats and digest paths outside Rails' constraints go to Puma while native writes require sign in",
-       ctx do
+  test "native stats and digest refusals preserve the native month and write owners",
+       _ctx do
     port = serve()
 
     for target <-
-          ~w(/stats/abcd /stats/202 /stats/20245 /stats/update_all /stats/2024/0 /stats/2024/00 /stats/2024/13 /stats/2024/1a /digests/new /digests/24 /stats/2024.json),
-        do:
-          assert(
-            answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
-              "GET #{target} HTTP/1.1"
-          )
+          ~w(/stats/2024/0 /stats/2024/00 /stats/2024/13 /stats/2024/1a),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
+
+    for target <-
+          ~w(/stats/abcd /stats/202 /stats/20245 /stats/update_all /digests/new /digests/24) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+    end
+
+    assert answered_by_phoenix(port, "GET /stats/2024.json HTTP/1.1\r\nHost: a\r\n\r\n") == 422
 
     for {method, target} <- [
           {"PUT", "/stats/update_all"},
@@ -860,20 +890,21 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_phoenix(port, request) == 302
+      assert answered_by_phoenix(port, request) ==
+               if(String.contains?(target, "/sharing"), do: 404, else: 302)
     end
   end
 
-  test "DAWARICH_RAILS_ROUTES hands the stats and digest pages back", ctx do
+  test "independent native stats and digests ignore rollback including the activated month host",
+       _ctx do
     Application.put_env(:dawarich, :rails_routes, ["stats", "digests"])
     port = serve()
 
-    for target <- ~w(/stats /stats/2024/3 /digests/2024),
-        do:
-          assert(
-            answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
-              "GET #{target} HTTP/1.1"
-          )
+    for target <- ~w(/stats/2024/3),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
+
+    for target <- ~w(/stats /digests/2024),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
   end
 
   test "Phoenix answers the trips list for a signed-out visitor with Rails' sign-in redirect" do
@@ -884,28 +915,24 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "retained value-less stats queries hand back while native trip queries resolve locally",
-       ctx do
+  test "native stats query admission stays owned while native trip query admission remains",
+       _ctx do
     port = serve()
 
-    for target <- ~w(/stats?year) do
-      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
-               "GET #{target} HTTP/1.1"
+    for target <- ~w(/trips?page /trips?view) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302
     end
 
-    for target <- ~w(/trips?page /trips?view /trips?page=2) do
-      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302
-      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-    end
+    assert answered_by_phoenix(port, "GET /stats?year HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+    assert answered_by_phoenix(port, "GET /trips?page=2 HTTP/1.1\r\nHost: a\r\n\r\n") == 302
   end
 
-  test "retained trip forms and writes hand back while native trip formats refuse locally", ctx do
+  test "native trip forms refuse formats while retained writes preserve their owners", ctx do
     port = serve()
 
     for target <-
           ~w(/trips/new?format=json /trips/5/edit?format=json) do
-      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
-               "GET #{target} HTTP/1.1"
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 422
     end
 
     for {target, status} <- [
@@ -945,32 +972,34 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert_write_transport(port, ctx.upstream, request, method, target)
     end
   end
 
-  test "native trip index ignores obsolete rollback keys and retains query admission", ctx do
+  test "native trip pages keep query admission despite obsolete ownership markers", _ctx do
     Application.put_env(:dawarich, :rails_routes, ["trips"])
     port = serve()
 
-    for target <- ~w(/trips /trips?page=2) do
+    for target <- ~w(/trips /trips?page=2 /trips/5) do
       assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302
-      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
     end
   end
 
-  test "Rails keeps guest achievement requests intact, including malformed page shapes and writes",
+  test "guest achievements use native sign-in and format refusal while external writes remain owned",
        ctx do
     port = serve()
 
     for target <-
-          ~w(/achievements /achievements/country_de /achievements/unknown /achievements.json /achievements/country_de.json /achievements?format=json /achievements?unexpected=value /achievements?q[a]=value) do
-      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
-               "GET #{target} HTTP/1.1"
+          ~w(/achievements /achievements/country_de /achievements/unknown /achievements?unexpected=value /achievements?q[a]=value) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+    end
+
+    for target <- ~w(/achievements.json /achievements/country_de.json /achievements?format=json) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 422
     end
 
     for target <-
-          ~w(/achievements/country_de/toggle_sharing /achievements/unlocks/next /achievements/unlocks/123/seen /achievements/unlocks/dismiss) do
+          ~w(/achievements/unlocks/next /achievements/unlocks/123/seen /achievements/unlocks/dismiss) do
       body = "authenticity_token=x"
 
       request =
@@ -981,8 +1010,7 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "native public page resists sharing switches while phrase unlock keeps its HTTP contract",
-       ctx do
+  test "DAWARICH_RAILS_ROUTES=sharing cannot hand native public pages and unlock back" do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     Dawarich.Test.SharingSeeds.load!()
@@ -1002,8 +1030,8 @@ defmodule DawarichWeb.EndpointTest do
     on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
 
     assert answered_by_phoenix(port, page) == 200
-    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-    assert answered_by_puma(port, ctx.upstream, unlock) == "POST /s/#{id}/unlock HTTP/1.1"
+    assert answered_by_phoenix(port, unlock) == 401
+    assert Dawarich.Test.SharingSeeds.view_count(id) == 2
   end
 
   test "Phoenix answers the settings, account and insights pages itself" do
@@ -1015,18 +1043,21 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "unsupported settings, account and insights requests go to Puma", ctx do
+  test "retained unsupported settings and account requests go to Puma while native insights refuses",
+       ctx do
     port = serve()
 
     assert answered_by_phoenix(port, "GET /settings/users HTTP/1.1\r\nHost: a\r\n\r\n") == 302
 
     for target <-
-          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
+          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /users/sign_in /users/sign_up /users/edit.json /settings/general.json),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
               "GET #{target} HTTP/1.1"
           )
+
+    assert answered_by_phoenix(port, "GET /insights.json HTTP/1.1\r\nHost: a\r\n\r\n") == 422
 
     for {method, target} <- [
           {"PATCH", "/settings/general"},
@@ -1049,21 +1080,24 @@ defmodule DawarichWeb.EndpointTest do
         "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
           "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+      assert_write_transport(port, ctx.upstream, request, method, target)
     end
   end
 
-  test "DAWARICH_RAILS_ROUTES hands the settings, account and insights pages back", ctx do
+  test "settings and account rollback remain while independent native insights stays owned",
+       ctx do
     Application.put_env(:dawarich, :rails_routes, ["settings", "users", "insights"])
     port = serve()
 
     for target <-
-          ~w(/settings/general /settings/integrations?service=immich /users/edit /insights?year=2024),
+          ~w(/settings/general /settings/integrations?service=immich /users/edit),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
               "GET #{target} HTTP/1.1"
           )
+
+    assert answered_by_phoenix(port, "GET /insights?year=2024 HTTP/1.1\r\nHost: a\r\n\r\n") == 302
   end
 
   test "Phoenix answers both map paths itself", ctx do
@@ -1078,153 +1112,15 @@ defmodule DawarichWeb.EndpointTest do
     assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
   end
 
-  test "native timeline and unsupported map envelopes never reach Rails", ctx do
-    port = serve()
-    get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
-
-    client = connect(port)
-    send_raw(client, get.("/api/v1/timeline?start_at=1&end_at=2", ""))
-    assert {401, headers, ""} = read_response(client)
-    assert values(headers, "x-dawarich-response") == ["Hey, I'm alive!"]
-    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-
-    for {target, headers, status} <- [
-          {"/map/v2", "Accept: application/json\r\n", 422},
-          {"/map/v2?format=json", "", 422},
-          {"/map/v2", "X-Requested-With: XMLHttpRequest\r\n", 422}
-        ],
-        do: assert(answered_by_phoenix(port, get.(target, headers)) == status)
-
-    body = "authenticity_token=x"
-
-    for method <- ~w(POST PATCH DELETE) do
-      request =
-        "#{method} /map/v2 HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
-          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
-
-      assert answered_by_phoenix(port, request) == 405
-      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-    end
-  end
-
-  test "native map pages ignore coexistence switches and preserve their query", ctx do
-    Application.put_env(:dawarich, :rails_routes, ["map"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
-    port = serve()
-
-    for target <- ~w(/map /map/v2?panel=timeline&date=2026-09-29),
-        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
-
-    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-    assert answered_by_phoenix(port, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n") == 302
-  end
-
-  test "DAWARICH_RAILS_ROUTES=places hands the list and the drawer back with their query", ctx do
+  test "native Places list ignores legacy ownership with the integrated map host", ctx do
     Application.put_env(:dawarich, :rails_routes, ["places"])
     on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
-    frame = "Accept: text/html, application/xhtml+xml\r\nTurbo-Frame: place-drawer\r\n"
 
-    for {target, headers} <- [{"/places", ""}, {"/places?page=2", ""}, {"/places/5", frame}],
-        do:
-          assert(
-            answered_by_puma(
-              port,
-              ctx.upstream,
-              "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n"
-            ) ==
-              "GET #{target} HTTP/1.1"
-          )
-  end
-
-  test "consumed map frames refuse while independent residency keeps HTTP admission", ctx do
-    port = serve()
-    accept = "Accept: text/html, application/xhtml+xml\r\n"
-
-    for target <- [
-          "/map/timeline_feeds/5/track_info",
-          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59",
-          "/map/timeline_feeds/calendar?month=2026-09",
-          "/map/timeline_feeds/calendar",
-          "/map/residency?year=2026",
-          "/map/residency",
-          "/map/timeline_feeds/5/track_info?locale=de",
-          "/map/timeline_feeds/5/track_info?client=ios",
-          "/map/timeline_feeds/5/track_info?aff=a6s2",
-          "/map/timeline_feeds/calendar?month=2026-09&via=a6s2",
-          "/map/timeline_feeds?date=2026-09-29",
-          "/map/timeline_feeds?start_at=&end_at=2026-09-27T23:59:59",
-          "/map/timeline_feeds?start_at=Oct%2015%202025&end_at=2026-09-27T23:59:59",
-          "/map/timeline_feeds?start_at[]=1&end_at=2",
-          "/map/timeline_feeds?start_at=1&end_at=2&locale=de",
-          "/map/timeline_feeds/calendar?month=2026-9",
-          "/map/residency?year=abc",
-          "/map/residency?year=",
-          "/map/residency?year=2040",
-          "/tracks/5/segments"
-        ],
-        do:
-          assert(
-            answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n#{accept}\r\n") ==
-              if(String.starts_with?(target, "/map/residency"), do: 302, else: 410)
-          )
-
-    assert answered_by_phoenix(
-             port,
-             "GET /map/timeline_feeds/5/track_info HTTP/1.1\r\nHost: a\r\nX-Dawarich-Client: ios\r\n\r\n"
-           ) == 410
+    for target <- ~w(/places /places?page=2),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
 
     assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-  end
-
-  test "retired frame malformed IDs formats and XHR requests never reach Rails", ctx do
-    port = serve()
-    frame = "Accept: text/html, application/xhtml+xml\r\n"
-    get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
-
-    for {target, headers} <- [
-          {"/map/timeline_feeds/abc/track_info", frame},
-          {"/map/timeline_feeds/1234567890123456789/track_info", frame},
-          {"/map/timeline_feeds/5/track_info", "Accept: application/json\r\n"},
-          {"/map/timeline_feeds/5/track_info", frame <> "X-Requested-With: XMLHttpRequest\r\n"},
-          {"/map/timeline_feeds/5/track_info?format=json", frame},
-          {"/tracks/5/segments?locale=de", frame}
-        ],
-        do: assert(answered_by_phoenix(port, get.(target, headers)) == 410)
-
-    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-  end
-
-  test "native pages and retired frames resist switches while residency can hand back", ctx do
-    Application.put_env(:dawarich, :rails_routes, ["map"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
-    port = serve()
-
-    for target <- [
-          "/map/v2",
-          "/map/timeline_feeds/5/track_info",
-          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59",
-          "/map/timeline_feeds/calendar?month=2026-09"
-        ],
-        do:
-          assert(
-            answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
-              if(target == "/map/v2", do: 302, else: 410)
-          )
-
-    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
-
-    assert answered_by_puma(
-             port,
-             ctx.upstream,
-             "GET /map/residency?year=2026 HTTP/1.1\r\nHost: a\r\n\r\n"
-           ) == "GET /map/residency?year=2026 HTTP/1.1"
-
-    drawer =
-      "GET /places/5 HTTP/1.1\r\nHost: a\r\nAccept: text/html, application/xhtml+xml\r\n" <>
-        "Turbo-Frame: place-drawer\r\n\r\n"
-
-    assert answered_by_phoenix(port, drawer) == 302
   end
 
   test "endpoint account and key hand-back reaches Puma once with original payload", ctx do
@@ -1342,5 +1238,136 @@ defmodule DawarichWeb.EndpointTest do
     end
 
     assert {:error, :timeout} == :gen_tcp.accept(ctx.upstream.listen, 0)
+  end
+
+  test "consumed map frames refuse while independent residency keeps HTTP admission", ctx do
+    port = serve()
+    accept = "Accept: text/html, application/xhtml+xml\r\n"
+
+    for target <- [
+          "/map/timeline_feeds/5/track_info",
+          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds/calendar?month=2026-09",
+          "/map/timeline_feeds/calendar",
+          "/map/residency?year=2026",
+          "/map/residency",
+          "/map/timeline_feeds/5/track_info?locale=de",
+          "/map/timeline_feeds/5/track_info?client=ios",
+          "/map/timeline_feeds/5/track_info?aff=a6s2",
+          "/map/timeline_feeds/calendar?month=2026-09&via=a6s2",
+          "/map/timeline_feeds?date=2026-09-29",
+          "/map/timeline_feeds?start_at=&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds?start_at=Oct%2015%202025&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds?start_at[]=1&end_at=2",
+          "/map/timeline_feeds?start_at=1&end_at=2&locale=de",
+          "/map/timeline_feeds/calendar?month=2026-9",
+          "/map/residency?year=abc",
+          "/map/residency?year=",
+          "/map/residency?year=2040",
+          "/tracks/5/segments"
+        ],
+        do:
+          assert(
+            answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n#{accept}\r\n") ==
+              if(String.starts_with?(target, "/map/residency"), do: 302, else: 410)
+          )
+
+    assert answered_by_phoenix(
+             port,
+             "GET /map/timeline_feeds/5/track_info HTTP/1.1\r\nHost: a\r\nX-Dawarich-Client: ios\r\n\r\n"
+           ) == 410
+
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+  end
+
+  test "native map pages ignore coexistence switches and preserve their query", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["map"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+
+    for target <- ~w(/map /map/v2?panel=timeline&date=2026-09-29),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
+
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    assert answered_by_phoenix(port, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+  end
+
+  test "native pages and retired frames resist switches while residency can hand back", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["map"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+
+    for target <- [
+          "/map/v2",
+          "/map/timeline_feeds/5/track_info",
+          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds/calendar?month=2026-09"
+        ],
+        do:
+          assert(
+            answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+              if(target == "/map/v2", do: 302, else: 410)
+          )
+
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+
+    assert answered_by_puma(
+             port,
+             ctx.upstream,
+             "GET /map/residency?year=2026 HTTP/1.1\r\nHost: a\r\n\r\n"
+           ) == "GET /map/residency?year=2026 HTTP/1.1"
+
+    drawer =
+      "GET /places/5 HTTP/1.1\r\nHost: a\r\nAccept: text/html, application/xhtml+xml\r\n" <>
+        "Turbo-Frame: place-drawer\r\n\r\n"
+
+    assert answered_by_phoenix(port, drawer) == 302
+  end
+
+  test "native timeline and unsupported map envelopes never reach Rails", ctx do
+    port = serve()
+    get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
+
+    client = connect(port)
+    send_raw(client, get.("/api/v1/timeline?start_at=1&end_at=2", ""))
+    assert {401, headers, ""} = read_response(client)
+    assert values(headers, "x-dawarich-response") == ["Hey, I'm alive!"]
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+
+    for {target, headers, status} <- [
+          {"/map/v2", "Accept: application/json\r\n", 422},
+          {"/map/v2?format=json", "", 422},
+          {"/map/v2", "X-Requested-With: XMLHttpRequest\r\n", 422}
+        ],
+        do: assert(answered_by_phoenix(port, get.(target, headers)) == status)
+
+    body = "authenticity_token=x"
+
+    for method <- ~w(POST PATCH DELETE) do
+      request =
+        "#{method} /map/v2 HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_phoenix(port, request) == 405
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    end
+  end
+
+  test "retired frame malformed IDs formats and XHR requests never reach Rails", ctx do
+    port = serve()
+    frame = "Accept: text/html, application/xhtml+xml\r\n"
+    get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
+
+    for {target, headers} <- [
+          {"/map/timeline_feeds/abc/track_info", frame},
+          {"/map/timeline_feeds/1234567890123456789/track_info", frame},
+          {"/map/timeline_feeds/5/track_info", "Accept: application/json\r\n"},
+          {"/map/timeline_feeds/5/track_info", frame <> "X-Requested-With: XMLHttpRequest\r\n"},
+          {"/map/timeline_feeds/5/track_info?format=json", frame},
+          {"/tracks/5/segments?locale=de", frame}
+        ],
+        do: assert(answered_by_phoenix(port, get.(target, headers)) == 410)
+
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
   end
 end

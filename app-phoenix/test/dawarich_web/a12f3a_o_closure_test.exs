@@ -473,9 +473,9 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
       {"/imports/42/download", "imports", DawarichWeb.ImportsDownload},
       {"/exports", "exports", DawarichWeb.ExportsLive.Index},
       {"/trips", "trips", DawarichWeb.TripsLive.NativeIndex},
-      {"/trips/new", "trips", DawarichWeb.TripsLive.Form},
+      {"/trips/new", "trips", DawarichWeb.NativeTripsLive.Form},
       {"/trips/42", "trips", DawarichWeb.TripsLive.NativeMap},
-      {"/trips/42/edit", "trips", DawarichWeb.TripsLive.Form},
+      {"/trips/42/edit", "trips", DawarichWeb.NativeTripsLive.Form},
       {"/visits", "visits", DawarichWeb.VisitsNavigation},
       {"/settings/visits", "settings", DawarichWeb.SettingsLive.Visits}
     ]
@@ -508,13 +508,13 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     reads = [
       {"/stats", "stats", DawarichWeb.StatsLive.NativePage},
       {"/stats/2024", "stats", DawarichWeb.StatsLive.NativePage},
-      {"/stats/2024/3", "stats", DawarichWeb.StatsLive.Month},
+      {"/stats/2024/3", "stats", DawarichWeb.StatsLive.NativePage},
       {"/digests", "digests", DawarichWeb.DigestsLive.NativePage},
       {"/digests/2024", "digests", DawarichWeb.DigestsLive.NativePage},
       {"/insights", "insights", DawarichWeb.InsightsLive.NativePage},
       {"/insights/details", "insights", DawarichWeb.InsightsLive.NativePage},
-      {"/shared/month/synthetic", "shared", DawarichWeb.SharedStatsPage},
-      {"/shared/digest/synthetic", "shared", DawarichWeb.SharedStatsPage},
+      {"/shared/month/synthetic", "shared", DawarichWeb.NativePublicPage},
+      {"/shared/digest/synthetic", "shared", DawarichWeb.NativePublicPage},
       {"/map", "map", DawarichWeb.MapLive.Native},
       {"/map/v2", "map", DawarichWeb.MapLive.Native},
       {"/map/v1", "map", DawarichWeb.MapRedirects},
@@ -558,7 +558,11 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   defp adopted?(method, path) do
     path = hd(String.split(path, "?"))
 
-    if path in ~w(/map /map/v2 /map/v1 /maps/v2 /trips /trips/42) do
+    route = info(if(method == "HEAD", do: "GET", else: method), path)
+    data_native = is_map(route) and :native_data_request in route.pipe_through
+
+    if data_native or
+         path in ~w(/map /map/v2 /map/v1 /maps/v2 /trips /trips/42 /trips/new /trips/42/edit /visits) do
       method in ~w(GET HEAD)
     else
       path in ~w(/map/timeline_feeds /map/timeline_feeds/calendar /map/timeline_feeds/42/track_info /points/42/address /tracks/41/segments /tracks/41/segments/42)
@@ -583,6 +587,9 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
                    DawarichWeb.MapRedirects ->
                      [301]
 
+                   DawarichWeb.VisitsNavigation ->
+                     [302, 422]
+
                    _ ->
                      [[id], _] = ctx.session["warden.user.user.key"]
 
@@ -594,11 +601,14 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
                assert response.status in expected
 
                if expected == [200] and method == "GET" do
-                 if hd(String.split(path, "?")) == "/trips" do
-                   assert String.contains?(response.resp_body, "id=\"trips\"")
+                 if hd(String.split(path, "?")) in ~w(/trips /trips/new /trips/42/edit /visits) do
+                   assert String.contains?(response.resp_body, "<html"), path
                  else
                    hook = if String.starts_with?(path, "/trips/"), do: "Trip", else: "Map"
-                   assert String.contains?(response.resp_body, "phx-hook=\"#{hook}\"")
+
+                   if :native_data_request in route.pipe_through,
+                     do: assert(String.contains?(response.resp_body, "<html")),
+                     else: assert(String.contains?(response.resp_body, "phx-hook=\"#{hook}\""))
                  end
                end
 

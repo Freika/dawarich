@@ -48,7 +48,7 @@ defmodule DawarichWeb.MapDataParityTest do
     assert @dir |> File.ls!() |> Enum.sort() == Enum.sort(expected)
   end
 
-  test "point page and address source corpus retain data while retired address endpoints refuse" do
+  test "native point corpus retains source rows filters and formats while address targets stay exact and retired" do
     for name <- @points, do: compare(name)
   end
 

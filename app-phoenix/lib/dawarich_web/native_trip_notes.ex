@@ -54,14 +54,18 @@ defmodule DawarichWeb.NativeTripNotes do
               socket.assigns.page.presentation.id,
               date,
               body,
-              DateTime.utc_now(), repo: Dawarich.Repo)
+              DateTime.utc_now(),
+              repo: Dawarich.Repo
+            )
 
           :destroy ->
             Dawarich.Trips.Notes.delete(
               fresh,
               socket.assigns.page.presentation.id,
               note_id,
-              DateTime.utc_now(), repo: Dawarich.Repo)
+              DateTime.utc_now(),
+              repo: Dawarich.Repo
+            )
         end
       end
 

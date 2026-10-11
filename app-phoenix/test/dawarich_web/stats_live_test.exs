@@ -49,55 +49,23 @@ defmodule DawarichWeb.StatsLiveTest do
       on_exit(fn -> :persistent_term.erase({DawarichWeb.Assets, :rails_imports}) end)
     end
 
-    test "a rails_js page loads Rails' imports, translations and Chartkick; Phoenix's own entries win",
-         %{user: user} do
+    test "native monthly charts retain their feature entry without loading Rails imports", %{
+      user: user
+    } do
       html = RailsUser.signed_in(user.id) |> get("/stats/2024/03") |> html_response(200)
-      head = html |> LazyHTML.from_document() |> LazyHTML.query("head")
-
-      imports =
-        head
-        |> LazyHTML.query("script[type='importmap']")
-        |> LazyHTML.text()
-        |> Jason.decode!()
-        |> Map.fetch!("imports")
-
-      assert imports["chartkick"] == "/assets/chartkick-0123abcd.js"
-      assert imports["app"] =~ "/phoenix/js/app.js?vsn="
-
-      translations =
-        head
-        |> LazyHTML.query("script#i18n-translations[type='application/json']")
-        |> LazyHTML.text()
-        |> Jason.decode!()
-
-      assert translations["stats"]["map_initialization_failed"] == "Failed to initialize map"
-      assert Map.has_key?(translations, "transportation_modes")
-      assert html =~ ~r/import "chartkick"\s+import "Chart.bundle"/
+      refute String.contains?(html, "importmap")
+      refute String.contains?(html, "i18n-translations")
+      refute String.contains?(html, "Chartkick")
+      assert String.contains?(html, "/native/app.js")
+      refute String.contains?(html, "should-not-win")
     end
 
-    test "a deferred trip page retains Rails imports and translations without Chartkick",
-         %{user: user} do
+    test "native trip cards retain their entry without loading Rails imports", %{user: user} do
       html = RailsUser.signed_in(user.id) |> get("/trips") |> html_response(200)
-      head = html |> LazyHTML.from_document() |> LazyHTML.query("head")
-
-      imports =
-        head
-        |> LazyHTML.query("script[type='importmap']")
-        |> LazyHTML.text()
-        |> Jason.decode!()
-        |> Map.fetch!("imports")
-
-      assert imports["chartkick"] == "/assets/chartkick-0123abcd.js"
-      assert imports["app"] =~ "/phoenix/js/app.js?vsn="
-
-      translations =
-        head
-        |> LazyHTML.query("script#i18n-translations[type='application/json']")
-        |> LazyHTML.text()
-        |> Jason.decode!()
-
-      assert translations["demo"]["already_loaded"] == "Demo data already loaded"
-      refute html =~ ~r/import "chartkick"/
+      refute String.contains?(html, "importmap")
+      refute String.contains?(html, "i18n-translations")
+      refute String.contains?(html, "Chartkick")
+      assert String.contains?(html, "/native/app.js")
     end
 
     test "rails_charts: false keeps Rails' modules and drops Chartkick" do
@@ -125,17 +93,11 @@ defmodule DawarichWeb.StatsLiveTest do
       refute html =~ ~r/import "chartkick"/
     end
 
-    test "rails_flash shows only success and error flashes", %{user: user} do
+    test "native monthly commands refuse arbitrary browser flash injection", %{user: user} do
       {:ok, view, _html} = live_as(user, "/stats/2024/03")
-
-      refute render_hook(view, "rails_flash", %{
-               "type" => "info",
-               "message" => "a5s-unwanted-flash"
-             }) =~ "a5s-unwanted-flash"
-
-      html = render_hook(view, "rails_flash", %{"type" => "success", "message" => "Auto-saved"})
-      assert html =~ "alert-success"
-      assert html =~ "Auto-saved"
+      render_hook(view, "rails_flash", %{"type" => "success", "message" => "untrusted-flash"})
+      refute has_element?(view, "[role=alert]", "untrusted-flash")
+      assert has_element?(view, "[role=alert]")
     end
   end
 
@@ -304,17 +266,20 @@ defmodule DawarichWeb.StatsLiveTest do
     test "a month without a stat is Rails' empty state with HTTP 200", %{user: user} do
       html = RailsUser.signed_in(user.id) |> get("/stats/2024/2") |> html_response(200)
       assert html =~ ">February 2024 Monthly Digest | Dawarich</title>"
-      assert html =~ ~s(<div class="alert">No location data available for this month</div>)
+
+      assert texts(html, "[role=status]") |> Enum.join() =~
+               "No location data available for this month"
+
       refute html =~ "stat-page-card"
     end
 
     test "a month compares itself with the year's average and the previous month", %{user: user} do
       {:ok, view, _html} = live_as(user, "/stats/2024/4")
-      assert has_element?(view, ".stat-value.text-success", "~12 km")
-      assert has_element?(view, ".stat-desc", "52% less than your average this year")
-      assert has_element?(view, ".stat-value.text-secondary", "1/30")
-      assert has_element?(view, ".stat-desc", "3 days less than previous month")
-      assert has_element?(view, ".stat-desc", "1 country less than previous month")
+      assert has_element?(view, "#stats-month-distance", "~12 km")
+      assert has_element?(view, "main p", "52% less than your average this year")
+      assert has_element?(view, "#stats-month-active-days", "1/30")
+      assert has_element?(view, "main p", "3 days less than previous month")
+      assert has_element?(view, "main p", "1 country less than previous month")
     end
 
     test "the peak day links to the map with the user's zoned day bounds", %{user: user} do
@@ -323,7 +288,7 @@ defmodule DawarichWeb.StatsLiveTest do
       href =
         "/map/v2?end_at=2024-03-07+23%3A59%3A59+%2B0100&start_at=2024-03-07+00%3A00%3A00+%2B0100"
 
-      assert has_element?(view, ~s(a.underline[href="#{href}"]), "March 07 (14 km)")
+      assert has_element?(view, ~s(#stats-peak-day[href="#{href}"]), "March 07 (14 km)")
       assert render(view) =~ "Mar 08 - Mar 14"
       assert has_element?(view, ~s(a.btn[href="/stats/2024"]), "← Back to 2024")
     end
@@ -350,21 +315,15 @@ defmodule DawarichWeb.StatsLiveTest do
       refute Map.has_key?(assigns, :api_key)
     end
 
-    test "the map remains deferred and monthly sharing links to scoped native controls",
-         %{user: user} do
-      {:ok, view, _html} = live_as(user, "/stats/2024/3")
-
-      assert has_element?(
-               view,
-               ~s(#stat-page-card[phx-hook="RailsStimulus"][phx-update="ignore"][data-controller="stat-page"][data-api-key="a5s-live-key"][data-year="2024"][data-month="3"][data-tiles-url=""][data-tiles-fallback="false"])
-             )
-
-      assert has_element?(
-               view,
-               ~s(#stat-page-card #monthly-stats-map[data-stat-page-target="map"])
-             )
-
-      assert has_element?(view, "a[href='/stats/2024/3/sharing']")
+    test "native monthly map and sharing use the scoped hosts without a DOM credential", %{
+      user: user
+    } do
+      {:ok, view, html} = live_as(user, "/stats/2024/3")
+      assert has_element?(view, "[phx-hook=MapPreview]")
+      refute String.contains?(html, "a5s-live-key")
+      assert has_element?(view, "button[phx-click=open_share]")
+      render_click(view, "open_share", %{})
+      assert has_element?(view, "#stats-sharing")
       refute has_element?(view, "#sharing_modal")
     end
 
@@ -389,8 +348,8 @@ defmodule DawarichWeb.StatsLiveTest do
       assert has_element?(view, "#stats-locked-2023")
       assert has_element?(view, "button[phx-click=upgrade]")
       {:ok, month, _html} = live_as(user, "/stats/#{today.year}/#{today.month}")
-      assert has_element?(month, "a[href='/stats/#{today.year}/#{today.month}/sharing']")
-      assert has_element?(month, "a.btn-primary[href*='utm_content=sharing']")
+      refute has_element?(month, "button[phx-click=open_share]")
+      assert has_element?(month, "#stats-window-alert[role=alert]")
       refute has_element?(month, "#sharing_modal")
     end
   end

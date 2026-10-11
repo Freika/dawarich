@@ -8,11 +8,10 @@ defmodule DawarichWeb.PageRoutesTest do
     for {path, view, action, params, gate, session} <- [
           {"/notifications", DawarichWeb.NotificationsLive.Index, :index, %{}, nil, :native_jobs},
           {"/notifications/17", DawarichWeb.NotificationsLive.Show, :show, %{"id" => "17"}, nil,
-           :rails_pages},
-          {"/imports/17", DawarichWeb.ImportsLive.Show, :show, %{"id" => "17"},
-           {DawarichWeb.ImportsGate, :native?}, :rails_pages},
-          {"/places", DawarichWeb.PlacesLive.Index, :index, %{},
-           {DawarichWeb.PlacesGate, :index?}, :rails_pages},
+           :native_jobs},
+          {"/imports/17", DawarichWeb.ImportsLive.Show, :show, %{"id" => "17"}, nil,
+           :native_jobs},
+          {"/places", DawarichWeb.PlacesLive.Index, :index, %{}, nil, :native_pages},
           {"/map/v2", DawarichWeb.MapLive.Native, :index, %{}, nil, :native_m6}
         ] do
       route = info(path)
@@ -37,12 +36,32 @@ defmodule DawarichWeb.PageRoutesTest do
                }
       else
         session_module =
-          if session == :rails_pages, do: DawarichWeb.NativeAuth, else: DawarichWeb.RailsAuth
+          case session do
+            :native_jobs -> DawarichWeb.NativeJobsAuth
+            :native_pages -> DawarichWeb.NativeAuth
+            :rails_map -> DawarichWeb.RailsAuth
+          end
 
         assert extra.session == {session_module, :live_session, []}
-        assert Enum.map(extra.on_mount, & &1.id) == [{DawarichWeb.LiveAuth, :default}]
+
+        expected =
+          case session do
+            :native_pages -> {DawarichWeb.NativeAuth, :require_user}
+            :native_jobs -> {DawarichWeb.NativeJobsAuth, :require_user}
+            :rails_map -> {DawarichWeb.LiveAuth, :default}
+          end
+
+        assert Enum.map(extra.on_mount, & &1.id) == [expected]
+
         layout = if session == :rails_map, do: :map, else: :app
-        root = if session == :rails_map, do: :map_root, else: :root
+
+        root =
+          case session do
+            :rails_map -> :map_root
+            :native_pages -> :native_root
+            :native_jobs -> :native_root
+          end
+
         assert extra.layout == {DawarichWeb.Layouts, layout}
         assert extra.root_layout == {DawarichWeb.Layouts, root}
       end

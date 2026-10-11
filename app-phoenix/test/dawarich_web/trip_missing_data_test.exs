@@ -103,7 +103,8 @@ defmodule DawarichWeb.TripMissingDataTest do
         handler,
         [:dawarich, :repo, :query],
         fn _, _, meta, _ ->
-          if meta.query == "SELECT id FROM trips WHERE id=$1 AND user_id=$2 FOR UPDATE" and
+          if meta.query ==
+               "SELECT path IS NULL OR ST_IsEmpty(path), distance, visited_countries, started_at, source_identifier FROM trips WHERE id=$1 AND user_id=$2 FOR UPDATE" and
                Process.delete(:flip_show_owner) do
             Ownership.put!(Repo, "command:trips.calculate", :sidekiq)
           end
