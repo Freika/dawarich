@@ -20,7 +20,7 @@ dk() { docker --context "$CONTEXT" "$@"; }
 cleanup() {
   result=$?
   trap - EXIT
-  for name in "${OWNED[@]}"; do
+  for name in ${OWNED[@]+"${OWNED[@]}"}; do
     if [ "$(dk inspect -f '{{index .Config.Labels "org.dawarich.x4"}}' "$name" 2>/dev/null)" = "$RUN" ]; then
       dk logs "$name" >"$NATIVE_SMOKE_OUT/$name.log" 2>&1 || true
       dk rm -fv "$name" >/dev/null 2>&1 || true
