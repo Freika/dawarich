@@ -46,7 +46,11 @@ export function initializePublicCharts(
   }
 }
 
-export function initializePublicPreviews(root = document, target = window, load = () => import("./map/preview/runtime.js")) {
+export function initializePublicPreviews(
+  root = document,
+  target = window,
+  load = () => import("./map/preview/runtime.js"),
+) {
   let alive = true
   const owners = []
   const elements = Array.from(root.querySelectorAll("[phx-hook=MapPreview]"))
@@ -55,28 +59,41 @@ export function initializePublicPreviews(root = document, target = window, load 
     for (const owner of owners) owner.destroy()
     owners.length = 0
   }
-  const hide = event => { if (!event.persisted) cleanup() }
+  const hide = (event) => {
+    if (!event.persisted) cleanup()
+  }
   target.addEventListener("pagehide", hide)
-  if (elements.length) load().then(({mountPreview}) => {
-    if (!alive) return
-    for (const element of elements) {
-      let entry = previews.get(element)
-      if (!entry) {
-        const owner = mountPreview({element})
-        let disposed = false
-        entry = {destroy() {
-          if (disposed) return
-          disposed = true
-          owner.destroy()
-          previews.delete(element)
-        }}
-        previews.set(element, entry)
-        owner.mount()
-      }
-      owners.push(entry)
-    }
-  }).catch(() => { if (alive) for (const element of elements) element.dataset.mapState = "failed" })
-  return () => {target.removeEventListener("pagehide", hide); cleanup()}
+  if (elements.length)
+    load()
+      .then(({ mountPreview }) => {
+        if (!alive) return
+        for (const element of elements) {
+          let entry = previews.get(element)
+          if (!entry) {
+            const owner = mountPreview({ element })
+            let disposed = false
+            entry = {
+              destroy() {
+                if (disposed) return
+                disposed = true
+                owner.destroy()
+                previews.delete(element)
+              },
+            }
+            previews.set(element, entry)
+            owner.mount()
+          }
+          owners.push(entry)
+        }
+      })
+      .catch(() => {
+        if (alive)
+          for (const element of elements) element.dataset.mapState = "failed"
+      })
+  return () => {
+    target.removeEventListener("pagehide", hide)
+    cleanup()
+  }
 }
 
 if (typeof document !== "undefined") {

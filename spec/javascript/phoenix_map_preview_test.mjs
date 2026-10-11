@@ -474,14 +474,22 @@ test("owned monthly preview reads cookie hexagons and bounded points", async () 
     },
     pages: async (resource, params) => {
       reads.push([resource, params])
-      return [{latitude: 52, longitude: 13, timestamp: 1}]
+      return [{ latitude: 52, longitude: 13, timestamp: 1 }]
     },
     reset() {},
     destroy() {},
   }
   const owner = createPreviewOwner({
     element,
-    config: { kind: "owned_stats", layer: "heatmap", range: {startAt: "2025-04-01T00:00:00Z", endAt: "2025-04-30T23:59:59Z", timezone: "UTC"} },
+    config: {
+      kind: "owned_stats",
+      layer: "heatmap",
+      range: {
+        startAt: "2025-04-01T00:00:00Z",
+        endAt: "2025-04-30T23:59:59Z",
+        timezone: "UTC",
+      },
+    },
     reader,
     loadLibrary: async () => ({
       Map: class {
@@ -496,7 +504,14 @@ test("owned monthly preview reads cookie hexagons and bounded points", async () 
   assert.equal(sources.has("hexagons"), true)
   assert.equal(reads[0][0], "hexagons")
   assert.equal(reads[0][1].start_date, "2025-04-01T00:00:00Z")
-  assert.equal(await owner.update({kind: "owned_stats", layer: "points", range: {startAt: "2025-04-01T00:00:00Z", endAt: "2025-04-30T23:59:59Z"}}), "ready")
+  assert.equal(
+    await owner.update({
+      kind: "owned_stats",
+      layer: "points",
+      range: { startAt: "2025-04-01T00:00:00Z", endAt: "2025-04-30T23:59:59Z" },
+    }),
+    "ready",
+  )
   assert.equal(reads.at(-2)[0], "points")
   assert.equal(reads.at(-1)[0], "bounds")
   assert.equal(sources.has("hexagons"), false)

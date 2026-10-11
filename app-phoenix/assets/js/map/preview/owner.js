@@ -19,7 +19,12 @@ export function createPreviewOwner({
     stats = null
     plan?.remove()
     plan = null
-    for (const id of ["preview-route", "preview-points", "hexagons-line", "hexagons-fill"])
+    for (const id of [
+      "preview-route",
+      "preview-points",
+      "hexagons-line",
+      "hexagons-fill",
+    ])
       if (map.getLayer(id)) map.removeLayer(id)
     for (const id of ["preview-route", "preview-points", "hexagons"])
       if (map.getSource(id)) map.removeSource(id)
@@ -28,7 +33,10 @@ export function createPreviewOwner({
     if (!current) return
     clear()
     const { data, state } = current
-    if (state.kind === "stats" || (state.kind === "owned_stats" && state.layer !== "points")) {
+    if (
+      state.kind === "stats" ||
+      (state.kind === "owned_stats" && state.layer !== "points")
+    ) {
       stats = createStatsLayer({
         map,
         library,
@@ -38,8 +46,26 @@ export function createPreviewOwner({
       })
       stats.show(data)
     } else if (state.kind === "owned_stats" && state.layer === "points") {
-      map.addSource("preview-points", {type: "geojson", data: {type: "FeatureCollection", features: (data.points ?? []).map(p => ({type: "Feature", properties: {}, geometry: {type: "Point", coordinates: [Number(p.longitude), Number(p.latitude)]}}))}})
-      map.addLayer({id: "preview-points", type: "circle", source: "preview-points", paint: {"circle-radius": 3, "circle-color": "#6366F1"}})
+      map.addSource("preview-points", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: (data.points ?? []).map((p) => ({
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "Point",
+              coordinates: [Number(p.longitude), Number(p.latitude)],
+            },
+          })),
+        },
+      })
+      map.addLayer({
+        id: "preview-points",
+        type: "circle",
+        source: "preview-points",
+        paint: { "circle-radius": 3, "circle-color": "#6366F1" },
+      })
     } else if (data.path?.length) {
       const lines = RouteSegmenter.unwrapCoordinates(
         data.path.map(([longitude, latitude]) => ({ longitude, latitude })),
@@ -120,7 +146,15 @@ export function createPreviewOwner({
           )
         ).data
       else if (state.kind === "owned_stats" && state.layer !== "points")
-        data = (await operation.wait(reader.read("hexagons", {start_date: state.range.startAt, end_date: state.range.endAt}, {signal}))).data
+        data = (
+          await operation.wait(
+            reader.read(
+              "hexagons",
+              { start_date: state.range.startAt, end_date: state.range.endAt },
+              { signal },
+            ),
+          )
+        ).data
       else if (state.tripId)
         data = (
           await operation.wait(
@@ -148,11 +182,28 @@ export function createPreviewOwner({
         }
       }
       if (!data) data = { path: [] }
-      const bounds = state.kind === "owned_stats" ? (await operation.wait(reader.read("bounds", {start_date: state.range.startAt, end_date: state.range.endAt}, {signal}))).data : state.bounds
+      const bounds =
+        state.kind === "owned_stats"
+          ? (
+              await operation.wait(
+                reader.read(
+                  "bounds",
+                  {
+                    start_date: state.range.startAt,
+                    end_date: state.range.endAt,
+                  },
+                  { signal },
+                ),
+              )
+            ).data
+          : state.bounds
       operation.check()
       current = { data, state }
       render()
-      if ((state.kind === "stats" || state.kind === "owned_stats") && bounds?.point_count > 0) {
+      if (
+        (state.kind === "stats" || state.kind === "owned_stats") &&
+        bounds?.point_count > 0
+      ) {
         const b = bounds
         map.fitBounds(
           [
