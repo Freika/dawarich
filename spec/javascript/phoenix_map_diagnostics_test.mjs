@@ -366,3 +366,42 @@ test("native viewport bounds diagnostics copy only finite coordinates and expire
   f.destroy()
   assert.equal(snapshot(), null)
 })
+
+test("native diagnostics copy owned GeoJSON input geometry and total count while bounding features", () => {
+  const f = setup()
+  const rows = Array.from({ length: 601 }, (_, id) => ({
+    type: "Feature",
+    properties: { id, api_key: "synthetic-private" },
+    geometry: { type: "Point", coordinates: [13.401234567, 52.501234567] },
+  }))
+  f.map.getSource = () => ({
+    serialize: () => ({
+      type: "geojson",
+      data: { type: "FeatureCollection", features: rows },
+    }),
+  })
+  const result = f.element.dawarichMapSnapshot({
+    sourceId: "points-mvt-source",
+  })
+  assert.equal(result.featureCount, 601)
+  assert.equal(result.features.length, 500)
+  assert.deepEqual(
+    result.features[0].geometry.coordinates,
+    [13.401234567, 52.501234567],
+  )
+  assert.equal(JSON.stringify(result).includes("synthetic-private"), false)
+  result.features[0].geometry.coordinates[0] = 1
+  assert.equal(rows[0].geometry.coordinates[0], 13.401234567)
+  f.map.getSource = () => ({
+    serialize: () => ({
+      type: "geojson",
+      data: "https://example.test/?token=synthetic-private",
+    }),
+  })
+  const remote = f.element.dawarichMapSnapshot({
+    sourceId: "points-mvt-source",
+  })
+  assert.equal(remote.featureCount, 700)
+  assert.equal(JSON.stringify(remote).includes("synthetic-private"), false)
+  f.destroy()
+})

@@ -159,10 +159,14 @@ export function installMapDiagnostics({ element, map, getConfig }) {
     let rows = []
     if (sources.includes(sourceId)) {
       try {
-        rows = map.querySourceFeatures(
-          sourceId,
-          sourceLayer ? { sourceLayer } : {},
-        )
+        const input = map.getSource?.(sourceId)?.serialize?.().data
+        rows =
+          input?.type === "FeatureCollection" && Array.isArray(input.features)
+            ? input.features
+            : map.querySourceFeatures(
+                sourceId,
+                sourceLayer ? { sourceLayer } : {},
+              )
       } catch {}
     }
     const paintBudget = { left: 4096 }
