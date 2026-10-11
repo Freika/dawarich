@@ -1,7 +1,7 @@
 defmodule Dawarich.Maps.VisitEditing do
   @moduledoc false
   alias Dawarich.{Maps, Repo, RubyInteger}
-  alias Dawarich.Maps.Dependencies.Notes
+  alias Dawarich.NotesApi.{Read, Write}
   alias Dawarich.Visits.{WebEffects, WebMerge, WebUpdate}
   alias Dawarich.VisitsApi.Create
 
@@ -103,7 +103,7 @@ defmodule Dawarich.Maps.VisitEditing do
 
   def notes(scope, visit_id, opts \\ []) do
     owned(scope, visit_id, opts, fn actor, id, zone ->
-      case Notes.list(actor.id, "Visit", id, zone) do
+      case Read.index(actor.id, %{"attachable_type" => "Visit", "attachable_id" => id}, zone) do
         {:ok, notes} -> {:ok, Enum.map(notes, fn {:object, pairs} -> Map.new(pairs) end)}
         other -> typed(other)
       end
@@ -119,7 +119,7 @@ defmodule Dawarich.Maps.VisitEditing do
         "noted_at" => DateTime.to_iso8601(now(opts))
       }
 
-      case Notes.create(actor.id, attrs, zone, now(opts)) do
+      case Write.create(actor.id, attrs, zone, now(opts)) do
         {:ok, 201, _} -> :ok
         {:ok, 422, {:object, [{"errors", errors}]}} -> {:error, {:invalid, errors}}
         other -> typed(other)

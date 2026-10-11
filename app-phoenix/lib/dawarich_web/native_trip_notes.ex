@@ -44,16 +44,26 @@ defmodule DawarichWeb.NativeTripNotes do
 
   defp persist(socket, day, date, action, body) do
     note_id = day.note && day.note.id
-    action = if action == :save, do: if(note_id, do: :update, else: :create), else: action
 
     result =
-      Dawarich.Maps.Dependencies.Notes.trip_change(
-        socket.assigns.current_scope,
-        action,
-        socket.assigns.page.presentation.id,
-        note_id,
-        %{"date" => date, "body" => body}
-      )
+      with {:ok, fresh} <- Dawarich.Maps.admit(socket.assigns.current_scope) do
+        case action do
+          :save ->
+            Dawarich.Trips.Notes.save(
+              fresh,
+              socket.assigns.page.presentation.id,
+              date,
+              body,
+              DateTime.utc_now(), repo: Dawarich.Repo)
+
+          :destroy ->
+            Dawarich.Trips.Notes.delete(
+              fresh,
+              socket.assigns.page.presentation.id,
+              note_id,
+              DateTime.utc_now(), repo: Dawarich.Repo)
+        end
+      end
 
     case result do
       {:ok, _} ->
@@ -62,7 +72,7 @@ defmodule DawarichWeb.NativeTripNotes do
           {:error, socket} -> socket
         end
 
-      {:invalid, errors, _} ->
+      {:invalid, errors} ->
         assign(socket, :note_editor, %{date: date, body: bounded_body(body), errors: errors})
 
       _ ->

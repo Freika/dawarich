@@ -1,7 +1,7 @@
 defmodule DawarichWeb.NativeM6IntegrationRegisterTest do
   use ExUnit.Case, async: true
 
-  test "native map integration records every B patch difference and Notes handoff" do
+  test "native map integration records B differences and native Notes contexts without an adapter" do
     diffs = File.read!(Path.expand("../../parity/expected_diffs.md", __DIR__))
     contracts = File.read!(Path.expand("../../../docs/phoenix/native-m6-contracts.md", __DIR__))
 
@@ -10,7 +10,8 @@ defmodule DawarichWeb.NativeM6IntegrationRegisterTest do
 
     assert diffs =~ "typed `unsupported`"
     assert diffs =~ "profile time zone"
-    assert contracts =~ "Dawarich.Maps.Dependencies.Notes"
+    assert contracts =~ "Dawarich.Trips.Notes"
+    refute File.exists?(Path.expand("../../lib/dawarich/maps/dependencies/notes.ex", __DIR__))
     assert contracts =~ "NotesApi.Read.index/3"
     assert contracts =~ "m5 notes/ActionText"
   end

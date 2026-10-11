@@ -19,7 +19,7 @@ Status: S1 foundation contracts implemented, 2026-10-10. The controller starts t
 | `Dawarich.Maps.Dependencies.Principal` | Accounts.get, Devise salt fingerprint, sanitized Scope | m4 fresh/sanitized principal and callback admission | Controller integrates m4, then dedicated adapter switch with original-session revocation tests |
 
 The other O10 dependencies (m4 upload claims/finalization, owner invalidations, family consent/public admission; m5 Trip/Visit/timeline projections and map insertion points) receive one thin adapter each when the owning A/B/D task first consumes them. The ledger will name actual modules and methods at that point. No duplicated domain queries or placeholder native fallback is part of this contract.
-| `Dawarich.Maps.Dependencies.Notes` | `NotesApi.Read.index/3` and `NotesApi.Write.create/4`; scoped plain-text visit notes | m5 notes/ActionText | Dedicated switch task; retain visit-note owner/day semantics |
+| `Dawarich.Trips.Notes` | `NotesApi.Read.index/3` and `NotesApi.Write.create/4`; scoped plain-text visit notes | integrated m5 notes/ActionText | Dedicated switch task; retain visit-note owner/day semantics |
 | `map/style/dependencies.js` | Pure existing poster basemap/token interfaces | A15/C0–C2 native poster style | Switch the two exports after controller integration |
 
 ## Verification
@@ -174,7 +174,7 @@ The Trip dependency adapter `view/3` reads one fresh owner-admitted TripPage and
 
 Trip day selection uses fresh admitted days and `trip:select_day` receipts. The Trip hook owns this handler, buffers an early receipt until map readiness, calls only its current layer owner, and removes the handler on destruction. Removing the resource refuses the next day command and clears the owner. Canonical production parent insertion remains pending.
 
-Native Trip notes keep only one bounded editor projection. The server selects the date/note from its freshly admitted Trip days; save/update/delete use the existing WebNotes domain service through Dawarich.Maps.Dependencies.Notes. Validation preserves the editor; cancel writes nothing; losing resource admission clears the root/editor and map owner. Browser notes use the principal Repo rather than the configurable job repository.
+Native Trip notes keep only one bounded editor projection. The server selects the date/note from its freshly admitted Trip days; save/update/delete use the existing WebNotes domain service through Dawarich.Trips.Notes. Validation preserves the editor; cancel writes nothing; losing resource admission clears the root/editor and map owner. Browser notes use the principal Repo rather than the configurable job repository.
 
 Trip photo/flight/plan visibility uses local Boolean overrides, pruned against freshly admitted settings/plan capability. Controls emit safe map:config receipts; all-days expansion emits an all-day selection receipt without changing the studios' Trip range. ARIA states are explicit text values.
 
@@ -199,3 +199,5 @@ The canonical Trip index uses `TripsLive.NativeIndex` and `NativeTripCard`; scal
 Native Map/Trip/Family/public routes ignore obsolete UI rollback keys and use their admitted native sessions. Consumed frame/address/segment endpoints refuse with 410, no cookie changes and no effects; the external APIs, retained form writes, downloads and phrase unlock retain their source protocols. Source-data fixtures keep their geometry, calendars, normalized fields, unit/date/country values, refusal/privacy, transaction/outbox and byte assertions. Named native behavior replaces importmap/controller/frame transport checks; the detailed test-retarget ledger records each successor. Current native CSS is checked against the Docker source closure and deterministic compilation, while unrelated asset exports retain their original hash contracts.
 
 Standalone browser specs collect without execution during implementation. Actual native controls and independent scoped/API reads replace mutable controller probes; real socket/HTTP responses can be held for deterministic races but are never fabricated. The three pre-existing photo-integration and fifteen family-plan fixture fixmes remain declared upstream dependencies. Browser, locale and real-file checks belong to controller acceptance; browser resource measurements are excluded by the scope cut. X4 verifies only the emitted production graph, workers and frozen byte caps.
+
+Stage 2: Visit notes call NotesApi.Read.index/3 and NotesApi.Write.create/4 directly after fresh map ownership admission. Native trip day notes use Dawarich.Trips.Notes.save/delete after Maps.admit; no Notes dependency module remains.
