@@ -18,6 +18,7 @@ function fixture(options = {}) {
       calls.roots++
     },
     ownerDocument: {
+      defaultView: options.window,
       createElement() {
         return {
           style: {},
@@ -387,4 +388,24 @@ test("current ordinary map refresh deadline ends loading emits failure and rejec
     f.runtime.destroy()
   }
   assert.equal(jobs.size, 0)
+})
+
+
+test("container resize updates the viewport and destruction disconnects the observer", async () => {
+  let notify, observed, disconnected = 0, resized = 0
+  class ResizeObserver {
+    constructor(callback) { notify = callback }
+    observe(target) { observed = target }
+    disconnect() { disconnected++ }
+  }
+  const f = fixture({ window: { ResizeObserver } })
+  await f.runtime.mount()
+  f.runtime.map.resize = () => resized++
+  assert.equal(observed, f.element)
+  notify()
+  assert.equal(resized, 1)
+  f.runtime.destroy()
+  assert.equal(disconnected, 1)
+  notify()
+  assert.equal(resized, 1)
 })

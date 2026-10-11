@@ -101,6 +101,14 @@ export function createMapRuntime({
       })
       const owned = map
       lifetime.own(() => owned.remove())
+      const Observer = element.ownerDocument.defaultView?.ResizeObserver ?? globalThis.ResizeObserver
+      if (Observer) {
+        const observer = new Observer(() => {
+          if (!lifetime.destroyed) owned.resize()
+        })
+        observer.observe(element)
+        lifetime.own(() => observer.disconnect())
+      }
       if (
         current.navigationControls !== false &&
         typeof library.NavigationControl === "function"
