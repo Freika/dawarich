@@ -55,5 +55,18 @@ export function auditDocument(html) {
     throw new Error('missing native entrypoint');
   return true;
 }
+export async function auditAssetResponses(paths, request, native = true) {
+  const verified = [];
+  for (const path of paths) {
+    const response = await request.get(path);
+    if (response.status() !== 200) throw new Error(`asset response: ${path}`);
+    const body = await response.body();
+    if (!body.length) throw new Error(`empty asset: ${path}`);
+    if (native && /\.(js|mjs)$/.test(path) && /Turbo\.session|@hotwired\/|application\.register\(/.test(body.toString()))
+      throw new Error(`legacy asset: ${path}`);
+    verified.push(path);
+  }
+  return verified;
+}
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href)
   console.log(JSON.stringify(auditPayload(process.argv[2], process.argv[3])));

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
-import { auditPayload, auditDocument } from '../../scripts/native_package.mjs';
+import { auditPayload, auditDocument, auditAssetResponses } from '../../scripts/native_package.mjs';
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'native-package-'));
@@ -140,4 +140,22 @@ test('native payload accepts SVG data URLs containing nested fragment references
   assert.equal(auditPayload(root, release).digests, 3);
   rmSync(join(root, 'release/priv/static/native/inter-abcd.woff2'));
   assert.throws(() => auditPayload(root, release), /inter-abcd.woff2/);
+});
+
+test('observed native assets are revalidated after document navigation', async () => {
+  const paths = ['/native/chunk.js', '/native/inter.woff2'];
+  const fetched = [];
+  let status = 200;
+  let source = 'synthetic module';
+  const request = { get: async path => {
+    fetched.push(path);
+    return { status: () => status, body: async () => Buffer.from(source) };
+  }};
+  assert.deepEqual(await auditAssetResponses(paths, request), paths);
+  assert.deepEqual(fetched, paths);
+  source = 'Turbo.session';
+  await assert.rejects(auditAssetResponses(paths, request), /legacy/);
+  source = 'synthetic module';
+  status = 404;
+  await assert.rejects(auditAssetResponses(paths, request), /asset response/);
 });

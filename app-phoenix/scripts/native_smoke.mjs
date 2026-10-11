@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { auditDocument } from './native_package.mjs';
+import { auditDocument, auditAssetResponses } from './native_package.mjs';
 
 const require = createRequire(join(process.env.NATIVE_PLAYWRIGHT_ROOT, 'package.json'));
 const { chromium } = require('@playwright/test');
@@ -14,7 +14,6 @@ const context = await browser.newContext({ baseURL, acceptDownloads: true,
 const page = await context.newPage();
 const assets = new Set();
 let stage = 'startup';
-const pending = [];
 const failures = [];
 const sockets = [];
 const workers = [];
@@ -28,9 +27,6 @@ page.on('response', response => {
     assets.add(url.pathname);
     if (!fallback && url.pathname.startsWith('/assets/')) failures.push(url.pathname);
     if (response.status() >= 400) failures.push(url.pathname);
-    if (/\.(js|mjs)$/.test(url.pathname)) pending.push(response.text().then(body => {
-      if (!fallback && /Turbo\.session|@hotwired\/|application\.register\(/.test(body)) failures.push(url.pathname);
-    }).catch(() => failures.push(url.pathname)));
   }
 });
 function evidence(name) { stage = name; console.log(`PASS ${name}`); }
@@ -121,7 +117,7 @@ try {
   }
   evidence('Swagger PWA icons worker siblings');
   await page.evaluate(() => document.fonts.ready);
-  await Promise.all(pending);
+  await auditAssetResponses(assets, context.request, !fallback);
   assert.deepEqual(failures, [], 'local asset responses');
   if (!fallback) {
     assert.ok([...assets].some(path => path.endsWith('.woff2')), 'native fonts fetched');
