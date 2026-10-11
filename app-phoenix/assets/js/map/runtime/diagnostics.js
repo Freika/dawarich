@@ -114,6 +114,17 @@ function hitCoordinates(geometry) {
   return null
 }
 function hitPosition(map, geometry) {
+  const single = {
+    MultiPoint: "Point",
+    MultiLineString: "LineString",
+    MultiPolygon: "Polygon",
+  }[geometry?.type]
+  if (single)
+    return (
+      geometry.coordinates
+        ?.map((coordinates) => hitPosition(map, { type: single, coordinates }))
+        .find(Boolean) ?? null
+    )
   const coordinate = hitCoordinates(geometry)
   if (
     !coordinate ||

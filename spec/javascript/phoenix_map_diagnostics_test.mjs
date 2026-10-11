@@ -455,3 +455,67 @@ test("diagnostic hit positions require rendered source geometry instead of hidde
   ])
   f.destroy()
 })
+
+test("rendered multipart tracks and areas use an in-viewport component for browser hits", () => {
+  const f = setup()
+  f.map.project = ([x, y]) => ({ x, y })
+  f.map.getContainer = () => ({
+    getBoundingClientRect: () => ({ width: 100, height: 100 }),
+  })
+  f.map.querySourceFeatures = () => [
+    { properties: { id: 7 }, geometry: { type: "Point", coordinates: [5, 5] } },
+  ]
+  let geometry
+  f.map.queryRenderedFeatures = () => [{ properties: { id: 7 }, geometry }]
+  const read = () =>
+    f.element.dawarichMapSnapshot({ sourceId: "points-mvt-source" }).features[0]
+      .screen
+  try {
+    geometry = {
+      type: "MultiLineString",
+      coordinates: [
+        [
+          [-20, -20],
+          [-10, -10],
+        ],
+        [
+          [30, 30],
+          [40, 40],
+        ],
+      ],
+    }
+    assert.deepEqual(read(), { x: 40, y: 40 })
+    geometry = {
+      type: "MultiPolygon",
+      coordinates: [
+        [
+          [
+            [-20, -20],
+            [-10, -20],
+            [-10, -10],
+            [-20, -20],
+          ],
+        ],
+        [
+          [
+            [30, 30],
+            [40, 30],
+            [40, 40],
+            [30, 30],
+          ],
+        ],
+      ],
+    }
+    assert.deepEqual(read(), { x: 35, y: 35 })
+    geometry = {
+      type: "MultiPoint",
+      coordinates: [
+        [-20, -20],
+        [30, 30],
+      ],
+    }
+    assert.deepEqual(read(), { x: 30, y: 30 })
+  } finally {
+    f.destroy()
+  }
+})
