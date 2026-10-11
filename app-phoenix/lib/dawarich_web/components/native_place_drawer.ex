@@ -9,7 +9,7 @@ defmodule DawarichWeb.NativePlaceDrawer do
     ~H"""
     <section
       id="native-place-drawer"
-      class="absolute right-0 top-32 bottom-0 z-20 w-96 max-w-full min-w-0 overflow-y-auto bg-base-100 p-4 space-y-4"
+      class="place-drawer absolute right-0 top-32 bottom-0 z-20 w-96 max-w-full min-w-0 overflow-y-auto bg-base-100 p-4 space-y-4"
       aria-labelledby="native-place-title"
     >
       <header class="flex min-w-0 gap-2 items-start">
