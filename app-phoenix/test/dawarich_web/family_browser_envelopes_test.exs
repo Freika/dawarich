@@ -23,7 +23,7 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   end
 
   @tag :sa_g44_families_leave
-  test "native confirmed browser leave removes one membership and redirects", c do
+  test "native map confirmed leave removes one membership and navigates to family creation", c do
     view = open(c.member)
     confirm(view, "remove_member", "92002")
     assert_redirect(view, "/family/new")
@@ -31,7 +31,7 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   end
 
   @tag :sa_g44_families_remove
-  test "native confirmed browser remove preserves the owner and removes the member", c do
+  test "native map confirmed removal preserves the owner and removes the member", c do
     view = open(c.owner)
     confirm(view, "remove_member", "92002")
     assert has_element?(view, "#family-shell")
@@ -39,7 +39,8 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   end
 
   @tag :sa_g44_families_accept
-  test "browser invitation acceptance joins once and permits leaving", c do
+  test "HTTP invitation acceptance joins once and native map departure removes the joined member",
+       c do
     response =
       browser(c.outsider, "/family/memberships?token=a9fpl-pending", %{"_method" => "post"})
 
@@ -54,10 +55,10 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   end
 
   @tag :sa_g44_families_delete
-  test "native browser family deletion refuses members until the owner removes them", c do
+  test "native map deletion refuses members until the owner removes them", c do
     view = open(c.owner)
     confirm(view, "delete", nil)
-    assert has_element?(view, "#family-errors")
+    assert has_element?(view, "[role=alert]")
     assert records("SELECT count(*) FROM families WHERE id=91001") == [[1]]
     confirm(view, "remove_member", "92002")
     confirm(view, "delete", nil)
@@ -66,7 +67,7 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   end
 
   @tag :sa_g44_families_history
-  test "native family form persists live location and history consent", c do
+  test "native map sharing form persists live location and history consent", c do
     assert sharing(c.owner, true) == :ok
     assert sharing(c.owner, true, %{"duration" => "1h"}) == :ok
     assert sharing(c.owner, true, %{"duration" => "1h", "share_history" => "true"}) == :ok
@@ -87,7 +88,7 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   end
 
   @tag :sa_g44_families_map
-  test "native browser family map includes only consenting members and removes revoked consent",
+  test "native map sharing command admits only consenting members and removes revoked consent",
        c do
     Repo.query!("UPDATE users SET settings=settings-'family' WHERE id IN (90101,90102)")
 
@@ -106,19 +107,20 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   defp sharing(user, enabled, attrs \\ %{}) do
     view = open(user)
 
-    render_change(
-      view,
-      "family_set_sharing",
-      Map.merge(
-        %{
-          "enabled" => to_string(enabled),
-          "duration" => "permanent",
-          "share_history" => "false",
-          "history_window" => "7d"
-        },
-        attrs
-      )
+    view
+    |> form("#native-family-sharing",
+      sharing:
+        Map.merge(
+          %{
+            "enabled" => to_string(enabled),
+            "duration" => "permanent",
+            "share_history" => "false",
+            "history_window" => "7d"
+          },
+          attrs
+        )
     )
+    |> render_change()
 
     :ok
   end
@@ -127,8 +129,13 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
     do: elem(live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/family"), 1)
 
   defp confirm(view, action, id) do
-    render_hook(view, "family_prepare_confirm", %{"action" => action, "id" => id})
-    render_hook(view, "family_confirm", %{})
+    event = %{"remove_member" => "member", "delete" => "destroy"}[action]
+
+    selector =
+      "[phx-click='family:#{event}'][data-confirm]" <>
+        if(id, do: "[phx-value-id='#{id}']", else: "")
+
+    view |> element(selector) |> render_click()
   end
 
   defp browser(user, path, params) do

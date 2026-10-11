@@ -110,3 +110,24 @@ Some source cases map jointly to two successors. Names containing `#{@name}` ref
 - `native public gallery accepts M5 values and keeps only admitted thumbnail metadata` covers the tuple/map boundary without geometry in LiveView presentation; `review trip gallery retains the 101st allowed photo` keeps the source gallery/API distinction.
 - Public cookie expiry, signout, immutable grant, revocation, viewer identity and delivery race successors retain M4 policy through the real M6 host.
 - The light/dark and mile Trip card cases retain canonical M5 settings; date/timezone, counts, note editing, rich-text mounts, replay/studios and effect snapshots stay behavior assertions.
+
+## Stage-2 group A: Family host and navbar successors (2026-10-11)
+
+The activated M6 family map consumes M4 scoped commands directly. The old confirmation modal events retire with the replaced host; the native `data-confirm` contract is exercised through the actual Phoenix HTML click dispatcher. Membership IDs, owner preservation, invitation IDs, consent history/duration, stale identity refusal and withdrawn-membership clearing remain exact behavior checks. The shared native map chrome now subscribes to canonical Family/Notification producers and refreshes its freshly admitted navbar without consuming the map invalidation. This corrects a Phoenix integration defect.
+
+| Test file | Previous case | Named successor |
+| --- | --- | --- |
+| `dawarich_web/family_native_events_test.exs` | cancelled confirmation changes nothing and confirmed family actions dispatch once | native member confirmation gates cancellation and repeated removal cannot affect the owner |
+| `dawarich_web/family_native_events_test.exs` | rendered member confirmation accepts its numeric JS payload and removes only that member | native rendered member command carries its membership ID and removes only that member |
+| `dawarich_web/family_native_events_test.exs` | owner member and target forms preserve role validation without hidden writes | native map family commands preserve member role refusals without hidden writes |
+| `dawarich_web/family_native_events_test.exs` | native invitation validation refreshes ID-only controls and cancels exactly the owned invitation | native map invitation validation refreshes ID-only controls and cancels exactly the owned invitation |
+| `dawarich_web/family_native_events_test.exs` | consent history and duration persist independently and refresh the native indicator | native map consent history and duration persist independently and refresh the native indicator |
+| `dawarich_web/family_native_events_test.exs` | family event info and params refuse changed passwords locked deleted and removed actors | native map event info and params refuse stale actors and clear withdrawn memberships |
+| `dawarich_web/family_browser_envelopes_test.exs` | native confirmed browser leave removes one membership and redirects | native map confirmed leave removes one membership and navigates to family creation |
+| `dawarich_web/family_browser_envelopes_test.exs` | native confirmed browser remove preserves the owner and removes the member | native map confirmed removal preserves the owner and removes the member |
+| `dawarich_web/family_browser_envelopes_test.exs` | browser invitation acceptance joins once and permits leaving | HTTP invitation acceptance joins once and native map departure removes the joined member |
+| `dawarich_web/family_browser_envelopes_test.exs` | native browser family deletion refuses members until the owner removes them | native map deletion refuses members until the owner removes them |
+| `dawarich_web/family_browser_envelopes_test.exs` | native family form persists live location and history consent | native map sharing form persists live location and history consent |
+| `dawarich_web/family_browser_envelopes_test.exs` | native browser family map includes only consenting members and removes revoked consent | native map sharing command admits only consenting members and removes revoked consent |
+| `dawarich_web/notification_subscription_test.exs` | family invalidations refresh job navbars while notification delivery remains independent | family and notification producers refresh job and native map navbars independently |
+| `client/native_family_confirmation_test.mjs` | Retired server confirmation preparation/cancel events | native family cancelled member deletion and invitation confirmations dispatch no command; native family accepted member deletion and invitation confirmations dispatch one command |

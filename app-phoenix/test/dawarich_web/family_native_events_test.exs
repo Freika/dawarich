@@ -80,41 +80,40 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     assert row("SELECT name FROM families WHERE creator_id=90103") == [["New family"]]
   end
 
-  test "cancelled confirmation changes nothing and confirmed family actions dispatch once", ctx do
-    {view, _} = open(ctx.owner, "/family")
-    render_hook(view, "family_prepare_confirm", %{"action" => "remove_member", "id" => "92002"})
-    assert has_element?(view, "#family-confirm[data-pending=true]")
-    render_hook(view, "family_cancel_confirm", %{})
-    assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[1]]
-    render_hook(view, "family_confirm", %{})
-    assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[1]]
-    render_hook(view, "family_prepare_confirm", %{"action" => "remove_member", "id" => "92002"})
-    render_hook(view, "family_confirm", %{})
-    assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[0]]
-    assert family_locks(view, fn -> render_hook(view, "family_confirm", %{}) end) == 0
-  end
-
-  test "rendered member confirmation accepts its numeric JS payload and removes only that member",
+  test "native member confirmation gates cancellation and repeated removal cannot affect the owner",
        ctx do
     {view, _} = open(ctx.owner, "/family")
-    view |> element("button[data-family-action=remove_member]") |> render_click()
-    assert has_element?(view, "#family-confirm[data-pending=true]")
+    selector = "button[phx-click='family:member'][phx-value-id='92002'][data-confirm]"
+    assert has_element?(view, selector)
     assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[1]]
-    view |> element("#family-confirm button[phx-click=family_confirm]") |> render_click()
+    view |> element(selector) |> render_click()
+    assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[0]]
+    render_click(view, "family:member", %{"id" => "92002"})
+    assert row("SELECT count(*) FROM family_memberships WHERE id=92001") == [[1]]
+    assert has_element?(view, "[role=alert]")
+  end
+
+  test "native rendered member command carries its membership ID and removes only that member",
+       ctx do
+    {view, _} = open(ctx.owner, "/family")
+
+    view
+    |> element("button[phx-click='family:member'][phx-value-id='92002'][data-confirm]")
+    |> render_click()
+
     assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[0]]
     assert row("SELECT count(*) FROM family_memberships WHERE id=92001") == [[1]]
   end
 
-  test "owner member and target forms preserve role validation without hidden writes", ctx do
+  test "native map family commands preserve member role refusals without hidden writes", ctx do
     {view, _} = open(ctx.member, "/family")
-    refute has_element?(view, "#native-invite-form")
+    refute has_element?(view, "#native-family-invite")
     refute has_element?(view, "a[href='/family/edit']")
-    render_hook(view, "family_prepare_confirm", %{"action" => "delete"})
-    render_hook(view, "family_confirm", %{})
+    render_click(view, "family:destroy", %{})
     assert row("SELECT count(*) FROM families WHERE id=91001") == [[1]]
-    assert has_element?(view, "#family-errors")
+    assert has_element?(view, "[role=alert]")
 
-    render_hook(view, "family_invite", %{
+    render_submit(view, "family:invite", %{
       "family_invitation" => %{"email" => "foreign@example.invalid"}
     })
 
@@ -122,73 +121,82 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
              [[0]]
   end
 
-  test "native invitation validation refreshes ID-only controls and cancels exactly the owned invitation",
+  test "native map invitation validation refreshes ID-only controls and cancels exactly the owned invitation",
        ctx do
     Dawarich.Jobs.Ownership.put!(Repo, "command:mail.family_invitation", :oban)
     {view, _} = open(ctx.owner, "/family")
-    render_hook(view, "family_invite", %{"family_invitation" => %{"email" => ""}})
-    assert has_element?(view, "#family-errors")
+    render_submit(view, "family:invite", %{"family_invitation" => %{"email" => ""}})
+    assert has_element?(view, "[role=alert]")
 
-    render_hook(view, "family_invite", %{
+    render_submit(view, "family:invite", %{
       "family_invitation" => %{"email" => "new-native@example.invalid"}
     })
 
     [[id]] = row("SELECT id FROM family_invitations WHERE email='new-native@example.invalid'")
-    assert has_element?(view, "[data-invitation-id='#{id}']")
+    assert has_element?(view, "[phx-click='family:cancel'][phx-value-id='#{id}']")
 
     refute Map.has_key?(
-             Enum.find(:sys.get_state(view.pid).socket.assigns.page.invitations, &(&1.id == id)),
+             Enum.find(
+               :sys.get_state(view.pid).socket.assigns.page.presentation.invitations,
+               &(&1.id == id)
+             ),
              :token
            )
 
-    render_hook(view, "family_prepare_confirm", %{
-      "action" => "cancel_invitation",
-      "id" => Integer.to_string(id)
-    })
+    view
+    |> element("[phx-click='family:cancel'][phx-value-id='#{id}'][data-confirm]")
+    |> render_click()
 
-    render_hook(view, "family_confirm", %{})
     assert row("SELECT status FROM family_invitations WHERE id=#{id}") == [[3]]
-    refute has_element?(view, "[data-invitation-id='#{id}']")
+    refute has_element?(view, "[phx-click='family:cancel'][phx-value-id='#{id}']")
   end
 
-  test "consent history and duration persist independently and refresh the native indicator",
+  test "native map consent history and duration persist independently and refresh the native indicator",
        ctx do
     {view, _} = open(ctx.member, "/family")
 
-    render_hook(view, "family_set_sharing", %{
-      "enabled" => "1",
-      "duration" => "6h",
-      "share_history" => "1",
-      "history_window" => "30d",
-      "history_before_sharing" => "0"
+    render_change(view, "family:sharing", %{
+      "sharing" => %{
+        "enabled" => "1",
+        "duration" => "6h",
+        "share_history" => "1",
+        "history_window" => "30d",
+        "history_before_sharing" => "0"
+      }
     })
 
     [[config]] = row("SELECT settings #> '{family,location_sharing}' FROM users WHERE id=90102")
     assert config["enabled"] and config["share_history"]
     refute config["history_before_sharing"]
     assert config["duration"] == "6h" and config["history_window"] == "30d"
-    assert has_element?(view, "input[name=share_history][type=checkbox][checked]")
+    assert has_element?(view, "input[name='sharing[share_history]'][type=checkbox][checked]")
     assert render(view) =~ "Location sharing enabled for 6 hours"
-    assert has_element?(view, "select[name=duration] option[value='6h'][selected]")
+    assert has_element?(view, "select[name='sharing[duration]'] option[value='6h'][selected]")
 
-    render_hook(view, "family_set_sharing", %{
-      "enabled" => "1",
-      "duration" => "1h",
-      "share_history" => "0"
+    render_change(view, "family:sharing", %{
+      "sharing" => %{
+        "enabled" => "1",
+        "duration" => "1h",
+        "share_history" => "0"
+      }
     })
 
-    assert has_element?(view, "input[name=enabled][type=checkbox][checked]")
+    assert has_element?(view, "input[name='sharing[enabled]'][type=checkbox][checked]")
 
     assert has_element?(
              view,
              "#family-navbar-indicator[data-tip='Location is being shared with your family']"
            )
 
-    refute has_element?(view, "input[name=share_history][type=checkbox][checked]")
-    assert has_element?(view, "select[name=duration] option[value='1h'][selected]")
-    render_hook(view, "family_set_sharing", %{"enabled" => "0", "share_history" => "1"})
-    refute has_element?(view, "input[name=enabled][type=checkbox][checked]")
-    refute has_element?(view, "input[name=share_history][type=checkbox][checked]")
+    refute has_element?(view, "input[name='sharing[share_history]'][type=checkbox][checked]")
+    assert has_element?(view, "select[name='sharing[duration]'] option[value='1h'][selected]")
+
+    render_change(view, "family:sharing", %{
+      "sharing" => %{"enabled" => "0", "share_history" => "1"}
+    })
+
+    refute has_element?(view, "input[name='sharing[enabled]'][type=checkbox][checked]")
+    refute has_element?(view, "input[name='sharing[share_history]'][type=checkbox][checked]")
   end
 
   test "only the request target can accept or decline and closing a request dialog does not write",
@@ -203,7 +211,7 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     assert row("SELECT status FROM family_location_requests WHERE id=94001") == [[1]]
   end
 
-  test "family event info and params refuse changed passwords locked deleted and removed actors",
+  test "native map event info and params refuse stale actors and clear withdrawn memberships",
        ctx do
     for change <- ["encrypted_password='revoked-session'", "locked_at=now()", "deleted_at=now()"],
         stage <- [:info, :event, :params] do
@@ -213,7 +221,7 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
 
       case stage do
         :info -> send(view.pid, :family_probe)
-        :event -> render_hook(view, "family_set_sharing", %{"enabled" => "1"})
+        :event -> render_change(view, "family:sharing", %{"sharing" => %{"enabled" => "1"}})
         :params -> render_patch(view, "/family?locale=de")
       end
 
@@ -229,7 +237,9 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     {view, _} = open(ctx.member, "/family")
     Repo.query!("DELETE FROM family_memberships WHERE user_id=90102", [], log: false)
     send(view.pid, :family_probe)
-    assert_redirect(view, "/family/new")
+    refute has_element?(view, "#family-shell")
+    assert :sys.get_state(view.pid).socket.assigns.page == nil
+    assert_push_event(view, "map:clear", %{code: "not_found"})
   end
 
   test "invitation capability reveal is scoped HTTP with CSRF and no-store", ctx do
@@ -264,37 +274,5 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     assert get(outsider, path).status in [403, 404]
     Repo.query!("UPDATE family_invitations SET status=3 WHERE id=$1", [id], log: false)
     assert get(conn, path).status == 404
-  end
-
-  defp family_locks(view, action) do
-    ref = make_ref()
-    parent = self()
-    id = {:family_locks, ref}
-
-    :telemetry.attach(
-      id,
-      [:dawarich, :repo, :query],
-      fn _, _, meta, _ ->
-        if self() == view.pid and
-             String.starts_with?(meta.query, "SELECT id FROM families WHERE id=$1 FOR UPDATE"),
-           do: send(parent, {ref, :lock})
-      end,
-      nil
-    )
-
-    try do
-      action.()
-      drain_locks(ref, 0)
-    after
-      :telemetry.detach(id)
-    end
-  end
-
-  defp drain_locks(ref, n) do
-    receive do
-      {^ref, :lock} -> drain_locks(ref, n + 1)
-    after
-      0 -> n
-    end
   end
 end
