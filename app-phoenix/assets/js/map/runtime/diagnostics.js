@@ -138,6 +138,18 @@ function hitPosition(map, geometry) {
   } catch {}
   return null
 }
+function viewportBounds(map) {
+  const box = map.getBounds?.()
+  if (!box) return null
+  const result = {
+    west: box.getWest(),
+    south: box.getSouth(),
+    east: box.getEast(),
+    north: box.getNorth(),
+  }
+  return Object.values(result).every(Number.isFinite) ? result : null
+}
+
 export function installMapDiagnostics({ element, map, getConfig }) {
   let active = true
   const snapshot = ({ sourceId, sourceLayer } = {}) => {
@@ -159,6 +171,7 @@ export function installMapDiagnostics({ element, map, getConfig }) {
     return {
       center: center ? { lng: center.lng, lat: center.lat } : null,
       zoom: map.getZoom?.() ?? null,
+      bounds: viewportBounds(map),
       bearing: map.getBearing?.() ?? null,
       pitch: map.getPitch?.() ?? null,
       projection: map.getProjection?.()?.type ?? null,

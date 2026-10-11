@@ -344,3 +344,25 @@ test("owned visit halo diagnostics copy only bounded integer identity filters", 
     f.destroy()
   }
 })
+
+test("native viewport bounds diagnostics copy only finite coordinates and expire with their owner", () => {
+  const f = setup()
+  const box = { west: 12, south: 51, east: 14, north: 53 }
+  f.map.getBounds = () => ({
+    getWest: () => box.west,
+    getSouth: () => box.south,
+    getEast: () => box.east,
+    getNorth: () => box.north,
+    token: "synthetic-private",
+  })
+  const snapshot = f.element.dawarichMapSnapshot
+  assert.deepEqual(snapshot().bounds, box)
+  snapshot().bounds.west = 80
+  assert.equal(snapshot().bounds.west, 12)
+  for (const value of [NaN, Infinity, "synthetic-private"]) {
+    box.west = value
+    assert.equal(snapshot().bounds, null)
+  }
+  f.destroy()
+  assert.equal(snapshot(), null)
+})
