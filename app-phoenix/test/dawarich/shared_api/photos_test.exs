@@ -61,38 +61,38 @@ defmodule Dawarich.SharedApi.PhotosTest do
   test "enabled unconfigured photos replay lists and deny scopeless thumbnails before cache effects",
        ctx do
     link = %{ctx.link | settings: %{"show_photos" => true}}
-    assert {:replay, _} = Photos.response(link, :photos)
-    assert {:replay, _} = Photos.response(link, :thumbnail)
+    assert Photos.response(link, :photos) == {:ok, []}
+    assert Photos.response(link, :thumbnail) == {:head, 404}
     flag!(true)
 
     for action <- ["photos"] do
       client = request(ctx.port, "/api/v1/shared/#{@id}/#{action}", @headers)
-      assert puma(ctx.upstream) == "GET /api/v1/shared/#{@id}/#{action} HTTP/1.1"
-      assert {200, _, "rails"} = read_response(client)
+      assert {200, _, "[]"} = read_response(client)
+      no_upstream!(ctx.upstream)
     end
 
     assert {404, _, ""} = response(ctx, "photos/synthetic/thumbnail?source=immich")
     no_upstream!(ctx.upstream)
-    untouched!()
+    untouched!(:empty_scope)
   end
 
   test "provider-enabled shared photos replay lists and deny scopeless thumbnails before network effects",
        ctx do
     {provider, worker} = provider!(ctx.link.user_id)
     link = %{ctx.link | settings: %{"show_photos" => true}}
-    assert {:replay, _} = Photos.response(link, :photos)
+    assert Photos.response(link, :photos) == {:ok, []}
     refute_received :photo_request
     flag!(true)
 
     for action <- ["photos"] do
       client = request(ctx.port, "/api/v1/shared/#{@id}/#{action}", @headers)
-      assert puma(ctx.upstream) == "GET /api/v1/shared/#{@id}/#{action} HTTP/1.1"
-      assert {200, _, "rails"} = read_response(client)
+      assert {200, _, "[]"} = read_response(client)
+      no_upstream!(ctx.upstream)
     end
 
     assert {404, _, ""} = response(ctx, "photos/synthetic/thumbnail?source=immich")
     no_upstream!(ctx.upstream)
-    untouched!()
+    untouched!(:empty_scope)
     refute_received :photo_request
     Task.shutdown(worker, :brutal_kill)
     :gen_tcp.close(provider.listen)
@@ -108,8 +108,20 @@ defmodule Dawarich.SharedApi.PhotosTest do
   defp response(ctx, action),
     do: ctx.port |> request("/api/v1/shared/#{@id}/#{action}", @headers) |> read_response()
 
-  defp untouched! do
-    assert Redix.command!(Dawarich.Redis.Cache, ["KEYS", "*"]) == ["a4rest-shared-acl-sentinel"]
+  defp untouched!(scope \\ nil) do
+    extra =
+      if scope == :empty_scope do
+        link = Dawarich.SharedLinks.active(@id, DateTime.utc_now())
+        key = Dawarich.SharedApi.Closure.photo_ids_key(link)
+        assert {:ok, %{}} = Dawarich.Photos.ProviderCache.get(key)
+        assert Redix.command!(Dawarich.Redis.Cache, ["TTL", key]) in 590..600
+        [key]
+      else
+        []
+      end
+
+    assert Enum.sort(Redix.command!(Dawarich.Redis.Cache, ["KEYS", "*"])) ==
+             Enum.sort(["a4rest-shared-acl-sentinel" | extra])
 
     assert Redix.command!(Dawarich.Redis.Cache, ["GET", "a4rest-shared-acl-sentinel"]) ==
              "synthetic"

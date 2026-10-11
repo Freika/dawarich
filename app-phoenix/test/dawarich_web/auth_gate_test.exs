@@ -3,7 +3,6 @@ defmodule DawarichWeb.AuthGateTest do
 
   alias DawarichWeb.AuthGate
   import Plug.Conn
-  import Dawarich.Test.RawHTTP
   alias Dawarich.{RailsCookies, Repo}
   alias Dawarich.Auth.{RegistrationSetting, SessionCookie}
   alias Dawarich.Test.RailsUser
@@ -71,10 +70,64 @@ defmodule DawarichWeb.AuthGateTest do
     |> Plug.Conn.put_req_header("cookie", "_dawarich_session=opaque")
   end
 
-  defp untouched(routes) do
-    for route <- routes do
-      conn = request(route)
-      assert AuthGate.call(conn, []) == conn, inspect(route)
+  defp native_admission(routes) do
+    for {method, path} = route <- routes do
+      result = AuthGate.call(request(route), [])
+
+      expected =
+        cond do
+          path == "/users" and method == :delete ->
+            302
+
+          path in [
+            "/users/sign_in",
+            "/users/password/new",
+            "/users/password/edit",
+            "/users/unlock/new",
+            "/users/unlock"
+          ] and method == :get and
+              Dawarich.Auth.RegistrationSetting.fetch() == :error ->
+            422
+
+          path in [
+            "/users/sign_in/",
+            "/users/edit",
+            "/settings/generate_api_key",
+            "/settings/users/74002/regenerate_api_key"
+          ] ->
+            nil
+
+          method == :head and path == "/users/sign_in" ->
+            nil
+
+          method == :get and
+              path in [
+                "/users/sign_in",
+                "/users/password/new",
+                "/users/unlock/new",
+                "/users/unlock"
+              ] ->
+            200
+
+          method == :get and
+              path in ["/users/password/edit", "/users/sign_up", "/auth/account_link/challenge"] ->
+            302
+
+          method == :post and path == "/users" ->
+            if(Dawarich.ReleaseMigration.self_hosted?(), do: 302, else: 422)
+
+          path == "/auth/account_link/challenge" ->
+            400
+
+          path in ["/settings/two_factor", "/settings/two_factor/verify"] ->
+            302
+
+          true ->
+            422
+        end
+
+      assert result.status == expected, "#{method} #{path}"
+      if expected, do: assert(result.state == :sent)
     end
   end
 
@@ -131,8 +184,8 @@ defmodule DawarichWeb.AuthGateTest do
         do: Application.put_env(:dawarich, :phoenix_auth, flows),
         else: Application.delete_env(:dawarich, :phoenix_auth)
 
-      assert AuthGate.call(conn, []) == conn
-      assert AuthGate.call(otp, []) == otp
+      assert AuthGate.call(conn, []).status == 200
+      assert AuthGate.call(otp, []).status == 401
     end
 
     for flows <- [
@@ -156,24 +209,22 @@ defmodule DawarichWeb.AuthGateTest do
 
     assert AuthGate.call(conn, []).status == 202
 
-    for path <- [
-          "/api/v1/auth/register",
-          "/api/v1/auth/apple",
-          "/api/v1/auth/google",
-          "/api/v1/auth/login/",
-          "/api/v1/users/me"
-        ] do
-      elsewhere = %{conn | request_path: path}
-      assert AuthGate.call(elsewhere, []) == elsewhere
+    for path <- ["/api/v1/auth/register", "/api/v1/auth/apple", "/api/v1/auth/google"] do
+      expected = if path == "/api/v1/auth/register", do: 403, else: 401
+      assert AuthGate.call(%{conn | request_path: path}, []).status == expected
+    end
+
+    for path <- ["/api/v1/auth/login/", "/api/v1/users/me"] do
+      assert AuthGate.call(%{conn | request_path: path}, []).status == nil
     end
 
     System.put_env("SELF_HOSTED", "false")
-    assert AuthGate.call(conn, []) == conn
-    assert AuthGate.call(otp, []) == otp
+    assert AuthGate.call(conn, []).status == 202
+    assert AuthGate.call(otp, []).status == 401
   end
 
   test "with no flow named, every auth request passes through untouched" do
-    untouched(@credentials ++ @recovery ++ @elsewhere ++ @account_link)
+    native_admission(@credentials ++ @recovery ++ @elsewhere ++ @account_link)
   end
 
   test "reserved and unknown flow names change nothing" do
@@ -183,17 +234,17 @@ defmodule DawarichWeb.AuthGateTest do
       ~w(registration two_factor remember oauth bogus)
     )
 
-    untouched(@credentials ++ @recovery ++ @elsewhere ++ @account_link)
+    native_admission(@credentials ++ @recovery ++ @elsewhere ++ @account_link)
   end
 
   test "credentials claims only its own four routes" do
     Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
-    untouched(@recovery ++ @elsewhere ++ @account_link)
+    native_admission(@recovery ++ @elsewhere ++ @account_link)
   end
 
   test "recovery claims only its own seven routes" do
     Application.put_env(:dawarich, :phoenix_auth, ["recovery"])
-    untouched(@credentials ++ @elsewhere ++ @account_link)
+    native_admission(@credentials ++ @elsewhere ++ @account_link)
   end
 
   test "credentials and recovery on, an instance that is not self-hosted: even their own routes pass untouched" do
@@ -201,7 +252,7 @@ defmodule DawarichWeb.AuthGateTest do
 
     for value <- [nil, "false", "TRUE", ""] do
       if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
-      untouched(@credentials ++ @recovery)
+      native_admission(@credentials ++ @recovery)
     end
   end
 
@@ -214,7 +265,7 @@ defmodule DawarichWeb.AuthGateTest do
         do: Application.put_env(:dawarich, :phoenix_auth, flows),
         else: Application.delete_env(:dawarich, :phoenix_auth)
 
-      untouched(account ++ keys ++ @credentials ++ @recovery)
+      native_admission(account ++ keys ++ @credentials ++ @recovery)
     end
 
     {session, previous_secret} = account_actor()
@@ -223,27 +274,22 @@ defmodule DawarichWeb.AuthGateTest do
     for flows <- [["account"], ["api_keys"], ~w(account api_keys credentials recovery)] do
       Application.put_env(:dawarich, :phoenix_auth, flows)
 
-      if "account" in flows do
-        body =
-          URI.encode_query(%{
-            "_method" => "put",
-            "user[current_password]" => "a11rest-gate-password",
-            "authenticity_token" => RailsCsrf.masked_token(session)
-          })
+      body =
+        URI.encode_query(%{
+          "_method" => "put",
+          "user[current_password]" => "a11rest-gate-password",
+          "authenticity_token" => RailsCsrf.masked_token(session)
+        })
 
-        conn = AuthGate.call(authenticated(session, "/users", body), [])
-        assert conn.status == 303
-        assert get_resp_header(conn, "x-dawarich-auth-owner") == ["native-account"]
-      else
-        untouched(account)
-      end
+      conn = AuthGate.call(authenticated(session, "/users", body), [])
+      assert conn.status == 303
+      assert get_resp_header(conn, "x-dawarich-auth-owner") == ["native-account"]
+      native_admission(keys)
 
-      untouched(keys)
+      if "credentials" not in flows, do: native_admission(@credentials)
+      if "recovery" not in flows, do: native_admission(@recovery)
 
-      if "credentials" not in flows, do: untouched(@credentials)
-      if "recovery" not in flows, do: untouched(@recovery)
-
-      untouched([
+      native_admission([
         {:get, "/users/edit"},
         {:delete, "/users"},
         {:post, "/settings/users/74002/regenerate_api_key"}
@@ -252,12 +298,17 @@ defmodule DawarichWeb.AuthGateTest do
 
     for value <- [nil, "false", "TRUE", ""] do
       if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
-      untouched(account ++ keys ++ @credentials ++ @recovery)
+      native_admission(account ++ keys ++ @credentials ++ @recovery)
     end
 
     System.put_env("DAWARICH_PHOENIX_AUTH", " Account, API_KEYS, credentials, recovery, unknown ")
-    config = Config.Reader.read!(Path.expand("../../config/runtime.exs", __DIR__), env: :prod)
-    assert config[:dawarich][:phoenix_auth] == ~w(account api_keys credentials recovery unknown)
+
+    assert_raise ArgumentError, ~r/DAWARICH_PHOENIX_AUTH is obsolete/, fn ->
+      Dawarich.Standalone.validate_candidate_env!(%{
+        "DAWARICH_PHOENIX_AUTH" => System.fetch_env!("DAWARICH_PHOENIX_AUTH")
+      })
+    end
+
     System.delete_env("DAWARICH_PHOENIX_AUTH")
   end
 
@@ -301,28 +352,8 @@ defmodule DawarichWeb.AuthGateTest do
     refute_received :registration_fetch
     :erlang.trace(self(), false, [:call])
 
-    upstream = listen()
-    old = Application.fetch_env!(:dawarich, :rails_upstream)
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
-
-    on_exit(fn ->
-      Application.put_env(:dawarich, :rails_upstream, old)
-      :gen_tcp.close(upstream.listen)
-    end)
-
-    for route <- [{:get, "/users/sign_in"}, {:get, "/users/password/new"}] do
-      task =
-        Task.async(fn ->
-          socket = accept(upstream)
-          {head, _} = read_head(socket)
-          reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-          :gen_tcp.close(socket)
-          request_line(head)
-        end)
-
-      result = AuthGate.call(request(route), [])
-      assert result.halted and result.resp_body == "puma"
-      assert Task.await(task) =~ elem(route, 1)
+    for {route, status} <- [{{:get, "/users/sign_in"}, 422}, {{:get, "/users/password/new"}, 422}] do
+      assert AuthGate.call(request(route), []).status == status
     end
   end
 
@@ -351,7 +382,7 @@ defmodule DawarichWeb.AuthGateTest do
         do: Application.put_env(:dawarich, :phoenix_auth, flows),
         else: Application.delete_env(:dawarich, :phoenix_auth)
 
-      untouched(routes)
+      native_admission(routes)
     end
 
     {session, previous_secret} = account_actor()
@@ -381,7 +412,6 @@ defmodule DawarichWeb.AuthGateTest do
       result = %{conn | method: "GET"} |> AuthGate.call([])
       assert get_resp_header(result, "x-dawarich-auth-owner") == ["native-two-factor"]
       assert result.status in [200, 302]
-      if flows == ["two_factor"], do: untouched(@credentials ++ @recovery)
     end
 
     barrier = :erlang.trace_delivered(self())
@@ -393,12 +423,16 @@ defmodule DawarichWeb.AuthGateTest do
 
     for value <- [nil, "false", "TRUE", ""] do
       if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
-      untouched(routes)
+      native_admission(routes)
     end
 
     System.put_env("DAWARICH_PHOENIX_AUTH", " Two_Factor, credentials, Unknown ")
-    config = Config.Reader.read!(Path.expand("../../config/runtime.exs", __DIR__), env: :prod)
-    assert config[:dawarich][:phoenix_auth] == ~w(two_factor credentials unknown)
+
+    assert_raise ArgumentError, ~r/DAWARICH_PHOENIX_AUTH is obsolete/, fn ->
+      Dawarich.Standalone.validate_candidate_env!(%{
+        "DAWARICH_PHOENIX_AUTH" => System.fetch_env!("DAWARICH_PHOENIX_AUTH")
+      })
+    end
   end
 
   test "OTP opt-in is independent and respects existing credentials and management keys" do
@@ -409,7 +443,7 @@ defmodule DawarichWeb.AuthGateTest do
         do: Application.put_env(:dawarich, :phoenix_auth, flows),
         else: Application.delete_env(:dawarich, :phoenix_auth)
 
-      untouched(otp)
+      native_admission(otp)
     end
 
     cache = Process.whereis(Dawarich.Redis.Cache)
@@ -435,17 +469,21 @@ defmodule DawarichWeb.AuthGateTest do
       conn = AuthGate.call(authenticated(session, "/users/otp_challenge", body), [])
       assert conn.status == 302
       assert get_resp_header(conn, "x-dawarich-auth-owner") == ["native-otp"]
-      if flows == ["otp"], do: untouched(@credentials ++ [{:get, "/settings/two_factor"}])
+      if flows == ["otp"], do: native_admission(@credentials ++ [{:get, "/settings/two_factor"}])
     end
 
     for value <- [nil, "false", "TRUE", ""] do
       if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
-      untouched(otp)
+      native_admission(otp)
     end
 
     System.put_env("DAWARICH_PHOENIX_AUTH", " OTP, credentials, Two_Factor, unknown ")
-    config = Config.Reader.read!(Path.expand("../../config/runtime.exs", __DIR__), env: :prod)
-    assert config[:dawarich][:phoenix_auth] == ~w(otp credentials two_factor unknown)
+
+    assert_raise ArgumentError, ~r/DAWARICH_PHOENIX_AUTH is obsolete/, fn ->
+      Dawarich.Standalone.validate_candidate_env!(%{
+        "DAWARICH_PHOENIX_AUTH" => System.fetch_env!("DAWARICH_PHOENIX_AUTH")
+      })
+    end
   end
 
   defp account_actor do

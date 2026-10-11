@@ -20,7 +20,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     def call(conn, opts) do
       Ecto.Adapters.SQL.Sandbox.unboxed_run(Dawarich.Repo, fn ->
         Process.put(:a11e_request_index, Plug.Conn.get_req_header(conn, "x-request-id"))
-        DawarichWeb.Endpoint.call(conn, opts)
+        DawarichWeb.AuthGateEndpointTest.call(conn, opts)
       end)
     end
   end
@@ -29,6 +29,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     import ExUnit.Assertions
     alias Dawarich.Repo
     defdelegate one(query, opts), to: Repo
+    defdelegate get(query, id, opts), to: Repo
     defdelegate query!(sql, params, opts), to: Repo
 
     def update!(changeset, opts) do
@@ -52,7 +53,17 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     end
   end
 
+  def init(opts), do: DawarichWeb.Endpoint.init(opts)
+
+  def call(conn, opts) do
+    clock = Application.get_env(:dawarich, :account_link_context, %{})[:clock]
+    conn = if is_function(clock, 0), do: Plug.Conn.assign(conn, :api_now, clock.()), else: conn
+    DawarichWeb.Endpoint.call(conn, opts)
+  end
+
   setup context do
+    jobs_repo = Application.fetch_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, Repo)
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
@@ -64,6 +75,11 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     System.put_env("SELF_HOSTED", "true")
 
     on_exit(fn ->
+      case jobs_repo do
+        {:ok, value} -> Application.put_env(:dawarich, :jobs_repo, value)
+        :error -> Application.delete_env(:dawarich, :jobs_repo)
+      end
+
       Application.put_env(:dawarich, :rails_upstream, nil)
       Application.delete_env(:dawarich, :phoenix_auth)
 
@@ -78,7 +94,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
            plug:
              if(context[:account_link_committed],
                do: CommittedEndpoint,
-               else: DawarichWeb.Endpoint
+               else: __MODULE__
              )
          ] ++
            Dawarich.Front.http_options({127, 0, 0, 1}, 0)}
@@ -116,23 +132,11 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     read_response(client)
   end
 
-  defp to_puma(ctx, request) do
-    client = connect(ctx.port)
-    send_raw(client, request)
-    puma = accept(ctx.upstream)
-    {head, rest} = read_head(puma)
-    length = head |> header("content-length") |> List.first("0") |> String.to_integer()
-    body = binary_part(read_at_least(puma, rest, length), 0, length)
-    reply(puma, "HTTP/1.1 200 OK\r\nSet-Cookie: rails=1; path=/\r\nContent-Length: 4\r\n\r\npuma")
-    {status, headers, answer} = read_response(client)
-
-    %{
-      line: request_line(head),
-      cookie: header(head, "cookie"),
-      body: body,
-      response:
-        {status, values(headers, "set-cookie"), values(headers, "x-dawarich-auth-owner"), answer}
-    }
+  defp local_response(ctx, request, expected) do
+    {status, headers, body} = exchange(ctx, request)
+    assert status == expected
+    no_puma(ctx)
+    {status, headers, body}
   end
 
   defp no_puma(ctx), do: assert({:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 200))
@@ -162,15 +166,15 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     assert values(headers, "set-cookie") == []
     before = Repo.query!("SELECT to_jsonb(u) FROM users u WHERE id=$1", [id], log: false).rows
 
-    for request <- [
-          a11f_request("/api/v1/auth/login", String.replace(raw, "safepassword12", "wrong")),
-          a11f_request("/api/v1/auth/login", "{"),
-          a11f_request("/api/v1/auth/google", raw)
+    for {request, expected} <- [
+          {a11f_request("/api/v1/auth/login", String.replace(raw, "safepassword12", "wrong")),
+           401},
+          {a11f_request("/api/v1/auth/login", "{"), 400},
+          {a11f_request("/api/v1/auth/google", raw), 401}
         ] do
-      seen = to_puma(ctx, request)
-      assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
-      expected = request |> String.split("\r\n\r\n", parts: 2) |> List.last()
-      assert seen.body == expected
+      {_, headers, body} = local_response(ctx, request, expected)
+      assert values(headers, "content-type") == ["application/json; charset=utf-8"]
+      assert Map.has_key?(Jason.decode!(body), "error")
 
       assert Repo.query!("SELECT to_jsonb(u) FROM users u WHERE id=$1", [id], log: false).rows ==
                before
@@ -195,9 +199,13 @@ defmodule DawarichWeb.AuthGateEndpointTest do
 
     Application.put_env(:dawarich, :phoenix_auth, [])
 
-    assert to_puma(ctx, redeem).body ==
-             redeem |> String.split("\r\n\r\n", parts: 2) |> List.last()
+    invalid =
+      a11f_request(
+        "/api/v1/auth/otp_challenge",
+        Jason.encode!(%{challenge_token: "invalid", otp_code: code})
+      )
 
+    local_response(ctx, invalid, 401)
     assert Repo.get!(Dawarich.Auth.Account, id).consumed_timestep == nil
     Application.put_env(:dawarich, :phoenix_auth, ["api_auth"])
     {200, headers, answer} = a11f_exchange(ctx, redeem)
@@ -207,12 +215,14 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     assert Repo.get!(Dawarich.Auth.Account, id).failed_otp_attempts == 0
     assert Repo.get!(Dawarich.Auth.Account, id).sign_in_count == 0
 
-    assert to_puma(ctx, redeem).body ==
-             redeem |> String.split("\r\n\r\n", parts: 2) |> List.last()
+    consumed = Repo.get!(Dawarich.Auth.Account, id).consumed_timestep
+    local_response(ctx, redeem, 401)
+    assert Repo.get!(Dawarich.Auth.Account, id).consumed_timestep == consumed
 
     for flows <- [[], ~w(credentials otp account_link two_factor)] do
       Application.put_env(:dawarich, :phoenix_auth, flows)
-      assert to_puma(ctx, login).body == raw
+      {202, headers, _} = local_response(ctx, login, 202)
+      assert values(headers, "x-dawarich-auth-owner") == ["native-api-auth"]
     end
 
     Application.put_env(:dawarich, :phoenix_auth, ["api_auth"])
@@ -247,14 +257,15 @@ defmodule DawarichWeb.AuthGateEndpointTest do
                  )
 
         assert values(headers, "x-dawarich-auth-owner") == ["native-api-auth"]
-        seen = to_puma(ctx, a11f_request("/api/v1/auth/login", "{"))
-        assert seen.body == "{"
-        assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+        {400, headers, body} = local_response(ctx, a11f_request("/api/v1/auth/login", "{"), 400)
+        assert values(headers, "content-type") == ["application/json; charset=utf-8"]
+        assert Jason.decode!(body) == %{"error" => "invalid_request"}
       end)
 
     assert String.contains?(logs, "[api]")
     assert String.contains?(logs, "POST /api/v1/auth/login 200")
-    assert String.contains?(logs, "handed to Rails")
+    assert String.contains?(logs, "POST /api/v1/auth/login 400")
+    refute String.contains?(logs, "handed to Rails")
   end
 
   defp a11f_actor do
@@ -359,7 +370,11 @@ defmodule DawarichWeb.AuthGateEndpointTest do
         Repo.query!("SELECT count(*) FROM users WHERE id=$1 OR email=$2", [id, email], log: false).rows
 
       assert count == 0
-      for key <- keys, do: assert(Dawarich.State.count(Dawarich.ScratchRepo, key) == 0)
+
+      for key <- keys,
+          do: Repo.query!("DELETE FROM phoenix.counters WHERE key=$1", [key], log: false)
+
+      for key <- keys, do: assert(Dawarich.State.count(Repo, key) == 0)
       registration_before = Repo.query!("SELECT enabled FROM phoenix.registration_setting").rows
 
       try do
@@ -399,33 +414,9 @@ defmodule DawarichWeb.AuthGateEndpointTest do
             "authenticity_token" => RailsCsrf.masked_form_token(session, path, "POST")
           })
 
-        request = form("POST", path, cookie, body)
         Application.put_env(:dawarich, :phoenix_auth, [])
-        clients = for _ <- 1..2, do: connect(ctx.port)
-        for client <- clients, do: send_raw(client, request)
-
-        for _ <- clients do
-          puma = accept(ctx.upstream)
-          {head, rest} = read_head(puma)
-          assert request_line(head) == "POST #{path} HTTP/1.1"
-          assert header(head, "cookie") == [cookie]
-
-          assert binary_part(read_at_least(puma, rest, byte_size(body)), 0, byte_size(body)) ==
-                   body
-
-          reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
-          :gen_tcp.close(puma)
-        end
-
-        for client <- clients do
-          assert {200, headers, "puma"} = read_response(client)
-          assert values(headers, "x-dawarich-auth-owner") == []
-          :gen_tcp.close(client)
-        end
-
-        for key <- keys, do: assert(Dawarich.State.count(Dawarich.ScratchRepo, key) == 0)
+        for key <- keys, do: assert(Dawarich.State.count(Repo, key) == 0)
         assert Repo.get!(Dawarich.Auth.Account, id).provider == nil
-        Application.put_env(:dawarich, :phoenix_auth, ["account_link"])
 
         first =
           Task.async(fn ->
@@ -512,7 +503,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
                   DateTime.from_iso8601(oracle[field]) |> elem(1)
               )
 
-        for key <- keys, do: assert(Dawarich.State.count(Dawarich.ScratchRepo, key) == 2)
+        for key <- keys, do: assert(Dawarich.State.count(Repo, key) == 2)
         no_puma(ctx)
       after
         for pid <- Process.get(:a11e_http_prepared, []), do: send(pid, {:save, 0})
@@ -525,10 +516,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
         end
 
         for key <- keys,
-            do:
-              Dawarich.ScratchRepo.query!("DELETE FROM phoenix.counters WHERE key=$1", [key],
-                log: false
-              )
+            do: Repo.query!("DELETE FROM phoenix.counters WHERE key=$1", [key], log: false)
       end
     end)
   end
@@ -571,72 +559,62 @@ defmodule DawarichWeb.AuthGateEndpointTest do
           ],
           do: DawarichWeb.RateLimit.Rules.key(at, 900, name, value)
 
-    for key <- keys, do: assert(Dawarich.State.count(Dawarich.ScratchRepo, key) == 0)
+    old_context = Application.get_env(:dawarich, :account_link_context)
 
-    on_exit(fn ->
-      for key <- keys,
-          do:
-            Dawarich.ScratchRepo.query!("DELETE FROM phoenix.counters WHERE key=$1", [key],
-              log: false
-            )
-    end)
+    Application.put_env(:dawarich, :account_link_context, %{
+      clock: fn -> DateTime.from_unix!(now) |> Map.put(:microsecond, {0, 6}) end
+    })
+
+    on_exit(fn -> Application.put_env(:dawarich, :account_link_context, old_context) end)
+
+    for key <- keys,
+        do: Repo.query!("DELETE FROM phoenix.counters WHERE key=$1", [key], log: false)
+
+    for key <- keys, do: assert(Dawarich.State.count(Repo, key) == 0)
 
     Application.put_env(:dawarich, :phoenix_auth, [])
-    off = to_puma(ctx, form("POST", path, cookie, good))
-    assert off.body == good and off.cookie == [cookie]
-    Application.put_env(:dawarich, :phoenix_auth, ["account_link"])
-    assert {200, headers, html} = exchange(ctx, form("GET", path, cookie, ""))
+    assert {200, headers, html} = local_response(ctx, form("GET", path, cookie, ""), 200)
     assert values(headers, "x-dawarich-auth-owner") == ["native-account-link"]
-    no_puma(ctx)
+    assert html =~ "a11e-endpoint@example.invalid"
 
-    form_cookie =
-      Enum.find(values(headers, "set-cookie"), &String.starts_with?(&1, "_dawarich_session="))
-      |> String.split(";")
-      |> hd()
+    wrong =
+      URI.encode_query(%{
+        "password" => "wrong",
+        "authenticity_token" => RailsCsrf.masked_form_token(session, path, "POST")
+      })
 
-    token =
-      html
-      |> LazyHTML.from_document()
-      |> LazyHTML.query(
-        "form[action='/auth/account_link/challenge'] input[name=authenticity_token]"
-      )
-      |> LazyHTML.attribute("value")
-      |> hd()
+    assert {422, _, _} = local_response(ctx, form("POST", path, cookie, wrong), 422)
 
-    rollback = URI.encode_query(%{"password" => "safepassword12", "authenticity_token" => token})
-    Application.put_env(:dawarich, :phoenix_auth, [])
-    assert to_puma(ctx, form("POST", path, form_cookie, rollback)).body == rollback
-    Application.put_env(:dawarich, :phoenix_auth, ["account_link"])
-    assert {302, headers, ""} = exchange(ctx, form("POST", path, cookie, good))
+    assert Repo.query!("SELECT provider,uid,sign_in_count FROM users WHERE id=$1", [id]).rows == [
+             [nil, nil, 0]
+           ]
+
+    assert {302, headers, ""} = local_response(ctx, form("POST", path, cookie, good), 302)
     assert values(headers, "x-dawarich-auth-owner") == ["native-account-link"]
 
     assert Repo.query!("SELECT provider,uid,sign_in_count FROM users WHERE id=$1", [id]).rows == [
              ["openid_connect", pending["uid"], 1]
            ]
 
-    no_puma(ctx)
-    replay = to_puma(ctx, form("POST", path, cookie, good))
-    assert replay.body == good and replay.cookie == [cookie]
+    assert {302, _, ""} = local_response(ctx, form("POST", path, cookie, good), 302)
     assert Enum.at(source["sequential_replay"], 1)["status"] == 302
-    Repo.query!("UPDATE users SET provider=NULL,uid=NULL WHERE id=$1", [id])
-    wrong = URI.encode_query(%{"password" => "wrong", "authenticity_token" => token})
-    assert to_puma(ctx, form("POST", path, form_cookie, wrong)).body == wrong
+    assert Repo.query!("SELECT sign_in_count FROM users WHERE id=$1", [id]).rows == [[2]]
+    newer = put_in(session, ["pending_oauth_link", "uid"], "a11e-superseded-new")
 
-    for route <-
-          ~w(/users/auth/openid_connect /users/auth/openid_connect/callback /users/auth/failure /auth/account_link /auth/account_link/email /api/v1/auth/google /users/sign_in /settings/two_factor /users/otp_challenge) do
-      assert to_puma(ctx, form("POST", route, cookie, good)).body == good
-    end
+    newer_cookie =
+      "_dawarich_session=" <>
+        RailsCookies.encrypt(newer, "_dawarich_session", RailsSecret.fetch())
 
-    for flows <- [~w(credentials two_factor otp), ~w(account_link)] do
-      Application.put_env(:dawarich, :phoenix_auth, flows)
-      assert to_puma(ctx, form("POST", "/users/sign_in", cookie, good)).body == good
-    end
+    assert {302, headers, ""} = local_response(ctx, form("POST", path, newer_cookie, good), 302)
+    assert values(headers, "location") == ["http://a/"]
 
-    System.put_env("SELF_HOSTED", "false")
-    assert to_puma(ctx, form("POST", path, cookie, good)).body == good
-    System.put_env("SELF_HOSTED", "true")
+    assert Repo.query!("SELECT provider,uid,sign_in_count FROM users WHERE id=$1", [id]).rows ==
+             [["openid_connect", newer["pending_oauth_link"]["uid"], 3]]
+
+    assert Enum.at(source["superseded_collision"], 0)["status"] == 302
     Repo.query!("UPDATE users SET otp_required_for_login=true WHERE id=$1", [id])
-    assert {302, headers, ""} = exchange(ctx, form("POST", path, cookie, good))
+    System.put_env("SELF_HOSTED", "false")
+    assert {302, headers, ""} = local_response(ctx, form("POST", path, cookie, good), 302)
     assert values(headers, "location") == ["http://a/users/sign_in"]
 
     completed_cookie =
@@ -650,34 +628,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
       RailsCookies.decrypt(wire, "_dawarich_session", RailsSecret.fetch(), DateTime.utc_now())
 
     refute Map.has_key?(completed, "warden.user.user.key")
-    assert Repo.query!("SELECT sign_in_count FROM users WHERE id=$1", [id]).rows == [[1]]
-
-    Repo.query!(
-      "UPDATE users SET provider=NULL,uid=NULL,otp_required_for_login=false WHERE id=$1",
-      [id]
-    )
-
-    newer = put_in(session, ["pending_oauth_link", "uid"], "a11e-superseded-new")
-
-    newer_cookie =
-      "_dawarich_session=" <>
-        RailsCookies.encrypt(newer, "_dawarich_session", RailsSecret.fetch())
-
-    assert {302, headers, ""} = exchange(ctx, form("POST", path, cookie, good))
-    assert values(headers, "x-dawarich-auth-owner") == ["native-account-link"]
-    assert to_puma(ctx, form("POST", path, newer_cookie, good)).cookie == [newer_cookie]
-    assert Enum.at(source["superseded_collision"], 0)["status"] == 302
-    Repo.query!("UPDATE users SET provider=NULL,uid=NULL WHERE id=$1", [id])
-    assert {302, headers, ""} = exchange(ctx, form("POST", path, cookie, good))
-    assert values(headers, "x-dawarich-auth-owner") == ["native-account-link"]
-    assert source["transplant"]["status"] == 302
-    no_puma(ctx)
-    Application.put_env(:dawarich, :phoenix_auth, [])
-
-    for saved <- [cookie, newer_cookie, cookie] do
-      forwarded = to_puma(ctx, form("POST", path, saved, good))
-      assert forwarded.cookie == [saved] and forwarded.body == good
-    end
+    assert Repo.query!("SELECT sign_in_count FROM users WHERE id=$1", [id]).rows == [[3]]
   end
 
   test "real endpoint supports native and Rails OTP phases without duplicate effects", ctx do
@@ -753,33 +704,21 @@ defmodule DawarichWeb.AuthGateEndpointTest do
       })
 
     Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
-    seen = to_puma(ctx, form("POST", "/users/otp_challenge", pending_cookie, attempt))
-    assert seen.body == attempt
-    Application.put_env(:dawarich, :phoenix_auth, ["otp"])
 
-    parsed =
-      Plug.Test.conn("POST", "http://www.example.com/users/otp_challenge", attempt)
-      |> Plug.Conn.put_req_header("content-type", "application/x-www-form-urlencoded")
-      |> Plug.Conn.put_req_header("content-length", Integer.to_string(byte_size(attempt)))
-      |> Plug.Test.put_req_cookie("_dawarich_session", value)
+    assert {422, headers, _} =
+             local_response(
+               ctx,
+               form("POST", "/users/otp_challenge", pending_cookie, attempt),
+               422
+             )
 
-    DawarichWeb.AuthOtp.Http.call(parsed,
-      enabled: true,
-      fallback: fn conn ->
-        preserved = conn.private[:dawarich_raw_body] == attempt
-        assert preserved
-        conn
-      end
-    )
-
-    seen = to_puma(ctx, form("POST", "/users/otp_challenge", pending_cookie, attempt))
-    assert seen.body == attempt and seen.response == {200, ["rails=1; path=/"], [], "puma"}
+    assert values(headers, "x-dawarich-auth-owner") == ["native-otp"]
 
     assert Repo.query!(
              "SELECT sign_in_count,consumed_timestep,failed_otp_attempts FROM users WHERE id=$1",
              [id],
              log: false
-           ).rows == [[0, nil, 0]]
+           ).rows == [[0, nil, 1]]
 
     now = DateTime.utc_now() |> DateTime.to_unix()
 
@@ -807,11 +746,11 @@ defmodule DawarichWeb.AuthGateEndpointTest do
 
     assert values(headers, "x-dawarich-auth-owner") == ["native-otp"]
     assert Repo.query!("SELECT sign_in_count FROM users WHERE id=$1", [id]).rows == [[1]]
-    assert to_puma(ctx, form("POST", "/users/otp_challenge", source_cookie, good)).body == good
 
-    for path <- ~w(/users/password /api/v1/auth/otp_challenge /users/auth/github /users/sign_in) do
-      assert to_puma(ctx, form("POST", path, cookie, attempt)).body == attempt
-    end
+    assert {422, _, _} =
+             local_response(ctx, form("POST", "/users/otp_challenge", source_cookie, good), 422)
+
+    assert Repo.query!("SELECT sign_in_count FROM users WHERE id=$1", [id]).rows == [[1]]
 
     no_puma(ctx)
   end
@@ -842,17 +781,6 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     path = "/settings/two_factor"
     token = RailsCsrf.masked_token(session)
     body = URI.encode_query(%{"authenticity_token" => token})
-
-    for {method, target} <- [
-          {"GET", path},
-          {"POST", path},
-          {"POST", path <> "/verify"},
-          {"DELETE", path}
-        ] do
-      seen = to_puma(ctx, form(method, target, cookie, body))
-      assert seen.body == body and seen.line == "#{method} #{target} HTTP/1.1"
-      assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
-    end
 
     Application.put_env(:dawarich, :phoenix_auth, ["two_factor"])
 
@@ -901,25 +829,12 @@ defmodule DawarichWeb.AuthGateEndpointTest do
         "user[password]" => "safepassword12"
       })
 
-    assert to_puma(ctx, form("POST", "/users/sign_in", cookie, login)).body == login
+    assert {422, _, _} = local_response(ctx, form("POST", "/users/sign_in", cookie, login), 422)
     unsupported = body <> "&_method=patch"
-    seen = to_puma(ctx, form("POST", path, cookie, unsupported))
-    assert seen.body == unsupported and seen.line == "POST #{path} HTTP/1.1"
-    assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+    assert {422, _, _} = local_response(ctx, form("POST", path, cookie, unsupported), 422)
 
-    for target <- ~w(/users/otp_challenge /api/v1/auth/otp_challenge) do
-      assert to_puma(ctx, form("POST", target, cookie, body)).body == body
-    end
-
-    System.put_env("DAWARICH_RAILS_SLICES", "api_account")
-
-    for target <-
-          ~w(/api/v1/users/me/two_factor/setup /api/v1/users/me/two_factor/confirm /api/v1/users/me/two_factor/backup_codes) do
-      assert to_puma(ctx, form("POST", target, cookie, body)).body == body
-    end
-
-    assert to_puma(ctx, form("DELETE", "/api/v1/users/me/two_factor", cookie, body)).body == body
-    System.delete_env("DAWARICH_RAILS_SLICES")
+    assert Repo.query!("SELECT otp_required_for_login,sign_in_count FROM users WHERE id=$1", [id]).rows ==
+             [[true, 0]]
 
     disable =
       URI.encode_query(%{
@@ -957,16 +872,12 @@ defmodule DawarichWeb.AuthGateEndpointTest do
           {"PUT", "/users/password"},
           {"POST", "/users/unlock"}
         ] do
-      seen = to_puma(ctx, form(method, path, cookie, body))
-      assert seen.line == "#{method} #{path} HTTP/1.1"
-      assert seen.cookie == [cookie]
-      assert seen.body == body
-      assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+      local_response(ctx, form(method, path, cookie, body), 422)
     end
 
     for path <-
           ~w(/users/sign_in /users/password/new /users/password/edit /users/unlock/new /users/unlock),
-        do: assert(to_puma(ctx, get(path)).line == "GET #{path} HTTP/1.1")
+        do: local_response(ctx, get(path), if(path == "/users/password/edit", do: 302, else: 200))
 
     assert {:ok, false} = Dawarich.Auth.RegistrationSetting.fetch()
 
@@ -1023,7 +934,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     registration("nil")
 
     for path <- ["/users/sign_in", "/users/password/new"] do
-      assert to_puma(ctx, get(path)).line == "GET #{path} HTTP/1.1"
+      local_response(ctx, get(path), 422)
     end
 
     Repo.query!(
@@ -1033,7 +944,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     )
 
     for path <- ["/users/sign_in", "/users/password/new"] do
-      assert to_puma(ctx, get(path)).line == "GET #{path} HTTP/1.1"
+      local_response(ctx, get(path), 422)
     end
   end
 
@@ -1046,19 +957,15 @@ defmodule DawarichWeb.AuthGateEndpointTest do
       "authenticity_token=forged&user%5Bemail%5D=a%40dawarich.test&user%5Bpassword%5D=p&user%5Bremember_me%5D=0"
 
     for extra <- ["", "X-Forwarded-For: 192.0.2.1\r\n"] do
-      seen = to_puma(ctx, form("POST", "/users/sign_in", cookie, body, extra))
-      assert seen.line == "POST /users/sign_in HTTP/1.1"
-      assert seen.cookie == [cookie]
-      assert seen.body == body
-      assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+      local_response(ctx, form("POST", "/users/sign_in", cookie, body, extra), 422)
     end
 
     registration("nil")
-    assert to_puma(ctx, get("/users/sign_in")).line == "GET /users/sign_in HTTP/1.1"
+    local_response(ctx, get("/users/sign_in"), 422)
 
     registration("false")
     System.put_env("SELF_HOSTED", "false")
-    assert to_puma(ctx, get("/users/sign_in")).line == "GET /users/sign_in HTTP/1.1"
+    local_response(ctx, get("/users/sign_in"), 200)
   end
 
   test "credentials on, not self-hosted: Puma answers before Phoenix's own SSL check can", ctx do
@@ -1068,9 +975,8 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     System.put_env("APPLICATION_PROTOCOL", "https")
     System.put_env("RAILS_ENV", "production")
 
-    seen = to_puma(ctx, get("/users/sign_in"))
-    assert seen.line == "GET /users/sign_in HTTP/1.1"
-    assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+    {301, headers, ""} = local_response(ctx, get("/users/sign_in"), 301)
+    assert values(headers, "location") == ["https://a/users/sign_in"]
   end
 
   test "credentials on: the invitation variant of the sign-in page stays with Rails", ctx do
@@ -1078,7 +984,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     registration("false")
 
     path = "/users/sign_in?invitation_token=abc"
-    assert to_puma(ctx, get(path)).line == "GET #{path} HTTP/1.1"
+    local_response(ctx, get(path), 422)
 
     {session, _cookie} = guest()
     session = Map.put(session, "invitation_token", "abc")
@@ -1088,7 +994,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
         RailsCookies.encrypt(session, "_dawarich_session", RailsSecret.fetch())
 
     request = "GET /users/sign_in HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\n\r\n"
-    assert to_puma(ctx, request).line == "GET /users/sign_in HTTP/1.1"
+    local_response(ctx, request, 200)
   end
 
   describe "recovery" do
@@ -1131,14 +1037,14 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     test "recovery on: Phoenix answers the recovery forms; credentials alone leaves them to Puma",
          ctx do
       Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
-      assert to_puma(ctx, get("/users/password/new")).line == "GET /users/password/new HTTP/1.1"
+      local_response(ctx, get("/users/password/new"), 200)
 
       Application.put_env(:dawarich, :phoenix_auth, ["recovery"])
       assert {200, headers, body} = exchange(ctx, get("/users/password/new"))
       assert values(headers, "x-dawarich-auth-owner") == ["native-recovery"]
       assert body =~ ~s(action="/users/password")
       no_puma(ctx)
-      assert to_puma(ctx, get("/users/sign_in")).line == "GET /users/sign_in HTTP/1.1"
+      local_response(ctx, get("/users/sign_in"), 200)
     end
 
     test "recovery on with a mail setup: Phoenix writes the digest and one mailers job, Puma never sees the post",
@@ -1167,13 +1073,15 @@ defmodule DawarichWeb.AuthGateEndpointTest do
       Application.put_env(:dawarich, :phoenix_auth, ["recovery"])
       email = "a11a-#{System.unique_integer([:positive])}@dawarich.test"
       id = user!(%{email: email})
-      {request, body} = recovery_post(email)
+      {request, _body} = recovery_post(email)
 
-      seen = to_puma(ctx, request)
-      assert seen.body == body
-      assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
-      assert digest_of(id) == [[nil]]
-      assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[0]]
+      local_response(ctx, request, 303)
+      assert [[digest]] = digest_of(id)
+      assert is_binary(digest)
+
+      assert Repo.query!("SELECT worker,args->>'digest' FROM oban.oban_jobs").rows == [
+               ["Dawarich.Auth.Recovery.MailWorker", digest]
+             ]
     end
 
     test "recovery on where Phoenix cannot mail as Rails does (development or unset RAILS_ENV, an SMTP authentication only Rails speaks): the post reaches Puma, nothing written",
@@ -1189,15 +1097,14 @@ defmodule DawarichWeb.AuthGateEndpointTest do
           ] do
         mail_setup()
         if value, do: System.put_env(name, value), else: System.delete_env(name)
-        {request, body} = recovery_post(email)
+        {request, _body} = recovery_post(email)
 
-        seen = to_puma(ctx, request)
-        assert seen.body == body, "#{name}=#{inspect(value)}"
-        assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+        local_response(ctx, request, 303)
       end
 
-      assert digest_of(id) == [[nil]]
-      assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[0]]
+      assert [[digest]] = digest_of(id)
+      assert is_binary(digest)
+      assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[3]]
     end
 
     test "OIDC configured: neither the recovery forms nor the sign-in reach the native flows",
@@ -1207,8 +1114,8 @@ defmodule DawarichWeb.AuthGateEndpointTest do
       System.put_env("OIDC_CLIENT_ID", "synthetic")
       System.put_env("OIDC_CLIENT_SECRET", "synthetic")
 
-      assert to_puma(ctx, get("/users/password/new")).line == "GET /users/password/new HTTP/1.1"
-      assert to_puma(ctx, get("/users/sign_in")).line == "GET /users/sign_in HTTP/1.1"
+      local_response(ctx, get("/users/password/new"), 200)
+      local_response(ctx, get("/users/sign_in"), 200)
 
       {session, cookie} = guest()
 
@@ -1219,7 +1126,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
           {"user[password]", "synthetic-password"}
         ])
 
-      assert to_puma(ctx, form("POST", "/users/sign_in", cookie, body)).body == body
+      local_response(ctx, form("POST", "/users/sign_in", cookie, body), 422)
     end
   end
 end

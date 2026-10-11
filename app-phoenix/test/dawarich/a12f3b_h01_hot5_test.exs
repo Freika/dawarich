@@ -41,20 +41,17 @@ defmodule Dawarich.A12f3bH01Hot5Test do
 
   @tag a12f3b_case: "H01d"
   test "mounted admin and trial home routes retain native effects and authorization" do
-    for {method, path, plug, pipeline, gate} <- [
-          {"GET", "/", DawarichWeb.HomeDispatch, [:public_home], {DawarichWeb.HomeGate, :owned?}},
-          {"GET", "/trial/welcome", DawarichWeb.TrialWelcome, [:trial_welcome],
-           {DawarichWeb.WelcomeGate, :owned?}},
-          {"GET", "/trial/upgrade", DawarichWeb.TrialUpgrade, [:rails_frame],
-           {DawarichWeb.TrialGate, :upgrade?}},
-          {"GET", "/trial/resume", Phoenix.LiveView.Plug, [:trial_resume],
-           {DawarichWeb.TrialGate, :resume?}}
+    for {method, path, plug, pipeline} <- [
+          {"GET", "/", DawarichWeb.HomeDispatch, [:public_home]},
+          {"GET", "/trial/welcome", DawarichWeb.TrialWelcome, [:trial_welcome]},
+          {"GET", "/trial/upgrade", DawarichWeb.TrialUpgrade, [:rails_frame]},
+          {"GET", "/trial/resume", Phoenix.LiveView.Plug, [:trial_resume]}
         ] do
       route = Phoenix.Router.route_info(Router, method, path, "www.example.com")
       assert is_map(route), "missing #{method} #{path}"
       assert route.plug == plug
       assert route.pipe_through == pipeline
-      assert route.rails_gate == gate
+      refute Map.has_key?(route, :rails_gate)
 
       assert Enum.count(
                Router.__routes__(),

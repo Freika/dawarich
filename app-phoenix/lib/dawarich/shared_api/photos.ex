@@ -4,11 +4,7 @@ defmodule Dawarich.SharedApi.Photos do
   alias Dawarich.Photos.{Index, ProviderCache, Thumbnail}
   alias Dawarich.SharedApi.{Closure, Privacy}
 
-  def response(link, action, params \\ %{}) do
-    if Dawarich.Standalone.enabled?(),
-      do: native_response(link, action, params),
-      else: coexistence_response(link, action)
-  end
+  def response(link, action, params \\ %{}), do: native_response(link, action, params)
 
   def gallery(link) do
     if link.settings["show_photos"] == true,
@@ -17,12 +13,6 @@ defmodule Dawarich.SharedApi.Photos do
   rescue
     _ -> []
   end
-
-  defp coexistence_response(%{settings: %{"show_photos" => true}}, _),
-    do: {:replay, "shared photo search and ACL cache remain Rails"}
-
-  defp coexistence_response(_, :photos), do: {:ok, []}
-  defp coexistence_response(_, :thumbnail), do: {:head, 404}
 
   def native_response(link, action, params) do
     if link.settings["show_photos"] == true do

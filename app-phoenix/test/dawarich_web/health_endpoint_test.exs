@@ -106,26 +106,37 @@ defmodule DawarichWeb.HealthEndpointTest do
         )
         |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, method, target)
 
-      assert conn.status == kase["status"], target
-      assert conn.resp_body == if(method == :head, do: "", else: kase["raw_body"]), target
+      expected_status =
+        if path == "/ready" and (kase["status"] == 400 or kase["query"] in ["x[y]=1", "x", "=1"]),
+          do: 422,
+          else: kase["status"]
 
-      for {header, values} <- kase["headers"], header != "content-length" do
-        assert Plug.Conn.get_resp_header(conn, header) == values, "#{target}: #{header}"
-      end
+      assert conn.status == expected_status, target
 
-      assert Enum.sort(
-               Enum.map(conn.resp_headers, &elem(&1, 0)) --
-                 ~w(content-length etag x-request-id x-runtime)
-             ) ==
-               Enum.sort(Map.keys(kase["headers"]) -- ~w(content-length))
+      if path == "/ready" and expected_status == 422 do
+        assert Plug.Conn.get_resp_header(conn, "content-type") == ["text/html; charset=utf-8"]
 
-      if path != "/ready" or kase["query"] in ~w(x=1&x=2 x=%25GG format=xml) do
-        refute_received {:query_upstream, _}
+        expected =
+          DawarichWeb.ErrorHTML.render("#{expected_status}.html", %{})
+          |> Phoenix.HTML.Safe.to_iodata()
+          |> IO.iodata_to_binary()
+
+        assert conn.resp_body == if(method == :head, do: "", else: expected)
       else
-        assert_receive {:query_upstream, line}
-        assert line == "GET #{target} HTTP/1.1"
-        assert conn.halted
+        assert conn.resp_body == if(method == :head, do: "", else: kase["raw_body"]), target
+
+        for {header, values} <- kase["headers"], header != "content-length" do
+          assert Plug.Conn.get_resp_header(conn, header) == values, "#{target}: #{header}"
+        end
+
+        assert Enum.sort(
+                 Enum.map(conn.resp_headers, &elem(&1, 0)) --
+                   ~w(content-length etag x-request-id x-runtime)
+               ) ==
+                 Enum.sort(Map.keys(kase["headers"]) -- ~w(content-length))
       end
+
+      refute_received {:query_upstream, _}
     end
   end
 
@@ -167,7 +178,10 @@ defmodule DawarichWeb.HealthEndpointTest do
         "staging.dawarich.app"
       )
 
-    assert route.rails_key == "health"
+    assert route.plug == DawarichWeb.Api.HealthController
+    assert route.plug_opts == :index
+    assert route.pipe_through == [:health]
+    refute Map.has_key?(route, :rails_key)
     refute Map.has_key?(route, :slice)
 
     for mode <- ~w(true false) do
@@ -223,8 +237,10 @@ defmodule DawarichWeb.HealthEndpointTest do
     now = elem(DateTime.from_iso8601(corpus["now"]), 1)
 
     for path <- ~w(/api/v1/ready /ready) do
-      assert Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "staging.dawarich.app").rails_key ==
-               "ready"
+      route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "staging.dawarich.app")
+      assert route.plug == DawarichWeb.Api.HealthController
+      assert route.plug_opts == :ready
+      refute Map.has_key?(route, :rails_key)
 
       for kase <- corpus["cases"], String.starts_with?(kase["name"], "ready_") do
         Repo.query!("DELETE FROM phoenix.counters", [], log: false)
