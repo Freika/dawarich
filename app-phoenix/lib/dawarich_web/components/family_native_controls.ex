@@ -28,6 +28,7 @@ defmodule DawarichWeb.FamilyNativeControls do
     <button
       type="button"
       data-family-action={@action}
+      data-family-target={@id}
       class={@class}
       phx-click={
         JS.push("family_prepare_confirm", value: %{action: @action, id: @id})
