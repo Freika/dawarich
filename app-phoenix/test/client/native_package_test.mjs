@@ -159,3 +159,30 @@ test('observed native assets are revalidated after document navigation', async (
   status = 404;
   await assert.rejects(auditAssetResponses(paths, request), /asset response/);
 });
+
+test('whole-app Rails smoke prepares locked test dependencies with private settings', async t => {
+  const { spawnSync } = await import('node:child_process');
+  const { chmodSync } = await import('node:fs');
+  const root = mkdtempSync(join(tmpdir(), 'native-smoke-rails-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const calls = join(root, 'calls.jsonl');
+  const bundle = join(root, 'bundle');
+  writeFileSync(bundle, `#!/bin/sh
+[ "$RAILS_ENV" = test ] && [ "$DATABASE_NAME" = "$EXPECTED_DB" ] && [ "$REDIS_URL" = "$EXPECTED_REDIS" ] || exit 41
+printf '%s\\n' "$*" >>"$CALLS"
+`);
+  chmodSync(bundle, 0o755);
+  writeFileSync(calls, '');
+  const env = { ...process.env, PATH: `${root}:${process.env.PATH}`, CALLS: calls,
+    RAILS_ENV: 'test', DATABASE_NAME: 'synthetic_database', EXPECTED_DB: 'synthetic_database',
+    REDIS_URL: 'redis://synthetic-service/0', EXPECTED_REDIS: 'redis://synthetic-service/0' };
+  const result = spawnSync('bash', ['app-phoenix/scripts/native_smoke_rails.sh'], { env });
+  assert.equal(result.status, 0);
+  assert.deepEqual(readFileSync(calls, 'utf8').trim().split('\n'), [
+    'config set --local without development', 'install --jobs 2 --retry 3',
+    'exec rails server -b 0.0.0.0 -p 3000',
+  ]);
+  assert.equal(spawnSync('bash', ['app-phoenix/scripts/native_smoke_rails.sh'], {
+    env: { ...env, REDIS_URL: '' },
+  }).status, 64);
+});

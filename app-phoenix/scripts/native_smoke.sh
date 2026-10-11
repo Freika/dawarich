@@ -70,6 +70,7 @@ REDIS_URL=redis://$REDIS:6379/0
 PHOENIX_TEST_REDIS_URL=redis://$REDIS:6379/1
 PHOENIX_TEST_DATABASE=$NATIVE_SMOKE_DATABASE
 RAILS_ENV=test
+E2E_PROXY_STACK=1
 RAILS_PORT=3000
 SECRET_KEY_BASE=$(openssl rand -hex 64)
 NATIVE_SMOKE_API_KEY=$NATIVE_SMOKE_API_KEY
@@ -115,7 +116,9 @@ NATIVE_SMOKE_URL=$(url) NATIVE_SMOKE_RECEIPT="$NATIVE_SMOKE_OUT/native.json" nod
 dk logs "$APP" >"$NATIVE_SMOKE_OUT/native-app.log" 2>&1
 dk rm -fv "$APP" >/dev/null
 sed -e 's/DAWARICH_RAILS=off/DAWARICH_RAILS=on/' -e 's/DAWARICH_PHOENIX_LIFECYCLE=true/DAWARICH_PHOENIX_LIFECYCLE=false/' "$PRIVATE/app.env" >"$PRIVATE/rails.env"
-dk run -d --pull=never --name "$APP" --network "$NET" --label org.dawarich.x4="$RUN" --env-file "$PRIVATE/rails.env" -p 127.0.0.1::3000 --entrypoint bundle "$RAILS_FALLBACK_IMAGE" exec rails server -b 0.0.0.0 -p 3000 >/dev/null
+dk create --name "$APP" --network "$NET" --label org.dawarich.x4="$RUN" --env-file "$PRIVATE/rails.env" -p 127.0.0.1::3000 --entrypoint bash "$RAILS_FALLBACK_IMAGE" /tmp/native_smoke_rails.sh >/dev/null
+dk cp "$ROOT/native_smoke_rails.sh" "$APP:/tmp/native_smoke_rails.sh"
+dk start "$APP" >/dev/null
 wait_app
 NATIVE_SMOKE_URL=$(url) NATIVE_SMOKE_MODE=rails NATIVE_SMOKE_RECEIPT="$NATIVE_SMOKE_OUT/rails.json" node "$ROOT/native_smoke.mjs" >"$NATIVE_SMOKE_OUT/rails-browser.log" 2>&1
 dk exec "$APP" sh -c 'ps -eo comm=' >"$NATIVE_SMOKE_OUT/rails-process-names.txt"
