@@ -20,11 +20,15 @@ defmodule DawarichWeb.PublicMapAuth do
 
     capability =
       case Dawarich.Maps.PublicGrant.bind(capability, []) do
-        {:ok, bound} -> bound
-        _ -> capability
+        {:ok, bound} ->
+          bound
+
+        _ ->
+          capability
       end
 
     RailsAuth.live_session(conn)
+    |> Map.put("public_record_visit", (conn.private[:dawarich_method] || conn.method) == "GET")
     |> Map.put("public_map_capability", capability)
     |> Map.put(
       "public_unlock_token",

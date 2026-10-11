@@ -38,6 +38,35 @@ defmodule DawarichWeb.NativeM6PublicRoutesTest do
     %{uuid: uuid, id: id}
   end
 
+  test "native public GET counts once while HEAD and LiveView reconnect are read only", %{
+    uuid: uuid
+  } do
+    path = "/s/#{uuid}"
+
+    count = fn ->
+      Repo.query!("SELECT view_count FROM shared_links WHERE id=$1", [Ecto.UUID.dump!(uuid)],
+        log: false
+      ).rows
+    end
+
+    assert build_conn() |> head(path) |> Map.get(:status) == 200
+    before = count.()
+    assert before == [[0]]
+    assert build_conn() |> get(path) |> Map.get(:status) == 200
+    assert count.() == [[(hd(hd(before)) || 0) + 1]]
+
+    conn =
+      build_conn() |> Plug.Conn.put_private(:live_view_connect_info, %{session: %{}}) |> get(path)
+
+    {:ok, view, _} = live(conn)
+    after_join = count.()
+    render(view)
+    render_hook(view, "public:ready", %{"revision" => 1})
+    assert count.() == after_join
+    assert build_conn() |> head(path) |> Map.get(:status) == 200
+    assert count.() == after_join
+  end
+
   test "native family public navigation rechecks audience without disclosing missing or revoked resources",
        %{uuid: uuid, id: id} do
     viewer = id + 1

@@ -1935,3 +1935,11 @@ Rails Family map markers and cached popups can remain visible indefinitely after
 - Round-2 successors: `unrelated Family callbacks cannot postpone the displayed snapshot consent bound`; `unrelated Family lease callbacks cannot prolong cached coordinates or accept retired reads`. Renewal-guard and sliding-browser-deadline mutations fail.
 - The existing m4 sharing-invalidation adapter is still pending. Withdrawal is detected by fresh lease revalidation within 30 seconds, including when no location event occurs; this is a bound, not an instantaneous cross-tab publication guarantee.
 - ED: ED-NATIVE-M6-FAMILY-IDLE-CONSENT. No DRB.
+
+### FRB-NATIVE-STAGE2-PUBLIC-HEAD — HEAD requests inflate shared-link visit counts
+
+- Rails symptom: automated HEAD checks execute the shared link show action and increment the visible visit counter despite reading no document body.
+- Rails: `app/controllers/shared/links_controller.rb:12`; `app/models/shared_link.rb:77`.
+- Phoenix: `app-phoenix/lib/dawarich_web/public_map_auth.ex:31`; `app-phoenix/lib/dawarich_web/public_map_live.ex:7`. Original HTTP method travels as a boolean in the signed mount session; only admitted static GET counts, with no connected/reconnect effect.
+- Test: `native public GET counts once while HEAD and LiveView reconnect are read only`. HEAD counter RED, GREEN, omit-method-guard mutation fails, restored GREEN.
+- Difference: ED-NATIVE-STAGE2-PUBLIC-HEAD. Restores the planned native GET-only touch boundary while fixing Rails' HEAD counter inflation.
