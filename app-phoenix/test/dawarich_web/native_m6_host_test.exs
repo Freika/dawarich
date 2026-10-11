@@ -77,6 +77,26 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert rows("SELECT count(*) FROM areas WHERE user_id=$1", [id]) == [[0]]
   end
 
+  test "native Visit creation retains required form controls and localized placement guidance", %{
+    id: id
+  } do
+    {:ok, view, _} = open(id, @second)
+
+    assert has_element?(
+             view,
+             "[data-map-tool-status][data-visit-message='Click on the map to place a visit (Esc to cancel)']"
+           )
+
+    render_hook(view, "visit:new", %{"latitude" => 52.5, "longitude" => 13.4})
+
+    for name <- ~w(name started_at ended_at) do
+      assert has_element?(view, "#native-visit-form input[name='visit[#{name}]'][required]")
+    end
+
+    render_hook(view, "visit:close", %{})
+    refute has_element?(view, "#native-visit-dialog")
+  end
+
   test "native production host opens validates and closes an Area dialog", %{id: id} do
     {:ok, view, _} = open(id, @second)
     render_hook(view, "area:new", %{"latitude" => 52.52, "longitude" => 13.405})

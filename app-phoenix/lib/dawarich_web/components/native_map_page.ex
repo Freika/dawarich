@@ -64,6 +64,18 @@ defmodule DawarichWeb.NativeMapPage do
         class="min-w-0 [overflow-wrap:anywhere]"
       >
       </p>
+      <p
+        id="native-map-tool-status"
+        data-map-tool-status
+        role="status"
+        phx-update="ignore"
+        data-visit-message={
+          t(@locale, "javascript.messages.click_on_the_map_to_place_a_visit_esc_to", %{})
+        }
+        data-place-message={t(@locale, "javascript.messages.click_on_the_map_to_place_a_place", %{})}
+        class="min-w-0 [overflow-wrap:anywhere]"
+      >
+      </p>
       <button
         type="button"
         data-testid="native-edit-points"

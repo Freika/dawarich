@@ -53,6 +53,7 @@ defmodule DawarichWeb.NativeMapVisit do
               class="input input-bordered w-full"
               type="text"
               name="visit[name]"
+              required
               value={@dialog.form["name"]}
             />
           </label>
@@ -64,6 +65,7 @@ defmodule DawarichWeb.NativeMapVisit do
                 type="datetime-local"
                 max="9999-12-31T23:59"
                 name="visit[started_at]"
+                required
                 value={@dialog.form["started_at"]}
               />
             </label>
@@ -74,6 +76,7 @@ defmodule DawarichWeb.NativeMapVisit do
                 type="datetime-local"
                 max="9999-12-31T23:59"
                 name="visit[ended_at]"
+                required
                 value={@dialog.form["ended_at"]}
               />
             </label>
