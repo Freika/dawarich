@@ -7,7 +7,7 @@ defmodule Dawarich.PlacesApi.Closure do
   @sources %{"manual" => 0, "photon" => 1, "gpx_waypoint" => 2}
   @attributes ~w(name latitude longitude source note)
   @placeholder "Suggested place"
-  @point "ST_SetSRID(ST_MakePoint($4::float8, $3::float8), 4326)::geography"
+  @point "ST_SetSRID(ST_MakePoint($4::float8, LEAST(90, GREATEST(-90, $3::float8))), 4326)::geography"
   @lookup "SELECT id, name, latitude::float8, longitude::float8, source, note, name_locked_at, " <>
             "COALESCE(ST_Y(lonlat::geometry) = latitude::float8 " <>
             "AND ST_X(lonlat::geometry) = longitude::float8, false) " <>
@@ -24,16 +24,26 @@ defmodule Dawarich.PlacesApi.Closure do
       dispatch(action, user.id, params, DateTime.to_naive(now))
     end)
   rescue
-    _ -> {:ok, 500, {:object, [{"error", "Internal Server Error"}]}, []}
+    _ -> {:exception, 500}
   end
 
   defp dispatch(:index, owner, params, _now), do: Search.index(owner, params)
 
   defp dispatch(:create, owner, params, now) do
+    params =
+      if Map.has_key?(params, "place"),
+        do: params,
+        else: Map.put(params, "place", Map.take(params, @attributes ++ ["tag_ids"]))
+
     if inputs?(params["place"]),
       do: save(owner, nil, params["place"], now),
       else:
-        {:ok, 400, {:object, [{"error", "param is missing or the value is empty: place"}]}, []}
+        if(is_binary(params["place"]),
+          do:
+            {:ok, 400, {:object, [{"error", "param is missing or the value is empty: place"}]},
+             []},
+          else: {:exception, 400}
+        )
   end
 
   defp dispatch(action, owner, %{"id" => text} = params, now) do
@@ -66,7 +76,7 @@ defmodule Dawarich.PlacesApi.Closure do
   defp change(:update, owner, [_, _, _, _, _, _, _, _] = row, changes, now) do
     cond do
       not inputs?(changes) ->
-        {:ok, 400, {:object, [{"error", "param is missing or the value is empty: place"}]}, []}
+        {:exception, 400}
 
       true ->
         save(owner, row, changes, now)
@@ -192,12 +202,16 @@ defmodule Dawarich.PlacesApi.Closure do
   defp blank?(value), do: String.trim(value) == ""
 
   defp number(nil), do: nil
-  defp number(value) when is_number(value), do: value / 1
+  defp number(value) when is_number(value), do: Float.round(value / 1, 6)
   defp number(""), do: nil
   defp number(value) when is_boolean(value), do: if(value, do: 1.0, else: 0.0)
 
   defp number(value),
-    do: if(String.trim(value) == "", do: nil, else: Dawarich.Ingest.Ruby.to_f(value))
+    do:
+      if(String.trim(value) == "",
+        do: nil,
+        else: Float.round(Dawarich.Ingest.Ruby.to_f(value), 6)
+      )
 
   defp not_found,
     do: {:ok, 404, {:object, [{"error", I18n.en!("controllers.api.record_not_found")}]}, []}

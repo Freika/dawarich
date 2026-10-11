@@ -31,7 +31,12 @@ defmodule Dawarich.Ingest.Closure do
         value not in [false, nil]
 
       _ ->
-        value = (user.points_count || 0) >= 10_000_000
+        [[count]] =
+          Dawarich.Repo.query!("SELECT COALESCE(points_count, 0) FROM users WHERE id = $1", [
+            user.id
+          ]).rows
+
+        value = count >= 10_000_000
 
         bytes =
           Dawarich.RailsCache.Wire.encode_boolean(value,

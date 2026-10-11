@@ -1,12 +1,13 @@
 defmodule DawarichWeb.Api.HeadGoldenReviewTest do
   use Dawarich.ApiEndpointCase
+  @moduletag api_golden: true
 
   import Dawarich.Test.RawHTTP
 
   @moduletag :capture_log
 
   @tag :review_rails_head_golden
-  test "Rails HEAD golden enforces exact downstream representation length and an empty wire entity",
+  test "former Rails HEAD golden enforces terminal representation length and an empty wire entity",
        c do
     fixture = Jason.decode!(File.read!("test/fixtures/api_foundation/golden.json"))
     kase = Enum.find(fixture["cases"], &(&1["name"] == "rails_head_plan"))
@@ -14,7 +15,7 @@ defmodule DawarichWeb.Api.HeadGoldenReviewTest do
     length = byte_size(get["response"]["body"])
     assert length == 300
 
-    assert :ok == check_rails_reply(kase, ["Content-Length: #{length}\r\n"], "")
+    assert :ok == check_reply(kase, ["Content-Length: #{length}\r\n"], "")
 
     for {framing, bytes} <- [
           {["Content-Length: 777\r\n"], ""},
@@ -22,28 +23,15 @@ defmodule DawarichWeb.Api.HeadGoldenReviewTest do
           {["Content-Length: #{length}\r\n", "Content-Length: #{length}\r\n"], ""},
           {["Content-Length: #{length}\r\n"], "unexpected-entity"}
         ] do
-      assert_raise ExUnit.AssertionError, fn -> check_rails_reply(kase, framing, bytes) end
+      assert_raise ExUnit.AssertionError, fn -> check_reply(kase, framing, bytes) end
     end
 
-    previous = Application.get_env(:dawarich, :rails_routes, [])
-    on_exit(fn -> Application.put_env(:dawarich, :rails_routes, previous) end)
-    Application.put_env(:dawarich, :rails_routes, ["api"])
-    kase = Map.put(kase, "expect", "own")
     for row <- kase["setup"], do: Dawarich.Test.ApiGolden.insert!("users", row)
     Dawarich.Test.ApiGolden.check(kase, c.port, c.upstream)
   end
 
   @tag :review_head_golden
   test "HEAD golden rejects wire entities and absent or arbitrary representation lengths", c do
-    previous = System.get_env("DAWARICH_RAILS")
-    System.put_env("DAWARICH_RAILS", "off")
-
-    on_exit(fn ->
-      if previous,
-        do: System.put_env("DAWARICH_RAILS", previous),
-        else: System.delete_env("DAWARICH_RAILS")
-    end)
-
     fixture = Jason.decode!(File.read!("test/fixtures/api_foundation/golden.json"))
 
     kase =
@@ -68,36 +56,6 @@ defmodule DawarichWeb.Api.HeadGoldenReviewTest do
 
     for row <- kase["setup"], do: Dawarich.Test.ApiGolden.insert!("users", row)
     Dawarich.Test.ApiGolden.check(kase, c.port, c.upstream)
-  end
-
-  defp check_rails_reply(kase, framing, bytes) do
-    endpoint = listen()
-    upstream = listen()
-
-    server =
-      Task.async(fn ->
-        client = accept(endpoint)
-        {head, _rest} = read_head(client)
-        puma = connect(upstream.port)
-        send_raw(puma, [head, "\r\n\r\n"])
-        {status, headers, rest} = read_response_head(puma)
-        assert status == 200
-        assert values(headers, "content-length") == ["300"]
-        assert rest == ""
-        :gen_tcp.close(puma)
-        reply(client, ["HTTP/1.1 #{status} OK\r\n", framing, "\r\n"])
-        reply(client, bytes)
-        :gen_tcp.close(client)
-      end)
-
-    try do
-      Dawarich.Test.ApiGolden.check(kase, endpoint.port, upstream)
-      :ok
-    after
-      Task.await(server)
-      :gen_tcp.close(endpoint.listen)
-      :gen_tcp.close(upstream.listen)
-    end
   end
 
   defp check_reply(kase, framing, bytes) do

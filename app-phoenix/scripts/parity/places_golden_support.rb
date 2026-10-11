@@ -33,7 +33,7 @@ module PlacesGoldenSupport
     end
   end
 
-  def places_record(kase, oracle: ApiPlacesGoldenOracle, strict: false)
+  def places_record(kase, oracle: ApiPlacesGoldenOracle, strict: false, complete: false)
     travel_to(oracle::NOW) do
       places_seed(kase)
       oracle::SEQUENCES.each { |name, value| places_sql("SELECT setval('#{name}', #{value}, false)") }
@@ -43,7 +43,7 @@ module PlacesGoldenSupport
       headers = places_conditional(kase[:path], headers) if kase[:conditional]
       target = kase[:auth] == :query ? "#{kase[:path]}?api_key=#{oracle::KEY}" : kase[:path]
       setup = places_snapshot(oracle::TABLES, oracle.setups, strict:)
-      response = places_response(kase, target, headers, body, strict:)
+      response = places_response(kase, target, headers, body, strict:, complete:)
       created = !strict && kase[:expect] == :own && response['status'] == 201
       { 'name' => kase[:name], 'expect' => kase[:expect].to_s, 'ignore' => created ? ['etag'] : [],
         **(created ? { 'mask' => ['"created_at":"[^"]*"'] } : {}),
@@ -51,7 +51,8 @@ module PlacesGoldenSupport
         'request' => { 'method' => kase[:method].to_s.upcase, 'target' => target, 'headers' => headers.to_a,
                        'body' => body },
         'response' => response,
-        **(places_after?(kase, strict:) ? { 'after' => places_rows(oracle::AFTER, strict:) } : {}),
+        **(complete && response['headers'].key?('set-cookie') ? { 'session_after' => request.session.to_hash.except('session_id', '_csrf_token') } : {}),
+        **((complete || places_after?(kase, strict:)) ? { 'after' => places_rows(complete ? oracle::TABLES : oracle::AFTER, strict:) } : {}),
         **(strict && kase[:cache_keys] ? { 'cache_after' => places_cache(kase[:cache_keys]) } : {}) }
     end
   end
@@ -80,16 +81,18 @@ module PlacesGoldenSupport
     headers.merge('If-None-Match' => response.headers['ETag'])
   end
 
-  def places_response(kase, target, headers, body, strict: false)
+  def places_response(kase, target, headers, body, strict: false, complete: false)
+    production = { 'action_dispatch.show_exceptions' => :all, 'action_dispatch.show_detailed_exceptions' => false }
+    request_env = complete ? production : {}
     if kase[:method] == :get && body.present?
-      get target, headers: headers, env: { 'rack.input' => StringIO.new(body), 'CONTENT_LENGTH' => body.bytesize.to_s }
+      get target, headers: headers, env: request_env.merge('rack.input' => StringIO.new(body), 'CONTENT_LENGTH' => body.bytesize.to_s)
       expect(request.raw_post).to eq(body)
       expect(request.query_string).to eq(URI.parse(target).query.to_s)
     else
-      send(kase[:method], target, params: body.empty? ? nil : body, headers: headers.except('Content-Length'))
+      send(kase[:method], target, params: body.empty? ? nil : body, headers: headers.except('Content-Length'), env: request_env)
     end
     headers = response.headers.to_h.transform_keys(&:downcase).except('date', 'content-length')
-    html = !strict && kase[:expect] == :rails && response.media_type == 'text/html'
+    html = !complete && !strict && kase[:expect] == :rails && response.media_type == 'text/html'
     payload = if strict && response.media_type.to_s.start_with?('image/')
                 { 'body_base64' => Base64.strict_encode64(response.body) }
               else
@@ -98,7 +101,7 @@ module PlacesGoldenSupport
     { 'status' => response.status, 'headers' => headers.merge(VOLATILE.slice(*headers.keys)),
       **payload }
   rescue StandardError
-    raise if strict || kase[:expect] != :rails
+    raise if complete || strict || kase[:expect] != :rails
 
     { 'status' => 500, 'headers' => {}, 'body' => '' }
   end

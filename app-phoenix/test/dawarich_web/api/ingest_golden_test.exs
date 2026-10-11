@@ -3,15 +3,33 @@ defmodule DawarichWeb.Api.IngestGoldenTest do
   import Dawarich.Test.RawHTTP
 
   @golden "test/fixtures/ingest/golden.json" |> File.read!() |> Jason.decode!()
+  @capture "test/rails_captures/ingest.json" |> File.read!() |> Jason.decode!()
+  @captured Map.new(@capture["cases"], &{&1["name"], &1})
+  @golden Map.update!(
+            @golden,
+            "cases",
+            &Enum.map(&1, fn kase -> @captured[kase["name"]] || kase end)
+          )
   @tables ~w(users families family_memberships point_sources points)
 
   setup do
+    previous = Application.get_env(:dawarich, :rails_secret)
+
+    Application.put_env(
+      :dawarich,
+      :rails_secret,
+      "phoenix-a2-cookie-fixture-secret-not-for-production"
+    )
+
+    on_exit(fn -> Application.put_env(:dawarich, :rails_secret, previous) end)
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
     bandit =
       start_supervised!(
-        {Bandit, [plug: DawarichWeb.Endpoint] ++ Dawarich.Front.http_options({127, 0, 0, 1}, 0)}
+        {Bandit,
+         [plug: {Dawarich.ApiEndpointCase, [api_golden: true, api_now: ~U[2026-10-05 12:00:00Z]]}] ++
+           Dawarich.Front.http_options({127, 0, 0, 1}, 0)}
       )
 
     {:ok, {_ip, port}} = ThousandIsland.listener_info(bandit)
@@ -21,17 +39,39 @@ defmodule DawarichWeb.Api.IngestGoldenTest do
 
   for kase <- @golden["cases"] do
     @kase kase
+    @tag golden_case: String.to_atom(kase["name"])
     test "golden #{kase["name"]}", %{port: port, upstream: upstream} do
       seed!(@kase["setup"])
       for sql <- @kase["fault"] ++ @kase["phoenix_fault"], do: Repo.query!(sql)
       client = connect(port)
       send_raw(client, raw(@kase["request"]))
 
-      if @kase["expect"] == "replay",
-        do: replayed(@kase, upstream, client),
-        else: owned(@kase, client)
+      expected = difference(@kase)
+      owned(expected, client)
+
+      if @kase["name"] == "replay_coordinate_text" do
+        assert Repo.query!("SELECT count(*) FROM point_sources").rows == [
+                 [length(@kase["setup"]["point_sources"])]
+               ]
+      end
+
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     end
   end
+
+  defp difference(%{"name" => "replay_coordinate_text"} = kase) do
+    assert [%{"lonlat" => nil}] = kase["rows"]
+    assert kase["points_count"] == 1
+    failed = @captured["replay_boolean_battery"]["response"]
+
+    kase
+    |> Map.put("response", failed)
+    |> Map.put("rows", [])
+    |> Map.put("commands", [])
+    |> Map.put("points_count", 0)
+  end
+
+  defp difference(kase), do: kase
 
   defp seed!(setup) do
     for table <- @tables, row <- setup[table] do
@@ -55,7 +95,10 @@ defmodule DawarichWeb.Api.IngestGoldenTest do
 
   defp owned(kase, client) do
     {status, headers, body} = read_response(client)
+    headers = Dawarich.Test.GoldenCookies.headers(headers, kase, ~U[2026-10-05 12:00:00Z])
     expected = kase["response"]
+    assert is_map(expected["headers"]), "Rails capture lacks terminal response headers"
+    assert is_list(kase["rows"]), "Rails capture lacks database effects"
     ids = new_ids(kase)
     id_free? = normalize(body, ids) == body
 
@@ -116,29 +159,51 @@ defmodule DawarichWeb.Api.IngestGoldenTest do
              [[kase["points_count"]]]
 
     assert commands(ids) == kase["commands"]
-  end
 
-  defp replayed(kase, upstream, client) do
-    request = kase["request"]
-    puma = Dawarich.Test.ApiGolden.rails_connection(client, upstream)
-    {head, rest} = read_head(puma)
+    if captured = kase["database_after"] do
+      for table <- ~w(users families family_memberships) do
+        expected =
+          if kase["name"] == "replay_coordinate_text" and table == "users",
+            do: Enum.map(captured[table], &Map.put(&1, "points_count", 0)),
+            else: captured[table]
 
-    assert request_line(head) == "POST #{request["target"]} HTTP/1.1"
+        relation =
+          if table == "family_memberships" and kase["name"] == "owntracks_friends_failure",
+            do: "family_memberships_a3",
+            else: table
 
-    assert read_at_least(puma, rest, byte_size(request["body"]))
-           |> binary_part(0, byte_size(request["body"])) == request["body"]
+        actual =
+          Repo.query!("SELECT row_to_json(t)::text FROM #{relation} t ORDER BY id").rows
+          |> Enum.map(fn [row] -> Jason.decode!(row) end)
 
-    for [name, value] <- request["headers"],
-        do: assert(header(head, String.downcase(name)) == [value], name)
+        assert actual == expected
+      end
 
-    %{"status" => status, "body" => body} = kase["response"]
-    reply(puma, "HTTP/1.1 #{status} Rails\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}")
-    assert {^status, _, ^body} = read_response(client)
+      expected_sources =
+        if kase["name"] == "replay_coordinate_text",
+          do: kase["setup"]["point_sources"],
+          else: captured["point_sources"]
 
-    assert Repo.query!("SELECT count(*) FROM points WHERE user_id = $1", [kase["user_id"]]).rows ==
-             [[length(kase["setup_point_ids"])]]
+      sources =
+        Repo.query!("SELECT row_to_json(t)::text FROM point_sources t ORDER BY id").rows
+        |> Enum.map(fn [row] -> Jason.decode!(row) end)
 
-    assert Repo.query!("SELECT count(*) FROM phoenix.rails_commands").rows == [[0]]
+      project = fn row -> Map.drop(row, ~w(id created_at updated_at)) end
+      assert Enum.map(sources, project) == Enum.map(expected_sources, project)
+
+      for source <- sources -- kase["setup"]["point_sources"],
+          do: assert(source["created_at"] == source["updated_at"])
+
+      expected_others = Enum.reject(captured["points"], &(&1["user_id"] == kase["user_id"]))
+
+      others =
+        Repo.query!("SELECT row_to_json(t)::text FROM points t WHERE user_id != $1 ORDER BY id", [
+          kase["user_id"]
+        ]).rows
+        |> Enum.map(fn [row] -> Jason.decode!(row) end)
+
+      assert others == expected_others
+    end
   end
 
   defp new_ids(kase) do

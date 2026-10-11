@@ -64,3 +64,22 @@ The immutable incremental ledger above remains the historical census. The [integ
 The C-owned document-root gate now exercises guest sign-in/recovery and signed-in Tags/admin/map roots in English/German, with native entrypoints, accessible controls and no legacy markers. Its existing public-map and feature cases remain. The base's public home root still belongs to A/B cleanup and is not passed off as native coverage. A synthetic legacy marker fails the root gate without exposing response HTML or session fields.
 
 Evidence: 97 tests passed in the 20-file targeted reader/register/root/direct-caller batch, seed 404, warnings-as-errors. Named successor omission, reader omission and legacy-root injection each fail their intended assertion; restored gates pass. External corpus bytes, Rails fixtures, ED/FRB/DRB rows, Swagger and schemas are unchanged. Full partition/G44/deletion-time integration acceptance remains X5, after A/B merge. Rails bugs fixed: none.
+
+## fix-s2g terminal API reconciliation (2026-10-11)
+
+`ApiGolden.check/4` now uses its existing terminal comparator for historical hand-back entries. Status, body, meaningful headers, HEAD framing and absence of upstream effects remain required; fixture bytes and normalization rules are unchanged. The async harness witness is `former hand-back cases compare terminal Rails status headers and body without upstream effects`, including independent negative status/body/header probes.
+
+| Historical exact case | Native successor | Retained behavior |
+| --- | --- | --- |
+| `Rails HEAD golden enforces exact downstream representation length and an empty wire entity` | `former Rails HEAD golden enforces terminal representation length and an empty wire entity` | Exact representation length; missing/duplicate/wrong lengths and wire entities fail. |
+| `a non-Unsupported exception in prepare logs only its struct name, never Exception.message/1` | `a non-Unsupported prepare exception terminates locally without leaking its message` | Local refusal, zero upstream receipt and no exception detail. |
+| `an Unsupported exception in prepare logs its reason as-is` | `an Unsupported prepare exception terminates locally without exposing its reason` | Local refusal, zero upstream receipt and no unsupported input disclosure. |
+| `ambiguous form replay and a missing CSRF token hand the consumed body to Rails before credentials` | `ambiguous forms preserve their body and method overrides terminate before credentials` | Ambiguous and missing-CSRF body preservation; native override refusal with no cookie or upstream effect. |
+
+The LoadRegions named packaging witness remains and accepts the combined build/release RUN statement while still requiring the asset before release, symlink and matching bytes. `native HEAD refusals retain Rails zero-length framing` preserves Rails refusal framing; 204/304 remain unchanged.
+
+The integrated overlay records all renamed witnesses. Golden endpoint context reproduces Rails test captures: disabled RackAttack counters, healthy readiness prerequisites and the recorded Places/family clocks. These conditions are scoped to golden tests; production guards and rate-limit tests are unchanged.
+
+API parity is **not accepted**. Forty-four historical Places entries have no recorded after-state; ten Ingest replay entries have no response headers or database effects. Some source emitters erase HTML bodies or substitute empty 500 exception sentinels. Complete Rails oracle captures or explicit named source/closure successors need controller reconciliation before those entries can establish terminal parity. No placeholder response, new expected difference, fixture rerecording or normalization exception is introduced here. Real product mismatches also remain.
+
+Evidence: completed harness/refusal/HEAD/packaging/Plan and register-reader packet: 66 passed on seed 404, warnings-as-errors. The wider 67-file packet has 1,163/1,274 passed and 111 identical failures on seeds 404/202 (two skipped, one excluded); every failure is in an API golden module. This is partial repair evidence, not X5 acceptance. Rails bugs fixed: none. AFFiNE mirror synchronization remains pending under the brief's remote-write prohibition.

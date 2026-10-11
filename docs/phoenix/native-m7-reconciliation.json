@@ -8948,7 +8948,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -9061,7 +9061,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -9174,7 +9174,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -9287,7 +9287,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -9400,7 +9400,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -9513,7 +9513,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -9626,7 +9626,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -9739,7 +9739,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -9852,7 +9852,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -9965,7 +9965,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -10078,7 +10078,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -10191,7 +10191,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -10304,7 +10304,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -10417,7 +10417,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -10530,7 +10530,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -10643,7 +10643,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -10756,7 +10756,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -10869,7 +10869,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -10982,7 +10982,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -11095,7 +11095,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -11208,7 +11208,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -11321,7 +11321,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -11434,7 +11434,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -11547,7 +11547,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
@@ -12833,6 +12833,58 @@
         }
       ],
       "authority": "integ-m7: relative Sprockets frontend module delivery retires to positive native digest serving"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/api/head_golden_review_test.exs",
+        "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/api/head_golden_review_test.exs",
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
+        }
+      ],
+      "authority": "fix-s2g: native terminal refusal retains body, framing, no-upstream and privacy contracts after m7 B3"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/api/ingest_controller_test.exs",
+        "name": "a non-Unsupported exception in prepare logs only its struct name, never Exception.message/1"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/api/ingest_controller_test.exs",
+          "name": "a non-Unsupported prepare exception terminates locally without leaking its message"
+        }
+      ],
+      "authority": "fix-s2g: native terminal refusal retains body, framing, no-upstream and privacy contracts after m7 B3"
+    },
+    {
+      "old": {
+        "file": "T/dawarich_web/api/ingest_controller_test.exs",
+        "name": "an Unsupported exception in prepare logs its reason as-is"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich_web/api/ingest_controller_test.exs",
+          "name": "an Unsupported prepare exception terminates locally without exposing its reason"
+        }
+      ],
+      "authority": "fix-s2g: native terminal refusal retains body, framing, no-upstream and privacy contracts after m7 B3"
+    },
+    {
+      "old": {
+        "file": "T/dawarich/auth/http_boundary_test.exs",
+        "name": "ambiguous form replay and a missing CSRF token hand the consumed body to Rails before credentials"
+      },
+      "successors": [
+        {
+          "file": "T/dawarich/auth/http_boundary_test.exs",
+          "name": "ambiguous forms preserve their body and method overrides terminate before credentials"
+        }
+      ],
+      "authority": "fix-s2g: native terminal refusal retains body, framing, no-upstream and privacy contracts after m7 B3"
     }
   ],
   "readers": [
@@ -17458,7 +17510,7 @@
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",
-          "name": "Rails HEAD golden enforces exact downstream representation length and an empty wire entity"
+          "name": "former Rails HEAD golden enforces terminal representation length and an empty wire entity"
         },
         {
           "file": "T/dawarich_web/api/head_golden_review_test.exs",

@@ -6,6 +6,7 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
   @moduletag :capture_log
 
   setup do
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
@@ -83,6 +84,25 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
       no_upstream!(upstream)
       assert [[1]] = Repo.query!("SELECT count(*) FROM points").rows
     end
+  end
+
+  test "Cloud ingestion enforces the points limit with the projected API user", %{
+    port: port,
+    upstream: upstream,
+    user: user
+  } do
+    System.put_env("SELF_HOSTED", "false")
+    Repo.query!("UPDATE users SET points_count = 10000000 WHERE id = $1", [user])
+    key = "points_limit_exceeded/#{user}"
+    Dawarich.Redis.cache_command(["UNLINK", key])
+    on_exit(fn -> Dawarich.Redis.cache_command(["UNLINK", key]) end)
+
+    assert {401, _, ~s({"error":"Points limit exceeded"})} =
+             port |> post("/api/v1/overland/batches") |> read_response()
+
+    no_upstream!(upstream)
+    assert_no_writes()
+    assert commands() == []
   end
 
   test "GET and .json variants stay on Rails", %{port: port, upstream: upstream} do

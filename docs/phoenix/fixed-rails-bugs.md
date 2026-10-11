@@ -1971,3 +1971,30 @@ Rails renders Get started as an anchor without href, so keyboard users cannot ac
 - Phoenix: `app-phoenix/lib/dawarich_web/components/navbar_end.ex:178`.
 - Test: `automatic native onboarding dismisses persistently and manual reopening restores focus`; desktop and German mobile openings use `openNativeOnboarding`.
 - ED: ED-NATIVE-S2E4-ONBOARDING-FOCUS. No DRB. Native browser focus restoration passes; replacing the opener with the Rails-style anchor fails the named focus assertion. Restored evidence is recorded in the assigned group-4 fix report.
+
+### FRB-NATIVE-S2GA-PLACE-SCALAR — Scalar Place parameters return a validation refusal
+
+Rails calls `permit` on a nonempty string and returns a handled 500. Native Places creation retains its existing 400 parameter refusal with no database changes. The complete Rails response remains in the supplemental source capture; the golden reader explicitly asserts the difference.
+
+- Rails: `app/controllers/api/v1/places_controller.rb:201`.
+- Phoenix: `app-phoenix/lib/dawarich/places_api/closure.ex:38`.
+- Test: `golden replay_create_place_string` in `app-phoenix/test/dawarich_web/api/places_golden_test.exs`.
+- ED: ED-NATIVE-S2GA-PLACE-SCALAR. No DRB.
+
+### FRB-NATIVE-S2GA-PLACE-NULL — Null latitude updates refuse before persistence
+
+Rails attempts to persist null latitude against the non-null column and returns a handled 500. Native Places retains its existing 422 `Lonlat can't be blank` validation, preserving the complete Place graph. The reader keeps and checks the Rails 500 capture before asserting the declared native response and unchanged captured after-state.
+
+- Rails: `app/controllers/api/v1/places_controller.rb:89`; `app/models/place.rb:27`.
+- Phoenix: `app-phoenix/lib/dawarich/places_api/closure.ex:98,104`.
+- Test: `golden replay_update_null_latitude` in `app-phoenix/test/dawarich_web/api/places_golden_test.exs`.
+- ED: ED-NATIVE-S2GA-PLACE-NULL. No DRB.
+
+### FRB-NATIVE-S2GA-INGEST-NULL-GEOMETRY — Invalid coordinate text cannot create a null-geometry point
+
+Rails accepts `abc` as coordinate text, commits a point whose geometry is null, increments points_count and schedules arrival effects. Native ingest retains its existing preparation refusal: 500 `Point creation failed`, zero points/source/counter/command effects. The Rails capture records the defective committed row and all commands; the reader asserts those source facts separately from the native refusal.
+
+- Rails: `app/services/points/params.rb:68`; `app/services/points/intake.rb:48`.
+- Phoenix: `app-phoenix/lib/dawarich/ingest/closure.ex:51,70,78`; `app-phoenix/lib/dawarich/ingest/geo.ex:27`.
+- Test: `golden replay_coordinate_text` in `app-phoenix/test/dawarich_web/api/ingest_golden_test.exs`.
+- ED: ED-NATIVE-S2GA-INGEST-NULL-GEOMETRY. No DRB.

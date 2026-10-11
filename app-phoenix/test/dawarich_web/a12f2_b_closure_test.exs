@@ -346,7 +346,7 @@ defmodule DawarichWeb.A12f2BClosureTest do
 
     now = ~U[2026-10-06 12:00:00Z]
 
-    assert {:ok, 500, _, []} =
+    assert {:exception, 500} =
              invoke(Dawarich.PlacesApi.Closure, :run, [
                :create,
                user,

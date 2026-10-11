@@ -28,21 +28,7 @@ defmodule DawarichWeb.Api.IngestControllerTest do
     end
   end
 
-  defp handed_off(conn, upstream) do
-    puma =
-      Task.async(fn ->
-        socket = accept(upstream)
-        {head, _rest} = read_head(socket)
-        reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-        request_line(head)
-      end)
-
-    conn = put_private(conn, :dawarich_raw_body, "")
-    result = IngestController.call(conn, :points)
-    {Task.await(puma), result}
-  end
-
-  test "a non-Unsupported exception in prepare logs only its struct name, never Exception.message/1",
+  test "a non-Unsupported prepare exception terminates locally without leaking its message",
        %{upstream: upstream} do
     user = user!()
 
@@ -54,16 +40,21 @@ defmodule DawarichWeb.Api.IngestControllerTest do
 
     log =
       with_info_log(fn ->
-        {request_line, result} = handed_off(conn, upstream)
-        assert request_line == "POST /api/v1/points HTTP/1.1"
+        result = IngestController.call(conn, :points)
+        assert result.status == 422
+        assert Jason.decode!(result.resp_body) == %{"error" => "Unprocessable Entity"}
+        assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
         assert result.halted
       end)
 
-    assert log =~ "[ingest] /api/v1/points handed to Rails: FunctionClauseError"
+    assert log =~ ~s("reason":"api_body")
+    refute log =~ "FunctionClauseError"
     refute log =~ "no function clause matching"
   end
 
-  test "an Unsupported exception in prepare logs its reason as-is", %{upstream: upstream} do
+  test "an Unsupported prepare exception terminates locally without exposing its reason", %{
+    upstream: upstream
+  } do
     user = user!()
 
     body =
@@ -77,11 +68,14 @@ defmodule DawarichWeb.Api.IngestControllerTest do
 
     log =
       with_info_log(fn ->
-        {request_line, result} = handed_off(conn, upstream)
-        assert request_line == "POST /api/v1/points HTTP/1.1"
+        result = IngestController.call(conn, :points)
+        assert result.status == 422
+        assert Jason.decode!(result.resp_body) == %{"error" => "Unprocessable Entity"}
+        assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
         assert result.halted
       end)
 
-    assert log =~ "[ingest] /api/v1/points handed to Rails: to_f of a non-number"
+    assert log =~ ~s("reason":"api_body")
+    refute log =~ "to_f of a non-number"
   end
 end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 module ApiPlacesGoldenOracle
   TABLES = %w[users tags places taggings visits place_visits notes].freeze
@@ -195,14 +196,31 @@ RSpec.describe 'Phoenix fixture: golden places API requests', type: :request do
   include ActiveSupport::Testing::TimeHelpers
   include PlacesGoldenSupport
 
+  include FixtureRecording::SyntheticSecret
+
+  around do |example|
+    config = Rails.application.env_config
+    previous = config.slice('action_dispatch.show_exceptions', 'action_dispatch.show_detailed_exceptions')
+    config.merge!('action_dispatch.show_exceptions' => :all, 'action_dispatch.show_detailed_exceptions' => false)
+    example.run
+  ensure
+    config.merge!(previous)
+  end
+
   after(:all) do
-    path = Rails.root.join('app-phoenix/test/fixtures/api_places/golden.json')
+    path = Pathname.new(ENV.fetch('API_GOLDEN_OUTPUT') { Rails.root.join('app-phoenix/test/fixtures/api_places/golden.json').to_s })
     FileUtils.mkdir_p(path.dirname)
     oracle = ApiPlacesGoldenOracle
+    if ENV['API_GOLDEN_OUTPUT']
+      expected = Object.new.extend(PlacesGoldenSupport).places_cases(oracle).map { _1[:name] }
+      raise 'golden generator incomplete' unless expected.sort == oracle.results.map { _1['name'] }.sort
+    end
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
-                'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,
+                'sequences' => oracle::SEQUENCES.merge(ENV['API_GOLDEN_OUTPUT'] ? { 'taggings_id_seq' => 955600 } : {}), 'setups' => oracle.setups.sort.to_h,
                 'cases' => oracle.results.reject { _1['name'].start_with?('closure_') }.sort_by { _1['name'] } }
     File.write(path, "#{places_exact_json(fixture)}\n")
+    next if ENV['API_GOLDEN_OUTPUT']
+
     closure_path = Rails.root.join('app-phoenix/test/fixtures/a12f2b/closure.json')
     FileUtils.mkdir_p(closure_path.dirname)
     closure = closure_path.exist? ? JSON.parse(closure_path.read) : {}
@@ -210,14 +228,17 @@ RSpec.describe 'Phoenix fixture: golden places API requests', type: :request do
     File.write(closure_path, "#{places_exact_json(closure.sort.to_h)}\n")
   end
 
-  (ApiPlacesGoldenOracle::CASES + ApiPlacesGoldenOracle::CLOSURE_CASES).each do |kase|
+  selected = ENV['API_GOLDEN_OUTPUT'] ? Object.new.extend(PlacesGoldenSupport).places_cases(ApiPlacesGoldenOracle) :
+    (ApiPlacesGoldenOracle::CASES + ApiPlacesGoldenOracle::CLOSURE_CASES)
+  selected.each do |kase|
     it(kase[:name]) do
       defaults = { method: :get, auth: :bearer, expect: :own, env: {}, seed: :base,
                    content: ApiPlacesGoldenOracle::JSON_TYPE }
       if kase[:name].start_with?('closure_')
         ActiveRecord::Base.connection.execute("SELECT setval('taggings_id_seq', 959000, false)")
       end
-      ApiPlacesGoldenOracle.results << places_record(kase.reverse_merge(defaults))
+      places_sql("SELECT setval('taggings_id_seq', 955600, false)") if ENV['API_GOLDEN_OUTPUT']
+      ApiPlacesGoldenOracle.results << places_record(kase.reverse_merge(defaults), complete: ENV['API_GOLDEN_OUTPUT'].present?)
       expect(enqueued_jobs).to be_empty if kase.fetch(:expect, :own) == :own
     end
   end

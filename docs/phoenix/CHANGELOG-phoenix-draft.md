@@ -271,3 +271,6 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 
 - Refresh native point and track tiles after paused style updates so deleted points disappear without rebuilding the map. [FRB-NATIVE-STAGE2-PAUSED-TILES](fixed-rails-bugs.md#frb-native-stage2-paused-tiles--deleted-points-remain-painted-after-map-updates)
 - Make native Get started controls keyboard accessible and return focus after closing onboarding. [FRB-NATIVE-S2E4-ONBOARDING-FOCUS](fixed-rails-bugs.md#frb-native-s2e4-onboarding-focus--get-started-cannot-restore-keyboard-focus)
+- Refuse scalar Place parameters with 400 instead of Rails' handled 500. [FRB-NATIVE-S2GA-PLACE-SCALAR](fixed-rails-bugs.md#frb-native-s2ga-place-scalar--scalar-place-parameters-return-a-validation-refusal)
+- Validate null Place latitude with 422 before persistence instead of Rails' failed null-column write. [FRB-NATIVE-S2GA-PLACE-NULL](fixed-rails-bugs.md#frb-native-s2ga-place-null--null-latitude-updates-refuse-before-persistence)
+- Refuse invalid ingest coordinate text before it can create a null-geometry point or schedule arrival effects. [FRB-NATIVE-S2GA-INGEST-NULL-GEOMETRY](fixed-rails-bugs.md#frb-native-s2ga-ingest-null-geometry--invalid-coordinate-text-cannot-create-a-null-geometry-point)

@@ -1,5 +1,6 @@
 defmodule DawarichWeb.Api.NotesGoldenTest do
   use Dawarich.ApiEndpointCase
+  @moduletag api_golden: true
 
   alias Dawarich.Test.ApiGolden
 

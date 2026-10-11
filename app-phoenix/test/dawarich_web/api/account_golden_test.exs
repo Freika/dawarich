@@ -19,6 +19,7 @@ end
 
 defmodule DawarichWeb.Api.AccountGoldenTest do
   use Dawarich.ApiEndpointCase
+  @moduletag api_golden: true
   use Dawarich.JobsCase, async: false
 
   alias Dawarich.Test.ApiGolden

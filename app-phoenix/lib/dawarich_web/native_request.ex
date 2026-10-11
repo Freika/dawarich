@@ -27,15 +27,20 @@ defmodule DawarichWeb.NativeRequest do
   defp dispatch(conn, original) do
     case Phoenix.Router.route_info(DawarichWeb.Router, conn.method, conn.path_info, conn.host) do
       :error ->
-        DawarichWeb.RailsErrors.respond(conn, 404)
+        refuse(conn)
 
       route ->
         if DawarichWeb.RouteConstraints.valid?(route) and
              not (original == "HEAD" and route[:head] == false),
            do: conn,
-           else: DawarichWeb.RailsErrors.respond(conn, 404)
+           else: refuse(conn)
     end
   end
+
+  defp refuse(%{path_info: ["api", "v1", "places" | _]} = conn),
+    do: DawarichWeb.Api.ExceptionResponse.send(conn, 404)
+
+  defp refuse(conn), do: DawarichWeb.RailsErrors.respond(conn, 404)
 
   def api?(%{path_info: ["api", "v1" | _]}), do: true
   def api?(_), do: false

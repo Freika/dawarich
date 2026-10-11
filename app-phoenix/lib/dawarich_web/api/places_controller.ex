@@ -8,8 +8,7 @@ defmodule DawarichWeb.Api.PlacesController do
   alias DawarichWeb.Api.{Body, Respond}
 
   @impl true
-  def init({:closure, action}),
-    do: if(Dawarich.Standalone.enabled?(), do: {:closure, action}, else: action)
+  def init({:closure, action}), do: {:closure, action}
 
   def init(action), do: action
 
@@ -23,9 +22,17 @@ defmodule DawarichWeb.Api.PlacesController do
   def call(conn, {:closure, action}) do
     params = Map.merge(conn.assigns.api_params, conn.path_params)
 
-    case Dawarich.PlacesApi.Closure.run(action, conn.assigns.api_user, params, DateTime.utc_now()) do
+    case Dawarich.PlacesApi.Closure.run(
+           action,
+           conn.assigns.api_user,
+           params,
+           conn.assigns[:api_now] || DateTime.utc_now()
+         ) do
       {:ok, status, term, headers} ->
         conn |> merge_resp_headers(headers) |> Respond.json(status, term)
+
+      {:exception, status} ->
+        DawarichWeb.Api.ExceptionResponse.send(conn, status)
 
       :no_content ->
         conn |> register_before_send(&delete_resp_header(&1, "content-type")) |> Respond.head(204)
@@ -35,7 +42,12 @@ defmodule DawarichWeb.Api.PlacesController do
   def call(conn, action) do
     params = Map.merge(conn.assigns.api_params, conn.path_params)
 
-    case PlacesApi.run(action, conn.assigns.api_user, params, DateTime.utc_now()) do
+    case PlacesApi.run(
+           action,
+           conn.assigns.api_user,
+           params,
+           conn.assigns[:api_now] || DateTime.utc_now()
+         ) do
       {:ok, status, term, headers} ->
         conn |> merge_resp_headers(headers) |> Respond.json(status, term)
 
