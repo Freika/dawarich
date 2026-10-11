@@ -14,7 +14,7 @@ defmodule DawarichWeb.NativeTripControls do
   defp command("trip:days:all", _, socket) do
     socket
     |> assign(expanded_days: !socket.assigns.expanded_days, selected_day: nil)
-    |> push_event("trip:select_day", %{day: nil})
+    |> push_event("trip:select_day", %{day: nil, expanded: !socket.assigns.expanded_days})
   end
 
   defp command("trip:layer", %{"layer" => layer}, socket) do

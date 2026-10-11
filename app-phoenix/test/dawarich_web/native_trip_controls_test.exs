@@ -81,6 +81,14 @@ defmodule DawarichWeb.NativeTripControlsTest do
     refute has_element?(view, "#trip-shell")
   end
 
+  test "trip all-days commands carry their authoritative browser expansion", %{id: id} do
+    {:ok, view, _} = open(id)
+    view |> element("[phx-click='trip:days:all']") |> render_click()
+    assert_push_event(view, "trip:select_day", %{day: nil, expanded: true})
+    view |> element("[phx-click='trip:days:all']") |> render_click()
+    assert_push_event(view, "trip:select_day", %{day: nil, expanded: false})
+  end
+
   defp open(id, resource \\ nil) do
     path = "/trips/#{resource || id * 10}"
 

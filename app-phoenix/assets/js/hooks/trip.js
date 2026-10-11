@@ -8,13 +8,16 @@ export const TripHook = {
   async mounted() {
     this.tripDay = undefined
     this.tripDayPending = false
-    this.tripDayHandler = this.handleEvent("trip:select_day", ({ day }) => {
+    this.tripDayHandler = this.handleEvent("trip:select_day", ({ day, expanded = false }) => {
       if (this.mapDestroyed || this.mapRevoked) return
       if (
         day !== null &&
         (typeof day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day))
       )
         return
+      const days = this.el.closest?.("[data-native-map-root]")?.querySelectorAll('details[id^="native-trip-day-"]') ?? []
+      for (const detail of days)
+        detail.open = expanded === true || detail.id === `native-trip-day-${day}`
       this.tripDay = day
       this.tripDayPending = !this.mapReady
       if (this.mapReady) this.mapOwner?.layers?.selectDay?.(day)
