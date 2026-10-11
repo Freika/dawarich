@@ -3,16 +3,44 @@ import test from "node:test"
 import { launchRequestedStudio } from "../../priv/static/js/hooks/requested_studio.js"
 
 function fixture(query = "?studio=video") {
-  let ready = false, opens = 0, disconnected = 0, observe
-  const provider = { get controller() { return ready ? { map: {}, mapDataManager: {} } : null } }
-  const studio = { open(value) { assert.equal(value, provider); opens++ } }
-  class Observer {
-    constructor(callback) { observe = callback }
-    observe() {}
-    disconnect() { disconnected++ }
+  let ready = false,
+    opens = 0,
+    disconnected = 0,
+    observe
+  const provider = {
+    get controller() {
+      return ready ? { map: {}, mapDataManager: {} } : null
+    },
   }
-  const stop = launchRequestedStudio(studio, provider, { query, Observer, root: {} })
-  return { stop, ready() { ready = true; observe?.() }, opens: () => opens, disconnected: () => disconnected }
+  const studio = {
+    open(value) {
+      assert.equal(value, provider)
+      opens++
+    },
+  }
+  class Observer {
+    constructor(callback) {
+      observe = callback
+    }
+    observe() {}
+    disconnect() {
+      disconnected++
+    }
+  }
+  const stop = launchRequestedStudio(studio, provider, {
+    query,
+    Observer,
+    root: {},
+  })
+  return {
+    stop,
+    ready() {
+      ready = true
+      observe?.()
+    },
+    opens: () => opens,
+    disconnected: () => disconnected,
+  }
 }
 
 test("requested video waits for the real map provider and opens once", () => {

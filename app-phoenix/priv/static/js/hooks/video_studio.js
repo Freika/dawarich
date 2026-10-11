@@ -1,15 +1,14 @@
+import Flash from "controllers/flash_controller"
+import { translate } from "i18n"
 import { MapPageProvider } from "poster_studio/data/providers"
 import { ensureHudFonts } from "video_studio/hud_fonts"
 import { defaultSettings } from "video_studio/studio_state"
-import { translate } from "i18n"
-import Flash from "controllers/flash_controller"
+import { launchRequestedStudio } from "./requested_studio.js"
 import { bindControls, controls } from "./video_studio_controls.js"
 import { dates } from "./video_studio_dates.js"
 import { preview } from "./video_studio_preview.js"
 import { rendering } from "./video_studio_render.js"
 import { saving } from "./video_studio_save.js"
-
-import { launchRequestedStudio } from "./requested_studio.js"
 
 const instances = new WeakMap()
 const targets =
@@ -120,7 +119,8 @@ export function mountVideoStudio(element, application = window.Stimulus) {
   instances.set(element, studio)
   studio.syncControls()
   studio.stopRequestedLaunch = launchRequestedStudio(
-    studio, new MapPageProvider({
+    studio,
+    new MapPageProvider({
       application: {
         getControllerForElementAndIdentifier: (...args) =>
           studio.application?.getControllerForElementAndIdentifier?.(...args),

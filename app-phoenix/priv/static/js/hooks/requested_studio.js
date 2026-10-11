@@ -8,13 +8,22 @@ export function launchRequestedStudio(studio, provider, options = {}) {
     observer?.disconnect()
   }
   const launch = () => {
-    if (!active || !provider.controller?.map || !provider.controller?.mapDataManager) return
+    if (
+      !active ||
+      !provider.controller?.map ||
+      !provider.controller?.mapDataManager
+    )
+      return
     stop()
     studio.open(provider)
   }
   const Observer = options.Observer ?? MutationObserver
   observer = new Observer(launch)
-  observer.observe(options.root ?? document.body, { childList: true, subtree: true, attributes: true })
+  observer.observe(options.root ?? document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+  })
   launch()
   return stop
 }

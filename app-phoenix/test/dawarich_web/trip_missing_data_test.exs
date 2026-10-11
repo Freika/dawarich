@@ -221,7 +221,10 @@ defmodule DawarichWeb.TripMissingDataTest do
           base_url: "http://www.example.com"
         })
 
-      golden = File.read!("test/fixtures/trips/remaining/pages/#{entry["name"]}.html")
+      golden =
+        File.read!("test/fixtures/trips/remaining/pages/#{entry["name"]}.html")
+        |> Dawarich.Test.NativeTripExports.prepare()
+
       actual = ParityHTML.normalize(shell(Dawarich.Test.NativeM4Corpus.prepare(html)))
       expected = ParityHTML.normalize(shell(Dawarich.Test.NativeM4Corpus.prepare(golden)))
 

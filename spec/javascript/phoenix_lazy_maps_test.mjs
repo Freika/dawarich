@@ -115,7 +115,9 @@ for (const [label, hook, name, snapshot, clear] of [
     try {
       const c = setup(hook, name, snapshot, clear)
       let reloads = 0
-      c.instance.pushEvent = () => { reloads++ }
+      c.instance.pushEvent = () => {
+        reloads++
+      }
       c.events.get(snapshot)({ private: true })
       win.dispatchEvent(new Event("offline"))
       assert.equal(c.canvas.hidden, true)
@@ -135,5 +137,4 @@ for (const [label, hook, name, snapshot, clear] of [
       globalThis.window = prior
     }
   })
-
 }

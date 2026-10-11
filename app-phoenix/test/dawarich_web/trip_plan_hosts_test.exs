@@ -165,7 +165,9 @@ defmodule DawarichWeb.TripPlanHostsTest do
             )
         end
 
-      golden = File.read!("test/fixtures/trips/remaining/pages/#{entry["name"]}.html")
+      golden =
+        File.read!("test/fixtures/trips/remaining/pages/#{entry["name"]}.html")
+        |> Dawarich.Test.NativeTripExports.prepare()
 
       actual =
         ParityHTML.normalize(fragment(Dawarich.Test.NativeM4Corpus.prepare(html), selector))

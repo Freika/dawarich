@@ -40,7 +40,10 @@ defmodule DawarichWeb.PointsNativeLiveTest do
       view |> element("#points_cancel") |> render_click()
       refute has_element?(view, "#points_dialog")
       view |> form("#point_filters", @params) |> render_submit()
-      assert URI.decode_query(URI.parse(assert_patch(view)).query)["start_at"] == @params["start_at"]
+
+      assert URI.decode_query(URI.parse(assert_patch(view)).query)["start_at"] ==
+               @params["start_at"]
+
       assert has_element?(view, "#point_160000")
     end
   end
