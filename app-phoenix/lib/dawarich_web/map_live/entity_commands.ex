@@ -29,7 +29,15 @@ defmodule DawarichWeb.MapLive.EntityCommands do
   def handle_event("place:change", %{"place" => attrs}, socket) when is_map(attrs) do
     case socket.assigns[:place_dialog] do
       %{form: form} = current ->
-        draft = Map.merge(form, Map.take(attrs, ~w(name latitude longitude note tag_ids)))
+        draft =
+          attrs
+          |> Map.take(~w(name latitude longitude note tag_ids))
+          |> Map.filter(fn
+            {"tag_ids", ids} -> is_list(ids) and Enum.all?(ids, &is_binary/1)
+            {_, value} -> is_binary(value)
+          end)
+          |> then(&Map.merge(form, &1))
+
         {:noreply, assign(socket, :place_dialog, %{current | form: draft})}
 
       _ ->

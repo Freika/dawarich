@@ -172,6 +172,31 @@ defmodule DawarichWeb.NativeMapEntitiesTest do
            ]
   end
 
+  test "malformed place draft fields leave the owned form usable", c do
+    view = open(c)
+    render_hook(view, "place:new", %{"latitude" => 52.52, "longitude" => 13.405})
+
+    view
+    |> form("#native-place-form", place: %{name: "Kept draft", note: "Kept note"})
+    |> render_change()
+
+    render_hook(view, "place:change", %{
+      "place" => %{
+        "name" => %{"nested" => "invalid"},
+        "note" => ["invalid"],
+        "tag_ids" => %{"invalid" => "shape"}
+      }
+    })
+
+    assert has_element?(view, "#native-place-form input[name='place[name]'][value='Kept draft']")
+    assert has_element?(view, "#native-place-form textarea", "Kept note")
+    view |> form("#native-place-form") |> render_submit()
+
+    assert rows("SELECT name,note FROM places WHERE user_id=$1", [c.id]) == [
+             ["Kept draft", "Kept note"]
+           ]
+  end
+
   defp finished(pid) do
     ref = Process.monitor(pid)
     assert_receive {:DOWN, ^ref, :process, ^pid, _}, 2_000
