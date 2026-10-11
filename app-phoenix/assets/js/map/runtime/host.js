@@ -271,6 +271,7 @@ export function mountHost({
     owner,
     () => layers,
     () => recent,
+    () => editing?.invalidate(),
   )
   const update = owner.update
   owner.update = (config) => {

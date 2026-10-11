@@ -106,9 +106,21 @@ export function createHostRecentPoint({ map, reader, lifetime, config }) {
   }
 }
 
-export function installRecentReconnect(owner, getLayers, getRecent) {
+export function installRecentReconnect(
+  owner,
+  getLayers,
+  getRecent,
+  invalidateEditing = () => {},
+) {
   const reconnect = owner.reconnect
   owner.reconnect = async (receipt) => {
+    if (
+      !receipt ||
+      receipt.kinds?.some(
+        (kind) => kind === "map_edits" || kind === "reconnect",
+      )
+    )
+      invalidateEditing()
     const state = await reconnect.call(owner)
     if (state === "ready") {
       getLayers()?.points.refresh()

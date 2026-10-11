@@ -171,3 +171,53 @@ test("date and import changes close selected edit geometry and reject deferred d
     }
   }
 })
+
+test("map edit invalidation closes stale active geometry and reopening reads the canonical revision without a drag", async () => {
+  for (const receipt of [{ kinds: ["map_edits"] }, { kinds: ["reconnect"] }]) {
+    const f = fixture({ editEnabled: true })
+    f.map.getCanvasContainer = () => ({ style: {} })
+    let revision = 0
+    f.reader.read = async () => ({
+      data: { ...editTrack, properties: { ...editTrack.properties, revision } },
+    })
+    f.reader.pages = async () =>
+      editPoints.map((point) => ({
+        ...point,
+        revision,
+        longitude: point.longitude + revision,
+      }))
+    let pending
+    try {
+      await f.owner.mount()
+      const editor = f.owner.editor
+      await editor.selectTrack(9, { forEditing: true })
+      editor.startDrag(7)
+      editor.dragTo(15, 54)
+      pending = editor.endDrag({ lng: 15, lat: 54 })
+      const oldCommand = f.pushed.find((item) => item.event === "point:move")
+      revision = 1
+      await f.owner.reconnect(receipt)
+      assert.equal(editor.data, null)
+      assert.equal(f.layers.has("track-points"), false)
+      oldCommand.reply({
+        ok: true,
+        response: {
+          point: { ...editPoints[0], revision: 1 },
+          revision: { point: 1 },
+        },
+      })
+      await pending
+      assert.equal(editor.edits.history.size, 0)
+      await editor.selectTrack(9, { forEditing: true })
+      assert.equal(editor.trackRevision, 1)
+      assert.deepEqual(editor._point(7).geometry.coordinates, [14, 52])
+      assert.equal(
+        f.pushed.filter((item) => item.event === "point:move").length,
+        1,
+      )
+    } finally {
+      f.owner.destroy()
+      await pending
+    }
+  }
+})

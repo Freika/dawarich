@@ -76,15 +76,19 @@ export function createHostEditing({
     transport.destroy()
     editor.dispose()
   })
+  function invalidate() {
+    gesture.cancel()
+    editor.close()
+    transport.cancel()
+  }
   return {
+    invalidate,
     editor,
     transport,
     config(next) {
       const nextScope = identity(next.range ?? {})
       if (nextScope !== sessionScope) {
-        gesture.cancel()
-        editor.close()
-        transport.cancel()
+        invalidate()
         sessionScope = nextScope
       }
       editor.edits.panel.distanceUnit = next.distanceUnit ?? "km"
