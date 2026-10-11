@@ -188,4 +188,4 @@ These are native Phoenix corrections delivered in A2; retained Rails behavior is
 
 - Release native point-drag and history controls after a lost acknowledgement, clear uncertain geometry and reread canonical tiles without retrying the write. [FRB-NATIVE-M6-POINT-MOVE-DEADLINE](fixed-rails-bugs.md#frb-native-m6-point-move-deadline)
 
-- Erase idle native Family map coordinates and popups on sharing expiry, and revalidate withdrawals within a bounded lease while typed sharing invalidations are pending. [FRB-NATIVE-M6-FAMILY-IDLE-CONSENT](fixed-rails-bugs.md#frb-native-m6-family-idle-consent)
+- Erase idle native Family map coordinates and popups on sharing expiry, and revalidate withdrawals within a snapshot-bound lease that unrelated callbacks cannot extend while typed sharing invalidations are pending. [FRB-NATIVE-M6-FAMILY-IDLE-CONSENT](fixed-rails-bugs.md#frb-native-m6-family-idle-consent)

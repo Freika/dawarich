@@ -19,7 +19,7 @@ export function mountFamily({
   now = Date.now,
 }) {
   const empty = element.querySelector?.("[data-family-empty]")
-  let overlay, library, overlayLocale, leaseTimer
+  let overlay, library, overlayLocale, leaseTimer, leaseToken
   let destroyed = false
   let leaseDeadline = now() + 30000
   const reads = createRequestScope(timers)
@@ -109,16 +109,23 @@ export function mountFamily({
     if (destroyed) return
     timers.clearTimeout(leaseTimer)
     const delay = Math.max(0, Math.min(30000, Number(milliseconds) || 0))
-    leaseDeadline = now() + delay
-    leaseTimer = timers.setTimeout(() => {
-      if (destroyed) return
-      owner.clear()
-      owner.lease({ milliseconds: 30000 })
-      void owner.reconnect()
-    }, delay)
+    leaseDeadline = Math.min(leaseDeadline, now() + delay)
+    const token = {}
+    leaseToken = token
+    leaseTimer = timers.setTimeout(
+      () => {
+        if (destroyed || token !== leaseToken) return
+        owner.clear()
+        owner.lease({ milliseconds: 30000 })
+        void owner.reconnect()
+      },
+      Math.max(0, leaseDeadline - now()),
+    )
   }
   owner.lease({ milliseconds: initial.consentLeaseMs ?? 30000 })
   owner.clear = () => {
+    leaseToken = null
+    leaseDeadline = now() + 30000
     reads.reset()
     reader.reset()
     overlay?.clear()

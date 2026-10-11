@@ -77,8 +77,8 @@ defmodule DawarichWeb.NativeM6FamilyRoutesTest do
     send(view.pid, :renew_family_admission)
     render(view)
     next = :sys.get_state(view.pid).socket.assigns.native_family_consent
-    assert next.token != lease.token
-    send(view.pid, {:native_family_consent, lease.token})
+    assert next.token == lease.token
+    send(view.pid, {:native_family_consent, make_ref()})
     render(view)
     refute_push_event(view, "family:clear", %{})
 
@@ -121,6 +121,47 @@ defmodule DawarichWeb.NativeM6FamilyRoutesTest do
     send(view.pid, :renew_family_admission)
     render(view)
     assert :sys.get_state(view.pid).socket.assigns.native_family_consent == nil
+  end
+
+  test "unrelated Family callbacks cannot postpone the displayed snapshot consent bound", %{
+    id: id
+  } do
+    Repo.query!(
+      "UPDATE users SET settings=jsonb_set(settings,'{family}',$2::jsonb) WHERE id=$1",
+      [id, %{"location_sharing" => %{"enabled" => true}}],
+      log: false
+    )
+
+    assert Dawarich.Accounts.get(id).settings["family"]["location_sharing"]["enabled"]
+    {:ok, view, _} = live(RailsUser.signed_in(id) |> RailsUser.connecting_as(id), "/family")
+    original = :sys.get_state(view.pid).socket.assigns.native_family_consent
+
+    Repo.query!(
+      "UPDATE users SET settings=jsonb_set(settings,'{family}',$2::jsonb) WHERE id=$1",
+      [id, %{"location_sharing" => %{"enabled" => false}}],
+      log: false
+    )
+
+    for _ <- 1..3 do
+      render_hook(view, "map:failed", %{})
+      send(view.pid, :unrelated_family_callback)
+      render(view)
+      current = :sys.get_state(view.pid).socket.assigns.native_family_consent
+      assert current.token == original.token
+      assert current.timer == original.timer
+      assert has_element?(view, "#native-family-members", "Not sharing")
+      assert Process.read_timer(current.timer) <= 30000
+    end
+
+    send(view.pid, {:native_family_consent, original.token})
+    render(view)
+    assert_push_event(view, "family:clear", %{code: "consent_expired"})
+    assert_push_event(view, "map:invalidate", %{kind: "family"})
+    fresh = :sys.get_state(view.pid).socket.assigns.native_family_consent
+    assert fresh.token != original.token
+    send(view.pid, {:native_family_consent, original.token})
+    render(view)
+    refute_push_event(view, "family:clear", %{})
   end
 
   test "canonical family envelopes refuse alternate transports and retain independent page and read routes",

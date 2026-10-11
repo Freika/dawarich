@@ -450,3 +450,58 @@ test("idle Family withdrawal is revalidated within the bounded lease and destroy
   assert.equal(f.reads.length, before)
   assert.equal(jobs.size, 0)
 })
+
+test("unrelated Family lease callbacks cannot prolong cached coordinates or accept retired reads", async () => {
+  let time = 1000,
+    next = 0
+  const jobs = new Map()
+  const f = fixture({
+    consentLeaseMs: 100,
+    now: () => time,
+    timers: {
+      setTimeout(fn, delay) {
+        jobs.set(++next, { fn, delay })
+        return next
+      },
+      clearTimeout(id) {
+        jobs.delete(id)
+      },
+    },
+  })
+  try {
+    await f.owner.mount()
+    for (const fn of f.events.get("click:family-circles"))
+      fn({ features: [{ properties: { id: 7 } }], lngLat: [13, 52] })
+    for (const elapsed of [20, 40, 80]) {
+      time = 1000 + elapsed
+      f.owner.lease({ milliseconds: 30000 })
+      assert.ok([...jobs.values()].some((job) => job.delay === 100 - elapsed))
+    }
+    const late = defer()
+    f.reader.read = () => late.promise
+    const pending = f.owner.reconnect()
+    await Promise.resolve()
+    time = 1100
+    const expiry = [...jobs.values()].find((job) => job.delay === 20)
+    expiry.fn()
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+    assert.equal(f.sources.get("family-history").data.features.length, 0)
+    assert.equal(f.popups[0].removed, true)
+    f.reader.read = async (resource) => ({
+      data:
+        resource === "family_locations" ? { locations: [] } : { members: [] },
+    })
+    await f.owner.reconnect()
+    late.resolve({
+      data: {
+        locations: [{ user_id: 7, latitude: 52, longitude: 13 }],
+        members: [],
+      },
+    })
+    await pending
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+  } finally {
+    f.owner.destroy()
+  }
+  assert.equal(jobs.size, 0)
+})
