@@ -164,12 +164,25 @@ end
 RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
   let(:fixture_models) { [User, Family, Family::Membership, Point, PointSource] }
   include FixtureRecording::DeterministicInputs
+  include FixtureRecording::SyntheticSecret
+
+  around do |example|
+    config = Rails.application.env_config
+    previous = config.slice('action_dispatch.show_exceptions', 'action_dispatch.show_detailed_exceptions')
+    config.merge!('action_dispatch.show_exceptions' => :all, 'action_dispatch.show_detailed_exceptions' => false)
+    example.run
+  ensure
+    config.merge!(previous)
+  end
+
   after(:all) do
     results = IngestGoldenOracle.results
-    missing = IngestGoldenOracle::EXPECTED_NAMES - results.map { _1['name'] }
+    selected = ENV.fetch('API_GOLDEN_CASES', '').split(',')
+    missing = (selected.empty? ? IngestGoldenOracle::EXPECTED_NAMES : selected) - results.map { _1['name'] }
     raise "golden generator incomplete, missing cases: #{missing.join(', ')}" if missing.any?
 
-    path = Rails.root.join('app-phoenix/test/fixtures/ingest/golden.json')
+    path = Pathname.new(ENV.fetch('API_GOLDEN_OUTPUT') { Rails.root.join('app-phoenix/test/fixtures/ingest/golden.json').to_s })
+    FileUtils.mkdir_p(path.dirname)
     fixture = { 'rows_sql' => IngestGoldenOracle::ROWS_SQL,
                 'cases' => results.reject { _1['name'].start_with?('closure_') }.sort_by { _1['name'] },
                 'closure_cases' => results.select { _1['name'].start_with?('closure_') }.sort_by { _1['name'] } }
@@ -177,6 +190,8 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
     File.write(path, encoded) if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
 
     written = JSON.parse(encoded)
+    next if selected.any?
+
     float_case = written['cases'].find { _1['name'] == 'points_float_text' }
     broadcast = float_case['commands'].find { _1['kind'] == 'points.live_broadcast' }
     altitude = broadcast['payload']['payloads'][0]['altitude']
@@ -185,7 +200,9 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
     end
   end
 
-  IngestGoldenOracle::CASES.each do |kase|
+  selected = ENV.fetch('API_GOLDEN_CASES', '').split(',')
+  raise 'Unknown golden case' unless (selected - IngestGoldenOracle::EXPECTED_NAMES).empty?
+  IngestGoldenOracle::CASES.select { selected.empty? || selected.include?(_1[:name]) }.each do |kase|
     it(kase[:name]) {
       IngestGoldenOracle.results << record(
         kase.reverse_merge(setup: :user, path: '/api/v1/points', auth: :bearer, expect: :own)
@@ -213,7 +230,7 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
       IngestGoldenOracle.results << record(
         IngestGoldenOracle::SLICE_FAULT.reverse_merge(setup: :user, path: '/api/v1/points', auth: :bearer, expect: :own)
       )
-    end
+    end if selected.empty? || selected.include?(IngestGoldenOracle::SLICE_FAULT[:name])
   end
 
   def capture_closure_ingest!
@@ -449,16 +466,13 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
       allow(Families::Locations).to receive(:new).and_raise(ActiveRecord::StatementInvalid, 'a3 forced friends failure')
     end
 
-    post path, params: body, headers: headers
+    post path, params: body, headers: headers,
+               env: { 'action_dispatch.show_exceptions' => :all, 'action_dispatch.show_detailed_exceptions' => false }
 
     result = { 'name' => kase[:name], 'expect' => kase[:expect].to_s, 'ignore' => kase[:ignore] || [],
                'user_id' => user.id, 'setup' => setup, 'setup_point_ids' => setup_ids,
                'fault' => Array(kase[:fault]), 'phoenix_fault' => Array(kase[:phoenix_fault]),
                'request' => { 'target' => path, 'headers' => headers.to_a, 'body' => body } }
-    if kase[:expect] == :replay
-      return result.merge('response' => { 'status' => response.status, 'body' => response.body })
-    end
-
     ids = normalizer(user, setup_ids)
     commands = calls.map do |kind, payload|
       next { 'kind' => kind, 'years' => years(payload['timestamps']) } if kind == 'points.tile_epoch'
@@ -470,7 +484,14 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
     rows = JSON.parse(ids.call(ActiveRecord::Base.connection.exec_query(rows_sql).to_a.to_json))
     count = ActiveRecord::Base.connection.select_value("SELECT points_count FROM users WHERE id = #{user.id}")
     response_headers = response.headers.to_h.transform_keys(&:downcase).except('date', 'content-length')
+    result['cookie_attributes'] = response_headers['set-cookie'].split('; ').then { |parts| { 'name' => parts.first.split('=').first, 'attributes' => parts.drop(1) } } if response_headers.key?('set-cookie')
+    response_headers['set-cookie'] = 'redacted' if response_headers.key?('set-cookie')
+    result['session_after'] = request.session.to_hash.except('session_id', '_csrf_token') if response_headers.key?('set-cookie')
+    database_after = IngestGoldenOracle::TABLES.index_with do |table|
+      sql_rows("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
+    end
     snapshot = result.merge(
+      'database_after' => database_after,
       'response' => { 'status' => response.status, 'headers' => response_headers, 'body' => ids.call(response.body),
                       'content_length' => response.body.bytesize },
       'rows' => rows, 'points_count' => count, 'commands' => commands
