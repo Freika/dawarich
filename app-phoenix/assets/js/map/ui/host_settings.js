@@ -5,6 +5,7 @@ import { createStyleControls } from "./style_controls.js"
 export function mapSettings(settings, config) {
   const maps = settings.maps ?? {}
   const enabled = settings.enabled_map_layers
+  const styleName = settings.maps_maplibre_style
   return {
     ...config,
     distanceUnit: maps.distance_unit ?? config.distanceUnit,
@@ -21,8 +22,8 @@ export function mapSettings(settings, config) {
         type: settings.globe_projection === true ? "globe" : "mercator",
       },
     },
-    styleName: settings.maps_maplibre_style ?? config.styleName,
-    styleUrl: `/maps_maplibre/styles/${["light", "dark", "white", "black", "grayscale"].includes(settings.maps_maplibre_style) ? settings.maps_maplibre_style : "light"}.json`,
+    styleName: styleName ?? config.styleName,
+    styleUrl: `/maps_maplibre/styles/${["light", "dark", "white", "black", "grayscale"].includes(styleName) ? styleName : "light"}.json`,
     trackColor: settings.track_color ?? config.trackColor,
     pointsEnabled: enabled ? enabled.includes("Points") : config.pointsEnabled,
     tracksEnabled: enabled ? enabled.includes("Tracks") : config.tracksEnabled,

@@ -528,3 +528,44 @@ test("empty native tool status whitespace permits track clicks and hover while a
     f.owner.destroy()
   }
 })
+
+test("selected index-based segments render the canonical track slice for map hover", async () => {
+  const f = fixture()
+  const coordinates = [
+    [12, 51],
+    [13, 52],
+    [14, 53],
+  ]
+  f.reader.read = async () => ({
+    data: {
+      type: "Feature",
+      geometry: { type: "LineString", coordinates },
+      properties: {
+        id: 7,
+        segments: [{ id: 19, start_index: 1, end_index: 2, color: "#3B82F6" }],
+      },
+    },
+  })
+  try {
+    await f.owner.mount()
+    await f.owner.timeline.select({ id: 7 })
+    const rendered = f.sources.get("native-selected-track").data.features[1]
+    assert.deepEqual(rendered.geometry, {
+      type: "LineString",
+      coordinates: coordinates.slice(1, 3),
+    })
+    assert.equal(rendered.properties.track_id, 7)
+    assert.equal(rendered.properties.color, "#3B82F6")
+    f.root.emit("pointerover", {
+      target: {
+        closest: () => ({ dataset: { trackId: "7", segmentId: "19" } }),
+      },
+    })
+    assert.deepEqual(
+      f.sources.get("native-timeline-hover").data.geometry,
+      rendered.geometry,
+    )
+  } finally {
+    f.owner.destroy()
+  }
+})

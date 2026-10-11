@@ -73,8 +73,12 @@ export function createTrackSelection({
       operation.check()
       if (!feature?.geometry || destroyed) return
       selected = feature
-      const segments = (feature.properties?.segments || []).map((segment) =>
-        segmentFeature({ ...segment, track_id: Number(id) }),
+      const segments = (feature.properties?.segments || []).map((row) =>
+        segmentFeature({
+          ...row,
+          coordinates: segment(row.id)?.geometry.coordinates ?? [],
+          track_id: Number(id),
+        }),
       )
       const data = {
         type: "FeatureCollection",

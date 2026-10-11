@@ -14,7 +14,7 @@ function visitHaloFilter(layer) {
     !Number.isSafeInteger(filter[2])
   )
     return
-  return ["==", ["get", "id"], filter[2]]
+  return structuredClone(filter)
 }
 const properties =
   "id,name,title,timestamp,start_at,end_at,avg_speed,transportation_mode,color,icon,tag_ids,emoji,confidence,status,duration,distance,anomaly,visit_id,place_id".split(
@@ -31,7 +31,6 @@ function paintValue(value, budget, depth = 0) {
     const copy = value.map((entry) => paintValue(entry, budget, depth + 1))
     if (copy.every((entry) => entry !== undefined)) return copy
   }
-  return undefined
 }
 
 function coordinates(value, depth = 0) {
