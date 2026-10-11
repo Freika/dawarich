@@ -7,6 +7,7 @@ class Settings::GeneralController < ApplicationController
 
   before_action :authenticate_user!
   before_action :authenticate_self_hosted!, only: :test_email
+  before_action :authenticate_admin!, only: :test_email
 
   def index; end
 

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Only administrators can request test email, and queued test messages are discarded after the recipient loses administrator access.
+
 - Calendar activity and status counts refresh after demo visit edits and deletion, including restored visits removed by null-island cleanup.
 
 - Achievement sharing returns only to same-host HTTP(S) or safe relative pages and falls back for non-HTTP return URLs.
