@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative 'places_golden_support'
+require_relative 'group_c_capture'
 
 module ApiVisitsGoldenOracle
   TABLES = %w[users areas places visits points place_visits notes tags taggings instance_settings].freeze
@@ -24,6 +25,7 @@ require_relative 'api_visits_golden_cases'
 RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
   include ActiveSupport::Testing::TimeHelpers
   include PlacesGoldenSupport
+  include GroupCCapture
 
   it 'records visits responses and database effects from Rails' do
     oracle = ApiVisitsGoldenOracle
@@ -48,6 +50,7 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
       expect(payload.length).to eq(entry[:count]), entry[:name] if entry[:count]
       headers = result.dig('response', 'headers')
       expect(headers.slice(*entry[:headers].keys)).to eq(entry[:headers]) if entry[:headers]
+      result['provider_response'] = JSON.generate(type: 'FeatureCollection', features: kase[:provider_input]) if kase[:provider_input]
       result['jobs_after'] = enqueued_jobs.map { { 'job' => _1[:job].name, 'args' => _1[:args] } }
       expect(result['jobs_after'].length).to eq(entry[:jobs]), entry[:name] if entry[:jobs]
       if kase[:method] == :get || entry.fetch(:status, 200) >= 400
@@ -100,14 +103,14 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
       expect(result).not_to have_key('mask')
       result
     end
-    path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/fixtures/api_visits/golden.json'))
+    path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/golden_captures/api_visits.json'))
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
                 'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,
                 'cases' => cases.sort_by { _1['name'] } }
     encoded = "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0).rstrip}\n"
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
       FileUtils.mkdir_p(path.dirname)
-      File.write(path, encoded)
+      group_c_write('api_visits', fixture)
     else
       expect(path.read == encoded).to be(true), 'visits golden fixture differs from Rails'
     end
@@ -191,6 +194,7 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
                'geometry' => { 'coordinates' => [13.405, 52.52] } }
       double(data:, latitude: 52.52, longitude: 13.405)
     end
+    kase[:provider_input] = results.map(&:data)
     allow(Geocoder).to receive(:search).and_return(results)
     search = Places::NearbySearch.new(user: owner, latitude: 52.52, longitude: 13.405, cache: true)
     kase[:cache_keys] << search.send(:cache_key)

@@ -10,13 +10,18 @@ defmodule DawarichWeb.Api.NotesGoldenTest do
   @moduletag :capture_log
   @tables ~w(users trips areas visits places notes action_text_rich_texts)
 
-  for kase <- @golden["cases"] do
-    @kase kase
-    @tag golden_case: String.to_atom(kase["name"])
-    test "golden #{kase["name"]}", %{port: port, upstream: upstream} do
-      for {name, value} <- @kase["env"], do: System.put_env(name, value)
+  setup_all do
+    {:ok, golden: File.read!("test/fixtures/api_notes/golden.json") |> Jason.decode!()}
+  end
 
-      for [table, rows] <- @golden["setups"][@kase["setup"]], row <- rows do
+  for kase <- @golden["cases"] do
+    @tag golden_case: String.to_atom(kase["name"])
+    @case_name kase["name"]
+    test "golden #{kase["name"]}", %{port: port, upstream: upstream, golden: golden} do
+      kase = Enum.find(golden["cases"], &(&1["name"] == @case_name))
+      for {name, value} <- kase["env"], do: System.put_env(name, value)
+
+      for [table, rows] <- golden["setups"][kase["setup"]], row <- rows do
         assert table in @tables
         ApiGolden.insert!(table, row)
       end
@@ -24,9 +29,8 @@ defmodule DawarichWeb.Api.NotesGoldenTest do
       for {name, value} <- @golden["sequences"],
           do: Repo.query!("SELECT setval($1::text::regclass, $2, false)", [name, value])
 
-      before = rows()
-      ApiGolden.check(@kase, port, upstream)
-      assert rows() == if(@kase["expect"] == "own", do: @kase["after"], else: before)
+      ApiGolden.check(kase, port, upstream)
+      assert rows() == Map.fetch!(kase, "after")
     end
   end
 

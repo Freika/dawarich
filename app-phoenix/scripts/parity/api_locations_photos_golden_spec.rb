@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative 'fixture_recording'
+require_relative 'group_c_capture'
 
 module ApiLocationsPhotosGoldenOracle
   TABLES = %w[users points].freeze
@@ -122,24 +123,27 @@ module ApiLocationsPhotosGoldenOracle
 end
 
 RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type: :request do
+  include GroupCCapture
   let(:fixture_models) { [User, Point] }
   include FixtureRecording::DeterministicInputs
   after(:all) do
-    path = Rails.root.join('app-phoenix/test/fixtures/api_locations_photos/golden.json')
-    FileUtils.mkdir_p(path.dirname)
     cases = ApiLocationsPhotosGoldenOracle.results.reject { _1['name'].start_with?('closure_') }
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'cases' => cases.sort_by { _1['name'] } }
-    File.write(path, "#{g3_exact_json(fixture)}\n")
-    closure_path = Rails.root.join('app-phoenix/test/fixtures/a12f2b/closure.json')
-    FileUtils.mkdir_p(closure_path.dirname)
-    closure = closure_path.exist? ? JSON.parse(closure_path.read) : {}
-    closure['locations_photos'] = ApiLocationsPhotosGoldenOracle.results
-                                                                .select { _1['name'].start_with?('closure_') }
-                                                                .sort_by { _1['name'] }
-    File.write(closure_path, "#{g3_exact_json(closure.sort.to_h)}\n")
+    group_c_write('api_locations_photos', fixture)
+    if ApiLocationsPhotosGoldenOracle.results.any? { _1['name'].start_with?('closure_') }
+      closure_path = Rails.root.join('app-phoenix/test/fixtures/a12f2b/closure.json')
+      FileUtils.mkdir_p(closure_path.dirname)
+      closure = closure_path.exist? ? JSON.parse(closure_path.read) : {}
+      closure['locations_photos'] = ApiLocationsPhotosGoldenOracle.results
+                                                                  .select { _1['name'].start_with?('closure_') }
+                                                                  .sort_by { _1['name'] }
+      File.write(closure_path, "#{g3_exact_json(closure.sort.to_h)}\n")
+    end
   end
 
-  (ApiLocationsPhotosGoldenOracle::CASES + ApiLocationsPhotosGoldenOracle::CLOSURE_CASES).each do |kase|
+  (ApiLocationsPhotosGoldenOracle::CASES + (ENV['GROUP_C_CAPTURE'] == '1' ? [] : ApiLocationsPhotosGoldenOracle::CLOSURE_CASES)).each do |kase|
+    next if ENV['API_GOLDEN_CASES'].present? && !ENV['API_GOLDEN_CASES'].split(',').include?(kase[:name])
+
     it(kase[:name]) do
       defaults = { method: :get, auth: :bearer, accept: :json, expect: :own, env: {}, seed: :none, user: {} }
       ApiLocationsPhotosGoldenOracle.results << g3_record(kase.reverse_merge(defaults))
@@ -188,16 +192,13 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
     { 'name' => kase[:name], 'expect' => kase[:expect].to_s, 'ignore' => kase[:ignore] || [], 'env' => kase[:env],
       'setup' => setup, 'upstream' => g3_upstream(kase),
       'request' => { 'method' => kase[:method].to_s.upcase, 'target' => path, 'headers' => headers.to_a },
-      'response' => captured }
+      'response' => captured, 'after' => group_c_rows(ApiLocationsPhotosGoldenOracle::TABLES),
+      'provider_cache' => kase[:seed] == :photoprism ? { Photoprism::CachePreviewToken::TOKEN_CACHE_KEY + "_#{user.id}" => Rails.cache.read(Photoprism::CachePreviewToken::TOKEN_CACHE_KEY + "_#{user.id}") } : {} }
   end
 
   def g3_request(kase, path, headers)
     send(kase[:method], path, headers: headers)
     g3_response
-  rescue NoMethodError
-    raise unless kase[:name] == 'closure_suggestions_nested'
-
-    { 'status' => 500, 'headers' => {}, 'body' => '' }
   end
 
   def g3_response
@@ -266,11 +267,18 @@ RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type
   end
 
   def g3_upstream(kase)
+    if kase[:seed] == :photoprism
+      oracle = ApiLocationsPhotosGoldenOracle
+      return { 'path' => "/api/v1/t/#{oracle::ASSET}/phoenix-a4g3-preview-token/tile_500",
+               'request_headers' => {}, 'status' => 200, 'headers' => [],
+               'body_base64' => Base64.strict_encode64(oracle::JPEG), 'calls' => 1 }
+    end
     up = kase[:upstream] or return nil
     { 'path' => URI(g3_upstream_url(kase)).request_uri, 'api_key' => ApiLocationsPhotosGoldenOracle::IMMICH_KEY,
       'status' => up[:status], 'headers' => (up[:headers] || {}).to_a, 'fault' => up[:fault]&.to_s,
       'body_base64' => Base64.strict_encode64(up.fetch(:body, ApiLocationsPhotosGoldenOracle::JPEG)),
-      'calls' => up.fetch(:calls) }
+      'calls' => up[:status] == 302 ? 2 : up.fetch(:calls),
+      **(up[:status] == 302 ? { 'redirect' => { 'path' => '/elsewhere', 'status' => 200, 'headers' => [], 'body_base64' => Base64.strict_encode64(ApiLocationsPhotosGoldenOracle::JPEG) } } : {}) }
   end
 
   def g3_point(user, lat, lon, timestamp, **attrs)

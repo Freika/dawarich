@@ -27,9 +27,10 @@ defmodule DawarichWeb.Api.MapController do
     now = conn.assigns[:api_now] || DateTime.utc_now()
 
     result =
-      if conn.private[:dawarich_browser_map] == true or Dawarich.Standalone.enabled?(),
-        do: Closure.read(action, conn.assigns.api_user, params, now),
-        else: Dawarich.MapApi.read(action, conn.assigns.api_user, params, now)
+      if conn.private[:dawarich_browser_map] == true or
+           (conn.private[:dawarich_native_api] == true or Dawarich.Standalone.enabled?()),
+         do: Closure.read(action, conn.assigns.api_user, params, now),
+         else: Dawarich.MapApi.read(action, conn.assigns.api_user, params, now)
 
     case result do
       {:points, term, headers, meta} ->
@@ -52,20 +53,12 @@ defmodule DawarichWeb.Api.MapController do
         Body.replay(conn, reason)
 
       {:error, status} ->
-        Respond.json(
-          conn,
-          status,
-          {:object,
-           [
-             {"error",
-              if(status == 500, do: "internal_server_error", else: "Unprocessable Entity")}
-           ]}
-        )
+        DawarichWeb.Api.ExceptionResponse.respond(conn, status)
     end
   rescue
     error ->
-      if Dawarich.Standalone.enabled?(),
-        do: Respond.json(conn, 500, {:object, [{"error", "internal_server_error"}]}),
+      if conn.private[:dawarich_native_api] == true or Dawarich.Standalone.enabled?(),
+        do: DawarichWeb.Api.ExceptionResponse.respond(conn, 500),
         else: Body.replay(conn, inspect(error.__struct__))
   end
 
@@ -79,7 +72,7 @@ defmodule DawarichWeb.Api.MapController do
       {"etag", etag} | if(modified, do: [{"last-modified", Params.http_date(modified)}], else: [])
     ]
 
-    with {:ok, since} <- Params.if_modified_since(conn) do
+    with {:ok, since} <- Dawarich.MapApi.NativeTime.http(conn.req_headers) do
       if Cache.fresh?(get_req_header(conn, "if-none-match"), etag, modified, since),
         do: Respond.not_modified(conn, validators),
         else:
@@ -87,7 +80,7 @@ defmodule DawarichWeb.Api.MapController do
           |> merge_resp_headers(headers)
           |> Respond.json(200, term.(), validators: validators)
     else
-      {:replay, reason} -> Body.replay(conn, reason)
+      _ -> DawarichWeb.Api.ExceptionResponse.respond(conn, 500)
     end
   end
 

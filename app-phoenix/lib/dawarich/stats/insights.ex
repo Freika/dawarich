@@ -27,7 +27,12 @@ defmodule Dawarich.Stats.Insights do
     years = Enum.sort(years, :desc)
     [[today]] = Repo.query!("SELECT ($1::timestamptz)::date", [now]).rows
     year = requested || List.first(years) || today.year
-    [[from, to]] = Repo.query!(@visit_bounds, [year]).rows
+
+    {from, to} =
+      if year == 0,
+        do: {nil, nil},
+        else: Repo.query!(@visit_bounds, [year]).rows |> hd() |> List.to_tuple()
+
     {:ok, %{year: year, years: years, today: today, visits: {from, to}}}
   end
 

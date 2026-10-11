@@ -4,7 +4,7 @@ defmodule DawarichWeb.Api.MapGoldenTest do
 
   alias Dawarich.Test.ApiGolden
 
-  @golden "test/fixtures/api_map/golden.json" |> File.read!() |> Jason.decode!()
+  @golden "test/golden_captures/api_map.json" |> File.read!() |> Jason.decode!()
   @tables ~w(users countries point_sources tracks track_segments points)
 
   setup do
@@ -12,23 +12,25 @@ defmodule DawarichWeb.Api.MapGoldenTest do
     :ok
   end
 
-  for kase <- @golden["cases"] do
-    @kase if(
-            kase["name"] in ~w(rails_point_tiles rails_tracked_months rails_point_update rails_points_bulk_destroy replay_points_local_time_without_offset),
-            do: Map.put(kase, "expect", "own"),
-            else: kase
-          )
-    test "golden #{kase["name"]}", %{port: port, upstream: puma} do
-      Enum.each(@kase["env"], fn {name, value} -> System.put_env(name, value) end)
+  setup_all do
+    {:ok, golden: File.read!("test/golden_captures/api_map.json") |> Jason.decode!()}
+  end
 
-      for [table, rows] <- @golden["setups"][@kase["setup"]], row <- rows do
+  for kase <- @golden["cases"] do
+    @case_name kase["name"]
+    test "golden #{kase["name"]}", %{port: port, upstream: puma, golden: golden} do
+      kase = Enum.find(golden["cases"], &(&1["name"] == @case_name))
+      Enum.each(kase["env"], fn {name, value} -> System.put_env(name, value) end)
+
+      for [table, rows] <- golden["setups"][kase["setup"]], row <- rows do
         true = table in @tables
         ApiGolden.insert!(table, row)
       end
 
       before = digests()
-      ApiGolden.check(@kase, port, puma, float_precision: 8, float_fields: ["avg_speed"])
+      ApiGolden.check(kase, port, puma, float_precision: 8, float_fields: ["avg_speed"])
       assert digests() == before
+      assert Dawarich.Test.ApiCapturedState.rows(@tables) == kase["after"]
     end
   end
 

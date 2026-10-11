@@ -28,7 +28,7 @@ defmodule Dawarich.NotesApi.Closure do
     do: Write.destroy(owner, RubyInteger.to_i(params["id"]), zone)
 
   defp dispatch(action, owner, params, zone, now) do
-    attrs = params["note"]
+    attrs = Map.get(params, "note", Map.take(params, @keys))
 
     cond do
       attrs in [nil, false, ""] or attrs == %{} ->

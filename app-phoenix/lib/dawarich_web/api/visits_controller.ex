@@ -15,9 +15,18 @@ defmodule DawarichWeb.Api.VisitsController do
     now = conn.assigns[:api_now] || DateTime.utc_now()
 
     result =
-      if conn.assigns.api_format in [:json, :html, :all],
-        do: scoped_run(action, user, params, zone, now, conn.private[:dawarich_browser_map]),
-        else: {:replay, "visit format"}
+      if conn.private[:dawarich_native_api] == true or
+           conn.assigns.api_format in [:json, :html, :all],
+         do:
+           scoped_run(
+             action,
+             user,
+             params,
+             zone,
+             now,
+             conn.private[:dawarich_browser_map] || conn.private[:dawarich_native_api]
+           ),
+         else: {:replay, "visit format"}
 
     case result do
       {:ok, rows, headers} when is_list(headers) ->
@@ -50,7 +59,7 @@ defmodule DawarichWeb.Api.VisitsController do
     end
   rescue
     error ->
-      if Dawarich.Standalone.enabled?(),
+      if conn.private[:dawarich_native_api] == true or Dawarich.Standalone.enabled?(),
         do: Respond.json(conn, 500, {:object, [{"error", "internal_server_error"}]}),
         else: Body.replay(conn, inspect(error.__struct__))
   end
@@ -126,7 +135,7 @@ defmodule DawarichWeb.Api.VisitsController do
   end
 
   defp run(action, owner, params, zone, now) do
-    case params["visit"] do
+    case Map.get(params, "visit", Map.take(params, ~w(name started_at ended_at))) do
       attrs when is_map(attrs) and map_size(attrs) > 0 ->
         result =
           if action == :create,

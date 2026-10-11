@@ -5,7 +5,7 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
 
   alias Dawarich.Test.ApiGolden
 
-  @golden "test/fixtures/api_visits/golden.json" |> File.read!() |> Jason.decode!()
+  @golden "test/golden_captures/api_visits.json" |> File.read!() |> Jason.decode!()
   @now @golden["now"] |> DateTime.from_iso8601() |> elem(1)
   @moduletag api_now: @now
   @moduletag api_public_only: true
@@ -44,15 +44,19 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
     Dawarich.Redis.cache_command(["DEL", key])
   end
 
-  for kase <- @golden["cases"] do
-    @kase kase
-    @setup_rows @golden["setups"][kase["setup"]]
-    @tag golden_case: String.to_atom(kase["name"])
-    test "golden #{kase["name"]}", %{port: port, upstream: upstream} do
-      Dawarich.FixtureCleanup.delete!(ScratchRepo, @tables)
-      for {name, value} <- @kase["env"], do: System.put_env(name, value)
+  setup_all do
+    {:ok, golden: File.read!("test/golden_captures/api_visits.json") |> Jason.decode!()}
+  end
 
-      for [table, seeds] <- @setup_rows, row <- seeds do
+  for kase <- @golden["cases"] do
+    @tag golden_case: String.to_atom(kase["name"])
+    @case_name kase["name"]
+    test "golden #{kase["name"]}", %{port: port, upstream: upstream, golden: golden} do
+      kase = Enum.find(golden["cases"], &(&1["name"] == @case_name))
+      Dawarich.FixtureCleanup.delete!(ScratchRepo, @tables)
+      for {name, value} <- kase["env"], do: System.put_env(name, value)
+
+      for [table, seeds] <- golden["setups"][kase["setup"]], row <- seeds do
         assert table in @tables
         ApiGolden.insert!(table, row, ScratchRepo)
         if table == "users", do: ApiGolden.insert!(table, row)
@@ -61,26 +65,46 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
       for {name, value} <- @sequences,
           do: rows("SELECT setval($1::text::regclass,$2,false)", [name, value])
 
-      for {key, _} <- @kase["cache_after"], do: Dawarich.Redis.cache_command(["DEL", key])
+      for {key, _} <- kase["cache_after"], do: Dawarich.Redis.cache_command(["DEL", key])
 
       primed_at = System.monotonic_time(:millisecond)
 
-      for {key, _} <- @kase["cache_after"],
+      for {key, _} <- kase["cache_after"],
           String.starts_with?(key, "timeline_month_summary/"),
           do: assert(Dawarich.RailsCache.put(key, "primed", expires_in: 300) == {:ok, "OK"})
 
-      before = after_rows()
-      ApiGolden.check(@kase, port, upstream)
-      assert after_rows() == if(@kase["expect"] == "own", do: @kase["after"], else: before)
+      if response = kase["provider_response"] do
+        start_supervised!(Dawarich.Geocoding.FakeHttp)
+        start_supervised!(hd(Dawarich.Redis.child_specs()))
+        config = Dawarich.Geocoding.Config.resolve(ScratchRepo)
+
+        {url, response_key, _} =
+          Dawarich.Geocoding.Query.build(
+            config,
+            {52.52, 13.405},
+            [limit: 10, radius: 0.5, distance_sort: true],
+            Dawarich.AppVersion.current()
+          )
+
+        Dawarich.TtlCache.delete({Dawarich.Geocoding.ResponseCache, response_key})
+        Dawarich.Geocoding.FakeHttp.stub(url, 200, response)
+      end
+
+      ApiGolden.check(kase, port, upstream)
+
+      if kase["provider_response"],
+        do: assert(length(Dawarich.Geocoding.FakeHttp.requests()) == 1)
+
+      assert after_rows() == Map.fetch!(kase, "after")
       effects = rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id")
 
-      if @kase["expect"] != "own" || @kase["response"]["status"] >= 400 ||
-           @kase["request"]["method"] == "GET",
+      if kase["response"]["status"] >= 400 ||
+           kase["request"]["method"] == "GET",
          do: assert(effects == [])
 
-      assert_jobs(effects, @kase["jobs_after"] || [])
-      assert_months(effects, @kase, primed_at)
-      for {key, _} <- @kase["cache_after"], do: Dawarich.Redis.cache_command(["DEL", key])
+      assert_jobs(effects, kase["jobs_after"] || [])
+      assert_months(effects, kase, primed_at)
+      for {key, _} <- kase["cache_after"], do: Dawarich.Redis.cache_command(["DEL", key])
     end
   end
 
@@ -133,17 +157,27 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
         end)
 
       readable? = timeline? and key not in targeted and not invalidated?
-      assert Dawarich.RailsCache.get(key) == if(readable?, do: {:ok, "primed"}, else: :miss)
+
+      if String.starts_with?(key, "places_nearby:") and kase["provider_response"] do
+        assert Dawarich.Photos.ProviderCache.get(key) == {:ok, kase["cache_after"][key]["value"]}
+      else
+        assert Dawarich.RailsCache.get(key) == if(readable?, do: {:ok, "primed"}, else: :miss)
+      end
+
       assert {:ok, ttl} = Dawarich.Redis.cache_command(["TTL", key])
       elapsed = (System.monotonic_time(:millisecond) - primed_at) / 1_000
 
       assert if(timeline?,
                do: ttl > 0 and ttl <= 300 and ttl >= 300 - ceil(elapsed),
-               else: ttl == -2
+               else:
+                 if(String.starts_with?(key, "places_nearby:") and kase["provider_response"],
+                   do: ttl > 0 and ttl <= 3600,
+                   else: ttl == -2
+                 )
              )
     end
 
-    if kase["expect"] == "own" do
+    if Map.has_key?(kase, "after") do
       keys =
         for {key, %{"value" => value}} <- kase["cache_after"],
             String.starts_with?(key, "timeline_month_summary/"),

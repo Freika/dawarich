@@ -35,7 +35,7 @@ defmodule Dawarich.PlacesApi.Nearby do
   end
 
   def fetch(user, lat, lon, radius, limit, opts \\ []) do
-    config = Suggestions.configuration()
+    config = Suggestions.configuration(false, opts[:repo] || Repo)
 
     cond do
       not config.enabled or (lat == 0 and lon == 0) ->
@@ -49,20 +49,25 @@ defmodule Dawarich.PlacesApi.Nearby do
             list
 
           _ ->
-            results = lookup(user, lat, lon, radius, limit)
+            results = lookup(user, lat, lon, radius, limit, opts)
             if results, do: ProviderCache.put(key, results, 3600)
             results || []
         end
 
       true ->
-        lookup(user, lat, lon, radius, limit) || []
+        lookup(user, lat, lon, radius, limit, opts) || []
     end
   rescue
     _ -> []
   end
 
-  defp lookup(user, lat, lon, radius, limit) do
-    case Suggestions.lookup(user, {lat, lon}, limit: limit, radius: radius, distance_sort: true) do
+  defp lookup(user, lat, lon, radius, limit, opts) do
+    case Suggestions.lookup(user, {lat, lon},
+           limit: limit,
+           radius: radius,
+           distance_sort: true,
+           repo: opts[:repo]
+         ) do
       nil -> nil
       results -> Enum.map(results, &format(&1, lat, lon))
     end

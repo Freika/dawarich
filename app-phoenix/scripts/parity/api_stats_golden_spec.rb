@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative 'fixture_recording'
+require_relative 'group_c_capture'
 
 RSpec.describe 'Phoenix fixture: ISO codes and flags of Countries::IsoCodeMapper' do
   it 'writes priv/country_codes.json in COUNTRIES order' do
@@ -117,17 +118,22 @@ module ApiStatsGoldenOracle
 end
 
 RSpec.describe 'Phoenix fixture: golden stats API requests', type: :request do
+  include GroupCCapture
   let(:fixture_models) { [User, Country, Stat, Users::Digest, Visit, Point, Flight] }
   include FixtureRecording::DeterministicInputs
   after(:all) do
-    path = Rails.root.join('app-phoenix/test/fixtures/api_stats/golden.json')
-    FileUtils.mkdir_p(path.dirname)
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil),
                 'cases' => ApiStatsGoldenOracle.results.sort_by { _1['name'] } }
-    File.write(path, "#{g2_exact_json(fixture)}\n")
+    group_c_write('api_stats', fixture)
     if (visited = fixture['cases'].find { _1['name'] == 'rails_visited_epoch' })
       recorded = visited.merge('expect' => 'own', 'cache' => self.class.instance_variable_get(:@visited_epoch_cache))
-      File.write(path.dirname.join('visited_epoch.json'), "#{g2_exact_json(recorded)}\n")
+      path = Rails.root.join('app-phoenix/test/golden_captures/api_stats_visited_epoch.json')
+      encoded = "#{g2_exact_json(recorded)}\n"
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        File.write(path, encoded)
+      else
+        expect(path.read).to eq(encoded)
+      end
     end
   end
 
@@ -193,7 +199,7 @@ RSpec.describe 'Phoenix fixture: golden stats API requests', type: :request do
     send(kase[:method], path, headers: headers)
 
     { 'name' => kase[:name], 'expect' => kase[:expect].to_s, 'ignore' => kase[:ignore] || [],
-      'env' => kase[:env], 'setup' => setup,
+      'env' => kase[:env], 'setup' => setup, 'after' => group_c_rows(ApiStatsGoldenOracle::TABLES),
       'request' => { 'method' => kase[:method].to_s.upcase, 'target' => path, 'headers' => headers.to_a },
       'response' => { 'status' => response.status, 'body' => response.body,
                       'headers' => response.headers.to_h.transform_keys(&:downcase).except('date', 'content-length') } }

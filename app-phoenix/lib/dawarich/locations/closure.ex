@@ -32,7 +32,7 @@ defmodule Dawarich.Locations.Closure do
           }
 
           case RailsTime.with_zone(user.timezone, fn ->
-                 term(search, Dawarich.Locations.rows(user.id, search))
+                 term(search, Dawarich.Locations.rows(user.id, search) |> Enum.reverse())
                end) do
             {:ok, body} -> {:ok, 200, body}
             _ -> error(500, "search_failed_please_try_again")

@@ -132,7 +132,7 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
              |> read_response()
   end
 
-  test "inputs Phoenix does not own go to Puma", %{port: port, upstream: upstream} do
+  test "permissive stats parameters terminate natively", %{port: port, upstream: upstream} do
     owner!()
     user!(%{api_key: "phoenix-a4g2-key-zone", settings: %{"timezone" => "europe/berlin"}})
 
@@ -148,18 +148,41 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
         ] do
       client = request(port, target, headers)
 
-      if target == "/api/v1/digests" do
-        assert {200, _, ~s({"digests":[],"availableYears":[]})} = read_response(client)
-      else
-        assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
-                 read_response(client)
+      {status, _, body} = read_response(client)
+      decoded = Jason.decode!(body)
+
+      cond do
+        target == "/api/v1/insights?distance_unit=furlong" ->
+          assert {status, decoded} == {500, %{"error" => "internal_server_error"}}
+
+        target == "/api/v1/insights?year=abc" ->
+          assert status == 200
+          assert decoded["year"] == 0
+          assert decoded["totals"]["totalDistance"] == 0
+
+        target == "/api/v1/residency?year=2045" ->
+          assert {status, decoded} ==
+                   {500, %{"status" => 500, "error" => "Internal Server Error"}}
+
+        target == "/api/v1/countries/visited_cities?start_at=yesterday&end_at=1" ->
+          assert {status, decoded} == {200, %{"data" => []}}
+
+        target == "/api/v1/flights?start_at=March%201" ->
+          assert {status, decoded} == {200, %{"type" => "FeatureCollection", "features" => []}}
+
+        target == "/api/v1/digests/2023" ->
+          assert status == 200
+          assert decoded["year"] == 2023
+
+        true ->
+          assert {status, decoded} == {200, %{"digests" => [], "availableYears" => []}}
       end
 
       no_upstream!(upstream)
     end
   end
 
-  test "a date Elixir accepts but Postgres rejects hands off instead of crashing, for visited_cities and flights",
+  test "year-zero date filters terminate natively for visited_cities and flights",
        %{port: port, upstream: upstream} do
     owner!()
 
@@ -168,7 +191,14 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
           "/api/v1/flights?start_at=0000-01-01"
         ] do
       client = request(port, target, bearer())
-      assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} = read_response(client)
+      {status, _, body} = read_response(client)
+
+      expected =
+        if String.contains?(target, "visited_cities"),
+          do: {200, %{"data" => []}},
+          else: {500, %{"error" => "internal_server_error"}}
+
+      assert {status, Jason.decode!(body)} == expected
       no_upstream!(upstream)
     end
   end
@@ -219,7 +249,7 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
     no_upstream!(upstream)
   end
 
-  test "answered lines carry the final status, the Last-Modified 304 included; a hand-off logs its reason",
+  test "terminal stats answers log final status and Last-Modified 304",
        %{port: port, upstream: upstream} do
     owner!()
     stamp = "Thu, 02 Jan 2025 03:04:05 GMT"
@@ -235,8 +265,8 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
 
         client = request(port, "/api/v1/insights?year=abc", bearer())
 
-        assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
-                 read_response(client)
+        assert {200, _, body} = read_response(client)
+        assert Jason.decode!(body)["year"] == 0
 
         no_upstream!(upstream)
       end)
@@ -246,18 +276,19 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
     refute log =~ "handed to Rails"
   end
 
-  test "a DB error raised while reading hands off to Rails instead of crashing, in every controller",
+  test "DB errors terminate natively in each stats controller",
        %{upstream: upstream} do
     Ecto.Adapters.SQL.Sandbox.checkin(Repo)
 
     for {controller, action, path} <- [
           {StatsController, :index, "/api/v1/stats"},
-          {DigestsController, :index, "/api/v1/digests"},
+          {DigestsController, :closure_index, "/api/v1/digests"},
           {GeoController, :flights, "/api/v1/flights"}
         ] do
       conn =
         Plug.Test.conn(:get, path)
         |> Plug.Conn.put_req_header("accept", "application/json")
+        |> DawarichWeb.Api.Respond.prepare()
         |> Plug.Conn.assign(:api_user, %{id: 1, timezone: nil})
         |> Plug.Conn.assign(:api_params, %{})
         |> Plug.Conn.assign(:api_tag, "api")
@@ -269,7 +300,13 @@ defmodule DawarichWeb.Api.StatsEndpointTest do
           result = controller.call(conn, action)
           assert result.halted
           assert result.status == 500
-          assert result.resp_body == ~s({"status":500,"error":"Internal Server Error"})
+
+          expected =
+            if controller == DigestsController,
+              do: %{"error" => "Digest request failed"},
+              else: %{"error" => "internal_server_error"}
+
+          assert Jason.decode!(result.resp_body) == expected
           no_upstream!(upstream)
         end)
 

@@ -54,11 +54,19 @@ defmodule Dawarich.VisitsApi.Read do
             [id]
           ).rows
 
-        if Dawarich.Geocoding.Config.resolve(repo).enabled && !(lat == 0 && lon == 0) do
-          {:replay, "enabled nearby provider"}
-        else
-          {:ok, current_place(repo, visit.place_id)}
-        end
+        suggestions =
+          Dawarich.PlacesApi.Nearby.fetch(owner, lat, lon, 0.5, 10, cache: true, repo: repo)
+
+        current = current_place(repo, visit.place_id)
+
+        ids =
+          for {:object, fields} <- current,
+              {"osm_id", osm_id} <- fields,
+              not is_nil(osm_id),
+              do: osm_id
+
+        suggestions = Enum.reject(suggestions, &(&1["osm_id"] in ids))
+        {:ok, current ++ Enum.map(suggestions, &Dawarich.PlacesApi.Nearby.item_term/1)}
       end
     end)
   end

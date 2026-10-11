@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative 'fixture_recording'
+require_relative 'group_c_capture'
 
 module ApiMapGoldenOracle
   TABLES = %w[users countries point_sources tracks track_segments points].freeze
@@ -172,11 +173,11 @@ module ApiMapGoldenOracle
 end
 
 RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request do
+  include GroupCCapture
   after(:all) do
-    path = Rails.root.join('app-phoenix/test/fixtures/api_map/golden.json')
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'setups' => ApiMapGoldenOracle.setups.sort.to_h,
                 'cases' => ApiMapGoldenOracle.results.sort_by { _1['name'] } }
-    FixtureRecording.verify(path, "#{map_exact_json(fixture)}\n")
+    group_c_write('api_map', fixture)
   end
 
   ApiMapGoldenOracle::CASES.each do |kase|
@@ -186,7 +187,7 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     end
   end
 
-  it 'isolates golden map seeds from orphaned point sources' do
+  it 'isolates golden map seeds from orphaned point sources', :group_c_skip do
     map_insert('point_sources', id: 850_999, digest: 'e' * 32,
                                 created_at: ApiMapGoldenOracle::STAMP, updated_at: ApiMapGoldenOracle::STAMP)
     map_seed(seed: :none, user: {})
@@ -345,21 +346,18 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     { 'name' => kase[:name], 'expect' => kase[:expect].to_s, 'ignore' => kase[:ignore] || [], 'env' => kase[:env],
       'setup' => setup,
       'request' => { 'method' => kase[:method].to_s.upcase, 'target' => path, 'headers' => headers.to_a },
-      'response' => map_response(kase, path, headers) }
+      'response' => map_response(kase, path, headers),
+      'after' => group_c_rows(ApiMapGoldenOracle::TABLES) }
   end
 
   def map_response(kase, path, headers)
     send(kase[:method], path, headers: headers)
     headers = response.headers.to_h.transform_keys(&:downcase).except('date', 'content-length')
-    headers['etag'] = 'W/"fixture-etag"'
+    headers['etag'] = 'W/"fixture-etag"' if headers.key?('etag')
     headers['set-cookie'] = 'fixture-session' if headers.key?('set-cookie')
     headers['x-request-id'] = 'fixture-request-id'
     headers['x-runtime'] = '0.000000'
     { 'status' => response.status, 'headers' => headers, 'body' => map_normalized_body(response.body) }
-  rescue StandardError
-    raise unless kase[:expect] == :rails
-
-    { 'status' => 500, 'headers' => {}, 'body' => '' }
   end
 
   def map_setup

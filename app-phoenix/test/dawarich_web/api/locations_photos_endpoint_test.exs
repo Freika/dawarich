@@ -232,7 +232,7 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
     no_upstream!(stalled)
   end
 
-  test "inputs Phoenix does not own go to Puma, before or after the upstream fetch", %{
+  test "permissive locations and provider errors terminate natively", %{
     port: port,
     upstream: upstream
   } do
@@ -248,27 +248,23 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
 
     user!(%{api_key: "phoenix-a4g3-key-zone", settings: %{"timezone" => "europe/berlin"}})
 
-    for {target, headers} <- [
-          {"/api/v1/locations?lat=52.52abc&lon=13.405", bearer()},
-          {"/api/v1/locations?lat=52.52&lon=13.405&limit=-1", bearer()},
-          {"/api/v1/locations?lat=52.52&lon=13.405&date_from=Nov%2015", bearer()},
-          {"/api/v1/locations?lat=52.52&lon=13.405", bearer("phoenix-a4g3-key-zone")},
-          {"#{@thumb}?source=photoprism", bearer()},
-          {"#{@thumb}?source=%C3%BC", bearer()},
-          {"#{@thumb}?source=immich", bearer()},
-          {"#{@thumb}?source=immich", bearer()}
+    for {target, headers, status, raw} <- [
+          {"/api/v1/locations?lat=52.52abc&lon=13.405", bearer(), 200,
+           ~s({"query":null,"locations":[],"total_locations":0,"search_metadata":{}})},
+          {"/api/v1/locations?lat=52.52&lon=13.405&limit=-1", bearer(), 500,
+           ~s({"error":"Search failed. Please try again."})},
+          {"/api/v1/locations?lat=52.52&lon=13.405&date_from=Nov%2015", bearer(), 200,
+           ~s({"query":null,"locations":[],"total_locations":0,"search_metadata":{}})},
+          {"/api/v1/locations?lat=52.52&lon=13.405", bearer("phoenix-a4g3-key-zone"), 200,
+           ~s({"query":null,"locations":[],"total_locations":0,"search_metadata":{}})},
+          {"#{@thumb}?source=photoprism", bearer(), 502, ~s({"error":"Failed to fetch photos"})},
+          {"#{@thumb}?source=%C3%BC", bearer(), 401,
+           ~s({"error":"Ü integration not configured"})},
+          {"#{@thumb}?source=immich", bearer(), 403,
+           ~s({"error":"Immich API key missing permission: asset.view"})},
+          {"#{@thumb}?source=immich", bearer(), 500, ~s({"error":"Failed to fetch thumbnail"})}
         ] do
-      client = request(port, target, headers)
-
-      if headers == bearer("phoenix-a4g3-key-zone") do
-        assert {200, _,
-                ~s({"query":null,"locations":[],"total_locations":0,"search_metadata":{}})} =
-                 read_response(client)
-      else
-        assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
-                 read_response(client)
-      end
-
+      assert {^status, _, ^raw} = port |> request(target, headers) |> read_response()
       no_upstream!(upstream)
     end
 
@@ -365,7 +361,7 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
         ""
       )
 
-  test "answered lines carry the final status; hand-off reasons carry no coordinates, URLs or keys",
+  test "terminal answers log final status without coordinates, URLs or keys",
        %{port: port, upstream: upstream} do
     {base, immich} = immich([answer(302, "")])
     owner!(@key, immich_settings(base))
@@ -377,14 +373,15 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
                  |> request("/api/v1/locations?lat=52.52&lon=13.405", bearer())
                  |> read_response()
 
-        for target <- ["/api/v1/locations?lat=52.52abc&lon=13.405", "#{@thumb}?source=immich"] do
-          client = request(port, target, bearer())
+        assert {200, _, _} =
+                 port
+                 |> request("/api/v1/locations?lat=52.52abc&lon=13.405", bearer())
+                 |> read_response()
 
-          assert {500, _, ~s({"status":500,"error":"Internal Server Error"})} =
-                   read_response(client)
+        assert {500, _, ~s({"error":"Failed to fetch thumbnail"})} =
+                 port |> request("#{@thumb}?source=immich", bearer()) |> read_response()
 
-          no_upstream!(upstream)
-        end
+        no_upstream!(upstream)
       end)
 
     Task.await(immich)
