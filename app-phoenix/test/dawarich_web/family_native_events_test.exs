@@ -94,7 +94,8 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     assert family_locks(view, fn -> render_hook(view, "family_confirm", %{}) end) == 0
   end
 
-  test "rendered member confirmation accepts its numeric JS payload and removes only that member", ctx do
+  test "rendered member confirmation accepts its numeric JS payload and removes only that member",
+       ctx do
     {view, _} = open(ctx.owner, "/family")
     view |> element("button[data-family-action=remove_member]") |> render_click()
     assert has_element?(view, "#family-confirm[data-pending=true]")

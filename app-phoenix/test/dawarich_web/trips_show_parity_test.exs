@@ -66,7 +66,9 @@ defmodule DawarichWeb.TripsShowParityTest do
         |> LazyHTML.to_html()
 
       assert MapStimulus.attributes("<html><body>#{content}</body></html>", ["#trip-shell"]) ==
-               MapStimulus.attributes("<html><body>#{native_exports(rails)}</body></html>", ["#trip-shell"])
+               MapStimulus.attributes("<html><body>#{native_exports(rails)}</body></html>", [
+                 "#trip-shell"
+               ])
 
       assert html =~ ">#{title}</title>"
     end
