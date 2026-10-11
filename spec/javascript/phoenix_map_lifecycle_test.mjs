@@ -390,13 +390,21 @@ test("current ordinary map refresh deadline ends loading emits failure and rejec
   assert.equal(jobs.size, 0)
 })
 
-
 test("container resize updates the viewport and destruction disconnects the observer", async () => {
-  let notify, observed, disconnected = 0, resized = 0
+  let notify,
+    observed,
+    disconnected = 0,
+    resized = 0
   class ResizeObserver {
-    constructor(callback) { notify = callback }
-    observe(target) { observed = target }
-    disconnect() { disconnected++ }
+    constructor(callback) {
+      notify = callback
+    }
+    observe(target) {
+      observed = target
+    }
+    disconnect() {
+      disconnected++
+    }
   }
   const f = fixture({ window: { ResizeObserver } })
   await f.runtime.mount()

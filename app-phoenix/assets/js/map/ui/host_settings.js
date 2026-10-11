@@ -73,13 +73,14 @@ export function createHostSettings({
     const previous = getConfig()
     const next = mapSettings(settings, previous)
     await update(next)
-    const appearance = (config) => JSON.stringify([
-      config.styleUrl,
-      config.customTheme,
-      config.tilesUrl,
-      config.hiddenTileCategories,
-      config.disabledPoiGroups,
-    ])
+    const appearance = (config) =>
+      JSON.stringify([
+        config.styleUrl,
+        config.customTheme,
+        config.tilesUrl,
+        config.hiddenTileCategories,
+        config.disabledPoiGroups,
+      ])
     if (appearance(next) !== appearance(previous))
       await style.apply(next.styleUrl)
   }
