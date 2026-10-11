@@ -207,6 +207,13 @@ test("R08: native studio controls and lifecycle matches current Rails contract w
       r.context,
     )
   }
+  r.globals.MapPageProvider = class { constructor({ application }) { this.application = application } }
+  r.globals.window.location = { search: "" }
+  r.globals.URLSearchParams = URLSearchParams
+  vm.runInContext(
+    stripImports(await source("requested_studio")).replace(/export /g, ""),
+    r.context,
+  )
   r.globals.controls = r.controls
   r.globals.bindControls = r.bindControls
   r.globals.URL = { revokeObjectURL() {} }

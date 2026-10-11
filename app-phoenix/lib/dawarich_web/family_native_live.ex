@@ -260,6 +260,8 @@ defmodule DawarichWeb.FamilyNativeLive do
   defp message(text) when is_binary(text), do: text
   defp message(_), do: ""
 
+  defp id(id) when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807, do: id
+
   defp id(id) when is_binary(id) and byte_size(id) <= 19 do
     case Integer.parse(id) do
       {id, ""} when id > 0 and id <= 9_223_372_036_854_775_807 -> id

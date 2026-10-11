@@ -4,6 +4,17 @@ function lazyMap(load, name, events, clear, erase, reload) {
   return {
     mounted() {
       this.alive = true
+      this.offline = false
+      this.onOffline = () => {
+        this.offline = true
+        this.disconnected()
+      }
+      this.onOnline = () => {
+        this.offline = false
+        this.reconnected()
+      }
+      globalThis.window?.addEventListener("offline", this.onOffline)
+      globalThis.window?.addEventListener("online", this.onOnline)
       this.pending = new Map()
       this.callbacks = new Map()
       this.listeners = events.map((event) =>
@@ -12,6 +23,7 @@ function lazyMap(load, name, events, clear, erase, reload) {
             this.pending.clear()
             erase(this.el)
           }
+          if (this.offline) return
           if (this.runtime) this.callbacks.get(event)?.(data)
           else this.pending.set(event, data)
         }),
@@ -50,6 +62,8 @@ function lazyMap(load, name, events, clear, erase, reload) {
     },
     destroyed() {
       this.alive = false
+      globalThis.window?.removeEventListener("offline", this.onOffline)
+      globalThis.window?.removeEventListener("online", this.onOnline)
       this.pending.clear()
       this.runtime?.destroyed()
       for (const ref of this.listeners) this.removeHandleEvent(ref)

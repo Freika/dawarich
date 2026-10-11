@@ -57,7 +57,7 @@ defmodule DawarichWeb.TripsShowParityTest do
       title = @page["title"] |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
       assert ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *") ==
-               ParityHTML.normalize(rails)
+               ParityHTML.normalize(native_exports(rails))
 
       content =
         html
@@ -66,9 +66,21 @@ defmodule DawarichWeb.TripsShowParityTest do
         |> LazyHTML.to_html()
 
       assert MapStimulus.attributes("<html><body>#{content}</body></html>", ["#trip-shell"]) ==
-               MapStimulus.attributes("<html><body>#{rails}</body></html>", ["#trip-shell"])
+               MapStimulus.attributes("<html><body>#{native_exports(rails)}</body></html>", [
+                 "#trip-shell"
+               ])
 
       assert html =~ ">#{title}</title>"
     end
+  end
+
+  defp native_exports(html) do
+    Regex.replace(
+      ~r{<a data-turbo-method="post" href="(/trips/[1-9][0-9]*/export\?file_format=(?:gpx|json))">([^<]*)</a>},
+      html,
+      fn _, path, label ->
+        ~s(<form method="post" action="#{path}" data-turbo="false"><input type="hidden" name="authenticity_token" value="CSRF"><button type="submit">#{label}</button></form>)
+      end
+    )
   end
 end

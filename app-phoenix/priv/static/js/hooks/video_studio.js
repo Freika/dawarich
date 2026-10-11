@@ -9,6 +9,8 @@ import { preview } from "./video_studio_preview.js"
 import { rendering } from "./video_studio_render.js"
 import { saving } from "./video_studio_save.js"
 
+import { launchRequestedStudio } from "./requested_studio.js"
+
 const instances = new WeakMap()
 const targets =
   "stage frame preview overlay result status progressBar renderButton saveButton cancelButton nameInput themeSwatch themeLabel durationLabel trackWidthLabel fogOpacityLabel fogColorLabel trackColorLabel fogControls visualizationMode formatOption hudScaleLabel formatDims dateStart dateEnd rangeControls rangeDisplay loadButton loadSpinner switchButton rangeLabel summary".split(
@@ -117,12 +119,21 @@ export function mountVideoStudio(element, application = window.Stimulus) {
   studio.unbind = bindControls(studio)
   instances.set(element, studio)
   studio.syncControls()
+  studio.stopRequestedLaunch = launchRequestedStudio(
+    studio, new MapPageProvider({
+      application: {
+        getControllerForElementAndIdentifier: (...args) =>
+          studio.application?.getControllerForElementAndIdentifier?.(...args),
+      },
+    }),
+  )
   return studio
 }
 
 export function destroyVideoStudio(element) {
   const studio = instances.get(element)
   if (!studio) return
+  studio.stopRequestedLaunch?.()
   studio.disposed = true
   studio.close()
   studio.saveAbortController?.abort()

@@ -287,12 +287,12 @@ defmodule DawarichWeb.TripsLiveTest do
 
       assert has_element?(
                view,
-               "#{actions} a[data-turbo-method='post'][href='/trips/883901/export?file_format=gpx']"
+               "#{actions} form[data-turbo='false'][method='post'][action='/trips/883901/export?file_format=gpx'] button[type='submit']"
              )
 
       assert has_element?(
                view,
-               "#{actions} a[data-turbo-method='post'][href='/trips/883901/export?file_format=json']"
+               "#{actions} form[data-turbo='false'][method='post'][action='/trips/883901/export?file_format=json'] button[type='submit']"
              )
 
       assert has_element?(

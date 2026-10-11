@@ -1607,3 +1607,21 @@ Rails renders centered human-date tooltips at the right edge of the import table
 - Phoenix: `app-phoenix/lib/dawarich_web/imports_live/show.ex:129`.
 - Tests: `imports/extraction.spec.js`, English/German “390px extraction dialog opens cancels and preserves trust controls”; centered-tooltip mutation must overflow, and removing it must restore bounded dimensions.
 - Ledger: ED-NATIVE-S1-DATE-TOOLTIP; no DRB. Source-backed inherited layout defect; no Rails runtime oracle. Rails production code unchanged.
+### FRB-NATIVE-S1E3-OFFLINE-ERASURE — Family coordinates remain visible while offline
+
+Rails family maps retain coordinates when the browser goes offline; Stimulus disconnect runs only when the controller leaves the document. Phoenix erases private family/public content immediately on the browser offline event, rejects intervening snapshots, and requests fresh admitted state when online.
+
+- Rails: `app/javascript/controllers/family_map_controller.js:21,28`.
+- Phoenix: `app-phoenix/assets/js/hooks/lazy_maps.js:8`.
+- Tests: `browser offline erases lazy family content before heartbeat and requests fresh state on online`; public-map counterpart. Removing the offline listener fails both.
+- Ledger: ED-NATIVE-S1E3-OFFLINE-ERASURE; no DRB. Rails source unchanged.
+
+### FRB-NATIVE-S1E3-TOAST-INTERCEPTION — Retry notifications block replay controls
+
+Rails map notifications inherit DaisyUI fixed positioning and accept pointer events across their message. A persistent tile retry notification can cover the replay Next point button indefinitely. The shared map client used by Phoenix keeps notifications within their top-right container, lets message surfaces pass pointer events through, and retains interactive recovery buttons. Message text can shrink and wrap at narrow widths.
+
+- Rails/Phoenix shared map source: `app/javascript/maps_maplibre/components/toast.js:63`; Phoenix consumer: `app-phoenix/priv/static/js/map_shell.js:64`.
+- Tests: `a persistent error notification leaves the next replay point clickable`; original acceptance successor `next cycle button advances to next point`. Restoring fixed bottom positioning and message pointer events fails the focused browser regression.
+- Ledger: ED-NATIVE-S1E3-TOAST-INTERCEPTION; no DRB. The shared Rails map client receives the same correction.
+
+The same DaisyUI collision imposes a fit-content minimum width and nowrap text, putting German messages and recovery controls outside a 390-pixel viewport. The scoped map notification resets those inherited constraints, bounds its container and wraps both message and action. The focused browser case measures the document and every text Range after the slide-in animation settles.

@@ -196,3 +196,8 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Cancel in-flight native uploads when leaving the page, suppress late completion, and release owner-bound reservations with a keepalive request. [FRB-NATIVE-S1-UPLOAD-DEPARTURE](fixed-rails-bugs.md#frb-native-s1-upload-departure--leaving-during-an-upload-retains-its-reservation)
 
 - Keep import detail date tooltips inside narrow viewports. [FRB-NATIVE-S1-DATE-TOOLTIP](fixed-rails-bugs.md#frb-native-s1-date-tooltip--import-date-tooltips-overflow-narrow-screens)
+- Erase private map content immediately when the browser goes offline and reload freshly admitted snapshots on reconnect (FRB-NATIVE-S1E3-OFFLINE-ERASURE).
+
+- Keep persistent map retry notifications from blocking replay controls while preserving clickable recovery actions (FRB-NATIVE-S1E3-TOAST-INTERCEPTION).
+
+- Keep map retry messages and recovery actions within narrow German layouts by removing inherited fit-content and nowrap constraints (FRB-NATIVE-S1E3-TOAST-INTERCEPTION).
