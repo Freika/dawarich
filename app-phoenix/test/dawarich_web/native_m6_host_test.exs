@@ -356,27 +356,6 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, ".timeline-day-modes .mode-chip--muted", "30m moving")
   end
 
-  test "native Cloud links retain source destinations and stay absent when self hosted", %{id: id} do
-    {:ok, cloud, _} = open(id, "/map/v2", "en", false)
-    cloud |> element("[data-testid=map-button-links]") |> render_click()
-    assert has_element?(cloud, "#native-map-links")
-
-    for href <- [
-          "https://discord.gg/pHsBjpt5J8",
-          "https://dawarich.app/docs/intro",
-          "https://dawarich.app/privacy-policy"
-        ] do
-      assert has_element?(
-               cloud,
-               "#native-map-links a[href='#{href}'][target='_blank'][rel='noopener noreferrer']"
-             )
-    end
-
-    {:ok, local, _} = open(id, "/map/v2?panel=links", "en", true)
-    refute has_element?(local, "[data-testid=map-button-links]")
-    refute has_element?(local, "#native-map-links")
-  end
-
   test "native launcher toggle dismisses only explicit repeated clicks", %{id: id} do
     {:ok, view, _} = open(id, "/map/v2?panel=layers")
     view |> element("[data-testid=map-button-layers]") |> render_click()
@@ -570,10 +549,22 @@ defmodule DawarichWeb.NativeM6HostTest do
   end
 
   test "native production host filters the timeline and clears the filter", %{id: id} do
+    stamp = NaiveDateTime.utc_now(:second)
+
+    Dawarich.Repo.insert_all("tags", [
+      %{id: id * 10, user_id: id, name: "Home", created_at: stamp, updated_at: stamp}
+    ])
+
     {:ok, view, _} = open(id, @second <> "&panel=timeline")
     render_async(view, 5000)
     view |> form("#native-timeline-filter", %{"q" => "Bakery"}) |> render_change()
-    assert has_element?(view, "#native-timeline-filter input[value='bakery']")
+    assert has_element?(view, "#native-timeline-filter input[value='bakery'][autocomplete=off]")
+
+    assert has_element?(
+             view,
+             "#native-timeline-tags a[data-testid=tags-manage-link][href='/tags'][target='_blank']"
+           )
+
     view |> element("#native-timeline-filter-clear") |> render_click()
     assert has_element?(view, "#native-timeline-filter input[value='']")
   end
@@ -965,11 +956,10 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, "#flash-messages [role=alert]", "Failed to delete point")
   end
 
-  defp open(id, path, locale \\ "en", self_hosted \\ true) do
+  defp open(id, path, locale \\ "en") do
     RailsUser.signed_in(id)
     |> RailsUser.connecting_as(id)
     |> Plug.Conn.assign(:locale, locale)
-    |> Plug.Conn.assign(:self_hosted, self_hosted)
     |> Plug.Test.init_test_session(%{})
     |> Plug.Conn.put_private(:phoenix_endpoint, @endpoint)
     |> Map.merge(%{

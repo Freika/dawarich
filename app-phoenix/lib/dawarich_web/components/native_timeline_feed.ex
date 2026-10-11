@@ -53,6 +53,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
     >
       <input
         type="search"
+        autocomplete="off"
         name="q"
         value={@query}
         class="input input-sm input-bordered min-w-0 flex-1"
@@ -60,6 +61,14 @@ defmodule DawarichWeb.NativeTimelineFeed do
       />
     </form>
     <div :if={@tags != []} id="native-timeline-tags" class="flex flex-wrap gap-1 min-w-0">
+      <a
+        data-testid="tags-manage-link"
+        href="/tags"
+        target="_blank"
+        rel="noopener"
+        class="link min-w-0 [overflow-wrap:anywhere]"
+        title={t(@locale, "map.maplibre.settings_panel.manage_tags_in_a_new_tab", %{})}
+      >{t(@locale, "map.maplibre.settings_panel.manage", %{})}</a>
       <button
         :for={tag <- @tags}
         type="button"
