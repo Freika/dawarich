@@ -8,6 +8,9 @@ defmodule DawarichWeb.NativePublicDocument do
   attr :uuid, :string, required: true
   attr :embed, :boolean, default: false
 
+  def document(%{page: %{kind: :month}} = assigns),
+    do: DawarichWeb.NativePublicMonth.document(assigns)
+
   def document(%{page: %{card: _} = page} = assigns) do
     AchievementPublicHTML.html(%{
       __changed__: nil,

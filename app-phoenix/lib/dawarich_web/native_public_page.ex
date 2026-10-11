@@ -20,7 +20,7 @@ defmodule DawarichWeb.NativePublicPage do
     end
   end
 
-  def call(conn, :digest), do: call_page(conn, :digest)
+  def call(conn, kind) when kind in [:digest, :month], do: call_page(conn, kind)
 
   defp call_page(conn, kind) do
     conn = fetch_query_params(conn)
@@ -43,12 +43,12 @@ defmodule DawarichWeb.NativePublicPage do
     target =
       if kind == :achievement,
         do: {:achievement, Dawarich.Repo, conn.path_params["uuid"]},
-        else: {:digest, conn.path_params["uuid"], viewer_zone}
+        else: {kind, conn.path_params["uuid"], viewer_zone}
 
     result =
       if kind == :achievement,
         do: Pages.achievement(conn.path_params["uuid"], opts),
-        else: Pages.report(:digest, conn.path_params["uuid"], opts)
+        else: Pages.report(kind, conn.path_params["uuid"], opts)
 
     conn =
       if kind == :achievement and localized?(result),
@@ -84,7 +84,8 @@ defmodule DawarichWeb.NativePublicPage do
             base_url: conn.assigns[:base_url] || DawarichWeb.RequestURL.base(conn),
             embed: params["embed"] == "1",
             uuid: conn.path_params["uuid"],
-            page: page
+            page: page,
+            chrome: chrome(conn)
           }
 
           html =
@@ -114,6 +115,28 @@ defmodule DawarichWeb.NativePublicPage do
     _ -> conn |> put_resp_content_type("text/plain") |> send_resp(503, "") |> halt()
   end
 
+  defp chrome(conn) do
+    actor = conn.assigns[:current_user]
+    scope = actor && Dawarich.Maps.principal(actor, conn.assigns[:locale] || "en")
+
+    %{
+      current_scope: scope,
+      current_user: scope && scope.user,
+      navbar:
+        actor &&
+          Dawarich.Navbar.load(actor,
+            now: conn.assigns[:now] || DateTime.utc_now(),
+            self_hosted: conn.assigns[:self_hosted] == true
+          ),
+      request_path: conn.request_path,
+      base_url: conn.assigns[:base_url] || DawarichWeb.RequestURL.base(conn),
+      self_hosted: conn.assigns[:self_hosted] == true,
+      rails_csrf_token: nil,
+      now: conn.assigns[:now] || DateTime.utc_now(),
+      locale: conn.assigns[:locale] || "en"
+    }
+  end
+
   defp localized?({:ok, _}), do: true
   defp localized?({:error, :not_found}), do: true
   defp localized?(_), do: false
@@ -122,7 +145,8 @@ defmodule DawarichWeb.NativePublicPage do
     scope =
       if kind == :achievement,
         do: "achievements.public.not_found",
-        else: "controllers.shared.digests.shared_digest_not_found_or_no_longer_available"
+        else:
+          "controllers.shared.#{if(kind == :month, do: "stats.shared_stats", else: "digests.shared_digest")}_not_found_or_no_longer_available"
 
     message = DawarichWeb.Translate.t(conn.assigns[:locale] || "en", scope, %{})
 

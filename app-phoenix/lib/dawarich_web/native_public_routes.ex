@@ -15,6 +15,9 @@ defmodule DawarichWeb.NativePublicRoutes do
       scope "/" do
         pipe_through :native_public
 
+        get "/shared/month/:uuid", DawarichWeb.NativePublicPage, :month,
+          metadata: %{native_page: true}
+
         get "/shared/digest/:uuid", DawarichWeb.NativePublicPage, :digest,
           metadata: %{native_page: true}
 

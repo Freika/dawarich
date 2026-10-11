@@ -174,3 +174,36 @@ test("public charts survive persisted history hide and show and clean up on fina
   stop()
   assert.equal(destroyed, 1)
 })
+
+test("public monthly previews cannot mount after their document leaves", async () => {
+  const {initializePublicPreviews} = await import("../../app-phoenix/assets/js/public_charts.js")
+  let resolve, mounted = 0, destroyed = 0
+  const loading = new Promise(done => {resolve = done})
+  const events = new Map()
+  const target = {addEventListener: (name, fn) => events.set(name, fn), removeEventListener: name => events.delete(name)}
+  const cleanup = initializePublicPreviews({querySelectorAll: () => [{}]}, target, () => loading)
+  events.get("pagehide")({persisted: false})
+  resolve({mountPreview: () => ({mount: () => mounted++, destroy: () => destroyed++})})
+  await loading
+  await Promise.resolve()
+  assert.equal(mounted, 0)
+  cleanup()
+  assert.equal(destroyed, 0)
+})
+
+test("public monthly initializer shares one preview owner across repeated initialization", async () => {
+  const {initializePublicPreviews} = await import("../../app-phoenix/assets/js/public_charts.js")
+  const element = {}
+  let mounted = 0, removed = 0
+  const root = {querySelectorAll: () => [element]}
+  const target = {addEventListener() {}, removeEventListener() {}}
+  const load = async () => ({mountPreview: () => ({mount: () => mounted++, destroy: () => removed++})})
+  const first = initializePublicPreviews(root, target, load)
+  const second = initializePublicPreviews(root, target, load)
+  await Promise.resolve()
+  await Promise.resolve()
+  assert.equal(mounted, 1)
+  first()
+  second()
+  assert.equal(removed, 1)
+})

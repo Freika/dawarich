@@ -24,6 +24,26 @@ defmodule DawarichWeb.PublicReportDeliveryTest do
     %{uuid: uuid}
   end
 
+  test "public monthly report mounts native M6 preview without private geometry", %{uuid: uuid} do
+    conn = build_conn() |> clock_conn() |> get("/shared/month/#{uuid}")
+    assert conn.status == 200
+    doc = LazyHTML.from_document(conn.resp_body)
+
+    [json] =
+      doc
+      |> LazyHTML.query("#public-month-map[phx-hook='MapPreview']")
+      |> LazyHTML.attribute("data-map-config")
+
+    config = Jason.decode!(json)
+    assert config["kind"] == "stats"
+    assert config["uuid"] == uuid
+    refute Map.has_key?(config, "hexagons")
+
+    assert Enum.empty?(
+             LazyHTML.query(doc, "[data-controller], script[type=importmap], [data-api-key]")
+           )
+  end
+
   for kind <- [:digest, :month] do
     @tag review_delivery: true
     test "public #{kind} projection refreshes its clock after preparation", %{uuid: uuid} do

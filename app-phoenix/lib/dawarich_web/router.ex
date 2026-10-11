@@ -188,9 +188,6 @@ defmodule DawarichWeb.Router do
 
   scope "/" do
     pipe_through :sharing
-
-    get "/shared/month/:uuid", DawarichWeb.SharedStatsPage, :month,
-      metadata: %{rails_key: "shared"}
   end
 
   map_frame_routes()

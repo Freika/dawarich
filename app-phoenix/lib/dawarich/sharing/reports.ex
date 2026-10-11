@@ -124,6 +124,7 @@ defmodule Dawarich.Sharing.Reports do
     {:ok,
      %{
        kind: :month,
+       timezone: Dawarich.UserTimeZone.zone(UserSettings.get(data.user)),
        stat: stat,
        totals: totals,
        unit: unit,
