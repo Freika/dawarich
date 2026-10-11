@@ -24,6 +24,11 @@ export function installStudios({ element, owner, lifetime }) {
           : null
       },
     })
+  owner.openStudio = (kind) => {
+    if (kind === "poster") poster()
+    if (kind === "video") dispatch("video", { source: owner.source })
+  }
+  lifetime.own(() => delete owner.openStudio)
   const switchStudio = (event) => {
     if (
       event.target === root?.querySelector("#native-video-studio") &&

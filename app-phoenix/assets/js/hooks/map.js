@@ -81,6 +81,9 @@ export const MapHook = {
         await this.mapOwner.visits?.select(this.mapVisitSelection)
       if (this.mapDestroyed || this.mapRevoked) return
       this.mapReady = true
+      const entry = this.el.ownerDocument?.location?.href
+      if (entry)
+        this.mapOwner.openStudio?.(new URL(entry).searchParams.get("studio"))
       for (const receipt of this.mapInvalidations)
         this.mapRealtime.invalidate(receipt)
       this.mapInvalidations = []
