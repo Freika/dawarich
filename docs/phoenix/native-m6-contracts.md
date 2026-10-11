@@ -217,3 +217,5 @@ Native advanced settings renders historical/default fog thresholds within the br
 Public document admission preserves HTTP 401 for phrase-protected links and 404 for missing/revoked grants. Public trips retain the admitted trip resource name as their heading, independently of the sharing-list label. These repairs preserve Rails behavior and introduce no Rails bug exceptions.
 
 Regressions: `native_advanced_constraints_test.exs`, `native_family_commands_test.exs`, `native_m6_public_routes_test.exs`, and `phoenix_family_map_test.mjs`. Browser fixtures explicitly grant and restore history consent, observe owned GeoJSON sources, open the Layers panel for its metadata, and use exact canonical decimal coordinates.
+
+Successive native success notices use distinct DOM identities for distinct messages, so LiveView's retained hide operation and an expired notice timer cannot hide a replacement consent notice. Native family browser helpers retain notice visibility and dismissal checks. Realtime fixtures initialize and restore preferences through scoped authenticated APIs before mounting, while explicit Live-mode cases continue exercising the native controls.

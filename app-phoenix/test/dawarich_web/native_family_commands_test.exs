@@ -62,6 +62,35 @@ defmodule DawarichWeb.NativeFamilyCommandsTest do
     refute has_element?(view, "#family-shell")
   end
 
+  test "successive native consent changes own distinct flash identities after dismissal", %{
+    id: id
+  } do
+    {:ok, view, _} = open(id)
+    render_change(view, "family:sharing", %{"sharing" => %{"enabled" => "true"}})
+
+    first =
+      render(view)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("#flash-messages [role=alert]")
+      |> LazyHTML.attribute("id")
+
+    assert [first_id] = first
+    assert has_element?(view, "##{first_id}", "Location sharing enabled")
+    render_click(view, "lv:clear-flash", %{"key" => "success"})
+    refute has_element?(view, "##{first_id}")
+    render_change(view, "family:sharing", %{"sharing" => %{"enabled" => "false"}})
+
+    assert [second_id] =
+             render(view)
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("#flash-messages [role=alert]")
+             |> LazyHTML.attribute("id")
+
+    refute second_id == first_id
+    assert has_element?(view, "##{second_id}", "Location sharing disabled")
+    assert Dawarich.Accounts.get(id).settings["family"]["location_sharing"]["enabled"] == false
+  end
+
   test "native map family confirmation consumes one admitted action and cancellation has no effects",
        %{id: id} do
     {:ok, view, _} = open(id)
