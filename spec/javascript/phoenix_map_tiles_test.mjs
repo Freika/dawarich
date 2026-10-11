@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { createBaseLayers } from "../../app-phoenix/assets/js/map/layers/tile_layers.js"
 import { createTileFreshness } from "../../app-phoenix/assets/js/map/data/tile_freshness.js"
+import { createBaseLayers } from "../../app-phoenix/assets/js/map/layers/tile_layers.js"
 
 function fakeMap() {
   const sources = new Map(),
@@ -155,7 +155,9 @@ test("native point and track invalidations fetch fresh tiles after a paused styl
   const map = fakeMap()
   let paused = true
   const fetched = []
-  map.refreshTiles = (id) => { if (!paused) fetched.push(id) }
+  map.refreshTiles = (id) => {
+    if (!paused) fetched.push(id)
+  }
   const owner = createBaseLayers({ map, config: { tracksEnabled: true } })
   try {
     owner.mount()

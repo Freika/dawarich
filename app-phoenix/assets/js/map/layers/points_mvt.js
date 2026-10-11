@@ -1,7 +1,7 @@
-import { queueTileRefresh } from "./tile_refresh.js"
 import { getMarkerStrokeColor } from "../algorithms/marker_theme.js"
 import { BaseLayer, isAbortedRequest } from "./base.js"
 import { heatmapPaint } from "./heatmap.js"
+import { queueTileRefresh } from "./tile_refresh.js"
 
 export class PointsMvtLayer extends BaseLayer {
   constructor(map, options = {}) {

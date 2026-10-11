@@ -1,4 +1,3 @@
-import { waitForStyle } from "./style_ready.js"
 import { createReader } from "../data/reader.js"
 import { readRouteSnapshot } from "../data/route_snapshot.js"
 import { createStudioSource } from "../data/studio_source.js"
@@ -22,6 +21,7 @@ import {
   createHostRecentPoint,
   installRecentReconnect,
 } from "./recent_point.js"
+import { waitForStyle } from "./style_ready.js"
 import { createViewportFit } from "./viewport_fit.js"
 export { createMapRuntime }
 export function mountHost({
@@ -240,7 +240,8 @@ export function mountHost({
   const snapshotReader = reader.fork?.() ?? reader
   owner.source = createStudioSource({
     getState: () => owner.config,
-    readSnapshot: (state, options) => readRouteSnapshot(snapshotReader, state, options),
+    readSnapshot: (state, options) =>
+      readRouteSnapshot(snapshotReader, state, options),
     applyDates: requests.applyDates,
   })
   Object.defineProperty(owner, "enrichment", { get: () => enrichment })

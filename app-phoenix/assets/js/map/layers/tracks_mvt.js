@@ -1,5 +1,5 @@
-import { queueTileRefresh } from "./tile_refresh.js"
 import { BaseLayer, isAbortedRequest } from "./base.js"
+import { queueTileRefresh } from "./tile_refresh.js"
 
 export class TracksMvtLayer extends BaseLayer {
   constructor(map, options = {}) {
