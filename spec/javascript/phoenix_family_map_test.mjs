@@ -97,6 +97,7 @@ function fixture(options = {}) {
     clearInterval(fn) {
       intervals.delete(fn)
     },
+    ...options.timers,
   }
   const empty = { hidden: false }
   const element = {
@@ -105,6 +106,7 @@ function fixture(options = {}) {
     dataset: {
       mapConfig: JSON.stringify({
         revision: 1,
+        consentLeaseMs: options.consentLeaseMs ?? 30000,
         locale: "de",
         range: { startAt: "2026-10-01", endAt: "2026-10-04" },
         mapOptions: {},
@@ -152,6 +154,7 @@ function fixture(options = {}) {
     element,
     reader,
     timers,
+    now: options.now,
     loadLibrary: async () => ({ Map: MapView, Popup }),
     loadStyle: async () => ({ version: 8, sources: {}, layers: [] }),
     pushEvent() {},
@@ -348,4 +351,102 @@ test("Family config and reconnect wait for attachment then paint latest geometry
   } finally {
     f.owner.destroy()
   }
+})
+
+test("idle Family consent expiry clears coordinates popups and late reads without manual reconnect", async () => {
+  let time = 1000,
+    next = 0
+  const jobs = new Map()
+  const f = fixture({
+    consentLeaseMs: 100,
+    now: () => time,
+    timers: {
+      setTimeout(fn, delay) {
+        jobs.set(++next, { fn, delay })
+        return next
+      },
+      clearTimeout(id) {
+        jobs.delete(id)
+      },
+    },
+  })
+  try {
+    await f.owner.mount()
+    for (const fn of f.events.get("click:family-circles"))
+      fn({ features: [{ properties: { id: 7 } }], lngLat: [13, 52] })
+    const delayed = defer()
+    f.reader.read = () => delayed.promise
+    time += 100
+    const expiry = [...jobs.values()].find((job) => job.delay === 100)
+    assert.ok(expiry)
+    expiry.fn()
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+    assert.equal(f.sources.get("family-history").data.features.length, 0)
+    assert.equal(f.popups[0].removed, true)
+    f.reader.read = async (resource) => ({
+      data:
+        resource === "family_locations" ? { locations: [] } : { members: [] },
+    })
+    f.owner.lease({ milliseconds: 100 })
+    const renewed = [...jobs.values()].find((job) => job.delay === 100)
+    time += 100
+    renewed.fn()
+    delayed.resolve({
+      data: {
+        locations: [{ user_id: 7, latitude: 52, longitude: 13 }],
+        members: [],
+      },
+    })
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+    assert.equal(f.sources.get("family-history").data.features.length, 0)
+    assert.equal(f.maps, 1)
+  } finally {
+    f.owner.destroy()
+  }
+  assert.equal(jobs.size, 0)
+})
+
+test("idle Family withdrawal is revalidated within the bounded lease and destroyed leases cannot refetch", async () => {
+  let next = 0
+  const jobs = new Map()
+  const f = fixture({
+    timers: {
+      setTimeout(fn, delay) {
+        jobs.set(++next, { fn, delay })
+        return next
+      },
+      clearTimeout(id) {
+        jobs.delete(id)
+      },
+    },
+  })
+  let expiry,
+    revalidations = 0
+  try {
+    await f.owner.mount()
+    f.reader.read = async (resource) => {
+      revalidations++
+      return {
+        data:
+          resource === "family_locations" ? { locations: [] } : { members: [] },
+      }
+    }
+    expiry = [...jobs.values()].find(
+      (job) => job.delay <= 30000 && job.delay > 15000,
+    )
+    assert.ok(expiry)
+    expiry.fn()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.sources.get("family-members").data.features.length, 0)
+    assert.equal(f.empty.hidden, false)
+    assert.equal(revalidations, 2)
+  } finally {
+    f.owner.destroy()
+  }
+  const before = f.reads.length
+  expiry.fn()
+  await Promise.resolve()
+  assert.equal(f.reads.length, before)
+  assert.equal(jobs.size, 0)
 })

@@ -95,6 +95,7 @@ defmodule DawarichWeb.MapLiveAuth do
       socket
       |> DawarichWeb.MapLive.Subscriptions.release()
       |> DawarichWeb.NativePosterGallery.release()
+      |> DawarichWeb.NativeFamilyConsent.cancel()
 
     socket =
       assign(

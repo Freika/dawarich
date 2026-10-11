@@ -20,7 +20,7 @@ defmodule DawarichWeb.FamilyMap do
 
     config =
       assigns.config
-      |> Map.take(~w(revision styleUrl range mapOptions))
+      |> Map.take(~w(revision styleUrl range mapOptions consentLeaseMs))
       |> Map.update("range", %{}, &Map.take(&1, ~w(startAt endAt timezone)))
       |> Map.update(
         "mapOptions",

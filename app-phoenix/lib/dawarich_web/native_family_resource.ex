@@ -6,7 +6,13 @@ defmodule DawarichWeb.NativeFamilyResource do
   def attach(socket) do
     socket
     |> attach_hook(:family_event, :handle_event, fn _, _, s -> admit(s) end)
-    |> attach_hook(:family_info, :handle_info, fn _, s -> admit(s) end)
+    |> attach_hook(:family_info, :handle_info, fn
+      {:native_family_consent, token}, s ->
+        {:halt, DawarichWeb.NativeFamilyConsent.expire(s, token)}
+
+      _, s ->
+        admit(s)
+    end)
     |> attach_hook(:family_async, :handle_async, fn _, _, s -> admit(s) end)
     |> admit()
     |> elem(1)
@@ -18,7 +24,9 @@ defmodule DawarichWeb.NativeFamilyResource do
          ) do
       {:ok, page} ->
         {:cont,
-         assign(socket, page: page, page_title: page.presentation.family.name, map_error: nil)}
+         socket
+         |> assign(page: page, page_title: page.presentation.family.name, map_error: nil)
+         |> DawarichWeb.NativeFamilyConsent.renew()}
 
       {:error, reason} ->
         {:halt, refuse(socket, reason)}

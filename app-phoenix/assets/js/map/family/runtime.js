@@ -16,13 +16,17 @@ export function mountFamily({
     return response.json()
   },
   timers = globalThis,
+  now = Date.now,
 }) {
   const empty = element.querySelector?.("[data-family-empty]")
-  let overlay, library, overlayLocale
+  let overlay, library, overlayLocale, leaseTimer
+  let destroyed = false
+  let leaseDeadline = now() + 30000
   const reads = createRequestScope(timers)
+  const initial = JSON.parse(element.dataset.mapConfig ?? "{}")
   const owner = createMapRuntime({
     element,
-    config: JSON.parse(element.dataset.mapConfig ?? "{}"),
+    config: initial,
     reader,
     timers,
     loadLibrary: async (options) => {
@@ -89,6 +93,7 @@ export function mountFamily({
         )
         operation.check()
         read.check()
+        if (now() >= leaseDeadline) return
         overlay.replace(latest.data.locations, history.data.members)
         if (empty) empty.hidden = latest.data.locations.length > 0
       } finally {
@@ -100,6 +105,19 @@ export function mountFamily({
       error: (receipt) => pushEvent("map:failed", receipt),
     },
   })
+  owner.lease = ({ milliseconds = 30000 } = {}) => {
+    if (destroyed) return
+    timers.clearTimeout(leaseTimer)
+    const delay = Math.max(0, Math.min(30000, Number(milliseconds) || 0))
+    leaseDeadline = now() + delay
+    leaseTimer = timers.setTimeout(() => {
+      if (destroyed) return
+      owner.clear()
+      owner.lease({ milliseconds: 30000 })
+      void owner.reconnect()
+    }, delay)
+  }
+  owner.lease({ milliseconds: initial.consentLeaseMs ?? 30000 })
   owner.clear = () => {
     reads.reset()
     reader.reset()
@@ -108,6 +126,8 @@ export function mountFamily({
   }
   const destroy = owner.destroy
   owner.destroy = () => {
+    destroyed = true
+    timers.clearTimeout(leaseTimer)
     reads.destroy()
     overlay?.clear()
     destroy()

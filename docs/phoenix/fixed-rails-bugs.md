@@ -1637,3 +1637,13 @@ A Rails point-position request with no response keeps drag/history operations pe
 - Phoenix: `app-phoenix/assets/js/map/edit/runtime.js:32`; `app-phoenix/assets/js/map/edit/host.js:37`.
 - Tests: `missing point replies time out drag and history without retry and ignore late acknowledgements`; `point send failures callbacks scope cancellation and destroy drain every owned deadline`; `missing move receipt releases host latches erases uncertain geometry and rereads canonical tiles`. Deterministic deadline-as-success, retained-timer and skipped-canonical-invalidation mutations fail these cases. A synthetic Rails module probe confirms an unsettled write, zero owned deadlines and no AbortSignal.
 - ED: ED-NATIVE-M6-POINT-MOVE-DEADLINE. No DRB.
+
+### FRB-NATIVE-M6-FAMILY-IDLE-CONSENT
+
+Rails Family map markers and cached popups can remain visible indefinitely after a timed sharing grant expires or sharing is withdrawn while the page stays idle. Native Family snapshots have an owned server timer and browser lease: at most 30 seconds, shortened to the nearest active sharing expiry. Expiry clears coordinates/history/popups and pending reads before fresh authorized reads. Stale timer tokens and late reads cannot restore the previous snapshot; refusal/destruction cancels timer ownership.
+
+- Rails: `app/javascript/controllers/family_map_controller.js:74,143` (snapshot refresh depends on activity/reconnect; relative-time repaint retains cached coordinates).
+- Phoenix: `app-phoenix/lib/dawarich_web/native_family_consent.ex:9,40`; `app-phoenix/assets/js/map/family/runtime.js:108`.
+- Tests: `idle Family server timer clears expired or withdrawn consent and ignores stale timer tokens`; `idle Family consent expiry clears coordinates popups and late reads without manual reconnect`; `idle Family withdrawal is revalidated within the bounded lease and destroyed leases cannot refetch`; `Family hook relays the latest server lease after lazy mount and clears an idle owner`. Server timer registration/deadline is inspected and its owned message is driven deterministically; browser timers are controllable. Disabled-expiry, retained-lease, missing-lazy-lease, stale-token and ignored-grant-deadline mutations fail.
+- The existing m4 sharing-invalidation adapter is still pending. Withdrawal is detected by fresh lease revalidation within 30 seconds, including when no location event occurs; this is a bound, not an instantaneous cross-tab publication guarantee.
+- ED: ED-NATIVE-M6-FAMILY-IDLE-CONSENT. No DRB.

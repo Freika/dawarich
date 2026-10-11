@@ -55,6 +55,74 @@ defmodule DawarichWeb.NativeM6FamilyRoutesTest do
     assert :sys.get_state(view.pid).socket.assigns.page_title == nil
   end
 
+  test "idle Family server timer clears expired or withdrawn consent and ignores stale timer tokens",
+       %{id: id} do
+    expires = DateTime.add(DateTime.utc_now(), 10)
+
+    settings = %{
+      "family" => %{
+        "location_sharing" => %{"enabled" => true, "expires_at" => DateTime.to_iso8601(expires)}
+      }
+    }
+
+    Repo.query!("UPDATE users SET settings=settings || $2::jsonb WHERE id=$1", [id, settings],
+      log: false
+    )
+
+    {:ok, view, _} = live(RailsUser.signed_in(id) |> RailsUser.connecting_as(id), "/family")
+    lease = :sys.get_state(view.pid).socket.assigns.native_family_consent
+    assert Process.read_timer(lease.timer) in 1..10000
+    assert_push_event(view, "family:lease", %{milliseconds: milliseconds})
+    assert milliseconds in 1..10000
+    send(view.pid, :renew_family_admission)
+    render(view)
+    next = :sys.get_state(view.pid).socket.assigns.native_family_consent
+    assert next.token != lease.token
+    send(view.pid, {:native_family_consent, lease.token})
+    render(view)
+    refute_push_event(view, "family:clear", %{})
+
+    Repo.query!(
+      "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing,expires_at}',$2::jsonb) WHERE id=$1",
+      [id, DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), -1))],
+      log: false
+    )
+
+    send(view.pid, {:native_family_consent, next.token})
+    render(view)
+    assert_push_event(view, "family:clear", %{code: "consent_expired"})
+    assert_push_event(view, "map:invalidate", %{kind: "family"})
+    assert has_element?(view, "#native-family-members", "Not sharing")
+    assert Process.read_timer(next.timer) == false
+    assert :sys.get_state(view.pid).socket.assigns.native_family_consent.milliseconds == 30000
+
+    Repo.query!(
+      "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing}',$2::jsonb) WHERE id=$1",
+      [id, %{"enabled" => true}],
+      log: false
+    )
+
+    send(view.pid, :renew_family_admission)
+    render(view)
+    permanent = :sys.get_state(view.pid).socket.assigns.native_family_consent
+    assert permanent.milliseconds == 30000
+
+    Repo.query!(
+      "UPDATE users SET settings=jsonb_set(settings,'{family,location_sharing,enabled}','false'::jsonb) WHERE id=$1",
+      [id],
+      log: false
+    )
+
+    send(view.pid, {:native_family_consent, permanent.token})
+    render(view)
+    assert_push_event(view, "family:clear", %{code: "consent_expired"})
+    assert has_element?(view, "#native-family-members", "Not sharing")
+    Repo.query!("DELETE FROM family_memberships WHERE user_id=$1", [id], log: false)
+    send(view.pid, :renew_family_admission)
+    render(view)
+    assert :sys.get_state(view.pid).socket.assigns.native_family_consent == nil
+  end
+
   test "canonical family envelopes refuse alternate transports and retain independent page and read routes",
        %{id: id} do
     for path <- ["/family.json", "/family?format=json"] do

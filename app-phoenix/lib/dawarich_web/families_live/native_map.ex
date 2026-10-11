@@ -37,6 +37,8 @@ defmodule DawarichWeb.FamiliesLive.NativeMap do
     end
   end
 
+  def terminate(_, socket), do: DawarichWeb.NativeFamilyConsent.cancel(socket)
+
   defp maybe_chrome(%{assigns: %{current_scope: nil}} = socket), do: socket
   defp maybe_chrome(socket), do: DawarichWeb.NativeMapChrome.load(socket)
   def render(assigns), do: DawarichWeb.NativeFamilyPage.page(assigns)
