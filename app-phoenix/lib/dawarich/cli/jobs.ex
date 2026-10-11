@@ -68,6 +68,24 @@ defmodule Dawarich.CLI.Jobs do
 
   def resume(_args, ctx), do: fail(ctx, @usage)
 
+  def operations([], ctx) do
+    case ReleaseOperations.unfinished(ctx.repo) do
+      [] -> puts(ctx, "no unfinished release operations")
+      rows -> Enum.each(rows, &puts(ctx, operation_line(&1)))
+    end
+
+    0
+  end
+
+  def operations(_args, ctx), do: fail(ctx, "usage: dawarich jobs operations")
+
+  defp operation_line([id, type, "running", false]), do: "#{id} #{type} running"
+
+  defp operation_line([id, type, status, true]) do
+    state = if status == "failed", do: "failed", else: "interrupted"
+    "#{id} #{type} #{state}: resume with dawarich jobs resume #{id}"
+  end
+
   defp summary(repo, node) do
     case read(repo, fn -> if table?(repo, "phoenix.job_owners"), do: flags(repo, node) end) do
       {:ok, [this, any, oban, overdue]} ->
