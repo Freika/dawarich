@@ -10,17 +10,21 @@ Status: S1 foundation contracts implemented, 2026-10-10. The controller starts t
 
 `DawarichWeb.MapLiveAuth` is the dedicated native host hook. Its `live_session/1` signs the original map identity into the server mount session. Connected mount also compares the socket session actor ID; events, params, info and async each re-admit. Session loss clears state and redirects to sign-in. Resource refusal clears the projection and records a typed error in place, with no reload to the same URL. X1 adopts this hook on the routed hosts.
 
-## Dependency adapters
+## Integrated dependency boundaries
 
-| Adapter | Current implementation | Accepted dependency awaited | Switch task |
-| --- | --- | --- | --- |
-| `Dawarich.Maps.Dependencies.Trip` | TripPage.load/gate, projected metadata + HTTP geometry/windows/plan | m5 owned Trip read/map insertion facade | Dedicated switch retaining owner/range/privacy cases |
-| `Dawarich.Maps.Dependencies.Family` | FamilyPage admission + Families.Locations/FamilyApi.Closure history | m4 fresh family consent/delivery facade | Dedicated adapter switch retaining withdrawal/session tests |
-| `Dawarich.Maps.Dependencies.Principal` | Accounts.get, Devise salt fingerprint, sanitized Scope | m4 fresh/sanitized principal and callback admission | Controller integrates m4, then dedicated adapter switch with original-session revocation tests |
+Stage-2 switches are complete. No cross-milestone dependency adapter remains.
 
-The other O10 dependencies (m4 upload claims/finalization, owner invalidations, family consent/public admission; m5 Trip/Visit/timeline projections and map insertion points) receive one thin adapter each when the owning A/B/D task first consumes them. The ledger will name actual modules and methods at that point. No duplicated domain queries or placeholder native fallback is part of this contract.
-| `Dawarich.Trips.Notes` | `NotesApi.Read.index/3` and `NotesApi.Write.create/4`; scoped plain-text visit notes | integrated m5 notes/ActionText | Dedicated switch task; retain visit-note owner/day semantics |
-| `map/style/dependencies.js` | Pure existing poster basemap/token interfaces | A15/C0–C2 native poster style | Switch the two exports after controller integration |
+| Boundary | Integrated module | Preserved admission |
+| --- | --- | --- |
+| Principal | M4 Principal.project and DataAccess.admit | Original session_version, sanitized state, fresh callback admission |
+| Family | Maps.Family over Families page, Locations, History and Commands | Atomic consent snapshot, numeric invitation/reveal boundary |
+| Trip | Maps.Trip over Trips.Pages and Commands | Owned bounded cards, description, fresh resource admission |
+| Public | Maps.PublicGrant over Sharing.Public; Maps.Public over Sharing.Pages/Delivery | Immutable versioned grant, independent current cookie proof, bounded 31-day cursors |
+| Realtime | Maps.Realtime and EventBus | Typed M4 producer events; retained external point/track transport |
+| Notes | Trips.Notes; NotesApi.Read.index/3 and Write.create/4 | Fresh owned day/Visit admission; integrated m5 notes/ActionText |
+| Route video | RouteVideos.Uploads and M4 Uploads | Opaque owner-bound reservation, verified object claim, cancellation |
+| Poster progress | Posters.Events | Publish only after successful worker transaction |
+| Styles | Native poster theme_loader/style_builder | Pure native modules, no Rails JavaScript graph |
 
 ## Verification
 
@@ -105,7 +109,7 @@ Native cookie resources `family_locations` and `family_history` freshly admit fa
 
 ## Trip read boundary
 
-`Maps.Dependencies.Trip.config(scope,id)` returns only scalar metadata/range/display options. `read` returns the same config plus overview path/device windows/plan over the cookie `trip` HTTP resource, never LiveView assigns. Current implementation delegates TripPage's existing ownership/settings/plan gates and data calculations; unsupported/missing reads become a typed refusal without a hybrid redirect. The m5 adapter switch will replace this current page projection with its accepted read facade and measure the deferred resource/query budgets.
+`Maps.Trip.config(scope,id)` returns only scalar metadata/range/display options. `read` returns the same config plus overview path/device windows/plan over the cookie `trip` HTTP resource, never LiveView assigns. Current implementation delegates TripPage's existing ownership/settings/plan gates and data calculations; unsupported/missing reads become a typed refusal without a hybrid redirect. M5 Pages now owns admission and presentation; the existing shared TripPage remains the geometry provider.
 
 ## Trip runtime and insertion
 
@@ -113,13 +117,12 @@ Native cookie resources `family_locations` and `family_history` freshly admit fa
 
 ## Preview contracts
 
-`NativeMapPreview.preview` accepts resource ID or a form range, interactivity/numbering/style scalars, and public-stat UUID/bounds. It serializes no path, plan, credentials or owner identity. `MapPreview` observes visibility and admits at most two live previews per document by default; hiding/destroying releases its slot, map, read and listeners. Reconnect refreshes the same visible owner. This safety default awaits measured O8 acceptance. Trip/form data uses the scoped cookie reader; public stats only request the existing UUID-clipped hexagon API with credentials omitted. Public refusal clears geometry before retry; localized hover/popups and style restoration are owned by the preview. m5/controller parent insertion remains X1.
+`NativeMapPreview.preview` accepts resource ID or a form range, interactivity/numbering/style scalars, and public-stat UUID/bounds. It serializes no path, plan, credentials or owner identity. `MapPreview` observes visibility and admits at most two live previews per document by default; hiding/destroying releases its slot, map, read and listeners. Reconnect refreshes the same visible owner. This safety default awaits measured O8 acceptance. Trip/form data uses the scoped cookie reader; public stats only request the existing UUID-clipped hexagon API with credentials omitted. Public refusal clears geometry before retry; localized hover/popups and style restoration are owned by the preview. M5 native form, monthly and public report hosts are integrated.
 
 ## Public capability boundary
 
 `Maps.Dependencies.Public.config/read` uses a separately validated share capability, never an owner Scope. Current SharedLinks/FamilyAudience and SharedApi privacy queries remain authoritative. Private phrase grants contain only a second-hashed unlock fingerprint and exact signed cookie expiry; SessionStore exposes these as ephemeral connection metadata and drops them before cookie persistence. Family grants validate the original viewer session and fresh membership; their Rails phrase exemption is retained. Revocation, expiry, phrase rotation, deleted owners, missing resources and changed grants are typed refusals. Native reads re-admit after completion before emitting provider bytes or geometry. External APIs remain unchanged.
 
-Dependency ledger additions: Family delegates current family consent/history and awaits m4; Trip delegates current TripPage/read helpers and awaits m5; Public delegates current SharedLinks/SharedApi admission/privacy and awaits m4 public/family admission plus m5 resource projections. All adapters switch after accepted controller integration.
 
 PublicMapLive consumes only metadata plus an opaque capability fingerprint. Connected mount replaces the HTTP proof with current trusted connection session metadata. Every callback re-admits; expiry is an owned timer keyed by deadline/revision/token. Refusal clears config and destroys the hook through map:clear. Phrase unlock remains `/s/:id/unlock` HTTP. Native map host additionally admits shareId/publicType/routeEnabled/validUntil scalars.
 
@@ -127,7 +130,7 @@ Native public browser reads use GET/HEAD `/native/public/maps/:id/{metadata,poin
 
 Public runtime owns public reader/route/day/latest/photo layers and a public-only fixed-range replay source. Metadata is reread before publication; a changed grant clears cached geometry and photos rather than restoring them on style reload. `show_photos=false` performs no photo acquisition. Public Trip `byDay` and route thresholds are profile values; live location remains separate from the route-history flag. Normalized locale/photo labels persist through scalar config updates. No browser-only public poster/video source is admitted.
 
-`MapLive.Subscriptions.sync(socket, descriptor)` subscribes connected admitted map/trip/family/public-live owners through the thin Realtime adapter. Reconcile is idempotent; `deliver` re-admits queued events, releases changed topics and stores only a bounded digest ledger. `map:invalidate` has kind/revision scalars, with no point/edit/HTML/binary payload. `release` runs before callback admission halts; normal bus process monitoring handles host exit. Native owners call sync/deliver/reconnect at X1 integration. The Realtime adapter awaits m4 typed events/fresh family-public callbacks and m5 Trip projections; current producers and eight-field external point tuples are unchanged.
+`MapLive.Subscriptions.sync(socket, descriptor)` subscribes connected admitted map/trip/family/public-live owners through Maps.Realtime. Reconcile is idempotent; `deliver` re-admits queued events, releases changed topics and stores only a bounded digest ledger. `map:invalidate` has kind/revision scalars, with no point/edit/HTML/binary payload. `release` runs before callback admission halts; normal bus process monitoring handles host exit. Native owners call sync/deliver/reconnect at X1 integration. Native typed producers are integrated; eight-field external point tuples remain unchanged.
 
 The common MapHook lazily loads `createRealtime` with the concrete owner. Pre-ready invalidations are bounded metadata, and active reconciliation coalesces bursts into one current and one follow-up read. Typed revision dedupe survives reconnect; clear/destruction drains queued timers/receipts before releasing the map. Ordinary page eager graph contains no map-data helper.
 
@@ -135,7 +138,6 @@ Native pure basemap classification and fallback composition preserve style-docum
 
 Viewport persistence accepts only `user:<positive account ID>` namespaces generated by the admitted server host. The native cache starts empty and retains same-user native views; legacy API-key-derived entries are not read or migrated (ED-NATIVE-M6-VIEW-IDENTITY). Account changes restore that account’s saved view or the supplied fallback. Owned moveend listeners are removed without writing on destruction, and late restores are inert. RTL uses the supplied packaged plugin URL with lazy per-library registration; warm library state is separate from host-owned handles and errors are typed. A15 loader/default asset wiring remains pending C0.2/controller integration.
 
-Dependency switch task identities: Principal → m4 X1; Family → m4 C1/C4; Trip → m5 B1/B7 with B6 parent insertion; Public → m4 C5/C8 and m5 C5/C6; Realtime → m4 B4/C1/C4 and m5 B1/B2. All current delegation remains operational under O10, and the controller switches these boundaries after accepted domain integration. A15’s C0.2 theme/schema dependency is a separate m6 integration requirement.
 
 ## Integrated map commands and replay
 
@@ -153,7 +155,7 @@ Controller integration keeps the reviewed values: first idle: 60 seconds; negoti
 
 Timeline feeds, calendar, track-info, segment drawers/writes and point-address frame URLs now return HTTP410 without dispatching an effect or a Rails hand-back. Native successors are `MapLive.Timeline`, `TimelineFilters`, `SegmentCommands` and `VisitCommands`. External API geometry and write contracts remain unchanged. `/map/residency` remains for Insights, `/places/nearby` for independent Places navigation, Area/point-list/recalculation writes for their surviving pages, poster/video HTTP actions for current Trip consumers and gallery seeds. Those surviving callers prevent deleting their shared domain/transport modules before the corresponding milestone integration.
 
-Public `/s/:id` now uses the production PublicMapLive session and native root. Successful, locked and revoked page states remain native; their LiveView shell responds200, while phrase-unlock stays the existing HTTP POST with its exact cookie/redirect/status contracts. The thin Public dependency adapter records each admitted HTTP visit once with the existing SharedLinks view counter; connected mount and locked/refused visits do not increment it.
+Public `/s/:id` now uses the production PublicMapLive session and native root. Successful, locked and revoked page states remain native; their LiveView shell responds200, while phrase-unlock stays the existing HTTP POST with its exact cookie/redirect/status contracts. PublicMapLive records each admitted static GET once with the existing SharedLinks view counter; HEAD, connected mount, reconnect and locked/refused visits do not increment it.
 
 ## Static production closure budgets
 
@@ -170,9 +172,9 @@ Named static tests exercise each exact boundary, every one-byte excess, malforme
 
 ## Trip presentation insertion contract
 
-The Trip dependency adapter `view/3` reads one fresh owner-admitted TripPage and projects safe config, presentation and two studio scalars from that same read. Presentation contains source summary/countries/days/notes/itinerary metadata, no path/device-window/plan JSON, API key or stream token. Photo and itinerary source destinations reject credential-bearing URLs; thumbnails use cookie-authenticated reads. NativeMap renders read-only presentation, refreshes it on params, updates the title and clears both presentation/title on a refused resource. Malformed IDs refuse locally. Native action/day/notes controls and production parent insertion remain X1 work; probe behavior is not a production route claim.
+Maps.Trip.view/3 reads one fresh owner-admitted TripPage and projects safe config, presentation and two studio scalars from that same read. Presentation contains source summary/countries/days/notes/itinerary metadata, no path/device-window/plan JSON, API key or stream token. Photo and itinerary source destinations reject credential-bearing URLs; thumbnails use cookie-authenticated reads. NativeMap renders read-only presentation, refreshes it on params, updates the title and clears both presentation/title on a refused resource. Malformed IDs refuse locally. Native action/day/notes controls and production parent insertion remain X1 work; probe behavior is not a production route claim.
 
-Trip day selection uses fresh admitted days and `trip:select_day` receipts. The Trip hook owns this handler, buffers an early receipt until map readiness, calls only its current layer owner, and removes the handler on destruction. Removing the resource refuses the next day command and clears the owner. Canonical production parent insertion remains pending.
+Trip day selection uses fresh admitted days and `trip:select_day` receipts. The Trip hook owns this handler, buffers an early receipt until map readiness, calls only its current layer owner, and removes the handler on destruction. Removing the resource refuses the next day command and clears the owner. Canonical production parent insertion is active.
 
 Native Trip notes keep only one bounded editor projection. The server selects the date/note from its freshly admitted Trip days; save/update/delete use the existing WebNotes domain service through Dawarich.Trips.Notes. Validation preserves the editor; cancel writes nothing; losing resource admission clears the root/editor and map owner. Browser notes use the principal Repo rather than the configurable job repository.
 
@@ -188,16 +190,20 @@ Trip delivery reconciles owned user/Trip topics, rechecks resource admission bef
 
 The main native map keeps the `Family Members` layer preference and exposes only `familyEnabled` in its config. The client owns its member list, current locations, history overlay, centering feedback and polling; those arrays stay outside LiveView state. The layer uses the same scoped cookie location/history endpoints and overlay as the native Family page. Config changes, disable, refusal and disposal clear visible data and cancel pending reads. A superseded reader cannot publish after a newer result.
 
-The optional Family stream is admitted through the existing Family dependency adapter only while the actor's current preference and membership allow it. Layer saves reconcile listeners. Membership loss releases the Family stream and emits a bounded reconnect invalidation while keeping ordinary map streams, which causes the private Family read to refuse and clear client data. Events carry kind/revision, never coordinates or legacy payloads.
+The optional Family stream is admitted through the canonical Maps.Family boundary only while the actor's current preference and membership allow it. Layer saves reconcile listeners. Membership loss releases the Family stream and emits a bounded reconnect invalidation while keeping ordinary map streams, which causes the private Family read to refuse and clear client data. Events carry kind/revision, never coordinates or legacy payloads.
 
 Member controls keep source update timestamps in the profile timezone, sharing-since dates/history-day counts, localized singular/plural loaded feedback and ordinary map centering. Photos and Family remain separate lazy engines under the map owner's auxiliary-layer lifetime.
 
 ## Integrated source corpus and pending domain switches
 
-The canonical Trip index uses `TripsLive.NativeIndex` and `NativeTripCard`; scalar preview configuration identifies an owned Trip and saved style, while scoped cookie reads supply its path/plan. Card metadata, units, country/day counts, pagination, empty/calculating states and local refusals retain the source corpus. The m5 Trip form/editor stays at its existing boundary until m5 B6 inserts the native preview; the component already accepts scalar form ranges and numbered plans. Principal, Family, Trip, Public, Realtime, Notes and RouteVideoUpload still delegate through their documented m4/m5 adapters. Video dependencies now use the integrated poster modules and A6 geometry.
+The canonical Trip index uses `TripsLive.NativeIndex` and `NativeTripCard`; scalar preview configuration identifies an owned Trip and saved style, while scoped cookie reads supply its path/plan. Card metadata, units, country/day counts, pagination, empty/calculating states and local refusals retain the source corpus. M5 Trip form/editor routes precede the M6 show resource and mount native previews; the M6 trip show host mounts the rich-text editor. Principal, Family, Trip, Public, Realtime, Notes and RouteVideoUpload now consume the integrated canonical domain modules. Video dependencies now use the integrated poster modules and A6 geometry.
 
 Native Map/Trip/Family/public routes ignore obsolete UI rollback keys and use their admitted native sessions. Consumed frame/address/segment endpoints refuse with 410, no cookie changes and no effects; the external APIs, retained form writes, downloads and phrase unlock retain their source protocols. Source-data fixtures keep their geometry, calendars, normalized fields, unit/date/country values, refusal/privacy, transaction/outbox and byte assertions. Named native behavior replaces importmap/controller/frame transport checks; the detailed test-retarget ledger records each successor. Current native CSS is checked against the Docker source closure and deterministic compilation, while unrelated asset exports retain their original hash contracts.
 
 Standalone browser specs collect without execution during implementation. Actual native controls and independent scoped/API reads replace mutable controller probes; real socket/HTTP responses can be held for deterministic races but are never fabricated. The three pre-existing photo-integration and fifteen family-plan fixture fixmes remain declared upstream dependencies. Browser, locale and real-file checks belong to controller acceptance; browser resource measurements are excluded by the scope cut. X4 verifies only the emitted production graph, workers and frozen byte caps.
 
 Stage 2: Visit notes call NotesApi.Read.index/3 and NotesApi.Write.create/4 directly after fresh map ownership admission. Native trip day notes use Dawarich.Trips.Notes.save/delete after Maps.admit; no Notes dependency module remains.
+
+## Stage-2 map hosts and media activation
+
+Private Stats month is a NativePage route with an owned_stats preview. Heatmap and bounded point layers use cookie readers and owner-local month bounds. Public monthly reports use NativePublicPage/NativePublicMonth with the M6 UUID-clipped preview, native chrome, lazy idempotent initialization and page-departure cancellation. Visits navigation refuses malformed query shapes locally; map Visit update/merge/bulk commands use canonical M5 Visits.Commands. Poster PNG encoding loads only when export starts; independent page startup caps remain frozen.

@@ -16,6 +16,13 @@ defmodule DawarichWeb.NativeM6IntegrationRegisterTest do
     assert contracts =~ "m5 notes/ActionText"
   end
 
+  test "native map styles use the real integrated poster modules without a dependency adapter" do
+    refute File.exists?(Path.expand("../../assets/js/map/style/dependencies.js", __DIR__))
+    source = File.read!(Path.expand("../../assets/js/map/style/map_style.js", __DIR__))
+    assert source =~ "poster/data/theme_loader.js"
+    assert source =~ "poster/render/style_builder.js"
+  end
+
   test "studio operation bounds are frozen without changing media formats" do
     contracts = File.read!(Path.expand("../../../docs/phoenix/native-m6-contracts.md", __DIR__))
 

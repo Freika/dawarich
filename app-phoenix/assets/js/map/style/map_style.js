@@ -1,4 +1,5 @@
-import { buildBasemapStyle, resolveTheme } from "./dependencies.js"
+import { resolveTheme } from "../../poster/data/theme_loader.js"
+import { buildBasemapStyle } from "../../poster/render/style_builder.js"
 import { enabledPoiKinds, TILE_LAYER_CATEGORIES } from "./layer_categories.js"
 
 export function applyMapStyle(style, config) {
