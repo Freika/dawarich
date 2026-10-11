@@ -1,6 +1,6 @@
 # Native map navigation
 
-> Historical hybrid navigation record. For migrated native pages, use [the native development workflow](native-frontend-development.md) and [ADR-0017 cleanup context](native-frontend-cleanup-adr.md). Shared Turbo/bridge retirement is milestone 7 work; its final production/browser evidence is still DRAFT. The original account below remains historical evidence, not current native setup instructions.
+> Historical hybrid navigation record. For migrated native pages, use [the native development workflow](native-frontend-development.md) and [ADR-0017 cleanup context](native-frontend-cleanup-adr.md). Shared Turbo/bridge retirement is milestone 7 work; its implementation guide is finalized while final production/browser acceptance remains pending X4/X5. The original account below remains historical evidence, not current native setup instructions.
 
 > Hybrid navigation (Turbo ↔ LiveView) is the transitional mechanism for pages not yet migrated. Pages in the `:native_pages` live_session (currently Tags, ADR-0017) load only the `/native` esbuild bundle; navigating between them and hybrid pages is a full page load.
 

@@ -4087,3 +4087,27 @@ Merged-tree reader scan: 402 current test/support/spec files match explicit fixt
 Additional router-reader reconciliation: public_delivery_routes.exs now records all 209 current delivery-boundary routes, including all 15 B1 standalone declarations, integrated public/browser map readers and local retirement routes; five displaced handler/segment rows retain their obligations in the historical route ledger; current-gate equality replaces the stale pre-integration >30 gate-count assumption. The share manager still mounts natively under compatibility hints, while its public destination is the native_m6_public PublicMapLive session. a8_gate_endpoint_test.exs keeps action/Cloud settings replay/no-write assertions and maps the former Cloud Visits navigation replay case to `Cloud visits navigation stays native before effects`; full native timeline/status redirect replaces the obsolete upstream wait. These are test integrations, not new Rails bug fixes.
 
 Post-merge verification: the 241-file targeted module/caller/router/build/register packet passed with warnings-as-errors on seeds 404 and 202: 2,304 passed and two skipped on each. Strict test compile (2,058 .ex files), full format check, all 821 touched Node cases, 18 changed build-input Ruby examples and E2E discovery (649 tests / 163 files) passed. The renamed Cloud Visits navigation successor has assertion RED, GREEN, omitted-status mutation failure and restored GREEN; missing current-gate/delivery-row mutations fail their exact readers. These are base-integration results, not full-suite/G44/production-serving or milestone acceptance. No task-owned service remains running.
+
+## Track C implementation results (2026-10-11)
+
+C1/C2/C3 implementation delivery is complete for this brief; native milestone acceptance remains **PENDING**. Historical appendices, census bytes and old ED/FRB/DRB rows stay intact. The controller must reconcile the retained legacy reader handoffs when merging A/B deletion/path batches, then run X4/X5; no source deletion clearance, full-partition/browser pass or Rails-independent production artifact is implied here.
+
+| Identity / evidence | Result |
+| --- | --- |
+| Integrated app base | `374648edab68b2960ccd3346f0425e4463e9669c` |
+| C1 test/overlay delivery | `223e2c2c0`; 197 exact reference renames, 386 current marker readers, 13 legacy reader handoffs / 53 current declarations; historical 549 files/2,578 definitions/127 register rows retained |
+| C2 register delivery | `91ba36cb3`; ED-NATIVE-M7-C2-FLASH appends a pending native browser successor, preserving the old Rails retry record |
+| Integrated E2E base / C2 delivery | `41adb0798c32e94e0ae7a8c5931ca89e18e95b77` / `c7f02bb` |
+| C1 strict targeted batch | 97 passed across 20 selected files, seed 404, warnings-as-errors; final two changed files 11 passed |
+| Native Node/direct readers | 158 passed, zero failures/skips |
+| C2 native event/register callers | 26 passed; map/shell callers 8 passed; point-command caller 1 passed; seed 404, warnings-as-errors |
+| E2E discovery | 17 tests in 11 files, standalone configuration; eight new browser cases plus inherited cases/setup; no browser launched |
+| Asset probe unit evidence | Two named tests pass; successor/reader/root mutations and classifier/missing-await/fetched-worker omissions fail their intended assertions; restored GREEN |
+| Corpus / drift | External corpus unchanged; no fixture pruning or Swagger/schema changes |
+| Runtime services | Only the targeted runner's private Redis was started; stopped after all targeted summaries. No stand/browser/Docker service started or left running |
+
+The 386-reader execution scan and the base's 402-reader scan use different explicit marker sets; the overlay records both instead of claiming 16 removed fixtures. Two hybrid disclosure-policy cases remain owned by the A1 integration handoff; the current base is not silently changed to match the new policy. The public home root remains an A/B cleanup boundary; native sign-in/recovery/admin/Tags/map and the existing public-map gate have current targeted evidence. Eight A/B shared-cleanup obligations remain named, pending merged-tree refresh.
+
+C2 specs drain eager/lazy/fetched-worker script responses, preserve en/de native controls at 390px, drive native transitions and reconnect/revocation, and count owned map/worker disposal. Their browser RED/GREEN/mutations, keyboard/focus/Range bounds and lane skips/flakes remain **PENDING X5** under the no-G44 implementation rule. JS decoded/gzip/wire values and phase reports are instrumented, not measured here. Gzip is reconstructed; Content-Length is optional wire evidence, not total transferred bytes. No latency, memory, resource or speedup result is claimed; D1–D4 remains removed.
+
+C3 finalizes README/AGENTS, development instructions and architecture/ADR context against today's source. A/B production asset resolution, feature moves and direct routing still require merge/source refresh; X4 owns exact accepted native and separate Rails-artifact startup/fallback commands. Final app/image/control identities, all partition exits/seeds, three sequential lanes and production asset serving remain controller acceptance evidence. Historical hybrid navigation/form-isolation docs keep their original bodies with updated superseding notices. AFFiNE canonical mirror `92Fb_pgYq2Yo2ySdCCoEZ` is searched, updated and read back during this delivery; repository files remain the versioned command/case source. Rails bugs fixed by C: **none**.

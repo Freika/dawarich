@@ -1,6 +1,6 @@
 # Ordinary forms inside native pages
 
-> Historical hybrid form-isolation record. [Native development](phoenix/native-frontend-development.md) and [ADR-0017 cleanup context](phoenix/native-frontend-cleanup-adr.md) supersede these island instructions for migrated pages. Final shared cleanup/acceptance remains DRAFT; retain the historical cases and effects until their named native successors are green.
+> Historical hybrid form-isolation record. [Native development](phoenix/native-frontend-development.md) and [ADR-0017 cleanup context](phoenix/native-frontend-cleanup-adr.md) supersede these island instructions for migrated pages. Shared-cleanup integration and X4/X5 acceptance remain pending; retain the historical cases and effects until their named native successors are green.
 
 > Superseded for migrated pages by ADR-0017 (2026-10-08): native pages (`:native_pages` live_session, currently the Tags pages) use LiveView forms (`to_form`, `phx-change`, `phx-submit`) and have no islands. This document still describes the remaining hybrid pages.
 
