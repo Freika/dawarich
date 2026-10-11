@@ -169,6 +169,14 @@ export function installMapDiagnostics({ element, map, getConfig }) {
               )
       } catch {}
     }
+    let rendered = new Set()
+    try {
+      const ids = (style.layers ?? []).filter((layer) => layer.source === sourceId).map((layer) => layer.id)
+      if (ids.length) rendered = new Set(
+        (map.queryRenderedFeatures?.(undefined, { layers: ids }) ?? [])
+          .slice(0, 5000).map((row) => String(row.properties?.id ?? row.id)),
+      )
+    } catch {}
     const paintBudget = { left: 4096 }
     const config = getConfig()
     const center = map.getCenter?.()
@@ -204,7 +212,7 @@ export function installMapDiagnostics({ element, map, getConfig }) {
       featureCount: rows.length,
       features: rows.slice(0, 500).map((row) => {
         const data = feature(row)
-        return { ...data, screen: hitPosition(map, data.geometry) }
+        return { ...data, screen: hitPosition(map, data.geometry), rendered: rendered.has(String(data.properties.id ?? data.id)) }
       }),
     }
   }
