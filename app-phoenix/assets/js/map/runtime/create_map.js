@@ -21,6 +21,7 @@ export function createMapRuntime({
   const operations = createOperations(timers)
   let current = config
   let map = null
+  let attached = false
   let viewport = null
   let mounting = null
   let state = "idle"
@@ -159,6 +160,7 @@ export function createMapRuntime({
       lifetime.own(
         installMapDiagnostics({ element, map, getConfig: () => current }),
       )
+      attached = true
       state = "ready"
       return await runRefresh()
     } catch (error) {
@@ -185,6 +187,7 @@ export function createMapRuntime({
       if (lifetime.destroyed) return "cancelled"
       current = next
       viewport?.updateNamespace(next.namespace)
+      if (map && !attached) return mounting
       operations.reset()
       reader.reset()
       if (!map) mounting = null
@@ -192,6 +195,7 @@ export function createMapRuntime({
     },
     async reconnect() {
       if (lifetime.destroyed) return "cancelled"
+      if (map && !attached) return mounting
       reader.reset()
       if (map) operations.reset()
       return map ? runRefresh() : this.mount()

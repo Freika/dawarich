@@ -61,7 +61,8 @@ const flights = {
     },
   ],
 }
-function fixture(config = {}) {
+function fixture(config = {}, options = {}) {
+  let releaseLoad, lastUpdate
   let maps = 0,
     removed = 0,
     updates = 0,
@@ -101,7 +102,10 @@ function fixture(config = {}) {
         maps++
       }
       loaded() {
-        return true
+        return options.loaded ?? true
+      }
+      once(_event, callback) {
+        releaseLoad = callback
       }
       remove() {
         removed++
@@ -110,7 +114,8 @@ function fixture(config = {}) {
     },
   }
   const layers = {
-    update() {
+    update(data, snapshot, config) {
+      lastUpdate = { data, snapshot, config }
       updates++
     },
     destroy() {
@@ -128,6 +133,10 @@ function fixture(config = {}) {
   })
   return {
     owner,
+    releaseLoad: () => releaseLoad(),
+    get lastUpdate() {
+      return lastUpdate
+    },
     reader,
     reads,
     element,
@@ -320,4 +329,31 @@ test("trip document publishes readiness failure and disposal through its native 
     f.owner.destroy()
   }
   assert.equal(f.element.dataset.mapState, "cancelled")
+})
+
+test("Trip config and reconnect wait for attachment then paint latest geometry once", async () => {
+  const f = fixture({}, { loaded: false })
+  try {
+    const mounting = f.owner.mount()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.maps, 1)
+    const next = { ...f.owner.config, tripId: 9, revision: 2 }
+    const updating = f.owner.update(next)
+    const reconnecting = f.owner.reconnect()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.reads.length, 0)
+    f.releaseLoad()
+    assert.deepEqual(await Promise.all([mounting, updating, reconnecting]), [
+      "ready",
+      "ready",
+      "ready",
+    ])
+    assert.equal(f.maps, 1)
+    assert.equal(f.reads.find((read) => read.resource === "trip").params.id, 9)
+    assert.deepEqual(f.lastUpdate.snapshot.points, points)
+    assert.equal(f.lastUpdate.config.revision, 2)
+    assert.equal(f.updates, 2)
+  } finally {
+    f.owner.destroy()
+  }
 })

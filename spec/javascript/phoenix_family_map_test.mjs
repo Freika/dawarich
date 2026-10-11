@@ -9,7 +9,8 @@ const defer = () => {
   })
   return { promise, resolve }
 }
-function fixture() {
+function fixture(options = {}) {
+  let releaseLoad
   const sources = new Map(),
     layers = new Map(),
     events = new Map(),
@@ -24,7 +25,7 @@ function fixture() {
       maps++
     }
     loaded() {
-      return true
+      return options.loaded ?? true
     }
     remove() {
       removed++
@@ -40,6 +41,7 @@ function fixture() {
       events.get(b ? `${e}:${a}` : e)?.delete(b ?? a)
     }
     once(e, f) {
+      if (e === "load") releaseLoad = f
       this.on(e, f)
     }
     getSource(id) {
@@ -156,6 +158,7 @@ function fixture() {
   })
   return {
     owner,
+    releaseLoad: () => releaseLoad(),
     empty,
     reader,
     element,
@@ -313,6 +316,35 @@ test("family empty guidance follows admitted locations and clears on withdrawal"
     assert.equal(f.empty.hidden, true)
     f.owner.clear()
     assert.equal(f.empty.hidden, false)
+  } finally {
+    f.owner.destroy()
+  }
+})
+
+test("Family config and reconnect wait for attachment then paint latest geometry once", async () => {
+  const f = fixture({ loaded: false })
+  try {
+    const mounting = f.owner.mount()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.maps, 1)
+    const range = { startAt: "2026-10-05", endAt: "2026-10-06" }
+    const updating = f.owner.update({ ...f.owner.config, revision: 2, range })
+    const reconnecting = f.owner.reconnect()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(f.reads.length, 0)
+    f.releaseLoad()
+    assert.deepEqual(await Promise.all([mounting, updating, reconnecting]), [
+      "ready",
+      "ready",
+      "ready",
+    ])
+    assert.equal(f.maps, 1)
+    assert.equal(f.reads.length, 2)
+    assert.deepEqual(
+      f.reads.find((read) => read.resource === "family_history").params,
+      { start_at: range.startAt, end_at: range.endAt },
+    )
+    assert.equal(f.sources.get("family-members").data.features.length, 1)
   } finally {
     f.owner.destroy()
   }
