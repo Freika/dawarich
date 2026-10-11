@@ -179,7 +179,51 @@ defmodule DawarichWeb.NativePagesHotwireFreeTest do
     assert Dawarich.Test.NativeAdminUI.labels(html) == []
     ids = html |> LazyHTML.from_document() |> LazyHTML.query("[id]") |> LazyHTML.attribute("id")
     assert Enum.uniq(ids) == ids
-    for marker <- @markers, do: refute(html =~ marker)
+
+    for marker <- @markers do
+      present = String.contains?(html, marker)
+      refute present, "legacy marker #{marker}"
+    end
+  end
+
+  test "all native document roots expose accessible controls without legacy hooks", %{user: user} do
+    Dawarich.State.put_registration_enabled(Repo, true)
+    previous = Map.new(~w(SELF_HOSTED DAWARICH_RAILS), &{&1, System.get_env(&1)})
+    System.put_env("SELF_HOSTED", "true")
+    System.put_env("DAWARICH_RAILS", "off")
+
+    on_exit(fn ->
+      for {key, value} <- previous,
+          do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+    end)
+
+    for locale <- ~w(en de),
+        {actor, path, entry} <- [
+          {nil, "/users/sign_in", "/native/auth_http"},
+          {nil, "/users/password/new", "/native/auth_http"},
+          {user.id, "/tags", "/native/app"},
+          {user.id, "/settings/users", "/native/app"},
+          {user.id, "/map/v2", "/native/app"}
+        ] do
+      conn =
+        if actor do
+          RailsUser.signed_in(actor)
+        else
+          session = %{"locale" => locale, "_csrf_token" => DawarichWeb.RailsCsrf.new_token()}
+          put_req_cookie(build_conn(), "_dawarich_session", RailsUser.cookie(session))
+        end
+
+      uri = if actor, do: path <> "?locale=" <> locale, else: path
+      response = get(conn, uri)
+      status = response.status
+      assert status == 200, "document status for #{path} #{locale}"
+      html = html_response(response, 200)
+      assert_native_controls(html)
+      entry_present = String.contains?(html, entry)
+      locale_present = String.contains?(html, ~s(lang="#{locale}"))
+      assert entry_present, "native entry for #{path}"
+      assert locale_present, "document locale for #{path}"
+    end
   end
 
   test "every native page renders without Turbo, Stimulus or the importmap", %{user: user} do

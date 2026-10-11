@@ -1,6 +1,6 @@
 # Native frontend architecture context
 
-Status: **DRAFT implementation context**, 2026-10-10. Accepted direction: ADR-0017; final cleanup and acceptance are pending. The historical [frontend contexts plan](native-frontend-contexts-plan-20261008.md) remains unchanged. [Inventory](native-m7-inventory.md) and [reader/case mapping](native-m7-test-retargets.md) are the code-coupled handoff.
+Status: **Implementation context finalized**, 2026-10-11. Accepted direction: ADR-0017; A/B cleanup integration and X4/X5 acceptance remain pending. The historical [frontend contexts plan](native-frontend-contexts-plan-20261008.md) remains unchanged. [Inventory](native-m7-inventory.md) and [reader/case mapping](native-m7-test-retargets.md) are the code-coupled handoff.
 
 Phoenix owns native documents, page state/forms/events and local refusals. Contexts take `Accounts.Scope`, refresh admission before effects, and own validation/transactions/durable jobs/publication. Hooks wrap browser libraries rather than domain commands or a Stimulus registry. Pure browser library state is keyed and bounded; async/server deliveries reject stale tokens and recheck authorization. Credential forms and public capabilities follow the existing secret-state/log rules.
 
@@ -12,6 +12,6 @@ Names such as RailsCookies, RailsSession, signed Active Storage, ActionText stor
 
 The native JS esbuild path exists today; native CSS/fonts/images and mixed Docker/build-input discovery still depend on Rails asset inputs. [Development instructions](native-frontend-development.md) distinguish that current state from A3/A4's proposed native digest manifest/data-export split. Positive renderer/font/worker/geodata/Swagger/PWA coverage must precede payload deletion.
 
-S1 owner attestations, final month/trip/shared-month hosts, 4/6 family hook reconciliation, A/B cleanup, C1 assertion splits, C2 E2E and X4/X5 acceptance remain. Performance D1–D4 is removed by the controller's scope cut; existing functional and byte-boundary tests remain. No full suite, browser gate, production image/serving or 390px acceptance is claimed by this draft.
+Stage-2 month/trip/shared-month and family hosts are integrated. S1/OD4 owner decisions, A/B cleanup integration, C1 deletion-time handoff refresh and X4/X5 acceptance remain. C1 supplies current exact successor/reader checks; C2 supplies native browser specs and C3 finalizes implementation instructions, with browser/production evidence explicitly pending. Performance D1–D4 is removed by the controller's scope cut; existing functional and byte-boundary tests remain. No full suite, browser gate, production image/serving or 390px acceptance is claimed by this implementation delivery.
 
 AFFiNE counterpart: `Dawarich — Native frontend milestones 7–8: removal inventory and acceptance plan` (document `92Fb_pgYq2Yo2ySdCCoEZ`). Repository instructions are canonical for versioned commands/case mappings; AFFiNE indexes accepted decisions and evidence. The [ADR cleanup record](native-frontend-cleanup-adr.md) extends accepted ADR-0017 without rewriting historical ADRs.

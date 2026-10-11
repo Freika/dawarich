@@ -1,6 +1,6 @@
 # Native frontend development
 
-Status: **DRAFT**, 2026-10-10. Commands below are aligned with source on the m7 branch; only the reported targeted tests have been executed for this draft. A3/A4/B2/B3/X4/X5 must supply production build, serving, packaging and final runtime evidence before these instructions become an accepted release runbook.
+Status: **Implementation guide finalized**, 2026-10-11, against the integrated stage-2 m7 base. Commands are source-aligned; the [C-track results](native-m7-inventory.md#track-c-implementation-results-2026-10-11) distinguish executed targeted tests from pending acceptance. Merge the A/B cleanup deliveries before using their final asset/routing contracts. X4/X5 still supply production build, serving, packaging, fallback and runtime evidence; this guide is not yet an accepted release runbook.
 
 ## Prepare a private checkout
 
@@ -32,7 +32,7 @@ LiveViews own forms, errors, confirmations, URL params and action acknowledgemen
 
 Keep credentials/capabilities out of retained form/socket state, event replies and logs. Renew credential forms after submit/error/close/reopen. Re-admit actors on params/events/info/async/reconnect and in scoped contexts. Async work needs a per-run token, bounded timeout and stale-result rejection. Maps/studios must destroy their own instances/workers/listeners on departure and ignore revoked private updates. Library-owned DOM may be ignored within a keyed hook; ordinary server-owned forms and gallery rows remain patchable.
 
-**DRAFT serving workflow:** rebuild `mix assets.build` after JS changes; use the controller-prepared foreground native stand to load the exact app/E2E identities. The current dev config does not define an assets watcher. The current runtime has lifecycle/readiness/source-debt admission beyond an endpoint startup, so a generic `mix phx.server` is not a verified substitute for the prepared stand. Stop all services you start unless a brief explicitly requests otherwise. X4 will provide the accepted production/native and separate Rails artifact startup procedures; no start command or default is changed by this draft.
+**Development serving workflow:** rebuild `mix assets.build` after JS changes; use the controller-prepared foreground native stand to load the exact app/E2E identities. The current dev config does not define an assets watcher. The current runtime has lifecycle/readiness/source-debt admission beyond an endpoint startup, so a generic `mix phx.server` is not a verified substitute for the prepared stand. Stop all services you start unless a brief explicitly requests otherwise. X4 will provide the accepted production/native and separate Rails artifact startup procedures; no start command or default is changed by these instructions.
 
 ## Build and dependency removal
 
@@ -44,9 +44,9 @@ mix format --check-formatted
 mix compile --warnings-as-errors --all-warnings
 ```
 
-`assets.build` invokes the configured `esbuild native` profile: ESM, splitting, output `priv/static/native`, and external `/maplibre/*` imports. `assets.deploy` minifies that profile and runs `phx.digest`, producing `priv/static/cache_manifest.json` and digested static outputs. The native JS graph/demo eager-byte caps remain required. These source-aligned commands are not fresh production-build evidence for this draft.
+`assets.build` invokes the configured `esbuild native` profile: ESM, splitting, output `priv/static/native`, and external `/maplibre/*` imports. `assets.deploy` minifies that profile and runs `phx.digest`, producing `priv/static/cache_manifest.json` and digested static outputs. The native JS graph/demo eager-byte caps remain required. These source-aligned commands are not fresh production-build evidence for this delivery.
 
-| Input/boundary | Current source | DRAFT accepted target / proof still needed |
+| Input/boundary | Current source | Owner delivery / acceptance still needed |
 | --- | --- | --- |
 | Native JS | Phoenix esbuild entrypoint/profile; lazy hooks | Keep one native entrypoint and explicit library chunks; A2 emitted/lazy/worker graph and runtime checks. |
 | CSS/fonts/images | Native root uses `DawarichWeb.Assets`; resolver reads Rails asset manifest | A3 native digest/static manifest and actual CSS/font/worker serving tests. Keep Tailwind/DaisyUI and useful source classes. |
@@ -66,6 +66,7 @@ zsh "$M7_TARGETED_RUNNER" \
   test/dawarich_web/native_shell_test.exs \
   test/dawarich_web/native_shell_events_test.exs \
   test/dawarich_web/native_root_test.exs \
+  test/dawarich/build/native_m7_corpus_ledger_test.exs \
   --warnings-as-errors --seed 404
 node --test app-phoenix/test/client/native_account_menu_patch_test.mjs \
   app-phoenix/test/client/account_menu_patch_test.mjs
@@ -82,11 +83,24 @@ Full ExUnit is authorized only by a FULL GATE brief and only through the control
 Edit E2E only in the controller-assigned E2E checkout. From that checkout, an implementation-time discovery check is:
 
 ```sh
-npx playwright test --list native/navigation.spec.js
+E2E_APP_MODE=standalone SELF_HOSTED=true npx playwright test --list \
+  native/navigation.spec.js native/frontend-free.spec.js \
+  native/assets-budget.spec.js native/socket-lifecycle.spec.js
+node --test unit/native-asset-probe.test.mjs
 ```
 
-This is the planned C2 path; it may not exist until C2 lands. Use a delivered spec path on the assigned E2E head. `--list` proves discovery/syntax, not a browser pass. Select controls by role/label/testid and await native join/action acknowledgement rather than Turbo/Stimulus presence. Disable sensitive credential/share/export captures; assertions compare booleans rather than printing tokens or signed URLs.
+C2 supplies this path and the companion `frontend-free`, `assets-budget` and `socket-lifecycle` specs on its E2E delivery head. Use the app/E2E pair recorded in Results. `--list` proves discovery/syntax, not a browser pass. Select controls by role/label/testid and await native join/action acknowledgement rather than Turbo/Stimulus presence. Disable sensitive credential/share/export captures; assertions compare booleans rather than printing tokens or signed URLs.
 
 G44 runs only at stage acceptance: stage 1 integrates 3c/3d/4/5; stage 2 integrates 6/7. The controller prepares the stand and runs three standalone lanes sequentially at frozen app/E2E/image identities. English/German 390px overflow, per-element bounds, keyboard/focus/Escape, navigation/reconnect and real lazy library/worker behavior belong to that acceptance. Unit hook stubs and spec discovery do not replace those checks.
 
 The 2026-10-10 scope cut removes D1–D4 performance/load/resource measurements. Preserve existing byte-cap/bundle-boundary tests, behavior/lifecycle tests and functional packaging/fallback acceptance. Do not require a control matrix, report invented speedups or advance a milestone on partial evidence.
+
+## Browser contracts and measurements
+
+C2 adds same-session/back-forward navigation, full document/session boundaries, expired-session draft refusal, lazy editor/emoji/map/studio admission, share revocation across reconnect and bounded map/worker teardown. Native video-gallery fixtures now use reservation/storage/save acknowledgements from the owned VideoStudio hook. The replay error case uses the native map hook and persistent server flash; ED-NATIVE-M7-C2-FLASH keeps the historical Rails retry correction separate from pending native browser evidence. No global controller registry is used.
+
+The asset probe drains every response-body promise, includes `.js`/`.mjs` fetched worker bodies, removes its own response listener and emits only declared static pathnames and scalar measurements. `decoded` is the body delivered by Playwright; `gzip` is reconstructed with Node gzip for a stable cap; `wire` is optional response Content-Length, not a measured transfer total or parse time. Undeclared script URLs are reported as a generic tag; queries, signed URLs and body text are never attached. Map probes count observed instances/removals and worker creations/terminations rather than asserting an unmeasured memory slope.
+
+Source-feature browser successors already delivered on the stage-2 E2E base remain: `auth/` sign-in/registration/remember/OTP/recovery/session cases; `admin/` access/users/instance/background; `places/` native list/drawer/nearby; `imports/`, `imports-exports-zip.spec.js`, notifications and families lifecycle/consent; `trips/rich-description.spec.js`, notes, gallery and trip studio; `v2/map/` native public/family/replay/poster/video/export journeys. Their collection or prior source presence is not a new lane pass. Sensitive captures remain disabled on the new/retargeted credential/share paths.
+
+Controller acceptance must execute the eight new browser cases plus changed inherited cases, named navigation/auth/revocation/destruction mutations and English/German 390px label, keyboard/focus/Escape and document/Range overflow checks. C2's 17-test/11-file discovery and two probe unit passes do not satisfy that gate. Record any skips/flakes, exact identities and unsupported measurements in X5 Results; no performance/control experiment is required.
