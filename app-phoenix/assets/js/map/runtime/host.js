@@ -237,9 +237,10 @@ export function mountHost({
       },
     },
   })
+  const snapshotReader = reader.fork?.() ?? reader
   owner.source = createStudioSource({
     getState: () => owner.config,
-    readSnapshot: (state, options) => readRouteSnapshot(reader, state, options),
+    readSnapshot: (state, options) => readRouteSnapshot(snapshotReader, state, options),
     applyDates: requests.applyDates,
   })
   Object.defineProperty(owner, "enrichment", { get: () => enrichment })
@@ -284,6 +285,7 @@ export function mountHost({
   owner.destroy = () => {
     requests.destroy()
     owner.source.destroy()
+    if (snapshotReader !== reader) snapshotReader.destroy()
     dispose()
   }
   return owner

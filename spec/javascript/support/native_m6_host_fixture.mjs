@@ -143,7 +143,7 @@ export function fixture(config = {}, options = {}) {
       getEast: () => 14,
     }),
   }
-  const reader = {
+  const reader = options.reader ?? {
     async read(resource, params) {
       reads.push({ resource, params })
       return {
