@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Update both mobile and desktop family-sharing indicators after changing location-sharing settings.
+
 - Keep signed storage capabilities and private filenames out of request path logs.
 
 - Prevent legacy or restored export URLs from deleting unrelated files; retain unproven legacy files after export removal or migration.
