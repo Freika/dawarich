@@ -18,7 +18,7 @@
             <% if current_user.in_family? %>
               <%= link_to family_home_path, class: "#{active_class?(family_home_path)} flex items-center space-x-2" do %>
                 <span><%= t('.family') %></span>
-                <%= render 'families/navbar_indicator', user: current_user %>
+                <%= render 'families/navbar_indicator', user: current_user, frame_id: 'family-navbar-indicator-mobile' %>
               <% end %>
             <% else %>
               <%= link_to t('.family_sup_sup_html').html_safe, new_family_path, class: "#{active_class?(new_family_path)}" %>
