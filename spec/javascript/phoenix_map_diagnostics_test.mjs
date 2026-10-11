@@ -519,3 +519,32 @@ test("rendered multipart tracks and areas use an in-viewport component for brows
     f.destroy()
   }
 })
+
+test("native single-Feature diagnostics preserve canonical hover geometry without tile quantization", () => {
+  const f = setup()
+  const input = {
+    type: "Feature",
+    properties: { id: 7 },
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [13.405677, 52.462147],
+        [13.408596, 52.461514],
+      ],
+    },
+  }
+  f.map.getSource = () => ({
+    serialize: () => ({ type: "geojson", data: input }),
+  })
+  try {
+    const data = f.element.dawarichMapSnapshot({
+      sourceId: "points-mvt-source",
+    })
+    assert.equal(data.featureCount, 1)
+    assert.deepEqual(data.features[0].geometry, input.geometry)
+    data.features[0].geometry.coordinates[0][0] = 1
+    assert.equal(input.geometry.coordinates[0][0], 13.405677)
+  } finally {
+    f.destroy()
+  }
+})

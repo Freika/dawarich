@@ -5,12 +5,15 @@ export function overlayAwarePadding(mapRect, overlayRect) {
     bottom: 50,
     left: 50,
   }
-  if (!mapRect || !overlayRect) return padding
-  if (overlayRect.bottom <= mapRect.top || overlayRect.top >= mapRect.bottom)
+  if (
+    !mapRect ||
+    !overlayRect ||
+    overlayRect.bottom <= mapRect.top ||
+    overlayRect.top >= mapRect.bottom ||
+    overlayRect.left >= mapRect.right ||
+    overlayRect.right <= mapRect.left
+  )
     return padding
-  const overlapsLeftEdge =
-    overlayRect.left < mapRect.right && overlayRect.right > mapRect.left
-  if (!overlapsLeftEdge) return padding
   padding.left = Math.max(
     padding.left,
     Math.ceil(overlayRect.right - mapRect.left + 12),
