@@ -51,6 +51,14 @@ defmodule Dawarich.Build.NativeM7CorpusLedgerTest do
       assert row["fixture_policy"] != ""
       assert row["cleanup_owner"] != ""
       assert row["disposition"] =~ "no deletion clearance"
+      assert row["current_cases"] != [] or is_binary(row["module_contract"])
+
+      assert Enum.sort(Enum.map(row["current_cases"], & &1["name"])) ==
+               Enum.sort(declarations(row["file"]))
+
+      for entry <- row["current_cases"] do
+        assert named?(entry["file"], entry["name"]), entry["file"]
+      end
     end
 
     for row <- historical["register_rows"] do
@@ -86,6 +94,15 @@ defmodule Dawarich.Build.NativeM7CorpusLedgerTest do
 
   defp source("T/" <> file), do: Path.join(@root, "app-phoenix/test/#{file}")
   defp source(file), do: Path.join(@root, file)
+
+  defp declarations(file) do
+    text = File.read!(source(file))
+
+    for quote <- [~s("), "'", "`"],
+        pattern = "\\btest\\s*(?:\\(\\s*)?#{quote}((?:\\\\.|[^#{quote}\\\\])*)#{quote}",
+        [_, name] <- Regex.scan(Regex.compile!(pattern), text),
+        do: name
+  end
 
   defp named?(file, name) do
     normalize = &(&1 |> String.replace(~S(\"), ~s(")) |> String.replace(~S(\'), "'"))

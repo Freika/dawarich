@@ -5184,7 +5184,19 @@
           "cleanup_successor": "A1"
         }
       ],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "T/client/a12f3a_m_test.mjs",
+          "name": "\nimport vm from ",
+          "line": 3
+        },
+        {
+          "file": "T/client/a12f3a_m_test.mjs",
+          "name": "M07: map presentation and refresh consumers matches current Rails contract without a native-owner Rails effect",
+          "line": 91
+        }
+      ]
     },
     {
       "file": "T/client/a12f3a_r_test.mjs",
@@ -5237,7 +5249,29 @@
           "cleanup_successor": "A1"
         }
       ],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "T/client/a12f3a_r_test.mjs",
+          "name": "\nimport vm from ",
+          "line": 3
+        },
+        {
+          "file": "T/client/a12f3a_r_test.mjs",
+          "name": "R08: native studio controls and lifecycle matches current Rails contract without a native-owner Rails effect",
+          "line": 154
+        },
+        {
+          "file": "T/client/a12f3a_r_test.mjs",
+          "name": "R09: native rendering and download bridge matches current Rails contract without a native-owner Rails effect",
+          "line": 257
+        },
+        {
+          "file": "T/client/a12f3a_r_test.mjs",
+          "name": "R06: studio recipe and native hooks matches current Rails contract without a native-owner Rails effect",
+          "line": 367
+        }
+      ]
     },
     {
       "file": "T/client/account_menu_patch_test.mjs",
@@ -5303,14 +5337,110 @@
           "cleanup_successor": "A1"
         }
       ],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "T/client/account_menu_patch_test.mjs",
+          "name": "\nimport vm from ",
+          "line": 3
+        },
+        {
+          "file": "T/client/account_menu_patch_test.mjs",
+          "name": "unrelated disclosure follows the server instead of keeping account state",
+          "line": 100
+        },
+        {
+          "file": "T/client/account_menu_patch_test.mjs",
+          "name": "a server removing logout remains free to replace account content and close disclosure",
+          "line": 107
+        }
+      ]
     },
     {
       "file": "T/client/requested_studio_test.mjs",
       "disposition": "retain until owning A/B cleanup replaces this reader; no deletion clearance",
       "fixture_policy": "retain external corpus and all business, security, data and effect assertions",
-      "cases": [],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cases": [
+        {
+          "old": {
+            "name": "\nimport { launchRequestedStudio } from ",
+            "line": 2
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "T/client/requested_studio_test.mjs",
+            "name": "\nimport { launchRequestedStudio } from ",
+            "line": 2
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "requested video waits for the real map provider and opens once",
+            "line": 46
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "T/client/requested_studio_test.mjs",
+            "name": "requested video waits for the real map provider and opens once",
+            "line": 46
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "destroying a requested studio cancels its pending map launch",
+            "line": 56
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "T/client/requested_studio_test.mjs",
+            "name": "destroying a requested studio cancels its pending map launch",
+            "line": 56
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "an ordinary map visit does not launch a video studio",
+            "line": 63
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "T/client/requested_studio_test.mjs",
+            "name": "an ordinary map visit does not launch a video studio",
+            "line": 63
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        }
+      ],
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "T/client/requested_studio_test.mjs",
+          "name": "\nimport { launchRequestedStudio } from ",
+          "line": 2
+        },
+        {
+          "file": "T/client/requested_studio_test.mjs",
+          "name": "requested video waits for the real map provider and opens once",
+          "line": 46
+        },
+        {
+          "file": "T/client/requested_studio_test.mjs",
+          "name": "destroying a requested studio cancels its pending map launch",
+          "line": 56
+        },
+        {
+          "file": "T/client/requested_studio_test.mjs",
+          "name": "an ordinary map visit does not launch a video studio",
+          "line": 63
+        }
+      ]
     },
     {
       "file": "T/client/retained_turbo_actions_test.mjs",
@@ -5333,14 +5463,33 @@
           "cleanup_successor": "B2-frame"
         }
       ],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "T/client/retained_turbo_actions_test.mjs",
+          "name": "\nimport vm from ",
+          "line": 3
+        },
+        {
+          "file": "T/client/retained_turbo_actions_test.mjs",
+          "name": "retained trip and family actions join the rendered Turbo destination without a reload",
+          "line": 18
+        },
+        {
+          "file": "T/client/retained_turbo_actions_test.mjs",
+          "name": ",\n  }\n  const storage = {\n    getItem() {\n      return null\n    },\n    setItem() {},\n    removeItem() {},\n  }\n  let root\n  const globals = {\n    console,\n    document: {\n      readyState: ",
+          "line": 24
+        }
+      ]
     },
     {
       "file": "T/client/turbo_navigation_test.mjs",
       "disposition": "retain until owning A/B cleanup replaces this reader; no deletion clearance",
       "fixture_policy": "retain external corpus and all business, security, data and effect assertions",
       "cases": [],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [],
+      "module_contract": "retain module-level bridge teardown assertions until named native map lifecycle and navigation successors pass at cleanup"
     },
     {
       "file": "T/dawarich/build/frontend_inventory_test.exs",
@@ -5438,7 +5587,39 @@
           "cleanup_successor": "A2"
         }
       ],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "T/dawarich/build/frontend_inventory_test.exs",
+          "name": "reports Hotwire dependencies and markup assertions per file",
+          "line": 14
+        },
+        {
+          "file": "T/dawarich/build/frontend_inventory_test.exs",
+          "name": "reports controllers and hooks set through conditional expressions",
+          "line": 44
+        },
+        {
+          "file": "T/dawarich/build/frontend_inventory_test.exs",
+          "name": "finds nothing in Hotwire-free sources",
+          "line": 58
+        },
+        {
+          "file": "T/dawarich/build/frontend_inventory_test.exs",
+          "name": "hotwire?/1 is true for Turbo, Stimulus and ActionCable findings",
+          "line": 72
+        },
+        {
+          "file": "T/dawarich/build/frontend_inventory_test.exs",
+          "name": "native graph distinguishes direct-upload adapters from Hotwire runtime",
+          "line": 80
+        },
+        {
+          "file": "T/dawarich/build/frontend_inventory_test.exs",
+          "name": "dynamic legacy import edge cannot evade the graph audit",
+          "line": 103
+        }
+      ]
     },
     {
       "file": "T/dawarich_web/assets_test.exs",
@@ -5596,7 +5777,59 @@
           "cleanup_successor": "A3"
         }
       ],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "T/dawarich_web/assets_test.exs",
+          "name": "stylesheet paths come from Sprockets' manifest, or stay logical without one",
+          "line": 12
+        },
+        {
+          "file": "T/dawarich_web/assets_test.exs",
+          "name": "Rails configured manifest wins over a conflicting legacy public manifest",
+          "line": 30
+        },
+        {
+          "file": "T/dawarich_web/assets_test.exs",
+          "name": "Source configured precompile manifest resolves with no public wildcard manifest",
+          "line": 54
+        },
+        {
+          "file": "T/dawarich_web/assets_test.exs",
+          "name": "Phoenix serves its own scripts, immutably when versioned",
+          "line": 70
+        },
+        {
+          "file": "T/dawarich_web/assets_test.exs",
+          "name": "Rails' imports come from the phoenix:importmap export, or are empty without one",
+          "line": 83
+        },
+        {
+          "file": "T/dawarich_web/assets_test.exs",
+          "name": "map_shell.js is served, versioned and in Phoenix's importmap",
+          "line": 99
+        },
+        {
+          "file": "T/dawarich_web/assets_test.exs",
+          "name": "rails_bridge.js is served, versioned, in Phoenix's importmap and imported by app.js",
+          "line": 120
+        },
+        {
+          "file": "T/dawarich_web/assets_test.exs",
+          "name": "rails_bridge.js lists each island's Stimulus application in window.StimulusIslands while it runs",
+          "line": 136
+        },
+        {
+          "file": "T/dawarich_web/assets_test.exs",
+          "name": "Phoenix's scripts stay under 300 lines and carry no comments",
+          "line": 145
+        },
+        {
+          "file": "T/dawarich_web/assets_test.exs",
+          "name": "inline family frames activate Turbo without taking over full page navigation",
+          "line": 153
+        }
+      ]
     },
     {
       "file": "T/dawarich_web/method_links_test.exs",
@@ -5619,7 +5852,14 @@
           "cleanup_successor": "B2-refusal"
         }
       ],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "T/dawarich_web/method_links_test.exs",
+          "name": "GET method links navigate to the original URL and target without posting a form",
+          "line": 4
+        }
+      ]
     },
     {
       "file": "T/dawarich_web/sharing_bridge_test.exs",
@@ -5687,7 +5927,29 @@
           "cleanup_successor": "A1"
         }
       ],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "T/dawarich_web/sharing_bridge_test.exs",
+          "name": "deferred Stimulus registration has no retired sharing stream write listener",
+          "line": 4
+        },
+        {
+          "file": "T/dawarich_web/sharing_bridge_test.exs",
+          "name": "native family consent hides the placeholder and revocation erases the map",
+          "line": 35
+        },
+        {
+          "file": "T/dawarich_web/sharing_bridge_test.exs",
+          "name": "deferred controls wait for Stimulus handlers and retain initially disabled fields",
+          "line": 70
+        },
+        {
+          "file": "T/dawarich_web/sharing_bridge_test.exs",
+          "name": "deferred map flash rendering preserves each visible notice without a write bridge",
+          "line": 101
+        }
+      ]
     },
     {
       "file": "T/dawarich_web/standalone_share_assets_test.exs",
@@ -5724,14 +5986,243 @@
           "cleanup_successor": "A3"
         }
       ],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "T/dawarich_web/standalone_share_assets_test.exs",
+          "name": ", ",
+          "line": 55
+        },
+        {
+          "file": "T/dawarich_web/standalone_share_assets_test.exs",
+          "name": "surviving legacy JavaScript imports resolve through Rails pins in standalone and coexistence",
+          "line": 72
+        },
+        {
+          "file": "T/dawarich_web/standalone_share_assets_test.exs",
+          "name": "standalone phrase unlock loads the native module while retained legacy assets resolve",
+          "line": 101
+        }
+      ]
     },
     {
       "file": "spec/javascript/phoenix_card_modal_test.mjs",
       "disposition": "retain until owning A/B cleanup replaces this reader; no deletion clearance",
       "fixture_policy": "retain external corpus and all business, security, data and effect assertions",
-      "cases": [],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cases": [
+        {
+          "old": {
+            "name": "\n\nconst source = (\n  await readFile(\n    new URL(\n      ",
+            "line": 3
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "\n\nconst source = (\n  await readFile(\n    new URL(\n      ",
+            "line": 3
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "native preview ${action} opens the owner manager without a write",
+            "line": 196
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "native preview ${action} opens the owner manager without a write",
+            "line": 196
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "native preview copies an existing public URL and embed without a write",
+            "line": 215
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "native preview copies an existing public URL and embed without a write",
+            "line": 215
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "Copy reports success only after the clipboard write and offers manual recovery",
+            "line": 237
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "Copy reports success only after the clipboard write and offers manual recovery",
+            "line": 237
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "${method} restores the same keyboard trigger without scrolling",
+            "line": 277
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "${method} restores the same keyboard trigger without scrolling",
+            "line": 277
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "Space opens the modal and clicking its contents does not close it",
+            "line": 315
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "Space opens the modal and clicking its contents does not close it",
+            "line": 315
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "Turbo cache preparation restores the live card before the DOM is snapshotted",
+            "line": 324
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "Turbo cache preparation restores the live card before the DOM is snapshotted",
+            "line": 324
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "restoration appends safely if the original next sibling was removed",
+            "line": 337
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "restoration appends safely if the original next sibling was removed",
+            "line": 337
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "restoration does not steal focus when the original grid was disconnected",
+            "line": 348
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "restoration does not steal focus when the original grid was disconnected",
+            "line": 348
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "restoration leaves no stale modal card if the trigger had no parent",
+            "line": 363
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "restoration leaves no stale modal card if the trigger had no parent",
+            "line": 363
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        },
+        {
+          "old": {
+            "name": "opening an unlocked card does not create a locked value",
+            "line": 378
+          },
+          "classification": "B/M/C mixed: retain behavior/data/security; mechanism retirement requires owning cleanup evidence",
+          "successor": {
+            "file": "spec/javascript/phoenix_card_modal_test.mjs",
+            "name": "opening an unlocked card does not create a locked value",
+            "line": 378
+          },
+          "status": "retain exact current reader",
+          "fixture_policy": "retain external corpus and all business, security, data and effect assertions"
+        }
+      ],
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "\n\nconst source = (\n  await readFile(\n    new URL(\n      ",
+          "line": 3
+        },
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "native preview ${action} opens the owner manager without a write",
+          "line": 196
+        },
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "native preview copies an existing public URL and embed without a write",
+          "line": 215
+        },
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "Copy reports success only after the clipboard write and offers manual recovery",
+          "line": 237
+        },
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "${method} restores the same keyboard trigger without scrolling",
+          "line": 277
+        },
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "Space opens the modal and clicking its contents does not close it",
+          "line": 315
+        },
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "Turbo cache preparation restores the live card before the DOM is snapshotted",
+          "line": 324
+        },
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "restoration appends safely if the original next sibling was removed",
+          "line": 337
+        },
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "restoration does not steal focus when the original grid was disconnected",
+          "line": 348
+        },
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "restoration leaves no stale modal card if the trigger had no parent",
+          "line": 363
+        },
+        {
+          "file": "spec/javascript/phoenix_card_modal_test.mjs",
+          "name": "opening an unlocked card does not create a locked value",
+          "line": 378
+        }
+      ]
     },
     {
       "file": "spec/javascript/phoenix_rails_bridge_stimulus_test.mjs",
@@ -5754,7 +6245,19 @@
           "cleanup_successor": "A1"
         }
       ],
-      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery"
+      "cleanup_owner": "C1 with A1/A2/A3/B2/B3 delivery",
+      "current_cases": [
+        {
+          "file": "spec/javascript/phoenix_rails_bridge_stimulus_test.mjs",
+          "name": "\n\nconst source = await readFile(\n  new URL(",
+          "line": 3
+        },
+        {
+          "file": "spec/javascript/phoenix_rails_bridge_stimulus_test.mjs",
+          "name": "window.Stimulus finds a controller in whichever island owns the element, as Rails' global application does",
+          "line": 19
+        }
+      ]
     }
   ]
 }
