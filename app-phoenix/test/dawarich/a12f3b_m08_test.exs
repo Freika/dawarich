@@ -37,7 +37,7 @@ defmodule Dawarich.A12f3bM08Test do
   end
 
   @tag a12f3b_case: "M08b"
-  test "test email worker reports failure without delivered marker" do
+  test "test email worker returns safe failure without a delivered marker and retries" do
     [[id]] =
       rows(
         "INSERT INTO users(email,settings,admin,created_at,updated_at) VALUES('failure@example.test','{}',true,now(),now()) RETURNING id"
@@ -45,7 +45,7 @@ defmodule Dawarich.A12f3bM08Test do
 
     args = %{"event_id" => Ecto.UUID.generate(), "user_id" => id, "locale" => "fr"}
     Process.put(:transport_result, {:error, :rejected})
-    assert TestEmailWorker.perform(%Oban.Job{args: args}) == {:error, :rejected}
+    assert TestEmailWorker.perform(%Oban.Job{args: args}) == {:error, :delivery_failed}
     assert_received {:mail, _}
 
     assert rows("SELECT count(*) FROM phoenix.delivery_claims WHERE delivered_at IS NOT NULL") ==

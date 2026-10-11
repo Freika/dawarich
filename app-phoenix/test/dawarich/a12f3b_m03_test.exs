@@ -71,7 +71,7 @@ defmodule Dawarich.A12f3bM03Test do
   end
 
   @tag a12f3b_case: "M03b"
-  test "failed credential transaction produces no change notification" do
+  test "credential rollback queues nothing and committed mail failure returns a safe retryable summary" do
     id = user!("unchanged@example.test")
     user!("taken@example.test")
     opts = [env: @env, oban: :mail_credentials]
@@ -99,7 +99,7 @@ defmodule Dawarich.A12f3bM03Test do
     assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
     Process.put(:transport_result, {:error, :rejected})
 
-    assert {:error, {:delivery, :rejected}} =
+    assert {:error, {:delivery, :delivery_failed}} =
              DeviseCallbacks.update(ScratchRepo, id, %{email: "committed@example.test"}, opts)
 
     assert rows("SELECT email FROM users WHERE id=$1", [id]) == [["committed@example.test"]]

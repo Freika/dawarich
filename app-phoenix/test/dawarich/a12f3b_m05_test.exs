@@ -40,7 +40,7 @@ defmodule Dawarich.A12f3bM05Test do
   end
 
   @tag a12f3b_case: "M05a"
-  test "lite archival warning atomically schedules source mail and warning marker" do
+  test "lite archival warning preserves its atomic marker and safe mail failure" do
     id = user!()
     assert ArchivalWarningWorker.run(ScratchRepo, :mail_archival, @now, "Europe/Berlin") == :ok
 
@@ -50,7 +50,7 @@ defmodule Dawarich.A12f3bM05Test do
     [[args]] = rows("SELECT args FROM oban.oban_jobs")
     assert args["user_id"] == id
     Process.put(:transport_result, {:error, :rejected})
-    assert ArchivalApproachingWorker.perform(%Oban.Job{args: args}) == {:error, :rejected}
+    assert ArchivalApproachingWorker.perform(%Oban.Job{args: args}) == {:error, :delivery_failed}
     assert_received {:mail, mail}
     assert mail.text =~ "utm_campaign=archival_approaching"
     assert rows("SELECT delivered_at FROM phoenix.delivery_claims") == [[nil]]
@@ -59,7 +59,7 @@ defmodule Dawarich.A12f3bM05Test do
   end
 
   @tag a12f3b_case: "M05b"
-  test "archival warning replay preserves the first provider identity" do
+  test "archival warning replay after safe failure preserves the first provider identity" do
     args = %{
       "user_id" => user!(),
       "locale" => "fr",
@@ -68,7 +68,7 @@ defmodule Dawarich.A12f3bM05Test do
     }
 
     Process.put(:transport_result, {:error, :rejected})
-    assert ArchivalApproachingWorker.perform(%Oban.Job{args: args}) == {:error, :rejected}
+    assert ArchivalApproachingWorker.perform(%Oban.Job{args: args}) == {:error, :delivery_failed}
     assert_received {:mail, first}
     Process.delete(:transport_result)
     assert ArchivalApproachingWorker.perform(%Oban.Job{args: args}) == :ok

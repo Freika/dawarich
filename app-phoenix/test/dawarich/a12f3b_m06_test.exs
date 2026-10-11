@@ -71,11 +71,11 @@ defmodule Dawarich.A12f3bM06Test do
   end
 
   @tag a12f3b_case: "M06b"
-  test "confirmation mail failure cannot complete account destruction" do
+  test "safe confirmation mail failure remains retryable without completing account destruction" do
     id = user!()
     {worker, args, _} = queued!("account_destroy_confirmation", id)
     Process.put(:transport_result, {:error, :rejected})
-    assert worker.perform(%Oban.Job{args: args}) == {:error, :rejected}
+    assert worker.perform(%Oban.Job{args: args}) == {:error, :delivery_failed}
     assert_received {:mail, _}
     assert rows("SELECT deleted_at FROM users WHERE id=$1", [id]) == [[nil]]
     assert rows("SELECT delivered_at FROM phoenix.delivery_claims") == [[nil]]
