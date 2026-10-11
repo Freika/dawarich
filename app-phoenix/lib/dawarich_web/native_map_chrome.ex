@@ -41,7 +41,7 @@ defmodule DawarichWeb.NativeMapChrome do
       &Dawarich.Navbar.put_changelog_consent(&1, decision)
     )
 
-    {:halt, socket}
+    {:halt, refresh(socket)}
   end
 
   defp event(_, _, socket), do: {:cont, socket}
