@@ -164,3 +164,20 @@ test("native replay exposes numeric day counters and clears them with its panel 
   panel.destroy()
   assert.equal(elements.dayCount.attributes["data-replay-day-count"], undefined)
 })
+
+test("timeline-started playback updates the native replay play state", () => {
+  const manager = new ReplayManager({ timezone: "UTC" })
+  manager.setPoints([point("2026-06-01T08:00:00Z", 5)])
+  const elements = Object.fromEntries(
+    ["play", "speed", "speedLabel", "prev", "next", "day", "dayCount", "time", "velocity", "noData", "follow", "scrubber"].map((key) => [key, control()]),
+  )
+  const replay = { manager, playing: false, seek() {}, play() { this.playing = true }, pause() { this.playing = false } }
+  const panel = createReplayPanel({ elements, replay, translate })
+  replay.play()
+  panel.onState({ minute: 480 })
+  assert.equal(elements.play.attributes["aria-pressed"], "true")
+  replay.pause()
+  panel.onState({ minute: 480 })
+  assert.equal(elements.play.attributes["aria-pressed"], "false")
+  panel.destroy()
+})

@@ -105,6 +105,7 @@ export function createReplayPanel({ elements, replay, translate }) {
 
   return {
     onState({ minute, point, dayChanged }) {
+      setPlaying(replay.playing)
       if (dayChanged) refresh()
       if (minute != null) showMinute(minute)
       if (point) showVelocity(point)
