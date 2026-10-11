@@ -92,6 +92,11 @@ export const SharingPhrase = {
   mounted() {
     this.generation = 0
     this.controller = new AbortController()
+    this.onInput = () => {
+      this.generation++
+      this.controller?.abort()
+    }
+    this.el.addEventListener("input", this.onInput)
     const generation = this.generation
     fetch(this.el.dataset.url, {
       credentials: "same-origin",
@@ -116,8 +121,7 @@ export const SharingPhrase = {
     this.event = this.handleEvent("sharing-clear", () => this.clear())
   },
   clear() {
-    this.generation++
-    this.controller?.abort()
+    this.onInput()
     this.el.value = ""
   },
   beforeUpdate() {
@@ -128,6 +132,7 @@ export const SharingPhrase = {
   },
   destroyed() {
     this.clear()
+    this.el.removeEventListener("input", this.onInput)
     this.removeHandleEvent(this.event)
   },
 }
