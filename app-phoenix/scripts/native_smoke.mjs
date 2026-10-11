@@ -43,6 +43,11 @@ try {
   const health = await context.request.get('/api/v1/health');
   assert.equal(health.status(), 200);
   evidence('health');
+  if (!fallback) {
+    const refusal = await context.request.get('/missing-native-package-route');
+    assert.equal(refusal.status(), 404);
+    evidence('local missing-route refusal');
+  }
   const points = await context.request.get('/api/v1/points?start_at=2025-10-15&end_at=2025-10-16', { headers: { Authorization: `Bearer ${process.env.NATIVE_SMOKE_API_KEY}` } });
   assert.equal(points.status(), 200);
   assert.ok((await points.json()).length >= 3);
@@ -57,7 +62,7 @@ try {
     await page.waitForURL(/\/map/);
     await page.evaluate(() => localStorage.setItem('dawarich_onboarding_shown', 'true'));
   }
-  for (const path of ['/tags', '/imports/new', '/settings/general', '/settings/users'])
+  for (const path of ['/tags', '/imports/new', '/users/edit', '/settings/general', '/settings/users'])
     await document(path, !fallback);
   if (!fallback) {
     await document('/tags/new', true);
