@@ -49,8 +49,9 @@ trap 'exit 130' INT TERM HUP
 for name in "$PG" "$REDIS" "$APP"; do
   if dk container inspect "$name" >/dev/null 2>&1; then echo 'resource name already exists' >&2; exit 64; fi
 done
-! dk network inspect "$NET" >/dev/null 2>&1
-! dk volume inspect "$VOL" >/dev/null 2>&1
+for pair in "network:$NET" "volume:$VOL"; do
+  if dk "${pair%%:*}" inspect "${pair#*:}" >/dev/null 2>&1; then echo 'resource name already exists' >&2; exit 64; fi
+done
 dk network create --label org.dawarich.x4="$RUN" "$NET" >/dev/null; NETWORK=1
 dk volume create --label org.dawarich.x4="$RUN" "$VOL" >/dev/null; VOLUME=1
 export NATIVE_SMOKE_API_KEY=$(openssl rand -hex 32)

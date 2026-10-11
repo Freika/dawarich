@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -57,4 +57,30 @@ test('native document audit requires its entrypoint and refuses legacy discovery
     assert.throws(() => auditDocument(document + marker), /legacy/);
   }
   assert.throws(() => auditDocument('<html></html>'), /entrypoint/);
+});
+
+test('image smoke refuses existing network or volume before creating resources', async t => {
+  const { spawnSync } = await import('node:child_process');
+  const { chmodSync } = await import('node:fs');
+  const root = mkdtempSync(join(tmpdir(), 'native-smoke-owner-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const docker = join(root, 'docker');
+  writeFileSync(docker, `#!/bin/sh
+printf '%s\\n' "$*" >>"$COMMANDS"
+case "$*" in
+  "--context colima $COLLISION inspect "*) exit 0;;
+  *) exit 1;;
+esac
+`);
+  chmodSync(docker, 0o755);
+  for (const collision of ['network', 'volume']) {
+    const commands = join(root, `${collision}.log`);
+    const result = spawnSync('bash', ['app-phoenix/scripts/native_smoke.sh'], { env: {
+      ...process.env, PATH: `${root}:${process.env.PATH}`, COLLISION: collision, COMMANDS: commands,
+      NATIVE_DOCKER_CONTEXT: 'colima', NATIVE_IMAGE: 'synthetic-native', RAILS_FALLBACK_IMAGE: 'synthetic-rails',
+      NATIVE_PLAYWRIGHT_ROOT: root, NATIVE_SMOKE_OUT: join(root, 'out'), NATIVE_SMOKE_RUN: 'synthetic-test',
+    }});
+    assert.equal(result.status, 64, `${collision} collision refuses`);
+    assert.doesNotMatch(readFileSync(commands, 'utf8'), /\b(create|run|rm)\b/, 'no resource mutation');
+  }
 });
