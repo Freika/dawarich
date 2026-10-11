@@ -94,6 +94,16 @@ defmodule DawarichWeb.FamilyNativeEventsTest do
     assert family_locks(view, fn -> render_hook(view, "family_confirm", %{}) end) == 0
   end
 
+  test "rendered member confirmation accepts its numeric JS payload and removes only that member", ctx do
+    {view, _} = open(ctx.owner, "/family")
+    view |> element("button[data-family-action=remove_member]") |> render_click()
+    assert has_element?(view, "#family-confirm[data-pending=true]")
+    assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[1]]
+    view |> element("#family-confirm button[phx-click=family_confirm]") |> render_click()
+    assert row("SELECT count(*) FROM family_memberships WHERE id=92002") == [[0]]
+    assert row("SELECT count(*) FROM family_memberships WHERE id=92001") == [[1]]
+  end
+
   test "owner member and target forms preserve role validation without hidden writes", ctx do
     {view, _} = open(ctx.member, "/family")
     refute has_element?(view, "#native-invite-form")
