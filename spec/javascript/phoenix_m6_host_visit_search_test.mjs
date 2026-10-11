@@ -44,3 +44,20 @@ test("native host visit search groups in profile year and opens a scoped visit d
   assert.deepEqual(panel.children, [])
   f.owner.destroy()
 })
+
+test("native visit selection uses the Rails bounded camera transition", async () => {
+  const f = fixture()
+  const flights = []
+  f.map.flyTo = (options) => flights.push(options)
+  f.map.getZoom = () => 2
+  f.reader.pages = async () => [{ id: 7, place: { latitude: 52.52, longitude: 13.405 } }]
+  try {
+    await f.owner.mount()
+    await f.owner.visits.select({ id: 7 })
+    assert.deepEqual(flights[0].center, [13.405, 52.52])
+    assert.equal(flights[0].zoom, 15)
+    assert.equal(flights[0].duration, 600)
+  } finally {
+    f.owner.destroy()
+  }
+})
