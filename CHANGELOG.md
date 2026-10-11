@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Refuse location-sharing consent when family access expires while waiting for the request lock.
+
 - Shared tracks hide their map and route coordinates when the owner disables route sharing, while enabled statistics remain visible.
 
 - Only administrators can request test email, and queued test messages are discarded after the recipient loses administrator access.
