@@ -29,6 +29,41 @@ defmodule DawarichWeb.ExportsNativeEventsTest do
   defp live_as(user),
     do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/exports")
 
+  test "localized export disable labels preserve cancellation and confirmed deletion", c do
+    for {locale, delete, cancel, id} <- [
+          {"en", "Delete", "Cancel", 111_030},
+          {"de", "Löschen", "Abbrechen", 111_031}
+        ] do
+      ImportsExportsSeeds.export!(%{
+        id: id,
+        user_id: c.user.id,
+        status: 0,
+        name: "localized-#{locale}.json"
+      })
+
+      {:ok, view, _} =
+        live(
+          RailsUser.signed_in(c.user.id) |> RailsUser.connecting_as(c.user.id),
+          "/exports?locale=#{locale}"
+        )
+
+      button =
+        render(view)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#export-delete-dialog button[phx-disable-with]")
+
+      assert LazyHTML.attribute(button, "phx-disable-with") == [delete]
+      assert String.trim(LazyHTML.text(button)) == delete
+      render_click(view, "choose_export_delete", %{"id" => to_string(id)})
+      view |> element("#export-delete-dialog button", cancel) |> render_click()
+      render_click(view, "confirm_export_delete", %{})
+      assert rows("SELECT id FROM exports WHERE id=$1", [id]) == [[id]]
+      render_click(view, "choose_export_delete", %{"id" => to_string(id)})
+      view |> element("#export-delete-dialog button[phx-disable-with]", delete) |> render_click()
+      assert rows("SELECT id FROM exports WHERE id=$1", [id]) == []
+    end
+  end
+
   test "export progress refreshes on reconnect and refuses a revoked socket", c do
     {:ok, view, _} = live_as(c.user)
     Repo.query!("UPDATE exports SET status=1 WHERE id=111010", [], log: false)

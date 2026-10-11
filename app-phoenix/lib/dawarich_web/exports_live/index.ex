@@ -208,7 +208,7 @@ defmodule DawarichWeb.ExportsLive.Index do
                 JS.push("cancel_export_delete")
                 |> JS.dispatch("dawarich:close-dialog", to: "#export-delete-dialog")
               }
-            >{t(@locale, "common.cancel", %{})}</button>
+            >{t(@locale, "javascript.common.cancel", %{})}</button>
             <button
               type="button"
               class="btn btn-error"
@@ -217,14 +217,14 @@ defmodule DawarichWeb.ExportsLive.Index do
                 JS.push("confirm_export_delete")
                 |> JS.dispatch("dawarich:close-dialog", to: "#export-delete-dialog")
               }
-              phx-disable-with={t(@locale, "common.delete", %{})}
-            >{t(@locale, "common.delete", %{})}</button>
+              phx-disable-with={t(@locale, "javascript.common.delete", %{})}
+            >{t(@locale, "javascript.common.delete", %{})}</button>
           </div>
         </div>
         <button
           type="button"
           class="modal-backdrop"
-          aria-label={t(@locale, "common.close", %{})}
+          aria-label={t(@locale, "javascript.common.close", %{})}
           phx-click={
             JS.push("cancel_export_delete")
             |> JS.dispatch("dawarich:close-dialog", to: "#export-delete-dialog")
