@@ -192,6 +192,9 @@ defmodule DawarichWeb.FamilyNativeControls do
   defp confirm_text(%{action: "cancel_invitation"}, _, locale),
     do: t(locale, "families.show.cancel_this_invitation", %{})
 
+  defp confirm_text(%{action: "remove_member", id: id}, %{me: %{membership_id: id}}, locale),
+    do: t(locale, "families.show.are_you_sure_you_want_to_leave_this_family", %{})
+
   defp confirm_text(%{action: "remove_member", id: id}, page, locale) do
     member = Enum.find(page[:members] || [], &(&1.membership_id == id))
 

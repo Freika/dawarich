@@ -7,6 +7,7 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.RailsCsrf
   @endpoint DawarichWeb.Endpoint
+  @delete_prompt "Delete this family? This cannot be undone."
 
   setup do
     context = Dawarich.Test.FamilyCorpus.seed()
@@ -25,7 +26,7 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   @tag :sa_g44_families_leave
   test "native map confirmed leave removes one membership and navigates to family creation", c do
     view = open(c.member)
-    confirm(view, "remove_member", "92002")
+    confirm(view, "remove_member", "92002", "Are you sure you want to leave this family?")
     assert_redirect(view, "/family/new")
     assert records("SELECT count(*) FROM family_memberships WHERE id=92002") == [[0]]
   end
@@ -33,7 +34,7 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   @tag :sa_g44_families_remove
   test "native map confirmed removal preserves the owner and removes the member", c do
     view = open(c.owner)
-    confirm(view, "remove_member", "92002")
+    confirm(view, "remove_member", "92002", "Remove #{c.member.email} from the family?")
     assert has_element?(view, "#family-shell")
     assert records("SELECT id FROM family_memberships WHERE family_id=91001") == [[92001]]
   end
@@ -49,7 +50,14 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
     assert [[id]] = records("SELECT id FROM family_memberships WHERE user_id=90103")
 
     view = open(Accounts.get(c.outsider.id))
-    confirm(view, "remove_member", Integer.to_string(id))
+
+    confirm(
+      view,
+      "remove_member",
+      Integer.to_string(id),
+      "Are you sure you want to leave this family?"
+    )
+
     assert_redirect(view, "/family/new")
     assert records("SELECT count(*) FROM family_memberships WHERE user_id=90103") == [[0]]
   end
@@ -57,11 +65,11 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   @tag :sa_g44_families_delete
   test "native map deletion refuses members until the owner removes them", c do
     view = open(c.owner)
-    confirm(view, "delete", nil)
+    confirm(view, "delete", nil, @delete_prompt)
     assert has_element?(view, "[role=alert]")
     assert records("SELECT count(*) FROM families WHERE id=91001") == [[1]]
-    confirm(view, "remove_member", "92002")
-    confirm(view, "delete", nil)
+    confirm(view, "remove_member", "92002", "Remove #{c.member.email} from the family?")
+    confirm(view, "delete", nil, @delete_prompt)
     assert_redirect(view, "/family/new")
     assert records("SELECT count(*) FROM families WHERE id=91001") == [[0]]
   end
@@ -128,14 +136,19 @@ defmodule DawarichWeb.FamilyBrowserEnvelopesTest do
   defp open(user),
     do: elem(live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/family"), 1)
 
-  defp confirm(view, action, id) do
-    event = %{"remove_member" => "member", "delete" => "destroy"}[action]
-
+  defp confirm(view, action, id, prompt) do
     selector =
-      "[phx-click='family:#{event}'][data-confirm]" <>
-        if(id, do: "[phx-value-id='#{id}']", else: "")
+      "[data-family-action='#{action}']" <>
+        if(id, do: "[data-family-target='#{id}']", else: "")
 
+    effects =
+      "SELECT (SELECT count(*) FROM families), (SELECT count(*) FROM family_memberships)"
+
+    before = records(effects)
     view |> element(selector) |> render_click()
+    assert has_element?(view, "#family-confirm[data-pending=true] p", prompt)
+    assert records(effects) == before
+    view |> element("#family-confirm button[phx-click='family_confirm']") |> render_click()
   end
 
   defp browser(user, path, params) do
