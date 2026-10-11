@@ -77,19 +77,24 @@ RSpec.describe 'Stats rebuilt after the calculation changes' do
     end
 
     it 'stays silent when the failure happens inside a repair run' do
-      expect { Stats::CalculateMonth.new(user.id, 2025, 12, notify_on_failure: false).call }
-        .not_to change(Notification, :count)
+      expect do
+        expect { Stats::CalculateMonth.new(user.id, 2025, 12, notify_on_failure: false).call }
+          .to raise_error(StandardError, 'boom')
+      end.not_to change(Notification, :count)
     end
 
     it 'still notifies when the failure happens outside a repair run' do
-      expect { Stats::CalculateMonth.new(user.id, 2025, 12).call }
-        .to change(Notification, :count).by(1)
+      expect do
+        expect { Stats::CalculateMonth.new(user.id, 2025, 12).call }
+          .to raise_error(StandardError, 'boom')
+      end.to change(Notification, :count).by(1)
     end
 
     it 'reports every failure to the exception tracker, repair or not' do
       allow(ExceptionReporter).to receive(:call)
 
-      Stats::CalculateMonth.new(user.id, 2025, 12, notify_on_failure: false).call
+      expect { Stats::CalculateMonth.new(user.id, 2025, 12, notify_on_failure: false).call }
+        .to raise_error(StandardError, 'boom')
 
       expect(ExceptionReporter).to have_received(:call).with(an_instance_of(StandardError), /#{user.id}/)
     end
