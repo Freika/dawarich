@@ -28,6 +28,7 @@ defmodule DawarichWeb.MapLive.Native do
         previous = socket.assigns[:map_revision]
         old_date = (socket.assigns[:map_url] || %{})["date"]
         old_panel = (socket.assigns[:map_url] || %{})["panel"]
+        old_visit = (socket.assigns[:map_url] || %{})["visit_id"]
 
         socket =
           socket
@@ -76,7 +77,7 @@ defmodule DawarichWeb.MapLive.Native do
           DawarichWeb.MapLive.VisitNavigation.params(
             socket,
             previous != socket.assigns.map_revision or old_panel != params["panel"] or
-              old_date != params["date"]
+              old_date != params["date"] or old_visit != params["visit_id"]
           )
 
         socket =
@@ -114,7 +115,7 @@ defmodule DawarichWeb.MapLive.Native do
             socket
           end
 
-        {:noreply, socket}
+        {:noreply, DawarichWeb.MapLive.VisitNavigation.hydrate(socket)}
 
       {:error, reason} ->
         {:noreply, DawarichWeb.MapLiveAuth.refuse(socket, reason)}
@@ -238,8 +239,10 @@ defmodule DawarichWeb.MapLive.Native do
     end
   end
 
-  def handle_async({:timeline, _} = name, result, socket),
-    do: DawarichWeb.MapLive.Timeline.handle_async(name, result, socket)
+  def handle_async({:timeline, _} = name, result, socket) do
+    {:noreply, socket} = DawarichWeb.MapLive.Timeline.handle_async(name, result, socket)
+    {:noreply, DawarichWeb.MapLive.VisitNavigation.hydrate(socket)}
+  end
 
   def handle_async({:calendar, _} = name, result, socket),
     do: DawarichWeb.MapLive.TimelineFilters.handle_async(name, result, socket)

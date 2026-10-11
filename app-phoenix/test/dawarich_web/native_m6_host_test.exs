@@ -356,6 +356,92 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert has_element?(view, ".timeline-day-modes .mode-chip--muted", "30m moving")
   end
 
+  test "native URL visit hydration admits only current owned rows and today uses profile day", %{
+    id: id
+  } do
+    visit =
+      Dawarich.Test.FrameSeeds.visit!(id, id * 10, %{
+        name: "Linked stop",
+        started_at: ~N[2026-03-30 10:00:00],
+        ended_at: ~N[2026-03-30 11:00:00]
+      })
+
+    path =
+      "/map/v2?panel=timeline&date=2026-03-30&start_at=2026-03-30T00:00:00&end_at=2026-03-30T23:59:59&visit_id=#{visit}"
+
+    {:ok, view, _} = open(id, path)
+    render_async(view, 5000)
+    assert has_element?(view, "#native-visit-#{visit}.visit-row--selected")
+    assert_push_event(view, "visit:selection", %{id: ^visit})
+    refute has_element?(view, "#native-visit-dialog")
+    assert config(view)["range"]["startAt"] =~ "2026-03-30T00:00:00"
+    foreign = System.unique_integer([:positive])
+    Dawarich.Test.FrameSeeds.user!(foreign, %{"timezone" => "Europe/Berlin"})
+
+    foreign_visit =
+      Dawarich.Test.FrameSeeds.visit!(foreign, foreign * 10, %{
+        name: "Foreign linked stop",
+        started_at: ~N[2026-03-30 10:00:00],
+        ended_at: ~N[2026-03-30 11:00:00]
+      })
+
+    render_patch(view, String.replace(path, "visit_id=#{visit}", "visit_id=#{foreign_visit}"))
+    refute has_element?(view, ".visit-row--selected")
+    refute has_element?(view, "#native-visit-#{foreign_visit}")
+    refute_push_event(view, "visit:selection", %{id: ^foreign_visit}, 0)
+    render_patch(view, String.replace(path, "visit_id=#{visit}", "visit_id=-1"))
+    refute has_element?(view, ".visit-row--selected")
+
+    past =
+      Dawarich.Test.FrameSeeds.visit!(id, id * 10 + 1, %{
+        name: "Other day stop",
+        started_at: ~N[2026-03-29 10:00:00],
+        ended_at: ~N[2026-03-29 11:00:00]
+      })
+
+    render_patch(
+      view,
+      "/map/v2?panel=timeline&date=2026-03-30&start_at=2026-03-29T00:00&end_at=2026-03-30T23:59&visit_id=#{past}"
+    )
+
+    render_async(view, 5000)
+    refute has_element?(view, ".visit-row--selected")
+    refute_push_event(view, "visit:selection", %{id: ^past}, 0)
+    render_patch(view, "/map/v2?panel=timeline&date=2026-03-31&visit_id=#{visit}")
+    render_async(view, 5000)
+    refute has_element?(view, ".visit-row--selected")
+    render_patch(view, "/map/v2?panel=timeline&date=today")
+    render_async(view, 5000)
+    current = String.slice(config(view)["range"]["startAt"], 0, 10)
+    assert has_element?(view, "#native-map-page[data-selected-date='#{current}']")
+
+    assert has_element?(
+             view,
+             "#native-timeline-calendar button[data-day='#{current}'][aria-current=date]"
+           )
+
+    assert rows("SELECT count(*) FROM visits WHERE user_id=$1", [id]) == [[2]]
+    rows("UPDATE visits SET deleted_at=now() WHERE id=$1", [visit])
+
+    stale = %Phoenix.LiveView.Socket{
+      assigns: %{
+        __changed__: %{},
+        current_scope: Dawarich.Maps.principal(Dawarich.Accounts.get(id), "en"),
+        map_url: %{"panel" => "timeline", "date" => "2026-03-30", "visit_id" => to_string(visit)},
+        selected_visit: nil,
+        timeline: %{
+          status: :ready,
+          feed: %{days: [%{date: "2026-03-30", entries: [%{type: "visit", visit_id: visit}]}]}
+        }
+      },
+      private: %{live_temp: %{push_events: []}}
+    }
+
+    admitted = DawarichWeb.MapLive.VisitNavigation.hydrate(stale)
+    assert admitted.assigns.selected_visit == nil
+    assert admitted.private.live_temp.push_events == []
+  end
+
   test "native production host loads and refreshes only the open timeline", %{id: id} do
     track = id * 10
 

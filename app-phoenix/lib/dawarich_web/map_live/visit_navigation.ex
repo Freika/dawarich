@@ -44,6 +44,39 @@ defmodule DawarichWeb.MapLive.VisitNavigation do
     end
   end
 
+  def hydrate(socket) do
+    url = socket.assigns.map_url
+    timeline = socket.assigns[:timeline]
+
+    if url["panel"] == "timeline" && timeline && timeline.status == :ready &&
+         !socket.assigns[:selected_visit] && is_binary(url["visit_id"]) do
+      date =
+        case Date.from_iso8601(url["date"] || "") do
+          {:ok, date} -> Date.to_iso8601(date)
+          _ -> Date.to_iso8601(socket.assigns.page.window.start_date)
+        end
+
+      entry =
+        Enum.find_value(timeline.feed.days, fn day ->
+          if day.date == date,
+            do:
+              Enum.find(
+                day.entries,
+                &(&1.type == "visit" && to_string(&1.visit_id) == url["visit_id"])
+              )
+        end)
+
+      with %{visit_id: id} <- entry,
+           {:ok, %{id: ^id}} <- VisitEditing.visit(socket.assigns.current_scope, id) do
+        selected(socket, id)
+      else
+        _ -> socket
+      end
+    else
+      socket
+    end
+  end
+
   def clear(socket), do: selected(socket, nil)
 
   defp selected(socket, id) do

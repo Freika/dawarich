@@ -4,7 +4,7 @@ defmodule DawarichWeb.MapLive.Commands do
   import Phoenix.LiveView, only: [push_event: 3, push_patch: 2]
   import DawarichWeb.MapParts, only: [map_path: 1]
 
-  @url ~w(start_at end_at import_id panel date place_id)
+  @url ~w(start_at end_at import_id panel date place_id visit_id)
   @range ~w(start_at end_at import_id)
 
   def apply_params(socket, params, window) do

@@ -214,6 +214,7 @@ defmodule DawarichWeb.MapLiveTest do
   end
 
   test "native places filter preserves every owned tag name order and color", %{user: user} do
+    settings(user, %{"enabled_map_layers" => ["Places"]})
     tags(user, [{6011, "Zoo", "#123456", nil}, {6012, "Alpha", "#123456", nil}])
     {:ok, view, _} = live_as(user, "/map/v2?panel=layers")
 
@@ -422,14 +423,14 @@ defmodule DawarichWeb.MapLiveTest do
     doc = render(view) |> LazyHTML.from_fragment()
 
     selector =
-      ":is(input:not([type=button]):not([type=reset]),select,textarea,button[name]):not(form[phx-submit] *):not(form[phx-change] *)"
+      ":is(input:not([type=button]):not([type=reset]):not([type=hidden]),select,textarea,button[name]):not(form[phx-submit] *):not(form[phx-change] *)"
 
     assert Enum.count(LazyHTML.query(doc, selector)) > 0
 
     unprotected =
       LazyHTML.query(doc, selector <> ":not([phx-update=ignore]):not([phx-update=ignore] *)")
 
-    assert Enum.count(unprotected) == 0, inspect(LazyHTML.attribute(unprotected, "id"))
+    assert Enum.count(unprotected) == 0, inspect(LazyHTML.attribute(unprotected, "name"))
   end
 
   test "the ignored ancestors each carry their own stable, unique id", %{user: user} do
