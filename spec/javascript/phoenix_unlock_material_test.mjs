@@ -13,7 +13,7 @@ test("unlock reveal initializes spectral material and releases it when hidden", 
       return () => disposed++
     },
   }))
-  runtime.generation = 1
+  runtime.epoch = 1
   runtime.storageKey = "synthetic-material"
   await runtime.decorate(1)
   assert.equal(initialized, 1)
@@ -32,10 +32,10 @@ test("a late spectral loader cannot decorate a destroyed or replaced unlock deck
           resolve = done
         }),
     )
-    runtime.generation = 1
+    runtime.epoch = 1
     const pending = runtime.decorate(1)
     if (boundary === "destroyed") runtime.stopped = true
-    else runtime.generation = 2
+    else runtime.epoch = 2
     resolve({ initializeAchievementMaterials: () => initialized++ })
     await pending
     assert.equal(initialized, 0)
