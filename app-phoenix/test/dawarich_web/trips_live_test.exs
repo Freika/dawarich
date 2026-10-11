@@ -54,7 +54,7 @@ defmodule DawarichWeb.TripsLiveTest do
       refute has_element?(view, "[role='navigation']")
     end
 
-    test "a card links to its trip, previews the path through the Rails bridge, counts days and countries",
+    test "a native card links to its trip, reads its scoped path, counts days and countries",
          %{user: user} do
       trip!(user, 883_101, %{
         started_at: ~N[2026-05-09 06:00:00],
@@ -68,16 +68,24 @@ defmodule DawarichWeb.TripsLiveTest do
                "a.block.group[href='/trips/883101'] > #trip-883101[data-trip-id='883101']"
              )
 
-      assert has_element?(
-               view,
-               "#map-883101[phx-hook='RailsStimulus'][phx-update='ignore'][data-controller='trip-maplibre-preview'][data-trip-maplibre-preview-map-style-value='light']"
-             )
+      assert has_element?(view, "#native-trip-preview-883101[phx-hook=MapPreview]")
 
-      assert html
-             |> LazyHTML.from_fragment()
-             |> LazyHTML.query("#map-883101")
-             |> LazyHTML.attribute("data-trip-maplibre-preview-path-value") ==
-               [~S([[12.5,51.25],[12.37346812345679,51.34]])]
+      config =
+        html
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("#native-trip-preview-883101")
+        |> LazyHTML.attribute("data-map-config")
+        |> hd()
+        |> Jason.decode!()
+
+      assert config["tripId"] == 883_101
+      assert config["styleName"] == "light"
+      refute Map.has_key?(config, "path")
+
+      data =
+        RailsUser.signed_in(user.id) |> get("/native/map/data/trips/883101") |> json_response(200)
+
+      assert data["path"] == Jason.decode!(~S([[12.5,51.25],[12.37346812345679,51.34]]))
 
       card = view |> element("#trip-883101") |> render()
       assert card =~ "12 km"
@@ -123,7 +131,18 @@ defmodule DawarichWeb.TripsLiveTest do
       {:ok, view, _html} = live_as(user, "/trips")
 
       assert view |> element("#trip-883301") |> render() =~ "10 mi"
-      assert has_element?(view, "#map-883301[data-trip-maplibre-preview-map-style-value='dark']")
+
+      config =
+        view
+        |> element("#native-trip-preview-883301")
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("[data-map-config]")
+        |> LazyHTML.attribute("data-map-config")
+        |> hd()
+        |> Jason.decode!()
+
+      assert config["styleName"] == "dark"
     end
 
     test "six trips per page, newest first; the next page patches; out of range is the empty state",
@@ -146,7 +165,7 @@ defmodule DawarichWeb.TripsLiveTest do
       refute has_element?(far, "[role='navigation']")
     end
 
-    test "patching to a page with malformed countries hands it to Rails", %{
+    test "patching to malformed countries refuses locally without preserving stale cards", %{
       user: user
     } do
       for n <- 1..6,
@@ -164,22 +183,30 @@ defmodule DawarichWeb.TripsLiveTest do
       Dawarich.Repo.query!("UPDATE trips SET visited_countries = '[1]'::jsonb WHERE id = 883510")
       {:ok, view, _html} = live_as(user, "/trips")
 
-      assert {:error, {:redirect, %{to: "/trips?page=2"}}} = render_patch(view, "/trips?page=2")
+      render_patch(view, "/trips?page=2")
+      assert has_element?(view, "[data-native-trip-index-refused][role=alert]")
+      refute has_element?(view, "[data-trip-id]")
+      assert :sys.get_state(view.pid).socket.redirected == nil
     end
 
     test "the process keeps no trip path once the list has rendered", %{user: user} do
       trip!(user, 883_601)
       {:ok, view, html} = live_as(user, "/trips")
-      assert html =~ "map-883601"
-      assert :sys.get_state(view.pid).socket.assigns.entries == []
+      assert html =~ "native-trip-preview-883601"
+      entries = :sys.get_state(view.pid).socket.assigns.entries
+      assert Enum.map(entries, & &1.id) == [883_601]
+      refute Enum.any?(entries, &Map.has_key?(&1, :path_json))
+      refute Enum.any?(entries, &Map.has_key?(&1, :plan_json))
     end
 
-    test "the head has no Turbo morph metas and no Chartkick, and loads Rails' importmap and translations",
+    test "the native list head omits Turbo Chartkick importmap and inline translations",
          %{user: user} do
       html = RailsUser.signed_in(user.id) |> get("/trips") |> html_response(200)
       refute html =~ "turbo-refresh-method"
       refute html =~ ~s(import "chartkick")
-      assert html =~ ~s(id="i18n-translations")
+      refute html =~ ~s(id="i18n-translations")
+      refute html =~ "importmap"
+      assert html =~ "/native/app"
     end
   end
 
