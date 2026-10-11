@@ -38,7 +38,9 @@ export function createEnrichmentResults({
   let rows = [],
     checks = []
   const thumbnails = new Set(),
-    objectURLs = new Set()
+    objectURLs = new Set(),
+    popupReads = new Set(),
+    popupURLs = new Set()
   const translate = (key, bindings = {}) =>
     Object.entries(bindings).reduce(
       (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
@@ -58,6 +60,11 @@ export function createEnrichmentResults({
     for (const check of checks) check.disabled = busy
   }
   function closePopup() {
+    for (const controller of popupReads) controller.abort()
+    popupReads.clear()
+    for (const url of popupURLs) urls.revokeObjectURL(url)
+    popupURLs.clear()
+    popup?.off?.("close", closePopup)
     popup?.remove()
     popup = null
   }
@@ -78,10 +85,12 @@ export function createEnrichmentResults({
     if (status) status.textContent = ""
     update()
   }
-  function thumbnail(image, row, current) {
+  function thumbnail(image, row, current, popupImage = false) {
     if (!reader) return
     const controller = new AbortController()
-    thumbnails.add(controller)
+    const controllers = popupImage ? popupReads : thumbnails
+    const ownedURLs = popupImage ? popupURLs : objectURLs
+    controllers.add(controller)
     reader
       .read(
         "thumbnail",
@@ -92,13 +101,13 @@ export function createEnrichmentResults({
         if (destroyed || current !== generation || controller.signal.aborted)
           return
         const url = urls.createObjectURL(data)
-        objectURLs.add(url)
+        ownedURLs.add(url)
         image.src = url
       })
       .catch(() => {
         image.hidden = true
       })
-      .finally(() => thumbnails.delete(controller))
+      .finally(() => controllers.delete(controller))
   }
   function showPopup(id) {
     closePopup()
@@ -112,11 +121,12 @@ export function createEnrichmentResults({
     image.alt = row.filename ?? ""
     image.className = "max-w-full max-h-48"
     content.append(image, title)
-    thumbnail(image, row, generation)
+    thumbnail(image, row, generation, true)
     popup = new library.Popup()
       .setLngLat([row.longitude, row.latitude])
       .setDOMContent(content)
       .addTo(map)
+    popup.on?.("close", closePopup)
   }
   function replace(next) {
     bind()

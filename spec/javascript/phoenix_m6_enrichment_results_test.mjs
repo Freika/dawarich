@@ -79,3 +79,88 @@ test("timed out enrichment attempt cannot settle its same-result retry or cancel
     f.owner.destroy()
   }
 })
+
+test("closing or replacing enrichment popups aborts only their thumbnails and revokes every popup URL", async () => {
+  const requests = [],
+    popups = [],
+    active = new Set()
+  let serial = 0
+  class Popup {
+    constructor() {
+      popups.push(this)
+      this.listeners = new Map()
+    }
+    setLngLat() {
+      return this
+    }
+    setDOMContent(content) {
+      this.content = content
+      return this
+    }
+    addTo() {
+      return this
+    }
+    on(event, fn) {
+      this.listeners.set(event, fn)
+      return this
+    }
+    off(event) {
+      this.listeners.delete(event)
+      return this
+    }
+    remove() {
+      this.removed = true
+      this.listeners.get("close")?.()
+    }
+  }
+  const f = fixture({
+    map: {},
+    library: { Popup },
+    reader: {
+      read(_resource, _params, { signal }) {
+        return new Promise((resolve) => requests.push({ signal, resolve }))
+      },
+    },
+    urls: {
+      createObjectURL() {
+        const url = `blob:${++serial}`
+        active.add(url)
+        return url
+      },
+      revokeObjectURL(url) {
+        active.delete(url)
+      },
+    },
+  })
+  const drain = () => new Promise((resolve) => setImmediate(resolve))
+  try {
+    f.owner.replace(rows)
+    requests[0].resolve({ data: new Blob(["row"]) })
+    await drain()
+    assert.equal(active.size, 1)
+    f.list.children[0].emit("mouseenter")
+    const late = requests[1]
+    f.list.children[0].emit("mouseleave")
+    assert.equal(late.signal.aborted, true)
+    assert.equal(popups[0].removed, true)
+    late.resolve({ data: new Blob(["closed"]) })
+    await drain()
+    assert.equal(active.size, 1)
+    for (let index = 0; index < 3; index++) {
+      f.owner.showPopup("one")
+      requests.at(-1).resolve({ data: new Blob(["current"]) })
+      await drain()
+      assert.equal(active.size, 2)
+    }
+    assert.equal(
+      popups.slice(0, -1).every((popup) => popup.removed),
+      true,
+    )
+    popups.at(-1).listeners.get("close")()
+    assert.equal(active.size, 1)
+    assert.equal(requests[0].signal.aborted, false)
+  } finally {
+    f.owner.destroy()
+  }
+  assert.equal(active.size, 0)
+})
