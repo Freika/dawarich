@@ -20,7 +20,7 @@ test("native map host arms place creation and enables its owned entity layer", a
     true,
   )
   f.owner.destroy()
-  assert.equal(button.listeners.get("click").size, 0)
+  assert.equal(f.root.listeners.get("click").size, 0)
 })
 
 test("native creation guidance belongs to the armed tool and clears after click Escape and destroy", async () => {

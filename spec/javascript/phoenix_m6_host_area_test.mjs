@@ -25,3 +25,19 @@ test("map host create-area tool owns its click and releases it on destroy", asyn
     f.owner.destroy()
   }
 })
+
+test("native create tools survive control replacement during panel patches", async () => {
+  const f = fixture()
+  const selector = '[data-testid="native-create-area"]'
+  f.nodes.set(selector, new Element())
+  await f.owner.mount()
+  const replacement = new Element()
+  f.nodes.set(selector, replacement)
+  replacement.emit("click")
+  f.map.emit("click", { lngLat: { lat: 52, lng: 13 } })
+  assert.equal(f.pushed.filter(({ event }) => event === "area:new").length, 1)
+  f.owner.destroy()
+  replacement.emit("click")
+  f.map.emit("click", { lngLat: { lat: 53, lng: 14 } })
+  assert.equal(f.pushed.filter(({ event }) => event === "area:new").length, 1)
+})

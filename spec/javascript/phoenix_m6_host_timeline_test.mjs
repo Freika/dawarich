@@ -123,9 +123,12 @@ test("native track clicks send only owned scalar commands and replay seeks the s
     }
     f.root.emit("click", {
       target: {
-        closest: () => ({
-          dataset: { trackStart: "2026-03-30T11:00:00+02:00" },
-        }),
+        closest: (selector) =>
+          selector === "[data-track-replay]"
+            ? {
+                dataset: { trackStart: "2026-03-30T11:00:00+02:00" },
+              }
+            : null,
       },
     })
     await new Promise((resolve) => setImmediate(resolve))
@@ -133,9 +136,12 @@ test("native track clicks send only owned scalar commands and replay seeks the s
     f.owner.replay.active = true
     f.root.emit("click", {
       target: {
-        closest: () => ({
-          dataset: { trackStart: "2026-03-30T11:00:00+02:00" },
-        }),
+        closest: (selector) =>
+          selector === "[data-track-replay]"
+            ? {
+                dataset: { trackStart: "2026-03-30T11:00:00+02:00" },
+              }
+            : null,
       },
     })
     await new Promise((resolve) => setImmediate(resolve))
