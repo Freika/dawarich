@@ -43,8 +43,7 @@ export function createHostAuxLayers({
             photos.load(config.range, { signal }),
           )
           operation.check()
-          if (status !== "ready" && status !== "unconfigured")
-            throw new Error()
+          if (status !== "ready" && status !== "unconfigured") throw new Error()
           if (replayActive()) photos.hide()
           photoKey = desired
         }
