@@ -769,3 +769,15 @@ test("settings changes during rendering save the recipe for the produced bytes",
   await saving
   h.studio.destroy()
 })
+
+test("a queued close from the previous video open cannot close its replacement", async () => {
+  const h = harness()
+  await h.studio.open()
+  h.studio.close()
+  await h.studio.open()
+  h.root.single.dialog.emit("close")
+  assert.equal(h.root.single.dialog.open, true)
+  assert.equal(h.root.single.render.disabled, false)
+  assert.equal(h.maps.at(-1).removed, false)
+  h.studio.destroy()
+})
