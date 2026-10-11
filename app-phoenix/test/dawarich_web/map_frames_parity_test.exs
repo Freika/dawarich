@@ -41,7 +41,10 @@ defmodule DawarichWeb.MapFramesParityTest do
   for name <- @names do
     @name name
 
-    test "#{@name} is answered as Rails answered it" do
+    @test_name if String.starts_with?(@name, "residency"),
+                 do: "#{@name} is answered as Rails answered it",
+                 else: "#{@name} retains source data and its declared native or retired endpoint"
+    test @test_name do
       state = FrameSeeds.load(@name)
       user = FrameSeeds.seed!(state)
 
@@ -58,8 +61,17 @@ defmodule DawarichWeb.MapFramesParityTest do
     {:ok, now, 0} = DateTime.from_iso8601(state["now"])
     %URI{path: path, query: query} = URI.parse(state["path"])
 
-    %{plug_opts: action, path_params: params} =
-      Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com")
+    retired = String.starts_with?(path, "/map/timeline_feeds")
+
+    action =
+      cond do
+        String.ends_with?(path, "/calendar") -> :calendar
+        String.ends_with?(path, "/track_info") -> :track_info
+        String.ends_with?(path, "/residency") -> :residency
+        true -> :index
+      end
+
+    params = %{"id" => Enum.at(String.split(path, "/", trim: true), 2)}
 
     ctx = %{
       user: user,
@@ -82,12 +94,27 @@ defmodule DawarichWeb.MapFramesParityTest do
       |> put_req_header("accept", state["accept"])
       |> get(state["path"])
 
-    assert conn.status == 200
+    if retired do
+      assert conn.status == 410
+      assert conn.resp_body =~ "available through the native map"
+      assert get_resp_header(conn, "cache-control") == ["no-store"]
+    else
+      assert conn.status == 200
 
-    assert conn |> get_resp_header("content-type") |> hd() |> String.split(";") |> hd() ==
-             state["content_type"]
+      assert conn |> get_resp_header("content-type") |> hd() |> String.split(";") |> hd() ==
+               state["content_type"]
 
-    assert get_resp_header(conn, "vary") == List.wrap(state["vary"])
+      assert get_resp_header(conn, "vary") == List.wrap(state["vary"])
+    end
+  end
+
+  defp check(%{"status" => status, "path" => "/map/timeline_feeds" <> _} = state, user, _rails)
+       when status in [302, 404] do
+    conn = if user, do: RailsUser.signed_in(user.id), else: build_conn()
+    conn = conn |> put_req_header("accept", state["accept"]) |> get(state["path"])
+    assert conn.status == 410
+    assert conn.resp_body =~ "available through the native map"
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
   end
 
   defp check(%{"status" => 302} = state, nil, _rails) do

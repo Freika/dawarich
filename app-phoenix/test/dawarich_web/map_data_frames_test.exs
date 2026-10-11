@@ -1,10 +1,11 @@
 defmodule DawarichWeb.MapDataFramesTest do
   use Dawarich.JobsCase, async: false
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
   import Plug.Conn
   alias Dawarich.Repo
-  alias Dawarich.Test.{FrameSeeds, RailsFormRequests, RailsUser}
-  alias DawarichWeb.{MapDataGate, MapFrames, RailsAuth, Router}
+  alias Dawarich.Test.{FrameSeeds, RailsUser}
+  alias DawarichWeb.Router
   @endpoint DawarichWeb.Endpoint
   @path "/tracks/8370/segments"
 
@@ -41,52 +42,62 @@ defmodule DawarichWeb.MapDataFramesTest do
     build_conn() |> put_req_cookie("_dawarich_session", cookie)
   end
 
-  test "owned segment frame renders without consuming flash", %{user: user} do
-    assert %{plug: MapFrames, pipe_through: [:rails_frame]} =
+  defp refused(conn) do
+    assert conn.status == 410
+    assert conn.resp_body =~ "available through the native map"
+    assert get_resp_header(conn, "set-cookie") == []
+    refute Map.has_key?(conn.private, :dawarich_rails_session_changes)
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
+  end
+
+  defp open(user) do
+    {:ok, view, _} =
+      Phoenix.LiveViewTest.live(
+        RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id),
+        "/map/v2"
+      )
+
+    view
+  end
+
+  test "retired owned segment frame refuses without consuming flash", %{user: user} do
+    assert %{plug: DawarichWeb.NativeMapRetired, pipe_through: [:native_map_retired]} =
              Phoenix.Router.route_info(Router, "GET", @path, "localhost")
 
     row!()
     flash = %{"discard" => [], "flashes" => %{"notice" => "Saved"}}
-    conn = user.id |> RailsUser.signed_in(%{"flash" => flash}) |> request()
-    assert html_response(conn, 200) =~ ~s(id="segment-row-83701")
-    assert get_resp_header(conn, "set-cookie") == []
-    assert get_resp_header(conn, "content-type") == ["text/html; charset=utf-8"]
-    assert get_resp_header(conn, "vary") == ["Accept"]
-    assert get_resp_header(conn, "x-frame-options") == ["SAMEORIGIN"]
-    assert conn.assigns.rails_session["flash"] == flash
+    refused(user.id |> RailsUser.signed_in(%{"flash" => flash}) |> request())
+    assert Repo.query!("SELECT count(*) FROM track_segments WHERE id=83701").rows == [[1]]
   end
 
-  test "segment forms stage a token only when needed", %{user: user} do
-    assert %{plug: MapFrames} = Phoenix.Router.route_info(Router, "GET", @path, "localhost")
-    empty = user |> no_token() |> request()
-    assert empty.status == 200
-    assert get_resp_header(empty, "set-cookie") == []
+  test "retired segment forms never stage a token with or without rows", %{user: user} do
+    refused(user |> no_token() |> request())
     row!()
-    forms = user |> no_token() |> request()
-    assert is_binary(RailsFormRequests.rails_session(forms)["_csrf_token"])
-    assert html_response(forms, 200) =~ ~r/name="authenticity_token" value="[^"]+"/
-    assert user.id |> RailsUser.signed_in() |> request() |> get_resp_header("set-cookie") == []
+    refused(user |> no_token() |> request())
+    refused(user.id |> RailsUser.signed_in() |> request())
+    view = open(user)
+    render_hook(view, "segments:open", %{"track_id" => "8370"})
+    assert has_element?(view, "#native-segment-drawer")
+    refute has_element?(view, "#native-segment-drawer input[name=authenticity_token]")
   end
 
-  test "matching address frame uses normalized fields without list fallback", %{user: user} do
-    assert %{plug: DawarichWeb.PointAddress} =
-             Phoenix.Router.route_info(Router, "GET", "/points/837001/address", "localhost")
-
+  test "native address drawer uses normalized fields without list fallback", %{user: user} do
     Repo.query!(
-      "UPDATE points SET city = 'Fallback', country_name = 'Germany', geodata = '{}'::jsonb WHERE id = 837001"
+      "UPDATE points SET city='Fallback', country_name='Germany', geodata='{}'::jsonb WHERE id=837001"
     )
 
-    conn =
+    refused(
       RailsUser.signed_in(user.id)
       |> put_req_header("turbo-frame", "point-address-837001")
       |> request("/points/837001/address")
+    )
 
-    assert html_response(conn, 200) =~ ~s(<turbo-frame id="point-address-837001">)
-    refute conn.resp_body =~ "Fallback"
-    refute conn.resp_body =~ "<!DOCTYPE"
-    assert get_resp_header(conn, "set-cookie") == []
+    view = open(user)
+    render_hook(view, "address:open", %{"id" => "837001"})
+    assert has_element?(view, "#native-point-address")
+    refute has_element?(view, "#native-point-address", "Fallback")
 
-    Repo.query!("UPDATE points SET geodata = $1 WHERE id = 837001", [
+    Repo.query!("UPDATE points SET geodata=$1 WHERE id=837001", [
       %{
         "properties" => %{
           "street" => "Synthetic Street",
@@ -96,20 +107,13 @@ defmodule DawarichWeb.MapDataFramesTest do
       }
     ])
 
-    html =
-      RailsUser.signed_in(user.id)
-      |> put_req_header("turbo-frame", "point-address-837001")
-      |> request("/points/837001/address")
-      |> html_response(200)
-
-    assert html =~ "Synthetic Street, Leipzig, Germany"
+    render_hook(view, "address:open", %{"id" => "837001"})
+    assert has_element?(view, "#native-point-address", "Synthetic Street, Leipzig, Germany")
   end
 
-  test "direct foreign malformed and query-writing frame requests replay", %{user: user} do
-    assert %{plug: DawarichWeb.PointAddress} =
-             Phoenix.Router.route_info(Router, "GET", "/points/837001/address", "localhost")
-
-    assert MapDataGate.point_address?(RailsUser.signed_in(user.id), %{"id" => "837001"})
+  test "direct foreign malformed and query-writing retired frames refuse without effects", %{
+    user: user
+  } do
     other = FrameSeeds.user!(8371)
     FrameSeeds.point!(other.id, 837_002, 1_772_359_200)
 
@@ -121,74 +125,37 @@ defmodule DawarichWeb.MapDataFramesTest do
     for frame <- [nil, "point-address-0", "point-address-837001"] do
       conn = no_token(user)
       conn = if frame, do: put_req_header(conn, "turbo-frame", frame), else: conn
-      assert request(conn, "/points/837001/address").status == 200
+      refused(request(conn, "/points/837001/address"))
     end
 
-    assert request(RailsUser.signed_in(user.id), "/points/837002/address").status == 404
-
-    upstream = RailsFormRequests.upstream!()
-
-    for {path, frame, token} <- [
-          {"/points/no/address", "point-address-no", true},
-          {"/points/9999999999999999999/address", "point-address-9999999999999999999", true},
-          {"/points/837001/address?locale=de", "point-address-837001", true},
-          {"/tracks/8370/segments?client=x", nil, true},
-          {"/tracks/8371/segments", nil, true}
-        ] do
-      {{line, body}, conn} =
-        RailsFormRequests.forwarded(upstream, fn ->
-          conn = if token, do: RailsUser.signed_in(user.id), else: no_token(user)
-          conn = if frame, do: put_req_header(conn, "turbo-frame", frame), else: conn
-          request(conn, path)
-        end)
-
-      assert line == "GET #{path} HTTP/1.1"
-      assert body == ""
-      assert conn.status == 204
-      assert get_resp_header(conn, "set-cookie") == []
+    for path <-
+          ~w(/points/837002/address /points/no/address /points/9999999999999999999/address /points/837001/address?locale=de /tracks/8370/segments?client=x /tracks/8371/segments) do
+      refused(request(RailsUser.signed_in(user.id), path))
     end
+
+    view = open(user)
+    render_hook(view, "address:open", %{"id" => "837002"})
+    refute has_element?(view, "#native-point-address")
+    assert Repo.query!("SELECT count(*) FROM points WHERE id IN (837001,837002)").rows == [[2]]
   end
 
-  test "frame race replays before any token changes are committed", %{user: user} do
-    assert %{plug: MapFrames} = Phoenix.Router.route_info(Router, "GET", @path, "localhost")
+  test "native segment admission race clears the drawer before any write", %{user: user} do
     row!()
-
-    conn =
-      user
-      |> no_token()
-      |> Map.put(:request_path, @path)
-      |> Map.put(:path_info, ["tracks", "8370", "segments"])
-
-    assert MapDataGate.segments?(conn, %{"track_id" => "8370"})
-    Repo.query!("DELETE FROM track_segments WHERE track_id = 8370")
-    Repo.query!("DELETE FROM tracks WHERE id = 8370")
-    upstream = RailsFormRequests.upstream!()
-
-    {{line, _}, result} =
-      RailsFormRequests.forwarded(upstream, fn ->
-        conn
-        |> RailsAuth.call([])
-        |> fetch_query_params()
-        |> assign(:locale, "en")
-        |> Map.put(:path_params, %{"track_id" => "8370"})
-        |> MapFrames.call(:segments)
-      end)
-
-    assert line == "GET #{@path} HTTP/1.1"
-    assert result.status == 204
-    assert result.assigns.api_tag == "tracks"
-    assert get_resp_header(result, "set-cookie") == []
-    refute Map.has_key?(result.private, :dawarich_rails_session_changes)
+    view = open(user)
+    render_hook(view, "segments:open", %{"track_id" => "8370"})
+    assert has_element?(view, "#native-segment-drawer")
+    Repo.query!("DELETE FROM track_segments WHERE track_id=8370")
+    Repo.query!("DELETE FROM tracks WHERE id=8370")
+    render_hook(view, "segments:open", %{"track_id" => "8370"})
+    refute has_element?(view, "#native-segment-drawer")
+    render_hook(view, "segment:mode", %{"segment_id" => "83701", "mode" => "cycling"})
+    assert Repo.query!("SELECT count(*) FROM track_segments WHERE track_id=8370").rows == [[0]]
+    refused(user |> no_token() |> request())
   end
 
-  test "signed out segment frame keeps the Devise return URL" do
-    assert %{plug: MapFrames} = Phoenix.Router.route_info(Router, "GET", @path, "localhost")
-    conn = request(build_conn())
+  test "signed out retired segment frame refuses locally and the native map retains Devise admission" do
+    refused(request(build_conn()))
+    conn = get(build_conn(), "/map/v2")
     assert redirected_to(conn, 302) == "http://www.example.com/users/sign_in"
-    session = RailsFormRequests.rails_session(conn)
-    assert session["user_return_to"] == @path
-
-    assert session["flash"]["flashes"]["alert"] ==
-             "You need to sign in or sign up before continuing."
   end
 end

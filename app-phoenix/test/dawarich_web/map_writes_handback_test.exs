@@ -101,6 +101,17 @@ defmodule DawarichWeb.MapWritesHandbackTest do
     assert snapshot() == before
   end
 
+  defp retired(ctx, method, path, body, headers \\ []) do
+    before = snapshot()
+    conn = request(ctx, method, path, body, headers)
+    assert conn.status == 410
+    assert conn.resp_body =~ "available through the native map"
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
+    refute Map.has_key?(conn.private, :dawarich_rails_session_changes)
+    assert get_resp_header(conn, "set-cookie") == []
+    assert snapshot() == before
+  end
+
   test "unowned query format session token override shapes forward bytes", ctx do
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
     probe = request(ctx, :post, "/tags", "authenticity_token=BAD&tag[name]=Synthetic-new")
@@ -131,7 +142,8 @@ defmodule DawarichWeb.MapWritesHandbackTest do
         do: forwarded(ctx, :post, path, body, headers, session)
   end
 
-  test "keys forward native bodies once with no native store changes", ctx do
+  test "retired segment writes refuse rollback keys while retained writes preserve native stores",
+       ctx do
     before = snapshot()
     Application.put_env(:dawarich, :rails_routes, ["points"])
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, 0})
@@ -147,8 +159,14 @@ defmodule DawarichWeb.MapWritesHandbackTest do
           {"points", :delete, "/points/bulk_destroy", raw(ctx, "point_ids[]=920010")}
         ] do
       Application.put_env(:dawarich, :rails_routes, [key])
-      forwarded(ctx, method, path, body)
-      forwarded(ctx, :post, path, "_method=#{method}&" <> body)
+
+      if key == "tracks" do
+        retired(ctx, method, path, body)
+        retired(ctx, :post, path, "_method=#{method}&" <> body)
+      else
+        forwarded(ctx, method, path, body)
+        forwarded(ctx, :post, path, "_method=#{method}&" <> body)
+      end
     end
   end
 
@@ -191,8 +209,8 @@ defmodule DawarichWeb.MapWritesHandbackTest do
         "www.example.com"
       )
 
-    assert route.plug == DawarichWeb.SegmentActions
-    assert route.pipe_through == [:map_write]
+    assert route.plug == DawarichWeb.NativeMapRetired
+    assert route.pipe_through == [:native_map_retired]
   end
 
   test "rejected write commits no cookie outbox RailsCommands", ctx do
@@ -203,7 +221,7 @@ defmodule DawarichWeb.MapWritesHandbackTest do
     assert Map.has_key?(probe.private, :dawarich_rails_session_changes) == false
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
     forwarded(ctx, :post, "/tags", raw(ctx, "tag[name]=Changed&tag[unknown]=1"))
-    forwarded(ctx, :patch, "/tracks/920010/segments/9200100", raw(ctx, "reset=true&unknown=1"))
+    retired(ctx, :patch, "/tracks/920010/segments/9200100", raw(ctx, "reset=true&unknown=1"))
     forwarded(ctx, :delete, "/points/bulk_destroy?client=legacy", raw(ctx, "point_ids[]=920010"))
   end
 end

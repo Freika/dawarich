@@ -48,11 +48,11 @@ defmodule DawarichWeb.MapDataParityTest do
     assert @dir |> File.ls!() |> Enum.sort() == Enum.sort(expected)
   end
 
-  test "point page corpus and address targets match Rails" do
+  test "point page and address source corpus retain data while retired address endpoints refuse" do
     for name <- @points, do: compare(name)
   end
 
-  test "segment corpus preserves forms condensed legs and Stimulus attributes" do
+  test "segment source corpus preserves condensed legs while retired endpoints refuse" do
     for name <- @segments, do: compare(name)
   end
 
@@ -169,14 +169,28 @@ defmodule DawarichWeb.MapDataParityTest do
   end
 
   defp body(%{"kind" => kind}, ctx, path) do
-    %{plug_opts: action, path_params: params} =
-      Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com")
+    parts = String.split(path, "/", trim: true)
 
-    ctx = Map.merge(ctx, %{id: params["id"], track_id: params["track_id"]})
-    assert action == if(kind == "segments", do: :segments, else: :address)
-    action = if action == :address, do: :point_address, else: action
+    ctx =
+      if kind == "segments",
+        do: Map.put(ctx, :track_id, Enum.at(parts, 1)),
+        else: Map.put(ctx, :id, Enum.at(parts, 1))
+
+    action = if kind == "segments", do: :segments, else: :point_address
     assert {:ok, "text/html", html} = MapFrames.body(action, ctx)
     IO.iodata_to_binary(html)
+  end
+
+  defp endpoint(state, user, rails, "address_direct", fallback),
+    do: endpoint(%{state | "kind" => "point_address"}, user, rails, "address_retired", fallback)
+
+  defp endpoint(%{"kind" => kind} = state, user, _rails, _name, _fallback)
+       when kind in ["segments", "point_address", "address"] do
+    conn = if user, do: RailsUser.signed_in(user.id), else: build_conn()
+    conn = get(conn, state["path"])
+    assert conn.status == 410
+    assert conn.resp_body =~ "available through the native map"
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
   end
 
   defp endpoint(state, user, rails, name, fallback) do
