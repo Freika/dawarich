@@ -133,3 +133,39 @@ test("native visit timeline hover dims other markers and overlapping time paints
     f.owner.destroy()
   }
 })
+
+test("native visit hover and pin commands preserve armed drawing and point edit modes", async () => {
+  const f = setup()
+  const status = { textContent: "placing" }
+  f.nodes.set("[data-map-tool-status]", status)
+  try {
+    await f.owner.mount()
+    f.canvas.style.cursor = "crosshair"
+    f.map.queryRenderedFeatures = () => [{ properties: { id: 7 } }]
+    f.map.emit("mousemove", { point: { x: 1, y: 2 } })
+    f.map.emit("click:visits", { features: [{ properties: { id: 7 } }] })
+    assert.equal(f.canvas.style.cursor, "crosshair")
+    assert.equal(
+      f.pushed.filter(({ event }) => event === "map:select").length,
+      0,
+    )
+    status.textContent = ""
+    f.owner.config.editEnabled = true
+    f.canvas.style.cursor = "move"
+    f.map.emit("mousemove", { point: { x: 1, y: 2 } })
+    f.map.emit("click:visits", { features: [{ properties: { id: 7 } }] })
+    assert.equal(f.canvas.style.cursor, "move")
+    assert.equal(
+      f.pushed.filter(({ event }) => event === "map:select").length,
+      0,
+    )
+    f.owner.config.editEnabled = false
+    f.map.emit("click:visits", { features: [{ properties: { id: 7 } }] })
+    assert.deepEqual(
+      f.pushed.filter(({ event }) => event === "map:select").at(-1).payload,
+      { kind: "visit", id: 7 },
+    )
+  } finally {
+    f.owner.destroy()
+  }
+})

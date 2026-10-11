@@ -9,6 +9,7 @@ export function createHostVisits({
   lifetime,
   getConfig,
   entities,
+  blocked = () => false,
 }) {
   const requests = createRequestScope()
   const paints = new Map()
@@ -131,6 +132,7 @@ export function createHostVisits({
       )
   }
   function move(event) {
+    if (blocked()) return
     const hits = map.getLayer("visits")
       ? map.queryRenderedFeatures?.(event.point, { layers: ["visits"] }) || []
       : []

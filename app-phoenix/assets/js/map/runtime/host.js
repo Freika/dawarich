@@ -31,6 +31,14 @@ export function mountHost({
   const requests = createRangeRequests({ pushEvent })
   const freshness = createTileFreshness()
   const fit = createViewportFit(reader, element)
+  const blocked = () =>
+    owner.config.editEnabled ||
+    owner.selection.state.active ||
+    Boolean(
+      element
+        .closest?.("[data-native-map-root]")
+        ?.querySelector("[data-map-tool-status]")?.textContent,
+    )
   let library
   let layers
   let editing
@@ -100,14 +108,7 @@ export function mountHost({
           pushEvent,
           getConfig: () => owner.config,
           replay: () => owner.replay,
-          blocked: () =>
-            owner.config.editEnabled ||
-            owner.selection.state.active ||
-            Boolean(
-              element
-                .closest?.("[data-native-map-root]")
-                ?.querySelector("[data-map-tool-status]")?.textContent,
-            ),
+          blocked,
           map,
           root: element.closest?.("[data-native-map-root]"),
           reader,
@@ -120,6 +121,7 @@ export function mountHost({
           root: element.closest?.("[data-native-map-root]"),
           getConfig: () => owner.config,
           entities: () => entities,
+          blocked,
         })
         createHostTools({
           map,
@@ -221,7 +223,9 @@ export function mountHost({
             map,
             reader,
             library,
-            onSelect: (receipt) => pushEvent("map:select", receipt),
+            onSelect: (receipt) => {
+              if (!blocked()) pushEvent("map:select", receipt)
+            },
             onError: (code) => pushEvent("map:failed", { code }),
           })
         }

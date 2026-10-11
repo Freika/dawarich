@@ -96,7 +96,7 @@ export function createHostTimeline({
     current.play()
   }
   function move(event) {
-    if (blocked()) return leave()
+    if (blocked()) return clear()
     const available = ["tracks-mvt", "native-selected-track-segments"].filter(
       (id) => map.getLayer(id),
     )
