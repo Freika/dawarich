@@ -60,12 +60,18 @@ export class Toast {
         }
       }
 
-      .toast {
-        pointer-events: auto;
+      .toast-container > .toast {
+        position: relative;
+        inset: auto;
+        pointer-events: none;
         animation: toast-slide-in 0.3s ease-out;
       }
 
-      .toast.removing {
+      .toast-container > .toast button {
+        pointer-events: auto;
+      }
+
+      .toast-container > .toast.removing {
         animation: toast-slide-out 0.3s ease-out;
       }
     `
@@ -84,6 +90,7 @@ export class Toast {
     const toast = document.createElement("div")
     toast.className = `toast toast-${type}`
     const messageElement = document.createElement("span")
+    messageElement.style.cssText = "min-width: 0; overflow-wrap: anywhere;"
     messageElement.textContent = message
     toast.appendChild(messageElement)
 

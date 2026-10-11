@@ -194,3 +194,5 @@ Implementation targeted tests and budgets are recorded in [native-m3c-inventory.
 - Extend family publication re-admission to OwnTracks friends, family trip metadata/share references and retained family Cable coordinates. [FRB-NATIVE-M4-FAMILY-PUBLICATION](fixed-rails-bugs.md#frb-native-m4-family-publication--family-reads-can-publish-data-after-in-flight-revocation)
 
 - Erase private map content immediately when the browser goes offline and reload freshly admitted snapshots on reconnect (FRB-NATIVE-S1E3-OFFLINE-ERASURE).
+
+- Keep persistent map retry notifications from blocking replay controls while preserving clickable recovery actions (FRB-NATIVE-S1E3-TOAST-INTERCEPTION).
