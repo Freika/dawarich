@@ -209,3 +209,11 @@ Stage 2: Visit notes call NotesApi.Read.index/3 and NotesApi.Write.create/4 dire
 Private Stats month is a NativePage route with an owned_stats preview. Heatmap and bounded point layers use cookie readers and owner-local month bounds. Public monthly reports use NativePublicPage/NativePublicMonth with the M6 UUID-clipped preview, native chrome, lazy idempotent initialization and page-departure cancellation. Visits navigation refuses malformed query shapes locally; map Visit update/merge/bulk commands use canonical M5 Visits.Commands. Poster PNG encoding loads only when export starts; independent page startup caps remain frozen.
 
 Stage-2 inherited named test replacements are recorded in [native-stage2-retargets.md](native-stage2-retargets.md). The integrated host keeps M4 cookie/session/signout admission, M5 Trip card styles and resource day windows, canonical M4 gallery thumbnails with a final delivery check, and all native form owners. Public monthly source distance, active-day and country totals accompany the native map/charts. Shared job-owner writer tests are synchronous because their locks persist across sandbox lifetimes; the admission protocols and production locking remain unchanged.
+
+## Stage 2 browser repairs (2026-10-11)
+
+Native advanced settings renders historical/default fog thresholds within the browser field's bounds so Live mode and unrelated settings can submit. The family map host reuses the M4 admitted confirmation state and controls; cancellation is inert and each confirmation consumes one pending action. Delete and leave preserve the source notice. Empty guidance disappears when consenting locations are present, including with flex styling.
+
+Public document admission preserves HTTP 401 for phrase-protected links and 404 for missing/revoked grants. Public trips retain the admitted trip resource name as their heading, independently of the sharing-list label. These repairs preserve Rails behavior and introduce no Rails bug exceptions.
+
+Regressions: `native_advanced_constraints_test.exs`, `native_family_commands_test.exs`, `native_m6_public_routes_test.exs`, and `phoenix_family_map_test.mjs`. Browser fixtures explicitly grant and restore history consent, observe owned GeoJSON sources, open the Layers panel for its metadata, and use exact canonical decimal coordinates.
