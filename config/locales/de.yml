@@ -3293,6 +3293,7 @@ de:
         failed_to_start_import_please_try_again: Importieren konnte nicht gestartet werden. Bitte versuche es erneut.
         an_error_occurred_while_starting_the_import_please_try_again: Ein Fehler ist beim Starten des Imports aufgetreten. Bitte versuche es erneut.
         please_upload_a_valid_zip_file: Bitte lade eine gültige ZIP-Datei hoch.
+        cannot_delete_yourself_or_last_admin: Du kannst dich selbst oder den letzten aktiven Administrator nicht löschen.
         cannot_remove_last_admin_role: Der letzte Admin-Benutzer kann nicht von der Admin-Rolle entfernt werden.
         cannot_disable_last_admin: Der letzte Admin-Benutzer kann nicht deaktiviert werden.
       visits:
