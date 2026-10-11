@@ -237,3 +237,79 @@ test("native point diagnostics project only visible finite point hit positions a
   assert.equal(read().screen, null)
   f.destroy()
 })
+
+test("diagnostic geometry hits retain bounded track and Area polygon locations", () => {
+  const f = setup()
+  f.map.project = ([x, y]) => ({ x, y })
+  f.map.getContainer = () => ({
+    getBoundingClientRect: () => ({ width: 100, height: 100 }),
+  })
+  f.map.querySourceFeatures = () => [
+    {
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [13, 52],
+          [15, 55],
+          [20, 58],
+        ],
+      },
+    },
+    {
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [10, 50],
+            [20, 50],
+            [20, 60],
+            [10, 60],
+            [10, 50],
+          ],
+        ],
+      },
+    },
+  ]
+  try {
+    const receipt = f.element.dawarichMapSnapshot({
+      sourceId: "points-mvt-source",
+    })
+    assert.deepEqual(
+      receipt.features.map((feature) => feature.screen),
+      [
+        { x: 15, y: 55 },
+        { x: 15, y: 55 },
+      ],
+    )
+  } finally {
+    f.destroy()
+  }
+})
+test("diagnostic geometry hits refuse malformed offscreen and unsupported coordinates", () => {
+  const f = setup()
+  f.map.project = ([x, y]) =>
+    Math.abs(x) > 180 || Math.abs(y) > 90 ? { x: 25, y: 52 } : { x, y }
+  f.map.getContainer = () => ({
+    getBoundingClientRect: () => ({ width: 100, height: 100 }),
+  })
+  f.map.querySourceFeatures = () => [
+    { geometry: { type: "LineString", coordinates: [[NaN, 52]] } },
+    { geometry: { type: "LineString", coordinates: [[-10, 52]] } },
+    { geometry: { type: "Polygon", coordinates: [[]] } },
+    { geometry: { type: "Point", coordinates: [13, Infinity] } },
+    { geometry: { type: "GeometryCollection", geometries: [] } },
+    { geometry: { type: "LineString", coordinates: [[13, 120]] } },
+    { geometry: { type: "Point", coordinates: [200, 52] } },
+    { geometry: { type: "Polygon", coordinates: [[null]] } },
+  ]
+  try {
+    assert.deepEqual(
+      f.element
+        .dawarichMapSnapshot({ sourceId: "points-mvt-source" })
+        .features.map((feature) => feature.screen),
+      [null, null, null, null, null, null, null, null],
+    )
+  } finally {
+    f.destroy()
+  }
+})

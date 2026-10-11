@@ -71,14 +71,44 @@ function feature(value) {
       : null,
   }
 }
+function hitCoordinates(geometry) {
+  if (!geometry || !Array.isArray(geometry.coordinates)) return null
+  if (geometry.type === "Point") return geometry.coordinates
+  if (geometry.type === "LineString")
+    return geometry.coordinates[Math.floor(geometry.coordinates.length / 2)]
+  if (geometry.type === "Polygon") {
+    const ring = geometry.coordinates[0]
+    if (
+      !ring?.length ||
+      ring.some(
+        (point) =>
+          !Array.isArray(point) ||
+          point.length !== 2 ||
+          !point.every(Number.isFinite),
+      )
+    )
+      return null
+    return [0, 1].map(
+      (axis) =>
+        (Math.min(...ring.map((point) => point[axis])) +
+          Math.max(...ring.map((point) => point[axis]))) /
+        2,
+    )
+  }
+  return null
+}
 function hitPosition(map, geometry) {
+  const coordinate = hitCoordinates(geometry)
   if (
-    geometry?.type !== "Point" ||
-    !geometry.coordinates.every(Number.isFinite)
+    !coordinate ||
+    coordinate.length !== 2 ||
+    !coordinate.every(Number.isFinite) ||
+    Math.abs(coordinate[0]) > 180 ||
+    Math.abs(coordinate[1]) > 90
   )
     return null
   try {
-    const point = map.project?.(geometry.coordinates)
+    const point = map.project?.(coordinate)
     const bounds = map.getContainer?.().getBoundingClientRect()
     if (
       Number.isFinite(point?.x) &&
