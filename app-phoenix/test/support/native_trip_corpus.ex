@@ -4,7 +4,7 @@ defmodule Dawarich.Test.NativeTripCorpus do
 
   def render(user, id, now) do
     scope = Dawarich.Maps.principal(user, "en")
-    assert {:ok, view} = Dawarich.Maps.Dependencies.Trip.view(scope, id, now: now)
+    assert {:ok, view} = Dawarich.Maps.Trip.view(scope, id, now: now)
     page = view.presentation
 
     render_component(&DawarichWeb.NativeTripContent.content/1, %{

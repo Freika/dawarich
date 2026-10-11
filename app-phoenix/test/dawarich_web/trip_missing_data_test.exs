@@ -177,7 +177,7 @@ defmodule DawarichWeb.TripMissingDataTest do
                before
 
       scope = Dawarich.Maps.principal(user, "en")
-      assert {:ok, safe} = Dawarich.Maps.Dependencies.Trip.presentation(scope, id, now: @now)
+      assert {:ok, safe} = Dawarich.Maps.Trip.presentation(scope, id, now: @now)
       assert safe.map_state == page.map_state
       assert safe.has_path == page.has_path
 
@@ -210,7 +210,7 @@ defmodule DawarichWeb.TripMissingDataTest do
 
       Repo.query!("UPDATE trips SET visited_countries = '[1]'::jsonb WHERE id=$1", [id])
       assert TripPage.gate(user, id) == :rails
-      assert {:error, :not_found} = Dawarich.Maps.Dependencies.Trip.view(scope, id, now: @now)
+      assert {:error, :not_found} = Dawarich.Maps.Trip.view(scope, id, now: @now)
 
       assert {:replay, _} =
                ShowCalculation.run(SpyRepo, user, id, %{now: @now, connected: false})

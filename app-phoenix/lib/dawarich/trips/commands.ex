@@ -35,7 +35,7 @@ defmodule Dawarich.Trips.Commands do
 
   def delete(%Scope{user: user} = scope, id, now, opts \\ []) do
     with {:ok, id} <- Pages.id(id) do
-      case WebDelete.run(repo(opts), user, id, context(scope, now)) do
+      case WebDelete.run(repo(opts), user, id, Map.put(context(scope, now), :owner_scoped, true)) do
         {:ok, :deleted} -> {:ok, %{notice: notice(:destroy)}}
         other -> refusal(other)
       end

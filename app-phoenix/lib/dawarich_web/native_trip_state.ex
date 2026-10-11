@@ -8,7 +8,7 @@ defmodule DawarichWeb.NativeTripState do
       if connected?(socket) do
         {:ok, socket}
       else
-        result = Dawarich.Maps.Dependencies.Trip.prepare(socket.assigns.current_scope, id)
+        result = Dawarich.Maps.Trip.prepare(socket.assigns.current_scope, id)
 
         with {:ok, socket} <- refresh(socket, id) do
           {:ok,
@@ -42,7 +42,7 @@ defmodule DawarichWeb.NativeTripState do
   def refresh(socket, id \\ nil) do
     id = id || socket.assigns.page.presentation.id
 
-    case Dawarich.Maps.Dependencies.Trip.view(socket.assigns.current_scope, id) do
+    case Dawarich.Maps.Trip.view(socket.assigns.current_scope, id) do
       {:ok, page} ->
         choices =
           Map.filter(socket.assigns[:trip_layers] || %{}, fn {key, value} ->

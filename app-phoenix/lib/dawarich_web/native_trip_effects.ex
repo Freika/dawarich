@@ -47,7 +47,7 @@ defmodule DawarichWeb.NativeTripEffects do
   end
 
   defp effect("trip:export", %{"format" => format}, socket) do
-    case Dawarich.Maps.Dependencies.Trip.export(
+    case Dawarich.Maps.Trip.export(
            socket.assigns.current_scope,
            socket.assigns.page.presentation.id,
            format
@@ -69,7 +69,7 @@ defmodule DawarichWeb.NativeTripEffects do
 
   defp command(socket, action),
     do:
-      Dawarich.Maps.Dependencies.Trip.command(
+      Dawarich.Maps.Trip.command(
         socket.assigns.current_scope,
         socket.assigns.page.presentation.id,
         action

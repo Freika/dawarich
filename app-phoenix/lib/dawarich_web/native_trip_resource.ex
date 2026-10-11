@@ -13,7 +13,7 @@ defmodule DawarichWeb.NativeTripResource do
   def authorize(%{assigns: %{page: nil}} = socket), do: {:cont, socket}
 
   def authorize(socket) do
-    case Dawarich.Maps.Dependencies.Trip.admit(
+    case Dawarich.Maps.Trip.admit(
            socket.assigns.current_scope,
            socket.assigns.page.presentation.id
          ) do

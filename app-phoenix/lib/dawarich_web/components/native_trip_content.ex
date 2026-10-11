@@ -25,7 +25,9 @@ defmodule DawarichWeb.NativeTripContent do
       </p>
       <DawarichWeb.TripParts.countries page={@page} locale={@locale} />
       <div :if={@page.description} class="prose max-w-full [overflow-wrap:anywhere]">
-        {Phoenix.HTML.raw(Dawarich.TripDescription.html(@page.description))}
+        {Phoenix.HTML.raw(
+          @page[:description_html] || Dawarich.TripDescription.html(@page.description)
+        )}
       </div>
       <DawarichWeb.NativeTripItinerary.itinerary
         :if={DawarichWeb.TripPlanItems.visible?(@page.plan)}

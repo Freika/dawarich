@@ -1,58 +1,26 @@
-defmodule Dawarich.Maps.Dependencies.Trip do
+defmodule Dawarich.Maps.Trip do
   @moduledoc false
   alias Dawarich.{Maps, TripPage}
+  alias Dawarich.Trips.{Pages, Commands}
 
   def list(scope, page, family_page, opts \\ []) do
-    Maps.with_actor(scope, fn actor ->
-      with {:ok, result} <- Dawarich.TripList.load(actor, page) do
-        family =
-          Dawarich.SharedLinks.FamilyAudience.trips(
-            actor,
-            family_page,
-            Keyword.get(opts, :now, DateTime.utc_now())
-          )
-
-        entries =
-          Enum.map(result.entries, fn trip ->
-            trip
-            |> Map.drop([:path_json, :plan_json])
-            |> Map.put(:has_path, not is_nil(trip.path_json))
-            |> Map.put(:has_plan, not is_nil(trip.plan_json))
-          end)
-
-        {:ok,
-         %{result | entries: entries}
-         |> Map.merge(%{family_entries: family.entries, family_total_pages: family.total_pages})}
-      else
-        _ -> {:error, :unavailable}
-      end
-    end)
+    with {:ok, fresh} <- Maps.admit(scope, opts) do
+      Pages.list(fresh, %{"page" => page, "family_page" => family_page}, now(opts))
+    end
   end
 
-  def admit(scope, id) when is_integer(id) and id > 0 do
-    Maps.with_actor(scope, fn actor ->
-      case TripPage.gate(actor, id) do
-        {:ok, _} -> :ok
-        _ -> {:error, :not_found}
-      end
-    end)
+  def admit(scope, id) do
+    with {:ok, fresh} <- Maps.admit(scope),
+         {:ok, _} <- Pages.get(fresh, id, DateTime.utc_now()),
+         do: :ok
   end
 
-  def admit(_, _), do: {:error, :invalid}
-
-  def prepare(scope, id) when is_integer(id) and id > 0 do
-    Maps.with_actor(scope, fn actor ->
-      case Dawarich.Trips.ShowCalculation.run(Dawarich.Repo, actor, id, %{
-             now: DateTime.utc_now(),
-             connected: false
-           }) do
-        {:ok, _} -> :ok
-        _ -> {:error, :unavailable}
-      end
-    end)
+  def prepare(scope, id) do
+    with {:ok, fresh} <- Maps.admit(scope),
+         {:ok, _} <-
+           Commands.ensure_calculated(fresh, id, DateTime.utc_now(), repo: Dawarich.Repo),
+         do: :ok
   end
-
-  def prepare(_, _), do: {:error, :invalid}
 
   def config(scope, id, opts \\ []) do
     with {:ok, data} <- read(scope, id, opts), do: {:ok, data["config"]}
@@ -66,7 +34,7 @@ defmodule Dawarich.Maps.Dependencies.Trip do
     Maps.with_actor(
       scope,
       fn user ->
-        case TripPage.load(user, id, now) do
+        case load(scope, user, id, now) do
           {:ok, page} -> {:ok, project(page)}
           _ -> {:error, :not_found}
         end
@@ -85,7 +53,7 @@ defmodule Dawarich.Maps.Dependencies.Trip do
     Maps.with_actor(
       scope,
       fn actor ->
-        case TripPage.load(actor, id, now) do
+        case load(scope, actor, id, now) do
           {:ok, page} ->
             {:ok,
              %{
@@ -112,7 +80,7 @@ defmodule Dawarich.Maps.Dependencies.Trip do
     Maps.with_actor(
       scope,
       fn actor ->
-        case TripPage.load(actor, id, now) do
+        case load(scope, actor, id, now) do
           {:ok, page} -> {:ok, present(page)}
           _ -> {:error, :not_found}
         end
@@ -149,6 +117,7 @@ defmodule Dawarich.Maps.Dependencies.Trip do
       ~w(id name distance countries flags settings iana started_at ended_at duration recalculating shared has_path map_state days day_notes plan now plan_on_map plan_toggle future_start description)a
     )
     |> Map.put(:days, days)
+    |> Map.put(:description_html, Map.get(page, :native_description))
     |> Map.put(:plan, %{page.plan | source: safe_plan_source(page.plan.source)})
     |> Map.put(:photos, %{
       sources: Enum.filter(page.photos.sources, &Map.has_key?(links, &1)),
@@ -157,35 +126,38 @@ defmodule Dawarich.Maps.Dependencies.Trip do
   end
 
   def command(scope, id, action) when action in [:delete, :recalculate] do
-    Maps.with_actor(scope, fn actor ->
-      context = %{now: DateTime.utc_now(), locale: scope.locale}
+    with {:ok, fresh} <- Maps.admit(scope) do
+      result =
+        case action do
+          :delete -> Commands.delete(fresh, id, DateTime.utc_now(), repo: Dawarich.Repo)
+          :recalculate -> Commands.recalculate(fresh, id, DateTime.utc_now(), repo: Dawarich.Repo)
+        end
 
-      case action do
-        :delete ->
-          Dawarich.Trips.WebDelete.run(
-            Dawarich.Repo,
-            actor,
-            id,
-            Map.put(context, :owner_scoped, true)
-          )
-
-        :recalculate ->
-          Dawarich.Trips.WebRecalculate.run(Dawarich.Repo, actor, id, context)
+      case result do
+        {:ok, %{status: status}} -> {:ok, status}
+        {:ok, _} -> {:ok, :deleted}
+        error -> error
       end
-    end)
+    end
   end
 
   def export(scope, id, format) do
-    Maps.with_actor(scope, fn actor ->
-      with {:ok, export} <-
-             Dawarich.Trips.WebExport.prepare(Dawarich.Repo, actor, id, format, %{}) do
-        case Dawarich.PointExports.create(export, actor, scope.locale, Dawarich.Repo) do
-          {:ok, id} -> {:ok, id}
-          _ -> {:error, :unavailable}
-        end
+    with {:ok, fresh} <- Maps.admit(scope) do
+      case Commands.request_export(fresh, id, format, repo: Dawarich.Repo) do
+        {:error, :invalid_format} -> {:invalid, :format}
+        result -> result
       end
-    end)
+    end
   end
+
+  defp load(scope, actor, id, now) do
+    with {:ok, detail} <- Pages.get(scope, id, now),
+         {:ok, page} <- TripPage.load(actor, id, now) do
+      {:ok, Map.put(page, :native_description, detail.description)}
+    end
+  end
+
+  defp now(opts), do: Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
 
   defp safe_plan_source(%{base_url: url} = source) do
     if safe_source_link?(url),

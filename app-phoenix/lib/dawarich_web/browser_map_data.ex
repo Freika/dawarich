@@ -84,7 +84,7 @@ defmodule DawarichWeb.BrowserMapData do
 
     with {id, ""} <- Integer.parse(conn.path_params["id"]),
          {:ok, data} <-
-           Dawarich.Maps.Dependencies.Trip.read(scope, id,
+           Dawarich.Maps.Trip.read(scope, id,
              now: conn.assigns[:now] || DateTime.utc_now()
            ) do
       Api.Respond.json(conn, 200, data)

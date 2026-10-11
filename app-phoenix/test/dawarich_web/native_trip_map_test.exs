@@ -21,16 +21,24 @@ defmodule DawarichWeb.NativeTripMapTest do
     %{user: Accounts.get(8841)}
   end
 
+  test "trip map list uses M5 normalized bounded cards", ctx do
+    scope = Maps.principal(ctx.user, "en")
+    assert {:ok, result} = Dawarich.Maps.Trip.list(scope, -1, -1, now: @now)
+    assert result.query == %{page: 1, family_page: 1}
+    assert [%{id: 884_101, preview: :path}] = result.entries
+    refute Map.has_key?(hd(result.entries), :path_json)
+  end
+
   test "native trip map admits only the owned trip and excludes bulk state", ctx do
     scope = Maps.principal(ctx.user, "en")
-    assert {:ok, metadata} = Dawarich.Maps.Dependencies.Trip.config(scope, 884_101, now: @now)
+    assert {:ok, metadata} = Dawarich.Maps.Trip.config(scope, 884_101, now: @now)
     assert metadata["tripId"] == 884_101
     assert metadata["range"]["startAt"] == "2026-06-01T22:00:00Z"
     refute Map.has_key?(metadata, "path")
     refute Map.has_key?(metadata, "api_key")
 
     assert {:error, :not_found} =
-             Dawarich.Maps.Dependencies.Trip.config(
+             Dawarich.Maps.Trip.config(
                Maps.principal(Accounts.get(8899), "en"),
                884_101,
                now: @now
@@ -60,7 +68,7 @@ defmodule DawarichWeb.NativeTripMapTest do
     })
 
     scope = Maps.principal(ctx.user, "en")
-    assert {:ok, page} = Dawarich.Maps.Dependencies.Trip.presentation(scope, 884_101, now: @now)
+    assert {:ok, page} = Dawarich.Maps.Trip.presentation(scope, 884_101, now: @now)
     assert page.id == 884_101
     assert Enum.map(page.days, & &1.date) == [~D[2026-06-01], ~D[2026-06-02], ~D[2026-06-03]]
     assert page.day_notes[~D[2026-06-02]].body == "Coffee <b>outside</b>"
@@ -72,7 +80,7 @@ defmodule DawarichWeb.NativeTripMapTest do
            )
 
     assert {:error, :not_found} =
-             Dawarich.Maps.Dependencies.Trip.presentation(
+             Dawarich.Maps.Trip.presentation(
                Maps.principal(Accounts.get(8899), "en"),
                884_101,
                now: @now
@@ -93,7 +101,7 @@ defmodule DawarichWeb.NativeTripMapTest do
 
     [first | rest] = page.days
     page = %{page | days: [%{first | photos: [photo]} | rest]}
-    safe = Dawarich.Maps.Dependencies.Trip.present(page)
+    safe = Dawarich.Maps.Trip.present(page)
 
     assert hd(hd(safe.days).photos).url ==
              "/native/map/data/photos/synthetic%2Fphoto/thumbnail?source=immich"
@@ -117,7 +125,7 @@ defmodule DawarichWeb.NativeTripMapTest do
           links: %{"immich" => "https://photos.test/search", "photoprism" => bad}
       }
 
-      safe = Dawarich.Maps.Dependencies.Trip.present(%{page | photos: photos})
+      safe = Dawarich.Maps.Trip.present(%{page | photos: photos})
       assert safe.photos.links == %{"immich" => "https://photos.test/search"}
       assert safe.photos.sources == ["immich"]
       refute String.contains?(inspect(safe), "synthetic-private")
@@ -135,7 +143,7 @@ defmodule DawarichWeb.NativeTripMapTest do
       source = %{id: 1, provider: "trek", base_url: url, status: 0, last_synced_at: nil}
 
       safe =
-        Dawarich.Maps.Dependencies.Trip.present(%{page | plan: %{page.plan | source: source}})
+        Dawarich.Maps.Trip.present(%{page | plan: %{page.plan | source: source}})
 
       assert safe.plan.source == nil
       refute String.contains?(inspect(safe), "synthetic-private")
@@ -149,7 +157,7 @@ defmodule DawarichWeb.NativeTripMapTest do
       last_synced_at: nil
     }
 
-    safe = Dawarich.Maps.Dependencies.Trip.present(%{page | plan: %{page.plan | source: source}})
+    safe = Dawarich.Maps.Trip.present(%{page | plan: %{page.plan | source: source}})
     assert safe.plan.source == source
   end
 
@@ -161,6 +169,6 @@ defmodule DawarichWeb.NativeTripMapTest do
     ])
 
     assert {:error, :stale_session} =
-             Dawarich.Maps.Dependencies.Trip.config(scope, 884_101, now: @now)
+             Dawarich.Maps.Trip.config(scope, 884_101, now: @now)
   end
 end

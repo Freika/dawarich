@@ -17,7 +17,7 @@ defmodule DawarichWeb.NativeTripCard do
         id={"trip-#{@trip.id}"}
       >
         <%= cond do %>
-          <% @trip.has_path or @trip.has_plan -> %>
+          <% @trip.preview in [:path, :plan] -> %>
             <DawarichWeb.NativeMapPreview.preview
               id={"native-trip-preview-#{@trip.id}"}
               config={%{"tripId" => @trip.id, "styleName" => @settings.style, "interactive" => false}}
@@ -25,7 +25,7 @@ defmodule DawarichWeb.NativeTripCard do
               class="w-full aspect-[16/10] min-w-0 bg-base-200"
             />
             <span
-              :if={!@trip.has_path and @trip.has_plan}
+              :if={@trip.preview == :plan}
               class="trip-plan-caption trip-plan-caption--compact"
             >{t(@locale, "trips.trip.plan", %{})}</span>
           <% @trip.distance -> %>

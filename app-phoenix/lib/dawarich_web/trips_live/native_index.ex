@@ -32,10 +32,18 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
          page = DawarichWeb.TripsGate.page_number(params["page"]),
          family_page = DawarichWeb.TripsGate.page_number(params["family_page"]),
          {:ok, result} <-
-           Dawarich.Maps.Dependencies.Trip.list(socket.assigns.current_scope, page, family_page) do
+           Dawarich.Maps.Trip.list(socket.assigns.current_scope, page, family_page) do
       {:noreply,
        socket
        |> assign(result)
+       |> assign(
+         :settings,
+         Map.put(
+           result.settings,
+           :style,
+           Dawarich.UserSettings.get(socket.assigns.current_scope.user)["map_style"] || "streets"
+         )
+       )
        |> assign(
          page: page,
          family_page: family_page,

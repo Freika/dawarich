@@ -146,7 +146,7 @@ defmodule DawarichWeb.TripPlanHostsTest do
 
           "#trips" ->
             scope = Dawarich.Maps.principal(user, "en")
-            assert {:ok, list} = Dawarich.Maps.Dependencies.Trip.list(scope, 1, 1, now: @now)
+            assert {:ok, list} = Dawarich.Maps.Trip.list(scope, 1, 1, now: @now)
 
             "<div id=trips>" <>
               Enum.map_join(list.entries, fn trip ->
@@ -175,8 +175,8 @@ defmodule DawarichWeb.TripPlanHostsTest do
 
         refute String.contains?(html, "data-controller")
         scope = Dawarich.Maps.principal(user, "en")
-        assert {:ok, view} = Dawarich.Maps.Dependencies.Trip.view(scope, id, now: @now)
-        assert {:ok, data} = Dawarich.Maps.Dependencies.Trip.read(scope, id, now: @now)
+        assert {:ok, view} = Dawarich.Maps.Trip.view(scope, id, now: @now)
+        assert {:ok, data} = Dawarich.Maps.Trip.read(scope, id, now: @now)
 
         assert view.presentation.map_state ==
                  if(
@@ -210,7 +210,7 @@ defmodule DawarichWeb.TripPlanHostsTest do
           refute html =~ "data-controller"
 
           assert {:ok, data} =
-                   Dawarich.Maps.Dependencies.Trip.read(Dawarich.Maps.principal(user, "en"), id,
+                   Dawarich.Maps.Trip.read(Dawarich.Maps.principal(user, "en"), id,
                      now: @now
                    )
 
