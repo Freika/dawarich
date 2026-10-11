@@ -6,7 +6,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
 
   alias DawarichWeb.{
     Icon,
-    LocalizedDate,
+    NativeTimelineDayNav,
     NativeSelectionActions,
     NativeTimelineEntries,
     TimelineFormat
@@ -14,6 +14,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
 
   alias Phoenix.LiveView.JS
 
+  attr :selected_date, :string, default: nil
   attr :timeline, :map, default: nil
   attr :filter, :map, default: nil
   attr :selection, :map, default: nil
@@ -88,6 +89,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
         :if={@timeline.feed && @timeline.feed.days == []}
         class="text-center text-base-content/60 py-8"
       >
+        <NativeTimelineDayNav.nav :if={@selected_date} date={@selected_date} locale={@locale} />
         <p class="text-sm">{t(@locale, "map.timeline_feeds.feed.no_visits_tracked_this_day", %{})}</p>
       </div>
       <div :if={@unmatched} class="text-center py-4">
@@ -152,7 +154,13 @@ defmodule DawarichWeb.NativeTimelineFeed do
         rows: TimelineFormat.with_gaps(assigns.day.entries, assigns.redetected),
         prev: Date.to_iso8601(Date.add(date, -1)),
         next: Date.to_iso8601(Date.add(date, 1)),
+        moving: Map.get(assigns.day.summary, :time_moving_minutes, 0),
         visits: length(visits),
+        count:
+          Enum.sum(
+            for key <- [:confirmed_count, :suggested_count, :declined_count],
+                do: Map.get(assigns.day.summary, key, 0)
+          ),
         low: Enum.count(visits, &TimelineFormat.low_confidence?(&1, assigns.redetected)),
         dom_id: "native-day-#{assigns.day.date}"
       )
@@ -160,27 +168,10 @@ defmodule DawarichWeb.NativeTimelineFeed do
     ~H"""
     <article id={@dom_id} class="timeline-day min-w-0" data-day={@day.date}>
       <header class="timeline-day-header flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          class="btn btn-ghost btn-xs btn-square"
-          phx-click="calendar:day"
-          phx-value-date={@prev}
-          aria-label={t(@locale, "map.timeline_feeds.day_nav.previous_day", %{})}
-        >
-          <Icon.icon name="chevron-left" class="w-4 h-4" />
-        </button>
-        <h3 class="font-semibold text-sm min-w-0 break-words">
-          {LocalizedDate.l(@locale, @date, "day_month_year")}
-        </h3>
-        <button
-          type="button"
-          class="btn btn-ghost btn-xs btn-square"
-          phx-click="calendar:day"
-          phx-value-date={@next}
-          aria-label={t(@locale, "map.timeline_feeds.day_nav.next_day", %{})}
-        >
-          <Icon.icon name="chevron-right" class="w-4 h-4" />
-        </button>
+        <NativeTimelineDayNav.nav date={@date} locale={@locale} />
+        <div class="timeline-day-header__meta text-sm min-w-0">
+          {t(@locale, "map.timeline_feeds.day.visit_count", %{count: @count})}
+        </div>
         <button
           :if={@visits >= 2 and !@selection}
           type="button"
@@ -198,14 +189,22 @@ defmodule DawarichWeb.NativeTimelineFeed do
         cancel="timeline:select_cancel"
         locale={@locale}
       />
-      <div :if={@day.summary.mode_distances != %{}} class="flex flex-wrap gap-1 text-xs">
+      <div
+        :if={@day.summary.mode_distances != %{} or @moving > 0}
+        class="timeline-day-modes flex flex-wrap gap-1 text-xs"
+      >
         <span
           :for={{mode, distance} <- Enum.sort(@day.summary.mode_distances)}
-          class="badge badge-ghost gap-1"
+          class="mode-chip badge badge-ghost gap-1"
         >
           <Icon.icon name={TimelineFormat.mode_icon(mode)} class="w-3 h-3" />
           <span class="sr-only">{t(@locale, "transportation_modes.#{mode}", %{})}</span>
           {distance} {@day.summary.distance_unit}
+        </span>
+        <span :if={@moving > 0} class="mode-chip mode-chip--muted">
+          {t(@locale, "map.timeline_feeds.day.moving_duration", %{
+            duration: TimelineFormat.duration_short(@locale, @moving * 60)
+          })}
         </span>
       </div>
       <ol class="timeline-entries">
@@ -226,6 +225,7 @@ defmodule DawarichWeb.NativeTimelineFeed do
           <% end %>
         <% end %>
       </ol>
+      <NativeTimelineDayNav.nav date={@date} locale={@locale} footer />
       <button
         :if={@low > 0}
         type="button"

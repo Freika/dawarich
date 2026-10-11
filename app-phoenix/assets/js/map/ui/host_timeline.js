@@ -128,6 +128,29 @@ export function createHostTimeline({
     clear()
     map.getCanvas().style.cursor = ""
   }
+  const document = root?.ownerDocument
+  function keydown(event) {
+    if (
+      getConfig().panel !== "timeline" ||
+      !["ArrowLeft", "ArrowRight"].includes(event.key) ||
+      event.target.closest?.(
+        "input, textarea, select, [contenteditable='true']",
+      )
+    )
+      return
+    const date = root?.dataset.selectedDate
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return
+    const day = new Date(`${date}T00:00:00Z`)
+    if (
+      !Number.isFinite(day.getTime()) ||
+      day.toISOString().slice(0, 10) !== date
+    )
+      return
+    day.setUTCDate(day.getUTCDate() + (event.key === "ArrowLeft" ? -1 : 1))
+    event.preventDefault()
+    pushEvent("calendar:day", { date: day.toISOString().slice(0, 10) })
+  }
+  document?.addEventListener?.("keydown", keydown)
   map.on("mousemove", move)
   map.on("mouseleave", leave)
   const play = (event) => {
@@ -138,6 +161,7 @@ export function createHostTimeline({
   root?.addEventListener("pointerover", enter)
   root?.addEventListener("pointerout", clear)
   lifetime.own(() => {
+    document?.removeEventListener?.("keydown", keydown)
     root?.removeEventListener("pointerover", enter)
     root?.removeEventListener("pointerout", clear)
     map.off("mousemove", move)

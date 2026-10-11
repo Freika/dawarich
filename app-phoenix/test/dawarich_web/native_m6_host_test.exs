@@ -301,6 +301,61 @@ defmodule DawarichWeb.NativeM6HostTest do
     assert rows("SELECT count(*) FROM visits WHERE user_id=$1", [id]) == [[1]]
   end
 
+  test "native date-only timeline preserves source labels navigation counts and calendar selection",
+       %{id: id} do
+    for index <- 1..3 do
+      Dawarich.Test.FrameSeeds.visit!(id, id * 10 + index, %{
+        name: "Day stop #{index}",
+        started_at: ~N[2026-03-30 09:00:00] |> NaiveDateTime.add(index * 7200),
+        ended_at: ~N[2026-03-30 10:00:00] |> NaiveDateTime.add(index * 7200)
+      })
+    end
+
+    {:ok, view, _} = open(id, "/map/v2?panel=timeline&date=2026-03-30")
+    render_async(view, 5000)
+    assert has_element?(view, "[data-testid='day-header-label']", "Monday, March 30")
+    assert has_element?(view, ".timeline-day-header__meta", "3 visits")
+
+    assert has_element?(
+             view,
+             ".timeline-day-footer button[data-direction='prev'][phx-value-date='2026-03-29']"
+           )
+
+    assert has_element?(
+             view,
+             ".timeline-day-footer button[data-direction='next'][phx-value-date='2026-03-31']"
+           )
+
+    assert has_element?(
+             view,
+             "#native-timeline-calendar button[data-day='2026-03-30'][aria-current='date']"
+           )
+
+    view |> element(".timeline-day-footer button[data-direction='next']") |> render_click()
+    assert URI.decode_query(URI.parse(assert_patch(view)).query)["date"] == "2026-03-31"
+    render_async(view, 5000)
+    refute has_element?(view, ".timeline-day-footer")
+    assert has_element?(view, "[data-testid='day-header-label']", "Tuesday, March 31")
+
+    assert has_element?(
+             view,
+             "#native-timeline-calendar button[data-day='2026-03-31'][aria-current='date']"
+           )
+  end
+
+  test "native timeline moving duration survives without per-mode distance chips", %{id: id} do
+    Dawarich.Test.FrameSeeds.track!(id, id * 10, %{
+      start_at: ~N[2026-03-30 09:00:00],
+      end_at: ~N[2026-03-30 09:30:00],
+      duration: 1800,
+      dominant_mode: 4
+    })
+
+    {:ok, view, _} = open(id, "/map/v2?panel=timeline&date=2026-03-30")
+    render_async(view, 5000)
+    assert has_element?(view, ".timeline-day-modes .mode-chip--muted", "30m moving")
+  end
+
   test "native production host loads and refreshes only the open timeline", %{id: id} do
     track = id * 10
 

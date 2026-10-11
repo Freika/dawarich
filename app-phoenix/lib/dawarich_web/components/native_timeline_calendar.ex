@@ -5,6 +5,7 @@ defmodule DawarichWeb.NativeTimelineCalendar do
   import DawarichWeb.Translate, only: [t: 3]
   alias DawarichWeb.{Icon, LocalizedDate, TimelineFormat}
 
+  attr :selected_date, :string, default: nil
   attr :calendar, :map, default: nil
   attr :locale, :string, required: true
 
@@ -20,11 +21,17 @@ defmodule DawarichWeb.NativeTimelineCalendar do
       <p :if={match?({:error, _}, @calendar.status)} class="alert alert-error text-xs" role="alert">
         {t(@locale, "javascript.messages.failed_to_load_visit_details", %{})}
       </p>
-      <.month :if={@calendar.summary} summary={@calendar.summary} locale={@locale} />
+      <.month
+        :if={@calendar.summary}
+        summary={@calendar.summary}
+        locale={@locale}
+        selected_date={@selected_date}
+      />
     </section>
     """
   end
 
+  attr :selected_date, :string, default: nil
   attr :summary, :map, required: true
   attr :locale, :string, required: true
 
@@ -73,7 +80,11 @@ defmodule DawarichWeb.NativeTimelineCalendar do
       <button
         :for={cell <- List.flatten(@summary.weeks)}
         type="button"
-        class={TimelineFormat.cell_classes(cell)}
+        class={[
+          TimelineFormat.cell_classes(cell),
+          cell.date == @selected_date && "cal-cell--selected"
+        ]}
+        aria-current={if cell.date == @selected_date, do: "date"}
         data-day={cell.date}
         data-tracked-seconds={cell.tracked_seconds}
         disabled={cell.disabled}

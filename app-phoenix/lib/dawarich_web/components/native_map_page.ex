@@ -3,12 +3,18 @@ defmodule DawarichWeb.NativeMapPage do
   use DawarichWeb, :html
 
   def page(assigns) do
+    assigns =
+      if assigns[:page],
+        do: assign(assigns, :selected_date, selected_date(assigns)),
+        else: assigns
+
     ~H"""
     <DawarichWeb.NativeMapChrome.header {assigns} />
     <div
       :if={@page}
       id="native-map-page"
       data-native-map-root
+      data-selected-date={@selected_date}
       class="relative w-full min-w-0 h-[calc(100dvh-4rem)] flex flex-col"
     >
       <DawarichWeb.Chrome.flash locale={@locale} flash={@flash} native />
@@ -94,9 +100,14 @@ defmodule DawarichWeb.NativeMapPage do
         id="native-map-panel"
         class="absolute left-0 top-40 bottom-0 z-10 overflow-auto w-96 max-w-full min-w-0 bg-base-100 p-3"
       >
-        <DawarichWeb.NativeTimelineCalendar.calendar calendar={assigns[:calendar]} locale={@locale} />
+        <DawarichWeb.NativeTimelineCalendar.calendar
+          calendar={assigns[:calendar]}
+          locale={@locale}
+          selected_date={@selected_date}
+        />
         <DawarichWeb.NativeTimelineFeed.feed
           timeline={assigns[:timeline]}
+          selected_date={@selected_date}
           filter={assigns[:timeline_filter]}
           selection={assigns[:timeline_selection]}
           selected_visit={assigns[:selected_visit]}
@@ -208,5 +219,12 @@ defmodule DawarichWeb.NativeMapPage do
     />
     <div :if={@map_error} role="alert">{to_string(@map_error)}</div>
     """
+  end
+
+  defp selected_date(assigns) do
+    case Date.from_iso8601(assigns.map_url["date"] || "") do
+      {:ok, date} -> Date.to_iso8601(date)
+      _ -> Date.to_iso8601(assigns.page.window.start_date)
+    end
   end
 end

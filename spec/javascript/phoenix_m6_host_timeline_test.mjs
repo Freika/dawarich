@@ -445,3 +445,45 @@ test("native canonical track owner consumes the real cookie FeatureCollection sh
     actual.destroy()
   }
 })
+
+test("native timeline keyboard steps profile calendar dates ignores text inputs and releases its listener", async () => {
+  const f = fixture({ panel: "timeline" })
+  const document = new Element()
+  f.root.ownerDocument = document
+  f.root.dataset.selectedDate = "2026-03-29"
+  const key = (name, target = { closest: () => null }) => ({
+    key: name,
+    target,
+    preventDefault() {},
+  })
+  try {
+    await f.owner.mount()
+    document.emit("keydown", key("ArrowLeft"))
+    assert.deepEqual(
+      f.pushed.filter(({ event }) => event === "calendar:day").at(-1).payload,
+      { date: "2026-03-28" },
+    )
+    f.root.dataset.selectedDate = "2026-03-30"
+    document.emit("keydown", key("ArrowRight"))
+    assert.deepEqual(
+      f.pushed.filter(({ event }) => event === "calendar:day").at(-1).payload,
+      { date: "2026-03-31" },
+    )
+    document.emit("keydown", key("ArrowRight", { closest: () => ({}) }))
+    f.owner.config.panel = "layers"
+    document.emit("keydown", key("ArrowRight"))
+    assert.equal(
+      f.pushed.filter(({ event }) => event === "calendar:day").length,
+      2,
+    )
+    f.owner.destroy()
+    assert.equal(document.listeners.get("keydown").size, 0)
+    document.emit("keydown", key("ArrowRight"))
+    assert.equal(
+      f.pushed.filter(({ event }) => event === "calendar:day").length,
+      2,
+    )
+  } finally {
+    f.owner.destroy()
+  }
+})

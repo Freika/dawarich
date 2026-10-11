@@ -82,7 +82,11 @@ defmodule DawarichWeb.MapLive.Native do
         socket =
           if connected?(socket) and params["panel"] == "timeline" and
                (previous != socket.assigns.map_revision or old_panel != "timeline"),
-             do: DawarichWeb.MapLive.Timeline.refresh(socket, params),
+             do:
+               DawarichWeb.MapLive.Timeline.refresh(socket, %{
+                 "start_at" => page.window.start,
+                 "end_at" => page.window.end
+               }),
              else: socket
 
         socket =
