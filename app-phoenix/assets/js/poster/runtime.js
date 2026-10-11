@@ -136,10 +136,6 @@ export function mountPosterStudio({
     exports.cancel()
     order.cancel()
   })
-  on(dialog, "cancel", (event) => {
-    event.preventDefault()
-    closeStudio()
-  })
   on(dialog, "close", closeStudio)
   on(find("recenter"), "click", () => studio.recenter())
   for (const swatch of swatches) {
