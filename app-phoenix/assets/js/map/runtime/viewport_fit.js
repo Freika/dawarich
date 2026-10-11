@@ -17,8 +17,8 @@ export function createViewportFit(reader, element) {
         reader.read(
           "bounds",
           {
-            start_at: config.range.startAt,
-            end_at: config.range.endAt,
+            start_date: config.range.startAt,
+            end_date: config.range.endAt,
             import_id: config.range.importId,
             robust: "true",
           },
