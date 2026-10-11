@@ -287,10 +287,13 @@ defmodule DawarichWeb.NativeM6HostTest do
            }
 
     render_async(view, 5000)
-    assert has_element?(view, "#native-timeline-feed")
+    assert has_element?(view, "#native-map-viewport #native-map-panel #native-timeline-feed")
+    refute has_element?(view, "#native-map-controls #native-map-panel")
     assert has_element?(view, "#native-track-info", "Track ##{track}")
     assert_push_event(view, "track:selection", %{id: ^track, points: false})
-    render_hook(view, "track:close", %{})
+    view |> element("#native-track-info [phx-click=\"track:close\"]") |> render_click()
+    assert_push_event(view, "track:selection", %{id: nil, points: false})
+    assert has_element?(view, "#native-map-viewport #native-map-panel")
     refute has_element?(view, "#native-track-info")
     render_hook(view, "map:select", %{"kind" => "track", "id" => -1})
     refute has_element?(view, "#native-track-info")

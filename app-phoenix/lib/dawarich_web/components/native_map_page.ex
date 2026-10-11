@@ -108,26 +108,6 @@ defmodule DawarichWeb.NativeMapPage do
           "javascript.areas.create_new",
           %{}
         )}</button>
-        <section
-          :if={@map_url["panel"] == "timeline"}
-          id="native-map-panel"
-          class="absolute left-0 top-40 bottom-0 z-10 overflow-auto w-96 max-w-full min-w-0 bg-base-100 p-3"
-        >
-          <DawarichWeb.NativeTimelineCalendar.calendar
-            calendar={assigns[:calendar]}
-            locale={@locale}
-            selected_date={@selected_date}
-          />
-          <DawarichWeb.NativeTimelineFeed.feed
-            timeline={assigns[:timeline]}
-            selected_date={@selected_date}
-            filter={assigns[:timeline_filter]}
-            selection={assigns[:timeline_selection]}
-            selected_visit={assigns[:selected_visit]}
-            tags={@page.timeline_tags}
-            locale={@locale}
-          />
-        </section>
         <DawarichWeb.NativeResidency.card
           :if={@map_url["panel"] == "insights"}
           residency={assigns[:residency]}
@@ -220,7 +200,28 @@ defmodule DawarichWeb.NativeMapPage do
           themes={@page.themes}
         />
       </div>
-      <div class="relative flex-1 min-h-0 min-w-0">
+      <div id="native-map-viewport" class="relative flex-1 min-h-0 min-w-0">
+        <section
+          :if={@map_url["panel"] == "timeline"}
+          id="native-map-panel"
+          class="absolute left-0 top-0 bottom-0 z-10 overflow-auto w-96 max-w-full min-w-0 bg-base-100 p-3"
+        >
+          <DawarichWeb.NativeTimelineCalendar.calendar
+            calendar={assigns[:calendar]}
+            locale={@locale}
+            selected_date={@selected_date}
+          />
+          <DawarichWeb.NativeTimelineFeed.feed
+            timeline={assigns[:timeline]}
+            selected_date={@selected_date}
+            filter={assigns[:timeline_filter]}
+            selection={assigns[:timeline_selection]}
+            selected_visit={assigns[:selected_visit]}
+            tags={@page.timeline_tags}
+            locale={@locale}
+          />
+        </section>
+
         <DawarichWeb.NativeMapHost.map_host id="native-map" config={@map_config} locale={@locale} />
       </div>
     </div>
