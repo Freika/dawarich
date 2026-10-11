@@ -55,7 +55,7 @@ defmodule DawarichWeb.CapabilityLoggingTest do
     %{user: user, path: path}
   end
 
-  test "every capability and unlock phrase stays out of request query job crash and reporting output",
+  test "native map capabilities and unlock phrases stay out of request query job crash and reporting output",
        c do
     :ok = :logger.remove_primary_filter(Dawarich.LogRedaction)
     on_exit(fn -> Dawarich.LogRedaction.install() end)
@@ -129,7 +129,10 @@ defmodule DawarichWeb.CapabilityLoggingTest do
     assert length(ids) == 4
 
     for id <- ids do
-      assert get(build_conn(), "/s/" <> id).status == 401
+      locked = get(build_conn(), "/s/" <> id)
+      assert locked.status == 200
+      assert locked.resp_body =~ "public-phrase"
+      refute locked.resp_body =~ "id=\"native-public-map\""
 
       unlocked =
         post(
@@ -233,7 +236,7 @@ defmodule DawarichWeb.CapabilityLoggingTest do
     assert {:ok, _} = :logger.get_handler_config(:default)
   end
 
-  test "connected and reconnected public mount diagnostics filter bootstrap capabilities on both logger boundaries",
+  test "connected and reconnected public map diagnostics filter immutable grants on both logger boundaries",
        c do
     {:ok, manager, _} = open(c.user, "/share_links/hub")
     render_submit(manager, "sharing_create", %{"shared_link" => %{"magic_phrase" => ""}})
@@ -249,18 +252,20 @@ defmodule DawarichWeb.CapabilityLoggingTest do
       capabilities =
         for _ <- 1..2 do
           conn = get(build_conn(), "/s/" <> id)
-          capability = conn.assigns.public_bootstrap
+          capability = DawarichWeb.PublicMapAuth.live_session(conn)["public_map_capability"]
+          grant = capability.grant
           conn = put_private(conn, :live_view_connect_info, %{session: get_session(conn)})
           {:ok, reader, _} = live(conn)
-          assert has_element?(reader, "[data-public-content]")
+          assert has_element?(reader, "#native-public-map[phx-hook=PublicMap]")
           GenServer.stop(reader.pid)
-          capability
+          [grant.version, grant.phrase_version]
         end
+        |> List.flatten()
 
       Logger.flush()
       :ok = :logger_std_h.filesync(:capability_capture)
       output = File.read!(c.path)
-      assert output =~ "MOUNT DawarichWeb.PublicShareLive"
+      assert output =~ "MOUNT DawarichWeb.PublicMapLive"
 
       assert Enum.all?(capabilities, &(not String.contains?(output, &1))),
              "bootstrap capability exposed at #{boundary} logger boundary"

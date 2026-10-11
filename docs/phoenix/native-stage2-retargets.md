@@ -131,3 +131,82 @@ The activated M6 family map consumes M4 scoped commands directly. The old confir
 | `dawarich_web/family_browser_envelopes_test.exs` | native browser family map includes only consenting members and removes revoked consent | native map sharing command admits only consenting members and removes revoked consent |
 | `dawarich_web/notification_subscription_test.exs` | family invalidations refresh job navbars while notification delivery remains independent | family and notification producers refresh job and native map navbars independently |
 | `client/native_family_confirmation_test.mjs` | Retired server confirmation preparation/cancel events | native family cancelled member deletion and invitation confirmations dispatch no command; native family accepted member deletion and invitation confirmations dispatch one command |
+
+## Stage-2 group A: Public host successors (2026-10-11)
+
+All 53 source GET vectors now declare the native M6 envelope: translated refusal documents return 200 with no map, admitted documents use PublicMapLive, private no-store caching and the exact native session attributes. Source security headers, source cookie attributes, effects, sharing flags, titles, locales and ranges remain asserted; all 11 unlock POST vectors retain their byte/header/cookie/status oracle. The native unlock form retains the exact Rails session CSRF derivation. No obsolete endpoint is removed here; remaining retirement belongs to M7.
+
+Delivery successors bind a real HTTP-admitted immutable grant, prove a positive read, then revoke at the canonical after-read boundary and require a typed refusal plus an empty native refusal document. Family session/remember, password/lock/deletion, gallery privacy and both actual logger boundaries remain covered. Shared fixes are limited to Maps.Public.record_visit / PublicMapLive.mount (admitted missing-resource GET counting, HEAD/reconnect/revoked read-only) and LogRedaction (filter the inspected LiveView Session diagnostic suffix, preserving mount/parameter diagnostics). These are Phoenix integration defects; no Rails bug is fixed.
+
+| Test file | Previous case | Named successor |
+| --- | --- | --- |
+| `dawarich_web/sharing_parity_test.exs` | live_en answers as Rails does | live_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_named_prompt_en answers as Rails does | live_named_prompt_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_range_en answers as Rails does | timeline_range_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_day_en answers as Rails does | timeline_day_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_year_en answers as Rails does | timeline_year_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_years_en answers as Rails does | timeline_years_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | missing_trip_en answers as Rails does | missing_trip_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | missing_track_en answers as Rails does | missing_track_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | not_found_revoked_en answers as Rails does | not_found_revoked_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | not_found_expired_en answers as Rails does | not_found_expired_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_route_yes_en answers as Rails does | live_route_yes_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_route_zero_en answers as Rails does | live_route_zero_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_route_unset_en answers as Rails does | live_route_unset_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_blank_phrase_en answers as Rails does | timeline_blank_phrase_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | not_found_unknown_en answers as Rails does | not_found_unknown_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_de answers as Rails does | live_de preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_named_prompt_de answers as Rails does | live_named_prompt_de preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_range_de answers as Rails does | timeline_range_de preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_years_de answers as Rails does | timeline_years_de preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | missing_track_de answers as Rails does | missing_track_de preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | not_found_revoked_de answers as Rails does | not_found_revoked_de preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_es answers as Rails does | live_es preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_named_prompt_es answers as Rails does | live_named_prompt_es preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_range_es answers as Rails does | timeline_range_es preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_years_es answers as Rails does | timeline_years_es preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | missing_track_es answers as Rails does | missing_track_es preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | not_found_revoked_es answers as Rails does | not_found_revoked_es preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_fr answers as Rails does | live_fr preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_named_prompt_fr answers as Rails does | live_named_prompt_fr preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_range_fr answers as Rails does | timeline_range_fr preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_years_fr answers as Rails does | timeline_years_fr preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | missing_track_fr answers as Rails does | missing_track_fr preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | not_found_revoked_fr answers as Rails does | not_found_revoked_fr preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_pl answers as Rails does | live_pl preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_named_prompt_pl answers as Rails does | live_named_prompt_pl preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_range_pl answers as Rails does | timeline_range_pl preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_years_pl answers as Rails does | timeline_years_pl preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | missing_track_pl answers as Rails does | missing_track_pl preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | not_found_revoked_pl answers as Rails does | not_found_revoked_pl preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_ca answers as Rails does | live_ca preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_named_prompt_ca answers as Rails does | live_named_prompt_ca preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_range_ca answers as Rails does | timeline_range_ca preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_years_ca answers as Rails does | timeline_years_ca preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | missing_track_ca answers as Rails does | missing_track_ca preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | not_found_revoked_ca answers as Rails does | not_found_revoked_ca preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_zh answers as Rails does | live_zh preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | live_named_prompt_zh answers as Rails does | live_named_prompt_zh preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_range_zh answers as Rails does | timeline_range_zh preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | timeline_years_zh answers as Rails does | timeline_years_zh preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | missing_track_zh answers as Rails does | missing_track_zh preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | not_found_revoked_zh answers as Rails does | not_found_revoked_zh preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | unlocked_live_named_en answers as Rails does | unlocked_live_named_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | unlocked_blank_en answers as Rails does | unlocked_blank_en preserves source sharing behavior through its declared native envelope |
+| `dawarich_web/sharing_parity_test.exs` | the unlock form and the csrf meta carry the tokens Rails derives from the session | native public unlock form and csrf meta preserve Rails session token derivation |
+| `dawarich_web/public_link_delivery_test.exs` | public trip shared-link HTTP refuses revocation after document preparation | native public trip document refuses revocation after presentation preparation |
+| `dawarich_web/public_link_delivery_test.exs` | public track shared-link HTTP refuses revocation after document preparation | native public track document refuses revocation after presentation preparation |
+| `dawarich_web/public_link_delivery_test.exs` | public timeline shared-link HTTP refuses revocation after document preparation | native public timeline document refuses revocation after presentation preparation |
+| `dawarich_web/public_link_delivery_test.exs` | public live shared-link HTTP refuses revocation after document preparation | native public live document refuses revocation after presentation preparation |
+| `dawarich_web/public_link_delivery_test.exs` | public trip HTML binds description flags to the initial admission | native public trip presentation binds description flags to its immutable admission |
+| `dawarich_web/public_link_delivery_test.exs` | family shared HTML revalidates session viewer after password during preparation | native public family presentation revalidates session viewer after password during preparation |
+| `dawarich_web/public_link_delivery_test.exs` | family shared HTML revalidates session viewer after lock during preparation | native public family presentation revalidates session viewer after lock during preparation |
+| `dawarich_web/public_link_delivery_test.exs` | family shared HTML revalidates session viewer after deletion during preparation | native public family presentation revalidates session viewer after deletion during preparation |
+| `dawarich_web/public_link_delivery_test.exs` | family shared HTML revalidates remember viewer after password during preparation | native public family presentation revalidates remember viewer after password during preparation |
+| `dawarich_web/public_link_delivery_test.exs` | family shared HTML revalidates remember viewer after lock during preparation | native public family presentation revalidates remember viewer after lock during preparation |
+| `dawarich_web/public_link_delivery_test.exs` | family shared HTML revalidates remember viewer after deletion during preparation | native public family presentation revalidates remember viewer after deletion during preparation |
+| `dawarich_web/capability_logging_test.exs` | every capability and unlock phrase stays out of request query job crash and reporting output | native map capabilities and unlock phrases stay out of request query job crash and reporting output |
+| `dawarich_web/capability_logging_test.exs` | connected and reconnected public mount diagnostics filter bootstrap capabilities on both logger boundaries | connected and reconnected public map diagnostics filter immutable grants on both logger boundaries |
+| `dawarich_web/share_management_page_test.exs` | share compatibility hints cannot return the manager to Rails or own public reads | share compatibility hints preserve native manager commands and the native public map owner |
+| `dawarich_web/public_native_gallery_test.exs` | native public gallery retains authorized photos while private and disabled photos never render | native public map gallery retains authorized photos and clears private or disabled photo delivery |
+| `dawarich_web/public_link_delivery_test.exs` | New admitted missing-resource accounting regression | native missing resource counts admitted GET once while HEAD reconnect and revoked links remain read only |

@@ -4,9 +4,8 @@ defmodule DawarichWeb.PublicMapLive do
   on_mount({DawarichWeb.PublicMapAuth, :default})
 
   def mount(_, session, socket) do
-    if socket.assigns.public_config && !connected?(socket) &&
-         session["public_record_visit"] != false,
-       do: Dawarich.Maps.Public.record_visit(socket.assigns.public_capability)
+    if !connected?(socket) && session["public_record_visit"] != false,
+      do: Dawarich.Maps.Public.record_visit(socket.assigns.public_capability)
 
     socket =
       assign(socket,

@@ -43,21 +43,44 @@ defmodule DawarichWeb.PublicLinkDeliveryTest do
     %{uuid: uuid}
   end
 
+  test "native missing resource counts admitted GET once while HEAD reconnect and revoked links remain read only",
+       %{uuid: uuid} do
+    import Phoenix.LiveViewTest
+    rows("DELETE FROM trips WHERE id=19022")
+    assert head(build_conn(), "/s/#{uuid}").status == 200
+    assert rows("SELECT view_count FROM shared_links WHERE id=$1::text::uuid", [uuid]) == [[0]]
+    conn = get(build_conn(), "/s/#{uuid}")
+    assert rows("SELECT view_count FROM shared_links WHERE id=$1::text::uuid", [uuid]) == [[1]]
+    refute conn.resp_body =~ "native-public-map"
+
+    {:ok, view, _} =
+      live(put_private(conn, :live_view_connect_info, %{session: get_session(conn)}))
+
+    refute has_element?(view, "#native-public-map")
+    assert rows("SELECT view_count FROM shared_links WHERE id=$1::text::uuid", [uuid]) == [[1]]
+    revoke()
+    assert get(build_conn(), "/s/#{uuid}").status == 200
+    assert rows("SELECT view_count FROM shared_links WHERE id=$1::text::uuid", [uuid]) == [[1]]
+  end
+
   for {kind, type} <- [{:trip, 0}, {:track, 1}, {:timeline, 2}, {:live, 3}] do
     @tag review_delivery: true
-    test "public #{kind} shared-link HTTP refuses revocation after document preparation", %{
+    test "native public #{kind} document refuses revocation after presentation preparation", %{
       uuid: uuid
     } do
       rows("UPDATE shared_links SET resource_type=$1 WHERE user_id=19022", [unquote(type)])
-      assert get(build_conn(), "/s/#{uuid}").status == 200
+      positive = get(build_conn(), "/s/#{uuid}")
+      assert positive.status == 200
+      grant = capability(positive)
+      assert {:ok, _} = Dawarich.Maps.Public.presentation(grant)
 
-      conn =
-        build_conn()
-        |> put_private(:dawarich_before_delivery, &revoke/0)
-        |> get("/s/#{uuid}")
+      assert {:error, :not_found} =
+               Dawarich.Maps.Public.presentation(grant, after_read: &revoke/0)
 
-      assert conn.status == 404
-      refute conn.resp_body =~ "Public trip"
+      conn = get(build_conn(), "/s/#{uuid}")
+      assert conn.status == 200
+      refute conn.resp_body =~ "id=\"native-public-map\""
+      refute conn.resp_body =~ "id=\"native-public-resource\""
     end
   end
 
@@ -209,7 +232,9 @@ defmodule DawarichWeb.PublicLinkDeliveryTest do
 
   @tag review_delivery: true
   @tag link_binding: true
-  test "public trip HTML binds description flags to the initial admission", %{uuid: uuid} do
+  test "native public trip presentation binds description flags to its immutable admission", %{
+    uuid: uuid
+  } do
     rows(
       "INSERT INTO action_text_rich_texts(record_type,record_id,name,body,created_at,updated_at) VALUES('Trip',19022,'description','<p>Protected description</p>',now(),now())"
     )
@@ -223,8 +248,12 @@ defmodule DawarichWeb.PublicLinkDeliveryTest do
       )
     end
 
-    conn = build_conn() |> put_private(:dawarich_before_admission, restrict) |> get(path)
-    assert conn.status == 404
+    positive = get(build_conn(), path)
+    grant = capability(positive)
+    restrict.()
+    assert {:error, :not_found} = Dawarich.Maps.Public.presentation(grant)
+    conn = get(build_conn(), path)
+    assert conn.status == 200
     refute conn.resp_body =~ "Protected description"
     fresh = get(build_conn(), path)
     assert fresh.status == 200
@@ -234,22 +263,29 @@ defmodule DawarichWeb.PublicLinkDeliveryTest do
   for source <- [:session, :remember], change <- [:password, :lock, :deletion] do
     @tag review_delivery: true
     @tag family_delivery: true
-    test "family shared HTML revalidates #{source} viewer after #{change} during preparation", %{
-      uuid: uuid
-    } do
+    test "native public family presentation revalidates #{source} viewer after #{change} during preparation",
+         %{
+           uuid: uuid
+         } do
       viewer = family_viewer()
       request = fn -> family_conn(viewer, unquote(source)) end
       path = "/s/#{uuid}"
       positive = get(request.(), path)
       assert positive.status == 200
-      assert positive.resp_body =~ "Public trip"
+      assert positive.resp_body =~ "id=\"native-public-resource\""
       hook = fn -> revoke_viewer(unquote(change)) end
-      conn = request.() |> put_private(:dawarich_before_delivery, hook) |> get(path)
-      assert conn.status == 404
-      refute conn.resp_body =~ "Public trip"
+      grant = capability(positive)
+      assert {:ok, _} = Dawarich.Maps.Public.presentation(grant)
+      assert {:error, :not_found} = Dawarich.Maps.Public.presentation(grant, after_read: hook)
+      conn = get(request.(), path)
+      assert conn.status == 200
+      refute conn.resp_body =~ "id=\"native-public-resource\""
+      refute conn.resp_body =~ "id=\"native-public-map\""
       assert rows("SELECT count(*) FROM family_memberships WHERE user_id=19023") == [[1]]
     end
   end
+
+  defp capability(conn), do: DawarichWeb.PublicMapAuth.live_session(conn)["public_map_capability"]
 
   defp family_viewer do
     now = DateTime.utc_now()

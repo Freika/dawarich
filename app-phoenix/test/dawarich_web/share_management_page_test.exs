@@ -124,7 +124,8 @@ defmodule DawarichWeb.ShareManagementPageTest do
     end
   end
 
-  test "share compatibility hints cannot return the manager to Rails or own public reads", c do
+  test "share compatibility hints preserve native manager commands and the native public map owner",
+       c do
     saved = Application.get_env(:dawarich, :rails_routes, [])
     Application.put_env(:dawarich, :rails_routes, ["share_links"])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, saved) end)
@@ -140,6 +141,9 @@ defmodule DawarichWeb.ShareManagementPageTest do
         "www.example.com"
       )
 
-    assert info.plug == DawarichWeb.SharedLinkPage
+    assert info.plug == Phoenix.LiveView.Plug
+
+    assert {DawarichWeb.PublicMapLive, :show, _, %{name: :native_m6_public}} =
+             info.phoenix_live_view
   end
 end

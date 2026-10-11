@@ -62,10 +62,15 @@ defmodule Dawarich.Maps.Public do
   end
 
   def record_visit(capability, opts \\ []) do
-    with_link(capability, opts, fn link ->
-      SharedLinks.touch!(link.id, Keyword.get(opts, :now, DateTime.utc_now()))
-      :ok
-    end)
+    with_link(
+      capability,
+      opts,
+      fn link ->
+        SharedLinks.touch!(link.id, Keyword.get(opts, :now, DateTime.utc_now()))
+        :ok
+      end,
+      false
+    )
   end
 
   def read(capability, action, params, opts \\ []) do

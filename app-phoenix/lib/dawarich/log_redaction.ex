@@ -147,6 +147,10 @@ defmodule Dawarich.LogRedaction do
 
       words ->
         cond do
+          String.contains?(binary, "\n  Session: ") ->
+            [diagnostic, _session] = String.split(binary, "\n  Session: ", parts: 2)
+            scrub_binary(diagnostic) <> "\n  Session: " <> @filtered
+
           String.contains?(binary, "Postgrex.Error") ->
             scrub_postgres(binary)
 
