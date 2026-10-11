@@ -228,3 +228,39 @@ test("removed anomalies stop owned pages and preserve exact request filters", as
     "Impossible",
   )
 })
+
+test("native place labels retain emoji as DOM text and release visible markers with the layer", () => {
+  const f = fixture(), events = new Map(), markers = []
+  let rendered = placesToGeoJSON([{ id: 7, name: "🏡 <b>Home</b>", latitude: 52.52, longitude: 13.405 }]).features
+  f.map.on = (event, fn) => events.set(event, fn)
+  f.map.off = (event, fn) => { if (events.get(event) === fn) events.delete(event) }
+  f.map.queryRenderedFeatures = () => rendered
+  f.map.getContainer = () => ({ ownerDocument: { createElement: () => ({ style: {} }) } })
+  class Marker {
+    constructor(options) { this.element = options.element; markers.push(this) }
+    setLngLat(value) { this.coordinates = value; return this }
+    getElement() { return this.element }
+    addTo() { this.removed = false; return this }
+    remove() { this.removed = true }
+  }
+  const places = new PlacesLayer(f.map, { library: { Marker } })
+  places.add({ type: "FeatureCollection", features: rendered })
+  events.get("render")?.()
+  assert.equal(markers.length, 1)
+  assert.equal(markers[0].element.textContent, "🏡 <b>Home</b>")
+  assert.equal(markers[0].element.innerHTML, undefined)
+  assert.equal(markers[0].element.className, "map-html-label--places")
+  assert.equal(markers[0].element.style.pointerEvents, "none")
+  rendered = []
+  events.get("render")()
+  assert.equal(markers[0].removed, true)
+  rendered = places.data.features
+  places.show()
+  assert.equal(markers.at(-1).removed, false)
+  places.hide()
+  assert.equal(markers.at(-1).removed, true)
+  places.show()
+  places.remove()
+  assert.equal(markers.at(-1).removed, true)
+  assert.equal(events.has("render"), false)
+})

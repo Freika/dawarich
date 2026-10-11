@@ -121,6 +121,7 @@ export function createEntityLayers({
         }
         if (!resources[kind]) {
           const layer = new definition.Class(map, {
+            library,
             reader,
             timers,
             onError,

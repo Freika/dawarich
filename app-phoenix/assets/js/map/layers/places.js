@@ -1,8 +1,28 @@
 import { BaseLayer } from "./base.js"
+import { createPlaceLabels } from "./place_labels.js"
 
 export class PlacesLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "places", ...options })
+    this.library = options.library
+  }
+
+  add(data, beforeId = null) {
+    if (!this.labels && this.library?.Marker)
+      this.labels = createPlaceLabels({ map: this.map, library: this.library, layerId: this.id })
+    super.add(data, beforeId)
+    this.labels?.refresh()
+  }
+
+  setVisibility(visible) {
+    super.setVisibility(visible)
+    this.labels?.visibility(visible)
+  }
+
+  remove() {
+    this.labels?.destroy()
+    this.labels = null
+    super.remove()
   }
 
   getSourceConfig() {
@@ -16,7 +36,7 @@ export class PlacesLayer extends BaseLayer {
   }
 
   getLayerConfigs() {
-    return [
+    const layers = [
       {
         id: this.id,
         type: "circle",
@@ -47,6 +67,7 @@ export class PlacesLayer extends BaseLayer {
         },
       },
     ]
+    return this.library?.Marker ? layers.slice(0, 1) : layers
   }
 
   getLayerIds() {
