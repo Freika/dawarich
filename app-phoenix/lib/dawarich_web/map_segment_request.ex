@@ -56,7 +56,7 @@ defmodule DawarichWeb.MapSegmentRequest do
 
   defp negotiate(accept, action)
        when action == :point_destroy do
-    if String.trim(accept) in ["", "*/*"] or DawarichWeb.Strangler.browser_like?(accept) do
+    if String.trim(accept) in ["", "*/*"] or DawarichWeb.PageRequest.browser_like?(accept) do
       {:ok, :html}
     else
       types(accept, action)

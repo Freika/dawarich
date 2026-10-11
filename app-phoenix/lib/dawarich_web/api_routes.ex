@@ -12,7 +12,6 @@ defmodule DawarichWeb.ApiRoutes do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
-        plug :method_override_to_rails
         plug DawarichWeb.Api.Body
         plug DawarichWeb.Api.Auth, require_active: false
       end
@@ -22,7 +21,6 @@ defmodule DawarichWeb.ApiRoutes do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
-        plug :method_override_to_rails
         plug DawarichWeb.Api.Body
         plug DawarichWeb.Api.Auth, require_active: false, reject_pending: false
       end
@@ -30,11 +28,7 @@ defmodule DawarichWeb.ApiRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_account_destroy
 
-        delete "/users/me", AccountDestroyController, :destroy,
-          metadata: %{
-            slice: :api_account,
-            rails_gate: {DawarichWeb.Api.AccountDestroyController, :enabled?}
-          }
+        delete "/users/me", AccountDestroyController, :destroy
       end
 
       pipeline :api_manager do
@@ -42,30 +36,25 @@ defmodule DawarichWeb.ApiRoutes do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
-        plug :method_override_to_rails
         plug DawarichWeb.Api.Body
       end
 
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_manager
-        post "/users/exist", UsersController, :exist, metadata: %{slice: :api_account}
+        post "/users/exist", UsersController, :exist
       end
 
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_account
-        get "/users/me", UsersController, :me, metadata: %{slice: :api_account}
+        get "/users/me", UsersController, :me
 
-        post "/users/me/two_factor/setup", TwoFactorController, :setup,
-          metadata: %{slice: :api_account}
+        post "/users/me/two_factor/setup", TwoFactorController, :setup
 
-        post "/users/me/two_factor/confirm", TwoFactorController, :confirm,
-          metadata: %{slice: :api_account}
+        post "/users/me/two_factor/confirm", TwoFactorController, :confirm
 
-        post "/users/me/two_factor/backup_codes", TwoFactorController, :backup_codes,
-          metadata: %{slice: :api_account}
+        post "/users/me/two_factor/backup_codes", TwoFactorController, :backup_codes
 
-        delete "/users/me/two_factor", TwoFactorController, :destroy,
-          metadata: %{slice: :api_account}
+        delete "/users/me/two_factor", TwoFactorController, :destroy
       end
 
       pipeline :api_visits do
@@ -73,31 +62,27 @@ defmodule DawarichWeb.ApiRoutes do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
-        plug :method_override_to_rails
         plug DawarichWeb.Api.Body
         plug DawarichWeb.Api.Auth, require_active: false
       end
 
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_visits
-        post "/visits/merge", VisitsController, :merge, metadata: %{slice: :api_visits}
+        post "/visits/merge", VisitsController, :merge
 
-        post "/visits/bulk_update", VisitsController, :bulk_update,
-          metadata: %{slice: :api_visits}
+        post "/visits/bulk_update", VisitsController, :bulk_update
 
-        post "/visits/batch", VisitsController, :batch, metadata: %{slice: :api_visits}
-        get "/visits", VisitsController, :index, metadata: %{slice: :api_visits}
-        post "/visits", VisitsController, :create, metadata: %{slice: :api_visits}
-        get "/visits/:id", VisitsController, :show, metadata: %{slice: :api_visits}
-        patch "/visits/:id", VisitsController, :update, metadata: %{slice: :api_visits}
-        put "/visits/:id", VisitsController, :update, metadata: %{slice: :api_visits}
-        delete "/visits/:id", VisitsController, :destroy, metadata: %{slice: :api_visits}
+        post "/visits/batch", VisitsController, :batch
+        get "/visits", VisitsController, :index
+        post "/visits", VisitsController, :create
+        get "/visits/:id", VisitsController, :show
+        patch "/visits/:id", VisitsController, :update
+        put "/visits/:id", VisitsController, :update
+        delete "/visits/:id", VisitsController, :destroy
 
-        get "/visits/:id/possible_places", VisitsController, :possible_places,
-          metadata: %{slice: :api_visits}
+        get "/visits/:id/possible_places", VisitsController, :possible_places
 
-        post "/visits/:id/select_place", VisitsController, :select_place,
-          metadata: %{slice: :api_visits}
+        post "/visits/:id/select_place", VisitsController, :select_place
       end
 
       pipeline :api_notes do
@@ -105,19 +90,18 @@ defmodule DawarichWeb.ApiRoutes do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
-        plug :method_override_to_rails
         plug DawarichWeb.Api.Body
         plug DawarichWeb.Api.Auth, require_active: false
       end
 
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_notes
-        get "/notes", NotesController, :index, metadata: %{slice: :api_notes}
-        post "/notes", NotesController, :create, metadata: %{slice: :api_notes}
-        get "/notes/:id", NotesController, :show, metadata: %{slice: :api_notes}
-        patch "/notes/:id", NotesController, :update, metadata: %{slice: :api_notes}
-        put "/notes/:id", NotesController, :update, metadata: %{slice: :api_notes}
-        delete "/notes/:id", NotesController, :destroy, metadata: %{slice: :api_notes}
+        get "/notes", NotesController, :index
+        post "/notes", NotesController, :create
+        get "/notes/:id", NotesController, :show
+        patch "/notes/:id", NotesController, :update
+        put "/notes/:id", NotesController, :update
+        delete "/notes/:id", NotesController, :destroy
       end
 
       pipeline :api_shared do
@@ -131,21 +115,13 @@ defmodule DawarichWeb.ApiRoutes do
       scope "/api/v1/shared", DawarichWeb.Api do
         pipe_through :api_shared
 
-        get "/:id/trip", SharedController, :trip, metadata: %{slice: :api_shared}
-        get "/:id/points", SharedController, :points, metadata: %{slice: :api_shared}
-        get "/:id/route", SharedController, :route, metadata: %{slice: :api_shared}
+        get "/:id/trip", SharedController, :trip
+        get "/:id/points", SharedController, :points
+        get "/:id/route", SharedController, :route
 
-        get "/:id/photos", SharedController, :photos,
-          metadata: %{
-            slice: :api_shared,
-            rails_gate: {DawarichWeb.Api.SharedController, :photos_owned?}
-          }
+        get "/:id/photos", SharedController, :photos
 
-        get "/:id/photos/:photo_id/thumbnail", SharedController, :thumbnail,
-          metadata: %{
-            slice: :api_shared,
-            rails_gate: {DawarichWeb.Api.SharedController, :photos_owned?}
-          }
+        get "/:id/photos/:photo_id/thumbnail", SharedController, :thumbnail
       end
 
       pipeline :api_ingest do
@@ -160,15 +136,13 @@ defmodule DawarichWeb.ApiRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_ingest
 
-        post "/points", IngestController, {:native, :points}, metadata: %{slice: :ingest}
+        post "/points", IngestController, {:native, :points}
 
-        post "/overland/batches", IngestController, {:native, :overland},
-          metadata: %{slice: :ingest}
+        post "/overland/batches", IngestController, {:native, :overland}
 
-        post "/owntracks/points", IngestController, {:native, :owntracks},
-          metadata: %{slice: :ingest}
+        post "/owntracks/points", IngestController, {:native, :owntracks}
 
-        post "/traccar/points", IngestController, {:native, :traccar}, metadata: %{slice: :ingest}
+        post "/traccar/points", IngestController, {:native, :traccar}
       end
 
       pipeline :api_pending do
@@ -194,7 +168,7 @@ defmodule DawarichWeb.ApiRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_foundation
 
-        get "/plan", PlanController, :show, metadata: %{slice: :api_foundation}
+        get "/plan", PlanController, :show
       end
 
       pipeline :api_stats do
@@ -243,11 +217,7 @@ defmodule DawarichWeb.ApiRoutes do
               {"/settings", :settings},
               {"/settings/transportation_recalculation_status", :progress}
             ] do
-          get path, StandaloneMap, action,
-            metadata: %{
-              slice: :api_map_reads,
-              rails_gate: {DawarichWeb.Api.StandaloneMap, :enabled?}
-            }
+          get path, StandaloneMap, action
         end
       end
 
@@ -256,7 +226,6 @@ defmodule DawarichWeb.ApiRoutes do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
         plug DawarichWeb.RateLimit
-        plug :method_override_to_rails
         plug DawarichWeb.Api.Body
         plug DawarichWeb.Api.Auth, require_active: false
       end

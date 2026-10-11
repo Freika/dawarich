@@ -5,7 +5,7 @@ defmodule DawarichWeb.AuthApi.Http do
   alias Dawarich.{Accounts, UserTimeZone}
   alias Dawarich.Auth.Admission
   alias Dawarich.Auth.Api.{Challenge, ChallengeToken, ChallengeWrite, Login}
-  alias DawarichWeb.{HostAuthorization, ForceSSL, RailsProxy, RateLimit}
+  alias DawarichWeb.{HostAuthorization, ForceSSL, RateLimit}
   alias DawarichWeb.Api.{Auth, Body}
   alias DawarichWeb.AuthApi.{Input, Response}
   @routes %{"/api/v1/auth/login" => :login, "/api/v1/auth/otp_challenge" => :challenge}
@@ -156,7 +156,7 @@ defmodule DawarichWeb.AuthApi.Http do
     conn =
       case Keyword.get(opts, :fallback) do
         fun when is_function(fun, 1) -> fun.(conn)
-        _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+        _ -> DawarichWeb.StandaloneError.respond(conn)
       end
 
     halt(conn)

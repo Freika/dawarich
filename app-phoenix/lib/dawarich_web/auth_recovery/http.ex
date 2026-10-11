@@ -4,7 +4,7 @@ defmodule DawarichWeb.AuthRecovery.Http do
   import Plug.Conn
   alias Dawarich.Auth.{ActionCsrf, Admission, SessionCookie}
   alias Dawarich.Auth.Recovery.Flow
-  alias DawarichWeb.{AuthCookie, RailsAuth, RailsCsrf, RailsProxy, RequestURL}
+  alias DawarichWeb.{AuthCookie, RailsAuth, RailsCsrf, RequestURL}
 
   @routes [
     {"GET", "/users/password/new"},
@@ -246,7 +246,7 @@ defmodule DawarichWeb.AuthRecovery.Http do
     case {Keyword.get(opts, :native, false), Keyword.get(opts, :fallback)} do
       {true, _} -> conn |> send_resp(422, "Invalid recovery request") |> halt()
       {_, fun} when is_function(fun, 1) -> fun.(conn)
-      _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+      _ -> DawarichWeb.StandaloneError.respond(conn)
     end
   end
 end

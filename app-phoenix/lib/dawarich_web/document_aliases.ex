@@ -17,13 +17,26 @@ defmodule DawarichWeb.DocumentAliases do
     route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, conn.host)
 
     if document?(route) do
-      query = Plug.Conn.Query.decode(conn.query_string)
+      query =
+        if achievement?(path) do
+          case DawarichWeb.AchievementPublicQuery.decode(
+                 conn.query_string,
+                 ~w(locale embed format)
+               ) do
+            {:ok, query} -> query
+            _ -> throw({:document_query, 422})
+          end
+        else
+          Plug.Conn.Query.decode(conn.query_string)
+        end
+
       selected = suffix || query["format"]
 
       formats =
         DawarichWeb.PageAccept.formats(Enum.join(get_req_header(conn, "accept"), ","), false)
 
-      status = if :native_m6_browser in route.pipe_through, do: 422, else: 406
+      status =
+        if :native_m6_browser in route.pipe_through or achievement?(path), do: 422, else: 406
 
       conn =
         if status == 422,
@@ -50,7 +63,13 @@ defmodule DawarichWeb.DocumentAliases do
           |> put_private(:native_document_original, {conn.request_path, conn.query_string})
           |> Map.put(:path_info, path)
           |> Map.put(:request_path, "/" <> Enum.join(path, "/"))
-          |> Map.put(:query_string, without_format(conn.query_string))
+          |> Map.put(
+            :query_string,
+            if(achievement?(path),
+              do: URI.encode_query(Map.delete(query, "format")),
+              else: without_format(conn.query_string)
+            )
+          )
           |> put_req_header("accept", "text/html")
           |> delete_req_header("turbo-frame")
           |> delete_req_header("x-turbo-request-id")
@@ -60,9 +79,14 @@ defmodule DawarichWeb.DocumentAliases do
     end
   rescue
     Plug.Conn.InvalidQueryError -> refuse(conn, 400)
+  catch
+    {:document_query, status} -> refuse(conn, status)
   end
 
   def call(conn, _), do: conn
+
+  defp achievement?(["shared", "achievements", _]), do: true
+  defp achievement?(_), do: false
 
   defp document?(%{plug: plug, pipe_through: pipelines}) do
     plug not in @protocols and plug != DawarichWeb.NativeMapRetired and

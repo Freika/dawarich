@@ -5,17 +5,13 @@ defmodule DawarichWeb.StatsLive.Month do
   import DawarichWeb.StatsCards, only: [plan_alert: 1]
 
   alias Dawarich.{LocalTime, Stats}
-  alias DawarichWeb.{Assets, LocalizedDate, Params, RailsWidgets, StatsFormat, StatsMonth}
+  alias DawarichWeb.{Assets, LocalizedDate, Params, StatsFormat, StatsMonth}
 
   @off [nil, "", false, 0, "0", "f", "F", "false", "FALSE", "off", "OFF"]
 
   @impl true
   def mount(params, _session, socket),
     do: {:ok, assign(socket, page(socket.assigns.current_user, params, socket.assigns))}
-
-  @impl true
-  def handle_event("rails_flash", params, socket),
-    do: {:noreply, RailsWidgets.rails_flash(socket, params)}
 
   def page(user, %{"year" => year, "month" => month}, %{
         locale: locale,

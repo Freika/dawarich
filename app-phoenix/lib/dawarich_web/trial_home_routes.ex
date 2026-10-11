@@ -5,22 +5,19 @@ defmodule DawarichWeb.TrialHomeRoutes do
       scope "/" do
         pipe_through :public_home
 
-        get "/", DawarichWeb.HomeDispatch, [],
-          metadata: %{rails_gate: {DawarichWeb.HomeGate, :owned?}}
+        get "/", DawarichWeb.HomeDispatch, []
       end
 
       scope "/" do
         pipe_through :trial_welcome
 
-        get "/trial/welcome", DawarichWeb.TrialWelcome, [],
-          metadata: %{rails_gate: {DawarichWeb.WelcomeGate, :owned?}}
+        get "/trial/welcome", DawarichWeb.TrialWelcome, []
       end
 
       scope "/" do
         pipe_through :rails_frame
 
-        get "/trial/upgrade", DawarichWeb.TrialUpgrade, [],
-          metadata: %{rails_gate: {DawarichWeb.TrialGate, :upgrade?}}
+        get "/trial/upgrade", DawarichWeb.TrialUpgrade, []
       end
 
       scope "/" do
@@ -32,8 +29,7 @@ defmodule DawarichWeb.TrialHomeRoutes do
           root_layout: {DawarichWeb.Layouts, :root},
           layout: {DawarichWeb.Layouts, :app} do
           live "/trial/resume", DawarichWeb.TrialLive.Resume, :show,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TrialGate, :resume?}}
+            container: {:div, class: "contents"}
         end
       end
     end

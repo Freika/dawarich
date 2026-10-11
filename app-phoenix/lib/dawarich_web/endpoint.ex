@@ -44,6 +44,6 @@ defmodule DawarichWeb.Endpoint do
   plug DawarichWeb.Api.RequestFormat
   plug DawarichWeb.Api.MethodOverride
   plug DawarichWeb.DocumentAliases
-  plug DawarichWeb.Strangler
+  plug DawarichWeb.NativeRequest
   plug DawarichWeb.Api.Transport, :router
 end

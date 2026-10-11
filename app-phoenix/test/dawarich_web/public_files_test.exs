@@ -178,7 +178,7 @@ defmodule DawarichWeb.PublicFilesTest do
     assert conn.status == 200
   end
 
-  test "the endpoint serves public/ before the Strangler and leaves the rest to Puma", %{
+  test "the endpoint serves public resources before native route admission", %{
     root: root
   } do
     upstream = listen()
@@ -218,11 +218,9 @@ defmodule DawarichWeb.PublicFilesTest do
     for path <- ["/settings/two_factor", "/phoenix/js/phoenix.mjs.map"] do
       client = connect(port)
       send_raw(client, "GET #{path} HTTP/1.1\r\nHost: dawarich.example\r\n\r\n")
-      puma = accept(upstream)
-      {head, _} = read_head(puma)
-      assert request_line(head) == "GET #{path} HTTP/1.1"
-      reply(puma, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n")
-      assert {404, _, ""} = read_response(client)
+      {status, _, _} = read_response(client)
+      assert status == if(path == "/settings/two_factor", do: 302, else: 404)
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
     end
   end
 end

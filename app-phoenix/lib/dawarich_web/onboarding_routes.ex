@@ -17,13 +17,11 @@ defmodule DawarichWeb.OnboardingRoutes do
         pipe_through :standalone_settings
 
         for method <- [:post, :patch, :put] do
-          match method, "/settings/onboarding", DawarichWeb.OnboardingActions, :update,
-            metadata: %{rails_gate: {DawarichWeb.SettingsActions, :enabled?}}
+          match method, "/settings/onboarding", DawarichWeb.OnboardingActions, :update
         end
 
         for method <- [:post, :delete] do
-          match method, "/settings/onboarding/demo_data", DawarichWeb.DemoDataActions, :demo_data,
-            metadata: %{rails_gate: {DawarichWeb.SettingsActions, :enabled?}}
+          match method, "/settings/onboarding/demo_data", DawarichWeb.DemoDataActions, :demo_data
         end
       end
     end

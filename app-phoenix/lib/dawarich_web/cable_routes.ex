@@ -12,7 +12,7 @@ defmodule DawarichWeb.CableRoutes do
       scope "/" do
         pipe_through :cable
 
-        get "/cable", DawarichWeb.Cable, :upgrade, metadata: %{slice: :cable}
+        get "/cable", DawarichWeb.Cable, :upgrade
       end
     end
   end

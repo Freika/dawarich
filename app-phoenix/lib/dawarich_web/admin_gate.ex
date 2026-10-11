@@ -2,7 +2,7 @@ defmodule DawarichWeb.AdminGate do
   @moduledoc false
 
   alias Dawarich.Auth.Admission
-  alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
+  alias DawarichWeb.{LayoutAssigns, RailsAuth, PageRequest}
 
   @markers ~w(client aff via referral dawarich_client invitation_token pending_import_ticket)
 
@@ -20,7 +20,7 @@ defmodule DawarichWeb.AdminGate do
 
     (LayoutAssigns.self_hosted?() or DawarichWeb.OperatorRedirect.operator?(user)) and
       not is_nil(user) and supported?(user) and
-      Strangler.page_request?(conn) and Admission.headers(conn.req_headers) == :ok and
+      PageRequest.page_request?(conn) and Admission.headers(conn.req_headers) == :ok and
       conn.method in ["GET", "HEAD"] and
       Enum.all?(query, fn {_key, value} -> is_binary(value) end) and
       not Enum.any?(["_method" | @markers], &Map.has_key?(query, &1)) and

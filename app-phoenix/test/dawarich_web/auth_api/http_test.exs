@@ -200,7 +200,7 @@ defmodule DawarichWeb.AuthApi.HttpTest do
     assert is_binary(bytes)
   end
 
-  test "API auth HTTP initializes API framing for untouched endpoint success and fallback conns",
+  test "API auth HTTP initializes framing for native success and local refusals",
        c do
     assert call(login(), c.context).assigns.api_tag == "api"
 
@@ -210,14 +210,11 @@ defmodule DawarichWeb.AuthApi.HttpTest do
         ] do
       before = snapshot()
 
-      logs =
-        capture_log([level: :info], fn ->
-          result = proxied(conn, c)
-          assert result.status == 209 and result.halted
-          assert result.assigns.api_tag == "api"
-        end)
-
-      assert String.contains?(logs, "[api]")
+      result = Http.call(conn, enabled: true, context: c.context)
+      assert result.status == 422 and result.halted
+      assert result.assigns.api_tag == "api"
+      assert result.resp_cookies == %{}
+      assert {:error, :timeout} = :gen_tcp.accept(c.upstream.listen, 0)
       assert snapshot() == before
     end
   end
@@ -354,28 +351,6 @@ defmodule DawarichWeb.AuthApi.HttpTest do
     unchanged = snapshot() == before
     assert unchanged
     assert result.resp_cookies == %{}
-  end
-
-  defp proxied(conn, c) do
-    expected = elem(conn.adapter, 1).req_body
-
-    peer =
-      Task.async(fn ->
-        socket = accept(c.upstream)
-        {head, rest} = read_head(socket)
-
-        raw =
-          binary_part(read_at_least(socket, rest, byte_size(expected)), 0, byte_size(expected))
-
-        assert raw == expected
-        reply(socket, "HTTP/1.1 209 Source\r\nContent-Length: 4\r\n\r\npuma")
-        :gen_tcp.close(socket)
-        request_line(head)
-      end)
-
-    result = Http.call(conn, enabled: true, context: c.context)
-    assert Task.await(peer) == "POST /api/v1/auth/login HTTP/1.1"
-    result
   end
 
   defp snapshot,

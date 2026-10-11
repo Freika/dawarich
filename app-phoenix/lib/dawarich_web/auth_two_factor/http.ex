@@ -5,7 +5,7 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
   alias Dawarich.{Accounts, RailsCookies, RailsSecret}
   alias Dawarich.Auth.{ActionCsrf, Admission, SessionCookie}
   alias Dawarich.Auth.TwoFactor.{Closure, Management, Secret}
-  alias DawarichWeb.{RailsAuth, RailsProxy, RequestURL}
+  alias DawarichWeb.{RailsAuth, RequestURL}
   alias DawarichWeb.AuthTwoFactor.Response
 
   @path "/settings/two_factor"
@@ -271,7 +271,7 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
     query? =
       conn.query_string == "" or
         (Keyword.get(opts, :native, false) and conn.method in ["GET", "HEAD"] and
-           DawarichWeb.Strangler.page_request?(conn))
+           DawarichWeb.PageRequest.page_request?(conn))
 
     query? and get_req_header(conn, "x-requested-with") == [] and
       Enum.all?(get_req_header(conn, "accept"), fn value ->
@@ -287,7 +287,7 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
       else
         case Keyword.get(opts, :fallback) do
           fun when is_function(fun, 1) -> fun.(conn)
-          _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+          _ -> DawarichWeb.StandaloneError.respond(conn)
         end
       end
 

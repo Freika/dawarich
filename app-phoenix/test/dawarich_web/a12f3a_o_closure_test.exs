@@ -3,7 +3,7 @@ defmodule DawarichWeb.A12f3aOClosureTest do
 
   import Plug.Conn
   import Plug.Test
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
+  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0]
 
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{A8Gate, A8Request, MapWriteRequest, RailsAuth, RailsCsrf}
@@ -215,15 +215,9 @@ defmodule DawarichWeb.A12f3aOClosureTest do
   end
 
   defp replay(ctx, method, path, body, plug, accept \\ "text/vnd.turbo-stream.html") do
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, ctx.upstream.port})
-
-    {{line, received}, response} =
-      forwarded(ctx.upstream, fn -> plug.call(request(ctx, method, path, body, accept), []) end)
-
-    assert response.status == 204
+    response = plug.call(request(ctx, method, path, body, accept), [])
+    assert response.status == 422
     assert response.halted
-    assert line == "#{method |> Atom.to_string() |> String.upcase()} #{path} HTTP/1.1"
-    assert received == body
   end
 end
 
@@ -231,9 +225,9 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
   use Dawarich.IngestCase, async: false
   import Plug.Conn
   import Phoenix.ConnTest
-  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
+  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0]
   alias Dawarich.Test.RailsUser
-  alias DawarichWeb.{Router, Strangler}
+  alias DawarichWeb.{Router, NativeRequest}
   @endpoint DawarichWeb.Endpoint
 
   @moduletag :tmp_dir
@@ -332,7 +326,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     Application.put_env(:dawarich, :rails_routes, ["stats", "digests"])
 
     for path <- ["/shared/month/missing", "/shared/digest/missing"], method <- [:get, :head] do
-      assert info("GET", path)[:native_page] || info("GET", path).rails_key == "shared"
+      assert info("GET", path)[:native_page]
       response = dispatch(build_conn(), @endpoint, method, path, nil)
       assert response.status == 302
       assert get_resp_header(response, "location") == ["http://www.example.com/"]
@@ -342,7 +336,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     Application.put_env(:dawarich, :rails_routes, ["map"])
 
     for {method, path, key, _} <- routes, key in ~w(points tracks areas), method != "GET" do
-      admitted = Strangler.call(raw(ctx, method, path, ""), [])
+      admitted = NativeRequest.call(raw(ctx, method, path, ""), [])
       refute admitted.halted, "map must leave #{key} independent"
     end
 
@@ -430,12 +424,9 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
           put_req_header(c, k, v)
         end)
 
-      {{line, original}, response} =
-        forwarded(ctx.upstream, fn -> @endpoint.call(conn, @endpoint.init([])) end)
-
-      assert response.status == 204
-      assert line == "#{method} #{path} HTTP/1.1"
-      assert original == bytes
+      response = @endpoint.call(conn, @endpoint.init([]))
+      assert response.status == if(path == "/settings/users/import", do: 404, else: 422)
+      assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
       assert observations() == previous
     end
 
@@ -635,8 +626,7 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
 
     build = fn -> original end
     Application.put_env(:dawarich, :rails_routes, [])
-    route = info(if(method == "HEAD", do: "GET", else: method), path |> String.split("?") |> hd())
-    assert Strangler.gate_open?(route, build.()), "native eligibility: #{method} #{path}"
+    refute NativeRequest.call(build.(), []).halted, "native admission: #{method} #{path}"
     before = observations()
 
     assert {:ok, :ok} =
@@ -656,28 +646,20 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
              end)
 
     assert observations() == before, "native probe restored: #{method} #{path}"
-    before = observations()
     Application.put_env(:dawarich, :rails_routes, [key])
 
-    if route[:native_page] == true or
-         (method in ["GET", "HEAD"] and URI.parse(path).path == "/places") do
-      response = native_response(ctx, build.())
-      assert response.status in [200, 301, 302, 303]
-      assert observations() == before
-    else
-      {{line, bytes}, response} =
-        forwarded(ctx.upstream, fn ->
-          response = @endpoint.call(build.(), @endpoint.init([]))
-          assert response.status == 204, "rollback #{key}: #{method} #{path}"
-          response
-        end)
-
-      assert line == "#{method} #{path} HTTP/1.1"
-      assert bytes == body
-      assert response.status == 204
-      refute response.private[:dawarich_method]
-      assert observations() == before
-    end
+    assert {:ok, :ok} =
+             Repo.transaction(fn ->
+               Repo.query!("SAVEPOINT direct_probe")
+               response = native_response(ctx, build.())
+               assert response.status in [200, 301, 302, 303]
+               assert response.private[:dawarich_method] == method
+               assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+               if method == "HEAD", do: assert(response.resp_body == "")
+               Repo.query!("ROLLBACK TO SAVEPOINT direct_probe")
+               Repo.query!("RELEASE SAVEPOINT direct_probe")
+               :ok
+             end)
 
     assert observations() == before
     Application.put_env(:dawarich, :rails_routes, [])
@@ -712,24 +694,11 @@ defmodule DawarichWeb.A12f3aORouteClosureTest do
     Application.put_env(:dawarich, :rails_routes, [key])
     body = "original=%2B+%26&original=second&nested%5Ba%5D=1"
 
-    route = info(if(method == "HEAD", do: "GET", else: method), path |> String.split("?") |> hd())
-
-    if route[:native_page] == true or
-         (method in ["GET", "HEAD"] and URI.parse(path).path == "/places") do
-      response = native_response(ctx, raw(ctx, method, path, body))
-      assert response.status in [200, 301, 302, 303]
-      assert observations() == before
-    else
-      {{line, bytes}, response} =
-        forwarded(ctx.upstream, fn ->
-          @endpoint.call(raw(ctx, method, path, body), @endpoint.init([]))
-        end)
-
-      assert line == "#{method} #{path} HTTP/1.1"
-      assert bytes == body
-      assert response.status == 204
-      assert observations() == before
-    end
+    response = native_response(ctx, raw(ctx, method, path, body))
+    assert response.status in [200, 301, 302, 303, 400, 404, 422]
+    assert response.private[:dawarich_method] == method
+    assert {:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 0)
+    if method == "HEAD", do: assert(response.resp_body == "")
 
     assert observations() == before
     Application.put_env(:dawarich, :rails_routes, [])

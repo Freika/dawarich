@@ -56,7 +56,7 @@ defmodule DawarichWeb.CableRouteTest do
 
     Application.put_env(:dawarich, :rails_routes, ["cable"])
     assert {101, _} = upgrade!(port)
-    assert_receive {:cable_request, "/cable", _, _}
+    refute_receive {:cable_request, "/cable", _, _}, 100
     Application.put_env(:dawarich, :rails_routes, [])
 
     with_system_env("SELF_HOSTED", "false", fn ->
@@ -66,7 +66,7 @@ defmodule DawarichWeb.CableRouteTest do
 
     with_system_env("DAWARICH_RAILS_SLICES", "cable", fn ->
       assert {101, _} = upgrade!(port)
-      assert_receive {:cable_request, "/cable", _, _}
+      refute_receive {:cable_request, "/cable", _, _}, 100
     end)
   end
 
@@ -81,7 +81,7 @@ defmodule DawarichWeb.CableRouteTest do
       refute_receive {:cable_request, "/cable", _, _}, 100
       Application.put_env(:dawarich, :rails_routes, ["cable"])
       assert {101, _} = upgrade!(port)
-      assert_receive {:cable_request, "/cable", _, _}
+      refute_receive {:cable_request, "/cable", _, _}, 100
       Application.put_env(:dawarich, :rails_routes, [])
 
       for {name, value} <- [{"SELF_HOSTED", "false"}, {"DAWARICH_RAILS_SLICES", "cable"}] do
@@ -90,7 +90,7 @@ defmodule DawarichWeb.CableRouteTest do
 
           if name == "SELF_HOSTED",
             do: refute_receive({:cable_request, "/cable", _, _}, 100),
-            else: assert_receive({:cable_request, "/cable", _, _})
+            else: refute_receive({:cable_request, "/cable", _, _}, 100)
         end)
       end
     end
@@ -98,16 +98,12 @@ defmodule DawarichWeb.CableRouteTest do
 
   test "map and cable rollback keys remain independent", %{port: port} do
     Application.put_env(:dawarich, :rails_routes, ["map"])
-    assert DawarichWeb.Strangler.handed_back?(["map"])
-    refute DawarichWeb.Strangler.handed_back?(["cable"])
     assert {101, _} = upgrade!(port)
     refute_receive {:cable_request, "/cable", _, _}, 200
 
     Application.put_env(:dawarich, :rails_routes, ["cable"])
-    refute DawarichWeb.Strangler.handed_back?(["map"])
-    assert DawarichWeb.Strangler.handed_back?(["cable"])
     assert {101, _} = upgrade!(port)
-    assert_receive {:cable_request, "/cable", _, _}
+    refute_receive {:cable_request, "/cable", _, _}, 100
   end
 
   test "the Bus is a child of the application" do

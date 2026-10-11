@@ -5,18 +5,15 @@ defmodule DawarichWeb.MapFrameRoutes do
       scope "/map" do
         pipe_through :rails_frame
 
-        get "/residency", DawarichWeb.MapFrames, :residency,
-          metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :residency?}}
+        get "/residency", DawarichWeb.MapFrames, :residency
       end
 
       scope "/places" do
         pipe_through :rails_frame
 
-        get "/nearby", DawarichWeb.PlaceNavigation, :nearby,
-          metadata: %{rails_gate: {DawarichWeb.PlacesGate, :nearby?}}
+        get "/nearby", DawarichWeb.PlaceNavigation, :nearby
 
-        get "/:id", DawarichWeb.PlaceNavigation, :show,
-          metadata: %{rails_gate: {DawarichWeb.PlacesGate, :navigation?}}
+        get "/:id", DawarichWeb.PlaceNavigation, :show
       end
     end
   end

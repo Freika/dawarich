@@ -1,4 +1,4 @@
-defmodule DawarichWeb.CableProxy.Frame do
+defmodule Dawarich.Cable.Frame do
   @moduledoc false
 
   @kinds %{0 => :continuation, 1 => :text, 2 => :binary, 8 => :close, 9 => :ping, 10 => :pong}

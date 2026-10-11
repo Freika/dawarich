@@ -5,14 +5,11 @@ defmodule DawarichWeb.SettingsMiscRoutes do
       scope "/" do
         pipe_through :standalone_settings
 
-        get "/settings/theme", DawarichWeb.SettingsMiscActions, :theme,
-          metadata: %{rails_gate: {DawarichWeb.SettingsActions, :enabled?}}
+        get "/settings/theme", DawarichWeb.SettingsMiscActions, :theme
 
-        patch "/settings/changelog_consent", DawarichWeb.SettingsMiscActions, :changelog_consent,
-          metadata: %{rails_gate: {DawarichWeb.SettingsActions, :enabled?}}
+        patch "/settings/changelog_consent", DawarichWeb.SettingsMiscActions, :changelog_consent
 
-        post "/settings/changelog_consent", DawarichWeb.SettingsMiscActions, :changelog_consent,
-          metadata: %{rails_gate: {DawarichWeb.SettingsActions, :enabled?}}
+        post "/settings/changelog_consent", DawarichWeb.SettingsMiscActions, :changelog_consent
       end
     end
   end

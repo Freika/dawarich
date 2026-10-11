@@ -48,12 +48,7 @@ defmodule DawarichWeb.AchievementActions.Gate do
         DawarichWeb.StandaloneError.respond(conn, "achievement_request", status)
       end
     else
-      upstream =
-        Keyword.get_lazy(opts, :upstream, fn ->
-          Application.fetch_env!(:dawarich, :rails_upstream)
-        end)
-
-      conn |> DawarichWeb.RailsProxy.call(upstream) |> Plug.Conn.halt()
+      DawarichWeb.StandaloneError.respond(conn)
     end
   end
 

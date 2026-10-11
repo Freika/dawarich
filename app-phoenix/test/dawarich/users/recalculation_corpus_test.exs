@@ -61,18 +61,16 @@ defmodule Dawarich.Users.RecalculationCorpusTest do
     end
   end
 
-  test "recalculation routes retain explicit hand-backs and expose native digest generation" do
+  test "recalculation and digest generation use direct native routes" do
     route = Phoenix.Router.route_info(DawarichWeb.Router, "POST", "/api/v1/recalculations", "x")
     assert %{plug: DawarichWeb.Api.RecalculationsController, plug_opts: :create} = route
-    assert route.rails_gate == {DawarichWeb.Api.StandaloneMap, :enabled?}
+    refute Map.has_key?(route, :rails_gate)
 
     assert %{plug: DawarichWeb.DigestActions, plug_opts: :create} =
              Phoenix.Router.route_info(DawarichWeb.Router, "POST", "/digests", "localhost")
 
     original = Application.get_env(:dawarich, :rails_routes)
     Application.put_env(:dawarich, :rails_routes, ["digests", "api"])
-    assert DawarichWeb.Strangler.handed_back?(["digests", "2025"])
-    assert DawarichWeb.Strangler.handed_back?(["api", "v1", "stats"])
     Application.put_env(:dawarich, :rails_routes, original)
   end
 

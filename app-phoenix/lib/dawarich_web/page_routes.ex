@@ -9,20 +9,16 @@ defmodule DawarichWeb.PageRoutes do
       scope "/" do
         pipe_through :map_write
 
-        post "/tracks/recalculation", DawarichWeb.TrackRecalculationActions, :create,
-          metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+        post "/tracks/recalculation", DawarichWeb.TrackRecalculationActions, :create
 
-        post "/areas", DawarichWeb.AreaActions, :create,
-          metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+        post "/areas", DawarichWeb.AreaActions, :create
 
         for method <- [:patch, :put, :post] do
-          match method, "/areas/:id", DawarichWeb.AreaActions, :update,
-            metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+          match method, "/areas/:id", DawarichWeb.AreaActions, :update
         end
 
         for method <- [:delete, :post] do
-          match method, "/points/bulk_destroy", DawarichWeb.PointListActions, :destroy,
-            metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+          match method, "/points/bulk_destroy", DawarichWeb.PointListActions, :destroy
         end
       end
 

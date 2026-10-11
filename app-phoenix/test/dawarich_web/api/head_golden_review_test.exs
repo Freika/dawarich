@@ -28,6 +28,8 @@ defmodule DawarichWeb.Api.HeadGoldenReviewTest do
     previous = Application.get_env(:dawarich, :rails_routes, [])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, previous) end)
     Application.put_env(:dawarich, :rails_routes, ["api"])
+    kase = Map.put(kase, "expect", "own")
+    for row <- kase["setup"], do: Dawarich.Test.ApiGolden.insert!("users", row)
     Dawarich.Test.ApiGolden.check(kase, c.port, c.upstream)
   end
 

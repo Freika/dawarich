@@ -5,7 +5,7 @@ defmodule DawarichWeb.AuthAccountLink.Http do
   alias Dawarich.{Jobs, RailsCookies, RailsSecret}
   alias Dawarich.Auth.{ActionCsrf, Admission, SessionCookie}
   alias Dawarich.Auth.AccountLink.{Pending, Confirmation, SignIn}
-  alias DawarichWeb.{RailsAuth, RailsProxy, RateLimit, RequestURL}
+  alias DawarichWeb.{RailsAuth, RateLimit, RequestURL}
   alias DawarichWeb.AuthAccountLink.Response
   @path "/auth/account_link/challenge"
   @fields ~w(authenticity_token password commit utf8)
@@ -161,7 +161,7 @@ defmodule DawarichWeb.AuthAccountLink.Http do
   defp read_all(%{private: %{dawarich_raw_body: raw}} = conn, []), do: {:ok, raw, conn}
 
   defp read_all(conn, acc) do
-    case read_body(conn, RailsProxy.read_options()) do
+    case read_body(conn, DawarichWeb.Api.RequestBody.read_options()) do
       {:more, raw, conn} -> read_all(conn, [acc, raw])
       {:ok, raw, conn} -> {:ok, IO.iodata_to_binary([acc, raw]), conn}
       {:error, _} -> {:error, conn}
@@ -198,7 +198,7 @@ defmodule DawarichWeb.AuthAccountLink.Http do
     conn =
       case Keyword.get(opts, :fallback) do
         fun when is_function(fun, 1) -> fun.(conn)
-        _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+        _ -> DawarichWeb.StandaloneError.respond(conn)
       end
 
     halt(conn)

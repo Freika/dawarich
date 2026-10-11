@@ -5,7 +5,7 @@ defmodule DawarichWeb.AchievementPublic do
   alias Dawarich.Achievements.{PublicCard, UiText}
   alias Dawarich.Auth.Admission
   alias Dawarich.Sharing.Delivery
-  alias DawarichWeb.{Locale, RailsAuth, RailsCsrf, RailsProxy, RailsSession}
+  alias DawarichWeb.{Locale, RailsAuth, RailsCsrf, RailsSession}
 
   @markers ~w(client aff via referral invitation_token pending_import_ticket dawarich_client)
   @headers ~w(turbo-frame x-http-method-override x-dawarich-client content-type transfer-encoding)
@@ -20,7 +20,7 @@ defmodule DawarichWeb.AchievementPublic do
       Enum.all?(@headers, &(get_req_header(conn, &1) == [])) and
       get_req_header(conn, "content-length") in [[], ["0"]] and
       not Enum.any?(conn.req_headers, fn {name, _} -> String.contains?(name, "_") end) and
-      DawarichWeb.Strangler.page_request?(conn)
+      DawarichWeb.PageRequest.page_request?(conn)
   end
 
   def load(conn, opts \\ []) do
@@ -57,16 +57,11 @@ defmodule DawarichWeb.AchievementPublic do
     end
   end
 
-  def handoff(conn, opts) do
+  def handoff(conn, _opts) do
     if Dawarich.Standalone.enabled?() do
       DawarichWeb.StandaloneError.respond(conn, "achievement_public")
     else
-      upstream =
-        Keyword.get_lazy(opts, :upstream, fn ->
-          Application.fetch_env!(:dawarich, :rails_upstream)
-        end)
-
-      conn |> RailsProxy.call(upstream) |> halt()
+      DawarichWeb.StandaloneError.respond(conn)
     end
   end
 

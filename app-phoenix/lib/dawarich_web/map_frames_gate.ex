@@ -3,7 +3,7 @@ defmodule DawarichWeb.MapFramesGate do
 
   import Plug.Conn, only: [get_req_header: 2]
 
-  alias DawarichWeb.Strangler
+  alias DawarichWeb.PageRequest
 
   @types ["text/html", "application/xhtml+xml", "text/vnd.turbo-stream.html", "*/*"]
 
@@ -37,7 +37,7 @@ defmodule DawarichWeb.MapFramesGate do
   defp accept?(conn) do
     accept = conn |> get_req_header("accept") |> Enum.join(", ")
 
-    String.trim(accept) == "" or Strangler.browser_like?(accept) or
+    String.trim(accept) == "" or PageRequest.browser_like?(accept) or
       (not String.contains?(accept, ";") and
          Enum.all?(String.split(accept, ","), &(String.trim(&1) in @types)))
   end

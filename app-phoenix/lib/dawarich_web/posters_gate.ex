@@ -90,7 +90,7 @@ defmodule DawarichWeb.PostersGate do
       params["format"] not in [nil, ""] ->
         [extension(params["format"])]
 
-      not xhr and DawarichWeb.Strangler.browser_like?(accept) ->
+      not xhr and DawarichWeb.PageRequest.browser_like?(accept) ->
         [:html]
 
       accept == "" and Body.kind(conn) == :json ->

@@ -5,7 +5,6 @@ defmodule DawarichWeb.RailsRemoteIp do
   end
 
   import Bitwise
-  alias DawarichWeb.RailsProxy.Headers
 
   @trusted ~w(127.0.0.0/8 ::1/128 fc00::/7 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 fe80::/10)
   @h "[0-9A-Fa-f]{1,4}"
@@ -17,7 +16,7 @@ defmodule DawarichWeb.RailsRemoteIp do
   @plain ~r/\A([-a-zA-Z0-9._~%!$&'()*+,;=]*?)(?::\d+)?\z/
 
   def ip(conn) do
-    remote = Headers.peer(conn.remote_ip)
+    remote = peer(conn.remote_ip)
 
     clients =
       conn |> Plug.Conn.get_req_header("client-ip") |> Enum.join(", ") |> split() |> valid()
@@ -40,6 +39,11 @@ defmodule DawarichWeb.RailsRemoteIp do
       remote
     end
   end
+
+  defp peer({0, 0, 0, 0, 0, 0xFFFF, hi, lo}),
+    do: peer({div(hi, 256), rem(hi, 256), div(lo, 256), rem(lo, 256)})
+
+  defp peer(ip), do: ip |> :inet.ntoa() |> to_string()
 
   defp split(value), do: String.split(String.trim(value), ~r/[,\s]+/, trim: true)
 

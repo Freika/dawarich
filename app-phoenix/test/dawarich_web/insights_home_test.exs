@@ -14,7 +14,7 @@ defmodule DawarichWeb.InsightsHomeTest do
 
     route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/", "www.example.com")
     assert route.pipe_through == [:public_home]
-    assert route.rails_gate == {DawarichWeb.HomeGate, :owned?}
+    refute Map.has_key?(route, :rails_gate)
     original = Application.get_env(:dawarich, :rails_routes, [])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, original) end)
     owner = self()
@@ -60,16 +60,6 @@ defmodule DawarichWeb.InsightsHomeTest do
            )
 
     Application.put_env(:dawarich, :rails_routes, ["home"])
-
-    assert false ==
-             DawarichWeb.Strangler.gate_open?(
-               route,
-               Plug.Test.conn(:get, "/")
-               |> Plug.Test.put_req_cookie(
-                 "_dawarich_session",
-                 Dawarich.Test.RailsUser.cookie(Dawarich.Test.RailsUser.session(10001))
-               )
-             )
   end
 
   defp collect_queries(acc) do

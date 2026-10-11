@@ -4,7 +4,7 @@ defmodule DawarichWeb.AuthAccount.Http do
   import Plug.Conn
   alias Dawarich.{Accounts, RailsCookies, RailsSecret}
   alias Dawarich.Auth.{AccountChanges, ActionCsrf, Admission}
-  alias DawarichWeb.{RailsAuth, RailsProxy, RequestURL}
+  alias DawarichWeb.{RailsAuth, RequestURL}
   alias DawarichWeb.AuthAccount.Response
 
   @fields ~w(user[first_name] user[last_name] user[email] user[password] user[password_confirmation] user[current_password] authenticity_token commit utf8 _method)
@@ -172,7 +172,7 @@ defmodule DawarichWeb.AuthAccount.Http do
       case {Keyword.get(opts, :native, false), Keyword.get(opts, :fallback)} do
         {true, _} -> send_resp(conn, 422, "Invalid account request")
         {_, fun} when is_function(fun, 1) -> fun.(conn)
-        _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+        _ -> DawarichWeb.StandaloneError.respond(conn)
       end
 
     halt(conn)

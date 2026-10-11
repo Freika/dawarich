@@ -270,10 +270,6 @@ defmodule DawarichWeb.RateLimitTest do
     assert State.count(ScratchRepo, "a11e-refund-failed") == 1
     assert State.count(ScratchRepo, "a11e-refund-last") == 1
 
-    assert_raise RuntimeError, "rate limit refund failed", fn ->
-      DawarichWeb.RailsProxy.call(remaining, {{127, 0, 0, 1}, 1})
-    end
-
     assert State.count(ScratchRepo, "a11e-refund-failed") == 1
   end
 
@@ -332,7 +328,7 @@ defmodule DawarichWeb.RateLimitTest do
   defp naive(nil), do: nil
   defp naive(iso), do: iso |> NaiveDateTime.from_iso8601!() |> NaiveDateTime.truncate(:second)
 
-  test "a request Phoenix counted and then hands to Puma is released, so Rails counts it once" do
+  test "a native local refusal retains its rate counters exactly once" do
     upstream = RawHTTP.listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
     previous = System.get_env("SELF_HOSTED")
@@ -348,21 +344,6 @@ defmodule DawarichWeb.RateLimitTest do
 
     body = ~s({"email":"a@example.invalid"})
 
-    puma =
-      Task.async(fn ->
-        socket = RawHTTP.accept(upstream)
-        {_head, rest} = RawHTTP.read_head(socket)
-        received = RawHTTP.read_at_least(socket, rest, byte_size(body))
-
-        RawHTTP.reply(
-          socket,
-          "HTTP/1.1 401 Unauthorized\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
-        )
-
-        :gen_tcp.close(socket)
-        received
-      end)
-
     conn =
       %{Plug.Test.conn(:post, "/api/v1/auth/login", body) | remote_ip: {203, 0, 113, 40}}
       |> put_req_header("content-type", "application/json")
@@ -374,9 +355,9 @@ defmodule DawarichWeb.RateLimitTest do
 
     conn = conn |> assign(:api_tag, "api") |> DawarichWeb.Api.Body.replay("test")
 
-    assert Task.await(puma) == body
-    assert conn.status == 401
-    assert rows("SELECT value FROM phoenix.counters ORDER BY key") == [[0], [0]]
+    assert conn.status == 422
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+    assert rows("SELECT value FROM phoenix.counters ORDER BY key") == [[1], [1]]
   end
 
   test "native OTP handlers halt throttled requests before admission with Rails counters" do

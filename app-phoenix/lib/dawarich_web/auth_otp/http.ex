@@ -5,7 +5,7 @@ defmodule DawarichWeb.AuthOtp.Http do
   alias Dawarich.{RailsCookies, RailsSecret}
   alias Dawarich.Auth.{ActionCsrf, Admission, SessionCookie}
   alias Dawarich.Auth.Otp.Completion
-  alias DawarichWeb.{RailsAuth, RailsProxy, RequestURL}
+  alias DawarichWeb.{RailsAuth, RequestURL}
   alias DawarichWeb.AuthOtp.Response
   @path "/users/otp_challenge"
   @fields ~w(authenticity_token otp_attempt commit utf8)
@@ -241,7 +241,7 @@ defmodule DawarichWeb.AuthOtp.Http do
       case {Keyword.get(opts, :native, false), Keyword.get(opts, :fallback)} do
         {true, _} -> send_resp(conn, 422, "Invalid OTP request")
         {_, fun} when is_function(fun, 1) -> fun.(conn)
-        _ -> RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+        _ -> DawarichWeb.StandaloneError.respond(conn)
       end
 
     halt(conn)

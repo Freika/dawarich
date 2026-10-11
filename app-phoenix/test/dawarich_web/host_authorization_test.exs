@@ -7,7 +7,7 @@ defmodule DawarichWeb.HostAuthorizationTest do
   import Plug.Conn, only: [get_resp_header: 2]
   import Plug.Test
 
-  alias DawarichWeb.{HostAuthorization, Slices}
+  alias DawarichWeb.HostAuthorization
 
   @fixture "test/fixtures/public_files.json" |> File.read!() |> Jason.decode!()
   @units "test/fixtures/ingest/units.json" |> File.read!() |> Jason.decode!()
@@ -127,23 +127,6 @@ defmodule DawarichWeb.HostAuthorizationTest do
           assert result.halted, inspect(row)
       end
     end
-  end
-
-  test "ingest is owned on self-hosted installs unless DAWARICH_RAILS_SLICES names it" do
-    on_exit(fn ->
-      System.delete_env("SELF_HOSTED")
-      System.delete_env("DAWARICH_RAILS_SLICES")
-    end)
-
-    assert Slices.owned?(:ingest)
-    System.put_env("DAWARICH_RAILS_SLICES", " Ingest ,notifications")
-    refute Slices.owned?(:ingest)
-    System.delete_env("DAWARICH_RAILS_SLICES")
-    System.put_env("SELF_HOSTED", "false")
-    refute Slices.owned?(:ingest)
-    assert Slices.owned?(:ingest, true)
-    System.put_env("DAWARICH_RAILS_SLICES", "ingest")
-    refute Slices.owned?(:ingest, true)
   end
 
   describe "in front of a Phoenix page" do

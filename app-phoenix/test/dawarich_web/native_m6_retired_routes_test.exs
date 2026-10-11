@@ -43,7 +43,7 @@ defmodule DawarichWeb.NativeM6RetiredRoutesTest do
         ] do
       route = Phoenix.Router.route_info(DawarichWeb.Router, "PATCH", path, "www.example.com")
       assert route[:retired] == true
-      assert DawarichWeb.Strangler.rails_constraints?(route)
+      assert DawarichWeb.RouteConstraints.valid?(route)
       conn = dispatch(build_conn(), @endpoint, :patch, path, %{"reset" => "true"})
       assert conn.status == 410
       assert conn.resp_body == "This map command is available through the native map."

@@ -12,8 +12,7 @@ defmodule DawarichWeb.AchievementImageRoutes do
       scope "/" do
         pipe_through :achievement_image
 
-        get "/shared/achievements/:uuid/og.png", DawarichWeb.AchievementPublicImage, [],
-          metadata: %{rails_key: "achievements"}
+        get "/shared/achievements/:uuid/og.png", DawarichWeb.AchievementPublicImage, []
       end
     end
   end

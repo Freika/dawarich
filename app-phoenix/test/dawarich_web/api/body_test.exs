@@ -4,20 +4,8 @@ defmodule DawarichWeb.Api.BodyTest do
   import Plug.Conn
   import Plug.Test
   import Dawarich.Test.RawHTTP
-  import ExUnit.CaptureLog
 
   alias DawarichWeb.Api.Body
-
-  defp with_info_log(fun) do
-    previous = Logger.level()
-    Logger.configure(level: :info)
-
-    try do
-      capture_log([level: :info], fun)
-    after
-      Logger.configure(level: previous)
-    end
-  end
 
   setup do
     upstream = listen()
@@ -33,19 +21,12 @@ defmodule DawarichWeb.Api.BodyTest do
     |> assign(:api_tag, "ingest")
   end
 
-  defp forwarded(upstream, conn) do
-    puma =
-      Task.async(fn ->
-        socket = accept(upstream)
-        {head, rest} = read_head(socket)
-        length = head |> header("content-length") |> List.first("0") |> String.to_integer()
-        body = read_at_least(socket, rest, length)
-        reply(socket, "HTTP/1.1 204 No Content\r\n\r\n")
-        {request_line(head), body}
-      end)
-
+  defp refused(upstream, conn) do
     result = Body.call(conn, [])
-    {Task.await(puma), result}
+    assert result.status == 422
+    assert result.halted
+    assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+    result
   end
 
   test "JSON: query wins, non-objects become _json, nils leave arrays" do
@@ -68,7 +49,7 @@ defmodule DawarichWeb.Api.BodyTest do
     assert Body.call(request("/x", "application/json", ""), []).assigns.api_params == %{}
   end
 
-  test "flat form pairs are decoded; the shapes Rack parses differently go to Rails", %{
+  test "flat form pairs are decoded; the shapes Rack parses differently refuse locally", %{
     upstream: upstream
   } do
     assert Body.call(request("/x", "application/x-www-form-urlencoded", "id=a+b"), []).assigns.api_params ==
@@ -81,73 +62,60 @@ defmodule DawarichWeb.Api.BodyTest do
 
     body = "locations[][geometry]=1"
 
-    assert {{"POST /x HTTP/1.1", ^body}, %{halted: true}} =
-             forwarded(upstream, request("/x", "application/x-www-form-urlencoded", body))
+    refused(upstream, request("/x", "application/x-www-form-urlencoded", body))
   end
 
-  test "a body Jason rejects reaches Puma byte for byte", %{upstream: upstream} do
+  test "a body Jason rejects refuses locally", %{upstream: upstream} do
     body = ~s({"locations":[] /* c */})
 
-    assert {{"POST /api/v1/points HTTP/1.1", ^body}, _} =
-             forwarded(upstream, request("/api/v1/points", "application/json", body))
+    refused(upstream, request("/api/v1/points", "application/json", body))
   end
 
-  test "a multipart body reaches Puma byte for byte through the proxy branch", %{
+  test "a multipart body refuses locally without decoding", %{
     upstream: upstream
   } do
     body = "--X\r\nContent-Disposition: form-data; name=upload\r\n\r\nhello\r\n--X--\r\n"
 
-    assert {{"POST /api/v1/points HTTP/1.1", ^body}, %{halted: true}} =
-             forwarded(
-               upstream,
-               request("/api/v1/points", "multipart/form-data; boundary=X", body)
-             )
+    refused(
+      upstream,
+      request("/api/v1/points", "multipart/form-data; boundary=X", body)
+    )
   end
 
-  test "a JSON-shaped multipart body reaches Puma without JSON decoding", %{upstream: upstream} do
+  test "a JSON-shaped multipart body refuses locally without JSON decoding", %{upstream: upstream} do
     body = ~s({"upload":"hello"})
 
-    assert {{"POST /api/v1/points HTTP/1.1", ^body}, %{halted: true}} =
-             forwarded(
-               upstream,
-               request("/api/v1/points", "multipart/form-data; boundary=X", body)
-             )
+    refused(
+      upstream,
+      request("/api/v1/points", "multipart/form-data; boundary=X", body)
+    )
   end
 
-  test "a Jason-rejected body larger than one MiB reaches Puma byte for byte", %{
+  test "a Jason-rejected body larger than one MiB refuses locally", %{
     upstream: upstream
   } do
     body = "{\"locations\":[]" <> :binary.copy(" ", 1_048_576) <> "/* c */}"
 
-    assert {{"POST /api/v1/points HTTP/1.1", ^body}, %{halted: true}} =
-             forwarded(upstream, request("/api/v1/points", "application/json", body))
+    refused(upstream, request("/api/v1/points", "application/json", body))
   end
 
-  test "a body larger than two MiB reaches Puma unread", %{upstream: upstream} do
+  test "a body larger than two MiB refuses locally unread", %{upstream: upstream} do
     body = :binary.copy("x", 2_097_153)
     conn = request("/api/v1/points", "application/json", body)
 
     assert Body.kind(conn) == :proxy
 
-    assert {{"POST /api/v1/points HTTP/1.1", ^body}, %{halted: true}} =
-             forwarded(upstream, conn)
+    refused(upstream, conn)
   end
 
-  test "an unread proxy branch (oversized or other content type) logs a hand-off reason", %{
+  test "unread oversized and unsupported bodies refuse locally without upstream traffic", %{
     upstream: upstream
   } do
-    oversized = :binary.copy("x", 2_097_153)
-
-    cases = [
-      {request("/api/v1/points", "application/json", oversized), "body larger than 2 MiB"},
-      {request("/api/v1/points", "multipart/form-data; boundary=X", "--X--"),
-       "content type multipart/form-data"}
-    ]
-
-    for {conn, expected} <- cases do
-      log = with_info_log(fn -> {_puma, _result} = forwarded(upstream, conn) end)
-      assert log =~ "[ingest] /api/v1/points handed to Rails: #{expected}", expected
-    end
+    for conn <- [
+          request("/api/v1/points", "application/json", :binary.copy("x", 2_097_153)),
+          request("/api/v1/points", "multipart/form-data; boundary=X", "--X--")
+        ],
+        do: refused(upstream, conn)
   end
 
   test "form pairs after an ampersand space decode as Rack does" do
@@ -155,17 +123,16 @@ defmodule DawarichWeb.Api.BodyTest do
              %{"a" => "1", "b" => "2"}
   end
 
-  test "a form body with more ampersands than Rack allows reaches Puma", %{upstream: upstream} do
+  test "a form body with more ampersands than Rack allows refuses locally", %{upstream: upstream} do
     body = String.duplicate("&", 4_097)
 
-    assert {{"POST /api/v1/points HTTP/1.1", ^body}, %{halted: true}} =
-             forwarded(
-               upstream,
-               request("/api/v1/points", "application/x-www-form-urlencoded", body)
-             )
+    refused(
+      upstream,
+      request("/api/v1/points", "application/x-www-form-urlencoded", body)
+    )
   end
 
-  test "multipart, chunked, oversized and untyped bodies go to Puma unread" do
+  test "multipart, chunked, oversized and untyped bodies remain classified as unread refusals" do
     assert Body.kind(request("/x", "multipart/form-data; boundary=X", "--X--")) == :proxy
 
     assert Body.kind(conn(:post, "/x", "a") |> put_req_header("transfer-encoding", "chunked")) ==

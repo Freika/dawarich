@@ -2,7 +2,7 @@ defmodule DawarichWeb.MapWriteGate do
   @moduledoc false
 
   import Plug.Conn, only: [get_req_header: 2]
-  alias DawarichWeb.{RailsAuth, RailsProxy}
+  alias DawarichWeb.{RailsAuth}
   alias DawarichWeb.Api.Body
 
   def owned?(conn, _params) do
@@ -30,7 +30,7 @@ defmodule DawarichWeb.MapWriteGate do
   end
 
   defp content?(conn) do
-    not RailsProxy.Headers.chunked?(conn) and
+    not DawarichWeb.Api.RequestBody.chunked?(conn) and
       (Body.kind(conn) in [:form, :none] or multipart?(conn))
   end
 

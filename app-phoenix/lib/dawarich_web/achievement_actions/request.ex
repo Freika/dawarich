@@ -2,7 +2,7 @@ defmodule DawarichWeb.AchievementActions.Request do
   @moduledoc false
   import Plug.Conn
   alias Dawarich.Auth.{ActionCsrf, Admission}
-  alias DawarichWeb.{Locale, RailsProxy, RequestURL}
+  alias DawarichWeb.{Locale, RequestURL}
   alias DawarichWeb.AchievementActions.Gate
 
   @limit 65_536
@@ -149,7 +149,7 @@ defmodule DawarichWeb.AchievementActions.Request do
   end
 
   defp read_all(conn, acc) do
-    case read_body(conn, RailsProxy.read_options()) do
+    case read_body(conn, DawarichWeb.Api.RequestBody.read_options()) do
       {:more, raw, conn} -> read_all(conn, [acc, raw])
       {:ok, raw, conn} -> {:ok, IO.iodata_to_binary([acc, raw]), conn}
       {:error, _} -> {:error, conn}

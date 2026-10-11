@@ -3,7 +3,7 @@ defmodule DawarichWeb.A10cRoutesTest do
   import Phoenix.ConnTest
   import Plug.Conn
   alias Dawarich.Test.{RailsUser, RawHTTP}
-  alias DawarichWeb.{Router, Strangler}
+  alias DawarichWeb.{Router, NativeRequest}
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
@@ -61,8 +61,8 @@ defmodule DawarichWeb.A10cRoutesTest do
           RailsUser.cookie(RailsUser.session(44001))
         )
 
-      assert Strangler.gate_open?(route, conn)
-      result = Strangler.call(conn, [])
+      refute NativeRequest.call(conn, []).halted
+      result = NativeRequest.call(conn, [])
       refute result.halted
       refute Map.has_key?(result.private, :dawarich_raw_body)
     end
@@ -78,23 +78,26 @@ defmodule DawarichWeb.A10cRoutesTest do
     for method <- ~w(GET HEAD),
         do:
           refute(
-            Strangler.call(build_conn(method, path) |> put_req_header("accept", "text/html"), []).halted
+            NativeRequest.call(
+              build_conn(method, path) |> put_req_header("accept", "text/html"),
+              []
+            ).halted
           )
 
     image = Phoenix.Router.route_info(Router, "GET", path <> "/og.png", "www.example.com")
     assert image.plug == DawarichWeb.AchievementPublicImage
-    assert image.rails_key == "achievements"
+    refute Map.has_key?(image, :rails_key)
     assert image.pipe_through == [:achievement_image]
 
     for method <- ~w(GET HEAD) do
       conn = build_conn(method, path <> "/og.png") |> put_req_header("accept", "image/png")
-      refute Strangler.call(conn, []).halted
+      refute NativeRequest.call(conn, []).halted
     end
 
     for key <- ~w(shared achievements) do
       Application.put_env(:dawarich, :rails_routes, [key])
-      refute Strangler.call(build_conn("GET", path), []).halted
-      assert_proxy(build_conn("HEAD", path <> "/og.png"))
+      refute NativeRequest.call(build_conn("GET", path), []).halted
+      refute NativeRequest.call(build_conn("HEAD", path <> "/og.png"), []).halted
     end
 
     Application.put_env(:dawarich, :rails_routes, [])
@@ -104,25 +107,5 @@ defmodule DawarichWeb.A10cRoutesTest do
       route = Phoenix.Router.route_info(Router, "GET", path, "www.example.com")
       assert route == :error or route.plug != DawarichWeb.NativePublicPage
     end
-  end
-
-  defp assert_proxy(conn) do
-    server = RawHTTP.listen()
-    saved = Application.get_env(:dawarich, :rails_upstream)
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, server.port})
-
-    task =
-      Task.async(fn ->
-        socket = RawHTTP.accept(server)
-        RawHTTP.read_head(socket)
-        RawHTTP.reply(socket, "HTTP/1.1 218 Rails\r\ncontent-length: 0\r\n\r\n")
-        :gen_tcp.close(socket)
-      end)
-
-    result = Strangler.call(conn, [])
-    assert result.status == 218 and result.halted
-    Task.await(task)
-    :gen_tcp.close(server.listen)
-    Application.put_env(:dawarich, :rails_upstream, saved)
   end
 end

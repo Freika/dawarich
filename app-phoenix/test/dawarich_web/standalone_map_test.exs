@@ -26,9 +26,7 @@ defmodule DawarichWeb.StandaloneMapTest do
     assert Jason.decode!(conn.resp_body)["settings"]["timezone"] == "UTC"
     assert request("/api/v1/settings", "absent").status == 401
     System.delete_env("DAWARICH_RAILS")
-    conn = Plug.Test.conn(:get, "/api/v1/settings")
-    route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", conn.path_info, conn.host)
-    refute DawarichWeb.Strangler.gate_open?(route, conn)
+    assert request("/api/v1/settings", key).status == 200
   end
 
   test "standalone point tiles contain only the authenticated account and requested range", %{

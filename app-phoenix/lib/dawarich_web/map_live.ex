@@ -24,10 +24,6 @@ defmodule DawarichWeb.MapLive do
   end
 
   @impl true
-  def handle_event("rails_flash", params, socket),
-    do: {:noreply, DawarichWeb.RailsWidgets.rails_flash(socket, params)}
-
-  @impl true
   def render(assigns) do
     ~H"""
     <.map_page

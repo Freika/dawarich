@@ -16,7 +16,7 @@ defmodule DawarichWeb.MapFrames do
     RailsSession,
     ResidencyFrame,
     StatsFormat,
-    Strangler,
+    PageRequest,
     TimelineCalendar,
     TimelineFeed
   }
@@ -238,7 +238,7 @@ defmodule DawarichWeb.MapFrames do
 
   def stream?(accept),
     do:
-      String.trim(accept) != "" and not Strangler.browser_like?(accept) and
+      String.trim(accept) != "" and not PageRequest.browser_like?(accept) and
         (accept |> String.split(",") |> hd() |> String.trim()) in [
           "text/vnd.turbo-stream.html",
           "*/*"
@@ -257,7 +257,7 @@ defmodule DawarichWeb.MapFrames do
     do: conn |> vary(accept) |> put_resp_content_type(type) |> send_resp(200, html)
 
   defp vary(conn, accept) do
-    if String.trim(accept) != "" and not Strangler.browser_like?(accept),
+    if String.trim(accept) != "" and not PageRequest.browser_like?(accept),
       do: put_resp_header(conn, "vary", "Accept"),
       else: conn
   end

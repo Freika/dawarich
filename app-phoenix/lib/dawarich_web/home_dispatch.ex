@@ -1,6 +1,6 @@
 defmodule DawarichWeb.HomeDispatch do
   @moduledoc false
-  alias DawarichWeb.{InsightsHome, LayoutAssigns, PublicHomeLive, RailsAuth, RailsProxy}
+  alias DawarichWeb.{InsightsHome, LayoutAssigns, PublicHomeLive, RailsAuth}
   def init(opts), do: opts
 
   def call(conn, _opts) do
@@ -23,7 +23,7 @@ defmodule DawarichWeb.HomeDispatch do
         :error ->
           if Dawarich.Standalone.enabled?(),
             do: DawarichWeb.StandaloneError.respond(conn, "registration_unavailable", 503),
-            else: RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+            else: DawarichWeb.StandaloneError.respond(conn)
       end
     end
   end

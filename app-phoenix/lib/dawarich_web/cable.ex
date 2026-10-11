@@ -8,7 +8,7 @@ defmodule DawarichWeb.Cable do
 
   alias Dawarich.Cable.Identity
   alias Dawarich.RailsSecret
-  alias DawarichWeb.{CableProxy, LayoutAssigns, RackScheme, RailsAuth, SharedLinkCookie}
+  alias DawarichWeb.{LayoutAssigns, RackScheme, RailsAuth, SharedLinkCookie}
 
   @protocols ["actioncable-v1-json", "actioncable-unsupported"]
   @localhost ~r/https?:\/\/localhost:\d+/
@@ -27,7 +27,7 @@ defmodule DawarichWeb.Cable do
         refuse(conn, 404, "Page not found")
 
       WebSockAdapter.UpgradeValidation.validate_upgrade(conn) != :ok ->
-        CableProxy.bad_request(conn)
+        refuse(conn, 400, "Bad Request")
 
       true ->
         upgrade(conn, opts, env)
@@ -73,7 +73,10 @@ defmodule DawarichWeb.Cable do
 
     conn
     |> put_protocol()
-    |> WebSockAdapter.upgrade(DawarichWeb.Cable.Socket, state, CableProxy.upgrade_options())
+    |> WebSockAdapter.upgrade(DawarichWeb.Cable.Socket, state,
+      timeout: :infinity,
+      compress: false
+    )
     |> halt()
   end
 

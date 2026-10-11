@@ -1,7 +1,7 @@
 defmodule DawarichWeb.AdminWrites.Fallback do
   @moduledoc false
   import Plug.Conn
-  alias DawarichWeb.{AdminWritesGate, Locale, RailsAuth, RailsProxy, StandaloneError}
+  alias DawarichWeb.{AdminWritesGate, Locale, RailsAuth, StandaloneError}
   alias DawarichWeb.AdminWrites.Response
 
   def call(conn, opts \\ []) do
@@ -28,7 +28,7 @@ defmodule DawarichWeb.AdminWrites.Fallback do
           StandaloneError.respond(conn, "admin_envelope", Keyword.get(opts, :status, 422))
       end
     else
-      RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+      DawarichWeb.StandaloneError.respond(conn)
     end
   end
 

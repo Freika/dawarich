@@ -30,6 +30,6 @@ defmodule DawarichWeb.AchievementActions.Response do
   def supported?(conn),
     do:
       json?(conn) or
-        (DawarichWeb.Strangler.page_request?(conn) and
+        (DawarichWeb.PageRequest.page_request?(conn) and
            not Enum.any?(get_req_header(conn, "accept"), &String.contains?(&1, "turbo-stream")))
 end

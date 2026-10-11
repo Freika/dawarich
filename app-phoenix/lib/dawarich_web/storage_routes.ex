@@ -46,57 +46,29 @@ defmodule DawarichWeb.StorageRoutes do
       scope "/rails/active_storage" do
         pipe_through :storage_upload
 
-        post "/direct_uploads", DawarichWeb.StorageRoutes, :direct_upload,
-          metadata: %{
-            rails_key: "active_storage",
-            rails_gate: {DawarichWeb.StorageGate, :native?}
-          }
+        post "/direct_uploads", DawarichWeb.StorageRoutes, :direct_upload
       end
 
       scope "/rails/active_storage" do
         pipe_through :storage_public
 
-        put "/disk/:encoded_token", DawarichWeb.StorageRoutes, :disk_update,
-          metadata: %{
-            rails_key: "active_storage",
-            rails_gate: {DawarichWeb.StorageGate, :native?}
-          }
+        put "/disk/:encoded_token", DawarichWeb.StorageRoutes, :disk_update
 
-        get "/disk/:encoded_key/*filename", DawarichWeb.StorageRoutes, :disk,
-          metadata: %{
-            rails_key: "active_storage",
-            rails_gate: {DawarichWeb.StorageGate, :native?}
-          }
+        get "/disk/:encoded_key/*filename", DawarichWeb.StorageRoutes, :disk
 
-        get "/blobs/proxy/:signed_id/*filename", DawarichWeb.StorageRoutes, :proxy,
-          metadata: %{
-            rails_key: "active_storage",
-            rails_gate: {DawarichWeb.StorageGate, :native?}
-          }
+        get "/blobs/proxy/:signed_id/*filename", DawarichWeb.StorageRoutes, :proxy
 
         for {path, action} <- [
               {"/representations/proxy/:signed_blob_id/:variation_key/*filename", :proxy},
               {"/representations/redirect/:signed_blob_id/:variation_key/*filename", :redirect},
               {"/representations/:signed_blob_id/:variation_key/*filename", :redirect}
             ] do
-          get path, DawarichWeb.StorageRoutes, {:representation, action},
-            metadata: %{
-              rails_key: "active_storage",
-              rails_gate: {DawarichWeb.StorageGate, :native?}
-            }
+          get path, DawarichWeb.StorageRoutes, {:representation, action}
         end
 
-        get "/blobs/redirect/:signed_id/*filename", DawarichWeb.StorageRoutes, :redirect,
-          metadata: %{
-            rails_key: "active_storage",
-            rails_gate: {DawarichWeb.StorageGate, :native?}
-          }
+        get "/blobs/redirect/:signed_id/*filename", DawarichWeb.StorageRoutes, :redirect
 
-        get "/blobs/:signed_id/*filename", DawarichWeb.StorageRoutes, :redirect,
-          metadata: %{
-            rails_key: "active_storage",
-            rails_gate: {DawarichWeb.StorageGate, :native?}
-          }
+        get "/blobs/:signed_id/*filename", DawarichWeb.StorageRoutes, :redirect
       end
     end
   end

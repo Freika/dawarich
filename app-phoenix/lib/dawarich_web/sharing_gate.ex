@@ -4,12 +4,12 @@ defmodule DawarichWeb.SharingGate do
   import Plug.Conn, only: [get_req_header: 2]
 
   alias Dawarich.SharedLinks
-  alias DawarichWeb.{LayoutAssigns, RailsAuth, RailsProxy}
+  alias DawarichWeb.{LayoutAssigns, RailsAuth}
 
   @forwarded ~w(forwarded x-forwarded-for)
 
   def show?(conn, %{"id" => id}),
-    do: open?(conn, id) and not RailsProxy.Headers.body?(conn) and renderable?(id)
+    do: open?(conn, id) and not DawarichWeb.Api.RequestBody.body?(conn) and renderable?(id)
 
   def unlock?(conn, %{"id" => id}),
     do:

@@ -2,7 +2,7 @@ defmodule DawarichWeb.TrialWelcome do
   @moduledoc false
   import Plug.Conn
   alias Dawarich.Trial.Welcome
-  alias DawarichWeb.{AuthCookie, RailsHeaders, RailsProxy, RequestURL, WelcomeGate}
+  alias DawarichWeb.{AuthCookie, RailsHeaders, RequestURL, WelcomeGate}
   def init(opts), do: opts
   def call(%{halted: true} = conn, _opts), do: conn
 
@@ -73,6 +73,6 @@ defmodule DawarichWeb.TrialWelcome do
   defp proxy(conn) do
     if Dawarich.Standalone.enabled?(),
       do: conn |> headers() |> DawarichWeb.StandaloneError.respond("welcome_envelope", 422),
-      else: RailsProxy.call(conn, Application.fetch_env!(:dawarich, :rails_upstream))
+      else: DawarichWeb.StandaloneError.respond(conn)
   end
 end

@@ -42,7 +42,7 @@ defmodule DawarichWeb.TripsGate do
   def page_number(page), do: max(DawarichWeb.Params.ruby_to_i(page), 1)
 
   defp trip_open?(conn, check),
-    do: open?(conn, check) or is_nil(Application.get_env(:dawarich, :rails_upstream))
+    do: open?(conn, check)
 
   def open?(conn, check) do
     case DawarichWeb.RailsAuth.call(conn, []).assigns.current_user do

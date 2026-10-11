@@ -27,20 +27,19 @@ defmodule DawarichWeb.Api.RequestFormat do
 
   def init(opts), do: opts
 
-  def call(%{path_info: [api, version | rest]} = conn, _opts) do
+  def call(%{path_info: [api, version | _rest]} = conn, _opts) do
     if [api, version] != ["api", "v1"] and URI.decode(api) == "api" and
-         URI.decode(version) == "v1" and
-         not DawarichWeb.Strangler.handed_back?(["api", "v1" | rest]) do
+         URI.decode(version) == "v1" do
       DawarichWeb.RailsErrors.respond(conn, 404)
     else
-      if DawarichWeb.Strangler.native_api?(conn), do: format_path(conn), else: conn
+      format_path(conn)
     end
   end
 
   def call(conn, _opts), do: format_path(conn)
 
   defp format_path(%{path_info: ["api", "v1" | rest]} = conn) do
-    if DawarichWeb.Strangler.handed_back?(conn.path_info) or Enum.take(rest, 1) == ["tiles"] do
+    if Enum.take(rest, 1) == ["tiles"] do
       conn
     else
       last = List.last(rest) || ""
@@ -77,7 +76,7 @@ defmodule DawarichWeb.Api.RequestFormat do
       String.trim(value) == "" ->
         {:ok, if(get_req_header(conn, "x-requested-with") == [], do: :html, else: :js), false}
 
-      DawarichWeb.Strangler.browser_like?(value) ->
+      DawarichWeb.PageRequest.browser_like?(value) ->
         {:ok, :html, false}
 
       true ->
