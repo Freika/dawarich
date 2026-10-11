@@ -68,7 +68,9 @@ test("style-document failure falls back but individual tile failure does not dis
 
 test("destroy during fallback style fetch cannot set style on removed map", async () => {
   let resolve
-  const pending = new Promise((r) => (resolve = r))
+  const pending = new Promise((r) => {
+    resolve = r
+  })
   const handlers = new Map(),
     styles = []
   const map = {

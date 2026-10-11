@@ -89,7 +89,9 @@ test("native host restores and persists only its user viewport while owning RTL 
       },
     },
   )
-  f.map.jumpTo = (value) => (view = value)
+  f.map.jumpTo = (value) => {
+    view = value
+  }
   f.map.getCenter = () => ({ lng: 14, lat: 53 })
   await f.owner.mount()
   await Promise.resolve()

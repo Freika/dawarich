@@ -7,6 +7,7 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
   import DawarichWeb.Paginator, only: [paginator: 1]
   import DawarichWeb.NativeTripCard, only: [trip_card: 1]
 
+  @impl true
   def mount(_, _, socket) do
     socket =
       assign(socket,
@@ -25,6 +26,7 @@ defmodule DawarichWeb.TripsLive.NativeIndex do
     {:ok, socket, layout: false}
   end
 
+  @impl true
   def handle_params(params, _, socket) do
     with true <- valid_page?(params["page"]) and valid_page?(params["family_page"]),
          page = DawarichWeb.TripsGate.page_number(params["page"]),
