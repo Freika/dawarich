@@ -78,6 +78,10 @@ defmodule DawarichWeb.NativeM6Routes do
             container: {:div, class: "contents"},
             metadata: %{retired: true}
 
+          live "/trips", DawarichWeb.TripsLive.NativeIndex, :index,
+            container: {:div, class: "contents"},
+            metadata: %{retired: true}
+
           live "/trips/:id", DawarichWeb.TripsLive.NativeMap, :show,
             container: {:div, class: "contents"},
             metadata: %{retired: true}

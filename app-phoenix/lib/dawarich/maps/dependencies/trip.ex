@@ -2,6 +2,33 @@ defmodule Dawarich.Maps.Dependencies.Trip do
   @moduledoc false
   alias Dawarich.{Maps, TripPage}
 
+  def list(scope, page, family_page, opts \\ []) do
+    Maps.with_actor(scope, fn actor ->
+      with {:ok, result} <- Dawarich.TripList.load(actor, page) do
+        family =
+          Dawarich.SharedLinks.FamilyAudience.trips(
+            actor,
+            family_page,
+            Keyword.get(opts, :now, DateTime.utc_now())
+          )
+
+        entries =
+          Enum.map(result.entries, fn trip ->
+            trip
+            |> Map.drop([:path_json, :plan_json])
+            |> Map.put(:has_path, not is_nil(trip.path_json))
+            |> Map.put(:has_plan, not is_nil(trip.plan_json))
+          end)
+
+        {:ok,
+         %{result | entries: entries}
+         |> Map.merge(%{family_entries: family.entries, family_total_pages: family.total_pages})}
+      else
+        _ -> {:error, :unavailable}
+      end
+    end)
+  end
+
   def admit(scope, id) when is_integer(id) and id > 0 do
     Maps.with_actor(scope, fn actor ->
       case TripPage.gate(actor, id) do

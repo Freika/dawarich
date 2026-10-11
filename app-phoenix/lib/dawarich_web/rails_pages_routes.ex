@@ -79,10 +79,6 @@ defmodule DawarichWeb.RailsPagesRoutes do
           live "/digests/:year", DawarichWeb.DigestsLive.Show, :show,
             container: {:div, class: "contents"}
 
-          live "/trips", DawarichWeb.TripsLive.Index, :index,
-            container: {:div, class: "contents"},
-            metadata: %{rails_gate: {DawarichWeb.TripsGate, :index?}}
-
           live "/trips/new", DawarichWeb.TripsLive.Form, :new,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
