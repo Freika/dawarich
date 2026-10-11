@@ -27,6 +27,12 @@ export function createMapRuntime({
   let state = "idle"
   let presentationState = "idle"
   lifetime.own(() => reader.destroy())
+  const window = element.ownerDocument.defaultView
+  const retire = (event) => {
+    if (!event.persisted) destroy()
+  }
+  window?.addEventListener("pagehide", retire)
+  lifetime.own(() => window?.removeEventListener("pagehide", retire))
 
   function publish(value) {
     presentationState = value

@@ -18,6 +18,7 @@ function fixture(options = {}) {
       calls.roots++
     },
     ownerDocument: {
+      defaultView: options.window,
       createElement() {
         return {
           style: {},
@@ -405,4 +406,21 @@ test("native runtime exposes the latest published state through refresh and disp
   assert.equal(runtime.presentationState, "ready")
   runtime.destroy()
   assert.equal(runtime.presentationState, "cancelled")
+})
+
+test("native document retirement releases WebGL owners without retiring cached pages", async () => {
+  const window = new EventTarget()
+  const { runtime, calls } = fixture({ window })
+  assert.equal(await runtime.mount(), "ready")
+  const cached = new Event("pagehide")
+  Object.defineProperty(cached, "persisted", { value: true })
+  window.dispatchEvent(cached)
+  assert.equal(calls.removed, 0)
+  window.dispatchEvent(new Event("pagehide"))
+  assert.equal(calls.removed, 1)
+  assert.equal(calls.readers, 1)
+  assert.equal(calls.roots, 0)
+  runtime.destroy()
+  window.dispatchEvent(new Event("pagehide"))
+  assert.equal(calls.removed, 1)
 })
