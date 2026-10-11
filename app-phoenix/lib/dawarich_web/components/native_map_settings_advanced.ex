@@ -35,6 +35,7 @@ defmodule DawarichWeb.NativeMapSettingsAdvanced do
       />
       <.number
         name="fog_of_war_threshold"
+        type="range"
         label={p(@locale, "fog_of_war_threshold")}
         value={@saved["fog_of_war_threshold"]}
         min="1"
@@ -100,19 +101,24 @@ defmodule DawarichWeb.NativeMapSettingsAdvanced do
   attr :min, :string, required: true
   attr :max, :string, default: nil
   attr :step, :string, required: true
+  attr :type, :string, default: "number"
 
   defp number(assigns) do
     ~H"""
     <label class="form-control w-full min-w-0">
       <span class="label-text text-sm font-medium">{@label}</span>
       <input
-        type="number"
+        type={@type}
         name={@name}
         value={@value}
         min={@min}
         max={@max}
         step={@step}
-        class="input input-sm input-bordered w-full"
+        class={
+          if @type == "range",
+            do: "range range-sm w-full",
+            else: "input input-sm input-bordered w-full"
+        }
       />
     </label>
     """
