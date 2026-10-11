@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Partnero signup failure diagnostics and Immich enrichment errors exclude provider-supplied credentials and customer details.
 - Propagate failed monthly statistics calculations so background jobs can retry, with one failure notification per stats delivery.
 - Timeline calendar activity and status counts refresh after confirming or declining visits in bulk.
 - Shared photo thumbnails lose their old authorization immediately when the trip dates or shared resource change.
