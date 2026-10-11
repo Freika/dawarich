@@ -3,12 +3,14 @@
 <section class="container mx-auto px-4 py-6">
   <h1 class="text-3xl font-bold mb-2"><%= track_share_label(resource, unit) %></h1>
 
-  <div id="shared-trip-map"
-       data-controller="shared-trip-map"
-       data-shared-trip-map-link-id-value="<%= link.id %>"
-       data-shared-trip-map-show-photos-value="<%= ctx.show_photos? %>"
-       style="height: 60vh; min-height: 400px;"
-       class="rounded-lg overflow-hidden bg-base-200 my-6"></div>
+  <% if ctx.show_route? %>
+    <div id="shared-trip-map"
+         data-controller="shared-trip-map"
+         data-shared-trip-map-link-id-value="<%= link.id %>"
+         data-shared-trip-map-show-photos-value="<%= ctx.show_photos? %>"
+         style="height: 60vh; min-height: 400px;"
+         class="rounded-lg overflow-hidden bg-base-200 my-6"></div>
+  <% end %>
 
   <% if ctx.show_stats? %>
     <div class="stats shadow w-full">
